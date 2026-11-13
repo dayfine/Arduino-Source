@@ -11,7 +11,6 @@
 
 #include <algorithm>
 #include <format>
-#include <optional>
 #include <string>
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -20,7 +19,6 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteTiming.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 #include "PokemonBDSP_AutoStory_BadgeCheck.h"
@@ -96,15 +94,16 @@ enum class GymMeeting{
     LEADER_WON,
 };
 
-//  A talk has opened. Who it is, is what the battle's intro text says ("You
-//  are challenged by Gym Leader Roark!"), read on the screen by
-//  fight_story_battle(): never the count of trainers beaten or the distance
-//  walked (lab-B, 2026-11-12 22:50: the second trainer, met by a blocked walk
-//  and an A press, was fought as Roark, and 01.05 saved with no badge; 23:49:
-//  after a reload Roark was "Gym trainer 1"). The column only hints, and says
-//  how to wait: Roark's lines pause for more than 4 s before the battle
-//  (r210d: "only talked"), so up at his tile a battle is expected. An intro
-//  that was not read fails the step: the next one would be a guess.
+//  A talk has opened. Who it was is told after a won battle by whether
+//  anyone talked on the overworld (gym_opponent_after_battle()): Roark's
+//  badge speech, in any language. Never the count of trainers beaten or the
+//  distance walked (lab-B, 2026-11-12 22:50: the second trainer, met by a
+//  blocked walk and an A press, was fought as Roark, and 01.05 saved with no
+//  badge; 23:49: after a reload Roark was "Gym trainer 1"), and not the
+//  intro text, which OCR read in English only (01:17, French). The column
+//  only hints, and says how to wait: Roark's lines pause for more than 4 s
+//  before the battle (r210d: "only talked"), so up at his tile a battle is
+//  expected.
 GymMeeting meet_gym_opponent(VideoStream& stream, ProControllerContext& context, const GymColumn& column){
     const bool leader_hint = column.leader_here();
     stream.log(std::format("[01.04] About {:.1f} tiles up the gym (a hint, not the opponent: {}).",
@@ -117,16 +116,10 @@ GymMeeting meet_gym_opponent(VideoStream& stream, ProControllerContext& context,
     if (in_pokemon_center(stream)){
         return GymMeeting::LOST;
     }
-    stream.log(std::format("[01.04] Opponent by the battle's intro text: {}.", battle_opponent_name(met.opponent)));
-    switch (met.opponent){
-    case BattleOpponent::LEADER:
-        return GymMeeting::LEADER_WON;
-    case BattleOpponent::TRAINER:
-        return GymMeeting::TRAINER_WON;
-    case BattleOpponent::UNREAD:
-        break;
-    }
-    fail_step(stream, "Oreburgh Gym: the battle's intro text was not read, so the opponent is not known to be a trainer or Roark (its frames are in DebugDumps).");
+    const GymOpponent opponent = gym_opponent_after_battle(met.box_looks_after);
+    stream.log(std::format("[01.04] Beat {}: a box on the overworld after the battle in {} look(s).",
+        gym_opponent_name(opponent), met.box_looks_after));
+    return opponent == GymOpponent::LEADER ? GymMeeting::LEADER_WON : GymMeeting::TRAINER_WON;
 }
 
 //  Inside the Oreburgh Gym: straight up the middle, fighting the trainers
@@ -191,10 +184,6 @@ void gym_until_roark_beaten(VideoStream& stream, ProControllerContext& context, 
     // Losing costs some money and keeps the experience, so each try comes
     // back stronger: Roark won twice by hand against Piplup Lv 10 and 14 and
     // lost the third time.
-    const std::optional<std::string> refusal = gym_language_refusal(story_language());
-    if (refusal){
-        fail_step(stream, *refusal);
-    }
     GymColumn column = oreburgh_gym_column();
     bool won = false;
     for (size_t attempt = 0; attempt < 5 && !won; attempt++){

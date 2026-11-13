@@ -17,7 +17,6 @@
 #include "CommonTools/VisualDetector.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
-#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleIntro.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -94,18 +93,17 @@ private:
 //  lines until the overworld is quiet. Roark's badge lines pause for the
 //  fanfare, and someone may walk off before the next line, so a moment
 //  with no box is not the end. Fails with a screenshot after two minutes.
-void confirm_battle_overworld(VideoStream& stream, ProControllerContext& context, const std::string& label);
+//  Returns how many looks showed a box: someone talked after the battle.
+size_t confirm_battle_overworld(VideoStream& stream, ProControllerContext& context, const std::string& label);
 
 //  A story battle that may go badly: the best move each turn, Potions
 //  under 35 %, the next Pokemon when one faints, and "Keep old moves"
 //  on level-up prompts. `doubles` confirms the default target each
 //  turn in DOUBLES. Returns once the battle has ended,
-//  won or lost; after a loss we stand in the last Pokemon Center. Returns who
-//  the battle's intro text ("You are challenged by ...") said the opponent
-//  was: UNREAD when it was not read (no word table for the game's language,
-//  battle_intro_reads(), or the line was
-//  gone before the first read), never a guess.
-BattleOpponent fight_story_battle(VideoStream& stream, ProControllerContext& context, const std::string& label, BattleFormat format);
+//  won or lost; after a loss we stand in the last Pokemon Center. Returns how
+//  many looks showed a box on the overworld after the battle
+//  (confirm_battle_overworld()): who talked after it, in any language.
+size_t fight_story_battle(VideoStream& stream, ProControllerContext& context, const std::string& label, BattleFormat format);
 
 //  Any trainer battle, whatever the starter: the best move on the menu each
 //  turn until the battle ends, then the text after it.

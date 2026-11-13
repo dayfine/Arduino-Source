@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A talk that may end in a trainer's battle, with who the battle's intro
- *  text said the opponent was.
+ *  A talk that may end in a trainer's battle, with whether anyone talked on
+ *  the overworld after the battle.
  *
  */
 
@@ -17,13 +17,13 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
-//  How a talk ended, and who the battle's intro text said it was against.
+//  How a talk ended, and what was said after its battle.
 struct TalkFight{
     bool fought = false;
-    //  UNREAD when there was no battle, or its intro was not read.
-    BattleOpponent opponent = BattleOpponent::UNREAD;
+    //  Looks with a box on the overworld after the battle (0 with none).
+    size_t box_looks_after = 0;
 };
-//  talk_or_fight() that also says who the opponent was.
+//  talk_or_fight() that also says whether anyone talked after the battle.
 TalkFight talk_or_fight_who(
     VideoStream& stream, ProControllerContext& context, const std::string& label,
     TalkExpect expect = TalkExpect::TALK_OR_BATTLE, BattleFormat format = BattleFormat::SINGLES

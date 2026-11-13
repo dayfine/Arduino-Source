@@ -72,11 +72,11 @@ TalkFight talk_or_fight_who(VideoStream& stream, ProControllerContext& context, 
     route_status(stream, "Fighting " + label + ".");
     //  The battle ends with its speeches over (confirm_battle_overworld()):
     //  Roark's badge lines keep the Potion's menu from opening until then.
-    const BattleOpponent opponent = fight_story_battle(stream, context, label, format);
+    const size_t box_looks_after = fight_story_battle(stream, context, label, format);
     if (!in_pokemon_center(stream)){
         use_potion_first_pokemon(stream, context, 0.8);
     }
-    return {.fought = true, .opponent = opponent};
+    return {.fought = true, .box_looks_after = box_looks_after};
 }
 
 //  A rough check that we stand in a Pokemon Center: its floor fills the lower

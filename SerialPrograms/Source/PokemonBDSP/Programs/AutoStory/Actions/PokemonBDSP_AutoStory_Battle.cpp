@@ -10,14 +10,11 @@
 #include <array>
 #include <cctype>
 #include <cmath>
-#include <format>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/PrettyPrint.h"
-#include "Common/Cpp/Time.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
-#include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -27,11 +24,9 @@
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_EndBattleDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.h"
-#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleIntro.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_Bag.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 #include "PokemonBDSP_AutoStory_TalkOver.h"
@@ -313,7 +308,7 @@ void take_turn(
 
 //  The battle has ended: its text to the overworld, which must stay
 //  dialogue-free for four seconds.
-void finish_battle(VideoStream& stream, ProControllerContext& context, const std::string& label){
+size_t finish_battle(VideoStream& stream, ProControllerContext& context, const std::string& label){
     stream.log("[AutoStory] " + label + " battle complete.", COLOR_GREEN);
     OverworldWatcher overworld;
     const int cleanup_ret = run_until<ProControllerContext>(stream, context,
@@ -325,7 +320,7 @@ void finish_battle(VideoStream& stream, ProControllerContext& context, const std
             label + ": Post-battle cleanup timed out.", stream);
     }
     context.wait_for_all_requests();
-    confirm_battle_overworld(stream, context, label + " cleanup");
+    return confirm_battle_overworld(stream, context, label + " cleanup");
 }
 
 //  B through the battle's text until its menu, its end, or a move-learning
@@ -357,51 +352,11 @@ int wait_for_battle_screen(
     );
 }
 
-//  An intro that told nobody: the frames it read (none when the battle's
-//  dialog never showed) and the screen now, for the next fix.
-void dump_unread_intro(VideoStream& stream, const BattleIntroWatcher& intro, const std::string& label){
-    const std::vector<ImageRGB32> frames = intro.frames_read();
-    for (size_t i = 0; i < frames.size(); i++){
-        dump_debug_image(stream.logger(), "PokemonBDSP/AutoStory/BattleIntro", std::format("unread-read{}", i), frames[i]);
-    }
-    const VideoSnapshot now = stream.video().snapshot();
-    if (now){
-        dump_debug_image(stream.logger(), "PokemonBDSP/AutoStory/BattleIntro", "unread-now", *now.frame);
-    }
-    stream.log(std::format("[{}] The intro was not read: {} read frame(s) and the screen now are in DebugDumps.",
-        label, frames.size()), COLOR_ORANGE);
-}
-
-//  The battle's opening transition, 5 s as it always was. A trainer's battle
-//  starts with "You are challenged by ...": it is read while it shows, before
-//  anything presses through it.
-BattleOpponent wait_out_battle_start(VideoStream& stream, ProControllerContext& context, const BestMoveBattle& battle, const std::string& label){
-    constexpr Milliseconds TRANSITION = 5000ms;
-    if (battle.battle_type != BattleType::TRAINER || !battle_intro_reads(story_language())){
-        pbf_wait(context, TRANSITION);
-        return BattleOpponent::UNREAD;
-    }
-    context.wait_for_all_requests();
-    BattleIntroWatcher intro(story_language());
-    const WallClock start = current_time();
-    wait_until(stream, context, TRANSITION, {{intro}});
-    const Milliseconds elapsed = std::chrono::duration_cast<Milliseconds>(current_time() - start);
-    if (elapsed < TRANSITION){
-        pbf_wait(context, TRANSITION - elapsed);
-    }
-    const BattleOpponent opponent = intro.verdict();
-    stream.log(std::format("[{}] The battle's intro text read \"{}\"; opponent: {}.",
-        label, intro.last_text(), battle_opponent_name(opponent)));
-    if (opponent == BattleOpponent::UNREAD){
-        dump_unread_intro(stream, intro, label);
-    }
-    return opponent;
-}
-
 //  Fights the battle on screen to its end and the overworld after it.
-BattleOpponent fight_with_best_move(VideoStream& stream, ProControllerContext& context, const BestMoveBattle& battle, const std::string& label){
+size_t fight_with_best_move(VideoStream& stream, ProControllerContext& context, const BestMoveBattle& battle, const std::string& label){
     stream.log("[AutoStory] Starting " + label + " battle...", COLOR_BLUE);
-    const BattleOpponent opponent = wait_out_battle_start(stream, context, battle, label);
+    // Preserve the existing early-game transition delay.
+    pbf_wait(context, 5000ms);
     BattleProgress progress;
     EndBattleWatcher end_battle;
     while (true){
@@ -409,8 +364,7 @@ BattleOpponent fight_with_best_move(VideoStream& stream, ProControllerContext& c
         if (ret == 0){
             take_turn(stream, context, battle, progress, label);
         }else if (ret == 1){
-            finish_battle(stream, context, label);
-            return opponent;
+            return finish_battle(stream, context, label);
         }else if (ret == 2){
             stream.log("[" + label + "] Declining move learning; preserving scripted move positions.");
             pbf_move_right_joystick(context, {0, -1}, 160ms, 840ms);
@@ -433,12 +387,12 @@ BattleOpponent fight_with_best_move(VideoStream& stream, ProControllerContext& c
 
 } // namespace
 
-void confirm_battle_overworld(VideoStream& stream, ProControllerContext& context,
+size_t confirm_battle_overworld(VideoStream& stream, ProControllerContext& context,
     const std::string& label){
-    talk_over(stream, context, label);
+    return talk_over_seen(stream, context, label).box_looks;
 }
 
-BattleOpponent fight_story_battle(VideoStream& stream, ProControllerContext& context, const std::string& label, BattleFormat format){
+size_t fight_story_battle(VideoStream& stream, ProControllerContext& context, const std::string& label, BattleFormat format){
     // The best move each turn; the next Pokemon after a faint; no new moves.
     return fight_with_best_move(stream, context, {.battle_type = BattleType::TRAINER, .format = format, .switch_on_faint = true}, label);
 }

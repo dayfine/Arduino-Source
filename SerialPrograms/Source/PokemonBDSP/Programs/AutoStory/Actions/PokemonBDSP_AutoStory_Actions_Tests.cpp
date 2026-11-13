@@ -39,6 +39,7 @@
 #include "PokemonBDSP_AutoStory_IntroSteps.h"
 #include "PokemonBDSP_AutoStory_LitDoorway.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
+#include "PokemonBDSP_AutoStory_TalkOver.h"
 #include "PokemonBDSP_AutoStory_Actions_Tests.h"
 
 namespace PokemonAutomation{
@@ -498,110 +499,54 @@ UnitTestResult test_asks_someone_else(Logger&){
     return true;
 }
 
-//  01.04 (lab-B, 2026-11-12 22:50 and 23:49): the opponent is read from the
-//  battle's intro text, not told by a count that a reload loses (Roark was
-//  "Gym trainer 1 of 2" after a reload) or by the time walked.
-UnitTestResult test_battle_intro_tells_the_opponent(Logger&){
-    struct Case{ std::string_view text; BattleOpponent opponent; };
+//  The overworld after a won battle, replayed look by look through the
+//  talk-over's judge as the console runs it; returns the looks with a box.
+size_t replay_after_battle(const std::vector<Pokemon::ScreenEvents>& looks){
+    using Pokemon::ScreenEvent;
+    TalkOverTally judge;
+    WallClock now = WallClock{} + std::chrono::hours(1);
+    for (const Pokemon::ScreenEvents& look : looks){
+        if (judge.look(look, now) == SceneMove::DONE){
+            return judge.box_looks();
+        }
+        now += TALK_OVER_HOLD + TALK_OVER_RELEASE;
+    }
+    const Pokemon::ScreenEvents quiet{ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL};
+    for (size_t i = 0; i < 20; i++){
+        if (judge.look(quiet, now) == SceneMove::DONE){
+            return judge.box_looks();
+        }
+        now += TALK_OVER_HOLD + TALK_OVER_RELEASE;
+    }
+    return judge.box_looks();
+}
+
+//  01.04 (lab-B, 2026-11-13 01:17, French): Roark is told from a gym trainer
+//  by what happens after the battle, not by reading its intro text. A
+//  trainer's battle ends straight on a quiet overworld (22:49, the cleanup
+//  over in 7.8 s); Roark talks there for about 40 s (01:16:43 to 01:17:25),
+//  with a pause for the badge fanfare.
+UnitTestResult test_gym_opponent_from_the_talk_after(Logger&){
+    using Pokemon::ScreenEvent;
+    using Pokemon::ScreenEvents;
+    const ScreenEvents box{ScreenEvent::DIALOG_BOX};
+    const ScreenEvents fanfare{ScreenEvent::PLAYER_CAN_MOVE};
+    struct Case{ std::string_view name; std::vector<ScreenEvents> looks; GymOpponent opponent; };
+    std::vector<ScreenEvents> roark(20, box);
+    roark.insert(roark.end(), 3, fanfare);
+    roark.insert(roark.end(), 12, box);
     const Case cases[] = {
-        {"You are challenged by Gym Leader Roark!", BattleOpponent::LEADER},
-        {"You are challenged by Gym Leader", BattleOpponent::LEADER},
-        {"You are challenged by Gym Leacler Roark!", BattleOpponent::LEADER},
-        {"You are challenged by Youngster Tristan!", BattleOpponent::TRAINER},
-        {"You are challenged by Hiker Mark!\n", BattleOpponent::TRAINER},
-        //  Still being typed out: no verdict from "by Y".
-        {"You are challenged by Y", BattleOpponent::UNREAD},
-        {"You are challenged by", BattleOpponent::UNREAD},
-        {"You are chal", BattleOpponent::UNREAD},
-        {"Go! Turtwig!", BattleOpponent::UNREAD},
-        {"", BattleOpponent::UNREAD},
-        {"  \n ", BattleOpponent::UNREAD},
-        {"!!!", BattleOpponent::UNREAD},
+        {"a trainer: the overworld comes back quiet", {}, GymOpponent::TRAINER},
+        {"a trainer: one stray look with a box", {box}, GymOpponent::TRAINER},
+        {"Roark: the badge and TM speech, a fanfare pause between", roark, GymOpponent::LEADER},
     };
     for (const Case& c : cases){
-        if (classify_battle_intro(c.text) != c.opponent){
-            return std::format("\"{}\" read as {}, not {}.", c.text,
-                battle_opponent_name(classify_battle_intro(c.text)), battle_opponent_name(c.opponent));
+        const size_t looks = replay_after_battle(c.looks);
+        const GymOpponent opponent = gym_opponent_after_battle(looks);
+        if (opponent != c.opponent){
+            return std::format("{}: {} look(s) with a box read as {}, not {}.", c.name, looks,
+                gym_opponent_name(opponent), gym_opponent_name(c.opponent));
         }
-    }
-    return true;
-}
-
-//  01.04 in French (lab-B, 2026-11-13 01:17): the intro was never read, two
-//  gym battles were fought blind and the step failed after them. Roark is
-//  "Pierrick", his title "Champion d'Arene" (pokepedia.fr); OCR may drop the
-//  accents, and an English table must not read a French line.
-UnitTestResult test_battle_intro_french(Logger&){
-    struct Case{ std::string_view text; Language language; BattleOpponent opponent; };
-    const Case cases[] = {
-        {"Vous êtes défié par Champion d'Arène Pierrick !", Language::French, BattleOpponent::LEADER},
-        {"Champion d'Arene Pierrick", Language::French, BattleOpponent::LEADER},
-        {"CHAMPION D'ARÈNE", Language::French, BattleOpponent::LEADER},
-        {"Pierrick", Language::French, BattleOpponent::LEADER},
-        //  Not the leader's: a trainer's line, once it is long enough.
-        {"Vous êtes défié par Montagnard Marc !", Language::French, BattleOpponent::TRAINER},
-        {"Vous êtes", Language::French, BattleOpponent::UNREAD},
-        {"", Language::French, BattleOpponent::UNREAD},
-        //  Each table reads its own language only.
-        {"Vous êtes défié par Champion d'Arène Pierrick !", Language::English, BattleOpponent::UNREAD},
-        {"You are challenged by Gym Leader Roark!", Language::English, BattleOpponent::LEADER},
-        {"You are challenged by Gym Leader Roark!", Language::German, BattleOpponent::UNREAD},
-    };
-    for (const Case& c : cases){
-        const BattleOpponent read = classify_battle_intro(c.text, c.language);
-        if (read != c.opponent){
-            return std::format("\"{}\" ({}) read as {}, not {}.", c.text,
-                language_data(c.language).name, battle_opponent_name(read), battle_opponent_name(c.opponent));
-        }
-    }
-    BattleIntroReading trainer(Language::French);
-    trainer.add("Vous êtes défié par Montagnard Marc !");
-    if (trainer.add("Vous etes defie par Montagnard Marc !") != BattleOpponent::TRAINER){
-        return "The same French line twice, accents or not, is a trainer's.";
-    }
-    return true;
-}
-
-//  01.04 refuses at its start in a language the intro is not read in,
-//  before any gym battle; English and French run.
-UnitTestResult test_gym_refuses_unread_language(Logger&){
-    if (gym_language_refusal(Language::English) || gym_language_refusal(Language::French)){
-        return "English and French have intro word tables: 01.04 runs.";
-    }
-    for (Language language : {Language::German, Language::Japanese, Language::Spanish}){
-        if (!gym_language_refusal(language)){
-            return std::format("01.04 in {} must refuse before the gym.", language_data(language).name);
-        }
-    }
-    return true;
-}
-
-//  A trainer's line is final when read the same twice; a half-typed one is
-//  not, and nothing read stays unread. The leader's settles at once.
-UnitTestResult test_battle_intro_reading_settles(Logger&){
-    BattleIntroReading trainer;
-    if (trainer.add("You are challenged by Youngster Tr") != BattleOpponent::UNREAD){
-        return "A line read once is not final.";
-    }
-    if (trainer.add("You are challenged by Youngster Tristan!") != BattleOpponent::UNREAD){
-        return "A line that changed since the last read is still being typed.";
-    }
-    if (trainer.add("") != BattleOpponent::UNREAD || trainer.add("You are challenged by Youngster Tristan!") != BattleOpponent::UNREAD){
-        return "An unread frame between two reads breaks the pair.";
-    }
-    if (trainer.add("You are challenged by Youngster Tristan!") != BattleOpponent::TRAINER){
-        return "The same line twice in a row is a trainer's.";
-    }
-    //  The leader's line settles at once, and a later read does not undo it.
-    BattleIntroReading leader;
-    if (leader.add("You are challenged by Gym Leader Roark!") != BattleOpponent::LEADER
-        || leader.add("You are challenged by Youngster Tristan!") != BattleOpponent::LEADER
-    ){
-        return "Gym Leader in the intro is Roark's, at once and for good.";
-    }
-    BattleIntroReading none;
-    if (none.add("") != BattleOpponent::UNREAD || none.verdict() != BattleOpponent::UNREAD){
-        return "Nothing read must stay unread.";
     }
     return true;
 }
@@ -881,19 +826,7 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"01.04 gym: the opponent is read from the battle's intro text, not a count or the tiles walked (lab-B 2026-11-12)", test_battle_intro_tells_the_opponent},
-        .expectation = {},
-    },
-    {
-        .input = {"01.04 gym: the intro reading settles on a repeated trainer line or a leader's line", test_battle_intro_reading_settles},
-        .expectation = {},
-    },
-    {
-        .input = {"01.04 gym: the intro is read in French, accents or not, and each table reads its own language (lab-B 2026-11-13)", test_battle_intro_french},
-        .expectation = {},
-    },
-    {
-        .input = {"01.04 gym: refuses at its start in a language the intro is not read in", test_gym_refuses_unread_language},
+        .input = {"01.04 gym: Roark is told by the talk on the overworld after the battle, in any language (lab-B 2026-11-13)", test_gym_opponent_from_the_talk_after},
         .expectation = {},
     },
     {
