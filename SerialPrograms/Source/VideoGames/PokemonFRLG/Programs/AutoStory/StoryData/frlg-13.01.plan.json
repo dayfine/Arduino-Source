@@ -44,7 +44,7 @@
         "menu": "full",
         "notes": {
             "checkpoint": [
-                "Starts at Cinnabar's nurse, facing her, where no earlier row ends (on the unauthored-start list). Ends on 3F (19, 13) facing south, in the room of holes, with the switch on.",
+                "Starts at Cinnabar's nurse, facing her, where 12.03 ends (Fly to Pallet Town and Surf down Route 21, as PokeGuy goes after Koga). Ends on 3F (19, 13) facing south, in the room of holes, with the switch on.",
                 "The Mansion's statue switches: one flag for all four floors (pokefirered data/scripts/pokemon_mansion.inc, PokemonMansion_*F scripts.inc), a toggle each press flips and each floor applies on load. The pinned maps (PokemonSimulation 4b886bb) carry it as gates: barriers that open when the switch is on or off, and the statues that press it. A route plans the presses itself (PRESS_SWITCH: face the statue, A, Yes, B through the text) wherever a barrier is in the way, and the step's gates_after says the switch it leaves; a checkpoint that starts from a save says the switch in start_gates."
             ]
         }
