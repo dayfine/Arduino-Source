@@ -407,18 +407,18 @@ UnitTestResult test_describe(){
 }
 
 
-struct StorySegmentInput{
-    std::string name;
-    UnitTestResult (*test)();
-};
-
-struct StorySegmentExpectation{
-    std::string_view description;
-};
-
 struct StorySegmentTestCase{
-    StorySegmentInput input;
-    StorySegmentExpectation expectation;
+    struct Input{
+        std::string name;
+        UnitTestResult (*test)();
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StorySegments : public UnitTest{

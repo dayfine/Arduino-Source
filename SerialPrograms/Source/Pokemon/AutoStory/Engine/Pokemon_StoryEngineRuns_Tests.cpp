@@ -585,22 +585,22 @@ std::string segment_no_reload_for_console_only(CancellableScope& scope){
 
 //  Gap 7: the first checkpoint is retried after a reload; one after it
 //  only when the one before saved at its end (#329).
-struct SegmentInput{
-    std::string_view name;
-    StoryPhase phase;
-    //  Which checkpoint fails once: 0 or 1.
-    size_t flaky = 0;
-};
-
-struct SegmentExpectation{
-    bool completed = false;
-    size_t reloads = 0;
-    size_t saves = 0;
-};
-
 struct SegmentCase{
-    SegmentInput input;
-    SegmentExpectation expectation;
+    struct Input{
+        std::string_view name;
+        StoryPhase phase;
+        //  Which checkpoint fails once: 0 or 1.
+        size_t flaky = 0;
+    };
+
+    struct Expectation{
+        bool completed = false;
+        size_t reloads = 0;
+        size_t saves = 0;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const SegmentCase SEGMENT_CASES[] = {
@@ -649,6 +649,77 @@ public:
     }
 private:
     SegmentCase m_case;
+};
+
+//  The engine's retries run through run_checkpoint_attempts(): the same
+//  reload and pass lines and attempt counts as its own loop had.
+struct RetryCase{
+    struct Input{
+        std::string_view name;
+        //  Calls of the checkpoint's action that fail before one passes.
+        size_t failures = 0;
+        size_t attempts = 0;
+    };
+
+    struct Expectation{
+        bool passed = false;
+        size_t attempts = 0;
+        //  Lines the run writes once each.
+        std::vector<std::string_view> lines;
+    };
+
+    Input input;
+    Expectation expectation;
+};
+
+const RetryCase RETRY_CASES[] = {
+    {.input = {.name = "pass after a reload", .failures = 1, .attempts = 3},
+     .expectation = {.passed = true, .attempts = 2, .lines = {
+        "[Segment] 01: failed, reloading for attempt 2/3",
+        "[Test] reload",
+        "[Checkpoint] 01: passed on attempt 2 (1 reset)",
+     }}},
+    {.input = {.name = "stop after the last attempt", .failures = 5, .attempts = 2},
+     .expectation = {.passed = false, .attempts = 2, .lines = {
+        "[Segment] 01: failed, reloading for attempt 2/2",
+        "[Test] reload",
+     }}},
+};
+
+std::string check_retry(const RetryCase& test, CancellableScope& scope){
+    const StoryGame<GridPose> game = flaky_game<GridPose>(test.input.failures);
+    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::CAN_MOVE})}}, scope);
+    StoryEngine<GridPose> engine(game, backend);
+    const std::vector<StoryCheckpoint> checkpoints{checkpoint_of("01", {game_step("walk", "flaky")})};
+    RunState state;
+    const SegmentReport report = engine.run_segment("seg", checkpoints, test.input.attempts, state);
+    const CheckpointRun& run = report.runs.at(0);
+    if (run.passed != test.expectation.passed || run.attempts != test.expectation.attempts){
+        return std::format(
+            "expected passed {} after {} attempts, got {} after {}: {}",
+            test.expectation.passed, test.expectation.attempts, run.passed, run.attempts, joined(backend.lines())
+        );
+    }
+    for (std::string_view line : test.expectation.lines){
+        if (count_lines(backend, line) != 1){
+            return std::format("expected \"{}\" once: {}", line, joined(backend.lines()));
+        }
+    }
+    return "";
+}
+
+class StoryRetryTest : public UnitTest{
+public:
+    explicit StoryRetryTest(RetryCase test)
+        : UnitTest(std::format("Pokemon::StoryEngine retry - {}", test.input.name))
+        , m_case(std::move(test))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
+        const std::string error = check_retry(m_case, scope);
+        return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
+    }
+private:
+    RetryCase m_case;
 };
 
 //  Gap 7: verify runs a checkpoint 3 times from one save, saving only at
@@ -812,20 +883,20 @@ std::string pause_hook_from_the_installed_wait(CancellableScope& scope){
 }
 
 
-//  One check above, by name.
-struct RunsInput{
-    std::string_view name;
-    std::string (*check)(CancellableScope& scope);
-};
-
-//  The check's error: none.
-struct RunsExpectation{
-    std::string_view error = {};
-};
-
 struct RunsCase{
-    RunsInput input;
-    RunsExpectation expectation;
+    //  One check above, by name.
+    struct Input{
+        std::string_view name;
+        std::string (*check)(CancellableScope& scope);
+    };
+
+    //  The check's error: none.
+    struct Expectation{
+        std::string_view error = {};
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const RunsCase RUNS_CASES[] = {
@@ -876,6 +947,9 @@ void add_tests_StoryEngineRuns(UnitTestDatabase& database){
     }
     for (const SegmentCase& test : SEGMENT_CASES){
         database.add<StorySegmentTest>(test);
+    }
+    for (const RetryCase& test : RETRY_CASES){
+        database.add<StoryRetryTest>(test);
     }
 }
 
