@@ -114,7 +114,7 @@ SeedOutcome run_seed(
     PoppedDialog popped = PoppedDialog::CLEARED
 ){
     const SimMisses& clean = noise_of.clean;
-    SimDisturbance noise(Pokemon::make_disturbance_plan(seed, noise_of.rates, static_cast<size_t>(clean.fade_chances.chances()), static_cast<size_t>(clean.banner_chances.chances())));
+    SimDisturbance noise(Pokemon::make_disturbance_plan(seed, noise_of.rates, PokemonBDSP::looked_for(clean.fade_chances), PokemonBDSP::looked_for(clean.banner_chances)));
     Pokemon::SimRandom dialogs = noise.plan().dialogs;
     const double dialog_rate = noise_of.rates.dialog_between_steps;
     SimWorldKnobs knobs{
@@ -166,8 +166,8 @@ HeldRowReport run_row_holding(const std::vector<StoryCheckpoint>& rows, const st
     out.report = Pokemon::run_row_seeds(row, Pokemon::story_seeds(seeds), [&](const std::string& id, uint64_t seed){
         SilentLogger silent;
         const SeedOutcome plain = run_seed(silent, rows, noise, id, seed);
-        const Pokemon::DisturbancePlan plan = Pokemon::make_disturbance_plan(seed, noise.rates, static_cast<size_t>(noise.clean.fade_chances.chances()), static_cast<size_t>(noise.clean.banner_chances.chances()));
-        if (plain.passed && noise.clean.fade_chances.chances() > 0 && !plan.missed_fade && !plan.missed_banner){
+        const Pokemon::DisturbancePlan plan = Pokemon::make_disturbance_plan(seed, noise.rates, PokemonBDSP::looked_for(noise.clean.fade_chances), PokemonBDSP::looked_for(noise.clean.banner_chances));
+        if (plain.passed && PokemonBDSP::looked_for(noise.clean.fade_chances) > 0 && !plan.missed_fade && !plan.missed_banner){
             out.rerun++;
             const SeedOutcome hold = run_seed(silent, rows, hold_noise, id, seed);
             if (!hold.passed){
