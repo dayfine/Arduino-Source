@@ -164,7 +164,9 @@ protected:
             return observer.observe(VideoSnapshot(image.copy(), WallClock()), WallClock());
         };
         const auto facing_of = [&](const ImageRGB32& image){
-            return read_player_facing(image, PlayerGender::GIRL);
+            //  The run's player: whichever sheet reads the frame.
+            const std::optional<Direction> girl = read_player_facing(image, PlayerGender::GIRL);
+            return girl ? girl : read_player_facing(image, PlayerGender::BOY);
         };
 
         //  Each frame is quiet; only the Pallet frame, after a fade, has a player to read.
