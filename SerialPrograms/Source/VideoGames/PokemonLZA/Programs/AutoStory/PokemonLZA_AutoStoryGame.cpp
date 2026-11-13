@@ -103,7 +103,7 @@ const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
         {"claim_mable_research_reward", [](StoryEnv& env){ claim_mable_research_reward(env.env.console, env.context); }},
         //  For reruns in the lab: the title screen's Up + B + X loads the save
         //  before the last one, as a catch's autosave moves the save past a
-        //  checkpoint's start (03.07, console B 2026-11-10).
+        //  checkpoint's start (03.08, console B 2026-11-10).
         {"load_backup_save", [](StoryEnv& env){
             go_home(env.env.console, env.context);
             if (!reset_game_from_home(env.env, env.env.console, env.context, true)){

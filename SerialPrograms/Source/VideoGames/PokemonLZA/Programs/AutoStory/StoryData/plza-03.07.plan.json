@@ -3,60 +3,28 @@
   "game": "plza",
   "checkpoint": {
     "id": "03.07",
-    "title": "Five species, into the Research Lab",
+    "title": "Wild Zone 1: first catches",
     "start": {
       "place": "WildZone1"
     },
     "events": [
       {
-        "id": "catch_more_species",
+        "id": "catch_fletchling",
         "kind": "game_action",
-        "why": "step 64: the lab gate asks for five registered species (3/5 after the tutorial, 4/5 with Scatterbug). Catch more here in Wild Zone 1 before leaving, so the gate's scene finds 5/5: Mareep, in the grass right of the road at 60 from the far gate; only the Pokedex's \"Registered!\" banner counts, since repeats (Fletchling, Scatterbug) do not register (catch_in_zone).",
-        "action": "catch_in_zone"
+        "why": "step 59: catch Fletchling, throwing again when it breaks out",
+        "action": "catch_tutorial"
       },
       {
-        "id": "zone_1_to_far_gate",
+        "id": "catch_bunnelby",
         "kind": "game_action",
-        "why": "step 62: on across Wild Zone 1 to its far gate's \"A Leave\", by the objective marker (the timed legs started at the rocks; the catches leave us elsewhere).",
-        "action": "walk_to_marker"
+        "why": "step 60: weaken Bunnelby, then catch it in the catch window",
+        "action": "battle_then_catch"
       },
       {
-        "id": "leave_zone_1",
+        "id": "after_catches",
         "kind": "game_action",
-        "why": "step 62: A Leave, out on the street (a plain scene step ends at once on the gate's prompt with the party bar up; console B, 2026-11-10)",
-        "action": "mash_to_move_hints",
-        "args": {"press_a_first": true}
-      },
-      {
-        "id": "to_research_lab",
-        "kind": "game_action",
-        "why": "step 63: across to the Pokemon Research Lab's gate, into Taunie's scene, by the objective marker: out of the zone's gate the player faces whichever way it faced before (the timed legs from 2026-11-08 depended on that; console B, 2026-11-10).",
-        "action": "walk_to_marker"
-      },
-      {
-        "id": "research_lab_gate",
-        "kind": "scene",
-        "why": "step 63: Taunie at the lab gate; with five species registered she goes on",
-        "action": "a"
-      },
-      {
-        "id": "five_registered",
-        "kind": "scene",
-        "why": "step 65: Taunie's scene at the lab gate after 5/5",
-        "action": "a"
-      },
-      {
-        "id": "up_the_lab_steps",
-        "kind": "game_action",
-        "why": "step 65: up the steps to the lab's \"A Enter\", by the objective marker.",
-        "action": "walk_to_marker"
-      },
-      {
-        "id": "lab_lobby",
-        "kind": "game_action",
-        "why": "steps 65-66: A Enter, the receptionist: third floor; autosave (A first: the door's prompt shows with the party bar up)",
-        "action": "mash_to_move_hints",
-        "args": {"press_a_first": true}
+        "why": "step 61: Taunie: tall grass, more Poke Balls, moves smash boulders",
+        "action": "mash_to_move_hints"
       }
     ],
     "metadata": {

@@ -3,60 +3,60 @@
   "game": "plza",
   "checkpoint": {
     "id": "03.08",
-    "title": "Mable's research, the Rock Smash TM",
+    "title": "Five species, into the Research Lab",
     "start": {
-      "place": "PokemonResearchLab"
+      "place": "WildZone1"
     },
     "events": [
       {
-        "id": "to_lab_elevator",
+        "id": "catch_more_species",
         "kind": "game_action",
-        "why": "step 66: to the elevator's \"A Take Elevator\". Measured 2026-11-09 on console B, walk not run.",
-        "action": "walk",
-        "args": {
-          "legs": [[0, 1000]]
-        }
+        "why": "step 64: the lab gate asks for five registered species (3/5 after the tutorial, 4/5 with Scatterbug). Catch more here in Wild Zone 1 before leaving, so the gate's scene finds 5/5: Mareep, in the grass right of the road at 60 from the far gate; only the Pokedex's \"Registered!\" banner counts, since repeats (Fletchling, Scatterbug) do not register (catch_in_zone).",
+        "action": "catch_in_zone"
       },
       {
-        "id": "take_lab_elevator",
-        "kind": "talk",
-        "why": "step 66: A Take Elevator, \"Which floor would you like to go to?\""
-      },
-      {
-        "id": "ride_to_3f",
+        "id": "zone_1_to_far_gate",
         "kind": "game_action",
-        "why": "step 67: \"3F: Director's Office\", the second floor listed",
-        "action": "choose_1"
+        "why": "step 62: on across Wild Zone 1 to its far gate's \"A Leave\", by the objective marker (the timed legs started at the rocks; the catches leave us elsewhere).",
+        "action": "walk_to_marker"
       },
       {
-        "id": "arrive_3f",
+        "id": "leave_zone_1",
+        "kind": "game_action",
+        "why": "step 62: A Leave, out on the street (a plain scene step ends at once on the gate's prompt with the party bar up; console B, 2026-11-10)",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
+      },
+      {
+        "id": "to_research_lab",
+        "kind": "game_action",
+        "why": "step 63: across to the Pokemon Research Lab's gate, into Taunie's scene, by the objective marker: out of the zone's gate the player faces whichever way it faced before (the timed legs from 2026-11-08 depended on that; console B, 2026-11-10).",
+        "action": "walk_to_marker"
+      },
+      {
+        "id": "research_lab_gate",
         "kind": "scene",
-        "why": "step 67: the ride, until control on 3F"
+        "why": "step 63: Taunie at the lab gate; with five species registered she goes on",
+        "action": "a"
       },
       {
-        "id": "to_mable",
-        "kind": "game_action",
-        "why": "step 68: from the 3F elevator's door, facing out (the windows), around the left end of the desk and the counter behind it, into her talk: straight 0.7 s, right 1.2 s, right 1.6 s. Measured 2026-11-10 on console B, walking.",
-        "action": "walk",
-        "args": {
-          "legs": [[0, 700], [90, 1200], [90, 1600]]
-        }
-      },
-      {
-        "id": "mable_talk",
+        "id": "five_registered",
         "kind": "scene",
-        "why": "step 69: Mable's research requests, until control in her office: A takes her first question's top answer (\"Yes\") and closes her \"Press X...\" line."
+        "why": "step 65: Taunie's scene at the lab gate after 5/5",
+        "action": "a"
       },
       {
-        "id": "rock_smash_tm",
+        "id": "up_the_lab_steps",
         "kind": "game_action",
-        "why": "step 70: Mable's Research, Rewards: TM004 Rock Smash",
-        "action": "claim_mable_research_reward"
+        "why": "step 65: up the steps to the lab's \"A Enter\", by the objective marker.",
+        "action": "walk_to_marker"
       },
       {
-        "id": "leave_mable",
-        "kind": "scene",
-        "why": "step 71: out of the menu, through Mable's talk, until control in her office"
+        "id": "lab_lobby",
+        "kind": "game_action",
+        "why": "steps 65-66: A Enter, the receptionist: third floor; autosave (A first: the door's prompt shows with the party bar up)",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
       }
     ],
     "metadata": {

@@ -3,55 +3,35 @@
   "game": "plza",
   "checkpoint": {
     "id": "03.05",
-    "title": "To Wild Zone 1",
+    "title": "Heal at the Pokemon Center",
     "start": {
-      "place": "LumioseCity"
+      "place": "LumioseCity",
+      "spot": "PokemonCenter"
     },
     "events": [
       {
-        "id": "center_to_zone_1",
+        "id": "back_to_nurse",
         "kind": "game_action",
-        "why": "step 56: from the Pokemon Center to Wild Zone 1's gate. ~5 units/s; the first 2 s replace a dash test of the same distance. Measured 2026-11-08 on console B, walk not run.",
+        "why": "UNVERIFIED, NEEDS CONSOLE: back to the nurse's \"A Talk\" after 03.04's scene. Where that scene leaves the player (\"Taunie outside\") was not recorded; the legs turn around and retrace the inside part of 03.04's into_pokemon_center (a guess, not measured).",
         "action": "walk",
         "args": {
-          "legs": [[0, 2000], [0, 3000], [0, 6000]]
+          "legs": [[180, 0], [0, 2000], [-90, 2000], [90, 0]]
         }
       },
       {
-        "id": "toward_zone_1_gate",
-        "kind": "game_action",
-        "why": "step 57: toward the gate, into Taunie's scene. Left 45, right 15. Measured 2026-11-08 on console B, walk not run.",
-        "action": "walk",
-        "args": {
-          "legs": [[-45, 0], [15, 2500]]
-        }
+        "id": "talk_to_nurse",
+        "kind": "talk",
+        "why": "A at the nurse"
       },
       {
-        "id": "wild_zones_tutorial",
+        "id": "heal_party",
         "kind": "scene",
-        "why": "step 57: Taunie on wild zones, the Wild Zones card",
-        "action": "a"
-      },
-      {
-        "id": "into_zone_1",
-        "kind": "game_action",
-        "why": "step 58: to the gate's \"A Enter\". 22 units at ~5.1 units/s. Measured 2026-11-08 on console B, walk not run.",
-        "action": "walk",
-        "args": {
-          "legs": [[0, 4300]]
-        }
-      },
-      {
-        "id": "enter_zone_1",
-        "kind": "game_action",
-        "why": "step 58: A Enter at the gate (a scene step ends at once on its prompt), Taunie, the Throwing Poke Balls card",
-        "action": "mash_to_move_hints",
-        "args": {"press_a_first": true}
+        "why": "the nurse heals the party (A takes a question's top answer), until control at the counter. Healing writes a save, so the title screen's Up + B + X backup save is this spot after the checkpoint's menu save (user, 2026-11-13). UNVERIFIED, NEEDS CONSOLE: the nurse's lines were not recorded."
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+      "source": "added 2026-11-13 so Main Mission 03 has a backup save to retry from; no console recording: every step is unverified and needs console"
     }
   },
   "execution": {
