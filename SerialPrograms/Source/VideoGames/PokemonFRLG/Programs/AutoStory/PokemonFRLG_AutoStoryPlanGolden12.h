@@ -89,7 +89,7 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN_12[] = {
     "12.02b   face north -> FuchsiaCity (25, 32)",
     "12.03 outside_fuchsia_center from FuchsiaCity_PokemonCenter_1F (7, 4) facing north to FuchsiaCity (25, 32) facing south",
     "12.03   walk south 5 (warp) -> FuchsiaCity (25, 32) [walk only]",
-    "12.03 pallet_shore from PalletTown (6, 8) facing south to PalletTown (10, 16) facing south",
+    "12.03 pallet_shore from PalletTown (6, 8) facing south to PalletTown (8, 16) facing south",
     "12.03   walk south 2 (to wall) -> PalletTown (6, 10)",
     "12.03   walk east 4 -> PalletTown (10, 10)",
     "12.03   walk south 6 (to wall) -> PalletTown (10, 16)",
