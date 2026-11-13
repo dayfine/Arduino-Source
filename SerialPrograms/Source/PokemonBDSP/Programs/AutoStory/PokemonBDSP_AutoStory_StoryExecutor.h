@@ -42,6 +42,7 @@
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
@@ -88,6 +89,8 @@ struct StoryEnv{
     ProControllerContext& context;
     StarterChoice starter = StarterChoice::CHIMCHAR;
     std::string player_name;
+    //  How much the steps confirm on screen (StoryRunOptions::check_level()).
+    Pokemon::StoryCheckLevel checks = Pokemon::StoryCheckLevel::DEFAULT;
 };
 
 
