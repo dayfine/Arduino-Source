@@ -91,8 +91,12 @@ bool is_wall_hold(const RouteStep& next){
 //  open leg: nothing between them shows where `step` ended (console B,
 //  2026-11-13, 12.03: "south 86 (open)" down Route 21 stopped short at a
 //  sand bar unseen, and "east 7 (open)" went on from there).
+//  Only a long leg: the sims' shorter ones (Viridian's pond "east 5",
+//  Route 23's "north 17") have no walls near enough to check them by, and
+//  the unseen stop was 86 tiles into the leg.
+constexpr int OPEN_WATER_CHECKED_TILES = 20;
 bool open_water_chain(const RouteStep& step, const RouteStep& next){
-    return step.surfing && !step.to_wall && !step.warps
+    return step.surfing && !step.to_wall && !step.warps && step.tiles > OPEN_WATER_CHECKED_TILES
         && next.action == RouteAction::WALK && !next.to_wall && !next.warps && !next.spin_tiles;
 }
 
