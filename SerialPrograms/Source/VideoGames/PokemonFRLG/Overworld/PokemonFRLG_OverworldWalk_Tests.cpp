@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <functional>
 #include <set>
@@ -372,7 +373,12 @@ public:
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        static const MapData CENTER = load_map("FuchsiaCity_PokemonCenter_1F");
+        static const std::vector<MapData> MAPS = overworld_maps();
+        const auto center = std::find_if(MAPS.begin(), MAPS.end(), [](const MapData& map){ return map.name == "FuchsiaCity_PokemonCenter_1F"; });
+        if (center == MAPS.end()){
+            return "FuchsiaCity_PokemonCenter_1F isn't on the maps.";
+        }
+        const MapData& CENTER = *center;
         TilePos tile = m_case.input.tile;
         if (tile.x == -1){
             tile.x = CENTER.tiles.width - 1;
