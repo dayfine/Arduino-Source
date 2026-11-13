@@ -12,6 +12,7 @@
 #include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_GridSim_Tests.h"
 #include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_FaultSweep_Tests.h"
 #include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_SimFailureCases_Tests.h"
+#include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_SimGolden_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_RecoveryWalk_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_Maps_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_PlannedRoute_Tests.h"
@@ -63,6 +64,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStory_StoryMonteCarlo(database);
     add_tests_AutoStory_SimFailureCases(database);
     add_tests_AutoStory_FaultSweep(database);
+    add_tests_AutoStory_SimGolden(database);
     add_tests_AutoStory_StoryActions(database);
 }
 
