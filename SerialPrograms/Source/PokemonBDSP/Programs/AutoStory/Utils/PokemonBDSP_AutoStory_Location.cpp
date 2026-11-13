@@ -1,0 +1,205 @@
+/*  BDSP AutoStory - Location
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ */
+
+#include <algorithm>
+#include <cctype>
+#include <utility>
+#include <vector>
+#include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/ImageTools/ImageStats.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "CommonFramework/Language.h"
+#include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
+#include "CommonTools/Images/ImageFilter.h"
+#include "CommonTools/OCR/OCR_RawTesseractOCR.h"
+#include "PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP_AutoStory_LocationBannerWatcher.h"
+#include "PokemonBDSP_AutoStory_StoryLanguage.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonBDSP{
+
+
+namespace{
+
+//  The location banner: a white box at the top left that names a map for a
+//  few seconds after the player enters it. Left of the centred name it is plain
+//  white (251 on console B, against 27-75 for the trees there otherwise).
+const ImageFloatBox LOCATION_BANNER_WHITE{0.035, 0.035, 0.085, 0.050};
+const ImageFloatBox LOCATION_BANNER_TEXT{0.100, 0.025, 0.300, 0.080};
+
+//  The save card's header: the map's name in salmon (255, 152, 140) on near
+//  white (245), top left, right of the card's red border. Too faint for OCR
+//  as it is: the reddish pixels are made black on white first.
+const ImageFloatBox SAVE_SCREEN_LOCATION{0.036, 0.045, 0.274, 0.070};
+const uint32_t SAVE_SCREEN_TEXT_MIN = 0xff960000;
+const uint32_t SAVE_SCREEN_TEXT_MAX = 0xffffa9a9;
+
+std::string digits_of(const std::string& text){
+    std::string out;
+    for (char ch : text){
+        if (std::isdigit((unsigned char)ch)){
+            out.push_back(ch);
+        }
+    }
+    return out;
+}
+
+} // namespace
+
+
+std::string normalize_location_name(const std::string& text){
+    std::string out;
+    for (unsigned char ch : text){
+        if (std::isalnum(ch)){
+            out.push_back((char)std::tolower(ch));
+        }
+    }
+    return out;
+}
+
+namespace{
+Language& story_language_setting(){
+    static Language language = Language::English;
+    return language;
+}
+} // namespace
+
+Language story_language(){
+    return story_language_setting();
+}
+
+void set_story_language(Language language){
+    story_language_setting() = language;
+}
+
+bool story_reads_text(std::optional<Language> language){
+    return language.value_or(story_language()) == Language::English;
+}
+
+bool location_banner_showing(const ImageViewRGB32& screen){
+    const ImageStats white = image_stats(extract_box_reference(screen, LOCATION_BANNER_WHITE));
+    return white.average.sum() >= 690 && white.stddev.sum() <= 30;
+}
+
+std::string location_banner_stats(const ImageViewRGB32& screen){
+    const ImageStats white = image_stats(extract_box_reference(screen, LOCATION_BANNER_WHITE));
+    return "mean " + std::to_string((int)white.average.sum()) + ", spread " + std::to_string((int)white.stddev.sum());
+}
+
+std::string read_location_banner(const ImageViewRGB32& screen){
+    if (!location_banner_showing(screen)){
+        return "";
+    }
+    if (!story_reads_text()){
+        return UNREAD_LOCATION;
+    }
+    return normalize_location_name(OCR::tesseract_ocr_read(Language::English,
+        extract_box_reference(screen, LOCATION_BANNER_TEXT)));
+}
+
+std::string read_save_screen_location(const ImageViewRGB32& screen){
+    if (!story_reads_text()){
+        return UNREAD_LOCATION;
+    }
+    const ImageRGB32 text = to_blackwhite_rgb32_range(
+        extract_box_reference(screen, SAVE_SCREEN_LOCATION), true, SAVE_SCREEN_TEXT_MIN, SAVE_SCREEN_TEXT_MAX);
+    return normalize_location_name(OCR::tesseract_ocr_read(Language::English, text));
+}
+
+namespace{
+//  The edit distance of two normalized names.
+size_t name_distance(const std::string& a, const std::string& b){
+    //  Levenshtein distance.
+    std::vector<size_t> row(b.size() + 1);
+    for (size_t j = 0; j <= b.size(); j++){
+        row[j] = j;
+    }
+    for (size_t i = 1; i <= a.size(); i++){
+        size_t diagonal = row[0];
+        row[0] = i;
+        for (size_t j = 1; j <= b.size(); j++){
+            const size_t above = row[j];
+            row[j] = std::min({row[j] + 1, row[j - 1] + 1, diagonal + (a[i - 1] == b[j - 1] ? 0 : 1)});
+            diagonal = above;
+        }
+    }
+    return row[b.size()];
+}
+} // namespace
+
+bool location_banner_matches(const std::string& read, const std::string& expected){
+    //  No reader for the game's language: a banner (or the save card) that
+    //  showed is all there is; where we stand is the walk's to say.
+    if (read == UNREAD_LOCATION){
+        return true;
+    }
+    const std::string a = normalize_location_name(read);
+    const std::string b = normalize_location_name(expected);
+    if (a.empty() || b.empty()){
+        return false;
+    }
+    if (digits_of(a) != digits_of(b)){
+        return false;
+    }
+    return name_distance(a, b) <= std::max<size_t>(1, b.size() / 4);
+}
+
+bool location_banner_is_another(const std::string& read, const std::string& current){
+    const std::string a = normalize_location_name(read);
+    const std::string b = normalize_location_name(current);
+    if (a.empty() || b.empty() || read == UNREAD_LOCATION){
+        return false;
+    }
+    return digits_of(a) != digits_of(b) || name_distance(a, b) > std::max<size_t>(1, b.size() / 6);
+}
+
+
+std::string LocationBannerReads::read(const ImageViewRGB32& screen, WallClock now){
+    if (!location_banner_showing(screen)){
+        m_reads = 0;
+        return "";
+    }
+    if (m_reads >= 2 || (m_reads == 1 && now - m_first < std::chrono::milliseconds(300))){
+        return "";
+    }
+    if (m_reads == 0){
+        m_first = now;
+    }
+    m_reads++;
+    return read_location_banner(screen);
+}
+
+LocationBannerWatcher::LocationBannerWatcher(std::string expected)
+    : VisualInferenceCallback("LocationBannerWatcher")
+    , m_expected(std::move(expected))
+{}
+void LocationBannerWatcher::make_overlays(VideoOverlaySet& items) const{
+    items.add(COLOR_CYAN, LOCATION_BANNER_WHITE);
+}
+bool LocationBannerWatcher::process_frame(const ImageViewRGB32& frame, WallClock timestamp){
+    const std::string read = m_reads.read(frame, timestamp);
+    if (read.empty() || m_matched){
+        return m_matched;
+    }
+    m_last_read = read;
+    if (!m_expected.empty() && location_banner_matches(read, m_expected)){
+        m_seen = read;
+        m_matched = true;
+        return true;
+    }
+    if (m_seen.empty() && m_expected.empty()){
+        m_seen = read;
+    }
+    return false;
+}
+
+
+
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
