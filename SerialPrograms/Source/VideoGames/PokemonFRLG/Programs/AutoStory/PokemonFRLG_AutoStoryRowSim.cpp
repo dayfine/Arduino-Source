@@ -372,10 +372,6 @@ std::optional<std::vector<RouteStep>> walked_route(
     return plan_overworld_route_gated(maps, start, goal, gates, rules, story_route_costs(), at.facing);
 }
 
-std::optional<std::vector<RouteStep>> walked_route(const StoryPose& at, const StoryStep& step){
-    return walked_route(at, step, story_maps(), Pokemon::GateState(), Pokemon::GateRules());
-}
-
 
 OverworldStepSim::OverworldStepSim(OverworldSim& sim, std::string row, StoryPose at)
     : Pokemon::TableExecutor(m_table, m_guard)
@@ -492,9 +488,9 @@ void sim_wait_out_battle_exit(OverworldSim& sim){
 std::string OverworldStepSim::walk(const StoryStep& step){
     //  The sim's own maps and gates, if it has gates: the route opens the
     //  ones the Card Key opens, and the walker's steps open them in the sim.
-    const std::vector<MapData>& maps = m_sim.gated() ? m_sim.source_maps() : story_maps();
+    const std::vector<MapData>& maps = !m_sim.state().gate_maps.empty() ? m_sim.state().gate_maps : story_maps();
     const Pokemon::GateState& gates = m_sim.state().gates;
-    const std::optional<std::vector<RouteStep>> route = walked_route(m_at, step, maps, gates, Pokemon::GateRules{.card_key_held = m_sim.card_key_held()});
+    const std::optional<std::vector<RouteStep>> route = walked_route(m_at, step, maps, gates, Pokemon::GateRules{.card_key_held = m_sim.state().card_key_held});
     if (route && route->empty()){
         //  Already there.
         return "";

@@ -20,6 +20,7 @@
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/Navigation/Pokemon_GatedTypes.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -119,9 +120,9 @@ private:
 //  the Card Key.
 std::optional<std::vector<RouteStep>> walked_route(
     const StoryPose& at, const StoryStep& step,
-    const std::vector<MapData>& maps, const Pokemon::GateState& gates, const Pokemon::GateRules& rules
+    const std::vector<MapData>& maps = story_maps(),
+    const Pokemon::GateState& gates = Pokemon::GateState(), const Pokemon::GateRules& rules = Pokemon::GateRules()
 );
-std::optional<std::vector<RouteStep>> walked_route(const StoryPose& at, const StoryStep& step);
 
 //  A row's steps on the OverworldSim as the program does them: routes and
 //  legs by the sim's walker from where the table says the player stands,

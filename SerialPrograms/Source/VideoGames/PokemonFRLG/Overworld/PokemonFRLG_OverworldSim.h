@@ -108,19 +108,6 @@ public:
     //  battle follows it.
     bool close_message();
 
-    //  Whether the maps have gates (MapData::gates), and the maps as loaded
-    //  for planning through them, with a gate closed or open as the map
-    //  says; whether the player holds the Card Key (SimScript::card_key_held).
-    bool gated() const{
-        return !m_source_maps.empty();
-    }
-    const std::vector<MapData>& source_maps() const{
-        return m_source_maps;
-    }
-    bool card_key_held() const{
-        return m_script.card_key_held;
-    }
-
     //  A on what the player faces, as `field` says (`floor`: the lift's).
     //  Returns whether it was there. (PokemonFRLG_OverworldSimField.cpp)
     bool use_field(SimField field, size_t floor = 0);
@@ -215,8 +202,6 @@ private:
     const MapData& map() const{ return m_maps[m_map]; }
 
     std::vector<MapData> m_maps;
-    //  The maps as loaded, with the gates closed or open as the map says.
-    std::vector<MapData> m_source_maps;
     SimScript m_script;
     int m_map = 0;
     PlayerState m_player;
