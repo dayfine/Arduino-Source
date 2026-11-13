@@ -164,7 +164,7 @@ protected:
             return observer.observe(VideoSnapshot(image.copy(), WallClock()), WallClock());
         };
         const auto facing_of = [&](const ImageRGB32& image){
-            return read_player_facing(image, PlayerGender::GIRL);
+            return read_player_facing(image, PlayerGender::BOY);
         };
 
         //  Each frame is quiet; only the Pallet frame, after a fade, has a player to read.
