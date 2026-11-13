@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  01.00-01.01's scene steps and walks, and every checkpoint, through the shared
+ *  The new game's and 01.01's scene steps and walks, and every checkpoint, through the shared
  *  story engine on its scripted backend (FakeStoryBackend).
  *
  */
@@ -468,7 +468,7 @@ UnitTestResult test_refused_steps(CancellableScope& scope){
         return "Expected a tile walk to fail the lint.";
     }
     FakeBackend backend = fake_plza({look_at(0ms)}, scope);
-    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.00", "language"));
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("00.00", "language"));
     if (report.run.failure.failure != "console_only"){
         return std::format("Expected the new game's language to need a console, got {}", to_string(report.run.failure));
     }

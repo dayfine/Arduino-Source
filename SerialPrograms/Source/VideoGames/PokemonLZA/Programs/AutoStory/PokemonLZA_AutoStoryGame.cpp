@@ -76,6 +76,7 @@ const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
         {"type_player_name", [](StoryEnv& env){
             type_player_name(env.env.console, env.context, env.new_game.name, env.new_game.name_first_letter_auto_caps);
         }},
+        {"confirm_new_game", [](StoryEnv& env){ confirm_new_game_choices(env.env.console, env.context); }},
         {"choose_0", [](StoryEnv& env){ choose_dialog_option(env.env.console, env.context, 0); }},
         {"choose_1", [](StoryEnv& env){ choose_dialog_option(env.env.console, env.context, 1); }},
         {"story_battle_start", [](StoryEnv& env){

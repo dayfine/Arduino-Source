@@ -8,7 +8,7 @@
  *
  *  The actions that read or press through the game's own screens (menus,
  *  the naming keyboard, the battle AI, fast travel) are console_only: the
- *  engine refuses them elsewhere. The scenes of 01.00 and the walks run on
+ *  engine refuses them elsewhere. The new game's scenes and the walks run on
  *  any backend.
  *
  */
@@ -60,7 +60,8 @@ const std::map<std::string, std::string, std::less<>>& story_actions_not_impleme
 //              "text_to_choice" (run_scene_machine()); a console step, one
 //              call through the game's own screens with no args: the new
 //              game's "launch_game_from_home", "new_game_language",
-//              "pick_look", "type_player_name";
+//              "pick_look", "type_player_name" (00.00), and
+//              "confirm_new_game" (01.00, on "Confirm Choices");
 //              "choose_0" / "choose_1" (that row of the choices on screen);
 //              "story_battle_start" (A to the battle), "story_battle"
 //              (attack until a dialog shows); "talk_through_map_screen",

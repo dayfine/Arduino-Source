@@ -22,6 +22,7 @@
 #include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "Actions/PokemonLZA_AutoStoryIntro.h"
+#include "Actions/PokemonLZA_AutoStoryScenes.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
 #include "PokemonLZA_AutoStoryTable.h"
@@ -39,7 +40,7 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "PokemonLZA:AutoStory",
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Play the main story of Pokemon Legends: Z-A. Prototype: Main Missions 01-03 as recorded on a console; plays from a new game to Mable's Rock Smash TM. Checkpoint 01.00 (a new game) starts on the Switch HOME screen with PLZA's tile selected and no save: it launches the selected tile without moving the cursor (closing it first if it is running) and waits for the language list. Go Home When Done leaves HOME with PLZA's tile selected, ready for the next new game.",
+        "Play the main story of Pokemon Legends: Z-A. Prototype: Main Missions 01-03 as recorded on a console; plays from a new game to Mable's Rock Smash TM. Checkpoint 01.00 (a new game) starts on the new game's Confirm Choices screen, with the language, look and name chosen by hand: it checks that screen, presses nothing anywhere else, and picks Ready!. Checkpoint 00.00 makes those choices too: it starts on the Switch HOME screen with PLZA's tile selected and no save, launches the selected tile without moving the cursor (closing it first if it is running) and plays the new game to the platform; a run from 00.00 skips 01.00. Go Home When Done leaves HOME with PLZA's tile selected, ready for the next new game.",
         PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
@@ -117,14 +118,14 @@ AutoStory::AutoStory()
 
 namespace{
 
-//  Checkpoints after the first start from a save (01.01 from the platform
-//  autosave), so the run loads it first instead of assuming the game is
-//  already there.
+//  Checkpoints after the new game start from a save (01.01 from the
+//  platform autosave), so the run loads it first instead of assuming the
+//  game is already there. 00.00 and 01.00 start without one.
 void load_start_save(
     ConsoleHandle& console, const StoryGame<ZonePose>& game, StoryBackend<ZonePose>& backend,
     const std::vector<StoryCheckpoint>& rows, size_t first
 ){
-    if (first == 0){
+    if (story_row_starts_without_save(rows[first])){
         return;
     }
     const Outcome loaded = game.reload(backend);
@@ -152,6 +153,16 @@ StoryData load_run_story(ConsoleHandle& console){
     }catch (ParseException& e){
         throw UserSetupError(console, std::format("AutoStory: bad dev checkpoint in {}: {}", folder, e.message()));
     }
+}
+
+//  Connects the controller for a run from `first_row`. 01.00 starts on a
+//  screen that proves the save is fresh, so it is checked before any press,
+//  the connect press included.
+void connect_controller(ConsoleHandle& console, ProControllerContext& context, const StoryCheckpoint& first_row){
+    if (story_row_confirms_new_game(first_row)){
+        require_confirm_choices(console, context);
+    }
+    require_player(console, context, BUTTON_L);
 }
 
 } // namespace
@@ -183,10 +194,10 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     if (first > last || last >= rows.size()){
         throw UserSetupError(env.console, "The start checkpoint must not come after the end checkpoint.");
     }
-    require_player(env.console, context, BUTTON_L);
+    connect_controller(env.console, context, rows[first]);
 
     StoryEnv story{
-        .env = env, .context = context, .new_game = new_game_choices(env.console, first == 0),
+        .env = env, .context = context, .new_game = new_game_choices(env.console, story_row_launches_game(rows[first])),
         .language = RUN.language(), .battle_ai = BATTLE_AI
     };
     PlzaConsoleBackend backend(story);
@@ -209,7 +220,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
         return;
     }
-    const std::span<const StoryCheckpoint> checkpoints(rows.data() + first, last - first + 1);
+    const std::vector<StoryCheckpoint> checkpoints = story_run_rows(rows, first, last);
     const SegmentReport report = engine.run_segment("plza", checkpoints, RUN.policy().attempts_per_checkpoint, state);
     record_story_counts(report.story_counts(), env.current_stats<AutoStoryStats>());
     env.update_stats();

@@ -14,7 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  PLZA's checkpoints and 01.00's scene steps on the shared story engine,
+//  PLZA's checkpoints and the new game's scene steps on the shared story engine,
 //  with a scripted backend: no console.
 void add_tests_AutoStoryEngine(UnitTestDatabase& database);
 

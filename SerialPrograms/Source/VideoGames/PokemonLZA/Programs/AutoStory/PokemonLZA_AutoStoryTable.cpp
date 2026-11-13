@@ -4,6 +4,7 @@
  *
  */
 
+#include <string_view>
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryTable.h"
 
@@ -33,12 +34,43 @@ size_t story_rows_ready(const std::vector<StoryCheckpoint>& checkpoints){
     return ready;
 }
 
-bool story_row_launches_game(const StoryCheckpoint& row){
+namespace{
+
+//  Whether `row`'s first step is the GAME action `action`.
+bool first_game_action_is(const StoryCheckpoint& row, std::string_view action){
     if (row.steps.empty()){
         return false;
     }
     const StoryStep& first = row.steps.front();
-    return first.kind == StoryStepKind::GAME && first.action == "launch_game_from_home";
+    return first.kind == StoryStepKind::GAME && first.action == action;
+}
+
+} // namespace
+
+bool story_row_launches_game(const StoryCheckpoint& row){
+    return first_game_action_is(row, "launch_game_from_home");
+}
+
+bool story_row_confirms_new_game(const StoryCheckpoint& row){
+    return first_game_action_is(row, "confirm_new_game");
+}
+
+bool story_row_starts_without_save(const StoryCheckpoint& row){
+    return story_row_launches_game(row) || story_row_confirms_new_game(row);
+}
+
+std::vector<StoryCheckpoint> story_run_rows(const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last){
+    std::vector<StoryCheckpoint> rows;
+    if (first > last || last >= checkpoints.size()){
+        return rows;
+    }
+    for (size_t index = first; index <= last; index++){
+        if (index > first && story_row_confirms_new_game(checkpoints[index])){
+            continue;
+        }
+        rows.push_back(checkpoints[index]);
+    }
+    return rows;
 }
 
 
