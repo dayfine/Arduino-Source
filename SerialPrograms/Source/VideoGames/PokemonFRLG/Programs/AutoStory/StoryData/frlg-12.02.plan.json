@@ -3,7 +3,7 @@
   "game": "frlg",
   "checkpoint": {
     "id": "12.02",
-    "title": "Koga, the SOULBADGE; the GOLD TEETH to the Warden for HM04 STRENGTH; heal at Fuchsia's Center",
+    "title": "Koga, the SOULBADGE and TM06 Toxic",
     "start": {"map": "FuchsiaCity_Gym", "tiles": [[6, 13]], "facing": "east"},
     "events": [
       {
@@ -12,6 +12,15 @@
         "action": "level",
         "args": {"slot": 1, "min": 39},
         "why": "the precondition for Koga: the lead at least Lv39, pokeguy's Blastoise here (PokemonSimulation docs/battles/pokeguy-conditions.md, koga: C2 setup to Sp. Atk +1 and outspeed with X items, from 34/122 HP: 1191/1700 wins, 70.1%, 64.5% to 75.2%); at his level or above, those sims stand for this fight and no new one is needed; below it, the run stops here, before the fight"
+      },
+      {
+        "id": "count_bag_for_koga",
+        "kind": "game_action",
+        "action": "count_items",
+        "args": {
+          "items": ["super-potion", "antidote", "full-heal"]
+        },
+        "why": "the Items pocket as the save leaves it, read into the bag's counts for the battle's medicine and cures; no Mart on the way: 12.01 stocked the bag before the gym, and a blackout reloads this save with the bag as it was"
       },
       {
         "id": "challenge_koga",
@@ -23,69 +32,21 @@
         "kind": "battle",
         "args": {
           "trainer": "TRAINER_LEADER_KOGA",
-          "foes": ["koffing", "muk", "koffing", "weezing"]
+          "foes": ["koffing", "muk", "koffing", "weezing"],
+          "policy": "goal-based-setup",
+          "setup_spa": 1,
+          "setup_accuracy": 0,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": false,
+          "foe_threats": [
+            [30, 21, 18, 168, 84, 1, 1],
+            [48, 0, 4, 66, 33, 0, 0],
+            [30, 21, 18, 168, 84, 1, 1],
+            [56, 38, 37, 78, 39, 1, 0]
+          ]
         },
         "declared_after": {"map": "FuchsiaCity_Gym", "tiles": [[6, 13]], "facing": "east"},
-        "why": "Koga (TRAINER_LEADER_KOGA): Koffing Lv37, Muk Lv39, Koffing Lv37, Weezing Lv43 (pokeguy: Surf, two on Muk through Minimize, Weezing at 4 HP, 1:16:34 to 1:18:03); then the SOULBADGE and TM06 Toxic, read to the overworld with the battle's text"
-      },
-      {
-        "id": "below_warden",
-        "kind": "route",
-        "action": "run",
-        "args": {
-          "target": {"map": "FuchsiaCity_WardensHouse", "tiles": [[1, 6]], "facing": "north"}
-        },
-        "why": "out of the gym by the way in, Koga's win having beaten every gym trainer (FuchsiaCity_Gym_EventScript_DefeatedKoga, set_gym_trainers 5); east along the city's south row to the Warden's door (33, 31) and in, west along row 9 and up the west wall to (1, 6) (pokeguy 1:18:04 to 1:18:24)"
-      },
-      {
-        "id": "beside_warden",
-        "kind": "legs",
-        "action": "taps",
-        "args": {
-          "legs": [{"direction": "east", "tiles": 2}]
-        },
-        "why": "a tap a tile from the wall (1, 6) east to below the Warden (3, 6): no wall there stops a run"
-      },
-      {
-        "id": "face_warden",
-        "kind": "route",
-        "action": "run",
-        "args": {
-          "target": {"map": "FuchsiaCity_WardensHouse", "tiles": [[3, 6]], "facing": "north"}
-        },
-        "why": "turn to the Warden (3, 5)"
-      },
-      {
-        "id": "talk_warden",
-        "kind": "talk",
-        "why": "the Warden (3, 5): the GOLD TEETH from the Safari Zone (11.03)"
-      },
-      {
-        "id": "hm04_strength",
-        "kind": "scene",
-        "declared_after": {"map": "FuchsiaCity_WardensHouse", "tiles": [[3, 6]], "facing": "north"},
-        "why": "he takes the GOLD TEETH and gives HM04 STRENGTH (FuchsiaCity_WardensHouse_EventScript_GiveGoldTeeth; no YES/NO with the teeth; pokeguy 1:18:25 to 1:18:39)"
-      },
-      {
-        "id": "below_center_door",
-        "kind": "route",
-        "action": "run",
-        "args": {
-          "target": {"map": "FuchsiaCity", "tiles": [[25, 32]], "facing": "north"}
-        },
-        "why": "out of the Warden's door and west along row 32 to below the Center's door (25, 31)"
-      },
-      {
-        "id": "fuchsia_nurse",
-        "kind": "game_action",
-        "action": "center_enter",
-        "declared_after": {"map": "FuchsiaCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
-        "why": "the Center script in: through the door and up to the nurse; no map of the Center"
-      },
-      {
-        "id": "heal_fuchsia",
-        "kind": "heal",
-        "why": "full HP and PP (pokeguy uses a Potion and flies on at 24/126, 1:18:40)"
+        "why": "Koga (TRAINER_LEADER_KOGA), fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +1 and outspeed by X items, medicine and cures by safety; the doc's koga row, foe_threats the rows PokemonSimulation's planning_risk() gives for each foe leading against the entry state, 34/122): Koffing Lv37, Muk Lv39, Koffing Lv37, Weezing Lv43 (pokeguy: Surf, two on Muk through Minimize, Weezing at 4 HP, 1:16:34 to 1:18:03); then the SOULBADGE and TM06 Toxic, read to the overworld with the battle's text"
       }
     ]
   },
@@ -94,15 +55,15 @@
     "notes": {
       "checkpoint": [
         "Koga (7, 13), talked to from the west, from the save beside him (12.01): Koffing, Muk, Koffing, Weezing; his NPC medicine is two Hyper Potions and a Full Heal. The lead picks Surf (2x nothing here, the strongest move); pokeguy's Weezing took him to 4/126 HP with Sludge while Koga healed it.",
-        "Strength is not taught here: pokeguy teaches it over Water Pulse at Victory Road (19.02, D3).",
-        "Ends at Fuchsia's nurse, where 13.01 starts (Fly to Pallet Town, Surf down Route 21)."
+        "Bag for a retry: a blackout or a lost fight reloads this save with the bag as 12.01 left it, and 12.01's heals after Kayden and Kirk spend Super Potions. count_bag_for_koga reads the Items pocket; unless it holds PokeGuy's 5 Super Potions and a cure for poison (an Antidote, or a Full Heal: the Fuchsia Mart sells no Antidote), the row walks out of the gym by 12.01's legs backwards, to the Mart and back (the Mart's trip and the gym's legs as in 12.01; Kayden and Kirk are beaten, Koga is not, so every other trainer's line is still live and the legs are the same ones to walls), buys the shortfall, and ends west of Koga again. Console B lost to Koga on 2026-11-12 with 6 Potions, 1 Super Potion and no cure.",
+        "A boss battle is its own checkpoint (user, 2026-11-12): Koga's fight is all this row does. It ends west of Koga after the SOULBADGE and TM06 text, and saves there; 12.02b goes on to the Warden."
       ]
     }
   },
   "metadata": {
     "phase": "testing",
     "postconditions": {
-      "position": {"map": "FuchsiaCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+      "position": {"map": "FuchsiaCity_Gym", "tiles": [[6, 13]], "facing": "east"}
     }
   }
 }

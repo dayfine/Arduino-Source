@@ -142,6 +142,32 @@ size_t type_effectiveness(PokemonType attack, PokemonType defend){
     return it == CHART.end() ? 10 : it->second;
 }
 
+PokemonType ability_immunity(std::string_view species){
+    struct Immunity{
+        std::string_view species;
+        PokemonType type;
+    };
+    //  Gen 3 species with one ability only, so the foe has it for sure.
+    static constexpr Immunity IMMUNITIES[] = {
+        {"gastly", PokemonType::GROUND}, {"haunter", PokemonType::GROUND}, {"gengar", PokemonType::GROUND},
+        {"koffing", PokemonType::GROUND}, {"weezing", PokemonType::GROUND},
+        {"vulpix", PokemonType::FIRE}, {"ninetales", PokemonType::FIRE}, {"flareon", PokemonType::FIRE},
+        {"jolteon", PokemonType::ELECTRIC},
+        {"vaporeon", PokemonType::WATER},
+    };
+    for (const Immunity& immunity : IMMUNITIES){
+        if (immunity.species == species){
+            return immunity.type;
+        }
+    }
+    return PokemonType::NONE;
+}
+
+bool takes_two_turns(std::string_view move){
+    static constexpr std::string_view TWO_TURN_MOVES[] = {"dig", "fly", "solar-beam", "skull-bash", "razor-wind", "sky-attack"};
+    return std::ranges::find(TWO_TURN_MOVES, move) != std::end(TWO_TURN_MOVES);
+}
+
 std::string read_trainer_foe(Logger& logger, Language language, const ImageViewRGB32& screen, const std::vector<std::string>& party){
     if (language == Language::None || party.empty()){
         return "";

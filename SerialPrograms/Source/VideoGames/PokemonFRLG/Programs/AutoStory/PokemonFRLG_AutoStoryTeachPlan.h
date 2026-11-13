@@ -45,6 +45,11 @@ struct TeachPlan{
     //  The moves to forget, in order, when it doesn't know `forget_move`.
     std::vector<std::string> forget_else = {};
     std::optional<size_t> forget_slot = std::nullopt;
+    //  The moves to keep when it knows four: the one known move outside
+    //  this list (HM moves count as kept) is forgotten; none or several
+    //  outside is an error. When not empty, it replaces forget_move,
+    //  forget_else and forget_slot.
+    std::vector<std::string> keep = {};
 };
 
 //  Whether `move` is an HM's, which the game won't let a Pokemon forget.
@@ -55,7 +60,8 @@ bool is_hm_move(std::string_view move);
 //  or species WORD (one of them required); forget WORD or forget_slot
 //  INTEGER (from 1) (optional): the move to forget when it knows four.
 //  or_forget WORDS (optional): the moves to forget, in order, when it
-//  doesn't know `forget`'s.
+//  doesn't know `forget`'s. keep WORDS (optional): the moves to keep; the
+//  one known move outside them is forgotten.
 inline const std::string TEACH_ACTION = "teach";
 //  `plan` as its action's args.
 Pokemon::StoryActionArgs teach_args(const TeachPlan& plan);

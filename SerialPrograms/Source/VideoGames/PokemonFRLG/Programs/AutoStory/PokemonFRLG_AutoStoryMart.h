@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A story step at any Poke Mart: a buy list in priority order, within a
- *  budget, as pokefirered's shop.c runs the BUY menu:
+ *  A story step at any Poke Mart: a buy list in priority order, as pokefirered's shop.c runs the BUY menu:
  *
  *  - Talking to the clerk: BUY, SELL, SEE YA!, on BUY. A on BUY opens the
  *    Mart's list (its stock in the map's scripts.inc order, then CANCEL),
@@ -24,13 +23,12 @@
  *    until its top shows. A row on the screen is not the list's row once
  *    it has scrolled.
  *
- *  The step never opens SELL. Each line buys as many as its quantity,
- *  the budget left and the money left allow, in the order listed; a line
- *  that can't buy one is skipped. The money is read from the money box
- *  when a reader exists; without one the step counts on the table's
- *  floor (the least the ledger says the player has) and, with neither,
- *  buys nothing: a quantity typed past the most wraps, and buys the wrong
- *  number.
+ *  The step never opens SELL. The money can't be read, so each line buys
+ *  its quantity, in the order listed, blind. The only money check is the
+ *  "You don't have enough money." dialog, which fails the step; a
+ *  quantity typed past the box's most wraps, which the box's read catches
+ *  where it can be read. A Mart step belongs early in its checkpoint, so
+ *  that a failure costs little.
  *
  *  The decisions take their game steps from a MartActions, so they run in
  *  tests against a fake Mart; ConsoleMartActions does them on the console
@@ -66,11 +64,6 @@ namespace PokemonFRLG{
 //  How a Mart shopping trip concluded.
 enum class MartEnd{
     DONE,
-    //  The plan bought nothing: the money (or its floor) doesn't cover one
-    //  of anything. The Mart isn't touched.
-    NOTHING_TO_BUY,
-    //  Neither the money box nor the table's floor gave the money.
-    NO_MONEY_READ,
     FAILED,
 };
 //  The human-readable name of a Mart outcome.
@@ -99,15 +92,13 @@ void count_supplies(Supplies& supplies, std::string_view item, size_t quantity);
 
 
 //  The console's Mart. The money box and the quantity box have no reader
-//  yet, so the money is the table's floor and the quantity is typed by
-//  presses. Potions, Antidotes, Parlyz Heals and Awakenings bought are
+//  yet, so the quantity is typed by presses. Potions, Antidotes, Parlyz Heals and Awakenings bought are
 //  counted into `supplies`.
 class ConsoleMartActions : public MartActions{
 public:
     ConsoleMartActions(ConsoleHandle& console, ProControllerContext& context, Language language, Supplies& supplies);
 
     virtual bool open_buy_list() override;
-    virtual std::optional<size_t> read_money() override;
     virtual void press_cursor(bool down) override;
     virtual std::string read_row(size_t row) override;
     virtual void dump_screen(std::string_view name) override;

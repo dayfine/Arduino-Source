@@ -14,9 +14,9 @@
           "item": "tm03",
           "move": "water-pulse",
           "slot": 1,
-          "forget": "tail-whip"
+          "keep": ["tackle", "withdraw", "water-gun", "bubble", "bite", "mega-kick", "dig", "surf"]
         },
-        "why": "TM03 Water Pulse in place of Tail Whip, unless the lead knows it or there is no TM03"
+        "why": "TM03 Water Pulse in place of Tail Whip, unless the lead knows it or there is no TM03; keep list: the damaging moves, Bite, Withdraw and Mega Kick, so the one other move (Tail Whip) goes; fails if none or several are outside the list"
       },
       {
         "id": "mart_clerk",
@@ -33,11 +33,9 @@
         "action": "mart",
         "args": {
           "map": "CeruleanCity_Mart",
-          "budget": 1500,
-          "items": [{"item": "potion", "quantity": 3}, {"item": "awakening", "quantity": 2}],
-          "floor": 1500
+          "items": [{"item": "potion", "quantity": 3}, {"item": "awakening", "quantity": 3}]
         },
-        "why": "3 Potions: the GRIND fights wild battles only with 2 or more; 2 Awakenings for the rival's Sleep Powder"
+        "why": "3 Potions: the GRIND fights wild battles only with 2 or more; 3 Awakenings, the rival's Sleep Powder and the 3 PokeGuy brings to Koga (PokemonSimulation docs/battles/pokeguy-conditions.md); $250 more than before"
       },
       {
         "id": "grind_patch",
