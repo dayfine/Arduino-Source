@@ -227,6 +227,37 @@ std::vector<TilePos> tiles_walked_on(const std::vector<RouteStep>& route, const 
     return tiles;
 }
 
+//  The triggers `step`'s route must keep off: the old man's in Viridian
+//  City, and while Cinnabar's Gym is locked, (20, 5) below its door
+//  (pokefirered CinnabarIsland coord_events): "The door is locked..." and
+//  the player is walked a tile south, off the route (console B, 2026-11-13
+//  13:06, 12.03: the hold east along row 5 to (21, 5)).
+UnitTestResult check_triggers_avoided(const StoryStep& step, const std::vector<RouteStep>& route){
+    struct Trigger{
+        std::string_view map;
+        TilePos tile;
+        std::string_view what;
+        bool live;
+    };
+    const bool old_man = step.name == "below_old_man_trigger";
+    const Trigger TRIGGERS[] = {
+        {"ViridianCity", {20, 8}, "the old man's trigger", old_man},
+        {"ViridianCity", {22, 8}, "the old man's trigger", old_man},
+        {"CinnabarIsland", {20, 5}, "the locked Gym door's trigger", walk_state().cinnabar_gym_locked},
+    };
+    for (const Trigger& trigger : TRIGGERS){
+        if (!trigger.live){
+            continue;
+        }
+        for (const TilePos& tile : tiles_walked_on(route, std::string(trigger.map))){
+            if (tile == trigger.tile){
+                return std::format("{}: walks over {} {}:{}", step.name, trigger.what, to_string(tile), describe(route));
+            }
+        }
+    }
+    return true;
+}
+
 //  Steps that must reach Viridian Forest's gate by legs the walker can hold
 //  again after a battle: each ends on a wall or a warp, or is one step.
 bool held_legs_only(const std::string& name){
@@ -316,23 +347,8 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<s
             return result;
         }
     }
-    if (step.name == "below_old_man_trigger"){
-        for (const TilePos& tile : tiles_walked_on(*route, "ViridianCity")){
-            if (tile == TilePos{20, 8} || tile == TilePos{22, 8}){
-                return step.name + ": walks over the old man's trigger " + to_string(tile) + ":" + describe(*route);
-            }
-        }
-    }
-    //  While the Gym is locked, (20, 5) below its door is a trigger
-    //  (pokefirered CinnabarIsland coord_events): "The door is locked..."
-    //  and the player is walked a tile south, off the route (console B,
-    //  2026-11-13 13:06, 12.03: the hold east along row 5 to (21, 5)).
-    if (walk_state().cinnabar_gym_locked){
-        for (const TilePos& tile : tiles_walked_on(*route, "CinnabarIsland")){
-            if (tile == TilePos{20, 5}){
-                return step.name + ": walks over the locked Gym door's trigger " + to_string(tile) + ":" + describe(*route);
-            }
-        }
+    if (UnitTestResult result = check_triggers_avoided(step, *route); result.result != UnitTestResult::PASSED){
+        return result;
     }
     walk_state().gates = gates_after_route(walk_state().gates, *route);
     pose = StoryPose{target.map, target.tile, route->empty() ? facing : route->back().facing_after};
@@ -1288,7 +1304,7 @@ UnitTestResult test_route21_water_legs(){
 UnitTestResult test_save_end_error(){
     const std::string end = checkpoint_end_map("12.03");
     if (end != "CinnabarIsland"){
-        return "12.03 ends on \"" + end + "\", not CinnabarIsland.";
+        return std::format("12.03 ends on \"{}\", not CinnabarIsland.", end);
     }
     if (!checkpoint_end_map("no-such-row").empty()){
         return "A row that isn't in the table has an end map.";
