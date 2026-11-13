@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows 12.01 and 12.02 (StoryData/frlg-12.01.plan.json, 12.02) on the
- *  overworld sim: from Fuchsia's nurse into the gym past Jugglers Kayden
+ *  Rows 12.01, 12.02 and 12.02b (StoryData/frlg-12.01.plan.json, 12.02,
+ *  12.02b) on the overworld sim: from Fuchsia's nurse into the gym past Jugglers Kayden
  *  and Kirk and round its top edge to west of Koga; and from Koga out to
  *  the Warden and back to the nurse. And the lead's attacks against the
  *  gym's parties.
@@ -156,8 +156,9 @@ std::string row_on_sim(std::string_view id, GymWalk& walk){
 }
 
 //  12.01 from the nurse: the gym, Kayden fought from (14, 16) and Kirk from
-//  (14, 11), round the top edge to west of Koga, where 12.02 starts; then
-//  12.02 from there to the Warden and the nurse, meeting no one else. The
+//  (14, 11), round the top edge to west of Koga, where 12.02 starts; 12.02,
+//  Koga's battle, which ends where it starts; then 12.02b from there to the
+//  Warden and the nurse, meeting no one else. The
 //  sim's lookers see every way at once, so Edgar, whose lines the legs to
 //  the walls cross, always stops the walk there: the worst case, which
 //  the console meets only when he looks that way.
@@ -180,11 +181,21 @@ UnitTestResult test_gym_rows(){
     if (const std::string failure = row_on_sim("12.02", walk); !failure.empty()){
         return failure;
     }
+    if (!(walk.sim->state().position == west_of_koga)){
+        return std::format("12.02: ended on {}, not west of Koga where 12.02b starts.", to_string(walk.sim->state().position));
+    }
+    const StoryPose after_koga = *story_pose(Pokemon::pose_of(*checkpoint("12.02b").start));
+    if (after_koga.map != GYM || !(after_koga.tile == west_of_koga.point)){
+        return "12.02b doesn't start where 12.02 ends.";
+    }
+    if (const std::string failure = row_on_sim("12.02b", walk); !failure.empty()){
+        return failure;
+    }
     if (walk.all_fought().size() != 3){
-        return "12.02: fought a trainer after Koga.";
+        return "12.02b: fought a trainer after Koga.";
     }
     if (walk.at.map != "FuchsiaCity_PokemonCenter_1F"){
-        return std::format("12.02: ended on {}, not at Fuchsia's nurse.", walk.at.map);
+        return std::format("12.02b: ended on {}, not at Fuchsia's nurse.", walk.at.map);
     }
     return true;
 }
@@ -346,6 +357,32 @@ UnitTestResult test_12_02_goes_straight_to_koga(){
     return "12.02 has no challenge_koga step.";
 }
 
+//  Koga's rows are PokemonSimulation's planning_risk() for each foe leading
+//  against the entry state of its koga case (34/122): speed, the 80th
+//  percentile loss, the mean, the worst case, the worst normal hit, then
+//  whether it lowers accuracy and whether it explodes.
+UnitTestResult test_koga_foe_threats_are_the_generators(){
+    const StoryCheckpoint& row = checkpoint("12.02");
+    for (const StoryStep& step : row.steps){
+        if (step.name != "koga"){
+            continue;
+        }
+        const auto found = step.args.find("foe_threats");
+        const auto* rows = found == step.args.end() ? nullptr : std::get_if<std::vector<std::vector<int64_t>>>(&found->second);
+        const std::vector<std::vector<int64_t>> expected = {
+            {30, 21, 18, 168, 84, 1, 1},    //  Koffing
+            {48, 0, 4, 66, 33, 0, 0},       //  Muk
+            {30, 21, 18, 168, 84, 1, 1},    //  Koffing
+            {56, 38, 37, 78, 39, 1, 0},     //  Weezing
+        };
+        if (rows == nullptr || *rows != expected){
+            return "12.02 koga: foe_threats are not the generator's rows for the koga case.";
+        }
+        return true;
+    }
+    return "12.02 has no koga battle step.";
+}
+
 const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
     {
         .input = {.name = "12.01's Mart fills the bag to pokeguy's 5 Super Potions", .body = test_mart_fills_super_potions},
@@ -356,7 +393,7 @@ const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
         .expectation = {.description = "no Mart, skipped or walking step before challenge_koga"},
     },
     {
-        .input = {.name = "12.01 past Kayden and Kirk to west of Koga and 12.02 to the Warden and the nurse", .body = test_gym_rows},
+        .input = {.name = "12.01 past Kayden and Kirk to west of Koga, 12.02 on the spot and 12.02b to the Warden and the nurse", .body = test_gym_rows},
         .expectation = {.description = "Kayden and Kirk fought where the table steps into their lines, no one else; ends at Fuchsia's nurse"},
     },
     {
@@ -377,6 +414,10 @@ const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
             return check_lead_level_precondition(logger, "12.02", "koga", 39);
         }},
         .expectation = {.description = "a Lv39 lead passes the LEVEL step, a Lv38 one stops there"},
+    },
+    {
+        .input = {.name = "12.02 Koga's foe rows are the generator's", .body = test_koga_foe_threats_are_the_generators},
+        .expectation = {.description = "PokemonSimulation planning_risk() rows"},
     },
 };
 

@@ -453,7 +453,7 @@ UnitTestResult test_plan_koga(){
     }
     const StoryStep& step = battle_step("12.02", "koga");
     if (arg_of<std::vector<std::vector<int64_t>>>(step, "foe_threats") != std::vector<std::vector<int64_t>>{
-        {30, 73, 26, 166, 84, 1, 1}, {48, 28, 8, 63, 33, 0, 0}, {30, 73, 26, 166, 84, 1, 1}, {56, 33, 13, 75, 39, 1, 0},
+        {30, 21, 18, 168, 84, 1, 1}, {48, 0, 4, 66, 33, 0, 0}, {30, 21, 18, 168, 84, 1, 1}, {56, 38, 37, 78, 39, 1, 0},
     }){
         return "Expected Koga's foe rows from the doc's stats.";
     }
