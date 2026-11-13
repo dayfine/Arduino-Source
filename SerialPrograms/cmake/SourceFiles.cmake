@@ -1577,6 +1577,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.cpp
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h
     Source/Pokemon/AutoStory/Pokemon_FadeProfiles.h
+    Source/Pokemon/AutoStory/Pokemon_FrameReplay.cpp
+    Source/Pokemon/AutoStory/Pokemon_FrameReplay.h
+    Source/Pokemon/AutoStory/Pokemon_FrameReplay_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_FrameReplay_Tests.h
     Source/Pokemon/AutoStory/Pokemon_InterruptHandlers.h
     Source/Pokemon/AutoStory/Pokemon_Interrupts.cpp
     Source/Pokemon/AutoStory/Pokemon_Interrupts.h
@@ -2071,6 +2075,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCheckpoints.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFrameReplay_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFrameReplay_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLegs.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLegs.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFieldSteps.cpp
@@ -2291,6 +2297,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanTracker.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanTracker_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanTracker_Tests.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngProgram.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngProgram.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngStatsDatabase.cpp
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngStatsDatabase.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngSteps_Tests.cpp
