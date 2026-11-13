@@ -35,6 +35,8 @@
 #include "CommonFramework/Options/QtWidget/WallpaperWidget.h"
 #include "CommonFramework/Windows/DpiScaler.h"
 #include "NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_LabCommands.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
+#include "LabPause.h"
 #include "WindowTracker.h"
 #include "ButtonDiagram.h"
 #include "MainWindow.h"
@@ -291,7 +293,9 @@ MainWindow::MainWindow(QWidget* parent)
     update_wallpaper();
 
     //  Let lab scripts drive the app through files, if the lab folder exists.
-    //  See LabChannel.h. Nothing runs otherwise.
+    //  See LabChannel.h. Nothing runs otherwise. The wait installed here is what
+    //  makes an AutoStory run stop at its breakpoints (LabPause.h).
+    Pokemon::set_story_pause_wait(lab_pause_wait);
     m_lab_channel = LabChannel::start_if_enabled(
         LabChannelCallbacks{
             .current_panel = [this]{ return m_current_panel.get(); },
