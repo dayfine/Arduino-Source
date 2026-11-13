@@ -2,11 +2,12 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows 12.03, 14.03 and 14.04 (StoryData/frlg-12.03.plan.json, 14.03, 14.04)
+ *  Rows 12.03, 14.03, 14.04 and 14.04b (StoryData/frlg-12.03.plan.json, 14.03,
+ *  14.04, 14.04b)
  *  on the overworld sim: from Fuchsia's nurse out of the Center and Fly to
  *  Celadon; from Fly's landing in Celadon past the yard's tree, up
  *  the gym's west aisle into Beauty Tamia's line, round her by column 1,
- *  the inner tree, Beauty Lori, to below Erika; and from Erika back out
+ *  the inner tree, Beauty Lori, to below Erika; and from Erika (14.04b) back out
  *  the same way, past the tree, to the nurse. And the lead's attacks against the
  *  gym's three parties.
  *
@@ -162,8 +163,8 @@ std::string to_erika(StoryPose& at, OverworldSim& sim){
     return "";
 }
 
-//  14.03 on the sim (to_erika()), then 14.04 on the same sim, the gym as
-//  14.03 leaves it (Tamia on (2, 9), the inner tree cut): out along row
+//  14.03 on the sim (to_erika()), then 14.04, Erika's battle, which ends
+//  where it starts, then 14.04b on the same sim, the gym as 14.03 leaves it (Tamia on (2, 9), the inner tree cut): out along row
 //  5, a step onto the cut tree's tile, down column 1 past Tamia and
 //  column 2 to the wall, out of the gym, the tree again and back below
 //  the Center's door (the Center's way in and the nurse need the
@@ -177,12 +178,23 @@ UnitTestResult test_gym_rows(){
     if (const std::string failure = row_on_sim("14.04", at, sim); !failure.empty()){
         return failure;
     }
+    const MapPosition below_erika{GYM, {6, 5}};
+    if (!(sim.state().position == below_erika)){
+        return std::format("14.04: ended on {}, not in front of Erika where 14.04b starts.", to_string(sim.state().position));
+    }
+    const StoryPose after_erika = *story_pose(Pokemon::pose_of(*checkpoint("14.04b").start));
+    if (after_erika.map != GYM || !(after_erika.tile == below_erika.point)){
+        return "14.04b doesn't start where 14.04 ends.";
+    }
+    if (const std::string failure = row_on_sim("14.04b", at, sim); !failure.empty()){
+        return failure;
+    }
     if (sim.state().trainers_beaten.size() != 2){
-        return std::format("14.04: fought{} after Tamia and Lori.", fought(sim));
+        return std::format("14.04b: fought{} after Tamia and Lori.", fought(sim));
     }
     const MapPosition below_center{CELADON, {48, 12}};
     if (!(sim.state().position == below_center)){
-        return std::format("14.04: ended on {}, not below the Center's door {}.", to_string(sim.state().position), to_string(below_center));
+        return std::format("14.04b: ended on {}, not below the Center's door {}.", to_string(sim.state().position), to_string(below_center));
     }
     return true;
 }
@@ -282,7 +294,7 @@ const AutoStoryCeladonGymCase AUTO_STORY_CELADON_GYM_CASES[] = {
         .expectation = {.description = "lands on Celadon's heal spot facing south, where 14.03 starts"},
     },
     {
-        .input = {.name = "14.03 to below Erika and 14.04 back to the nurse", .body = test_gym_rows},
+        .input = {.name = "14.03 to below Erika, 14.04 on the spot and 14.04b back to the nurse", .body = test_gym_rows},
         .expectation = {.description = "Tamia and Lori fought where the table steps into their lines, no one else"},
     },
     {
