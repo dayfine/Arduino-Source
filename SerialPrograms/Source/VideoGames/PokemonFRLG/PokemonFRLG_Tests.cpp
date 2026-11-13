@@ -26,6 +26,7 @@
 #include "Inference/Menus/PokemonFRLG_PartyHeldItemDetector.h"
 #include "Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
 #include "Inference/Menus/PokemonFRLG_SaveCardReader.h"
+#include "Inference/Menus/PokemonFRLG_PartyMemberMenuReader.h"
 #include "Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
 #include "Inference/Menus/PokemonFRLG_TeachScreenReader.h"
 #include "Inference/PokemonFRLG_BattleLevelUpReader.h"
@@ -314,6 +315,7 @@ static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
     add_tests_ItemListReader(database);
     add_tests_OptionMenuReader(database);
     add_tests_SaveCardReader(database);
+    add_tests_PartyMemberMenuReader(database);
     add_tests_SummaryMovesReader(database);
     add_tests_TeachScreenReader(database);
     add_tests_AutoStoryScreenEvents(database);
