@@ -49,6 +49,10 @@ bool use_recovery_item(
     const std::string& item, Pokemon::StoryCheckLevel checks, Language language, Supplies& supplies
 );
 
+//  Whether the bag holds what `needs` lists, each at its quantity (as far
+//  as the bag was read): all of them, or with `any` at least one.
+bool bag_holds(const Supplies& supplies, const std::vector<Pokemon::StoryItem>& needs, bool any);
+
 //  HEAL_TO_FULL_ACTION's, CHECK_FULL_HP_ACTION's and BAG_CHECK_ACTION's specs.
 std::vector<Pokemon::StoryActionSpec> healing_action_specs();
 

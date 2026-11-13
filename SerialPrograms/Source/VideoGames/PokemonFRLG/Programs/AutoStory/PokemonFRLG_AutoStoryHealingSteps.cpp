@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <format>
 #include "Common/Cpp/Color.h"
+#include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
@@ -78,6 +79,16 @@ std::vector<Pokemon::StoryActionSpec> healing_action_specs(){
             optional_arg("any", Pokemon::StoryArgType::BOOLEAN, false, "at least one of the items, not all"),
         }},
     };
+}
+
+bool bag_holds(const Supplies& supplies, const std::vector<Pokemon::StoryItem>& needs, bool any){
+    for (const Pokemon::StoryItem& need : needs){
+        const bool held = bag_count(supplies, need.item) >= static_cast<int>(need.quantity);
+        if (held == any){
+            return held;
+        }
+    }
+    return !any;
 }
 
 std::optional<Outcome> run_healing_step(StoryEnv& env, Pokemon::RunState& state, const StoryStep& step){

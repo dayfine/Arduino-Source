@@ -60,10 +60,6 @@ int hp_cover_shortfall(const Supplies& supplies, int cover_hp, const std::string
 //  already does.
 int fill_shortfall(const Supplies& supplies, int target, const std::string& item);
 
-//  Whether the bag holds what `needs` lists, each at its quantity (as far
-//  as the bag was read): all of them, or with `any` at least one.
-bool bag_holds(const Supplies& supplies, const std::vector<Pokemon::StoryItem>& needs, bool any);
-
 //  Registers the healing tests.
 void add_tests_AutoStoryHealing(UnitTestDatabase& database);
 

@@ -286,10 +286,8 @@ std::optional<PolicyItem> PolicyState::planning_heal(
         if (bag_count(supplies, medicine.item) <= 0 || restored <= 0 || after <= danger.normal_max){
             continue;
         }
-        //  A heal that the foe's mean hit and the poison take back, and more,
-        //  is futile (the 2026-11-12 loss to Koga: Potions of 20 against 42 a
-        //  turn, four turns running, never attacking): the doc's "if HP still
-        //  cannot exceed D, attack". Only a heal that gains ground is a heal.
+        //  A heal that the mean hit and poison take back is futile (Koga,
+        //  2026-11-12: Potions of 20 against 42 a turn): attack instead.
         const double expected = after - danger.mean;
         if (expected <= view.hp){
             continue;

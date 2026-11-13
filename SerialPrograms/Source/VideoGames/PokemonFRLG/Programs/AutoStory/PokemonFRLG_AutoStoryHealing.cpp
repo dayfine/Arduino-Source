@@ -7,7 +7,6 @@
 #include <cmath>
 #include <format>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
 
@@ -103,16 +102,6 @@ int hp_cover_shortfall(const Supplies& supplies, int cover_hp, const std::string
 
 int fill_shortfall(const Supplies& supplies, int target, const std::string& item){
     return std::max(0, target - item_count(supplies, item));
-}
-
-bool bag_holds(const Supplies& supplies, const std::vector<Pokemon::StoryItem>& needs, bool any){
-    for (const Pokemon::StoryItem& need : needs){
-        const bool held = bag_count(supplies, need.item) >= static_cast<int>(need.quantity);
-        if (held == any){
-            return held;
-        }
-    }
-    return !any;
 }
 
 
