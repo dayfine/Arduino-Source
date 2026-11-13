@@ -10,6 +10,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryInterrupts.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_PartyDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Map/PokemonFRLG_MapDetector.h"
@@ -161,12 +162,16 @@ std::string open_fly_map(ConsoleHandle& console, ProControllerContext& context, 
 
 //  On the fly map: the cursor to the corner, then to the town, and A.
 //  Returns the failure, or empty once the player has landed: a fade has
-//  passed, the overworld is at rest and the player's facing reads.
+//  passed, the overworld is at rest, it is no longer `departure` (the
+//  overworld shot before the Fly menu) and the player's facing reads.
 //  Overlaps fly_from_kanto_map() in PokemonFRLG_Navigation.h.
 //  Ours moves the cursor by map cell from a town table and waits for a quiet overworld after landing;
 //  upstream uses timed stick holds per KantoFlyLocation and a blind wait.
 //  Could be unified with upstream if needed.
-std::string fly_to_town(ConsoleHandle& console, ProControllerContext& context, PlayerGender player, const FlyTown& town){
+std::string fly_to_town(
+    ConsoleHandle& console, ProControllerContext& context, PlayerGender player,
+    const FlyTown& town, const VideoSnapshot& departure
+){
     pbf_press_dpad(context, DPAD_UP_LEFT, CURSOR_TO_CORNER, CURSOR_TAP_RELEASE);
     tap_dpad(context, DPAD_RIGHT, (size_t)town.cell.x, CURSOR_TAP, CURSOR_TAP_RELEASE);
     tap_dpad(context, DPAD_DOWN, (size_t)town.cell.y, CURSOR_TAP, CURSOR_TAP_RELEASE);
@@ -176,7 +181,17 @@ std::string fly_to_town(ConsoleHandle& console, ProControllerContext& context, P
     //  The look goes on from the A: a fade, then a quiet overworld with the
     //  player on screen. The band of the flight and the departure town's
     //  overworld are quiet too (console B, 2026-11-12 23:59, 12.03), so a
-    //  quiet screen alone is no landing.
+    //  quiet screen alone is no landing; nor is a quiet departure town after
+    //  the fly map's fade (2026-11-13 02:46).
+    const auto has_left = [&]{
+        const VideoSnapshot now = console.video().snapshot();
+        if (!departure || !now){
+            return false;
+        }
+        const double change = departure_change(*departure.frame, *now.frame, GameSettings::instance().GAME_BOX);
+        console.log(std::format("Story: the screen differs from the departure town by {:.1f}.", change));
+        return left_departure(*departure.frame, *now.frame, GameSettings::instance().GAME_BOX);
+    };
     ConsoleScreenLook eyes(console, context);
     const WallClock start = current_time();
     FlyLanding landing;
@@ -184,7 +199,7 @@ std::string fly_to_town(ConsoleHandle& console, ProControllerContext& context, P
     do{
         const Pokemon::ScreenLook look = eyes.look(fresh);
         fresh = false;
-        landing = judge_fly_landing(look, MovementMechanics::AFTER_BATTLE_QUIET, [&]{
+        landing = judge_fly_landing(look, MovementMechanics::AFTER_BATTLE_QUIET, has_left, [&]{
             return OverworldWalkSteps::read_facing(console, context, player);
         });
     }while (!landing.landed() && current_time() - start < TAKEOFF_TIMEOUT + LANDING_TIMEOUT);
@@ -219,6 +234,8 @@ std::optional<Pokemon::Outcome> run_field_move_step(
         return std::nullopt;
     }
     const FlyTown& town = kanto_fly_towns()[plan->town];
+    context.wait_for_all_requests();
+    const VideoSnapshot departure = console.video().snapshot();
     const std::optional<size_t> slot = plan->party_slot(console_member_reader(console, context, language, plan->start_menu));
     if (!slot){
         console.log(std::format("Story: no {} read in the party to Fly with.", plan->species), COLOR_RED);
@@ -231,7 +248,7 @@ std::optional<Pokemon::Outcome> run_field_move_step(
     ));
     std::string failure = open_fly_map(console, context, *plan);
     if (failure.empty()){
-        failure = fly_to_town(console, context, player, town);
+        failure = fly_to_town(console, context, player, town, departure);
     }
     return failure.empty() ? done() : Pokemon::outcome_failed(failure, town.name);
 }
