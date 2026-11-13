@@ -207,25 +207,13 @@ private:
     bool m_has_text;
 };
 
-}  // namespace
+std::string test_image_path(std::string_view image){
+    return std::format("NintendoSwitch/SystemKeyboardDetector/{}", image);
+}
 
-
-void add_tests_SystemKeyboardDetector(UnitTestDatabase& database){
-    const auto path = [](std::string_view image){
-        return std::format("NintendoSwitch/SystemKeyboardDetector/{}", image);
-    };
-    const SystemKeyboardKey key_1{0, 0};
-    //  The OK button is blue with text in the field and grey without.
-    database.add<Test_SystemKeyboardDetector>(path("BDSP-PlayerName-Empty.png"), key_1, false);
-    database.add<Test_SystemKeyboardDetector>(path("BDSP-FriendName-Typed.png"), key_1, true);
-    for (std::string_view language : {"English", "French", "German", "Italian", "Japanese", "Spanish"}){
-        database.add<Test_SystemKeyboardDetector>(path(std::format("PLZA-{}-Empty.png", language)), key_1, false);
-    }
-    for (std::string_view image : {"BDSP-Dialog.png", "HomeMenu.png", "HomeMenu-OnlineLicensePopup.png", "UserSelect.png"}){
-        database.add<Test_SystemKeyboardDetector>(path(image), std::nullopt, false);
-    }
-
-    //  The cursor on other keys (Legends: Z-A, English and Spanish prompts). The
+//  The cursor on keys other than "1".
+void add_cursor_tests(UnitTestDatabase& database){
+    //  Legends: Z-A, English and Spanish prompts. The
     //  border pulses between bright cyan and a darker teal; T, / and ! are dark.
     const std::pair<std::string_view, SystemKeyboardKey> cursors[] = {
         {"PLZA-Cursor-T.png",           {1, 4}},
@@ -241,9 +229,13 @@ void add_tests_SystemKeyboardDetector(UnitTestDatabase& database){
         {"PLZA-Cursor-Space.png",       {4, 8}},
     };
     for (const auto& [image, cursor] : cursors){
-        database.add<Test_SystemKeyboardDetector>(path(image), cursor, false);
+        database.add<Test_SystemKeyboardDetector>(test_image_path(image), cursor, false);
     }
+}
 
+//  Tests whose screen is not captured yet.
+void add_planned_tests(UnitTestDatabase& database){
+    const SystemKeyboardKey key_1{0, 0};
     //  Screens still to be captured: AZERTY needs a console whose system language
     //  uses it (the layout follows the system, not the game). Each test is added
     //  once its image is in the test repo.
@@ -257,11 +249,29 @@ void add_tests_SystemKeyboardDetector(UnitTestDatabase& database){
         {"PLZA-Korean.png",     std::nullopt,   false},
     };
     for (const Planned& test : planned){
-        const std::string image = path(test.image);
+        const std::string image = test_image_path(test.image);
         if (Filesystem::exists(std::format("{}{}", UNIT_TEST_RESOURCE_PATH(), image))){
             database.add<Test_SystemKeyboardDetector>(image, test.cursor, test.has_text);
         }
     }
+}
+
+}  // namespace
+
+
+void add_tests_SystemKeyboardDetector(UnitTestDatabase& database){
+    const SystemKeyboardKey key_1{0, 0};
+    //  The OK button is blue with text in the field and grey without.
+    database.add<Test_SystemKeyboardDetector>(test_image_path("BDSP-PlayerName-Empty.png"), key_1, false);
+    database.add<Test_SystemKeyboardDetector>(test_image_path("BDSP-FriendName-Typed.png"), key_1, true);
+    for (std::string_view language : {"English", "French", "German", "Italian", "Japanese", "Spanish"}){
+        database.add<Test_SystemKeyboardDetector>(test_image_path(std::format("PLZA-{}-Empty.png", language)), key_1, false);
+    }
+    for (std::string_view image : {"BDSP-Dialog.png", "HomeMenu.png", "HomeMenu-OnlineLicensePopup.png", "UserSelect.png"}){
+        database.add<Test_SystemKeyboardDetector>(test_image_path(image), std::nullopt, false);
+    }
+    add_cursor_tests(database);
+    add_planned_tests(database);
 }
 
 
