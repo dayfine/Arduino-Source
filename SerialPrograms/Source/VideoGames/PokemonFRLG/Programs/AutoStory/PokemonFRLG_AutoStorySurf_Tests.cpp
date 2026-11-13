@@ -11,6 +11,7 @@
  */
 
 #include <algorithm>
+#include <cstdlib>
 #include <format>
 #include <optional>
 #include <string>
@@ -74,7 +75,26 @@ struct SurfRun{
     std::vector<int> surf_holds;
     std::vector<std::string> open_water_legs;
     std::vector<std::string> trainers;
+    //  The ROUTE steps whose legs walk back more than a tile.
+    std::vector<std::string> back_tracks;
 };
+
+//  How many tiles `route` walks back along one axis: what it walks north and
+//  south (or east and west) beyond its net way there, halved. A hold to a
+//  wall and a tile back, a common way to place the player, walks back one.
+int tiles_walked_back(const std::vector<RouteStep>& route){
+    int along[4] = {};
+    for (const RouteStep& step : route){
+        if (step.action == RouteAction::WALK){
+            along[(int)step.direction] += step.tiles;
+        }
+    }
+    const int north_south = along[(int)Direction::NORTH] + along[(int)Direction::SOUTH];
+    const int east_west = along[(int)Direction::EAST] + along[(int)Direction::WEST];
+    const int net_y = std::abs(along[(int)Direction::NORTH] - along[(int)Direction::SOUTH]);
+    const int net_x = std::abs(along[(int)Direction::EAST] - along[(int)Direction::WEST]);
+    return std::max(north_south - net_y, east_west - net_x) / 2;
+}
 
 std::string joined(const std::vector<std::string>& lines){
     std::string text;
@@ -106,6 +126,13 @@ SurfRun run_12_03(SimScript script = {}){
                 if (!ends_found(planned)){
                     run.open_water_legs.push_back(step.name + ": " + to_string(planned));
                 }
+            }
+            if (route && tiles_walked_back(*route) > 1){
+                std::string legs;
+                for (const RouteStep& planned : *route){
+                    legs += "; " + to_string(planned);
+                }
+                run.back_tracks.push_back(std::format("{}: back {} tiles{}", step.name, tiles_walked_back(*route), legs));
             }
         }
         run.failure = row_step_on_sim(sim, at, step, row.id);
@@ -143,6 +170,24 @@ UnitTestResult test_no_open_water_legs(){
     //  (5..11, 21..25) crosses his sight. He is the one trainer fought.
     if (run.trainers.size() > 1){
         return "12.03 meets more than Swimmer Roland:" + joined(run.trainers);
+    }
+    return true;
+}
+
+//  No ROUTE step of 12.03 walks back over its own way by more than a tile.
+//  Before, land_middle_sand_bar went south 5, west 1, north 3 and east 2,
+//  a loop, to start its hold down column 6 from a wall (12.03 run 7,
+//  console B 2026-11-13 13:31), and land_south_sand_bar went east 11 and
+//  west 10 round the rocks below (7, 32) where one tile east would do: the
+//  planner weighed a one-tile leg on the water ending in the open as
+//  if a message could stop it part-way.
+UnitTestResult test_no_back_tracking(){
+    const SurfRun run = run_12_03();
+    if (!run.failure.empty()){
+        return "12.03 failed on the sim: " + run.failure;
+    }
+    if (!run.back_tracks.empty()){
+        return "12.03 plans legs that walk back:" + joined(run.back_tracks);
     }
     return true;
 }
@@ -279,6 +324,10 @@ const SurfCase SURF_CASES[] = {
     {
         .input = {.name = "12.03's legs on the water land or end at a wall", .body = test_no_open_water_legs},
         .expectation = {.description = "no leg on Route 21's water ends in the open"},
+    },
+    {
+        .input = {.name = "12.03's routes go straight", .body = test_no_back_tracking},
+        .expectation = {.description = "no route step walks back more than a tile"},
     },
     {
         .input = {.name = "12.03 with a message after each step on the water", .body = test_message_at_every_surf_step},
