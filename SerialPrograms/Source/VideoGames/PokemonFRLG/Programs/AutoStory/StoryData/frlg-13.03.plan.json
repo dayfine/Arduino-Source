@@ -250,6 +250,18 @@
                 "why": "TM14 (pokeguy 1:20:15)"
             },
             {
+                "id": "teach_blizzard",
+                "kind": "game_action",
+                "action": "teach",
+                "args": {
+                    "item": "tm14",
+                    "move": "blizzard",
+                    "slot": 1,
+                    "keep": ["tackle", "withdraw", "tail-whip", "water-gun", "bubble", "bite", "mega-kick", "water-pulse", "surf"]
+                },
+                "why": "TM14 Blizzard over Dig (pokeguy, PokemonSimulation docs/progression/pokeguy-moves.md: Strength, Surf, Bite, Blizzard; the user approved the TM spend 2026-11-12), taught as soon as it is picked up; keep list: every move the lead can know but Dig, so the one other move (Dig) goes; fails if none or several are outside the list"
+            },
+            {
                 "id": "to_north_statue",
                 "kind": "legs",
                 "action": "taps",
