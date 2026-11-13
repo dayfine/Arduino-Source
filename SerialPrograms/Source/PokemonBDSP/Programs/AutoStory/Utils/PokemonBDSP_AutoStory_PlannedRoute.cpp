@@ -212,6 +212,9 @@ enum class LegNext{
 enum class Blocker{ THING, PERSON };
 //  How far past a leg's end a walk that ran on may have gone.
 constexpr size_t WARP_SLIDE_TILES = 2;
+//  How long after a leg that may have slid onto a warp the walk looks for the
+//  banner of the map beyond: it shows about 1.5 s after the fade.
+constexpr Milliseconds BANNER_AFTER_SLIDE = 2500ms;
 
 //  One planned leg as it is walked: where it goes, and the location
 //  banners read on the way.
@@ -292,6 +295,7 @@ private:
 
     //  After each leg.
     void check_banners(LegWalk& walk);
+    bool slid_through_unseen(const LegWalk& walk);
     LegNext after_leg(LegWalk& walk);
     std::vector<size_t> watching_trainers(const std::vector<std::vector<TilePos>>& paths) const;
     LegNext unknown_trainer(LegWalk& walk, const std::vector<std::vector<TilePos>>& paths);
@@ -449,10 +453,31 @@ LegNext RouteWalker::walk_leg(const PlannedLeg& planned, size_t number, size_t c
         m_warp = walk.result.warp;
         return LegNext::ARRIVED_EARLY;
     }
+    if (slid_through_unseen(walk)){
+        return LegNext::ARRIVED_EARLY;
+    }
     check_banners(walk);
     const LegNext done = after_leg(walk);
     m_prev_wall = done == LegNext::NEXT_LEG && planned.leg.ends_at_wall ? std::optional<WallBefore>{{planned.leg.direction, wall_limit(planned.leg)}} : std::nullopt;
     return done;
+}
+
+//  A leg that stayed on its map but could have run on over a warp (a count
+//  off by a tile or two: lab-B 2026-11-12, 01.02's east mouth) may have gone
+//  through with its fade between two frames. The banner of another map in
+//  the next moments says so: the walk is over, through the warp.
+bool RouteWalker::slid_through_unseen(const LegWalk& walk){
+    const TileLeg& leg = walk.planned.leg;
+    if (walk.map_before != walk.map_after || !warp_within(m_grid, m_from, leg.direction, leg.tiles + WARP_SLIDE_TILES)){
+        return false;
+    }
+    const std::string read = m_io.banner_within(BANNER_AFTER_SLIDE);
+    if (!location_banner_is_another(read, walk.map_before)){
+        return false;
+    }
+    m_io.note("[Route] " + walk.label + ": the location banner \"" + read + "\" shows after the leg, no fade seen: through the warp; handing over.", RouteNote::WARNING);
+    m_warp.banner = read;
+    return true;
 }
 
 //  Legs whose ends span two maps skip the per-leg check; the walk as a

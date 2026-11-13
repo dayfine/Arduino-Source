@@ -229,6 +229,19 @@ UnitTestResult night_and_dim_floors(Logger& logger){
     return passes(run_case(logger, "01.02", "01.05", {.fade = {}, .banner = {}}, knobs));
 }
 
+//  lab-B 2026-11-12 18:36, 01.02's by_the_east_mouth: the walk to the east
+//  mouth's door ran two tiles further east than it counted (a blocked leg
+//  left its column open, and the wall it stopped against was judged by the
+//  screen's change), onto the warp, whose fade the walk did not see. The
+//  step must see the far map's banner after the leg (gone by the next
+//  step's taps) and take the way through as done, not tap east into the city's fence.
+UnitTestResult east_mouth_crossed_unseen(Logger& logger){
+    const Pose far = Pokemon::pose_of(*table_step("01.02", "into_oreburgh").pose_after);
+    const SimWorldKnobs knobs{.slides = {{.step = "by_the_east_mouth", .direction = Direction::EAST, .tiles = 2,
+        .far = far, .fade = SimFade::UNSEEN, .banner_up = false}}};
+    return passes(run_case(logger, "01.02", "01.02", {.fade = {}, .banner = {}}, knobs));
+}
+
 //  01.03: Roark's first line in the mine comes after the camera zooms in on
 //  us, some seconds after the A press (r98; the old event waited 8 s).
 UnitTestResult roark_speaks_late(Logger& logger){
@@ -732,6 +745,7 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
         return every_single_miss(logger, ONE_SIGNAL_STEPS);
     }}, .expectation = {}},
     {.input = {"any one fade with its hold unseen from 00.00 to 01.11: every row still passes", every_single_hold_miss}, .expectation = {}},
+    {.input = {"01.02 by_the_east_mouth runs onto the Gate's east warp, fade unseen (lab-B 2026-11-12)", east_mouth_crossed_unseen}, .expectation = {}},
     {.input = {"01.02 to 01.05 at night, the Gate's dim floor", night_and_dim_floors}, .expectation = {}},
     {.input = {"01.03 Roark's first line 7 s after the A press", roark_speaks_late}, .expectation = {}},
     {.input = {"01.03 with Oreburgh's people wandering (the pokefan on 45, 37..39)", [](Logger& logger){

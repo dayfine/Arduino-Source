@@ -46,6 +46,9 @@ public:
     virtual bool dialog_within(Milliseconds wait, Color color) override{
         return m_inner.dialog_within(wait, color);
     }
+    virtual std::string banner_within(Milliseconds wait) override{
+        return m_inner.banner_within(wait);
+    }
     virtual bool holding_against_wall(Pokemon::Direction direction, const std::string& label) override{
         return m_inner.holding_against_wall(direction, label);
     }
