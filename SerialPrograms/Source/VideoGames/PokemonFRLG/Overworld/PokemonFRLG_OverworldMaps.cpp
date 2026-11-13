@@ -175,6 +175,15 @@ constexpr std::string_view MAP_NAMES[] = {
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",
+    //  Route 22's east end to Indigo Plateau: its north gate, Route 23 with
+    //  its badge guards, Victory Road's three floors and the Plateau's Center.
+    "Route22_NorthEntrance",
+    "Route23",
+    "VictoryRoad_1F",
+    "VictoryRoad_2F",
+    "VictoryRoad_3F",
+    "IndigoPlateau_Exterior",
+    "IndigoPlateau_PokemonCenter_1F",
 };
 
 
