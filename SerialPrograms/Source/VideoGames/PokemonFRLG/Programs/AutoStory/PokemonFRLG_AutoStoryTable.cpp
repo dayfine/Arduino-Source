@@ -62,6 +62,9 @@ PokemonFRLG_RngTarget read_gift(std::string_view name, std::string_view source){
     if (name == "eevee"){
         return PokemonFRLG_RngTarget::eevee;
     }
+    if (name == "lapras"){
+        return PokemonFRLG_RngTarget::lapras;
+    }
     throw ParseException(std::format("{}: unknown gift {}", source, name));
 }
 
@@ -236,7 +239,7 @@ constexpr std::string_view STORY_ORDER[] = {
     "09.04", "10.01", "10.02", "10.03", "10.04", "10.05", "10.06", "11.01", "11.02", "11.03",
     "12.01", "12.02", "12.02b", "12.03",
     "13.01", "13.02", "13.03", "13.04", "14.01", "14.02", "14.02b",
-    "14.03", "14.04", "14.04b", "15.01", "16.01",
+    "14.03", "14.04", "14.04b", "15.01", "16.01", "16.02", "16.03", "16.03b", "16.04", "16.05", "16.06",
 };
 
 //  `checkpoints` in STORY_ORDER's order. Throws ParseException for a

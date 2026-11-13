@@ -19,6 +19,7 @@
 #include "Common/Cpp/Options/StringOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "Pokemon/AutoStory/Pokemon_StoryRngHandoff.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -49,6 +50,8 @@ public:
     ) override{}
 
 private:
+    //  The mode of Stop for Starter RNG and Run Starter RNG in AutoStory.
+    Pokemon::RngHandoffMode starter_rng_mode() const;
     //  The RNG programs' handoffs the run takes, from the options.
     StoryHandoffs story_handoffs() const;
     //  Runs `plan`'s rows, then the RNG handoff they stop at and, for a
@@ -97,6 +100,9 @@ private:
     //  Runs Gift RNG's attempts in the program after 04.02 (the Magikarp)
     //  and 09.03 (the Eevee).
     BooleanCheckBoxOption RUN_GIFT_RNG;
+    //  Takes the Master Ball from Silph Co.'s president (16.05), unless the
+    //  run is a SPEEDRUN.
+    BooleanCheckBoxOption TAKE_MASTER_BALL;
     StarterRngPlanOptions RNG_PLAN;
     EventNotificationOption NOTIFICATION_SHINY;
     EventNotificationOption NOTIFICATION_STATUS_UPDATE;
