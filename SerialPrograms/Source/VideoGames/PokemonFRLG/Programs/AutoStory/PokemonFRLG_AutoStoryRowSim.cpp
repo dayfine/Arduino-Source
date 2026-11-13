@@ -14,6 +14,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPose.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "PokemonFRLG_AutoStoryBoulders.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"

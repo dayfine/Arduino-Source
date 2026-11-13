@@ -120,35 +120,36 @@ bool OverworldSim::cut_tree(){
     return false;
 }
 
+namespace{
+
+//  The map named `name` in `maps`, or nullptr.
+template <typename Maps>
+auto* map_named_in(Maps& maps, const std::string& name){
+    const auto found = std::find_if(maps.begin(), maps.end(), [&](const MapData& map){ return map.name == name; });
+    return found == maps.end() ? nullptr : &*found;
+}
+
+} // namespace
+
 void OverworldSim::land_fallen_boulder(const MapPosition& hole){
-    const MapData* from = nullptr;
-    for (const MapData& item : m_maps){
-        if (item.name == hole.map){
-            from = &item;
-        }
-    }
+    const MapData* from = map_named_in(m_maps, hole.map);
     const MapWarp* warp = from == nullptr ? nullptr : warp_at(*from, hole.point);
     if (warp == nullptr || !warp->to){
         return;
     }
     static const std::vector<MapData> ALL = overworld_maps();
-    for (const MapData& below : ALL){
-        if (below.name != warp->to->map){
-            continue;
-        }
-        for (MapData& shown : m_maps){
-            if (shown.name != below.name){
-                continue;
-            }
-            for (const MapObject& object : below.objects){
-                const bool hidden = object.name == "pushable_boulder" && object.hide_flag && std::none_of(
-                    shown.objects.begin(), shown.objects.end(), [&](const MapObject& item){ return item.x == object.x && item.y == object.y; }
-                );
-                if (hidden){
-                    shown.objects.push_back(object);
-                    note("the boulder lands on " + to_string(MapPosition{shown.name, TilePos{object.x, object.y}}) + ".");
-                }
-            }
+    const MapData* below = map_named_in(ALL, warp->to->map);
+    MapData* shown = map_named_in(m_maps, warp->to->map);
+    if (below == nullptr || shown == nullptr){
+        return;
+    }
+    for (const MapObject& object : below->objects){
+        const bool hidden = object.name == "pushable_boulder" && object.hide_flag && std::none_of(
+            shown->objects.begin(), shown->objects.end(), [&](const MapObject& item){ return item.x == object.x && item.y == object.y; }
+        );
+        if (hidden){
+            shown->objects.push_back(object);
+            note("the boulder lands on " + to_string(MapPosition{shown->name, TilePos{object.x, object.y}}) + ".");
         }
     }
 }

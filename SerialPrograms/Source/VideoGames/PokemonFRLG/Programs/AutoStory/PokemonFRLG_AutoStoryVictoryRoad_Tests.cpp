@@ -293,7 +293,7 @@ UnitTestResult cave_floor(std::string_view previous, std::string_view id, std::s
             continue;
         }
         if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
-            std::string log; for (size_t c = sim.state().log.size() > 25 ? sim.state().log.size() - 25 : 0; c < sim.state().log.size(); c++){ log += "\n  " + sim.state().log[c]; } return std::format("{} {}: ended on {}; {}{}", id, step.name, to_string(sim.state().position), failure, log);
+            return std::format("{} {}: ended on {}; {}", id, step.name, to_string(sim.state().position), failure);
         }
         if (!sim.state().violations.empty()){
             return std::format("{} {}: broke a rule on {}: {}", id, step.name, to_string(sim.state().position), sim.state().violations.front());
