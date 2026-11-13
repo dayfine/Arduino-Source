@@ -33,6 +33,7 @@
 #include "PokemonBDSP_AutoStory_TalkOver.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walks.h"
+#include "PokemonBDSP_AutoStory_TalkFight.h"
 #include "PokemonBDSP_AutoStory_Talks.h"
 
 namespace PokemonAutomation{
@@ -56,22 +57,26 @@ bool dialogue_opens(VideoStream& stream, ProControllerContext& context, Millisec
 }
 
 bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std::string& label, TalkExpect expect, BattleFormat format){
+    return talk_or_fight_who(stream, context, label, expect, format).fought;
+}
+
+TalkFight talk_or_fight_who(VideoStream& stream, ProControllerContext& context, const std::string& label, TalkExpect expect, BattleFormat format){
     const TalkOverEnd end = talk_over(stream, context, label, {
         .rule = {.end_on_quiet = expect != TalkExpect::BATTLE},
         .watch = TalkOverWatch::TRAINER,
     });
     if (end == TalkOverEnd::QUIET){
         route_status(stream, label + " only talked.");
-        return false;
+        return {};
     }
     route_status(stream, "Fighting " + label + ".");
     //  The battle ends with its speeches over (confirm_battle_overworld()):
     //  Roark's badge lines keep the Potion's menu from opening until then.
-    fight_story_battle(stream, context, label, format);
+    const size_t box_looks_after = fight_story_battle(stream, context, label, format);
     if (!in_pokemon_center(stream)){
         use_potion_first_pokemon(stream, context, 0.8);
     }
-    return true;
+    return {.fought = true, .box_looks_after = box_looks_after};
 }
 
 //  A rough check that we stand in a Pokemon Center: its floor fills the lower

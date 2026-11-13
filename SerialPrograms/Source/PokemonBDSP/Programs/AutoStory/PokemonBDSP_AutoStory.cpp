@@ -295,13 +295,18 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     //  The reads that use text (Location.h) take the game's language from here.
     set_story_language(RUN.language());
 
-    StoryEnv story{env, context, STARTER, PLAYER_NAME, IntroPicks{RUN.language(), PLAYER_LOOK.index()}};
+    StoryEnv story{env, context, STARTER, PLAYER_NAME, IntroPicks{RUN.language(), PLAYER_LOOK.index()}, RUN.check_level()};
     if (STARTER_RNG.run()){
         story.run_starter_rng = make_starter_rng_hook(
             env, context, STARTER_RNG, STARTER_RNG.config(RUN.language(), STARTER), NOTIFICATION_ERROR_RECOVERABLE
         );
     }
+    Pokemon::StoryPausePoints pause(RUN.breakpoints(), Pokemon::make_story_pause_hook(context));
+    pause.set_log([&env](std::string_view line){
+        env.console.log(std::string(line));
+    });
     StoryExecutor executor(story);
+    executor.set_breakpoints(&pause);
     const StoryRunPlan plan = plan_story_run(
         checkpoints, first, last,
         StoryHandoffs{.starter_rng = Pokemon::rng_handoff_mode({.stop = STOP_FOR_STARTER_RNG, .run = STARTER_RNG.run()})}

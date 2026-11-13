@@ -9,6 +9,7 @@
  *
  */
 
+#include <algorithm>
 #include <chrono>
 #include <format>
 #include <functional>
@@ -17,6 +18,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
+#include "Pokemon/AutoStory/Types/Pokemon_BadgeCheck.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
@@ -24,19 +26,25 @@
 #include "NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor_Tests.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryTrainers.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteTiming.h"
 #include "PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_IntroMenuDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_BagScreen.h"
+#include "PokemonBDSP_AutoStory_Battle.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 #include "PokemonBDSP_AutoStory_Center.h"
 #include "PokemonBDSP_AutoStory_Events.h"
+#include "PokemonBDSP_AutoStory_GymOpponent.h"
 #include "PokemonBDSP_AutoStory_IntroProbe.h"
 #include "PokemonBDSP_AutoStory_IntroSteps.h"
 #include "PokemonBDSP_AutoStory_LitDoorway.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP_AutoStory_Settings.h"
+#include "PokemonBDSP_AutoStory_TalkOver.h"
 #include "PokemonBDSP_AutoStory_Actions_Tests.h"
 
 namespace PokemonAutomation{
@@ -687,6 +695,150 @@ UnitTestResult test_asks_someone_else(Logger&){
     return true;
 }
 
+//  The overworld after a won battle, replayed look by look through the
+//  talk-over's judge as the console runs it; returns the looks with a box.
+size_t replay_after_battle(const std::vector<Pokemon::ScreenEvents>& looks){
+    using Pokemon::ScreenEvent;
+    TalkOverTally judge;
+    WallClock now = WallClock{} + std::chrono::hours(1);
+    for (const Pokemon::ScreenEvents& look : looks){
+        if (judge.look(look, now) == SceneMove::DONE){
+            return judge.box_looks();
+        }
+        now += TALK_OVER_HOLD + TALK_OVER_RELEASE;
+    }
+    const Pokemon::ScreenEvents quiet{ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL};
+    for (size_t i = 0; i < 20; i++){
+        if (judge.look(quiet, now) == SceneMove::DONE){
+            return judge.box_looks();
+        }
+        now += TALK_OVER_HOLD + TALK_OVER_RELEASE;
+    }
+    return judge.box_looks();
+}
+
+//  01.04 (lab-B, 2026-11-13 01:17, French): Roark is told from a gym trainer
+//  by what happens after the battle, not by reading its intro text. A
+//  trainer's battle ends straight on a quiet overworld (22:49, the cleanup
+//  over in 7.8 s); Roark talks there for about 40 s (01:16:43 to 01:17:25),
+//  with a pause for the badge fanfare.
+UnitTestResult test_gym_opponent_from_the_talk_after(Logger&){
+    using Pokemon::ScreenEvent;
+    using Pokemon::ScreenEvents;
+    const ScreenEvents box{ScreenEvent::DIALOG_BOX};
+    const ScreenEvents fanfare{ScreenEvent::PLAYER_CAN_MOVE};
+    struct Case{ std::string_view name; std::vector<ScreenEvents> looks; GymOpponent opponent; };
+    std::vector<ScreenEvents> roark(20, box);
+    roark.insert(roark.end(), 3, fanfare);
+    roark.insert(roark.end(), 12, box);
+    const Case cases[] = {
+        {"a trainer: the overworld comes back quiet", {}, GymOpponent::TRAINER},
+        {"a trainer: one stray look with a box", {box}, GymOpponent::TRAINER},
+        {"Roark: the badge and TM speech, a fanfare pause between", roark, GymOpponent::LEADER},
+    };
+    for (const Case& c : cases){
+        const size_t looks = replay_after_battle(c.looks);
+        const GymOpponent opponent = gym_opponent_after_battle(looks);
+        if (opponent != c.opponent){
+            return std::format("{}: {} look(s) with a box read as {}, not {}.", c.name, looks,
+                gym_opponent_name(opponent), gym_opponent_name(c.opponent));
+        }
+    }
+    return true;
+}
+
+//  The column's time estimate is a hint only now: it must still count and
+//  restart, and a negative walk adds nothing.
+UnitTestResult test_gym_column_is_a_hint(Logger&){
+    GymColumn column(6, 9, 240ms);
+    if (column.leader_here() || column.tiles() != 0){
+        return "At the entrance the hint is a trainer's tile.";
+    }
+    column.walked_north(240ms * 8);
+    if (!column.leader_here()){
+        return "Past the halfway point to Roark the hint says his tile.";
+    }
+    column.walked_north(-100ms);
+    if (column.tiles() != 8){
+        return "A negative walk must not move the hint.";
+    }
+    column.restart();
+    if (column.leader_here()){
+        return "After a restart the hint is a trainer's tile.";
+    }
+    return true;
+}
+
+//  Roark, lab-B 2026-11-12 23:49: four Potions at 26%, 26%, 29%, 29%. A Potion
+//  that gained nothing ends the Potions of the battle.
+UnitTestResult test_potion_ledger_stops_without_gain(Logger&){
+    PotionLedger potions;
+    potions.observe(0.26);
+    if (!potions.may_use()){
+        return "The first Potion must be allowed.";
+    }
+    potions.used(0.26);
+    if (!potions.pending()){
+        return "A Potion waits for its HP read.";
+    }
+    potions.observe(-1);
+    if (!potions.pending() || potions.stalled()){
+        return "An unread bar must not settle a Potion.";
+    }
+    potions.observe(0.26);
+    if (!potions.stalled() || potions.may_use()){
+        return "No gain (26% then 26%) must stop the Potions.";
+    }
+    //  The gain case: a Potion that raised HP allows the next while it is low.
+    PotionLedger gaining;
+    gaining.used(0.20);
+    gaining.observe(0.45);
+    if (gaining.stalled() || !gaining.may_use()){
+        return "A Potion that gained HP must not stop the Potions.";
+    }
+    //  At most the cap, and none after the Bag runs out.
+    for (size_t n = 1; n < PotionLedger::MAX_POTIONS; n++){
+        gaining.used(0.20);
+        gaining.observe(0.20 + 0.01 * (double)n);
+    }
+    if (gaining.may_use()){
+        return "No more than the cap of Potions in a battle.";
+    }
+    PotionLedger empty;
+    empty.out_of_potions();
+    if (empty.may_use()){
+        return "No Potion once the Bag has none.";
+    }
+    return true;
+}
+
+//  The Trainer Card check runs for the levels that check everything and fails
+//  on a missing badge and on a card the reader cannot read.
+UnitTestResult test_badge_check(Logger&){
+    using Pokemon::BadgeReading;
+    using Pokemon::StoryCheckLevel;
+    for (StoryCheckLevel level : {StoryCheckLevel::TESTING, StoryCheckLevel::THOROUGH}){
+        if (!Pokemon::badge_check_wanted(level)){
+            return "A thorough run must check the badge.";
+        }
+    }
+    for (StoryCheckLevel level : {StoryCheckLevel::DEFAULT, StoryCheckLevel::FAST, StoryCheckLevel::SPEEDRUN}){
+        if (Pokemon::badge_check_wanted(level)){
+            return "A run below thorough must not open the Trainer Card.";
+        }
+    }
+    if (Pokemon::badge_check_failure(BadgeReading::MISSING, "Coal Badge").find("Coal Badge") == std::string::npos){
+        return "A missing badge must fail and name the badge.";
+    }
+    if (!Pokemon::badge_check_failure(BadgeReading::PRESENT, "Coal Badge").empty()){
+        return "A present badge must not fail.";
+    }
+    if (Pokemon::badge_check_failure(BadgeReading::UNREADABLE, "Coal Badge").find("Coal Badge") == std::string::npos){
+        return "An unreadable card must fail and name the badge.";
+    }
+    return true;
+}
+
 //  A menu read on an empty image, or with buttons outside the frame, reads
 //  nothing instead of crashing (SIGSEGV in gray_box, 2026-11-12).
 UnitTestResult test_move_menu_unreadable(Logger&){
@@ -908,6 +1060,22 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
     },
     {
         .input = {"wanderer talk: no ask from a tile that faces a sign (00.05b, the Poketch Company's sign first)", test_asks_someone_else},
+        .expectation = {},
+    },
+    {
+        .input = {"01.04 gym: Roark is told by the talk on the overworld after the battle, in any language (lab-B 2026-11-13)", test_gym_opponent_from_the_talk_after},
+        .expectation = {},
+    },
+    {
+        .input = {"01.04 gym: the column's tile estimate is a hint only", test_gym_column_is_a_hint},
+        .expectation = {},
+    },
+    {
+        .input = {"Battle: a Potion that gained no HP ends the Potions of the battle (Roark, lab-B 2026-11-12 23:49)", test_potion_ledger_stops_without_gain},
+        .expectation = {},
+    },
+    {
+        .input = {"badge check: thorough levels open the Trainer Card and a missing badge fails", test_badge_check},
         .expectation = {},
     },
     {

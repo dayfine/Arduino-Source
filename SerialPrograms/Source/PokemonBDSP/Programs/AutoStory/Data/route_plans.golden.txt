@@ -418,19 +418,19 @@ anchor); 0 from one start tile.
   totals: 3 legs, 2 turns, 1 open, 0 localization
 
 == 01.10 line_1 (costs: line)
-  from: Route204North (20, 26) facing south (tile)
-  target: Route204North (20, 27) (tile)
-  start candidates: Route 204 (20, 26)
-  1. south 1 (open) -> Route 204 (20, 27)
-  totals: 1 legs, 0 turns, 1 open, 0 localization
+  from: Route204North (20, 26) (20, 27) facing south (set)
+  target: Route204North (20, 30) (tile)
+  start candidates: Route 204 (20, 26), Route 204 (20, 27)
+  1. south 4 (to wall) -> Route 204 (20, 30)
+  totals: 1 legs, 0 turns, 0 open, 1 localization
 
 == 01.10 line_2 (costs: line)
-  from: Route204North (20, 27) (tile)
+  from: Route204North (20, 30) (tile)
   target: Route204North (11, 27) (tile)
-  start candidates: Route 204 (20, 27)
-  1. west 10 (to wall) -> Route 204 (10, 27)
-  2. east 1 (open) -> Route 204 (11, 27)
-  totals: 2 legs, 1 turns, 1 open, 0 localization
+  start candidates: Route 204 (20, 30)
+  1. north 3 (open) -> Route 204 (20, 27)
+  2. west 9 (open) -> Route 204 (11, 27)
+  totals: 2 legs, 1 turns, 2 open, 0 localization
 
 == 01.10 line_3 (costs: line)
   from: Route204North (11, 27) (tile)

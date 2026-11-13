@@ -44,6 +44,8 @@
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
@@ -92,6 +94,8 @@ struct StoryEnv{
     std::string player_name;
     //  The new game's language and look.
     IntroPicks intro_picks = {};
+    //  How much the steps confirm on screen (StoryRunOptions::check_level()).
+    Pokemon::StoryCheckLevel checks = Pokemon::StoryCheckLevel::DEFAULT;
     std::function<Pokemon::Outcome()> run_starter_rng;
 };
 
@@ -137,6 +141,8 @@ private:
     const std::string& m_checkpoint;
     std::map<std::string, size_t> m_failures;
     std::set<std::string> m_stop_rows;
+    //  The row whose start screen is kept: a retry's start is kept again.
+    std::string m_started;
 };
 
 
@@ -159,6 +165,11 @@ public:
     //  failed step there throws on instead of failing the step.
     void set_stop_rows(std::set<std::string> rows){
         m_guard.set_stop_rows(std::move(rows));
+    }
+    //  The run's breakpoints: a pause before each step and each leg of a walk.
+    void set_breakpoints(Pokemon::StoryPausePoints* pause){
+        set_pause_points(pause);
+        m_walks.set_pause_points(pause);
     }
     //  A new attempt of a row: every trainer can see us again.
     virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override;
