@@ -372,6 +372,21 @@ bool warp_left_scene(
     return true;
 }
 
+//  How bright the black below a building's map may be, as the sum of the
+//  average's channels (as a dark cave's corners).
+constexpr double BLACK_BELOW_MAX = 45.0;
+
+//  Whether the bottom tile row of the game box `box` is black: the black
+//  below a building's map, which a door north into it ends on.
+bool black_below(const ImageViewRGB32& box){
+    const size_t row = box.height() / SCREEN_TILES_Y;
+    if (row == 0){
+        return false;
+    }
+    const ImageViewRGB32 bottom = box.sub_image(0, box.height() - row, box.width(), row);
+    return image_stats(bottom).average.sum() < BLACK_BELOW_MAX;
+}
+
 } // namespace
 
 bool arrived_without_fade(
@@ -387,6 +402,11 @@ bool arrived_without_fade(
         return false;
     }
     if (scrolled_rmsd(now_box, later_box, 0, 0) >= SAME_SCENE_RMSD){
+        return false;
+    }
+    //  Water's waves make any scene after it look like another one: a door
+    //  north has to show the building it leads into.
+    if (step.direction == Direction::NORTH && !black_below(later_box)){
         return false;
     }
     return warp_left_scene(before, later, game, step.direction, step.tiles + step.warp_slack + 2);
