@@ -13,6 +13,7 @@
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPreflight.h"
+#include "Pokemon/AutoStory/Pokemon_StoryRngHandoff.h"
 #include "Pokemon/AutoStory/Pokemon_StoryRun.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
@@ -581,18 +582,26 @@ static StarterRngLoopResult run_rng_plan_in_program(
     return result;
 }
 
-//  True for a shiny, on the target or not, with `message` logged; otherwise
-//  the run has stopped with it.
-static bool shiny_or_stop(
+//  Runs `call` as `program`'s handoff. True for a shiny, on the target or
+//  not, with its summary logged; otherwise the run has stopped with the
+//  user's turn (a shiny is the only way the story goes on, so the rows after
+//  it are the caller's).
+static bool run_handoff_to_shiny(
     SingleSwitchProgramEnvironment& env, EventNotificationOption& finished,
-    const StarterRngLoopResult& result, const std::string& message
+    const std::string& program, const Pokemon::RngHandoffCall& call
 ){
-    if (result.end != StarterRngLoopEnd::SHINY && result.end != StarterRngLoopEnd::SHINY_OFF_TARGET){
-        stop_for_handoff(env, finished, message);
+    Pokemon::RngHandoffResult result;
+    const std::optional<std::string> user_turn = Pokemon::run_rng_handoff_or_user_turn(
+        env.console, program, [&]{
+            result = call();
+            return result;
+        }
+    );
+    if (user_turn){
+        stop_for_handoff(env, finished, *user_turn);
         return false;
     }
-    env.console.log(message, COLOR_BLUE);
-    env.console.overlay().add_log(message);
+    env.console.overlay().add_log(result.summary);
     return true;
 }
 
@@ -611,17 +620,19 @@ static bool run_starter_rng_in_program(
         .language = language, .sound = options.SOUND, .calibration = calibration.calibration(calibration.STARTER_INGAME),
     }, notifications);
     CalibrationSavingSteps steps(console_steps, calibration, calibration.STARTER_INGAME);
-    const StarterRngLoopResult result = run_rng_plan_in_program(env, steps, planned, options);
-    return shiny_or_stop(env, finished, result, starter_rng_loop_message(result));
+    return run_handoff_to_shiny(env, finished, "Starter RNG", [&]{
+        return starter_rng_handoff_result(run_rng_plan_in_program(env, steps, planned, options));
+    });
 }
 
 //  Gift RNG's attempts in the program for the language and gift of
 //  `settings`, from the save where the gift is taken; the sound and
-//  calibration come from `options`. A shiny leaves the game on its summary.
-static StarterRngLoopResult run_gift_rng_in_program(
+//  calibration come from `options`. Returns true for a shiny, which leaves the
+//  game on its summary (`saving_row` saves it); otherwise the run has stopped.
+static bool run_gift_rng_in_program(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
     const StarterRngPlanned& planned, StarterRngPlanOptions& options, GiftRngConsoleSettings settings,
-    const GiftRngNotifications& notifications
+    const GiftRngNotifications& notifications, EventNotificationOption& finished, std::string_view saving_row
 ){
     //  The console's seed and CSF offsets, from Starter RNG too, and Gift
     //  RNG's own in-game offset, saved as Starter RNG's are.
@@ -630,7 +641,9 @@ static StarterRngLoopResult run_gift_rng_in_program(
     settings.calibration = calibration.calibration(calibration.GIFT_INGAME);
     ConsoleGiftRngSteps console_steps(env, context, settings, notifications);
     CalibrationSavingSteps steps(console_steps, calibration, calibration.GIFT_INGAME);
-    return run_rng_plan_in_program(env, steps, planned, options);
+    return run_handoff_to_shiny(env, finished, "Gift RNG", [&]{
+        return gift_rng_handoff_result(run_rng_plan_in_program(env, steps, planned, options), settings.target, saving_row);
+    });
 }
 
 //  After a shiny Squirtle: off its summary, and the rows to run next: the
@@ -684,7 +697,7 @@ StoryHandoffs AutoStory::story_handoffs() const{
     //  and sets the SID at 01.01 when it isn't known.
     return StoryHandoffs{
         .sid_helper = RUN_STARTER_RNG ? static_cast<std::string>(RNG_PLAN.SID).empty() : bool(STOP_FOR_SID_HELPER),
-        .starter_rng = STOP_FOR_STARTER_RNG || RUN_STARTER_RNG,
+        .starter_rng = Pokemon::rng_handoff_mode(STOP_FOR_STARTER_RNG, RUN_STARTER_RNG) != Pokemon::RngHandoffMode::OFF,
         .gift_rng = RUN_GIFT_RNG,
     };
 }
@@ -787,7 +800,7 @@ std::optional<StoryRunPlan> AutoStory::after_starter_ball(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
     StoryEnv& story, const StarterRngPlanned& planned, size_t ball_row
 ){
-    if (!RUN_STARTER_RNG){
+    if (Pokemon::rng_handoff_mode(STOP_FOR_STARTER_RNG, RUN_STARTER_RNG) != Pokemon::RngHandoffMode::RUN){
         stop_for_starter_rng(env, NOTIFICATION_PROGRAM_FINISH, RNG_PLAN.sound_name(), rng_attempt_lines(planned.attempts));
         return std::nullopt;
     }
@@ -810,10 +823,9 @@ std::optional<StoryRunPlan> AutoStory::after_gift_row(
     const GiftRngNotifications notifications{
         .shiny = NOTIFICATION_SHINY, .status_update = NOTIFICATION_STATUS_UPDATE, .error_recoverable = NOTIFICATION_ERROR_RECOVERABLE,
     };
-    const StarterRngLoopResult result = run_gift_rng_in_program(env, context, planned, RNG_PLAN, settings, notifications);
     //  The live-start row after the gift's, which saves it (04.03, 09.04).
     const std::string& saving_row = story_checkpoints().at(gift_row + 1).id;
-    if (!shiny_or_stop(env, NOTIFICATION_PROGRAM_FINISH, result, gift_rng_loop_message(result, settings.target, saving_row))){
+    if (!run_gift_rng_in_program(env, context, planned, RNG_PLAN, settings, notifications, NOTIFICATION_PROGRAM_FINISH, saving_row)){
         return std::nullopt;
     }
     return after_shiny_gift(env, story, gift_row, RUN.end_index(), story_handoffs());
