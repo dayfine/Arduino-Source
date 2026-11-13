@@ -273,6 +273,35 @@ UnitTestResult test_warp_leg(){
     return true;
 }
 
+//  With breakpoints on legs, the route pauses before each leg, in the step's
+//  label, with the leg's place, direction, tiles and the tile it ends on; a
+//  leg walked again after a stop pauses again.
+UnitTestResult test_pause_before_legs(){
+    const RouteStep first = walk(Direction::EAST, 2, {"Corridor", {3, 1}});
+    const RouteStep second = walk(Direction::NORTH, 1, {"Corridor", {3, 0}});
+    std::vector<std::string> paused;
+    Pokemon::StoryPausePoints pause(Pokemon::StoryBreakpoints::LEGS, [&paused](std::string_view label){
+        paused.emplace_back(label);
+    });
+    pause.before_step("12.03/5 shore");
+    const RoutePlanning planning{.label = "Route", .pause = &pause};
+    ScriptedRoute script;
+    if (script.run({first, second}, &planning)){
+        return "Failed: " + script.failure;
+    }
+    const std::vector<std::string> expected{
+        "12.03/5 shore", "12.03/5 shore leg 1/2 east 2 -> (3, 1)", "12.03/5 shore leg 2/2 north 1 -> (3, 0)",
+    };
+    if (paused != expected){
+        std::string text;
+        for (const std::string& label : paused){
+            text += "\n  " + label;
+        }
+        return "Paused:" + text;
+    }
+    return true;
+}
+
 //  After a leg to a wall, a tap toward it that moves the screen is only
 //  logged (the forest drift diagnostic): a bump and a step can't be told
 //  apart yet. With the check off there is no tap. Open legs aren't tapped.
@@ -513,6 +542,10 @@ const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
     {
         .input = {.name = "the route is logged", .body = test_route_logged},
         .expectation = {.description = "verifies route execution logging and breadcrumbs"},
+    },
+    {
+        .input = {.name = "pause before each leg", .body = test_pause_before_legs},
+        .expectation = {.description = "calls the breakpoint pause before each leg of a route"},
     },
     {
         .input = {.name = "a leg to a wall ends at it", .body = test_wall_check},

@@ -169,7 +169,7 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const 
     const OverworldInterruptSet interrupts = walk_interrupts(env, step);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest. From a set of tiles: reads the facing.
-    const RoutePlanning planning{.maps = &maps, .gates = state.gates, .costs = story_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
+    const RoutePlanning planning{.maps = &maps, .gates = state.gates, .costs = story_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env), .pause = &env.pause};
     walk_overworld_route_with_recovery(env.console, env.context, *route, planning, env.player_gender, facing, interrupts, move_speed(step));
     state.gates = gates_after_route(state.gates, *route);
     log_arrival(env, step.name, target->map, target->tile);
@@ -199,7 +199,7 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     const OverworldInterruptSet interrupts = walk_interrupts(env, step);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
-    const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
+    const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env), .pause = &env.pause};
     walk_overworld_route_with_recovery(env.console, env.context, *route, planning, env.player_gender, facing, interrupts, move_speed(step));
     log_arrival(env, step.name, route->back().end.map, route->back().end.point);
     return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
@@ -823,6 +823,7 @@ StoryExecutor::StoryExecutor(StoryEnv& env)
     ))
 {
     m_executor.set_interrupts(&m_interrupts);
+    set_pause_points(&env.pause);
 }
 
 Outcome StoryExecutor::run(const StoryStep& step, RunState& state){

@@ -43,6 +43,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
 #include "PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRoute.h"
@@ -68,6 +69,9 @@ struct RoutePlanning{
     std::string label = "Route";
     WallCheck wall_check = WallCheck::TAP;
     OpenLegCheck open_leg_check = OpenLegCheck::REANCHOR;
+    //  Where the run pauses before each leg (breakpoints, LEGS mode). None:
+    //  never.
+    Pokemon::StoryPausePoints* pause = nullptr;
 };
 
 //  The console side. `walk` walks one step from `facing` (unknown after a

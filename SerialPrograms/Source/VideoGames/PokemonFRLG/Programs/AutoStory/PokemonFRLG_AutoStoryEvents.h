@@ -31,6 +31,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
@@ -93,6 +94,9 @@ struct StoryEnv{
     //  The Items pocket's counts a count_items step kept
     //  (PokemonFRLG_AutoStorySlopeRun.h), for the next to compare.
     std::map<std::string, int> counted_items = {};
+    //  The run's breakpoints (the BREAKPOINTS option): StoryExecutor pauses
+    //  before each step, the walks before each leg.
+    Pokemon::StoryPausePoints pause = {};
 };
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the
