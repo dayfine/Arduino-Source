@@ -4,6 +4,7 @@
  *
  *  Walking and running times per tile, and the stick for a direction.
  *
+// code-health: allow header_symbols -- walking and running times per tile, the stick for a direction, and the run limits
  */
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_RouteTiming_H
