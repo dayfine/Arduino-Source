@@ -55,6 +55,12 @@ bool story_row_saves(const StoryData& story, const Pokemon::StoryCheckpoint& row
 //  story_actions_not_implemented(): the part of the story a run can play.
 size_t story_rows_ready(const std::vector<Pokemon::StoryCheckpoint>& checkpoints);
 
+//  Whether `row` starts by launching the game from HOME (its first step is
+//  the GAME action "launch_game_from_home"): the game may be in front on any
+//  screen, a dark scene too, so the frame at the program's start says nothing
+//  about the screen size and the black border check waits for HOME.
+bool story_row_launches_game(const Pokemon::StoryCheckpoint& row);
+
 
 
 } // namespace PokemonLZA
