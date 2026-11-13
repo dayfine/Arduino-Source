@@ -14,9 +14,12 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
+#include "PokemonLZA_AutoStoryTable.h"
 #include "PokemonLZA_AutoStoryTable_Tests.h"
 
 namespace PokemonAutomation{
@@ -297,6 +300,25 @@ struct AutoStoryTableInput{
 struct AutoStoryTableExpectation{
 };
 
+//  A black start frame (the previous run stopped in a dark scene) trips the
+//  black border check: a run from 01.00, which launches the game, leaves the
+//  check to HOME; a run from any later row still refuses on it.
+UnitTestResult test_black_start_frame(Logger&){
+    ImageRGB32 black(1920, 1080);
+    black.fill(0xff000000);
+    BlackBorderDetector border;
+    if (!border.detect(black)){
+        return "Expected the black border check to refuse an all-black frame.";
+    }
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        const bool launches = story_row_launches_game(row);
+        if (launches != (row.id == "01.00")){
+            return std::format("{}: launches the game: {}; only 01.00 should.", row.id, launches);
+        }
+    }
+    return true;
+}
+
 struct AutoStoryTableCase{
     AutoStoryTableInput input;
     AutoStoryTableExpectation expectation;
@@ -354,6 +376,10 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"Scene mash: what each frame presses", test_scene_mash_rule},
+        .expectation = {},
+    },
+    {
+        .input = {"Start checks: a black start frame refuses every row but 01.00", test_black_start_frame},
         .expectation = {},
     },
 };

@@ -24,6 +24,7 @@
 #include "Actions/PokemonLZA_AutoStoryIntro.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
+#include "PokemonLZA_AutoStoryTable.h"
 #include "PokemonLZA_AutoStory.h"
 
 namespace PokemonAutomation{
@@ -38,7 +39,7 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "PokemonLZA:AutoStory",
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Play the main story of Pokemon Legends: Z-A. Prototype: Main Mission 01 as recorded on a console; plays from a new game to the starter and Andi.",
+        "Play the main story of Pokemon Legends: Z-A. Prototype: Main Mission 01 as recorded on a console; plays from a new game to the starter and Andi. Checkpoint 01.00 (a new game) starts on the Switch HOME screen with PLZA's tile selected and no save: it launches the selected tile without moving the cursor (closing it first if it is running) and waits for the language list. Go Home When Done leaves HOME with PLZA's tile selected, ready for the next new game.",
         PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
@@ -162,6 +163,16 @@ NewGameChoices AutoStory::new_game_choices(ConsoleHandle& console, bool check) c
         throw UserSetupError(console, problem);
     }
     return choices;
+}
+
+void AutoStory::start_program_border_check(VideoStream& stream, FeedbackType feedback_type){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const size_t first = RUN.start_index();
+    if (first < rows.size() && story_row_launches_game(rows[first])){
+        stream.log(std::format("AutoStory: {} launches the game; the black border check waits for HOME.", rows[first].id));
+        return;
+    }
+    SingleSwitchProgramInstance::start_program_border_check(stream, feedback_type);
 }
 
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
