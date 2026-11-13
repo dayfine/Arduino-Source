@@ -196,6 +196,7 @@ UnitTestResult test_step_sim_statue_switch(){
 //  the walk holds), replayed by the story engine on the pinned maps with the
 //  run's flags (the Card Key) and the gates the route's commands change.
 constexpr std::string_view REVISION = "0123456789abcdef0123456789abcdef01234567";
+constexpr std::string_view CHECKPOINT_ID = "99.01";
 
 const MapData& scene_map(const Scene& scene){
     for (const MapData& map : scene_maps()){
@@ -253,22 +254,8 @@ JsonArray recorded_commands(const Scene& scene, const std::vector<RouteStep>& ro
     return commands;
 }
 
-//  The replay of the scene's checkpoint with the recorded route. The scenario starts with
-//  the Card Key if `card_key`; the recording is made with it either way.
-//  Throws what the replay rejects.
-JsonValue replay_scene(const Scene& scene, bool card_key, bool recorded_card_key = true){
-    const MapData& map = scene_map(scene);
-    const Pokemon::GateRules rules{.card_key_held = recorded_card_key};
-    const std::optional<std::vector<RouteStep>> route = plan_overworld_route_gated(
-        scene_maps(), MapPosition{std::string(scene.map), scene.start}, RouteGoal{MapPosition{std::string(scene.map), scene.goal}, std::nullopt},
-        Pokemon::GateState(), rules, default_route_costs(), Direction::EAST
-    );
-    if (!route){
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No route across the scene to record.");
-    }
-    const Direction facing_after = route->back().direction;
-
-    JsonObject start_pose = tile_json(scene, scene.start, "east");
+//  The capture of the scene's checkpoint: one route across it, to `facing_after`.
+std::string capture_text(const Scene& scene, Direction facing_after){
     JsonObject target = tile_json(scene, scene.goal, direction_name(facing_after));
     JsonObject event;
     event["id"] = "cross";
@@ -278,9 +265,9 @@ JsonValue replay_scene(const Scene& scene, bool card_key, bool recorded_card_key
     JsonArray events;
     events.push_back(std::move(event));
     JsonObject checkpoint;
-    checkpoint["id"] = "99.01";
+    checkpoint["id"] = std::string(CHECKPOINT_ID);
     checkpoint["title"] = "Gate replay";
-    checkpoint["start"] = std::move(start_pose);
+    checkpoint["start"] = tile_json(scene, scene.start, "east");
     checkpoint["events"] = std::move(events);
     JsonObject capture;
     capture["format"] = "pokesim-native-checkpoint-export/1";
@@ -288,8 +275,11 @@ JsonValue replay_scene(const Scene& scene, bool card_key, bool recorded_card_key
     capture["checkpoint"] = std::move(checkpoint);
     capture["source_revision"] = std::string(REVISION);
     capture["unbound"] = JsonArray();
-    const std::string capture_text = capture.dump(-1);
+    return capture.dump(-1);
+}
 
+//  The binding of that capture to the scene's map, as the replay pins it.
+std::string binding_text(const Scene& scene, const std::string& capture){
     std::string map_hash;
     for (const auto& [name, text] : overworld_map_json()){
         if (name == scene.map){
@@ -298,7 +288,7 @@ JsonValue replay_scene(const Scene& scene, bool card_key, bool recorded_card_key
     }
     JsonObject capture_pin;
     capture_pin["file"] = "gate-replay.json";
-    capture_pin["sha256"] = StoryReplayInternal::digest(capture_text);
+    capture_pin["sha256"] = StoryReplayInternal::digest(capture);
     capture_pin["source_revision"] = std::string(REVISION);
     JsonObject maps;
     maps[std::string(scene.map)] = map_hash;
@@ -327,16 +317,11 @@ JsonValue replay_scene(const Scene& scene, bool card_key, bool recorded_card_key
     binding["costs"] = std::move(costs);
     binding["max_route_moves"] = 256;
     binding["policy"] = std::move(policy);
-    const std::string binding_text = binding.dump(-1);
+    return binding.dump(-1);
+}
 
-    JsonObject routes;
-    routes["cross"] = recorded_commands(scene, *route);
-    JsonObject candidate;
-    candidate["format"] = "pokesim-route-candidate/1";
-    candidate["binding_sha256"] = StoryReplayInternal::digest(binding_text);
-    candidate["checkpoint"] = "99.01";
-    candidate["routes"] = std::move(routes);
-
+//  The scenario: the player on the scene's start, with the Card Key if `card_key`.
+JsonValue scenario_json(const Scene& scene, bool card_key){
     JsonObject entry_pose;
     entry_pose["map"] = std::string(scene.map);
     JsonArray tile;
@@ -344,7 +329,7 @@ JsonValue replay_scene(const Scene& scene, bool card_key, bool recorded_card_key
     tile.push_back(scene.start.y);
     entry_pose["tile"] = std::move(tile);
     entry_pose["facing"] = "east";
-    entry_pose["elevation"] = elevation_at(map, scene.start);
+    entry_pose["elevation"] = elevation_at(scene_map(scene), scene.start);
     JsonObject entry;
     entry["basis"] = "scripted";
     entry["screen"] = "overworld";
@@ -357,14 +342,36 @@ JsonValue replay_scene(const Scene& scene, bool card_key, bool recorded_card_key
         flags.push_back("card_key_held");
     }
     scenario["start_flags"] = std::move(flags);
-    return replay_story_checkpoint(capture_text, binding_text, candidate.dump(-1), JsonValue(std::move(scenario)));
+    return scenario;
+}
+
+//  The scene's checkpoint replayed with the route recorded for a player who has the
+//  Card Key, for a run that has it if `card_key`. Throws what the replay rejects.
+JsonValue replay_scene(const Scene& scene, bool card_key){
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route_gated(
+        scene_maps(), MapPosition{std::string(scene.map), scene.start}, RouteGoal{MapPosition{std::string(scene.map), scene.goal}, std::nullopt},
+        Pokemon::GateState(), Pokemon::GateRules{.card_key_held = true}, default_route_costs(), Direction::EAST
+    );
+    if (!route){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No route across the scene to record.");
+    }
+    const std::string capture = capture_text(scene, route->back().direction);
+    const std::string binding = binding_text(scene, capture);
+    JsonObject routes;
+    routes["cross"] = recorded_commands(scene, *route);
+    JsonObject candidate;
+    candidate["format"] = "pokesim-route-candidate/1";
+    candidate["binding_sha256"] = StoryReplayInternal::digest(binding);
+    candidate["checkpoint"] = std::string(CHECKPOINT_ID);
+    candidate["routes"] = std::move(routes);
+    return replay_story_checkpoint(capture, binding, candidate.dump(-1), scenario_json(scene, card_key));
 }
 
 //  The replay completed the checkpoint and its actions have `kind` (the gate's command).
 std::string completed_with(const JsonValue& report, std::string_view kind){
     const JsonObject& root = report.to_object_throw();
     if (root.get_string_throw("status") != "model_complete"){
-        return "The replay stopped: " + report.dump(-1);
+        return std::format("The replay stopped: {}", report.dump(-1));
     }
     for (const JsonValue& action : root.get_array_throw("actions")){
         if (action.to_object_throw().get_string_throw("kind") == kind){
@@ -391,7 +398,7 @@ UnitTestResult test_replay_door_without_card_key(){
         }
     }catch (const ParseException& e){
         if (e.message().find("card-key") == std::string::npos){
-            return "Unexpected rejection: " + e.message();
+            return std::format("Unexpected rejection: {}", e.message());
         }
     }
     return true;

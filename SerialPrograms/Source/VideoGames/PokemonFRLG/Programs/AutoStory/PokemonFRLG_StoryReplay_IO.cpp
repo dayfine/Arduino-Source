@@ -350,6 +350,14 @@ ReplayScreen between_steps_screen(std::string_view kind){
     }
     return screen;
 }
+namespace{
+//  The run flags a scenario starts with: strings.
+void check_start_flags(const JsonValue& flags){
+    for (const JsonValue& flag : flags.to_array_throw()){
+        flag.to_string_throw();
+    }
+}
+} // namespace
 void validate_scenario(const ReplayData& data, const JsonValue& scenario){
     const JsonObject& root = scenario.to_object_throw();
     for (const auto& [name, value] : root){
@@ -360,9 +368,7 @@ void validate_scenario(const ReplayData& data, const JsonValue& scenario){
             value.to_boolean_throw();
         }
         if (name == "start_flags"){
-            for (const JsonValue& flag : value.to_array_throw()){
-                flag.to_string_throw();
-            }
+            check_start_flags(value);
         }
     }
     const JsonObject& entry = fields(root.get_value_throw("entry"), {"basis", "screen", "pose"});
