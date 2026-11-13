@@ -22,7 +22,7 @@
 #include "Common/Cpp/Time.h"
 #include "Pokemon/AutoStory/Pokemon_InterruptHandlers.h"
 #include "Pokemon/AutoStory/Pokemon_StoryInterrupts.h"
-#include "Pokemon/AutoStory/Types/Pokemon_Direction.h"
+#include "Pokemon/Navigation/Pokemon_Direction.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
