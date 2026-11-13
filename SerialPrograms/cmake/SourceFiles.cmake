@@ -1512,6 +1512,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_RouteScorer.h
     Source/Pokemon/Navigation/Pokemon_RouteScorer_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_RouteScorer_Tests.h
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimFaults.cpp
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimFaults.h
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimFaults_Tests.cpp
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimFaults_Tests.h
     Source/Pokemon/Navigation/Simulation/Pokemon_SimGolden.cpp
     Source/Pokemon/Navigation/Simulation/Pokemon_SimGolden.h
     Source/Pokemon/Navigation/Simulation/Pokemon_SimGolden_Tests.cpp
