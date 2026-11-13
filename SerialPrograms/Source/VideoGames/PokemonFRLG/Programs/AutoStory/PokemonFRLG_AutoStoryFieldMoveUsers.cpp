@@ -34,6 +34,14 @@ void FieldMoveUsers::clear(){
     m_users.clear();
 }
 
+std::string FieldMoveUsers::to_text() const{
+    return "";
+}
+
+ParsedFieldMoveUsers parse_field_move_users(std::string_view){
+    return {};
+}
+
 
 
 } // namespace PokemonFRLG

@@ -277,6 +277,61 @@ UnitTestResult test_no_member_failure(Logger& logger){
     return check_counts("no member", party, 1, 1, 1, 1);
 }
 
+//  The users as the settings keep them read back the same, slots from 1.
+UnitTestResult test_users_text_round_trip(Logger&){
+    FieldMoveUsers users;
+    users.record("fly", 2, "pidgey");
+    users.record("cut", 1, "");
+    const std::string text = users.to_text();
+    if (text != "cut=2:,fly=3:pidgey"){
+        return std::format("the users' text is '{}', expected 'cut=2:,fly=3:pidgey'.", text);
+    }
+    const ParsedFieldMoveUsers parsed = parse_field_move_users(text);
+    if (!(parsed.users == users) || !parsed.rejected.empty()){
+        return std::format("'{}' doesn't read back as the users it came from.", text);
+    }
+    return true;
+}
+
+//  Text that isn't readable is dropped entry by entry, never thrown on:
+//  those moves are found by a scan. Empty text is no users.
+UnitTestResult test_unreadable_users_text_dropped(Logger&){
+    const ParsedFieldMoveUsers parsed = parse_field_move_users(
+        " strength = 1 : blastoise ,fly=x:pidgey,surf=7:lapras,=2:oddish,junk,cut=0:oddish,flash=2:Bad Name,,"
+    );
+    const std::optional<FieldMoveUser> strength = parsed.users.find("strength");
+    if (!strength || strength->slot != 0 || strength->species != "blastoise"){
+        return "the readable entry, strength=1:blastoise, isn't kept.";
+    }
+    if (parsed.users.find("fly") || parsed.users.find("surf") || parsed.users.find("cut") || parsed.users.find("flash")){
+        return "an unreadable entry was kept.";
+    }
+    if (parsed.rejected.size() != 6){
+        return std::format("{} entries rejected, expected 6.", parsed.rejected.size());
+    }
+    const ParsedFieldMoveUsers empty = parse_field_move_users("");
+    if (!(empty.users == FieldMoveUsers{}) || !empty.rejected.empty()){
+        return "empty text isn't empty users.";
+    }
+    return true;
+}
+
+//  After a restart, the users read from the settings: the first Fly opens
+//  the party once and reads no summary.
+UnitTestResult test_restart_fly_reads_no_summary(Logger& logger){
+    FieldMoveUsers before;
+    before.record("fly", 2, "pidgey");
+    PartyCache cache;
+    cache.users() = parse_field_move_users(before.to_text()).users;
+    FakeParty party({"blastoise", "oddish", "pidgey"});
+    size_t calls = 0;
+    const std::string failure = use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 2, calls));
+    if (!failure.empty() || calls != 1){
+        return std::format("the Fly after a restart: failure '{}', {} menu uses.", failure, calls);
+    }
+    return check_counts("restart", party, 1, 0, 0, 0);
+}
+
 struct AutoStoryPartyRosterInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -323,6 +378,9 @@ const AutoStoryPartyRosterCase AUTO_STORY_PARTY_ROSTER_CASES[] = {
     {.input = {"a scan records the user for the next Fly", test_scan_records_for_next_fly}, .expectation = {}},
     {.input = {"invalidate() drops the field move users", test_invalidate_drops_records}, .expectation = {}},
     {.input = {"no member of the species fails without flying", test_no_member_failure}, .expectation = {}},
+    {.input = {"the field move users' text reads back the same", test_users_text_round_trip}, .expectation = {}},
+    {.input = {"unreadable field move users' text is dropped", test_unreadable_users_text_dropped}, .expectation = {}},
+    {.input = {"a Fly after a restart reads no summary", test_restart_fly_reads_no_summary}, .expectation = {}},
 };
 
 } // namespace

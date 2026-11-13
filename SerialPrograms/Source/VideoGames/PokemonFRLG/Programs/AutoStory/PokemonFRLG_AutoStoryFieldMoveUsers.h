@@ -15,6 +15,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -29,6 +30,8 @@ struct FieldMoveUser{
     size_t slot = 0;
     //  Empty if the TEACH named a slot and the summary didn't read.
     std::string species = {};
+
+    friend bool operator==(const FieldMoveUser&, const FieldMoveUser&) = default;
 };
 
 //  The user of each field move, by the move's slug ("fly", "surf").
@@ -40,9 +43,25 @@ public:
     //  The party order changed (a deposit or withdrawal): nobody is known.
     void clear();
 
+    //  The users as text, "fly=3:pidgey,cut=2:", slots from 1, in move
+    //  order: AutoStory keeps it in its settings, as it keeps the SID, so a
+    //  restart of the program knows them too.
+    std::string to_text() const;
+
+    friend bool operator==(const FieldMoveUsers&, const FieldMoveUsers&) = default;
+
 private:
     std::map<std::string, FieldMoveUser, std::less<>> m_users;
 };
+
+//  The users read back from to_text()'s text, and the entries that weren't
+//  readable (a slot outside 1-6, a move or species that isn't a slug, no
+//  "="): those are dropped, so their moves are found by a party scan.
+struct ParsedFieldMoveUsers{
+    FieldMoveUsers users = {};
+    std::vector<std::string> rejected = {};
+};
+ParsedFieldMoveUsers parse_field_move_users(std::string_view text);
 
 
 } // namespace PokemonFRLG
