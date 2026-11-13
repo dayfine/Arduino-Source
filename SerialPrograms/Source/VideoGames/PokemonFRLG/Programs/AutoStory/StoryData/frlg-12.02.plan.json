@@ -115,7 +115,7 @@
       "checkpoint": [
         "Koga (7, 13), talked to from the west, from the save beside him (12.01): Koffing, Muk, Koffing, Weezing; his NPC medicine is two Hyper Potions and a Full Heal. The lead picks Surf (2x nothing here, the strongest move); pokeguy's Weezing took him to 4/126 HP with Sludge while Koga healed it.",
         "Bag for a retry: a blackout or a lost fight reloads this save with the bag as 12.01 left it, and 12.01's heals after Kayden and Kirk spend Super Potions. count_bag_for_koga reads the Items pocket; unless it holds PokeGuy's 5 Super Potions and a cure for poison (an Antidote, or a Full Heal: the Fuchsia Mart sells no Antidote), the row walks out of the gym by 12.01's legs backwards, to the Mart and back (the Mart's trip and the gym's legs as in 12.01; Kayden and Kirk are beaten, Koga is not, so every other trainer's line is still live and the legs are the same ones to walls), buys the shortfall, and ends west of Koga again. Console B lost to Koga on 2026-11-12 with 6 Potions, 1 Super Potion and no cure.",
-        "Strength is not taught here: pokeguy teaches it over Water Pulse at Victory Road (19.02, D3).",
+        "Strength is not taught here: pokeguy teaches it over Water Pulse at Victory Road (19.04).",
         "Ends at Fuchsia's nurse, where 13.01 starts (Fly to Pallet Town, Surf down Route 21)."
       ]
     }
