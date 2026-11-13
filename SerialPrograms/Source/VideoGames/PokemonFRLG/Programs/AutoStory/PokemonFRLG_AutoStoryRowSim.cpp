@@ -73,8 +73,8 @@ std::string stub_report(const std::vector<RowStubs>& rows){
 
 namespace{
 
-const MapData* map_named(const std::string& name){
-    for (const MapData& map : story_maps()){
+const MapData* map_named(const std::string& name, const std::vector<MapData>& maps = story_maps()){
+    for (const MapData& map : maps){
         if (map.name == name){
             return &map;
         }
@@ -85,8 +85,8 @@ const MapData* map_named(const std::string& name){
 //  Whether the player, at the end of a WALK `step`, stops there holding on:
 //  the map's edge, a wall, or water to Surf onto, but no warp of any kind,
 //  even one to a map that isn't loaded.
-bool stops_past_end(const RouteStep& step){
-    const MapData& map = *map_named(step.end.map);
+bool stops_past_end(const RouteStep& step, const std::vector<MapData>& maps){
+    const MapData& map = *map_named(step.end.map, maps);
     const TilePos here = step.end.point;
     const TilePos ahead = here.next(step.direction);
     if (!in_bounds(map, ahead)){
@@ -104,9 +104,9 @@ bool stops_past_end(const RouteStep& step){
 //  The first leg of `route` to a wall that holding on would carry past its
 //  end, or nothing (console B, 2026-11-02: one rode Route 4's Pokemon
 //  Center escalator).
-std::optional<std::string> overrun_wall_leg(const std::vector<RouteStep>& route){
+std::optional<std::string> overrun_wall_leg(const std::vector<RouteStep>& route, const std::vector<MapData>& maps){
     for (const RouteStep& step : route){
-        if (step.to_wall && !stops_past_end(step)){
+        if (step.to_wall && !stops_past_end(step, maps)){
             return to_string(step);
         }
     }
@@ -119,14 +119,14 @@ struct Standing{
     Direction facing = Direction::NORTH;
     std::string error;
 };
-Standing standing(const Pokemon::Pose& pose){
+Standing standing(const Pokemon::Pose& pose, const std::vector<MapData>& maps){
     const std::optional<StoryPose> at = story_pose(pose);
     if (!at){
         return {{}, Direction::NORTH, "no one-tile pose: " + Pokemon::to_string(pose)};
     }
     std::optional<Direction> facing = at->facing;
     if (!facing){
-        const MapData* map = map_named(at->map);
+        const MapData* map = map_named(at->map, maps);
         facing = map ? wall_beside(*map, at->tile) : std::nullopt;
     }
     if (!facing){
@@ -248,7 +248,7 @@ Pokemon::StoryAction StoryMapsSim::action(StoryActionId id){
 }
 
 Outcome StoryMapsSim::legs(const Pokemon::Pose& pose, const StoryStep& step) const{
-    const Standing at = standing(pose);
+    const Standing at = standing(pose, maps());
     if (!at.error.empty()){
         return Pokemon::outcome_failed("no_pose", at.error);
     }
@@ -332,7 +332,7 @@ Outcome StoryMapsSim::walk_to(Pokemon::RunState& state, const StoryStep& step) c
         state.gates = gates_after_route(state.gates, *route);
         return Pokemon::outcome_ok(to_pose(StoryPose{target->map, target->tile, route->back().facing_after}));
     }
-    const Standing at = standing(pose);
+    const Standing at = standing(pose, maps());
     if (!at.error.empty()){
         return Pokemon::outcome_failed("no_pose", at.error);
     }
@@ -348,7 +348,7 @@ Outcome StoryMapsSim::walk_to(Pokemon::RunState& state, const StoryStep& step) c
     if (!(end == goal.position)){
         return Pokemon::outcome_failed("wrong_end", to_string(end));
     }
-    if (const std::optional<std::string> leg = overrun_wall_leg(*route)){
+    if (const std::optional<std::string> leg = overrun_wall_leg(*route, maps())){
         return Pokemon::outcome_failed("wall_overrun", *leg);
     }
     state.gates = gates_after_route(state.gates, *route);
@@ -492,7 +492,7 @@ void sim_wait_out_battle_exit(OverworldSim& sim){
 std::string OverworldStepSim::walk(const StoryStep& step){
     //  The sim's own maps and gates, if it has gates: the route opens the
     //  ones the Card Key opens, and the walker's steps open them in the sim.
-    const std::vector<MapData>& maps = m_sim.has_gates() ? m_sim.source_maps() : story_maps();
+    const std::vector<MapData>& maps = m_sim.gated() ? m_sim.source_maps() : story_maps();
     const Pokemon::GateState& gates = m_sim.state().gates;
     const std::optional<std::vector<RouteStep>> route = walked_route(m_at, step, maps, gates, Pokemon::GateRules{.card_key_held = m_sim.card_key_held()});
     if (route && route->empty()){

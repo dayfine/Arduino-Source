@@ -111,7 +111,7 @@ public:
     //  Whether the maps have gates (MapData::gates), and the maps as loaded
     //  for planning through them, with a gate closed or open as the map
     //  says; whether the player holds the Card Key (SimScript::card_key_held).
-    bool has_gates() const{
+    bool gated() const{
         return !m_source_maps.empty();
     }
     const std::vector<MapData>& source_maps() const{
