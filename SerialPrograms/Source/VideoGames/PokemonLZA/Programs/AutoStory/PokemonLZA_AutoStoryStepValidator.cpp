@@ -89,6 +89,16 @@ std::optional<PokemonAutomation::ScreenEvent> walk_end_event(std::string_view en
     return std::nullopt;
 }
 
+std::optional<FirstTurnFrom> walk_first_turn(std::string_view name){
+    if (name == "player"){
+        return FirstTurnFrom::PLAYER;
+    }
+    if (name == "camera"){
+        return FirstTurnFrom::CAMERA;
+    }
+    return std::nullopt;
+}
+
 //  What is wrong with the args of a "walk" or "approach_starter" step;
 //  nothing for any other step.
 std::vector<std::string> plza_step_arg_errors(const Pokemon::StoryStep& step){
@@ -123,6 +133,13 @@ std::vector<std::string> plza_step_arg_errors(const Pokemon::StoryStep& step){
         const int64_t degrees = std::get<int64_t>(heading->second);
         if (degrees < 0 || degrees >= 360){
             errors.push_back(std::format("{}: heading {} deg, expected 0 to 359", step.name, degrees));
+        }
+    }
+    const auto first_turn = step.args.find("first_turn");
+    if (first_turn != step.args.end()){
+        const std::string& name = std::get<std::string>(first_turn->second);
+        if (!walk_first_turn(name)){
+            errors.push_back(std::format("{}: first_turn {} is not \"player\" or \"camera\"", step.name, name));
         }
     }
     return errors;

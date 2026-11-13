@@ -124,6 +124,10 @@ StoryActionSpec walk_spec(){
             .key = "heading", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
             .why = "the compass heading to face first, clockwise from north",
         },
+        StoryArgSpec{
+            .key = "first_turn", .type = StoryArgType::WORD, .required = false, .fallback = std::nullopt,
+            .why = "\"camera\": the first leg turns from where the camera looks, not the player (no L first)",
+        },
     });
 }
 
@@ -503,6 +507,10 @@ StoryMove story_walk_move(const StoryActionArgs& args, std::string_view legs){
     const auto heading = args.find("heading");
     if (heading != args.end()){
         move.heading = (double)std::get<int64_t>(heading->second);
+    }
+    const auto first_turn = args.find("first_turn");
+    if (first_turn != args.end()){
+        move.first_turn_from = walk_first_turn(std::get<std::string>(first_turn->second)).value_or(FirstTurnFrom::PLAYER);
     }
     for (const Pokemon::StoryTimedLeg& row : Pokemon::story_arg<TimedLegs>(args, legs)){
         move.legs.push_back({.turn = (double)row.turn, .walk = Milliseconds(row.ms)});
