@@ -83,29 +83,29 @@ StoryGame<GridPose> engine_game(std::optional<int> candies){
 
 
 
-//  One engine run of 00.31 in `phase`, the player ending on `end_map`.
-struct EngineInput{
-    std::string_view name;
-    std::string_view phase;
-    HashRecord hash = HashRecord::MATCHING;
-    std::string_view steps = TALK_STEPS;
-    //  Where the talk leaves the player; empty: the talk opens no text.
-    std::string_view end_map = "RocketHideout_B3F";
-    std::optional<int> candies = 2;
-};
-
-//  The save mode chosen, the verdict, whether the game saved (each save
-//  logs "[Test] save") and a line the run logged.
-struct EngineExpectation{
-    StorySaveMode mode = StorySaveMode::NONE;
-    CheckpointVerdict verdict = CheckpointVerdict::PASSED;
-    size_t saves = 0;
-    std::string_view line = {};
-};
-
 struct EngineCase{
-    EngineInput input;
-    EngineExpectation expectation;
+    //  One engine run of 00.31 in `phase`, the player ending on `end_map`.
+    struct Input{
+        std::string_view name;
+        std::string_view phase;
+        HashRecord hash = HashRecord::MATCHING;
+        std::string_view steps = TALK_STEPS;
+        //  Where the talk leaves the player; empty: the talk opens no text.
+        std::string_view end_map = "RocketHideout_B3F";
+        std::optional<int> candies = 2;
+    };
+
+    //  The save mode chosen, the verdict, whether the game saved (each save
+    //  logs "[Test] save") and a line the run logged.
+    struct Expectation{
+        StorySaveMode mode = StorySaveMode::NONE;
+        CheckpointVerdict verdict = CheckpointVerdict::PASSED;
+        size_t saves = 0;
+        std::string_view line = {};
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const EngineCase ENGINE_CASES[] = {
@@ -201,23 +201,23 @@ private:
 
 
 
-//  Two checkpoints' events, hashed with the built-in actions.
-struct HashInput{
-    std::string_view name;
-    std::string_view a;
-    std::string_view b;
-};
-
-//  Whether they hash the same, and `a`'s hash when pinned: a change to it
-//  means every recorded verification goes stale.
-struct HashExpectation{
-    bool same = true;
-    std::optional<std::string_view> hash_a = std::nullopt;
-};
-
 struct HashCase{
-    HashInput input;
-    HashExpectation expectation;
+    //  Two checkpoints' events, hashed with the built-in actions.
+    struct Input{
+        std::string_view name;
+        std::string_view a;
+        std::string_view b;
+    };
+
+    //  Whether they hash the same, and `a`'s hash when pinned: a change to it
+    //  means every recorded verification goes stale.
+    struct Expectation{
+        bool same = true;
+        std::optional<std::string_view> hash_a = std::nullopt;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 inline constexpr std::string_view ROUTE_B3F = R"([{"id": "go", "kind": "route", "args": {"target": {"map": "RocketHideout_B3F", "tiles": [[12, 13]]}}}])";
@@ -271,23 +271,23 @@ private:
 
 
 
-//  A checkpoint's "metadata", read.
-struct MetadataInput{
-    std::string_view name;
-    std::string_view metadata;
-};
-
-//  The error the read throws (contained), or what it read.
-struct MetadataExpectation{
-    std::string_view error = {};
-    StoryPhase phase = StoryPhase::TESTING;
-    std::string_view steps_hash = {};
-    size_t items = 0;
-};
-
 struct MetadataCase{
-    MetadataInput input;
-    MetadataExpectation expectation;
+    //  A checkpoint's "metadata", read.
+    struct Input{
+        std::string_view name;
+        std::string_view metadata;
+    };
+
+    //  The error the read throws (contained), or what it read.
+    struct Expectation{
+        std::string_view error = {};
+        StoryPhase phase = StoryPhase::TESTING;
+        std::string_view steps_hash = {};
+        size_t items = 0;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const MetadataCase METADATA_CASES[] = {
@@ -341,21 +341,21 @@ private:
 
 
 
-//  What a look showed, classified by ScreenMachine states that match on
-//  observations.
-struct ScreenInput{
-    std::string_view name;
-    std::vector<ScreenEvent> events;
-};
-
-//  The state matched; none when no state did.
-struct ScreenExpectation{
-    std::optional<std::string_view> state = std::nullopt;
-};
-
 struct ScreenCase{
-    ScreenInput input;
-    ScreenExpectation expectation;
+    //  What a look showed, classified by ScreenMachine states that match on
+    //  observations.
+    struct Input{
+        std::string_view name;
+        std::vector<ScreenEvent> events;
+    };
+
+    //  The state matched; none when no state did.
+    struct Expectation{
+        std::optional<std::string_view> state = std::nullopt;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const ScreenCase SCREEN_CASES[] = {
