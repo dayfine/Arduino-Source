@@ -17,7 +17,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Rows 14.01 and 14.02, Cinnabar Gym, on the overworld sim (PokemonFRLG_AutoStoryCinnabarGym_Tests.cpp).
+//  Rows 14.01, 14.02 and 14.02b, Cinnabar Gym, on the overworld sim (PokemonFRLG_AutoStoryCinnabarGym_Tests.cpp).
 void add_tests_AutoStoryCinnabarGym(UnitTestDatabase& database);
 
 

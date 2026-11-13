@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows 14.01 and 14.02 (StoryData/frlg-14.01.plan.json, 14.02) on the
+ *  Rows 14.01, 14.02 and 14.02b (StoryData/frlg-14.01.plan.json, 14.02, 14.02b) on the
  *  overworld sim: from outside the Pokemon Mansion to Cinnabar's nurse,
  *  into the gym and through its six quiz doors to below Blaine; and from
  *  Blaine back out through the doors, past Bill, to the nurse. And the
@@ -185,8 +185,9 @@ UnitTestResult test_quiz_doors_on_map(){
 }
 
 //  14.01 from outside the Mansion: the nurse, the gym and its six quiz
-//  doors, nobody fought, to below Blaine, where 14.02 starts; then 14.02
-//  from there out of the gym to the nurse.
+//  doors, nobody fought, to below Blaine, where 14.02 starts; 14.02,
+//  Blaine's battle, which ends where it starts; then 14.02b from there out
+//  of the gym to the nurse.
 UnitTestResult test_gym_rows(){
     GymWalk walk(*story_pose(Pokemon::pose_of(*checkpoint("14.01").start)));
     if (const std::string failure = row_on_sim("14.01", walk); !failure.empty()){
@@ -206,11 +207,21 @@ UnitTestResult test_gym_rows(){
     if (const std::string failure = row_on_sim("14.02", walk); !failure.empty()){
         return failure;
     }
+    if (!(walk.sim->state().position == below_blaine)){
+        return std::format("14.02: ended on {}, not in front of Blaine where 14.02b starts.", to_string(walk.sim->state().position));
+    }
+    const StoryPose after_blaine = *story_pose(Pokemon::pose_of(*checkpoint("14.02b").start));
+    if (after_blaine.map != GYM || !(after_blaine.tile == below_blaine.point)){
+        return "14.02b doesn't start where 14.02 ends.";
+    }
+    if (const std::string failure = row_on_sim("14.02b", walk); !failure.empty()){
+        return failure;
+    }
     if (!walk.all_fought().empty()){
-        return "14.02: fought a gym trainer on the way out.";
+        return "14.02b: fought a gym trainer on the way out.";
     }
     if (walk.at.map != "CinnabarIsland_PokemonCenter_1F"){
-        return std::format("14.02: ended on {}, not at Cinnabar's nurse.", walk.at.map);
+        return std::format("14.02b: ended on {}, not at Cinnabar's nurse.", walk.at.map);
     }
     return true;
 }
@@ -277,7 +288,7 @@ const AutoStoryCinnabarGymCase AUTO_STORY_CINNABAR_GYM_CASES[] = {
         .expectation = {.description = "each of 14.01's door steps crosses one barrier tile between floor"},
     },
     {
-        .input = {.name = "14.01 through the quiz to below Blaine and 14.02 back to the nurse", .body = test_gym_rows},
+        .input = {.name = "14.01 through the quiz to below Blaine, 14.02 on the spot and 14.02b back to the nurse", .body = test_gym_rows},
         .expectation = {.description = "no gym trainer fought; ends at Cinnabar's nurse"},
     },
     {
