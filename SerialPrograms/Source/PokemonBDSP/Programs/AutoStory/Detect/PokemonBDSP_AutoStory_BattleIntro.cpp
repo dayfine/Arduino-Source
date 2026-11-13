@@ -6,6 +6,7 @@
 
 #include <cctype>
 #include <chrono>
+#include <format>
 #include <vector>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
@@ -158,7 +159,7 @@ BattleOpponent classify_battle_intro(std::string_view text, Language language){
     if (table->trainer.empty()){
         return letters_in(words) >= TRAINER_LINE_MIN ? BattleOpponent::TRAINER : BattleOpponent::UNREAD;
     }
-    const std::string marker = std::string(table->trainer) + " ";
+    const std::string marker = std::format("{} ", table->trainer);
     const size_t at = words.find(marker);
     if (at == std::string::npos){
         return BattleOpponent::UNREAD;
