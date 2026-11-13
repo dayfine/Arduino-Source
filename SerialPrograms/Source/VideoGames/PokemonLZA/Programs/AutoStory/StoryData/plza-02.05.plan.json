@@ -3,47 +3,61 @@
   "game": "plza",
   "checkpoint": {
     "id": "02.05",
-    "title": "Main Mission 02: the night in Room 202",
+    "title": "Main Mission 02: Hotel Z elevator to Room 202",
     "start": {
       "place": "LumioseCity"
     },
     "events": [
       {
-        "id": "to_bed",
+        "id": "to_lobby_elevator",
         "kind": "game_action",
-        "why": "step 31: to the bed's \"A Rest\". 1.5 s explored, 1 s enough. Measured 2026-11-08 on console B, walk not run.",
+        "why": "step 28: to the elevator's \"A Take Elevator\". Measured 2026-11-08 on console B, walk not run.",
         "action": "walk",
-        "args": {"legs": [[45, 1000]], "held": true}
+        "args": {"legs": [[0, 2000]]}
       },
       {
-        "id": "rest",
+        "id": "take_elevator_up",
         "kind": "talk",
-        "why": "step 31: A Rest, \"Rest until tomorrow morning?\""
+        "why": "step 28: A Take Elevator, \"Which floor?\""
       },
       {
-        "id": "rest_question",
+        "id": "floor_question",
         "kind": "game_action",
-        "why": "step 31: \"Rest until tomorrow morning?\" before the choice shows",
+        "why": "step 28: the elevator line, then \"Which floor?\", before the choice shows; B would close the talk (console B, 2026-11-10)",
         "action": "text_to_choice",
         "args": {"advance_with_a": true}
       },
       {
-        "id": "rest_until_morning",
+        "id": "ride_to_2f",
         "kind": "game_action",
-        "why": "step 31: yes",
+        "why": "step 28: \"2F\", the first floor listed",
         "action": "choose_0"
       },
       {
-        "id": "wake_up",
+        "id": "arrive_2f",
         "kind": "game_action",
-        "why": "step 32: sleep and wake up, until control facing the door; the room shows no party bar or prompt, so the quiet time is control",
+        "why": "step 28: the ride, until control on 2F; the hall shows no party bar or prompt, so the quiet time is control (console B, 2026-11-10)",
         "action": "mash_to_move_hints",
-        "args": {"quiet_ms": 3000, "min_length_ms": 20000, "quiet_is_control": true}
+        "args": {"quiet_ms": 3000, "min_length_ms": 5000, "quiet_is_control": true}
+      },
+      {
+        "id": "to_room_202",
+        "kind": "game_action",
+        "why": "step 29: to \"Room 202 / A Enter\". Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {"legs": [[-15, 2000]]}
+      },
+      {
+        "id": "enter_room_202",
+        "kind": "game_action",
+        "why": "step 30: A Enter, \"Here's room 202.\", the fade, until control in the room; no party bar or prompt there (console B, 2026-11-10)",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true, "quiet_ms": 3000, "min_length_ms": 5000, "quiet_is_control": true}
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 02.04 at the autosave on entering Room 202 (2026-11-10)"
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 02.04 at the autosave after the check-in scene (2026-11-13). Starts at that autosave: the lobby ~3 tiles in front of the elevator, facing it, holding the suitcase, Taunie beside, AZ at the counter (reloaded there on console B, 2026-11-13; 02.04 from there failed at talk_to_clerk). Ends at the autosave on entering Room 202"
     }
   },
   "execution": {
