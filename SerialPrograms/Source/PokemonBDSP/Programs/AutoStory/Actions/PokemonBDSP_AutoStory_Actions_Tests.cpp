@@ -687,6 +687,27 @@ UnitTestResult test_asks_someone_else(Logger&){
     return true;
 }
 
+//  A menu read on an empty image, or with buttons outside the frame, reads
+//  nothing instead of crashing (SIGSEGV in gray_box, 2026-11-12).
+UnitTestResult test_move_menu_unreadable(Logger&){
+    BattleMoveMenuState moves;
+    moves.move_count = 2;
+    moves.buttons[0] = ImageFloatBox{0.5, 0.5, 0.4, 0.1};
+    moves.buttons[1] = ImageFloatBox{1.5, 1.5, 0.4, 0.1};
+    const ImageRGB32 frame(64, 36);
+    const ImageViewRGB32 inputs[] = {ImageViewRGB32(), frame};
+    for (const ImageViewRGB32& screen : inputs){
+        const std::vector<MoveSlot> slots = read_move_menu(screen, moves);
+        if (slots.size() != 2){
+            return "read_move_menu returned " + std::to_string(slots.size()) + " slots, expected 2.";
+        }
+        if (!slots[1].slug.empty() || slots[1].pp != -1){
+            return "a button outside the frame read a move.";
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_choose_move(Logger&){
     struct Case{ std::string_view name; std::vector<MoveSlot> slots; size_t best; };
     const Case cases[] = {
@@ -875,6 +896,10 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
     },
     {
         .input = {"battle moves: the pick from names and PP", test_choose_move},
+        .expectation = {},
+    },
+    {
+        .input = {"battle moves: unreadable menu reads nothing", test_move_menu_unreadable},
         .expectation = {},
     },
     {
