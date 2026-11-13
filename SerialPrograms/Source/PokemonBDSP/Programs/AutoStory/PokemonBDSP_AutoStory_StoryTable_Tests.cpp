@@ -925,6 +925,9 @@ UnitTestResult test_plan_story_run_starter_rng(Logger&){
 //  00.03 starts; the handoff stop is not taken.
 UnitTestResult test_plan_story_run_in_program(Logger&){
     const std::vector<StoryCheckpoint>& table = story_checkpoints();
+    if (table.size() < 4){
+        return std::format("Expected the story table to reach 00.03, got {} rows.", table.size());
+    }
     const StoryRunPlan in_program = plan_story_run(
         table, 0, table.size() - 1, StoryHandoffs{.starter_rng = Pokemon::RngHandoffMode::RUN}
     );
