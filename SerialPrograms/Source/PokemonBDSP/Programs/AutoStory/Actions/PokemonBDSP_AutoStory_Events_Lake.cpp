@@ -118,6 +118,16 @@ void azure_flute_if_there(VideoStream& stream, ProControllerContext& context){
 
 
 
+//  00.02 with Run Starter RNG in AutoStory: runs Starter RNG from the
+//  Verity Lakefront (17, 14) start save through the Starly battle and
+//  Rowan's scene, ending on the VerityLakefront overworld at (17, 14..15).
+Pokemon::Outcome starter_rng(StoryExecutor& executor, Pokemon::RunState&, const Pokemon::StoryStep&){
+    if (!executor.env().run_starter_rng){
+        return Pokemon::outcome_failed("starter_rng_not_configured", "Starter RNG is not configured on StoryEnv.");
+    }
+    return executor.env().run_starter_rng();
+}
+
 //  00.04: Dawn's catching tutorial on Route 202: her lines and her demo
 //  battle, B for 70 s.
 void catch_tutorial(VideoStream& stream, ProControllerContext& context){
@@ -134,6 +144,7 @@ void add_lake_events(StoryEvents& events){
     events.emplace("azure_flute_if_there", console_event(azure_flute_if_there));
     events.emplace("starter_briefcase", console_event(starter_briefcase));
     events.emplace("choose_starter", choose_starter);
+    events.emplace("starter_rng", starter_rng);
 
 
     events.emplace("catch_tutorial", console_event(catch_tutorial));
