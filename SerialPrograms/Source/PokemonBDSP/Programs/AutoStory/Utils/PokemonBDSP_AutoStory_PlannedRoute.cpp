@@ -316,6 +316,7 @@ private:
     std::vector<TilePos> m_from;
     //  Which way the player faces, once a leg has set it.
     std::optional<Direction> m_facing;
+    std::optional<WallBefore> m_prev_wall;  //  the leg before this one, if it went to a wall
     //  Every banner read on the way, to check the map we arrive on against.
     std::vector<std::string> m_all_banners;
     std::string m_map_start;
@@ -436,6 +437,7 @@ LegNext RouteWalker::walk_leg(const PlannedLeg& planned, size_t number, size_t c
     };
     const LegNext next = planned.leg.ends_at_wall ? wall_leg(walk) : open_leg(walk);
     if (next == LegNext::REPLAN){
+        m_prev_wall.reset();
         return next;
     }
     m_facing = planned.leg.direction;
@@ -448,7 +450,9 @@ LegNext RouteWalker::walk_leg(const PlannedLeg& planned, size_t number, size_t c
         return LegNext::ARRIVED_EARLY;
     }
     check_banners(walk);
-    return after_leg(walk);
+    const LegNext done = after_leg(walk);
+    m_prev_wall = done == LegNext::NEXT_LEG && planned.leg.ends_at_wall ? std::optional<WallBefore>{{planned.leg.direction, wall_limit(planned.leg)}} : std::nullopt;
+    return done;
 }
 
 //  Legs whose ends span two maps skip the per-leg check; the walk as a
@@ -763,10 +767,9 @@ LegNext RouteWalker::check_at_wall(LegWalk& walk, size_t walked_tiles, size_t ex
 //  After a battle on a leg to a wall: a leg to a wall ends at its wall
 //  however far it got, so walk on to it and carry on.
 LegNext RouteWalker::on_to_wall(LegWalk& walk){
-    m_io.note("[Route] " + walk.label + ": on to the wall after the battle.", RouteNote::WARNING);
     const Milliseconds limit = wall_limit(walk.planned.leg);
-    walk.result = m_io.walk_to_wall({.direction = walk.planned.leg.direction, .limit = limit,
-        .label = walk.label + ": on to the wall", .options = run_watching(walk)});
+    walk.result = walk_on_to_wall(m_io, m_trainers, m_prev_wall, walk.result.moved_chunks + walk.turn_moved == 0,
+        {.direction = walk.planned.leg.direction, .limit = limit, .label = walk.label + ": on to the wall", .options = run_watching(walk)});
     std::optional<LegNext> next = finish_interrupted_wall(walk, limit);
     if (!next && walk.result.stop != WalkStop::BLOCKED){
         next = check_at_wall(walk);
@@ -778,7 +781,6 @@ LegNext RouteWalker::on_to_wall(LegWalk& walk){
     log_leg_done(m_io, m_maps, m_plan.label, walk.planned, 0);
     return LegNext::NEXT_LEG;
 }
-
 
 //  Whole tiles on the D-pad, a tap each: a tap moves exactly one tile, while
 //  a stick hold timed for three moved one in the Ravaged Path (r235b) and the
@@ -889,7 +891,6 @@ LegNext RouteWalker::mark_and_replan(LegWalk& walk, size_t moved, Blocker blocke
     return replan_from(walk, std::move(stopped),
         "blocked after " + std::to_string(moved) + " of " + std::to_string(walk.planned.leg.tiles) + " tiles");
 }
-
 
 //  Entering another map shows its name; a missing or wrong name means the
 //  walk did not end where the plan says. From tiles on several maps (a leg
@@ -1054,7 +1055,6 @@ LegNext RouteWalker::known_trainer(LegWalk& walk, const std::vector<std::vector<
     return replan_from(walk, sorted_unique(std::move(by_taps)), std::to_string(taps) + " taps before the battle, or where they saw us");
 }
 
-
 //  Presses A at whoever stopped the walk; a trainer we walked up to from
 //  the side starts the battle this way. Whoever talks is a person.
 Blocker RouteWalker::talk_to_blocker(const std::string& leg_label){
@@ -1204,7 +1204,6 @@ LegNext RouteWalker::replan_from(const LegWalk& walk, std::vector<TilePos> stopp
 }
 
 } // namespace
-
 
 std::vector<TilePos> walk_route(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
