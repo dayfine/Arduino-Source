@@ -329,6 +329,7 @@ UnitTestResult test_golden_plans(){
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_10), std::end(FRLG_PLAN_GOLDEN_10));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_11), std::end(FRLG_PLAN_GOLDEN_11));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_12), std::end(FRLG_PLAN_GOLDEN_12));
+    golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_12_CELADON), std::end(FRLG_PLAN_GOLDEN_12_CELADON));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_15), std::end(FRLG_PLAN_GOLDEN_15));
     const size_t stored = golden.size();
     size_t first_diff = 0;

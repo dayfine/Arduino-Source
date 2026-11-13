@@ -84,6 +84,7 @@ private:
             {"route-16", "Route 16"},
             {"fuchsia-city", "Fuchsia City"},
             {"saffron-city", "Saffron City"},
+            {"cinnabar-island", "Cinnabar Island"},
         }){
             JsonArray names;
             names.push_back(std::string(name));
