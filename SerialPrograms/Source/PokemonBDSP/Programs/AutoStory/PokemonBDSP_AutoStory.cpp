@@ -254,7 +254,12 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     set_story_language(RUN.language());
 
     StoryEnv story{env, context, STARTER, PLAYER_NAME, IntroPicks{RUN.language(), PLAYER_LOOK.index()}, RUN.check_level()};
+    Pokemon::StoryPausePoints pause(RUN.breakpoints(), Pokemon::make_story_pause_hook(context));
+    pause.set_log([&env](std::string_view line){
+        env.console.log(std::string(line));
+    });
     StoryExecutor executor(story);
+    executor.set_breakpoints(&pause);
     executor.set_stop_rows(rows_that_stop(checkpoints));
     //  A start with a save always loads it first, so the run never walks
     //  from wherever the game was left (console B, 2026-11-11: a run from
