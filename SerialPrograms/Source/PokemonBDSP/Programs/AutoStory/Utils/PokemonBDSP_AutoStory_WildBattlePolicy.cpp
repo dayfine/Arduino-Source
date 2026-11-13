@@ -28,6 +28,10 @@ WildEscapeResult escape_wild_battle(WildBattleEscapeActions& actions, const Wild
                 return WildEscapeResult::FOUGHT;
             }
             break;
+        case WildRunOutcome::NO_RUNNING:
+            actions.note("A Trainer battle: there is no running; fighting it as a trainer battle.");
+            actions.fight_trainer();
+            return WildEscapeResult::TRAINER_FOUGHT;
         case WildRunOutcome::UNCERTAIN:
             break;
         }

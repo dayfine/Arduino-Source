@@ -79,6 +79,9 @@ struct SimMisses{
     bool fading_in = false;
     bool slid = false;
     std::string banner_up = {};
+    //  The map whose banner shows a second after a fade the walk missed
+    //  (SimFade::UNSEEN): only a look within a wait reads it.
+    std::string banner_soon = {};
 };
 
 //  How a warp's fade looks on the screen (#268's design note); the
@@ -93,6 +96,10 @@ enum class SimFade{
     //  A cave exit's white. The walk's old encounter-flash watcher read it
     //  as a wild battle.
     WHITE,
+    //  A door's fade the walk's frames miss (a short one between two): the
+    //  walk goes on as if nothing happened and only the banner, a second or
+    //  so later, shows the far map (lab-B 2026-11-12, 01.02's east mouth).
+    UNSEEN,
 };
 
 //  An open leg that runs on past its end: the walk taps of the step `step`
@@ -233,7 +240,7 @@ public:
 
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override;
     virtual WalkResult walk_taps(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
-    virtual bool dialog_within(Milliseconds wait, Color color) override;
+    virtual RouteSight sight_within(const RouteWatch& watch) override;
     //  With SimWorldKnobs::slow_fade_in, fails the move `label` if the last
     //  warp is still fading in (SimMisses::fading_in).
     void check_fade_in(const std::string& label);
@@ -520,6 +527,10 @@ private:
     //  A clown's coupon or the president's Poketch, after step `step` passed.
     void count_coupons(const std::string& step);
     StoryBoundActions sim_actions();
+    //  The BDSP event `name` on the simulation: the ones it plays, or a stub.
+    Pokemon::StoryActionFunction sim_event(const std::string& name);
+    //  A wander wait, played from where the step before left us, on its map.
+    Pokemon::Outcome wait_for_wanderer(const Pokemon::StoryStep& step, Pokemon::RunState& state);
     //  The screen between steps: the dialog that popped up, if one did; a
     //  battle's opening, its battle on the OPENING_LOOKS-th look. `fresh`
     //  starts a new look.

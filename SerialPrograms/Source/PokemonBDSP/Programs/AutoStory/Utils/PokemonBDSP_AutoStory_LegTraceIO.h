@@ -43,8 +43,8 @@ public:
     virtual void press(const RouteInput& input) override{
         m_inner.press(input);
     }
-    virtual bool dialog_within(Milliseconds wait, Color color) override{
-        return m_inner.dialog_within(wait, color);
+    virtual RouteSight sight_within(const RouteWatch& watch) override{
+        return m_inner.sight_within(watch);
     }
     virtual bool holding_against_wall(Pokemon::Direction direction, const std::string& label) override{
         return m_inner.holding_against_wall(direction, label);

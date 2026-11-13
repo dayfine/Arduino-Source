@@ -546,7 +546,7 @@ UnitTestResult test_gives_up_after_attempts(Logger&){
 //  Events that leave the player where they were: the look at the Poketch,
 //  and 00.05c's start probe, whose step west the Poketch Company's sign
 //  stops on 00.05b's end, (14, 19).
-const std::set<std::string> EVENTS_IN_PLACE{"check_poketch", "jubilife_start_probe"};
+const std::set<std::string> EVENTS_IN_PLACE{"check_poketch", "jubilife_start_probe", "check_coupons"};
 
 //  Each row that has a start pose starts where the row before it leaves
 //  the player, by the same planning and walking the fake run does.

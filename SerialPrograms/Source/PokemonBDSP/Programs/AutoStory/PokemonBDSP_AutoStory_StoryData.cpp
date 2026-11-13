@@ -61,6 +61,10 @@ void add_legs_actions(
     actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = "one_short_ok", .args = {legs_arg, fight_wild}});
     actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = "counted_wall", .args = {legs_arg, fight_wild},
         .console_only = false, .certainty = Pokemon::StoryCertainty{.needs = PoseCertainty::SET, .leaves = PoseEnd::DECLARED}});
+    //  Taps counted against the map from each tile we may be on: legs each
+    //  ended by a wall take every one of them to the declared end.
+    actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = "measured", .args = {legs_arg, fight_wild},
+        .console_only = false, .certainty = Pokemon::StoryCertainty{.needs = PoseCertainty::SET, .leaves = PoseEnd::DECLARED}});
 }
 
 //  The talks to someone who wanders: each walks in D-pad taps, a whole tile
@@ -71,13 +75,36 @@ void add_wanderer_talks(std::vector<Pokemon::StoryActionSpec>& actions){
     //  Walks the row below his home, asking north.
     actions.push_back({.kind = Pokemon::StoryStepKind::TALK, .name = "talk_to_wanderer", .args = {again},
         .console_only = false, .certainty = certainty});
-    //  Waits for him on a column beside his box (WanderWaitPlan); ends
-    //  against a wall the declared way and one at the column's back.
+    //  Waits for him at an end column of his box, then at the other end
+    //  (WanderWaitPlan); ends against a wall the declared way and one at
+    //  the stand column's back.
     const Pokemon::StoryArgSpec stand = required(
-        "stand", Pokemon::StoryArgType::GRID_POSE, "the tiles to wait on, in order, on the start's column; facing his box"
+        "stand", Pokemon::StoryArgType::GRID_POSE, "the tiles to wait on first, in order, on one column; facing into his box"
     );
-    actions.push_back({.kind = Pokemon::StoryStepKind::TALK, .name = "wait_for_wanderer", .args = {stand, again},
+    const Pokemon::StoryArgSpec far_stand = optional(
+        "far_stand", Pokemon::StoryArgType::GRID_POSE, Pokemon::GridPose{},
+        "the tiles to wait on next, on his box's other end column; facing into it"
+    );
+    actions.push_back({.kind = Pokemon::StoryStepKind::TALK, .name = "wait_for_wanderer", .args = {stand, far_stand, again},
         .console_only = false, .certainty = certainty});
+}
+
+//  ROUTE "exit": the room's way on is a door this way; a fight or a lost
+//  count on the way ends in a hold to the door, not a replan.
+Pokemon::StoryArgSpec leave_arg(){
+    return {.key = "leave", .type = Pokemon::StoryArgType::DIRECTION, .required = false, .fallback = std::nullopt,
+        .why = "the room's way on is a door this way"};
+}
+
+//  The steps that end on a door or a banner: to_banner and door (the way to
+//  step), or_legs (a step, or legs if it did not move).
+void add_door_steps(
+    std::vector<Pokemon::StoryActionSpec>& actions,
+    const Pokemon::StoryArgSpec& direction_arg, const Pokemon::StoryArgSpec& legs_arg
+){
+    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "to_banner", .args = {direction_arg}, .console_only = false, .certainty = PINS});
+    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "door", .args = {direction_arg}});
+    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "or_legs", .args = {direction_arg, legs_arg}});
 }
 
 std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
@@ -115,13 +142,12 @@ std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
         .fallback = std::nullopt, .why = "ground on the target's map to keep off: [x, y] tiles, [x0, y0, x1, y1] boxes"};
     const Pokemon::StoryArgSpec opt_greeter{.key = "greeter", .type = Pokemon::StoryArgType::INTEGER_ROWS, .required = false,
         .fallback = std::nullopt, .why = "ground on the target's map where someone walks up and talks, then walks off: [x, y] tiles, [x0, y0, x1, y1] boxes"};
-    for (std::string_view cost : {"town", "overworld", "indoors", "caves", "robust", "line", "trigger"}){
-        actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = std::string(cost), .args = {route_target, fight_wild, opt_legs, opt_avoid, opt_greeter}});
+    for (std::string_view cost : {"town", "overworld", "indoors", "caves", "robust", "line", "trigger", "exit"}){
+        actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = std::string(cost), .args = {route_target, fight_wild, opt_legs, opt_avoid, opt_greeter, leave_arg()}});
     }
     actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = "into_scene", .args = {route_target, fight_wild, legs_arg}});
     add_legs_actions(actions, legs_arg, fight_wild);
-    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "to_banner", .args = {direction_arg}, .console_only = false, .certainty = PINS});
-    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "or_legs", .args = {direction_arg, legs_arg}});
+    add_door_steps(actions, direction_arg, legs_arg);
     add_wanderer_talks(actions);
     actions.push_back({.kind = Pokemon::StoryStepKind::MASH, .name = "a", .args = {}});
     actions.push_back({.kind = Pokemon::StoryStepKind::BATTLE, .name = "starter", .args = {may_lose}});

@@ -24,7 +24,8 @@ constexpr std::string_view STORY_ITEM_OCR = R"JSON({
 "eng": {
     "potion": ["Potion"], "antidote": ["Antidote"], "paralyze-heal": ["Paralyze Heal"],
     "awakening": ["Awakening"], "poke-ball": ["Poké Ball", "Poke Ball"], "repel": ["Repel"],
-    "super-repel": ["Super Repel"], "max-repel": ["Max Repel"], "escape-rope": ["Escape Rope"]
+    "super-repel": ["Super Repel"], "max-repel": ["Max Repel"], "escape-rope": ["Escape Rope"],
+    "coupon-1": ["Coupon 1"], "coupon-2": ["Coupon 2"], "coupon-3": ["Coupon 3"]
 },
 "fra": {
     "potion": ["Potion"], "antidote": ["Antidote"], "paralyze-heal": ["Anti-Para"],
@@ -107,6 +108,12 @@ private:
 
 std::string read_bag_item_slug(Logger& logger, Language language, const ImageViewRGB32& image){
     return StoryItemMatcher::instance().read(logger, language, image);
+}
+
+bool bag_item_named(Language language, std::string_view slug){
+    const JsonValue json = parse_json(std::string(STORY_ITEM_OCR));
+    const JsonObject* names = json.to_object_throw().get_object(language_data(language).code);
+    return names != nullptr && names->get_value(std::string(slug)) != nullptr;
 }
 
 

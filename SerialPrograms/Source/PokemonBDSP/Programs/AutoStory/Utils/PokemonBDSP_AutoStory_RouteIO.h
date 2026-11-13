@@ -13,6 +13,7 @@
 #define PokemonAutomation_PokemonBDSP_AutoStory_RouteIO_H
 
 #include <functional>
+#include <optional>
 #include <string>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Time.h"
@@ -38,6 +39,20 @@ struct RouteWallWalk{
     DpadWalkOptions options;
 };
 
+//  What to watch for within a wait: a dialogue box (of the given color, for
+//  the game's text box), and/or the location banner.
+struct RouteWatch{
+    Milliseconds wait;
+    std::optional<Color> dialog = std::nullopt;
+    bool banner = false;
+};
+
+//  What RouteWatch saw: whether the dialogue box showed, the banner read ("" if none).
+struct RouteSight{
+    bool dialog = false;
+    std::string banner;
+};
+
 //  How a line goes to the log.
 enum class RouteNote{
     LOG,
@@ -60,8 +75,10 @@ public:
     //  Presses or waits (press_route_input()).
     virtual void press(const RouteInput& input) = 0;
 
-    //  Whether a dialogue box shows within `wait`.
-    virtual bool dialog_within(Milliseconds wait, Color color) = 0;
+    //  What shows within `watch.wait`. A door's fade can go by between two
+    //  frames of a walk, and the banner of the map beyond shows a second or
+    //  so after it.
+    virtual RouteSight sight_within(const RouteWatch& watch) = 0;
 
     //  Holds the stick toward `direction` for 1.6 s, and returns whether the
     //  screen changed less than walking would: we stand at a wall.
@@ -87,7 +104,7 @@ public:
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override;
     virtual WalkResult walk_taps(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual void press(const RouteInput& input) override;
-    virtual bool dialog_within(Milliseconds wait, Color color) override;
+    virtual RouteSight sight_within(const RouteWatch& watch) override;
     virtual bool holding_against_wall(Pokemon::Direction direction, const std::string& label) override;
     virtual void look(const std::function<void(const ImageViewRGB32& screen)>& at) override;
     virtual void note(const std::string& text, RouteNote kind) override;
@@ -98,6 +115,16 @@ private:
     const WildBattleEscape& m_escape;
 };
 
+
+//  Whether a dialogue box shows within `wait`.
+inline bool dialog_within(RouteIO& io, Milliseconds wait, Color color){
+    return io.sight_within({.wait = wait, .dialog = color}).dialog;
+}
+
+//  The location banner that shows within `wait`, "" if none.
+inline std::string banner_within(RouteIO& io, Milliseconds wait){
+    return io.sight_within({.wait = wait, .banner = true}).banner;
+}
 
 
 } // namespace PokemonBDSP

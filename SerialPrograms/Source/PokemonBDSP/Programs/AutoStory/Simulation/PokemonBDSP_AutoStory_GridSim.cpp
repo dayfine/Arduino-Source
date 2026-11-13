@@ -438,6 +438,9 @@ public:
     virtual void fight() override{
         m_notes.push_back("[Sim escape] Fought with the best move until the battle ended.");
     }
+    virtual void fight_trainer() override{
+        m_notes.push_back("[Sim escape] Fought as a trainer battle, then a potion check.");
+    }
     virtual void note(const std::string& text) override{
         m_notes.push_back("[Sim escape] " + text);
     }
@@ -467,7 +470,12 @@ void GridSimRouteIO::escape_scripted_battle(const SimWildBattle& battle, const s
     if (result == WildEscapeResult::UNCONFIRMED){
         note(std::format("escape_wild_battle: {}: the Run attempts ran out without the exit.", label), RouteNote::FAILURE);
     }
-    const std::string_view ended = result == WildEscapeResult::FOUGHT ? "fought to its end" : "run from";
+    std::string_view ended = "run from";
+    if (result == WildEscapeResult::FOUGHT){
+        ended = "fought to its end";
+    }else if (result == WildEscapeResult::TRAINER_FOUGHT){
+        ended = "fought as a trainer battle";
+    }
     m_notes.push_back(std::format("[Sim] {}: wild battle {}.", label, ended));
 }
 
@@ -590,8 +598,8 @@ void GridSimRouteIO::press(const RouteInput& input){
     }
 }
 
-bool GridSimRouteIO::dialog_within(Milliseconds, Color){
-    return m_sim.player().dialog;
+RouteSight GridSimRouteIO::sight_within(const RouteWatch& watch){
+    return {.dialog = watch.dialog && m_sim.player().dialog};
 }
 
 bool GridSimRouteIO::holding_against_wall(Direction direction, const std::string&){

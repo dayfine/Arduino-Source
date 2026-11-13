@@ -51,9 +51,9 @@ using Pokemon::story_arg;
 //  The actions each kind does itself, besides the story's events.
 const std::map<StoryStepKind, std::set<std::string>>& built_in_actions(){
     static const std::map<StoryStepKind, std::set<std::string>> actions{
-        {StoryStepKind::ROUTE, {"", "route", "town", "robust", "line", std::string(ROUTE_ONTO_TRIGGER), std::string(ROUTE_INTO_SCENE)}},
+        {StoryStepKind::ROUTE, {"", "route", "town", "robust", "line", "exit", std::string(ROUTE_ONTO_TRIGGER), std::string(ROUTE_INTO_SCENE)}},
         {StoryStepKind::LEGS, {"", "legs", "one_short_ok", "to_wall", "to_dialogue", "to_map", "counted_wall", "measured"}},
-        {StoryStepKind::STEP, {"", "face", "to_banner", "tap", "or_legs"}},        {StoryStepKind::MASH, {"", "a"}},
+        {StoryStepKind::STEP, {"", "face", "to_banner", "tap", "or_legs", "door"}},        {StoryStepKind::MASH, {"", "a"}},
         {StoryStepKind::BATTLE, {"", "fight", "doubles", "starter"}},
         {StoryStepKind::TALK, {"", "talk_to_wanderer", "wait_for_wanderer"}},
         {StoryStepKind::SHOP, {"", "sandgem_potions"}},
@@ -134,6 +134,66 @@ UnitTestResult test_story_table_rows_join(Logger&){
         }
     }
     return true;
+}
+
+//  01.02: a scene's trigger on an open row is reached by walking toward it
+//  until the scene starts, not by a localizing detour (south, east to a
+//  rock, north) to a tile beside the trigger and a step onto it (the
+//  user's rule, 2026-11-12). The Gate's hikers (trigger (7, 22)) and the
+//  city's welcome guide (trigger (10, 12..15)) are each one "into_scene"
+//  route that runs east along the row it arrives on.
+UnitTestResult test_oreburgh_scenes_are_walked_into(Logger&){
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        if (row.id != "01.02"){
+            continue;
+        }
+        size_t found = 0;
+        for (size_t i = 0; i < row.steps.size(); i++){
+            const Pokemon::StoryStep& step = row.steps[i];
+            if (step.name.starts_with("west_of_") || step.name.ends_with("_trigger") || step.name == "welcome_trigger"){
+                return std::format("{} {}: a detour to land beside the trigger.", row.id, step.name);
+            }
+            if (step.name != "the_hiker" && step.name != "oreburgh_welcome"){
+                continue;
+            }
+            found++;
+            const Pokemon::StoryStep& walk = row.steps[i - 1];
+            if (walk.kind != StoryStepKind::ROUTE || walk.action != ROUTE_INTO_SCENE){
+                return std::format("{}: the step before is {}, not an into_scene route.", step.name, walk.name);
+            }
+            const auto& legs = story_arg<std::vector<Pokemon::StoryLeg>>(walk.args, "legs");
+            if (legs.size() != 1 || legs.front().direction != Direction::EAST){
+                return std::format("{}: {} does not run one leg east.", step.name, walk.name);
+            }
+        }
+        return found == 2 ? UnitTestResult(true) : UnitTestResult("01.02 has no hikers and welcome scenes.");
+    }
+    return "No 01.02.";
+}
+
+//  01.03's doors into and out of the mine have no text on the far side: they
+//  settle as a door (the fade back up and a short still spell), not by B
+//  through the cave's ambient motion for 15 s (lab-B 2026-11-12 21:57,
+//  into_the_mine 18 s and into_the_coal_room 16.7 s).
+UnitTestResult test_mine_doors_settle_as_doors(Logger&){
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        if (row.id != "01.03"){
+            continue;
+        }
+        size_t found = 0;
+        for (const Pokemon::StoryStep& step : row.steps){
+            if (step.name == "into_the_mine" || step.name == "into_the_coal_room" ||
+                step.name == "up_to_the_hall" || step.name == "out_of_the_mine"
+            ){
+                found++;
+                if (step.action != "door"){
+                    return step.name + ": not a \"door\" step, so it settles as a talk.";
+                }
+            }
+        }
+        return found == 4 ? UnitTestResult(true) : UnitTestResult("01.03 lacks a mine door step.");
+    }
+    return "No 01.03.";
 }
 
 struct LadyLeg{
@@ -456,14 +516,14 @@ constexpr Pokemon::TileBox WONDER_STATION_PLAZA[] = {
 };
 
 std::string company_clown_plaza_tiles(Logger& logger, TableRoute route, int x){
-    route.from = Pokemon::tile_pose("JubilifeCity", {{x, 22}}, Direction::WEST);
+    route.from = Pokemon::tile_pose("JubilifeCity", {{x, 21}}, Direction::WEST);
     const RouteStepPlan plan = plan_table_route(route);
     if (!plan.legs){
-        return std::format("no plan from ({}, 22).", x);
+        return std::format("no plan from ({}, 21).", x);
     }
     const StoryWorld& world = *route.world;
     for (const PlannedLeg& planned : *plan.legs){
-        logger.log(std::format("00.05c below_the_company_clown from ({}, 22): {}", x, to_string(planned)));
+        logger.log(std::format("00.05c beside_the_president from ({}, 21): {}", x, to_string(planned)));
     }
     const auto plaza = [&](const TilePos& pos){
         const std::optional<TilePos> local = story_to_local(world, "JubilifeCity", pos);
@@ -475,8 +535,9 @@ std::string company_clown_plaza_tiles(Logger& logger, TableRoute route, int x){
     return most == 0 ? "" : std::format("the leg {} walks {} tile(s) of the plaza.", leg, most);
 }
 
-//  00.05c's walk to the Poketch Company's clown from the street
-//  (57..58, 22), where the checkpoint starts on a rerun from 01.01's start,
+//  00.05c's first walk (to the president since its clown re-talks went;
+//  to the Poketch Company's clown before) from the street
+//  (57..58, 21), where the checkpoint starts on a rerun from 01.01's start,
 //  keeps off the plaza (WONDER_STATION_PLAZA). BDSP put the Global Wonder Station
 //  there, a round wall with people round it that pret's Diamond map lacks:
 //  on lab-B (2026-11-12 01:22 and 01:55) the walk west from (57, 22) was
@@ -484,7 +545,7 @@ std::string company_clown_plaza_tiles(Logger& logger, TableRoute route, int x){
 //  (45, 24) until the step failed.
 UnitTestResult test_company_clown_from_the_street_keeps_off_the_plaza(Logger& logger){
     for (const TableRoute& route : table_routes()){
-        if (route.row != "00.05c" || route.step->name != "below_the_company_clown" || route.world == nullptr){
+        if (route.row != "00.05c" || route.step->name != "beside_the_president" || route.world == nullptr){
             continue;
         }
         std::string out;
@@ -492,9 +553,9 @@ UnitTestResult test_company_clown_from_the_street_keeps_off_the_plaza(Logger& lo
             const std::string found = company_clown_plaza_tiles(logger, route, x);
             out += found.empty() ? "" : "\n  " + found;
         }
-        return out.empty() ? UnitTestResult(true) : UnitTestResult("00.05c below_the_company_clown:" + out);
+        return out.empty() ? UnitTestResult(true) : UnitTestResult("00.05c beside_the_president:" + out);
     }
-    return "00.05c below_the_company_clown: not in the table, or from nowhere known.";
+    return "00.05c beside_the_president: not in the table, or from nowhere known.";
 }
 
 //  00.05c's replan on lab-B (2026-11-12 02:52): the walk west on row 24
@@ -503,7 +564,7 @@ UnitTestResult test_company_clown_from_the_street_keeps_off_the_plaza(Logger& lo
 //  plan at all, with the route costs or the default ones.
 UnitTestResult test_company_clown_after_the_woman_on_row_24(Logger& logger){
     for (TableRoute route : table_routes()){
-        if (route.row != "00.05c" || route.step->name != "below_the_company_clown" || route.world == nullptr){
+        if (route.row != "00.05c" || route.step->name != "beside_the_president" || route.world == nullptr){
             continue;
         }
         StoryWorld world = *route.world;
@@ -513,14 +574,99 @@ UnitTestResult test_company_clown_after_the_woman_on_row_24(Logger& logger){
         route.from = Pokemon::tile_pose("JubilifeCity", {{35, 24}, {36, 24}}, Direction::WEST);
         const RouteStepPlan plan = plan_table_route(route);
         if (!plan.legs){
-            return "00.05c below_the_company_clown: no plan from (35, 24), (36, 24).";
+            return "00.05c beside_the_president: no plan from (35, 24), (36, 24).";
         }
         for (const PlannedLeg& planned : *plan.legs){
-            logger.log("00.05c below_the_company_clown from (35, 24), (36, 24): " + to_string(planned));
+            logger.log("00.05c beside_the_president from (35, 24), (36, 24): " + to_string(planned));
         }
         return UnitTestResult(true);
     }
-    return "00.05c below_the_company_clown: not in the table, or from nowhere known.";
+    return "00.05c beside_the_president: not in the table, or from nowhere known.";
+}
+
+//  00.05c's end below the east-exit sign (59, 21) facing north, on the
+//  planned route from the Mart's street (lab-B 2026-11-12 13:55: a "measured"
+//  walk inferred its start and tapped against the hedges). Each leg is taps
+//  (a whole tile each, a turn tap first) or a wall's end, and none steps on
+//  the guard's trigger column 60.
+UnitTestResult test_main_road_ends_below_the_east_exit_sign(Logger& logger){
+    for (const PlannedStoryRoute& route : plan_story_routes(logger)){
+        if (route.name != "00.05c below_the_east_exit_sign"){
+            continue;
+        }
+        if (!route.legs || route.legs->empty()){
+            return "00.05c below_the_east_exit_sign: no plan.";
+        }
+        const StoryWorld& world = *route.world;
+        const auto guard_column = [&](const TilePos& pos){
+            const std::optional<TilePos> local = story_to_local(world, "JubilifeCity", pos);
+            return local && local->x >= 60;
+        };
+        const auto [most, leg] = most_zone_tiles(world, route.from, *route.legs, guard_column);
+        if (most > 0){
+            return std::format("the leg {} steps on {} tiles of column 60 or east.", leg, most);
+        }
+        const PlannedLeg& last = route.legs->back();
+        const auto on_the_tile = [&](const TilePos& pos){
+            const std::optional<TilePos> local = story_to_local(world, "JubilifeCity", pos);
+            return local && *local == TilePos{59, 21};
+        };
+        if (last.after.size() != 1 || !on_the_tile(last.after.front()) || last.leg.direction != Direction::NORTH || to_string(last).find("to wall") == std::string::npos){
+            return "00.05c below_the_east_exit_sign does not end on (59, 21) facing north against the sign.";
+        }
+        return true;
+    }
+    return "00.05c below_the_east_exit_sign is not a ROUTE step from a known place.";
+}
+
+//  A leg whose end has a wall (or the maps' edge) right after it in the
+//  leg's direction is a leg to the wall: held until the wall stops the
+//  player, which localizes, not tapped to a tile and left open (lab-B,
+//  2026-11-12 14:24: 00.05c's "east 14 (open)" to (59, 26) was a run into
+//  the wall past it).
+UnitTestResult test_legs_ending_at_a_wall_are_wall_legs(Logger& logger){
+    std::vector<std::string> found;
+    for (const PlannedStoryRoute& route : plan_story_routes(logger)){
+        for (const PlannedLeg& planned : route.legs ? *route.legs : std::vector<PlannedLeg>{}){
+            const bool at_wall_end = !planned.after.empty() && std::all_of(planned.after.begin(), planned.after.end(), [&](const TilePos& pos){
+                return at_wall(*route.world, pos, planned.leg.direction);
+            });
+            if (!planned.leg.ends_at_wall && at_wall_end){
+                found.push_back(std::format("{}: {}.", route.name, to_string(planned)));
+            }
+        }
+    }
+    std::string out;
+    for (const std::string& line : found){
+        out += "\n  " + line;
+    }
+    return found.empty() ? UnitTestResult(true) : UnitTestResult("open legs that end at a wall:" + out);
+}
+
+//  After a tapped leg the walk knows its place exactly: a leg to a wall
+//  from it is not followed by a leg straight back (00.05c's "east 19
+//  (open)", "south 15 (to wall)", then "north 1"). Run to a wall and back is
+//  fine from the start or after a wall (00.04 into_twinleaf, south 37).
+UnitTestResult test_no_wall_and_back_after_taps(Logger& logger){
+    std::vector<std::string> found;
+    for (const PlannedStoryRoute& route : plan_story_routes(logger)){
+        if (!route.legs){
+            continue;
+        }
+        const std::vector<PlannedLeg>& legs = *route.legs;
+        for (size_t i = 2; i < legs.size(); i++){
+            const bool back = (int)legs[i].leg.direction == ((int)legs[i - 1].leg.direction + 2) % 4;
+            const TileLeg& taps = legs[i - 2].leg;
+            if (!taps.ends_at_wall && !taps.held && legs[i - 1].leg.ends_at_wall && back){
+                found.push_back(std::format("{}: {}, {} then {}.", route.name, to_string(legs[i - 2]), to_string(legs[i - 1]), to_string(legs[i])));
+            }
+        }
+    }
+    std::string out;
+    for (const std::string& line : found){
+        out += "\n  " + line;
+    }
+    return found.empty() ? UnitTestResult(true) : UnitTestResult("a wall and back after a tapped leg:" + out);
 }
 
 //  01.08's walk below the Ravaged Path keeps off the row Route 204 South's
@@ -792,6 +938,18 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
+        .input = {"00.05c: the plan to below the east-exit sign is taps and a wall's end, off the guard's column (lab-B, 2026-11-12 13:55)", test_main_road_ends_below_the_east_exit_sign},
+        .expectation = {},
+    },
+    {
+        .input = {"a leg that ends at a wall is planned as a leg to the wall (00.05c east 14 to (59, 26), lab-B 2026-11-12 14:24)", test_legs_ending_at_a_wall_are_wall_legs},
+        .expectation = {},
+    },
+    {
+        .input = {"no run to a wall and back after a tapped leg (00.05c east 19, south 15, north 1, lab-B 2026-11-12 14:24)", test_no_wall_and_back_after_taps},
+        .expectation = {},
+    },
+    {
         .input = {"01.08: the walk below the Ravaged Path keeps off the youngster's row (lab-B, 2026-11-08)", test_ravaged_path_keeps_off_the_youngster},
         .expectation = {},
     },
@@ -800,11 +958,19 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"00.05c: from the street (57..58, 22), the walk keeps off the Wonder Station's plaza (lab-B, 2026-11-12)", test_company_clown_from_the_street_keeps_off_the_plaza},
+        .input = {"00.05c: from the street (57..58, 21), the walk keeps off the Wonder Station's plaza (lab-B, 2026-11-12)", test_company_clown_from_the_street_keeps_off_the_plaza},
         .expectation = {},
     },
     {
         .input = {"00.05c: a plan from (35, 24), (36, 24) past the woman on row 24 (lab-B, 2026-11-12 02:52)", test_company_clown_after_the_woman_on_row_24},
+        .expectation = {},
+    },
+    {
+        .input = {"01.02: the hikers' and the welcome scenes are walked into along their rows, no detour to a tile beside the trigger", test_oreburgh_scenes_are_walked_into},
+        .expectation = {},
+    },
+    {
+        .input = {"01.03: the mine's doors are \"door\" steps, settled as doors (lab-B 2026-11-12 21:57)", test_mine_doors_settle_as_doors},
         .expectation = {},
     },
 };

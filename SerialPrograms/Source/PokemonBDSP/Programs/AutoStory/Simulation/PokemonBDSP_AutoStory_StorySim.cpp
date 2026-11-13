@@ -13,6 +13,7 @@
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
@@ -325,6 +326,10 @@ WalkResult SimKnobRouteIO::slide_on(const SimSlide& slide, WalkResult result){
         note("[Sim] slid onto a warp to " + Pokemon::to_string(slide.far) + ".", RouteNote::LOG);
         m_cross(slide.far);
         m_misses.banner_up = slide.banner_up ? slide.far.map : "";
+        if (slide.fade == SimFade::UNSEEN){
+            m_misses.banner_soon = slide.far.map;
+            return result;
+        }
         const double brightness = slide.fade == SimFade::BLACK ? SIM_DOOR_FADE : slide.fade == SimFade::DIM ? SIM_DIM_FADE : SIM_WHITE_FADE;
         result.warp.fade = fade_of(sim_screen(brightness, SIM_FADE_STDDEV));
         if (result.warp.fade != WarpFade::NONE){
@@ -335,13 +340,20 @@ WalkResult SimKnobRouteIO::slide_on(const SimSlide& slide, WalkResult result){
     return result;
 }
 
-bool SimKnobRouteIO::dialog_within(Milliseconds wait, Color color){
-    const auto late = m_knobs.first_line.find(m_step);
-    if (late != m_knobs.first_line.end() && late->second > wait){
-        note(std::format("[Sim] {}: the first line comes after {} ms, past the {} ms wait.", m_step, late->second.count(), wait.count()), RouteNote::LOG);
-        return false;
+RouteSight SimKnobRouteIO::sight_within(const RouteWatch& watch){
+    RouteSight sight;
+    if (watch.dialog){
+        const auto late = m_knobs.first_line.find(m_step);
+        if (late != m_knobs.first_line.end() && late->second > watch.wait){
+            note(std::format("[Sim] {}: the first line comes after {} ms, past the {} ms wait.", m_step, late->second.count(), watch.wait.count()), RouteNote::LOG);
+        }else{
+            sight = GridSimRouteIO::sight_within(watch);
+        }
     }
-    return GridSimRouteIO::dialog_within(wait, color);
+    if (watch.banner){
+        sight.banner = std::exchange(m_misses.banner_soon, "");
+    }
+    return sight;
 }
 
 namespace{
@@ -695,13 +707,6 @@ StoryBoundActions SimExecutor::sim_actions(){
     const auto stubbed = [this](const StoryStep&, RunState&){
         return stub();
     };
-    //  Played from where the step before left us, on its map.
-    const auto wait_for_wanderer = [this, stubbed](const StoryStep& step, RunState& state){
-        if (!sync(state.pose)){
-            return stubbed(step, state);
-        }
-        return sim_wait_for_wanderer(m_sim, m_sim.world(), state.pose, step);
-    };
     return StoryBoundActions{
         .new_game = stubbed,
         .options = stubbed,
@@ -714,18 +719,39 @@ StoryBoundActions SimExecutor::sim_actions(){
             return heal(state, step);
         },
         .save = stubbed,
-        .event = [this, stubbed, wait_for_wanderer](const std::string& name) -> Pokemon::StoryActionFunction{
-            if (name == "check_poketch"){
-                return [this](const StoryStep& step, RunState&){
-                    return m_poketch ? Pokemon::outcome_ok() : Pokemon::outcome_failed("no_poketch", step.name + ": no Poketch on the screen.");
-                };
-            }
-            if (name == "wait_for_wanderer"){
-                return wait_for_wanderer;
-            }
-            return stubbed;
+        .event = [this](const std::string& name){
+            return sim_event(name);
         },
     };
+}
+
+Pokemon::StoryActionFunction SimExecutor::sim_event(const std::string& name){
+    if (name == "check_poketch"){
+        return [this](const StoryStep& step, RunState&){
+            return m_poketch ? Pokemon::outcome_ok() : Pokemon::outcome_failed("no_poketch", step.name + ": no Poketch on the screen.");
+        };
+    }
+    if (name == "wait_for_wanderer"){
+        return [this](const StoryStep& step, RunState& state){
+            return wait_for_wanderer(step, state);
+        };
+    }
+    if (name == "check_coupons"){
+        return [this](const StoryStep& step, RunState&){
+            return m_coupons.size() == jubilife_clown_coupons().size() ? Pokemon::outcome_ok()
+                : Pokemon::outcome_failed("operation_failed", std::format("{}: {} of the coupons in the Key Items.", step.name, m_coupons.size()));
+        };
+    }
+    return [this](const StoryStep&, RunState&){
+        return stub();
+    };
+}
+
+Outcome SimExecutor::wait_for_wanderer(const StoryStep& step, RunState& state){
+    if (!sync(state.pose)){
+        return stub();
+    }
+    return sim_wait_for_wanderer(m_sim, m_sim.world(), state.pose, step);
 }
 
 //  The look at a battle's opening that shows its battle: past the three

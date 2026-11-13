@@ -111,20 +111,9 @@ std::string read_save_screen_location(const ImageViewRGB32& screen){
     return normalize_location_name(OCR::tesseract_ocr_read(Language::English, text));
 }
 
-bool location_banner_matches(const std::string& read, const std::string& expected){
-    //  No reader for the game's language: a banner (or the save card) that
-    //  showed is all there is; where we stand is the walk's to say.
-    if (read == UNREAD_LOCATION){
-        return true;
-    }
-    const std::string a = normalize_location_name(read);
-    const std::string b = normalize_location_name(expected);
-    if (a.empty() || b.empty()){
-        return false;
-    }
-    if (digits_of(a) != digits_of(b)){
-        return false;
-    }
+namespace{
+//  The edit distance of two normalized names.
+size_t name_distance(const std::string& a, const std::string& b){
     //  Levenshtein distance.
     std::vector<size_t> row(b.size() + 1);
     for (size_t j = 0; j <= b.size(); j++){
@@ -139,7 +128,34 @@ bool location_banner_matches(const std::string& read, const std::string& expecte
             diagonal = above;
         }
     }
-    return row[b.size()] <= std::max<size_t>(1, b.size() / 4);
+    return row[b.size()];
+}
+} // namespace
+
+bool location_banner_matches(const std::string& read, const std::string& expected){
+    //  No reader for the game's language: a banner (or the save card) that
+    //  showed is all there is; where we stand is the walk's to say.
+    if (read == UNREAD_LOCATION){
+        return true;
+    }
+    const std::string a = normalize_location_name(read);
+    const std::string b = normalize_location_name(expected);
+    if (a.empty() || b.empty()){
+        return false;
+    }
+    if (digits_of(a) != digits_of(b)){
+        return false;
+    }
+    return name_distance(a, b) <= std::max<size_t>(1, b.size() / 4);
+}
+
+bool location_banner_is_another(const std::string& read, const std::string& current){
+    const std::string a = normalize_location_name(read);
+    const std::string b = normalize_location_name(current);
+    if (a.empty() || b.empty() || read == UNREAD_LOCATION){
+        return false;
+    }
+    return digits_of(a) != digits_of(b) || name_distance(a, b) > std::max<size_t>(1, b.size() / 6);
 }
 
 

@@ -145,6 +145,36 @@ UnitTestResult test_plan_robust_route(Logger&){
         return true;
 }
 
+//  A held run on to a wall and tapped back is fine from the start, but not
+//  after a tapped leg: the player is exactly where the taps left them, and a
+//  run past that tile and back only adds a turn (lab-B 2026-11-12 14:24, 00.05c
+//  "south 15 (to wall), north 1" after "east 19 (open)").
+UnitTestResult test_robust_wall_and_back_not_after_taps(Logger&){
+    //  East along the top row, which goes on past column 5, then down column 5
+    //  to the goal a few tiles above the wall.
+    std::vector<std::string> rows{"#########", "#.......#"};
+    for (int y = 0; y < 40; y++){
+        rows.push_back("#####.###");
+    }
+    rows.push_back("#########");
+    const StoryWorld world = make_world(rows);
+    RobustPlanCosts costs;
+    costs.exact_open_tiles = costs.max_open_tiles;
+    const auto legs = plan_robust_route(world, {{1, 1}}, [](const TilePos& pos){ return pos == TilePos{5, 38}; }, costs);
+    if (!legs){
+        return std::string("no plan.");
+    }
+    for (size_t i = 1; i + 1 < legs->size(); i++){
+        const TileLeg& before = (*legs)[i - 1].leg;
+        const TileLeg& wall = (*legs)[i].leg;
+        const TileLeg& back = (*legs)[i + 1].leg;
+        if (!before.ends_at_wall && wall.ends_at_wall && (int)back.direction == ((int)wall.direction + 2) % 4){
+            return "a run to the wall and back after a tapped leg: " + describe(*legs);
+        }
+    }
+    return true;
+}
+
 //  Someone wanders a row, (2..4, 2): a leg may cross the row through one of
 //  their tiles, but not run along it through two, the leg's start among
 //  them. On lab-B (2026-11-08, 01.08) Route 204's youngster stopped a leg
@@ -398,6 +428,10 @@ const RoutePlannerCase ROUTE_PLANNER_CASES[] = {
     },
     {
         .input = {"robust plans", test_plan_robust_route},
+        .expectation = {},
+    },
+    {
+        .input = {"a run to the wall and back is not planned after a tapped leg", test_robust_wall_and_back_not_after_taps},
         .expectation = {},
     },
     {

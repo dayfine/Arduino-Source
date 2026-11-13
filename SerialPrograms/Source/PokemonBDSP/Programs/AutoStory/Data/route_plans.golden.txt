@@ -154,11 +154,12 @@ anchor); 0 from one start tile.
   5. west 7 (open) -> Route 201 (50, 13)
   6. north 7 (open) -> Route 201 (50, 6)
   7. east 43 (to wall) -> Sandgem Town (29, 13)
-  8. west 5 (open) -> Sandgem Town (24, 13)
-  9. north 21 (to wall) -> Route 202 (25, 24)
-  10. west 3 (to wall) -> Route 202 (22, 24)
-  11. south 3 (open) -> Route 202 (22, 27)
-  totals: 11 legs, 10 turns, 5 open, 1 localization
+  8. north 2 (to wall) -> Sandgem Town (29, 11)
+  9. west 5 (open) -> Sandgem Town (24, 11)
+  10. north 19 (to wall) -> Route 202 (25, 24)
+  11. west 3 (to wall) -> Route 202 (22, 24)
+  12. south 3 (open) -> Route 202 (22, 27)
+  totals: 12 legs, 11 turns, 5 open, 1 localization
 
 == 00.04b to_catch_grass (costs: route)
   from: Route202 (15, 25) (16, 25) (17, 25) (18, 25) (19, 25) (20, 25) (21, 25) (15, 26) (16, 26) (17, 26) (18, 26) (19, 26) (20, 26) (21, 26) (15, 27) (16, 27) (17, 27) (18, 27) (19, 27) (20, 27) (21, 27) (21, 28) (21, 29) (set)
@@ -243,60 +244,37 @@ anchor); 0 from one start tile.
   totals: 3 legs, 2 turns, 3 open, 0 localization
 
 == 00.05b beside_the_company_sign (costs: line)
-  from: JubilifeCity (15, 19) facing north (tile)
-  target: JubilifeCity (14, 19) facing west (tile)
-  start candidates: Jubilife City (15, 19)
-  1. west 1 (to wall) -> Jubilife City (14, 19)
-  totals: 1 legs, 0 turns, 0 open, 0 localization
-
-== 00.05c below_the_company_clown (costs: town)
   from: JubilifeCity (14, 19) facing west (tile)
-  target: JubilifeCity (15, 19) facing north (tile)
+  target: JubilifeCity (14, 19) facing west (tile)
   start candidates: Jubilife City (14, 19)
-  1. east 1 (open) -> Jubilife City (15, 19)
-  totals: 1 legs, 0 turns, 1 open, 0 localization
-
-== 00.05c below_the_tv_clown (costs: town)
-  from: JubilifeCity (15, 19) facing north (tile)
-  target: JubilifeCity (36, 17) facing north (tile)
-  start candidates: Jubilife City (15, 19)
-  1. south 2 (open) -> Jubilife City (15, 21)
-  2. east 21 (open) -> Jubilife City (36, 21)
-  3. north 4 (to wall) -> Jubilife City (36, 17)
-  totals: 3 legs, 2 turns, 2 open, 0 localization
-
-== 00.05c below_the_mart_clown (costs: town)
-  from: JubilifeCity (36, 17) facing north (tile)
-  target: JubilifeCity (56, 31) facing south (tile)
-  start candidates: Jubilife City (36, 17)
-  1. south 7 (to wall) -> Jubilife City (36, 24)
-  2. east 8 (open) -> Jubilife City (44, 24)
-  3. south 7 (open) -> Jubilife City (44, 31)
-  4. east 12 (to wall) -> Jubilife City (56, 31)
-  totals: 4 legs, 3 turns, 2 open, 0 localization
+  totals: 0 legs, 0 turns, 0 open, 0 localization
 
 == 00.05c beside_the_president (costs: town)
-  from: JubilifeCity (56, 31) facing north (tile)
+  from: JubilifeCity (14, 19) facing west (tile)
   target: JubilifeCity (45, 35) facing east (tile)
-  start candidates: Jubilife City (56, 31)
-  1. west 11 (open) -> Jubilife City (45, 31)
-  2. south 4 (open) -> Jubilife City (45, 35)
-  totals: 2 legs, 1 turns, 2 open, 0 localization
+  start candidates: Jubilife City (14, 19)
+  1. south 4 (open) -> Jubilife City (14, 23)
+  2. east 18 (open) -> Jubilife City (32, 23)
+  3. south 12 (open) -> Jubilife City (32, 35)
+  4. east 13 (to wall) -> Jubilife City (45, 35)
+  totals: 4 legs, 3 turns, 3 open, 0 localization
 
-== 00.05c to_the_route_203_street (costs: line)
+== 00.05c below_the_east_exit_sign (costs: line)
   from: JubilifeCity (45, 35) facing east (tile)
-  target: JubilifeCity (58, 22) facing east (tile)
+  target: JubilifeCity (59, 21) facing north (tile)
   start candidates: Jubilife City (45, 35)
-  1. north 13 (open) -> Jubilife City (45, 22)
-  2. east 13 (open) -> Jubilife City (58, 22)
-  totals: 2 legs, 1 turns, 2 open, 0 localization
+  1. north 9 (open) -> Jubilife City (45, 26)
+  2. east 14 (to wall) -> Jubilife City (59, 26)
+  3. north 5 (to wall) -> Jubilife City (59, 21)
+  totals: 3 legs, 2 turns, 1 open, 0 localization
 
 == 01.01 west_of_barrys_trigger (costs: town)
-  from: JubilifeCity (58, 22) facing east (tile)
+  from: JubilifeCity (59, 21) facing north (tile)
   target: Route203 (4, 18) facing east (tile)
-  start candidates: Jubilife City (58, 22)
-  1. east 9 (open) -> Route 203 (4, 18)
-  totals: 1 legs, 0 turns, 1 open, 0 localization
+  start candidates: Jubilife City (59, 21)
+  1. south 1 (open) -> Jubilife City (59, 22)
+  2. east 8 (open) -> Route 203 (4, 18)
+  totals: 2 legs, 1 turns, 2 open, 0 localization
 
 == 01.02 south_to_the_cliff (costs: route)
   from: Route203 (5, 17) (5, 18) (5, 19) (5, 20) facing east (set)
@@ -315,38 +293,31 @@ anchor); 0 from one start tile.
   4. south 3 (open) -> Route 203 (55, 9)
   totals: 4 legs, 3 turns, 2 open, 0 localization
 
-== 01.02 west_of_the_hikers_trigger (costs: route)
+== 01.02 into_the_hikers_scene (costs: into_scene)
   from: OreburghGate (4, 22) (5, 22) facing east (set)
-  target: OreburghGate (6, 22) facing east (tile)
+  target: OreburghGate (4, 22) (5, 22) facing east (set)
   start candidates: OreburghGate (4, 22), OreburghGate (5, 22)
-  1. south 1 (to wall) -> OreburghGate (4, 23), OreburghGate (5, 23)
-  2. east 2 (to wall) -> OreburghGate (6, 23)
-  3. north 1 (open) -> OreburghGate (6, 22)
-  totals: 3 legs, 2 turns, 1 open, 2 localization
+  totals: 0 legs, 0 turns, 0 open, 0 localization
 
-== 01.02 past_curtis (costs: route)
+== 01.02 past_curtis (costs: exit)
   from: OreburghGate (7, 22) facing east (tile)
   target: OreburghGate (20, 22) facing east (tile)
   start candidates: OreburghGate (7, 22)
   1. east 13 (open) -> OreburghGate (20, 22)
   totals: 1 legs, 0 turns, 1 open, 0 localization
 
-== 01.02 by_the_east_mouth (costs: route)
+== 01.02 by_the_east_mouth (costs: exit)
   from: OreburghGate (20, 22) facing east (tile)
   target: OreburghGate (26, 22) facing east (tile)
   start candidates: OreburghGate (20, 22)
   1. east 6 (open) -> OreburghGate (26, 22)
   totals: 1 legs, 0 turns, 1 open, 0 localization
 
-== 01.02 west_of_the_welcome (costs: route)
+== 01.02 into_the_welcome_scene (costs: into_scene)
   from: OreburghCity (2, 13) (3, 13) facing east (set)
-  target: OreburghCity (9, 13) facing east (tile)
+  target: OreburghCity (2, 13) (3, 13) facing east (set)
   start candidates: Oreburgh City (2, 13), Oreburgh City (3, 13)
-  1. north 3 (to wall) -> Oreburgh City (2, 10), Oreburgh City (3, 10)
-  2. east 4 (to wall) -> Oreburgh City (6, 10)
-  3. south 3 (open) -> Oreburgh City (6, 13)
-  4. east 3 (open) -> Oreburgh City (9, 13)
-  totals: 4 legs, 3 turns, 2 open, 2 localization
+  totals: 0 legs, 0 turns, 0 open, 0 localization
 
 == 01.02b below_the_centers_door (costs: town)
   from: OreburghCity (26, 22) facing north (tile)
@@ -447,19 +418,19 @@ anchor); 0 from one start tile.
   totals: 3 legs, 2 turns, 1 open, 0 localization
 
 == 01.10 line_1 (costs: line)
-  from: Route204North (20, 26) facing south (tile)
-  target: Route204North (20, 27) (tile)
-  start candidates: Route 204 (20, 26)
-  1. south 1 (open) -> Route 204 (20, 27)
-  totals: 1 legs, 0 turns, 1 open, 0 localization
+  from: Route204North (20, 26) (20, 27) facing south (set)
+  target: Route204North (20, 30) (tile)
+  start candidates: Route 204 (20, 26), Route 204 (20, 27)
+  1. south 4 (to wall) -> Route 204 (20, 30)
+  totals: 1 legs, 0 turns, 0 open, 1 localization
 
 == 01.10 line_2 (costs: line)
-  from: Route204North (20, 27) (tile)
+  from: Route204North (20, 30) (tile)
   target: Route204North (11, 27) (tile)
-  start candidates: Route 204 (20, 27)
-  1. west 10 (to wall) -> Route 204 (10, 27)
-  2. east 1 (open) -> Route 204 (11, 27)
-  totals: 2 legs, 1 turns, 1 open, 0 localization
+  start candidates: Route 204 (20, 30)
+  1. north 3 (open) -> Route 204 (20, 27)
+  2. west 9 (open) -> Route 204 (11, 27)
+  totals: 2 legs, 1 turns, 2 open, 0 localization
 
 == 01.10 line_3 (costs: line)
   from: Route204North (11, 27) (tile)

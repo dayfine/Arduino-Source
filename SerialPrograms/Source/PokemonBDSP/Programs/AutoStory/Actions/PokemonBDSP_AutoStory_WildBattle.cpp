@@ -20,6 +20,7 @@
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/OCR/OCR_RawTesseractOCR.h"
+#include "CommonTools/OCR/OCR_Routines.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
@@ -32,7 +33,10 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_ReceivePokemonDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
+#include "PokemonBDSP_AutoStory_Bag.h"
 #include "PokemonBDSP_AutoStory_Battle.h"
+#include "PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
 
 namespace PokemonAutomation{
@@ -223,6 +227,11 @@ public:
     virtual void fight() override{
         fight_wild_battle(m_stream, m_context, "Mine escape");
     }
+    virtual void fight_trainer() override{
+        PokemonBDSP::fight_trainer(m_stream, m_context, "Mine escape");
+        m_context.wait_for_all_requests();
+        use_potion_first_pokemon(m_stream, m_context, 0.8);
+    }
     virtual void note(const std::string& text) override{
         m_stream.log("[Mine escape] " + text);
     }
@@ -235,6 +244,9 @@ public:
 private:
     //  B, then the exit (0) or the battle menu (1) within three seconds; -1 for neither.
     int exit_or_menu();
+    //  After A on Run: whether the box under the battle says a Trainer
+    //  battle cannot be run from. Read while its text is still up.
+    bool says_no_running();
 
     VideoStream& m_stream;
     ProControllerContext& m_context;
@@ -249,6 +261,20 @@ int ConsoleWildBattleEscape::exit_or_menu(){
     return wait_until(m_stream, m_context, 3s, {{m_battle_end}, {menu_ready}});
 }
 
+bool ConsoleWildBattleEscape::says_no_running(){
+    //  The refusal's box: the bottom of the battle screen, as a dialogue's.
+    const ImageFloatBox text_box(0.19, 0.80, 0.64, 0.18);
+    pbf_press_button(m_context, BUTTON_A, 80ms, 600ms);
+    m_context.wait_for_all_requests();
+    const VideoSnapshot frame = m_stream.video().snapshot();
+    if (!frame){
+        return false;
+    }
+    const std::string text = OCR::ocr_read(story_language(), extract_box_reference(frame, text_box), OCR::PageSegMode::SINGLE_BLOCK);
+    m_stream.log("[Mine escape] Text after Run: \"" + text + "\"");
+    return sign_text_matches(text, "trainer");
+}
+
 WildRunOutcome ConsoleWildBattleEscape::run(){
     const int ready = exit_or_menu();
     if (ready == 0){
@@ -256,6 +282,9 @@ WildRunOutcome ConsoleWildBattleEscape::run(){
     }
     if (ready != 1 || !mine_select_run(m_stream, m_context, m_battle_type)){
         return WildRunOutcome::UNCERTAIN;
+    }
+    if (says_no_running()){
+        return WildRunOutcome::NO_RUNNING;
     }
     m_stream.log("[Mine escape] Run input sent; watching for black-screen exit.");
     const int result = run_until<ProControllerContext>(m_stream,
@@ -435,8 +464,8 @@ void escape_wild_battle(VideoStream& stream,
     const WildBattleEscapePolicy& policy){
     ConsoleWildBattleEscape actions(stream, context, battle_type);
     WildEscapeResult result = escape_wild_battle(actions, policy);
-    if (result == WildEscapeResult::FOUGHT){
-        // fight_wild_battle() ended on the overworld.
+    if (result == WildEscapeResult::FOUGHT || result == WildEscapeResult::TRAINER_FOUGHT){
+        // fight_wild_battle() and fight_trainer() ended on the overworld.
         return;
     }
     if (result == WildEscapeResult::UNCONFIRMED && actions.exit_within(10s)){

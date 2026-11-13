@@ -344,7 +344,8 @@ const SceneRunCase SCENE_RUN_SIM_CASES[] = {
 
 //  The Wonder Station's greeter in Jubilife's plaza walks up and talks
 //  whenever we come near, then walks off: on lab-B (2026-11-12 03:57, 00.05c
-//  below_the_company_clown) she stopped one walk three times, at about
+//  below_the_company_clown; 00.05c's first walk is now beside_the_president)
+//  she stopped one walk three times, at about
 //  (44, 28), (43, 30) and (39, 32), and the third failed it as "dialogue the
 //  map does not explain". Here a step onto the step's greeter ground starts
 //  her dialogue, and so does the next one after each talk, `talks` in all.
@@ -365,16 +366,16 @@ std::string walk_past_the_greeter(Logger& logger, size_t most_talks){
     const StoryStep* step = nullptr;
     for (const StoryCheckpoint& row : story_checkpoints()){
         for (const StoryStep& s : row.steps){
-            step = row.id == "00.05c" && s.name == "below_the_company_clown" ? &s : step;
+            step = row.id == "00.05c" && s.name == "beside_the_president" ? &s : step;
         }
     }
     const StoryWorld* world = story_plan_world("JubilifeCity", "JubilifeCity");
     if (step == nullptr || world == nullptr){
-        return "00.05c below_the_company_clown: not in the table, or no JubilifeCity world.";
+        return "00.05c beside_the_president: not in the table, or no JubilifeCity world.";
     }
     const std::vector<TilePos> greeter = story_route_tiles(*world, *step, "greeter");
     const TilePos start = story_to_world(*world, "JubilifeCity", {57, 22});
-    const TilePos target = story_to_world(*world, "JubilifeCity", {15, 19});
+    const TilePos target = story_to_world(*world, "JubilifeCity", {45, 35});
     GridSim sim({.world = world, .trainers = {}, .triggers = {}}, start, Direction::WEST, true);
     size_t talks = 0;
     const auto arm = [&](){
@@ -394,7 +395,7 @@ std::string walk_past_the_greeter(Logger& logger, size_t most_talks){
     std::vector<TilePos> believed;
     try{
         believed = walk_route(sim_io, *world, {start}, trainers, {.goal = [&](const TilePos& pos){ return pos == target; },
-            .label = "below the company clown", .avoid = story_route_tiles(*world, *step, "avoid"), .costs = *story_route_costs("town"),
+            .label = "beside the president", .avoid = story_route_tiles(*world, *step, "avoid"), .costs = *story_route_costs("town"),
             .speed = MoveSpeed::RUN, .scene_next = false, .goal_is_trigger = false, .greeter = greeter});
     }catch (const GridSimFailure& e){
         return std::format("failed after {} talk(s): {}", talks, e.message);
@@ -561,8 +562,8 @@ public:
     virtual void press(const RouteInput& input) override{
         m_io.press(input);
     }
-    virtual bool dialog_within(Milliseconds wait, Color color) override{
-        return m_io.dialog_within(wait, color);
+    virtual RouteSight sight_within(const RouteWatch& watch) override{
+        return m_io.sight_within(watch);
     }
     virtual bool holding_against_wall(Direction direction, const std::string& label) override{
         return m_io.holding_against_wall(direction, label);
@@ -579,16 +580,18 @@ private:
 };
 
 //  Where the walk from (46, 27) past the greeter's talks went wrong, or "".
+//  It walks to the Poketch Company's clown, as on lab-B, on the plaza
+//  ground of 00.05c's walk to the president (the old walk's, unchanged).
 std::string walk_open_leg_talks(Logger& logger, const OpenLegTalkInput& input){
     const StoryStep* step = nullptr;
     for (const StoryCheckpoint& row : story_checkpoints()){
         for (const StoryStep& s : row.steps){
-            step = row.id == "00.05c" && s.name == "below_the_company_clown" ? &s : step;
+            step = row.id == "00.05c" && s.name == "beside_the_president" ? &s : step;
         }
     }
     const StoryWorld* world = story_plan_world("JubilifeCity", "JubilifeCity");
     if (step == nullptr || world == nullptr){
-        return "00.05c below_the_company_clown: not in the table, or no JubilifeCity world.";
+        return "00.05c beside_the_president: not in the table, or no JubilifeCity world.";
     }
     const TilePos start = story_to_world(*world, "JubilifeCity", {46, 27});
     const TilePos target = story_to_world(*world, "JubilifeCity", {15, 19});
@@ -614,7 +617,7 @@ std::string walk_open_leg_talks(Logger& logger, const OpenLegTalkInput& input){
     std::string error;
     try{
         believed = walk_route(io, *world, {start}, trainers, {.goal = [&](const TilePos& pos){ return pos == target; },
-            .label = "below the company clown", .avoid = story_route_tiles(*world, *step, "avoid"), .costs = *story_route_costs("town"),
+            .label = "beside the president", .avoid = story_route_tiles(*world, *step, "avoid"), .costs = *story_route_costs("town"),
             .speed = MoveSpeed::RUN, .scene_next = false, .goal_is_trigger = false, .greeter = story_route_tiles(*world, *step, "greeter")});
     }catch (const GridSimFailure& e){
         error = std::format("failed after {} talk(s): {}", talks, e.message);
@@ -653,10 +656,118 @@ const OpenLegTalkCase OPEN_LEG_TALK_SIM_CASES[] = {
     {.input = {.name = "with no tap counted, then again a tap on (lab-B, 2026-11-12 07:44)", .talks = {{46, 29}, {45, 30}}}, .expectation = {.arrives = true}},
 };
 
+//  lab-B 2026-11-12 21:01, 01.02 past_curtis: camper_1's sight on column 17
+//  stopped the taps on (17, 22), and the count read "blocked after 9 of 13"
+//  with the dialogue on the next tap: the walk placed us a tile or two back,
+//  marked the beaten camper's tile, and planned a loop round it. In the Gate
+//  the only way on is the east door along row 22, so any fight on the way
+//  ends in a hold east to the door's fade, fighting what stops us on the way
+//  (picnicker_0 on column 24).
+class DialogOnNextTapIO : public GridSimRouteIO{
+public:
+    using GridSimRouteIO::GridSimRouteIO;
+    virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string& label) override{
+        if (m_dialog_next){
+            m_dialog_next = false;
+            return {.stop = WalkStop::DIALOG, .walked = 800ms, .wild_battles = 0, .moved_chunks = 0};
+        }
+        WalkResult result = GridSimRouteIO::walk_taps(direction, tiles, label);
+        if (result.stop == WalkStop::DIALOG){
+            result.stop = WalkStop::BLOCKED;
+            result.moved_chunks = result.moved_chunks > 0 ? result.moved_chunks - 1 : 0;
+            m_dialog_next = true;
+        }
+        return result;
+    }
+
+private:
+    bool m_dialog_next = false;
+};
+
+std::string leave_the_gate_by_the_east_door(Logger& logger, bool leave){
+    const StoryWorld* world = story_plan_world("OreburghGate", "OreburghGate");
+    if (world == nullptr){
+        return "no OreburghGate world.";
+    }
+    //  The Gate's trainers, as the game has them; the walk's map lists none
+    //  of them (map_trainers() has no OreburghGate), so they are people it lacks.
+    const std::vector<TrainerSight> gate_trainers{
+        {.name = "camper_1", .pos = story_to_world(*world, "OreburghGate", {17, 25}), .facing = Direction::NORTH, .range = 4},
+        {.name = "picnicker_0", .pos = story_to_world(*world, "OreburghGate", {24, 21}), .facing = Direction::SOUTH, .range = 2},
+    };
+    const TilePos start = story_to_world(*world, "OreburghGate", {7, 22});
+    const TilePos target = story_to_world(*world, "OreburghGate", {20, 22});
+    GridSim sim({.world = world, .trainers = gate_trainers, .triggers = {}}, start, Direction::EAST, true);
+    std::vector<std::string> notes;
+    DialogOnNextTapIO io(sim, notes);
+    std::vector<std::string> fought;
+    RouteTrainers trainers{{}, [&](const std::string& name){
+        fought.push_back(name);
+        sim.end_dialogue();
+        return true;
+    }};
+    RouteEnd end;
+    std::string error;
+    try{
+        end = walk_route_to_warp(io, *world, {start}, trainers, {.goal = [&](const TilePos& pos){ return pos == target; },
+            .label = "past curtis", .costs = *story_route_costs("town"), .speed = MoveSpeed::RUN,
+            .leave_toward = leave ? std::optional<Direction>(Direction::EAST) : std::nullopt});
+    }catch (const GridSimFailure& e){
+        error = e.message;
+    }
+    for (const std::string& note : notes){
+        logger.log(note);
+    }
+    if (!error.empty()){
+        return error;
+    }
+    if (!end.warp.any() || !sim.player().warped){
+        return std::format("did not leave by the east door: ended on {} after {} fight(s).",
+            describe(*world, nearest_tile(sim.player().pos)), fought.size());
+    }
+    return fought.size() >= 2 ? "" : std::format("left after {} fight(s), not camper_1 and picnicker_0.", fought.size());
+}
+
+struct GateEastOutInput{
+    std::string name;
+};
+struct GateEastOutExpectation{
+    bool leaves;
+};
+struct GateEastOutCase{
+    GateEastOutInput input;
+    GateEastOutExpectation expectation;
+};
+
+class Test_GateEastOut : public UnitTest{
+public:
+    explicit Test_GateEastOut(GateEastOutCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - Grid sim: 01.02 past_curtis, " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const std::string error = leave_the_gate_by_the_east_door(logger, true);
+        if (error.empty() != m_case.expectation.leaves){
+            return error.empty() ? "left" : error;
+        }
+        return true;
+    }
+
+private:
+    GateEastOutCase m_case;
+};
+
+const GateEastOutCase GATE_EAST_OUT_CASES[] = {
+    {.input = {.name = "a fight in the Gate ends in a hold east through the door (lab-B 2026-11-12 21:01)"}, .expectation = {.leaves = true}},
+};
+
 } // namespace
 
 
 void add_tests_AutoStory_WallBattleSim(UnitTestDatabase& database){
+    for (const GateEastOutCase& item : GATE_EAST_OUT_CASES){
+        database.add<Test_GateEastOut>(item);
+    }
     for (const OpenLegTalkCase& item : OPEN_LEG_TALK_SIM_CASES){
         database.add<Test_OpenLegTalkSim>(item);
     }

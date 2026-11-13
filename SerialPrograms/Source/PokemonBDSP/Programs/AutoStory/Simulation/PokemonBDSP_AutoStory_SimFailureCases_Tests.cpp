@@ -229,6 +229,19 @@ UnitTestResult night_and_dim_floors(Logger& logger){
     return passes(run_case(logger, "01.02", "01.05", {.fade = {}, .banner = {}}, knobs));
 }
 
+//  lab-B 2026-11-12 18:36, 01.02's by_the_east_mouth: the walk to the east
+//  mouth's door ran two tiles further east than it counted (a blocked leg
+//  left its column open, and the wall it stopped against was judged by the
+//  screen's change), onto the warp, whose fade the walk did not see. The
+//  step must see the far map's banner after the leg (gone by the next
+//  step's taps) and take the way through as done, not tap east into the city's fence.
+UnitTestResult east_mouth_crossed_unseen(Logger& logger){
+    const Pose far = Pokemon::pose_of(*table_step("01.02", "into_oreburgh").pose_after);
+    const SimWorldKnobs knobs{.slides = {{.step = "by_the_east_mouth", .direction = Direction::EAST, .tiles = 2,
+        .far = far, .fade = SimFade::UNSEEN, .banner_up = false}}};
+    return passes(run_case(logger, "01.02", "01.02", {.fade = {}, .banner = {}}, knobs));
+}
+
 //  01.03: Roark's first line in the mine comes after the camera zooms in on
 //  us, some seconds after the A press (r98; the old event waited 8 s).
 UnitTestResult roark_speaks_late(Logger& logger){
@@ -318,6 +331,30 @@ UnitTestResult center_inside_settles(Logger& logger){
     return true;
 }
 
+//  01.03's doors into the mine and the coal room (lab-B 2026-11-12 21:57):
+//  a plain door with no text, and the cave's ambient motion kept the talk's
+//  quiet from ever coming, so B was pressed 14 times over 16 to 18 s. The
+//  door's settle is over within 3 s of the fade back up, banner read or not,
+//  and the talk's is not (it takes the 15 s calm).
+UnitTestResult mine_doors_settle_fast(Logger& logger){
+    const Milliseconds fade = 1500ms;
+    const Milliseconds most = fade + 3000ms;
+    const SimScene scene{sim_fade("the mine's door fade", fade), sim_pause("the cave's ambient motion", 60000ms, true)};
+    for (const bool door : {true, false}){
+        const std::string over = play_scene(scene, {.door = door});
+        logger.log(std::format("mine door, {}: {}", door ? "door settle" : "talk settle", over));
+        long long ms = -1;
+        const bool parsed = std::sscanf(over.c_str(), "judged over %lld ms in", &ms) == 1;
+        if (door && (!parsed || ms < fade.count() || ms > most.count())){
+            return std::format("the door's settle took more than {} ms: {}", most.count(), over);
+        }
+        if (!door && parsed && ms <= most.count()){
+            return "the talk's settle ended with the cave still moving: the test no longer shows the bug.";
+        }
+    }
+    return true;
+}
+
 //  From the door mat, one held run north reaches the nurse's counter, even
 //  at walking pace: the counter is the wall that stops it, and A talks.
 UnitTestResult nurse_in_one_run(Logger&){
@@ -339,6 +376,32 @@ std::string boy_below_the_mart(Logger& logger, int row){
     knobs.standing = {{"school_kid_m_5", TilePos{51, row}}};
     knobs.pushing_someone = 1600ms;
     return run_case(logger, "00.05b", "00.05b", {.fade = {}, .banner = {}}, std::move(knobs));
+}
+
+//  01.10 on lab-B (2026-11-13 02:35 and 02:37): the player walked Route
+//  204's row 28, not the plan's row 27, and "west 10 (to wall)" stopped
+//  against the youngster (youngster_4, who wanders x 14..16 on row 28)
+//  about 5 tiles in. The push read as stopped late (2400 and 2800 ms), the
+//  time counted 13 tiles and more, and the stop passed as the wall at
+//  (10, 27): every later leg ran 5 columns off, and "west 1 (to wall)" ran
+//  on 6 tiles to "position unknown". Which way the row went wrong is open:
+//  `cave_exit_low`, the cave leaves us on (20, 27) and the old line 1's
+//  "south 1" goes on to row 28, on today's table; else, on the old line 1,
+//  that south 1 moved two tiles, and the walker must tell the youngster
+//  from the wall. The youngster stands on (14, 28), as on the console's
+//  run 1.
+std::string youngster_on_route_204(Logger& logger, bool cave_exit_low){
+    SimWorldKnobs knobs;
+    knobs.standing = {{"youngster_4", TilePos{14, 28}}};
+    knobs.pushing_someone = 1200ms;
+    if (cave_exit_low){
+        knobs.start_at = Pokemon::tile_pose("Route204North", {TilePos{20, 27}}, Direction::SOUTH);
+        return run_case(logger, "01.10", "01.10", {.fade = {}, .banner = {}}, std::move(knobs));
+    }
+    StoryStep old_line_1 = table_step("01.10", "line_1");
+    old_line_1.args["target"] = GridPose{"Route204North", {{20, 27}}, std::nullopt};
+    knobs.lands["line_1"] = Pokemon::tile_pose("Route204North", {TilePos{20, 28}}, Direction::SOUTH);
+    return run_case(logger, "01.10", "01.10", {.fade = {}, .banner = {}}, std::move(knobs), table_with("01.10", old_line_1));
 }
 
 //  01.07: after the tag battle the screen fades back from the battle and
@@ -429,27 +492,56 @@ UnitTestResult sandgem_entry_two_columns_west(Logger& logger){
 //  00.05c on lab-B 2026-11-11: 00.05b's Poketch Company clown was
 //  "answered" by the sign's text, so the save held two coupons; the
 //  president gave no Poketch and 00.05c went on to the street as passed.
-//  `misread` re-runs that read in 00.05c's own talk too. "" when the run
-//  stopped at 00.05c's Poketch check, as it must when a coupon is still
-//  missing.
-std::string poketch_run(Logger& logger, bool misread){
+//  00.05c talks to no clown (00.05b checks its coupons before its save):
+//  from such a save it stops at its Poketch check.
+UnitTestResult no_poketch_fails_00_05c(Logger& logger){
     SimWorldKnobs knobs;
     knobs.coupons_at_start = {"mart_clown", "tv_clown"};
     knobs.poketch_at_start = false;
-    if (misread){
-        knobs.talks_without_coupon = {"company_clown"};
-    }
-    return run_case(logger, "00.05c", "00.05c", {.fade = {}, .banner = {}}, std::move(knobs));
-}
-UnitTestResult no_poketch_fails_00_05c(Logger& logger){
-    const std::string stopped = poketch_run(logger, true);
+    const std::string stopped = run_case(logger, "00.05c", "00.05c", {.fade = {}, .banner = {}}, std::move(knobs));
     if (stopped.find("00.05c poketch") == std::string::npos){
         return UnitTestResult("expected a stop at 00.05c's Poketch check; got " + (stopped.empty() ? std::string("a pass") : stopped));
     }
     return true;
 }
-UnitTestResult missing_coupon_collected_in_00_05c(Logger& logger){
-    return passes(poketch_run(logger, false));
+//  00.05b with the Poketch Company's clown answered by the sign's text
+//  (lab-B 2026-11-11): two coupons. The row fails at its coupon check
+//  instead of saving them.
+UnitTestResult missing_coupon_fails_00_05b(Logger& logger){
+    SimWorldKnobs knobs;
+    knobs.coupons_at_start = {};
+    knobs.talks_without_coupon = {"company_clown"};
+    const std::string stopped = run_case(logger, "00.05b", "00.05b", {.fade = {}, .banner = {}}, std::move(knobs));
+    if (stopped.find("00.05b all_three_coupons") == std::string::npos){
+        return UnitTestResult("expected a stop at 00.05b's coupon check; got " + (stopped.empty() ? std::string("a pass") : stopped));
+    }
+    return true;
+}
+//  00.05c's walk up the main road on lab-B 2026-11-12 13:32: its open leg
+//  north ended a row off, the leg east to the wall stopped at the Mart's
+//  hedges, and the walk took it for (59, 26) and "arrived" below the
+//  east-exit sign beside them. The end on (59, 21) must hold from a row
+//  off either way, into 01.01 from there.
+UnitTestResult main_road_a_row_off_00_05c(Logger& logger){
+    std::string failures;
+    for (const Direction direction : {Direction::NORTH, Direction::SOUTH}){
+        SimWorldKnobs knobs;
+        knobs.slides = {{.step = "below_the_east_exit_sign", .direction = direction, .tiles = 1}};
+        const std::string stopped = run_case(logger, "00.05c", "01.01", {.fade = {}, .banner = {}}, std::move(knobs));
+        if (!stopped.empty()){
+            failures += std::format("\n  a row {}: {}", Pokemon::direction_name(direction), stopped);
+        }
+    }
+    return failures.empty() ? UnitTestResult(true) : UnitTestResult("00.05c up the main road:" + failures);
+}
+//  00.05c on lab-B 2026-11-12 13:55: a short D-pad tap in a new direction
+//  after the east leg only turned the player, and the walk, counting its
+//  taps against an inferred start, tapped east against the hedges. Every
+//  tap leg now turns first and then steps a whole tile, so the walk from
+//  the street ends on (59, 21) and the row goes on into 01.01.
+UnitTestResult turn_tap_after_the_east_leg_00_05c(Logger& logger){
+    const std::string stopped = run_case(logger, "00.05c", "01.01", {.fade = {}, .banner = {}}, SimWorldKnobs{});
+    return stopped.empty() ? UnitTestResult(true) : UnitTestResult("00.05c to the east-exit sign: " + stopped);
 }
 //  01.01 from a save with no Poketch: Jubilife's east-exit guard would
 //  ask about the Poketch campaign and turn us back (lab-B 2026-11-11, the
@@ -703,6 +795,7 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
         return every_single_miss(logger, ONE_SIGNAL_STEPS);
     }}, .expectation = {}},
     {.input = {"any one fade with its hold unseen from 00.00 to 01.11: every row still passes", every_single_hold_miss}, .expectation = {}},
+    {.input = {"01.02 by_the_east_mouth runs onto the Gate's east warp, fade unseen (lab-B 2026-11-12)", east_mouth_crossed_unseen}, .expectation = {}},
     {.input = {"01.02 to 01.05 at night, the Gate's dim floor", night_and_dim_floors}, .expectation = {}},
     {.input = {"01.03 Roark's first line 7 s after the A press", roark_speaks_late}, .expectation = {}},
     {.input = {"01.03 with Oreburgh's people wandering (the pokefan on 45, 37..39)", [](Logger& logger){
@@ -719,6 +812,7 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     }}, .expectation = {}},
     {.input = {"01.04 Roark's badge speech: the fanfare's pause, then a scene", roark_badge_speech}, .expectation = {}},
     {.input = {"inside a Pokemon Center, the door's settle ends within 3 s of the fade-up with visitors walking, never during the fade", center_inside_settles}, .expectation = {}},
+    {.input = {"01.03: a door into the mine or the coal room settles within 3 s of the fade-up, whatever moves in the cave (lab-B 2026-11-12 21:57)", mine_doors_settle_fast}, .expectation = {}},
     {.input = {"inside a Pokemon Center, one held run north from the door mat reaches the nurse", nurse_in_one_run}, .expectation = {}},
     {.input = {"01.07 after the tag battle the grunts run off before anyone speaks", grunts_run_off_before_rowan}, .expectation = {}},
     {.input = {"00.03 Rowan's scene opens with no box and fades home", rowans_scene_opens_with_no_box}, .expectation = {}},
@@ -738,8 +832,16 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
         return stopped.find("sim_mismatch") == std::string::npos ? UnitTestResult(true)
             : UnitTestResult("the program went on from a tile the player is not on: " + stopped);
     }}, .expectation = {}},
+    {.input = {"01.10 the cave exit leaves us a row low, on (20, 27): the youngster on row 28 stops west 10 (to wall), not its wall (lab-B 2026-11-13 02:35)", [](Logger& logger){
+        return passes(youngster_on_route_204(logger, true));
+    }}, .expectation = {}},
+    {.input = {"01.10 the old line 1's south 1 moves two tiles, to (20, 28): the youngster on row 28 stops west 10 (to wall), not its wall (lab-B 2026-11-13 02:35)", [](Logger& logger){
+        return passes(youngster_on_route_204(logger, false));
+    }}, .expectation = {}},
     {.input = {"00.05c a coupon missing (the sign read for the Poketch Company clown): no Poketch, 00.05c fails (lab-B 2026-11-11)", no_poketch_fails_00_05c}, .expectation = {}},
-    {.input = {"00.05c a coupon missing from 00.05b: its clown talks collect it, the president gives the Poketch", missing_coupon_collected_in_00_05c}, .expectation = {}},
+    {.input = {"00.05b a coupon missing at its end: the row fails at its coupon check, before the save", missing_coupon_fails_00_05b}, .expectation = {}},
+    {.input = {"00.05c the walk up the main road ends a row off: still on (59, 21) below the east-exit sign, into 01.01 (lab-B 2026-11-12 13:32)", main_road_a_row_off_00_05c}, .expectation = {}},
+    {.input = {"00.05c the turn tap after the east leg only turns: the walk ends on (59, 21), into 01.01 (lab-B 2026-11-12 13:55)", turn_tap_after_the_east_leg_00_05c}, .expectation = {}},
     {.input = {"01.01 with no Poketch: the east-exit guard's gate stops the row at its check, not a trainer fight (lab-B 2026-11-11)", gate_guard_stops_01_01}, .expectation = {}},
     {.input = {"00.04 to the ledge column with a wild battle on each pass through Route 201's grass (lab-B 2026-11-09 16:14)", [](Logger& logger){
         return passes(ledge_walk_in_grass(logger, {}));

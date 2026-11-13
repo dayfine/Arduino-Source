@@ -54,7 +54,6 @@ constexpr size_t TRIGGER_RUN_TILES = 32;
 //  (the BDSP sims plan thousands).
 constexpr size_t RUN_VARIANT_TILES = 6;
 
-
 //  Expected time a plan must save for each tile it walks back beyond the
 //  route's own plan: the user's road route on Route 201 walks back 3
 //  more and saves 24 s; 2 more to save 4.6 s (00.04b to_center_sign) or
@@ -158,7 +157,7 @@ std::optional<std::vector<PlannedLeg>> overshoot_to_wall(
 }
 
 //  Plans made from `legs` the way a player runs: each open leg from a
-//  known tile run on to a wall and tapped back. An open leg is never held
+//  known tile (not after a tapped leg) run on to a wall and tapped back. An open leg is never held
 //  for its time: a timed run overshoots by up to a third (lab-B
 //  2026-11-11, Jubilife: runs timed for 10 tiles went about 13), so open
 //  legs are tapped and only legs to a wall are held.
@@ -167,7 +166,11 @@ std::vector<std::vector<PlannedLeg>> run_variants(const ScoredRoute& route, cons
     std::vector<TilePos> at = route.from;
     for (size_t i = 0; i < legs.size(); i++){
         const TileLeg& leg = legs[i].leg;
-        if (!leg.ends_at_wall && !leg.held && leg.tiles >= RUN_VARIANT_TILES && at.size() == 1){
+        //  After a tapped leg the player is exactly where the taps left them
+        //  (00.05c, lab-B 2026-11-12 14:24): a run past that tile and back
+        //  adds a turn. At the start or after a wall it is fast and exact.
+        const bool after_taps = i > 0 && !legs[i - 1].leg.ends_at_wall && !legs[i - 1].leg.held;
+        if (!leg.ends_at_wall && !leg.held && leg.tiles >= RUN_VARIANT_TILES && at.size() == 1 && !after_taps){
             if (std::optional<std::vector<PlannedLeg>> legs_out = overshoot_to_wall(route.world, at.front(), legs, i)){
                 out.push_back(std::move(*legs_out));
             }

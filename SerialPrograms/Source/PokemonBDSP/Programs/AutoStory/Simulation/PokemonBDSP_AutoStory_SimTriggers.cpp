@@ -93,6 +93,9 @@ RowTrigger row_trigger(const std::string& map, const CoordEvent& event, const Va
             out.trigger.tiles = seen.tiles;
         }
     }
+    //  The maps name their events coord_event_0, 1, ...: a scene is spent by name,
+    //  so the map goes in it.
+    out.trigger.name = map + " " + out.trigger.name;
     return out;
 }
 

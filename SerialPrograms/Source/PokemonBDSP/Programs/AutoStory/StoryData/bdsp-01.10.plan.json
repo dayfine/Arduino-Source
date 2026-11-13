@@ -10,14 +10,14 @@
             "tiles": [
               [
                 20,
-                27
+                30
               ]
             ]
           }
         },
         "id": "line_1",
         "kind": "route",
-        "why": "a corner of the human's line"
+        "why": "south to the wall below the cave: the cave may leave us on row 26 or 27 (lab-B 2026-11-13 02:35), and a leg north could walk back into it"
       },
       {
         "action": "line",
@@ -156,6 +156,10 @@
         [
           20,
           26
+        ],
+        [
+          20,
+          27
         ]
       ]
     },
