@@ -403,45 +403,6 @@ void move_look_cursor(ConsoleHandle& console, ProControllerContext& context, siz
     );
 }
 
-//  The "Confirm Choices" highlight on the screen now, reading a few frames
-//  over `window` with no press. Nullopt if none of them is the screen.
-std::optional<size_t> read_confirm_choices_now(ConsoleHandle& console, ProControllerContext& context, Milliseconds window){
-    const WallClock deadline = current_time() + window;
-    while (true){
-        context.wait_for_all_requests();
-        const VideoSnapshot frame = console.video().snapshot();
-        const std::optional<size_t> cursor = frame ? read_confirm_choices_cursor(frame) : std::nullopt;
-        if (cursor || current_time() >= deadline){
-            return cursor;
-        }
-        context.wait_for(250ms);
-    }
-}
-
-//  On "Confirm Choices": one DOWN at a time to "Ready!", reading the
-//  highlight after each, then A on it. Throws OperationFailedException if
-//  the highlight is not read or does not get there.
-void press_ready_on_confirm_choices(ConsoleHandle& console, ProControllerContext& context){
-    for (size_t attempt = 0; attempt < 6; attempt++){
-        const std::optional<size_t> cursor = read_confirm_choices_now(console, context, 1000ms);
-        const std::optional<std::vector<IntroKey>> moves = cursor ? confirm_choices_moves(*cursor) : std::nullopt;
-        if (!moves){
-            break;
-        }
-        console.log(std::format("AutoStory intro: Confirm Choices: the highlight is on row {}.", *cursor));
-        press_intro_keys(console, context, {moves->front()}, 500ms);
-        if (moves->front() == IntroKey::A){
-            dump_intro_frame(console, context, "confirm");
-            return;
-        }
-    }
-    OperationFailedExceptionWithScreenshot::fire(
-        ErrorReportMode::SEND_ERROR_REPORT,
-        "AutoStory intro: the Confirm Choices highlight was not read on \"Ready!\".",
-        console
-    );
-}
-
 } // namespace
 
 
@@ -506,25 +467,6 @@ void type_player_name(
     console.log("AutoStory intro: Confirm Choices: DOWN x2 to \"Ready!\", then A.");
     press_intro_keys(console, context, *confirm_choices_moves(0), 2000ms);
     dump_intro_frame(console, context, "confirm");
-}
-
-size_t require_confirm_choices(ConsoleHandle& console, ProControllerContext& context){
-    const std::optional<size_t> cursor = read_confirm_choices_now(console, context, 2000ms);
-    if (!cursor){
-        throw UserSetupError(
-            console,
-            "AutoStory: 01.00 starts on the new game's \"Confirm Choices\" screen, with the language, look and name "
-            "already chosen. It is not on screen; nothing was pressed. Start from 00.00 to have the program choose them."
-        );
-    }
-    console.log(std::format("AutoStory intro: Confirm Choices on screen, row {} highlighted.", *cursor));
-    return *cursor;
-}
-
-void confirm_new_game_choices(ConsoleHandle& console, ProControllerContext& context){
-    require_confirm_choices(console, context);
-    dump_intro_frame(console, context, "confirm-choices");
-    press_ready_on_confirm_choices(console, context);
 }
 
 
