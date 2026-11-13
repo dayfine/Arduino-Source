@@ -47,7 +47,7 @@ const RouteCosts& story_route_costs();
 std::optional<std::vector<RouteStep>> plan_story_route(
     const std::vector<MapData>& maps, const Pokemon::Pose& pose,
     std::optional<Direction> facing, const RouteGoal& goal,
-    const Pokemon::GateState& gates = {}, const Pokemon::GateRules& rules = {}
+    const Pokemon::GateState& gates = Pokemon::GateState(), const Pokemon::GateRules& rules = Pokemon::GateRules()
 );
 
 

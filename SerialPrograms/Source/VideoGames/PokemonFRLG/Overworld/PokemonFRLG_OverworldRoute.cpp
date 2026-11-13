@@ -598,6 +598,26 @@ std::vector<MapData> resolve_maps(const std::vector<MapData>& maps, const Pokemo
     return resolved;
 }
 
+namespace{
+
+//  `legs` as route steps, each read on the maps its gates make.
+std::vector<RouteStep> gated_route_steps(const GateMaps& gate_maps, const std::vector<Pokemon::Leg<Pokemon::GatedState<Located>>>& legs){
+    std::vector<RouteStep> route;
+    for (const Pokemon::Leg<Pokemon::GatedState<Located>>& gated : legs){
+        Pokemon::Leg<Located> leg{
+            .kind = gated.kind, .action = gated.action, .direction = gated.direction, .tiles = gated.tiles,
+            .warps = gated.warps, .to_wall = gated.to_wall, .wild = gated.wild, .facing_after = gated.facing_after,
+            .start = gated.start.inner, .end = gated.end.inner,
+        };
+        RouteStep step = to_route_step(gate_maps.at(gated.start.gates), leg);
+        step.gate_change = Pokemon::gate_change_of(gated);
+        route.push_back(std::move(step));
+    }
+    return route;
+}
+
+} // namespace
+
 std::optional<std::vector<RouteStep>> plan_overworld_route_gated(
     const std::vector<MapData>& maps,
     const MapPosition& start,
@@ -607,6 +627,9 @@ std::optional<std::vector<RouteStep>> plan_overworld_route_gated(
     const RouteCosts& costs,
     std::optional<Direction> start_facing
 ){
+    if (!has_gates(maps)){
+        return plan_overworld_route(maps, start, goal, costs, start_facing);
+    }
     const int start_map = find_map(maps, start.map);
     const int goal_map = find_map(maps, goal.position.map);
     if (start_map < 0 || goal_map < 0){
@@ -638,17 +661,7 @@ std::optional<std::vector<RouteStep>> plan_overworld_route_gated(
         return std::nullopt;
     }
 
-    std::vector<RouteStep> route;
-    for (const Pokemon::Leg<Pokemon::GatedState<Located>>& gated : *legs){
-        Pokemon::Leg<Located> leg{
-            .kind = gated.kind, .action = gated.action, .direction = gated.direction, .tiles = gated.tiles,
-            .warps = gated.warps, .to_wall = gated.to_wall, .wild = gated.wild, .facing_after = gated.facing_after,
-            .start = gated.start.inner, .end = gated.end.inner,
-        };
-        RouteStep step = to_route_step(gate_maps.at(gated.start.gates), leg);
-        step.gate_change = Pokemon::gate_change_of(gated);
-        route.push_back(std::move(step));
-    }
+    std::vector<RouteStep> route = gated_route_steps(gate_maps, *legs);
     tap_from_known_tile(route);
     return route;
 }
@@ -740,6 +753,31 @@ std::vector<MapPosition> leg_tiles(
     return tiles;
 }
 
+namespace{
+
+//  `step`'s tiles from `player`, on `maps` as the gates now make them.
+void follow_step(const std::vector<MapData>& maps, Located& player, const RouteStep& step){
+    for (int c = 0; c < step.tiles; c++){
+        const std::optional<Transition> transition = press(maps, player, step.direction);
+        if (!transition || transition->action != step.action){
+            throw InternalProgramError(
+                nullptr, PA_CURRENT_FUNCTION,
+                "Step refused at " + to_string(MapPosition{maps[player.map].name, player.state.position}) + ": " + to_string(step)
+            );
+        }
+        player = transition->next;
+    }
+    const MapPosition position{maps[player.map].name, player.state.position};
+    if (!(position == step.end)){
+        throw InternalProgramError(
+            nullptr, PA_CURRENT_FUNCTION,
+            "Ended at " + to_string(position) + " instead of " + to_string(step.end)
+        );
+    }
+}
+
+} // namespace
+
 MapPosition follow_overworld_route(
     const std::vector<MapData>& maps,
     const MapPosition& start,
@@ -773,23 +811,7 @@ MapPosition follow_overworld_route(
             }
             continue;
         }
-        for (int c = 0; c < step.tiles; c++){
-            const std::optional<Transition> transition = press(gated ? resolved : maps, player, step.direction);
-            if (!transition || transition->action != step.action){
-                throw InternalProgramError(
-                    nullptr, PA_CURRENT_FUNCTION,
-                    "Step refused at " + to_string(MapPosition{maps[player.map].name, player.state.position}) + ": " + to_string(step)
-                );
-            }
-            player = transition->next;
-        }
-        const MapPosition position{maps[player.map].name, player.state.position};
-        if (!(position == step.end)){
-            throw InternalProgramError(
-                nullptr, PA_CURRENT_FUNCTION,
-                "Ended at " + to_string(position) + " instead of " + to_string(step.end)
-            );
-        }
+        follow_step(gated ? resolved : maps, player, step);
     }
     return MapPosition{maps[player.map].name, player.state.position};
 }

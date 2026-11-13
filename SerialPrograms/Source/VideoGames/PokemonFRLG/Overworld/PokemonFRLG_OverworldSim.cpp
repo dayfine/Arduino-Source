@@ -15,7 +15,6 @@
 #include "PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_OverworldBike.h"
 #include "PokemonFRLG_OverworldMaps.h"
-#include "PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_OverworldSim.h"
 
 namespace PokemonAutomation{
@@ -148,10 +147,7 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Sim: start on a map that isn't loaded: " + start.map);
     }
     add_coded_field();
-    if (has_gates(m_maps)){
-        m_source_maps = m_maps;
-    }
-    m_gates = m_script.gates;
+    m_state.gates = m_script.gates;
     read_gates();
     m_player = PlayerState{start.point, elevation_at(map(), start.point), false};
     m_state.facing = facing;
@@ -851,16 +847,7 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     }
     const int warps_before = m_sim.state().warps;
     const std::vector<Interrupt>& ints = interrupts(step);
-    Pokemon::LegSpec leg;
-    leg.direction = step.direction;
-    leg.tiles = step.tiles + step.warp_slack;
-    leg.to_wall = step.to_wall;
-    leg.tile_time = tile_time(step, m_speed);
-    leg.stop_on_interrupt = !step.to_wall;
-    leg.stop_if_blocked = step.to_wall && m_rules.stop_if_blocked;
-    if (m_rules.hold_over_connections){
-        leg.stalled_steps = step.connection_steps;
-    }
+    const Pokemon::LegSpec leg = leg_spec(step);
     Pokemon::LegCalls calls;
     calls.hold_watching = [&](Milliseconds hold) -> std::optional<Pokemon::HoldOutcome>{
         const std::optional<SimSeen> seen = hold_watching(step, hold, ints);

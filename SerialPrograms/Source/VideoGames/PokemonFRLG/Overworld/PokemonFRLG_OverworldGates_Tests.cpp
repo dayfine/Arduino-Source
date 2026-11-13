@@ -181,7 +181,7 @@ SimRun walk_in_sim(const std::vector<MapData>& maps, const MapPosition& start, c
     const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Sim"};
     SimRun run;
     run.failure = walker.run(route, planning);
-    run.gates = sim.gates();
+    run.gates = sim.state().gates;
     run.position = sim.state().position;
     run.log = sim.state().log;
     run.log.insert(run.log.end(), walker.log().begin(), walker.log().end());

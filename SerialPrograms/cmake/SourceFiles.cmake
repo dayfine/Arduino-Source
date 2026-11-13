@@ -2052,6 +2052,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWarpFade_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkedTiles.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkGates.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkMoves.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkOptions.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkTimes.h

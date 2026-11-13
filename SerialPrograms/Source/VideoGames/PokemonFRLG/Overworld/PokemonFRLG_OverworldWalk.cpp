@@ -25,6 +25,7 @@
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_OverworldWalkGates.h"
 #include "PokemonFRLG_OverworldBike.h"
 #include "PokemonFRLG_BikeSpinMechanics.h"
 #include "PokemonFRLG_BikeSpinPresses.h"
@@ -916,6 +917,25 @@ void walk_step_leg(
     check_warp_was_no_battle(console, context, step);
 }
 
+//  A WALK step: turned first, then its leg.
+void walk_hold(
+    ConsoleHandle& console, ProControllerContext& context,
+    const RouteStep& step, std::optional<Direction> facing,
+    const OverworldInterruptSet& interrupts, MoveSpeed speed, PlayerGender player
+){
+    //  Turning first, with a tap, makes the hold start from a standstill
+    //  facing the right way: holding through a turn lost a tile on the
+    //  console, while holds from a standstill were exact over 15 tiles.
+    //  Not on the Bicycle, where the tap is a step.
+    if (turns_first(step, speed, facing)){
+        turn_to(console, context, step.direction, player);
+    }
+    if (const std::string note = speed_note(step, speed); !note.empty()){
+        console.log(note);
+    }
+    walk_step_leg(console, context, step, interrupts, speed);
+}
+
 } // namespace
 
 
@@ -936,17 +956,7 @@ void walk_overworld_route(
         check_overworld(console, context, step);
         switch (step.action){
         case RouteAction::WALK:
-            //  Turning first, with a tap, makes the hold start from a standstill
-            //  facing the right way: holding through a turn lost a tile on the
-            //  console, while holds from a standstill were exact over 15 tiles.
-            //  Not on the Bicycle, where the tap is a step.
-            if (turns_first(step, speed, facing)){
-                turn_to(console, context, step.direction, player);
-            }
-            if (const std::string note = speed_note(step, speed); !note.empty()){
-                console.log(note);
-            }
-            walk_step_leg(console, context, step, interrupts, speed);
+            walk_hold(console, context, step, facing, interrupts, speed, player);
             break;
         case RouteAction::SURF:
             start_surf(console, context, step.direction, facing == step.direction);
@@ -958,12 +968,13 @@ void walk_overworld_route(
             turn_to(console, context, step.direction, player);
             break;
         case RouteAction::OPEN_GATE:
-            turn_to(console, context, step.direction, player);
-            open_gate(console, context, step.direction, true);
-            break;
         case RouteAction::PRESS_SWITCH:
             turn_to(console, context, step.direction, player);
-            press_switch(console, context, step.direction, true);
+            if (step.action == RouteAction::OPEN_GATE){
+                open_gate(console, context, step.direction, true);
+            }else{
+                press_switch(console, context, step.direction, true);
+            }
             break;
         }
         if (step.action != RouteAction::FACE && step.action != RouteAction::OPEN_GATE && step.action != RouteAction::PRESS_SWITCH){

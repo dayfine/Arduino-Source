@@ -1044,7 +1044,6 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
 }
 
 
-
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch
 } // namespace PokemonAutomation

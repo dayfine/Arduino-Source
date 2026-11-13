@@ -136,6 +136,9 @@ struct SimScript{
 //  The player and the screen, and what went wrong that the game would show.
 struct SimState{
     MapPosition position;
+    //  The gates open and the switches on (SimScript::gates, then what the
+    //  player opened and pressed).
+    Pokemon::GateState gates;
     Direction facing = Direction::SOUTH;
     SimScreen screen = SimScreen::OVERWORLD;
     //  Whether black shows below the map: the player stands near the bottom

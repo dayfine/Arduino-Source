@@ -67,10 +67,6 @@ public:
 
     const SimState& state() const{ return m_state; }
 
-    //  The gates open and the switches on now (SimScript::gates, then what
-    //  the player opened and pressed).
-    const Pokemon::GateState& gates() const{ return m_gates; }
-
     //  Whether the walker's screen check reads its last step tap as a
     //  step: one that moved the player from `before`, but for
     //  SimScript::unseen_step_taps, or a turn tap since `turn_taps_before`
@@ -178,7 +174,7 @@ private:
     //  if there is none or the Card Key is missing.
     bool open_gate();
     bool press_switch();
-    //  Reads each map's gate tiles through m_gates.
+    //  Reads each map's gate tiles through the gates of m_state.
     void read_gates();
     bool fly_to_town(size_t town);
     //  The trees cut come back, as after a warp.
@@ -208,7 +204,6 @@ private:
     std::vector<MapData> m_maps;
     //  The maps as loaded, with the gates closed or open as the map says.
     std::vector<MapData> m_source_maps;
-    Pokemon::GateState m_gates;
     SimScript m_script;
     int m_map = 0;
     PlayerState m_player;
@@ -448,6 +443,8 @@ private:
     //  OPEN_GATE, PRESS_SWITCH: turned to the gate or statue, A (and YES),
     //  as use_field(). (PokemonFRLG_OverworldSimField.cpp)
     std::optional<WalkedTiles> use_gate(const RouteStep& step);
+    //  The hold of a WALK step. (PokemonFRLG_OverworldSimField.cpp)
+    Pokemon::LegSpec leg_spec(const RouteStep& step) const;
     bool after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
     bool fade_over_since(Milliseconds from) const;
     //  after_warp() on a fade seen with no warp: fails, or with
