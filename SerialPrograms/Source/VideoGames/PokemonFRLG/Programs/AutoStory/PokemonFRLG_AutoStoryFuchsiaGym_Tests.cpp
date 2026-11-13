@@ -10,6 +10,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <functional>
 #include <optional>
@@ -23,6 +24,8 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryGameArgs.h"
+#include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryMember.h"
@@ -248,7 +251,52 @@ UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id
     return true;
 }
 
+//  pokeguy's bag at Koga holds 5 Super Potions (PokemonSimulation
+//  docs/battles/pokeguy-conditions.md, ### koga): 12.01's Mart step buys up
+//  to 5, whatever the Potions cover, within its budget.
+UnitTestResult test_mart_fills_super_potions(){
+    const std::optional<Pokemon::StoryCheckpoint> row = checkpoint("12.01");
+    if (!row){
+        return "12.01 is missing.";
+    }
+    const auto step_it = std::find_if(row->steps.begin(), row->steps.end(), [](const Pokemon::StoryStep& step){
+        return step.name == "buy_super_potions";
+    });
+    if (step_it == row->steps.end()){
+        return "12.01 has no buy_super_potions step.";
+    }
+    struct Case{
+        int potions;
+        int super_potions;
+        size_t expected;
+    };
+    const Case cases[] = {{6, 0, 5}, {0, 0, 5}, {6, 2, 3}, {6, 5, 0}, {0, 7, 0}};
+    QuietLogger logger;
+    for (const Case& test : cases){
+        Supplies supplies;
+        supplies.potions = test.potions;
+        supplies.super_potions = test.super_potions;
+        Pokemon::StoryStep step = *step_it;
+        const std::optional<Pokemon::Outcome> done = cover_hp_in_mart(logger, supplies, step);
+        const std::vector<Pokemon::StoryItem>* items = game_arg<std::vector<Pokemon::StoryItem>>(step.args, "items");
+        const size_t buys = done ? 0 : (items == nullptr || items->empty() ? 0 : items->at(0).quantity);
+        if (buys != test.expected){
+            return std::format("{} Potions, {} Super Potions: buys {}, expected {}.", test.potions, test.super_potions, buys, test.expected);
+        }
+    }
+    const int64_t* budget = game_arg<int64_t>(step_it->args, "budget");
+    const int64_t* floor = game_arg<int64_t>(step_it->args, "floor");
+    if (budget == nullptr || *budget < 5 * 700 || floor == nullptr || *floor != 3762){
+        return "The step's budget doesn't cover 5 Super Potions, or its floor moved off 3762.";
+    }
+    return true;
+}
+
 const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
+    {
+        .input = {.name = "12.01's Mart fills the bag to pokeguy's 5 Super Potions", .body = test_mart_fills_super_potions},
+        .expectation = {.description = "5 bought with 6 Potions and none, fewer or none when the bag holds some"},
+    },
     {
         .input = {.name = "12.01 past Kayden and Kirk to west of Koga and 12.02 to the Warden and the nurse", .body = test_gym_rows},
         .expectation = {.description = "Kayden and Kirk fought where the table steps into their lines, no one else; ends at Fuchsia's nurse"},
