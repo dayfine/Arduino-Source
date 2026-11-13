@@ -51,8 +51,8 @@ std::vector<Pokemon::StoryActionSpec> healing_action_specs();
 //  nothing for another.
 std::optional<Pokemon::Outcome> run_healing_step(StoryEnv& env, const Pokemon::StoryStep& step);
 
-//  A MART_ACTION step with "cover_hp": its first line cut to the
-//  hp_cover_shortfall() of `supplies` (at most the plan's quantity), in
+//  A MART_ACTION step with "cover_hp" or "fill_to": its first line cut to the
+//  hp_cover_shortfall() or fill_shortfall() of `supplies` (at most the plan's quantity), in
 //  `step`. Nothing to buy: the step's Outcome, unchanged, logged. Nothing
 //  for another step, left as it was.
 std::optional<Pokemon::Outcome> cover_hp_in_mart(Logger& logger, const Supplies& supplies, Pokemon::StoryStep& step);
