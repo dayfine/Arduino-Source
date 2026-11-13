@@ -1,0 +1,101 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "17.04b",
+    "title": "Out of the gym, heal at Viridian's Center",
+    "start": {
+      "map": "ViridianCity_Gym",
+      "tiles": [
+        [
+          2,
+          3
+        ]
+      ],
+      "facing": "north"
+    },
+    "events": [
+      {
+        "id": "gym_exit",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "ViridianCity",
+            "tiles": [
+              [
+                36,
+                11
+              ]
+            ],
+            "facing": "south"
+          }
+        },
+        "why": "back through the gym to the door and out onto Viridian City below it"
+      },
+      {
+        "id": "below_center_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "ViridianCity",
+            "tiles": [
+              [
+                26,
+                27
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "west and down to below the Center's door (26, 26)"
+      },
+      {
+        "id": "viridian_nurse",
+        "kind": "game_action",
+        "action": "center_enter",
+        "declared_after": {
+          "map": "ViridianCity_PokemonCenter_1F",
+          "tiles": [
+            [
+              7,
+              4
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "the Center script in, up to the nurse"
+      },
+      {
+        "id": "heal_viridian",
+        "kind": "heal",
+        "why": "full HP and PP"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts in front of Giovanni, where 17.04 ends after his battle and saves.",
+        "Ends at Viridian's nurse (declared: the gym exit is a street tile; the Center is where the next row starts)."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {
+        "map": "ViridianCity_PokemonCenter_1F",
+        "tiles": [
+          [
+            7,
+            4
+          ]
+        ],
+        "facing": "north"
+      }
+    }
+  }
+}
