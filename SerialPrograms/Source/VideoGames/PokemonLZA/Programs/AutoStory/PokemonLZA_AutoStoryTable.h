@@ -50,6 +50,21 @@ struct StoryData{
     std::vector<std::pair<std::string, std::string>> dev_files;
 };
 
+//  How a run plays its checkpoints: the attempts each gets, and whether it
+//  reloads at the plan's boundaries.
+struct StoryRunPolicy{
+    //  Whether a run of several checkpoints reloads the save at a row of
+    //  StoryData::reload_when_chained (AT_PLAN_BOUNDARIES) or runs on from
+    //  the state the row before left (STRAIGHT_THROUGH). A failed
+    //  checkpoint's retries reload as usual either way.
+    enum class BoundaryReload{
+        AT_PLAN_BOUNDARIES,
+        STRAIGHT_THROUGH,
+    };
+    size_t attempts_per_checkpoint = 1;
+    BoundaryReload boundary_reload = BoundaryReload::AT_PLAN_BOUNDARIES;
+};
+
 //  Whether `row` of `story` saves through the menu at its end: every row
 //  but the autosave rows. The menu (X, then R) can save from the start of
 //  the story too: 01.03 saves through it after Andi (console B, 2026-11-10).

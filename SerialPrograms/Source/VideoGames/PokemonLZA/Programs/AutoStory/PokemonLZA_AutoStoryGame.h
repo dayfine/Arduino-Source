@@ -101,18 +101,9 @@ Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(
 //  carry, and there is no save or reload.
 Pokemon::StoryGame<Pokemon::ZonePose> make_offline_plza_story_game();
 
-//  Whether a run of several checkpoints reloads the save at a row of
-//  StoryData::reload_when_chained (AT_PLAN_BOUNDARIES) or runs on from the
-//  state the row before left (STRAIGHT_THROUGH). A failed checkpoint's
-//  retries reload as usual either way.
-enum class BoundaryReload{
-    AT_PLAN_BOUNDARIES,
-    STRAIGHT_THROUGH,
-};
-
 //  `rows` in order from the save the game is on, as
-//  StoryEngine::run_segment() runs them. With
-//  BoundaryReload::AT_PLAN_BOUNDARIES, a row of `story`'s
+//  StoryEngine::run_segment() runs them, `policy`'s attempts per checkpoint.
+//  With StoryRunPolicy::BoundaryReload::AT_PLAN_BOUNDARIES, a row of `story`'s
 //  reload_when_chained after the run's first starts as from its save: the
 //  run's segment stops before it, the event "reload_at_boundary" reloads
 //  the save (`game`'s reload, the autosave the row before ended on) and
@@ -121,7 +112,7 @@ enum class BoundaryReload{
 //  before such a row ends its segment, so it ends at SavePoint::RUN_END.
 Pokemon::SegmentReport run_plza_segment(
     const Pokemon::StoryGame<Pokemon::ZonePose>& game, const StoryData& story,
-    std::span<const Pokemon::StoryCheckpoint> rows, size_t attempts_per_checkpoint, BoundaryReload boundary_reload,
+    std::span<const Pokemon::StoryCheckpoint> rows, const StoryRunPolicy& policy,
     Pokemon::StoryEngine<Pokemon::ZonePose>& engine, Pokemon::StoryBackend<Pokemon::ZonePose>& backend,
     Pokemon::RunState& state
 );
