@@ -113,10 +113,6 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN_12[] = {
     "12.03   walk south 7 -> CinnabarIsland (21, 12)",
     "12.03   walk west 7 -> CinnabarIsland (14, 12)",
     "12.03   face north -> CinnabarIsland (14, 12)",
-    "12.03   walk east 8 (to wall) -> CinnabarIsland (21, 5)",
-    "12.03   walk south 7 -> CinnabarIsland (21, 12)",
-    "12.03   walk west 7 -> CinnabarIsland (14, 12)",
-    "12.03   face north -> CinnabarIsland (14, 12)",
 };
 
 //  The stored plan lines of Erika's rows, 14.03 to 14.04b, after the rows of Blaine's
