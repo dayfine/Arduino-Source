@@ -1,0 +1,177 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "map": "Route204North",
+            "tiles": [
+              [
+                20,
+                27
+              ]
+            ]
+          }
+        },
+        "id": "line_1",
+        "kind": "route",
+        "why": "a corner of the human's line"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "map": "Route204North",
+            "tiles": [
+              [
+                11,
+                27
+              ]
+            ]
+          }
+        },
+        "id": "line_2",
+        "kind": "route",
+        "why": "a corner of the human's line"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "map": "Route204North",
+            "tiles": [
+              [
+                11,
+                22
+              ]
+            ]
+          }
+        },
+        "id": "line_3",
+        "kind": "route",
+        "why": "a corner of the human's line"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "map": "Route204North",
+            "tiles": [
+              [
+                19,
+                22
+              ]
+            ]
+          }
+        },
+        "id": "line_4",
+        "kind": "route",
+        "why": "a corner of the human's line"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "map": "Route204North",
+            "tiles": [
+              [
+                19,
+                12
+              ]
+            ]
+          }
+        },
+        "id": "line_5",
+        "kind": "route",
+        "why": "a corner of the human's line"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "map": "Route204North",
+            "tiles": [
+              [
+                11,
+                12
+              ]
+            ]
+          }
+        },
+        "id": "line_6",
+        "kind": "route",
+        "why": "a corner of the human's line"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "map": "Route204North",
+            "tiles": [
+              [
+                11,
+                5
+              ]
+            ]
+          }
+        },
+        "id": "line_7",
+        "kind": "route",
+        "why": "a corner of the human's line"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "FloaromaTown",
+            "tiles": [
+              [
+                11,
+                29
+              ]
+            ]
+          }
+        },
+        "id": "into_floaroma",
+        "kind": "route",
+        "why": "north up column 11 into Floaroma"
+      },
+      {
+        "id": "save_here",
+        "kind": "save",
+        "why": "the next checkpoint starts here"
+      }
+    ],
+    "id": "01.10",
+    "start": {
+      "facing": "south",
+      "map": "Route204North",
+      "tiles": [
+        [
+          20,
+          26
+        ]
+      ]
+    },
+    "title": "Route 204 to Floaroma"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Route 204"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "metadata": {
+    "phase": "testing"
+  }
+}

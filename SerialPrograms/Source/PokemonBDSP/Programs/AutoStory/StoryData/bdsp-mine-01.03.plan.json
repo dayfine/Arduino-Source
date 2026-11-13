@@ -1,0 +1,366 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "OreburghCity",
+            "tiles": [
+              [
+                47,
+                21
+              ]
+            ]
+          }
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "OreburghCity",
+          "tiles": [
+            [
+              47,
+              21
+            ]
+          ]
+        },
+        "id": "below_the_centers_door",
+        "kind": "route",
+        "why": "below the Center's door"
+      },
+      {
+        "id": "barry",
+        "kind": "talk",
+        "why": "Barry in the Center's door"
+      },
+      {
+        "declared_after": {
+          "facing": "north",
+          "map": "OreburghCity",
+          "tiles": [
+            [
+              47,
+              21
+            ]
+          ]
+        },
+        "id": "barrys_lines",
+        "kind": "scene",
+        "why": "Roark has gone to the mine"
+      },
+      {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "south",
+            "map": "OreburghCity",
+            "tiles": [
+              [
+                46,
+                58
+              ]
+            ]
+          }
+        },
+        "id": "above_the_mine",
+        "kind": "route",
+        "why": "down the door's column to above the mine's warp tiles"
+      },
+      {
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {
+          "facing": "south",
+          "map": "OreburghMineB1F",
+          "tiles": [
+            [
+              12,
+              1
+            ]
+          ]
+        },
+        "id": "into_the_mine",
+        "kind": "step",
+        "why": "the warp tile (46, 59)"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 19
+            }
+          ]
+        },
+        "id": "down_the_hall",
+        "kind": "legs",
+        "why": "down column 12 of the entrance hall"
+      },
+      {
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {
+          "facing": "south",
+          "map": "OreburghMine",
+          "tiles": [
+            [
+              15,
+              2
+            ],
+            [
+              15,
+              1
+            ]
+          ]
+        },
+        "id": "into_the_coal_room",
+        "kind": "step",
+        "why": "the hall's warp tiles (11..13, 21)"
+      },
+      {
+        "action": "to_wall",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 9
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "south",
+          "map": "OreburghMine",
+          "tiles": [
+            [
+              15,
+              9
+            ]
+          ]
+        },
+        "id": "down_to_the_boulder",
+        "kind": "legs",
+        "why": "down the corridor to the boulder (15, 10)"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "OreburghMine",
+            "tiles": [
+              [
+                18,
+                29
+              ]
+            ]
+          }
+        },
+        "id": "below_roark",
+        "kind": "route",
+        "why": "down the corridor and the room's east side, west along the bottom row"
+      },
+      {
+        "id": "roark",
+        "kind": "talk",
+        "why": "Roark, north of us between his rocks"
+      },
+      {
+        "declared_after": {
+          "facing": "north",
+          "map": "OreburghMine",
+          "tiles": [
+            [
+              18,
+              29
+            ]
+          ]
+        },
+        "id": "roark_smashes_the_rock",
+        "kind": "scene",
+        "why": "his lines, Rock Smash on the rock east of him, and he walks off"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "OreburghMine",
+            "tiles": [
+              [
+                15,
+                2
+              ]
+            ]
+          }
+        },
+        "id": "below_the_coal_rooms_warp",
+        "kind": "route",
+        "why": "back up the corridor"
+      },
+      {
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "OreburghMineB1F",
+          "tiles": [
+            [
+              11,
+              21
+            ]
+          ]
+        },
+        "id": "up_to_the_hall",
+        "kind": "step",
+        "why": "the warp tile (15, 1)"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 19
+            }
+          ]
+        },
+        "id": "up_the_hall",
+        "kind": "legs",
+        "why": "up column 11 of the entrance hall"
+      },
+      {
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "OreburghCity",
+          "tiles": [
+            [
+              45,
+              59
+            ],
+            [
+              45,
+              58
+            ]
+          ]
+        },
+        "id": "out_of_the_mine",
+        "kind": "step",
+        "why": "the hall's warp tiles (11..13, 1)"
+      },
+      {
+        "action": "to_wall",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 3
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "OreburghCity",
+          "tiles": [
+            [
+              45,
+              57
+            ]
+          ]
+        },
+        "id": "up_to_the_mines_sign",
+        "kind": "legs",
+        "why": "north against the mine's sign (45, 56)"
+      },
+      {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "OreburghCity",
+            "tiles": [
+              [
+                47,
+                21
+              ]
+            ]
+          }
+        },
+        "id": "below_the_centers_door_again",
+        "kind": "route",
+        "why": "up to below the Center's door"
+      },
+      {
+        "declared_after": {
+          "facing": "south",
+          "map": "OreburghCity",
+          "tiles": [
+            [
+              47,
+              21
+            ],
+            [
+              46,
+              21
+            ]
+          ]
+        },
+        "id": "heal_oreburgh",
+        "kind": "heal",
+        "why": "the nurse; out onto the doorstep, where 01.04 starts"
+      }
+    ],
+    "id": "01.03",
+    "start": {
+      "map": "OreburghCity",
+      "tiles": [
+        [
+          43,
+          21
+        ],
+        [
+          44,
+          21
+        ],
+        [
+          45,
+          21
+        ],
+        [
+          43,
+          22
+        ],
+        [
+          44,
+          22
+        ],
+        [
+          45,
+          22
+        ]
+      ]
+    },
+    "title": "Oreburgh Mine to Roark"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Oreburgh City"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "metadata": {
+    "phase": "reproduction"
+  }
+}

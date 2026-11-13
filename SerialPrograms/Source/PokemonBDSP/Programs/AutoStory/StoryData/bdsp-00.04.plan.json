@@ -1,0 +1,406 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "SandgemTown",
+          "tiles": [
+            [
+              26,
+              11
+            ],
+            [
+              27,
+              11
+            ],
+            [
+              28,
+              11
+            ],
+            [
+              26,
+              12
+            ],
+            [
+              27,
+              12
+            ],
+            [
+              28,
+              12
+            ]
+          ]
+        },
+        "id": "out_of_the_lab",
+        "kind": "step",
+        "why": "out of the lab; Dawn's tour of Sandgem"
+      },
+      {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "west",
+            "map": "SandgemTown",
+            "tiles": [
+              [
+                29,
+                12
+              ]
+            ]
+          }
+        },
+        "id": "onto_the_path",
+        "kind": "route",
+        "why": "to the east end of the path below the doors' row"
+      },
+      {
+        "action": "to_map",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 40
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "west",
+          "map": "Route201",
+          "tiles": [
+            [
+              57,
+              5
+            ],
+            [
+              58,
+              5
+            ],
+            [
+              59,
+              5
+            ],
+            [
+              60,
+              5
+            ],
+            [
+              61,
+              5
+            ],
+            [
+              62,
+              5
+            ],
+            [
+              63,
+              5
+            ]
+          ]
+        },
+        "id": "to_route_201",
+        "kind": "legs",
+        "why": "run west along the path until Route 201's banner"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "TwinleafTown",
+            "tiles": [
+              [
+                20,
+                22
+              ],
+              [
+                20,
+                23
+              ],
+              [
+                20,
+                24
+              ],
+              [
+                20,
+                25
+              ],
+              [
+                20,
+                26
+              ]
+            ]
+          }
+        },
+        "id": "home",
+        "kind": "route",
+        "why": "west along Route 201 to Twinleaf, running from wild battles"
+      },
+      {
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "PlayerHouse1F",
+          "tiles": [
+            [
+              6,
+              9
+            ]
+          ]
+        },
+        "id": "into_the_house",
+        "kind": "step",
+        "why": "the house's door"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "east",
+            "map": "PlayerHouse1F",
+            "tiles": [
+              [
+                6,
+                7
+              ]
+            ]
+          }
+        },
+        "id": "beside_mom",
+        "kind": "route",
+        "why": "west of Mom at (7, 7)"
+      },
+      {
+        "id": "mom",
+        "kind": "talk",
+        "why": "Mom"
+      },
+      {
+        "declared_after": {
+          "facing": "east",
+          "map": "PlayerHouse1F",
+          "tiles": [
+            [
+              6,
+              7
+            ]
+          ]
+        },
+        "id": "mom_heals_us",
+        "kind": "scene",
+        "why": "Mom heals us; Barry's mom gives us his parcel"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "south",
+            "map": "PlayerHouse1F",
+            "tiles": [
+              [
+                5,
+                9
+              ]
+            ]
+          }
+        },
+        "id": "around_mom",
+        "kind": "route",
+        "why": "around Mom at (6, 8), to beside the door's column"
+      },
+      {
+        "action": "to_dialogue",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            }
+          ]
+        },
+        "id": "to_moms_call",
+        "kind": "legs",
+        "why": "east above the door until Mom calls"
+      },
+      {
+        "declared_after": {
+          "facing": "east",
+          "map": "TwinleafTown",
+          "tiles": [
+            [
+              19,
+              22
+            ]
+          ]
+        },
+        "id": "moms_hat",
+        "kind": "scene",
+        "why": "Mom's hat; she walks out with us"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "west",
+            "map": "Route202",
+            "tiles": [
+              [
+                22,
+                27
+              ]
+            ]
+          }
+        },
+        "id": "short_of_the_catch_tutorial",
+        "kind": "route",
+        "why": "through Sandgem onto Route 202, east of its trigger column"
+      },
+      {
+        "args": {
+          "direction": "west"
+        },
+        "id": "catch_tutorial_trigger",
+        "kind": "step",
+        "why": "the trigger (21, 25..29), VAR_ROUTE_202_STATE 0"
+      },
+      {
+        "action": "catch_tutorial",
+        "id": "catch_tutorial",
+        "kind": "game_action",
+        "why": "Dawn's catching tutorial"
+      },
+      {
+        "action": "catch_pokemon",
+        "declared_after": {
+          "map": "Route202",
+          "tiles": [
+            [
+              15,
+              25
+            ],
+            [
+              16,
+              25
+            ],
+            [
+              17,
+              25
+            ],
+            [
+              18,
+              25
+            ],
+            [
+              19,
+              25
+            ],
+            [
+              20,
+              25
+            ],
+            [
+              21,
+              25
+            ],
+            [
+              15,
+              26
+            ],
+            [
+              16,
+              26
+            ],
+            [
+              17,
+              26
+            ],
+            [
+              18,
+              26
+            ],
+            [
+              19,
+              26
+            ],
+            [
+              20,
+              26
+            ],
+            [
+              21,
+              26
+            ],
+            [
+              15,
+              27
+            ],
+            [
+              16,
+              27
+            ],
+            [
+              17,
+              27
+            ],
+            [
+              18,
+              27
+            ],
+            [
+              19,
+              27
+            ],
+            [
+              20,
+              27
+            ],
+            [
+              21,
+              27
+            ],
+            [
+              21,
+              28
+            ],
+            [
+              21,
+              29
+            ]
+          ]
+        },
+        "id": "catch_pokemon",
+        "kind": "game_action",
+        "why": "a Pokemon of our own from the grass"
+      }
+    ],
+    "id": "00.04",
+    "start": {
+      "facing": "north",
+      "map": "RowansLab",
+      "tiles": [
+        [
+          7,
+          6
+        ]
+      ]
+    },
+    "title": "Home to Mom, then Dawn's catching tutorial on Route 202"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Sandgem Town"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "metadata": {
+    "phase": "reproduction"
+  }
+}

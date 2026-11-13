@@ -1,0 +1,143 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "west",
+            "map": "FloaromaTown",
+            "tiles": [
+              [
+                3,
+                29
+              ]
+            ]
+          }
+        },
+        "id": "west_along_the_field",
+        "kind": "route",
+        "why": "west along row 29"
+      },
+      {
+        "action": "to_wall",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 5
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "FloaromaTown",
+          "tiles": [
+            [
+              4,
+              26
+            ]
+          ]
+        },
+        "id": "up_to_the_old_woman",
+        "kind": "legs",
+        "why": "north until she stops us"
+      },
+      {
+        "id": "old_woman",
+        "kind": "talk",
+        "why": "she gives Mew when a Let's Go save is on the console"
+      },
+      {
+        "declared_after": {
+          "facing": "north",
+          "map": "FloaromaTown",
+          "tiles": [
+            [
+              4,
+              26
+            ]
+          ]
+        },
+        "id": "old_woman_talks",
+        "kind": "scene",
+        "why": "her lines"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "west",
+            "map": "FloaromaTown",
+            "tiles": [
+              [
+                3,
+                26
+              ]
+            ]
+          }
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "FloaromaTown",
+          "tiles": [
+            [
+              3,
+              26
+            ]
+          ]
+        },
+        "id": "below_the_old_man",
+        "kind": "route",
+        "why": "a tile west"
+      },
+      {
+        "id": "old_man",
+        "kind": "talk",
+        "why": "he gives Jirachi with a Sword/Shield save"
+      },
+      {
+        "declared_after": {
+          "facing": "north",
+          "map": "FloaromaTown",
+          "tiles": [
+            [
+              3,
+              26
+            ]
+          ]
+        },
+        "id": "old_man_talks",
+        "kind": "scene",
+        "why": "his lines"
+      },
+      {
+        "id": "save_here",
+        "kind": "save",
+        "why": "the next checkpoint starts here"
+      }
+    ],
+    "id": "01.11",
+    "start": {
+      "facing": "north",
+      "map": "FloaromaTown",
+      "tiles": [
+        [
+          11,
+          29
+        ]
+      ]
+    },
+    "title": "Floaroma's old couple"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Floaroma Town"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "metadata": {
+    "phase": "testing"
+  }
+}

@@ -19,9 +19,11 @@
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
+#include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
+#include "PokemonBDSP_AutoStory_Indoors.h"
 #include "PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_LocationBannerWatcher.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
@@ -110,6 +112,70 @@ WarpFade WarpFadeWatch::push(const Pokemon::TransitionSample& sample){
     m_how = Pokemon::describe(*done, done->start);
     return done->kind == Pokemon::TransitionKind::FADE_BLACK ? WarpFade::BLACK : WarpFade::WHITE;
 }
+
+
+namespace detail{
+bool ViewShift::scrolled() const{
+    constexpr double LEAST_DIFFERENCE = 3;  //  standing still in the video: 0 to 1.5
+    return (dx != 0 || dy != 0) && unshifted >= LEAST_DIFFERENCE && unshifted >= 2 * shifted;
+}
+
+ViewShift walk_view_shift(const ImageViewRGB32& before, const ImageViewRGB32& after){
+    constexpr int W = 192;
+    constexpr int H = 108;
+    //  A step scrolls 2 to 10 pixels of the copy in 300 ms.
+    constexpr int REACH = 12;
+    const ImageRGB32 a = before.scale_to(W, H);
+    const ImageRGB32 b = after.scale_to(W, H);
+    //  The player's box, which moves with the camera, not with the scenery.
+    auto in_player_box = [](int x, int y){
+        return x >= W * 42 / 100 && x < W * 58 / 100 && y >= H * 30 / 100 && y < H * 75 / 100;
+    };
+    auto difference = [&](int dx, int dy){
+        uint64_t sum = 0;
+        size_t count = 0;
+        for (int y = REACH; y < H - REACH; y++){
+            for (int x = REACH; x < W - REACH; x++){
+                if (in_player_box(x, y)){
+                    continue;
+                }
+                const uint32_t p = a.pixel(x - dx, y - dy);
+                const uint32_t q = b.pixel(x, y);
+                for (int shift = 0; shift < 24; shift += 8){
+                    const int c = (int)((p >> shift) & 0xff) - (int)((q >> shift) & 0xff);
+                    sum += c < 0 ? -c : c;
+                }
+                count += 3;
+            }
+        }
+        return (double)sum / (double)count;
+    };
+    ViewShift best;
+    best.unshifted = difference(0, 0);
+    best.shifted = best.unshifted;
+    for (int dy = -REACH; dy <= REACH; dy++){
+        for (int dx = -REACH; dx <= REACH; dx++){
+            if (dx == 0 && dy == 0){
+                continue;
+            }
+            const double d = difference(dx, dy);
+            if (d < best.shifted){
+                best.shifted = d;
+                best.dx = dx;
+                best.dy = dy;
+            }
+        }
+    }
+    return best;
+}
+
+bool tap_moved(const ImageViewRGB32& before, const ImageViewRGB32& after, double line){
+    if (indoors(after)){
+        return walk_screen_change(before, after) >= line;
+    }
+    return walk_view_shift(before, after).scrolled();
+}
+} // namespace detail
 
 
 namespace{
@@ -323,8 +389,9 @@ public:
     {}
 
     WalkResult run(){
-        //  A tile a tap: 160 ms held, the rest released, so each chunk is one tile.
-        const Milliseconds CHUNK = m_spec.input == WalkInput::TAPS ? 800ms : 400ms;
+        //  A tile a tap: the step tap held, the rest released, so each chunk is one tile.
+        const Pokemon::StepTap& tap = Pokemon::BDSP_MOVE_MECHANICS.walk.tap;
+        const Milliseconds CHUNK = m_spec.input == WalkInput::TAPS ? tap.hold + tap.release : 400ms;
         m_context.wait_for_all_requests();
         m_result.started = current_time();
         m_result.events.record({}, m_result.started);
@@ -373,9 +440,11 @@ private:
 
     void press(ProControllerContext& context, Milliseconds chunk) const{
         switch (m_spec.input){
-        case WalkInput::TAPS:
-            pbf_press_dpad(context, m_dpad, 160ms, chunk - 160ms);
+        case WalkInput::TAPS:{
+            const Pokemon::StepTap& tap = Pokemon::BDSP_MOVE_MECHANICS.walk.tap;
+            pbf_press_dpad(context, m_dpad, tap.hold, chunk - tap.hold);
             return;
+        }
         case WalkInput::DPAD_RUN:
             ssf_press_button(context, BUTTON_B, 0ms, chunk, 0ms);
             ssf_press_dpad(context, m_dpad, chunk, chunk, 0ms);
@@ -438,7 +507,11 @@ private:
             m_before = std::move(after);
             return {ChunkNext::NEXT_CHUNK, WalkStop::LIMIT};
         }
-        const bool still = still_chunk(change);
+        //  Taps count what scrolled the view, not scenery that moved (r84:
+        //  cloud shadows read as steps).
+        const bool still = m_spec.input == WalkInput::TAPS
+            ? !tap_moved(*m_before.frame, *after.frame, still_line(change))
+            : change < still_line(change);
         if (!still){
             //  A quiet tap and then a moving one: the first moved too. What
             //  blocks a tap still blocks the next; the view barely changed
@@ -460,12 +533,11 @@ private:
     //  NPC measured 17.2 after steps of 63 to 65 (r250a, Floaroma's old
     //  woman), over the fixed line of 16, so for taps "still" is also
     //  anything under 40% of the walk's own steps.
-    bool still_chunk(double change){
+    double still_line(double change){
         m_largest = std::max(m_largest, change);
-        const double line = m_spec.input == WalkInput::TAPS
+        return m_spec.input == WalkInput::TAPS
             ? std::max(WALK_TAP_BLOCKED_CHANGE, 0.4 * m_largest)
             : WALK_BLOCKED_CHANGE;
-        return change < line;
     }
 
     //  What hold()'s watcher `ret` saw (see after_watchers()).
@@ -528,7 +600,7 @@ private:
         ){
             VideoSnapshot after = snapshot_or_fail(m_stream, m_spec.label);
             const double change = walk_screen_change(*m_before_still.frame, *after.frame);
-            if (!still_chunk(change)){
+            if (tap_moved(*m_before_still.frame, *after.frame, still_line(change))){
                 m_result.moved_chunks++;
             }
         }

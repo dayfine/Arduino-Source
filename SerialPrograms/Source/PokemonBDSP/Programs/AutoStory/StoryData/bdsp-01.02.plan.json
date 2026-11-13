@@ -1,0 +1,268 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "south",
+            "map": "Route203",
+            "tiles": [
+              [
+                5,
+                20
+              ]
+            ]
+          }
+        },
+        "declared_after": {
+          "facing": "south",
+          "map": "Route203",
+          "tiles": [
+            [
+              5,
+              20
+            ]
+          ]
+        },
+        "id": "south_to_the_cliff",
+        "kind": "route",
+        "why": "down the trigger's column to the cliff"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "east",
+            "map": "Route203",
+            "tiles": [
+              [
+                55,
+                9
+              ]
+            ]
+          }
+        },
+        "id": "by_the_gate",
+        "kind": "route",
+        "why": "east along Route 203 to the Gate's warp tile (55, 9)"
+      },
+      {
+        "action": "to_banner",
+        "args": {
+          "direction": "east"
+        },
+        "declared_after": {
+          "facing": "east",
+          "map": "OreburghGate",
+          "tiles": [
+            [
+              4,
+              22
+            ],
+            [
+              5,
+              22
+            ]
+          ]
+        },
+        "id": "into_oreburgh_gate",
+        "kind": "step",
+        "why": "the Gate's west mouth (56, 9)"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "east",
+            "map": "OreburghGate",
+            "tiles": [
+              [
+                6,
+                22
+              ]
+            ]
+          }
+        },
+        "id": "west_of_the_hikers_trigger",
+        "kind": "route",
+        "why": "east along row 22"
+      },
+      {
+        "args": {
+          "direction": "east"
+        },
+        "id": "hikers_trigger",
+        "kind": "step",
+        "why": "the trigger (7, 22): the Hiker walks down to us"
+      },
+      {
+        "declared_after": {
+          "facing": "east",
+          "map": "OreburghGate",
+          "tiles": [
+            [
+              7,
+              22
+            ]
+          ]
+        },
+        "id": "the_hiker",
+        "kind": "scene",
+        "why": "HM Rock Smash, then the Hidden Moves card"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "east",
+            "map": "OreburghGate",
+            "tiles": [
+              [
+                20,
+                22
+              ]
+            ]
+          }
+        },
+        "id": "past_curtis",
+        "kind": "route",
+        "why": "east along row 22 past Camper Curtis's column (17), fighting him"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "east",
+            "map": "OreburghGate",
+            "tiles": [
+              [
+                27,
+                22
+              ]
+            ]
+          }
+        },
+        "id": "by_the_east_mouth",
+        "kind": "route",
+        "why": "east past Picnicker Diana's column (24), fighting her"
+      },
+      {
+        "action": "to_banner",
+        "args": {
+          "direction": "east"
+        },
+        "declared_after": {
+          "facing": "east",
+          "map": "OreburghCity",
+          "tiles": [
+            [
+              2,
+              13
+            ],
+            [
+              3,
+              13
+            ]
+          ]
+        },
+        "id": "into_oreburgh",
+        "kind": "step",
+        "why": "the Gate's east mouth (28, 22)"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "east",
+            "map": "OreburghCity",
+            "tiles": [
+              [
+                9,
+                13
+              ]
+            ]
+          }
+        },
+        "id": "west_of_the_welcome",
+        "kind": "route",
+        "why": "east along row 13"
+      },
+      {
+        "args": {
+          "direction": "east"
+        },
+        "id": "welcome_trigger",
+        "kind": "step",
+        "why": "the trigger (10, 12..15): the man walks over"
+      },
+      {
+        "declared_after": {
+          "map": "OreburghCity",
+          "tiles": [
+            [
+              43,
+              21
+            ],
+            [
+              44,
+              21
+            ],
+            [
+              45,
+              21
+            ],
+            [
+              43,
+              22
+            ],
+            [
+              44,
+              22
+            ],
+            [
+              45,
+              22
+            ]
+          ]
+        },
+        "id": "oreburgh_welcome",
+        "kind": "scene",
+        "why": "the man's lines, the walk to the Center, and Barry's"
+      }
+    ],
+    "id": "01.02",
+    "start": {
+      "facing": "east",
+      "map": "Route203",
+      "tiles": [
+        [
+          5,
+          17
+        ],
+        [
+          5,
+          18
+        ],
+        [
+          5,
+          19
+        ],
+        [
+          5,
+          20
+        ]
+      ]
+    },
+    "title": "Route 203 to Oreburgh"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Route 203"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "metadata": {
+    "phase": "reproduction"
+  }
+}

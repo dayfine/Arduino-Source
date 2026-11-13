@@ -1,0 +1,271 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "map": "Route202",
+            "tiles": [
+              [
+                18,
+                25
+              ],
+              [
+                19,
+                25
+              ],
+              [
+                20,
+                25
+              ],
+              [
+                18,
+                26
+              ],
+              [
+                19,
+                26
+              ],
+              [
+                20,
+                26
+              ],
+              [
+                18,
+                27
+              ],
+              [
+                19,
+                27
+              ],
+              [
+                20,
+                27
+              ]
+            ]
+          }
+        },
+        "id": "to_catch_grass",
+        "kind": "route",
+        "why": "into the training column's grass"
+      },
+      {
+        "args": {
+          "battles": 3
+        },
+        "declared_after": {
+          "map": "Route202",
+          "tiles": [
+            [
+              18,
+              25
+            ],
+            [
+              19,
+              25
+            ],
+            [
+              20,
+              25
+            ],
+            [
+              18,
+              26
+            ],
+            [
+              19,
+              26
+            ],
+            [
+              20,
+              26
+            ],
+            [
+              18,
+              27
+            ],
+            [
+              19,
+              27
+            ],
+            [
+              20,
+              27
+            ]
+          ]
+        },
+        "id": "train",
+        "kind": "train",
+        "why": "three wild battles with the best move"
+      },
+      {
+        "action": "robust",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "map": "SandgemTown",
+            "tiles": [
+              [
+                29,
+                5
+              ]
+            ]
+          }
+        },
+        "id": "into_sandgem",
+        "kind": "route",
+        "why": "south down the road to above the Mart"
+      },
+      {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "SandgemTown",
+            "tiles": [
+              [
+                17,
+                11
+              ]
+            ]
+          }
+        },
+        "id": "below_center_door",
+        "kind": "route",
+        "why": "below the Center's door"
+      },
+      {
+        "declared_after": {
+          "map": "SandgemTown",
+          "tiles": [
+            [
+              16,
+              11
+            ],
+            [
+              17,
+              11
+            ],
+            [
+              18,
+              11
+            ]
+          ]
+        },
+        "id": "heal_sandgem",
+        "kind": "heal",
+        "why": "Sandgem Town Pokemon Center"
+      }
+    ],
+    "id": "00.04b",
+    "start": {
+      "map": "Route202",
+      "tiles": [
+        [
+          15,
+          25
+        ],
+        [
+          16,
+          25
+        ],
+        [
+          17,
+          25
+        ],
+        [
+          18,
+          25
+        ],
+        [
+          19,
+          25
+        ],
+        [
+          20,
+          25
+        ],
+        [
+          21,
+          25
+        ],
+        [
+          15,
+          26
+        ],
+        [
+          16,
+          26
+        ],
+        [
+          17,
+          26
+        ],
+        [
+          18,
+          26
+        ],
+        [
+          19,
+          26
+        ],
+        [
+          20,
+          26
+        ],
+        [
+          21,
+          26
+        ],
+        [
+          15,
+          27
+        ],
+        [
+          16,
+          27
+        ],
+        [
+          17,
+          27
+        ],
+        [
+          18,
+          27
+        ],
+        [
+          19,
+          27
+        ],
+        [
+          20,
+          27
+        ],
+        [
+          21,
+          27
+        ],
+        [
+          21,
+          28
+        ],
+        [
+          21,
+          29
+        ]
+      ]
+    },
+    "title": "After the catch: train and heal in Sandgem"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Route 202"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "metadata": {
+    "phase": "reproduction"
+  }
+}
