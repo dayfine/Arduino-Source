@@ -33,6 +33,16 @@ const EnumDropdownDatabase<StorySaveMode>& StorySaveMode_Database(){
 }
 
 
+const EnumDropdownDatabase<StoryBreakpoints>& StoryBreakpoints_Database(){
+    static const EnumDropdownDatabase<StoryBreakpoints> database({
+        {StoryBreakpoints::OFF,   "off",   "Off: never pause"},
+        {StoryBreakpoints::STEPS, "steps", "Steps: pause before each step"},
+        {StoryBreakpoints::LEGS,  "legs",  "Legs: pause before each step and each leg of a walk"},
+    });
+    return database;
+}
+
+
 std::string story_checkpoint_label(const StoryCheckpoint& checkpoint){
     return checkpoint.title.empty() ? checkpoint.id : std::format("{} {}", checkpoint.id, checkpoint.title);
 }
@@ -110,6 +120,13 @@ StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints, const 
         LockMode::LOCK_WHILE_RUNNING,
         false
     )
+    , BREAKPOINTS(
+        "<b>Breakpoints:</b><br>Pause before each step, or before each leg of a walk too, so you can look at the console "
+        "and then continue. Only lab builds wait; elsewhere the run goes on.",
+        StoryBreakpoints_Database(),
+        LockMode::LOCK_WHILE_RUNNING,
+        StoryBreakpoints::OFF
+    )
 {
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
     PA_ADD_OPTION(CHECKS);
@@ -117,6 +134,7 @@ StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints, const 
     PA_ADD_OPTION(VERIFY);
     PA_ADD_OPTION(SAVE_MODE);
     PA_ADD_OPTION(POSTCONDITIONS_ONLY);
+    PA_ADD_OPTION(BREAKPOINTS);
 }
 
 std::string StoryRunOptions::check_validity() const{
@@ -154,6 +172,10 @@ StoryCheckLevel StoryRunOptions::check_level() const{
 
 Language StoryRunOptions::language() const{
     return LANGUAGE;
+}
+
+StoryBreakpoints StoryRunOptions::breakpoints() const{
+    return BREAKPOINTS;
 }
 
 
