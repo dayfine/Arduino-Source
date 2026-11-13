@@ -67,6 +67,13 @@ public:
     //  screen changed less than walking would: we stand at a wall.
     virtual bool holding_against_wall(Pokemon::Direction direction, const std::string& label) = 0;
 
+    //  The location banner that shows within `wait`, "" if none. A door's
+    //  fade can go by between two frames of a walk, and the banner of the
+    //  map beyond shows a second or so after it. Nothing sees one by default.
+    virtual std::string banner_within(Milliseconds){
+        return "";
+    }
+
     //  Once the presses so far are done, shows `at` the screen, if there is one.
     virtual void look(const std::function<void(const ImageViewRGB32& screen)>& at) = 0;
 
@@ -88,6 +95,7 @@ public:
     virtual WalkResult walk_taps(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual void press(const RouteInput& input) override;
     virtual bool dialog_within(Milliseconds wait, Color color) override;
+    virtual std::string banner_within(Milliseconds wait) override;
     virtual bool holding_against_wall(Pokemon::Direction direction, const std::string& label) override;
     virtual void look(const std::function<void(const ImageViewRGB32& screen)>& at) override;
     virtual void note(const std::string& text, RouteNote kind) override;

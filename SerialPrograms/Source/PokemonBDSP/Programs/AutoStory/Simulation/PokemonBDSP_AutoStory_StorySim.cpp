@@ -326,6 +326,10 @@ WalkResult SimKnobRouteIO::slide_on(const SimSlide& slide, WalkResult result){
         note("[Sim] slid onto a warp to " + Pokemon::to_string(slide.far) + ".", RouteNote::LOG);
         m_cross(slide.far);
         m_misses.banner_up = slide.banner_up ? slide.far.map : "";
+        if (slide.fade == SimFade::UNSEEN){
+            m_misses.banner_soon = slide.far.map;
+            return result;
+        }
         const double brightness = slide.fade == SimFade::BLACK ? SIM_DOOR_FADE : slide.fade == SimFade::DIM ? SIM_DIM_FADE : SIM_WHITE_FADE;
         result.warp.fade = fade_of(sim_screen(brightness, SIM_FADE_STDDEV));
         if (result.warp.fade != WarpFade::NONE){
@@ -334,6 +338,10 @@ WalkResult SimKnobRouteIO::slide_on(const SimSlide& slide, WalkResult result){
         return result;
     }
     return result;
+}
+
+std::string SimKnobRouteIO::banner_within(Milliseconds){
+    return std::exchange(m_misses.banner_soon, "");
 }
 
 bool SimKnobRouteIO::dialog_within(Milliseconds wait, Color color){

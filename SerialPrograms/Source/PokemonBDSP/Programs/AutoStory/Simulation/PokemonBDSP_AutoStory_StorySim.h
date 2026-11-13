@@ -79,6 +79,9 @@ struct SimMisses{
     bool fading_in = false;
     bool slid = false;
     std::string banner_up = {};
+    //  The map whose banner shows a second after a fade the walk missed
+    //  (SimFade::UNSEEN): only a look within a wait reads it.
+    std::string banner_soon = {};
 };
 
 //  How a warp's fade looks on the screen (#268's design note); the
@@ -93,6 +96,10 @@ enum class SimFade{
     //  A cave exit's white. The walk's old encounter-flash watcher read it
     //  as a wild battle.
     WHITE,
+    //  A door's fade the walk's frames miss (a short one between two): the
+    //  walk goes on as if nothing happened and only the banner, a second or
+    //  so later, shows the far map (lab-B 2026-11-12, 01.02's east mouth).
+    UNSEEN,
 };
 
 //  An open leg that runs on past its end: the walk taps of the step `step`
@@ -234,6 +241,7 @@ public:
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override;
     virtual WalkResult walk_taps(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual bool dialog_within(Milliseconds wait, Color color) override;
+    virtual std::string banner_within(Milliseconds wait) override;
     //  With SimWorldKnobs::slow_fade_in, fails the move `label` if the last
     //  warp is still fading in (SimMisses::fading_in).
     void check_fade_in(const std::string& label);

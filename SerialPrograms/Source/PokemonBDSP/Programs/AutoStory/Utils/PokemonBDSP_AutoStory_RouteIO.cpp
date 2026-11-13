@@ -10,6 +10,7 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
+#include "PokemonBDSP_AutoStory_LocationBannerWatcher.h"
 #include "PokemonBDSP_AutoStory_RouteIO.h"
 #include "PokemonBDSP_AutoStory_WalkDpad.h"
 #include "PokemonBDSP_AutoStory_WalkResult.h"
@@ -67,6 +68,12 @@ void ConsoleRouteIO::press(const RouteInput& input){
 bool ConsoleRouteIO::dialog_within(Milliseconds wait, Color color){
     ShortDialogWatcher dialog(color);
     return wait_until(m_stream, m_context, wait, {{dialog}}) == 0;
+}
+
+std::string ConsoleRouteIO::banner_within(Milliseconds wait){
+    LocationBannerWatcher banner;
+    wait_until(m_stream, m_context, wait, {{banner}});
+    return banner.seen();
 }
 
 bool ConsoleRouteIO::holding_against_wall(Direction direction, const std::string& label){

@@ -47,6 +47,12 @@ std::string read_save_screen_location(const ImageViewRGB32& screen);
 //  read as Route 202.
 bool location_banner_matches(const std::string& read, const std::string& expected);
 
+//  Whether the banner's `read` is surely not the map `current`'s: a stricter
+//  test than !location_banner_matches(), which forgives a quarter of the
+//  letters ("Oreburgh City" matches "Oreburgh Gate" within it). Only an
+//  OCR slip or two (a sixth of the letters) still reads as `current`.
+bool location_banner_is_another(const std::string& read, const std::string& current);
+
 
 
 } // namespace PokemonBDSP
