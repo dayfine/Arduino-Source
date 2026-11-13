@@ -5,13 +5,19 @@
  */
 
 #include <format>
+#include <optional>
+#include <string_view>
+#include <vector>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
+#include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_KeyboardCodeEntry.h"
 #include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapDetector.h"
+#include "PokemonLZA_AutoStoryIntro.h"
+#include "PokemonLZA_AutoStoryIntroScreens.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 
 namespace PokemonAutomation{
@@ -154,40 +160,118 @@ void mash_scene(
 }
 
 
-void new_game_language(ConsoleHandle&, ProControllerContext& context){
-    //  TODO: a title screen and a language list detector; the waits are guesses.
-    pbf_press_button(context, BUTTON_A, 160ms, 5000ms);
-    pbf_press_button(context, BUTTON_A, 160ms, 5000ms);
-    context.wait_for_all_requests();
-}
+namespace{
 
-void pick_first_look(ConsoleHandle&, ProControllerContext& context){
-    //  TODO: the shared MenuCursor (BDSP #305) once it reaches this branch,
-    //  to read the highlight instead of relying on the edges clamping.
-    pbf_press_dpad(context, DPAD_UP, 160ms, 400ms);
-    for (int i = 0; i < 3; i++){
-        pbf_press_dpad(context, DPAD_LEFT, 160ms, 400ms);
+//  The intro's screens are waited for by time until their detectors exist
+//  (PokemonLZA_AutoStoryIntro.h): until `is_screen` says the screen is up or
+//  `fixed_wait` passes. Either way the screen's frame is saved to
+//  DebugDumps, so a run records each one for the detectors' captures.
+void wait_for_intro_screen(
+    ConsoleHandle& console, ProControllerContext& context,
+    std::string_view screen, bool (*is_screen)(const ImageViewRGB32&), Milliseconds fixed_wait
+){
+    const WallClock deadline = current_time() + fixed_wait;
+    bool seen = false;
+    while (current_time() < deadline){
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = console.video().snapshot();
+        if (frame && is_screen(frame)){
+            seen = true;
+            break;
+        }
+        context.wait_for(250ms);
     }
-    pbf_press_button(context, BUTTON_A, 160ms, 3000ms);
     context.wait_for_all_requests();
+    const VideoSnapshot frame = console.video().snapshot();
+    console.log(std::format(
+        "AutoStory intro: {}: {} (waited up to {} ms).",
+        screen, seen ? "detected" : "not detected; the detector is not written, so the wait is fixed", fixed_wait.count()
+    ));
+    if (frame){
+        dump_debug_image(console, "PokemonLZA/AutoStory/Intro", std::string(screen), frame);
+    }
 }
 
-void type_player_name(ConsoleHandle& console, ProControllerContext& context, const std::string& name){
-    //  TODO: a keyboard detector instead of the wait.
-    context.wait_for(3000ms);
-    //  The system keyboard types lowercase. Its Shift (stick click) caps
-    //  the next letter only, so it goes right before the name. Code entry
-    //  takes upper case letters only and presses their keys, so the rest of
-    //  the name comes out lower case.
-    std::string keys = name;
-    for (char& ch : keys){
-        if ('a' <= ch && ch <= 'z'){
-            ch = (char)(ch - 'a' + 'A');
+void press_intro_keys(
+    ConsoleHandle& console, ProControllerContext& context,
+    const std::vector<IntroKey>& presses, Milliseconds after_last
+){
+    for (size_t i = 0; i < presses.size(); i++){
+        const IntroKey key = presses[i];
+        const Milliseconds release = i + 1 == presses.size() ? after_last : 400ms;
+        switch (key){
+        case IntroKey::UP:
+            console.log("AutoStory intro: UP.");
+            pbf_press_dpad(context, DPAD_UP, 160ms, release);
+            break;
+        case IntroKey::DOWN:
+            console.log("AutoStory intro: DOWN.");
+            pbf_press_dpad(context, DPAD_DOWN, 160ms, release);
+            break;
+        case IntroKey::LEFT:
+            console.log("AutoStory intro: LEFT.");
+            pbf_press_dpad(context, DPAD_LEFT, 160ms, release);
+            break;
+        case IntroKey::RIGHT:
+            console.log("AutoStory intro: RIGHT.");
+            pbf_press_dpad(context, DPAD_RIGHT, 160ms, release);
+            break;
+        case IntroKey::A:
+            console.log("AutoStory intro: A.");
+            pbf_press_button(context, BUTTON_A, 160ms, release);
+            break;
         }
     }
-    pbf_press_button(context, BUTTON_LCLICK, 160ms, 400ms);
     context.wait_for_all_requests();
-    FastCodeEntry::keyboard_enter_code(console, context, true, KeyboardLayout::QWERTY, keys, true);
+}
+
+} // namespace
+
+
+void new_game_language(ConsoleHandle& console, ProControllerContext& context, Language language){
+    const std::optional<std::vector<IntroKey>> presses = language_list_presses(language);
+    if (!presses){
+        throw UserSetupError(console, "AutoStory: the new game's language list has no such language.");
+    }
+    console.log(std::format("AutoStory intro: language {}: {} presses.", language_data(language).code, presses->size()));
+    //  TODO: a title screen detector; the wait is a guess.
+    pbf_press_button(context, BUTTON_A, 160ms, 500ms);
+    wait_for_intro_screen(console, context, "language-list", is_language_list, 5000ms);
+    press_intro_keys(console, context, *presses, 5000ms);
+}
+
+void pick_player_look(ConsoleHandle& console, ProControllerContext& context, size_t look){
+    const std::optional<std::vector<IntroKey>> presses = look_picker_presses(look);
+    if (!presses){
+        throw UserSetupError(console, std::format("AutoStory: the player look must be 1 to {}.", LOOK_COUNT));
+    }
+    console.log(std::format("AutoStory intro: look {} of {}.", look, LOOK_COUNT));
+    //  The language's A already waited 5 s for this screen.
+    wait_for_intro_screen(console, context, "look-picker", is_look_picker, 0ms);
+    press_intro_keys(console, context, *presses, 3000ms);
+}
+
+void type_player_name(
+    ConsoleHandle& console, ProControllerContext& context,
+    const std::string& name, bool first_letter_auto_caps
+){
+    const std::optional<NameKeys> plan = name_keys(name, first_letter_auto_caps);
+    if (!plan){
+        throw UserSetupError(console, std::format("AutoStory: the player name \"{}\" cannot be typed.", name));
+    }
+    wait_for_intro_screen(console, context, "keyboard", is_keyboard, 3000ms);
+    console.log(std::format(
+        "AutoStory intro: typing \"{}\": keys {}, Shift first {}, keyboard capitalizes the first letter {}.",
+        name, plan->keys, plan->shift_first, first_letter_auto_caps
+    ));
+    //  Code entry takes upper case letters and digits only and presses
+    //  their keys. The keyboard types lower case; Shift capitalizes the next
+    //  letter only, so it goes right before the name.
+    if (plan->shift_first){
+        pbf_press_button(context, BUTTON_LCLICK, 160ms, 400ms);
+        context.wait_for_all_requests();
+    }
+    FastCodeEntry::keyboard_enter_code(console, context, true, KeyboardLayout::QWERTY, plan->keys, true);
     context.wait_for(1000ms);
     //  PLUS is the keyboard's OK. "Confirm Choices" opens on "Change hair
     //  color"; "Ready!" is two rows down (console B, 2026-11-10).
