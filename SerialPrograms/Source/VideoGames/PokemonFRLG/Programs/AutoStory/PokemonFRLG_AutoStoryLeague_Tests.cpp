@@ -74,11 +74,11 @@ const StoryCheckpoint& league_row(std::string_view id){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No checkpoint {}.", id));
 }
 
-//  Runs the walking steps of `row` on `sim` up to (not including) the step
+//  Runs the walking steps of `row` on `sim`, from `at`, up to (not including) the step
 //  named `until`, or all of them if `until` is empty. The other steps (the
 //  Mart, the level checks, the heals, the scenes and the battles) are the
 //  console's.
-std::string walk_league_row(OverworldSim& sim, StoryPose& at, const StoryCheckpoint& row, std::string_view until){
+std::string walk_league_row(const StoryCheckpoint& row, std::string_view until, OverworldSim& sim, StoryPose& at){
     for (const StoryStep& step : row.steps){
         if (step.name == until){
             return "";
@@ -100,7 +100,7 @@ UnitTestResult walk_to_room(std::string_view id, std::string_view until, std::st
     const StoryCheckpoint& row = league_row(id);
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
-    if (const std::string failure = walk_league_row(sim, at, row, until); !failure.empty()){
+    if (const std::string failure = walk_league_row(row, until, sim, at); !failure.empty()){
         return failure;
     }
     if (sim.state().position.map != room){
@@ -121,7 +121,7 @@ UnitTestResult walk_to_door(std::string_view id, std::string_view door, const Ma
     const StoryCheckpoint& row = league_row(id);
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
-    if (const std::string failure = walk_league_row(sim, at, row, door); !failure.empty()){
+    if (const std::string failure = walk_league_row(row, door, sim, at); !failure.empty()){
         return failure;
     }
     if (!(sim.state().position == below) || sim.state().facing != Direction::NORTH){
@@ -138,7 +138,7 @@ UnitTestResult test_indigo_mart_counter(){
     const StoryCheckpoint& shop = league_row("20.01a");
     StoryPose at = *story_pose(Pokemon::pose_of(*shop.start));
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
-    if (const std::string failure = walk_league_row(sim, at, shop, ""); !failure.empty()){
+    if (const std::string failure = walk_league_row(shop, "", sim, at); !failure.empty()){
         return failure;
     }
     const MapPosition counter{"IndigoPlateau_PokemonCenter_1F", {2, 7}};
@@ -178,13 +178,16 @@ UnitTestResult check_foe_threats(std::string_view id, std::string_view battle, c
     return true;
 }
 
-UnitTestResult test_foe_threats_are_the_generators(){
-    struct Fight{
-        std::string_view id;
-        std::string_view battle;
-        std::vector<std::vector<int64_t>> rows;
-    };
-    const Fight fights[] = {
+//  A League battle and its generator's rows.
+struct LeagueFight{
+    std::string_view id;
+    std::string_view battle;
+    std::vector<std::vector<int64_t>> rows;
+};
+
+//  The generator's rows for the five League battles, in the doc's foe order.
+std::vector<LeagueFight> league_fights(){
+    return {
         {"20.01", "lorelei", {
             {93, 21, 13, 45, 22, 0, 0},     //  Dewgong
             {91, 0, 0, 0, 15, 0, 0},        //  Cloyster
@@ -222,7 +225,10 @@ UnitTestResult test_foe_threats_are_the_generators(){
             {125, 217, 218, 444, 222, 0, 0},//  Venusaur
         }},
     };
-    for (const Fight& fight : fights){
+}
+
+UnitTestResult test_foe_threats_are_the_generators(){
+    for (const LeagueFight& fight : league_fights()){
         UnitTestResult result = check_foe_threats(fight.id, fight.battle, fight.rows);
         if (result.result != UnitTestResult::PASSED){
             return result;
