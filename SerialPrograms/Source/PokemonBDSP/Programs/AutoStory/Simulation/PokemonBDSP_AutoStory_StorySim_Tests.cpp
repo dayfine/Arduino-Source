@@ -87,10 +87,10 @@ UnitTestResult run_exit_test(Logger& logger, const std::string& row_id, const St
         return "the table's row fails without misses: " + clean.result().error;
     }
     std::vector<SimMisses> runs;
-    for (size_t i = 0; i < looked_for(clean.misses().fade_chances); i++){
+    for (size_t i = 0; i < clean.misses().fades; i++){
         runs.push_back({.fade = i, .banner = std::nullopt});
     }
-    for (size_t i = 0; i < looked_for(clean.misses().banner_chances); i++){
+    for (size_t i = 0; i < clean.misses().banners; i++){
         runs.push_back({.fade = std::nullopt, .banner = i});
     }
     for (const SimMisses& m : runs){
@@ -149,10 +149,10 @@ UnitTestResult test_story_sim_misses(Logger& logger){
     if (!run_rows_on(clean, logger, range).completed){
         return "the run fails without misses: " + clean.result().error;
     }
-    logger.log(std::format("{} fades and {} banners to miss.", looked_for(clean.misses().fade_chances), looked_for(clean.misses().banner_chances)));
+    logger.log(std::format("{} fades and {} banners to miss.", clean.misses().fades, clean.misses().banners));
     std::vector<std::string> unseen;
-    for (size_t i = 0; i < looked_for(clean.misses().fade_chances) + looked_for(clean.misses().banner_chances); i++){
-        const std::string line = miss(logger, clean.result(), i < looked_for(clean.misses().fade_chances), i < looked_for(clean.misses().fade_chances) ? i : i - looked_for(clean.misses().fade_chances));
+    for (size_t i = 0; i < clean.misses().fades + clean.misses().banners; i++){
+        const std::string line = miss(logger, clean.result(), i < clean.misses().fades, i < clean.misses().fades ? i : i - clean.misses().fades);
         if (!line.empty()){
             unseen.push_back(line);
         }
@@ -220,10 +220,10 @@ UnitTestResult test_tap_through_already(Logger& logger, bool banner){
     const SimRun& run = through.result();
     const std::optional<TilePos> at = run.world ? story_to_local(*run.world, "OreburghGate", run.end) : std::nullopt;
     const bool passed = banner
-        ? run.error.empty() && looked_for(through.misses().fade_chances) + 1 == looked_for(clean.misses().fade_chances)
+        ? run.error.empty() && through.misses().fades + 1 == clean.misses().fades
         : run.failed_step == "01.05 into_oreburgh_gate" && at && at->y == 22 && at->x >= 21;
     return passed ? UnitTestResult(true) : UnitTestResult(std::format("failed in '{}' on {} after {} fades (clean {}): {}",
-        run.failed_step, end_of(run), looked_for(through.misses().fade_chances), looked_for(clean.misses().fade_chances), run.error.empty() ? "no failure" : run.error));
+        run.failed_step, end_of(run), through.misses().fades, clean.misses().fades, run.error.empty() ? "no failure" : run.error));
 }
 
 UnitTestResult test_story_sim_step_failure(Logger& logger, const std::string& row, const StoryStep& old_step, const std::string& expected_failed_step, const std::string& expected_error){
@@ -243,7 +243,7 @@ UnitTestResult test_story_sim_step_failure(Logger& logger, const std::string& ro
 UnitTestResult test_heal_fade_unseen(Logger& logger){
     SimExecutor clean(logger);
     run_rows_on(clean, logger, {.from = "01.03", .to = "01.03"});
-    for (size_t i = 0; i < looked_for(clean.misses().fade_chances); i++){
+    for (size_t i = 0; i < clean.misses().fades; i++){
         SimExecutor sim(logger, {.fade = i, .banner = {}});
         run_rows_on(sim, logger, {.from = "01.03", .to = "01.03"});
         const SimRun& run = sim.result();

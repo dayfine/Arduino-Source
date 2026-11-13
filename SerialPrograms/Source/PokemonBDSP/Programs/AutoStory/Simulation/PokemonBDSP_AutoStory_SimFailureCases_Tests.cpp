@@ -180,13 +180,13 @@ UnitTestResult every_single_miss(Logger& logger, const std::set<std::string>& sk
                 run->failed_step, run->error));
         }
     };
-    for (size_t i = 0; i < looked_for(clean.misses().fade_chances); i++){
+    for (size_t i = 0; i < clean.misses().fades; i++){
         miss(true, i);
     }
-    for (size_t i = 0; i < looked_for(clean.misses().banner_chances); i++){
+    for (size_t i = 0; i < clean.misses().banners; i++){
         miss(false, i);
     }
-    std::string out = std::format("{} of {} single misses fail their row:", failed.size(), looked_for(clean.misses().fade_chances) + looked_for(clean.misses().banner_chances));
+    std::string out = std::format("{} of {} single misses fail their row:", failed.size(), clean.misses().fades + clean.misses().banners);
     for (const std::string& line : failed){
         out += "\n  " + line;
     }
@@ -203,13 +203,13 @@ UnitTestResult every_single_hold_miss(Logger& logger){
         return "the run fails without misses: " + clean.result().error;
     }
     std::vector<std::string> failed;
-    for (size_t i = 0; i < looked_for(clean.misses().fade_chances); i++){
+    for (size_t i = 0; i < clean.misses().fades; i++){
         const std::optional<SimRun> run = run_single_miss(logger, clean.result().rows, SingleMiss::HOLD, i);
         if (run){
             failed.push_back(std::format("fade {}'s hold unseen: stopped in {}: {}", i, run->failed_step, run->error));
         }
     }
-    std::string out = std::format("{} of {} fades with their hold unseen fail their row:", failed.size(), looked_for(clean.misses().fade_chances));
+    std::string out = std::format("{} of {} fades with their hold unseen fail their row:", failed.size(), clean.misses().fades);
     for (const std::string& line : failed){
         out += "\n  " + line;
     }
