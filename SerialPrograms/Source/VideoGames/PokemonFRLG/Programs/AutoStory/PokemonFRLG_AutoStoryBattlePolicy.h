@@ -73,6 +73,9 @@ struct PolicyStages{
     int mist_turns = 0;
 };
 
+//  A trainer battle's plan is over: its party, items and policy go from `supplies`.
+void end_trainer_battle(Supplies& supplies);
+
 //  The lead's side of the battle as the policy tracks it: the stages and
 //  Mist from the items used and the effects reported.
 class PolicyState{

@@ -267,11 +267,7 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     }
     const BattleKind kind = arg<bool>(step, "run") ? BattleKind::WILD_RUN : BattleKind::TRAINER;
     const BattleEnd end = fight_battle(env.console, env.context, env.supplies, kind, env.checks, env.language);
-    env.supplies.foes.clear();
-    env.supplies.trainer.clear();
-    env.supplies.foe_out.clear();
-    env.supplies.battle_items.clear();
-    env.supplies.policy = {};
+    end_trainer_battle(env.supplies);
     if (end == BattleEnd::LOST && !arg<bool>(step, "may_lose")){
         return Pokemon::outcome_failed("blackout");
     }
