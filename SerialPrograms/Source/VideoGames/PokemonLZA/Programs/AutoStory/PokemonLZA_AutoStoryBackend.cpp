@@ -12,6 +12,7 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Color.h"
+#include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
@@ -191,6 +192,9 @@ std::optional<std::string> AutosaveSpots::on_look(bool badge, WallClock when){
 void PlzaConsoleBackend::log(std::string_view line){
     m_autosave_spots.on_log(line);
     m_env.env.console.log(std::string(line), COLOR_BLUE);
+    //  The checkpoint, the step under way and the autosaves, for whoever
+    //  watches the stream: the engine's lines all come through here.
+    m_env.env.console.overlay().add_log(std::string(line));
 }
 
 CancellableScope& PlzaConsoleBackend::scope(){
