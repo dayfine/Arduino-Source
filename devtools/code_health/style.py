@@ -641,17 +641,20 @@ def header_comments(path, lines, parsed, changed):
 
 
 def structures(parsed):
-    """Local aggregate definitions and their directly declared fields."""
+    """Local aggregate definitions by qualified name (`Case::Input`) and their directly
+    declared fields; a field type naming a struct nested in the owner resolves to it."""
     found = {}
     for statement, enclosing in scopes(parsed):
+        owner = '::'.join(name for kind, name in enclosing if kind == 'class')
         match = re.match(r'struct\s+(\w+)\b', statement.text)
         if match and statement.end == '{':
-            found[match.group(1)] = {}
+            found[(owner + '::' if owner else '') + match.group(1)] = {}
         elif enclosing and enclosing[-1][0] == 'class' and statement.end == ';':
-            fields = found.get(enclosing[-1][1])
+            fields = found.get(owner)
             field = re.fullmatch(r'([\w:<> ,]+?)\s+(\w+)\s*(?:=.*)?', statement.text)
             if fields is not None and field:
-                fields[field.group(2)] = field.group(1)
+                nested = owner + '::' + field.group(1)
+                fields[field.group(2)] = nested if nested in found else field.group(1)
     return found
 
 
@@ -712,13 +715,13 @@ def native_cases(path, code, parsed, changed):
         if not edited:
             continue
         case = case_type(test.group(1), parsed)
-        fields = definitions.get(case, {})
-        valid_fields = set(fields) == {'input', 'expectation'} and all(
-            field in definitions for field in fields.values())
+        valid_fields = definitions.get(case) == {'input': f'{case}::Input',
+                                                 'expectation': f'{case}::Expectation'}
         if not case or not valid_fields or not case_table(case, code):
             errors.append(Finding(path, statement.line,
-                'test-case: construct each UnitTest from one case struct with input and expectation '
-                'struct fields; register a named table of designated cases in a range-for'))
+                'test-case: construct each UnitTest from one case struct that defines nested '
+                'Input and Expectation structs and has exactly the fields input and expectation; '
+                'register a named table of designated cases in a range-for'))
     return errors
 
 
