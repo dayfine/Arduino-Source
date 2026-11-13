@@ -17,6 +17,7 @@
 #include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
 #include "Pokemon_AutoStoryStats_Tests.h"
+#include "Pokemon_CheckpointRetry_Tests.h"
 #include "Pokemon_ScreenEvents_Tests.h"
 #include "Pokemon_StoryEvents_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
@@ -33,6 +34,7 @@ namespace Pokemon{
 inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_AutoStorySelect(database);
     add_tests_AutoStoryStats(database);
+    add_tests_CheckpointRetry(database);
     add_tests_StoryLog(database);
     add_tests_StoryRangeOptions(database);
     add_tests_StoryEvents(database);

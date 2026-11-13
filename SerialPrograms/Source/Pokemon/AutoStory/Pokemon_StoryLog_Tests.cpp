@@ -5,7 +5,9 @@
  */
 
 #include <format>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_StoryLog.h"
@@ -51,6 +53,9 @@ private:
     const StoryLogTestCase m_case;
 };
 
+//  SV's display text for a checkpoint, which already says "Checkpoint::".
+constexpr std::string_view SV_TEXT = "Checkpoint:: 004 - 02. Start point: X";
+
 const StoryLogTestCase STORY_LOG_CASES[] = {
     {
         .input = {.name = "event", .line = event_log_line("00.04", 3, "talk_mom", "start")},
@@ -87,6 +92,22 @@ const StoryLogTestCase STORY_LOG_CASES[] = {
     {
         .input = {.name = "reset", .line = checkpoint_reset_line("00.04", 2)},
         .expectation = {.line = "[Checkpoint] 00.04: failed, resetting for attempt 2"},
+    },
+    {
+        .input = {.name = "start with display text", .line = checkpoint_start_line("004", std::nullopt, SV_TEXT)},
+        .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: start"},
+    },
+    {
+        .input = {.name = "attempt with display text", .line = checkpoint_attempt_line("004", 2, 100, SV_TEXT)},
+        .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: attempt 2/100"},
+    },
+    {
+        .input = {.name = "pass with display text", .line = checkpoint_pass_line("004", 2, SV_TEXT)},
+        .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: passed on attempt 2 (1 reset)"},
+    },
+    {
+        .input = {.name = "reset with display text", .line = checkpoint_reset_line("004", 2, SV_TEXT)},
+        .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: failed, resetting for attempt 2"},
     },
     {
         .input = {.name = "reload within a segment", .line = segment_reload_line("00", "00.02", 2, 3)},
