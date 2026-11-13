@@ -9,16 +9,20 @@
  *
  */
 
+#include <algorithm>
+#include <format>
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryTrainers.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteTiming.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 #include "PokemonBDSP_AutoStory_BadgeCheck.h"
 #include "PokemonBDSP_AutoStory_GymOpponent.h"
+#include "PokemonBDSP_AutoStory_TalkFight.h"
 #include "PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walks.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
@@ -69,6 +73,18 @@ void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
     fail_step(stream, "Oreburgh: no column near the gym's door went in.");
 }
 
+//  The gym's column as tiles north of the entrance: where the farthest gym
+//  trainer stops us, and the tile in front of Roark.
+GymColumn oreburgh_gym_column(){
+    const Pokemon::TilePos entrance = map_point("OreburghGym", "entrance");
+    const Pokemon::TilePos roark = map_point("OreburghGym", "roark");
+    int last_trainer = 0;
+    for (const TrainerSight& trainer : oreburgh_gym_trainer_sights()){
+        last_trainer = std::max(last_trainer, entrance.y - trainer.pos.y);
+    }
+    return GymColumn(last_trainer, entrance.y - roark.y - 1, ROUTE_MS_PER_TILE_UP_DOWN);
+}
+
 //  How a meeting with someone in the gym ended.
 enum class GymMeeting{
     TALKED,         //  No battle: someone beaten, or a line only.
@@ -77,28 +93,37 @@ enum class GymMeeting{
     LEADER_WON,
 };
 
-//  A talk has opened: the opponent is whoever `trainers` says is next, never
-//  "whoever the walk met" (lab-B, 2026-11-12 22:50: the second trainer,
-//  met by a blocked walk and an A press, was fought as Roark, and 01.05
-//  saved with no badge).
-GymMeeting meet_gym_opponent(VideoStream& stream, ProControllerContext& context, GymTrainers& trainers){
-    const bool leader = trainers.leader_next();
-    const std::string label = trainers.next_label();
-    //  His lines pause for more than 4 s before the battle (r210d: "only
-    //  talked"), so Roark's battle is expected; his badge speech is over
-    //  when talk_or_fight() returns (confirm_battle_overworld()).
-    const bool fought = talk_or_fight(stream, context, label, leader ? TalkExpect::BATTLE : TalkExpect::TALK_OR_BATTLE);
-    if (!fought){
+//  A talk has opened. Who it is, is what the battle's intro text says ("You
+//  are challenged by Gym Leader Roark!"), read on the screen by
+//  fight_story_battle(): never the count of trainers beaten or the distance
+//  walked (lab-B, 2026-11-12 22:50: the second trainer, met by a blocked walk
+//  and an A press, was fought as Roark, and 01.05 saved with no badge; 23:49:
+//  after a reload Roark was "Gym trainer 1"). The column only hints, and says
+//  how to wait: Roark's lines pause for more than 4 s before the battle
+//  (r210d: "only talked"), so up at his tile a battle is expected. An intro
+//  that was not read fails the step: the next one would be a guess.
+GymMeeting meet_gym_opponent(VideoStream& stream, ProControllerContext& context, const GymColumn& column){
+    const bool leader_hint = column.leader_here();
+    stream.log(std::format("[01.04] About {:.1f} tiles up the gym (a hint, not the opponent: {}).",
+        column.tiles(), leader_hint ? "Roark's tile" : "a trainer's"));
+    //  His badge speech is over when talk_or_fight_who() returns (confirm_battle_overworld()).
+    const TalkFight met = talk_or_fight_who(stream, context, "Gym opponent", leader_hint ? TalkExpect::BATTLE : TalkExpect::TALK_OR_BATTLE);
+    if (!met.fought){
         return GymMeeting::TALKED;
     }
     if (in_pokemon_center(stream)){
         return GymMeeting::LOST;
     }
-    if (leader){
+    stream.log(std::format("[01.04] The intro text says the opponent was the {}.", battle_opponent_name(met.opponent)));
+    switch (met.opponent){
+    case BattleOpponent::LEADER:
         return GymMeeting::LEADER_WON;
+    case BattleOpponent::TRAINER:
+        return GymMeeting::TRAINER_WON;
+    case BattleOpponent::UNREAD:
+        break;
     }
-    trainers.record_win();
-    return GymMeeting::TRAINER_WON;
+    fail_step(stream, "Oreburgh Gym: the battle's intro text was not read (English text only), so the opponent is not known to be a trainer or Roark.");
 }
 
 //  Inside the Oreburgh Gym: straight up the middle, fighting the trainers
@@ -106,21 +131,23 @@ GymMeeting meet_gym_opponent(VideoStream& stream, ProControllerContext& context,
 //  false after a whiteout, which leaves us in the Pokemon Center.
 //  Walking straight up meets both gym trainers (one at the entrance, one on
 //  the second tier); their experience helps an under-levelled team, and
-//  after a whiteout they stay beaten (`trainers` keeps the count). Butters'
+//  after a whiteout they stay beaten. Butters'
 //  route goes round them.
-bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context, GymTrainers& trainers){
+bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context, GymColumn& column){
+    column.restart();
     // The entry camera pans for about 7.5 s (Butters' reference video).
     context.wait_for(8000ms);
     if (dialogue_opens(stream, context, 3000ms)){
-        if (meet_gym_opponent(stream, context, trainers) == GymMeeting::LOST){
+        if (meet_gym_opponent(stream, context, column) == GymMeeting::LOST){
             return false;
         }
     }
     size_t stuck = 0;
     for (size_t leg = 0; leg < 10; leg++){
         const WalkResult up = walk_until_no_wild(stream, context, {0, 1}, 8000ms, "north up the gym");
+        column.walked_north(up.walked);
         if (up.stop == WalkStop::DIALOG){
-            switch (meet_gym_opponent(stream, context, trainers)){
+            switch (meet_gym_opponent(stream, context, column)){
             case GymMeeting::LOST:
                 return false;
             case GymMeeting::LEADER_WON:
@@ -139,10 +166,7 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context, Gy
         // north: a turn tap that way would be a step.
         pbf_press_button(context, BUTTON_A, 80ms, 200ms);
         if (dialogue_opens(stream, context, 3000ms)){
-            if (!trainers.leader_next()){
-                stream.log("[01.04] Blocked with a gym trainer still to beat: the talk is not Roark's.");
-            }
-            switch (meet_gym_opponent(stream, context, trainers)){
+            switch (meet_gym_opponent(stream, context, column)){
             case GymMeeting::LOST:
                 return false;
             case GymMeeting::LEADER_WON:
@@ -164,11 +188,11 @@ void gym_until_roark_beaten(VideoStream& stream, ProControllerContext& context, 
     // Losing costs some money and keeps the experience, so each try comes
     // back stronger: Roark won twice by hand against Piplup Lv 10 and 14 and
     // lost the third time.
-    GymTrainers trainers(oreburgh_gym_trainer_sights().size());
+    GymColumn column = oreburgh_gym_column();
     bool won = false;
     for (size_t attempt = 0; attempt < 5 && !won; attempt++){
         oreburgh_street_to_gym(stream, context);
-        won = oreburgh_gym_battles(stream, context, trainers);
+        won = oreburgh_gym_battles(stream, context, column);
         if (!won){
             stream.log("[01.04] Lost in the gym (try " + std::to_string(attempt + 1) + "); back from the Center.", COLOR_ORANGE);
             walk_out_of_center(stream, context, "Oreburgh");

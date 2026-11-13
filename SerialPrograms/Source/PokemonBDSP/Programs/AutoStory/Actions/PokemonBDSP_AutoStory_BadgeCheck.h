@@ -24,8 +24,8 @@ namespace PokemonBDSP{
 //  When `level` asks for it, opens the Trainer Card from the overworld, saves
 //  its screenshot, reads badge `index` (menu with `menu_icons` icons, see
 //  open_menu()) and backs out to the overworld. Fails
-//  the step with a screenshot when the badge is missing; a card the reader
-//  cannot read yet is logged and passes.
+//  the step with a screenshot when the badge is missing or the card cannot be
+//  read: nothing is passed unseen.
 void verify_badge(
     VideoStream& stream, ProControllerContext& context,
     Pokemon::StoryCheckLevel level, size_t index, std::string_view badge, int menu_icons

@@ -10,8 +10,10 @@
 #include <array>
 #include <cctype>
 #include <cmath>
+#include <format>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/PrettyPrint.h"
+#include "Common/Cpp/Time.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
@@ -24,9 +26,11 @@
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_EndBattleDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleIntro.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_Bag.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 #include "PokemonBDSP_AutoStory_TalkOver.h"
@@ -216,10 +220,21 @@ enum class BattleHeal{ NOT_NEEDED, USED, NONE_LEFT };
 // from the Bag on the lead, which takes the turn. Otherwise the
 // battle menu is left up.
 BattleHeal battle_heal_if_low(VideoStream& stream, ProControllerContext& context,
-    BattleType battle_type, double heal_below, const std::string& label){
+    BattleType battle_type, double heal_below, const std::string& label, PotionLedger& potions){
+    //  The menu comes up after the turn's animations; the bar settles a
+    //  moment later, so read it after a short wait when a Potion is settling.
+    if (potions.pending()){
+        pbf_wait(context, 600ms);
+    }
     const double hp = read_battle_hp(stream, context);
     stream.log("[" + label + "] Our HP bar reads " + std::to_string((int)(hp * 100)) + "%.");
-    if (hp < 0 || hp >= heal_below){
+    const size_t before_count = potions.count();
+    potions.observe(hp);
+    if (potions.stalled() && before_count > 0){
+        stream.log("[" + label + "] The last Potion gained no HP (read " + std::to_string((int)(hp * 100)) +
+            "%): the foe's hits take it back, or it was not used. No more Potions this battle; fighting on.", COLOR_ORANGE);
+    }
+    if (hp < 0 || hp >= heal_below || !potions.may_use()){
         return BattleHeal::NOT_NEEDED;
     }
     if (!cursor_to_bag(stream, context, battle_type)){
@@ -240,6 +255,7 @@ BattleHeal battle_heal_if_low(VideoStream& stream, ProControllerContext& context
     pbf_press_button(context, BUTTON_A, 80ms, 1500ms);
     pbf_press_button(context, BUTTON_A, 80ms, 2500ms);
     context.wait_for_all_requests();
+    potions.used(hp);
     return BattleHeal::USED;
 }
 
@@ -255,8 +271,7 @@ struct BestMoveBattle{
 //  What a battle has done so far, across turns.
 struct BattleProgress{
     bool battle_menu_seen = false;
-    bool out_of_potions = false;
-    size_t potions_used = 0;
+    PotionLedger potions;
     size_t turns = 0;
     size_t faint_switches = 0;
 };
@@ -276,13 +291,14 @@ void take_turn(
     }
     stream.log("[AutoStory] Battle menu detected.", COLOR_BLUE);
     // A trainer battle we may lose: a Potion when HP is low.
-    if (battle.battle_type == BattleType::TRAINER && !progress.out_of_potions && progress.potions_used < 4){
-        const BattleHeal heal = battle_heal_if_low(stream, context, battle.battle_type, 0.35, label);
+    if (battle.battle_type == BattleType::TRAINER && progress.potions.may_use()){
+        const BattleHeal heal = battle_heal_if_low(stream, context, battle.battle_type, 0.35, label, progress.potions);
         if (heal == BattleHeal::USED){
-            progress.potions_used++;
             return;
         }
-        progress.out_of_potions = heal == BattleHeal::NONE_LEFT;
+        if (heal == BattleHeal::NONE_LEFT){
+            progress.potions.out_of_potions();
+        }
     }
     stream.log("[" + label + "] Move list position 1: use move 0.");
     use_best_move(stream, context, battle.battle_type, label);
@@ -340,11 +356,33 @@ int wait_for_battle_screen(
     );
 }
 
+//  The battle's opening transition, 5 s as it always was. A trainer's battle
+//  starts with "You are challenged by ...": it is read while it shows, before
+//  anything presses through it.
+BattleOpponent wait_out_battle_start(VideoStream& stream, ProControllerContext& context, const BestMoveBattle& battle, const std::string& label){
+    constexpr Milliseconds TRANSITION = 5000ms;
+    if (battle.battle_type != BattleType::TRAINER || !story_reads_text()){
+        pbf_wait(context, TRANSITION);
+        return BattleOpponent::UNREAD;
+    }
+    context.wait_for_all_requests();
+    BattleIntroWatcher intro;
+    const WallClock start = current_time();
+    wait_until(stream, context, TRANSITION, {{intro}});
+    const Milliseconds elapsed = std::chrono::duration_cast<Milliseconds>(current_time() - start);
+    if (elapsed < TRANSITION){
+        pbf_wait(context, TRANSITION - elapsed);
+    }
+    const BattleOpponent opponent = intro.verdict();
+    stream.log(std::format("[{}] The battle's intro text read \"{}\": the opponent is {}.",
+        label, intro.last_text(), battle_opponent_name(opponent)));
+    return opponent;
+}
+
 //  Fights the battle on screen to its end and the overworld after it.
-void fight_with_best_move(VideoStream& stream, ProControllerContext& context, const BestMoveBattle& battle, const std::string& label){
+BattleOpponent fight_with_best_move(VideoStream& stream, ProControllerContext& context, const BestMoveBattle& battle, const std::string& label){
     stream.log("[AutoStory] Starting " + label + " battle...", COLOR_BLUE);
-    // Preserve the existing early-game transition delay.
-    pbf_wait(context, 5000ms);
+    const BattleOpponent opponent = wait_out_battle_start(stream, context, battle, label);
     BattleProgress progress;
     EndBattleWatcher end_battle;
     while (true){
@@ -353,7 +391,7 @@ void fight_with_best_move(VideoStream& stream, ProControllerContext& context, co
             take_turn(stream, context, battle, progress, label);
         }else if (ret == 1){
             finish_battle(stream, context, label);
-            return;
+            return opponent;
         }else if (ret == 2){
             stream.log("[" + label + "] Declining move learning; preserving scripted move positions.");
             pbf_move_right_joystick(context, {0, -1}, 160ms, 840ms);
@@ -381,9 +419,9 @@ void confirm_battle_overworld(VideoStream& stream, ProControllerContext& context
     talk_over(stream, context, label);
 }
 
-void fight_story_battle(VideoStream& stream, ProControllerContext& context, const std::string& label, BattleFormat format){
+BattleOpponent fight_story_battle(VideoStream& stream, ProControllerContext& context, const std::string& label, BattleFormat format){
     // The best move each turn; the next Pokemon after a faint; no new moves.
-    fight_with_best_move(stream, context, {.battle_type = BattleType::TRAINER, .format = format, .switch_on_faint = true}, label);
+    return fight_with_best_move(stream, context, {.battle_type = BattleType::TRAINER, .format = format, .switch_on_faint = true}, label);
 }
 
 void fight_trainer(VideoStream& stream, ProControllerContext& context, const std::string& label){

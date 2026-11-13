@@ -9,6 +9,7 @@
  *
  */
 
+#include <algorithm>
 #include <chrono>
 #include <format>
 #include <functional>
@@ -29,6 +30,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_BagScreen.h"
+#include "PokemonBDSP_AutoStory_Battle.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 #include "PokemonBDSP_AutoStory_Center.h"
 #include "PokemonBDSP_AutoStory_Events.h"
@@ -496,32 +498,132 @@ UnitTestResult test_asks_someone_else(Logger&){
     return true;
 }
 
-//  01.04 (lab-B, 2026-11-12 22:50): the walk up the gym was blocked by the
-//  second trainer, an A press opened his talk, and it was taken for Roark's.
-//  A talk before every trainer is beaten is a trainer's, however it began.
-UnitTestResult test_gym_opponent_is_roark_only_after_the_trainers(Logger&){
-    GymTrainers gym(oreburgh_gym_trainer_sights().size());
-    if (gym.leader_next() || gym.next_label() != "Gym trainer 1 of 2"){
-        return "At the door the opponent must be the first trainer, not Roark.";
-    }
-    gym.record_win();
-    //  The failing case: one trainer beaten, a blocked walk, a talk.
-    if (gym.leader_next() || gym.next_label() != "Gym trainer 2 of 2"){
-        return "After one trainer a talk must be the second trainer's, not Roark's.";
-    }
-    gym.record_win();
-    if (!gym.leader_next() || gym.next_label() != "Roark"){
-        return "After both trainers the opponent must be Roark.";
-    }
-    gym.record_win();
-    if (!gym.leader_next()){
-        return "A win past the last trainer must not unset Roark.";
+//  01.04 (lab-B, 2026-11-12 22:50 and 23:49): the opponent is read from the
+//  battle's intro text, not told by a count that a reload loses (Roark was
+//  "Gym trainer 1 of 2" after a reload) or by the time walked.
+UnitTestResult test_battle_intro_tells_the_opponent(Logger&){
+    struct Case{ std::string_view text; BattleOpponent opponent; };
+    const Case cases[] = {
+        {"You are challenged by Gym Leader Roark!", BattleOpponent::LEADER},
+        {"You are challenged by Gym Leader", BattleOpponent::LEADER},
+        {"You are challenged by Gym Leacler Roark!", BattleOpponent::LEADER},
+        {"You are challenged by Youngster Tristan!", BattleOpponent::TRAINER},
+        {"You are challenged by Hiker Mark!\n", BattleOpponent::TRAINER},
+        //  Still being typed out: no verdict from "by Y".
+        {"You are challenged by Y", BattleOpponent::UNREAD},
+        {"You are challenged by", BattleOpponent::UNREAD},
+        {"You are chal", BattleOpponent::UNREAD},
+        {"Go! Turtwig!", BattleOpponent::UNREAD},
+        {"", BattleOpponent::UNREAD},
+        {"  \n ", BattleOpponent::UNREAD},
+        {"!!!", BattleOpponent::UNREAD},
+    };
+    for (const Case& c : cases){
+        if (classify_battle_intro(c.text) != c.opponent){
+            return std::format("\"{}\" read as {}, not {}.", c.text,
+                battle_opponent_name(classify_battle_intro(c.text)), battle_opponent_name(c.opponent));
+        }
     }
     return true;
 }
 
-//  The Trainer Card check runs for the levels that check everything, fails
-//  on a missing badge, and lets a card the reader cannot read yet pass.
+//  A trainer's line is final when read the same twice; a half-typed one is
+//  not, and nothing read stays unread. The leader's settles at once.
+UnitTestResult test_battle_intro_reading_settles(Logger&){
+    BattleIntroReading trainer;
+    if (trainer.add("You are challenged by Youngster Tr") != BattleOpponent::UNREAD){
+        return "A line read once is not final.";
+    }
+    if (trainer.add("You are challenged by Youngster Tristan!") != BattleOpponent::UNREAD){
+        return "A line that changed since the last read is still being typed.";
+    }
+    if (trainer.add("") != BattleOpponent::UNREAD || trainer.add("You are challenged by Youngster Tristan!") != BattleOpponent::UNREAD){
+        return "An unread frame between two reads breaks the pair.";
+    }
+    if (trainer.add("You are challenged by Youngster Tristan!") != BattleOpponent::TRAINER){
+        return "The same line twice in a row is a trainer's.";
+    }
+    //  The leader's line settles at once, and a later read does not undo it.
+    BattleIntroReading leader;
+    if (leader.add("You are challenged by Gym Leader Roark!") != BattleOpponent::LEADER
+        || leader.add("You are challenged by Youngster Tristan!") != BattleOpponent::LEADER
+    ){
+        return "Gym Leader in the intro is Roark's, at once and for good.";
+    }
+    BattleIntroReading none;
+    if (none.add("") != BattleOpponent::UNREAD || none.verdict() != BattleOpponent::UNREAD){
+        return "Nothing read must stay unread.";
+    }
+    return true;
+}
+
+//  The column's time estimate is a hint only now: it must still count and
+//  restart, and a negative walk adds nothing.
+UnitTestResult test_gym_column_is_a_hint(Logger&){
+    GymColumn column(6, 9, 240ms);
+    if (column.leader_here() || column.tiles() != 0){
+        return "At the entrance the hint is a trainer's tile.";
+    }
+    column.walked_north(240ms * 8);
+    if (!column.leader_here()){
+        return "Past the halfway point to Roark the hint says his tile.";
+    }
+    column.walked_north(-100ms);
+    if (column.tiles() != 8){
+        return "A negative walk must not move the hint.";
+    }
+    column.restart();
+    if (column.leader_here()){
+        return "After a restart the hint is a trainer's tile.";
+    }
+    return true;
+}
+
+//  Roark, lab-B 2026-11-12 23:49: four Potions at 26%, 26%, 29%, 29%. A Potion
+//  that gained nothing ends the Potions of the battle.
+UnitTestResult test_potion_ledger_stops_without_gain(Logger&){
+    PotionLedger potions;
+    potions.observe(0.26);
+    if (!potions.may_use()){
+        return "The first Potion must be allowed.";
+    }
+    potions.used(0.26);
+    if (!potions.pending()){
+        return "A Potion waits for its HP read.";
+    }
+    potions.observe(-1);
+    if (!potions.pending() || potions.stalled()){
+        return "An unread bar must not settle a Potion.";
+    }
+    potions.observe(0.26);
+    if (!potions.stalled() || potions.may_use()){
+        return "No gain (26% then 26%) must stop the Potions.";
+    }
+    //  The gain case: a Potion that raised HP allows the next while it is low.
+    PotionLedger gaining;
+    gaining.used(0.20);
+    gaining.observe(0.45);
+    if (gaining.stalled() || !gaining.may_use()){
+        return "A Potion that gained HP must not stop the Potions.";
+    }
+    //  At most the cap, and none after the Bag runs out.
+    for (size_t n = 1; n < PotionLedger::MAX_POTIONS; n++){
+        gaining.used(0.20);
+        gaining.observe(0.20 + 0.01 * (double)n);
+    }
+    if (gaining.may_use()){
+        return "No more than the cap of Potions in a battle.";
+    }
+    PotionLedger empty;
+    empty.out_of_potions();
+    if (empty.may_use()){
+        return "No Potion once the Bag has none.";
+    }
+    return true;
+}
+
+//  The Trainer Card check runs for the levels that check everything and fails
+//  on a missing badge and on a card the reader cannot read.
 UnitTestResult test_badge_check(Logger&){
     using Pokemon::BadgeReading;
     using Pokemon::StoryCheckLevel;
@@ -538,10 +640,11 @@ UnitTestResult test_badge_check(Logger&){
     if (Pokemon::badge_check_failure(BadgeReading::MISSING, "Coal Badge").find("Coal Badge") == std::string::npos){
         return "A missing badge must fail and name the badge.";
     }
-    if (!Pokemon::badge_check_failure(BadgeReading::PRESENT, "Coal Badge").empty()
-        || !Pokemon::badge_check_failure(BadgeReading::UNREADABLE, "Coal Badge").empty()
-    ){
-        return "A present or unreadable badge must not fail.";
+    if (!Pokemon::badge_check_failure(BadgeReading::PRESENT, "Coal Badge").empty()){
+        return "A present badge must not fail.";
+    }
+    if (Pokemon::badge_check_failure(BadgeReading::UNREADABLE, "Coal Badge").find("Coal Badge") == std::string::npos){
+        return "An unreadable card must fail and name the badge.";
     }
     return true;
 }
@@ -729,7 +832,19 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"01.04 gym: a talk before both trainers are beaten is not Roark's (lab-B 2026-11-12)", test_gym_opponent_is_roark_only_after_the_trainers},
+        .input = {"01.04 gym: the opponent is read from the battle's intro text, not a count or the tiles walked (lab-B 2026-11-12)", test_battle_intro_tells_the_opponent},
+        .expectation = {},
+    },
+    {
+        .input = {"01.04 gym: the intro reading settles on a repeated trainer line or a leader's line", test_battle_intro_reading_settles},
+        .expectation = {},
+    },
+    {
+        .input = {"01.04 gym: the column's tile estimate is a hint only", test_gym_column_is_a_hint},
+        .expectation = {},
+    },
+    {
+        .input = {"Battle: a Potion that gained no HP ends the Potions of the battle (Roark, lab-B 2026-11-12 23:49)", test_potion_ledger_stops_without_gain},
         .expectation = {},
     },
     {

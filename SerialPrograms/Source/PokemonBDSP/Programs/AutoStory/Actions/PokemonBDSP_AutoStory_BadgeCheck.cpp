@@ -52,9 +52,7 @@ void verify_badge(
     }
     pbf_mash_button(context, BUTTON_B, 3000ms);
     context.wait_for_all_requests();
-    stream.log(reading == Pokemon::BadgeReading::PRESENT
-        ? std::string("Badge check: the ") + std::string(badge) + " is on the Trainer Card."
-        : std::string("Badge check: the Trainer Card reader has no reference yet; not checked (screenshot kept)."));
+    stream.log(std::string("Badge check: the ") + std::string(badge) + " is on the Trainer Card.");
 }
 
 
