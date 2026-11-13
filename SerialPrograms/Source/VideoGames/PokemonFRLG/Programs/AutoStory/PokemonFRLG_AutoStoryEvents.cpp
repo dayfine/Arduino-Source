@@ -24,6 +24,7 @@
 #include "PokemonFRLG_AutoStoryAbilities.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
+#include "PokemonFRLG_AutoStoryCenterHeal.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
@@ -304,8 +305,7 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!walked.succeeded()){
         return walked;
     }
-    heal_at_pokecenter(env.console, env.context);
-    healed_by_nurse(supplies);
+    heal_in_center(env);
     return walked;
 }
 
@@ -346,6 +346,7 @@ std::string save_card_place(const std::string& map){
         {"CeruleanCity", "cerulean-city"},
         {"Route24", "route-24"},
         {"Route25", "route-25"},
+        {"Route21", "route-21"},
         {"Route22", "route-22"},
         {"Route23", "route-23"},
         {"VictoryRoad", "victory-road"},
@@ -521,9 +522,8 @@ bool grind_heal_trip(StoryEnv& env, RunState& state, const StoryStep& step, cons
     if (!walked(env, state, walk)){
         return false;
     }
-    heal_at_pokecenter(env.console, env.context);
     //  PP too: a grind's battles spend more than its attacks have.
-    healed_by_nurse(env.supplies);
+    heal_in_center(env);
     walk.name = step.name + "_back_to_patch";
     walk.args["target"] = Pokemon::GridPose{back->map, {back->tile}, back->facing};
     return walked(env, state, walk);
@@ -774,8 +774,7 @@ ConsoleAction console_action_of(StoryActionId id){
         return [](StoryEnv& env, RunState&, const StoryStep& step){ return battle(env, step); };
     case StoryActionId::HEAL:
         return [](StoryEnv& env, RunState&, const StoryStep&){
-            heal_at_pokecenter(env.console, env.context);
-            healed_by_nurse(env.supplies);
+            heal_in_center(env);
             return Pokemon::outcome_ok();
         };
     case StoryActionId::SHOP:
@@ -992,7 +991,9 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     const StartMenu menu = data.menu;
     checkpoint.save = [&env, menu, id = data.id](RunState&){
         return guarded([&]{
-            save_game(env.console, env.context, menu);
+            save_game(env.console, env.context, menu, env.language, [end_map = checkpoint_end_map(id)](const std::string& place){
+                return save_end_error(end_map, place);
+            });
             keep_next_start_frame(env, id);
             env.has_save = true;
             env.saved_supplies = env.supplies;
@@ -1016,7 +1017,6 @@ Pokemon::Segment make_story_segment(const std::vector<StoryCheckpoint>& checkpoi
     }
     return segment;
 }
-
 
 
 } // namespace PokemonFRLG

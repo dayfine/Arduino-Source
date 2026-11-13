@@ -2002,6 +2002,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementStepPresses.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementTurnPresses.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBike.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBike.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBikeTaps.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBikeTaps.h
@@ -2066,6 +2067,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWildTiles.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PokemonCenterFloorReader.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PokemonCenterFloorReader.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PokemonCenterRoom.h
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Navigation.cpp
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h
@@ -2103,6 +2106,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCapture_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCeladon_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCeladonGym_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCenterHeal.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySaffron_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySaffronGym_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCinnabarGym_Tests.cpp
@@ -2241,6 +2245,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryUnauthoredStarts_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRows_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRowSimStubs.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRngReturns.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRngReturns.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRunPlan_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySimulation_Tests.cpp
@@ -2248,6 +2253,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPoses.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPresses.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySave.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySaveChecks.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySaveChecks.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryStartFrameCompare.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryStartFrameStore.h

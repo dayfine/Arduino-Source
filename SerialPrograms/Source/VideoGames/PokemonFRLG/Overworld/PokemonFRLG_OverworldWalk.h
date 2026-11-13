@@ -89,7 +89,9 @@ void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const 
 //  Store's lift room is mostly black around its lit floor: a watch for the
 //  fade started once it was over never sees black end (console B,
 //  2026-11-12 00:39, 10.01 lift_to_1f: two steps more into the lift's back
-//  wall, then "no fade in and out").
+//  wall, then "no fade in and out"). A step north must also show the black
+//  below the building it enters: on Route 21 the waves after a step "into
+//  the Center" were taken as it (console B, 2026-11-13, 12.03).
 bool arrived_without_fade(
     const ImageViewRGB32& before, const ImageViewRGB32& now, const ImageViewRGB32& later,
     const ImageFloatBox& game, const RouteStep& step
