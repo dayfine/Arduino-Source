@@ -51,8 +51,7 @@ const std::map<std::string, std::string, std::less<>>& story_actions_not_impleme
 //      MASH    "mash"      B through the text until the overworld is back
 //      MASH    "a"         A through it
 //      GAME    "walk" (args "legs", [[turn, ms], ...] as story_walk_move()
-//              reads them; "end", "fade_white" or "fade_black"; "heading";
-//              "first_turn", "player" or "camera"),
+//              reads them; "end", "fade_white" or "fade_black"; "heading"),
 //              walked once the screen shows free control
 //              (check_can_walk()), until its end fade if it has one
 //              (walk_until()); "approach_starter" (args "chikorita",

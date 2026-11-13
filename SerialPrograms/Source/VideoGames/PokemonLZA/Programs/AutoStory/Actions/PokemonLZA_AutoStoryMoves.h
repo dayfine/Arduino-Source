@@ -38,20 +38,6 @@ struct StoryWalkLeg{
     Milliseconds walk = Milliseconds(0);
 };
 
-//  What a walk's first turn is measured from.
-enum class FirstTurnFrom{
-    //  Where the player faces: L recenters the camera behind the player
-    //  first, as before every later turn.
-    PLAYER,
-    //  Where the camera looks as the walk starts: no L before the first
-    //  turn. For a walk whose start is reached two ways that leave the
-    //  camera looking the same way but the player facing different ways,
-    //  where no minimap gives a heading: Main Mission 01 has none, and its
-    //  scenes end with the player turned to whoever spoke last, while a
-    //  save load puts the camera behind the player.
-    CAMERA,
-};
-
 //  A walk in the overworld. Lumiose has no tiles: a move is an optional
 //  compass heading to face first, then legs of turns and timed walks, as
 //  recorded on the console.
@@ -59,7 +45,6 @@ struct StoryMove{
     //  Clockwise from north, as the minimap's arrow reads it
     //  (get_facing_direction()). None: no compass turn first.
     std::optional<double> heading = std::nullopt;
-    FirstTurnFrom first_turn_from = FirstTurnFrom::PLAYER;
     std::vector<StoryWalkLeg> legs = {};
 };
 
@@ -72,9 +57,8 @@ struct StoryMove{
 Pokemon::Outcome face_heading(PlzaBackend& backend, const PlzaReader& reader, double heading, double tolerance);
 
 //  From the overworld, walks as `move` says: faces its heading first, if it
-//  has one, then each leg's turn (the first from where first_turn_from
-//  says) and L to recenter the camera, since the walk goes where it looks,
-//  and walk. Nothing is read on the way: a leg
+//  has one, then each leg's turn (and L to recenter the camera, since the
+//  walk goes where it looks) and walk. Nothing is read on the way: a leg
 //  that is cut short or blocked goes unnoticed, and a step that needs a
 //  prompt after the walk fails there instead. `heading` reads the compass
 //  (face_heading()).
