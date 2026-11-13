@@ -32,10 +32,10 @@ Pokemon::Outcome check_can_walk(PlzaBackend& backend, std::string_view walk);
 //  Walks `move`, holding its last leg in slices of 250 ms until a look
 //  shows `end` (a fade), the leg's time as the upper bound. Fails as
 //  "walk_no_end" if `end` does not show within it. `heading` reads the
-//  compass (face_heading()).
+//  compass (face_heading()); `pause` is as for run_story_move().
 Pokemon::Outcome walk_until(
     PlzaBackend& backend, std::string_view walk, const StoryMove& move, const PlzaReader& heading,
-    PokemonAutomation::ScreenEvent end
+    PokemonAutomation::ScreenEvent end, Pokemon::StoryPausePoints* pause = nullptr
 );
 
 
