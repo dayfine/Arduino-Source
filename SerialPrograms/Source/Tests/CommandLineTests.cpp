@@ -30,11 +30,7 @@ size_t run_unit_tests(bool augment_color_distortions, std::span<const std::strin
     //  explicit buffer size is required: with 0, MSVC's ucrt can end up with
     //  a zero-size buffer, which corrupts the next stdout write.
     setvbuf(stdout, nullptr, _IOLBF, 8192);
-    if (test_substring.empty()){
-        cout << "Running parallel unit tests..." << endl;
-    }else{
-        cout << "Running parallel unit tests matching substring \"" << test_substring << "\"..." << endl;
-    }
+    cout << "Running parallel unit tests..." << endl;
     ComputerPrograms::CommandLineUnitTestRunner runner(global_logger_command_line());
     size_t failed = runner.run(augment_color_distortions, filters);
     if (failed > 0){
