@@ -1,0 +1,15 @@
+{
+  "about": "lab-B 2026-11-12 21:02:53, 01.02 past_curtis: hikers_trigger's step east went one tile further than the program counted, so the east walk from the believed (7, 22) met Camper Curtis's sight line on column 17 after 9 tiles, not 10, and he stopped it at (17, 22) while the program believed (15-16, 22). Its recovery hold east then ran 12 tiles, out of the Gate.",
+  "checkpoint": "01.02",
+  "faults": [
+    {"kind": "moved_further", "step": "hikers_trigger", "direction": "east", "tiles": 1}
+  ],
+  "failed": {"step": "past_curtis", "error": "operation_failed: past curtis: east 1 (to wall) to find us again: still moving after 12 tiles, past the wall 1 tiles away at most: position unknown."},
+  "frame": "20261112-210253120715-attempt0.png",
+  "evidence": [
+    "[Event] 01.02/7 hikers_trigger: a step east, limit.",
+    "[Walk] past curtis: east 13 (open): blocked after 8800 ms, 9 moved chunks",
+    "[Route] someone the map lacks is at OreburghGate (17, 22)",
+    "[Leg] past_curtis leg 1: east, moved 9, seen at (15, 22),(16, 22)"
+  ]
+}

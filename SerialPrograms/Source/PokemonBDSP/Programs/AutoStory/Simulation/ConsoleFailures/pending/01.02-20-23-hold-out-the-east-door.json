@@ -1,0 +1,13 @@
+{
+  "about": "lab-B 2026-11-12 20:20:50, 01.02 past_curtis: the hold east to find us again ran along row 22 and out the Gate's east door, its fade unseen; the program took it as ending at (16, 22) and walked on in Oreburgh City, which it took for the Gate, until into_oreburgh saw no banner at 20:23:09.",
+  "checkpoint": "01.02",
+  "faults": [
+    {"kind": "hold_through_warp", "step": "past_curtis", "direction": "east", "fade": "unseen", "far_pose_of": "into_oreburgh"}
+  ],
+  "failed": {"step": "into_oreburgh", "error": "no_banner"},
+  "frame": "",
+  "evidence": [
+    "[Walk] past curtis: east 3 (to wall) to find us again: screen change 266.96 at 1200 ms (the fade), then limit after 1850 ms",
+    "[Route] past curtis: found again at OreburghGate (16, 22), after 1 hold(s)."
+  ]
+}

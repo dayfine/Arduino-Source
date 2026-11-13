@@ -153,6 +153,12 @@ std::string play_scene(const SimScene& scene, const TalkOverRule& rule);
 //  unless set. All of it is deterministic: wanderers walk from `wander_seed`.
 struct SimWorldKnobs{
     std::vector<SimSlide> slides = {};
+    //  A hold of the step `step` toward `direction` (a recovery's hold to a
+    //  wall, a walk to a wall) that runs on through a warp its watchers
+    //  miss: the player lands on `far` (lab-B 2026-11-12 20:20:50, 01.02's
+    //  past_curtis, a hold east along row 22 that went out the Gate's east
+    //  door). `tiles` is not used.
+    std::vector<SimSlide> hold_slides = {};
     //  The mean brightness (0 to 255) of a map's floor, by JSON map name, and
     //  of the fade into a map; a tap step judges its fade from these with the
     //  program's fade_of(), a floor textured, a fade uniform (SIM_FLOOR_STDDEV,
@@ -247,6 +253,7 @@ public:
 
 private:
     WalkResult slide_on(const SimSlide& slide, WalkResult result);
+    WalkResult through_warp(const SimSlide& slide, WalkResult result);
 
     GridSim& m_grid;
     SimMisses& m_misses;

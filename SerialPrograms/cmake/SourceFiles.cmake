@@ -1484,6 +1484,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_LegPlanner.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.h
+    Source/Pokemon/Navigation/Pokemon_LegReplay.cpp
+    Source/Pokemon/Navigation/Pokemon_LegReplay.h
     Source/Pokemon/Navigation/Pokemon_LegTrace.cpp
     Source/Pokemon/Navigation/Pokemon_LegTrace.h
     Source/Pokemon/Navigation/Pokemon_LegTrace_Tests.cpp
@@ -1838,6 +1840,9 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walk_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walks.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walks.h
+    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_ConsoleFailureData.h
+    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_ConsoleFailureReplay_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_ConsoleFailureReplay_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_FaultSweep_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_FaultSweep_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_GridSim.cpp

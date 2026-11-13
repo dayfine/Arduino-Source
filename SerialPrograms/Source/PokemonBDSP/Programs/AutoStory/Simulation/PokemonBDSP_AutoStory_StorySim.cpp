@@ -292,6 +292,15 @@ WalkResult SimKnobRouteIO::walk_to_wall(const RouteWallWalk& walk){
     if (result.stop == WalkStop::BLOCKED && pushing){
         result.walked += m_knobs.pushing_someone;
     }
+    if (result.warp.fade != WarpFade::NONE){
+        for (const SimSlide& item : m_knobs.hold_slides){
+            if (item.step == m_step && item.direction == walk.direction){
+                m_misses.slid = true;
+                note("[Sim] held through a warp to " + Pokemon::to_string(item.far) + ".", RouteNote::LOG);
+                return through_warp(item, result);
+            }
+        }
+    }
     return result;
 }
 
@@ -324,18 +333,29 @@ WalkResult SimKnobRouteIO::slide_on(const SimSlide& slide, WalkResult result){
             continue;
         }
         note("[Sim] slid onto a warp to " + Pokemon::to_string(slide.far) + ".", RouteNote::LOG);
-        m_cross(slide.far);
-        m_misses.banner_up = slide.banner_up ? slide.far.map : "";
-        if (slide.fade == SimFade::UNSEEN){
-            m_misses.banner_soon = slide.far.map;
-            return result;
-        }
-        const double brightness = slide.fade == SimFade::BLACK ? SIM_DOOR_FADE : slide.fade == SimFade::DIM ? SIM_DIM_FADE : SIM_WHITE_FADE;
-        result.warp.fade = fade_of(sim_screen(brightness, SIM_FADE_STDDEV));
-        if (result.warp.fade != WarpFade::NONE){
-            result.stop = WalkStop::TRANSITION;
+        return through_warp(slide, result);
+    }
+    return result;
+}
+
+//  The player went through a warp to `slide.far` on a walk: the fade as the
+//  slide says, the walk's own result otherwise.
+WalkResult SimKnobRouteIO::through_warp(const SimSlide& slide, WalkResult result){
+    m_cross(slide.far);
+    m_misses.banner_up = slide.banner_up ? slide.far.map : "";
+    if (slide.fade == SimFade::UNSEEN){
+        m_misses.banner_soon = slide.far.map;
+        //  The console's walk read the time out, not a fade.
+        result.warp.fade = WarpFade::NONE;
+        if (result.stop == WalkStop::TRANSITION){
+            result.stop = WalkStop::LIMIT;
         }
         return result;
+    }
+    const double brightness = slide.fade == SimFade::BLACK ? SIM_DOOR_FADE : slide.fade == SimFade::DIM ? SIM_DIM_FADE : SIM_WHITE_FADE;
+    result.warp.fade = fade_of(sim_screen(brightness, SIM_FADE_STDDEV));
+    if (result.warp.fade != WarpFade::NONE){
+        result.stop = WalkStop::TRANSITION;
     }
     return result;
 }
