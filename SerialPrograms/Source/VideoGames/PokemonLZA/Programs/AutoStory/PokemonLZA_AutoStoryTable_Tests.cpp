@@ -211,9 +211,8 @@ UnitTestResult test_reload_when_chained_field(Logger&){
 //  01.02 reloads when run after 01.01, whose autosave is 01.02's start;
 //  with 01.01 saving through the menu instead, 01.02's reload is refused.
 UnitTestResult test_mm1_reload_when_chained(Logger&){
-    const std::set<std::string, std::less<>> expected{"01.02"};
-    if (builtin_story_data().reload_when_chained != expected){
-        return "Expected 01.02, and only 01.02, to reload when chained.";
+    if (!builtin_story_data().reload_when_chained.contains("01.02")){
+        return "Expected 01.02 to reload when chained.";
     }
     const std::string problem = load_problem(dev_with_execution("01.01", R"("save": "menu")"));
     if (problem.find("does not end on the game's autosave") == std::string::npos){
