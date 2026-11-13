@@ -16,21 +16,21 @@ namespace Pokemon{
 
 namespace{
 
-//  A formatter's line, made when the table is built.
-struct StoryLogInput{
-    std::string name;
-    std::string line;
-};
-
-//  The exact line: the lab watcher and the engine tests read these.
-struct StoryLogExpectation{
-    std::string line;
-};
-
 // One formatter call and the line it must make.
 struct StoryLogCase{
-    StoryLogInput input;
-    StoryLogExpectation expectation;
+    //  A formatter's line, made when the table is built.
+    struct Input{
+        std::string name;
+        std::string line;
+    };
+
+    //  The exact line: the lab watcher and the engine tests read these.
+    struct Expectation{
+        std::string line;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryLog : public UnitTest{

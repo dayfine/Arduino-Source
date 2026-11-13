@@ -18,23 +18,23 @@ namespace Pokemon{
 
 namespace{
 
-//  Counts added to fresh stats, in order.
-struct StoryCountsInput{
-    std::string name;
-    std::vector<StoryRunCounts> added;
-};
-
-//  The stats after them: counts add up rather than replace.
-struct StoryCountsExpectation{
-    uint64_t segments;
-    uint64_t checkpoints;
-    uint64_t resets;
-};
-
 // Counts recorded into the AutoStory stats and the totals they must reach.
 struct StoryCountsCase{
-    StoryCountsInput input;
-    StoryCountsExpectation expectation;
+    //  Counts added to fresh stats, in order.
+    struct Input{
+        std::string name;
+        std::vector<StoryRunCounts> added;
+    };
+
+    //  The stats after them: counts add up rather than replace.
+    struct Expectation{
+        uint64_t segments;
+        uint64_t checkpoints;
+        uint64_t resets;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryCounts : public UnitTest{
@@ -49,7 +49,7 @@ public:
         for (const StoryRunCounts& counts : m_case.input.added){
             record_story_counts(counts, stats);
         }
-        const StoryCountsExpectation& expected = m_case.expectation;
+        const StoryCountsCase::Expectation& expected = m_case.expectation;
         if (stats.m_segment != expected.segments || stats.m_checkpoint != expected.checkpoints || stats.m_reset != expected.resets){
             return std::format(
                 "Expected {} segments, {} checkpoints and {} resets, got {}, {} and {}",
