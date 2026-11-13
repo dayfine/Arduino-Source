@@ -433,8 +433,16 @@ private:
         bool done = false;
     };
     using Entry = std::pair<long long, Spread>;
+    //  Cheapest first; equal costs go to the lesser spread (rows north to
+    //  south, then west to east), so the search order, and the plan among
+    //  equal-cost ones, never depends on the heap's order for equal keys.
     struct EntryGreater{
-        bool operator()(const Entry& a, const Entry& b) const{ return a.first > b.first; }
+        bool operator()(const Entry& a, const Entry& b) const{
+            if (a.first != b.first){
+                return a.first > b.first;
+            }
+            return SpreadLess()(b.second, a.second);
+        }
     };
 
     void expand(const Spread& spread, long long cost){
