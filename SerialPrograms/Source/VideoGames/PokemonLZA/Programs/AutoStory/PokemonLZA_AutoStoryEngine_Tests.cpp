@@ -674,7 +674,7 @@ UnitTestResult test_walk_to_prompt(CancellableScope& scope){
 //  step's own pause, each labelled with the leg's turn and walk.
 UnitTestResult test_walk_pauses_before_each_leg(CancellableScope& scope){
     std::vector<std::string> pauses;
-    Pokemon::StoryGame<ZonePose> game = make_offline_plza_story_game();
+    Pokemon::StoryGame<ZonePose> game = make_plza_story_game(StarterChoice::CHIKORITA);
     game.breakpoints = Pokemon::StoryBreakpoints::LEGS;
     game.pause_point = [&pauses](std::string_view label){
         pauses.emplace_back(label);
