@@ -351,7 +351,8 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryBoulders(database);
 }
 
-void add_tests(UnitTestDatabase& database){
+//  The detectors and readers of battle, box, party and dialog screens.
+static void add_tests_Screens(UnitTestDatabase& database){
     add_tests_AdvanceWhiteDialogDetector(database);
     add_tests_AdvanceBattleDialogDetector(database);
     add_tests_BagDetector(database);
@@ -380,14 +381,22 @@ void add_tests(UnitTestDatabase& database){
     add_tests_PartySlotDetector(database);
     add_tests_BattleTextBoxDetector(database);
     add_tests_AutoStoryReaders(database);
+    add_tests_PlayerFacingReader(database);
+    add_tests_PokemonCenterFloorReader(database);
+}
+
+//  The overworld's maps, routes, walker and sim.
+static void add_tests_Overworld(UnitTestDatabase& database){
     add_tests_OverworldMaps(database);
     add_tests_OverworldRoute(database);
     add_tests_OverworldWalk(database);
     add_tests_OverworldReanchor(database);
     add_tests_OverworldRecovery(database);
     add_tests_OverworldSim(database);
-    add_tests_PlayerFacingReader(database);
-    add_tests_PokemonCenterFloorReader(database);
+}
+
+//  The story's tables, plans and steps.
+static void add_tests_AutoStoryAll(UnitTestDatabase& database){
     add_tests_AutoStory(database);
     add_tests_AutoStoryJson(database);
     add_tests_AutoStorySimulation(database);
@@ -399,6 +408,12 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStoryCapture(database);
     add_tests_AutoStoryPcStorage(database);
     add_tests_AutoStoryAbilities(database);
+}
+
+void add_tests(UnitTestDatabase& database){
+    add_tests_Screens(database);
+    add_tests_Overworld(database);
+    add_tests_AutoStoryAll(database);
     add_tests_NamingScreen(database);
     add_tests_RngPlanning(database);
 }

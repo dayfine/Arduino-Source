@@ -20,11 +20,11 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
-#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PokemonCenterFloorReader.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
+#include "PokemonFRLG_AutoStoryCenterHeal.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
@@ -287,25 +287,6 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
-//  The nurse's heal, counted only where a Center's floor shows: on 12.03
-//  (console B, 2026-11-13 04:16) a route taken as walked left the player
-//  on Route 21's water, the Center entry after it was taken from a still
-//  screen, and the heal's A mashing was counted as the nurse's. No frame,
-//  or no floor: fails with the screen.
-void heal_in_center(StoryEnv& env){
-    env.context.wait_for_all_requests();
-    const VideoSnapshot frame = env.console.video().snapshot();
-    if (!frame || !shows_pokemon_center_floor(frame)){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            "Heal: no Pokemon Center floor on screen; the player is not in a Center.",
-            env.console
-        );
-    }
-    heal_at_pokecenter(env.console, env.context);
-    healed_by_nurse(env.supplies);
-}
-
 //  HP and status are the battle loop's last reading. Items first (an
 //  Antidote, a Parlyz Heal, a Potion); then the nurse as
 //  nurse_before_battle() says.
@@ -412,27 +393,6 @@ std::string save_place_error(const std::string& start_map, const std::string& pl
         return "";
     }
     return "The save is in " + place + ", but the checkpoint starts in " + expected + " (" + start_map + ").";
-}
-
-std::string checkpoint_end_map(const std::string& id){
-    const std::vector<StoryCheckpoint>& table = story_checkpoints();
-    for (size_t c = 0; c + 1 < table.size(); c++){
-        if (table[c].id == id && table[c + 1].start){
-            return Pokemon::grid_pose_of(*table[c + 1].start).map;
-        }
-    }
-    return "";
-}
-
-std::string save_end_error(const std::string& end_map, const std::string& place){
-    const std::string expected = save_card_place(end_map);
-    if (expected.empty() || place == expected){
-        return "";
-    }
-    if (place.empty()){
-        return "The save card's place can't be read, so the end in " + expected + " (" + end_map + ") isn't confirmed.";
-    }
-    return "The save card names " + place + ", but the checkpoint ends in " + expected + " (" + end_map + ").";
 }
 
 std::string start_pose_mismatch(const Pokemon::Pose& start, const StoryPose& stands){
@@ -1039,8 +999,7 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     const StartMenu menu = data.menu;
     checkpoint.save = [&env, menu, id = data.id](RunState&){
         return guarded([&]{
-            const std::string end_map = checkpoint_end_map(id);
-            save_game(env.console, env.context, menu, env.language, [&end_map](const std::string& place){
+            save_game(env.console, env.context, menu, env.language, [end_map = checkpoint_end_map(id)](const std::string& place){
                 return save_end_error(end_map, place);
             });
             keep_next_start_frame(env, id);
@@ -1065,7 +1024,6 @@ Pokemon::Segment make_story_segment(const std::vector<StoryCheckpoint>& checkpoi
     }
     return segment;
 }
-
 
 
 } // namespace PokemonFRLG

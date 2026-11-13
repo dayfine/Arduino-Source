@@ -44,11 +44,39 @@
         "why": "the lead's Surf (taught in 12.01): A at the water, YES, onto (10, 17)"
       },
       {
+        "id": "surf_channel_wall",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route21_North", "tiles": [[7, 0]], "facing": "west"}},
+        "why": "off Pallet Town's shore into the channel and west to its cliff (6, 0..14): a short leg south, then a leg to a wall (route scoring: legs to walls)"
+      },
+      {
+        "id": "surf_route_21_west_edge",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route21_North", "tiles": [[0, 15]], "facing": "west"}},
+        "why": "down the channel past the cliff and west to Route 21's west edge under it (0..6, 11..14); Route 21's open water has no other walls"
+      },
+      {
+        "id": "surf_route_21_west_corner",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "CinnabarIsland", "tiles": [[0, 19]], "facing": "south"}},
+        "why": "south along the west edge, past Route21_South, to Cinnabar Island's bottom-left corner: the map's south edge stops the hold, so a leg cut short by a wild battle or a swimmer is walked on to it (the one localization on the water)"
+      },
+      {
+        "id": "surf_route_21_beach",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route21_South", "tiles": [[5, 49]], "facing": "east"}},
+        "why": "20 tiles back north to the beach row (5..13, 48..49) and east onto it: the island's west side can't be landed on, the beach is the way onto Cinnabar"
+      },
+      {
         "id": "surf_route_21",
         "kind": "route",
         "action": "run",
         "args": {"target": {"map": "CinnabarIsland", "tiles": [[14, 12]], "facing": "north"}},
-        "why": "south over Route 21's water (Pallet Town, Route21_North, Route21_South) to Cinnabar's north shore, off the water onto land and down to below the Center's door (14, 11); round the swimmers' and tuber's lines (pokeguy avoids them, 1:19:00 to 1:19:23)"
+        "why": "east along the beach to the water (14, 49), then south onto the island and over to below the Center's door (14, 11)"
       },
       {
         "id": "cinnabar_nurse",
