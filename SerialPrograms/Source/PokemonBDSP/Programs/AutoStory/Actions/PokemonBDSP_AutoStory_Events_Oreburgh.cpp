@@ -10,6 +10,7 @@
  */
 
 #include <algorithm>
+#include <format>
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
@@ -21,6 +22,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 #include "PokemonBDSP_AutoStory_BadgeCheck.h"
 #include "PokemonBDSP_AutoStory_GymOpponent.h"
+#include "PokemonBDSP_AutoStory_TalkFight.h"
 #include "PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walks.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
@@ -91,28 +93,37 @@ enum class GymMeeting{
     LEADER_WON,
 };
 
-//  A talk has opened: the opponent is Roark when we stand where he does
-//  (`column`), whatever was beaten before (lab-B, 2026-11-12 22:50: the second
-//  trainer, met by a blocked walk and an A press, was fought as Roark, and
-//  01.05 saved with no badge; 23:49: after a reload Roark was "Gym trainer 1").
+//  A talk has opened. Who it is, is what the battle's intro text says ("You
+//  are challenged by Gym Leader Roark!"), read on the screen by
+//  fight_story_battle(): never the count of trainers beaten or the distance
+//  walked (lab-B, 2026-11-12 22:50: the second trainer, met by a blocked walk
+//  and an A press, was fought as Roark, and 01.05 saved with no badge; 23:49:
+//  after a reload Roark was "Gym trainer 1"). The column only hints, and says
+//  how to wait: Roark's lines pause for more than 4 s before the battle
+//  (r210d: "only talked"), so up at his tile a battle is expected. An intro
+//  that was not read fails the step: the next one would be a guess.
 GymMeeting meet_gym_opponent(VideoStream& stream, ProControllerContext& context, const GymColumn& column){
-    const bool leader = column.leader_here();
-    const std::string label = column.label();
-    stream.log("[01.04] About " + std::to_string(column.tiles()).substr(0, 4) + " tiles up the gym: the opponent is " + label + ".");
-    //  His lines pause for more than 4 s before the battle (r210d: "only
-    //  talked"), so Roark's battle is expected; his badge speech is over
-    //  when talk_or_fight() returns (confirm_battle_overworld()).
-    const bool fought = talk_or_fight(stream, context, label, leader ? TalkExpect::BATTLE : TalkExpect::TALK_OR_BATTLE);
-    if (!fought){
+    const bool leader_hint = column.leader_here();
+    stream.log(std::format("[01.04] About {:.1f} tiles up the gym (a hint, not the opponent: {}).",
+        column.tiles(), leader_hint ? "Roark's tile" : "a trainer's"));
+    //  His badge speech is over when talk_or_fight_who() returns (confirm_battle_overworld()).
+    const TalkFight met = talk_or_fight_who(stream, context, "Gym opponent", leader_hint ? TalkExpect::BATTLE : TalkExpect::TALK_OR_BATTLE);
+    if (!met.fought){
         return GymMeeting::TALKED;
     }
     if (in_pokemon_center(stream)){
         return GymMeeting::LOST;
     }
-    if (leader){
+    stream.log(std::format("[01.04] The intro text says the opponent was the {}.", battle_opponent_name(met.opponent)));
+    switch (met.opponent){
+    case BattleOpponent::LEADER:
         return GymMeeting::LEADER_WON;
+    case BattleOpponent::TRAINER:
+        return GymMeeting::TRAINER_WON;
+    case BattleOpponent::UNREAD:
+        break;
     }
-    return GymMeeting::TRAINER_WON;
+    fail_step(stream, "Oreburgh Gym: the battle's intro text was not read (English text only), so the opponent is not known to be a trainer or Roark.");
 }
 
 //  Inside the Oreburgh Gym: straight up the middle, fighting the trainers

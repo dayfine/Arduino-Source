@@ -10,11 +10,10 @@
  *  count is run state: a reload, or a save made mid-gym, restarts it at zero
  *  and Roark was called "Gym trainer 1 of 2" (lab-B, 23:49).
  *
- *  So the opponent is told by where we stand: every try walks the same column
- *  from the entrance, so the north distance walked since the entrance (the
- *  walks' held time over the measured tile pace) says which of the people
- *  stationed up the column stopped us. It does not depend on what was beaten
- *  before.
+ *  Position is not identity either: it is dead reckoning from the time held,
+ *  so it is only a hint (a log line, and whether to expect Roark's long
+ *  pause). Who the opponent is, is read from the battle's intro text
+ *  (BattleIntro.h).
  *
  */
 
@@ -22,7 +21,6 @@
 #define PokemonAutomation_PokemonBDSP_AutoStory_GymOpponent_H
 
 #include <chrono>
-#include <string>
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -30,7 +28,7 @@ namespace PokemonBDSP{
 
 
 //  Where we stand on the way up the gym's column, in tiles north of the
-//  entrance, estimated from the time walked north.
+//  entrance, estimated from the time walked north: a hint, not who is there.
 class GymColumn{
 public:
     //  `last_trainer_tiles`: how far north of the entrance the farthest gym
@@ -60,10 +58,6 @@ public:
     //  point between the last trainer's stop and the leader's.
     bool leader_here() const{
         return tiles() >= (m_last_trainer + m_leader) / 2;
-    }
-    //  The opponent's name, for the log and the battle.
-    std::string label() const{
-        return leader_here() ? "Roark" : "Gym trainer";
     }
 
 private:

@@ -25,7 +25,8 @@ namespace Pokemon{
 enum class BadgeReading{
     PRESENT,
     MISSING,
-    //  The reader has no reference for the card yet, or the card was not on screen.
+    //  The reader has no reference for the card yet, or the card was not on
+    //  screen. A badge not seen is not a badge confirmed: this fails too.
     UNREADABLE,
 };
 
@@ -33,9 +34,10 @@ enum class BadgeReading{
 //  the levels that check everything for the user.
 bool badge_check_wanted(StoryCheckLevel level);
 
-//  The failure text when the badge is missing, "" when `reading` is fine.
-//  An UNREADABLE card does not fail the step: the reader has nothing to say
-//  yet, and the caller logs it and keeps the card's screenshot.
+//  The failure text when the badge is missing or the card was not read, ""
+//  when the badge was seen. The check runs only at the levels that check
+//  everything (badge_check_wanted()), and there an unreadable card must not
+//  pass as a badge confirmed; the caller keeps the card's screenshot.
 std::string badge_check_failure(BadgeReading reading, std::string_view badge);
 
 

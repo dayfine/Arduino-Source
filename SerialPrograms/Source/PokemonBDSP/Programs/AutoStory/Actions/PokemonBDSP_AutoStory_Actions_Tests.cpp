@@ -694,45 +694,83 @@ UnitTestResult test_asks_someone_else(Logger&){
     return true;
 }
 
-//  01.04 (lab-B, 2026-11-12 22:50 and 23:49): the opponent is told by where
-//  we stand up the column, not by a count that a reload loses. Roark was
-//  "Gym trainer 1 of 2" after a reload; the second trainer was Roark when a
-//  blocked walk ended in a talk.
-UnitTestResult test_gym_opponent_is_told_by_position(Logger&){
-    const Pokemon::TilePos entrance = map_point("OreburghGym", "entrance");
-    const Pokemon::TilePos roark = map_point("OreburghGym", "roark");
-    int last_trainer = 0;
-    for (const TrainerSight& trainer : oreburgh_gym_trainer_sights()){
-        last_trainer = std::max(last_trainer, entrance.y - trainer.pos.y);
-    }
-    const int leader = entrance.y - roark.y - 1;
-    GymColumn column(last_trainer, leader, ROUTE_MS_PER_TILE_UP_DOWN);
-    if (column.leader_here() || column.label() != "Gym trainer"){
-        return "At the entrance the opponent must be a trainer, not Roark.";
-    }
-    for (const int tiles : {0, 5, last_trainer}){
-        column.restart();
-        column.walked_north(ROUTE_MS_PER_TILE_UP_DOWN * tiles);
-        if (column.leader_here()){
-            return std::format("{} tiles up the opponent is a trainer, not Roark.", tiles);
+//  01.04 (lab-B, 2026-11-12 22:50 and 23:49): the opponent is read from the
+//  battle's intro text, not told by a count that a reload loses (Roark was
+//  "Gym trainer 1 of 2" after a reload) or by the time walked.
+UnitTestResult test_battle_intro_tells_the_opponent(Logger&){
+    struct Case{ std::string_view text; BattleOpponent opponent; };
+    const Case cases[] = {
+        {"You are challenged by Gym Leader Roark!", BattleOpponent::LEADER},
+        {"You are challenged by Gym Leader", BattleOpponent::LEADER},
+        {"You are challenged by Gym Leacler Roark!", BattleOpponent::LEADER},
+        {"You are challenged by Youngster Tristan!", BattleOpponent::TRAINER},
+        {"You are challenged by Hiker Mark!\n", BattleOpponent::TRAINER},
+        //  Still being typed out: no verdict from "by Y".
+        {"You are challenged by Y", BattleOpponent::UNREAD},
+        {"You are challenged by", BattleOpponent::UNREAD},
+        {"You are chal", BattleOpponent::UNREAD},
+        {"Go! Turtwig!", BattleOpponent::UNREAD},
+        {"", BattleOpponent::UNREAD},
+        {"  \n ", BattleOpponent::UNREAD},
+        {"!!!", BattleOpponent::UNREAD},
+    };
+    for (const Case& c : cases){
+        if (classify_battle_intro(c.text) != c.opponent){
+            return std::format("\"{}\" read as {}, not {}.", c.text,
+                battle_opponent_name(classify_battle_intro(c.text)), battle_opponent_name(c.opponent));
         }
     }
-    //  Roark's stop, walked in several legs with a battle between.
-    column.restart();
-    column.walked_north(ROUTE_MS_PER_TILE_UP_DOWN * 5);
-    column.walked_north(ROUTE_MS_PER_TILE_UP_DOWN * (leader - 5));
-    if (!column.leader_here() || column.label() != "Roark"){
-        return "In front of Roark's tile the opponent must be Roark, whatever was beaten before.";
+    return true;
+}
+
+//  A trainer's line is final when read the same twice; a half-typed one is
+//  not, and nothing read stays unread. The leader's settles at once.
+UnitTestResult test_battle_intro_reading_settles(Logger&){
+    BattleIntroReading trainer;
+    if (trainer.add("You are challenged by Youngster Tr") != BattleOpponent::UNREAD){
+        return "A line read once is not final.";
     }
-    //  A whiteout restarts at the entrance.
+    if (trainer.add("You are challenged by Youngster Tristan!") != BattleOpponent::UNREAD){
+        return "A line that changed since the last read is still being typed.";
+    }
+    if (trainer.add("") != BattleOpponent::UNREAD || trainer.add("You are challenged by Youngster Tristan!") != BattleOpponent::UNREAD){
+        return "An unread frame between two reads breaks the pair.";
+    }
+    if (trainer.add("You are challenged by Youngster Tristan!") != BattleOpponent::TRAINER){
+        return "The same line twice in a row is a trainer's.";
+    }
+    //  The leader's line settles at once, and a later read does not undo it.
+    BattleIntroReading leader;
+    if (leader.add("You are challenged by Gym Leader Roark!") != BattleOpponent::LEADER
+        || leader.add("You are challenged by Youngster Tristan!") != BattleOpponent::LEADER
+    ){
+        return "Gym Leader in the intro is Roark's, at once and for good.";
+    }
+    BattleIntroReading none;
+    if (none.add("") != BattleOpponent::UNREAD || none.verdict() != BattleOpponent::UNREAD){
+        return "Nothing read must stay unread.";
+    }
+    return true;
+}
+
+//  The column's time estimate is a hint only now: it must still count and
+//  restart, and a negative walk adds nothing.
+UnitTestResult test_gym_column_is_a_hint(Logger&){
+    GymColumn column(6, 9, 240ms);
+    if (column.leader_here() || column.tiles() != 0){
+        return "At the entrance the hint is a trainer's tile.";
+    }
+    column.walked_north(240ms * 8);
+    if (!column.leader_here()){
+        return "Past the halfway point to Roark the hint says his tile.";
+    }
+    column.walked_north(-100ms);
+    if (column.tiles() != 8){
+        return "A negative walk must not move the hint.";
+    }
     column.restart();
     if (column.leader_here()){
-        return "After a restart the opponent must be a trainer again.";
-    }
-    //  A negative or empty walk adds nothing.
-    column.walked_north(-100ms);
-    if (column.tiles() != 0){
-        return "A negative walk must not move us.";
+        return "After a restart the hint is a trainer's tile.";
     }
     return true;
 }
@@ -780,8 +818,8 @@ UnitTestResult test_potion_ledger_stops_without_gain(Logger&){
     return true;
 }
 
-//  The Trainer Card check runs for the levels that check everything, fails
-//  on a missing badge, and lets a card the reader cannot read yet pass.
+//  The Trainer Card check runs for the levels that check everything and fails
+//  on a missing badge and on a card the reader cannot read.
 UnitTestResult test_badge_check(Logger&){
     using Pokemon::BadgeReading;
     using Pokemon::StoryCheckLevel;
@@ -798,10 +836,11 @@ UnitTestResult test_badge_check(Logger&){
     if (Pokemon::badge_check_failure(BadgeReading::MISSING, "Coal Badge").find("Coal Badge") == std::string::npos){
         return "A missing badge must fail and name the badge.";
     }
-    if (!Pokemon::badge_check_failure(BadgeReading::PRESENT, "Coal Badge").empty()
-        || !Pokemon::badge_check_failure(BadgeReading::UNREADABLE, "Coal Badge").empty()
-    ){
-        return "A present or unreadable badge must not fail.";
+    if (!Pokemon::badge_check_failure(BadgeReading::PRESENT, "Coal Badge").empty()){
+        return "A present badge must not fail.";
+    }
+    if (Pokemon::badge_check_failure(BadgeReading::UNREADABLE, "Coal Badge").find("Coal Badge") == std::string::npos){
+        return "An unreadable card must fail and name the badge.";
     }
     return true;
 }
@@ -1030,7 +1069,15 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"01.04 gym: the opponent is Roark by the tiles walked up the column, not a count (lab-B 2026-11-12)", test_gym_opponent_is_told_by_position},
+        .input = {"01.04 gym: the opponent is read from the battle's intro text, not a count or the tiles walked (lab-B 2026-11-12)", test_battle_intro_tells_the_opponent},
+        .expectation = {},
+    },
+    {
+        .input = {"01.04 gym: the intro reading settles on a repeated trainer line or a leader's line", test_battle_intro_reading_settles},
+        .expectation = {},
+    },
+    {
+        .input = {"01.04 gym: the column's tile estimate is a hint only", test_gym_column_is_a_hint},
         .expectation = {},
     },
     {
