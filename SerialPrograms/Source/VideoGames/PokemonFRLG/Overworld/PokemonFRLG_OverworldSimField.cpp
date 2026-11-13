@@ -14,6 +14,7 @@
 #include "PokemonFRLG_CodedRooms.h"
 #include "PokemonFRLG_FlyMap.h"
 #include "PokemonFRLG_OverworldGatedRoute.h"
+#include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_OverworldSimField.h"
 #include "PokemonFRLG_OverworldWalk.h"
@@ -119,6 +120,39 @@ bool OverworldSim::cut_tree(){
     return false;
 }
 
+void OverworldSim::land_fallen_boulder(const MapPosition& hole){
+    const MapData* from = nullptr;
+    for (const MapData& item : m_maps){
+        if (item.name == hole.map){
+            from = &item;
+        }
+    }
+    const MapWarp* warp = from == nullptr ? nullptr : warp_at(*from, hole.point);
+    if (warp == nullptr || !warp->to){
+        return;
+    }
+    static const std::vector<MapData> ALL = overworld_maps();
+    for (const MapData& below : ALL){
+        if (below.name != warp->to->map){
+            continue;
+        }
+        for (MapData& shown : m_maps){
+            if (shown.name != below.name){
+                continue;
+            }
+            for (const MapObject& object : below.objects){
+                const bool hidden = object.name == "pushable_boulder" && object.hide_flag && std::none_of(
+                    shown.objects.begin(), shown.objects.end(), [&](const MapObject& item){ return item.x == object.x && item.y == object.y; }
+                );
+                if (hidden){
+                    shown.objects.push_back(object);
+                    note("the boulder lands on " + to_string(MapPosition{shown.name, TilePos{object.x, object.y}}) + ".");
+                }
+            }
+        }
+    }
+}
+
 bool OverworldSim::push_boulder(){
     std::vector<MapObject>& objects = m_maps[m_map].objects;
     const TilePos ahead = m_player.position.next(m_state.facing);
@@ -128,6 +162,18 @@ bool OverworldSim::push_boulder(){
     if (boulder == objects.end() || m_state.screen != SimScreen::OVERWORLD || m_frozen){
         violation("no boulder " + std::string(direction_name(m_state.facing)) + " of " + to_string(m_state.position) + ".");
         return false;
+    }
+    //  A boulder pushed onto a hole falls through it to the floor below,
+    //  where the game shows the boulder it hid until then (Victory Road
+    //  3F's (34, 18): 2F's (33, 19), FLAG_HIDE_VICTORY_ROAD_2F_BOULDER).
+    const TilePos into = ahead.next(m_state.facing);
+    if (map().tiles.contains(into) && map().tiles.at(into) == TileKind::FALL_HOLE){
+        const MapPosition hole{map().name, into};
+        objects.erase(boulder);
+        advance_to(m_now + PUSH_TIME);
+        note("pushed the boulder into the hole at " + to_string(hole) + ".");
+        land_fallen_boulder(hole);
+        return true;
     }
     //  The boulder moves where a player on its tile could step.
     const PlayerState on_boulder{ahead, elevation_at(map(), ahead), false};

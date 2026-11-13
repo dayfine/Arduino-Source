@@ -176,6 +176,9 @@ private:
     bool push_poster_switch();
     //  SimField::PUSH_BOULDER. (PokemonFRLG_OverworldSimField.cpp)
     bool push_boulder();
+    //  A boulder fell through `hole`: the boulder the game hid on the floor
+    //  below (a pushable_boulder with a hide_flag) is shown.
+    void land_fallen_boulder(const MapPosition& hole);
     bool start_surf();
     //  A on the gate or the statue the player faces; false, as a violation,
     //  if there is none or the Card Key is missing.

@@ -1,0 +1,220 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "19.04c",
+    "title": "Victory Road 2F and 3F: the west boulder and the north boulder onto their switches",
+    "start": {"map": "VictoryRoad_2F", "tiles": [[1, 9]]},
+    "events": [
+      {
+        "id": "behind_boulder_1",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_2F", "tiles": [[7, 17]]}},
+        "why": "east of the west boulder (6, 17)"
+      },
+      {
+        "id": "push_west",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "west", "tiles": 2, "activate": true},
+        "declared_after": {"map": "VictoryRoad_2F", "tiles": [[5, 17]], "facing": "west"},
+        "why": "Strength on again (a new map), the boulder west to (4, 17)"
+      },
+      {
+        "id": "by_boulder_2_corner",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_2F", "tiles": [[5, 16]]}},
+        "why": "round the pushed boulder, which the maps still show where it started: the planner would walk through its new tile"
+      },
+      {
+        "id": "behind_boulder_2",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_2F", "tiles": [[4, 16]]}},
+        "why": "above it"
+      },
+      {
+        "id": "push_south",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "south", "tiles": 2},
+        "declared_after": {"map": "VictoryRoad_2F", "tiles": [[4, 18]], "facing": "south"},
+        "why": "south to (4, 19), the switch's row"
+      },
+      {
+        "id": "by_boulder_3_corner",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_2F", "tiles": [[5, 18]]}},
+        "why": "round the pushed boulder, which the maps still show where it started: the planner would walk through its new tile"
+      },
+      {
+        "id": "behind_boulder_3",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_2F", "tiles": [[5, 19]]}},
+        "why": "east of it"
+      },
+      {
+        "id": "push_onto_2f_switch",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "west", "tiles": 2},
+        "declared_after": {"map": "VictoryRoad_2F", "tiles": [[3, 19]], "facing": "west"},
+        "why": "onto the switch (2, 19): VAR_MAP_SCENE_VICTORY_ROAD_2F_BOULDER1 is set and the barrier (13, 10), (13, 11) opens for good",
+        "gates_after": {"switches": {"VictoryRoad_2F/floor_switch_1": true}}
+      },
+      {
+        "id": "ladder_3f",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[5, 2]]}},
+        "why": "to the ladder (3, 3), which leads to 3F's (5, 2)"
+      },
+      {
+        "id": "behind_boulder_4",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[32, 6]]}},
+        "why": "east along 3F's north side to below the north boulder (32, 5)"
+      },
+      {
+        "id": "push_north",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "north", "tiles": 2, "activate": true},
+        "declared_after": {"map": "VictoryRoad_3F", "tiles": [[32, 4]], "facing": "north"},
+        "why": "Strength on (3F is a new map), the boulder up to (32, 3), the row west"
+      },
+      {
+        "id": "by_boulder_5_corner",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[33, 4]]}},
+        "why": "round the pushed boulder, which the maps still show where it started: the planner would walk through its new tile"
+      },
+      {
+        "id": "behind_boulder_5",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[33, 3]]}},
+        "why": "east of it"
+      },
+      {
+        "id": "push_west_row3",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "west", "tiles": 21},
+        "declared_after": {"map": "VictoryRoad_3F", "tiles": [[12, 3]], "facing": "west"},
+        "why": "west along row 3 to (12, 3)"
+      },
+      {
+        "id": "by_boulder_6_corner",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[12, 2]]}},
+        "why": "round the pushed boulder, which the maps still show where it started: the planner would walk through its new tile"
+      },
+      {
+        "id": "behind_boulder_6",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[11, 2]]}},
+        "why": "above it, now on (11, 3)"
+      },
+      {
+        "id": "push_south_col11",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "south", "tiles": 1},
+        "declared_after": {"map": "VictoryRoad_3F", "tiles": [[11, 3]], "facing": "south"},
+        "why": "down to (11, 4), the row west to the switch"
+      },
+      {
+        "id": "by_boulder_7_corner",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[12, 3]]}},
+        "why": "round the pushed boulder, which the maps still show where it started: the planner would walk through its new tile"
+      },
+      {
+        "id": "behind_boulder_7",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[12, 4]]}},
+        "why": "east of it"
+      },
+      {
+        "id": "push_west_row4",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "west", "tiles": 5},
+        "declared_after": {"map": "VictoryRoad_3F", "tiles": [[7, 4]], "facing": "west"},
+        "why": "west along row 4 to (6, 4)"
+      },
+      {
+        "id": "by_boulder_8_corner",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[7, 3]]}},
+        "why": "round the pushed boulder, which the maps still show where it started: the planner would walk through its new tile"
+      },
+      {
+        "id": "behind_boulder_8",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[6, 3]]}},
+        "why": "above it"
+      },
+      {
+        "id": "push_south_col6",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "south", "tiles": 3},
+        "declared_after": {"map": "VictoryRoad_3F", "tiles": [[6, 6]], "facing": "south"},
+        "why": "down to (6, 7), beside the switch"
+      },
+      {
+        "id": "by_boulder_9_corner",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[5, 6]]}},
+        "why": "round the pushed boulder, which the maps still show where it started: the planner would walk through its new tile"
+      },
+      {
+        "id": "behind_boulder_9",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[5, 7]]}},
+        "why": "west of it"
+      },
+      {
+        "id": "push_onto_3f_switch",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "east", "tiles": 1},
+        "declared_after": {"map": "VictoryRoad_3F", "tiles": [[6, 7]], "facing": "east"},
+        "why": "onto the switch (7, 7): VAR_MAP_SCENE_VICTORY_ROAD_3F is set and the barrier (12, 12), (12, 13) opens for good",
+        "gates_after": {"switches": {"VictoryRoad_3F/floor_switch_1": true}}
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts on Victory Road 2F (1, 9), where 19.04b ends.",
+        "Two floor switches, each the boulder solver's pushes (PokemonFRLG_AutoStoryBoulders_Tests.cpp) on the decomp's maps: 2F's (2, 19) with the boulder at (6, 17), then, up the ladder (3, 3), 3F's (7, 7) with the boulder at (32, 5). Strength asks again on each new map.",
+        "Ends on 3F (6, 7), beside the pressed switch; 3F's barrier is open, the way to its hole (34, 18)."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "VictoryRoad_3F", "tiles": [[6, 7]], "facing": "east"}
+    }
+  }
+}

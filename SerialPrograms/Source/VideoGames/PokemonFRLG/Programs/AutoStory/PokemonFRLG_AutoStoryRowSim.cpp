@@ -226,11 +226,12 @@ Pokemon::StoryAction StoryMapsSim::action(StoryActionId id){
         });
     case StoryActionId::SHOP:
         return played([this](const StoryStep& step, RunState&){ return shop(step); });
+    //  A push leaves the player behind the boulder, a switch on if it lands on one.
+    case StoryActionId::PUSH_BOULDER:
+        return played([this](const StoryStep& step, RunState& state){ return boulder_pushed(state, step, maps()); });
     //  Pacing leaves the player on either of its tiles, as on the console.
     case StoryActionId::CLOSE_TRAINER_CARD:
     case StoryActionId::LEAVE_GIFT_SUMMARY:
-    case StoryActionId::PUSH_BOULDER:
-        return played([this](const StoryStep& step, RunState& state){ return boulder_pushed(state, step, maps()); });
     case StoryActionId::CUT_TREE:
     case StoryActionId::TRASH_CANS:
     case StoryActionId::GAME:

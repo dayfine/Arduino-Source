@@ -1,0 +1,157 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "19.04d",
+    "title": "Victory Road 3F's hole: a boulder down to 2F, onto its switch, out to Route 23",
+    "start": {"map": "VictoryRoad_3F", "tiles": [[6, 7]], "facing": "east"},
+    "events": [
+      {
+        "id": "hole_way_1",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[6, 6]]}},
+        "why": "north off the pressed switch: the maps still show its button bare, and the planner would step onto the boulder at (7, 7)"
+      },
+      {
+        "id": "hole_way_2",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[25, 8]]}},
+        "why": "east along 3F's north side and down to (25, 8), below the gap (25, 7) onto the platform"
+      },
+      {
+        "id": "hole_way_3",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[25, 6]]}},
+        "why": "up through the gap onto the platform's second row: (25, 5) is in Alexa's line (the cooltrainer at (21, 5), facing east, sight 4)"
+      },
+      {
+        "id": "hole_way_4",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[16, 6]]}},
+        "why": "west along row 6, below Alexa, to the platform's west end"
+      },
+      {
+        "id": "hole_way_5",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[16, 13]]}},
+        "why": "down the column x 16 to the barrier's row"
+      },
+      {
+        "id": "hole_way_6",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[11, 13]]}},
+        "why": "west through the opened barrier (12, 13)"
+      },
+      {
+        "id": "hole_way_7",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[4, 14]]}},
+        "why": "round the west room to (4, 14), the way down to the south room"
+      },
+      {
+        "id": "hole_way_8",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[17, 15]]}},
+        "why": "east along row 15, north of Caroline's line (the cooltrainer at (11, 16), facing east, sight 5) and Colby's (the cooltrainer at (10, 17), facing west, sight 5)"
+      },
+      {
+        "id": "hole_way_9",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[17, 19]]}},
+        "why": "down x 17, east of Caroline's line, to the south room's bottom row"
+      },
+      {
+        "id": "behind_hole_boulder",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[32, 18]]}},
+        "why": "east along row 19 to below, then west of, the boulder (33, 18) beside the hole"
+      },
+      {
+        "id": "push_into_hole",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "east", "tiles": 1, "activate": true},
+        "declared_after": {"map": "VictoryRoad_3F", "tiles": [[33, 18]], "facing": "east"},
+        "why": "Strength on (the map was left for the save), the boulder into the hole (34, 18); it falls to 2F (33, 19), where the game now shows it (FLAG_HIDE_VICTORY_ROAD_2F_BOULDER cleared)"
+      },
+      {
+        "id": "drop_to_2f",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_2F", "tiles": [[34, 19]]}},
+        "why": "east onto the hole (34, 18), down to 2F's (34, 19), east of the fallen boulder; a route, so the fade is waited out before the next press"
+      },
+      {
+        "id": "push_west_row19",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "west", "tiles": 19, "activate": true},
+        "declared_after": {"map": "VictoryRoad_2F", "tiles": [[15, 19]], "facing": "west"},
+        "why": "Strength on (a new map), the boulder west along row 19 to the switch (14, 19): VAR_MAP_SCENE_VICTORY_ROAD_2F_BOULDER2 is set and the barrier (33, 16), (33, 17) opens for good",
+        "gates_after": {"switches": {"VictoryRoad_2F/floor_switch_2": true}}
+      },
+      {
+        "id": "exit_way_1",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_2F", "tiles": [[31, 19]]}},
+        "why": "back east along row 19 to (31, 19), south of Daisuke's line (the black belt at (20, 11), looking south and west, sight 4)"
+      },
+      {
+        "id": "exit_way_2",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_2F", "tiles": [[35, 17]]}},
+        "why": "north by (31, 18) and east through the opened barrier (33, 17) to beside the ladder (36, 17), below Nelson (the rocker at (31, 16), facing west)"
+      },
+      {
+        "id": "above_exit",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_2F", "tiles": [[48, 11]], "facing": "south"}},
+        "why": "onto the ladder (36, 17), 3F's east corridor to its ladder (37, 10), down to 2F (38, 9) and east to above the exit (48, 12)"
+      },
+      {
+        "id": "onto_exit",
+        "kind": "step",
+        "args": {"direction": "south"},
+        "declared_after": {"map": "VictoryRoad_2F", "tiles": [[48, 12]], "facing": "south"},
+        "why": "south onto the exit mat (48, 12), a warp taken by walking south on it"
+      },
+      {
+        "id": "exit_route23",
+        "kind": "step",
+        "args": {"direction": "south"},
+        "declared_after": {"map": "Route23", "tiles": [[18, 29]], "facing": "south"},
+        "why": "south again on the mat: out of the cave mouth (18, 28), which the game walks the player off a tile, onto Route 23 (18, 29)"
+      }
+    ],
+    "start_gates": {"switches": {"VictoryRoad_3F/floor_switch_1": true}}
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts on Victory Road 3F (6, 7), where 19.04c ends; 3F's switch is on (start_gates) and so its barrier is open.",
+        "3F's boulder (33, 18) pushed into the hole (34, 18) lands on 2F (33, 19); the player follows it down the hole and pushes it west onto 2F's second switch (14, 19), which opens the barrier (33, 16), (33, 17) before 2F's ladder (36, 17). The maps show 2F's boulder from the start; the game hides it until 3F's falls.",
+        "Ends on Route 23 (18, 29), facing south, a tile below the cave mouth, where 19.05 starts."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "Route23", "tiles": [[18, 29]], "facing": "south"}
+    }
+  }
+}

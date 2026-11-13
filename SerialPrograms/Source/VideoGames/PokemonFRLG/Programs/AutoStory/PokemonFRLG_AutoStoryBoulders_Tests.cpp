@@ -6,12 +6,9 @@
  *  (Pokemon_BoulderSolver below), and the sim's PUSH_BOULDER, which the
  *  search's answer is replayed on.
  *
- *  TODO(map edit, needs the user's OK): the Victory Road maps have the
- *  boulders (objects named "pushable_boulder") but not the switches'
- *  barriers or which tiles the switches press, so the planner walks
- *  through the barriers. The data below is from the decompilation
- *  (pokefirered data/maps/VictoryRoad_*), kept here until the maps carry
- *  it as `gates` and `switches`; then this search reads them from the map.
+ *  The maps carry each floor's barriers as `gates` and its switch's
+ *  button (PokemonSimulation 1cacf81); the puzzle below repeats 1F's for
+ *  the search. Rows 19.04b to 19.04d play the search's answers.
  *
  */
 
