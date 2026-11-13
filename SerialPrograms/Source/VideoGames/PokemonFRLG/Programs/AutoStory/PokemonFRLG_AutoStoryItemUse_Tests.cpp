@@ -40,6 +40,8 @@ public:
     bool opens = true;
     //  The lead's level-up text never shows.
     bool no_level_up = false;
+    //  The bag never comes back after an item's message on the lead.
+    bool no_bag_back = false;
     std::vector<std::string> used;
     std::vector<std::string> used_on_lead;
     std::vector<std::string> registered;
@@ -68,6 +70,14 @@ public:
         used_on_lead.push_back(pockets[m_pocket][row].item);
         return true;
     }
+    virtual bool use_row_on_lead_to_bag(size_t row) override{
+        if (no_bag_back){
+            return false;
+        }
+        use_row(row);
+        used_on_lead.push_back(pockets[m_pocket][row].item);
+        return true;
+    }
     virtual void register_row(size_t row) override{
         registered.push_back(pockets[m_pocket][row].item);
     }
@@ -90,6 +100,7 @@ struct ItemUseInput{
     //  The step's count (use_items_from_bag()).
     size_t count = 1;
     bool no_level_up = false;
+    bool no_bag_back = false;
 };
 struct ItemUseExpectation{
     ItemUseEnd end;
@@ -112,12 +123,13 @@ public:
         bag.pockets[BagPocket::KEY_ITEMS] = m_case.input.key_items;
         bag.opens = m_case.input.opens;
         bag.no_level_up = m_case.input.no_level_up;
+        bag.no_bag_back = m_case.input.no_bag_back;
         const std::string variant = m_case.input.variant;
         const std::string item = variant == RIDE_BIKE_VARIANT ? "bicycle" : parse_use_item_step(game_step_of(variant, ITEM)).value_or(variant);
         const ItemUseEnd end = m_case.input.renew
             ? renew_repel(logger, bag, item)
             : use_items_from_bag(logger, bag, item, m_case.input.count).end;
-        const bool lead_ok = is_party_item(item) ? bag.used_on_lead == bag.used : bag.used_on_lead.empty();
+        const bool lead_ok = is_party_item(item) || is_lead_recovery_item(item) ? bag.used_on_lead == bag.used : bag.used_on_lead.empty();
         if (end != m_case.expectation.end || bag.used != m_case.expectation.used || bag.open || !lead_ok){
             return std::format(
                 "\"{}\": {} using {} item(s), bag {}; expected {} using {}.", variant,
@@ -239,6 +251,40 @@ const ItemUseCase ITEM_USE_CASES[] = {
         },
         .expectation = {.end = ItemUseEnd::UNKNOWN_ITEM, .used = {}},
     },
+    //  The healing steps' items, by slug: a use_item step doesn't take them.
+    {
+        .input = {
+            .name = "an Elixir on the lead, back to the bag",
+            .variant = "elixir",
+            .items = {{"potion", 4}, {"max-elixir", 1}, {"elixir", 1}, {"full-restore", 12}},
+        },
+        .expectation = {.end = ItemUseEnd::USED, .used = {"elixir"}},
+    },
+    {
+        .input = {
+            .name = "an Elixir whose bag never comes back",
+            .variant = "elixir",
+            .items = {{"elixir", 1}},
+            .no_bag_back = true,
+        },
+        .expectation = {.end = ItemUseEnd::NOT_USED, .used = {}},
+    },
+    {
+        .input = {
+            .name = "no Elixir in the bag, only a Max Elixir",
+            .variant = "elixir",
+            .items = {{"max-elixir", 1}},
+        },
+        .expectation = {.end = ItemUseEnd::NONE_LEFT, .used = {}},
+    },
+    {
+        .input = {
+            .name = "a Full Restore on the lead",
+            .variant = "full-restore",
+            .items = {{"potion", 4}, {"full-restore", 12}},
+        },
+        .expectation = {.end = ItemUseEnd::USED, .used = {"full-restore"}},
+    },
 };
 
 //  "use_item rare-candy" with its count, an integer as the plans give it.
@@ -257,6 +303,8 @@ UnitTestResult test_variants_and_bike(){
         || !parse_use_item_step(candy_step(2))
         || use_item_count(candy_step(2)) != 2
         || use_item_count(game_step_of("use_item rare-candy", ITEM)) != 1
+        || parse_use_item_step(game_step_of("use_item elixir", ITEM))
+        || parse_use_item_step(game_step_of("use_item full-restore", ITEM))
     ){
         return "Expected only the story's bag items as use_item steps.";
     }

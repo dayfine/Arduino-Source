@@ -53,15 +53,20 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPaceSim.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPcStorage.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryPartyRoster.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryHealing.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows12_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows14_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows15_Tests.h"
+#include "Overworld/PokemonFRLG_OverworldGateMaps_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryGates_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows13_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows16_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows17_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryRows18_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows19_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryRows20_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTrashCans.h"
 #include "Programs/AutoStory/Data/Json_Tests.h"
@@ -337,6 +342,7 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryVermilionGym(database);
     add_tests_AutoStoryCeladon(database);
     add_tests_AutoStorySnorlax(database);
+    add_tests_AutoStoryPartyRoster(database);
     add_tests_AutoStorySlope(database);
     add_tests_AutoStorySafari(database);
     add_tests_AutoStoryFuchsiaGym(database);
@@ -349,6 +355,10 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryViridian(database);
     add_tests_AutoStoryVictoryRoad(database);
     add_tests_AutoStoryBoulders(database);
+    add_tests_AutoStoryLeague(database);
+    add_tests_AutoStoryGates(database);
+    add_tests_OverworldGateMaps(database);
+    add_tests_AutoStorySaffronGym(database);
 }
 
 //  The detectors and readers of battle, box, party and dialog screens.

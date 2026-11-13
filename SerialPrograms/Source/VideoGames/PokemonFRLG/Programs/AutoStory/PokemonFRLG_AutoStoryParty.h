@@ -66,6 +66,8 @@ void no_pp_left(PartyMember& member, size_t slot);
 
 //  The nurse heals: every move back to full PP.
 void restore_pp(PartyMember& member);
+//  An Elixir: `amount` PP back to every move, at most its full PP.
+void add_pp(PartyMember& member, uint8_t amount);
 
 
 

@@ -43,6 +43,7 @@
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryCheckpoints.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
+#include "PokemonFRLG_AutoStoryPartyRoster.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -96,6 +97,19 @@ struct StoryEnv{
     //  The Items pocket's counts a count_items step kept
     //  (PokemonFRLG_AutoStorySlopeRun.h), for the next to compare.
     std::map<std::string, int> counted_items = {};
+    //  The species the party's summaries were read as, for a Fly or a TEACH
+    //  that names one, and who uses each field move (`party.users`, set by a
+    //  TEACH of one or a Fly's scan). The species are emptied when a save is
+    //  loaded; both when a PC deposit or withdrawal moves members. A catch
+    //  or a gift adds a member at the end, so the slots stay right.
+    PartyCache party = {};
+    //  Who uses the field moves as the last save holds it, which a load
+    //  restores into `party.users`. The program starts it from its settings
+    //  and keeps it there.
+    SavedFieldMoveUsers saved_field_moves = {};
+    //  The program's "Take the Master Ball" option: 16.05's talk with Silph
+    //  Co.'s president (skip_if master_ball_skipped).
+    bool take_master_ball = true;
     //  The run's breakpoints (the BREAKPOINTS option): StoryExecutor pauses
     //  before each step, the walks before each leg.
     Pokemon::StoryPausePoints pause = {};
@@ -142,6 +156,11 @@ public:
 
     //  The step's action from the table.
     virtual Pokemon::Outcome run(const StoryStep& step, Pokemon::RunState& state) override;
+    //  The step condition master_ball_skipped: the program's option is off, or
+    //  the run is a SPEEDRUN, where the Master Ball's few seconds are not spent.
+    static bool master_ball_skipped(bool take_master_ball, Pokemon::StoryCheckLevel checks);
+    //  master_ball_skipped(); any other condition as the run's flags say.
+    virtual bool holds(std::string_view condition, Pokemon::RunState& state) override;
 
 private:
     //  How the console does `id`.

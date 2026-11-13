@@ -26,6 +26,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h"
+#include "PokemonFRLG_AutoStoryPartyRoster.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -66,7 +67,7 @@ void push_poster_switch(ConsoleHandle& console, ProControllerContext& context);
 //  has one (an Escape Rope's, a lift ride's, a Center's).
 std::optional<Pokemon::Outcome> run_field_game_step(
     ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player,
-    const Pokemon::StoryStep& step
+    const Pokemon::StoryStep& step, PartyCache& party
 );
 
 

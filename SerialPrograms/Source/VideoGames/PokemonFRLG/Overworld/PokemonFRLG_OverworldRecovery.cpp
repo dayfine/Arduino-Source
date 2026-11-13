@@ -353,7 +353,11 @@ private:
         return m_resolved ? &*m_resolved : m_planning->maps;
     }
 
+    //  A route run without maps (a replay's) keeps none through its gates.
     void read_gates(){
+        if (m_planning == nullptr || m_planning->maps == nullptr){
+            return;
+        }
         m_resolved = has_gates(*m_planning->maps) ? std::optional(resolve_maps(*m_planning->maps, m_gates)) : std::nullopt;
     }
 

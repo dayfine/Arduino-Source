@@ -42,6 +42,10 @@ struct SetupGoals{
     bool guard_accuracy = false;
     //  Raise the Sp. Atk goal while Torrent is off, to make up for it.
     bool torrent_power = false;
+    //  The same, in the opening only (the first foe, with more to come):
+    //  the doc's Torrent stall, whose extra X Specials stand in for the
+    //  turns that wait for Torrent. Not repeated on later foes.
+    bool target_torrent = false;
 };
 
 //  What one foe can do to the lead, from the doc's stats: the HP the lead

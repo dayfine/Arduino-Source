@@ -1,0 +1,196 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "19.04b",
+    "title": "Victory Road 1F: the boulder onto the floor switch, up to 2F",
+    "start": {"map": "VictoryRoad_1F", "tiles": [[11, 20]], "facing": "north"},
+    "events": [
+      {
+        "id": "behind_boulder_1",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_1F", "tiles": [[7, 17]]}},
+        "why": "north of the south boulder (7, 18), the one that reaches the switch"
+      },
+      {
+        "id": "push_south",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "south", "tiles": 1, "activate": true},
+        "declared_after": {"map": "VictoryRoad_1F", "tiles": [[7, 18]], "facing": "south"},
+        "why": "Strength on (A, YES), the boulder down to (7, 19), the row it runs east along"
+      },
+      {
+        "id": "by_boulder_2_corner",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_1F", "tiles": [[6, 18]]}},
+        "why": "round the pushed boulder, which the maps still show where it started: the planner would walk through its new tile"
+      },
+      {
+        "id": "behind_boulder_2",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_1F", "tiles": [[6, 19]]}},
+        "why": "round to its west side"
+      },
+      {
+        "id": "push_east_row19",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "east", "tiles": 5},
+        "declared_after": {"map": "VictoryRoad_1F", "tiles": [[11, 19]], "facing": "east"},
+        "why": "east along row 19 to (12, 19), below the gap north"
+      },
+      {
+        "id": "by_boulder_3_corner",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_1F", "tiles": [[10, 20]]}},
+        "why": "round the pushed boulder to (10, 20), so the step onto the cave mouth (11, 20) is eastward: south onto it would take its warp out to Route 23"
+      },
+      {
+        "id": "behind_boulder_3",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_1F", "tiles": [[12, 20]]}},
+        "why": "below it, by the cave's mouth"
+      },
+      {
+        "id": "push_north_col12",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "north", "tiles": 2},
+        "declared_after": {"map": "VictoryRoad_1F", "tiles": [[12, 18]], "facing": "north"},
+        "why": "north to (12, 17), the corridor east to the switch"
+      },
+      {
+        "id": "by_boulder_4_corner",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_1F", "tiles": [[11, 18]]}},
+        "why": "round the pushed boulder, which the maps still show where it started: the planner would walk through its new tile"
+      },
+      {
+        "id": "behind_boulder_4",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_1F", "tiles": [[11, 17]]}},
+        "why": "west of it"
+      },
+      {
+        "id": "push_east_row17",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "east", "tiles": 7},
+        "declared_after": {"map": "VictoryRoad_1F", "tiles": [[18, 17]], "facing": "east"},
+        "why": "east along row 17 to (19, 17)"
+      },
+      {
+        "id": "by_boulder_5_corner",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_1F", "tiles": [[18, 18]]}},
+        "why": "round the pushed boulder, which the maps still show where it started: the planner would walk through its new tile"
+      },
+      {
+        "id": "behind_boulder_5",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_1F", "tiles": [[19, 18]]}},
+        "why": "below it"
+      },
+      {
+        "id": "push_north_col19",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "north", "tiles": 2},
+        "declared_after": {"map": "VictoryRoad_1F", "tiles": [[19, 16]], "facing": "north"},
+        "why": "north to (19, 15), level with the switch's column"
+      },
+      {
+        "id": "by_boulder_6_corner",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_1F", "tiles": [[20, 14]]}},
+        "why": "round the pushed boulder, now on (19, 15), over the switch's column (20, 16) to (20, 14): the maps still show it where it started, and the planner would walk through its new tile"
+      },
+      {
+        "id": "by_boulder_6_top",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_1F", "tiles": [[18, 14]]}},
+        "why": "west along row 14, above the boulder, to above its west side"
+      },
+      {
+        "id": "behind_boulder_6",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_1F", "tiles": [[18, 15]]}},
+        "why": "west of it"
+      },
+      {
+        "id": "push_east_col20",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "east", "tiles": 1},
+        "declared_after": {"map": "VictoryRoad_1F", "tiles": [[19, 15]], "facing": "east"},
+        "why": "east to (20, 15), above the switch"
+      },
+      {
+        "id": "by_boulder_7_corner",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_1F", "tiles": [[19, 14]]}},
+        "why": "round the pushed boulder, which the maps still show where it started: the planner would walk through its new tile"
+      },
+      {
+        "id": "behind_boulder_7",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_1F", "tiles": [[20, 14]]}},
+        "why": "above it"
+      },
+      {
+        "id": "push_onto_switch",
+        "kind": "game_action",
+        "action": "push_boulder",
+        "args": {"direction": "south", "tiles": 1},
+        "declared_after": {"map": "VictoryRoad_1F", "tiles": [[20, 15]], "facing": "south"},
+        "why": "onto the switch (20, 16): VAR_MAP_SCENE_VICTORY_ROAD_1F is set and the barrier (12, 14), (12, 15) opens for good",
+        "gates_after": {"switches": {"VictoryRoad_1F/floor_switch_1": true}}
+      },
+      {
+        "id": "below_ladder",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_1F", "tiles": [[4, 7]], "facing": "north"}},
+        "why": "through the opened barrier, over the platform and round to column 4 below the ladder: column 5 is in Rolando's sight (the cooltrainer at (5, 2), facing south, sight 4)"
+      },
+      {
+        "id": "ladder_2f",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_2F", "tiles": [[1, 9]]}},
+        "why": "north up column 4, past Rolando's line, and west onto the ladder (3, 2), which leads to 2F's (1, 9)"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts on Victory Road 1F's south end (11, 20), where 19.04 ends; Strength is HM04 on the lead (19.04).",
+        "The pushes are the boulder solver's (PokemonFRLG_AutoStoryBoulders_Tests.cpp) for the switch (20, 16), from the map's boulders (pokefirered data/maps/VictoryRoad_1F/map.json) and PokemonSimulation's floor switch and barrier (VAR_MAP_SCENE_VICTORY_ROAD_1F, one-way). Strength stays on until the player leaves the map, so only the first push asks.",
+        "Ends on Victory Road 2F (1, 9), the foot of 1F's ladder."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "VictoryRoad_2F", "tiles": [[1, 9]]}
+    }
+  }
+}

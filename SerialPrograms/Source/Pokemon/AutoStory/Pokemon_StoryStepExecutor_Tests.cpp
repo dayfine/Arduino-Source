@@ -344,6 +344,33 @@ UnitTestResult test_gate_state_carried(){
     return true;
 }
 
+UnitTestResult test_skipped_step_gates_applied(){
+    //  A step that skip_if skips has its effect already: the door it opens
+    //  is open for the steps after it, and a later step that needs it runs
+    //  with it open.
+    StoryStep open_door = make(StoryStepKind::TALK, "open_door");
+    open_door.skip_if = {"door_done"};
+    open_door.gates_after = GateChange{.opened = {"SilphCo_5F/door_2"}};
+    const StoryCheckpoint data{
+        .id = "16.02",
+        .title = "Silph",
+        .steps = {open_door, make(StoryStepKind::TALK, "after")},
+    };
+    FakeExecutor executor;
+    executor.conditions = {"door_done"};
+    const Run result = run(data, executor);
+    if (!result.report.completed || result.report.events_skipped != 1){
+        return std::format("Expected the door step skipped:{}", joined(result.lines));
+    }
+    if (executor.gates_seen.size() != 1 || !executor.gates_seen[0].second.opened.contains("SilphCo_5F/door_2")){
+        return "Expected the step after a skipped door step to see the door open.";
+    }
+    if (!result.state.gates.opened.contains("SilphCo_5F/door_2")){
+        return "Expected the door open at the end of the checkpoint.";
+    }
+    return true;
+}
+
 UnitTestResult test_failure_names_the_step(){
     const StoryCheckpoint data = lab_checkpoint();
     FakeExecutor executor;
@@ -851,6 +878,10 @@ const StoryStepTestCase STORY_STEP_CASES[] = {
     {
         .input = {.name = "gate state and run flags carried from the save through the steps", .test = test_gate_state_carried},
         .expectation = {.description = "applies start_gates, start_flags, gates_after and flags_after in order"},
+    },
+    {
+        .input = {.name = "a skipped step's gates_after is applied", .test = test_skipped_step_gates_applied},
+        .expectation = {.description = "the gates a skipped step opened are open for the steps after it"},
     },
     {
         .input = {.name = "unsupported kinds and lost battles", .test = test_unsupported_and_lost_battles},

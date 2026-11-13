@@ -1,10 +1,9 @@
-/*  Gates Tests
+/*  Overworld Gate Maps Tests
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Fixtures: GateTestMaps/, trimmed from PokemonSimulation's runtime maps
- *  (SilphCo_5F: card-key doors; PokemonMansion_1F and _3F: statue switch,
- *  barriers, holes).
+ *  The real maps, pinned PokemonSimulation resources: SilphCo_5F (card-key
+ *  doors) and PokemonMansion_1F and _3F (statue switch, barriers, holes).
  *
  */
 
@@ -16,30 +15,25 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon_GatedPlanner.h"
-#include "Pokemon_Gates_Tests.h"
-#include "Pokemon_NavigationGateTestMaps.h"
+#include "Pokemon/Navigation/Pokemon_GatedPlanner.h"
+#include "PokemonFRLG_OverworldGateMaps_Tests.h"
+#include "PokemonFRLG_OverworldMaps.h"
 
 namespace PokemonAutomation{
-namespace Pokemon{
+namespace NintendoSwitch{
+namespace PokemonFRLG{
+
+using namespace Pokemon;
+
 namespace{
 
-
-MapData load(const std::string& name){
-    for (const auto& [file, text] : navigation_gate_test_map_json()){
-        if (file == name){
-            return parse_map(parse_json(text), name + ".json");
-        }
-    }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No gate test map " + name);
-}
 
 //  Silph 5F, Mansion 1F and 3F, in that order.
 const std::vector<MapData>& maps(){
     static const std::vector<MapData> loaded{
-        load("SilphCo_5F"),
-        load("PokemonMansion_1F"),
-        load("PokemonMansion_3F"),
+        load_map("SilphCo_5F"),
+        load_map("PokemonMansion_1F"),
+        load_map("PokemonMansion_3F"),
     };
     return loaded;
 }
@@ -94,7 +88,7 @@ public:
 
 private:
     static bool walkable(TileKind tile){
-        return tile == TileKind::OPEN || tile == TileKind::TALL_GRASS;
+        return tile == TileKind::OPEN || tile == TileKind::TALL_GRASS || tile == TileKind::FALL_HOLE;
     }
 };
 
@@ -194,7 +188,7 @@ std::string parse_error(const std::string& rows, const std::string& gates, const
         "gates": {}, "switches": {}
     }})", rows, gates, switches);
     try{
-        parse_map(parse_json(text), "T.json");
+        Pokemon::parse_map(parse_json(text), "T.json");
     }catch (ParseException& e){
         return e.message();
     }
@@ -224,6 +218,60 @@ UnitTestResult test_gate_errors(){
     return true;
 }
 
+
+//  Victory Road: each floor's boulder-fed floor switch opens its barrier, a
+//  top and a bottom tile. The switch has no statue to press, only its flag,
+//  which the game sets for good, and its button, the tile a boulder turns it
+//  on from. Each floor's switch is its own: on, it opens no other floor's.
+UnitTestResult test_victory_road_barriers(){
+    struct Floor{
+        std::string_view name;
+        size_t gates;
+        size_t switches;
+        std::string_view switch_id;
+        std::string_view barrier;
+        std::string_view flag;
+        TilePos top;
+        TilePos button;
+    };
+    const Floor floors[] = {
+        {"VictoryRoad_1F", 2, 1, "floor_switch_1", "barrier_1_top", "VAR_MAP_SCENE_VICTORY_ROAD_1F", {12, 14}, {20, 16}},
+        {"VictoryRoad_2F", 4, 2, "floor_switch_2", "barrier_2_top", "VAR_MAP_SCENE_VICTORY_ROAD_2F_BOULDER2", {33, 16}, {14, 19}},
+        {"VictoryRoad_3F", 2, 1, "floor_switch_1", "barrier_1_top", "VAR_MAP_SCENE_VICTORY_ROAD_3F", {12, 12}, {7, 7}},
+    };
+    for (const Floor& floor : floors){
+        const MapData map = load_map(std::string(floor.name));
+        if (map.gates.size() != floor.gates || map.switches.size() != floor.switches){
+            return std::format("{}: expected {} gates and {} switches, got {} and {}.",
+                floor.name, floor.gates, floor.switches, map.gates.size(), map.switches.size());
+        }
+        const auto found = map.switches.find(std::string(floor.switch_id));
+        if (found == map.switches.end() || found->second.toggle || found->second.flag != floor.flag || !found->second.statues.empty()){
+            return std::format("{}: {} should be a one-way flag switch with no statue.", floor.name, floor.switch_id);
+        }
+        const MapGate& top = map.gates.at(std::string(floor.barrier));
+        if (top.kind != GateKind::SWITCH || top.switch_id != floor.switch_id || !top.open_when_on || top.open_at_new_game){
+            return std::format("{}: the barrier should be closed at new game and open with {}.", floor.name, floor.switch_id);
+        }
+        const MapSwitch* pressed = switch_with_button(map, floor.button);
+        if (pressed == nullptr || pressed->id != floor.switch_id){
+            return std::format("{}: no {} button at ({}, {}).", floor.name, floor.switch_id, floor.button.x, floor.button.y);
+        }
+        GateState off;
+        GateState on;
+        on.switches_on.insert(switch_key(*pressed));
+        //  Another floor's switch of the same id leaves this barrier shut.
+        GateState elsewhere;
+        elsewhere.switches_on.insert(std::format("VictoryRoad_XF/{}", floor.switch_id));
+        if (resolved_tile(map, floor.top, elsewhere) != TileKind::WALL){
+            return std::format("{}: another floor's {} opened the barrier.", floor.name, floor.switch_id);
+        }
+        if (resolved_tile(map, floor.top, off) != TileKind::WALL || resolved_tile(map, floor.top, on) == TileKind::WALL){
+            return std::format("{}: the barrier at ({}, {}) should be a wall until {} is on.", floor.name, floor.top.x, floor.top.y, floor.switch_id);
+        }
+    }
+    return true;
+}
 
 //  State and tiles
 
@@ -417,7 +465,7 @@ struct GatesTestCase{
 class Test_Gates : public UnitTest{
 public:
     explicit Test_Gates(GatesTestCase scenario)
-        : UnitTest(std::format("Pokemon::Gates - {}", scenario.input.name))
+        : UnitTest(std::format("PokemonFRLG::OverworldGateMaps - {}", scenario.input.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -477,12 +525,16 @@ const GatesTestCase GATES_CASES[] = {
         .input = {.name = "a hole is one-way", .test = test_hole_one_way},
         .expectation = {.description = "down yes, back up no"},
     },
+    {
+        .input = {.name = "Victory Road barriers", .test = test_victory_road_barriers},
+        .expectation = {.description = "floor switches open the barriers; boulders are not modelled"},
+    },
 };
 
 } // namespace
 
 
-void add_tests_Gates(UnitTestDatabase& database){
+void add_tests_OverworldGateMaps(UnitTestDatabase& database){
     for (const auto& scenario : GATES_CASES){
         database.add<Test_Gates>(scenario);
     }
@@ -490,5 +542,6 @@ void add_tests_Gates(UnitTestDatabase& database){
 
 
 
-} // namespace Pokemon
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
 } // namespace PokemonAutomation

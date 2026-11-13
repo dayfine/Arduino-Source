@@ -139,6 +139,9 @@ struct SimState{
     //  The gates open and the switches on (SimScript::gates, then what the
     //  player opened and pressed).
     Pokemon::GateState gates;
+    //  The maps as loaded, with each gate closed or open as the map says, to
+    //  plan through the gates (resolve_maps()); empty if no map has a gate.
+    std::vector<MapData> gate_maps;
     Direction facing = Direction::SOUTH;
     SimScreen screen = SimScreen::OVERWORLD;
     //  Whether black shows below the map: the player stands near the bottom

@@ -13,6 +13,7 @@
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPreflight.h"
+#include "Pokemon/AutoStory/Pokemon_StoryRngHandoff.h"
 #include "Pokemon/AutoStory/Pokemon_StoryRun.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
@@ -74,6 +75,18 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
+const std::string PLAYER_NAME_TEXT =
+    "<b>Player name:</b><br>Typed on the new game's keyboard (01.01). Empty keeps the game's default name. "
+    "The rival always keeps the default name.";
+
+//  Kept by the run as the SID is: who uses each field move as the last save
+//  holds it (FieldMoveUsers' text).
+const std::string FIELD_MOVE_USERS_TEXT =
+    "<b>Field move users:</b><br>Set by the run at each save: the party slot and species that use each field move "
+    "(e.g. fly=3:pidgey), so a Fly after the program restarts goes to that slot without reading the party's summaries. "
+    "A slot that holds another member now, or an entry that can't be read, only costs a party scan. "
+    "Clear it when loading a different save.";
+
 const std::string KEEP_START_FRAME_TEXT =
     "<b>Keep the start frame:</b><br>Off by default. The save loaded was made by hand where the start checkpoint "
     "begins: keep the screen after loading it as that checkpoint's start frame, which later runs compare their "
@@ -93,11 +106,17 @@ const std::string RUN_GIFT_RNG_TEXT =
     "Pokemon Center, run Gift RNG's attempts for the Magikarp from that save, as the RNG plan lists them for its TID and "
     "SID (set by Run Starter RNG in AutoStory, or typed in). A shiny Magikarp is saved there (04.03) and the run goes "
     "on; otherwise the run stops with the save beside the salesman. Likewise for the Eevee: 09.03 saves facing its ball "
-    "in Celadon Mansion's roof room, and 09.04 saves the shiny.<br>"
-    "To try again from that save, start at 04.03 (09.04) with this on: it loads the save and runs the attempts first. "
-    "After Gift RNG run by hand, start at 04.03 (09.04) with this off.<br>"
+    "in Celadon Mansion's roof room, and 09.04 saves the shiny; and for the Lapras: 16.03b saves facing the employee "
+    "on Silph Co.'s 7F, and 16.04 saves the shiny.<br>"
+    "To try again from that save, start at 04.03 (09.04, 16.04) with this on: it loads the save and runs the attempts first. "
+    "After Gift RNG run by hand, start at 04.03 (09.04, 16.04) with this off.<br>"
     "English only. The Magikarp costs 500; each gift needs a free party slot; AutoStory's options leave the text fast.";
 
+const std::string TAKE_MASTER_BALL_TEXT =
+    "<b>Take the Master Ball:</b><br>On by default. After Giovanni on Silph Co.'s 11F, talk to the president for the "
+    "Master Ball (16.05). Off, or with the checks on SPEEDRUN, skips it.";
+
+// code-health: allow function_lines -- a flat list of the program's options, each one line of its own; splitting it hides which belong
 AutoStory::AutoStory()
     : RUN(checkpoint_database(), Pokemon::FireRedLeafGreenLanguages_Database())
     , NEW_GAME_FROM_TITLE(
@@ -116,13 +135,7 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         PlayerGender::BOY
     )
-    , PLAYER_NAME(
-        false,
-        "<b>Player name:</b><br>Typed on the new game's keyboard (01.01). Empty keeps the game's default name. "
-        "The rival always keeps the default name.",
-        LockMode::LOCK_WHILE_RUNNING,
-        "Kosmos", ""
-    )
+    , PLAYER_NAME(false, PLAYER_NAME_TEXT, LockMode::LOCK_WHILE_RUNNING, "Kosmos", "")
     , STOP_FOR_SID_HELPER(
         "<b>Stop for SID Helper:</b><br>Off by default. At 01.01, stop on the player's keyboard with the name typed and OK not pressed, "
         "where the SID Helper program starts. After SID Helper, start AutoStory at 01.02, with the game as SID Helper left it "
@@ -142,6 +155,8 @@ AutoStory::AutoStory()
     )
     , RUN_STARTER_RNG(RUN_STARTER_RNG_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
     , RUN_GIFT_RNG(RUN_GIFT_RNG_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
+    , TAKE_MASTER_BALL(TAKE_MASTER_BALL_TEXT, LockMode::LOCK_WHILE_RUNNING, true)
+    , FIELD_MOVE_USERS(false, FIELD_MOVE_USERS_TEXT, LockMode::LOCK_WHILE_RUNNING, "", "fly=3:pidgey")
     , NOTIFICATION_SHINY("Shiny found", true, true, ImageAttachmentMode::JPG, {"Notifs", "Showcase"})
     , NOTIFICATION_STATUS_UPDATE("Status Update", true, false, std::chrono::seconds(3600))
     , KEEP_START_FRAME(KEEP_START_FRAME_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
@@ -156,7 +171,9 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(STOP_FOR_STARTER_RNG);
     PA_ADD_OPTION(RUN_STARTER_RNG);
     PA_ADD_OPTION(RUN_GIFT_RNG);
+    PA_ADD_OPTION(TAKE_MASTER_BALL);
     PA_ADD_OPTION(RNG_PLAN);
+    PA_ADD_OPTION(FIELD_MOVE_USERS);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
@@ -185,6 +202,24 @@ StoryEnv story_env(
     story.start_frames = program_start_frames();
     story.keep_start_frame = keep_start_frame;
     return story;
+}
+
+//  Who uses the field moves, from `setting` (FieldMoveUsers' text) into
+//  `story`, and back into it after each save. An entry that can't be read
+//  is dropped and logged: its move is found by a party scan.
+void keep_field_move_users(ConsoleHandle& console, StoryEnv& story, StringOption& setting){
+    const ParsedFieldMoveUsers parsed = parse_field_move_users(static_cast<std::string>(setting));
+    for (const std::string& entry : parsed.rejected){
+        console.log(std::format("AutoStory: Field move users: can't read \"{}\"; the party is scanned for it.", entry), COLOR_ORANGE);
+    }
+    story.party.users() = parsed.users;
+    story.saved_field_moves = SavedFieldMoveUsers(parsed.users, [&console, &setting](const FieldMoveUsers& users){
+        const std::string text = users.to_text();
+        if (static_cast<std::string>(setting) != text){
+            setting.set(text);
+            console.log(std::format("AutoStory: Field move users set to \"{}\".", text), COLOR_BLUE);
+        }
+    });
 }
 
 //  The run's breakpoints (the BREAKPOINTS option): the story pauses before
@@ -237,6 +272,9 @@ Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, StoryEnv
     };
     game.after_load = [&story](Pokemon::RunState&){
         story.supplies = story.saved_supplies;
+        //  The save's party, which a catch or a gift since then changed.
+        story.party.invalidate_species();
+        story.party.users() = story.saved_field_moves.users();
         //  Until read in full, so each verify run starts from the bag as
         //  the save holds it, not from a count once read wrong or not at
         //  all (console B, 2026-11-03: 0 Potions in all 3 runs). Once
@@ -379,14 +417,10 @@ static void stop_for_handoff(
     SingleSwitchProgramEnvironment& env, EventNotificationOption& notification,
     const std::string& message, const std::vector<std::string>& lines = {}
 ){
-    env.console.log(message, COLOR_BLUE);
-    env.console.overlay().add_log(message);
-    std::string full = message;
-    for (const std::string& line : lines){
-        env.console.log(line, COLOR_BLUE);
-        env.console.overlay().add_log(line);
-        full += "\n" + line;
-    }
+    const std::string full = Pokemon::report_rng_handoff_stop(
+        env.console, message, lines,
+        [&](const std::string& line){ env.console.overlay().add_log(line); }
+    );
     send_program_finished_notification(env, notification, full);
 }
 
@@ -584,18 +618,26 @@ static StarterRngLoopResult run_rng_plan_in_program(
     return result;
 }
 
-//  True for a shiny, on the target or not, with `message` logged; otherwise
-//  the run has stopped with it.
-static bool shiny_or_stop(
+//  Runs `call` as `program`'s handoff. True for a shiny, on the target or
+//  not, with its summary logged; otherwise the run has stopped with the
+//  user's turn (a shiny is the only way the story goes on, so the rows after
+//  it are the caller's).
+static bool run_handoff_to_shiny(
     SingleSwitchProgramEnvironment& env, EventNotificationOption& finished,
-    const StarterRngLoopResult& result, const std::string& message
+    const std::string& program, const Pokemon::RngHandoffCall& call
 ){
-    if (result.end != StarterRngLoopEnd::SHINY && result.end != StarterRngLoopEnd::SHINY_OFF_TARGET){
-        stop_for_handoff(env, finished, message);
+    Pokemon::RngHandoffResult result;
+    const std::optional<std::string> user_turn = Pokemon::run_rng_handoff_or_user_turn(
+        env.console, program, [&]{
+            result = call();
+            return result;
+        }
+    );
+    if (user_turn){
+        stop_for_handoff(env, finished, *user_turn);
         return false;
     }
-    env.console.log(message, COLOR_BLUE);
-    env.console.overlay().add_log(message);
+    env.console.overlay().add_log(result.summary);
     return true;
 }
 
@@ -614,8 +656,10 @@ static bool run_starter_rng_in_program(
         .language = language, .sound = options.SOUND, .calibration = calibration.calibration(calibration.STARTER_INGAME),
     }, notifications);
     CalibrationSavingSteps steps(console_steps, calibration, calibration.STARTER_INGAME);
-    const StarterRngLoopResult result = run_rng_plan_in_program(env, steps, planned, options);
-    return shiny_or_stop(env, finished, result, starter_rng_loop_message(result));
+    return run_handoff_to_shiny(env, finished, "Starter RNG", [&]{
+        const StarterRngLoopResult result = run_rng_plan_in_program(env, steps, planned, options);
+        return rng_handoff_result(result, starter_rng_loop_message(result));
+    });
 }
 
 //  Gift RNG's attempts in the program for the language and gift of
@@ -682,12 +726,16 @@ static void send_story_finished(
     send_program_finished_notification(env, finished, message);
 }
 
+Pokemon::RngHandoffMode AutoStory::starter_rng_mode() const{
+    return Pokemon::rng_handoff_mode({.stop = STOP_FOR_STARTER_RNG, .run = RUN_STARTER_RNG});
+}
+
 StoryHandoffs AutoStory::story_handoffs() const{
     //  Running Starter RNG here splits 01.05 at the ball as its stop does,
     //  and sets the SID at 01.01 when it isn't known.
     return StoryHandoffs{
         .sid_helper = RUN_STARTER_RNG ? static_cast<std::string>(RNG_PLAN.SID).empty() : bool(STOP_FOR_SID_HELPER),
-        .starter_rng = STOP_FOR_STARTER_RNG || RUN_STARTER_RNG,
+        .starter_rng = starter_rng_mode() != Pokemon::RngHandoffMode::OFF,
         .gift_rng = RUN_GIFT_RNG,
     };
 }
@@ -720,8 +768,10 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         plan = plan_story_run(checkpoints, first, last, handoffs);
     }
     StoryEnv story = story_env(env, context, checkpoints[first], RUN.check_level(), KEEP_START_FRAME);
+    keep_field_move_users(env.console, story, FIELD_MOVE_USERS);
     story.player_gender = PLAYER_GENDER;
     story.player_name = player_name;
+    story.take_master_ball = TAKE_MASTER_BALL;
     const bool at_gift_rng = plan.stop == StoryHandoff::GIFT_RNG && plan.rows.empty();
     prepare_start(env, checkpoints, first, story, at_gift_rng);
     story.language = RUN.language();
@@ -791,7 +841,7 @@ std::optional<StoryRunPlan> AutoStory::after_starter_ball(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
     StoryEnv& story, const StarterRngPlanned& planned, size_t ball_row
 ){
-    if (!RUN_STARTER_RNG){
+    if (starter_rng_mode() != Pokemon::RngHandoffMode::RUN){
         stop_for_starter_rng(env, NOTIFICATION_PROGRAM_FINISH, RNG_PLAN.sound_name(), rng_attempt_lines(planned.attempts));
         return std::nullopt;
     }
@@ -814,10 +864,13 @@ std::optional<StoryRunPlan> AutoStory::after_gift_row(
     const GiftRngNotifications notifications{
         .shiny = NOTIFICATION_SHINY, .status_update = NOTIFICATION_STATUS_UPDATE, .error_recoverable = NOTIFICATION_ERROR_RECOVERABLE,
     };
-    const StarterRngLoopResult result = run_gift_rng_in_program(env, context, planned, RNG_PLAN, settings, notifications);
     //  The live-start row after the gift's, which saves it (04.03, 09.04).
     const std::string& saving_row = story_checkpoints().at(gift_row + 1).id;
-    if (!shiny_or_stop(env, NOTIFICATION_PROGRAM_FINISH, result, gift_rng_loop_message(result, settings.target, saving_row))){
+    const bool shiny = run_handoff_to_shiny(env, NOTIFICATION_PROGRAM_FINISH, "Gift RNG", [&]{
+        const StarterRngLoopResult result = run_gift_rng_in_program(env, context, planned, RNG_PLAN, settings, notifications);
+        return rng_handoff_result(result, gift_rng_loop_message(result, settings.target, saving_row));
+    });
+    if (!shiny){
         return std::nullopt;
     }
     return after_shiny_gift(env, story, gift_row, RUN.end_index(), story_handoffs());

@@ -429,6 +429,11 @@ void restore_pp(PartyMember& member){
         known.pp = max_pp(known.move);
     }
 }
+void add_pp(PartyMember& member, uint8_t amount){
+    for (KnownMove& known : member.moves){
+        known.pp = static_cast<uint8_t>(std::min<int>(known.pp + amount, max_pp(known.move)));
+    }
+}
 
 
 

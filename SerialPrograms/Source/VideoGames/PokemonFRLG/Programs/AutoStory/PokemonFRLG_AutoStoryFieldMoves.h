@@ -26,6 +26,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "PokemonFRLG_AutoStoryMemberInfo.h"
+#include "PokemonFRLG_AutoStoryPartyRoster.h"
 #include "PokemonFRLG_AutoStoryStartMenu.h"
 
 namespace PokemonAutomation{
@@ -74,12 +75,14 @@ bool is_field_move_step(const Pokemon::StoryStep& step);
 std::vector<Pokemon::StoryActionSpec> field_move_specs();
 
 //  On the console, a step of this file's; nothing for another step. The
-//  step ends on its pose_after, if it has one. A Fly ends once the player
-//  has landed (judge_fly_landing()), or fails as fly_no_takeoff or
-//  fly_no_landing.
+//  step ends on its pose_after, if it has one. A Fly naming a species opens
+//  the party once and goes to the Fly user's menu from there; `party`
+//  keeps the species read, so a later Fly reads no summary. A Fly ends
+//  once the player has landed (judge_fly_landing()), or fails as
+//  fly_no_takeoff or fly_no_landing.
 std::optional<Pokemon::Outcome> run_field_move_step(
     ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player,
-    const Pokemon::StoryStep& step
+    const Pokemon::StoryStep& step, PartyCache& party
 );
 
 

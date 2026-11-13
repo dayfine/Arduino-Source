@@ -63,6 +63,8 @@ constexpr std::pair<std::string_view, std::string_view> ENGLISH_ITEM_NAMES[] = {
     //  (console B, 2026-11-12).
     {"rare-candy", "Rare Candy"},
     {"max-elixir", "Max Elixir"},
+    //  Cinnabar Mansion's (13.03), which 20.05 uses after Lance.
+    {"elixir", "Elixir"},
     //  The Safari Zone's FULL RESTORE, which 11.03 counts. Without it its
     //  row matched several names and read as nothing (console B,
     //  2026-11-12).

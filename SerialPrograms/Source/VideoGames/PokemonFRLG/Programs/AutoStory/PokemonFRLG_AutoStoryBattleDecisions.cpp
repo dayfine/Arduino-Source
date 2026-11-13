@@ -62,24 +62,6 @@ constexpr uint8_t MAX_LEVELS_IN_BATTLE = 3;
 //  The HP a Potion heals (pret src/data/items.h).
 constexpr double POTION_HP = 20;
 
-//  An item used: the story's count of it goes down, and an item it doesn't
-//  count takes its row with the last one.
-void spend_bag_item(Supplies& supplies, const std::string& item){
-    const auto count = supplies.other_counts.find(item);
-    if (count == supplies.other_counts.end()){
-        spend_item(supplies, item);
-        return;
-    }
-    if (--count->second > 0){
-        return;
-    }
-    supplies.other_counts.erase(count);
-    const auto row = std::find(supplies.pocket.begin(), supplies.pocket.end(), item);
-    if (row != supplies.pocket.end()){
-        supplies.pocket.erase(row);
-    }
-}
-
 //  A trainer's battle: the plan's attack, else the best type matchup
 //  (attack_slot_against()) against the foe out as read at the battle
 //  menu, else against the whole party its plan lists.
@@ -338,11 +320,11 @@ void BattleDecisions::planned_item_used(){
             break;
         }
     }
-    spend_bag_item(m_supplies, m_planned_item);
+    spend_item(m_supplies, m_planned_item);
 }
 
 void BattleDecisions::policy_item_used(){
-    spend_bag_item(m_supplies, m_planned_item);
+    spend_item(m_supplies, m_planned_item);
     m_policy->item_used(m_planned_item);
     //  A medicine heals up to the bar's end.
     const double room = static_cast<double>(m_supplies.lead.stats->hp) - m_last_hp.value_or(0);

@@ -146,6 +146,8 @@ constexpr std::string_view MAP_NAMES[] = {
     //  Route 7's east gate, where the guard takes the TEA, and Saffron City.
     "Route7_EastEntrance",
     "SaffronCity",
+    //  Sabrina's gym: nine rooms joined by teleport pads (warps).
+    "SaffronCity_Gym",
     //  Cinnabar Island's Center and Blaine's gym, through its quiz doors, and
     //  Route 21 north of it to Pallet Town (12.03).
     "CinnabarIsland",
@@ -185,6 +187,14 @@ constexpr std::string_view MAP_NAMES[] = {
     "VictoryRoad_3F",
     "IndigoPlateau_Exterior",
     "IndigoPlateau_PokemonCenter_1F",
+    //  The Pokemon League: the Elite Four's rooms, one-way north, the
+    //  Champion's room and the Hall of Fame (20.01 to 20.05).
+    "PokemonLeague_LoreleisRoom",
+    "PokemonLeague_BrunosRoom",
+    "PokemonLeague_AgathasRoom",
+    "PokemonLeague_LancesRoom",
+    "PokemonLeague_ChampionsRoom",
+    "PokemonLeague_HallOfFame",
 };
 
 

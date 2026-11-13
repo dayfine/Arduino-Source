@@ -1,0 +1,206 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "20.04",
+    "title": "The Elite Four: Lance",
+    "start": {
+      "map": "PokemonLeague_AgathasRoom",
+      "tiles": [
+        [
+          6,
+          6
+        ]
+      ],
+      "facing": "north"
+    },
+    "events": [
+      {
+        "id": "heal_after_agatha",
+        "kind": "game_action",
+        "action": "heal_to_full",
+        "args": {
+          "max_hp": 168,
+          "full_restore": true
+        },
+        "why": "full HP into Lance, as PokeGuy enters him (168/168, docs/battles/pokeguy-conditions.md lance) after Agatha's fight: a Full Restore if any HP is missing (from the battle's last HP bar), as PokeGuy spends one here (his bag's 12 to 11), then Super Potions and Potions for what is left (none, or all of it when the bag has no Full Restore)"
+      },
+      {
+        "id": "lead_lv54_for_lance",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 54
+        },
+        "why": "the precondition for Lance: the lead at least Lv54, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md lance)"
+      },
+      {
+        "id": "below_agathas_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_AgathasRoom",
+            "tiles": [
+              [
+                6,
+                3
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "from in front of Agatha (6, 5) around her to below her door (6, 2), open since her defeat"
+      },
+      {
+        "id": "agathas_door",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "into the door (6, 2), the warp into Lance's room at the east end of its corridor (23, 13)"
+      },
+      {
+        "id": "lances_corridor",
+        "kind": "scene",
+        "declared_after": {
+          "map": "PokemonLeague_LancesRoom",
+          "tiles": [
+            [
+              6,
+              10
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "the room's OnFrame script walks the player through the corridor (PokemonLeague_LancesRoom_Movement_WalkThroughCorridor: 2 north, 6 west, 7 south, 11 west, 8 north) from (23, 13) to (6, 10) and closes the entrance behind; no text"
+      },
+      {
+        "id": "before_lance",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_LancesRoom",
+            "tiles": [
+              [
+                6,
+                9
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "to (6, 9) facing Lance (6, 8), planned from where the room's walk left the player: a tile north, or a step round if the walk ended a tile off"
+      },
+      {
+        "id": "challenge_lance",
+        "kind": "talk",
+        "why": "Lance (6, 8): the intro, then the battle (trainerbattle_no_intro)"
+      },
+      {
+        "id": "lance",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_ELITE_FOUR_LANCE",
+          "foes": [
+            "gyarados",
+            "dragonair",
+            "dragonair",
+            "aerodactyl",
+            "dragonite"
+          ],
+          "policy": "goal-based-setup",
+          "setup_spa": 3,
+          "setup_accuracy": 2,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": true,
+          "foe_threats": [
+            [
+              112,
+              40,
+              32,
+              42,
+              93,
+              0,
+              0
+            ],
+            [
+              96,
+              40,
+              17,
+              87,
+              62,
+              0,
+              0
+            ],
+            [
+              96,
+              0,
+              0,
+              0,
+              62,
+              0,
+              0
+            ],
+            [
+              173,
+              47,
+              47,
+              96,
+              78,
+              0,
+              0
+            ],
+            [
+              107,
+              64,
+              24,
+              144,
+              114,
+              0,
+              0
+            ]
+          ]
+        },
+        "declared_after": {
+          "map": "PokemonLeague_LancesRoom",
+          "tiles": [
+            [
+              6,
+              9
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "Lance (TRAINER_ELITE_FOUR_LANCE): Gyarados Lv56, Dragonair Lv54, Dragonair Lv54, Aerodactyl Lv58, Dragonite Lv60, two Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +3 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first against an accuracy drop; the doc's lance row, 99.2% at 168/168); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's lance entry state (168/168), as 19.01's: Dragonite's worst case is 144 and its worst normal hit (Hyper Beam) 114. Then the Champion's door north (6, 5) opens"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts in front of Agatha at (6, 6) facing north, where 20.03 ends. A boss battle is its own checkpoint: the heal after Agatha, the corridor and Lance's fight. PokeGuy has this fight at 1:53:07 (docs/battles/pokeguy-conditions.md, lance).",
+        "Lance's Blizzard budget: the doc's League PP contract (league-pp-requirements.md) has Blizzard 5/5 into Lance; nothing before him casts it.",
+        "Ends in front of Lance at (6, 9) facing north, saved there."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {
+        "map": "PokemonLeague_LancesRoom",
+        "tiles": [
+          [
+            6,
+            9
+          ]
+        ],
+        "facing": "north"
+      }
+    }
+  }
+}

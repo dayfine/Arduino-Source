@@ -24,6 +24,13 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Whether `item` is used on the lead with only a message before the bag
+//  comes back: the Elixir (in FRLG it restores every move, no move to
+//  pick) and the Full Restore. The healing steps use them
+//  (PokemonFRLG_AutoStoryHealingSteps.h), which keep the lead's HP and PP;
+//  a use_item step doesn't take them.
+bool is_lead_recovery_item(std::string_view item);
+
 //  Opens the item's pocket, finds it and uses it, then back to the
 //  overworld.
 ItemUseEnd use_item_from_bag(Logger& logger, ItemUseActions& actions, std::string_view item);
@@ -54,6 +61,7 @@ public:
     virtual std::vector<BagRow> read_pocket() override;
     virtual void use_row(size_t row) override;
     virtual bool use_row_on_lead(size_t row) override;
+    virtual bool use_row_on_lead_to_bag(size_t row) override;
     virtual void register_row(size_t row) override;
     virtual void close_bag() override;
 

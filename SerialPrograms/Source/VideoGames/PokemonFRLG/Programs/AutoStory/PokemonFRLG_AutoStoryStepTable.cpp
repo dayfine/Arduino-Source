@@ -206,6 +206,10 @@ std::vector<Pokemon::StoryArgSpec> policy_arg_specs(){
         .why = "the doc's setup goal torrent_power: a higher Sp. Atk goal while Torrent is off",
     });
     args.push_back(Pokemon::StoryArgSpec{
+        .key = "setup_target_torrent", .type = Pokemon::StoryArgType::BOOLEAN, .required = false, .fallback = false,
+        .why = "the doc's setup goal target_torrent: torrent_power's goal against the first foe only, with more to come",
+    });
+    args.push_back(Pokemon::StoryArgSpec{
         .key = "foe_threats", .type = Pokemon::StoryArgType::INTEGER_ROWS, .required = false, .fallback = std::vector<std::vector<int64_t>>(),
         .why = "one row per foe, [speed, likely, mean, max, normal_max, lowers_accuracy, explodes]: what it does to the lead, from the doc's stats",
     });

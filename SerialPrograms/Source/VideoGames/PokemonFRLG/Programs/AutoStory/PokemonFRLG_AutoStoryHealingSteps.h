@@ -3,8 +3,9 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The story's steps for full HP into a battle (PokemonFRLG_AutoStoryHealing.h)
- *  on the console: heal to full with the bag's Potions and Super Potions,
- *  check the HP is full, and a Mart step's buy cut to what the bag lacks.
+ *  on the console: heal to full with the bag's Potions and Super Potions
+ *  (or a Full Restore), an Elixir for the lead's PP, check the HP is full,
+ *  and a Mart step's buy cut to what the bag lacks.
  *
  */
 
@@ -28,9 +29,15 @@ namespace PokemonFRLG{
 
 
 //  The GAME step that heals the lead to full with the bag (heal_to_full()):
-//  max_hp INTEGER, the lead's maximum HP when the summary wasn't read. HP
-//  still missing when the bag runs out is logged; the check fails on it.
+//  max_hp INTEGER, the lead's maximum HP when the summary wasn't read;
+//  full_restore BOOLEAN (default false), a Full Restore first if the bag
+//  holds one (heal_to_full()'s first item). HP still missing when the
+//  bag runs out is logged; the check fails on it.
 inline const std::string HEAL_TO_FULL_ACTION = "heal_to_full";
+//  The GAME step "restore_pp" uses a PP item on the lead from the bag:
+//  item WORD, "elixir" (FRLG's Elixir restores every move, no move to
+//  pick). It fails when the bag has none or doesn't come back after its
+//  message.
 //  The GAME step that fails unless the lead's HP is known full
 //  (missing_hp() measured and 0 or less): max_hp INTEGER, as above.
 inline const std::string CHECK_FULL_HP_ACTION = "check_full_hp";
@@ -53,11 +60,12 @@ bool use_recovery_item(
 //  as the bag was read): all of them, or with `any` at least one.
 bool bag_holds(const Supplies& supplies, const std::vector<Pokemon::StoryItem>& needs, bool any);
 
-//  HEAL_TO_FULL_ACTION's, CHECK_FULL_HP_ACTION's and BAG_CHECK_ACTION's specs.
+//  HEAL_TO_FULL_ACTION's, restore_pp's, CHECK_FULL_HP_ACTION's and
+//  BAG_CHECK_ACTION's specs.
 std::vector<Pokemon::StoryActionSpec> healing_action_specs();
 
-//  On the console, a HEAL_TO_FULL_ACTION, CHECK_FULL_HP_ACTION or
-//  BAG_CHECK_ACTION step (its flag set in `state`); nothing for another.
+//  On the console, a HEAL_TO_FULL_ACTION, restore_pp,
+//  CHECK_FULL_HP_ACTION or BAG_CHECK_ACTION step (its flag set in `state`); nothing for another.
 std::optional<Pokemon::Outcome> run_healing_step(StoryEnv& env, Pokemon::RunState& state, const Pokemon::StoryStep& step);
 
 //  A MART_ACTION step with "fill_to": its first line cut to the

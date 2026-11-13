@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -41,7 +42,7 @@ std::optional<BagPocket> usable_item_pocket(std::string_view item){
     if (is_repel(item) || item == "escape-rope"){
         return BagPocket::ITEMS;
     }
-    if (is_party_item(item)){
+    if (is_party_item(item) || is_lead_recovery_item(item)){
         return BagPocket::ITEMS;
     }
     if (item == "bicycle"){
@@ -52,13 +53,16 @@ std::optional<BagPocket> usable_item_pocket(std::string_view item){
 bool is_party_item(std::string_view item){
     return item == "rare-candy";
 }
+bool is_lead_recovery_item(std::string_view item){
+    return item == "elixir" || item == "full-restore";
+}
 bool is_repel(std::string_view item){
     return item == "repel" || item == "super-repel" || item == "max-repel";
 }
 
 std::optional<std::string> parse_use_item_step(const Pokemon::StoryStep& step){
     const std::string* item = step.action == USE_ITEM_VARIANT ? game_arg<std::string>(step.args, "item") : nullptr;
-    if (item == nullptr || step.args.contains("slot") || !usable_item_pocket(*item)){
+    if (item == nullptr || step.args.contains("slot") || !usable_item_pocket(*item) || is_lead_recovery_item(*item)){
         return std::nullopt;
     }
     if (step.args.contains("count") && !number_arg(step.args, "count", 1, MAX_USE_COUNT)){
@@ -129,6 +133,12 @@ ItemUseEnd with_bag_row(
             actions.close_bag();
             return ItemUseEnd::NOT_USED;
         }
+    }else if (is_lead_recovery_item(item)){
+        if (!actions.use_row_on_lead_to_bag(*row)){
+            logger.log(std::format("Bag: never back at the bag after the {}.", item));
+            actions.close_bag();
+            return ItemUseEnd::NOT_USED;
+        }
     }else{
         actions.use_row(*row);
     }
@@ -186,6 +196,10 @@ constexpr Milliseconds CURSOR_WAIT = 150ms;
 //  presses each) to get from it back to the bag.
 constexpr int LEVEL_UP_PRESSES = 30;
 constexpr int BACK_TO_BAG_ATTEMPTS = 8;
+//  B presses through an item's message on the lead ("PP was restored.",
+//  "<name>'s HP was restored by N point(s).") back to the bag: one or two
+//  boxes take two, the rest is margin. Not timed on the console.
+constexpr int MESSAGE_PRESSES = 6;
 //  Out of the bag and its messages, or the Escape Rope's warp.
 constexpr Milliseconds BAG_CLOSE_TIMEOUT = 30000ms;
 
@@ -300,6 +314,34 @@ bool ConsoleItemUseActions::use_row_on_lead(size_t row){
     pbf_press_button(m_context, BUTTON_A, 160ms, 1500ms);
     pbf_press_button(m_context, BUTTON_A, 160ms, 1000ms);
     return wait_for_level_up_stats() && back_to_bag_declining_moves();
+}
+
+bool ConsoleItemUseActions::use_row_on_lead_to_bag(size_t row){
+    for (size_t c = 0; c < row; c++){
+        pbf_press_dpad(m_context, DPAD_DOWN, CURSOR_TAP, CURSOR_WAIT);
+    }
+    //  The item's menu, USE, then the party list on the lead.
+    pbf_press_button(m_context, BUTTON_A, 160ms, 800ms);
+    pbf_press_button(m_context, BUTTON_A, 160ms, 1500ms);
+    pbf_press_button(m_context, BUTTON_A, 160ms, 1000ms);
+    //  The message, then the game returns to the bag. B, not A: an A at
+    //  the bag would open the next item's menu.
+    BagWatcher bag(COLOR_RED);
+    m_context.wait_for_all_requests();
+    const int seen = run_until<ProControllerContext>(
+        m_console, m_context,
+        [](ProControllerContext& context){
+            pbf_wait(context, 1000ms);
+            for (int c = 0; c < MESSAGE_PRESSES; c++){
+                pbf_press_button(context, BUTTON_B, 200ms, 1800ms);
+            }
+        },
+        {bag}
+    );
+    if (seen < 0){
+        m_console.log("Bag: no bag after the item's message on the lead.", COLOR_RED);
+    }
+    return seen >= 0;
 }
 
 void ConsoleItemUseActions::register_row(size_t row){

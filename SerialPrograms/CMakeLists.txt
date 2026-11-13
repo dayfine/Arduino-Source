@@ -243,8 +243,6 @@ pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonFRLG/Programs/Aut
     VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryConsoleFailureData.h PokemonAutomation::NintendoSwitch::PokemonFRLG console_failure_json)
 pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonFRLG/Programs/AutoStory/ReplayData
     VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay.h PokemonAutomation::NintendoSwitch::PokemonFRLG story_replay_fixture_json)
-pa_embed_text_files(SerialProgramsLib Source/Pokemon/Navigation/GateTestMaps
-    Pokemon/Navigation/Pokemon_NavigationGateTestMaps.h PokemonAutomation::Pokemon navigation_gate_test_map_json)
 
 
 # Create binary target

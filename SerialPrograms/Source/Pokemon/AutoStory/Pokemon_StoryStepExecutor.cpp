@@ -62,6 +62,11 @@ Event story_event(const StoryStep& step, StoryStepExecutor& executor){
         }
         return outcome;
     };
+    if (step.gates_after){
+        event.when_skipped = [&step](RunState& state){
+            apply_gate_change(state.gates, *step.gates_after);
+        };
+    }
     if (step.pose_after){
         event.pose_learned = pose_of(*step.pose_after);
     }

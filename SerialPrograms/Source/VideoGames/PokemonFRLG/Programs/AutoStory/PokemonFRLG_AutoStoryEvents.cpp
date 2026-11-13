@@ -28,6 +28,7 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
+#include "PokemonFRLG_AutoStoryBoulders.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
@@ -139,7 +140,7 @@ OverworldInterruptSet walk_interrupts(StoryEnv& env, const StoryStep& step){
 
 //  `maps`: where the route is planned; the story's but where a step knows
 //  better (the trash cans' walks, past trainers who have walked up).
-Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const std::vector<MapData>& maps = story_maps()){
+Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const std::vector<MapData>& maps){
     const std::vector<TilePos> tiles = Pokemon::tiles_of(state.pose);
     const bool known = state.pose.certainty == Pokemon::PoseCertainty::TILE
         || (state.pose.certainty == Pokemon::PoseCertainty::SET && tiles.size() > 1);
@@ -300,7 +301,7 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!nurse_before_battle(supplies)){
         return Pokemon::outcome_ok();
     }
-    Outcome walked = walk_route(env, state, step);
+    Outcome walked = walk_route(env, state, step, story_maps(state.flags));
     if (!walked.succeeded()){
         return walked;
     }
@@ -318,24 +319,6 @@ const RouteCosts& story_route_costs(){
         return costs;
     }();
     return COSTS;
-}
-
-const std::vector<MapData>& story_maps(){
-    static const std::vector<MapData> maps = []{
-        const std::vector<MapData> all = overworld_maps();
-        std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
-        flags.merge(map_flag_set(all, "new_game"));
-        //  The one ball the story picks up in its way: B2F's MOON STONE
-        //  blocks column 2 of the arrow floor (09.02's moon_stone).
-        flags.insert("FLAG_HIDE_ROCKET_HIDEOUT_B2F_MOON_STONE");
-        //  Route 16's Snorlax (31, 13), gone once 11.01 has played the POKE
-        //  FLUTE and run: the routes after it go over its tile. None before
-        //  it does (10.01 goes north by the Cut tree), and 11.01 walks up to
-        //  it from the east.
-        flags.insert("FLAG_HIDE_ROUTE_16_SNORLAX");
-        return overworld_maps(flags);
-    }();
-    return maps;
 }
 
 Pokemon::Pose to_pose(const StoryPose& pose){
@@ -366,6 +349,8 @@ std::string save_card_place(const std::string& map){
         {"Route21", "route-21"},
         {"Route22", "route-22"},
         {"Route23", "route-23"},
+        {"VictoryRoad", "victory-road"},
+        {"IndigoPlateau", "indigo-plateau"}, {"PokemonLeague", "indigo-plateau"},
         {"VermilionCity", "vermilion-city"},
         {"Route10", "route-10"},
         {"LavenderTown", "lavender-town"},
@@ -507,7 +492,7 @@ bool talk_until_message(ConsoleHandle& console, ProControllerContext& context, c
 
 
 bool walked(StoryEnv& env, RunState& state, const StoryStep& step){
-    const Outcome outcome = walk_route(env, state, step);
+    const Outcome outcome = walk_route(env, state, step, story_maps(state.flags));
     if (outcome.succeeded() && outcome.pose){
         state.pose = *outcome.pose;
     }
@@ -575,12 +560,10 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
         [&](const GrindSpot& spot){
             return grind_heal_trip(env, state, step, patch, spot);
         },
-        [&]{
-            pace_trainer_battle(env, state, step, patch);
-        }
+        [&]{ pace_trainer_battle(env, state, step, patch); }
     );
     ConsoleChoiceActions choice(env.console, env.context);
-    StoryAbilities abilities{console_member_reader(env.console, env.context, env.language, StartMenu::FULL), mart, teach, grind, choice};
+    StoryAbilities abilities{console_member_reader(env.console, env.context, env.language, StartMenu::FULL), mart, teach, grind, choice, console_species_finder(env.console, env.context, env.language, env.party), &env.party};
     if (const std::optional<GrindPlan> plan = step.action == GRIND_CHECK_ACTION ? grind_plan_of(step.args) : std::nullopt){
         if (grind_reached_already(env.console.logger(), grind, abilities.members, *plan)){
             state.flags.insert(step.name);
@@ -632,12 +615,10 @@ Outcome push_boulder(StoryEnv& env, RunState& state, const StoryStep& step){
         answer_yes_no(env.console, env.context, true, BUTTON_B, YES_NO_TIMEOUT);
         mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
     }
-    StoryPose at = *here;
     for (int64_t c = 0; c < tiles; c++){
         step_once(env.console, env.context, direction, direction, env.player_gender);
-        at = StoryPose{at.map, at.tile.next(direction), direction};
     }
-    return Pokemon::outcome_ok(to_pose(at));
+    return boulder_pushed(state, step, story_maps());
 }
 
 //  Vermilion Gym's trash cans on the console: a walk to each can's stand
@@ -698,13 +679,14 @@ Outcome open_gym_door(StoryEnv& env, RunState& state, const StoryStep& step){
 //  withdrawal, a MART, TEACH, LEVEL, GRIND or fossil CHOICE.
 Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
     const Pokemon::Pose patch = state.pose;
-    ConsoleCaptureActions capture(env.console, env.context, env.language, env.player_gender, [&]{
-        pace_trainer_battle(env, state, step, patch);
-    });
+    ConsoleCaptureActions capture(env.console, env.context, env.language, env.player_gender, [&]{ pace_trainer_battle(env, state, step, patch); });
     ConsolePcStorageActions pc(env.console, env.context);
-    std::optional<Outcome> done = run_field_game_step(env.console, env.context, env.language, env.player_gender, step);
+    std::optional<Outcome> done = run_field_game_step(env.console, env.context, env.language, env.player_gender, step, env.party);
     if (!done){
         done = run_storage_game_step(env.console.logger(), &env.console, step, capture, pc);
+        if (done){
+            env.party.invalidate();
+        }
     }
     if (!done){
         done = run_healing_step(env, state, step);
@@ -766,7 +748,7 @@ ConsoleAction console_action_of(StoryActionId id){
             return Pokemon::outcome_ok();
         };
     case StoryActionId::ROUTE:
-        return [](StoryEnv& env, RunState& state, const StoryStep& step){ return walk_route(env, state, step); };
+        return [](StoryEnv& env, RunState& state, const StoryStep& step){ return walk_route(env, state, step, story_maps(state.flags)); };
     case StoryActionId::LEGS:
         return walk_legs;
     case StoryActionId::STEP:
@@ -826,6 +808,17 @@ StoryExecutor::StoryExecutor(StoryEnv& env)
 
 Outcome StoryExecutor::run(const StoryStep& step, RunState& state){
     return m_executor.run(step, state);
+}
+
+bool StoryExecutor::master_ball_skipped(bool take_master_ball, Pokemon::StoryCheckLevel checks){
+    return !take_master_ball || checks == Pokemon::StoryCheckLevel::SPEEDRUN;
+}
+
+bool StoryExecutor::holds(std::string_view condition, RunState& state){
+    if (condition == "master_ball_skipped"){
+        return master_ball_skipped(m_env.take_master_ball, m_env.checks);
+    }
+    return Pokemon::StoryStepExecutor::holds(condition, state);
 }
 
 Pokemon::StoryAction StoryExecutor::console_action(StoryActionId id){
@@ -1005,6 +998,7 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
             keep_next_start_frame(env, id);
             env.has_save = true;
             env.saved_supplies = env.supplies;
+            env.saved_field_moves.save(env.party.users());
             env.prepared.clear();
             env.bag_read = false;
             return Pokemon::outcome_ok();
