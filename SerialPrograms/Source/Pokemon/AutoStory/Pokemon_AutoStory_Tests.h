@@ -16,10 +16,10 @@
 #include "Data/Pokemon_StoryStepJson_Tests.h"
 #include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
-#include "Pokemon_AutoStoryStats_Tests.h"
 #include "Pokemon_CheckpointRetry_Tests.h"
 #include "Pokemon_StoryEvents_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
+#include "Pokemon_StoryRunCounts_Tests.h"
 #include "Pokemon_StorySavePolicy_Tests.h"
 #include "Pokemon_StorySegments_Tests.h"
 #include "Pokemon_StoryStepExecutor_Tests.h"
@@ -32,7 +32,6 @@ namespace Pokemon{
 // Registers every shared AutoStory suite, for the unit test runner.
 inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_AutoStorySelect(database);
-    add_tests_AutoStoryStats(database);
     add_tests_CheckpointRetry(database);
     add_tests_StoryLog(database);
     add_tests_StoryRangeOptions(database);
@@ -43,6 +42,7 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryActionArg(database);
     add_tests_AuthoredCheckpointJson(database);
     add_tests_StorySavePolicy(database);
+    add_tests_StoryRunCounts(database);
 }
 
 
