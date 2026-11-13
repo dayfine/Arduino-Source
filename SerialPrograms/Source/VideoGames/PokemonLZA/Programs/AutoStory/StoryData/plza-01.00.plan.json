@@ -8,7 +8,7 @@
       {
         "id": "launch_from_home",
         "kind": "game_action",
-        "why": "step 0: on the HOME screen with PLZA's tile selected: close it if it is running (X, A), launch the selected tile without moving the cursor, user select / license check, wait for the language list (no save: a new game opens on it)",
+        "why": "step 0: with PLZA in front (any screen, mid-scene too) or on the HOME screen with its tile selected: HOME once if HOME is not showing (the game in front stays the selected tile), close it if it is running (X, A), launch the selected tile without moving the cursor, user select / license check, wait for the language list (no save: a new game opens on it)",
         "action": "launch_game_from_home"
       },
       {

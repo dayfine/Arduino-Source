@@ -173,9 +173,8 @@ UnitTestResult test_language_list_capture(Logger&){
     return true;
 }
 
-//  01.00's start on frames whose HOME reading is given: only HOME
-//  launches; the language list and anything else (an empty frame too) are
-//  refused.
+//  01.00's start on frames whose HOME reading is given: HOME, the
+//  language list, anything else, and no video.
 UnitTestResult test_launch_start_synthetic(Logger&){
     const ImageRGB32 list = language_list_frame(0);
     ImageRGB32 game(1920, 1080);
@@ -192,8 +191,8 @@ UnitTestResult test_launch_start_synthetic(Logger&){
         {"a game frame", &game, false, LaunchStart::OTHER},
         {"the language list", &list, false, LaunchStart::FIRST_SCREEN},
         {"the language list, HOME read", &list, true, LaunchStart::FIRST_SCREEN},
-        {"an empty frame", &empty, false, LaunchStart::OTHER},
-        {"an empty frame, HOME read", &empty, true, LaunchStart::OTHER},
+        {"an empty frame", &empty, false, LaunchStart::NO_VIDEO},
+        {"an empty frame, HOME read", &empty, true, LaunchStart::NO_VIDEO},
     };
     for (const Row& row : rows){
         if (read_launch_start(*row.frame, row.home, is_language_list) != row.expected){
@@ -237,6 +236,60 @@ UnitTestResult test_launch_start_capture(Logger&){
         if (read_launch_start(frame, row.home, is_language_list) != row.expected){
             return std::format("{}: expected start {}.", row.file, (int)row.expected);
         }
+    }
+    return true;
+}
+
+//  01.00's moves: HOME launches; a game in front (mid-scene or on its
+//  first screen) gets one HOME press, then is refused if HOME still does
+//  not show; no video is refused without a press.
+UnitTestResult test_launch_moves(Logger&){
+    struct Row{
+        LaunchStart start;
+        bool home_pressed;
+        LaunchMove expected;
+    };
+    const Row rows[] = {
+        {LaunchStart::HOME_MENU, false, LaunchMove::LAUNCH},
+        {LaunchStart::HOME_MENU, true, LaunchMove::LAUNCH},
+        {LaunchStart::OTHER, false, LaunchMove::PRESS_HOME},
+        {LaunchStart::OTHER, true, LaunchMove::REFUSE},
+        {LaunchStart::FIRST_SCREEN, false, LaunchMove::PRESS_HOME},
+        {LaunchStart::FIRST_SCREEN, true, LaunchMove::REFUSE},
+        {LaunchStart::NO_VIDEO, false, LaunchMove::REFUSE},
+        {LaunchStart::NO_VIDEO, true, LaunchMove::REFUSE},
+    };
+    for (const Row& row : rows){
+        if (next_launch_move(row.start, row.home_pressed) != row.expected){
+            return std::format(
+                "start {}, HOME pressed {}: expected move {}.",
+                (int)row.start, row.home_pressed, (int)row.expected
+            );
+        }
+    }
+    return true;
+}
+
+//  The HOME press on console B's frames, from the folder in
+//  PLZA_INTRO_SCREENS: in-game.png (a game in front) gets the press, and
+//  home.png, the screen it opens, launches.
+UnitTestResult test_launch_moves_capture(Logger&){
+    const auto* folder = std::getenv("PLZA_INTRO_SCREENS");
+    if (folder == nullptr || !Filesystem::is_directory(Filesystem::Path(folder))){
+        return UnitTestResult(UnitTestResult::SKIPPED, "PLZA_INTRO_SCREENS is not a folder.");
+    }
+    const std::string in_game = std::format("{}/in-game.png", folder);
+    const std::string home = std::format("{}/home.png", folder);
+    if (!Filesystem::exists(Filesystem::Path(in_game)) || !Filesystem::exists(Filesystem::Path(home))){
+        return UnitTestResult(UnitTestResult::SKIPPED, "in-game.png or home.png is missing.");
+    }
+    const LaunchStart before = read_launch_start(ImageRGB32(in_game), false, is_language_list);
+    if (next_launch_move(before, false) != LaunchMove::PRESS_HOME){
+        return "in-game.png: expected a HOME press.";
+    }
+    const LaunchStart after = read_launch_start(ImageRGB32(home), true, is_language_list);
+    if (next_launch_move(after, true) != LaunchMove::LAUNCH){
+        return "home.png after the HOME press: expected a launch.";
     }
     return true;
 }
@@ -366,6 +419,14 @@ const IntroCase INTRO_CASES[] = {
     },
     {
         .input = {"Intro: the start screen on console B (PLZA_INTRO_SCREENS)", test_launch_start_capture},
+        .expectation = {},
+    },
+    {
+        .input = {"Intro: the launch step's moves", test_launch_moves},
+        .expectation = {},
+    },
+    {
+        .input = {"Intro: the HOME press on console B (PLZA_INTRO_SCREENS)", test_launch_moves_capture},
         .expectation = {},
     },
     {

@@ -27,12 +27,25 @@ using namespace std::chrono_literals;
 
 LaunchStart read_launch_start(const ImageViewRGB32& frame, bool home_menu_shows, const ScreenCheck& first_screen){
     if (!frame){
-        return LaunchStart::OTHER;
+        return LaunchStart::NO_VIDEO;
     }
     if (first_screen && first_screen(frame)){
         return LaunchStart::FIRST_SCREEN;
     }
     return home_menu_shows ? LaunchStart::HOME_MENU : LaunchStart::OTHER;
+}
+
+LaunchMove next_launch_move(LaunchStart start, bool home_pressed){
+    switch (start){
+    case LaunchStart::HOME_MENU:
+        return LaunchMove::LAUNCH;
+    case LaunchStart::FIRST_SCREEN:
+    case LaunchStart::OTHER:
+        return home_pressed ? LaunchMove::REFUSE : LaunchMove::PRESS_HOME;
+    case LaunchStart::NO_VIDEO:
+        return LaunchMove::REFUSE;
+    }
+    return LaunchMove::REFUSE;
 }
 
 
@@ -89,6 +102,42 @@ void close_selected_game_if_running(ConsoleHandle& console, ProControllerContext
     console.log("launch: the selected game is closed.");
 }
 
+//  The screen now, read as the launch step's start.
+LaunchStart read_screen(ConsoleHandle& console, ProControllerContext& context, const ScreenCheck& first_screen){
+    context.wait_for_all_requests();
+    const VideoSnapshot frame = console.video().snapshot();
+    HomeMenuDetector home(console, COLOR_RED);
+    const bool home_shows = frame && home.detect_only(frame);
+    return read_launch_start(frame, home_shows, first_screen);
+}
+
+//  Until the HOME menu shows, at most HOME once (see next_launch_move()).
+//  Throws UserSetupError if it does not.
+void reach_home_menu(ConsoleHandle& console, ProControllerContext& context, std::string_view game, const ScreenCheck& first_screen){
+    LaunchStart start = read_screen(console, context, first_screen);
+    bool home_pressed = false;
+    while (true){
+        switch (next_launch_move(start, home_pressed)){
+        case LaunchMove::LAUNCH:
+            return;
+        case LaunchMove::PRESS_HOME:{
+            console.log(std::format("launch: not on HOME ({}); HOME once: the game in front stays the selected tile.", (int)start));
+            pbf_press_button(context, BUTTON_HOME, 160ms, 0ms);
+            HomeMenuDetector home(console, COLOR_RED);
+            wait_for_screen(console, context, [&](const ImageViewRGB32& frame){ return home.detect_only(frame); }, 5000ms);
+            home_pressed = true;
+            start = read_screen(console, context, first_screen);
+            break;
+        }
+        case LaunchMove::REFUSE:
+            throw UserSetupError(console, std::format(
+                "Start a new game with {} in front, or on the HOME screen with {}'s tile selected. {}",
+                game, game, start == LaunchStart::NO_VIDEO ? "There is no video." : "HOME did not show after a HOME press."
+            ));
+        }
+    }
+}
+
 } // namespace
 
 
@@ -98,21 +147,7 @@ void launch_selected_game_from_home(
     const ScreenCheck& first_screen, Milliseconds timeout,
     std::string_view dump_folder
 ){
-    context.wait_for_all_requests();
-    const VideoSnapshot frame = console.video().snapshot();
-    HomeMenuDetector home(console, COLOR_RED);
-    const bool home_shows = frame && home.detect_only(frame);
-    switch (read_launch_start(frame, home_shows, first_screen)){
-    case LaunchStart::HOME_MENU:
-        break;
-    case LaunchStart::FIRST_SCREEN:
-        throw UserSetupError(console, std::format(
-            "Start a new game on the HOME screen with {}'s tile selected. The {} is showing: go HOME first.",
-            game, first_screen_name
-        ));
-    case LaunchStart::OTHER:
-        throw UserSetupError(console, std::format("Start a new game on the HOME screen with {}'s tile selected.", game));
-    }
+    reach_home_menu(console, context, game, first_screen);
     console.log(std::format("launch: the HOME menu; launching the selected tile ({} expected), the cursor not moved.", game));
     close_selected_game_if_running(console, context);
     console.log("launch: A on the selected tile, then the user select and the license check.");
