@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include <optional>
 #include <string>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
@@ -99,6 +100,42 @@ public:
     }
 };
 
+//  The user's turn is returned, not thrown, once.
+class Test_RngHandoffUserTurn : public UnitTest{
+public:
+    Test_RngHandoffUserTurn()
+        : UnitTest("Pokemon::StoryRngHandoff - a user's turn is returned, not an error")
+    {}
+
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        int calls = 0;
+        const std::optional<std::string> turn = run_rng_handoff_or_user_turn(logger, "Test RNG", [&]{
+            calls++;
+            return RngHandoffResult{.user_turn = "save by hand"};
+        });
+        if (!turn || *turn != "save by hand"){
+            return "Expected the user's turn";
+        }
+        if (calls != 1){
+            return std::format("Expected 1 call, got {}", calls);
+        }
+        const std::optional<std::string> none = run_rng_handoff_or_user_turn(logger, "Test RNG", []{
+            return RngHandoffResult{.summary = "shiny"};
+        });
+        if (none){
+            return "A success has no user's turn";
+        }
+        try{
+            run_rng_handoff_or_user_turn(logger, "Test RNG", []{
+                return RngHandoffResult{.failure = "out of resets", .user_turn = "ignored"};
+            });
+        }catch (OperationFailedException&){
+            return true;
+        }
+        return "A failure must throw even with a user's turn";
+    }
+};
+
 } // namespace
 
 
@@ -106,6 +143,7 @@ void add_tests_StoryRngHandoff(UnitTestDatabase& database){
     database.add<Test_RngHandoffMode>();
     database.add<Test_RngHandoffSuccess>();
     database.add<Test_RngHandoffFailure>();
+    database.add<Test_RngHandoffUserTurn>();
 }
 
 
