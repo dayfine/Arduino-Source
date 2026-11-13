@@ -26,6 +26,7 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryIntro.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAdvanceArrowDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAutosaveDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryControlsHintDetector.h"
@@ -46,10 +47,9 @@ namespace PokemonLZA{
 struct StoryEnv{
     SingleSwitchProgramEnvironment& env;
     ProControllerContext& context;
-    //  The new game's name: letters and digits; type_player_name() capitalizes
-    //  the first letter only. The lab's player is Kosmos.
-    std::string player_name = "Kosmos";
-    //  The game's language, for the steps that read text.
+    //  The new game's name and look.
+    NewGameChoices new_game;
+    //  The game's language: the new game's pick, and the steps that read text.
     Language language = Language::English;
     BattleAIOption& battle_ai;
 };

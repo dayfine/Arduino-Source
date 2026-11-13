@@ -17,7 +17,9 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStory_H
 #define PokemonAutomation_PokemonLZA_AutoStory_H
 
-#include "Common/Cpp/Options/EnumDropdownOption.h"
+#include "Common/Cpp/Options/BooleanCheckBoxOption.h"
+#include "Common/Cpp/Options/SimpleIntegerOption.h"
+#include "Common/Cpp/Options/StringOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
@@ -49,9 +51,18 @@ public:
     virtual void program(SingleSwitchProgramEnvironment& env, ProControllerContext& context) override;
 
 private:
+    //  The new game's choices; with `check`, throws UserSetupError for ones the
+    //  intro cannot play.
+    NewGameChoices new_game_choices(ConsoleHandle& console, bool check) const;
+
     //  The start and end checkpoints, attempts, checks and language.
     Pokemon::StoryRunOptions RUN;
     BattleAIOption BATTLE_AI;
+    //  The new game's choices (01.00): the language is RUN's. The look and
+    //  the language list's order are guesses from Scarlet/Violet's screens.
+    StringOption PLAYER_NAME;
+    SimpleIntegerOption<uint8_t> PLAYER_LOOK;
+    BooleanCheckBoxOption NAME_FIRST_LETTER_AUTO_CAPS;
 
     GoHomeWhenDoneOption GO_HOME_WHEN_DONE;
     EventNotificationsOption NOTIFICATIONS;
