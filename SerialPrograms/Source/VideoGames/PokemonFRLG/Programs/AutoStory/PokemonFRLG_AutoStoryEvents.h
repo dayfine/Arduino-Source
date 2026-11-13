@@ -93,6 +93,9 @@ struct StoryEnv{
     //  The Items pocket's counts a count_items step kept
     //  (PokemonFRLG_AutoStorySlopeRun.h), for the next to compare.
     std::map<std::string, int> counted_items = {};
+    //  The program's "Take the Master Ball" option: 16.05's talk with Silph
+    //  Co.'s president (skip_if master_ball_skipped).
+    bool take_master_ball = true;
 };
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the
@@ -136,6 +139,11 @@ public:
 
     //  The step's action from the table.
     virtual Pokemon::Outcome run(const StoryStep& step, Pokemon::RunState& state) override;
+    //  The step condition master_ball_skipped: the program's option is off, or
+    //  the run is a SPEEDRUN, where the Master Ball's few seconds are not spent.
+    static bool master_ball_skipped(bool take_master_ball, Pokemon::StoryCheckLevel checks);
+    //  master_ball_skipped(); any other condition as the run's flags say.
+    virtual bool holds(std::string_view condition, Pokemon::RunState& state) override;
 
 private:
     //  How the console does `id`.

@@ -234,6 +234,30 @@ std::vector<MapData> overworld_maps(const std::set<std::string>& set_flags){
     return maps;
 }
 
+//  (name, JSON text) of each file in GateMaps/, sorted by name: the floors of
+//  Silph Co. as PokemonSimulation's runtime maps have them from revision
+//  82b5b05 (the pinned maps have the doors open), trimmed to tiles, points,
+//  warps and gates. Generated at build time.
+//  TODO: drop them when the pin has moved past 82b5b05.
+const std::vector<std::pair<std::string, std::string>>& overworld_gate_map_json();
+
+std::vector<MapData> with_gate_maps(std::vector<MapData> maps){
+    for (const auto& [name, json] : overworld_gate_map_json()){
+        const std::string source = "GateMaps/" + name + ".json";
+        const MapData fixture = parse_map(json, source);
+        const auto map = std::find_if(maps.begin(), maps.end(), [&](const MapData& item){ return item.name == fixture.name; });
+        if (map == maps.end()){
+            continue;
+        }
+        if (map->tiles.width != fixture.tiles.width || map->tiles.height != fixture.tiles.height){
+            throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, source + " has other dimensions than the map it adds gates to.");
+        }
+        map->tiles = fixture.tiles;
+        map->gates = fixture.gates;
+    }
+    return maps;
+}
+
 TilePos map_point(const std::vector<MapData>& maps, const std::string& map, const std::string& point){
     for (const MapData& data : maps){
         if (data.name != map){

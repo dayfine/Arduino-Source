@@ -93,11 +93,17 @@ const std::string RUN_GIFT_RNG_TEXT =
     "Pokemon Center, run Gift RNG's attempts for the Magikarp from that save, as the RNG plan lists them for its TID and "
     "SID (set by Run Starter RNG in AutoStory, or typed in). A shiny Magikarp is saved there (04.03) and the run goes "
     "on; otherwise the run stops with the save beside the salesman. Likewise for the Eevee: 09.03 saves facing its ball "
-    "in Celadon Mansion's roof room, and 09.04 saves the shiny.<br>"
-    "To try again from that save, start at 04.03 (09.04) with this on: it loads the save and runs the attempts first. "
-    "After Gift RNG run by hand, start at 04.03 (09.04) with this off.<br>"
+    "in Celadon Mansion's roof room, and 09.04 saves the shiny; and for the Lapras: 16.03 saves facing the employee "
+    "on Silph Co.'s 7F, and 16.04 saves the shiny.<br>"
+    "To try again from that save, start at 04.03 (09.04, 16.04) with this on: it loads the save and runs the attempts first. "
+    "After Gift RNG run by hand, start at 04.03 (09.04, 16.04) with this off.<br>"
     "English only. The Magikarp costs 500; each gift needs a free party slot; AutoStory's options leave the text fast.";
 
+const std::string TAKE_MASTER_BALL_TEXT =
+    "<b>Take the Master Ball:</b><br>On by default. After Giovanni on Silph Co.'s 11F, talk to the president for the "
+    "Master Ball (16.05). Off, or with the checks on SPEEDRUN, skips it.";
+
+// code-health: allow function_lines -- a flat list of the program's options, each one line of its own; splitting it hides which belong
 AutoStory::AutoStory()
     : RUN(checkpoint_database(), Pokemon::FireRedLeafGreenLanguages_Database())
     , NEW_GAME_FROM_TITLE(
@@ -142,6 +148,7 @@ AutoStory::AutoStory()
     )
     , RUN_STARTER_RNG(RUN_STARTER_RNG_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
     , RUN_GIFT_RNG(RUN_GIFT_RNG_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
+    , TAKE_MASTER_BALL(TAKE_MASTER_BALL_TEXT, LockMode::LOCK_WHILE_RUNNING, true)
     , NOTIFICATION_SHINY("Shiny found", true, true, ImageAttachmentMode::JPG, {"Notifs", "Showcase"})
     , NOTIFICATION_STATUS_UPDATE("Status Update", true, false, std::chrono::seconds(3600))
     , KEEP_START_FRAME(KEEP_START_FRAME_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
@@ -156,6 +163,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(STOP_FOR_STARTER_RNG);
     PA_ADD_OPTION(RUN_STARTER_RNG);
     PA_ADD_OPTION(RUN_GIFT_RNG);
+    PA_ADD_OPTION(TAKE_MASTER_BALL);
     PA_ADD_OPTION(RNG_PLAN);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
@@ -711,6 +719,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     StoryEnv story = story_env(env, context, checkpoints[first], RUN.check_level(), KEEP_START_FRAME);
     story.player_gender = PLAYER_GENDER;
     story.player_name = player_name;
+    story.take_master_ball = TAKE_MASTER_BALL;
     const bool at_gift_rng = plan.stop == StoryHandoff::GIFT_RNG && plan.rows.empty();
     prepare_start(env, checkpoints, first, story, at_gift_rng);
     story.language = RUN.language();

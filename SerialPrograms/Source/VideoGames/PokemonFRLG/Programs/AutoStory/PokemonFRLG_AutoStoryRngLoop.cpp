@@ -32,6 +32,8 @@ std::string_view gift_name(PokemonFRLG_RngTarget gift){
         return "Magikarp";
     case PokemonFRLG_RngTarget::eevee:
         return "Eevee";
+    case PokemonFRLG_RngTarget::lapras:
+        return "Lapras";
     default:
         return "gift";
     }

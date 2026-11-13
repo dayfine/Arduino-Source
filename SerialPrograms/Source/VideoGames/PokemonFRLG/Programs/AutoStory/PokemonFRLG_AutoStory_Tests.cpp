@@ -22,6 +22,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_OptionMenuReader.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
@@ -200,6 +201,34 @@ std::string golden_line(const RouteStep& step){
     return line;
 }
 
+//  The doors open and the Card Key held when the checkpoint's `step` starts
+//  (its start_gates and start_flags, the earlier steps' gates_after and
+//  flags_after); none for a step that is a copy of a table's.
+struct StepGates{
+    Pokemon::GateState gates;
+    Pokemon::GateRules rules;
+};
+StepGates gates_before(const StoryStep& step){
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (size_t c = 0; c < row.steps.size(); c++){
+            if (&row.steps[c] != &step){
+                continue;
+            }
+            StepGates out;
+            out.gates = Pokemon::checkpoint_gates(row, c);
+            const auto holds_key = [](const std::vector<std::string>& flags){
+                return std::find(flags.begin(), flags.end(), "card_key_held") != flags.end();
+            };
+            out.rules.card_key_held = holds_key(row.start_flags);
+            for (size_t before = 0; before < c; before++){
+                out.rules.card_key_held = out.rules.card_key_held || holds_key(row.steps[before].flags_after);
+            }
+            return out;
+        }
+    }
+    return {};
+}
+
 //  Plans `step` from `pose` and moves `pose` to its end; adds the plan to
 //  `golden`.
 UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<std::string>& golden){
@@ -214,7 +243,13 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<s
     }
     const StoryPose target = one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target"));
     const RouteGoal goal{{target.map, target.tile}, target.facing};
-    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(story_maps(), start, goal, default_route_costs(), facing);
+    const StepGates gating = gates_before(step);
+    //  The rows with no gates keep the stored plans of plan_overworld_route() (the gated
+    //  planner breaks ties differently, as on Safari Zone's 11.03).
+    const bool gated = !gating.gates.opened.empty() || gating.rules.card_key_held;
+    const std::optional<std::vector<RouteStep>> route = gated
+        ? plan_overworld_route_gated(story_maps(), start, goal, gating.gates, gating.rules, default_route_costs(), facing)
+        : plan_overworld_route(story_maps(), start, goal, default_route_costs(), facing);
     if (!route){
         return step.name + ": no route from " + to_string(start) + " to " + to_string(goal.position) + ".";
     }
@@ -223,7 +258,7 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<s
     for (const RouteStep& planned : *route){
         golden.push_back(golden_line(planned));
     }
-    const MapPosition end = follow_overworld_route(story_maps(), start, *route);
+    const MapPosition end = follow_overworld_route(story_maps(), start, *route, gating.gates);
     if (!(end == goal.position)){
         return step.name + ": the route ends at " + to_string(end) + ":" + describe(*route);
     }
@@ -291,8 +326,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 //  start: starts_after_unauthored_rows()), and adds the plans to `golden`.
 UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 63 || checkpoints[0].start){
-        return "Expected 63 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 68 || checkpoints[0].start){
+        return "Expected 68 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -668,6 +703,13 @@ UnitTestResult advance(StoryPose& pose, const StoryStep& step){
     return true;
 }
 
+//  Silph Co.'s rows: their floors are full of trainers whose lines the walk
+//  can't keep out of (the way on crosses them); the walk's interrupts fight
+//  them as they see the player, each walked leg ending where one does.
+bool incidental_fights(const std::string& id){
+    return id == "16.02" || id == "16.03" || id == "16.05";
+}
+
 //  `checkpoint`'s routes and legs keep to tiles with no tile_problem(); a
 //  step into a trainer's line is followed by the battle, which beats them.
 //  `repelled`: a Repel the table used is on (it lasts past the
@@ -687,7 +729,9 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
         for (const MapPosition& tile : walks ? tiles_walked(pose, step) : std::vector<MapPosition>{}){
             const StoryPose end = to_patch ? one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")) : StoryPose{};
             const bool patch = to_patch && tile.map == end.map && tile.point == end.tile;
-            if (const std::string problem = tile_problem(tile, beaten); !problem.empty() && !((patch || repelled || grass_held(pose, step)) && problem.starts_with("in the grass"))){
+            if (const std::string problem = tile_problem(tile, beaten); !problem.empty() && !((patch || repelled || grass_held(pose, step)) && problem.starts_with("in the grass"))
+                && !(incidental_fights(checkpoint.id) && problem.starts_with("in the line of the trainer"))
+            ){
                 return where + problem;
             }
         }
@@ -695,10 +739,10 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
         //  13.03's walk into Lewis's room, B1F of the Pokemon Mansion: its one way in,
         //  (22, 24), is beside his wander range (19..21, 24..26), on a cave's wild floor.
         const bool lewis = checkpoint.id == "13.03" && step.name == "to_statue";
-        if (!lewis && std::count(stops.begin(), stops.end(), std::nullopt) > 0){
+        if (!lewis && !incidental_fights(checkpoint.id) && std::count(stops.begin(), stops.end(), std::nullopt) > 0){
             return where + "crosses a wandering trainer's sight where the walk can't tell where they'd stop the player.";
         }
-        if (const std::string problem = walks ? held_past_lookers(pose, step, beaten) : ""; !problem.empty()){
+        if (const std::string problem = walks && !incidental_fights(checkpoint.id) ? held_past_lookers(pose, step, beaten) : ""; !problem.empty()){
             return where + problem;
         }
         const MapData* map = find_map_named(pose.map);
@@ -836,6 +880,9 @@ UnitTestResult test_approaches_end_on_their_tile(){
         //  open routes; tap them (follow-up) and drop these.
         "14.01/below_quiz_1", "14.01/below_quiz_2", "14.01/below_quiz_3", "14.01/below_quiz_4",
         "14.01/below_quiz_5", "14.01/below_quiz_6",
+        //  Not run on a console: 16.05's walk to the president ends at (9, 10) facing north, the
+        //  only tile that faces him; no leg ends there against a wall. Tap it once Silph Co. has run.
+        "16.05/below_president",
     };
     std::string wrong;
     size_t count = 0;

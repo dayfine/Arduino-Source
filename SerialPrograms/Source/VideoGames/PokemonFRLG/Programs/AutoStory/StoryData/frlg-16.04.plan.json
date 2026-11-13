@@ -1,0 +1,69 @@
+{
+    "format": "pokesim-authored-checkpoint/1",
+    "game": "frlg",
+    "checkpoint": {
+        "id": "16.04",
+        "title": "after Gift RNG: save with the Lapras",
+        "start": {
+            "map": "SilphCo_7F",
+            "tiles": [
+                [
+                    1,
+                    7
+                ]
+            ],
+            "facing": "west"
+        },
+        "start_gates": {
+            "opened": [
+                "SilphCo_3F/door_2"
+            ]
+        },
+        "start_flags": [
+            "card_key_held"
+        ],
+        "events": [
+            {
+                "id": "leave_gift_summary",
+                "kind": "game_action",
+                "action": "leave_gift_summary",
+                "declared_after": {
+                    "map": "SilphCo_7F",
+                    "tiles": [
+                        [
+                            1,
+                            7
+                        ]
+                    ],
+                    "facing": "west"
+                },
+                "why": "the Lapras's summary Gift RNG left open, or HOME"
+            }
+        ]
+    },
+    "execution": {
+        "menu": "full",
+        "lead": "after_brock",
+        "live_start": true,
+        "notes": {
+            "checkpoint": [
+                "Gift RNG takes the Lapras from the employee without moving the player and leaves its summary open, or HOME. This saves the shiny where 16.03 ended. A run started here with Gift RNG's handoff on loads the save facing the employee and runs Gift RNG first."
+            ]
+        }
+    },
+    "metadata": {
+        "phase": "testing",
+        "postconditions": {
+            "position": {
+                "map": "SilphCo_7F",
+                "tiles": [
+                    [
+                        1,
+                        7
+                    ]
+                ],
+                "facing": "west"
+            }
+        }
+    }
+}

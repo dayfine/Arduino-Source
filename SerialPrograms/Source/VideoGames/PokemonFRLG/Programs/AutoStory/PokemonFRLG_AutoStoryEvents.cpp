@@ -137,7 +137,7 @@ OverworldInterruptSet walk_interrupts(StoryEnv& env, const StoryStep& step){
 
 //  `maps`: where the route is planned; the story's but where a step knows
 //  better (the trash cans' walks, past trainers who have walked up).
-Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const std::vector<MapData>& maps = story_maps()){
+Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const std::vector<MapData>& maps){
     const std::vector<TilePos> tiles = Pokemon::tiles_of(state.pose);
     const bool known = state.pose.certainty == Pokemon::PoseCertainty::TILE
         || (state.pose.certainty == Pokemon::PoseCertainty::SET && tiles.size() > 1);
@@ -300,7 +300,7 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!nurse_before_battle(supplies)){
         return Pokemon::outcome_ok();
     }
-    Outcome walked = walk_route(env, state, step);
+    Outcome walked = walk_route(env, state, step, story_maps(state.flags));
     if (!walked.succeeded()){
         return walked;
     }
@@ -319,24 +319,6 @@ const RouteCosts& story_route_costs(){
         return costs;
     }();
     return COSTS;
-}
-
-const std::vector<MapData>& story_maps(){
-    static const std::vector<MapData> maps = []{
-        const std::vector<MapData> all = overworld_maps();
-        std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
-        flags.merge(map_flag_set(all, "new_game"));
-        //  The one ball the story picks up in its way: B2F's MOON STONE
-        //  blocks column 2 of the arrow floor (09.02's moon_stone).
-        flags.insert("FLAG_HIDE_ROCKET_HIDEOUT_B2F_MOON_STONE");
-        //  Route 16's Snorlax (31, 13), gone once 11.01 has played the POKE
-        //  FLUTE and run: the routes after it go over its tile. None before
-        //  it does (10.01 goes north by the Cut tree), and 11.01 walks up to
-        //  it from the east.
-        flags.insert("FLAG_HIDE_ROUTE_16_SNORLAX");
-        return overworld_maps(flags);
-    }();
-    return maps;
 }
 
 Pokemon::Pose to_pose(const StoryPose& pose){
@@ -505,7 +487,7 @@ bool talk_until_message(ConsoleHandle& console, ProControllerContext& context, c
 
 
 bool walked(StoryEnv& env, RunState& state, const StoryStep& step){
-    const Outcome outcome = walk_route(env, state, step);
+    const Outcome outcome = walk_route(env, state, step, story_maps(state.flags));
     if (outcome.succeeded() && outcome.pose){
         state.pose = *outcome.pose;
     }
@@ -736,7 +718,7 @@ ConsoleAction console_action_of(StoryActionId id){
             return Pokemon::outcome_ok();
         };
     case StoryActionId::ROUTE:
-        return [](StoryEnv& env, RunState& state, const StoryStep& step){ return walk_route(env, state, step); };
+        return [](StoryEnv& env, RunState& state, const StoryStep& step){ return walk_route(env, state, step, story_maps(state.flags)); };
     case StoryActionId::LEGS:
         return walk_legs;
     case StoryActionId::STEP:
@@ -797,6 +779,17 @@ StoryExecutor::StoryExecutor(StoryEnv& env)
 
 Outcome StoryExecutor::run(const StoryStep& step, RunState& state){
     return m_executor.run(step, state);
+}
+
+bool StoryExecutor::master_ball_skipped(bool take_master_ball, Pokemon::StoryCheckLevel checks){
+    return !take_master_ball || checks == Pokemon::StoryCheckLevel::SPEEDRUN;
+}
+
+bool StoryExecutor::holds(std::string_view condition, RunState& state){
+    if (condition == "master_ball_skipped"){
+        return master_ball_skipped(m_env.take_master_ball, m_env.checks);
+    }
+    return Pokemon::StoryStepExecutor::holds(condition, state);
 }
 
 Pokemon::StoryAction StoryExecutor::console_action(StoryActionId id){

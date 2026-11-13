@@ -17,6 +17,7 @@
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryFieldMoves.h"
@@ -209,7 +210,7 @@ StepInterruptActions StoryMapsSim::sim_interrupt_actions(){
 Pokemon::StoryAction StoryMapsSim::action(StoryActionId id){
     switch (id){
     case StoryActionId::ROUTE:
-        return played([this](const StoryStep& step, RunState& state){ return walk_to(state.pose, step); });
+        return played([this](const StoryStep& step, RunState& state){ return walk_to(state, step); });
     case StoryActionId::LEGS:
         return played([this](const StoryStep& step, RunState& state){ return legs(state.pose, step); });
     case StoryActionId::STEP:
@@ -217,7 +218,7 @@ Pokemon::StoryAction StoryMapsSim::action(StoryActionId id){
     //  The nurse's way must plan too, but the run goes on from where it stands.
     case StoryActionId::READY:
         return played([this](const StoryStep& step, RunState& state){
-            const Outcome to_nurse = walk_to(state.pose, step);
+            const Outcome to_nurse = walk_to(state, step);
             return to_nurse.succeeded() ? Pokemon::outcome_ok() : to_nurse;
         });
     case StoryActionId::SHOP:
@@ -309,13 +310,14 @@ Outcome StoryMapsSim::shop(const StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
-Outcome StoryMapsSim::walk_to(const Pokemon::Pose& pose, const StoryStep& step) const{
+Outcome StoryMapsSim::walk_to(const RunState& state, const StoryStep& step) const{
+    const Pokemon::Pose& pose = state.pose;
     if (Pokemon::tiles_of(pose).size() > 1){
         //  From the tiles a pacing step leaves: the route must plan, and
         //  test_routes_after_pacing() walks it on the sim from each.
         const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
         const RouteGoal goal{{target->map, target->tile}, target->facing};
-        const std::optional<std::vector<RouteStep>> route = plan_story_route(story_maps(), pose, std::nullopt, goal);
+        const std::optional<std::vector<RouteStep>> route = plan_story_route(story_maps(), pose, std::nullopt, goal, state.gates, Pokemon::gate_rules_of(state));
         if (!route || route->empty()){
             return Pokemon::outcome_failed("no_route", Pokemon::to_string(pose) + " to " + to_string(goal.position));
         }
@@ -327,13 +329,13 @@ Outcome StoryMapsSim::walk_to(const Pokemon::Pose& pose, const StoryStep& step) 
     }
     const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
     const RouteGoal goal{{target->map, target->tile}, target->facing};
-    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
-        story_maps(), at.position, goal, story_route_costs(), at.facing
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route_gated(
+        story_maps(), at.position, goal, state.gates, Pokemon::gate_rules_of(state), story_route_costs(), at.facing
     );
     if (!route){
         return Pokemon::outcome_failed("no_route", to_string(at.position) + " to " + to_string(goal.position));
     }
-    const MapPosition end = follow_overworld_route(story_maps(), at.position, *route);
+    const MapPosition end = follow_overworld_route(story_maps(), at.position, *route, state.gates);
     if (!(end == goal.position)){
         return Pokemon::outcome_failed("wrong_end", to_string(end));
     }
@@ -347,14 +349,17 @@ Outcome StoryMapsSim::walk_to(const Pokemon::Pose& pose, const StoryStep& step) 
 
 //  The route the program walks for `step`, a ROUTE or LEGS, from `at`:
 //  planned, or the legs laid out.
-std::optional<std::vector<RouteStep>> walked_route(const StoryPose& at, const StoryStep& step){
+std::optional<std::vector<RouteStep>> walked_route(
+    const StoryPose& at, const StoryStep& step,
+    const std::vector<MapData>& maps, const Pokemon::GateState& gates, const Pokemon::GateRules& rules
+){
     const MapPosition start{at.map, at.tile};
     if (step.kind == StoryStepKind::LEGS){
-        return fixed_route(story_maps(), start, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
+        return fixed_route(maps, start, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
     }
     const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
     const RouteGoal goal{{target->map, target->tile}, target->facing};
-    return plan_overworld_route(story_maps(), start, goal, story_route_costs(), at.facing);
+    return plan_overworld_route_gated(maps, start, goal, gates, rules, story_route_costs(), at.facing);
 }
 
 
@@ -471,12 +476,15 @@ void sim_wait_out_battle_exit(OverworldSim& sim){
 //  A ROUTE or LEGS by the sim's walker, fighting a trainer who sees the
 //  player on the way.
 std::string OverworldStepSim::walk(const StoryStep& step){
-    const std::optional<std::vector<RouteStep>> route = walked_route(m_at, step);
+    const std::vector<MapData>& maps = story_maps();
+    Pokemon::GateRules gate_rules;
+    gate_rules.card_key_held = m_sim.card_key_held();
+    const std::optional<std::vector<RouteStep>> route = walked_route(m_at, step, maps, m_sim.state().gates, gate_rules);
     if (route && route->empty()){
         //  Already there.
         return "";
     }
-    const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = MapPosition{m_at.map, m_at.tile}, .label = step.name};
+    const RoutePlanning planning{.maps = &maps, .gates = m_sim.state().gates, .costs = story_route_costs(), .start = MapPosition{m_at.map, m_at.tile}, .label = step.name};
     SimWalkerRules rules;
     rules.trainer_battle_end = battle_end_on_sim;
     //  A BIKE_VARIANT rides, as on the console, when the sim has the
@@ -732,6 +740,11 @@ std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& s
     const Outcome outcome = executor.run(step, state);
     at = executor.at();
     if (outcome.succeeded()){
+        //  The step that picks the Card Key up (flags_after) opens the doors the
+        //  next ones walk to.
+        if (std::find(step.flags_after.begin(), step.flags_after.end(), "card_key_held") != step.flags_after.end()){
+            sim.give_card_key();
+        }
         return "";
     }
     return id + "/" + step.name + ": " + outcome.detail + " On " + to_string(sim.state().position) + ".";

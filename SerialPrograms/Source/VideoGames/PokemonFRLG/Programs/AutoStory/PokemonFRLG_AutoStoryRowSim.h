@@ -84,7 +84,7 @@ protected:
 
 private:
     Pokemon::StoryAction action(StoryActionId id);
-    Pokemon::Outcome walk_to(const Pokemon::Pose& pose, const StoryStep& step) const;
+    Pokemon::Outcome walk_to(const Pokemon::RunState& state, const StoryStep& step) const;
     Pokemon::Outcome legs(const Pokemon::Pose& pose, const StoryStep& step) const;
     Pokemon::Outcome step_ahead(const Pokemon::Pose& pose, const StoryStep& step) const;
     Pokemon::Outcome shop(const StoryStep& step);
@@ -109,7 +109,7 @@ private:
 
 //  The route the program walks for `step`, a ROUTE or LEGS, from `at`:
 //  planned, or the legs laid out.
-std::optional<std::vector<RouteStep>> walked_route(const StoryPose& at, const StoryStep& step);
+std::optional<std::vector<RouteStep>> walked_route(const StoryPose& at, const StoryStep& step, const std::vector<MapData>& maps = story_maps(), const Pokemon::GateState& gates = {}, const Pokemon::GateRules& rules = {});
 
 //  A row's steps on the OverworldSim as the program does them: routes and
 //  legs by the sim's walker from where the table says the player stands,

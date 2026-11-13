@@ -1,0 +1,181 @@
+{
+    "format": "pokesim-authored-checkpoint/1",
+    "game": "frlg",
+    "checkpoint": {
+        "id": "16.05",
+        "title": "Silph Co. 11F: Giovanni and the MASTER BALL",
+        "start": {
+            "map": "SilphCo_7F",
+            "tiles": [
+                [
+                    1,
+                    7
+                ]
+            ],
+            "facing": "west"
+        },
+        "start_gates": {
+            "opened": [
+                "SilphCo_3F/door_2"
+            ]
+        },
+        "start_flags": [
+            "card_key_held"
+        ],
+        "events": [
+            {
+                "id": "to_left_wall",
+                "kind": "route",
+                "action": "run",
+                "args": {
+                    "target": {
+                        "map": "SilphCo_11F",
+                        "tiles": [
+                            [
+                                0,
+                                18
+                            ]
+                        ],
+                        "facing": "south"
+                    }
+                },
+                "why": "from 7F's left rooms onto the pad (5, 8) to 11F's (2, 5), down its left wall (column 0) out of the sight of the Rocket at (2, 19), who looks up column 2"
+            },
+            {
+                "id": "to_rocket_column",
+                "kind": "route",
+                "action": "run",
+                "args": {
+                    "target": {
+                        "map": "SilphCo_11F",
+                        "tiles": [
+                            [
+                                2,
+                                18
+                            ]
+                        ],
+                        "facing": "east"
+                    }
+                },
+                "why": "east along row 18 to (2, 18): the Rocket (2, 19) sees the player there and fights beside him (incidental; the leg ends on the tile he sees)"
+            },
+            {
+                "id": "to_giovanni_door",
+                "kind": "route",
+                "action": "run",
+                "args": {
+                    "target": {
+                        "map": "SilphCo_11F",
+                        "tiles": [
+                            [
+                                5,
+                                16
+                            ]
+                        ],
+                        "facing": "north"
+                    }
+                },
+                "why": "east along row 18, on to the Card Key door (5..6, 16..17): a face-and-A at (5, 18) opens it, then up to (5, 16), below the trigger (5, 15)",
+                "gates_after": {
+                    "opened": [
+                        "SilphCo_11F/door"
+                    ]
+                }
+            },
+            {
+                "id": "giovanni_trigger",
+                "kind": "step",
+                "args": {
+                    "direction": "north"
+                },
+                "declared_after": {
+                    "map": "SilphCo_11F",
+                    "tiles": [
+                        [
+                            5,
+                            15
+                        ]
+                    ],
+                    "facing": "north"
+                },
+                "why": "onto the trigger (5, 15) (SilphCo_11F_EventScript_GiovanniTriggerLeft): Giovanni (6, 11) turns down, speaks and walks up to the player"
+            },
+            {
+                "id": "giovanni",
+                "kind": "battle",
+                "args": {
+                    "trainer": "TRAINER_BOSS_GIOVANNI_2",
+                    "foes": [
+                        "nidorino",
+                        "kangaskhan",
+                        "rhyhorn",
+                        "nidoqueen"
+                    ]
+                },
+                "declared_after": {
+                    "map": "SilphCo_11F",
+                    "tiles": [
+                        [
+                            5,
+                            15
+                        ]
+                    ],
+                    "facing": "north"
+                },
+                "flags_after": [
+                    "silph_cleared"
+                ],
+                "why": "Giovanni (TRAINER_BOSS_GIOVANNI_2): Nidorino Lv37, Kangaskhan Lv35, Rhyhorn Lv37, Nidoqueen Lv41; then he and the Rockets leave Silph Co. and Saffron City (FLAG_HIDE_SAFFRON_ROCKETS), the story's maps from here have none"
+            },
+            {
+                "id": "below_president",
+                "kind": "route",
+                "action": "run",
+                "args": {
+                    "target": {
+                        "map": "SilphCo_11F",
+                        "tiles": [
+                            [
+                                9,
+                                10
+                            ]
+                        ],
+                        "facing": "north"
+                    }
+                },
+                "why": "up the room to (9, 10), below the president (9, 9)"
+            },
+            {
+                "id": "master_ball",
+                "kind": "talk",
+                "skip_if": [
+                    "master_ball_skipped"
+                ],
+                "why": "the president gives the MASTER BALL (SilphCo_11F_EventScript_President, FLAG_GOT_MASTER_BALL_FROM_SILPH); skipped by the program's option and in a SPEEDRUN (pokeguy skips it, 1:32:51)"
+            }
+        ]
+    },
+    "execution": {
+        "menu": "full",
+        "notes": {
+            "checkpoint": [
+                "Starts on 7F beside the employee, where 16.04 saves (16.03 without Gift RNG). Ends facing the president, with the MASTER BALL if taken; the save after it is the retry point before the walk back (16.06). Giovanni is a boss fight (pokeguy: C, TRAINER_BOSS_GIOVANNI_2)."
+            ]
+        }
+    },
+    "metadata": {
+        "phase": "testing",
+        "postconditions": {
+            "position": {
+                "map": "SilphCo_11F",
+                "tiles": [
+                    [
+                        9,
+                        10
+                    ]
+                ],
+                "facing": "north"
+            }
+        }
+    }
+}

@@ -1,0 +1,30 @@
+{
+  "format": "pokesim-runtime-map/2",
+  "name": "SilphCo_7F",
+  "source": {"decomp_file": "data/maps/SilphCo_7F/map.json", "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982", "date": "2026-10-31"},
+  "tiles": [
+    "###############################",
+    "###############################",
+    "###################..#####..###",
+    "###################..##D##..###",
+    "......####..#..##..............",
+    "......##....#..##..............",
+    "...##########..................",
+    "......##............####GG#####",
+    "......#####GG####...####GG#####",
+    "......#####GG####...###........",
+    "########.......##...##......##.",
+    "########.##.##.##...###........",
+    "......##.##.##.##...##.........",
+    "......##.......##...#####GG####",
+    "......##.......##...#####GG####",
+    ".#..#.##.......##...##.........",
+    "......###########...##........6",
+    "......###########...##........6",
+    "....................##........."
+  ],
+  "points": {"warp_0": [19, 2], "warp_1": [5, 8], "warp_2": [25, 17], "warp_3": [27, 2], "warp_4": [5, 4]},
+  "warps": [{"enter": "walk_west", "to_map": "SilphCo_6F", "to_point": "warp_0", "coord": [19, 2]}, {"enter": "step_on", "to_map": "SilphCo_11F", "to_point": "warp_1", "coord": [5, 8]}, {"enter": "step_on", "to_map": "SilphCo_5F", "to_point": "warp_5", "coord": [25, 17]}, {"enter": "walk_east", "to_map": "SilphCo_8F", "to_point": "warp_3", "coord": [27, 2]}, {"enter": "step_on", "to_map": "SilphCo_3F", "to_point": "warp_2", "coord": [5, 4]}, {"enter": "walk_into", "to_map": "SilphCo_Elevator", "to_point": "warp_0", "coord": [23, 3]}],
+  "connections": [],
+  "gates": {"door_1": {"tiles": [[11, 8], [11, 9], [12, 8], [12, 9]], "open_glyph": ".", "new_game": "closed", "opens_by": "card_key_face_a", "flag": "FLAG_SILPH_7F_DOOR_1"}, "door_2": {"tiles": [[24, 7], [24, 8], [25, 7], [25, 8]], "open_glyph": ".", "new_game": "closed", "opens_by": "card_key_face_a", "flag": "FLAG_SILPH_7F_DOOR_2"}, "door_3": {"tiles": [[25, 13], [25, 14], [26, 13], [26, 14]], "open_glyph": ".", "new_game": "closed", "opens_by": "card_key_face_a", "flag": "FLAG_SILPH_7F_DOOR_3"}}
+}

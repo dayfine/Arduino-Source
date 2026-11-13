@@ -11,6 +11,9 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryPacedRoute_H
 
 #include <optional>
+#include <set>
+#include <string>
+#include <string_view>
 #include <vector>
 #include "Pokemon/Navigation/Pokemon_GatedTypes.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
@@ -33,7 +36,13 @@ Pokemon::Pose paced_pose(const Pokemon::Pose& patch, const StoryStep& step);
 //  the objects the game hides after the Hall of Fame removed, as the lab's
 //  frlg_route does, and those a new game hides until their scene (the
 //  S.S. Anne's rival on the Captain's door).
-const std::vector<MapData>& story_maps();
+//  With `run_flags` (a run's, default none): without the Rockets once
+//  SILPH_CLEARED_FLAG is among them.
+const std::vector<MapData>& story_maps(const std::set<std::string>& run_flags = {});
+//  The run flag Giovanni's step on 11F sets: the story's maps from then on
+//  have no Rockets in Silph Co. or Saffron City (15.01 to 16.xx before it
+//  have them).
+inline constexpr std::string_view SILPH_CLEARED_FLAG = "silph_cleared";
 //  default_route_costs() without Surf, which the story hasn't got yet:
 //  routes stay on land, even where water is the shorter way (Vermilion
 //  City's harbor).
