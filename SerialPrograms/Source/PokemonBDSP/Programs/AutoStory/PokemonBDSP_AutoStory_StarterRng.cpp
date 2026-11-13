@@ -108,6 +108,19 @@ std::string starter_rng_failure(const StarterRngRunResult& result){
 }
 
 
+Pokemon::RngHandoffResult starter_rng_handoff_result(const StarterRngRunResult& result){
+    Pokemon::RngHandoffResult handoff;
+    handoff.failure = starter_rng_failure(result);
+    if (handoff.failure.empty()){
+        handoff.summary = std::format(
+            "after {} reset(s) on advance {}: {}.",
+            result.resets_used, result.target_advance, result.target.to_string()
+        );
+    }
+    return handoff;
+}
+
+
 namespace{
 
 //  What the hook keeps between its calls: the filters, copied once so that
@@ -148,19 +161,10 @@ std::function<Pokemon::Outcome()> make_starter_rng_hook(
             resets_logged++;
             env.console.overlay().add_log(std::format("Starter RNG: try {}", resets_logged));
         };
-        const StarterRngRunResult result = run_starter_rng_attempts(env, context, state->settings, io, state->aim);
-        const std::string failure = starter_rng_failure(result);
-        if (!failure.empty()){
-            throw_and_log<OperationFailedException>(env.logger(), ErrorReportMode::SEND_ERROR_REPORT, failure);
-        }
-        env.log(
-            std::format(
-                "Starter RNG succeeded after {} reset(s) on advance {}: {}.",
-                result.resets_used, result.target_advance, result.target.to_string()
-            ),
-            COLOR_BLUE
-        );
-        return Pokemon::outcome_ok();
+        return Pokemon::run_rng_handoff(env.logger(), "Starter RNG", [&]{
+            const StarterRngRunResult result = run_starter_rng_attempts(env, context, state->settings, io, state->aim);
+            return starter_rng_handoff_result(result);
+        });
     };
 }
 

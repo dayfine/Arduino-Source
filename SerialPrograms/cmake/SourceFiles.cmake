@@ -1563,6 +1563,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff.h
+    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryRun.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryRun.h
     Source/Pokemon/AutoStory/Pokemon_StoryRun_Tests.cpp

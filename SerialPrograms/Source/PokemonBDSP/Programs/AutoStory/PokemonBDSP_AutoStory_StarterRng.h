@@ -19,6 +19,7 @@
 #include "CommonFramework/Language.h"
 #include "CommonFramework/Notifications/EventNotificationOption.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Pokemon/AutoStory/Pokemon_StoryRngHandoff.h"
 #include "PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h"
 #include "PokemonBDSP/Options/PokemonBDSP_RngFilter.h"
 #include "PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRngAttempts.h"
@@ -76,6 +77,11 @@ StarterRngSettings make_starter_rng_settings(const StoryStarterRngConfig& config
 //  Why the story cannot go on after Starter RNG ended as `result`; empty if
 //  it can: a starter was caught and the game stands on the Lakefront.
 std::string starter_rng_failure(const StarterRngRunResult& result);
+
+//  Starter RNG's end as the shared handoff contract has it
+//  (Pokemon_StoryRngHandoff.h): starter_rng_failure() and, on success, the
+//  resets used and the target hit.
+Pokemon::RngHandoffResult starter_rng_handoff_result(const StarterRngRunResult& result);
 
 //  The action 00.02 runs. Throws a UserSetupError now if the filter table is
 //  empty. The action itself throws when Starter RNG fails, so that no row
