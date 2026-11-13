@@ -31,6 +31,7 @@
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
+#include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows12_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -214,6 +215,47 @@ UnitTestResult test_lead_moves_in_gym(){
     return true;
 }
 
+//  The lead of the 2026-11-12 console failure (12.02): Bite, Water Pulse,
+//  Surf, Dig (slot 4). Dig was picked 8 turns against Koffing, whose
+//  Levitate makes Ground do nothing. Surf instead, over Koga's party.
+UnitTestResult test_dig_not_picked_against_levitate(){
+    PartyMember lead;
+    lead.species = "blastoise";
+    lead.moves_read = true;
+    lead.level = 39;
+    lead.moves = {{"bite", 25}, {"water-pulse", 20}, {"surf", 15}, {"dig", 10}};
+    constexpr size_t SURF = 2;
+    //  Koga's four, in order; the user won by hand with Surf every turn.
+    for (std::string_view foe : {"koffing", "muk", "koffing", "weezing"}){
+        if (attack_slot_against(lead, {std::string(foe)}) != SURF){
+            return std::format("Against {}: expected Surf.", foe);
+        }
+    }
+    if (attack_slot_against(lead, {"koffing", "muk", "weezing"}) != SURF){
+        return "Against Koga's whole party: expected Surf.";
+    }
+    return true;
+}
+
+//  A foe's ability blocks only the type it names, and a single ability only.
+UnitTestResult test_ability_immunities(){
+    if (ability_immunity("koffing") != PokemonType::GROUND || ability_immunity("weezing") != PokemonType::GROUND){
+        return "Expected Koffing and Weezing: Levitate, Ground.";
+    }
+    if (ability_immunity("vulpix") != PokemonType::FIRE || ability_immunity("jolteon") != PokemonType::ELECTRIC ||
+        ability_immunity("vaporeon") != PokemonType::WATER
+    ){
+        return "Expected Flash Fire, Volt Absorb and Water Absorb immunities.";
+    }
+    if (ability_immunity("muk") != PokemonType::NONE || ability_immunity("growlithe") != PokemonType::NONE){
+        return "Expected no immunity for Muk, or for Growlithe (two possible abilities).";
+    }
+    if (!takes_two_turns("dig") || !takes_two_turns("fly") || takes_two_turns("surf")){
+        return "Expected Dig and Fly to take two turns, and Surf not.";
+    }
+    return true;
+}
+
 class QuietLogger : public Logger{
 public:
     using Logger::log;
@@ -289,136 +331,19 @@ UnitTestResult test_mart_fills_super_potions(){
     return true;
 }
 
-const StoryStep& step_named(const StoryCheckpoint& row, std::string_view name){
-    for (const StoryStep& step : row.steps){
-        if (step.name == name){
-            return step;
-        }
-    }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No step {} in {}.", name, row.id));
-}
-
-//  Whether a BAG_CHECK_ACTION step's flag is set for `supplies`.
-bool bag_flag(const Supplies& supplies, const StoryStep& step){
-    const std::vector<Pokemon::StoryItem>* items = game_arg<std::vector<Pokemon::StoryItem>>(step.args, "items");
-    const bool* any = game_arg<bool>(step.args, "any");
-    return items != nullptr && bag_holds(supplies, *items, any != nullptr && *any);
-}
-
-Supplies koga_supplies(int super_potions, int antidotes, int full_heals){
-    Supplies supplies;
-    supplies.potions = 6;
-    supplies.super_potions = super_potions;
-    supplies.antidotes = antidotes;
-    supplies.full_heals = full_heals;
-    return supplies;
-}
-
-//  The 2026-11-12 loss to Koga: a save in front of him with 6 Potions, 1 Super
-//  Potion and no Antidote. 12.02 counts the bag first; the walk out to the
-//  Fuchsia Mart and back is skipped only when the bag holds PokeGuy's 5 Super
-//  Potions and a cure for poison.
-UnitTestResult test_koga_bag_detour_flags(){
+//  12.02 starts at its save west of Koga and goes to him: no Mart, no walk
+//  out of the gym (12.01 stocks the bag before the gym).
+UnitTestResult test_12_02_goes_straight_to_koga(){
     const StoryCheckpoint& row = checkpoint("12.02");
-    const StoryStep& supers = step_named(row, "bag_super_potions");
-    const StoryStep& cure = step_named(row, "bag_status_cure");
-    struct Case{
-        int super_potions;
-        int antidotes;
-        int full_heals;
-        bool supers_flag;
-        bool cure_flag;
-    };
-    const Case cases[] = {
-        {1, 0, 0, false, false},    //  the loss's bag
-        {5, 1, 0, true, true},      //  PokeGuy's: no detour
-        {7, 0, 1, true, true},      //  a Full Heal cures poison too
-        {5, 0, 0, true, false},     //  only the cure is missing
-        {4, 1, 0, false, true},     //  only a Super Potion is missing
-        {0, 0, 0, false, false},
-    };
-    for (const Case& test : cases){
-        const Supplies supplies = koga_supplies(test.super_potions, test.antidotes, test.full_heals);
-        if (bag_flag(supplies, supers) != test.supers_flag || bag_flag(supplies, cure) != test.cure_flag){
-            return std::format(
-                "{} Super Potions, {} Antidotes, {} Full Heals: flags {}/{}, expected {}/{}.",
-                test.super_potions, test.antidotes, test.full_heals,
-                bag_flag(supplies, supers), bag_flag(supplies, cure), test.supers_flag, test.cure_flag
-            );
-        }
-    }
-    return true;
-}
-
-//  The detour's steps: every walk and cut is skipped when both flags hold; each
-//  buy when its own does; the buys are not once-per-save (a skip_if and
-//  once_per_save are refused together); it starts and ends where 12.02 does.
-UnitTestResult test_koga_bag_detour_steps(){
-    const StoryCheckpoint& row = checkpoint("12.02");
-    const std::vector<std::string> both = {"bag_super_potions", "bag_status_cure"};
-    bool inside = false;
-    size_t skipped = 0;
     for (const StoryStep& step : row.steps){
         if (step.name == "challenge_koga"){
-            break;
+            return true;
         }
-        if (step.name == "leave_gym_by_top_edge"){
-            inside = true;
-        }
-        if (!inside){
-            continue;
-        }
-        const bool buy = step.action == MART_ACTION;
-        const std::vector<std::string> expected = !buy ? both
-            : step.name == "buy_super_potions_again" ? std::vector<std::string>{"bag_super_potions"}
-            : std::vector<std::string>{"bag_status_cure"};
-        if (step.skip_if != expected){
-            return std::format("12.02/{}: the wrong skip_if.", step.name);
-        }
-        if (step.once_per_save){
-            return std::format("12.02/{}: once per save with a skip_if.", step.name);
-        }
-        skipped++;
-    }
-    if (skipped != 14){
-        return std::format("12.02: {} detour steps before Koga, expected 14.", skipped);
-    }
-    const StoryStep& last = step_named(row, "west_of_koga_again");
-    const StoryStep& first = step_named(checkpoint("12.01"), "west_of_koga");
-    const Pokemon::GridPose* back = game_arg<Pokemon::GridPose>(last.args, "target");
-    const Pokemon::GridPose* west = game_arg<Pokemon::GridPose>(first.args, "target");
-    if (back == nullptr || west == nullptr || !(*back == *west)){
-        return "The detour doesn't end where 12.01 does: west of Koga facing east.";
-    }
-    return true;
-}
-
-//  The Full Heal buy is one when the bag has none, whatever the Potions;
-//  the Super Potion buy fills to 5.
-UnitTestResult test_koga_bag_detour_buys(){
-    const StoryCheckpoint& row = checkpoint("12.02");
-    struct Case{
-        std::string_view name;
-        int super_potions;
-        int full_heals;
-        size_t expected;
-    };
-    const Case cases[] = {
-        {"buy_super_potions_again", 1, 0, 4}, {"buy_super_potions_again", 0, 0, 5}, {"buy_super_potions_again", 5, 0, 0},
-        {"buy_full_heal", 1, 0, 1}, {"buy_full_heal", 1, 1, 0}, {"buy_full_heal", 1, 3, 0},
-    };
-    QuietLogger logger;
-    for (const Case& test : cases){
-        const Supplies supplies = koga_supplies(test.super_potions, 0, test.full_heals);
-        Pokemon::StoryStep step = step_named(row, test.name);
-        const std::optional<Pokemon::Outcome> done = fill_mart_to(logger, supplies, step);
-        const std::vector<Pokemon::StoryItem>* items = game_arg<std::vector<Pokemon::StoryItem>>(step.args, "items");
-        const size_t buys = done ? 0 : (items == nullptr || items->empty() ? 0 : items->at(0).quantity);
-        if (buys != test.expected){
-            return std::format("{} with {} Super Potions, {} Full Heals: buys {}, expected {}.", test.name, test.super_potions, test.full_heals, buys, test.expected);
+        if (step.action == MART_ACTION || !step.skip_if.empty() || step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
+            return std::format("12.02/{}: a Mart, a skipped or a walking step before Koga.", step.name);
         }
     }
-    return true;
+    return "12.02 has no challenge_koga step.";
 }
 
 const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
@@ -427,16 +352,8 @@ const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
         .expectation = {.description = "5 bought with 6 Potions and none, fewer or none when the bag holds some"},
     },
     {
-        .input = {.name = "12.02 counts the bag and walks to the Fuchsia Mart only when it lacks PokeGuy's Koga bag", .body = test_koga_bag_detour_flags},
-        .expectation = {.description = "flags set for 5 Super Potions and an Antidote or Full Heal; the loss's bag sets neither"},
-    },
-    {
-        .input = {.name = "12.02's detour steps skip together and end west of Koga", .body = test_koga_bag_detour_steps},
-        .expectation = {.description = "14 steps skipped by the flags, ending where 12.01 does"},
-    },
-    {
-        .input = {.name = "12.02's Mart buys fill to 5 Super Potions and one Full Heal", .body = test_koga_bag_detour_buys},
-        .expectation = {.description = "the shortfall, or nothing when held"},
+        .input = {.name = "12.02 challenges Koga from its save with no Mart on the way", .body = test_12_02_goes_straight_to_koga},
+        .expectation = {.description = "no Mart, skipped or walking step before challenge_koga"},
     },
     {
         .input = {.name = "12.01 past Kayden and Kirk to west of Koga and 12.02 to the Warden and the nurse", .body = test_gym_rows},
@@ -445,6 +362,14 @@ const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
     {
         .input = {.name = "the lead's attacks in Fuchsia Gym", .body = test_lead_moves_in_gym},
         .expectation = {.description = "Surf against Koga's Pokemon, Surf or Bite against the Jugglers'"},
+    },
+    {
+        .input = {.name = "Dig is not picked against Levitate", .body = test_dig_not_picked_against_levitate},
+        .expectation = {.description = "Surf, not Dig, against all four of Koga's Pokemon"},
+    },
+    {
+        .input = {.name = "foe abilities that grant immunity", .body = test_ability_immunities},
+        .expectation = {.description = "Levitate, Flash Fire, Volt Absorb and Water Absorb species; Dig and Fly take two turns"},
     },
     {
         .input = {.name = "12.02 stops before Koga unless the lead is at least pokeguy's Lv39", .body = []{
