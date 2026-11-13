@@ -164,25 +164,6 @@ const StringSelectDatabase& TEST_DATABASE(){
 }
 
 
-namespace{
-
-//  For each test in `UNIT_TESTS_ALL()` whose name contains `filter`, in name order, call
-//  `add_test(test)`. An empty `filter` matches all the tests. Return the number of tests
-//  visited.
-template <class AddTest>
-size_t add_tests_matching(const std::string& filter, AddTest&& add_test){
-    size_t count = 0;
-    for (const auto& test : UNIT_TESTS_ALL()){
-        if (filter.empty() || test.first.contains(filter)){
-            count++;
-            add_test(test.second);
-        }
-    }
-    return count;
-}
-
-}
-
 
 
 UnitTestRunner_Descriptor::UnitTestRunner_Descriptor()
@@ -313,12 +294,15 @@ void UnitTestRunner::on_config_value_changed(void* object){
     if (object == &SUBSTRING_TEST){
         std::string name = SUBSTRING_TEST;
         TESTS_TO_RUN.set("");
-        size_t num_shown = 0;
-        size_t count = add_tests_matching(name, [&](std::shared_ptr<const UnitTest> test){
-            if (++num_shown <= 1000){
-                TESTS_TO_RUN.append(test->name() + "\n");
+        size_t count = 0;
+        for (const auto& test : UNIT_TESTS_ALL()){
+            if (test.first.contains(name)){
+                count++;
+                if (count <= 1000){
+                    TESTS_TO_RUN.append(test.first + "\n");
+                }
             }
-        });
+        }
         if (count > 1000){
             TESTS_TO_RUN.append("<" + tostr_u_commas(count - 1000) + " more...>\n");
         }
@@ -349,12 +333,6 @@ void UnitTestRunner::program(ProgramEnvironment& env, CancellableScope& scope){
 
     const UnitTestDatabase& all_tests = UNIT_TESTS_ALL();
 
-    auto add_matching = [&](const std::string& filter){
-        add_tests_matching(filter, [&](std::shared_ptr<const UnitTest> test){
-            runner.add_test(test);
-        });
-    };
-
     switch ((RunMode)RUN_MODE){
     case RunMode::RUN_ONE:{
         auto iter = all_tests.find(SINGLE_TEST.slug());
@@ -368,12 +346,21 @@ void UnitTestRunner::program(ProgramEnvironment& env, CancellableScope& scope){
         runner.add_test(iter->second);
         break;
     }
-    case RunMode::RUN_SUBSTRING_MATCH:
-        add_matching(SUBSTRING_TEST);
+    case RunMode::RUN_SUBSTRING_MATCH:{
+        std::string name = SUBSTRING_TEST;
+        for (const auto& test : all_tests){
+            if (test.first.contains(name)){
+                runner.add_test(test.second);
+            }
+        }
         break;
-    case RunMode::RUN_ALL:
-        add_matching("");
+    }
+    case RunMode::RUN_ALL:{
+        for (const auto& test : all_tests){
+            runner.add_test(test.second);
+        }
         break;
+    }
     }
 
     runner.run();
