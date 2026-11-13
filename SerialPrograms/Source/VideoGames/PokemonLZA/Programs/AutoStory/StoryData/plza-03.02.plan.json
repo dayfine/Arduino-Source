@@ -69,6 +69,7 @@
     }
   },
   "execution": {
-    "save": "menu"
+    "save": "menu",
+    "reload_when_chained": true
   }
 }

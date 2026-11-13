@@ -31,6 +31,11 @@ const ImageFloatBox WHITE_BOX_EDGE{0.265, 0.931, 0.465, 0.020};
 } // namespace
 
 
+bool SceneStart::never_started(const ScreenEvents& events, WallClock now){
+    m_seen |= events.any_of({ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX, ScreenEvent::BATTLE_STARTED});
+    return !m_seen && now >= m_deadline;
+}
+
 SceneMashAction scene_mash_action(const ScreenEvents& events, SceneMashGoal goal, bool text_button_is_b){
     switch (goal){
     case SceneMashGoal::CHOICE:

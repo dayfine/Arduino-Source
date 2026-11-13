@@ -73,11 +73,6 @@ using PlzaReader = Pokemon::StoryReader<Pokemon::ZonePose>;
 //  then the stick is tapped that way for 150 ms. The tap also takes a step.
 void story_turn(PlzaBackend& backend, double degrees);
 
-//  Turns the player `degrees` clockwise of where the camera looks, without
-//  recentering it first: the stick tapped that way for 150 ms, as in
-//  story_turn().
-void story_turn_from_camera(PlzaBackend& backend, double degrees);
-
 //  The STORY_HEADING reading for the console: the minimap's arrow
 //  (get_facing_direction()), clockwise from north in [0, 360). It waits up
 //  to 40 s for the minimap and throws without it, so its StoryGameReader
