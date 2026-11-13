@@ -62,12 +62,6 @@ bool column_gap_dark(const ImageViewRGB32& frame){
     return gap.count > 0 && gap.average.sum() / 3 < 70;
 }
 
-enum class LookTile{
-    HIGHLIGHTED,
-    PLAIN,
-    OTHER,
-};
-
 constexpr size_t LOOK_COLUMNS = 4;
 
 //  The look picker's tiles are 240 x 240 at 1920 x 1080, their left edges
@@ -79,80 +73,99 @@ double look_tile_top(size_t look){
     return (look <= LOOK_COLUMNS ? 324.0 : 609.0) / 1080;
 }
 
-//  A strip at the left end of look `look`'s tile, left of the face: 24 x 60
-//  from 4 right of its edge and 20 down.
-ImageFloatBox look_tile_strip(size_t look){
-    return ImageFloatBox(look_tile_left(look) + 4.0 / 1920, look_tile_top(look) + 20.0 / 1080, 24.0 / 1920, 60.0 / 1080);
+//  Corner `corner` of look `look`'s tile (0 top left, 1 top right, 2 bottom
+//  left, 3 bottom right): 12 x 12, 10 in from both edges. The highlighted
+//  look's white card reaches about 12 past the tile on every side, so the
+//  patches stay on it while it is enlarged.
+ImageFloatBox look_corner_patch(size_t look, size_t corner){
+    const double dx = (corner % 2 == 0 ? 10.0 : 218.0) / 1920;
+    const double dy = (corner < 2 ? 10.0 : 218.0) / 1080;
+    return ImageFloatBox(look_tile_left(look) + dx, look_tile_top(look) + dy, 12.0 / 1920, 12.0 / 1080);
 }
 
-//  The dark strip above look `look`'s tile: 160 x 8 from 40 right of its
-//  edge and 14 above it.
-ImageFloatBox look_above_strip(size_t look){
-    return ImageFloatBox(look_tile_left(look) + 40.0 / 1920, look_tile_top(look) - 14.0 / 1080, 160.0 / 1920, 8.0 / 1080);
-}
-
-//  The dark gap right of look `look`'s tile (not the last column's): 40 x 180
-//  from 12 right of the tile and 20 down.
-ImageFloatBox look_gap_strip(size_t look){
-    return ImageFloatBox(look_tile_left(look) + 252.0 / 1920, look_tile_top(look) + 20.0 / 1080, 40.0 / 1920, 180.0 / 1080);
+//  The face in the middle of look `look`'s tile: 60 x 60 from 90 right of
+//  its edge and 100 down.
+ImageFloatBox look_face_patch(size_t look){
+    return ImageFloatBox(look_tile_left(look) + 90.0 / 1920, look_tile_top(look) + 100.0 / 1080, 60.0 / 1920, 60.0 / 1080);
 }
 
 double brightness(const ImageStats& stats){
     return stats.average.sum() / 3;
 }
 
-//  Measured on console B (2026-11-13), the picker as it opens: the tiles'
-//  strips slate, (31-32, 44-47, 70-77), spread under 6; above them dark
-//  blue, (9-10, 16-32, 44-67), spread under 3. No frame with a highlight
-//  exists yet, so HIGHLIGHTED is any tile whose strip or the strip above it
-//  is much brighter than that: a light tile, or a light frame round it.
-LookTile classify_look_tile(const ImageStats& tile, const ImageStats& above){
-    if (tile.count == 0 || above.count == 0){
-        return LookTile::OTHER;
+enum class LookCorner{
+    WHITE,
+    DARK,
+    OTHER,
+};
+
+//  Measured on console B's look pickers (2026-11-13, 67 frames in English,
+//  German and Japanese): the highlighted card's corners (240-248, 245-250,
+//  246-251), spread under 17; the others slate or, past a tile's rounded
+//  corner, the background: (21-34, 29-57, 56-91), spread under 32.
+LookCorner classify_look_corner(const ImageStats& stats){
+    if (stats.count == 0){
+        return LookCorner::OTHER;
     }
-    if (brightness(tile) >= 90 || brightness(above) >= 90){
-        return LookTile::HIGHLIGHTED;
+    const FloatPixel& average = stats.average;
+    const double spread = stats.stddev.sum();
+    if (average.r >= 200 && average.g >= 200 && average.b >= 200 && spread <= 40){
+        return LookCorner::WHITE;
     }
-    const FloatPixel& average = tile.average;
-    const bool slate =
-        average.r >= 20 && average.r <= 45 &&
-        average.g >= 35 && average.g <= 60 &&
-        average.b >= 60 && average.b <= 95 &&
-        average.b >= average.r + 25;
-    if (slate && tile.stddev.sum() <= 15 && brightness(above) < 50 && above.stddev.sum() <= 10){
-        return LookTile::PLAIN;
+    if (brightness(stats) < 90 && average.r <= 50 && average.b >= average.r + 20 && spread <= 50){
+        return LookCorner::DARK;
     }
-    return LookTile::OTHER;
+    return LookCorner::OTHER;
 }
 
-//  Whether `frame` is the look picker; if so, `highlighted` is the
-//  highlighted look, if any.
+//  How many of look `look`'s 4 corners are white; nullopt if the tile is
+//  not a look picker tile: a corner neither white nor dark, or no face in
+//  its middle (on the same frames brightness 108-196, spread over 117).
+std::optional<size_t> look_white_corners(const ImageViewRGB32& frame, size_t look){
+    const ImageStats face = image_stats(extract_box_reference(frame, look_face_patch(look)));
+    if (face.count == 0 || brightness(face) < 80 || face.stddev.sum() < 60){
+        return std::nullopt;
+    }
+    size_t white = 0;
+    for (size_t corner = 0; corner < 4; corner++){
+        switch (classify_look_corner(image_stats(extract_box_reference(frame, look_corner_patch(look, corner))))){
+        case LookCorner::WHITE:
+            white++;
+            break;
+        case LookCorner::DARK:
+            break;
+        case LookCorner::OTHER:
+            return std::nullopt;
+        }
+    }
+    return white;
+}
+
+//  Whether `frame` is the look picker: all 8 tiles have a face and corners
+//  that are white or dark. If so, `highlighted` is the one look with 4
+//  white corners while the other 7 have none; with any other mix (the card
+//  moving between looks) no look is highlighted.
 bool read_look_picker(const ImageViewRGB32& frame, std::optional<size_t>& highlighted){
+    highlighted.reset();
     if (!frame || frame.width() < 160 || frame.height() < 90){
         return false;
     }
-    highlighted.reset();
+    std::optional<size_t> card;
+    size_t lit_tiles = 0;
     for (size_t look = 1; look <= LOOK_COUNT; look++){
-        if (look % LOOK_COLUMNS != 0){
-            const ImageStats gap = image_stats(extract_box_reference(frame, look_gap_strip(look)));
-            if (gap.count == 0 || brightness(gap) >= 50 || gap.stddev.sum() > 30){
-                return false;
-            }
-        }
-        const ImageStats tile = image_stats(extract_box_reference(frame, look_tile_strip(look)));
-        const ImageStats above = image_stats(extract_box_reference(frame, look_above_strip(look)));
-        switch (classify_look_tile(tile, above)){
-        case LookTile::HIGHLIGHTED:
-            if (highlighted){
-                return false;
-            }
-            highlighted = look;
-            break;
-        case LookTile::PLAIN:
-            break;
-        case LookTile::OTHER:
+        const std::optional<size_t> white = look_white_corners(frame, look);
+        if (!white){
             return false;
         }
+        if (*white > 0){
+            lit_tiles++;
+        }
+        if (*white == 4){
+            card = look;
+        }
+    }
+    if (lit_tiles == 1 && card){
+        highlighted = card;
     }
     return true;
 }
