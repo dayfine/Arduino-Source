@@ -12,8 +12,14 @@
  *
  *  Position is not identity either: it is dead reckoning from the time held,
  *  so it is only a hint (a log line, and whether to expect Roark's long
- *  pause). Who the opponent is, is read from the battle's intro text
- *  (BattleIntro.h).
+ *  pause). Nor is the intro text: read by OCR, it held only in the
+ *  languages it had word tables for, and a French game fought both gym
+ *  battles and Roark's blind, then failed (lab-B, 2026-11-13 01:17). Who the
+ *  opponent was is told by what happens after the battle, in any language:
+ *  Roark talks on the overworld (the Coal Badge, then the TM, about 40 s of
+ *  lines at 01:16), while a gym trainer's lines are all in the battle and
+ *  the overworld comes back quiet (lab-B 2026-11-12 22:49: the trainer's
+ *  cleanup was over in 7.8 s, the fade and the 5 s quiet).
  *
  */
 
@@ -21,30 +27,32 @@
 #define PokemonAutomation_PokemonBDSP_AutoStory_GymOpponent_H
 
 #include <chrono>
-#include <format>
-#include <optional>
-#include <string>
-#include "CommonFramework/Language.h"
-#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleIntro.h"
+#include <cstddef>
+#include <string_view>
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
-//  Why 01.04 cannot run in `language`, or none when it can. Roark is told
-//  from a trainer only by the battle's intro text; with no word table for
-//  the language, every gym battle would be fought blind and the step would
-//  fail after them (lab-B, 2026-11-13 01:17, French), so it refuses first.
-inline std::optional<std::string> gym_language_refusal(Language language){
-    if (battle_intro_reads(language)){
-        return std::nullopt;
-    }
-    return std::format(
-        "Oreburgh Gym: the battle's intro text is not read in {}, so Roark could not be told from a trainer. "
-        "Refusing before the gym's battles.",
-        language_data(language).name
-    );
+//  Who a won gym battle was against.
+enum class GymOpponent{
+    TRAINER,
+    LEADER,
+};
+inline std::string_view gym_opponent_name(GymOpponent opponent){
+    return opponent == GymOpponent::LEADER ? "Roark" : "a gym trainer";
+}
+
+//  This many looks with a box on the overworld after a won battle are the
+//  leader's speech. Roark's lines fill dozens of looks; one look is allowed
+//  to be a stray read of the battle's last frame.
+constexpr size_t GYM_LEADER_TALK_LOOKS = 2;
+
+//  Who a won gym battle was against, from the looks with a box on the
+//  overworld after it (confirm_battle_overworld()).
+inline GymOpponent gym_opponent_after_battle(size_t box_looks_after){
+    return box_looks_after >= GYM_LEADER_TALK_LOOKS ? GymOpponent::LEADER : GymOpponent::TRAINER;
 }
 
 //  Where we stand on the way up the gym's column, in tiles north of the

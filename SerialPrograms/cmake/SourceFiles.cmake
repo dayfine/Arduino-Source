@@ -1822,8 +1822,6 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WalkRules.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h
-    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleIntro.cpp
-    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleIntro.h
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.cpp
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.h
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_IntroMenuDetector.cpp
