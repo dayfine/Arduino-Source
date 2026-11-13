@@ -34,6 +34,11 @@ inline const std::string HEAL_TO_FULL_ACTION = "heal_to_full";
 //  The GAME step that fails unless the lead's HP is known full
 //  (missing_hp() measured and 0 or less): max_hp INTEGER, as above.
 inline const std::string CHECK_FULL_HP_ACTION = "check_full_hp";
+//  The GAME step that sets its own name as a run flag when the bag, as the
+//  last count_items read it, holds what its `items` list (bag_holds()): items
+//  ITEMS, with a quantity each; any BOOLEAN (default false), at least one of
+//  them rather than all. Later steps name the flag in skip_if.
+inline const std::string BAG_CHECK_ACTION = "bag_check";
 
 //  From the overworld: `item` from the bag on the lead, if one is left:
 //  its count spent, and its HP (healing_hp()) or its cure taken into
@@ -44,18 +49,22 @@ bool use_recovery_item(
     const std::string& item, Pokemon::StoryCheckLevel checks, Language language, Supplies& supplies
 );
 
-//  HEAL_TO_FULL_ACTION's and CHECK_FULL_HP_ACTION's specs.
+//  Whether the bag holds what `needs` lists, each at its quantity (as far
+//  as the bag was read): all of them, or with `any` at least one.
+bool bag_holds(const Supplies& supplies, const std::vector<Pokemon::StoryItem>& needs, bool any);
+
+//  HEAL_TO_FULL_ACTION's, CHECK_FULL_HP_ACTION's and BAG_CHECK_ACTION's specs.
 std::vector<Pokemon::StoryActionSpec> healing_action_specs();
 
-//  On the console, a HEAL_TO_FULL_ACTION or CHECK_FULL_HP_ACTION step;
-//  nothing for another.
-std::optional<Pokemon::Outcome> run_healing_step(StoryEnv& env, const Pokemon::StoryStep& step);
+//  On the console, a HEAL_TO_FULL_ACTION, CHECK_FULL_HP_ACTION or
+//  BAG_CHECK_ACTION step (its flag set in `state`); nothing for another.
+std::optional<Pokemon::Outcome> run_healing_step(StoryEnv& env, Pokemon::RunState& state, const Pokemon::StoryStep& step);
 
-//  A MART_ACTION step with "cover_hp": its first line cut to the
-//  hp_cover_shortfall() of `supplies` (at most the plan's quantity), in
+//  A MART_ACTION step with "fill_to": its first line cut to the
+//  fill_shortfall() of `supplies` (at most the plan's quantity), in
 //  `step`. Nothing to buy: the step's Outcome, unchanged, logged. Nothing
 //  for another step, left as it was.
-std::optional<Pokemon::Outcome> cover_hp_in_mart(Logger& logger, const Supplies& supplies, Pokemon::StoryStep& step);
+std::optional<Pokemon::Outcome> fill_mart_to(Logger& logger, const Supplies& supplies, Pokemon::StoryStep& step);
 
 
 

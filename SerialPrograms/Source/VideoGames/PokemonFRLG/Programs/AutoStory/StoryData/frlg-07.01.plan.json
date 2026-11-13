@@ -121,9 +121,7 @@
         "action": "mart",
         "args": {
           "map": "CeruleanCity_Mart",
-          "budget": 2850,
-          "items": [{"item": "repel", "quantity": 5}, {"item": "escape-rope", "quantity": 2}],
-          "floor": 6000
+          "items": [{"item": "repel", "quantity": 5}, {"item": "escape-rope", "quantity": 2}]
         },
         "why": "5 Repels and 2 Escape Ropes, 2850 at most"
       },

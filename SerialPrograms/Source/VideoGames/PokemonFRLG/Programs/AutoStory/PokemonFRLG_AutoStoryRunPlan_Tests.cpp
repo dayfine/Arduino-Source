@@ -145,7 +145,7 @@ private:
     const RunPlanScenario m_scenario;
 };
 
-const std::string TODAY = "01.01 01.03 01.04 01.05 02.01 02.02 02.03 03.01 03.02 03.03 04.01 04.02 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06 11.01 11.02 11.03 12.01 12.02 12.03 14.03 14.04 15.01 16.01 18.01 18.02 17.01 13.01 13.02 13.03 13.04 14.01 14.02 17.02 17.03 17.04";
+const std::string TODAY = "01.01 01.03 01.04 01.05 02.01 02.02 02.03 03.01 03.02 03.03 04.01 04.02 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06 11.01 11.02 11.03 12.01 12.02 12.03 14.03 14.04 15.01 16.01 18.01 18.02 17.01 13.01 13.02 13.03 13.04 14.01 14.02 14.02b 17.02 17.03 17.04";
 
 const RunPlanScenario RUN_PLAN_CASES[] = {
     {
@@ -236,11 +236,11 @@ const RunPlanScenario RUN_PLAN_CASES[] = {
     },
     {
         .input = {.name = "Gift RNG off: 04.03 is passed over", .first = "04.01"},
-        .expectation = {.expected_ids = "04.01 04.02 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06 11.01 11.02 11.03 12.01 12.02 12.03 14.03 14.04 15.01 16.01 18.01 18.02 17.01 13.01 13.02 13.03 13.04 14.01 14.02 17.02 17.03 17.04"},
+        .expectation = {.expected_ids = "04.01 04.02 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06 11.01 11.02 11.03 12.01 12.02 12.03 14.03 14.04 15.01 16.01 18.01 18.02 17.01 13.01 13.02 13.03 13.04 14.01 14.02 14.02b 17.02 17.03 17.04"},
     },
     {
         .input = {.name = "Gift RNG off: 04.03 runs when started at", .first = "04.03"},
-        .expectation = {.expected_ids = "04.03 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06 11.01 11.02 11.03 12.01 12.02 12.03 14.03 14.04 15.01 16.01 18.01 18.02 17.01 13.01 13.02 13.03 13.04 14.01 14.02 17.02 17.03 17.04"},
+        .expectation = {.expected_ids = "04.03 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06 11.01 11.02 11.03 12.01 12.02 12.03 14.03 14.04 15.01 16.01 18.01 18.02 17.01 13.01 13.02 13.03 13.04 14.01 14.02 14.02b 17.02 17.03 17.04"},
     },
     {
         .input = {            .name = "Gift RNG: started at 04.03, from the save beside the salesman",
@@ -279,7 +279,7 @@ const RunPlanScenario RUN_PLAN_CASES[] = {
     },
     {
         .input = {.name = "Starter RNG alone: 04.03 runs when started at", .first = "04.03", .handoffs = {.starter_rng = true}},
-        .expectation = {.expected_ids = "04.03 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06 11.01 11.02 11.03 12.01 12.02 12.03 14.03 14.04 15.01 16.01 18.01 18.02 17.01 13.01 13.02 13.03 13.04 14.01 14.02 17.02 17.03 17.04"},
+        .expectation = {.expected_ids = "04.03 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06 11.01 11.02 11.03 12.01 12.02 12.03 14.03 14.04 15.01 16.01 18.01 18.02 17.01 13.01 13.02 13.03 13.04 14.01 14.02 14.02b 17.02 17.03 17.04"},
     },
     {
         .input = {            .name = "Starter RNG first, with both on",
@@ -416,7 +416,7 @@ bool plans(const Pokemon::Pose& from, const Pokemon::Pose& to){
 //  05.03, before the rival, from the Center: first TM03 Water Pulse over
 //  Tail Whip if the lead doesn't know it, so the sim plays it in the
 //  GRIND; Potions from Cerulean's Mart (a loaded save's bag may hold too
-//  few for the wild battles a GRIND fights), and at its money floor 2 or
+//  few for the wild battles a GRIND fights), and 2 or
 //  more Awakenings for the rival's Sleep Powder; then a GRIND on Route 4's
 //  grass east of Mt. Moon to Lv22, where console B's lead beat the rival
 //  05.04 fights, healing at Cerulean's Center; its trip there plans both ways.
@@ -443,14 +443,12 @@ UnitTestResult test_cerulean_mart_and_grind(){
         return "05.03: expected a Cerulean Mart step buying Potions, then a GRIND of the lead to Lv22 or more.";
     }
     const MartPlan plan = *mart_of(steps[mart]);
-    const std::optional<std::vector<MartBuy>> buys = plan.money_floor
-        ? plan_mart_buys(mart_stock(plan.map), plan, *plan.money_floor)
-        : std::nullopt;
+    const std::optional<std::vector<MartBuy>> buys = plan_mart_buys(mart_stock(plan.map), plan);
     const bool awakenings = buys && std::ranges::any_of(*buys, [](const MartBuy& buy){
         return buy.item == "awakening" && buy.quantity >= 2;
     });
     if (!awakenings){
-        return "05.03: expected the Mart step to buy 2 or more Awakenings at its money floor.";
+        return "05.03: expected the Mart step to buy 2 or more Awakenings.";
     }
     const std::optional<StoryPose> clerk = mart > 0 ? story_pose_arg(steps[mart - 1], "target") : std::nullopt;
     if (!clerk || clerk->map != "CeruleanCity_Mart"){
@@ -569,7 +567,7 @@ UnitTestResult test_misty_rows(){
 
 //  05.01 in order (Misty lost to at Lv20, console B, run m51): the Mart
 //  first, Potions then Super Potions, the Potions enough for the GRIND's
-//  wild battles at the table's money floor and at least one Super Potion
+//  wild battles and at least one Super Potion
 //  after them; a GRIND of the lead to Lv23 on Route 4, from a route to its
 //  patch, with Cerulean's nurse as its target; the nurse; then the walk
 //  into the Gym, ending on (9, 7).
@@ -580,14 +578,12 @@ UnitTestResult test_misty_grind_order(){
         plan = mart_of(step);
         return plan && plan->map == "CeruleanCity_Mart";
     });
-    if (mart == steps.size() || plan->lines.size() < 2 || plan->lines[0].item != "potion" || plan->lines[1].item != "super-potion"
-        || !plan->money_floor
-    ){
-        return "05.01: expected a Cerulean Mart step buying Potions, then Super Potions, with a money floor.";
+    if (mart == steps.size() || plan->lines.size() < 2 || plan->lines[0].item != "potion" || plan->lines[1].item != "super-potion"){
+        return "05.01: expected a Cerulean Mart step buying Potions, then Super Potions.";
     }
-    const std::optional<std::vector<MartBuy>> buys = plan_mart_buys(mart_stock(plan->map), *plan, *plan->money_floor);
+    const std::optional<std::vector<MartBuy>> buys = plan_mart_buys(mart_stock(plan->map), *plan);
     if (!buys || buys->size() < 2 || (*buys)[0].quantity < 2 || (*buys)[1].item != "super-potion"){
-        return "05.01: expected the money floor to buy 2 or more Potions and a Super Potion.";
+        return "05.01: expected the step to buy 2 or more Potions and a Super Potion.";
     }
     const size_t grind = find_step(steps, mart, [](const StoryStep& step){
         const std::optional<GrindPlan> grind_plan = grind_of(step);

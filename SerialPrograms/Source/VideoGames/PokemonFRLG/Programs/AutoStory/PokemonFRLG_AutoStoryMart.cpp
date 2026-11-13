@@ -27,8 +27,6 @@ namespace{
 
 //  The quantity box's most (shop.c Task_BuyHowManyDialogueInit).
 constexpr size_t MAX_QUANTITY = 99;
-//  pokefirered: MAX_MONEY.
-constexpr size_t MAX_MONEY = 999999;
 //  The rows the BUY list shows at once (shop.c BuyMenuInitListMenu).
 constexpr size_t LIST_ROWS_SHOWN = 6;
 
@@ -166,8 +164,6 @@ const std::vector<MartStockItem>& mart_stock(std::string_view map){
 std::string_view mart_end_name(MartEnd end){
     switch (end){
     case MartEnd::DONE:             return "done";
-    case MartEnd::NOTHING_TO_BUY:   return "nothing_to_buy";
-    case MartEnd::NO_MONEY_READ:    return "no_money_read";
     case MartEnd::FAILED:           return "failed";
     }
     return "?";
@@ -179,29 +175,16 @@ Pokemon::StoryActionArgs mart_args(const MartPlan& plan){
     for (const MartLine& line : plan.lines){
         items.push_back({line.item, line.quantity});
     }
-    Pokemon::StoryActionArgs args{
-        {"map", plan.map}, {"budget", int64_t(plan.budget)}, {"items", std::move(items)},
-    };
-    if (plan.money_floor){
-        args.emplace("floor", int64_t(*plan.money_floor));
-    }
-    return args;
+    return {{"map", plan.map}, {"items", std::move(items)}};
 }
 
 std::optional<MartPlan> mart_plan_of(const Pokemon::StoryActionArgs& args){
     const std::string* map = game_arg<std::string>(args, "map");
-    const std::optional<size_t> budget = number_arg(args, "budget", 0, MAX_MONEY);
     const std::vector<Pokemon::StoryItem>* items = game_arg<std::vector<Pokemon::StoryItem>>(args, "items");
-    if (map == nullptr || mart_stock(*map).empty() || !budget || items == nullptr || items->empty()){
+    if (map == nullptr || mart_stock(*map).empty() || items == nullptr || items->empty()){
         return std::nullopt;
     }
-    MartPlan plan{.map = *map, .budget = *budget};
-    if (args.contains("floor")){
-        plan.money_floor = number_arg(args, "floor", 0, MAX_MONEY);
-        if (!plan.money_floor){
-            return std::nullopt;
-        }
-    }
+    MartPlan plan{.map = *map};
     for (const Pokemon::StoryItem& item : *items){
         if (item.quantity < 1 || item.quantity > MAX_QUANTITY || !stock_row(mart_stock(plan.map), item.item)){
             return std::nullopt;
@@ -223,23 +206,16 @@ Pokemon::StoryStep mart_step(std::string name, std::string why, const MartPlan& 
 }
 
 
-std::optional<std::vector<MartBuy>> plan_mart_buys(
-    const std::vector<MartStockItem>& stock, const MartPlan& plan, size_t money
-){
+std::optional<std::vector<MartBuy>> plan_mart_buys(const std::vector<MartStockItem>& stock, const MartPlan& plan){
     std::vector<MartBuy> buys;
-    size_t left = std::min(plan.budget, money);
     for (const MartLine& line : plan.lines){
         const std::optional<size_t> row = stock_row(stock, line.item);
         if (!row){
             return std::nullopt;
         }
         const size_t price = stock[*row].price;
-        const size_t quantity = std::min({line.quantity, left / price, MAX_QUANTITY});
-        if (quantity == 0){
-            continue;
-        }
+        const size_t quantity = std::min(line.quantity, MAX_QUANTITY);
         buys.push_back({.row = *row, .item = line.item, .quantity = quantity, .cost = quantity * price});
-        left -= quantity * price;
     }
     return buys;
 }
@@ -272,26 +248,14 @@ public:
         if (!m_actions.open_buy_list()){
             return end(MartEnd::FAILED, "the BUY list didn't show");
         }
-        const std::optional<size_t> read = m_actions.read_money();
-        const std::optional<size_t> money = read ? read : m_plan.money_floor;
-        if (!money){
-            return leave(MartEnd::NO_MONEY_READ, "");
-        }
-        m_logger.log(std::format("Mart: ${} ({}), budget ${}.", *money, read ? "read" : "the table's floor", m_plan.budget));
-        const std::optional<std::vector<MartBuy>> buys = plan_mart_buys(m_stock, m_plan, *money);
+        const std::optional<std::vector<MartBuy>> buys = plan_mart_buys(m_stock, m_plan);
         if (!buys){
             return leave(MartEnd::FAILED, "an item the Mart doesn't sell");
-        }
-        if (buys->empty()){
-            return leave(MartEnd::NOTHING_TO_BUY, "");
         }
         for (const MartBuy& buy : *buys){
             if (!buy_one(buy)){
                 return leave(MartEnd::FAILED, m_result.detail);
             }
-        }
-        if (!money_checks(read)){
-            return leave(MartEnd::FAILED, m_result.detail);
         }
         return leave(MartEnd::DONE, "");
     }
@@ -360,20 +324,6 @@ private:
         return false;
     }
 
-    //  With the money read before, it is read again: the difference must
-    //  be what was spent.
-    bool money_checks(const std::optional<size_t>& before){
-        if (!before){
-            return true;
-        }
-        const std::optional<size_t> after = m_actions.read_money();
-        if (!after || *before - *after == m_result.spent){
-            return true;
-        }
-        m_result.detail = std::format("${} before and ${} after, but ${} bought", *before, *after, m_result.spent);
-        return false;
-    }
-
     Logger& m_logger;
     MartActions& m_actions;
     const MartPlan& m_plan;
@@ -401,12 +351,6 @@ std::string mart_message(const MartPlan& plan, const MartResult& result){
     switch (result.end){
     case MartEnd::DONE:
         return std::format("Mart ({}): bought {} for ${}.", plan.map, bought, result.spent);
-    case MartEnd::NOTHING_TO_BUY:
-        return std::format("Mart ({}): the money or budget covers none of the list; bought nothing.", plan.map);
-    case MartEnd::NO_MONEY_READ:
-        return std::format(
-            "Mart ({}): the money box can't be read and the table gives no floor; bought nothing.", plan.map
-        );
     case MartEnd::FAILED:
         return std::format("Mart ({}): {}; bought {} for ${}.", plan.map, result.detail, bought, result.spent);
     }
@@ -430,11 +374,6 @@ bool ConsoleMartActions::open_buy_list(){
     pbf_press_button(m_context, BUTTON_A, 160ms, 2000ms);
     m_context.wait_for_all_requests();
     return true;
-}
-
-std::optional<size_t> ConsoleMartActions::read_money(){
-    //  No reader for the money box yet.
-    return std::nullopt;
 }
 
 void ConsoleMartActions::press_cursor(bool down){

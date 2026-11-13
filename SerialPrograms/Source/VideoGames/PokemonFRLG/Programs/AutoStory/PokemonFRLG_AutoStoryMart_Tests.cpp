@@ -14,10 +14,15 @@
 #include <format>
 #include <functional>
 #include <map>
+#include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
+#include "PokemonFRLG_AutoStoryCaptureStep.h"
+#include "PokemonFRLG_AutoStoryGrindStep.h"
 #include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -44,13 +49,10 @@ public:
 
     std::vector<MartStockItem> stock;
     size_t money;
-    bool money_readable = true;
     bool rows_readable = true;
     bool quantity_readable = true;
     //  Rows that read as another item.
     std::map<size_t, std::string> misread = {};
-    //  Each purchase takes this much more than its price: a bug to catch.
-    size_t overcharge = 0;
     std::map<std::string, size_t> bag = {};
     size_t list_opened = 0;
     size_t dumps = 0;
@@ -64,12 +66,6 @@ public:
         m_row = 0;
         list_opened++;
         return true;
-    }
-    virtual std::optional<size_t> read_money() override{
-        if (!in_list){
-            error = "read the money off the list";
-        }
-        return money_readable ? std::optional<size_t>(money) : std::nullopt;
     }
     virtual void press_cursor(bool down) override{
         press(down);
@@ -103,7 +99,7 @@ public:
         if (quantity_readable && quantity != buy.quantity){
             return PurchaseEnd::WRONG_QUANTITY;
         }
-        money -= quantity * price + overcharge;
+        money -= quantity * price;
         bag[std::string(stock[m_cursor].item)] += quantity;
         return PurchaseEnd::BOUGHT;
     }
@@ -195,8 +191,8 @@ private:
 };
 
 
-MartPlan pewter_plan(size_t budget, std::vector<MartLine> lines, std::optional<size_t> floor = std::nullopt){
-    return {.map = "PewterCity_Mart", .lines = std::move(lines), .budget = budget, .money_floor = floor};
+MartPlan pewter_plan(std::vector<MartLine> lines){
+    return {.map = "PewterCity_Mart", .lines = std::move(lines)};
 }
 
 std::string bag_string(const std::map<std::string, size_t>& bag){
@@ -222,29 +218,23 @@ struct MartCase{
 std::vector<MartCase> mart_cases_1(){
     return {
         {
-            .name = "priority order within the budget, a line cut to what fits",
-            .plan = pewter_plan(2000, {{"potion", 5}, {"repel", 3}, {"antidote", 3}}),
+            .name = "every line its listed quantity, in order",
+            .plan = pewter_plan({{"potion", 5}, {"repel", 3}, {"antidote", 3}}),
             .money = 3000,
-            .bag = {{"potion", 5}, {"repel", 1}, {"antidote", 1}},
-            .money_after = 1050,
+            .bag = {{"potion", 5}, {"repel", 3}, {"antidote", 3}},
+            .money_after = 150,
         },
         {
-            .name = "the money, below the budget, limits it",
-            .plan = pewter_plan(2000, {{"potion", 5}}),
-            .money = 700,
-            .bag = {{"potion", 2}},
-            .money_after = 100,
-        },
-        {
-            .name = "a line that can't buy one is skipped",
-            .plan = pewter_plan(400, {{"escape-rope", 1}, {"antidote", 2}}),
-            .money = 3000,
-            .bag = {{"antidote", 2}},
-            .money_after = 2800,
+            .name = "a line the money can't pay one of fails the step, the rest not bought",
+            .plan = pewter_plan({{"potion", 1}, {"escape-rope", 1}, {"antidote", 2}}),
+            .money = 800,
+            .end = MartEnd::FAILED,
+            .bag = {{"potion", 1}},
+            .money_after = 500,
         },
         {
             .name = "twenty-five by RIGHT and UP",
-            .plan = pewter_plan(10000, {{"poke-ball", 25}}),
+            .plan = pewter_plan({{"poke-ball", 25}}),
             .money = 6000,
             .bag = {{"poke-ball", 25}},
             .money_after = 1000,
@@ -255,34 +245,17 @@ std::vector<MartCase> mart_cases_1(){
 std::vector<MartCase> mart_cases_2(){
     return {
         {
-            .name = "unread money: the table's floor",
-            .plan = pewter_plan(2000, {{"potion", 5}}, 1000),
-            .money = 1200,
-            .setup = [](FakeMart& mart){ mart.money_readable = false; },
-            .bag = {{"potion", 3}},
-            .money_after = 300,
-        },
-        {
-            .name = "unread money and no floor: nothing bought",
-            .plan = pewter_plan(2000, {{"potion", 5}}),
-            .money = 3000,
-            .setup = [](FakeMart& mart){ mart.money_readable = false; },
-            .end = MartEnd::NO_MONEY_READ,
-            .money_after = 3000,
-        },
-        {
-            .name = "a floor above the money: the quantity box wraps, and its read catches it",
-            .plan = pewter_plan(2000, {{"potion", 3}}, 1000),
+            .name = "more than the money allows: the quantity box wraps, and its read catches it",
+            .plan = pewter_plan({{"potion", 3}}),
             .money = 500,
-            .setup = [](FakeMart& mart){ mart.money_readable = false; },
             .end = MartEnd::FAILED,
             .money_after = 500,
         },
         {
-            .name = "too poor for any of it",
-            .plan = pewter_plan(2000, {{"potion", 5}}),
+            .name = "too poor for any of it: the dialog fails the step",
+            .plan = pewter_plan({{"potion", 5}}),
             .money = 250,
-            .end = MartEnd::NOTHING_TO_BUY,
+            .end = MartEnd::FAILED,
             .money_after = 250,
         },
     };
@@ -292,7 +265,7 @@ std::vector<MartCase> mart_cases_3(){
     return {
         {
             .name = "a row that reads as another item stops it",
-            .plan = pewter_plan(2000, {{"potion", 1}, {"antidote", 1}}),
+            .plan = pewter_plan({{"potion", 1}, {"antidote", 1}}),
             .money = 3000,
             .setup = [](FakeMart& mart){ mart.misread[2] = "parlyz-heal"; },
             .end = MartEnd::FAILED,
@@ -302,20 +275,11 @@ std::vector<MartCase> mart_cases_3(){
         },
         {
             .name = "rows that can't be read are bought by position",
-            .plan = pewter_plan(2000, {{"repel", 2}, {"potion", 1}}),
+            .plan = pewter_plan({{"repel", 2}, {"potion", 1}}),
             .money = 3000,
             .setup = [](FakeMart& mart){ mart.rows_readable = false; },
             .bag = {{"repel", 2}, {"potion", 1}},
             .money_after = 2000,
-        },
-        {
-            .name = "more money gone than bought fails",
-            .plan = pewter_plan(2000, {{"potion", 1}}),
-            .money = 3000,
-            .setup = [](FakeMart& mart){ mart.overcharge = 10; },
-            .end = MartEnd::FAILED,
-            .bag = {{"potion", 1}},
-            .money_after = 2690,
         },
     };
 }
@@ -329,7 +293,7 @@ std::vector<MartCase> mart_cases_4(){
     return {
         {
             .name = "a list scrolled under the cursor",
-            .plan = {.map = "CeladonCity_DepartmentStore_5F", .lines = lines, .budget = 15600},
+            .plan = {.map = "CeladonCity_DepartmentStore_5F", .lines = lines},
             .money = 19862,
             .bag = {{"x-special", 21}, {"x-speed", 6}, {"x-accuracy", 5}, {"guard-spec", 2}},
             .money_after = 4262,
@@ -395,10 +359,10 @@ UnitTestResult test_quantity_presses(){
 
 
 UnitTestResult test_mart_args(){
-    const MartPlan plan = pewter_plan(2000, {{"potion", 5}, {"repel", 3}}, 2400);
+    const MartPlan plan = pewter_plan({{"potion", 5}, {"repel", 3}});
     const Pokemon::StoryActionArgs args = mart_args(plan);
     const std::optional<MartPlan> back = mart_plan_of(args);
-    if (!back || back->map != plan.map || back->budget != 2000 || back->money_floor != plan.money_floor
+    if (!back || back->map != plan.map
         || back->lines.size() != 2 || back->lines[1].item != "repel" || back->lines[1].quantity != 3
     ){
         return "The Pewter plan didn't read back from its args.";
@@ -438,6 +402,29 @@ UnitTestResult test_mart_stock(){
 }
 
 
+//  12.01's Fuchsia Mart read its ULTRA BALL row as PARLYZ HEAL and bought
+//  nothing (console B, 2026-11-12): the item list reader had no name for it.
+//  Every item any Mart sells has one.
+UnitTestResult test_mart_stock_readable(){
+    std::string missing;
+    for (const std::string_view map : {
+        "ViridianCity_Mart", "PewterCity_Mart", "CeruleanCity_Mart", "VermilionCity_Mart",
+        "LavenderTown_Mart", "FuchsiaCity_Mart", "SaffronCity_Mart", "CinnabarIsland_Mart",
+        "CeladonCity_DepartmentStore_5F",
+    }){
+        for (const MartStockItem& stock : mart_stock(map)){
+            if (!item_list_reader_knows(stock.item)){
+                missing += std::format("\n    {}: {}", map, stock.item);
+            }
+        }
+    }
+    if (!missing.empty()){
+        return std::format("The item list reader has no name for:{}", missing);
+    }
+    return true;
+}
+
+
 //  Potions, Antidotes, Parlyz Heals and Awakenings bought go into the
 //  battles' supplies.
 UnitTestResult test_count_supplies(){
@@ -457,19 +444,60 @@ UnitTestResult test_count_supplies(){
     return true;
 }
 
-//  ConsoleMartActions::read_money() reads nothing yet, so a Mart step with no
-//  "floor" buys nothing (MartEnd::NO_MONEY_READ): every one carries a floor.
-UnitTestResult test_mart_steps_have_floor(){
-    std::string missing;
-    for (const StoryCheckpoint& data : story_checkpoints()){
-        for (const StoryStep& step : data.steps){
-            if (step.kind == Pokemon::StoryStepKind::GAME && step.action == MART_ACTION && !step.args.contains("floor")){
-                missing += " " + data.id + "/" + step.name;
+//  A Mart step buys blind: the money can't be read, so a Mart that can't
+//  be paid fails the step. That is cheap only early in a checkpoint: no
+//  battle (a BATTLE, TRAIN, GRIND or CAPTURE step) and at most
+//  MAX_WALK_BEFORE_MART ROUTE or LEGS steps since the checkpoint's start or
+//  its last Mart step.
+constexpr size_t MAX_WALK_BEFORE_MART = 4;
+
+//  Checkpoints whose Mart step is late, known: not reordered yet. A
+//  checkpoint listed here that no longer is late must come off the list.
+const std::set<std::string_view> LATE_MART_CHECKPOINTS = {"07.01", "12.01"};
+
+//  Whether a step is a battle that can cost the money (a prize or a loss).
+bool fights(const StoryStep& step){
+    return step.kind == Pokemon::StoryStepKind::BATTLE
+        || step.kind == Pokemon::StoryStepKind::TRAIN
+        || (step.kind == Pokemon::StoryStepKind::GAME && (step.action == GRIND_ACTION || step.action == CAPTURE_ACTION));
+}
+
+//  Whether `data` has a Mart step after a battle or a long walk.
+bool has_late_mart(const StoryCheckpoint& data){
+    size_t walk = 0;
+    bool fought = false;
+    for (const StoryStep& step : data.steps){
+        if (step.kind == Pokemon::StoryStepKind::GAME && step.action == MART_ACTION){
+            if (fought || walk > MAX_WALK_BEFORE_MART){
+                return true;
             }
+            walk = 0;
+            fought = false;
+        }else if (step.kind == Pokemon::StoryStepKind::ROUTE || step.kind == Pokemon::StoryStepKind::LEGS){
+            walk++;
+        }else if (fights(step)){
+            fought = true;
         }
     }
-    if (!missing.empty()){
-        return "Mart steps with no floor:" + missing;
+    return false;
+}
+
+UnitTestResult test_mart_steps_early(){
+    std::string late;
+    std::string stale;
+    for (const StoryCheckpoint& data : story_checkpoints()){
+        const bool listed = LATE_MART_CHECKPOINTS.contains(data.id);
+        if (has_late_mart(data) && !listed){
+            late += " " + data.id;
+        }else if (!has_late_mart(data) && listed){
+            stale += " " + data.id;
+        }
+    }
+    if (!late.empty()){
+        return "Mart steps after a battle or a long walk:" + late;
+    }
+    if (!stale.empty()){
+        return "Checkpoints listed as late, no longer:" + stale;
     }
     return true;
 }
@@ -495,11 +523,15 @@ const AutoStoryMartCase AUTO_STORY_MART_CASES[] = {
         .expectation = {},
     },
     {
+        .input = {"every Mart item has a reader name", test_mart_stock_readable},
+        .expectation = {},
+    },
+    {
         .input = {"bought supplies counted", test_count_supplies},
         .expectation = {},
     },
     {
-        .input = {"every Mart step has a floor", test_mart_steps_have_floor},
+        .input = {"every Mart step is early in its checkpoint", test_mart_steps_early},
         .expectation = {},
     },
 };
