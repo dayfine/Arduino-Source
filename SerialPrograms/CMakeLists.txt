@@ -230,6 +230,19 @@ add_library(SerialProgramsLib STATIC ${CORE_LIBRARY_SOURCES} ${LIBRARY_SOURCES})
 include(cmake/EmbedTextFiles.cmake)
 pa_embed_text_files(SerialProgramsLib Source/Pokemon/Navigation/TestMaps
     Pokemon/Navigation/Pokemon_NavigationTestMaps.h PokemonAutomation::Pokemon navigation_test_map_json)
+# Prepared data is validated by the shared publisher tooling. No source-map
+# fallback or network download is performed during configuration.
+set(POKESIM_TOOLS_SOURCE "$ENV{POKESIM_TOOLS_SOURCE}" CACHE PATH "Pinned PokemonSimulation tools checkout")
+set(POKESIM_SOURCE_CACHE "$ENV{POKESIM_SOURCE_CACHE}" CACHE PATH "Approved publishing Git cache")
+if(NOT POKESIM_TOOLS_SOURCE OR NOT POKESIM_SOURCE_CACHE)
+    message(FATAL_ERROR "Prepare devtools/maps/map-resources.lock.json and set POKESIM_TOOLS_SOURCE/POKESIM_SOURCE_CACHE; see devtools/maps/RESOURCE_MAPS.md.")
+endif()
+include("${POKESIM_TOOLS_SOURCE}/integrations/arduino-source/resource-maps.cmake")
+get_filename_component(POKESIM_CONSUMER "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+pa_pokesim_map_directory(BDSP_MAP_DIRECTORY bdsp "${POKESIM_CONSUMER}" "${POKESIM_SOURCE_CACHE}")
+file(RELATIVE_PATH BDSP_MAP_RESOURCES "${CMAKE_CURRENT_SOURCE_DIR}" "${BDSP_MAP_DIRECTORY}")
+pa_embed_text_files(SerialProgramsLib "${BDSP_MAP_RESOURCES}"
+    PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h PokemonAutomation::NintendoSwitch::PokemonBDSP bdsp_map_json)
 
 
 # Create binary target
