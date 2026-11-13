@@ -135,6 +135,8 @@ private:
     const std::string& m_checkpoint;
     std::map<std::string, size_t> m_failures;
     std::set<std::string> m_stop_rows;
+    //  The row whose start screen is kept: a retry's start is kept again.
+    std::string m_started;
 };
 
 
