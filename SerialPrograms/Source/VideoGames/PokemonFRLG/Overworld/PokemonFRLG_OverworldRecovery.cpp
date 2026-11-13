@@ -249,7 +249,7 @@ public:
             m_lines.leg(m_next, m_plan);
             //  Where a hold that finds the player starts isn't known.
             const std::optional<TrainerCrossing> crossing = m_next >= m_holds ? crossing_here(step) : std::nullopt;
-            const StepOutcome outcome = m_steps.walk(step, m_facing, crossing);
+            const StepOutcome outcome = judge_movement(step, m_steps.walk(step, m_facing, crossing));
             if (outcome.end == StepEnd::DONE){
                 const std::optional<MapPosition> start = m_next >= m_unchecked ? m_at : std::nullopt;
                 remember_walked(step);
@@ -329,12 +329,79 @@ private:
         return after_stop(walked.step, StepOutcome{.end = StepEnd::LATE, .walked = std::nullopt}, walked.start, std::nullopt);
     }
 
+    //  How many tiles the plan has `step`, a hold or an open leg, walk, at
+    //  the least: its tiles from a tile the player is known to be on, and
+    //  for the first hold that finds the player, the fewest from any tile
+    //  they may be on. 0 where that isn't known, or if one of those tiles
+    //  stands at the wall already (a bump right away moves nothing).
+    int expected_tiles(const RouteStep& step) const{
+        if (m_next >= m_holds){
+            return step.tiles;
+        }
+        if (m_next != 0 || m_hold_from.empty() || maps() == nullptr){
+            return 0;
+        }
+        int least = step.tiles;
+        for (const MapPosition& from : m_hold_from){
+            const std::optional<WallHold> hold = hold_to_wall(*maps(), from, false, step.direction);
+            least = std::min(least, hold ? hold->tiles : 0);
+        }
+        return least;
+    }
+
+    //  A walk that ended DONE with the screen never having moved did not
+    //  walk the tiles the plan expected: it is STOPPED at its start, never
+    //  taken as walked or as at its wall (console B, 2026-11-12, 12.03
+    //  pallet_shore: two holds east moved 0 tiles and were logged as
+    //  ended). A hold that only bumped a wall it stood at moves nothing
+    //  too, which expected_tiles() tells apart.
+    StepOutcome judge_movement(const RouteStep& step, StepOutcome outcome){
+        if (outcome.end != StepEnd::DONE || step.action != RouteAction::WALK || step.warps){
+            return outcome;
+        }
+        if (outcome.movement != HoldMovement::NONE){
+            m_unmoved.clear();
+            return outcome;
+        }
+        const int expected = expected_tiles(step);
+        if (expected < 1){
+            m_calls.log("Route: " + to_string(step) + " moved the screen not at all, as a bump into the wall it may stand at already; taken as walked.");
+            return outcome;
+        }
+        m_calls.log(std::format(
+            "Route: {} moved the screen not at all, though the plan has it walk at least {} tiles; the player never moved.",
+            to_string(step), expected
+        ));
+        return StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{.min = 0, .max = 0}, .movement = HoldMovement::NONE};
+    }
+
+    //  After `step` moved nothing, from `start` if known: walked again
+    //  from where it started, once. False once the route has failed.
+    bool after_unmoved(const RouteStep& step, const std::optional<MapPosition>& start){
+        const std::string leg = to_string(step);
+        const bool again = m_unmoved == leg;
+        m_unmoved = leg;
+        m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, "stopped part-way");
+        if (again){
+            m_calls.fail("walk_overworld_route(): " + leg + " moved nothing twice in a row: the player is not walking.");
+            return false;
+        }
+        if (!start || maps() == nullptr){
+            m_calls.fail("walk_overworld_route(): " + leg + " moved nothing, and the tile it was held from isn't known to walk it again from.");
+            return false;
+        }
+        return rejoin(step, {StopCandidate{*start, std::nullopt}}, WalkedTiles{.min = 0, .max = 0});
+    }
+
     //  After a stop on `step`, from `start` if known. False once the route
     //  has failed.
     bool after_stop(
         const RouteStep& step, const StepOutcome& outcome,
         const std::optional<MapPosition>& start, const std::optional<TrainerCrossing>& crossing
     ){
+        if (outcome.end == StepEnd::STOPPED && outcome.movement == HoldMovement::NONE){
+            return after_unmoved(step, start);
+        }
         if (step.to_wall){
             return after_wall_stop(step, outcome, start, crossing);
         }
@@ -411,15 +478,19 @@ private:
             "Route: position check: {} may have ended up to {} tiles short with nothing seen; finding the player at walls.",
             to_string(step), OPEN_LEG_SHORTFALL
         ));
-        replan(*anchor, m_next);
+        replan(*anchor, m_next, candidates);
         m_at = std::nullopt;
         m_lines.plan(std::nullopt, m_plan);
     }
 
     //  The plan from here: `anchor`'s holds and way back, then the old
     //  plan's steps from `rest` on. Neither the holds nor the way back are
-    //  checked as open legs again.
-    void replan(const Reanchor& anchor, size_t rest){
+    //  checked as open legs again. The first hold starts from a tile of `from`.
+    void replan(const Reanchor& anchor, size_t rest, const std::vector<StopCandidate>& from){
+        m_hold_from.clear();
+        for (const StopCandidate& candidate : from){
+            m_hold_from.push_back(candidate.player);
+        }
         std::vector<RouteStep> plan = anchor.holds;
         plan.insert(plan.end(), anchor.back.begin(), anchor.back.end());
         plan.insert(plan.end(), m_plan.begin() + rest, m_plan.end());
@@ -451,7 +522,7 @@ private:
             );
             return false;
         }
-        replan(*anchor, m_next + 1);
+        replan(*anchor, m_next + 1, candidates);
         if (m_holds > 0){
             m_at = std::nullopt;
             m_lines.plan(std::nullopt, m_plan);
@@ -483,6 +554,8 @@ private:
     size_t m_holds = 0;     //  of the plan, holds to walls that find the player
     size_t m_unchecked = 0; //  of the plan, the holds and the way back after them
     std::optional<Walked> m_walked;     //  the step walked last, if it may have stopped part-way
+    std::vector<MapPosition> m_hold_from;   //  the tiles the first hold of the plan may start from
+    std::string m_unmoved;      //  the leg that moved nothing last, until another walks
 };
 
 } // namespace

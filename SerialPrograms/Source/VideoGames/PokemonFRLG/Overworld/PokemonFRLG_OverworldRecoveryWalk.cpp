@@ -50,7 +50,43 @@ Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
 struct StepWalk{
     std::optional<WalkedTiles> stopped;
     WallClock hold_start;
+    HoldMovement movement = HoldMovement::UNMEASURED;
 };
+
+//  How much the game screen's top quarter, clear of the player in the
+//  middle, may differ between two shots of a player who stood still (an
+//  animated tile, water). A hold that walked even one tile scrolls the
+//  whole map by it. Not yet measured on the console: a guess, set low so
+//  that only a screen that did not move at all reads as not moved.
+constexpr double HOLD_UNMOVED_RMSD = 6.0;
+
+//  The game screen's top quarter, for comparing shots of the map.
+ImageViewRGB32 map_band(const VideoSnapshot& shot){
+    const ImageFloatBox game = GameSettings::instance().GAME_BOX;
+    const ImageFloatBox band(game.x, game.y, game.width, game.height * 0.25);
+    return extract_box_reference(shot, band);
+}
+
+//  Whether the map scrolled between the shot before a hold and now, once
+//  the hold's first tile has had its time (`since_start`: how long ago the
+//  hold started; a one-tile open leg is let go half-way through its step).
+HoldMovement measure_movement(
+    ConsoleHandle& console, ProControllerContext& context,
+    const VideoSnapshot& before, Milliseconds first_tile, WallClock hold_start
+){
+    const Milliseconds since_start = std::chrono::duration_cast<Milliseconds>(current_time() - hold_start);
+    if (since_start < first_tile + TURN_SETTLE){
+        context.wait_for(first_tile + TURN_SETTLE - since_start);
+    }
+    context.wait_for_all_requests();
+    const VideoSnapshot after = console.video().snapshot();
+    if (!before || !after){
+        return HoldMovement::UNMEASURED;
+    }
+    const double change = ImageMatch::pixel_RMSD(map_band(before), map_band(after));
+    console.log(std::format("Position check: the screen changed by {:.1f} over the hold.", change));
+    return change > HOLD_UNMOVED_RMSD ? HoldMovement::MOVED : HoldMovement::NONE;
+}
 
 //  One step of a route, for a player facing `facing`.
 StepWalk walk_step(
@@ -71,6 +107,7 @@ StepWalk walk_step(
             console.log(note);
         }
         context.wait_for_all_requests();
+        const VideoSnapshot before = step.warps ? VideoSnapshot() : console.video().snapshot();
         out.hold_start = current_time();
         const Pokemon::LegResult result = Pokemon::walk_leg(
             console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other,
@@ -79,6 +116,9 @@ StepWalk walk_step(
         if (result.stopped){
             out.stopped = walked_near(step, result.tiles, tile_time(step, speed));
             return out;
+        }
+        if (!step.warps){
+            out.movement = measure_movement(console, context, before, tile_time(step, speed), out.hold_start);
         }
         if (step.warps){
             wait_out_warp(console, context, step);
@@ -172,6 +212,7 @@ StepOutcome walk_and_watch(
     if (step.action == RouteAction::FACE){
         return StepOutcome{};
     }
+    const HoldMovement movement = walked.movement;
     const Milliseconds watch = step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH;
     const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
     size_t late = Pokemon::clear_late_interrupts(console, context, watched, watch, MAX_INTERRUPTIONS_PER_LEG);
@@ -181,7 +222,7 @@ StepOutcome walk_and_watch(
     //  After a warp it was checked for already.
     const bool done = late == 0 || step.warps || step.action != RouteAction::WALK;
     if (done){
-        return StepOutcome{};
+        return StepOutcome{.end = StepEnd::DONE, .walked = std::nullopt, .movement = movement};
     }
     return StepOutcome{.end = StepEnd::LATE, .walked = recorder.place(console, step, tile_time(step, speed), walked.hold_start)};
 }

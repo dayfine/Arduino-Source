@@ -10,7 +10,6 @@
     {"kind": "moved_less", "step": "pallet_shore", "index": 2, "tiles": 4},
     {"kind": "moved_less", "step": "pallet_shore", "index": 3, "tiles": 6}
   ],
-  "known_failing": "measure whether the screen moved during a hold, and take a hold that moved nothing as stopped, not as walked",
   "failed": {"step": "pallet_shore", "error": "none: the walk ended 'arrived at PalletTown (8, 14)' with the player still on (6, 10)"},
   "frame": "20261112-222235-pallet-shore-east-unmoved.png",
   "evidence": [
