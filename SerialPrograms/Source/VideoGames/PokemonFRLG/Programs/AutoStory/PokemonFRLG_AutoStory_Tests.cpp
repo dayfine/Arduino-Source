@@ -700,7 +700,13 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
         //  13.03's walk into Lewis's room, B1F of the Pokemon Mansion: its one way in,
         //  (22, 24), is beside his wander range (19..21, 24..26), on a cave's wild floor.
         const bool lewis = checkpoint.id == "13.03" && step.name == "to_statue";
-        if (!lewis && std::count(stops.begin(), stops.end(), std::nullopt) > 0){
+        //  12.03's leg down Route21_South's column 5 to the beach: Swimmer
+        //  Roland wanders (8..12, 27..31) and sees 4 tiles each way, across
+        //  every way from sand bar to sand bar. The leg lands on the beach
+        //  and is held to Cinnabar Island's wall, so wherever he stops the
+        //  player, the leg is held on to its end after the battle.
+        const bool roland = checkpoint.id == "12.03" && step.name == "land_beach";
+        if (!lewis && !roland && std::count(stops.begin(), stops.end(), std::nullopt) > 0){
             return where + "crosses a wandering trainer's sight where the walk can't tell where they'd stop the player.";
         }
         if (const std::string problem = walks ? held_past_lookers(pose, step, beaten) : ""; !problem.empty()){
@@ -1113,6 +1119,84 @@ UnitTestResult test_save_place_error(){
     return true;
 }
 
+//  A checkpoint saves only where it ends. 12.03 ends in Cinnabar's Center,
+//  where 13.01 starts; on console B (2026-11-13 04:16) it stopped surfing
+//  on Route 21 and saved there, its card reading "ROUTE 21": that save is
+//  refused, and so is one whose card can't be read.
+//  12.03's legs on Route 21's water (console B, 2026-11-13 04:15: "south 86
+//  (open)" stopped short at a sand bar unseen, and the route went on from a
+//  guess): an open leg of more than 20 tiles on the water is followed by a
+//  leg to a wall or a warp, or lands and then walks to one, which finds the
+//  player again.
+UnitTestResult test_route21_water_legs(){
+    std::vector<std::string> plan;
+    UnitTestResult result = chain_story_routes(plan);
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    const auto finds_player = [](std::string_view line){
+        return line.find("(to wall)") != std::string_view::npos || line.find("(warp)") != std::string_view::npos;
+    };
+    size_t water_legs = 0;
+    for (size_t c = 0; c < plan.size(); c++){
+        const std::string& line = plan[c];
+        if (!line.starts_with("12.03   walk ") || line.find("[surfing]") == std::string::npos){
+            continue;
+        }
+        water_legs++;
+        //  As the walker checks them: legs of up to 20 tiles go unchecked
+        //  (OPEN_WATER_CHECKED_TILES, PokemonFRLG_OverworldRecovery.cpp).
+        int tiles = 0;
+        const size_t number = line.find_first_of("0123456789", std::string_view("12.03   walk ").size());
+        if (number != std::string::npos){
+            tiles = std::stoi(line.substr(number));
+        }
+        const std::string_view next = c + 1 < plan.size() ? std::string_view(plan[c + 1]) : std::string_view();
+        const std::string_view after = c + 2 < plan.size() ? std::string_view(plan[c + 2]) : std::string_view();
+        //  A step onto a sand bar or the shore, then a leg to a wall on it.
+        const bool lands_then_wall = next.find(" 1 -> ") != std::string_view::npos && finds_player(after);
+        if (tiles > 20 && !finds_player(line) && !finds_player(next) && !lands_then_wall){
+            return std::format("12.03: \"{}\" is open, and \"{}\" after it doesn't find the player again.", line, next);
+        }
+    }
+    if (water_legs == 0){
+        return "12.03 plans no leg on the water.";
+    }
+    return true;
+}
+
+UnitTestResult test_save_end_error(){
+    const std::string end = checkpoint_end_map("12.03");
+    if (end != "CinnabarIsland_PokemonCenter_1F"){
+        return "12.03 ends on \"" + end + "\", not CinnabarIsland_PokemonCenter_1F.";
+    }
+    if (!checkpoint_end_map("no-such-row").empty()){
+        return "A row that isn't in the table has an end map.";
+    }
+    struct Case{
+        std::string end_map;
+        std::string place;
+        bool error;
+    };
+    const Case CASES[] = {
+        {.end_map = end, .place = "route-21", .error = true},
+        {.end_map = end, .place = "cinnabar-island", .error = false},
+        {.end_map = end, .place = "", .error = true},
+        {.end_map = "Route21_North", .place = "route-21", .error = false},
+        //  A map with no known place isn't checked.
+        {.end_map = "Route9", .place = "pewter-city", .error = false},
+        {.end_map = "", .place = "route-21", .error = false},
+    };
+    for (const Case& c : CASES){
+        const std::string error = save_end_error(c.end_map, c.place);
+        if (error.empty() == c.error){
+            return "A save card naming \"" + c.place + "\" for an end on " + c.end_map + ": expected " +
+                (c.error ? "an error" : "no error") + ", got \"" + error + "\".";
+        }
+    }
+    return true;
+}
+
 std::string_view save_action_name(SaveAction action){
     switch (action){
     case SaveAction::WAIT:
@@ -1356,6 +1440,14 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
     {
         .input = {.name = "a reload's save is checked against the start", .body = test_save_place_error},
         .expectation = {.description = "detects mismatch between checkpoint initial state and save point"},
+    },
+    {
+        .input = {.name = "12.03's water legs end where the player is found again", .body = test_route21_water_legs},
+        .expectation = {.description = "no open leg on Route 21's water is followed by another open leg"},
+    },
+    {
+        .input = {.name = "a checkpoint saves only where it ends", .body = test_save_end_error},
+        .expectation = {.description = "refuses a save whose card names another place than the checkpoint's end"},
     },
     {
         .input = {.name = "save dialogs: every YES/NO is YES, a cancel fails", .body = test_save_dialog},

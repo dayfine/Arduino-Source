@@ -202,6 +202,59 @@ UnitTestResult test_stop_recover_resume(){
     });
 }
 
+//  Console B, 2026-11-13 04:15 (12.03, surf_route_21): Surf from Pallet
+//  Town's shore down Route 21 to Cinnabar. "south 86 (open)" on the water
+//  stopped short at a sand bar on Route21_South, unseen, and "east 7
+//  (open)" after it was walked from there: the route was taken as walked
+//  to (14, 12), with the player still on the water, and the Center entry
+//  and the heal after it were faked. A surfing open leg followed by another
+//  open leg is now checked: the player is found again at walls, or the
+//  route stops, never goes on from a guess.
+UnitTestResult test_open_water_legs(){
+    const std::vector<MapData> maps = overworld_maps();
+    const MapPosition start{"PalletTown", {10, 17}};
+    std::optional<std::vector<RouteStep>> route = plan_overworld_route(
+        maps, start, RouteGoal{{"CinnabarIsland", {14, 12}}, Direction::NORTH}, default_route_costs()
+    );
+    if (!route){
+        return "No route.";
+    }
+    //  Routes now land on the sand bars and the shore instead of stopping
+    //  on the water (RouteCost::OPEN_WATER_STOP). The leg to the
+    //  first sand bar is made an open stop on the water, as legs were then,
+    //  to keep the check covered.
+    for (RouteStep& step : *route){
+        if (step.surfing && step.action == RouteAction::WALK && !step.warps){
+            step.to_wall = false;
+            step.lands_after = 0;
+            break;
+        }
+    }
+    size_t chained = 0;
+    while (chained + 1 < route->size() && !(
+        (*route)[chained].surfing && !(*route)[chained].to_wall && !(*route)[chained].warps
+        && (*route)[chained + 1].action == RouteAction::WALK && !(*route)[chained + 1].to_wall && !(*route)[chained + 1].warps
+    )){
+        chained++;
+    }
+    if (chained + 1 >= route->size()){
+        return "Expected an open leg on the water followed by another open leg:" + describe(*route);
+    }
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Route", .wall_check = WallCheck::SKIP};
+    ScriptedRoute script;
+    const bool failed = script.run(*route, &planning);
+    const std::string leg = to_string((*route)[chained]);
+    if (failed && script.failure.find(leg) != std::string::npos){
+        return true;
+    }
+    const UnitTestResult checked = expect_logged(script.logs, {"Route: position check: " + leg});
+    if (checked.result != UnitTestResult::PASSED){
+        return "Expected " + leg + " checked or the route stopped, not taken as walked:" + describe(*route)
+            + (failed ? "\nfailed: " + script.failure : std::string());
+    }
+    return true;
+}
+
 //  A corridor with a person at each end: nothing finds the player again.
 const std::string TEST_CORRIDOR_JSON = R"({
     "name": "Corridor", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
@@ -529,7 +582,11 @@ const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
     {
         .input = {.name = "a stop on the grass in a trainer's sight", .body = test_grass_in_sight},
         .expectation = {.description = "handles wild encounter in trainer sight line"},
+    },    {
+        .input = {.name = "open legs on the water", .body = test_open_water_legs},
+        .expectation = {.description = "checks a surfing open leg before another open leg"},
     },
+
 };
 
 } // namespace

@@ -54,12 +54,21 @@ enum class RouteCost{
     //  (console B, 2026-11-12, 11.03: "north 5" to Safari Zone West's
     //  (27, 10) on the Bicycle). A tie-break more than a detour.
     SIGN_OVERSHOOT,
+    //  Extra for an open leg that ends on the water: open water has hardly
+    //  a wall, so a leg stopped part-way there can't be placed, and the
+    //  player isn't found again (console B, 2026-11-13 06:55 and 07:02,
+    //  12.03: "south 15 (open)" down Route 21 stopped by a message). Above
+    //  OPEN_WILD_STOP and a few Surfs: a leg that lands on a sand bar and
+    //  is held to its bank finds the player, so Route 21 is crossed sand
+    //  bar to sand bar (the user's design, 2026-11-13).
+    OPEN_WATER_STOP,
 };
 //  Cost mapping table for path planning.
 using RouteCosts = std::map<RouteCost, int>;
 
 //  TILE 1, TURN 2, WARP 30, SURF 40, GRASS_TILE 20, OPEN_STOP 8,
-//  OPEN_WILD_STOP 300, SIGHT_TILE 0, SIGHT_OVERSHOOT 0, SIGN_OVERSHOOT 3.
+//  OPEN_WILD_STOP 300, SIGHT_TILE 0, SIGHT_OVERSHOOT 0, SIGN_OVERSHOOT 3,
+//  OPEN_WATER_STOP 1000.
 //  The sight costs are
 //  off by default until beaten trainers and battles a story step wants are
 //  told apart: at 100 and 10 they moved Pewter City's and Pewter Gym's

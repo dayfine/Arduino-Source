@@ -38,6 +38,7 @@ const RouteCosts& default_route_costs(){
         {RouteCost::SIGHT_TILE, 0},
         {RouteCost::SIGHT_OVERSHOOT, 0},
         {RouteCost::SIGN_OVERSHOOT, 3},
+        {RouteCost::OPEN_WATER_STOP, 1000},
     };
     return COSTS;
 }
@@ -273,6 +274,22 @@ bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction
     return true;
 }
 
+//  Whether `player` at the edge of their map faces a wall on the loaded map
+//  connected there (Cinnabar Island's north wall below Route 21's beach):
+//  press() finds the step blocked.
+bool wall_over_edge(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    const MapData& map = maps[player.map];
+    if (in_bounds(map, player.state.position.next(direction)) || press(maps, player, direction)){
+        return false;
+    }
+    for (const MapConnection& connection : map.connections){
+        if (connection.side == direction){
+            return find_map(maps, connection.to_map) >= 0;
+        }
+    }
+    return false;
+}
+
 //  The search state: a player, the way they face (4 stands for "not known
 //  yet", before the first step), and whether they are in the middle of a leg
 //  that could go on, as opposed to just stopped by a warp or Surf.
@@ -295,10 +312,11 @@ public:
         Pokemon::Step<State> step;
         step.next = transition->next;
         step.action = transition->action == RouteAction::SURF ? ACTION_SURF : 0;
-        //  Leaving the water: the player walks at half the speed from here.
-        step.starts_leg = transition->dismounted;
+        //  Leaving the water doesn't end the leg: the player held on lands
+        //  and walks on, so a leg over a sand bar to its far bank ends where
+        //  the water stops them (RouteStep::lands_after).
         //  A slide ends the leg: the hold must let go on the spinner.
-        step.ends_leg = transition->warped || transition->dismounted || transition->spin;
+        step.ends_leg = transition->warped || transition->spin;
         step.warped = transition->warped;
         step.facing = transition->facing.value_or(direction);
         if (transition->spin){
@@ -327,6 +345,9 @@ public:
         return stops_at(m_maps, state, direction);
     }
     int open_stop_risk(const State& state, Direction direction) const{
+        if (state.state.surfing){
+            return route_cost(m_costs, RouteCost::OPEN_WATER_STOP);
+        }
         if (reads_sign_ahead(m_maps[state.map], state.state.position, direction)){
             return route_cost(m_costs, RouteCost::SIGN_OVERSHOOT);
         }
@@ -432,6 +453,26 @@ std::optional<int> last_spin_tiles(const std::vector<MapData>& maps, const Pokem
     return transition->spin->tiles;
 }
 
+//  The step of WALK `leg` that lands the player off the water, counted
+//  from 1, or 0 if none does.
+int landing_step(const std::vector<MapData>& maps, const Pokemon::Leg<Located>& leg){
+    if (!leg.start.state.surfing){
+        return 0;
+    }
+    Located player = leg.start;
+    for (int c = 1; c <= leg.tiles; c++){
+        const std::optional<Transition> transition = press(maps, player, leg.direction);
+        if (!transition){
+            return 0;
+        }
+        if (transition->dismounted){
+            return c;
+        }
+        player = transition->next;
+    }
+    return 0;
+}
+
 //  Whether WALK `step` ends on stairs at the side of a room, or an exit
 //  mat, going another way than its warp is taken, and not at a wall. The
 //  press the warp's way finds the warp only if the leg ended on its tile:
@@ -466,28 +507,28 @@ void tap_from_known_tile(std::vector<RouteStep>& route){
     }
 }
 
-RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Located>& leg){
-    RouteStep step;
+RouteAction route_action(const Pokemon::Leg<Located>& leg){
     switch (leg.kind){
     case Pokemon::LegKind::WALK:
-        step.action = RouteAction::WALK;
-        break;
+        return RouteAction::WALK;
     case Pokemon::LegKind::ACTION:
         switch (leg.action){
         case Pokemon::ACTION_OPEN_GATE:
-            step.action = RouteAction::OPEN_GATE;
-            break;
+            return RouteAction::OPEN_GATE;
         case Pokemon::ACTION_PRESS_SWITCH:
-            step.action = RouteAction::PRESS_SWITCH;
-            break;
+            return RouteAction::PRESS_SWITCH;
         default:
-            step.action = RouteAction::SURF;
+            return RouteAction::SURF;
         }
-        break;
     case Pokemon::LegKind::FACE:
-        step.action = RouteAction::FACE;
-        break;
+        return RouteAction::FACE;
     }
+    return RouteAction::WALK;
+}
+
+RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Located>& leg){
+    RouteStep step;
+    step.action = route_action(leg);
     step.direction = leg.direction;
     const bool gate = step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH;
     step.tiles = leg.kind == Pokemon::LegKind::FACE || gate ? 0 : leg.tiles;
@@ -505,6 +546,13 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
     }
     if (leg.kind == Pokemon::LegKind::WALK){
         step.spin_tiles = last_spin_tiles(maps, leg);
+        step.lands_after = landing_step(maps, leg);
+        //  A leg that lands and goes on to a wall over the map's edge ends
+        //  there as at a wall on its own map. Only for these: other legs
+        //  keep the edges they were planned with.
+        if (step.lands_after > 0 && !step.warps && wall_over_edge(maps, leg.end, step.direction)){
+            step.to_wall = true;
+        }
         step.to_wall = step.to_wall && !step.spin_tiles;
         step.tapped = !step.surfing && onto_warp_sideways(maps[leg.end.map], step);
         step.sign_ahead = !step.to_wall && !step.warps && reads_sign_ahead(maps[leg.end.map], leg.end.state.position, step.direction);

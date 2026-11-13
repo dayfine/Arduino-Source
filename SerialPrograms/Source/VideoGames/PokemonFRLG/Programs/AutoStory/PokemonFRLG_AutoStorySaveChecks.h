@@ -44,6 +44,19 @@ std::string save_card_place(const std::string& map);
 //  be read (empty `place`), or the map has no known place.
 std::string save_place_error(const std::string& start_map, const std::string& place);
 
+//  The map checkpoint `id` ends on: where the table's next row starts.
+//  Empty for the last row, or one whose next row has no start.
+std::string checkpoint_end_map(const std::string& id);
+
+//  Why the save card, naming `place`, shows the player isn't where a
+//  checkpoint that ends on `end_map` ends, or empty if it is: the places
+//  match, or the map has no known place. A card that can't be read (empty
+//  `place`) doesn't show the end, so it is refused too: the story has one
+//  save slot, and a save made in the wrong place loses the one before it
+//  (12.03 saved on Route 21, short of Cinnabar's Center: console B,
+//  2026-11-13).
+std::string save_end_error(const std::string& end_map, const std::string& place);
+
 //  Why a save standing at `stands` can't start a checkpoint that starts at
 //  `start`, or empty if it can: the same map and tile, and the same facing
 //  when both are known.

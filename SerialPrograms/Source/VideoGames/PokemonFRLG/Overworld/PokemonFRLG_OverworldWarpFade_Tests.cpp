@@ -182,6 +182,37 @@ UnitTestResult test_lift_room_arrival(){
     return true;
 }
 
+//  Water whose waves are drawn from `phase`: every phase another scene.
+ImageRGB32 water(size_t phase){
+    ImageRGB32 image(240, 160);
+    for (size_t y = 0; y < 160; y++){
+        for (size_t x = 0; x < 240; x++){
+            image.pixel(x, y) = ((x + 3 * y + 7 * phase) % 13 < 6) ? 0xff3060e0 : 0xff80b0f8;
+        }
+    }
+    return image;
+}
+
+//  12.03 cinnabar_nurse: surfing on Route 21, short of Cinnabar, the step
+//  north "into the Center" saw no fade, and the water after it, still for
+//  a poll but not the water from before, was taken as the Center (console
+//  B, 2026-11-13 04:16). A door north into a building ends at the bottom of
+//  its map, with the black below it on screen; water has none.
+UnitTestResult test_water_is_not_the_center(){
+    const ImageFloatBox game(0, 0, 1, 1);
+    RouteStep step;
+    step.direction = Direction::NORTH;
+    step.tiles = 1;
+    step.warps = true;
+    step.end.map = "the Center";
+    const ImageRGB32 before = water(0);
+    const ImageRGB32 after = water(1);
+    if (OverworldWalkSteps::arrived_without_fade(before, after, after, game, step)){
+        return "Expected still water with no black below not to be taken as the Center.";
+    }
+    return true;
+}
+
 struct ArrivalScreenInput{
     std::string name;
     std::function<UnitTestResult()> body;
@@ -211,6 +242,7 @@ private:
 
 const ArrivalScreenCase ARRIVAL_SCREEN_CASES[] = {
     {.input = {"the lift room after a missed fade, by its screen", test_lift_room_arrival}, .expectation = {}},
+    {.input = {"water after a missed fade is not the Center", test_water_is_not_the_center}, .expectation = {}},
 };
 
 } // namespace

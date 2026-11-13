@@ -202,6 +202,14 @@ MoveSpeed step_speed(const RouteStep& step, MoveSpeed speed){
 }
 
 Milliseconds tile_time(const RouteStep& step, MoveSpeed speed){
+    if (step.surfing && step.lands_after > 0 && step.tiles > 0){
+        //  The surfed tiles, then the hop onto land and the walked ones
+        //  (B isn't held on a leg that starts on the water), each hop or
+        //  walked tile taken at walking pace, averaged and rounded up.
+        const int walked = step.tiles - step.lands_after + 1;
+        const Milliseconds total = SURF_TILE_TIME * (step.lands_after - 1) + TILE_TIME * walked;
+        return (total + Milliseconds(step.tiles - 1)) / step.tiles;
+    }
     if (step.surfing){
         return SURF_TILE_TIME;
     }
@@ -232,56 +240,6 @@ bool counts_bike_taps(const RouteStep& step, MoveSpeed speed){
 bool gets_on_bike(const RouteStep& step, MoveSpeed speed, bool riding){
     return speed == MoveSpeed::BIKE && !riding && step.action == RouteAction::WALK
         && !step.walk_only && !step.surfing;
-}
-
-bool select_onto_bike(const BikeSelectCalls& calls){
-    for (int press = 1; press <= 2; press++){
-        calls.press_select();
-        if (calls.riding()){
-            return true;
-        }
-        if (calls.wait_to_read_again){
-            calls.wait_to_read_again();
-        }
-        if (calls.riding()){
-            return true;
-        }
-    }
-    return false;
-}
-
-bool screen_shows_riding(const ImageViewRGB32& screen, PlayerGender player){
-    if (StartMenuDetector(COLOR_RED).detect(screen) || SelectionDialogDetector(COLOR_RED).detect(screen)
-        || WhiteDialogDetector(COLOR_RED).detect(screen)
-    ){
-        return false;
-    }
-    return !read_player_facing(screen, player).has_value();
-}
-
-void get_on_bike(ConsoleHandle& console, ProControllerContext& context, PlayerGender player){
-    BikeSelectCalls calls;
-    calls.press_select = [&]{
-        pbf_press_button(context, BUTTON_MINUS, BIKE_SELECT_PRESS, BIKE_SELECT_SETTLE);
-    };
-    calls.riding = [&]{
-        context.wait_for_all_requests();
-        VideoSnapshot screen = console.video().snapshot();
-        const bool riding = screen && screen_shows_riding(*screen.frame, player);
-        console.log(riding ? "Bike: riding." : "Bike: not riding after SELECT.", riding ? COLOR_BLACK : COLOR_ORANGE);
-        return riding;
-    };
-    calls.wait_to_read_again = [&]{
-        pbf_wait(context, BIKE_SELECT_SETTLE);
-    };
-    console.log("Bike: SELECT (MINUS) onto the Bicycle.");
-    if (!select_onto_bike(calls)){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            "get_on_bike(): not on the Bicycle after SELECT twice. Is it registered?",
-            console
-        );
-    }
 }
 
 Pokemon::LegMover<ProControllerContext> leg_mover(const RouteStep& step, MoveSpeed speed){
@@ -372,6 +330,21 @@ bool warp_left_scene(
     return true;
 }
 
+//  How bright the black below a building's map may be, as the sum of the
+//  average's channels (as a dark cave's corners).
+constexpr double BLACK_BELOW_MAX = 45.0;
+
+//  Whether the bottom tile row of the game box `box` is black: the black
+//  below a building's map, which a door north into it ends on.
+bool black_below(const ImageViewRGB32& box){
+    const size_t row = box.height() / SCREEN_TILES_Y;
+    if (row == 0){
+        return false;
+    }
+    const ImageViewRGB32 bottom = box.sub_image(0, box.height() - row, box.width(), row);
+    return image_stats(bottom).average.sum() < BLACK_BELOW_MAX;
+}
+
 } // namespace
 
 bool arrived_without_fade(
@@ -387,6 +360,11 @@ bool arrived_without_fade(
         return false;
     }
     if (scrolled_rmsd(now_box, later_box, 0, 0) >= SAME_SCENE_RMSD){
+        return false;
+    }
+    //  Water's waves make any scene after it look like another one: a door
+    //  north has to show the building it leads into.
+    if (step.direction == Direction::NORTH && !black_below(later_box)){
         return false;
     }
     return warp_left_scene(before, later, game, step.direction, step.tiles + step.warp_slack + 2);

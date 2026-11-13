@@ -87,6 +87,19 @@ bool is_wall_hold(const RouteStep& next){
     return next.action == RouteAction::WALK && next.to_wall && !next.warps;
 }
 
+//  Whether `step`, an open leg on the water, is followed by `next`, another
+//  open leg: nothing between them shows where `step` ended (console B,
+//  2026-11-13, 12.03: "south 86 (open)" down Route 21 stopped short at a
+//  sand bar unseen, and "east 7 (open)" went on from there).
+//  Only a long leg: the sims' shorter ones (Viridian's pond "east 5",
+//  Route 23's "north 17") have no walls near enough to check them by, and
+//  the unseen stop was 86 tiles into the leg.
+constexpr int OPEN_WATER_CHECKED_TILES = 20;
+bool open_water_chain(const RouteStep& step, const RouteStep& next){
+    return step.surfing && !step.to_wall && !step.warps && step.tiles > OPEN_WATER_CHECKED_TILES
+        && next.action == RouteAction::WALK && !next.to_wall && !next.warps && !next.spin_tiles;
+}
+
 //  Whether `next` steps onto a spinner. From a tile short of its start it
 //  misses the arrow, or walks onto another, and ends elsewhere in the maze:
 //  "south 2" before Rocket Hideout B3F's "east 2" onto the arrow (3, 16)
@@ -254,12 +267,9 @@ public:
                 continue;
             }
             if (outcome.end == StepEnd::DONE){
-                const std::optional<MapPosition> start = m_next >= m_unchecked ? m_at : std::nullopt;
-                remember_walked(step);
-                m_at = step.end;
-                m_facing = step.facing_after;
-                m_lines.done(step, ++m_next, m_holds);
-                check_open_leg(step, start);
+                if (!after_done(step)){
+                    return;
+                }
                 continue;
             }
             const std::optional<MapPosition> start = m_next >= m_holds ? m_at : std::nullopt;
@@ -282,6 +292,25 @@ public:
     }
 
 private:
+    //  After `step` ended as planned: false, the route failed, if it lands
+    //  the player and they are still on the water.
+    bool after_done(const RouteStep& step){
+        if (step.lands_after > 0 && m_calls.landed_on && !m_calls.landed_on(step.end)){
+            m_calls.fail(std::format(
+                "walk_overworld_route(): still surfing after {}: the player didn't land on {}.",
+                to_string(step), to_string(step.end)
+            ));
+            return false;
+        }
+        const std::optional<MapPosition> start = m_next >= m_unchecked ? m_at : std::nullopt;
+        remember_walked(step);
+        m_at = step.end;
+        m_facing = step.facing_after;
+        m_lines.done(step, ++m_next, m_holds);
+        check_open_leg(step, start);
+        return true;
+    }
+
     static bool is_gate_step(const RouteStep& step){
         return step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH;
     }
@@ -474,8 +503,11 @@ private:
     //  only that far, to keep the check cheap: in Viridian Forest (r16) it
     //  walks 10 tiles after "west 6", while after Route 1's "west 4" the
     //  only holds walk 30. An open leg after a short one walks on off the
-    //  route, which isn't checked. A leg onto a spinner isn't checked: its
-    //  taps wait out the slide and its settle, and it ends on the stop. The
+    //  route, which isn't checked, except on the water: there an open leg
+    //  followed by another open leg is checked however far the holds walk,
+    //  and stops the route if none find the player (open_water_chain()).
+    //  A leg onto a spinner isn't checked: its taps wait out the slide and
+    //  its settle, and it ends on the stop. The
     //  tiles short of its arrow left out that stop, and the hold west "to
     //  the wall (7, 11)" after Rocket Hideout B2F's "east 2" to the stop
     //  (14, 13) slid from there to (10, 15) (09.02, console B, 2026-11-11).
@@ -488,8 +520,12 @@ private:
         if (maps() == nullptr || m_planning->open_leg_check != OpenLegCheck::REANCHOR || !start
             || counts_step_taps(step)
             || step.action != RouteAction::WALK || step.to_wall || step.warps || step.spin_tiles
-            || m_next >= m_plan.size() || !(is_wall_hold(m_plan[m_next]) || is_slide(m_plan[m_next]))
+            || m_next >= m_plan.size()
         ){
+            return;
+        }
+        const bool water_chain = open_water_chain(step, m_plan[m_next]);
+        if (!(is_wall_hold(m_plan[m_next]) || is_slide(m_plan[m_next]) || water_chain)){
             return;
         }
         const std::vector<StopCandidate> candidates = short_candidates(*maps(), *start, step);
@@ -497,7 +533,15 @@ private:
             return;
         }
         const std::optional<Reanchor> anchor = plan_reanchor(*maps(), candidates, step, m_planning->costs);
-        if (!anchor || anchor->holds.empty() || reanchor_tiles(*anchor) > OPEN_LEG_CHECK_TILES_PER_TILE * step.tiles){
+        if (water_chain && (!anchor || anchor->holds.empty())){
+            m_calls.fail(std::format(
+                "walk_overworld_route(): {} on the water may have ended short with nothing seen, and {} after it is open too; "
+                "no holds to walls find the player: stopped rather than go on from a guess.",
+                to_string(step), to_string(m_plan[m_next])
+            ));
+            return;
+        }
+        if (!anchor || anchor->holds.empty() || (!water_chain && reanchor_tiles(*anchor) > OPEN_LEG_CHECK_TILES_PER_TILE * step.tiles)){
             m_calls.log("Route: no holds to walls within " + std::to_string(OPEN_LEG_CHECK_TILES_PER_TILE * step.tiles) + " tiles find the player if " + to_string(step) + " ended short; taken as walked.");
             return;
         }

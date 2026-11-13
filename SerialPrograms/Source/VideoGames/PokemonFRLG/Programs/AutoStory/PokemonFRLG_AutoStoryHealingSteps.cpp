@@ -7,7 +7,11 @@
 #include <algorithm>
 #include <format>
 #include "Common/Cpp/Color.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PokemonCenterFloorReader.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
+#include "PokemonFRLG_AutoStoryCenterHeal.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
@@ -67,6 +71,25 @@ Outcome bag_check(StoryEnv& env, Pokemon::RunState& state, const StoryStep& step
 }
 
 } // namespace
+
+//  The nurse's heal, counted only where a Center's floor shows: on 12.03
+//  (console B, 2026-11-13 04:16) a route taken as walked left the player
+//  on Route 21's water, the Center entry after it was taken from a still
+//  screen, and the heal's A mashing was counted as the nurse's. No frame,
+//  or no floor: fails with the screen.
+void heal_in_center(StoryEnv& env){
+    env.context.wait_for_all_requests();
+    const VideoSnapshot frame = env.console.video().snapshot();
+    if (!frame || !shows_pokemon_center_floor(frame)){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "Heal: no Pokemon Center floor on screen; the player is not in a Center.",
+            env.console
+        );
+    }
+    heal_at_pokecenter(env.console, env.context);
+    healed_by_nurse(env.supplies);
+}
 
 
 std::vector<Pokemon::StoryActionSpec> healing_action_specs(){
