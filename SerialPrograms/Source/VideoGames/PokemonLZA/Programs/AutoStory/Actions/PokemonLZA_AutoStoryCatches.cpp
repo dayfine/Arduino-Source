@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <format>
+#include <string_view>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -15,6 +16,7 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
+#include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_RunFromBattleDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryCaughtMarkReader.h"
@@ -112,6 +114,79 @@ bool lock_on_near(ConsoleHandle& console, ProControllerContext& context){
     return false;
 }
 
+//  Whether a wild battle is on: its Run prompt ("-" at the left), which
+//  story battles do not show. A target a ball broke out of can turn on the
+//  player and start one (Mareep in 03.08, console B 2026-11-13).
+bool wild_battle_on(ConsoleHandle& console, ProControllerContext& context){
+    context.wait_for_all_requests();
+    const VideoSnapshot screen = console.video().snapshot();
+    RunFromBattleDetector run_prompt(COLOR_RED, nullptr);
+    return screen && run_prompt.detect(screen);
+}
+
+//  What tells weaken_then_throw() a throw caught its target.
+enum class CatchSign{
+    NO_TARGET,      //  only a later round with nothing to lock on (Bunnelby)
+    REGISTERED,     //  the Pokedex's "Registered!" banner: a new species
+    CARD,           //  a tutorial card after the throw (03.07's tutorial)
+};
+
+//  How weaken_then_throw() ended.
+struct WeakenThrows{
+    bool caught = false;
+    int throws = 0;
+};
+
+//  TrainerBattleState attacks until 3 land (12 tries at most). Two lock-ons
+//  in a row with no move symbols press D-pad up (twice at most): the
+//  partner may not be out. Returns the attacks that landed.
+int weaken_target(ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context, TrainerBattleState& battle_state){
+    int landed = 0;
+    int misses = 0;
+    int sends = 0;
+    for (int tries = 0; tries < 12 && landed < 3; tries++){
+        if (battle_state.attempt_one_attack(env, console, context)){
+            landed++;
+            misses = 0;
+        }else if (++misses == 2 && sends < 2){
+            console.log("weaken_target(): no lock-on twice: D-pad up to send the partner out.");
+            pbf_press_dpad(context, DPAD_UP, 100ms, 2000ms);
+            misses = 0;
+            sends++;
+        }
+    }
+    return landed;
+}
+
+//  Rounds of weaken_target() and a throw, with A through any lines, until
+//  `sign` shows, a round after the first finds nothing to lock on (caught
+//  for NO_TARGET, gone otherwise), or `max_throws` throws.
+WeakenThrows weaken_then_throw(
+    ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
+    BattleAIOption& battle_ai, CatchSign sign, int max_throws, std::string_view caller
+){
+    TrainerBattleState battle_state(battle_ai);
+    WeakenThrows out;
+    while (out.throws < max_throws){
+        const int landed = weaken_target(env, console, context, battle_state);
+        if (landed == 0 && out.throws > 0){
+            console.log(std::format("{}: nothing to lock on in round {}: {}.", caller, out.throws + 1, sign == CatchSign::NO_TARGET ? "caught" : "gone"));
+            out.caught = sign == CatchSign::NO_TARGET;
+            return out;
+        }
+        advance_text_and_cards(console, context);
+        const bool registered = throw_ball(console, context);
+        out.throws++;
+        const bool card = advance_text_and_cards(console, context).card;
+        console.log(std::format("{}: round {}: {} attacks landed, then a throw.", caller, out.throws, landed));
+        if ((sign == CatchSign::REGISTERED && registered) || (sign == CatchSign::CARD && card)){
+            out.caught = true;
+            return out;
+        }
+    }
+    return out;
+}
+
 //  Holds ZL at the target and reads its name plate while it shows: whether
 //  its species is already caught (lock_target_caught()).
 std::optional<bool> aim_and_read_caught(ConsoleHandle& console, ProControllerContext& context){
@@ -148,7 +223,12 @@ struct GrassCatches{
 //  Steps right into the grass 1 s at a time (3 at most) and throws at what
 //  locks on, skipping species already caught, until `new_species_wanted`
 //  new species registered or `max_throws`.
-GrassCatches catch_in_grass(ConsoleHandle& console, ProControllerContext& context, int new_species_wanted, int max_throws){
+//  A break-out that starts a wild battle gets weaken_then_throw() for the
+//  next throws.
+GrassCatches catch_in_grass(
+    ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
+    BattleAIOption& battle_ai, int new_species_wanted, int max_throws
+){
     GrassCatches out;
     for (; out.steps < 3 && out.found < new_species_wanted && out.throws < max_throws; out.steps++){
         pbf_move_left_joystick(context, {1, 0}, 1000ms, 300ms);
@@ -168,6 +248,14 @@ GrassCatches catch_in_grass(ConsoleHandle& console, ProControllerContext& contex
             out.found += registered ? 1 : 0;
             console.log(std::format("catch_in_zone(): throw {}: {}.", out.throws, registered ? "a new species registered" : "no new species"));
             advance_text_and_cards(console, context);
+            if (!registered && out.throws < max_throws && wild_battle_on(console, context)){
+                console.log(std::format("catch_in_zone(): throw {} broke out: battle, weakening.", out.throws));
+                const WeakenThrows weakened = weaken_then_throw(
+                    env, console, context, battle_ai, CatchSign::REGISTERED, max_throws - out.throws, "catch_in_zone()"
+                );
+                out.throws += weakened.throws;
+                out.found += weakened.caught ? 1 : 0;
+            }
         }
         face_objective(console, context);
     }
@@ -342,7 +430,10 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
     return last;
 }
 
-void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int new_species_wanted, int max_throws){
+void catch_in_zone(
+    ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
+    BattleAIOption& battle_ai, int new_species_wanted, int max_throws
+){
     //  Taunie's two rocks stand between the start and the marker: a step
     //  right first, around them, from the start (a catch's autosave can
     //  leave the save further on).
@@ -357,7 +448,7 @@ void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int ne
     //  repeats (Fletchling, Scatterbug).
     walk_to_objective(console, context, 60, 90s);
     face_objective(console, context);
-    const GrassCatches result = catch_in_grass(console, context, new_species_wanted, max_throws);
+    const GrassCatches result = catch_in_grass(env, console, context, battle_ai, new_species_wanted, max_throws);
     //  Back onto the road.
     pbf_move_left_joystick(context, {-1, 0}, Milliseconds(1000 * result.steps), 300ms);
     console.log(std::format("catch_in_zone(): {} new species in {} throws.", result.found, result.throws));
@@ -390,12 +481,28 @@ void walk_to_marker(ConsoleHandle& console, ProControllerContext& context){
     }
 }
 
-void catch_tutorial(ConsoleHandle& console, ProControllerContext& context, int max_throws){
-    for (int i = 0; i < max_throws; i++){
+void catch_tutorial(
+    ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
+    BattleAIOption& battle_ai, int max_throws
+){
+    int throws = 0;
+    while (throws < max_throws){
         throw_ball(console, context);
+        throws++;
         if (advance_text_and_cards(console, context).card){
-            console.log(std::format("catch_tutorial(): caught on throw {}.", i + 1));
+            console.log(std::format("catch_tutorial(): caught on throw {}.", throws));
             return;
+        }
+        if (throws < max_throws && wild_battle_on(console, context)){
+            console.log(std::format("catch_tutorial(): throw {} broke out: battle, weakening.", throws));
+            const WeakenThrows weakened = weaken_then_throw(
+                env, console, context, battle_ai, CatchSign::CARD, max_throws - throws, "catch_tutorial()"
+            );
+            throws += weakened.throws;
+            if (weakened.caught){
+                console.log(std::format("catch_tutorial(): caught on throw {}.", throws));
+                return;
+            }
         }
     }
     OperationFailedExceptionWithScreenshot::fire(
@@ -413,30 +520,8 @@ void battle_then_catch(
     pbf_press_button(context, BUTTON_A, 160ms, 840ms);
     advance_text_and_cards(console, context);
     pbf_press_dpad(context, DPAD_UP, 100ms, 2000ms);
-    TrainerBattleState battle_state(battle_ai);
-    for (int round = 0; round < max_rounds; round++){
-        int landed = 0;
-        int misses = 0;
-        int sends = 0;
-        for (int tries = 0; tries < 12 && landed < 3; tries++){
-            if (battle_state.attempt_one_attack(env, console, context)){
-                landed++;
-                misses = 0;
-            }else if (++misses == 2 && sends < 2){
-                //  No move symbols twice: the partner may not be out.
-                console.log("battle_then_catch(): no lock-on twice: D-pad up to send the partner out.");
-                pbf_press_dpad(context, DPAD_UP, 100ms, 2000ms);
-                misses = 0;
-                sends++;
-            }
-        }
-        if (landed == 0 && round > 0){
-            console.log(std::format("battle_then_catch(): nothing to lock on in round {}: caught.", round + 1));
-            return;
-        }
-        advance_text_and_cards(console, context);
-        throw_ball(console, context);
-        advance_text_and_cards(console, context);
+    if (weaken_then_throw(env, console, context, battle_ai, CatchSign::NO_TARGET, max_rounds, "battle_then_catch()").caught){
+        return;
     }
     OperationFailedExceptionWithScreenshot::fire(
         ErrorReportMode::SEND_ERROR_REPORT,
