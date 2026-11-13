@@ -240,15 +240,15 @@ HoldMovement measure_movement(
 //  One WALK step: turned first when it should, then its hold, and the warp it ends on.
 StepWalk walk_hold_step(
     ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, std::optional<Direction> facing, const std::optional<MapPosition>& at,
+    const RouteStep& step, const StepStart& from,
     const OverworldInterruptSet& interrupts, MoveSpeed speed, PlayerGender player
 ){
     StepWalk out{std::nullopt, current_time(), false, false};
     //  Turning first, with a tap, starts the hold from a standstill facing
     //  the right way: exact over 15 tiles, where a turn lost one.
-    if (turns_first(step, speed, facing)){
+    if (turns_first(step, speed, from.facing)){
         const bool walking = !step.surfing && step_speed(step, speed) != MoveSpeed::BIKE;
-        turn_to(console, context, step.direction, player, walking ? TurnSprite::WALKING : TurnSprite::NOT_READ, at);
+        turn_to(console, context, step.direction, player, walking ? TurnSprite::WALKING : TurnSprite::NOT_READ, from.at);
     }
     if (const std::string note = speed_note(step, speed); !note.empty()){
         console.log(note);
@@ -283,27 +283,27 @@ StepWalk walk_hold_step(
     return out;
 }
 
-//  One step of a route, for a player facing `facing` on `at` (if known).
+//  One step of a route, from `from`.
 StepWalk walk_step(
     ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, std::optional<Direction> facing, const std::optional<MapPosition>& at,
+    const RouteStep& step, const StepStart& from,
     const OverworldInterruptSet& interrupts, MoveSpeed speed, PlayerGender player
 ){
     switch (step.action){
     case RouteAction::WALK:
-        return walk_hold_step(console, context, step, facing, at, interrupts, speed, player);
+        return walk_hold_step(console, context, step, from, interrupts, speed, player);
     case RouteAction::SURF:
-        start_surf(console, context, step.direction, facing == step.direction);
+        start_surf(console, context, step.direction, from.facing == step.direction);
         break;
     case RouteAction::FACE:
-        turn_to(console, context, step.direction, player, TurnSprite::WALKING, at);
+        turn_to(console, context, step.direction, player, TurnSprite::WALKING, from.at);
         break;
     case RouteAction::OPEN_GATE:
-        turn_to(console, context, step.direction, player, TurnSprite::WALKING, at);
+        turn_to(console, context, step.direction, player, TurnSprite::WALKING, from.at);
         open_gate(console, context, step.direction, true);
         break;
     case RouteAction::PRESS_SWITCH:
-        turn_to(console, context, step.direction, player, TurnSprite::WALKING, at);
+        turn_to(console, context, step.direction, player, TurnSprite::WALKING, from.at);
         press_switch(console, context, step.direction, true);
         break;
     }
@@ -365,7 +365,7 @@ private:
 //  BATTLE_BEFORE (clear_battle_before()).
 StepOutcome walk_and_watch(
     ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, std::optional<Direction> facing, const std::optional<MapPosition>& at,
+    const RouteStep& step, const StepStart& from,
     const OverworldInterruptSet& interrupts, MoveSpeed speed, PlayerGender player
 ){
     if (clear_battle_before(console, context, interrupts.wild, step) > 0){
@@ -380,7 +380,7 @@ StepOutcome walk_and_watch(
     }else if (counts_bike_taps(step, speed)){
         walked = walk_bike_taps(console, context, step, interrupts, player);
     }else{
-        walked = walk_step(console, context, step, facing, at, interrupts, speed, player);
+        walked = walk_step(console, context, step, from, interrupts, speed, player);
     }
     if (walked.stopped){
         return StepOutcome{.end = StepEnd::STOPPED, .walked = walked.stopped, .blocked = walked.blocked};
@@ -583,7 +583,7 @@ void walk_overworld_route_with_recovery(
             riding = true;
             from_facing = std::nullopt;
         }
-        const StepOutcome outcome = walk_and_watch(console, context, step, from_facing, at, interrupts, riding ? speed : on_foot(speed), player);
+        const StepOutcome outcome = walk_and_watch(console, context, step, StepStart{from_facing, at}, interrupts, riding ? speed : on_foot(speed), player);
         at = outcome.end == StepEnd::DONE ? std::optional<MapPosition>(step.end) : std::nullopt;
         if (riding && step.warps && !warp_keeps_bike(step.end.map)){
             console.log("Bike: through the warp to " + step.end.map + ", off the Bicycle.");
