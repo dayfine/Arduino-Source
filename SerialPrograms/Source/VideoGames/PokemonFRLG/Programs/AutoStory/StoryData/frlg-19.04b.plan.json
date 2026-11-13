@@ -162,6 +162,13 @@
         "gates_after": {"switches": {"VictoryRoad_1F/floor_switch_1": true}}
       },
       {
+        "id": "by_boulder_8_corner",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_1F", "tiles": [[19, 15]]}},
+        "why": "west, off the column of the boulder now on the switch (20, 16), which the maps still show where it started: the planner would walk south through its new tile"
+      },
+      {
         "id": "below_ladder",
         "kind": "route",
         "action": "run",
