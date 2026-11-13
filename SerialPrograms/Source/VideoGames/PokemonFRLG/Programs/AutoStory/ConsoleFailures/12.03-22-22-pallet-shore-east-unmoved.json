@@ -1,0 +1,22 @@
+{
+  "about": "lab-B 2026-11-12 22:22, FRLG 12.03 pallet_shore (lab-B log lines 317846-317974): from (6, 10) both holds east, the open leg east 4 (held 465 ms) and the reanchoring hold east 4 to the wall (held 798 ms), moved 0 tiles; the user watched and the player never went east. The walker logged \"ended at (10, 10) (walked)\", then \"ended at (12, 10) (walked)\" and \"found again at (12, 10)\", and walked on as if it stood there. Nothing on screen told it otherwise: the walker does not measure whether the screen moved.",
+  "checkpoint": "12.03",
+  "start": {"map": "PalletTown", "tile": [6, 8], "facing": "south"},
+  "walk": {
+    "event": "pallet_shore",
+    "legs": [["south", 2], ["east", 4], ["south", 6], ["west", 2]]
+  },
+  "faults": [
+    {"kind": "moved_less", "step": "pallet_shore", "index": 2, "tiles": 4},
+    {"kind": "moved_less", "step": "pallet_shore", "index": 3, "tiles": 6}
+  ],
+  "known_failing": "measure whether the screen moved during a hold, and take a hold that moved nothing as stopped, not as walked",
+  "failed": {"step": "pallet_shore", "error": "none: the walk ended 'arrived at PalletTown (8, 16)' with the player still on (6, 10)"},
+  "frame": "20261112-222235-pallet-shore-east-unmoved.png",
+  "evidence": [
+    "[Route] pallet_shore: east 4 (open): ended at PalletTown (10, 10) (walked).",
+    "Route: position check: walk east 4 -> PalletTown (10, 10) may have ended up to 2 tiles short with nothing seen; finding the player at walls.",
+    "[Route] pallet_shore: east 4 (to wall): ended at PalletTown (12, 10) (walked).",
+    "[Route] pallet_shore: found again at PalletTown (12, 10), after 1 hold(s)."
+  ]
+}

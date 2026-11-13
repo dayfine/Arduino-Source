@@ -66,6 +66,8 @@ struct StoryEnv{
     //  The map the checkpoint under way starts on, where its save is: a
     //  reload checks the save card against it.
     std::string start_map = {};
+    //  That checkpoint's id, for the walker's [Leg] records.
+    std::string checkpoint = {};
     //  That checkpoint's START menu: a reload reads the bag again with it.
     StartMenu start_menu = StartMenu::BEFORE_POKEMON;
     //  The once_per_save steps done from the last save that changed

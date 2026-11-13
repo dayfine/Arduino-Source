@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <format>
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
+#include "PokemonFRLG_OverworldLegTrace.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 
@@ -99,12 +100,17 @@ int anchor_tiles(const Reanchor& anchor){
 }
 
 //  The route's lines in the route log the games share, as BDSP's walker
-//  writes them, under the caller's label.
+//  writes them, under the caller's label; and one [Leg] record per leg
+//  (PokemonFRLG_OverworldLegTrace.h), written to the same log.
 class RouteLogLines{
 public:
     RouteLogLines(const RouteCalls& calls, const RoutePlanning* planning)
         : m_calls(calls)
         , m_label(planning != nullptr ? planning->label : "Route")
+        , m_trace(
+            planning != nullptr ? planning->checkpoint : "", m_label,
+            [&calls](const std::string& line){ calls.log(line); }
+        )
     {}
     void plan(const std::optional<MapPosition>& from, const std::vector<RouteStep>& steps) const{
         std::vector<Pokemon::PlannedRouteLeg> legs;
@@ -113,36 +119,56 @@ public:
         }
         m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_plan_line(m_label, route_tiles(from), legs));
     }
-    void leg(size_t index, const std::vector<RouteStep>& steps) const{
+    void leg(size_t index, const std::vector<RouteStep>& steps){
         const RouteStep& step = steps[index];
         m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_leg_line(index + 1, steps.size(), {.leg = route_log_leg(step), .after = route_tiles(step.end)}));
+        m_trace.begin(step);
     }
-    void end(const RouteStep& step, const std::optional<MapPosition>& at, EndBasis basis, const std::string& why) const{
-        m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_leg_end_line(m_label, route_log_leg(step), route_tiles(at), basis, why));
+    //  The leg ended other than as planned and walked: its hold went on to
+    //  the warp (ASSUMED), or its end is not known (UNKNOWN).
+    void end(const RouteStep& step, const std::optional<MapPosition>& at, EndBasis basis, const std::string& why){
+        log_end(step, at, basis, why);
+        if (basis == EndBasis::ASSUMED){
+            m_trace.held_to_warp(step);
+        }else{
+            m_trace.unknown(why == "stopped part-way" ? "replan" : "again");
+        }
     }
-    void trainer_stopped(const RouteStep& step, const MapPosition& at) const{
+    void trainer_stopped(const RouteStep& step, const MapPosition& at){
         m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_replan_line(m_label, route_log_leg(step), "stopped by a trainer who saw the player", route_tiles(at)));
+        m_trace.trainer_stopped(at);
+    }
+    //  A wild battle set off before the leg that just started.
+    void battle_before(){
+        m_trace.battle_before();
     }
     void found(const MapPosition& at, size_t holds) const{
         m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_found_line(m_label, route_tiles(at), holds));
     }
     //  Step `number` (from 1) of a plan whose first `holds` steps are holds
     //  to walls, walked to its end.
-    void done(const RouteStep& step, size_t number, size_t holds) const{
+    void done(const RouteStep& step, size_t number, size_t holds){
         if (number < holds){
             //  Where a hold but the last ends depends on where it started.
-            end(step, std::nullopt, EndBasis::UNKNOWN, "a hold from an unknown tile");
+            log_end(step, std::nullopt, EndBasis::UNKNOWN, "a hold from an unknown tile");
+            m_trace.unknown("hold");
             return;
         }
-        end(step, step.end, EndBasis::WALKED, "");
+        log_end(step, step.end, EndBasis::WALKED, "");
+        m_trace.done(step);
         if (number == holds){
             found(step.end, holds);
         }
     }
 
 private:
+    void log_end(const RouteStep& step, const std::optional<MapPosition>& at, EndBasis basis, const std::string& why) const{
+        m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_leg_end_line(m_label, route_log_leg(step), route_tiles(at), basis, why));
+    }
+
     const RouteCalls& m_calls;
     std::string m_label;
+    OverworldLegTrace m_trace;
 };
 
 //  Walks each step through `calls`; watches a leg that crosses a trainer's
@@ -290,6 +316,7 @@ private:
     //  With nothing walked since the plan was made, the player is where
     //  `step` starts. False once the route has failed.
     bool after_battle_before(const RouteStep& step){
+        m_lines.battle_before();
         if (!m_walked){
             m_calls.log("Route: a wild battle before " + to_string(step) + ", with nothing walked since the plan: walking it from its start.");
             return true;
@@ -446,7 +473,7 @@ private:
 
     const RoutePlanning* m_planning;
     const RouteCalls& m_calls;
-    const RouteLogLines m_lines;
+    RouteLogLines m_lines;
     CheckedSteps m_steps;
     std::vector<RouteStep> m_plan;
     std::optional<MapPosition> m_at;
