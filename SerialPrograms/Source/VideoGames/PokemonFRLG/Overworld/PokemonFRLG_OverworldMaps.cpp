@@ -146,9 +146,12 @@ constexpr std::string_view MAP_NAMES[] = {
     //  Route 7's east gate, where the guard takes the TEA, and Saffron City.
     "Route7_EastEntrance",
     "SaffronCity",
-    //  Cinnabar Island's Center and Blaine's gym, through its quiz doors.
+    //  Cinnabar Island's Center and Blaine's gym, through its quiz doors, and
+    //  Route 21 north of it to Pallet Town (12.03).
     "CinnabarIsland",
     "CinnabarIsland_Gym",
+    "Route21_North",
+    "Route21_South",
     //  Silph Co.'s floors, 1F to 11F (the lift's map, SilphCo_Elevator, is
     //  not built in).
     "SilphCo_1F",
@@ -193,11 +196,28 @@ void add_unmapped_centers(std::vector<MapData>& maps){
     }
 }
 
+//  Pallet Town's fat man wanders over (7..19, 15..19), which holds the whole
+//  shore (7..10, 16) the way onto Route 21's water goes by. A planned route
+//  never crosses a wanderer's box, so none would reach the water. He stands on
+//  his own tile (13, 17) in the planner's model: east of the shore, off the
+//  way; a person in the way on the console is waited out (12.03).
+void waive_pallet_fat_man_box(MapData& map){
+    if (map.name != "PalletTown"){
+        return;
+    }
+    for (MapObject& object : map.objects){
+        if (object.name == "fat_man"){
+            object.wander.reset();
+        }
+    }
+}
+
 const std::vector<MapData>& all_maps(){
     static const std::vector<MapData> MAPS = []{
         std::vector<MapData> maps;
         for (std::string_view name : MAP_NAMES){
             maps.push_back(load_map(std::string(name)));
+            waive_pallet_fat_man_box(maps.back());
         }
         add_unmapped_centers(maps);
         return maps;

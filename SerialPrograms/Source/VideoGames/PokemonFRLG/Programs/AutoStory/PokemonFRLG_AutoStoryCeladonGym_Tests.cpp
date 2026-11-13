@@ -4,8 +4,9 @@
  *
  *  Rows 12.03, 14.03, 14.04 and 14.04b (StoryData/frlg-12.03.plan.json, 14.03,
  *  14.04, 14.04b)
- *  on the overworld sim: from Fuchsia's nurse out of the Center and Fly to
- *  Celadon; from Fly's landing in Celadon past the yard's tree, up
+ *  on the overworld sim: from Fuchsia's nurse out of the Center, Fly to Pallet
+ *  Town and Surf down Route 21 to Cinnabar; from Cinnabar's nurse out of the
+ *  Center and Fly to Celadon, past the yard's tree, up
  *  the gym's west aisle into Beauty Tamia's line, round her by column 1,
  *  the inner tree, Beauty Lori, to below Erika; and from Erika (14.04b) back out
  *  the same way, past the tree, to the nurse. And the lead's attacks against the
@@ -29,6 +30,7 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryMember.h"
+#include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -117,30 +119,57 @@ std::string fought(const OverworldSim& sim){
     return names.empty() ? " no one" : names;
 }
 
-//  12.03 on a sim from Fuchsia's nurse: out of the Center, the Fly, and
-//  the landing on Celadon's heal spot (48, 12) facing south, where 14.03
-//  starts. No one is fought on the way.
-UnitTestResult test_fly_to_celadon(){
-    StoryPose at = *story_pose(Pokemon::pose_of(*checkpoint("12.03").start));
+//  12.03 on a sim from Fuchsia's nurse: out of the Center, the Fly to
+//  Pallet Town, the shore, the Surf onto Route 21 and the way south over it
+//  to Cinnabar's Center door. No trainer is met and no rule is broken.
+UnitTestResult test_fuchsia_to_cinnabar(){
+    const StoryCheckpoint& row = checkpoint("12.03");
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
-    if (const std::string failure = row_on_sim("12.03", at, sim); !failure.empty()){
-        return failure;
+    for (const StoryStep& step : row.steps){
+        if (step.action == CENTER_ENTER_VARIANT){
+            break;
+        }
+        if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
+            return std::format("12.03: ended on {}; {}", to_string(sim.state().position), failure);
+        }
     }
-    const MapPosition landing{CELADON, {48, 12}};
-    if (!(sim.state().position == landing) || sim.state().facing != Direction::SOUTH){
-        return std::format("12.03: ended on {}, not Celadon's heal spot {} facing south.", to_string(sim.state().position), to_string(landing));
+    const MapPosition below_center{"CinnabarIsland", {14, 12}};
+    if (!(sim.state().position == below_center)){
+        return std::format("12.03: ended on {}, not below Cinnabar's Center door {}.", to_string(sim.state().position), to_string(below_center));
     }
-    if (!sim.state().trainers_beaten.empty()){
-        return std::format("12.03: fought{}.", fought(sim));
-    }
-    const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("14.03").start));
-    if (next.map != CELADON || !(next.tile == landing.point) || next.facing != Direction::SOUTH){
-        return "14.03 doesn't start where 12.03 ends.";
+    if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
+        return "12.03: met a trainer or broke a rule on the way.";
     }
     return true;
 }
 
-//  14.03 on `sim` from its start, Fly's landing (48, 12): the yard's tree
+//  14.03's first steps on a sim from Cinnabar's nurse: out of the Center and
+//  the Fly to Celadon, landing on its heal spot (48, 12) facing south, where
+//  the walk to the gym starts. No one is fought on the way.
+UnitTestResult test_fly_to_celadon(){
+    const StoryCheckpoint& row = checkpoint("14.03");
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    for (const StoryStep& step : row.steps){
+        if (step.name == "above_gym_tree"){
+            break;
+        }
+        if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
+            return std::format("14.03: ended on {}; {}", to_string(sim.state().position), failure);
+        }
+    }
+    const MapPosition landing{CELADON, {48, 12}};
+    if (!(sim.state().position == landing) || sim.state().facing != Direction::SOUTH){
+        return std::format("14.03: ended on {}, not Celadon's heal spot {} facing south.", to_string(sim.state().position), to_string(landing));
+    }
+    if (!sim.state().trainers_beaten.empty()){
+        return std::format("14.03: fought{}.", fought(sim));
+    }
+    return true;
+}
+
+//  14.03 on `sim` from its start, Cinnabar's nurse: the Fly to Celadon's landing (48, 12), the yard's tree
 //  cut, into the gym and up the west aisle; Tamia walks down to (2, 9)
 //  and is fought, the walk goes round her by column 1, the inner tree
 //  (3, 5) is cut, and Lori is fought from (5, 5). Ends below Erika, where
@@ -290,8 +319,12 @@ UnitTestResult test_erika_foe_threats_are_the_generators(){
 
 const AutoStoryCeladonGymCase AUTO_STORY_CELADON_GYM_CASES[] = {
     {
-        .input = {.name = "12.03 out of Fuchsia's Center and Fly to Celadon", .body = test_fly_to_celadon},
-        .expectation = {.description = "lands on Celadon's heal spot facing south, where 14.03 starts"},
+        .input = {.name = "12.03 Fuchsia to Cinnabar by Fly and Surf", .body = test_fuchsia_to_cinnabar},
+        .expectation = {.description = "Pallet Town's shore, Route 21 surfed, below Cinnabar's Center door, nobody met"},
+    },
+    {
+        .input = {.name = "14.03 out of Cinnabar's Center and Fly to Celadon", .body = test_fly_to_celadon},
+        .expectation = {.description = "lands on Celadon's heal spot facing south, where the walk to the gym starts"},
     },
     {
         .input = {.name = "14.03 to below Erika, 14.04 on the spot and 14.04b back to the nurse", .body = test_gym_rows},
