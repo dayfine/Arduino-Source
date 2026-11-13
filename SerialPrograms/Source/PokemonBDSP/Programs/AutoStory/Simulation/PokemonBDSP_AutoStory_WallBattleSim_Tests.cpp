@@ -653,7 +653,7 @@ private:
 
 const OpenLegTalkCase OPEN_LEG_TALK_SIM_CASES[] = {
     {.input = {.name = "with no tap counted", .talks = {{46, 29}}}, .expectation = {.arrives = true}},
-    {.input = {.name = "with no tap counted, then again a tap on (lab-B, 2026-11-12 07:44)", .talks = {{46, 29}, {47, 29}}}, .expectation = {.arrives = true}},
+    {.input = {.name = "with no tap counted, then again a tap on (lab-B, 2026-11-12 07:44)", .talks = {{46, 29}, {45, 30}}}, .expectation = {.arrives = true}},
 };
 
 } // namespace
