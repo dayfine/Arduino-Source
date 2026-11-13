@@ -38,16 +38,15 @@ enum class IntroKey{
 };
 
 
-//  The number of looks on the picker: a grid of 2 rows of 4 faces, as
-//  Scarlet/Violet's, numbered 1 to LOOK_COUNT left to right along the top
-//  row, then the bottom row. TODO: confirm the grid and the cursor's moves
-//  on a console.
+//  The number of looks on the picker: a grid of 2 rows of 4 faces, numbered
+//  1 to LOOK_COUNT left to right along the top row, then the bottom row
+//  (console B, 2026-11-13).
 constexpr size_t LOOK_COUNT = 8;
 
-//  The highlight starts at random, so: UP and LEFT x3 to the top-left face
-//  (the edges clamp), then RIGHT and DOWN to look `look` (1 to LOOK_COUNT),
-//  then A. Nullopt for a look outside the grid.
-std::optional<std::vector<IntroKey>> look_picker_presses(size_t look);
+//  The presses that move the picker's highlight from look `from` to look
+//  `to`: LEFT or RIGHT to the column, then UP or DOWN to the row. Empty when
+//  `from` is `to`; nullopt for a look outside 1 to LOOK_COUNT.
+std::optional<std::vector<IntroKey>> look_picker_moves(size_t from, size_t to);
 
 
 //  What to type for a player name on the keyboard. The keyboard types lower

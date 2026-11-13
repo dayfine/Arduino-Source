@@ -73,10 +73,11 @@ void launch_game_from_home(ConsoleHandle& console, ProControllerContext& context
 //  screen or the highlight does not get there.
 void new_game_language(ConsoleHandle& console, ProControllerContext& context, Language language);
 
-//  On the look picker, whose highlight starts at random: UP and LEFT x3 to
-//  the top-left look (the edges clamp), RIGHT and DOWN to look `look` (1 to 8,
-//  a 2 x 4 grid), A. The screen is not checked (is_look_picker() is a TODO
-//  stub): the presses are blind.
+//  On the look picker: waits up to 10 s for it, moves its highlight to look
+//  `look` (1 to 8, a 2 x 4 grid) one left-stick press at a time, reading it
+//  after each, and presses A only on `look`. Throws UserSetupError for a
+//  look outside 1 to 8, OperationFailedException if the picker does not
+//  show or its highlight is not read on `look`.
 void pick_player_look(ConsoleHandle& console, ProControllerContext& context, size_t look);
 
 //  On the name screen, the Switch system keyboard: waits up to 20 s for it,
