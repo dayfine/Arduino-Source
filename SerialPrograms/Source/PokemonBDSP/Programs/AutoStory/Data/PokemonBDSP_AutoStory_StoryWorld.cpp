@@ -49,6 +49,12 @@ std::optional<Direction> ledge_direction(TileKind tile){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown TileKind.");
 }
 
+//  Still people the console showed talking when bumped. The map data has no
+//  marker for it; r29 ran east into Mom, who talked.
+bool bump_talker(const std::string& map, const std::string& object){
+    return map == "PlayerHouse1F" && object == "mom_0";
+}
+
 } // namespace
 
 
@@ -58,10 +64,13 @@ void StoryWorld::add(std::string name, const Pokemon::MapData& map, const TilePo
             throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Map placed twice: " + name);
         }
     }
-    Placed placed{.name = std::move(name), .tiles = map.tiles, .occupied = {}, .wander = {}, .warps = {}, .offset = offset};
+    Placed placed{.name = std::move(name), .tiles = map.tiles, .occupied = {}, .talkers = {}, .wander = {}, .warps = {}, .offset = offset};
     for (const Pokemon::MapObject& object : map.objects){
         if (!object.wander){
             placed.occupied.push_back({object.x, object.y});
+            if (bump_talker(map.name, object.name)){
+                placed.talkers.push_back({object.x, object.y});
+            }
         }else{
             placed.wander.push_back(*object.wander);
         }
@@ -150,6 +159,11 @@ void StoryWorld::paint(const Placed& placed, const TilePos& corner){
     for (const TilePos& pos : placed.occupied){
         Pokemon::cell_at({corner.x + pos.x, corner.y + pos.y}, m_cells).occupant = PERSON;
     }
+    for (const TilePos& pos : placed.talkers){
+        Cell& c = Pokemon::cell_at({corner.x + pos.x, corner.y + pos.y}, m_cells);
+        c.recovery_hazard = true;
+        c.talks = true;
+    }
     for (const auto& box : placed.wander){
         for (int y = std::max(0, box.y0); y <= std::min(placed.tiles.height - 1, box.y1); y++){
             for (int x = std::max(0, box.x0); x <= std::min(placed.tiles.width - 1, box.x1); x++){
@@ -235,6 +249,11 @@ bool wandering_hazard(const StoryWorld& world, const TilePos& pos){
 bool recovery_hazard(const StoryWorld& world, const TilePos& pos){
     const StoryWorld::Cell* found = world.cell(pos);
     return found != nullptr && found->recovery_hazard;
+}
+
+bool talks_when_bumped(const StoryWorld& world, const TilePos& pos){
+    const StoryWorld::Cell* found = world.cell(pos);
+    return found != nullptr && found->talks;
 }
 
 void StoryWorld::block(const TilePos& pos){
@@ -334,11 +353,13 @@ bool warp_within(const StoryWorld& world, const std::vector<TilePos>& from, Dire
 }
 
 //  Someone who never moves (a person or item with no wander box) is a wall
-//  like any other (the user's rule, 2026-11-12). A wanderer is none: it is
-//  not in the cells' occupants, and the walker waits for it.
+//  like any other (the user's rule, 2026-11-12), unless they talk when bumped.
+//  A wanderer is none: it is not in the cells' occupants, and the walker
+//  waits for it.
 bool at_wall(const StoryWorld& world, const TilePos& pos, Direction direction){
     const std::optional<TileKind> next = world.tile(pos.next(direction));
-    return next && *next != TileKind::DOOR && !step(world, pos, direction).has_value();
+    return next && *next != TileKind::DOOR && !talks_when_bumped(world, pos.next(direction)) &&
+        !step(world, pos, direction).has_value();
 }
 
 std::string describe(const StoryWorld& world, const TilePos& pos){

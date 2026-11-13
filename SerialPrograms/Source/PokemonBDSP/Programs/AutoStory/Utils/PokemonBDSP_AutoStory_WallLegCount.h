@@ -43,6 +43,13 @@ bool held_up(const WalkResult& walk, size_t nearest, Milliseconds per_tile);
 //  to count as at its wall.
 size_t min_tiles_at_wall(size_t expected_tiles);
 
+//  Whether a walk to the wall that ran out of time while still moving went
+//  clearly past the farthest wall the map has, `farthest` tiles away: at a
+//  wall it would have stopped. It is not where the plan has us (lab-B
+//  2026-11-12 20:22, 01.02: the player had left the Gate unseen and kept
+//  running through Oreburgh City).
+bool ran_past_the_wall(const WalkResult& walk, size_t farthest, Milliseconds per_tile);
+
 
 } // namespace PokemonBDSP
 } // namespace NintendoSwitch

@@ -73,6 +73,13 @@ size_t min_tiles_at_wall(size_t expected_tiles){
     return expected_tiles > EXACT_WALL_LEG_TILES ? expected_tiles * 7 / 10 : expected_tiles;
 }
 
+bool ran_past_the_wall(const WalkResult& walk, size_t farthest, Milliseconds per_tile){
+    if (walk.stop != WalkStop::LIMIT || walk.moved_chunks == 0){
+        return false;
+    }
+    return tiles_moved(walk, per_tile) > farthest + std::max<size_t>(3, farthest * 3 / 10);
+}
+
 
 
 } // namespace PokemonBDSP

@@ -113,6 +113,16 @@ UnitTestResult test_story_world_steps(Logger&){
                 return std::format("{}: at_wall() is {}, expected {}.", item.name, !item.at_wall, item.at_wall);
             }
         }
+        {
+            //  Mom talks when bumped (r29): she stops a walk, but is no wall.
+            MapData map = make_map({".", "."}, {{0, 0}});
+            map.name = "PlayerHouse1F";
+            map.objects[0].name = "mom_0";
+            const StoryWorld world = make_world(map);
+            if (at_wall(world, {0, 1}, Direction::NORTH) || step(world, {0, 1}, Direction::NORTH).has_value()){
+                return "Mom: no wall to stop against, and no step onto her.";
+            }
+        }
         return true;
 }
 

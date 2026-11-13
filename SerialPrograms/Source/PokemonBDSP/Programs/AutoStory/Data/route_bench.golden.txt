@@ -28,7 +28,7 @@ walk run with no stops) | verdict (why). A ratio above 1.5 is flagged "!".
 00.04 into_twinleaf | 10200 | 10200 | 10200 | 1 | 0 | 0 | 1.00 | 1.00 | 1.00 | 10200 ms (user's route) | PASS
 00.04 to_moms_doorstep | 4100 | 4100 | 4100 | 0 | 0 | 0 | 5.47! | 1.00 | 1.00 | 750 ms (stand-in) | PASS
 00.04 beside_mom | 900 | 900 | 900 | 0 | 0 | 0 | 2.25! | 1.00 | 1.00 | 400 ms (stand-in) | PASS
-00.04 into_moms_call | 3100 | 3100 | 3100 | 2 | 0 | 0 | 1.22 | 1.00 | 1.00 | 2550 ms (user's route) | PASS
+00.04 into_moms_call | 2550 | 2550 | 2550 | 1 | 0 | 0 | 1.00 | 1.00 | 1.00 | 2550 ms (user's route) | PASS
 00.04 short_of_the_catch_tutorial | 84406 | 81950 | 51250 | 7 | 19 | 7 | 4.76! | 1.00 | 62.00! | 17750 ms (stand-in) | PASS
 00.04b to_catch_grass | 11689 | 38550 | 6300 | 2 | 34 | 1 | 17.98! | 17.50! | 2.00! | 650 ms (stand-in) | PASS
 00.04b into_sandgem | 9520 | 19400 | 7050 | 3 | 12 | 0 | 2.93! | 4.33! | 1.00 | 3250 ms (stand-in) | PASS
