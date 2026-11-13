@@ -21,11 +21,31 @@
 #define PokemonAutomation_PokemonBDSP_AutoStory_GymOpponent_H
 
 #include <chrono>
+#include <format>
+#include <optional>
+#include <string>
+#include "CommonFramework/Language.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleIntro.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
+
+//  Why 01.04 cannot run in `language`, or none when it can. Roark is told
+//  from a trainer only by the battle's intro text; with no word table for
+//  the language, every gym battle would be fought blind and the step would
+//  fail after them (lab-B, 2026-11-13 01:17, French), so it refuses first.
+inline std::optional<std::string> gym_language_refusal(Language language){
+    if (battle_intro_reads(language)){
+        return std::nullopt;
+    }
+    return std::format(
+        "Oreburgh Gym: the battle's intro text is not read in {}, so Roark could not be told from a trainer. "
+        "Refusing before the gym's battles.",
+        language_data(language).name
+    );
+}
 
 //  Where we stand on the way up the gym's column, in tiles north of the
 //  entrance, estimated from the time walked north: a hint, not who is there.

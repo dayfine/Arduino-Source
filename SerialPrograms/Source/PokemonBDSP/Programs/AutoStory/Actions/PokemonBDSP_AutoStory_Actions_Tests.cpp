@@ -527,6 +527,55 @@ UnitTestResult test_battle_intro_tells_the_opponent(Logger&){
     return true;
 }
 
+//  01.04 in French (lab-B, 2026-11-13 01:17): the intro was never read, two
+//  gym battles were fought blind and the step failed after them. Roark is
+//  "Pierrick", his title "Champion d'Arene" (pokepedia.fr); OCR may drop the
+//  accents, and an English table must not read a French line.
+UnitTestResult test_battle_intro_french(Logger&){
+    struct Case{ std::string_view text; Language language; BattleOpponent opponent; };
+    const Case cases[] = {
+        {"Vous êtes défié par Champion d'Arène Pierrick !", Language::French, BattleOpponent::LEADER},
+        {"Champion d'Arene Pierrick", Language::French, BattleOpponent::LEADER},
+        {"CHAMPION D'ARÈNE", Language::French, BattleOpponent::LEADER},
+        {"Pierrick", Language::French, BattleOpponent::LEADER},
+        //  Not the leader's: a trainer's line, once it is long enough.
+        {"Vous êtes défié par Montagnard Marc !", Language::French, BattleOpponent::TRAINER},
+        {"Vous êtes", Language::French, BattleOpponent::UNREAD},
+        {"", Language::French, BattleOpponent::UNREAD},
+        //  Each table reads its own language only.
+        {"Vous êtes défié par Champion d'Arène Pierrick !", Language::English, BattleOpponent::UNREAD},
+        {"You are challenged by Gym Leader Roark!", Language::English, BattleOpponent::LEADER},
+        {"You are challenged by Gym Leader Roark!", Language::German, BattleOpponent::UNREAD},
+    };
+    for (const Case& c : cases){
+        const BattleOpponent read = classify_battle_intro(c.text, c.language);
+        if (read != c.opponent){
+            return std::format("\"{}\" ({}) read as {}, not {}.", c.text,
+                language_data(c.language).name, battle_opponent_name(read), battle_opponent_name(c.opponent));
+        }
+    }
+    BattleIntroReading trainer(Language::French);
+    trainer.add("Vous êtes défié par Montagnard Marc !");
+    if (trainer.add("Vous etes defie par Montagnard Marc !") != BattleOpponent::TRAINER){
+        return "The same French line twice, accents or not, is a trainer's.";
+    }
+    return true;
+}
+
+//  01.04 refuses at its start in a language the intro is not read in,
+//  before any gym battle; English and French run.
+UnitTestResult test_gym_refuses_unread_language(Logger&){
+    if (gym_language_refusal(Language::English) || gym_language_refusal(Language::French)){
+        return "English and French have intro word tables: 01.04 runs.";
+    }
+    for (Language language : {Language::German, Language::Japanese, Language::Spanish}){
+        if (!gym_language_refusal(language)){
+            return std::format("01.04 in {} must refuse before the gym.", language_data(language).name);
+        }
+    }
+    return true;
+}
+
 //  A trainer's line is final when read the same twice; a half-typed one is
 //  not, and nothing read stays unread. The leader's settles at once.
 UnitTestResult test_battle_intro_reading_settles(Logger&){
@@ -837,6 +886,14 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
     },
     {
         .input = {"01.04 gym: the intro reading settles on a repeated trainer line or a leader's line", test_battle_intro_reading_settles},
+        .expectation = {},
+    },
+    {
+        .input = {"01.04 gym: the intro is read in French, accents or not, and each table reads its own language (lab-B 2026-11-13)", test_battle_intro_french},
+        .expectation = {},
+    },
+    {
+        .input = {"01.04 gym: refuses at its start in a language the intro is not read in", test_gym_refuses_unread_language},
         .expectation = {},
     },
     {

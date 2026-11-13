@@ -102,7 +102,8 @@ void confirm_battle_overworld(VideoStream& stream, ProControllerContext& context
 //  turn in DOUBLES. Returns once the battle has ended,
 //  won or lost; after a loss we stand in the last Pokemon Center. Returns who
 //  the battle's intro text ("You are challenged by ...") said the opponent
-//  was: UNREAD when it was not read (no English text reader, or the line was
+//  was: UNREAD when it was not read (no word table for the game's language,
+//  battle_intro_reads(), or the line was
 //  gone before the first read), never a guess.
 BattleOpponent fight_story_battle(VideoStream& stream, ProControllerContext& context, const std::string& label, BattleFormat format);
 

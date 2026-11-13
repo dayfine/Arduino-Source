@@ -11,6 +11,8 @@
 
 #include <algorithm>
 #include <format>
+#include <optional>
+#include <string>
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
@@ -18,6 +20,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteTiming.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 #include "PokemonBDSP_AutoStory_BadgeCheck.h"
@@ -114,7 +117,7 @@ GymMeeting meet_gym_opponent(VideoStream& stream, ProControllerContext& context,
     if (in_pokemon_center(stream)){
         return GymMeeting::LOST;
     }
-    stream.log(std::format("[01.04] The intro text says the opponent was the {}.", battle_opponent_name(met.opponent)));
+    stream.log(std::format("[01.04] Opponent by the battle's intro text: {}.", battle_opponent_name(met.opponent)));
     switch (met.opponent){
     case BattleOpponent::LEADER:
         return GymMeeting::LEADER_WON;
@@ -123,7 +126,7 @@ GymMeeting meet_gym_opponent(VideoStream& stream, ProControllerContext& context,
     case BattleOpponent::UNREAD:
         break;
     }
-    fail_step(stream, "Oreburgh Gym: the battle's intro text was not read (English text only), so the opponent is not known to be a trainer or Roark.");
+    fail_step(stream, "Oreburgh Gym: the battle's intro text was not read, so the opponent is not known to be a trainer or Roark (its frames are in DebugDumps).");
 }
 
 //  Inside the Oreburgh Gym: straight up the middle, fighting the trainers
@@ -188,6 +191,10 @@ void gym_until_roark_beaten(VideoStream& stream, ProControllerContext& context, 
     // Losing costs some money and keeps the experience, so each try comes
     // back stronger: Roark won twice by hand against Piplup Lv 10 and 14 and
     // lost the third time.
+    const std::optional<std::string> refusal = gym_language_refusal(story_language());
+    if (refusal){
+        fail_step(stream, *refusal);
+    }
     GymColumn column = oreburgh_gym_column();
     bool won = false;
     for (size_t attempt = 0; attempt < 5 && !won; attempt++){
