@@ -252,6 +252,8 @@ struct PlatformProgress{
     bool autosave_seen = false;
     bool skip_prompt = false;
     size_t streak = 0;
+    //  The text with the advance arrow was on the last look.
+    bool text_waiting = false;
 };
 
 //  Takes `look` into `progress`; logs the skip prompt and the autosave
@@ -275,10 +277,17 @@ bool platform_look(Pokemon::StoryBackend<ZonePose>& backend, const ScreenObserva
     return progress.streak >= PLATFORM_LOOKS;
 }
 
-//  The station platform after the opening cutscene, with no input (A does
-//  not advance the cutscene): PLATFORM_READING on PLATFORM_LOOKS looks in a
-//  row; AFTER_AUTOSAVE counts them only once the autosave badge has shown
-//  and gone. Fails after `timeout`.
+//  A text box with the advance arrow: the opening's last line ("Your train
+//  has arrived in Lumiose City!") waits for A (console B, 2026-11-13).
+bool text_waiting_for_a(const ScreenObservation& look){
+    return look.events.has(PokemonAutomation::ScreenEvent::TEXT_BOX) && look.readings.contains(ADVANCE_ARROW_READING);
+}
+
+//  The station platform after the opening cutscene: PLATFORM_READING on
+//  PLATFORM_LOOKS looks in a row; AFTER_AUTOSAVE counts them only once the
+//  autosave badge has shown and gone. No input through the cutscene (A does
+//  not advance it), but one A for each text box with the advance arrow, when
+//  it shows (not again while the same one is up). Fails after `timeout`.
 Outcome wait_for_platform(Pokemon::StoryBackend<ZonePose>& backend, Milliseconds timeout, PlatformWait wait){
     //  The looks bound a script whose time stands still.
     const size_t max_looks = (size_t)(timeout / PLATFORM_POLL) + 1;
@@ -295,6 +304,12 @@ Outcome wait_for_platform(Pokemon::StoryBackend<ZonePose>& backend, Milliseconds
         if (look.when - *start >= timeout){
             break;
         }
+        const bool text_now = text_waiting_for_a(look);
+        if (text_now && !progress.text_waiting){
+            backend.log("[PLZA] platform wait: text waiting for A; A");
+            backend.press(BUTTON_A, 160ms, 400ms);
+        }
+        progress.text_waiting = text_now;
         backend.wait(PLATFORM_POLL);
     }
     return Pokemon::outcome_failed("platform_not_seen", std::format(

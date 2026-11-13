@@ -294,30 +294,135 @@ UnitTestResult test_launch_moves_capture(Logger&){
     return true;
 }
 
-UnitTestResult test_look_presses(Logger&){
-    //  Look 1 is the top-left face: the clamp, then A.
-    const Keys clamp = joined({{IntroKey::UP}, repeated(IntroKey::LEFT, 3)});
-    const auto first = look_picker_presses(1);
-    if (!first || *first != joined({clamp, {IntroKey::A}})){
-        return "Look 1: expected UP, LEFT x3, A.";
+UnitTestResult test_look_moves(Logger&){
+    struct Row{
+        size_t from;
+        size_t to;
+        Keys expected;
+    };
+    const Row rows[] = {
+        {1, 1, {}},
+        //  Along the top row.
+        {1, 4, repeated(IntroKey::RIGHT, 3)},
+        {3, 2, {IntroKey::LEFT}},
+        //  Down a column.
+        {1, 5, {IntroKey::DOWN}},
+        //  Corner to corner: across, then down or up.
+        {1, 8, joined({repeated(IntroKey::RIGHT, 3), {IntroKey::DOWN}})},
+        {8, 1, joined({repeated(IntroKey::LEFT, 3), {IntroKey::UP}})},
+        {6, 3, joined({{IntroKey::RIGHT}, {IntroKey::UP}})},
+    };
+    for (const Row& row : rows){
+        const auto moves = look_picker_moves(row.from, row.to);
+        if (!moves || *moves != row.expected){
+            return std::format("Look {} to {}: expected {} presses.", row.from, row.to, row.expected.size());
+        }
     }
-    //  Look 3: two to the right on the top row.
-    const auto third = look_picker_presses(3);
-    if (!third || *third != joined({clamp, repeated(IntroKey::RIGHT, 2), {IntroKey::A}})){
-        return "Look 3: expected the clamp, RIGHT x2, A.";
-    }
-    //  Look 5: the bottom row's first face.
-    const auto fifth = look_picker_presses(5);
-    if (!fifth || *fifth != joined({clamp, {IntroKey::DOWN, IntroKey::A}})){
-        return "Look 5: expected the clamp, DOWN, A.";
-    }
-    //  Look 8: the bottom-right face.
-    const auto last = look_picker_presses(8);
-    if (!last || *last != joined({clamp, repeated(IntroKey::RIGHT, 3), {IntroKey::DOWN, IntroKey::A}})){
-        return "Look 8: expected the clamp, RIGHT x3, DOWN, A.";
-    }
-    if (look_picker_presses(0) || look_picker_presses(9)){
+    if (look_picker_moves(0, 1) || look_picker_moves(1, 0) || look_picker_moves(1, 9) || look_picker_moves(9, 1)){
         return "Looks 0 and 9 are outside the grid.";
+    }
+    return true;
+}
+
+//  How a highlighted face is drawn in look_picker_frame().
+enum class LookHighlight{
+    //  A white frame round the tile.
+    FRAME,
+    //  A light tile.
+    TILE,
+};
+
+//  The look picker drawn as console B shows it (1920 x 1080): dark blue,
+//  8 slate tiles 240 x 240, the columns' left edges at x 373, 685, 997 and
+//  1309, the rows' tops at y 324 and 609; look `highlighted` (if any) drawn
+//  as `style`.
+ImageRGB32 look_picker_frame(std::optional<size_t> highlighted, LookHighlight style = LookHighlight::FRAME){
+    const size_t lefts[] = {373, 685, 997, 1309};
+    const size_t tops[] = {324, 609};
+    ImageRGB32 image(1920, 1080);
+    image.fill(0xff0a1b3e);
+    for (size_t look = 1; look <= LOOK_COUNT; look++){
+        const size_t left = lefts[(look - 1) % 4];
+        const size_t top = tops[(look - 1) / 4];
+        const bool lit = highlighted == look;
+        if (lit && style == LookHighlight::FRAME){
+            for (size_t y = top - 10; y < top + 250; y++){
+                for (size_t x = left - 10; x < left + 250; x++){
+                    image.pixel(x, y) = 0xffffffff;
+                }
+            }
+        }
+        const uint32_t tile = lit && style == LookHighlight::TILE ? 0xffc8d2dc : 0xff202f50;
+        for (size_t y = top; y < top + 240; y++){
+            for (size_t x = left; x < left + 240; x++){
+                image.pixel(x, y) = tile;
+            }
+        }
+    }
+    return image;
+}
+
+UnitTestResult test_look_picker_synthetic(Logger&){
+    const ImageRGB32 none = look_picker_frame(std::nullopt);
+    if (!is_look_picker(none) || read_look_picker_cursor(none)){
+        return "Expected the picker with no highlight.";
+    }
+    for (const LookHighlight style : {LookHighlight::FRAME, LookHighlight::TILE}){
+        for (size_t look = 1; look <= LOOK_COUNT; look++){
+            const ImageRGB32 frame = look_picker_frame(look, style);
+            if (!is_look_picker(frame) || read_look_picker_cursor(frame) != look){
+                return std::format("Expected the highlight read on look {} (style {}).", look, (int)style);
+            }
+        }
+    }
+    ImageRGB32 two = look_picker_frame(1, LookHighlight::TILE);
+    for (size_t y = 609; y < 849; y++){
+        for (size_t x = 1309; x < 1549; x++){
+            two.pixel(x, y) = 0xffc8d2dc;
+        }
+    }
+    if (is_look_picker(two) || read_look_picker_cursor(two)){
+        return "Expected no picker with two highlights.";
+    }
+    if (is_look_picker(language_list_frame(0))){
+        return "Expected the language list not to be the picker.";
+    }
+    for (const uint32_t fill : {0xff000000u, 0xffffffffu, 0xff202f50u, 0xff0a1b3eu}){
+        ImageRGB32 flat(1920, 1080);
+        flat.fill(fill);
+        if (is_look_picker(flat)){
+            return std::format("Expected a flat {:08x} frame not to be the picker.", fill);
+        }
+    }
+    if (is_look_picker(ImageRGB32()) || is_look_picker(ImageRGB32(1, 1)) || read_look_picker_cursor(ImageRGB32(40, 20))){
+        return "Expected empty and tiny frames not to be the picker.";
+    }
+    return true;
+}
+
+//  The console's frames, from the folder in PLZA_INTRO_SCREENS: look-picker.png,
+//  the picker as it opens (no face highlighted yet), and the screens before
+//  and after it, which are not the picker.
+UnitTestResult test_look_picker_capture(Logger&){
+    const auto* folder = std::getenv("PLZA_INTRO_SCREENS");
+    if (folder == nullptr || !Filesystem::is_directory(Filesystem::Path(folder))){
+        return UnitTestResult(UnitTestResult::SKIPPED, "PLZA_INTRO_SCREENS is not a folder.");
+    }
+    const ImageRGB32 picker(std::format("{}/look-picker.png", folder));
+    if (!is_look_picker(picker)){
+        return "look-picker.png: expected the look picker.";
+    }
+    if (const std::optional<size_t> cursor = read_look_picker_cursor(picker)){
+        return std::format("look-picker.png: expected no highlight, read look {}.", *cursor);
+    }
+    for (const char* name : {"language-list.png", "keyboard.png", "confirm-choices.png"}){
+        const std::string path = std::format("{}/{}", folder, name);
+        if (!Filesystem::exists(Filesystem::Path(path))){
+            continue;
+        }
+        if (is_look_picker(ImageRGB32(path))){
+            return std::format("{}: expected not the look picker.", name);
+        }
     }
     return true;
 }
@@ -367,9 +472,11 @@ UnitTestResult test_new_game_problem(Logger&){
     if (new_game_problem(Language::None, choices).empty()){
         return "No language is a problem.";
     }
-    choices.look = 9;
-    if (new_game_problem(Language::English, choices).empty()){
-        return "Look 9 is a problem.";
+    for (const size_t look : {size_t(0), size_t(9)}){
+        choices.look = look;
+        if (new_game_problem(Language::English, choices).empty()){
+            return std::format("Look {} is a problem.", look);
+        }
     }
     choices.look = 1;
     choices.name = "KOsmos";
@@ -430,7 +537,15 @@ const IntroCase INTRO_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"Intro: the look picker's presses", test_look_presses},
+        .input = {"Intro: the look picker's moves", test_look_moves},
+        .expectation = {},
+    },
+    {
+        .input = {"Intro: the look picker's highlight, synthetic frames", test_look_picker_synthetic},
+        .expectation = {},
+    },
+    {
+        .input = {"Intro: the look picker on console B (PLZA_INTRO_SCREENS)", test_look_picker_capture},
         .expectation = {},
     },
     {

@@ -21,19 +21,26 @@ constexpr size_t LOOK_COLUMNS = 4;
 } // namespace
 
 
-std::optional<std::vector<IntroKey>> look_picker_presses(size_t look){
-    if (look < 1 || look > LOOK_COUNT){
+std::optional<std::vector<IntroKey>> look_picker_moves(size_t from, size_t to){
+    if (from < 1 || from > LOOK_COUNT || to < 1 || to > LOOK_COUNT){
         return std::nullopt;
     }
-    const size_t row = (look - 1) / LOOK_COLUMNS;
-    const size_t column = (look - 1) % LOOK_COLUMNS;
-    std::vector<IntroKey> presses;
-    presses.push_back(IntroKey::UP);
-    presses.insert(presses.end(), LOOK_COLUMNS - 1, IntroKey::LEFT);
-    presses.insert(presses.end(), column, IntroKey::RIGHT);
-    presses.insert(presses.end(), row, IntroKey::DOWN);
-    presses.push_back(IntroKey::A);
-    return presses;
+    const size_t from_row = (from - 1) / LOOK_COLUMNS;
+    const size_t from_column = (from - 1) % LOOK_COLUMNS;
+    const size_t to_row = (to - 1) / LOOK_COLUMNS;
+    const size_t to_column = (to - 1) % LOOK_COLUMNS;
+    std::vector<IntroKey> moves;
+    if (to_column > from_column){
+        moves.insert(moves.end(), to_column - from_column, IntroKey::RIGHT);
+    }else{
+        moves.insert(moves.end(), from_column - to_column, IntroKey::LEFT);
+    }
+    if (to_row > from_row){
+        moves.insert(moves.end(), to_row - from_row, IntroKey::DOWN);
+    }else{
+        moves.insert(moves.end(), from_row - to_row, IntroKey::UP);
+    }
+    return moves;
 }
 
 
@@ -64,7 +71,7 @@ std::string new_game_problem(Language language, const NewGameChoices& choices){
     if (!language_list_index(language)){
         return "The new game's language list has no such language.";
     }
-    if (!look_picker_presses(choices.look)){
+    if (choices.look < 1 || choices.look > LOOK_COUNT){
         return std::format("The player look must be 1 to {}.", LOOK_COUNT);
     }
     if (!name_keys(choices.name, choices.name_first_letter_auto_caps)){

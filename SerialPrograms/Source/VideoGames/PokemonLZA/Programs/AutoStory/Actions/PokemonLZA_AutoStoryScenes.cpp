@@ -165,40 +165,6 @@ void mash_scene(
 
 namespace{
 
-//  An intro screen with no detector yet (is_look_picker() is a TODO stub):
-//  waited for until `is_screen` says it is up or `fixed_wait` passes, then
-//  pressed blind. Either way its frame is saved to DebugDumps, so a run
-//  records it for the detector's capture.
-void wait_for_intro_screen(
-    ConsoleHandle& console, ProControllerContext& context,
-    std::string_view screen, bool (*is_screen)(const ImageViewRGB32&), Milliseconds fixed_wait
-){
-    const WallClock deadline = current_time() + fixed_wait;
-    bool seen = false;
-    while (current_time() < deadline){
-        context.wait_for_all_requests();
-        const VideoSnapshot frame = console.video().snapshot();
-        if (frame && is_screen(frame)){
-            seen = true;
-            break;
-        }
-        context.wait_for(250ms);
-    }
-    context.wait_for_all_requests();
-    const VideoSnapshot frame = console.video().snapshot();
-    if (seen){
-        console.log(std::format("AutoStory intro: {}: detected.", screen));
-    }else{
-        console.log(std::format(
-            "AutoStory intro: {}: NOT CHECKED, its detector is a TODO stub; waited a fixed {} ms, pressing blind.",
-            screen, fixed_wait.count()
-        ));
-    }
-    if (frame){
-        dump_debug_image(console, "PokemonLZA/AutoStory/Intro", std::string(screen), frame);
-    }
-}
-
 //  Saves the current frame to DebugDumps as intro screen `screen`.
 void dump_intro_frame(ConsoleHandle& console, ProControllerContext& context, std::string_view screen){
     context.wait_for_all_requests();
@@ -346,6 +312,97 @@ std::string system_keyboard_text(const NameKeys& plan){
     return text;
 }
 
+//  One look picker press: a short tilt of the left stick (the screen says
+//  "Use the Left Stick"), then a pause for the highlight to move.
+void press_look_picker_key(ConsoleHandle& console, ProControllerContext& context, IntroKey key){
+    switch (key){
+    case IntroKey::UP:
+        console.log("AutoStory intro: look-picker: stick UP.");
+        pbf_move_left_joystick(context, {0, +1}, 200ms, 500ms);
+        break;
+    case IntroKey::DOWN:
+        console.log("AutoStory intro: look-picker: stick DOWN.");
+        pbf_move_left_joystick(context, {0, -1}, 200ms, 500ms);
+        break;
+    case IntroKey::LEFT:
+        console.log("AutoStory intro: look-picker: stick LEFT.");
+        pbf_move_left_joystick(context, {-1, 0}, 200ms, 500ms);
+        break;
+    case IntroKey::RIGHT:
+        console.log("AutoStory intro: look-picker: stick RIGHT.");
+        pbf_move_left_joystick(context, {+1, 0}, 200ms, 500ms);
+        break;
+    case IntroKey::A:
+        console.log("AutoStory intro: look-picker: A.");
+        pbf_press_button(context, BUTTON_A, 160ms, 500ms);
+        break;
+    }
+    context.wait_for_all_requests();
+}
+
+//  Until the look picker shows, or `timeout`. Saves its first frame to
+//  DebugDumps. Throws OperationFailedException if it does not show.
+void wait_for_look_picker(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout){
+    const WallClock deadline = current_time() + timeout;
+    while (current_time() < deadline){
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = console.video().snapshot();
+        if (frame && is_look_picker(frame)){
+            console.log("AutoStory intro: look-picker: detected.");
+            dump_debug_image(console, "PokemonLZA/AutoStory/Intro", "look-picker", frame);
+            return;
+        }
+        context.wait_for(250ms);
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format("AutoStory intro: the look picker did not show within {} ms.", timeout.count()),
+        console
+    );
+}
+
+//  On the look picker: one press at a time towards look `target`, reading
+//  the highlight after each, until it is on `target`. The picker opens with
+//  no face highlighted, so while none is, UP (harmless on any face of the
+//  top row) to bring the highlight up. Each frame read with no highlight is
+//  saved to DebugDumps. Throws OperationFailedException if the highlight is
+//  not read or does not reach `target`.
+void move_look_cursor(ConsoleHandle& console, ProControllerContext& context, size_t target){
+    size_t unread = 0;
+    for (size_t attempt = 0; attempt < 24; attempt++){
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = console.video().snapshot();
+        const std::optional<size_t> cursor = frame ? read_look_picker_cursor(frame) : std::nullopt;
+        if (!cursor){
+            unread++;
+            if (frame){
+                dump_debug_image(console, "PokemonLZA/AutoStory/Intro", "look-picker-unread", frame);
+            }
+            if (unread > 6){
+                break;
+            }
+            console.log("AutoStory intro: look-picker: no highlight read.");
+            press_look_picker_key(console, context, IntroKey::UP);
+            continue;
+        }
+        unread = 0;
+        if (*cursor == target){
+            return;
+        }
+        const std::optional<std::vector<IntroKey>> moves = look_picker_moves(*cursor, target);
+        if (!moves || moves->empty()){
+            break;
+        }
+        console.log(std::format("AutoStory intro: look-picker: the highlight is on look {}.", *cursor));
+        press_look_picker_key(console, context, moves->front());
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format("AutoStory intro: the look picker's highlight was not read on look {}.", target),
+        console
+    );
+}
+
 } // namespace
 
 
@@ -371,14 +428,14 @@ void new_game_language(ConsoleHandle& console, ProControllerContext& context, La
 }
 
 void pick_player_look(ConsoleHandle& console, ProControllerContext& context, size_t look){
-    const std::optional<std::vector<IntroKey>> presses = look_picker_presses(look);
-    if (!presses){
+    if (look < 1 || look > LOOK_COUNT){
         throw UserSetupError(console, std::format("AutoStory: the player look must be 1 to {}.", LOOK_COUNT));
     }
     console.log(std::format("AutoStory intro: look {} of {}.", look, LOOK_COUNT));
-    //  The language's A already waited 5 s for this screen.
-    wait_for_intro_screen(console, context, "look-picker", is_look_picker, 0ms);
-    press_intro_keys(console, context, *presses, 3000ms);
+    wait_for_look_picker(console, context, 10s);
+    move_look_cursor(console, context, look);
+    console.log(std::format("AutoStory intro: look-picker: the highlight is on look {}; A.", look));
+    press_intro_keys(console, context, {IntroKey::A}, 3000ms);
 }
 
 void type_player_name(
