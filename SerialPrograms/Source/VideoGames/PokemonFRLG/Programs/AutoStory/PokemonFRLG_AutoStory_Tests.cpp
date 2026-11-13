@@ -766,12 +766,12 @@ bool wanders_past_known(const StoryCheckpoint& checkpoint, const StoryStep& step
     //  13.03's walk into (and, planned, past) Lewis's room, B1F of the Pokemon Mansion: its one way in,
     //  (22, 24), is beside his wander range (19..21, 24..26), on a cave's wild floor.
     const bool lewis = checkpoint.id == "13.03" && (step.name == "to_statue" || step.name == "to_elixir");
-    //  12.03's leg down Route21_South's column 5 to the beach: Swimmer
-    //  Roland wanders (8..12, 27..31) and sees 4 tiles each way, across
-    //  every way from sand bar to sand bar. The leg lands on the beach
-    //  and is held to Cinnabar Island's wall, so wherever he stops the
-    //  player, the leg is held on to its end after the battle.
-    const bool roland = checkpoint.id == "12.03" && step.name == "land_beach";
+    //  12.03's leg from Route21_South's middle sand bar to the south one:
+    //  Swimmer Roland wanders (8..12, 27..31) and sees 4 tiles each way,
+    //  across every way from sand bar to sand bar. The leg lands on the
+    //  south sand bar and is held to its bank, so wherever he stops the
+    //  player, the leg is planned again and held on to its end after the battle.
+    const bool roland = checkpoint.id == "12.03" && step.name == "land_south_sand_bar";
     return lewis || roland || incidental_fights(checkpoint.id);
 }
 
