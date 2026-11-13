@@ -60,6 +60,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows13_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows16_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows17_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryRows18_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTrashCans.h"
 #include "Programs/AutoStory/Data/Json_Tests.h"
@@ -345,6 +346,7 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStorySilph(database);
     add_tests_AutoStoryMansion(database);
     add_tests_AutoStoryViridian(database);
+    add_tests_AutoStorySaffronGym(database);
 }
 
 void add_tests(UnitTestDatabase& database){

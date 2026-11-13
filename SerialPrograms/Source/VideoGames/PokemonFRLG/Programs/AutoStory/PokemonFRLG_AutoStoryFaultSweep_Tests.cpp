@@ -134,6 +134,12 @@ const std::map<std::string, std::string> KNOWN_FAILING{
         "fly_pallet: a Fly that doesn't leave Saffron City goes unseen, and the row, which walks on from Saffron's streets to Pallet's shore, ends on Cinnabar's nurse tile: the same fix as 11.01's, the fly landing on its town's tile (FlyTown::landing) checked before the step ends"},
     {"PokemonFRLG::AutoStory - Fault sweep: 17.02, warp no-op",
         "fly_viridian: a Fly that doesn't leave Cinnabar Island goes unseen, and the row, which walks on from Cinnabar's streets, ends on Viridian's Gym tile: the same fix as 11.01's, the fly landing on its town's tile (FlyTown::landing) checked before the step ends"},
+    {"PokemonFRLG::AutoStory - Fault sweep: 18.01, late warp fade",
+        "pad_to_top_right: a pad hop stays on SaffronCity_Gym, so a fade seen late (or a slow fade-in) leaves no scene change to confirm the warp and the step finds no fade: a scene check for a warp within one map (the player's tile moved from the pad), as the walker's scene_confirms_missed_fade does for a leg"},
+    {"PokemonFRLG::AutoStory - Fault sweep: 18.02, late warp fade",
+        "pad_from_top_right: a pad hop stays on SaffronCity_Gym, so a fade seen late (or a slow fade-in) leaves no scene change to confirm the warp and the step finds no fade: a scene check for a warp within one map (the player's tile moved from the pad), as the walker's scene_confirms_missed_fade does for a leg"},
+    {"PokemonFRLG::AutoStory - Fault sweep: 18.02, slow fade-in after every warp",
+        "pad_from_top_right: a pad hop stays on SaffronCity_Gym, so a fade seen late (or a slow fade-in) leaves no scene change to confirm the warp and the step finds no fade: a scene check for a warp within one map (the player's tile moved from the pad), as the walker's scene_confirms_missed_fade does for a leg"},
     {"PokemonFRLG::AutoStory - Fault sweep: 08.03, off the Bicycle at a bike leg",
         "riding with no fault, route7_underground_exit's warp to UndergroundPath_EastEntrance is not confirmed on the sim (the screen after the fade reads as before the hold): the sim's warp off the Bicycle, before this class can sweep 08.03"},
 };

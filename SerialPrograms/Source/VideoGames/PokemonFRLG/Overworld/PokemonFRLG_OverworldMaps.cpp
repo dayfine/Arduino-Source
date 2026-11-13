@@ -146,6 +146,8 @@ constexpr std::string_view MAP_NAMES[] = {
     //  Route 7's east gate, where the guard takes the TEA, and Saffron City.
     "Route7_EastEntrance",
     "SaffronCity",
+    //  Sabrina's gym: nine rooms joined by teleport pads (warps).
+    "SaffronCity_Gym",
     //  Cinnabar Island's Center and Blaine's gym, through its quiz doors.
     "CinnabarIsland",
     "CinnabarIsland_Gym",
