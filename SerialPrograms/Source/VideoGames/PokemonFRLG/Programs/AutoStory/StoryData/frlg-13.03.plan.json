@@ -1,0 +1,339 @@
+{
+    "format": "pokesim-authored-checkpoint/1",
+    "game": "frlg",
+    "checkpoint": {
+        "id": "13.03",
+        "title": "Pokemon Mansion B1F: the statue by Lewis's room, the Elixir, TM14, the statue by the Elixir room",
+        "start": {
+            "map": "PokemonMansion_B1F",
+            "tiles": [
+                [
+                    34,
+                    29
+                ]
+            ],
+            "facing": "west"
+        },
+        "events": [
+            {
+                "id": "to_lewis_room",
+                "kind": "legs",
+                "action": "taps",
+                "args": {
+                    "legs": [
+                        {
+                            "direction": "west",
+                            "tiles": 7
+                        },
+                        {
+                            "direction": "north",
+                            "tiles": 9
+                        },
+                        {
+                            "direction": "west",
+                            "tiles": 5
+                        }
+                    ]
+                },
+                "why": "B1F arrives in the set state (the flag is set), which closes its north: a tap a tile west to (27, 29), up column 27 to (27, 20) and west along row 20 to (22, 20), above the opening (20-22, 22-23), set open"
+            },
+            {
+                "id": "into_room_1",
+                "kind": "step",
+                "args": {
+                    "direction": "south"
+                },
+                "declared_after": {
+                    "map": "PokemonMansion_B1F",
+                    "tiles": [
+                        [
+                            22,
+                            21
+                        ]
+                    ],
+                    "facing": "south"
+                },
+                "why": "a step to (22, 21)"
+            },
+            {
+                "id": "into_room_2",
+                "kind": "step",
+                "args": {
+                    "direction": "south"
+                },
+                "declared_after": {
+                    "map": "PokemonMansion_B1F",
+                    "tiles": [
+                        [
+                            22,
+                            22
+                        ]
+                    ],
+                    "facing": "south"
+                },
+                "why": "a step onto (22, 22): the opening (20-22, 22-23) is open only in the set state, closed on the map"
+            },
+            {
+                "id": "into_room_3",
+                "kind": "step",
+                "args": {
+                    "direction": "south"
+                },
+                "declared_after": {
+                    "map": "PokemonMansion_B1F",
+                    "tiles": [
+                        [
+                            22,
+                            23
+                        ]
+                    ],
+                    "facing": "south"
+                },
+                "why": "a step onto (22, 23), the opening's second row"
+            },
+            {
+                "id": "to_statue",
+                "kind": "legs",
+                "action": "taps",
+                "args": {
+                    "legs": [
+                        {
+                            "direction": "south",
+                            "tiles": 1
+                        },
+                        {
+                            "direction": "east",
+                            "tiles": 1
+                        },
+                        {
+                            "direction": "south",
+                            "tiles": 6
+                        },
+                        {
+                            "direction": "east",
+                            "tiles": 1
+                        }
+                    ]
+                },
+                "why": "a tap a tile down to (22, 24), east to (23, 24) and down column 23 to (23, 30), then east to (24, 30), below the statue (24, 29); Burglar Lewis wanders (19-21, 24-26) with sight 1, and a battle is taken as it comes (pokeguy passed without one)"
+            },
+            {
+                "id": "face_statue",
+                "kind": "step",
+                "args": {
+                    "direction": "north"
+                },
+                "declared_after": {
+                    "map": "PokemonMansion_B1F",
+                    "tiles": [
+                        [
+                            24,
+                            30
+                        ]
+                    ],
+                    "facing": "north"
+                },
+                "why": "turn north to the statue (24, 29)"
+            },
+            {
+                "id": "press_b1f_south",
+                "kind": "talk",
+                "why": "press A: \"Press the secret switch?\""
+            },
+            {
+                "id": "press_south",
+                "kind": "answer",
+                "why": "YES: the flag clears, B1F's north opens again ((12, 10-12) and (20-22, 22-23) close, (33-35, 20-21) and (16, 28-30) open: the map)"
+            },
+            {
+                "id": "south_to_north",
+                "kind": "legs",
+                "action": "taps",
+                "args": {
+                    "legs": [
+                        {
+                            "direction": "west",
+                            "tiles": 9
+                        },
+                        {
+                            "direction": "north",
+                            "tiles": 10
+                        },
+                        {
+                            "direction": "east",
+                            "tiles": 14
+                        },
+                        {
+                            "direction": "south",
+                            "tiles": 2
+                        },
+                        {
+                            "direction": "east",
+                            "tiles": 4
+                        },
+                        {
+                            "direction": "north",
+                            "tiles": 16
+                        },
+                        {
+                            "direction": "north",
+                            "tiles": 1
+                        },
+                        {
+                            "direction": "east",
+                            "tiles": 1
+                        }
+                    ]
+                },
+                "why": "a tap a tile in the clear state, which is the map's: west to (15, 30), up column 15 to (15, 20), east along row 20 to (29, 20), down to (29, 22), east to (33, 22), up column 33 to (33, 5) (Ivan (34, 13) looks south along column 34 with sight 6, so not x 34), and east to (34, 5), facing (35, 5)"
+            },
+            {
+                "id": "hidden_elixir",
+                "kind": "talk",
+                "why": "the hidden ELIXIR on (35, 5) (pokeguy 1:20:06)"
+            },
+            {
+                "id": "to_tm14",
+                "kind": "legs",
+                "action": "taps",
+                "args": {
+                    "legs": [
+                        {
+                            "direction": "south",
+                            "tiles": 1
+                        },
+                        {
+                            "direction": "west",
+                            "tiles": 4
+                        },
+                        {
+                            "direction": "south",
+                            "tiles": 4
+                        },
+                        {
+                            "direction": "west",
+                            "tiles": 11
+                        },
+                        {
+                            "direction": "north",
+                            "tiles": 5
+                        },
+                        {
+                            "direction": "east",
+                            "tiles": 4
+                        }
+                    ]
+                },
+                "why": "a tap a tile back down: (34, 6), west to (30, 6), down to (30, 10), west along row 10 to (19, 10), up column 19 to (19, 5) and east to (23, 5), below TM14 (23, 4)"
+            },
+            {
+                "id": "face_tm14",
+                "kind": "step",
+                "args": {
+                    "direction": "north"
+                },
+                "declared_after": {
+                    "map": "PokemonMansion_B1F",
+                    "tiles": [
+                        [
+                            23,
+                            5
+                        ]
+                    ],
+                    "facing": "north"
+                },
+                "why": "turn north to the ball"
+            },
+            {
+                "id": "tm14",
+                "kind": "talk",
+                "why": "TM14 (pokeguy 1:20:15)"
+            },
+            {
+                "id": "to_north_statue",
+                "kind": "legs",
+                "action": "taps",
+                "args": {
+                    "legs": [
+                        {
+                            "direction": "west",
+                            "tiles": 4
+                        },
+                        {
+                            "direction": "south",
+                            "tiles": 5
+                        },
+                        {
+                            "direction": "east",
+                            "tiles": 11
+                        },
+                        {
+                            "direction": "north",
+                            "tiles": 4
+                        },
+                        {
+                            "direction": "west",
+                            "tiles": 3
+                        }
+                    ]
+                },
+                "why": "a tap a tile back: west to (19, 5), down column 19 to (19, 10), east along row 10 to (30, 10), up to (30, 6) and west to (27, 6), below the statue (27, 5)"
+            },
+            {
+                "id": "face_north_statue",
+                "kind": "step",
+                "args": {
+                    "direction": "north"
+                },
+                "declared_after": {
+                    "map": "PokemonMansion_B1F",
+                    "tiles": [
+                        [
+                            27,
+                            6
+                        ]
+                    ],
+                    "facing": "north"
+                },
+                "why": "turn north to the statue (27, 5)"
+            },
+            {
+                "id": "press_b1f_north",
+                "kind": "talk",
+                "why": "press A: \"Press the secret switch?\" (pokeguy 1:20:09 presses the statue before the TM, the Elixir between)"
+            },
+            {
+                "id": "press_north",
+                "kind": "answer",
+                "why": "YES: the flag is set; (12, 10-12) open, (33-35, 20-21) and (16, 28-30) close"
+            }
+        ]
+    },
+    "execution": {
+        "menu": "full",
+        "notes": {
+            "checkpoint": [
+                "Starts on B1F (34, 29) where 13.02 ends. Ends below the second statue (27, 5), at (27, 6), with the flag set: (12, 10-12) is the opening the walk to the SECRET KEY takes.",
+                "Barriers: Switch model (pokefirered data/scripts/pokemon_mansion.inc, PokemonMansion_*F scripts.inc; one global flag, set on a press and applied on each floor's load; the pack's maps are the flag-clear state only). Assumed per floor (read from pokefirered; the overlay data on PokemonSimulation's maps/frlg-mansion-switches branch, seen 2026-11-12, has the same tiles open or closed per state): 1F set: (22-24,10-11), (27-29,25-26), (32-34,25-26) open, (31-33,18-19) closed. 2F set: (24-26,14-15), (10,30-32) open, (12,4-8) closed, (10,28-29) wall. 3F set: (17-19,11-12) open, (21,4-8) closed. B1F set: (12,10-12), (20-22,22-23) open, (33-35,20-21) and (16,28-30) closed. Clear = the map as it is.",
+                "The two B1F statues are (24, 29) (press from (24, 30)) and (27, 5) (from (27, 6)). B1F is entered in the set state whichever way it was left, so the first press is a reset to clear: that opens the north, which the set state closes ((33-35, 20-21), (16, 28-30) are open in the clear state). The path to the Elixir and TM14 is the clear state, as the map is.",
+                "Open: Burglar Lewis (wandering (19-21, 24-26), sight 1: Growlithe, Ponyta Lv34) cannot be avoided in the room (its one way in, (22, 24), is beside his range; the sim meets him there and the AutoStory test lists to_statue as the one wanderer crossing it allows); the row relies on the normal battle code if he fights. Ivan (34, 13, looking south, sight 6) is passed on x 33. The Elixir is a hidden item: the walk faces it from (34, 5).",
+                "PokeGuy (1:19:56 to 1:20:21): basement statue, the Elixir 1:20:06, another statue 1:20:09, TM14 1:20:15."
+            ]
+        }
+    },
+    "metadata": {
+        "phase": "testing",
+        "postconditions": {
+            "position": {
+                "map": "PokemonMansion_B1F",
+                "tiles": [
+                    [
+                        27,
+                        6
+                    ]
+                ],
+                "facing": "north"
+            }
+        }
+    }
+}

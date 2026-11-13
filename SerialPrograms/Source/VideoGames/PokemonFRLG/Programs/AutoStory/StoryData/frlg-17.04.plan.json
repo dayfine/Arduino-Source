@@ -1,0 +1,140 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "17.04",
+    "title": "Viridian Gym: Giovanni and the EARTHBADGE, heal at Viridian's Center",
+    "start": {
+      "map": "ViridianCity_Gym",
+      "tiles": [
+        [
+          2,
+          3
+        ]
+      ],
+      "facing": "north"
+    },
+    "events": [
+      {
+        "id": "lead_lv50_for_giovanni",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 50
+        },
+        "why": "the precondition for Giovanni (Rhyhorn Lv50): below it the run stops before the fight"
+      },
+      {
+        "id": "challenge_giovanni",
+        "kind": "talk",
+        "why": "Giovanni (2, 2)"
+      },
+      {
+        "id": "giovanni",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LEADER_GIOVANNI",
+          "foes": [
+            "rhyhorn",
+            "dugtrio",
+            "nidoqueen",
+            "nidoking",
+            "rhydon"
+          ]
+        },
+        "declared_after": {
+          "map": "ViridianCity_Gym",
+          "tiles": [
+            [
+              2,
+              3
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "Giovanni: Rhyhorn Lv45, Dugtrio Lv42, Nidoqueen Lv44, Nidoking Lv45, Rhydon Lv50; then the EARTHBADGE and TM26 Earthquake"
+      },
+      {
+        "id": "gym_exit",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "ViridianCity",
+            "tiles": [
+              [
+                36,
+                11
+              ]
+            ],
+            "facing": "south"
+          }
+        },
+        "why": "back through the gym to the door and out onto Viridian City below it"
+      },
+      {
+        "id": "below_center_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "ViridianCity",
+            "tiles": [
+              [
+                26,
+                27
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "west and down to below the Center's door (26, 26)"
+      },
+      {
+        "id": "viridian_nurse",
+        "kind": "game_action",
+        "action": "center_enter",
+        "declared_after": {
+          "map": "ViridianCity_PokemonCenter_1F",
+          "tiles": [
+            [
+              7,
+              4
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "the Center script in, up to the nurse"
+      },
+      {
+        "id": "heal_viridian",
+        "kind": "heal",
+        "why": "full HP and PP"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Ends at Viridian's nurse (declared: the gym exit is a street tile; the Center is where the next row starts)."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {
+        "map": "ViridianCity_PokemonCenter_1F",
+        "tiles": [
+          [
+            7,
+            4
+          ]
+        ],
+        "facing": "north"
+      }
+    }
+  }
+}

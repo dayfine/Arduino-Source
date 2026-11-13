@@ -31,6 +31,12 @@ namespace PokemonFRLG{
 
 namespace{
 
+//  Whether a Water Pulse teach step forgets Tail Whip: its keep list holds
+//  other moves and not Tail Whip.
+bool forgets_tail_whip(const TeachPlan& plan){
+    return !plan.keep.empty() && std::find(plan.keep.begin(), plan.keep.end(), "tail-whip") == plan.keep.end();
+}
+
 struct AutoStoryInput{
     std::string name;
     std::function<UnitTestResult()> body;
@@ -139,7 +145,7 @@ private:
     const RunPlanScenario m_scenario;
 };
 
-const std::string TODAY = "01.01 01.03 01.04 01.05 02.01 02.02 02.03 03.01 03.02 03.03 04.01 04.02 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06 11.01 11.02 11.03 12.01 12.02 12.03 14.03 14.04 15.01 16.01 14.01 14.02";
+const std::string TODAY = "01.01 01.03 01.04 01.05 02.01 02.02 02.03 03.01 03.02 03.03 04.01 04.02 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06 11.01 11.02 11.03 12.01 12.02 12.03 14.03 14.04 15.01 16.01 17.01 13.01 13.02 13.03 13.04 14.01 14.02 17.02 17.03 17.04";
 
 const RunPlanScenario RUN_PLAN_CASES[] = {
     {
@@ -230,11 +236,11 @@ const RunPlanScenario RUN_PLAN_CASES[] = {
     },
     {
         .input = {.name = "Gift RNG off: 04.03 is passed over", .first = "04.01"},
-        .expectation = {.expected_ids = "04.01 04.02 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06 11.01 11.02 11.03 12.01 12.02 12.03 14.03 14.04 15.01 16.01 14.01 14.02"},
+        .expectation = {.expected_ids = "04.01 04.02 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06 11.01 11.02 11.03 12.01 12.02 12.03 14.03 14.04 15.01 16.01 17.01 13.01 13.02 13.03 13.04 14.01 14.02 17.02 17.03 17.04"},
     },
     {
         .input = {.name = "Gift RNG off: 04.03 runs when started at", .first = "04.03"},
-        .expectation = {.expected_ids = "04.03 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06 11.01 11.02 11.03 12.01 12.02 12.03 14.03 14.04 15.01 16.01 14.01 14.02"},
+        .expectation = {.expected_ids = "04.03 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06 11.01 11.02 11.03 12.01 12.02 12.03 14.03 14.04 15.01 16.01 17.01 13.01 13.02 13.03 13.04 14.01 14.02 17.02 17.03 17.04"},
     },
     {
         .input = {            .name = "Gift RNG: started at 04.03, from the save beside the salesman",
@@ -273,7 +279,7 @@ const RunPlanScenario RUN_PLAN_CASES[] = {
     },
     {
         .input = {.name = "Starter RNG alone: 04.03 runs when started at", .first = "04.03", .handoffs = {.starter_rng = true}},
-        .expectation = {.expected_ids = "04.03 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06 11.01 11.02 11.03 12.01 12.02 12.03 14.03 14.04 15.01 16.01 14.01 14.02"},
+        .expectation = {.expected_ids = "04.03 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06 11.01 11.02 11.03 12.01 12.02 12.03 14.03 14.04 15.01 16.01 17.01 13.01 13.02 13.03 13.04 14.01 14.02 17.02 17.03 17.04"},
     },
     {
         .input = {            .name = "Starter RNG first, with both on",
@@ -422,7 +428,7 @@ UnitTestResult test_cerulean_mart_and_grind(){
         return "05.03: expected it to start in Cerulean's Center.";
     }
     const std::optional<TeachPlan> teach = steps.empty() ? std::nullopt : teach_of(steps[0]);
-    if (!teach || teach->item != "tm03" || teach->move != "water-pulse" || teach->member != 0 || teach->forget_move != "tail-whip"){
+    if (!teach || teach->item != "tm03" || teach->move != "water-pulse" || teach->member != 0 || !forgets_tail_whip(*teach)){
         return "05.03: expected it to start with TM03 Water Pulse over the lead's Tail Whip.";
     }
     const size_t mart = find_step(steps, 0, [](const StoryStep& step){
@@ -487,7 +493,7 @@ UnitTestResult test_cerulean_rival_row(){
     }
     const std::optional<TeachPlan> teach = teach_of(rival.steps[0]);
     if (rival.steps[0].kind != StoryStepKind::GAME || !teach || teach->item != "tm03" || teach->move != "water-pulse"
-        || teach->member != 0 || teach->forget_move != "tail-whip"
+        || teach->member != 0 || !forgets_tail_whip(*teach)
     ){
         return "05.04: expected it to start with TM03 Water Pulse over the lead's Tail Whip.";
     }
@@ -553,7 +559,7 @@ UnitTestResult test_misty_rows(){
     }
     const size_t teach = find_step(misty.steps, 0, [](const StoryStep& step){
         const std::optional<TeachPlan> plan = teach_of(step);
-        return plan && plan->item == "tm03" && plan->move == "water-pulse" && plan->member == 0 && plan->forget_move == "tail-whip";
+        return plan && plan->item == "tm03" && plan->move == "water-pulse" && plan->member == 0 && forgets_tail_whip(*plan);
     });
     if (teach == misty.steps.size()){
         return "05.02: expected TM03 Water Pulse taught to the lead in place of Tail Whip.";

@@ -228,6 +228,28 @@ std::vector<TeachCase> teach_cases_1(){
             .moves = {"water-gun", "surf", "bubble", "withdraw"},
         },
         {
+            .name = "Surf over the one move outside the keep list (BUBBLE, as console B's Blastoise)",
+            .plan = {.item = "hm03", .move = "surf", .member = 0, .keep = {"bite", "water-pulse", "dig"}},
+            .setup = [](FakeTeachGame& game){ game.party[0].moves = {"bite", "water-pulse", "bubble", "dig"}; },
+            .moves = {"bite", "water-pulse", "surf", "dig"},
+        },
+        {
+            .name = "a keep list with two moves outside it forgets none",
+            .plan = {.item = "hm03", .move = "surf", .member = 0, .keep = {"bite", "dig"}},
+            .setup = [](FakeTeachGame& game){ game.party[0].moves = {"bite", "water-pulse", "bubble", "dig"}; },
+            .end = TeachEnd::REFUSED,
+            .moves = {"bite", "water-pulse", "bubble", "dig"},
+            .opened = false,
+        },
+        {
+            .name = "a keep list that holds all four moves forgets none",
+            .plan = {.item = "hm03", .move = "surf", .member = 0, .keep = {"bite", "water-pulse", "bubble", "dig"}},
+            .setup = [](FakeTeachGame& game){ game.party[0].moves = {"bite", "water-pulse", "bubble", "dig"}; },
+            .end = TeachEnd::REFUSED,
+            .moves = {"bite", "water-pulse", "bubble", "dig"},
+            .opened = false,
+        },
+        {
             .name = "Strength over the fourth slot by number",
             .plan = {.item = "hm04", .move = "strength", .member = 0, .forget_slot = 3},
             .setup = [](FakeTeachGame& game){ game.tm_case["hm04"] = {"strength", 1}; },
@@ -404,6 +426,11 @@ UnitTestResult test_teach_by_species(){
     const std::vector<std::string> pokeguys{"fly", "gust", "quick-attack", "steel-wing"};
     if (fallback.end != TeachEnd::LEARNED || fallback.forgot != "sand-attack" || game.party[3].moves != pokeguys){
         return std::format("Fly, no Whirlwind: ended {} ({}), forgot \"{}\".", teach_end_name(fallback.end), fallback.detail, fallback.forgot);
+    }
+    const TeachPlan kept{.item = "hm03", .move = "surf", .member = 0, .keep = {"bite", "dig"}};
+    const std::optional<TeachPlan> kept_back = teach_plan_of(teach_args(kept));
+    if (!kept_back || kept_back->keep != kept.keep){
+        return "keep didn't read back from its args.";
     }
     const std::optional<TeachPlan> back = teach_plan_of(teach_args(or_else));
     if (!back || back->forget_else != or_else.forget_else){

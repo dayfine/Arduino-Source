@@ -271,10 +271,24 @@ std::optional<Direction> spin_direction(const MapData& map, const TilePos& point
             return direction;
         }
     }
-    return std::nullopt;
+    //  A map file's own glyphs (Viridian Gym).
+    switch (tile_at(map, point)){
+    case TileKind::SPIN_NORTH:
+        return Direction::NORTH;
+    case TileKind::SPIN_SOUTH:
+        return Direction::SOUTH;
+    case TileKind::SPIN_WEST:
+        return Direction::WEST;
+    case TileKind::SPIN_EAST:
+        return Direction::EAST;
+    default:
+        return std::nullopt;
+    }
 }
 bool stops_spinning(const MapData& map, const TilePos& point){
-    return coded_spin_stop(map.name, point) || in_region(map, SPIN_STOP_REGION, point);
+    return coded_spin_stop(map.name, point)
+        || in_region(map, SPIN_STOP_REGION, point)
+        || tile_at(map, point) == TileKind::STOP_SPIN;
 }
 
 std::optional<SpinSlide> spin_slide(const MapData& map, const PlayerState& state){

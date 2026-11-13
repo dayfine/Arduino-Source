@@ -149,6 +149,11 @@ constexpr std::string_view MAP_NAMES[] = {
     //  Cinnabar Island's Center and Blaine's gym, through its quiz doors.
     "CinnabarIsland",
     "CinnabarIsland_Gym",
+    //  Pallet Town south over Route 21 to Cinnabar, and Viridian Gym with its
+    //  spinner tiles (the map file's glyphs: PokemonFRLG_OverworldSpin.h).
+    "Route21_North",
+    "Route21_South",
+    "ViridianCity_Gym",
     //  Silph Co.'s floors, 1F to 11F (the lift's map, SilphCo_Elevator, is
     //  not built in).
     "SilphCo_1F",
@@ -162,6 +167,11 @@ constexpr std::string_view MAP_NAMES[] = {
     "SilphCo_9F",
     "SilphCo_10F",
     "SilphCo_11F",
+    //  The Pokemon Mansion's four floors, for the SECRET KEY.
+    "PokemonMansion_1F",
+    "PokemonMansion_2F",
+    "PokemonMansion_3F",
+    "PokemonMansion_B1F",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",
@@ -188,11 +198,28 @@ void add_unmapped_centers(std::vector<MapData>& maps){
     }
 }
 
+//  Pallet Town's fat man wanders over (7..19, 15..19), which holds the whole
+//  shore (7..10, 16) the way onto Route 21's water goes by. A planned route
+//  never crosses a wanderer's box, so none would reach the water. He stands on
+//  his own tile (13, 17) in the planner's model: east of the shore, off the
+//  way; a person in the way on the console is waited out (17.01).
+void waive_pallet_fat_man_box(MapData& map){
+    if (map.name != "PalletTown"){
+        return;
+    }
+    for (MapObject& object : map.objects){
+        if (object.name == "fat_man"){
+            object.wander.reset();
+        }
+    }
+}
+
 const std::vector<MapData>& all_maps(){
     static const std::vector<MapData> MAPS = []{
         std::vector<MapData> maps;
         for (std::string_view name : MAP_NAMES){
             maps.push_back(load_map(std::string(name)));
+            waive_pallet_fat_man_box(maps.back());
         }
         add_unmapped_centers(maps);
         return maps;
