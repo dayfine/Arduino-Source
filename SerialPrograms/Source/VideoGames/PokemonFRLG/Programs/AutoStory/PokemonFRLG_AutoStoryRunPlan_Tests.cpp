@@ -31,6 +31,12 @@ namespace PokemonFRLG{
 
 namespace{
 
+//  Whether a Water Pulse teach step forgets Tail Whip: its keep list holds
+//  other moves and not Tail Whip.
+bool forgets_tail_whip(const TeachPlan& plan){
+    return !plan.keep.empty() && std::find(plan.keep.begin(), plan.keep.end(), "tail-whip") == plan.keep.end();
+}
+
 struct AutoStoryInput{
     std::string name;
     std::function<UnitTestResult()> body;
@@ -422,7 +428,7 @@ UnitTestResult test_cerulean_mart_and_grind(){
         return "05.03: expected it to start in Cerulean's Center.";
     }
     const std::optional<TeachPlan> teach = steps.empty() ? std::nullopt : teach_of(steps[0]);
-    if (!teach || teach->item != "tm03" || teach->move != "water-pulse" || teach->member != 0 || teach->forget_move != "tail-whip"){
+    if (!teach || teach->item != "tm03" || teach->move != "water-pulse" || teach->member != 0 || !forgets_tail_whip(*teach)){
         return "05.03: expected it to start with TM03 Water Pulse over the lead's Tail Whip.";
     }
     const size_t mart = find_step(steps, 0, [](const StoryStep& step){
@@ -487,7 +493,7 @@ UnitTestResult test_cerulean_rival_row(){
     }
     const std::optional<TeachPlan> teach = teach_of(rival.steps[0]);
     if (rival.steps[0].kind != StoryStepKind::GAME || !teach || teach->item != "tm03" || teach->move != "water-pulse"
-        || teach->member != 0 || teach->forget_move != "tail-whip"
+        || teach->member != 0 || !forgets_tail_whip(*teach)
     ){
         return "05.04: expected it to start with TM03 Water Pulse over the lead's Tail Whip.";
     }
@@ -553,7 +559,7 @@ UnitTestResult test_misty_rows(){
     }
     const size_t teach = find_step(misty.steps, 0, [](const StoryStep& step){
         const std::optional<TeachPlan> plan = teach_of(step);
-        return plan && plan->item == "tm03" && plan->move == "water-pulse" && plan->member == 0 && plan->forget_move == "tail-whip";
+        return plan && plan->item == "tm03" && plan->move == "water-pulse" && plan->member == 0 && forgets_tail_whip(*plan);
     });
     if (teach == misty.steps.size()){
         return "05.02: expected TM03 Water Pulse taught to the lead in place of Tail Whip.";
