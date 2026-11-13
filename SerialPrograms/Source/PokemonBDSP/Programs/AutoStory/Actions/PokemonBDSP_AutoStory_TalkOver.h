@@ -20,6 +20,7 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "Pokemon/AutoStory/Pokemon_SceneJudges.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
+#include "PokemonBDSP_AutoStory_TalkOverTally.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -69,47 +70,6 @@ struct TalkOverSpec{
     TalkOverWatch watch = TalkOverWatch::SCENE;
     //  The expected map's banner name for TalkOverRule::warp ("" for a fade only).
     std::string banner = "";
-};
-
-//  How talk_over() ended.
-enum class TalkOverEnd{
-    QUIET,
-    BATTLE,     //  Only with TalkOverWatch::TRAINER.
-};
-
-//  TalkOver's judgement, with how many looks showed a box: what was said,
-//  in any language, without reading it. Pure: tests replay looks through it.
-class TalkOverTally{
-public:
-    explicit TalkOverTally(TalkOverRule rule = {})
-        : m_judge(rule)
-    {}
-    SceneMove look(const Pokemon::ScreenEvents& events, WallClock now){
-        const SceneMove move = m_judge.look(events, now);
-        if (move == SceneMove::NEXT){
-            m_box_looks++;
-        }
-        return move;
-    }
-    size_t box_looks() const{
-        return m_box_looks;
-    }
-    bool warped() const{
-        return m_judge.warped();
-    }
-    std::string describe() const{
-        return m_judge.describe();
-    }
-
-private:
-    TalkOver m_judge;
-    size_t m_box_looks = 0;
-};
-
-//  How talk_over_seen() ended, and how many of its looks showed a box.
-struct TalkOverSeen{
-    TalkOverEnd end = TalkOverEnd::QUIET;
-    size_t box_looks = 0;
 };
 
 //  Presses through any text and scene on the console until TalkOver says it

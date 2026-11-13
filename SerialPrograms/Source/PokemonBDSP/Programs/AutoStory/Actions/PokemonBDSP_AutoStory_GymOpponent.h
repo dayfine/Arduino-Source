@@ -40,6 +40,8 @@ enum class GymOpponent{
     TRAINER,
     LEADER,
 };
+
+//  The opponent as the log names it.
 inline std::string_view gym_opponent_name(GymOpponent opponent){
     return opponent == GymOpponent::LEADER ? "Roark" : "a gym trainer";
 }
