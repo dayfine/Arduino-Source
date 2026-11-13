@@ -1507,6 +1507,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_RouteLog.h
     Source/Pokemon/Navigation/Pokemon_RouteLog_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_RouteLog_Tests.h
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimGolden.cpp
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimGolden.h
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimGolden_Tests.cpp
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimGolden_Tests.h
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
     Source/Pokemon/Options/Pokemon_BoxSortingTable.h
     Source/Pokemon/Options/Pokemon_EncounterBotOptions.h
@@ -1635,6 +1639,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.h
     Source/Pokemon/AutoStory/Pokemon_TilePose.cpp
     Source/Pokemon/AutoStory/Pokemon_TilePose.h
+    Source/Pokemon/AutoStory/Pokemon_TestExpect.h
     Source/Pokemon/AutoStory/Pokemon_Transitions.cpp
     Source/Pokemon/AutoStory/Pokemon_Transitions.h
     Source/Pokemon/AutoStory/Pokemon_Transitions_Tests.cpp

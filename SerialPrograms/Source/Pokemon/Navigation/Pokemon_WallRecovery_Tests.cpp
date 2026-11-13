@@ -69,21 +69,21 @@ std::string describe_holds(std::span<const TestHold> holds){
 }
 
 //  Inputs and expectations are separate aggregates; each registered test owns one row.
-struct CorridorInput{
-    std::string name;
-    std::vector<int> positions;
-    std::optional<int> person;
-    size_t budget;
-};
-
-struct CorridorExpectation{
-    std::optional<int> first_anchor;
-    std::vector<TestHold> holds;
-};
-
 struct CorridorTestCase{
-    CorridorInput input;
-    CorridorExpectation expectation;
+    struct Input{
+        std::string name;
+        std::vector<int> positions;
+        std::optional<int> person;
+        size_t budget;
+    };
+
+    struct Expectation{
+        std::optional<int> first_anchor;
+        std::vector<TestHold> holds;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_WallRecovery : public UnitTest{
@@ -187,20 +187,20 @@ public:
     }
 };
 
-struct CornerInput{
-    std::string name;
-    std::array<TilePos, 2> positions;
-    size_t budget;
-};
-
-struct CornerExpectation{
-    std::optional<TilePos> first_anchor;
-    std::vector<TestHold> holds;
-};
-
 struct CornerTestCase{
-    CornerInput input;
-    CornerExpectation expectation;
+    struct Input{
+        std::string name;
+        std::array<TilePos, 2> positions;
+        size_t budget;
+    };
+
+    struct Expectation{
+        std::optional<TilePos> first_anchor;
+        std::vector<TestHold> holds;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_WallRecoveryCorner : public UnitTest{

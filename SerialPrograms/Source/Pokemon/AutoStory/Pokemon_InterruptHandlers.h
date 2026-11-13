@@ -2,7 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Split out of Pokemon_StoryInterrupts.h, unchanged; it includes this header.
+ *  The table of a game's interrupt handlers and the screen look they read.
+ *  Pokemon_StoryInterrupts.h builds on it.
  *
  */
 

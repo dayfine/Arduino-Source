@@ -18,18 +18,18 @@ namespace Pokemon{
 namespace{
 
 
-struct MoveMechanicsInput{
-    std::string_view game;
-    MoveMechanics mechanics;
-};
-struct MoveMechanicsExpectation{
-    //  How the walker presses an open leg on foot (the user's pick,
-    //  2026-11-11: BDSP taps, FRLG timed holds).
-    OpenLegPress open_legs_on_foot;
-};
 struct MoveMechanicsCase{
-    MoveMechanicsInput input;
-    MoveMechanicsExpectation expectation;
+    struct Input{
+        std::string_view game;
+        MoveMechanics mechanics;
+    };
+    struct Expectation{
+        //  How the walker presses an open leg on foot (BDSP taps, FRLG
+        //  timed holds).
+        OpenLegPress open_legs_on_foot;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 //  Why `faster` is not faster than `slower` on both axes, if it is not.
