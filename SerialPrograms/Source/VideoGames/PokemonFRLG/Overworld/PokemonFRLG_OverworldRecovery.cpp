@@ -240,6 +240,7 @@ public:
         , m_plan(with_warp_slack(route))
         , m_at(planning != nullptr ? planning->start : std::nullopt)
         , m_facing(facing)
+        , m_known(m_at.has_value())
     {}
 
     void run(){
@@ -253,6 +254,7 @@ public:
             if (outcome.end == StepEnd::DONE){
                 const std::optional<MapPosition> start = m_next >= m_unchecked ? m_at : std::nullopt;
                 remember_walked(step);
+                m_known = m_known || step.to_wall || step.warps;
                 m_at = step.end;
                 m_facing = step.facing_after;
                 m_lines.done(step, ++m_next, m_holds);
@@ -332,10 +334,12 @@ private:
     //  How many tiles the plan has `step`, a hold or an open leg, walk, at
     //  the least: its tiles from a tile the player is known to be on, and
     //  for the first hold that finds the player, the fewest from any tile
-    //  they may be on. 0 where that isn't known, or if one of those tiles
-    //  stands at the wall already (a bump right away moves nothing).
+    //  they may be on. 0 where that isn't known (a route the caller gave
+    //  with no start, whose first holds are from tiles it doesn't name), or
+    //  if one of those tiles stands at the wall already (a bump right away
+    //  moves nothing).
     int expected_tiles(const RouteStep& step) const{
-        if (m_next >= m_holds){
+        if (m_holds > 0 ? m_next >= m_holds : m_known){
             return step.tiles;
         }
         if (m_next != 0 || m_hold_from.empty() || maps() == nullptr){
@@ -537,6 +541,7 @@ private:
             m_lines.found(anchor->found, 0);
         }
         m_at = anchor->found;
+        m_known = true;
         m_facing = step.direction;
         m_lines.plan(m_at, m_plan);
         return true;
@@ -549,6 +554,9 @@ private:
     std::vector<RouteStep> m_plan;
     std::optional<MapPosition> m_at;
     std::optional<Direction> m_facing;
+    //  Whether the player's tile is known when a plan without holds starts:
+    //  from the caller's start, or since a wall or a warp.
+    bool m_known = false;
     size_t m_next = 0;
     size_t m_stops = 0;
     size_t m_holds = 0;     //  of the plan, holds to walls that find the player
