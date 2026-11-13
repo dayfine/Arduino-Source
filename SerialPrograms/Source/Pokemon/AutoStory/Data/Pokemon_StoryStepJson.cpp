@@ -369,7 +369,7 @@ JsonValue write_gate_state(const GateState& state){
 }
 
 StoryStep read_story_step(const JsonValue& value, std::string_view source, std::span<const StoryActionSpec> actions){
-    const JsonObject& root = fields(value, {"id", "kind", "why", "action", "args", "skip_if", "declared_after", "gates_after"}, source);
+    const JsonObject& root = fields(value, {"id", "kind", "why", "action", "args", "skip_if", "declared_after", "gates_after", "flags_after"}, source);
     StoryStep result;
     result.name = root.get_string_throw("id");
     if (result.name.empty()){
@@ -392,11 +392,14 @@ StoryStep read_story_step(const JsonValue& value, std::string_view source, std::
     if (const JsonValue* field = root.get_value("gates_after")){
         result.gates_after = read_gate_change(*field, source);
     }
+    if (const JsonValue* field = root.get_value("flags_after")){
+        result.flags_after = read_strings(*field, source);
+    }
     return result;
 }
 
 StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view source, std::span<const StoryActionSpec> actions){
-    const JsonObject& root = fields(value, {"id", "title", "start", "start_gates", "events", "metadata"}, source);
+    const JsonObject& root = fields(value, {"id", "title", "start", "start_gates", "start_flags", "events", "metadata"}, source);
     StoryCheckpoint result;
     result.id = root.get_string_throw("id");
     if (result.id.empty()){
@@ -408,6 +411,9 @@ StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view s
     }
     if (const JsonValue* gates = root.get_value("start_gates")){
         result.start_gates = read_gate_state(*gates, source);
+    }
+    if (const JsonValue* flags = root.get_value("start_flags")){
+        result.start_flags = read_strings(*flags, source);
     }
     std::set<std::string> names;
     result.steps_json = root.get_value_throw("events").dump(-1);

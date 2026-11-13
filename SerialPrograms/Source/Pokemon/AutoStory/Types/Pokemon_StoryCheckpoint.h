@@ -45,6 +45,10 @@ struct StoryCheckpoint{
     //  where the checkpoint does not say, which the run infers from the
     //  story so far, or else observes. JSON: "start_gates".
     std::optional<GateState> start_gates = {};
+    //  The run flags that hold at the start, as flags_after would have set
+    //  them in the story so far, which a reload loses ("card_key_held" in a
+    //  save made after the Card Key). JSON: "start_flags".
+    std::vector<std::string> start_flags = {};
 };
 
 //  The gate state of `checkpoint` once its first `steps_done` steps are done:

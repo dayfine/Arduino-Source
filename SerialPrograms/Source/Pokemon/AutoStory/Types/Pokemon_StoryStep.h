@@ -56,6 +56,10 @@ struct StoryStep{
     //  (Pokemon/Navigation/Pokemon_GateState.h), applied to the run's gate
     //  state when the step is done.
     std::optional<GateChange> gates_after = {};
+    //  The run flags the step sets when it is done (JSON "flags_after"): what
+    //  the story's later steps and the planner read, as "card_key_held" after
+    //  the Card Key is picked up, which lets plans open card-key gates.
+    std::vector<std::string> flags_after = {};
 };
 
 

@@ -144,6 +144,15 @@ const WireCase CASES[] = {
     {.input = {.name = "step with no gates", .json = R"({"id":"plain","kind":"talk"})"}, .expectation = {.check = [](const ReadRecord& record){
         return expect(!step_of(record).gates_after, "no gate change");
     }}},
+    {.input = {.name = "flags: given after a step, held at the start", .record = Record::CHECKPOINT, .json = R"({"id":"16.02","title":"Silph","start_flags":["has_pass"],"events":[{"id":"a","kind":"talk","flags_after":["card_key_held"]},{"id":"b","kind":"talk"}]})"}, .expectation = {.check = [](const ReadRecord& record){
+        const StoryCheckpoint& checkpoint = std::get<StoryCheckpoint>(record);
+        return expect(
+            checkpoint.start_flags == std::vector<std::string>{"has_pass"}
+                && checkpoint.steps[0].flags_after == std::vector<std::string>{"card_key_held"}
+                && checkpoint.steps[1].flags_after.empty(),
+            "start_flags and flags_after"
+        );
+    }}},
     {.input = {.name = "gate change with an unknown field", .json = R"({"id":"x","kind":"talk","gates_after":{"closed":["a/b"]}})"}, .expectation = {.rejected = true}},
     {.input = {.name = "checkpoint gate state", .record = Record::CHECKPOINT, .json = R"({"id":"16.02","title":"Silph","start_gates":{"opened":["SilphCo_5F/door_1"]},"events":[{"id":"a","kind":"talk","gates_after":{"opened":["SilphCo_5F/door_2"]}},{"id":"b","kind":"talk","gates_after":{"switches":{"mansion":true}}},{"id":"c","kind":"talk"}]})"}, .expectation = {.check = [](const ReadRecord& record){
         const StoryCheckpoint& checkpoint = std::get<StoryCheckpoint>(record);

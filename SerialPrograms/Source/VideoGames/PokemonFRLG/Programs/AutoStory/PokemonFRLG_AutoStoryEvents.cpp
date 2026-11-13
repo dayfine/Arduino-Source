@@ -14,6 +14,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldReanchor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
@@ -136,6 +137,10 @@ OverworldInterruptSet walk_interrupts(StoryEnv& env, const StoryStep& step){
 
 //  `maps`: where the route is planned; the story's but where a step knows
 //  better (the trash cans' walks, past trainers who have walked up).
+Pokemon::GateRules gate_rules(const RunState& state){
+    return Pokemon::GateRules{.card_key_held = state.flags.contains("card_key_held")};
+}
+
 Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const std::vector<MapData>& maps = story_maps()){
     const std::vector<TilePos> tiles = Pokemon::tiles_of(state.pose);
     const bool known = state.pose.certainty == Pokemon::PoseCertainty::TILE
@@ -157,7 +162,7 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const 
         return Pokemon::outcome_failed("bad_target", Pokemon::to_string(target_pose));
     }
     const RouteGoal goal{{target->map, target->tile}, target->facing};
-    const std::optional<std::vector<RouteStep>> route = plan_story_route(maps, state.pose, facing, goal);
+    const std::optional<std::vector<RouteStep>> route = plan_story_route(maps, state.pose, facing, goal, state.gates, gate_rules(state));
     if (!route){
         return Pokemon::outcome_failed("no_route", Pokemon::to_string(state.pose) + " to " + to_string(goal.position));
     }
@@ -168,8 +173,10 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const 
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given. From a set of tiles
     //  the start isn't known: the walker reads the facing.
-    const RoutePlanning planning{.maps = &maps, .costs = story_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
+    RoutePlanning planning{.maps = &maps, .costs = story_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
+    planning.gates = state.gates;
     walk_overworld_route_with_recovery(env.console, env.context, *route, planning, env.player_gender, facing, interrupts, move_speed(step));
+    state.gates = gates_after_route(state.gates, *route);
     log_arrival(env, step.name, target->map, target->tile);
     const std::optional<Direction> end_facing = route->empty() ? facing : std::optional<Direction>(route->back().facing_after);
     return Pokemon::outcome_ok(to_pose(StoryPose{target->map, target->tile, end_facing}));
@@ -436,7 +443,8 @@ Pokemon::Pose paced_pose(const Pokemon::Pose& patch, const StoryStep& step){
 
 std::optional<std::vector<RouteStep>> plan_story_route(
     const std::vector<MapData>& maps, const Pokemon::Pose& pose,
-    std::optional<Direction> facing, const RouteGoal& goal
+    std::optional<Direction> facing, const RouteGoal& goal,
+    const Pokemon::GateState& gates, const Pokemon::GateRules& rules
 ){
     std::vector<MapPosition> tiles;
     for (const TilePos& tile : Pokemon::tiles_of(pose)){
@@ -450,7 +458,10 @@ std::optional<std::vector<RouteStep>> plan_story_route(
     if (!holds->empty()){
         facing = holds->back().facing_after;
     }
-    std::optional<std::vector<RouteStep>> route = plan_overworld_route(maps, from, goal, story_route_costs(), facing);
+    //  Maps without gates plan as ever (with the open legs' stop risk).
+    std::optional<std::vector<RouteStep>> route = has_gates(maps)
+        ? plan_overworld_route_gated(maps, from, goal, gates, rules, story_route_costs(), facing)
+        : plan_overworld_route(maps, from, goal, story_route_costs(), facing);
     if (route){
         route->insert(route->begin(), holds->begin(), holds->end());
     }

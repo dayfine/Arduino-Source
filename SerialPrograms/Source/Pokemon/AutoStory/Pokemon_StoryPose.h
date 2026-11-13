@@ -17,6 +17,7 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/MoveOnlyFunction.h"
+#include "Pokemon/Navigation/Pokemon_GateState.h"
 #include "Pokemon_StoryLog.h"
 
 namespace PokemonAutomation{
@@ -70,6 +71,9 @@ std::string to_string(const Pose& pose);
 struct RunState{
     Pose pose;
     std::set<std::string> flags;
+    //  The gates open and the switches on (Pokemon_GateState.h): from the
+    //  checkpoint's start_gates, then each step's gates_after as it is done.
+    GateState gates;
 };
 
 
