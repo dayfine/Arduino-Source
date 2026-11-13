@@ -13,6 +13,7 @@
 #include <format>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -61,7 +62,7 @@ private:
 //  A walk across a gate on the real maps: Silph Co. 5F's card-key door, and
 //  the Pokemon Mansion 1F's barrier behind its statue's switch.
 struct Scene{
-    const char* map;
+    std::string_view map;
     TilePos start;
     TilePos goal;
 };
@@ -83,7 +84,7 @@ StoryStep route_step(const std::string& map, TilePos goal){
 
 Pokemon::RunState run_state(const Scene& scene, bool card_key){
     Pokemon::RunState state;
-    state.pose = to_pose(StoryPose{scene.map, scene.start, Direction::EAST});
+    state.pose = to_pose(StoryPose{std::string(scene.map), scene.start, Direction::EAST});
     if (card_key){
         state.flags.insert("card_key_held");
     }
@@ -96,7 +97,7 @@ Pokemon::Outcome on_maps(const Scene& scene, bool card_key, Pokemon::RunState& s
     knobs.maps = &scene_maps();
     StoryMapsSim sim(knobs);
     state = run_state(scene, card_key);
-    return sim.run(route_step(scene.map, scene.goal), state);
+    return sim.run(route_step(std::string(scene.map), scene.goal), state);
 }
 
 
@@ -144,9 +145,9 @@ struct GateStateOut{
 std::string on_overworld_sim(const Scene& scene, bool card_key, GateStateOut& out){
     SimScript script;
     script.card_key_held = card_key;
-    OverworldSim sim(scene_maps(), MapPosition{scene.map, scene.start}, Direction::EAST, script);
-    StoryPose at{scene.map, scene.start, Direction::EAST};
-    const std::string failure = row_step_on_sim(sim, at, route_step(scene.map, scene.goal), "test");
+    OverworldSim sim(scene_maps(), MapPosition{std::string(scene.map), scene.start}, Direction::EAST, script);
+    StoryPose at{std::string(scene.map), scene.start, Direction::EAST};
+    const std::string failure = row_step_on_sim(sim, at, route_step(std::string(scene.map), scene.goal), "test");
     out.gates = sim.state().gates;
     out.position = sim.state().position;
     return failure;
@@ -166,7 +167,7 @@ UnitTestResult test_step_sim_door_opens(){
     if (!failure.empty()){
         return "The step did not open the door for a player with the Card Key: " + failure;
     }
-    if (!out.gates.opened.contains("SilphCo_5F/door_1") || !(out.position == MapPosition{DOOR.map, DOOR.goal})){
+    if (!out.gates.opened.contains("SilphCo_5F/door_1") || !(out.position == MapPosition{std::string(DOOR.map), DOOR.goal})){
         return "Expected the door open and the player at the goal, ended at " + to_string(out.position);
     }
     return true;
@@ -178,7 +179,7 @@ UnitTestResult test_step_sim_statue_switch(){
     if (!failure.empty()){
         return "The step did not press the statue: " + failure;
     }
-    if (!out.gates.switch_on("mansion") || !(out.position == MapPosition{STATUE.map, STATUE.goal})){
+    if (!out.gates.switch_on("mansion") || !(out.position == MapPosition{std::string(STATUE.map), STATUE.goal})){
         return "Expected the switch on and the player at the goal, ended at " + to_string(out.position);
     }
     return true;

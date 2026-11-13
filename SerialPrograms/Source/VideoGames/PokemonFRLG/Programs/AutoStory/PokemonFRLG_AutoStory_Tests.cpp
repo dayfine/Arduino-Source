@@ -104,35 +104,38 @@ struct WalkGates{
     Pokemon::GateState gates;
     bool card_key_held = false;
 };
-thread_local WalkGates WALK;
+WalkGates& walk_state(){
+    thread_local WalkGates walk;
+    return walk;
+}
 
 //  Starts a walk at `checkpoint`'s start: its start_gates and start_flags.
 void begin_walk(const StoryCheckpoint& checkpoint){
-    WALK = WalkGates{};
+    walk_state() = WalkGates{};
     if (checkpoint.start_gates){
-        WALK.gates = *checkpoint.start_gates;
+        walk_state().gates = *checkpoint.start_gates;
     }
-    WALK.card_key_held = std::ranges::find(checkpoint.start_flags, "card_key_held") != checkpoint.start_flags.end();
+    walk_state().card_key_held = std::ranges::find(checkpoint.start_flags, "card_key_held") != checkpoint.start_flags.end();
 }
 
 //  A walk through the checkpoint that follows the one before: only what its
 //  start says replaces the gates carried.
 void continue_walk(const StoryCheckpoint& checkpoint){
     if (checkpoint.start_gates){
-        WALK.gates = *checkpoint.start_gates;
+        walk_state().gates = *checkpoint.start_gates;
     }
     if (std::ranges::find(checkpoint.start_flags, "card_key_held") != checkpoint.start_flags.end()){
-        WALK.card_key_held = true;
+        walk_state().card_key_held = true;
     }
 }
 
 //  What `step` does to the walk's gates once done, besides a route's own.
 void apply_step_effects(const StoryStep& step){
     if (step.gates_after){
-        apply_gate_change(WALK.gates, *step.gates_after);
+        apply_gate_change(walk_state().gates, *step.gates_after);
     }
     if (std::ranges::find(step.flags_after, "card_key_held") != step.flags_after.end()){
-        WALK.card_key_held = true;
+        walk_state().card_key_held = true;
     }
 }
 
@@ -142,8 +145,8 @@ const std::vector<MapData>& walk_maps(){
     if (!has_gates(story_maps())){
         return story_maps();
     }
-    if (!resolved || !(resolved->first == WALK.gates)){
-        resolved.emplace(WALK.gates, resolve_maps(story_maps(), WALK.gates));
+    if (!resolved || !(resolved->first == walk_state().gates)){
+        resolved.emplace(walk_state().gates, resolve_maps(story_maps(), walk_state().gates));
     }
     return resolved->second;
 }
@@ -267,8 +270,8 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<s
     }
     const StoryPose target = one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target"));
     const RouteGoal goal{{target.map, target.tile}, target.facing};
-    const Pokemon::GateRules rules{.card_key_held = WALK.card_key_held};
-    const std::optional<std::vector<RouteStep>> route = plan_overworld_route_gated(story_maps(), start, goal, WALK.gates, rules, default_route_costs(), facing);
+    const Pokemon::GateRules rules{.card_key_held = walk_state().card_key_held};
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route_gated(story_maps(), start, goal, walk_state().gates, rules, default_route_costs(), facing);
     if (!route){
         return step.name + ": no route from " + to_string(start) + " to " + to_string(goal.position) + ".";
     }
@@ -277,7 +280,7 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<s
     for (const RouteStep& planned : *route){
         golden.push_back(golden_line(planned));
     }
-    const MapPosition end = follow_overworld_route(story_maps(), start, *route, WALK.gates);
+    const MapPosition end = follow_overworld_route(story_maps(), start, *route, walk_state().gates);
     if (!(end == goal.position)){
         return step.name + ": the route ends at " + to_string(end) + ":" + describe(*route);
     }
@@ -297,7 +300,7 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<s
             }
         }
     }
-    WALK.gates = gates_after_route(WALK.gates, *route);
+    walk_state().gates = gates_after_route(walk_state().gates, *route);
     pose = StoryPose{target.map, target.tile, route->empty() ? facing : route->back().facing_after};
     return true;
 }
@@ -351,7 +354,7 @@ UnitTestResult chain_story_routes(std::vector<std::string>& golden){
         return "Expected 63 checkpoints, the first from a new game.";
     }
     StoryPose pose;
-    WALK = WalkGates{};
+    walk_state() = WalkGates{};
     for (size_t c = 0; c < checkpoints.size(); c++){
         const StoryCheckpoint& checkpoint = checkpoints[c];
         continue_walk(checkpoint);
@@ -604,7 +607,7 @@ std::vector<RouteStep> legs_walked(const StoryPose& pose, const StoryStep& step)
         const MapData* map = find_map_named(pose.map);
         const std::optional<Direction> facing = pose.facing ? pose.facing : map ? wall_beside(*map, pose.tile) : std::nullopt;
         const StoryPose target = one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target"));
-        route = plan_overworld_route_gated(story_maps(), start, RouteGoal{{target.map, target.tile}, target.facing}, WALK.gates, Pokemon::GateRules{.card_key_held = WALK.card_key_held}, story_route_costs(), facing);
+        route = plan_overworld_route_gated(story_maps(), start, RouteGoal{{target.map, target.tile}, target.facing}, walk_state().gates, Pokemon::GateRules{.card_key_held = walk_state().card_key_held}, story_route_costs(), facing);
     }
     return route ? *route : std::vector<RouteStep>{};
 }
@@ -887,19 +890,17 @@ std::string approach_off_tile(const std::vector<RouteStep>& legs){
 //  approach to the Rare Candy, "west 4" and "south 6" held open, ended a
 //  tile west and met a gravestone (console B, 2026-11-12 04:39).
 //  PASSED_ON_CONSOLE: approaches before 10.05 that passed their console
-//  runs as held legs (a follow-up to tap them).
+//  runs as held legs (a follow-up to tap them). 13.03 and 13.04 plan their statue
+//  approaches (PRESS_SWITCH) and have not run on a console.
 UnitTestResult test_approaches_end_on_their_tile(){
     const std::set<std::string> PASSED_ON_CONSOLE{
         "02.02/below_oak", "03.02/before_brock", "05.07/below_bill_clefairy", "05.07/pc_front",
         "05.07/beside_bill", "06.01/behind_captain", "07.01/beside_chairman", "07.01/bike_clerk",
-        "09.01/below_poster_guard", "09.02/below_left_guard", "09.03/above_tea_woman", "10.01/below_fly_woman",
+        "09.01/below_poster_guard", "09.02/below_left_guard", "09.03/above_tea_woman", "10.01/below_fly_woman", "13.03/to_elixir", "13.04/to_key",
         //  Not run on a console: 14.01 (#410) predates this rule. Its quiz machine approaches are held
         //  open routes; tap them (follow-up) and drop these.
         "14.01/below_quiz_1", "14.01/below_quiz_2", "14.01/below_quiz_3", "14.01/below_quiz_4",
         "14.01/below_quiz_5", "14.01/below_quiz_6",
-        //  Not run on a console: 13.03 and 13.04 plan their statue approaches (PRESS_SWITCH, #442); the
-        //  held legs before the A press are for the first console run to tap.
-        "13.03/to_elixir", "13.04/to_key",
     };
     std::string wrong;
     size_t count = 0;
