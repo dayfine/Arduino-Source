@@ -24,9 +24,18 @@
         "action": "a"
       },
       {
+        "id": "to_battle_zone_gate",
+        "kind": "game_action",
+        "why": "step 22: on to the gate's \"A Leave\" until its prompt shows. From the save the street scene ends at the gate (console B, 2026-11-10: no walk then); after the Brigitte battle it ended at the near end of the street, facing the gate (2026-11-13).",
+        "action": "walk_to_prompt",
+        "args": {
+          "timeout_ms": 10000
+        }
+      },
+      {
         "id": "leave_battle_zone",
         "kind": "talk",
-        "why": "step 22: A at the gate's \"A Leave\", where the street scene ends; Taunie's first line ~3.5 s later (console B, 2026-11-10)"
+        "why": "step 22: A at the gate's \"A Leave\" (to_battle_zone_gate walked there); Taunie's first line ~3.5 s later (console B, 2026-11-10)"
       },
       {
         "id": "out_of_battle_zone",
