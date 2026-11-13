@@ -858,24 +858,36 @@ void walk_step_leg(
     check_warp_was_no_battle(console, context, step);
 }
 
-//  A WALK step from `at` (if known): turned first, then its leg.
+//  A WALK step from `from`: turned first, then its leg.
 void walk_hold(
     ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, std::optional<Direction> facing, const std::optional<MapPosition>& at,
+    const RouteStep& step, const StepStart& from,
     const OverworldInterruptSet& interrupts, MoveSpeed speed, PlayerGender player
 ){
     //  Turning first, with a tap, makes the hold start from a standstill
     //  facing the right way: holding through a turn lost a tile on the
     //  console, while holds from a standstill were exact over 15 tiles.
     //  Not on the Bicycle, where the tap is a step.
-    if (turns_first(step, speed, facing)){
+    if (turns_first(step, speed, from.facing)){
         const bool walking = !step.surfing && step_speed(step, speed) != MoveSpeed::BIKE;
-        turn_to(console, context, step.direction, player, walking ? TurnSprite::WALKING : TurnSprite::NOT_READ, at);
+        turn_to(console, context, step.direction, player, walking ? TurnSprite::WALKING : TurnSprite::NOT_READ, from.at);
     }
     if (const std::string note = speed_note(step, speed); !note.empty()){
         console.log(note);
     }
     walk_step_leg(console, context, step, interrupts, speed);
+}
+
+//  After a step that moves: clears what it set off, or a battle on its way
+//  the watch missed.
+void watch_after_step(
+    ConsoleHandle& console, ProControllerContext& context,
+    const RouteStep& step, const OverworldInterruptSet& interrupts
+){
+    const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
+    if (Pokemon::clear_late_interrupts(console, context, watched, step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) == 0){
+        clear_unseen_battle(console, context, interrupts.wild, step);
+    }
 }
 
 } // namespace
@@ -892,8 +904,7 @@ void walk_overworld_route(
     if (!facing){
         facing = read_facing(console, context, player);
     }
-    //  Where the next step starts: unknown for the first (this walker isn't
-    //  given the route's start), then each step's planned end.
+    //  The first step's tile isn't given; then each step's planned end.
     std::optional<MapPosition> at;
     for (const RouteStep& step : route){
         console.log("Route: " + to_string(step));
@@ -901,7 +912,7 @@ void walk_overworld_route(
         check_overworld(console, context, step);
         switch (step.action){
         case RouteAction::WALK:
-            walk_hold(console, context, step, facing, at, interrupts, speed, player);
+            walk_hold(console, context, step, StepStart{facing, at}, interrupts, speed, player);
             break;
         case RouteAction::SURF:
             start_surf(console, context, step.direction, facing == step.direction);
@@ -923,10 +934,7 @@ void walk_overworld_route(
             break;
         }
         if (step.action != RouteAction::FACE && step.action != RouteAction::OPEN_GATE && step.action != RouteAction::PRESS_SWITCH){
-            const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
-            if (Pokemon::clear_late_interrupts(console, context, watched, step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) == 0){
-                clear_unseen_battle(console, context, interrupts.wild, step);
-            }
+            watch_after_step(console, context, step, interrupts);
         }
         facing = step.facing_after;
         at = step.end;

@@ -28,6 +28,13 @@ std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContex
 //  Whether `tile` is in `map`'s first or last column or row.
 bool on_map_edge(const MapData& map, const TilePos& tile);
 
+//  Where a step starts, as far as the route knows: the way the player
+//  faces and the tile they stand on.
+struct StepStart{
+    std::optional<Direction> facing;
+    std::optional<MapPosition> at;
+};
+
 //  The player's sprite while turning: the walking one, which
 //  read_player_facing() knows, or a surfing or biking one, which it doesn't.
 enum class TurnSprite{
