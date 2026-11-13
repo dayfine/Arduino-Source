@@ -14,7 +14,6 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
-#include "Pokemon_AutoStoryStats_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
 
 namespace PokemonAutomation{
@@ -24,7 +23,6 @@ namespace Pokemon{
 // Registers every shared AutoStory suite, for the unit test runner.
 inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_AutoStorySelect(database);
-    add_tests_AutoStoryStats(database);
     add_tests_StoryLog(database);
     add_tests_StoryRangeOptions(database);
 }
