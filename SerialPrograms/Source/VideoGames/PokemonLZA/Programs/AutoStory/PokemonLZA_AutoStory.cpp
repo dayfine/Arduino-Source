@@ -205,6 +205,21 @@ void AutoStory::start_program_border_check(VideoStream& stream, FeedbackType fee
     SingleSwitchProgramInstance::start_program_border_check(stream, feedback_type);
 }
 
+namespace{
+
+//  `run`'s attempts per checkpoint, and the boundary reload `reload_at_boundaries`
+//  picks; logs which.
+StoryRunPolicy run_policy(const Pokemon::StoryRunOptions& run, const BooleanCheckBoxOption& reload_at_boundaries, Logger& logger){
+    if (reload_at_boundaries){
+        logger.log("AutoStory: reloads the save at checkpoint boundaries whose plan asks for it.");
+        return {.attempts_per_checkpoint = run.policy().attempts_per_checkpoint, .boundary_reload = StoryRunPolicy::BoundaryReload::AT_PLAN_BOUNDARIES};
+    }
+    logger.log("AutoStory: runs straight through checkpoint boundaries, no reload.");
+    return {.attempts_per_checkpoint = run.policy().attempts_per_checkpoint, .boundary_reload = StoryRunPolicy::BoundaryReload::STRAIGHT_THROUGH};
+}
+
+} // namespace
+
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     const StoryData story_data = load_run_story(env.console);
     const std::vector<StoryCheckpoint>& rows = story_data.checkpoints;
@@ -240,15 +255,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         return;
     }
     const std::vector<StoryCheckpoint> checkpoints = story_run_rows(rows, first, last);
-    const BoundaryReload boundary_reload = RELOAD_AT_BOUNDARIES ? BoundaryReload::AT_PLAN_BOUNDARIES : BoundaryReload::STRAIGHT_THROUGH;
-    env.console.log(
-        boundary_reload == BoundaryReload::AT_PLAN_BOUNDARIES
-            ? "AutoStory: reloads the save at checkpoint boundaries whose plan asks for it."
-            : "AutoStory: runs straight through checkpoint boundaries, no reload."
-    );
-    const SegmentReport report = run_plza_segment(
-        game, story_data, checkpoints, RUN.policy().attempts_per_checkpoint, boundary_reload, engine, backend, state
-    );
+    const SegmentReport report = run_plza_segment(game, story_data, checkpoints, run_policy(RUN, RELOAD_AT_BOUNDARIES, env.console), engine, backend, state);
     record_story_counts(report.story_counts(), env.current_stats<AutoStoryStats>());
     env.update_stats();
     if (!report.completed){
