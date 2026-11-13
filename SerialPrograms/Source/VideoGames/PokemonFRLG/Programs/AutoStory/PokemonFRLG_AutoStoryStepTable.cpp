@@ -120,10 +120,7 @@ Pokemon::StoryActionSpec level_action_spec(){
 Pokemon::StoryActionSpec mart_action_spec(){
     return {.kind = StoryStepKind::GAME, .name = MART_ACTION, .args = {
         required_arg("map", StoryArgType::WORD, "the Mart's map, for its stock"),
-        required_arg("budget", StoryArgType::INTEGER, "the most the step spends"),
-        absent_arg("floor", StoryArgType::INTEGER, "the least money the player has here, when the money box can't be read"),
         required_arg("items", StoryArgType::ITEMS, "what to buy, in priority order"),
-        absent_arg("cover_hp", StoryArgType::INTEGER, "buy only the first line's shortfall for the bag's Potions and Super Potions to heal this much HP"),
         absent_arg("fill_to", StoryArgType::INTEGER, "buy only what the bag lacks of the first line's item to hold this many"),
     }};
 }
