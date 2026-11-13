@@ -51,6 +51,12 @@ std::string_view cure_of(StatusCondition status){
     return "";
 }
 
+//  A Full Restore (a heal and a cure in one) is used only when it also heals
+//  at least half of max HP; below that a cheap cure or a smaller medicine does.
+bool full_restore_worth_it(const PolicyView& view){
+    return view.max_hp - view.hp >= view.max_hp / 2;
+}
+
 double stage_multiplier(int stage){
     return stage >= 0 ? (2.0 + stage) / 2.0 : 2.0 / (2.0 - stage);
 }
@@ -202,9 +208,12 @@ std::optional<PolicyItem> PolicyState::cure(const Supplies& supplies, const Poli
     const std::string_view own_cure = cure_of(view.status);
     std::vector<std::string_view> candidates;
     if (!own_cure.empty()){
-        candidates = {own_cure, "full-heal", "full-restore"};
+        candidates = {own_cure, "full-heal"};
     }else if (view.status == StatusCondition::OTHER){
-        candidates = {"full-heal", "full-restore"};
+        candidates = {"full-heal"};
+    }
+    if (!candidates.empty() && full_restore_worth_it(view)){
+        candidates.push_back("full-restore");
     }
     for (const std::string_view item : candidates){
         if (bag_count(supplies, item) > 0){
@@ -221,6 +230,9 @@ std::optional<PolicyItem> PolicyState::heal(const Supplies& supplies, const Poli
     const double missing = view.max_hp - view.hp;
     for (const Medicine& medicine : MEDICINES){
         const double gained = std::min(medicine.hp, missing);
+        if (medicine.item == "full-restore" && !full_restore_worth_it(view)){
+            continue;
+        }
         if (bag_count(supplies, medicine.item) > 0 && gained > danger.likely && gained > 0){
             return medicine_item(std::string(medicine.item), std::format(
                 "{}: HP {:.0f}/{:.0f}, a turn's loss up to {:.0f}", medicine.item, view.hp, view.max_hp, danger.max
