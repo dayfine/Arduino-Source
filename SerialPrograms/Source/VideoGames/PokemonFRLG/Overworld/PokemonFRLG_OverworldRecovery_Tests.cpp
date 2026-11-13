@@ -17,9 +17,11 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRecovery.h"
+#include "PokemonFRLG_OverworldRecoveryWalk.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -390,6 +392,133 @@ UnitTestResult test_wall_check(){
     return true;
 }
 
+//  A hall to walk: floor from x=1 to x=7, nothing in it.
+const std::string TEST_HALL_JSON = R"({
+    "name": "Hall", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-12"},
+    "tiles": ["#########", "#.......#", "#########"],
+    "elevation": ["333333333", "333333333", "333333333"],
+    "objects": []
+})";
+
+StepOutcome no_movement(){
+    return StepOutcome{.end = StepEnd::DONE, .walked = std::nullopt, .movement = HoldMovement::NONE};
+}
+
+//  A leg held from a known tile that moved the screen not at all did not
+//  walk (console B, 2026-11-12, 12.03 pallet_shore): it is not taken as
+//  walked, whether open or to a wall, but walked again from where it
+//  started; once more with nothing moved, the route fails. A leg that
+//  moved is walked as before.
+//  A map of 64-pixel tiles, each its own color, seen with the camera
+//  `scroll` pixels down; `banner` paints a town's name banner over the top
+//  left, as the game shows on entering a town.
+ImageRGB32 tile_map(size_t scroll, bool banner){
+    ImageRGB32 image(960, 640);
+    for (size_t y = 0; y < image.height(); y++){
+        for (size_t x = 0; x < image.width(); x++){
+            const uint32_t tile = (uint32_t)(x / 64 * 7 + (y + scroll) / 64 * 13);
+            const bool in_banner = banner && x < 400 && y < 80;
+            image.pixel(x, y) = in_banner ? 0xfff8f8f8 : 0xff000000 | (tile * 0x2f1b3d & 0x00ffffff);
+        }
+    }
+    return image;
+}
+
+//  Pallet Town after a Fly (console B, 2026-11-13 02:42 and 02:46, 12.03):
+//  the first hold walked nothing while the town's banner slid in over the
+//  top of the screen, and was taken as walked ("changed by 223.0"); every
+//  later tile was then 2 rows off. A banner is not a scroll; a step is.
+UnitTestResult test_banner_is_no_scroll(){
+    const ImageFloatBox game(0, 0, 1, 1);
+    const double banner = hold_scroll_change(tile_map(0, false), tile_map(0, true), game);
+    const double step = hold_scroll_change(tile_map(0, false), tile_map(64, false), game);
+    if (banner > HOLD_UNMOVED_RMSD){
+        return std::format("a banner over a still map changed it by {:.1f}, over {:.1f}", banner, HOLD_UNMOVED_RMSD);
+    }
+    if (step <= HOLD_UNMOVED_RMSD){
+        return std::format("a one-tile step changed the map by {:.1f}, not over {:.1f}", step, HOLD_UNMOVED_RMSD);
+    }
+    return true;
+}
+
+UnitTestResult test_unmoved_leg(){
+    const std::vector<MapData> maps{parse_map(TEST_HALL_JSON, "Hall")};
+    RouteStep wall = walk(Direction::EAST, 5, {"Hall", {7, 1}});
+    wall.to_wall = true;
+    const std::vector<RouteStep> legs[] = {
+        {walk(Direction::EAST, 3, {"Hall", {5, 1}})},
+        {wall},
+    };
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = MapPosition{"Hall", {2, 1}}, .label = "Route", .wall_check = WallCheck::SKIP};
+    for (const std::vector<RouteStep>& route : legs){
+        const std::string name = to_string(route[0]);
+        ScriptedRoute once;
+        once.ends[0] = no_movement();
+        if (once.run(route, &planning) || once.walked.size() != 2){
+            return name + ": expected the leg walked a second time after it moved nothing: " + once.failure;
+        }
+        const UnitTestResult logged = expect_logged(once.logs, {"the player never moved", "stopped 0 to 0 tiles in"});
+        if (logged.result != UnitTestResult::PASSED){
+            return name + ": " + logged.message;
+        }
+        ScriptedRoute twice;
+        twice.ends[0] = no_movement();
+        twice.ends[1] = no_movement();
+        if (!twice.run(route, &planning) || twice.failure.find("moved nothing twice in a row") == std::string::npos){
+            return name + ": expected a failure after two holds that moved nothing, got: " + twice.failure;
+        }
+        ScriptedRoute moved;
+        moved.ends[0] = StepOutcome{.end = StepEnd::DONE, .walked = std::nullopt, .movement = HoldMovement::MOVED};
+        if (moved.run(route, &planning) || moved.walked.size() != 1){
+            return name + ": a leg that moved is walked once: " + moved.failure;
+        }
+        ScriptedRoute unmeasured;
+        if (unmeasured.run(route, &planning) || unmeasured.walked.size() != 1){
+            return name + ": a leg not measured is walked once: " + unmeasured.failure;
+        }
+    }
+    return true;
+}
+
+//  A hold that finds the player starts from one of a few tiles. If one of
+//  them stands at its wall, a hold that moved nothing may be a bump right
+//  away and is taken as walked; if none does, it never moved, and as the
+//  tile it was held from isn't known, the route fails.
+UnitTestResult test_unmoved_hold_from_unknown_tile(){
+    const std::vector<MapData> maps{parse_map(TEST_HALL_JSON, "Hall")};
+    const RouteStep open = walk(Direction::EAST, 5, {"Hall", {7, 1}});
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = MapPosition{"Hall", {2, 1}}, .label = "Route", .wall_check = WallCheck::SKIP};
+    struct Case{
+        std::string_view name;
+        WalkedTiles stopped;
+        bool bump;
+    };
+    //  Walked 4 to 5 tiles stops on (6, 1) or (7, 1), the wall's tile; 2 to
+    //  3 on (4, 1) or (5, 1).
+    const Case cases[] = {
+        {.name = "one tile at the wall", .stopped = WalkedTiles{.min = 4, .max = 5}, .bump = true},
+        {.name = "none at the wall", .stopped = WalkedTiles{.min = 2, .max = 3}, .bump = false},
+    };
+    for (const Case& c : cases){
+        ScriptedRoute script;
+        script.ends[0] = stop_part_way(c.stopped);
+        script.ends[1] = no_movement();
+        const bool failed = script.run({open}, &planning);
+        if (script.walked.size() < 2 || !script.walked[1].to_wall){
+            return std::format("{}: expected a hold to a wall after the stop:{}", c.name, describe(script.walked));
+        }
+        if (c.bump){
+            const UnitTestResult logged = expect_logged(script.logs, {"as a bump into the wall it may stand at already"});
+            if (failed || logged.result != UnitTestResult::PASSED){
+                return std::format("{}: expected the hold taken as a bump: {}", c.name, script.failure);
+            }
+        }else if (!failed || script.failure.find("moved nothing") == std::string::npos){
+            return std::format("{}: expected a failure, got: {}", c.name, script.failure);
+        }
+    }
+    return true;
+}
+
 //  The route log lines the games share (Pokemon_RouteLog.h): the plan from
 //  the caller's start under its label, then each leg and how it ended.
 UnitTestResult test_route_logged(){
@@ -409,9 +538,22 @@ UnitTestResult test_route_logged(){
         "[Route] Leg 2/2: west 1 (open) to Corridor (3, 1)",
         "[Route] test walk: west 1 (open): ended at Corridor (3, 1) (walked).",
     };
+    //  The [Leg] records are the replay's; they are checked apart.
+    std::vector<std::string> logs;
+    size_t leg_records = 0;
+    for (const std::string& line : script.logs){
+        if (line.starts_with("[Leg] ")){
+            leg_records++;
+        }else{
+            logs.push_back(line);
+        }
+    }
+    if (leg_records != route.size()){
+        return "Expected one [Leg] record per leg, got " + std::to_string(leg_records) + ".";
+    }
     for (size_t c = 0; c < expected.size(); c++){
-        const std::string got = c < script.logs.size() ? "\"" + script.logs[c] + "\"" : std::string("nothing");
-        if (c >= script.logs.size() || script.logs[c] != expected[c]){
+        const std::string got = c < logs.size() ? "\"" + logs[c] + "\"" : std::string("nothing");
+        if (c >= logs.size() || logs[c] != expected[c]){
             return "Log line " + std::to_string(c) + ": expected \"" + expected[c] + "\", got " + got + ".";
         }
     }
@@ -603,6 +745,18 @@ const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
     {
         .input = {.name = "a leg to a wall ends at it", .body = test_wall_check},
         .expectation = {.description = "validates arrival position at wall terminator"},
+    },
+    {
+        .input = {.name = "a hold that moved nothing", .body = test_unmoved_leg},
+        .expectation = {.description = "a leg whose screen never moved is walked again, then fails; not taken as walked"},
+    },
+    {
+        .input = {.name = "a hold that moved nothing from an unknown tile", .body = test_unmoved_hold_from_unknown_tile},
+        .expectation = {.description = "a bump at the wall it may stand at is walked; no movement from short of it fails"},
+    },
+    {
+        .input = {.name = "a town banner over a hold that moved nothing", .body = test_banner_is_no_scroll},
+        .expectation = {.description = "only a scroll of the whole map reads as moved"},
     },
     {
         .input = {.name = "a leg crosses a trainer's sight", .body = test_trainer_crossing},

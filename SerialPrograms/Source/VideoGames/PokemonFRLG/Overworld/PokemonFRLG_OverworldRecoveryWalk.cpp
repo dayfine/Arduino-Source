@@ -66,6 +66,7 @@ struct StepWalk{
     bool dark = false;
     //  Stopped by a Bicycle tap that didn't move (StepOutcome::blocked).
     bool blocked = false;
+    HoldMovement movement = HoldMovement::UNMEASURED;
 };
 
 } // namespace
@@ -202,7 +203,29 @@ bool on_dark_cave(ConsoleHandle& console){
     return screen && dark_cave_screen(*screen.frame);
 }
 
-//  One WALK step: turned first when it should, then its hold, and the warp it ends on.
+//  Whether the map scrolled between the shot before a hold and now, once
+//  the hold's first tile has had its time (`first_tile` after `hold_start`;
+//  a one-tile open leg is let go half-way through its step).
+HoldMovement measure_movement(
+    ConsoleHandle& console, ProControllerContext& context,
+    const VideoSnapshot& before, Milliseconds first_tile, WallClock hold_start
+){
+    const Milliseconds since_start = std::chrono::duration_cast<Milliseconds>(current_time() - hold_start);
+    if (since_start < first_tile + TURN_SETTLE){
+        context.wait_for(first_tile + TURN_SETTLE - since_start);
+    }
+    context.wait_for_all_requests();
+    const VideoSnapshot after = console.video().snapshot();
+    if (!before || !after){
+        return HoldMovement::UNMEASURED;
+    }
+    const double change = hold_scroll_change(*before.frame, *after.frame, GameSettings::instance().GAME_BOX);
+    console.log(std::format("Position check: the screen changed by {:.1f} over the hold.", change));
+    return change > HOLD_UNMOVED_RMSD ? HoldMovement::MOVED : HoldMovement::NONE;
+}
+
+//  One WALK step: turned first when it should, then its hold, and the warp
+//  it ends on; for a hold not onto a warp, whether the screen moved.
 StepWalk walk_hold_step(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, const StepStart& from,
@@ -232,14 +255,15 @@ StepWalk walk_hold_step(
         out.stopped = logged_stop_tiles(console, step, out.dark, walked_near(step, result.tiles, tile_time(step, speed)));
         return out;
     }
-    if (step.warps){
-        wait_out_warp(console, context, step, fade, before);
-        static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
-        if (run_from_battle_after_warp(console, context)){
-            console.log("Route: a wild battle, not the warp to " + step.end.map + "; the player is on " + to_string(step) + " before the warp.", COLOR_ORANGE);
-            out.stopped = walked_before_warp(step);
-            return out;
-        }
+    if (!step.warps){
+        out.movement = measure_movement(console, context, before, tile_time(step, speed), out.hold_start);
+        return out;
+    }
+    wait_out_warp(console, context, step, fade, before);
+    static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
+    if (run_from_battle_after_warp(console, context)){
+        console.log("Route: a wild battle, not the warp to " + step.end.map + "; the player is on " + to_string(step) + " before the warp.", COLOR_ORANGE);
+        out.stopped = walked_before_warp(step);
     }
     return out;
 }
@@ -350,6 +374,7 @@ StepOutcome walk_and_watch(
     if (step.action == RouteAction::FACE || step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH){
         return StepOutcome{};
     }
+    const HoldMovement movement = walked.movement;
     const Milliseconds watch = step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH;
     const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
     size_t late = Pokemon::clear_late_interrupts(console, context, watched, watch, MAX_INTERRUPTIONS_PER_LEG);
@@ -359,7 +384,7 @@ StepOutcome walk_and_watch(
     //  After a warp it was checked for already.
     const bool done = late == 0 || step.warps || step.action != RouteAction::WALK;
     if (done){
-        return StepOutcome{};
+        return StepOutcome{.end = StepEnd::DONE, .walked = std::nullopt, .movement = movement};
     }
     std::optional<WalkedTiles> placed = recorder.place(console, step, tile_time(step, speed), walked.hold_start);
     if (walked.dark && step.action == RouteAction::WALK && !step.to_wall){
@@ -535,6 +560,18 @@ RouteCalls console_route_calls(
 }
 
 } // namespace
+
+double hold_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game){
+    //  The top and bottom quarters, clear of the player in the middle. A
+    //  scroll moves both; a town's banner (top) or water (either) only one.
+    const double h = game.height * 0.25;
+    const ImageFloatBox top(game.x, game.y, game.width, h);
+    const ImageFloatBox bottom(game.x, game.y + game.height - h, game.width, h);
+    return std::min(
+        ImageMatch::pixel_RMSD(extract_box_reference(before, top), extract_box_reference(after, top)),
+        ImageMatch::pixel_RMSD(extract_box_reference(before, bottom), extract_box_reference(after, bottom))
+    );
+}
 
 void walk_overworld_route_with_recovery(
     ConsoleHandle& console, ProControllerContext& context,

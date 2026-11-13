@@ -330,7 +330,8 @@ UnitTestResult test_battle_on_warp_leg(){
 
 //  cp0007-zy (console B, 2026-11-01): with the START menu still open, three
 //  legs to walls in Viridian Forest "walked" without the player moving.
-//  The walker now stops before the first.
+//  The walker now stops before the first; with that check off, it measures
+//  that the screen never moved and fails on the first leg.
 UnitTestResult test_start_menu_open(){
     SimCase c{.start = at("ViridianForest", 42, 44), .facing = Direction::NORTH, .goal = at("ViridianForest", 39, 25)};
     c.script.start_menu_open = true;
@@ -341,8 +342,8 @@ UnitTestResult test_start_menu_open(){
     SimCase unchecked = c;
     unchecked.rules.check_overworld = false;
     const SimRun old = run_case(unchecked);
-    if (!old.failure.empty() || !(old.state.position == c.start)){
-        return "Expected the walk to claim the route done without moving, with the check off:" + describe(old);
+    if (old.failure.find("moved nothing") == std::string::npos || !(old.state.position == c.start)){
+        return "Expected a failure for a leg that moved nothing, with the check off:" + describe(old);
     }
     return true;
 }

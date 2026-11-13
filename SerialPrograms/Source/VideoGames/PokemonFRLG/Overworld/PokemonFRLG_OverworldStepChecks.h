@@ -33,15 +33,25 @@ enum class StepEnd{
     BATTLE_BEFORE,
 };
 
+//  Whether the screen moved while a step's hold ran, as the walker saw it.
+enum class HoldMovement{
+    UNMEASURED,     //  not measured: not a plain walk, or no screen to compare
+    MOVED,          //  the map scrolled: at least one tile was walked
+    NONE,           //  the map did not move at all
+};
+
 //  How a step ended, and for an open leg STOPPED part-way, how many of its
 //  tiles the timing of the stop says the player walked. Not set: anywhere
-//  on the leg.
+//  on the leg. `movement` is for a DONE walk: a hold that moved nothing is
+//  not trusted to have reached its end (run_route() judges it against the
+//  tiles the plan expected).
 struct StepOutcome{
     StepEnd end = StepEnd::DONE;
     std::optional<WalkedTiles> walked;
     //  STOPPED by a Bicycle tap that didn't move the player: the tile
     //  ahead of where they stand is blocked (count_bike_taps()).
     bool blocked = false;
+    HoldMovement movement = HoldMovement::UNMEASURED;
 };
 
 //  Whether, after each leg to a wall, the walker taps once more toward the
