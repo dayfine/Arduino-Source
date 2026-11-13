@@ -119,8 +119,11 @@ public:
     virtual void press(const RouteInput& input) override{
         expect(describe(input));
     }
-    virtual bool dialog_within(Milliseconds wait, Color) override{
-        return expect(std::format("dialog within {} ms", wait.count())).answer;
+    virtual RouteSight sight_within(const RouteWatch& watch) override{
+        if (!watch.dialog){
+            return {};
+        }
+        return {.dialog = expect(std::format("dialog within {} ms", watch.wait.count())).answer};
     }
     virtual bool holding_against_wall(Direction direction, const std::string&) override{
         return expect(std::string("holding ") + Pokemon::direction_name(direction)).answer;

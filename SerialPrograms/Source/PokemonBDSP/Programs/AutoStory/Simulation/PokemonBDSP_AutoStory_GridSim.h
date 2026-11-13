@@ -304,7 +304,7 @@ public:
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override;
     virtual WalkResult walk_taps(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual void press(const RouteInput& input) override;
-    virtual bool dialog_within(Milliseconds wait, Color color) override;
+    virtual RouteSight sight_within(const RouteWatch& watch) override;
     virtual bool holding_against_wall(Pokemon::Direction direction, const std::string& label) override;
     virtual void look(const std::function<void(const ImageViewRGB32& screen)>& at) override;
     virtual void note(const std::string& text, RouteNote kind) override;

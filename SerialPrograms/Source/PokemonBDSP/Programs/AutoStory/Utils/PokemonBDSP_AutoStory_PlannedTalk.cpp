@@ -49,7 +49,7 @@ void talk_to_npc(
             side == Direction::EAST ? Direction::WEST : Direction::EAST;
         turn(io, face);
         io.press(press_a(RouteInputEnd::DONE));
-        if (io.dialog_within(2000ms, COLOR_CYAN)){
+        if (dialog_within(io, 2000ms, COLOR_CYAN)){
             io.note(talk.label + ": talking from " + describe(maps, stand) + ".", RouteNote::STATUS);
             return;
         }

@@ -82,8 +82,10 @@ public:
         m_frozen = false;
         GridSimRouteIO::press(input);
     }
-    virtual bool dialog_within(Milliseconds wait, Color color) override{
-        return !m_frozen && GridSimRouteIO::dialog_within(wait, color);
+    virtual RouteSight sight_within(const RouteWatch& watch) override{
+        RouteSight sight = GridSimRouteIO::sight_within(watch);
+        sight.dialog = sight.dialog && !m_frozen;
+        return sight;
     }
 
 private:
