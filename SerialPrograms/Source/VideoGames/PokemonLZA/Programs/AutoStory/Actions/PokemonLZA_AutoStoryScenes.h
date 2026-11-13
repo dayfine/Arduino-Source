@@ -52,13 +52,20 @@ bool tutorial_card_shows(const ImageViewRGB32& frame);
 
 //  The new game's opening, as recorded 2026-11-08 on console B, with the
 //  player's choices (PokemonLZA_AutoStoryIntro.h has each one's presses).
-//  None of it reads the screen yet: each waits a fixed time for its screen,
-//  logs every press, and saves the screen's frame (DebugDumps) for the
-//  detectors to be built from.
+//  Each logs every press and saves its screen's frame (DebugDumps) for the
+//  detectors to be built from. Only the language list's is built: the look
+//  picker and the keyboard wait a fixed time for their screens.
 
-//  At the title screen with no save: A into the language list, DOWN to
-//  `language`'s entry (the list's order is Scarlet/Violet's: to be
-//  confirmed), A. Throws UserSetupError for a language the list lacks.
+//  01.00's first step. It starts on the Switch HOME screen with the game's
+//  tile highlighted and no save, the game open or closed: closes the game
+//  so the launch is fresh, starts it (start_game_from_home(): the user
+//  select and the online license check), waits 5 s, then up to 90 s for
+//  the language list (a new game has no title screen). Started on the
+//  language list itself, it skips the launch. Then moves the list's
+//  highlight to `language`'s entry, reading it after each press, and
+//  presses A. Throws UserSetupError for a language the list lacks or any
+//  other starting screen, OperationFailedException if the list does not
+//  show or the highlight does not get there.
 void new_game_language(ConsoleHandle& console, ProControllerContext& context, Language language);
 
 //  On the look picker, whose highlight starts at random: UP and LEFT x3 to
