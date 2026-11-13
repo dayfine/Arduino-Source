@@ -721,6 +721,10 @@ private:
         plan.insert(plan.end(), m_plan.begin() + m_next + 1, m_plan.end());
         m_plan = std::move(plan);
         m_walked.reset();
+        //  The plan's first step starts on one of the tiles this stop left
+        //  the player on, not on those of an earlier recovery: a hold of
+        //  it that moves nothing is judged from these (expected_tiles()).
+        m_hold_from = m_walk_on_starts.empty() ? std::vector<MapPosition>() : m_walk_on_starts[0];
         m_holds = (resume.rest.tiles > 0 ? 1 : 0) + resume.steps;
         m_unchecked = m_holds;
         m_next = 0;

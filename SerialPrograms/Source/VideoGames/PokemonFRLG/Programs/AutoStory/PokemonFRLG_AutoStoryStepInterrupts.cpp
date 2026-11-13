@@ -5,8 +5,14 @@
  */
 
 #include <format>
+#include <memory>
 #include <utility>
 #include "Common/Cpp/Color.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
+#include "Common/Cpp/PrettyPrint.h"
+#include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
@@ -120,6 +126,22 @@ Pokemon::ScreenSettle wait_for_quiet_overworld(
     return settle;
 }
 
+
+void InterruptLogGuard::on_failure(const Pokemon::StoryStep& step, const OperationFailedException& error){
+    const OperationFailedExceptionWithScreenshot* shot = dynamic_cast<const OperationFailedExceptionWithScreenshot*>(&error);
+    const std::shared_ptr<const ImageRGB32> frame = shot == nullptr ? nullptr : shot->screenshot();
+    if (!frame || !*frame){
+        m_logger.log(std::format("Story: {} failed with no frame to save.", step.name), COLOR_ORANGE);
+        return;
+    }
+    Filesystem::create_directories(Filesystem::Path(m_failures_folder));
+    const std::string path = std::format("{}{}-{}.png", m_failures_folder, now_to_filestring(), step.name);
+    if (frame->save(path)){
+        m_logger.log(std::format("Failure screenshot: {}", path), COLOR_RED);
+    }else{
+        m_logger.log(std::format("Story: the failure's frame didn't save to {}", path), COLOR_RED);
+    }
+}
 
 void InterruptLogGuard::on_interrupt(const Pokemon::StoryStep& step, const Pokemon::InterruptCheck& check){
     const bool cleared = check.outcome.succeeded();

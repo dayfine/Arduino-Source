@@ -11,6 +11,7 @@
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
+#include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -25,6 +26,7 @@
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_OverworldWalkWatches.h"
 #include "PokemonFRLG_OverworldWalkGates.h"
 #include "PokemonFRLG_OverworldBike.h"
 #include "PokemonFRLG_BikeSpinMechanics.h"
@@ -106,6 +108,9 @@ public:
         return 400ms;
     }
     virtual void clear(ConsoleHandle& console, ProControllerContext& context) const override{
+        if (const VideoSnapshot frame = console.video().snapshot()){
+            save_leg_interrupt_frame(console.logger(), frame, name());
+        }
         WhiteDialogOverWatcher closed(COLOR_RED);
         context.wait_for_all_requests();
         const int ret = run_until<ProControllerContext>(
@@ -740,6 +745,19 @@ void press_switch(ConsoleHandle& console, ProControllerContext& context, Directi
 }
 
 } // namespace OverworldWalkSteps
+
+
+std::string save_leg_interrupt_frame(Logger& logger, const ImageViewRGB32& frame, const std::string& interrupt){
+    if (!frame){
+        return "";
+    }
+    std::string label = "interrupt-";
+    for (char c : interrupt){
+        const bool keep = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
+        label += keep ? c : '_';
+    }
+    return dump_debug_image(logger, "AutoStory/route", label, frame);
+}
 
 
 
