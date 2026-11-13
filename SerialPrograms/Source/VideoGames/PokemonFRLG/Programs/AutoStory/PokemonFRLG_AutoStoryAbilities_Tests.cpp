@@ -208,6 +208,10 @@ public:
     virtual bool next_member() override{ return true; }
     virtual bool leave_summary() override{ return true; }
     virtual bool open_member_menu(size_t slot) override{ m_menu = slot; return true; }
+    virtual std::optional<PartyMemberMenu> read_member_menu() override{
+        return PartyMemberMenu{.field_moves = {"surf"}};
+    }
+    virtual bool close_member_menu() override{ return true; }
     virtual void close() override{}
 
     size_t m_opens = 0;
@@ -241,7 +245,7 @@ UnitTestResult test_teach_records_fly_user(){
     party.invalidate_species();
     CountingScreens screens;
     size_t flights = 0;
-    const std::string failure = use_field_move(logger, screens, party, "surf", "squirtle", [&flights]{
+    const std::string failure = use_field_move(logger, screens, party, "surf", "squirtle", [&flights](size_t){
         flights++;
         return std::string();
     });

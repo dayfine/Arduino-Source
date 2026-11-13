@@ -132,7 +132,7 @@ std::optional<std::string> use_recorded_member(
     }
     logger.log(std::format("Party: the {} uses {} from slot {} (recorded).", user.species, move, user.slot + 1));
     if (user.slot < members && screens.open_member_menu(user.slot)){
-        std::string failure = from_menu();
+        std::string failure = from_menu(1);
         if (failure.empty()){
             return failure;
         }
@@ -160,7 +160,7 @@ std::string use_field_move(
         return FIELD_MOVE_NO_MEMBER;
     }
     cache.users().record(std::string(move), *slot, std::string(species));
-    return from_menu();
+    return from_menu(1);
 }
 
 

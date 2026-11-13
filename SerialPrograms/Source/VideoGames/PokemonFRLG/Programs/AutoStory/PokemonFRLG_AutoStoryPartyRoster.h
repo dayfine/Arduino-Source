@@ -18,6 +18,12 @@
  *  lookup of a species in it opens the party once and goes straight to the
  *  slot, with no summary read.
  *
+ *  A field move's user is found without a summary: A on a member opens its
+ *  menu, which lists its field moves in blue under SUMMARY
+ *  (PartyMemberMenuReader). The scan opens the party once, walks the cursor
+ *  down it, and stops at the first member whose menu lists the move; that
+ *  menu is where the move is picked.
+ *
  */
 
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryPartyRoster_H
@@ -31,6 +37,7 @@
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMemberMenuReader.h"
 #include "PokemonFRLG_AutoStoryFieldMoveUsers.h"
 
 namespace PokemonAutomation{
@@ -78,8 +85,14 @@ public:
     //  Back out of the summary to the party menu: the member's menu is
     //  open. False if it didn't show.
     virtual bool leave_summary() = 0;
-    //  From the party menu on the lead: slot `slot`'s menu opened.
+    //  From the party menu, the cursor where open_party(), the summary or
+    //  the last member's menu left it: slot `slot`'s menu opened.
     virtual bool open_member_menu(size_t slot) = 0;
+    //  The member's menu now open, as read; nothing if it isn't read.
+    virtual std::optional<PartyMemberMenu> read_member_menu() = 0;
+    //  B on the member's menu: back to the party menu, the cursor on the
+    //  member. False if the menu didn't close.
+    virtual bool close_member_menu() = 0;
     //  Back to the overworld from wherever the party menu is.
     virtual void close() = 0;
 };
@@ -97,18 +110,23 @@ std::optional<size_t> open_member_menu_of(
 );
 
 
-//  What use_field_move() returns when no member reads as the species.
+//  What use_field_move() returns when no member's menu lists the move.
 inline const std::string FIELD_MOVE_NO_MEMBER = "no_member";
-//  Runs the move from the member's menu; its failure, or empty.
-using FieldMoveFromMenu = std::function<std::string()>;
-//  The field move `move` used by the first member read as `species`: the
-//  party is opened, the member's menu is chosen, and `from_menu` (the
-//  console's FLY row and map) runs from it. Returns its failure, empty on
-//  success, or FIELD_MOVE_NO_MEMBER if no member reads as `species`. With a
-//  record in the cache's users for `move` and `species`, the slot is chosen
-//  without reading a summary; if the menu there fails (no such row, a
-//  different member), the party is closed, the record dropped, and the scan
-//  finds the member and records it again. A scan records what it finds.
+//  What it returns when a member's menu isn't read, or lists a field move
+//  whose name isn't read: the move may be there, so nothing is picked.
+inline const std::string FIELD_MOVE_MENU_UNREAD = "menu_unread";
+//  Runs the move from the member's menu, its row there (SUMMARY is 0)
+//  given; its failure, or empty.
+using FieldMoveFromMenu = std::function<std::string(size_t row)>;
+//  The field move `move` (a slug, "fly") used by the first member whose
+//  menu lists it: the party is opened once, the members' menus are opened
+//  down the party until one lists `move`, and `from_menu` (the console's
+//  FLY row and map) runs from that menu. No summary is read. Returns its
+//  failure, empty on success, FIELD_MOVE_NO_MEMBER if no menu lists the
+//  move, or FIELD_MOVE_MENU_UNREAD. With a record in the cache's users for
+//  `move`, that slot's menu is opened first and the scan runs only if it
+//  doesn't list the move (the record is dropped then). What is found is
+//  recorded, with `species` (the step's name for the user) as its species.
 std::string use_field_move(
     Logger& logger, PartyScreens& screens, PartyCache& cache,
     std::string_view move, std::string_view species, const FieldMoveFromMenu& from_menu
