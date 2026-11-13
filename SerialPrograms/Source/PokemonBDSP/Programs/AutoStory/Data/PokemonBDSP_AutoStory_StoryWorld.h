@@ -60,9 +60,7 @@ public:
         PERSON,
         BLOCKED,
     };
-    //  Recovery also excludes wandering areas and declared warps.
-    enum class OccupancyUse{ MOVEMENT, WALL_RECOVERY };
-    Occupant occupied(const Pokemon::TilePos& pos, OccupancyUse use = OccupancyUse::MOVEMENT) const;
+    Occupant occupied(const Pokemon::TilePos& pos) const;
 
     //  Blocks a tile found in the way on the console. Tiles off the maps
     //  are left alone.
