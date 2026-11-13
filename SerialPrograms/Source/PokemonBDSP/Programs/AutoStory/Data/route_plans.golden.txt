@@ -293,14 +293,11 @@ anchor); 0 from one start tile.
   4. south 3 (open) -> Route 203 (55, 9)
   totals: 4 legs, 3 turns, 2 open, 0 localization
 
-== 01.02 west_of_the_hikers_trigger (costs: route)
+== 01.02 into_the_hikers_scene (costs: into_scene)
   from: OreburghGate (4, 22) (5, 22) facing east (set)
-  target: OreburghGate (6, 22) facing east (tile)
+  target: OreburghGate (4, 22) (5, 22) facing east (set)
   start candidates: OreburghGate (4, 22), OreburghGate (5, 22)
-  1. south 1 (to wall) -> OreburghGate (4, 23), OreburghGate (5, 23)
-  2. east 2 (to wall) -> OreburghGate (6, 23)
-  3. north 1 (open) -> OreburghGate (6, 22)
-  totals: 3 legs, 2 turns, 1 open, 2 localization
+  totals: 0 legs, 0 turns, 0 open, 0 localization
 
 == 01.02 past_curtis (costs: exit)
   from: OreburghGate (7, 22) facing east (tile)
@@ -316,15 +313,11 @@ anchor); 0 from one start tile.
   1. east 6 (open) -> OreburghGate (26, 22)
   totals: 1 legs, 0 turns, 1 open, 0 localization
 
-== 01.02 west_of_the_welcome (costs: route)
+== 01.02 into_the_welcome_scene (costs: into_scene)
   from: OreburghCity (2, 13) (3, 13) facing east (set)
-  target: OreburghCity (9, 13) facing east (tile)
+  target: OreburghCity (2, 13) (3, 13) facing east (set)
   start candidates: Oreburgh City (2, 13), Oreburgh City (3, 13)
-  1. north 3 (to wall) -> Oreburgh City (2, 10), Oreburgh City (3, 10)
-  2. east 4 (to wall) -> Oreburgh City (6, 10)
-  3. south 3 (open) -> Oreburgh City (6, 13)
-  4. east 3 (open) -> Oreburgh City (9, 13)
-  totals: 4 legs, 3 turns, 2 open, 2 localization
+  totals: 0 legs, 0 turns, 0 open, 0 localization
 
 == 01.02b below_the_centers_door (costs: town)
   from: OreburghCity (26, 22) facing north (tile)
