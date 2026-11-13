@@ -326,6 +326,13 @@ void add_tests_PlayerFacingReader(UnitTestDatabase& database){
     database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/CeruleanCave_North.png");
     database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Surfing_None.png");
     database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Bag_None.png");
+    //  Fuchsia's Center (0, 5), after the turn tap east and before it, facing
+    //  south: the escalator's rail is drawn over the legs and half the face
+    //  (console B, 2026-11-13 00:39, 12.03). Too little shows to tell the
+    //  way from the head alone (the cap matches every sprite), so these read
+    //  nothing; they must never read a wrong way.
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/FuchsiaCenterEscalatorEast_None.png");
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/FuchsiaCenterEscalatorSouth_None.png");
 }
 
 

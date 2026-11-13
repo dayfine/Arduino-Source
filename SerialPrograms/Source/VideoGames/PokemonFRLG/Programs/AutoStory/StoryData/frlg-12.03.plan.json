@@ -7,18 +7,11 @@
     "start": {"map": "FuchsiaCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
     "events": [
       {
-        "id": "center_northwest_corner",
-        "kind": "legs",
-        "action": "run",
-        "args": {"legs": [{"direction": "west", "tiles": 7}, {"direction": "north", "tiles": 2}]},
-        "why": "from the nurse to the Center's wall west (0, 4) and up to the wall (0, 2), as 12.01 does: legs to walls, so the walk out starts from a known tile even if the Center script left the player a tile off the nurse"
-      },
-      {
         "id": "outside_fuchsia_center",
         "kind": "route",
         "action": "run",
         "args": {"target": {"map": "FuchsiaCity", "tiles": [[25, 32]], "facing": "south"}},
-        "why": "out of the Center's door onto Fuchsia City, where Fly works"
+        "why": "from the nurse straight south 5 to the Center's door warp (7, 9), held until the warp: the door is the position fix, so no walk to a wall corner first (user, 2026-11-13: the old way west to (0, 5) turned east beside the escalator, whose rail hides the player's legs and the facing read failed); out onto Fuchsia City, where Fly works"
       },
       {
         "id": "fly_pallet",

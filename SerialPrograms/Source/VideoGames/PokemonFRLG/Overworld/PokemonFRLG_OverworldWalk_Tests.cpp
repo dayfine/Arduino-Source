@@ -346,6 +346,43 @@ public:
     }
 };
 
+//  Console B, 2026-11-13 00:39 (12.03): on Fuchsia's Center (0, 5) the
+//  escalator's rail hides the player's legs, the facing can't be read after
+//  the turn tap east, and the leg failed. turn_to() takes the tap as turned
+//  on a map's edge tile, where the route knows the player stands, and fails
+//  the leg elsewhere.
+class Test_OverworldTurnOnMapEdge : public UnitTest{
+public:
+    Test_OverworldTurnOnMapEdge()
+        : UnitTest("PokemonFRLG::OverworldWalk - turn tap unread on a map's edge tile")
+    {}
+
+    virtual UnitTestResult run(Logger& logger, CancellableScope& scope) const override{
+        const MapData center = load_map("FuchsiaCity_PokemonCenter_1F");
+        struct Case{
+            TilePos tile;
+            bool edge;
+        };
+        const Case cases[] = {
+            {{0, 5}, true},
+            {{0, 2}, true},
+            {{center.tiles.width - 1, 5}, true},
+            {{7, center.tiles.height - 1}, true},
+            {{7, 4}, false},
+            {{7, 5}, false},
+            {{1, 5}, false},
+            {{-1, 5}, false},
+            {{center.tiles.width, 5}, false},
+        };
+        for (const Case& test : cases){
+            if (on_map_edge(center, test.tile) != test.edge){
+                return std::format("({}, {}) on Fuchsia's Center: expected {}.", test.tile.x, test.tile.y, test.edge ? "an edge tile" : "not an edge tile");
+            }
+        }
+        return true;
+    }
+};
+
 void add_tests_OverworldWalk(UnitTestDatabase& database){
     for (const auto& scenario : OVERWORLD_WALK_CASES){
         database.add<Test_OverworldWalk>(scenario);
@@ -357,6 +394,7 @@ void add_tests_OverworldWalk(UnitTestDatabase& database){
         database.add<Test_OverworldTapMechanics>(item);
     }
     database.add<Test_OverworldUnseenStepTap>();
+    database.add<Test_OverworldTurnOnMapEdge>();
 }
 
 

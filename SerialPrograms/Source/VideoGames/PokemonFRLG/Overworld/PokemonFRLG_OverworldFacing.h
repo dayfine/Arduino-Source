@@ -12,6 +12,7 @@
 #include <optional>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "PokemonFRLG_OverworldRouteSteps.h"
 #include "PokemonFRLG_OverworldTiles.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
 
@@ -23,6 +24,16 @@ namespace OverworldWalkSteps{
 //  The way `player` faces, read from the screen with their sprites; nothing
 //  if it can't be read.
 std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContext& context, PlayerGender player);
+
+//  Whether `tile` is in `map`'s first or last column or row.
+bool on_map_edge(const MapData& map, const TilePos& tile);
+
+//  The player's sprite while turning: the walking one, which
+//  read_player_facing() knows, or a surfing or biking one, which it doesn't.
+enum class TurnSprite{
+    WALKING,
+    NOT_READ,
+};
 
 //  Turns `player` to `direction` with a tap (TURN_TAP), then reads the
 //  facing from the screen and taps again while it shows another way, up to
@@ -36,11 +47,14 @@ std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContex
 //  way already would take a step: the leg fails, with the screenshot, as
 //  the player isn't settled and their place is unknown (a re-anchor finds
 //  it).
-//  `walking` is false while surfing or biking, whose sprites aren't read:
-//  the facing then can't be read, and is taken as turned after a few reads.
+//  Two exceptions take the tap as turned. A NOT_READ sprite's facing
+//  can't be read at all. And `at`, where the route knows the player turns,
+//  on its map's edge tile: a tile drawn over the player can hide the sprite
+//  there (Fuchsia's Center (0, 5), the escalator's rail over the legs;
+//  console B, 2026-11-13 00:39, 12.03). Without `at` the leg fails.
 void turn_to(
     ConsoleHandle& console, ProControllerContext& context, Direction direction, PlayerGender player,
-    bool walking = true
+    TurnSprite sprite, const std::optional<MapPosition>& at
 );
 
 } // namespace OverworldWalkSteps
