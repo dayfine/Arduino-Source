@@ -117,7 +117,7 @@ UnitTestResult check_gym_slide(const TilePos& from, const TilePos& end, Directio
     }
     const std::optional<SpinSlide> slide = spin_slide(*gym, PlayerState{from, ELEVATION_GROUND, false});
     if (!slide){
-        return "No slide from " + to_string(from) + ".";
+        return std::format("No slide from {}.", to_string(from));
     }
     if (!(slide->end.position == end) || slide->facing != facing || slide->tiles != tiles){
         return std::format(
