@@ -21,11 +21,14 @@ namespace{
 
 //  `row` with a save appended at its end, where the next checkpoint starts:
 //  in BDSP rows normally save at their start, so a run that stops after
-//  00.01 for Starter RNG makes 00.02's Lakefront save before stopping.
-StoryCheckpoint with_handoff_save(StoryCheckpoint row){
+//  00.01 for Starter RNG makes 00.02's Lakefront save before stopping. As
+//  every start save does, it checks that the save card names `saves_in`
+//  (the next row's), and stops the program if not.
+StoryCheckpoint with_handoff_save(StoryCheckpoint row, const std::string& saves_in){
     Pokemon::StoryStep save;
     save.kind = Pokemon::StoryStepKind::SAVE;
     save.name = "save_for_starter_rng";
+    save.action = saves_in;
     save.why = "the save at the Verity Lakefront where Starter RNG starts";
     if (!row.steps.empty()){
         const Pokemon::StoryStep& last = row.steps.back();
@@ -73,7 +76,8 @@ StoryRunPlan plan_story_run(
     for (size_t c = first; c <= last && c < checkpoints.size(); c++){
         const StoryCheckpoint& row = checkpoints[c];
         if (row.id == STARTER_RNG_HANDOFF_ROW && handoffs.starter_rng && !handoffs.run_starter_rng){
-            plan.rows.push_back(with_handoff_save(row));
+            const std::string saves_in = c + 1 < checkpoints.size() ? checkpoints[c + 1].saves_in : std::string();
+            plan.rows.push_back(with_handoff_save(row, saves_in));
             plan.stop = StoryHandoff::STARTER_RNG;
             return plan;
         }

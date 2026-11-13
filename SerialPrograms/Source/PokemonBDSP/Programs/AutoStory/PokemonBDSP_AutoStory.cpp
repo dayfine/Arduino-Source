@@ -9,6 +9,7 @@
 #include <format>
 #include <optional>
 #include <set>
+#include <string_view>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
@@ -68,6 +69,14 @@ BdspStarter bdsp_starter_for_choice(StarterChoice choice){
 
 
 namespace{
+
+//  What the user does around Starter RNG when the run stops for it: the
+//  option's help and the run's closing message.
+constexpr std::string_view STARTER_RNG_HANDOFF_TEXT =
+    "At the end of 00.01 save at the Verity Lakefront (17, 14), facing Lake Verity's entrance, and stop. "
+    "Run the Starter RNG program from that save (Start point: Verity Lakefront). "
+    "When it is done, close the Summary page and the menu, let Rowan's scene finish so the player stands "
+    "on the Verity Lakefront overworld, save, and start AutoStory at 00.03.";
 
 //  The start and end dropdowns' entries: segments 00 and 01 joined, 00.00
 //  to 01.11. The options hold a reference to it.
@@ -160,9 +169,7 @@ BDSPAutoStory::BDSPAutoStory()
         StarterChoice::CHIMCHAR
     )
     , STOP_FOR_STARTER_RNG(
-        "<b>Stop for Starter RNG:</b><br>Off by default. At the end of 00.01, save at the Verity Lakefront (17, 14) "
-        "facing Lake Verity's entrance and stop, where the Starter RNG program starts (Start point: Verity Lakefront). "
-        "After Starter RNG, let Rowan's scene finish out of the lake, save at the Verity Lakefront, and start AutoStory at 00.03.",
+        std::format("<b>Stop for Starter RNG:</b><br>Off by default. {}", STARTER_RNG_HANDOFF_TEXT),
         LockMode::LOCK_WHILE_RUNNING,
         false
     )
@@ -364,6 +371,9 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     if (new_game && RUN.VERIFY.policy()){
         throw UserSetupError(env.console, "Verify mode reloads the start's save between runs: turn off \"Start a new game first\".");
     }
+    if (plan.stop != StoryHandoff::NONE && RUN.VERIFY.policy()){
+        throw UserSetupError(env.console, "Verify mode repeats the start's checkpoint, and its extra save at the end of 00.01 would overwrite the Verity Lakefront save: turn off \"Stop for Starter RNG\".");
+    }
     std::set<std::string> saved = saved_before_the_run(plan.rows, 0, start);
     Pokemon::Segment segment = make_story_segment(plan.rows, executor, saved);
     Pokemon::StoryGameHooks game = story_game(env, context);
@@ -378,10 +388,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
         Pokemon::SegmentRange{plan.rows.front().id, plan.rows.back().id}, RUN.policy(), segment, game, state, env
     );
     if (plan.stop == StoryHandoff::STARTER_RNG){
-        const std::string handoff =
-            "Stopped for Starter RNG: saved at the Verity Lakefront (17, 14), facing Lake Verity's entrance. "
-            "Run Starter RNG now (Start point: Verity Lakefront). "
-            "After Starter RNG, let Rowan's scene finish out of the lake, save at the Verity Lakefront, and start AutoStory at 00.03.";
+        const std::string handoff = std::format("Stopped for Starter RNG. {}", STARTER_RNG_HANDOFF_TEXT);
         env.log(handoff, COLOR_BLUE);
         send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH, handoff);
         return;

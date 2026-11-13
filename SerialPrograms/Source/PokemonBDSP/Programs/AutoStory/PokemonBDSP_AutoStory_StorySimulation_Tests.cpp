@@ -458,10 +458,11 @@ UnitTestResult test_start_and_end(Logger&){
     if (!handoff_report.completed || plan.stop != StoryHandoff::STARTER_RNG ||
         handoff_sim.begun() != std::vector<std::string>{"00.00", "00.01"} ||
         handoff_sim.count("00.01/save_for_starter_rng") != 1 ||
+        handoff_sim.count("card for 00.01: Verity Lakefront") != 1 ||
         handoff_state.pose.map != "VerityLakefront" ||
         Pokemon::tiles_of(handoff_state.pose) != std::vector<TilePos>{{17, 14}}
     ){
-        return "Expected Starter RNG handoff to stop after 00.01 saved at VerityLakefront (17, 14):" + joined(handoff_sim.trace);
+        return std::format("Expected Starter RNG handoff to stop after 00.01 saved at VerityLakefront (17, 14), checking the Verity Lakefront card:{}", joined(handoff_sim.trace));
     }
     //  With Run Starter RNG in AutoStory on, 00.02 saves at the Verity
     //  Lakefront, runs 00.02/starter_rng, and chains into 00.03 and on.
