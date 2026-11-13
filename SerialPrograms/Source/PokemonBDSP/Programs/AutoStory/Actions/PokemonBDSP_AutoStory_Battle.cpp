@@ -17,6 +17,7 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -356,17 +357,32 @@ int wait_for_battle_screen(
     );
 }
 
+//  An intro that told nobody: the frames it read (none when the battle's
+//  dialog never showed) and the screen now, for the next fix.
+void dump_unread_intro(VideoStream& stream, const BattleIntroWatcher& intro, const std::string& label){
+    const std::vector<ImageRGB32> frames = intro.frames_read();
+    for (size_t i = 0; i < frames.size(); i++){
+        dump_debug_image(stream.logger(), "PokemonBDSP/AutoStory/BattleIntro", std::format("unread-read{}", i), frames[i]);
+    }
+    const VideoSnapshot now = stream.video().snapshot();
+    if (now){
+        dump_debug_image(stream.logger(), "PokemonBDSP/AutoStory/BattleIntro", "unread-now", *now.frame);
+    }
+    stream.log(std::format("[{}] The intro was not read: {} read frame(s) and the screen now are in DebugDumps.",
+        label, frames.size()), COLOR_ORANGE);
+}
+
 //  The battle's opening transition, 5 s as it always was. A trainer's battle
 //  starts with "You are challenged by ...": it is read while it shows, before
 //  anything presses through it.
 BattleOpponent wait_out_battle_start(VideoStream& stream, ProControllerContext& context, const BestMoveBattle& battle, const std::string& label){
     constexpr Milliseconds TRANSITION = 5000ms;
-    if (battle.battle_type != BattleType::TRAINER || !story_reads_text()){
+    if (battle.battle_type != BattleType::TRAINER || !battle_intro_reads(story_language())){
         pbf_wait(context, TRANSITION);
         return BattleOpponent::UNREAD;
     }
     context.wait_for_all_requests();
-    BattleIntroWatcher intro;
+    BattleIntroWatcher intro(story_language());
     const WallClock start = current_time();
     wait_until(stream, context, TRANSITION, {{intro}});
     const Milliseconds elapsed = std::chrono::duration_cast<Milliseconds>(current_time() - start);
@@ -374,8 +390,11 @@ BattleOpponent wait_out_battle_start(VideoStream& stream, ProControllerContext& 
         pbf_wait(context, TRANSITION - elapsed);
     }
     const BattleOpponent opponent = intro.verdict();
-    stream.log(std::format("[{}] The battle's intro text read \"{}\": the opponent is {}.",
+    stream.log(std::format("[{}] The battle's intro text read \"{}\"; opponent: {}.",
         label, intro.last_text(), battle_opponent_name(opponent)));
+    if (opponent == BattleOpponent::UNREAD){
+        dump_unread_intro(stream, intro, label);
+    }
     return opponent;
 }
 
