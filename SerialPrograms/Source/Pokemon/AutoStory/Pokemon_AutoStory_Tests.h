@@ -12,13 +12,14 @@
 #define PokemonAutomation_Pokemon_AutoStory_Tests_H
 
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
-#include "Pokemon_AutoStorySelect_Tests.h"
 #include "Data/Pokemon_AuthoredCheckpointJson_Tests.h"
 #include "Data/Pokemon_StoryStepJson_Tests.h"
+#include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
+#include "Pokemon_AutoStorySelect_Tests.h"
 #include "Pokemon_AutoStoryStats_Tests.h"
 #include "Pokemon_StoryEvents_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
+#include "Pokemon_StorySavePolicy_Tests.h"
 #include "Pokemon_StorySegments_Tests.h"
 #include "Pokemon_StoryStepExecutor_Tests.h"
 #include "Types/Pokemon_StoryActionArg_Tests.h"
@@ -39,6 +40,7 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryStepJson(database);
     add_tests_StoryActionArg(database);
     add_tests_AuthoredCheckpointJson(database);
+    add_tests_StorySavePolicy(database);
 }
 
 

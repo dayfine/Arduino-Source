@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 #include "Pokemon_GridPose.h"
+#include "Pokemon_StoryPostconditions.h"
 #include "Pokemon_StoryStep.h"
 
 namespace PokemonAutomation{
@@ -28,6 +29,8 @@ struct StoryCheckpoint{
     //  Where its starting save leaves the player; none for a new game.
     std::optional<GridPose> start;
     std::vector<StoryStep> steps;
+    //  What must hold when it is done; checked on its own after a run.
+    StoryPostconditions postconditions;
 };
 
 
