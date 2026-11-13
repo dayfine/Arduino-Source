@@ -3,7 +3,7 @@
   "game": "frlg",
   "checkpoint": {
     "id": "12.03",
-    "title": "Fuchsia to Cinnabar: Fly to Pallet Town, Surf down Route 21, ashore by the Center's wall",
+    "title": "Fuchsia to Cinnabar: Fly to Pallet Town, Surf down Route 21, ashore to the Mansion door",
     "start": {"map": "FuchsiaCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
     "events": [
       {
@@ -77,7 +77,7 @@
         "kind": "route",
         "action": "run",
         "args": {"target": {"map": "Route21_South", "tiles": [[7, 25]], "facing": "south"}},
-        "why": "west along row 3 to the wall at (5, 3), south to (5, 8), round the rocks to (6, 5), then down column 6 until the player lands on the middle sand bar (5..11, 21..25) at (6, 21), and over it to its south bank (7, 25): column 6 and the bank are out of Swimmer Roland's sight (he wanders (8..12, 27..31) and sees 4 tiles each way) and Swimmer Jack's ((15, 24) looks 3 tiles along row 24); the small sand bar (7..11, 7..10) is passed, since column 10 down to it crosses Swimmer Spencer's line"
+        "why": "west along row 3 to the wall at (5, 3), a tile back east onto column 6, which has no wall of its own up there (a tile can't stop part-way, so it needs none: 12.03 run 7, console B 2026-11-13 13:31, went south 5, west 1, north 3 and east 2 round the rocks to a wall on column 6 instead), then down column 6 until the player lands on the middle sand bar (5..11, 21..25) at (6, 21), and over it to its south bank (7, 25): column 6 and the bank are out of Swimmer Roland's sight (he wanders (8..12, 27..31) and sees 4 tiles each way) and Swimmer Jack's ((15, 24) looks 3 tiles along row 24); the small sand bar (7..11, 7..10) is passed, since column 10 down to it crosses Swimmer Spencer's line"
       },
       {
         "id": "surf_off_middle_sand_bar",
@@ -92,7 +92,7 @@
         "kind": "route",
         "action": "run",
         "args": {"target": {"map": "Route21_South", "tiles": [[8, 39]], "facing": "south"}},
-        "why": "south down column 7 to the rock at (7, 33), then on to the south sand bar (6..11, 36..39) and its south bank (8, 39). Swimmer Roland wanders (8..12, 27..31) and sees 4 tiles each way, across every way from the middle sand bar south: he is fought on this leg, and the leg is planned again from where the battle leaves the player and ends on the bar, so the hold after it lands"
+        "why": "south down column 7 to the rock at (7, 33), a tile east, then on to the south sand bar (6..11, 36..39) and its south bank (8, 39). Swimmer Roland wanders (8..12, 27..31) and sees 4 tiles each way, across every way from the middle sand bar south: he is fought on this leg, and the leg is planned again from where the battle leaves the player and ends on the bar, so the hold after it lands"
       },
       {
         "id": "surf_off_south_sand_bar",
@@ -122,6 +122,13 @@
         "action": "run",
         "args": {"target": {"map": "CinnabarIsland", "tiles": [[16, 7]], "facing": "south"}},
         "why": "down column 16 to the Center's wall at (16, 7), east of the woman's walk (13..15, 6): a hold to a wall, where an open hold south 3 to row 5 could end on row 4 or 6 and send the hold east after it along the wrong row. The roof's eave hides the player's legs there (turn_to() takes the turn as turned)"
+      },
+      {
+        "id": "mansion_door",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "CinnabarIsland", "tiles": [[8, 4]], "facing": "north"}},
+        "why": "from the Center's wall, north 3 and west 8 along row 4 to below the Mansion door (8, 3), clear of (20, 5), the locked Gym door's trigger: the end 13.01 starts from, a place to know the save by. No wall ends a leg on (8, 4): the door between the walls (7, 3) and (9, 3) is the only one, and a hold north there goes in. So the legs from (16, 7), the last tile both of whose row and column a wall fixed, are open, 3 and 8 tiles on dry land with no wild step; a tile off on row 4, 13.01's first press north meets a wall instead of the door"
       }
     ]
   },
@@ -131,14 +138,14 @@
       "checkpoint": [
         "Starts at Fuchsia's nurse, facing her, where 12.02b ends healed. Out of the Center on foot (Fly works outdoors only), Fly to Pallet Town, then Surf (HM03, taught to the lead in 12.01) down Route 21 onto Cinnabar Island: pokeguy's way after Koga (1:18:59 to 1:19:23), with the Mansion (13.01) next and Blaine after it. No Seafoam Islands (user, 2026-11-12, design section 12). Route 21 is two maps (Route21_North, Route21_South) between Pallet Town and Cinnabar.",
         "Route 21's water has wild encounters (Tentacool, Tentacruel) and its swimmers and tuber see one or four ways a tile or more: the planner keeps off their lines where the water allows. A trainer that does see the player is fought with the normal battle code. No heal at Cinnabar's Center: the lead is healthy enough for the Mansion (user, 2026-11-13).",
-        "Ends on Cinnabar Island at the Center's wall (16, 7), facing south: found by two holds to walls (east to column 16, south down it), the first tile after landing whose row and column are both certain. 13.01 starts there. Not east along row 5: (20, 5), below the Gym's door, is a trigger while the Gym is locked (pokefirered CinnabarIsland coord_events, VAR_TEMP_1 until the SECRET KEY in 13.04): \"The door is locked...\" and the player is walked a tile south (console B 2026-11-13 13:06, run 6)."
+        "Ends on Cinnabar Island below the Pokemon Mansion's door, (8, 4) facing north (user, 2026-11-13: a spot to know the save by), from the Center's wall (16, 7), found by two holds to walls (east to column 16, south down it), the first tile after landing whose row and column are both certain, north 3 and west 8. 13.01 starts there and goes in. Not east along row 5: (20, 5), below the Gym's door, is a trigger while the Gym is locked (pokefirered CinnabarIsland coord_events, VAR_TEMP_1 until the SECRET KEY in 13.04): \"The door is locked...\" and the player is walked a tile south (console B 2026-11-13 13:06, run 6)."
       ]
     }
   },
   "metadata": {
     "phase": "testing",
     "postconditions": {
-      "position": {"map": "CinnabarIsland", "tiles": [[16, 7]], "facing": "south"}
+      "position": {"map": "CinnabarIsland", "tiles": [[8, 4]], "facing": "north"}
     }
   }
 }

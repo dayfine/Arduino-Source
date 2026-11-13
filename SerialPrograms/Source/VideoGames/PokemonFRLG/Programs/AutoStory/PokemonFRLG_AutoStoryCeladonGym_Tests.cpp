@@ -121,7 +121,7 @@ std::string fought(const OverworldSim& sim){
 
 //  12.03 on a sim from Fuchsia's nurse: out of the Center, the Fly to
 //  Pallet Town, the shore, the Surf onto Route 21 and the way south over it
-//  to Cinnabar's Center wall (16, 7), where it ends. No trainer is met and
+//  to Cinnabar, and on to below the Mansion's door (8, 4), where it ends. No trainer is met and
 //  no rule is broken.
 UnitTestResult test_fuchsia_to_cinnabar(){
     const StoryCheckpoint& row = checkpoint("12.03");
@@ -135,9 +135,9 @@ UnitTestResult test_fuchsia_to_cinnabar(){
             return std::format("12.03: ended on {}; {}", to_string(sim.state().position), failure);
         }
     }
-    const MapPosition center_wall{"CinnabarIsland", {16, 7}};
-    if (!(sim.state().position == center_wall)){
-        return std::format("12.03: ended on {}, not at Cinnabar's Center wall {}.", to_string(sim.state().position), to_string(center_wall));
+    const MapPosition mansion_door{"CinnabarIsland", {8, 4}};
+    if (!(sim.state().position == mansion_door)){
+        return std::format("12.03: ended on {}, not below the Mansion's door {}.", to_string(sim.state().position), to_string(mansion_door));
     }
     //  Swimmer Roland, who wanders Route21_South's (8..12, 27..31) and sees 4
     //  tiles each way, is in the way of every crossing from sand bar to sand

@@ -4,14 +4,13 @@
  *
  *  Row 12.03's water (StoryData/frlg-12.03.plan.json) on the overworld sim:
  *  each leg on Route 21's water lands on a sand bar, an island or the shore
- *  and ends at its bank, or at a wall, never on open water, where a stop
- *  part-way can't be placed (console B, 2026-11-13 04:15, 06:55 and 07:02).
+ *  and ends at its bank, or at a wall, or goes a single tile, never further
+ *  on open water, where a stop part-way can't be placed (console B, 2026-11-13 04:15, 06:55 and 07:02).
  *  The faults seen there are injected at every step on the water.
  *
  */
 
 #include <algorithm>
-#include <cstdlib>
 #include <format>
 #include <optional>
 #include <string>
@@ -38,8 +37,8 @@ namespace PokemonFRLG{
 
 namespace{
 
-//  Where 12.03 ends: the wall of Cinnabar's Center, (16, 7).
-const MapPosition CINNABAR_CENTER_WALL{"CinnabarIsland", {16, 7}};
+//  Where 12.03 ends: below the Pokemon Mansion's door, (8, 4).
+const MapPosition MANSION_DOOR{"CinnabarIsland", {8, 4}};
 
 const StoryCheckpoint& row_12_03(){
     const std::vector<StoryCheckpoint>& rows = story_checkpoints();
@@ -60,9 +59,10 @@ StoryPose one_tile(const Pokemon::GridPose& grid_pose){
 }
 
 //  A leg on the water that ends where the player can be found again: at a
-//  wall (the bank of a sand bar it lands on, or the map's edge) or a warp.
+//  wall (the bank of a sand bar it lands on, or the map's edge) or a warp,
+//  or a tile on, which can't stop part-way.
 bool ends_found(const RouteStep& step){
-    return step.action != RouteAction::WALK || !step.surfing || step.to_wall || step.warps;
+    return step.action != RouteAction::WALK || !step.surfing || step.to_wall || step.warps || step.tiles == 1;
 }
 
 //  What a 12.03 run on the sim did: its failure (empty if none), where it
@@ -75,25 +75,32 @@ struct SurfRun{
     std::vector<int> surf_holds;
     std::vector<std::string> open_water_legs;
     std::vector<std::string> trainers;
-    //  The ROUTE steps whose legs walk back more than a tile.
+    //  The ROUTE steps that walk back the way they came.
     std::vector<std::string> back_tracks;
 };
 
-//  How many tiles `route` walks back along one axis: what it walks north and
-//  south (or east and west) beyond its net way there, halved. A hold to a
-//  wall and a tile back, a common way to place the player, walks back one.
-int tiles_walked_back(const std::vector<RouteStep>& route){
-    int along[4] = {};
+Direction opposite(Direction direction){
+    return (Direction)(((int)direction + 2) % 4);
+}
+
+//  The first leg of `route` that walks back against an earlier leg's way,
+//  other than the one tile off a wall a hold just ended at, the way to
+//  start a leg on a column or row with no wall of its own. Nothing if none.
+std::optional<RouteStep> walks_back(const std::vector<RouteStep>& route){
+    bool walked[4] = {};
+    const RouteStep* before = nullptr;
     for (const RouteStep& step : route){
-        if (step.action == RouteAction::WALK){
-            along[(int)step.direction] += step.tiles;
+        if (step.action != RouteAction::WALK){
+            continue;
         }
+        const bool off_wall = step.tiles == 1 && before != nullptr && before->to_wall;
+        if (walked[(int)opposite(step.direction)] && !off_wall){
+            return step;
+        }
+        walked[(int)step.direction] = true;
+        before = &step;
     }
-    const int north_south = along[(int)Direction::NORTH] + along[(int)Direction::SOUTH];
-    const int east_west = along[(int)Direction::EAST] + along[(int)Direction::WEST];
-    const int net_y = std::abs(along[(int)Direction::NORTH] - along[(int)Direction::SOUTH]);
-    const int net_x = std::abs(along[(int)Direction::EAST] - along[(int)Direction::WEST]);
-    return std::max(north_south - net_y, east_west - net_x) / 2;
+    return std::nullopt;
 }
 
 std::string joined(const std::vector<std::string>& lines){
@@ -104,8 +111,22 @@ std::string joined(const std::vector<std::string>& lines){
     return text;
 }
 
-//  12.03 on a sim with `script`, from Fuchsia's nurse to the Center's
-//  wall on Cinnabar, as test_fuchsia_to_cinnabar() runs it. Each ROUTE
+//  Adds to `back_tracks` the leg of `route`, ROUTE step `name`'s, that walks
+//  back (walks_back()), if any.
+void note_walk_back(const std::string& name, const std::vector<RouteStep>& route, std::vector<std::string>& back_tracks){
+    const std::optional<RouteStep> back = walks_back(route);
+    if (!back){
+        return;
+    }
+    std::string legs;
+    for (const RouteStep& planned : route){
+        legs += std::format("; {}", to_string(planned));
+    }
+    back_tracks.push_back(std::format("{}: {}, in{}", name, to_string(*back), legs));
+}
+
+//  12.03 on a sim with `script`, from Fuchsia's nurse to the Mansion's
+//  door on Cinnabar, as test_fuchsia_to_cinnabar() runs it. Each ROUTE
 //  step is also planned from where the sim stands, for its water legs.
 SurfRun run_12_03(SimScript script = {}){
     const StoryCheckpoint& row = row_12_03();
@@ -127,12 +148,8 @@ SurfRun run_12_03(SimScript script = {}){
                     run.open_water_legs.push_back(step.name + ": " + to_string(planned));
                 }
             }
-            if (route && tiles_walked_back(*route) > 1){
-                std::string legs;
-                for (const RouteStep& planned : *route){
-                    legs += "; " + to_string(planned);
-                }
-                run.back_tracks.push_back(std::format("{}: back {} tiles{}", step.name, tiles_walked_back(*route), legs));
+            if (route){
+                note_walk_back(step.name, *route, run.back_tracks);
             }
         }
         run.failure = row_step_on_sim(sim, at, step, row.id);
@@ -174,7 +191,8 @@ UnitTestResult test_no_open_water_legs(){
     return true;
 }
 
-//  No ROUTE step of 12.03 walks back over its own way by more than a tile.
+//  No ROUTE step of 12.03 walks back the way it came, but for a tile off a
+//  wall it was held to.
 //  Before, land_middle_sand_bar went south 5, west 1, north 3 and east 2,
 //  a loop, to start its hold down column 6 from a wall (12.03 run 7,
 //  console B 2026-11-13 13:31), and land_south_sand_bar went east 11 and
@@ -184,17 +202,17 @@ UnitTestResult test_no_open_water_legs(){
 UnitTestResult test_no_back_tracking(){
     const SurfRun run = run_12_03();
     if (!run.failure.empty()){
-        return "12.03 failed on the sim: " + run.failure;
+        return std::format("12.03 failed on the sim: {}", run.failure);
     }
     if (!run.back_tracks.empty()){
-        return "12.03 plans legs that walk back:" + joined(run.back_tracks);
+        return std::format("12.03 plans legs that walk back:{}", joined(run.back_tracks));
     }
     return true;
 }
 
 //  A message stops the hold after every step on the water in turn, as
 //  "a message" did 8 tiles into "south 15 (open)" (console B, 2026-11-13
-//  06:55 and 07:02): each run still ends at Cinnabar's Center wall, the
+//  06:55 and 07:02): each run still ends below the Mansion's door, the
 //  leg held on to its bank after the message.
 UnitTestResult test_message_at_every_surf_step(){
     const SurfRun clean = run_12_03();
@@ -206,7 +224,7 @@ UnitTestResult test_message_at_every_surf_step(){
         SimScript script;
         script.messages_at_surf_steps = {step};
         const SurfRun run = run_12_03(std::move(script));
-        if (!run.failure.empty() || !(run.end == CINNABAR_CENTER_WALL)){
+        if (!run.failure.empty() || !(run.end == MANSION_DOOR)){
             failed.push_back(std::format(
                 "message after surfed step {}: ended on {}{}", step, to_string(run.end),
                 run.failure.empty() ? "" : "; " + run.failure
@@ -221,7 +239,7 @@ UnitTestResult test_message_at_every_surf_step(){
 
 //  A hold on the water that stops short with nothing seen, as "south 86
 //  (open)" did (console B, 2026-11-13 04:15), at each in turn: the run
-//  ends at Cinnabar's Center wall, or fails (a leg that lands checks the
+//  ends below the Mansion's door, or fails (a leg that lands checks the
 //  player is on foot); it never goes on from where it wrongly takes the
 //  player to be and ends elsewhere.
 UnitTestResult test_short_hold_never_goes_on_from_a_guess(){
@@ -237,7 +255,7 @@ UnitTestResult test_short_hold_never_goes_on_from_a_guess(){
         SimScript script;
         script.short_holds = {{hold, 3}};
         const SurfRun run = run_12_03(std::move(script));
-        if (run.failure.empty() && !(run.end == CINNABAR_CENTER_WALL)){
+        if (run.failure.empty() && !(run.end == MANSION_DOOR)){
             wrong.push_back(std::format("hold {} 3 tiles short: passed, ended on {}", hold, to_string(run.end)));
         }
         if (run.failure.find("trainer") != std::string::npos || run.failure.find("violation") != std::string::npos){
@@ -327,15 +345,15 @@ const SurfCase SURF_CASES[] = {
     },
     {
         .input = {.name = "12.03's routes go straight", .body = test_no_back_tracking},
-        .expectation = {.description = "no route step walks back more than a tile"},
+        .expectation = {.description = "no route step walks back, but a tile off a wall"},
     },
     {
         .input = {.name = "12.03 with a message after each step on the water", .body = test_message_at_every_surf_step},
-        .expectation = {.description = "every run ends at Cinnabar's Center wall"},
+        .expectation = {.description = "every run ends below the Mansion's door"},
     },
     {
         .input = {.name = "12.03 with a hold stopped short, unseen", .body = test_short_hold_never_goes_on_from_a_guess},
-        .expectation = {.description = "each run ends at the Center wall or fails, never elsewhere"},
+        .expectation = {.description = "each run ends below the Mansion's door or fails, never elsewhere"},
     },
 };
 
