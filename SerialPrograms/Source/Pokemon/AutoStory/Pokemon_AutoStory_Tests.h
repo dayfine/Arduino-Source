@@ -20,6 +20,7 @@
 #include "Pokemon_ScreenEvents_Tests.h"
 #include "Pokemon_StoryEvents_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
+#include "Pokemon_StorySavePolicy_Tests.h"
 #include "Pokemon_StorySegments_Tests.h"
 #include "Pokemon_StoryStepExecutor_Tests.h"
 #include "Types/Pokemon_StoryActionArg_Tests.h"
@@ -41,6 +42,7 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryActionArg(database);
     add_tests_AuthoredCheckpointJson(database);
     add_tests_ScreenEvents(database);
+    add_tests_StorySavePolicy(database);
 }
 
 

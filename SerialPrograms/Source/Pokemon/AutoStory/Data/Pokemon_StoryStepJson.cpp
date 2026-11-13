@@ -280,6 +280,36 @@ StoryActionArgs read_args(
 }
 
 
+JsonValue postconditions_json(const StoryPostconditions& postconditions){
+    JsonObject result;
+    if (postconditions.position){
+        result["position"] = grid_pose_json(*postconditions.position);
+    }
+    if (!postconditions.items.empty()){
+        result["items"] = items_json(postconditions.items);
+    }
+    if (!postconditions.flags.empty()){
+        result["flags"] = strings_json(postconditions.flags);
+    }
+    return result;
+}
+
+StoryPostconditions read_postconditions(const JsonValue& value, std::string_view source){
+    const JsonObject& root = fields(value, {"position", "items", "flags"}, source);
+    StoryPostconditions result;
+    if (const JsonValue* field = root.get_value("position")){
+        result.position = read_grid_pose(*field, source);
+    }
+    if (const JsonValue* field = root.get_value("items")){
+        result.items = read_items(*field, source);
+    }
+    if (const JsonValue* field = root.get_value("flags")){
+        result.flags = read_strings(*field, source);
+    }
+    return result;
+}
+
+
 } // namespace
 
 
@@ -366,11 +396,14 @@ JsonValue story_checkpoint_json(const StoryCheckpoint& checkpoint){
         events.push_back(story_step_json(step));
     }
     result["events"] = std::move(events);
+    if (checkpoint.postconditions != StoryPostconditions{}){
+        result["postconditions"] = postconditions_json(checkpoint.postconditions);
+    }
     return result;
 }
 
 StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view source, std::span<const StoryActionSpec> actions){
-    const JsonObject& root = fields(value, {"id", "title", "start", "events"}, source);
+    const JsonObject& root = fields(value, {"id", "title", "start", "events", "postconditions"}, source);
     StoryCheckpoint result;
     result.id = root.get_string_throw("id");
     if (result.id.empty()){
@@ -387,6 +420,9 @@ StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view s
             throw ParseException("Empty or duplicate story event id.");
         }
         result.steps.push_back(std::move(step));
+    }
+    if (const JsonValue* postconditions = root.get_value("postconditions")){
+        result.postconditions = read_postconditions(*postconditions, source);
     }
     return result;
 }
