@@ -50,6 +50,11 @@ public:
 
     virtual void program(SingleSwitchProgramEnvironment& env, ProControllerContext& context) override;
 
+    //  The start frame's black border check, except for a start checkpoint
+    //  that launches the game (story_row_launches_game()): the launch checks
+    //  the border on HOME instead.
+    virtual void start_program_border_check(VideoStream& stream, FeedbackType feedback_type) override;
+
 private:
     //  The new game's choices; with `check`, throws UserSetupError for ones the
     //  intro cannot play.

@@ -24,6 +24,7 @@
 #include "Actions/PokemonLZA_AutoStoryIntro.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
+#include "PokemonLZA_AutoStoryTable.h"
 #include "PokemonLZA_AutoStory.h"
 
 namespace PokemonAutomation{
@@ -151,6 +152,16 @@ NewGameChoices AutoStory::new_game_choices(ConsoleHandle& console, bool check) c
         throw UserSetupError(console, problem);
     }
     return choices;
+}
+
+void AutoStory::start_program_border_check(VideoStream& stream, FeedbackType feedback_type){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const size_t first = RUN.start_index();
+    if (first < rows.size() && story_row_launches_game(rows[first])){
+        stream.log(std::format("AutoStory: {} launches the game; the black border check waits for HOME.", rows[first].id));
+        return;
+    }
+    SingleSwitchProgramInstance::start_program_border_check(stream, feedback_type);
 }
 
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
