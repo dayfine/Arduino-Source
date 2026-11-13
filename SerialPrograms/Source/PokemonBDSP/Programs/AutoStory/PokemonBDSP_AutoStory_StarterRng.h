@@ -57,7 +57,6 @@ public:
     PlayerModelOption& player_model(){ return PLAYER_MODEL; }
     SimpleIntegerOption<uint16_t>& max_resets(){ return MAX_RESETS; }
     BdspRngFilterTable& filters(){ return FILTERS; }
-    const BdspRngFilterTable& filters() const{ return FILTERS; }
     EventNotificationOption& notification_shiny(){ return NOTIFICATION_SHINY; }
 
 private:

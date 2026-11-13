@@ -114,7 +114,7 @@ namespace{
 //  edits made while running do not apply, and the aim that Starter RNG's
 //  calibration builds up across them.
 struct StarterRngHookState{
-    StarterRngHookState(const StoryStarterRngOptions& options, const StoryStarterRngConfig& config)
+    StarterRngHookState(StoryStarterRngOptions& options, const StoryStarterRngConfig& config)
         : filters(options.filters().make_snapshot())
         , settings(make_starter_rng_settings(config, filters))
     {}
