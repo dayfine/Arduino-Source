@@ -131,7 +131,8 @@ std::string lab_state_text(const LabState& state){
         "program=" + state.program + "\n" +
         "controller=" + state.controller + "\n" +
         "owner=" + state.owner + "\n" +
-        "error=" + state.error + "\n";
+        "error=" + state.error + "\n" +
+        "paused=" + state.paused + "\n";
 }
 
 
