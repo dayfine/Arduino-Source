@@ -17,7 +17,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Rows 17.01 to 17.04b and Viridian Gym's spinner tiles, on the overworld sim (PokemonFRLG_AutoStoryViridian_Tests.cpp).
+//  Rows 17.02 to 17.04b and Viridian Gym's spinner tiles, on the overworld sim (PokemonFRLG_AutoStoryViridian_Tests.cpp).
 void add_tests_AutoStoryViridian(UnitTestDatabase& database);
 
 

@@ -17,7 +17,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-//  The stored plan lines from segment 12 on, after FRLG_PLAN_GOLDEN_11's.
+//  The stored plan lines of segment 12 (12.01 to 12.03, Fuchsia to Cinnabar), after FRLG_PLAN_GOLDEN_11's.
 inline constexpr std::string_view FRLG_PLAN_GOLDEN_12[] = {
     "12.01 face_center_door from FuchsiaCity (25, 32) facing south to FuchsiaCity (25, 32) facing north",
     "12.01   face north -> FuchsiaCity (25, 32)",
@@ -91,6 +91,33 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN_12[] = {
     "12.03   walk south 3 (to wall) -> FuchsiaCity_PokemonCenter_1F (0, 5) [walk only]",
     "12.03   walk east 7 -> FuchsiaCity_PokemonCenter_1F (7, 5) [walk only]",
     "12.03   walk south 4 (warp) -> FuchsiaCity (25, 32) [walk only]",
+    "12.03 pallet_shore from PalletTown (6, 8) facing south to PalletTown (8, 16) facing south",
+    "12.03   walk south 2 (to wall) -> PalletTown (6, 10)",
+    "12.03   walk east 4 -> PalletTown (10, 10)",
+    "12.03   walk south 6 (to wall) -> PalletTown (10, 16)",
+    "12.03   walk west 2 -> PalletTown (8, 16)",
+    "12.03   face south -> PalletTown (8, 16)",
+    "12.03 surf_route_21 from PalletTown (8, 17) facing south to CinnabarIsland (14, 12) facing north",
+    "12.03   walk south 29 -> Route21_North (8, 26) [surfing] [wild] [connection 3]",
+    "12.03   walk south 1 -> Route21_North (8, 27) [surfing] [wild]",
+    "12.03   surf north -> Route21_North (8, 26) [wild]",
+    "12.03   walk east 5 -> Route21_North (13, 26) [surfing] [wild]",
+    "12.03   walk east 1 -> Route21_North (14, 26) [surfing] [wild]",
+    "12.03   surf west -> Route21_North (13, 26) [wild]",
+    "12.03   walk south 68 -> Route21_South (13, 44) [surfing] [wild] [connection 24]",
+    "12.03   walk south 1 -> Route21_South (13, 45) [surfing] [wild]",
+    "12.03   walk south 10 -> CinnabarIsland (13, 5) [connection 5]",
+    "12.03   walk east 8 (to wall) -> CinnabarIsland (21, 5)",
+    "12.03   walk south 7 -> CinnabarIsland (21, 12)",
+    "12.03   walk west 7 -> CinnabarIsland (14, 12)",
+    "12.03   face north -> CinnabarIsland (14, 12)",
+};
+
+//  The stored plan lines of Erika's rows, 14.03 to 14.04b, after the rows of Blaine's
+//  (14.01 to 14.02b) in the story's order.
+inline constexpr std::string_view FRLG_PLAN_GOLDEN_12_CELADON[] = {
+    "14.03 cinnabar_outside from CinnabarIsland_PokemonCenter_1F (7, 4) facing north to CinnabarIsland (14, 12) facing south",
+    "14.03   walk south 5 (warp) -> CinnabarIsland (14, 12) [walk only]",
     "14.03 above_gym_tree from CeladonCity (48, 12) facing south to CeladonCity (40, 34) facing south",
     "14.03   walk west 7 -> CeladonCity (41, 12)",
     "14.03   walk south 13 (to wall) -> CeladonCity (41, 25)",

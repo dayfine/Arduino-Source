@@ -146,10 +146,11 @@ constexpr std::string_view MAP_NAMES[] = {
     //  Route 7's east gate, where the guard takes the TEA, and Saffron City.
     "Route7_EastEntrance",
     "SaffronCity",
-    //  Cinnabar Island's Center and Blaine's gym, through its quiz doors.
+    //  Cinnabar Island's Center and Blaine's gym, through its quiz doors, and
+    //  Route 21 north of it to Pallet Town (12.03).
     "CinnabarIsland",
     "CinnabarIsland_Gym",
-    //  Pallet Town south over Route 21 to Cinnabar, and Viridian Gym with its
+    //  Route 21 from Pallet Town south to Cinnabar (12.03), and Viridian Gym with its
     //  spinner tiles (the map file's glyphs: PokemonFRLG_OverworldSpin.h).
     "Route21_North",
     "Route21_South",
@@ -211,7 +212,7 @@ void add_unmapped_centers(std::vector<MapData>& maps){
 //  shore (7..10, 16) the way onto Route 21's water goes by. A planned route
 //  never crosses a wanderer's box, so none would reach the water. He stands on
 //  his own tile (13, 17) in the planner's model: east of the shore, off the
-//  way; a person in the way on the console is waited out (17.01).
+//  way; a person in the way on the console is waited out (12.03).
 void waive_pallet_fat_man_box(MapData& map){
     if (map.name != "PalletTown"){
         return;
