@@ -201,30 +201,35 @@ enum class Dose{ HEALED, GIVEN, NONE_LEFT };
 
 //  One Potion on the lead, from the overworld, its HP read before and after
 //  in the Bag. HEALED when no dose is needed (HP full, or above
-//  `heal_below` on the first look, or no Potion when only checking) or the
+//  `heal_below` on the first look) or the
 //  dose filled it; GIVEN when HP rose but is not full yet.
 Dose potion_dose(VideoStream& stream, ProControllerContext& context, size_t dose, double heal_below){
-    stream.log("[Potion] Finding Bag/Medicine/Potion; dose " + std::to_string(dose + 1) + "/3.");
-    if (!find_bag_item_by_name(stream, context, "potion", 1, 5)){
+    stream.log("[Potion] Opening the Bag; dose " + std::to_string(dose + 1) + "/3.");
+    //  The lead's HP shows as soon as the Bag opens: read it before the
+    //  pocket is walked and the list scanned for a Potion nobody needs.
+    open_menu(stream, context, MenuCursorPosition::BAG, 5);
+    pbf_wait(context, 1000ms);
+    const double before = confirmed_potion_hp(stream, context);
+    stream.log("[Potion] Slot 1 HP bar before use=" + std::to_string(before * 100) + "%.");
+    switch (potion_need(before, dose, heal_below)){
+    case PotionNeed::FULL:
+        return Dose::HEALED;
+    case PotionNeed::ENOUGH:
+        stream.log("[Potion] Slot 1 HP is at least " + std::to_string(heal_below * 100) + "%; no Potion needed.");
+        return Dose::HEALED;
+    case PotionNeed::FAINTED:
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            "Potion: Slot 1 appears fainted; a Potion cannot revive it.",
+            stream);
+    case PotionNeed::NEEDED:
+        break;
+    }
+    if (!find_bag_item_in_open_bag(stream, context, "potion", 1)){
         // No Potion left is not a failure: the next Center heals. After Roark
         // the one Potion went on the first dose and the second found the
         // Medicine pocket empty (lab-B, 2026-11-08 15:26).
         stream.log("[Potion] No Potion left in the Bag after " + std::to_string(dose) + " dose(s); going on.", COLOR_ORANGE);
         return Dose::NONE_LEFT;
-    }
-    const double before = confirmed_potion_hp(stream, context);
-    stream.log("[Potion] Slot 1 HP bar before use=" + std::to_string(before * 100) + "%.");
-    if (before >= 0.98){
-        return Dose::HEALED;
-    }
-    if (dose == 0 && before >= heal_below){
-        stream.log("[Potion] Slot 1 HP is at least " + std::to_string(heal_below * 100) + "%; no Potion needed.");
-        return Dose::HEALED;
-    }
-    if (before <= 0.005){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Potion: Slot 1 appears fainted; a Potion cannot revive it.",
-            stream);
     }
     pbf_press_button(context, BUTTON_A, 80ms, 500ms);
     pbf_press_button(context, BUTTON_A, 80ms, 500ms);
@@ -324,6 +329,16 @@ bool bag_list_is_empty(const ImageViewRGB32& frame){
     const auto icons = extract_box_reference(frame, ImageFloatBox(0.449, 0.213, 0.032, 0.500));
     const auto stats = image_stats(icons);
     return stats.average.r > 220 && stats.average.g > 220 && stats.average.b > 220 && stats.stddev.sum() < 20;
+}
+
+PotionNeed potion_need(double hp, size_t dose, double heal_below){
+    if (hp >= 0.98){
+        return PotionNeed::FULL;
+    }
+    if (dose == 0 && hp >= heal_below){
+        return PotionNeed::ENOUGH;
+    }
+    return hp <= 0.005 ? PotionNeed::FAINTED : PotionNeed::NEEDED;
 }
 
 BagPocketMovePlan plan_bag_pocket_move(int current, int target){

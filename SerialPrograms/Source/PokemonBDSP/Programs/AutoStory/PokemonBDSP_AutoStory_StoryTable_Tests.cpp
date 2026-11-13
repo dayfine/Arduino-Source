@@ -53,7 +53,7 @@ const std::map<StoryStepKind, std::set<std::string>>& built_in_actions(){
     static const std::map<StoryStepKind, std::set<std::string>> actions{
         {StoryStepKind::ROUTE, {"", "route", "town", "robust", "line", "exit", std::string(ROUTE_ONTO_TRIGGER), std::string(ROUTE_INTO_SCENE)}},
         {StoryStepKind::LEGS, {"", "legs", "one_short_ok", "to_wall", "to_dialogue", "to_map", "counted_wall", "measured"}},
-        {StoryStepKind::STEP, {"", "face", "to_banner", "tap", "or_legs"}},        {StoryStepKind::MASH, {"", "a"}},
+        {StoryStepKind::STEP, {"", "face", "to_banner", "tap", "or_legs", "door"}},        {StoryStepKind::MASH, {"", "a"}},
         {StoryStepKind::BATTLE, {"", "fight", "doubles", "starter"}},
         {StoryStepKind::TALK, {"", "talk_to_wanderer", "wait_for_wanderer"}},
         {StoryStepKind::SHOP, {"", "sandgem_potions"}},
@@ -134,6 +134,66 @@ UnitTestResult test_story_table_rows_join(Logger&){
         }
     }
     return true;
+}
+
+//  01.02: a scene's trigger on an open row is reached by walking toward it
+//  until the scene starts, not by a localizing detour (south, east to a
+//  rock, north) to a tile beside the trigger and a step onto it (the
+//  user's rule, 2026-11-12). The Gate's hikers (trigger (7, 22)) and the
+//  city's welcome guide (trigger (10, 12..15)) are each one "into_scene"
+//  route that runs east along the row it arrives on.
+UnitTestResult test_oreburgh_scenes_are_walked_into(Logger&){
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        if (row.id != "01.02"){
+            continue;
+        }
+        size_t found = 0;
+        for (size_t i = 0; i < row.steps.size(); i++){
+            const Pokemon::StoryStep& step = row.steps[i];
+            if (step.name.starts_with("west_of_") || step.name.ends_with("_trigger") || step.name == "welcome_trigger"){
+                return std::format("{} {}: a detour to land beside the trigger.", row.id, step.name);
+            }
+            if (step.name != "the_hiker" && step.name != "oreburgh_welcome"){
+                continue;
+            }
+            found++;
+            const Pokemon::StoryStep& walk = row.steps[i - 1];
+            if (walk.kind != StoryStepKind::ROUTE || walk.action != ROUTE_INTO_SCENE){
+                return std::format("{}: the step before is {}, not an into_scene route.", step.name, walk.name);
+            }
+            const auto& legs = story_arg<std::vector<Pokemon::StoryLeg>>(walk.args, "legs");
+            if (legs.size() != 1 || legs.front().direction != Direction::EAST){
+                return std::format("{}: {} does not run one leg east.", step.name, walk.name);
+            }
+        }
+        return found == 2 ? UnitTestResult(true) : UnitTestResult("01.02 has no hikers and welcome scenes.");
+    }
+    return "No 01.02.";
+}
+
+//  01.03's doors into and out of the mine have no text on the far side: they
+//  settle as a door (the fade back up and a short still spell), not by B
+//  through the cave's ambient motion for 15 s (lab-B 2026-11-12 21:57,
+//  into_the_mine 18 s and into_the_coal_room 16.7 s).
+UnitTestResult test_mine_doors_settle_as_doors(Logger&){
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        if (row.id != "01.03"){
+            continue;
+        }
+        size_t found = 0;
+        for (const Pokemon::StoryStep& step : row.steps){
+            if (step.name == "into_the_mine" || step.name == "into_the_coal_room" ||
+                step.name == "up_to_the_hall" || step.name == "out_of_the_mine"
+            ){
+                found++;
+                if (step.action != "door"){
+                    return step.name + ": not a \"door\" step, so it settles as a talk.";
+                }
+            }
+        }
+        return found == 4 ? UnitTestResult(true) : UnitTestResult("01.03 lacks a mine door step.");
+    }
+    return "No 01.03.";
 }
 
 struct LadyLeg{
@@ -903,6 +963,14 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"00.05c: a plan from (35, 24), (36, 24) past the woman on row 24 (lab-B, 2026-11-12 02:52)", test_company_clown_after_the_woman_on_row_24},
+        .expectation = {},
+    },
+    {
+        .input = {"01.02: the hikers' and the welcome scenes are walked into along their rows, no detour to a tile beside the trigger", test_oreburgh_scenes_are_walked_into},
+        .expectation = {},
+    },
+    {
+        .input = {"01.03: the mine's doors are \"door\" steps, settled as doors (lab-B 2026-11-12 21:57)", test_mine_doors_settle_as_doors},
         .expectation = {},
     },
 };

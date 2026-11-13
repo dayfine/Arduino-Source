@@ -39,6 +39,7 @@
         "why": "down the door's column to two above the mine's warp tiles (44..48, 59)"
       },
       {
+        "action": "door",
         "args": {
           "direction": "south"
         },
@@ -57,6 +58,7 @@
         "why": "the warp tile (46, 59)"
       },
       {
+        "action": "door",
         "args": {
           "direction": "south"
         },
@@ -285,6 +287,7 @@
         "why": "east around crate, up column 29, west across row 17, and up corridor to warp doorstep"
       },
       {
+        "action": "door",
         "args": {
           "direction": "north"
         },
@@ -303,6 +306,7 @@
         "why": "the warp tile (15, 1)"
       },
       {
+        "action": "door",
         "args": {
           "direction": "north"
         },

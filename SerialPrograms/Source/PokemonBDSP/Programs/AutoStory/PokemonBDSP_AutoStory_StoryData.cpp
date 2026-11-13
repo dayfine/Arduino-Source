@@ -137,6 +137,7 @@ std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
     actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = "into_scene", .args = {route_target, fight_wild, legs_arg}});
     add_legs_actions(actions, legs_arg, fight_wild);
     actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "to_banner", .args = {direction_arg}, .console_only = false, .certainty = PINS});
+    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "door", .args = {direction_arg}});
     actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "or_legs", .args = {direction_arg, legs_arg}});
     add_wanderer_talks(actions);
     actions.push_back({.kind = Pokemon::StoryStepKind::MASH, .name = "a", .args = {}});
