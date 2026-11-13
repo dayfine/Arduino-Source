@@ -19,7 +19,7 @@ namespace Pokemon{
 namespace{
 
 // Counts recorded into the AutoStory stats and the totals they must reach.
-struct StoryCountsCase{
+struct StoryCountsTestCase{
     //  Counts added to fresh stats, in order.
     struct Input{
         std::string name;
@@ -39,7 +39,7 @@ struct StoryCountsCase{
 
 class Test_StoryCounts : public UnitTest{
 public:
-    Test_StoryCounts(StoryCountsCase test_case)
+    Test_StoryCounts(StoryCountsTestCase test_case)
         : UnitTest(std::format("Pokemon::AutoStoryStats - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
@@ -49,7 +49,7 @@ public:
         for (const StoryRunCounts& counts : m_case.input.added){
             record_story_counts(counts, stats);
         }
-        const StoryCountsCase::Expectation& expected = m_case.expectation;
+        const StoryCountsTestCase::Expectation& expected = m_case.expectation;
         if (stats.m_segment != expected.segments || stats.m_checkpoint != expected.checkpoints || stats.m_reset != expected.resets){
             return std::format(
                 "Expected {} segments, {} checkpoints and {} resets, got {}, {} and {}",
@@ -61,10 +61,10 @@ public:
     }
 
 private:
-    const StoryCountsCase m_case;
+    const StoryCountsTestCase m_case;
 };
 
-const StoryCountsCase STORY_COUNTS_CASES[] = {
+const StoryCountsTestCase STORY_COUNTS_CASES[] = {
     {
         .input = {.name = "a segment's counts in the stats", .added = {{.segments = 1, .checkpoints = 2, .resets = 3}}},
         .expectation = {.segments = 1, .checkpoints = 2, .resets = 3},
@@ -82,7 +82,7 @@ const StoryCountsCase STORY_COUNTS_CASES[] = {
 
 
 void add_tests_AutoStoryStats(UnitTestDatabase& database){
-    for (const StoryCountsCase& test_case : STORY_COUNTS_CASES){
+    for (const StoryCountsTestCase& test_case : STORY_COUNTS_CASES){
         database.add<Test_StoryCounts>(test_case);
     }
 }
