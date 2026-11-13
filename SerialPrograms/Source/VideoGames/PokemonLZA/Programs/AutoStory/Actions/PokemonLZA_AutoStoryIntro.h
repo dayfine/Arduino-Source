@@ -3,12 +3,14 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The new game's opening screens (language list, look picker, name
- *  keyboard): the presses each choice takes as pure functions. The screens'
+ *  keyboard): the presses each choice takes as pure functions; the language
+ *  list's are in PokemonLZA_AutoStoryLanguageList.h. The screens'
  *  detectors are in PokemonLZA_AutoStoryIntroScreens.h.
  *
- *  Everything about the screens' layout is a guess from Scarlet/Violet's,
- *  to be confirmed on a console (see the TODOs): the language list's order,
- *  the look picker's 2 x 4 grid, and what the name keyboard does with Shift.
+ *  The language list is as seen on console B (2026-11-13). The rest is a
+ *  guess from Scarlet/Violet's, to be confirmed on a console (see the
+ *  TODOs): the look picker's 2 x 4 grid, and what the name keyboard does
+ *  with Shift.
  *
  */
 
@@ -36,25 +38,15 @@ enum class IntroKey{
 };
 
 
-//  The language list's entries, top to bottom, as Scarlet/Violet shows them
-//  (English, Espanol, Francais, Deutsch, Italiano, Japanese, Korean,
-//  Chinese Simplified, Chinese Traditional). TODO: confirm LZA's order on a
-//  console.
-//  From the top entry: DOWN to the language's entry, then A. Nullopt for a
-//  language the list lacks.
-std::optional<std::vector<IntroKey>> language_list_presses(Language language);
-
-
-//  The number of looks on the picker: a grid of 2 rows of 4 faces, as
-//  Scarlet/Violet's, numbered 1 to LOOK_COUNT left to right along the top
-//  row, then the bottom row. TODO: confirm the grid and the cursor's moves
-//  on a console.
+//  The number of looks on the picker: a grid of 2 rows of 4 faces, numbered
+//  1 to LOOK_COUNT left to right along the top row, then the bottom row
+//  (console B, 2026-11-13).
 constexpr size_t LOOK_COUNT = 8;
 
-//  The highlight starts at random, so: UP and LEFT x3 to the top-left face
-//  (the edges clamp), then RIGHT and DOWN to look `look` (1 to LOOK_COUNT),
-//  then A. Nullopt for a look outside the grid.
-std::optional<std::vector<IntroKey>> look_picker_presses(size_t look);
+//  The presses that move the picker's highlight from look `from` to look
+//  `to`: LEFT or RIGHT to the column, then UP or DOWN to the row. Empty when
+//  `from` is `to`; nullopt for a look outside 1 to LOOK_COUNT.
+std::optional<std::vector<IntroKey>> look_picker_moves(size_t from, size_t to);
 
 
 //  What to type for a player name on the keyboard. The keyboard types lower

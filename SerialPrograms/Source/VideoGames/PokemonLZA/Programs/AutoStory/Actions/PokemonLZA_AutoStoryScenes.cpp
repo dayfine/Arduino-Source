@@ -4,6 +4,7 @@
  *
  */
 
+#include <cctype>
 #include <format>
 #include <optional>
 #include <string_view>
@@ -14,9 +15,12 @@
 #include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_KeyboardCodeEntry.h"
+#include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
+#include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h"
 #include "PokemonLZA_AutoStoryIntro.h"
 #include "PokemonLZA_AutoStoryIntroScreens.h"
+#include "PokemonLZA_AutoStoryLanguageList.h"
+#include "PokemonLZA_AutoStoryLaunch.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 
 namespace PokemonAutomation{
@@ -161,31 +165,10 @@ void mash_scene(
 
 namespace{
 
-//  The intro's screens are waited for by time until their detectors exist
-//  (PokemonLZA_AutoStoryIntro.h): until `is_screen` says the screen is up or
-//  `fixed_wait` passes. Either way the screen's frame is saved to
-//  DebugDumps, so a run records each one for the detectors' captures.
-void wait_for_intro_screen(
-    ConsoleHandle& console, ProControllerContext& context,
-    std::string_view screen, bool (*is_screen)(const ImageViewRGB32&), Milliseconds fixed_wait
-){
-    const WallClock deadline = current_time() + fixed_wait;
-    bool seen = false;
-    while (current_time() < deadline){
-        context.wait_for_all_requests();
-        const VideoSnapshot frame = console.video().snapshot();
-        if (frame && is_screen(frame)){
-            seen = true;
-            break;
-        }
-        context.wait_for(250ms);
-    }
+//  Saves the current frame to DebugDumps as intro screen `screen`.
+void dump_intro_frame(ConsoleHandle& console, ProControllerContext& context, std::string_view screen){
     context.wait_for_all_requests();
     const VideoSnapshot frame = console.video().snapshot();
-    console.log(std::format(
-        "AutoStory intro: {}: {} (waited up to {} ms).",
-        screen, seen ? "detected" : "not detected; the detector is not written, so the wait is fixed", fixed_wait.count()
-    ));
     if (frame){
         dump_debug_image(console, "PokemonLZA/AutoStory/Intro", std::string(screen), frame);
     }
@@ -224,30 +207,235 @@ void press_intro_keys(
     context.wait_for_all_requests();
 }
 
+//  Until the language list shows, or `timeout`. Saves its first frame to
+//  DebugDumps. Throws OperationFailedException with `failure` if it does
+//  not show.
+void wait_for_language_list(
+    ConsoleHandle& console, ProControllerContext& context,
+    Milliseconds timeout, std::string_view failure
+){
+    const WallClock deadline = current_time() + timeout;
+    while (current_time() < deadline){
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = console.video().snapshot();
+        if (frame && is_language_list(frame)){
+            console.log("AutoStory intro: language-list: detected.");
+            dump_debug_image(console, "PokemonLZA/AutoStory/Intro", "language-list", frame);
+            return;
+        }
+        context.wait_for(250ms);
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format("AutoStory intro: {} (waited {} ms)", failure, timeout.count()),
+        console
+    );
+}
+
+//  On the language list: one press at a time towards entry `target`,
+//  reading the highlight after each, until it is on `target`. A dropped
+//  press or a frame caught mid-move is read again on the next turn.
+void move_language_cursor(ConsoleHandle& console, ProControllerContext& context, size_t target){
+    for (size_t attempt = 0; attempt < 20; attempt++){
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = console.video().snapshot();
+        const std::optional<size_t> cursor = frame ? read_language_list_cursor(frame) : std::nullopt;
+        if (!cursor){
+            console.log("AutoStory intro: language-list: no highlight read; reading again.");
+            context.wait_for(250ms);
+            continue;
+        }
+        if (*cursor == target){
+            console.log(std::format("AutoStory intro: language-list: the highlight is on entry {}.", target));
+            return;
+        }
+        const std::optional<std::vector<IntroKey>> moves = language_list_moves(*cursor, target);
+        if (!moves || moves->empty()){
+            break;
+        }
+        console.log(std::format("AutoStory intro: language-list: the highlight is on entry {}.", *cursor));
+        press_intro_keys(console, context, {moves->front()}, 400ms);
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format("AutoStory intro: the language list's highlight did not reach entry {}.", target),
+        console
+    );
+}
+
+//  Until the system keyboard shows (or, `gone`, has closed), or `timeout`.
+//  Throws OperationFailedException if it does not.
+void wait_for_system_keyboard(ConsoleHandle& console, ProControllerContext& context, bool gone, Milliseconds timeout){
+    SystemKeyboardDetector keyboard;
+    const WallClock deadline = current_time() + timeout;
+    while (current_time() < deadline){
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = console.video().snapshot();
+        if (frame && keyboard.detect(frame) != gone){
+            console.log(std::format("AutoStory intro: keyboard: {}.", gone ? "closed" : "detected"));
+            return;
+        }
+        context.wait_for(250ms);
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format("AutoStory intro: the name keyboard {} within {} ms.", gone ? "did not close" : "did not show", timeout.count()),
+        console
+    );
+}
+
+//  B deletes a character, and closes the keyboard on an empty field, so it
+//  deletes only while the field holds text (a name left from a retry).
+void clear_system_keyboard_field(ConsoleHandle& console, ProControllerContext& context){
+    for (size_t c = 0; c < 14; c++){
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = console.video().snapshot();
+        if (!frame || !system_keyboard_field_has_text(frame)){
+            return;
+        }
+        console.log("AutoStory intro: keyboard: the field holds text; B.");
+        pbf_press_button(context, BUTTON_B, 60ms, 250ms);
+    }
+}
+
+//  What type_on_system_keyboard() types for `plan`: it clicks Shift before
+//  each capital, so the keys in lower case, the first a capital when Shift
+//  goes first.
+std::string system_keyboard_text(const NameKeys& plan){
+    std::string text;
+    for (const char key : plan.keys){
+        text += (char)std::tolower((unsigned char)key);
+    }
+    if (plan.shift_first && !text.empty()){
+        text[0] = (char)std::toupper((unsigned char)text[0]);
+    }
+    return text;
+}
+
+//  One look picker press: a short tilt of the left stick (the screen says
+//  "Use the Left Stick"), then a pause for the highlight to move.
+void press_look_picker_key(ConsoleHandle& console, ProControllerContext& context, IntroKey key){
+    switch (key){
+    case IntroKey::UP:
+        console.log("AutoStory intro: look-picker: stick UP.");
+        pbf_move_left_joystick(context, {0, +1}, 200ms, 500ms);
+        break;
+    case IntroKey::DOWN:
+        console.log("AutoStory intro: look-picker: stick DOWN.");
+        pbf_move_left_joystick(context, {0, -1}, 200ms, 500ms);
+        break;
+    case IntroKey::LEFT:
+        console.log("AutoStory intro: look-picker: stick LEFT.");
+        pbf_move_left_joystick(context, {-1, 0}, 200ms, 500ms);
+        break;
+    case IntroKey::RIGHT:
+        console.log("AutoStory intro: look-picker: stick RIGHT.");
+        pbf_move_left_joystick(context, {+1, 0}, 200ms, 500ms);
+        break;
+    case IntroKey::A:
+        console.log("AutoStory intro: look-picker: A.");
+        pbf_press_button(context, BUTTON_A, 160ms, 500ms);
+        break;
+    }
+    context.wait_for_all_requests();
+}
+
+//  Until the look picker shows, or `timeout`. Saves its first frame to
+//  DebugDumps. Throws OperationFailedException if it does not show.
+void wait_for_look_picker(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout){
+    const WallClock deadline = current_time() + timeout;
+    while (current_time() < deadline){
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = console.video().snapshot();
+        if (frame && is_look_picker(frame)){
+            console.log("AutoStory intro: look-picker: detected.");
+            dump_debug_image(console, "PokemonLZA/AutoStory/Intro", "look-picker", frame);
+            return;
+        }
+        context.wait_for(250ms);
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format("AutoStory intro: the look picker did not show within {} ms.", timeout.count()),
+        console
+    );
+}
+
+//  On the look picker: one press at a time towards look `target`, reading
+//  the highlight after each, until it is on `target`. The picker opens with
+//  no face highlighted, so while none is, UP (harmless on any face of the
+//  top row) to bring the highlight up. Each frame read with no highlight is
+//  saved to DebugDumps. Throws OperationFailedException if the highlight is
+//  not read or does not reach `target`.
+void move_look_cursor(ConsoleHandle& console, ProControllerContext& context, size_t target){
+    size_t unread = 0;
+    for (size_t attempt = 0; attempt < 24; attempt++){
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = console.video().snapshot();
+        const std::optional<size_t> cursor = frame ? read_look_picker_cursor(frame) : std::nullopt;
+        if (!cursor){
+            unread++;
+            if (frame){
+                dump_debug_image(console, "PokemonLZA/AutoStory/Intro", "look-picker-unread", frame);
+            }
+            if (unread > 6){
+                break;
+            }
+            console.log("AutoStory intro: look-picker: no highlight read.");
+            press_look_picker_key(console, context, IntroKey::UP);
+            continue;
+        }
+        unread = 0;
+        if (*cursor == target){
+            return;
+        }
+        const std::optional<std::vector<IntroKey>> moves = look_picker_moves(*cursor, target);
+        if (!moves || moves->empty()){
+            break;
+        }
+        console.log(std::format("AutoStory intro: look-picker: the highlight is on look {}.", *cursor));
+        press_look_picker_key(console, context, moves->front());
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format("AutoStory intro: the look picker's highlight was not read on look {}.", target),
+        console
+    );
+}
+
 } // namespace
 
 
+void launch_game_from_home(ConsoleHandle& console, ProControllerContext& context){
+    launch_selected_game_from_home(
+        console, context, "PLZA", "language list",
+        [](const ImageViewRGB32& frame){ return is_language_list(frame); },
+        90s, "PokemonLZA/AutoStory/Intro"
+    );
+}
+
 void new_game_language(ConsoleHandle& console, ProControllerContext& context, Language language){
-    const std::optional<std::vector<IntroKey>> presses = language_list_presses(language);
-    if (!presses){
+    const std::optional<size_t> target = language_list_index(language);
+    if (!target){
         throw UserSetupError(console, "AutoStory: the new game's language list has no such language.");
     }
-    console.log(std::format("AutoStory intro: language {}: {} presses.", language_data(language).code, presses->size()));
-    //  TODO: a title screen detector; the wait is a guess.
-    pbf_press_button(context, BUTTON_A, 160ms, 500ms);
-    wait_for_intro_screen(console, context, "language-list", is_language_list, 5000ms);
-    press_intro_keys(console, context, *presses, 5000ms);
+    console.log(std::format("AutoStory intro: language {}: entry {} of the list.", language_data(language).code, *target));
+    wait_for_language_list(console, context, 5s,
+        "the language list is not on screen: the launch_game_from_home step brings it up."
+    );
+    move_language_cursor(console, context, *target);
+    press_intro_keys(console, context, {IntroKey::A}, 5000ms);
 }
 
 void pick_player_look(ConsoleHandle& console, ProControllerContext& context, size_t look){
-    const std::optional<std::vector<IntroKey>> presses = look_picker_presses(look);
-    if (!presses){
+    if (look < 1 || look > LOOK_COUNT){
         throw UserSetupError(console, std::format("AutoStory: the player look must be 1 to {}.", LOOK_COUNT));
     }
     console.log(std::format("AutoStory intro: look {} of {}.", look, LOOK_COUNT));
-    //  The language's A already waited 5 s for this screen.
-    wait_for_intro_screen(console, context, "look-picker", is_look_picker, 0ms);
-    press_intro_keys(console, context, *presses, 3000ms);
+    wait_for_look_picker(console, context, 10s);
+    move_look_cursor(console, context, look);
+    console.log(std::format("AutoStory intro: look-picker: the highlight is on look {}; A.", look));
+    press_intro_keys(console, context, {IntroKey::A}, 3000ms);
 }
 
 void type_player_name(
@@ -258,27 +446,27 @@ void type_player_name(
     if (!plan){
         throw UserSetupError(console, std::format("AutoStory: the player name \"{}\" cannot be typed.", name));
     }
-    wait_for_intro_screen(console, context, "keyboard", is_keyboard, 3000ms);
+    wait_for_system_keyboard(console, context, false, 20s);
+    dump_intro_frame(console, context, "keyboard");
+    //  Let the keyboard finish sliding in: inputs during that are dropped.
+    context.wait_for(800ms);
+    clear_system_keyboard_field(console, context);
+    const std::string typed = system_keyboard_text(*plan);
     console.log(std::format(
-        "AutoStory intro: typing \"{}\": keys {}, Shift first {}, keyboard capitalizes the first letter {}.",
-        name, plan->keys, plan->shift_first, first_letter_auto_caps
+        "AutoStory intro: typing \"{}\" as \"{}\" (keyboard capitalizes the first letter: {}).",
+        name, typed, first_letter_auto_caps
     ));
-    //  Code entry takes upper case letters and digits only and presses
-    //  their keys. The keyboard types lower case; Shift capitalizes the next
-    //  letter only, so it goes right before the name.
-    if (plan->shift_first){
-        pbf_press_button(context, BUTTON_LCLICK, 160ms, 400ms);
-        context.wait_for_all_requests();
-    }
-    FastCodeEntry::keyboard_enter_code(console, context, true, KeyboardLayout::QWERTY, plan->keys, true);
-    context.wait_for(1000ms);
-    //  PLUS is the keyboard's OK. "Confirm Choices" opens on "Change hair
-    //  color"; "Ready!" is two rows down (console B, 2026-11-10).
-    pbf_press_button(context, BUTTON_PLUS, 160ms, 2500ms);
-    pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
-    pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
-    pbf_press_button(context, BUTTON_A, 160ms, 2000ms);
-    context.wait_for_all_requests();
+    FastCodeEntry::type_on_system_keyboard(console, context, typed);
+    console.log("AutoStory intro: PLUS (the keyboard's OK).");
+    pbf_press_button(context, BUTTON_PLUS, 160ms, 0ms);
+    wait_for_system_keyboard(console, context, true, 5s);
+    //  "Confirm Choices" opens on "Change hair color"; "Ready!" is two rows
+    //  down (console B, 2026-11-10).
+    context.wait_for(2500ms);
+    dump_intro_frame(console, context, "confirm-choices");
+    console.log("AutoStory intro: Confirm Choices: DOWN x2 to \"Ready!\", then A.");
+    press_intro_keys(console, context, {IntroKey::DOWN, IntroKey::DOWN, IntroKey::A}, 2000ms);
+    dump_intro_frame(console, context, "confirm");
 }
 
 

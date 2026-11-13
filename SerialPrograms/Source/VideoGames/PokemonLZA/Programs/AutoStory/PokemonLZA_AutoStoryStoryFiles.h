@@ -45,7 +45,8 @@ const StoryData& builtin_story_data();
 //  what the tests, the lint and the program's dropdowns use. 01.xx Main
 //  Mission 01 (new game, Pancham, the starter), 02.xx Main Mission 02 (out
 //  of the Battle Zone to Hotel Z, the first night). Only 01.00, a new game,
-//  starts without a save; it starts on the title screen.
+//  starts without a save; it starts on the HOME screen with
+//  PLZA's tile selected.
 const std::vector<Pokemon::StoryCheckpoint>& story_checkpoints();
 
 //  The built-in rows that end on one of the game's autosaves. Each ends

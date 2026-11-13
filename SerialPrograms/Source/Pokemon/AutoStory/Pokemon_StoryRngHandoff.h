@@ -27,6 +27,7 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Pokemon_StoryOutcome.h"
 
@@ -78,6 +79,15 @@ Outcome run_rng_handoff(Logger& logger, const std::string& program, const RngHan
 //  nothing when the game stands where the story goes on.
 std::optional<std::string> run_rng_handoff_or_user_turn(
     Logger& logger, const std::string& program, const RngHandoffCall& call
+);
+
+//  A run that stops for the user to run an RNG program, as the game's program
+//  reports it: `message` (what to do) and then `lines` (the RNG plan's
+//  attempts), each logged and passed to `show` (the overlay's log). Returns
+//  the whole text, one line each, for the program's finish notification.
+std::string report_rng_handoff_stop(
+    Logger& logger, const std::string& message, const std::vector<std::string>& lines,
+    const std::function<void(const std::string&)>& show
 );
 
 

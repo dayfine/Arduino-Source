@@ -15,7 +15,7 @@ namespace PokemonLZA{
 
 
 //  Tests that need no console: the presses for the new game's language, look
-//  and name.
+//  and name, and the language list's detector.
 void add_tests_AutoStoryIntro(UnitTestDatabase& database);
 
 
