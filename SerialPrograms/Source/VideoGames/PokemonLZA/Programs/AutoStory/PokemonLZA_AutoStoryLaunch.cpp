@@ -36,24 +36,6 @@ constexpr Language HOME_LANGUAGE = Language::English;
 //  Where the title's "use the backup save?" arrow shows (reset_game_from_home()).
 const ImageFloatBox BACKUP_ARROW_BOX{0.2, 0.5, 0.6, 0.3};
 
-//  The title, read only after the launch: a screen with a picture that
-//  is not a fade, the overworld, or a talk or battle prompt (A there would
-//  answer the story).
-bool plza_title(const ScreenObservation& look){
-    if (!look.frame || !look.frame->frame){
-        return false;
-    }
-    for (ScreenEvent event : {
-        ScreenEvent::FADE_BLACK, ScreenEvent::FADE_WHITE, ScreenEvent::PLAYER_CAN_MOVE,
-        ScreenEvent::INTERACT_PROMPT, ScreenEvent::BATTLE_STARTED,
-    }){
-        if (look.events.has(event)){
-            return false;
-        }
-    }
-    return true;
-}
-
 //  The game's own prompts on the way, read only after the launch: the
 //  backup save's arrow (A) and a dialog box (B).
 std::vector<StoryLaunchPrompt> plza_prompts(){
@@ -75,6 +57,23 @@ std::vector<StoryLaunchPrompt> plza_prompts(){
 
 } // namespace
 
+
+//  No INTERACT_PROMPT veto: the title's "PRESS (A) BUTTON" reads as one,
+//  and the overworld's prompts show with the party bar, which vetoes.
+bool plza_title(const ScreenObservation& look){
+    if (!look.frame || !look.frame->frame){
+        return false;
+    }
+    for (ScreenEvent event : {
+        ScreenEvent::FADE_BLACK, ScreenEvent::FADE_WHITE, ScreenEvent::PLAYER_CAN_MOVE,
+        ScreenEvent::BATTLE_STARTED,
+    }){
+        if (look.events.has(event)){
+            return false;
+        }
+    }
+    return true;
+}
 
 StoryLaunchPolicy plza_launch_policy(ConsoleHandle& console){
     StoryLaunchPolicy policy;

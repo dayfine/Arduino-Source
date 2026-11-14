@@ -18,10 +18,16 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+//  Whether `look`, read after the launch, counts as PLZA's title: a frame
+//  that is not a fade, the overworld (the party bar) or a battle. An A
+//  prompt alone counts: the title's centred "PRESS (A) BUTTON" reads as one
+//  (console B, 2026-11-14), and the overworld's prompts come with the
+//  party bar.
+bool plza_title(const ScreenObservation& look);
+
 //  PLZA on `console`: the Switch's prompts, then the game's own, as
 //  reset_game_from_home() answered them: the backup save's arrow takes A,
-//  a dialog box B. The title is any screen after the launch that is not a
-//  fade, a prompt or the overworld, and takes A; the backup save is Up,
+//  a dialog box B. The title (plza_title()) takes A; the backup save is Up,
 //  then B + X held for a second, on it. No HOME tile reader yet: the tile
 //  under the cursor is taken as PLZA's, as reset_game_from_home() did.
 Pokemon::StoryLaunchPolicy plza_launch_policy(ConsoleHandle& console);
