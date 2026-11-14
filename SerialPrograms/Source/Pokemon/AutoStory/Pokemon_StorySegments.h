@@ -68,7 +68,7 @@ struct SegmentHooks{
 //  allows (story_save_allowed()). Logs through `hooks.log`,
 //  around the checkpoint lines:
 //      [Segment] 00: start, 3 checkpoints
-//      [Segment] 00: 00.02 failed, reloading for attempt 2/3
+//      [Checkpoint] 00.02: failed, resetting for attempt 2/3
 //      [Checkpoint] 00.02: passed on attempt 2 (1 reset)
 //      [Checkpoint] 00.03: passed on attempt 1 (one-shot)
 //      [Segment] 00: 2 of 3 checkpoints one-shot
