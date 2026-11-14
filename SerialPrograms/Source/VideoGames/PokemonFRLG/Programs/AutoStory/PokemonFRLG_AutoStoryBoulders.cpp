@@ -5,8 +5,10 @@
  */
 
 #include <algorithm>
+#include <string>
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/Navigation/Pokemon_GateTiles.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_AutoStoryBoulders.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
 
@@ -36,6 +38,28 @@ Pokemon::Outcome boulder_pushed(Pokemon::RunState& state, const StoryStep& step,
         state.gates.switches_on.insert(Pokemon::switch_key(*pressed));
     }
     return Pokemon::outcome_ok(to_pose(at));
+}
+
+Pokemon::Outcome tree_cut(Pokemon::RunState& state, const StoryStep& step, const std::vector<MapData>& maps){
+    const std::optional<StoryPose> here = story_pose(state.pose);
+    if (!here){
+        return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
+    }
+    const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+    const StoryPose on_tree{here->map, here->tile.next(direction), direction};
+    if (const std::optional<std::string> key = cut_gate_key(maps, MapPosition{on_tree.map, on_tree.tile})){
+        state.gates.opened.insert(*key);
+    }
+    return Pokemon::outcome_ok(to_pose(on_tree));
+}
+
+Pokemon::Outcome regrow_on_warp(const std::vector<MapData>& maps, const std::function<Pokemon::Outcome()>& run, Pokemon::RunState& state){
+    const std::string map_before = state.pose.map;
+    Pokemon::Outcome outcome = run();
+    if (state.pose.map != map_before){
+        regrow_cut_gates(maps, state.gates);
+    }
+    return outcome;
 }
 
 

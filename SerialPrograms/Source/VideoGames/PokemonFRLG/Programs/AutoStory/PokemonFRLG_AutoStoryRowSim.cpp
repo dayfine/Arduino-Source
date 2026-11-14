@@ -177,7 +177,7 @@ Outcome StoryMapsSim::run_action(const StoryStep& step, RunState& state){
         }
         m_dialog_up = false;
     }
-    return Pokemon::TableExecutor::run_action(step, state);
+    return regrow_on_warp(maps(), [&]{ return Pokemon::TableExecutor::run_action(step, state); }, state);
 }
 
 Pokemon::ScreenLook StoryMapsSim::look(){
@@ -214,7 +214,7 @@ Pokemon::StoryAction StoryMapsSim::action(StoryActionId id){
     case StoryActionId::ROUTE:
         return played([this](const StoryStep& step, RunState& state){ return walk_to(state, step); });
     case StoryActionId::LEGS:
-        return played([this](const StoryStep& step, RunState& state){ return legs(state.pose, step); });
+        return played([this](const StoryStep& step, RunState& state){ return legs(state, step); });
     case StoryActionId::STEP:
         return played([this](const StoryStep& step, RunState& state){ return step_ahead(state.pose, step); });
     //  The nurse's way must plan too, but the run goes on from where it stands.
@@ -231,9 +231,11 @@ Pokemon::StoryAction StoryMapsSim::action(StoryActionId id){
     case StoryActionId::PUSH_BOULDER:
         return played([this](const StoryStep& step, RunState& state){ return boulder_pushed(state, step, maps()); });
     //  Pacing leaves the player on either of its tiles, as on the console.
+    //  A cut leaves the player on the tree's tile, its gate open.
+    case StoryActionId::CUT_TREE:
+        return m_stubs.stub([this](const StoryStep& step, RunState& state){ return tree_cut(state, step, maps()); });
     case StoryActionId::CLOSE_TRAINER_CARD:
     case StoryActionId::LEAVE_GIFT_SUMMARY:
-    case StoryActionId::CUT_TREE:
     case StoryActionId::TRASH_CANS:
     case StoryActionId::GAME:
         return m_stubs.stub([](const StoryStep& step, RunState& state){
@@ -251,12 +253,12 @@ Pokemon::StoryAction StoryMapsSim::action(StoryActionId id){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown story action.");
 }
 
-Outcome StoryMapsSim::legs(const Pokemon::Pose& pose, const StoryStep& step) const{
-    const Standing at = standing(pose, maps());
+Outcome StoryMapsSim::legs(const RunState& state, const StoryStep& step) const{
+    const Standing at = standing(state.pose, maps());
     if (!at.error.empty()){
         return Pokemon::outcome_failed("no_pose", at.error);
     }
-    const std::optional<std::vector<RouteStep>> route = fixed_route(maps(), at.position, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
+    const std::optional<std::vector<RouteStep>> route = fixed_route(resolve_maps(maps(), state.gates), at.position, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
     if (!route || route->empty()){
         return Pokemon::outcome_failed("bad_legs", to_string(at.position));
     }
@@ -369,8 +371,9 @@ std::optional<std::vector<RouteStep>> walked_route(
 ){
     const MapPosition start{at.map, at.tile};
     if (step.kind == StoryStepKind::LEGS){
-        //  Tapped a tile at a time, as walk_legs() taps them on the console.
-        std::optional<std::vector<RouteStep>> route = fixed_route(maps, start, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
+        //  Tapped a tile at a time, as walk_legs() taps them on the console,
+        //  on the maps with the gates opened.
+        std::optional<std::vector<RouteStep>> route = fixed_route(resolve_maps(maps, gates), start, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
         if (route && step.action == TAPS_VARIANT){
             for (RouteStep& leg : *route){
                 leg.tapped = true;
@@ -832,6 +835,10 @@ std::string row_step_on_sim(
         //  next ones walk to.
         if (std::find(step.flags_after.begin(), step.flags_after.end(), "card_key_held") != step.flags_after.end()){
             sim.give_card_key();
+        }
+        //  The gates the story opens (a quiz answered), as the console's run state has them.
+        if (step.gates_after){
+            sim.change_gates(*step.gates_after);
         }
         return "";
     }

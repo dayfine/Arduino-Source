@@ -22,6 +22,7 @@
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_MapUtil.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/Navigation/Pokemon_GateTiles.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
@@ -99,11 +100,11 @@ const std::vector<TilePos> QUIZ_DOOR_FLOORS[] = {
     {{5, 8}, {6, 8}, {5, 9}, {6, 9}, {5, 10}, {6, 10}, {7, 10}},
 };
 
-//  The rows on the sim, whose gym opens each quiz door as the console does
-//  once its quiz is answered, while the walker plans on the story's maps,
-//  where the doors are shut: a leg held to a shut door runs through the
-//  open one, as on the console. The sim can't walk into a Center with no
-//  map. Kept across sims: the trainers fought.
+//  The rows on the sim, whose gym opens each quiz door once its quiz is
+//  answered (the door_N_opens step's gates_after, row_step_on_sim()), and
+//  the walker plans with it open, as the console's run state has it. The
+//  sim can't walk into a Center with no map. Kept across sims: the
+//  trainers fought and the doors open.
 struct GymWalk{
     StoryPose at;
     std::vector<MapData> maps = story_maps();
@@ -119,26 +120,15 @@ struct GymWalk{
     void place(){
         place_on(MapPosition{at.map, at.tile}, *at.facing);
     }
-    //  Quiz door `door` (1 to 6) opens where the player stands.
-    void open_door(size_t door){
-        for (MapData& map : maps){
-            if (map.name != GYM){
-                continue;
-            }
-            for (const TilePos& tile : QUIZ_DOOR_FLOORS[door - 1]){
-                Pokemon::cell_at(tile, map.tiles) = TileKind::OPEN;
-            }
-        }
-        const SimState& state = sim->state();
-        place_on(state.position, state.facing);
-    }
     //  By value: `position` may be the state of the sim this replaces.
     void place_on(MapPosition position, Direction facing){
+        SimScript script;
         if (sim){
             const std::vector<std::string>& beaten = sim->state().trainers_beaten;
             fought.insert(fought.end(), beaten.begin(), beaten.end());
+            script.gates = sim->state().gates;
         }
-        sim.emplace(maps, position, facing);
+        sim.emplace(maps, position, facing, script);
     }
     std::vector<std::string> all_fought() const{
         std::vector<std::string> all = fought;
@@ -150,7 +140,7 @@ struct GymWalk{
 
 //  A step of a row on the sim: row_step_on_sim(), but the way into the
 //  Center and Blaine's battle, which a talk starts, leave the player where
-//  the table says, and "door_N_opens" opens quiz door N.
+//  the table says.
 std::string gym_step_on_sim(const StoryStep& step, const std::string& id, GymWalk& walk){
     const bool center = step.action == CENTER_ENTER_VARIANT;
     if (center || (step.kind == StoryStepKind::BATTLE && step.name == "blaine")){
@@ -160,13 +150,7 @@ std::string gym_step_on_sim(const StoryStep& step, const std::string& id, GymWal
         }
         return "";
     }
-    const std::string failure = row_step_on_sim(*walk.sim, walk.at, step, id);
-    constexpr std::string_view OPENS_PREFIX = "door_";
-    constexpr std::string_view OPENS_SUFFIX = "_opens";
-    if (failure.empty() && step.name.starts_with(OPENS_PREFIX) && step.name.ends_with(OPENS_SUFFIX)){
-        walk.open_door((size_t)(step.name[OPENS_PREFIX.size()] - '0'));
-    }
-    return failure;
+    return row_step_on_sim(*walk.sim, walk.at, step, id);
 }
 
 //  Row `id`'s steps on the sim from `walk.at`: the failure, or empty.
@@ -206,8 +190,19 @@ Direction behind(Direction direction){
     }
 }
 
-//  Each quiz door is shut on the map, one barrier tile, with floor on both
-//  sides: the tiles 14.01 steps over.
+//  The gate of the gym whose tile `tile` is, if any.
+std::optional<std::string> gym_gate(const TilePos& tile){
+    for (const MapData& map : story_maps()){
+        if (map.name == GYM && map.tiles.at(tile) == TileKind::GATE){
+            const Pokemon::MapGate* gate = Pokemon::gate_at(map, tile);
+            return gate == nullptr ? std::nullopt : std::optional<std::string>(gate->id);
+        }
+    }
+    return std::nullopt;
+}
+
+//  Each quiz door is a gate on the map, door_N, with floor on both sides:
+//  the tiles 14.01 steps over, the doors in the order they open.
 UnitTestResult test_quiz_doors_on_map(){
     const StoryCheckpoint& row = checkpoint("14.01");
     int doors = 0;
@@ -218,10 +213,10 @@ UnitTestResult test_quiz_doors_on_map(){
         const StoryPose door = *story_pose(Pokemon::pose_of(*step.pose_after));
         const TilePos before = door.tile.next(behind(*door.facing));
         const TilePos after = door.tile.next(*door.facing);
-        if (!gym_wall(door.tile) || gym_wall(before) || gym_wall(after)){
-            return std::format("{}: expected a barrier on {} between floor tiles.", step.name, to_string(MapPosition{GYM, door.tile}));
-        }
         doors++;
+        if (gym_gate(door.tile) != std::format("door_{}", doors) || gym_wall(before) || gym_wall(after)){
+            return std::format("{}: expected gate door_{} on {} between floor tiles.", step.name, doors, to_string(MapPosition{GYM, door.tile}));
+        }
     }
     return doors == 6 ? UnitTestResult(true) : UnitTestResult(std::format("Expected 6 quiz doors, found {}.", doors));
 }

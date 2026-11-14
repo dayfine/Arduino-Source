@@ -186,7 +186,7 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!facing){
         facing = face_a_wall(env, start);
     }
-    std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), start, arg<std::vector<StoryLeg>>(step, "legs"));
+    std::optional<std::vector<RouteStep>> route = fixed_route(resolve_maps(story_maps(), state.gates), start, arg<std::vector<StoryLeg>>(step, "legs"));
     if (route && step.action == TAPS_VARIANT){
         for (RouteStep& leg : *route){
             leg.tapped = true;
@@ -198,7 +198,7 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     const OverworldInterruptSet interrupts = walk_interrupts(env, step);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
-    const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = start, .label = step.name, .checkpoint = env.checkpoint, .wall_check = wall_check(env), .pause = &env.pause, .beaten_trainers = beaten_trainers(state.flags)};
+    const RoutePlanning planning{.maps = &story_maps(), .gates = state.gates, .costs = story_route_costs(), .start = start, .label = step.name, .checkpoint = env.checkpoint, .wall_check = wall_check(env), .pause = &env.pause, .beaten_trainers = beaten_trainers(state.flags)};
     walk_keeping_state(state, nullptr, [&]{
         walk_overworld_route_with_recovery(env.console, env.context, *route, planning, env.player_gender, facing, interrupts, move_speed(step));
     });
@@ -587,7 +587,7 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
 }
 
 //  CUT_TREE_VARIANT: the tree in the step's direction, cut, and a step
-//  onto its tile.
+//  onto its tile; its gate is open until the next warp (tree_cut()).
 Outcome cut_tree(StoryEnv& env, RunState& state, const StoryStep& step){
     const std::optional<StoryPose> here = story_pose(state.pose);
     if (!here){
@@ -602,7 +602,7 @@ Outcome cut_tree(StoryEnv& env, RunState& state, const StoryStep& step){
     answer_yes_no(env.console, env.context, true, BUTTON_B, YES_NO_TIMEOUT);
     mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
     step_once(env.console, env.context, direction, direction, env.player_gender);
-    return Pokemon::outcome_ok(to_pose(StoryPose{here->map, here->tile.next(direction), direction}));
+    return tree_cut(state, step, story_maps());
 }
 
 //  PUSH_BOULDER_VARIANT: the boulder in the step's direction, Strength
@@ -822,7 +822,7 @@ StoryExecutor::StoryExecutor(StoryEnv& env)
 }
 
 Outcome StoryExecutor::run(const StoryStep& step, RunState& state){
-    return m_executor.run(step, state);
+    return regrow_on_warp(story_maps(), [&]{ return m_executor.run(step, state); }, state);
 }
 
 bool StoryExecutor::master_ball_skipped(bool take_master_ball, Pokemon::StoryCheckLevel checks){

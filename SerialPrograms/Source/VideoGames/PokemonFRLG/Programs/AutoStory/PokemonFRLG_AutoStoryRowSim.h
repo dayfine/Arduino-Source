@@ -93,7 +93,7 @@ private:
     const std::vector<MapData>& maps() const;
     //  Plans the route and moves the run's pose and gates to its end.
     Pokemon::Outcome walk_to(Pokemon::RunState& state, const StoryStep& step) const;
-    Pokemon::Outcome legs(const Pokemon::Pose& pose, const StoryStep& step) const;
+    Pokemon::Outcome legs(const Pokemon::RunState& state, const StoryStep& step) const;
     Pokemon::Outcome step_ahead(const Pokemon::Pose& pose, const StoryStep& step) const;
     Pokemon::Outcome shop(const StoryStep& step);
     //  The screen between steps: the dialog that popped up, if one did.

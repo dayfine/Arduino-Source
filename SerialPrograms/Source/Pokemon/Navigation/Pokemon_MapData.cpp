@@ -515,7 +515,7 @@ bool read_on_off(const JsonObject& object, const std::string& key, const std::st
 }
 
 //  A gate is a door with a flag (opens_by and flag: a card-key door or a
-//  quiz door) or follows a switch (switch and open_when); never both.
+//  quiz door or a cut tree) or follows a switch (switch and open_when); never both.
 MapGate read_gate(const std::string& id, const JsonObject& object, const std::string& where){
     MapGate gate;
     gate.id = id;
@@ -538,10 +538,15 @@ MapGate read_gate(const std::string& id, const JsonObject& object, const std::st
     }
     if (by_key){
         const std::string opens_by = read_string(object, "opens_by", where);
-        if (opens_by != "card_key_face_a" && opens_by != "quiz_answer"){
-            throw ParseException(std::format("{}opens_by \"{}\" is not card_key_face_a or quiz_answer.", where, opens_by));
+        if (opens_by == "card_key_face_a"){
+            gate.kind = GateKind::CARD_KEY;
+        }else if (opens_by == "quiz_answer"){
+            gate.kind = GateKind::QUIZ_ANSWER;
+        }else if (opens_by == "cut"){
+            gate.kind = GateKind::CUT;
+        }else{
+            throw ParseException(std::format("{}opens_by \"{}\" is not card_key_face_a, quiz_answer or cut.", where, opens_by));
         }
-        gate.kind = opens_by == "quiz_answer" ? GateKind::QUIZ_ANSWER : GateKind::CARD_KEY;
         gate.flag = read_string(object, "flag", where);
     }else{
         gate.kind = GateKind::SWITCH;

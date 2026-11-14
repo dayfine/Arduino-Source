@@ -5,6 +5,7 @@
     "id": "14.02b",
     "title": "Out through the quiz doors, NO to Bill, heal at Cinnabar's Center",
     "start": {"map": "CinnabarIsland_Gym", "tiles": [[5, 5]], "facing": "north"},
+    "start_gates": {"opened": ["CinnabarIsland_Gym/door_1", "CinnabarIsland_Gym/door_2", "CinnabarIsland_Gym/door_3", "CinnabarIsland_Gym/door_4", "CinnabarIsland_Gym/door_5", "CinnabarIsland_Gym/door_6"]},
     "events": [
       {
         "id": "above_door_6",

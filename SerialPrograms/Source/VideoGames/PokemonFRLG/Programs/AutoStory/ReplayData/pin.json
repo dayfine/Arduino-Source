@@ -6,7 +6,7 @@
   "files": {
     "binding": {
       "path": "data/story/parcel-pilot/binding.json",
-      "sha256": "a29dd87a33c56dd108956d3a691646dbed850b376df6b9f019977dac979a5ed2"
+      "sha256": "df4735e80ed802b0207d7256e8c82c464f982d26a7e869ea5295a6ed3f658c0c"
     },
     "cases": {
       "path": "data/story/parcel-pilot/cases.json",
@@ -18,7 +18,7 @@
     }
   },
   "candidate": {
-    "sha256": "019e0d77f4f2c15a295e6ac2cfdf31ad836255acdc40a54fee042fddc96373fb",
+    "sha256": "04b1d7646bafff251bf5fd631ae79dc06333b33426d8e981dcaf1cfdc6980a20",
     "producer": "checkpoint_replay.run actual route actions; expectations are not read"
   }
 }
