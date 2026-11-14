@@ -14,6 +14,7 @@
 #include <vector>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
@@ -95,6 +96,7 @@ public:
         : m_console(console)
         , m_context(context)
         , m_home(console, COLOR_RED)
+        , m_black(COLOR_BLUE, {0.1, 0.15, 0.8, 0.7})
         , m_load_menu(COLOR_BLUE)
     {}
 
@@ -133,6 +135,8 @@ private:
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     HomeMenuDetector m_home;
+    //  The boot's black screen, as the RNG programs' hard reset reads it.
+    BlackScreenDetector m_black;
     CheckOnlineDetector m_check_online;
     LoadMenuDetector m_load_menu;
     FrlgScreenObserver m_observer;
@@ -154,7 +158,11 @@ Pokemon::Observation<GridPose> FrlgLaunchBackend::observe(){
     m_context.wait_for_all_requests();
     VideoSnapshot frame = m_console.video().snapshot();
     Pokemon::Observation<GridPose> look;
-    if (frame && m_home.detect(*frame.frame)){
+    if (frame && m_black.detect(*frame.frame)){
+        //  The game booting or loading: never HOME, whose dark theme is
+        //  dark too.
+        look.events.set(ScreenEvent::FADE_BLACK, true);
+    }else if (frame && m_home.detect(*frame.frame)){
         //  Alone: FRLG's detectors may read HOME's plain screen as quiet.
         look.events.set(ScreenEvent::SWITCH_HOME_MENU, true);
     }else if (frame){
@@ -215,9 +223,8 @@ StoryLaunchPolicy frlg_launch_policy(
         return chosen->chosen && quiet(look);
     };
     policy.settled_looks = 4;
-    //  The title takes A through the boot's logos too, a second apart; HOME
-    //  takes A through the license check's seconds on it.
-    policy.presses_per_screen = settings.handle_online_license_check ? 24 : 12;
+    //  The title takes A through the boot's logos too, a second apart.
+    policy.presses_per_screen = 12;
     return policy;
 }
 
