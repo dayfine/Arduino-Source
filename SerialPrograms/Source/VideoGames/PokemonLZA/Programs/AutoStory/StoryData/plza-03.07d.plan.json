@@ -39,10 +39,11 @@
       {
         "id": "to_zone_1_gate",
         "kind": "game_action",
-        "why": "straight on from where center_to_zone_1 ends: the gate is dead ahead there (console B 2026-11-14 02:00, by hand: ~6.5 s to the gate's 'A はいる'). 03.06's toward_zone_1_gate turn (left 45, right 15) was dropped: it followed Taunie's scene, which does not play here, and sent the player past the gate into the cafe (02:51 run).",
-        "action": "walk_to_prompt",
+        "why": "From where center_to_zone_1 ends: faces the street's heading toward Wild Zone 1's gate by the minimap (246: the arrow on the frame with the gate dead ahead from mid-street, console B 2026-11-14 13:40, Zone1Gate/gate_ahead.png), then walks steered by the gate's two lime pillars on screen until its A prompt (walk_to_zone_gate_entrance, shared by 03.06 and 03.07d). Fails as gate_not_seen when no gate shows in the first second. Straight on by timed turns failed: the legs ended pointing along the left sidewalk and walk_to_prompt walked 10 s into the zone's wall with no prompt (console B 2026-11-14 13:35).",
+        "action": "walk_to_zone_gate_entrance",
         "args": {
-          "timeout_ms": 10000
+          "heading": 246,
+          "timeout_ms": 15000
         }
       },
       {

@@ -43,12 +43,13 @@
         "action": "a"
       },
       {
-        "id": "into_zone_1",
+        "id": "to_zone_1_gate",
         "kind": "game_action",
-        "why": "step 58: to the gate's \"A Enter\". 22 units at ~5.1 units/s. Measured 2026-11-08 on console B, walk not run.",
-        "action": "walk",
+        "why": "step 58, after Taunie's scene: faces the street's heading toward Wild Zone 1's gate by the minimap (246: the arrow on the frame with the gate dead ahead from mid-street, console B 2026-11-14 13:40, Zone1Gate/gate_ahead.png), then walks steered by the gate's two lime pillars on screen until its A prompt (walk_to_zone_gate_entrance, shared by 03.06 and 03.07d). Fails as gate_not_seen when no gate shows in the first second. Replaces the timed 4.3 s walk (22 units at ~5.1 units/s), as in 03.07d.",
+        "action": "walk_to_zone_gate_entrance",
         "args": {
-          "legs": [[0, 4300]]
+          "heading": 246,
+          "timeout_ms": 15000
         }
       },
       {
