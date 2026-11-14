@@ -378,6 +378,7 @@ private:
         const std::optional<MapPosition> start = m_next >= m_unchecked ? m_at : std::nullopt;
         remember_walked(step);
         m_known = m_known || step.to_wall || step.warps;
+        m_drift.walked(step);
         m_at = step.end;
         m_facing = step.facing_after;
         m_lines.done(step, ++m_next, m_holds);
@@ -501,7 +502,7 @@ private:
             }
         }
         if (m_holds > 0 ? m_next >= m_holds : m_known){
-            return step.tiles;
+            return m_drift.least_tiles(step);
         }
         if (m_next != 0 || m_hold_from.empty() || maps() == nullptr){
             return 0;
@@ -887,6 +888,7 @@ private:
         }
         m_at = anchor->found;
         m_known = true;
+        m_drift.found();
         m_facing = step.direction;
         m_lines.plan(m_at, m_plan);
         return true;
@@ -916,10 +918,10 @@ private:
     std::vector<MapPosition> m_hold_from;   //  the tiles the first hold of the plan may start from
     std::string m_unmoved;      //  the leg that moved nothing last, until another walks
     bool m_held_again = false;  //  the next walk holds a leg to a wall again after something seen after it
+    OpenLegDrift m_drift;       //  the ways the player may be a tile off since the last open legs
 };
 
 } // namespace
-
 
 WalkedTiles walked_before_warp(const RouteStep& step){
     return WalkedTiles{.min = 1, .max = step.tiles - 1};
@@ -992,8 +994,6 @@ void run_route(
 ){
     RouteRun(route, facing, planning, calls).run();
 }
-
-
 
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch

@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <format>
 #include <memory>
 #include <optional>
@@ -15,6 +16,7 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
+#include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/Async/InferenceSession.h"
@@ -69,19 +71,38 @@ struct StepWalk{
     HoldMovement movement = HoldMovement::UNMEASURED;
 };
 
+//  The four edge quarters of the game screen `game`: top, bottom, left and
+//  right, all clear of the player in the middle.
+std::array<ImageFloatBox, 4> edge_bands(const ImageFloatBox& game){
+    const double w = game.width * 0.25;
+    const double h = game.height * 0.25;
+    return {
+        ImageFloatBox(game.x, game.y, game.width, h),
+        ImageFloatBox(game.x, game.y + game.height - h, game.width, h),
+        ImageFloatBox(game.x, game.y, w, game.height),
+        ImageFloatBox(game.x + game.width - w, game.y, w, game.height),
+    };
+}
+
+//  Most a band's color may spread (the sum of its channels' stddev) and
+//  still be blank: one color, as off the map's edge. A band of the map
+//  spreads 90 or more (Pokemon Mansion 1F, console B, 2026-11-14).
+constexpr double BLANK_BAND_STDDEV = 10.0;
+
+bool blank_band(const ImageViewRGB32& band){
+    return image_stats(band).stddev.sum() <= BLANK_BAND_STDDEV;
+}
+
+//  How much hold_scroll_change() may read for a player who stood still (an
+//  animated tile, water). Not yet measured on the console: a guess, set low
+//  so that only a screen that did not move at all reads as not moved.
+constexpr double HOLD_UNMOVED_RMSD = 6.0;
+
 } // namespace
 
 double tap_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game){
-    const double w = game.width * 0.25;
-    const double h = game.height * 0.25;
-    const ImageFloatBox bands[] = {
-        {game.x, game.y, game.width, h},
-        {game.x, game.y + game.height - h, game.width, h},
-        {game.x, game.y, w, game.height},
-        {game.x + game.width - w, game.y, w, game.height},
-    };
     double most = 0;
-    for (const ImageFloatBox& band : bands){
+    for (const ImageFloatBox& band : edge_bands(game)){
         most = std::max(most, ImageMatch::pixel_RMSD(extract_box_reference(before, band), extract_box_reference(after, band)));
     }
     return most;
@@ -320,9 +341,13 @@ HoldMovement measure_movement(
     if (!before || !after){
         return HoldMovement::UNMEASURED;
     }
-    const double change = hold_scroll_change(*before.frame, *after.frame, GameSettings::instance().GAME_BOX);
-    console.log(std::format("Position check: the screen changed by {:.1f} over the hold.", change));
-    return change > HOLD_UNMOVED_RMSD ? HoldMovement::MOVED : HoldMovement::NONE;
+    const std::optional<double> change = hold_scroll_change(*before.frame, *after.frame, GameSettings::instance().GAME_BOX);
+    if (change){
+        console.log(std::format("Position check: the screen changed by {:.1f} over the hold.", *change));
+    }else{
+        console.log("Position check: no edge of the screen shows the map, before or after the hold: not measured.", COLOR_ORANGE);
+    }
+    return hold_movement(change);
 }
 
 //  One WALK step: turned first when it should, then its hold, and the warp
@@ -685,16 +710,27 @@ RouteCalls console_route_calls(
 
 } // namespace
 
-double hold_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game){
-    //  The top and bottom quarters, clear of the player in the middle. A
-    //  scroll moves both; a town's banner (top) or water (either) only one.
-    const double h = game.height * 0.25;
-    const ImageFloatBox top(game.x, game.y, game.width, h);
-    const ImageFloatBox bottom(game.x, game.y + game.height - h, game.width, h);
-    return std::min(
-        ImageMatch::pixel_RMSD(extract_box_reference(before, top), extract_box_reference(after, top)),
-        ImageMatch::pixel_RMSD(extract_box_reference(before, bottom), extract_box_reference(after, bottom))
-    );
+std::optional<double> hold_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game){
+    //  A scroll moves every band that shows the map; a town's banner (top
+    //  left) or water only some.
+    std::optional<double> least;
+    for (const ImageFloatBox& band : edge_bands(game)){
+        const ImageViewRGB32 from = extract_box_reference(before, band);
+        const ImageViewRGB32 to = extract_box_reference(after, band);
+        if (blank_band(from) && blank_band(to)){
+            continue;
+        }
+        const double change = ImageMatch::pixel_RMSD(from, to);
+        least = least ? std::min(*least, change) : change;
+    }
+    return least;
+}
+
+HoldMovement hold_movement(std::optional<double> change){
+    if (!change){
+        return HoldMovement::UNMEASURED;
+    }
+    return *change > HOLD_UNMOVED_RMSD ? HoldMovement::MOVED : HoldMovement::NONE;
 }
 
 void walk_overworld_route_with_recovery(

@@ -8,12 +8,16 @@
 #include <cstdint>
 #include <format>
 #include <functional>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "PokemonFRLG_OverworldFacing.h"
 #include "PokemonFRLG_OverworldMaps.h"
+#include "PokemonFRLG_OverworldRecoveryWalk.h"
 #include "PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_BikeSpinMechanics.h"
@@ -224,7 +228,10 @@ const TurnTapCase TURN_TAP_CASES[] = {
     {.name = "taken", .input = {}, .expectation = {.end = TURN_END}},
     {.name = "dropped, tapped again", .input = {.dropped_turn_taps = {1}}, .expectation = {.end = TURN_END}},
     {.name = "dropped twice, tapped again", .input = {.dropped_turn_taps = {1, 2}}, .expectation = {.end = TURN_END}},
-    {.name = "dropped, not checked: the leg only turns", .input = {.dropped_turn_taps = {1}, .confirm_turn = false}, .expectation = {.end = TURN_START}},
+    //  Unchecked, the leg's hold only turns the player; the screen didn't
+    //  move, so the leg is held again and walks (judged since console B,
+    //  2026-11-12, 12.03 pallet_shore).
+    {.name = "dropped, not checked: the hold that only turned is held again", .input = {.dropped_turn_taps = {1}, .confirm_turn = false}, .expectation = {.end = TURN_END}},
     //  Console B, 2026-11-09 (08.03): on the Bicycle the turn tap took a
     //  step, each one-tile leg went two, and the walk to Route 8 ended on
     //  Route 12.
@@ -372,6 +379,187 @@ const TapMechanicsCase TAP_MECHANICS_CASES[] = {
     {.name = "step_once 3 times takes 3 steps", .input = {.presses = step_once_east(3)}, .expectation = {.steps = 3}},
 };
 
+std::string_view movement_name(HoldMovement movement){
+    switch (movement){
+    case HoldMovement::UNMEASURED:
+        return "unmeasured";
+    case HoldMovement::MOVED:
+        return "moved";
+    case HoldMovement::NONE:
+        return "no move";
+    }
+    return "?";
+}
+
+//  Where a screen shows black past the map's edge.
+enum class OffMap{
+    NONE,
+    TOP,        //  the top 240 of 640 rows
+    BOTTOM,     //  the bottom 240 of 640 rows
+    ALL,        //  the whole screen
+};
+
+//  One shot of a screen for hold_scroll_change().
+struct HoldShot{
+    //  How far the camera has moved, in pixels, right and down.
+    size_t scroll_x = 0;
+    size_t scroll_y = 0;
+    //  A town's name banner over the top left, as the game shows on
+    //  entering a town.
+    bool banner = false;
+    OffMap off_map = OffMap::NONE;
+};
+
+//  A 960x640 screen of 64-pixel tiles, each its own color, seen as `shot`.
+ImageRGB32 tile_map(const HoldShot& shot){
+    ImageRGB32 image(960, 640);
+    for (size_t y = 0; y < image.height(); y++){
+        for (size_t x = 0; x < image.width(); x++){
+            const uint32_t tile = (uint32_t)((x + shot.scroll_x) / 64 * 7 + (y + shot.scroll_y) / 64 * 13);
+            const bool in_banner = shot.banner && x < 400 && y < 80;
+            const bool off_map = shot.off_map == OffMap::ALL
+                || (shot.off_map == OffMap::TOP && y < 240)
+                || (shot.off_map == OffMap::BOTTOM && y >= 400);
+            if (off_map){
+                image.pixel(x, y) = 0xff070707;
+            }else{
+                image.pixel(x, y) = in_banner ? 0xfff8f8f8 : 0xff000000 | (tile * 0x2f1b3d & 0x00ffffff);
+            }
+        }
+    }
+    return image;
+}
+
+struct HoldScrollInput{
+    HoldShot before;
+    HoldShot after;
+};
+struct HoldScrollExpectation{
+    HoldMovement movement;
+};
+struct HoldScrollCase{
+    std::string name;
+    HoldScrollInput input;
+    HoldScrollExpectation expectation;
+};
+
+//  hold_scroll_change() over drawn screens: a hold reads as moved when the
+//  map scrolled in every edge band that shows it; a banner or a still map
+//  is no move.
+class Test_OverworldHoldScroll : public UnitTest{
+public:
+    explicit Test_OverworldHoldScroll(HoldScrollCase test_case)
+        : UnitTest("PokemonFRLG::OverworldWalk - hold scroll: " + test_case.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const ImageFloatBox game(0, 0, 1, 1);
+        const std::optional<double> change = hold_scroll_change(tile_map(m_case.input.before), tile_map(m_case.input.after), game);
+        const HoldMovement movement = hold_movement(change);
+        if (movement == m_case.expectation.movement){
+            return true;
+        }
+        return std::format(
+            "Expected {}; read {} (changed by {:.1f}).",
+            movement_name(m_case.expectation.movement), movement_name(movement), change.value_or(0)
+        );
+    }
+
+private:
+    HoldScrollCase m_case;
+};
+
+const HoldScrollCase HOLD_SCROLL_CASES[] = {
+    //  Pallet Town after a Fly (console B, 2026-11-13 02:42 and 02:46,
+    //  12.03): the first hold walked nothing while the town's banner slid in
+    //  over the top of the screen, and was taken as walked ("changed by
+    //  223.0"); every later tile was then 2 rows off.
+    {.name = "a town's banner over a still map", .input = {.before = {}, .after = {.banner = true}}, .expectation = {.movement = HoldMovement::NONE}},
+    {.name = "a step south", .input = {.before = {}, .after = {.scroll_y = 64}}, .expectation = {.movement = HoldMovement::MOVED}},
+    //  Pokemon Mansion 1F's bottom row (console B, 2026-11-14 03:20, 13.02):
+    //  a walk east of 13 tiles read as no move, the black below the map the
+    //  same in both shots.
+    {
+        .name = "a step east along the map's bottom edge",
+        .input = {.before = {.off_map = OffMap::BOTTOM}, .after = {.scroll_x = 64, .off_map = OffMap::BOTTOM}},
+        .expectation = {.movement = HoldMovement::MOVED},
+    },
+    {
+        .name = "a step east along the map's top edge",
+        .input = {.before = {.off_map = OffMap::TOP}, .after = {.scroll_x = 64, .off_map = OffMap::TOP}},
+        .expectation = {.movement = HoldMovement::MOVED},
+    },
+    {
+        .name = "standing at the map's bottom edge",
+        .input = {.before = {.off_map = OffMap::BOTTOM}, .after = {.off_map = OffMap::BOTTOM}},
+        .expectation = {.movement = HoldMovement::NONE},
+    },
+    {
+        .name = "a town's banner at the map's bottom edge",
+        .input = {.before = {.off_map = OffMap::BOTTOM}, .after = {.banner = true, .off_map = OffMap::BOTTOM}},
+        .expectation = {.movement = HoldMovement::NONE},
+    },
+    {
+        .name = "no map on the screen",
+        .input = {.before = {.off_map = OffMap::ALL}, .after = {.off_map = OffMap::ALL}},
+        .expectation = {.movement = HoldMovement::UNMEASURED},
+    },
+};
+
+struct HoldFramesInput{
+    //  Console B frames (1920x1080) in CommandLineTests.
+    std::string before;
+    std::string after;
+};
+struct HoldFramesCase{
+    std::string name;
+    HoldFramesInput input;
+    HoldScrollExpectation expectation;
+};
+
+//  hold_scroll_change() over console frames, in the console's game box.
+class Test_OverworldHoldFrames : public UnitTest{
+public:
+    explicit Test_OverworldHoldFrames(HoldFramesCase test_case)
+        : UnitTest("PokemonFRLG::OverworldWalk - hold frames: " + test_case.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const ImageFloatBox game(0.09375, 0.00462963, 0.8125, 0.962963);
+        const ImageRGB32 before(UNIT_TEST_RESOURCE_PATH() + m_case.input.before);
+        const ImageRGB32 after(UNIT_TEST_RESOURCE_PATH() + m_case.input.after);
+        const std::optional<double> change = hold_scroll_change(before, after, game);
+        const HoldMovement movement = hold_movement(change);
+        if (movement == m_case.expectation.movement){
+            return true;
+        }
+        return std::format(
+            "Expected {}; read {} (changed by {:.1f}).",
+            movement_name(m_case.expectation.movement), movement_name(movement), change.value_or(0)
+        );
+    }
+
+private:
+    HoldFramesCase m_case;
+};
+
+//  Pokemon Mansion 1F's bottom row (console B, 2026-11-14 03:19-03:20,
+//  13.02): "east 13 (to wall)" from (17, 33) walked to (30, 33) but read as
+//  no move; the route walked the leg again from (17, 33), which moved
+//  nothing, and failed.
+const HoldFramesCase HOLD_FRAMES_CASES[] = {
+    {
+        .name = "Pokemon Mansion 1F's bottom row, east 13",
+        .input = {.before = "PokemonFRLG/OverworldHold/PokemonMansion1F_Row33_Before.png", .after = "PokemonFRLG/OverworldHold/PokemonMansion1F_Row33_East13.png"},
+        .expectation = {.movement = HoldMovement::MOVED},
+    },
+    {
+        .name = "Pokemon Mansion 1F's bottom row, held again at the wall",
+        .input = {.before = "PokemonFRLG/OverworldHold/PokemonMansion1F_Row33_East13.png", .after = "PokemonFRLG/OverworldHold/PokemonMansion1F_Row33_HeldAgain.png"},
+        .expectation = {.movement = HoldMovement::NONE},
+    },
+};
+
 } // namespace
 
 
@@ -483,6 +671,12 @@ void add_tests_OverworldWalk(UnitTestDatabase& database){
     }
     for (const MapEdgeCase& item : MAP_EDGE_CASES){
         database.add<Test_OverworldTurnOnMapEdge>(item);
+    }
+    for (const HoldScrollCase& item : HOLD_SCROLL_CASES){
+        database.add<Test_OverworldHoldScroll>(item);
+    }
+    for (const HoldFramesCase& item : HOLD_FRAMES_CASES){
+        database.add<Test_OverworldHoldFrames>(item);
     }
 }
 
