@@ -1,6 +1,7 @@
 # Agent integration: an MCP lab server
 
-Status: proposal (2026-11-01; revised 2026-11-14 from the week's incidents,
+Status: accepted 2026-11-14, Slices 0-3 built (proposed 2026-11-01; revised 2026-11-14 from
+the week's incidents,
 `~/BDSPLab/notes/2026-11-13-week-problems.md`, and an implementation review; checked against the
 lab scripts and the user's console rules on 2026-11-14; the user's decisions of 2026-11-14
 are recorded in [Decisions and open questions](#decisions-and-open-questions)). It builds on:
@@ -10,12 +11,21 @@ are recorded in [Decisions and open questions](#decisions-and-open-questions)). 
 - the lab scripts on `agents` (`lab/control`, `lab/scripts`) and in `~/BDSPLab`
   (`labrun.sh`, `labbuild.sh`, `checkin.sh`, `lablock.sh`, `heavy_gate.sh`, ...).
 
-Nothing here is implemented except what those already have, FRLG RNG's one-off
+Before this rollout nothing here was implemented except what those already have, FRLG RNG's one-off
 `RngProgramInstance::run_precheck()` (upstream PokemonAutomation/Arduino-Source#1881, which the
 precheck list below generalizes) and the `require-profile` Claude Code hook (done, see
-Enforcement). In particular, the app does not yet expose a frame sequence, a generic
+Enforcement). In particular, the app did not expose a frame sequence, a generic
 game/screen detector, a preflight API, or an action source. Those are deliverables below, not
-existing integration points. Everything here is fork tooling for now (user, 2026-11-14).
+pre-existing integration points. Everything here is fork tooling for now (user, 2026-11-14).
+
+Build status (2026-11-14): Slices 0-3 are built as fork drafts: #478 (Slice 0, contracts and
+fixtures, base `agents`, tip ff209b333), #481 (Slice 1, `Lab/state.json` and the snapshot
+command, base `lab/tooling`, tip 629bfde88), #482 (Slice 2, read server, on #478, tip
+cbfccc2ac) and #483 (Slice 3, control plane, on #482, tip c9b45d06e). Slice 4 is
+approved to start, stacked on upstream #1881's branch `upstream/frlg-free-party-slots`. Draft
+#476 (`LabStateV1`, commit 7c44e72c3) adds a serializer and its tests only; it does not modify
+`LabChannel` or tag transitions, and its second `ProgramState` enum is to be dropped (see
+Resources).
 
 ## Requirement
 
@@ -115,9 +125,13 @@ code-health one, with its fake-lab tests beside it. App-side slices go on branch
 
 ## Resources (read-only, first implementation slice)
 
-The app keeps the legacy key/value `Lab/state` for existing scripts and atomically writes a
-new versioned `Lab/state.json`. The daemon rejects an unsupported `schema` and overlays only
-server-owned data such as the lease. Example app file:
+The app keeps the legacy key/value `Lab/state` (`seq`, `state`, `program`, `controller`,
+`owner`, `error`) byte-compatible for existing scripts and atomically writes a new versioned
+`Lab/state.json`. The C++ side only serializes. The Python daemon owns strict parsing: it
+rejects an unsupported `schema`, keeps unknown fields that matter for diagnostics, and
+overlays only server-owned data such as the lease. Shared golden JSON fixtures (Slice 0, #478)
+are the cross-language contract: the app's writer is tested against them byte for byte and the
+daemon's parser against the same files. Example app file:
 
 ```json
 {
@@ -151,12 +165,19 @@ server-owned data such as the lease. Example app file:
 
 `written_at` is a heartbeat even when no logical field changes. `instance.id` changes on
 each app start, so a reset frame sequence cannot be mistaken for a newer frame from the old
-process. `frame_seq` increases for every frame accepted by the app's frame cache and
-`captured_at` is that frame's capture time, not the time the state file was serialized.
+process. `frame_seq` is one process-wide monotonic counter: it increases for every frame the
+app receives and never resets on a panel switch or a camera auto-reset, so frames order by
+`(instance.id, frame_seq)` with no stream epoch. `captured_at` is that frame's capture time,
+not the time the state file was serialized.
 The daemon computes frame age from `captured_at`; it does not persist a decaying
-`last_frame_age_ms` value. `program.state` carries the legacy channel's values in lower case
-(`stopped`, `running`, `stopping`, `not_ready`, `no_program`), so one app enum feeds both
-files.
+`last_frame_age_ms` value. `program.state` reuses the app's one `ProgramState` enum, mapped
+once to the legacy upper-case values and once to lower-case JSON values (`stopped`,
+`running`, `stopping`, `not_ready`, `no_program`); no second state enum.
+`program.last_transition` is an object, or `null` before the first transition.
+
+Publication: a logical change (panel, program state, transition, controller, video state)
+rewrites `Lab/state.json` immediately; heartbeat-only and frame-only changes (`written_at`,
+`frame_seq`, `captured_at`) are throttled to one write every 1-2 s.
 
 Version 1 distinguishes transport freshness (`live`, `stale`, `missing`) from visual signal
 classification (`ok`, `black`, `colour_bars`, `unknown`). The first slice can truthfully
@@ -167,8 +188,10 @@ confidence fields.
 
 `program.last_transition.source` is emitted where the action originates, not inferred from
 the resulting state: `ui`, `lab`, `program`, or `error`. A lab action carries the daemon's
-request UUID. This is how the daemon distinguishes a user's Stop click from its own Stop
-request even if both race.
+request UUID. `ProgramSession`'s start and stop take an `ActionSource` and a request id, and the
+session latches the stop's initiator from `STOPPING` through `STOPPED`, so a later event cannot
+overwrite who stopped the run. This is how the daemon distinguishes a user's Stop click from
+its own Stop request even if both race.
 
 **`console://<id>/state`** is the parsed app state plus:
 
@@ -198,15 +221,18 @@ Reads need no lease. Every tool that can press a button, start/stop a program or
 selection requires a live lease token, not merely the caller-supplied owner name. The
 SQLite state machine is:
 
-| State | Entry | Exit |
+| State | Entry | Exit → target |
 |---|---|---|
-| `free` | initial state or explicit release | successful `acquire_console` |
-| `agent-idle` | acquired with bounded TTL | renew, explicit release, TTL expiry, run start, or observed UI action |
-| `agent-running` | the leased caller starts a run | program terminal event, explicit leased stop, or observed UI action; it never expires mid-run |
-| `user` | app reports a UI-originated Start/Stop or the operator explicitly claims B | explicit operator release only |
+| `free` | initial state or explicit release | successful `acquire_console` → `agent-idle`; observed UI action or operator claim → `user` |
+| `agent-idle` | acquired with a 20-minute TTL, renewed by every tool call | renew → `agent-idle`; explicit release or TTL expiry → `free`; run start → `agent-running`; observed UI action → `user` |
+| `agent-running` | the leased caller starts a run | natural terminal event or lab-requested stop (`stop_program`) → `free`; UI-originated transition → `user`; it never expires mid-run |
+| `user` | app reports a UI-originated Start/Stop or the operator explicitly claims B | explicit operator release only → `free` |
 
 A UI action revokes any agent lease before a user lease is installed. There is no guessed
-30-minute user timeout: absence of UI telemetry is not proof that the user is done. On
+30-minute user timeout: absence of UI telemetry is not proof that the user is done. The
+operator releases a `user` lease with the thin CLI's `release-user` command, which reads a
+separate operator token file; a hook rule refuses that command from an agent shell. The user
+and the agents share one login on the lab Mac, so the rule, not cryptography, is the guard. On
 daemon restart, leases and request results survive in SQLite; the daemon reconciles them
 against `instance.id`, current program state and the latest transition before allowing a
 mutation.
@@ -253,11 +279,11 @@ Each tool validates before it acts and returns JSON, or a refusal naming the fai
 |---|---|
 | `acquire_console(console, owner, ttl)` | Atomically acquires `free`; returns an opaque lease token and expiry. Owner is descriptive, not authority. |
 | `renew_console(lease, ttl)` / `release_console(lease)` | Operate only on the matching token. A user lease is released through an operator-authenticated CLI action, not an agent token. |
-| `shot(console, max_age_ms=2000, timeout_ms=5000)` | Lease not needed. Records `(instance.id, frame_seq)` at call start and waits for a strictly newer frame. Returns the completed PNG plus the new token and `captured_at`; never reuses a caller tag. Refuses on timeout, stale transport, or a classified bad signal. |
+| `shot(console, max_age_ms=2000, timeout_ms=5000)` | Lease not needed. Records `(instance.id, frame_seq)` at call start and waits for a strictly newer frame from the app's video-session snapshot seam. Returns the completed PNG plus the new token and `captured_at`; never reuses a caller tag. Refuses on timeout, stale transport, or a classified bad signal. |
 | `ensure_game(console, expected, allowed_screens)` | Read-only verification. Runs/reads the named detectors and returns the observation and age. It never navigates HOME or launches a title. |
-| `describe_program(console, panel)` | Returns a stable program id, typed option schema, defaults and the declared prechecks (each check's name and `needs` line) without touching the console. Refuses settings panels and hidden/unavailable programs. |
-| `preflight_program(console, panel, options)` | Lease required because detectors may use app resources, but performs no controller action. Checks selection and typed options, then has the app run the program's prechecks in order; returns the checks run, the first failure's name and user message, and evidence. |
-| `run_program(console, panel, options, preflight_token)` | Lease. Requires a still-current successful preflight bound to app instance, panel, normalized options, observation versions and lease. Starts once and returns request/run ids. |
+| `describe_program(console, panel)` | Returns a stable program id and only the stable parts of the option schema: keys, types, defaults, bounds and which enum entries are available, plus the declared prechecks (each check's name and `needs` line), without touching the console. Dynamic visibility is not part of it. Refuses settings panels and hidden/unavailable programs. |
+| `preflight_program(console, panel, options)` | Lease required because detectors may use app resources, but performs no controller action. Rejects unknown keys and disabled values, stages the candidate options, evaluates dynamic visibility and `check_validity`, then has the app run the program's prechecks in order; always restores the prior options. Returns the checks run, the first failure's name and user message, and evidence. |
+| `run_program(console, panel, options, preflight_token)` | Lease. Requires a still-current successful preflight bound to app instance, panel, the candidate options' hash, observation versions and lease. Starts once and returns request/run ids. |
 | `stop_program(console)` | Lease. Requests Stop once; success is the matching `last_transition{source: lab, request_id}` or a terminal run event, not merely a stopped snapshot. |
 | `cfr_batch(console, lines)` | Lease, program stopped. Debug-only allowlisted command batch; marks the save fact stale. Raw writes to `Lab/inbox` are not exposed. |
 
@@ -268,8 +294,19 @@ Until then, `ensure_game` turns the dangerous case into an early refusal and lea
 to the operator.
 
 The `shot` freshness rule closes both old races: its token is newer than call start, and the
-daemon responds only after the atomically published PNG can be opened. An app-side snapshot
-command should serve this read-only path without requiring a ready controller.
+daemon responds only after the atomically published PNG can be opened.
+
+The snapshot is a direct video-session seam: it reads frames from the panel's `VideoSession`
+frame listener, never constructs `LabConsole`, and needs no owner token, program state or
+controller. It must not wait behind the sequential `Lab/inbox` worker, so a 5-second `shot`
+is never blocked by a 30-second controller wait or a long CFR batch. As built in #481
+(629bfde88), the `snapshot LABEL [TIMEOUT_MS]` channel command already has the first half: it
+waits on that frame listener for the first frame newer than the line (100-60000 ms, default
+5000), saves `<request>_<LABEL>.png`, and prints `snapshot saved instance=… frame_seq=…
+captured_at=… after=… path=…`, or fails with `snapshot timeout …` or `snapshot unavailable …
+reason=no_video|panel_changed|app_closing|save_failed`. It still runs as a line on the
+channel's one worker, so moving it off that worker (its own request path served beside the
+inbox worker) is the remaining Slice 1 item.
 
 ### Program contract and preflight
 
@@ -279,8 +316,11 @@ border check, then free party slots). The general form is two layers rather than
 Start/Stop cycle:
 
 1. A static contract beside the program descriptor gives stable option keys, types,
-   constraints, defaults and visibility. The daemon validates and normalizes options without
-   touching the console. UI row indices and display strings are never API identifiers.
+   defaults, bounds and enum-entry availability. The daemon validates and normalizes options
+   without touching the console. UI row indices and display strings are never API
+   identifiers. Dynamic `ConfigOption` visibility and `check_validity` depend on other
+   options' values, so they are not in the static contract; preflight evaluates them on the
+   loaded candidate.
 2. Preconditions declared with the program (user decision, 2026-11-14). The program overrides
    `prechecks()` and returns a list of small named check objects; each has a `name`, a
    one-line `needs` description, and `run(env, context)` returning pass/fail plus a message
@@ -299,8 +339,13 @@ list generalizes upstream #1881's `run_precheck()`: its two checks become `black
 `free_party_slots(1)`. Nothing changes in upstream #1881 now; that move is Slice 4's first PR, and the
 server first refuses a run on a failed check in Slice 5.
 
+Candidate options during preflight: the app stages the candidate `BatchOption` JSON on the UI
+thread, rejects unknown keys and disabled values, evaluates dynamic visibility and
+`check_validity`, runs the prechecks, and always restores the prior options through a scope
+guard, on success, refusal or exception. Programs never see a separate cloned copy.
+
 The result of a preflight is a short-lived token hashing the app instance, program id,
-normalized options, relevant state/save observation versions and lease. `run_program` refuses
+the candidate options' hash, relevant state/save observation versions and lease. `run_program` refuses
 a stale token. A program with no `prechecks()` override reports `unsupported`; absence never
 means a successful check.
 
@@ -359,22 +404,47 @@ pushed onto its branch.
   compatibility. Decide which fields are app-authored and which are daemon overlays.
 - Add golden parse/round-trip tests before wiring live state.
 
-Acceptance: malformed, missing-version and future-version examples fail with a field-level
-error; all golden examples round-trip without losing unknown fields needed for diagnostics.
+Ownership: C++ only serializes; the Python daemon owns strict parsing, unsupported-schema
+rejection and keeping unknown diagnostic fields. The shared golden JSON fixtures are the
+cross-language contract: the app's writer must reproduce them, the daemon's parser must
+accept them.
+
+Acceptance: the golden fixtures are the contract both languages test against; the daemon's
+parser fails malformed, missing-version and future-version examples with a field-level error;
+all golden examples round-trip through the parser without losing unknown fields needed for
+diagnostics; the app's writer reproduces the app-authored goldens byte for byte.
+
+Built: #478 (on `agents`).
 
 ### Slice 1 — app observation seam (first coding branch)
 
 - Keep `Lab/state` byte-compatible and add atomically replaced `Lab/state.json`.
 - Give each app process an instance UUID and heartbeat; expose panel id/kind, program state,
   controller state, last transition, frame sequence and capture timestamp.
-- Thread the existing video-cache sequence/timestamp to the lab seam. Do not invent black,
-  colour-bar, game or screen observations; publish `unknown` until their detectors exist.
-- Add a read-only fresh-snapshot command that does not require controller readiness and
-  returns the published frame token.
+- Count frames in one process-wide monotonic `frame_seq` with each frame's capture time. Do
+  not invent black, colour-bar, game or screen observations; publish `unknown` until their
+  detectors exist.
+- Pass an `ActionSource` and request id into `ProgramSession`'s start and stop, and latch the
+  stop initiator through `STOPPING` → `STOPPED`. Slice 1 owns producing transitions; Slice 5
+  only consumes them.
+- Map the app's one `ProgramState` enum to the legacy upper-case and JSON lower-case values;
+  publish logical changes immediately and throttle heartbeat/frame-only writes to 1-2 s.
+- Add a read-only fresh-snapshot command on the video-session seam that does not require
+  controller readiness, does not wait behind the inbox worker, and returns the frame token.
 
-Acceptance: native tests cover serialization and transition-source mapping; a manual test
-restarts the app and proves `(instance, seq)` changes; a snapshot requested during a panel
-or controller fault is either a newer openable PNG or a typed timeout, never an old image.
+Acceptance: native tests cover serialization against the Slice 0 goldens and transition-source
+mapping; a manual test restarts the app and proves `(instance, seq)` changes; a snapshot
+requested during a panel or controller fault, or during a long controller wait, is either a
+newer openable PNG or a typed timeout, never an old image.
+
+Built so far: #481 (`lab/observation-seam`, 629bfde88) writes `Lab/state.json` beside the
+unchanged legacy `Lab/state`, rewritten at every 500 ms poll, and adds the `snapshot`
+command (see Tools). Its `frame_seq` counts frames at `VideoSession`'s frame listener in one
+counter per app instance that survives panel switches, which is decision 1. Where #481 differs
+from the decisions above, these are the remaining Slice 1 items: the transition source is
+inferred in the channel (it marks its own start/stop just before calling them, and everything
+else reads as `ui`) instead of passed into `ProgramSession`; writes are not yet split into
+immediate and throttled; `snapshot` still runs on the channel's one worker.
 
 App-side slices follow the repo's hard rules (AGENTS.md), which this design must not bend:
 
@@ -383,7 +453,8 @@ App-side slices follow the repo's hard rules (AGENTS.md), which this design must
 - files through `Common/Cpp/Filesystem` (atomic replace is write-beside-then-rename) and the
   project's JSON classes; no `std::filesystem`;
 - the transition source is set where the session's start/stop is called: the widget passes
-  `ui`, the lab channel passes `lab` with its request id; widgets hold no state;
+  `ActionSource::ui`, the lab channel passes `lab` with its request id, and `ProgramSession`
+  holds the latched source; widgets hold no state;
 - program contracts and the precheck list are program code: Qt-free, declared next to the
   program descriptor and instance;
 - the seams stay small enough to upstream later without a rewrite (user, 2026-11-14): behind
@@ -403,6 +474,8 @@ Acceptance: fake-lab tests exercise partial writes, stale files, sequence resets
 restarts, timeouts and concurrent readers; a console-B session can replace `shotB.sh` and
 status/log greps without granting mutation authority.
 
+Built: #482 (on #478). `runs://` is not in it; it arrives in Slice 6 with #116's format.
+
 ### Slice 3 — durable control plane
 
 - Add SQLite migrations for leases, requests/idempotency, events and tickets.
@@ -413,18 +486,29 @@ status/log greps without granting mutation authority.
 Acceptance: crash/restart and concurrent-client tests prove one lease winner, stable retry
 results, no running-lease expiry and gap-free event catch-up.
 
+Built: #483 (on #482).
+
 ### Slice 4 — typed program contract
 
-- Add `describe_program` app support with stable ids and typed options; keep UI concerns out
-  of the contract.
+Approved to start (2026-11-14), stacked on upstream #1881's branch
+`upstream/frlg-free-party-slots`.
+
+- Add `describe_program` app support with stable ids and the static option contract (keys,
+  types, defaults, bounds, enum availability); keep UI concerns and dynamic visibility out of
+  it.
 - Add the precheck list: `prechecks()`, `run_prechecks()`, `UserSetupError`, the shared
   checks `game_open`, `black_border`, `free_party_slots(n)`, and structured check results;
   `describe_program` lists them.
 - Move FRLG RNG's `run_precheck()` (upstream #1881) onto the list as `black_border` then
   `free_party_slots(1)`. This is the first change to that code and it waits for this slice.
-  Then one AutoStory family with its known-screen checks; `save_at(place)` waits for Slice 6's
-  save facts. Programs without a list report `unsupported`. Two PRs: the contract and the
-  precheck list with FRLG RNG, then the first AutoStory family.
+  #1881's "Run Start Checks" setting in the FRLG Game Settings (eb27dfc4f; today it skips the
+  party check while the black border check always runs) becomes the switch for FRLG's
+  precheck list.
+- Then the FRLG AutoStory family with its known-screen checks (it shares the cartridge and the
+  one-save-slot risk with the RNG programs). `game_open` runs before `black_border`, since a
+  black-border check means nothing on HOME. `save_at(place)` waits for Slice 6's save facts.
+  Programs without a list report `unsupported`. Two PRs: the contract and the precheck list
+  with FRLG RNG, then the FRLG AutoStory family.
 
 Acceptance: native tests cover option normalization, ranges/enums, hidden checkpoint ids and
 side-effect-free prechecks. Deliberately bad Safari, party, language and HOME-screen setups
@@ -432,13 +516,15 @@ are refused before a reset (bad saves: Slice 6).
 
 ### Slice 5 — leased actions
 
-- Implement `preflight_program`, token binding, `run_program`, `stop_program` and the
-  restricted `cfr_batch` over request UUIDs.
+- Implement `preflight_program` (stage-and-restore candidate options, candidate hash in the
+  token), token binding, `run_program`, `stop_program` and the restricted `cfr_batch` over
+  request UUIDs.
 - This is where the server first refuses a run on a failed precheck: `preflight_program`
   runs the list through the app and `run_program` needs its token. Until then the only
   enforcement is the program's own `run_prechecks()` at Start.
-- Emit the action source at the UI/lab/program/error origin and correlate lab transitions
-  with the request id. Make terminal events authoritative for completion.
+- Consume the transitions Slice 1 produces (source, request id, latched stop initiator) and
+  correlate lab transitions with the request id; this slice does not change how they are
+  emitted. Make terminal events authoritative for completion.
 - Leave `switch_game` out. Do not make selection-by-visible-index part of the protocol.
 
 Acceptance: race tests cover duplicate requests, UI takeover during start/stop, lease loss,
@@ -523,26 +609,55 @@ Settled by the user:
   that code changes only in Slice 4, and the server first refuses a run on a failed check in
   Slice 5. Nothing changes in upstream #1881 now.
 
-Still open, with the recommended answer in parentheses:
+Settled by the user (2026-11-14), each the recommended answer of the earlier open list:
 
-1. Operator authentication for releasing a `user` lease and for the thin CLI in general: the
-   user and the agents are the same login on the lab Mac. (A separate operator token file read
-   only by the CLI's `release-user` command, plus a hook rule that refuses that command from an
-   agent shell; the rule, not cryptography, is the guard.)
-2. Agent lease TTL and renewal cadence for `agent-idle`. (20 minutes, renewed by every tool
-   call; never applies to `agent-running`.)
-3. How the daemon is started before Slice 7 makes it the supervisor. (A launchd agent beside
-   `com.dayfine.pa-sync`, attach-only; never started from an agent's Bash call.)
-4. `runs://` before #116 lands. (Slice 2 ships without it; it arrives in Slice 6 with #116's
-   format.)
-5. Which AutoStory family goes first in Slice 4. (FRLG: it shares the cartridge and the
-   one-save-slot risk with the RNG programs already on the list.)
-6. Check order and the `unknown` save fact: does `game_open` run before `black_border`, and
-   does `save_at` refuse or warn while `console://B/save` is `unknown`? (`game_open` first,
-   since a black-border check means nothing on HOME; `save_at` refuses on `unknown` and is not
-   declared before Slice 6.)
-7. The hook's known gaps (wrappers with flags, no `Lab/inbox` guard, Bash tool only). (Leave
-   them; the owner token in Slice 5 and app supervision in Slice 7 close them structurally.)
+1. **Operator authentication.** The thin CLI's `release-user` command reads a separate
+   operator token file, and a hook rule refuses that command from an agent shell; the user and
+   the agents share one login, so the rule, not cryptography, is the guard (Leases).
+2. **Agent lease TTL.** 20 minutes for `agent-idle`, renewed by every tool call; it never
+   applies to `agent-running`.
+3. **Starting the daemon before Slice 7.** A launchd agent beside `com.dayfine.pa-sync`,
+   attach-only; never started from an agent's Bash call.
+4. **`runs://` before #116 lands.** Slice 2 ships without it; it arrives in Slice 6 with
+   #116's format.
+5. **First AutoStory family in Slice 4.** FRLG: it shares the cartridge and the one-save-slot
+   risk with the RNG programs already on the list.
+6. **Check order and the `unknown` save fact.** `game_open` runs before `black_border`, since
+   a black-border check means nothing on HOME; `save_at` refuses while `console://B/save` is
+   `unknown` and is not declared before Slice 6.
+7. **The hook's known gaps** (wrappers with flags, no `Lab/inbox` guard, Bash tool only).
+   Left as they are; the owner token in Slice 5 and app supervision in Slice 7 close them
+   structurally.
+
+Settled by the user (2026-11-14), from the implementation review of 7a2da8fac (#131's comment
+of 09:11Z):
+
+1. **Frame identity:** one process-wide monotonic `frame_seq`; order by
+   `(instance.id, frame_seq)`, no stream epoch (Resources, Slice 1).
+2. **Transition provenance:** Slice 1 passes `ActionSource` and the request id into
+   `ProgramSession` start/stop and latches the stop initiator through `STOPPING` →
+   `STOPPED`; Slice 5 only consumes (Resources, Slices 1 and 5).
+3. **Fresh screenshots:** `shot` uses a direct video-session snapshot seam, not the
+   sequential `Lab/inbox` worker (Tools, Slice 1).
+4. **Static versus dynamic options:** `describe_program` exposes stable keys, types,
+   defaults, bounds and enum availability only; preflight rejects unknown/disabled values and
+   evaluates dynamic visibility and `check_validity` on the loaded candidate (Program
+   contract and preflight).
+5. **Candidate options:** preflight stages the candidate and always restores the prior
+   options with scope cleanup; the candidate hash is bound into the token (Program contract
+   and preflight).
+6. **State publication:** logical changes publish immediately; heartbeat/frame-only changes
+   are throttled to 1-2 s; `program.last_transition` is an object or `null` (Resources).
+7. **Lease terminal state:** `agent-running` → `free` on a natural or lab-requested terminal
+   event; a UI-originated transition → `user` (Leases table).
+8. **Program-state enum:** `state.json` reuses the app's one `ProgramState` enum, mapped once
+   to legacy upper case and JSON lower case; draft #476's second enum is to be dropped
+   (Resources).
+9. **Slice 0 ownership:** C++ only serializes; the Python daemon owns strict parsing,
+   unsupported-schema rejection and unknown diagnostic fields; shared golden JSON fixtures
+   are the cross-language contract (Resources, Slice 0).
+
+No questions are open.
 
 Separate designs, not hidden follow-ups inside the console server: arbitrary game switching,
 CI diagnosis and stack/worktree planning, and the mGBA controller/video work.
