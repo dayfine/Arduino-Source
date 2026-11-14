@@ -113,7 +113,7 @@ Act checked_save(Act save, std::string id, SegmentHooks& hooks){
         }
         const Outcome checked = hooks.check_postconditions(id, state);
         if (!checked.succeeded()){
-            say(std::format("[Checkpoint] {}: postconditions failed, not saving", id), hooks);
+            say(checkpoint_log_line(id, "postconditions failed, not saving"), hooks);
             return outcome_failed("postconditions_failed", to_string(checked));
         }
         return save(state);
@@ -144,7 +144,7 @@ void set_save(const Row& row, const SegmentPolicy& policy, SegmentHooks& hooks, 
     const SavePoint point = row.last ? SavePoint::RUN_END : SavePoint::CHECKPOINT_END;
     if (!story_save_allowed(mode, CheckpointVerdict::PASSED, point)){
         checkpoint.save = [&hooks, id = row.spec.id, mode](RunState&){
-            say(std::format("[Checkpoint] {}: not saving (save mode {})", id, story_save_mode_name(mode)), hooks);
+            say(checkpoint_log_line(id, std::format("not saving (save mode {})", story_save_mode_name(mode))), hooks);
             return outcome_ok();
         };
         return;
