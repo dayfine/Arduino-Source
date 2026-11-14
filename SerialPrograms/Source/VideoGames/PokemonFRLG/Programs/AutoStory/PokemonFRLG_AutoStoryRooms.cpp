@@ -65,11 +65,11 @@ const std::vector<RoomLeg>& center_legs(std::string_view variant){
 
 void walk_room_legs(
     ConsoleHandle& console, ProControllerContext& context,
-    const std::vector<RoomLeg>& legs, std::optional<Pokemon::Direction> facing
+    const std::vector<RoomLeg>& legs, std::optional<Pokemon::Direction> facing, PlayerGender player
 ){
     for (const RoomLeg& leg : legs){
         if (leg.tiles == 0){
-            OverworldWalkSteps::turn_to(console, context, leg.direction);
+            OverworldWalkSteps::turn_to(console, context, leg.direction, player);
             facing = leg.direction;
             continue;
         }
@@ -79,7 +79,7 @@ void walk_room_legs(
                 context.wait_for_all_requests();
                 before = console.video().snapshot();
             }
-            step_once(console, context, leg.direction, facing);
+            step_once(console, context, leg.direction, facing, player);
             facing = leg.direction;
         }
         if (leg.warps){
