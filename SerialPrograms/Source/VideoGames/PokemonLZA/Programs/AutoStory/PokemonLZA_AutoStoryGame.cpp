@@ -27,6 +27,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatches.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryConfirmChoices.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryDialogs.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryGateWalk.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerWalks.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMoves.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.h"
@@ -129,6 +130,17 @@ StoryArgSpec legs_arg(std::string key, bool required, std::string why){
     return StoryArgSpec{.key = std::move(key), .type = StoryArgType::TIMED_LEGS, .required = required, .fallback = std::nullopt, .why = std::move(why)};
 }
 
+//  "walk_to_zone_gate_entrance": the heading it faces first, its bound.
+StoryActionSpec gate_walk_spec(){
+    return game_spec("walk_to_zone_gate_entrance", {
+        StoryArgSpec{
+            .key = "heading", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
+            .why = "the compass heading along the street to the gate, faced first, clockwise from north",
+        },
+        optional_ms("timeout_ms", 15000, "walking this long with no A prompt fails the step"),
+    });
+}
+
 //  "walk": its legs, the fade it ends on, the heading it faces first.
 StoryActionSpec walk_spec(){
     return game_spec("walk", {
@@ -162,6 +174,50 @@ StoryActionSpec approach_starter_spec(){
 }
 
 
+
+//  `move`, once the screen shows free control; held until the fade of
+//  `call`'s "end" arg, if it names one. Each leg is a breakpoint.
+Outcome walk_legs(
+    Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, const StoryMove& move,
+    const PlzaReader& heading
+){
+    const std::string_view name = call.step.name;
+    const StoryActionArgs& args = call.args;
+    if (move.wait_first > Milliseconds(0)){
+        backend.wait(move.wait_first);
+    }
+    const Outcome free = check_can_walk(backend, name);
+    if (!free.succeeded()){
+        return free;
+    }
+    const auto end = args.find("end");
+    std::optional<PokemonAutomation::ScreenEvent> fade;
+    if (end != args.end()){
+        fade = walk_end_event(std::get<std::string>(end->second));
+    }
+    return fade ? walk_until(backend, name, move, heading, *fade, &call.pause) : run_story_move(backend, move, heading, &call.pause);
+}
+
+//  A walk's body, with the run's compass reader for the heading it faces.
+using HeadingBody = Outcome (*)(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, const PlzaReader& heading);
+
+//  "walk": its args' legs, walked once the screen shows free control,
+//  until its end event if it has one.
+Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, const PlzaReader& heading){
+    return walk_legs(backend, call, story_walk_move(call.args, "legs"), heading);
+}
+
+//  "walk_to_zone_gate_entrance": its args' heading faced first, if any,
+//  then the walk steered by the gate on screen to its A prompt.
+Outcome gate_walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, const PlzaReader& heading){
+    GateWalk walk;
+    walk.timeout = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "timeout_ms"));
+    const auto facing = call.args.find("heading");
+    if (facing != call.args.end()){
+        walk.heading = (double)std::get<int64_t>(facing->second);
+    }
+    return walk_to_zone_gate_entrance(backend, heading, zone_gate_reader(), walk);
+}
 
 //  Builds the handlers. The console actions hold the console; without one
 //  (a test, a simulation) their specs are console_only and the engine
@@ -202,11 +258,10 @@ public:
         };
     }
 
-    //  "walk": its args' legs, walked once the screen shows free control,
-    //  until its end event if it has one.
-    Handler walk() const{
-        return [heading = m_heading](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
-            return walk_legs(backend, call, story_walk_move(call.args, "legs"), heading);
+    //  `body` with the run's compass reader (heading_reader()).
+    Handler with_heading(HeadingBody body) const{
+        return [heading = m_heading, body](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
+            return body(backend, call, heading);
         };
     }
 
@@ -290,29 +345,6 @@ public:
     }
 
 private:
-    //  `move`, once the screen shows free control; held until the fade of
-    //  `call`'s "end" arg, if it names one. Each leg is a breakpoint.
-    static Outcome walk_legs(
-        Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, const StoryMove& move,
-        const PlzaReader& heading
-    ){
-        const std::string_view name = call.step.name;
-        const StoryActionArgs& args = call.args;
-        if (move.wait_first > Milliseconds(0)){
-            backend.wait(move.wait_first);
-        }
-        const Outcome free = check_can_walk(backend, name);
-        if (!free.succeeded()){
-            return free;
-        }
-        const auto end = args.find("end");
-        std::optional<PokemonAutomation::ScreenEvent> fade;
-        if (end != args.end()){
-            fade = walk_end_event(std::get<std::string>(end->second));
-        }
-        return fade ? walk_until(backend, name, move, heading, *fade, &call.pause) : run_story_move(backend, move, heading, &call.pause);
-    }
-
     StoryEnv* m_env;
     StarterChoice m_starter;
     //  The compass for the walks; none without a console, where a look
@@ -436,8 +468,9 @@ Handler platform_handler(PlatformWait wait){
 using HandlerOf = Handler (*)(const PlzaHandlers& handlers);
 const std::map<std::string, HandlerOf, std::less<>>& story_game_actions(){
     static const std::map<std::string, HandlerOf, std::less<>> actions{
-        {"walk", [](const PlzaHandlers& handlers){ return handlers.walk(); }},
+        {"walk", [](const PlzaHandlers& handlers){ return handlers.with_heading(walk_step); }},
         {"approach_starter", [](const PlzaHandlers& handlers){ return handlers.approach_starter(); }},
+        {"walk_to_zone_gate_entrance", [](const PlzaHandlers& handlers){ return handlers.with_heading(gate_walk_step); }},
         {"load_backup_save", [](const PlzaHandlers& handlers){ return handlers.load_backup_save(); }},
         {"mash_to_move_hints", [](const PlzaHandlers&){ return PlzaHandlers::move_hints(); }},
         {"text_to_choice", [](const PlzaHandlers&){ return PlzaHandlers::text_to_choice(); }},
@@ -605,12 +638,11 @@ std::vector<StoryActionSpec> plza_story_action_specs(){
         game_spec("opening_to_platform", {
             optional_ms("timeout_ms", 240000, "no autosave and platform this long fails the step"),
         }),
+        walk_spec(), gate_walk_spec(), approach_starter_spec(),
     };
     for (StoryActionSpec& spec : console_game_specs()){
         specs.push_back(std::move(spec));
     }
-    specs.push_back(walk_spec());
-    specs.push_back(approach_starter_spec());
     for (const auto& [name, todo] : story_actions_not_implemented()){
         specs.push_back(game_spec(name));
     }
