@@ -26,6 +26,10 @@ namespace{
 inline constexpr size_t MAX_TEXT_LOOKS = 80;
 //  Looks for a text box to open after a talk's A.
 inline constexpr size_t MAX_OPEN_LOOKS = 20;
+//  A press through text or an answer: held, then released before the next
+//  look, the same for every text press so they read alike in the log.
+inline constexpr std::chrono::milliseconds TEXT_PRESS_HOLD{80};
+inline constexpr std::chrono::milliseconds TEXT_PRESS_RELEASE{120};
 
 
 //  The action of a built-in that needs the game's own code.
@@ -54,7 +58,7 @@ Outcome mash_to_overworld(StoryBackend<PoseType>& backend){
         if (now.events.has(ScreenEvent::PLAYER_CAN_MOVE) && !now.events.has(ScreenEvent::DIALOG_BOX)){
             return outcome_ok();
         }
-        backend.press(NintendoSwitch::BUTTON_A, 80ms, 120ms);
+        backend.press(NintendoSwitch::BUTTON_A, TEXT_PRESS_HOLD, TEXT_PRESS_RELEASE);
     }
     return outcome_failed("mash_no_overworld", std::format("no overworld after {} looks", MAX_TEXT_LOOKS));
 }
@@ -69,7 +73,7 @@ Outcome mash(StoryBackend<PoseType>& backend, const StoryActionCall&, RunState&)
 template <StoryPose PoseType>
 Outcome talk(StoryBackend<PoseType>& backend, const StoryActionCall&, RunState&){
     using namespace std::chrono_literals;
-    backend.press(NintendoSwitch::BUTTON_A, 80ms, 120ms);
+    backend.press(NintendoSwitch::BUTTON_A, TEXT_PRESS_HOLD, TEXT_PRESS_RELEASE);
     for (size_t c = 0; c < MAX_OPEN_LOOKS; c++){
         if (backend.observe().events.has(ScreenEvent::DIALOG_BOX)){
             return mash_to_overworld(backend);
@@ -114,7 +118,7 @@ Outcome face(StoryBackend<PoseType>& backend, const StoryActionCall& call, RunSt
 template <StoryPose PoseType>
 Outcome answer(StoryBackend<PoseType>& backend, const StoryActionCall& call, RunState&){
     using namespace std::chrono_literals;
-    backend.press(story_arg<bool>(call.args, "yes") ? NintendoSwitch::BUTTON_A : NintendoSwitch::BUTTON_B, 80ms, 120ms);
+    backend.press(story_arg<bool>(call.args, "yes") ? NintendoSwitch::BUTTON_A : NintendoSwitch::BUTTON_B, TEXT_PRESS_HOLD, TEXT_PRESS_RELEASE);
     return outcome_ok();
 }
 
