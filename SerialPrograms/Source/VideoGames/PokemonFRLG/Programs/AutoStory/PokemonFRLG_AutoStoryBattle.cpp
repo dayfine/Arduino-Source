@@ -32,6 +32,7 @@
 #include "PokemonFRLG_AutoStoryBagUse.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
+#include "PokemonFRLG_AutoStoryPocketList.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -903,44 +904,12 @@ bool battle_shows(const ImageViewRGB32& screen){
     return text.hp_box || text.yes_no;
 }
 
-//  The Items pocket's capacity (pokefirered BAG_ITEMS_COUNT).
-constexpr size_t MAX_ITEMS_POCKET_ROWS = 42;
-
 std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerContext& context, Language language){
     open_items_pocket(console, context);
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
     dump_debug_image(console, "AutoStory/bag", "items-pocket", screen);
-    std::vector<BagRow> reads;
-    bool cancel = !screen;
-    for (int shown = 0; !cancel && shown < ITEM_LIST_ROWS; shown++){
-        BagRow read = read_bag_row(console, language, screen, shown);
-        cancel = read.item == "cancel";
-        if (!cancel){
-            reads.push_back(std::move(read));
-        }
-    }
-    //  The rows below the first six: DOWN to the fourth row shown, then each
-    //  DOWN scrolls the next row into the last (item_shown_row()). Reading
-    //  one page only missed the X Specials under a MOON STONE, a NUGGET and
-    //  four more, and the Tower rival was fought with none (console B,
-    //  2026-11-12).
-    if (!cancel){
-        for (int c = 0; c < ITEM_LIST_ROWS / 2; c++){
-            pbf_press_dpad(context, DPAD_DOWN, 100ms, 300ms);
-        }
-    }
-    while (!cancel && reads.size() < MAX_ITEMS_POCKET_ROWS){
-        pbf_press_dpad(context, DPAD_DOWN, 100ms, 400ms);
-        context.wait_for_all_requests();
-        screen = console.video().snapshot();
-        BagRow read = screen ? read_bag_row(console, language, screen, ITEM_LIST_ROWS - 1) : BagRow{};
-        cancel = !screen || read.item == "cancel";
-        if (!cancel){
-            reads.push_back(std::move(read));
-        }
-    }
-    std::vector<BagRow> rows = pocket_rows(std::move(reads));
+    std::vector<BagRow> rows = read_open_pocket(console, context, language).rows;
     std::string text;
     for (const BagRow& row : rows){
         text += std::format(" {} x{};", row.item, row.count);

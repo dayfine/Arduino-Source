@@ -71,7 +71,8 @@ public:
     virtual ~ItemUseActions() = default;
     //  From the overworld, opens the bag on `pocket`, scrolled to its top.
     virtual bool open_pocket(BagPocket pocket) = 0;
-    //  The open pocket's rows, from the top.
+    //  The open pocket's rows, from the top, all of them
+    //  (read_whole_pocket()); the cursor back on the top row after.
     virtual std::vector<BagRow> read_pocket() = 0;
     //  Moves to row `row`, USE, and through what the item says.
     virtual void use_row(size_t row) = 0;
