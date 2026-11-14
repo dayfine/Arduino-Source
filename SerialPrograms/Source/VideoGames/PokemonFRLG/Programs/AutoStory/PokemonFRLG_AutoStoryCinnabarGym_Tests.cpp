@@ -132,7 +132,8 @@ struct GymWalk{
         const SimState& state = sim->state();
         place_on(state.position, state.facing);
     }
-    void place_on(const MapPosition& position, Direction facing){
+    //  By value: `position` may be the state of the sim this replaces.
+    void place_on(MapPosition position, Direction facing){
         if (sim){
             const std::vector<std::string>& beaten = sim->state().trainers_beaten;
             fought.insert(fought.end(), beaten.begin(), beaten.end());
