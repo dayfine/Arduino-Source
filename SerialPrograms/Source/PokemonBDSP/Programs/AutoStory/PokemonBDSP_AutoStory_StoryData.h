@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Json/JsonValue.h"
+#include "Pokemon/AutoStory/Data/Pokemon_StoryFiles.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "PokemonBDSP_AutoStory_StoryCheckpoint.h"
 
@@ -34,8 +35,11 @@ StoryCheckpoint read_authored_checkpoint(const JsonValue& value, std::string_vie
 //  Load an embedded authored checkpoint; a missing file throws InternalProgramError.
 StoryCheckpoint load_authored_checkpoint(std::string_view file);
 
-//  Load all embedded authored checkpoints in id order.
-std::vector<StoryCheckpoint> load_authored_story();
+//  The embedded authored checkpoints in id order, each of `dev_files` in
+//  place of the embedded file of its name (Pokemon_StoryFiles.h). Throws
+//  ParseException for a bad file, a dev file the shared loader refuses, or
+//  two checkpoints with one id.
+Pokemon::StoryData<StoryCheckpoint> load_bdsp_story(std::span<const Pokemon::StoryDevFile> dev_files);
 
 //  The embedded authored checkpoint file, parsed but not read.
 JsonValue authored_checkpoint_document(std::string_view file);

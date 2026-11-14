@@ -11,6 +11,7 @@
 #include <set>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
+#include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPreflight.h"
@@ -26,7 +27,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_ConsoleStory.h"
-#include "PokemonBDSP_AutoStory_StoryTable.h"
+#include "PokemonBDSP_AutoStory_StoryData.h"
 #include "PokemonBDSP_AutoStory.h"
 
 namespace PokemonAutomation{
@@ -57,12 +58,17 @@ std::unique_ptr<StatsTracker> BDSPAutoStory_Descriptor::make_stats() const{
 
 namespace{
 
+//  The rows a run lists: dev_only ones only in Developer Mode.
+Pokemon::StoryRowsShown rows_shown(){
+    return STATIC_GLOBALS.DEVELOPER_MODE ? Pokemon::StoryRowsShown::DEVELOPER : Pokemon::StoryRowsShown::USER;
+}
+
 //  The start and end dropdowns' entries: segments 00 and 01 joined, 00.00
 //  to 01.11. The options hold a reference to it.
 const StringSelectDatabase& checkpoint_database(){
     static const StringSelectDatabase database = []{
         std::vector<std::string> labels;
-        for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryCheckpoint& row : Pokemon::story_rows_for_mode(load_bdsp_story({}), rows_shown())){
             labels.push_back(story_checkpoint_label(row));
         }
         return Pokemon::story_checkpoint_database(labels);
@@ -235,10 +241,27 @@ std::string run_story(
     return done;
 }
 
+//  The rows for this run: the built-in checkpoints, with those of
+//  <user files>/AutoStoryDev/bdsp/ in their place, read now so a run after
+//  an edit plays the edited walks. Logs each dev file it uses; a bad one
+//  fails the run.
+std::vector<StoryCheckpoint> load_run_rows(ConsoleHandle& console){
+    const std::string folder = Pokemon::story_dev_folder("bdsp");
+    try{
+        const Pokemon::StoryData<StoryCheckpoint> story = load_bdsp_story(Pokemon::read_story_dev_files(folder, "bdsp"));
+        for (const auto& [name, path] : story.dev_files){
+            console.log(std::format("AutoStory: using dev checkpoint {} from {}", name, path));
+        }
+        return Pokemon::story_rows_for_mode(story, rows_shown());
+    }catch (const ParseException& error){
+        throw UserSetupError(console, std::format("AutoStory: bad dev checkpoint in {}: {}", folder, error.message()));
+    }
+}
+
 } // namespace
 
 void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
+    const std::vector<StoryCheckpoint> checkpoints = load_run_rows(env.console);
     const size_t first = RUN.start_index();
     const size_t last = RUN.end_index();
     if (first > last || last >= checkpoints.size()){

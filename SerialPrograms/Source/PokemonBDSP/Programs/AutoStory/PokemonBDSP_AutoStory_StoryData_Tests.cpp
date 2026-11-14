@@ -11,6 +11,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/AutoStory/Data/Pokemon_StoryFiles.h"
 #include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
 #include "PokemonBDSP_AutoStory_StoryData.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
@@ -219,11 +220,150 @@ const StoryDataCase STORY_DATA_CASES[] = {
     },
 };
 
+
+//  A dev file in place of a built-in checkpoint file (load_bdsp_story()).
+struct DevFileInput{
+    std::string file;               //  the dev file's name; empty: no dev file
+    std::string_view builtin;       //  the built-in file it starts from
+    void (*mutate)(JsonObject&) = nullptr;
+};
+
+struct DevFileExpectation{
+    bool rejected = false;
+    //  story_summary() of the story loaded.
+    std::string summary = {};
+};
+
+struct DevFileCase{
+    std::string name;
+    DevFileInput input;
+    DevFileExpectation expectation;
+};
+
+void retitle(JsonObject& root){
+    root.get_object_throw("checkpoint")["title"] = "Retimed";
+}
+
+void mark_dev_only(JsonObject& root){
+    root.get_object_throw("execution")["dev_only"] = true;
+}
+
+void other_id(JsonObject& root){
+    root.get_object_throw("checkpoint")["id"] = "00.99";
+}
+
+std::vector<Pokemon::StoryDevFile> dev_files_of(const DevFileInput& input){
+    if (input.file.empty()){
+        return {};
+    }
+    JsonValue document = authored_checkpoint_document(input.builtin);
+    if (input.mutate != nullptr){
+        input.mutate(document.to_object_throw());
+    }
+    return {{.name = input.file, .path = std::format("AutoStoryDev/bdsp/{}", input.file), .text = document.dump()}};
+}
+
+//  The loaded story in one line: 00.01's title, the dev_only rows, how
+//  many rows a user sees and the dev files used; or "not in id order".
+std::string story_summary(const Pokemon::StoryData<StoryCheckpoint>& story){
+    const bool in_id_order = std::is_sorted(story.checkpoints.begin(), story.checkpoints.end(),
+        [](const StoryCheckpoint& a, const StoryCheckpoint& b){ return a.id < b.id; });
+    if (!in_id_order){
+        return "not in id order";
+    }
+    std::string title;
+    for (const StoryCheckpoint& row : story.checkpoints){
+        if (row.id == "00.01"){
+            title = row.title;
+        }
+    }
+    std::string dev_only;
+    for (const std::string& id : story.dev_only){
+        dev_only += std::format(" {}", id);
+    }
+    std::string used;
+    for (const auto& [name, path] : story.dev_files){
+        used += std::format(" {}", name);
+    }
+    const size_t user_rows = Pokemon::story_rows_for_mode(story, Pokemon::StoryRowsShown::USER).size();
+    return std::format("{} | dev_only{} | {} user rows | dev{}", title, dev_only, user_rows, used);
+}
+
+UnitTestResult check_dev_file_case(const DevFileCase& test_case){
+    std::string summary;
+    try{
+        summary = story_summary(load_bdsp_story(dev_files_of(test_case.input)));
+    }catch (const ParseException& error){
+        if (test_case.expectation.rejected){
+            return true;
+        }
+        return std::format("Unexpected rejection: {}", error.message());
+    }
+    if (test_case.expectation.rejected){
+        return "Expected rejection but load_bdsp_story() succeeded.";
+    }
+    if (summary != test_case.expectation.summary){
+        return std::format("Got \"{}\", expected \"{}\".", summary, test_case.expectation.summary);
+    }
+    return true;
+}
+
+class Test_StoryDevFiles : public UnitTest{
+public:
+    explicit Test_StoryDevFiles(DevFileCase test_case)
+        : UnitTest(std::format("PokemonBDSP::StoryData - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return check_dev_file_case(m_case);
+    }
+
+private:
+    DevFileCase m_case;
+};
+
+const DevFileCase DEV_FILE_CASES[] = {
+    {
+        .name = "Dev file: none, the built-in rows in id order",
+        .input = {.file = "", .builtin = ""},
+        .expectation = {.summary = "Bedroom to the Verity Lakefront | dev_only | 23 user rows | dev"},
+    },
+    {
+        .name = "Dev file: replaces the built-in file of its name",
+        .input = {.file = "bdsp-00.01.plan.json", .builtin = "bdsp-00.01.plan", .mutate = retitle},
+        .expectation = {.summary = "Retimed | dev_only | 23 user rows | dev bdsp-00.01.plan.json"},
+    },
+    {
+        .name = "Dev file: an out-of-order file's row stays in id order",
+        .input = {.file = "bdsp-mine-01.03.plan.json", .builtin = "bdsp-mine-01.03.plan"},
+        .expectation = {.summary = "Bedroom to the Verity Lakefront | dev_only | 23 user rows | dev bdsp-mine-01.03.plan.json"},
+    },
+    {
+        .name = "Dev file: a dev_only row is not listed for a user",
+        .input = {.file = "bdsp-00.01.plan.json", .builtin = "bdsp-00.01.plan", .mutate = mark_dev_only},
+        .expectation = {.summary = "Bedroom to the Verity Lakefront | dev_only 00.01 | 22 user rows | dev bdsp-00.01.plan.json"},
+    },
+    {
+        .name = "Dev file: named like no built-in file, refused",
+        .input = {.file = "bdsp-99.99.plan.json", .builtin = "bdsp-00.01.plan"},
+        .expectation = {.rejected = true},
+    },
+    {
+        .name = "Dev file: changes the checkpoint id, refused",
+        .input = {.file = "bdsp-00.01.plan.json", .builtin = "bdsp-00.01.plan", .mutate = other_id},
+        .expectation = {.rejected = true},
+    },
+};
+
 } // namespace
 
 void add_tests_AutoStory_StoryData(UnitTestDatabase& database){
     for (const auto& item : STORY_DATA_CASES){
         database.add<Test_StoryData>(item);
+    }
+    for (const auto& item : DEV_FILE_CASES){
+        database.add<Test_StoryDevFiles>(item);
     }
 }
 
