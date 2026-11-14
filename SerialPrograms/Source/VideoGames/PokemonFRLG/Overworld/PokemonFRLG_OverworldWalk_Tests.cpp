@@ -263,8 +263,8 @@ struct UnreadTurnCase{
 };
 
 //  OverworldWalkSteps::unread_turn_taken(): a turn whose facing never read
-//  is taken where the route knows the tile and nothing covers the
-//  overworld; else the leg fails for a re-anchor.
+//  is taken where nothing covers the overworld and the route knows the
+//  tile or holds to a wall next; else the leg fails for a re-anchor.
 class Test_OverworldUnreadTurn : public UnitTest{
 public:
     explicit Test_OverworldUnreadTurn(UnreadTurnCase test_case)
@@ -287,6 +287,16 @@ const UnreadTurnCase UNREAD_TURN_CASES[] = {
     {.name = "tile unknown", .input = {.turn = {.at_known = false, .overworld_clear = true}}, .expectation = {.taken = false}},
     {.name = "a box or a fade over the overworld", .input = {.turn = {.at_known = true, .overworld_clear = false}}, .expectation = {.taken = false}},
     {.name = "surfing, tile unknown", .input = {.turn = {.sprite = OverworldWalkSteps::TurnSprite::NOT_READ}}, .expectation = {.taken = true}},
+    {
+        .name = "tile unknown, a hold to a wall next (Pokemon Mansion B1F row 31)",
+        .input = {.turn = {.at_known = false, .overworld_clear = true, .after = OverworldWalkSteps::UnreadTurn::Then::HOLD_TO_WALL}},
+        .expectation = {.taken = true},
+    },
+    {
+        .name = "a hold to a wall next, a box over the overworld",
+        .input = {.turn = {.at_known = false, .overworld_clear = false, .after = OverworldWalkSteps::UnreadTurn::Then::HOLD_TO_WALL}},
+        .expectation = {.taken = false},
+    },
 };
 
 

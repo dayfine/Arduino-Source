@@ -409,10 +409,7 @@ struct SimWalkerRules{
 //  overworld only, but for SimScript::hidden_facing_reads; with `confirm`
 //  false, the one tap before it. Returns false where turn_to() would fail
 //  the leg: unread_turn_taken() of `unread`, by default on a known tile.
-bool sim_turn_to(
-    OverworldSim& sim, Direction direction, bool confirm = SimWalkerRules{}.confirm_turn,
-    const OverworldWalkSteps::UnreadTurn& unread = {.at_known = true, .overworld_clear = true}
-);
+bool sim_turn_to(OverworldSim& sim, Direction direction, bool confirm = SimWalkerRules{}.confirm_turn, const OverworldWalkSteps::UnreadTurn& unread = {.at_known = true, .overworld_clear = true});
 
 //  AutoStory's step_once() on `sim`: turns the player if they face another
 //  way, then one step tap.

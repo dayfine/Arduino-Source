@@ -69,8 +69,14 @@ TurnTaps tap_until_facing(
     return out;
 }
 
+UnreadTurn::Then UnreadTurn::then_for(const RouteStep& step){
+    const bool wall_hold = step.action == RouteAction::WALK && step.to_wall && !step.warps;
+    return wall_hold ? UnreadTurn::Then::HOLD_TO_WALL : UnreadTurn::Then::OTHER;
+}
+
 bool unread_turn_taken(const UnreadTurn& turn){
-    return turn.sprite == TurnSprite::NOT_READ || (turn.at_known && turn.overworld_clear);
+    return turn.sprite == TurnSprite::NOT_READ
+        || ((turn.at_known || turn.after == UnreadTurn::Then::HOLD_TO_WALL) && turn.overworld_clear);
 }
 
 namespace{
@@ -114,7 +120,7 @@ bool known_on_map_edge(const std::optional<MapPosition>& at){
 //  unread_turn_taken() says, else the leg fails.
 void handle_unread_facing(
     ConsoleHandle& console, ProControllerContext& context, Direction direction, size_t tap,
-    TurnSprite sprite, const std::optional<MapPosition>& at
+    TurnSprite sprite, const std::optional<MapPosition>& at, UnreadTurn::Then after
 ){
     const std::string turn = std::format("after turn tap {} {}", tap, Pokemon::direction_name(direction));
     if (sprite == TurnSprite::NOT_READ){
@@ -124,7 +130,14 @@ void handle_unread_facing(
     context.wait_for_all_requests();
     const VideoSnapshot screen = console.video().snapshot();
     const bool clear = overworld_clear(screen);
-    if (unread_turn_taken({.sprite = sprite, .at_known = at.has_value(), .overworld_clear = clear})){
+    if (!at && unread_turn_taken({.sprite = sprite, .at_known = false, .overworld_clear = clear, .after = after})){
+        console.log(std::format(
+            "Route: {} on an unknown tile, facing not read: taken as turned, as the hold to the wall after it turns the player first.",
+            turn
+        ), COLOR_ORANGE);
+        return;
+    }
+    if (unread_turn_taken({.sprite = sprite, .at_known = at.has_value(), .overworld_clear = clear, .after = after})){
         console.log(std::format(
             "Route: {} on {}, facing not read{}: taken as turned, the leg's walk checks it.",
             turn, to_string(*at),
@@ -139,7 +152,7 @@ void handle_unread_facing(
         ErrorReportMode::SEND_ERROR_REPORT,
         std::format(
             "walk_overworld_route(): {}, the facing can't be read for {} reads: {}.",
-            turn, TURN_FACING_READS, at ? "the overworld isn't clear" : "the player's tile isn't known"
+            turn, TURN_FACING_READS, clear ? "the player's tile isn't known" : "the overworld isn't clear"
         ),
         console
     );
@@ -149,7 +162,7 @@ void handle_unread_facing(
 
 void turn_to(
     ConsoleHandle& console, ProControllerContext& context, Direction direction, PlayerGender player,
-    TurnSprite sprite, const std::optional<MapPosition>& at
+    TurnSprite sprite, const std::optional<MapPosition>& at, UnreadTurn::Then after
 ){
     //  A tap while the player faces `direction` already takes a step, so the
     //  screen is read first. A trainer's battle leaves the player facing the
@@ -188,7 +201,7 @@ void turn_to(
         }
     );
     if (!turned.facing){
-        handle_unread_facing(console, context, direction, turned.taps, sprite, at);
+        handle_unread_facing(console, context, direction, turned.taps, sprite, at, after);
     }
 }
 

@@ -374,7 +374,7 @@ UnitTestResult test_mansion_unread_turn_before_wall_hold(){
     script.hidden_facing_reads = SIZE_MAX;
     const SimWalk run = walk_on_sim(start, Direction::SOUTH, mansion_b1f_to_switch(), script);
     if (run.log.find("plan from an unknown tile") == std::string::npos){
-        return "Expected the battle to leave the tile unknown, as on the console:" + run.log;
+        return std::format("Expected the battle to leave the tile unknown, as on the console:{}", run.log);
     }
     const MapPosition goal{"PokemonMansion_B1F", {24, 30}};
     if (!run.failure.empty() || !(run.state.position == goal)){

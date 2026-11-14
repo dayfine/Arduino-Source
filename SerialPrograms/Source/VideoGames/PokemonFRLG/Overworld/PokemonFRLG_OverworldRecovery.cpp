@@ -75,11 +75,11 @@ int sight_onto(const std::vector<MapData>& maps, const MapPosition& tile, const 
 constexpr int OPEN_LEG_CHECK_TILES_PER_TILE = 3;
 
 //  The tiles an open `step` from `start` may have ended on with nothing
-//  seen: its end, and up to OPEN_LEG_SHORTFALL tiles before it.
-std::vector<StopCandidate> short_candidates(const std::vector<MapData>& maps, const MapPosition& start, const RouteStep& step){
+//  seen: its end and up to OPEN_LEG_SHORTFALL before it, not `start` if it scrolled.
+std::vector<StopCandidate> short_candidates(const std::vector<MapData>& maps, const MapPosition& start, const RouteStep& step, HoldMovement movement){
     const std::vector<MapPosition> tiles = leg_tiles(maps, start, step);
     std::vector<StopCandidate> candidates;
-    for (size_t c = 0; c <= (size_t)OPEN_LEG_SHORTFALL && c < tiles.size(); c++){
+    for (size_t c = 0; c <= (size_t)OPEN_LEG_SHORTFALL && c + (movement == HoldMovement::MOVED ? 1 : 0) < tiles.size(); c++){
         candidates.push_back(StopCandidate{tiles[tiles.size() - 1 - c], std::nullopt});
     }
     return candidates;
@@ -340,7 +340,7 @@ public:
                 continue;
             }
             if (outcome.end == StepEnd::DONE){
-                if (!after_done(step)){
+                if (!after_done(step, outcome.movement)){
                     return;
                 }
                 continue;
@@ -367,7 +367,7 @@ public:
 private:
     //  After `step` ended as planned: false, the route failed, if it lands
     //  the player and they are still on the water.
-    bool after_done(const RouteStep& step){
+    bool after_done(const RouteStep& step, HoldMovement movement){
         if (step.lands_after > 0 && m_calls.landed_on && !m_calls.landed_on(step.end)){
             m_calls.fail(std::format(
                 "walk_overworld_route(): still surfing after {}: the player didn't land on {}.",
@@ -382,7 +382,7 @@ private:
         m_at = step.end;
         m_facing = step.facing_after;
         m_lines.done(step, ++m_next, m_holds);
-        check_open_leg(step, start);
+        check_open_leg(step, start, movement);
         return true;
     }
 
@@ -757,8 +757,8 @@ private:
     //  had every tap seen to move: it ended on its tile, and a check walks
     //  back over tiles already walked (09.02's B2F, console B, 2026-11-11
     //  15:34: a hold back north to (21, 2) after "south 2" and to the wall
-    //  (17, 5) after "north 3").
-    void check_open_leg(const RouteStep& step, const std::optional<MapPosition>& start){
+    //  (17, 5) after "north 3"). A hold that scrolled (`movement`) left `start`.
+    void check_open_leg(const RouteStep& step, const std::optional<MapPosition>& start, HoldMovement movement){
         if (maps() == nullptr || m_planning->open_leg_check != OpenLegCheck::REANCHOR || !start
             || counts_step_taps(step)
             || step.action != RouteAction::WALK || step.to_wall || step.warps || step.spin_tiles
@@ -770,7 +770,7 @@ private:
         if (!(is_wall_hold(m_plan[m_next]) || is_slide(m_plan[m_next]) || water_chain)){
             return;
         }
-        const std::vector<StopCandidate> candidates = short_candidates(*maps(), *start, step);
+        const std::vector<StopCandidate> candidates = short_candidates(*maps(), *start, step, movement);
         if (candidates.size() < 2 || (is_wall_hold(m_plan[m_next]) && hold_finds(*maps(), candidates, m_plan[m_next]))){
             return;
         }

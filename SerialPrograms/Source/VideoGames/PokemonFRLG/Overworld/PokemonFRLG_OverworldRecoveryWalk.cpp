@@ -377,7 +377,7 @@ StepWalk walk_hold_step(
     //  the right way: exact over 15 tiles, where a turn lost one.
     if (turns_first(step, speed, from.facing)){
         const bool walking = !step.surfing && step_speed(step, speed) != MoveSpeed::BIKE;
-        turn_to(console, context, step.direction, player, walking ? TurnSprite::WALKING : TurnSprite::NOT_READ, from.at);
+        turn_to(console, context, step.direction, player, walking ? TurnSprite::WALKING : TurnSprite::NOT_READ, from.at, UnreadTurn::then_for(step));
     }
     if (const std::string note = speed_note(step, speed); !note.empty()){
         console.log(note);
