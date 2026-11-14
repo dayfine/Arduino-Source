@@ -6,8 +6,9 @@ here pushes). Every request must carry `Authorization: Bearer <token>`, a loopba
 `Mcp-Session-Id`. The bearer token is never logged or returned.
 
 Resources: `console://B/state` (console_state), `console://B/save` (save_resource).
-Tools: `shot`, `ensure_game`. Nothing here presses a button, starts or stops a program, or
-holds a lease: those arrive in Slices 3 and 5.
+Tools: `shot`, `ensure_game`; with a control plane (Slice 3) also `acquire_console`,
+`renew_console`, `release_console`, `next_events` and `request_status`. Nothing here presses a
+button or starts or stops a program: that arrives in Slice 5.
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ import secrets
 import threading
 from typing import Any, Callable, Dict, Optional, Tuple
 
-from pa_lab import contracts, shot, tools
+from pa_lab import contracts, control, shot, tools
 from pa_lab.lab_reader import ConsoleReader, Unavailable
 
 LOG = logging.getLogger('pa_lab.server')
@@ -89,6 +90,50 @@ TOOL_LIST = [
 ]
 
 
+_REQUEST_ID = {'type': 'string', 'description': 'client-generated lower-case UUID; a retry reuses it'}
+_LEASE_TOKEN = {'type': 'string', 'description': 'the token acquire_console returned'}
+_TTL = {'type': 'integer', 'minimum': 60, 'maximum': 3600, 'default': control.DEFAULT_TTL_S}
+_MUTATING = {'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': True}
+_READ = {'readOnlyHint': True, 'destructiveHint': False, 'idempotentHint': True}
+
+
+def _schema(properties: Dict[str, Any], required) -> Dict[str, Any]:
+    return {'type': 'object', 'properties': dict({'console': {'type': 'string', 'enum': ['B']}}, **properties),
+            'required': ['console'] + list(required), 'additionalProperties': False}
+
+
+CONTROL_TOOL_LIST = [
+    {'name': 'acquire_console', 'title': 'Lease the console',
+     'description': 'Takes the free console for this client and returns an opaque lease_token and its expiry '
+                    '(agent_idle, ttl_s, default 1200 s; renew to keep it). Refused while the user or another '
+                    'agent holds it. A retry with the same request_id returns the same result.',
+     'inputSchema': _schema({'request_id': _REQUEST_ID, 'owner': {'type': 'string'}, 'ttl_s': _TTL},
+                            ['request_id', 'owner']), 'annotations': _MUTATING},
+    {'name': 'renew_console', 'title': 'Renew the lease',
+     'description': 'Extends the lease to now + ttl_s. A running lease never expires.',
+     'inputSchema': _schema({'request_id': _REQUEST_ID, 'lease_token': _LEASE_TOKEN, 'ttl_s': _TTL},
+                            ['request_id', 'lease_token']), 'annotations': _MUTATING},
+    {'name': 'release_console', 'title': 'Release the lease',
+     'description': 'Frees the console. A user lease is released only by the operator.',
+     'inputSchema': _schema({'request_id': _REQUEST_ID, 'lease_token': _LEASE_TOKEN},
+                            ['request_id', 'lease_token']), 'annotations': _MUTATING},
+    {'name': 'next_events', 'title': 'Events after a cursor',
+     'description': 'Returns the events with seq > after_seq (oldest first) and next_after_seq, waiting up to '
+                    'timeout_s for one. Pass the last next_after_seq you processed: events after it are kept.',
+     'inputSchema': _schema({'after_seq': {'type': 'integer', 'minimum': 0},
+                             'timeout_s': {'type': 'number', 'minimum': 0, 'maximum': control.MAX_WAIT_S,
+                                           'default': 0},
+                             'limit': {'type': 'integer', 'minimum': 1, 'maximum': control.MAX_PAGE,
+                                       'default': control.DEFAULT_PAGE}},
+                            ['after_seq']), 'annotations': _READ},
+    {'name': 'request_status', 'title': 'Request or ticket status',
+     'description': "This client's request record: pending, completed, refused or failed.",
+     'inputSchema': _schema({'request_id': _REQUEST_ID}, ['request_id']), 'annotations': _READ},
+]
+
+LEASE_TOOLS = ('acquire_console', 'renew_console', 'release_console')
+
+
 class RpcError(Exception):
     def __init__(self, code: int, message: str, data: Any = None):
         super().__init__(message)
@@ -110,11 +155,13 @@ class LabMcp:
     """JSON-RPC methods, without the transport. `consoles` is the allowlist: console id -> reader."""
 
     def __init__(self, consoles: Dict[str, ConsoleReader],
-                 take_shot: Callable[..., Dict[str, Any]] = shot.take_shot):
+                 take_shot: Callable[..., Dict[str, Any]] = shot.take_shot,
+                 control_plane: Optional[control.ControlPlane] = None):
         self.consoles = consoles
         self.take_shot = take_shot
+        self.control = control_plane
 
-    def call(self, method: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    def call(self, method: str, params: Dict[str, Any], client: str = 'unnamed') -> Dict[str, Any]:
         if method == 'ping':
             return {}
         if method == 'resources/list':
@@ -124,8 +171,10 @@ class LabMcp:
         if method == 'resources/read':
             return self._read_resource(params.get('uri'))
         if method == 'tools/list':
-            return {'tools': TOOL_LIST}
+            return {'tools': TOOL_LIST + (CONTROL_TOOL_LIST if self.control is not None else [])}
         if method == 'tools/call':
+            if self.control is not None and params.get('name') in [t['name'] for t in CONTROL_TOOL_LIST]:
+                return self._call_control(client, params.get('name'), params.get('arguments', {}))
             return self._call_tool(params.get('name'), params.get('arguments', {}))
         raise RpcError(METHOD_NOT_FOUND, 'method not found: {}'.format(method))
 
@@ -199,9 +248,47 @@ class LabMcp:
                             {'type': 'text', 'text': _json_text(result)}],
                 'structuredContent': result, 'isError': False}
 
+    def _call_control(self, client: str, name: str, arguments: Any) -> Dict[str, Any]:
+        if not isinstance(arguments, dict):
+            return self._refused(name, {'code': 'invalid_arguments', 'field': 'arguments',
+                                        'message': 'expected an object'})
+        args = dict(arguments)
+        console = args.pop('console', None)
+        request_id = args.get('request_id') if isinstance(args.get('request_id'), str) else None
+        try:
+            if name == 'next_events':
+                unknown = sorted(set(args) - {'after_seq', 'timeout_s', 'limit'})
+                if unknown:
+                    raise control.Refused('invalid_arguments', 'unknown argument', field=unknown[0])
+                if 'after_seq' not in args:
+                    raise control.Refused('invalid_arguments', 'required', field='after_seq')
+                result = self.control.next_events(client, console, args['after_seq'], args.get('timeout_s', 0),
+                                                  args.get('limit', control.DEFAULT_PAGE))
+            elif name == 'request_status':
+                if set(args) != {'request_id'} or request_id is None:
+                    raise control.Refused('invalid_arguments', 'expects console and request_id', field='request_id')
+                result = self.control.request_status(client, request_id)
+            else:
+                request = {'schema': 1, 'request_id': args.pop('request_id', None), 'tool': name,
+                           'console': console, 'arguments': args}
+                if 'lease_token' in args:
+                    request['lease_token'] = args.pop('lease_token')
+                record = self.control.execute(client, request)
+                if record['refusal'] is not None:
+                    return self._refused(name, record['refusal'], record['request_id'])
+                result = record
+        except control.Refused as e:
+            return self._refused(name, e.refusal, request_id if name in LEASE_TOOLS else None)
+        return {'content': [{'type': 'text', 'text': _json_text(result)}], 'structuredContent': result,
+                'isError': False}
+
     @staticmethod
-    def _refused(tool: str, refusal: Dict[str, Any]) -> Dict[str, Any]:
-        doc = refusal_doc(tool, refusal)
+    def _refused(tool: str, refusal: Dict[str, Any], request_id: Optional[str] = None) -> Dict[str, Any]:
+        try:
+            doc = contracts.validate('refusal', {'schema': 1, 'request_id': request_id, 'tool': tool,
+                                                 'refusal': refusal}).data
+        except contracts.ContractError:  # a request_id that is not a UUID is not echoed
+            doc = refusal_doc(tool, refusal)
         return {'content': [{'type': 'text', 'text': _json_text(doc)}], 'structuredContent': doc,
                 'isError': True}
 
@@ -365,7 +452,8 @@ class _Handler(BaseHTTPRequestHandler):
         try:
             if not isinstance(params, dict):
                 raise RpcError(INVALID_PARAMS, 'params must be an object')
-            reply = {'jsonrpc': '2.0', 'id': message['id'], 'result': self.server.mcp.call(method, params)}
+            reply = {'jsonrpc': '2.0', 'id': message['id'],
+                     'result': self.server.mcp.call(method, params, client=found[1])}
         except RpcError as e:
             error = {'code': e.code, 'message': e.message}
             if e.data is not None:

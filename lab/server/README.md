@@ -2,8 +2,9 @@
 
 The local server designed in `docs/design/Agent-Integration.md` (fork #131, branch
 `design/agent-integration`). Slice 0: the version-1 contracts, golden examples and a parser.
-Slice 2: the attach-only read server ([below](#slice-2-the-attach-only-read-server)). It has no
-lease store, no write path and no press: those are Slices 3 and 5.
+Slice 2: the attach-only read server ([below](#slice-2-the-attach-only-read-server)). Slice 3: the
+durable control plane ([below](#slice-3-the-durable-control-plane)): leases, request records,
+tickets and events in SQLite. Nothing presses a button yet: that is Slice 5.
 
 | Path | What |
 |---|---|
@@ -20,6 +21,9 @@ lease store, no write path and no press: those are Slices 3 and 5.
 | `pa_lab/mcp_server.py` | MCP over Streamable HTTP on `127.0.0.1`: bearer, Host/Origin, sessions, size caps |
 | `tests/fake_lab.py` | A fake `Lab/` folder and a fake app answering `snapshot` requests, in temp dirs |
 | `tests/test_{lab_reader,ensure_game,shot,config,mcp_server}.py` | Slice 2's fake-lab tests |
+| `pa_lab/db.py` | The SQLite file: migrations (`PRAGMA user_version`), owner-only file, `BEGIN IMMEDIATE` writes |
+| `pa_lab/control.py` | Leases, idempotent requests, tickets, events, `next_events`, reconciliation, compaction |
+| `tests/test_{db,control,control_concurrency,control_mcp}.py` | Slice 3's tests: restarts, threads and processes racing, kills mid-write |
 
 Stdlib only (Python 3.8+), so no venv: the MCP transport is small enough to write on
 `http.server`. Run the tests from the repo root:
@@ -184,3 +188,50 @@ journal names, and only when complete (signature and `IEND`). Refusals: `timeout
 or the saved frame is older than `max_age_ms`), `video_bad_signal`, `app_unavailable` (a reply
 from another instance: `evidence.reason` `instance_replaced`; `panel_changed`, `app_closing`,
 `save_failed` as `evidence.reason`; a line error or an incomplete PNG).
+
+## Slice 3: the durable control plane
+
+SQLite (`db_file` in the config, default `~/.local/state/pa-lab/control.sqlite`, created `0600`)
+is the source of truth; every change is one `BEGIN IMMEDIATE` transaction, so racing threads,
+processes or a restarted daemon cannot both win, and a kill mid-write leaves nothing.
+
+**Leases.** `acquire_console(console, request_id, owner, ttl_s=1200)` takes a `free` console and
+returns an opaque `lease_token` (only its hash is in the lease row) and `expires_at`.
+`renew_console` / `release_console` need the token. `agent_idle` expires after its TTL;
+`agent_running` (entered by Slice 5's run start, `ControlPlane.begin_run`) never expires and ends
+when the app reports the run's stop (back to `agent_idle` with a fresh TTL) or a new app instance.
+A UI Start/Stop in `Lab/state.json` (`last_transition.source == 'ui'`) revokes any agent lease and
+installs `user`, with no timeout; only the operator ends it:
+
+```sh
+python3 -m pa_lab lease --config ~/.config/pa-lab/server.json show|claim-user|release-user
+```
+
+A token whose lease ended is refused with the reason: `lease_expired`, `console_held_by_user`,
+otherwise `lease_invalid`. `lease_changed` events carry `old`, `new` and a `reason` (`acquired`,
+`released`, `expired`, `run_started`, `run_ended`, `app_restarted`, `ui_takeover`,
+`operator_claim`, `operator_release`).
+
+**Requests.** `(client_id, tool, request_id)` is unique; `client_id` is the MCP session's client
+name. The record keeps the normalized arguments (defaults filled in) and the result or refusal.
+An exact retry gets the stored record, refusals included, even after a restart; the same key with
+other arguments is `request_id_reused`. `request_status(console, request_id)` reads the caller's
+own record; the lease token never appears in a status read or an event.
+
+**Tickets** are request records with status `pending`: `open_ticket` / `resolve_ticket` are the
+store side of Slice 5's long operations. They survive restarts and resolve once.
+
+**Events.** `next_events(console, after_seq, timeout_s<=60, limit<=500)` returns the events after
+the cursor and `next_after_seq`; it waits for one up to `timeout_s`. `after_seq` is also the
+client's confirmed position: pass the last cursor you processed, so a lost response loses nothing.
+`seq` comes from `AUTOINCREMENT` and is never reused.
+
+**Reconciliation.** Every read of a live app (`console://B/state`) and the daemon's start apply
+`observe`: each transition once (UI takeover, `stopped` with its source), a run's end, an app
+restart. Expiries due during downtime apply on the next read, once.
+
+**Retention.** `compact()` runs at start and every 500 events: it keeps the newest 10 000 events,
+every event after an active cursor (one used in the last 7 days), every event of a pending ticket
+and every pending record; finished records go after 7 days. A cursor behind the compacted range
+is refused (`invalid_arguments`, field `after_seq`, `evidence.compacted_through`), never served
+with a silent gap.
