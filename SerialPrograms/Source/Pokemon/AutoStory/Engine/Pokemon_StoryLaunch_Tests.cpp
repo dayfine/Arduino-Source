@@ -121,6 +121,7 @@ StoryLaunchPolicy test_policy(Backup backup, GameScreens game_screens, TileCheck
     };
     policy.title_after_launch = game_screens == GameScreens::AFTER_LAUNCH;
     policy.presses_per_screen = 3;
+    policy.launch_wait = Milliseconds(2000);
     policy.max_looks = 12;
     return policy;
 }
@@ -180,7 +181,17 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
     {.name = "license check back to HOME",
      .input = {.screens = then_settled({Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::LICENSE_CHECK, Screen::HOME_ON_GAME,
                                         Screen::BLACK, Screen::TITLE, Screen::LOAD_MENU})},
-     .expectation = {.inputs = "X A A A wait A A wait wait"}},
+     .expectation = {.inputs = "X A A wait wait A A wait wait"}},
+    //  Console B, 2026-11-14 02:41 (FRLG): HOME showed for about 1.5 s
+    //  after the A on the tile, and each look there pressed A again.
+    {.name = "HOME after the launch press waits",
+     .input = {.screens = then_settled({Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::HOME_ON_GAME,
+                                        Screen::HOME_ON_GAME, Screen::BLACK, Screen::TITLE})},
+     .expectation = {.inputs = "X A wait wait wait wait A wait wait"}},
+    {.name = "HOME past the launch wait takes A again",
+     .input = {.screens = then_settled({Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::HOME_ON_GAME,
+                                        Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::TITLE})},
+     .expectation = {.inputs = "X A wait wait wait wait A A wait wait"}},
     {.name = "cursor on another tile",
      .input = {.screens = then_settled({Screen::HOME_OFF_GAME, Screen::HOME_OFF_GAME, Screen::HOME_ON_GAME}),
                .request = {.running = Running::KEEP}},
