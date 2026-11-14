@@ -49,7 +49,7 @@ void SuperControlSession<ControllerType>::operator+=(AudioInferenceCallback& cal
     m_audio_callbacks.emplace_back(&callback);
 }
 template <typename ControllerType>
-void SuperControlSession<ControllerType>::register_state_command(size_t state, std::function<bool()>&& action){
+void SuperControlSession<ControllerType>::register_state_command(size_t state, MoveOnlyFunction<bool()>&& action){
     auto iter = m_state_actions.find(state);
     if (iter != m_state_actions.end()){
         throw InternalProgramError(&m_stream.logger(), PA_CURRENT_FUNCTION, "Duplicate State Enum: " + std::to_string(state));

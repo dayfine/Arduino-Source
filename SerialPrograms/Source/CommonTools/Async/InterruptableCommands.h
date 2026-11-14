@@ -7,7 +7,7 @@
 #ifndef PokemonAutomation_CommonTools_InterruptableCommands_H
 #define PokemonAutomation_CommonTools_InterruptableCommands_H
 
-#include <functional>
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
 #include "Common/Cpp/Concurrency/ConditionVariable.h"
 #include "Common/Cpp/Concurrency/AsyncTask.h"
@@ -44,7 +44,7 @@ public:
     //  previous `dispatch()` while a new `dispatch()` presses button A and button B
     //  at the same time, button A is not released during the transition.
     //  You can use it to adjust button state continuously without interruption.
-    void dispatch(std::function<void(ControllerContextType&)>&& lambda);
+    void dispatch(MoveOnlyFunction<void(ControllerContextType&)>&& lambda);
 
     //  Wait for currently running command to finish.
     void wait();
