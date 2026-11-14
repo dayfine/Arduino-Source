@@ -260,7 +260,9 @@ jobs:
         uses: actions/checkout@v7
         if: inputs.run-tests
         with:
-          repository: 'PokemonAutomation/CommandLineTests'
+          # The fork's fixtures: upstream's plus the SystemKeyboardDetector screenshots.
+          repository: 'dayfine/CommandLineTests'
+          ref: '5de4ff774f9141d904c4b5c557fa7b9dc85eaef1'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded
