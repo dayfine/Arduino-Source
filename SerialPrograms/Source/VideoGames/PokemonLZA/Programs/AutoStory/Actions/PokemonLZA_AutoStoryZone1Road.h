@@ -60,6 +60,11 @@ inline constexpr int ZONE_1_START_DISTANCE = 127;
 //  marker reads whole units and a walk stops a step or two late.
 inline constexpr int ZONE_1_START_TOLERANCE = 10;
 
+//  How many units past its stop distance walk_to_objective() ends on the
+//  zone 1 road: 2 on every console B run (asked 137, read 135; asked 127,
+//  read 125; 2026-11-14). 03.07d stops this much early so it ends on 127.
+inline constexpr int ZONE_1_START_OVERSHOOT = 2;
+
 //  Whether 03.07d's end is 03.08's start: a far-gate distance read
 //  (nothing: none read) within ZONE_1_START_TOLERANCE of
 //  ZONE_1_START_DISTANCE, and the minimap's player arrow in the wild
