@@ -109,7 +109,6 @@ constexpr RobustLegCosts HELD{.open_error = 1, .open_error_per = 0, .hold_open_l
 
 
 struct PlanInput{
-    std::string_view name;
     std::vector<std::string_view> rows;
     bool wraps = false;
     std::vector<TilePos> from;
@@ -120,6 +119,7 @@ struct PlanExpectation{
     std::string_view legs;  //  as describe() writes them
 };
 struct PlanCase{
+    std::string_view name;
     PlanInput input;
     PlanExpectation expectation;
 };
@@ -127,7 +127,7 @@ struct PlanCase{
 class Test_RobustLegPlanner_Plan : public UnitTest{
 public:
     explicit Test_RobustLegPlanner_Plan(PlanCase scenario)
-        : UnitTest(std::format("Pokemon::RobustLegPlanner - {}", scenario.input.name))
+        : UnitTest(std::format("Pokemon::RobustLegPlanner - {}", scenario.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -149,117 +149,138 @@ private:
 //  Open legs on default costs may end a tile either way (two up to 5 tiles).
 const PlanCase PLAN_CASES[] = {
     {
-        .input = {.name = "a wall gathers the possible tiles", .rows = {"...#"}, .from = {{0, 0}, {1, 0}}, .goal = {2, 0}},
+        .name = "a wall gathers the possible tiles",
+        .input = {.rows = {"...#"}, .from = {{0, 0}, {1, 0}}, .goal = {2, 0}},
         .expectation = {.legs = "east 2 to wall: (2, 0)"},
     },
     {
-        .input = {.name = "no plan ends in the open while open legs may be off", .rows = {"........"}, .from = {{0, 0}}, .goal = {3, 0}},
+        .name = "no plan ends in the open while open legs may be off",
+        .input = {.rows = {"........"}, .from = {{0, 0}}, .goal = {3, 0}},
         .expectation = {.legs = "none"},
     },
     {
-        .input = {.name = "an exact open leg ends in the open", .rows = {"........"}, .from = {{0, 0}}, .goal = {3, 0}, .costs = EXACT},
+        .name = "an exact open leg ends in the open",
+        .input = {.rows = {"........"}, .from = {{0, 0}}, .goal = {3, 0}, .costs = EXACT},
         .expectation = {.legs = "east 3 open: (3, 0)"},
     },
     {
+        .name = "open_error_per 0 with no open_error is exact",
         .input = {
-            .name = "open_error_per 0 with no open_error is exact", .rows = {"........"}, .from = {{0, 0}}, .goal = {3, 0},
+            .rows = {"........"}, .from = {{0, 0}}, .goal = {3, 0},
             .costs = {.open_error = 0, .open_error_per = 0},
         },
         .expectation = {.legs = "east 3 open: (3, 0)"},
     },
     {
+        .name = "open_error_per 0 keeps open_error",
         .input = {
-            .name = "open_error_per 0 keeps open_error", .rows = {"........"}, .from = {{0, 0}}, .goal = {3, 0},
+            .rows = {"........"}, .from = {{0, 0}}, .goal = {3, 0},
             .costs = {.open_error = 1, .open_error_per = 0},
         },
         .expectation = {.legs = "none"},
     },
     {
-        .input = {.name = "a door is not a wall", .rows = {"#..D"}, .from = {{1, 0}}, .goal = {2, 0}, .costs = EXACT},
+        .name = "a door is not a wall",
+        .input = {.rows = {"#..D"}, .from = {{1, 0}}, .goal = {2, 0}, .costs = EXACT},
         .expectation = {.legs = "east 1 open: (2, 0)"},
     },
     {
-        .input = {.name = "no leg along a wander zone", .rows = {".www.", "....."}, .from = {{1, 0}}, .goal = {4, 0}, .costs = EXACT},
+        .name = "no leg along a wander zone",
+        .input = {.rows = {".www.", "....."}, .from = {{1, 0}}, .goal = {4, 0}, .costs = EXACT},
         .expectation = {.legs = "south 1 to wall: (1, 1); east 3 to wall: (4, 1); north 1 to wall: (4, 0)"},
     },
     {
-        .input = {.name = "a ledge hop counts 2 tiles", .rows = {".", "v", "."}, .from = {{0, 0}}, .goal = {0, 2}},
+        .name = "a ledge hop counts 2 tiles",
+        .input = {.rows = {".", "v", "."}, .from = {{0, 0}}, .goal = {0, 2}},
         .expectation = {.legs = "south 2 to wall: (0, 2)"},
     },
     {
-        .input = {.name = "a ledge cannot be climbed", .rows = {".", "v", "."}, .from = {{0, 2}}, .goal = {0, 0}},
+        .name = "a ledge cannot be climbed",
+        .input = {.rows = {".", "v", "."}, .from = {{0, 2}}, .goal = {0, 0}},
         .expectation = {.legs = "none"},
     },
     {
-        .input = {.name = "tall grass costs less than a detour", .rows = {".\"\"..", "....."}, .from = {{0, 0}}, .goal = {4, 0}},
+        .name = "tall grass costs less than a detour",
+        .input = {.rows = {".\"\"..", "....."}, .from = {{0, 0}}, .goal = {4, 0}},
         .expectation = {.legs = "east 4 to wall: (4, 0)"},
     },
     {
+        .name = "costly tall grass is walked round",
         .input = {
-            .name = "costly tall grass is walked round", .rows = {".\"\"..", "....."}, .from = {{0, 0}}, .goal = {4, 0},
+            .rows = {".\"\"..", "....."}, .from = {{0, 0}}, .goal = {4, 0},
             .costs = {.per_wild_tile = 20},
         },
         .expectation = {.legs = "south 1 to wall: (0, 1); east 4 to wall: (4, 1); north 1 to wall: (4, 0)"},
     },
     {
         //  Only an open leg reaches the second row; a wall then gathers.
-        .input = {.name = "an open leg spreads, a wall gathers", .rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}},
+        .name = "an open leg spreads, a wall gathers",
+        .input = {.rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}},
         .expectation = {.legs = "east 1 open: (1, 0) (2, 0); south 1 to wall: (1, 1) (2, 1); east 2 to wall: (3, 1)"},
     },
     {
+        .name = "a spread wider than max_spread is not planned",
         .input = {
-            .name = "a spread wider than max_spread is not planned", .rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1},
+            .rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1},
             .costs = {.max_spread = 1},
         },
         .expectation = {.legs = "none"},
     },
     {
+        .name = "the search gives up past max_searched",
         .input = {
-            .name = "the search gives up past max_searched", .rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1},
+            .rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1},
             .costs = {.max_searched = 1},
         },
         .expectation = {.legs = "none"},
     },
     {
+        .name = "two open legs the same way are one",
         .input = {
-            .name = "two open legs the same way are one", .rows = {"........"}, .from = {{0, 0}}, .goal = {3, 0},
+            .rows = {"........"}, .from = {{0, 0}}, .goal = {3, 0},
             .costs = {.exact_open_tiles = 12, .max_open_tiles = 2},
         },
         .expectation = {.legs = "east 3 open: (3, 0)"},
     },
     {
-        .input = {.name = "a walk that is never stopped is not a wall", .rows = {"...."}, .wraps = true, .from = {{0, 0}}, .goal = {2, 0}, .costs = EXACT},
+        .name = "a walk that is never stopped is not a wall",
+        .input = {.rows = {"...."}, .wraps = true, .from = {{0, 0}}, .goal = {2, 0}, .costs = EXACT},
         .expectation = {.legs = "east 2 open: (2, 0)"},
     },
     {
-        .input = {.name = "an open leg that may end off is held", .rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}, .costs = HELD},
+        .name = "an open leg that may end off is held",
+        .input = {.rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}, .costs = HELD},
         .expectation = {.legs = "east 1 held: (1, 0) (2, 0); south 1 to wall: (1, 1) (2, 1); east 2 to wall: (3, 1)"},
     },
     {
-        .input = {.name = "a held leg is refused when its long end lands in tall grass", .rows = {"..\"..", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}, .costs = HELD},
+        .name = "a held leg is refused when its long end lands in tall grass",
+        .input = {.rows = {"..\"..", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}, .costs = HELD},
         .expectation = {.legs = "none"},
     },
     {
-        .input = {.name = "a held leg is refused when its long end lands where someone wanders", .rows = {"..w..", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}, .costs = HELD},
+        .name = "a held leg is refused when its long end lands where someone wanders",
+        .input = {.rows = {"..w..", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}, .costs = HELD},
         .expectation = {.legs = "none"},
     },
     {
-        .input = {.name = "a held leg south lines up a wall leg", .rows = {".##", "...", "...", ".##", ".##"}, .from = {{0, 0}}, .goal = {2, 2}, .costs = HELD},
+        .name = "a held leg south lines up a wall leg",
+        .input = {.rows = {".##", "...", "...", ".##", ".##"}, .from = {{0, 0}}, .goal = {2, 2}, .costs = HELD},
         .expectation = {.legs = "south 1 held: (0, 1) (0, 2); east 2 to wall: (2, 1) (2, 2); south 1 to wall: (2, 2)"},
     },
     {
-        .input = {.name = "a held leg is refused when its long end hops a ledge", .rows = {".##", "...", "v..", ".##", ".##"}, .from = {{0, 0}}, .goal = {2, 2}, .costs = HELD},
+        .name = "a held leg is refused when its long end hops a ledge",
+        .input = {.rows = {".##", "...", "v..", ".##", ".##"}, .from = {{0, 0}}, .goal = {2, 2}, .costs = HELD},
         .expectation = {.legs = "none"},
     },
     {
-        .input = {.name = "open legs are tapped while hold_open_legs is off", .rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}, .costs = {.open_error = 1, .open_error_per = 0}},
+        .name = "open legs are tapped while hold_open_legs is off",
+        .input = {.rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}, .costs = {.open_error = 1, .open_error_per = 0}},
         .expectation = {.legs = "east 1 open: (1, 0) (2, 0); south 1 to wall: (1, 1) (2, 1); east 2 to wall: (3, 1)"},
     },
 };
 
 
 struct CostInput{
-    std::string_view name;
     std::vector<std::string_view> rows;
     TilePos from;
     Legs legs;
@@ -269,6 +290,7 @@ struct CostExpectation{
     long long cost = 0;
 };
 struct CostCase{
+    std::string_view name;
     CostInput input;
     CostExpectation expectation;
 };
@@ -276,7 +298,7 @@ struct CostCase{
 class Test_RobustLegPlanner_Cost : public UnitTest{
 public:
     explicit Test_RobustLegPlanner_Cost(CostCase scenario)
-        : UnitTest(std::format("Pokemon::RobustLegPlanner - {}", scenario.input.name))
+        : UnitTest(std::format("Pokemon::RobustLegPlanner - {}", scenario.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -296,38 +318,44 @@ private:
 //  leg that stops in the open.
 const CostCase COST_CASES[] = {
     {
-        .input = {.name = "a wall leg costs a leg and its tiles", .rows = {"...#"}, .from = {0, 0}, .legs = {{Direction::EAST, 2, true, {{2, 0}}}}},
+        .name = "a wall leg costs a leg and its tiles",
+        .input = {.rows = {"...#"}, .from = {0, 0}, .legs = {{Direction::EAST, 2, true, {{2, 0}}}}},
         .expectation = {.cost = 8 + 2},
     },
     {
+        .name = "an open leg costs its stop and open tiles on top",
         .input = {
-            .name = "an open leg costs its stop and open tiles on top", .rows = {"...#"}, .from = {0, 0},
+            .rows = {"...#"}, .from = {0, 0},
             .legs = {{Direction::EAST, 1, false, {{1, 0}}}}, .costs = {.exact_open_tiles = 12, .per_open_tile = 2},
         },
         .expectation = {.cost = 8 + 50 + 3},
     },
     {
-        .input = {.name = "each grass tile entered costs extra", .rows = {".\"\"#"}, .from = {0, 0}, .legs = {{Direction::EAST, 2, true, {{2, 0}}}}},
+        .name = "each grass tile entered costs extra",
+        .input = {.rows = {".\"\"#"}, .from = {0, 0}, .legs = {{Direction::EAST, 2, true, {{2, 0}}}}},
         .expectation = {.cost = 8 + 2 + 2 * 4},
     },
     {
+        .name = "a cost with open_error_per 0",
         .input = {
-            .name = "a cost with open_error_per 0", .rows = {"........"}, .from = {0, 0},
+            .rows = {"........"}, .from = {0, 0},
             .legs = {{Direction::EAST, 3, false, {{3, 0}}}}, .costs = {.open_error_per = 0},
         },
         .expectation = {.cost = 8 + 50 + 3},
     },
     {
+        .name = "a held leg pays no per_open_tile",
         .input = {
-            .name = "a held leg pays no per_open_tile", .rows = {"........"}, .from = {0, 0},
+            .rows = {"........"}, .from = {0, 0},
             .legs = {{Direction::EAST, 3, false, {{2, 0}, {3, 0}, {4, 0}}, true}},
             .costs = {.open_error = 1, .open_error_per = 0, .per_open_tile = 2, .hold_open_legs = true},
         },
         .expectation = {.cost = 8 + 50 + 3},
     },
     {
+        .name = "held legs the same way are not joined",
         .input = {
-            .name = "held legs the same way are not joined", .rows = {"........"}, .from = {0, 0},
+            .rows = {"........"}, .from = {0, 0},
             .legs = {
                 {Direction::EAST, 2, false, {{1, 0}, {2, 0}, {3, 0}}, true},
                 {Direction::EAST, 2, false, {{2, 0}, {3, 0}, {4, 0}, {5, 0}}, true},
@@ -337,15 +365,17 @@ const CostCase COST_CASES[] = {
         .expectation = {.cost = 2 * (8 + 50 + 2)},
     },
     {
+        .name = "each grass tile of an open leg costs per_open_wild_tile more",
         .input = {
-            .name = "each grass tile of an open leg costs per_open_wild_tile more", .rows = {".\"\"...."}, .from = {0, 0},
+            .rows = {".\"\"...."}, .from = {0, 0},
             .legs = {{Direction::EAST, 3, false, {{3, 0}}}}, .costs = {.exact_open_tiles = 12, .per_open_wild_tile = 10},
         },
         .expectation = {.cost = 8 + 50 + 3 + 2 * (4 + 10)},
     },
     {
+        .name = "per_open_wild_tile leaves a wall leg's grass alone",
         .input = {
-            .name = "per_open_wild_tile leaves a wall leg's grass alone", .rows = {".\"\"#"}, .from = {0, 0},
+            .rows = {".\"\"#"}, .from = {0, 0},
             .legs = {{Direction::EAST, 2, true, {{2, 0}}}}, .costs = {.per_open_wild_tile = 10},
         },
         .expectation = {.cost = 8 + 2 + 2 * 4},
