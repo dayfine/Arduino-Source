@@ -670,13 +670,29 @@ def case_type(test_name, parsed):
     return None
 
 
+# A test case is its name, its input and its expectation, three fields in this order: the name
+# labels the case and is not part of what the code under test is given.
+CASE_FIELDS = ('name', 'input', 'expectation')
+
+
+def valid_case_fields(fields, definitions):
+    """name (not a local struct), then input and expectation local structs; no name in the input."""
+    if list(fields) != list(CASE_FIELDS):
+        return False
+    if fields['name'] in definitions:
+        return False
+    if any(fields[part] not in definitions for part in ('input', 'expectation')):
+        return False
+    return 'name' not in definitions[fields['input']]
+
+
 def designated_case(row):
     row = row.strip()
     if not row.startswith('{') or not row.endswith('}'):
         return False
     fields = [field for field in split_top_level(row[1:-1]) if field]
-    names = [re.match(r'\.(input|expectation)\s*=', field) for field in fields]
-    return len(names) == 2 and all(names) and {name.group(1) for name in names} == {'input', 'expectation'}
+    names = [re.match(r'\.(name|input|expectation)\s*=', field) for field in fields]
+    return len(names) == 3 and all(names) and [name.group(1) for name in names] == list(CASE_FIELDS)
 
 
 def case_table(case, code):
@@ -713,12 +729,11 @@ def native_cases(path, code, parsed, changed):
             continue
         case = case_type(test.group(1), parsed)
         fields = definitions.get(case, {})
-        valid_fields = set(fields) == {'input', 'expectation'} and all(
-            field in definitions for field in fields.values())
-        if not case or not valid_fields or not case_table(case, code):
+        if not case or not valid_case_fields(fields, definitions) or not case_table(case, code):
             errors.append(Finding(path, statement.line,
-                'test-case: construct each UnitTest from one case struct with input and expectation '
-                'struct fields; register a named table of designated cases in a range-for'))
+                'test-case: construct each UnitTest from one case struct with name, input and expectation '
+                'fields (input and expectation structs, the name outside the input); register a named '
+                'table of designated cases in a range-for'))
     return errors
 
 
