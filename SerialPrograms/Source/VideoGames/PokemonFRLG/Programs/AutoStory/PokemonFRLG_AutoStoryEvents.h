@@ -33,6 +33,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryStartFrames.h"
@@ -70,6 +71,9 @@ struct StoryEnv{
     //  The next start check keeps the screen as its checkpoint's start
     //  frame and passes: the user saved there by hand.
     bool keep_start_frame = false;
+    //  The player: the one a new game picks, and whose sprites the facing
+    //  reader matches. A save must be of this player.
+    PlayerGender player_gender = PlayerGender::BOY;
 };
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the

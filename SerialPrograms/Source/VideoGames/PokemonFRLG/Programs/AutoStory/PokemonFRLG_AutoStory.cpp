@@ -75,6 +75,16 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         true
     )
+    , PLAYER_GENDER(
+        "<b>Player:</b><br>Who a new game plays as, picked at \"Are you a boy or a girl?\". "
+        "The player's sprite is read as this one's, so a save must be of the same player.",
+        {
+            {PlayerGender::BOY, "boy", "Boy"},
+            {PlayerGender::GIRL, "girl", "Girl"},
+        },
+        LockMode::LOCK_WHILE_RUNNING,
+        PlayerGender::BOY
+    )
     , KEEP_START_FRAME(KEEP_START_FRAME_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
@@ -83,6 +93,7 @@ AutoStory::AutoStory()
 {
     PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(NEW_GAME_FROM_TITLE);
+    PA_ADD_OPTION(PLAYER_GENDER);
     PA_ADD_OPTION(KEEP_START_FRAME);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
@@ -221,6 +232,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     }
 
     StoryEnv story = story_env(env, context, checkpoints[first], RUN.check_level(), KEEP_START_FRAME);
+    story.player_gender = PLAYER_GENDER;
     if (!(first == 0 && NEW_GAME_FROM_TITLE)){
         env.console.log("Loading the save for " + checkpoints[first].id + ".");
         soft_reset(env.console, context);

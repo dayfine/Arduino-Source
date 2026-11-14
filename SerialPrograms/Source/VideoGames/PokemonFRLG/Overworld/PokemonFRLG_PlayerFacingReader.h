@@ -6,8 +6,9 @@
  *  player on the same spot of the screen, so the reader compares that spot
  *  with the player's standing sprites from pret/pokefirered, on the sprite's
  *  own pixels only, so the ground behind doesn't matter. The sprites come
- *  from Packages: Resources/PokemonFRLG/PlayerSprites/red_normal.png is the
- *  decompilation's graphics/object_events/pics/people/red_normal.png.
+ *  from Packages: Resources/PokemonFRLG/PlayerSprites/red_normal.png (the
+ *  boy) and green_normal.png (the girl) are the decompilation's
+ *  graphics/object_events/pics/people/ files of those names.
  *
  *  Only the walking player is known: surfing and biking use other sprites.
  *
@@ -27,6 +28,12 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Who the player is, picked at "Are you a boy or a girl?" in the intro.
+enum class PlayerGender{
+    BOY,
+    GIRL,
+};
+
 //  The standing player's frames, as the game draws them, with transparent
 //  pixels at alpha 0. Facing east is facing west mirrored.
 struct PlayerSprites{
@@ -35,13 +42,15 @@ struct PlayerSprites{
     ImageRGB32 west;
 };
 
-//  Loads the frames once. Throws FileException if the file is missing.
-const PlayerSprites& player_sprites();
+//  Loads `gender`'s frames once. Throws FileException if the file is
+//  missing.
+const PlayerSprites& player_sprites(PlayerGender gender);
 
 
 //  The way the standing player faces, or nothing if no standing sprite
-//  matches clearly (surfing, on the bike, in a menu, mid-step).
-std::optional<Direction> read_player_facing(const ImageViewRGB32& screen);
+//  matches clearly (surfing, on the bike, in a menu, mid-step). Only
+//  `gender`'s sheet is loaded and matched.
+std::optional<Direction> read_player_facing(const ImageViewRGB32& screen, PlayerGender gender);
 
 //  The same on `game`, the GBA's 240x160 screen at any scale, already cut
 //  out of the console's.

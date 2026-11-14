@@ -28,9 +28,12 @@ namespace PokemonFRLG{
 
 namespace{
 
-//  The sprite sheet's frames are 16x32, and the standing ones are 0 (south),
-//  1 (north) and 2 (west). Rows 12 to 30 are drawn; the rest is empty.
-constexpr std::string_view PLAYER_SPRITE_SHEET = "PokemonFRLG/PlayerSprites/red_normal.png";
+//  The sprite sheets' frames are 16x32, and the standing ones are 0 (south),
+//  1 (north) and 2 (west). Rows 12 to 30 are drawn; the rest is empty. The
+//  boy and the girl share the layout (pokefirered field_player_avatar.c:
+//  OBJ_EVENT_GFX_RED_NORMAL and OBJ_EVENT_GFX_GREEN_NORMAL).
+constexpr std::string_view BOY_SPRITE_SHEET = "PokemonFRLG/PlayerSprites/red_normal.png";
+constexpr std::string_view GIRL_SPRITE_SHEET = "PokemonFRLG/PlayerSprites/green_normal.png";
 constexpr int SHEET_FRAME_WIDTH = 16;
 constexpr int SHEET_FIRST_ROW = 12;
 
@@ -83,18 +86,31 @@ double difference(const ImageViewRGB32& game, const ImageViewRGB32& sprite, bool
 } // namespace
 
 
-const PlayerSprites& player_sprites(){
-    static const PlayerSprites SPRITES = []{
-        const ImageRGB32 sheet(std::format("{}{}", RESOURCE_PATH(), PLAYER_SPRITE_SHEET));
-        return PlayerSprites{sheet_frame(sheet, 0), sheet_frame(sheet, 1), sheet_frame(sheet, 2)};
-    }();
-    return SPRITES;
+namespace{
+
+PlayerSprites load_player_sprites(std::string_view sheet_path){
+    const ImageRGB32 sheet(std::format("{}{}", RESOURCE_PATH(), sheet_path));
+    return PlayerSprites{sheet_frame(sheet, 0), sheet_frame(sheet, 1), sheet_frame(sheet, 2)};
 }
 
+} // namespace
 
-std::optional<Direction> read_player_facing(const ImageViewRGB32& screen){
+const PlayerSprites& player_sprites(PlayerGender gender){
+    switch (gender){
+    case PlayerGender::GIRL:{
+        static const PlayerSprites GIRL = load_player_sprites(GIRL_SPRITE_SHEET);
+        return GIRL;
+    }
+    case PlayerGender::BOY:
+        break;
+    }
+    static const PlayerSprites BOY = load_player_sprites(BOY_SPRITE_SHEET);
+    return BOY;
+}
+
+std::optional<Direction> read_player_facing(const ImageViewRGB32& screen, PlayerGender gender){
     const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
-    return match_player_facing(game, player_sprites());
+    return match_player_facing(game, player_sprites(gender));
 }
 
 std::optional<Direction> match_player_facing(const ImageViewRGB32& game, const PlayerSprites& sprites){
@@ -156,7 +172,7 @@ public:
 
         std::optional<Direction> facing;
         try{
-            facing = read_player_facing(ImageRGB32(m_image));
+            facing = read_player_facing(ImageRGB32(m_image), PlayerGender::BOY);
         }catch (FileException& e){
             //  The screenshots and the sprite sheet aren't in CI's resources yet.
             return UnitTestResult(UnitTestResult::SKIPPED, "File not found: " + e.message());
@@ -244,10 +260,65 @@ public:
     }
 };
 
+//  The real sheets, the boy's then the girl's, drawn on a grey screen: each
+//  reads with its own sheet, and neither reads with the other's.
+class Test_PlayerFacingGenders : public UnitTest{
+public:
+    Test_PlayerFacingGenders()
+        : UnitTest("PokemonFRLG::PlayerFacingReader - boy and girl sheets")
+    {}
+
+    virtual UnitTestResult run(Logger& logger, CancellableScope& scope) const override{
+        try{
+            for (PlayerGender gender : {PlayerGender::BOY, PlayerGender::GIRL}){
+                const std::string error = check_gender(gender);
+                if (!error.empty()){
+                    return error;
+                }
+            }
+        }catch (FileException& e){
+            return UnitTestResult(UnitTestResult::SKIPPED, "File not found: " + e.message());
+        }
+        return true;
+    }
+
+private:
+    static std::string check_gender(PlayerGender gender){
+        const std::string_view name = gender == PlayerGender::BOY ? "boy" : "girl";
+        const PlayerSprites& sprites = player_sprites(gender);
+        struct Case{
+            const ImageViewRGB32* sprite;
+            bool mirror;
+            Direction expected;
+        };
+        const Case cases[] = {
+            {&sprites.south, false, Direction::SOUTH},
+            {&sprites.north, false, Direction::NORTH},
+            {&sprites.west, false, Direction::WEST},
+            {&sprites.west, true, Direction::EAST},
+        };
+        for (const Case& test : cases){
+            const ImageRGB32 screen = fixture_screen(test.sprite, test.mirror);
+            const std::optional<Direction> own = match_player_facing(screen, sprites);
+            if (own != test.expected){
+                return std::format("The {} facing {}: read {} with its own sheet.",
+                    name, direction_name(test.expected), own ? direction_name(*own) : "nothing"
+                );
+            }
+            const PlayerGender other = gender == PlayerGender::BOY ? PlayerGender::GIRL : PlayerGender::BOY;
+            if (match_player_facing(screen, player_sprites(other)) == test.expected){
+                return std::format("The {} facing {} read with the other player's sheet.", name, direction_name(test.expected));
+            }
+        }
+        return "";
+    }
+};
+
 } // namespace
 
 void add_tests_PlayerFacingReader(UnitTestDatabase& database){
     database.add<Test_PlayerFacingFixture>();
+    database.add<Test_PlayerFacingGenders>();
     //  LeafGreen on the Switch, captured with a 1080p card.
     database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route24_South.png");
     database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route24_North.png");

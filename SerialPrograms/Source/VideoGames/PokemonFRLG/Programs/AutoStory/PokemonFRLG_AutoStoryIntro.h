@@ -22,6 +22,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_AutoStoryPresses.h"
 
 namespace PokemonAutomation{
@@ -58,10 +59,10 @@ constexpr size_t RIVAL_PRESET_TRIES = 3;
 //  Determines the next input step in character/rival naming sequence.
 IntroNameStep intro_name_step(IntroNameScreen screen, size_t keyboards_seen, size_t presets_picked);
 //  From the title screen of a game with no save, to the bedroom: the
-//  controls pages, Oak's speech, BOY, the default name for the player (an
-//  empty name confirmed) and the rival's first preset name. Returns on the
-//  overworld.
-void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context);
+//  controls pages, Oak's speech, `gender` on the BOY/GIRL menu, the default
+//  name for the player (an empty name confirmed) and the rival's first
+//  preset name. Returns on the overworld.
+void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, PlayerGender gender);
 
 
 

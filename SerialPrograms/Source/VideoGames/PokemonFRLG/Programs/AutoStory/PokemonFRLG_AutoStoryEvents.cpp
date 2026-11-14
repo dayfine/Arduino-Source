@@ -119,7 +119,7 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step){
         return Pokemon::outcome_failed("no_route", to_string(start) + " to " + to_string(goal.position));
     }
     const OverworldInterruptSet interrupts = story_interrupts(env.supplies, arg<bool>(step, "fight_wild"), env.checks, env.language);
-    walk_overworld_route(env.console, env.context, *route, facing, interrupts, move_speed(step));
+    walk_overworld_route(env.console, env.context, *route, facing, interrupts, move_speed(step), env.player_gender);
     log_arrival(env, step.name, target->map, target->tile);
     const std::optional<Direction> end_facing = route->empty() ? facing : std::optional<Direction>(route->back().facing_after);
     return Pokemon::outcome_ok(to_pose(StoryPose{target->map, target->tile, end_facing}));
@@ -140,7 +140,7 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
         return Pokemon::outcome_failed("bad_legs", to_string(start));
     }
     const OverworldInterruptSet interrupts = story_interrupts(env.supplies, arg<bool>(step, "fight_wild"), env.checks, env.language);
-    walk_overworld_route(env.console, env.context, *route, facing, interrupts, move_speed(step));
+    walk_overworld_route(env.console, env.context, *route, facing, interrupts, move_speed(step), env.player_gender);
     log_arrival(env, step.name, route->back().end.map, route->back().end.point);
     return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
 }
@@ -398,7 +398,7 @@ ConsoleAction console_action_of(StoryActionId id){
     switch (id){
     case StoryActionId::NEW_GAME:
         return [](StoryEnv& env, RunState&, const StoryStep&){
-            play_new_game_intro(env.console, env.context);
+            play_new_game_intro(env.console, env.context, env.player_gender);
             return Pokemon::outcome_ok();
         };
     case StoryActionId::ROUTE:

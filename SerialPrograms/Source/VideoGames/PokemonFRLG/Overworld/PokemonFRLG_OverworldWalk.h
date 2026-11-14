@@ -27,6 +27,7 @@
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldWalkMoves.h"
+#include "PokemonFRLG_PlayerFacingReader.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -36,7 +37,8 @@ namespace PokemonFRLG{
 
 //  Walks `route` from where it was planned, at `speed`. The player must be
 //  standing still on the overworld and not on the bike. `facing` is the way
-//  the player faces at the start; if not given, it is read from the screen.
+//  the player faces at the start; if not given, it is read from the screen
+//  with `player`'s sprites.
 //  Throws OperationFailedException if a warp's fade or the Surf prompt
 //  doesn't show, or a leg is interrupted too many times.
 void walk_overworld_route(
@@ -44,7 +46,8 @@ void walk_overworld_route(
     const std::vector<RouteStep>& route,
     std::optional<Direction> facing = std::nullopt,
     const OverworldInterruptSet& interrupts = default_overworld_interrupts(),
-    MoveSpeed speed = MoveSpeed::WALK
+    MoveSpeed speed = MoveSpeed::WALK,
+    PlayerGender player = PlayerGender::BOY
 );
 
 
@@ -72,8 +75,8 @@ void clear_open_message(
 //  wild battle's.
 void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step);
 
-//  The way the player faces, read from the screen; nothing if it can't be read.
-std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContext& context);
+//  The way `player` faces, read from the screen; nothing if it can't be read.
+std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContext& context, PlayerGender player);
 
 //  Facing `direction` (turning first unless `facing_water`), starts Surf.
 void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_water);
