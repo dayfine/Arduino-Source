@@ -1481,7 +1481,7 @@ void checkpoint_reattempt_loop(
             );
         }
         context.wait_for_all_requests();
-        env.console.log(Pokemon::checkpoint_reset_line(NO_CHECKPOINT_ID, i + 2, checkpoint_text));
+        env.console.log(Pokemon::checkpoint_reset_line(NO_CHECKPOINT_ID, i + 2, std::nullopt, checkpoint_text));
         reset_game(env.program_info(), env.console, context);
         stats.m_reset++;
         env.update_stats();
@@ -1538,7 +1538,7 @@ void checkpoint_reattempt_loop_tutorial(
             );
         }        
         context.wait_for_all_requests();
-        env.console.log(Pokemon::checkpoint_reset_line(NO_CHECKPOINT_ID, i + 2, checkpoint_text));
+        env.console.log(Pokemon::checkpoint_reset_line(NO_CHECKPOINT_ID, i + 2, std::nullopt, checkpoint_text));
         reset_game(env.program_info(), env.console, context);
         stats.m_reset++;
         env.update_stats();
