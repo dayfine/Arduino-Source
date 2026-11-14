@@ -13,6 +13,7 @@
 
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Data/Pokemon_AuthoredCheckpointJson_Tests.h"
+#include "Data/Pokemon_StoryFiles_Tests.h"
 #include "Data/Pokemon_StoryStepJson_Tests.h"
 #include "Engine/Pokemon_StoryEnginePolicy_Tests.h"
 #include "Engine/Pokemon_StoryEngineRuns_Tests.h"
@@ -54,6 +55,7 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryStepJson(database);
     add_tests_StoryActionArg(database);
     add_tests_AuthoredCheckpointJson(database);
+    add_tests_StoryFiles(database);
     add_tests_StorySavePolicy(database);
     add_tests_StoryEngine(database);
     add_tests_StoryEnginePolicy(database);
