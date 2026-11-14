@@ -32,6 +32,7 @@
 
 #include <cstddef>
 #include "Common/Cpp/Time.h"
+#include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
 #include "PokemonFRLG_MovementStepPresses.h"
 #include "PokemonFRLG_MovementTurnPresses.h"
 
@@ -44,10 +45,10 @@ namespace MovementMechanics{
 //  The game.
 
 //  Walking: a tile per 16 frames at 60 fps (console B, 2026-11-09).
-inline constexpr Milliseconds TILE_TIME(267);
+inline constexpr Milliseconds TILE_TIME = Pokemon::FRLG_MOVE_MECHANICS.walk.tile.across;
 //  Running with B held: a tile per 8 frames (console B, 2026-11-02, video
 //  of run 04.01).
-inline constexpr Milliseconds RUN_TILE_TIME(133);
+inline constexpr Milliseconds RUN_TILE_TIME = Pokemon::FRLG_MOVE_MECHANICS.run.tile.across;
 //  Surfing: a tile per 8 frames.
 inline constexpr Milliseconds SURF_TILE_TIME(133);
 //  The longest tap measured to only turn a player facing another way, and

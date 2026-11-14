@@ -28,6 +28,7 @@
 #include "PokemonFRLG_OverworldBike.h"
 #include "PokemonFRLG_BikeSpinMechanics.h"
 #include "PokemonFRLG_BikeSpinPresses.h"
+#include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -196,15 +197,16 @@ Milliseconds tile_time(const RouteStep& step, MoveSpeed speed){
     if (step.surfing){
         return SURF_TILE_TIME;
     }
+    const Pokemon::MoveMechanics& game = Pokemon::FRLG_MOVE_MECHANICS;
     switch (step_speed(step, speed)){
     case MoveSpeed::RUN:
-        return RUN_TILE_TIME;
+        return game.run.tile.along(step.direction);
     case MoveSpeed::BIKE:
-        return BIKE_TILE_TIME;
+        return game.bike->tile.along(step.direction);
     case MoveSpeed::WALK:
         break;
     }
-    return TILE_TIME;
+    return game.walk.tile.along(step.direction);
 }
 
 bool turns_first(const RouteStep& step, MoveSpeed speed, std::optional<Direction> facing){
