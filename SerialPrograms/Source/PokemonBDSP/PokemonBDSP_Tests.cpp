@@ -11,13 +11,16 @@
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_Maps_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_PlannedRoute_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_SimulatedRoute_Tests.h"
+#include "Programs/AutoStory/PokemonBDSP_AutoStory_RoutePlanner_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_StoryMaps_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_StoryWorld_Tests.h"
+#include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StoryActions_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_StoryData_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_RouteBench_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_Walk_Tests.h"
 #include "Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WildBattlePolicy_Tests.h"
+#include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_WallBattleSim_Tests.h"
 #include "Programs/RngManipulation/PokemonBDSP_StarterRng_Tests.h"
 #include "PokemonBDSP_Tests.h"
 
@@ -33,6 +36,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStory_Actions(database);
     add_tests_AutoStory_Maps(database);
     add_tests_AutoStory_StoryWorld(database);
+    add_tests_AutoStory_RoutePlanner(database);
     add_tests_AutoStory_RouteBench(database);
     add_tests_AutoStory_StoryMaps(database);
     add_tests_AutoStory_StoryData(database);
@@ -41,6 +45,8 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStory_WildBattlePolicy(database);
     add_tests_AutoStory_PlannedRoute(database);
     add_tests_AutoStory_SimulatedRoute(database);
+    add_tests_AutoStory_WallBattleSim(database);
+    add_tests_AutoStory_StoryActions(database);
     add_tests_StarterRng(database);
 }
 
