@@ -7,13 +7,14 @@
  */
 
 #include <format>
-#include <functional>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_SceneJudges.h"
 #include "Pokemon_SceneJudges_Tests.h"
+#include "Pokemon_TestExpect.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -21,13 +22,6 @@ namespace Pokemon{
 namespace{
 
 using namespace std::chrono_literals;
-
-UnitTestResult expect_equal(const std::string& what, const std::string& got, const std::string& expected){
-    if (got == expected){
-        return true;
-    }
-    return std::format("{}: expected \"{}\", got \"{}\"", what, expected, got);
-}
 
 
 UnitTestResult test_warp_seen(){
@@ -43,17 +37,17 @@ UnitTestResult test_warp_seen(){
 
 
 //  A scripted scene: a look per beat, a second apart. Returns the beat
-//  TalkOver first says `want` at, or -1.
-int first_beat(const std::vector<ScreenEvents>& beats, SceneMove want, TalkOver& judge){
+//  TalkOver first says `want` at, if any.
+std::optional<size_t> first_beat(const std::vector<ScreenEvents>& beats, SceneMove want, TalkOver& judge){
     const Milliseconds every = 1000ms;
     WallClock now = WallClock();
     for (size_t c = 0; c < beats.size(); c++){
         if (judge.look(beats[c], now) == want){
-            return (int)c;
+            return c;
         }
         now += every;
     }
-    return -1;
+    return std::nullopt;
 }
 
 const ScreenEvents QUIET{ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL};
@@ -77,7 +71,7 @@ UnitTestResult test_talk_over(){
         TalkOverRule rule;
         std::vector<ScreenEvents> beats;
         SceneMove want;
-        int beat;
+        std::optional<size_t> beat;  //  Unset: never says `want`.
     };
     const std::vector<Row> rows = {
         {"5 s of quiet ends it", {}, repeat(QUIET, 8), SceneMove::DONE, 5},
@@ -91,39 +85,41 @@ UnitTestResult test_talk_over(){
         {"a banner is the warp too", {.warp = true},
             concat({ScreenEvents{ScreenEvent::LOCATION_BANNER, ScreenEvent::PLAYER_CAN_MOVE}}, repeat(QUIET, 8)),
             SceneMove::DONE, 6},
-        {"no quiet ends a talk before a battle", {.end_on_quiet = false}, repeat(QUIET, 30), SceneMove::DONE, -1},
+        {"no quiet ends a talk before a battle", {.end_on_quiet = false}, repeat(QUIET, 30), SceneMove::DONE, std::nullopt},
         {"a battle", {.end_on_quiet = false}, concat(repeat(QUIET, 6), {ScreenEvents{ScreenEvent::BATTLE_STARTED}}), SceneMove::BATTLE, 6},
-        //  Mom's Running Shoes scene (lab-B 2026-11-09 14:33): quiet, then
-        //  the scene's closing fade. It ended at the fade's start and the
-        //  next step's input landed in the fade.
+        //  Quiet, then the scene's closing fade: the scene must not end at
+        //  the fade's start, or the next step's input lands in the fade.
         {"a closing fade starts the quiet over", {},
             concat(concat(repeat(QUIET, 4), repeat(FADED, 3)), repeat(QUIET, 8)),
             SceneMove::DONE, 12},
-        {"a fade still down never ends it", {}, concat(repeat(QUIET, 3), repeat(FADED, 20)), SceneMove::DONE, -1},
-        {"a fade is never calm", {}, concat(repeat(CALM, 10), repeat(CALM_FADED, 10)), SceneMove::DONE, -1},
+        {"a fade still down never ends it", {}, concat(repeat(QUIET, 3), repeat(FADED, 20)), SceneMove::DONE, std::nullopt},
+        {"a fade is never calm", {}, concat(repeat(CALM, 10), repeat(CALM_FADED, 10)), SceneMove::DONE, std::nullopt},
     };
     for (const Row& row : rows){
         TalkOver judge(row.rule);
-        const int got = first_beat(row.beats, row.want, judge);
+        const std::optional<size_t> got = first_beat(row.beats, row.want, judge);
         if (got != row.beat){
-            return std::format("{}: expected beat {}, got {} ({})", row.name, row.beat, got, judge.describe());
+            const auto show = [](const std::optional<size_t>& beat){
+                return beat ? std::to_string(*beat) : std::string("none");
+            };
+            return std::format("{}: expected beat {}, got {} ({})", row.name, show(row.beat), show(got), judge.describe());
         }
     }
     return true;
 }
 
 
-struct SceneJudgesInput{
-    std::string name;
-    std::function<UnitTestResult()> body;
-};
-
-struct SceneJudgesExpectation{
-};
-
 struct SceneJudgesCase{
-    SceneJudgesInput input;
-    SceneJudgesExpectation expectation;
+    struct Input{
+        std::string name;
+        UnitTestResult (*body)();
+    };
+
+    struct Expectation{
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_SceneJudges : public UnitTest{
