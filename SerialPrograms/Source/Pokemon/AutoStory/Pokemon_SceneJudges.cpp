@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include "CommonTools/ScreenEvents/ScreenFades.h"
 #include "Pokemon_SceneJudges.h"
 
 namespace PokemonAutomation{

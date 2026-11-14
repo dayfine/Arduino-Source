@@ -376,8 +376,8 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
     while (current_time() < deadline){
         context.wait_for_all_requests();
         const VideoSnapshot frame = console.video().snapshot();
-        const Pokemon::ScreenEvents events = observer.observe(frame, current_time());
-        if (stop_at <= 0 && events.any_of({Pokemon::ScreenEvent::INTERACT_PROMPT, Pokemon::ScreenEvent::DIALOG_BOX})){
+        const ScreenEvents events = observer.observe(frame, current_time());
+        if (stop_at <= 0 && events.any_of({ScreenEvent::INTERACT_PROMPT, ScreenEvent::DIALOG_BOX})){
             return last;
         }
         const std::optional<ObjectiveMarker> marker = read_objective_marker(console, frame);
@@ -471,8 +471,8 @@ void walk_to_marker(ConsoleHandle& console, ProControllerContext& context){
     walk_to_objective(console, context, 0, 90s);
     PlzaScreenObserver observer;
     context.wait_for_all_requests();
-    const Pokemon::ScreenEvents events = observer.observe(console.video().snapshot(), current_time());
-    if (!events.any_of({Pokemon::ScreenEvent::INTERACT_PROMPT, Pokemon::ScreenEvent::DIALOG_BOX})){
+    const ScreenEvents events = observer.observe(console.video().snapshot(), current_time());
+    if (!events.any_of({ScreenEvent::INTERACT_PROMPT, ScreenEvent::DIALOG_BOX})){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
             "walk_to_marker(): no A prompt or dialog at the objective.",

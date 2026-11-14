@@ -13,11 +13,12 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "Pokemon_ScreenEvents.h"
-#include "Pokemon_ScreenEvents_Tests.h"
+#include "ScreenEventTypes.h"
+#include "ScreenFades.h"
+#include "ScreenEvents.h"
+#include "ScreenEvents_Tests.h"
 
 namespace PokemonAutomation{
-namespace Pokemon{
 
 namespace{
 
@@ -146,7 +147,7 @@ struct ScreenEventsCase{
 class Test_ScreenEvents : public UnitTest{
 public:
     explicit Test_ScreenEvents(ScreenEventsCase test_case)
-        : UnitTest(std::format("Pokemon::ScreenEvents - {}", test_case.input.name))
+        : UnitTest(std::format("CommonTools::ScreenEvents - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -183,5 +184,4 @@ void add_tests_ScreenEvents(UnitTestDatabase& database){
 
 
 
-} // namespace Pokemon
-} // namespace PokemonAutomation
+}  // namespace PokemonAutomation
