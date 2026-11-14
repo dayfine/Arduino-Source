@@ -11,6 +11,7 @@
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartySlot.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_RngProgram.h"
 
 namespace PokemonAutomation{
@@ -65,6 +66,10 @@ void RngProgramInstance::run_precheck(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context
 ){
+    if (!GameSettings::instance().RUN_RNG_START_CHECKS){
+        env.console.log("Start checks are off in the FRLG Game Settings. Skipping them.");
+        return;
+    }
     home_black_border_check(env.console, context);
     check_free_party_slots(env, context);
 }
