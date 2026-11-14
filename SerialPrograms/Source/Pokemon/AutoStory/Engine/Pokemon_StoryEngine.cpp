@@ -11,6 +11,7 @@
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_CheckpointAttempts.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
+#include "Pokemon/AutoStory/Pokemon_StoryOutcomeClass.h"
 #include "Pokemon_StoryEngine.h"
 
 namespace PokemonAutomation{
@@ -289,7 +290,7 @@ SegmentReport StoryEngine<PoseType>::run_segment(
             report.failed_checkpoint = checkpoint.id;
             report.failed_event = result.run.failed_name;
             report.failure = run_failure(result);
-            m_backend.log(std::format("[Segment] {}: failed at {}: {}", id, checkpoint.id, to_string(report.failure)));
+            m_backend.log(std::format("[Segment] {}: failed at {}: {}", id, checkpoint.id, to_string_with_class(report.failure)));
             return report;
         }
         start_saved = result.saved;
@@ -329,7 +330,7 @@ VerifyReport StoryEngine<PoseType>::verify_checkpoint(const StoryCheckpoint& che
         report.saved = result.saved;
         m_backend.log(std::format(
             "[Verify] {}: run {}/{} {}", checkpoint.id, run, policy.runs,
-            passed ? std::string("passed") : std::format("failed: {}", to_string(run_failure(result)))
+            passed ? std::string("passed") : std::format("failed: {}", to_string_with_class(run_failure(result)))
         ));
         if (repeats_on_reload(result.run.failure)){
             report.failure = result.run.failure;

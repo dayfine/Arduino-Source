@@ -15,8 +15,10 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_StoryEvents_Tests.h"
+#include "Pokemon_StoryOutcomeClass.h"
 #include "Pokemon_TilePose.h"
 
 namespace PokemonAutomation{
@@ -248,7 +250,8 @@ UnitTestResult test_stop_names_failed_event(){
         return "Nothing after the failed event should run.";
     }
     if (!lines.has("[Event] 00.04/2 talk_mom: recover: stop (expect_failed): four rows cover the mat to the TV")
-        || lines.lines.back() != "[Checkpoint] 00.04: failed at 2 talk_mom: expect_failed: dialogue opened"
+        || !lines.has("[Event] 00.04/2 talk_mom: failed: expect_failed: dialogue opened (class=state_check_failed)")
+        || lines.lines.back() != "[Checkpoint] 00.04: failed at 2 talk_mom: expect_failed: dialogue opened (class=state_check_failed)"
     ){
         return std::format("Unexpected log:{}", lines.all());
     }
@@ -271,6 +274,49 @@ UnitTestResult test_unmatched_failure_stops(){
         return std::format("A failure no recovery names should stop at once:{}", lines.all());
     }
     if (!lines.has("[Event] 00.04/1 probe_for_mom: failed: probe_exhausted: 4 rows")){
+        return std::format("Unexpected log:{}", lines.all());
+    }
+    return true;
+}
+
+//  A game's own failure name with the class the game gives it.
+UnitTestResult test_failure_names_its_class(){
+    Checkpoint checkpoint = make_checkpoint();
+    checkpoint.events.push_back(make_event("probe_for_mom", [](RunState&){
+        return outcome_failed("probe_exhausted", "4 rows", StoryFailureClass::POSE_LOST);
+    }));
+    RunState state;
+    Lines lines;
+    EventLogger log = lines.logger();
+    const CheckpointReport report = run_checkpoint(state, checkpoint, log);
+    if (failure_class_of(report.failure) != StoryFailureClass::POSE_LOST){
+        return std::format("Expected the report's failure of class pose_lost:{}", lines.all());
+    }
+    if (!lines.has("[Event] 00.04/1 probe_for_mom: failed: probe_exhausted: 4 rows (class=pose_lost)")
+        || lines.lines.back() != "[Checkpoint] 00.04: failed at 1 probe_for_mom: probe_exhausted: 4 rows (class=pose_lost)"
+    ){
+        return std::format("Unexpected log:{}", lines.all());
+    }
+    return true;
+}
+
+//  A game's action that throws OperationFailedException: the exception goes
+//  on, the log names its class.
+UnitTestResult test_throw_names_its_class(){
+    Checkpoint checkpoint = make_checkpoint();
+    checkpoint.events.push_back(make_event("talk_mom", [](RunState&) -> Outcome{
+        throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "no dialog");
+    }));
+    RunState state;
+    Lines lines;
+    EventLogger log = lines.logger();
+    try{
+        run_checkpoint(state, checkpoint, log);
+        return "Expected the exception to go on.";
+    }catch (OperationFailedException&){}
+    if (!lines.has("[Event] 00.04/1 talk_mom: failed: OperationFailedException: no dialog (class=operation_failed)")
+        || lines.lines.back() != "[Checkpoint] 00.04: failed at 1 talk_mom: OperationFailedException: no dialog (class=operation_failed)"
+    ){
         return std::format("Unexpected log:{}", lines.all());
     }
     return true;
@@ -663,6 +709,14 @@ const StoryEventTestCase STORY_EVENT_CASES[] = {
     {
         .input = {.name = "an unanswered failure stops", .test = test_unmatched_failure_stops},
         .expectation = {.description = "stops checkpoint execution when failure has no handler"},
+    },
+    {
+        .input = {.name = "a failure names its class", .test = test_failure_names_its_class},
+        .expectation = {.description = "logs the class a game gives its own failure name"},
+    },
+    {
+        .input = {.name = "a throw names its class", .test = test_throw_names_its_class},
+        .expectation = {.description = "logs operation_failed for an OperationFailedException that goes on"},
     },
     {
         .input = {.name = "an interrupt mid-event", .test = test_interrupt_mid_event},
