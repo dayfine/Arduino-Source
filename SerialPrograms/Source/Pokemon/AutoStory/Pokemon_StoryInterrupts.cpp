@@ -10,6 +10,8 @@
 #include <optional>
 #include <string>
 #include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "CommonTools/ScreenEvents/ScreenFades.h"
 #include "Pokemon_StoryInterrupts.h"
 
 namespace PokemonAutomation{
@@ -146,6 +148,17 @@ std::string describe(const ScreenSettle& settle){
 }
 
 
+//  The handler's outcome. A handler drives the console, which it can lose:
+//  that is a failed outcome too, not an exception for the executor's caller.
+Outcome run_handler(const InterruptHandler& handler, const InterruptVerdict& verdict, RunState& state){
+    try{
+        return handler.handle(verdict, state);
+    }catch (OperationFailedException& e){
+        return outcome_failed("operation_failed", e.message());
+    }
+}
+
+
 InterruptCheck clear_story_interrupt(const StoryInterrupts& interrupts, const StoryStep& step, RunState& state){
     InterruptCheck out;
     out.verdict = settled_verdict(interrupts, step.kind, out.screen);
@@ -171,7 +184,7 @@ InterruptCheck clear_story_interrupt(const StoryInterrupts& interrupts, const St
         out.outcome = outcome_failed("unhandled_interrupt", std::format("{} before {}", interrupt_kind_name(kind), step.name));
         return out;
     }
-    const Outcome handled = handler->handle(out.verdict, state);
+    const Outcome handled = run_handler(*handler, out.verdict, state);
     if (!handled.succeeded()){
         out.outcome = outcome_failed("interrupt_failed", std::format("{}: {}", interrupt_kind_name(kind), to_string(handled)));
         return out;

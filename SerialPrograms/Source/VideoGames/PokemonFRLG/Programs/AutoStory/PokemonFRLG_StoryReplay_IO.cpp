@@ -327,16 +327,15 @@ ReplayData read_data(std::string_view capture, std::string_view binding, std::st
     return result;
 }
 ReplayScreen between_steps_screen(std::string_view kind){
-    using Pokemon::ScreenEvent;
-    const Pokemon::ScreenEvents box{ScreenEvent::DIALOG_BOX};
-    const Pokemon::ScreenEvents battle{ScreenEvent::BATTLE_STARTED};
-    const Pokemon::ScreenEvents black{ScreenEvent::FADE_BLACK};
+    const ScreenEvents box{ScreenEvent::DIALOG_BOX};
+    const ScreenEvents battle{ScreenEvent::BATTLE_STARTED};
+    const ScreenEvents black{ScreenEvent::FADE_BLACK};
     ReplayScreen screen;
     if (kind == "dialog"){
         screen.frames = {{33, box}};
         screen.look_ms = 400;
     }else if (kind == "wild-encounter"){
-        screen.frames = {{100, Pokemon::ScreenEvents{ScreenEvent::FADE_WHITE}}, {400, {}}, {1500, battle}};
+        screen.frames = {{100, ScreenEvents{ScreenEvent::FADE_WHITE}}, {400, {}}, {1500, battle}};
         screen.look_ms = 2000;
     }else if (kind == "trainer-sight"){
         screen.frames = {{100, box}, {2000, black}, {2500, battle}};
