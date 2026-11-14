@@ -36,7 +36,20 @@ local function new_world(config, busy_ports)
     local server = {}
     function server:listen(_) return 0 end
     function server:add(ev, fn) w.accept = fn; return 1 end
-    function server:accept() return client end
+    function server:accept()
+        if w.next_accept ~= nil then
+            local s = w.next_accept
+            w.next_accept = nil
+            return s
+        end
+        return client
+    end
+    function server:poll()
+        w.server_polls = (w.server_polls or 0) + 1
+        if w.on_server_poll then
+            w.on_server_poll(w)
+        end
+    end
     function server:close() end
 
     socket = {
@@ -277,6 +290,69 @@ function tests.no_game_loaded()
     local w = new_world()
     emu = nil
     assert(cmd(w, "HELLO 1") == "ERR no-game")
+end
+
+function tests.reset_clears_pending_keys_and_holds_grant()
+    local w = new_world()
+    assert(cmd(w, "KEYS 400 1") == "OK")
+    assert(cmd(w, "GRANT 500") == "OK 100")
+    assert(cmd(w, "RESET") == "OK")
+    assert(w.resets == 1 and w.frame == 0)
+    local s = cmd(w, "STATUS")
+    assert(s:match(" grant=0 "), s)
+    assert(cmd(w, "GRANT 450") == "OK 0")
+    w.frame = 400
+    step(w)
+    assert(w.keys == 0, "pending KEYS survived RESET")
+end
+
+local function new_rejected_client()
+    local s = { sent = {}, closed = false }
+    function s:send(data) s.sent[#s.sent + 1] = data; return #data end
+    function s:close() s.closed = true end
+    return s
+end
+
+function tests.second_client_gets_err_busy()
+    local w = new_world()
+    local second = new_rejected_client()
+    w.next_accept = second
+    w.accept()
+    assert(#second.sent == 1 and second.sent[1] == "ERR busy\n")
+    assert(second.closed)
+    assert(w.last_warn:match("refused"))
+    assert(cmd(w, "HELLO 1"):match("^OK 1 "))
+end
+
+function tests.second_client_during_stall_gets_err_busy()
+    local w = new_world()
+    local second = new_rejected_client()
+    cmd(w, "GRANT 101")
+    w.on_server_poll = function(ww)
+        if ww.server_polls == 1 then
+            ww.next_accept = second
+            ww.accept()
+        end
+    end
+    w.on_poll = function(ww)
+        if ww.polls == 2 then
+            ww.inbound[#ww.inbound + 1] = "GRANT 105\n"
+        end
+    end
+    step(w)
+    assert(w.server_polls >= 1)
+    assert(#second.sent == 1 and second.sent[1] == "ERR busy\n")
+    assert(second.closed)
+    assert(cmd(w, "STATUS"):match(" grant=105 "))
+end
+
+function tests.handler_error_returns_err_internal()
+    local w = new_world()
+    emu.screenshot = function() error("boom\nline2") end
+    local reply = cmd(w, "FRAME")
+    assert(reply:match("^ERR internal "), reply)
+    assert(not reply:find("[\r\n]"), reply)
+    assert(reply:find("boom line2", 1, true), reply)
 end
 
 local names = {}

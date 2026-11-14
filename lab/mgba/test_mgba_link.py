@@ -4,6 +4,7 @@ Run: python3 -I -m unittest discover -s lab/mgba -p test_mgba_link.py
 No mGBA and no ROM: the fake bridge below models bridge.lua's frame clock in Python.
 """
 
+import contextlib
 import io
 import os
 import socket
@@ -18,12 +19,14 @@ import mgba_link
 class FakeBridge:
     """A MgbaLink v1 server that advances one frame every tick unless a GRANT holds it."""
 
-    def __init__(self, mode="paced", code="BPRE", frame_dir=None):
+    def __init__(self, mode="paced", code="BPRE", frame_dir=None, delay_keys_reads=0):
         self.mode, self.code = mode, code
         self.frame, self.grant, self.held = 1000, None, None
         self.pending, self.states = [], {}
         self.applied = (None, None)
         self.read = (None, None)
+        self.delay_keys_reads = delay_keys_reads
+        self.skip_reads_range = None
         self.lock = threading.Lock()
         self.byes = 0
         self.frame_path = os.path.join(frame_dir, "frame.png")
@@ -47,13 +50,14 @@ class FakeBridge:
         while not self.stop.is_set():
             with self.lock:
                 if self.mode == "free" or self.grant is None or self.frame < self.grant:
-                    self.pending.sort(key=lambda e: e[0])
-                    while self.pending and self.pending[0][0] <= self.frame:
-                        mask = self.pending.pop(0)[1]
-                        if mask != self.held:
-                            self.applied = (self.frame, mask)
-                        self.held = mask
-                    self.read = (self.frame, self.held or 0)
+                    if not (self.skip_reads_range and self.skip_reads_range[0] <= self.frame < self.skip_reads_range[1]):
+                        self.pending.sort(key=lambda e: e[0])
+                        while self.pending and self.pending[0][0] <= self.frame:
+                            mask = self.pending.pop(0)[1]
+                            if mask != self.held:
+                                self.applied = (self.frame, mask)
+                            self.held = mask
+                        self.read = (self.frame, self.held or 0)
                     self.frame += 1
             time.sleep(0.001)
 
@@ -93,6 +97,9 @@ class FakeBridge:
                 self.held = mask
                 self.applied = (self.frame, mask)
                 return "LATE %d" % (self.frame - f)
+            if self.delay_keys_reads > 0:
+                self.skip_reads_range = (f, f + self.delay_keys_reads)
+                self.delay_keys_reads = 0
             return "OK"
         if cmd == "FRAME":
             with open(self.frame_path, "wb") as fh:
@@ -107,6 +114,12 @@ class FakeBridge:
             if self.grant is not None:
                 self.grant = self.frame
             return "OK %d" % self.frame
+        if cmd == "RESET":
+            self.frame = 0
+            self.pending = []
+            if self.grant is not None:
+                self.grant = self.frame
+            return "OK"
         if cmd == "BYE":
             self.grant, self.held, self.pending = None, None, []
             return "OK BYE"
@@ -221,6 +234,29 @@ class SmokeAgainstFakeBridgeTest(unittest.TestCase):
         with mgba_link.MgbaLink("127.0.0.1", bridge.port) as link:
             with self.assertRaises(mgba_link.LinkError):
                 link.command("BOGUS")
+
+    def test_reset_clears_pending_and_resets_frame(self):
+        bridge = FakeBridge(frame_dir=self.tmp.name)
+        self.addCleanup(bridge.close)
+        with mgba_link.MgbaLink("127.0.0.1", bridge.port) as link:
+            link.grant(1000)
+            link.keys(2000, mgba_link.KEY["A"])
+            link.reset()
+            st = link.status()
+            self.assertEqual(st["frame"], 0)
+            self.assertEqual(st["grant"], 0)
+            self.assertEqual(bridge.pending, [])
+
+    def test_keys_with_lag_passes(self):
+        ok, text = self.run_smoke(delay_keys_reads=2)
+        self.assertTrue(ok, text)
+        self.assertIn("(lag 2 frames)", text)
+
+    def test_samples_must_be_positive(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as ctx:
+                mgba_link.main(["smoke", "--samples", "0"])
+        self.assertEqual(ctx.exception.code, 2)
 
 
 if __name__ == "__main__":

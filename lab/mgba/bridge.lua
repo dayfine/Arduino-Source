@@ -1,4 +1,4 @@
--- MgbaLink v1 bridge for mGBA 0.10.5 (lab only, agents branch).
+-- MgbaLink v1 bridge for mGBA 0.10.5.
 --
 -- Load it by hand once per mGBA launch: Tools > Scripting, then File > Load script.
 -- It listens on 127.0.0.1 (first free port from CONFIG.port) and speaks the line protocol in
@@ -30,6 +30,7 @@ local STATE_FLAGS = 31          -- C.SAVESTATE.ALL; includes SAVEDATA (the load 
 local KEY_MASK_MAX = 0x3FF      -- 10 GBA keys
 local MAX_LINE = 4096
 local SCREEN_W, SCREEN_H = 240, 160
+local SEND_MAX_ATTEMPTS = 100   -- cap retries on AGAIN/partial sends so a wedged peer cannot hang the emulator
 
 local server = nil
 local port = nil
@@ -105,7 +106,7 @@ local function send_line(line)
     end
     local data = line .. "\n"
     local from = 1
-    for _ = 1, 100 do
+    for _ = 1, SEND_MAX_ATTEMPTS do
         local last, err = client:send(data, from)
         if last == nil then
             if err ~= socket.ERRORS.AGAIN then
@@ -247,7 +248,7 @@ function handlers.BYE(_)
     return "OK BYE"
 end
 
--- Diagnostic for the slice-0 smoke client; the app does not depend on it.
+-- Diagnostic for the smoke client and tests; the app does not depend on it.
 function handlers.STATUS(_)
     return "OK frame=" .. emu:currentFrame()
         .. " keys=" .. emu:getKeys()
@@ -372,6 +373,9 @@ local function on_frame()
     local start = now_s()
     while client ~= nil and grant ~= nil and emu:currentFrame() >= grant do
         wait_readable(client)
+        if server ~= nil then
+            server:poll()
+        end
         if client ~= nil then
             client:poll()
         end
