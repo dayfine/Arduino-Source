@@ -28,6 +28,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatches.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryConfirmChoices.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryDialogs.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerWalks.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMoves.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
@@ -112,9 +113,7 @@ const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
         {"walk_to_zone_gate", [](StoryEnv& env){ walk_to_zone_gate(env.env.console, env.context); }},
         {"fly_to_center_or_stay", [](StoryEnv& env){ fly_to_or_stay(env.env.console, env.context, env.language, Location::VERT_POKEMON_CENTER); }},
         {"center_to_zone_1", [](StoryEnv& env){ center_to_zone_1(env.env.console, env.context); }},
-        //  The lab's 03.07d, back from Wild Zone 1 to the Pokemon Center.
-        {"walk_back_to_zone_entrance", [](StoryEnv& env){ walk_back_to_zone_entrance(env.env.console, env.context); }},
-        {"walk_back_to_center", [](StoryEnv& env){ walk_back_to_center(env.env.console, env.context); }},
+        {"zone_1_back_to_center", [](StoryEnv& env){ zone_1_back_to_center(env.env.console, env.context); }},
         {"claim_mable_research_reward", [](StoryEnv& env){ claim_mable_research_reward(env.env.console, env.context); }},
         //  For reruns in the lab: the title screen's Up + B + X loads the save
         //  before the last one, as a catch's autosave moves the save past a

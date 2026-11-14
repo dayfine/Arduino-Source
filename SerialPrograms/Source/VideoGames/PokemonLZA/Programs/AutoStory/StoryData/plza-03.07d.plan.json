@@ -9,23 +9,10 @@
     },
     "events": [
       {
-        "id": "back_to_entrance_gate",
-        "kind": "game_action",
-        "why": "lab only (user, 2026-11-13): from where 03.07's catches end, back away from the objective marker (the far gate) to Wild Zone 1's entrance gate, the one 03.06 came in by, until its \"A Leave\" shows. UNVERIFIED, NEEDS CONSOLE: that the entrance lies back from the marker with nothing in the way.",
-        "action": "walk_back_to_zone_entrance"
-      },
-      {
-        "id": "leave_zone_1",
-        "kind": "game_action",
-        "why": "A Leave, out on the street (as 03.08 leaves by the far gate: a plain scene step ends at once on the gate's prompt).",
-        "action": "mash_to_move_hints",
-        "args": {"press_a_first": true}
-      },
-      {
         "id": "back_to_center",
         "kind": "game_action",
-        "why": "on back away from the marker, the reverse of 03.08's center_to_zone_1, to the front of Vert's Pokemon Center: the far gate reads CENTER_FROM_FAR_GATE (220, a guess) or 40 s; fails unless it reads past 150, where 03.08 would take the player as in the zone and skip its walk. Fast travel is not open here yet (console B, 2026-11-13). UNVERIFIED, NEEDS CONSOLE: the distance the Center reads, and that the walk back follows the street.",
-        "action": "walk_back_to_center"
+        "why": "lab only (user, 2026-11-13): fast travel is not open here yet (console B, 2026-11-13), so walk. From where 03.07's catches end, back away from the objective marker (the far gate) to Wild Zone 1's entrance gate, the one 03.06 came in by, until its \"A Leave\"; A, B to the street; on back away from the marker, the reverse of 03.08's center_to_zone_1, to the front of Vert's Pokemon Center: until the far gate reads CENTER_FROM_FAR_GATE (220, a guess) or 40 s. Fails unless it reads past 150, where 03.08 would take the player as in the zone and skip its walk. UNVERIFIED, NEEDS CONSOLE: that the entrance and the Center lie back from the marker with nothing in the way, and the distance the Center reads.",
+        "action": "zone_1_back_to_center"
       }
     ],
     "metadata": {

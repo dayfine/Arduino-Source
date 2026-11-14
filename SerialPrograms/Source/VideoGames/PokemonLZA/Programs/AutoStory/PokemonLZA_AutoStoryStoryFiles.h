@@ -57,6 +57,12 @@ const std::vector<Pokemon::StoryCheckpoint>& story_checkpoints();
 //  01.03 saves through it after Andi (console B, 2026-11-10).
 const std::set<std::string, std::less<>>& story_autosave_rows();
 
+//  The rows of `story` a run may play, in order: all of them in
+//  `developer_mode` (the program's Developer Mode setting), else all but
+//  StoryData::dev_only's. The start and end dropdowns list these, so their
+//  indices name these rows.
+std::vector<Pokemon::StoryCheckpoint> story_rows_for_mode(const StoryData& story, bool developer_mode);
+
 
 
 } // namespace PokemonLZA

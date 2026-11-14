@@ -180,6 +180,16 @@ const std::set<std::string, std::less<>>& story_autosave_rows(){
     return builtin_story_data().autosaves;
 }
 
+std::vector<StoryCheckpoint> story_rows_for_mode(const StoryData& story, bool developer_mode){
+    std::vector<StoryCheckpoint> rows;
+    for (const StoryCheckpoint& row : story.checkpoints){
+        if (developer_mode || !story.dev_only.contains(row.id)){
+            rows.push_back(row);
+        }
+    }
+    return rows;
+}
+
 
 
 } // namespace PokemonLZA

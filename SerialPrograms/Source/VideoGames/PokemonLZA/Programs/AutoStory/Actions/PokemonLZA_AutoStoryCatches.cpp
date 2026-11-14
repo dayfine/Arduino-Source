@@ -27,6 +27,7 @@
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 #include "PokemonLZA_AutoStoryCatches.h"
 #include "PokemonLZA_AutoStoryDialogs.h"
+#include "PokemonLZA_AutoStoryMarkerWalks.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 #include "PokemonLZA_AutoStoryZone1Road.h"
 
@@ -504,17 +505,6 @@ GrassCatches catch_at_stop(
     return out;
 }
 
-//  Off screen, the game pins the marker to the edge with no digits
-//  (anything read there is noise): turns the camera to it. Returns whether
-//  the marker at `x` (0 to 1) was pinned.
-bool turn_to_pinned_marker(ProControllerContext& context, double x){
-    if (x >= 0.10 && x <= 0.90){
-        return false;
-    }
-    pbf_move_right_joystick(context, {x < 0.5 ? -0.5 : 0.5, 0}, 400ms, 200ms);
-    return true;
-}
-
 //  Turns the camera toward the marker at `x` (0 to 1) and walks 0.6 s on.
 void steer_and_step(ProControllerContext& context, double x){
     const double off = x - 0.5;
@@ -559,32 +549,6 @@ private:
     int m_still = 0;
     int m_sidesteps = 0;
 };
-
-//  Walks back away from the objective marker (the stick down: toward the
-//  camera, which stays on the marker) until its distance reads `stop_at`
-//  or more, or `limit`. A read more than 12 from the last is a misread, as
-//  in walk_to_objective(). Returns the last distance read.
-std::optional<int> walk_from_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit){
-    const WallClock deadline = current_time() + limit;
-    std::optional<int> last;
-    while (current_time() < deadline){
-        context.wait_for_all_requests();
-        const std::optional<ObjectiveMarker> marker = read_objective_marker(console, console.video().snapshot());
-        if (marker && turn_to_pinned_marker(context, marker->x)){
-            continue;
-        }
-        if (marker && marker->distance > 0 && (!last || std::abs(marker->distance - *last) <= 12)){
-            last = marker->distance;
-            if (*last >= stop_at){
-                console.log(std::format("walk_from_objective(): {} from the objective.", *last));
-                return last;
-            }
-        }
-        pbf_move_left_joystick(context, {0, -1}, 600ms, 0ms);
-    }
-    console.log(std::format("walk_from_objective(): not back to {} in time (last read {}).", stop_at, last.value_or(-1)));
-    return last;
-}
 
 } // namespace
 
@@ -852,50 +816,6 @@ void walk_to_zone_gate(ConsoleHandle& console, ProControllerContext& context){
     OperationFailedExceptionWithScreenshot::fire(
         ErrorReportMode::SEND_ERROR_REPORT,
         std::format("walk_to_zone_gate(): no \"A Leave\" prompt at the far gate, held up at {} from it.", last.value_or(-1)),
-        console
-    );
-}
-
-void walk_back_to_zone_entrance(ConsoleHandle& console, ProControllerContext& context){
-    PlzaScreenObserver observer;
-    const WallClock deadline = current_time() + 60s;
-    std::optional<int> last;
-    while (current_time() < deadline){
-        context.wait_for_all_requests();
-        const VideoSnapshot frame = console.video().snapshot();
-        if (observer.observe(frame, current_time()).any_of({ScreenEvent::INTERACT_PROMPT, ScreenEvent::DIALOG_BOX})){
-            console.log(std::format("walk_back_to_zone_entrance(): a prompt at {} from the far gate.", last.value_or(-1)));
-            return;
-        }
-        const std::optional<ObjectiveMarker> marker = read_objective_marker(console, frame);
-        if (marker && turn_to_pinned_marker(context, marker->x)){
-            continue;
-        }
-        if (marker && marker->distance > 0 && last != marker->distance){
-            last = marker->distance;
-            console.log(std::format("walk_back_to_zone_entrance(): {} from the far gate.", *last));
-        }
-        pbf_move_left_joystick(context, {0, -1}, 600ms, 0ms);
-    }
-    OperationFailedExceptionWithScreenshot::fire(
-        ErrorReportMode::SEND_ERROR_REPORT,
-        std::format("walk_back_to_zone_entrance(): no \"A Leave\" prompt in 60 s, last read {} from the far gate.", last.value_or(-1)),
-        console
-    );
-}
-
-void walk_back_to_center(ConsoleHandle& console, ProControllerContext& context){
-    const std::optional<int> last = walk_from_objective(console, context, CENTER_FROM_FAR_GATE, 40s);
-    if (left_zone_1(last)){
-        console.log(std::format("walk_back_to_center(): {} from the far gate: out of Wild Zone 1.", *last));
-        return;
-    }
-    OperationFailedExceptionWithScreenshot::fire(
-        ErrorReportMode::SEND_ERROR_REPORT,
-        std::format(
-            "walk_back_to_center(): {} from the far gate: not past {}, so 03.08 would take the player as in Wild Zone 1.",
-            last.value_or(-1), ZONE_1_START_MAX
-        ),
         console
     );
 }

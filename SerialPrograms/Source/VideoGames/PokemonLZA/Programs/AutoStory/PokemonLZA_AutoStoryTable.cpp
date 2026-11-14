@@ -59,16 +59,6 @@ bool story_row_starts_without_save(const StoryCheckpoint& row){
     return story_row_launches_game(row) || story_row_confirms_new_game(row);
 }
 
-std::vector<StoryCheckpoint> story_rows_for_mode(const StoryData& story, bool developer_mode){
-    std::vector<StoryCheckpoint> rows;
-    for (const StoryCheckpoint& row : story.checkpoints){
-        if (developer_mode || !story.dev_only.contains(row.id)){
-            rows.push_back(row);
-        }
-    }
-    return rows;
-}
-
 std::vector<StoryCheckpoint> story_run_rows(const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last){
     std::vector<StoryCheckpoint> rows;
     if (first > last || last >= checkpoints.size()){

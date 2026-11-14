@@ -99,12 +99,6 @@ bool story_row_confirms_new_game(const Pokemon::StoryCheckpoint& row);
 //  confirms a new game.
 bool story_row_starts_without_save(const Pokemon::StoryCheckpoint& row);
 
-//  The rows of `story` a run may play, in order: all of them in
-//  `developer_mode` (the program's Developer Mode setting), else all but
-//  StoryData::dev_only's. The start and end dropdowns list these, so their
-//  indices name these rows.
-std::vector<Pokemon::StoryCheckpoint> story_rows_for_mode(const StoryData& story, bool developer_mode);
-
 //  The rows a run from `first` to `last` of `checkpoints` plays, in order:
 //  all of them but a row that confirms a new game after the run's first
 //  row, which played it already. Empty if `first` comes after `last` or
