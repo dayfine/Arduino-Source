@@ -277,7 +277,6 @@ UnitTestResult test_trainer_sight_once(){
 
 
 struct RouteScorerInput{
-    std::string name;
     UnitTestResult (*test)();
 };
 
@@ -286,6 +285,7 @@ struct RouteScorerExpectation{
 };
 
 struct RouteScorerCase{
+    std::string name;
     RouteScorerInput input;
     RouteScorerExpectation expectation;
 };
@@ -293,7 +293,7 @@ struct RouteScorerCase{
 class Test_RouteScorer : public UnitTest{
 public:
     explicit Test_RouteScorer(RouteScorerCase scenario)
-        : UnitTest("Pokemon::Navigation - RouteScorer: " + scenario.input.name)
+        : UnitTest("Pokemon::Navigation - RouteScorer: " + scenario.name)
         , m_case(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -306,63 +306,78 @@ private:
 
 const RouteScorerCase ROUTE_SCORER_CASES[] = {
     {
-        .input = {.name = "taps take a tap each", .test = test_taps_time},
+        .name = "taps take a tap each",
+        .input = {.test = test_taps_time},
         .expectation = {.description = "4 taps cost 4 taps and a press"},
     },
     {
-        .input = {.name = "a run to a wall beats taps", .test = test_run_to_wall_beats_taps},
+        .name = "a run to a wall beats taps",
+        .input = {.test = test_run_to_wall_beats_taps},
         .expectation = {.description = "run to the wall is faster than the same tiles in taps"},
     },
     {
-        .input = {.name = "walls bring a set of tiles to one", .test = test_wall_collapses_a_set},
+        .name = "walls bring a set of tiles to one",
+        .input = {.test = test_wall_collapses_a_set},
         .expectation = {.description = "PASS"},
     },
     {
-        .input = {.name = "an open hold with nothing to stop it fails", .test = test_open_hold_off_the_goal},
+        .name = "an open hold with nothing to stop it fails",
+        .input = {.test = test_open_hold_off_the_goal},
         .expectation = {.description = "FAIL: may end off the goal"},
     },
     {
-        .input = {.name = "an open hold may not overshoot into grass", .test = test_open_hold_into_grass},
+        .name = "an open hold may not overshoot into grass",
+        .input = {.test = test_open_hold_into_grass},
         .expectation = {.description = "FAIL: overshoot onto grass"},
     },
     {
-        .input = {.name = "an open hold may not overshoot onto a ledge", .test = test_open_hold_onto_a_ledge},
+        .name = "an open hold may not overshoot onto a ledge",
+        .input = {.test = test_open_hold_onto_a_ledge},
         .expectation = {.description = "FAIL: overshoot over a ledge"},
     },
     {
-        .input = {.name = "an open hold may overshoot toward a wall", .test = test_open_hold_before_a_wall},
+        .name = "an open hold may overshoot toward a wall",
+        .input = {.test = test_open_hold_before_a_wall},
         .expectation = {.description = "FAIL when short of the goal, PASS with the wall after it"},
     },
     {
-        .input = {.name = "a hold may not walk into a warp", .test = test_wall_leg_through_a_warp},
+        .name = "a hold may not walk into a warp",
+        .input = {.test = test_wall_leg_through_a_warp},
         .expectation = {.description = "FAIL through a warp, PASS into the goal warp"},
     },
     {
-        .input = {.name = "the goal's trigger stops a run", .test = test_trigger_stops_a_run},
+        .name = "the goal's trigger stops a run",
+        .input = {.test = test_trigger_stops_a_run},
         .expectation = {.description = "PASS"},
     },
     {
-        .input = {.name = "grass charges interruptions", .test = test_grass_charges_interruptions},
+        .name = "grass charges interruptions",
+        .input = {.test = test_grass_charges_interruptions},
         .expectation = {.description = "3 recoveries, expected and worst above nominal"},
     },
     {
-        .input = {.name = "taps in grass need a replan", .test = test_taps_in_grass_need_a_replan},
+        .name = "taps in grass need a replan",
+        .input = {.test = test_taps_in_grass_need_a_replan},
         .expectation = {.description = "FAIL without a replanner, PASS with 3 replans"},
     },
     {
-        .input = {.name = "a recovery back through the grass strands", .test = test_recovery_back_through_the_grass_strands},
+        .name = "a recovery back through the grass strands",
+        .input = {.test = test_recovery_back_through_the_grass_strands},
         .expectation = {.description = "STRAND"},
     },
     {
-        .input = {.name = "a recovery from a wall out of the grass retries", .test = test_recovery_from_a_wall_out_of_the_grass_retries},
+        .name = "a recovery from a wall out of the grass retries",
+        .input = {.test = test_recovery_from_a_wall_out_of_the_grass_retries},
         .expectation = {.description = "PASS"},
     },
     {
-        .input = {.name = "recoveries in a row are capped", .test = test_too_many_recoveries},
+        .name = "recoveries in a row are capped",
+        .input = {.test = test_too_many_recoveries},
         .expectation = {.description = "RETRIES"},
     },
     {
-        .input = {.name = "a trainer sees us once", .test = test_trainer_sight_once},
+        .name = "a trainer sees us once",
+        .input = {.test = test_trainer_sight_once},
         .expectation = {.description = "one trainer battle charged"},
     },
 };
