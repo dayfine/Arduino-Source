@@ -93,7 +93,7 @@ const std::vector<StoryFailureClassInfo> CLASSES{
         C::MOUNT_LOST, "mount_lost",
         "off the Bicycle (or another mount) at a leg that rides",
         "the walker's tiles per tap",
-        {}, {}, R::RETRY_STEP,
+        {FaultClass::MOUNT_LOST}, {}, R::RETRY_STEP,
     },
     {
         C::POSE_LOST, "pose_lost",
