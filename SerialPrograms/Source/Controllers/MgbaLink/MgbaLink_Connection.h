@@ -32,6 +32,7 @@ namespace PokemonAutomation{
 namespace MgbaLink{
 
 
+//  A synchronous MgbaLink v1 client: open(), then one command at a time.
 class MgbaLink_Connection final : private AbstractClientSocket::Listener{
 public:
     MgbaLink_Connection(
@@ -95,6 +96,6 @@ private:
 
 
 
-}
-}
+}  // namespace MgbaLink
+}  // namespace PokemonAutomation
 #endif

@@ -13,6 +13,7 @@
 #include "Common/Cpp/Concurrency/ConditionVariable.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/Tools/GlobalThreadPools.h"
 #ifdef _WIN32
 #include "Common/Cpp/Sockets/ServerSocket_WinSocket.h"
 #else
@@ -34,168 +35,187 @@ using FakeServerSocket = ServerSocket_POSIX;
 #endif
 
 
-UnitTestResult test_line_splitter(){
-    struct Input{
-        std::vector<std::string> chunks;
-        size_t max_line;
-    };
-    struct Expectation{
+//  Line framing over a byte stream.
+struct LineFramingInput{
+    std::vector<std::string> chunks;
+    size_t max_line;
+};
+struct LineFramingExpectation{
+    std::vector<std::string> lines;
+    bool overflowed;
+};
+struct LineFramingCase{
+    std::string name;
+    LineFramingInput input;
+    LineFramingExpectation expectation;
+};
+
+class Test_LineFraming : public UnitTest{
+public:
+    Test_LineFraming(LineFramingCase test_case)
+        : UnitTest("Controllers::MgbaLink - line framing - " + test_case.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        LineSplitter splitter(m_case.input.max_line);
         std::vector<std::string> lines;
-        bool overflowed;
-    };
-    struct Case{
-        std::string name;
-        Input input;
-        Expectation expectation;
-    };
-    const Case CASES[] = {
-        {"one line", {{"OK\n"}, 16}, {{"OK"}, false}},
-        {"CR before LF dropped", {{"OK 5\r\n"}, 16}, {{"OK 5"}, false}},
-        {"line split across chunks", {{"FRAME 12", "0 240 160 /a b.png\nOK"}, 64}, {{"FRAME 120 240 160 /a b.png"}, false}},
-        {"two lines in one chunk", {{"OK\nLATE 3\n"}, 16}, {{"OK", "LATE 3"}, false}},
-        {"empty line", {{"\n"}, 16}, {{""}, false}},
-        {"exactly max", {{std::string(8, 'a') + "\r\n"}, 8}, {{std::string(8, 'a')}, false}},
-        {"over max without LF", {{std::string(10, 'a')}, 8}, {{}, true}},
-        {"over max across chunks", {{"aaaaa", "aaaaa\n"}, 8}, {{}, true}},
-    };
-    for (const Case& c : CASES){
-        LineSplitter splitter(c.input.max_line);
-        std::vector<std::string> lines;
-        for (const std::string& chunk : c.input.chunks){
+        for (const std::string& chunk : m_case.input.chunks){
             for (std::string& line : splitter.push(chunk)){
                 lines.emplace_back(std::move(line));
             }
         }
-        if (lines != c.expectation.lines || splitter.overflowed() != c.expectation.overflowed){
-            return std::format("{}: got {} line(s), overflowed={}", c.name, lines.size(), splitter.overflowed());
+        if (lines != m_case.expectation.lines || splitter.overflowed() != m_case.expectation.overflowed){
+            return std::format("got {} line(s), overflowed={}", lines.size(), splitter.overflowed());
         }
+        return true;
     }
-    return true;
+
+private:
+    LineFramingCase m_case;
+};
+
+
+
+//  Reply parsing. Each parser's result is printed as one string, so one table
+//  covers all reply kinds; nullopt means the reply was rejected.
+enum class ReplyKind{
+    HELLO,
+    OK_FRAME,
+    KEYS,
+    FRAME,
+};
+struct ReplyInput{
+    ReplyKind kind;
+    std::string reply;
+};
+struct ReplyExpectation{
+    std::optional<std::string> parsed;
+};
+struct ReplyCase{
+    std::string name;
+    ReplyInput input;
+    ReplyExpectation expectation;
+};
+
+std::optional<std::string> describe_reply(const ReplyInput& input){
+    switch (input.kind){
+    case ReplyKind::HELLO:{
+        std::optional<HelloReply> hello = parse_hello_reply(input.reply);
+        if (!hello){
+            return std::nullopt;
+        }
+        return std::format("{}|{}|{}", hello->game_code, hello->bridge_version, hello->mode);
+    }
+    case ReplyKind::OK_FRAME:{
+        std::optional<uint64_t> frame = parse_ok_frame_reply(input.reply);
+        return frame ? std::optional<std::string>(std::to_string(*frame)) : std::nullopt;
+    }
+    case ReplyKind::KEYS:{
+        std::optional<uint64_t> late = parse_keys_reply(input.reply);
+        return late ? std::optional<std::string>(std::to_string(*late)) : std::nullopt;
+    }
+    case ReplyKind::FRAME:{
+        std::optional<FrameReply> frame = parse_frame_reply(input.reply);
+        if (!frame){
+            return std::nullopt;
+        }
+        return std::format("{}|{}|{}|{}", frame->frame, frame->width, frame->height, frame->path);
+    }
+    }
+    return std::nullopt;
 }
 
-
-UnitTestResult test_parse_hello(){
-    struct Case{
-        std::string name;
-        std::string input;
-        std::optional<std::string> expected_code;
-    };
-    const Case CASES[] = {
-        {"v1 reply", "OK 1 BPRE bridge-0.1 paced", "BPRE"},
-        {"wrong version", "OK 2 BPRE bridge-0.1 paced", std::nullopt},
-        {"missing mode", "OK 1 BPRE bridge-0.1", std::nullopt},
-        {"extra field", "OK 1 BPRE bridge-0.1 paced x", std::nullopt},
-        {"error", "ERR busy", std::nullopt},
-    };
-    for (const Case& c : CASES){
-        std::optional<HelloReply> hello = parse_hello_reply(c.input);
-        std::optional<std::string> code;
-        if (hello){
-            code = hello->game_code;
+class Test_Reply : public UnitTest{
+public:
+    Test_Reply(ReplyCase test_case)
+        : UnitTest("Controllers::MgbaLink - reply - " + test_case.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        std::optional<std::string> parsed = describe_reply(m_case.input);
+        if (parsed != m_case.expectation.parsed){
+            return std::format("parsed as <{}>", parsed.value_or("(rejected)"));
         }
-        if (code != c.expected_code){
-            return c.name + ": unexpected result.";
+        return true;
+    }
+
+private:
+    ReplyCase m_case;
+};
+
+
+
+//  Frame numbers to timestamps, anchored at (t0, frame 1000).
+struct FrameClockInput{
+    uint64_t frame;
+};
+struct FrameClockExpectation{
+    std::chrono::microseconds offset_from_anchor;
+};
+struct FrameClockCase{
+    std::string name;
+    FrameClockInput input;
+    FrameClockExpectation expectation;
+};
+
+const WallClock CLOCK_T0 = WallClock() + std::chrono::hours(1000);
+
+class Test_FrameClock : public UnitTest{
+public:
+    Test_FrameClock(FrameClockCase test_case)
+        : UnitTest("Controllers::MgbaLink - frame clock - " + test_case.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        FrameClock clock(CLOCK_T0, 1000);
+        WallDuration offset = clock.timestamp(m_case.input.frame) - CLOCK_T0;
+        if (offset != std::chrono::duration_cast<WallDuration>(m_case.expectation.offset_from_anchor)){
+            return std::format("offset {} us", std::chrono::duration_cast<std::chrono::microseconds>(offset).count());
         }
+        return true;
     }
-    return true;
-}
+
+private:
+    FrameClockCase m_case;
+};
 
 
-UnitTestResult test_parse_frame(){
-    struct Expectation{
-        uint64_t frame;
-        size_t width;
-        size_t height;
-        std::string path;
-    };
-    struct Case{
-        std::string name;
-        std::string input;
-        std::optional<Expectation> expectation;
-    };
-    const Case CASES[] = {
-        {"0.10.5 reply", "FRAME 1234 240 160 /tmp/mgba-bridge-47801.png", Expectation{1234, 240, 160, "/tmp/mgba-bridge-47801.png"}},
-        {"path with spaces", "FRAME 7 240 160 /Users/x/My Folder/f.png", Expectation{7, 240, 160, "/Users/x/My Folder/f.png"}},
-        {"no path", "FRAME 7 240 160", std::nullopt},
-        {"negative frame", "FRAME -7 240 160 /f.png", std::nullopt},
-        {"error", "ERR no-game", std::nullopt},
-    };
-    for (const Case& c : CASES){
-        std::optional<FrameReply> reply = parse_frame_reply(c.input);
-        if (reply.has_value() != c.expectation.has_value()){
-            return c.name + ": parsed=" + (reply ? "true" : "false");
+
+//  Re-anchoring when frame 1060 (1004.6 ms after the anchor) is read late.
+struct ResyncInput{
+    std::chrono::milliseconds read_after_anchor;
+};
+struct ResyncExpectation{
+    bool resynced;
+    std::chrono::milliseconds frame_1060_after_anchor;
+};
+struct ResyncCase{
+    std::string name;
+    ResyncInput input;
+    ResyncExpectation expectation;
+};
+
+class Test_Resync : public UnitTest{
+public:
+    Test_Resync(ResyncCase test_case)
+        : UnitTest("Controllers::MgbaLink - clock resync - " + test_case.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        FrameClock clock(CLOCK_T0, 1000);
+        bool resynced = clock.resync(CLOCK_T0 + m_case.input.read_after_anchor, 1060, std::chrono::milliseconds(500));
+        WallDuration offset = clock.timestamp(1060) - CLOCK_T0;
+        if (resynced != m_case.expectation.resynced ||
+            std::chrono::duration_cast<std::chrono::milliseconds>(offset) != m_case.expectation.frame_1060_after_anchor
+        ){
+            return std::format("resynced={}", resynced);
         }
-        if (reply && (
-            reply->frame != c.expectation->frame || reply->width != c.expectation->width ||
-            reply->height != c.expectation->height || reply->path != c.expectation->path
-        )){
-            return c.name + ": wrong fields.";
-        }
+        return true;
     }
-    return true;
-}
 
-
-UnitTestResult test_parse_keys_and_ok_frame(){
-    struct Case{
-        std::string name;
-        std::function<std::optional<uint64_t>(std::string_view)> parser;
-        std::string input;
-        std::optional<uint64_t> expected;
-    };
-    const Case CASES[] = {
-        {"KEYS on time", parse_keys_reply, "OK", 0},
-        {"KEYS late", parse_keys_reply, "LATE 3", 3},
-        {"KEYS late without count", parse_keys_reply, "LATE", std::nullopt},
-        {"KEYS error", parse_keys_reply, "ERR usage KEYS <frame> <mask>", std::nullopt},
-        {"GRANT reply", parse_ok_frame_reply, "OK 4521", 4521},
-        {"bare OK", parse_ok_frame_reply, "OK", std::nullopt},
-        {"OK with text", parse_ok_frame_reply, "OK BYE", std::nullopt},
-    };
-    for (const Case& c : CASES){
-        if (c.parser(c.input) != c.expected){
-            return c.name + ": unexpected result.";
-        }
-    }
-    return true;
-}
-
-
-UnitTestResult test_frame_clock(){
-    using std::chrono::microseconds;
-    const WallClock t0 = WallClock() + std::chrono::hours(1000);
-    struct Case{
-        std::string name;
-        uint64_t frame;
-        microseconds expected_offset;
-    };
-    //  Anchored at frame 1000; one frame = 16742.7 us.
-    const Case CASES[] = {
-        {"anchor frame", 1000, microseconds(0)},
-        {"next frame", 1001, microseconds(16743)},
-        {"one second of frames", 1060, microseconds(1004562)},
-        {"before the anchor (after a LOAD)", 940, microseconds(-1004562)},
-    };
-    FrameClock clock(t0, 1000);
-    for (const Case& c : CASES){
-        WallDuration offset = clock.timestamp(c.frame) - t0;
-        if (offset != std::chrono::duration_cast<WallDuration>(c.expected_offset)){
-            return std::format(
-                "{}: offset {} us",
-                c.name, std::chrono::duration_cast<microseconds>(offset).count()
-            );
-        }
-    }
-    if (clock.resync(t0 + std::chrono::milliseconds(1100), 1060, std::chrono::milliseconds(500))){
-        return "resync: 95 ms of drift should keep the anchor.";
-    }
-    if (!clock.resync(t0 + std::chrono::seconds(10), 1060, std::chrono::milliseconds(500)) ||
-        clock.timestamp(1060) != t0 + std::chrono::seconds(10)
-    ){
-        return "resync: 9 s of drift (mGBA paused) should re-anchor at the read time.";
-    }
-    return true;
-}
+private:
+    ResyncCase m_case;
+};
 
 
 
@@ -278,10 +298,14 @@ std::optional<uint16_t> FakeBridge::start(){
 
 void FakeBridge::on_receive_data(const void* data, size_t bytes){
     if (m_busy){
+        //  Record what the client sent, then refuse it.
+        std::lock_guard<Mutex> lg(m_lock);
+        m_commands.emplace_back("(refused)");
+        m_cv.notify_all();
         m_server.close_connection();
         return;
     }
-    std::vector<std::string> lines = m_splitter.push(std::string_view((const char*)data, bytes));
+    std::vector<std::string> lines = m_splitter.push(std::string_view(static_cast<const char*>(data), bytes));
     for (const std::string& line : lines){
         {
             std::lock_guard<Mutex> lg(m_lock);
@@ -320,93 +344,149 @@ std::string FakeBridge::reply_for(std::string_view line){
 
 
 
-UnitTestResult test_session(Logger& logger, ThreadPool& thread_pool){
-    FakeBridge bridge(thread_pool, false);
-    std::optional<uint16_t> port = bridge.start();
-    if (!port){
-        return UnitTestResult(UnitTestResult::SKIPPED, "No free port for the fake bridge.");
-    }
-    {
-        MgbaLink_Connection connection(logger, thread_pool, "127.0.0.1", *port);
+//  A whole session against the fake bridge: open, FRAME, KEYS late and on
+//  time, an ERR reply, then close (BYE).
+struct SessionInput{
+    bool bridge_busy;
+};
+struct SessionExpectation{
+    std::vector<std::string> results;
+    std::vector<std::string> bridge_saw;
+};
+struct SessionCase{
+    std::string name;
+    SessionInput input;
+    SessionExpectation expectation;
+};
+
+std::vector<std::string> run_session(Logger& logger, ThreadPool& thread_pool, uint16_t port){
+    std::vector<std::string> results;
+    MgbaLink_Connection connection(logger, thread_pool, "127.0.0.1", port);
+    try{
         HelloReply hello = connection.open();
-        if (hello.game_code != "BPRE" || hello.mode != "paced"){
-            return "HELLO: wrong game code or mode.";
-        }
+        results.emplace_back(std::format("hello {} {}", hello.game_code, hello.mode));
         FrameReply frame = connection.frame();
-        if (frame.frame != 120 || frame.path != "/tmp/mgba bridge.png"){
-            return "FRAME: wrong frame number or path.";
-        }
-        if (connection.keys(100, 1) != 20 || connection.keys(130, 1) != 0){
-            return "KEYS: expected LATE 20, then on time.";
-        }
-        try{
-            connection.command("FLY");
-            return "An ERR reply should throw.";
-        }catch (ConnectionException&){}
+        results.emplace_back(std::format("frame {} {}", frame.frame, frame.path));
+        results.emplace_back(std::format("late {}", connection.keys(100, 1)));
+        results.emplace_back(std::format("late {}", connection.keys(130, 1)));
+        connection.command("FLY");
+        results.emplace_back("FLY accepted");
+    }catch (ConnectionException& e){
+        bool busy = e.message().find("ERR busy") != std::string::npos;
+        results.emplace_back(busy ? "failed: ERR busy" : "failed: " + e.message());
     }
-    const std::vector<std::string> expected{"HELLO 1", "FRAME", "KEYS 100 1", "KEYS 130 1", "FLY", "BYE"};
-    if (!bridge.wait_for_commands(expected.size()) || bridge.commands() != expected){
-        return std::format("The bridge saw {} command(s); the session should end with BYE.", bridge.commands().size());
-    }
-    return true;
+    return results;
 }
 
-UnitTestResult test_busy_bridge(Logger& logger, ThreadPool& thread_pool){
-    FakeBridge bridge(thread_pool, true);
-    std::optional<uint16_t> port = bridge.start();
-    if (!port){
-        return UnitTestResult(UnitTestResult::SKIPPED, "No free port for the fake bridge.");
-    }
-    MgbaLink_Connection connection(logger, thread_pool, "127.0.0.1", *port);
-    try{
-        connection.open();
-    }catch (ConnectionException& e){
-        if (e.message().find("ERR busy") == std::string::npos){
-            return "Expected the bridge's ERR busy in the error, got: " + e.message();
+class Test_Session : public UnitTest{
+public:
+    Test_Session(SessionCase test_case)
+        : UnitTest("Controllers::MgbaLink - fake bridge - " + test_case.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        ThreadPool& thread_pool = GlobalThreadPools::unlimited_normal();
+        FakeBridge bridge(thread_pool, m_case.input.bridge_busy);
+        std::optional<uint16_t> port = bridge.start();
+        if (!port){
+            return UnitTestResult(UnitTestResult::SKIPPED, "No free port for the fake bridge.");
+        }
+        std::vector<std::string> results = run_session(logger, thread_pool, *port);
+        if (results != m_case.expectation.results){
+            return std::format("result {}: <{}>", results.size(), results.empty() ? "" : results.back());
+        }
+        bridge.wait_for_commands(m_case.expectation.bridge_saw.size());
+        if (bridge.commands() != m_case.expectation.bridge_saw){
+            return std::format("the bridge saw {} command(s)", bridge.commands().size());
         }
         return true;
     }
-    return "open() should fail when the bridge already has a client.";
-}
-
-
-
-class Test_MgbaLink : public UnitTest{
-public:
-    using Body = std::function<UnitTestResult(Logger&, ThreadPool&)>;
-
-    Test_MgbaLink(std::string name, ThreadPool& thread_pool, Body body)
-        : UnitTest("Controllers::MgbaLink - " + std::move(name))
-        , m_thread_pool(thread_pool)
-        , m_body(std::move(body))
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        return m_body(logger, m_thread_pool);
-    }
 
 private:
-    ThreadPool& m_thread_pool;
-    Body m_body;
+    SessionCase m_case;
 };
 
-Test_MgbaLink::Body pure(UnitTestResult (*body)()){
-    return [body](Logger&, ThreadPool&){ return body(); };
+}  // namespace
+
+
+void add_tests(UnitTestDatabase& database){
+    const LineFramingCase LINE_FRAMING_CASES[] = {
+        {.name = "one line", .input = {{"OK\n"}, 16}, .expectation = {{"OK"}, false}},
+        {.name = "CR before LF dropped", .input = {{"OK 5\r\n"}, 16}, .expectation = {{"OK 5"}, false}},
+        {.name = "line split across chunks", .input = {{"FRAME 12", "0 240 160 /a b.png\nOK"}, 64}, .expectation = {{"FRAME 120 240 160 /a b.png"}, false}},
+        {.name = "two lines in one chunk", .input = {{"OK\nLATE 3\n"}, 16}, .expectation = {{"OK", "LATE 3"}, false}},
+        {.name = "empty line", .input = {{"\n"}, 16}, .expectation = {{""}, false}},
+        {.name = "exactly max", .input = {{"aaaaaaaa\r\n"}, 8}, .expectation = {{"aaaaaaaa"}, false}},
+        {.name = "over max without LF", .input = {{"aaaaaaaaaa"}, 8}, .expectation = {{}, true}},
+        {.name = "over max across chunks", .input = {{"aaaaa", "aaaaa\n"}, 8}, .expectation = {{}, true}},
+    };
+    for (const LineFramingCase& test_case : LINE_FRAMING_CASES){
+        database.add<Test_LineFraming>(test_case);
+    }
+
+    const ReplyCase REPLY_CASES[] = {
+        {.name = "HELLO v1", .input = {ReplyKind::HELLO, "OK 1 BPRE bridge-0.1 paced"}, .expectation = {"BPRE|bridge-0.1|paced"}},
+        {.name = "HELLO wrong version", .input = {ReplyKind::HELLO, "OK 2 BPRE bridge-0.1 paced"}, .expectation = {std::nullopt}},
+        {.name = "HELLO missing mode", .input = {ReplyKind::HELLO, "OK 1 BPRE bridge-0.1"}, .expectation = {std::nullopt}},
+        {.name = "HELLO extra field", .input = {ReplyKind::HELLO, "OK 1 BPRE bridge-0.1 paced x"}, .expectation = {std::nullopt}},
+        {.name = "HELLO busy", .input = {ReplyKind::HELLO, "ERR busy"}, .expectation = {std::nullopt}},
+        {.name = "GRANT frame", .input = {ReplyKind::OK_FRAME, "OK 4521"}, .expectation = {"4521"}},
+        {.name = "bare OK", .input = {ReplyKind::OK_FRAME, "OK"}, .expectation = {std::nullopt}},
+        {.name = "BYE is not a frame", .input = {ReplyKind::OK_FRAME, "OK BYE"}, .expectation = {std::nullopt}},
+        {.name = "KEYS on time", .input = {ReplyKind::KEYS, "OK"}, .expectation = {"0"}},
+        {.name = "KEYS late", .input = {ReplyKind::KEYS, "LATE 3"}, .expectation = {"3"}},
+        {.name = "KEYS late without count", .input = {ReplyKind::KEYS, "LATE"}, .expectation = {std::nullopt}},
+        {.name = "KEYS usage error", .input = {ReplyKind::KEYS, "ERR usage KEYS <frame> <mask>"}, .expectation = {std::nullopt}},
+        {.name = "FRAME on 0.10.5", .input = {ReplyKind::FRAME, "FRAME 1234 240 160 /tmp/mgba-bridge-47801.png"}, .expectation = {"1234|240|160|/tmp/mgba-bridge-47801.png"}},
+        {.name = "FRAME path with spaces", .input = {ReplyKind::FRAME, "FRAME 7 240 160 /Users/x/My Folder/f.png"}, .expectation = {"7|240|160|/Users/x/My Folder/f.png"}},
+        {.name = "FRAME without path", .input = {ReplyKind::FRAME, "FRAME 7 240 160"}, .expectation = {std::nullopt}},
+        {.name = "FRAME negative number", .input = {ReplyKind::FRAME, "FRAME -7 240 160 /f.png"}, .expectation = {std::nullopt}},
+        {.name = "FRAME no game", .input = {ReplyKind::FRAME, "ERR no-game"}, .expectation = {std::nullopt}},
+    };
+    for (const ReplyCase& test_case : REPLY_CASES){
+        database.add<Test_Reply>(test_case);
+    }
+
+    //  One frame = 1000 / 59.7275 ms = 16742.7 us.
+    const FrameClockCase FRAME_CLOCK_CASES[] = {
+        {.name = "anchor frame", .input = {1000}, .expectation = {std::chrono::microseconds(0)}},
+        {.name = "next frame", .input = {1001}, .expectation = {std::chrono::microseconds(16743)}},
+        {.name = "60 frames", .input = {1060}, .expectation = {std::chrono::microseconds(1004562)}},
+        {.name = "before the anchor (after a LOAD)", .input = {940}, .expectation = {std::chrono::microseconds(-1004562)}},
+    };
+    for (const FrameClockCase& test_case : FRAME_CLOCK_CASES){
+        database.add<Test_FrameClock>(test_case);
+    }
+
+    const ResyncCase RESYNC_CASES[] = {
+        {.name = "small drift keeps the anchor", .input = {std::chrono::milliseconds(1100)}, .expectation = {false, std::chrono::milliseconds(1004)}},
+        {.name = "mGBA paused re-anchors", .input = {std::chrono::milliseconds(10000)}, .expectation = {true, std::chrono::milliseconds(10000)}},
+    };
+    for (const ResyncCase& test_case : RESYNC_CASES){
+        database.add<Test_Resync>(test_case);
+    }
+
+    const SessionCase SESSION_CASES[] = {
+        {
+            .name = "session",
+            .input = {false},
+            .expectation = {
+                {"hello BPRE paced", "frame 120 /tmp/mgba bridge.png", "late 20", "late 0", "failed: MgbaLink: FLY -> ERR unknown FLY"},
+                {"HELLO 1", "FRAME", "KEYS 100 1", "KEYS 130 1", "FLY", "BYE"},
+            },
+        },
+        {
+            .name = "busy",
+            .input = {true},
+            .expectation = {{"failed: ERR busy"}, {"(refused)"}},
+        },
+    };
+    for (const SessionCase& test_case : SESSION_CASES){
+        database.add<Test_Session>(test_case);
+    }
 }
 
-}
 
 
-void add_tests(UnitTestDatabase& database, ThreadPool& thread_pool){
-    database.add<Test_MgbaLink>("line framing", thread_pool, pure(test_line_splitter));
-    database.add<Test_MgbaLink>("HELLO reply", thread_pool, pure(test_parse_hello));
-    database.add<Test_MgbaLink>("FRAME reply", thread_pool, pure(test_parse_frame));
-    database.add<Test_MgbaLink>("KEYS and OK replies", thread_pool, pure(test_parse_keys_and_ok_frame));
-    database.add<Test_MgbaLink>("frame clock", thread_pool, pure(test_frame_clock));
-    database.add<Test_MgbaLink>("fake bridge session", thread_pool, test_session);
-    database.add<Test_MgbaLink>("fake bridge busy", thread_pool, test_busy_bridge);
-}
-
-
-
-}
-}
+}  // namespace MgbaLink
+}  // namespace PokemonAutomation

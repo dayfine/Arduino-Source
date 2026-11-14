@@ -23,20 +23,14 @@ namespace PokemonAutomation{
 namespace MgbaLink{
 
 
-//  GBA frame rate: 16.78 MHz / 280,896 cycles per frame.
-constexpr double GBA_FRAMES_PER_SECOND = 59.7275;
-
-//  The bridge drops a client whose command line is longer than this; replies
-//  are bounded the same way (a FRAME path is the longest reply).
-constexpr size_t MAX_LINE_BYTES = 4096;
-
-
+//  The fields of a "HELLO 1" reply.
 struct HelloReply{
     std::string game_code;      //  "BPRE" for FireRed US.
     std::string bridge_version; //  "bridge-0.1"
     std::string mode;           //  "paced" or "free"
 };
 
+//  The fields of a "FRAME" reply (0.10.5: the frame is a PNG on disk).
 struct FrameReply{
     uint64_t frame;
     size_t width;
@@ -67,6 +61,10 @@ std::optional<FrameReply> parse_frame_reply(std::string_view reply);
 //  drops everything buffered so far; the caller should then disconnect.
 class LineSplitter{
 public:
+    //  The bridge drops a client whose command line is longer than this;
+    //  replies are bounded the same way (a FRAME path is the longest reply).
+    static constexpr size_t MAX_LINE_BYTES = 4096;
+
     explicit LineSplitter(size_t max_line = MAX_LINE_BYTES)
         : m_max_line(max_line)
     {}
@@ -91,6 +89,9 @@ private:
 //  frame's timestamp comes from its number, not from when the app read it.
 class FrameClock{
 public:
+    //  GBA frame rate: 16.78 MHz / 280,896 cycles per frame.
+    static constexpr double GBA_FRAMES_PER_SECOND = 59.7275;
+
     FrameClock(WallClock t0, uint64_t f0)
         : m_t0(t0)
         , m_f0(f0)
@@ -118,6 +119,6 @@ private:
 
 
 
-}
-}
+}  // namespace MgbaLink
+}  // namespace PokemonAutomation
 #endif

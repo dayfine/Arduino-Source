@@ -32,6 +32,27 @@ const EnumStringMap<VideoSourceType> VIDEO_TYPE_STRINGS{
 };
 
 
+namespace{
+
+//  Loads the saved parameters of one source type into the cache, if present.
+template <typename DescriptorType>
+void load_cached_descriptor(
+    std::map<VideoSourceType, std::shared_ptr<VideoSourceDescriptor>>& cache,
+    const JsonObject& obj,
+    VideoSourceType type
+){
+    const JsonValue* params = obj.get_value(VIDEO_TYPE_STRINGS.get_string(type));
+    if (params == nullptr){
+        return;
+    }
+    auto descriptor = std::make_unique<DescriptorType>();
+    descriptor->load_json(*params);
+    cache[type] = std::move(descriptor);
+}
+
+}  // namespace
+
+
 VideoSourceOption::VideoSourceOption()
     : m_resolution(1920, 1080)
     , m_format(VideoFormat::OTHER)
@@ -60,7 +81,7 @@ std::shared_ptr<VideoSourceDescriptor> VideoSourceOption::get_descriptor_from_ca
         descriptor.reset(new VideoSourceDescriptor_Camera());
         break;
     case VideoSourceType::MgbaLink:
-        descriptor.reset(new VideoSourceDescriptor_MgbaLink());
+        descriptor = std::make_shared<VideoSourceDescriptor_MgbaLink>();
         break;
     default:;
         descriptor.reset(new VideoSourceDescriptor_Null());
@@ -124,29 +145,9 @@ void VideoSourceOption::load_json(const JsonValue& json){
         }
 #endif
 
-        const JsonValue* params;
-        params = obj->get_value(VIDEO_TYPE_STRINGS.get_string(VideoSourceType::StillImage));
-        if (params != nullptr){
-            auto x = std::make_unique<VideoSourceDescriptor_StillImage>();
-            x->load_json(*params);
-            m_descriptor_cache[VideoSourceType::StillImage] = std::move(x);
-        }
-        params = obj->get_value(VIDEO_TYPE_STRINGS.get_string(VideoSourceType::VideoPlayback));
-        if (params != nullptr){
-//            m_descriptor_cache[VideoSourceType::VideoPlayback] =
-        }
-        params = obj->get_value(VIDEO_TYPE_STRINGS.get_string(VideoSourceType::Camera));
-        if (params != nullptr){
-            auto x = std::make_unique<VideoSourceDescriptor_Camera>();
-            x->load_json(*params);
-            m_descriptor_cache[VideoSourceType::Camera] = std::move(x);
-        }
-        params = obj->get_value(VIDEO_TYPE_STRINGS.get_string(VideoSourceType::MgbaLink));
-        if (params != nullptr){
-            auto x = std::make_unique<VideoSourceDescriptor_MgbaLink>();
-            x->load_json(*params);
-            m_descriptor_cache[VideoSourceType::MgbaLink] = std::move(x);
-        }
+        load_cached_descriptor<VideoSourceDescriptor_StillImage>(m_descriptor_cache, *obj, VideoSourceType::StillImage);
+        load_cached_descriptor<VideoSourceDescriptor_Camera>(m_descriptor_cache, *obj, VideoSourceType::Camera);
+        load_cached_descriptor<VideoSourceDescriptor_MgbaLink>(m_descriptor_cache, *obj, VideoSourceType::MgbaLink);
 
         auto iter = m_descriptor_cache.find(VIDEO_TYPE_STRINGS.get_enum(*type, VideoSourceType::None));
         if (iter == m_descriptor_cache.end()){

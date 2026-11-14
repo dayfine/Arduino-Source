@@ -157,12 +157,12 @@ void MgbaLink_Connection::on_receive_data(const void* data, size_t bytes){
     bool overflowed;
     {
         std::lock_guard<Mutex> lg(m_lock);
-        for (std::string& line : m_splitter.push(std::string_view((const char*)data, bytes))){
+        for (std::string& line : m_splitter.push(std::string_view(static_cast<const char*>(data), bytes))){
             m_replies.emplace_back(std::move(line));
         }
         overflowed = m_splitter.overflowed();
         if (overflowed){
-            m_disconnect_error = "reply line longer than " + std::to_string(MAX_LINE_BYTES) + " bytes";
+            m_disconnect_error = "reply line longer than " + std::to_string(LineSplitter::MAX_LINE_BYTES) + " bytes";
         }
         m_cv.notify_all();
     }
@@ -181,5 +181,5 @@ void MgbaLink_Connection::on_disconnect(const std::string& error_message){
 
 
 
-}
-}
+}  // namespace MgbaLink
+}  // namespace PokemonAutomation

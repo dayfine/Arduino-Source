@@ -36,15 +36,14 @@ std::optional<uint64_t> parse_unsigned(std::string_view text){
     if (text.empty()){
         return std::nullopt;
     }
-    const char* end = text.data() + text.size();
-    std::from_chars_result result = std::from_chars(text.data(), end, value);
-    if (result.ec != std::errc() || result.ptr != end){
+    std::from_chars_result result = std::from_chars(text.data(), text.data() + text.size(), value);
+    if (result.ec != std::errc() || result.ptr != text.data() + text.size()){
         return std::nullopt;
     }
     return value;
 }
 
-}
+}  // namespace
 
 
 
@@ -152,5 +151,5 @@ bool FrameClock::resync(WallClock now, uint64_t frame, WallDuration max_drift){
     return true;
 }
 
-}
-}
+}  // namespace MgbaLink
+}  // namespace PokemonAutomation

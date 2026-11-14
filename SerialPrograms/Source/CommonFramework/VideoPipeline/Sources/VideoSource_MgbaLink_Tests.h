@@ -16,5 +16,5 @@ namespace PokemonAutomation{
 void add_tests_VideoSource_MgbaLink(UnitTestDatabase& database);
 
 
-}
+}  // namespace PokemonAutomation
 #endif

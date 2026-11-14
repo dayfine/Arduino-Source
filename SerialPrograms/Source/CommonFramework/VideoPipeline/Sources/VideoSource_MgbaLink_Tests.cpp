@@ -5,7 +5,6 @@
  */
 
 #include <format>
-#include <functional>
 #include <optional>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "VideoSource_MgbaLink.h"
@@ -27,104 +26,118 @@ ImageRGB32 make_gba_frame(){
     return frame;
 }
 
-
-UnitTestResult test_compose_geometry(){
-    struct Point{
-        size_t x;
-        size_t y;
-    };
-    struct Case{
-        std::string name;
-        Point canvas;
-        std::optional<Point> expected_source;   //  nullopt: black border.
-    };
-    const Case CASES[] = {
-        {"box top-left", {180, 5}, Point{0, 0}},
-        {"box bottom-right", {1739, 1044}, Point{239, 159}},
-        {"left of the box", {179, 500}, std::nullopt},
-        {"right of the box", {1740, 500}, std::nullopt},
-        {"above the box", {960, 4}, std::nullopt},
-        {"below the box", {960, 1045}, std::nullopt},
-        //  6.5x: source columns alternate 6 and 7 canvas pixels.
-        {"last pixel of column 0", {185, 5}, Point{0, 0}},
-        {"first pixel of column 1", {186, 5}, Point{1, 0}},
-        {"last pixel of column 1", {192, 5}, Point{1, 0}},
-        {"first pixel of column 2", {193, 5}, Point{2, 0}},
-        {"first pixel of row 1", {180, 11}, Point{0, 1}},
-        {"centre", {960, 525}, Point{120, 80}},
-    };
-    ImageRGB32 canvas = compose_mgba_frame(make_gba_frame());
-    if (canvas.width() != 1920 || canvas.height() != 1080){
-        return std::format("canvas is {}x{}, expected 1920x1080", canvas.width(), canvas.height());
-    }
-    for (const Case& c : CASES){
-        uint32_t expected = c.expected_source
-            ? 0xff000000 | (uint32_t)(c.expected_source->x << 8) | (uint32_t)c.expected_source->y
-            : 0xff000000;
-        uint32_t actual = canvas.pixel(c.canvas.x, c.canvas.y);
-        if (actual != expected){
-            return std::format("{}: pixel {:08x}, expected {:08x}", c.name, actual, expected);
-        }
-    }
-    return true;
-}
+struct Point{
+    size_t x;
+    size_t y;
+};
 
 
-UnitTestResult test_parse_address(){
-    struct Expectation{
-        std::string host;
-        uint16_t port;
-    };
-    struct Case{
-        std::string name;
-        std::string input;
-        std::optional<Expectation> expectation;
-    };
-    const Case CASES[] = {
-        {"default bridge", "127.0.0.1:47801", Expectation{"127.0.0.1", 47801}},
-        {"host name", "localhost:47802", Expectation{"localhost", 47802}},
-        {"no port", "127.0.0.1", std::nullopt},
-        {"empty port", "127.0.0.1:", std::nullopt},
-        {"port 0", "127.0.0.1:0", std::nullopt},
-        {"port too large", "127.0.0.1:70000", std::nullopt},
-        {"no host", ":47801", std::nullopt},
-    };
-    for (const Case& c : CASES){
-        std::optional<std::pair<std::string, uint16_t>> address = parse_mgba_address(c.input);
-        if (address.has_value() != c.expectation.has_value()){
-            return c.name + ": parsed=" + (address ? "true" : "false");
-        }
-        if (address && (address->first != c.expectation->host || address->second != c.expectation->port)){
-            return c.name + ": wrong host or port.";
-        }
-    }
-    return true;
-}
+//  Which GBA pixel lands on a canvas pixel of the composed 1920x1080 frame.
+struct ComposeInput{
+    Point canvas;
+};
+struct ComposeExpectation{
+    std::optional<Point> gba_pixel;     //  nullopt: black border.
+};
+struct ComposeCase{
+    std::string name;
+    ComposeInput input;
+    ComposeExpectation expectation;
+};
 
-
-
-class Test_VideoSource_MgbaLink : public UnitTest{
+class Test_Compose : public UnitTest{
 public:
-    Test_VideoSource_MgbaLink(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("CommonFramework::VideoSource_MgbaLink - " + std::move(name))
-        , m_body(std::move(body))
+    Test_Compose(ComposeCase test_case)
+        : UnitTest("CommonFramework::VideoSource_MgbaLink - compose - " + test_case.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_body();
+        ImageRGB32 canvas = compose_mgba_frame(make_gba_frame());
+        if (canvas.width() != 1920 || canvas.height() != 1080){
+            return std::format("canvas is {}x{}, expected 1920x1080", canvas.width(), canvas.height());
+        }
+        const std::optional<Point>& gba = m_case.expectation.gba_pixel;
+        uint32_t expected = gba ? 0xff000000 | (uint32_t)(gba->x << 8) | (uint32_t)gba->y : 0xff000000;
+        uint32_t actual = canvas.pixel(m_case.input.canvas.x, m_case.input.canvas.y);
+        if (actual != expected){
+            return std::format("pixel {:08x}, expected {:08x}", actual, expected);
+        }
+        return true;
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    ComposeCase m_case;
 };
 
-}
+
+//  "host:port" parsing for the descriptor.
+struct AddressInput{
+    std::string address;
+};
+struct AddressExpectation{
+    std::optional<std::pair<std::string, uint16_t>> host_and_port;
+};
+struct AddressCase{
+    std::string name;
+    AddressInput input;
+    AddressExpectation expectation;
+};
+
+class Test_Address : public UnitTest{
+public:
+    Test_Address(AddressCase test_case)
+        : UnitTest("CommonFramework::VideoSource_MgbaLink - address - " + test_case.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        if (parse_mgba_address(m_case.input.address) != m_case.expectation.host_and_port){
+            return std::format("unexpected result for <{}>", m_case.input.address);
+        }
+        return true;
+    }
+
+private:
+    AddressCase m_case;
+};
+
+}  // namespace
 
 
 void add_tests_VideoSource_MgbaLink(UnitTestDatabase& database){
-    database.add<Test_VideoSource_MgbaLink>("compose geometry", test_compose_geometry);
-    database.add<Test_VideoSource_MgbaLink>("address", test_parse_address);
+    //  GAME_BOX at 1080p is x = 180..1739, y = 5..1044; 6.5x, so source
+    //  columns alternate 6 and 7 canvas pixels.
+    const ComposeCase COMPOSE_CASES[] = {
+        {.name = "box top-left", .input = {{180, 5}}, .expectation = {Point{0, 0}}},
+        {.name = "box bottom-right", .input = {{1739, 1044}}, .expectation = {Point{239, 159}}},
+        {.name = "left of the box", .input = {{179, 500}}, .expectation = {std::nullopt}},
+        {.name = "right of the box", .input = {{1740, 500}}, .expectation = {std::nullopt}},
+        {.name = "above the box", .input = {{960, 4}}, .expectation = {std::nullopt}},
+        {.name = "below the box", .input = {{960, 1045}}, .expectation = {std::nullopt}},
+        {.name = "last pixel of column 0", .input = {{185, 5}}, .expectation = {Point{0, 0}}},
+        {.name = "first pixel of column 1", .input = {{186, 5}}, .expectation = {Point{1, 0}}},
+        {.name = "last pixel of column 1", .input = {{192, 5}}, .expectation = {Point{1, 0}}},
+        {.name = "first pixel of column 2", .input = {{193, 5}}, .expectation = {Point{2, 0}}},
+        {.name = "first pixel of row 1", .input = {{180, 11}}, .expectation = {Point{0, 1}}},
+        {.name = "centre", .input = {{960, 525}}, .expectation = {Point{120, 80}}},
+    };
+    for (const ComposeCase& test_case : COMPOSE_CASES){
+        database.add<Test_Compose>(test_case);
+    }
+
+    const AddressCase ADDRESS_CASES[] = {
+        {.name = "default bridge", .input = {"127.0.0.1:47801"}, .expectation = {std::make_pair(std::string("127.0.0.1"), uint16_t(47801))}},
+        {.name = "host name", .input = {"localhost:47802"}, .expectation = {std::make_pair(std::string("localhost"), uint16_t(47802))}},
+        {.name = "no port", .input = {"127.0.0.1"}, .expectation = {std::nullopt}},
+        {.name = "empty port", .input = {"127.0.0.1:"}, .expectation = {std::nullopt}},
+        {.name = "port 0", .input = {"127.0.0.1:0"}, .expectation = {std::nullopt}},
+        {.name = "port too large", .input = {"127.0.0.1:70000"}, .expectation = {std::nullopt}},
+        {.name = "no host", .input = {":47801"}, .expectation = {std::nullopt}},
+    };
+    for (const AddressCase& test_case : ADDRESS_CASES){
+        database.add<Test_Address>(test_case);
+    }
 }
 
 
 
-}
+}  // namespace PokemonAutomation

@@ -56,9 +56,10 @@ std::optional<std::pair<std::string, uint16_t>> parse_mgba_address(std::string_v
 
 
 
+//  Selects an mGBA bridge by "host:port" (saved in the profile).
 class VideoSourceDescriptor_MgbaLink : public VideoSourceDescriptor{
 public:
-    static constexpr const char* DEFAULT_ADDRESS = "127.0.0.1:47801";
+    static constexpr std::string_view DEFAULT_ADDRESS = "127.0.0.1:47801";
 
     VideoSourceDescriptor_MgbaLink()
         : VideoSourceDescriptor(VideoSourceType::MgbaLink)
@@ -87,6 +88,7 @@ private:
 
 
 
+//  Polls FRAME on its own connection and keeps the latest composed frame.
 class VideoSource_MgbaLink : public VideoSource{
 public:
     VideoSource_MgbaLink(Logger& logger, std::string address);
@@ -130,5 +132,5 @@ private:
 
 
 
-}
+}  // namespace PokemonAutomation
 #endif

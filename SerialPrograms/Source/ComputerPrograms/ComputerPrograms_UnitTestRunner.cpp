@@ -71,7 +71,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_SinkPipeline(ret);
     add_tests_AudioFileLoader(ret);
     add_tests_LabChannel(ret);
-    MgbaLink::add_tests(ret, GlobalThreadPools::unlimited_normal());
+    MgbaLink::add_tests(ret);
     add_tests_VideoSource_MgbaLink(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);

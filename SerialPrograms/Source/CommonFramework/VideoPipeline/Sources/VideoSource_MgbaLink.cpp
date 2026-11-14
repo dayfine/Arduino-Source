@@ -30,7 +30,7 @@ constexpr std::chrono::milliseconds RECONNECT_DELAY(2000);
 //  One GBA frame, rounded down: polling faster only repeats a frame number.
 constexpr std::chrono::milliseconds POLL_PERIOD(16);
 
-}
+}  // namespace
 
 
 
@@ -63,9 +63,8 @@ std::optional<std::pair<std::string, uint16_t>> parse_mgba_address(std::string_v
     }
     std::string_view port_text = address.substr(colon + 1);
     uint16_t port = 0;
-    const char* end = port_text.data() + port_text.size();
-    std::from_chars_result result = std::from_chars(port_text.data(), end, port);
-    if (port_text.empty() || result.ec != std::errc() || result.ptr != end || port == 0){
+    std::from_chars_result result = std::from_chars(port_text.data(), port_text.data() + port_text.size(), port);
+    if (port_text.empty() || result.ec != std::errc() || result.ptr != port_text.data() + port_text.size() || port == 0){
         return std::nullopt;
     }
     return std::make_pair(std::string(address.substr(0, colon)), port);
@@ -220,4 +219,4 @@ QWidget* VideoSource_MgbaLink::make_display_QtWidget(QWidget* parent){
 
 
 
-}
+}  // namespace PokemonAutomation
