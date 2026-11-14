@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <cmath>
 #include <format>
 #include <string_view>
@@ -21,6 +22,7 @@
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryCaughtMarkReader.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDexRegisteredDetector.h"
+#include "PokemonLZA_AutoStoryCatchPlan.h"
 #include "PokemonLZA_AutoStoryCatches.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 
@@ -65,17 +67,20 @@ ScreensPassed advance_text_and_cards(ConsoleHandle& console, ProControllerContex
     return passed;
 }
 
-//  ZL+ZR held 1.5 s throws a ball at the locked target (0.5 s only aims),
-//  then the ball's flight, shakes and any loading screen. Returns whether
-//  the Pokedex's "Registered!" banner showed meanwhile: a new species
-//  caught. A repeat catch or a break-out shows none.
+//  ZL held 0.5 s, then ZL+ZR held 1.5 s throws a ball at the locked target
+//  (0.5 s of ZR only aims), then the ball's flight, shakes and any loading
+//  screen. ZL is never let go between the lock and the throw: a release
+//  may drop the lock. Returns whether the Pokedex's "Registered!" banner
+//  showed meanwhile: a new species caught. A repeat catch or a break-out
+//  shows none.
 bool throw_ball(ConsoleHandle& console, ProControllerContext& context){
     DetectorToFinder<DexRegisteredDetector> registered("DexRegisteredWatcher", 100ms);
     const int ret = run_until<ProControllerContext>(
         console, context,
         [](ProControllerContext& context){
-            pbf_press_button(context, BUTTON_ZL, 500ms, 100ms);
-            pbf_press_button(context, BUTTON_ZL | BUTTON_ZR, 1500ms, 6000ms);
+            pbf_controller_state(context, BUTTON_ZL, DPAD_NONE, {0, 0}, {0, 0}, 500ms);
+            pbf_controller_state(context, BUTTON_ZL | BUTTON_ZR, DPAD_NONE, {0, 0}, {0, 0}, 1500ms);
+            pbf_wait(context, 6000ms);
         },
         {registered}
     );
@@ -187,14 +192,148 @@ WeakenThrows weaken_then_throw(
     return out;
 }
 
-//  Holds ZL at the target and reads its name plate while it shows: whether
-//  its species is already caught (lock_target_caught()).
-std::optional<bool> aim_and_read_caught(ConsoleHandle& console, ProControllerContext& context){
-    pbf_press_button(context, BUTTON_ZL, 1500ms, 0ms);
-    context.wait_for(900ms);
-    const VideoSnapshot frame = console.video().snapshot();
-    context.wait_for_all_requests();
-    return frame ? lock_target_caught(frame) : std::nullopt;
+//  ZL held across reads of the screen: each hold is queued before the last
+//  one ends, so ZL is never let go from the lock to the throw (throw_ball()
+//  queues its own ZL first).
+class HeldZl{
+public:
+    HeldZl(ConsoleHandle& console, ProControllerContext& context)
+        : m_console(console)
+        , m_context(context)
+        , m_end(current_time())
+    {}
+
+    //  Queues `time` of ZL with the sticks at `left` and `right`.
+    void hold(Milliseconds time, const JoystickPosition& left, const JoystickPosition& right){
+        pbf_controller_state(m_context, BUTTON_ZL, DPAD_NONE, left, right, time);
+        m_end = std::max(m_end, current_time()) + time;
+    }
+
+    //  Holds ZL still until 0.6 s after what was queued and reads the plate
+    //  locked on to, with 0.4 s more of ZL queued.
+    std::optional<LockTarget> read(){
+        hold(1000ms, {0, 0}, {0, 0});
+        const WallClock at = m_end - 400ms;
+        const WallClock now = current_time();
+        if (at > now){
+            m_context.wait_for(std::chrono::duration_cast<Milliseconds>(at - now));
+        }
+        const VideoSnapshot frame = m_console.video().snapshot();
+        if (!frame){
+            return std::nullopt;
+        }
+        const std::optional<ImageFloatBox> bar = lock_target_plate_bar(frame);
+        if (!bar){
+            return std::nullopt;
+        }
+        LockTarget target;
+        target.x = bar->x + bar->width / 2;
+        target.y = bar->y + bar->height / 2;
+        target.width = bar->width;
+        target.caught = lock_target_caught(frame);
+        return target;
+    }
+
+    //  The right stick flicked `x` (right when positive) with ZL held moves
+    //  the lock to the next target that way (the user, 2026-11-13). Returns
+    //  the plate after it.
+    std::optional<LockTarget> flick(double x){
+        hold(150ms, {0, 0}, {x, 0});
+        return read();
+    }
+
+private:
+    ConsoleHandle& m_console;
+    ProControllerContext& m_context;
+    WallClock m_end;
+};
+
+//  A full flick of the right stick: what moves the lock to the next target.
+constexpr double TARGET_FLICK = 0.8;
+
+std::string_view caught_text(const std::optional<bool>& caught){
+    if (!caught){
+        return "caught mark unread";
+    }
+    return *caught ? "caught" : "not caught";
+}
+
+void log_target(ConsoleHandle& console, std::string_view caller, std::string_view what, const LockTarget& target){
+    console.log(std::format(
+        "{}: {}: plate at ({:.2f}, {:.2f}), {:.3f} wide, {}.",
+        caller, what, target.x, target.y, target.width, caught_text(target.caught)
+    ));
+}
+
+//  What choose_target() found.
+struct TargetChoice{
+    //  The target locked on to now; nothing when no plate read.
+    std::optional<LockTarget> target;
+    //  Plates read, all of species already caught.
+    bool all_caught = false;
+};
+
+//  With ZL held, flicks the right stick right up to 3 times, reading each
+//  target's plate (LockTargetCycle), then flicks back to the nearest one
+//  not caught: the closer one is much more likely to be caught (the user,
+//  2026-11-13). The plate's height on the screen stands for the distance;
+//  the cyan catch-chance icon over the target is not read.
+TargetChoice choose_target(ConsoleHandle& console, HeldZl& held, std::string_view caller){
+    LockTargetCycle cycle(4);
+    std::optional<LockTarget> view = held.read();
+    for (int flicks = 0; view && flicks < 4; flicks++){
+        log_target(console, caller, std::format("target {}", cycle.targets().size()), *view);
+        if (!cycle.add(*view)){
+            break;
+        }
+        view = held.flick(TARGET_FLICK);
+    }
+    TargetChoice choice;
+    const std::vector<LockTarget>& targets = cycle.targets();
+    const std::optional<size_t> best = nearest_uncaught(targets);
+    if (!best){
+        choice.all_caught = !targets.empty();
+        console.log(std::format("{}: {} plates read, none of a species not caught.", caller, targets.size()));
+        return choice;
+    }
+    const int flicks = cycle.flicks_to(*best);
+    console.log(std::format("{}: choosing target {} of {}: {} flicks {}.", caller, *best, targets.size(), std::abs(flicks), flicks < 0 ? "left" : "right"));
+    std::optional<LockTarget> now = targets[*best];
+    for (int i = 0; i < std::abs(flicks); i++){
+        now = held.flick(flicks < 0 ? -TARGET_FLICK : TARGET_FLICK);
+    }
+    if (now && !same_lock_target(*now, targets[*best])){
+        log_target(console, caller, "the lock moved on to another plate", *now);
+    }
+    choice.target = now ? now : targets[*best];
+    return choice;
+}
+
+//  Walks toward a far target with ZL held (the lock keeps the camera on
+//  it): 0.5 s steps, re-reading the plate, 4 at most (2 s).
+void approach_target(ConsoleHandle& console, HeldZl& held, LockTarget target, std::string_view caller){
+    int steps = 0;
+    for (; steps < 4 && lock_target_far(target); steps++){
+        held.hold(500ms, {0, 1}, {0, 0});
+        const std::optional<LockTarget> view = held.read();
+        if (!view){
+            console.log(std::format("{}: the plate went after {} steps toward the target.", caller, steps + 1));
+            return;
+        }
+        target = *view;
+    }
+    log_target(console, caller, std::format("after {} steps toward the target", steps), target);
+}
+
+//  ZL held: chooses the nearest target not caught (choose_target()) and
+//  walks toward it when it is far, then leaves ZL held for throw_ball().
+TargetChoice aim_choose_approach(ConsoleHandle& console, ProControllerContext& context, std::string_view caller){
+    HeldZl held(console, context);
+    const TargetChoice choice = choose_target(console, held, caller);
+    if (choice.target){
+        approach_target(console, held, *choice.target, caller);
+    }
+    return choice;
 }
 
 //  Turns the camera, without walking, until the objective marker is in the
@@ -211,53 +350,77 @@ void face_objective(ConsoleHandle& console, ProControllerContext& context){
     }
 }
 
-//  What catch_in_grass() did: new species registered, throws, targets
-//  skipped as already caught, and steps right taken off the road.
+//  What catch_at_stop() did: new species registered, throws, and locks on
+//  that found only species already caught.
 struct GrassCatches{
     int found = 0;
     int throws = 0;
     int caught_seen = 0;
-    int steps = 0;
+
+    GrassCatches& operator+=(const GrassCatches& other){
+        found += other.found;
+        throws += other.throws;
+        caught_seen += other.caught_seen;
+        return *this;
+    }
 };
 
-//  Steps right into the grass 1 s at a time (3 at most) and throws at what
-//  locks on, skipping species already caught, until `new_species_wanted`
-//  new species registered or `max_throws`.
-//  A break-out that starts a wild battle gets weaken_then_throw() for the
-//  next throws.
-GrassCatches catch_in_grass(
+//  A throw at the target locked on to, then weaken_then_throw() when it
+//  broke out into a wild battle, `max_throws` in all at most.
+GrassCatches throw_at_target(
+    ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
+    BattleAIOption& battle_ai, int max_throws
+){
+    GrassCatches out;
+    out.throws = 1;
+    out.found = throw_ball(console, context) ? 1 : 0;
+    console.log(std::format("catch_in_zone(): throw: {}.", out.found > 0 ? "a new species registered" : "no new species"));
+    advance_text_and_cards(console, context);
+    if (out.found == 0 && max_throws > 1 && wild_battle_on(console, context)){
+        console.log("catch_in_zone(): the throw broke out: battle, weakening.");
+        const WeakenThrows weakened = weaken_then_throw(
+            env, console, context, battle_ai, CatchSign::REGISTERED, max_throws - 1, "catch_in_zone()"
+        );
+        out.throws += weakened.throws;
+        out.found += weakened.caught ? 1 : 0;
+    }
+    return out;
+}
+
+//  At one stop: locks on (lock_on_near()), chooses the nearest target not
+//  caught and walks toward it (aim_choose_approach()), and throws, 4 locks
+//  at most, until `new_species_wanted` new species or `max_throws`. When
+//  nothing locks on from where it stands, steps right into the grass 1 s,
+//  once, and back at the end. All species caught: turns the camera right
+//  a little and locks on again.
+GrassCatches catch_at_stop(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
     BattleAIOption& battle_ai, int new_species_wanted, int max_throws
 ){
     GrassCatches out;
-    for (; out.steps < 3 && out.found < new_species_wanted && out.throws < max_throws; out.steps++){
-        pbf_move_left_joystick(context, {1, 0}, 1000ms, 300ms);
-        int skips = 0;
-        while (out.found < new_species_wanted && out.throws < max_throws && skips < 4 && lock_on_near(console, context)){
-            //  A species already caught: its plate shows a Poke Ball. Look
-            //  further right instead of throwing.
-            if (aim_and_read_caught(console, context) == true){
-                console.log("catch_in_zone(): locked on to a species already caught: skipping it.");
-                skips++;
-                out.caught_seen++;
-                pbf_move_right_joystick(context, {0.5, 0}, 400ms, 300ms);
-                continue;
+    bool stepped = false;
+    for (int locks = 0; locks < 4 && out.found < new_species_wanted && out.throws < max_throws; locks++){
+        if (!lock_on_near(console, context)){
+            if (stepped){
+                console.log("catch_in_zone(): nothing locks on in the grass either.");
+                break;
             }
-            out.throws++;
-            const bool registered = throw_ball(console, context);
-            out.found += registered ? 1 : 0;
-            console.log(std::format("catch_in_zone(): throw {}: {}.", out.throws, registered ? "a new species registered" : "no new species"));
-            advance_text_and_cards(console, context);
-            if (!registered && out.throws < max_throws && wild_battle_on(console, context)){
-                console.log(std::format("catch_in_zone(): throw {} broke out: battle, weakening.", out.throws));
-                const WeakenThrows weakened = weaken_then_throw(
-                    env, console, context, battle_ai, CatchSign::REGISTERED, max_throws - out.throws, "catch_in_zone()"
-                );
-                out.throws += weakened.throws;
-                out.found += weakened.caught ? 1 : 0;
-            }
+            console.log("catch_in_zone(): nothing locks on here: a step right into the grass.");
+            pbf_move_left_joystick(context, {1, 0}, 1000ms, 300ms);
+            stepped = true;
+            continue;
         }
-        face_objective(console, context);
+        const TargetChoice choice = aim_choose_approach(console, context, "catch_in_zone()");
+        if (choice.all_caught){
+            console.log("catch_in_zone(): only species already caught lock on: looking further right.");
+            out.caught_seen++;
+            pbf_move_right_joystick(context, {0.5, 0}, 400ms, 300ms);
+            continue;
+        }
+        out += throw_at_target(env, console, context, battle_ai, max_throws - out.throws);
+    }
+    if (stepped){
+        pbf_move_left_joystick(context, {-1, 0}, 1000ms, 300ms);
     }
     return out;
 }
@@ -317,6 +480,32 @@ private:
     int m_still = 0;
     int m_sidesteps = 0;
 };
+
+//  Walks back away from the objective marker (the stick down: toward the
+//  camera, which stays on the marker) until its distance reads `stop_at`
+//  or more, or `limit`. A read more than 12 from the last is a misread, as
+//  in walk_to_objective(). Returns the last distance read.
+std::optional<int> walk_from_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit){
+    const WallClock deadline = current_time() + limit;
+    std::optional<int> last;
+    while (current_time() < deadline){
+        context.wait_for_all_requests();
+        const std::optional<ObjectiveMarker> marker = read_objective_marker(console, console.video().snapshot());
+        if (marker && turn_to_pinned_marker(context, marker->x)){
+            continue;
+        }
+        if (marker && marker->distance > 0 && (!last || std::abs(marker->distance - *last) <= 12)){
+            last = marker->distance;
+            if (*last >= stop_at){
+                console.log(std::format("walk_from_objective(): {} from the objective.", *last));
+                return last;
+            }
+        }
+        pbf_move_left_joystick(context, {0, -1}, 600ms, 0ms);
+    }
+    console.log(std::format("walk_from_objective(): not back to {} in time (last read {}).", stop_at, last.value_or(-1)));
+    return last;
+}
 
 } // namespace
 
@@ -443,17 +632,37 @@ void catch_in_zone(
         pbf_move_left_joystick(context, {1, 0}, 1000ms, 300ms);
     }
     //  Mareep, the species still missing after the tutorial, graze in the
-    //  grass right of the road at 55-60 from the far gate, out of lock-on
-    //  range from the road (console B, 2026-11-10). Earlier spots gave only
-    //  repeats (Fletchling, Scatterbug).
+    //  grass right of the road at 55-60 from the far gate (console B,
+    //  2026-11-10). Other species stand at other distances (the user,
+    //  2026-11-13): stops back to 100 and forward to 60 again, 2 laps.
     walk_to_objective(console, context, 60, 90s);
-    face_objective(console, context);
-    const GrassCatches result = catch_in_grass(env, console, context, battle_ai, new_species_wanted, max_throws);
-    //  Back onto the road.
-    pbf_move_left_joystick(context, {-1, 0}, Milliseconds(1000 * result.steps), 300ms);
+    const std::vector<int> stops = patrol_stops(60, 100, 20, 2);
+    const WallClock deadline = current_time() + 8min;
+    GrassCatches result;
+    for (size_t i = 0; i < stops.size() && result.found < new_species_wanted && result.throws < max_throws; i++){
+        if (current_time() > deadline){
+            console.log("catch_in_zone(): out of time for the patrol.");
+            break;
+        }
+        std::optional<int> at = stops[i];
+        if (i > 0){
+            at = stops[i] > stops[i - 1]
+                ? walk_from_objective(console, context, stops[i], 15s)
+                : walk_to_objective(console, context, stops[i], 15s);
+        }
+        face_objective(console, context);
+        const GrassCatches stop = catch_at_stop(
+            env, console, context, battle_ai, new_species_wanted - result.found, max_throws - result.throws
+        );
+        console.log(std::format(
+            "catch_in_zone(): stop {} of {} at {} (for {}): {} throws, {} new species, {} locks on caught species only.",
+            i + 1, stops.size(), at.value_or(-1), stops[i], stop.throws, stop.found, stop.caught_seen
+        ));
+        result += stop;
+    }
     console.log(std::format("catch_in_zone(): {} new species in {} throws.", result.found, result.throws));
     //  A rerun from a save after the catch: only species already caught
-    //  lock on here (Mareep, the one this spot has), so the quest is done.
+    //  lock on along the road, so the quest is done.
     if (result.found == 0 && result.throws == 0 && result.caught_seen > 0){
         console.log("catch_in_zone(): only species already caught here: taking the quest as done.");
         return;
@@ -487,6 +696,9 @@ void catch_tutorial(
 ){
     int throws = 0;
     while (throws < max_throws){
+        //  Fletchling, the tutorial's target, is never caught yet: the
+        //  throw goes at whatever the choice locked on to.
+        aim_choose_approach(console, context, "catch_tutorial()");
         throw_ball(console, context);
         throws++;
         if (advance_text_and_cards(console, context).card){

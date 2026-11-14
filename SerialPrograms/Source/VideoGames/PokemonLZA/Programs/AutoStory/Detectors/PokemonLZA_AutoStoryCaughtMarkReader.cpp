@@ -45,6 +45,17 @@ std::optional<ImagePixelBox> find_plate_bar(const ImageViewRGB32& screen){
 } // namespace
 
 
+std::optional<ImageFloatBox> lock_target_plate_bar(const ImageViewRGB32& screen){
+    const std::optional<ImagePixelBox> bar = find_plate_bar(screen);
+    if (!bar || screen.width() == 0 || screen.height() == 0){
+        return std::nullopt;
+    }
+    return ImageFloatBox(
+        (double)bar->min_x / screen.width(), (double)bar->min_y / screen.height(),
+        (double)bar->width() / screen.width(), (double)bar->height() / screen.height()
+    );
+}
+
 std::optional<bool> lock_target_caught(const ImageViewRGB32& screen){
     const std::optional<ImagePixelBox> bar = find_plate_bar(screen);
     if (!bar){

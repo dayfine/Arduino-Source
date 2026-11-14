@@ -11,6 +11,7 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryCaughtMarkReader_H
 
 #include <optional>
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 
 namespace PokemonAutomation{
@@ -26,6 +27,11 @@ namespace PokemonLZA{
 //  (0.6-1.5 bar widths from its left, 0.45-0.85 above it). Tuned on Mareep,
 //  caught and not, on console B (2026-11-10).
 std::optional<bool> lock_target_caught(const ImageViewRGB32& screen);
+
+//  While ZL locks on to a wild Pokemon: its name plate's HP bar (as
+//  above) as shares of the screen, nothing when no plate was found. The
+//  plate stands above the target, so a lower bar is a nearer target.
+std::optional<ImageFloatBox> lock_target_plate_bar(const ImageViewRGB32& screen);
 
 
 

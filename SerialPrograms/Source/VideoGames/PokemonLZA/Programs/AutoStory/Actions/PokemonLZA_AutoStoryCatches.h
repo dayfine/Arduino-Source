@@ -27,8 +27,10 @@ namespace PokemonLZA{
 //  03.07's first catch (Fletchling): ZL locks on, ZL+ZR held 1.5 s throws
 //  (0.5 s only aims). A break-out brings two or three lines from Taunie and
 //  control back; the catch brings her lines and then the "Battling wild
-//  Pokemon" cards (console B, 2026-11-10). So: lock, throw, A through her
-//  lines, again until a card shows, then A through the cards. When a
+//  Pokemon" cards (console B, 2026-11-10). So: lock with ZL held, choose
+//  the nearest target and walk toward it when far (as catch_in_zone()
+//  does), throw, A through her lines, again until a card shows, then A
+//  through the cards. When a
 //  break-out starts a wild battle, the rest of the throws go after
 //  `battle_ai`'s attacks (weaken_then_throw). Throws
 //  OperationFailedException after `max_throws` throws with no card.
@@ -70,15 +72,19 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
 //  03.08's catch for the "register five species" quest (4/5 after the
 //  tutorial and its repeats): walks toward the objective (Wild Zone 1's far
 //  gate, around Taunie's rocks from the start) to 60, where Mareep graze in
-//  the grass right of the road, then steps right 1 s at a time (3 at most)
-//  and throws at what locks on in front, or after small camera turns right,
-//  counting the Pokedex's "Registered!" banners; then steps back onto the
-//  road. A break-out that starts a wild battle (Mareep turns on the player,
-//  console B 2026-11-13) gets `battle_ai`'s attacks before the next throws.
-//  When only species already caught lock on there (a rerun from a save
-//  after the catch), the quest is taken as done. Otherwise throws
+//  the grass right of the road, then patrols back to 100 and forward to 60
+//  again (stops every 20, 2 laps, 8 minutes at most). At each stop it locks
+//  on (in front or after small camera turns right; a step into the grass
+//  when nothing does), cycles the targets with ZL held, walks toward the
+//  nearest one not caught when it is far, and throws without letting ZL
+//  go, counting the Pokedex's "Registered!" banners. At 58 from the road,
+//  throws at a far Mareep fell short (console B, 2026-11-13). A break-out
+//  that starts a wild battle (Mareep turns on the player, console B
+//  2026-11-13) gets `battle_ai`'s attacks before the next throws. When
+//  only species already caught lock on (a rerun from a save after the
+//  catch), the quest is taken as done. Otherwise throws
 //  OperationFailedException with fewer than `new_species_wanted` new
-//  species after the steps or `max_throws`.
+//  species after the patrol or `max_throws`.
 void catch_in_zone(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
     BattleAIOption& battle_ai, int new_species_wanted, int max_throws
