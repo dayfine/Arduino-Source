@@ -1,7 +1,8 @@
 # Agent integration: an MCP lab server
 
 Status: proposal (2026-11-01; revised 2026-11-14 from the week's incidents,
-`~/BDSPLab/notes/2026-11-13-week-problems.md`, and an implementation review). It builds on:
+`~/BDSPLab/notes/2026-11-13-week-problems.md`, and an implementation review; checked against the
+lab scripts and the user's console rules on 2026-11-14). It builds on:
 - the lab channel: fork #107, `SerialPrograms/Source/CommonFramework/Windows/Lab.md`
   (`Lab/inbox`, `Lab/outbox`, `Lab/state`, the owner token);
 - run records: fork #116, `docs/design/Lab-RunRecords.md`;
@@ -104,6 +105,10 @@ local-operations worker may expose queued build/test tickets over a separate pro
 configuration, reusing the existing heavy-gate scripts. `ci_status` and `stack_plan` remain
 outside this design.
 
+The daemon lives with the lab tooling on `agents` (`lab/server/`), in a venv like the
+code-health one, with its fake-lab tests beside it. App-side slices go on branches from
+`lab/tooling` (#107), where the lab channel lives, so this design PR stays documentation only.
+
 ## Resources (read-only, first implementation slice)
 
 The app keeps the legacy key/value `Lab/state` for existing scripts and atomically writes a
@@ -145,7 +150,9 @@ each app start, so a reset frame sequence cannot be mistaken for a newer frame f
 process. `frame_seq` increases for every frame accepted by the app's frame cache and
 `captured_at` is that frame's capture time, not the time the state file was serialized.
 The daemon computes frame age from `captured_at`; it does not persist a decaying
-`last_frame_age_ms` value.
+`last_frame_age_ms` value. `program.state` carries the legacy channel's values in lower case
+(`stopped`, `running`, `stopping`, `not_ready`, `no_program`), so one app enum feeds both
+files.
 
 Version 1 distinguishes transport freshness (`live`, `stale`, `missing`) from visual signal
 classification (`ok`, `black`, `colour_bars`, `unknown`). The first slice can truthfully
@@ -199,6 +206,17 @@ A UI action revokes any agent lease before a user lease is installed. There is n
 daemon restart, leases and request results survive in SQLite; the daemon reconciles them
 against `instance.id`, current program state and the latest transition before allowing a
 mutation.
+
+**Until Slice 7 the existing locks stay in force and the daemon works beside them.**
+`labrun.sh` launches the app under `lablock.sh`, and the launcher's train holds that lock for
+the app's lifetime; `labctl.sh` and `cfrun.sh` check it before writing a request. From Slice 5
+on, the daemon claims the channel's `owner` token (Lab.md) when it attaches and re-claims it
+after every app restart, since that token dies with the app; the app then refuses any
+mutating request that does not come from the daemon, which is what makes "raw writes to
+`Lab/inbox` are not exposed" hold for stray scripts too. Three gates coexist during the
+transition: `lablock` on launching the app, the owner token on writing the channel, the lease
+on which agent may act. Slice 7 folds the first into the daemon; the owner token stays as the
+app/daemon boundary.
 
 Every mutating call requires a client-generated request UUID. The unique key
 `(client_id, tool, request_id)` stores the normalized arguments and terminal result. An
@@ -282,7 +300,11 @@ means a successful check.
 - **Agents never run the app once supervision lands.** The server launches it with
   `--profile lab-B` using the extracted `labrun.sh` behavior (direct exec, never a bare
   binary) and quits only the PID/instance it created. Before that milestone, it is an
-  attach-only observer and the existing guarded launcher remains authoritative.
+  attach-only observer and the existing guarded launcher remains authoritative. Until then
+  the only guard is the standing rule: no Claude Code hook refuses a Bash call that names the
+  binary today (checked 2026-11-14). A PreToolUse hook that refuses the binary without
+  `--profile` and any write into `Lab/inbox` needs nothing from this design and should land
+  first, as its own change to the agent harness.
 - **Console A is never exposed.** The server's own allowlist has no entry for it; no
   resource, no tool. A user-supplied console id cannot become a filesystem path.
 - **One train.** Leases replace `lablock.sh`; the app still refuses presses while a program
@@ -299,9 +321,9 @@ means a successful check.
 ## Work plan
 
 Each slice is independently reviewable and keeps the existing scripts working until its
-replacement passes a console-B soak. App slices belong on a new branch from
-`design/agent-integration`; changes to this proposal are handed to that PR's owner rather
-than pushed onto its branch.
+replacement passes a console-B soak. App slices go on branches from `lab/tooling` (#107),
+server slices on `agents`; changes to this proposal are handed to #131's owner rather than
+pushed onto its branch.
 
 ### Slice 0 — freeze contracts and fixtures
 
@@ -326,6 +348,17 @@ error; all golden examples round-trip without losing unknown fields needed for d
 Acceptance: native tests cover serialization and transition-source mapping; a manual test
 restarts the app and proves `(instance, seq)` changes; a snapshot requested during a panel
 or controller fault is either a newer openable PNG or a typed timeout, never an old image.
+
+App-side slices follow the repo's hard rules (AGENTS.md), which this design must not bend:
+
+- the heartbeat and the `Lab/state.json` writer run on the lab channel's existing worker, no
+  new `std::thread`; locking through `PokemonAutomation::Mutex`;
+- files through `Common/Cpp/Filesystem` (atomic replace is write-beside-then-rename) and the
+  project's JSON classes; no `std::filesystem`;
+- the transition source is set where the session's start/stop is called: the widget passes
+  `ui`, the lab channel passes `lab` with its request id; widgets hold no state;
+- program contracts and the dynamic preflight are program code: Qt-free, declared next to
+  the program descriptor and instance.
 
 ### Slice 2 — attach-only read server
 
@@ -356,7 +389,8 @@ results, no running-lease expiry and gap-free event catch-up.
   of the contract.
 - Add the side-effect-free dynamic preflight interface and structured check results.
 - Implement it first for FRLG RNG and one AutoStory family, including save provenance and
-  known-screen checks; missing implementations report `unsupported`.
+  known-screen checks; missing implementations report `unsupported`. Two PRs: the contract
+  and preflight interface with FRLG RNG, then the first AutoStory family.
 
 Acceptance: native tests cover option normalization, ranges/enums, hidden checkpoint ids and
 side-effect-free preflight. Deliberately bad Safari, party, language, save and HOME-screen
@@ -416,14 +450,34 @@ program family at a time. Retire a script only when its replacement has native/f
 coverage, a successful console-B session and a documented operator fallback. Do not delete
 the file channel: it remains the app/daemon compatibility boundary.
 
-## Decisions and remaining boundary
+| Slice | Retires once soaked |
+|---|---|
+| 2 | `checkin.sh`, `lab_status.sh`, `shotB.sh`, `rec_shots.sh`, log greps for verdicts |
+| 3 | `switch_guard.sh`, `run_watch.sh`, `watch_run.sh`, `stage_watch.sh`, `full_run_watch.sh`, `plza_watch*.sh` |
+| 5 | `stopB.sh`, `run_from_save.sh`, `reload.sh`, `preflight_B.sh`, `stage_run.sh`, `cfB.sh`, `cfrB.sh`; `labctl.sh` and `cfrun.sh` as agent entry points |
+| 7 | `labrun.sh`, `lab_panel.sh`, `start_B.sh`, `stage_launch.sh`, `lablock.sh` |
+| 8 | `labbuild.sh`, `heavy_gate.sh`, `make_slot_b.sh`, `plza_rebuild.sh` |
 
-- User leases end only by explicit operator release.
+`disk_gc.sh` and the launchd jobs stay, as before.
+
+## Decisions and open questions
+
+Settled by the user's rules:
+
+- User leases end only by explicit operator release. A Start or Stop clicked in the app
+  window, not sent through the channel, means the user holds console B until they say it is
+  free (2026-11-13); the `user` lease is that rule in code, and no idle timer ends it.
+- Console A is never exposed, and the app is never run without `--profile`.
+
+Proposed here, for the user to confirm:
+
 - Static option/precondition data lives with the program contract; dynamic evidence lives in
   the program instance. The server orchestrates and caches results but does not duplicate a
   per-program rules table.
 - The generic app-side observation/contract seams are candidates for upstream review behind
-  the existing Lab/Developer boundary. The Python daemon, console inventory, credentials and
+  the existing Lab/Developer boundary; whether and when to hand them upstream is the user's
+  call (no agent opens an upstream PR). The Python daemon, console inventory, credentials and
   local policies remain fork/local tooling.
-- Arbitrary game switching, CI diagnosis and stack/worktree planning require separate
-  designs. They are not hidden follow-ups inside the console server.
+
+Separate designs, not hidden follow-ups inside the console server: arbitrary game switching,
+CI diagnosis and stack/worktree planning.
