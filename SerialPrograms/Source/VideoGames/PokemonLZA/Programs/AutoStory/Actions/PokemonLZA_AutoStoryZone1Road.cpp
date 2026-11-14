@@ -46,6 +46,10 @@ bool starts_in_zone_1(std::optional<int> distance){
     return distance && *distance <= ZONE_1_START_MAX;
 }
 
+bool left_zone_1(std::optional<int> distance){
+    return distance && *distance > ZONE_1_START_MAX;
+}
+
 
 
 } // namespace PokemonLZA

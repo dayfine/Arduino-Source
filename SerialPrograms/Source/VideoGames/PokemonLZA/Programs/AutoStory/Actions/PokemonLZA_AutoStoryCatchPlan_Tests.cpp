@@ -602,6 +602,60 @@ const ZoneStartCase ZONE_START_CASES[] = {
     },
 };
 
+//  left_zone_1(): 03.07d ends out of the zone, where 03.08 walks from.
+struct LeftZoneCase{
+    std::string name;
+    struct Input{
+        std::optional<int> distance;
+    };
+    Input input;
+    struct Expectation{
+        bool left;
+    };
+    Expectation expectation;
+};
+
+const LeftZoneCase LEFT_ZONE_CASES[] = {
+    {
+        .name = "in front of the Pokemon Center",
+        .input = {.distance = CENTER_FROM_FAR_GATE},
+        .expectation = {.left = true},
+    },
+    {
+        .name = "just past the bound",
+        .input = {.distance = ZONE_1_START_MAX + 1},
+        .expectation = {.left = true},
+    },
+    {
+        .name = "at the bound: 03.08 would skip its walk",
+        .input = {.distance = ZONE_1_START_MAX},
+        .expectation = {.left = false},
+    },
+    {
+        .name = "no distance read: unknown, not out",
+        .input = {.distance = std::nullopt},
+        .expectation = {.left = false},
+    },
+};
+
+class Test_LeftZone1 : public UnitTest{
+public:
+    explicit Test_LeftZone1(const LeftZoneCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: 03.07d ends out of Wild Zone 1: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const bool left = left_zone_1(m_case.input.distance);
+        if (left != m_case.expectation.left){
+            return std::format("Expected {}, got {}.", m_case.expectation.left, left);
+        }
+        return true;
+    }
+
+private:
+    const LeftZoneCase& m_case;
+};
+
 class Test_StartsInZone1 : public UnitTest{
 public:
     explicit Test_StartsInZone1(const ZoneStartCase& test_case)
@@ -650,6 +704,9 @@ void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
     }
     for (const ZoneStartCase& item : ZONE_START_CASES){
         database.add<Test_StartsInZone1>(item);
+    }
+    for (const LeftZoneCase& item : LEFT_ZONE_CASES){
+        database.add<Test_LeftZone1>(item);
     }
 }
 

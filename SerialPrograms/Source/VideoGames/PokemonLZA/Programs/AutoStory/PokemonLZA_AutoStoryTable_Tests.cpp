@@ -484,6 +484,50 @@ UnitTestResult test_new_game_rows(Logger&){
     return true;
 }
 
+//  The dev-only rows: 03.07d alone, between 03.07 and 03.08. Developer Mode
+//  lists and plays it; a user's run neither lists nor plays it, so 03.07
+//  and 03.08 sit next to each other there.
+UnitTestResult test_dev_only_rows(Logger&){
+    const StoryData& story = builtin_story_data();
+    if (story.dev_only != std::set<std::string, std::less<>>{"03.07d"}){
+        return "Expected 03.07d to be the only dev-only row.";
+    }
+    const auto index_of = [](const std::vector<StoryCheckpoint>& rows, std::string_view id) -> size_t{
+        for (size_t i = 0; i < rows.size(); i++){
+            if (rows[i].id == id){
+                return i;
+            }
+        }
+        return rows.size();
+    };
+    const std::vector<StoryCheckpoint> dev = story_rows_for_mode(story, true);
+    const size_t dev_index = index_of(dev, "03.07d");
+    if (dev.size() != story.checkpoints.size() || dev_index == dev.size()
+        || dev[dev_index - 1].id != "03.07" || dev[dev_index + 1].id != "03.08"
+    ){
+        return "Developer Mode: expected every row, 03.07d between 03.07 and 03.08.";
+    }
+    const std::vector<StoryCheckpoint> user = story_rows_for_mode(story, false);
+    const size_t user_index = index_of(user, "03.07");
+    if (user.size() != story.checkpoints.size() - 1 || index_of(user, "03.07d") != user.size()
+        || user_index + 1 >= user.size() || user[user_index + 1].id != "03.08"
+    ){
+        return "A user's run: expected every row but 03.07d, 03.08 right after 03.07.";
+    }
+    const std::string text = builtin_text("plza-03.07d.plan");
+    const std::string_view field = "\"dev_only\": true";
+    if (text.find(field) == std::string::npos){
+        return "Expected \"dev_only\": true in plza-03.07d.plan.json.";
+    }
+    for (const std::string_view bad : {"\"dev_only\": false", "\"dev_only\": \"yes\"", "\"dev_mode\": true"}){
+        const std::string error = dev_load_error("plza-03.07d.plan.json", replaced(text, field, bad));
+        if (error.find("/dev/plza-03.07d.plan.json") == std::string::npos){
+            return std::format("Expected {} to fail naming its file, got \"{}\".", bad, error);
+        }
+    }
+    return true;
+}
+
 struct AutoStoryTableCase{
     std::string name;
     struct Input{
@@ -576,6 +620,10 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     },
     {
         .name = "Start checks: 00.00 and 01.00 start the new game without a save; a run from 00.00 skips 01.00", .input = {test_new_game_rows},
+        .expectation = {},
+    },
+    {
+        .name = "Dev-only rows: 03.07d only in Developer Mode, between 03.07 and 03.08", .input = {test_dev_only_rows},
         .expectation = {},
     },
 };

@@ -853,6 +853,50 @@ void walk_to_zone_gate(ConsoleHandle& console, ProControllerContext& context){
     );
 }
 
+void walk_back_to_zone_entrance(ConsoleHandle& console, ProControllerContext& context){
+    PlzaScreenObserver observer;
+    const WallClock deadline = current_time() + 60s;
+    std::optional<int> last;
+    while (current_time() < deadline){
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = console.video().snapshot();
+        if (observer.observe(frame, current_time()).any_of({ScreenEvent::INTERACT_PROMPT, ScreenEvent::DIALOG_BOX})){
+            console.log(std::format("walk_back_to_zone_entrance(): a prompt at {} from the far gate.", last.value_or(-1)));
+            return;
+        }
+        const std::optional<ObjectiveMarker> marker = read_objective_marker(console, frame);
+        if (marker && turn_to_pinned_marker(context, marker->x)){
+            continue;
+        }
+        if (marker && marker->distance > 0 && last != marker->distance){
+            last = marker->distance;
+            console.log(std::format("walk_back_to_zone_entrance(): {} from the far gate.", *last));
+        }
+        pbf_move_left_joystick(context, {0, -1}, 600ms, 0ms);
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format("walk_back_to_zone_entrance(): no \"A Leave\" prompt in 60 s, last read {} from the far gate.", last.value_or(-1)),
+        console
+    );
+}
+
+void walk_back_to_center(ConsoleHandle& console, ProControllerContext& context){
+    const std::optional<int> last = walk_from_objective(console, context, CENTER_FROM_FAR_GATE, 40s);
+    if (left_zone_1(last)){
+        console.log(std::format("walk_back_to_center(): {} from the far gate: out of Wild Zone 1.", *last));
+        return;
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format(
+            "walk_back_to_center(): {} from the far gate: not past {}, so 03.08 would take the player as in Wild Zone 1.",
+            last.value_or(-1), ZONE_1_START_MAX
+        ),
+        console
+    );
+}
+
 namespace{
 
 //  Whether lock-on brackets show around a wild Pokemon within `limit`,

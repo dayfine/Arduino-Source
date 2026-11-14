@@ -110,6 +110,22 @@ void walk_to_marker(ConsoleHandle& console, ProControllerContext& context);
 //  spent).
 void walk_to_zone_gate(ConsoleHandle& console, ProControllerContext& context);
 
+//  The lab's 03.07d, from where 03.07's catches end in Wild Zone 1 to its
+//  entrance gate (the one toward the Pokemon Center): walks back away from
+//  the objective marker (the far gate), the camera kept on it, until an A
+//  prompt (the gate's "Leave") or a dialog shows. UNVERIFIED, NEEDS
+//  CONSOLE: that the entrance lies back from the marker with nothing in
+//  the way. Throws OperationFailedException when no prompt shows in 60 s.
+void walk_back_to_zone_entrance(ConsoleHandle& console, ProControllerContext& context);
+
+//  The lab's 03.07d, out of Wild Zone 1's entrance gate: walks back away
+//  from the objective marker (the far gate), the camera kept on it, the
+//  reverse of 03.08's center_to_zone_1(), until it reads
+//  CENTER_FROM_FAR_GATE or more, or 40 s. Throws OperationFailedException
+//  unless the last read is out of the zone (left_zone_1()), where 03.08
+//  would take the player as in the zone and skip its walk from the Center.
+void walk_back_to_center(ConsoleHandle& console, ProControllerContext& context);
+
 
 
 } // namespace PokemonLZA

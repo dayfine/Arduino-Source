@@ -12,7 +12,7 @@
       {
         "id": "center_to_zone_1",
         "kind": "game_action",
-        "why": "from Vert's Pokemon Center (03.07 flies there) by the objective marker to Wild Zone 1's \"A Enter\", A, into the zone; where 03.07's fly fell back, the far gate reads 150 or less and the player is in the zone already: nothing. UNVERIFIED, NEEDS CONSOLE: the marker's way from the Center to the entrance gate, and the 150 bound.",
+        "why": "from Vert's Pokemon Center (where the lab's dev-only 03.07d walks back to; fast travel is not open at 03.07's end, console B 2026-11-13) by the objective marker to Wild Zone 1's \"A Enter\", A, into the zone; in a run straight on from 03.07 the far gate reads 150 or less and the player is in the zone already: nothing. UNVERIFIED, NEEDS CONSOLE: the marker's way from the Center to the entrance gate, and the 150 bound.",
         "action": "center_to_zone_1"
       },
       {
