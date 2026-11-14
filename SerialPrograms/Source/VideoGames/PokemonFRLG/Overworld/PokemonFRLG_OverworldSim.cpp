@@ -52,16 +52,16 @@ WallClock sim_wall_clock(Milliseconds time){
 
 namespace{
 
-Pokemon::ScreenEvents observed_events(SimScreen screen){
+ScreenEvents observed_events(SimScreen screen){
     switch (screen){
     case SimScreen::MESSAGE:
-        return {Pokemon::ScreenEvent::DIALOG_BOX};
+        return {ScreenEvent::DIALOG_BOX};
     case SimScreen::BATTLE_WIPE:
     case SimScreen::FADE:
-        return {Pokemon::ScreenEvent::FADE_BLACK};
+        return {ScreenEvent::FADE_BLACK};
     case SimScreen::BATTLE_OPENING:
     case SimScreen::BATTLE:
-        return {Pokemon::ScreenEvent::BATTLE_STARTED};
+        return {ScreenEvent::BATTLE_STARTED};
     case SimScreen::OVERWORLD:
     case SimScreen::START_MENU:
     case SimScreen::BATTLE_FLASH:
@@ -72,8 +72,8 @@ Pokemon::ScreenEvents observed_events(SimScreen screen){
 
 } // namespace
 
-Pokemon::ScreenEventLog screen_event_log(const SimState& state, Milliseconds from){
-    Pokemon::ScreenEventLog log;
+ScreenEventLog screen_event_log(const SimState& state, Milliseconds from){
+    ScreenEventLog log;
     SimScreen screen = state.shown.empty() ? state.screen : state.shown.front().screen;
     size_t next = 0;
     for (; next < state.shown.size() && state.shown[next].at <= from; next++){

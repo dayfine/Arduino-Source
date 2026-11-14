@@ -127,24 +127,24 @@ StoryStep make_step(StoryStepKind kind, std::string action, StoryActionArgs args
 
 
 
-//  A step checked and, when it lints clean, dispatched on a backend that
-//  shows talk text once, then the overworld.
-struct RegistryInput{
-    std::string_view name;
-    StoryStep step;
-};
-
-//  The lint errors joined by "; ", then (for a clean step) the failure and
-//  the inputs sent.
-struct RegistryExpectation{
-    std::string_view lint = {};
-    std::string_view failure = {};
-    std::string_view inputs = {};
-};
-
 struct RegistryCase{
-    RegistryInput input;
-    RegistryExpectation expectation;
+    //  A step checked and, when it lints clean, dispatched on a backend that
+    //  shows talk text once, then the overworld.
+    struct Input{
+        std::string_view name;
+        StoryStep step;
+    };
+
+    //  The lint errors joined by "; ", then (for a clean step) the failure and
+    //  the inputs sent.
+    struct Expectation{
+        std::string_view lint = {};
+        std::string_view failure = {};
+        std::string_view inputs = {};
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const RegistryCase REGISTRY_CASES[] = {
@@ -180,7 +180,7 @@ std::string check_registry(const RegistryCase& test, CancellableScope& scope){
     if (!lint.empty()){
         return "";
     }
-    FakeStoryBackend<GridPose> backend({.looks = {look({ScreenEvent::TEXT_BOX}), look({ScreenEvent::TEXT_BOX}), look({ScreenEvent::CAN_MOVE})}}, scope);
+    FakeStoryBackend<GridPose> backend({.looks = {look({ScreenEvent::DIALOG_BOX}), look({ScreenEvent::DIALOG_BOX}), look({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     RunState state;
     const Outcome outcome = registry.dispatch(backend, test.input.step, state);
     if (outcome.failure != test.expectation.failure){
@@ -208,26 +208,26 @@ private:
 
 
 
-//  One step, read from JSON, run by the step runner on a backend that
-//  shows the overworld, with `flags` set and the "door_open" reader
-//  reading `door_open`.
-struct RunnerInput{
-    std::string_view name;
-    std::string_view step;
-    std::vector<std::string> flags = {};
-    std::optional<int> door_open = std::nullopt;
-};
-
-//  The failure, a line the run logged and the map of the outcome's pose.
-struct RunnerExpectation{
-    std::string_view failure = {};
-    std::string_view line = {};
-    std::string_view pose_map = {};
-};
-
 struct RunnerCase{
-    RunnerInput input;
-    RunnerExpectation expectation;
+    //  One step, read from JSON, run by the step runner on a backend that
+    //  shows the overworld, with `flags` set and the "door_open" reader
+    //  reading `door_open`.
+    struct Input{
+        std::string_view name;
+        std::string_view step;
+        std::vector<std::string> flags = {};
+        std::optional<int> door_open = std::nullopt;
+    };
+
+    //  The failure, a line the run logged and the map of the outcome's pose.
+    struct Expectation{
+        std::string_view failure = {};
+        std::string_view line = {};
+        std::string_view pose_map = {};
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const RunnerCase RUNNER_CASES[] = {
@@ -248,7 +248,7 @@ const RunnerCase RUNNER_CASES[] = {
 std::string check_runner(const RunnerCase& test, CancellableScope& scope){
     const StoryGame<GridPose> game = test_game(test.input.door_open);
     const StoryActionRegistry<GridPose> registry(game);
-    FakeStoryBackend<GridPose> backend({.looks = {look({ScreenEvent::CAN_MOVE})}}, scope);
+    FakeStoryBackend<GridPose> backend({.looks = {look({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     StoryStepRunner<GridPose> runner(registry, backend);
     RunState state;
     state.flags.insert(test.input.flags.begin(), test.input.flags.end());
@@ -283,31 +283,31 @@ private:
 
 
 
-//  take_warp north to B3F, from B4F, on a scripted game.
-struct WarpInput{
-    std::string_view name;
-    std::vector<Observation<GridPose>> looks;
-};
-
-//  How take_warp ended: "" for arrived.
-struct WarpExpectation{
-    std::string_view failure = {};
-};
-
 struct WarpCase{
-    WarpInput input;
-    WarpExpectation expectation;
+    //  take_warp north to B3F, from B4F, on a scripted game.
+    struct Input{
+        std::string_view name;
+        std::vector<Observation<GridPose>> looks;
+    };
+
+    //  How take_warp ended: "" for arrived.
+    struct Expectation{
+        std::string_view failure = {};
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const WarpCase WARP_CASES[] = {
     {.input = {.name = "fade then B3F", .looks = {
-        look({}, on_map("RocketHideout_B4F")), look({ScreenEvent::FADE_BLACK}), look({ScreenEvent::CAN_MOVE}, on_map("RocketHideout_B3F")),
+        look({}, on_map("RocketHideout_B4F")), look({ScreenEvent::FADE_BLACK}), look({ScreenEvent::PLAYER_CAN_MOVE}, on_map("RocketHideout_B3F")),
      }}, .expectation = {}},
     //  The screen darkens at the stairs but no fade starts and the map
     //  stays B4F: the old wait took this for arrived (00.31's false pass).
-    {.input = {.name = "black_without_warp", .looks = {look({ScreenEvent::STILL}, on_map("RocketHideout_B4F"))}},
+    {.input = {.name = "black_without_warp", .looks = {look({ScreenEvent::SCREEN_STILL}, on_map("RocketHideout_B4F"))}},
      .expectation = {.failure = "warp_no_fade"}},
-    {.input = {.name = "fade back to B4F", .looks = {look({ScreenEvent::FADE_BLACK}), look({ScreenEvent::CAN_MOVE}, on_map("RocketHideout_B4F"))}},
+    {.input = {.name = "fade back to B4F", .looks = {look({ScreenEvent::FADE_BLACK}), look({ScreenEvent::PLAYER_CAN_MOVE}, on_map("RocketHideout_B4F"))}},
      .expectation = {.failure = "warp_wrong_map"}},
 };
 
