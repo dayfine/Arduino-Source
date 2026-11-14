@@ -101,8 +101,8 @@ struct ScriptedRoute{
             failure = message;
             throw std::runtime_error(message);
         };
-        calls.watch_for_trainer = [this](const RouteStep&, int approach_tiles){
-            watches.push_back(approach_tiles);
+        calls.watch_for_trainer = [this](const RouteStep&, const TrainerCrossing& crossing){
+            watches.push_back(crossing.approach_tiles);
             return watches.size() <= watch_ends.size() ? watch_ends[watches.size() - 1] : StepEnd::DONE;
         };
         return calls;

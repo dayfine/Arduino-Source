@@ -448,7 +448,8 @@ Pokemon::StoryAction OverworldStepSim::step_action(StoryActionId id){
     default:
         return m_stubs.stub();
     }
-    return played([this, body](const StoryStep& step, RunState&){
+    return played([this, body](const StoryStep& step, RunState& state){
+        m_beaten = beaten_trainers(state.flags);
         const std::string failure = (this->*body)(step);
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
     });
@@ -529,7 +530,10 @@ std::string OverworldStepSim::walk(const StoryStep& step){
         //  Already there.
         return "";
     }
-    const RoutePlanning planning{.maps = &maps, .gates = gates, .costs = story_route_costs(), .start = MapPosition{m_at.map, m_at.tile}, .label = step.name};
+    const RoutePlanning planning{
+        .maps = &maps, .gates = gates, .costs = story_route_costs(), .start = MapPosition{m_at.map, m_at.tile}, .label = step.name,
+        .beaten_trainers = m_beaten
+    };
     SimWalkerRules rules;
     rules.trainer_battle_end = battle_end_on_sim;
     //  A BIKE_VARIANT rides, as on the console, when the sim has the
@@ -807,9 +811,13 @@ std::string OverworldStepSim::battle(const StoryStep& step){
 }
 
 
-std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id){
+std::string row_step_on_sim(
+    OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id,
+    const std::set<std::string>& run_flags
+){
     OverworldStepSim executor(sim, id, at);
     RunState state;
+    state.flags = run_flags;
     const Outcome outcome = executor.run(step, state);
     at = executor.at();
     if (outcome.succeeded()){

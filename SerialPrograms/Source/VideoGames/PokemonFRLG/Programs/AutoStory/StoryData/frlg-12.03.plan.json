@@ -5,6 +5,7 @@
     "id": "12.03",
     "title": "Fuchsia to Cinnabar: Fly to Pallet Town, Surf down Route 21, ashore to the Mansion door",
     "start": {"map": "FuchsiaCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "start_flags": ["trainer_beaten:Route21_South/swimmer_m_water@10,29"],
     "events": [
       {
         "id": "outside_fuchsia_center",

@@ -16,6 +16,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
@@ -169,15 +170,22 @@ private:
 
     OverworldSim& m_sim;
     StoryPose m_at;
+    //  The trainers the step's run flags say are beaten (beaten_trainers()):
+    //  the walker doesn't watch for them.
+    std::set<std::string> m_beaten;
     SimStepGuard m_guard;
     SimStubs m_stubs;
     Pokemon::StoryActionTable m_table;
 };
 
 //  Runs `step` of row `id` on `sim` through OverworldStepSim, from `at`,
+//  with `run_flags` (the trainers beaten among them, TRAINER_BEATEN_FLAG),
 //  and moves `at` to where the table says the step ends. Returns the
 //  failure, "<id>/<step>: <why> On <where>.", or empty.
-std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id);
+std::string row_step_on_sim(
+    OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id,
+    const std::set<std::string>& run_flags = {}
+);
 
 
 

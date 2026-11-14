@@ -8,9 +8,10 @@
  *    - a leg to a wall interrupted after its hold is walked again;
  *    - an open leg to a warp, off the grass, stopped by a message (a
  *      trainer), is held on toward the warp;
- *    - a leg that crosses a trainer's sight (trainer_crossing()) is watched
- *      after for long enough that the trainer, if they saw the player, has
- *      walked up and spoken;
+ *    - a leg that crosses the sight of a trainer not yet beaten
+ *      (trainer_crossing()) is looked at after (trainer_first_look()), and
+ *      watched on for long enough that the trainer has walked up and
+ *      spoken if anything shows;
  *    - any other open leg stopped part-way, or a leg seen stopped by a
  *      trainer, has the tiles the player may be on worked out from the
  *      stop's timing and the trainers' sight (stop_candidates()). One tile:
@@ -40,6 +41,7 @@
 
 #include <functional>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -74,6 +76,9 @@ struct RoutePlanning{
     //  Where the run pauses before each leg (breakpoints, LEGS mode). None:
     //  never.
     Pokemon::StoryPausePoints* pause = nullptr;
+    //  The trainers the player has beaten (trainer_id()): a leg across their
+    //  sight is not watched. The planner still keeps off their sight.
+    std::set<std::string> beaten_trainers = {};
 };
 
 //  The console side. `walk` walks one step from `facing` (unknown after a
@@ -88,12 +93,13 @@ struct RouteCalls{
     //  whether the screen moved. Only logged: a bump and a step can't be
     //  told apart reliably yet. Not set (or WallCheck::SKIP): not tapped.
     std::function<bool(const RouteStep& step)> moved_past_wall;
-    //  After a leg that ended as planned but crosses a trainer's sight:
-    //  watches long enough for a trainer who saw the player to walk up
-    //  `approach_tiles` tiles and speak, has what shows cleared (the
-    //  caller's interrupts fight the trainer), and returns LATE if anything
-    //  showed, DONE if not. Not set: not watched.
-    std::function<StepEnd(const RouteStep& step, int approach_tiles)> watch_for_trainer;
+    //  After a leg that ended as planned but crosses the sight of a trainer
+    //  not beaten (`crossing`): looks for trainer_first_look(), and if
+    //  anything shows, watches on long enough for a trainer who saw the
+    //  player to walk up and speak (trainer_full_watch()), has what shows
+    //  cleared (the caller's interrupts fight the trainer), and returns
+    //  LATE if anything showed, DONE if not. Not set: not watched.
+    std::function<StepEnd(const RouteStep& step, const TrainerCrossing& crossing)> watch_for_trainer;
     //  A leg's "ended at" line was logged for the leg with this text (also a
     //  leg walked again after a stop). Returns the file the caller saved
     //  the screen to, which is logged on the next line; empty: none.

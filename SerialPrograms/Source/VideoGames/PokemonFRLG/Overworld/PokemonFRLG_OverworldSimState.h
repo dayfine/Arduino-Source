@@ -197,6 +197,9 @@ struct SimState{
     //  (SimScript::off_bike_at_legs).
     int bike_legs = 0;
     std::vector<std::string> trainers_beaten;
+    //  The time the walker spent watching for trainers after legs across
+    //  their sight (watch_for_trainer()), fights included.
+    Milliseconds trainer_watch{0};
     //  Things the walker did that the game wouldn't let pass: D-pad holds
     //  under a battle, a trainer's battle fled, a battle fought that wasn't
     //  there.

@@ -542,27 +542,27 @@ void hold_to_warp(
     );
 }
 
-//  A trainer who sees the player stops them, a "!" shows over the trainer,
-//  the trainer walks up, then speaks. The leg's hold may run on past the
-//  tile the player was stopped on, so the watch counts from the hold's end,
-//  with room to spare: on Route 3 (console B, 2026-11-02) Lass Robin's
-//  message showed after the 500ms watch after the leg had ended. Not
-//  measured on the console yet.
-constexpr Milliseconds TRAINER_NOTICE(1500);
-constexpr Milliseconds TRAINER_SPEAKS(1000);
-
-//  After `step`, which crosses a trainer's sight: watches for the trainer
-//  to walk up `approach_tiles` tiles and speak, and clears what shows.
+//  After `step`, which crosses the sight of a trainer not beaten
+//  (`crossing`): a trainer who sees the player stops them, a "!" shows
+//  over the trainer, the trainer walks up, then speaks. Looks for
+//  trainer_first_look() from the hold's end; if anything shows, watches on
+//  for the trainer to walk up and speak (trainer_full_watch()), and
+//  clears what shows.
 StepEnd watch_for_trainer(
     ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, int approach_tiles, const OverworldInterruptSet& interrupts
+    const RouteStep& step, const TrainerCrossing& crossing, const OverworldInterruptSet& interrupts
 ){
-    const Milliseconds watch = TRAINER_NOTICE + TILE_TIME * approach_tiles + TRAINER_SPEAKS;
-    console.log(std::format("Route: {} crosses a trainer's sight; watching {} ms for them.", to_string(step), watch.count()));
-    const size_t seen = Pokemon::clear_late_interrupts(
-        console, context, step.wild ? interrupts.wild : interrupts.other, watch, MAX_INTERRUPTIONS_PER_LEG
-    );
-    return seen == 0 ? StepEnd::DONE : StepEnd::LATE;
+    const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
+    const Milliseconds look = trainer_first_look(crossing);
+    const size_t first = Pokemon::clear_late_interrupts(console, context, watched, look, MAX_INTERRUPTIONS_PER_LEG);
+    if (first == 0){
+        console.log(std::format("Route: {} crosses a trainer's sight; watch {} ms: nothing.", to_string(step), look.count()));
+        return StepEnd::DONE;
+    }
+    const Milliseconds watch = trainer_full_watch(crossing.approach_tiles);
+    console.log(std::format("Route: {} crosses a trainer's sight; watch {} ms: something showed; watching {} ms more.", to_string(step), look.count(), watch.count()));
+    Pokemon::clear_late_interrupts(console, context, watched, watch, MAX_INTERRUPTIONS_PER_LEG);
+    return StepEnd::LATE;
 }
 
 //  TODO(forest drift, 2026-11-01): diagnostic; remove or turn into a recovery once the cause is known.
@@ -673,8 +673,8 @@ RouteCalls console_route_calls(
     calls.moved_past_wall = [&console, &context](const RouteStep& step){
         return moved_past_wall(console, context, step);
     };
-    calls.watch_for_trainer = [&console, &context, &interrupts](const RouteStep& step, int approach_tiles){
-        return watch_for_trainer(console, context, step, approach_tiles, interrupts);
+    calls.watch_for_trainer = [&console, &context, &interrupts](const RouteStep& step, const TrainerCrossing& crossing){
+        return watch_for_trainer(console, context, step, crossing, interrupts);
     };
     calls.leg_ended = [&console, &planning](const std::string& leg_text){
         const bool stepped = planning.pause != nullptr && !planning.pause->step_label().empty();

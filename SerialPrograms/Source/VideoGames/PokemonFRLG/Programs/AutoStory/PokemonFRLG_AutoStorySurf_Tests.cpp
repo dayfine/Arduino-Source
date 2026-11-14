@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <format>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -78,6 +79,10 @@ struct SurfRun{
     std::vector<std::string> trainers;
     //  The ROUTE steps that walk back the way they came.
     std::vector<std::string> back_tracks;
+    //  How long the walker watched for trainers after legs, and the run's
+    //  time on the sim's clock.
+    Milliseconds trainer_watch{0};
+    Milliseconds time{0};
 };
 
 Direction opposite(Direction direction){
@@ -129,10 +134,15 @@ void note_walk_back(const std::string& name, const std::vector<RouteStep>& route
 //  12.03 on a sim with `script`, from Fuchsia's nurse to the Mansion's
 //  door on Cinnabar, as test_fuchsia_to_cinnabar() runs it. Each ROUTE
 //  step is also planned from where the sim stands, for its water legs.
-SurfRun run_12_03(SimScript script = {}){
+//  With `start_flags`, the row's: the trainers its save has beaten stop
+//  no one, and aren't watched for.
+SurfRun run_12_03(SimScript script = {}, bool start_flags = true){
     const StoryCheckpoint& row = row_12_03();
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
-    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing, std::move(script));
+    const std::set<std::string> flags = start_flags
+        ? std::set<std::string>(row.start_flags.begin(), row.start_flags.end())
+        : std::set<std::string>();
+    OverworldSim sim(with_trainers_beaten(story_maps(), beaten_trainers(flags)), MapPosition{at.map, at.tile}, *at.facing, std::move(script));
     SurfRun run;
     for (const StoryStep& step : row.steps){
         if (step.action == CENTER_ENTER_VARIANT){
@@ -153,12 +163,14 @@ SurfRun run_12_03(SimScript script = {}){
                 note_walk_back(step.name, *route, run.back_tracks);
             }
         }
-        run.failure = row_step_on_sim(sim, at, step, row.id);
+        run.failure = row_step_on_sim(sim, at, step, row.id, flags);
         if (!run.failure.empty()){
             break;
         }
     }
     run.end = sim.state().position;
+    run.trainer_watch = sim.state().trainer_watch;
+    run.time = sim.state().time;
     run.surf_steps = sim.state().surf_steps;
     run.surf_holds = sim.state().surf_holds;
     if (run.failure.empty() && !sim.state().violations.empty()){
@@ -343,6 +355,55 @@ UnitTestResult test_box_open_before_each_surf(){
     return true;
 }
 
+//  12.03 from its save, which has Swimmer Roland beaten (start_flags),
+//  watches for trainers for less time than with no trainer beaten, and
+//  ends below the Mansion's door either way.
+UnitTestResult test_beaten_trainers_not_watched(){
+    const SurfRun saved = run_12_03();
+    const SurfRun fresh = run_12_03({}, false);
+    if (!saved.failure.empty() || !fresh.failure.empty()){
+        return std::format("12.03 failed on the sim: from its save \"{}\", with no trainer beaten \"{}\".", saved.failure, fresh.failure);
+    }
+    if (!(saved.end == MANSION_DOOR) || !(fresh.end == MANSION_DOOR)){
+        return std::format("12.03 ended on {} from its save, {} with no trainer beaten.", to_string(saved.end), to_string(fresh.end));
+    }
+    if (!saved.trainers.empty()){
+        return "12.03 from its save met a trainer it has beaten:" + joined(saved.trainers);
+    }
+    if (saved.trainer_watch >= fresh.trainer_watch){
+        return std::format(
+            "12.03 from its save watched {} ms for trainers, not less than the {} ms with no trainer beaten.",
+            saved.trainer_watch.count(), fresh.trainer_watch.count()
+        );
+    }
+    return true;
+}
+
+//  Each trainer a row's start_flags says is beaten (TRAINER_BEATEN_FLAG)
+//  is a trainer on the story's maps.
+UnitTestResult test_beaten_trainers_named(){
+    std::set<std::string> known;
+    for (const MapData& map : story_maps()){
+        for (const MapObject& object : map.objects){
+            if (object.trainer){
+                known.insert(trainer_id(map, object));
+            }
+        }
+    }
+    std::vector<std::string> unknown;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const std::string& trainer : beaten_trainers(std::set<std::string>(row.start_flags.begin(), row.start_flags.end()))){
+            if (!known.contains(trainer)){
+                unknown.push_back(row.id + ": " + trainer);
+            }
+        }
+    }
+    if (!unknown.empty()){
+        return "Rows list beaten trainers the story's maps don't have:" + joined(unknown);
+    }
+    return true;
+}
+
 struct SurfCase{
     std::string_view name;
     struct Input{
@@ -398,6 +459,16 @@ const SurfCase SURF_CASES[] = {
         .name = "12.03 with a hold stopped short, unseen",
         .input = {.body = test_short_hold_never_goes_on_from_a_guess},
         .expectation = {.description = "each run ends below the Mansion's door or fails, never elsewhere"},
+    },
+    {
+        .name = "12.03 from its save: no watch for Swimmer Roland",
+        .input = {.body = test_beaten_trainers_not_watched},
+        .expectation = {.description = "less time watching for trainers than with none beaten, and no trainer met"},
+    },
+    {
+        .name = "beaten trainers in start_flags are on the story's maps",
+        .input = {.body = test_beaten_trainers_named},
+        .expectation = {.description = "each names a trainer by trainer_id()"},
     },
     {
         .name = "12.03 with a box open as each Surf step starts",

@@ -14,6 +14,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <vector>
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
 #include "PokemonFRLG_OverworldTileRules.h"
@@ -34,6 +35,15 @@ bool trainer_may_see(const MapData& map, const MapObject& object, const TilePos&
 
 //  Removes the objects the game hides once one of `flags` is set.
 void hide_objects(MapData& map, const std::set<std::string>& flags);
+
+//  What a run calls the trainer `object` of `map` once beaten:
+//  "<map>/<object>@<x>,<y>", from where the map places them, since a map
+//  has several of a kind (Route 21's swimmers).
+std::string trainer_id(const MapData& map, const MapObject& object);
+
+//  `maps` with the trainers `beaten` names (trainer_id()) no longer
+//  trainers: they stand where they are and stop no one, as in the game.
+std::vector<MapData> with_trainers_beaten(std::vector<MapData> maps, const std::set<std::string>& beaten);
 
 
 
