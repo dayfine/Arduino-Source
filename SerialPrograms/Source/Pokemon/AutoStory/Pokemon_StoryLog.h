@@ -65,6 +65,13 @@ std::string checkpoint_reset_line(std::string_view checkpoint, size_t next_attem
 //      [Segment] 00: 00.02 failed, reloading for attempt 2/3
 std::string segment_reload_line(std::string_view segment, std::string_view checkpoint, size_t next_attempt, size_t attempts);
 
+//  The full lines above go to the log. The video overlay, which wraps its
+//  lines, shows each one short, without its leading "[Tag] ":
+//      [Event] 12.03/3 fly_pallet: start  ->  12.03/3 fly_pallet: start
+//      [Checkpoint] 12.03: start, 18 events  ->  12.03: start, 18 events
+//  A line without a tag, like SV's display text, is returned unchanged.
+std::string story_short_line(std::string_view line);
+
 
 
 } // namespace Pokemon

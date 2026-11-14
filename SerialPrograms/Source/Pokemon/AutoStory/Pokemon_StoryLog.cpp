@@ -74,6 +74,17 @@ std::string segment_reload_line(std::string_view segment, std::string_view check
     );
 }
 
+std::string story_short_line(std::string_view line){
+    if (!line.starts_with('[')){
+        return std::string(line);
+    }
+    const size_t end = line.find("] ");
+    if (end == std::string_view::npos){
+        return std::string(line);
+    }
+    return std::string(line.substr(end + 2));
+}
+
 
 
 } // namespace Pokemon

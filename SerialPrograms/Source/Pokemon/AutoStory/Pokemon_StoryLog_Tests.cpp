@@ -113,6 +113,30 @@ const StoryLogTestCase STORY_LOG_CASES[] = {
         .input = {.name = "reload within a segment", .line = segment_reload_line("00", "00.02", 2, 3)},
         .expectation = {.line = "[Segment] 00: 00.02 failed, reloading for attempt 2/3"},
     },
+    {
+        .input = {.name = "short event", .line = story_short_line("[Event] 12.03/3 fly_pallet: start")},
+        .expectation = {.line = "12.03/3 fly_pallet: start"},
+    },
+    {
+        .input = {.name = "short checkpoint start", .line = story_short_line("[Checkpoint] 12.03: start, 18 events")},
+        .expectation = {.line = "12.03: start, 18 events"},
+    },
+    {
+        .input = {.name = "short segment line", .line = story_short_line("[Segment] 00: 00.02 failed, reloading for attempt 2/3")},
+        .expectation = {.line = "00: 00.02 failed, reloading for attempt 2/3"},
+    },
+    {
+        .input = {.name = "short line without a tag", .line = story_short_line("Checkpoint:: 004 - 02. Start point: X: start")},
+        .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: start"},
+    },
+    {
+        .input = {.name = "short line with an unclosed tag", .line = story_short_line("[Event 12.03")},
+        .expectation = {.line = "[Event 12.03"},
+    },
+    {
+        .input = {.name = "short empty line", .line = story_short_line("")},
+        .expectation = {.line = ""},
+    },
 };
 
 
