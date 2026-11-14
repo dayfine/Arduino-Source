@@ -2,16 +2,20 @@
 
 Status: proposal (2026-11-01; revised 2026-11-14 from the week's incidents,
 `~/BDSPLab/notes/2026-11-13-week-problems.md`, and an implementation review; checked against the
-lab scripts and the user's console rules on 2026-11-14). It builds on:
+lab scripts and the user's console rules on 2026-11-14; the user's decisions of 2026-11-14
+are recorded in [Decisions and open questions](#decisions-and-open-questions)). It builds on:
 - the lab channel: fork #107, `SerialPrograms/Source/CommonFramework/Windows/Lab.md`
   (`Lab/inbox`, `Lab/outbox`, `Lab/state`, the owner token);
 - run records: fork #116, `docs/design/Lab-RunRecords.md`;
 - the lab scripts on `agents` (`lab/control`, `lab/scripts`) and in `~/BDSPLab`
   (`labrun.sh`, `labbuild.sh`, `checkin.sh`, `lablock.sh`, `heavy_gate.sh`, ...).
 
-Nothing here is implemented except what those already have. In particular, the app does
-not yet expose a frame sequence, a generic game/screen detector, a preflight API, or an
-action source. Those are deliverables below, not existing integration points.
+Nothing here is implemented except what those already have, FRLG RNG's one-off
+`RngProgramInstance::run_precheck()` (upstream PokemonAutomation/Arduino-Source#1881, which the
+precheck list below generalizes) and the `require-profile` Claude Code hook (done, see
+Enforcement). In particular, the app does not yet expose a frame sequence, a generic
+game/screen detector, a preflight API, or an action source. Those are deliverables below, not
+existing integration points. Everything here is fork tooling for now (user, 2026-11-14).
 
 ## Requirement
 
@@ -42,19 +46,19 @@ One row per incident from 2026-11-07..13. "R" = resource, "T" = tool, "E" = even
 | Panel switch reset controller and video ("requires video feedback") | R `console://B/state` `controller`, `video`; `run_program` waits for both |
 | No-HDMI colour bars went unnoticed until a frame was read | R `state.video.signal`; E `video_lost` |
 | Game switches (HOME, close, pick tile) done by hand | deferred: arbitrary title selection has no reliable app seam yet |
-| PLZA 03.08 started with the game closed and walked on HOME | T `ensure_game(expected)` and the program's dynamic preflight refuse the run |
+| PLZA 03.08 started with the game closed and walked on HOME | T `ensure_game(expected)` and the program's `game_open` precheck refuse the run |
 | UI stop at 22:25 had to be guessed as the user's | E `stopped{source: ui}`; lease moves to `user` |
 | "Hands off B while the user plays" held only by memory | lease: tools refuse while `user` holds it |
 | Which save B holds lived in notes (Safari logo vs Mansion door, unsaved Parasect) | R `console://B/save` |
 | Max Resets 10 on a long-shot target | schema range plus program precondition |
 | Safari needs ≥ 4000 advances | precondition on `run_program` |
 | FRLG license check not loaded (Game Settings panel never opened) | precondition: game settings loaded |
-| No Sweet Scent user in the last slot | precondition, checked by the program's precheck before any reset |
+| No Sweet Scent user in the last slot | a precheck declared with the program, run before any reset |
 | Restart on a post-run summary screen | precondition "known screen" refuses the run; recovery remains explicit |
 | PLZA LANGUAGE left on ja | precondition: language matches the console's game |
 | Dev-only checkpoint hidden without Developer Mode shifted indices; wrong checkpoint started | options by key and checkpoint id, never by index; refuse a hidden row |
 | Audio input not allowlisted for lab-B (UserSetupError spam) | server launch checks the lab profile's settings |
-| App run without `--profile`, twice | agents never run the app; the server launches it |
+| App run without `--profile`, twice | done 2026-11-14: the `require-profile` PreToolUse hook refuses the call (Enforcement); from Slice 7 the server launches the app |
 | Rules retyped per brief and drifting | rules enforced by the server, not restated in briefs |
 | Agents parked waiting on the console | long console operations return a request/ticket; E `program_finished` |
 | Linter rule changed mid-task | not addressed by this design |
@@ -251,8 +255,8 @@ Each tool validates before it acts and returns JSON, or a refusal naming the fai
 | `renew_console(lease, ttl)` / `release_console(lease)` | Operate only on the matching token. A user lease is released through an operator-authenticated CLI action, not an agent token. |
 | `shot(console, max_age_ms=2000, timeout_ms=5000)` | Lease not needed. Records `(instance.id, frame_seq)` at call start and waits for a strictly newer frame. Returns the completed PNG plus the new token and `captured_at`; never reuses a caller tag. Refuses on timeout, stale transport, or a classified bad signal. |
 | `ensure_game(console, expected, allowed_screens)` | Read-only verification. Runs/reads the named detectors and returns the observation and age. It never navigates HOME or launches a title. |
-| `describe_program(console, panel)` | Returns a stable program id, typed option schema, defaults and declared preconditions. Refuses settings panels and hidden/unavailable programs. |
-| `preflight_program(console, panel, options)` | Lease required because detectors may use app resources, but performs no controller action. Checks selection, typed options, static facts and the program's dynamic checks; returns every check and evidence. |
+| `describe_program(console, panel)` | Returns a stable program id, typed option schema, defaults and the declared prechecks (each check's name and `needs` line) without touching the console. Refuses settings panels and hidden/unavailable programs. |
+| `preflight_program(console, panel, options)` | Lease required because detectors may use app resources, but performs no controller action. Checks selection and typed options, then has the app run the program's prechecks in order; returns the checks run, the first failure's name and user message, and evidence. |
 | `run_program(console, panel, options, preflight_token)` | Lease. Requires a still-current successful preflight bound to app instance, panel, normalized options, observation versions and lease. Starts once and returns request/run ids. |
 | `stop_program(console)` | Lease. Requests Stop once; success is the matching `last_transition{source: lab, request_id}` or a terminal run event, not merely a stopped snapshot. |
 | `cfr_batch(console, lines)` | Lease, program stopped. Debug-only allowlisted command batch; marks the save fact stale. Raw writes to `Lab/inbox` are not exposed. |
@@ -269,28 +273,42 @@ command should serve this read-only path without requiring a ready controller.
 
 ### Program contract and preflight
 
-There is no generic program preflight API today. It is introduced as two layers rather than
-simulating a Start/Stop cycle:
+There is no generic program preflight API today; FRLG RNG has a one-off,
+`RngProgramInstance::run_precheck()` (upstream PokemonAutomation/Arduino-Source#1881: the black
+border check, then free party slots). The general form is two layers rather than a simulated
+Start/Stop cycle:
 
 1. A static contract beside the program descriptor gives stable option keys, types,
-   constraints, defaults, visibility and declarative fact requirements. The daemon validates
-   and normalizes options without touching the console. UI row indices and display strings
-   are never API identifiers.
-2. A virtual dynamic preflight on the program instance checks facts only the program can
-   establish: screen readers, party layout, loaded game settings, save compatibility, and
-   similar state. It returns structured checks and must not press a controller button,
-   reset, save, or alter options.
+   constraints, defaults and visibility. The daemon validates and normalizes options without
+   touching the console. UI row indices and display strings are never API identifiers.
+2. Preconditions declared with the program (user decision, 2026-11-14). The program overrides
+   `prechecks()` and returns a list of small named check objects; each has a `name`, a
+   one-line `needs` description, and `run(env, context)` returning pass/fail plus a message
+   for the user. A shared `run_prechecks()` runs the list in order and throws
+   `UserSetupError` on the first failure; the program's start path calls it before any reset,
+   so one list guards both a Start clicked in the app and a `run_program` from the daemon.
+   Shared checks are written once and reused by name: `game_open`, `black_border`,
+   `free_party_slots(n)`, `save_at(place)`. Program-specific checks (Sweet Scent user in the
+   last slot, Safari advances) sit beside the program. `describe_program` lists the names and
+   `needs` lines without touching the console, so what a program needs can be read without
+   running it. A check must not press a controller button, reset, save, or alter options.
 
-The result is a short-lived preflight token hashing the app instance, program id, normalized
-options, relevant state/save observation versions and lease. `run_program` refuses a stale
-token. Programs without a dynamic implementation declare that explicitly; absence never
+There is no server-side rules table, and no template/policy form: the user rejected that in
+favour of the plain list because it has to be readable without running (2026-11-14). The
+list generalizes upstream #1881's `run_precheck()`: its two checks become `black_border` then
+`free_party_slots(1)`. Nothing changes in upstream #1881 now; that move is Slice 4's first PR, and the
+server first refuses a run on a failed check in Slice 5.
+
+The result of a preflight is a short-lived token hashing the app instance, program id,
+normalized options, relevant state/save observation versions and lease. `run_program` refuses
+a stale token. A program with no `prechecks()` override reports `unsupported`; absence never
 means a successful check.
 
-| Program | Preconditions |
+| Program | Prechecks |
 |---|---|
-| FRLG RNG (static, gift, egg, Safari) | a free party slot (gift, egg); Sweet Scent user in the last slot (wild); Safari advances ≥ 4000; Game Settings loaded so the license check is on; game on a known screen, not a summary |
-| FRLG / BDSP / PLZA AutoStory | game in front is the program's game; start checkpoint chosen by id and visible (dev-only rows need Developer Mode); `console://B/save` matches the start checkpoint and is not stale; LANGUAGE matches the cartridge |
-| Every program | lab profile has audio input allowed or off; controller/video transport live |
+| FRLG RNG (static, gift, egg, Safari) | `black_border`; `free_party_slots(1)` (gift, egg; upstream #1881's two checks, in that order); Sweet Scent user in the last slot (wild); Safari advances ≥ 4000; Game Settings loaded so the license check is on; game on a known screen, not a summary |
+| FRLG / BDSP / PLZA AutoStory | `game_open` (the program's game is in front); start checkpoint chosen by id and visible (dev-only rows need Developer Mode); `save_at(start checkpoint)` against `console://B/save`, not stale (from Slice 6); LANGUAGE matches the cartridge |
+| Every program (server-side, not a program precheck) | lab profile has audio input allowed or off; controller/video transport live |
 
 ## Enforcement
 
@@ -300,11 +318,20 @@ means a successful check.
 - **Agents never run the app once supervision lands.** The server launches it with
   `--profile lab-B` using the extracted `labrun.sh` behavior (direct exec, never a bare
   binary) and quits only the PID/instance it created. Before that milestone, it is an
-  attach-only observer and the existing guarded launcher remains authoritative. Until then
-  the only guard is the standing rule: no Claude Code hook refuses a Bash call that names the
-  binary today (checked 2026-11-14). A PreToolUse hook that refuses the binary without
-  `--profile` and any write into `Lab/inbox` needs nothing from this design and should land
-  first, as its own change to the agent harness.
+  attach-only observer and the existing guarded launcher remains authoritative.
+- **The bare binary is already blocked (done 2026-11-14, not part of this rollout).**
+  `~/.claude/hooks/require-profile.py` is a Claude Code PreToolUse hook registered for `Bash`
+  in `~/.claude/settings.json`. It splits the command on `&&`, `||`, `;`, `|`, `&` and
+  newlines, drops leading `VAR=value` assignments and the bare wrappers `exec`, `nohup`,
+  `env`, `time`, `caffeinate`, and looks at each segment's program: a path ending in
+  `SerialPrograms`, `SerialPrograms.app` or `SerialPrograms.app/Contents/MacOS/SerialPrograms`,
+  or `open … SerialPrograms.app`. If that segment has no `--profile` argument the hook exits 2
+  with a message naming the target and the call is refused. Everything else passes: builds
+  (`cmake --build … --target SerialPrograms`), `pgrep`, `grep`, `ls`, and a launch with
+  `--profile <name>`. Checked against those cases on 2026-11-14. Known gaps, not design
+  items: it does not guard writes into `Lab/inbox` (the owner token covers that from Slice 5),
+  it sees only commands run through Claude Code's Bash tool, and a wrapper with flags
+  (`caffeinate -i …`) is not unwrapped.
 - **Console A is never exposed.** The server's own allowlist has no entry for it; no
   resource, no tool. A user-supplied console id cannot become a filesystem path.
 - **One train.** Leases replace `lablock.sh`; the app still refuses presses while a program
@@ -357,8 +384,11 @@ App-side slices follow the repo's hard rules (AGENTS.md), which this design must
   project's JSON classes; no `std::filesystem`;
 - the transition source is set where the session's start/stop is called: the widget passes
   `ui`, the lab channel passes `lab` with its request id; widgets hold no state;
-- program contracts and the dynamic preflight are program code: Qt-free, declared next to
-  the program descriptor and instance.
+- program contracts and the precheck list are program code: Qt-free, declared next to the
+  program descriptor and instance;
+- the seams stay small enough to upstream later without a rewrite (user, 2026-11-14): behind
+  the Lab/Developer boundary, no change to the shared scheduler or clock, one connection, one
+  controller, one video source per app instance.
 
 ### Slice 2 — attach-only read server
 
@@ -387,19 +417,26 @@ results, no running-lease expiry and gap-free event catch-up.
 
 - Add `describe_program` app support with stable ids and typed options; keep UI concerns out
   of the contract.
-- Add the side-effect-free dynamic preflight interface and structured check results.
-- Implement it first for FRLG RNG and one AutoStory family, including save provenance and
-  known-screen checks; missing implementations report `unsupported`. Two PRs: the contract
-  and preflight interface with FRLG RNG, then the first AutoStory family.
+- Add the precheck list: `prechecks()`, `run_prechecks()`, `UserSetupError`, the shared
+  checks `game_open`, `black_border`, `free_party_slots(n)`, and structured check results;
+  `describe_program` lists them.
+- Move FRLG RNG's `run_precheck()` (upstream #1881) onto the list as `black_border` then
+  `free_party_slots(1)`. This is the first change to that code and it waits for this slice.
+  Then one AutoStory family with its known-screen checks; `save_at(place)` waits for Slice 6's
+  save facts. Programs without a list report `unsupported`. Two PRs: the contract and the
+  precheck list with FRLG RNG, then the first AutoStory family.
 
 Acceptance: native tests cover option normalization, ranges/enums, hidden checkpoint ids and
-side-effect-free preflight. Deliberately bad Safari, party, language, save and HOME-screen
-setups are refused before a reset.
+side-effect-free prechecks. Deliberately bad Safari, party, language and HOME-screen setups
+are refused before a reset (bad saves: Slice 6).
 
 ### Slice 5 — leased actions
 
 - Implement `preflight_program`, token binding, `run_program`, `stop_program` and the
   restricted `cfr_batch` over request UUIDs.
+- This is where the server first refuses a run on a failed precheck: `preflight_program`
+  runs the list through the app and `run_program` needs its token. Until then the only
+  enforcement is the program's own `run_prechecks()` at Start.
 - Emit the action source at the UI/lab/program/error origin and correlate lab transitions
   with the request id. Make terminal events authoritative for completion.
 - Leave `switch_game` out. Do not make selection-by-visible-index part of the protocol.
@@ -411,7 +448,7 @@ A console-B soak demonstrates that every mutation has exactly one audit/request 
 ### Slice 6 — save facts and run-record adoption
 
 - Add the versioned save hook to the initial AutoStory/RNG programs and mark all unhooked
-  mutation paths stale with a reason.
+  mutation paths stale with a reason; add the shared `save_at(place)` precheck on top of it.
 - Adapt #116 run records instead of defining a competing run format; carry stop source,
   checkpoint and RNG hit summaries through resources/events.
 - Copy/link failure media only after publication is complete, with clean run-id paths.
@@ -426,8 +463,9 @@ record with the correct source.
   PID identity checks into reusable guarded operations.
 - Let the daemon start/stop only the process instance it owns; reconcile crashes and reject
   a second instance. Preserve an operator escape hatch.
-- Only after the soak, update hooks/rules so agents use the server instead of launching the
-  app or writing `Lab/inbox` directly.
+- Only after the soak, tighten the `require-profile` hook (or add a sibling) so agents cannot
+  launch the app at all, with or without `--profile`, and update the rules so they use the
+  server instead of writing `Lab/inbox` directly.
 
 Acceptance: tests use fake processes/PIDs; manual tests cover stale pidfiles, wrong profile,
 missing audio permission, crash/restart and refusal to kill an unrelated process.
@@ -462,22 +500,49 @@ the file channel: it remains the app/daemon compatibility boundary.
 
 ## Decisions and open questions
 
-Settled by the user's rules:
+Settled by the user:
 
-- User leases end only by explicit operator release. A Start or Stop clicked in the app
-  window, not sent through the channel, means the user holds console B until they say it is
-  free (2026-11-13); the `user` lease is that rule in code, and no idle timer ends it.
-- Console A is never exposed, and the app is never run without `--profile`.
+- **User lease (2026-11-13, confirmed 2026-11-14).** A Start or Stop clicked in the app
+  window, not sent through the lab inbox, hands console B to the user; agents stop until the
+  user says it is free. No timeout ends it; the `user` lease state is that rule in code.
+- **Console A is never exposed, and the app is never run without `--profile`.** The daemon's
+  one-entry allowlist covers the first; the `require-profile` hook (done 2026-11-14, see
+  Enforcement) covers the second today and is not a rollout item.
+- **Fork-only for now (2026-11-14).** The app's generic seams (`Lab/state.json`, the instance
+  id, the snapshot command, `describe_program` and the precheck list) and the mGBA
+  controller/video work (its own design, not in this doc) stay on the fork. They are kept
+  small enough to upstream later without a rewrite: behind the Lab/Developer boundary, no
+  change to the shared scheduler or clock, one connection, one controller, one video source.
+  Upstream is pitched only with results, by the user; no agent opens an upstream PR. The
+  Python daemon, console inventory, credentials and local policies are fork/local tooling in
+  any case.
+- **Preconditions are declared with the program (2026-11-14).** The list of named check
+  objects in Program contract and preflight; no server-side rules table and no
+  template/policy form (rejected: the list must be readable without running). It generalizes
+  FRLG's `RngProgramInstance::run_precheck()` (upstream PokemonAutomation/Arduino-Source#1881);
+  that code changes only in Slice 4, and the server first refuses a run on a failed check in
+  Slice 5. Nothing changes in upstream #1881 now.
 
-Proposed here, for the user to confirm:
+Still open, with the recommended answer in parentheses:
 
-- Static option/precondition data lives with the program contract; dynamic evidence lives in
-  the program instance. The server orchestrates and caches results but does not duplicate a
-  per-program rules table.
-- The generic app-side observation/contract seams are candidates for upstream review behind
-  the existing Lab/Developer boundary; whether and when to hand them upstream is the user's
-  call (no agent opens an upstream PR). The Python daemon, console inventory, credentials and
-  local policies remain fork/local tooling.
+1. Operator authentication for releasing a `user` lease and for the thin CLI in general: the
+   user and the agents are the same login on the lab Mac. (A separate operator token file read
+   only by the CLI's `release-user` command, plus a hook rule that refuses that command from an
+   agent shell; the rule, not cryptography, is the guard.)
+2. Agent lease TTL and renewal cadence for `agent-idle`. (20 minutes, renewed by every tool
+   call; never applies to `agent-running`.)
+3. How the daemon is started before Slice 7 makes it the supervisor. (A launchd agent beside
+   `com.dayfine.pa-sync`, attach-only; never started from an agent's Bash call.)
+4. `runs://` before #116 lands. (Slice 2 ships without it; it arrives in Slice 6 with #116's
+   format.)
+5. Which AutoStory family goes first in Slice 4. (FRLG: it shares the cartridge and the
+   one-save-slot risk with the RNG programs already on the list.)
+6. Check order and the `unknown` save fact: does `game_open` run before `black_border`, and
+   does `save_at` refuse or warn while `console://B/save` is `unknown`? (`game_open` first,
+   since a black-border check means nothing on HOME; `save_at` refuses on `unknown` and is not
+   declared before Slice 6.)
+7. The hook's known gaps (wrappers with flags, no `Lab/inbox` guard, Bash tool only). (Leave
+   them; the owner token in Slice 5 and app supervision in Slice 7 close them structurally.)
 
 Separate designs, not hidden follow-ups inside the console server: arbitrary game switching,
-CI diagnosis and stack/worktree planning.
+CI diagnosis and stack/worktree planning, and the mGBA controller/video work.
