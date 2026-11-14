@@ -417,11 +417,12 @@ bool pace_until_battle(Logger& logger, PatchSteps& steps, size_t max_steps){
 
 
 ConsolePatchSteps::ConsolePatchSteps(
-    ConsoleHandle& console, ProControllerContext& context, Direction pace, PaceSpot& spot,
+    ConsoleHandle& console, ProControllerContext& context, PlayerGender player, Direction pace, PaceSpot& spot,
     const PaceTrainerBattle& trainer_battle
 )
     : m_console(console)
     , m_context(context)
+    , m_player(player)
     , m_pace(pace)
     , m_spot(spot)
     , m_trainer_battle(trainer_battle)
@@ -433,7 +434,7 @@ bool ConsolePatchSteps::step(){
     const int ret = run_until<ProControllerContext>(
         m_console, m_context,
         [&](ProControllerContext& context){
-            step_once(m_console, context, way, m_spot.facing);
+            step_once(m_console, context, way, m_spot.facing, m_player);
         },
         {battle}
     );
@@ -471,18 +472,19 @@ void ConsolePatchSteps::dump_screen(std::string_view label){
 
 
 ConsoleCaptureActions::ConsoleCaptureActions(
-    ConsoleHandle& console, ProControllerContext& context, Language language,
+    ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player,
     PaceTrainerBattle trainer_battle
 )
     : m_console(console)
     , m_context(context)
     , m_language(language)
+    , m_player(player)
     , m_trainer_battle(std::move(trainer_battle))
 {}
 
 bool ConsoleCaptureActions::find_encounter(Direction pace){
-    ConsolePatchSteps steps(m_console, m_context, pace, m_spot, m_trainer_battle);
-    return find_paced_encounter(m_console.logger(), console_bike_select(m_console, m_context), steps);
+    ConsolePatchSteps steps(m_console, m_context, m_player, pace, m_spot, m_trainer_battle);
+    return find_paced_encounter(m_console.logger(), console_bike_select(m_console, m_context, m_player), steps);
 }
 
 EncounterSeen ConsoleCaptureActions::read_encounter(){
