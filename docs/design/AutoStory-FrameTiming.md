@@ -167,21 +167,23 @@ One PR on the shared `Pokemon/AutoStory` code, via /tdd with the FrameReplay sim
 Later slices: the per-step frame log line in every walker; the `frames_starved` row; the ninja
 wrapper for agent trees.
 
-## 4. Open questions
+## 4. Decisions (user, 2026-11-14)
 
-1. Add a sequence number to `VideoSnapshot`? Recommended: no for now; timestamps identify frames well
+All seven recommendations accepted as written.
+
+1. Add a sequence number to `VideoSnapshot`? Decided: no for now; timestamps identify frames well
    enough, and the pivot already dedupes on them. Revisit with the mGBA clock seam.
-2. Express timeouts in frames? Recommended: no. Milliseconds stay in programs; frames count evidence;
+2. Express timeouts in frames? Decided: no. Milliseconds stay in programs; frames count evidence;
    mGBA converts at its boundary.
 3. Which FRLG frame rate is right, 59.999977 (RNG calibration, NSO) or 59.7275 (GBA, slope tests,
-   mGBA)? Recommended: one constant per platform in `PokemonFRLG_RngCalibration.h`, the NSO value for
+   mGBA)? Decided: one constant per platform in `PokemonFRLG_RngCalibration.h`, the NSO value for
    console runs and the GBA value for mGBA, and retire the `EliteFourFarmer` copy.
 4. Should AutoStory watchers poll faster than the 50 ms default (20 Hz against a 30 fps source)?
-   Recommended: measure distinct frames per second with slice 1 first; change the period only if the
+   Decided: measure distinct frames per second with slice 1 first; change the period only if the
    settle verdicts are frame-limited at idle.
 5. Lab-B stream history during runs: keep at 30 fps, drop to 15, or disable while agents build?
-   Recommended: 15 fps during agent build windows; keep 30 fps for runs the user watches.
-6. Who enforces the build gate? Recommended: the harness (the ninja wrapper and the agent definition),
+   Decided: 15 fps during agent build windows; keep 30 fps for runs the user watches.
+6. Who enforces the build gate? Decided: the harness (the ninja wrapper and the agent definition),
    owned by the agents branch; the main session also checks `Lab/state` before dispatching a build.
-7. Name and retry policy of the lag class? Recommended: `frames_starved`, `RETRY_STEP`, owned by seam
+7. Name and retry policy of the lag class? Decided: `frames_starved`, `RETRY_STEP`, owned by seam
    (c); this doc does not edit the list.
