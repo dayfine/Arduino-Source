@@ -36,6 +36,7 @@
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryPlanGolden.h"
 #include "PokemonFRLG_AutoStoryPlanGolden10.h"
+#include "PokemonFRLG_AutoStoryPlanGolden11.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -282,8 +283,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 //  before leaves the player, and adds the plans to `golden`.
 UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 47 || checkpoints[0].start){
-        return "Expected 47 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 48 || checkpoints[0].start){
+        return "Expected 48 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -312,9 +313,9 @@ UnitTestResult test_routes_and_chain(){
 //  Every story route's plan against the stored copy in
 //  PokemonFRLG_AutoStoryPlanGolden.h. A change that should not alter any
 //  plan must leave this byte-identical. To regenerate after an intended plan
-//  change: run this suite, and replace the lines of FRLG_PLAN_GOLDEN and
-//  FRLG_PLAN_GOLDEN_10 (segment 10 on) with the lines the failure lists
-//  after "GOLDEN|".
+//  change: run this suite, and replace the lines of FRLG_PLAN_GOLDEN,
+//  FRLG_PLAN_GOLDEN_10 (segment 10) and FRLG_PLAN_GOLDEN_11 (segment 11 on)
+//  with the lines the failure lists after "GOLDEN|".
 UnitTestResult test_golden_plans(){
     std::vector<std::string> actual;
     UnitTestResult result = chain_story_routes(actual);
@@ -323,6 +324,7 @@ UnitTestResult test_golden_plans(){
     }
     std::vector<std::string_view> golden(std::begin(FRLG_PLAN_GOLDEN), std::end(FRLG_PLAN_GOLDEN));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_10), std::end(FRLG_PLAN_GOLDEN_10));
+    golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_11), std::end(FRLG_PLAN_GOLDEN_11));
     const size_t stored = golden.size();
     size_t first_diff = 0;
     while (first_diff < actual.size() && first_diff < stored && actual[first_diff] == golden[first_diff]){

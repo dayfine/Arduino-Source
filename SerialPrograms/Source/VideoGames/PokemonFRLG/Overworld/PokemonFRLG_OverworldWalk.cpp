@@ -231,6 +231,12 @@ bool select_onto_bike(const BikeSelectCalls& calls){
         if (calls.riding()){
             return true;
         }
+        if (calls.wait_to_read_again){
+            calls.wait_to_read_again();
+        }
+        if (calls.riding()){
+            return true;
+        }
     }
     return false;
 }
@@ -255,6 +261,9 @@ void get_on_bike(ConsoleHandle& console, ProControllerContext& context, PlayerGe
         const bool riding = screen && screen_shows_riding(*screen.frame, player);
         console.log(riding ? "Bike: riding." : "Bike: not riding after SELECT.", riding ? COLOR_BLACK : COLOR_ORANGE);
         return riding;
+    };
+    calls.wait_to_read_again = [&]{
+        pbf_wait(context, BIKE_SELECT_SETTLE);
     };
     console.log("Bike: SELECT (MINUS) onto the Bicycle.");
     if (!select_onto_bike(calls)){

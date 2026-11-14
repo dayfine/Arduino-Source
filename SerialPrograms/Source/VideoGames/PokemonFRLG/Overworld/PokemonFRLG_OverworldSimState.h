@@ -80,6 +80,12 @@ struct SimScript{
     //  one leaves the player where they were, with no fade, as a wall would
     //  (the warp no-op fault class, PokemonFRLG_AutoStoryFaultSweep_Tests.cpp).
     std::set<std::string> dead_warp_maps;
+    //  Fault injection: legs on the Bicycle counted out a tap at a time
+    //  (SimState::bike_legs), by number from 1, that start with
+    //  the player off the Bicycle: the mount state lost. On 11.01 a second
+    //  SELECT took the player off, and every bike tap after only turned
+    //  them (console B, 2026-11-12 05:42).
+    std::set<int> off_bike_at_legs;
     //  The player rides the Bicycle: a tap facing another way takes a step
     //  too, a hold through a turn loses no tile
     //  (MovementMechanics::BIKE_TAP_ONLY_TURNS), and no step tap is
@@ -149,6 +155,10 @@ struct SimState{
     int step_taps_ignored = 0;
     //  Walker step taps that moved the player (SimScript::unseen_step_taps).
     int moved_step_taps = 0;
+    //  Legs on the Bicycle counted out a tap at a time: taps on it, each
+    //  a way other than the last's, or after another press
+    //  (SimScript::off_bike_at_legs).
+    int bike_legs = 0;
     std::vector<std::string> trainers_beaten;
     //  Things the walker did that the game wouldn't let pass: D-pad holds
     //  under a battle, a trainer's battle fled, a battle fought that wasn't

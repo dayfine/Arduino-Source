@@ -68,6 +68,13 @@ constexpr int BLOCKED_TAP_SLACK = 3;
 //  and one more, which may have moved before its battle showed.
 StepOutcome count_bike_taps(const RouteStep& step, const BikeTapCalls& calls);
 
+//  count_bike_taps() on the Bicycle, where a tap that doesn't move may
+//  find the player on foot: `remount` then says whether they were and got
+//  back on, and the tap is tapped again, once a leg. On foot a bike tap
+//  only turned the player, each taken as blocked, and the route replanned
+//  9 times (11.01, console B, 2026-11-12 05:42).
+StepOutcome count_bike_taps_remounting(const RouteStep& step, const BikeTapCalls& calls, const std::function<bool()>& remount);
+
 //  Whether `step` is walked on foot a tap at a time (RouteStep::tapped),
 //  each a tile, by count_bike_taps() with STEP_TAP_TRIES: an open leg or
 //  one to a wall or onto a spinner, not onto a warp or over a connection.
