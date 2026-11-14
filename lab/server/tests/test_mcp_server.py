@@ -222,6 +222,11 @@ class ProtocolTests(ServerTest):
         _, body = self.client.rpc('tools/call', {'name': 'run_program', 'arguments': {'console': 'B'}})
         self.assertEqual(body['error']['code'], mcp_server.INVALID_PARAMS)
 
+    def test_non_object_params_get_an_invalid_params_reply(self):
+        response, body = self.client.raw(body={'jsonrpc': '2.0', 'id': 99, 'method': 'tools/call', 'params': [1]})
+        self.assertEqual(response.status, 200)
+        self.assertEqual(body['error']['code'], mcp_server.INVALID_PARAMS)
+
 
 class ConcurrencyTests(ServerTest):
     def test_many_readers_and_shots_while_the_app_writes(self):

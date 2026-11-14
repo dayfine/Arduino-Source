@@ -699,6 +699,15 @@ AUTHORS: Dict[str, str] = {
 
 # ---- entry points --------------------------------------------------------------------------------
 
+def check_object(spec: Spec, value: Any) -> Any:
+    """Checks `value` against one spec; returns it as checked or raises ContractError."""
+    ctx = _Ctx()
+    out = spec.check(value, '', ctx)
+    if ctx.errors:
+        raise ContractError('object', ctx.errors)
+    return out
+
+
 def validate(kind: str, value: Any) -> Parsed:
     if kind not in _SPECS:
         raise ValueError('unknown kind {!r}; kinds: {}'.format(kind, ', '.join(KINDS)))

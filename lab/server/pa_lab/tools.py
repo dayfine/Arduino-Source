@@ -42,14 +42,13 @@ class InvalidArguments(Exception):
 
 def check_arguments(tool: str, arguments: Any) -> Dict[str, Any]:
     """Closed argument objects: an unknown key is refused, as for every request (README)."""
-    ctx = contracts._Ctx()
     if not isinstance(arguments, dict):
         raise InvalidArguments('arguments', 'expected an object')
-    out = ARGUMENTS[tool].check(arguments, '', ctx)
-    if ctx.errors:
-        first = ctx.errors[0]
-        raise InvalidArguments(first.path, first.message)
-    return out
+    try:
+        return contracts.check_object(ARGUMENTS[tool], arguments)
+    except contracts.ContractError as e:
+        first = e.errors[0]
+        raise InvalidArguments(first.path, first.message) from None
 
 
 def _age_ms(observation: Dict[str, Any], now: float) -> Optional[int]:

@@ -325,9 +325,11 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if not self._gate():
+            self.close_connection = True  # the body is unread; it must not parse as the next request
             return
         length = self.headers.get('Content-Length')
         if length is None or not length.isdigit():
+            self.close_connection = True
             self._http_error(411, 'Content-Length required')
             return
         if int(length) > MAX_BODY_BYTES:
@@ -360,11 +362,13 @@ class _Handler(BaseHTTPRequestHandler):
         if 'id' not in message:  # notifications (notifications/initialized, cancelled)
             self._send(202)
             return
+        if not isinstance(params, dict):
+            self._send(200, {'jsonrpc': '2.0', 'id': message['id'],
+                             'error': {'code': INVALID_PARAMS, 'message': 'params must be an object'}})
+            return
         LOG.info('client=%s method=%s tool=%s', found[1], method,
                  params.get('name') if method == 'tools/call' else '-')
         try:
-            if not isinstance(params, dict):
-                raise RpcError(INVALID_PARAMS, 'params must be an object')
             reply = {'jsonrpc': '2.0', 'id': message['id'], 'result': self.server.mcp.call(method, params)}
         except RpcError as e:
             error = {'code': e.code, 'message': e.message}
