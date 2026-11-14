@@ -179,7 +179,9 @@ checkout and finish commands): `autostory-code`, `pr-maintenance`, `run-records`
 A dispatch brief points at the definition (`git show origin/agents:.agents/agents/<name>.md`, or
 `subagent_type: <name>` once linked into `~/.claude/agents/` from a checkout of this branch, as for
 skills) and carries only the task, as its `## The brief` section lists: goal, branch or PR and tip
-SHA, scope in and out, what is ruled out, done criteria, attribution lines (default time limit 2 h).
+SHA, scope in and out, what is ruled out, done criteria (default time limit 2 h). No attribution lines: commits get no
+Co-Authored-By or Claude-Session trailers and PR bodies no "Generated with Claude Code" line or
+session link (user, 2026-11-14).
 Don't restate the standing rules in a brief. `sh bin/agent-standing-rules-check.sh` and
 `sh bin/agent-harness-check.sh` must pass; the Harness Check workflow runs them on PRs into `agents`.
 
