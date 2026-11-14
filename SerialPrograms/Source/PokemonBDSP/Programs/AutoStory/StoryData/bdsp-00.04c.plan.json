@@ -1,0 +1,57 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "action": "sandgem_potions",
+        "args": {
+          "items": [
+            {
+              "item": "potion",
+              "quantity": 10
+            }
+          ]
+        },
+        "declared_after": {
+          "map": "Route202",
+          "tiles": [
+            [
+              30,
+              24
+            ]
+          ]
+        },
+        "id": "potions",
+        "kind": "shop",
+        "why": "Potions before Route 202's trainers: the Poke Mart lady's 10 (she stands still, as in the decomp)"
+      }
+    ],
+    "id": "00.04c",
+    "start": {
+      "map": "SandgemTown",
+      "tiles": [
+        [
+          16,
+          11
+        ],
+        [
+          17,
+          11
+        ],
+        [
+          18,
+          11
+        ]
+      ]
+    },
+    "title": "Poke Mart lady for Potions, back to Route 202's save spot"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Sandgem Town"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "metadata": {
+    "phase": "reproduction"
+  }
+}

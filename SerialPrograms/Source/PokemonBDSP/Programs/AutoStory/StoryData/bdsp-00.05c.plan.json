@@ -1,0 +1,149 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "action": "jubilife_start_probe",
+        "id": "where_we_start",
+        "kind": "game_action",
+        "why": "a step west: the Poketch Company's sign (14, 19) blocks it (00.05b's end); below the east-exit sign (59, 21) it goes (a rerun from 01.01's start when no Poketch came)"
+      },
+      {
+        "action": "town",
+        "args": {
+          "avoid": [
+            [
+              40,
+              20,
+              52,
+              25
+            ],
+            [
+              40,
+              26,
+              43,
+              27
+            ]
+          ],
+          "fight_wild": false,
+          "greeter": [
+            [
+              30,
+              22,
+              48,
+              34
+            ]
+          ],
+          "target": {
+            "facing": "east",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                45,
+                35
+              ]
+            ]
+          }
+        },
+        "id": "beside_the_president",
+        "kind": "route",
+        "why": "from the Poketch Company's sign (00.05b's end; 00.05b checks all three coupons are in the Bag) or the street east, round the plaza to the Poketch president"
+      },
+      {
+        "id": "president",
+        "kind": "talk",
+        "why": "the Poketch Company's president at (46, 35), level with (45, 35)"
+      },
+      {
+        "declared_after": {
+          "facing": "east",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              45,
+              35
+            ]
+          ]
+        },
+        "id": "the_poketch",
+        "kind": "scene",
+        "why": "the coupons for the Poketch; he walks off north"
+      },
+      {
+        "action": "check_poketch",
+        "id": "poketch",
+        "kind": "game_action",
+        "why": "the Poketch on the screen (R): without it the president had too few coupons, and Jubilife's east-exit guard (60, 21..24) turns us back in 01.01"
+      },
+      {
+        "action": "line",
+        "args": {
+          "avoid": [
+            [
+              40,
+              20,
+              52,
+              25
+            ],
+            [
+              40,
+              26,
+              43,
+              27
+            ],
+            [
+              60,
+              18,
+              70,
+              30
+            ]
+          ],
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                59,
+                21
+              ]
+            ]
+          }
+        },
+        "id": "below_the_east_exit_sign",
+        "kind": "route",
+        "why": "up the main road and along the street to below the east-exit sign (59, 21) facing north, west of the guard's trigger column 60: tapped legs (each a whole tile, a turn tap first) and legs to a wall, none a held leg ended in the open (lab-B 2026-11-12 13:55)",
+        "declared_after": {
+          "facing": "north",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              59,
+              21
+            ]
+          ]
+        }
+      }
+    ],
+    "id": "00.05c",
+    "start": {
+      "facing": "west",
+      "map": "JubilifeCity",
+      "tiles": [
+        [
+          14,
+          19
+        ]
+      ]
+    },
+    "title": "Jubilife: the clowns' coupons again, the Poketch, up to the street east to Route 203"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Jubilife City"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "metadata": {
+    "phase": "reproduction"
+  }
+}
