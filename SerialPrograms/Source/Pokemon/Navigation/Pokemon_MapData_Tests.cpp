@@ -401,18 +401,18 @@ UnitTestResult test_built_in_maps(){
     return true;
 }
 
-struct MapDataTestInput{
-    std::string name;
-    UnitTestResult (*test)();
-};
-
-struct MapDataTestExpectation{
-    std::string_view description;
-};
-
 struct MapDataTestCase{
-    MapDataTestInput input;
-    MapDataTestExpectation expectation;
+    struct Input{
+        std::string name;
+        UnitTestResult (*test)();
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_MapData : public UnitTest{

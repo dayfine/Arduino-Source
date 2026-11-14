@@ -30,18 +30,21 @@ cmake --build /path/to/build -j4
 ctest --test-dir /path/to/build --output-on-failure
 ```
 
-The focused target also runs all eight existing registered MapData cases,
-including their legacy diagnostics and embedded map assets. The 26 new cases are registered in the application's native test
+The focused target also runs the existing registered MapData cases,
+including their legacy diagnostics and embedded map assets. The runtime-map cases are registered in the application's native test
 database. They cover v1 compatibility, mixed/malformed versions and pairs,
 inclusive wander bounds, object groups, interaction-vs-item rejection, coordinate
 events and complete normalized JSON parity, including unknown metadata.
 
-For real data, prepare a clean PokemonSimulation checkout at
-`40717c7c809c415c751fd7a348dfc1895f7ec3d7` (merged #53), then run:
+For real data, prepare a clean PokemonSimulation checkout at the revision
+that `.github/workflows/runtime-map-reader.yml` pins (CI passes it as
+`--publisher-revision`; the script refuses any other), then run:
 
 ```sh
 python3 devtools/runtime-map-tests/prepare_parity.py \
-  --publisher /path/to/PokemonSimulation --out /tmp/runtime-map-pairs.json
+  --publisher /path/to/PokemonSimulation \
+  --publisher-revision <the ref pinned in runtime-map-reader.yml> \
+  --out /tmp/runtime-map-pairs.json
 /path/to/build/RuntimeMapTests /tmp/runtime-map-pairs.json
 ```
 

@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Split out of Pokemon_MapData.h, unchanged; it includes this header.
+ *  A map's tile grid. Pokemon_MapData.h builds on it.
  *
  */
 
