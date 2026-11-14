@@ -35,6 +35,7 @@ code branches keep only a stub workflow that checks this branch out to run it. O
 | Agent definitions (`autostory-code`, `pr-maintenance`, `reviewer`, `run-records`) | [.agents/agents/](.agents/agents/) | `~/.claude/agents/<name>.md` symlinks to `~/Projects/Arduino-Source-agentdefs/.agents/agents/` (a checkout of `agents`; `git -C` it `pull` to update). Dispatch with `subagent_type: <name>`. |
 | Harness checks | [bin/](bin/), [dev/lib/](dev/lib/), [.agents/standing-rules.conf](.agents/standing-rules.conf) | `sh bin/agent-harness-check.sh`, `sh bin/agent-standing-rules-check.sh`; CI: Harness Check on PRs into `agents`. |
 | Skills | [skills/](skills/) ([list](#skills)) | `ln -s "$PWD/skills/<name>" ~/.claude/skills/<name>` from a checkout of `agents`; edit here, not the local copy. |
+| Engineering-skills config (issue tracker, triage labels, domain docs) | [docs/agents/](docs/agents/) ([Agent skills](#agent-skills)) | Issues on the fork only, `gh ... -R dayfine/Arduino-Source`; `CONTEXT.md` and `docs/adr/` live on this branch. |
 
 **Code health and CI**
 
@@ -509,6 +510,20 @@ checkout of this branch; edit it here and PR the change, not the local copy.
   style review of a fork PR, against the user's own review themes.
 - [skills/codex-dispatch/SKILL.md](skills/codex-dispatch/SKILL.md): hand bounded tasks to Codex
   and use it as an advisory reviewer.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub issues on the fork, dayfine/Arduino-Source (never upstream). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` + `docs/adr/` on this agents branch. See `docs/agents/domain.md`.
 
 ## C++ harness and verification (fork issue #40)
 
