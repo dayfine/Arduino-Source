@@ -781,7 +781,7 @@ std::string expect_events(const std::vector<std::string>& events, const std::vec
 std::string pauses_before_each_step(CancellableScope& scope){
     const auto events = std::make_shared<std::vector<std::string>>();
     const StoryGame<GridPose> game = breakpoint_game(StoryBreakpoints::STEPS, events);
-    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::CAN_MOVE})}}, scope);
+    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     StoryEngine<GridPose> engine(game, backend);
     const StoryCheckpoint checkpoint = checkpoint_of("12.03", {game_step("first", "mark"), legs_step("shore"), game_step("last", "mark")});
     RunState state;
@@ -804,7 +804,7 @@ std::string pauses_before_each_step(CancellableScope& scope){
 std::string pauses_before_each_leg(CancellableScope& scope){
     const auto events = std::make_shared<std::vector<std::string>>();
     const StoryGame<GridPose> game = breakpoint_game(StoryBreakpoints::LEGS, events);
-    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::CAN_MOVE})}}, scope);
+    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     StoryEngine<GridPose> engine(game, backend);
     const StoryCheckpoint checkpoint = checkpoint_of("12.03", {game_step("first", "mark"), legs_step("shore")});
     RunState state;
@@ -827,7 +827,7 @@ std::string pauses_before_each_leg(CancellableScope& scope){
 std::string leg_label_without_a_known_tile(CancellableScope& scope){
     const auto events = std::make_shared<std::vector<std::string>>();
     const StoryGame<GridPose> game = breakpoint_game(StoryBreakpoints::LEGS, events);
-    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::CAN_MOVE})}}, scope);
+    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     StoryEngine<GridPose> engine(game, backend);
     const StoryCheckpoint checkpoint = checkpoint_of("12.03", {legs_step("shore")});
     RunState state;
@@ -841,7 +841,7 @@ std::string leg_label_without_a_known_tile(CancellableScope& scope){
 std::string off_never_pauses(CancellableScope& scope){
     const auto events = std::make_shared<std::vector<std::string>>();
     StoryGame<GridPose> game = breakpoint_game(StoryBreakpoints::OFF, events);
-    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::CAN_MOVE})}}, scope);
+    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     StoryEngine<GridPose> engine(game, backend);
     const StoryCheckpoint checkpoint = checkpoint_of("12.03", {game_step("first", "mark"), legs_step("shore")});
     RunState state;
@@ -852,7 +852,7 @@ std::string off_never_pauses(CancellableScope& scope){
     }
     StoryGame<GridPose> no_hook = breakpoint_game(StoryBreakpoints::LEGS, events);
     no_hook.pause_point = {};
-    FakeStoryBackend<GridPose> quiet({.looks = {look<GridPose>({ScreenEvent::CAN_MOVE})}}, scope);
+    FakeStoryBackend<GridPose> quiet({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     StoryEngine<GridPose> quiet_engine(no_hook, quiet);
     state = RunState();
     quiet_engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state);
