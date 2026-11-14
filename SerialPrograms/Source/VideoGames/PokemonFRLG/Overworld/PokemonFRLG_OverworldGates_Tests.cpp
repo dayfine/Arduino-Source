@@ -159,12 +159,48 @@ UnitTestResult test_route_presses_statue(){
     if (count_steps(*route, RouteAction::PRESS_SWITCH) != 1 || !(route->back().end == STATUE_GOAL)){
         return "Expected one press-switch step and the goal reached:" + describe(*route);
     }
-    if (!gates_after_route(GateState(), *route).switch_on("mansion")){
+    if (!gates_after_route(GateState(), *route).switch_on("GateStatue/mansion")){
         return "gates_after_route() does not have the switch on.";
     }
     return true;
 }
 
+
+//  A room with a sign on its north wall, above the third column, and a
+//  card-key door, open, in a corner out of the way.
+const std::vector<MapData>& sign_maps(){
+    static const std::vector<MapData> MAPS{parse_map(R"({
+        "format": "pokesim-runtime-map/2", "name": "GateSign", "points": {}, "warps": [], "connections": [], "source": {"decomp_file": "", "revision": "test", "date": "2026-11-12"},
+        "tiles": ["##S####", "#.....#", "#.....#", "#...G.#", "#######"],
+        "gates": {"door_1": {"tiles": [[4, 3]], "open_glyph": ".", "new_game": "closed", "opens_by": "card_key_face_a", "flag": "FLAG_TEST"}}
+    })", "GateSign")};
+    return MAPS;
+}
+
+//  A route over gated maps weighs a stop under a sign as one over maps
+//  without gates does: with the sign's overshoot dear, the walk to the tile
+//  under it comes from the side, not north from below.
+UnitTestResult test_gated_plan_keeps_stop_risk(){
+    RouteCosts costs = default_route_costs();
+    costs[RouteCost::SIGN_OVERSHOOT] = 1000;
+    GateState open;
+    open.opened.insert(Pokemon::gate_key("GateSign", "door_1"));
+    const MapPosition start{"GateSign", {2, 3}};
+    const RouteGoal goal{{"GateSign", {2, 1}}, std::nullopt};
+
+    const auto plain = plan_overworld_route(resolve_maps(sign_maps(), open), start, goal, costs);
+    const auto gated = plan_overworld_route_gated(sign_maps(), start, goal, open, GateRules(), costs);
+    if (!plain || !gated){
+        return "No route to the tile under the sign.";
+    }
+    if (plain->back().direction == Direction::NORTH){
+        return "The plain plan ends going north under the sign, so the test shows nothing:" + describe(*plain);
+    }
+    if (describe(*gated) != describe(*plain)){
+        return "The gated plan differs from the plain one, which weighs the stop under the sign:" + describe(*gated) + "\n  against" + describe(*plain);
+    }
+    return true;
+}
 
 //  Walks `route` in the sim from `start`, with the Card Key as `card_key`.
 struct SimRun{
@@ -221,7 +257,7 @@ UnitTestResult test_sim_presses_statue(){
         return "No route.";
     }
     const SimRun run = walk_in_sim(statue_maps(), STATUE_START, *route, false);
-    if (!run.failure.empty() || !(run.position == STATUE_GOAL) || !run.gates.switch_on("mansion")){
+    if (!run.failure.empty() || !(run.position == STATUE_GOAL) || !run.gates.switch_on("GateStatue/mansion")){
         return std::format("Expected the switch on and the goal reached, ended at {}: \"{}\"", to_string(run.position), run.failure)
             + describe(*route) + joined(run.log);
     }
@@ -250,6 +286,7 @@ const std::vector<GatesCase> GATES_CASES{
     {.input = {.name = "no route through a card-key gate without the Card Key", .body = test_route_needs_card_key}, .expectation = {}},
     {.input = {.name = "an open gate is walked through", .body = test_route_through_open_gate}, .expectation = {}},
     {.input = {.name = "the route presses a statue for a switch's barrier", .body = test_route_presses_statue}, .expectation = {}},
+    {.input = {.name = "a gated plan keeps the stop-risk costs", .body = test_gated_plan_keeps_stop_risk}, .expectation = {}},
     {.input = {.name = "sim: face the door, A, walk through", .body = test_sim_opens_gate}, .expectation = {}},
     {.input = {.name = "sim: face the statue, A, YES, walk through", .body = test_sim_presses_statue}, .expectation = {}},
     {.input = {.name = "sim: the door stays shut without the Card Key", .body = test_sim_door_stays_shut_without_card_key}, .expectation = {}},

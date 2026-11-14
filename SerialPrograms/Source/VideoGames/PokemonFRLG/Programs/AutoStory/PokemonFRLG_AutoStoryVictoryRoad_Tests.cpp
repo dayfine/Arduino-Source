@@ -17,6 +17,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -270,6 +271,67 @@ UnitTestResult test_strength_teach_and_cave_mouth(){
     return true;
 }
 
+//  A Victory Road floor's row on the sim from its start_gates, its boulder
+//  pushes included: it starts where `previous` ends, turns on the switch
+//  `switch_key`, meets no trainer, breaks no rule and ends on `end`.
+UnitTestResult cave_floor(std::string_view previous, std::string_view id, std::string_view switch_key, const MapPosition& end){
+    const StoryCheckpoint& before = checkpoint(previous);
+    const StoryCheckpoint& row = checkpoint(id);
+    const StoryPose at_start = *story_pose(Pokemon::pose_of(*row.start));
+    const std::optional<Pokemon::GridPose> before_pose = Pokemon::checkpoint_end_pose(before);
+    const std::optional<StoryPose> before_end = before_pose ? story_pose(Pokemon::pose_of(*before_pose)) : std::nullopt;
+    if (!before_end || before_end->map != at_start.map || !(before_end->tile == at_start.tile)){
+        return std::format("{} doesn't start where {} ends.", id, previous);
+    }
+    StoryPose at = at_start;
+    SimScript script;
+    script.gates = row.start_gates.value_or(Pokemon::GateState());
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, at.facing.value_or(Direction::NORTH), script);
+    for (const StoryStep& step : row.steps){
+        const bool push = step.kind == StoryStepKind::GAME && step.action == PUSH_BOULDER_VARIANT;
+        if (!push && step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS && step.kind != StoryStepKind::STEP){
+            continue;
+        }
+        if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
+            return std::format("{} {}: ended on {}; {}", id, step.name, to_string(sim.state().position), failure);
+        }
+        if (!sim.state().violations.empty()){
+            return std::format("{} {}: broke a rule on {}: {}", id, step.name, to_string(sim.state().position), sim.state().violations.front());
+        }
+        if (!sim.state().trainers_beaten.empty()){
+            return std::format("{} {}: met a trainer: {}", id, step.name, sim.state().trainers_beaten.front());
+        }
+    }
+    if (!sim.state().gates.switch_on(std::string(switch_key))){
+        return std::format("{}: the switch {} is not on.", id, switch_key);
+    }
+    if (!(sim.state().position == end)){
+        return std::format("{}: ended on {}, not {}.", id, to_string(sim.state().position), to_string(end));
+    }
+    if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
+        return std::format("{}: met a trainer or broke a rule on the way.", id);
+    }
+    return true;
+}
+
+//  19.04b: 1F's boulder from (7, 18) onto the switch (20, 16), the barrier
+//  open, up the ladder to 2F.
+UnitTestResult test_victory_road_1f(){
+    return cave_floor("19.04", "19.04b", "VictoryRoad_1F/floor_switch_1", MapPosition{"VictoryRoad_2F", {1, 9}});
+}
+
+//  19.04c: 2F's west boulder onto the switch (2, 19), then up to 3F and its
+//  north boulder onto the switch (7, 7).
+UnitTestResult test_victory_road_2f_3f(){
+    return cave_floor("19.04b", "19.04c", "VictoryRoad_3F/floor_switch_1", MapPosition{"VictoryRoad_3F", {6, 7}});
+}
+
+//  19.04d: 3F's boulder down the hole, after it to 2F, onto 2F's second
+//  switch (14, 19), then the exit to Route 23, a tile below its mouth (18, 29), where 19.05 starts.
+UnitTestResult test_victory_road_hole_and_exit(){
+    return cave_floor("19.04c", "19.04d", "VictoryRoad_2F/floor_switch_2", MapPosition{"Route23", {18, 29}});
+}
+
 //  19.05: from Victory Road's exit on Route 23 to the nurse's counter.
 UnitTestResult test_indigo_center_walk(){
     const StoryCheckpoint& row = checkpoint("19.05");
@@ -305,6 +367,18 @@ const AutoStoryVictoryRoadCase AUTO_STORY_VICTORY_ROAD_CASES[] = {
     {
         .input = {.name = "19.04 Strength over Water Pulse, into the cave", .body = test_strength_teach_and_cave_mouth},
         .expectation = {.description = "keep surf, bite, blizzard; Victory Road 1F (11, 20)"},
+    },
+    {
+        .input = {.name = "19.04b Victory Road 1F's boulder switch, up to 2F", .body = test_victory_road_1f},
+        .expectation = {.description = "1F's switch on, 2F (1, 9), no trainer met"},
+    },
+    {
+        .input = {.name = "19.04c Victory Road 2F's and 3F's boulder switches", .body = test_victory_road_2f_3f},
+        .expectation = {.description = "3F's switch on, 3F (6, 7), no trainer met"},
+    },
+    {
+        .input = {.name = "19.04d Victory Road 3F's hole, 2F's second switch, out to Route 23", .body = test_victory_road_hole_and_exit},
+        .expectation = {.description = "2F's east switch on, Route 23 (18, 29), no trainer met"},
     },
     {
         .input = {.name = "19.05 Indigo Plateau's Center", .body = test_indigo_center_walk},

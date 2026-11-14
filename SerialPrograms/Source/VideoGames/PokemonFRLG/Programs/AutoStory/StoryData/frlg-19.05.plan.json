@@ -4,7 +4,7 @@
   "checkpoint": {
     "id": "19.05",
     "title": "Victory Road's exit to Indigo Plateau: heal at its Center",
-    "start": {"map": "Route23", "tiles": [[18, 28]], "facing": "south"},
+    "start": {"map": "Route23", "tiles": [[18, 29]], "facing": "south"},
     "events": [
       {
         "id": "indigo_door",
@@ -13,7 +13,7 @@
         "args": {
           "target": {"map": "IndigoPlateau_Exterior", "tiles": [[11, 7]], "facing": "north"}
         },
-        "why": "from Victory Road's second-floor exit (Route 23 (18, 28)) north along Route 23 to Indigo Plateau (its north connection) and up to below the Center's door (11, 6)"
+        "why": "from below Victory Road's second-floor exit (Route 23 (18, 29)) north along Route 23 to Indigo Plateau (its north connection) and up to below the Center's door (11, 6)"
       },
       {
         "id": "indigo_nurse",
@@ -35,7 +35,7 @@
     "menu": "full",
     "notes": {
       "checkpoint": [
-        "Starts on Route 23 (18, 28), where Victory Road 2F's exit (48, 12) leaves the player, facing south. Victory Road's floors are not authored (19.04's note), so this row's start is its own (starts_after_unauthored_rows()).",
+        "Starts on Route 23 (18, 29), facing south, where 19.04d ends: Victory Road 2F's exit (48, 12) lets out on the cave mouth (18, 28), and the game walks the player a tile off it.",
         "Ends at Indigo Plateau's nurse below the counter (13, 12): the save point of the League's door, where the first League row (Lorelei) starts."
       ]
     }

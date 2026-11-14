@@ -27,6 +27,7 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
+#include "PokemonFRLG_AutoStoryBoulders.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
@@ -365,6 +366,7 @@ std::string save_card_place(const std::string& map){
         {"Route25", "route-25"},
         {"Route22", "route-22"},
         {"Route23", "route-23"},
+        {"VictoryRoad", "victory-road"},
         {"VermilionCity", "vermilion-city"},
         {"Route10", "route-10"},
         {"LavenderTown", "lavender-town"},
@@ -632,12 +634,10 @@ Outcome push_boulder(StoryEnv& env, RunState& state, const StoryStep& step){
         answer_yes_no(env.console, env.context, true, BUTTON_B, YES_NO_TIMEOUT);
         mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
     }
-    StoryPose at = *here;
     for (int64_t c = 0; c < tiles; c++){
         step_once(env.console, env.context, direction, direction, env.player_gender);
-        at = StoryPose{at.map, at.tile.next(direction), direction};
     }
-    return Pokemon::outcome_ok(to_pose(at));
+    return boulder_pushed(state, step, story_maps());
 }
 
 //  Vermilion Gym's trash cans on the console: a walk to each can's stand

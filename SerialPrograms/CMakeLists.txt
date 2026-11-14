@@ -230,6 +230,8 @@ add_library(SerialProgramsLib STATIC ${CORE_LIBRARY_SOURCES} ${LIBRARY_SOURCES})
 include(cmake/EmbedTextFiles.cmake)
 pa_embed_text_files(SerialProgramsLib Source/Pokemon/Navigation/TestMaps
     Pokemon/Navigation/Pokemon_NavigationTestMaps.h PokemonAutomation::Pokemon navigation_test_map_json)
+pa_embed_text_files(SerialProgramsLib Source/Pokemon/Navigation/GateTestMaps
+    Pokemon/Navigation/Pokemon_NavigationGateTestMaps.h PokemonAutomation::Pokemon navigation_gate_test_map_json)
 include(cmake/PokesimMapResources.cmake)
 pa_frlg_map_resources(FRLG_MAP_RESOURCES)
 pa_embed_text_files(SerialProgramsLib "${FRLG_MAP_RESOURCES}"
@@ -240,8 +242,6 @@ pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonFRLG/Programs/Aut
     VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.h PokemonAutomation::NintendoSwitch::PokemonFRLG autostory_checkpoint_json)
 pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonFRLG/Programs/AutoStory/ReplayData
     VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay.h PokemonAutomation::NintendoSwitch::PokemonFRLG story_replay_fixture_json)
-pa_embed_text_files(SerialProgramsLib Source/Pokemon/Navigation/GateTestMaps
-    Pokemon/Navigation/Pokemon_NavigationGateTestMaps.h PokemonAutomation::Pokemon navigation_gate_test_map_json)
 
 
 # Create binary target

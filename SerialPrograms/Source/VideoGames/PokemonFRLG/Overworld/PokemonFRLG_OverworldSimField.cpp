@@ -14,6 +14,7 @@
 #include "PokemonFRLG_CodedRooms.h"
 #include "PokemonFRLG_FlyMap.h"
 #include "PokemonFRLG_OverworldGatedRoute.h"
+#include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_OverworldSimField.h"
 #include "PokemonFRLG_OverworldWalk.h"
@@ -119,6 +120,40 @@ bool OverworldSim::cut_tree(){
     return false;
 }
 
+namespace{
+
+//  The map named `name` in `maps`, or nullptr.
+template <typename Maps>
+auto* map_named_in(Maps& maps, const std::string& name){
+    const auto found = std::find_if(maps.begin(), maps.end(), [&](const MapData& map){ return map.name == name; });
+    return found == maps.end() ? nullptr : &*found;
+}
+
+} // namespace
+
+void OverworldSim::land_fallen_boulder(const MapPosition& hole){
+    const MapData* from = map_named_in(m_maps, hole.map);
+    const MapWarp* warp = from == nullptr ? nullptr : warp_at(*from, hole.point);
+    if (warp == nullptr || !warp->to){
+        return;
+    }
+    static const std::vector<MapData> ALL = overworld_maps();
+    const MapData* below = map_named_in(ALL, warp->to->map);
+    MapData* shown = map_named_in(m_maps, warp->to->map);
+    if (below == nullptr || shown == nullptr){
+        return;
+    }
+    for (const MapObject& object : below->objects){
+        const bool hidden = object.name == "pushable_boulder" && object.hide_flag && std::none_of(
+            shown->objects.begin(), shown->objects.end(), [&](const MapObject& item){ return item.x == object.x && item.y == object.y; }
+        );
+        if (hidden){
+            shown->objects.push_back(object);
+            note("the boulder lands on " + to_string(MapPosition{shown->name, TilePos{object.x, object.y}}) + ".");
+        }
+    }
+}
+
 bool OverworldSim::push_boulder(){
     std::vector<MapObject>& objects = m_maps[m_map].objects;
     const TilePos ahead = m_player.position.next(m_state.facing);
@@ -128,6 +163,18 @@ bool OverworldSim::push_boulder(){
     if (boulder == objects.end() || m_state.screen != SimScreen::OVERWORLD || m_frozen){
         violation("no boulder " + std::string(direction_name(m_state.facing)) + " of " + to_string(m_state.position) + ".");
         return false;
+    }
+    //  A boulder pushed onto a hole falls through it to the floor below,
+    //  where the game shows the boulder it hid until then (Victory Road
+    //  3F's (34, 18): 2F's (33, 19), FLAG_HIDE_VICTORY_ROAD_2F_BOULDER).
+    const TilePos into = ahead.next(m_state.facing);
+    if (map().tiles.contains(into) && map().tiles.at(into) == TileKind::FALL_HOLE){
+        const MapPosition hole{map().name, into};
+        objects.erase(boulder);
+        advance_to(m_now + PUSH_TIME);
+        note("pushed the boulder into the hole at " + to_string(hole) + ".");
+        land_fallen_boulder(hole);
+        return true;
     }
     //  The boulder moves where a player on its tile could step.
     const PlayerState on_boulder{ahead, elevation_at(map(), ahead), false};
@@ -140,6 +187,16 @@ bool OverworldSim::push_boulder(){
     boulder->y = beyond.y;
     advance_to(m_now + PUSH_TIME);
     note("pushed the boulder to " + to_string(MapPosition{map().name, beyond}) + ".");
+    //  A boulder on a floor switch's button turns it on for good (Victory
+    //  Road's floors: the switch's flag, then the barrier redrawn).
+    const Pokemon::MapSwitch* pressed = m_state.gate_maps.empty()
+        ? nullptr
+        : Pokemon::switch_with_button(m_state.gate_maps[m_map], beyond);
+    if (pressed != nullptr){
+        m_state.gates.switches_on.insert(Pokemon::switch_key(*pressed));
+        read_gates();
+        note(std::format("switch {} is on.", Pokemon::switch_key(*pressed)));
+    }
     return true;
 }
 
@@ -175,22 +232,22 @@ bool OverworldSim::start_surf(){
 void OverworldSim::read_gates(){
     //  Only the tiles: the objects the sim has changed stay as they are.
     //  Maps without a gate were not copied.
-    if (m_source_maps.empty() && has_gates(m_maps)){
-        m_source_maps = m_maps;
+    if (m_state.gate_maps.empty() && has_gates(m_maps)){
+        m_state.gate_maps = m_maps;
     }
-    for (size_t c = 0; c < m_source_maps.size(); c++){
-        if (!m_source_maps[c].gates.empty()){
-            m_maps[c].tiles = Pokemon::resolve_tiles(m_source_maps[c], m_state.gates);
+    for (size_t c = 0; c < m_state.gate_maps.size(); c++){
+        if (!m_state.gate_maps[c].gates.empty()){
+            m_maps[c].tiles = Pokemon::resolve_tiles(m_state.gate_maps[c], m_state.gates);
         }
     }
 }
 
 bool OverworldSim::open_gate(){
-    if (m_source_maps.empty()){
+    if (m_state.gate_maps.empty()){
         violation("no gates on the maps.");
         return false;
     }
-    const MapData& source = m_source_maps[m_map];
+    const MapData& source = m_state.gate_maps[m_map];
     const Pokemon::MapGate* gate = Pokemon::closed_card_key_gate_faced(source, m_player.position, m_state.facing, m_state.gates);
     if (gate == nullptr || !m_script.card_key_held || m_state.screen != SimScreen::OVERWORLD || m_frozen){
         violation(std::format(
@@ -208,20 +265,21 @@ bool OverworldSim::open_gate(){
 }
 
 bool OverworldSim::press_switch(){
-    const Pokemon::MapSwitch* pressed = m_source_maps.empty()
+    const Pokemon::MapSwitch* pressed = m_state.gate_maps.empty()
         ? nullptr
-        : Pokemon::switch_pressed(m_source_maps[m_map], m_player.position, m_state.facing);
+        : Pokemon::switch_pressed(m_state.gate_maps[m_map], m_player.position, m_state.facing);
     if (pressed == nullptr || m_state.screen != SimScreen::OVERWORLD || m_frozen){
         violation(std::format("no statue to press {} of {}.", direction_name(m_state.facing), to_string(m_state.position)));
         return false;
     }
     //  The prompt, YES, and the text after it.
     advance_to(m_now + m_script.timing.message);
-    const bool now_on = pressed->toggle ? !m_state.gates.switch_on(pressed->id) : true;
+    const std::string key = Pokemon::switch_key(*pressed);
+    const bool now_on = pressed->toggle ? !m_state.gates.switch_on(key) : true;
     if (now_on){
-        m_state.gates.switches_on.insert(pressed->id);
+        m_state.gates.switches_on.insert(key);
     }else{
-        m_state.gates.switches_on.erase(pressed->id);
+        m_state.gates.switches_on.erase(key);
     }
     read_gates();
     note(std::format("switch {} is {}.", pressed->id, now_on ? "on" : "off"));
