@@ -908,6 +908,13 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonTools/Options/TrainOCRModeOption.h
     Source/CommonTools/Resources/SpriteDatabase.cpp
     Source/CommonTools/Resources/SpriteDatabase.h
+    Source/CommonTools/ScreenEvents/ScreenEventLog.h
+    Source/CommonTools/ScreenEvents/ScreenEventTypes.h
+    Source/CommonTools/ScreenEvents/ScreenEvents.cpp
+    Source/CommonTools/ScreenEvents/ScreenEvents.h
+    Source/CommonTools/ScreenEvents/ScreenEvents_Tests.cpp
+    Source/CommonTools/ScreenEvents/ScreenEvents_Tests.h
+    Source/CommonTools/ScreenEvents/ScreenFades.h
     Source/CommonTools/ScreenMachine/ScreenMachine.cpp
     Source/CommonTools/ScreenMachine/ScreenMachine.h
     Source/CommonTools/ScreenMachine/ScreenObservation.h
@@ -1360,6 +1367,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h
+    Source/NintendoSwitch/Inference/NintendoSwitch_HomeScreenObserver.cpp
+    Source/NintendoSwitch/Inference/NintendoSwitch_HomeScreenObserver.h
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.cpp
@@ -1585,10 +1594,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryRun_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryPreflight.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryPreflight.h
-    Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.h
-    Source/Pokemon/AutoStory/Pokemon_AutoStoryStats_Tests.cpp
-    Source/Pokemon/AutoStory/Pokemon_AutoStoryStats_Tests.h
     Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.cpp
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h
@@ -1609,13 +1615,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_SceneJudges.h
     Source/Pokemon/AutoStory/Pokemon_SceneJudges_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_SceneJudges_Tests.h
-    Source/Pokemon/AutoStory/Pokemon_ScreenEventLog.h
-    Source/Pokemon/AutoStory/Pokemon_ScreenEventTypes.h
-    Source/Pokemon/AutoStory/Pokemon_ScreenEvents.cpp
-    Source/Pokemon/AutoStory/Pokemon_ScreenEvents.h
-    Source/Pokemon/AutoStory/Pokemon_ScreenEvents_Tests.cpp
-    Source/Pokemon/AutoStory/Pokemon_ScreenEvents_Tests.h
-    Source/Pokemon/AutoStory/Pokemon_ScreenFades.h
     Source/Pokemon/AutoStory/Pokemon_StoryActions.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryActions.h
     Source/Pokemon/AutoStory/Pokemon_StoryActions_Tests.cpp
@@ -1638,6 +1637,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryPose.h
     Source/Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h
+    Source/Pokemon/AutoStory/Pokemon_StoryRunCounts_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryRunCounts_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StorySavePolicy_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StorySavePolicy_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StorySegments.cpp

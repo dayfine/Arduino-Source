@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Judgements a story step makes from screen events (Pokemon_ScreenEvents.h)
+ *  Judgements a story step makes from screen events (CommonTools/ScreenEvents/ScreenEvents.h)
  *  over time, not from one look: a warp is a fade or
  *  the banner of the map arrived on, and a talk or a scene is over when the
  *  overworld has been quiet for a while. Pure: tests drive them with
@@ -16,7 +16,7 @@
 #include <optional>
 #include <string>
 #include "Common/Cpp/Time.h"
-#include "Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

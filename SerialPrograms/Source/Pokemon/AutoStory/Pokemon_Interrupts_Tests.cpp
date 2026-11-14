@@ -16,7 +16,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Pokemon_Interrupts.h"
 #include "Pokemon_Interrupts_Tests.h"
-#include "Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "Pokemon_TestExpect.h"
 
 namespace PokemonAutomation{
