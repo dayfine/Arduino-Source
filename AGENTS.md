@@ -177,8 +177,9 @@ Each role has a definition under `.agents/agents/`, carrying its standing rules 
 checkout and finish commands): `autostory-code`, `pr-maintenance`, `run-records` and `reviewer`.
 A dispatch brief points at the definition (`git show origin/agents:.agents/agents/<name>.md`, or
 `subagent_type: <name>` once linked into `~/.claude/agents/` from a checkout of this branch, as for
-skills) and carries only the task: PR or branch, tip SHA, scope, prior review, rework round. Don't
-restate the standing rules in a brief. `sh bin/agent-standing-rules-check.sh` and
+skills) and carries only the task, as its `## The brief` section lists: goal, branch or PR and tip
+SHA, scope in and out, what is ruled out, done criteria, attribution lines (default time limit 2 h).
+Don't restate the standing rules in a brief. `sh bin/agent-standing-rules-check.sh` and
 `sh bin/agent-harness-check.sh` must pass; the Harness Check workflow runs them on PRs into `agents`.
 
 ## Where PRs live

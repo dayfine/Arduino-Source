@@ -11,6 +11,23 @@ fails when a listed agent's definition loses the block or one of its
 required phrases; `.agents/standing-rules.conf` lists which agents need which
 roles.
 
+## The brief — what the dispatcher sends
+
+Each definition also carries a short `## The brief` section listing what a brief must contain, so the
+dispatcher and the agent agree on it:
+
+- the goal;
+- the branch or PR and its tip SHA;
+- scope in and out (for a review: the delta since the last review and where that review is);
+- what is already ruled out;
+- done criteria;
+- the attribution lines (commit trailers, PR-body ending), for agents that commit.
+
+A wall-clock limit is optional; the definition states the default (2 h here). Anything else that
+holds for every dispatch belongs in the standing-rules block, not in the brief.
+
+## The blocks
+
 Copy the block for the agent's role into its definition and replace the
 `<TODO>` placeholders with your project's commands. **Keep the phrases the
 checker looks for verbatim** (listed under each block).
@@ -21,14 +38,13 @@ checker looks for verbatim** (listed under each block).
 ## Standing rules — the dispatch brief does not repeat these
 
 <!-- standing-rules: pinned by bin/agent-standing-rules-check.sh -->
-The dispatcher's brief carries only the task: the issue or PR and its tip SHA, the scope or the delta
-since the last review, the prior review's location, and the rework iteration. The rules below apply
-without being restated.
+The dispatcher's brief carries only the task (see The brief above). The rules below apply without
+being restated.
 
-- **No waiting.** Run every build and test in the foreground with `timeout: 600000`, split into scoped
-  calls (`<TODO: format command>`, `<TODO: build command>`, `<TODO: test command for one directory>`)
-  when one call could run longer. Read the exit code from a file (`…; echo $? > rc`), never through a
-  pipe. Never background a long command and end the turn waiting for it: nothing wakes a subagent.
+- **No waiting.** Run every local check in the foreground with `timeout: 600000`, split into scoped
+  calls (`<TODO: lint command>`, `<TODO: compile one touched file>`) when one call could run longer.
+  Full builds and tests run on CI after the push (`<TODO: CI workflow and its dispatch command>`).
+  Read the exit code from a file (`…; echo $? > rc`), never through a pipe. Never background a long command and end the turn waiting for it: nothing wakes a subagent.
   If a command does run in the background, keep polling its output in bounded loops until it finishes.
 - **Bounded loops.** Every wait loop has an iteration cap and checks that the producing process is
   still alive.
@@ -45,10 +61,13 @@ Required phrases: `## Standing rules — the dispatch brief does not repeat thes
 Append to the `all` block:
 
 ```markdown
-- **Commit early, finish in one turn.** Commit and push as soon as the scoped checks pass; the full
-  build and test run comes after the push. Then, in the foreground and without ending the turn:
+- **Commit early, finish in one turn.** Commit and push as soon as the scoped checks pass; CI runs the
+  full build and tests after the push. Then, in the foreground and without ending the turn:
   verify → commit → push → open the PR → confirm the PR's file list. Never end with an unpushed commit.
   If the push or PR step fails twice, report the branch, the commit id and "PR NOT opened".
+  Commit trailers and the PR-body ending come from the brief's attribution lines; never hardcode them.
+- **Time limit.** At the wall-clock limit (brief, else the definition's default), push what is done
+  and report.
 - **Your stage ends at the PR.** Never wait for CI or any other event after pushing: report the PR
   number and tip SHA and stop; the dispatcher waits for CI (`.agents/rules/long-chain-ownership.md`).
 ```
