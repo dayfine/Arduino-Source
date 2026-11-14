@@ -406,10 +406,8 @@ private:
     SessionCase m_case;
 };
 
-}  // namespace
 
-
-void add_tests(UnitTestDatabase& database){
+void add_framing_and_reply_tests(UnitTestDatabase& database){
     const LineFramingCase LINE_FRAMING_CASES[] = {
         {.name = "one line", .input = {{"OK\n"}, 16}, .expectation = {{"OK"}, false}},
         {.name = "CR before LF dropped", .input = {{"OK 5\r\n"}, 16}, .expectation = {{"OK 5"}, false}},
@@ -446,7 +444,9 @@ void add_tests(UnitTestDatabase& database){
     for (const ReplyCase& test_case : REPLY_CASES){
         database.add<Test_Reply>(test_case);
     }
+}
 
+void add_clock_and_session_tests(UnitTestDatabase& database){
     //  One frame = 1000 / 59.7275 ms = 16742.7 us.
     const FrameClockCase FRAME_CLOCK_CASES[] = {
         {.name = "anchor frame", .input = {1000}, .expectation = {std::chrono::microseconds(0)}},
@@ -484,6 +484,14 @@ void add_tests(UnitTestDatabase& database){
     for (const SessionCase& test_case : SESSION_CASES){
         database.add<Test_Session>(test_case);
     }
+}
+
+}  // namespace
+
+
+void add_tests(UnitTestDatabase& database){
+    add_framing_and_reply_tests(database);
+    add_clock_and_session_tests(database);
 }
 
 
