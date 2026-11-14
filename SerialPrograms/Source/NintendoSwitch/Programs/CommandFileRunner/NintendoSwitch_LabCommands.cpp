@@ -6,6 +6,8 @@
 
 #include <format>
 #include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Notifications/ProgramInfo.h"
+#include "CommonFramework/Tools/ProgramEnvironment.h"
 #include "GameConsole/Framework/ConsoleProgramSession.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
@@ -22,11 +24,12 @@ using namespace std::chrono_literals;
 namespace{
 
 //  The console of a stopped program, with a Pro Controller context for the
-//  command's scope.
+//  command's scope and a program environment for commands that need one.
 class LabConsole{
 public:
     LabConsole(PanelSession& panel, CancellableScope& scope)
-        : m_console(system_of(panel))
+        : m_env(m_info, program_of(panel), nullptr, nullptr)
+        , m_console(program_of(panel).system())
         , m_context(scope, m_console.controller<ProController>())
     {
         //  Commands that watch the screen (run_until) need the inference
@@ -37,18 +40,22 @@ public:
         }
     }
 
+    ProgramEnvironment& env(){ return m_env; }
     ConsoleHandle& console(){ return m_console; }
     ProControllerContext& context(){ return m_context; }
 
 private:
-    static GameConsole::ConsoleSystemSession& system_of(PanelSession& panel){
+    static GameConsole::ConsoleProgramSession& program_of(PanelSession& panel){
         GameConsole::ConsoleProgramSession* program = dynamic_cast<GameConsole::ConsoleProgramSession*>(&panel);
         if (program == nullptr){
             throw ParseException("The selected program has no console of its own.");
         }
-        return program->system();
+        return *program;
     }
 
+    //  No stats: lab commands keep none.
+    const ProgramInfo m_info{"Lab channel"};
+    ProgramEnvironment m_env;
     ConsoleHandle m_console;
     ProControllerContext m_context;
 };
@@ -77,12 +84,9 @@ void SwitchLabCommands::run(
     //  A command that only reads the screen may run while a program drives
     //  the controller; it must not wait for that program's presses.
     const bool drives = command_file_command_kind(words[0]) == CommandFileCommandKind::DRIVES_CONSOLE;
-    CommandFileSession session{console.console(), console.context(), output.out, output.outbox, output.request, drives};
+    CommandFileSession session{console.env(), console.console(), console.context(), output.out, output.outbox, output.request, drives};
     try{
-        run_command_file_line(session, words);
-        if (drives){
-            session.context.wait_for_all_requests();
-        }
+        run_command_file_line(session, words, output.line);
     }catch (OperationCancelledException&){
         throw;
     }catch (...){

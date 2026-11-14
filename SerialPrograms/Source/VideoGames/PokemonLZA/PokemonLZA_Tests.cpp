@@ -24,6 +24,7 @@
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDetectors_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStoryCommands_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryTable_Tests.h"
 
 namespace PokemonAutomation{
@@ -53,6 +54,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStoryIntro(database);
     add_tests_AutoStorySceneMachine(database);
     add_tests_AutoStoryEngine(database);
+    add_tests_AutoStory_Commands(database);
 
 }
 

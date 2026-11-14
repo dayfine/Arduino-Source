@@ -97,6 +97,10 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/Cpp/Hardware/Hardware_x86_Linux.tpp
     ../Common/Cpp/Hardware/Hardware_x86_Windows.tpp
     ../Common/Cpp/HttpServer/AbstractHttpServer.h
+    ../Common/Cpp/HttpServer/HttpServer.cpp
+    ../Common/Cpp/HttpServer/HttpServer.h
+    ../Common/Cpp/HttpServer/HttpServer_Tests.cpp
+    ../Common/Cpp/HttpServer/HttpServer_Tests.h
     ../Common/Cpp/ImageResolution.cpp
     ../Common/Cpp/ImageResolution.h
     ../Common/Cpp/Json/JsonArray.cpp
@@ -1412,6 +1416,11 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Options/TurboMacroTable.h
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileParsing.cpp
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileParsing.h
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileReading.h
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRecorder.cpp
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRecorder.h
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRecorder_Tests.cpp
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRecorder_Tests.h
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner.cpp
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner.h
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner_Tests.cpp
@@ -1965,6 +1974,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TrainerCardDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TrainerCardDetector.h
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BallReader.cpp
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BallReader.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.cpp
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.cpp
@@ -2117,6 +2128,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonHome/Inference/PokemonHome_GigantamaxDetector.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_OriginMarkReader.cpp
     Source/VideoGames/PokemonHome/Inference/PokemonHome_OriginMarkReader.h
+    Source/VideoGames/PokemonHome/Inference/PokemonHome_PageViewDetector.cpp
+    Source/VideoGames/PokemonHome/Inference/PokemonHome_PageViewDetector.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_SelectionArrowDetector.cpp
     Source/VideoGames/PokemonHome/Inference/PokemonHome_SelectionArrowDetector.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_ShinyDetector.cpp
@@ -2499,6 +2512,10 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryCommands.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryCommands.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryCommands_Tests.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryCommands_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryDevFiles.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryDevFiles.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryEngine_Tests.cpp

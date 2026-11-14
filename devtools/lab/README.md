@@ -12,6 +12,7 @@ request is a text file in `inbox/`, its journal appears in `outbox/`, and
 | `lablock.sh` | One user of a console at a time: `run [-w] NAME -- CMD...`, `check`, `status`. | `-c CONSOLE` or `LAB_CONSOLE` (default `default`); `LAB_DIR` for the lock folder (default `~/.lab`); `LABLOCK_TOKEN` passed to the command. |
 | `labctl.sh` | One channel command per call: `state`, `start`, `stop`, `select ID`, `set KEY JSON`, `owner claim TOKEN`, `owner release`, `keepawake on\|off [S]`, `send NAME` (any request from stdin); `supports PATH` tells whether a build has the channel. | `-p PROFILE` or `LAB_PROFILE`; `LAB_OWNER` for the owner line; `LABCTL_WAIT` seconds per request and for start/stop to settle (default 60). `start` refuses with `controller not connected` when the app's controller never becomes ready (`controller=` in `state`). |
 | `cfrun.sh` | Send one batch of console commands (stdin) under the console's lock and print its journal. | `-p PROFILE` or `LAB_PROFILE`; `LAB_OWNER`; `CFRUN_WAIT` seconds per batch (default 600). |
+| `cfr_steps_to_story.py` | Turn a batch's `Lab/outbox/<batch>.steps.jsonl` (one line per command) into draft PLZA story table rows: one step per `lza_*` action, raw inputs collapsed into one `RAW n inputs` line to review. Tests: `test_cfr_steps_to_story.py`. | `STEPS` file; `--first-id` (default `01.01`). |
 
 Each script's header comment has the full usage and exit codes.
 
