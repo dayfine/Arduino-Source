@@ -517,22 +517,20 @@ GrassCatches fight_back(
     return out;
 }
 
-//  At one stop (`at` from the objective), 4 tries at most, until
-//  `new_species_wanted` new species or `max_throws`: a wild battle on is
-//  fought (fight_back()); otherwise it sweeps the camera for brackets
+//  At one stop (`at` from the objective), 4 tries at most, until a new
+//  species is caught (the stop ends) or `max_throws`: a wild battle on is fought (fight_back()); otherwise it sweeps the camera for brackets
 //  (sweep_for_brackets()), turns the camera to the tallest, holds ZL until
 //  the target's name plate shows the lock (LOCK_ON_WAIT at most; the move
 //  symbols show only with the partner out, and never did in 03.08, console
 //  B 2026-11-14), chooses the nearest target not caught and walks toward
-//  it when far (aim_choose_approach()), and throws. No
-//  brackets: on to the next stop. All species caught: turns the camera
+//  it when far (aim_choose_approach()), and throws. No brackets: on to the next stop. All species caught: turns the camera
 //  right a little and watches again.
 GrassCatches catch_at_stop(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
-    BattleAIOption& battle_ai, int at, int new_species_wanted, int max_throws
+    BattleAIOption& battle_ai, int at, int max_throws
 ){
     GrassCatches out;
-    for (int tries = 0; tries < 4 && out.found < new_species_wanted && out.throws < max_throws; tries++){
+    for (int tries = 0; tries < 4 && out.found == 0 && out.throws < max_throws; tries++){
         //  Level at the stop's start and after every lock-on and throw.
         level_camera(console, context);
         if (wild_battle_on(console, context)){
@@ -556,6 +554,9 @@ GrassCatches catch_at_stop(
             continue;
         }
         out += throw_at_target(env, console, context, battle_ai, max_throws - out.throws);
+    }
+    if (out.found > 0){
+        console.log(std::format("catch_in_zone(): caught at {}: the stop ends, on to the next.", at));
     }
     level_camera(console, context);
     return out;
@@ -793,7 +794,7 @@ GrassCatches patrol_and_catch(
         last = at ? at : stops[i];
         step_across_road(console, context, true);
         const GrassCatches stop = catch_at_stop(
-            env, console, context, battle_ai, at.value_or(-1), new_species_wanted - result.found, max_throws - result.throws
+            env, console, context, battle_ai, at.value_or(-1), max_throws - result.throws
         );
         step_across_road(console, context, false);
         console.log(std::format(
