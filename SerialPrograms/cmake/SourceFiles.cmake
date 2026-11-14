@@ -1493,6 +1493,12 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.h
     Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts.cpp
+    Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts.h
+    Source/Pokemon/AutoStory/Pokemon_CheckpointRetry.cpp
+    Source/Pokemon/AutoStory/Pokemon_CheckpointRetry.h
+    Source/Pokemon/AutoStory/Pokemon_CheckpointRetry_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_CheckpointRetry_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
