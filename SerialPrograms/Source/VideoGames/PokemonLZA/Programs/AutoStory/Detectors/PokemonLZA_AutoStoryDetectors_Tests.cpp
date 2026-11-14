@@ -2,36 +2,15 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Synthetic frames always. The opening's frames are not in
- *  CommandLineTests yet; each set runs when its folder is in the
- *  environment and is skipped otherwise (console B, 1920x1080):
- *  - PLZA_OPENING_FRAMES: platform_ref.png and the lab's cutscene,
- *    0001-*.png ... 0056-*.png;
- *  - PLZA_USER_OPENING_FRAMES: the user's run, rec1_u001.png ...
- *    rec1_u146.png, one per ~1.5 s, with the autosave badge (in Chinese);
- *  - PLZA_0101_RUN1_FRAMES: 01.01's first run (2026-11-10 13:00, in
- *    Chinese), 0001-*.png ... 0089-*.png: the platform with the controls
- *    hint, the walk to the plaza and the arrival scenes;
- *  - PLZA_0101_RUN2_FRAMES: 01.01's second run (2026-11-10 13:28, in
- *    Chinese), 0001-*.png ... 0115-*.png: the same, on to the ad's
- *    subtitles (0090-0115), where the run stopped;
- *  - PLZA_0101_RUN3_FRAMES: 01.01's third run (2026-11-10 13:49, in
- *    Chinese), 0001-*.png ... 0181-*.png: the same, through the ad and
- *    Pancham taking the bag, to the "MAIN MISSION 01" banner (0181);
- *  - PLZA_0101_RUN4_FRAMES: 01.01's fourth run (2026-11-10, in Chinese),
- *    0001-*.png ... 0221-*.png, the "MAIN MISSION 01" banner on
- *    0181-0189;
- *  - PLZA_0103_RUN2_FRAMES: 01.03's second run (2026-11-10, in Chinese),
- *    0001-*.png ... 0139-*.png and mission01-complete-fullres.png: the
- *    "MAIN MISSION 01 COMPLETE" card (0045, 0046, the full-res frame),
- *    the "MAIN MISSION 02" banner (0133-0139).
+ *  Synthetic frames, and console frames (1920x1080 JPEG) from
+ *  CommandLineTests/PokemonLZA/AutoStoryDetectors/, one folder per scene
+ *  sequence.
  *
  */
 
 
 #include <charconv>
 #include <cmath>
-#include <cstdlib>
 #include <format>
 #include <functional>
 #include <optional>
@@ -40,6 +19,7 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "PokemonLZA_AutoStoryAdvanceArrowDetector.h"
 #include "PokemonLZA_AutoStoryAutosaveDetector.h"
@@ -227,7 +207,7 @@ enum class BannerIcon{
 
 //  The mission banner drawn on a grey scene: the yellow bar, and with
 //  BannerIcon::DRAWN the icon's white hexagon (as a block) with the orange
-//  stroke, `dx` right of where the 01.01 banner frame has it.
+//  stroke, `dx` right of where the detector expects it.
 ImageRGB32 mission_banner_frame(size_t dx, BannerIcon icon){
     ImageRGB32 image = solid_frame(0xff606060);
     fill_box(345, 410, 1590, 600, 0xfffad228, image);
@@ -396,7 +376,7 @@ UnitTestResult check_synthetic_frame(const SyntheticFrameCase& test, Logger& log
 }
 
 
-//  Recorded frames, from folders named by environment variables.
+//  Console frames, from folders in CommandLineTests.
 
 //  The number of `digits` digits at `offset` in a frame's file name; none
 //  if they are not all digits.
@@ -413,7 +393,8 @@ std::optional<int> frame_number(std::string_view name, size_t offset, size_t dig
     return number;
 }
 
-//  A frame as a run read it, by its name ("0133-nothing+mission_banner.png").
+//  What a frame shows, from the readings in its name
+//  ("0133-nothing+mission_banner.jpg").
 DetectorReads as_named(std::string_view name){
     const auto has = [name](std::string_view reading){
         return name.find(reading) != std::string_view::npos;
@@ -425,38 +406,17 @@ DetectorReads as_named(std::string_view name){
     };
 }
 
-//  The lab's opening: platform_ref.png is the platform, no cutscene frame
-//  0001-0056 is; only 0050 shows the skip prompt. The platform reference
-//  was taken after the controls hint had gone.
-std::optional<DetectorReads> lab_opening(std::string_view name){
-    return DetectorReads{.platform = name == "platform_ref.png", .skip_prompt = name.starts_with("0050-")};
+//  The opening cutscene up to the platform: only 0050 shows the skip
+//  prompt, and none is the platform.
+std::optional<DetectorReads> opening(std::string_view name){
+    return DetectorReads{.skip_prompt = name.starts_with("0050-")};
 }
 
-//  The user's run rec1_u001-u146: the platform settles at u131 (u124-u130
-//  are the fade in and the camera moving in; u128 already passes, top 77
-//  under 90, as the platform it shows), the autosave badge shows on
-//  u132 only, the controls hint on u132-u138 (~10 s), no skip prompt. The
-//  train's blue box has its advance chevron on u116-u122.
-//  Later frames of the folder are not in the set.
-std::optional<DetectorReads> user_opening(std::string_view name){
-    const std::optional<int> index = frame_number(name, 6, 3);
-    if (!index || *index > 146){
-        return std::nullopt;
-    }
-    return DetectorReads{
-        .platform = *index == 128 || *index >= 131,
-        .autosave = *index == 132, .controls_hint = *index >= 132 && *index <= 138,
-        .advance_arrow = *index >= 116 && *index <= 122,
-    };
-}
-
-//  01.01's first run: the platform (0001-0003, as the run read it) and the
-//  walk with the controls hint (0001-0006; it is gone by 0007), then the
-//  white fade, the title card, the text-free flyover, the starters and the
-//  girl, the tourist choice (0065) and the ad (0080-0089): no free control.
-//  No autosave: the run took flyover frames 0033 and 0038 for one. The
-//  advance chevron on the one box with its text done, 0040.
-std::optional<DetectorReads> run1_arrival(std::string_view name){
+//  The platform (as named) with the controls hint (0001-0006), the walk,
+//  the white fade, the title card, the text-free flyover, the starters, the
+//  tourist choice and the start of the ad: no autosave badge, the advance
+//  chevron only on the one box with its text done (0040).
+std::optional<DetectorReads> arrival_to_ad(std::string_view name){
     const std::optional<int> index = frame_number(name, 0, 4);
     if (!index){
         return std::nullopt;
@@ -467,11 +427,10 @@ std::optional<DetectorReads> run1_arrival(std::string_view name){
     };
 }
 
-//  01.01's second run: as the first, with the hint on 0001-0006, on to the
-//  ad (the logo 0088-0089, the president's subtitles 0090-0115). The
-//  advance chevron on the boxes with their text done (0044, 0049, 0053,
-//  0078) and on the ad's subtitles once typed (0093-0115).
-std::optional<DetectorReads> run2_arrival(std::string_view name){
+//  As arrival_to_ad(), on to the ad's subtitles (0090-0115). The advance
+//  chevron on the boxes with their text done (0044, 0049, 0053, 0078) and
+//  on the subtitles once typed (0093-0115).
+std::optional<DetectorReads> arrival_to_ad_subtitles(std::string_view name){
     const std::optional<int> index = frame_number(name, 0, 4);
     if (!index){
         return std::nullopt;
@@ -484,11 +443,10 @@ std::optional<DetectorReads> run2_arrival(std::string_view name){
     };
 }
 
-//  01.01's third run: as the second, on through the ad and the bag scene.
-//  The platform, the controls hint and the advance chevron as the run read
-//  them (in each frame's name; checked by eye on the hint and the chevrons
-//  through 0115 in run 2); the mission banner on 0181 only, the last frame.
-std::optional<DetectorReads> run3_arrival(std::string_view name){
+//  As arrival_to_ad_subtitles(), on through the ad and the bag scene. The
+//  platform, the controls hint and the advance chevron as named; the
+//  mission banner on 0181 only, the last frame.
+std::optional<DetectorReads> arrival_to_mission_banner(std::string_view name){
     const std::optional<int> index = frame_number(name, 0, 4);
     if (!index){
         return std::nullopt;
@@ -501,31 +459,27 @@ std::optional<DetectorReads> run3_arrival(std::string_view name){
     };
 }
 
-//  01.01's fourth run: every detector as the run read it; the banner on
-//  0181-0189 (checked by eye), no complete card.
-std::optional<DetectorReads> run4_arrival(std::string_view name){
+//  Every detector as named; the banner on 0181-0189, no complete card.
+std::optional<DetectorReads> arrival_past_mission_banner(std::string_view name){
     return as_named(name);
 }
 
-//  01.03's second run: as the run read it, and the complete card on 0045,
-//  0046 (named "nothing": the run had no detector for it) and the full-res
-//  frame; the "MAIN MISSION 02" banner on 0133-0139 is not the card.
-std::optional<DetectorReads> run_0103_2(std::string_view name){
+//  As named, and the complete card on 0045 and 0046 (named "nothing"); the
+//  next mission's banner (0133-0139) is not the card.
+std::optional<DetectorReads> mission_complete_to_next_banner(std::string_view name){
     DetectorReads want = as_named(name);
-    want.mission_complete = name.starts_with("0045-") || name.starts_with("0046-") ||
-        name == "mission01-complete-fullres.png";
+    want.mission_complete = name.starts_with("0045-") || name.starts_with("0046-");
     return want;
 }
 
 struct FrameFolderCase{
     std::string name;
     struct Input{
-        std::string_view folder_variable;   //  The environment variable naming the folder.
-        std::string_view prefix;            //  The file names to read: <prefix>*.png.
+        std::string_view folder;    //  In CommandLineTests/PokemonLZA/AutoStoryDetectors/.
     };
     Input input;
     struct Expectation{
-        size_t frames = 0;  //  How many files of the folder `reads` has an expectation for.
+        size_t frames = 0;  //  How many frames of the folder `reads` has an expectation for.
         //  Each frame's reads, by file name; none for a file not in the set.
         //  A detector it leaves unset must not fire.
         std::function<std::optional<DetectorReads>(std::string_view name)> reads = {};
@@ -535,69 +489,48 @@ struct FrameFolderCase{
 
 const FrameFolderCase FRAME_FOLDER_CASES[] = {
     {
-        .name = "the lab's opening frames",
-        .input = {.folder_variable = "PLZA_OPENING_FRAMES", .prefix = ""},
-        //  0001-0056 and platform_ref.png.
-        .expectation = {.frames = 57, .reads = lab_opening},
+        .name = "the opening cutscene",
+        .input = {.folder = "Opening"},
+        .expectation = {.frames = 56, .reads = opening},
     },
     {
-        .name = "the user's opening frames",
-        .input = {.folder_variable = "PLZA_USER_OPENING_FRAMES", .prefix = "rec1_u"},
-        .expectation = {.frames = 146, .reads = user_opening},
+        .name = "the arrival to the ad",
+        .input = {.folder = "ArrivalToAd"},
+        .expectation = {.frames = 89, .reads = arrival_to_ad},
     },
     {
-        .name = "01.01 run 1's arrival frames",
-        .input = {.folder_variable = "PLZA_0101_RUN1_FRAMES", .prefix = "00"},
-        .expectation = {.frames = 89, .reads = run1_arrival},
+        .name = "the arrival to the ad's subtitles",
+        .input = {.folder = "ArrivalToAdSubtitles"},
+        .expectation = {.frames = 115, .reads = arrival_to_ad_subtitles},
     },
     {
-        .name = "01.01 run 2's arrival frames to the ad",
-        .input = {.folder_variable = "PLZA_0101_RUN2_FRAMES", .prefix = "0"},
-        .expectation = {.frames = 115, .reads = run2_arrival},
+        .name = "the arrival to the mission banner",
+        .input = {.folder = "ArrivalToMissionBanner"},
+        .expectation = {.frames = 181, .reads = arrival_to_mission_banner},
     },
     {
-        .name = "01.01 run 3's arrival frames to the mission banner",
-        .input = {.folder_variable = "PLZA_0101_RUN3_FRAMES", .prefix = "0"},
-        .expectation = {.frames = 181, .reads = run3_arrival},
+        .name = "the arrival past the mission banner",
+        .input = {.folder = "ArrivalPastMissionBanner"},
+        .expectation = {.frames = 221, .reads = arrival_past_mission_banner},
     },
     {
-        .name = "01.01 run 4's arrival frames to the mission banner",
-        .input = {.folder_variable = "PLZA_0101_RUN4_FRAMES", .prefix = "0"},
-        .expectation = {.frames = 221, .reads = run4_arrival},
-    },
-    {
-        .name = "01.03 run 2's frames: the mission complete card and the MM02 banner",
-        .input = {.folder_variable = "PLZA_0103_RUN2_FRAMES", .prefix = ""},
-        //  0001-0139 and mission01-complete-fullres.png.
-        .expectation = {.frames = 140, .reads = run_0103_2},
+        .name = "the mission complete card to the next mission's banner",
+        .input = {.folder = "MissionCompleteToNextBanner"},
+        .expectation = {.frames = 139, .reads = mission_complete_to_next_banner},
     },
 };
 
-//  The folder in the environment variable `variable`; none when it is unset
-//  or not a folder.
-std::optional<std::string> frames_folder(std::string_view variable){
-    const auto* value = std::getenv(std::string(variable).c_str());
-    if (value == nullptr){
-        return std::nullopt;
-    }
-    std::string folder(value);
-    if (!Filesystem::is_directory(Filesystem::Path(folder))){
-        return std::nullopt;
-    }
-    return folder;
-}
-
 UnitTestResult check_frame_folder(const FrameFolderCase& test, Logger& logger){
-    const std::optional<std::string> folder = frames_folder(test.input.folder_variable);
-    if (!folder){
-        return UnitTestResult(UnitTestResult::SKIPPED, std::format("{} is not a folder.", test.input.folder_variable));
+    const Filesystem::Path folder(std::format("{}PokemonLZA/AutoStoryDetectors/{}/", UNIT_TEST_RESOURCE_PATH(), test.input.folder));
+    if (!Filesystem::is_directory(folder)){
+        return std::format("{} is not a folder.", folder.string());
     }
     StoryDetectors detectors;
     size_t frames = 0;
     std::string failures;
-    for (const Filesystem::Path& path : Filesystem::list_directory(Filesystem::Path(*folder))){
+    for (const Filesystem::Path& path : Filesystem::list_directory(folder)){
         const std::string name = path.filename().string();
-        if (!name.starts_with(test.input.prefix) || !name.ends_with(".png")){
+        if (!name.ends_with(".jpg")){
             continue;
         }
         const std::optional<DetectorReads> want = test.expectation.reads(name);
@@ -613,7 +546,7 @@ UnitTestResult check_frame_folder(const FrameFolderCase& test, Logger& logger){
         frames++;
     }
     if (frames != test.expectation.frames){
-        return std::format("Expected {} frames in {}, found {}.", test.expectation.frames, *folder, frames);
+        return std::format("Expected {} frames in {}, found {}.", test.expectation.frames, folder.string(), frames);
     }
     if (!failures.empty()){
         return std::format("Wrong on:{}", failures);
@@ -639,7 +572,7 @@ private:
 class Test_FrameFolder : public UnitTest{
 public:
     explicit Test_FrameFolder(const FrameFolderCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStoryDetectors - {} ({})", test.name, test.input.folder_variable))
+        : UnitTest(std::format("PokemonLZA::AutoStoryDetectors - console frames: {}", test.name))
         , m_test(test)
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{

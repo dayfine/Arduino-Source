@@ -56,18 +56,16 @@ void AutosaveDetector::make_overlays(VideoOverlaySet& items) const{
     items.add(m_color, m_below);
 }
 
-//  Measured on the user's run (console B, 2026-11-10, frames 1.5 s apart):
-//  the badge's one frame (rec1_u132) has the icon 19% white and 48% cyan,
-//  nothing left of it. The only other frames over the icon bounds (u103,
-//  u104: a bright cutscene flash) are 70%+ white and 39%+ cyan left of it
-//  too; none of the opening's 56 lab frames come near.
-//  The badge is seen in Chinese only; with a shorter text (English
+//  On the badge the icon is 19% white and 48% cyan, with nothing bright
+//  left of it. A bright cutscene flash passes the icon's bounds too, but is
+//  70%+ white and 39%+ cyan left of the icon as well.
+//  Only the Chinese badge is checked; with a shorter text (English
 //  "Saving...") a right-aligned badge moves the icon right, so the icon is
 //  looked for from where it is in Chinese to 240 px right of it.
-//  The 01.01 run (console B, 2026-11-10 13:00) took two flyover frames for
-//  the badge: 0033, a glowing blade at dx 40, and 0038, the sky at dx
-//  152-172. Both glow on past the icon: the strips 14 px above and below it
-//  are 22%+ white or cyan there, 0% on u132; they must stay under 5%.
+//  Glowing scenery (a lit blade, a bright sky) can match the icon somewhere
+//  in that span, but glows on past it: the strips 14 px above and below the
+//  icon are 22%+ white or cyan there and empty around the badge; they must
+//  stay under 5%.
 //  The icon's glow is dim over a dark or lamp-lit scene (about 28, 70, 85
 //  on 02.04's check-in wall, console B 2026-11-13: frame 0075 of the 13:46
 //  run, in Japanese, icon at dx 36), so the icon's glow is dim_cyan_share():
