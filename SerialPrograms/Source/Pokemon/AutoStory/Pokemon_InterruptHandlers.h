@@ -17,7 +17,7 @@
 #include <string>
 #include <utility>
 #include "Pokemon_Interrupts.h"
-#include "Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_StoryStepExecutor.h"
 
