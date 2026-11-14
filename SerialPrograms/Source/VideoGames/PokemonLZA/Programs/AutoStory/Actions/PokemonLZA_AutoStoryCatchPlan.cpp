@@ -65,18 +65,13 @@ int LockTargetCycle::flicks_to(size_t index) const{
 }
 
 
-std::vector<int> patrol_stops(int near, int far, int step, int laps){
-    std::vector<int> stops{near};
-    if (step <= 0 || far <= near){
+std::vector<int> alternating_stops(std::span<const int> spots, size_t visits){
+    std::vector<int> stops;
+    if (spots.empty()){
         return stops;
     }
-    for (int lap = 0; lap < laps; lap++){
-        for (int d = near + step; d < far + step; d += step){
-            stops.push_back(std::min(d, far));
-        }
-        for (int d = far - step; d > near - step; d -= step){
-            stops.push_back(std::max(d, near));
-        }
+    for (size_t i = 0; i < visits; i++){
+        stops.push_back(spots[i % spots.size()]);
     }
     return stops;
 }

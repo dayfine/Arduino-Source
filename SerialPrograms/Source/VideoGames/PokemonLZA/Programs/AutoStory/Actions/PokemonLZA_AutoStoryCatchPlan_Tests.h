@@ -14,7 +14,8 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Tests that need no console: lock-on target choice and the patrol's stops.
+//  Tests that need no console: bracket watching, camera turns, lock-on
+//  target choice and the patrol's stops.
 void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database);
 
 

@@ -2426,6 +2426,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_HyperspaceCalorieDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_HyperspaceRewardNameReader.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_HyperspaceRewardNameReader.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_LockOnBracketDetector.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_LockOnBracketDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_MainMenuDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_MainMenuDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.cpp
@@ -2454,6 +2456,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/PokemonLZA_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActions.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActions.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryBracketWatch.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryBracketWatch.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan_Tests.cpp
