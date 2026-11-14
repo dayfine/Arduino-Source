@@ -27,11 +27,11 @@ namespace PokemonFRLG{
 //  Not reported yet, as FRLG has no detector for them here: the map-name
 //  popup (LOCATION_BANNER), PLAYER_CAN_MOVE, SCREEN_STILL, the interact
 //  prompt (FRLG has none) and a battle's end.
-class FrlgScreenObserver : public Pokemon::ScreenEventObserver{
+class FrlgScreenObserver : public ScreenEventObserver{
 public:
     FrlgScreenObserver();
 
-    virtual Pokemon::ScreenEvents observe(const VideoSnapshot& frame, WallClock now) override;
+    virtual ScreenEvents observe(const VideoSnapshot& frame, WallClock now) override;
     virtual void make_overlays(VideoOverlaySet& items) const override;
 
 private:
