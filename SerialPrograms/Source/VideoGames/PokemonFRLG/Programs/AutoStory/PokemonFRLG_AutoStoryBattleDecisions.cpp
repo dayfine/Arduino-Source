@@ -5,7 +5,9 @@
  */
 
 #include <algorithm>
+#include <format>
 #include <iterator>
+#include <string>
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 
 namespace PokemonAutomation{
@@ -60,10 +62,36 @@ std::optional<size_t> trainer_attack_slot(const PartyMember& usable, const Suppl
     return attack_slot_against(usable, supplies.foes);
 }
 
-//  A Potion this turn: whenever the bar isn't green, unless the last hit
-//  took a Potion's worth or more (`seen_hit`, 0 if not seen).
-bool wants_potion(const PartyStatus& status, double seen_hit){
-    return (status.hp_red || status.hp_yellow) && seen_hit < POTION_HP;
+//  The item a turn uses, if any, and why one was or wasn't, for the log.
+struct ItemTurn{
+    TurnChoice choice = TurnChoice::MOVE;
+    std::string reason = {};
+};
+
+std::string_view bar_name(const PartyStatus& status){
+    return status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green";
+}
+
+//  The item this turn, from the bar and the badge as read (`seen_hit` the
+//  HP the foe's last hit took, 0 if not seen): a Potion whenever the bar
+//  isn't green, unless the last hit took a Potion's worth or more; asleep,
+//  an Awakening unless the bar is red.
+ItemTurn item_turn(const Supplies& supplies, const PartyStatus& status, double seen_hit, int awakenings){
+    const bool hurt = status.hp_red || status.hp_yellow;
+    const bool asleep = status.status == StatusCondition::SLEEP;
+    if (hurt && supplies.potions > 0 && seen_hit < POTION_HP){
+        return {TurnChoice::POTION, std::format("a Potion: HP {}, its last hit {:.0f} HP", bar_name(status), seen_hit)};
+    }
+    if (asleep && awakenings > 0 && !status.hp_red){
+        return {TurnChoice::AWAKENING, std::format("an Awakening: asleep at HP {}", bar_name(status))};
+    }
+    if (!hurt){
+        return {};
+    }
+    return {TurnChoice::MOVE, supplies.potions <= 0
+        ? std::string("no Potion: none left")
+        : std::format("no Potion: the foe's last hit {:.0f} HP would undo one", seen_hit)
+    };
 }
 
 //  The lead's HP from the bar's share, if it showed and POKEMON SKILLS was
@@ -135,14 +163,19 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
         return TurnAction{.choice = TurnChoice::RUN};
     }
     see_hit(status);
-    if (!m_items_off && m_supplies.potions > 0 && wants_potion(status, m_seen_hit)){
-        return TurnAction{.choice = TurnChoice::POTION};
+    //  Awakenings are kept for trainers: a wild battle with a status is run from.
+    const int awakenings = m_kind == BattleKind::TRAINER ? m_supplies.awakenings : 0;
+    const ItemTurn items = m_items_off ? ItemTurn{} : item_turn(m_supplies, status, m_seen_hit, awakenings);
+    if (items.choice != TurnChoice::MOVE){
+        return TurnAction{.choice = items.choice, .heal_reason = items.reason};
     }
     if (!m_items_off && m_psn_reads >= PSN_READS && !m_antidote_used && m_supplies.antidotes > 0){
         m_antidote_used = true;
-        return TurnAction{.choice = TurnChoice::ANTIDOTE};
+        return TurnAction{.choice = TurnChoice::ANTIDOTE, .heal_reason = items.reason};
     }
-    return move_turn();
+    TurnAction action = move_turn();
+    action.heal_reason = items.reason;
+    return action;
 }
 
 void BattleDecisions::see_hit(const PartyStatus& status){
@@ -228,6 +261,10 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
         return;
     case TurnChoice::ANTIDOTE:
         m_supplies.antidotes--;
+        return;
+    case TurnChoice::AWAKENING:
+        m_supplies.awakenings--;
+        m_supplies.status = StatusCondition::NONE;
         return;
     case TurnChoice::RUN:
     case TurnChoice::MOVE:

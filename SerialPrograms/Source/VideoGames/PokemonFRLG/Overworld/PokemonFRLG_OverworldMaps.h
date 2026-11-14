@@ -4,9 +4,10 @@
  *
  *  The FRLG maps the overworld routes know about so far: every map from a
  *  new game in Pallet Town through Viridian City, Route 2 and Viridian
- *  Forest to Brock's gym in Pewter City; and Cerulean City, its Pokemon
- *  Center, Route 24 to its north, and the three floors of Cerulean Cave,
- *  where Mewtwo waits on B1F.
+ *  Forest to Brock's gym in Pewter City, Route 3, Mt. Moon and Route 4;
+ *  and Cerulean City, its Pokemon Center, Mart and Gym, Route 24 (Nugget
+ *  Bridge) and Route 25 to Bill's Sea Cottage, and the three floors of
+ *  Cerulean Cave, where Mewtwo waits on B1F.
  *
  *  Each map is a pinned PokemonSimulation JSON resource, prepared under
  *  Packages/Resources/Pokemon/Maps/frlg and built into the program by CMake

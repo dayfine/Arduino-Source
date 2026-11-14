@@ -15,6 +15,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryActions_H
 
 #include <cstddef>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>

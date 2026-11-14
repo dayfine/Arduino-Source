@@ -54,7 +54,9 @@ Pokemon::StoryActionArgs teach_args(const TeachPlan& plan);
 //  TM or HM or a slot is out of range.
 std::optional<TeachPlan> teach_plan_of(const Pokemon::StoryActionArgs& args);
 
-//  Constructs an auto-story step for teaching a TM or HM.
+//  The table's TEACH step, once per save (StoryStep::once_per_save): a
+//  retry from the same save skips it when the lead knew the move or there
+//  was no TM.
 Pokemon::StoryStep teach_step(std::string name, std::string why, const TeachPlan& plan);
 
 

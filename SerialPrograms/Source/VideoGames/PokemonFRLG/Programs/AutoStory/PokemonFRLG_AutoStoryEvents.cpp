@@ -164,12 +164,26 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
 
 Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
     const Direction direction = arg<Direction>(step, "direction");
-    step_once(env.context, direction, facing_of(state.pose));
+    int tiles_stepped = 1;
+    if (step.action == TRAINER_LINE_VARIANT){
+        const std::optional<int> stepped = step_into_line(env.console, env.context, direction, facing_of(state.pose), TRAINER_LINE_TILES);
+        if (!stepped){
+            return Pokemon::outcome_failed("no_trainer", std::format("{} tiles {}", TRAINER_LINE_TILES, direction_name(direction)));
+        }
+        env.console.log(std::format("Story: {}: a trainer saw the player after {} tile(s).", step.name, *stepped));
+        tiles_stepped = *stepped;
+    }else{
+        step_once(env.context, direction, facing_of(state.pose));
+    }
     const std::vector<TilePos> tiles = Pokemon::tiles_of(state.pose);
     if (tiles.size() != 1){
         return Pokemon::outcome_ok();
     }
-    return Pokemon::outcome_ok(to_pose(StoryPose{state.pose.map, tiles[0].next(direction), direction}));
+    TilePos onto = tiles[0];
+    for (int c = 0; c < tiles_stepped; c++){
+        onto = onto.next(direction);
+    }
+    return Pokemon::outcome_ok(to_pose(StoryPose{state.pose.map, onto, direction}));
 }
 
 Outcome battle(StoryEnv& env, const StoryStep& step){
@@ -319,6 +333,7 @@ std::string save_card_place(const std::string& map){
         {"PewterCity", "pewter-city"},
         {"Route3", "route-3"},
         {"Route4", "route-4"},
+        {"CeruleanCity", "cerulean-city"},
     };
     for (const auto& [prefix, place] : PLACES){
         if (map == prefix || map.rfind(prefix + "_", 0) == 0){
@@ -683,11 +698,13 @@ void read_bag_supplies(StoryEnv& env, StartMenu menu){
         env.console.log("Couldn't read the Items pocket; going on with the checkpoint's items.", COLOR_ORANGE);
         return;
     }
-    for (const std::string& item : set_from_loaded_bag(env.supplies, env.saved_supplies, rows)){
+    const std::vector<std::string> unread = set_from_loaded_bag(env.supplies, env.saved_supplies, rows);
+    for (const std::string& item : unread){
         env.console.log(std::format(
             "Story: couldn't read how many {} the bag holds; counting {}.", item, item_count(env.supplies, item)
         ), COLOR_ORANGE);
     }
+    env.bag_read = unread.empty();
 }
 
 namespace{
@@ -723,7 +740,7 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     //  card's place is checked when the save is loaded (check_save_place()),
     //  and the start check compares the screen with the frame kept when the
     //  program last saved there. With none kept, it passes.
-    Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, executor);
+    Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, executor, &env.prepared);
     add_start_check(
         checkpoint, start_pose(data),
         [&env, id = data.id]{ return read_console_start(env, id); },
@@ -738,6 +755,8 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
             keep_next_start_frame(env, id);
             env.has_save = true;
             env.saved_supplies = env.supplies;
+            env.prepared.clear();
+            env.bag_read = false;
             return Pokemon::outcome_ok();
         });
     };

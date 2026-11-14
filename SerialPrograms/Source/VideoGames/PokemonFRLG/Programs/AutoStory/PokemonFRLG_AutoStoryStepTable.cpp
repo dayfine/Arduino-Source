@@ -156,6 +156,9 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
             run.name = "run";
             specs.push_back(std::move(run));
         }
+        Pokemon::StoryActionSpec trainer_line = *Pokemon::find_story_action(builtin, StoryStepKind::STEP, "");
+        trainer_line.name = TRAINER_LINE_VARIANT;
+        specs.push_back(std::move(trainer_line));
         specs.push_back({.kind = StoryStepKind::GAME, .name = CLOSE_TRAINER_CARD, .args = {}});
         specs.push_back({.kind = StoryStepKind::GAME, .name = LEAVE_GIFT_SUMMARY, .args = {}});
         for (Pokemon::StoryActionSpec spec : {

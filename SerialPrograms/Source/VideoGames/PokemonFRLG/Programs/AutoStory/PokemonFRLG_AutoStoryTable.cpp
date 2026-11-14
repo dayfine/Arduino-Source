@@ -10,9 +10,11 @@
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.h"
+#include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_AutoStoryTeach.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -162,6 +164,10 @@ StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_v
         if (!found){
             throw ParseException(std::format("{}: notes for unknown step {}", source, key));
         }
+    }
+    //  A Mart spends money and a TEACH a TM: once per save.
+    for (StoryStep& step : checkpoint.steps){
+        step.once_per_save = step.action == MART_ACTION || step.action == TEACH_ACTION;
     }
     return checkpoint;
 }

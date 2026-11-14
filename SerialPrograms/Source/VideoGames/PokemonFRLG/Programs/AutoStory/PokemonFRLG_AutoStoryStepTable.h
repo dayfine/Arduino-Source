@@ -60,7 +60,8 @@ const std::vector<StoryActionRow>& story_action_rows();
 //  The actions FRLG's steps name, with the args each takes: the built-in
 //  ones (Pokemon_BuiltinStoryActions.h), then a ROUTE and a LEGS named
 //  "run" (RUN_VARIANT), which take the same args and run with B held,
-//  then FRLG's GAME actions: closing the Trainer Card or the Gift RNG
+//  a STEP named "trainer_line" (TRAINER_LINE_VARIANT), which steps on
+//  until a trainer sees the player, then FRLG's GAME actions: closing the Trainer Card or the Gift RNG
 //  summary, a PC transfer, a capture, the fossil, a LEVEL check, a Mart,
 //  a TEACH and a GRIND, each with the args it declares.
 //  A story file is read against these.

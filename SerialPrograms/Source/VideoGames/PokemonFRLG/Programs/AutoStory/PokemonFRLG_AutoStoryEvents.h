@@ -67,6 +67,12 @@ struct StoryEnv{
     std::string start_map = {};
     //  That checkpoint's START menu: a reload reads the bag again with it.
     StartMenu start_menu = StartMenu::BEFORE_POKEMON;
+    //  The once_per_save steps done from the last save that changed
+    //  nothing: a retry after a reload skips them. Emptied by a save.
+    Pokemon::PreparedSteps prepared = {};
+    //  The last save's Items pocket was read in full (read_bag_supplies()):
+    //  a reload restores `saved_supplies` without reading it again.
+    bool bag_read = false;
     //  The frames of where each checkpoint starts, for the start check: a
     //  save at a checkpoint's end keeps one for the next checkpoint.
     StartFrameStore start_frames = {};
@@ -90,7 +96,8 @@ void read_lead_moves(StoryEnv& env, StartMenu menu);
 //  After a save is loaded, with START's menu `menu`: the Items pocket's
 //  counts as read (set_from_loaded_bag()), in place of the row's, which
 //  are kept if nothing can be read. Only with the full menu: the rows
-//  before it carry the items they have.
+//  before it carry the items they have. Sets `bag_read` when every count
+//  was read.
 void read_bag_supplies(StoryEnv& env, StartMenu menu);
 
 //  Does FRLG's kinds of story step on the console, each with its row of

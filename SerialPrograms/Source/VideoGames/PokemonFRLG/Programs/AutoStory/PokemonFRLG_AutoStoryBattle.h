@@ -7,7 +7,9 @@
  *  is put back on FIGHT and the move list's top left, since the game
  *  remembers both, then onto the move BattleDecisions picks. A Potion is
  *  used when the HP bar turns yellow or red, an Antidote (once a battle)
- *  when the status reads PSN at two turns in a row; after the battle, PSN
+ *  when the status reads PSN at two turns in a row, an Awakening in a
+ *  trainer's battle when it reads SLP; each turn's reason for a Potion or
+ *  none is logged. After the battle, PSN
  *  and PAR are cured from the bag. Move prompts, an evolution after the
  *  battle and a fainted lead are as PokemonFRLG_AutoStoryBattleDecisions.h
  *  says.
@@ -35,6 +37,7 @@
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
+#include "PokemonFRLG_AutoStoryStatusBadge.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -63,7 +66,8 @@ enum class BattleEnd{
 //  What the HP bar (read_player_hp_bar()) and the status badge of the
 //  player's Pokemon show, on a battle screen with its box. The badge's
 //  place measured on console B's captures (2026-11-01): off-white
-//  (255, 255, 217) with no status, (228, 168, 212) for PSN.
+//  (255, 255, 217) with no status, (228, 168, 212) for PSN, (202, 203, 168)
+//  for SLP (2026-11-03, after the Cerulean rival's Sleep Powder).
 struct PartyStatus{
     bool hp_seen = false;
     bool hp_yellow = false;

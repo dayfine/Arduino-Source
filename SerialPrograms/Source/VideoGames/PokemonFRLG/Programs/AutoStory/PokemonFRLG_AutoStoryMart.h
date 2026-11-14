@@ -87,15 +87,15 @@ std::string mart_message(const MartPlan& plan, const MartResult& result);
 
 
 //  Counts `quantity` of `item` into `supplies`, if it is one the battles
-//  use (Potions, Antidotes, Parlyz Heals); a new one goes to the end of the
+//  use (Potions, Antidotes, Parlyz Heals, Awakenings); a new one goes to the end of the
 //  pocket, where the bag adds it.
 void count_supplies(Supplies& supplies, std::string_view item, size_t quantity);
 
 
 //  The console's Mart. The money box and the quantity box have no reader
 //  yet, so the money is the table's floor and the quantity is typed by
-//  presses. Potions, Antidotes and Parlyz Heals bought are counted into
-//  `supplies`.
+//  presses. Potions, Antidotes, Parlyz Heals and Awakenings bought are
+//  counted into `supplies`.
 class ConsoleMartActions : public MartActions{
 public:
     ConsoleMartActions(ConsoleHandle& console, ProControllerContext& context, Language language, Supplies& supplies);

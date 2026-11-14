@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
 
@@ -19,25 +20,30 @@ namespace{
 Outcome mart(Logger& logger, const MartPlan& plan, StoryAbilities& abilities){
     const MartResult result = run_mart(logger, abilities.mart, plan);
     const std::string message = mart_message(plan, result);
-    const bool ok = result.end == MartEnd::DONE || result.end == MartEnd::NOTHING_TO_BUY;
     logger.log(message, result.end == MartEnd::DONE ? COLOR_BLACK : COLOR_RED);
-    return ok ? Pokemon::outcome_ok() : Pokemon::outcome_failed(std::string("mart_") + std::string(mart_end_name(result.end)), message);
+    if (result.end == MartEnd::NOTHING_TO_BUY){
+        return Pokemon::outcome_unchanged();
+    }
+    return result.end == MartEnd::DONE ? Pokemon::outcome_ok() : Pokemon::outcome_failed(std::format("mart_{}", mart_end_name(result.end)), message);
 }
 
 Outcome teach(Logger& logger, const TeachPlan& plan, StoryAbilities& abilities){
     const TeachResult result = run_teach(logger, abilities.teach, abilities.members, plan);
-    //  NO_ITEM: skipped, with run_teach()'s log line.
-    if (result.end == TeachEnd::LEARNED || result.end == TeachEnd::ALREADY_KNOWN || result.end == TeachEnd::NO_ITEM){
+    if (result.end == TeachEnd::LEARNED){
         return Pokemon::outcome_ok();
     }
-    return Pokemon::outcome_failed(std::string("teach_") + std::string(teach_end_name(result.end)), teach_message(plan, result));
+    //  NO_ITEM: skipped, with run_teach()'s log line.
+    if (result.end == TeachEnd::ALREADY_KNOWN || result.end == TeachEnd::NO_ITEM){
+        return Pokemon::outcome_unchanged();
+    }
+    return Pokemon::outcome_failed(std::format("teach_{}", teach_end_name(result.end)), teach_message(plan, result));
 }
 
 Outcome level(Logger& logger, const LevelCheck& check, StoryAbilities& abilities){
     const LevelResult result = run_level_check(logger, abilities.members, check);
     switch (result.end){
     case LevelEnd::REACHED:
-        return Pokemon::outcome_ok();
+        return Pokemon::outcome_unchanged();
     case LevelEnd::BELOW:
         return Pokemon::outcome_failed("level_below", std::to_string(*result.level) + " < " + std::to_string(check.level));
     case LevelEnd::UNREAD:

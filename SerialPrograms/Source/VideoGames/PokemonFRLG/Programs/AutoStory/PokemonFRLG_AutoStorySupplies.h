@@ -29,23 +29,25 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  A status condition, as far as the story treats them: the two it carries
+//  A status condition, as far as the story treats them: the ones it carries
 //  items for, and the rest, which only a nurse cures.
 enum class StatusCondition{
     NONE,
     POISON,
     PARALYSIS,
-    OTHER,      //  SLP, BRN, FRZ
+    SLEEP,
+    OTHER,      //  BRN, FRZ
 };
 //  String representation of a status condition.
 std::string_view status_name(StatusCondition status);
 
 //  The healing items in the Items pocket, in the order they were bought:
-//  Potions, Antidotes, then Parlyz Heals.
+//  Potions, Antidotes, then Parlyz Heals; Awakenings from Cerulean's Mart.
 struct Supplies{
     int potions = 0;
     int antidotes = 0;
     int parlyz_heals = 0;
+    int awakenings = 0;
     //  The Items pocket's order, by slug (see read_item_list_name()): the
     //  order bought, or as read from the bag, with "" for a row whose name
     //  couldn't be read. A counted item with none left takes no row; the
