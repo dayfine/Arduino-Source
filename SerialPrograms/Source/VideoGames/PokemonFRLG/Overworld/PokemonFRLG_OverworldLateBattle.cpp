@@ -16,7 +16,7 @@ namespace PokemonFRLG{
 
 const std::vector<Pokemon::EventLag>& wild_battle_lags(){
     static const std::vector<Pokemon::EventLag> LAGS{
-        {Pokemon::ScreenEvent::BATTLE_STARTED, OverworldWalkSteps::LATE_WILD_BATTLE_DELAY},
+        {ScreenEvent::BATTLE_STARTED, OverworldWalkSteps::LATE_WILD_BATTLE_DELAY},
     };
     return LAGS;
 }
@@ -34,7 +34,7 @@ int tile_reached(Milliseconds since_hold, Milliseconds tile_time, int tiles){
 
 LateStop place_late_stop(
     const RouteStep& step, Milliseconds tile_time,
-    const Pokemon::ScreenEventLog& log, WallClock hold_start, WallClock now
+    const ScreenEventLog& log, WallClock hold_start, WallClock now
 ){
     LateStop out;
     out.verdict = Pokemon::classify_interrupt(log, {hold_start, now}, {});

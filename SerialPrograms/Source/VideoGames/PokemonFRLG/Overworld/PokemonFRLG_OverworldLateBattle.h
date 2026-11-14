@@ -4,7 +4,7 @@
  *
  *  Where a wild battle seen only after an open leg's hold stopped the
  *  player. The walker records the leg's screens as timed events
- *  (Pokemon::ScreenEventLog) through the hold and the watch after it. The
+ *  (ScreenEventLog) through the hold and the watch after it. The
  *  shared classifier (Pokemon::classify_interrupt()) says what stopped the
  *  player, and a wild battle is placed by when its first timed event
  *  showed, not by when the watcher that cleared it fired: that is after the
@@ -21,7 +21,7 @@
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_Interrupts.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRoute.h"
 
@@ -56,7 +56,7 @@ struct LateStop{
 //  reached (tile_reached()), give or take walked_near()'s slack.
 LateStop place_late_stop(
     const RouteStep& step, Milliseconds tile_time,
-    const Pokemon::ScreenEventLog& log, WallClock hold_start, WallClock now
+    const ScreenEventLog& log, WallClock hold_start, WallClock now
 );
 
 //  "Route: seen after the hold of <step>: wild encounter: +5035 ms battle
