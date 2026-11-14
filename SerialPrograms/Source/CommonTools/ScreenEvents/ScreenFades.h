@@ -2,39 +2,24 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Split out of Pokemon_ScreenEvents.h, unchanged; it includes this header.
+ *  A fade to black or white, read from a screen and as screen events.
  *
  */
 
-#ifndef PokemonAutomation_Pokemon_ScreenFades_H
-#define PokemonAutomation_Pokemon_ScreenFades_H
+#ifndef PokemonAutomation_CommonTools_ScreenEvents_ScreenFades_H
+#define PokemonAutomation_CommonTools_ScreenEvents_ScreenFades_H
 
-#include <atomic>
-#include <cstdint>
-#include <deque>
-#include <initializer_list>
-#include <optional>
-#include <string>
-#include "Common/Cpp/Concurrency/Mutex.h"
-#include "Common/Cpp/Time.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
-#include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
-#include "Pokemon_ScreenEventTypes.h"
+#include "ScreenEventTypes.h"
 
 namespace PokemonAutomation{
-namespace Pokemon{
 
 
 //  The event of a fade: FADE_BLACK, FADE_WHITE, or none for WarpFade::NONE.
 ScreenEvents fade_events(WarpFade fade);
 //  The fade `events` show: BLACK before WHITE if they have both.
 WarpFade fade_in(const ScreenEvents& events);
-//  "dialog box, player can move"; "nothing" when empty.
-std::string describe(const ScreenEvents& events);
 
 
 //  A fade is uniform over the middle 80% of the screen, the shared
@@ -55,6 +40,5 @@ WarpFade fade_of_screen(const ImageViewRGB32& screen);
 
 
 
-} // namespace Pokemon
-} // namespace PokemonAutomation
+}  // namespace PokemonAutomation
 #endif
