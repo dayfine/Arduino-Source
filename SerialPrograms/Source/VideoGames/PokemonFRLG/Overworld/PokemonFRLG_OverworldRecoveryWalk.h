@@ -65,12 +65,14 @@ double tap_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& aft
 //  a step that way. A hold that walked even one tile scrolls the whole map
 //  by it, while a town's name banner sliding in over the top left of the
 //  screen (Pallet Town after a Fly, console B, 2026-11-13 02:46) is not a
-//  move. A quarter that looks the same one tile over along `direction`, in
-//  both shots, can't show the step and is left out: the black below Pokemon
-//  Mansion 1F's bottom row read as no move after a walk east of 13 tiles
-//  (13.02), and Pokemon Mansion B1F's south wall, whose pattern repeats
-//  across, after a step west (13.03; both console B, 2026-11-14). Nothing
-//  when no quarter would show the step.
+//  move. A quarter that looks the same one or two tiles over along
+//  `direction`, in both shots, can't show a walk by a multiple of that and
+//  is left out: the black below Pokemon Mansion 1F's bottom row read as no
+//  move after a walk east of 13 tiles (13.02), Pokemon Mansion B1F's south
+//  wall, whose pattern repeats across, after a step west (13.03), and
+//  Celadon City's south yard, whose trees repeat every two tiles, after a
+//  walk west of 36 tiles (14.03; all console B, 2026-11-14). Nothing when no
+//  quarter would show the walk.
 std::optional<double> hold_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game, Direction direction);
 
 //  measure_movement()'s check of its frame, here for its tests.
@@ -78,9 +80,7 @@ namespace detail{
 //  Whether a frame captured at `frame_time` can show a hold that started at
 //  `hold_start`: one from after the hold's first tile (`first_tile`). An
 //  older one, from a feed that stalled, shows the screen from before the
-//  hold, which reads as not moved (console B, 2026-11-14 09:45, 14.03 run
-//  12: "west 29" read 0.0, and the leg's screenshot half a second later
-//  showed the player 29 tiles on).
+//  hold, which reads as not moved.
 bool frame_shows_hold(WallClock frame_time, WallClock hold_start, Milliseconds first_tile);
 } // namespace detail
 

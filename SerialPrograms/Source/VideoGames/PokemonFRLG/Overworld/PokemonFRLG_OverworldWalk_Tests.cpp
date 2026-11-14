@@ -421,6 +421,9 @@ struct HoldShot{
     //  The bottom 160 rows a wall whose pattern repeats every 16 pixels
     //  across, as along Pokemon Mansion B1F's south wall.
     bool striped_bottom = false;
+    //  The bottom 160 rows a row of trees whose pattern repeats every two
+    //  tiles across, as along Celadon City's south yard.
+    bool trees_bottom = false;
 };
 
 //  A 960x640 screen of 64-pixel tiles, each its own color, seen as `shot`.
@@ -431,6 +434,7 @@ ImageRGB32 tile_map(const HoldShot& shot){
             const uint32_t tile = (uint32_t)((x + shot.scroll_x) / 64 * 7 + (y + shot.scroll_y) / 64 * 13);
             const bool in_banner = shot.banner && x < 400 && y < 80;
             const bool in_stripes = shot.striped_bottom && y >= 480;
+            const bool in_trees = shot.trees_bottom && y >= 480;
             const bool off_map = shot.off_map == OffMap::ALL
                 || (shot.off_map == OffMap::TOP && y < 240)
                 || (shot.off_map == OffMap::BOTTOM && y >= 400);
@@ -438,6 +442,8 @@ ImageRGB32 tile_map(const HoldShot& shot){
                 image.pixel(x, y) = 0xff070707;
             }else if (in_stripes){
                 image.pixel(x, y) = (x + shot.scroll_x) % 16 < 8 ? 0xff804020 : 0xffc08040;
+            }else if (in_trees){
+                image.pixel(x, y) = (x + shot.scroll_x) % 128 < 64 ? 0xff208040 : 0xff60c080;
             }else{
                 image.pixel(x, y) = in_banner ? 0xfff8f8f8 : 0xff000000 | (tile * 0x2f1b3d & 0x00ffffff);
             }
@@ -505,6 +511,20 @@ const HoldScrollCase HOLD_SCROLL_CASES[] = {
     {
         .name = "standing beside a wall that repeats across",
         .input = {.before = {.striped_bottom = true}, .after = {.striped_bottom = true}, .direction = Direction::WEST},
+        .expectation = {.movement = HoldMovement::NONE},
+    },
+    //  Celadon City's south yard (console B, 2026-11-14 10:07, 14.03 run
+    //  13): "west 36 (to wall)" from (40, 37) walked to the tree wall (4, 37)
+    //  but read "changed by 0.0": the trees below repeat every two tiles,
+    //  and 36 tiles on they look the same.
+    {
+        .name = "a walk west of two tiles along trees that repeat every two tiles",
+        .input = {.before = {.trees_bottom = true}, .after = {.scroll_x = 128, .trees_bottom = true}, .direction = Direction::WEST},
+        .expectation = {.movement = HoldMovement::MOVED},
+    },
+    {
+        .name = "standing beside trees that repeat every two tiles",
+        .input = {.before = {.trees_bottom = true}, .after = {.trees_bottom = true}, .direction = Direction::WEST},
         .expectation = {.movement = HoldMovement::NONE},
     },
     //  Pokemon Mansion 1F's bottom row (console B, 2026-11-14 03:20, 13.02):
