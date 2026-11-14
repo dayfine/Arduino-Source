@@ -41,13 +41,17 @@ std::vector<MapData> make_story_maps(bool silph_cleared){
 
 } // namespace
 
+const std::vector<MapData>& story_maps(){
+    static const std::vector<MapData> maps = make_story_maps(false);
+    return maps;
+}
+
 const std::vector<MapData>& story_maps(const std::set<std::string>& run_flags){
     if (run_flags.contains(std::string(SILPH_CLEARED_FLAG))){
         static const std::vector<MapData> cleared = make_story_maps(true);
         return cleared;
     }
-    static const std::vector<MapData> maps = make_story_maps(false);
-    return maps;
+    return story_maps();
 }
 
 std::set<std::string> beaten_trainers(const std::set<std::string>& run_flags){
