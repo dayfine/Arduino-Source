@@ -33,6 +33,7 @@ const RouteCosts& default_route_costs(){
         {RouteCost::OPEN_WILD_STOP, 300},
         {RouteCost::SIGHT_TILE, 0},
         {RouteCost::SIGHT_OVERSHOOT, 0},
+        {RouteCost::SIGN_OVERSHOOT, 3},
     };
     return COSTS;
 }
@@ -218,6 +219,14 @@ bool warps_off_loaded_maps(const std::vector<MapData>& maps, const Located& play
     return warp != nullptr && !take_warp(maps, warp);
 }
 
+//  Whether holding `direction` from `here` reads a sign: one walked into
+//  moving north or south shows its message (pokefirered
+//  TrySetUpWalkIntoSignpostScript()).
+bool reads_sign_ahead(const MapData& map, TilePos here, Direction direction){
+    return tile_at(map, here.next(direction)) == TileKind::SIGN
+        && (direction == Direction::NORTH || direction == Direction::SOUTH);
+}
+
 //  Whether holding `direction` stops the player where they are: a wall, or
 //  water they'd need to Surf onto. A leg that ends there can be
 //  held for longer than it takes, and walked again after an interruption. A
@@ -239,7 +248,7 @@ bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction
     //  Held into a sign moving north or south, the game shows the sign's
     //  message: the player stops, but the walk is interrupted (console B,
     //  2026-11-01, the poster on the bedroom's wall).
-    if (tile_at(map, ahead) == TileKind::SIGN && (direction == Direction::NORTH || direction == Direction::SOUTH)){
+    if (reads_sign_ahead(map, player.state.position, direction)){
         return false;
     }
     //  Held into a ledge the way it faces, the player hops down it (console
@@ -314,6 +323,9 @@ public:
         return stops_at(m_maps, state, direction);
     }
     int open_stop_risk(const State& state, Direction direction) const{
+        if (reads_sign_ahead(m_maps[state.map], state.state.position, direction)){
+            return route_cost(m_costs, RouteCost::SIGN_OVERSHOOT);
+        }
         const std::optional<Transition> past = PokemonFRLG::press(m_maps, state, direction);
         if (!past || !seen_by_trainer(past->next)){
             return 0;
@@ -427,6 +439,7 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
         step.spin_tiles = last_spin_tiles(maps, leg);
         step.to_wall = step.to_wall && !step.spin_tiles;
         step.tapped = !step.surfing && onto_warp_sideways(maps[leg.end.map], step);
+        step.sign_ahead = !step.to_wall && !step.warps && reads_sign_ahead(maps[leg.end.map], leg.end.state.position, step.direction);
     }
     const std::vector<MapPosition> tiles = leg_tiles(maps, MapPosition{maps[leg.start.map].name, leg.start.state.position}, step);
     for (int c : std::views::iota(1, (int)tiles.size()) | std::views::filter([&](int n){ return tiles[n].map != tiles[n - 1].map; })){

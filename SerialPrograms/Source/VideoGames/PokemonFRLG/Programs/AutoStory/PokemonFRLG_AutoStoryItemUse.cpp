@@ -144,14 +144,15 @@ constexpr Milliseconds BAG_CLOSE_TIMEOUT = 30000ms;
 
 } // namespace
 
-ConsoleItemUseActions::ConsoleItemUseActions(ConsoleHandle& console, ProControllerContext& context, Language language)
+ConsoleItemUseActions::ConsoleItemUseActions(ConsoleHandle& console, ProControllerContext& context, Language language, StartMenu menu)
     : m_console(console)
     , m_context(context)
     , m_language(language)
+    , m_menu(menu)
 {}
 
 bool ConsoleItemUseActions::open_pocket(BagPocket pocket){
-    open_bag_from_overworld(m_console, m_context);
+    open_bag_from_overworld(m_console, m_context, start_menu_context(m_menu));
     pbf_wait(m_context, BAG_SLIDE_IN);
     //  Left to the Items pocket, which doesn't wrap, then right to `pocket`.
     for (int c = 0; c < 3; c++){

@@ -463,6 +463,53 @@ UnitTestResult test_short_leg_then_sign(){
     return true;
 }
 
+//  11.03 run 1 (console B, 2026-11-12), Safari Zone West: from the GOLD
+//  TEETH's tile (28, 15) to the Secret House, "north 5" ended below the sign
+//  on (27, 9), and its hold ran on into it: the sign spoke, and the walker,
+//  finding the player at walls, held the same leg into it 9 times. The plan
+//  now turns west a row lower, where no sign is ahead.
+UnitTestResult test_safari_west_sign_route(){
+    SimCase c{.start = at("SafariZone_West", 28, 15), .facing = Direction::NORTH, .goal = at("SafariZone_SecretHouse", 4, 9)};
+    const std::vector<RouteStep> route = planned(c);
+    for (const RouteStep& step : route){
+        if (step.sign_ahead){
+            return "Expected no open leg ending below a sign:" + describe(route);
+        }
+    }
+    const SimRun now = run_case(c);
+    if (!arrived(now, c.goal) || now.state.signs_read != 0){
+        return "Expected the Secret House reached with no sign read:" + describe(now);
+    }
+    return true;
+}
+
+//  As above, to the tile below the sign itself, (27, 10): the hold runs
+//  on and the sign speaks. The message places the player on the leg's end;
+//  without that, they are found again at walls and the same leg is held
+//  into the sign until the walk gives up.
+UnitTestResult test_safari_west_sign_read(){
+    SimCase c{.start = at("SafariZone_West", 27, 15), .facing = Direction::NORTH, .goal = at("SafariZone_West", 27, 10)};
+    const std::vector<RouteStep> route = planned(c);
+    if (route.size() != 1 || !route[0].sign_ahead){
+        return "Expected one open leg north, ending below the sign:" + describe(route);
+    }
+    //  On the console every hold ran on.
+    for (int hold = 1; hold <= 30; hold++){
+        c.script.long_holds[hold] = 1;
+    }
+    const SimRun now = run_case(c);
+    if (!arrived(now, c.goal) || now.state.signs_read != 1){
+        return "Expected the sign read once and the player placed below it:" + describe(now);
+    }
+    SimCase unplaced = c;
+    unplaced.rules.place_by_sign = false;
+    const SimRun old = run_case(unplaced);
+    if (old.failure.empty() || old.state.signs_read < 2){
+        return "Expected the sign read again and the walk failed without the rule:" + describe(old);
+    }
+    return true;
+}
+
 //  r16 (console B, 2026-11-01), Viridian Forest, a tile short instead of 2:
 //  the hold south from (8, 28) misses the sign and stops at the wall a
 //  column east of the plan's, with nothing on screen, so the walk was
@@ -963,6 +1010,8 @@ const OverworldSimCase OVERWORLD_SIM_CASES[] = {
     {.input = {"no hold over a ledge", test_no_hold_over_ledge}, .expectation = {},},
     {.input = {"a short leg, then a sign", test_short_leg_then_sign}, .expectation = {},},
     {.input = {"a short leg, nothing seen", test_short_leg_unseen}, .expectation = {},},
+    {.input = {"Safari Zone West: no leg ends below the sign", test_safari_west_sign_route}, .expectation = {},},
+    {.input = {"Safari Zone West: a hold run on into the sign", test_safari_west_sign_read}, .expectation = {},},
     {.input = {"a trainer on the way out of Pewter Gym", test_trainer_on_way_out}, .expectation = {},},
     {.input = {"out of Viridian Mart from the clerk's scene", test_mart_exit}, .expectation = {},},
     {.input = {"Mt. Moon: down the ladders to B2F", test_mt_moon_ladders}, .expectation = {},},

@@ -571,7 +571,7 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
         }
     );
     ConsoleChoiceActions choice(env.console, env.context);
-    StoryAbilities abilities{console_member_reader(env.console, env.context, env.language), mart, teach, grind, choice};
+    StoryAbilities abilities{console_member_reader(env.console, env.context, env.language, StartMenu::FULL), mart, teach, grind, choice};
     if (const std::optional<GrindPlan> plan = step.action == GRIND_CHECK_ACTION ? grind_plan_of(step.args) : std::nullopt){
         if (grind_reached_already(env.console.logger(), grind, abilities.members, *plan)){
             state.flags.insert(step.name);

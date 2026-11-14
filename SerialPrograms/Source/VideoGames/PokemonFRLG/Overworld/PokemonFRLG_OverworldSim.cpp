@@ -552,7 +552,9 @@ std::optional<SimSeen> OverworldSim::hold(
         m_last_tap.reset();
     }else{
         const auto short_hold = m_script.short_holds.find(m_holds);
-        walk_hold(direction, duration, short_hold == m_script.short_holds.end() ? 0 : short_hold->second);
+        const auto long_hold = m_script.long_holds.find(m_holds);
+        const Milliseconds over = long_hold == m_script.long_holds.end() ? Milliseconds(0) : tile_time() * long_hold->second;
+        walk_hold(direction, duration + over, short_hold == m_script.short_holds.end() ? 0 : short_hold->second);
     }
     return watch_until(watchers, start, start + std::max(duration + release, watch));
 }
@@ -920,8 +922,10 @@ std::optional<WalkedTiles> OverworldSimWalker::late_stop(const RouteStep& step){
         return std::nullopt;
     }
     const WallClock start = sim_wall_clock(m_leg_start);
+    RouteStep placed = step;
+    placed.sign_ahead = step.sign_ahead && m_rules.place_by_sign;
     const LateStop stop = place_late_stop(
-        step, TILE_TIME, screen_event_log(m_sim.state(), m_leg_start), start, sim_wall_clock(m_sim.state().time)
+        placed, TILE_TIME, screen_event_log(m_sim.state(), m_leg_start), start, sim_wall_clock(m_sim.state().time)
     );
     m_log.push_back(late_stop_line(step, stop, start));
     return m_leg_dark ? std::optional<WalkedTiles>(dark_stop(step, whole_leg(step))) : stop.walked;

@@ -301,6 +301,11 @@ struct SimWalkerRules{
     //  player may be anywhere on the leg: on Route 10, "east 11" was found
     //  again from all 12 of its tiles (console B, 2026-11-09, 07.02 run 2).
     bool place_late_battle = true;
+    //  A message after the hold of an open leg that ends below a sign
+    //  (RouteStep::sign_ahead) places the player on its end. Without it
+    //  the walker found the player at walls and held the same leg into the
+    //  sign 9 times (console B, 2026-11-12, 11.03, Safari Zone West).
+    bool place_by_sign = true;
     //  The watch for a warp's fade starts with the hold onto the warp
     //  (Pokemon::WatchAlong), not when it ends. Without it a fade over
     //  before the hold ended was missed, and the walk stopped on "no fade in

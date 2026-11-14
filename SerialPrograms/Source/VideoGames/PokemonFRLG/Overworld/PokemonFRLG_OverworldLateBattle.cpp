@@ -38,6 +38,11 @@ LateStop place_late_stop(
 ){
     LateStop out;
     out.verdict = Pokemon::classify_interrupt(log, {hold_start, now}, {});
+    if (out.verdict.kind == Pokemon::InterruptKind::DIALOG && step.sign_ahead){
+        //  The sign past the end: only a hold run on from there reads it.
+        out.walked = WalkedTiles{.min = step.tiles, .max = step.tiles};
+        return out;
+    }
     if (out.verdict.kind != Pokemon::InterruptKind::WILD_ENCOUNTER){
         return out;
     }

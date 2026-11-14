@@ -6,8 +6,10 @@
 
 #include <algorithm>
 #include <format>
+#include <iterator>
 #include <string>
 #include <string_view>
+#include <utility>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
@@ -37,6 +39,39 @@ namespace{
 constexpr double ROW_TOP = 11;
 constexpr double ROW_STEP = 16;
 constexpr double ROW_HEIGHT = 12;
+
+//  Each item's slug and its English name.
+constexpr std::pair<std::string_view, std::string_view> ENGLISH_ITEM_NAMES[] = {
+    {"potion", "Potion"},
+    {"super-potion", "Super Potion"},
+    {"antidote", "Antidote"},
+    {"parlyz-heal", "Parlyz Heal"},
+    {"awakening", "Awakening"},
+    {"poke-ball", "Poke Ball"},
+    {"repel", "Repel"},
+    {"super-repel", "Super Repel"},
+    {"max-repel", "Max Repel"},
+    {"escape-rope", "Escape Rope"},
+    {"x-special", "X Special"},
+    {"x-speed", "X Speed"},
+    {"x-accuracy", "X Accuracy"},
+    {"guard-spec", "Guard Spec."},
+    {"bicycle", "Bicycle"},
+    //  Route 17's hidden items. Without them a RARE CANDY read
+    //  "FARE CANCY" and matched CANCEL: the pocket's read ended
+    //  above it, and 11.02 counted no RARE CANDY in a bag with 2
+    //  (console B, 2026-11-12).
+    {"rare-candy", "Rare Candy"},
+    {"max-elixir", "Max Elixir"},
+    //  The Safari Zone's FULL RESTORE, which 11.03 counts. Without it its
+    //  row matched several names and read as nothing (console B,
+    //  2026-11-12).
+    {"full-restore", "Full Restore"},
+    //  Mt. Moon's, which top the pocket above the story's items.
+    {"moon-stone", "Moon Stone"},
+    {"nugget", "Nugget"},
+    {"cancel", "Cancel"},
+};
 
 class ItemNameMatcher : public OCR::SmallDictionaryMatcher{
 public:
@@ -76,29 +111,7 @@ private:
 
     static JsonObject dictionary(){
         JsonObject english;
-        for (const auto& [slug, name] : {
-            std::pair<std::string_view, std::string_view>{"potion", "Potion"},
-            {"antidote", "Antidote"},
-            {"parlyz-heal", "Parlyz Heal"},
-            {"awakening", "Awakening"},
-            {"poke-ball", "Poke Ball"},
-            {"repel", "Repel"},
-            {"super-repel", "Super Repel"},
-            {"max-repel", "Max Repel"},
-            {"escape-rope", "Escape Rope"},
-            {"x-special", "X Special"},
-            {"x-speed", "X Speed"},
-            {"x-accuracy", "X Accuracy"},
-            {"guard-spec", "Guard Spec."},
-            {"bicycle", "Bicycle"},
-            //  Route 17's hidden items. Without them a RARE CANDY read
-            //  "FARE CANCY" and matched CANCEL: the pocket's read ended
-            //  above it, and 11.02 counted no RARE CANDY in a bag with 2
-            //  (console B, 2026-11-12).
-            {"rare-candy", "Rare Candy"},
-            {"max-elixir", "Max Elixir"},
-            {"cancel", "Cancel"},
-        }){
+        for (const auto& [slug, name] : ENGLISH_ITEM_NAMES){
             JsonArray names;
             names.push_back(std::string(name));
             english[std::string(slug)] = std::move(names);
@@ -137,6 +150,12 @@ ImageFloatBox item_list_name_box(int row){
 
 std::string read_item_list_name(Logger& logger, Language language, const ImageViewRGB32& screen, int row){
     return ItemNameMatcher::instance().read(logger, language, extract_box_reference(game_box(screen), item_list_name_box(row)));
+}
+
+bool item_list_reader_knows(std::string_view item){
+    return std::any_of(std::begin(ENGLISH_ITEM_NAMES), std::end(ENGLISH_ITEM_NAMES), [&](const auto& entry){
+        return entry.first == item;
+    });
 }
 
 BagRow read_bag_row(Logger& logger, Language language, const ImageViewRGB32& screen, int shown){
@@ -242,6 +261,39 @@ public:
     }
 };
 
+//  11.03's count (console B, 2026-11-12): the FULL RESTORE's row matched
+//  several names with no Full Restore in the dictionary, read as nothing,
+//  and the count saw 0 after the Safari Zone's ball was picked up. The
+//  other names the story counts or buys, and those it keeps rows for,
+//  are each read as themselves, and the shorter names they contain stay
+//  apart.
+class Test_StoryItemNames : public UnitTest{
+public:
+    Test_StoryItemNames()
+        : UnitTest("PokemonFRLG::ItemListReader - 11.03 the FULL RESTORE's row is read")
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const ItemNameMatcher& matcher = ItemNameMatcher::instance();
+        for (const auto& [text, expected] : {
+            std::pair<std::string_view, std::string_view>{"FULL RESTORE", "full-restore"},
+            {"SUPER POTION", "super-potion"},
+            {"MOON STONE", "moon-stone"},
+            {"NUGGET", "nugget"},
+            {"POTION", "potion"},
+            {"REPEL", "repel"},
+            {"SUPER REPEL", "super-repel"},
+            {"MAX REPEL", "max-repel"},
+        }){
+            const std::string item = matcher.match(Language::English, std::string(text));
+            if (item != expected){
+                return std::format("Expected \"{}\" read as {}, got \"{}\".", text, expected, item);
+            }
+        }
+        return true;
+    }
+};
+
 //  A capture of a Mart's BUY list, read from the top to its CANCEL. Its
 //  golden file holds each row's item, one per line.
 class Test_MartList : public ImageUnitTest{
@@ -279,12 +331,14 @@ void add_tests_ItemListReader(UnitTestDatabase& database){
     //  the 3 read as nothing before the digit templates.
     database.add<Test_BagPocket>("PokemonFRLG/ItemListReader/ItemsPocket_eng.png");
     //  Console B, 2026-11-03, the save before Cerulean's rival: a MOON STONE,
-    //  which the reader has no name for, above the PARLYZ HEAL and 15 POTIONs.
-    //  Stopping at it read nothing, and the rival was fought with 0 Potions.
+    //  which the reader had no name for then, above the PARLYZ HEAL and 15
+    //  POTIONs. Stopping at it read nothing, and the rival was fought with 0
+    //  Potions.
     database.add<Test_BagPocket>("PokemonFRLG/ItemListReader/ItemsPocketMoonStone_eng.png");
     //  The Viridian Mart's BUY list, the same day, the cursor on POTION.
     database.add<Test_MartList>("PokemonFRLG/ItemListReader/MartBuyList_eng.png");
     database.add<Test_Route17ItemNames>();
+    database.add<Test_StoryItemNames>();
 }
 
 

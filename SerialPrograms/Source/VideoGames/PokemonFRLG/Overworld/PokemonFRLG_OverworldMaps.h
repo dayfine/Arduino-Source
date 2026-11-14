@@ -66,8 +66,9 @@ std::set<std::string> map_flag_set(const std::vector<MapData>& maps, const std::
 
 //  Registers overworld map unit tests.
 //  Whether a warp onto `map` leaves a rider on the Bicycle: the Cycling
-//  Road's gates (allow_cycling in pokefirered's map.json) and the routes
-//  their doors open onto. Every other door takes the player off (console
+//  Road's gates (allow_cycling in pokefirered's map.json), the routes
+//  their doors open onto, and the Safari Zone's areas, whose edge warps
+//  lead from one to the next (not measured). Every other door takes the player off (console
 //  B, 2026-11-12 01:05: through Route 16's north gate the player still
 //  rode, and a run-paced open leg after it overshot the Fly house's door).
 bool warp_keeps_bike(const std::string& map);

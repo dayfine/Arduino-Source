@@ -40,6 +40,7 @@ inline std::string_view menu_name(StartMenu menu){
     case StartMenu::BEFORE_POKEMON: return "before_pokemon";
     case StartMenu::BEFORE_POKEDEX: return "before_pokedex";
     case StartMenu::FULL: return "full";
+    case StartMenu::SAFARI: break;
     }
     throw ParseException("Unsupported FRLG START menu.");
 }

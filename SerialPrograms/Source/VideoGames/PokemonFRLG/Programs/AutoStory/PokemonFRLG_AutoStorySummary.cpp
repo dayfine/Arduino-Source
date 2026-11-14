@@ -116,9 +116,7 @@ std::optional<SummaryRead> read_party_summary(
     if (menu == StartMenu::BEFORE_POKEMON){
         return std::nullopt;
     }
-    open_party_menu_from_overworld(
-        console, context, menu == StartMenu::BEFORE_POKEDEX ? StartMenuContext::NO_DEX : StartMenuContext::STANDARD
-    );
+    open_party_menu_from_overworld(console, context, start_menu_context(menu));
     context.wait_for_all_requests();
     //  LEFT puts the cursor on the lead from any other slot (pokefirered
     //  party_menu.c, MENU_DIR_LEFT); on the lead it does nothing. The menu

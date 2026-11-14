@@ -51,7 +51,8 @@ inline const std::string BIKE_VARIANT = "bike";
 inline const std::string REGISTER_BIKE_VARIANT = "register_bike";
 
 
-//  The item a use_item step uses, or nothing if it isn't one, the item
+//  The item a use_item step uses (with "safari", from the Safari Zone's
+//  START menu, step_start_menu()), or nothing if it isn't one, the item
 //  isn't one the story uses from the bag, or it names a slot.
 std::optional<std::string> parse_use_item_step(const Pokemon::StoryStep& step);
 //  Whether `step` is one of this file's steps.
