@@ -1,0 +1,146 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "12.01",
+    "title": "Fuchsia: heal, HM03 Surf over Water Gun, the gym past Jugglers Kayden and Kirk and round the top edge to west of Koga",
+    "start": {"map": "FuchsiaCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "heal_fuchsia",
+        "kind": "heal",
+        "why": "full HP and PP (pokeguy uses an Oran Berry in the gym instead, 1:14:38; healing is the safe side)"
+      },
+      {
+        "id": "teach_surf",
+        "kind": "game_action",
+        "action": "teach",
+        "args": {
+          "item": "hm03",
+          "move": "surf",
+          "slot": 1,
+          "forget": "water-gun"
+        },
+        "why": "HM03 Surf in place of Water Gun, as pokeguy (1:14:55 to 1:15:13: Surf, Water Pulse, Bite, Mega Kick after it), unless the lead knows it; an HM, so not a one-shot TM"
+      },
+      {
+        "id": "gym_east_wall",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "FuchsiaCity_Gym", "tiles": [[14, 21]], "facing": "north"}
+        },
+        "why": "out of the Center (its ground floor coded), west along row 32 to the gym's door (9, 32), and in the gym (no running) from the mat (7, 21) east along row 21 to the east wall: below Juggler Kayden's south line (12, 17..20) and Nate's (2, 17..20)"
+      },
+      {
+        "id": "below_kayden_line",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 4}]
+        },
+        "why": "up column 14 from (14, 21) to (14, 17), a tile below Kayden's east line (13..14, 16): a planned route here goes up column 12 or 13 and meets his south line"
+      },
+      {
+        "id": "kayden_sight",
+        "kind": "step",
+        "action": "trainer_wait",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto (14, 16), the second tile of Kayden's east line: he faces south or east (MOVEMENT_TYPE_FACE_DOWN_AND_RIGHT), and once he faces east he walks to (13, 16). Every way north crosses his line and none ends on a wall there, so he is fought, not passed (pokeguy passed him while he faced south, 1:15:14)"
+      },
+      {
+        "id": "kayden",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_JUGGLER_KAYDEN",
+          "foes": ["hypno"]
+        },
+        "declared_after": {"map": "FuchsiaCity_Gym", "tiles": [[14, 16]], "facing": "north"},
+        "why": "Juggler Kayden (TRAINER_JUGGLER_KAYDEN): Hypno Lv38"
+      },
+      {
+        "id": "east_column_to_kirk",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 4}]
+        },
+        "why": "up column 14 from (14, 16) to (14, 12), a tile below Juggler Kirk's line (12..14, 11)"
+      },
+      {
+        "id": "kirk_line",
+        "kind": "step",
+        "action": "trainer_line",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto (14, 11), the end of Kirk's line (sight 3, facing east): he walks east to (13, 11) (pokeguy 1:15:14)"
+      },
+      {
+        "id": "kirk",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_JUGGLER_KIRK",
+          "foes": ["drowzee", "drowzee", "kadabra", "drowzee"]
+        },
+        "declared_after": {"map": "FuchsiaCity_Gym", "tiles": [[14, 11]], "facing": "north"},
+        "why": "Juggler Kirk (TRAINER_JUGGLER_KIRK): Drowzee, Drowzee, Kadabra, Drowzee, all Lv31 (pokeguy: one Surf each, 1:15:14 to 1:16:17)"
+      },
+      {
+        "id": "east_column_to_wall",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 9}]
+        },
+        "why": "up column 14 from (14, 11) to the wall at (14, 2): past Tamer Edgar's east line (14, 4) when he looks east (he looks every way), on a leg the wall stops"
+      },
+      {
+        "id": "top_row_to_wall",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 14}]
+        },
+        "why": "west along row 2 to the wall at (0, 2), the gym's top edge (pokeguy's invisible-wall corridor, 1:16:18): past Edgar's north line (13, 2..3) when he looks north, on a leg the wall stops"
+      },
+      {
+        "id": "down_to_koga",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "east", "tiles": 9}, {"direction": "south", "tiles": 8}, {"direction": "west", "tiles": 7}, {"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 4}, {"direction": "south", "tiles": 1}]
+        },
+        "why": "east along row 2 to (9, 2), down column 9 to the wall at (9, 10), west along row 10 to (2, 10), below Rocker Shawn (2, 9), who looks west at (1, 9) only, down to (2, 12) and into the middle box along row 12 to (6, 12) and (6, 13): out of Tamer Phil's lines round (4, 6), which a planned route crosses"
+      },
+      {
+        "id": "west_of_koga",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "FuchsiaCity_Gym", "tiles": [[6, 13]], "facing": "east"}
+        },
+        "why": "turn to Koga (7, 13): pokeguy approaches him from the west (1:16:33)"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts at Fuchsia's nurse, facing her: 11.02 (the Safari Zone, HM03 SURF and the GOLD TEETH) flies to Fuchsia and is expected to end there, and is authored separately; until it is in, this row's start is its own (starts_after_unauthored_rows()). Starting at the nurse keeps the walk out of the coded Center at a row's start, where a nurse pose a tile off can't come from a scene before it.",
+        "PokeGuy's way (1:14:38 to 1:16:33): into the gym, Surf taught over Water Gun, Juggler Kirk fought (forced), round the top edge, Koga from the west. He fights nobody else; this row also fights Juggler Kayden (Hypno Lv38), whose east line every way north crosses with no wall to end a leg on (a deviation, for the user).",
+        "The gym (FuchsiaCity_Gym map.json), 15 x 23, no running, its invisible walls in the map: Koga (7, 13) in the middle box, entered only from row 12 on the west. Its trainers and lines: Kayden (12, 16) south and east 4, Shawn (2, 9) west 1, Kirk (11, 11) east 3, Edgar (13, 4) every way 2, Phil (4, 6) every way 2, Nate (2, 16) south 4. Every way north crosses Kirk's line and one of Kayden's and Edgar's; the legs across a looker's line end on walls.",
+        "Ends west of Koga and saves there: his own pre-battle checkpoint (battle-checkpoint-retry), 12.02. Koga is a D7 fight: pokeguy entered at 34/122 HP and the PokemonSimulation benchmark wins 70.1% from that; this row enters at full HP and PP after the Center (the full-heal comparison is still pending there)."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "FuchsiaCity_Gym", "tiles": [[6, 13]], "facing": "east"}
+    }
+  }
+}
