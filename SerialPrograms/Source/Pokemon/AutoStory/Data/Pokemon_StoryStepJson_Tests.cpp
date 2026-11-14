@@ -36,28 +36,28 @@ enum class Record{
     CHECKPOINT,
 };
 
-//  A record to read, and which kind it is.
-struct WireInput{
-    std::string_view name;
-    Record record = Record::STEP;
-    std::string_view json;
-};
-
 //  What a read gives.
 using ReadRecord = std::variant<GridPose, DeclaredPose, StoryStep, StoryCheckpoint>;
 
 //  "" when the record read is as expected, else what differs.
 using ReadCheck = std::string (*)(const ReadRecord& record);
 
-//  What reading it gives: a record the check accepts, or a rejection.
-struct WireExpectation{
-    ReadCheck check = nullptr;
-    bool rejected = false;
-};
-
 struct WireCase{
-    WireInput input;
-    WireExpectation expectation;
+    //  A record to read, and which kind it is.
+    struct Input{
+        std::string_view name;
+        Record record = Record::STEP;
+        std::string_view json;
+    };
+
+    //  What reading it gives: a record the check accepts, or a rejection.
+    struct Expectation{
+        ReadCheck check = nullptr;
+        bool rejected = false;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 std::string expect(bool ok, std::string_view what){
@@ -143,10 +143,14 @@ const WireCase CASES[] = {
     {.input = {.name = "checkpoint postconditions", .record = Record::CHECKPOINT, .json = R"({"id":"x","title":"X","events":[],"metadata":{"phase":"reproduction","postconditions":{"position":{"map":"M","tiles":[[3,4]]},"items":[{"item":"LIFT_KEY","quantity":1}],"flags":["f"]}}})"}, .expectation = {.check = [](const ReadRecord& record){
         const StoryCheckpoint& checkpoint = std::get<StoryCheckpoint>(record);
         const StoryPostconditions& post = checkpoint.postconditions;
+        //  Named, not temporaries in the comparison: GCC's -Wdangling-pointer
+        //  flags the braced vector temporaries there.
+        const GridPose position{.map = "M", .tiles = {{3, 4}}, .facing = std::nullopt};
+        const std::vector<StoryItem> items{{.item = "LIFT_KEY", .quantity = 1}};
+        const std::vector<std::string> flags{"f"};
         return expect(checkpoint.metadata.phase == StoryPhase::REPRODUCTION
-            && post.position == GridPose{.map = "M", .tiles = {{3, 4}}, .facing = std::nullopt}
-            && post.items == std::vector<StoryItem>{{.item = "LIFT_KEY", .quantity = 1}}
-            && post.flags == std::vector<std::string>{"f"}, "the phase, position, item and flag");
+            && post.position == position && post.items == items && post.flags == flags,
+            "the phase, position, item and flag");
     }}},
     {.input = {.name = "integer rows, not rows", .json = R"({"id":"w","kind":"game_action","action":"walk","args":{"legs":[0,4500]}})"}, .expectation = {.rejected = true}},
     {.input = {.name = "integer rows, fraction", .json = R"({"id":"w","kind":"game_action","action":"walk","args":{"legs":[[0,4.5]]}})"}, .expectation = {.rejected = true}},
@@ -197,7 +201,7 @@ std::vector<StoryActionSpec> test_actions(){
 
 
 //  `input` read.
-ReadRecord read_record(const WireInput& input){
+ReadRecord read_record(const WireCase::Input& input){
     static const std::vector<StoryActionSpec> actions = test_actions();
     const JsonValue value = parse_json(std::string(input.json));
     switch (input.record){
