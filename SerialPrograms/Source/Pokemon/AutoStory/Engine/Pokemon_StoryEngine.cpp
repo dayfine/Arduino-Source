@@ -268,7 +268,7 @@ StoryEngineReport StoryEngine<PoseType>::run_with_retries(
             return repeats_on_reload(report.run.failure) ? AttemptResult::FINAL : AttemptResult::FAILED;
         },
         .reset = [&](size_t next_attempt){
-            m_backend.log(std::format("[Segment] {}: failed, reloading for attempt {}/{}", checkpoint.id, next_attempt, attempts));
+            m_backend.log(checkpoint_reset_line(checkpoint.id, next_attempt, attempts));
             const Outcome reloaded = reload(state);
             if (!reloaded.succeeded()){
                 report.run.completed = false;
