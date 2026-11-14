@@ -19,12 +19,15 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
+#include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
@@ -255,6 +258,7 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     }
     env.supplies.foes = arg<std::vector<std::string>>(step, "foes");
     env.supplies.battle_items = arg<std::vector<Pokemon::StoryItem>>(step, "use_items");
+    env.supplies.policy = battle_policy_of(step.args);
     if (!env.supplies.foes.empty()){
         env.console.log(std::format(
             "Story: {} is {}, risk {}; attacks are chosen against the foe out.",
@@ -263,10 +267,7 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     }
     const BattleKind kind = arg<bool>(step, "run") ? BattleKind::WILD_RUN : BattleKind::TRAINER;
     const BattleEnd end = fight_battle(env.console, env.context, env.supplies, kind, env.checks, env.language);
-    env.supplies.foes.clear();
-    env.supplies.trainer.clear();
-    env.supplies.foe_out.clear();
-    env.supplies.battle_items.clear();
+    end_trainer_battle(env.supplies);
     if (end == BattleEnd::LOST && !arg<bool>(step, "may_lose")){
         return Pokemon::outcome_failed("blackout");
     }
@@ -301,7 +302,7 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!walked.succeeded()){
         return walked;
     }
-    heal_at_center(env.console, env.context);
+    heal_at_pokecenter(env.console, env.context);
     healed_by_nurse(supplies);
     return walked;
 }
@@ -527,7 +528,7 @@ bool grind_heal_trip(StoryEnv& env, RunState& state, const StoryStep& step, cons
     if (!walked(env, state, walk)){
         return false;
     }
-    heal_at_center(env.console, env.context);
+    heal_at_pokecenter(env.console, env.context);
     //  PP too: a grind's battles spend more than its attacks have.
     healed_by_nurse(env.supplies);
     walk.name = step.name + "_back_to_patch";
@@ -578,7 +579,11 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
         }
         return Pokemon::outcome_unchanged();
     }
-    return run_ability_game_step(env.console.logger(), &env.console, step, abilities);
+    StoryStep covered = step;
+    if (const std::optional<Outcome> nothing_to_buy = fill_mart_to(env.console.logger(), env.supplies, covered)){
+        return nothing_to_buy;
+    }
+    return run_ability_game_step(env.console.logger(), &env.console, covered, abilities);
 }
 
 //  CUT_TREE_VARIANT: the tree in the step's direction, cut, and a step
@@ -667,6 +672,9 @@ Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
         done = run_storage_game_step(env.console.logger(), &env.console, step, capture, pc);
     }
     if (!done){
+        done = run_healing_step(env, state, step);
+    }
+    if (!done){
         done = run_abilities(env, state, step);
     }
     if (!done){
@@ -747,7 +755,7 @@ ConsoleAction console_action_of(StoryActionId id){
         return [](StoryEnv& env, RunState&, const StoryStep& step){ return battle(env, step); };
     case StoryActionId::HEAL:
         return [](StoryEnv& env, RunState&, const StoryStep&){
-            heal_at_center(env.console, env.context);
+            heal_at_pokecenter(env.console, env.context);
             healed_by_nurse(env.supplies);
             return Pokemon::outcome_ok();
         };

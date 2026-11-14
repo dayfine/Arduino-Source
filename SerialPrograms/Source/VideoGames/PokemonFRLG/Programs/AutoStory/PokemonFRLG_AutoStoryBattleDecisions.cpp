@@ -10,6 +10,8 @@
 #include <iterator>
 #include <string>
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "PokemonFRLG_AutoStoryHealing.h"
+#include "PokemonFRLG_AutoStoryItemsPocket.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -59,6 +61,24 @@ constexpr int MOVE_PROMPTS = 4;
 constexpr uint8_t MAX_LEVELS_IN_BATTLE = 3;
 //  The HP a Potion heals (pret src/data/items.h).
 constexpr double POTION_HP = 20;
+
+//  An item used: the story's count of it goes down, and an item it doesn't
+//  count takes its row with the last one.
+void spend_bag_item(Supplies& supplies, const std::string& item){
+    const auto count = supplies.other_counts.find(item);
+    if (count == supplies.other_counts.end()){
+        spend_item(supplies, item);
+        return;
+    }
+    if (--count->second > 0){
+        return;
+    }
+    supplies.other_counts.erase(count);
+    const auto row = std::find(supplies.pocket.begin(), supplies.pocket.end(), item);
+    if (row != supplies.pocket.end()){
+        supplies.pocket.erase(row);
+    }
+}
 
 //  A trainer's battle: the plan's attack, else the best type matchup
 //  (attack_slot_against()) against the foe out as read at the battle
@@ -118,6 +138,7 @@ void healed_by_nurse(Supplies& supplies){
     supplies.hurt = false;
     supplies.hp_red = false;
     supplies.hp_fill = 1.0;
+    measured_hp(supplies, 1.0);
     supplies.status = StatusCondition::NONE;
     restore_pp(supplies.lead);
 }
@@ -160,6 +181,10 @@ BattleDecisions::BattleDecisions(Supplies& supplies, BattleKind kind)
     if (supplies.lead.level > 0){
         m_level_cap = static_cast<uint8_t>(std::min(battle_level(supplies.lead) + MAX_LEVELS_IN_BATTLE, 255));
     }
+    //  The policy needs the lead's HP and Speed, which its stats give.
+    if (kind == BattleKind::TRAINER && supplies.policy.kind != BattlePolicyKind::NONE && supplies.lead.stats){
+        m_policy.emplace(supplies.policy);
+    }
 }
 
 TurnAction BattleDecisions::turn(const PartyStatus& status){
@@ -185,6 +210,7 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     m_supplies.hurt = hurt;
     if (status.hp_seen){
         m_supplies.hp_fill = status.hp_fill;
+        measured_hp(m_supplies, status.hp_fill);
     }
     m_supplies.status = status.status;
     m_psn_reads = status.status == StatusCondition::POISON ? m_psn_reads + 1 : 0;
@@ -198,6 +224,9 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
         return TurnAction{.choice = TurnChoice::RUN};
     }
     see_hit(status);
+    if (m_policy){
+        return policy_turn(status, {});
+    }
     //  Awakenings are kept for trainers: a wild battle with a status is run from.
     const int awakenings = m_kind == BattleKind::TRAINER ? m_supplies.awakenings : 0;
     const ItemTurn items = m_items_off ? ItemTurn{} : item_turn(m_supplies, status, m_seen_hit, awakenings);
@@ -217,6 +246,40 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     return action;
 }
 
+size_t BattleDecisions::track_foe(){
+    const std::vector<std::string>& foes = m_supplies.foes;
+    for (size_t index = m_foe_index; index < foes.size() && !m_supplies.foe_out.empty(); index++){
+        if (foes[index] == m_supplies.foe_out){
+            m_foe_index = index;
+            break;
+        }
+    }
+    return m_foe_index;
+}
+
+TurnAction BattleDecisions::policy_turn(const PartyStatus& status, std::string heal_reason){
+    const std::optional<double> hp = lead_hp(m_supplies, status);
+    const PolicyView view{
+        .hp = hp.value_or(static_cast<double>(m_supplies.lead.stats->hp)),
+        .max_hp = static_cast<double>(m_supplies.lead.stats->hp),
+        .status = status.status,
+        .speed = m_supplies.lead.stats->speed,
+        .foe_index = track_foe(),
+    };
+    std::optional<PolicyItem> item = m_items_off ? std::nullopt : m_policy->choose(m_supplies, view);
+    if (!item){
+        TurnAction action = move_turn();
+        action.heal_reason = std::move(heal_reason);
+        return action;
+    }
+    m_planned_item = item->item;
+    return TurnAction{
+        .choice = item->party_member ? TurnChoice::MEDICINE : TurnChoice::BATTLE_ITEM,
+        .heal_reason = "policy: " + item->why,
+        .item = std::move(item->item),
+    };
+}
+
 void BattleDecisions::see_hit(const PartyStatus& status){
     if (m_supplies.foe_out != m_hit_by){
         m_seen_hit = 0;
@@ -224,13 +287,13 @@ void BattleDecisions::see_hit(const PartyStatus& status){
     }
     const std::optional<double> hp = lead_hp(m_supplies, status);
     if (hp && m_last_hp){
-        const double taken = *m_last_hp + (m_healed ? POTION_HP : 0) - *hp;
+        const double taken = *m_last_hp + m_healed_hp - *hp;
         if (taken > 0){
             m_seen_hit = taken;
         }
     }
     m_last_hp = hp;
-    m_healed = false;
+    m_healed_hp = 0;
 }
 
 //  The plan's attack with PP left, or against known foes (a trainer's
@@ -275,15 +338,15 @@ void BattleDecisions::planned_item_used(){
             break;
         }
     }
-    const auto count = m_supplies.other_counts.find(m_planned_item);
-    if (count == m_supplies.other_counts.end() || --count->second > 0){
-        return;
-    }
-    m_supplies.other_counts.erase(count);
-    const auto row = std::find(m_supplies.pocket.begin(), m_supplies.pocket.end(), m_planned_item);
-    if (row != m_supplies.pocket.end()){
-        m_supplies.pocket.erase(row);
-    }
+    spend_bag_item(m_supplies, m_planned_item);
+}
+
+void BattleDecisions::policy_item_used(){
+    spend_bag_item(m_supplies, m_planned_item);
+    m_policy->item_used(m_planned_item);
+    //  A medicine heals up to the bar's end.
+    const double room = static_cast<double>(m_supplies.lead.stats->hp) - m_last_hp.value_or(0);
+    m_healed_hp = std::min(medicine_hp(m_planned_item), std::max(0.0, room));
 }
 
 void BattleDecisions::count_down_refused(){
@@ -325,7 +388,7 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
     }
     switch (choice){
     case TurnChoice::POTION:
-        m_healed = true;
+        m_healed_hp = POTION_HP;
         m_supplies.potions--;
         m_supplies.hurt = false;
         m_supplies.hp_red = false;
@@ -337,8 +400,15 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
         m_supplies.awakenings--;
         m_supplies.status = StatusCondition::NONE;
         return;
+    case TurnChoice::MEDICINE:
+        policy_item_used();
+        return;
     case TurnChoice::BATTLE_ITEM:
-        planned_item_used();
+        if (m_policy){
+            policy_item_used();
+        }else{
+            planned_item_used();
+        }
         return;
     case TurnChoice::RUN:
     case TurnChoice::MOVE:

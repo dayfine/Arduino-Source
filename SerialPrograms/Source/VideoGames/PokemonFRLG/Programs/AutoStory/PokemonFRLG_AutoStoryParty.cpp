@@ -116,6 +116,9 @@ struct Attack{
     std::string_view move;
 };
 constexpr Attack ATTACKS[] = {
+    //  From HM03 (12.01) on, as pokeguy: Surf on everything it is not
+    //  resisted by (1:15:14 on).
+    {.line = "squirtle", .move = "surf"},
     //  Blastoise's strongest STAB move: a tie with Bite against Pidgeotto
     //  went to Bite, and one with Bubble against Growlithe to Bubble, and
     //  the Tower rival won (console B, 2026-11-12).
@@ -208,8 +211,10 @@ size_t effectiveness(const MoveData& move, const SpeciesData& defender){
     return tenths;
 }
 
-//  `move`'s type multiplier, in tenths, summed over `foes`; 0 for a move
-//  that does no damage. Each foe must be in species_data().
+//  `move`'s type multiplier, in tenths, summed over `foes`: 0 against a foe
+//  whose ability makes it immune, halved for a two-turn move; 0 for a move
+//  that does no damage. Each foe must be in species_data(). (The data has no
+//  power, so STAB is left to the plan's order, which breaks ties.)
 size_t matchup(std::string_view move, const std::vector<std::string>& foes){
     const MoveData* data = move_data(move);
     if (data == nullptr || !data->damaging){
@@ -217,7 +222,11 @@ size_t matchup(std::string_view move, const std::vector<std::string>& foes){
     }
     size_t total = 0;
     for (const std::string& foe : foes){
-        total += effectiveness(*data, *species_data(foe));
+        if (ability_immunity(foe) == data->type){
+            continue;
+        }
+        size_t tenths = effectiveness(*data, *species_data(foe));
+        total += takes_two_turns(move) ? tenths / 2 : tenths;
     }
     return total;
 }

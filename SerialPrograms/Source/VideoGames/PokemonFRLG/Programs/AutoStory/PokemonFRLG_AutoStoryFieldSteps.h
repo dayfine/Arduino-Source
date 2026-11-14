@@ -35,10 +35,18 @@ Pokemon::StoryStep lift_floor_step(std::string name, std::string_view from, std:
 
 //  Into the Pokemon Center `center` (a map name) from below its door,
 //  facing north, to below the nurse's counter (CENTER_ENTER_VARIANT).
+//  Overlaps enter_pokecenter() in PokemonFRLG_Navigation.h.
+//  Ours walks one tap per tile and ends on the nurse's front tile with a declared pose;
+//  upstream holds the stick until the screen goes black and leaves the position unknown.
+//  Could be unified with upstream if needed.
 Pokemon::StoryStep center_enter_step(std::string name, std::string_view center);
 
 //  Out of the Center from below the nurse's counter (CENTER_EXIT_VARIANT)
 //  to `below_door`, the tile below its door outside, facing south.
+//  Overlaps leave_pokecenter() in PokemonFRLG_Navigation.h.
+//  Ours starts below the nurse's counter and ends on the tile below the door with a declared pose;
+//  upstream starts north of the exit and holds the stick until the screen goes black.
+//  Could be unified with upstream if needed.
 Pokemon::StoryStep center_exit_step(std::string name, Pokemon::GridPose below_door);
 
 //  Uses `item` from the bag on the overworld (USE_ITEM_VARIANT): a

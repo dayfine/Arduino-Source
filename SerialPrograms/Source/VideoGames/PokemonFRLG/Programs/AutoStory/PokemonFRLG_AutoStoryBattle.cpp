@@ -29,6 +29,8 @@
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryHealing.h"
+#include "PokemonFRLG_AutoStoryHealingSteps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -209,6 +211,10 @@ bool use_item(
 }
 
 //  RUN, bottom right of the battle menu.
+//  Overlaps flee_battle() in PokemonFRLG_Navigation.h.
+//  Ours is one blind turn that resets the cursor first, since the battle loop reads the result itself;
+//  upstream needs the cursor on FIGHT and assumes the run always works.
+//  Could be unified with upstream if needed.
 void run_away(ProControllerContext& context){
     tap(context, DPAD_LEFT);
     tap(context, DPAD_UP);
@@ -567,6 +573,7 @@ private:
             m_supplies.hurt = status.hp_red || status.hp_yellow;
             m_supplies.hp_red = status.hp_red;
             m_supplies.hp_fill = status.hp_fill;
+            measured_hp(m_supplies, status.hp_fill);
         }
         m_supplies.status = status.status;
     }
@@ -586,6 +593,17 @@ private:
         m_last_press = now;
     }
 
+    void log_turn(const PartyStatus& status, const TurnAction& action){
+        m_console.log(std::format(
+            "Battle: turn {}, HP {} ({:.0f}% of the bar), {}, {} Potions, {} Antidotes, {} Parlyz Heals, {} Awakenings.",
+            m_decisions.turns(), status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green", 100 * status.hp_fill,
+            status_name(status.status), m_supplies.potions, m_supplies.antidotes, m_supplies.parlyz_heals, m_supplies.awakenings
+        ));
+        if (!action.heal_reason.empty()){
+            m_console.log("Battle: " + action.heal_reason + ".");
+        }
+    }
+
     void take_turn(const ImageViewRGB32& screen){
         m_faint_polls = 0;
         if (m_kind != BattleKind::TRAINER && m_decisions.turns() == 0){
@@ -601,14 +619,7 @@ private:
         const PartyStatus status = read_party_status(screen);
         const TurnAction action = m_decisions.turn(status);
         m_evolution.turn_taken(action.choice);
-        m_console.log(std::format(
-            "Battle: turn {}, HP {} ({:.0f}% of the bar), {}, {} Potions, {} Antidotes, {} Parlyz Heals, {} Awakenings.",
-            m_decisions.turns(), status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green", 100 * status.hp_fill,
-            status_name(status.status), m_supplies.potions, m_supplies.antidotes, m_supplies.parlyz_heals, m_supplies.awakenings
-        ));
-        if (!action.heal_reason.empty()){
-            m_console.log("Battle: " + action.heal_reason + ".");
-        }
+        log_turn(status, action);
         dump_debug_image(m_console, "AutoStory/battle", std::format("turn{}-menu", m_decisions.turns()), screen);
         switch (action.choice){
         case TurnChoice::RUN:
@@ -623,6 +634,9 @@ private:
             return;
         case TurnChoice::AWAKENING:
             m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "awakening", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            return;
+        case TurnChoice::MEDICINE:
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, action.item, ItemTarget::PARTY_MEMBER, m_checks, m_language)));
             return;
         case TurnChoice::BATTLE_ITEM:
             m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, action.item, ItemTarget::POKEMON_OUT, m_checks, m_language)));
@@ -673,6 +687,9 @@ private:
 
 
 //  From the overworld: the bag open on the Items pocket, cursor on its top.
+//  Overlaps open_bag_from_overworld() in PokemonFRLG_Navigation.h.
+//  Ours wraps it, then waits for the bag to slide in and moves the cursor to the top of the Items pocket.
+//  Could be unified with upstream if needed.
 void open_items_pocket(ConsoleHandle& console, ProControllerContext& context){
     open_bag_from_overworld(console, context);
     //  The bag ignores presses while it slides in.
@@ -895,26 +912,25 @@ std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerConte
     return rows;
 }
 
+bool use_recovery_item(
+    ConsoleHandle& console, ProControllerContext& context,
+    const std::string& item, Pokemon::StoryCheckLevel checks, Language language, Supplies& supplies
+){
+    //  The row before the count drops: a counted item with none left takes
+    //  no row.
+    if (!use_item_on_overworld(console, context, supplies, item, checks, language)){
+        return false;
+    }
+    took_recovery_item(supplies, item);
+    return true;
+}
+
 void recover_after_battle(
     ConsoleHandle& console, ProControllerContext& context,
     Supplies& supplies, Pokemon::StoryCheckLevel checks, Language language
 ){
     for (const std::string& item : recovery_items(supplies)){
-        //  The row before the count drops: a counted item with none left
-        //  takes no row.
-        if (!use_item_on_overworld(console, context, supplies, item, checks, language)){
-            continue;
-        }
-        spend_item(supplies, item);
-        if (item == "potion"){
-            //  One Potion (20 HP) takes a starter of these levels from red
-            //  to green; the bar can't be read again on the overworld.
-            supplies.hurt = false;
-            supplies.hp_red = false;
-            supplies.hp_fill = 1.0;
-        }else{
-            supplies.status = StatusCondition::NONE;
-        }
+        use_recovery_item(console, context, item, checks, language, supplies);
     }
     if (supplies.status != StatusCondition::NONE){
         console.log(std::format(

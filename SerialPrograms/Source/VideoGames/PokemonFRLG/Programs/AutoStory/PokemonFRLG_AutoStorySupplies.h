@@ -24,6 +24,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
+#include "PokemonFRLG_AutoStoryBattlePolicyData.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 
 namespace PokemonAutomation{
@@ -47,6 +48,7 @@ std::string_view status_name(StatusCondition status);
 //  Potions, Antidotes, then Parlyz Heals; Awakenings from Cerulean's Mart.
 struct Supplies{
     int potions = 0;
+    int super_potions = 0;
     int antidotes = 0;
     int parlyz_heals = 0;
     int awakenings = 0;
@@ -71,6 +73,12 @@ struct Supplies{
     //  The starter's HP bar's filled share at the last battle screen that
     //  showed it, 1 after the nurse or a Potion on the overworld.
     double hp_fill = 1.0;
+    //  The bar's filled share as last measured on a battle screen (1 after
+    //  the nurse), unlike hp_fill not raised by a Potion's guess; nothing
+    //  while none was (a checkpoint loaded from a save). And the HP the
+    //  items used on the lead since then heal.
+    std::optional<double> measured_fill = std::nullopt;
+    int healed_since_measured = 0;
     //  The starter's moves and their PP, as far as the story knows them:
     //  a new game's Squirtle unless a checkpoint's row says otherwise.
     PartyMember lead = new_member("squirtle", 5);
@@ -90,6 +98,9 @@ struct Supplies{
     //  X Specials against the Tower rival), each once its pocket row is
     //  known; a quantity counts down as they are used. Empty otherwise.
     std::vector<Pokemon::StoryItem> battle_items = {};
+    //  How that battle is fought by PokeGuy's policy, if its step names one
+    //  (BattlePolicyKind::NONE otherwise: the story's own recovery).
+    BattlePolicy policy = {};
     //  How carefully that battle is fought (default_battle_risk()).
     BattleRisk risk = BattleRisk::LOW;
     //  The species of the trainer's Pokemon out, as read at the last battle

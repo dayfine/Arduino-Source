@@ -66,6 +66,34 @@ std::string forget_names(const TeachPlan& plan){
     return names;
 }
 
+//  "bite, water-pulse".
+std::string joined(const std::vector<std::string>& moves){
+    std::string names;
+    for (const std::string& move : moves){
+        names += names.empty() ? move : ", " + move;
+    }
+    return names;
+}
+
+//  The decision for a plan with a keep list: forget the one known move
+//  outside it.
+TeachDecision decide_keep(const TeachPlan& plan, const std::vector<std::string>& moves){
+    std::vector<size_t> outside;
+    for (size_t slot = 0; slot < moves.size(); slot++){
+        const bool kept = std::find(plan.keep.begin(), plan.keep.end(), moves[slot]) != plan.keep.end();
+        if (!kept && !is_hm_move(moves[slot])){
+            outside.push_back(slot);
+        }
+    }
+    if (outside.size() != 1){
+        return {.error = std::format(
+            "it knows {} and the keep list ({}) leaves {} moves to forget, not one",
+            joined(moves), joined(plan.keep), outside.size()
+        )};
+    }
+    return {.forget = outside[0]};
+}
+
 } // namespace
 
 Pokemon::StoryActionArgs teach_args(const TeachPlan& plan){
@@ -74,6 +102,9 @@ Pokemon::StoryActionArgs teach_args(const TeachPlan& plan){
         args.emplace("slot", int64_t(plan.member + 1));
     }else{
         args.emplace("species", plan.species);
+    }
+    if (!plan.keep.empty()){
+        args.emplace("keep", plan.keep);
     }
     if (!plan.forget_move.empty()){
         args.emplace("forget", plan.forget_move);
@@ -98,6 +129,9 @@ std::optional<TeachPlan> teach_plan_of(const Pokemon::StoryActionArgs& args){
     TeachPlan plan{.item = *item, .move = *move, .member = member.value_or(0)};
     if (species != nullptr){
         plan.species = *species;
+    }
+    if (const std::vector<std::string>* keep = game_arg<std::vector<std::string>>(args, "keep")){
+        plan.keep = *keep;
     }
     if (const std::string* forget = game_arg<std::string>(args, "forget")){
         if (forget->empty()){
@@ -138,6 +172,9 @@ TeachDecision decide_teach(const TeachPlan& plan, const std::vector<std::string>
     }
     if (moves.size() < MOVE_SLOTS){
         return {};
+    }
+    if (!plan.keep.empty()){
+        return decide_keep(plan, moves);
     }
     std::optional<size_t> slot = plan.forget_slot;
     if (!plan.forget_move.empty()){
