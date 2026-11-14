@@ -11,6 +11,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBike.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryFieldMoves.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryHideoutLift.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
@@ -101,6 +102,9 @@ std::vector<Pokemon::StoryActionSpec> field_action_specs(){
     for (const std::string& center : {CENTER_ENTER_VARIANT, CENTER_EXIT_VARIANT}){
         specs.push_back({.kind = StoryStepKind::GAME, .name = center, .args = {}});
     }
+    for (Pokemon::StoryActionSpec& move : field_move_specs()){
+        specs.push_back(std::move(move));
+    }
     return specs;
 }
 
@@ -164,6 +168,9 @@ std::optional<Pokemon::Outcome> run_field_game_step(
     if (const std::optional<LiftRide> ride = parse_lift_floor_step(step)){
         ride_lift(console, context, *ride, player);
         return done();
+    }
+    if (std::optional<Pokemon::Outcome> moved = run_field_move_step(console, context, step)){
+        return moved;
     }
     if (is_center_variant(step.action)){
         //  Both start facing north: at the door, or at the nurse.

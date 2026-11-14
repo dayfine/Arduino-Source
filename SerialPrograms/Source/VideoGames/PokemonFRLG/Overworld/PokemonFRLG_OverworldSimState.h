@@ -133,6 +133,8 @@ struct SimState{
     int turn_taps_dropped = 0;
     //  On the Bicycle (SimScript::on_bike).
     bool on_bike = false;
+    //  On the water (SimField::SURF).
+    bool surfing = false;
     //  Bicycle taps the game dropped, too soon after the last one.
     int bike_taps_dropped = 0;
     //  Step taps the game ignored, inside the lockout after the last one
