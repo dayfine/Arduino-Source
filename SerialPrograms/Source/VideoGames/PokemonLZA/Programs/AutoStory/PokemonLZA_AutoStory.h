@@ -19,6 +19,7 @@
 
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
+#include "CommonTools/Options/LanguageOCROption.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
@@ -49,7 +50,12 @@ public:
     virtual void program(SingleSwitchProgramEnvironment& env, ProControllerContext& context) override;
 
 private:
-    //  The start and end checkpoints, attempts, checks and language.
+    //  The language the game is set to, required: the steps that read text
+    //  (the fast travel menu's place names) read it in this language. The
+    //  program does not check that the game matches.
+    OCR::LanguageOCROption LANGUAGE;
+    //  The start and end checkpoints, attempts and checks. Its own language
+    //  dropdown is hidden: LANGUAGE above is PLZA's.
     Pokemon::StoryRunOptions RUN;
     BattleAIOption BATTLE_AI;
     //  Off: a run of several checkpoints runs straight on at the rows whose

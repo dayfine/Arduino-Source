@@ -21,6 +21,7 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Pokemon_Strings.h"
+#include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_LocationNameReader.h"
 #include "Actions/PokemonLZA_AutoStoryConfirmChoices.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
@@ -70,7 +71,14 @@ const StringSelectDatabase& checkpoint_database(){
 
 
 AutoStory::AutoStory()
-    : RUN(checkpoint_database(), Gen8ToGen9Languages_Database())
+    : LANGUAGE(
+        "<b>Game Language:</b><br>The language the game is set to. The program reads text in it "
+        "(the place names in the fast travel menu) and does not check that the game matches.",
+        LocationNameOCR::instance().languages(),
+        LockMode::LOCK_WHILE_RUNNING,
+        true
+    )
+    , RUN(checkpoint_database(), Gen8ToGen9Languages_Database())
     , RELOAD_AT_BOUNDARIES(
         "<b>Reload at Checkpoint Boundaries:</b><br>Reload the save before a checkpoint whose plan asks for it "
         "when the run comes from the checkpoint before. Off: run straight on. A failed checkpoint's retry reloads either way.",
@@ -84,6 +92,8 @@ AutoStory::AutoStory()
         &NOTIFICATION_ERROR_FATAL,
     })
 {
+    PA_ADD_OPTION(LANGUAGE);
+    RUN.LANGUAGE.set_visibility(ConfigOptionState::HIDDEN);
     PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(BATTLE_AI);
     PA_ADD_OPTION(RELOAD_AT_BOUNDARIES);
@@ -174,7 +184,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     connect_controller(env.console, context, rows[first]);
 
     StoryEnv story{
-        .env = env, .context = context, .language = RUN.language(), .battle_ai = BATTLE_AI
+        .env = env, .context = context, .language = LANGUAGE, .battle_ai = BATTLE_AI
     };
     PlzaConsoleBackend backend(story);
     const StoryGame<ZonePose> game = run_game(story, story_data, RUN.breakpoints(), context);
