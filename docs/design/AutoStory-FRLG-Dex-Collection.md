@@ -2,7 +2,11 @@
 
 Status: **design only**. The actions, readers, catalog and program described
 here are not implemented. This design is stacked on the current FRLG AutoStory
-design and implementation through the Elite Four.
+design and implementation through the Elite Four. Reviewed 2026-11-14 against
+`frlg/stage20-league` (table, actions, capture) and `nav/shared` (failure
+classes); decisions that belong to the user are marked **Open question** and
+collected in section 12. This work starts after the FRLG story reaches the Hall
+of Fame with verified checkpoints; it does not compete with that.
 
 ## 1. Goal and meaning of completion
 
@@ -26,6 +30,24 @@ trade evolutions, mutually exclusive starters and fossils, and event-only
 Pokémon remain explicit blockers unless the user enables an acquisition source
 that supplies them. "Complete" always names the selected goal and allowed
 methods.
+
+The first goal is the **Kanto caught set** (Kanto Dex, 150 entries). The
+National Dex is not a postgame given in FRLG: it needs 60 owned species plus
+Celio's Ruby/Sapphire quest on the Sevii Islands, which is
+[Architecture.md](AutoStory-Architecture.md) milestone 3 and out of this
+design's scope. National entries in a goal are `story_locked` until then.
+
+### 1.0 What the story already registers
+
+The story rows own these acquisitions, several as shiny Gift RNG hand-offs the
+user asked for: the Magikarp (04.03), the Helix Fossil (04.05; Miguel takes the
+Dome), Oddish (05.09) and Pidgey (08.03) captures, Eevee (09.03/09.04), Lapras
+(16.03b), and Hitmonchan (15.02/15.03, planned, not authored). The collector
+never repeats them: a `gift`, `fossil` or `static` recipe whose story row has
+run is `story_owned`, and the mutually exclusive counterparts (Dome Fossil and
+Kabuto, Hitmonlee) are `unavailable` on a save that followed the story. Any new
+gift or static that the user wants as a shiny stays a story row with its RNG
+hand-off, not a collector recipe.
 
 ### 1.1 Existing pieces and exact gaps
 
@@ -72,15 +94,24 @@ checkpoint is:
 ```text
 from_save (known Pokémon Center anchor)
     -> mart, when the ball budget is not already present
-    -> heal
-    -> fly/run to the selected map
-    -> run to a generated land hunt site
+    -> heal_to_full (center_enter / center_exit variants)
+    -> field-move step, fly variant, or route steps (run / bike variants)
+       to the selected map
+    -> route to a generated land hunt site
     -> capture the selected species
     -> dex_entry requires caught
-    -> fly/run back to a known Pokémon Center anchor
-    -> heal
-    -> checkpoint save
+    -> fly / route back to a known Pokémon Center anchor
+    -> heal_to_full
+    -> save (the engine's step; the checkpoint's commit)
 ```
+
+These are the table's real words. The FRLG GAME actions registered today are
+`capture`, `mart`, `pc`, `teach`, `fossil`, `grind`, `grind_check`, `level`,
+`bag_check`, `check_full_hp`, `heal_to_full` and `restore_pp`; movement is the
+shared `route` step with `run`/`bike` variants
+(`PokemonFRLG_AutoStoryPoses.h`), Fly and Surf are field-move step variants,
+and saving is the engine's `save`. There are no `run`, `fly`, `surf` or `heal`
+actions, and the factory must not invent them.
 
 The dynamic checkpoint id should be stable and diagnostic, for example
 `dex-025-pikachu-viridian-forest`. The run record then identifies the species,
@@ -124,9 +155,16 @@ one postgame save without coupling development to a full story run.
 ### 3.2 AutoStory integration
 
 The same `run_dex_collection()` routine can be called by AutoStory after the
-main-story range has completed and saved at its final known anchor. Add an
-option such as **Continue with Pokédex collection** only after the standalone
-controller is proven.
+main-story range has completed. Add an option such as **Continue with Pokédex
+collection** only after the standalone controller is proven.
+
+The story does not end at a Center. 20.05 ends in the Hall of Fame (5, 4), the
+Hall of Fame saves the game itself, the credits roll, and the game next loads
+in the player's bedroom in Pallet Town. The continuation therefore begins from
+a declared post-credits start (bedroom, save card PALLET TOWN) and its first
+generated checkpoint routes to a Center anchor (Viridian) and saves there
+before any catch is attempted. The same start is the standalone program's
+"after the Champion" prerequisite profile.
 
 AutoStory supplies facts it already knows: version, completed story row,
 available map flags, expected party roles, start menu, and the exact final
@@ -172,12 +210,22 @@ is added to `PokemonFRLG_Panels.cpp`; new sources/resources are added to CMake
 in their owning slice.
 
 `build_checkpoint()` can supply the action dispatch, start check and save, but
-its current `keep_next_start_frame()` looks up the next id in the static story
-table. A generated row is not in that table. Extract or overload that small
-piece so a dynamic checkpoint saves its post-save frame under a stable anchor
-key such as `dex-anchor-celadon`. The next generated row checks that anchor key
-even though its diagnostic checkpoint id names a different species. Static
-story rows keep their current next-row lookup unchanged.
+its save hook has two static-table lookups: `keep_next_start_frame()` finds the
+next id's start to keep the post-save frame, and `checkpoint_end_map(id)`
+(`PokemonFRLG_AutoStorySaveChecks.cpp`) finds the next row's start map for the
+save-card place check. A generated row is in neither: `story_checkpoints()` is
+loaded from the embedded `StoryData/frlg-<id>.plan.json` files and
+`load_frlg_story()` rejects an id outside `STORY_ORDER`. So the factory passes
+an explicit end map and a stable next-start key such as `dex-anchor-celadon`
+(the next generated row checks that key even though its diagnostic id names a
+different species), and builds its `Pokemon::Segment` with one `CheckpointSpec`
+directly rather than through `make_story_segment()`. Static story rows keep
+their current lookups unchanged.
+
+A generated row also has no authored `StoryCheckpointMetadata.phase`, which is
+what decides whether a run may save (TESTING never, VERIFICATION after 2-3
+passes, REPRODUCTION always). The collector's commit is a save, so the program
+carries the save mode itself (section 8) and stamps each generated row with it.
 
 For AutoStory integration, add the continuation option to `AutoStory` only in
 the integration slice. After `run_story_plan()` reports the declared main-story
@@ -221,7 +269,9 @@ snapshot. A periodic full scan at an anchor catches drift without paying for a
 
 When the goal contains national entries but the save exposes only the Kanto
 Dex, classify those entries as locked on the National Dex prerequisite. Do not
-turn absent rows into `UNSEEN` or `UNKNOWN` captures.
+turn absent rows into `UNSEEN` or `UNKNOWN` captures. National number to slug
+comes from the existing `Pokemon/Pokedex/Pokedex-National.json` resource
+(`load_pokemon_slug_json_list()`), not a new table.
 
 ### 4.2 Acquisition catalog
 
@@ -308,8 +358,12 @@ Add under `Inference/Menus/`:
    when a targeted verification needs stronger evidence than the list marker.
 
 The reader should identify species by national-number row, not OCR the English
-name as its primary identity. Names can be derived from the pinned Pokédex
-resource. It must handle caught, seen-only, unseen and unread rows separately.
+name as its primary identity. Names come from `Pokedex-National.json`. It must
+handle caught, seen-only, unseen and unread rows separately. The list facts
+this relies on (the caught marker is a Poké Ball beside the number, unseen rows
+show dashes, numerical order is the default and the SELECT search menu may not
+be available before the National Dex) are from memory of the game, not yet
+checked on console: slice 2 starts by capturing the real screens.
 
 Add under `Programs/DexCollection/` or a reusable FRLG menu module:
 
@@ -365,6 +419,7 @@ For each missing species, recipes are classified as:
 | State | Meaning |
 |---|---|
 | `feasible_now` | version, capability, method and map are supported |
+| `story_owned` | a story row acquires it (section 1.0); never planned here |
 | `story_locked` | a badge, item, field move, area or scene is not available yet |
 | `unsupported_method` | source exists, but its console action is not implemented |
 | `unrouteable_map` | source exists, but the published map/connection graph cannot reach it |
@@ -372,12 +427,16 @@ For each missing species, recipes are classified as:
 | `unknown_state` | a required observed fact could not be read |
 
 For a land recipe, enumerate adjacent pairs of tiles in the map's `wild`
-region. A valid first-slice hunt site:
+region (`WILD_REGION` in `PokemonFRLG_OverworldWildTiles.h`). A valid
+first-slice hunt site:
 
 - lets the player step from one encounter tile to the other and back;
 - is reachable through the loaded map graph;
 - is not a warp, ledge, gate or one-way tile;
-- avoids undefeated trainer sight when the story state says one remains; and
+- avoids undefeated trainer sight when the story state says one remains (the
+  capture loop already fights a trainer who sees the player while pacing,
+  `PatchSteps::fight_trainer()`; after the Champion only optional trainers
+  remain); and
 - has a route back to the commit anchor.
 
 The current `CapturePlan::pace` then comes from the chosen pair rather than an
@@ -419,10 +478,10 @@ large `DexSnapshot`, which does not belong in `Outcome` flags.
 
 Generated checkpoints reuse:
 
-- `run`/`bike` and the connected-map route planner;
-- `fly` and `surf` field actions;
+- the `route` step (`run`/`bike` variants) and the connected-map route planner;
+- the field-move step's `fly` and `surf` variants;
 - `mart` for balls and healing items;
-- `heal` and ordinary checkpoint save;
+- `heal_to_full` with the Center variants, and the engine's `save` step;
 - `pc` when a later recipe requires party arrangement; and
 - `capture` for the first land-wild slice.
 
@@ -441,6 +500,11 @@ bounds. Extend it without changing today's authored capture defaults:
 2. **HP-aware weakening:** map `read_opponent_hp_fill()` to `FoeHp` and enable
    the already-designed weakening turns. The plan still names a move and a
    maximum; safe-move selection from damage ranges is a separate planner.
+   **Open question:** the PokeGuy team has no move that cannot knock out a
+   low-level wild, so weakening means a TM (False Swipe) or a caught helper,
+   which is a TM/team decision for the user. Recommendation: slices 5-7 use no
+   weakening; they buy Great/Ultra Balls instead and let the planner's
+   catch-rate filter decide which species are feasible without it.
 3. **Registration evidence:** have the catch result record whether the
    registration page appeared. The generated `dex_entry` action remains the
    durable check.
@@ -485,6 +549,22 @@ with a persistent resume record and an independently verified tile pose.
 
 Do not add a sidecar progress file in the first slice. The game save plus a
 fresh Pokédex scan is the source of truth.
+
+**Save mode.** The program has the same save modes as AutoStory: a testing run
+never saves (it catches, checks `dex_entry`, then reloads, so the console pilot
+proves the loop without committing), a verification run saves once after 2-3
+passes of the same target, and a reproduction run saves at every anchor.
+**Open question:** FRLG has one save slot, so every collector save overwrites
+the post-credits save that the 20.x retries also load. Recommendation: run the
+collector only once 20.01-20.05 are verified and the user has released that
+save; until then testing mode only.
+
+**Failure names.** Generated checkpoints report through the shared
+`StoryFailureClass` list (`Pokemon_StoryFailureClasses.h`): a failed
+`dex_entry` is `STATE_CHECK_FAILED`, a ball or encounter bound reached is
+`OPERATION_FAILED` with the bound in the message, pacing interrupted by a wild
+battle it could not flee is `WILD_BATTLES`. The planner's recipe states
+(section 6) are not failure classes; they are a report, not a retry decision.
 
 ## 9. Completion and blocker report
 
@@ -581,3 +661,22 @@ Keep the design's boundaries as separate reviewable changes:
 The first usable result is slice 7: it reads actual caught state, chooses among
 published FireRed land encounters, routes, catches, verifies, saves and moves to
 the next target. It makes no claim about methods added by later slices.
+
+## 12. Open questions for the user
+
+Each has a recommendation; none is decided here.
+
+1. **Weakening move / TM spend** (7.3): teach False Swipe or catch a helper, or
+   none. Recommendation: none in slices 5-7; better balls and a catch-rate
+   filter instead.
+2. **The one save slot** (8): may the collector overwrite the post-credits
+   save? Recommendation: only after 20.01-20.05 are verified and released;
+   testing mode (no save) until then.
+3. **Goal and version**: Kanto caught set on FireRed only; National Dex and
+   Sevii are out of scope. Recommendation: accept; LeafGreen and National Dex
+   are later goals, not options in slice 7.
+4. **Pilot anchor**: Viridian (first Center after the credits) or Celadon
+   (department store, central Fly target). Recommendation: Viridian for the
+   first checkpoint, Celadon as the working anchor once Fly is confirmed.
+5. **External trades and events**: disabled by default. Recommendation: keep
+   disabled; the blocker report names them.
