@@ -14,8 +14,8 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
-using Pokemon::ScreenEvent;
-using Pokemon::ScreenEvents;
+using PokemonAutomation::ScreenEvent;
+using PokemonAutomation::ScreenEvents;
 
 namespace{
 //  Around the player, whom the camera keeps in the middle: PLAYER_STILL's
@@ -46,7 +46,7 @@ ScreenEvents BdspScreenObserver::observe(const VideoSnapshot& frame, WallClock n
     out.set(ScreenEvent::PLAYER_STILL, m_previous && walk_screen_change(
         extract_box_reference(*m_previous.frame, PLAYER_BOX), extract_box_reference(screen, PLAYER_BOX)) < WALK_TAP_BLOCKED_CHANGE);
 
-    out.merge(Pokemon::fade_events(fade_of_screen(screen)));
+    out.merge(fade_events(fade_of_screen(screen)));
     out.set(ScreenEvent::LOCATION_BANNER, !m_banner.empty() && location_banner_matches(m_reads.read(screen, now), m_banner));
     m_previous = frame;
     return out;

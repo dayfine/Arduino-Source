@@ -10,9 +10,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "Common/Cpp/CancellableScope.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryActions.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
@@ -44,7 +44,7 @@ std::vector<std::pair<std::string, StoryStep>> story_steps(){
         StoryStep save;
         save.kind = StoryStepKind::SAVE;
         save.name = "save";
-        save.action = row.saves_in;
+        save.args.emplace(SAVES_IN_ARG, row.saves_in);
         out.emplace_back(row.id, std::move(save));
     }
     return out;
@@ -65,7 +65,7 @@ std::string old_dispatch(const StoryStep& step){
     case StoryStepKind::STEP:
     case StoryStepKind::TALK:
     case StoryStepKind::MASH:
-        return "walk " + kind;
+        return std::format("walk {}", kind);
     case StoryStepKind::NEW_GAME:
     case StoryStepKind::OPTIONS:
     case StoryStepKind::ANSWER:
@@ -75,7 +75,7 @@ std::string old_dispatch(const StoryStep& step){
     case StoryStepKind::SAVE:
         return "console " + kind;
     default:
-        return "executor " + kind;
+        return std::format("executor {}", kind);
     }
 }
 
@@ -94,7 +94,7 @@ StoryBoundActions naming_actions(){
         .train = named(StoryStepKind::TRAIN),
         .heal = named(StoryStepKind::HEAL),
         .save = named(StoryStepKind::SAVE),
-        .event = [](const std::string& name) -> Pokemon::StoryActionFunction{
+        .event = [](const std::string& name) -> StoryBoundAction{
             return [name](const StoryStep&, RunState&){
                 return Pokemon::outcome_failed("event", name);
             };
@@ -102,19 +102,40 @@ StoryBoundActions naming_actions(){
     };
 }
 
-//  What `table` runs for `step`, in old_dispatch()'s words. A walking row
-//  is not run: it would walk.
-std::string table_dispatch(const Pokemon::StoryActionTable& table, const StoryStep& step){
-    const Pokemon::StoryAction* action = table.find(step);
-    if (action == nullptr){
-        return std::string("executor ") + Pokemon::story_step_kind_name(step.kind);
+//  Whether `step` runs one of the binding's own actions, which need the
+//  console: an event, or a kind StoryWalkSteps does not do.
+bool needs_console(const StoryStep& step){
+    if (story_events().contains(step.action)){
+        return true;
     }
-    if (!action->needs_console){
-        return std::string("walk ") + Pokemon::story_step_kind_name(step.kind);
+    switch (step.kind){
+    case StoryStepKind::ROUTE:
+    case StoryStepKind::LEGS:
+    case StoryStepKind::STEP:
+    case StoryStepKind::TALK:
+    case StoryStepKind::MASH:
+        return false;
+    default:
+        return true;
+    }
+}
+
+//  What `steps` runs for `step`, in old_dispatch()'s words. A walking step
+//  is not run: it would walk.
+std::string engine_dispatch(StoryEngineSteps& steps, const StoryStep& step){
+    const std::string kind = Pokemon::story_step_kind_name(step.kind);
+    if (!steps.check(step).empty()){
+        return std::format("executor {}", kind);
+    }
+    if (!needs_console(step)){
+        return std::format("walk {}", kind);
     }
     RunState state;
-    const Pokemon::Outcome outcome = action->act(step, state);
-    return outcome.failure + " " + outcome.detail;
+    const Pokemon::Outcome outcome = steps.act(step, state);
+    if (outcome.failure == "unsupported_step"){
+        return std::format("executor {}", kind);
+    }
+    return std::format("{} {}", outcome.failure, outcome.detail);
 }
 
 
@@ -122,9 +143,15 @@ UnitTestResult test_every_step_has_an_action(Logger& logger){
     SimExecutor sim(logger);
     size_t steps = 0;
     for (const StoryCheckpoint& row : story_checkpoints()){
-        const std::vector<std::string> unbound = Pokemon::lint_story_checkpoint(row, sim.actions());
-        if (!unbound.empty()){
-            return unbound.front();
+        for (size_t c = 0; c < row.steps.size(); c++){
+            const StoryStep& step = row.steps[c];
+            const std::vector<std::string> problems = sim.steps().check(step);
+            if (!problems.empty()){
+                return std::format(
+                    "{} step {} {}: {} for {} '{}'",
+                    row.id, c + 1, step.name, problems.front(), Pokemon::story_step_kind_name(step.kind), step.action
+                );
+            }
         }
         steps += row.steps.size();
     }
@@ -140,7 +167,9 @@ UnitTestResult test_table_runs_what_the_old_dispatch_ran(Logger& logger){
     const std::string step_name;
     SimStoryStepIO io(sim, notes, misses, knobs, step_name, []{ return false; }, [](const Pokemon::Pose&){});
     StoryWalkSteps walks(io);
-    const Pokemon::StoryActionTable table = story_action_table(walks, naming_actions());
+    CancellableHolder<CancellableScope> scope;
+    StoryLogBackend backend(Pokemon::StoryBackendKind::SCRIPT, {}, scope);
+    StoryEngineSteps engine(walks, naming_actions(), backend);
 
     std::set<std::pair<StoryStepKind, std::string>> seen;
     for (const auto& [row, step] : story_steps()){
@@ -148,9 +177,9 @@ UnitTestResult test_table_runs_what_the_old_dispatch_ran(Logger& logger){
             continue;
         }
         const std::string expected = old_dispatch(step);
-        const std::string actual = table_dispatch(table, step);
+        const std::string actual = engine_dispatch(engine, step);
         if (actual != expected){
-            return std::format("{} {} ({} \"{}\"): the table runs \"{}\", the old dispatch ran \"{}\".",
+            return std::format("{} {} ({} \"{}\"): the engine runs \"{}\", the old dispatch ran \"{}\".",
                 row, step.name, Pokemon::story_step_kind_name(step.kind), step.action, actual, expected);
         }
     }
@@ -163,8 +192,7 @@ UnitTestResult test_stubbed_steps_need_the_console(Logger& logger){
     run_rows_on(sim, logger, {.from = "00.00", .to = "01.11"});
     logger.log("Steps the simulation does not play, by row:\n" + stub_report(sim.result()));
     for (const auto& [row, step] : story_steps()){
-        const Pokemon::StoryAction* action = sim.actions().find(step);
-        if (action != nullptr && action->needs_console){
+        if (needs_console(step)){
             continue;
         }
         for (const SimRun::RowStart& start : sim.result().rows){

@@ -4,7 +4,6 @@
  *
  */
 
-#include <algorithm>
 #include <format>
 #include <utility>
 #include "Common/Cpp/Exceptions.h"
@@ -127,11 +126,14 @@ std::span<const Pokemon::StoryActionSpec> bdsp_story_actions(){
     return actions;
 }
 
-StoryCheckpoint read_authored_checkpoint(const JsonValue& value, std::string_view source){
+namespace{
+
+Pokemon::StoryFileRow<StoryCheckpoint> read_story_file(const JsonValue& value, std::string_view source){
     StoryFailure on_failure = StoryFailure::RELOAD_AND_RETRY;
     std::string saves_in;
+    Pokemon::StoryRowExecution shared;
     auto read_execution = [&](const JsonObject& execution, std::string_view src){
-        Pokemon::validate_json_fields(execution, {"on_failure", "saves_in"}, src);
+        shared = Pokemon::read_story_row_execution(execution, src, {"on_failure", "saves_in"});
         on_failure = read_failure(execution.get_string_throw("on_failure"));
         saves_in = execution.get_string_throw("saves_in");
         if ((on_failure == StoryFailure::RELOAD_AND_RETRY) == saves_in.empty()){
@@ -144,7 +146,13 @@ StoryCheckpoint read_authored_checkpoint(const JsonValue& value, std::string_vie
     );
     result.on_failure = on_failure;
     result.saves_in = std::move(saves_in);
-    return result;
+    return {std::move(result), shared};
+}
+
+} // namespace
+
+StoryCheckpoint read_authored_checkpoint(const JsonValue& value, std::string_view source){
+    return read_story_file(value, source).checkpoint;
 }
 
 JsonValue authored_checkpoint_document(std::string_view file){
@@ -160,22 +168,29 @@ StoryCheckpoint load_authored_checkpoint(std::string_view file){
     return read_authored_checkpoint(authored_checkpoint_document(file), file);
 }
 
-std::vector<StoryCheckpoint> load_authored_story(){
-    std::vector<StoryCheckpoint> result;
-    for (const auto& [name, text] : bdsp_checkpoint_json()){
-        if (name.ends_with(".plan")){
-            result.push_back(read_authored_checkpoint(parse_json(text), name));
+Pokemon::StoryData<StoryCheckpoint> load_bdsp_story(std::span<const Pokemon::StoryDevFile> dev_files){
+    std::vector<Pokemon::EmbeddedJsonFile> plans;
+    for (const Pokemon::EmbeddedJsonFile& file : bdsp_checkpoint_json()){
+        if (file.first.ends_with(".plan")){
+            plans.push_back(file);
         }
     }
-    std::sort(result.begin(), result.end(), [](const StoryCheckpoint& a, const StoryCheckpoint& b){
-        return a.id < b.id;
+    Pokemon::StoryData<StoryCheckpoint> story = Pokemon::load_story_data<StoryCheckpoint>(plans, dev_files, {
+        .read = [](std::string_view text, std::string_view source){
+            return read_story_file(parse_json(std::string(text)), source);
+        },
+        //  The story plays its rows in id order (bdsp-mine-01.03 after 01.02b).
+        .plays_before = [](const StoryCheckpoint& a, const StoryCheckpoint& b){
+            return a.id < b.id;
+        },
     });
+    const std::vector<StoryCheckpoint>& result = story.checkpoints;
     for (size_t c = 1; c < result.size(); c++){
         if (result[c].id == result[c - 1].id){
             throw ParseException("Two authored checkpoints are " + result[c].id + ".");
         }
     }
-    return result;
+    return story;
 }
 
 

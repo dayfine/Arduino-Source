@@ -43,7 +43,7 @@ std::vector<RouteTile> route_tiles(const StoryWorld& maps, const std::vector<Til
 }
 
 std::string describe(const StoryWorld& maps, const std::vector<TilePos>& tiles){
-    return Pokemon::describe(route_tiles(maps, tiles));
+    return describe(route_tiles(maps, tiles));
 }
 
 RouteLogLeg route_log_leg(const TileLeg& leg){

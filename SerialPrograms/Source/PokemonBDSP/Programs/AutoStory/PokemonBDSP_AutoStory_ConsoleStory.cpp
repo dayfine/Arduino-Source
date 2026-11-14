@@ -1,4 +1,4 @@
-/*  BDSP AutoStory - Story executor
+/*  BDSP AutoStory - Console story
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,7 +6,9 @@
 
 #include <algorithm>
 #include <format>
+#include <string_view>
 #include <utility>
+#include <variant>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/PrettyPrint.h"
@@ -48,7 +50,7 @@
 #include "Actions/PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_Walks.h"
 #include "Actions/PokemonBDSP_AutoStory_WildBattle.h"
-#include "PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP_AutoStory_ConsoleStory.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -63,23 +65,6 @@ using Pokemon::RunState;
 using Pokemon::StoryStep;
 using Pokemon::TilePos;
 using Pokemon::story_arg;
-
-
-std::optional<RobustPlanCosts> story_route_costs(const std::string& action){
-    if (action.empty() || action == ROUTE_ONTO_TRIGGER || action == ROUTE_INTO_SCENE || action == "route"){
-        return route_plan_costs();
-    }
-    if (action == "town"){
-        return town_plan_costs();
-    }
-    if (action == "robust"){
-        return RobustPlanCosts();
-    }
-    if (action == "line"){
-        return waypoint_plan_costs();
-    }
-    return std::nullopt;
-}
 
 
 namespace{
@@ -132,42 +117,43 @@ void ConsoleStepGuard::on_interrupt(const StoryStep& step, const Pokemon::Interr
 }
 
 void ConsoleStepGuard::on_screen(const StoryStep& step, const Pokemon::ScreenSettle& screen){
-    m_stream.log(std::format("[Screen] before {}: {}", step.name, Pokemon::describe(screen)));
+    m_stream.log(std::format("[Screen] before {}: {}", step.name, describe(screen)));
 }
 
 
 //  The table and the guard are members, built after the base: it only
 //  keeps references to them until a step runs.
-StoryExecutor::StoryExecutor(StoryEnv& env)
-    : Pokemon::TableExecutor(m_table, m_guard)
+ConsoleStory::ConsoleStory(StoryEnv& env)
+    : Pokemon::TableExecutor(m_no_table, m_guard)
     , m_env(env)
     , m_io(env.env.console, env.context)
     , m_walks(m_io)
     , m_guard(env.env.console, m_checkpoint)
-    , m_table(story_action_table(m_walks, console_actions()))
+    , m_backend(Pokemon::StoryBackendKind::CONSOLE, [&env](std::string_view line){ env.env.console.log(std::string(line)); }, env.context)
+    , m_steps(m_walks, console_actions(), m_backend)
     , m_look(env.env.console, env.context)
     , m_interrupts(story_interrupts([this](bool fresh){ return m_look.look(fresh); }, console_interrupt_actions()))
 {
     set_interrupts(&m_interrupts);
 }
 
-StoryBoundActions StoryExecutor::console_actions(){
-    const auto method = [this](Outcome (StoryExecutor::*action)(RunState&, const StoryStep&)){
+StoryBoundActions ConsoleStory::console_actions(){
+    const auto method = [this](Outcome (ConsoleStory::*action)(RunState&, const StoryStep&)){
         return [this, action](const StoryStep& step, RunState& state){
             return (this->*action)(state, step);
         };
     };
     return StoryBoundActions{
-        .new_game = method(&StoryExecutor::new_game),
-        .options = method(&StoryExecutor::options),
-        .answer = method(&StoryExecutor::answer),
-        .battle = method(&StoryExecutor::battle),
-        .train = method(&StoryExecutor::train),
-        .heal = method(&StoryExecutor::heal),
-        .save = method(&StoryExecutor::save),
-        .event = [this](const std::string& name) -> Pokemon::StoryActionFunction{
+        .new_game = method(&ConsoleStory::new_game),
+        .options = method(&ConsoleStory::options),
+        .answer = method(&ConsoleStory::answer),
+        .battle = method(&ConsoleStory::battle),
+        .train = method(&ConsoleStory::train),
+        .heal = method(&ConsoleStory::heal),
+        .save = method(&ConsoleStory::save),
+        .event = [this](const std::string& name) -> StoryBoundAction{
             return [this, event = story_events().at(name)](const StoryStep& step, RunState& state){
-                return event(*this, state, step);
+                return event(m_env, state, step);
             };
         },
     };
@@ -175,7 +161,7 @@ StoryBoundActions StoryExecutor::console_actions(){
 
 //  A wild battle is run from, a trainer who saw us fought, a dialog or a
 //  warp's scene pressed through to the quiet overworld.
-StoryInterruptActions StoryExecutor::console_interrupt_actions(){
+StoryInterruptActions ConsoleStory::console_interrupt_actions(){
     const auto settle = [this](std::string label){
         return [this, label](const Pokemon::InterruptVerdict&, RunState&){
             m_io.settle(BUTTON_B, label, SettleKind::TALK, "");
@@ -196,24 +182,28 @@ StoryInterruptActions StoryExecutor::console_interrupt_actions(){
     };
 }
 
-void StoryExecutor::begin_attempt(const Pokemon::StoryCheckpoint& data){
+void ConsoleStory::begin_attempt(const Pokemon::StoryCheckpoint& data){
     m_checkpoint = data.id;
     m_walks.begin_attempt(data.id, data.steps);
 }
 
+Outcome ConsoleStory::run_action(const StoryStep& step, RunState& state){
+    return m_steps.act(step, state);
+}
 
-Outcome StoryExecutor::new_game(RunState&, const StoryStep&){
+
+Outcome ConsoleStory::new_game(RunState&, const StoryStep&){
     play_new_game_intro(m_env.env, context(), m_env.player_name);
     return Pokemon::outcome_ok();
 }
 
-Outcome StoryExecutor::options(RunState&, const StoryStep&){
+Outcome ConsoleStory::options(RunState&, const StoryStep&){
     verify_tutorial_settings(stream(), context());
     context().wait_for_all_requests();
     return Pokemon::outcome_ok();
 }
 
-Outcome StoryExecutor::answer(RunState&, const StoryStep& step){
+Outcome ConsoleStory::answer(RunState&, const StoryStep& step){
     wait_for_dialogue(stream(), context(), label_of(step));
     const bool yes = story_arg<bool>(step.args, "yes");
     pbf_press_button(context(), yes ? BUTTON_A : BUTTON_B, 80ms, 1000ms);
@@ -221,7 +211,7 @@ Outcome StoryExecutor::answer(RunState&, const StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
-Outcome StoryExecutor::battle(RunState&, const StoryStep& step){
+Outcome ConsoleStory::battle(RunState&, const StoryStep& step){
     //  "starter": the Starly battle at the lake (00.02). It opens on its own,
     //  with no talk, and the starter has no Poke Balls to throw; the scene
     //  goes on whoever wins.
@@ -246,7 +236,7 @@ Outcome StoryExecutor::battle(RunState&, const StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
-Outcome StoryExecutor::train(RunState&, const StoryStep& step){
+Outcome ConsoleStory::train(RunState&, const StoryStep& step){
     const int64_t battles = story_arg<int64_t>(step.args, "battles");
     for (int64_t battle = 0; battle < battles; battle++){
         const std::string label = std::format("Training battle {}/{}", battle + 1, battles);
@@ -257,7 +247,7 @@ Outcome StoryExecutor::train(RunState&, const StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
-Outcome StoryExecutor::heal(RunState&, const StoryStep& step){
+Outcome ConsoleStory::heal(RunState&, const StoryStep& step){
     //  From the planned tile below the door, run in like any door. The lit-
     //  doorway lineup is for when the run in finds no door: people on the
     //  way can leave the route unsure of the column (r59, Jubilife). Below
@@ -306,17 +296,19 @@ Outcome StoryExecutor::heal(RunState&, const StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
-Outcome StoryExecutor::save(RunState&, const StoryStep& step){
-    if (step.action.empty()){
+Outcome ConsoleStory::save(RunState&, const StoryStep& step){
+    const auto saves_in = step.args.find(SAVES_IN_ARG);
+    const std::string* map = saves_in == step.args.end() ? nullptr : std::get_if<std::string>(&saves_in->second);
+    if (map == nullptr || map->empty()){
         save_game(m_env.env, context());
         return Pokemon::outcome_ok();
     }
-    //  A row's start save, its action the map the card must name. With a
-    //  map, save_game() throws only when the card names another one, having
+    //  A row's start save, its SAVES_IN_ARG the map the card must name. With
+    //  a map, save_game() throws only when the card names another one, having
     //  backed out unsaved. That stops the program: a reset would load an
     //  older save and run this row from wherever that is.
     try{
-        save_game(m_env.env, context(), step.action);
+        save_game(m_env.env, context(), *map);
     }catch (OperationFailedException& e){
         throw FatalProgramException(
             ErrorReportMode::NO_ERROR_REPORT,
@@ -327,56 +319,7 @@ Outcome StoryExecutor::save(RunState&, const StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
-Outcome StoryExecutor::game(RunState&, const StoryStep& step){
-    return Pokemon::outcome_failed("unknown_event", step.action);
-}
 
-
-Pokemon::Segment make_story_segment(
-    const std::vector<StoryCheckpoint>& rows, Pokemon::StoryStepExecutor& executor,
-    std::set<std::string>& saved
-){
-    static const StoryStep SAVE_AT_START = []{
-        StoryStep step;
-        step.kind = Pokemon::StoryStepKind::SAVE;
-        step.name = "save";
-        step.why = "the save a failed step resets to";
-        return step;
-    }();
-    Pokemon::Segment segment;
-    segment.id = "BDSP";
-    for (const StoryCheckpoint& row : rows){
-        segment.checkpoints.push_back(Pokemon::CheckpointSpec{
-            .id = row.id, .title = row.title, .saves = false,
-            .build = [&row, &executor, &saved]{
-                Pokemon::Checkpoint steps = Pokemon::build_story_checkpoint(row, executor);
-                if (row.on_failure != StoryFailure::RELOAD_AND_RETRY){
-                    return steps;
-                }
-                StoryStep save_at_start = SAVE_AT_START;
-                save_at_start.action = row.saves_in;
-                Pokemon::Event save = Pokemon::story_event(save_at_start, executor);
-                save.skip_if.push_back(Pokemon::condition("saved at the start", [&saved, id = row.id](RunState&){
-                    return saved.contains(id);
-                }));
-                //  A save that fails is a failed first attempt: the retry
-                //  resets and does not save again.
-                save.act = [&executor, &saved, id = row.id, save_at_start](RunState& state){
-                    saved.insert(id);
-                    return executor.run(save_at_start, state);
-                };
-                Pokemon::Checkpoint checkpoint;
-                checkpoint.id = row.id;
-                checkpoint.events.push_back(std::move(save));
-                for (Pokemon::Event& event : steps.events){
-                    checkpoint.events.push_back(std::move(event));
-                }
-                return checkpoint;
-            },
-        });
-    }
-    return segment;
-}
 
 
 

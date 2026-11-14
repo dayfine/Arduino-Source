@@ -16,7 +16,7 @@ namespace PokemonBDSP{
 
 
 const std::vector<StoryCheckpoint>& story_checkpoints(){
-    static const std::vector<StoryCheckpoint> checkpoints = load_authored_story();
+    static const std::vector<StoryCheckpoint> checkpoints = load_bdsp_story({}).checkpoints;
     return checkpoints;
 }
 

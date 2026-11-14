@@ -16,7 +16,7 @@
 
 #include <string_view>
 #include <vector>
-#include "PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP_AutoStory_StoryCheckpoint.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

@@ -19,7 +19,7 @@
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
-#include "PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP_AutoStory_StoryCheckpoint.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

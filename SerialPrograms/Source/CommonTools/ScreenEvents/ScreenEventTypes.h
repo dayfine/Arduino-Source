@@ -2,30 +2,21 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Split out of Pokemon_ScreenEvents.h, unchanged; it includes this header.
+ *  The words a program uses for what the screen shows: a fade, a dialogue
+ *  box, a battle starting. ScreenEvents.h watches a stream for them.
  *
  */
 
-#ifndef PokemonAutomation_Pokemon_ScreenEventTypes_H
-#define PokemonAutomation_Pokemon_ScreenEventTypes_H
+#ifndef PokemonAutomation_CommonTools_ScreenEvents_ScreenEventTypes_H
+#define PokemonAutomation_CommonTools_ScreenEvents_ScreenEventTypes_H
 
-#include <atomic>
+#include <cstddef>
 #include <cstdint>
-#include <deque>
 #include <initializer_list>
-#include <optional>
 #include <string>
-#include "Common/Cpp/Concurrency/Mutex.h"
-#include "Common/Cpp/Time.h"
-#include "CommonFramework/ImageTools/ImageStats.h"
-#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
-#include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
+#include <string_view>
 
 namespace PokemonAutomation{
-namespace Pokemon{
 
 
 //  One thing a frame shows. A game reports the ones its detectors can see.
@@ -95,9 +86,11 @@ private:
 
     uint32_t m_bits = 0;
 };
+//  "dialog box, player can move" (joined by `separator`); "nothing" when
+//  empty.
+std::string describe(const ScreenEvents& events, std::string_view separator = ", ");
 
 
 
-} // namespace Pokemon
-} // namespace PokemonAutomation
+}  // namespace PokemonAutomation
 #endif

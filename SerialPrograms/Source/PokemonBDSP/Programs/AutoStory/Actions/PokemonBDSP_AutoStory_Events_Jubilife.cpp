@@ -55,9 +55,9 @@ void step_along(VideoStream& stream, ProControllerContext& context, int east, co
     route_turn(stream, context, east > 0 ? Direction::EAST : Direction::WEST);
     walk_tiles_dpad(stream, context, run_from_wild_battle, {east > 0 ? 1.0 : -1.0, 0}, 1, label);
 }
-Pokemon::Outcome talk_to_wanderer(StoryExecutor& executor, Pokemon::RunState&, const Pokemon::StoryStep& step){
-    VideoStream& stream = executor.stream();
-    ProControllerContext& context = executor.context();
+Pokemon::Outcome talk_to_wanderer(StoryEnv& console, Pokemon::RunState&, const Pokemon::StoryStep& step){
+    VideoStream& stream = console.env.console;
+    ProControllerContext& context = console.context;
     const std::string label = "Along the row below " + step.name;
     //  Home, east, west, west, east: each move one tile on the D-pad.
     const int moves[] = {0, 1, -1, -1, 1};
