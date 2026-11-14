@@ -13,8 +13,8 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_RunFromBattleDetector.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_AlertEyeDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_LockOnBracketDetector.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
@@ -71,28 +71,29 @@ bool throw_ball(ConsoleHandle& console, ProControllerContext& context){
     return ret == 0;
 }
 
-//  ZL held (not mashed) up to 1.5 s: whether the move symbols show, the
-//  lock on the Pokemon with the brackets.
-bool lock_on_held(ConsoleHandle& console, ProControllerContext& context){
-    MoveEffectivenessSymbolWatcher lock_on(COLOR_RED, &console.overlay(), 100ms);
-    const int ret = run_until<ProControllerContext>(
-        console, context,
-        [](ProControllerContext& context){
-            pbf_controller_state(context, BUTTON_ZL, DPAD_NONE, {0, 0}, {0, 0}, 1500ms);
-        },
-        {lock_on}
-    );
-    return ret == 0;
-}
-
 //  Whether a wild battle is on: its Run prompt ("-" at the left), which
-//  story battles do not show. A target a ball broke out of can turn on the
-//  player and start one (Mareep in 03.08, console B 2026-11-13).
+//  story battles do not show, or the red alert bar with the eye at the top
+//  (AlertEyeDetector), which shows while a wild Pokemon attacks the player
+//  before the partner is out: Bunnelby's Tackle at stop 100, where the Run
+//  prompt did not show (03.08, console B 2026-11-14). A target a ball broke
+//  out of can turn on the player too (Mareep, 2026-11-13).
 bool wild_battle_on(ConsoleHandle& console, ProControllerContext& context){
     context.wait_for_all_requests();
     const VideoSnapshot screen = console.video().snapshot();
+    if (!screen){
+        return false;
+    }
     RunFromBattleDetector run_prompt(COLOR_RED, nullptr);
-    return screen && run_prompt.detect(screen);
+    if (run_prompt.detect(screen)){
+        console.log("wild_battle_on(): the Run prompt shows.");
+        return true;
+    }
+    AlertEyeDetector alert(COLOR_RED, nullptr);
+    if (alert.detect(screen)){
+        console.log("wild_battle_on(): the alert eye shows: a wild Pokemon attacks.");
+        return true;
+    }
+    return false;
 }
 
 //  What tells weaken_then_throw() a throw caught its target.
@@ -200,6 +201,19 @@ public:
         return target;
     }
 
+    //  Reads the plate (read()) with ZL held on until one shows or `limit`
+    //  passes. The lock can take over 1.5 s to show (the user, console B
+    //  2026-11-14).
+    std::optional<LockTarget> wait_for_plate(Milliseconds limit){
+        const WallClock end = current_time() + limit;
+        while (true){
+            const std::optional<LockTarget> target = read();
+            if (target || current_time() >= end){
+                return target;
+            }
+        }
+    }
+
     //  The right stick flicked `x` (right when positive) with ZL held moves
     //  the lock to the next target that way (the user, 2026-11-13). Returns
     //  the plate after it.
@@ -239,14 +253,23 @@ struct TargetChoice{
     bool all_caught = false;
 };
 
-//  With ZL held, flicks the right stick right up to 3 times, reading each
+//  How long ZL is held for the lock to show before a stop gives up on the
+//  target: the lock took longer than the old 1.5 s at times (the user,
+//  console B 2026-11-14).
+constexpr Milliseconds LOCK_ON_WAIT = 3000ms;
+
+//  With ZL held until the lock shows (LOCK_ON_WAIT at most), flicks the
+//  right stick right up to 3 times, reading each
 //  target's plate (LockTargetCycle), then flicks back to the nearest one
 //  not caught: the closer one is much more likely to be caught (the user,
 //  2026-11-13). The plate's height on the screen stands for the distance;
 //  the cyan catch-chance icon over the target is not read.
 TargetChoice choose_target(ConsoleHandle& console, HeldZl& held, std::string_view caller){
     LockTargetCycle cycle(4);
-    std::optional<LockTarget> view = held.read();
+    std::optional<LockTarget> view = held.wait_for_plate(LOCK_ON_WAIT);
+    if (!view){
+        console.log(std::format("{}: ZL held {} ms, but no name plate: no lock on.", caller, LOCK_ON_WAIT.count()));
+    }
     for (int flicks = 0; view && flicks < 4; flicks++){
         log_target(console, caller, std::format("target {}", cycle.targets().size()), *view);
         if (!cycle.add(*view)){
@@ -445,18 +468,50 @@ void turn_to_brackets(ConsoleHandle& console, ProControllerContext& context, con
     }
 }
 
+//  Attacks (weaken_target(), which sends the partner out when no move
+//  symbols show) until the wild battle is over or a round lands nothing,
+//  3 rounds at most: a wild Pokemon of a species already caught, fought
+//  off with no throws.
+void fight_off(ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context, BattleAIOption& battle_ai){
+    TrainerBattleState battle_state(battle_ai);
+    for (int round = 1; round <= 3; round++){
+        const int landed = weaken_target(env, console, context, battle_state);
+        advance_text_and_cards(console, context);
+        const bool still_on = wild_battle_on(console, context);
+        console.log(std::format("catch_in_zone(): fighting off, round {}: {} attacks landed, battle {}.", round, landed, still_on ? "on" : "over"));
+        if (landed == 0 || !still_on){
+            return;
+        }
+    }
+}
+
 //  A wild Pokemon fighting the player (a Mareep often does, the user's walk
-//  on console B, 2026-11-13): weaken_then_throw() until it is caught or
+//  on console B, 2026-11-13; Bunnelby, 2026-11-14): ZL locks on to it and
+//  reads its plate. Of a species already caught, it is fought off
+//  (fight_off()); otherwise weaken_then_throw() until it is caught or
 //  gone, `max_throws` at most.
 GrassCatches fight_back(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
     BattleAIOption& battle_ai, int max_throws
 ){
+    GrassCatches out;
+    std::optional<LockTarget> attacker;
+    {
+        HeldZl held(console, context);
+        attacker = held.wait_for_plate(LOCK_ON_WAIT);
+    }
+    if (attacker){
+        log_target(console, "catch_in_zone()", "a wild battle at the stop, locked on to", *attacker);
+    }
+    if (attacker && attacker->caught == true){
+        console.log("catch_in_zone(): a species already caught: fighting it off, no throws.");
+        fight_off(env, console, context, battle_ai);
+        return out;
+    }
     console.log("catch_in_zone(): a wild battle at the stop: weakening and throwing.");
     const WeakenThrows weakened = weaken_then_throw(
         env, console, context, battle_ai, CatchSign::REGISTERED, max_throws, "catch_in_zone()"
     );
-    GrassCatches out;
     out.throws = weakened.throws;
     out.found = weakened.caught ? 1 : 0;
     return out;
@@ -466,8 +521,10 @@ GrassCatches fight_back(
 //  `new_species_wanted` new species or `max_throws`: a wild battle on is
 //  fought (fight_back()); otherwise it sweeps the camera for brackets
 //  (sweep_for_brackets()), turns the camera to the tallest, holds ZL until
-//  the move symbols show the lock, chooses the nearest target not caught
-//  and walks toward it when far (aim_choose_approach()), and throws. No
+//  the target's name plate shows the lock (LOCK_ON_WAIT at most; the move
+//  symbols show only with the partner out, and never did in 03.08, console
+//  B 2026-11-14), chooses the nearest target not caught and walks toward
+//  it when far (aim_choose_approach()), and throws. No
 //  brackets: on to the next stop. All species caught: turns the camera
 //  right a little and watches again.
 GrassCatches catch_at_stop(
@@ -486,11 +543,10 @@ GrassCatches catch_at_stop(
             break;
         }
         turn_to_brackets(console, context, *target);
-        if (!lock_on_held(console, context)){
-            console.log("catch_in_zone(): ZL held, but no lock on.");
+        const TargetChoice choice = aim_choose_approach(console, context, "catch_in_zone()");
+        if (!choice.target && !choice.all_caught){
             continue;
         }
-        const TargetChoice choice = aim_choose_approach(console, context, "catch_in_zone()");
         if (choice.all_caught){
             console.log("catch_in_zone(): only species already caught lock on: looking further right.");
             out.caught_seen++;

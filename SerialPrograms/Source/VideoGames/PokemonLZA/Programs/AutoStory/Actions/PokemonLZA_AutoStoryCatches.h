@@ -61,10 +61,12 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
 //  user's two catch spots (CATCH_SPOTS): 100 from the objective
 //  (Scatterbug on the plaza's road) and 60 (Mareep by the gate),
 //  PATROL_VISITS visits, 10 minutes at most. At each stop
-//  it fights a wild battle that is on, else watches for the lock-on
+//  it fights a wild battle that is on (the Run prompt, or the alert eye of
+//  a wild Pokemon attacking: one of a species already caught is fought
+//  off, others weakened and caught), else watches for the lock-on
 //  brackets the game draws around one wild Pokemon (6 s at most), turns
-//  the camera to the tallest (the nearest), holds ZL until the move
-//  symbols show the lock, cycles the targets with ZL held, walks toward
+//  the camera to the tallest (the nearest), holds ZL until the target's
+//  name plate shows the lock (3 s at most), cycles the targets with ZL held, walks toward
 //  the nearest one not caught when it is far, and throws without letting
 //  ZL go, counting the Pokedex's "Registered!" banners. A break-out that
 //  starts a wild battle gets `battle_ai`'s attacks before the next throws.
