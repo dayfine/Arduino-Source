@@ -53,10 +53,10 @@ enum class SceneMove{
 //  pauses while someone walks off, a scripted walk-in can run 5 s with no
 //  text before someone speaks, and a speech pauses for a fanfare. The clock
 //  is the last look that was not quiet.
-constexpr Milliseconds TALK_OVER_QUIET = Milliseconds(5000);
+inline constexpr Milliseconds TALK_OVER_QUIET = Milliseconds(5000);
 //  The overworld with no box this long ends it, still or not (the rule's
 //  `calm`): wanderers or grass can keep the screen from ever being still.
-constexpr Milliseconds TALK_OVER_CALM = Milliseconds(15000);
+inline constexpr Milliseconds TALK_OVER_CALM = Milliseconds(15000);
 
 //  What ends a talk-over, besides the quiet.
 struct TalkOverRule{
