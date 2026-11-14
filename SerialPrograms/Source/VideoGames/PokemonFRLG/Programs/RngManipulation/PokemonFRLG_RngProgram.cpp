@@ -66,11 +66,11 @@ void RngProgramInstance::run_precheck(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context
 ){
+    home_black_border_check(env.console, context);
     if (!GameSettings::instance().RUN_RNG_START_CHECKS){
         env.console.log("Start checks are off in the FRLG Game Settings. Skipping them.");
         return;
     }
-    home_black_border_check(env.console, context);
     check_free_party_slots(env, context);
 }
 

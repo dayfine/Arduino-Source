@@ -76,8 +76,7 @@ GameSettings::GameSettings()
     )
     , RUN_RNG_START_CHECKS(
         "<b>Run Start Checks:</b><br>"
-        "Before an RNG program starts, check that the game has no black border and that your party has enough free slots. "
-        "Turn this off to skip these checks, e.g. when you restart a program often after fixing its settings.",
+        "Run pre-program validation checks, e.g. that your party has enough free slots.",
         LockMode::LOCK_WHILE_RUNNING,
         true // default
     )
