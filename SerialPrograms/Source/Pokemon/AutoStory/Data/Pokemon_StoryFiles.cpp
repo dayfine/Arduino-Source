@@ -54,8 +54,8 @@ void check_dev_checkpoint(
 }
 
 void add_story_row(
-    StoryRows& rows, std::string_view id, const StoryRowExecution& execution, RowSave start,
-    std::optional<std::string_view> previous_id, std::string_view source
+    std::string_view id, const StoryRowExecution& execution, RowSave start,
+    std::optional<std::string_view> previous_id, std::string_view source, StoryRows& rows
 ){
     if (execution.reload != StoryReload::NEVER){
         if (start == RowSave::WITHOUT_SAVE){

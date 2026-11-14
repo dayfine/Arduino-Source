@@ -62,6 +62,35 @@ struct StoryFileReader{
 };
 
 
+//  The story of the built-in checkpoint files `builtin`, in their order,
+//  each of `dev_files` in place of the built-in file of its name. Throws
+//  ParseException naming the file when a file does not parse, a dev file
+//  matches no built-in file, changes its checkpoint's id or fails the
+//  game's lint, or a row reloads a save it cannot count on.
+template <typename Checkpoint>
+StoryData<Checkpoint> load_story_data(
+    std::span<const EmbeddedJsonFile> builtin, std::span<const StoryDevFile> dev_files,
+    const StoryFileReader<Checkpoint>& reader
+);
+
+//  Who a run's rows are listed for.
+enum class StoryRowsShown{
+    USER,       //  every row but the dev-only ones
+    DEVELOPER,  //  every row (the program's Developer Mode)
+};
+
+//  The rows of `story` a run may play, in order. The start and end
+//  dropdowns list these, so their indices name these rows.
+template <typename Checkpoint>
+std::vector<Checkpoint> story_rows_for_mode(const StoryData<Checkpoint>& story, StoryRowsShown shown);
+
+//  The rows a run from `first` to `last` of `rows` plays, in order. Empty
+//  if `first` comes after `last` or `last` is past the end.
+template <typename Checkpoint>
+std::vector<Checkpoint> story_run_rows(std::span<const Checkpoint> rows, size_t first, size_t last);
+
+
+
 namespace detail{
 
 //  Throws ParseException naming the dev file that matches no built-in file.
@@ -76,16 +105,24 @@ ParseException naming_path(const ParseException& error, std::string_view path);
 void check_dev_checkpoint(
     std::string_view path, std::string_view id, std::string_view builtin_id, const std::vector<std::string>& problems
 );
+
+//  Whether a row starts from a save, which a reload can load.
+enum class RowSave{
+    FROM_SAVE,
+    WITHOUT_SAVE,   //  a new game
+};
+
 //  Adds row `id` to the sets of `rows`. Throws ParseException naming
-//  `source` when it reloads and `starts_without_save` or the row before
-//  it, `previous_id`, does not end on the game's autosave: a reload loads
-//  the last save, which must be that autosave.
-enum class RowSave{ FROM_SAVE, WITHOUT_SAVE };
+//  `source` when it reloads and starts WITHOUT_SAVE or the row before it,
+//  `previous_id`, does not end on the game's autosave: a reload loads the
+//  last save, which must be that autosave.
 void add_story_row(
-    StoryRows& rows, std::string_view id, const StoryRowExecution& execution, RowSave start,
-    std::optional<std::string_view> previous_id, std::string_view source
+    std::string_view id, const StoryRowExecution& execution, RowSave start,
+    std::optional<std::string_view> previous_id, std::string_view source, StoryRows& rows
 );
 
+//  The dev file `dev`'s row, in place of the built-in file `builtin_name`:
+//  it must parse, keep the built-in checkpoint's id and pass the lint.
 template <typename Checkpoint>
 StoryFileRow<Checkpoint> read_dev_file(
     const StoryDevFile& dev, std::string_view builtin_text, std::string_view builtin_name,
@@ -107,11 +144,6 @@ StoryFileRow<Checkpoint> read_dev_file(
 } // namespace detail
 
 
-//  The story of the built-in checkpoint files `builtin`, in their order,
-//  each of `dev_files` in place of the built-in file of its name. Throws
-//  ParseException naming the file when a file does not parse, a dev file
-//  matches no built-in file, changes its checkpoint's id or fails the
-//  game's lint, or a row reloads a save it cannot count on.
 template <typename Checkpoint>
 StoryData<Checkpoint> load_story_data(
     std::span<const EmbeddedJsonFile> builtin, std::span<const StoryDevFile> dev_files,
@@ -129,25 +161,17 @@ StoryData<Checkpoint> load_story_data(
         }
         const bool new_game = reader.starts_without_save && reader.starts_without_save(row.checkpoint);
         detail::add_story_row(
-            data, row.checkpoint.id, row.execution,
+            row.checkpoint.id, row.execution,
             new_game ? detail::RowSave::WITHOUT_SAVE : detail::RowSave::FROM_SAVE,
             data.checkpoints.empty() ? std::nullopt : std::optional<std::string_view>(data.checkpoints.back().id),
-            dev == nullptr ? std::string_view(name) : std::string_view(dev->path)
+            dev == nullptr ? std::string_view(name) : std::string_view(dev->path),
+            data
         );
         data.checkpoints.push_back(std::move(row.checkpoint));
     }
     return data;
 }
 
-
-//  Who a run's rows are listed for.
-enum class StoryRowsShown{
-    USER,       //  every row but the dev-only ones
-    DEVELOPER,  //  every row (the program's Developer Mode)
-};
-
-//  The rows of `story` a run may play, in order. The start and end
-//  dropdowns list these, so their indices name these rows.
 template <typename Checkpoint>
 std::vector<Checkpoint> story_rows_for_mode(const StoryData<Checkpoint>& story, StoryRowsShown shown){
     std::vector<Checkpoint> rows;
@@ -159,8 +183,6 @@ std::vector<Checkpoint> story_rows_for_mode(const StoryData<Checkpoint>& story, 
     return rows;
 }
 
-//  The rows a run from `first` to `last` of `rows` plays, in order. Empty
-//  if `first` comes after `last` or `last` is past the end.
 template <typename Checkpoint>
 std::vector<Checkpoint> story_run_rows(std::span<const Checkpoint> rows, size_t first, size_t last){
     if (first > last || last >= rows.size()){

@@ -22,6 +22,7 @@ class StoryActionNotImplemented : public OperationFailedException{
 public:
     explicit StoryActionNotImplemented(std::string message);
 
+    // code-health: allow char_pointer -- Exception::name() returns a const char pointer in the base class
     virtual const char* name() const override{
         return "StoryActionNotImplemented";
     }
