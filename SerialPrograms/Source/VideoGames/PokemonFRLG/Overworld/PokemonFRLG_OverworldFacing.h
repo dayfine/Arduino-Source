@@ -68,20 +68,37 @@ TurnTaps tap_until_facing(
 
 //  What turn_to() knows of a turn tap whose facing never read.
 struct UnreadTurn{
+    //  What follows the tap: a hold to a wall, not onto a warp, or
+    //  anything else.
+    enum class Then{
+        OTHER,
+        HOLD_TO_WALL,
+    };
+    //  What follows the turn tap before `step`.
+    static Then then_for(const RouteStep& step);
+
     TurnSprite sprite = TurnSprite::WALKING;
     //  The route knows the player's tile.
     bool at_known = false;
     //  The overworld shows with nothing over it: no box, menu or fade.
     bool overworld_clear = false;
+    //  What follows the tap.
+    Then after = Then::OTHER;
 };
 
 //  Whether such a turn tap is taken as turned: always for a NOT_READ
-//  sprite; for the walking one when the tile is known and the overworld
-//  clear. The sprite is hidden there
+//  sprite; for the walking one when the overworld is clear and either the
+//  tile is known or a hold to a wall follows. The sprite is hidden there
 //  by what the game draws over it: an escalator's rail, a roof's eave
 //  (Cinnabar, north of the Center: console B, 2026-11-13 11:06, 12.03
 //  surf_route_21, only the head showing), a tree or a wanderer. The leg's
-//  walk then checks the turn: a hold from the old facing turns first.
+//  walk then checks the turn: a hold from the old facing turns first. A
+//  hold to a wall also needs no known tile: it walks on along its way if
+//  the tap stepped, and ends at the wall from any tile of its line, where
+//  the wall's check places the player. Pokemon Mansion B1F's row 31 hides
+//  the legs under the partition's base, and the hold that found the player
+//  there, "east 1 (to wall)" from an unknown tile, failed at its turn
+//  (13.03, console B, 2026-11-14 04:43).
 bool unread_turn_taken(const UnreadTurn& turn);
 
 //  Turns `player` to `direction` with a tap (TURN_TAP), then reads the
@@ -99,7 +116,7 @@ bool unread_turn_taken(const UnreadTurn& turn);
 //  re-anchor finds the player.
 void turn_to(
     ConsoleHandle& console, ProControllerContext& context, Direction direction, PlayerGender player,
-    TurnSprite sprite, const std::optional<MapPosition>& at
+    TurnSprite sprite, const std::optional<MapPosition>& at, UnreadTurn::Then after = UnreadTurn::Then::OTHER
 );
 
 } // namespace OverworldWalkSteps
