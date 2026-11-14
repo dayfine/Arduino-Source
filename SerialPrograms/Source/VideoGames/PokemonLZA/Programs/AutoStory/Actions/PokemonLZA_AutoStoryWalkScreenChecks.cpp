@@ -36,10 +36,10 @@ std::string not_free_control(const ScreenObservation& look){
     if (look.events.has(EngineEvent::CHOICE_BOX)){
         return "a choice";
     }
-    if (look.events.has(EngineEvent::TEXT_BOX)){
+    if (look.events.has(EngineEvent::DIALOG_BOX)){
         return "a text box";
     }
-    if (look.events.has(EngineEvent::BATTLE)){
+    if (look.events.has(EngineEvent::BATTLE_STARTED)){
         return "a battle";
     }
     if (look.events.has(EngineEvent::FADE_BLACK) || look.events.has(EngineEvent::FADE_WHITE)){

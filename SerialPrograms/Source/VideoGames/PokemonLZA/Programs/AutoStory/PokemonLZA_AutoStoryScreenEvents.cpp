@@ -7,6 +7,7 @@
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/Images/SolidColorTest.h"
+#include "CommonTools/ScreenEvents/ScreenFades.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryDialogs.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 
@@ -14,8 +15,6 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
-using Pokemon::ScreenEvent;
-using Pokemon::ScreenEvents;
 
 namespace{
 
@@ -87,8 +86,8 @@ ScreenEvents PlzaScreenObserver::observe(const VideoSnapshot& frame, WallClock){
 }
 
 ScreenEvents PlzaScreenObserver::read(const ImageViewRGB32& screen){
-    ScreenEvents out = Pokemon::fade_events(Pokemon::fade_of_screen(screen));
-    if (Pokemon::fade_in(out) != Pokemon::WarpFade::NONE){
+    ScreenEvents out = fade_events(fade_of_screen(screen));
+    if (fade_in(out) != WarpFade::NONE){
         //  A uniform screen has no box, prompt or HUD to read.
         return out;
     }
