@@ -277,12 +277,14 @@ Pokemon::StoryData<StoryCheckpoint> load_frlg_story(std::span<const Pokemon::Sto
         .plays_before = [](const StoryCheckpoint& a, const StoryCheckpoint& b){
             return story_position(a.id) < story_position(b.id);
         },
+        .in_story_order = [](std::string_view id){
+            return story_position(id) < std::size(STORY_ORDER);
+        },
     });
-    //  Sorted by position, so STORY_ORDER lists each id once exactly when
-    //  every position is listed and follows the one before.
-    for (size_t c = 0; c < story.checkpoints.size(); c++){
-        const size_t position = story_position(story.checkpoints[c].id);
-        if (position == std::size(STORY_ORDER) || (c > 0 && position == story_position(story.checkpoints[c - 1].id))){
+    //  Every id is in STORY_ORDER (in_story_order) and the rows are sorted
+    //  by it, so two files of one id sit next to each other.
+    for (size_t c = 1; c < story.checkpoints.size(); c++){
+        if (story.checkpoints[c].id == story.checkpoints[c - 1].id){
             throw ParseException(std::format(
                 "Checkpoint {} needs its id once in STORY_ORDER (PokemonFRLG_AutoStoryTable.cpp).", story.checkpoints[c].id
             ));
