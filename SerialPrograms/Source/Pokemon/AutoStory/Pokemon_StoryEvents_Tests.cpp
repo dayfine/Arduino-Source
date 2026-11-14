@@ -611,18 +611,18 @@ UnitTestResult test_lint(){
 }
 
 
-struct StoryEventInput{
-    std::string name;
-    UnitTestResult (*test)();
-};
-
-struct StoryEventExpectation{
-    std::string_view description;
-};
-
 struct StoryEventTestCase{
-    StoryEventInput input;
-    StoryEventExpectation expectation;
+    struct Input{
+        std::string name;
+        UnitTestResult (*test)();
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryEvents : public UnitTest{
