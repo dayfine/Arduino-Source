@@ -54,7 +54,7 @@ std::optional<int> walk_from_objective(ConsoleHandle& console, ProControllerCont
 }
 
 void walk_to_zone_1_start(ConsoleHandle& console, ProControllerContext& context){
-    walk_to_objective(console, context, ZONE_1_START_DISTANCE, 60s);
+    walk_to_objective(console, context, ZONE_1_START_DISTANCE + ZONE_1_START_OVERSHOOT, 60s);
     context.wait_for_all_requests();
     const VideoSnapshot frame = console.video().snapshot();
     const std::optional<ObjectiveMarker> marker = read_objective_marker(console, frame);

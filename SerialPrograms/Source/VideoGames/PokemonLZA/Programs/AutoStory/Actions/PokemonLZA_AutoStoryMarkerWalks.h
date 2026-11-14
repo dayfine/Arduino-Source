@@ -35,9 +35,9 @@ std::optional<int> walk_from_objective(ConsoleHandle& console, ProControllerCont
 
 //  03.07d's last step, from just inside Wild Zone 1's entrance gate to
 //  where 03.08 starts: toward the objective marker (the zone's far gate)
-//  until it reads ZONE_1_START_DISTANCE or less (walk_to_objective(), 60 s;
-//  stopping at the edge of the tolerance left the player at 135, short of
-//  03.08's start, console B 2026-11-14 14:16), then checks the end on a fresh frame:
+//  until it reads ZONE_1_START_DISTANCE + ZONE_1_START_OVERSHOOT or less
+//  (walk_to_objective(), 60 s), so the walk ends on 03.08's start frame's
+//  127 rather than 2 past it, then checks the end on a fresh frame:
 //  the marker within the tolerance and the minimap's player arrow in the
 //  zone's green (at_zone_1_start()). Throws OperationFailedException with
 //  both readings when the end is not 03.08's start.
