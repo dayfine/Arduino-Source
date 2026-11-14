@@ -89,6 +89,20 @@ std::optional<PokemonAutomation::ScreenEvent> walk_end_event(std::string_view en
     return std::nullopt;
 }
 
+namespace{
+
+//  What is wrong with a walk's "heading", added to `errors`.
+void add_turn_errors(const Pokemon::StoryStep& step, std::vector<std::string>& errors){
+    const auto heading = step.args.find("heading");
+    if (heading != step.args.end()){
+        const int64_t degrees = std::get<int64_t>(heading->second);
+        if (degrees < 0 || degrees >= 360){
+            errors.push_back(std::format("{}: heading {} deg, expected 0 to 359", step.name, degrees));
+        }
+    }
+}
+
+} // namespace
 //  What is wrong with the args of a "walk" or "approach_starter" step;
 //  nothing for any other step.
 std::vector<std::string> plza_step_arg_errors(const Pokemon::StoryStep& step){
@@ -117,14 +131,16 @@ std::vector<std::string> plza_step_arg_errors(const Pokemon::StoryStep& step){
         if (rows.empty() || rows.back().ms <= 0){
             errors.push_back(std::format("{}: the last leg has no walk to hold until the end", step.name));
         }
-    }
-    const auto heading = step.args.find("heading");
-    if (heading != step.args.end()){
-        const int64_t degrees = std::get<int64_t>(heading->second);
-        if (degrees < 0 || degrees >= 360){
-            errors.push_back(std::format("{}: heading {} deg, expected 0 to 359", step.name, degrees));
+        const auto held = step.args.find("held");
+        if (held != step.args.end() && std::get<bool>(held->second)){
+            errors.push_back(std::format("{}: a held walk cannot end on a fade yet", step.name));
         }
     }
+    const auto wait = step.args.find("wait_ms");
+    if (wait != step.args.end() && std::get<int64_t>(wait->second) < 0){
+        errors.push_back(std::format("{}: wait_ms {} is negative", step.name, std::get<int64_t>(wait->second)));
+    }
+    add_turn_errors(step, errors);
     return errors;
 }
 

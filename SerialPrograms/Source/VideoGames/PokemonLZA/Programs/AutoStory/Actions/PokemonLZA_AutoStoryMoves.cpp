@@ -30,6 +30,16 @@ std::optional<int> read_heading(PlzaBackend& backend, const PlzaReader& reader){
     return Pokemon::story_heading(look);
 }
 
+//  Leg `index` of `move` is about to start: a breakpoint, when `pause` is
+//  given (StoryPausePoints::before_leg()).
+void pause_before_leg(PlzaBackend& backend, Pokemon::StoryPausePoints* pause, const StoryMove& move, size_t index){
+    if (pause == nullptr){
+        return;
+    }
+    pause->before_leg(story_walk_leg_label(index, move.legs.size(), move.legs[index]));
+    backend.scope().throw_if_cancelled();
+}
+
 } // namespace
 
 
@@ -69,12 +79,24 @@ Pokemon::Outcome run_story_move(
             return faced;
         }
     }
+    if (move.held){
+        for (size_t i = 0; i < move.legs.size(); i++){
+            const StoryWalkLeg& leg = move.legs[i];
+            pause_before_leg(backend, pause, move, i);
+            if (i > 0 && leg.turn != 0){
+                backend.press(BUTTON_L, 100ms, 150ms);
+            }
+            if (leg.walk > Milliseconds(0)){
+                backend.stick(leg.turn, leg.walk, 0ms, Pokemon::StoryPace::WALK);
+            }else if (leg.turn != 0){
+                backend.stick(leg.turn, 150ms, 100ms, Pokemon::StoryPace::WALK);
+            }
+        }
+        return Pokemon::outcome_ok();
+    }
     for (size_t index = 0; index < move.legs.size(); index++){
         const StoryWalkLeg& leg = move.legs[index];
-        if (pause != nullptr){
-            pause->before_leg(story_walk_leg_label(index, move.legs.size(), leg));
-            backend.scope().throw_if_cancelled();
-        }
+        pause_before_leg(backend, pause, move, index);
         if (leg.turn != 0){
             //  The walk goes where the camera looks: recenter it after the turn.
             story_turn(backend, leg.turn);

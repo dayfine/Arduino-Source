@@ -1,0 +1,35 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "02.06",
+    "title": "Main Mission 02: the first evening to Main Mission 03",
+    "start": {
+      "place": "LumioseCity"
+    },
+    "events": [
+      {
+        "id": "to_room_door",
+        "kind": "game_action",
+        "why": "step 33: to the door's \"A Leave\". Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {"legs": [[0, 2000]]}
+      },
+      {
+        "id": "first_evening",
+        "kind": "game_action",
+        "why": "steps 33-35: A Leave at the door, Taunie, the rooftop, AZ, the Main Mission 03 banner and its autosave",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 02.05 at the autosave after waking up (2026-11-10)"
+    }
+  },
+  "execution": {
+    "save": "autosave",
+    "reload_when_chained": true
+  }
+}
