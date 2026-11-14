@@ -642,6 +642,26 @@ UnitTestResult test_unmoved_hold_from_unknown_tile(){
     return true;
 }
 
+//  13.01 mansion_holes (console B, 2026-11-13 19:20): a hold to a wall
+//  held again after something seen after it, that moves nothing, is a
+//  bump at the wall (the sim's case is in the Reanchor tests).
+UnitTestResult test_unmoved_hold_again(){
+    const std::vector<MapData> maps{parse_map(TEST_HALL_JSON, "Hall")};
+    const RouteStep open = walk(Direction::EAST, 5, {"Hall", {7, 1}});
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = MapPosition{"Hall", {2, 1}}, .label = "Route", .wall_check = WallCheck::SKIP};
+    ScriptedRoute script;
+    script.ends[0] = stop_part_way(WalkedTiles{.min = 2, .max = 3});
+    script.ends[1] = StepOutcome{.end = StepEnd::LATE, .walked = std::nullopt};
+    script.ends[2] = no_movement();
+    if (script.run({open}, &planning)){
+        return "Expected the hold held again taken as a bump at its wall: " + script.failure + describe(script.walked);
+    }
+    if (script.walked.size() < 3 || !script.walked[1].to_wall || !(script.walked[2].end == script.walked[1].end)){
+        return "Expected the hold to the wall held twice:" + describe(script.walked);
+    }
+    return expect_logged(script.logs, {"as a bump into the wall it may stand at already"});
+}
+
 //  A walk-on after a stop judges a hold that moved nothing by the tiles
 //  that stop left the player on, not by those of an earlier recovery
 //  (console B, 2026-11-13, 12.03). Down the hall from (1, 1): "east 6"
@@ -920,6 +940,10 @@ const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
     {
         .input = {.name = "a hold that moved nothing from an unknown tile", .body = test_unmoved_hold_from_unknown_tile},
         .expectation = {.description = "a bump at the wall it may stand at is walked; no movement from short of it fails"},
+    },
+    {
+        .input = {.name = "a hold held again that moved nothing", .body = test_unmoved_hold_again},
+        .expectation = {.description = "after something seen after a hold to a wall, a hold again that moves nothing is a bump at the wall"},
     },
     {
         .input = {.name = "a town banner over a hold that moved nothing", .body = test_banner_is_no_scroll},

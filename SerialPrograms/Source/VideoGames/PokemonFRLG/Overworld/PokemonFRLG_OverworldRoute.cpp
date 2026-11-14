@@ -505,6 +505,26 @@ bool onto_warp_sideways(const MapData& map, const RouteStep& step){
     return taken && *taken != step.direction && !step.warps && !step.to_wall && !step.spin_tiles;
 }
 
+//  Taps an open leg onto the tile a switch is pressed from: a hold that
+//  ends a tile off presses nothing ("east 4 (open)" to Pokemon Mansion 3F's
+//  statue tile (12, 6) ran a tile long; console B, 2026-11-13 19:17, 13.01
+//  mansion_holes). tap_from_known_tile() then taps the open legs before it.
+void tap_onto_switches(std::vector<RouteStep>& route){
+    for (size_t c = route.size(); c-- > 1;){
+        if (route[c].action != RouteAction::PRESS_SWITCH){
+            continue;
+        }
+        size_t before = c - 1;
+        while (before > 0 && route[before].action == RouteAction::FACE){
+            before--;
+        }
+        RouteStep& step = route[before];
+        if (step.action == RouteAction::WALK && !step.surfing && !step.warps && !step.to_wall && !step.spin_tiles){
+            step.tapped = true;
+        }
+    }
+}
+
 //  Taps the open legs before each tapped leg in `route`, back to the start
 //  or a leg that ends where the walk knows the player is (a wall, a warp),
 //  so a leg onto stairs from the side starts from a known tile (Pokemon
@@ -730,6 +750,7 @@ std::optional<std::vector<RouteStep>> plan_overworld_route_gated(
     }
 
     std::vector<RouteStep> route = gated_route_steps(gate_maps, *legs);
+    tap_onto_switches(route);
     tap_from_known_tile(route);
     return route;
 }

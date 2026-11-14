@@ -41,14 +41,23 @@ int tiles_before_interrupt(const LegSpec& leg, Milliseconds elapsed, Millisecond
 
 namespace{
 
+//  How soon after a hold starts a sign's message shows, at the latest, when
+//  the hold bumps into it: about two walking tiles, however fast the player
+//  moves. Running, 3 tiles were 399ms, and the Pallet Town sign spoke 353
+//  to 726ms into each hold south, which was held into it 6 times (console
+//  B, 2026-11-13 18:29, 12.03 pallet_shore).
+constexpr Milliseconds BLOCKED_MESSAGE_WINDOW{800};
+
 //  Whether `leg` stops at the interrupt just cleared: an open leg asked to
 //  stop at any, or a leg to a wall interrupted again within three tiles of
-//  being held again (a message there lags the step by about two tiles).
+//  being held again (a message there lags the step by about two tiles), or
+//  within BLOCKED_MESSAGE_WINDOW.
 bool stops_here(const LegSpec& leg, const LegResult& result, const HoldOutcome& outcome){
     if (!leg.to_wall){
         return leg.stop_on_interrupt;
     }
-    return leg.stop_if_blocked && result.interruptions > 1 && outcome.elapsed < leg.tile_time * 3;
+    const Milliseconds window = std::max(leg.tile_time * 3, BLOCKED_MESSAGE_WINDOW);
+    return leg.stop_if_blocked && result.interruptions > 1 && outcome.elapsed < window;
 }
 
 } // namespace

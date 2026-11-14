@@ -443,8 +443,8 @@ UnitTestResult test_no_hold_over_ledge(){
 //  was held into the TRAINER TIPS sign on (9, 29) six times. The walker now
 //  finds the player at walls after the open leg, since the hold south
 //  doesn't end on its tile from where a short leg leaves them. Without that
-//  check it stops at the sign's second read, as off the route; without the
-//  stop either, it reads the sign 6 times.
+//  check the sign's second read stops the leg and places the player below
+//  it (test_pallet_sign_after_long_leg()); without the stop, 6 reads.
 UnitTestResult test_short_leg_then_sign(){
     SimCase c{.start = at("ViridianForest", 13, 28), .facing = Direction::WEST, .goal = at("ViridianForest", 7, 33)};
     c.route = std::vector<RouteStep>{
@@ -459,8 +459,8 @@ UnitTestResult test_short_leg_then_sign(){
     SimCase trusted = c;
     trusted.open_leg_check = OpenLegCheck::TRUST;
     const SimRun blocked = run_case(trusted);
-    if (!stopped_with(blocked, "interrupted right away, again") || blocked.state.signs_read > 2){
-        return "Expected a stop at the sign's second read without the check:" + describe(blocked);
+    if (!arrived(blocked, c.goal) || blocked.state.signs_read != 2){
+        return "Expected the player placed by the sign at its second read without the check:" + describe(blocked);
     }
     SimCase unbounded = trusted;
     unbounded.rules.stop_if_blocked = false;

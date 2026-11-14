@@ -171,6 +171,20 @@ UnitTestResult test_wall_leg_blocked(){
     return true;
 }
 
+//  The same running: a tile takes 133ms, and the sign spoke 353 to 726ms
+//  into each hold (console B, 2026-11-13 18:29, 12.03 pallet_shore).
+UnitTestResult test_wall_leg_blocked_running(){
+    ScriptedLeg script;
+    script.outcomes = {HoldOutcome{.interrupt = 0, .elapsed = 353ms}, HoldOutcome{.interrupt = 0, .elapsed = 578ms}, HoldOutcome{.interrupt = 0, .elapsed = 603ms}};
+    LegSpec leg{.direction = Direction::SOUTH, .tiles = 6, .to_wall = true, .tile_time = 133ms};
+    leg.stop_if_blocked = true;
+    const LegResult result = walk_leg_with(leg, script.calls(), 5);
+    if (script.holds.size() != 2 || !result.stopped){
+        return std::format("Expected the leg stopped after 2 holds, got {}.", script.holds.size());
+    }
+    return true;
+}
+
 UnitTestResult test_too_many_interruptions(){
     ScriptedLeg script;
     for (int c = 0; c < 4; c++){
@@ -284,6 +298,10 @@ const LegWalkerTestCase LEG_WALKER_CASES[] = {
     {
         .input = {.name = "a wall leg blocked by a sign stops", .test = test_wall_leg_blocked},
         .expectation = {.description = "aborts wall movement when blocked prematurely repeatedly"},
+    },
+    {
+        .input = {.name = "a wall leg blocked by a sign stops, running", .test = test_wall_leg_blocked_running},
+        .expectation = {.description = "a sign's message lags the same time however fast the player moves"},
     },
     {
         .input = {.name = "a watcher along a hold never stops it", .test = test_watch_along},
