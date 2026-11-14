@@ -240,23 +240,55 @@ bool gym_person_on(const TilePos& tile){
     return false;
 }
 
-//  The planned route of ROUTE step `step` from `from`: for each open hold
+//  A LEGS or ROUTE step of a row inside the gym, as the walker walks it:
+//  its route from where the step before it leaves the player.
+struct GymLegs{
+    const StoryStep* step = nullptr;
+    std::vector<RouteStep> route;
+};
+
+//  Row `id`'s ROUTE steps that start inside the gym, each planned from the
+//  pose the step before it declares or its target. A step with no route
+//  has an empty one.
+std::vector<GymLegs> gym_routes(std::string_view id){
+    const StoryCheckpoint& row = checkpoint(id);
+    std::vector<GymLegs> all;
+    std::optional<StoryPose> at = story_pose(Pokemon::pose_of(*row.start));
+    for (const StoryStep& step : row.steps){
+        const Pokemon::GridPose* target = Pokemon::value_if_at_it<Pokemon::GridPose>(step.args, step.args.find("target"));
+        const std::optional<StoryPose> to = target == nullptr ? std::nullopt : story_pose(Pokemon::pose_of(*target));
+        if (step.kind == StoryStepKind::ROUTE && at && to && at->map == GYM){
+            const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
+                story_maps(), MapPosition{at->map, at->tile}, RouteGoal{MapPosition{to->map, to->tile}, to->facing},
+                story_route_costs(), at->facing.value_or(Direction::NORTH)
+            );
+            all.push_back(GymLegs{.step = &step, .route = route.value_or(std::vector<RouteStep>{})});
+        }
+        if (step.pose_after){
+            at = story_pose(Pokemon::pose_of(*step.pose_after));
+        }else if (to){
+            at = to;
+        }else{
+            at.reset();
+        }
+    }
+    return all;
+}
+
+//  The planned route of ROUTE step `planned.step`: for each open hold
 //  (no wall ends it) that a turn follows, the person on the next leg's
 //  tiles if the hold ends a tile short. Empty if there is none. Console B,
 //  2026-11-14, 14.01 below_door_5: "east 3 (open)" ended a tile short, on
 //  Burglar Dusty's column, and "north 4" stopped below him.
-std::string short_hold_meets_person(const StoryStep& step, const StoryPose& from, const StoryPose& to){
-    const MapPosition start{from.map, from.tile};
-    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
-        story_maps(), start, RouteGoal{MapPosition{to.map, to.tile}, to.facing},
-        story_route_costs(), from.facing.value_or(Direction::NORTH)
-    );
-    if (!route){
-        return std::format("{}: no route from {}.", step.name, to_string(start));
+std::string short_hold_meets_person(const GymLegs& planned){
+    const StoryStep& step = *planned.step;
+    const std::vector<RouteStep>& route = planned.route;
+    if (route.empty()){
+        return std::format("{}: no route.", step.name);
     }
-    for (size_t i = 0; i + 1 < route->size(); i++){
-        const RouteStep& hold = (*route)[i];
-        const RouteStep& next = (*route)[i + 1];
+    for (size_t i = 0; i + 1 < route.size(); i++){
+        const RouteStep& hold = route[i];
+        const RouteStep& next = route[i + 1];
         if (hold.action != RouteAction::WALK || next.action != RouteAction::WALK || hold.to_wall || hold.tapped || hold.direction == next.direction){
             continue;
         }
@@ -279,34 +311,14 @@ std::string short_hold_meets_person(const StoryStep& step, const StoryPose& from
 //  trainers stand beside the door columns, so those steps go a tap a tile.
 UnitTestResult test_short_holds_clear_of_trainers(){
     for (std::string_view id : {"14.01", "14.02b"}){
-        const StoryCheckpoint& row = checkpoint(id);
-        std::optional<StoryPose> at = story_pose(Pokemon::pose_of(*row.start));
-        for (const StoryStep& step : row.steps){
-            const Pokemon::GridPose* target = Pokemon::value_if_at_it<Pokemon::GridPose>(step.args, step.args.find("target"));
-            const std::optional<StoryPose> to = target == nullptr ? std::nullopt : story_pose(Pokemon::pose_of(*target));
-            if (step.kind == StoryStepKind::ROUTE && at && to && at->map == GYM && to->map == GYM){
-                if (const std::string failure = short_hold_meets_person(step, *at, *to); !failure.empty()){
-                    return std::format("{} {}", id, failure);
-                }
-            }
-            if (step.pose_after){
-                at = story_pose(Pokemon::pose_of(*step.pose_after));
-            }else if (to){
-                at = to;
-            }else{
-                at.reset();
+        for (const GymLegs& planned : gym_routes(id)){
+            if (const std::string failure = short_hold_meets_person(planned); !failure.empty()){
+                return std::format("{} {}", id, failure);
             }
         }
     }
     return true;
 }
-
-//  A LEGS step of a row inside the gym, as the walker walks it: its legs
-//  from where the step before it leaves the player.
-struct GymLegs{
-    const StoryStep* step = nullptr;
-    std::vector<RouteStep> route;
-};
 
 //  Row `id`'s LEGS steps inside the gym, each from the pose the step before
 //  it declares, a route's target or the end of the legs before it. A step
@@ -408,6 +420,48 @@ UnitTestResult test_quiz_approaches_end_at_machine(){
         }
     }
     return quizzes == 6 ? UnitTestResult(true) : UnitTestResult(std::format("Expected 6 quiz talks, found {}.", quizzes));
+}
+
+//  The last walk of `route` if it is a hold that no wall, warp or tap
+//  count ends.
+std::optional<RouteStep> open_last_hold(const std::vector<RouteStep>& route){
+    for (auto it = route.rbegin(); it != route.rend(); ++it){
+        if (it->action != RouteAction::WALK){
+            continue;
+        }
+        if (it->to_wall || it->warps || it->tapped){
+            return std::nullopt;
+        }
+        return *it;
+    }
+    return std::nullopt;
+}
+
+//  No walk inside the gym in 14.01 and 14.02b ends on an open hold. The
+//  walker re-checks an open leg that ends a walk with holds to walls, and
+//  near a quiz door that wall may be the door, shut on the map and open on
+//  the console. Console B, 2026-11-14, 14.01 below_blaine: "north 3 (open)"
+//  from door 6 to (5, 5) was re-checked with a hold "south 3 (to wall)" to
+//  (5, 8), whose wall is door 6's barrier (5, 9); the hold ran through the
+//  open door, north 3 then left the player in the door's gap, and 14.02's
+//  talk to Blaine opened no message.
+UnitTestResult test_gym_walks_end_clear_of_rechecks(){
+    for (std::string_view id : {"14.01", "14.02b"}){
+        std::vector<GymLegs> all = gym_legs(id);
+        std::vector<GymLegs> routes = gym_routes(id);
+        all.insert(all.end(), routes.begin(), routes.end());
+        for (const GymLegs& planned : all){
+            const bool tapped = planned.step->kind == StoryStepKind::LEGS && planned.step->action == TAPS_VARIANT;
+            const std::optional<RouteStep> open = tapped ? std::nullopt : open_last_hold(planned.route);
+            if (open){
+                return std::format(
+                    "{} {}: ends on \"{}\", an open hold the walker re-checks with holds to walls, which may be quiz doors.",
+                    id, planned.step->name, to_string(*open)
+                );
+            }
+        }
+    }
+    return true;
 }
 
 //  14.01 from outside the Mansion: the nurse, the gym and its six quiz
@@ -524,6 +578,10 @@ const AutoStoryCinnabarGymCase AUTO_STORY_CINNABAR_GYM_CASES[] = {
     {
         .input = {.name = "Cinnabar Gym's quiz approaches end against the machine", .body = test_quiz_approaches_end_at_machine},
         .expectation = {.description = "each of the six quiz talks follows taps whose last leg ends at the machine"},
+    },
+    {
+        .input = {.name = "Cinnabar Gym's walks end clear of the open-leg re-check", .body = test_gym_walks_end_clear_of_rechecks},
+        .expectation = {.description = "no gym route or held legs step in 14.01 or 14.02b ends on an open hold"},
     },
     {
         .input = {.name = "14.01 through the quiz to below Blaine, 14.02 on the spot and 14.02b back to the nurse", .body = test_gym_rows},

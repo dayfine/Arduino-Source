@@ -8,12 +8,12 @@
     "events": [
       {
         "id": "above_door_6",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 7]], "facing": "south"}
+          "legs": [{"direction": "south", "tiles": 2}]
         },
-        "why": "down to (5, 7), a tile short of door 6, open since quiz 6: the map has the door shut, so a leg ending on (5, 8) is held to it and runs through the open door (as 14.01, console B, 2026-11-14)"
+        "why": "a tap a tile down to (5, 7), a tile short of door 6, open since quiz 6: the map has the door shut, so a leg ending on (5, 8) is held to it and runs through the open door (as 14.01, console B, 2026-11-14). A route's last leg here is an open hold, and the walker re-checks an open leg that ends a walk with holds to walls: near a quiz door that wall may be the door, shut on the map and open on the console, as 14.01's below_blaine did through door 6"
       },
       {
         "id": "to_door_6",
@@ -44,12 +44,12 @@
       },
       {
         "id": "above_door_5",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 15]], "facing": "south"}
+          "legs": [{"direction": "south", "tiles": 5}]
         },
-        "why": "down to (5, 15), a tile short of door 5, as for door 6"
+        "why": "a tap a tile down to (5, 15), a tile short of door 5, as for door 6"
       },
       {
         "id": "to_door_5",
@@ -152,12 +152,12 @@
       },
       {
         "id": "below_door_2",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 11]], "facing": "north"}
+          "legs": [{"direction": "north", "tiles": 4}]
         },
-        "why": "up to (17, 11), a tile short of door 2, as for door 6: a hold to (17, 10) would run through the open door 2 into the top room, where above_door_1 starts east from (17, 8) (as 14.01's door 2 did, console B, 2026-11-14)"
+        "why": "a tap a tile up to (17, 11), a tile short of door 2, as for door 6: a hold to (17, 10) would run through the open door 2 into the top room, where above_door_1 starts east from (17, 8) (as 14.01's door 2 did, console B, 2026-11-14)"
       },
       {
         "id": "to_door_2",
@@ -188,12 +188,12 @@
       },
       {
         "id": "above_door_1",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[26, 7]], "facing": "south"}
+          "legs": [{"direction": "east", "tiles": 1}, {"direction": "north", "tiles": 6}, {"direction": "east", "tiles": 10}, {"direction": "south", "tiles": 5}, {"direction": "west", "tiles": 2}]
         },
-        "why": "east through the top room to (26, 7), a tile short of door 1, as for door 6: a hold to (26, 8) would run through the open door"
+        "why": "a tap a tile east through the top room to (26, 7), a tile short of door 1, as for door 6: a hold to (26, 8) would run through the open door. The legs to walls are the route's, tapped too, as the last leg is open"
       },
       {
         "id": "to_door_1",
