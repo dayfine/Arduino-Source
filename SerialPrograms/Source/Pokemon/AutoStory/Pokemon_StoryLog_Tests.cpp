@@ -22,7 +22,6 @@ namespace{
 struct StoryLogTestCase{
     //  A formatter's line, made when the table is built.
     struct Input{
-        std::string name;
         std::string line;
     };
 
@@ -31,6 +30,7 @@ struct StoryLogTestCase{
         std::string line;
     };
 
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -38,7 +38,7 @@ struct StoryLogTestCase{
 class Test_StoryLog : public UnitTest{
 public:
     Test_StoryLog(StoryLogTestCase test_case)
-        : UnitTest(std::format("Pokemon::StoryLog - {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::StoryLog - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
 
@@ -58,75 +58,93 @@ constexpr std::string_view SV_TEXT = "Checkpoint:: 004 - 02. Start point: X";
 
 const StoryLogTestCase STORY_LOG_CASES[] = {
     {
-        .input = {.name = "checkpoint start", .line = checkpoint_start_line("00.04")},
+        .name = "checkpoint start",
+        .input = {.line = checkpoint_start_line("00.04")},
         .expectation = {.line = "[Checkpoint] 00.04: start"},
     },
     {
-        .input = {.name = "checkpoint start with its events", .line = checkpoint_start_line("00.04", 3)},
+        .name = "checkpoint start with its events",
+        .input = {.line = checkpoint_start_line("00.04", 3)},
         .expectation = {.line = "[Checkpoint] 00.04: start, 3 events"},
     },
     {
-        .input = {.name = "attempt", .line = checkpoint_attempt_line("00.04", 2)},
+        .name = "attempt",
+        .input = {.line = checkpoint_attempt_line("00.04", 2)},
         .expectation = {.line = "[Checkpoint] 00.04: attempt 2"},
     },
     {
-        .input = {.name = "attempt out of a limit", .line = checkpoint_attempt_line("00.04", 2, 3)},
+        .name = "attempt out of a limit",
+        .input = {.line = checkpoint_attempt_line("00.04", 2, 3)},
         .expectation = {.line = "[Checkpoint] 00.04: attempt 2/3"},
     },
     {
-        .input = {.name = "one-shot pass", .line = checkpoint_pass_line("00.03", 1)},
+        .name = "one-shot pass",
+        .input = {.line = checkpoint_pass_line("00.03", 1)},
         .expectation = {.line = "[Checkpoint] 00.03: passed on attempt 1 (one-shot)"},
     },
     {
-        .input = {.name = "pass after one reset", .line = checkpoint_pass_line("00.04", 2)},
+        .name = "pass after one reset",
+        .input = {.line = checkpoint_pass_line("00.04", 2)},
         .expectation = {.line = "[Checkpoint] 00.04: passed on attempt 2 (1 reset)"},
     },
     {
-        .input = {.name = "pass after resets", .line = checkpoint_pass_line("00.04", 3)},
+        .name = "pass after resets",
+        .input = {.line = checkpoint_pass_line("00.04", 3)},
         .expectation = {.line = "[Checkpoint] 00.04: passed on attempt 3 (2 resets)"},
     },
     {
-        .input = {.name = "reset", .line = checkpoint_reset_line("00.04", 2)},
+        .name = "reset",
+        .input = {.line = checkpoint_reset_line("00.04", 2)},
         .expectation = {.line = "[Checkpoint] 00.04: failed, resetting for attempt 2"},
     },
     {
-        .input = {.name = "reset out of a limit", .line = checkpoint_reset_line("00.04", 2, 3)},
+        .name = "reset out of a limit",
+        .input = {.line = checkpoint_reset_line("00.04", 2, 3)},
         .expectation = {.line = "[Checkpoint] 00.04: failed, resetting for attempt 2/3"},
     },
     {
-        .input = {.name = "start with display text", .line = checkpoint_start_line("004", std::nullopt, SV_TEXT)},
+        .name = "start with display text",
+        .input = {.line = checkpoint_start_line("004", std::nullopt, SV_TEXT)},
         .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: start"},
     },
     {
-        .input = {.name = "attempt with display text", .line = checkpoint_attempt_line("004", 2, 100, SV_TEXT)},
+        .name = "attempt with display text",
+        .input = {.line = checkpoint_attempt_line("004", 2, 100, SV_TEXT)},
         .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: attempt 2/100"},
     },
     {
-        .input = {.name = "pass with display text", .line = checkpoint_pass_line("004", 2, SV_TEXT)},
+        .name = "pass with display text",
+        .input = {.line = checkpoint_pass_line("004", 2, SV_TEXT)},
         .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: passed on attempt 2 (1 reset)"},
     },
     {
-        .input = {.name = "reset with display text", .line = checkpoint_reset_line("004", 2, std::nullopt, SV_TEXT)},
+        .name = "reset with display text",
+        .input = {.line = checkpoint_reset_line("004", 2, std::nullopt, SV_TEXT)},
         .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: failed, resetting for attempt 2"},
     },
     {
-        .input = {.name = "short checkpoint start", .line = story_short_line("[Checkpoint] 12.03: start, 18 events")},
+        .name = "short checkpoint start",
+        .input = {.line = story_short_line("[Checkpoint] 12.03: start, 18 events")},
         .expectation = {.line = "12.03: start, 18 events"},
     },
     {
-        .input = {.name = "short line with another tag", .line = story_short_line("[Tag] 12.03: some text")},
+        .name = "short line with another tag",
+        .input = {.line = story_short_line("[Tag] 12.03: some text")},
         .expectation = {.line = "12.03: some text"},
     },
     {
-        .input = {.name = "short line without a tag", .line = story_short_line("Checkpoint:: 004 - 02. Start point: X: start")},
+        .name = "short line without a tag",
+        .input = {.line = story_short_line("Checkpoint:: 004 - 02. Start point: X: start")},
         .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: start"},
     },
     {
-        .input = {.name = "short line with an unclosed tag", .line = story_short_line("[Tag 12.03")},
+        .name = "short line with an unclosed tag",
+        .input = {.line = story_short_line("[Tag 12.03")},
         .expectation = {.line = "[Tag 12.03"},
     },
     {
-        .input = {.name = "short empty line", .line = story_short_line("")},
+        .name = "short empty line",
+        .input = {.line = story_short_line("")},
         .expectation = {.line = ""},
     },
 };
