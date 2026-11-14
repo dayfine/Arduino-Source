@@ -81,7 +81,6 @@ static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
 }
 
 //  The RNG programs' searches, plans and loops.
-//  The RNG plan: its targets, attempts and the Starter RNG loop.
 static void add_tests_RngPlanning(UnitTestDatabase& database){
     add_tests_RngTargetSearch(database);
     add_tests_RngPlanInputs(database);
