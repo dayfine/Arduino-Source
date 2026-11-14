@@ -495,10 +495,17 @@ std::string OverworldStepSim::walk(const StoryStep& step){
 //  a step one tap at a time, or for a step into a trainer's line by
 //  step_until_seen(), each watched for the trainer.
 std::string OverworldStepSim::step_ahead(const StoryStep& step){
+    const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
     if (step.action.empty() && step.pose_after){
+        //  A step onto a warp waits out its fade, as take_warp_step() does, so
+        //  the next press is not swallowed by the fade.
+        if (const std::optional<RouteStep> warp = warp_press(story_maps(), MapPosition{m_at.map, m_at.tile}, direction)){
+            const std::string failure = step_onto_warp(*warp);
+            m_at = *story_pose(Pokemon::pose_of(*step.pose_after));
+            return failure;
+        }
         return step_onto(step);
     }
-    const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
     if (step.action.empty()){
         if (const std::optional<RouteStep> warp = warp_press(story_maps(), MapPosition{m_at.map, m_at.tile}, direction)){
             return step_onto_warp(*warp);
