@@ -62,21 +62,21 @@ struct FakeGame{
 };
 
 //  A start as the program asks for it, and what the game must have done.
-struct StartInput{
-    std::string name;
-    StoryStart start;
-    std::string place_error;
-    StoryPreflight preflight;
-};
-struct StartExpectation{
-    bool succeeds;
-    size_t loads;
-    size_t rereads;
-    bool save_loaded;
-};
 struct StartCase{
-    StartInput input;
-    StartExpectation expectation;
+    struct Input{
+        std::string name;
+        StoryStart start;
+        std::string place_error;
+        StoryPreflight preflight;
+    };
+    struct Expectation{
+        bool succeeds;
+        size_t loads;
+        size_t rereads;
+        bool save_loaded;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 constexpr StoryPreflight READY{.video_alive = true, .controller_ready = true, .game_running = true};
@@ -134,8 +134,8 @@ private:
 };
 
 const StartCase START_CASES[] = {
-    //  Console B, 2026-11-11: a BDSP run started at 00.04b with the game
-    //  left at 00.04d walked from 00.04d's position.
+    //  A game left at a later checkpoint must not be walked from: a
+    //  checkpoint with a save loads that save first.
     {
         .input = {.name = "a checkpoint with a save loads it first", .start = StoryStart::FROM_SAVE, .place_error = "", .preflight = READY},
         .expectation = {.succeeds = true, .loads = 1, .rereads = 1, .save_loaded = true},
@@ -152,9 +152,8 @@ const StartCase START_CASES[] = {
         .input = {.name = "a live start loads nothing", .start = StoryStart::LIVE, .place_error = "", .preflight = READY},
         .expectation = {.succeeds = true, .loads = 0, .rereads = 0, .save_loaded = false},
     },
-    //  Console B, 2026-11-11 13:32: the game was on HOME; the run saved,
-    //  pressed X/R/ZL on HOME, then "loaded" nothing. The preflight stops it
-    //  before any press.
+    //  The game is on the HOME menu: every press would go to the console's
+    //  menus, so the preflight stops the run before any press.
     {
         .input = {.name = "the HOME menu stops the run before the load", .start = StoryStart::FROM_SAVE, .place_error = "", .preflight = ON_HOME},
         .expectation = {.succeeds = false, .loads = 0, .rereads = 0, .save_loaded = false},
@@ -176,16 +175,16 @@ const StartCase START_CASES[] = {
 
 //  A preflight's checks, and the failure it reads as: the setup's, not
 //  the story's, naming every check that failed.
-struct PreflightInput{
-    std::string name;
-    StoryPreflight preflight;
-};
-struct PreflightExpectation{
-    std::string outcome;
-};
 struct PreflightCase{
-    PreflightInput input;
-    PreflightExpectation expectation;
+    struct Input{
+        std::string name;
+        StoryPreflight preflight;
+    };
+    struct Expectation{
+        std::string outcome;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryPreflight : public UnitTest{
@@ -222,16 +221,16 @@ const PreflightCase PREFLIGHT_CASES[] = {
 
 //  Whether the first checkpoint saves at its start: only a new game's. After
 //  a load the save is already there; from the game as it is the place is
-//  unconfirmed (console B, 2026-11-11: "save" ran first on HOME).
-struct FirstSaveInput{
-    StoryStart start;
-};
-struct FirstSaveExpectation{
-    bool saves;
-};
+//  unconfirmed (the game may be on the HOME menu).
 struct FirstSaveCase{
-    FirstSaveInput input;
-    FirstSaveExpectation expectation;
+    struct Input{
+        StoryStart start;
+    };
+    struct Expectation{
+        bool saves;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryFirstSave : public UnitTest{
@@ -260,10 +259,24 @@ const FirstSaveCase FIRST_SAVE_CASES[] = {
 
 
 //  A failed attempt's reload loads the save through the game.
+struct ReloadCase{
+    struct Input{
+        std::string name;
+    };
+    struct Expectation{
+        size_t loads;
+        size_t rereads;
+        std::string log_line;
+    };
+    Input input;
+    Expectation expectation;
+};
+
 class Test_StoryReload : public UnitTest{
 public:
-    Test_StoryReload()
-        : UnitTest("Pokemon::StoryRun - a retry reloads the save")
+    Test_StoryReload(const ReloadCase& test_case)
+        : UnitTest(std::format("Pokemon::StoryRun - {}", test_case.input.name))
+        , m_case(test_case)
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -272,20 +285,46 @@ public:
         SegmentHooks hooks = story_segment_hooks(game);
         RunState state;
         const Outcome outcome = hooks.reload(state);
-        if (!outcome.succeeded() || fake.loads != 1 || fake.rereads != 1 || !fake.logged("[Story] retry: loading the save")){
-            return std::format("Expected one load and reread, got {} and {} ({})", fake.loads, fake.rereads, to_string(outcome));
+        const ReloadCase::Expectation& expected = m_case.expectation;
+        if (!outcome.succeeded() || fake.loads != expected.loads || fake.rereads != expected.rereads || !fake.logged(expected.log_line)){
+            return std::format("Expected {} load and {} reread, got {} and {} ({})", expected.loads, expected.rereads, fake.loads, fake.rereads, to_string(outcome));
         }
         return true;
     }
+
+private:
+    const ReloadCase m_case;
+};
+
+const ReloadCase RELOAD_CASES[] = {
+    {
+        .input = {.name = "a retry reloads the save"},
+        .expectation = {.loads = 1, .rereads = 1, .log_line = "[Story] retry: loading the save"},
+    },
 };
 
 
 //  A run that stopped short throws, logs the failure line and touches
 //  nothing in the game: no reload, no save, no reset to HOME.
+struct FailureCase{
+    struct Input{
+        std::string name;
+        std::string checkpoint;
+        std::string event;
+        std::string stopped_after;
+    };
+    struct Expectation{
+        std::string message;
+    };
+    Input input;
+    Expectation expectation;
+};
+
 class Test_StoryFailureLeavesGame : public UnitTest{
 public:
-    Test_StoryFailureLeavesGame()
-        : UnitTest("Pokemon::StoryRun - a failed run leaves the game where it failed")
+    Test_StoryFailureLeavesGame(const FailureCase& test_case)
+        : UnitTest(std::format("Pokemon::StoryRun - {}", test_case.input.name))
+        , m_case(test_case)
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -293,18 +332,18 @@ public:
         StoryGameHooks game = fake.hooks();
         SegmentReport report;
         report.completed = false;
-        report.failed_checkpoint = "00.04b";
-        report.failed_event = "talk_mom";
+        report.failed_checkpoint = m_case.input.checkpoint;
+        report.failed_event = m_case.input.event;
         report.failure = outcome_failed("expect_failed", "dialogue opened");
         AutoStoryStats stats;
         std::string message;
         try{
-            finish_story_run(report, "00.05", stats, game);
+            finish_story_run(report, m_case.input.stopped_after, stats, game);
             return "Expected an OperationFailedException";
         }catch (OperationFailedException& e){
             message = e.message();
         }
-        if (message != "AutoStory stopped at 00.04b talk_mom: expect_failed: dialogue opened"){
+        if (message != m_case.expectation.message){
             return std::format("Unexpected message: {}", message);
         }
         if (!fake.logged(STORY_LEFT_WHERE_FAILED)){
@@ -315,14 +354,37 @@ public:
         }
         return true;
     }
+
+private:
+    const FailureCase m_case;
+};
+
+const FailureCase FAILURE_CASES[] = {
+    {
+        .input = {.name = "a failed run leaves the game where it failed", .checkpoint = "00.04b", .event = "talk_mom", .stopped_after = "00.05"},
+        .expectation = {.message = "AutoStory stopped at 00.04b talk_mom: expect_failed: dialogue opened"},
+    },
 };
 
 
 //  A completed run logs and returns the line the finish notification sends.
+struct FinishedCase{
+    struct Input{
+        std::string name;
+        std::string last_checkpoint;
+    };
+    struct Expectation{
+        std::string line;
+    };
+    Input input;
+    Expectation expectation;
+};
+
 class Test_StoryFinished : public UnitTest{
 public:
-    Test_StoryFinished()
-        : UnitTest("Pokemon::StoryRun - a completed run is done through its last checkpoint")
+    Test_StoryFinished(const FinishedCase& test_case)
+        : UnitTest(std::format("Pokemon::StoryRun - {}", test_case.input.name))
+        , m_case(test_case)
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -331,20 +393,44 @@ public:
         SegmentReport report;
         report.completed = true;
         AutoStoryStats stats;
-        const std::string done = finish_story_run(report, "00.05", stats, game);
-        if (done != "AutoStory: done through 00.05." || !fake.logged(done)){
+        const std::string done = finish_story_run(report, m_case.input.last_checkpoint, stats, game);
+        if (done != m_case.expectation.line || !fake.logged(done)){
             return std::format("Unexpected finish line: {}", done);
         }
         return true;
     }
+
+private:
+    const FinishedCase m_case;
+};
+
+const FinishedCase FINISHED_CASES[] = {
+    {
+        .input = {.name = "a completed run is done through its last checkpoint", .last_checkpoint = "00.05"},
+        .expectation = {.line = "AutoStory: done through 00.05."},
+    },
 };
 
 
 //  A verify run short of its passes throws with the summary.
+struct VerifyCase{
+    struct Input{
+        std::string name;
+        std::string checkpoint;
+        size_t passes;
+    };
+    struct Expectation{
+        std::string message;
+    };
+    Input input;
+    Expectation expectation;
+};
+
 class Test_StoryVerifyFailed : public UnitTest{
 public:
-    Test_StoryVerifyFailed()
-        : UnitTest("Pokemon::StoryRun - an unverified checkpoint fails with its summary")
+    Test_StoryVerifyFailed(const VerifyCase& test_case)
+        : UnitTest(std::format("Pokemon::StoryRun - {}", test_case.input.name))
+        , m_case(test_case)
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -352,20 +438,30 @@ public:
         StoryGameHooks game = fake.hooks();
         VerifyPolicy policy;
         VerifyReport report;
-        report.passes = 1;
+        report.passes = m_case.input.passes;
         report.verified = false;
         std::string message;
         try{
-            finish_story_verify("00.15b", policy, report, game);
+            finish_story_verify(m_case.input.checkpoint, policy, report, game);
             return "Expected an OperationFailedException";
         }catch (OperationFailedException& e){
             message = e.message();
         }
-        if (message != "AutoStory verify: 00.15b 1/3 passed, 2 needed." || !fake.logged(STORY_LEFT_WHERE_FAILED)){
+        if (message != m_case.expectation.message || !fake.logged(STORY_LEFT_WHERE_FAILED)){
             return std::format("Unexpected message: {}", message);
         }
         return true;
     }
+
+private:
+    const VerifyCase m_case;
+};
+
+const VerifyCase VERIFY_CASES[] = {
+    {
+        .input = {.name = "an unverified checkpoint fails with its summary", .checkpoint = "00.15b", .passes = 1},
+        .expectation = {.message = "AutoStory verify: 00.15b 1/3 passed, 2 needed."},
+    },
 };
 
 } // namespace
@@ -381,10 +477,18 @@ void add_tests_StoryRun(UnitTestDatabase& database){
     for (const FirstSaveCase& test_case : FIRST_SAVE_CASES){
         database.add<Test_StoryFirstSave>(test_case);
     }
-    database.add<Test_StoryReload>();
-    database.add<Test_StoryFailureLeavesGame>();
-    database.add<Test_StoryFinished>();
-    database.add<Test_StoryVerifyFailed>();
+    for (const ReloadCase& test_case : RELOAD_CASES){
+        database.add<Test_StoryReload>(test_case);
+    }
+    for (const FailureCase& test_case : FAILURE_CASES){
+        database.add<Test_StoryFailureLeavesGame>(test_case);
+    }
+    for (const FinishedCase& test_case : FINISHED_CASES){
+        database.add<Test_StoryFinished>(test_case);
+    }
+    for (const VerifyCase& test_case : VERIFY_CASES){
+        database.add<Test_StoryVerifyFailed>(test_case);
+    }
 }
 
 

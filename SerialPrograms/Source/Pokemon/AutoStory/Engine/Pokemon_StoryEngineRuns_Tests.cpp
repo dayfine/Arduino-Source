@@ -143,7 +143,7 @@ StoryGame<PoseType> flaky_game(size_t failures){
 //  only its zone, run on the scripted backend of its pose type.
 std::string zone_checkpoint_runs(CancellableScope& scope){
     StoryGame<ZonePose> game = flaky_game<ZonePose>(0);
-    FakeStoryBackend<ZonePose> backend({.looks = {look<ZonePose>({ScreenEvent::CAN_MOVE})}}, scope);
+    FakeStoryBackend<ZonePose> backend({.looks = {look<ZonePose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     StoryEngine<ZonePose> engine(game, backend);
     const StoryCheckpoint checkpoint = read_story_checkpoint(parse_json(R"({
         "id": "03.01", "title": "Down to the lobby", "start": {"place": "HotelZ", "spot": "Room", "heading": 180},
@@ -297,7 +297,7 @@ std::vector<ScreenState> choice_states(std::vector<std::string>& acted){
     std::vector<ScreenState> states{
         state("choice", ScreenEvent::CHOICE_BOX),
         state("prompt", ScreenEvent::INTERACT_PROMPT),
-        state("text", ScreenEvent::TEXT_BOX),
+        state("text", ScreenEvent::DIALOG_BOX),
     };
     states[0].terminal = true;
     return states;
@@ -318,7 +318,7 @@ ScreenMachineResult run_on_events(
     const std::function<ScreenObservation()> observe = [&]{
         ScreenObservation observation;
         observation.when = start + std::chrono::seconds(next);
-        observation.events.add(events[std::min(next, events.size() - 1)]);
+        observation.events.set(events[std::min(next, events.size() - 1)], true);
         next++;
         return observation;
     };
@@ -329,7 +329,7 @@ std::string observation_machine_ends(CancellableScope& scope){
     std::vector<std::string> acted;
     std::vector<std::string> lines;
     const ScreenMachineResult result = run_on_events(
-        {ScreenEvent::INTERACT_PROMPT, ScreenEvent::TEXT_BOX, ScreenEvent::CHOICE_BOX}, scope, 60s, acted, lines
+        {ScreenEvent::INTERACT_PROMPT, ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, scope, 60s, acted, lines
     );
     if (!result.succeeded() || result.terminal != "choice"){
         return std::format("expected the run to end on choice, got \"{}\"", result.failure);
@@ -346,15 +346,15 @@ std::string observation_machine_ends(CancellableScope& scope){
 std::string observation_machine_fails(CancellableScope& scope){
     std::vector<std::string> acted;
     std::vector<std::string> lines;
-    ScreenMachineResult result = run_on_events({ScreenEvent::BATTLE}, scope, 60s, acted, lines);
+    ScreenMachineResult result = run_on_events({ScreenEvent::BATTLE_STARTED}, scope, 60s, acted, lines);
     if (result.failure != "The screen matches none of the known states."){
         return std::format("expected no state to match, got \"{}\"", result.failure);
     }
-    result = run_on_events({ScreenEvent::TEXT_BOX}, scope, 60s, acted, lines);
+    result = run_on_events({ScreenEvent::DIALOG_BOX}, scope, 60s, acted, lines);
     if (!result.failure.starts_with("Screen \"text\" came up more than 3 times")){
         return std::format("expected text to come up too often, got \"{}\"", result.failure);
     }
-    result = run_on_events({ScreenEvent::TEXT_BOX, ScreenEvent::INTERACT_PROMPT, ScreenEvent::TEXT_BOX}, scope, 1s, acted, lines);
+    result = run_on_events({ScreenEvent::DIALOG_BOX, ScreenEvent::INTERACT_PROMPT, ScreenEvent::DIALOG_BOX}, scope, 1s, acted, lines);
     if (result.failure != "Did not finish within 1s."){
         return std::format("expected the looks' time to run out, got \"{}\"", result.failure);
     }
@@ -366,7 +366,7 @@ std::string observation_machine_fails(CancellableScope& scope){
 Observation<ZonePose> framed_look(WallClock start, int seconds, uint32_t shade, ScreenEvent event){
     Observation<ZonePose> observation;
     observation.when = start + std::chrono::seconds(seconds);
-    observation.events.add(event);
+    observation.events.set(event, true);
     ImageRGB32 image(16, 16);
     image.fill(shade);
     observation.frame = VideoSnapshot(std::move(image), observation.when);
@@ -387,7 +387,7 @@ ScreenMachineResult run_still_states(const std::vector<Observation<ZonePose>>& l
     ScreenState text;
     text.name = "text";
     text.matches_observation = [](const ScreenObservation& observation){
-        return observation.events.has(ScreenEvent::TEXT_BOX);
+        return observation.events.has(ScreenEvent::DIALOG_BOX);
     };
     text.act = [&backend]{
         backend.press(NintendoSwitch::BUTTON_A, 80ms, 120ms);
@@ -396,7 +396,7 @@ ScreenMachineResult run_still_states(const std::vector<Observation<ZonePose>>& l
     ScreenState done;
     done.name = "done";
     done.matches_observation = [](const ScreenObservation& observation){
-        return observation.events.has(ScreenEvent::CAN_MOVE);
+        return observation.events.has(ScreenEvent::PLAYER_CAN_MOVE);
     };
     done.max_visits = SIZE_MAX;
     done.terminal = true;
@@ -416,7 +416,7 @@ std::string still_states(CancellableScope& scope){
     for (int second = 0; second < 12; second++){
         waits.push_back(framed_look(start, second, 0xff000000, ScreenEvent::FADE_BLACK));
     }
-    waits.push_back(framed_look(start, 12, 0xff808080, ScreenEvent::CAN_MOVE));
+    waits.push_back(framed_look(start, 12, 0xff808080, ScreenEvent::PLAYER_CAN_MOVE));
     ScreenMachineResult result = run_still_states(waits, scope);
     if (result.terminal != "done"){
         return std::format("expected a 12 s still fade to end on done, got \"{}\"", result.failure);
@@ -431,7 +431,7 @@ std::string still_states(CancellableScope& scope){
     }
     std::vector<Observation<ZonePose>> presses;
     for (int second = 0; second < 12; second++){
-        presses.push_back(framed_look(start, second, 0xffffffff, ScreenEvent::TEXT_BOX));
+        presses.push_back(framed_look(start, second, 0xffffffff, ScreenEvent::DIALOG_BOX));
     }
     result = run_still_states(presses, scope);
     if (result.failure != "The screen stopped changing: 8 steps on \"text\" did nothing."){
@@ -520,7 +520,7 @@ std::string handler_sees_step(CancellableScope& scope){
 //  Gap 6: the save is told its checkpoint, at the end and at a SAVE step.
 std::string save_gets_checkpoint(CancellableScope& scope){
     StoryGame<GridPose> game = flaky_game<GridPose>(0);
-    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::CAN_MOVE})}}, scope);
+    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     StoryEngine<GridPose> engine(game, backend);
     StoryStep save;
     save.kind = StoryStepKind::SAVE;
@@ -572,7 +572,7 @@ std::string console_only_refused(CancellableScope& scope){
 //  would repeat.
 std::string segment_no_reload_for_console_only(CancellableScope& scope){
     const StoryGame<GridPose> game = console_game();
-    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::CAN_MOVE})}}, scope);
+    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     StoryEngine<GridPose> engine(game, backend);
     const std::vector<StoryCheckpoint> checkpoints{checkpoint_of("01", {game_step("menu", "open_menu")})};
     RunState state;
@@ -585,22 +585,22 @@ std::string segment_no_reload_for_console_only(CancellableScope& scope){
 
 //  Gap 7: the first checkpoint is retried after a reload; one after it
 //  only when the one before saved at its end (#329).
-struct SegmentInput{
-    std::string_view name;
-    StoryPhase phase;
-    //  Which checkpoint fails once: 0 or 1.
-    size_t flaky = 0;
-};
-
-struct SegmentExpectation{
-    bool completed = false;
-    size_t reloads = 0;
-    size_t saves = 0;
-};
-
 struct SegmentCase{
-    SegmentInput input;
-    SegmentExpectation expectation;
+    struct Input{
+        std::string_view name;
+        StoryPhase phase;
+        //  Which checkpoint fails once: 0 or 1.
+        size_t flaky = 0;
+    };
+
+    struct Expectation{
+        bool completed = false;
+        size_t reloads = 0;
+        size_t saves = 0;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const SegmentCase SEGMENT_CASES[] = {
@@ -616,7 +616,7 @@ const SegmentCase SEGMENT_CASES[] = {
 
 std::string check_segment(const SegmentCase& test, CancellableScope& scope){
     const StoryGame<GridPose> game = flaky_game<GridPose>(1);
-    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::CAN_MOVE})}}, scope);
+    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     StoryEngine<GridPose> engine(game, backend);
     std::vector<StoryCheckpoint> checkpoints;
     for (size_t c = 0; c < 2; c++){
@@ -651,12 +651,83 @@ private:
     SegmentCase m_case;
 };
 
+//  The engine's retries run through run_checkpoint_attempts(): the same
+//  reload and pass lines and attempt counts as its own loop had.
+struct RetryCase{
+    struct Input{
+        std::string_view name;
+        //  Calls of the checkpoint's action that fail before one passes.
+        size_t failures = 0;
+        size_t attempts = 0;
+    };
+
+    struct Expectation{
+        bool passed = false;
+        size_t attempts = 0;
+        //  Lines the run writes once each.
+        std::vector<std::string_view> lines;
+    };
+
+    Input input;
+    Expectation expectation;
+};
+
+const RetryCase RETRY_CASES[] = {
+    {.input = {.name = "pass after a reload", .failures = 1, .attempts = 3},
+     .expectation = {.passed = true, .attempts = 2, .lines = {
+        "[Segment] 01: failed, reloading for attempt 2/3",
+        "[Test] reload",
+        "[Checkpoint] 01: passed on attempt 2 (1 reset)",
+     }}},
+    {.input = {.name = "stop after the last attempt", .failures = 5, .attempts = 2},
+     .expectation = {.passed = false, .attempts = 2, .lines = {
+        "[Segment] 01: failed, reloading for attempt 2/2",
+        "[Test] reload",
+     }}},
+};
+
+std::string check_retry(const RetryCase& test, CancellableScope& scope){
+    const StoryGame<GridPose> game = flaky_game<GridPose>(test.input.failures);
+    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
+    StoryEngine<GridPose> engine(game, backend);
+    const std::vector<StoryCheckpoint> checkpoints{checkpoint_of("01", {game_step("walk", "flaky")})};
+    RunState state;
+    const SegmentReport report = engine.run_segment("seg", checkpoints, test.input.attempts, state);
+    const CheckpointRun& run = report.runs.at(0);
+    if (run.passed != test.expectation.passed || run.attempts != test.expectation.attempts){
+        return std::format(
+            "expected passed {} after {} attempts, got {} after {}: {}",
+            test.expectation.passed, test.expectation.attempts, run.passed, run.attempts, joined(backend.lines())
+        );
+    }
+    for (std::string_view line : test.expectation.lines){
+        if (count_lines(backend, line) != 1){
+            return std::format("expected \"{}\" once: {}", line, joined(backend.lines()));
+        }
+    }
+    return "";
+}
+
+class StoryRetryTest : public UnitTest{
+public:
+    explicit StoryRetryTest(RetryCase test)
+        : UnitTest(std::format("Pokemon::StoryEngine retry - {}", test.input.name))
+        , m_case(std::move(test))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
+        const std::string error = check_retry(m_case, scope);
+        return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
+    }
+private:
+    RetryCase m_case;
+};
+
 //  Gap 7: verify runs a checkpoint 3 times from one save, saving only at
 //  the end of the last, and only when every run passed.
 std::string verify_saves_after_all_passed(CancellableScope& scope){
     for (size_t failures = 0; failures < 2; failures++){
         const StoryGame<GridPose> game = flaky_game<GridPose>(failures);
-        FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::CAN_MOVE})}}, scope);
+        FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
         StoryEngine<GridPose> engine(game, backend);
         const StoryCheckpoint checkpoint = in_phase(checkpoint_of("00.15b", {game_step("battle", "flaky")}), StoryPhase::VERIFICATION, engine);
         RunState state;
@@ -675,20 +746,20 @@ std::string verify_saves_after_all_passed(CancellableScope& scope){
 }
 
 
-//  One check above, by name.
-struct RunsInput{
-    std::string_view name;
-    std::string (*check)(CancellableScope& scope);
-};
-
-//  The check's error: none.
-struct RunsExpectation{
-    std::string_view error = {};
-};
-
 struct RunsCase{
-    RunsInput input;
-    RunsExpectation expectation;
+    //  One check above, by name.
+    struct Input{
+        std::string_view name;
+        std::string (*check)(CancellableScope& scope);
+    };
+
+    //  The check's error: none.
+    struct Expectation{
+        std::string_view error = {};
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const RunsCase RUNS_CASES[] = {
@@ -734,6 +805,9 @@ void add_tests_StoryEngineRuns(UnitTestDatabase& database){
     }
     for (const SegmentCase& test : SEGMENT_CASES){
         database.add<StorySegmentTest>(test);
+    }
+    for (const RetryCase& test : RETRY_CASES){
+        database.add<StoryRetryTest>(test);
     }
 }
 

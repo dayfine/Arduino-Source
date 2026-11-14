@@ -412,6 +412,9 @@ CheckpointReport run_checkpoint(RunState& state, Checkpoint& checkpoint, EventLo
         EventRun run{checkpoint, c + 1, event, state, log, std::vector<size_t>(event.recoveries.size(), 0), 0};
         if (already_done(event, state)){
             log_status("skipped", run);
+            if (event.when_skipped){
+                event.when_skipped(state);
+            }
             report.events_skipped++;
             continue;
         }
