@@ -10,6 +10,7 @@
  */
 
 #include <format>
+#include <optional>
 #include <string>
 #include <utility>
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -22,27 +23,25 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-using Pokemon::ScreenEvent;
-using Pokemon::ScreenEvents;
 
 namespace{
 
-struct ScreenEventsInput{
-    std::string name;
-    //  The frame's colour; 0 for no frame.
-    uint32_t color;
-    //  The colour of a square in the middle of the frame, around the
-    //  player; 0 for none.
-    uint32_t middle = 0;
-};
-
-struct ScreenEventsExpectation{
-    ScreenEvents events;
-};
-
 struct ScreenEventsCase{
-    ScreenEventsInput input;
-    ScreenEventsExpectation expectation;
+    struct Input{
+        std::string name;
+        //  The frame's colour; none for no frame.
+        std::optional<uint32_t> color;
+        //  The colour of a square in the middle of the frame, around the
+        //  player; 0 for none.
+        uint32_t middle = 0;
+    };
+
+    struct Expectation{
+        ScreenEvents events;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_AutoStoryScreenEvents : public UnitTest{
@@ -54,9 +53,9 @@ public:
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         VideoSnapshot frame;
-        if (m_case.input.color != 0){
+        if (m_case.input.color.has_value()){
             ImageRGB32 image(1920, 1080);
-            image.fill(m_case.input.color);
+            image.fill(*m_case.input.color);
             if (m_case.input.middle != 0){
                 for (size_t y = 380; y < 700; y++){
                     for (size_t x = 800; x < 1120; x++){
@@ -83,7 +82,7 @@ private:
 
 const ScreenEventsCase SCREEN_EVENTS_CASES[] = {
     {
-        .input = {"no frame shows nothing", 0},
+        .input = {"no frame shows nothing", std::nullopt},
         .expectation = {{}},
     },
     {
