@@ -15,6 +15,7 @@
 #include "Data/Pokemon_AuthoredCheckpointJson_Tests.h"
 #include "Data/Pokemon_StoryStepJson_Tests.h"
 #include "Engine/Pokemon_StoryEnginePolicy_Tests.h"
+#include "Engine/Pokemon_StoryLaunch_Tests.h"
 #include "Engine/Pokemon_StoryEngineRuns_Tests.h"
 #include "Engine/Pokemon_StoryEngine_Tests.h"
 #include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
@@ -58,6 +59,7 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryEngine(database);
     add_tests_StoryEnginePolicy(database);
     add_tests_StoryEngineRuns(database);
+    add_tests_StoryLaunch(database);
     add_tests_SceneJudges(database);
     add_tests_Interrupts(database);
     add_tests_Transitions(database);
