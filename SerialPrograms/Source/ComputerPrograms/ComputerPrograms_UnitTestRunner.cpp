@@ -23,6 +23,7 @@
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "CommonFramework/Windows/LabChannel_Tests.h"
+#include "CommonFramework/Windows/LabStateV1_Tests.h"
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "CommonTools/OCR/OCR_Tests.h"
 
@@ -47,28 +48,34 @@
 
 namespace PokemonAutomation{
 namespace ComputerPrograms{
+namespace{
 
 
+void add_infrastructure_tests(UnitTestDatabase& database){
+    add_tests_QtEventThreadPool(database, GlobalThreadPools::computation_normal());
+    add_tests_Sockets(database, GlobalThreadPools::unlimited_normal());
+    add_tests_BlackBorderDetector(database);
+    add_tests_ListenerSet(database);
+    add_tests_MoveOnlyFunction(database);
+    SysbotBase::add_tests_SysbotBasePing(database);
+    SysbotBase::add_tests_SysbotBaseReceiveLine(database);
+    add_tests_AudioInfo(database);
+    add_tests_ChannelMixerMatrix(database);
+    add_tests_FFTStreamer(database);
+    add_tests_SinkPipeline(database);
+    add_tests_AudioFileLoader(database);
+    add_tests_LabChannel(database);
+    add_tests_LabStateV1(database);
+}
 
 
+} // namespace
 
 
 UnitTestDatabase make_UNIT_TESTS_ALL(){
     UnitTestDatabase ret;
 
-    add_tests_QtEventThreadPool(ret, GlobalThreadPools::computation_normal());
-    add_tests_Sockets(ret, GlobalThreadPools::unlimited_normal());
-    add_tests_BlackBorderDetector(ret);
-    add_tests_ListenerSet(ret);
-    add_tests_MoveOnlyFunction(ret);
-    SysbotBase::add_tests_SysbotBasePing(ret);
-    SysbotBase::add_tests_SysbotBaseReceiveLine(ret);
-    add_tests_AudioInfo(ret);
-    add_tests_ChannelMixerMatrix(ret);
-    add_tests_FFTStreamer(ret);
-    add_tests_SinkPipeline(ret);
-    add_tests_AudioFileLoader(ret);
-    add_tests_LabChannel(ret);
+    add_infrastructure_tests(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
     Pokemon::add_tests_AutoStorySelect(ret);

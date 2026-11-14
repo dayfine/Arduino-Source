@@ -801,6 +801,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Windows/LabChannel_Tests.h
     Source/CommonFramework/Windows/LabRequest.cpp
     Source/CommonFramework/Windows/LabRequest.h
+    Source/CommonFramework/Windows/LabStateV1.cpp
+    Source/CommonFramework/Windows/LabStateV1.h
+    Source/CommonFramework/Windows/LabStateV1_Tests.cpp
+    Source/CommonFramework/Windows/LabStateV1_Tests.h
     Source/CommonFramework/Windows/MainWindow.cpp
     Source/CommonFramework/Windows/MainWindow.h
     Source/CommonFramework/Windows/WindowTracker.cpp
