@@ -79,6 +79,11 @@ UnitTestResult test_talk_over(){
         {"a box is answered", {}, {BOX}, SceneMove::NEXT, 0},
         {"no box is a B press", {}, {QUIET}, SceneMove::B, 0},
         {"15 s calm but moving ends it", {}, repeat(CALM, 20), SceneMove::DONE, 15},
+        //  PLZA: its party bar never shows mid-scene for long, and its
+        //  city never stands still.
+        {"a shorter calm rule ends it sooner", {.calm = 1000ms}, repeat(CALM, 5), SceneMove::DONE, 1},
+        {"a shorter calm rule still waits out a box", {.calm = 1000ms},
+            concat(concat({CALM}, {BOX}), repeat(CALM, 5)), SceneMove::DONE, 3},
         {"a warp rule waits for the fade", {.warp = true},
             concat(concat(repeat(QUIET, 8), {ScreenEvents{ScreenEvent::FADE_BLACK}}), repeat(QUIET, 8)),
             SceneMove::DONE, 14},
