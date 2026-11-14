@@ -362,7 +362,7 @@ UnitTestResult test_route10_column_16_short(){
 //  them can.
 UnitTestResult test_route10_tile_off_after_open_legs(){
     const std::vector<StoryStep> steps = route10_walk();
-    const std::vector<MapData>& maps = story_maps();
+    const std::vector<MapData> maps = story_maps();
     //  above_caitlin_line ends east 6 on (70, 8), an open leg.
     RouteStep before{.direction = Direction::EAST, .tiles = 6};
     StoryPose at = ROUTE10_WALK_START;
