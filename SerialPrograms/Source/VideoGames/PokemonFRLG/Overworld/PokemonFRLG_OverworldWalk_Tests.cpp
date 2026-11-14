@@ -703,6 +703,49 @@ const MapEdgeCase MAP_EDGE_CASES[] = {
     {.name = "off the map (-2, 5)", .input = {.tile = {-2, 5}}, .expectation = {.edge = false}},
 };
 
+struct FrameAfterHoldInput{
+    //  When the frame was captured, from the hold's start.
+    Milliseconds frame_from_start;
+};
+struct FrameAfterHoldExpectation{
+    bool shows_hold;
+};
+struct FrameAfterHoldCase{
+    std::string name;
+    FrameAfterHoldInput input;
+    FrameAfterHoldExpectation expectation;
+};
+
+//  Console B, 2026-11-14 09:45 (14.03 run 12): after "west 29" the position
+//  check read 0.0, the screen before the hold again, and half a second
+//  later the leg's screenshot showed the player 29 tiles on. A frame from
+//  before the hold's first tile can't show the hold.
+class Test_OverworldFrameAfterHold : public UnitTest{
+public:
+    explicit Test_OverworldFrameAfterHold(FrameAfterHoldCase test_case)
+        : UnitTest("PokemonFRLG::OverworldWalk - a frame that can show a hold: " + test_case.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const WallClock hold_start = WallClock() + std::chrono::hours(1);
+        const bool shows = detail::frame_shows_hold(hold_start + m_case.input.frame_from_start, hold_start, Milliseconds(133));
+        if (shows == m_case.expectation.shows_hold){
+            return true;
+        }
+        return std::format("Expected the frame {} the hold.", m_case.expectation.shows_hold ? "to show" : "not to show");
+    }
+
+private:
+    FrameAfterHoldCase m_case;
+};
+
+const FrameAfterHoldCase FRAME_AFTER_HOLD_CASES[] = {
+    {.name = "the frame before the hold, from a stalled feed", .input = {.frame_from_start = Milliseconds(-3900)}, .expectation = {.shows_hold = false}},
+    {.name = "a frame inside the first tile", .input = {.frame_from_start = Milliseconds(100)}, .expectation = {.shows_hold = false}},
+    {.name = "a frame after the first tile", .input = {.frame_from_start = Milliseconds(133)}, .expectation = {.shows_hold = true}},
+    {.name = "a frame at the hold's end", .input = {.frame_from_start = Milliseconds(3900)}, .expectation = {.shows_hold = true}},
+};
+
 void add_tests_OverworldWalk(UnitTestDatabase& database){
     for (const auto& scenario : OVERWORLD_WALK_CASES){
         database.add<Test_OverworldWalk>(scenario);
@@ -725,6 +768,9 @@ void add_tests_OverworldWalk(UnitTestDatabase& database){
     }
     for (const HoldFramesCase& item : HOLD_FRAMES_CASES){
         database.add<Test_OverworldHoldFrames>(item);
+    }
+    for (const FrameAfterHoldCase& item : FRAME_AFTER_HOLD_CASES){
+        database.add<Test_OverworldFrameAfterHold>(item);
     }
 }
 
