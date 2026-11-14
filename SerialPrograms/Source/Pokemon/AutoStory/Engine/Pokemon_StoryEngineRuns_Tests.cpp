@@ -7,7 +7,7 @@
  *  the heading reading, the choice and interact events, a screen machine
  *  over observations, the step in an action's call, the checkpoint in the
  *  save, the segment and verify loops, console-only actions, declared poses
- *  read as the game's pose type, and tile actions only for tile games.
+ *  of the game's kind only, and tile actions only for tile games.
  *  Then what PLZA found on the engine: readers opt in to the postcondition
  *  check, inputs logged by button name, waiting states may stay still, and
  *  the stick's release.
@@ -517,15 +517,21 @@ std::string handler_sees_step(CancellableScope& scope){
     return *seen == "opening / the long intro" ? "" : std::format("expected the step, got \"{}\"", *seen);
 }
 
+StoryStep save_step(std::string name){
+    StoryStep step;
+    step.kind = StoryStepKind::SAVE;
+    step.name = std::move(name);
+    return step;
+}
+
 //  Gap 6: the save is told its checkpoint, at the end and at a SAVE step.
 std::string save_gets_checkpoint(CancellableScope& scope){
     StoryGame<GridPose> game = flaky_game<GridPose>(0);
     FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     StoryEngine<GridPose> engine(game, backend);
-    StoryStep save;
-    save.kind = StoryStepKind::SAVE;
-    save.name = "save_here";
-    const StoryCheckpoint checkpoint = in_phase(checkpoint_of("02.01", {game_step("walk", "fine"), save}), StoryPhase::REPRODUCTION, engine);
+    const StoryCheckpoint checkpoint = in_phase(
+        checkpoint_of("02.01", {game_step("walk", "fine"), save_step("save_here")}), StoryPhase::REPRODUCTION, engine
+    );
     RunState state;
     const StoryEngineReport report = engine.run_checkpoint(checkpoint, SavePoint::CHECKPOINT_END, state);
     if (!report.saved){
@@ -533,6 +539,30 @@ std::string save_gets_checkpoint(CancellableScope& scope){
     }
     const size_t saves = count_lines(backend, "[Test] save 02.01");
     return saves == 2 ? "" : std::format("expected 2 saves of 02.01, got {}: {}", saves, joined(backend.lines()));
+}
+
+//  A SAVE step part-way through a checkpoint moves the save: a reload
+//  after a later failure would not return to the checkpoint's start, so
+//  the segment stops there instead of retrying from step 1.
+std::string no_retry_after_a_save_step(CancellableScope& scope){
+    StoryGame<GridPose> game = flaky_game<GridPose>(1);
+    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
+    StoryEngine<GridPose> engine(game, backend);
+    const std::vector<StoryCheckpoint> checkpoints{in_phase(
+        checkpoint_of("02.01", {game_step("walk", "fine"), save_step("save_here"), game_step("talk", "flaky")}),
+        StoryPhase::REPRODUCTION, engine
+    )};
+    RunState state;
+    const SegmentReport report = engine.run_segment("seg", checkpoints, 3, state);
+    if (report.completed || report.failed_event != "talk" || report.failure.failure != "flaky_failed"){
+        return std::format("expected the segment to stop at talk, got {}: {}", to_string(report.failure), joined(backend.lines()));
+    }
+    if (count_lines(backend, "[Test] reload") != 0){
+        return std::format("expected no reload: {}", joined(backend.lines()));
+    }
+    return has_line(backend, "[Checkpoint] 02.01: a save step saved part-way, so a reload would not return to its start: no retry")
+        ? ""
+        : std::format("expected the no-retry line: {}", joined(backend.lines()));
 }
 
 //  Gap 8: a console_only action is refused, before any input, on a backend
@@ -913,6 +943,7 @@ const RunsCase RUNS_CASES[] = {
     {.name = "observation machine fails", .input = {.check = &observation_machine_fails}, .expectation = {}},
     {.name = "handler sees its step", .input = {.check = &handler_sees_step}, .expectation = {}},
     {.name = "save gets its checkpoint", .input = {.check = &save_gets_checkpoint}, .expectation = {}},
+    {.name = "no retry after a save step", .input = {.check = &no_retry_after_a_save_step}, .expectation = {}},
     {.name = "console_only refused off console", .input = {.check = &console_only_refused}, .expectation = {}},
     {.name = "no reload for console_only", .input = {.check = &segment_no_reload_for_console_only}, .expectation = {}},
     {.name = "verify saves after all passed", .input = {.check = &verify_saves_after_all_passed}, .expectation = {}},

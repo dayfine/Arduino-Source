@@ -68,12 +68,12 @@ private:
 
 //  `game` with its SAVE step "save" saving `current` only while `mode` is
 //  PER_CHECKPOINT: a checkpoint under test or verification must not save
-//  part-way.
+//  part-way. Sets `saved` when it saves.
 template <StoryPose PoseType>
 StoryGame<PoseType> with_gated_save_step(
-    StoryGame<PoseType> game, const StorySaveMode& mode, const StoryCheckpoint* const& current
+    StoryGame<PoseType> game, const StorySaveMode& mode, const StoryCheckpoint* const& current, bool& saved
 ){
-    StoryActionHandler<PoseType> gated = [&mode, &current, save = game.save](
+    StoryActionHandler<PoseType> gated = [&mode, &current, &saved, save = game.save](
         StoryBackend<PoseType>& backend, const StoryActionCall&, RunState&
     ){
         if (mode != StorySaveMode::PER_CHECKPOINT){
@@ -83,7 +83,9 @@ StoryGame<PoseType> with_gated_save_step(
         if (!save || current == nullptr){
             return outcome_failed("unsupported_step", "save needs StoryGame::save");
         }
-        return save(backend, *current);
+        Outcome outcome = save(backend, *current);
+        saved = saved || outcome.succeeded();
+        return outcome;
     };
     game.actions.push_back({.spec = {.kind = StoryStepKind::SAVE, .name = "save", .args = {}}, .handler = std::move(gated)});
     return game;
@@ -181,7 +183,7 @@ ObservedState observed_state(const Observation<ZonePose>& observation){
 
 template <StoryPose PoseType>
 StoryEngine<PoseType>::StoryEngine(const StoryGame<PoseType>& game, StoryBackend<PoseType>& backend)
-    : m_game(with_gated_save_step(game, m_save_mode, m_checkpoint))
+    : m_game(with_gated_save_step(game, m_save_mode, m_checkpoint, m_saved_part_way))
     , m_backend(backend)
     , m_registry(m_game)
     , m_runner(m_registry, backend)
@@ -222,7 +224,9 @@ StoryEngineReport StoryEngine<PoseType>::run_once(
     m_backend.log(report.save.reason);
     m_save_mode = report.save.mode;
     m_checkpoint = &checkpoint;
+    m_saved_part_way = false;
     report.run = run_steps(checkpoint, state);
+    report.saved_part_way = m_saved_part_way;
     m_save_mode = StorySaveMode::NONE;
     m_checkpoint = nullptr;
     if (!report.run.completed){
@@ -265,6 +269,13 @@ StoryEngineReport StoryEngine<PoseType>::run_with_retries(
             report = run_checkpoint(checkpoint, point, state);
             if (report.verdict == CheckpointVerdict::PASSED){
                 return AttemptResult::PASSED;
+            }
+            if (report.saved_part_way){
+                m_backend.log(std::format(
+                    "[Checkpoint] {}: a save step saved part-way, so a reload would not return to its start: no retry",
+                    checkpoint.id
+                ));
+                return AttemptResult::FINAL;
             }
             return repeats_on_reload(report.run.failure) ? AttemptResult::FINAL : AttemptResult::FAILED;
         },
