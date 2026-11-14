@@ -88,6 +88,11 @@ std::array<ImageFloatBox, 4> edge_bands(const ImageFloatBox& game){
 //  so that only a screen that did not move at all reads as not moved.
 constexpr double HOLD_UNMOVED_RMSD = 6.0;
 
+//  How long measure_movement() waits for a frame that can show the hold
+//  (frame_shows_hold()), a wait at a time, when the feed has stalled.
+constexpr Milliseconds STALE_FRAME_WAIT = std::chrono::milliseconds(100);
+constexpr int STALE_FRAME_WAITS = 20;
+
 //  Whether `band` of `screen` (in the game screen `game`) looks the same one
 //  tile over along `direction`, as a stand-still would read: a scroll that
 //  way by whole tiles leaves it the same. One color off the map's edge does
@@ -352,8 +357,16 @@ HoldMovement measure_movement(
         context.wait_for(first_tile + TURN_SETTLE - since_start);
     }
     context.wait_for_all_requests();
-    const VideoSnapshot after = console.video().snapshot();
+    VideoSnapshot after = console.video().snapshot();
+    for (int wait = 0; after && !detail::frame_shows_hold(after.timestamp, hold_start, first_tile) && wait < STALE_FRAME_WAITS; wait++){
+        context.wait_for(STALE_FRAME_WAIT);
+        after = console.video().snapshot();
+    }
     if (!before || !after){
+        return HoldMovement::UNMEASURED;
+    }
+    if (!detail::frame_shows_hold(after.timestamp, hold_start, first_tile)){
+        console.log("Position check: the video shows no frame from after the hold's first tile: not measured.", COLOR_ORANGE);
         return HoldMovement::UNMEASURED;
     }
     const std::optional<double> change = hold_scroll_change(*before.frame, *after.frame, GameSettings::instance().GAME_BOX, direction);
@@ -724,6 +737,10 @@ RouteCalls console_route_calls(
 }
 
 } // namespace
+
+bool detail::frame_shows_hold(WallClock frame_time, WallClock hold_start, Milliseconds first_tile){
+    return frame_time >= hold_start + first_tile;
+}
 
 std::optional<double> hold_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game, Direction direction){
     //  A scroll moves every band that would show it; a town's banner (top

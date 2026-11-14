@@ -16,6 +16,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "Common/Cpp/Time.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
@@ -71,6 +72,17 @@ double tap_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& aft
 //  across, after a step west (13.03; both console B, 2026-11-14). Nothing
 //  when no quarter would show the step.
 std::optional<double> hold_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game, Direction direction);
+
+//  measure_movement()'s check of its frame, here for its tests.
+namespace detail{
+//  Whether a frame captured at `frame_time` can show a hold that started at
+//  `hold_start`: one from after the hold's first tile (`first_tile`). An
+//  older one, from a feed that stalled, shows the screen from before the
+//  hold, which reads as not moved (console B, 2026-11-14 09:45, 14.03 run
+//  12: "west 29" read 0.0, and the leg's screenshot half a second later
+//  showed the player 29 tiles on).
+bool frame_shows_hold(WallClock frame_time, WallClock hold_start, Milliseconds first_tile);
+} // namespace detail
 
 //  What a hold's hold_scroll_change() says: MOVED for a change over what a
 //  player who stood still may read, NONE for one at or under it, UNMEASURED

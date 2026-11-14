@@ -46,13 +46,31 @@
         "why": "the Oddish cuts the tree; a step onto its tile (pokeguy 1:24:05)"
       },
       {
+        "id": "yard_west_wall",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity", "tiles": [[4, 37]], "facing": "west"}
+        },
+        "why": "down to row 37 and west along it to the yard's tree wall (3, 37): a wall ends the long hold on a known tile. An open hold to the gap's column (11, 37) ended by its time, and when its position check misread it as not moved (console B, 2026-11-14 09:45, run 12) the walk again from (40, 37) ran on to the wall, and north from (4, 37) met the ledge (4..9, 33)"
+      },
+      {
+        "id": "below_gym_gap",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "east", "tiles": 7}]
+        },
+        "why": "7 taps east from the tree wall (4, 37) to (11, 37), below the gap in the ledges (10..11, 33) and the gym's door (11, 30): a tile off, north meets a ledge (4..9 or 12..19, 33) or the fence beside the door"
+      },
+      {
         "id": "below_tamia_line",
         "kind": "route",
         "action": "run",
         "args": {
           "target": {"map": "CeladonCity_Gym", "tiles": [[2, 11]], "facing": "north"}
         },
-        "why": "down to row 36, west along it, up through the gap in the ledges (10..11, 33) into the gym's door (11, 30), and in the gym (no running) up the west aisle to (2, 11), a tile below Beauty Tamia's line (2, 7..10): out of Lass Kay's (4..6, 11), behind her, and Beauty Bridget's (6..8, 10)"
+        "why": "up column 11 through the gap in the ledges (10..11, 33) into the gym's door (11, 30), and in the gym (no running) up the west aisle to (2, 11), a tile below Beauty Tamia's line (2, 7..10): out of Lass Kay's (4..6, 11), behind her, and Beauty Bridget's (6..8, 10)"
       },
       {
         "id": "tamia_line",

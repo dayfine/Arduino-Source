@@ -232,6 +232,45 @@ UnitTestResult test_gym_rows(){
     return true;
 }
 
+//  14.03's walk from the cut tree (40, 35), where cut_gym_tree leaves the
+//  player, into the gym to below Tamia's line (2, 11), on a sim whose hold
+//  west along row 37 (hold 2, after "south 2") ends `drift` tiles off its
+//  time: past it if positive, short of it if negative. Console B,
+//  2026-11-14 09:45 (run 12): an open hold west to the gap's column
+//  (11, 37), misread as not moved, was walked again from (40, 37) into the
+//  tree wall (4, 37), and north from there met the ledge (4..9, 33). A tile
+//  off that column, the walk up to the gym's door (11, 30) meets a ledge or
+//  the fence beside the door.
+UnitTestResult test_gym_door_after_drifted_hold(int drift){
+    const StoryCheckpoint& row = checkpoint("14.03");
+    SimScript script;
+    if (drift > 0){
+        script.long_holds[2] = drift;
+    }else{
+        script.short_holds[2] = -drift;
+    }
+    StoryPose at{CELADON, {40, 35}, Direction::SOUTH};
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing, script);
+    bool after_cut = false;
+    for (const StoryStep& step : row.steps){
+        if (!after_cut){
+            after_cut = step.name == "cut_gym_tree";
+            continue;
+        }
+        if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
+            return std::format("14.03: ended on {}; {}", to_string(sim.state().position), failure);
+        }
+        if (step.name == "below_tamia_line"){
+            break;
+        }
+    }
+    const MapPosition below_line{GYM, {2, 11}};
+    if (!(sim.state().position == below_line)){
+        return std::format("14.03: ended on {}, not below Tamia's line {}.", to_string(sim.state().position), to_string(below_line));
+    }
+    return true;
+}
+
 //  The lead as pokeguy brings it to Erika, without the Blizzard he
 //  teaches there (left out: no TM spent without the user): Surf, Water
 //  Pulse, Bite, Mega Kick. Against Tamia's, Lori's and Erika's Grass
@@ -333,6 +372,18 @@ const AutoStoryCeladonGymCase AUTO_STORY_CELADON_GYM_CASES[] = {
     {
         .input = {.name = "14.03 to below Erika, 14.04 on the spot and 14.04b back to the nurse", .body = test_gym_rows},
         .expectation = {.description = "Tamia and Lori fought where the table steps into their lines, no one else"},
+    },
+    {
+        .input = {.name = "14.03 into the gym with the hold west along row 37 a tile long", .body = []{
+            return test_gym_door_after_drifted_hold(1);
+        }},
+        .expectation = {.description = "ends below Tamia's line (2, 11): the hold ends at the yard's tree wall, and taps reach the door's column"},
+    },
+    {
+        .input = {.name = "14.03 into the gym with the hold west along row 37 a tile short", .body = []{
+            return test_gym_door_after_drifted_hold(-1);
+        }},
+        .expectation = {.description = "ends below Tamia's line (2, 11): the hold's wall check finds the tile short, and taps reach the door's column"},
     },
     {
         .input = {.name = "the lead's attacks against Celadon Gym", .body = test_lead_moves_against_grass},
