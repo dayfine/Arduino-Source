@@ -53,7 +53,7 @@ private:
     const StoryLogTestCase m_case;
 };
 
-//  SV's display text for a checkpoint, which already says "Checkpoint::".
+//  SV's text for a checkpoint, which already says "Checkpoint::".
 constexpr std::string_view SV_TEXT = "Checkpoint:: 004 - 02. Start point: X";
 
 const StoryLogTestCase STORY_LOG_CASES[] = {
@@ -64,7 +64,7 @@ const StoryLogTestCase STORY_LOG_CASES[] = {
     },
     {
         .name = "checkpoint start with its events",
-        .input = {.line = checkpoint_start_line("00.04", 3)},
+        .input = {.line = checkpoint_start_line("00.04", /*events=*/3)},
         .expectation = {.line = "[Checkpoint] 00.04: start, 3 events"},
     },
     {
@@ -74,7 +74,7 @@ const StoryLogTestCase STORY_LOG_CASES[] = {
     },
     {
         .name = "attempt out of a limit",
-        .input = {.line = checkpoint_attempt_line("00.04", 2, 3)},
+        .input = {.line = checkpoint_attempt_line("00.04", 2, /*attempts=*/3)},
         .expectation = {.line = "[Checkpoint] 00.04: attempt 2/3"},
     },
     {
@@ -99,27 +99,27 @@ const StoryLogTestCase STORY_LOG_CASES[] = {
     },
     {
         .name = "reset out of a limit",
-        .input = {.line = checkpoint_reset_line("00.04", 2, 3)},
+        .input = {.line = checkpoint_reset_line("00.04", 2, /*attempts=*/3)},
         .expectation = {.line = "[Checkpoint] 00.04: failed, resetting for attempt 2/3"},
     },
     {
-        .name = "start with display text",
-        .input = {.line = checkpoint_start_line("004", std::nullopt, SV_TEXT)},
+        .name = "start without the checkpoint prefix",
+        .input = {.line = checkpoint_start_line(SV_TEXT, /*events=*/std::nullopt, /*add_checkpoint_prefix=*/false)},
         .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: start"},
     },
     {
-        .name = "attempt with display text",
-        .input = {.line = checkpoint_attempt_line("004", 2, 100, SV_TEXT)},
+        .name = "attempt without the checkpoint prefix",
+        .input = {.line = checkpoint_attempt_line(SV_TEXT, 2, /*attempts=*/100, /*add_checkpoint_prefix=*/false)},
         .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: attempt 2/100"},
     },
     {
-        .name = "pass with display text",
-        .input = {.line = checkpoint_pass_line("004", 2, SV_TEXT)},
+        .name = "pass without the checkpoint prefix",
+        .input = {.line = checkpoint_pass_line(SV_TEXT, 2, /*add_checkpoint_prefix=*/false)},
         .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: passed on attempt 2 (1 reset)"},
     },
     {
-        .name = "reset with display text",
-        .input = {.line = checkpoint_reset_line("004", 2, std::nullopt, SV_TEXT)},
+        .name = "reset without the checkpoint prefix",
+        .input = {.line = checkpoint_reset_line(SV_TEXT, 2, /*attempts=*/std::nullopt, /*add_checkpoint_prefix=*/false)},
         .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: failed, resetting for attempt 2"},
     },
     {
@@ -133,8 +133,10 @@ const StoryLogTestCase STORY_LOG_CASES[] = {
         .expectation = {.line = "12.03: some text"},
     },
     {
-        .name = "short line without a tag",
-        .input = {.line = story_short_line("Checkpoint:: 004 - 02. Start point: X: start")},
+        .name = "short line without the checkpoint prefix",
+        .input = {.line = story_short_line(
+            checkpoint_start_line(SV_TEXT, /*events=*/std::nullopt, /*add_checkpoint_prefix=*/false)
+        )},
         .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: start"},
     },
     {
