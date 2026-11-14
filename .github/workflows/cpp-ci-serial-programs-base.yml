@@ -247,7 +247,7 @@ jobs:
         with:
           # The fork's fixtures: upstream's plus the SystemKeyboardDetector screenshots.
           repository: 'dayfine/CommandLineTests'
-          ref: '5de4ff774f9141d904c4b5c557fa7b9dc85eaef1'
+          ref: '95b9aa8b9492b8216e5a50928521a0bf9c19a0d9'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded
