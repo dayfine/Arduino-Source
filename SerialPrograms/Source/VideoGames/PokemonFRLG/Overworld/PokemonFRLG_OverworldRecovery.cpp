@@ -330,20 +330,13 @@ public:
             pause_before_leg(m_next, step);
             //  Where a hold that finds the player starts isn't known.
             const std::optional<TrainerCrossing> crossing = m_next >= m_holds ? crossing_here(step) : std::nullopt;
+            report_progress(step);
             const StepOutcome outcome = judge_movement(step, m_steps.walk(step, m_facing, crossing));
             m_on_caller_start = false;
             if (is_gate_step(step)){
-                //  The player stays on their tile: nothing to find again if
-                //  the gate didn't open, so the route fails.
-                if (outcome.end != StepEnd::DONE){
-                    m_calls.fail("walk_overworld_route(): " + to_string(step) + " did not finish.");
+                if (!after_gate(step, outcome)){
                     return;
                 }
-                m_walked.reset();
-                Pokemon::apply_gate_change(m_gates, step.gate_change);
-                read_gates();
-                m_facing = step.facing_after;
-                m_lines.done(step, ++m_next, m_holds);
                 continue;
             }
             if (outcome.end == StepEnd::DONE){
@@ -394,6 +387,30 @@ private:
 
     static bool is_gate_step(const RouteStep& step){
         return step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH;
+    }
+
+    //  After `step`, a gate step: false, the route failed, if the gate
+    //  didn't open. The player stays on their tile: nothing to find again.
+    bool after_gate(const RouteStep& step, const StepOutcome& outcome){
+        if (outcome.end != StepEnd::DONE){
+            m_calls.fail("walk_overworld_route(): " + to_string(step) + " did not finish.");
+            return false;
+        }
+        m_walked.reset();
+        Pokemon::apply_gate_change(m_gates, step.gate_change);
+        read_gates();
+        m_facing = step.facing_after;
+        m_lines.done(step, ++m_next, m_holds);
+        return true;
+    }
+
+    //  Before `step`, m_plan[m_next]: where the player is if it fails. A gate
+    //  step leaves them on their tile, if known; any other step moves them.
+    void report_progress(const RouteStep& step) const{
+        if (m_planning != nullptr && m_planning->progress != nullptr){
+            m_planning->progress->gates = m_gates;
+            m_planning->progress->at = is_gate_step(step) && m_next >= m_holds ? m_at : std::nullopt;
+        }
     }
 
     //  The maps through the gates as they are now. The planning's own maps

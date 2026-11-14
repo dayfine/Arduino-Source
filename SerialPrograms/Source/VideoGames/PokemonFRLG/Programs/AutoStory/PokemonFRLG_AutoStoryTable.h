@@ -43,12 +43,14 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryTable_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryTable_H
 
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/AutoStory/Data/Pokemon_StoryFiles.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 
 namespace PokemonAutomation{
@@ -65,8 +67,16 @@ const std::vector<std::pair<std::string, std::string>>& autostory_checkpoint_jso
 //  action args it doesn't take, or has notes for a step it doesn't have.
 StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_view source);
 
-//  Every file in StoryData/ in the order the story plays them (STORY_ORDER in
-//  PokemonFRLG_AutoStoryTable.cpp), not in id order. Checkpoints 01.01 to 07.02 with
+//  The story of StoryData/'s files (load_story_data() in
+//  Pokemon_StoryFiles.h), each of `dev_files` in place of the built-in file
+//  of its name: its rows in the order the story plays them (STORY_ORDER in
+//  PokemonFRLG_AutoStoryTable.cpp), not in id order. Throws ParseException
+//  naming the file when a file is malformed or a dev file is refused, and
+//  when a checkpoint's id is not listed once in STORY_ORDER.
+Pokemon::StoryData<StoryCheckpoint> load_frlg_story(std::span<const Pokemon::StoryDevFile> dev_files);
+
+//  The built-in story's rows (load_frlg_story() with no dev files), in the
+//  order the story plays them. Checkpoints 01.01 to 07.02 with
 //  01.02, the way back in after SID Helper, after 01.01, 01.05 split in two at Squirtle's ball for
 //  Starter RNG: 01.05 and 01.06, 04.03, the way back in after Gift RNG,
 //  after 04.02, 04.04, the Magikarp put in BOX 1, after it, 05.01 and
@@ -78,6 +88,9 @@ const std::vector<StoryCheckpoint>& story_checkpoints();
 
 //  Registers AutoStory table validation unit tests.
 void add_tests_AutoStory(UnitTestDatabase& database);
+//  The checkpoint files read through the shared loader, with dev files
+//  (PokemonFRLG_AutoStoryTable_Tests.cpp).
+void add_tests_AutoStoryStoryFiles(UnitTestDatabase& database);
 //  Which rows a run takes (PokemonFRLG_AutoStoryRunPlan_Tests.cpp).
 void add_tests_AutoStoryRunPlan(UnitTestDatabase& database);
 //  The table run end to end against a fake game (PokemonFRLG_AutoStorySimulation_Tests.cpp).

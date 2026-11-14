@@ -11,6 +11,7 @@
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
+#include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPreflight.h"
 #include "Pokemon/AutoStory/Pokemon_StoryRngHandoff.h"
@@ -61,12 +62,17 @@ std::unique_ptr<StatsTracker> AutoStory_Descriptor::make_stats() const{
 
 namespace{
 
-//  The start and end dropdowns' entries: the table's checkpoints, 01.01 to
-//  04.03. The options hold a reference to it.
+//  The rows a run lists: dev_only ones only in Developer Mode.
+Pokemon::StoryRowsShown rows_shown(){
+    return STATIC_GLOBALS.DEVELOPER_MODE ? Pokemon::StoryRowsShown::DEVELOPER : Pokemon::StoryRowsShown::USER;
+}
+
+//  The start and end dropdowns' entries: the story's rows a run lists. The
+//  options hold a reference to it.
 const StringSelectDatabase& checkpoint_database(){
     static const std::vector<std::string> labels = []{
         std::vector<std::string> result;
-        for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        for (const StoryCheckpoint& checkpoint : Pokemon::story_rows_for_mode(load_frlg_story({}), rows_shown())){
             result.push_back(Pokemon::story_checkpoint_label(checkpoint));
         }
         return result;
@@ -341,6 +347,23 @@ void load_verify_save(
     load_start_save(env, story, game, state, checkpoint);
 }
 
+//  The rows for this run: the built-in checkpoints, with those of
+//  <user files>/AutoStoryDev/frlg/ in their place, read now so a run after
+//  an edit plays the edited walks. Logs each dev file it uses; a bad one
+//  fails the run.
+std::vector<StoryCheckpoint> load_run_rows(ConsoleHandle& console){
+    const std::string folder = Pokemon::story_dev_folder("frlg");
+    try{
+        const Pokemon::StoryData<StoryCheckpoint> story = load_frlg_story(Pokemon::read_story_dev_files(folder, "frlg"));
+        for (const auto& [name, path] : story.dev_files){
+            console.log(std::format("AutoStory: using dev checkpoint {} from {}", name, path));
+        }
+        return Pokemon::story_rows_for_mode(story, rows_shown());
+    }catch (const ParseException& error){
+        throw UserSetupError(console, std::format("AutoStory: bad dev checkpoint in {}: {}", folder, error.message()));
+    }
+}
+
 //  Verify mode: the start checkpoint run from its save as `policy` says,
 //  never saving at its end, so every run starts from the same save.
 //  Throws unless enough runs pass.
@@ -348,7 +371,7 @@ void verify_story_checkpoint(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
     const Pokemon::StoryRunOptions& run, const Pokemon::VerifyPolicy& policy, EventNotificationOption& finished
 ){
-    const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
+    const std::vector<StoryCheckpoint> checkpoints = load_run_rows(env.console);
     const StoryCheckpoint& checkpoint = checkpoints[run.start_index()];
     StoryEnv story = story_env(env, context, checkpoint, run.check_level(), false);
     story.language = run.language();
@@ -680,15 +703,14 @@ static StarterRngLoopResult run_gift_rng_in_program(
     return run_rng_plan_in_program(env, steps, planned, options);
 }
 
-//  After a shiny Squirtle: off its summary, and the rows to run next: the
-//  rival's battle, which saves (01.06), and the rows after it to `last`.
-//  Until that save, a reload would load the save under the ball and lose
-//  the shiny, so a failure stops the run instead.
+//  After a shiny Squirtle: off its summary, and `plan`, the rows to run
+//  next: the rival's battle, which saves (01.06), and the rows after it
+//  (rows_after_starter_rng()). Until that save, a reload would load the
+//  save under the ball and lose the shiny, so a failure stops the run
+//  instead.
 static StoryRunPlan after_shiny_starter(
-    SingleSwitchProgramEnvironment& env, ProControllerContext& context, StoryEnv& story,
-    size_t ball_row, size_t last, const StoryHandoffs& handoffs
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context, StoryEnv& story, StoryRunPlan plan
 ){
-    StoryRunPlan plan = rows_after_starter_rng(story_checkpoints(), ball_row, last, handoffs);
     //  As Starter RNG leaves the summary for the overworld.
     pbf_mash_button(context, BUTTON_B, 5000ms);
     context.wait_for_all_requests();
@@ -698,14 +720,11 @@ static StoryRunPlan after_shiny_starter(
     return plan;
 }
 
-//  After a shiny gift: the rows to run next, from the row after
-//  `gift_row` (04.03, 09.04), which leaves its summary and saves, to
-//  `last`. Until that save, a failure stops the run, as after a shiny
-//  Squirtle.
-static StoryRunPlan after_shiny_gift(
-    SingleSwitchProgramEnvironment& env, StoryEnv& story, size_t gift_row, size_t last, const StoryHandoffs& handoffs
-){
-    StoryRunPlan plan = rows_after_gift_rng(story_checkpoints(), gift_row, last, handoffs);
+//  After a shiny gift: `plan`, the rows to run next, from the row after the
+//  gift's (04.03, 09.04), which leaves its summary and saves
+//  (rows_after_gift_rng()). Until that save, a failure stops the run, as
+//  after a shiny Squirtle.
+static StoryRunPlan after_shiny_gift(SingleSwitchProgramEnvironment& env, StoryEnv& story, StoryRunPlan plan){
     env.console.log("The shiny gift isn't saved until " + plan.rows.front().id + " saves. "
         "If it fails before then, the run stops without reloading: save by hand.", COLOR_BLUE);
     story.has_save = false;
@@ -745,7 +764,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         verify_story_checkpoint(env, context, RUN, *verify, NOTIFICATION_PROGRAM_FINISH);
         return;
     }
-    const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
+    const std::vector<StoryCheckpoint> checkpoints = load_run_rows(env.console);
     size_t first = RUN.start_index();
     const size_t last = RUN.end_index();
     const std::string player_name = PLAYER_NAME;
@@ -780,8 +799,8 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     executor.set_pause_points(&story.pause);
 
     const std::optional<std::string> done_through = at_gift_rng
-        ? run_from_gift_rng_save(env, context, story, executor, first)
-        : run_story_plan(env, context, story, executor, std::move(plan));
+        ? run_from_gift_rng_save(env, context, story, executor, checkpoints, first)
+        : run_story_plan(env, context, story, executor, checkpoints, std::move(plan));
     if (done_through){
         send_story_finished(env, NOTIFICATION_PROGRAM_FINISH, *done_through, sid_before, RNG_PLAN.SID);
     }
@@ -789,7 +808,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
 
 std::optional<std::string> AutoStory::run_story_plan(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    StoryEnv& story, StoryExecutor& executor, StoryRunPlan plan
+    StoryEnv& story, StoryExecutor& executor, const std::vector<StoryCheckpoint>& rows, StoryRunPlan plan
 ){
     while (true){
         const std::string last_id = plan.rows.back().id;
@@ -802,7 +821,7 @@ std::optional<std::string> AutoStory::run_story_plan(
             };
         }
         run_story_rows(env, story, executor, plan.rows, RUN.policy(), std::move(before));
-        const size_t row = checkpoint_index(story_checkpoints(), last_id);
+        const size_t row = checkpoint_index(rows, last_id);
         std::optional<StoryRunPlan> next;
         switch (stop){
         case StoryHandoff::NONE:
@@ -810,10 +829,10 @@ std::optional<std::string> AutoStory::run_story_plan(
         case StoryHandoff::SID_HELPER:
             throw InternalProgramError(&env.logger(), PA_CURRENT_FUNCTION, "SID Helper's stop has no rows to run.");
         case StoryHandoff::STARTER_RNG:
-            next = after_starter_ball(env, context, story, planned, row);
+            next = after_starter_ball(env, context, story, planned, rows, row);
             break;
         case StoryHandoff::GIFT_RNG:
-            next = after_gift_row(env, context, story, planned, row);
+            next = after_gift_row(env, context, story, planned, rows, row);
             break;
         }
         if (!next){
@@ -825,21 +844,21 @@ std::optional<std::string> AutoStory::run_story_plan(
 
 std::optional<std::string> AutoStory::run_from_gift_rng_save(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    StoryEnv& story, StoryExecutor& executor, size_t first
+    StoryEnv& story, StoryExecutor& executor, const std::vector<StoryCheckpoint>& rows, size_t first
 ){
     const StarterRngPlanned planned = plan_handoff_attempts(
-        env, context, RNG_PLAN, RUN.language(), StoryHandoff::GIFT_RNG, story_checkpoints()[first].id
+        env, context, RNG_PLAN, RUN.language(), StoryHandoff::GIFT_RNG, rows[first].id
     );
-    std::optional<StoryRunPlan> next = after_gift_row(env, context, story, planned, first - 1);
+    std::optional<StoryRunPlan> next = after_gift_row(env, context, story, planned, rows, first - 1);
     if (!next){
         return std::nullopt;
     }
-    return run_story_plan(env, context, story, executor, std::move(*next));
+    return run_story_plan(env, context, story, executor, rows, std::move(*next));
 }
 
 std::optional<StoryRunPlan> AutoStory::after_starter_ball(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    StoryEnv& story, const StarterRngPlanned& planned, size_t ball_row
+    StoryEnv& story, const StarterRngPlanned& planned, const std::vector<StoryCheckpoint>& rows, size_t ball_row
 ){
     if (starter_rng_mode() != Pokemon::RngHandoffMode::RUN){
         stop_for_starter_rng(env, NOTIFICATION_PROGRAM_FINISH, RNG_PLAN.sound_name(), rng_attempt_lines(planned.attempts));
@@ -851,21 +870,23 @@ std::optional<StoryRunPlan> AutoStory::after_starter_ball(
     if (!run_starter_rng_in_program(env, context, planned, RNG_PLAN, RUN.language(), notifications, NOTIFICATION_PROGRAM_FINISH)){
         return std::nullopt;
     }
-    return after_shiny_starter(env, context, story, ball_row, RUN.end_index(), story_handoffs());
+    return after_shiny_starter(
+        env, context, story, rows_after_starter_rng(rows, ball_row, RUN.end_index(), story_handoffs())
+    );
 }
 
 std::optional<StoryRunPlan> AutoStory::after_gift_row(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    StoryEnv& story, const StarterRngPlanned& planned, size_t gift_row
+    StoryEnv& story, const StarterRngPlanned& planned, const std::vector<StoryCheckpoint>& rows, size_t gift_row
 ){
     const GiftRngConsoleSettings settings{
-        .language = RUN.language(), .sound = {}, .calibration = {}, .target = story_checkpoints()[gift_row].gift,
+        .language = RUN.language(), .sound = {}, .calibration = {}, .target = rows[gift_row].gift,
     };
     const GiftRngNotifications notifications{
         .shiny = NOTIFICATION_SHINY, .status_update = NOTIFICATION_STATUS_UPDATE, .error_recoverable = NOTIFICATION_ERROR_RECOVERABLE,
     };
     //  The live-start row after the gift's, which saves it (04.03, 09.04).
-    const std::string& saving_row = story_checkpoints().at(gift_row + 1).id;
+    const std::string& saving_row = rows.at(gift_row + 1).id;
     const bool shiny = run_handoff_to_shiny(env, NOTIFICATION_PROGRAM_FINISH, "Gift RNG", [&]{
         const StarterRngLoopResult result = run_gift_rng_in_program(env, context, planned, RNG_PLAN, settings, notifications);
         return rng_handoff_result(result, gift_rng_loop_message(result, settings.target, saving_row));
@@ -873,7 +894,7 @@ std::optional<StoryRunPlan> AutoStory::after_gift_row(
     if (!shiny){
         return std::nullopt;
     }
-    return after_shiny_gift(env, story, gift_row, RUN.end_index(), story_handoffs());
+    return after_shiny_gift(env, story, rows_after_gift_rng(rows, gift_row, RUN.end_index(), story_handoffs()));
 }
 
 

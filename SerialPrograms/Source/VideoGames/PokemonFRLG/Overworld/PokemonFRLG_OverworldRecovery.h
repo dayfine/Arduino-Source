@@ -57,6 +57,17 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Where a route left the player, for a caller whose route failed part-way:
+//  the tile they are known to stand on (nothing while a leg moves them or
+//  after a stop that hasn't found them again), and the gates as the steps
+//  walked so far left them. A step tried again plans from here, never from
+//  where the route started (13.01, console B, 2026-11-14 01:26: a failed
+//  statue press on Mansion 3F was tried again from Cinnabar Island).
+struct RouteProgress{
+    std::optional<MapPosition> at;
+    Pokemon::GateState gates;
+};
+
 //  What the route was planned with, to plan the way back onto it: the maps
 //  (with the event flags the caller set) and the costs; and, for the route
 //  log (Pokemon_RouteLog.h), where it starts and what the caller calls it.
@@ -79,6 +90,8 @@ struct RoutePlanning{
     //  The trainers the player has beaten (trainer_id()): a leg across their
     //  sight is not watched. The planner still keeps off their sight.
     std::set<std::string> beaten_trainers = {};
+    //  Kept up to date as the route runs. None: not kept.
+    RouteProgress* progress = nullptr;
 };
 
 //  The console side. `walk` walks one step from `facing` (unknown after a

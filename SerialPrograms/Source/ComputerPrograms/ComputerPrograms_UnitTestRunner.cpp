@@ -4,6 +4,7 @@
  *
  */
 
+#include "Common/Cpp/HttpServer/HttpServer_Tests.h"
 #include "Common/Cpp/Json/JsonTools_Tests.h"
 #include "Common/Cpp/ListenerSet.h"
 #include "Common/Cpp/MoveOnlyFunction_Tests.h"
@@ -90,6 +91,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
 
     add_tests_QtEventThreadPool(ret, GlobalThreadPools::computation_normal());
     add_tests_Sockets(ret, GlobalThreadPools::unlimited_normal());
+    add_tests_HttpServer(ret, GlobalThreadPools::unlimited_normal());
     add_tests_BlackBorderDetector(ret);
     add_tests_ListenerSet(ret);
     add_tests_JsonTools(ret);
