@@ -15,7 +15,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The badge on 1920x1080 (frame 0050 of the opening): the white (+) icon
+//  The badge on 1920x1080: the white (+) icon
 //  at x 1564-1586, y 128-150; the text x 1630-1875, y 122-158; the strip
 //  under the text x 1640-1880, y 161-169.
 SkipPromptDetector::SkipPromptDetector(Color color)
@@ -31,10 +31,10 @@ void SkipPromptDetector::make_overlays(VideoOverlaySet& items) const{
     items.add(m_color, m_strip);
 }
 
-//  On frame 0050 the icon is 70% white, the text 24%, and the strip is
-//  dark and even (average 44, deviation 2). No other opening frame has the
-//  icon over 40% white with a dark strip: the brightest (0044, a white
-//  flash) has the icon at 38% and the strip at 220.
+//  On the badge the icon is 70% white, the text 24%, and the strip is dark
+//  and even (average 44, deviation 2). No other scene of the opening has
+//  the icon over 40% white with a dark strip: the brightest, a white flash,
+//  has the icon at 38% and the strip at 220.
 bool SkipPromptDetector::detect(const ImageViewRGB32& screen){
     if (white_share(screen, m_icon) < 0.40){
         return false;
