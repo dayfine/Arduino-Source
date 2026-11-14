@@ -253,18 +253,18 @@ UnitTestResult test_guard_stop_rethrows(){
 }
 
 
-struct StoryActionsInput{
-    std::string_view name;
-    UnitTestResult (*test)();
-};
-
-struct StoryActionsExpectation{
-    std::string_view description;
-};
-
 struct StoryActionsCase{
-    StoryActionsInput input;
-    StoryActionsExpectation expectation;
+    struct Input{
+        std::string_view name;
+        UnitTestResult (*test)();
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryActions : public UnitTest{
