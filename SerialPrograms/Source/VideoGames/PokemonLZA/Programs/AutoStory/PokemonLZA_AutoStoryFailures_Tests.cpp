@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcomeClass.h"
 #include "PokemonLZA_AutoStoryFailures.h"
@@ -55,13 +56,38 @@ UnitTestResult check_failure_class(const FailureClassCase& test){
     return true;
 }
 
-//  No PLZA name shadows a name the shared list classes: the game's class
-//  would hide the list's.
-UnitTestResult check_no_shared_names(){
-    for (const PlzaFailure& failure : plza_failures()){
+//  A table of PLZA's names, none of which the shared list classes: the
+//  game's class would hide the list's.
+struct NameTableCase{
+    std::string name;
+    struct Input{
+        const std::vector<PlzaFailure>& (*table)();
+    };
+    Input input;
+    struct Expectation{
+        //  The names the shared list already has.
+        std::vector<std::string_view> shared;
+    };
+    Expectation expectation;
+};
+
+const NameTableCase NAME_TABLE_CASES[] = {
+    {.name = "no PLZA name is a shared one", .input = {.table = plza_failures}, .expectation = {.shared = {}}},
+};
+
+UnitTestResult check_name_table(const NameTableCase& test){
+    std::vector<std::string_view> shared;
+    for (const PlzaFailure& failure : test.input.table()){
         if (Pokemon::story_failure_class_of_outcome(failure.name)){
-            return std::format("\"{}\" is in the shared list already.", failure.name);
+            shared.push_back(failure.name);
         }
+    }
+    if (shared != test.expectation.shared){
+        std::string names;
+        for (std::string_view name : shared){
+            names += std::format(" {}", name);
+        }
+        return std::format("In the shared list already:{}", names);
     }
     return true;
 }
@@ -80,14 +106,18 @@ private:
     const FailureClassCase& m_test;
 };
 
-class Test_NoSharedNames : public UnitTest{
+class Test_NameTable : public UnitTest{
 public:
-    Test_NoSharedNames()
-        : UnitTest("PokemonLZA::AutoStory - Failure class: no PLZA name is a shared one")
+    explicit Test_NameTable(const NameTableCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Failure class: {}", test.name))
+        , m_test(test)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_no_shared_names();
+        return check_name_table(m_test);
     }
+
+private:
+    const NameTableCase& m_test;
 };
 
 } // namespace
@@ -97,7 +127,9 @@ void add_tests_AutoStoryFailures(UnitTestDatabase& database){
     for (const FailureClassCase& test : FAILURE_CLASS_CASES){
         database.add<Test_FailureClass>(test);
     }
-    database.add<Test_NoSharedNames>();
+    for (const NameTableCase& test : NAME_TABLE_CASES){
+        database.add<Test_NameTable>(test);
+    }
 }
 
 

@@ -220,14 +220,17 @@ public:
         turn_if_posed("");
     }
 
-    const std::string& spot() const{
-        return m_spot;
-    }
     const CleanRun& record() const{
         return m_record;
     }
-    bool fade_under_way() const{
-        return m_fade.has_value();
+    //  Where the row ended, when not at the end of its step `last` with
+    //  the game settled: "at 03.07d's to_zone_1_gate", "off the story: ...".
+    std::optional<std::string> off_end(std::string_view last) const{
+        if (m_spot == last && !m_fade){
+            return std::nullopt;
+        }
+        std::string where = m_spot.starts_with("off") ? m_spot : std::format("at {}", spot_name(m_spot));
+        return m_fade ? std::format("{}, in a fade", where) : where;
     }
 
     //  Step `index` of the row starts.
@@ -468,42 +471,39 @@ struct RowRun{
     CleanRun record;
 };
 
-//  "at 03.07d's to_zone_1_gate", "off the story: ...".
-std::string where_ended(const std::string& spot){
-    if (spot.starts_with("off")){
-        return spot;
+//  `step` alone through PLZA's engine on `sim`: its failure, if any.
+std::optional<Pokemon::Outcome> run_played(const StoryCheckpoint& row, const StoryStep& step, RowSim& sim){
+    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game(StarterChoice::CHIKORITA);
+    StoryCheckpoint one{.id = row.id, .title = row.title};
+    one.steps.push_back(step);
+    Pokemon::StoryEngine<ZonePose> engine(game, sim);
+    Pokemon::RunState state;
+    const Pokemon::StoryEngineReport report = engine.run_checkpoint(one, Pokemon::SavePoint::RUN_END, state);
+    if (report.verdict == Pokemon::CheckpointVerdict::PASSED){
+        return std::nullopt;
     }
-    return std::format("at {}", spot.empty() ? "the row's start" : spot);
+    return report.run.failure;
 }
 
 //  The row's steps on `sim`: the ones it plays through PLZA's engine, each
 //  alone, the others by the sim. Fails on a step that fails or on an end
 //  elsewhere.
-RowRun run_row(const StoryCheckpoint& row, RowSim& sim, std::string variant){
-    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game(StarterChoice::CHIKORITA);
+RowRun run_row(const StoryCheckpoint& row, const std::string& variant, RowSim& sim){
     for (size_t i = 0; i < row.steps.size(); i++){
         const StoryStep& step = row.steps[i];
         sim.begin_step(i);
-        if (sim_step(step) != SimStep::NOT_PLAYED){
-            StoryCheckpoint one{.id = row.id, .title = row.title};
-            one.steps.push_back(step);
-            Pokemon::StoryEngine<ZonePose> engine(game, sim);
-            Pokemon::RunState state;
-            const Pokemon::StoryEngineReport report = engine.run_checkpoint(one, Pokemon::SavePoint::RUN_END, state);
-            if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
-                return RowRun{.failure = FaultSweepResult::Failure{
-                    .step = step.name, .variant = variant, .stopped = Pokemon::to_string_with_class(report.run.failure),
-                }, .record = sim.record()};
-            }
+        const std::optional<Pokemon::Outcome> failed = sim_step(step) == SimStep::NOT_PLAYED ? std::nullopt : run_played(row, step, sim);
+        if (failed){
+            return RowRun{.failure = FaultSweepResult::Failure{
+                .step = step.name, .variant = variant, .stopped = Pokemon::to_string_with_class(*failed),
+            }, .record = sim.record()};
         }
         sim.end_step();
     }
     const std::string& last = row.steps.back().name;
-    if (sim.spot() != last || sim.fade_under_way()){
-        return RowRun{.failure = FaultSweepResult::Failure{
-            .step = last, .variant = variant,
-            .stopped = std::format("ended {}{}", where_ended(sim.spot()), sim.fade_under_way() ? ", in a fade" : ""),
-        }, .record = sim.record()};
+    const std::optional<std::string> off = sim.off_end(last);
+    if (off){
+        return RowRun{.failure = FaultSweepResult::Failure{.step = last, .variant = variant, .stopped = std::format("ended {}", *off)}, .record = sim.record()};
     }
     return RowRun{.failure = std::nullopt, .record = sim.record()};
 }
@@ -515,7 +515,7 @@ struct CleanResult{
 };
 CleanResult clean_run(const StoryCheckpoint& row, CancellableScope& scope){
     RowSim sim(row, SimFaults{}, nullptr, scope);
-    const RowRun run = run_row(row, sim, "clean");
+    const RowRun run = run_row(row, "clean", sim);
     if (run.failure){
         return CleanResult{.run = run.record, .not_swept = std::format("fails clean at {}: {}", run.failure->step, run.failure->stopped)};
     }
@@ -545,7 +545,7 @@ FaultSweepResult sweep_row(
     }
     for (const Variant& variant : variants){
         RowSim sim(row, variant.second, &clean.run, scope);
-        const RowRun run = run_row(row, sim, variant.first);
+        const RowRun run = run_row(row, variant.first, sim);
         result.variants++;
         if (run.failure){
             result.failures.push_back(*run.failure);
@@ -634,50 +634,73 @@ std::shared_ptr<const Pokemon::StoryFaultSweep> plza_fault_sweep(){
 }
 
 
-//  03.07d's walk to the gate, on a sim where the gate never shows: the
-//  engine's failure line carries the class of PLZA's own failure name.
-class Test_GateFailureClass : public UnitTest{
+//  A row's walk to a zone's gate through PLZA's engine, on looks facing
+//  the step's heading with no gate on screen: the failure line carries the
+//  class of PLZA's own failure name.
+struct GateClassCase{
+    std::string name;
+    struct Input{
+        std::string row;
+    };
+    Input input;
+    struct Expectation{
+        //  In a failure line of the run's log.
+        std::string failure;
+        std::string tag;
+    };
+    Expectation expectation;
+};
+
+const GateClassCase GATE_CLASS_CASES[] = {
+    {
+        .name = "03.07d's missed gate is logged as class=pose_lost",
+        .input = {.row = "03.07d"},
+        .expectation = {.failure = "gate_not_seen", .tag = "(class=pose_lost)"},
+    },
+};
+
+UnitTestResult check_gate_class(const GateClassCase& test, CancellableScope& scope){
+    const StoryCheckpoint& row = row_of(test.input.row);
+    StoryCheckpoint one{.id = row.id, .title = row.title};
+    for (const StoryStep& step : row.steps){
+        if (sim_step(step) == SimStep::GATE){
+            one.steps.push_back(step);
+        }
+    }
+    if (one.steps.empty()){
+        return std::format("{} has no walk to a gate.", test.input.row);
+    }
+    Observation<ZonePose> look;
+    look.when = current_time();
+    look.events.set(ScreenEvent::PLAYER_CAN_MOVE, true);
+    look.readings[std::string(Pokemon::STORY_HEADING)] = (int)std::get<int64_t>(one.steps[0].args.at("heading"));
+    Pokemon::FakeStoryBackend<ZonePose> backend(Pokemon::FakeStoryScript<ZonePose>{
+        .looks = {look}, .battle = Pokemon::outcome_ok(), .kind = Pokemon::StoryBackendKind::SCRIPT,
+    }, scope);
+    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game(StarterChoice::CHIKORITA);
+    Pokemon::StoryEngine<ZonePose> engine(game, backend);
+    Pokemon::RunState state;
+    engine.run_checkpoint(one, Pokemon::SavePoint::RUN_END, state);
+    for (const std::string& line : backend.lines()){
+        if (line.find(test.expectation.failure) != std::string::npos && line.find(test.expectation.tag) != std::string::npos){
+            return true;
+        }
+    }
+    return std::format("No log line with {} {}.", test.expectation.failure, test.expectation.tag);
+}
+
+class Test_GateClass : public UnitTest{
 public:
-    Test_GateFailureClass()
-        : UnitTest(std::format("{} - Failure class: a missed gate is logged as class=pose_lost", TEST_PREFIX))
+    explicit Test_GateClass(const GateClassCase& test)
+        : UnitTest(std::format("{} - Failure class: {}", TEST_PREFIX, test.name))
+        , m_test(test)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
-        const StoryCheckpoint& row = row_of("03.07d");
-        StoryCheckpoint one{.id = row.id, .title = row.title};
-        for (const StoryStep& step : row.steps){
-            if (sim_step(step) == SimStep::GATE){
-                one.steps.push_back(step);
-            }
-        }
-        Pokemon::FakeStoryBackend<ZonePose> backend(Pokemon::FakeStoryScript<ZonePose>{
-            .looks = {gate_heading_look(one)}, .battle = Pokemon::outcome_ok(), .kind = Pokemon::StoryBackendKind::SCRIPT,
-        }, scope);
-        const Pokemon::StoryGame<ZonePose> game = make_plza_story_game(StarterChoice::CHIKORITA);
-        Pokemon::StoryEngine<ZonePose> engine(game, backend);
-        Pokemon::RunState state;
-        const Pokemon::StoryEngineReport report = engine.run_checkpoint(one, Pokemon::SavePoint::RUN_END, state);
-        if (report.verdict == Pokemon::CheckpointVerdict::PASSED){
-            return std::string("Expected the walk to fail with no gate in view.");
-        }
-        for (const std::string& line : backend.lines()){
-            if (line.find("gate_not_seen") != std::string::npos && line.find("(class=pose_lost)") != std::string::npos){
-                return true;
-            }
-        }
-        return std::format("No failure line with gate_not_seen (class=pose_lost): {}", Pokemon::to_string_with_class(report.run.failure));
+        return check_gate_class(m_test, scope);
     }
 
 private:
-    //  A look facing the step's heading, with no gate on screen.
-    static Observation<ZonePose> gate_heading_look(const StoryCheckpoint& one){
-        Observation<ZonePose> look;
-        look.when = current_time();
-        look.events.set(ScreenEvent::PLAYER_CAN_MOVE, true);
-        if (!one.steps.empty()){
-            look.readings[std::string(Pokemon::STORY_HEADING)] = (int)std::get<int64_t>(one.steps[0].args.at("heading"));
-        }
-        return look;
-    }
+    const GateClassCase& m_test;
 };
 
 } // namespace
@@ -685,7 +708,9 @@ private:
 
 void add_tests_AutoStoryFaultSweep(UnitTestDatabase& database){
     Pokemon::add_fault_sweep_tests(database, plza_fault_sweep());
-    database.add<Test_GateFailureClass>();
+    for (const GateClassCase& test : GATE_CLASS_CASES){
+        database.add<Test_GateClass>(test);
+    }
 }
 
 
