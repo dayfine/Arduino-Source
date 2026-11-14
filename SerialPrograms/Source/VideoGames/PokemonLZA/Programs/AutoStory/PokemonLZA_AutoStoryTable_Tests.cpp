@@ -90,8 +90,8 @@ UnitTestResult test_story_walks_read(Logger&){
             }
         }
     }
-    if (walks != 26){
-        return std::format("Expected the 26 walks, found {}.", walks);
+    if (walks != 29){
+        return std::format("Expected the 29 walks, found {}.", walks);
     }
     const StoryStep* plaza = find_step(story_checkpoints(), "01.01", "platform_to_plaza");
     if (plaza == nullptr){

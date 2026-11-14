@@ -501,9 +501,15 @@ std::optional<DetectorReads> arrival_to_mission_banner(std::string_view name){
     };
 }
 
-//  Every detector as named; the banner on 0181-0189, no complete card.
+//  Every detector as named; the banner on 0181-0189, no complete card. The
+//  autosave badge on 0197 too: it is named "nothing" but shows the badge
+//  (Traditional Chinese, top right), right after the black fade.
 std::optional<DetectorReads> arrival_past_mission_banner(std::string_view name){
-    return as_named(name);
+    DetectorReads want = as_named(name);
+    if (name.starts_with("0197-")){
+        want.autosave = true;
+    }
+    return want;
 }
 
 //  As named, and the complete card on 0045 and 0046 (named "nothing"); the
