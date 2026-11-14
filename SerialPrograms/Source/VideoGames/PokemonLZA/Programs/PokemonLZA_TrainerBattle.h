@@ -7,7 +7,9 @@
 #ifndef PokemonAutomation_PokemonLZA_TrainerBattle_H
 #define PokemonAutomation_PokemonLZA_TrainerBattle_H
 
-//#include "Common/Cpp/Time.h"
+#include <functional>
+#include "Common/Cpp/Time.h"
+#include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
 
@@ -53,6 +55,24 @@ private:
 
     size_t m_consecutive_failures;
 };
+
+
+// Fight a battle until `end_watcher` fires: mash B (it clears battle dialogs)
+// until the battle menu (RunFromBattleWatcher) or `end_watcher` shows; on the
+// battle menu, attack once with `battle_state` and repeat.
+// - after_failed_attack: if set, called when an attack finds no move to use.
+// Return:
+// -  0 if `end_watcher` fires
+// - -1 if neither the battle menu nor `end_watcher` shows for `mash_time`
+int run_battle_until(
+    ProgramEnvironment& env,
+    ConsoleHandle& console,
+    ProControllerContext& context,
+    TrainerBattleState& battle_state,
+    VisualInferenceCallback& end_watcher,
+    Milliseconds mash_time = Milliseconds(120000),
+    const std::function<void(ProControllerContext&)>& after_failed_attack = nullptr
+);
 
 
 
