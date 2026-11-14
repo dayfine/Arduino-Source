@@ -7,8 +7,11 @@
  *
  */
 
+#include <chrono>
 #include <format>
+#include <iterator>
 #include <optional>
+#include <utility>
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -231,14 +234,138 @@ private:
 };
 
 
-//  patrol_stops(): the distances a patrol walks to, near to far and back.
-struct PatrolCase{
+//  BracketWatch: frames one after another, each with or without brackets.
+struct WatchCase{
+    std::string name;
+    struct Frame{
+        int ms;
+        //  The brackets' middle x and height; nothing: none on the frame.
+        std::optional<std::pair<double, double>> brackets;
+    };
+    struct Input{
+        int settle_ms;
+        int limit_ms;
+        std::vector<Frame> frames;
+    };
+    Input input;
+    struct Expectation{
+        //  The frames added before the watch was done (all when it never was).
+        size_t frames_watched;
+        //  The middle x of the brackets chosen; nothing: none chosen.
+        std::optional<double> chosen_x;
+    };
+    Expectation expectation;
+};
+
+const WatchCase WATCH_CASES[] = {
+    {
+        .name = "the tallest of the brackets seen until it settles",
+        .input = {
+            .settle_ms = 1500, .limit_ms = 6000,
+            .frames = {{0, std::nullopt}, {300, {{0.30, 0.07}}}, {600, {{0.70, 0.10}}}, {900, {{0.55, 0.08}}}, {1800, {{0.40, 0.12}}}, {2100, {{0.45, 0.15}}}},
+        },
+        .expectation = {.frames_watched = 5, .chosen_x = 0.40},
+    },
+    {
+        .name = "nothing at the limit when no brackets show",
+        .input = {.settle_ms = 1500, .limit_ms = 1000, .frames = {{0, std::nullopt}, {500, std::nullopt}, {1000, std::nullopt}, {1300, {{0.5, 0.1}}}}},
+        .expectation = {.frames_watched = 3, .chosen_x = std::nullopt},
+    },
+    {
+        .name = "brackets first seen late still settle",
+        .input = {.settle_ms = 1000, .limit_ms = 6000, .frames = {{0, std::nullopt}, {2500, {{0.60, 0.09}}}, {3000, std::nullopt}, {3500, std::nullopt}}},
+        .expectation = {.frames_watched = 4, .chosen_x = 0.60},
+    },
+};
+
+class Test_BracketWatch : public UnitTest{
+public:
+    explicit Test_BracketWatch(const WatchCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: bracket watch: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const WatchCase::Input& in = m_case.input;
+        BracketWatch watch{std::chrono::milliseconds(in.settle_ms), std::chrono::milliseconds(in.limit_ms)};
+        size_t watched = 0;
+        for (const WatchCase::Frame& frame : in.frames){
+            std::optional<BracketSighting> sighting;
+            if (frame.brackets){
+                sighting = BracketSighting{frame.brackets->first, 0.4, frame.brackets->second};
+            }
+            watch.add(std::chrono::milliseconds(frame.ms), sighting);
+            watched++;
+            if (watch.done()){
+                break;
+            }
+        }
+        const std::optional<BracketSighting> chosen = watch.nearest();
+        const std::optional<double> chosen_x = chosen ? std::optional<double>(chosen->x) : std::nullopt;
+        const WatchCase::Expectation& expected = m_case.expectation;
+        if (watched != expected.frames_watched || chosen_x != expected.chosen_x){
+            return std::format(
+                "Expected {} frames and x {}; got {} and {}.",
+                expected.frames_watched, expected.chosen_x.value_or(-1), watched, chosen_x.value_or(-1)
+            );
+        }
+        return true;
+    }
+
+private:
+    const WatchCase& m_case;
+};
+
+
+//  camera_turn_toward(): the right stick toward brackets off the middle.
+struct TurnCase{
     std::string name;
     struct Input{
-        int near;
-        int far;
-        int step;
-        int laps;
+        double x;
+    };
+    Input input;
+    struct Expectation{
+        double stick_x;
+        int ms;
+    };
+    Expectation expectation;
+};
+
+const TurnCase TURN_CASES[] = {
+    {.name = "none near the middle", .input = {.x = 0.54}, .expectation = {.stick_x = 0, .ms = 0}},
+    {.name = "a short turn right", .input = {.x = 0.60}, .expectation = {.stick_x = 0.4, .ms = 240}},
+    {.name = "a short turn left", .input = {.x = 0.40}, .expectation = {.stick_x = -0.4, .ms = 240}},
+    {.name = "the longest turn a quarter off or more", .input = {.x = 0.95}, .expectation = {.stick_x = 0.4, .ms = 480}},
+};
+
+class Test_CameraTurn : public UnitTest{
+public:
+    explicit Test_CameraTurn(const TurnCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: camera turn: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const CameraTurn turn = camera_turn_toward(m_case.input.x);
+        const TurnCase::Expectation& expected = m_case.expectation;
+        if (turn.stick_x != expected.stick_x || turn.time.count() != expected.ms){
+            return std::format(
+                "Expected stick {} for {} ms, got {} for {} ms.",
+                expected.stick_x, expected.ms, turn.stick_x, turn.time.count()
+            );
+        }
+        return true;
+    }
+
+private:
+    const TurnCase& m_case;
+};
+
+
+//  alternating_stops(): back and forth over the catch spots.
+struct StopsCase{
+    std::string name;
+    struct Input{
+        std::vector<int> spots;
+        size_t visits;
     };
     Input input;
     struct Expectation{
@@ -247,43 +374,37 @@ struct PatrolCase{
     Expectation expectation;
 };
 
-const PatrolCase PATROL_CASES[] = {
+const StopsCase STOPS_CASES[] = {
     {
-        .name = "two laps of 60 to 100 by 20",
-        .input = {.near = 60, .far = 100, .step = 20, .laps = 2},
-        .expectation = {.stops = {60, 80, 100, 80, 60, 80, 100, 80, 60}},
+        .name = "Wild Zone 1's spots, three times each",
+        .input = {.spots = {std::begin(CATCH_SPOTS), std::end(CATCH_SPOTS)}, .visits = 6},
+        .expectation = {.stops = {96, 57, 96, 57, 96, 57}},
     },
     {
-        .name = "one lap of 60 to 100 by 20",
-        .input = {.near = 60, .far = 100, .step = 20, .laps = 1},
-        .expectation = {.stops = {60, 80, 100, 80, 60}},
+        .name = "an odd count ends on the first spot",
+        .input = {.spots = {96, 57}, .visits = 3},
+        .expectation = {.stops = {96, 57, 96}},
     },
     {
-        .name = "a step that doesn't divide the span stops at far",
-        .input = {.near = 60, .far = 100, .step = 30, .laps = 1},
-        .expectation = {.stops = {60, 90, 100, 70, 60}},
+        .name = "no visits, no stops",
+        .input = {.spots = {96, 57}, .visits = 0},
+        .expectation = {.stops = {}},
     },
     {
-        .name = "no laps stays near",
-        .input = {.near = 60, .far = 100, .step = 20, .laps = 0},
-        .expectation = {.stops = {60}},
-    },
-    {
-        .name = "near and far the same stays there",
-        .input = {.near = 60, .far = 60, .step = 20, .laps = 2},
-        .expectation = {.stops = {60}},
+        .name = "no spots, no stops",
+        .input = {.spots = {}, .visits = 4},
+        .expectation = {.stops = {}},
     },
 };
 
-class Test_PatrolStops : public UnitTest{
+class Test_AlternatingStops : public UnitTest{
 public:
-    explicit Test_PatrolStops(const PatrolCase& test_case)
+    explicit Test_AlternatingStops(const StopsCase& test_case)
         : UnitTest(std::format("PokemonLZA::AutoStory - Catches: patrol stops: {}", test_case.name))
         , m_case(test_case)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const PatrolCase::Input& in = m_case.input;
-        const std::vector<int> stops = patrol_stops(in.near, in.far, in.step, in.laps);
+        const std::vector<int> stops = alternating_stops(m_case.input.spots, m_case.input.visits);
         if (stops != m_case.expectation.stops){
             return std::format("Expected [{}], got [{}].", joined(m_case.expectation.stops), joined(stops));
         }
@@ -291,7 +412,7 @@ public:
     }
 
 private:
-    const PatrolCase& m_case;
+    const StopsCase& m_case;
 };
 
 } // namespace
@@ -307,8 +428,14 @@ void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
     for (const CycleCase& item : CYCLE_CASES){
         database.add<Test_LockTargetCycle>(item);
     }
-    for (const PatrolCase& item : PATROL_CASES){
-        database.add<Test_PatrolStops>(item);
+    for (const WatchCase& item : WATCH_CASES){
+        database.add<Test_BracketWatch>(item);
+    }
+    for (const TurnCase& item : TURN_CASES){
+        database.add<Test_CameraTurn>(item);
+    }
+    for (const StopsCase& item : STOPS_CASES){
+        database.add<Test_AlternatingStops>(item);
     }
 }
 

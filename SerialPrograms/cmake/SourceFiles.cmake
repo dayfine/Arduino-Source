@@ -2398,6 +2398,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_HyperspaceCalorieDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_HyperspaceRewardNameReader.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_HyperspaceRewardNameReader.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_LockOnBracketDetector.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_LockOnBracketDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_MainMenuDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_MainMenuDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.cpp

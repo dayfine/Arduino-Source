@@ -71,17 +71,18 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
 
 //  03.08's catch for the "register five species" quest (4/5 after the
 //  tutorial and its repeats): walks toward the objective (Wild Zone 1's far
-//  gate, around Taunie's rocks from the start) to 60, where Mareep graze in
-//  the grass right of the road, then patrols back to 100 and forward to 60
-//  again (stops every 20, 2 laps, 8 minutes at most). At each stop it locks
-//  on (in front or after small camera turns right; a step into the grass
-//  when nothing does), cycles the targets with ZL held, walks toward the
-//  nearest one not caught when it is far, and throws without letting ZL
-//  go, counting the Pokedex's "Registered!" banners. At 58 from the road,
-//  throws at a far Mareep fell short (console B, 2026-11-13). A break-out
-//  that starts a wild battle (Mareep turns on the player, console B
-//  2026-11-13) gets `battle_ai`'s attacks before the next throws. When
-//  only species already caught lock on (a rerun from a save after the
+//  gate, around Taunie's rocks from the start), then goes back and forth
+//  between the two spots where the user caught by hand (console B,
+//  2026-11-13): 96 from the objective (Scatterbug on the plaza's road) and
+//  57 (Mareep by the gate), 3 visits each, 8 minutes at most. At each stop
+//  it fights a wild battle that is on, else watches for the lock-on
+//  brackets the game draws around one wild Pokemon (6 s at most), turns
+//  the camera to the tallest (the nearest), holds ZL until the move
+//  symbols show the lock, cycles the targets with ZL held, walks toward
+//  the nearest one not caught when it is far, and throws without letting
+//  ZL go, counting the Pokedex's "Registered!" banners. A break-out that
+//  starts a wild battle gets `battle_ai`'s attacks before the next throws.
+//  When only species already caught lock on (a rerun from a save after the
 //  catch), the quest is taken as done. Otherwise throws
 //  OperationFailedException with fewer than `new_species_wanted` new
 //  species after the patrol or `max_throws`.

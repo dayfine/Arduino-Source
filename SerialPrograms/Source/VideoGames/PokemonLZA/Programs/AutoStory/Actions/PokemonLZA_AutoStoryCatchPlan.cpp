@@ -65,18 +65,59 @@ int LockTargetCycle::flicks_to(size_t index) const{
 }
 
 
-std::vector<int> patrol_stops(int near, int far, int step, int laps){
-    std::vector<int> stops{near};
-    if (step <= 0 || far <= near){
+BracketWatch::BracketWatch(std::chrono::milliseconds settle, std::chrono::milliseconds limit)
+    : m_settle(settle)
+    , m_limit(limit)
+{}
+
+void BracketWatch::add(std::chrono::milliseconds elapsed, const std::optional<BracketSighting>& sighting){
+    m_last = std::max(m_last, elapsed);
+    if (!sighting){
+        return;
+    }
+    if (!m_first_seen){
+        m_first_seen = elapsed;
+    }
+    m_sightings.push_back(*sighting);
+}
+
+bool BracketWatch::done() const{
+    if (m_last >= m_limit){
+        return true;
+    }
+    return m_first_seen && m_last - *m_first_seen >= m_settle;
+}
+
+std::optional<BracketSighting> BracketWatch::nearest() const{
+    std::optional<BracketSighting> best;
+    for (const BracketSighting& sighting : m_sightings){
+        if (!best || sighting.height > best->height){
+            best = sighting;
+        }
+    }
+    return best;
+}
+
+
+CameraTurn camera_turn_toward(double x){
+    const double off = x - 0.5;
+    CameraTurn turn;
+    if (std::abs(off) <= 0.06){
+        return turn;
+    }
+    turn.stick_x = off > 0 ? 0.4 : -0.4;
+    turn.time = std::chrono::milliseconds(std::lround(std::min(1.0, std::abs(off) * 4) * 400) + 80);
+    return turn;
+}
+
+
+std::vector<int> alternating_stops(std::span<const int> spots, size_t visits){
+    std::vector<int> stops;
+    if (spots.empty()){
         return stops;
     }
-    for (int lap = 0; lap < laps; lap++){
-        for (int d = near + step; d < far + step; d += step){
-            stops.push_back(std::min(d, far));
-        }
-        for (int d = far - step; d > near - step; d -= step){
-            stops.push_back(std::max(d, near));
-        }
+    for (size_t i = 0; i < visits; i++){
+        stops.push_back(spots[i % spots.size()]);
     }
     return stops;
 }
