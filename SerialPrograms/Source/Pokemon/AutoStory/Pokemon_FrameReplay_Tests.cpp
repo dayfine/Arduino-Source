@@ -16,12 +16,13 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonTools/ScreenEvents/ScreenFades.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker.h"
 #include "Pokemon_FrameReplay_Tests.h"
 #include "Pokemon_FrameReplay.h"
 #include "Pokemon_Interrupts.h"
-#include "Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

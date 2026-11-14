@@ -204,7 +204,7 @@ UnitTestResult test_reloads_a_failed_checkpoint(){
     if (!report.completed || report.reloads != 1 || lab.world.trace != expected){
         return std::format("Expected a reload, then the walk again:{}", lab.all());
     }
-    if (!lab.has("[Segment] 00: 00.02 failed, reloading for attempt 2/3")){
+    if (!lab.has("[Checkpoint] 00.02: failed, resetting for attempt 2/3")){
         return std::format("Expected the reload logged:{}", lab.all());
     }
     return true;
@@ -407,18 +407,18 @@ UnitTestResult test_describe(){
 }
 
 
-struct StorySegmentInput{
-    std::string name;
-    UnitTestResult (*test)();
-};
-
-struct StorySegmentExpectation{
-    std::string_view description;
-};
-
 struct StorySegmentTestCase{
-    StorySegmentInput input;
-    StorySegmentExpectation expectation;
+    struct Input{
+        std::string name;
+        UnitTestResult (*test)();
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StorySegments : public UnitTest{

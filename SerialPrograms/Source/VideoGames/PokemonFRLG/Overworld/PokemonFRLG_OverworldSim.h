@@ -42,7 +42,7 @@
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "PokemonFRLG_MovementMechanics.h"
 #include "PokemonFRLG_BikeSpinPresses.h"
 #include "PokemonFRLG_BikeSpinMechanics.h"
