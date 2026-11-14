@@ -20,7 +20,8 @@
  *  A step onto a connected map waits a tile first, as the console does
  *  while the game loads the map.
  *
- *  Not modelled: Surf, running, HP and status. Wandering people stand on
+ *  Not modelled: running, HP and status, and wild battles on the water.
+ *  Surf and Fly are (SimField::SURF, SimField::FLY). Wandering people stand on
  *  their tile. The Bicycle is: its pace, its taps (each a tile, some
  *  dropped when they come too fast), SELECT and doors taking the player
  *  off it.
@@ -66,9 +67,11 @@ public:
 
     const SimState& state() const{ return m_state; }
 
-    //  Counts a walker step tap that moved the player; whether the
-    //  walker's screen check misses it (SimScript::unseen_step_taps).
-    bool hides_moved_step_tap();
+    //  Whether the walker's screen check reads its last step tap as a
+    //  step: one that moved the player from `before`, but for
+    //  SimScript::unseen_step_taps, or a turn tap since `turn_taps_before`
+    //  (SimState::turn_taps) that SimScript::seen_turn_taps names.
+    bool reads_step_tap_as_step(const MapPosition& before, int turn_taps_before);
 
     //  Holds `direction` for `duration` then lets go for `release`, while
     //  `watchers` watch until `watch` (at least the hold and release) from
@@ -121,7 +124,9 @@ private:
         int map = 0;
         PlayerState player;
         bool warped = false;
-        bool walked_out = false;    //  the warp ended with the game walking the player a tile south
+        //  The way the warp left the player facing (arrival_facing()), if
+        //  not the way they moved.
+        std::optional<Direction> facing = std::nullopt;
         bool ledge = false;
         //  The step landed on a spinner, which slid the player to `player`.
         std::optional<SpinSlide> spin = {};
@@ -164,6 +169,10 @@ private:
     bool cut_tree();
     bool choose_lift_floor(size_t floor);
     bool push_poster_switch();
+    bool start_surf();
+    bool fly_to_town(size_t town);
+    //  The trees cut come back, as after a warp.
+    void regrow_cut_trees();
     bool after_step(const Step& step, Milliseconds pressed);
     bool wild_battle(Milliseconds pressed);
     std::optional<SimEncounter> next_encounter();
@@ -173,8 +182,11 @@ private:
     //  Whether the Bicycle tap starting at `start` is dropped, too soon
     //  after the last one.
     bool drops_bike_tap(Milliseconds start);
-    //  How long a tile takes: on the Bicycle or on foot.
+    //  How long a tile takes: on the water, on the Bicycle or on foot.
     Milliseconds tile_time() const{
+        if (m_player.surfing){
+            return m_script.timing.surf_tile;
+        }
         return m_state.on_bike ? m_script.timing.bike_tile : m_script.timing.tile;
     }
     bool trainer_sees(Milliseconds pressed);
@@ -208,7 +220,6 @@ private:
     int m_steps_since_encounter = 0;
     int m_encounter_rate_buff = 0;
     //  The turn taps so far, for SimScript::dropped_turn_taps.
-    int m_turn_taps = 0;
     //  Steps onto a warp so far, and the fault on one
     //  (SimScript::black_without_warp): its black without the warp.
     int m_warp_steps = 0;
@@ -296,6 +307,15 @@ struct SimWalkerRules{
     //  Without it a black that cleared with the player where they were was
     //  taken as the warp (console B, 2026-11-10 01:44, 09.01 run 4).
     bool confirm_warp_destination = true;
+    //  A warp whose fade was over before the watch for it began is taken by
+    //  the screen after it: another scene than before the hold, held still
+    //  (OverworldWalkSteps::arrived_without_fade()). Without it the walker
+    //  tapped twice into the Department Store lift's back wall and failed
+    //  on "no fade in and out after walking onto the warp" with the player
+    //  inside the lift (console B, 2026-11-12 00:39, 10.01 lift_to_1f): the
+    //  lift room is mostly black, so a watch started after the fade never
+    //  sees black end.
+    bool scene_confirms_missed_fade = true;
     //  A turn tap is checked by the facing on screen, and tapped again
     //  while the player faces another way (OverworldWalkSteps::turn_to()).
     //  Without it a dropped tap left a one-tile leg turning the player
@@ -397,6 +417,10 @@ private:
         return stop_tiles(step, timed, m_leg_dark);
     }
     std::optional<WalkedTiles> walk_step(const RouteStep& step, std::optional<Direction> facing);
+    //  start_surf(): turned to the water, A, YES, and the jump onto it.
+    //  Nothing: a Surf is never stopped part-way.
+    //  (PokemonFRLG_OverworldSimField.cpp)
+    std::optional<WalkedTiles> surf(const RouteStep& step);
     bool after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
     bool fade_over_since(Milliseconds from) const;
     //  after_warp() on a fade seen with no warp: fails, or with
@@ -438,6 +462,8 @@ private:
 void add_tests_OverworldSim(UnitTestDatabase& database);
 //  Register the tests of a warp's fade over before the hold onto it ends.
 void add_tests_OverworldWarpFade(UnitTestDatabase& database);
+//  Register the tests of the way a warp leaves the player facing.
+void add_tests_OverworldStairs(UnitTestDatabase& database);
 
 
 } // namespace PokemonFRLG

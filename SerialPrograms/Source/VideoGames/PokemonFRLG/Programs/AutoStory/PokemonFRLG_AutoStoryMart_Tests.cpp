@@ -51,12 +51,15 @@ public:
     size_t overcharge = 0;
     std::map<std::string, size_t> bag = {};
     size_t list_opened = 0;
+    size_t dumps = 0;
     bool in_list = false;
     std::string error = {};
 
     virtual bool open_buy_list() override{
         in_list = true;
         m_cursor = 0;
+        m_scroll = 0;
+        m_row = 0;
         list_opened++;
         return true;
     }
@@ -66,22 +69,23 @@ public:
         }
         return money_readable ? std::optional<size_t>(money) : std::nullopt;
     }
-    virtual void move_cursor(size_t from, size_t to) override{
-        if (from != m_cursor){
-            error = std::format("moved from row {}, but the cursor was on row {}", from, m_cursor);
-        }
-        //  The list is the stock, then CANCEL.
-        m_cursor = std::min(to, stock.size());
+    virtual void press_cursor(bool down) override{
+        press(down);
     }
+    //  `row` is a row of the window, as the console reads the screen.
     virtual std::string read_row(size_t row) override{
-        if (row != m_cursor){
-            error = std::format("read row {}, the cursor on row {}", row, m_cursor);
+        if (row != m_row){
+            error = std::format("read window row {}, the cursor on window row {}", row, m_row);
         }
-        const auto found = misread.find(row);
+        const size_t index = m_scroll + row;
+        const auto found = misread.find(index);
         if (found != misread.end()){
             return found->second;
         }
-        return rows_readable && row < stock.size() ? std::string(stock[row].item) : "";
+        return rows_readable && index < stock.size() ? std::string(stock[index].item) : "";
+    }
+    virtual void dump_screen(std::string_view) override{
+        dumps++;
     }
     virtual PurchaseEnd buy(const MartBuy& buy) override{
         if (m_cursor >= stock.size()){
@@ -107,6 +111,36 @@ public:
     }
 
 private:
+    //  One UP or DOWN on the list (the stock, then CANCEL), as pokefirered's
+    //  list_menu.c ListMenuUpdateSelectedRowIndexAndScrollOffset moves it,
+    //  six rows shown (shop.c BuyMenuInitListMenu): going down the cursor
+    //  stops on the window's fourth row and the list scrolls under it until
+    //  its end shows; going up it stops on the third until its top shows.
+    void press(bool down){
+        const size_t total = stock.size() + 1;
+        const size_t shown = std::min<size_t>(total, 6);
+        if (down){
+            if (m_scroll + m_row + 1 >= total){
+                return;
+            }
+            if (m_row < shown / 2 + shown % 2 || m_scroll == total - shown){
+                m_row++;
+            }else{
+                m_scroll++;
+            }
+        }else{
+            if (m_scroll + m_row == 0){
+                return;
+            }
+            if (m_row > shown - (shown / 2 + shown % 2) - 1 || m_scroll == 0){
+                m_row--;
+            }else{
+                m_scroll--;
+            }
+        }
+        m_cursor = m_scroll + m_row;
+    }
+
     //  The box after quantity_presses(wanted), from 1, with this most.
     static size_t typed_quantity(size_t wanted, size_t most){
         const QuantityPresses presses = quantity_presses(wanted);
@@ -121,6 +155,9 @@ private:
     }
 
     size_t m_cursor = 0;
+    //  The window: the list's row on its top, and the cursor's row in it.
+    size_t m_scroll = 0;
+    size_t m_row = 0;
 };
 
 
@@ -176,6 +213,8 @@ struct MartCase{
     MartEnd end = MartEnd::DONE;
     std::map<std::string, size_t> bag = {};
     size_t money_after = 0;
+    //  Screens saved for a row read as another item.
+    size_t dumps = 0;
 };
 
 std::vector<MartCase> mart_cases_1(){
@@ -257,6 +296,7 @@ std::vector<MartCase> mart_cases_3(){
             .end = MartEnd::FAILED,
             .bag = {{"potion", 1}},
             .money_after = 2700,
+            .dumps = 1,
         },
         {
             .name = "rows that can't be read are bought by position",
@@ -278,9 +318,26 @@ std::vector<MartCase> mart_cases_3(){
     };
 }
 
+//  The X items clerk's list (seven, then CANCEL) scrolls under the cursor:
+//  after X SPECIAL and X SPEED, X ACCURACY sits on the window's fourth row,
+//  not its fifth, and the fifth was read as GUARD SPEC. (console B,
+//  2026-11-12, 10.01).
+std::vector<MartCase> mart_cases_4(){
+    const std::vector<MartLine> lines{{"x-special", 21}, {"x-speed", 6}, {"x-accuracy", 5}, {"guard-spec", 2}};
+    return {
+        {
+            .name = "a list scrolled under the cursor",
+            .plan = {.map = "CeladonCity_DepartmentStore_5F", .lines = lines, .budget = 15600},
+            .money = 19862,
+            .bag = {{"x-special", 21}, {"x-speed", 6}, {"x-accuracy", 5}, {"guard-spec", 2}},
+            .money_after = 4262,
+        },
+    };
+}
+
 std::vector<MartCase> mart_cases(){
     std::vector<MartCase> cases;
-    for (std::vector<MartCase> part : {mart_cases_1(), mart_cases_2(), mart_cases_3()}){
+    for (std::vector<MartCase> part : {mart_cases_1(), mart_cases_2(), mart_cases_3(), mart_cases_4()}){
         cases.insert(cases.end(), part.begin(), part.end());
     }
     return cases;
@@ -300,9 +357,9 @@ UnitTestResult check_mart_case(const MartCase& item){
         return std::format("{}: ended {}, expected {} ({}).", item.name,
             mart_end_name(result.end), mart_end_name(item.end), result.detail);
     }
-    if (mart.bag != item.bag || mart.money != item.money_after){
-        return std::format("{}: bag {}, ${}; expected {}, ${}.", item.name,
-            bag_string(mart.bag), mart.money, bag_string(item.bag), item.money_after);
+    if (mart.bag != item.bag || mart.money != item.money_after || mart.dumps != item.dumps){
+        return std::format("{}: bag {}, ${}, {} screens saved; expected {}, ${}, {}.", item.name,
+            bag_string(mart.bag), mart.money, mart.dumps, bag_string(item.bag), item.money_after, item.dumps);
     }
     if (mart.in_list){
         return item.name + ": left in the Mart's list.";

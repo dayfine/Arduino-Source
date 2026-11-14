@@ -29,9 +29,9 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "RocketHideout_B2F", "tiles": [[21, 2]], "facing": "east"}
+          "target": {"map": "RocketHideout_B2F", "tiles": [[21, 2]], "facing": "west"}
         },
-        "why": "east along row 2 onto the stairs (18, 2), up to B2F's (21, 2); no arrow on the way"
+        "why": "east along row 2 onto the stairs (18, 2), up to B2F's (21, 2), facing west off them; no arrow on the way"
       },
       {
         "id": "b2f_arrows_to_moon_stone",

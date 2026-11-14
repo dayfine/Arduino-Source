@@ -74,7 +74,8 @@ const std::vector<StoryActionRow>& story_action_rows();
 //  ones (Pokemon_BuiltinStoryActions.h), then a ROUTE and a LEGS named
 //  "run" (RUN_VARIANT), which take the same args and run with B held,
 //  STEPs named "trainer_line" (TRAINER_LINE_VARIANT) and "trainer_wait"
-//  (TRAINER_WAIT_VARIANT), then FRLG's GAME actions: closing the Trainer
+//  (TRAINER_WAIT_VARIANT), a TALK named "wanderer" (TALK_WANDERER_VARIANT),
+//  then FRLG's GAME actions: closing the Trainer
 //  Card or the Gift RNG summary, cutting a tree, the trash cans, a PC
 //  transfer, a capture, the fossil, a LEVEL check, a Mart, a TEACH and a
 //  GRIND, each with the args it declares.

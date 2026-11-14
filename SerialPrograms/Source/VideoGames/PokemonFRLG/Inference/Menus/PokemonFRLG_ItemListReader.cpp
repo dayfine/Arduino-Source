@@ -75,6 +75,10 @@ private:
             {"super-repel", "Super Repel"},
             {"max-repel", "Max Repel"},
             {"escape-rope", "Escape Rope"},
+            {"x-special", "X Special"},
+            {"x-speed", "X Speed"},
+            {"x-accuracy", "X Accuracy"},
+            {"guard-spec", "Guard Spec."},
             {"bicycle", "Bicycle"},
             {"cancel", "Cancel"},
         }){
@@ -92,33 +96,43 @@ ImageViewRGB32 game_box(const ImageViewRGB32& screen){
     return extract_box_reference(screen, GameSettings::instance().GAME_BOX);
 }
 
+//  Where row `row` of the bag shows its item count.
+ImageFloatBox bag_item_count_box(int row){
+    return ImageFloatBox(208.0 / 240, (ROW_TOP + ROW_STEP * row) / 160, 15.0 / 240, ROW_HEIGHT / 160);
+}
+
 } // namespace
 
 
 ImageFloatBox item_list_name_box(int row){
     return ImageFloatBox(96.0 / 240, (ROW_TOP + ROW_STEP * row) / 160, 72.0 / 240, ROW_HEIGHT / 160);
 }
-ImageFloatBox bag_item_count_box(int row){
-    return ImageFloatBox(208.0 / 240, (ROW_TOP + ROW_STEP * row) / 160, 15.0 / 240, ROW_HEIGHT / 160);
-}
 
 std::string read_item_list_name(Logger& logger, Language language, const ImageViewRGB32& screen, int row){
     return ItemNameMatcher::instance().read(logger, language, extract_box_reference(game_box(screen), item_list_name_box(row)));
 }
 
+BagRow read_bag_row(Logger& logger, Language language, const ImageViewRGB32& screen, int shown){
+    const std::string item = read_item_list_name(logger, language, screen, shown);
+    if (item == "cancel"){
+        return BagRow{item, 0};
+    }
+    const ImageViewRGB32 count = extract_box_reference(game_box(screen), bag_item_count_box(shown));
+    //  Not Tesseract on each waterfilled digit: the font joins some strokes
+    //  only at a corner, so the 5 and the 3 fell apart into pieces and read
+    //  as nothing (console B, 2026-11-02). The stat boxes' templates are
+    //  the same digits on the same cream.
+    return BagRow{item, read_digits_waterfill_template(logger, count, DigitTemplateType::StatBox)};
+}
+
 std::vector<BagRow> read_bag_pocket(Logger& logger, Language language, const ImageViewRGB32& screen){
     std::vector<BagRow> rows;
     for (int row = 0; row < ITEM_LIST_ROWS; row++){
-        const std::string item = read_item_list_name(logger, language, screen, row);
-        if (item == "cancel"){
+        BagRow read = read_bag_row(logger, language, screen, row);
+        if (read.item == "cancel"){
             break;
         }
-        const ImageViewRGB32 count = extract_box_reference(game_box(screen), bag_item_count_box(row));
-        //  Not Tesseract on each waterfilled digit: the font joins some strokes
-        //  only at a corner, so the 5 and the 3 fell apart into pieces and read
-        //  as nothing (console B, 2026-11-02). The stat boxes' templates are
-        //  the same digits on the same cream.
-        rows.push_back(BagRow{item, read_digits_waterfill_template(logger, count, DigitTemplateType::StatBox)});
+        rows.push_back(std::move(read));
     }
     return pocket_rows(std::move(rows));
 }

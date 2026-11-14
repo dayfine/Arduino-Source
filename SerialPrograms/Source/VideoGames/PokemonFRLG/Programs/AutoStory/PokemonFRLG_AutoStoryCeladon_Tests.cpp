@@ -449,6 +449,7 @@ void add_tests_AutoStoryCeladon(UnitTestDatabase& database){
         database.add<Test_AutoStoryCeladon>(item);
     }
     add_tests_AutoStoryLavender(database);
+    add_tests_AutoStoryTower(database);
 }
 
 

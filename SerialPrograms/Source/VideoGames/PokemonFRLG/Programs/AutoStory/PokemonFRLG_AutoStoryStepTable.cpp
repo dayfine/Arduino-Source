@@ -127,8 +127,10 @@ Pokemon::StoryActionSpec teach_action_spec(){
     return {.kind = StoryStepKind::GAME, .name = TEACH_ACTION, .args = {
         required_arg("item", StoryArgType::WORD, "the TM or HM, e.g. \"hm03\""),
         required_arg("move", StoryArgType::WORD, "the move it holds, e.g. \"surf\""),
-        required_arg("slot", StoryArgType::INTEGER, "the party slot, from 1"),
+        absent_arg("slot", StoryArgType::INTEGER, "the party slot, from 1, when no species is named"),
+        absent_arg("species", StoryArgType::WORD, "the member by its species, e.g. \"pidgey\": the first slot whose summary reads it"),
         absent_arg("forget", StoryArgType::WORD, "the move to forget when it knows four"),
+        absent_arg("or_forget", StoryArgType::WORDS, "the moves to forget, in order, when it doesn't know `forget`"),
         absent_arg("forget_slot", StoryArgType::INTEGER, "the move slot to forget, from 1, when no move is named"),
     }};
 }
@@ -190,10 +192,15 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
                 .key = "foes", .type = Pokemon::StoryArgType::WORDS, .required = false, .fallback = std::vector<std::string>(),
                 .why = "the trainer's party in order; attacks are chosen against the one out",
             });
+            spec.args.push_back(Pokemon::StoryArgSpec{
+                .key = "use_items", .type = Pokemon::StoryArgType::ITEMS, .required = false, .fallback = std::vector<Pokemon::StoryItem>(),
+                .why = "items used on the lead from the first turn, in order, before any attack (X Specials)",
+            });
         }
         for (Pokemon::StoryActionSpec spec : movement_variant_specs(builtin)){
             specs.push_back(std::move(spec));
         }
+        specs.push_back({.kind = StoryStepKind::TALK, .name = TALK_WANDERER_VARIANT, .args = {}});
         specs.push_back({.kind = StoryStepKind::GAME, .name = CLOSE_TRAINER_CARD, .args = {}});
         specs.push_back({.kind = StoryStepKind::GAME, .name = LEAVE_GIFT_SUMMARY, .args = {}});
         specs.push_back({.kind = StoryStepKind::GAME, .name = CUT_TREE_VARIANT, .args = {

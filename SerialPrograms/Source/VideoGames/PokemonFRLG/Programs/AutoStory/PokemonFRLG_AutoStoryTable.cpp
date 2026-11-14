@@ -52,6 +52,17 @@ StoryHandoff read_handoff(std::string_view name, std::string_view source){
     throw ParseException(std::format("{}: unknown handoff {}", source, name));
 }
 
+//  The wire names of the gifts Gift RNG's handoff takes.
+PokemonFRLG_RngTarget read_gift(std::string_view name, std::string_view source){
+    if (name == "magikarp"){
+        return PokemonFRLG_RngTarget::magikarp;
+    }
+    if (name == "eevee"){
+        return PokemonFRLG_RngTarget::eevee;
+    }
+    throw ParseException(std::format("{}: unknown gift {}", source, name));
+}
+
 //  `object`'s fields, each of which must be one of `keys`.
 void only_fields(const JsonObject& object, std::initializer_list<std::string_view> keys, std::string_view source){
     for (const auto& [key, unused] : object){
@@ -173,11 +184,14 @@ StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_v
     StoryCheckpoint checkpoint;
     std::set<std::string> note_keys;
     const Pokemon::ExecutionReader read_execution = [&](const JsonObject& execution, std::string_view where){
-        only_fields(execution, {"menu", "supplies", "lead", "handoff", "live_start", "notes"}, where);
+        only_fields(execution, {"menu", "supplies", "lead", "handoff", "gift", "live_start", "notes"}, where);
         checkpoint.menu = read_start_menu(execution.get_string_throw("menu", std::string(where)), where);
         checkpoint.supplies = read_supplies(execution, where);
         if (execution.get_value("handoff") != nullptr){
             checkpoint.handoff = read_handoff(execution.get_string_throw("handoff", std::string(where)), where);
+        }
+        if (execution.get_value("gift") != nullptr){
+            checkpoint.gift = read_gift(execution.get_string_throw("gift", std::string(where)), where);
         }
         if (execution.get_value("live_start") != nullptr){
             checkpoint.live_start = execution.get_boolean_throw("live_start", std::string(where));

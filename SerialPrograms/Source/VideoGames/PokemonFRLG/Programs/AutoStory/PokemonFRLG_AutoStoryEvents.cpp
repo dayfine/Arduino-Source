@@ -253,6 +253,7 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
         return Pokemon::outcome_failed("no_battle");
     }
     env.supplies.foes = arg<std::vector<std::string>>(step, "foes");
+    env.supplies.battle_items = arg<std::vector<Pokemon::StoryItem>>(step, "use_items");
     if (!env.supplies.foes.empty()){
         env.console.log(std::format(
             "Story: {} is {}, risk {}; attacks are chosen against the foe out.",
@@ -263,6 +264,7 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     env.supplies.foes.clear();
     env.supplies.trainer.clear();
     env.supplies.foe_out.clear();
+    env.supplies.battle_items.clear();
     if (end == BattleEnd::LOST && !arg<bool>(step, "may_lose")){
         return Pokemon::outcome_failed("blackout");
     }
@@ -357,6 +359,7 @@ std::string save_card_place(const std::string& map){
         {"LavenderTown", "lavender-town"},
         {"CeladonCity", "celadon-city"},
         {"RocketHideout", "rocket-hideout"},
+        {"PokemonTower", "pokemon-tower"},
     };
     for (const auto& [prefix, place] : PLACES){
         if (map == prefix || map.rfind(prefix + "_", 0) == 0){
@@ -464,6 +467,23 @@ bool talk_opens_message(ConsoleHandle& console, ProControllerContext& context){
         {opened}
     );
     return shown >= 0;
+}
+
+//  A talk to someone who wanders (MOVEMENT_TYPE_WANDER_AROUND, as the
+//  Route 16 house's woman with HM02): A at the tile the player faces, each
+//  watched 2 s, until they step onto it and a message opens. They take a
+//  step every 0.5 to 2 s (pokefirered event_object_movement.c,
+//  MovementType_WanderAround), so a few tiles' zone has them in front of
+//  the player many times in WANDERER_TALK_TRIES.
+constexpr int WANDERER_TALK_TRIES = 45;
+bool talk_until_message(ConsoleHandle& console, ProControllerContext& context, const StoryStep& step){
+    const int tries = step.action == TALK_WANDERER_VARIANT ? WANDERER_TALK_TRIES : 1;
+    for (int c = 0; c < tries; c++){
+        if (talk_opens_message(console, context)){
+            return true;
+        }
+    }
+    return false;
 }
 
 
@@ -694,8 +714,8 @@ ConsoleAction console_action_of(StoryActionId id){
     case StoryActionId::STEP:
         return take_step;
     case StoryActionId::TALK:
-        return [](StoryEnv& env, RunState&, const StoryStep&){
-            if (!talk_opens_message(env.console, env.context)){
+        return [](StoryEnv& env, RunState&, const StoryStep& step){
+            if (!talk_until_message(env.console, env.context, step)){
                 return Pokemon::outcome_failed("no_message", "talk: A opened no message; nothing to talk to or pick up here.");
             }
             return Pokemon::outcome_ok();
@@ -890,7 +910,7 @@ StartRead read_console_start(StoryEnv& env, const std::string& checkpoint){
 void keep_next_start_frame(StoryEnv& env, const std::string& ended){
     const std::vector<StoryCheckpoint>& table = story_checkpoints();
     for (size_t c = 0; c + 1 < table.size(); c++){
-        if (table[c].id == ended && table[c + 1].start){
+        if (table[c].id == ended && checked_start_pose(table[c + 1])){
             keep_console_frame(env.console, env.context, env.start_frames, table[c + 1].id, "saved at the end of " + ended);
             return;
         }
@@ -898,6 +918,10 @@ void keep_next_start_frame(StoryEnv& env, const std::string& ended){
 }
 
 } // namespace
+
+std::optional<Pokemon::Pose> checked_start_pose(const StoryCheckpoint& data){
+    return data.live_start ? std::nullopt : start_pose(data);
+}
 
 Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor& executor){
     executor.set_menu(data.menu);
@@ -908,7 +932,7 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     //  program last saved there. With none kept, it passes.
     Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, executor, &env.prepared);
     add_start_check(
-        checkpoint, start_pose(data),
+        checkpoint, checked_start_pose(data),
         [&env, id = data.id]{ return read_console_start(env, id); },
         [&env](const std::string& line){ env.console.log(line, COLOR_ORANGE); }
     );

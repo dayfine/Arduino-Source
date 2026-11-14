@@ -34,6 +34,7 @@
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "PokemonFRLG_AutoStoryNewMembers.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -259,6 +260,29 @@ UnitTestResult test_pocket_rows_unread(Logger&){
     }
     if (!pocket_rows({{"", 1}, {"", 2}}).empty()){
         return "Expected nothing with no name read.";
+    }
+    return true;
+}
+
+//  Rows past the first six show where the list has scrolled to: the
+//  cursor stops at the fourth row shown, until the CANCEL shows. The
+//  Tower's bag (console B, 2026-11-12): its X Specials 7th of 8 rows and
+//  the CANCEL; then the Potions run out and take no row.
+UnitTestResult test_item_shown_row(Logger&){
+    Supplies supplies;
+    set_from_bag(supplies, {
+        {"moon-stone", 2}, {"potion", 1}, {"nugget", 1}, {"repel", 5},
+        {"escape-rope", 5}, {"super-repel", 7}, {"x-special", 2}, {"x-speed", 1},
+    });
+    const std::vector<std::pair<int, int>> full = {{2, 2}, {3, 3}, {4, 3}, {6, 3}, {7, 4}, {8, 5}};
+    for (const auto& [row, shown] : full){
+        if (item_shown_row(supplies, row) != shown){
+            return std::format("Row {} of 9: expected shown in row {}, got {}.", row, shown, item_shown_row(supplies, row));
+        }
+    }
+    spend_item(supplies, "potion");
+    if (item_row(supplies, "x-special") != 5 || item_shown_row(supplies, 5) != 3 || item_shown_row(supplies, 7) != 5){
+        return "Expected the X Specials in row 6 of 8 shown 4th, the CANCEL last, with no Potions left.";
     }
     return true;
 }
@@ -507,6 +531,59 @@ UnitTestResult test_poison_cured_after_battle(Logger&){
     return true;
 }
 
+//  The Tower rival as PokeGuy fought him (10.03): two X Specials on the
+//  first turns, then attacks. A Potion comes first for HP not green, red
+//  HP or a wild battle uses none, and the last X Special takes its row.
+UnitTestResult test_planned_battle_items(Logger&){
+    const PartyStatus GREEN{.hp_seen = true, .hp_yellow = false, .hp_red = false, .status = StatusCondition::NONE};
+    const PartyStatus RED{.hp_seen = true, .hp_yellow = false, .hp_red = true, .status = StatusCondition::NONE};
+    const PartyStatus YELLOW{.hp_seen = true, .hp_yellow = true, .hp_red = false, .status = StatusCondition::NONE};
+    Supplies supplies;
+    supplies.lead = story_lead_after_brock();
+    set_from_bag(supplies, {{"potion", 2}, {"x-special", 2}, {"x-speed", 6}});
+    supplies.battle_items = {{.item = "x-special", .quantity = 3}};
+
+    Supplies wild_supplies = supplies;
+    BattleDecisions wild(wild_supplies, BattleKind::WILD_FIGHT);
+    if (wild.turn(GREEN).choice == TurnChoice::BATTLE_ITEM){
+        return "Expected no X Special in a wild battle.";
+    }
+
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    if (decisions.turn(YELLOW).choice != TurnChoice::POTION){
+        return "Expected a Potion before an X Special for yellow HP.";
+    }
+    decisions.turn_done(TurnChoice::POTION, TurnResult::DONE);
+    for (int c = 0; c < 2; c++){
+        const TurnAction action = decisions.turn(GREEN);
+        if (action.choice != TurnChoice::BATTLE_ITEM || action.item != "x-special"){
+            return std::format("Expected an X Special at turn {}.", c + 2);
+        }
+        decisions.turn_done(action.choice, TurnResult::DONE);
+    }
+    if (item_row(supplies, "x-special") != -1 || item_row(supplies, "x-speed") != 1){
+        return "Expected the X Special's row gone with the last of the 2, X Speed a row up.";
+    }
+    if (decisions.turn(GREEN).choice != TurnChoice::MOVE){
+        return "Expected an attack once the bag has no X Special, though the plan asked for 3.";
+    }
+
+    Supplies red_supplies;
+    set_from_bag(red_supplies, {{"x-special", 5}});
+    red_supplies.battle_items = {{.item = "x-special", .quantity = 1}};
+    BattleDecisions red(red_supplies, BattleKind::TRAINER);
+    if (red.turn(RED).choice != TurnChoice::MOVE){
+        return "Expected an attack, not an X Special, at red HP with no Potion.";
+    }
+    const TurnAction other = red.turn(GREEN);
+    red.turn_done(other.choice, TurnResult::NOT_DONE);
+    if (other.choice != TurnChoice::BATTLE_ITEM || red.turn(GREEN).choice != TurnChoice::MOVE || red_supplies.other_counts.at("x-special") != 5){
+        return "Expected no item after the bag's row read as another item.";
+    }
+    return true;
+}
+
+
 const AutoStoryItemsTestCase AUTO_STORY_ITEMS_CASES[] = {
     {
         .input = {.name = "Mart cursor stays on the row bought", .body = test_mart_cursor},
@@ -523,6 +600,10 @@ const AutoStoryItemsTestCase AUTO_STORY_ITEMS_CASES[] = {
     {
         .input = {.name = "an item the story doesn't count keeps its row", .body = test_loaded_bag_other_items},
         .expectation = {.description = "preserves row indexing for uncounted items"},
+    },
+    {
+        .input = {.name = "Items pocket rows past the first page", .body = test_item_shown_row},
+        .expectation = {.description = "places rows below the first six where the scrolled list shows them"},
     },
     {
         .input = {.name = "an unread item name keeps its row", .body = test_pocket_rows_unread},
@@ -551,6 +632,10 @@ const AutoStoryItemsTestCase AUTO_STORY_ITEMS_CASES[] = {
     {
         .input = {.name = "poison after a battle: Antidote, else Full Heal, then a Potion", .body = test_poison_cured_after_battle},
         .expectation = {.description = "cures a status left by a battle before the story walks on"},
+    },
+    {
+        .input = {.name = "battle items: the rival's X Specials first, Potions before them", .body = test_planned_battle_items},
+        .expectation = {.description = "uses the plan's X items before attacking"},
     },
 };
 

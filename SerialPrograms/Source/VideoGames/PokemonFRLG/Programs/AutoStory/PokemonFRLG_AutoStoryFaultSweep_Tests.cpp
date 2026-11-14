@@ -59,10 +59,13 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryFieldMoves.h"
+#include "PokemonFRLG_AutoStoryHideoutLift.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryFaultSweep_Tests.h"
@@ -112,6 +115,8 @@ std::string_view fault_class_name(FaultClass fault){
 const std::map<std::string, std::string> KNOWN_FAILING{
     {"PokemonFRLG::AutoStory - Fault sweep: 02.02, wild battles at the game's odds",
         "below_oak on Route 1 gives up after 9 stops part-way (seeds 16, 30): count stops that make no progress, not every battle"},
+    {"PokemonFRLG::AutoStory - Fault sweep: 10.06, scene end pose",
+        "below_fuji_house plans from (4, 7), where Mr. Fuji's script warps the player (warp 4, 7, exact); from a tile off, no wall in his house funnels the walk onto (3, 4): legs that re-anchor, if the console shows the warp can land elsewhere"},
 };
 
 //  The land encounter rates of the maps the story walks (pokefirered
@@ -140,15 +145,26 @@ constexpr Milliseconds LATE_FADE = 1500ms;
 constexpr Milliseconds SLOW_FADE_IN = 1000ms;
 
 //  The maps as the story after the Hall of Fame and a new game flag them:
-//  the same set for every row, as each stage's tests use.
+//  the same set for every row, as each stage's tests use, with the two
+//  lifts' coded rooms (09.02, 10.01).
 const std::vector<MapData>& sweep_maps(){
     static const std::vector<MapData> maps = []{
         const std::vector<MapData> all = overworld_maps();
         std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
         flags.merge(map_flag_set(all, "new_game"));
-        return overworld_maps(flags);
+        std::vector<MapData> flagged = overworld_maps(flags);
+        flagged.push_back(rocket_hideout_lift_room());
+        flagged.push_back(department_store_lift_room());
+        return flagged;
     }();
     return maps;
+}
+
+//  `script` with the lifts' floors, for sweep_maps()' lift rooms.
+SimScript with_lifts(SimScript script){
+    script.lift_floors[std::string(LIFT_MAP)] = rocket_hideout_lift_exits();
+    script.lift_floors[std::string(DEPT_STORE_LIFT_MAP)] = department_store_lift_exits();
+    return script;
 }
 
 //  Whether the overworld sim plays `step` (OverworldStepSim): the rest is stubbed.
@@ -160,7 +176,10 @@ bool sim_plays(const StoryStep& step){
     case StoryStepKind::BATTLE:
         return true;
     case StoryStepKind::GAME:
-        return step.action == CUT_TREE_VARIANT;
+        //  A Fly lands on its town's landing tile, as the sim plays it; a
+        //  lift's warp lets out on its floor's tile (sweep_maps()' lift
+        //  rooms, with_lifts()).
+        return step.action == CUT_TREE_VARIANT || is_field_move_step(step) || parse_lift_floor_step(step).has_value();
     default:
         return false;
     }
@@ -260,9 +279,10 @@ bool run_row_step(
 //  play: in a clean run (`scripted` unset) at any step, else only at the
 //  steps in `scripted`, where the clean run let it pass.
 RowRun run_row(
-    const StoryCheckpoint& row, const SimScript& script, const Landings& landings = {},
+    const StoryCheckpoint& row, const SimScript& row_script, const Landings& landings = {},
     const std::optional<std::set<size_t>>& scripted = std::nullopt
 ){
+    const SimScript script = with_lifts(row_script);
     RowRun out;
     std::optional<MapPosition> off_maps;
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));

@@ -375,6 +375,43 @@ UnitTestResult test_tm_used_up(){
 }
 
 
+//  10.01's Fly: the Pidgey found by its summary's species wherever it
+//  stands (here fourth, an Eevee after it), Whirlwind read among its moves
+//  and forgotten. A species no member reads as teaches no one.
+UnitTestResult test_teach_by_species(){
+    QuietLogger logger;
+    FakeTeachGame game = console_b_party();
+    game.party.push_back({"pidgey", {"sand-attack", "gust", "quick-attack", "whirlwind"}, {"fly"}});
+    game.party.push_back({"eevee", {"tackle", "tail-whip", "helping-hand", "sand-attack"}, {}});
+    game.tm_case["hm02"] = {"fly", 1};
+    const TeachPlan fly{.item = "hm02", .move = "fly", .species = "pidgey", .forget_move = "whirlwind"};
+    const TeachResult taught = run_teach(logger, game, reader_of(game), fly);
+    const std::vector<std::string> expected{"sand-attack", "gust", "quick-attack", "fly"};
+    if (taught.end != TeachEnd::LEARNED || taught.forgot != "whirlwind" || game.party[3].moves != expected || !game.error.empty()){
+        return std::format("Fly by species: ended {} ({}), forgot \"{}\".", teach_end_name(taught.end), taught.detail, taught.forgot);
+    }
+    const size_t opened = game.items_opened;
+    const TeachResult missing = run_teach(logger, game, reader_of(game), {.item = "hm02", .move = "fly", .species = "spearow"});
+    if (missing.end != TeachEnd::UNREAD || game.items_opened != opened){
+        return std::format("No Spearow in the party: ended {}, expected unread with the bag shut.", teach_end_name(missing.end));
+    }
+    //  No Whirlwind (a Pidgey that declined it at 19): Sand-Attack, the
+    //  plan's next choice, goes, which leaves pokeguy's moveset.
+    game.party[3].moves = {"sand-attack", "gust", "quick-attack", "steel-wing"};
+    TeachPlan or_else = fly;
+    or_else.forget_else = {"sand-attack"};
+    const TeachResult fallback = run_teach(logger, game, reader_of(game), or_else);
+    const std::vector<std::string> pokeguys{"fly", "gust", "quick-attack", "steel-wing"};
+    if (fallback.end != TeachEnd::LEARNED || fallback.forgot != "sand-attack" || game.party[3].moves != pokeguys){
+        return std::format("Fly, no Whirlwind: ended {} ({}), forgot \"{}\".", teach_end_name(fallback.end), fallback.detail, fallback.forgot);
+    }
+    const std::optional<TeachPlan> back = teach_plan_of(teach_args(or_else));
+    if (!back || back->forget_else != or_else.forget_else){
+        return "or_forget didn't read back from its args.";
+    }
+    return true;
+}
+
 UnitTestResult test_teach_args(){
     const TeachPlan plan{.item = "hm03", .move = "surf", .member = 0, .forget_move = "tail-whip"};
     const Pokemon::StoryActionArgs args = teach_args(plan);
@@ -391,6 +428,16 @@ UnitTestResult test_teach_args(){
     const std::optional<TeachPlan> tutor = teach_plan_of(teach_args({.item = std::string(TEACH_TUTOR), .move = "mega-kick", .member = 0, .forget_move = "withdraw"}));
     if (!tutor || tutor->item != TEACH_TUTOR || tutor->move != "mega-kick" || tutor->forget_move != "withdraw"){
         return "The tutor's Mega Kick didn't read back from its args.";
+    }
+    const std::optional<TeachPlan> by_species = teach_plan_of(teach_args({.item = "hm02", .move = "fly", .species = "pidgey", .forget_move = "whirlwind"}));
+    if (!by_species || by_species->species != "pidgey" || by_species->forget_move != "whirlwind"){
+        return "Fly to the Pidgey by species didn't read back from its args.";
+    }
+    if (teach_plan_of({{"item", std::string("hm02")}, {"move", std::string("fly")}})
+        || teach_plan_of({{"item", std::string("hm02")}, {"move", std::string("fly")}, {"slot", int64_t(3)}, {"species", std::string("pidgey")}})
+        || teach_plan_of({{"item", std::string("hm02")}, {"move", std::string("fly")}, {"species", std::string("")}})
+    ){
+        return "Expected exactly one of slot and species.";
     }
     const std::vector<std::pair<std::string, Pokemon::StoryArgValue>> bad_args{
         {"item", std::string("potion")},
@@ -423,6 +470,10 @@ const AutoStoryTeachCase AUTO_STORY_TEACH_CASES[] = {
     },
     {
         .input = {"the step's args", test_teach_args},
+        .expectation = {},
+    },
+    {
+        .input = {"Fly to the Pidgey found by species", test_teach_by_species},
         .expectation = {},
     },
 };

@@ -4,7 +4,9 @@
  *
  */
 
+#include <format>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/ScopeExit.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "PokemonFRLG_StarterRngConsoleSteps.h"
 #include "PokemonFRLG_GiftRngConsoleSteps.h"
@@ -88,10 +90,9 @@ StarterRngResult ConsoleGiftRngSteps::run_attempt(const RngAttempt& attempt, con
         throw InternalProgramError(&m_env.logger(), PA_CURRENT_FUNCTION, "The plan's seed isn't in the seed list it came from.");
     }
 
-    GiftRngStats stats;
     GiftRngAttempts attempts(
         GiftRngTarget{
-            .target = PokemonFRLG_RngTarget::magikarp,
+            .target = m_settings.target,
             .seed = attempt.target.seed.seed,
             .advances = attempt.target.advances,
             .seed_match = seed_match,
@@ -105,8 +106,10 @@ StarterRngResult ConsoleGiftRngSteps::run_attempt(const RngAttempt& attempt, con
             .calibration = m_calibration_display,
         },
         m_notifications,
-        stats
+        m_stats
     );
+    //  The run's counts after each try, however it ends.
+    const ScopeExit log_stats_after([this]{ log_stats(); });
     try{
         const GiftRngResult result = attempts.run(m_env, m_context);
         return StarterRngResult{.outcome = loop_outcome(result.outcome), .pokemon = result.pokemon};
@@ -118,6 +121,10 @@ StarterRngResult ConsoleGiftRngSteps::run_attempt(const RngAttempt& attempt, con
         }
         throw StarterRngTimingsRefused(e.message());
     }
+}
+
+void ConsoleGiftRngSteps::log_stats(){
+    m_env.log(std::format("Gift RNG stats: {}", m_stats.to_str(StatsTracker::DISPLAY_ON_SCREEN)));
 }
 
 

@@ -32,7 +32,7 @@ namespace PokemonFRLG{
 
 //  One purchase the step makes.
 struct MartBuy{
-    //  The list's row, from 0.
+    //  The list's row, from 0 at the list's top.
     size_t row = 0;
     std::string item = {};
     size_t quantity = 0;
@@ -78,10 +78,14 @@ public:
     virtual bool open_buy_list() = 0;
     //  On the list: the money box; nothing if it can't be read.
     virtual std::optional<size_t> read_money() = 0;
-    //  On the list: the cursor from row `from` to row `to`.
-    virtual void move_cursor(size_t from, size_t to) = 0;
-    //  On the list: row `row`'s item slug; empty if it can't be read.
+    //  On the list: one DOWN (`down`) or UP.
+    virtual void press_cursor(bool down) = 0;
+    //  On the list: the item slug on row `row` of its window, from the
+    //  window's top (not the list's: the list scrolls); empty if it can't
+    //  be read.
     virtual std::string read_row(size_t row) = 0;
+    //  On the list: saves the screen to look at, as `name`.
+    virtual void dump_screen(std::string_view name) = 0;
     //  On the list, the cursor on `buy`'s row: A, its quantity typed as
     //  quantity_presses() says, A, YES. The quantity box is read before
     //  the A, if it can be: another number backs out.

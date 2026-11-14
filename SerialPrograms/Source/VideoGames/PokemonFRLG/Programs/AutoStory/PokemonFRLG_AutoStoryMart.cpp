@@ -8,6 +8,7 @@
 #include <format>
 #include <map>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
@@ -28,6 +29,8 @@ namespace{
 constexpr size_t MAX_QUANTITY = 99;
 //  pokefirered: MAX_MONEY.
 constexpr size_t MAX_MONEY = 999999;
+//  The rows the BUY list shows at once (shop.c BuyMenuInitListMenu).
+constexpr size_t LIST_ROWS_SHOWN = 6;
 
 //  Prices from pokefirered src/data/items.json.
 constexpr MartStockItem POKE_BALL{"poke-ball", 200};
@@ -49,6 +52,13 @@ constexpr MartStockItem ESCAPE_ROPE{"escape-rope", 550};
 constexpr MartStockItem REPEL{"repel", 350};
 constexpr MartStockItem SUPER_REPEL{"super-repel", 500};
 constexpr MartStockItem MAX_REPEL{"max-repel", 700};
+constexpr MartStockItem X_ATTACK{"x-attack", 500};
+constexpr MartStockItem X_DEFEND{"x-defend", 550};
+constexpr MartStockItem X_SPEED{"x-speed", 350};
+constexpr MartStockItem X_SPECIAL{"x-special", 350};
+constexpr MartStockItem X_ACCURACY{"x-accuracy", 950};
+constexpr MartStockItem GUARD_SPEC{"guard-spec", 700};
+constexpr MartStockItem DIRE_HIT{"dire-hit", 650};
 
 //  Each Mart's `<map>_Items` list in pokefirered data/maps/<map>/scripts.inc.
 const std::map<std::string, std::vector<MartStockItem>, std::less<>>& mart_stocks(){
@@ -65,6 +75,8 @@ const std::map<std::string, std::vector<MartStockItem>, std::less<>>& mart_stock
         {"FuchsiaCity_Mart", {ULTRA_BALL, GREAT_BALL, SUPER_POTION, REVIVE, FULL_HEAL, MAX_REPEL}},
         {"SaffronCity_Mart", {GREAT_BALL, HYPER_POTION, REVIVE, FULL_HEAL, ESCAPE_ROPE, MAX_REPEL}},
         {"CinnabarIsland_Mart", {ULTRA_BALL, GREAT_BALL, HYPER_POTION, REVIVE, FULL_HEAL, ESCAPE_ROPE, MAX_REPEL}},
+        //  The X items clerk (CeladonCity_DepartmentStore_5F_XItems).
+        {"CeladonCity_DepartmentStore_5F", {X_ATTACK, X_DEFEND, X_SPEED, X_SPECIAL, X_ACCURACY, GUARD_SPEC, DIRE_HIT}},
         {"IndigoPlateau_PokemonCenter_1F", {
             ULTRA_BALL, GREAT_BALL, FULL_RESTORE, MAX_POTION, REVIVE, FULL_HEAL, MAX_REPEL,
         }},
@@ -80,6 +92,67 @@ std::optional<size_t> stock_row(const std::vector<MartStockItem>& stock, std::st
     }
     return std::nullopt;
 }
+
+//  The item on row `index` of a Mart's list: its stock, then CANCEL.
+std::string_view list_item(const std::vector<MartStockItem>& stock, size_t index){
+    return index < stock.size() ? stock[index].item : "cancel";
+}
+
+//  The BUY list's window over its rows, moved one UP or DOWN at a time as
+//  pokefirered's list_menu.c ListMenuUpdateSelectedRowIndexAndScrollOffset
+//  moves it (see PokemonFRLG_AutoStoryMart.h).
+class ListWindow{
+public:
+    explicit ListWindow(size_t rows)
+        : m_rows(rows)
+        , m_shown(std::min(rows, LIST_ROWS_SHOWN))
+    {}
+
+    //  The cursor's row in the list.
+    size_t index() const{
+        return m_top + m_row;
+    }
+    //  The cursor's row in the window.
+    size_t row() const{
+        return m_row;
+    }
+
+    void move(bool down){
+        if (down){
+            move_down();
+        }else{
+            move_up();
+        }
+    }
+
+private:
+    void move_down(){
+        if (index() + 1 >= m_rows){
+            return;
+        }
+        if (m_row < m_shown / 2 + m_shown % 2 || m_top == m_rows - m_shown){
+            m_row++;
+        }else{
+            m_top++;
+        }
+    }
+    void move_up(){
+        if (index() == 0){
+            return;
+        }
+        if (m_top == 0 || m_row + 1 > m_shown - (m_shown / 2 + m_shown % 2)){
+            m_row--;
+        }else{
+            m_top--;
+        }
+    }
+
+    size_t m_rows;
+    size_t m_shown;
+    //  The list's row on the window's top.
+    size_t m_top = 0;
+    size_t m_row = 0;
+};
 
 } // namespace
 
@@ -191,6 +264,8 @@ public:
         : m_logger(logger)
         , m_actions(actions)
         , m_plan(plan)
+        , m_stock(mart_stock(plan.map))
+        , m_window(m_stock.size() + 1)
     {}
 
     MartResult run(){
@@ -203,7 +278,7 @@ public:
             return leave(MartEnd::NO_MONEY_READ, "");
         }
         m_logger.log(std::format("Mart: ${} ({}), budget ${}.", *money, read ? "read" : "the table's floor", m_plan.budget));
-        const std::optional<std::vector<MartBuy>> buys = plan_mart_buys(mart_stock(m_plan.map), m_plan, *money);
+        const std::optional<std::vector<MartBuy>> buys = plan_mart_buys(m_stock, m_plan, *money);
         if (!buys){
             return leave(MartEnd::FAILED, "an item the Mart doesn't sell");
         }
@@ -235,16 +310,36 @@ private:
         return this->end(end, std::move(detail));
     }
 
-    bool buy_one(const MartBuy& buy){
-        m_actions.move_cursor(m_cursor, buy.row);
-        m_cursor = buy.row;
-        const std::string item = m_actions.read_row(buy.row);
-        if (!item.empty() && item != buy.item){
-            m_result.detail = std::format("row {} is {}, not {}", buy.row + 1, item, buy.item);
-            return false;
+    //  Moves the cursor to `buy`'s row one press at a time, reading the
+    //  cursor's row after each: a name that isn't the row's stops it, the
+    //  screen saved. A row that can't be read is passed, or bought, by its
+    //  position.
+    bool reach(const MartBuy& buy){
+        for (size_t presses = 0; presses <= m_stock.size(); presses++){
+            const size_t index = m_window.index();
+            const std::string item = m_actions.read_row(m_window.row());
+            if (!item.empty() && item != list_item(m_stock, index)){
+                m_result.detail = std::format("row {} is {}, not {}", index + 1, item, list_item(m_stock, index));
+                m_actions.dump_screen(std::format("row{}-{}-not-{}", index + 1, item, list_item(m_stock, index)));
+                return false;
+            }
+            if (index == buy.row){
+                if (item.empty()){
+                    m_logger.log(std::format("Mart: couldn't read row {}; buying it by position.", index + 1), COLOR_ORANGE);
+                }
+                return true;
+            }
+            const bool down = index < buy.row;
+            m_actions.press_cursor(down);
+            m_window.move(down);
         }
-        if (item.empty()){
-            m_logger.log(std::format("Mart: couldn't read row {}; buying it by position.", buy.row + 1), COLOR_ORANGE);
+        m_result.detail = std::format("the cursor didn't reach row {}", buy.row + 1);
+        return false;
+    }
+
+    bool buy_one(const MartBuy& buy){
+        if (!reach(buy)){
+            return false;
         }
         switch (m_actions.buy(buy)){
         case PurchaseEnd::BOUGHT:
@@ -282,7 +377,10 @@ private:
     Logger& m_logger;
     MartActions& m_actions;
     const MartPlan& m_plan;
-    size_t m_cursor = 0;
+    const std::vector<MartStockItem>& m_stock;
+    //  Where the cursor is, from the list's top row as open_buy_list()
+    //  leaves it; a purchase leaves it on the row bought.
+    ListWindow m_window;
     MartResult m_result;
 };
 
@@ -331,8 +429,6 @@ bool ConsoleMartActions::open_buy_list(){
     pbf_press_button(m_context, BUTTON_A, 160ms, 2000ms);
     pbf_press_button(m_context, BUTTON_A, 160ms, 2000ms);
     m_context.wait_for_all_requests();
-    m_row = 0;
-    m_lowest_row = 0;
     return true;
 }
 
@@ -341,21 +437,13 @@ std::optional<size_t> ConsoleMartActions::read_money(){
     return std::nullopt;
 }
 
-void ConsoleMartActions::move_cursor(size_t from, size_t to){
-    for (size_t c = from; c < to; c++){
-        pbf_press_dpad(m_context, DPAD_DOWN, 160ms, 300ms);
-    }
-    for (size_t c = to; c < from; c++){
-        pbf_press_dpad(m_context, DPAD_UP, 160ms, 300ms);
-    }
+void ConsoleMartActions::press_cursor(bool down){
+    pbf_press_dpad(m_context, down ? DPAD_DOWN : DPAD_UP, 160ms, 300ms);
     m_context.wait_for_all_requests();
-    m_row = to;
-    m_lowest_row = std::max(m_lowest_row, to);
 }
 
 std::string ConsoleMartActions::read_row(size_t row){
-    //  Rows past the window's last but one may have scrolled the list.
-    if (m_lowest_row + 1 >= (size_t)ITEM_LIST_ROWS){
+    if (row >= (size_t)ITEM_LIST_ROWS){
         return "";
     }
     VideoSnapshot screen = m_console.video().snapshot();
@@ -363,6 +451,13 @@ std::string ConsoleMartActions::read_row(size_t row){
         return "";
     }
     return read_item_list_name(m_console.logger(), m_language, screen, (int)row);
+}
+
+void ConsoleMartActions::dump_screen(std::string_view name){
+    VideoSnapshot screen = m_console.video().snapshot();
+    if (screen){
+        dump_debug_image(m_console, "AutoStory/mart", std::string(name), screen);
+    }
 }
 
 PurchaseEnd ConsoleMartActions::buy(const MartBuy& buy){

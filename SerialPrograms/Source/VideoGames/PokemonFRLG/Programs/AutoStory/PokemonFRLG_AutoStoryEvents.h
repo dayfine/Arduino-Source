@@ -48,6 +48,11 @@ namespace PokemonFRLG{
 
 
 
+//  The variant of a TALK to someone who wanders (MOVEMENT_TYPE_WANDER_AROUND):
+//  the player faces a tile of their zone, and A is pressed until they step
+//  onto it and a message opens.
+inline const std::string TALK_WANDERER_VARIANT = "wanderer";
+
 //  What the story's events act on. `supplies` are what the bag holds now,
 //  `saved_supplies` what the last save holds.
 struct StoryEnv{

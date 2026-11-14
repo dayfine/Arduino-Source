@@ -36,8 +36,9 @@ public:
 
     virtual bool open_buy_list() override{ return true; }
     virtual std::optional<size_t> read_money() override{ return money; }
-    virtual void move_cursor(size_t, size_t) override{}
+    virtual void press_cursor(bool) override{}
     virtual std::string read_row(size_t) override{ return ""; }
+    virtual void dump_screen(std::string_view) override{}
     virtual PurchaseEnd buy(const MartBuy&) override{ return PurchaseEnd::FAILED; }
     virtual bool leave() override{ return true; }
 };

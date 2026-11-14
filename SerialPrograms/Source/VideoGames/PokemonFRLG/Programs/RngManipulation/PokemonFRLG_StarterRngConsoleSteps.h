@@ -76,6 +76,9 @@ public:
     virtual StarterRngResult run_attempt(const RngAttempt& attempt, const StarterRngAttemptCall& call) override;
 
 private:
+    //  Logs Starter RNG's counts so far in this run.
+    void log_stats();
+
     SingleSwitchProgramEnvironment& m_env;
     ProControllerContext& m_context;
     StarterRngConsoleSettings m_settings;
@@ -84,6 +87,8 @@ private:
     RngTargetDisplay m_target_display;
     RngFilterDisplay m_filter_display;
     RngCalibrationDisplay m_calibration_display;
+    //  Starter RNG's counts over all tries of this run.
+    StarterRngStats m_stats;
 };
 
 

@@ -14,6 +14,7 @@
 #include "PokemonFRLG_BikeSpinMechanics.h"
 #include "PokemonFRLG_BikeSpinPresses.h"
 #include "PokemonFRLG_OverworldBike.h"
+#include "PokemonFRLG_OverworldMaps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -80,9 +81,10 @@ StepOutcome OverworldSimWalker::walk_bike_taps(const RouteStep& step){
 
 BikeTap OverworldSimWalker::step_tap(const RouteStep& step, int tap){
     const MapPosition before = m_sim.state().position;
+    const int turn_taps = m_sim.state().turn_taps;
     m_sim.tap(step.direction, STEP_TAP, STEP_TAP_RELEASE);
     m_sim.watch({}, step_tap_settle(step, tap));
-    if (!(m_sim.state().position == before) && !m_sim.hides_moved_step_tap()){
+    if (m_sim.reads_step_tap_as_step(before, turn_taps)){
         return BikeTap{.moved = true};
     }
     return BikeTap{.moved = false, .interrupt = std::nullopt, .cleared_late = clear_late(interrupts(step), AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) > 0};
@@ -121,7 +123,7 @@ StepOutcome OverworldSimWalker::walk(const RouteStep& step, std::optional<Direct
     }
     m_speed = m_riding || !m_rules.get_back_on_bike ? m_rules.speed : on_foot(m_rules.speed);
     const StepOutcome outcome = walk_ridden(step, facing);
-    if (m_riding && step.warps){
+    if (m_riding && step.warps && !warp_keeps_bike(step.end.map)){
         m_log.push_back("Bike: through the warp to " + step.end.map + ", off the Bicycle.");
         m_riding = false;
     }
