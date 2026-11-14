@@ -13,6 +13,7 @@
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
+#include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "Pokemon/AutoStory/Pokemon_SceneJudges.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_ButtonDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
@@ -77,7 +78,7 @@ enum class SceneMashAction{
 
 //  How long the party bar (PLAYER_CAN_MOVE) must hold to be the overworld:
 //  it also shows between the lines of a scene.
-constexpr Milliseconds OVERWORLD_HOLD(1000);
+inline constexpr Milliseconds OVERWORLD_HOLD(1000);
 
 //  How a scene mash reads frames (the loop is mash_scene() in
 //  Actions/PokemonLZA_AutoStoryScenes.h), one look at a time:
@@ -93,20 +94,21 @@ constexpr Milliseconds OVERWORLD_HOLD(1000);
 //    (A would talk to whoever stands in front).
 class SceneMash{
 public:
-    SceneMash(SceneMashGoal goal, bool text_button_is_b);
+    //  `text_button` advances the text: A or B.
+    SceneMash(SceneMashGoal goal, Button text_button);
 
     SceneMashAction look(const ScreenEvents& events, WallClock now);
 
 private:
     SceneMashGoal m_goal;
-    bool m_text_button_is_b;
+    Button m_text_button;
     Pokemon::TalkOver m_talk;
 };
 
 //  How long a scene step's mash waits for its scene to show. 02.02's street
 //  scene shows its first box ~10 s in from the save (console B, 2026-11-10);
 //  02.07's first evening holds a ~25 s black screen first.
-constexpr Milliseconds SCENE_START_WINDOW(45000);
+inline constexpr Milliseconds SCENE_START_WINDOW(45000);
 
 //  Whether a scene mash's scene has started, from its frames: a box, a
 //  choice or a battle. A fade alone does not count: a walk's way into a new

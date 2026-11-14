@@ -38,9 +38,9 @@ bool SceneStart::never_started(const ScreenEvents& events, WallClock now){
     return !m_seen && now >= m_deadline;
 }
 
-SceneMash::SceneMash(SceneMashGoal goal, bool text_button_is_b)
+SceneMash::SceneMash(SceneMashGoal goal, Button text_button)
     : m_goal(goal)
-    , m_text_button_is_b(text_button_is_b)
+    , m_text_button(text_button)
     , m_talk(Pokemon::TalkOverRule{.calm = OVERWORLD_HOLD})
 {}
 
@@ -78,7 +78,7 @@ SceneMashAction SceneMash::look(const ScreenEvents& events, WallClock now){
     if (m_goal == SceneMashGoal::OVERWORLD && events.has(ScreenEvent::PLAYER_CAN_MOVE)){
         return SceneMashAction::WAIT;
     }
-    return m_text_button_is_b ? SceneMashAction::PRESS_B : SceneMashAction::WAIT;
+    return m_text_button == BUTTON_B ? SceneMashAction::PRESS_B : SceneMashAction::WAIT;
 }
 
 

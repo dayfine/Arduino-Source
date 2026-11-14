@@ -12,7 +12,7 @@
       {
         "id": "into_the_counter",
         "kind": "game_action",
-        "why": "UNVERIFIED, NEEDS CONSOLE: the checkpoint starts from the heal's save at the nurse's counter (03.05's back_to_nurse walked right into the counter, which faces her, and stopped there). A short walk straight into the counter sets the player against it as 03.05's scene left it, whatever way the camera turned at the load; the next step's turn recenters the camera on the player's facing (L) before turning. 03.06's legs below are UNVERIFIED for the counter turn too (console B, 2026-11-13: 03.06 passed from its own save, not from this pose).",
+        "why": "The checkpoint starts from the heal's save at the nurse's counter (03.05's back_to_nurse walked right into the counter, which faces her, and stopped there). A short walk straight into the counter sets the player against it as 03.05's scene left it, whatever way the camera turned at the load; the next step's turn recenters the camera on the player's facing (L) before turning. Console B, 2026-11-14: 3 of 3 runs from the counter save reached the gate prompt with the legs below.",
         "action": "walk",
         "args": {
           "legs": [[0, 1500]]
@@ -21,7 +21,7 @@
       {
         "id": "out_of_pokemon_center",
         "kind": "game_action",
-        "why": "03.06's out_of_pokemon_center, unchanged: from the nurse's counter back to where 03.04's scene left the player, facing as it did, so the legs below (measured from there) still hold. Reverses 03.05's back_to_nurse (right, then into the counter): turn around, walk back 1.5 s, then right to face as the scene left the player. UNVERIFIED, NEEDS CONSOLE.",
+        "why": "03.06's out_of_pokemon_center, unchanged: from the nurse's counter back to where 03.04's scene left the player, facing as it did, so the legs below (measured from there) still hold. Reverses 03.05's back_to_nurse (right, then into the counter): turn around, walk back 1.5 s, then right to face as the scene left the player. Console B, 2026-11-14: 3 of 3 runs from the counter save reached the gate prompt.",
         "action": "walk",
         "args": {
           "legs": [[180, 1500], [90, 0]]

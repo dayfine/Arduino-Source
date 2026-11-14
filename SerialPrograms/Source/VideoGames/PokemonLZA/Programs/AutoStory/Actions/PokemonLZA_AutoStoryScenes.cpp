@@ -59,31 +59,35 @@ Pokemon::Outcome mash_scene(
     PlzaBackend& backend, SceneMashGoal goal, Button text_button, Milliseconds timeout,
     std::optional<Milliseconds> start_window
 ){
-    SceneMash mash(goal, text_button == BUTTON_B);
+    SceneMash mash(goal, text_button);
     ScreenEvents last_events;
-    std::optional<SceneStart> scene;
-    std::optional<WallClock> start;
+    //  Set by the first look: when the mash started, and its scene's start
+    //  window from there.
+    struct Started{
+        WallClock at;
+        SceneStart scene;
+    };
+    std::optional<Started> started;
     //  Every look presses or waits at least MASH_POLL on a console; a
     //  scripted backend's clock stands still between inputs.
     const size_t max_looks = static_cast<size_t>(timeout / MASH_POLL) + 1;
     for (size_t looks = 0; looks < max_looks; looks++){
         backend.scope().throw_if_cancelled();
         const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
-        if (!start){
-            start = look.when;
-            scene.emplace(look.when, start_window.value_or(timeout));
+        if (!started){
+            started = Started{look.when, SceneStart(look.when, start_window.value_or(timeout))};
         }
-        if (look.when - *start >= timeout){
+        if (look.when - started->at >= timeout){
             break;
         }
         if (look.readings.contains(TUTORIAL_CARD_READING)){
             backend.log("mash_scene(): a tutorial card: A.");
-            scene->see();
+            started->scene.see();
             backend.press(BUTTON_A, 160ms, 840ms);
             continue;
         }
         log_event_change(backend, look.events, last_events);
-        if (start_window && scene->never_started(look.events, look.when)){
+        if (start_window && started->scene.never_started(look.events, look.when)){
             return Pokemon::outcome_failed("scene_never_started", std::format(
                 "mash_scene(): the scene never started (player not at its trigger?): no box, choice or battle in {} ms.",
                 start_window->count()
