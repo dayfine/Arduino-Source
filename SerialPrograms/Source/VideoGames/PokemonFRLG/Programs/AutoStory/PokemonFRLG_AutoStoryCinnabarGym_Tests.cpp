@@ -12,6 +12,7 @@
 
 #include <format>
 #include <functional>
+#include <iterator>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -26,6 +27,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryMember.h"
@@ -299,6 +301,115 @@ UnitTestResult test_short_holds_clear_of_trainers(){
     return true;
 }
 
+//  A LEGS step of a row inside the gym, as the walker walks it: its legs
+//  from where the step before it leaves the player.
+struct GymLegs{
+    const StoryStep* step = nullptr;
+    std::vector<RouteStep> route;
+};
+
+//  Row `id`'s LEGS steps inside the gym, each from the pose the step before
+//  it declares, a route's target or the end of the legs before it. A step
+//  whose legs leave the map or meet a wall has an empty route.
+std::vector<GymLegs> gym_legs(std::string_view id){
+    const StoryCheckpoint& row = checkpoint(id);
+    std::vector<GymLegs> all;
+    std::optional<StoryPose> at = story_pose(Pokemon::pose_of(*row.start));
+    for (const StoryStep& step : row.steps){
+        const Pokemon::GridPose* target = Pokemon::value_if_at_it<Pokemon::GridPose>(step.args, step.args.find("target"));
+        const std::vector<Pokemon::StoryLeg>* legs = Pokemon::value_if_at_it<std::vector<Pokemon::StoryLeg>>(step.args, step.args.find("legs"));
+        std::optional<StoryPose> after = step.pose_after ? story_pose(Pokemon::pose_of(*step.pose_after)) : std::nullopt;
+        if (!after && target != nullptr){
+            after = story_pose(Pokemon::pose_of(*target));
+        }
+        if (step.kind == StoryStepKind::LEGS && legs != nullptr && at && at->map == GYM){
+            const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), MapPosition{at->map, at->tile}, *legs);
+            all.push_back(GymLegs{.step = &step, .route = route.value_or(std::vector<RouteStep>{})});
+            if (!after && route && !route->empty()){
+                after = StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after};
+            }
+        }
+        if (after || step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
+            at = after;
+        }
+    }
+    return all;
+}
+
+//  The quiz door, 1 to 6, whose floor `tile` is, if any.
+std::optional<size_t> quiz_door_on(const TilePos& tile){
+    for (size_t door = 0; door < std::size(QUIZ_DOOR_FLOORS); door++){
+        for (const TilePos& floor : QUIZ_DOOR_FLOORS[door]){
+            if (floor == tile){
+                return door + 1;
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+//  The leg of `legs` (row `id`) that ends at a wall that is a quiz door,
+//  as a line, or empty if none does.
+std::string wall_tap_into_quiz_door(std::string_view id, const GymLegs& legs){
+    if (legs.route.empty()){
+        return std::format("{} {}: its legs don't fit the map.", id, legs.step->name);
+    }
+    for (const RouteStep& leg : legs.route){
+        const TilePos beyond = leg.end.point.next(leg.direction);
+        const std::optional<size_t> door = leg.to_wall ? quiz_door_on(beyond) : std::nullopt;
+        if (door){
+            return std::format(
+                "{} {}: \"{}\" ends against quiz door {} on {}; the tap after it walks through the open door.",
+                id, legs.step->name, to_string(leg), *door, to_string(MapPosition{GYM, beyond})
+            );
+        }
+    }
+    return "";
+}
+//  No leg of 14.01's or 14.02b's gym LEGS steps ends at a wall that is a
+//  quiz door shut on the map: after a leg to a wall the walker taps once
+//  more toward it, and once the door is open that tap walks through it.
+//  Console B, 2026-11-14, 14.01 run 5: east_of_door_4's "west 2 (to wall)"
+//  to (12, 22) tapped on through door 4, the player stood a tile west of
+//  the plan from there on, and below_door_5 ended under Burglar Dusty.
+UnitTestResult test_wall_taps_clear_of_quiz_doors(){
+    for (std::string_view id : {"14.01", "14.02b"}){
+        for (const GymLegs& legs : gym_legs(id)){
+            if (const std::string failure = wall_tap_into_quiz_door(id, legs); !failure.empty()){
+                return failure;
+            }
+        }
+    }
+    return true;
+}
+
+//  Each quiz machine's talk in 14.01 follows a LEGS step counted a tap a
+//  tile whose last leg ends against the machine: no open hold that can run
+//  a tile on ends the approach to the machine's stand tile.
+UnitTestResult test_quiz_approaches_end_at_machine(){
+    const StoryCheckpoint& row = checkpoint("14.01");
+    const std::vector<GymLegs> all = gym_legs("14.01");
+    int quizzes = 0;
+    for (size_t c = 1; c < row.steps.size(); c++){
+        const StoryStep& talk = row.steps[c];
+        if (talk.kind != StoryStepKind::TALK || !talk.name.starts_with("quiz_")){
+            continue;
+        }
+        quizzes++;
+        const StoryStep& before = row.steps[c - 1];
+        const GymLegs* legs = nullptr;
+        for (const GymLegs& item : all){
+            if (item.step == &before){
+                legs = &item;
+            }
+        }
+        if (legs == nullptr || before.action != TAPS_VARIANT || legs->route.empty() || !legs->route.back().to_wall){
+            return std::format("14.01 {}: expected taps ending against the machine before it, found {}.", talk.name, before.name);
+        }
+    }
+    return quizzes == 6 ? UnitTestResult(true) : UnitTestResult(std::format("Expected 6 quiz talks, found {}.", quizzes));
+}
+
 //  14.01 from outside the Mansion: the nurse, the gym and its six quiz
 //  doors, each walked through once open, nobody fought, to below Blaine, where 14.02 starts; 14.02,
 //  Blaine's battle, which ends where it starts; then 14.02b from there out
@@ -405,6 +516,14 @@ const AutoStoryCinnabarGymCase AUTO_STORY_CINNABAR_GYM_CASES[] = {
     {
         .input = {.name = "Cinnabar Gym's open holds a tile short meet no trainer", .body = test_short_holds_clear_of_trainers},
         .expectation = {.description = "no gym route in 14.01 or 14.02b turns onto a trainer after an open hold a tile short"},
+    },
+    {
+        .input = {.name = "Cinnabar Gym's legs to a wall end clear of the quiz doors", .body = test_wall_taps_clear_of_quiz_doors},
+        .expectation = {.description = "no gym leg in 14.01 or 14.02b ends against a quiz door, which the tap after it would walk through"},
+    },
+    {
+        .input = {.name = "Cinnabar Gym's quiz approaches end against the machine", .body = test_quiz_approaches_end_at_machine},
+        .expectation = {.description = "each of the six quiz talks follows taps whose last leg ends at the machine"},
     },
     {
         .input = {.name = "14.01 through the quiz to below Blaine, 14.02 on the spot and 14.02b back to the nurse", .body = test_gym_rows},

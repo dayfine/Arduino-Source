@@ -1,0 +1,21 @@
+{
+  "about": "lab-B 2026-11-14 07:16, FRLG 14.01 below_door_5 (run 4, lab-B log lines 318520-318618): from (2, 19) south 4 to the wall, then the open leg east 3 came up a tile short (the hold changed the screen by 15.4) and left the player on (4, 23). The open leg north 4 then stopped under Burglar Dusty (4, 19) on (4, 20). The open-leg check planned \"north 3 (to wall) to (5, 18)\" from (5, 19..21), its hold met Dusty and changed the screen by 0.0, and the walk failed: \"moved nothing, and the tile it was held from isn't known to walk it again from\". The walker must find the player under the person instead: the walk must arrive, not just stop.",
+  "checkpoint": "14.01",
+  "start": {"map": "CinnabarIsland_Gym", "tile": [2, 19], "facing": "north"},
+  "walk": {
+    "event": "below_door_5",
+    "legs": [["south", 4], ["east", 3], ["north", 4]]
+  },
+  "faults": [
+    {"kind": "moved_less", "step": "below_door_5", "index": 2, "tiles": 1}
+  ],
+  "failed": {"step": "below_door_5", "error": "walk_overworld_route(): walk north 3 (to wall) -> CinnabarIsland_Gym (5, 18) moved nothing, and the tile it was held from isn't known to walk it again from."},
+  "frame": "20261114-071635404550-below_door_5.png",
+  "evidence": [
+    "[Route] below_door_5: east 3 (open): ended at CinnabarIsland_Gym (5, 23) (walked).",
+    "[Route] below_door_5: north 4 (open): ended at CinnabarIsland_Gym (5, 19) (walked).",
+    "[Route] below_door_5: plan from an unknown tile: north 3 (to wall) to CinnabarIsland_Gym (5, 18); south 1 (open) to CinnabarIsland_Gym (5, 19)",
+    "Position check: the screen changed by 0.0 over the hold.",
+    "Route: walk north 3 (to wall) -> CinnabarIsland_Gym (5, 18) moved the screen not at all, though the plan has it walk at least 1 tiles; the player never moved."
+  ]
+}

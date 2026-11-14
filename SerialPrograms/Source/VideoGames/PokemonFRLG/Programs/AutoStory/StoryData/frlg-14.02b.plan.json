@@ -83,9 +83,18 @@
         "kind": "legs",
         "action": "taps",
         "args": {
-          "legs": [{"direction": "south", "tiles": 4}, {"direction": "east", "tiles": 5}]
+          "legs": [{"direction": "south", "tiles": 4}, {"direction": "east", "tiles": 4}]
         },
-        "why": "a tap a tile: down column 5 to (5, 22) and east to (10, 22), west of door 4's floor (11, 22); a planned route would hold east along row 23 to the shut door (11, 23), which is open, as 14.01's east_of_door_4 did"
+        "why": "a tap a tile: down column 5 to (5, 22) and east to (9, 22), two tiles west of door 4's floor (11, 22); a planned route would hold east along row 23 to the shut door (11, 23), which is open, as 14.01's east_of_door_4 did. Legs ending on (10, 22) end 'to the wall' (the shut door) and the walker's tap toward the wall after them walks through the open door, as in 14.01 run 5 (console B, 2026-11-14)"
+      },
+      {
+        "id": "to_door_4",
+        "kind": "step",
+        "args": {
+          "direction": "east"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[10, 22]], "facing": "east"},
+        "why": "a step to beside door 4 (10, 22)"
       },
       {
         "id": "into_door_4",
