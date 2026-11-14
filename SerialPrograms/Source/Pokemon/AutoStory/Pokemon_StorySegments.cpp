@@ -16,22 +16,13 @@ namespace Pokemon{
 
 namespace{
 
-//  "[Event] 00.03/2 x: start" as "00.03/2 x: start", for the status sink.
-std::string without_tag(const std::string& line){
-    if (line.empty() || line[0] != '['){
-        return line;
-    }
-    const size_t end = line.find("] ");
-    return end == std::string::npos ? line : line.substr(end + 2);
-}
-
 //  A line for the log, and without its tag for the status sink, if set.
 void say(const std::string& line, SegmentHooks& hooks){
     if (hooks.log){
         hooks.log(line);
     }
     if (hooks.status){
-        hooks.status(without_tag(line));
+        hooks.status(story_short_line(line));
     }
 }
 
@@ -122,7 +113,7 @@ Act checked_save(Act save, std::string id, SegmentHooks& hooks){
         }
         const Outcome checked = hooks.check_postconditions(id, state);
         if (!checked.succeeded()){
-            say(std::format("[Checkpoint] {}: postconditions failed, not saving", id), hooks);
+            say(checkpoint_log_line(id, "postconditions failed, not saving"), hooks);
             return outcome_failed("postconditions_failed", to_string(checked));
         }
         return save(state);
@@ -153,7 +144,7 @@ void set_save(const Row& row, const SegmentPolicy& policy, SegmentHooks& hooks, 
     const SavePoint point = row.last ? SavePoint::RUN_END : SavePoint::CHECKPOINT_END;
     if (!story_save_allowed(mode, CheckpointVerdict::PASSED, point)){
         checkpoint.save = [&hooks, id = row.spec.id, mode](RunState&){
-            say(std::format("[Checkpoint] {}: not saving (save mode {})", id, story_save_mode_name(mode)), hooks);
+            say(checkpoint_log_line(id, std::format("not saving (save mode {})", story_save_mode_name(mode))), hooks);
             return outcome_ok();
         };
         return;
@@ -206,7 +197,7 @@ CheckpointReport run_row(
             return AttemptResult::FAILED;
         },
         .reset = [&](size_t next_attempt){
-            say(segment_reload_line(segment.id, row.spec.id, next_attempt, policy.attempts_per_checkpoint), hooks);
+            say(checkpoint_reset_line(row.spec.id, next_attempt, policy.attempts_per_checkpoint), hooks);
             report.reloads++;
             Outcome reloaded = reload(state, hooks);
             if (!reloaded.succeeded()){
