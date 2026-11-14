@@ -83,6 +83,9 @@ struct ReplayInput{
 };
 struct ReplayExpectation{
     std::string description;
+    //  The walk must end where its route says: the walker stopping itself
+    //  is not enough, for a failure the maps hold what it needs to recover.
+    bool arrives = false;
 };
 const std::string& fault_text(const std::string& name){
     for (const auto& [file, text] : console_failure_json()){
@@ -143,6 +146,9 @@ private:
         const bool right = failed.empty() && sim.state().position == route->back().end;
         //  The walker may stop itself instead: it did not take the move as seen.
         const bool noticed = !failed.empty();
+        if (m_case.expectation.arrives && !right){
+            return missed_arrival(name, failed, route->back().end, sim, walker);
+        }
         const std::string fix = json.to_object_throw().get_string_default("known_failing", "");
         if (fix.empty()){
             return right || noticed ? UnitTestResult(true) : UnitTestResult(wrong_end(name, route->back().end, sim, walker));
@@ -164,6 +170,17 @@ private:
         return text;
     }
 
+    static std::string missed_arrival(const std::string& name, const std::string& failed, const MapPosition& planned, const OverworldSim& sim, const OverworldSimWalker& walker){
+        std::string text = std::format(
+            "{}: the walk must arrive on {}; the player stands on {}, and the walker {}",
+            name, to_string(planned), to_string(sim.state().position), failed.empty() ? "took it as done" : "stopped: " + failed
+        );
+        for (const std::string& line : walker.log()){
+            text += "\n  " + line;
+        }
+        return text;
+    }
+
     ReplayCase m_case;
 };
 
@@ -178,6 +195,14 @@ const ReplayCase CONSOLE_FAILURE_CASES[] = {
         .name = "14.01-05-48-quiz-2-west-short",
         .input = {},
         .expectation = {.description = "an open leg that ends the walk and stopped short must not end it as arrived"},
+    },
+    {
+        .name = "14.01-07-16-door-5-north-into-dusty",
+        .input = {},
+        .expectation = {
+            .description = "a re-check hold that moves nothing under a person finds the player below them",
+            .arrives = true,
+        },
     },
 };
 
