@@ -176,7 +176,8 @@ bool use_lets_go_to_clear_in_front(
     VideoStream& stream, ProControllerContext& context,
     LetsGoEncounterBotTracker& tracker,
     bool throw_ball_if_bubble,
-    std::function<void(ProControllerContext& context)>&& command
+    std::function<void(ProControllerContext& context)>&& command,
+    std::function<bool()> stop_early
 ){
 //    ShinyHuntAreaZeroPlatform_Descriptor::Stats& stats = env.current_stats<ShinyHuntAreaZeroPlatform_Descriptor::Stats>();
 
@@ -213,11 +214,21 @@ bool use_lets_go_to_clear_in_front(
             command(context);
             context.wait_for_all_requests();
             command = nullptr;
+        }else if (stop_early){
+            //  Wait in short steps, so the clear ends soon after `stop_early` is met.
+            while (current_time() < tracker.last_kill() + timeout && !stop_early()){
+                context.wait_until(std::min(tracker.last_kill() + timeout, current_time() + Milliseconds(200)));
+            }
         }else{
 //            cout << "Waiting out... " << timeout.count() << " seconds" << endl;
             context.wait_until(tracker.last_kill() + timeout);
         }
 //        timeout = std::chrono::seconds(3);
+
+        if (stop_early && stop_early()){
+            stream.log("Stopping the clear early.");
+            break;
+        }
 
         WallClock now = current_time();
         WallClock last_kill_time = tracker.last_kill();
