@@ -25,6 +25,7 @@ public:
         const std::vector<std::string>& words, LabCommandOutput& output
     ) override;
     virtual std::string controller_status(PanelSession& panel) override;
+    virtual VideoFeed* video(PanelSession& panel) override;
     virtual void keep_awake(PanelSession& panel, CancellableScope& scope) override;
     virtual void help(std::ostream& out) override;
 };
