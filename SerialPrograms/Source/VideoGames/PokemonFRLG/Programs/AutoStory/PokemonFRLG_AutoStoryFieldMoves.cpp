@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include <memory>
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Pokemon_StoryInterrupts.h"
@@ -20,6 +21,7 @@
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryQuietOverworld.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
+#include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
 
 namespace PokemonAutomation{
@@ -37,6 +39,8 @@ namespace{
 //  A Pokemon's menu has at most SUMMARY, four field moves, SWITCH, ITEM
 //  and CANCEL (the party's six slots are PARTY_SLOTS).
 constexpr size_t MON_MENU_ROWS = 8;
+//  The move a Fly step's user is recorded under.
+const std::string FLY_MOVE = "fly";
 
 } // namespace
 
@@ -89,7 +93,7 @@ std::vector<Pokemon::StoryActionSpec> field_move_specs(){
         {.kind = StoryStepKind::GAME, .name = FLY_VARIANT, .args = {
             required_arg("town", StoryArgType::WORD, "the town's map, as kanto_fly_towns() names it (CeladonCity, Route4)"),
             absent_arg("slot", StoryArgType::INTEGER, "the Fly user's party slot, from 1, when no species is named"),
-            absent_arg("species", StoryArgType::WORD, "the Fly user by its species, e.g. \"pidgey\": the first slot whose summary reads it"),
+            absent_arg("species", StoryArgType::WORD, "the Fly user by its species, e.g. \"pidgey\": the first member whose menu lists FLY flies, recorded under this name"),
             optional_arg("menu_row", StoryArgType::INTEGER, int64_t(2), "FLY's row on its menu, from 1: SUMMARY, then field moves in move order"),
             optional_arg("safari", StoryArgType::BOOLEAN, false, "in the Safari Zone, whose START menu has RETIRE on top"),
         }},
@@ -129,6 +133,20 @@ void tap_dpad(ProControllerContext& context, DpadPosition dpad, size_t count, Mi
     }
 }
 
+//  From the Fly user's menu, the cursor on SUMMARY: FLY on row `row`, to
+//  the fly map. Returns the failure, or empty.
+std::string fly_from_member_menu(ConsoleHandle& console, ProControllerContext& context, size_t row){
+    tap_dpad(context, DPAD_DOWN, row, MENU_TAP, MENU_TAP_RELEASE);
+    KantoMapWatcher fly_map(COLOR_RED);
+    context.wait_for_all_requests();
+    pbf_press_button(context, BUTTON_A, 160ms, 0ms);
+    if (wait_until(console, context, FLY_MAP_TIMEOUT, {fly_map}) < 0){
+        return "fly_no_map";
+    }
+    pbf_wait(context, FLY_MAP_SETTLE);
+    return "";
+}
+
 //  From the overworld to the fly map: the party, the Fly user, FLY.
 //  Returns the failure, or empty.
 //  Overlaps open_fly_map_from_overworld() in PokemonFRLG_Navigation.h.
@@ -144,15 +162,7 @@ std::string open_fly_map(ConsoleHandle& console, ProControllerContext& context, 
     if (wait_until(console, context, MON_MENU_TIMEOUT, {mon_menu}) < 0){
         return "fly_no_menu";
     }
-    tap_dpad(context, DPAD_DOWN, plan.menu_row, MENU_TAP, MENU_TAP_RELEASE);
-    KantoMapWatcher fly_map(COLOR_RED);
-    context.wait_for_all_requests();
-    pbf_press_button(context, BUTTON_A, 160ms, 0ms);
-    if (wait_until(console, context, FLY_MAP_TIMEOUT, {fly_map}) < 0){
-        return "fly_no_map";
-    }
-    pbf_wait(context, FLY_MAP_SETTLE);
-    return "";
+    return fly_from_member_menu(console, context, plan.menu_row);
 }
 
 //  On the fly map: the cursor to the corner, then to the town, and A.
@@ -185,7 +195,7 @@ std::string fly_to_town(ConsoleHandle& console, ProControllerContext& context, c
 } // namespace
 
 std::optional<Pokemon::Outcome> run_field_move_step(
-    ConsoleHandle& console, ProControllerContext& context, Language language, const StoryStep& step
+    ConsoleHandle& console, ProControllerContext& context, Language language, const StoryStep& step, PartyCache& party
 ){
     const auto done = [&step]{
         return step.pose_after ? Pokemon::outcome_ok(Pokemon::pose_of(*step.pose_after)) : Pokemon::outcome_ok();
@@ -200,17 +210,32 @@ std::optional<Pokemon::Outcome> run_field_move_step(
         return std::nullopt;
     }
     const FlyTown& town = kanto_fly_towns()[plan->town];
-    const std::optional<size_t> slot = plan->party_slot(console_member_reader(console, context, language, plan->start_menu));
-    if (!slot){
-        console.log(std::format("Story: no {} read in the party to Fly with.", plan->species), COLOR_RED);
-        return Pokemon::outcome_failed("fly_no_member", plan->species);
+    std::string failure;
+    if (!plan->species.empty()){
+        //  The party is opened once: the recorded Fly user's menu if the
+        //  TEACH or an earlier Fly left one, else the members' menus down
+        //  the party to the first that lists FLY.
+        console.log(std::format(
+            "Story: Fly with the {}, to {} (cell {}, {}).", plan->species, town.name, town.cell.x, town.cell.y
+        ));
+        const std::unique_ptr<PartyScreens> screens = console_party_screens(console, context, plan->start_menu, language);
+        failure = use_field_move(console.logger(), *screens, party, FLY_MOVE, plan->species, [&](size_t row){
+            return fly_from_member_menu(console, context, row);
+        });
+        if (failure == FIELD_MOVE_NO_MEMBER){
+            console.log("Story: no member's menu lists FLY.", COLOR_RED);
+            return Pokemon::outcome_failed("fly_no_member", plan->species);
+        }
+        if (failure == FIELD_MOVE_MENU_UNREAD){
+            return Pokemon::outcome_failed("fly_menu_unread", plan->species);
+        }
+    }else{
+        console.log(std::format(
+            "Story: Fly with slot {}, menu row {}, to {} (cell {}, {}).",
+            plan->slot + 1, plan->menu_row + 1, town.name, town.cell.x, town.cell.y
+        ));
+        failure = open_fly_map(console, context, *plan);
     }
-    plan->slot = *slot;
-    console.log(std::format(
-        "Story: Fly with slot {}, menu row {}, to {} (cell {}, {}).",
-        plan->slot + 1, plan->menu_row + 1, town.name, town.cell.x, town.cell.y
-    ));
-    std::string failure = open_fly_map(console, context, *plan);
     if (failure.empty()){
         failure = fly_to_town(console, context, town);
     }

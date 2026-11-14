@@ -74,6 +74,18 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
+const std::string PLAYER_NAME_TEXT =
+    "<b>Player name:</b><br>Typed on the new game's keyboard (01.01). Empty keeps the game's default name. "
+    "The rival always keeps the default name.";
+
+//  Kept by the run as the SID is: who uses each field move as the last save
+//  holds it (FieldMoveUsers' text).
+const std::string FIELD_MOVE_USERS_TEXT =
+    "<b>Field move users:</b><br>Set by the run at each save: the party slot and species that use each field move "
+    "(e.g. fly=3:pidgey), so a Fly after the program restarts goes to that slot without reading the party's summaries. "
+    "A slot that holds another member now, or an entry that can't be read, only costs a party scan. "
+    "Clear it when loading a different save.";
+
 const std::string KEEP_START_FRAME_TEXT =
     "<b>Keep the start frame:</b><br>Off by default. The save loaded was made by hand where the start checkpoint "
     "begins: keep the screen after loading it as that checkpoint's start frame, which later runs compare their "
@@ -116,13 +128,7 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         PlayerGender::BOY
     )
-    , PLAYER_NAME(
-        false,
-        "<b>Player name:</b><br>Typed on the new game's keyboard (01.01). Empty keeps the game's default name. "
-        "The rival always keeps the default name.",
-        LockMode::LOCK_WHILE_RUNNING,
-        "Kosmos", ""
-    )
+    , PLAYER_NAME(false, PLAYER_NAME_TEXT, LockMode::LOCK_WHILE_RUNNING, "Kosmos", "")
     , STOP_FOR_SID_HELPER(
         "<b>Stop for SID Helper:</b><br>Off by default. At 01.01, stop on the player's keyboard with the name typed and OK not pressed, "
         "where the SID Helper program starts. After SID Helper, start AutoStory at 01.02, with the game as SID Helper left it "
@@ -142,6 +148,7 @@ AutoStory::AutoStory()
     )
     , RUN_STARTER_RNG(RUN_STARTER_RNG_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
     , RUN_GIFT_RNG(RUN_GIFT_RNG_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
+    , FIELD_MOVE_USERS(false, FIELD_MOVE_USERS_TEXT, LockMode::LOCK_WHILE_RUNNING, "", "fly=3:pidgey")
     , NOTIFICATION_SHINY("Shiny found", true, true, ImageAttachmentMode::JPG, {"Notifs", "Showcase"})
     , NOTIFICATION_STATUS_UPDATE("Status Update", true, false, std::chrono::seconds(3600))
     , KEEP_START_FRAME(KEEP_START_FRAME_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
@@ -157,6 +164,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(RUN_STARTER_RNG);
     PA_ADD_OPTION(RUN_GIFT_RNG);
     PA_ADD_OPTION(RNG_PLAN);
+    PA_ADD_OPTION(FIELD_MOVE_USERS);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
@@ -185,6 +193,24 @@ StoryEnv story_env(
     story.start_frames = program_start_frames();
     story.keep_start_frame = keep_start_frame;
     return story;
+}
+
+//  Who uses the field moves, from `setting` (FieldMoveUsers' text) into
+//  `story`, and back into it after each save. An entry that can't be read
+//  is dropped and logged: its move is found by a party scan.
+void keep_field_move_users(ConsoleHandle& console, StoryEnv& story, StringOption& setting){
+    const ParsedFieldMoveUsers parsed = parse_field_move_users(static_cast<std::string>(setting));
+    for (const std::string& entry : parsed.rejected){
+        console.log(std::format("AutoStory: Field move users: can't read \"{}\"; the party is scanned for it.", entry), COLOR_ORANGE);
+    }
+    story.party.users() = parsed.users;
+    story.saved_field_moves = SavedFieldMoveUsers(parsed.users, [&console, &setting](const FieldMoveUsers& users){
+        const std::string text = users.to_text();
+        if (static_cast<std::string>(setting) != text){
+            setting.set(text);
+            console.log(std::format("AutoStory: Field move users set to \"{}\".", text), COLOR_BLUE);
+        }
+    });
 }
 
 //  The start gate's preflight failed: the console's setup, nothing pressed.
@@ -228,6 +254,9 @@ Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, StoryEnv
     };
     game.after_load = [&story](Pokemon::RunState&){
         story.supplies = story.saved_supplies;
+        //  The save's party, which a catch or a gift since then changed.
+        story.party.invalidate_species();
+        story.party.users() = story.saved_field_moves.users();
         //  Until read in full, so each verify run starts from the bag as
         //  the save holds it, not from a count once read wrong or not at
         //  all (console B, 2026-11-03: 0 Potions in all 3 runs). Once
@@ -709,6 +738,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         plan = plan_story_run(checkpoints, first, last, handoffs);
     }
     StoryEnv story = story_env(env, context, checkpoints[first], RUN.check_level(), KEEP_START_FRAME);
+    keep_field_move_users(env.console, story, FIELD_MOVE_USERS);
     story.player_gender = PLAYER_GENDER;
     story.player_name = player_name;
     const bool at_gift_rng = plan.stop == StoryHandoff::GIFT_RNG && plan.rows.empty();

@@ -199,6 +199,66 @@ UnitTestResult test_once_per_save_steps(){
 }
 
 
+//  A party whose screens count the summaries read.
+class CountingScreens : public PartyScreens{
+public:
+    virtual bool open_party(size_t& members) override{ members = 2; m_opens++; return true; }
+    virtual bool enter_summary() override{ m_summaries++; return true; }
+    virtual std::string read_species() override{ m_summaries++; return "squirtle"; }
+    virtual bool next_member() override{ return true; }
+    virtual bool leave_summary() override{ return true; }
+    virtual bool open_member_menu(size_t slot) override{ m_menu = slot; return true; }
+    virtual std::optional<PartyMemberMenu> read_member_menu() override{
+        return PartyMemberMenu{.field_moves = {"surf"}};
+    }
+    virtual bool close_member_menu() override{ return true; }
+    virtual void close() override{}
+
+    size_t m_opens = 0;
+    size_t m_summaries = 0;
+    size_t m_menu = SIZE_MAX;
+};
+
+//  A TEACH of a field move records its user; the Fly after it opens the
+//  party once, at that slot, and reads no summary, though the species
+//  cache was emptied by a reload. A TEACH of a plain TM records nothing.
+UnitTestResult test_teach_records_fly_user(){
+    StubGame game;
+    QuietLogger logger;
+    const MemberReader members = [](size_t slot) -> std::optional<MemberInfo>{
+        if (slot != 0){
+            return std::nullopt;
+        }
+        return MemberInfo{.species = "squirtle", .level = 16, .moves = {"water-gun", "surf"}};
+    };
+    PartyCache party;
+    StoryAbilities abilities{members, game.mart, game.teach, game.patch, game.fossils, {}, &party};
+    run_ability_game_step(logger, nullptr, teach_step("teach_surf", "", {.item = "hm03", .move = "surf", .member = 0}), abilities);
+    run_ability_game_step(logger, nullptr, teach_step("teach_tm", "", {.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "water-gun"}), abilities);
+    const std::optional<FieldMoveUser> user = party.users().find("surf");
+    if (!user || user->slot != 0 || user->species != "squirtle"){
+        return "the Surf user isn't recorded as slot 1, squirtle.";
+    }
+    if (party.users().find("water-pulse")){
+        return "a TM move was recorded as a field move.";
+    }
+    party.invalidate_species();
+    CountingScreens screens;
+    size_t flights = 0;
+    const std::string failure = use_field_move(logger, screens, party, "surf", "squirtle", [&flights](size_t){
+        flights++;
+        return std::string();
+    });
+    if (!failure.empty() || flights != 1 || screens.m_menu != 0 || screens.m_opens != 1 || screens.m_summaries != 0){
+        return std::format(
+            "Fly after TEACH: failure '{}', {} flights, menu {}, {} party opens, {} summary reads.",
+            failure, flights, screens.m_menu, screens.m_opens, screens.m_summaries
+        );
+    }
+    return true;
+}
+
+
 //  A shiny in a GRIND stops the program, not the checkpoint: a reload
 //  would lose it.
 UnitTestResult test_grind_shiny_stops(){
@@ -244,6 +304,10 @@ const AutoStoryAbilitiesCase AUTO_STORY_ABILITIES_CASES[] = {
     },
     {
         .input = {"a shiny in a GRIND stops the program", test_grind_shiny_stops},
+        .expectation = {},
+    },
+    {
+        .input = {"a Fly after a TEACH reads no summary", test_teach_records_fly_user},
         .expectation = {},
     },
     {

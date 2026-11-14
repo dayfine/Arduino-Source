@@ -49,6 +49,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryTeach_H
 
 #include <cstddef>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -87,16 +88,30 @@ struct TeachResult{
     //  The move forgotten, if any.
     std::string forgot = {};
     std::string detail = {};
+    //  The party slot taught and the species its summary read as (empty if
+    //  not read), for the field move users record; set once the member is read.
+    size_t member = 0;
+    std::string species = {};
 };
+
+//  Whether `move` is one the overworld uses (an HM's, Dig, Teleport, Sweet
+//  Scent, Softboiled, Milk Drink): its user is worth remembering.
+bool is_field_move(std::string_view move);
 
 //  The first party slot whose member `reader` reads as `species`; nothing
 //  if none does. Stops at the first slot not read (an empty slot ends the
 //  party).
 std::optional<size_t> find_party_species(const MemberReader& reader, std::string_view species);
 
+//  Finds the party slot of a species; nothing if none reads as it.
+using SpeciesFinder = std::function<std::optional<size_t>(std::string_view species)>;
+
 //  From the overworld: reads the member, teaches as `plan` says, back to
-//  the overworld, and reads the member again to confirm.
-TeachResult run_teach(Logger& logger, TeachActions& actions, const MemberReader& reader, const TeachPlan& plan);
+//  the overworld, and reads the member again to confirm. A plan naming a
+//  species finds its slot with `find_species` if given (the console's opens the
+//  party once, or not at all from its cache), else by reading the members in turn
+//  (find_party_species()).
+TeachResult run_teach(Logger& logger, TeachActions& actions, const MemberReader& reader, const TeachPlan& plan, const SpeciesFinder& find_species = {});
 
 //  Formats a log message summarizing the move teaching result.
 std::string teach_message(const TeachPlan& plan, const TeachResult& result);

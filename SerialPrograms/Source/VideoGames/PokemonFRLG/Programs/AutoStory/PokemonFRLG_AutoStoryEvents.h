@@ -42,6 +42,7 @@
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryCheckpoints.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
+#include "PokemonFRLG_AutoStoryPartyRoster.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -93,6 +94,16 @@ struct StoryEnv{
     //  The Items pocket's counts a count_items step kept
     //  (PokemonFRLG_AutoStorySlopeRun.h), for the next to compare.
     std::map<std::string, int> counted_items = {};
+    //  The species the party's summaries were read as, for a Fly or a TEACH
+    //  that names one, and who uses each field move (`party.users`, set by a
+    //  TEACH of one or a Fly's scan). The species are emptied when a save is
+    //  loaded; both when a PC deposit or withdrawal moves members. A catch
+    //  or a gift adds a member at the end, so the slots stay right.
+    PartyCache party = {};
+    //  Who uses the field moves as the last save holds it, which a load
+    //  restores into `party.users`. The program starts it from its settings
+    //  and keeps it there.
+    SavedFieldMoveUsers saved_field_moves = {};
 };
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the

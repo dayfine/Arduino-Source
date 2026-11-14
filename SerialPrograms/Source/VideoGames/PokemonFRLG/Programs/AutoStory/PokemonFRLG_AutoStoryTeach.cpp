@@ -24,6 +24,15 @@ bool is_hm_move(std::string_view move){
     return false;
 }
 
+bool is_field_move(std::string_view move){
+    for (std::string_view other : {"dig", "teleport", "sweet-scent", "softboiled", "milk-drink"}){
+        if (move == other){
+            return true;
+        }
+    }
+    return is_hm_move(move);
+}
+
 std::string_view teach_end_name(TeachEnd end){
     switch (end){
     case TeachEnd::LEARNED:         return "learned";
@@ -210,6 +219,8 @@ public:
         if (!member || member->moves.empty()){
             return end(TeachEnd::UNREAD, "couldn't read the member's moves");
         }
+        m_result.member = m_plan.member;
+        m_result.species = member->species;
         const TeachDecision decision = decide_teach(m_plan, member->moves);
         if (decision.already_known){
             return end(TeachEnd::ALREADY_KNOWN, "");
@@ -336,10 +347,13 @@ std::optional<size_t> find_party_species(const MemberReader& reader, std::string
     return std::nullopt;
 }
 
-TeachResult run_teach(Logger& logger, TeachActions& actions, const MemberReader& reader, const TeachPlan& plan){
+TeachResult run_teach(
+    Logger& logger, TeachActions& actions, const MemberReader& reader, const TeachPlan& plan,
+    const SpeciesFinder& find_species
+){
     TeachPlan found = plan;
     if (!plan.species.empty()){
-        const std::optional<size_t> slot = find_party_species(reader, plan.species);
+        const std::optional<size_t> slot = find_species ? find_species(plan.species) : find_party_species(reader, plan.species);
         if (!slot){
             const TeachResult result{.end = TeachEnd::UNREAD, .detail = std::format("no {} read in the party", plan.species)};
             logger.log(std::format("Teach {} ({}) to the {}: {}.", plan.move, plan.item, plan.species, result.detail), COLOR_RED);
