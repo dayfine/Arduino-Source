@@ -25,8 +25,6 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 using namespace std::chrono_literals;
-using Pokemon::ScreenEvent;
-using Pokemon::ScreenEvents;
 
 namespace{
 
@@ -57,7 +55,7 @@ UnitTestResult check_reads(const SceneMachineConfig& config, const std::vector<R
         ScreenObservation look = Pokemon::screen_observation(read.events);
         look.when = start + read.at;
         if (read.still){
-            look.events.add(PokemonAutomation::ScreenEvent::STILL);
+            look.events.set(PokemonAutomation::ScreenEvent::SCREEN_STILL, true);
         }
         if (read.hint){
             look.readings[std::string(CONTROLS_HINT_READING)] = 1;
@@ -77,7 +75,7 @@ UnitTestResult check_reads(const SceneMachineConfig& config, const std::vector<R
         const SceneScreen got = timeline.classify(look);
         if (got != read.expected){
             return std::format("at {} ms ({}): expected {}, got {}.",
-                read.at.count(), Pokemon::describe(read.events),
+                read.at.count(), describe(read.events),
                 scene_screen_name(read.expected), scene_screen_name(got));
         }
         timeline.record(look);

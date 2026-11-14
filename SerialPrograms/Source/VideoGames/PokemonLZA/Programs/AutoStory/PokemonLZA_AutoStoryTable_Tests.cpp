@@ -280,8 +280,6 @@ UnitTestResult test_every_row_ready(Logger&){
 //  after the Brigitte battle, console B, 2026-11-13) fail at its end, not
 //  before.
 UnitTestResult test_scene_start_window(Logger&){
-    using Pokemon::ScreenEvent;
-    using Pokemon::ScreenEvents;
     const WallClock start = current_time();
     const auto at = [start](int64_t seconds){
         return start + Milliseconds(seconds * 1000);
@@ -303,8 +301,6 @@ UnitTestResult test_scene_start_window(Logger&){
 }
 
 UnitTestResult test_scene_mash_rule(Logger&){
-    using Pokemon::ScreenEvent;
-    using Pokemon::ScreenEvents;
     struct Case{
         std::string_view name;
         ScreenEvents events;
@@ -431,14 +427,6 @@ UnitTestResult test_dev_override(Logger&){
 }
 
 
-struct AutoStoryTableInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct AutoStoryTableExpectation{
-};
-
 //  A black start frame (the previous run stopped in a dark scene) trips the
 //  black border check: a run from 00.00, which launches the game, leaves the
 //  check to HOME; a run from any later row still refuses on it.
@@ -497,14 +485,21 @@ UnitTestResult test_new_game_rows(Logger&){
 }
 
 struct AutoStoryTableCase{
-    AutoStoryTableInput input;
-    AutoStoryTableExpectation expectation;
+    std::string name;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    Input input;
+    //  What each body checks is in its own code: these cases are functions.
+    struct Expectation{
+    };
+    Expectation expectation;
 };
 
 class Test_AutoStoryTable : public UnitTest{
 public:
     explicit Test_AutoStoryTable(AutoStoryTableCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStory - {}", test_case.input.name))
+        : UnitTest(std::format("PokemonLZA::AutoStory - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -524,63 +519,63 @@ private:
 
 const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     {
-        .input = {"Story table: rows lint against PLZA's engine actions", test_story_table_lints},
+        .name = "Story table: rows lint against PLZA's engine actions", .input = {test_story_table_lints},
         .expectation = {},
     },
     {
-        .input = {"Story table: every walk reads its legs", test_story_walks_read},
+        .name = "Story table: every walk reads its legs", .input = {test_story_walks_read},
         .expectation = {},
     },
     {
-        .input = {"Story table: actions not implemented say what they wait for", test_not_implemented_actions},
+        .name = "Story table: actions not implemented say what they wait for", .input = {test_not_implemented_actions},
         .expectation = {},
     },
     {
-        .input = {"Starters: the walk to Chikorita is recorded", test_starter_moves},
+        .name = "Starters: the walk to Chikorita is recorded", .input = {test_starter_moves},
         .expectation = {},
     },
     {
-        .input = {"Dev checkpoints: replace the built-in file of their name, fail naming the file", test_dev_override},
+        .name = "Dev checkpoints: replace the built-in file of their name, fail naming the file", .input = {test_dev_override},
         .expectation = {},
     },
     {
-        .input = {"Story table: the autosave rows, and 01.03 saves through the menu", test_autosave_rows},
+        .name = "Story table: the autosave rows, and 01.03 saves through the menu", .input = {test_autosave_rows},
         .expectation = {},
     },
     {
-        .input = {"Story table: 03.05 heals at the Pokemon Center and saves there", test_mm3_heal_row},
+        .name = "Story table: 03.05 heals at the Pokemon Center and saves there", .input = {test_mm3_heal_row},
         .expectation = {},
     },
     {
-        .input = {"Story table: every row is ready", test_every_row_ready},
+        .name = "Story table: every row is ready", .input = {test_every_row_ready},
         .expectation = {},
     },
     {
-        .input = {"reload_when_chained: only true, only after an autosave row, never on a new game row", test_reload_when_chained_field},
+        .name = "reload_when_chained: only true, only after an autosave row, never on a new game row", .input = {test_reload_when_chained_field},
         .expectation = {},
     },
     {
-        .input = {"reload_when_chained: 01.02 after 01.01's autosave", test_mm1_reload_when_chained},
+        .name = "reload_when_chained: 01.02 after 01.01's autosave", .input = {test_mm1_reload_when_chained},
         .expectation = {},
     },
     {
-        .input = {"reload_when_chained: \"always\" on 03.04, after 03.03's autosave", test_0304_reloads_always},
+        .name = "reload_when_chained: \"always\" on 03.04, after 03.03's autosave", .input = {test_0304_reloads_always},
         .expectation = {},
     },
     {
-        .input = {"Scene mash: a scene that never starts fails at its start window", test_scene_start_window},
+        .name = "Scene mash: a scene that never starts fails at its start window", .input = {test_scene_start_window},
         .expectation = {},
     },
     {
-        .input = {"Scene mash: what each frame presses", test_scene_mash_rule},
+        .name = "Scene mash: what each frame presses", .input = {test_scene_mash_rule},
         .expectation = {},
     },
     {
-        .input = {"Start checks: a black start frame refuses every row but 00.00", test_black_start_frame},
+        .name = "Start checks: a black start frame refuses every row but 00.00", .input = {test_black_start_frame},
         .expectation = {},
     },
     {
-        .input = {"Start checks: 00.00 and 01.00 start the new game without a save; a run from 00.00 skips 01.00", test_new_game_rows},
+        .name = "Start checks: 00.00 and 01.00 start the new game without a save; a run from 00.00 skips 01.00", .input = {test_new_game_rows},
         .expectation = {},
     },
 };

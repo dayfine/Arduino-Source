@@ -5,9 +5,9 @@
  *  The log lines an AutoStory program writes around its checkpoints, in
  *  one format for every game: the story engine (Pokemon_StoryEvents.h,
  *  Pokemon_StorySegments.h) writes them, and SV's AutoStory writes the same
- *  checkpoint start line, so the program developer and user find each
- *  checkpoint's start, attempts, resets and pass the same way in any game's
- *  log. Nothing here runs a story.
+ *  checkpoint start, attempt, reset and pass lines, so the program developer
+ *  and user find each checkpoint's start, attempts, resets and pass the same
+ *  way in any game's log. Nothing here runs a story.
  *
  */
 

@@ -29,6 +29,7 @@
 #include "CommonFramework/Devices/LabDeviceAccessQt_Tests.h"
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "CommonTools/OCR/OCR_Tests.h"
+#include "CommonTools/ScreenEvents/ScreenEvents_Tests.h"
 
 #include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h"
@@ -107,6 +108,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_LabStartupPolicy(ret);
     add_tests_LabDeviceAccess(ret);
     OCR::add_tests(ret);
+    add_tests_ScreenEvents(ret);
     Kernels::add_tests(ret);
     Pokemon::add_tests_LegPlanner(ret);
     Pokemon::add_tests_LegWalker(ret);

@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <cmath>
 #include <numbers>
 #include <string>
@@ -79,7 +80,7 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
             look.readings[std::string(MISSION_BANNER_READING)] = 1;
         }
         if (same_screen(m_previous, frame)){
-            look.events.add(PokemonAutomation::ScreenEvent::STILL);
+            look.events.set(PokemonAutomation::ScreenEvent::SCREEN_STILL, true);
         }
     }
     look.when = current_time();
@@ -96,10 +97,12 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
 
 namespace{
 
-//  The look's events and readings: "fade_black+still",
-//  "nothing+skip_prompt", "can_move+platform+autosave+controls_hint".
+//  The look's events and readings, for a capture's file name:
+//  "black_fade+screen_still", "nothing+skip_prompt",
+//  "player_can_move+platform+autosave+controls_hint".
 std::string look_text(const ScreenObservation& look){
     std::string text = describe(look.events, "+");
+    std::replace(text.begin(), text.end(), ' ', '_');
     if (look.readings.contains(PLATFORM_READING)){
         text += "+platform";
     }

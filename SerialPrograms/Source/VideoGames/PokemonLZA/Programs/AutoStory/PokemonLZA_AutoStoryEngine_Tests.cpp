@@ -138,36 +138,6 @@ UnitTestResult test_opening_waits_for_platform(CancellableScope& scope){
     return expect_inputs(backend, std::vector<std::string>(6, "wait 300ms"));
 }
 
-//  The opening ends on "Your train has arrived in Lumiose City!", a text box
-//  with the advance arrow that waits for A (console B, 2026-11-13: the run
-//  waited 100 s on it and failed platform_not_seen; one A by hand went on to
-//  the platform). One A per text, none while it is still up, then the platform.
-UnitTestResult test_opening_presses_through_arrival_text(CancellableScope& scope){
-    const auto arrival = [](Milliseconds at){
-        return with_reading(look_at(at, {EngineEvent::TEXT_BOX}), ADVANCE_ARROW_READING);
-    };
-    FakeBackend backend = fake_plza({
-        look_at(0ms, {EngineEvent::FADE_BLACK}),
-        with_reading(look_at(300ms), AUTOSAVE_READING),
-        arrival(600ms),
-        arrival(900ms),
-        with_reading(look_at(1200ms), PLATFORM_READING),
-        with_reading(look_at(1500ms), PLATFORM_READING),
-    }, scope);
-    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.00", "opening"));
-    if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
-        return std::format("Expected the opening to end at the platform: {}", to_string(report.run.failure));
-    }
-    std::vector<std::string> presses;
-    std::copy_if(backend.inputs().begin(), backend.inputs().end(), std::back_inserter(presses), [](const std::string& input){
-        return input.starts_with("press");
-    });
-    if (presses != std::vector<std::string>{"press A"}){
-        return std::format("Expected one A at the arrival text, got [{}].", joined(backend.inputs()));
-    }
-    return true;
-}
-
 //  01.01's start check: one look at the platform is not enough, and with
 //  no platform it fails within its 10 s, pressing nothing.
 UnitTestResult test_start_check_needs_platform(CancellableScope& scope){
@@ -190,7 +160,7 @@ UnitTestResult test_start_check_needs_platform(CancellableScope& scope){
 //  A walk starts only on free control: platform_to_plaza on a text box
 //  waits for it, then fails with no input but its waits.
 UnitTestResult test_walk_needs_free_control(CancellableScope& scope){
-    FakeBackend backend = fake_plza({look_at(0ms, {EngineEvent::TEXT_BOX})}, scope);
+    FakeBackend backend = fake_plza({look_at(0ms, {EngineEvent::DIALOG_BOX})}, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "platform_to_plaza"));
     if (report.run.completed || report.run.failure.failure != "walk_not_free"){
         return std::format("Expected walk_not_free, got {}", to_string(report.run.failure));
@@ -252,6 +222,36 @@ UnitTestResult test_walk_fails_at_bound(CancellableScope& scope){
     return true;
 }
 
+//  The opening ends on "Your train has arrived in Lumiose City!", a text box
+//  with the advance arrow that waits for A (console B, 2026-11-13: the run
+//  waited 100 s on it and failed platform_not_seen; one A by hand went on to
+//  the platform). One A per text, none while it is still up, then the platform.
+UnitTestResult test_opening_presses_through_arrival_text(CancellableScope& scope){
+    const auto arrival = [](Milliseconds at){
+        return with_reading(look_at(at, {EngineEvent::DIALOG_BOX}), ADVANCE_ARROW_READING);
+    };
+    FakeBackend backend = fake_plza({
+        look_at(0ms, {EngineEvent::FADE_BLACK}),
+        with_reading(look_at(300ms), AUTOSAVE_READING),
+        arrival(600ms),
+        arrival(900ms),
+        with_reading(look_at(1200ms), PLATFORM_READING),
+        with_reading(look_at(1500ms), PLATFORM_READING),
+    }, scope);
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.00", "opening"));
+    if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
+        return std::format("Expected the opening to end at the platform: {}", to_string(report.run.failure));
+    }
+    std::vector<std::string> presses;
+    std::copy_if(backend.inputs().begin(), backend.inputs().end(), std::back_inserter(presses), [](const std::string& input){
+        return input.starts_with("press");
+    });
+    if (presses != std::vector<std::string>{"press A"}){
+        return std::format("Expected one A at the arrival text, got [{}].", joined(backend.inputs()));
+    }
+    return true;
+}
+
 //  A look at `at` facing `heading`, as the minimap reads it.
 Observation<ZonePose> facing(Milliseconds at, int heading){
     Observation<ZonePose> look = look_at(at);
@@ -283,8 +283,8 @@ UnitTestResult test_face_heading(CancellableScope& scope){
 //  Pancham cornered (text_to_choice): B through the text, done at the
 //  choice without pressing it.
 UnitTestResult test_text_to_choice(CancellableScope& scope){
-    const Observation<ZonePose> choice = look_at(2000ms, {EngineEvent::TEXT_BOX, EngineEvent::CHOICE_BOX});
-    FakeBackend backend = fake_plza({look_at(0ms, {EngineEvent::TEXT_BOX}), choice}, scope);
+    const Observation<ZonePose> choice = look_at(2000ms, {EngineEvent::DIALOG_BOX, EngineEvent::CHOICE_BOX});
+    FakeBackend backend = fake_plza({look_at(0ms, {EngineEvent::DIALOG_BOX}), choice}, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.02", "pancham_cornered"));
     if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
         return std::format("Expected the scene to end at the choice: {}", to_string(report.run.failure));
@@ -297,10 +297,10 @@ UnitTestResult test_text_to_choice(CancellableScope& scope){
 //  once the controls hint has shown a second.
 UnitTestResult test_arrival_ends_on_controls_hint(CancellableScope& scope){
     FakeBackend backend = fake_plza({
-        look_at(0ms, {EngineEvent::TEXT_BOX}),
+        look_at(0ms, {EngineEvent::DIALOG_BOX}),
         look_at(1000ms),
         look_at(21000ms),
-        look_at(22000ms, {EngineEvent::TEXT_BOX, EngineEvent::CHOICE_BOX}),
+        look_at(22000ms, {EngineEvent::DIALOG_BOX, EngineEvent::CHOICE_BOX}),
         look_at(23000ms),
         with_reading(look_at(24000ms), CONTROLS_HINT_READING),
         with_reading(look_at(24500ms), CONTROLS_HINT_READING),
@@ -328,7 +328,7 @@ UnitTestResult test_arrival_ends_on_controls_hint(CancellableScope& scope){
 //  hint. The prompt held a second ends the step; no press at it.
 UnitTestResult test_battle_area_ends_on_interact_prompt(CancellableScope& scope){
     FakeBackend backend = fake_plza({
-        look_at(0ms, {EngineEvent::TEXT_BOX}),
+        look_at(0ms, {EngineEvent::DIALOG_BOX}),
         look_at(1000ms, {EngineEvent::FADE_BLACK}),
         look_at(3000ms),
         look_at(3250ms, {EngineEvent::INTERACT_PROMPT}),
@@ -383,7 +383,7 @@ UnitTestResult test_arrival_presses_through_the_ad(CancellableScope& scope){
 UnitTestResult test_arrival_ends_on_mission_banner(CancellableScope& scope){
     for (const bool goes : {true, false}){
         std::vector<Observation<ZonePose>> looks{
-            look_at(0ms, {EngineEvent::TEXT_BOX}),
+            look_at(0ms, {EngineEvent::DIALOG_BOX}),
             look_at(500ms),
             with_reading(look_at(1000ms), MISSION_BANNER_READING),
             with_reading(look_at(1250ms), MISSION_BANNER_READING),
@@ -415,7 +415,7 @@ UnitTestResult test_arrival_ends_on_mission_banner(CancellableScope& scope){
 UnitTestResult test_after_andi_presses_complete_card(CancellableScope& scope){
     for (const bool goes : {true, false}){
         std::vector<Observation<ZonePose>> looks{
-            look_at(0ms, {EngineEvent::TEXT_BOX}),
+            look_at(0ms, {EngineEvent::DIALOG_BOX}),
             with_reading(look_at(500ms), MISSION_COMPLETE_READING),
             with_reading(look_at(1000ms), MISSION_COMPLETE_READING),
             look_at(1500ms),
@@ -747,23 +747,22 @@ UnitTestResult test_walk_pauses_before_each_leg(CancellableScope& scope){
 }
 
 
-struct EngineTestInput{
-    std::string name;
-    std::function<UnitTestResult(CancellableScope&)> body;
-};
-
-struct EngineTestExpectation{
-};
-
 struct EngineTestCase{
-    EngineTestInput input;
-    EngineTestExpectation expectation;
+    std::string name;
+    struct Input{
+        std::function<UnitTestResult(CancellableScope&)> body;
+    };
+    Input input;
+    //  What each body checks is in its own code: these cases are functions.
+    struct Expectation{
+    };
+    Expectation expectation;
 };
 
 class Test_AutoStoryEngine : public UnitTest{
 public:
     explicit Test_AutoStoryEngine(EngineTestCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryEngine - {}", test_case.input.name))
+        : UnitTest(std::format("PokemonLZA::AutoStoryEngine - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
@@ -782,30 +781,30 @@ private:
 
 
 const EngineTestCase ENGINE_TEST_CASES[] = {
-    {.input = {"01.00 opening: no presses, done on two looks at the platform after the autosave", test_opening_waits_for_platform}, .expectation = {}},
-    {.input = {"01.00 opening: one A at the arrival text with the advance arrow", test_opening_presses_through_arrival_text}, .expectation = {}},
-    {.input = {"01.01 start check: fails without the platform", test_start_check_needs_platform}, .expectation = {}},
-    {.input = {"01.01 text_to_choice: B through the text, done at the choice", test_text_to_choice}, .expectation = {}},
-    {.input = {"01.01 arrival_scenes: A through text and choice, done on the controls hint", test_arrival_ends_on_controls_hint}, .expectation = {}},
-    {.input = {"01.01 arrival_scenes: A through the ad's boxless subtitles", test_arrival_presses_through_the_ad}, .expectation = {}},
-    {.input = {"01.01 arrival_scenes: done on the mission banner once it has gone, A if it stays", test_arrival_ends_on_mission_banner}, .expectation = {}},
-    {.input = {"01.03 after_andi: A at the mission complete card, then the banner, A if it stays", test_after_andi_presses_complete_card}, .expectation = {}},
-    {.input = {"01.01 arrival_scenes: a quiet minute without the hint fails", test_arrival_quiet_fails}, .expectation = {}},
-    {.input = {"01.02 battle_area: done on the \"A: Talk\" prompt", test_battle_area_ends_on_interact_prompt}, .expectation = {}},
-    {.input = {"02.01 battle_zone_to_brigitte: a held walk waits, then holds each leg's angle", test_held_walk_inputs}, .expectation = {}},
-    {.input = {"face_heading: turns by the minimap's heading", test_face_heading}, .expectation = {}},
-    {.input = {"01.01 platform_to_plaza: no walk without free control", test_walk_needs_free_control}, .expectation = {}},
-    {.input = {"01.01 platform_to_plaza: ends on the white fade", test_walk_ends_on_white_fade}, .expectation = {}},
-    {.input = {"01.01 platform_to_plaza: fails at its bound", test_walk_fails_at_bound}, .expectation = {}},
-    {.input = {"refused: console actions off a console, tile walks, unknown actions", test_refused_steps}, .expectation = {}},
-    {.input = {"every checkpoint runs in step order, testing never saves", test_every_checkpoint_runs}, .expectation = {}},
-    {.input = {"reload_when_chained: reload between the rows, as its own event", test_reload_when_chained}, .expectation = {}},
-    {.input = {"reload_when_chained: no reload from the row's save or for other rows", test_no_reload_unless_chained}, .expectation = {}},
-    {.input = {"reload_when_chained: a reload onto the platform fails", test_reload_lands_on_older_save}, .expectation = {}},
-    {.input = {"reload_when_chained: straight through, no reload at a boundary", test_straight_through_has_no_reload}, .expectation = {}},
-    {.input = {"reload_when_chained: \"always\" reloads straight through too", test_straight_through_reloads_always}, .expectation = {}},
-    {.input = {"walk_to_prompt: walks until the A prompt, none when it shows", test_walk_to_prompt}, .expectation = {}},
-    {.input = {"breakpoints: a walk pauses before each leg", test_walk_pauses_before_each_leg}, .expectation = {}},
+    {.name = "01.00 opening: no presses, done on two looks at the platform after the autosave", .input = {test_opening_waits_for_platform}, .expectation = {}},
+    {.name = "01.00 opening: one A at the arrival text with the advance arrow", .input = {test_opening_presses_through_arrival_text}, .expectation = {}},
+    {.name = "01.01 start check: fails without the platform", .input = {test_start_check_needs_platform}, .expectation = {}},
+    {.name = "01.01 text_to_choice: B through the text, done at the choice", .input = {test_text_to_choice}, .expectation = {}},
+    {.name = "01.01 arrival_scenes: A through text and choice, done on the controls hint", .input = {test_arrival_ends_on_controls_hint}, .expectation = {}},
+    {.name = "01.01 arrival_scenes: A through the ad's boxless subtitles", .input = {test_arrival_presses_through_the_ad}, .expectation = {}},
+    {.name = "01.01 arrival_scenes: done on the mission banner once it has gone, A if it stays", .input = {test_arrival_ends_on_mission_banner}, .expectation = {}},
+    {.name = "01.03 after_andi: A at the mission complete card, then the banner, A if it stays", .input = {test_after_andi_presses_complete_card}, .expectation = {}},
+    {.name = "01.01 arrival_scenes: a quiet minute without the hint fails", .input = {test_arrival_quiet_fails}, .expectation = {}},
+    {.name = "01.02 battle_area: done on the \"A: Talk\" prompt", .input = {test_battle_area_ends_on_interact_prompt}, .expectation = {}},
+    {.name = "02.01 battle_zone_to_brigitte: a held walk waits, then holds each leg's angle", .input = {test_held_walk_inputs}, .expectation = {}},
+    {.name = "face_heading: turns by the minimap's heading", .input = {test_face_heading}, .expectation = {}},
+    {.name = "01.01 platform_to_plaza: no walk without free control", .input = {test_walk_needs_free_control}, .expectation = {}},
+    {.name = "01.01 platform_to_plaza: ends on the white fade", .input = {test_walk_ends_on_white_fade}, .expectation = {}},
+    {.name = "01.01 platform_to_plaza: fails at its bound", .input = {test_walk_fails_at_bound}, .expectation = {}},
+    {.name = "refused: console actions off a console, tile walks, unknown actions", .input = {test_refused_steps}, .expectation = {}},
+    {.name = "every checkpoint runs in step order, testing never saves", .input = {test_every_checkpoint_runs}, .expectation = {}},
+    {.name = "reload_when_chained: reload between the rows, as its own event", .input = {test_reload_when_chained}, .expectation = {}},
+    {.name = "reload_when_chained: no reload from the row's save or for other rows", .input = {test_no_reload_unless_chained}, .expectation = {}},
+    {.name = "reload_when_chained: a reload onto the platform fails", .input = {test_reload_lands_on_older_save}, .expectation = {}},
+    {.name = "reload_when_chained: straight through, no reload at a boundary", .input = {test_straight_through_has_no_reload}, .expectation = {}},
+    {.name = "reload_when_chained: \"always\" reloads straight through too", .input = {test_straight_through_reloads_always}, .expectation = {}},
+    {.name = "walk_to_prompt: walks until the A prompt, none when it shows", .input = {test_walk_to_prompt}, .expectation = {}},
+    {.name = "breakpoints: a walk pauses before each leg", .input = {test_walk_pauses_before_each_leg}, .expectation = {}},
 };
 
 void add_tests_AutoStoryEngine(UnitTestDatabase& database){
