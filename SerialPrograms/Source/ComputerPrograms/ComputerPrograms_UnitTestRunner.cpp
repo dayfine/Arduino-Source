@@ -23,6 +23,7 @@
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "CommonFramework/Windows/LabChannel_Tests.h"
+#include "CommonFramework/Windows/LabStateJson_Tests.h"
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "CommonTools/OCR/OCR_Tests.h"
 
@@ -69,6 +70,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_SinkPipeline(ret);
     add_tests_AudioFileLoader(ret);
     add_tests_LabChannel(ret);
+    add_tests_LabStateJson(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
     Pokemon::add_tests_AutoStorySelect(ret);

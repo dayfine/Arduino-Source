@@ -48,10 +48,13 @@ struct LabRequestLine{
     std::vector<std::string> words;
 };
 
-//  A request file: an optional "owner <token>" line first, then commands.
-//  Blank lines and comments are dropped.
+//  A request file: optional "owner <token>" and "request <uuid>" lines
+//  first, then commands. Blank lines and comments are dropped.
 struct LabRequest{
     std::string owner;
+    //  The lab server's id for this request, a lower-case UUID. Lab/state.json
+    //  names it on a start or stop the request made.
+    std::optional<std::string> id;
     std::vector<LabRequestLine> lines;
 };
 LabRequest parse_lab_request(const std::string& text);

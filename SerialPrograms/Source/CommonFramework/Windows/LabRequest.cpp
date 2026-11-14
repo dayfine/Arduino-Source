@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <format>
 #include <sstream>
+#include "LabTransition.h"
 #include "LabRequest.h"
 
 namespace PokemonAutomation{
@@ -108,6 +109,11 @@ LabRequest parse_lab_request(const std::string& text){
         //  halfway through.
         if (request.lines.empty() && request.owner.empty() && words.size() == 2 && words[0] == "owner"){
             request.owner = words[1];
+            continue;
+        }
+        //  A malformed id is left as a command, which then fails as unknown.
+        if (request.lines.empty() && !request.id && words.size() == 2 && words[0] == "request" && is_lab_uuid(words[1])){
+            request.id = words[1];
             continue;
         }
         request.lines.push_back({number, line, std::move(words)});

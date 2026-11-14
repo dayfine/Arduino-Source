@@ -28,6 +28,7 @@ takes effect at the next launch.
 | `Lab/outbox/<name>.out` | app writes | The request's journal (below). It appears only once the request has finished; `<name>.tmp` shows the progress so far. |
 | `Lab/outbox/<name>_<label>.png`, `.mp4` | app writes | Files that `shot`, `shots` and `history` save. |
 | `Lab/state` | app writes | The channel's state, rewritten after every request and whenever the program state changes. |
+| `Lab/state.json` | app writes | The same state and more, for the lab server: rewritten at every poll. See [state.json](#statejson). |
 
 Write a request somewhere else and then move it into `inbox`, so the app
 never reads a half-written file. Only `.txt` files are read.
@@ -36,6 +37,10 @@ never reads a half-written file. Only `.txt` files are read.
 
 - One command per line, words separated by spaces. `#` starts a comment.
 - The first line may be `owner <token>`; see [Owner](#owner).
+- The first lines may also hold `request <uuid>`: the lab server's id for the
+  request, a lower-case UUID. `state.json` names it on a start or stop the
+  request makes; without it, the app makes one up. Anything else after
+  `request` is a command, and fails as unknown.
 - Commands run in order. The request stops at its first failing line.
 - Durations are in milliseconds. Arguments in `[brackets]` are optional.
 
@@ -71,6 +76,30 @@ error=
   reconnects it, which can stall), empty for a panel without a console.
 - `owner` is the owner token, empty when the channel is unclaimed.
 - `error` is the error of the last request, empty once a request succeeds.
+
+### state.json
+
+`Lab/state.json` is the lab server's view of the app, version 1 of the
+contract in `lab/server/` on the fork's `agents` branch (its README lists
+the fields; `python3 -m pa_lab check app_state <file>` checks one). It
+holds the state file's fields (as `program.state` in lower case, `panel`,
+`controller.state` and `channel`), and also:
+
+- `written_at`: rewritten at every poll (500 ms), even when nothing changed.
+- `instance.id`: a new UUID at every app start; `instance.pid`; on macOS
+  `instance.profile`, the `--profile` name.
+- `program.last_transition`: the last start or stop, and where it came
+  from: `lab` (a request, with its `request_id`), `ui` (the Start/Stop
+  button, or anything else outside the channel), `program` (it finished by
+  itself) or `error` (it ended with an error). `null` until the first one.
+- `video.frame_seq` and `captured_at`: the newest frame from the console's
+  video, counted since the app started. `state` is `live` while that frame
+  is at most 2 s old, `stale` when older, `missing` without video.
+- `video.signal`, `observation.game` and `observation.screen` stay
+  `unknown`: no detector feeds them yet.
+
+Unlike the state file, `panel.id` is `null` when the selected panel is not a
+program.
 
 ## Commands
 
@@ -274,6 +303,7 @@ two-line `state`) is gone. `start` and `stop` are lines in a request, and
 
 `add_tests_LabChannel()` covers the request format, the journal lines, the
 state text, the owner lock, the keep-awake schedule and the controller wait before `start` (`LabChannel - ...`
-unit tests); `add_tests_CommandFileRunner()` covers the console commands'
+unit tests); `add_tests_LabStateJson()` checks `state.json` against the
+contract's golden files and where each start and stop is said to come from; `add_tests_CommandFileRunner()` covers the console commands'
 arguments. Run them with the app's `--command-line-test-mode`. Selecting,
 setting, starting and the presses need a live app and console.

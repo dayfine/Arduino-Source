@@ -6,6 +6,11 @@
 
 #include <exception>
 #include <sstream>
+#if defined(_WIN32)
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
 #include <QApplication>
 #include <QCoreApplication>
 #include <QMessageBox>
@@ -20,6 +25,7 @@
 #include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/ProgramSession.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
+#include "CommonFramework/VideoPipeline/Backends/VideoFrameQt.h"
 #include "LabChannel.h"
 
 namespace PokemonAutomation{
@@ -34,6 +40,27 @@ constexpr Milliseconds POLL_INTERVAL = 500ms;
 
 //  How often a worker waiting on the UI thread checks whether the app is closing.
 constexpr Milliseconds UI_WAIT_SLICE = 100ms;
+
+//  Lab/state.json calls the video live while its newest frame is at most this old.
+constexpr Milliseconds VIDEO_LIVE_MAX_AGE = 2000ms;
+
+
+uint64_t process_id(){
+#if defined(_WIN32)
+    return (uint64_t)_getpid();
+#else
+    return (uint64_t)getpid();
+#endif
+}
+
+std::optional<std::string> startup_profile(){
+#if defined(__APPLE__)
+    if (!Filesystem::STARTUP_PROFILE().empty()){
+        return Filesystem::STARTUP_PROFILE();
+    }
+#endif
+    return std::nullopt;
+}
 
 
 void write_file(const Filesystem::Path& path, const std::string& text){
@@ -177,6 +204,7 @@ std::unique_ptr<LabChannel> LabChannel::start_if_enabled(
 LabChannel::LabChannel(LabChannelCallbacks callbacks, std::unique_ptr<LabConsoleCommands> console)
     : m_callbacks(std::move(callbacks))
     , m_console(std::move(console))
+    , m_instance_id(new_lab_uuid())
 {
     //  A pool task rather than a Thread: Thread::join() does not wait under
     //  the Qt thread-adoption workaround, and the worker must be gone before
@@ -207,9 +235,45 @@ void LabChannel::set_panel(PanelSession* panel){
         }
     }
     std::lock_guard<Mutex> lg(m_panel_lock);
+    attach_listeners(panel);
     m_panel = panel;
     std::lock_guard<Mutex> lg2(m_scope_lock);
     m_panel_changing = false;
+}
+
+void LabChannel::attach_listeners(PanelSession* panel){
+    if (m_program != nullptr){
+        m_program->remove_listener(m_program_listener);
+    }
+    if (m_video != nullptr){
+        m_video->remove_frame_listener(m_frame_listener);
+    }
+    m_program = dynamic_cast<ProgramSession*>(panel);
+    m_video = panel == nullptr ? nullptr : m_console->video(*panel);
+    if (m_program != nullptr){
+        m_transitions.reset_program(m_program->current_state());
+        m_program->add_listener(m_program_listener);
+    }
+    if (m_video != nullptr){
+        m_video->add_frame_listener(m_frame_listener);
+    }
+}
+
+void LabChannel::ProgramListener::state_change(ProgramState state){
+    m_tracker.on_state_change(state, current_time());
+}
+void LabChannel::ProgramListener::error(const std::string&){
+    m_tracker.on_error();
+}
+
+void LabChannel::FrameListener::on_frame(std::shared_ptr<const VideoFrame> frame){
+    std::lock_guard<Mutex> lg(m_lock);
+    m_count++;
+    m_latest = LabFrameToken{m_count, frame->timestamp};
+}
+std::optional<LabFrameToken> LabChannel::FrameListener::latest() const{
+    std::lock_guard<Mutex> lg(m_lock);
+    return m_latest;
 }
 
 
@@ -340,7 +404,7 @@ std::string LabChannel::run_line(const LabRequest& request, const LabRequestLine
         }
     }
     if (command == "select" || command == "set" || command == "start" || command == "stop" || command == "popups"){
-        return run_ui_command(line, output.out);
+        return run_ui_command(request, line, output.out);
     }
     if (command == "keepawake"){
         return m_keep_awake.set(words, current_time());
@@ -401,7 +465,7 @@ std::string LabChannel::run_on_console(const std::function<void(PanelSession& pa
     return "";
 }
 
-std::string LabChannel::run_ui_command(const LabRequestLine& line, std::ostream& out){
+std::string LabChannel::run_ui_command(const LabRequest& request, const LabRequestLine& line, std::ostream& out){
     const std::vector<std::string>& words = line.words;
     const std::string& command = words[0];
     if (command == "popups"){
@@ -439,16 +503,30 @@ std::string LabChannel::run_ui_command(const LabRequestLine& line, std::ostream&
         return error;
     }
     if (command == "start"){
-        return run_start(words);
+        return run_start(request, words);
     }
+    return run_start_or_stop(request, false);
+}
+
+//  Starts or stops the program on the UI thread, telling m_transitions first
+//  that this start or stop is the lab's. On the UI thread no click of the
+//  Start/Stop button can come in between.
+std::string LabChannel::run_start_or_stop(const LabRequest& request, bool start){
+    const LabTransitionAction action = start ? LabTransitionAction::START : LabTransitionAction::STOP;
+    const std::string id = request.id ? *request.id : new_lab_uuid();
     return run_on_ui([&]{
-        return start_or_stop(m_callbacks.current_panel(), false);
+        m_transitions.expect_lab(action, id);
+        std::string error = start_or_stop(m_callbacks.current_panel(), start);
+        if (!error.empty()){
+            m_transitions.cancel_lab();
+        }
+        return error;
     });
 }
 
 //  "start [SECONDS]": waits for the controller, then starts. The wait runs
 //  here on the worker, so the window stays responsive while it reconnects.
-std::string LabChannel::run_start(const std::vector<std::string>& words){
+std::string LabChannel::run_start(const LabRequest& request, const std::vector<std::string>& words){
     Seconds timeout = CONTROLLER_WAIT_DEFAULT;
     if (words.size() > 2){
         return "start: expected start [SECONDS]";
@@ -475,9 +553,7 @@ std::string LabChannel::run_start(const std::vector<std::string>& words){
     if (!error.empty()){
         return error;
     }
-    return run_on_ui([&]{
-        return start_or_stop(m_callbacks.current_panel(), true);
-    });
+    return run_start_or_stop(request, true);
 }
 
 //  Runs `body` on the UI thread and returns what it returns: "" or an error.
@@ -601,6 +677,26 @@ void LabChannel::write_state(){
         write_file_atomically(path, text);
         m_written_state = std::move(text);
     }
+    write_state_json(current_time());
+}
+
+//  Rewritten at every poll: "written_at" is the heartbeat.
+void LabChannel::write_state_json(WallClock now){
+    bool has_video;
+    {
+        std::lock_guard<Mutex> lg(m_panel_lock);
+        has_video = m_video != nullptr;
+    }
+    LabAppState state;
+    state.legacy = m_state;
+    state.written_at = now;
+    state.instance_id = m_instance_id;
+    state.pid = process_id();
+    state.profile = startup_profile();
+    state.last_transition = m_transitions.last();
+    state.frame = m_frame_listener.latest();
+    state.video = lab_video_state(has_video, state.frame, now, VIDEO_LIVE_MAX_AGE);
+    write_file_atomically(Filesystem::Path(folder() + "state.json"), lab_state_json_text(state));
 }
 
 

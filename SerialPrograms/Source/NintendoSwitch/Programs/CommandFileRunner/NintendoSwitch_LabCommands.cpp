@@ -102,6 +102,11 @@ std::string SwitchLabCommands::controller_status(PanelSession& panel){
     return system.controllers() > 0 && system.controller(0).ready() ? "ready" : "none";
 }
 
+VideoFeed* SwitchLabCommands::video(PanelSession& panel){
+    GameConsole::ConsoleProgramSession* program = dynamic_cast<GameConsole::ConsoleProgramSession*>(&panel);
+    return program == nullptr ? nullptr : &program->system().video();
+}
+
 void SwitchLabCommands::keep_awake(PanelSession& panel, CancellableScope& scope){
     LabConsole console(panel, scope);
     pbf_press_button(console.context(), BUTTON_B, 80ms, 0ms);

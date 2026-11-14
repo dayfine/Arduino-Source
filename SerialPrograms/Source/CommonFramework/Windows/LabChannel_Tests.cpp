@@ -10,10 +10,12 @@
 
 #include <functional>
 #include <format>
+#include <optional>
 #include <string>
 #include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "LabRequest.h"
+#include "LabTransition.h"
 #include "LabChannel_Tests.h"
 
 namespace PokemonAutomation{
@@ -123,6 +125,78 @@ UnitTestResult test_parse_request(){
     const LabRequest claim = parse_lab_request("owner claim lab-B\n");
     if (!claim.owner.empty() || claim.lines.size() != 1){
         return "\"owner claim\" is a command, not the owner line.";
+    }
+    return true;
+}
+
+UnitTestResult test_parse_request_id(){
+    const std::string ID = "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10";
+    struct Input{
+        std::string text;
+    };
+    struct Expectation{
+        std::optional<std::string> id;
+        std::string owner;
+        size_t lines;
+    };
+    struct Case{
+        std::string name;
+        Input input;
+        Expectation expectation;
+    };
+    const Case CASES[] = {
+        {.name = "no id", .input = {"start\n"}, .expectation = {.id = std::nullopt, .owner = "", .lines = 1}},
+        {.name = "id first", .input = {"request " + ID + "\nstart\n"}, .expectation = {.id = ID, .owner = "", .lines = 1}},
+        {
+            .name = "owner and id",
+            .input = {"owner lab-B\nrequest " + ID + "\nstart\n"},
+            .expectation = {.id = ID, .owner = "lab-B", .lines = 1},
+        },
+        {
+            .name = "id and owner",
+            .input = {"request " + ID + "\nowner lab-B\nstart\n"},
+            .expectation = {.id = ID, .owner = "lab-B", .lines = 1},
+        },
+        {.name = "not a UUID is a command", .input = {"request r42\nstart\n"}, .expectation = {.id = std::nullopt, .owner = "", .lines = 2}},
+        {.name = "below a command", .input = {"state\nrequest " + ID + "\n"}, .expectation = {.id = std::nullopt, .owner = "", .lines = 2}},
+    };
+    for (const Case& c : CASES){
+        const LabRequest request = parse_lab_request(c.input.text);
+        if (request.id != c.expectation.id || request.owner != c.expectation.owner || request.lines.size() != c.expectation.lines){
+            return std::format("{}: wrong id, owner or command lines", c.name);
+        }
+    }
+    return true;
+}
+
+UnitTestResult test_uuid(){
+    const std::string a = new_lab_uuid();
+    const std::string b = new_lab_uuid();
+    if (!is_lab_uuid(a) || !is_lab_uuid(b) || a == b || a[14] != '4'){
+        return std::format("Expected two different version 4 UUIDs, got {} and {}", a, b);
+    }
+    struct Input{
+        std::string text;
+    };
+    struct Expectation{
+        bool is_uuid;
+    };
+    struct Case{
+        std::string name;
+        Input input;
+        Expectation expectation;
+    };
+    const Case CASES[] = {
+        {.name = "lower case", .input = {"5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10"}, .expectation = {true}},
+        {.name = "upper case", .input = {"5F0C2A8E-3D41-4B7A-9C55-0E6A1F2B7C10"}, .expectation = {false}},
+        {.name = "no dashes", .input = {"5f0c2a8e3d414b7a9c550e6a1f2b7c10"}, .expectation = {false}},
+        {.name = "a request name", .input = {"fs012327"}, .expectation = {false}},
+        {.name = "empty", .input = {""}, .expectation = {false}},
+    };
+    for (const Case& c : CASES){
+        if (is_lab_uuid(c.input.text) != c.expectation.is_uuid){
+            return std::format("{}: is_lab_uuid() should be {}", c.name, c.expectation.is_uuid);
+        }
     }
     return true;
 }
@@ -302,6 +376,8 @@ void add_tests_LabChannel(UnitTestDatabase& database){
     database.add<Test_LabChannel>("line after words", test_line_after_words);
     database.add<Test_LabChannel>("next inbox file", test_next_file);
     database.add<Test_LabChannel>("parse a request", test_parse_request);
+    database.add<Test_LabChannel>("request id", test_parse_request_id);
+    database.add<Test_LabChannel>("uuid", test_uuid);
     database.add<Test_LabChannel>("journal lines", test_journal);
     database.add<Test_LabChannel>("state text", test_state_text);
     database.add<Test_LabChannel>("owner lock", test_owner);
