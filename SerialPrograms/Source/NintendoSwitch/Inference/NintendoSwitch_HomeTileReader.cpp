@@ -38,10 +38,11 @@ constexpr double MIN_FRAME_WIDTH = 0.18;
 constexpr double MAX_FRAME_WIDTH = 0.25;
 
 //  The band above the row where HOME writes the selected game's name. The
-//  name starts 0.044 left of the frame, at the game card icon.
+//  name starts 0.005 to 0.01 left of the frame, right of a game card icon
+//  that ends 0.017 or more left of it.
 constexpr double NAME_TOP = 0.19;
 constexpr double NAME_HEIGHT = 0.06;
-constexpr double NAME_LEAD = 0.06;
+constexpr double NAME_LEAD = 0.015;
 constexpr double NAME_RIGHT = 0.98;
 //  The name's cyan (ARGB), dark text on HOME's light background once
 //  filtered: red low, green and blue high.
