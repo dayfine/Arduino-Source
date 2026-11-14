@@ -16,6 +16,7 @@
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
+#include "Pokemon_StorySaveMode.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -27,6 +28,10 @@ struct SegmentPolicy{
     //  segment stops. 1 stops at the first failure without reloading, leaving
     //  the game where it failed for a look.
     size_t attempts_per_checkpoint = 3;
+    //  When the run saves. In the other modes no checkpoint after the first
+    //  has a save at its start, so only the first is retried with a reload.
+    //  The options' default is NONE; the engine's stays the playthrough's.
+    StorySaveMode save_mode = StorySaveMode::PER_CHECKPOINT;
 };
 
 //  The checkpoints to run, by id, both inclusive. An unset end is the
