@@ -18,7 +18,7 @@ lease store, no write path and no press: those are Slices 3 and 5.
 | `pa_lab/lab_reader.py` | Strict reads of `Lab/state.json` and `Lab/save.json`; `console://B/state` and `/save` |
 | `pa_lab/tools.py`, `pa_lab/shot.py` | `ensure_game` (verification only) and `shot` (newer than the call) |
 | `pa_lab/mcp_server.py` | MCP over Streamable HTTP on `127.0.0.1`: bearer, Host/Origin, sessions, size caps |
-| `tests/fake_lab.py` | A fake `Lab/` folder and a fake app answering `shot` requests, in temp dirs |
+| `tests/fake_lab.py` | A fake `Lab/` folder and a fake app answering `snapshot` requests, in temp dirs |
 | `tests/test_{lab_reader,ensure_game,shot,config,mcp_server}.py` | Slice 2's fake-lab tests |
 
 Stdlib only (Python 3.8+), so no venv: the MCP transport is small enough to write on
@@ -172,13 +172,15 @@ remembered across an app restart until Slice 3's store.
 `unknown` never verifies; until the app has detectors, every call says `game_unknown`.
 
 **`shot(console, max_age_ms=2000, timeout_ms=5000)`** returns the PNG (MCP image content), its
-path and `frame_seq_at_least`. The app has no snapshot command yet (#481), so the daemon reads
-`(instance.id, frame_seq)` at call start, waits until `state.json` shows a strictly greater
-`frame_seq` from the same instance, and only then writes the fixed request `request <uuid>` /
-`shot frame` into `Lab/inbox` (a read-only line: no owner token). The saved PNG is that frame or
-a later one. It is opened only at the path the daemon chose, and only when complete (signature
-and `IEND`). Refusals: `timeout` (no newer frame, or the app did not answer; the request is then
-withdrawn from the inbox), `video_stale`, `video_bad_signal`, `panel_not_program` and
-`controller_not_ready` (the channel's `shot` needs both today), `app_unavailable` (journal
-error, incomplete PNG, `instance_replaced`). The exact frame token of the PNG and a snapshot
-without a ready controller wait for the app's snapshot command (#131 Slice 1).
+path and the exact `frame_seq` and `captured_at` of that frame. The daemon checks `state.json`
+once (the app is up; its `instance.id`), then writes the fixed request `request <uuid>` /
+`snapshot frame <timeout_ms>` into `Lab/inbox` at once. The app's `snapshot` command (#481,
+`Lab.md` "Snapshot") needs no owner token, program state or controller: it waits for the first
+frame after the line starts, saves it and prints `snapshot saved instance=... frame_seq=...
+captured_at=... after=... path=...`. The daemon opens only the path it chose, never the one the
+journal names, and only when complete (signature and `IEND`). Refusals: `timeout` (the app's
+`snapshot timeout`, evidence `{instance_id, frame_seq: after}`; or the app did not answer within
+`timeout_ms` + 2 s, and the request is withdrawn from the inbox), `video_stale` (`reason=no_video`,
+or the saved frame is older than `max_age_ms`), `video_bad_signal`, `app_unavailable` (a reply
+from another instance: `evidence.reason` `instance_replaced`; `panel_changed`, `app_closing`,
+`save_failed` as `evidence.reason`; a line error or an incomplete PNG).

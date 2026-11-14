@@ -53,7 +53,7 @@ TOOL_LIST = [
     {
         'name': 'shot',
         'title': 'Console screenshot',
-        'description': 'A PNG of the console strictly newer than this call. Read-only; needs no lease. '
+        'description': 'The first console frame after this call starts, with its frame_seq. Read-only; needs no lease. '
                        'Refuses on timeout, stale video or a classified bad signal.',
         'inputSchema': {
             'type': 'object',

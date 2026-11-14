@@ -200,7 +200,7 @@ class ProtocolTests(ServerTest):
         image = result['content'][0]
         self.assertEqual((image['type'], image['mimeType']), ('image', 'image/png'))
         self.assertEqual(base64.b64decode(image['data']), PNG)
-        self.assertGreater(result['structuredContent']['frame_seq_at_least'], 921930)
+        self.assertGreater(result['structuredContent']['frame_seq'], 921930)
 
     def test_shot_timeout_is_a_refusal_document(self):
         self.app.frames = False
