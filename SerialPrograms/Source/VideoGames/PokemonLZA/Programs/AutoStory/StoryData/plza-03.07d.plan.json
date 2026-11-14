@@ -56,7 +56,7 @@
       {
         "id": "to_zone_1_start",
         "kind": "game_action",
-        "why": "to where 03.08 starts: toward the objective marker (the zone's far gate) until it reads 137 or less, then the end is checked on a fresh frame: the far gate within 127 +- 10 (03.08's start frame reads 127, CatchesToZone1Start/0077) and the minimap's player arrow in the wild zone's green (MinimapZoneDetector). Fails with both readings otherwise. The green check keeps a 127 read from the street outside the gate from passing (walk_to_zone_1_start).",
+        "why": "to where 03.08 starts: toward the objective marker (the zone's far gate) until it reads 127 or less, then the end is checked on a fresh frame: the far gate within 127 +- 10 (03.08's start frame reads 127, CatchesToZone1Start/0077) and the minimap's player arrow in the wild zone's green (MinimapZoneDetector). Fails with both readings otherwise. The green check keeps a 127 read from the street outside the gate from passing (walk_to_zone_1_start).",
         "action": "walk_to_zone_1_start"
       }
     ],
