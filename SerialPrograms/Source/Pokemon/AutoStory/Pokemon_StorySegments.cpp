@@ -16,22 +16,13 @@ namespace Pokemon{
 
 namespace{
 
-//  "[Event] 00.03/2 x: start" as "00.03/2 x: start", for the status sink.
-std::string without_tag(const std::string& line){
-    if (line.empty() || line[0] != '['){
-        return line;
-    }
-    const size_t end = line.find("] ");
-    return end == std::string::npos ? line : line.substr(end + 2);
-}
-
 //  A line for the log, and without its tag for the status sink, if set.
 void say(const std::string& line, SegmentHooks& hooks){
     if (hooks.log){
         hooks.log(line);
     }
     if (hooks.status){
-        hooks.status(without_tag(line));
+        hooks.status(story_short_line(line));
     }
 }
 
@@ -134,7 +125,7 @@ CheckpointReport run_row(
             return AttemptResult::FAILED;
         },
         .reset = [&](size_t next_attempt){
-            say(segment_reload_line(segment.id, spec.id, next_attempt, policy.attempts_per_checkpoint), hooks);
+            say(checkpoint_reset_line(spec.id, next_attempt, policy.attempts_per_checkpoint), hooks);
             report.reloads++;
             Outcome reloaded = reload(state, hooks);
             if (!reloaded.succeeded()){
