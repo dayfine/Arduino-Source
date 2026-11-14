@@ -8,6 +8,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
@@ -67,6 +68,14 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
+constexpr std::string_view RELOAD_AT_BOUNDARIES_LABEL =
+    "<b>Reload at Checkpoint Boundaries:</b><br>Reload the save before a checkpoint whose plan asks for it "
+    "when the run comes from the checkpoint before. Off: run straight on. A failed checkpoint's retry reloads either way.";
+constexpr std::string_view START_FROM_BACKUP_SAVE_LABEL =
+    "<b>Start from the Backup Save:</b><br>The run starts by loading the backup save "
+    "(title screen Up + B + X), the save before the latest. Off: it loads the latest save and, when a checkpoint "
+    "with a start check is not at its start there, the backup save. Later reloads load the latest save either way.";
+
 } // namespace
 
 
@@ -82,12 +91,8 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         StarterChoice::CHIKORITA
     )
-    , RELOAD_AT_BOUNDARIES(
-        "<b>Reload at Checkpoint Boundaries:</b><br>Reload the save before a checkpoint whose plan asks for it "
-        "when the run comes from the checkpoint before. Off: run straight on. A failed checkpoint's retry reloads either way.",
-        LockMode::LOCK_WHILE_RUNNING,
-        false
-    )
+    , RELOAD_AT_BOUNDARIES(std::string(RELOAD_AT_BOUNDARIES_LABEL), LockMode::LOCK_WHILE_RUNNING, false)
+    , START_FROM_BACKUP_SAVE(std::string(START_FROM_BACKUP_SAVE_LABEL), LockMode::LOCK_WHILE_RUNNING, false)
     , PLAYER_NAME(
         false,
         "<b>Player Name:</b><br>New game only. Letters and digits; a capital only as the first letter.",
@@ -116,6 +121,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(BATTLE_AI);
     PA_ADD_OPTION(RELOAD_AT_BOUNDARIES);
+    PA_ADD_OPTION(START_FROM_BACKUP_SAVE);
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(PLAYER_LOOK);
     PA_ADD_OPTION(NAME_FIRST_LETTER_AUTO_CAPS);
@@ -127,15 +133,17 @@ namespace{
 
 //  Checkpoints after the new game start from a save (01.01 from the
 //  platform autosave), so the run loads it first instead of assuming the
-//  game is already there. 00.00 and 01.00 start without one.
+//  game is already there: the latest save, or the backup save when the
+//  latest is past the start (load_checkpoint_start()). 00.00 and 01.00
+//  start without one.
 void load_start_save(
-    ConsoleHandle& console, const StoryGame<ZonePose>& game, StoryBackend<ZonePose>& backend,
-    const std::vector<StoryCheckpoint>& rows, size_t first
+    ConsoleHandle& console, StoryEnv& story, StoryBackend<ZonePose>& backend,
+    const std::vector<StoryCheckpoint>& rows, size_t first, bool backup_first
 ){
     if (story_row_starts_without_save(rows[first])){
         return;
     }
-    const Outcome loaded = game.reload(backend);
+    const Outcome loaded = load_checkpoint_start(story, backend, rows[first].id, backup_first);
     if (!loaded.succeeded()){
         throw OperationFailedException(
             ErrorReportMode::NO_ERROR_REPORT,
@@ -238,7 +246,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const StoryGame<ZonePose> game = run_game(story, STARTER, story_data, RUN.breakpoints(), context);
     StoryEngine<ZonePose> engine(game, backend);
     RunState state;
-    load_start_save(env.console, game, backend, rows, first);
+    load_start_save(env.console, story, backend, rows, first, START_FROM_BACKUP_SAVE);
 
     if (const std::optional<VerifyPolicy> verify = RUN.VERIFY.policy()){
         const VerifyReport report = engine.verify_checkpoint(rows[first], *verify, state);

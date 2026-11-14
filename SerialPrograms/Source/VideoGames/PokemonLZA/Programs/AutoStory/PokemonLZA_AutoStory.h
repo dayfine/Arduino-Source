@@ -67,6 +67,9 @@ private:
     //  Off: a run of several checkpoints runs straight on at the rows whose
     //  plans say "reload_when_chained"; on: it reloads the save there.
     BooleanCheckBoxOption RELOAD_AT_BOUNDARIES;
+    //  On: the run starts from the backup save; off: from the latest, or
+    //  the backup save when the latest is past the start check.
+    BooleanCheckBoxOption START_FROM_BACKUP_SAVE;
     //  The new game's choices (00.00): the language is RUN's. The look and
     //  the language list's order are guesses from Scarlet/Violet's screens.
     StringOption PLAYER_NAME;

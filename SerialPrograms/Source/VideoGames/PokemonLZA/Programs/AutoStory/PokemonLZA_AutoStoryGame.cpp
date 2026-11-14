@@ -628,6 +628,19 @@ StoryMove story_walk_move(const StoryActionArgs& args, std::string_view legs){
     return move;
 }
 
+namespace{
+
+//  Resets the game from HOME onto `save`.
+Outcome reload_save(StoryEnv& env, StartSave save){
+    go_home(env.env.console, env.context);
+    if (!reset_game_from_home(env.env, env.env.console, env.context, save == StartSave::BACKUP)){
+        return Pokemon::outcome_failed("reload_failed", "Failed to reset the game from HOME.");
+    }
+    return Pokemon::outcome_ok();
+}
+
+} // namespace
+
 Pokemon::StoryGame<ZonePose> make_plza_story_game(
     StoryEnv& env, StarterChoice starter, std::set<std::string, std::less<>> autosave_rows
 ){
@@ -650,17 +663,83 @@ Pokemon::StoryGame<ZonePose> make_plza_story_game(
         return Pokemon::outcome_ok();
     };
     game.reload = [&env](Pokemon::StoryBackend<ZonePose>&){
-        go_home(env.env.console, env.context);
-        if (!reset_game_from_home(env.env, env.env.console, env.context)){
-            return Pokemon::outcome_failed("reload_failed", "Failed to reset the game from HOME.");
-        }
-        return Pokemon::outcome_ok();
+        return reload_save(env, StartSave::LATEST);
     };
     return game;
 }
 
 Pokemon::StoryGame<ZonePose> make_plza_story_game(StarterChoice starter){
     return plza_game_actions(nullptr, starter);
+}
+
+namespace{
+
+//  Looks at a checkpoint's start: it shows once its sign holds
+//  START_SIGN_LOOKS looks in a row, PLATFORM_POLL apart.
+constexpr size_t START_LOOKS = 8;
+constexpr size_t START_SIGN_LOOKS = 2;
+
+//  The screen event each checkpoint with a start check shows at its start.
+//  03.06 starts at the Pokemon Center counter, facing the nurse after
+//  03.05's heal: her "A" talk prompt shows.
+std::optional<PokemonAutomation::ScreenEvent> start_sign(std::string_view row){
+    if (row == "03.06"){
+        return PokemonAutomation::ScreenEvent::INTERACT_PROMPT;
+    }
+    return std::nullopt;
+}
+
+//  Whether the game shows `row`'s start now; nothing when `row` has no
+//  start check.
+std::optional<bool> at_checkpoint_start(Pokemon::StoryBackend<ZonePose>& backend, std::string_view row){
+    const std::optional<PokemonAutomation::ScreenEvent> sign = start_sign(row);
+    if (!sign){
+        return std::nullopt;
+    }
+    size_t streak = 0;
+    for (size_t looks = 0; looks < START_LOOKS; looks++){
+        backend.scope().throw_if_cancelled();
+        streak = backend.observe().events.has(*sign) ? streak + 1 : 0;
+        if (streak >= START_SIGN_LOOKS){
+            return true;
+        }
+        backend.wait(PLATFORM_POLL);
+    }
+    return false;
+}
+
+std::string_view start_save_name(StartSave save){
+    return save == StartSave::BACKUP ? "the backup save" : "the latest save";
+}
+
+} // namespace
+
+Outcome load_checkpoint_start(StoryEnv& env, Pokemon::StoryBackend<ZonePose>& backend, std::string_view row, bool backup_first){
+    std::vector<StartLoad> loads;
+    while (true){
+        const StartLoadAction action = next_start_load_action(backup_first, loads);
+        if (action == StartLoadAction::START){
+            return Pokemon::outcome_ok();
+        }
+        if (action == StartLoadAction::STOP){
+            const std::string_view tried = backup_first ? "the backup save" : "the latest and the backup save";
+            backend.log(std::format("[Checkpoint] {}: not at its start after {}, stopping", row, tried));
+            return Pokemon::outcome_failed("not_at_start", std::format("not at {}'s start after {}", row, tried));
+        }
+        const StartSave save = action == StartLoadAction::LOAD_BACKUP ? StartSave::BACKUP : StartSave::LATEST;
+        backend.log(std::format("[Save] {}: loading {}", row, start_save_name(save)));
+        const Outcome loaded = reload_save(env, save);
+        if (!loaded.succeeded()){
+            return loaded;
+        }
+        const std::optional<bool> at_start = at_checkpoint_start(backend, row);
+        if (!at_start){
+            backend.log(std::format("[Checkpoint] {}: no start check, starting from {}", row, start_save_name(save)));
+        }else{
+            backend.log(std::format("[Checkpoint] {}: start check after {}: {}", row, start_save_name(save), *at_start ? "passed" : "failed"));
+        }
+        loads.push_back({.save = save, .at_start = at_start});
+    }
 }
 
 

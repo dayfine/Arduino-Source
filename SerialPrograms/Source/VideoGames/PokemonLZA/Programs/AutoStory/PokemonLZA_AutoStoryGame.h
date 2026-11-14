@@ -28,6 +28,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "PokemonLZA_AutoStoryBackend.h"
+#include "PokemonLZA_AutoStoryStartLoad.h"
 #include "PokemonLZA_AutoStoryTable.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMoves.h"
 
@@ -99,7 +100,7 @@ StoryMove story_walk_move(const Pokemon::StoryActionArgs& args, std::string_view
 //  compass with heading_reader(). The save waits out the game's autosave at
 //  the end of the checkpoints of `autosave_rows` (the run's
 //  StoryData::autosaves) and saves through the menu after the others; the
-//  reload resets the game from HOME.
+//  reload resets the game from HOME onto the latest save.
 Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(
     StoryEnv& env, StarterChoice starter, std::set<std::string, std::less<>> autosave_rows
 );
@@ -108,6 +109,14 @@ Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(
 //  actions fail as "console_only", the walks read the heading the looks
 //  carry, and there is no save or reload.
 Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(StarterChoice starter);
+
+//  Loads the save `row` starts from by next_start_load_action(), checking
+//  the start after each load (03.06: the nurse's "A" prompt at the Pokemon
+//  Center counter), and logs each load and check as "[Save]" and
+//  "[Checkpoint]" lines. Fails when the game is not at `row`'s start after
+//  the latest and the backup save: the run must not start from an unknown
+//  spot.
+Pokemon::Outcome load_checkpoint_start(StoryEnv& env, Pokemon::StoryBackend<Pokemon::ZonePose>& backend, std::string_view row, bool backup_first);
 
 //  `rows` in order from the save the game is on, as
 //  StoryEngine::run_segment() runs them, `policy`'s attempts per checkpoint.
