@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  FRLG's detectors as the shared screen events (Pokemon_ScreenEvents.h),
+ *  FRLG's detectors as the shared screen events (CommonTools/ScreenEvents/ScreenEvents.h),
  *  so the shared judgements (Pokemon_SceneJudges.h) read FRLG frames too.
  *
  */
@@ -10,7 +10,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryScreenEvents_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryScreenEvents_H
 
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 

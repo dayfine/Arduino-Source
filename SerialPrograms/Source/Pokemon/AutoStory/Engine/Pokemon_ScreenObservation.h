@@ -11,7 +11,7 @@
 #define PokemonAutomation_Pokemon_ScreenObservation_H
 
 #include "CommonTools/ScreenMachine/ScreenObservation.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEventTypes.h"
+#include "CommonTools/ScreenEvents/ScreenEventTypes.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
