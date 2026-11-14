@@ -1,0 +1,177 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "map": "Route204North",
+            "tiles": [
+              [
+                20,
+                30
+              ]
+            ]
+          }
+        },
+        "id": "line_1",
+        "kind": "route",
+        "why": "south to the wall below the cave: the cave may leave us on row 26 or 27 (lab-B 2026-11-13 02:35), and a leg north could walk back into it"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "map": "Route204North",
+            "tiles": [
+              [
+                11,
+                27
+              ]
+            ]
+          }
+        },
+        "id": "line_2",
+        "kind": "route",
+        "why": "a corner of the human's line"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "map": "Route204North",
+            "tiles": [
+              [
+                11,
+                22
+              ]
+            ]
+          }
+        },
+        "id": "line_3",
+        "kind": "route",
+        "why": "a corner of the human's line"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "map": "Route204North",
+            "tiles": [
+              [
+                19,
+                22
+              ]
+            ]
+          }
+        },
+        "id": "line_4",
+        "kind": "route",
+        "why": "a corner of the human's line"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "map": "Route204North",
+            "tiles": [
+              [
+                19,
+                12
+              ]
+            ]
+          }
+        },
+        "id": "line_5",
+        "kind": "route",
+        "why": "a corner of the human's line"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "map": "Route204North",
+            "tiles": [
+              [
+                11,
+                12
+              ]
+            ]
+          }
+        },
+        "id": "line_6",
+        "kind": "route",
+        "why": "a corner of the human's line"
+      },
+      {
+        "action": "to_map",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 17
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "FloaromaTown",
+          "tiles": [
+            [
+              11,
+              27
+            ],
+            [
+              11,
+              28
+            ],
+            [
+              11,
+              29
+            ]
+          ]
+        },
+        "id": "into_floaroma",
+        "kind": "legs",
+        "why": "run north until Floaroma's banner; on after a wild battle"
+      },
+      {
+        "id": "save_here",
+        "kind": "save",
+        "why": "the next checkpoint starts here"
+      }
+    ],
+    "id": "01.10",
+    "start": {
+      "facing": "south",
+      "map": "Route204North",
+      "tiles": [
+        [
+          20,
+          26
+        ],
+        [
+          20,
+          27
+        ]
+      ]
+    },
+    "title": "Route 204 to Floaroma"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Route 204"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "metadata": {
+    "phase": "testing"
+  }
+}

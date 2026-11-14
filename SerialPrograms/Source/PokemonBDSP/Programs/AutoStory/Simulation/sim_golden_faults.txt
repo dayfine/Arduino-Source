@@ -1,0 +1,495 @@
+# BDSP AutoStory fault sweep outcomes (PokemonBDSP_AutoStory_SimGolden_Tests.cpp)
+PokemonBDSP::AutoStory - Certainty: no step walks from a pose surer than the steps before leave: passed
+PokemonBDSP::AutoStory - Fault sweep: 00.00, battle opening at step start: passed
+  Fault sweep 00.00 battle opening at step start: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.00, scene end pose: passed
+  Fault sweep 00.00 scene end pose: 8 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.00, scene starts during the walk before it: passed
+  Fault sweep 00.00 scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.00, slow fade-in after every warp: passed
+  Fault sweep 00.00 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.00, start off its declared tile: passed
+  Fault sweep 00.00 start off its declared tile: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.00, wild battles on every grass pass: passed
+  Fault sweep 00.00 wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.01, battle opening at step start: passed
+  Fault sweep 00.01 battle opening at step start: 6 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.01, scene end pose: passed
+  Fault sweep 00.01 scene end pose: 14 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.01, scene starts during the walk before it: passed
+  Fault sweep 00.01 scene starts during the walk before it: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.01, slow fade-in after every warp: passed
+  Fault sweep 00.01 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.01, start off its declared tile: passed
+  Fault sweep 00.01 start off its declared tile: 10 variants, 7 fail.
+  | 00.01 |  | start off its declared tile | starts on (4, 5) | stopped in 00.01 below_the_flute: 00.01 sim_mismatch: below_the_flute: ended at (7, 4) (PlayerHouse2F (7, 4)), not on PlayerHouse2F (7, 5) facing north (tile). |
+  | 00.01 |  | start off its declared tile | starts on (3, 6) | stopped in 00.01 below_the_flute: 00.01 sim_mismatch: below_the_flute: ended at (6, 5) (PlayerHouse2F (6, 5)), not on PlayerHouse2F (7, 5) facing north (tile). |
+  | 00.01 |  | start off its declared tile | starts on (2, 6) | stopped in 00.01 below_the_flute: 00.01 sim_mismatch: below_the_flute: ended at (5, 5) (PlayerHouse2F (5, 5)), not on PlayerHouse2F (7, 5) facing north (tile). |
+  | 00.01 |  | start off its declared tile | starts on (1, 6) | stopped in 00.01 below_the_flute: 00.01 sim_mismatch: below_the_flute: ended at (4, 5) (PlayerHouse2F (4, 5)), not on PlayerHouse2F (7, 5) facing north (tile). |
+  | 00.01 |  | start off its declared tile | starts on (5, 6) | stopped in 00.01 below_the_flute: 00.01 sim_mismatch: below_the_flute: ended at (8, 5) (PlayerHouse2F (8, 5)), not on PlayerHouse2F (7, 5) facing north (tile). |
+  | 00.01 |  | start off its declared tile | starts on (6, 6) | stopped in 00.01 below_the_flute: 00.01 sim_failure: below the flute: east 3 (open): unexpected transition. |
+  | 00.01 |  | start off its declared tile | starts on (7, 6) | stopped in 00.01 below_the_flute: 00.01 sim_failure: below the flute: east 3 (open): unexpected transition. |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 7 of 10 variants fail 00.01:
+     starts on (4, 5): stopped in 00.01 below_the_flute: 00.01 sim_mismatch: below_the_flute: ended at (7, 4) (PlayerHouse2F (7, 4)), not on PlayerHouse2F (7, 5) facing north (tile).
+     starts on (3, 6): stopped in 00.01 below_the_flute: 00.01 sim_mismatch: below_the_flute: ended at (6, 5) (PlayerHouse2F (6, 5)), not on PlayerHouse2F (7, 5) facing north (tile).
+     starts on (2, 6): stopped in 00.01 below_the_flute: 00.01 sim_mismatch: below_the_flute: ended at (5, 5) (PlayerHouse2F (5, 5)), not on PlayerHouse2F (7, 5) facing north (tile).
+     starts on (1, 6): stopped in 00.01 below_the_flute: 00.01 sim_mismatch: below_the_flute: ended at (4, 5) (PlayerHouse2F (4, 5)), not on PlayerHouse2F (7, 5) facing north (tile).
+     starts on (5, 6): stopped in 00.01 below_the_flute: 00.01 sim_mismatch: below_the_flute: ended at (8, 5) (PlayerHouse2F (8, 5)), not on PlayerHouse2F (7, 5) facing north (tile).
+     starts on (6, 6): stopped in 00.01 below_the_flute: 00.01 sim_failure: below the flute: east 3 (open): unexpected transition.
+     starts on (7, 6): stopped in 00.01 below_the_flute: 00.01 sim_failure: below the flute: east 3 (open): unexpected transition.
+PokemonBDSP::AutoStory - Fault sweep: 00.01, wild battles on every grass pass: passed
+  Fault sweep 00.01 wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.02, battle opening at step start: passed
+  Fault sweep 00.02 battle opening at step start: 2 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.02, scene end pose: passed
+  Fault sweep 00.02 scene end pose: 9 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.02, scene starts during the walk before it: passed
+  Fault sweep 00.02 scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.02, slow fade-in after every warp: passed
+  Fault sweep 00.02 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.02, start off its declared tile: passed
+  Fault sweep 00.02 start off its declared tile: 9 variants, 9 fail.
+  | 00.02 |  | start off its declared tile | starts on (17, 13) | stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (17, 44) (Verity Lakefront (17, 12)), not on VerityLakefront (17, 13) facing north (tile). |
+  | 00.02 |  | start off its declared tile | starts on (17, 12) | stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (17, 43) (Verity Lakefront (17, 11)), not on VerityLakefront (17, 13) facing north (tile). |
+  | 00.02 |  | start off its declared tile | starts on (17, 11) | stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (17, 43) (Verity Lakefront (17, 11)), not on VerityLakefront (17, 13) facing north (tile). |
+  | 00.02 |  | start off its declared tile | starts on (17, 15) | stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (17, 46) (Verity Lakefront (17, 14)), not on VerityLakefront (17, 13) facing north (tile). |
+  | 00.02 |  | start off its declared tile | starts on (17, 16) | stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (17, 47) (Verity Lakefront (17, 15)), not on VerityLakefront (17, 13) facing north (tile). |
+  | 00.02 |  | start off its declared tile | starts on (17, 17) | stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (17, 48) (Verity Lakefront (17, 16)), not on VerityLakefront (17, 13) facing north (tile). |
+  | 00.02 |  | start off its declared tile | starts on (16, 14) | stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (16, 45) (Verity Lakefront (16, 13)), not on VerityLakefront (17, 13) facing north (tile). |
+  | 00.02 |  | start off its declared tile | starts on (18, 14) | stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (18, 46) (Verity Lakefront (18, 14)), not on VerityLakefront (17, 13) facing north (tile). |
+  | 00.02 |  | start off its declared tile | starts on (19, 14) | stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (19, 46) (Verity Lakefront (19, 14)), not on VerityLakefront (17, 13) facing north (tile). |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 9 of 9 variants fail 00.02:
+     starts on (17, 13): stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (17, 44) (Verity Lakefront (17, 12)), not on VerityLakefront (17, 13) facing north (tile).
+     starts on (17, 12): stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (17, 43) (Verity Lakefront (17, 11)), not on VerityLakefront (17, 13) facing north (tile).
+     starts on (17, 11): stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (17, 43) (Verity Lakefront (17, 11)), not on VerityLakefront (17, 13) facing north (tile).
+     starts on (17, 15): stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (17, 46) (Verity Lakefront (17, 14)), not on VerityLakefront (17, 13) facing north (tile).
+     starts on (17, 16): stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (17, 47) (Verity Lakefront (17, 15)), not on VerityLakefront (17, 13) facing north (tile).
+     starts on (17, 17): stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (17, 48) (Verity Lakefront (17, 16)), not on VerityLakefront (17, 13) facing north (tile).
+     starts on (16, 14): stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (16, 45) (Verity Lakefront (16, 13)), not on VerityLakefront (17, 13) facing north (tile).
+     starts on (18, 14): stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (18, 46) (Verity Lakefront (18, 14)), not on VerityLakefront (17, 13) facing north (tile).
+     starts on (19, 14): stopped in 00.02 to_the_lake_entrance: 00.02 sim_mismatch: to_the_lake_entrance: ended at (19, 46) (Verity Lakefront (19, 14)), not on VerityLakefront (17, 13) facing north (tile).
+PokemonBDSP::AutoStory - Fault sweep: 00.02, wild battles on every grass pass: passed
+  Fault sweep 00.02 wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.03, battle opening at step start: passed
+  Fault sweep 00.03 battle opening at step start: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.03, scene end pose: passed
+  Fault sweep 00.03 scene end pose: 7 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.03, scene starts during the walk before it: passed
+  Fault sweep 00.03 scene starts during the walk before it: 2 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.03, slow fade-in after every warp: passed
+  Fault sweep 00.03 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.03, start off its declared tile: passed
+  Fault sweep 00.03 start off its declared tile: 9 variants, 1 fail.
+  | 00.03 |  | start off its declared tile | starts on (17, 17) | stopped in 00.03 into_rowans_scene: 00.03 sim_failure: into rowans scene: too many plans. |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 1 of 9 variants fail 00.03:
+     starts on (17, 17): stopped in 00.03 into_rowans_scene: 00.03 sim_failure: into rowans scene: too many plans.
+PokemonBDSP::AutoStory - Fault sweep: 00.03, wild battles on every grass pass: passed
+  Fault sweep 00.03 wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04, battle opening at step start: passed
+  Fault sweep 00.04 battle opening at step start: 7 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04, scene end pose: passed
+  Fault sweep 00.04 scene end pose: 12 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04, scene starts during the walk before it: passed
+  Fault sweep 00.04 scene starts during the walk before it: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04, slow fade-in after every warp: passed
+  Fault sweep 00.04 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04, start off its declared tile: passed
+  Fault sweep 00.04 start off its declared tile: 9 variants, 6 fail.
+  | 00.04 |  | start off its declared tile | starts on (6, 6) | stopped in 00.04 out_of_the_lab: 00.04 sim_failure: out of the lab: no fade, so we are not where the step goes (map mismatch). |
+  | 00.04 |  | start off its declared tile | starts on (5, 6) | stopped in 00.04 out_of_the_lab: 00.04 sim_failure: out of the lab: no fade, so we are not where the step goes (map mismatch). |
+  | 00.04 |  | start off its declared tile | starts on (4, 6) | stopped in 00.04 out_of_the_lab: 00.04 sim_failure: out of the lab: no fade, so we are not where the step goes (map mismatch). |
+  | 00.04 |  | start off its declared tile | starts on (8, 6) | stopped in 00.04 out_of_the_lab: 00.04 sim_failure: out of the lab: no fade, so we are not where the step goes (map mismatch). |
+  | 00.04 |  | start off its declared tile | starts on (9, 6) | stopped in 00.04 out_of_the_lab: 00.04 sim_failure: out of the lab: no fade, so we are not where the step goes (map mismatch). |
+  | 00.04 |  | start off its declared tile | starts on (10, 6) | stopped in 00.04 out_of_the_lab: 00.04 sim_failure: out of the lab: no fade, so we are not where the step goes (map mismatch). |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 6 of 9 variants fail 00.04:
+     starts on (6, 6): stopped in 00.04 out_of_the_lab: 00.04 sim_failure: out of the lab: no fade, so we are not where the step goes (map mismatch).
+     starts on (5, 6): stopped in 00.04 out_of_the_lab: 00.04 sim_failure: out of the lab: no fade, so we are not where the step goes (map mismatch).
+     starts on (4, 6): stopped in 00.04 out_of_the_lab: 00.04 sim_failure: out of the lab: no fade, so we are not where the step goes (map mismatch).
+     starts on (8, 6): stopped in 00.04 out_of_the_lab: 00.04 sim_failure: out of the lab: no fade, so we are not where the step goes (map mismatch).
+     starts on (9, 6): stopped in 00.04 out_of_the_lab: 00.04 sim_failure: out of the lab: no fade, so we are not where the step goes (map mismatch).
+     starts on (10, 6): stopped in 00.04 out_of_the_lab: 00.04 sim_failure: out of the lab: no fade, so we are not where the step goes (map mismatch).
+PokemonBDSP::AutoStory - Fault sweep: 00.04, wild battles on every grass pass: passed
+  Fault sweep 00.04 wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04b, battle opening at step start: passed
+  Fault sweep 00.04b battle opening at step start: 2 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04b, scene end pose: passed
+  Fault sweep 00.04b scene end pose: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04b, scene starts during the walk before it: passed
+  Fault sweep 00.04b scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04b, slow fade-in after every warp: passed
+  Fault sweep 00.04b slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04b, start off its declared tile: passed
+  Fault sweep 00.04b start off its declared tile: 8 variants, 2 fail.
+  | 00.04b |  | start off its declared tile | starts on (13, 25) | stopped in 00.04b to_catch_grass: 00.04b sim_mismatch: to_catch_grass: ended at (107, 24) (Route 202 (12, 24)), not on Route202 (20, 25) (tile). |
+  | 00.04b |  | start off its declared tile | starts on (12, 25) | stopped in 00.04b to_catch_grass: 00.04b sim_mismatch: to_catch_grass: ended at (105, 24) (Route 202 (10, 24)), not on Route202 (20, 25) (tile). |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 2 of 8 variants fail 00.04b:
+     starts on (13, 25): stopped in 00.04b to_catch_grass: 00.04b sim_mismatch: to_catch_grass: ended at (107, 24) (Route 202 (12, 24)), not on Route202 (20, 25) (tile).
+     starts on (12, 25): stopped in 00.04b to_catch_grass: 00.04b sim_mismatch: to_catch_grass: ended at (105, 24) (Route 202 (10, 24)), not on Route202 (20, 25) (tile).
+PokemonBDSP::AutoStory - Fault sweep: 00.04b, wild battles on every grass pass: passed
+  Fault sweep 00.04b wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04c, battle opening at step start: passed
+  Fault sweep 00.04c battle opening at step start: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04c, scene end pose: passed
+  Fault sweep 00.04c scene end pose: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04c, scene starts during the walk before it: passed
+  Fault sweep 00.04c scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04c, slow fade-in after every warp: passed
+  Fault sweep 00.04c slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04c, start off its declared tile: passed
+  Fault sweep 00.04c start off its declared tile: 9 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04c, wild battles on every grass pass: passed
+  Fault sweep 00.04c wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04d, battle opening at step start: passed
+  Fault sweep 00.04d battle opening at step start: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04d, scene end pose: passed
+  Fault sweep 00.04d scene end pose: 8 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04d, scene starts during the walk before it: passed
+  Fault sweep 00.04d scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04d, slow fade-in after every warp: passed
+  Fault sweep 00.04d slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04d, start off its declared tile: passed
+  Fault sweep 00.04d start off its declared tile: 6 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.04d, wild battles on every grass pass: passed
+  Fault sweep 00.04d wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.05, battle opening at step start: passed
+  Fault sweep 00.05 battle opening at step start: 2 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.05, scene end pose: passed
+  Fault sweep 00.05 scene end pose: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.05, scene starts during the walk before it: passed
+  Fault sweep 00.05 scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.05, slow fade-in after every warp: passed
+  Fault sweep 00.05 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.05, start off its declared tile: passed
+  Fault sweep 00.05 start off its declared tile: 12 variants, 1 fail.
+  | 00.05 |  | start off its declared tile | starts on (46, 57) | stopped in 00.05 east_to_the_wall: 00.05 sim_mismatch: east_to_the_wall: ended at (48, 53) (Jubilife City (48, 53)), not on JubilifeCity (52, 51) (52, 52) (52, 53) (52, 54) (52, 55) (52, 56) (52, 57) facing east (set). |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 1 of 12 variants fail 00.05:
+     starts on (46, 57): stopped in 00.05 east_to_the_wall: 00.05 sim_mismatch: east_to_the_wall: ended at (48, 53) (Jubilife City (48, 53)), not on JubilifeCity (52, 51) (52, 52) (52, 53) (52, 54) (52, 55) (52, 56) (52, 57) facing east (set).
+PokemonBDSP::AutoStory - Fault sweep: 00.05, wild battles on every grass pass: passed
+  Fault sweep 00.05 wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.05b, battle opening at step start: passed
+  Fault sweep 00.05b battle opening at step start: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.05b, scene end pose: passed
+  Fault sweep 00.05b scene end pose: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.05b, scene starts during the walk before it: passed
+  Fault sweep 00.05b scene starts during the walk before it: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.05b, slow fade-in after every warp: passed
+  Fault sweep 00.05b slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.05b, start off its declared tile: passed
+  Fault sweep 00.05b start off its declared tile: 10 variants, 10 fail.
+  | 00.05b |  | start off its declared tile | starts on (40, 40) | stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (46, 40) (Jubilife City (46, 40)), not on JubilifeCity (46, 41) facing north (tile). |
+  | 00.05b |  | start off its declared tile | starts on (40, 42) | stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (46, 42) (Jubilife City (46, 42)), not on JubilifeCity (46, 41) facing north (tile). |
+  | 00.05b |  | start off its declared tile | starts on (40, 43) | stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (46, 43) (Jubilife City (46, 43)), not on JubilifeCity (46, 41) facing north (tile). |
+  | 00.05b |  | start off its declared tile | starts on (40, 44) | stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (34, 44) (Jubilife City (34, 44)), not on JubilifeCity (46, 41) facing north (tile). |
+  | 00.05b |  | start off its declared tile | starts on (39, 41) | stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (45, 41) (Jubilife City (45, 41)), not on JubilifeCity (46, 41) facing north (tile). |
+  | 00.05b |  | start off its declared tile | starts on (38, 41) | stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (44, 41) (Jubilife City (44, 41)), not on JubilifeCity (46, 41) facing north (tile). |
+  | 00.05b |  | start off its declared tile | starts on (37, 41) | stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (43, 41) (Jubilife City (43, 41)), not on JubilifeCity (46, 41) facing north (tile). |
+  | 00.05b |  | start off its declared tile | starts on (41, 41) | stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (47, 41) (Jubilife City (47, 41)), not on JubilifeCity (46, 41) facing north (tile). |
+  | 00.05b |  | start off its declared tile | starts on (42, 41) | stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (48, 41) (Jubilife City (48, 41)), not on JubilifeCity (46, 41) facing north (tile). |
+  | 00.05b |  | start off its declared tile | starts on (43, 41) | stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (49, 41) (Jubilife City (49, 41)), not on JubilifeCity (46, 41) facing north (tile). |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 10 of 10 variants fail 00.05b:
+     starts on (40, 40): stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (46, 40) (Jubilife City (46, 40)), not on JubilifeCity (46, 41) facing north (tile).
+     starts on (40, 42): stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (46, 42) (Jubilife City (46, 42)), not on JubilifeCity (46, 41) facing north (tile).
+     starts on (40, 43): stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (46, 43) (Jubilife City (46, 43)), not on JubilifeCity (46, 41) facing north (tile).
+     starts on (40, 44): stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (34, 44) (Jubilife City (34, 44)), not on JubilifeCity (46, 41) facing north (tile).
+     starts on (39, 41): stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (45, 41) (Jubilife City (45, 41)), not on JubilifeCity (46, 41) facing north (tile).
+     starts on (38, 41): stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (44, 41) (Jubilife City (44, 41)), not on JubilifeCity (46, 41) facing north (tile).
+     starts on (37, 41): stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (43, 41) (Jubilife City (43, 41)), not on JubilifeCity (46, 41) facing north (tile).
+     starts on (41, 41): stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (47, 41) (Jubilife City (47, 41)), not on JubilifeCity (46, 41) facing north (tile).
+     starts on (42, 41): stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (48, 41) (Jubilife City (48, 41)), not on JubilifeCity (46, 41) facing north (tile).
+     starts on (43, 41): stopped in 00.05b below_the_presidents_trigger: 00.05b sim_mismatch: below_the_presidents_trigger: ended at (49, 41) (Jubilife City (49, 41)), not on JubilifeCity (46, 41) facing north (tile).
+PokemonBDSP::AutoStory - Fault sweep: 00.05b, wild battles on every grass pass: passed
+  Fault sweep 00.05b wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.05c, battle opening at step start: passed
+  Fault sweep 00.05c battle opening at step start: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.05c, scene end pose: passed
+  Fault sweep 00.05c scene end pose: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.05c, scene starts during the walk before it: passed
+  Fault sweep 00.05c scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.05c, slow fade-in after every warp: passed
+  Fault sweep 00.05c slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 00.05c, start off its declared tile: passed
+  Fault sweep 00.05c start off its declared tile: 9 variants, 6 fail.
+  | 00.05c |  | start off its declared tile | starts on (14, 18) | stopped in 00.05c beside_the_president: 00.05c sim_mismatch: beside_the_president: ended at (56, 34) (Jubilife City (56, 34)), not on JubilifeCity (45, 35) facing east (tile). |
+  | 00.05c |  | start off its declared tile | starts on (14, 17) | stopped in 00.05c beside_the_president: 00.05c sim_mismatch: beside_the_president: ended at (56, 33) (Jubilife City (56, 33)), not on JubilifeCity (45, 35) facing east (tile). |
+  | 00.05c |  | start off its declared tile | starts on (14, 16) | stopped in 00.05c beside_the_president: 00.05c sim_mismatch: beside_the_president: ended at (56, 32) (Jubilife City (56, 32)), not on JubilifeCity (45, 35) facing east (tile). |
+  | 00.05c |  | start off its declared tile | starts on (14, 20) | stopped in 00.05c beside_the_president: 00.05c sim_mismatch: beside_the_president: ended at (45, 36) (Jubilife City (45, 36)), not on JubilifeCity (45, 35) facing east (tile). |
+  | 00.05c |  | start off its declared tile | starts on (14, 21) | stopped in 00.05c beside_the_president: 00.05c sim_mismatch: beside_the_president: ended at (45, 36) (Jubilife City (45, 36)), not on JubilifeCity (45, 35) facing east (tile). |
+  | 00.05c |  | start off its declared tile | starts on (14, 22) | stopped in 00.05c beside_the_president: 00.05c sim_failure: beside the president: too many plans. |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 6 of 9 variants fail 00.05c:
+     starts on (14, 18): stopped in 00.05c beside_the_president: 00.05c sim_mismatch: beside_the_president: ended at (56, 34) (Jubilife City (56, 34)), not on JubilifeCity (45, 35) facing east (tile).
+     starts on (14, 17): stopped in 00.05c beside_the_president: 00.05c sim_mismatch: beside_the_president: ended at (56, 33) (Jubilife City (56, 33)), not on JubilifeCity (45, 35) facing east (tile).
+     starts on (14, 16): stopped in 00.05c beside_the_president: 00.05c sim_mismatch: beside_the_president: ended at (56, 32) (Jubilife City (56, 32)), not on JubilifeCity (45, 35) facing east (tile).
+     starts on (14, 20): stopped in 00.05c beside_the_president: 00.05c sim_mismatch: beside_the_president: ended at (45, 36) (Jubilife City (45, 36)), not on JubilifeCity (45, 35) facing east (tile).
+     starts on (14, 21): stopped in 00.05c beside_the_president: 00.05c sim_mismatch: beside_the_president: ended at (45, 36) (Jubilife City (45, 36)), not on JubilifeCity (45, 35) facing east (tile).
+     starts on (14, 22): stopped in 00.05c beside_the_president: 00.05c sim_failure: beside the president: too many plans.
+PokemonBDSP::AutoStory - Fault sweep: 00.05c, wild battles on every grass pass: passed
+  Fault sweep 00.05c wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.01, battle opening at step start: passed
+  Fault sweep 01.01 battle opening at step start: 2 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.01, scene end pose: passed
+  Fault sweep 01.01 scene end pose: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.01, scene starts during the walk before it: passed
+  Fault sweep 01.01 scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.01, slow fade-in after every warp: passed
+  Fault sweep 01.01 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.01, start off its declared tile: passed
+  Fault sweep 01.01 start off its declared tile: 9 variants, 8 fail.
+  | 01.01 |  | start off its declared tile | starts on (59, 22) | stopped in 01.01 west_of_barrys_trigger: 01.01 sim_mismatch: west_of_barrys_trigger: ended at (67, 23) (Route 203 (4, 19)), not on Route203 (4, 18) facing east (tile). |
+  | 01.01 |  | start off its declared tile | starts on (59, 23) | stopped in 01.01 west_of_barrys_trigger: 01.01 sim_mismatch: west_of_barrys_trigger: ended at (67, 24) (Route 203 (4, 20)), not on Route203 (4, 18) facing east (tile). |
+  | 01.01 |  | start off its declared tile | starts on (58, 21) | stopped in 01.01 west_of_barrys_trigger: 01.01 sim_mismatch: west_of_barrys_trigger: ended at (66, 22) (Route 203 (3, 18)), not on Route203 (4, 18) facing east (tile). |
+  | 01.01 |  | start off its declared tile | starts on (57, 21) | stopped in 01.01 west_of_barrys_trigger: 01.01 sim_mismatch: west_of_barrys_trigger: ended at (65, 22) (Route 203 (2, 18)), not on Route203 (4, 18) facing east (tile). |
+  | 01.01 |  | start off its declared tile | starts on (56, 21) | stopped in 01.01 west_of_barrys_trigger: 01.01 sim_mismatch: west_of_barrys_trigger: ended at (64, 22) (Route 203 (1, 18)), not on Route203 (4, 18) facing east (tile). |
+  | 01.01 |  | start off its declared tile | starts on (60, 21) | stopped in 01.01 west_of_barrys_trigger: 01.01 sim_mismatch: west_of_barrys_trigger: ended at (68, 22) (Route 203 (5, 18)), not on Route203 (4, 18) facing east (tile). |
+  | 01.01 |  | start off its declared tile | starts on (61, 21) | stopped in 01.01 west_of_barrys_trigger: 01.01 sim_mismatch: west_of_barrys_trigger: ended at (69, 22) (Route 203 (6, 18)), not on Route203 (4, 18) facing east (tile). |
+  | 01.01 |  | start off its declared tile | starts on (62, 21) | stopped in 01.01 west_of_barrys_trigger: 01.01 sim_mismatch: west_of_barrys_trigger: ended at (70, 22) (Route 203 (7, 18)), not on Route203 (4, 18) facing east (tile). |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 8 of 9 variants fail 01.01:
+     starts on (59, 22): stopped in 01.01 west_of_barrys_trigger: 01.01 sim_mismatch: west_of_barrys_trigger: ended at (67, 23) (Route 203 (4, 19)), not on Route203 (4, 18) facing east (tile).
+     starts on (59, 23): stopped in 01.01 west_of_barrys_trigger: 01.01 sim_mismatch: west_of_barrys_trigger: ended at (67, 24) (Route 203 (4, 20)), not on Route203 (4, 18) facing east (tile).
+     starts on (58, 21): stopped in 01.01 west_of_barrys_trigger: 01.01 sim_mismatch: west_of_barrys_trigger: ended at (66, 22) (Route 203 (3, 18)), not on Route203 (4, 18) facing east (tile).
+     starts on (57, 21): stopped in 01.01 west_of_barrys_trigger: 01.01 sim_mismatch: west_of_barrys_trigger: ended at (65, 22) (Route 203 (2, 18)), not on Route203 (4, 18) facing east (tile).
+     starts on (56, 21): stopped in 01.01 west_of_barrys_trigger: 01.01 sim_mismatch: west_of_barrys_trigger: ended at (64, 22) (Route 203 (1, 18)), not on Route203 (4, 18) facing east (tile).
+     starts on (60, 21): stopped in 01.01 west_of_barrys_trigger: 01.01 sim_mismatch: west_of_barrys_trigger: ended at (68, 22) (Route 203 (5, 18)), not on Route203 (4, 18) facing east (tile).
+     starts on (61, 21): stopped in 01.01 west_of_barrys_trigger: 01.01 sim_mismatch: west_of_barrys_trigger: ended at (69, 22) (Route 203 (6, 18)), not on Route203 (4, 18) facing east (tile).
+     starts on (62, 21): stopped in 01.01 west_of_barrys_trigger: 01.01 sim_mismatch: west_of_barrys_trigger: ended at (70, 22) (Route 203 (7, 18)), not on Route203 (4, 18) facing east (tile).
+PokemonBDSP::AutoStory - Fault sweep: 01.01, wild battles on every grass pass: passed
+  Fault sweep 01.01 wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.02, battle opening at step start: passed
+  Fault sweep 01.02 battle opening at step start: 6 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.02, scene end pose: passed
+  Fault sweep 01.02 scene end pose: 8 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.02, scene starts during the walk before it: passed
+  Fault sweep 01.02 scene starts during the walk before it: 2 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.02, slow fade-in after every warp: passed
+  Fault sweep 01.02 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.02, start off its declared tile: passed
+  Fault sweep 01.02 start off its declared tile: 12 variants, 6 fail.
+  | 01.02 |  | start off its declared tile | starts on (4, 17) | stopped in 01.02 south_to_the_cliff: 01.02 sim_mismatch: south_to_the_cliff: ended at (67, 24) (Route 203 (4, 20)), not on Route203 (5, 20) facing south (tile). |
+  | 01.02 |  | start off its declared tile | starts on (3, 17) | stopped in 01.02 south_to_the_cliff: 01.02 sim_mismatch: south_to_the_cliff: ended at (66, 24) (Route 203 (3, 20)), not on Route203 (5, 20) facing south (tile). |
+  | 01.02 |  | start off its declared tile | starts on (2, 17) | stopped in 01.02 south_to_the_cliff: 01.02 sim_mismatch: south_to_the_cliff: ended at (65, 24) (Route 203 (2, 20)), not on Route203 (5, 20) facing south (tile). |
+  | 01.02 |  | start off its declared tile | starts on (6, 17) | stopped in 01.02 south_to_the_cliff: 01.02 sim_mismatch: south_to_the_cliff: ended at (69, 24) (Route 203 (6, 20)), not on Route203 (5, 20) facing south (tile). |
+  | 01.02 |  | start off its declared tile | starts on (7, 17) | stopped in 01.02 south_to_the_cliff: 01.02 sim_mismatch: south_to_the_cliff: ended at (70, 24) (Route 203 (7, 20)), not on Route203 (5, 20) facing south (tile). |
+  | 01.02 |  | start off its declared tile | starts on (8, 17) | stopped in 01.02 south_to_the_cliff: 01.02 sim_mismatch: south_to_the_cliff: ended at (71, 24) (Route 203 (8, 20)), not on Route203 (5, 20) facing south (tile). |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 6 of 12 variants fail 01.02:
+     starts on (4, 17): stopped in 01.02 south_to_the_cliff: 01.02 sim_mismatch: south_to_the_cliff: ended at (67, 24) (Route 203 (4, 20)), not on Route203 (5, 20) facing south (tile).
+     starts on (3, 17): stopped in 01.02 south_to_the_cliff: 01.02 sim_mismatch: south_to_the_cliff: ended at (66, 24) (Route 203 (3, 20)), not on Route203 (5, 20) facing south (tile).
+     starts on (2, 17): stopped in 01.02 south_to_the_cliff: 01.02 sim_mismatch: south_to_the_cliff: ended at (65, 24) (Route 203 (2, 20)), not on Route203 (5, 20) facing south (tile).
+     starts on (6, 17): stopped in 01.02 south_to_the_cliff: 01.02 sim_mismatch: south_to_the_cliff: ended at (69, 24) (Route 203 (6, 20)), not on Route203 (5, 20) facing south (tile).
+     starts on (7, 17): stopped in 01.02 south_to_the_cliff: 01.02 sim_mismatch: south_to_the_cliff: ended at (70, 24) (Route 203 (7, 20)), not on Route203 (5, 20) facing south (tile).
+     starts on (8, 17): stopped in 01.02 south_to_the_cliff: 01.02 sim_mismatch: south_to_the_cliff: ended at (71, 24) (Route 203 (8, 20)), not on Route203 (5, 20) facing south (tile).
+PokemonBDSP::AutoStory - Fault sweep: 01.02, wild battles on every grass pass: passed
+  Fault sweep 01.02 wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.02b, battle opening at step start: passed
+  Fault sweep 01.02b battle opening at step start: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.02b, scene end pose: passed
+  Fault sweep 01.02b scene end pose: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.02b, scene starts during the walk before it: passed
+  Fault sweep 01.02b scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.02b, slow fade-in after every warp: passed
+  Fault sweep 01.02b slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.02b, start off its declared tile: passed
+  Fault sweep 01.02b start off its declared tile: 10 variants, 10 fail.
+  | 01.02b |  | start off its declared tile | starts on (23, 22) | stopped in 01.02b below_barry: 01.02b short_leg: north 2 moved 1 |
+  | 01.02b |  | start off its declared tile | starts on (23, 21) | stopped in 01.02b below_barry: 01.02b short_leg: north 2 moved 0 |
+  | 01.02b |  | start off its declared tile | starts on (23, 24) | stopped in 01.02b below_barry: 01.02b sim_mismatch: below_barry: ended at (26, 23) (Oreburgh City (26, 23)), not on OreburghCity (26, 22) facing north (tile). |
+  | 01.02b |  | start off its declared tile | starts on (23, 25) | stopped in 01.02b below_barry: 01.02b short_leg: south 1 moved 0 |
+  | 01.02b |  | start off its declared tile | starts on (22, 23) | stopped in 01.02b below_barry: 01.02b sim_mismatch: below_barry: ended at (25, 22) (Oreburgh City (25, 22)), not on OreburghCity (26, 22) facing north (tile). |
+  | 01.02b |  | start off its declared tile | starts on (21, 23) | stopped in 01.02b below_barry: 01.02b sim_mismatch: below_barry: ended at (24, 22) (Oreburgh City (24, 22)), not on OreburghCity (26, 22) facing north (tile). |
+  | 01.02b |  | start off its declared tile | starts on (20, 23) | stopped in 01.02b below_barry: 01.02b sim_mismatch: below_barry: ended at (23, 22) (Oreburgh City (23, 22)), not on OreburghCity (26, 22) facing north (tile). |
+  | 01.02b |  | start off its declared tile | starts on (24, 23) | stopped in 01.02b below_barry: 01.02b sim_mismatch: below_barry: ended at (27, 22) (Oreburgh City (27, 22)), not on OreburghCity (26, 22) facing north (tile). |
+  | 01.02b |  | start off its declared tile | starts on (25, 23) | stopped in 01.02b below_barry: 01.02b sim_mismatch: below_barry: ended at (28, 22) (Oreburgh City (28, 22)), not on OreburghCity (26, 22) facing north (tile). |
+  | 01.02b |  | start off its declared tile | starts on (26, 23) | stopped in 01.02b below_barry: 01.02b sim_mismatch: below_barry: ended at (29, 22) (Oreburgh City (29, 22)), not on OreburghCity (26, 22) facing north (tile). |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 10 of 10 variants fail 01.02b:
+     starts on (23, 22): stopped in 01.02b below_barry: 01.02b short_leg: north 2 moved 1
+     starts on (23, 21): stopped in 01.02b below_barry: 01.02b short_leg: north 2 moved 0
+     starts on (23, 24): stopped in 01.02b below_barry: 01.02b sim_mismatch: below_barry: ended at (26, 23) (Oreburgh City (26, 23)), not on OreburghCity (26, 22) facing north (tile).
+     starts on (23, 25): stopped in 01.02b below_barry: 01.02b short_leg: south 1 moved 0
+     starts on (22, 23): stopped in 01.02b below_barry: 01.02b sim_mismatch: below_barry: ended at (25, 22) (Oreburgh City (25, 22)), not on OreburghCity (26, 22) facing north (tile).
+     starts on (21, 23): stopped in 01.02b below_barry: 01.02b sim_mismatch: below_barry: ended at (24, 22) (Oreburgh City (24, 22)), not on OreburghCity (26, 22) facing north (tile).
+     starts on (20, 23): stopped in 01.02b below_barry: 01.02b sim_mismatch: below_barry: ended at (23, 22) (Oreburgh City (23, 22)), not on OreburghCity (26, 22) facing north (tile).
+     starts on (24, 23): stopped in 01.02b below_barry: 01.02b sim_mismatch: below_barry: ended at (27, 22) (Oreburgh City (27, 22)), not on OreburghCity (26, 22) facing north (tile).
+     starts on (25, 23): stopped in 01.02b below_barry: 01.02b sim_mismatch: below_barry: ended at (28, 22) (Oreburgh City (28, 22)), not on OreburghCity (26, 22) facing north (tile).
+     starts on (26, 23): stopped in 01.02b below_barry: 01.02b sim_mismatch: below_barry: ended at (29, 22) (Oreburgh City (29, 22)), not on OreburghCity (26, 22) facing north (tile).
+PokemonBDSP::AutoStory - Fault sweep: 01.02b, wild battles on every grass pass: passed
+  Fault sweep 01.02b wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.03, battle opening at step start: passed
+  Fault sweep 01.03 battle opening at step start: 8 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.03, scene end pose: passed
+  Fault sweep 01.03 scene end pose: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.03, scene starts during the walk before it: passed
+  Fault sweep 01.03 scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.03, slow fade-in after every warp: passed
+  Fault sweep 01.03 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.03, start off its declared tile: passed
+  Fault sweep 01.03 start off its declared tile: 8 variants, 3 fail.
+  | 01.03 |  | start off its declared tile | starts on (47, 23) | stopped in 01.03 above_the_mine: 01.03 sim_mismatch: above_the_mine: ended at (46, 58) (Oreburgh City (46, 58)), not on OreburghCity (46, 57) facing south (tile). |
+  | 01.03 |  | start off its declared tile | starts on (47, 24) | stopped in 01.03 above_the_mine: 01.03 sim_mismatch: above_the_mine: ended at (46, 59) (Oreburgh City (46, 59)), not on OreburghCity (46, 39) facing south (tile). |
+  | 01.03 |  | start off its declared tile | starts on (48, 21) | stopped in 01.03 above_the_mine: 01.03 sim_mismatch: above_the_mine: ended at (46, 59) (Oreburgh City (46, 59)), not on OreburghCity (46, 36) facing south (tile). |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 3 of 8 variants fail 01.03:
+     starts on (47, 23): stopped in 01.03 above_the_mine: 01.03 sim_mismatch: above_the_mine: ended at (46, 58) (Oreburgh City (46, 58)), not on OreburghCity (46, 57) facing south (tile).
+     starts on (47, 24): stopped in 01.03 above_the_mine: 01.03 sim_mismatch: above_the_mine: ended at (46, 59) (Oreburgh City (46, 59)), not on OreburghCity (46, 39) facing south (tile).
+     starts on (48, 21): stopped in 01.03 above_the_mine: 01.03 sim_mismatch: above_the_mine: ended at (46, 59) (Oreburgh City (46, 59)), not on OreburghCity (46, 36) facing south (tile).
+PokemonBDSP::AutoStory - Fault sweep: 01.03, wild battles on every grass pass: passed
+  Fault sweep 01.03 wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.04, battle opening at step start: passed
+  Fault sweep 01.04 battle opening at step start: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.04, scene end pose: passed
+  Fault sweep 01.04 scene end pose: 7 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.04, scene starts during the walk before it: passed
+  Fault sweep 01.04 scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.04, slow fade-in after every warp: passed
+  Fault sweep 01.04 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.04, start off its declared tile: passed
+  Fault sweep 01.04 start off its declared tile: 8 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.04, wild battles on every grass pass: passed
+  Fault sweep 01.04 wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.05, battle opening at step start: passed
+  Fault sweep 01.05 battle opening at step start: 4 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.05, scene end pose: passed
+  Fault sweep 01.05 scene end pose: 8 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.05, scene starts during the walk before it: passed
+  Fault sweep 01.05 scene starts during the walk before it: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.05, slow fade-in after every warp: passed
+  Fault sweep 01.05 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.05, start off its declared tile: passed
+  Fault sweep 01.05 start off its declared tile: 9 variants, 6 fail.
+  | 01.05 |  | start off its declared tile | starts on (4, 4) | stopped in 01.05 out_of_the_gym: 01.05 no_banner: no fade and no OreburghCity banner in 22 taps south |
+  | 01.05 |  | start off its declared tile | starts on (3, 4) | stopped in 01.05 out_of_the_gym: 01.05 no_banner: no fade and no OreburghCity banner in 22 taps south |
+  | 01.05 |  | start off its declared tile | starts on (2, 4) | stopped in 01.05 out_of_the_gym: 01.05 no_banner: no fade and no OreburghCity banner in 22 taps south |
+  | 01.05 |  | start off its declared tile | starts on (6, 4) | stopped in 01.05 out_of_the_gym: 01.05 no_banner: no fade and no OreburghCity banner in 22 taps south |
+  | 01.05 |  | start off its declared tile | starts on (7, 4) | stopped in 01.05 out_of_the_gym: 01.05 no_banner: no fade and no OreburghCity banner in 22 taps south |
+  | 01.05 |  | start off its declared tile | starts on (8, 4) | stopped in 01.05 out_of_the_gym: 01.05 no_banner: no fade and no OreburghCity banner in 22 taps south |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 6 of 9 variants fail 01.05:
+     starts on (4, 4): stopped in 01.05 out_of_the_gym: 01.05 no_banner: no fade and no OreburghCity banner in 22 taps south
+     starts on (3, 4): stopped in 01.05 out_of_the_gym: 01.05 no_banner: no fade and no OreburghCity banner in 22 taps south
+     starts on (2, 4): stopped in 01.05 out_of_the_gym: 01.05 no_banner: no fade and no OreburghCity banner in 22 taps south
+     starts on (6, 4): stopped in 01.05 out_of_the_gym: 01.05 no_banner: no fade and no OreburghCity banner in 22 taps south
+     starts on (7, 4): stopped in 01.05 out_of_the_gym: 01.05 no_banner: no fade and no OreburghCity banner in 22 taps south
+     starts on (8, 4): stopped in 01.05 out_of_the_gym: 01.05 no_banner: no fade and no OreburghCity banner in 22 taps south
+PokemonBDSP::AutoStory - Fault sweep: 01.05, wild battles on every grass pass: passed
+  Fault sweep 01.05 wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.06, battle opening at step start: passed
+  Fault sweep 01.06 battle opening at step start: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.06, scene end pose: passed
+  Fault sweep 01.06 scene end pose: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.06, scene starts during the walk before it: passed
+  Fault sweep 01.06 scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.06, slow fade-in after every warp: passed
+  Fault sweep 01.06 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.06, start off its declared tile: passed
+  Fault sweep 01.06 start off its declared tile: 10 variants, 3 fail.
+  | 01.06 |  | start off its declared tile | starts on (55, 11) | stopped in 01.06 up_jubilifes_road: 01.06 sim_failure: up jubilifes road: west 11 (to wall): still moving after 32 tiles, past the wall 11 tiles away at most: position unknown. |
+  | 01.06 |  | start off its declared tile | starts on (55, 12) | stopped in 01.06 up_jubilifes_road: 01.06 sim_failure: up jubilifes road: too many plans. |
+  | 01.06 |  | start off its declared tile | starts on (56, 9) | stopped in 01.06 up_jubilifes_road: 01.06 sim_failure: up jubilifes road: too many plans. |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 3 of 10 variants fail 01.06:
+     starts on (55, 11): stopped in 01.06 up_jubilifes_road: 01.06 sim_failure: up jubilifes road: west 11 (to wall): still moving after 32 tiles, past the wall 11 tiles away at most: position unknown.
+     starts on (55, 12): stopped in 01.06 up_jubilifes_road: 01.06 sim_failure: up jubilifes road: too many plans.
+     starts on (56, 9): stopped in 01.06 up_jubilifes_road: 01.06 sim_failure: up jubilifes road: too many plans.
+PokemonBDSP::AutoStory - Fault sweep: 01.06, wild battles on every grass pass: passed
+  Fault sweep 01.06 wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.07, battle opening at step start: passed
+  Fault sweep 01.07 battle opening at step start: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.07, scene end pose: passed
+  Fault sweep 01.07 scene end pose: 10 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.07, scene starts during the walk before it: passed
+  Fault sweep 01.07 scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.07, slow fade-in after every warp: passed
+  Fault sweep 01.07 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.07, start off its declared tile: passed
+  Fault sweep 01.07 start off its declared tile: 9 variants, 9 fail.
+  | 01.07 |  | start off its declared tile | starts on (47, 7) | stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (47, 6) (Jubilife City (47, 6)), not on JubilifeCity (47, 7) facing north (tile). |
+  | 01.07 |  | start off its declared tile | starts on (47, 6) | stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (47, 5) (Jubilife City (47, 5)), not on JubilifeCity (47, 7) facing north (tile). |
+  | 01.07 |  | start off its declared tile | starts on (47, 5) | stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (47, 4) (Jubilife City (47, 4)), not on JubilifeCity (47, 7) facing north (tile). |
+  | 01.07 |  | start off its declared tile | starts on (47, 9) | stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (47, 8) (Jubilife City (47, 8)), not on JubilifeCity (47, 7) facing north (tile). |
+  | 01.07 |  | start off its declared tile | starts on (47, 10) | stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (47, 9) (Jubilife City (47, 9)), not on JubilifeCity (47, 7) facing north (tile). |
+  | 01.07 |  | start off its declared tile | starts on (47, 11) | stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (47, 10) (Jubilife City (47, 10)), not on JubilifeCity (47, 7) facing north (tile). |
+  | 01.07 |  | start off its declared tile | starts on (46, 8) | stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (46, 7) (Jubilife City (46, 7)), not on JubilifeCity (47, 7) facing north (tile). |
+  | 01.07 |  | start off its declared tile | starts on (45, 8) | stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (45, 7) (Jubilife City (45, 7)), not on JubilifeCity (47, 7) facing north (tile). |
+  | 01.07 |  | start off its declared tile | starts on (44, 8) | stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (44, 8) (Jubilife City (44, 8)), not on JubilifeCity (47, 7) facing north (tile). |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 9 of 9 variants fail 01.07:
+     starts on (47, 7): stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (47, 6) (Jubilife City (47, 6)), not on JubilifeCity (47, 7) facing north (tile).
+     starts on (47, 6): stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (47, 5) (Jubilife City (47, 5)), not on JubilifeCity (47, 7) facing north (tile).
+     starts on (47, 5): stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (47, 4) (Jubilife City (47, 4)), not on JubilifeCity (47, 7) facing north (tile).
+     starts on (47, 9): stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (47, 8) (Jubilife City (47, 8)), not on JubilifeCity (47, 7) facing north (tile).
+     starts on (47, 10): stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (47, 9) (Jubilife City (47, 9)), not on JubilifeCity (47, 7) facing north (tile).
+     starts on (47, 11): stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (47, 10) (Jubilife City (47, 10)), not on JubilifeCity (47, 7) facing north (tile).
+     starts on (46, 8): stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (46, 7) (Jubilife City (46, 7)), not on JubilifeCity (47, 7) facing north (tile).
+     starts on (45, 8): stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (45, 7) (Jubilife City (45, 7)), not on JubilifeCity (47, 7) facing north (tile).
+     starts on (44, 8): stopped in 01.07 rowans_trigger: 01.07 sim_mismatch: rowans_trigger: ended at (44, 8) (Jubilife City (44, 8)), not on JubilifeCity (47, 7) facing north (tile).
+PokemonBDSP::AutoStory - Fault sweep: 01.07, wild battles on every grass pass: passed
+  Fault sweep 01.07 wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.08, battle opening at step start: passed
+  Fault sweep 01.08 battle opening at step start: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.08, scene end pose: passed
+  Fault sweep 01.08 scene end pose: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.08, scene starts during the walk before it: passed
+  Fault sweep 01.08 scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.08, slow fade-in after every warp: passed
+  Fault sweep 01.08 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.08, start off its declared tile: passed
+  Fault sweep 01.08 start off its declared tile: 11 variants, 6 fail.
+  | 01.08 |  | start off its declared tile | starts on (46, 4) | stopped in 01.08 west_to_the_wall: 01.08 sim_mismatch: west_to_the_wall: ended at (44, 4) (Jubilife City (44, 4)), not on JubilifeCity (44, 5) facing west (tile). |
+  | 01.08 |  | start off its declared tile | starts on (46, 3) | stopped in 01.08 west_to_the_wall: 01.08 sim_mismatch: west_to_the_wall: ended at (44, 3) (Jubilife City (44, 3)), not on JubilifeCity (44, 5) facing west (tile). |
+  | 01.08 |  | start off its declared tile | starts on (46, 2) | stopped in 01.08 west_to_the_wall: 01.08 sim_mismatch: west_to_the_wall: ended at (44, 2) (Jubilife City (44, 2)), not on JubilifeCity (44, 5) facing west (tile). |
+  | 01.08 |  | start off its declared tile | starts on (46, 6) | stopped in 01.08 west_to_the_wall: 01.08 sim_mismatch: west_to_the_wall: ended at (44, 6) (Jubilife City (44, 6)), not on JubilifeCity (44, 5) facing west (tile). |
+  | 01.08 |  | start off its declared tile | starts on (46, 7) | stopped in 01.08 west_to_the_wall: 01.08 sim_mismatch: west_to_the_wall: ended at (45, 7) (Jubilife City (45, 7)), not on JubilifeCity (44, 5) facing west (tile). |
+  | 01.08 |  | start off its declared tile | starts on (46, 8) | stopped in 01.08 west_to_the_wall: 01.08 sim_mismatch: west_to_the_wall: ended at (41, 8) (Jubilife City (41, 8)), not on JubilifeCity (44, 5) facing west (tile). |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 6 of 11 variants fail 01.08:
+     starts on (46, 4): stopped in 01.08 west_to_the_wall: 01.08 sim_mismatch: west_to_the_wall: ended at (44, 4) (Jubilife City (44, 4)), not on JubilifeCity (44, 5) facing west (tile).
+     starts on (46, 3): stopped in 01.08 west_to_the_wall: 01.08 sim_mismatch: west_to_the_wall: ended at (44, 3) (Jubilife City (44, 3)), not on JubilifeCity (44, 5) facing west (tile).
+     starts on (46, 2): stopped in 01.08 west_to_the_wall: 01.08 sim_mismatch: west_to_the_wall: ended at (44, 2) (Jubilife City (44, 2)), not on JubilifeCity (44, 5) facing west (tile).
+     starts on (46, 6): stopped in 01.08 west_to_the_wall: 01.08 sim_mismatch: west_to_the_wall: ended at (44, 6) (Jubilife City (44, 6)), not on JubilifeCity (44, 5) facing west (tile).
+     starts on (46, 7): stopped in 01.08 west_to_the_wall: 01.08 sim_mismatch: west_to_the_wall: ended at (45, 7) (Jubilife City (45, 7)), not on JubilifeCity (44, 5) facing west (tile).
+     starts on (46, 8): stopped in 01.08 west_to_the_wall: 01.08 sim_mismatch: west_to_the_wall: ended at (41, 8) (Jubilife City (41, 8)), not on JubilifeCity (44, 5) facing west (tile).
+PokemonBDSP::AutoStory - Fault sweep: 01.08, wild battles on every grass pass: passed
+  Fault sweep 01.08 wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.09, battle opening at step start: passed
+  Fault sweep 01.09 battle opening at step start: 2 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.09, scene end pose: passed
+  Fault sweep 01.09 scene end pose: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.09, scene starts during the walk before it: passed
+  Fault sweep 01.09 scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.09, slow fade-in after every warp: passed
+  Fault sweep 01.09 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.09, start off its declared tile: passed
+  Fault sweep 01.09 start off its declared tile: 6 variants, 4 fail.
+  | 01.09 |  | start off its declared tile | starts on (19, 48) | stopped in 01.09 west_of_the_rock: 01.09 sim_mismatch: west_of_the_rock: ended at (21, 42) (RavagedPath (21, 42)), not on RavagedPath (21, 43) facing east (tile). |
+  | 01.09 |  | start off its declared tile | starts on (19, 47) | stopped in 01.09 west_of_the_rock: 01.09 sim_mismatch: west_of_the_rock: ended at (20, 41) (RavagedPath (20, 41)), not on RavagedPath (21, 43) facing east (tile). |
+  | 01.09 |  | start off its declared tile | starts on (18, 50) | stopped in 01.09 west_of_the_rock: 01.09 sim_mismatch: west_of_the_rock: ended at (20, 43) (RavagedPath (20, 43)), not on RavagedPath (21, 43) facing east (tile). |
+  | 01.09 |  | start off its declared tile | starts on (20, 50) | stopped in 01.09 west_of_the_rock: 01.09 sim_mismatch: west_of_the_rock: ended at (22, 43) (RavagedPath (22, 43)), not on RavagedPath (21, 43) facing east (tile). |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 4 of 6 variants fail 01.09:
+     starts on (19, 48): stopped in 01.09 west_of_the_rock: 01.09 sim_mismatch: west_of_the_rock: ended at (21, 42) (RavagedPath (21, 42)), not on RavagedPath (21, 43) facing east (tile).
+     starts on (19, 47): stopped in 01.09 west_of_the_rock: 01.09 sim_mismatch: west_of_the_rock: ended at (20, 41) (RavagedPath (20, 41)), not on RavagedPath (21, 43) facing east (tile).
+     starts on (18, 50): stopped in 01.09 west_of_the_rock: 01.09 sim_mismatch: west_of_the_rock: ended at (20, 43) (RavagedPath (20, 43)), not on RavagedPath (21, 43) facing east (tile).
+     starts on (20, 50): stopped in 01.09 west_of_the_rock: 01.09 sim_mismatch: west_of_the_rock: ended at (22, 43) (RavagedPath (22, 43)), not on RavagedPath (21, 43) facing east (tile).
+PokemonBDSP::AutoStory - Fault sweep: 01.09, wild battles on every grass pass: passed
+  Fault sweep 01.09 wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.10, battle opening at step start: passed
+  Fault sweep 01.10 battle opening at step start: 6 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.10, scene end pose: passed
+  Fault sweep 01.10 scene end pose: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.10, scene starts during the walk before it: passed
+  Fault sweep 01.10 scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.10, slow fade-in after every warp: passed
+  Fault sweep 01.10 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.10, start off its declared tile: passed
+  Fault sweep 01.10 start off its declared tile: 3 variants, 1 fail.
+  | 01.10 |  | start off its declared tile | starts on (20, 29) | stopped in 01.10 line_1: 01.10 sim_failure: line 1: too many plans. |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 1 of 3 variants fail 01.10:
+     starts on (20, 29): stopped in 01.10 line_1: 01.10 sim_failure: line 1: too many plans.
+PokemonBDSP::AutoStory - Fault sweep: 01.10, wild battles on every grass pass: passed
+  Fault sweep 01.10 wild battles on every grass pass: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.11, battle opening at step start: passed
+  Fault sweep 01.11 battle opening at step start: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.11, scene end pose: passed
+  Fault sweep 01.11 scene end pose: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.11, scene starts during the walk before it: passed
+  Fault sweep 01.11 scene starts during the walk before it: 0 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.11, slow fade-in after every warp: passed
+  Fault sweep 01.11 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonBDSP::AutoStory - Fault sweep: 01.11, start off its declared tile: passed
+  Fault sweep 01.11 start off its declared tile: 9 variants, 1 fail.
+  | 01.11 |  | start off its declared tile | starts on (11, 30) | stopped in 01.11 west_to_the_field_edge: 01.11 sim_mismatch: west_to_the_field_edge: ended at (10, 30) (Floaroma Town (10, 30)), not on FloaromaTown (0, 27) (0, 28) (0, 29) facing west (set). |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 1 of 9 variants fail 01.11:
+     starts on (11, 30): stopped in 01.11 west_to_the_field_edge: 01.11 sim_mismatch: west_to_the_field_edge: ended at (10, 30) (Floaroma Town (10, 30)), not on FloaromaTown (0, 27) (0, 28) (0, 29) facing west (set).
+PokemonBDSP::AutoStory - Fault sweep: 01.11, wild battles on every grass pass: passed
+  Fault sweep 01.11 wild battles on every grass pass: 1 variants, 0 fail.
