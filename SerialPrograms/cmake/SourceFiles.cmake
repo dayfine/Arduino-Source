@@ -1553,12 +1553,22 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.h
     Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson_Tests.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson_Tests.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryDevFiles.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryDevFiles.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles_Tests.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles_Tests.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryRowExecution.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryRowExecution.h
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.cpp
