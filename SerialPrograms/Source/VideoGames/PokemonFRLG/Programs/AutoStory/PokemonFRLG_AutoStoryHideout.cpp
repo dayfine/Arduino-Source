@@ -117,6 +117,7 @@ std::vector<Pokemon::StoryActionSpec> field_action_specs(){
             required_arg("item", StoryArgType::WORD, "the item's slug, as read_item_list_name() names it"),
             optional_arg("safari", StoryArgType::BOOLEAN, false, "in the Safari Zone, whose START menu has RETIRE on top"),
             optional_arg("count", StoryArgType::INTEGER, int64_t(1), "how often to use it, as many as the bag has (a Rare Candy on the lead each)"),
+            optional_arg("if_any", StoryArgType::BOOLEAN, false, "skip the step, logged, if the bag has none left, instead of failing"),
         }},
         {.kind = StoryStepKind::GAME, .name = RIDE_BIKE_VARIANT, .args = {}},
         {.kind = StoryStepKind::GAME, .name = REGISTER_BIKE_VARIANT, .args = {}},
@@ -183,7 +184,7 @@ void push_poster_switch(ConsoleHandle& console, ProControllerContext& context){
 
 std::optional<Pokemon::Outcome> run_field_game_step(
     ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player,
-    const Pokemon::StoryStep& step
+    const Pokemon::StoryStep& step, PartyCache& party
 ){
     const auto done = [&step]{
         return step.pose_after ? Pokemon::outcome_ok(Pokemon::pose_of(*step.pose_after)) : Pokemon::outcome_ok();
@@ -192,7 +193,7 @@ std::optional<Pokemon::Outcome> run_field_game_step(
         ride_lift(console, context, *ride, player);
         return done();
     }
-    if (std::optional<Pokemon::Outcome> moved = run_field_move_step(console, context, language, step)){
+    if (std::optional<Pokemon::Outcome> moved = run_field_move_step(console, context, language, player, step, party)){
         return moved;
     }
     if (is_center_variant(step.action)){
@@ -215,8 +216,13 @@ std::optional<Pokemon::Outcome> run_field_game_step(
     const ItemUseEnd end = step.action == REGISTER_BIKE_VARIANT
         ? register_item_in_bag(console.logger(), bag, "bicycle")
         : use_items_from_bag(console.logger(), bag, *parse_use_item_step(step), use_item_count(step)).end;
-    if (end != ItemUseEnd::USED){
+    //  A Repel that lingered from before leaves one on: the step's purpose.
+    const bool* if_any = game_arg<bool>(step.args, "if_any");
+    if (!item_use_step_done(end, if_any != nullptr && *if_any)){
         return Pokemon::outcome_failed(std::string("use_item_") + item_use_end_name(end), step.action);
+    }
+    if (end == ItemUseEnd::NONE_LEFT){
+        console.log(std::format("{}: none left in the bag; skipped (if_any).", step.name), COLOR_ORANGE);
     }
     return done();
 }

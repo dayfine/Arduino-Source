@@ -326,6 +326,26 @@ void add_tests_PlayerFacingReader(UnitTestDatabase& database){
     database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/CeruleanCave_North.png");
     database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Surfing_None.png");
     database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Bag_None.png");
+    //  Fuchsia's Center (0, 5), after the turn tap east and before it, facing
+    //  south: the escalator's rail is drawn over the legs and half the face
+    //  (console B, 2026-11-13 00:39, 12.03). Too little shows to tell the
+    //  way from the head alone (the cap matches every sprite), so these read
+    //  nothing; they must never read a wrong way.
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/FuchsiaCenterEscalatorEast_None.png");
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/FuchsiaCenterEscalatorSouth_None.png");
+    //  FireRed on console B, 2026-11-13 (12.03): on foot on Route 21's sand
+    //  bars after a leg that landed, and surfing down Route21_North, where
+    //  a leg that lands is checked to have (RouteCalls::landed_on).
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route21SandBar_South.png");
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route21SandBar_East.png");
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route21SandBar_North.png");
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route21Surfing_None.png");
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route21ChannelSurfing_None.png");
+    //  Cinnabar (13, 7), north of the Center, after the turn tap west
+    //  (console B, 2026-11-13 11:06, 12.03 surf_route_21): the roof's eave
+    //  is drawn over all but the head. It must read nothing, never a wrong
+    //  way.
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/CinnabarCenterRoofWest_None.png");
 }
 
 

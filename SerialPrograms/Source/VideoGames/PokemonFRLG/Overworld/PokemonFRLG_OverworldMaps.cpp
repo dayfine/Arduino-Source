@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <string_view>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "PokemonFRLG_OverworldMaps.h"
@@ -146,6 +147,8 @@ constexpr std::string_view MAP_NAMES[] = {
     //  Route 7's east gate, where the guard takes the TEA, and Saffron City.
     "Route7_EastEntrance",
     "SaffronCity",
+    //  Sabrina's gym: nine rooms joined by teleport pads (warps).
+    "SaffronCity_Gym",
     //  Cinnabar Island's Center and Blaine's gym, through its quiz doors, and
     //  Route 21 north of it to Pallet Town (12.03).
     "CinnabarIsland",
@@ -185,6 +188,14 @@ constexpr std::string_view MAP_NAMES[] = {
     "VictoryRoad_3F",
     "IndigoPlateau_Exterior",
     "IndigoPlateau_PokemonCenter_1F",
+    //  The Pokemon League: the Elite Four's rooms, one-way north, the
+    //  Champion's room and the Hall of Fame (20.01 to 20.05).
+    "PokemonLeague_LoreleisRoom",
+    "PokemonLeague_BrunosRoom",
+    "PokemonLeague_AgathasRoom",
+    "PokemonLeague_LancesRoom",
+    "PokemonLeague_ChampionsRoom",
+    "PokemonLeague_HallOfFame",
 };
 
 
@@ -224,12 +235,44 @@ void waive_pallet_fat_man_box(MapData& map){
     }
 }
 
+//  A trainer whose walk the map pack leaves out: the pack has them standing
+//  on their own tile, and a route past it was planned through their line.
+struct WalkedBox{
+    std::string_view map;
+    std::string_view name;
+    TilePos start;
+    Pokemon::TileBox box;
+};
+//  Swimmer Spencer (pokefirered Route21_North map.json, object event 2):
+//  MOVEMENT_TYPE_WALK_SEQUENCE_LEFT_UP_RIGHT_DOWN from (12, 44) with range
+//  4 by 2, so he goes round (8..16, 42..46) (MoveNextDirectionInSequence()
+//  and IsCoordOutsideObjectEventMovementRange() in event_object_movement.c),
+//  looking a tile ahead. The pack had him at (12, 44) alone, and 12.03's
+//  hold down column 10 met him (console B, 2026-11-13 10:07).
+const WalkedBox WALKED_BOXES[] = {
+    {"Route21_North", "swimmer_m_water", {12, 44}, {.x0 = 8, .y0 = 42, .x1 = 16, .y1 = 46}},
+};
+
+void add_walked_boxes(MapData& map){
+    for (const WalkedBox& walked : WALKED_BOXES){
+        if (map.name != walked.map){
+            continue;
+        }
+        for (MapObject& object : map.objects){
+            if (object.name == walked.name && object.x == walked.start.x && object.y == walked.start.y && !object.wander){
+                object.wander = walked.box;
+            }
+        }
+    }
+}
+
 const std::vector<MapData>& all_maps(){
     static const std::vector<MapData> MAPS = []{
         std::vector<MapData> maps;
         for (std::string_view name : MAP_NAMES){
             maps.push_back(load_map(std::string(name)));
             waive_pallet_fat_man_box(maps.back());
+            add_walked_boxes(maps.back());
         }
         add_unmapped_centers(maps);
         return maps;

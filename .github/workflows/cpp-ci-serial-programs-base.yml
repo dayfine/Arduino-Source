@@ -109,7 +109,7 @@ jobs:
 
       - name: Prepare approved FRLG map resources
         id: map-resources
-        uses: dayfine/PokemonSimulation/integrations/arduino-source/verify-map-packs@1cacf81b2377ec1413317d905ad5415f6fe8dad5
+        uses: dayfine/PokemonSimulation/integrations/arduino-source/verify-map-packs@eaf158837fd46839d047439338b505833c1900f0
         with:
           layout: resources
           operation: prepare
@@ -383,9 +383,9 @@ jobs:
         uses: actions/checkout@v7
         if: inputs.run-tests
         with:
-          # The fork's fixtures: upstream's, the SystemKeyboardDetector screenshots and pending FRLG image submissions.
+          # The fork's fixtures: upstream's, the SystemKeyboardDetector and HomeTileReader screenshots and pending FRLG image submissions (Fly landing, party menu, Route 21 battle and Pokemon Mansion 1F and B1F hold frames).
           repository: 'dayfine/CommandLineTests'
-          ref: '3a6708327b225e71a329d77d8d067305ea4058d2'
+          ref: '248ac19e5fa06c8f14eebe27647562cf6881e66a'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded

@@ -97,7 +97,15 @@ inline std::optional<Pose> after_legs(const Pose& start, const std::vector<Story
 template <StoryPose PoseType>
 Outcome walk_legs(StoryBackend<PoseType>& backend, const StoryActionCall& call, RunState& state){
     const std::vector<StoryLeg>& legs = story_arg<std::vector<StoryLeg>>(call.args, "legs");
-    for (const StoryLeg& leg : legs){
+    const std::vector<TilePos> start = tiles_of(state.pose);
+    std::optional<TilePos> tile = start.size() == 1 ? std::optional<TilePos>(start[0]) : std::nullopt;
+    for (size_t index = 0; index < legs.size(); index++){
+        const StoryLeg& leg = legs[index];
+        for (int c = 0; tile && c < leg.tiles; c++){
+            tile = tile->next(leg.direction);
+        }
+        call.pause.before_leg(story_leg_pause_label(index, legs.size(), leg.direction, leg.tiles, tile));
+        backend.scope().throw_if_cancelled();
         for (int c = 0; c < leg.tiles; c++){
             backend.tap(leg.direction);
         }

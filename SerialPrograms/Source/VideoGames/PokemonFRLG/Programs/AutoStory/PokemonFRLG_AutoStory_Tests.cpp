@@ -32,6 +32,7 @@
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryGenderMenu.h"
 #include "PokemonFRLG_AutoStoryBag.h"
+#include "PokemonFRLG_AutoStoryConsoleFailure_Tests.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
@@ -42,9 +43,11 @@
 #include "PokemonFRLG_AutoStoryPlanGolden14.h"
 #include "PokemonFRLG_AutoStoryPlanGolden15.h"
 #include "PokemonFRLG_AutoStoryPlanGolden16.h"
+#include "PokemonFRLG_AutoStoryPlanGolden18.h"
 #include "PokemonFRLG_AutoStoryPlanGolden17.h"
 #include "PokemonFRLG_AutoStoryPlanGolden13.h"
 #include "PokemonFRLG_AutoStoryPlanGolden19.h"
+#include "PokemonFRLG_AutoStoryPlanGolden20.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
@@ -89,15 +92,6 @@ private:
     AutoStoryTestCase m_scenario;
 };
 
-const MapData* find_map_named(const std::string& name){
-    for (const MapData& map : story_maps()){
-        if (map.name == name){
-            return &map;
-        }
-    }
-    return nullptr;
-}
-
 //  The gates the walk the test is following has opened and the switches it
 //  has pressed, and whether it holds the Card Key: what the story's steps
 //  carry through a checkpoint (start_gates, gates_after, flags_after). Each
@@ -105,6 +99,11 @@ const MapData* find_map_named(const std::string& name){
 struct WalkGates{
     Pokemon::GateState gates;
     bool card_key_held = false;
+    //  The run flags the walk has set (silph_cleared takes the Rockets off the maps).
+    std::set<std::string> run_flags;
+    //  Whether Cinnabar's Gym is still locked: it opens with the SECRET KEY,
+    //  taken in 13.04, so from 14.01 on.
+    bool cinnabar_gym_locked = false;
 };
 WalkGates& walk_state(){
     thread_local WalkGates walk;
@@ -118,6 +117,8 @@ void begin_walk(const StoryCheckpoint& checkpoint){
         walk_state().gates = *checkpoint.start_gates;
     }
     walk_state().card_key_held = std::ranges::find(checkpoint.start_flags, "card_key_held") != checkpoint.start_flags.end();
+    walk_state().run_flags.insert(checkpoint.start_flags.begin(), checkpoint.start_flags.end());
+    walk_state().cinnabar_gym_locked = checkpoint.id < "14";
 }
 
 //  A walk through the checkpoint that follows the one before: only what its
@@ -129,6 +130,8 @@ void continue_walk(const StoryCheckpoint& checkpoint){
     if (std::ranges::find(checkpoint.start_flags, "card_key_held") != checkpoint.start_flags.end()){
         walk_state().card_key_held = true;
     }
+    walk_state().run_flags.insert(checkpoint.start_flags.begin(), checkpoint.start_flags.end());
+    walk_state().cinnabar_gym_locked = checkpoint.id < "14";
 }
 
 //  What `step` does to the walk's gates once done, besides a route's own.
@@ -139,18 +142,36 @@ void apply_step_effects(const StoryStep& step){
     if (std::ranges::find(step.flags_after, "card_key_held") != step.flags_after.end()){
         walk_state().card_key_held = true;
     }
+    walk_state().run_flags.insert(step.flags_after.begin(), step.flags_after.end());
+}
+
+//  The story's maps as the walk's flags make them.
+const std::vector<MapData>& walk_story_maps(){
+    return story_maps(walk_state().run_flags);
+}
+
+const MapData* find_map_named(const std::string& name){
+    for (const MapData& map : walk_story_maps()){
+        if (map.name == name){
+            return &map;
+        }
+    }
+    return nullptr;
 }
 
 //  The story's maps as the walk's gates make them.
 const std::vector<MapData>& walk_maps(){
-    thread_local std::optional<std::pair<Pokemon::GateState, std::vector<MapData>>> resolved;
-    if (!has_gates(story_maps())){
-        return story_maps();
+    //  The gates and the maps (the flags' ones) the cached maps were resolved for.
+    thread_local std::optional<std::pair<Pokemon::GateState, const std::vector<MapData>*>> resolved_for;
+    thread_local std::vector<MapData> resolved;
+    if (!has_gates(walk_story_maps())){
+        return walk_story_maps();
     }
-    if (!resolved || !(resolved->first == walk_state().gates)){
-        resolved.emplace(walk_state().gates, resolve_maps(story_maps(), walk_state().gates));
+    if (!resolved_for || !(resolved_for->first == walk_state().gates) || resolved_for->second != &walk_story_maps()){
+        resolved = resolve_maps(walk_story_maps(), walk_state().gates);
+        resolved_for.emplace(walk_state().gates, &walk_story_maps());
     }
-    return resolved->second;
+    return resolved;
 }
 
 std::string describe(const std::vector<RouteStep>& route){
@@ -204,6 +225,37 @@ std::vector<TilePos> tiles_walked_on(const std::vector<RouteStep>& route, const 
         }
     }
     return tiles;
+}
+
+//  The triggers `step`'s route must keep off: the old man's in Viridian
+//  City, and while Cinnabar's Gym is locked, (20, 5) below its door
+//  (pokefirered CinnabarIsland coord_events): "The door is locked..." and
+//  the player is walked a tile south, off the route (console B, 2026-11-13
+//  13:06, 12.03: the hold east along row 5 to (21, 5)).
+UnitTestResult check_triggers_avoided(const StoryStep& step, const std::vector<RouteStep>& route){
+    struct Trigger{
+        std::string_view map;
+        TilePos tile;
+        std::string_view what;
+        bool live;
+    };
+    const bool old_man = step.name == "below_old_man_trigger";
+    const Trigger TRIGGERS[] = {
+        {"ViridianCity", {20, 8}, "the old man's trigger", old_man},
+        {"ViridianCity", {22, 8}, "the old man's trigger", old_man},
+        {"CinnabarIsland", {20, 5}, "the locked Gym door's trigger", walk_state().cinnabar_gym_locked},
+    };
+    for (const Trigger& trigger : TRIGGERS){
+        if (!trigger.live){
+            continue;
+        }
+        for (const TilePos& tile : tiles_walked_on(route, std::string(trigger.map))){
+            if (tile == trigger.tile){
+                return std::format("{}: walks over {} {}:{}", step.name, trigger.what, to_string(tile), describe(route));
+            }
+        }
+    }
+    return true;
 }
 
 //  Steps that must reach Viridian Forest's gate by legs the walker can hold
@@ -273,7 +325,7 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<s
     const StoryPose target = one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target"));
     const RouteGoal goal{{target.map, target.tile}, target.facing};
     const Pokemon::GateRules rules{.card_key_held = walk_state().card_key_held};
-    const std::optional<std::vector<RouteStep>> route = plan_overworld_route_gated(story_maps(), start, goal, walk_state().gates, rules, default_route_costs(), facing);
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route_gated(walk_story_maps(), start, goal, walk_state().gates, rules, default_route_costs(), facing);
     if (!route){
         return step.name + ": no route from " + to_string(start) + " to " + to_string(goal.position) + ".";
     }
@@ -282,7 +334,7 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<s
     for (const RouteStep& planned : *route){
         golden.push_back(golden_line(planned));
     }
-    const MapPosition end = follow_overworld_route(story_maps(), start, *route, walk_state().gates);
+    const MapPosition end = follow_overworld_route(walk_story_maps(), start, *route, walk_state().gates);
     if (!(end == goal.position)){
         return step.name + ": the route ends at " + to_string(end) + ":" + describe(*route);
     }
@@ -295,12 +347,8 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<s
             return result;
         }
     }
-    if (step.name == "below_old_man_trigger"){
-        for (const TilePos& tile : tiles_walked_on(*route, "ViridianCity")){
-            if (tile == TilePos{20, 8} || tile == TilePos{22, 8}){
-                return step.name + ": walks over the old man's trigger " + to_string(tile) + ":" + describe(*route);
-            }
-        }
+    if (UnitTestResult result = check_triggers_avoided(step, *route); result.result != UnitTestResult::PASSED){
+        return result;
     }
     walk_state().gates = gates_after_route(walk_state().gates, *route);
     pose = StoryPose{target.map, target.tile, route->empty() ? facing : route->back().facing_after};
@@ -352,8 +400,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 //  start: starts_after_unauthored_rows()), and adds the plans to `golden`.
 UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 79 || checkpoints[0].start){
-        return "Expected 79 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 93 || checkpoints[0].start){
+        return "Expected 93 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     walk_state() = WalkGates{};
@@ -404,8 +452,10 @@ UnitTestResult test_golden_plans(){
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_12_CELADON), std::end(FRLG_PLAN_GOLDEN_12_CELADON));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_15), std::end(FRLG_PLAN_GOLDEN_15));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_16), std::end(FRLG_PLAN_GOLDEN_16));
+    golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_18), std::end(FRLG_PLAN_GOLDEN_18));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_17_GYM), std::end(FRLG_PLAN_GOLDEN_17_GYM));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_19), std::end(FRLG_PLAN_GOLDEN_19));
+    golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_20), std::end(FRLG_PLAN_GOLDEN_20));
     const size_t stored = golden.size();
     size_t first_diff = 0;
     while (first_diff < actual.size() && first_diff < stored && actual[first_diff] == golden[first_diff]){
@@ -437,7 +487,7 @@ UnitTestResult check_legs_on(
     const std::string& map, const std::vector<ExpectedLeg>& expected
 ){
     const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
-        story_maps(), start, goal, default_route_costs(), start_facing
+        walk_story_maps(), start, goal, default_route_costs(), start_facing
     );
     if (!route){
         return "No route from " + to_string(start) + " to " + to_string(goal.position) + ".";
@@ -496,7 +546,7 @@ UnitTestResult test_pewter_aide_walk(){
     const MapPosition gym{"PewterCity_Gym", {6, 6}};
     const MapPosition goal{"PewterCity", {45, 21}};
     const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
-        story_maps(), gym, RouteGoal{goal, Direction::EAST}, default_route_costs(), Direction::NORTH
+        walk_story_maps(), gym, RouteGoal{goal, Direction::EAST}, default_route_costs(), Direction::NORTH
     );
     if (!route || route->empty()){
         return "No route from " + to_string(gym) + " to " + to_string(goal) + ".";
@@ -506,7 +556,7 @@ UnitTestResult test_pewter_aide_walk(){
         if (step.action != RouteAction::WALK){
             continue;
         }
-        for (const MapPosition& tile : leg_tiles(story_maps(), from, step)){
+        for (const MapPosition& tile : leg_tiles(walk_story_maps(), from, step)){
             if (tile.map == "PewterCity" && tile.point.x == 46 && tile.point.y >= 21 && tile.point.y <= 23){
                 return "The route crosses the aide's trigger " + to_string(tile) + ":" + describe(*route);
             }
@@ -612,7 +662,7 @@ std::vector<RouteStep> legs_walked(const StoryPose& pose, const StoryStep& step)
         const MapData* map = find_map_named(pose.map);
         const std::optional<Direction> facing = pose.facing ? pose.facing : map ? wall_beside(*map, pose.tile) : std::nullopt;
         const StoryPose target = one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target"));
-        route = plan_overworld_route_gated(story_maps(), start, RouteGoal{{target.map, target.tile}, target.facing}, walk_state().gates, Pokemon::GateRules{.card_key_held = walk_state().card_key_held}, story_route_costs(), facing);
+        route = plan_overworld_route_gated(walk_story_maps(), start, RouteGoal{{target.map, target.tile}, target.facing}, walk_state().gates, Pokemon::GateRules{.card_key_held = walk_state().card_key_held}, story_route_costs(), facing);
     }
     return route ? *route : std::vector<RouteStep>{};
 }
@@ -735,6 +785,28 @@ UnitTestResult advance(StoryPose& pose, const StoryStep& step){
     return true;
 }
 
+//  Silph Co.'s rows: their floors are full of trainers whose lines the walk
+//  can't keep out of (the way on crosses them); the walk's interrupts fight
+//  them as they see the player, each walked leg ending where one does.
+bool incidental_fights(const std::string& id){
+    return id == "16.02" || id == "16.03" || id == "16.05";
+}
+
+//  Steps that may cross a wandering trainer's sight where the walk can't
+//  tell where they'd stop the player, and why that's safe for each.
+bool wanders_past_known(const StoryCheckpoint& checkpoint, const StoryStep& step){
+    //  13.03's walk into (and, planned, past) Lewis's room, B1F of the Pokemon Mansion: its one way in,
+    //  (22, 24), is beside his wander range (19..21, 24..26), on a cave's wild floor.
+    const bool lewis = checkpoint.id == "13.03" && (step.name == "to_statue" || step.name == "to_elixir");
+    //  12.03's leg from Route21_South's middle sand bar to the south one:
+    //  Swimmer Roland wanders (8..12, 27..31) and sees 4 tiles each way,
+    //  across every way from sand bar to sand bar. The leg lands on the
+    //  south sand bar and is held to its bank, so wherever he stops the
+    //  player, the leg is planned again and held on to its end after the battle.
+    const bool roland = checkpoint.id == "12.03" && step.name == "land_south_sand_bar";
+    return lewis || roland || incidental_fights(checkpoint.id);
+}
+
 //  `checkpoint`'s routes and legs keep to tiles with no tile_problem(); a
 //  step into a trainer's line is followed by the battle, which beats them.
 //  `repelled`: a Repel the table used is on (it lasts past the
@@ -755,18 +827,17 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
         for (const MapPosition& tile : walks ? tiles_walked(pose, step) : std::vector<MapPosition>{}){
             const StoryPose end = to_patch ? one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")) : StoryPose{};
             const bool patch = to_patch && tile.map == end.map && tile.point == end.tile;
-            if (const std::string problem = tile_problem(tile, beaten); !problem.empty() && !((patch || repelled || grass_held(pose, step)) && problem.starts_with("in the grass"))){
+            if (const std::string problem = tile_problem(tile, beaten); !problem.empty() && !((patch || repelled || grass_held(pose, step)) && problem.starts_with("in the grass"))
+                && !(incidental_fights(checkpoint.id) && problem.starts_with("in the line of the trainer"))
+            ){
                 return where + problem;
             }
         }
         const std::vector<std::optional<MapPosition>> stops = walks ? wanderer_stops(pose, step) : std::vector<std::optional<MapPosition>>{};
-        //  13.03's walk into (and, planned, past) Lewis's room, B1F of the Pokemon Mansion: its one way in,
-        //  (22, 24), is beside his wander range (19..21, 24..26), on a cave's wild floor.
-        const bool lewis = checkpoint.id == "13.03" && (step.name == "to_statue" || step.name == "to_elixir");
-        if (!lewis && std::count(stops.begin(), stops.end(), std::nullopt) > 0){
+        if (!wanders_past_known(checkpoint, step) && std::count(stops.begin(), stops.end(), std::nullopt) > 0){
             return where + "crosses a wandering trainer's sight where the walk can't tell where they'd stop the player.";
         }
-        if (const std::string problem = walks ? held_past_lookers(pose, step, beaten) : ""; !problem.empty()){
+        if (const std::string problem = walks && !incidental_fights(checkpoint.id) ? held_past_lookers(pose, step, beaten) : ""; !problem.empty()){
             return where + problem;
         }
         const MapData* map = find_map_named(pose.map);
@@ -893,19 +964,21 @@ std::string approach_off_tile(const std::vector<RouteStep>& legs){
 //  The walk before an A press (a TALK: a person, an item, a sign) ends on
 //  its tile: tapped from a tile the walk knows, or against a wall. 10.05's
 //  approach to the Rare Candy, "west 4" and "south 6" held open, ended a
-//  tile west and met a gravestone (console B, 2026-11-12 04:39).
+//  tile west and met a gravestone (console B, 2026-11-12 04:39). 14.01's
+//  approach to quiz machine 2, "north 5" held open, ended a tile north on
+//  (26, 2) and "west 10" stopped against the machine on (17, 2)
+//  (console B, 2026-11-14 05:48).
 //  PASSED_ON_CONSOLE: approaches before 10.05 that passed their console
 //  runs as held legs (a follow-up to tap them). 13.03 and 13.04 plan their statue
-//  approaches (PRESS_SWITCH) and have not run on a console.
+//  approaches (PRESS_SWITCH) and have not run on a console, nor has 16.05's walk to the
+//  president: it ends at (9, 10) facing north, the only tile that faces him, with no wall to
+//  end a leg against (tap it once Silph Co. has run).
 UnitTestResult test_approaches_end_on_their_tile(){
     const std::set<std::string> PASSED_ON_CONSOLE{
         "02.02/below_oak", "03.02/before_brock", "05.07/below_bill_clefairy", "05.07/pc_front",
         "05.07/beside_bill", "06.01/behind_captain", "07.01/beside_chairman", "07.01/bike_clerk",
         "09.01/below_poster_guard", "09.02/below_left_guard", "09.03/above_tea_woman", "10.01/below_fly_woman", "13.03/to_elixir", "13.04/to_key",
-        //  Not run on a console: 14.01 (#410) predates this rule. Its quiz machine approaches are held
-        //  open routes; tap them (follow-up) and drop these.
-        "14.01/below_quiz_1", "14.01/below_quiz_2", "14.01/below_quiz_3", "14.01/below_quiz_4",
-        "14.01/below_quiz_5", "14.01/below_quiz_6",
+        "16.05/below_president",
     };
     std::string wrong;
     size_t count = 0;
@@ -1182,6 +1255,84 @@ UnitTestResult test_save_place_error(){
     return true;
 }
 
+//  A checkpoint saves only where it ends. 12.03 ends on Cinnabar Island,
+//  where 13.01 starts; on console B (2026-11-13 04:16) it stopped surfing
+//  on Route 21 and saved there, its card reading "ROUTE 21": that save is
+//  refused, and so is one whose card can't be read.
+//  12.03's legs on Route 21's water (console B, 2026-11-13 04:15: "south 86
+//  (open)" stopped short at a sand bar unseen, and the route went on from a
+//  guess): an open leg of more than 20 tiles on the water is followed by a
+//  leg to a wall or a warp, or lands and then walks to one, which finds the
+//  player again.
+UnitTestResult test_route21_water_legs(){
+    std::vector<std::string> plan;
+    UnitTestResult result = chain_story_routes(plan);
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    const auto finds_player = [](std::string_view line){
+        return line.find("(to wall)") != std::string_view::npos || line.find("(warp)") != std::string_view::npos;
+    };
+    size_t water_legs = 0;
+    for (size_t c = 0; c < plan.size(); c++){
+        const std::string& line = plan[c];
+        if (!line.starts_with("12.03   walk ") || line.find("[surfing]") == std::string::npos){
+            continue;
+        }
+        water_legs++;
+        //  As the walker checks them: legs of up to 20 tiles go unchecked
+        //  (OPEN_WATER_CHECKED_TILES, PokemonFRLG_OverworldRecovery.cpp).
+        int tiles = 0;
+        const size_t number = line.find_first_of("0123456789", std::string_view("12.03   walk ").size());
+        if (number != std::string::npos){
+            tiles = std::stoi(line.substr(number));
+        }
+        const std::string_view next = c + 1 < plan.size() ? std::string_view(plan[c + 1]) : std::string_view();
+        const std::string_view after = c + 2 < plan.size() ? std::string_view(plan[c + 2]) : std::string_view();
+        //  A step onto a sand bar or the shore, then a leg to a wall on it.
+        const bool lands_then_wall = next.find(" 1 -> ") != std::string_view::npos && finds_player(after);
+        if (tiles > 20 && !finds_player(line) && !finds_player(next) && !lands_then_wall){
+            return std::format("12.03: \"{}\" is open, and \"{}\" after it doesn't find the player again.", line, next);
+        }
+    }
+    if (water_legs == 0){
+        return "12.03 plans no leg on the water.";
+    }
+    return true;
+}
+
+UnitTestResult test_save_end_error(){
+    const std::string end = checkpoint_end_map("12.03");
+    if (end != "CinnabarIsland"){
+        return std::format("12.03 ends on \"{}\", not CinnabarIsland.", end);
+    }
+    if (!checkpoint_end_map("no-such-row").empty()){
+        return "A row that isn't in the table has an end map.";
+    }
+    struct Case{
+        std::string end_map;
+        std::string place;
+        bool error;
+    };
+    const Case CASES[] = {
+        {.end_map = end, .place = "route-21", .error = true},
+        {.end_map = end, .place = "cinnabar-island", .error = false},
+        {.end_map = end, .place = "", .error = true},
+        {.end_map = "Route21_North", .place = "route-21", .error = false},
+        //  A map with no known place isn't checked.
+        {.end_map = "Route9", .place = "pewter-city", .error = false},
+        {.end_map = "", .place = "route-21", .error = false},
+    };
+    for (const Case& c : CASES){
+        const std::string error = save_end_error(c.end_map, c.place);
+        if (error.empty() == c.error){
+            return "A save card naming \"" + c.place + "\" for an end on " + c.end_map + ": expected " +
+                (c.error ? "an error" : "no error") + ", got \"" + error + "\".";
+        }
+    }
+    return true;
+}
+
 std::string_view save_action_name(SaveAction action){
     switch (action){
     case SaveAction::WAIT:
@@ -1427,6 +1578,14 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
         .expectation = {.description = "detects mismatch between checkpoint initial state and save point"},
     },
     {
+        .input = {.name = "12.03's water legs end where the player is found again", .body = test_route21_water_legs},
+        .expectation = {.description = "no open leg on Route 21's water is followed by another open leg"},
+    },
+    {
+        .input = {.name = "a checkpoint saves only where it ends", .body = test_save_end_error},
+        .expectation = {.description = "refuses a save whose card names another place than the checkpoint's end"},
+    },
+    {
         .input = {.name = "save dialogs: every YES/NO is YES, a cancel fails", .body = test_save_dialog},
         .expectation = {.description = "verifies save confirmation prompt interactions"},
     },
@@ -1500,6 +1659,7 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
 
 void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_AutoStoryRunPlan(database);
+    add_tests_AutoStoryConsoleFailure(database);
     for (const auto& scenario : AUTO_STORY_CASES){
         database.add<Test_AutoStory>(scenario);
     }

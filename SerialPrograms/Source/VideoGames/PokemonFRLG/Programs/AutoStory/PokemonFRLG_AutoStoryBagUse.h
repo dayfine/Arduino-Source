@@ -10,6 +10,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryBagUse_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryBagUse_H
 
+#include <optional>
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
@@ -24,6 +25,13 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Whether `item` is used on the lead with only a message before the bag
+//  comes back: the Elixir (in FRLG it restores every move, no move to
+//  pick) and the Full Restore. The healing steps use them
+//  (PokemonFRLG_AutoStoryHealingSteps.h), which keep the lead's HP and PP;
+//  a use_item step doesn't take them.
+bool is_lead_recovery_item(std::string_view item);
+
 //  Opens the item's pocket, finds it and uses it, then back to the
 //  overworld.
 ItemUseEnd use_item_from_bag(Logger& logger, ItemUseActions& actions, std::string_view item);
@@ -37,13 +45,20 @@ struct ItemUses{
 //  Uses `item` up to `count` times from the bag.
 ItemUses use_items_from_bag(Logger& logger, ItemUseActions& actions, std::string_view item, size_t count);
 
+//  Whether a use_item step that ended with `end` has done its job: the
+//  item used, or a Repel used before still on. With `if_any` (the step's
+//  arg), also when the bag has none left: the walk goes on without it
+//  (PokeGuy's Super Repels from 12.03 on, which a Repel renewed earlier
+//  may have used up).
+bool item_use_step_done(ItemUseEnd end, bool if_any);
 //  The same, REGISTERing it for SELECT (the Bicycle) instead of USE.
 ItemUseEnd register_item_in_bag(Logger& logger, ItemUseActions& actions, std::string_view item);
 
 //  After "REPEL's effect wore off..." has closed: FRLG asks nothing, so
-//  another of the same Repel is used if the bag has one. NONE_LEFT is no
-//  failure: the walk goes on without.
-ItemUseEnd renew_repel(Logger& logger, ItemUseActions& actions, std::string_view item);
+//  another Repel is used if the bag has one, the first in
+//  repel_renew_order(`used`, `remaining_steps`). NONE_LEFT is no failure:
+//  the walk goes on without.
+ItemUseEnd renew_repel(Logger& logger, ItemUseActions& actions, std::string_view used, std::optional<int> remaining_steps = std::nullopt);
 
 //  The console's bag, opened from `menu`'s BAG.
 class ConsoleItemUseActions : public ItemUseActions{
@@ -53,7 +68,9 @@ public:
     virtual bool open_pocket(BagPocket pocket) override;
     virtual std::vector<BagRow> read_pocket() override;
     virtual void use_row(size_t row) override;
+    virtual RepelUse repel_use() override;
     virtual bool use_row_on_lead(size_t row) override;
+    virtual bool use_row_on_lead_to_bag(size_t row) override;
     virtual void register_row(size_t row) override;
     virtual void close_bag() override;
 

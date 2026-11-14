@@ -1,0 +1,92 @@
+{
+    "format": "pokesim-authored-checkpoint/1",
+    "game": "frlg",
+    "checkpoint": {
+        "id": "16.06",
+        "title": "Silph Co. to Saffron: back down to the Center",
+        "start": {
+            "map": "SilphCo_11F",
+            "tiles": [
+                [
+                    9,
+                    10
+                ]
+            ],
+            "facing": "north"
+        },
+        "start_gates": {
+            "opened": [
+                "SilphCo_3F/door_2",
+                "SilphCo_11F/door"
+            ]
+        },
+        "start_flags": [
+            "card_key_held",
+            "silph_cleared"
+        ],
+        "events": [
+            {
+                "id": "below_center_door",
+                "kind": "route",
+                "action": "run",
+                "args": {
+                    "target": {
+                        "map": "SaffronCity",
+                        "tiles": [
+                            [
+                                24,
+                                39
+                            ]
+                        ],
+                        "facing": "north"
+                    }
+                },
+                "why": "back by the pads and stairs, with the doors open and no Rocket left in Silph Co. or Saffron City, out of Silph Co.'s door (33, 30) to below the Center's door (24, 38)"
+            },
+            {
+                "id": "saffron_nurse",
+                "kind": "game_action",
+                "action": "center_enter",
+                "declared_after": {
+                    "map": "SaffronCity_PokemonCenter_1F",
+                    "tiles": [
+                        [
+                            7,
+                            4
+                        ]
+                    ],
+                    "facing": "north"
+                },
+                "why": "the Center script in: through the door and up to the nurse"
+            },
+            {
+                "id": "heal_saffron",
+                "kind": "heal",
+                "why": "full HP and PP before the Gym"
+            }
+        ]
+    },
+    "execution": {
+        "menu": "full",
+        "notes": {
+            "checkpoint": [
+                "Starts facing the president on 11F, where 16.05 ends. The Rockets are gone from Silph Co. and Saffron City (silph_cleared): the Grunt at Saffron (46, 13) no longer blocks the Gym's door."
+            ]
+        }
+    },
+    "metadata": {
+        "phase": "testing",
+        "postconditions": {
+            "position": {
+                "map": "SaffronCity_PokemonCenter_1F",
+                "tiles": [
+                    [
+                        7,
+                        4
+                    ]
+                ],
+                "facing": "north"
+            }
+        }
+    }
+}

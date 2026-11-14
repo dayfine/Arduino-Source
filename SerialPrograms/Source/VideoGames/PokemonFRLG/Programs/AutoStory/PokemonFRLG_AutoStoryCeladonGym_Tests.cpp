@@ -121,7 +121,8 @@ std::string fought(const OverworldSim& sim){
 
 //  12.03 on a sim from Fuchsia's nurse: out of the Center, the Fly to
 //  Pallet Town, the shore, the Surf onto Route 21 and the way south over it
-//  to Cinnabar's Center door. No trainer is met and no rule is broken.
+//  to Cinnabar, and on to below the Mansion's door (8, 4), where it ends. No trainer is met and
+//  no rule is broken.
 UnitTestResult test_fuchsia_to_cinnabar(){
     const StoryCheckpoint& row = checkpoint("12.03");
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
@@ -134,11 +135,14 @@ UnitTestResult test_fuchsia_to_cinnabar(){
             return std::format("12.03: ended on {}; {}", to_string(sim.state().position), failure);
         }
     }
-    const MapPosition below_center{"CinnabarIsland", {14, 12}};
-    if (!(sim.state().position == below_center)){
-        return std::format("12.03: ended on {}, not below Cinnabar's Center door {}.", to_string(sim.state().position), to_string(below_center));
+    const MapPosition mansion_door{"CinnabarIsland", {8, 4}};
+    if (!(sim.state().position == mansion_door)){
+        return std::format("12.03: ended on {}, not below the Mansion's door {}.", to_string(sim.state().position), to_string(mansion_door));
     }
-    if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
+    //  Swimmer Roland, who wanders Route21_South's (8..12, 27..31) and sees 4
+    //  tiles each way, is in the way of every crossing from sand bar to sand
+    //  bar (PokemonFRLG_AutoStorySurf_Tests.cpp); no one else is met.
+    if (sim.state().trainers_beaten.size() > 1 || !sim.state().violations.empty()){
         return "12.03: met a trainer or broke a rule on the way.";
     }
     return true;
@@ -224,6 +228,45 @@ UnitTestResult test_gym_rows(){
     const MapPosition below_center{CELADON, {48, 12}};
     if (!(sim.state().position == below_center)){
         return std::format("14.04b: ended on {}, not below the Center's door {}.", to_string(sim.state().position), to_string(below_center));
+    }
+    return true;
+}
+
+//  14.03's walk from the cut tree (40, 35), where cut_gym_tree leaves the
+//  player, into the gym to below Tamia's line (2, 11), on a sim whose hold
+//  west along row 37 (hold 2, after "south 2") ends `drift` tiles off its
+//  time: past it if positive, short of it if negative. Console B,
+//  2026-11-14 09:45 (run 12): an open hold west to the gap's column
+//  (11, 37), misread as not moved, was walked again from (40, 37) into the
+//  tree wall (4, 37), and north from there met the ledge (4..9, 33). A tile
+//  off that column, the walk up to the gym's door (11, 30) meets a ledge or
+//  the fence beside the door.
+UnitTestResult test_gym_door_after_drifted_hold(int drift){
+    const StoryCheckpoint& row = checkpoint("14.03");
+    SimScript script;
+    if (drift > 0){
+        script.long_holds[2] = drift;
+    }else{
+        script.short_holds[2] = -drift;
+    }
+    StoryPose at{CELADON, {40, 35}, Direction::SOUTH};
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing, script);
+    bool after_cut = false;
+    for (const StoryStep& step : row.steps){
+        if (!after_cut){
+            after_cut = step.name == "cut_gym_tree";
+            continue;
+        }
+        if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
+            return std::format("14.03: ended on {}; {}", to_string(sim.state().position), failure);
+        }
+        if (step.name == "below_tamia_line"){
+            break;
+        }
+    }
+    const MapPosition below_line{GYM, {2, 11}};
+    if (!(sim.state().position == below_line)){
+        return std::format("14.03: ended on {}, not below Tamia's line {}.", to_string(sim.state().position), to_string(below_line));
     }
     return true;
 }
@@ -329,6 +372,18 @@ const AutoStoryCeladonGymCase AUTO_STORY_CELADON_GYM_CASES[] = {
     {
         .input = {.name = "14.03 to below Erika, 14.04 on the spot and 14.04b back to the nurse", .body = test_gym_rows},
         .expectation = {.description = "Tamia and Lori fought where the table steps into their lines, no one else"},
+    },
+    {
+        .input = {.name = "14.03 into the gym with the hold west along row 37 a tile long", .body = []{
+            return test_gym_door_after_drifted_hold(1);
+        }},
+        .expectation = {.description = "ends below Tamia's line (2, 11): the hold ends at the yard's tree wall, and taps reach the door's column"},
+    },
+    {
+        .input = {.name = "14.03 into the gym with the hold west along row 37 a tile short", .body = []{
+            return test_gym_door_after_drifted_hold(-1);
+        }},
+        .expectation = {.description = "ends below Tamia's line (2, 11): the hold's wall check finds the tile short, and taps reach the door's column"},
     },
     {
         .input = {.name = "the lead's attacks against Celadon Gym", .body = test_lead_moves_against_grass},

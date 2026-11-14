@@ -26,6 +26,7 @@
 #include "Inference/Menus/PokemonFRLG_PartyHeldItemDetector.h"
 #include "Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
 #include "Inference/Menus/PokemonFRLG_SaveCardReader.h"
+#include "Inference/Menus/PokemonFRLG_PartyMemberMenuReader.h"
 #include "Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
 #include "Inference/Menus/PokemonFRLG_TeachScreenReader.h"
 #include "Inference/PokemonFRLG_BallReader.h"
@@ -46,6 +47,7 @@
 #include "Overworld/PokemonFRLG_OverworldSim.h"
 #include "Overworld/PokemonFRLG_OverworldWalk.h"
 #include "Overworld/PokemonFRLG_PlayerFacingReader.h"
+#include "Overworld/PokemonFRLG_PokemonCenterFloorReader.h"
 #include "Programs/PokemonFRLG_NamingScreenKeyboard_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryCapture.h"
@@ -53,17 +55,23 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPcStorage.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryAbilities.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryPartyRoster.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStorySurf_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryHealing.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows12_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows14_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows15_Tests.h"
 #include "Overworld/PokemonFRLG_OverworldGateMaps_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryGates_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryFailureClasses_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryLaunch_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows13_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows16_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows17_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryRows18_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows19_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryRows20_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTrashCans.h"
 #include "Programs/AutoStory/Data/Json_Tests.h"
@@ -90,6 +98,7 @@ static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
     add_tests_ItemListReader(database);
     add_tests_OptionMenuReader(database);
     add_tests_SaveCardReader(database);
+    add_tests_PartyMemberMenuReader(database);
     add_tests_SummaryMovesReader(database);
     add_tests_TeachScreenReader(database);
     add_tests_AutoStoryScreenEvents(database);
@@ -113,11 +122,13 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryVermilionGym(database);
     add_tests_AutoStoryCeladon(database);
     add_tests_AutoStorySnorlax(database);
+    add_tests_AutoStoryPartyRoster(database);
     add_tests_AutoStorySlope(database);
     add_tests_AutoStorySafari(database);
     add_tests_AutoStoryFuchsiaGym(database);
     add_tests_AutoStoryHealing(database);
     add_tests_AutoStoryCeladonGym(database);
+    add_tests_AutoStorySurf(database);
     add_tests_AutoStorySaffron(database);
     add_tests_AutoStoryCinnabarGym(database);
     add_tests_AutoStorySilph(database);
@@ -125,11 +136,16 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryViridian(database);
     add_tests_AutoStoryVictoryRoad(database);
     add_tests_AutoStoryBoulders(database);
+    add_tests_AutoStoryLeague(database);
     add_tests_AutoStoryGates(database);
+    add_tests_AutoStoryFailureClasses(database);
+    add_tests_AutoStoryLaunch(database);
     add_tests_OverworldGateMaps(database);
+    add_tests_AutoStorySaffronGym(database);
 }
 
-void add_tests(UnitTestDatabase& database){
+//  The detectors and readers of battle, box, party and dialog screens.
+static void add_tests_Screens(UnitTestDatabase& database){
     add_tests_AdvanceWhiteDialogDetector(database);
     add_tests_AdvanceBattleDialogDetector(database);
     add_tests_BagDetector(database);
@@ -160,14 +176,24 @@ void add_tests(UnitTestDatabase& database){
     add_tests_PartySlotDetector(database);
     add_tests_BattleTextBoxDetector(database);
     add_tests_AutoStoryReaders(database);
+    add_tests_PlayerFacingReader(database);
+    add_tests_PokemonCenterFloorReader(database);
+}
+
+//  The overworld's maps, routes, walker and sim.
+static void add_tests_Overworld(UnitTestDatabase& database){
     add_tests_OverworldMaps(database);
     add_tests_OverworldRoute(database);
     add_tests_OverworldWalk(database);
     add_tests_OverworldReanchor(database);
     add_tests_OverworldRecovery(database);
     add_tests_OverworldSim(database);
-    add_tests_PlayerFacingReader(database);
+}
+
+//  The story's tables, plans and steps.
+static void add_tests_AutoStoryAll(UnitTestDatabase& database){
     add_tests_AutoStory(database);
+    add_tests_AutoStoryStoryFiles(database);
     add_tests_AutoStoryJson(database);
     add_tests_AutoStorySimulation(database);
     add_tests_AutoStoryRows(database);
@@ -178,6 +204,12 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStoryCapture(database);
     add_tests_AutoStoryPcStorage(database);
     add_tests_AutoStoryAbilities(database);
+}
+
+void add_tests(UnitTestDatabase& database){
+    add_tests_Screens(database);
+    add_tests_Overworld(database);
+    add_tests_AutoStoryAll(database);
     add_tests_NamingScreen(database);
     add_tests_RngPlanning(database);
 }

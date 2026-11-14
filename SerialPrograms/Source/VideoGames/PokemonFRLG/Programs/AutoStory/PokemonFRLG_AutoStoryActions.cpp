@@ -16,8 +16,6 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/Images/SolidColorTest.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
-#include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
@@ -602,7 +600,7 @@ std::optional<size_t> talk_and_count_pages(ConsoleHandle& console, ProController
 
 void step_once(ConsoleHandle& console, ProControllerContext& context, Direction direction, std::optional<Direction> facing, PlayerGender player){
     if (facing != direction){
-        OverworldWalkSteps::turn_to(console, context, direction, player);
+        OverworldWalkSteps::turn_to(console, context, direction, player, OverworldWalkSteps::TurnSprite::WALKING, std::nullopt);
     }
     //  A step, once started, finishes on its own. The release waits out the
     //  lockout before a next step tap (MovementMechanics::STEP_TAP_LOCKOUT).
@@ -657,7 +655,7 @@ std::optional<int> step_into_line(
 }
 
 void face_wall(ConsoleHandle& console, ProControllerContext& context, Direction direction, PlayerGender player){
-    OverworldWalkSteps::turn_to(console, context, direction, player);
+    OverworldWalkSteps::turn_to(console, context, direction, player, OverworldWalkSteps::TurnSprite::WALKING, std::nullopt);
 }
 
 SaveAction SaveDialog::next(SaveScreen screen){
@@ -759,7 +757,10 @@ void run_save_dialog(ConsoleHandle& console, ProControllerContext& context){
 
 } // namespace
 
-void save_game(ConsoleHandle& console, ProControllerContext& context, StartMenu menu){
+void save_game(
+    ConsoleHandle& console, ProControllerContext& context, StartMenu menu,
+    Language language, const SavePlaceCheck& check
+){
     console.log("Saving the game.");
     open_start_menu_row(console, context, menu, start_menu_save_row(menu));
     //  The save card and "Would you like to save the game?"
@@ -769,7 +770,20 @@ void save_game(ConsoleHandle& console, ProControllerContext& context, StartMenu 
         );
     }
     context.wait_for_all_requests();
-    dump_debug_image(console, "AutoStory/save", "save-card", console.video().snapshot());
+    VideoSnapshot card = console.video().snapshot();
+    dump_debug_image(console, "AutoStory/save", "save-card", card);
+    const std::string place = card ? read_save_card_location(console, language, card) : "";
+    const std::string error = check(place);
+    if (!error.empty()){
+        console.log("Not saving: " + error, COLOR_RED);
+        //  NO, then out of the menu.
+        press(context, BUTTON_B, 1000ms);
+        mash_until_overworld(console, context, 20000ms);
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT, "save_game(): not saved: " + error, console
+        );
+    }
+    console.log("Save card: " + (place.empty() ? std::string("(unread)") : place) + ".");
     run_save_dialog(console, context);
 }
 
@@ -968,33 +982,6 @@ void play_new_game_to_player_name(ConsoleHandle& console, ProControllerContext& 
     console.log("New game: from the title screen to the player's keyboard, for SID Helper.");
     NewGameIntro(console, context, player_name, gender, NewGameIntro::End::PLAYER_NAME_TYPED).run();
 }
-
-namespace{
-
-//  After the RNG program `program`: from HOME, if it went there, back to
-//  the game, then B until the overworld.
-void back_to_overworld_after(ConsoleHandle& console, ProControllerContext& context, const std::string& program){
-    context.wait_for_all_requests();
-    VideoSnapshot screen = console.video().snapshot();
-    if (screen && HomeMenuDetector(console, COLOR_RED).detect(screen)){
-        console.log("After " + program + ": on HOME, back to the game.");
-        resume_game_from_home(console, context);
-    }
-    mash_until_overworld(console, context, 20000ms);
-}
-
-} // namespace
-
-void close_trainer_card(ConsoleHandle& console, ProControllerContext& context){
-    //  B closes the card, then the START menu.
-    back_to_overworld_after(console, context, "SID Helper");
-}
-
-void leave_gift_summary(ConsoleHandle& console, ProControllerContext& context){
-    //  B closes the summary, the party, then the START menu.
-    back_to_overworld_after(console, context, "Gift RNG");
-}
-
 
 
 } // namespace PokemonFRLG

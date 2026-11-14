@@ -28,13 +28,22 @@
         "why": "full HP and PP before the gym (pokeguy skips the Center; healing is the safe side)"
       },
       {
-        "id": "below_quiz_1",
+        "id": "to_gym_east_room",
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[23, 11]], "facing": "north"}
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[25, 16]], "facing": "north"}
         },
-        "why": "out of the Center, up to the gym's door (20, 4), unlocked by the SECRET KEY (CinnabarIsland_EventScript_CheckUnlockGym), and in the gym (no running) from the mat (25, 23) up the east rooms to below quiz machine 1 (22..23, 10), west of Burglar Quinn (25, 11)"
+        "why": "out of the Center, up to the gym's door (20, 4), unlocked by the SECRET KEY (CinnabarIsland_EventScript_CheckUnlockGym), and in the gym (no running) from the mat (25, 23) up to the wall (25, 15)"
+      },
+      {
+        "id": "below_quiz_1",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "east", "tiles": 3}, {"direction": "north", "tiles": 4}, {"direction": "west", "tiles": 5}, {"direction": "north", "tiles": 1}]
+        },
+        "why": "a tap a tile, as no wall ends the open legs: east to (28, 16), up column 28 to row 12, west to (23, 12) and up to below quiz machine 1 (22..23, 10), west of Burglar Quinn (25, 11); a held north 4 a tile long would meet Quinn on row 11"
       },
       {
         "id": "quiz_1",
@@ -57,12 +66,21 @@
       },
       {
         "id": "below_door_1",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[26, 10]], "facing": "north"}
+          "legs": [{"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 3}, {"direction": "north", "tiles": 1}]
         },
-        "why": "east along row 10 to below door 1 (26..27, 8..9)"
+        "why": "a tap a tile: down to (23, 12), east along row 12 below the trainer on (25, 11) to (26, 12) and up to (26, 11), a tile short of door 1 (26..27, 8..9), whose map has it shut (a leg ending on (26, 10) is held to it and runs through the open door; console B, 2026-11-14). A route's open hold east a tile short would turn north into that trainer, as at door 5"
+      },
+      {
+        "id": "to_door_1",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[26, 10]], "facing": "north"},
+        "why": "a step to below door 1 (26, 10)"
       },
       {
         "id": "into_door_1",
@@ -83,13 +101,21 @@
         "why": "a step through door 1 onto (26, 8)"
       },
       {
-        "id": "below_quiz_2",
-        "kind": "route",
-        "action": "run",
+        "id": "to_quiz_2_machine",
+        "kind": "legs",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[16, 3]], "facing": "north"}
+          "legs": [{"direction": "north", "tiles": 6}, {"direction": "west", "tiles": 9}]
         },
-        "why": "west through the top room, above Super Nerd Erik (25, 4) and Avery (17, 5), to below quiz machine 2 (15..16, 2)"
+        "why": "up column 26 to the top wall (26, 2) and west along row 2, above Super Nerd Erik (25, 4), against quiz machine 2 (15..16, 2) on (17, 2): both legs end at a wall. Row 2 is floor east of the machine (pokefirered layout); a held north 5 to (26, 3) ran a tile on to (26, 2) and west 10 stopped at the machine (console B, 2026-11-14)"
+      },
+      {
+        "id": "below_quiz_2",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 1}, {"direction": "north", "tiles": 1}]
+        },
+        "why": "a tap a tile: down to (17, 4), above Super Nerd Avery (17, 5), west to (16, 4) and up to below quiz machine 2 (16, 2) on (16, 3)"
       },
       {
         "id": "quiz_2",
@@ -112,12 +138,21 @@
       },
       {
         "id": "above_door_2",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 8]], "facing": "south"}
+          "legs": [{"direction": "south", "tiles": 4}, {"direction": "east", "tiles": 1}]
         },
-        "why": "down to above door 2 (17..18, 8..9), west of Avery"
+        "why": "a tap a tile: down column 16 to the wall (16, 7) and east to (17, 7), a tile short of door 2 (17..18, 8..9), west of Avery: a leg ending on (17, 8) is held to the shut door on the map and ran through the open one to (17, 11) (console B, 2026-11-14). A route's last leg here is an open hold, and the walker re-checks an open leg that ends a walk with holds to walls: near a quiz door that wall may be the door, shut on the map and open on the console"
+      },
+      {
+        "id": "to_door_2",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[17, 8]], "facing": "south"},
+        "why": "a step into door 2's gap (17, 8)"
       },
       {
         "id": "into_door_2",
@@ -139,12 +174,12 @@
       },
       {
         "id": "below_quiz_3",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[14, 11]], "facing": "north"}
+          "legs": [{"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 3}, {"direction": "north", "tiles": 1}]
         },
-        "why": "west along row 11 past Burglar Ramon (16, 11) to below quiz machine 3 (13..14, 10)"
+        "why": "a tap a tile, as no wall ends the open legs: down to (17, 12), west along row 12 below Burglar Ramon (16, 11) to (14, 12) and up to below quiz machine 3 (13..14, 10)"
       },
       {
         "id": "quiz_3",
@@ -167,12 +202,21 @@
       },
       {
         "id": "above_door_3",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 15]], "facing": "south"}
+          "legs": [{"direction": "south", "tiles": 3}, {"direction": "east", "tiles": 3}]
         },
-        "why": "east and down to above door 3 (17..18, 15..16)"
+        "why": "a tap a tile: down column 14 to the wall (14, 14) and east to (17, 14), a tile short of door 3 (17..18, 15..16), as for door 2"
+      },
+      {
+        "id": "to_door_3",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[17, 15]], "facing": "south"},
+        "why": "a step into door 3's gap (17, 15)"
       },
       {
         "id": "into_door_3",
@@ -194,12 +238,12 @@
       },
       {
         "id": "below_quiz_4",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[14, 18]], "facing": "north"}
+          "legs": [{"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 3}, {"direction": "north", "tiles": 1}]
         },
-        "why": "west along row 18, past Super Nerd Derek (16, 18), to below quiz machine 4 (13..14, 17)"
+        "why": "a tap a tile, as no wall ends the open legs: down to (17, 19), west along row 19 below Super Nerd Derek (16, 18) to (14, 19) and up to below quiz machine 4 (13..14, 17)"
       },
       {
         "id": "quiz_4",
@@ -222,12 +266,21 @@
       },
       {
         "id": "east_of_door_4",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[12, 22]], "facing": "west"}
+          "legs": [{"direction": "south", "tiles": 4}, {"direction": "west", "tiles": 1}]
         },
-        "why": "down column 12 to east of door 4 (11, 21..23)"
+        "why": "a tap a tile: down column 14 to (14, 22) and west to (13, 22), two tiles east of door 4's floor (11, 22). Door 4 opens (11, 22) and (11, 23) (OpenDoor4), which the map has shut: a planned route ran south to (14, 23) and held west 'to the wall' (11, 23), and on the console that hold went through the open door and on to below Burglar Dusty (console B, 2026-11-14). Legs ending on (12, 22) end 'to the wall' too, and the walker's tap toward the wall after them walked through the open door to (11, 22), leaving the player a tile west of the plan from there on (run 5, console B, 2026-11-14)"
+      },
+      {
+        "id": "to_door_4",
+        "kind": "step",
+        "args": {
+          "direction": "west"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[12, 22]], "facing": "west"},
+        "why": "a step to beside door 4 (12, 22)"
       },
       {
         "id": "into_door_4",
@@ -249,12 +302,12 @@
       },
       {
         "id": "below_quiz_5",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[2, 19]], "facing": "north"}
+          "legs": [{"direction": "west", "tiles": 9}, {"direction": "east", "tiles": 1}, {"direction": "north", "tiles": 3}]
         },
-        "why": "west through the bottom-left room, past Burglar Dusty (4, 19), to below quiz machine 5 (1..2, 18)"
+        "why": "a tap a tile: west along row 22 to the wall (1, 22), back east to (2, 22) and up, west of Burglar Dusty (4, 19), to below quiz machine 5 (1..2, 18). The west leg ends at a wall so the player is found there: in run 5 (console B, 2026-11-14) the player came into the room a tile west of the plan, an open west 8 ended on (1, 22), and quiz 5 was read from (1, 19), so below_door_5 ended under Dusty"
       },
       {
         "id": "quiz_5",
@@ -277,12 +330,21 @@
       },
       {
         "id": "below_door_5",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 18]], "facing": "north"}
+          "legs": [{"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 3}, {"direction": "north", "tiles": 1}]
         },
-        "why": "east along row 18 to below door 5 (5..6, 16..17)"
+        "why": "a tap a tile: down to (2, 20), east along row 20 below Burglar Dusty (4, 19) to (5, 20) and up to (5, 19), a tile short of door 5 (5..6, 16..17). A route went south to (2, 23), east 3 open and north 4: on the console the east hold ended a tile short, on Dusty's column, and north 4 stopped below him (console B, 2026-11-14)"
+      },
+      {
+        "id": "to_door_5",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 18]], "facing": "north"},
+        "why": "a step to below door 5 (5, 18)"
       },
       {
         "id": "into_door_5",
@@ -304,12 +366,12 @@
       },
       {
         "id": "below_quiz_6",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[2, 11]], "facing": "north"}
+          "legs": [{"direction": "north", "tiles": 4}, {"direction": "west", "tiles": 3}, {"direction": "north", "tiles": 1}]
         },
-        "why": "up and west to below quiz machine 6 (1..2, 10), west of Super Nerd Zac (4, 11)"
+        "why": "a tap a tile, as no wall ends the open legs: up column 5 to (5, 12), west along row 12 below Super Nerd Zac (4, 11) to (2, 12) and up to below quiz machine 6 (1..2, 10); a held north 4 a tile long would meet Zac on row 11"
       },
       {
         "id": "quiz_6",
@@ -332,12 +394,21 @@
       },
       {
         "id": "below_door_6",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 10]], "facing": "north"}
+          "legs": [{"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 3}, {"direction": "north", "tiles": 1}]
         },
-        "why": "east to below door 6 (5..6, 8..9)"
+        "why": "a tap a tile: down to (2, 12), east along row 12 below Super Nerd Zac (4, 11) to (5, 12) and up to (5, 11), a tile short of door 6 (5..6, 8..9). A route's open hold east a tile short would turn north into Zac, as at door 5"
+      },
+      {
+        "id": "to_door_6",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 10]], "facing": "north"},
+        "why": "a step to below door 6 (5, 10)"
       },
       {
         "id": "into_door_6",
@@ -359,12 +430,12 @@
       },
       {
         "id": "below_blaine",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 5]], "facing": "north"}
+          "legs": [{"direction": "north", "tiles": 3}]
         },
-        "why": "up to below Blaine (5, 4), facing him"
+        "why": "a tap a tile up column 5 from door 6 to (5, 5), facing Blaine (5, 4). A route's open hold north 3 was re-checked with a hold south 3 'to the wall' (5, 8), whose wall is door 6's barrier (5, 9), shut on the map: on the console it ran through the open door, the player was taken as found on (5, 8), and north 3 left them in door 6's gap, so challenge_blaine's A opened no message (14.02, console B, 2026-11-14)"
       }
     ]
   },
@@ -375,7 +446,7 @@
         "Starts outside the Pokemon Mansion's door (8, 3) on (8, 4) facing south, where the Escape Rope out of the Mansion (13.04, pokeguy 1:20:24) leaves the player. 13.04 is authored separately; until it is in, this row's start is its own (starts_after_unauthored_rows()).",
         "PokeGuy's way (1:20:37 to 1:21:43): all six quiz machines answered right, each opening the next door, so none of the gym's eight trainers is fought. Answers (pokefirered CinnabarIsland_Gym scripts.inc): 1 YES, 2 NO, 3 NO, 4 NO, 5 YES, 6 NO. A wrong answer starts the room's trainer instead; the table has no branch for that.",
         "Every gym trainer has sight 0 (map.json trainer_sight_or_berry_tree_id): they fight only after a wrong answer or a talk, so no trainer lines here.",
-        "The doors are metatiles the quiz scripts swap (setmetatile in OpenDoorN); the map has them shut, one barrier tile each. Each is crossed by two plain steps with their ends declared, not a planned route. On the sim they need the door opened (no sim support yet: the test moves the player over them).",
+        "The doors are metatiles the quiz scripts swap (setmetatile in OpenDoorN); the map has them shut, one barrier tile each. Each is crossed by two plain steps with their ends declared, not a planned route, after a third plain step onto the tile next to it: a route ending there plans its last leg held to the shut door, and on the console that hold walks through the open one (door 2, console B, 2026-11-14), so the routes end a tile short. Door 4 is two floor tiles (11, 22..23) beside a corner a route reaches along row 23, so it is reached by taps instead (console B, 2026-11-14). Doors 1, 5 and 6 are reached by taps too: a trainer stands on the column beside each door's, and a route's open hold a tile short turned up that column into him (door 5, console B, 2026-11-14). Every walk inside the gym goes a tap a tile or ends at a wall: the walker re-checks an open hold that ends a walk with holds to walls, and near a door that wall may be the door, open on the console (below_blaine's re-check held south through door 6, 14.02, console B, 2026-11-14). On the sim they need the door opened (no sim support yet: the test moves the player over them).",
         "We heal at Cinnabar's Center first; pokeguy doesn't (he fights Blaine at 24/126 HP with one Surf each).",
         "Ends in front of Blaine and saves there: his own pre-battle checkpoint (battle-checkpoint-retry), 14.02."
       ]

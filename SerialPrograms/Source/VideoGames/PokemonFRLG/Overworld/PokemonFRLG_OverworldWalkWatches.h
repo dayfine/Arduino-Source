@@ -14,7 +14,9 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -55,6 +57,13 @@ inline constexpr Milliseconds OPEN_MESSAGE_WATCH(1000);
 inline constexpr size_t MAX_INTERRUPTIONS_PER_LEG = 5;
 
 } // namespace OverworldWalkSteps
+
+
+//  Saves `frame`, the screen as `interrupt` stopped a leg, to
+//  DebugDumps/AutoStory/route/<timestamp>-interrupt-<interrupt>.png, so a
+//  false stop can be checked afterwards (console B, 2026-11-13, 12.03: "a
+//  message after 2152ms" left no frame). Returns the path, "" for no frame.
+std::string save_leg_interrupt_frame(Logger& logger, const ImageViewRGB32& frame, const std::string& interrupt);
 
 
 

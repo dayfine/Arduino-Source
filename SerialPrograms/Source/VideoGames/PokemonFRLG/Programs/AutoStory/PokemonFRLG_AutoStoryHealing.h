@@ -16,6 +16,7 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <string_view>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "PokemonFRLG_AutoStorySupplies.h"
 
@@ -32,8 +33,10 @@ int healing_hp(const std::string& item);
 //  missing_hp() counts from, with no item used since.
 void measured_hp(Supplies& supplies, double fill);
 
-//  One of `item` was used on the lead: its count spent, and its HP
-//  (healing_hp()) or, for another item, its cure taken into `supplies`.
+//  One of `item` was used on the lead: its count spent (spend_item()),
+//  and what it does taken into `supplies`: its HP (healing_hp()); a Full
+//  Restore's whole HP and cure; an Elixir's PP (ELIXIR_PP for every move,
+//  add_pp()); else its cure.
 void took_recovery_item(Supplies& supplies, const std::string& item);
 
 //  The HP the lead misses: the bar's empty share of its maximum HP (the
@@ -46,9 +49,12 @@ std::optional<int> missing_hp(const Supplies& supplies, int fallback_max_hp);
 //  having called took_recovery_item()) until missing_hp() is 0 or less:
 //  a Super Potion while more than a Potion's HP is missing, else a Potion,
 //  else a Super Potion. Stops when none is left or one couldn't be used.
-//  Returns missing_hp() at the end.
+//  With `first_item` (a Full Restore, PokeGuy's after Agatha: his bag's 12
+//  to 11, docs/battles/pokeguy-conditions.md lance), one of it first while
+//  HP is missing and the bag holds one. Returns missing_hp() at the end.
 std::optional<int> heal_to_full(
-    Supplies& supplies, int fallback_max_hp, const std::function<bool(const std::string& item)>& use
+    Supplies& supplies, int fallback_max_hp, const std::function<bool(const std::string& item)>& use,
+    std::string_view first_item = {}
 );
 
 //  How many of `item` to buy so the bag's Potions and Super Potions, with

@@ -25,7 +25,12 @@ Outcome mart(Logger& logger, const MartPlan& plan, StoryAbilities& abilities){
 }
 
 Outcome teach(Logger& logger, const TeachPlan& plan, StoryAbilities& abilities){
-    const TeachResult result = run_teach(logger, abilities.teach, abilities.members, plan);
+    const TeachResult result = run_teach(logger, abilities.teach, abilities.members, plan, abilities.species);
+    if ((result.end == TeachEnd::LEARNED || result.end == TeachEnd::ALREADY_KNOWN) && abilities.party != nullptr && is_field_move(plan.move)){
+        const std::string& species = result.species.empty() ? plan.species : result.species;
+        logger.log(std::format("Party: {} is used by slot {} ({}).", plan.move, result.member + 1, species.empty() ? "species unread" : species));
+        abilities.party->users().record(plan.move, result.member, species);
+    }
     if (result.end == TeachEnd::LEARNED){
         return Pokemon::outcome_ok();
     }

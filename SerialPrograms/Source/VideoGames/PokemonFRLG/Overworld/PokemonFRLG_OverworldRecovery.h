@@ -8,9 +8,10 @@
  *    - a leg to a wall interrupted after its hold is walked again;
  *    - an open leg to a warp, off the grass, stopped by a message (a
  *      trainer), is held on toward the warp;
- *    - a leg that crosses a trainer's sight (trainer_crossing()) is watched
- *      after for long enough that the trainer, if they saw the player, has
- *      walked up and spoken;
+ *    - a leg that crosses the sight of a trainer not yet beaten
+ *      (trainer_crossing()) is looked at after (trainer_first_look()), and
+ *      watched on for long enough that the trainer has walked up and
+ *      spoken if anything shows;
  *    - any other open leg stopped part-way, or a leg seen stopped by a
  *      trainer, has the tiles the player may be on worked out from the
  *      stop's timing and the trainers' sight (stop_candidates()). One tile:
@@ -40,9 +41,11 @@
 
 #include <functional>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
 #include "PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRoute.h"
@@ -53,6 +56,17 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
+
+//  Where a route left the player, for a caller whose route failed part-way:
+//  the tile they are known to stand on (nothing while a leg moves them or
+//  after a stop that hasn't found them again), and the gates as the steps
+//  walked so far left them. A step tried again plans from here, never from
+//  where the route started (13.01, console B, 2026-11-14 01:26: a failed
+//  statue press on Mansion 3F was tried again from Cinnabar Island).
+struct RouteProgress{
+    std::optional<MapPosition> at;
+    Pokemon::GateState gates;
+};
 
 //  What the route was planned with, to plan the way back onto it: the maps
 //  (with the event flags the caller set) and the costs; and, for the route
@@ -66,8 +80,18 @@ struct RoutePlanning{
     RouteCosts costs = default_route_costs();
     std::optional<MapPosition> start;
     std::string label = "Route";
+    //  The checkpoint the route belongs to, for its [Leg] records.
+    std::string checkpoint;
     WallCheck wall_check = WallCheck::TAP;
     OpenLegCheck open_leg_check = OpenLegCheck::REANCHOR;
+    //  Where the run pauses before each leg (breakpoints, LEGS mode). None:
+    //  never.
+    Pokemon::StoryPausePoints* pause = nullptr;
+    //  The trainers the player has beaten (trainer_id()): a leg across their
+    //  sight is not watched. The planner still keeps off their sight.
+    std::set<std::string> beaten_trainers = {};
+    //  Kept up to date as the route runs. None: not kept.
+    RouteProgress* progress = nullptr;
 };
 
 //  The console side. `walk` walks one step from `facing` (unknown after a
@@ -82,12 +106,22 @@ struct RouteCalls{
     //  whether the screen moved. Only logged: a bump and a step can't be
     //  told apart reliably yet. Not set (or WallCheck::SKIP): not tapped.
     std::function<bool(const RouteStep& step)> moved_past_wall;
-    //  After a leg that ended as planned but crosses a trainer's sight:
-    //  watches long enough for a trainer who saw the player to walk up
-    //  `approach_tiles` tiles and speak, has what shows cleared (the
-    //  caller's interrupts fight the trainer), and returns LATE if anything
-    //  showed, DONE if not. Not set: not watched.
-    std::function<StepEnd(const RouteStep& step, int approach_tiles)> watch_for_trainer;
+    //  After a leg that ended as planned but crosses the sight of a trainer
+    //  not beaten (`crossing`): looks for trainer_first_look(), and if
+    //  anything shows, watches on long enough for a trainer who saw the
+    //  player to walk up and speak (trainer_full_watch()), has what shows
+    //  cleared (the caller's interrupts fight the trainer), and returns
+    //  LATE if anything showed, DONE if not. Not set: not watched.
+    std::function<StepEnd(const RouteStep& step, const TrainerCrossing& crossing)> watch_for_trainer;
+    //  A leg's "ended at" line was logged for the leg with this text (also a
+    //  leg walked again after a stop). Returns the file the caller saved
+    //  the screen to, which is logged on the next line; empty: none.
+    std::function<std::string(const std::string& leg_text)> leg_ended;
+    //  Whether the player stands on foot on `tile`, off the water: checked
+    //  after a leg that lands there (RouteStep::lands_after), which fails
+    //  if not. The console reads only whether they surf. Not set: not
+    //  checked.
+    std::function<bool(const MapPosition& tile)> landed_on;
 };
 
 

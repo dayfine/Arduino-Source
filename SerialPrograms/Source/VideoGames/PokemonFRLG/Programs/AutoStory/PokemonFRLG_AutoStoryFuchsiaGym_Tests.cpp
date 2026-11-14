@@ -248,7 +248,9 @@ UnitTestResult test_dig_not_picked_against_levitate(){
     return true;
 }
 
-//  A foe's ability blocks only the type it names, and a single ability only.
+//  A foe's ability blocks only the type it names, also where the species
+//  has another ability it may have instead (Growlithe: Intimidate or Flash
+//  Fire; Poliwhirl: Water Absorb or Damp).
 UnitTestResult test_ability_immunities(){
     if (ability_immunity("koffing") != PokemonType::GROUND || ability_immunity("weezing") != PokemonType::GROUND){
         return "Expected Koffing and Weezing: Levitate, Ground.";
@@ -258,8 +260,10 @@ UnitTestResult test_ability_immunities(){
     ){
         return "Expected Flash Fire, Volt Absorb and Water Absorb immunities.";
     }
-    if (ability_immunity("muk") != PokemonType::NONE || ability_immunity("growlithe") != PokemonType::NONE){
-        return "Expected no immunity for Muk, or for Growlithe (two possible abilities).";
+    if (ability_immunity("muk") != PokemonType::NONE || ability_immunity("growlithe") != PokemonType::FIRE
+        || ability_immunity("poliwhirl") != PokemonType::WATER
+    ){
+        return "Expected no immunity for Muk, Flash Fire for Growlithe, Water Absorb for Poliwhirl.";
     }
     if (!takes_two_turns("dig") || !takes_two_turns("fly") || takes_two_turns("surf")){
         return "Expected Dig and Fly to take two turns, and Surf not.";

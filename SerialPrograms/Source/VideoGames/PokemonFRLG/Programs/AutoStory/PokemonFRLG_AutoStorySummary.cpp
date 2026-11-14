@@ -58,19 +58,28 @@ std::optional<Stats> skills_stats(ConsoleHandle& console, Language language, con
     };
 }
 
-//  From the party menu with the cursor on the member: its summary, read.
-std::optional<SummaryRead> read_open_summary(ConsoleHandle& console, ProControllerContext& context, Language language){
+//  From the party menu with the cursor on the member: its summary's first
+//  page shown.
+bool open_summary(ConsoleHandle& console, ProControllerContext& context){
     PartySelectionWatcher submenu(COLOR_RED);
     press(context, BUTTON_A);
     if (!wait_drawn(console, context, submenu, 5000ms)){
         console.log("Summary: the party member's menu didn't show.", COLOR_ORANGE);
-        return std::nullopt;
+        return false;
     }
     //  SUMMARY, the menu's top row.
     SummaryWatcher info(COLOR_RED);
     press(context, BUTTON_A);
     if (!wait_drawn(console, context, info, 5000ms)){
         console.log("Summary: the summary's first page didn't show.", COLOR_ORANGE);
+        return false;
+    }
+    return true;
+}
+
+//  From the party menu with the cursor on the member: its summary, read.
+std::optional<SummaryRead> read_open_summary(ConsoleHandle& console, ProControllerContext& context, Language language){
+    if (!open_summary(console, context)){
         return std::nullopt;
     }
     SummaryRead read;
@@ -108,7 +117,153 @@ std::optional<SummaryRead> read_open_summary(ConsoleHandle& console, ProControll
     return read;
 }
 
+
+//  The member switch (DOWN on the summary's first page): the sprite and
+//  text are redrawn over a few frames.
+constexpr Milliseconds MEMBER_SWITCH_SETTLE = 900ms;
+constexpr size_t SPECIES_READ_TRIES = 3;
+//  B on a member's menu: it is gone the next frames; checked for 3 s.
+constexpr Milliseconds MENU_CLOSE_CHECK = 100ms;
+constexpr size_t MENU_CLOSE_CHECKS = 30;
+
+class ConsolePartyScreens : public PartyScreens{
+public:
+    ConsolePartyScreens(ConsoleHandle& console, ProControllerContext& context, StartMenu menu, Language language)
+        : m_console(console)
+        , m_context(context)
+        , m_menu(menu)
+        , m_language(language)
+    {}
+
+    virtual bool open_party(size_t& members) override{
+        if (m_menu == StartMenu::BEFORE_POKEMON){
+            return false;
+        }
+        open_party_menu_from_overworld(m_console, m_context, start_menu_context(m_menu));
+        m_context.wait_for_all_requests();
+        //  The cursor on the lead, as read_party_summary() does.
+        tap(m_context, DPAD_LEFT);
+        m_context.wait_for_all_requests();
+        members = size_t(detect_last_occupied_party_slot(m_console)) + 1;
+        m_members = members;
+        m_cursor = 0;
+        return true;
+    }
+
+    virtual bool enter_summary() override{
+        return open_summary(m_console, m_context);
+    }
+
+    virtual std::string read_species() override{
+        for (size_t c = 0; c < SPECIES_READ_TRIES; c++){
+            if (VideoSnapshot screen = m_console.video().snapshot()){
+                PokemonFRLG_Stats stats;
+                StatsReader().read_page1(m_console, m_language, screen, stats);
+                if (!stats.name.empty()){
+                    return stats.name;
+                }
+            }
+            pbf_wait(m_context, 400ms);
+            m_context.wait_for_all_requests();
+        }
+        return "";
+    }
+
+    virtual bool next_member() override{
+        //  DOWN on the last member does nothing.
+        if (m_cursor + 1 < m_members){
+            m_cursor++;
+        }
+        tap(m_context, DPAD_DOWN, 0ms);
+        pbf_wait(m_context, MEMBER_SWITCH_SETTLE);
+        m_context.wait_for_all_requests();
+        return true;
+    }
+
+    virtual bool leave_summary() override{
+        PartySelectionWatcher menu(COLOR_RED);
+        //  The party menu comes back with the member's menu open
+        //  (pokefirered party_menu.c, CB2_ReturnToPartyMenuFromSummaryScreen()).
+        press(m_context, BUTTON_B);
+        return wait_drawn(m_console, m_context, menu, 5000ms);
+    }
+
+    virtual bool open_member_menu(size_t slot) override{
+        //  The party menu's UP and DOWN step one member, through CANCEL
+        //  past the ends; the scans never go past them.
+        for (; m_cursor < slot; m_cursor++){
+            tap(m_context, DPAD_DOWN);
+        }
+        for (; m_cursor > slot; m_cursor--){
+            tap(m_context, DPAD_UP);
+        }
+        return open_menu_on_cursor();
+    }
+
+    virtual std::optional<PartyMemberMenu> read_member_menu() override{
+        VideoSnapshot screen = m_console.video().snapshot();
+        if (!screen){
+            return std::nullopt;
+        }
+        std::optional<PartyMemberMenu> menu = read_party_member_menu(m_console.logger(), m_language, screen);
+        if (!menu || !menu->all_read()){
+            m_console.log(std::format("Party: slot {}'s menu isn't read.", m_cursor + 1), COLOR_RED);
+            dump_debug_image(m_console, "AutoStory/party", "member_menu", screen);
+        }
+        return menu;
+    }
+
+    virtual bool close_member_menu() override{
+        press(m_context, BUTTON_B);
+        m_context.wait_for_all_requests();
+        PartySelectionDetector menu(COLOR_RED);
+        for (size_t c = 0; c < MENU_CLOSE_CHECKS; c++){
+            pbf_wait(m_context, MENU_CLOSE_CHECK);
+            m_context.wait_for_all_requests();
+            VideoSnapshot screen = m_console.video().snapshot();
+            if (screen && !menu.detect(screen)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    virtual void close() override{
+        mash_until_overworld(m_console, m_context, 20000ms);
+    }
+
+private:
+    bool open_menu_on_cursor(){
+        PartySelectionWatcher menu(COLOR_RED);
+        press(m_context, BUTTON_A);
+        return wait_drawn(m_console, m_context, menu, 5000ms);
+    }
+
+    ConsoleHandle& m_console;
+    ProControllerContext& m_context;
+    StartMenu m_menu;
+    Language m_language;
+    size_t m_members = 0;
+    //  The member the party menu's cursor is on.
+    size_t m_cursor = 0;
+};
+
 } // namespace
+
+std::unique_ptr<PartyScreens> console_party_screens(
+    ConsoleHandle& console, ProControllerContext& context, StartMenu menu, Language language
+){
+    return std::make_unique<ConsolePartyScreens>(console, context, menu, language);
+}
+
+SpeciesFinder console_species_finder(
+    ConsoleHandle& console, ProControllerContext& context, Language language, PartyCache& party
+){
+    return [&console, &context, language, &party](std::string_view species){
+        const std::unique_ptr<PartyScreens> screens = console_party_screens(console, context, StartMenu::FULL, language);
+        return open_member_menu_of(console.logger(), *screens, party, species, false);
+    };
+}
 
 std::optional<SummaryRead> read_party_summary(
     ConsoleHandle& console, ProControllerContext& context, StartMenu menu, Language language, size_t slot

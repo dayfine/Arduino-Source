@@ -1376,6 +1376,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeScreenObserver.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeScreenObserver.h
+    Source/NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.cpp
+    Source/NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.h
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.cpp
@@ -1517,6 +1519,12 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_LegWalker.h
     Source/Pokemon/Navigation/Pokemon_LegWalker_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_LegWalker_Tests.h
+    Source/Pokemon/Navigation/Pokemon_LegReplay.cpp
+    Source/Pokemon/Navigation/Pokemon_LegReplay.h
+    Source/Pokemon/Navigation/Pokemon_LegTrace.cpp
+    Source/Pokemon/Navigation/Pokemon_LegTrace.h
+    Source/Pokemon/Navigation/Pokemon_LegTrace_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_LegTrace_Tests.h
     Source/Pokemon/Navigation/Pokemon_MapData.cpp
     Source/Pokemon/Navigation/Pokemon_MapData.h
     Source/Pokemon/Navigation/Pokemon_MapData_Tests.cpp
@@ -1567,12 +1575,22 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.h
     Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson_Tests.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson_Tests.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryDevFiles.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryDevFiles.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles_Tests.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles_Tests.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryRowExecution.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryRowExecution.h
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.cpp
@@ -1592,6 +1610,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryGame.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryPoseConcept.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryPoseConcept.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryStepRunner.cpp
@@ -1646,6 +1668,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryFailureClasses.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryFailureClasses.h
+    Source/Pokemon/AutoStory/Pokemon_StoryFailureClasses_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryFailureClasses_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryInterrupts.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryInterrupts.h
     Source/Pokemon/AutoStory/Pokemon_StoryInterrupts_Tests.cpp
@@ -1670,6 +1696,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StorySwitchPrompts.cpp
+    Source/Pokemon/AutoStory/Pokemon_StorySwitchPrompts.h
     Source/Pokemon/AutoStory/Pokemon_TilePose.cpp
     Source/Pokemon/AutoStory/Pokemon_TilePose.h
     Source/Pokemon/AutoStory/Pokemon_TestExpect.h
@@ -1686,6 +1714,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg_Tests.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
@@ -1956,6 +1986,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyEmptySlotDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyHeldItemDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyHeldItemDetector.h
+    Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMemberMenuReader.cpp
+    Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMemberMenuReader.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartySlot.h
@@ -2024,11 +2056,14 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementStepPresses.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementTurnPresses.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBike.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBike.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBikeTaps.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBikeTaps.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBike_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldHeldInPlace.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldHeldInPlace.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGateMaps_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGateMaps_Tests.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGates_Tests.cpp
@@ -2045,6 +2080,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldReanchor.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldResume.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldReanchor_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldLegTrace.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldLegTrace.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.cpp
@@ -2074,6 +2111,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTrainerCrossing.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldFacing.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldFacing.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkBattles.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk_Tests.cpp
@@ -2087,6 +2125,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWildTiles.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PokemonCenterFloorReader.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PokemonCenterFloorReader.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PokemonCenterRoom.h
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Navigation.cpp
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h
@@ -2124,12 +2164,18 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCapture_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCeladon_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCeladonGym_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySurf_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySurf_Tests.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCenterHeal.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySaffron_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySaffronGym_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCinnabarGym_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySilph_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRows16_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRows17_Tests.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRows18_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRows19_Tests.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRows20_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryGates_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryGates_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMansion_Tests.cpp
@@ -2138,6 +2184,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBoulders.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBoulders_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryVictoryRoad_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLeague_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRows13_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryUnauthoredStarts_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryChoice.cpp
@@ -2157,6 +2204,9 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFieldMoves.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFieldMoves.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFieldMoves_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFlyLanding.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFlyLanding.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFlyLanding_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFieldSteps.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFieldSteps.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFossil.h
@@ -2179,14 +2229,25 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryItemUse.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryItemUse.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryItemUse_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPocketList.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPocketList.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryGenderMenu.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryGenderMenu.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryItems_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFaultSweep_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFailureClasses.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFailureClasses.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFailureClasses_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFailureClasses_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFaultSweep_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLavender_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLaunch.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLaunch.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLaunch_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLaunch_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTower_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySnorlax_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPartyRoster_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySlope.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySlope.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySlopeMessage.h
@@ -2201,6 +2262,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMart_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMember.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMember.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPacedRoute.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPacedRoute.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPaceSim.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPaceSim.h
@@ -2230,7 +2292,9 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPlanGolden15.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPlanGolden16.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPlanGolden17.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPlanGolden18.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPlanGolden19.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPlanGolden20.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPlanGolden13.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryResources.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryResources.h
@@ -2245,6 +2309,9 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRooms.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRooms.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRooms_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryConsoleFailureData.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryConsoleFailure_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryConsoleFailure_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRowSim.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRowSim.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRows12_Tests.h
@@ -2253,18 +2320,26 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryUnauthoredStarts_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRows_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRowSimStubs.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRngReturns.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRngReturns.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRunPlan_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySimulation_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPartyMember.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPoses.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRoutePose.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRoutePose.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPresses.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySave.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySaveChecks.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySaveChecks.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryStartFrameCompare.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryStartFrameStore.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryStartMenu.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryStartMenu.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFieldMoveUsers.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFieldMoveUsers.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPartyRoster.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPartyRoster.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySummary.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySummary.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryStartFrames.cpp
@@ -2293,6 +2368,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySupplies.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTeach.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTeach.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTeachActions.h

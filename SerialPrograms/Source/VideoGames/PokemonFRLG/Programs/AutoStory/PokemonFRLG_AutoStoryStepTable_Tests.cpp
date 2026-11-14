@@ -20,6 +20,7 @@
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryFieldMoveSteps.h"
+#include "PokemonFRLG_AutoStoryFlyLanding.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
@@ -259,6 +260,7 @@ void add_tests_AutoStoryStepTable(UnitTestDatabase& database){
     //  The GAME variants with logic of their own.
     add_tests_AutoStoryHideout(database);
     add_tests_AutoStoryFieldMoves(database);
+    add_tests_AutoStoryFlyLanding(database);
     add_tests_AutoStoryRooms(database);
     add_tests_AutoStoryItemUse(database);
 }

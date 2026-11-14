@@ -26,6 +26,9 @@ constexpr size_t PARTY_SLOTS = 6;
 constexpr int MIN_POTIONS_TO_FIGHT = 2;
 //  RUN this many times ("Can't escape!") before fighting instead.
 constexpr int RUN_TRIES = 4;
+//  The lead's box gone with the foe's there this many polls in a row: the
+//  lead fainted.
+constexpr int FAINT_POLLS = 3;
 //  PSN read at this many turns in a row before an Antidote.
 constexpr int PSN_READS = 2;
 //  An evolution screen held this long was an evolution, not a text box
@@ -61,24 +64,6 @@ constexpr int MOVE_PROMPTS = 4;
 constexpr uint8_t MAX_LEVELS_IN_BATTLE = 3;
 //  The HP a Potion heals (pret src/data/items.h).
 constexpr double POTION_HP = 20;
-
-//  An item used: the story's count of it goes down, and an item it doesn't
-//  count takes its row with the last one.
-void spend_bag_item(Supplies& supplies, const std::string& item){
-    const auto count = supplies.other_counts.find(item);
-    if (count == supplies.other_counts.end()){
-        spend_item(supplies, item);
-        return;
-    }
-    if (--count->second > 0){
-        return;
-    }
-    supplies.other_counts.erase(count);
-    const auto row = std::find(supplies.pocket.begin(), supplies.pocket.end(), item);
-    if (row != supplies.pocket.end()){
-        supplies.pocket.erase(row);
-    }
-}
 
 //  A trainer's battle: the plan's attack, else the best type matchup
 //  (attack_slot_against()) against the foe out as read at the battle
@@ -141,6 +126,7 @@ void healed_by_nurse(Supplies& supplies){
     measured_hp(supplies, 1.0);
     supplies.status = StatusCondition::NONE;
     restore_pp(supplies.lead);
+    supplies.repel.clear();
 }
 
 bool attacks_low_on_pp(const Supplies& supplies){
@@ -338,11 +324,11 @@ void BattleDecisions::planned_item_used(){
             break;
         }
     }
-    spend_bag_item(m_supplies, m_planned_item);
+    spend_item(m_supplies, m_planned_item);
 }
 
 void BattleDecisions::policy_item_used(){
-    spend_bag_item(m_supplies, m_planned_item);
+    spend_item(m_supplies, m_planned_item);
     m_policy->item_used(m_planned_item);
     //  A medicine heals up to the bar's end.
     const double room = static_cast<double>(m_supplies.lead.stats->hp) - m_last_hp.value_or(0);
@@ -370,7 +356,7 @@ void BattleDecisions::move_refused(){
 
 void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
     if (result == TurnResult::REFUSED){
-        move_refused();
+        refused(choice);
         return;
     }
     const bool done = result == TurnResult::DONE;
@@ -471,6 +457,33 @@ std::optional<size_t> BattleDecisions::next_member_slot(){
 
 void BattleDecisions::lead_fainted(){
     m_lost = true;
+}
+
+void BattleDecisions::refused(TurnChoice choice){
+    if (choice != TurnChoice::RUN){
+        move_refused();
+        return;
+    }
+    if (m_kind == BattleKind::TRAINER){
+        return;
+    }
+    m_kind = BattleKind::TRAINER;
+    //  The wild Pokemon read at the start is gone; the trainer's is unknown.
+    m_supplies.wild_foes.clear();
+    if (m_supplies.policy.kind != BattlePolicyKind::NONE && m_supplies.lead.stats){
+        m_policy.emplace(m_supplies.policy);
+    }
+}
+
+void LeadFaintWatch::no_battle_screen(){
+    m_lead_seen = false;
+    m_polls = 0;
+}
+
+bool LeadFaintWatch::seen(BattleBoxes boxes){
+    m_lead_seen |= boxes.lead;
+    m_polls = m_lead_seen && !boxes.lead && boxes.foe ? m_polls + 1 : 0;
+    return m_polls == FAINT_POLLS;
 }
 
 EvolutionHold::EvolutionHold(PartyMember& lead)

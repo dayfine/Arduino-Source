@@ -1,0 +1,285 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "18.02",
+    "title": "Saffron Gym: Sabrina and the MARSHBADGE, the pads back out, heal at Saffron's Center",
+    "start": {
+      "map": "SaffronCity_Gym",
+      "tiles": [
+        [
+          14,
+          12
+        ]
+      ],
+      "facing": "north"
+    },
+    "events": [
+      {
+        "id": "lead_lv46_for_sabrina",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 46
+        },
+        "why": "the precondition for Sabrina: the lead at least Lv46, pokeguy's Blastoise here (PokemonSimulation docs/battles/pokeguy-conditions.md, sabrina: from 33/143 HP, 98.3% of the sims win, 90.1% to 100.0%); at his level or above, those sims stand for this fight and no new one is needed; below it, the run stops here, before the fight"
+      },
+      {
+        "id": "challenge_sabrina",
+        "kind": "talk",
+        "why": "Sabrina (14, 11)"
+      },
+      {
+        "id": "sabrina",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LEADER_SABRINA",
+          "foes": [
+            "kadabra",
+            "mr-mime",
+            "venomoth",
+            "alakazam"
+          ]
+        },
+        "declared_after": {
+          "map": "SaffronCity_Gym",
+          "tiles": [
+            [
+              14,
+              12
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "Sabrina (TRAINER_LEADER_SABRINA): Kadabra Lv38, Mr. Mime Lv37, Venomoth Lv38, Alakazam Lv43 (pokeguy: Water Pulse, Surf, Bite and Blizzard, 1:33:30 to 1:34:38); then the MARSHBADGE and TM04 Calm Mind"
+      },
+      {
+        "id": "by_pad_out_of_sabrina",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "SaffronCity_Gym",
+            "tiles": [
+              [
+                17,
+                15
+              ]
+            ],
+            "facing": "east"
+          }
+        },
+        "why": "back to the tile west of the pad (18, 15) the way in landed on"
+      },
+      {
+        "id": "pad_out_of_sabrina",
+        "kind": "step",
+        "args": {
+          "direction": "east"
+        },
+        "declared_after": {
+          "map": "SaffronCity_Gym",
+          "tiles": [
+            [
+              0,
+              7
+            ]
+          ],
+          "facing": "east"
+        },
+        "why": "onto the pad (18, 15), which warps to (0, 7) in the top left room"
+      },
+      {
+        "id": "by_pad_from_top_left",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "SaffronCity_Gym",
+            "tiles": [
+              [
+                0,
+                5
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "up column 0 to a tile below the pad (0, 4)"
+      },
+      {
+        "id": "pad_from_top_left",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {
+          "map": "SaffronCity_Gym",
+          "tiles": [
+            [
+              20,
+              7
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "onto the pad (0, 4), which warps to (20, 7) in the top right room"
+      },
+      {
+        "id": "along_row_6",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "SaffronCity_Gym",
+            "tiles": [
+              [
+                28,
+                6
+              ]
+            ],
+            "facing": "east"
+          }
+        },
+        "why": "east along row 6 (Johan (24, 2) sees (24, 3) to (24, 5), so not row 5) to the room's east wall"
+      },
+      {
+        "id": "below_pad_from_top_right",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "SaffronCity_Gym",
+            "tiles": [
+              [
+                28,
+                5
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "up to the tile below the pad (28, 4)"
+      },
+      {
+        "id": "pad_from_top_right",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {
+          "map": "SaffronCity_Gym",
+          "tiles": [
+            [
+              20,
+              20
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "onto the pad (28, 4), which warps to (20, 20) in the bottom right room"
+      },
+      {
+        "id": "by_pad_from_bottom_right",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "SaffronCity_Gym",
+            "tiles": [
+              [
+                28,
+                22
+              ]
+            ],
+            "facing": "south"
+          }
+        },
+        "why": "east along row 22, below Cameron's line (24, 19 to 21), to a tile above the pad (28, 23)"
+      },
+      {
+        "id": "pad_from_bottom_right",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {
+          "map": "SaffronCity_Gym",
+          "tiles": [
+            [
+              18,
+              20
+            ]
+          ],
+          "facing": "south"
+        },
+        "why": "onto the pad (28, 23), which warps to (18, 20) in the entrance room"
+      },
+      {
+        "id": "below_center_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "SaffronCity",
+            "tiles": [
+              [
+                24,
+                39
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "down the entrance room and out of the door (14, 23) onto Saffron City below the gym (46, 13), then through the city to below the Center's door (24, 38)"
+      },
+      {
+        "id": "saffron_nurse",
+        "kind": "game_action",
+        "action": "center_enter",
+        "declared_after": {
+          "map": "SaffronCity_PokemonCenter_1F",
+          "tiles": [
+            [
+              7,
+              4
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "the Center script in: through the door and up to the nurse; no map of the Center"
+      },
+      {
+        "id": "heal_saffron",
+        "kind": "heal",
+        "why": "full HP and PP"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Sabrina (14, 11), talked to from below, from the save in front of her (18.01): Kadabra Lv38, Mr. Mime Lv37, Venomoth Lv38, Alakazam Lv43 (sParty_LeaderSabrina); then the MARSHBADGE and TM04 Calm Mind. PokeGuy has Blastoise at Lv46 here (pokeguy-route.md, section 14).",
+        "Out by the four pads in reverse, each pair a two-way link: (18, 15) to (0, 7), (0, 4) to (20, 7), (28, 4) to (20, 20), (28, 23) to (18, 20), keeping to the same rows as the way in (18.01). No gym trainer is fought on the way out.",
+        "Ends at Saffron's nurse, facing her: 17.01's start. Silph Co.'s Rocket Grunts are gone by now (FLAG_HIDE_SAFFRON_ROCKETS), but story_maps() still has them, so the city route here goes round their lines as 15.01's does; the walk out of the gym lands the player on (46, 13), where one of them stands on that map."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {
+        "map": "SaffronCity_PokemonCenter_1F",
+        "tiles": [
+          [
+            7,
+            4
+          ]
+        ],
+        "facing": "north"
+      }
+    }
+  }
+}

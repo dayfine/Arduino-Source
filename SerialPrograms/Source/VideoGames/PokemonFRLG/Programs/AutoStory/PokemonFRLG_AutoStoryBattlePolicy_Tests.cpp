@@ -348,6 +348,39 @@ UnitTestResult test_torrent_power(){
     return true;
 }
 
+//  The X Specials `policy` uses from a bag of 10 on `view`.
+int x_specials_used(const BattlePolicy& policy, const PolicyView& view){
+    Supplies supplies;
+    set_from_bag(supplies, {{"x-special", 10}});
+    PolicyState state(policy);
+    int used = 0;
+    while (!use(state, supplies, view).empty() && used < 10){
+        used++;
+    }
+    return used;
+}
+
+//  Bruno (docs/battles/pokeguy-conditions.md): Sp. Atk +2, target_torrent.
+//  Against his first Onix with Torrent off, the stall's X Specials up to
+//  +4 (Torrent's 1.5 at +2); with Torrent on, or against a later foe, +2.
+UnitTestResult test_target_torrent(){
+    BattlePolicy policy;
+    policy.kind = BattlePolicyKind::GOAL_BASED_SETUP;
+    policy.goals = {.spa = 2, .target_torrent = true};
+    policy.foes = {FoeThreat{.speed = 81}, FoeThreat{.speed = 101}};
+    const int opening = x_specials_used(policy, PolicyView{.hp = 130, .max_hp = 162, .speed = 109});
+    const int torrent = x_specials_used(policy, PolicyView{.hp = 54, .max_hp = 162, .speed = 109});
+    const int later = x_specials_used(policy, PolicyView{.hp = 130, .max_hp = 162, .speed = 109, .foe_index = 1});
+    if (opening != 4 || torrent != 2 || later != 2){
+        return std::format("X Specials: {} in the opening, {} with Torrent, {} on a later foe; expected 4, 2, 2.", opening, torrent, later);
+    }
+    policy.foes.resize(1);
+    if (const int last = x_specials_used(policy, PolicyView{.hp = 130, .max_hp = 162, .speed = 109}); last != 2){
+        return std::format("{} X Specials against a lone foe: no stall, expected 2.", last);
+    }
+    return true;
+}
+
 UnitTestResult test_solo_recovery_no_setup(){
     BattlePolicy policy = koga_policy();
     policy.kind = BattlePolicyKind::SOLO_RECOVERY;
@@ -481,6 +514,17 @@ UnitTestResult test_plan_blaine(){
     return true;
 }
 
+UnitTestResult test_plan_bruno(){
+    const UnitTestResult result = check_policy_step("20.02", "bruno", {.spa = 2, .outspeed = true, .guard_accuracy = true});
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    if (arg_of<bool>(battle_step("20.02", "bruno"), "setup_target_torrent") != true){
+        return "20.02 bruno: expected the doc's target_torrent.";
+    }
+    return true;
+}
+
 
 struct AutoStoryBattlePolicyInput{
     std::string name;
@@ -562,6 +606,14 @@ const std::vector<AutoStoryBattlePolicyCase> AUTO_STORY_BATTLE_POLICY_CASES = {
     {
         .input = {.name = "torrent_power: a higher Sp. Atk goal while Torrent is off", .body = test_torrent_power},
         .expectation = {.description = "4 X Specials off, 2 on"},
+    },
+    {
+        .input = {.name = "target_torrent: the stall's X Specials against the first foe only", .body = test_target_torrent},
+        .expectation = {.description = "4 in the opening, 2 with Torrent, on a later foe or a lone one"},
+    },
+    {
+        .input = {.name = "plan: 20.02 bruno names the policy, goals and target_torrent", .body = test_plan_bruno},
+        .expectation = {.description = "the policy, goals, target_torrent and 5 foe rows"},
     },
     {
         .input = {.name = "solo-recovery cures and heals without setup", .body = test_solo_recovery_no_setup},

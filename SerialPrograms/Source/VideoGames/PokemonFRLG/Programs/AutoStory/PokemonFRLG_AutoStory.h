@@ -14,11 +14,13 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/StringOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "Pokemon/AutoStory/Pokemon_StoryRngHandoff.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -49,21 +51,24 @@ public:
     ) override{}
 
 private:
+    //  The mode of Stop for Starter RNG and Run Starter RNG in AutoStory.
+    Pokemon::RngHandoffMode starter_rng_mode() const;
     //  The RNG programs' handoffs the run takes, from the options.
     StoryHandoffs story_handoffs() const;
     //  Runs `plan`'s rows, then the RNG handoff they stop at and, for a
-    //  shiny, the rows after it, to the end checkpoint. Returns the last
-    //  checkpoint run, or nothing once the run has stopped.
+    //  shiny, the rows after it, to the end checkpoint, all of `rows`, the
+    //  run's story. Returns the last checkpoint run, or nothing once the run
+    //  has stopped.
     std::optional<std::string> run_story_plan(
         SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-        StoryEnv& story, StoryExecutor& executor, StoryRunPlan plan
+        StoryEnv& story, StoryExecutor& executor, const std::vector<StoryCheckpoint>& rows, StoryRunPlan plan
     );
     //  After 01.05 saved under Squirtle's ball (row `ball_row`): the stop
     //  for Starter RNG, or its attempts run here. Returns the rows to run
     //  after a shiny, or nothing once the run has stopped.
     std::optional<StoryRunPlan> after_starter_ball(
         SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-        StoryEnv& story, const StarterRngPlanned& planned, size_t ball_row
+        StoryEnv& story, const StarterRngPlanned& planned, const std::vector<StoryCheckpoint>& rows, size_t ball_row
     );
     //  Started at a gift's live-start row (04.03, 09.04; row `first`) with
     //  Run Gift RNG in AutoStory on, the save where the gift is taken
@@ -71,7 +76,7 @@ private:
     //  As run_story_plan() returns.
     std::optional<std::string> run_from_gift_rng_save(
         SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-        StoryEnv& story, StoryExecutor& executor, size_t first
+        StoryEnv& story, StoryExecutor& executor, const std::vector<StoryCheckpoint>& rows, size_t first
     );
     //  After a GIFT_RNG row (04.02 beside the Magikarp salesman, 09.03
     //  facing the Eevee's ball; row `gift_row`) saved: Gift RNG's attempts
@@ -79,7 +84,7 @@ private:
     //  nothing once the run has stopped.
     std::optional<StoryRunPlan> after_gift_row(
         SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-        StoryEnv& story, const StarterRngPlanned& planned, size_t gift_row
+        StoryEnv& story, const StarterRngPlanned& planned, const std::vector<StoryCheckpoint>& rows, size_t gift_row
     );
 
     //  The start and end checkpoints, attempts, checks and language, as in
@@ -97,7 +102,13 @@ private:
     //  Runs Gift RNG's attempts in the program after 04.02 (the Magikarp)
     //  and 09.03 (the Eevee).
     BooleanCheckBoxOption RUN_GIFT_RNG;
+    //  Takes the Master Ball from Silph Co.'s president (16.05), unless the
+    //  run is a SPEEDRUN.
+    BooleanCheckBoxOption TAKE_MASTER_BALL;
     StarterRngPlanOptions RNG_PLAN;
+    //  Who uses each field move as the last save holds it (FieldMoveUsers'
+    //  text), kept as the SID is, so a restart skips the party scan.
+    StringOption FIELD_MOVE_USERS;
     EventNotificationOption NOTIFICATION_SHINY;
     EventNotificationOption NOTIFICATION_STATUS_UPDATE;
     //  The save loaded was made by hand: keep the screen as its start frame.

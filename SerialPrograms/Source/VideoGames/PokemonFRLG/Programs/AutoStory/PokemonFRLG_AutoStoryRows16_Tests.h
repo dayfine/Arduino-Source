@@ -17,7 +17,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Row 16.01, Silph Co., on the overworld sim (PokemonFRLG_AutoStorySilph_Tests.cpp).
+//  Rows 16.01 to 16.03b, Silph Co., on the overworld sim (PokemonFRLG_AutoStorySilph_Tests.cpp).
 void add_tests_AutoStorySilph(UnitTestDatabase& database);
 
 

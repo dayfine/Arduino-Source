@@ -211,10 +211,23 @@ size_t effectiveness(const MoveData& move, const SpeciesData& defender){
     return tenths;
 }
 
+//  `move` may do nothing to `foe`, which must be in species_data(): its
+//  ability may make it immune (ability_immunity()), it is a Water move on a
+//  Water foe (Water Absorb heals off it on Swimmer Roland's Poliwhirl,
+//  console B, 2026-11-13; the user's rule: never Water on Water), or it is
+//  not super effective on Shedinja (Wonder Guard).
+bool useless_against(const MoveData& move, std::string_view foe){
+    const SpeciesData& types = *species_data(foe);
+    const bool water_on_water = move.type == PokemonType::WATER
+        && (types.first == PokemonType::WATER || types.second == PokemonType::WATER);
+    const bool wonder_guard = foe == "shedinja" && effectiveness(move, types) <= 10;
+    return ability_immunity(foe) == move.type || water_on_water || wonder_guard;
+}
+
 //  `move`'s type multiplier, in tenths, summed over `foes`: 0 against a foe
-//  whose ability makes it immune, halved for a two-turn move; 0 for a move
-//  that does no damage. Each foe must be in species_data(). (The data has no
-//  power, so STAB is left to the plan's order, which breaks ties.)
+//  it may do nothing to (useless_against()), halved for a two-turn move; 0
+//  for a move that does no damage. Each foe must be in species_data(). (The
+//  data has no power, so STAB is left to the plan's order, which breaks ties.)
 size_t matchup(std::string_view move, const std::vector<std::string>& foes){
     const MoveData* data = move_data(move);
     if (data == nullptr || !data->damaging){
@@ -222,7 +235,7 @@ size_t matchup(std::string_view move, const std::vector<std::string>& foes){
     }
     size_t total = 0;
     for (const std::string& foe : foes){
-        if (ability_immunity(foe) == data->type){
+        if (useless_against(*data, foe)){
             continue;
         }
         size_t tenths = effectiveness(*data, *species_data(foe));
@@ -399,7 +412,22 @@ std::optional<size_t> attack_slot_against(const PartyMember& member, const std::
             best_matchup = tenths;
         }
     }
-    return best ? best : plan;
+    if (best){
+        return best;
+    }
+    //  No damaging move does anything to them: the first move with PP
+    //  left that isn't wasted on them, a status move included, before the
+    //  plan's attack (which may be the Water move that heals them).
+    for (size_t slot : attack_order(member)){
+        const MoveData* data = move_data(member.moves[slot].move);
+        const bool wasted = data != nullptr && data->damaging && std::ranges::all_of(known, [data](const std::string& foe){
+            return useless_against(*data, foe);
+        });
+        if (member.moves[slot].pp > 0 && !wasted){
+            return slot;
+        }
+    }
+    return plan;
 }
 
 size_t attack_pp(const PartyMember& member){
@@ -427,6 +455,11 @@ void no_pp_left(PartyMember& member, size_t slot){
 void restore_pp(PartyMember& member){
     for (KnownMove& known : member.moves){
         known.pp = max_pp(known.move);
+    }
+}
+void add_pp(PartyMember& member, uint8_t amount){
+    for (KnownMove& known : member.moves){
+        known.pp = static_cast<uint8_t>(std::min<int>(known.pp + amount, max_pp(known.move)));
     }
 }
 

@@ -37,6 +37,11 @@ struct SimScript{
     Pokemon::GateState gates;
     //  The START menu is open at the start: the D-pad moves its cursor.
     bool start_menu_open = false;
+    //  Fault injection: a message box is open at the start, and the player
+    //  can't move until B or A closes it. 12.03's surf_off_middle_sand_bar
+    //  began so: the look before it ended on "dialog box showing (quiet
+    //  0.3 s)" (console B, 2026-11-13).
+    bool message_open = false;
     //  The hold numbered by the key (from 1) stops this many tiles short,
     //  with nothing on screen (the forest drift, console B, 2026-11-01).
     std::map<int, int> short_holds;
@@ -65,6 +70,11 @@ struct SimScript{
     //  (SimWalkerRules::confirm_turn) after 08.01 run 2 (console B,
     //  2026-11-09), where a one-tile leg only turned the player.
     std::set<int> dropped_turn_taps;
+    //  Fault injection: the reads of the facing after each turn tap that
+    //  show no player, as when a roof's eave, a tree or a wanderer is drawn
+    //  over the sprite (Cinnabar, north of the Center: console B,
+    //  2026-11-13 11:06, 12.03 surf_route_21); SIZE_MAX: none shows.
+    size_t hidden_facing_reads = 0;
     //  Fault injection: walker step taps that moved the player, by number
     //  from 1 among those that moved, which the walker's screen check reads
     //  as not moved. On Rocket Hideout B2F's floor a real step read so, and
@@ -96,6 +106,12 @@ struct SimScript{
     //  SELECT took the player off, and every bike tap after only turned
     //  them (console B, 2026-11-12 05:42).
     std::set<int> off_bike_at_legs;
+    //  Fault injection: steps on the water, by number from 1 among all the
+    //  steps surfed, after which a message shows and stops the player, as
+    //  "a message" did on 12.03's "south 15 (open)" down Route 21 (console
+    //  B, 2026-11-13 06:55 and 07:02, 8 tiles in both times; no box was on
+    //  the leg's screenshot after it was closed).
+    std::set<int> messages_at_surf_steps;
     //  The player rides the Bicycle: a tap facing another way takes a step
     //  too, a hold through a turn loses no tile
     //  (MovementMechanics::BIKE_TAP_ONLY_TURNS), and no step tap is
@@ -142,8 +158,6 @@ struct SimState{
     //  The maps as loaded, with each gate closed or open as the map says, to
     //  plan through the gates (resolve_maps()); empty if no map has a gate.
     std::vector<MapData> gate_maps;
-    //  Whether the player holds the Card Key (SimScript::card_key_held).
-    bool card_key_held = false;
     Direction facing = Direction::SOUTH;
     SimScreen screen = SimScreen::OVERWORLD;
     //  Whether black shows below the map: the player stands near the bottom
@@ -159,6 +173,11 @@ struct SimState{
     //  From each wild battle's step to the overworld after it, together.
     Milliseconds in_wild_battles{0};
     int signs_read = 0;
+    //  Steps taken on the water (SimScript::messages_at_surf_steps).
+    int surf_steps = 0;
+    //  The holds, by number from 1 as SimScript::short_holds counts them,
+    //  that started on the water.
+    std::vector<int> surf_holds;
     int turn_taps_dropped = 0;
     //  Taps that only turned the player, or were dropped turning them.
     int turn_taps = 0;
@@ -178,6 +197,9 @@ struct SimState{
     //  (SimScript::off_bike_at_legs).
     int bike_legs = 0;
     std::vector<std::string> trainers_beaten;
+    //  The time the walker spent watching for trainers after legs across
+    //  their sight (watch_for_trainer()), fights included.
+    Milliseconds trainer_watch{0};
     //  Things the walker did that the game wouldn't let pass: D-pad holds
     //  under a battle, a trainer's battle fled, a battle fought that wasn't
     //  there.

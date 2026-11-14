@@ -47,9 +47,22 @@ int item_count(const Supplies& supplies, const std::string& item){
     return member == nullptr ? 0 : supplies.*member;
 }
 
+
 void spend_item(Supplies& supplies, const std::string& item){
-    if (int* count = count_slot(supplies, item)){
-        (*count)--;
+    const auto count = supplies.other_counts.find(item);
+    if (count == supplies.other_counts.end()){
+        if (int* counted = count_slot(supplies, item)){
+            (*counted)--;
+        }
+        return;
+    }
+    if (--count->second > 0){
+        return;
+    }
+    supplies.other_counts.erase(count);
+    const auto row = std::find(supplies.pocket.begin(), supplies.pocket.end(), item);
+    if (row != supplies.pocket.end()){
+        supplies.pocket.erase(row);
     }
 }
 

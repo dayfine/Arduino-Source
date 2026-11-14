@@ -2,8 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Each class of failure console B showed, injected at every row of the
- *  story on the overworld sim, instead of only where it was seen:
+ *  Each class of failure console B showed (the shared sim faults,
+ *  Pokemon_SimFaults.h), injected at every row of the story on the
+ *  overworld sim, instead of only where it was seen:
  *
  *  - SCENE_END_POSE: a step the sim does not play (a scene, a talk, an
  *    event) that moved the player leaves them on another walkable tile
@@ -63,6 +64,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_SimFaults.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
@@ -85,44 +87,12 @@ namespace{
 
 using namespace std::chrono_literals;
 
-enum class FaultClass{
-    SCENE_END_POSE,
-    WILD_BATTLES,
-    LATE_FADE,
-    SLOW_FADE_IN,
-    DARK_CAVE,
-    LOST_TAP,
-    WARP_NO_OP,
-    UNSEEN_STEP,
-    MOUNT_LOST,
-};
-std::string_view fault_class_name(FaultClass fault){
-    switch (fault){
-    case FaultClass::SCENE_END_POSE:
-        return "scene end pose";
-    case FaultClass::WILD_BATTLES:
-        return "wild battles at the game's odds";
-    case FaultClass::LATE_FADE:
-        return "late warp fade";
-    case FaultClass::SLOW_FADE_IN:
-        return "slow fade-in after every warp";
-    case FaultClass::DARK_CAVE:
-        return "dark cave without Flash";
-    case FaultClass::LOST_TAP:
-        return "lost tap after a battle in a trainer's line";
-    case FaultClass::WARP_NO_OP:
-        return "warp no-op";
-    case FaultClass::UNSEEN_STEP:
-        return "step tap read as not moved";
-    case FaultClass::MOUNT_LOST:
-        return "off the Bicycle at a bike leg";
-    }
-    return "?";
-}
+using Pokemon::FaultClass;
+using Pokemon::fault_class_name;
 
 //  Sweeps the program fails today, by test name, with the likely fix.
 const std::map<std::string, std::string> KNOWN_FAILING{
-    {"PokemonFRLG::AutoStory - Fault sweep: 02.02, wild battles at the game's odds",
+    {"PokemonFRLG::AutoStory - Fault sweep: 02.02, wild battles",
         "below_oak on Route 1 gives up after 9 stops part-way (seeds 16, 30): count stops that make no progress, not every battle"},
     {"PokemonFRLG::AutoStory - Fault sweep: 10.06, scene end pose",
         "below_fuji_house plans from (4, 7), where Mr. Fuji's script warps the player (warp 4, 7, exact); from a tile off, no wall in his house funnels the walk onto (3, 4): legs that re-anchor, if the console shows the warp can land elsewhere"},
@@ -134,7 +104,9 @@ const std::map<std::string, std::string> KNOWN_FAILING{
         "fly_celadon: a Fly that doesn't leave Cinnabar Island goes unseen, and the row, which walks on from Celadon's heal spot, ends below Erika: the same fix as 11.01's, the fly landing on its town's tile (FlyTown::landing) checked before the step ends"},
     {"PokemonFRLG::AutoStory - Fault sweep: 17.02, warp no-op",
         "fly_viridian: a Fly that doesn't leave Saffron City goes unseen, and the row, which walks on from Saffron's streets, ends on Viridian's Gym tile: the same fix as 11.01's, the fly landing on its town's tile (FlyTown::landing) checked before the step ends"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 08.03, off the Bicycle at a bike leg",
+    {"PokemonFRLG::AutoStory - Fault sweep: 18.01, late fade",
+        "pad_to_top_right: a pad hop stays on SaffronCity_Gym, so a fade seen late (or a slow fade-in) leaves no scene change to confirm the warp and the step finds no fade: a scene check for a warp within one map (the player's tile moved from the pad), as the walker's scene_confirms_missed_fade does for a leg"},
+    {"PokemonFRLG::AutoStory - Fault sweep: 08.03, mount lost",
         "riding with no fault, route7_underground_exit's warp to UndergroundPath_EastEntrance is not confirmed on the sim (the screen after the fade reads as before the hold): the sim's warp off the Bicycle, before this class can sweep 08.03"},
 };
 
@@ -691,7 +663,10 @@ struct FaultSweepInput{
 //  Whether a sweep is expected to fail is KNOWN_FAILING's, by name.
 struct FaultSweepExpectation{
 };
+//  `name`: the fault class's in FAULT_SWEEP_CASES; "<row>, <fault class>"
+//  in a test.
 struct FaultSweepCase{
+    std::string name;
     FaultSweepInput input;
     FaultSweepExpectation expectation;
 };
@@ -709,7 +684,7 @@ const StoryCheckpoint& table_row(const std::string& id){
 class Test_AutoStoryFaultSweep : public UnitTest{
 public:
     explicit Test_AutoStoryFaultSweep(FaultSweepCase test_case)
-        : UnitTest(std::format("PokemonFRLG::AutoStory - Fault sweep: {}, {}", test_case.input.row, fault_class_name(test_case.input.fault)))
+        : UnitTest(std::format("PokemonFRLG::AutoStory - Fault sweep: {}", test_case.name))
         , m_fault(test_case.input.fault)
         , m_row(table_row(test_case.input.row))
     {}
@@ -757,6 +732,10 @@ private:
             return sweep_unseen_step(logger, m_row, clean);
         case FaultClass::MOUNT_LOST:
             return sweep_mount_lost(logger, m_row);
+        case FaultClass::SCENE_EARLY:
+        case FaultClass::BATTLE_OPENING:
+            //  Not in FAULT_SWEEP_CASES: no test is made.
+            break;
         }
         return true;
     }
@@ -768,16 +747,19 @@ private:
 } // namespace
 
 
+//  The shared sim faults (Pokemon_SimFaults.h) this sweep injects: all but
+//  SCENE_EARLY and BATTLE_OPENING, which need knobs the sims don't have yet
+//  (see the top of this file).
 const FaultSweepCase FAULT_SWEEP_CASES[] = {
-    {.input = {.fault = FaultClass::SCENE_END_POSE}, .expectation = {}},
-    {.input = {.fault = FaultClass::WILD_BATTLES}, .expectation = {}},
-    {.input = {.fault = FaultClass::LATE_FADE}, .expectation = {}},
-    {.input = {.fault = FaultClass::SLOW_FADE_IN}, .expectation = {}},
-    {.input = {.fault = FaultClass::DARK_CAVE}, .expectation = {}},
-    {.input = {.fault = FaultClass::LOST_TAP}, .expectation = {}},
-    {.input = {.fault = FaultClass::WARP_NO_OP}, .expectation = {}},
-    {.input = {.fault = FaultClass::UNSEEN_STEP}, .expectation = {}},
-    {.input = {.fault = FaultClass::MOUNT_LOST}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::SCENE_END_POSE)), .input = {.fault = FaultClass::SCENE_END_POSE}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::WILD_BATTLES)), .input = {.fault = FaultClass::WILD_BATTLES}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::LATE_FADE)), .input = {.fault = FaultClass::LATE_FADE}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::SLOW_FADE_IN)), .input = {.fault = FaultClass::SLOW_FADE_IN}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::DARK_CAVE)), .input = {.fault = FaultClass::DARK_CAVE}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::LOST_TAP)), .input = {.fault = FaultClass::LOST_TAP}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::WARP_NO_OP)), .input = {.fault = FaultClass::WARP_NO_OP}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::UNSEEN_STEP)), .input = {.fault = FaultClass::UNSEEN_STEP}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::MOUNT_LOST)), .input = {.fault = FaultClass::MOUNT_LOST}, .expectation = {}},
 };
 
 std::optional<std::string> talk_battle_hide_flag(const StoryStep& step){
@@ -797,7 +779,11 @@ void add_tests_AutoStoryFaultSweep(UnitTestDatabase& database){
             if (!row.start || !story_pose(Pokemon::pose_of(*row.start))){
                 continue;
             }
-            database.add<Test_AutoStoryFaultSweep>(FaultSweepCase{.input = {.fault = item.input.fault, .row = row.id}, .expectation = item.expectation});
+            database.add<Test_AutoStoryFaultSweep>(FaultSweepCase{
+                .name = std::format("{}, {}", row.id, item.name),
+                .input = {.fault = item.input.fault, .row = row.id},
+                .expectation = item.expectation,
+            });
         }
     }
 }

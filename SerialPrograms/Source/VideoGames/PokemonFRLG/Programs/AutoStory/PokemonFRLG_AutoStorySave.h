@@ -11,6 +11,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStorySave_H
 
 #include <cstddef>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -71,15 +72,24 @@ private:
     size_t m_nothing_seen = 0;
 };
 
+//  Why the save card's place (read_save_card_location(), empty if it can't
+//  be read) shows the game mustn't be saved there, or empty if it may be.
+using SavePlaceCheck = std::function<std::string(const std::string& place)>;
+
 //  From the overworld: SAVE, YES, and YES again to overwrite an older save
 //  (see SaveDialog). The menu's cursor is read, since the game remembers it
-//  and the menu grows. Returns to the overworld; throws
-//  OperationFailedException if the save wasn't made.
+//  and the menu grows. Before the first YES the card's place is read in
+//  `language` and given to `check`: an error answers NO, goes back to the
+//  overworld and throws OperationFailedException, unsaved. Returns to the
+//  overworld; throws OperationFailedException if the save wasn't made.
 //  Overlaps save_game_to_overworld() in PokemonFRLG_Navigation.h.
 //  Ours reads the cursor for any START menu length (the menu grows during the
 //  story) and checks the overworld is back; upstream assumes the full menu.
 //  Could be unified with upstream if needed.
-void save_game(ConsoleHandle& console, ProControllerContext& context, StartMenu menu);
+void save_game(
+    ConsoleHandle& console, ProControllerContext& context, StartMenu menu,
+    Language language, const SavePlaceCheck& check
+);
 
 //  From the overworld: the place the START menu's SAVE card names (see
 //  read_save_card_location()), then NO, back to the overworld. Empty if it

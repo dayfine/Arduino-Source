@@ -148,12 +148,12 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
     }
     add_coded_field();
     m_state.gates = m_script.gates;
-    m_state.card_key_held = m_script.card_key_held;
     read_gates();
     m_player = PlayerState{start.point, elevation_at(map(), start.point), false};
     m_state.facing = facing;
     m_state.on_bike = m_script.on_bike;
-    show(m_script.start_menu_open ? SimScreen::START_MENU : SimScreen::OVERWORLD, m_now);
+    m_frozen = m_script.message_open;
+    show(m_frozen ? SimScreen::MESSAGE : m_script.start_menu_open ? SimScreen::START_MENU : SimScreen::OVERWORLD, m_now);
     update_view();
 }
 
@@ -388,6 +388,9 @@ bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
         note("warped to " + to_string(m_state.position) + ".");
         return true;
     }
+    if (m_player.surfing && message_on_water(pressed)){
+        return true;
+    }
     //  The game looks for trainers who see the player before it rolls for a
     //  wild battle, and doesn't roll once one does (pokefirered
     //  ProcessPlayerFieldInput(): CheckForTrainersWantingBattle() first,
@@ -493,39 +496,6 @@ void OverworldSim::walk_hold(Direction direction, Milliseconds duration, int sho
     take_steps(direction, pressed, end, (int)((end - pressed + tile - 1ms) / tile) - short_by);
 }
 
-//  Up to `left` steps of a hold of `direction` until `end`, the first
-//  pressed at `pressed`.
-void OverworldSim::take_steps(Direction direction, Milliseconds pressed, Milliseconds end, int left){
-    const Milliseconds tile = tile_time();
-    for (; left > 0 && pressed < end; left--){
-        const std::optional<Step> step = press(direction);
-        if (!step){
-            bump(direction, pressed);
-            return;
-        }
-        if (m_script.connections_stall && step->map != m_map && !step->warped){
-            //  The step onto a connected map waits a tile while the game
-            //  loads it: a hold timed by its tiles alone ended a tile short
-            //  (console B, 2026-11-03, rows 04.06, 05.05 and 05.09).
-            pressed += tile;
-            if (pressed >= end){
-                return;
-            }
-        }
-        if (step->facing){
-            m_state.facing = *step->facing;
-        }
-        pressed += after_slide(*step);
-        if (after_step(*step, pressed)){
-            return;
-        }
-        if (step->spin && m_script.holds_end_at_slide_stop){
-            return;
-        }
-        pressed += step->ledge ? tile * 2 : tile;
-    }
-}
-
 //  A hold the game doesn't move the player for.
 void OverworldSim::stuck_hold(Direction direction){
     if (m_state.screen == SimScreen::START_MENU){
@@ -543,6 +513,9 @@ std::optional<SimSeen> OverworldSim::hold(
 ){
     const Milliseconds start = m_now;
     m_holds++;
+    if (m_player.surfing){
+        m_state.surf_holds.push_back(m_holds);
+    }
     m_last_tap.reset();
     count_bike_leg(direction, duration);
     if (m_state.screen != SimScreen::OVERWORLD || m_frozen){
@@ -701,9 +674,6 @@ namespace{
 using namespace MovementMechanics;
 using namespace OverworldWalkSteps;
 
-//  As the console's watch for a trainer (PokemonFRLG_OverworldRecoveryWalk.cpp).
-constexpr Milliseconds TRAINER_NOTICE(1500);
-constexpr Milliseconds TRAINER_SPEAKS(1000);
 //  The console's wait for a warp's fade (wait_out_warp()).
 constexpr Milliseconds WARP_TIMEOUT(8000);
 
@@ -828,13 +798,22 @@ bool OverworldSimWalker::after_warp(const RouteStep& step, int warps_before, Mil
     return false;
 }
 
+void OverworldSimWalker::turn_or_fail(const RouteStep& step){
+    const OverworldWalkSteps::UnreadTurn unread{
+        .at_known = m_at_known, .overworld_clear = true, .after = OverworldWalkSteps::UnreadTurn::then_for(step),
+    };
+    if (!sim_turn_to(m_sim, step.direction, m_rules.confirm_turn, unread)){
+        fail("walk_overworld_route(): after a turn tap " + std::string(Pokemon::direction_name(step.direction)) + ", the facing can't be read.");
+    }
+}
+
 void OverworldSimWalker::fail_off_route(const RouteStep& step){
     fail("walk_overworld_route(): a wild battle, not the warp to " + step.end.map + ": the player is off the route.");
 }
 
 std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, std::optional<Direction> facing){
     if (step.action == RouteAction::FACE){
-        sim_turn_to(m_sim, step.direction, m_rules.confirm_turn);
+        turn_or_fail(step);
         return std::nullopt;
     }
     if (step.action == RouteAction::SURF){
@@ -844,7 +823,7 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
         return use_gate(step);
     }
     if (turns_first(step, m_speed, facing)){
-        sim_turn_to(m_sim, step.direction, m_rules.confirm_turn);
+        turn_or_fail(step);
     }
     const int warps_before = m_sim.state().warps;
     const std::vector<Interrupt>& ints = interrupts(step);
@@ -890,7 +869,9 @@ StepOutcome OverworldSimWalker::walk_ridden(const RouteStep& step, std::optional
         clear_late(interrupts(step), OPEN_MESSAGE_WATCH, 1);
     }
     check_overworld(step);
-    if (counts_step_taps(step) || (m_rules.count_bike_taps && counts_bike_taps(step, m_speed))){
+    const MapPosition before = m_sim.state().position;
+    const bool tapped = counts_step_taps(step) || (m_rules.count_bike_taps && counts_bike_taps(step, m_speed));
+    if (tapped){
         const StepOutcome outcome = counts_step_taps(step) ? walk_step_taps(step) : walk_bike_taps(step);
         if (outcome.end != StepEnd::DONE){
             return outcome;
@@ -901,13 +882,19 @@ StepOutcome OverworldSimWalker::walk_ridden(const RouteStep& step, std::optional
     if (step.action == RouteAction::FACE || step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH){
         return StepOutcome{};
     }
+    //  What the console reads off the screen: whether a hold's map scrolled.
+    //  Counted taps saw each tap move, and measure nothing more.
+    HoldMovement movement = HoldMovement::UNMEASURED;
+    if (step.action == RouteAction::WALK && !step.warps && !tapped){
+        movement = m_sim.state().position == before ? HoldMovement::NONE : HoldMovement::MOVED;
+    }
     size_t late = clear_late(interrupts(step), step.wild ? m_rules.after_wild_leg_watch : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG);
     if (late == 0){
         late = clear_unseen_battle(step);
     }
     const bool done = late == 0 || step.warps || step.action != RouteAction::WALK;
     if (done){
-        return StepOutcome{};
+        return StepOutcome{.end = StepEnd::DONE, .walked = std::nullopt, .movement = movement};
     }
     return StepOutcome{.end = StepEnd::LATE, .walked = late_stop(step)};
 }
@@ -974,9 +961,16 @@ void OverworldSimWalker::hold_to_warp(const RouteStep& step){
     fail("walk_overworld_route(): no fade holding on toward the warp to " + step.end.map + ".");
 }
 
-StepEnd OverworldSimWalker::watch_for_trainer(const RouteStep& step, int approach_tiles){
-    const Milliseconds watch = TRAINER_NOTICE + TILE_TIME * approach_tiles + TRAINER_SPEAKS;
-    return clear_late(interrupts(step), watch, MAX_INTERRUPTIONS_PER_LEG) == 0 ? StepEnd::DONE : StepEnd::LATE;
+StepEnd OverworldSimWalker::watch_for_trainer(const RouteStep& step, const TrainerCrossing& crossing){
+    const Milliseconds from = m_sim.state().time;
+    const Milliseconds look = trainer_first_look(crossing);
+    const bool seen = clear_late(interrupts(step), look, MAX_INTERRUPTIONS_PER_LEG) > 0;
+    m_log.push_back(std::format("Route: {} crosses a trainer's sight; watch {} ms: {}.", to_string(step), look.count(), seen ? "something showed" : "nothing"));
+    if (seen){
+        clear_late(interrupts(step), trainer_full_watch(crossing.approach_tiles), MAX_INTERRUPTIONS_PER_LEG);
+    }
+    m_sim.count_trainer_watch(m_sim.state().time - from);
+    return seen ? StepEnd::LATE : StepEnd::DONE;
 }
 
 bool OverworldSimWalker::moved_past_wall(const RouteStep& step){
@@ -992,11 +986,14 @@ RouteCalls OverworldSimWalker::calls(){
     calls.log = [this](const std::string& message){ m_log.push_back(message); };
     calls.fail = [this](const std::string& message){ fail(message); };
     calls.moved_past_wall = [this](const RouteStep& step){ return moved_past_wall(step); };
-    calls.watch_for_trainer = [this](const RouteStep& step, int approach_tiles){ return watch_for_trainer(step, approach_tiles); };
+    calls.watch_for_trainer = [this](const RouteStep& step, const TrainerCrossing& crossing){ return watch_for_trainer(step, crossing); };
+    //  As the console: the walking sprite shows, not where.
+    calls.landed_on = [this](const MapPosition&){ return !m_sim.state().surfing; };
     return calls;
 }
 
 std::string OverworldSimWalker::run(const std::vector<RouteStep>& route, const RoutePlanning& planning){
+    m_at_known = planning.start.has_value();
     try{
         run_route(route, m_sim.state().facing, &planning, calls());
     }catch (OperationFailedException& e){

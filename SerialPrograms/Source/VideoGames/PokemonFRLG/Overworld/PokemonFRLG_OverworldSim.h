@@ -47,6 +47,7 @@
 #include "PokemonFRLG_BikeSpinPresses.h"
 #include "PokemonFRLG_BikeSpinMechanics.h"
 #include "PokemonFRLG_OverworldBikeTaps.h"
+#include "PokemonFRLG_OverworldFacing.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldSimField.h"
@@ -61,11 +62,20 @@ namespace PokemonFRLG{
 
 
 //  Simulates overworld movement, encounters and dialogs.
+// code-health: allow public_methods -- the Card Key pickup is a story event the row sim reports to the one sim, beside its other inputs
 class OverworldSim{
 public:
     OverworldSim(std::vector<MapData> maps, MapPosition start, Direction facing, SimScript script = {});
 
     const SimState& state() const{ return m_state; }
+
+    //  SimScript::hidden_facing_reads.
+    size_t hidden_facing_reads() const{ return m_script.hidden_facing_reads; }
+
+    //  Whether the player holds the Card Key (SimScript::card_key_held).
+    bool card_key_held() const{ return m_script.card_key_held; }
+    //  The player picks up the Card Key: A on a card-key gate opens it from now on.
+    void give_card_key(){ m_script.card_key_held = true; }
 
     //  Whether the walker's screen check reads its last step tap as a
     //  step: one that moved the player from `before`, but for
@@ -107,6 +117,12 @@ public:
     //  Closes the message on screen with B. Returns whether a trainer's
     //  battle follows it.
     bool close_message();
+
+    //  Adds `watched` to SimState::trainer_watch: the walker watched that
+    //  long for trainers after a leg.
+    void count_trainer_watch(Milliseconds watched){
+        m_state.trainer_watch += watched;
+    }
 
     //  A on what the player faces, as `field` says (`floor`: the lift's).
     //  Returns whether it was there. (PokemonFRLG_OverworldSimField.cpp)
@@ -242,6 +258,9 @@ private:
     //  (SimScript::black_without_warp): its black without the warp.
     int m_warp_steps = 0;
     bool black_without_warp(Milliseconds pressed);
+    //  A message after the step on the water just taken
+    //  (SimScript::messages_at_surf_steps).
+    bool message_on_water(Milliseconds pressed);
     //  The last tap, until a hold.
     std::optional<TapPress> m_last_tap;
     //  When the last Bicycle tap started, and how many came too soon.
@@ -387,8 +406,10 @@ struct SimWalkerRules{
 };
 
 //  OverworldWalkSteps::turn_to() on `sim`, which reads the facing on the
-//  overworld only; with `confirm` false, the one tap before it.
-void sim_turn_to(OverworldSim& sim, Direction direction, bool confirm = SimWalkerRules{}.confirm_turn);
+//  overworld only, but for SimScript::hidden_facing_reads; with `confirm`
+//  false, the one tap before it. Returns false where turn_to() would fail
+//  the leg: unread_turn_taken() of `unread`, by default on a known tile.
+bool sim_turn_to(OverworldSim& sim, Direction direction, bool confirm = SimWalkerRules{}.confirm_turn, const OverworldWalkSteps::UnreadTurn& unread = {.at_known = true, .overworld_clear = true});
 
 //  AutoStory's step_once() on `sim`: turns the player if they face another
 //  way, then one step tap.
@@ -461,13 +482,15 @@ private:
     //  SimWalkerRules::confirm_warp_destination off, takes it as the warp.
     bool black_without_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
     [[noreturn]] void fail_off_route(const RouteStep& step);
+    //  sim_turn_to() for `step`, failing as turn_to() would.
+    void turn_or_fail(const RouteStep& step);
     std::optional<SimSeen> hold_watching(const RouteStep& step, Milliseconds hold, const std::vector<Interrupt>& interrupts);
     size_t clear_late(const std::vector<Interrupt>& interrupts, Milliseconds watch, size_t max);
     size_t clear_unseen_battle(const RouteStep& step);
     bool battle_on_its_way() const;
     void clear(const Interrupt& interrupt);
     void hold_to_warp(const RouteStep& step);
-    StepEnd watch_for_trainer(const RouteStep& step, int approach_tiles);
+    StepEnd watch_for_trainer(const RouteStep& step, const TrainerCrossing& crossing);
     bool moved_past_wall(const RouteStep& step);
     void check_overworld(const RouteStep& step);
     //  After a leg onto a spinner: the slide's time.
@@ -489,6 +512,11 @@ private:
     //  speed of the step under way.
     bool m_riding = false;
     MoveSpeed m_speed = MoveSpeed::WALK;
+    //  Whether the walker knows the tile the next step starts on, as
+    //  walk_overworld_route_with_recovery() does: from the planned start,
+    //  then after each step that ended as planned. Known for calls() used
+    //  without run(), as before the sim modelled it.
+    bool m_at_known = true;
 };
 
 

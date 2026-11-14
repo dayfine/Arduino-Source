@@ -16,6 +16,7 @@
 #include "PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldSim.h"
+#include "PokemonFRLG_OverworldWalkGates.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -166,6 +167,47 @@ UnitTestResult test_route_presses_statue(){
 }
 
 
+//  A hall with a statue on its north wall above the fourth column, whose
+//  switch opens the barrier south of the sixth, to a room below. Nothing
+//  stops a leg east on the statue's tile.
+const std::vector<MapData>& statue_hall_maps(){
+    static const std::vector<MapData> MAPS{parse_map(R"({
+        "format": "pokesim-runtime-map/2", "name": "GateStatueHall", "points": {}, "warps": [], "connections": [], "source": {"decomp_file": "", "revision": "test", "date": "2026-11-13"},
+        "tiles": ["##########", "#........#", "#####G####", "#........#", "##########"],
+        "gates": {"barrier_1": {"tiles": [[5, 2]], "open_glyph": ".", "new_game": "closed", "switch": "mansion", "open_when": "on"}},
+        "switches": {"mansion": {"flag": "FLAG_TEST_SWITCH", "toggle": true, "floors": ["GateStatueHall"],
+            "statues": [{"coord": [3, 0], "face_from": [3, 1], "facing": "north"}]}}
+    })", "GateStatueHall")};
+    return MAPS;
+}
+
+//  13.01 mansion_holes (console B, 2026-11-13 19:17), Pokemon Mansion 3F:
+//  "east 4 (open)" to the statue's tile (12, 6) ran a tile long, and the
+//  press north from (13, 6) found no statue. An open leg onto the tile a
+//  switch is pressed from is tapped, a tile a tap, each checked to have
+//  moved, so it ends on that tile.
+UnitTestResult test_route_taps_onto_statue(){
+    const MapPosition start{"GateStatueHall", {1, 1}};
+    const MapPosition goal{"GateStatueHall", {5, 3}};
+    const auto route = plan_overworld_route_gated(
+        statue_hall_maps(), start, RouteGoal{goal, std::nullopt}, GateState(), with_card_key(false)
+    );
+    if (!route){
+        return "No route past the barrier.";
+    }
+    for (size_t c = 1; c < route->size(); c++){
+        if ((*route)[c].action != RouteAction::PRESS_SWITCH){
+            continue;
+        }
+        const RouteStep& before = (*route)[c - 1];
+        if (before.action != RouteAction::WALK || !(before.to_wall || before.tapped)){
+            return "Expected the leg onto the statue's tile tapped or to a wall:" + describe(*route);
+        }
+        return true;
+    }
+    return "Expected a press-switch step:" + describe(*route);
+}
+
 //  A room with a sign on its north wall, above the third column, and a
 //  card-key door, open, in a corner out of the way.
 const std::vector<MapData>& sign_maps(){
@@ -264,6 +306,87 @@ UnitTestResult test_sim_presses_statue(){
     return true;
 }
 
+//  statue_hall_maps() with its statue moved off to (8, 0): a press north
+//  from (3, 1), where the plan on statue_hall_maps() presses, finds none.
+const std::vector<MapData>& statue_moved_maps(){
+    static const std::vector<MapData> MAPS{parse_map(R"({
+        "format": "pokesim-runtime-map/2", "name": "GateStatueHall", "points": {}, "warps": [], "connections": [], "source": {"decomp_file": "", "revision": "test", "date": "2026-11-14"},
+        "tiles": ["##########", "#........#", "#####G####", "#........#", "##########"],
+        "gates": {"barrier_1": {"tiles": [[5, 2]], "open_glyph": ".", "new_game": "closed", "switch": "mansion", "open_when": "on"}},
+        "switches": {"mansion": {"flag": "FLAG_TEST_SWITCH", "toggle": true, "floors": ["GateStatueHall"],
+            "statues": [{"coord": [8, 0], "face_from": [8, 1], "facing": "north"}]}}
+    })", "GateStatueHall")};
+    return MAPS;
+}
+
+//  13.01 mansion_holes (console B, 2026-11-14 01:26), Pokemon Mansion 3F:
+//  the press at the statue failed on its tile (12, 6), and the step was
+//  tried again planned from the checkpoint's start on Cinnabar Island,
+//  with the player still on 3F. A route that fails says where the player
+//  is known to be: on the tile the press failed on, the switch as it was.
+UnitTestResult test_failed_press_keeps_its_tile(){
+    const MapPosition start{"GateStatueHall", {1, 1}};
+    const MapPosition pressed_from{"GateStatueHall", {3, 1}};
+    const auto route = plan_overworld_route_gated(
+        statue_hall_maps(), start, RouteGoal{{"GateStatueHall", {5, 3}}, std::nullopt}, GateState(), with_card_key(false)
+    );
+    if (!route){
+        return "No route past the barrier.";
+    }
+    OverworldSim sim(statue_moved_maps(), start, Direction::EAST, SimScript{});
+    OverworldSimWalker walker(sim, SimWalkerRules{});
+    RouteProgress progress;
+    const RoutePlanning planning{
+        .maps = &statue_hall_maps(), .costs = default_route_costs(), .start = start, .label = "Sim", .progress = &progress
+    };
+    const std::string failure = walker.run(*route, planning);
+    if (failure.empty()){
+        return "Expected the press to find no statue." + describe(*route);
+    }
+    if (!progress.at || !(*progress.at == pressed_from) || progress.gates.switch_on("GateStatueHall/mansion")){
+        return std::format(
+            "Expected the player known on {} with the switch off, got {}.",
+            to_string(pressed_from), progress.at ? to_string(*progress.at) : "no tile"
+        ) + describe(*route);
+    }
+    return true;
+}
+
+//  The statue's text as the game shows it after each A (pokefirered
+//  data/scripts/pokemon_mansion.inc, PokemonMansion_EventScript_SecretSwitch:
+//  "A secret switch!\p" "Press it?" with YES/NO): a page of its own first,
+//  then the prompt. `pages` more text pages before it, then the prompt.
+std::function<StatueScreen()> statue_text(int pages){
+    return [pages, presses = 0]() mutable{
+        presses++;
+        return presses <= pages ? StatueScreen::MORE_TEXT : StatueScreen::PROMPT;
+    };
+}
+
+//  13.01 mansion_holes (console B, 2026-11-13 19:17 and 2026-11-14 01:26):
+//  the press waited for YES/NO after one A, while "A secret switch!" showed
+//  with its page arrow until a second A. The prompt is reached by turning
+//  the pages first.
+UnitTestResult test_statue_pages_to_prompt(){
+    const std::optional<int> presses = page_to_switch_prompt(statue_text(1), 5);
+    if (presses != 2){
+        return std::format("Expected 2 presses of A to the prompt, got {}.", presses ? std::to_string(*presses) : "none");
+    }
+    return true;
+}
+
+//  A statue that shows no prompt (no text at all, or page after page)
+//  is not pressed forever.
+UnitTestResult test_statue_without_prompt_gives_up(){
+    if (page_to_switch_prompt([]{ return StatueScreen::NOTHING; }, 5)){
+        return "Took a screen with no text for the prompt.";
+    }
+    if (page_to_switch_prompt(statue_text(100), 5)){
+        return "Turned pages past the cap.";
+    }
+    return true;
+}
+
 //  The sim, like the game, does not open a card-key door for a player
 //  without the Card Key.
 UnitTestResult test_sim_door_stays_shut_without_card_key(){
@@ -286,10 +409,14 @@ const std::vector<GatesCase> GATES_CASES{
     {.input = {.name = "no route through a card-key gate without the Card Key", .body = test_route_needs_card_key}, .expectation = {}},
     {.input = {.name = "an open gate is walked through", .body = test_route_through_open_gate}, .expectation = {}},
     {.input = {.name = "the route presses a statue for a switch's barrier", .body = test_route_presses_statue}, .expectation = {}},
+    {.input = {.name = "the leg onto a statue's tile is tapped", .body = test_route_taps_onto_statue}, .expectation = {}},
     {.input = {.name = "a gated plan keeps the stop-risk costs", .body = test_gated_plan_keeps_stop_risk}, .expectation = {}},
     {.input = {.name = "sim: face the door, A, walk through", .body = test_sim_opens_gate}, .expectation = {}},
     {.input = {.name = "sim: face the statue, A, YES, walk through", .body = test_sim_presses_statue}, .expectation = {}},
     {.input = {.name = "sim: the door stays shut without the Card Key", .body = test_sim_door_stays_shut_without_card_key}, .expectation = {}},
+    {.input = {.name = "sim: a failed press keeps the player on its tile", .body = test_failed_press_keeps_its_tile}, .expectation = {}},
+    {.input = {.name = "the statue's first page is turned to its prompt", .body = test_statue_pages_to_prompt}, .expectation = {}},
+    {.input = {.name = "a statue with no prompt is given up on", .body = test_statue_without_prompt_gives_up}, .expectation = {}},
 };
 
 } // namespace

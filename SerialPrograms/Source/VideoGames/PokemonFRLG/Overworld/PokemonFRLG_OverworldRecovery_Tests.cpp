@@ -16,10 +16,16 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "CommonFramework/Logging/Logger.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRecovery.h"
+#include "PokemonFRLG_OverworldRecoveryWalk.h"
+#include "PokemonFRLG_OverworldWalkWatches.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -95,8 +101,8 @@ struct ScriptedRoute{
             failure = message;
             throw std::runtime_error(message);
         };
-        calls.watch_for_trainer = [this](const RouteStep&, int approach_tiles){
-            watches.push_back(approach_tiles);
+        calls.watch_for_trainer = [this](const RouteStep&, const TrainerCrossing& crossing){
+            watches.push_back(crossing.approach_tiles);
             return watches.size() <= watch_ends.size() ? watch_ends[watches.size() - 1] : StepEnd::DONE;
         };
         return calls;
@@ -202,6 +208,59 @@ UnitTestResult test_stop_recover_resume(){
     });
 }
 
+//  Console B, 2026-11-13 04:15 (12.03, surf_route_21): Surf from Pallet
+//  Town's shore down Route 21 to Cinnabar. "south 86 (open)" on the water
+//  stopped short at a sand bar on Route21_South, unseen, and "east 7
+//  (open)" after it was walked from there: the route was taken as walked
+//  to (14, 12), with the player still on the water, and the Center entry
+//  and the heal after it were faked. A surfing open leg followed by another
+//  open leg is now checked: the player is found again at walls, or the
+//  route stops, never goes on from a guess.
+UnitTestResult test_open_water_legs(){
+    const std::vector<MapData> maps = overworld_maps();
+    const MapPosition start{"PalletTown", {10, 17}};
+    std::optional<std::vector<RouteStep>> route = plan_overworld_route(
+        maps, start, RouteGoal{{"CinnabarIsland", {14, 12}}, Direction::NORTH}, default_route_costs()
+    );
+    if (!route){
+        return "No route.";
+    }
+    //  Routes now land on the sand bars and the shore instead of stopping
+    //  on the water (RouteCost::OPEN_WATER_STOP). The leg to the
+    //  first sand bar is made an open stop on the water, as legs were then,
+    //  to keep the check covered.
+    for (RouteStep& step : *route){
+        if (step.surfing && step.action == RouteAction::WALK && !step.warps){
+            step.to_wall = false;
+            step.lands_after = 0;
+            break;
+        }
+    }
+    size_t chained = 0;
+    while (chained + 1 < route->size() && !(
+        (*route)[chained].surfing && !(*route)[chained].to_wall && !(*route)[chained].warps
+        && (*route)[chained + 1].action == RouteAction::WALK && !(*route)[chained + 1].to_wall && !(*route)[chained + 1].warps
+    )){
+        chained++;
+    }
+    if (chained + 1 >= route->size()){
+        return "Expected an open leg on the water followed by another open leg:" + describe(*route);
+    }
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Route", .wall_check = WallCheck::SKIP};
+    ScriptedRoute script;
+    const bool failed = script.run(*route, &planning);
+    const std::string leg = to_string((*route)[chained]);
+    if (failed && script.failure.find(leg) != std::string::npos){
+        return true;
+    }
+    const UnitTestResult checked = expect_logged(script.logs, {"Route: position check: " + leg});
+    if (checked.result != UnitTestResult::PASSED){
+        return "Expected " + leg + " checked or the route stopped, not taken as walked:" + describe(*route)
+            + (failed ? "\nfailed: " + script.failure : std::string());
+    }
+    return true;
+}
+
 //  A corridor with a person at each end: nothing finds the player again.
 const std::string TEST_CORRIDOR_JSON = R"({
     "name": "Corridor", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
@@ -273,6 +332,35 @@ UnitTestResult test_warp_leg(){
     return true;
 }
 
+//  With breakpoints on legs, the route pauses before each leg, in the step's
+//  label, with the leg's place, direction, tiles and the tile it ends on; a
+//  leg walked again after a stop pauses again.
+UnitTestResult test_pause_before_legs(){
+    const RouteStep first = walk(Direction::EAST, 2, {"Corridor", {3, 1}});
+    const RouteStep second = walk(Direction::NORTH, 1, {"Corridor", {3, 0}});
+    std::vector<std::string> paused;
+    Pokemon::StoryPausePoints pause(Pokemon::StoryBreakpoints::LEGS, [&paused](std::string_view label){
+        paused.emplace_back(label);
+    });
+    pause.before_step("12.03/5 shore");
+    const RoutePlanning planning{.label = "Route", .pause = &pause};
+    ScriptedRoute script;
+    if (script.run({first, second}, &planning)){
+        return "Failed: " + script.failure;
+    }
+    const std::vector<std::string> expected{
+        "12.03/5 shore", "12.03/5 shore leg 1/2 east 2 -> (3, 1)", "12.03/5 shore leg 2/2 north 1 -> (3, 0)",
+    };
+    if (paused != expected){
+        std::string text;
+        for (const std::string& label : paused){
+            text += "\n  " + label;
+        }
+        return "Paused:" + text;
+    }
+    return true;
+}
+
 //  After a leg to a wall, a tap toward it that moves the screen is only
 //  logged (the forest drift diagnostic): a bump and a step can't be told
 //  apart yet. With the check off there is no tap. Open legs aren't tapped.
@@ -308,6 +396,280 @@ UnitTestResult test_wall_check(){
     return true;
 }
 
+//  A hall to walk: floor from x=1 to x=7, nothing in it.
+const std::string TEST_HALL_JSON = R"({
+    "name": "Hall", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-12"},
+    "tiles": ["#########", "#.......#", "#########"],
+    "elevation": ["333333333", "333333333", "333333333"],
+    "objects": []
+})";
+
+StepOutcome no_movement(){
+    return StepOutcome{.end = StepEnd::DONE, .walked = std::nullopt, .movement = HoldMovement::NONE};
+}
+
+//  A leg held from a known tile that moved the screen not at all did not
+//  walk (console B, 2026-11-12, 12.03 pallet_shore): it is not taken as
+//  walked, whether open or to a wall, but walked again from where it
+//  started; once more with nothing moved, the route fails. A leg that
+//  moved is walked as before.
+//  Console B frames (1920x1080) in CommandLineTests, 12.03 on Route 21,
+//  2026-11-13: a tap south against a rock 400 ms apart, the player blocked;
+//  and the player landed on Cinnabar's beach behind the roof of the
+//  building below, only the head showing.
+constexpr std::string_view ROCK_TAP_BEFORE = "PokemonFRLG/OverworldWater/Route21_RockTap_Before.png";
+constexpr std::string_view ROCK_TAP_AFTER = "PokemonFRLG/OverworldWater/Route21_RockTap_After.png";
+constexpr std::string_view BEACH_BEHIND_ROOF = "PokemonFRLG/OverworldWater/Cinnabar_BeachBehindRoof.png";
+const ImageFloatBox CONSOLE_GAME_BOX(0.09375, 0.00462963, 0.8125, 0.962963);
+
+std::optional<ImageRGB32> unit_test_frame(std::string_view name){
+    try{
+        return ImageRGB32(UNIT_TEST_RESOURCE_PATH() + std::string(name));
+    }catch (FileException&){
+        return std::nullopt;
+    }
+}
+
+//  `screen` with the map in `game` moved as a step south moves it: up a tile.
+ImageRGB32 stepped_south(const ImageRGB32& screen, const ImageFloatBox& game){
+    ImageRGB32 out = screen.copy();
+    const size_t top = (size_t)(screen.height() * game.y + 0.5);
+    const size_t bottom = top + (size_t)(screen.height() * game.height + 0.5);
+    const size_t tile = (size_t)(screen.height() * game.height / 10 + 0.5);
+    for (size_t y = top; y + tile < bottom; y++){
+        for (size_t x = 0; x < screen.width(); x++){
+            out.pixel(x, y) = screen.pixel(x, y + tile);
+        }
+    }
+    return out;
+}
+
+//  A tap against a rock on the water (console B, 2026-11-13 08:53, 12.03):
+//  the water's animation changed the edge bands by 35.2, read as a step.
+//  It must read as no move; the same frame moved a tile still reads as one.
+UnitTestResult test_water_tap_against_rock(){
+    const std::optional<ImageRGB32> before = unit_test_frame(ROCK_TAP_BEFORE);
+    const std::optional<ImageRGB32> after = unit_test_frame(ROCK_TAP_AFTER);
+    if (!before || !after){
+        return UnitTestResult(UnitTestResult::SKIPPED, "Frames not in CommandLineTests: " + std::string(ROCK_TAP_BEFORE));
+    }
+    if (tap_moved_on_water(*before, *after, CONSOLE_GAME_BOX, Direction::SOUTH)){
+        return std::format("a tap against the rock read as a step (bands changed by {:.1f})", tap_scroll_change(*before, *after, CONSOLE_GAME_BOX));
+    }
+    if (!tap_moved_on_water(*before, stepped_south(*after, CONSOLE_GAME_BOX), CONSOLE_GAME_BOX, Direction::SOUTH)){
+        return "a step south on the water read as no move";
+    }
+    return true;
+}
+
+//  Landed behind a roof (console B, 2026-11-13 09:46, 12.03 land_beach):
+//  the walking sprite hides, but no water shows on the player's tile, as it
+//  does around a surfing player.
+UnitTestResult test_landed_behind_roof(){
+    const std::optional<ImageRGB32> beach = unit_test_frame(BEACH_BEHIND_ROOF);
+    const std::optional<ImageRGB32> surfing = unit_test_frame(ROCK_TAP_BEFORE);
+    if (!beach || !surfing){
+        return UnitTestResult(UnitTestResult::SKIPPED, "Frames not in CommandLineTests: " + std::string(BEACH_BEHIND_ROOF));
+    }
+    if (surfing_on_screen(*beach, CONSOLE_GAME_BOX)){
+        return "landed behind a roof read as surfing";
+    }
+    if (!surfing_on_screen(*surfing, CONSOLE_GAME_BOX)){
+        return "surfing read as landed";
+    }
+    return true;
+}
+
+//  Console B, 2026-11-13 08:53 (12.03): "a message after 2152ms" stopped
+//  "south 35 (to wall)" on Route 21 and left no frame to check it by. The
+//  frame a leg's interrupt shows is saved, and an empty one isn't.
+UnitTestResult test_interrupt_frame(){
+    Logger& logger = global_logger_tagged();
+    const std::string path = save_leg_interrupt_frame(logger, ImageRGB32(64, 48), "a message");
+    if (path.empty() || !Filesystem::exists(Filesystem::Path(path))){
+        return std::format("Expected the interrupt's frame saved, got \"{}\".", path);
+    }
+    Filesystem::remove(Filesystem::Path(path));
+    if (path.find("AutoStory/route/") == std::string::npos || path.find("interrupt-a_message") == std::string::npos){
+        return std::format("Expected it under AutoStory/route/, named for the interrupt: {}", path);
+    }
+    if (!save_leg_interrupt_frame(logger, ImageRGB32(), "a message").empty()){
+        return "Expected no file for an empty frame.";
+    }
+    return true;
+}
+
+UnitTestResult test_unmoved_leg(){
+    const std::vector<MapData> maps{parse_map(TEST_HALL_JSON, "Hall")};
+    RouteStep wall = walk(Direction::EAST, 5, {"Hall", {7, 1}});
+    wall.to_wall = true;
+    const std::vector<RouteStep> legs[] = {
+        {walk(Direction::EAST, 3, {"Hall", {5, 1}})},
+        {wall},
+    };
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = MapPosition{"Hall", {2, 1}}, .label = "Route", .wall_check = WallCheck::SKIP};
+    for (const std::vector<RouteStep>& route : legs){
+        const std::string name = to_string(route[0]);
+        ScriptedRoute once;
+        once.ends[0] = no_movement();
+        if (once.run(route, &planning) || once.walked.size() != 2){
+            return name + ": expected the leg walked a second time after it moved nothing: " + once.failure;
+        }
+        const UnitTestResult logged = expect_logged(once.logs, {"the player never moved", "stopped 0 to 0 tiles in"});
+        if (logged.result != UnitTestResult::PASSED){
+            return name + ": " + logged.message;
+        }
+        ScriptedRoute twice;
+        twice.ends[0] = no_movement();
+        twice.ends[1] = no_movement();
+        if (!twice.run(route, &planning) || twice.failure.find("moved nothing twice in a row") == std::string::npos){
+            return name + ": expected a failure after two holds that moved nothing, got: " + twice.failure;
+        }
+        ScriptedRoute moved;
+        moved.ends[0] = StepOutcome{.end = StepEnd::DONE, .walked = std::nullopt, .movement = HoldMovement::MOVED};
+        if (moved.run(route, &planning) || moved.walked.size() != 1){
+            return name + ": a leg that moved is walked once: " + moved.failure;
+        }
+        ScriptedRoute unmeasured;
+        if (unmeasured.run(route, &planning) || unmeasured.walked.size() != 1){
+            return name + ": a leg not measured is walked once: " + unmeasured.failure;
+        }
+    }
+    return true;
+}
+
+//  A route of one tile from the caller's start onto the tile before a wall
+//  (20.01's walk up to Lorelei): a scene before it may have left the player
+//  on that tile already, so a hold that moved nothing is a bump there and
+//  ends the route. The same leg with more of the route after it, or longer
+//  than a tile, is still walked again.
+UnitTestResult test_unmoved_one_tile_route_to_wall(){
+    const std::vector<MapData> maps{parse_map(TEST_HALL_JSON, "Hall")};
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = MapPosition{"Hall", {6, 1}}, .label = "Route", .wall_check = WallCheck::SKIP};
+    const RouteStep last = walk(Direction::EAST, 1, {"Hall", {7, 1}});
+    ScriptedRoute bump;
+    bump.ends[0] = no_movement();
+    if (bump.run({last}, &planning) || bump.walked.size() != 1){
+        return "the one-tile route to the wall: expected it walked once, taken as a bump: " + bump.failure + describe(bump.walked);
+    }
+    const UnitTestResult logged = expect_logged(bump.logs, {"as a bump into the wall it may stand at already"});
+    if (logged.result != UnitTestResult::PASSED){
+        return "the one-tile route to the wall: " + logged.message;
+    }
+    const std::vector<RouteStep> longer[] = {
+        {last, walk(Direction::WEST, 1, {"Hall", {6, 1}})},
+        {walk(Direction::EAST, 1, {"Hall", {6, 1}})},
+    };
+    const RoutePlanning from_five{.maps = &maps, .costs = default_route_costs(), .start = MapPosition{"Hall", {5, 1}}, .label = "Route", .wall_check = WallCheck::SKIP};
+    for (size_t c = 0; c < 2; c++){
+        ScriptedRoute again;
+        again.ends[0] = no_movement();
+        if (again.run(longer[c], c == 0 ? &planning : &from_five) || again.walked.size() < 2 || again.walked[1].direction != again.walked[0].direction || !(again.walked[1].end == again.walked[0].end)){
+            return std::format("case {}: expected the leg walked again after it moved nothing: {}{}", c, again.failure, describe(again.walked));
+        }
+    }
+    return true;
+}
+
+//  A hold that finds the player starts from one of a few tiles. If one of
+//  them stands at its wall, a hold that moved nothing may be a bump right
+//  away and is taken as walked; if none does, it never moved, and as the
+//  tile it was held from isn't known, the route fails.
+UnitTestResult test_unmoved_hold_from_unknown_tile(){
+    const std::vector<MapData> maps{parse_map(TEST_HALL_JSON, "Hall")};
+    const RouteStep open = walk(Direction::EAST, 5, {"Hall", {7, 1}});
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = MapPosition{"Hall", {2, 1}}, .label = "Route", .wall_check = WallCheck::SKIP};
+    struct Case{
+        std::string_view name;
+        WalkedTiles stopped;
+        bool bump;
+    };
+    //  Walked 4 to 5 tiles stops on (6, 1) or (7, 1), the wall's tile; 2 to
+    //  3 on (4, 1) or (5, 1).
+    const Case cases[] = {
+        {.name = "one tile at the wall", .stopped = WalkedTiles{.min = 4, .max = 5}, .bump = true},
+        {.name = "none at the wall", .stopped = WalkedTiles{.min = 2, .max = 3}, .bump = false},
+    };
+    for (const Case& c : cases){
+        ScriptedRoute script;
+        script.ends[0] = stop_part_way(c.stopped);
+        script.ends[1] = no_movement();
+        const bool failed = script.run({open}, &planning);
+        if (script.walked.size() < 2 || !script.walked[1].to_wall){
+            return std::format("{}: expected a hold to a wall after the stop:{}", c.name, describe(script.walked));
+        }
+        if (c.bump){
+            const UnitTestResult logged = expect_logged(script.logs, {"as a bump into the wall it may stand at already"});
+            if (failed || logged.result != UnitTestResult::PASSED){
+                return std::format("{}: expected the hold taken as a bump: {}", c.name, script.failure);
+            }
+        }else if (!failed || script.failure.find("moved nothing") == std::string::npos){
+            return std::format("{}: expected a failure, got: {}", c.name, script.failure);
+        }
+    }
+    return true;
+}
+
+//  13.01 mansion_holes (console B, 2026-11-13 19:20): a hold to a wall
+//  held again after something seen after it, that moves nothing, is a
+//  bump at the wall (the sim's case is in the Reanchor tests).
+UnitTestResult test_unmoved_hold_again(){
+    const std::vector<MapData> maps{parse_map(TEST_HALL_JSON, "Hall")};
+    const RouteStep open = walk(Direction::EAST, 5, {"Hall", {7, 1}});
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = MapPosition{"Hall", {2, 1}}, .label = "Route", .wall_check = WallCheck::SKIP};
+    ScriptedRoute script;
+    script.ends[0] = stop_part_way(WalkedTiles{.min = 2, .max = 3});
+    script.ends[1] = StepOutcome{.end = StepEnd::LATE, .walked = std::nullopt};
+    script.ends[2] = no_movement();
+    if (script.run({open}, &planning)){
+        return "Expected the hold held again taken as a bump at its wall: " + script.failure + describe(script.walked);
+    }
+    if (script.walked.size() < 3 || !script.walked[1].to_wall || !(script.walked[2].end == script.walked[1].end)){
+        return "Expected the hold to the wall held twice:" + describe(script.walked);
+    }
+    return expect_logged(script.logs, {"as a bump into the wall it may stand at already"});
+}
+
+//  A walk-on after a stop judges a hold that moved nothing by the tiles
+//  that stop left the player on, not by those of an earlier recovery
+//  (console B, 2026-11-13, 12.03). Down the hall from (1, 1): "east 6"
+//  stops on (7, 1), at the east wall, which the route then knows; "west
+//  5", then "east 3" stops 1 to 2 tiles in, on (3, 1) or (4, 1), and the
+//  route walks on 1 tile to (5, 1) before the hold to the wall. That walk
+//  on moved nothing: from (3, 1) or (4, 1) east is open, so the player
+//  never moved, which the first stop's (7, 1) at the wall would take for a
+//  bump.
+UnitTestResult test_unmoved_walk_on(){
+    const std::vector<MapData> maps{parse_map(TEST_HALL_JSON, "Hall")};
+    RouteStep wall = walk(Direction::EAST, 2, {"Hall", {7, 1}});
+    wall.to_wall = true;
+    const std::vector<RouteStep> route{
+        walk(Direction::EAST, 6, {"Hall", {7, 1}}),
+        walk(Direction::WEST, 5, {"Hall", {2, 1}}),
+        walk(Direction::EAST, 3, {"Hall", {5, 1}}),
+        wall,
+    };
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = MapPosition{"Hall", {1, 1}}, .label = "Route", .wall_check = WallCheck::SKIP};
+    ScriptedRoute script;
+    script.ends[0] = stop_part_way(WalkedTiles{.min = 6, .max = 6});
+    script.ends[2] = stop_part_way(WalkedTiles{.min = 1, .max = 2});
+    script.ends[3] = no_movement();
+    const bool failed = script.run(route, &planning);
+    const UnitTestResult walked_on = expect_logged(script.logs, {"Route: walking on 1 tiles along " + to_string(route[2])});
+    if (walked_on.result != UnitTestResult::PASSED){
+        return "Expected a walk on after the second stop: " + walked_on.message + describe(script.walked) + "\n" + script.failure;
+    }
+    if (script.walked.size() < 4){
+        return "Expected the walk on held:" + describe(script.walked);
+    }
+    const UnitTestResult never_moved = expect_logged(script.logs, {to_string(script.walked[3]) + " moved the screen not at all, though the plan has it walk at least 1 tiles"});
+    if (never_moved.result != UnitTestResult::PASSED){
+        return "Expected the walk on that moved nothing judged from (3, 1) and (4, 1): " + never_moved.message
+            + (failed ? "\nfailed: " + script.failure : std::string());
+    }
+    return true;
+}
+
 //  The route log lines the games share (Pokemon_RouteLog.h): the plan from
 //  the caller's start under its label, then each leg and how it ended.
 UnitTestResult test_route_logged(){
@@ -327,9 +689,22 @@ UnitTestResult test_route_logged(){
         "[Route] Leg 2/2: west 1 (open) to Corridor (3, 1)",
         "[Route] test walk: west 1 (open): ended at Corridor (3, 1) (walked).",
     };
+    //  The [Leg] records are the replay's; they are checked apart.
+    std::vector<std::string> logs;
+    size_t leg_records = 0;
+    for (const std::string& line : script.logs){
+        if (line.starts_with("[Leg] ")){
+            leg_records++;
+        }else{
+            logs.push_back(line);
+        }
+    }
+    if (leg_records != route.size()){
+        return "Expected one [Leg] record per leg, got " + std::to_string(leg_records) + ".";
+    }
     for (size_t c = 0; c < expected.size(); c++){
-        const std::string got = c < script.logs.size() ? "\"" + script.logs[c] + "\"" : std::string("nothing");
-        if (c >= script.logs.size() || script.logs[c] != expected[c]){
+        const std::string got = c < logs.size() ? "\"" + logs[c] + "\"" : std::string("nothing");
+        if (c >= logs.size() || logs[c] != expected[c]){
             return "Log line " + std::to_string(c) + ": expected \"" + expected[c] + "\", got " + got + ".";
         }
     }
@@ -515,8 +890,28 @@ const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
         .expectation = {.description = "verifies route execution logging and breadcrumbs"},
     },
     {
+        .input = {.name = "pause before each leg", .body = test_pause_before_legs},
+        .expectation = {.description = "calls the breakpoint pause before each leg of a route"},
+    },
+    {
         .input = {.name = "a leg to a wall ends at it", .body = test_wall_check},
         .expectation = {.description = "validates arrival position at wall terminator"},
+    },
+    {
+        .input = {.name = "a hold that moved nothing", .body = test_unmoved_leg},
+        .expectation = {.description = "a leg whose screen never moved is walked again, then fails; not taken as walked"},
+    },
+    {
+        .input = {.name = "a one-tile route to a wall that moved nothing", .body = test_unmoved_one_tile_route_to_wall},
+        .expectation = {.description = "a bump on the route's last tile ends it; the same leg before more legs is walked again"},
+    },
+    {
+        .input = {.name = "a hold that moved nothing from an unknown tile", .body = test_unmoved_hold_from_unknown_tile},
+        .expectation = {.description = "a bump at the wall it may stand at is walked; no movement from short of it fails"},
+    },
+    {
+        .input = {.name = "a hold held again that moved nothing", .body = test_unmoved_hold_again},
+        .expectation = {.description = "after something seen after a hold to a wall, a hold again that moves nothing is a bump at the wall"},
     },
     {
         .input = {.name = "a leg crosses a trainer's sight", .body = test_trainer_crossing},
@@ -529,7 +924,27 @@ const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
     {
         .input = {.name = "a stop on the grass in a trainer's sight", .body = test_grass_in_sight},
         .expectation = {.description = "handles wild encounter in trainer sight line"},
+    },    {
+        .input = {.name = "open legs on the water", .body = test_open_water_legs},
+        .expectation = {.description = "checks a surfing open leg before another open leg"},
     },
+    {
+        .input = {.name = "a walk on that moved nothing", .body = test_unmoved_walk_on},
+        .expectation = {.description = "judged from the tiles of the stop it walks on from"},
+    },
+    {
+        .input = {.name = "a tap against a rock on the water", .body = test_water_tap_against_rock},
+        .expectation = {.description = "the water's animation is no step"},
+    },
+    {
+        .input = {.name = "landed behind a roof", .body = test_landed_behind_roof},
+        .expectation = {.description = "no water on the player's tile: on foot, sprite hidden or not"},
+    },
+    {
+        .input = {.name = "the frame of a leg's interrupt", .body = test_interrupt_frame},
+        .expectation = {.description = "saved under DebugDumps/AutoStory/route/, named for the interrupt"},
+    },
+
 };
 
 } // namespace

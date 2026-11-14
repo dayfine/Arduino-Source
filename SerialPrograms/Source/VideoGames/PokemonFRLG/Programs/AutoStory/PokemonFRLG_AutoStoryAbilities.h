@@ -22,6 +22,7 @@
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryMember.h"
+#include "PokemonFRLG_AutoStoryPartyRoster.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
 
 namespace PokemonAutomation{
@@ -36,6 +37,10 @@ struct StoryAbilities{
     TeachActions& teach;
     GrindActions& grind;
     ChoiceActions& choice;
+    //  Where a TEACH naming a species finds it; empty reads the members in turn.
+    SpeciesFinder species = {};
+    //  Where a TEACH of a field move records who learned it; none records nothing.
+    PartyCache* party = nullptr;
 };
 
 //  A MART, TEACH, LEVEL, GRIND or fossil step with `abilities`: nothing for

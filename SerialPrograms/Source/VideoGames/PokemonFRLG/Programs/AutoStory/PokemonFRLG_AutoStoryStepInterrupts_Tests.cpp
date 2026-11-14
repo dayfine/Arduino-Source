@@ -15,7 +15,12 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "CommonFramework/Logging/Logger.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -171,6 +176,35 @@ UnitTestResult test_warp(){
 }
 
 
+//  Console B, 2026-11-13 08:53 (12.03): "still surfing ... didn't land"
+//  failed land_north_sand_bar, and its frame was saved nowhere. A failed
+//  step's frame is saved to the failures folder, named for the step; one
+//  that failed without a frame saves nothing.
+UnitTestResult test_failure_frame(){
+    const std::string folder = DEBUG_PATH() + "UnitTests/AutoStoryFailures/";
+    InterruptLogGuard guard(global_logger_tagged(), folder);
+    Pokemon::StoryStep step;
+    step.name = "land_north_sand_bar";
+    guard.on_failure(step, OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "no frame"));
+    if (Filesystem::exists(Filesystem::Path(folder)) && !Filesystem::list_directory(Filesystem::Path(folder)).empty()){
+        return "Expected nothing saved for a failure without a frame.";
+    }
+    guard.on_failure(step, OperationFailedExceptionWithScreenshot(
+        ErrorReportMode::NO_ERROR_REPORT, "still surfing", nullptr, ImageRGB32(64, 48)
+    ));
+    const std::vector<Filesystem::Path> saved = Filesystem::exists(Filesystem::Path(folder))
+        ? Filesystem::list_directory(Filesystem::Path(folder))
+        : std::vector<Filesystem::Path>();
+    for (const Filesystem::Path& path : saved){
+        Filesystem::remove(path);
+    }
+    if (saved.size() != 1 || saved[0].string_slash_normalized().find("land_north_sand_bar.png") == std::string::npos){
+        return std::format("Expected one frame named for the step, got {}.", saved.size());
+    }
+    return true;
+}
+
+
 struct StepInterruptsInput{
     std::string name;
     UnitTestResult (*body)();
@@ -213,6 +247,10 @@ const StepInterruptsTestCase STEP_INTERRUPTS_CASES[] = {
     {
         .input = {.name = "a warp before a step", .body = test_warp},
         .expectation = {.description = "pressed through and the pose lost; a GAME's own"},
+    },
+    {
+        .input = {.name = "a failed step's frame", .body = test_failure_frame},
+        .expectation = {.description = "saved to the failures folder, named for the step"},
     },
 };
 

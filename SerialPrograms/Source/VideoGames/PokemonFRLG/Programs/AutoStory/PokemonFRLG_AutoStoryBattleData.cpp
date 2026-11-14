@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cctype>
 #include <format>
 #include <functional>
 #include <initializer_list>
@@ -13,6 +14,11 @@
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Json/JsonValue.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonTools/Images/ImageFilter.h"
+#include "CommonTools/OCR/OCR_Routines.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_OcrPreprocessing.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_WildEncounterReader.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 
@@ -24,6 +30,34 @@ namespace PokemonFRLG{
 namespace{
 
 using JsonTable = std::map<std::string, JsonValue, std::less<>>;
+
+//  The battle text box's first line, as a fraction of the game screen:
+//  "No! There's no running" (console B, 2026-11-13, Route 21).
+const ImageFloatBox TEXT_FIRST_LINE_BOX(0.04, 0.755, 0.62, 0.075);
+//  A message box's two lines, for the bag's answer to a Repel's USE.
+const ImageFloatBox TEXT_TWO_LINES_BOX(0.04, 0.755, 0.9, 0.2);
+
+//  The letters of the text in `box` of the game screen, lower case: the
+//  first of `filters` that reads at least 5 decides, as each read takes
+//  time. Empty if none does.
+std::string text_letters(
+    Language language, const ImageViewRGB32& screen, const ImageFloatBox& box,
+    const std::vector<OCR::TextColorRange>& filters, OCR::PageSegMode mode
+){
+    const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
+    const ImageRGB32 text_image = preprocess_for_ocr(extract_box_reference(game, box), 3, 1);
+    for (const OCR::TextColorRange& filter : filters){
+        size_t text_pixels = 0;
+        const ImageRGB32 filtered = to_blackwhite_rgb32_range(text_pixels, text_image, true, filter.mins, filter.maxs);
+        std::string text = text_pixels == 0 ? "" : OCR::ocr_read(language, filtered, mode);
+        std::erase_if(text, [](char c){ return !std::isalpha(static_cast<unsigned char>(c)); });
+        if (text.size() >= 5){
+            std::ranges::transform(text, text.begin(), [](char c){ return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
+            return text;
+        }
+    }
+    return "";
+}
 
 const JsonValue& file_json(std::string_view name){
     static const JsonTable FILES = []{
@@ -147,13 +181,26 @@ PokemonType ability_immunity(std::string_view species){
         std::string_view species;
         PokemonType type;
     };
-    //  Gen 3 species with one ability only, so the foe has it for sure.
+    //  Gen 3 species that can have Levitate, Flash Fire, Volt Absorb or
+    //  Water Absorb, as either of their abilities: the one out may have it.
     static constexpr Immunity IMMUNITIES[] = {
         {"gastly", PokemonType::GROUND}, {"haunter", PokemonType::GROUND}, {"gengar", PokemonType::GROUND},
         {"koffing", PokemonType::GROUND}, {"weezing", PokemonType::GROUND},
+        {"misdreavus", PokemonType::GROUND}, {"unown", PokemonType::GROUND},
+        {"vibrava", PokemonType::GROUND}, {"flygon", PokemonType::GROUND},
+        {"lunatone", PokemonType::GROUND}, {"solrock", PokemonType::GROUND},
+        {"baltoy", PokemonType::GROUND}, {"claydol", PokemonType::GROUND},
+        {"duskull", PokemonType::GROUND}, {"chimecho", PokemonType::GROUND},
+        {"latias", PokemonType::GROUND}, {"latios", PokemonType::GROUND},
         {"vulpix", PokemonType::FIRE}, {"ninetales", PokemonType::FIRE}, {"flareon", PokemonType::FIRE},
-        {"jolteon", PokemonType::ELECTRIC},
-        {"vaporeon", PokemonType::WATER},
+        {"growlithe", PokemonType::FIRE}, {"arcanine", PokemonType::FIRE},
+        {"ponyta", PokemonType::FIRE}, {"rapidash", PokemonType::FIRE},
+        {"houndour", PokemonType::FIRE}, {"houndoom", PokemonType::FIRE},
+        {"jolteon", PokemonType::ELECTRIC}, {"chinchou", PokemonType::ELECTRIC}, {"lanturn", PokemonType::ELECTRIC},
+        {"vaporeon", PokemonType::WATER}, {"lapras", PokemonType::WATER},
+        {"poliwag", PokemonType::WATER}, {"poliwhirl", PokemonType::WATER},
+        {"poliwrath", PokemonType::WATER}, {"politoed", PokemonType::WATER},
+        {"wooper", PokemonType::WATER}, {"quagsire", PokemonType::WATER}, {"mantine", PokemonType::WATER},
     };
     for (const Immunity& immunity : IMMUNITIES){
         if (immunity.species == species){
@@ -169,16 +216,48 @@ bool takes_two_turns(std::string_view move){
 }
 
 std::string read_trainer_foe(Logger& logger, Language language, const ImageViewRGB32& screen, const std::vector<std::string>& party){
-    if (language == Language::None || party.empty()){
+    if (language == Language::None){
         return "";
     }
-    const std::set<std::string> species(party.begin(), party.end());
+    const std::set<std::string> species = party.empty() ? battle_species() : std::set<std::string>(party.begin(), party.end());
     std::string read = WildEncounterReader().read_encounter(logger, language, screen, species).name;
     if (!species.contains(read)){
         read.clear();
     }
     logger.log(read.empty() ? "Battle: the trainer's Pokemon wasn't read." : std::format("Battle: the trainer's {} is out.", read));
     return read;
+}
+
+bool run_refused_shows(Language language, const ImageViewRGB32& screen){
+    if (language != Language::English){
+        return false;
+    }
+    const std::string text = text_letters(language, screen, TEXT_FIRST_LINE_BOX, BRIGHT_TEXT_FILTERS(), OCR::PageSegMode::SINGLE_LINE);
+    return text.find("running") != std::string::npos;
+}
+
+bool repel_wore_off_shows(Language language, const ImageViewRGB32& screen){
+    if (language != Language::English){
+        return false;
+    }
+    //  "REPEL's effect wore off..." reads "repelseffectworeoff", or less of
+    //  it while the text is still being typed.
+    const std::string text = text_letters(language, screen, TEXT_FIRST_LINE_BOX, DARK_TEXT_FILTERS(), OCR::PageSegMode::SINGLE_LINE);
+    return text.find("repel") != std::string::npos && text.find("eff") != std::string::npos;
+}
+
+RepelUse read_repel_use(Language language, const ImageViewRGB32& screen){
+    if (language != Language::English){
+        return RepelUse::UNREAD;
+    }
+    const std::string text = text_letters(language, screen, TEXT_TWO_LINES_BOX, DARK_TEXT_FILTERS(), OCR::PageSegMode::SINGLE_BLOCK);
+    if (text.find("linger") != std::string::npos || text.find("effects") != std::string::npos){
+        return RepelUse::LINGERED;
+    }
+    if (text.find("used") != std::string::npos){
+        return RepelUse::USED;
+    }
+    return RepelUse::UNREAD;
 }
 
 std::string_view battle_risk_name(BattleRisk risk){

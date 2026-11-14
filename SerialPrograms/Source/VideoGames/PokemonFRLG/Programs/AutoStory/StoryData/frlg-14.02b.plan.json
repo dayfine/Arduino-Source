@@ -8,12 +8,21 @@
     "events": [
       {
         "id": "above_door_6",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 8]], "facing": "south"}
+          "legs": [{"direction": "south", "tiles": 2}]
         },
-        "why": "down to above door 6, open since quiz 6"
+        "why": "a tap a tile down to (5, 7), a tile short of door 6, open since quiz 6: the map has the door shut, so a leg ending on (5, 8) is held to it and runs through the open door (as 14.01, console B, 2026-11-14). A route's last leg here is an open hold, and the walker re-checks an open leg that ends a walk with holds to walls: near a quiz door that wall may be the door, shut on the map and open on the console, as 14.01's below_blaine did through door 6"
+      },
+      {
+        "id": "to_door_6",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 8]], "facing": "south"},
+        "why": "a step to above door 6 (5, 8)"
       },
       {
         "id": "into_door_6",
@@ -35,12 +44,21 @@
       },
       {
         "id": "above_door_5",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 16]], "facing": "south"}
+          "legs": [{"direction": "south", "tiles": 5}]
         },
-        "why": "down to above door 5"
+        "why": "a tap a tile down to (5, 15), a tile short of door 5, as for door 6"
+      },
+      {
+        "id": "to_door_5",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 16]], "facing": "south"},
+        "why": "a step to above door 5 (5, 16)"
       },
       {
         "id": "into_door_5",
@@ -62,12 +80,21 @@
       },
       {
         "id": "west_of_door_4",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[10, 22]], "facing": "east"}
+          "legs": [{"direction": "south", "tiles": 4}, {"direction": "east", "tiles": 4}]
         },
-        "why": "down and east to west of door 4"
+        "why": "a tap a tile: down column 5 to (5, 22) and east to (9, 22), two tiles west of door 4's floor (11, 22); a planned route would hold east along row 23 to the shut door (11, 23), which is open, as 14.01's east_of_door_4 did. Legs ending on (10, 22) end 'to the wall' (the shut door) and the walker's tap toward the wall after them walks through the open door, as in 14.01 run 5 (console B, 2026-11-14)"
+      },
+      {
+        "id": "to_door_4",
+        "kind": "step",
+        "args": {
+          "direction": "east"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[10, 22]], "facing": "east"},
+        "why": "a step to beside door 4 (10, 22)"
       },
       {
         "id": "into_door_4",
@@ -89,12 +116,21 @@
       },
       {
         "id": "below_door_3",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 17]], "facing": "north"}
+          "legs": [{"direction": "east", "tiles": 5}, {"direction": "north", "tiles": 4}]
         },
-        "why": "up and east to below door 3"
+        "why": "a tap a tile: east along row 22 to (17, 22) and up column 17 to (17, 18), a tile short of door 3. The route's open hold east a tile short would turn north up column 16 into the trainer on (16, 18), as 14.01's below_door_5 did into Burglar Dusty (console B, 2026-11-14)"
+      },
+      {
+        "id": "to_door_3",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[17, 17]], "facing": "north"},
+        "why": "a step to below door 3 (17, 17)"
       },
       {
         "id": "into_door_3",
@@ -116,12 +152,21 @@
       },
       {
         "id": "below_door_2",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 10]], "facing": "north"}
+          "legs": [{"direction": "north", "tiles": 4}]
         },
-        "why": "up to below door 2"
+        "why": "a tap a tile up to (17, 11), a tile short of door 2, as for door 6: a hold to (17, 10) would run through the open door 2 into the top room, where above_door_1 starts east from (17, 8) (as 14.01's door 2 did, console B, 2026-11-14)"
+      },
+      {
+        "id": "to_door_2",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[17, 10]], "facing": "north"},
+        "why": "a step to below door 2 (17, 10)"
       },
       {
         "id": "into_door_2",
@@ -143,12 +188,21 @@
       },
       {
         "id": "above_door_1",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[26, 8]], "facing": "south"}
+          "legs": [{"direction": "east", "tiles": 1}, {"direction": "north", "tiles": 6}, {"direction": "east", "tiles": 10}, {"direction": "south", "tiles": 5}, {"direction": "west", "tiles": 2}]
         },
-        "why": "east through the top room to above door 1"
+        "why": "a tap a tile east through the top room to (26, 7), a tile short of door 1, as for door 6: a hold to (26, 8) would run through the open door. The legs to walls are the route's, tapped too, as the last leg is open"
+      },
+      {
+        "id": "to_door_1",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[26, 8]], "facing": "south"},
+        "why": "a step to above door 1 (26, 8)"
       },
       {
         "id": "into_door_1",
@@ -169,13 +223,22 @@
         "why": "a step through door 1 onto (26, 10)"
       },
       {
-        "id": "below_gym_door",
+        "id": "onto_gym_mat",
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CinnabarIsland", "tiles": [[20, 5]], "facing": "south"}
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[25, 23]], "facing": "west"}
         },
-        "why": "down the east rooms to the mat (25, 23) and out of the gym's door (20, 4)"
+        "why": "down the east rooms onto the exit mat (25, 23), a tap west from (26, 23): the walk stops on the gym's side of the warp"
+      },
+      {
+        "id": "out_of_gym",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland", "tiles": [[20, 5]], "facing": "south"},
+        "why": "south on the mat: out of the gym's door (20, 4) onto (20, 5). A step, not the route's last leg: Bill's scene starts as the player lands, and a walk closes a message at its end with B, which answered his YES/NO (NO) itself and left decline_bill none (console B, 2026-11-14 08:19, run 7). A step onto a warp leaves the message up for decline_bill. The mat (25, 23) is the only warp tile of the three (MB_SOUTH_ARROW_WARP; (24, 23) and (26, 23) are plain floor): stepping onto it facing west takes no warp, a press south on it takes it from any facing. take_warp_step() presses once with no turn tap: run 8's turn tap south took the warp, and the read of the turn failed on the fade (console B, 2026-11-14 08:44). Nothing is pressed after the press: wait_out_warp() only watches the fade, so Bill's question is decline_bill's"
       },
       {
         "id": "decline_bill",
@@ -219,7 +282,7 @@
     "notes": {
       "checkpoint": [
         "Starts in front of Blaine, where 14.02 ends after his battle and saves.",
-        "Out the way in: the quiz doors stay open while the player is in the gym (the flags are set and OnLoad reopens them), each crossed by two plain steps as in 14.01.",
+        "Out the way in: the quiz doors stay open while the player is in the gym (the flags are set and OnLoad reopens them), each crossed by two plain steps as in 14.01, after a plain step from a tile short of it (doors 6, 5, 3, 2 and 1; doors 4 and 3 are reached by taps, as in 14.01, door 3's because a trainer stands on the column beside it).",
         "Outside, Bill's scene runs on the first frame (VAR_MAP_SCENE_CINNABAR_ISLAND 1, set by Blaine's win): NO to the Sevii trip, as pokeguy. He walks to the Center and waits there; the Center visit here doesn't talk to him.",
         "Ends at Cinnabar's nurse. PokeGuy flies to Celadon from outside the gym (1:23:45); 14.03 starts from Fly's landing in Celadon, so the Fly (a step type in #406) goes at 14.03's start or here once it is in."
       ]

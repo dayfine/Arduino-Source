@@ -4,7 +4,9 @@
  *
  */
 
+#include <algorithm>
 #include <format>
+#include <iterator>
 #include <set>
 #include <string_view>
 #include <vector>
@@ -61,6 +63,9 @@ PokemonFRLG_RngTarget read_gift(std::string_view name, std::string_view source){
     }
     if (name == "eevee"){
         return PokemonFRLG_RngTarget::eevee;
+    }
+    if (name == "lapras"){
+        return PokemonFRLG_RngTarget::lapras;
     }
     throw ParseException(std::format("{}: unknown gift {}", source, name));
 }
@@ -182,11 +187,18 @@ JsonValue without_metadata(const JsonValue& value, std::string_view source){
 } // namespace
 
 
-StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_view source){
+namespace{
+
+//  The file's checkpoint and its shared execution fields
+//  (Pokemon_StoryRowExecution.h), beside which FRLG reads its own.
+Pokemon::StoryFileRow<StoryCheckpoint> read_story_file(const JsonValue& value, std::string_view source){
     StoryCheckpoint checkpoint;
+    Pokemon::StoryRowExecution shared;
     std::set<std::string> note_keys;
     const Pokemon::ExecutionReader read_execution = [&](const JsonObject& execution, std::string_view where){
-        only_fields(execution, {"menu", "supplies", "lead", "handoff", "gift", "live_start", "notes"}, where);
+        shared = Pokemon::read_story_row_execution(
+            execution, where, {"menu", "supplies", "lead", "handoff", "gift", "live_start", "notes"}
+        );
         checkpoint.menu = read_start_menu(execution.get_string_throw("menu", std::string(where)), where);
         checkpoint.supplies = read_supplies(execution, where);
         if (execution.get_value("handoff") != nullptr){
@@ -219,10 +231,8 @@ StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_v
         const bool spends = step.action == MART_ACTION || step.action == TEACH_ACTION || step.action == REGISTER_BIKE_VARIANT;
         step.once_per_save = spends && step.skip_if.empty();
     }
-    return checkpoint;
+    return {std::move(checkpoint), shared};
 }
-
-namespace{
 
 //  The checkpoints' ids in the order the story plays them. Ids are labels,
 //  not positions: a gym's rows may be numbered before rows that come first
@@ -236,38 +246,55 @@ constexpr std::string_view STORY_ORDER[] = {
     "09.04", "10.01", "10.02", "10.03", "10.04", "10.05", "10.06", "11.01", "11.02", "11.03",
     "12.01", "12.02", "12.02b", "12.03",
     "13.01", "13.02", "13.03", "13.04", "14.01", "14.02", "14.02b",
-    "14.03", "14.04", "14.04b", "15.01", "16.01",
+    "14.03", "14.04", "14.04b", "15.01", "16.01", "16.02", "16.03", "16.03b", "16.04", "16.05", "16.06",
+    "18.01", "18.02",
     "17.02", "17.03", "17.04", "17.04b", "19.01a", "19.01", "19.02", "19.03", "19.04", "19.04b", "19.04c", "19.04d", "19.05",
+    "20.01a", "20.01", "20.02", "20.03", "20.04", "20.05",
 };
 
-//  `checkpoints` in STORY_ORDER's order. Throws ParseException for a
-//  checkpoint that is not listed there, or listed twice.
-std::vector<StoryCheckpoint> in_story_order(std::vector<StoryCheckpoint> checkpoints){
-    std::vector<StoryCheckpoint> ordered;
-    for (std::string_view id : STORY_ORDER){
-        for (StoryCheckpoint& checkpoint : checkpoints){
-            if (checkpoint.id == id){
-                ordered.push_back(std::move(checkpoint));
-                checkpoint.id = "";
-            }
-        }
-    }
-    if (ordered.size() != checkpoints.size()){
-        throw ParseException("Every checkpoint file needs its id once in STORY_ORDER (PokemonFRLG_AutoStoryTable.cpp).");
-    }
-    return ordered;
+//  Where checkpoint `id` plays in STORY_ORDER; past its end if it is not
+//  listed.
+size_t story_position(std::string_view id){
+    return (size_t)(std::find(std::begin(STORY_ORDER), std::end(STORY_ORDER), id) - std::begin(STORY_ORDER));
 }
 
 } // namespace
 
-const std::vector<StoryCheckpoint>& story_checkpoints(){
-    static const std::vector<StoryCheckpoint> checkpoints = []{
-        std::vector<StoryCheckpoint> result;
-        for (const auto& [name, text] : autostory_checkpoint_json()){
-            result.push_back(read_story_checkpoint_file(parse_json(text), name));
+StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_view source){
+    return read_story_file(value, source).checkpoint;
+}
+
+Pokemon::StoryData<StoryCheckpoint> load_frlg_story(std::span<const Pokemon::StoryDevFile> dev_files){
+    Pokemon::StoryData<StoryCheckpoint> story = Pokemon::load_story_data<StoryCheckpoint>(autostory_checkpoint_json(), dev_files, {
+        .read = [](std::string_view text, std::string_view source){
+            return read_story_file(parse_json(std::string(text)), source);
+        },
+        //  A new game has no save; a live start begins from the game as
+        //  another program left it, not from its own save.
+        .starts_without_save = [](const StoryCheckpoint& row){
+            return !row.start || row.live_start;
+        },
+        .plays_before = [](const StoryCheckpoint& a, const StoryCheckpoint& b){
+            return story_position(a.id) < story_position(b.id);
+        },
+        .in_story_order = [](std::string_view id){
+            return story_position(id) < std::size(STORY_ORDER);
+        },
+    });
+    //  Every id is in STORY_ORDER (in_story_order) and the rows are sorted
+    //  by it, so two files of one id sit next to each other.
+    for (size_t c = 1; c < story.checkpoints.size(); c++){
+        if (story.checkpoints[c].id == story.checkpoints[c - 1].id){
+            throw ParseException(std::format(
+                "Checkpoint {} needs its id once in STORY_ORDER (PokemonFRLG_AutoStoryTable.cpp).", story.checkpoints[c].id
+            ));
         }
-        return in_story_order(std::move(result));
-    }();
+    }
+    return story;
+}
+
+const std::vector<StoryCheckpoint>& story_checkpoints(){
+    static const std::vector<StoryCheckpoint> checkpoints = load_frlg_story({}).checkpoints;
     return checkpoints;
 }
 

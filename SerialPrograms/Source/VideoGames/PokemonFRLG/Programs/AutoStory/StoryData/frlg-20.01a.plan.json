@@ -1,0 +1,46 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "20.01a",
+    "title": "Indigo Plateau's Mart: Full Restores before the Elite Four",
+    "start": {"map": "IndigoPlateau_PokemonCenter_1F", "tiles": [[13, 12]], "facing": "north"},
+    "events": [
+      {
+        "id": "indigo_mart_clerk",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "IndigoPlateau_PokemonCenter_1F", "tiles": [[2, 7]], "facing": "west"}
+        },
+        "why": "from the nurse across the lobby to the Mart's counter, facing the clerk (0, 7) across it (1, 7)"
+      },
+      {
+        "id": "buy_full_restores",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "IndigoPlateau_PokemonCenter_1F",
+          "items": [{"item": "full-restore", "quantity": 13}],
+          "fill_to": 13
+        },
+        "why": "Full Restores up to 13 in the bag, as in PokeGuy's bag at Lorelei (fullrestore x13, potion x4, superpotion x4, xaccuracy x3, xspecial x15, xspeed x4, guardspec x2, elixir x1; PokemonSimulation docs/battles/pokeguy-conditions.md, lorelei): the C policy's heals in the League's five fights come from the bag. Buys 13 less what the bag holds (3000 each), skipped at 13; a short purse stops the row here, before the League"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts at Indigo Plateau's nurse, where 19.05 ends with the party healed. The Mart is its own row, as 19.01a is for the Route 22 rival: 20.01 starts at the counter with the bag as Lorelei needs it.",
+        "Ends at the counter (2, 7) facing the clerk, where 20.01 starts."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "IndigoPlateau_PokemonCenter_1F", "tiles": [[2, 7]], "facing": "west"}
+    }
+  }
+}

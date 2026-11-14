@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <format>
 #include "Common/Cpp/Exceptions.h"
 #include "PokemonFRLG_CodedRooms.h"
 #include "PokemonFRLG_OverworldMap.h"
@@ -151,6 +152,21 @@ void hide_objects(MapData& map, const std::set<std::string>& flags){
         }
     }
     map.objects = std::move(shown);
+}
+
+std::string trainer_id(const MapData& map, const MapObject& object){
+    return std::format("{}/{}@{},{}", map.name, object.name, object.x, object.y);
+}
+
+std::vector<MapData> with_trainers_beaten(std::vector<MapData> maps, const std::set<std::string>& beaten){
+    for (MapData& map : maps){
+        for (MapObject& object : map.objects){
+            if (object.trainer && beaten.contains(trainer_id(map, object))){
+                object.trainer.reset();
+            }
+        }
+    }
+    return maps;
 }
 
 namespace{

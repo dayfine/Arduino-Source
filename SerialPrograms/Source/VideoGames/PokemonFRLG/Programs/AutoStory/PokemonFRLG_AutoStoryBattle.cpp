@@ -22,15 +22,17 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
-#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkWatches.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryBagUse.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
+#include "PokemonFRLG_AutoStoryPocketList.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -50,8 +52,6 @@ constexpr Milliseconds BATTLE_GONE = 2000ms;
 //  A battle screen with neither an arrow nor a menu for this long: B, for
 //  a prompt the detectors miss.
 constexpr Milliseconds STUCK = 8000ms;
-//  Seen this many polls in a row: the starter fainted.
-constexpr int FAINT_POLLS = 3;
 //  No battle menu for this long: A and B in turn, for a prompt nothing reads.
 //  Only near battle screens: A on the overworld after a gym leader's speech
 //  would talk to them again.
@@ -388,12 +388,14 @@ private:
         }
         if (seen == BattleScreen::NONE){
             m_refusal.no_battle_screen();
+            m_faint.no_battle_screen();
             return no_battle_screen(screen, now);
         }
         m_seen_battle = true;
         m_last_battle = now;
         read_hp(screen);
         watch_for_faint(screen);
+        check_run_refused(seen, screen);
         act(seen, screen, now);
         return false;
     }
@@ -605,11 +607,11 @@ private:
     }
 
     void take_turn(const ImageViewRGB32& screen){
-        m_faint_polls = 0;
-        if (m_kind != BattleKind::TRAINER && m_decisions.turns() == 0){
+        const bool trainer = m_kind == BattleKind::TRAINER;
+        if (!trainer && m_decisions.turns() == 0){
             m_supplies.wild_foes = read_wild_foes(m_console.logger(), m_language, screen);
         }
-        if (m_kind == BattleKind::TRAINER && !m_supplies.foes.empty()){
+        if (trainer){
             m_supplies.foe_out = read_trainer_foe(m_console.logger(), m_language, screen, m_supplies.foes);
         }
         if (m_refusal.refused(current_time())){
@@ -619,6 +621,7 @@ private:
         const PartyStatus status = read_party_status(screen);
         const TurnAction action = m_decisions.turn(status);
         m_evolution.turn_taken(action.choice);
+        m_ran = action.choice == TurnChoice::RUN;
         log_turn(status, action);
         dump_debug_image(m_console, "AutoStory/battle", std::format("turn{}-menu", m_decisions.turns()), screen);
         switch (action.choice){
@@ -654,11 +657,28 @@ private:
         if (m_decisions.turns() == 0 || m_decisions.lost()){
             return;
         }
-        m_faint_polls = starter_fainted(screen) ? m_faint_polls + 1 : 0;
-        if (m_faint_polls >= FAINT_POLLS){
+        const BattleBoxes boxes{
+            .lead = BattlePokemonDetector(COLOR_RED).detect(screen),
+            .foe = BattleOpponentDetector(COLOR_RED).detect(screen),
+        };
+        if (m_faint.seen(boxes)){
             m_console.log("Battle: the starter fainted.", COLOR_RED);
             m_decisions.lead_fainted();
         }
+    }
+
+    //  After RUN, until the next battle menu: the game's "No! There's no
+    //  running from a trainer battle!" makes the battle a trainer's.
+    void check_run_refused(BattleScreen seen, const ImageViewRGB32& screen){
+        const bool text = seen == BattleScreen::ADVANCE || seen == BattleScreen::OTHER;
+        if (!m_ran || !text || m_kind == BattleKind::TRAINER || !run_refused_shows(m_language, screen)){
+            return;
+        }
+        m_console.log("Battle: \"No! There's no running from a trainer battle!\": fighting it as a trainer's.", COLOR_ORANGE);
+        dump_debug_image(m_console, "AutoStory/battle", std::format("turn{}-run-refused", m_decisions.turns()), screen);
+        m_ran = false;
+        m_kind = BattleKind::TRAINER;
+        m_decisions.turn_done(TurnChoice::RUN, TurnResult::REFUSED);
     }
 
     ConsoleHandle& m_console;
@@ -668,7 +688,9 @@ private:
     EvolutionHold m_evolution;
     BattleEndWatch m_end;
     MoveRefusalWatch m_refusal;
-    const BattleKind m_kind;
+    LeadFaintWatch m_faint;
+    //  As the battle was taken at its start, until RUN is refused.
+    BattleKind m_kind;
     const Pokemon::StoryCheckLevel m_checks;
     const Language m_language;
     const WallClock m_start;
@@ -682,7 +704,8 @@ private:
     bool m_press_a = true;
     //  A move was chosen and no battle menu has shown since.
     bool m_move_chosen = false;
-    int m_faint_polls = 0;
+    //  RUN was chosen and no battle menu has shown since.
+    bool m_ran = false;
 };
 
 
@@ -795,8 +818,24 @@ public:
     virtual Milliseconds detection_delay() const override{
         return 400ms;
     }
+    //  The message's frame is saved first, to check a false stop by. After
+    //  "REPEL's effect wore off..." another Repel is used while the player
+    //  stands where the message stopped them, if a use_item step used one
+    //  (Supplies::repel): on 12.03 the one used at Pallet Town lingered
+    //  from before the save and wore off on Route 21 (console B, 2026-11-13
+    //  10:06 and 11:02), and three wild Tentacool followed.
     virtual void clear(ConsoleHandle& console, ProControllerContext& context) const override{
+        bool wore_off = false;
+        if (const VideoSnapshot frame = console.video().snapshot()){
+            save_leg_interrupt_frame(console.logger(), frame, name());
+            wore_off = !m_supplies.repel.empty() && repel_wore_off_shows(m_language, frame);
+        }
         clear_overworld_message(console, context, m_supplies, m_checks, m_language);
+        if (wore_off){
+            ConsoleItemUseActions bag(console, context, m_language, m_supplies.repel_menu);
+            const ItemUseEnd end = renew_repel(console.logger(), bag, m_supplies.repel);
+            console.log("Story: another Repel after the last wore off: " + item_use_end_name(end) + ".");
+        }
     }
 
 private:
@@ -865,44 +904,12 @@ bool battle_shows(const ImageViewRGB32& screen){
     return text.hp_box || text.yes_no;
 }
 
-//  The Items pocket's capacity (pokefirered BAG_ITEMS_COUNT).
-constexpr size_t MAX_ITEMS_POCKET_ROWS = 42;
-
 std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerContext& context, Language language){
     open_items_pocket(console, context);
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
     dump_debug_image(console, "AutoStory/bag", "items-pocket", screen);
-    std::vector<BagRow> reads;
-    bool cancel = !screen;
-    for (int shown = 0; !cancel && shown < ITEM_LIST_ROWS; shown++){
-        BagRow read = read_bag_row(console, language, screen, shown);
-        cancel = read.item == "cancel";
-        if (!cancel){
-            reads.push_back(std::move(read));
-        }
-    }
-    //  The rows below the first six: DOWN to the fourth row shown, then each
-    //  DOWN scrolls the next row into the last (item_shown_row()). Reading
-    //  one page only missed the X Specials under a MOON STONE, a NUGGET and
-    //  four more, and the Tower rival was fought with none (console B,
-    //  2026-11-12).
-    if (!cancel){
-        for (int c = 0; c < ITEM_LIST_ROWS / 2; c++){
-            pbf_press_dpad(context, DPAD_DOWN, 100ms, 300ms);
-        }
-    }
-    while (!cancel && reads.size() < MAX_ITEMS_POCKET_ROWS){
-        pbf_press_dpad(context, DPAD_DOWN, 100ms, 400ms);
-        context.wait_for_all_requests();
-        screen = console.video().snapshot();
-        BagRow read = screen ? read_bag_row(console, language, screen, ITEM_LIST_ROWS - 1) : BagRow{};
-        cancel = !screen || read.item == "cancel";
-        if (!cancel){
-            reads.push_back(std::move(read));
-        }
-    }
-    std::vector<BagRow> rows = pocket_rows(std::move(reads));
+    std::vector<BagRow> rows = read_open_pocket(console, context, language).rows;
     std::string text;
     for (const BagRow& row : rows){
         text += std::format(" {} x{};", row.item, row.count);

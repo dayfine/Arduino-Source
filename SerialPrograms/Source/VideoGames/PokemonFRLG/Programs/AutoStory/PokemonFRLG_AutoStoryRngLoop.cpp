@@ -32,6 +32,8 @@ std::string_view gift_name(PokemonFRLG_RngTarget gift){
         return "Magikarp";
     case PokemonFRLG_RngTarget::eevee:
         return "Eevee";
+    case PokemonFRLG_RngTarget::lapras:
+        return "Lapras";
     default:
         return "gift";
     }
@@ -106,6 +108,15 @@ std::string gift_rng_loop_message(const StarterRngLoopResult& result, PokemonFRL
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown Gift RNG loop end.");
 }
+
+
+Pokemon::RngHandoffResult rng_handoff_result(const StarterRngLoopResult& result, std::string message){
+    if (result.end == StarterRngLoopEnd::SHINY || result.end == StarterRngLoopEnd::SHINY_OFF_TARGET){
+        return Pokemon::RngHandoffResult{.summary = std::move(message)};
+    }
+    return Pokemon::RngHandoffResult{.user_turn = std::move(message)};
+}
+
 
 
 CalibrationSavingSteps::CalibrationSavingSteps(
