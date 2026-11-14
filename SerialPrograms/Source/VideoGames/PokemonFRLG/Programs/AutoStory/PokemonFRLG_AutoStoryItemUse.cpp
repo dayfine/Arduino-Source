@@ -116,6 +116,9 @@ std::optional<size_t> bag_row_of(const std::vector<BagRow>& rows, std::string_vi
     return std::nullopt;
 }
 
+bool item_use_step_done(ItemUseEnd end, bool if_any){
+    return end == ItemUseEnd::USED || end == ItemUseEnd::LINGERED || (if_any && end == ItemUseEnd::NONE_LEFT);
+}
 std::string item_use_end_name(ItemUseEnd end){
     switch (end){
     case ItemUseEnd::USED:

@@ -8,6 +8,13 @@
     "start_flags": ["trainer_beaten:Route21_South/swimmer_m_water@10,29"],
     "events": [
       {
+        "id": "super_repel_fuchsia",
+        "kind": "game_action",
+        "action": "use_item",
+        "args": {"item": "super-repel", "if_any": true},
+        "why": "pokeguy's Super Repel before his Fly to Pallet (1:18:40, Super Repels 5 to 4; user's approval 2026-11-13): its 200 steps last over Route 21's water (wild Tentacool and Tentacruel on every tile) and up the Mansion to 3F's statue, where 13.01 uses the next. The first event, at the nurse: this checkpoint's save already stands there. 08.03 bought 7, 10.04 and 11.03 used one each; a Repel renewed in battle may have taken more, so with none left the step is skipped (if_any) and the Repel at Pallet's shore still covers the Surf"
+      },
+      {
         "id": "outside_fuchsia_center",
         "kind": "route",
         "action": "run",
@@ -34,7 +41,7 @@
         "kind": "game_action",
         "action": "use_item",
         "args": {"item": "repel"},
-        "why": "a Repel at the shore before the Surf: Route 21's water has wild Tentacool and Tentacruel on every tile (pokeguy uses one at Pallet Town before surfing to Cinnabar, user's check of the video 2026-11-12); one of 07.01's 5 Repels, which nothing else uses"
+        "why": "a Repel at the shore before the Surf: Route 21's water has wild Tentacool and Tentacruel on every tile (pokeguy uses one at Pallet Town before surfing to Cinnabar, user's check of the video 2026-11-12); one of 07.01's 5 Repels, which nothing else uses. After super_repel_fuchsia it only lingers (the step passes, no Repel used); it covers the Surf if that step found no Super Repel"
       },
       {
         "id": "surf_off_pallet",

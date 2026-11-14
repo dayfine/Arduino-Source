@@ -37,6 +37,16 @@
                         "mansion": true
                     }
                 }
+            },
+            {
+                "id": "super_repel_mansion",
+                "kind": "game_action",
+                "action": "use_item",
+                "args": {
+                    "item": "super-repel",
+                    "if_any": true
+                },
+                "why": "pokeguy's Super Repel on 3F right after the statue, before the floor drop (1:19:40, Super Repels 4 to 3; user's approval 2026-11-13): its 200 steps cover the floors 13.02 walks after the drop (wild Pokemon on every Mansion floor). With none left the step is skipped (if_any), as 12.03's"
             }
         ]
     },
