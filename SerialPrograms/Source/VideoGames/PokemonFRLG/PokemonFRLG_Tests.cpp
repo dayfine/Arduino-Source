@@ -27,10 +27,12 @@
 #include "Inference/Menus/PokemonFRLG_SaveCardReader.h"
 #include "Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
 #include "Inference/Menus/PokemonFRLG_TeachScreenReader.h"
+#include "Inference/PokemonFRLG_BallReader.h"
 #include "Inference/PokemonFRLG_BattleLevelUpReader.h"
 #include "Inference/PokemonFRLG_BattleSelectionArrowDetector.h"
 #include "Inference/PokemonFRLG_BattleTextBoxDetector.h"
 #include "Inference/PokemonFRLG_PartyLevelUpReader.h"
+#include "Inference/PokemonFRLG_PokemonSpriteReader.h"
 #include "Inference/PokemonFRLG_ShinySymbolDetector.h"
 #include "Inference/PokemonFRLG_StatsReader.h"
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
@@ -118,9 +120,11 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AdvanceWhiteDialogDetector(database);
     add_tests_AdvanceBattleDialogDetector(database);
     add_tests_BagDetector(database);
+    add_tests_BallReader(database);
     add_tests_BattleLevelUpReader(database);
     add_tests_BattleMenuDetector(database);
     add_tests_BattleMoveSelectionArrow(database);
+    add_tests_BattleSpriteReader(database);
     add_tests_BoxCellOccupiedDetector(database);
     add_tests_BoxCellReader(database);
     add_tests_BoxGenderReader(database);
@@ -132,6 +136,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_SelectionDialogDetector(database);
     add_tests_ShinySymbolDetector(database);
     add_tests_StatsReader(database);
+    add_tests_SummarySpriteReader(database);
     add_tests_WildEncounterReader(database);
     add_tests_TrainerIdReader(database);
     add_tests_PartyEmptySlotDetector(database);
