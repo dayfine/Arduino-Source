@@ -118,7 +118,7 @@ Pokemon::Outcome load_checkpoint_start(StoryEnv& env, Pokemon::StoryBackend<Poke
 
 //  `rows` in order from the save the game is on, as
 //  StoryEngine::run_segment() runs them, `policy`'s attempts per checkpoint.
-//  With StoryRunPolicy::BoundaryReload::AT_PLAN_BOUNDARIES, a row of `story`'s
+//  With Pokemon::StoryRunPolicy::BoundaryReload::AT_PLAN_BOUNDARIES, a row of `story`'s
 //  reload_when_chained after the run's first starts as from its save: the
 //  run's segment stops before it, the event "reload_at_boundary" reloads
 //  the save (`game`'s reload, the autosave the row before ended on) and
@@ -127,7 +127,7 @@ Pokemon::Outcome load_checkpoint_start(StoryEnv& env, Pokemon::StoryBackend<Poke
 //  before such a row ends its segment, so it ends at SavePoint::RUN_END.
 Pokemon::SegmentReport run_plza_segment(
     const Pokemon::StoryGame<Pokemon::ZonePose>& game, const StoryData& story,
-    std::span<const Pokemon::StoryCheckpoint> rows, const StoryRunPolicy& policy,
+    std::span<const Pokemon::StoryCheckpoint> rows, const Pokemon::StoryRunPolicy& policy,
     Pokemon::StoryEngine<Pokemon::ZonePose>& engine, Pokemon::StoryBackend<Pokemon::ZonePose>& backend,
     Pokemon::RunState& state
 );

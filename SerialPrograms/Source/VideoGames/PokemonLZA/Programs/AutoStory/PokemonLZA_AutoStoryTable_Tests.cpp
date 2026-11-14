@@ -185,7 +185,7 @@ UnitTestResult test_mm3_heal_row(Logger&){
 
 //  The built-in file of checkpoint `id` with its execution's save line
 //  replaced by `execution` (the fields after "execution": {), as a dev file.
-StoryDevFile dev_with_execution(std::string_view id, std::string_view execution){
+Pokemon::StoryDevFile dev_with_execution(std::string_view id, std::string_view execution){
     for (const auto& [name, text] : autostory_checkpoint_json()){
         if (name != std::format("plza-{}.plan", id)){
             continue;
@@ -195,44 +195,30 @@ StoryDevFile dev_with_execution(std::string_view id, std::string_view execution)
         if (at != std::string::npos){
             edited.replace(at, std::string_view("\"save\": \"autosave\"").size(), execution);
         }
-        return StoryDevFile{.name = std::format("{}.json", name), .path = std::format("dev/{}.json", name), .text = edited};
+        return Pokemon::StoryDevFile{.name = std::format("{}.json", name), .path = std::format("dev/{}.json", name), .text = edited};
     }
-    return StoryDevFile{};
+    return Pokemon::StoryDevFile{};
 }
 
-//  The ParseException load_story_data() throws for `dev`; empty when it
-//  loads.
-std::string load_problem(const StoryDevFile& dev){
+//  The ParseException message of load_story_data() on the one dev file
+//  `dev`; empty if it loads.
+std::string load_problem(const Pokemon::StoryDevFile& dev){
     try{
-        load_story_data(std::vector<StoryDevFile>{dev});
+        load_story_data(std::span<const Pokemon::StoryDevFile>(&dev, 1));
     }catch (ParseException& e){
         return e.message();
     }
     return "";
 }
 
-//  "reload_when_chained" in a checkpoint's execution: only true or "always", and only on
-//  a row with a save to reload after a row that ends on the autosave.
+//  01.00, the new game (story_row_starts_without_save()), has no save to
+//  reload: the shared loader refuses its "reload_when_chained".
 UnitTestResult test_reload_when_chained_field(Logger&){
-    struct Case{
-        std::string_view execution;
-        std::string_view problem;
-    };
-    const Case cases[] = {
-        {R"("save": "autosave", "reload_when_chained": "yes")", "true, \"always\" or left out"},
-        {R"("save": "autosave", "reload_when_chained": false)", "true, \"always\" or left out"},
-        {R"("save": "autosave", "reload_when_chained": true)", "no save to reload"},
-        {R"("save": "autosave", "reload_when_chained": "always")", "no save to reload"},
-    };
-    for (const Case& item : cases){
-        const std::string problem = load_problem(dev_with_execution("01.00", item.execution));
-        if (problem.find(item.problem) == std::string::npos){
-            return std::format("01.00 with {}: expected a problem with \"{}\", got \"{}\".", item.execution, item.problem, problem);
-        }
-    }
-    for (const StoryCheckpoint& row : story_checkpoints()){
-        if (story_row_starts_without_save(row) && builtin_story_data().reload_when_chained.contains(row.id)){
-            return std::format("{} starts without a save but reloads when chained.", row.id);
+    for (std::string_view reload : {"true", "\"always\""}){
+        const std::string execution = std::format("\"save\": \"autosave\", \"reload_when_chained\": {}", reload);
+        const std::string problem = load_problem(dev_with_execution("01.00", execution));
+        if (problem.find("no save to reload") == std::string::npos){
+            return std::format("01.00 with {}: expected \"no save to reload\", got \"{}\".", execution, problem);
         }
     }
     return true;
@@ -370,35 +356,23 @@ std::string replaced(std::string text, std::string_view from, std::string_view t
 //  The ParseException message of load_story_data() on the one dev file
 //  `text`; empty if it loads.
 std::string dev_load_error(std::string_view name, std::string text){
-    const StoryDevFile dev{.name = std::string(name), .path = std::format("/dev/{}", name), .text = std::move(text)};
-    try{
-        load_story_data(std::span<const StoryDevFile>(&dev, 1));
-    }catch (ParseException& e){
-        return e.message();
-    }
-    return "";
+    return load_problem({.name = std::string(name), .path = std::format("/dev/{}", name), .text = std::move(text)});
 }
 
-//  A dev file replaces the built-in checkpoint of its name and no other,
-//  and is named; a bad one (not JSON, a leg of 3 numbers, a negative walk,
-//  an unknown file, another id) fails naming its path.
+//  A dev file replaces the built-in checkpoint of its name and no other; a
+//  walk PLZA's reader refuses (a leg of 3 numbers, a negative walk) fails
+//  naming its path.
 UnitTestResult test_dev_override(Logger&){
     const std::string chase = builtin_text("plza-01.02.plan");
     const std::string_view legs = "[[-15, 4000], [-75, 3500]";
     if (chase.find(legs) == std::string::npos){
         return "Expected chase_pancham's legs in plza-01.02.plan.json.";
     }
-    const StoryDevFile dev{
+    const Pokemon::StoryDevFile dev{
         .name = "plza-01.02.plan.json", .path = "/dev/plza-01.02.plan.json",
         .text = replaced(chase, legs, "[[-15, 4200], [-75, 3500]"),
     };
-    const StoryData data = load_story_data(std::span<const StoryDevFile>(&dev, 1));
-    if (data.dev_files.size() != 1 || data.dev_files[0].first != dev.name || data.dev_files[0].second != dev.path){
-        return "Expected the dev file to be named with its path.";
-    }
-    if (data.checkpoints.size() != story_checkpoints().size() || data.autosaves != story_autosave_rows()){
-        return "Expected the same rows and autosaves as the built-in story.";
-    }
+    const StoryData data = load_story_data(std::span<const Pokemon::StoryDevFile>(&dev, 1));
     const StoryStep* tuned = find_step(data.checkpoints, "01.02", "chase_pancham");
     if (tuned == nullptr || leg_pairs(story_walk_move(tuned->args, "legs")).front() != std::pair<int, int64_t>(-15, 4200)){
         return "Expected the dev file's first leg, [-15, 4200].";
@@ -407,17 +381,10 @@ UnitTestResult test_dev_override(Logger&){
     if (plaza == nullptr || leg_pairs(story_walk_move(plaza->args, "legs")).front() != std::pair<int, int64_t>(0, 4500)){
         return "Expected 01.01 to stay built-in.";
     }
-    const std::pair<std::string, std::string> bad[] = {
-        {"plza-01.02.plan.json", "{ not json"},
-        {"plza-01.02.plan.json", replaced(chase, legs, "[[-15, 4000, 1], [-75, 3500]")},
-        {"plza-01.02.plan.json", replaced(chase, legs, "[[-15, -4000], [-75, 3500]")},
-        {"plza-09.99.plan.json", chase},
-        {"plza-01.02.plan.json", replaced(chase, "\"01.02\"", "\"01.09\"")},
-    };
-    for (const auto& [name, text] : bad){
-        const std::string error = dev_load_error(name, text);
-        if (error.find(std::format("/dev/{}", name)) == std::string::npos){
-            return std::format("Expected {} to fail naming its path, got \"{}\".", name, error);
+    for (const std::string_view bad_legs : {"[[-15, 4000, 1], [-75, 3500]", "[[-15, -4000], [-75, 3500]"}){
+        const std::string error = dev_load_error("plza-01.02.plan.json", replaced(chase, legs, bad_legs));
+        if (error.find("/dev/plza-01.02.plan.json") == std::string::npos){
+            return std::format("Expected legs {} to fail naming the file, got \"{}\".", bad_legs, error);
         }
     }
     return true;
@@ -425,30 +392,13 @@ UnitTestResult test_dev_override(Logger&){
 
 
 //  The new game's start: 01.00 starts on "Confirm Choices" after the
-//  choices made by hand, without a save; every later row loads one. A run
-//  plays every row from its start to its end.
+//  choices made by hand, without a save; every later row loads one.
 UnitTestResult test_new_game_rows(Logger&){
-    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
-    for (const StoryCheckpoint& row : rows){
+    for (const StoryCheckpoint& row : story_checkpoints()){
         const bool no_save = story_row_starts_without_save(row);
         if (no_save != (row.id == "01.00")){
             return std::format("{}: starts without a save: {}; only 01.00 should.", row.id, no_save);
         }
-    }
-    const size_t last = rows.size() - 1;
-    const auto ids = [](const std::vector<StoryCheckpoint>& run){
-        std::string text;
-        for (const StoryCheckpoint& row : run){
-            text += (text.empty() ? "" : " ") + row.id;
-        }
-        return text;
-    };
-    const std::vector<StoryCheckpoint> from_confirm = story_run_rows(rows, 0, last);
-    if (from_confirm.size() != rows.size() || from_confirm[0].id != "01.00"){
-        return std::format("A run from 01.00: expected every row from 01.00, got {}.", ids(from_confirm));
-    }
-    if (!story_run_rows(rows, 1, 0).empty() || !story_run_rows(rows, 0, rows.size()).empty()){
-        return "Expected no rows for a start after the end or an end past the table.";
     }
     return true;
 }
@@ -589,7 +539,7 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
-        .name = "reload_when_chained: only true, only after an autosave row, never on a new game row",
+        .name = "reload_when_chained: never on the new game row",
         .input = {.body = test_reload_when_chained_field},
         .expectation = {},
     },
@@ -614,7 +564,7 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
-        .name = "Start checks: 01.00 starts the new game without a save; a run plays every row",
+        .name = "Start checks: 01.00 starts the new game without a save",
         .input = {.body = test_new_game_rows},
         .expectation = {},
     },

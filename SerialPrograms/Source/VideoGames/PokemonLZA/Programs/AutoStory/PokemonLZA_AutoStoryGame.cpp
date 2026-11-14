@@ -21,6 +21,7 @@
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
 #include "VideoGames/PokemonLZA/Resources/PokemonLZA_Locations.h"
@@ -215,7 +216,7 @@ public:
         ){
             try{
                 body(env, call.args);
-            }catch (StoryActionNotImplemented&){
+            }catch (Pokemon::StoryActionNotImplemented&){
                 throw;
             }catch (OperationFailedException& e){
                 backend.log(std::format("[PLZA] {} failed: {}", name, e.message()));
@@ -255,7 +256,7 @@ public:
         ) -> Outcome{
             const std::string message = std::format("PLZA AutoStory: {} is not implemented yet. TODO: {}", name, todo);
             backend.log(message);
-            throw StoryActionNotImplemented(message);
+            throw Pokemon::StoryActionNotImplemented(message);
         };
     }
 
@@ -772,15 +773,6 @@ Outcome reload_at_boundary(const Pokemon::StoryGame<ZonePose>& game, Pokemon::St
     return Pokemon::outcome_ok();
 }
 
-//  Whether a run reloads the save before `row` when it reaches it from the
-//  row before.
-bool reloads_before(const StoryData& story, StoryRunPolicy::BoundaryReload boundary_reload, std::string_view row){
-    if (story.reload_always.contains(row)){
-        return true;
-    }
-    return boundary_reload == StoryRunPolicy::BoundaryReload::AT_PLAN_BOUNDARIES && story.reload_when_chained.contains(row);
-}
-
 void add_segment(const Pokemon::SegmentReport& part, Pokemon::SegmentReport& total){
     total.checkpoints_run += part.checkpoints_run;
     total.reloads += part.reloads;
@@ -794,14 +786,14 @@ void add_segment(const Pokemon::SegmentReport& part, Pokemon::SegmentReport& tot
 
 Pokemon::SegmentReport run_plza_segment(
     const Pokemon::StoryGame<ZonePose>& game, const StoryData& story,
-    std::span<const Pokemon::StoryCheckpoint> rows, const StoryRunPolicy& policy,
+    std::span<const Pokemon::StoryCheckpoint> rows, const Pokemon::StoryRunPolicy& policy,
     Pokemon::StoryEngine<ZonePose>& engine, Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState& state
 ){
     Pokemon::SegmentReport total;
     size_t begin = 0;
     while (begin < rows.size()){
         size_t end = begin + 1;
-        while (end < rows.size() && !reloads_before(story, policy.boundary_reload, rows[end].id)){
+        while (end < rows.size() && !Pokemon::story_reloads_before(story, policy.boundary_reload, rows[end].id)){
             end++;
         }
         if (begin > 0){

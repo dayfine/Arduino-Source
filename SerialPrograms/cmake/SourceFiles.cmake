@@ -2502,8 +2502,6 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryDevFiles.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryDevFiles.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryEngine_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryEngine_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame.cpp
