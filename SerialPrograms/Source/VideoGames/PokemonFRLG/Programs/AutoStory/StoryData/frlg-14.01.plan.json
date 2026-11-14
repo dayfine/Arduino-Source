@@ -103,6 +103,7 @@
       {
         "id": "to_quiz_2_machine",
         "kind": "legs",
+        "action": "run",
         "args": {
           "legs": [{"direction": "north", "tiles": 6}, {"direction": "west", "tiles": 9}]
         },
