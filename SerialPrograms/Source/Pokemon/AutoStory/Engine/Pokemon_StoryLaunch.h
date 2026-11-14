@@ -116,6 +116,12 @@ struct StoryLaunchPolicy{
     std::vector<StoryLaunchPrompt> prompts = {};
     //  The player in control. Unset: the look shows PLAYER_CAN_MOVE.
     std::function<bool(const ScreenObservation& look)> overworld = {};
+    //  Looks after a title press's black fade (FADE_BLACK) on which
+    //  `title` is not read: the screens there are the save loading or the
+    //  boot, waited out. A loose title check passes a load's tips screen,
+    //  and an A on a boot logo is followed by the boot's own fade, so the
+    //  title is read again once these looks are over. 0: always read.
+    size_t title_load_looks = 0;
     //  Looks in a row the overworld must show before the launch is done.
     size_t settled_looks = 3;
     //  The wait between looks at a screen with nothing to press.

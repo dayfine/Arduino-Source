@@ -37,6 +37,7 @@ enum class Screen{
     CLOSE_DIALOG,       //  HOME's "Close software?"
     LICENSE_CHECK,      //  the online license check
     BLACK,              //  a boot or a load
+    FADE,               //  a black fade (FADE_BLACK), as a boot or a load starts
     TITLE,
     NEW_GAME,           //  the title's menu without a save
     BACKUP_CONFIRM,     //  "Load the backup save?"
@@ -59,6 +60,9 @@ Observation<GridPose> look(Screen screen){
         return observation;
     case Screen::OVERWORLD:
         observation.events = ScreenEvents{ScreenEvent::PLAYER_CAN_MOVE};
+        return observation;
+    case Screen::FADE:
+        observation.events = ScreenEvents{ScreenEvent::FADE_BLACK};
         return observation;
     default:
         observation.readings[std::string(SCREEN)] = (int)screen;
@@ -91,10 +95,16 @@ enum class GameScreens{
     AFTER_LAUNCH,   //  read only once the launch launched the game
 };
 
+//  The test game's bounds that a case may change.
+struct Bounds{
+    size_t title_load_looks = 0;
+    size_t max_looks = 12;
+};
+
 //  The test game: A on the title, `backup` for the backup save, A on each
 //  prompt (Up, Up, A on the update prompt; B on the game's dialog), and
 //  small bounds so a failure takes few looks.
-StoryLaunchPolicy test_policy(Backup backup, GameScreens game_screens, TileCheck tile_check){
+StoryLaunchPolicy test_policy(Backup backup, GameScreens game_screens, TileCheck tile_check, Bounds bounds){
     StoryLaunchPolicy policy;
     policy.game = "test";
     policy.tile_selected = [](const ScreenObservation& observation){
@@ -121,7 +131,8 @@ StoryLaunchPolicy test_policy(Backup backup, GameScreens game_screens, TileCheck
     };
     policy.title_after_launch = game_screens == GameScreens::AFTER_LAUNCH;
     policy.presses_per_screen = 3;
-    policy.max_looks = 12;
+    policy.title_load_looks = bounds.title_load_looks;
+    policy.max_looks = bounds.max_looks;
     return policy;
 }
 
@@ -142,6 +153,7 @@ struct LaunchCase{
         Backup backup = Backup::PLZA;
         GameScreens game_screens = GameScreens::STRICT;
         TileCheck tile_check = TileCheck::READINGS;
+        Bounds bounds = {};
     };
     struct Expectation{
         //  Empty: the launch succeeds; else a part of its failure's detail.
@@ -214,6 +226,24 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
                                         Screen::BLACK, Screen::GAME_DIALOG, Screen::TITLE}),
                .game_screens = GameScreens::AFTER_LAUNCH},
      .expectation = {.inputs = "HOME HOME X A wait B A wait wait"}},
+    //  Console B, PLZA, 2026-11-14 13:09: A twice on a boot logo the loose
+    //  title check passes, the boot's black, the title (A works), the
+    //  load's black, then its tips screen, which the title check passes
+    //  too. Each fade after a title press holds the title check off for
+    //  6 looks: the boot's title waits 3 looks, the tips screen gets no A.
+    {.name = "title not read on the screens after its fade",
+     .input = {.screens = then_settled({Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::FADE,
+                                        Screen::TITLE, Screen::TITLE,
+                                        Screen::FADE, Screen::FADE, Screen::FADE, Screen::FADE,
+                                        Screen::TITLE, Screen::TITLE, Screen::TITLE, Screen::TITLE,
+                                        Screen::FADE, Screen::FADE,
+                                        Screen::TITLE, Screen::TITLE, Screen::TITLE, Screen::TITLE}),
+               .game_screens = GameScreens::AFTER_LAUNCH, .bounds = {.title_load_looks = 6, .max_looks = 30}},
+     .expectation = {.inputs = "X A wait A A wait wait wait wait wait wait wait A wait wait wait wait wait wait wait wait"}},
+    {.name = "title read again once its fade's looks are over",
+     .input = {.screens = {Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::TITLE, Screen::FADE, Screen::TITLE},
+               .game_screens = GameScreens::AFTER_LAUNCH, .bounds = {.title_load_looks = 2}},
+     .expectation = {.failure = "stuck on title", .inputs = "X A A wait wait wait A A"}},
 };
 
 //  The fake backend's record of `input` ("A" -> "press A").
@@ -254,7 +284,7 @@ std::string check_launch(const LaunchCase& test, CancellableScope& scope){
         looks.push_back(look(screen));
     }
     FakeStoryBackend<GridPose> backend({.looks = std::move(looks)}, scope);
-    const Outcome outcome = launch_story_game(backend, test_policy(test.input.backup, test.input.game_screens, test.input.tile_check), test.input.request);
+    const Outcome outcome = launch_story_game(backend, test_policy(test.input.backup, test.input.game_screens, test.input.tile_check, test.input.bounds), test.input.request);
     if (test.expectation.failure.empty() && !outcome.succeeded()){
         return std::format("expected success, got {}", to_string(outcome));
     }
