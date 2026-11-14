@@ -26,6 +26,18 @@ namespace PokemonLZA{
 using namespace std::chrono_literals;
 
 
+//  Console B, 2026-11-14 15:25: the right stick down held 1500 ms pins the
+//  pitch at its lowest; from there the stick up held 600 ms gives the
+//  walking pitch (400 ms is still too low, 1000 ms looks at the sky).
+constexpr Milliseconds CAMERA_PITCH_DOWN_HOLD = 1500ms;
+constexpr Milliseconds CAMERA_PITCH_UP_HOLD = 600ms;
+
+void level_camera(ConsoleHandle& console, ProControllerContext& context){
+    console.log("level_camera(): pitch reset");
+    pbf_move_right_joystick(context, {0, -1}, CAMERA_PITCH_DOWN_HOLD, 100ms);
+    pbf_move_right_joystick(context, {0, 1}, CAMERA_PITCH_UP_HOLD, 300ms);
+}
+
 bool turn_to_pinned_marker(ProControllerContext& context, double x){
     if (x >= 0.10 && x <= 0.90){
         return false;

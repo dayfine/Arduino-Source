@@ -27,6 +27,12 @@ namespace PokemonLZA{
 //  the marker at `x` (0 to 1) was pinned.
 bool turn_to_pinned_marker(ProControllerContext& context, double x);
 
+//  A ZL lock-on and throw leave the camera looking steeply down, and every
+//  later sweep for brackets sees only the ground. Pins the pitch at its
+//  lowest (the right stick down), then tips it up to the walking pitch
+//  (horizon in the middle, far markers in the upper third).
+void level_camera(ConsoleHandle& console, ProControllerContext& context);
+
 //  Walks back away from the objective marker (the stick down: toward the
 //  camera, turned back onto the marker before each step) until its distance reads `stop_at`
 //  or more, or `limit`. A read more than 12 from the last is a misread, as
