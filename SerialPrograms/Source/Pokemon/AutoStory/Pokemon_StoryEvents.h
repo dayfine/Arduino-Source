@@ -42,6 +42,17 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+//  The runner's own log lines, beside the checkpoint lines of
+//  Pokemon_StoryLog.h. One event's line:
+//      [Event] 00.04/3 talk_mom: start
+//      [Event] 00.04/3 talk_mom: failed: expect_failed: has_parcel
+std::string event_log_line(std::string_view checkpoint, size_t number, std::string_view event, std::string_view status);
+
+//  Any other line about a checkpoint, such as how its run ended:
+//      [Checkpoint] 00.04: done, 3 run, 0 skipped
+//      [Checkpoint] 00.04: failed at 2 talk_mom: expect_failed: has_parcel
+std::string checkpoint_log_line(std::string_view checkpoint, std::string_view text);
+
 //  Problems an author should fix before running: unnamed or empty events,
 //  missing actions, recoveries out of escalation order.
 std::vector<std::string> lint_checkpoint(const Checkpoint& checkpoint);
