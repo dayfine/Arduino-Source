@@ -19,7 +19,7 @@ namespace PokemonAutomation{
 struct Thread::Data{
     std::thread m_thread;
 
-    Data(std::function<void()>&& function)
+    Data(MoveOnlyFunction<void()>&& function)
         : m_thread(std::move(function))
     {}
 };
@@ -45,7 +45,7 @@ Thread::Thread() = default;
 // Main constructor - starts thread immediately with given function
 // - Uses CONSTRUCT_TOKEN to construct Pimpl<Data> with Data constructor
 // - Thread starts running immediately (same as std::thread behavior)
-Thread::Thread(std::function<void()>&& function)
+Thread::Thread(MoveOnlyFunction<void()>&& function)
     : m_data(CONSTRUCT_TOKEN, std::move(function))
 {}
 

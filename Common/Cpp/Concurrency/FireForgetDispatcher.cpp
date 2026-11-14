@@ -38,7 +38,7 @@ FireForgetDispatcher::~FireForgetDispatcher(){
     stop();
 }
 
-void FireForgetDispatcher::dispatch(std::function<void()>&& func){
+void FireForgetDispatcher::dispatch(MoveOnlyFunction<void()>&& func){
     std::lock_guard<Mutex> lg(m_lock);
     m_queue.emplace_back(std::move(func));
     m_cv.notify_one();
@@ -58,7 +58,7 @@ void FireForgetDispatcher::dispatch(std::function<void()>&& func){
 
 void FireForgetDispatcher::thread_loop(){
     while (true){
-        std::function<void()> task;
+        MoveOnlyFunction<void()> task;
         {
             std::unique_lock<Mutex> lg(m_lock);
             if (m_stopping){

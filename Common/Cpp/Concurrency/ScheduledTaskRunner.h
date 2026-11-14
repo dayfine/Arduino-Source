@@ -10,6 +10,7 @@
 #define PokemonAutomation_ScheduledTaskRunner_H
 
 #include <map>
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/Time.h"
 //#include "Common/Cpp/CancellableScope.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
@@ -33,8 +34,8 @@ public:
     //  events are scheduled.
     WallClock next_event() const;
 
-    void add_event(WallClock time, std::function<void()> callback);
-    void add_event(std::chrono::milliseconds time_from_now, std::function<void()> callback);
+    void add_event(WallClock time, MoveOnlyFunction<void()> callback);
+    void add_event(std::chrono::milliseconds time_from_now, MoveOnlyFunction<void()> callback);
 
 //    virtual bool cancel(std::exception_ptr exception) noexcept override;
 
@@ -46,7 +47,7 @@ private:
     ConditionVariable m_cv;
     bool m_stopped;
 
-    std::multimap<WallClock, std::function<void()>> m_schedule;
+    std::multimap<WallClock, MoveOnlyFunction<void()>> m_schedule;
 
     AsyncTask m_runner;
 };

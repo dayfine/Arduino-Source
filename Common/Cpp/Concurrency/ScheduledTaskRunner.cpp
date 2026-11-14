@@ -52,7 +52,7 @@ WallClock ScheduledTaskRunner::next_event() const{
     }
     return m_schedule.begin()->first;
 }
-void ScheduledTaskRunner::add_event(WallClock time, std::function<void()> callback){
+void ScheduledTaskRunner::add_event(WallClock time, MoveOnlyFunction<void()> callback){
     std::lock_guard<Mutex> lg(m_lock);
     if (m_stopped){
         return;
@@ -60,7 +60,7 @@ void ScheduledTaskRunner::add_event(WallClock time, std::function<void()> callba
     m_schedule.emplace(time, std::move(callback));
     m_cv.notify_all();
 }
-void ScheduledTaskRunner::add_event(std::chrono::milliseconds time_from_now, std::function<void()> callback){
+void ScheduledTaskRunner::add_event(std::chrono::milliseconds time_from_now, MoveOnlyFunction<void()> callback){
     std::lock_guard<Mutex> lg(m_lock);
     if (m_stopped){
         return;
