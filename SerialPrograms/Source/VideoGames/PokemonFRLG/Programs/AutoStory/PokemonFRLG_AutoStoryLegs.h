@@ -39,6 +39,11 @@ std::optional<std::vector<RouteStep>> fixed_route(
 //  (OverworldWalkSteps::wait_out_warp()), not taken as walked.
 std::optional<RouteStep> warp_press(const std::vector<MapData>& maps, const MapPosition& from, Direction direction);
 
+//  Whether `from` is an exit mat whose warp a press of `direction` takes.
+//  On one, the press takes the warp from any facing: a turn tap that way
+//  takes it too.
+bool takes_mat_warp(const std::vector<MapData>& maps, const MapPosition& from, Direction direction);
+
 
 
 } // namespace PokemonFRLG

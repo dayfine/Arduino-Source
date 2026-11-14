@@ -506,6 +506,41 @@ UnitTestResult test_gym_rows(){
     return true;
 }
 
+//  Out of the gym, 14.02b's out_of_gym presses south on the exit mat
+//  (25, 23), facing west from onto_gym_mat's tap onto it. A press south
+//  there takes the warp from any facing, so take_warp_step() presses once
+//  with no turn tap: the turn tap took the warp, and the read of the turn
+//  failed on the fade (console B, 2026-11-14 08:44). The mat's side tiles
+//  and the other ways off it take no warp.
+struct MatPressInput{
+    MapPosition from;
+    Direction press;
+};
+struct MatPressCase{
+    std::string_view name;
+    MatPressInput input;
+    bool takes_warp;
+};
+const MatPressCase MAT_PRESS_CASES[] = {
+    {"south on the mat", {{GYM, {25, 23}}, Direction::SOUTH}, true},
+    {"west on the mat", {{GYM, {25, 23}}, Direction::WEST}, false},
+    {"south beside the mat, east", {{GYM, {26, 23}}, Direction::SOUTH}, false},
+    {"south beside the mat, west", {{GYM, {24, 23}}, Direction::SOUTH}, false},
+    {"south above the mat", {{GYM, {25, 22}}, Direction::SOUTH}, false},
+};
+UnitTestResult test_exit_mat_press_takes_warp(){
+    for (const MatPressCase& c : MAT_PRESS_CASES){
+        if (takes_mat_warp(story_maps(), c.input.from, c.input.press) != c.takes_warp){
+            return std::format("{}: expected {}.", c.name, c.takes_warp ? "the mat's warp" : "no mat warp");
+        }
+    }
+    const std::optional<RouteStep> out = warp_press(story_maps(), MapPosition{GYM, {25, 23}}, Direction::SOUTH);
+    if (!out || out->end != MapPosition{"CinnabarIsland", {20, 5}}){
+        return std::string("south on the mat: expected the warp to CinnabarIsland (20, 5), where Bill's scene starts.");
+    }
+    return true;
+}
+
 //  The lead as pokeguy brings it to Blaine: Surf (12.01, over Water Gun),
 //  Water Pulse, Bite, Mega Kick. It picks Surf against all four of
 //  Blaine's Fire types.
@@ -586,6 +621,10 @@ const AutoStoryCinnabarGymCase AUTO_STORY_CINNABAR_GYM_CASES[] = {
     {
         .input = {.name = "14.01 through the quiz to below Blaine, 14.02 on the spot and 14.02b back to the nurse", .body = test_gym_rows},
         .expectation = {.description = "no gym trainer fought; ends at Cinnabar's nurse"},
+    },
+    {
+        .input = {.name = "14.02b's press south on the gym's exit mat takes the warp from any facing", .body = test_exit_mat_press_takes_warp},
+        .expectation = {.description = "only (25, 23) pressed south takes it, to CinnabarIsland (20, 5)"},
     },
     {
         .input = {.name = "the lead's attacks against Blaine", .body = test_lead_moves_against_blaine},
