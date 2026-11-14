@@ -40,12 +40,13 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
 );
 
 //  Holding `direction` from `from`, on the water if `surfing`: where a wall
-//  stops the player, how many tiles on, and whether any tile on the way is
-//  tall grass or water.
+//  stops the player, how many tiles on, whether any tile on the way is tall
+//  grass or water, and whether the map lets the player run.
 struct WallHold{
     MapPosition end;
     int tiles = 0;
     bool wild = false;
+    bool walk_only = false;
 };
 //  Nothing unless every step on the way is a plain walk: a warp, Surf, a
 //  ledge, a person, a sign that would speak, or the edge of the loaded maps

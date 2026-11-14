@@ -17,7 +17,14 @@
  *      the route is planned again from it. More: holds to walls that end on
  *      one tile from all of them find the player (plan_reanchor()), and a
  *      way back to the stopped leg's end rejoins the route. The rest of the
- *      route is then walked as planned.
+ *      route is then walked as planned. A leg onto a warp whose fade was
+ *      a wild battle's counts as stopped before its warp
+ *      (walked_before_warp()), and the way back goes on through the warp;
+ *    - an open leg that ended with nothing seen may still have ended up to
+ *      OPEN_LEG_SHORTFALL tiles short. When the next step is a hold to a
+ *      wall that doesn't end on its tile from each of those, the player is
+ *      found at walls the same way and walked back to the leg's end first.
+ *      When no holds find them, the leg is taken as walked, as before.
  *
  *  Where the player is is never guessed: when no holds find them from every
  *  tile they may be on, the route fails, and the caller stops without
@@ -38,34 +45,12 @@
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldTrainerCrossing.h"
+#include "PokemonFRLG_OverworldStepChecks.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-
-//  How one step of a route ended.
-enum class StepEnd{
-    DONE,
-    STOPPED,    //  stopped part-way: where the player is isn't known
-    LATE,       //  something was seen after the hold, which may have
-                //  stopped the player before the end
-};
-
-//  How a step ended, and for an open leg STOPPED part-way, how many of its
-//  tiles the timing of the stop says the player walked. Not set: anywhere
-//  on the leg.
-struct StepOutcome{
-    StepEnd end = StepEnd::DONE;
-    std::optional<WalkedTiles> walked;
-};
-
-//  Whether, after each leg to a wall, the walker taps once more toward the
-//  wall and logs whether the player moved (see RouteCalls).
-enum class WallCheck{
-    TAP,
-    SKIP,
-};
 
 //  What the route was planned with, to plan the way back onto it: the maps
 //  (with the event flags the caller set) and the costs; and, for the route
@@ -76,6 +61,7 @@ struct RoutePlanning{
     std::optional<MapPosition> start;
     std::string label = "Route";
     WallCheck wall_check = WallCheck::TAP;
+    OpenLegCheck open_leg_check = OpenLegCheck::REANCHOR;
 };
 
 //  The console side. `walk` walks one step from `facing` (unknown after a

@@ -68,7 +68,10 @@ std::optional<WalkedTiles> walk_step(
         if (step.warps){
             wait_out_warp(console, context, step);
             static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
-            check_warp_was_no_battle(console, context, step);
+            if (run_from_battle_after_warp(console, context)){
+                console.log("Route: a wild battle, not the warp to " + step.end.map + "; the player is on " + to_string(step) + " before the warp.", COLOR_ORANGE);
+                return walked_before_warp(step);
+            }
         }
         break;
     }
@@ -85,12 +88,21 @@ std::optional<WalkedTiles> walk_step(
 //  walk_step(), then a watch for what its last step set off. Not DONE if
 //  the player may have stopped short of the step's end: an open leg
 //  stopped, or something seen after the hold, which may have stopped it
-//  before the end (after a warp, it was checked for already).
+//  before the end (after a warp, it was checked for already). A battle
+//  on its way that the watch missed counts as seen (clear_unseen_battle()),
+//  also after a leg the maps see no wild tiles on. One on its way before
+//  the step starts was set off before it: the step isn't walked, and is
+//  BATTLE_BEFORE (clear_battle_before()).
 StepOutcome walk_and_watch(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, std::optional<Direction> facing,
     const OverworldInterruptSet& interrupts, MoveSpeed speed
 ){
+    if (clear_battle_before(console, context, interrupts.wild, step) > 0){
+        return StepOutcome{.end = StepEnd::BATTLE_BEFORE, .walked = std::nullopt};
+    }
+    clear_open_message(console, context, step.wild ? interrupts.wild : interrupts.other, step);
+    check_overworld(console, context, step);
     if (const std::optional<WalkedTiles> walked = walk_step(console, context, step, facing, interrupts, speed)){
         return StepOutcome{.end = StepEnd::STOPPED, .walked = walked};
     }
@@ -98,7 +110,11 @@ StepOutcome walk_and_watch(
         return StepOutcome{};
     }
     const Milliseconds watch = step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH;
-    const size_t late = Pokemon::clear_late_interrupts(console, context, step.wild ? interrupts.wild : interrupts.other, watch, MAX_INTERRUPTIONS_PER_LEG);
+    const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
+    size_t late = Pokemon::clear_late_interrupts(console, context, watched, watch, MAX_INTERRUPTIONS_PER_LEG);
+    if (late == 0){
+        late = clear_unseen_battle(console, context, interrupts.wild, step);
+    }
     //  After a warp it was checked for already.
     const bool done = late == 0 || step.warps || step.action != RouteAction::WALK;
     return StepOutcome{.end = done ? StepEnd::DONE : StepEnd::LATE, .walked = std::nullopt};
@@ -218,8 +234,6 @@ void walk_overworld_route_with_recovery(
     }
     RouteCalls calls;
     calls.walk = [&](const RouteStep& step, std::optional<Direction> from_facing){
-        clear_open_message(console, context, step.wild ? interrupts.wild : interrupts.other, step);
-        check_overworld(console, context, step);
         return walk_and_watch(console, context, step, from_facing, interrupts, speed);
     };
     calls.hold_to_warp = [&](const RouteStep& step){

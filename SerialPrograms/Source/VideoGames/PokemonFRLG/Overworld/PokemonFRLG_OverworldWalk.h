@@ -27,6 +27,7 @@
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldWalkMoves.h"
+#include "PokemonFRLG_OverworldWalkBattles.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -67,10 +68,6 @@ void clear_open_message(
     ConsoleHandle& console, ProControllerContext& context,
     const OverworldInterrupts& interrupts, const RouteStep& step
 );
-
-//  After `step`'s warp: fails, once the battle is fled, if its fade was a
-//  wild battle's.
-void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step);
 
 //  The way the player faces, read from the screen; nothing if it can't be read.
 std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContext& context);

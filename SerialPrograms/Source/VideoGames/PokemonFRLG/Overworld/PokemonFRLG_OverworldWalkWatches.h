@@ -34,12 +34,21 @@ inline constexpr Milliseconds AFTER_WARP_BATTLE_WATCH(5000);
 //  A message set off by a leg's last step shows after the hold ends. Caught
 //  here, before the next leg's turn tap, which the message would swallow.
 inline constexpr Milliseconds AFTER_LEG_WATCH(500);
-//  The same after a leg through grass. A battle whose flashes are missed is
-//  seen only by its "Wild <Pokemon> appeared!", 3.7s after its step's press
-//  (twice on Route 1, console B, 2026-11-01, run 7). Unless the walker waits
-//  that long, the next leg is walked into the battle and lost: there, "east
-//  4" and "west 4".
+//  A wild battle whose flashes are missed is seen only by its "Wild
+//  <Pokemon> appeared!": the flashes, the wipe and the opening animation
+//  take 3.7s from its step's press, twice on Route 1 (console B, 2026-11-01,
+//  run 7). Other maps open battles with other wipes, so elsewhere this is a
+//  guess. Every interrupt for such a battle places the stop with this.
+inline constexpr Milliseconds LATE_WILD_BATTLE_DELAY(3700);
+//  The same after a leg through grass, for a battle seen that late. Unless
+//  the walker waits that long, the next leg is walked into the battle and
+//  lost: on Route 1, "east 4" and "west 4".
 inline constexpr Milliseconds AFTER_WILD_LEG_WATCH(3500);
+//  After a leg's watch saw nothing, but the screen shows a battle on its
+//  way: how long to watch on for its HP boxes. In Mt. Moon they came over
+//  5s after the step that set the battle off, after the watch had ended on
+//  the battle's empty text box (console B, 2026-11-03, row 00.13).
+inline constexpr Milliseconds UNSEEN_BATTLE_WATCH(5000);
 //  How long clear_open_message() watches for the message it saw.
 inline constexpr Milliseconds OPEN_MESSAGE_WATCH(1000);
 //  Maximum interruptions before a leg is abandoned.

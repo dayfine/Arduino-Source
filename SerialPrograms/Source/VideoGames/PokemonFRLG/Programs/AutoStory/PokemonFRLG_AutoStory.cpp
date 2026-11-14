@@ -22,6 +22,7 @@
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreenKeyboard.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_TrainerCard.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_GiftRngConsoleSteps.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanLog.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanTracker.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_SidSteps.h"
@@ -58,7 +59,7 @@ std::unique_ptr<StatsTracker> AutoStory_Descriptor::make_stats() const{
 namespace{
 
 //  The start and end dropdowns' entries: the table's checkpoints, 00.01 to
-//  00.10. The options hold a reference to it.
+//  00.12b. The options hold a reference to it.
 const StringSelectDatabase& checkpoint_database(){
     static const std::vector<std::string> labels = []{
         std::vector<std::string> result;
@@ -84,6 +85,15 @@ const std::string RUN_STARTER_RNG_TEXT =
     "end of 00.04, as the RNG plan lists them. A shiny Squirtle goes on to the rival's battle, saves after it and the run "
     "goes on; otherwise the run stops with the save south of the table.<br>"
     "SID Helper's timing needs the text speed and button settings already saved, as with Stop for SID Helper.";
+
+const std::string RUN_GIFT_RNG_TEXT =
+    "<b>Run Gift RNG in AutoStory:</b><br>Off by default. After 00.12 saves beside the Magikarp salesman in Route 4's "
+    "Pokemon Center, run Gift RNG's attempts for the Magikarp from that save, as the RNG plan lists them for its TID and "
+    "SID (set by Run Starter RNG in AutoStory, or typed in). A shiny Magikarp is saved there (00.12b) and the run goes "
+    "on; otherwise the run stops with the save beside the salesman.<br>"
+    "To try again from that save, start at 00.12b with this on: it loads the save and runs the attempts first. "
+    "After Gift RNG run by hand, start at 00.12b with this off.<br>"
+    "English only. The Magikarp costs 500 and needs a free party slot; AutoStory's options leave the text fast.";
 
 AutoStory::AutoStory()
     : RUN(checkpoint_database(), Pokemon::FireRedLeafGreenLanguages_Database())
@@ -118,6 +128,7 @@ AutoStory::AutoStory()
         false
     )
     , RUN_STARTER_RNG(RUN_STARTER_RNG_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
+    , RUN_GIFT_RNG(RUN_GIFT_RNG_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
     , NOTIFICATION_SHINY("Shiny found", true, true, ImageAttachmentMode::JPG, {"Notifs", "Showcase"})
     , NOTIFICATION_STATUS_UPDATE("Status Update", true, false, std::chrono::seconds(3600))
     , KEEP_START_FRAME(KEEP_START_FRAME_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
@@ -130,6 +141,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(STOP_FOR_SID_HELPER);
     PA_ADD_OPTION(STOP_FOR_STARTER_RNG);
     PA_ADD_OPTION(RUN_STARTER_RNG);
+    PA_ADD_OPTION(RUN_GIFT_RNG);
     PA_ADD_OPTION(RNG_PLAN);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
@@ -299,16 +311,17 @@ static void throw_if_failed(const Pokemon::SegmentReport& report){
 
 //  Gets the game to where checkpoint `first` starts: a new game from the
 //  title screen, the game as another program left it, or the checkpoint's
-//  save loaded.
+//  save loaded. `at_handoff`: the run starts with the RNG handoff before a
+//  live-start row, whose save is where that row starts, so it is loaded.
 static void prepare_start(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    const std::vector<StoryCheckpoint>& checkpoints, size_t first, StoryEnv& story
+    const std::vector<StoryCheckpoint>& checkpoints, size_t first, StoryEnv& story, bool at_handoff
 ){
     const StoryCheckpoint& checkpoint = checkpoints[first];
     if (!checkpoint.start){
         return;
     }
-    if (checkpoint.live_start){
+    if (checkpoint.live_start && !at_handoff){
         env.console.log(checkpoint.id + " starts from the game as it is: no save to load.");
         return;
     }
@@ -349,12 +362,12 @@ static void stop_for_sid_helper(
     );
 }
 
-//  The TID for the Starter RNG plan: the RNG plan's, or read off the
-//  Trainer Card (START, the player's entry), which is then closed again.
-//  Before the first Pokemon, as under the ball, the player's entry is second.
-static uint16_t starter_rng_tid(
+//  The TID for the RNG plan: the RNG plan's, or read off the Trainer Card
+//  (START, the player's entry), which is then closed again. Run before
+//  `checkpoint` saves, which a failure tells the user to start at again.
+static uint16_t rng_plan_tid(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    const StarterRngPlanOptions& options, Language language
+    const StarterRngPlanOptions& options, Language language, const std::string& checkpoint
 ){
     std::optional<uint16_t> tid = options.tid_override(env.console);
     if (tid){
@@ -366,8 +379,8 @@ static uint16_t starter_rng_tid(
     if (!tid){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::NO_ERROR_REPORT,
-            "Couldn't read the TID on the Trainer Card, so there is no Starter RNG plan. Nothing was saved: "
-            "type the TID into the RNG plan's TID option and start AutoStory at 00.04 again.",
+            "Couldn't read the TID on the Trainer Card, so there is no RNG plan. Nothing was saved: "
+            "type the TID into the RNG plan's TID option and start AutoStory at " + checkpoint + " again.",
             env.console
         );
     }
@@ -376,17 +389,21 @@ static uint16_t starter_rng_tid(
     return *tid;
 }
 
-//  The Starter RNG attempts. Run under the ball before 00.04 saves there, so
-//  a failure ends the run with 00.03's save kept.
-static StarterRngPlanned plan_starter_rng_attempts(
+//  The RNG plan's attempts for the handoff `stop` (STARTER_RNG or
+//  GIFT_RNG) that ends `checkpoint`. Run where it ends, before it saves
+//  there, so a failure ends the run with the save it started from kept.
+static StarterRngPlanned plan_handoff_attempts(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    const StarterRngPlanOptions& options, Language language
+    const StarterRngPlanOptions& options, Language language, StoryHandoff stop, const std::string& checkpoint
 ){
-    const uint16_t tid = starter_rng_tid(env, context, options, language);
+    const uint16_t tid = rng_plan_tid(env, context, options, language, checkpoint);
     try{
-        return StarterRngPlanned{.tid = tid, .attempts = options.plan(env.console, language, tid)};
+        std::vector<RngAttempt> attempts = stop == StoryHandoff::GIFT_RNG
+            ? options.gift_plan(env.console, language, tid)
+            : options.plan(env.console, language, tid);
+        return StarterRngPlanned{.tid = tid, .attempts = std::move(attempts)};
     }catch (UserSetupError& e){
-        throw UserSetupError(env.console, e.message() + " Nothing was saved: fix the RNG plan and start AutoStory at 00.04 again.");
+        throw UserSetupError(env.console, e.message() + " Nothing was saved: fix the RNG plan and start AutoStory at " + checkpoint + " again.");
     }
 }
 
@@ -480,9 +497,9 @@ static void set_sid_in_program(
 
 namespace{
 
-//  Run Starter RNG in AutoStory: the time caps, Starter RNG's default Max
-//  Resets per try, and an attempt's misses before the run stops.
-const StarterRngLoopLimits STARTER_RNG_LIMITS{
+//  Run Starter RNG and Gift RNG in AutoStory: the time caps, both programs'
+//  default Max Resets per try, and an attempt's misses before the run stops.
+const StarterRngLoopLimits RNG_LOOP_LIMITS{
     .attempt_time = std::chrono::hours(3),
     .total_time = std::chrono::hours(12),
     .max_resets = 50,
@@ -491,28 +508,18 @@ const StarterRngLoopLimits STARTER_RNG_LIMITS{
 
 } // namespace
 
-//  Starter RNG's attempts in the program, from the save south of the table.
-//  Returns true for a shiny Squirtle, on the target or not, the game on its
-//  summary; otherwise the run has stopped with what to do next. A shiny that
-//  confirms the SID writes it into the RNG plan's SID option.
-static bool run_starter_rng_in_program(
-    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    const StarterRngPlanned& planned, StarterRngPlanOptions& options, Language language,
-    const StarterRngNotifications& notifications, EventNotificationOption& finished
+//  The RNG plan's attempts for `planned`, each tried through `steps`. A
+//  shiny that confirms the SID writes it into the RNG plan's SID option.
+static StarterRngLoopResult run_rng_plan_in_program(
+    SingleSwitchProgramEnvironment& env, StarterRngLoopSteps& steps,
+    const StarterRngPlanned& planned, StarterRngPlanOptions& options
 ){
     RngPlanTracker tracker(
-        planned.attempts, options.plan_candidates(env.console, planned.tid), options.SHINY_REQUIRED, STARTER_RNG_LIMITS.max_retries
+        planned.attempts, options.plan_candidates(env.console, planned.tid), options.SHINY_REQUIRED, RNG_LOOP_LIMITS.max_retries
     );
-    //  The settings file gets the calibration saved after each reset when
-    //  the program's panel is closed or the app quits.
-    RngStopCalibrationOptions& calibration = options.CALIBRATION;
-    ConsoleStarterRngSteps console_steps(env, context, StarterRngConsoleSettings{
-        .language = language, .sound = options.SOUND, .calibration = calibration.calibration(calibration.STARTER_INGAME),
-    }, notifications);
-    CalibrationSavingSteps steps(console_steps, calibration, calibration.STARTER_INGAME);
     RngPlanLogger logger(env.console);
     const StarterRngLoopResult result = run_starter_rng_plan(
-        logger, tracker, steps, STARTER_RNG_LIMITS, planned.tid, options.helper_candidates(planned.tid)
+        logger, tracker, steps, RNG_LOOP_LIMITS, planned.tid, options.helper_candidates(planned.tid)
     );
     const std::string confirmed_sid = result.sid ? std::to_string(*result.sid) : "";
     if (result.end == StarterRngLoopEnd::SHINY && result.sid && static_cast<std::string>(options.SID) != confirmed_sid){
@@ -526,7 +533,15 @@ static bool run_starter_rng_in_program(
             "when the program's panel is closed or the app quits.", COLOR_BLUE
         );
     }
-    const std::string message = starter_rng_loop_message(result);
+    return result;
+}
+
+//  True for a shiny, on the target or not, with `message` logged; otherwise
+//  the run has stopped with it.
+static bool shiny_or_stop(
+    SingleSwitchProgramEnvironment& env, EventNotificationOption& finished,
+    const StarterRngLoopResult& result, const std::string& message
+){
     if (result.end != StarterRngLoopEnd::SHINY && result.end != StarterRngLoopEnd::SHINY_OFF_TARGET){
         stop_for_handoff(env, finished, message);
         return false;
@@ -536,34 +551,84 @@ static bool run_starter_rng_in_program(
     return true;
 }
 
-//  After a shiny Squirtle: off its summary, then the rival's battle, which
-//  saves (00.04b), and the rows after it to `last`. Until that save, a
-//  reload would load the save under the ball and lose the shiny, so a
-//  failure stops the run instead. Returns the last row's id.
-static std::string run_after_shiny_starter(
+//  Starter RNG's attempts in the program, from the save south of the table.
+//  Returns true for a shiny Squirtle, the game on its summary; otherwise
+//  the run has stopped with what to do next.
+static bool run_starter_rng_in_program(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    StoryEnv& story, StoryExecutor& executor, const Pokemon::SegmentPolicy& policy, size_t ball_row, size_t last
+    const StarterRngPlanned& planned, StarterRngPlanOptions& options, Language language,
+    const StarterRngNotifications& notifications, EventNotificationOption& finished
 ){
-    const std::vector<StoryCheckpoint> rows = rows_after_starter_rng(story_checkpoints(), ball_row, last);
+    //  The settings file gets the calibration saved after each reset when
+    //  the program's panel is closed or the app quits.
+    RngStopCalibrationOptions& calibration = options.CALIBRATION;
+    ConsoleStarterRngSteps console_steps(env, context, StarterRngConsoleSettings{
+        .language = language, .sound = options.SOUND, .calibration = calibration.calibration(calibration.STARTER_INGAME),
+    }, notifications);
+    CalibrationSavingSteps steps(console_steps, calibration, calibration.STARTER_INGAME);
+    const StarterRngLoopResult result = run_rng_plan_in_program(env, steps, planned, options);
+    return shiny_or_stop(env, finished, result, starter_rng_loop_message(result));
+}
+
+//  Gift RNG's attempts in the program, from the save beside the Magikarp
+//  salesman. Returns true for a shiny Magikarp, the game on its summary;
+//  otherwise the run has stopped with what to do next.
+static bool run_gift_rng_in_program(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    const StarterRngPlanned& planned, StarterRngPlanOptions& options, Language language,
+    const GiftRngNotifications& notifications, EventNotificationOption& finished
+){
+    //  The console's seed and CSF offsets, from Starter RNG too, and Gift
+    //  RNG's own in-game offset, saved as Starter RNG's are.
+    RngStopCalibrationOptions& calibration = options.CALIBRATION;
+    ConsoleGiftRngSteps console_steps(env, context, GiftRngConsoleSettings{
+        .language = language, .sound = options.SOUND, .calibration = calibration.calibration(calibration.GIFT_INGAME),
+    }, notifications);
+    CalibrationSavingSteps steps(console_steps, calibration, calibration.GIFT_INGAME);
+    const StarterRngLoopResult result = run_rng_plan_in_program(env, steps, planned, options);
+    return shiny_or_stop(env, finished, result, gift_rng_loop_message(result));
+}
+
+//  After a shiny Squirtle: off its summary, and the rows to run next: the
+//  rival's battle, which saves (00.04b), and the rows after it to `last`.
+//  Until that save, a reload would load the save under the ball and lose
+//  the shiny, so a failure stops the run instead.
+static StoryRunPlan after_shiny_starter(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context, StoryEnv& story,
+    size_t ball_row, size_t last, const StoryHandoffs& handoffs
+){
+    StoryRunPlan plan = rows_after_starter_rng(story_checkpoints(), ball_row, last, handoffs);
     //  As Starter RNG leaves the summary for the overworld.
     pbf_mash_button(context, BUTTON_B, 5000ms);
     context.wait_for_all_requests();
-    env.console.log("The shiny Squirtle isn't saved until " + rows.front().id + " saves after the rival's battle. "
+    env.console.log("The shiny Squirtle isn't saved until " + plan.rows.front().id + " saves after the rival's battle. "
         "If it fails before then, the run stops without reloading: save by hand.", COLOR_BLUE);
     story.has_save = false;
-    run_story_rows(env, story, executor, rows, policy, nullptr);
-    return rows.back().id;
+    return plan;
+}
+
+//  After a shiny Magikarp: the rows to run next, from 00.12b, which leaves
+//  its summary and saves, to `last`. Until that save, a failure stops the
+//  run, as after a shiny Squirtle.
+static StoryRunPlan after_shiny_magikarp(
+    SingleSwitchProgramEnvironment& env, StoryEnv& story, size_t salesman_row, size_t last, const StoryHandoffs& handoffs
+){
+    StoryRunPlan plan = rows_after_gift_rng(story_checkpoints(), salesman_row, last, handoffs);
+    env.console.log("The shiny Magikarp isn't saved until " + plan.rows.front().id + " saves. "
+        "If it fails before then, the run stops without reloading: save by hand.", COLOR_BLUE);
+    story.has_save = false;
+    return plan;
 }
 
 //  The run is done through `done_through`. The finish message also gives
-//  the SID when Starter RNG set it, from `sid_before` to `sid_after`.
+//  the SID when an RNG loop set it, from `sid_before` to `sid_after`.
 static void send_story_finished(
     SingleSwitchProgramEnvironment& env, EventNotificationOption& finished,
     const std::string& done_through, const std::string& sid_before, const std::string& sid_after
 ){
     std::string message = "AutoStory: done through " + done_through + ".";
     if (sid_after != sid_before){
-        message += " Starter RNG confirmed the SID, " + sid_after + ", and saved it as the RNG plan's SID.";
+        message += " The RNG plan's attempts confirmed the SID, " + sid_after + ", and saved it as the RNG plan's SID.";
     }
     env.console.log(message);
     send_program_finished_notification(env, finished, message);
@@ -575,6 +640,7 @@ StoryHandoffs AutoStory::story_handoffs() const{
     return StoryHandoffs{
         .sid_helper = RUN_STARTER_RNG ? static_cast<std::string>(RNG_PLAN.SID).empty() : bool(STOP_FOR_SID_HELPER),
         .starter_rng = STOP_FOR_STARTER_RNG || RUN_STARTER_RNG,
+        .gift_rng = RUN_GIFT_RNG,
     };
 }
 
@@ -606,31 +672,72 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     }
     StoryEnv story = story_env(env, context, checkpoints[first], RUN.check_level(), KEEP_START_FRAME);
     story.player_name = player_name;
-    prepare_start(env, context, checkpoints, first, story);
+    const bool at_gift_rng = plan.stop == StoryHandoff::GIFT_RNG && plan.rows.empty();
+    prepare_start(env, context, checkpoints, first, story, at_gift_rng);
     story.language = RUN.language();
     StoryExecutor executor(story);
-    StarterRngPlanned planned;
-    std::function<void()> before;
-    if (plan.stop == StoryHandoff::STARTER_RNG){
-        before = [&]{ planned = plan_starter_rng_attempts(env, context, RNG_PLAN, RUN.language()); };
+
+    const std::optional<std::string> done_through = at_gift_rng
+        ? run_from_gift_rng_save(env, context, story, executor, first)
+        : run_story_plan(env, context, story, executor, std::move(plan));
+    if (done_through){
+        send_story_finished(env, NOTIFICATION_PROGRAM_FINISH, *done_through, sid_before, RNG_PLAN.SID);
     }
-    run_story_rows(env, story, executor, plan.rows, RUN.policy(), std::move(before));
-    std::string done_through = plan.rows.back().id;
-    if (plan.stop == StoryHandoff::STARTER_RNG){
-        std::optional<std::string> done = after_starter_ball(
-            env, context, story, executor, planned, checkpoint_index(checkpoints, done_through)
-        );
-        if (!done){
-            return;
-        }
-        done_through = *done;
-    }
-    send_story_finished(env, NOTIFICATION_PROGRAM_FINISH, done_through, sid_before, RNG_PLAN.SID);
 }
 
-std::optional<std::string> AutoStory::after_starter_ball(
+std::optional<std::string> AutoStory::run_story_plan(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    StoryEnv& story, StoryExecutor& executor, const StarterRngPlanned& planned, size_t ball_row
+    StoryEnv& story, StoryExecutor& executor, StoryRunPlan plan
+){
+    while (true){
+        const std::string last_id = plan.rows.back().id;
+        const StoryHandoff stop = plan.stop;
+        StarterRngPlanned planned;
+        std::function<void()> before;
+        if (stop == StoryHandoff::STARTER_RNG || stop == StoryHandoff::GIFT_RNG){
+            before = [&, stop, last_id]{
+                planned = plan_handoff_attempts(env, context, RNG_PLAN, RUN.language(), stop, last_id);
+            };
+        }
+        run_story_rows(env, story, executor, plan.rows, RUN.policy(), std::move(before));
+        const size_t row = checkpoint_index(story_checkpoints(), last_id);
+        std::optional<StoryRunPlan> next;
+        switch (stop){
+        case StoryHandoff::NONE:
+            return last_id;
+        case StoryHandoff::SID_HELPER:
+            throw InternalProgramError(&env.logger(), PA_CURRENT_FUNCTION, "SID Helper's stop has no rows to run.");
+        case StoryHandoff::STARTER_RNG:
+            next = after_starter_ball(env, context, story, planned, row);
+            break;
+        case StoryHandoff::GIFT_RNG:
+            next = after_magikarp_salesman(env, context, story, planned, row);
+            break;
+        }
+        if (!next){
+            return std::nullopt;
+        }
+        plan = std::move(*next);
+    }
+}
+
+std::optional<std::string> AutoStory::run_from_gift_rng_save(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    StoryEnv& story, StoryExecutor& executor, size_t first
+){
+    const StarterRngPlanned planned = plan_handoff_attempts(
+        env, context, RNG_PLAN, RUN.language(), StoryHandoff::GIFT_RNG, story_checkpoints()[first].id
+    );
+    std::optional<StoryRunPlan> next = after_magikarp_salesman(env, context, story, planned, first - 1);
+    if (!next){
+        return std::nullopt;
+    }
+    return run_story_plan(env, context, story, executor, std::move(*next));
+}
+
+std::optional<StoryRunPlan> AutoStory::after_starter_ball(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    StoryEnv& story, const StarterRngPlanned& planned, size_t ball_row
 ){
     if (!RUN_STARTER_RNG){
         stop_for_starter_rng(env, NOTIFICATION_PROGRAM_FINISH, RNG_PLAN.sound_name(), rng_attempt_lines(planned.attempts));
@@ -642,7 +749,20 @@ std::optional<std::string> AutoStory::after_starter_ball(
     if (!run_starter_rng_in_program(env, context, planned, RNG_PLAN, RUN.language(), notifications, NOTIFICATION_PROGRAM_FINISH)){
         return std::nullopt;
     }
-    return run_after_shiny_starter(env, context, story, executor, RUN.policy(), ball_row, RUN.end_index());
+    return after_shiny_starter(env, context, story, ball_row, RUN.end_index(), story_handoffs());
+}
+
+std::optional<StoryRunPlan> AutoStory::after_magikarp_salesman(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    StoryEnv& story, const StarterRngPlanned& planned, size_t salesman_row
+){
+    const GiftRngNotifications notifications{
+        .shiny = NOTIFICATION_SHINY, .status_update = NOTIFICATION_STATUS_UPDATE, .error_recoverable = NOTIFICATION_ERROR_RECOVERABLE,
+    };
+    if (!run_gift_rng_in_program(env, context, planned, RNG_PLAN, RUN.language(), notifications, NOTIFICATION_PROGRAM_FINISH)){
+        return std::nullopt;
+    }
+    return after_shiny_magikarp(env, story, salesman_row, RUN.end_index(), story_handoffs());
 }
 
 

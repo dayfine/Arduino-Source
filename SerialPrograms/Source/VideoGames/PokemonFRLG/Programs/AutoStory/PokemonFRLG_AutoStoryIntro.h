@@ -23,6 +23,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "PokemonFRLG_AutoStoryPresses.h"
+#include "PokemonFRLG_AutoStoryRngReturns.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -69,10 +70,6 @@ void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, 
 //  OK not pressed, which is where SID Helper starts. Empty types nothing.
 void play_new_game_to_player_name(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name);
 
-//  From the Trainer Card SID Helper leaves open, or from HOME (its "go
-//  home when done"): back to the game, the card and the START menu closed.
-//  Returns on the overworld.
-void close_trainer_card(ConsoleHandle& console, ProControllerContext& context);
 
 
 

@@ -43,13 +43,18 @@
 #include "Overworld/PokemonFRLG_OverworldReanchor.h"
 #include "Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "Overworld/PokemonFRLG_OverworldRoute.h"
+#include "Overworld/PokemonFRLG_OverworldSim.h"
 #include "Overworld/PokemonFRLG_OverworldWalk.h"
 #include "Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "Programs/PokemonFRLG_NamingScreenKeyboard_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryCapture.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryPcStorage.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryAbilities.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryExport_Tests.h"
+#include "Programs/RngManipulation/PokemonFRLG_GiftRngAttempts_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanInputs_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanLog_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanTracker_Tests.h"
@@ -77,7 +82,7 @@ static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
     add_tests_AutoStoryScreenEvents(database);
 }
 
-//  The RNG plan: its targets, attempts and the Starter RNG loop.
+//  The RNG programs' searches, plans and loops.
 static void add_tests_RngPlanning(UnitTestDatabase& database){
     add_tests_RngTargetSearch(database);
     add_tests_RngPlanInputs(database);
@@ -86,6 +91,7 @@ static void add_tests_RngPlanning(UnitTestDatabase& database){
     add_tests_RngPlanLog(database);
     add_tests_RngSteps(database);
     add_tests_StarterRngLoop(database);
+    add_tests_GiftRngAttempts(database);
 }
 
 void add_tests(UnitTestDatabase& database){
@@ -124,12 +130,16 @@ void add_tests(UnitTestDatabase& database){
     add_tests_OverworldWalk(database);
     add_tests_OverworldReanchor(database);
     add_tests_OverworldRecovery(database);
+    add_tests_OverworldSim(database);
     add_tests_PlayerFacingReader(database);
     add_tests_AutoStory(database);
     add_tests_AutoStoryExport(database);
     add_tests_AutoStorySimulation(database);
     add_tests_AutoStoryItems(database);
     add_tests_AutoStoryRngLoop(database);
+    add_tests_AutoStoryCapture(database);
+    add_tests_AutoStoryPcStorage(database);
+    add_tests_AutoStoryAbilities(database);
     add_tests_NamingScreen(database);
     add_tests_RngPlanning(database);
 }

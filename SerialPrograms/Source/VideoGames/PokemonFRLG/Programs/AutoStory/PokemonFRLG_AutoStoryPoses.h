@@ -57,10 +57,15 @@ inline const std::string RUN_VARIANT = "run";
 //  The GAME step that closes the Trainer Card SID Helper leaves open.
 inline const std::string CLOSE_TRAINER_CARD = "close_trainer_card";
 
+//  The GAME step that leaves the gift's summary Gift RNG leaves open for
+//  the overworld.
+inline const std::string LEAVE_GIFT_SUMMARY = "leave_gift_summary";
+
 //  How `step`, a ROUTE or LEGS, moves the player: RUN_VARIANT runs.
 MoveSpeed move_speed(const StoryStep& step);
-//  The maps the story plans on: every map to Brock, with the objects the
-//  game hides after the Hall of Fame removed, as the lab's frlg_route does.
+//  The maps the story plans on: every map to Route 4's Pokemon Center, with
+//  the objects the game hides after the Hall of Fame removed, as the lab's
+//  frlg_route does.
 const std::vector<MapData>& story_maps();
 
 //  Converts a StoryPose to a general navigation Pose.

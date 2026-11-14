@@ -37,6 +37,14 @@ constexpr std::string_view MAP_NAMES[] = {
     "PewterCity_Mart",
     "PewterCity_Museum_1F",
     "PewterCity_Gym",
+    //  Route 3 to the Magikarp salesman in Route 4's Pokemon Center.
+    "Route3",
+    "Route4",
+    "Route4_PokemonCenter_1F",
+    //  Mt. Moon, from Route 4 west of it to Route 4 east of it.
+    "MtMoon_1F",
+    "MtMoon_B1F",
+    "MtMoon_B2F",
     //  Cerulean Cave, for Mewtwo.
     "CeruleanCity_PokemonCenter_1F",
     "CeruleanCity",

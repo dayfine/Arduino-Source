@@ -43,6 +43,9 @@ StoryHandoff read_handoff(std::string_view name, std::string_view source){
     if (name == "starter_rng"){
         return StoryHandoff::STARTER_RNG;
     }
+    if (name == "gift_rng"){
+        return StoryHandoff::GIFT_RNG;
+    }
     throw ParseException(std::format("{}: unknown handoff {}", source, name));
 }
 

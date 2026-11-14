@@ -27,6 +27,14 @@
         "kind": "scene",
         "declared_after": {"map": "PewterCity", "tiles": [[46, 21]], "facing": "north"},
         "why": "\"Oh, PLAYER!\" ... the Running Shoes; ends facing north"
+      },
+      {
+        "id": "below_pewter_center",
+        "kind": "route",
+        "args": {
+          "target": {"map": "PewterCity", "tiles": [[17, 26]], "facing": "south"}
+        },
+        "why": "west along row 21 and down to below the Pokemon Center's door (17, 25)"
       }
     ]
   },
@@ -42,6 +50,9 @@
       ],
       "shoes_from_aide": [
         "RunningShoesAideTriggerTop: the aide talks from (46, 20), no YES/NO; the player only turns up. He walks off and is removed; FLAG_SYS_B_DASH is set (console B, 2026-11-02: about 20 B presses to the overworld)."
+      ],
+      "below_pewter_center": [
+        "Where the by-hand walk stopped to start 00.11 (console B, 2026-11-02)."
       ]
     }
   },

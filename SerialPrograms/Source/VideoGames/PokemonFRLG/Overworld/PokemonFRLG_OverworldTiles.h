@@ -62,7 +62,9 @@ constexpr uint8_t ELEVATION_GROUND = 3;
 //    pokefirered TrySetUpWalkIntoSignpostScript()). Ledges are hopped the
 //    way they face, which isn't modelled, so the planner avoids them.
 //  - WATER is entered only by starting to Surf.
-//  - CLOSED_<side> can't be entered or left through that side.
+//  - CLOSED_<side> can't be entered or left through that side. One with wild
+//    encounters (a cave's) is listed in the map's region WILD_REGION, as its
+//    glyph can't say so too.
 //  - A warp entered by step_on (ladders, escalators) or cave_entrance warps
 //    the player who steps onto its tile; walk_<direction> (exit mats, stairs
 //    at the side of a room) warps the player standing on it who walks that

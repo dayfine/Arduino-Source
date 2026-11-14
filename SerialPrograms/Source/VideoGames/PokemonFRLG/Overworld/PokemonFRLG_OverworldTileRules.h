@@ -17,14 +17,13 @@
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
 #include "PokemonFRLG_OverworldTiles.h"
+#include "PokemonFRLG_OverworldWildTiles.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Whether the tile at point is tall grass terrain.
-bool is_tall_grass(const MapData& map, const TilePos& point);
 //  Whether the tile at point is a one-way ledge.
 bool is_ledge(const MapData& map, const TilePos& point);
 //  Whether the tile itself refuses a step in `direction`: entering it, or

@@ -2,10 +2,11 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  FireRed from a new game to the Boulder Badge and the Running Shoes, as
- *  story checkpoints 00.01 to 00.10, each saved at its end. After 00.10
- *  every route and leg runs. Taken from a by-hand run on
- *  console B (2026-11-01) and the pokefirered map scripts.
+ *  FireRed from a new game to the Boulder Badge, the Running Shoes, Route
+ *  3 to the Magikarp salesman in Route 4's Pokemon Center, and through Mt.
+ *  Moon to Route 4 east of it, as story checkpoints 00.01 to 00.13, each
+ *  saved at its end. After 00.10 every route and leg runs. Taken from a
+ *  by-hand run on console B (2026-11-01) and the pokefirered map scripts.
  *
  *  Each checkpoint is an authored JSON file in StoryData/
  *  (frlg-<id>.plan.json, format pokesim-authored-checkpoint/1): the shared
@@ -18,7 +19,7 @@
  *                  its start, for a run that loads its save;
  *      "lead"      optional: "after_brock", the starter as the story left
  *                  it by Brock (story_lead_after_brock());
- *      "handoff"   optional: sid_helper or starter_rng, the RNG program
+ *      "handoff"   optional: sid_helper, starter_rng or gift_rng, the RNG program
  *                  the user may run there (StoryCheckpoint::handoff);
  *      "live_start" optional, true: it starts from the game as another
  *                  program left it (StoryCheckpoint::live_start);
@@ -56,14 +57,18 @@ const std::vector<std::pair<std::string, std::string>>& autostory_checkpoint_jso
 //  action args it doesn't take, or has notes for a step it doesn't have.
 StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_view source);
 
-//  Checkpoints 00.01 to 00.10, in order: every file in StoryData/. With
-//  00.01b, the way back in after SID Helper, after 00.01, and 00.04 split
-//  in two at Squirtle's ball for Starter RNG: 00.04 and 00.04b.
+//  Checkpoints 00.01 to 00.13, in order: every file in StoryData/. With
+//  00.01b, the way back in after SID Helper, after 00.01, 00.04 split in
+//  two at Squirtle's ball for Starter RNG: 00.04 and 00.04b, 00.12b, the
+//  way back in after Gift RNG, after 00.12, and 00.12c, the Magikarp put
+//  in BOX 1, after it.
 const std::vector<StoryCheckpoint>& story_checkpoints();
 
 
 //  Registers AutoStory table validation unit tests.
 void add_tests_AutoStory(UnitTestDatabase& database);
+//  Which rows a run takes (PokemonFRLG_AutoStoryRunPlan_Tests.cpp).
+void add_tests_AutoStoryRunPlan(UnitTestDatabase& database);
 //  The table run end to end against a fake game (PokemonFRLG_AutoStorySimulation_Tests.cpp).
 void add_tests_AutoStorySimulation(UnitTestDatabase& database);
 

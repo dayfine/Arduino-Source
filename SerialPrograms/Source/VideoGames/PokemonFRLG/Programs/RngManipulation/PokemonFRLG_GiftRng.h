@@ -14,6 +14,7 @@
 #include "CommonTools/Options/LanguageOCROption.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
 #include "PokemonFRLG_BlindNavigation.h"
+#include "PokemonFRLG_GiftRngAttempts.h"
 #include "PokemonFRLG_RngDisplays.h"
 #include "PokemonFRLG_RngProgram.h"
 #include "PokemonFRLG_SeedsDatabase.h"
@@ -25,7 +26,7 @@ namespace PokemonFRLG{
 class GiftRng_Descriptor : public SingleSwitchProgramDescriptor{
 public:
     GiftRng_Descriptor();
-    struct Stats;
+    using Stats = GiftRngStats;
     virtual std::unique_ptr<StatsTracker> make_stats() const override;
 };
 

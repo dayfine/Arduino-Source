@@ -26,17 +26,26 @@ struct OverworldWalkInput{
     int tiles;
     bool to_wall;
     bool surfing;
+    bool walk_only = false;
 };
 
 struct OverworldWalkExpectation{
     Milliseconds hold;
     std::string_view note;
+    bool runs = false;
 };
 
 struct OverworldWalkTestCase{
     OverworldWalkInput input;
     OverworldWalkExpectation expectation;
 };
+
+//  Whether `mover` is hold_dpad_running(), which holds B.
+bool holds_b(const Pokemon::LegMover<ProControllerContext>& mover){
+    using Mover = void (*)(ProControllerContext&, Direction, Milliseconds);
+    const Mover* target = mover.target<Mover>();
+    return target != nullptr && *target == hold_dpad_running;
+}
 
 class Test_OverworldWalk : public UnitTest{
 public:
@@ -50,6 +59,7 @@ public:
         step.tiles = m_scenario.input.tiles;
         step.to_wall = m_scenario.input.to_wall;
         step.surfing = m_scenario.input.surfing;
+        step.walk_only = m_scenario.input.walk_only;
         const Milliseconds hold = leg_hold_time(step, m_scenario.input.speed);
         if (hold != m_scenario.expectation.hold){
             return std::format("Expected a hold of {}ms, got {}ms.", m_scenario.expectation.hold.count(), hold.count());
@@ -57,6 +67,9 @@ public:
         const std::string note = speed_note(step, m_scenario.input.speed);
         if (note != m_scenario.expectation.note){
             return "Expected the note \"" + std::string(m_scenario.expectation.note) + "\", got \"" + note + "\".";
+        }
+        if (holds_b(leg_mover(step, m_scenario.input.speed)) != m_scenario.expectation.runs){
+            return m_scenario.expectation.runs ? "Expected the leg held with B." : "Expected the leg held without B.";
         }
         return true;
     }
@@ -79,11 +92,19 @@ const OverworldWalkTestCase OVERWORLD_WALK_CASES[] = {
     },
     {
         .input = {.name = "run, open", .speed = MoveSpeed::RUN, .tiles = 5, .to_wall = false, .surfing = false},
-        .expectation = {.hold = Milliseconds(4 * 133 + 66), .note = ""},
+        .expectation = {.hold = Milliseconds(4 * 133 + 66), .note = "", .runs = true},
     },
     {
         .input = {.name = "run, to a wall", .speed = MoveSpeed::RUN, .tiles = 40, .to_wall = true, .surfing = false},
-        .expectation = {.hold = Milliseconds(42 * 133), .note = "[Speed] run west: 40 tiles in 5320 ms, held 5586 ms"},
+        .expectation = {.hold = Milliseconds(42 * 133), .note = "[Speed] run west: 40 tiles in 5320 ms, held 5586 ms", .runs = true},
+    },
+    {
+        .input = {.name = "run, indoors: walks", .speed = MoveSpeed::RUN, .tiles = 5, .to_wall = true, .surfing = false, .walk_only = true},
+        .expectation = {.hold = Milliseconds(7 * 267), .note = "[Speed] walk west: 5 tiles in 1335 ms, held 1869 ms"},
+    },
+    {
+        .input = {.name = "run, indoors, open: walks", .speed = MoveSpeed::RUN, .tiles = 5, .to_wall = false, .surfing = false, .walk_only = true},
+        .expectation = {.hold = Milliseconds(4 * 267 + 133), .note = ""},
     },
     {
         .input = {.name = "run, surfing to a wall", .speed = MoveSpeed::RUN, .tiles = 3, .to_wall = true, .surfing = true},

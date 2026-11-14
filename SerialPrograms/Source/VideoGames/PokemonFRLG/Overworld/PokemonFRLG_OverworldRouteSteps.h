@@ -50,6 +50,9 @@ struct RouteStep{
     bool warps = false;
     //  WALK: on the water, where the player moves twice as fast.
     bool surfing = false;
+    //  WALK: on a map where the game doesn't let the player run (indoors,
+    //  MapData::allow_running): B held there still walks.
+    bool walk_only = false;
     //  WALK: a wall stops the player at the end, so the leg can be held for
     //  longer than it takes and still ends on its tile.
     bool to_wall = false;
