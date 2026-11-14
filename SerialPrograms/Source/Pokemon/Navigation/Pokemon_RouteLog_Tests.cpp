@@ -23,16 +23,16 @@ namespace Pokemon{
 
 namespace{
 
-struct RouteLogInput{
-    std::string name;
-    std::string line;
-};
-struct RouteLogExpectation{
-    std::string expected;
-};
 struct RouteLogTestCase{
-    RouteLogInput input;
-    RouteLogExpectation expectation;
+    struct Input{
+        std::string name;
+        std::string line;
+    };
+    struct Expectation{
+        std::string expected;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 class Test_RouteLog : public UnitTest{
