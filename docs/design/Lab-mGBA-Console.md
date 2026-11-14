@@ -1,9 +1,20 @@
 # Lab: mGBA as a console for FRLG
 
-Design proposal, 2026-11-14. No code changes. The user decided to go ahead with mGBA: the official
-build 0.10.5 now runs at `/Applications/mGBA.app`, and the user has loaded a FireRed ROM locally. This doc
-says how SerialPrograms drives it (buttons in, frames out, one frame clock), where it plugs in, and the
-slices to build it.
+Design, 2026-11-14. Accepted by the user on 2026-11-14 ("accepts recommendations"): every open question
+below is now a decision. No code changes. The user decided to go ahead with mGBA: the official build
+0.10.5 runs at `/Applications/mGBA.app` (the Homebrew build crashes), and the user has loaded a FireRed
+ROM locally. This doc says how SerialPrograms drives it (buttons in, frames out, one frame clock), where
+it plugs in, and the slices to build it.
+
+## First action: step 0 (user)
+
+Before slice 0 can be accepted, the user loads the bridge by hand once per mGBA launch (0.10.5 has no
+`--script` flag):
+
+1. Open `/Applications/mGBA.app` and load the local FireRed ROM (File > Load ROM).
+2. Tools > Scripting, then File > Load script, and pick `lab/mgba/bridge.lua` from a checkout of `agents`
+   (added by slice 0).
+3. The scripting console prints the port it listens on; the smoke client (slice 0) connects to it.
 
 Inputs:
 
@@ -27,6 +38,9 @@ Inputs:
 The ROM stays on the user's Mac. Nothing in this design copies, commits, uploads or publishes it, or a
 hash of it.
 
+- The ROM is not a dump of the user's own cartridge; the user decided to move forward with it anyway
+  (user 2026-11-14). Because of that it stays strictly local: never copied, committed, uploaded or
+  named in a record.
 - The ROM path comes from a local config file outside every repo:
   `~/.config/pokemonautomation/mgba.json`, for example `{"rom": "<path>", "instances": {"emu-1": 47801}}`.
   Only the lab runner reads it. It hands the path to mGBA on the command line.
@@ -157,8 +171,7 @@ console slot has one link to one emulator.
   devices.
 - AutoStory on `emulator` takes the normal gifts instead of the RNG gift steps and never claims RNG
   results (user, 2026-11-13, answer 4).
-- The movement mechanics table stays the console's until a measured mGBA run says otherwise (open
-  question 3).
+- The movement mechanics table stays the console's until a measured mGBA run says otherwise (decision 3).
 
 **Save states as checkpoint starts.** The lab runner (agents branch, `lab/mgba/`), not the program, loads
 `~/FRLGLab/mgba/<label>/states/NN.MM.ss` through the bridge before it starts AutoStory with
@@ -175,7 +188,7 @@ are game screenshots: they stay local like the console captures, linked by path.
 the same folder, so the case can also be rerun in mGBA from its state.
 
 **Lab control.** mGBA instances are not console B. The pa-lab daemon's allowlist stays B; mGBA runs go
-through the runner until a later entry is designed (open question 5).
+through the runner until a later entry is designed (decision 5).
 
 ## 4. Rollout
 
@@ -183,7 +196,7 @@ Each slice is one small PR with its own acceptance.
 
 | # | Slice | Where | Acceptance |
 |---|---|---|---|
-| 0 | `lab/mgba/bridge.lua` and the protocol text; a Python smoke client | agents branch | On the user's Mac with 0.10.5 and the local ROM: `HELLO` returns `BPRE`; `KEYS` at frame F shows the key held from F (read back with `emu:getKeys`); a `GRANT` stall holds `currentFrame` still for 2 s with the window responsive; `SAVE`/`LOAD` round trip returns the same frame; `FRAME` cost measured. Numbers recorded in the PR. |
+| 0 | `lab/mgba/bridge.lua` and the protocol text; a Python smoke client | agents branch | After step 0, on the user's Mac with 0.10.5 and the local ROM: `HELLO` returns `BPRE`; `KEYS` at frame F shows the key held from F (read back with `emu:getKeys`); a `GRANT` stall holds `currentFrame` still for 2 s with the window responsive; `SAVE`/`LOAD` round trip returns the same frame; `FRAME` cost measured. Numbers recorded in the PR. |
 | 1 | `MgbaLink_Connection` + `VideoSource_MgbaLink` | fork branch from `lab/tooling` | Unit tests against a fake server: framing, `LATE`, compose geometry (nearest, x=180..1740), timestamps from frame numbers. Live: the lab app (own `--profile`) shows the mGBA picture. |
 | 2 | `ProController_MgbaLink`, the pacer and the input log | same stack | Unit tests: ms-to-frames table (17→1, 80→5, 1000→60), button map, scheduled `KEYS` frames. Live: FRLG start menu opens and closes. |
 | 3 | FRLG `Device::emulator` | FRLG fork stack | FRLG unit tests unchanged on `switch_1_2`. Live: AutoStory 00.x runs from a new game on mGBA. |
@@ -193,23 +206,24 @@ Each slice is one small PR with its own acceptance.
 Later, separate designs: the headless libmgba host (earlier note, option C); the virtual-clock seam;
 mGBA instances in the pa-lab daemon.
 
-## 5. Open questions (with recommended answers)
+## 5. Decisions (were open questions; user 2026-11-14)
 
-1. **Stay on 0.10.5 or move to the 0.11 nightly?** Recommended: stay on 0.10.5, the official build the
-   user installed. The cost is one manual script load per launch and frames through a PNG file. Move to a
-   pinned nightly only if slice 0 measures `FRAME` at over one frame (16.7 ms) or launch automation
-   becomes the bottleneck; the protocol is the same on both.
-2. **Paced lockstep or free-running by default?** Recommended: paced, if slice 0 shows the stall holds
-   the emulator cleanly; deterministic input is the main thing mGBA gives that console B cannot.
-3. **Own movement table for mGBA?** Recommended: no, not first. Run slice 3 with the console table and
-   add a per-device row to the mechanics module only for legs that fail, with measurements.
-4. **Compose to 1080p or native 240x160 with `GAME_BOX` = full frame?** Recommended: compose with
-   nearest now (zero detector change, gate passed); fix the eight lost text reads in their own PR. Native
-   frames wait for the four full-frame call sites to move to `GAME_BOX`.
-5. **Expose mGBA instances through the pa-lab daemon?** Recommended: not before slice 4 works. Then a
-   separate allowlist entry per instance, with no console-B lease semantics.
-6. **Which ROM revision?** Recommended: whatever the user loaded; the runner checks the header game code
-   and keeps the revision label in the local config. Detector or text differences against the NSO build
-   are recorded as findings, not fixed blind.
-7. **RNG gifts on mGBA?** Recommended: skip them, as answered on 2026-11-13; console B stays the
-   acceptance run for RNG.
+1. **Stay on 0.10.5.** The official build the user installed. The cost is one manual script load per
+   launch (step 0) and frames through a PNG file. Move to a pinned nightly only if slice 0 measures
+   `FRAME` at over one frame (16.7 ms) or launch automation becomes the bottleneck; the protocol is the
+   same on both. (user 2026-11-14)
+2. **Paced lockstep by default,** provided slice 0 shows the stall holds the emulator cleanly; otherwise
+   free-running. Deterministic input is the main thing mGBA gives that console B cannot. (user 2026-11-14)
+3. **No own movement table for mGBA at first.** Run slice 3 with the console table and add a per-device
+   row to the mechanics module only for legs that fail, with measurements. (user 2026-11-14)
+4. **Compose to 1080p with nearest-neighbour now** (zero detector change, gate passed); fix the eight lost
+   text reads in their own PR. Native 240x160 frames wait for the four full-frame call sites to move to
+   `GAME_BOX`. (user 2026-11-14)
+5. **No pa-lab daemon entry before slice 4 works.** Then a separate allowlist entry per instance, with no
+   console-B lease semantics. (user 2026-11-14)
+6. **ROM revision: whatever the user loaded.** The runner checks the header game code and keeps the
+   revision label in the local config. Detector or text differences against the NSO build are recorded as
+   findings, not fixed blind. The ROM is not a dump of the user's cartridge; the user chose to proceed
+   anyway, and it stays local (ROM rule above). (user 2026-11-14)
+7. **No RNG gifts on mGBA.** Skip them, as answered on 2026-11-13; console B stays the acceptance run for
+   RNG. (user 2026-11-14)
