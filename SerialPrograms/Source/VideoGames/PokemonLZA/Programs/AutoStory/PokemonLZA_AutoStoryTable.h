@@ -50,11 +50,6 @@ struct StoryData{
     //  through ("reload_when_chained": "always"): the row before leaves the
     //  player where the row's walk cannot start, only its save can.
     std::set<std::string, std::less<>> reload_always;
-    //  The ids of the rows for lab runs only ("execution": {"dev_only":
-    //  true}): a test walk between two story rows that the story itself
-    //  does not need, as 03.07d back to the Pokemon Center. A run outside
-    //  developer mode neither lists nor plays them (story_rows_for_mode()).
-    std::set<std::string, std::less<>> dev_only;
     //  The dev files that replaced a built-in checkpoint, as (file name,
     //  path).
     std::vector<std::pair<std::string, std::string>> dev_files;

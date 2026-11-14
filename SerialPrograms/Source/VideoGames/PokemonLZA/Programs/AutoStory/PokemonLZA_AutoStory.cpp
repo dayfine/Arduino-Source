@@ -13,7 +13,6 @@
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
-#include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
@@ -60,17 +59,11 @@ std::unique_ptr<StatsTracker> AutoStory_Descriptor::make_stats() const{
 
 namespace{
 
-//  The built-in rows a run may play (story_rows_for_mode()): the dev-only
-//  rows only in Developer Mode. The dropdowns' indices name these rows.
-std::vector<StoryCheckpoint> panel_rows(const StoryData& story){
-    return story_rows_for_mode(story, STATIC_GLOBALS.DEVELOPER_MODE);
-}
-
 //  The start and end dropdowns' entries. The options hold a reference to it.
 const StringSelectDatabase& checkpoint_database(){
     static const StringSelectDatabase database = []{
         std::vector<std::string> labels;
-        for (const StoryCheckpoint& row : panel_rows(builtin_story_data())){
+        for (const StoryCheckpoint& row : story_checkpoints()){
             labels.push_back(story_checkpoint_label(row));
         }
         return story_checkpoint_database(labels);
@@ -206,7 +199,7 @@ StoryRunPolicy run_policy(const Pokemon::StoryRunOptions& run, const BooleanChec
 
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     const StoryData story_data = load_run_story(env.console);
-    const std::vector<StoryCheckpoint> rows = panel_rows(story_data);
+    const std::vector<StoryCheckpoint>& rows = story_data.checkpoints;
     const size_t first = RUN.start_index();
     const size_t last = RUN.end_index();
     if (first > last || last >= rows.size()){

@@ -4,7 +4,7 @@
  *
  *  Walks that keep the camera on the main mission's objective marker
  *  (read_objective_marker(), PokemonLZA_AutoStoryCatches.h) and walk back
- *  away from it: 03.08's road stops, and the lab's 03.07d back from Wild
+ *  away from it: 03.08's road stops, and 03.07d back from Wild
  *  Zone 1 to the Pokemon Center.
  *
  */
@@ -33,7 +33,7 @@ bool turn_to_pinned_marker(ProControllerContext& context, double x);
 //  in walk_to_objective(). Returns the last distance read.
 std::optional<int> walk_from_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit);
 
-//  The lab's 03.07d, from where 03.07's catches end in Wild Zone 1 to the
+//  03.07d, from where 03.07's catches end in Wild Zone 1 to the
 //  front of Vert's Pokemon Center, all walked back away from the objective
 //  marker (the zone's far gate), the reverse of 03.08's center_to_zone_1():
 //  to the entrance gate (the one 03.06 came in by) until its "A Leave" or
