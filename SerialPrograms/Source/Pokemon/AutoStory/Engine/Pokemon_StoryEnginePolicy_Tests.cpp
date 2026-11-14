@@ -55,7 +55,7 @@ enum class HashRecord{
 //  A look at B3F (12, 13) or wherever `map` is.
 Observation<GridPose> end_look(std::string map){
     Observation<GridPose> observation;
-    observation.events = ScreenEvents{ScreenEvent::CAN_MOVE};
+    observation.events = ScreenEvents{ScreenEvent::PLAYER_CAN_MOVE};
     observation.pose = GridPose{.map = std::move(map), .tiles = {{12, 13}}, .facing = Direction::NORTH};
     return observation;
 }
@@ -144,7 +144,7 @@ std::vector<Observation<GridPose>> engine_looks(std::string_view end_map){
         return {end_look("RocketHideout_B3F")};
     }
     Observation<GridPose> text;
-    text.events = ScreenEvents{ScreenEvent::TEXT_BOX};
+    text.events = ScreenEvents{ScreenEvent::DIALOG_BOX};
     return {std::move(text), end_look(std::string(end_map))};
 }
 
@@ -359,9 +359,9 @@ struct ScreenCase{
 };
 
 const ScreenCase SCREEN_CASES[] = {
-    {.input = {.name = "battle first", .events = {ScreenEvent::BATTLE, ScreenEvent::TEXT_BOX}}, .expectation = {.state = "battle"}},
-    {.input = {.name = "text", .events = {ScreenEvent::TEXT_BOX}}, .expectation = {.state = "text"}},
-    {.input = {.name = "overworld", .events = {ScreenEvent::CAN_MOVE}}, .expectation = {.state = "overworld"}},
+    {.input = {.name = "battle first", .events = {ScreenEvent::BATTLE_STARTED, ScreenEvent::DIALOG_BOX}}, .expectation = {.state = "battle"}},
+    {.input = {.name = "text", .events = {ScreenEvent::DIALOG_BOX}}, .expectation = {.state = "text"}},
+    {.input = {.name = "overworld", .events = {ScreenEvent::PLAYER_CAN_MOVE}}, .expectation = {.state = "overworld"}},
     {.input = {.name = "image-only state skipped", .events = {ScreenEvent::FADE_WHITE}}, .expectation = {}},
 };
 
@@ -377,9 +377,9 @@ ScreenState observation_state(std::string name, ScreenEvent event){
 
 std::string check_screen(const ScreenCase& test){
     std::vector<ScreenState> states{
-        observation_state("battle", ScreenEvent::BATTLE),
-        observation_state("text", ScreenEvent::TEXT_BOX),
-        observation_state("overworld", ScreenEvent::CAN_MOVE),
+        observation_state("battle", ScreenEvent::BATTLE_STARTED),
+        observation_state("text", ScreenEvent::DIALOG_BOX),
+        observation_state("overworld", ScreenEvent::PLAYER_CAN_MOVE),
     };
     ScreenState image_only;
     image_only.name = "image_only";
@@ -390,7 +390,7 @@ std::string check_screen(const ScreenCase& test){
     states.push_back(std::move(image_only));
     ScreenObservation observation;
     for (ScreenEvent event : test.input.events){
-        observation.events.add(event);
+        observation.events.set(event, true);
     }
     const ScreenState* state = match_screen_state(states, observation);
     const std::string got = state ? state->name : "none";
