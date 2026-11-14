@@ -40,7 +40,10 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "PokemonLZA:AutoStory",
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Play the main story of Pokemon Legends: Z-A. Prototype: plays a new game to the station platform, as recorded on a console. Checkpoint 01.00 (a new game) starts on the new game's Confirm Choices screen, with the language, look and name chosen by hand: it checks that screen, presses nothing anywhere else, and picks Ready!. Checkpoint 00.00 makes those choices too: it starts on the Switch HOME screen with PLZA's tile selected and no save, launches the selected tile without moving the cursor (closing it first if it is running) and plays the new game to the platform; a run from 00.00 skips 01.00. Go Home When Done leaves HOME with PLZA's tile selected, ready for the next new game.",
+        "Play the main story of Pokemon Legends: Z-A. Prototype: plays a new game to the station platform, as recorded on a console. "
+        "Start a new game and pick its language, look and name by hand: checkpoint 01.00 starts on the Confirm Choices screen that follows. "
+        "It checks that screen, presses nothing anywhere else, and picks Ready!. Later checkpoints load their save first. "
+        "Set Game Language to the language the game is set to: the program reads place names in it.",
         PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
