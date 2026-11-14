@@ -388,8 +388,13 @@ UnitTestResult test_teach_args(){
     if (!by_slot || by_slot->member != 1 || by_slot->forget_slot != 3u){
         return "Dig into slot 2, forgetting move 4, didn't read back.";
     }
+    const std::optional<TeachPlan> tutor = teach_plan_of(teach_args({.item = std::string(TEACH_TUTOR), .move = "mega-kick", .member = 0, .forget_move = "withdraw"}));
+    if (!tutor || tutor->item != TEACH_TUTOR || tutor->move != "mega-kick" || tutor->forget_move != "withdraw"){
+        return "The tutor's Mega Kick didn't read back from its args.";
+    }
     const std::vector<std::pair<std::string, Pokemon::StoryArgValue>> bad_args{
         {"item", std::string("potion")},
+        {"item", std::string("tutors")},
         {"slot", int64_t(7)},
         {"forget_slot", int64_t(5)},
         {"move", std::string("")},

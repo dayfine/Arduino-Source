@@ -60,6 +60,11 @@ struct RouteStep{
     //  tall grass or water. Elsewhere (indoors, streets) no wild battle can
     //  start, so the walker doesn't watch for one.
     bool wild = false;
+    //  WALK: the steps (from 1) onto a connected map. The game holds the
+    //  player up a tile before each while it loads the map: a hold timed
+    //  by the tiles alone ended a tile short (console B, 2026-11-03, rows
+    //  00.14, 00.16 and 00.20).
+    std::vector<int> connection_steps = {};
     //  Which way the player faces after the step. Arriving at a door or a
     //  cave mouth, the game walks the player a tile out, facing south.
     Direction facing_after = Direction::NORTH;

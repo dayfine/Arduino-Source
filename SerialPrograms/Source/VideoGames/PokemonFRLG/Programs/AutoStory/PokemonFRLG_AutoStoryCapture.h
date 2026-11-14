@@ -24,6 +24,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryCapture_H
 
 #include <cstddef>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -39,6 +40,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
+#include "PokemonFRLG_AutoStoryTrainerMessage.h"
 #include "PokemonFRLG_AutoStoryCaptureRun.h"
 #include "PokemonFRLG_AutoStoryCaptureTurns.h"
 #include "PokemonFRLG_AutoStoryCaptureStep.h"
@@ -80,12 +82,21 @@ public:
     virtual bool battle_shows() = 0;
     //  Whether the overworld is up, with no text or menu open.
     virtual bool overworld_shows() = 0;
+    //  Whether a message shows on the overworld: a trainer who saw the
+    //  player walked up and speaks.
+    virtual bool message_shows() = 0;
+    //  From that message: closes it, fights the trainer's battle after it,
+    //  and stands the player back on the patch's tile, from either tile
+    //  pacing may have left them on. Returns who was fought, for the log.
+    virtual std::string fight_trainer() = 0;
     //  Saves the screen as a debug image, named `label`.
     virtual void dump_screen(std::string_view label) = 0;
 };
 
 //  From the overworld, in the patch: steps until a wild battle starts,
-//  `max_steps` at most. True once one has.
+//  `max_steps` at most. True once one has. A trainer who sees the player
+//  meanwhile is fought (PatchSteps::fight_trainer()) and pacing goes on;
+//  their battle isn't a wild one.
 bool pace_until_battle(Logger& logger, PatchSteps& steps, size_t max_steps);
 
 //  Steps in a patch before pacing gives up: about 10 % of steps in grass
@@ -93,14 +104,19 @@ bool pace_until_battle(Logger& logger, PatchSteps& steps, size_t max_steps);
 constexpr size_t PACE_MAX_STEPS = 200;
 
 //  The console's PatchSteps: `pace` and back from `spot`, which each step
-//  updates.
+//  updates; a trainer is fought by `trainer_battle`.
 class ConsolePatchSteps : public PatchSteps{
 public:
-    ConsolePatchSteps(ConsoleHandle& console, ProControllerContext& context, Pokemon::Direction pace, PaceSpot& spot);
+    ConsolePatchSteps(
+        ConsoleHandle& console, ProControllerContext& context, Pokemon::Direction pace, PaceSpot& spot,
+        const PaceTrainerBattle& trainer_battle
+    );
 
     virtual bool step() override;
     virtual bool battle_shows() override;
     virtual bool overworld_shows() override;
+    virtual bool message_shows() override;
+    virtual std::string fight_trainer() override;
     virtual void dump_screen(std::string_view label) override;
 
 private:
@@ -108,6 +124,7 @@ private:
     ProControllerContext& m_context;
     Pokemon::Direction m_pace;
     PaceSpot& m_spot;
+    const PaceTrainerBattle& m_trainer_battle;
 };
 
 
@@ -115,10 +132,14 @@ private:
 //  shiny hunt finds them, a shiny heard as the shiny hunts hear it
 //  (handle_encounter()), and runs as they run (flee_battle()). The wild
 //  Pokemon's HP bar has no reader yet, so it reads UNKNOWN and nothing is
-//  weakened on the console.
+//  weakened on the console. A trainer who sees the player while pacing is
+//  fought by `trainer_battle`.
 class ConsoleCaptureActions : public CaptureActions{
 public:
-    ConsoleCaptureActions(ConsoleHandle& console, ProControllerContext& context, Language language);
+    ConsoleCaptureActions(
+        ConsoleHandle& console, ProControllerContext& context, Language language,
+        PaceTrainerBattle trainer_battle
+    );
 
     virtual bool find_encounter(Pokemon::Direction pace) override;
     virtual EncounterSeen read_encounter() override;
@@ -137,6 +158,7 @@ private:
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     Language m_language;
+    PaceTrainerBattle m_trainer_battle;
 };
 
 

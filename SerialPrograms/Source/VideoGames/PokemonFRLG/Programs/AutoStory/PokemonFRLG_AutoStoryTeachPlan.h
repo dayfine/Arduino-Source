@@ -28,7 +28,8 @@ namespace PokemonFRLG{
 
 //  What a TEACH step teaches.
 struct TeachPlan{
-    //  The TM or HM's slug, e.g. "hm03", "tm28".
+    //  The TM or HM's slug, e.g. "hm03", "tm28"; or TEACH_TUTOR, the move
+    //  tutor the player faces.
     std::string item = {};
     //  The move it holds, e.g. "surf".
     std::string move = {};

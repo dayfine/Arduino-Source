@@ -39,6 +39,7 @@
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryCheckpoints.h"
+#include "PokemonFRLG_AutoStoryPacedRoute.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

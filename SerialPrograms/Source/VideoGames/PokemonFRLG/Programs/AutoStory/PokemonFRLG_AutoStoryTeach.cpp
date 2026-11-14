@@ -62,7 +62,7 @@ std::optional<TeachPlan> teach_plan_of(const Pokemon::StoryActionArgs& args){
     const std::string* item = game_arg<std::string>(args, "item");
     const std::string* move = game_arg<std::string>(args, "move");
     const std::optional<size_t> member = counted_arg(args, "slot", PARTY_SLOTS);
-    if (item == nullptr || !is_tm_or_hm(*item) || move == nullptr || move->empty() || !member){
+    if (item == nullptr || !(is_tm_or_hm(*item) || *item == TEACH_TUTOR) || move == nullptr || move->empty() || !member){
         return std::nullopt;
     }
     TeachPlan plan{.item = *item, .move = *move, .member = *member};

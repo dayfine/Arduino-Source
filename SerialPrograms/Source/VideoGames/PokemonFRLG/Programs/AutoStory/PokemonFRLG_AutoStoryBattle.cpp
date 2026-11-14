@@ -764,13 +764,7 @@ public:
         return 400ms;
     }
     virtual void clear(ConsoleHandle& console, ProControllerContext& context) const override{
-        if (advance_text(console, context, AFTER_BATTLE_TEXT, true) == TextEnd::OVERWORLD){
-            return;
-        }
-        console.log("Story: a trainer's battle after a message on the overworld.");
-        fail_on_blackout(console, fight_battle(console, context, m_supplies, BattleKind::TRAINER, m_checks, m_language));
-        mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
-        recover_after_battle(console, context, m_supplies, m_checks, m_language);
+        clear_overworld_message(console, context, m_supplies, m_checks, m_language);
     }
 
 private:
@@ -971,6 +965,16 @@ BattleEnd fight_battle(
     Supplies& supplies, BattleKind kind, Pokemon::StoryCheckLevel checks, Language language
 ){
     return BattleLoop(console, context, supplies, kind, checks, language).run();
+}
+
+void clear_overworld_message(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, Pokemon::StoryCheckLevel checks, Language language){
+    if (advance_text(console, context, AFTER_BATTLE_TEXT, true) == TextEnd::OVERWORLD){
+        return;
+    }
+    console.log("Story: a trainer's battle after a message on the overworld.");
+    fail_on_blackout(console, fight_battle(console, context, supplies, BattleKind::TRAINER, checks, language));
+    mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
+    recover_after_battle(console, context, supplies, checks, language);
 }
 
 OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild, Pokemon::StoryCheckLevel checks, Language language){

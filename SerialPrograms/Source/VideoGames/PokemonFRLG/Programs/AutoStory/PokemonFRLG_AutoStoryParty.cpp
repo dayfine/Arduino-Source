@@ -93,7 +93,9 @@ constexpr Evolution EVOLUTIONS[] = {
 //  it learns over a full move list, and the move whose slot it takes. Any
 //  other move offered over four is declined. Squirtle's is the speedrun's:
 //  Water Gun where Bubble was (so the attack stays bottom left), Bite over
-//  Tail Whip. TM moves are not level-up prompts and are not here.
+//  Tail Whip. TM and tutor moves are not level-up prompts and are not
+//  here; no rule replaces them, so Water Pulse (TM03, 00.14c) and Mega Kick
+//  (Route 4's tutor, 00.14) are kept over every later level-up move.
 struct LearnRule{
     std::string_view line;
     std::string_view move;

@@ -90,6 +90,15 @@ std::optional<Reanchor> plan_reanchor(
     const RouteCosts& costs = default_route_costs()
 );
 
+//  Holds to walls that bring the player to one tile from every one of
+//  `tiles`, found as plan_reanchor() finds them, with no trainer about: for
+//  a player known to be on one of a few tiles without a stop (a wild
+//  battle's pacing). Empty if `tiles` are one tile; the last hold ends on
+//  it otherwise. Nothing if no holds bring them together.
+std::optional<std::vector<RouteStep>> holds_to_one_tile(
+    const std::vector<MapData>& maps, const std::vector<MapPosition>& tiles
+);
+
 
 //  Registers overworld reanchor unit tests.
 void add_tests_OverworldReanchor(UnitTestDatabase& database);

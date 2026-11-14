@@ -3,9 +3,30 @@
   "game": "frlg",
   "checkpoint": {
     "id": "00.14",
-    "title": "Route 4 east to Cerulean's Pokemon Center",
+    "title": "Route 4: Mega Kick from its tutor, then east to Cerulean's Pokemon Center",
     "start": {"map": "Route4", "tiles": [[32, 6]], "facing": "south"},
     "events": [
+      {
+        "id": "mega_kick_tutor",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route4", "tiles": [[50, 4]], "facing": "north"}
+        },
+        "why": "east and up through (48, 5) into the tutors' pen, below the Mega Kick tutor (50, 3)"
+      },
+      {
+        "id": "teach_mega_kick",
+        "kind": "game_action",
+        "action": "teach",
+        "args": {
+          "item": "tutor",
+          "move": "mega-kick",
+          "slot": 1,
+          "forget": "withdraw"
+        },
+        "why": "the tutor's Mega Kick in place of Withdraw, unless the lead knows it"
+      },
       {
         "id": "above_ledge",
         "kind": "route",
@@ -74,6 +95,9 @@
       "checkpoint": [
         "Route 4 east of Mt. Moon (Route4 map.json) joins Cerulean City at its east end (x 107; Route 4's row 3 is the city's row 13). Its upper road (rows 2..8) reaches the city only by water: the way on by land is down the ledge row 9 at x 90..96 to the lower road (rows 10..12), which joins the city's rows 20..22. Lass Crissy (75, 3) faces east, sight 4, over row 3 from x 76 to 79; the way east keeps out of her line and off the grass south of the road (75..87, 11..17).",
         "A ledge is taken as one step the way it faces, from the tile before it: the player hops it and lands two tiles on. Planned routes never hop a ledge (they hold into walls, and a held ledge hops), so where the only way on is down a ledge the row takes it as this one step."
+      ],
+      "mega_kick_tutor": [
+        "The Mega Kick tutor (Black Belt (50, 3), facing west, Route4_EventScript_MegaKickTutor) stands in a pen (46..51, 2..4) north of the road, beside the Mega Punch tutor (47, 3); the pen opens south only on (48, 5) and (49, 5), the rest of row 5 ledges out of it. From Mt. Moon's exit the walk goes east and up into the pen to (50, 4), below the tutor, and Mega Kick takes Withdraw's slot. Cerulean can't be walked back to Route 4's upper road without Surf, so it is now or much later."
       ],
       "cerulean_entry": [
         "The open leg east across the city's edge ended a tile short on the console (2026-11-03: on (6, 20), not (7, 20)), and no hold to a wall in the city's west end finds the player from there: the next hold south met the fence on (6, 23) and the walk went on a column off. So the entry ends on (9, 20), and only legs to walls follow."

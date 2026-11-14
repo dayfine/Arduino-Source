@@ -215,21 +215,22 @@ std::string grind_message(const GrindPlan& plan, const GrindResult& result){
 
 ConsoleGrindActions::ConsoleGrindActions(
     ConsoleHandle& console, ProControllerContext& context, Language language,
-    Supplies& supplies, Pokemon::StoryCheckLevel checks, HealTrip heal_trip
+    Supplies& supplies, Pokemon::StoryCheckLevel checks, HealTrip heal_trip, PaceTrainerBattle trainer_battle
 )
     : m_console(console)
     , m_context(context)
     , m_language(language)
     , m_supplies(supplies)
     , m_checks(checks)
-    , m_encounters(console, context, language)
+    , m_encounters(console, context, language, trainer_battle)
     , m_heal_trip(std::move(heal_trip))
+    , m_trainer_battle(std::move(trainer_battle))
 {}
 
 bool ConsoleGrindActions::find_encounter(Direction pace){
     //  As ConsoleCaptureActions::find_encounter(), keeping track of the
     //  tile: a battle starts on the tile just stepped onto.
-    ConsolePatchSteps steps(m_console, m_context, pace, m_spot);
+    ConsolePatchSteps steps(m_console, m_context, pace, m_spot, m_trainer_battle);
     return pace_until_battle(m_console.logger(), steps, PACE_MAX_STEPS);
 }
 

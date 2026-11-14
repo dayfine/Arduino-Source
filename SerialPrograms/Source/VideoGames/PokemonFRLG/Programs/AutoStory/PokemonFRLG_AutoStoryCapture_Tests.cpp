@@ -572,6 +572,12 @@ struct FakePatch : public PatchSteps{
     virtual bool overworld_shows() override{
         return !battle_started() && overworld;
     }
+    virtual bool message_shows() override{
+        return false;
+    }
+    virtual std::string fight_trainer() override{
+        return "";
+    }
     virtual void dump_screen(std::string_view label) override{
         dumps.emplace_back(label);
     }

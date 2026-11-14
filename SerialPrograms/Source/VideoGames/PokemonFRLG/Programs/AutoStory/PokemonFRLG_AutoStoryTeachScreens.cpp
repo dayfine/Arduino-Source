@@ -10,6 +10,7 @@
 #include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryTeachScreens.h"
@@ -131,6 +132,14 @@ ItemOpen ScreenTeachActions::open_row(TeachScreen screen, std::string_view name)
 }
 
 ItemOpen ScreenTeachActions::open_item(std::string_view item, std::string_view move){
+    m_tutor = item == TEACH_TUTOR;
+    if (m_tutor){
+        if (!m_screens.talk_to_tutor()){
+            m_logger.log(std::format("Teach: the tutor's questions for {} didn't lead to the party menu.", move), COLOR_RED);
+            return ItemOpen::FAILED;
+        }
+        return wait_for(TeachScreen::PARTY_PROMPT).has_value() ? ItemOpen::OPENED : ItemOpen::FAILED;
+    }
     if (!m_screens.open_bag()){
         m_logger.log("Teach: the bag didn't open.", COLOR_RED);
         return ItemOpen::FAILED;
@@ -160,6 +169,7 @@ TeachPrompt ScreenTeachActions::choose_member(size_t slot){
 
 TeachPrompt ScreenTeachActions::member_answer(){
     bool incompatible = false;
+    bool texts = false;
     size_t prompts = 0;
     for (size_t c = 0; c < MAX_LOOKS; c++){
         const TeachView view = m_screens.look();
@@ -169,7 +179,14 @@ TeachPrompt ScreenTeachActions::member_answer(){
                 return TeachPrompt::DELETE_PROMPT;
             }
             incompatible |= view.text == TeachText::NOT_COMPATIBLE;
+            texts = true;
             press(TeachPress::A);
+            break;
+        case TeachScreen::OTHER:
+            //  A tutor's party menu closes onto the overworld once learned.
+            if (m_tutor && texts){
+                return TeachPrompt::LEARNED;
+            }
             break;
         case TeachScreen::PARTY_YES_NO:
             return view.text == TeachText::STOP_QUESTION ? TeachPrompt::FAILED : TeachPrompt::DELETE_PROMPT;
@@ -233,6 +250,10 @@ ForgetEnd ScreenTeachActions::forget(size_t slot){
         case TeachScreen::ITEM_MENU:
             return picked ? ForgetEnd::LEARNED : ForgetEnd::FAILED;
         default:
+            //  A tutor's: leave() pages through them; the moves read decide.
+            if (picked && m_tutor){
+                return ForgetEnd::LEARNED;
+            }
             //  After the pick, its messages: B pages through them, once the
             //  moves page has closed (the first look).
             if (picked && ++unplaced > 1){
@@ -317,6 +338,31 @@ bool ConsoleTeachScreens::open_bag(){
         m_console.log("Teach: " + e.message(), COLOR_RED);
         return false;
     }
+}
+
+bool ConsoleTeachScreens::talk_to_tutor(){
+    try{
+        //  A talks, pages through its lines and says YES, the top row.
+        answer_yes_no(m_console, m_context, true, BUTTON_A, 30000ms);
+        answer_yes_no(m_console, m_context, true, BUTTON_A, 15000ms);
+    }catch (OperationFailedException& e){
+        m_console.log("Teach: " + e.message(), COLOR_RED);
+        return false;
+    }
+    //  "Which POKEMON wants to learn it?": A only on its advance arrow, as
+    //  A on the party menu would choose the lead.
+    for (size_t c = 0; c < 50; c++){
+        m_context.wait_for_all_requests();
+        VideoSnapshot snapshot = m_console.video().snapshot();
+        if (snapshot && AdvanceWhiteDialogDetector(COLOR_RED).detect(snapshot)){
+            pbf_press_button(m_context, BUTTON_A, 160ms, 240ms);
+        }else if (snapshot && read_teach_screen(snapshot) == TeachScreen::PARTY_PROMPT){
+            return true;
+        }else{
+            pbf_wait(m_context, 300ms);
+        }
+    }
+    return false;
 }
 
 TeachView ConsoleTeachScreens::look(){

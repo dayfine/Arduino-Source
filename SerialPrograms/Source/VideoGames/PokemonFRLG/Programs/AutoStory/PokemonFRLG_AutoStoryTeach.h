@@ -23,6 +23,14 @@
  *  A TM or HM the TM CASE hasn't got skips the step, with a log line: the
  *  table can teach a TM a run may not have won yet.
  *
+ *  A move tutor teaches the same way from the overworld, the player facing
+ *  the tutor (pokefirered data/scripts/move_tutors.inc, e.g.
+ *  Route4_EventScript_MegaKickTutor): its offer, YES/NO; "This move can be
+ *  learned only once. Is that okay?", YES/NO; "Which POKEMON wants to
+ *  learn it?", then the party menu (ChooseMonForMoveTutor) with the TM's
+ *  prompts. After it, the party menu closes onto the tutor's last line,
+ *  not the TM CASE.
+ *
  *  The step reads the member's moves first (MemberReader) and decides
  *  everything before it opens the bag: the move to forget, by name or
  *  slot; a refusal if the member already knows the move, has four moves

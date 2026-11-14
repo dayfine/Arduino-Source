@@ -27,6 +27,9 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  TeachPlan::item for a move tutor.
+inline constexpr std::string_view TEACH_TUTOR = "tutor";
+
 //  What A on the member showed.
 enum class TeachPrompt{
     LEARNED,
@@ -61,7 +64,8 @@ public:
     virtual ~TeachActions() = default;
 
     //  From the overworld: the bag, the TM Case, `item` (which holds
-    //  `move`), USE, to the party menu.
+    //  `move`), USE, to the party menu. For TEACH_TUTOR: talk to the
+    //  tutor the player faces, YES to its questions, to the party menu.
     virtual ItemOpen open_item(std::string_view item, std::string_view move) = 0;
     //  On "Teach which POKEMON?": A on `slot`.
     virtual TeachPrompt choose_member(size_t slot) = 0;

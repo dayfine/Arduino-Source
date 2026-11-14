@@ -38,6 +38,7 @@
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
 #include "PokemonFRLG_AutoStoryStatusBadge.h"
+#include "PokemonFRLG_AutoStoryTrainerMessage.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
