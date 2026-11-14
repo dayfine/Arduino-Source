@@ -1,0 +1,269 @@
+BDSP AutoStory: the legs each ROUTE step of the story table plans.
+Planned as the console's RouteWalker plans them: plan_recovered_route() on
+story_plan_world(), from the tiles the row's steps before it leave the
+player on, with the step's costs, then the default costs if those find none.
+Written by the StoryTable test "every ROUTE step plans as
+Data/route_plans.golden.txt says". After a planner or table change, run
+that test with PA_UPDATE_ROUTE_PLANS=1 to rewrite this file
+(PA_ROUTE_PLANS_GOLDEN=<path> reads or writes another copy), and review
+its diff.
+turns: direction changes between legs. open: legs that stop in the open
+(tapped, not held to a wall). localization: the wall holds at the start
+that only bring several start tiles to one (plan_recovered_route()'s
+anchor); 0 from one start tile.
+
+== 00.01 below_the_flute (costs: route)
+  from: PlayerHouse2F (4, 6) facing north (tile)
+  target: PlayerHouse2F (7, 5) facing north (tile)
+  start candidates: PlayerHouse2F (4, 6)
+  1. north 1 (to wall) -> PlayerHouse2F (4, 5)
+  2. east 3 (open) -> PlayerHouse2F (7, 5)
+  totals: 2 legs, 1 turns, 1 open, 0 localization
+
+== 00.01 above_the_door (costs: route)
+  from: PlayerHouse1F (10, 3) (10, 4) (set)
+  target: PlayerHouse1F (6, 9) facing south (tile)
+  start candidates: PlayerHouse1F (10, 3), PlayerHouse1F (10, 4)
+  1. south 7 (to wall) -> PlayerHouse1F (10, 10)
+  2. north 1 (open) -> PlayerHouse1F (10, 9)
+  3. west 4 (open) -> PlayerHouse1F (6, 9)
+  totals: 3 legs, 2 turns, 2 open, 1 localization
+
+== 00.01 short_of_barrys_door (costs: route)
+  from: TwinleafTown (20, 22) facing south (tile)
+  target: TwinleafTown (10, 12) facing west (tile)
+  start candidates: Twinleaf Town (20, 22)
+  1. west 7 (open) -> Twinleaf Town (13, 22)
+  2. north 10 (to wall) -> Twinleaf Town (13, 12)
+  3. west 3 (open) -> Twinleaf Town (10, 12)
+  totals: 3 legs, 2 turns, 2 open, 0 localization
+
+== 00.01 below_barrys_stairs (costs: route)
+  from: unknown
+  target: RivalHouse1F (2, 3) facing east (tile)
+  not planned: the start is unknown (a LEGS or STEP step before it does not say where it ends)
+
+== 00.01 above_barrys_door (costs: route)
+  from: RivalHouse1F (2, 3) (tile)
+  target: RivalHouse1F (6, 9) facing south (tile)
+  start candidates: RivalHouse1F (2, 3)
+  1. south 7 (to wall) -> RivalHouse1F (2, 10)
+  2. north 1 (open) -> RivalHouse1F (2, 9)
+  3. east 4 (open) -> RivalHouse1F (6, 9)
+  totals: 3 legs, 2 turns, 2 open, 0 localization
+
+== 00.01 below_the_lake_entrance (costs: route)
+  from: unknown
+  target: VerityLakefront (17, 14) facing north (tile)
+  not planned: the start is unknown (a LEGS or STEP step before it does not say where it ends)
+
+== 00.02 to_the_lake_entrance (costs: route)
+  from: VerityLakefront (17, 14) facing north (tile)
+  target: VerityLakefront (17, 13) facing north (tile)
+  start candidates: Verity Lakefront (17, 14)
+  1. north 1 (open) -> Verity Lakefront (17, 13)
+  totals: 1 legs, 0 turns, 1 open, 0 localization
+
+== 00.03 into_rowans_scene (costs: into_scene)
+  from: VerityLakefront (17, 14) (17, 15) (set)
+  target: VerityLakefront (17, 21) (tile)
+  start candidates: Verity Lakefront (17, 14), Verity Lakefront (17, 15)
+  1. south 7 (to wall) -> Verity Lakefront (17, 21)
+  totals: 1 legs, 0 turns, 0 open, 1 localization
+
+== 00.03 into_dawns_scene (costs: into_scene)
+  from: TwinleafTown (20, 22) facing south (tile)
+  target: Route201 (63, 5) facing east (tile)
+  start candidates: Twinleaf Town (20, 22)
+  1. west 3 (open) -> Twinleaf Town (17, 22)
+  2. north 34 (to wall) -> Route 201 (17, 13)
+  3. east 40 (to wall) -> Route 201 (57, 13)
+  4. west 7 (open) -> Route 201 (50, 13)
+  5. north 10 (to wall) -> Route 201 (50, 3)
+  6. east 13 (to wall) -> Route 201 (63, 3)
+  7. south 2 (open) -> Route 201 (63, 5)
+  totals: 7 legs, 6 turns, 3 open, 0 localization
+
+== 00.04 onto_the_path (costs: town)
+  from: SandgemTown (26, 11) (27, 11) (28, 11) (26, 12) (27, 12) (28, 12) facing north (set)
+  target: SandgemTown (29, 12) facing west (tile)
+  start candidates: Sandgem Town (26, 11), Sandgem Town (27, 11), Sandgem Town (28, 11), Sandgem Town (26, 12), Sandgem Town (27, 12), Sandgem Town (28, 12)
+  1. east 3 (to wall) -> Sandgem Town (29, 11), Sandgem Town (29, 12)
+  2. north 1 (to wall) -> Sandgem Town (29, 11)
+  3. south 1 (open) -> Sandgem Town (29, 12)
+  totals: 3 legs, 2 turns, 1 open, 2 localization
+
+== 00.04 to_ledge_column (costs: line)
+  from: Route201 (57, 4) (58, 4) (59, 4) (60, 4) (61, 4) (62, 4) (63, 4) facing north (set)
+  target: Route201 (55, 5) facing west (tile)
+  start candidates: Route 201 (57, 4), Route 201 (58, 4), Route 201 (59, 4), Route 201 (60, 4), Route 201 (61, 4), Route 201 (62, 4), Route 201 (63, 4)
+  1. west 7 (to wall) -> Route 201 (56, 4)
+  2. south 1 (open) -> Route 201 (56, 5)
+  3. west 1 (open) -> Route 201 (55, 5)
+  totals: 3 legs, 2 turns, 2 open, 1 localization
+
+== 00.04 along_route_201_road (costs: line)
+  from: Route201 (55, 14) facing south (tile)
+  target: Route201 (15, 14) facing west (tile)
+  start candidates: Route 201 (55, 14)
+  1. west 16 (open) -> Route 201 (39, 14)
+  2. north 3 (open) -> Route 201 (39, 11)
+  3. west 24 (open) -> Route 201 (15, 11)
+  4. south 2 (open) -> Route 201 (15, 14)
+  totals: 4 legs, 3 turns, 4 open, 0 localization
+
+== 00.04 into_twinleaf (costs: line)
+  from: Route201 (15, 14) facing west (tile)
+  target: TwinleafTown (15, 22) facing south (tile)
+  start candidates: Route 201 (15, 14)
+  1. south 37 (to wall) -> Twinleaf Town (15, 26)
+  2. north 4 (open) -> Twinleaf Town (15, 22)
+  totals: 2 legs, 1 turns, 1 open, 0 localization
+
+== 00.04 to_moms_doorstep (costs: line)
+  from: TwinleafTown (15, 22) facing south (tile)
+  target: TwinleafTown (20, 22) facing north (tile)
+  start candidates: Twinleaf Town (15, 22)
+  1. east 5 (open) -> Twinleaf Town (20, 22)
+  totals: 1 legs, 0 turns, 1 open, 0 localization
+
+== 00.04 beside_mom (costs: route)
+  from: PlayerHouse1F (6, 9) facing north (tile)
+  target: PlayerHouse1F (6, 8) facing east (tile)
+  start candidates: PlayerHouse1F (6, 9)
+  1. north 1 (open) -> PlayerHouse1F (6, 8)
+  totals: 1 legs, 0 turns, 1 open, 0 localization
+
+== 00.04 into_moms_call (costs: trigger)
+  from: PlayerHouse1F (11, 8) facing south (tile)
+  target: PlayerHouse1F (6, 9) facing west (tile)
+  start candidates: PlayerHouse1F (11, 8)
+  1. west 1 (open) -> PlayerHouse1F (10, 8)
+  2. south 1 (open) -> PlayerHouse1F (10, 9)
+  3. west 4 (to wall) -> PlayerHouse1F (6, 9)
+  totals: 3 legs, 2 turns, 2 open, 0 localization
+
+== 00.04 short_of_the_catch_tutorial (costs: route)
+  from: TwinleafTown (6, 22) (6, 23) facing west (set)
+  target: Route202 (22, 27) facing west (tile)
+  start candidates: Twinleaf Town (6, 22), Twinleaf Town (6, 23)
+  1. north 19 (to wall) -> Twinleaf Town (6, 4)
+  2. east 8 (open) -> Twinleaf Town (14, 4)
+  3. north 16 (to wall) -> Route 201 (14, 13)
+  4. east 43 (to wall) -> Route 201 (57, 13)
+  5. west 7 (open) -> Route 201 (50, 13)
+  6. north 7 (open) -> Route 201 (50, 6)
+  7. east 43 (to wall) -> Sandgem Town (29, 13)
+  8. north 2 (to wall) -> Sandgem Town (29, 11)
+  9. west 5 (open) -> Sandgem Town (24, 11)
+  10. north 19 (to wall) -> Route 202 (25, 24)
+  11. west 3 (to wall) -> Route 202 (22, 24)
+  12. south 3 (open) -> Route 202 (22, 27)
+  totals: 12 legs, 11 turns, 5 open, 1 localization
+
+== 00.04b to_catch_grass (costs: route)
+  from: Route202 (15, 25) (16, 25) (17, 25) (18, 25) (19, 25) (20, 25) (21, 25) (15, 26) (16, 26) (17, 26) (18, 26) (19, 26) (20, 26) (21, 26) (15, 27) (16, 27) (17, 27) (18, 27) (19, 27) (20, 27) (21, 27) (21, 28) (21, 29) (set)
+  target: Route202 (18, 25) (19, 25) (20, 25) (18, 26) (19, 26) (20, 26) (18, 27) (19, 27) (20, 27) (set)
+  start candidates: Route 202 (15, 25), Route 202 (16, 25), Route 202 (17, 25), Route 202 (18, 25), Route 202 (19, 25), Route 202 (20, 25), Route 202 (21, 25), Route 202 (15, 26), Route 202 (16, 26), Route 202 (17, 26), Route 202 (18, 26), Route 202 (19, 26), Route 202 (20, 26), Route 202 (21, 26), Route 202 (15, 27), Route 202 (16, 27), Route 202 (17, 27), Route 202 (18, 27), Route 202 (19, 27), Route 202 (20, 27), Route 202 (21, 27), Route 202 (21, 28), Route 202 (21, 29)
+  1. north 4 (to wall) -> Route 202 (15, 25), Route 202 (16, 25), Route 202 (17, 25), Route 202 (18, 25), Route 202 (19, 25), Route 202 (20, 25), Route 202 (21, 25)
+  2. east 8 (to wall) -> Route 202 (23, 25)
+  3. west 3 (open) -> Route 202 (20, 25)
+  totals: 3 legs, 2 turns, 1 open, 2 localization
+
+== 00.04b into_sandgem (costs: robust)
+  from: Route202 (18, 25) (19, 25) (20, 25) (18, 26) (19, 26) (20, 26) (18, 27) (19, 27) (20, 27) (set)
+  target: SandgemTown (29, 5) (tile)
+  start candidates: Route 202 (18, 25), Route 202 (19, 25), Route 202 (20, 25), Route 202 (18, 26), Route 202 (19, 26), Route 202 (20, 26), Route 202 (18, 27), Route 202 (19, 27), Route 202 (20, 27)
+  1. south 2 (to wall) -> Route 202 (18, 27), Route 202 (19, 27), Route 202 (20, 27)
+  2. east 12 (to wall) -> Route 202 (30, 27)
+  3. south 10 (to wall) -> Sandgem Town (29, 5)
+  totals: 3 legs, 2 turns, 0 open, 2 localization
+
+== 00.04d north_to_jubilife (costs: route)
+  from: Route202 (30, 24) (tile)
+  target: Route202 (11, 0) (12, 0) (13, 0) (14, 0) (15, 0) (16, 0) (17, 0) (18, 0) (11, 1) (12, 1) (13, 1) (14, 1) (15, 1) (16, 1) (17, 1) (18, 1) (11, 2) (12, 2) (13, 2) (14, 2) (15, 2) (16, 2) (17, 2) (18, 2) (11, 3) (12, 3) (13, 3) (14, 3) (15, 3) (16, 3) (17, 3) (18, 3) (set)
+  start candidates: Route 202 (30, 24)
+  1. south 2 (open) -> Route 202 (30, 26)
+  2. west 27 (to wall) -> Route 202 (3, 26)
+  3. north 12 (to wall) -> Route 202 (3, 14)
+  4. east 14 (to wall) -> Route 202 (17, 14)
+  5. south 8 (to wall) -> Route 202 (17, 22)
+  6. east 13 (to wall) -> Route 202 (30, 22)
+  7. north 18 (to wall) -> Route 202 (30, 4)
+  8. south 1 (open) -> Route 202 (30, 5)
+  9. west 5 (open) -> Route 202 (25, 5)
+  10. north 1 (to wall) -> Route 202 (25, 4)
+  11. west 7 (to wall) -> Route 202 (18, 4)
+  12. north 1 (open) -> Route 202 (18, 3)
+  totals: 12 legs, 11 turns, 4 open, 0 localization
+
+== 00.05 to_the_school (costs: town)
+  from: unknown
+  target: JubilifeCity (40, 41) facing north (tile)
+  not planned: the start is unknown (a LEGS or STEP step before it does not say where it ends)
+
+== 00.05b below_the_presidents_trigger (costs: town)
+  from: JubilifeCity (40, 41) facing south (tile)
+  target: JubilifeCity (46, 41) facing north (tile)
+  start candidates: Jubilife City (40, 41)
+  1. east 6 (open) -> Jubilife City (46, 41)
+  totals: 1 legs, 0 turns, 1 open, 0 localization
+
+== 00.05b past_the_president (costs: route)
+  from: JubilifeCity (46, 40) facing north (tile)
+  target: JubilifeCity (48, 40) facing east (tile)
+  start candidates: Jubilife City (46, 40)
+  1. east 2 (open) -> Jubilife City (48, 40)
+  totals: 1 legs, 0 turns, 1 open, 0 localization
+
+== 00.05b below_the_mart_clown (costs: town)
+  from: JubilifeCity (48, 40) facing east (tile)
+  target: JubilifeCity (56, 36) facing north (tile)
+  start candidates: Jubilife City (48, 40)
+  1. north 4 (open) -> Jubilife City (48, 36)
+  2. east 8 (to wall) -> Jubilife City (56, 36)
+  totals: 2 legs, 1 turns, 1 open, 0 localization
+
+== 00.05b below_the_tv_clown (costs: town)
+  from: JubilifeCity (56, 31) facing north (tile)
+  target: JubilifeCity (36, 17) facing north (tile)
+  start candidates: Jubilife City (56, 31)
+  1. west 8 (open) -> Jubilife City (48, 31)
+  2. north 7 (open) -> Jubilife City (48, 24)
+  3. west 12 (open) -> Jubilife City (36, 24)
+  4. north 7 (to wall) -> Jubilife City (36, 17)
+  totals: 4 legs, 3 turns, 3 open, 0 localization
+
+== 00.05b below_the_company_clown (costs: town)
+  from: JubilifeCity (36, 17) facing north (tile)
+  target: JubilifeCity (15, 19) facing north (tile)
+  start candidates: Jubilife City (36, 17)
+  1. south 4 (open) -> Jubilife City (36, 21)
+  2. west 21 (open) -> Jubilife City (15, 21)
+  3. north 2 (open) -> Jubilife City (15, 19)
+  totals: 3 legs, 2 turns, 3 open, 0 localization
+
+== 00.05b beside_the_company_sign (costs: line)
+  from: JubilifeCity (14, 19) facing west (tile)
+  target: JubilifeCity (14, 19) facing west (tile)
+  start candidates: Jubilife City (14, 19)
+  totals: 0 legs, 0 turns, 0 open, 0 localization
+
+== 00.05c beside_the_president (costs: town)
+  from: JubilifeCity (14, 19) facing west (tile)
+  target: JubilifeCity (45, 35) facing east (tile)
+  start candidates: Jubilife City (14, 19)
+  1. south 4 (open) -> Jubilife City (14, 23)
+  2. east 18 (open) -> Jubilife City (32, 23)
+  3. south 12 (open) -> Jubilife City (32, 35)
+  4. east 13 (to wall) -> Jubilife City (45, 35)
+  totals: 4 legs, 3 turns, 3 open, 0 localization
+
+== 00.05c below_the_east_exit_sign (costs: line)
+  from: JubilifeCity (45, 35) facing east (tile)
+  target: JubilifeCity (59, 21) facing north (tile)
+  start candidates: Jubilife City (45, 35)
+  1. north 9 (open) -> Jubilife City (45, 26)
+  2. east 14 (to wall) -> Jubilife City (59, 26)
+  3. north 5 (to wall) -> Jubilife City (59, 21)
+  totals: 3 legs, 2 turns, 1 open, 0 localization
