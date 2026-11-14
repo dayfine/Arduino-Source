@@ -38,6 +38,12 @@
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents_Tests.h"
 #include "Programs/BoxOrganization/PokemonFRLG_BoxSorter_Tests.h"
+#include "Overworld/PokemonFRLG_OverworldMaps.h"
+#include "Overworld/PokemonFRLG_OverworldReanchor.h"
+#include "Overworld/PokemonFRLG_OverworldRecovery.h"
+#include "Overworld/PokemonFRLG_OverworldRoute.h"
+#include "Overworld/PokemonFRLG_OverworldWalk.h"
+#include "Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "Tests/TestUtils.h"
 
 #include "PokemonFRLG_Tests.h"
@@ -46,6 +52,9 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  The menu readers AutoStory brought: the bag's and Marts' lists, the
+//  options, the save card, the summary's moves and the teach screens, and
+//  the screen events.
 static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
     add_tests_ItemListReader(database);
     add_tests_OptionMenuReader(database);
@@ -86,6 +95,12 @@ void add_tests(UnitTestDatabase& database){
     add_tests_PartySlotDetector(database);
     add_tests_BattleTextBoxDetector(database);
     add_tests_AutoStoryReaders(database);
+    add_tests_OverworldMaps(database);
+    add_tests_OverworldRoute(database);
+    add_tests_OverworldWalk(database);
+    add_tests_OverworldReanchor(database);
+    add_tests_OverworldRecovery(database);
+    add_tests_PlayerFacingReader(database);
 }
 
 

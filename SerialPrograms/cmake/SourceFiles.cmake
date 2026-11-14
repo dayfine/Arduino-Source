@@ -1999,6 +1999,35 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Sounds/PokemonFRLG_CatchFanfareDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Sounds/PokemonFRLG_ShinySoundDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Sounds/PokemonFRLG_ShinySoundDetector.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldReanchor.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldReanchor.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldReanchor_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteCosts.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteSteps.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTileRules.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTiles.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTrainerCrossing.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkedTiles.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkMoves.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkOptions.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkTimes.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkWatches.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Navigation.cpp
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Panels.cpp

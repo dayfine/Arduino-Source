@@ -230,6 +230,10 @@ add_library(SerialProgramsLib STATIC ${CORE_LIBRARY_SOURCES} ${LIBRARY_SOURCES})
 include(cmake/EmbedTextFiles.cmake)
 pa_embed_text_files(SerialProgramsLib Source/Pokemon/Navigation/TestMaps
     Pokemon/Navigation/Pokemon_NavigationTestMaps.h PokemonAutomation::Pokemon navigation_test_map_json)
+include(cmake/PokesimMapResources.cmake)
+pa_frlg_map_resources(FRLG_MAP_RESOURCES)
+pa_embed_text_files(SerialProgramsLib "${FRLG_MAP_RESOURCES}"
+    VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h PokemonAutomation::NintendoSwitch::PokemonFRLG overworld_map_json)
 
 
 # Create binary target
