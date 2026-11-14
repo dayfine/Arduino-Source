@@ -9,6 +9,7 @@
 #include <utility>
 #include <variant>
 #include "Pokemon_StoryPostconditionCheck.h"
+#include "Pokemon_StoryStepExecutor.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -180,7 +181,7 @@ std::optional<GridPose> checkpoint_end_pose(const StoryCheckpoint& checkpoint){
     }
     for (auto step = checkpoint.steps.rbegin(); step != checkpoint.steps.rend(); ++step){
         if (step->pose_after){
-            return step->pose_after;
+            return grid_pose_of(*step->pose_after);
         }
         if (std::optional<GridPose> target = pose_arg(*step)){
             return target;

@@ -47,31 +47,31 @@ const StringSelectDatabase& main_story_database(){
     return database;
 }
 
-//  The start and end set by slug, as saved settings load them; empty
-//  leaves the default.
-struct StoryRangeInput{
-    std::string name;
-    std::string start_slug;
-    std::string end_slug;
-};
-
-//  The indexes in the dropdown, and whether the range is valid.
-struct StoryRangeExpectation{
-    size_t start;
-    size_t end;
-    bool valid;
-};
-
 // A range chosen in the main story's dropdowns and what the group reads from it.
 struct StoryRangeCase{
-    StoryRangeInput input;
-    StoryRangeExpectation expectation;
+    //  The start and end set by slug, as saved settings load them; empty
+    //  leaves the default.
+    struct Input{
+        std::string start_slug;
+        std::string end_slug;
+    };
+
+    //  The indexes in the dropdown, and whether the range is valid.
+    struct Expectation{
+        size_t start;
+        size_t end;
+        bool valid;
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryRange : public UnitTest{
 public:
     Test_StoryRange(StoryRangeCase test_case)
-        : UnitTest(std::format("Pokemon::StoryRangeOptions - {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::StoryRangeOptions - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
 
@@ -83,7 +83,7 @@ public:
         if (!m_case.input.end_slug.empty()){
             range.END_CHECKPOINT.set_by_slug(m_case.input.end_slug);
         }
-        const StoryRangeExpectation& expected = m_case.expectation;
+        const StoryRangeCase::Expectation& expected = m_case.expectation;
         if (range.start_index() != expected.start || range.end_index() != expected.end){
             return std::format(
                 "Expected indexes {} to {}, got {} to {}",
@@ -106,19 +106,23 @@ private:
 
 const StoryRangeCase STORY_RANGE_CASES[] = {
     {
-        .input = {.name = "the whole database by default", .start_slug = "", .end_slug = ""},
+        .name = "the whole database by default",
+        .input = {.start_slug = "", .end_slug = ""},
         .expectation = {.start = 0, .end = 2, .valid = true},
     },
     {
-        .input = {.name = "slugs are whole-list indexes, indexes are the dropdown's", .start_slug = "3", .end_slug = "4"},
+        .name = "slugs are whole-list indexes, indexes are the dropdown's",
+        .input = {.start_slug = "3", .end_slug = "4"},
         .expectation = {.start = 1, .end = 2, .valid = true},
     },
     {
-        .input = {.name = "one checkpoint", .start_slug = "3", .end_slug = "3"},
+        .name = "one checkpoint",
+        .input = {.start_slug = "3", .end_slug = "3"},
         .expectation = {.start = 1, .end = 1, .valid = true},
     },
     {
-        .input = {.name = "a start after the end is refused", .start_slug = "4", .end_slug = "2"},
+        .name = "a start after the end is refused",
+        .input = {.start_slug = "4", .end_slug = "2"},
         .expectation = {.start = 2, .end = 0, .valid = false},
     },
 };

@@ -132,17 +132,16 @@ UnitTestResult test_watcher(){
 }
 
 
-struct ScreenEventsInput{
-    std::string name;
-    std::function<UnitTestResult()> body;
-};
-
-struct ScreenEventsExpectation{
-};
-
 struct ScreenEventsCase{
-    ScreenEventsInput input;
-    ScreenEventsExpectation expectation;
+    struct Input{
+        std::string name;
+        std::function<UnitTestResult()> body;
+    };
+    struct Expectation{
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_ScreenEvents : public UnitTest{

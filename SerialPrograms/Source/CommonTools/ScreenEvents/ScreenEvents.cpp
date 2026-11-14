@@ -81,7 +81,7 @@ WarpFade fade_in(const ScreenEvents& events){
     }
     return WarpFade::NONE;
 }
-std::string describe(const ScreenEvents& events){
+std::string describe(const ScreenEvents& events, std::string_view separator){
     std::string out;
     for (size_t c = 0; c < SCREEN_EVENT_COUNT; c++){
         const ScreenEvent event = (ScreenEvent)c;
@@ -89,7 +89,7 @@ std::string describe(const ScreenEvents& events){
             continue;
         }
         if (!out.empty()){
-            out += ", ";
+            out += separator;
         }
         out += screen_event_name(event);
     }
