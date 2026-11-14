@@ -223,13 +223,22 @@
         "why": "a step through door 1 onto (26, 10)"
       },
       {
-        "id": "below_gym_door",
+        "id": "onto_gym_mat",
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CinnabarIsland", "tiles": [[20, 5]], "facing": "south"}
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[25, 23]], "facing": "west"}
         },
-        "why": "down the east rooms to the mat (25, 23) and out of the gym's door (20, 4)"
+        "why": "down the east rooms onto the exit mat (25, 23), a tap west from (26, 23): the walk stops on the gym's side of the warp"
+      },
+      {
+        "id": "out_of_gym",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland", "tiles": [[20, 5]], "facing": "south"},
+        "why": "south on the mat: out of the gym's door (20, 4) onto (20, 5). A step, not the route's last leg: Bill's scene starts as the player lands, and a walk closes a message at its end with B, which answered his YES/NO (NO) itself and left decline_bill none (console B, 2026-11-14 08:19, run 7). A step onto a warp leaves the message up for decline_bill"
       },
       {
         "id": "decline_bill",
