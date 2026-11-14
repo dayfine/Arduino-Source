@@ -1,8 +1,9 @@
 # pa-lab console daemon (`lab/server`)
 
 The local server designed in `docs/design/Agent-Integration.md` (fork #131, branch
-`design/agent-integration`). This directory is Slice 0 only: the version-1 contracts, golden
-examples and a parser. There is no server, no network code and no app change here yet.
+`design/agent-integration`). Slice 0: the version-1 contracts, golden examples and a parser.
+Slice 2: the attach-only read server ([below](#slice-2-the-attach-only-read-server)). It has no
+lease store, no write path and no press: those are Slices 3 and 5.
 
 | Path | What |
 |---|---|
@@ -13,9 +14,15 @@ examples and a parser. There is no server, no network code and no app change her
 | `contracts/v1/legacy/*.state` | Legacy `Lab/state` twins of three `app_state` goldens (`stopped_ui` is the real lab-B file of 2026-11-14) |
 | `contracts/v1/invalid_cases.json` | Documents that must fail: name, kind, input, expected field path and message |
 | `tests/test_contracts.py` | Golden parse, round-trip, invalid-case and legacy-mapping tests |
+| `pa_lab/config.py` | Server config: the one-entry allowlist (B), loopback port, owner-only token file |
+| `pa_lab/lab_reader.py` | Strict reads of `Lab/state.json` and `Lab/save.json`; `console://B/state` and `/save` |
+| `pa_lab/tools.py`, `pa_lab/shot.py` | `ensure_game` (verification only) and `shot` (newer than the call) |
+| `pa_lab/mcp_server.py` | MCP over Streamable HTTP on `127.0.0.1`: bearer, Host/Origin, sessions, size caps |
+| `tests/fake_lab.py` | A fake `Lab/` folder and a fake app answering `snapshot` requests, in temp dirs |
+| `tests/test_{lab_reader,ensure_game,shot,config,mcp_server}.py` | Slice 2's fake-lab tests |
 
-Stdlib only (Python 3.8+), so no venv yet; Slice 2 adds `requirements.txt` and a venv
-(`~/.venvs/pa-lab`) for the MCP server. Run the tests from the repo root:
+Stdlib only (Python 3.8+), so no venv: the MCP transport is small enough to write on
+`http.server`. Run the tests from the repo root:
 
 ```sh
 python3 -m unittest discover -s lab/server/tests -t lab/server -v
@@ -110,3 +117,70 @@ New in `state.json`: `written_at` (heartbeat), `instance.{id,pid,profile}`, `pan
 - Lower-case enums exactly as listed by `python3 -m pa_lab describe app_state`.
 - Checked by `python3 -m pa_lab check app_state <file>` and by a native serialization test
   against the goldens in `contracts/v1/app_state/`.
+
+## Slice 2: the attach-only read server
+
+```sh
+python3 -m pa_lab init-token ~/.config/pa-lab/token          # 0600; never overwritten
+python3 -m pa_lab serve --config ~/.config/pa-lab/server.json
+```
+
+```json
+{"schema": 1, "host": "127.0.0.1", "port": 8765, "token_file": "~/.config/pa-lab/token",
+ "consoles": {"B": {"lab_dir": "~/Library/Application Support/SerialPrograms/Profiles/lab-B/Lab",
+                    "profile": "lab-B"}}}
+```
+
+The config is the server's own, closed, and must list exactly `B`; it never reads
+`~/BDSPLab/consoles.json`. A Claude Code client adds it as an HTTP MCP server at
+`http://127.0.0.1:8765/mcp` with the header `Authorization: Bearer <token>`.
+
+**Transport.** One endpoint, `POST /mcp`, JSON-RPC answered as `application/json` (MCP
+2025-06-18 or 2025-03-26). `GET` is 405 (nothing is pushed), `DELETE` ends a session. Each request
+needs the bearer token (compared in constant time, never logged), a `Host` of
+`127.0.0.1:<port>` or `localhost:<port>` (DNS rebinding), and no `Origin` but the server's own;
+bodies over 1 MiB are refused. `initialize` opens an `Mcp-Session-Id` session and records the
+client's name, which the log carries with each call.
+
+**Resources.** `console://B/state` is `console_state`: the app's `Lab/state.json` exactly as
+parsed, availability, the reported lease and `blocked`. `console://B/save` is `save_resource`.
+A console id is looked up in the allowlist, never turned into a path.
+
+| What the daemon finds | `console://B/state` |
+|---|---|
+| no `Lab/state.json` | `unavailable`, `no_state_file` |
+| torn/partial file, duplicate key, `NaN`, > 1 MiB, a contract break, another profile's app | `unavailable`, `malformed` (the message names the field) |
+| `schema` it does not read | `unavailable`, `unsupported_schema` |
+| `instance.pid` not running | `unavailable`, `app_not_running` |
+| `written_at` older than 10 s | `unavailable`, `stale_heartbeat` |
+
+The heartbeat limit is 10 s, not 1 s, because the app writes `state.json` between channel
+requests and a long request (`walk`) holds it. A new `instance.id` is the new app: the resource
+shows it with its own `frame_seq`; `shot` refuses a call that spans the restart.
+
+`save.json` missing is `unknown` / `no_fact`. A save fact is `known` / `hooked_save` until the
+app shows a UI Start/Stop after `saved_at`, then `stale` / `user_lease`. A `save.json` that
+exists but cannot be read is a JSON-RPC error (`-32001`, the refusal in `data`), not `unknown`.
+
+**Lease, reported only.** With no lease store yet, the lease comes from the app's last
+transition: a UI Start/Stop means `user` (no timeout), otherwise `free`. A user lease is not
+remembered across an app restart until Slice 3's store.
+
+**`ensure_game(console, expected, allowed_screens?, max_age_ms=5000)`** reads the app's
+`observation.game` / `.screen` and returns them with their ages and `verified` with a `reason`
+(`game_unknown`, `game_mismatch`, `screen_unknown`, `screen_not_allowed`, `observation_stale`).
+`unknown` never verifies; until the app has detectors, every call says `game_unknown`.
+
+**`shot(console, max_age_ms=2000, timeout_ms=5000)`** returns the PNG (MCP image content), its
+path and the exact `frame_seq` and `captured_at` of that frame. The daemon checks `state.json`
+once (the app is up; its `instance.id`), then writes the fixed request `request <uuid>` /
+`snapshot frame <timeout_ms>` into `Lab/inbox` at once. The app's `snapshot` command (#481,
+`Lab.md` "Snapshot") needs no owner token, program state or controller: it waits for the first
+frame after the line starts, saves it and prints `snapshot saved instance=... frame_seq=...
+captured_at=... after=... path=...`. The daemon opens only the path it chose, never the one the
+journal names, and only when complete (signature and `IEND`). Refusals: `timeout` (the app's
+`snapshot timeout`, evidence `{instance_id, frame_seq: after}`; or the app did not answer within
+`timeout_ms` + 2 s, and the request is withdrawn from the inbox), `video_stale` (`reason=no_video`,
+or the saved frame is older than `max_age_ms`), `video_bad_signal`, `app_unavailable` (a reply
+from another instance: `evidence.reason` `instance_replaced`; `panel_changed`, `app_closing`,
+`save_failed` as `evidence.reason`; a line error or an incomplete PNG).
