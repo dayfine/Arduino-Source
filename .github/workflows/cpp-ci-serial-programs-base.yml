@@ -245,9 +245,9 @@ jobs:
         uses: actions/checkout@v7
         if: inputs.run-tests
         with:
-          # The fork's fixtures: upstream's plus the SystemKeyboardDetector screenshots.
+          # The fork's fixtures: upstream's plus the SystemKeyboardDetector and HomeTileReader screenshots.
           repository: 'dayfine/CommandLineTests'
-          ref: '95b9aa8b9492b8216e5a50928521a0bf9c19a0d9'
+          ref: 'eae4697738d5fe18975e77c05a4e01216bed68e7'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded

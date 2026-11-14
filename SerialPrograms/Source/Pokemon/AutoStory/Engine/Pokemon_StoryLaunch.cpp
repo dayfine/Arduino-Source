@@ -10,6 +10,8 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
+#include "NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.h"
 #include "Pokemon_StoryLaunch.h"
 
 namespace PokemonAutomation{
@@ -225,6 +227,13 @@ private:
 
 
 } // namespace
+
+
+std::function<bool(const ScreenObservation& look)> switch_home_tile_named(Language language, std::string name){
+    return [language, name = std::move(name)](const ScreenObservation& look){
+        return look.frame && look.frame->frame && selected_home_tile_is(language, *look.frame->frame, name);
+    };
+}
 
 
 template <StoryPose PoseType>
