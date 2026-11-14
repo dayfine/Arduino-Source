@@ -31,6 +31,9 @@ struct MapWarp{
     int y = 0;
     WarpEntry enter = WarpEntry::WALK_INTO;
     std::optional<WarpDestination> to;
+    //  A drop (a hole the player falls through): the landing has no way back
+    //  up, so a route takes it forward only.
+    bool one_way = false;
 };
 
 // Type classification for interactive map objects.
