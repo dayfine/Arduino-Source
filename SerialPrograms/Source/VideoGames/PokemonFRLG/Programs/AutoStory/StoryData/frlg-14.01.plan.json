@@ -269,9 +269,18 @@
         "kind": "legs",
         "action": "taps",
         "args": {
-          "legs": [{"direction": "south", "tiles": 4}, {"direction": "west", "tiles": 2}]
+          "legs": [{"direction": "south", "tiles": 4}, {"direction": "west", "tiles": 1}]
         },
-        "why": "a tap a tile: down column 14 to (14, 22) and west to (12, 22), east of door 4's floor (11, 22). Door 4 opens (11, 22) and (11, 23) (OpenDoor4), which the map has shut: a planned route ran south to (14, 23) and held west 'to the wall' (11, 23), and on the console that hold went through the open door and on to below Burglar Dusty (console B, 2026-11-14)"
+        "why": "a tap a tile: down column 14 to (14, 22) and west to (13, 22), two tiles east of door 4's floor (11, 22). Door 4 opens (11, 22) and (11, 23) (OpenDoor4), which the map has shut: a planned route ran south to (14, 23) and held west 'to the wall' (11, 23), and on the console that hold went through the open door and on to below Burglar Dusty (console B, 2026-11-14). Legs ending on (12, 22) end 'to the wall' too, and the walker's tap toward the wall after them walked through the open door to (11, 22), leaving the player a tile west of the plan from there on (run 5, console B, 2026-11-14)"
+      },
+      {
+        "id": "to_door_4",
+        "kind": "step",
+        "args": {
+          "direction": "west"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[12, 22]], "facing": "west"},
+        "why": "a step to beside door 4 (12, 22)"
       },
       {
         "id": "into_door_4",
@@ -296,9 +305,9 @@
         "kind": "legs",
         "action": "taps",
         "args": {
-          "legs": [{"direction": "west", "tiles": 8}, {"direction": "north", "tiles": 3}]
+          "legs": [{"direction": "west", "tiles": 9}, {"direction": "east", "tiles": 1}, {"direction": "north", "tiles": 3}]
         },
-        "why": "a tap a tile, as no wall ends the west leg: west along row 22 to (2, 22) and up, west of Burglar Dusty (4, 19), to below quiz machine 5 (1..2, 18)"
+        "why": "a tap a tile: west along row 22 to the wall (1, 22), back east to (2, 22) and up, west of Burglar Dusty (4, 19), to below quiz machine 5 (1..2, 18). The west leg ends at a wall so the player is found there: in run 5 (console B, 2026-11-14) the player came into the room a tile west of the plan, an open west 8 ended on (1, 22), and quiz 5 was read from (1, 19), so below_door_5 ended under Dusty"
       },
       {
         "id": "quiz_5",
