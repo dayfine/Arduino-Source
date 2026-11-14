@@ -143,6 +143,9 @@ constexpr std::string_view MAP_NAMES[] = {
     //  Koga's gym, and the Warden's house (GOLD TEETH for HM04).
     "FuchsiaCity_Gym",
     "FuchsiaCity_WardensHouse",
+    //  Route 7's east gate, where the guard takes the TEA, and Saffron City.
+    "Route7_EastEntrance",
+    "SaffronCity",
     //  Cinnabar Island, and Route 21 north of it to Pallet Town (12.03).
     "CinnabarIsland",
     "Route21_North",

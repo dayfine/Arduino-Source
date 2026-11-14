@@ -83,6 +83,7 @@ private:
             {"pokemon-tower", "Pokemon Tower"},
             {"route-16", "Route 16"},
             {"fuchsia-city", "Fuchsia City"},
+            {"saffron-city", "Saffron City"},
             {"cinnabar-island", "Cinnabar Island"},
         }){
             JsonArray names;
