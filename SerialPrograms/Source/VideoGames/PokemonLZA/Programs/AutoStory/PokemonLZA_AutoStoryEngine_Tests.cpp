@@ -11,6 +11,7 @@
 #include <format>
 #include <functional>
 #include <iterator>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -807,9 +808,96 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.name = "breakpoints: a walk pauses before each leg", .input = {test_walk_pauses_before_each_leg}, .expectation = {}},
 };
 
+
+namespace{
+
+//  next_start_load_action(): the loads a run makes before its first
+//  checkpoint, from the start checks each load gives.
+struct StartLoadCase{
+    std::string name;
+    struct Input{
+        bool backup_first;
+        //  The start check after each load, in order; nothing: no check.
+        std::vector<std::optional<bool>> checks;
+    };
+    Input input;
+    struct Expectation{
+        std::vector<StartLoadAction> actions;
+    };
+    Expectation expectation;
+};
+
+using enum StartLoadAction;
+
+const StartLoadCase START_LOAD_CASES[] = {
+    {.name = "the latest save at the start: start", .input = {.backup_first = false, .checks = {true}}, .expectation = {.actions = {LOAD_LATEST, START}}},
+    {.name = "no start check: start from the latest save", .input = {.backup_first = false, .checks = {std::nullopt}}, .expectation = {.actions = {LOAD_LATEST, START}}},
+    {.name = "the latest save past the start, the backup at it: start from the backup", .input = {.backup_first = false, .checks = {false, true}}, .expectation = {.actions = {LOAD_LATEST, LOAD_BACKUP, START}}},
+    {.name = "neither save at the start: stop", .input = {.backup_first = false, .checks = {false, false}}, .expectation = {.actions = {LOAD_LATEST, LOAD_BACKUP, STOP}}},
+    {.name = "backup first, at the start: start", .input = {.backup_first = true, .checks = {true}}, .expectation = {.actions = {LOAD_BACKUP, START}}},
+    {.name = "backup first, not at the start: stop", .input = {.backup_first = true, .checks = {false}}, .expectation = {.actions = {LOAD_BACKUP, STOP}}},
+};
+
+std::string_view action_name(StartLoadAction action){
+    switch (action){
+    case LOAD_LATEST:
+        return "load latest";
+    case LOAD_BACKUP:
+        return "load backup";
+    case START:
+        return "start";
+    case STOP:
+        return "stop";
+    }
+    return "?";
+}
+
+std::string action_names(const std::vector<StartLoadAction>& actions){
+    std::string out;
+    for (StartLoadAction action : actions){
+        out += std::format("{}{}", out.empty() ? "" : ", ", action_name(action));
+    }
+    return out;
+}
+
+class Test_StartLoad : public UnitTest{
+public:
+    explicit Test_StartLoad(const StartLoadCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStoryEngine - start load: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        std::vector<StartLoad> loads;
+        std::vector<StartLoadAction> actions;
+        while (actions.size() < 5){
+            const StartLoadAction action = next_start_load_action(m_case.input.backup_first, loads);
+            actions.push_back(action);
+            if (action == START || action == STOP){
+                break;
+            }
+            if (loads.size() >= m_case.input.checks.size()){
+                return std::format("Loaded more than the {} checks given: {}.", m_case.input.checks.size(), action_names(actions));
+            }
+            loads.push_back({.save = action == LOAD_BACKUP ? StartSave::BACKUP : StartSave::LATEST, .at_start = m_case.input.checks[loads.size()]});
+        }
+        if (actions != m_case.expectation.actions){
+            return std::format("Expected [{}], got [{}].", action_names(m_case.expectation.actions), action_names(actions));
+        }
+        return true;
+    }
+
+private:
+    const StartLoadCase& m_case;
+};
+
+} // namespace
+
 void add_tests_AutoStoryEngine(UnitTestDatabase& database){
     for (const EngineTestCase& item : ENGINE_TEST_CASES){
         database.add<Test_AutoStoryEngine>(item);
+    }
+    for (const StartLoadCase& item : START_LOAD_CASES){
+        database.add<Test_StartLoad>(item);
     }
 }
 

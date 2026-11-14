@@ -767,6 +767,28 @@ void walk_to_marker(ConsoleHandle& console, ProControllerContext& context){
     }
 }
 
+namespace{
+
+//  Whether lock-on brackets show around a wild Pokemon within `limit`,
+//  looking every 250 ms with ZL let go.
+bool brackets_show(ConsoleHandle& console, ProControllerContext& context, Milliseconds limit){
+    context.wait_for_all_requests();
+    const WallClock end = current_time() + limit;
+    while (true){
+        const std::optional<BracketSighting> seen = read_brackets(console);
+        if (seen){
+            console.log(std::format("catch_tutorial(): brackets at ({:.2f}, {:.2f}), {:.3f} tall.", seen->x, seen->y, seen->height));
+            return true;
+        }
+        if (current_time() >= end){
+            return false;
+        }
+        context.wait_for(250ms);
+    }
+}
+
+} // namespace
+
 void catch_tutorial(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
     BattleAIOption& battle_ai, int max_throws
@@ -775,7 +797,17 @@ void catch_tutorial(
     while (throws < max_throws){
         //  Fletchling, the tutorial's target, is never caught yet: the
         //  throw goes at whatever the choice locked on to.
-        aim_choose_approach(console, context, "catch_tutorial()");
+        const TargetChoice choice = aim_choose_approach(console, context, "catch_tutorial()");
+        //  Nothing to lock on to and no brackets before the first throw:
+        //  the player is not where the tutorial is (a wrong save), so the
+        //  balls would go at a wall (console B, 2026-11-13).
+        if (throws == 0 && !choice.target && !brackets_show(console, context, 3000ms)){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT,
+                "catch_tutorial(): no lock-on target or brackets before the first throw.",
+                console
+            );
+        }
         throw_ball(console, context);
         throws++;
         if (advance_text_and_cards(console, context).card){

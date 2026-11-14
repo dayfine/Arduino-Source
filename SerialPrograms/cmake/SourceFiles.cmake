@@ -2495,6 +2495,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents_Tests.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStartLoad.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStartLoad.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStepValidator.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStepValidator.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStoryFiles.cpp
