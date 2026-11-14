@@ -330,6 +330,7 @@ public:
             pause_before_leg(m_next, step);
             //  Where a hold that finds the player starts isn't known.
             const std::optional<TrainerCrossing> crossing = m_next >= m_holds ? crossing_here(step) : std::nullopt;
+            report_progress(step);
             const StepOutcome outcome = judge_movement(step, m_steps.walk(step, m_facing, crossing));
             m_on_caller_start = false;
             if (is_gate_step(step)){
@@ -342,6 +343,9 @@ public:
                 m_walked.reset();
                 Pokemon::apply_gate_change(m_gates, step.gate_change);
                 read_gates();
+                if (m_planning != nullptr && m_planning->progress != nullptr){
+                    m_planning->progress->gates = m_gates;
+                }
                 m_facing = step.facing_after;
                 m_lines.done(step, ++m_next, m_holds);
                 continue;
@@ -394,6 +398,19 @@ private:
 
     static bool is_gate_step(const RouteStep& step){
         return step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH;
+    }
+
+    //  Before `step`, m_plan[m_next], is walked: where the player is if it
+    //  fails. A gate step leaves them on their tile, if that is known; any
+    //  other step moves them, to where a failure doesn't say.
+    void report_progress(const RouteStep& step) const{
+        if (m_planning == nullptr || m_planning->progress == nullptr){
+            return;
+        }
+        RouteProgress& progress = *m_planning->progress;
+        progress.gates = m_gates;
+        const bool stays = is_gate_step(step) && m_next >= m_holds;
+        progress.at = stays ? m_at : std::nullopt;
     }
 
     //  The maps through the gates as they are now. The planning's own maps

@@ -305,6 +305,52 @@ UnitTestResult test_sim_presses_statue(){
     return true;
 }
 
+//  statue_hall_maps() with its statue moved off to (8, 0): a press north
+//  from (3, 1), where the plan on statue_hall_maps() presses, finds none.
+const std::vector<MapData>& statue_moved_maps(){
+    static const std::vector<MapData> MAPS{parse_map(R"({
+        "format": "pokesim-runtime-map/2", "name": "GateStatueHall", "points": {}, "warps": [], "connections": [], "source": {"decomp_file": "", "revision": "test", "date": "2026-11-14"},
+        "tiles": ["##########", "#........#", "#####G####", "#........#", "##########"],
+        "gates": {"barrier_1": {"tiles": [[5, 2]], "open_glyph": ".", "new_game": "closed", "switch": "mansion", "open_when": "on"}},
+        "switches": {"mansion": {"flag": "FLAG_TEST_SWITCH", "toggle": true, "floors": ["GateStatueHall"],
+            "statues": [{"coord": [8, 0], "face_from": [8, 1], "facing": "north"}]}}
+    })", "GateStatueHall")};
+    return MAPS;
+}
+
+//  13.01 mansion_holes (console B, 2026-11-14 01:26), Pokemon Mansion 3F:
+//  the press at the statue failed on its tile (12, 6), and the step was
+//  tried again planned from the checkpoint's start on Cinnabar Island,
+//  with the player still on 3F. A route that fails says where the player
+//  is known to be: on the tile the press failed on, the switch as it was.
+UnitTestResult test_failed_press_keeps_its_tile(){
+    const MapPosition start{"GateStatueHall", {1, 1}};
+    const MapPosition pressed_from{"GateStatueHall", {3, 1}};
+    const auto route = plan_overworld_route_gated(
+        statue_hall_maps(), start, RouteGoal{{"GateStatueHall", {5, 3}}, std::nullopt}, GateState(), with_card_key(false)
+    );
+    if (!route){
+        return "No route past the barrier.";
+    }
+    OverworldSim sim(statue_moved_maps(), start, Direction::EAST, SimScript{});
+    OverworldSimWalker walker(sim, SimWalkerRules{});
+    RouteProgress progress;
+    const RoutePlanning planning{
+        .maps = &statue_hall_maps(), .costs = default_route_costs(), .start = start, .label = "Sim", .progress = &progress
+    };
+    const std::string failure = walker.run(*route, planning);
+    if (failure.empty()){
+        return "Expected the press to find no statue." + describe(*route);
+    }
+    if (!progress.at || !(*progress.at == pressed_from) || progress.gates.switch_on("GateStatueHall/mansion")){
+        return std::format(
+            "Expected the player known on {} with the switch off, got {}.",
+            to_string(pressed_from), progress.at ? to_string(*progress.at) : "no tile"
+        ) + describe(*route);
+    }
+    return true;
+}
+
 //  The sim, like the game, does not open a card-key door for a player
 //  without the Card Key.
 UnitTestResult test_sim_door_stays_shut_without_card_key(){
@@ -332,6 +378,7 @@ const std::vector<GatesCase> GATES_CASES{
     {.input = {.name = "sim: face the door, A, walk through", .body = test_sim_opens_gate}, .expectation = {}},
     {.input = {.name = "sim: face the statue, A, YES, walk through", .body = test_sim_presses_statue}, .expectation = {}},
     {.input = {.name = "sim: the door stays shut without the Card Key", .body = test_sim_door_stays_shut_without_card_key}, .expectation = {}},
+    {.input = {.name = "sim: a failed press keeps the player on its tile", .body = test_failed_press_keeps_its_tile}, .expectation = {}},
 };
 
 } // namespace

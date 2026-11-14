@@ -130,6 +130,15 @@ std::optional<MapPosition> route_start(const Pokemon::Pose& pose){
     return MapPosition{pose.map, tiles[0]};
 }
 
+//  Where a route that failed left the player: the tile it last knew them
+//  on, facing not known; nothing known if it failed while moving them.
+Pokemon::Pose pose_after_failed_route(const RouteProgress& progress){
+    if (!progress.at){
+        return Pokemon::Pose{};
+    }
+    return Pokemon::tile_pose(progress.at->map, {progress.at->point}, std::nullopt);
+}
+
 //  The story's interrupts for `step`'s walk, with FRLG's screen observer,
 //  which places a wild battle seen only after an open leg's hold
 //  (OverworldInterruptSet::make_observer).
@@ -174,8 +183,18 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const 
     const OverworldInterruptSet interrupts = walk_interrupts(env, step);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest. From a set of tiles: reads the facing.
-    const RoutePlanning planning{.maps = &maps, .gates = state.gates, .costs = story_route_costs(), .start = start, .label = step.name, .checkpoint = env.checkpoint, .wall_check = wall_check(env), .pause = &env.pause, .beaten_trainers = beaten_trainers(state.flags)};
-    walk_overworld_route_with_recovery(env.console, env.context, *route, planning, env.player_gender, facing, interrupts, move_speed(step));
+    RouteProgress progress{.at = start, .gates = state.gates};
+    const RoutePlanning planning{.maps = &maps, .gates = state.gates, .costs = story_route_costs(), .start = start, .label = step.name, .checkpoint = env.checkpoint, .wall_check = wall_check(env), .pause = &env.pause, .beaten_trainers = beaten_trainers(state.flags), .progress = &progress};
+    try{
+        walk_overworld_route_with_recovery(env.console, env.context, *route, planning, env.player_gender, facing, interrupts, move_speed(step));
+    }catch (OperationFailedException&){
+        //  A step tried again after this (an interrupt cleared after the
+        //  failure) plans from where the route left the player, or fails
+        //  for want of a pose: never from where this one started.
+        state.pose = pose_after_failed_route(progress);
+        state.gates = progress.gates;
+        throw;
+    }
     state.gates = gates_after_route(state.gates, *route);
     log_arrival(env, step.name, target->map, target->tile);
     const std::optional<Direction> end_facing = route->empty() ? facing : std::optional<Direction>(route->back().facing_after);
@@ -205,7 +224,14 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
     const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = start, .label = step.name, .checkpoint = env.checkpoint, .wall_check = wall_check(env), .pause = &env.pause, .beaten_trainers = beaten_trainers(state.flags)};
-    walk_overworld_route_with_recovery(env.console, env.context, *route, planning, env.player_gender, facing, interrupts, move_speed(step));
+    try{
+        walk_overworld_route_with_recovery(env.console, env.context, *route, planning, env.player_gender, facing, interrupts, move_speed(step));
+    }catch (OperationFailedException&){
+        //  The legs are laid out from where the step started: tried again
+        //  from anywhere else they would walk off course.
+        state.pose = Pokemon::Pose{};
+        throw;
+    }
     log_arrival(env, step.name, route->back().end.map, route->back().end.point);
     return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
 }
