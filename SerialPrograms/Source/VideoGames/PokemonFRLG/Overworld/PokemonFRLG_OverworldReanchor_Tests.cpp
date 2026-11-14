@@ -8,6 +8,7 @@
  */
 
 #include <chrono>
+#include <cstdint>
 #include <format>
 #include <functional>
 #include <optional>
@@ -329,6 +330,59 @@ UnitTestResult test_mansion_battle_then_hold_again(){
     return true;
 }
 
+//  The walk from the statue's corner of Pokemon Mansion B1F, (25, 31), to
+//  the switch, (24, 30): "west 1 (open)", then "north 1 (to wall)".
+std::vector<RouteStep> mansion_b1f_to_switch(){
+    std::vector<RouteStep> route{
+        sim_leg(Direction::WEST, 1, {"PokemonMansion_B1F", {24, 31}}, false),
+        sim_leg(Direction::NORTH, 1, {"PokemonMansion_B1F", {24, 30}}, true),
+    };
+    for (RouteStep& step : route){
+        step.wild = true;
+    }
+    return route;
+}
+
+//  13.03 to_elixir (console B, 2026-11-14 04:43), Pokemon Mansion B1F:
+//  "west 1 (open)" from (25, 31) scrolled the screen (39.2) and ended under
+//  the statue, but the open-leg check took it as maybe 0 tiles walked and
+//  found the player at walls: "east 1 (to wall)" back to (25, 31), then the
+//  same leg again. A hold that scrolled walked at least a tile, so a
+//  one-tile leg ended on its tile, and nothing walks back over it.
+UnitTestResult test_mansion_one_tile_leg_scrolled(){
+    const MapPosition start{"PokemonMansion_B1F", {25, 31}};
+    const SimWalk run = walk_on_sim(start, Direction::SOUTH, mansion_b1f_to_switch(), SimScript{});
+    const MapPosition goal{"PokemonMansion_B1F", {24, 30}};
+    if (!run.failure.empty() || !(run.state.position == goal) || run.log.find("position check") != std::string::npos){
+        return std::format("Expected the one-tile leg trusted and the switch reached, ended on {}: \"{}\"{}", to_string(run.state.position), run.failure, run.log);
+    }
+    return true;
+}
+
+//  As above, the second try: a wild battle seen after the hold of "west 1
+//  (open)" left the tile unknown, (25, 31) or (24, 31), and the hold that
+//  finds the player, "east 1 (to wall)", failed at its turn tap: the
+//  facing never read there, the legs hidden by the partition's base drawn
+//  over them, and a turn whose facing doesn't read is taken only on a known
+//  tile. A hold to a wall turns the player itself if the tap was missed,
+//  and ends at the wall from either tile, so it goes on.
+UnitTestResult test_mansion_unread_turn_before_wall_hold(){
+    const MapPosition start{"PokemonMansion_B1F", {25, 31}};
+    SimScript script;
+    script.wild_floor_maps = {"PokemonMansion_B1F"};
+    script.encounters = {{.grass_step = 1, .seen_late = true}};
+    script.hidden_facing_reads = SIZE_MAX;
+    const SimWalk run = walk_on_sim(start, Direction::SOUTH, mansion_b1f_to_switch(), script);
+    if (run.log.find("plan from an unknown tile") == std::string::npos){
+        return "Expected the battle to leave the tile unknown, as on the console:" + run.log;
+    }
+    const MapPosition goal{"PokemonMansion_B1F", {24, 30}};
+    if (!run.failure.empty() || !(run.state.position == goal)){
+        return std::format("Expected the turn before the hold to the wall taken, and the switch reached, ended on {}: \"{}\"{}", to_string(run.state.position), run.failure, run.log);
+    }
+    return true;
+}
+
 const OverworldReanchorTestCase OVERWORLD_REANCHOR_CASES[] = {
     {
         .input = {.name = "rules", .body = test_rules},
@@ -349,6 +403,14 @@ const OverworldReanchorTestCase OVERWORLD_REANCHOR_CASES[] = {
     {
         .input = {.name = "sim: Pokemon Mansion 2F, a battle, then a hold held again at its wall", .body = test_mansion_battle_then_hold_again},
         .expectation = {.description = "a hold to a wall held again that moves nothing is a bump at the wall"},
+    },
+    {
+        .input = {.name = "sim: Pokemon Mansion B1F, a one-tile open leg that scrolled", .body = test_mansion_one_tile_leg_scrolled},
+        .expectation = {.description = "a one-tile open leg whose hold scrolled ends on its tile, with no walls to find"},
+    },
+    {
+        .input = {.name = "sim: Pokemon Mansion B1F, a turn not read before a hold to a wall", .body = test_mansion_unread_turn_before_wall_hold},
+        .expectation = {.description = "on an unknown tile, an unread turn before a hold to a wall is taken as turned"},
     },
     {
         .input = {.name = "Viridian Mart to Oak's Lab", .body = test_viridian_mart_to_oaks_lab},

@@ -211,6 +211,7 @@ StepOutcome OverworldSimWalker::walk(const RouteStep& step, std::optional<Direct
     }
     m_speed = m_riding || !m_rules.get_back_on_bike ? m_rules.speed : on_foot(m_rules.speed);
     const StepOutcome outcome = walk_ridden(step, facing);
+    m_at_known = outcome.end == StepEnd::DONE;
     if (m_riding && step.warps && !warp_keeps_bike(step.end.map)){
         m_log.push_back("Bike: through the warp to " + step.end.map + ", off the Bicycle.");
         m_riding = false;
@@ -218,7 +219,7 @@ StepOutcome OverworldSimWalker::walk(const RouteStep& step, std::optional<Direct
     return outcome;
 }
 
-bool sim_turn_to(OverworldSim& sim, Direction direction, bool confirm){
+bool sim_turn_to(OverworldSim& sim, Direction direction, bool confirm, const OverworldWalkSteps::UnreadTurn& unread){
     if (!confirm){
         sim.tap(direction);
         return true;
@@ -238,8 +239,7 @@ bool sim_turn_to(OverworldSim& sim, Direction direction, bool confirm){
             return sim.state().facing;
         }
     );
-    //  The sim's walker knows the tile it turns on.
-    return turned.facing || OverworldWalkSteps::unread_turn_taken({.at_known = true, .overworld_clear = true});
+    return turned.facing || OverworldWalkSteps::unread_turn_taken(unread);
 }
 
 void sim_step_once(OverworldSim& sim, Direction direction){

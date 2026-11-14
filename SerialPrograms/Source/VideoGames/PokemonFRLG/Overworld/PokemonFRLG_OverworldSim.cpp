@@ -799,7 +799,8 @@ bool OverworldSimWalker::after_warp(const RouteStep& step, int warps_before, Mil
 }
 
 void OverworldSimWalker::turn_or_fail(const RouteStep& step){
-    if (!sim_turn_to(m_sim, step.direction, m_rules.confirm_turn)){
+    const OverworldWalkSteps::UnreadTurn unread{.at_known = m_at_known, .overworld_clear = true};
+    if (!sim_turn_to(m_sim, step.direction, m_rules.confirm_turn, unread)){
         fail("walk_overworld_route(): after a turn tap " + std::string(Pokemon::direction_name(step.direction)) + ", the facing can't be read.");
     }
 }
@@ -990,6 +991,7 @@ RouteCalls OverworldSimWalker::calls(){
 }
 
 std::string OverworldSimWalker::run(const std::vector<RouteStep>& route, const RoutePlanning& planning){
+    m_at_known = planning.start.has_value();
     try{
         run_route(route, m_sim.state().facing, &planning, calls());
     }catch (OperationFailedException& e){

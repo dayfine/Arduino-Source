@@ -47,6 +47,7 @@
 #include "PokemonFRLG_BikeSpinPresses.h"
 #include "PokemonFRLG_BikeSpinMechanics.h"
 #include "PokemonFRLG_OverworldBikeTaps.h"
+#include "PokemonFRLG_OverworldFacing.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldSimField.h"
@@ -407,8 +408,11 @@ struct SimWalkerRules{
 //  OverworldWalkSteps::turn_to() on `sim`, which reads the facing on the
 //  overworld only, but for SimScript::hidden_facing_reads; with `confirm`
 //  false, the one tap before it. Returns false where turn_to() would fail
-//  the leg (unread_turn_taken()), the tile taken as known.
-bool sim_turn_to(OverworldSim& sim, Direction direction, bool confirm = SimWalkerRules{}.confirm_turn);
+//  the leg: unread_turn_taken() of `unread`, by default on a known tile.
+bool sim_turn_to(
+    OverworldSim& sim, Direction direction, bool confirm = SimWalkerRules{}.confirm_turn,
+    const OverworldWalkSteps::UnreadTurn& unread = {.at_known = true, .overworld_clear = true}
+);
 
 //  AutoStory's step_once() on `sim`: turns the player if they face another
 //  way, then one step tap.
@@ -511,6 +515,11 @@ private:
     //  speed of the step under way.
     bool m_riding = false;
     MoveSpeed m_speed = MoveSpeed::WALK;
+    //  Whether the walker knows the tile the next step starts on, as
+    //  walk_overworld_route_with_recovery() does: from the planned start,
+    //  then after each step that ended as planned. Known for calls() used
+    //  without run(), as before the sim modelled it.
+    bool m_at_known = true;
 };
 
 
