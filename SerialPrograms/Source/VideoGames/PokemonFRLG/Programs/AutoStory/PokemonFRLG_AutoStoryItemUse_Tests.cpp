@@ -9,7 +9,9 @@
 
 #include <format>
 #include <map>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -21,6 +23,9 @@
 #include "PokemonFRLG_AutoStoryBagUse.h"
 #include "PokemonFRLG_AutoStoryBag.h"
 #include "PokemonFRLG_AutoStoryFieldSteps.h"
+#include "PokemonFRLG_AutoStoryGameArgs.h"
+#include "PokemonFRLG_AutoStoryMartPlan.h"
+#include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -402,6 +407,129 @@ UnitTestResult test_variants_and_bike(){
     return true;
 }
 
+struct StepDoneInput{
+    std::string name;
+    ItemUseEnd end;
+    //  The step's "if_any" arg.
+    bool if_any = false;
+};
+struct StepDoneExpectation{
+    bool done;
+};
+struct StepDoneCase{
+    StepDoneInput input;
+    StepDoneExpectation expectation;
+};
+
+class Test_ItemUseStepDone : public UnitTest{
+public:
+    explicit Test_ItemUseStepDone(StepDoneCase test_case)
+        : UnitTest(std::format("PokemonFRLG::AutoStoryItemUse - step done: {}", test_case.input.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        if (item_use_step_done(m_case.input.end, m_case.input.if_any) != m_case.expectation.done){
+            return std::format("{}: expected done = {}.", item_use_end_name(m_case.input.end), m_case.expectation.done);
+        }
+        return true;
+    }
+
+private:
+    StepDoneCase m_case;
+};
+
+const StepDoneCase STEP_DONE_CASES[] = {
+    {.input = {.name = "used", .end = ItemUseEnd::USED}, .expectation = {.done = true}},
+    {.input = {.name = "a Repel lingered", .end = ItemUseEnd::LINGERED}, .expectation = {.done = true}},
+    {.input = {.name = "none left", .end = ItemUseEnd::NONE_LEFT}, .expectation = {.done = false}},
+    {.input = {.name = "none left, if_any", .end = ItemUseEnd::NONE_LEFT, .if_any = true}, .expectation = {.done = true}},
+    {.input = {.name = "none left, if_any false", .end = ItemUseEnd::NONE_LEFT, .if_any = false}, .expectation = {.done = false}},
+    {.input = {.name = "no bag, if_any", .end = ItemUseEnd::NO_BAG, .if_any = true}, .expectation = {.done = false}},
+};
+
+//  A Super Repel step of the story table, PokeGuy's (FRLG_POKEGUY_15934_VIDEO_NOTES.md).
+struct SuperRepelInput{
+    std::string name;
+    std::string_view checkpoint;
+    std::string_view step;
+};
+//  The steps around it ("" for none: the checkpoint's first or last), and
+//  the Super Repels in the bag before it: those the Mart steps bought less
+//  those the use_item steps used, in story order. Repels renewed in a
+//  battle aren't counted, so the step skips if none is left (if_any).
+struct SuperRepelExpectation{
+    std::string_view previous;
+    std::string_view next;
+    size_t in_bag;
+};
+struct SuperRepelCase{
+    SuperRepelInput input;
+    SuperRepelExpectation expectation;
+};
+
+class Test_SuperRepelStep : public UnitTest{
+public:
+    explicit Test_SuperRepelStep(SuperRepelCase test_case)
+        : UnitTest(std::format("PokemonFRLG::AutoStoryItemUse - {}", test_case.input.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        size_t in_bag = 0;
+        for (const StoryCheckpoint& row : story_checkpoints()){
+            for (size_t c = 0; c < row.steps.size(); c++){
+                const StoryStep& step = row.steps[c];
+                if (row.id == m_case.input.checkpoint && step.name == m_case.input.step){
+                    return check(row, c, in_bag);
+                }
+                in_bag = super_repels_after(step, in_bag);
+            }
+        }
+        return std::format("No step {} in {}.", m_case.input.step, m_case.input.checkpoint);
+    }
+
+private:
+    static size_t super_repels_after(const StoryStep& step, size_t in_bag){
+        if (step.action == MART_ACTION){
+            for (const MartLine& line : mart_plan_of(step.args).value_or(MartPlan()).lines){
+                in_bag += line.item == "super-repel" ? line.quantity : 0;
+            }
+        }
+        if (parse_use_item_step(step) == "super-repel" && in_bag > 0){
+            in_bag--;
+        }
+        return in_bag;
+    }
+    UnitTestResult check(const StoryCheckpoint& row, size_t index, size_t in_bag) const{
+        const StoryStep& step = row.steps[index];
+        const std::string_view previous = index == 0 ? "" : std::string_view(row.steps[index - 1].name);
+        const std::string_view next = index + 1 == row.steps.size() ? "" : std::string_view(row.steps[index + 1].name);
+        const bool* if_any = game_arg<bool>(step.args, "if_any");
+        if (parse_use_item_step(step) != "super-repel" || if_any == nullptr || !*if_any){
+            return std::format("{}/{}: expected a use_item super-repel step with if_any.", row.id, step.name);
+        }
+        if (previous != m_case.expectation.previous || next != m_case.expectation.next){
+            return std::format("{}/{}: between \"{}\" and \"{}\".", row.id, step.name, previous, next);
+        }
+        if (in_bag != m_case.expectation.in_bag){
+            return std::format("{}/{}: {} Super Repels in the bag before it.", row.id, step.name, in_bag);
+        }
+        return true;
+    }
+
+    SuperRepelCase m_case;
+};
+
+const SuperRepelCase SUPER_REPEL_CASES[] = {
+    {
+        .input = {.name = "12.03's Super Repel before the Fly to Pallet", .checkpoint = "12.03", .step = "super_repel_fuchsia"},
+        .expectation = {.previous = "", .next = "outside_fuchsia_center", .in_bag = 5},
+    },
+    {
+        .input = {.name = "13.01's Super Repel after 3F's statue", .checkpoint = "13.01", .step = "super_repel_mansion"},
+        .expectation = {.previous = "mansion_holes", .next = "", .in_bag = 4},
+    },
+};
+
 struct AutoStoryItemUseBodyInput{
     std::string name;
     UnitTestResult (*body)();
@@ -448,6 +576,12 @@ void add_tests_AutoStoryItemUse(UnitTestDatabase& database){
     }
     for (const AutoStoryItemUseBodyCase& item : ITEM_USE_BODY_CASES){
         database.add<Test_AutoStoryItemUseBody>(item);
+    }
+    for (const StepDoneCase& item : STEP_DONE_CASES){
+        database.add<Test_ItemUseStepDone>(item);
+    }
+    for (const SuperRepelCase& item : SUPER_REPEL_CASES){
+        database.add<Test_SuperRepelStep>(item);
     }
 }
 

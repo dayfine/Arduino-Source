@@ -45,6 +45,12 @@ struct ItemUses{
 //  Uses `item` up to `count` times from the bag.
 ItemUses use_items_from_bag(Logger& logger, ItemUseActions& actions, std::string_view item, size_t count);
 
+//  Whether a use_item step that ended with `end` has done its job: the
+//  item used, or a Repel used before still on. With `if_any` (the step's
+//  arg), also when the bag has none left: the walk goes on without it
+//  (PokeGuy's Super Repels from 12.03 on, which a Repel renewed earlier
+//  may have used up).
+bool item_use_step_done(ItemUseEnd end, bool if_any);
 //  The same, REGISTERing it for SELECT (the Bicycle) instead of USE.
 ItemUseEnd register_item_in_bag(Logger& logger, ItemUseActions& actions, std::string_view item);
 
