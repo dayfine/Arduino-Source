@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cstdlib>
 #include <functional>
 #include "PokemonLZA_AutoStoryZone1Road.h"
 
@@ -42,12 +43,8 @@ std::vector<int> road_stops_to_gate(std::span<const int> spots, std::optional<in
     return ahead;
 }
 
-bool starts_in_zone_1(std::optional<int> distance){
-    return distance && *distance <= ZONE_1_START_MAX;
-}
-
-bool left_zone_1(std::optional<int> distance){
-    return distance && *distance > ZONE_1_START_MAX;
+bool at_zone_1_start(std::optional<int> distance, bool arrow_in_zone){
+    return arrow_in_zone && distance && std::abs(*distance - ZONE_1_START_DISTANCE) <= ZONE_1_START_TOLERANCE;
 }
 
 

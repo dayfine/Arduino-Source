@@ -15,9 +15,7 @@ namespace PokemonLZA{
 
 
 //  Registers the tests of the AutoStory detectors (Detectors/): synthetic
-//  frames always; the opening's frames from the folders in
-//  PLZA_OPENING_FRAMES and PLZA_USER_OPENING_FRAMES, and the runs' frames
-//  from PLZA_0101_RUN1_FRAMES and the others, each skipped when unset.
+//  frames, and console frames from CommandLineTests.
 void add_tests_AutoStoryDetectors(UnitTestDatabase& database);
 
 

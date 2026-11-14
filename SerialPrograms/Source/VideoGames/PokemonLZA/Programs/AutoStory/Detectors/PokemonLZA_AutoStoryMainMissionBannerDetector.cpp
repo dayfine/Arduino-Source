@@ -14,11 +14,10 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Measured on 1920x1080 (console B, 2026-11-10, 01.01 run 3's 0181): the
-//  bar's yellow fills x 430-820 and x 1100-1500 at y 425-585 (left and
-//  right of the name), none of it 15 px above or below the bar; the icon's
-//  hexagon is white at x 700-710 and 724-734, y 337-358, with the "!"'s
-//  orange stroke at x 716-719 between them.
+//  On 1920x1080: the bar's yellow fills x 430-820 and x 1100-1500 at
+//  y 425-585 (left and right of the name), none of it 15 px above or
+//  below the bar; the icon's hexagon is white at x 700-710 and 724-734,
+//  y 337-358, with the "!"'s orange stroke at x 716-719 between them.
 MainMissionBannerDetector::MainMissionBannerDetector(Color color)
     : m_color(color)
     , m_bar_left(430.0 / 1920, 425.0 / 1080, 390.0 / 1920, 160.0 / 1080)
@@ -40,13 +39,11 @@ void MainMissionBannerDetector::make_overlays(VideoOverlaySet& items) const{
     items.add(m_color, m_icon_stroke);
 }
 
-//  Measured on 01.01's runs 1-3, the lab's and the user's opening frames
-//  and the other PLZA lab captures (746 frames, console B, 2026-11-10):
-//  the banner's one frame (run 3's 0181) has both bar boxes 100% yellow,
-//  the strips around it 0-1%, and the icon's three boxes 100% at dx 0. The
-//  closest others: the bar boxes 8% at most, the icon's weakest box 27% at
-//  most (run 2's 0032, the flyover). The icon is looked for 60 px either side, as a longer
-//  or shorter header moves it.
+//  On the banner both bar boxes are 100% yellow, the strips around the bar
+//  0-1%, and the icon's three boxes 100% at dx 0. Other screens have the
+//  bar boxes 8% yellow at most and the icon's weakest box 27% at most (a
+//  city flyover). The icon is looked for 60 px either side, as a longer or
+//  shorter header moves it.
 bool MainMissionBannerDetector::detect(const ImageViewRGB32& screen){
     if (banner_yellow_share(screen, m_bar_left) < 0.6 || banner_yellow_share(screen, m_bar_right) < 0.6){
         return false;

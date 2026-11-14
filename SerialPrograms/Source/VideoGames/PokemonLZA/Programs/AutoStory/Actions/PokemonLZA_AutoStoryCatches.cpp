@@ -11,9 +11,6 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "CommonTools/Images/BinaryImage_FilterRgb32.h"
-#include "CommonTools/OCR/OCR_NumberReader.h"
-#include "Kernels/Waterfill/Kernels_Waterfill_Session.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
@@ -23,6 +20,7 @@
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryCaughtMarkReader.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDexRegisteredDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader.h"
 #include "PokemonLZA_AutoStoryBracketWatch.h"
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 #include "PokemonLZA_AutoStoryCatches.h"
@@ -36,7 +34,6 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 using namespace std::chrono_literals;
-using namespace Kernels::Waterfill;
 
 
 namespace{
@@ -550,116 +547,147 @@ private:
     int m_sidesteps = 0;
 };
 
+//  The marker's distance reads, with misreads dropped. A read far from the
+//  last one is a misread: a 0.6 s step covers about 3. Below: 36 as "3" or
+//  29 on console B; above: 110 as "1110" (2026-11-13), which then rejected
+//  every true read after it. So three agreeing reads in a row far from the
+//  last mean the last read was the wrong one, and they are taken.
+class DistanceReads{
+public:
+    std::optional<int> last() const{
+        return m_last;
+    }
+
+    //  Whether `distance` (a read above 0) is taken as the last read.
+    bool accept(int distance){
+        if (m_last && !near(distance, *m_last)){
+            m_rejected = m_rejected_read && near(distance, *m_rejected_read) ? m_rejected + 1 : 1;
+            m_rejected_read = distance;
+            if (m_rejected < 3){
+                return false;
+            }
+        }
+        m_rejected_read.reset();
+        m_rejected = 0;
+        m_last = distance;
+        return true;
+    }
+
+private:
+    static bool near(int a, int b){
+        return a >= b - 12 && a <= b + 12;
+    }
+
+    std::optional<int> m_last;
+    //  Reads far from `m_last` in a row that agree with each other.
+    std::optional<int> m_rejected_read;
+    int m_rejected = 0;
+};
+
+//  How one step of ObjectiveWalk ended.
+enum class ObjectiveStep{
+    WALKING,    //  on toward the marker
+    ARRIVED,    //  within the distance asked, or (stop at 0) a prompt or a dialog shows
+    LOST,       //  the marker did not show for 12 camera turns
+};
+
+//  walk_to_objective()'s walk, one look and one move at a time.
+class ObjectiveWalk{
+public:
+    ObjectiveWalk(ConsoleHandle& console, ProControllerContext& context, int stop_at)
+        : m_console(console)
+        , m_context(context)
+        , m_stop_at(stop_at)
+    {}
+
+    std::optional<int> last() const{
+        return m_reads.last();
+    }
+
+    //  Reads the screen, then turns the camera or walks a step.
+    ObjectiveStep step(){
+        m_context.wait_for_all_requests();
+        const VideoSnapshot frame = m_console.video().snapshot();
+        const ScreenEvents events = m_observer.observe(frame, current_time());
+        if (m_stop_at <= 0 && events.any_of({ScreenEvent::INTERACT_PROMPT, ScreenEvent::DIALOG_BOX})){
+            return ObjectiveStep::ARRIVED;
+        }
+        const std::optional<ObjectiveMarker> marker = read_objective_marker(m_console, frame);
+        if (!marker){
+            return look_behind();
+        }
+        m_unseen = 0;
+        m_last_x = marker->x;
+        if (turn_to_pinned_marker(m_context, marker->x)){
+            return ObjectiveStep::WALKING;
+        }
+        if (marker->distance > 0 && on_distance(*marker) == ObjectiveStep::ARRIVED){
+            return ObjectiveStep::ARRIVED;
+        }
+        steer_and_step(m_context, marker->x);
+        return ObjectiveStep::WALKING;
+    }
+
+private:
+    //  The marker is behind us: turn the camera, toward where it was last,
+    //  until it shows.
+    ObjectiveStep look_behind(){
+        if (++m_unseen > 12){
+            return ObjectiveStep::LOST;
+        }
+        pbf_move_right_joystick(m_context, {m_last_x < 0.5 ? -0.5 : 0.5, 0}, 500ms, 200ms);
+        return ObjectiveStep::WALKING;
+    }
+
+    //  A distance read above 0: dropped as a misread (a step on), taken
+    //  and within `m_stop_at` (arrived), or taken, with a sidestep when the
+    //  walk is held up.
+    ObjectiveStep on_distance(const ObjectiveMarker& marker){
+        const std::optional<int> before = m_reads.last();
+        if (!m_reads.accept(marker.distance)){
+            return ObjectiveStep::WALKING;
+        }
+        if (before != marker.distance){
+            m_console.log(std::format("walk_to_objective(): {} to go, marker at x = {:.2f}.", marker.distance, marker.x));
+        }
+        if (marker.distance <= m_stop_at){
+            m_console.log(std::format("walk_to_objective(): {} to the objective.", marker.distance));
+            return ObjectiveStep::ARRIVED;
+        }
+        if (m_stuck.stuck(marker.distance)){
+            m_stuck.sidestep(m_console, m_context);
+        }
+        return ObjectiveStep::WALKING;
+    }
+
+    ConsoleHandle& m_console;
+    ProControllerContext& m_context;
+    const int m_stop_at;
+    PlzaScreenObserver m_observer;
+    DistanceReads m_reads;
+    StuckWatch m_stuck;
+    int m_unseen = 0;
+    double m_last_x = 0.5;
+};
+
 } // namespace
 
 
-std::optional<ObjectiveMarker> read_objective_marker(Logger& logger, const ImageViewRGB32& screen){
-    //  The hexagon's orange, about (245, 175, 40) on console B: the largest
-    //  hexagon-sized blob outside the minimap (its marker is there too).
-    const double scale = screen.height() / 1080.0;
-    PackedBinaryMatrix matrix = compress_rgb32_to_binary_range(screen, 220, 255, 140, 215, 0, 90);
-    std::unique_ptr<WaterfillSession> session = make_WaterfillSession(matrix);
-    std::unique_ptr<WaterfillIterator> iter = session->make_iterator((size_t)(500 * scale * scale));
-    std::optional<WaterfillObject> best;
-    WaterfillObject object;
-    while (iter->find_next(object, false)){
-        //  The minimap: a circle of radius 125 around (180, 180) on
-        //  1920x1080. A box around it also covered the real marker when it
-        //  sat at the left edge, high up (console B, 2026-11-10).
-        const double dx = object.center_of_gravity_x() / scale - 180;
-        const double dy = object.center_of_gravity_y() / scale - 180;
-        const bool in_minimap = dx * dx + dy * dy < 140 * 140;
-        const bool in_party_bar = object.center_of_gravity_y() / screen.height() > 0.70;
-        const double aspect = object.aspect_ratio();
-        if (in_minimap || in_party_bar || object.area > 4000 * scale * scale || aspect < 0.6 || aspect > 1.4){
-            continue;
-        }
-        if (!best || object.area > best->area){
-            best = object;
-        }
-    }
-    if (!best){
-        return std::nullopt;
-    }
-    //  The distance: white digits just above the hexagon, up to its width
-    //  out each side, about half its height tall.
-    const double w = (double)best->width();
-    const double h = (double)best->height();
-    const ImagePixelBox digits(
-        (size_t)std::max(0.0, best->min_x - w), (size_t)std::max(0.0, best->min_y - 0.95 * h),
-        (size_t)std::min((double)screen.width(), best->max_x + w), (size_t)std::max(1.0, best->min_y - 0.10 * h)
-    );
-    ObjectiveMarker marker;
-    marker.x = (best->min_x + best->max_x) / 2.0 / screen.width();
-    marker.distance = OCR::read_number_waterfill(logger, extract_box_reference(screen, digits), 0xffd0d0d0, 0xffffffff);
-    return marker;
-}
-
 std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit){
-    PlzaScreenObserver observer;
     const WallClock deadline = current_time() + limit;
-    int unseen = 0;
-    double last_x = 0.5;
-    std::optional<int> last;
-    //  Reads far from `last` in a row that agree with each other.
-    std::optional<int> rejected_read;
-    int rejected = 0;
-    StuckWatch stuck;
+    ObjectiveWalk walk(console, context, stop_at);
     while (current_time() < deadline){
-        context.wait_for_all_requests();
-        const VideoSnapshot frame = console.video().snapshot();
-        const ScreenEvents events = observer.observe(frame, current_time());
-        if (stop_at <= 0 && events.any_of({ScreenEvent::INTERACT_PROMPT, ScreenEvent::DIALOG_BOX})){
-            return last;
+        switch (walk.step()){
+        case ObjectiveStep::WALKING:
+            break;
+        case ObjectiveStep::ARRIVED:
+            return walk.last();
+        case ObjectiveStep::LOST:
+            return std::nullopt;
         }
-        const std::optional<ObjectiveMarker> marker = read_objective_marker(console, frame);
-        if (!marker){
-            //  Behind us: turn the camera, toward where it was last, until it
-            //  shows.
-            if (++unseen > 12){
-                return std::nullopt;
-            }
-            pbf_move_right_joystick(context, {last_x < 0.5 ? -0.5 : 0.5, 0}, 500ms, 200ms);
-            continue;
-        }
-        unseen = 0;
-        last_x = marker->x;
-        if (turn_to_pinned_marker(context, marker->x)){
-            continue;
-        }
-        //  A read far from the last one is a misread: a 0.6 s step covers
-        //  about 3. Below: 36 as "3" or 29 on console B; above: 110 as
-        //  "1110" (2026-11-13), which then rejected every true read after
-        //  it. So three agreeing reads in a row far from the last mean the
-        //  last read was the wrong one, and they are taken.
-        const auto near = [](int a, int b){ return a >= b - 12 && a <= b + 12; };
-        if (marker->distance > 0 && last && !near(marker->distance, *last)){
-            rejected = rejected_read && near(marker->distance, *rejected_read) ? rejected + 1 : 1;
-            rejected_read = marker->distance;
-            if (rejected < 3){
-                steer_and_step(context, marker->x);
-                continue;
-            }
-        }
-        if (marker->distance > 0){
-            rejected_read.reset();
-            rejected = 0;
-            if (last != marker->distance){
-                console.log(std::format("walk_to_objective(): {} to go, marker at x = {:.2f}.", marker->distance, marker->x));
-            }
-            last = marker->distance;
-            if (marker->distance <= stop_at){
-                console.log(std::format("walk_to_objective(): {} to the objective.", marker->distance));
-                return last;
-            }
-            if (stuck.stuck(marker->distance)){
-                stuck.sidestep(console, context);
-            }
-        }
-        steer_and_step(context, marker->x);
     }
-    console.log(std::format("walk_to_objective(): not within {} in time (last read {}).", stop_at, last.value_or(-1)));
-    return last;
+    console.log(std::format("walk_to_objective(): not within {} in time (last read {}).", stop_at, walk.last().value_or(-1)));
+    return walk.last();
 }
 
 namespace{

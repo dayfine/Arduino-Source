@@ -51,13 +51,6 @@ bool story_row_starts_without_save(const StoryCheckpoint& row){
     return first_game_action_is(row, "confirm_new_game");
 }
 
-std::vector<StoryCheckpoint> story_run_rows(const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last){
-    if (first > last || last >= checkpoints.size()){
-        return {};
-    }
-    return std::vector<StoryCheckpoint>(checkpoints.begin() + first, checkpoints.begin() + last + 1);
-}
-
 
 
 } // namespace PokemonLZA

@@ -1,5 +1,5 @@
 {
-  "source": "platform_ref.png: console B, the station platform right after the opening cutscene (default camera)",
+  "source": "the station platform right after the opening cutscene, default camera, 1920x1080",
   "regions": {
     "top": {
       "cols": 64,

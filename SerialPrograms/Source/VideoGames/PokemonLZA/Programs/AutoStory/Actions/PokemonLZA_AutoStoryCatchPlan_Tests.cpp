@@ -566,106 +566,68 @@ private:
 };
 
 
-//  starts_in_zone_1(): 03.08 starts in the zone or at the Pokemon Center.
+//  at_zone_1_start(): 03.07d ends where 03.08 starts in Wild Zone 1.
 struct ZoneStartCase{
     std::string name;
     struct Input{
         std::optional<int> distance;
+        bool arrow_in_zone;
     };
     Input input;
     struct Expectation{
-        bool in_zone;
+        bool at_start;
     };
     Expectation expectation;
 };
 
 const ZoneStartCase ZONE_START_CASES[] = {
     {
-        .name = "where 03.07's tutorial ends",
-        .input = {.distance = 125},
-        .expectation = {.in_zone = true},
+        .name = "03.08's start frame: the far gate at 127, in the zone",
+        .input = {.distance = 127, .arrow_in_zone = true},
+        .expectation = {.at_start = true},
     },
     {
-        .name = "at the bound",
-        .input = {.distance = ZONE_1_START_MAX},
-        .expectation = {.in_zone = true},
+        .name = "at the near bound",
+        .input = {.distance = ZONE_1_START_DISTANCE - ZONE_1_START_TOLERANCE, .arrow_in_zone = true},
+        .expectation = {.at_start = true},
     },
     {
-        .name = "further: at the Pokemon Center",
-        .input = {.distance = ZONE_1_START_MAX + 1},
-        .expectation = {.in_zone = false},
+        .name = "at the far bound",
+        .input = {.distance = ZONE_1_START_DISTANCE + ZONE_1_START_TOLERANCE, .arrow_in_zone = true},
+        .expectation = {.at_start = true},
     },
     {
-        .name = "no distance read: not taken as in the zone",
-        .input = {.distance = std::nullopt},
-        .expectation = {.in_zone = false},
+        .name = "too near: walked on past the start",
+        .input = {.distance = ZONE_1_START_DISTANCE - ZONE_1_START_TOLERANCE - 1, .arrow_in_zone = true},
+        .expectation = {.at_start = false},
+    },
+    {
+        .name = "too far: short of the start",
+        .input = {.distance = ZONE_1_START_DISTANCE + ZONE_1_START_TOLERANCE + 1, .arrow_in_zone = true},
+        .expectation = {.at_start = false},
+    },
+    {
+        .name = "the right distance read from the street outside the zone",
+        .input = {.distance = 127, .arrow_in_zone = false},
+        .expectation = {.at_start = false},
+    },
+    {
+        .name = "no distance read: not taken as at the start",
+        .input = {.distance = std::nullopt, .arrow_in_zone = true},
+        .expectation = {.at_start = false},
     },
 };
 
-//  left_zone_1(): 03.07d ends out of the zone, where 03.08 walks from.
-struct LeftZoneCase{
-    std::string name;
-    struct Input{
-        std::optional<int> distance;
-    };
-    Input input;
-    struct Expectation{
-        bool left;
-    };
-    Expectation expectation;
-};
-
-const LeftZoneCase LEFT_ZONE_CASES[] = {
-    {
-        .name = "in front of the Pokemon Center",
-        .input = {.distance = CENTER_FROM_FAR_GATE},
-        .expectation = {.left = true},
-    },
-    {
-        .name = "just past the bound",
-        .input = {.distance = ZONE_1_START_MAX + 1},
-        .expectation = {.left = true},
-    },
-    {
-        .name = "at the bound: 03.08 would skip its walk",
-        .input = {.distance = ZONE_1_START_MAX},
-        .expectation = {.left = false},
-    },
-    {
-        .name = "no distance read: unknown, not out",
-        .input = {.distance = std::nullopt},
-        .expectation = {.left = false},
-    },
-};
-
-class Test_LeftZone1 : public UnitTest{
+class Test_AtZone1Start : public UnitTest{
 public:
-    explicit Test_LeftZone1(const LeftZoneCase& test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: 03.07d ends out of Wild Zone 1: {}", test_case.name))
+    explicit Test_AtZone1Start(const ZoneStartCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: 03.07d ends at 03.08's start in Wild Zone 1: {}", test_case.name))
         , m_case(test_case)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const bool left = left_zone_1(m_case.input.distance);
-        if (left != m_case.expectation.left){
-            return std::format("Expected {}, got {}.", m_case.expectation.left, left);
-        }
-        return true;
-    }
-
-private:
-    const LeftZoneCase& m_case;
-};
-
-class Test_StartsInZone1 : public UnitTest{
-public:
-    explicit Test_StartsInZone1(const ZoneStartCase& test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: 03.08 starts in Wild Zone 1: {}", test_case.name))
-        , m_case(test_case)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const bool in_zone = starts_in_zone_1(m_case.input.distance);
-        if (in_zone != m_case.expectation.in_zone){
-            return std::format("Expected {}, got {}.", m_case.expectation.in_zone, in_zone);
+        const bool at_start = at_zone_1_start(m_case.input.distance, m_case.input.arrow_in_zone);
+        if (at_start != m_case.expectation.at_start){
+            return std::format("Expected {}, got {}.", m_case.expectation.at_start, at_start);
         }
         return true;
     }
@@ -703,10 +665,7 @@ void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
         database.add<Test_RoadStopsToGate>(item);
     }
     for (const ZoneStartCase& item : ZONE_START_CASES){
-        database.add<Test_StartsInZone1>(item);
-    }
-    for (const LeftZoneCase& item : LEFT_ZONE_CASES){
-        database.add<Test_LeftZone1>(item);
+        database.add<Test_AtZone1Start>(item);
     }
 }
 

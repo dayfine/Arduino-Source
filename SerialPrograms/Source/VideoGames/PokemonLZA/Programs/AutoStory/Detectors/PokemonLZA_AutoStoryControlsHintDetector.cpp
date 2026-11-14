@@ -14,7 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Measured on 1920x1080 (console B, 2026-11-10): the card at x 946-971,
+//  On 1920x1080: the card at x 946-971,
 //  y 868-901 with its spine at x 974-976; the "?" at x 953-965, y 876-894.
 ControlsHintDetector::ControlsHintDetector(Color color)
     : m_color(color)
@@ -35,11 +35,9 @@ void ControlsHintDetector::make_overlays(VideoOverlaySet& items) const{
     }
 }
 
-//  The hint's 13 frames (01.01 run 0001-0006, the user's u132-u138): the
-//  card 88%+ sky blue, the "?" at most 48%, nothing around it. Of the 376
-//  frames without it, the closest are the 01.01 run's 0056 (the sky
-//  behind the girl: card 76%, "?" 100%, around 54%), 0060 (card 35%,
-//  around 27%) and the user's u126 (card 22%, around 32%).
+//  With the hint up the card is 88%+ sky blue, the "?" at most 48%, and
+//  nothing around it is. A sky behind the card comes closest (card 76%),
+//  but then the "?" and the area around it are blue too (100%, 54%).
 bool ControlsHintDetector::detect(const ImageViewRGB32& screen){
     if (sky_blue_share(screen, m_card) < 0.80 || sky_blue_share(screen, m_glyph) > 0.70){
         return false;

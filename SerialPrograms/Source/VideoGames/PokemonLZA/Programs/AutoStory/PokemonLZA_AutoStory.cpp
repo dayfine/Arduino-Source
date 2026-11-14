@@ -146,13 +146,13 @@ void load_start_save(
 }
 
 //  The story for this run: the built-in checkpoints, with those of
-//  story_dev_folder() in their place, read now so a run after an edit
+//  story_dev_folder("plza") in their place, read now so a run after an edit
 //  plays the edited walks. Logs each dev file it uses; a bad one fails the
 //  run.
 StoryData load_run_story(ConsoleHandle& console){
-    const std::string folder = story_dev_folder();
+    const std::string folder = story_dev_folder("plza");
     try{
-        StoryData data = load_story_data(read_story_dev_files(folder));
+        StoryData data = load_story_data(read_story_dev_files(folder, "plza"));
         for (const auto& [name, path] : data.dev_files){
             console.log(std::format("AutoStory: using dev checkpoint {} from {}", name, path));
         }
@@ -230,7 +230,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
         return;
     }
-    const std::vector<StoryCheckpoint> checkpoints = story_run_rows(rows, first, last);
+    const std::vector<StoryCheckpoint> checkpoints = story_run_rows(std::span<const StoryCheckpoint>(rows), first, last);
     const SegmentReport report = run_plza_segment(game, story_data, checkpoints, run_policy(RUN, RELOAD_AT_BOUNDARIES, env.console), engine, backend, state);
     record_story_counts(report.story_counts(), env.current_stats<AutoStoryStats>());
     env.update_stats();

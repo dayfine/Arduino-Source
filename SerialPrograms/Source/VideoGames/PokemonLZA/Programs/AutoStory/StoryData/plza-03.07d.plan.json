@@ -3,21 +3,74 @@
   "game": "plza",
   "checkpoint": {
     "id": "03.07d",
-    "title": "Back to the Pokemon Center",
+    "title": "From the Pokemon Center into Wild Zone 1",
     "start": {
-      "place": "WildZone1"
+      "place": "LumioseCity",
+      "spot": "PokemonCenter"
     },
     "events": [
       {
-        "id": "back_to_center",
+        "id": "into_the_counter",
         "kind": "game_action",
-        "why": "fast travel is not open here yet (console B, 2026-11-13), so the story walks to the Center. From where 03.07's catches end, back away from the objective marker (the far gate) to Wild Zone 1's entrance gate, the one 03.06 came in by, until its \"A Leave\"; A, B to the street; on back away from the marker, the reverse of 03.08's center_to_zone_1, to the front of Vert's Pokemon Center: until the far gate reads CENTER_FROM_FAR_GATE (220, a guess) or 40 s. Fails unless it reads past 150, where 03.08 would take the player as in the zone and skip its walk. UNVERIFIED, NEEDS CONSOLE: that the entrance and the Center lie back from the marker with nothing in the way, and the distance the Center reads.",
-        "action": "zone_1_back_to_center"
+        "why": "UNVERIFIED, NEEDS CONSOLE: the checkpoint starts from the heal's save at the nurse's counter (03.05's back_to_nurse walked right into the counter, which faces her, and stopped there). A short walk straight into the counter sets the player against it as 03.05's scene left it, whatever way the camera turned at the load; the next step's turn recenters the camera on the player's facing (L) before turning. 03.06's legs below are UNVERIFIED for the counter turn too (console B, 2026-11-13: 03.06 passed from its own save, not from this pose).",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 1500]]
+        }
+      },
+      {
+        "id": "out_of_pokemon_center",
+        "kind": "game_action",
+        "why": "03.06's out_of_pokemon_center, unchanged: from the nurse's counter back to where 03.04's scene left the player, facing as it did, so the legs below (measured from there) still hold. Reverses 03.05's back_to_nurse (right, then into the counter): turn around, walk back 1.5 s, then right to face as the scene left the player. UNVERIFIED, NEEDS CONSOLE.",
+        "action": "walk",
+        "args": {
+          "legs": [[180, 1500], [90, 0]]
+        }
+      },
+      {
+        "id": "center_to_zone_1",
+        "kind": "game_action",
+        "why": "03.06's center_to_zone_1, unchanged (step 56): from the Pokemon Center to Wild Zone 1's gate. ~5 units/s. Measured 2026-11-08 on console B; passed in 03.06 from the counter save (console B, 2026-11-13 18:46 and 19:24). Marker-following from inside the Center failed instead (03.08's old center_to_zone_1 reported done after ~7 s with the player still in the lobby, console B 2026-11-14, twice).",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 2000], [0, 3000], [0, 6000]]
+        }
+      },
+      {
+        "id": "toward_zone_1_gate",
+        "kind": "game_action",
+        "why": "03.06's toward_zone_1_gate, unchanged (step 57): toward the gate. Left 45, right 15. Measured 2026-11-08 on console B. Taunie's wild zones tutorial does not replay here, so no scene step follows.",
+        "action": "walk",
+        "args": {
+          "legs": [[-45, 0], [15, 2500]]
+        }
+      },
+      {
+        "id": "to_zone_1_gate",
+        "kind": "game_action",
+        "why": "03.06's into_zone_1 covered the last 22 units (4.3 s) to the gate's \"A Enter\" after Taunie's scene; here straight on until the prompt shows instead, so an early or late stop of the timed legs does not matter: about 4.3 s expected, 10 s at most.",
+        "action": "walk_to_prompt",
+        "args": {
+          "timeout_ms": 10000
+        }
+      },
+      {
+        "id": "enter_zone_1",
+        "kind": "game_action",
+        "why": "A Enter at the gate (a scene step ends at once on its prompt), B through any lines, until the player can move in the zone (as 03.06's enter_zone_1 and 03.08's leave_zone_1)",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
+      },
+      {
+        "id": "to_zone_1_start",
+        "kind": "game_action",
+        "why": "to where 03.08 starts: toward the objective marker (the zone's far gate) until it reads 137 or less, then the end is checked on a fresh frame: the far gate within 127 +- 10 (03.08's start frame reads 127, CatchesToZone1Start/0077) and the minimap's player arrow in the wild zone's green (MinimapZoneDetector). Fails with both readings otherwise. The green check keeps a 127 read from the street outside the gate from passing (walk_to_zone_1_start).",
+        "action": "walk_to_zone_1_start"
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "story step between 03.07 and 03.08 (user, 2026-11-13): the walk back to the Pokemon Center, where 03.08 and its reruns start"
+      "source": "story step between 03.07 and 03.08 (user, 2026-11-13, plan 2026-11-14): from the heal's save at Vert's Pokemon Center to where 03.08 and its reruns start in Wild Zone 1, by 03.06's measured walks"
     }
   },
   "execution": {

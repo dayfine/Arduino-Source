@@ -5,7 +5,6 @@
  */
 
 #include <format>
-#include <limits>
 #include <optional>
 #include <string>
 #include "Common/Cpp/Color.h"
@@ -15,10 +14,7 @@
 #include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapDetector.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_FastTravelNavigation.h"
-#include "PokemonLZA_AutoStoryCatches.h"
-#include "PokemonLZA_AutoStoryDialogs.h"
 #include "PokemonLZA_AutoStoryMoves.h"
-#include "PokemonLZA_AutoStoryZone1Road.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -172,20 +168,6 @@ bool fly_to_or_stay(ConsoleHandle& console, ProControllerContext& context, Langu
     }
     map_to_overworld(console, context);
     return false;
-}
-
-void center_to_zone_1(ConsoleHandle& console, ProControllerContext& context){
-    //  Any distance ends the walk at once: this only finds the marker
-    //  (turning the camera to it when it is behind) and reads it.
-    const std::optional<int> start = walk_to_objective(console, context, std::numeric_limits<int>::max(), 20s);
-    if (starts_in_zone_1(start)){
-        console.log(std::format("center_to_zone_1(): {} from the far gate: in Wild Zone 1 already.", start.value_or(-1)));
-        return;
-    }
-    console.log(std::format("center_to_zone_1(): {} from the far gate: to the zone's \"A Enter\".", start.value_or(-1)));
-    walk_to_marker(console, context);
-    pbf_press_button(context, BUTTON_A, 160ms, 840ms);
-    mash_to_overworld(console, context, BUTTON_B, 60s);
 }
 
 

@@ -29,11 +29,6 @@ namespace PokemonLZA{
 using namespace std::chrono_literals;
 
 
-StoryActionNotImplemented::StoryActionNotImplemented(std::string message)
-    : OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, std::move(message))
-{}
-
-
 void fight_battle(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
     BattleAIOption& battle_ai

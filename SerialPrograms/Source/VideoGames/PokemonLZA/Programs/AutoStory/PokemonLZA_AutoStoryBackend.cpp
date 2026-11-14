@@ -16,6 +16,7 @@
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActions.h"
 #include "PokemonLZA_AutoStoryBackend.h"
@@ -156,7 +157,7 @@ void PlzaConsoleBackend::capture(const Pokemon::Observation<Pokemon::ZonePose>& 
 Pokemon::Outcome PlzaConsoleBackend::battle(const Pokemon::StoryActionArgs&){
     try{
         fight_battle(m_env.env, m_env.env.console, m_env.context, m_env.battle_ai);
-    }catch (StoryActionNotImplemented&){
+    }catch (Pokemon::StoryActionNotImplemented&){
         throw;
     }catch (OperationFailedException& e){
         return Pokemon::outcome_failed("battle_failed", e.message());

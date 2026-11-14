@@ -34,6 +34,7 @@ namespace PokemonLZA{
 using namespace std::chrono_literals;
 using Pokemon::Observation;
 using Pokemon::StoryCheckpoint;
+using Pokemon::StoryRunPolicy;
 using Pokemon::StoryStep;
 using Pokemon::ZonePose;
 using EngineEvent = PokemonAutomation::ScreenEvent;
