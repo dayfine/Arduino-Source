@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""MgbaLink v1 smoke client for lab/mgba/bridge.lua (slice 0 of docs/design/Lab-mGBA-Console.md).
+"""MgbaLink v1 client and smoke suite for lab/mgba/bridge.lua.
 
-Talks to a running mGBA 0.10.5 that has bridge.lua loaded (step 0 in lab/mgba/README.md). It takes
+Talks to a running mGBA 0.10.5 that has bridge.lua loaded (see lab/mgba/README.md). It takes
 only a host and a port; it never sees a ROM path.
 
     python3 -I lab/mgba/mgba_link.py hello
@@ -21,6 +21,11 @@ import time
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 47801
 GBA_FPS = 59.7275
+STALL_SETTLE_SECONDS = 0.1        # brief pause after GRANT so any in-flight frame finishes before measuring stall
+FRAME_WAIT_TIMEOUT_SECONDS = 5.0  # upper bound on waiting for the emulator to advance to a granted frame
+KEY_LEAD_FRAMES = 3               # schedule KEYS ahead of the stall frame so it arrives before F
+KEY_READ_MAX_STEPS = 30           # bound frame-by-frame grants while waiting for the game's next keysRead
+LATE_TEST_FRAMES = 2              # step forward and send KEYS in the past by this many frames to verify LATE
 
 KEY = {
     "A": 1 << 0, "B": 1 << 1, "SELECT": 1 << 2, "START": 1 << 3, "RIGHT": 1 << 4,
@@ -178,9 +183,83 @@ def _ms_stats(samples):
     return "min %.2f / median %.2f / max %.2f ms (n=%d)" % (ms[0], statistics.median(ms), ms[-1], len(ms))
 
 
+def _check_stall(link, check, stall_seconds, frame_samples):
+    """Holds the emulator with GRANT and measures stall stability, FRAME cost, and command RTT."""
+    cur = link.status()["frame"]
+    link.grant(cur)
+    time.sleep(STALL_SETTLE_SECONDS)
+    f0 = link.status()["frame"]
+    t0 = time.monotonic()
+    time.sleep(stall_seconds)
+    f1 = link.status()["frame"]
+    held_s = time.monotonic() - t0
+    check("GRANT stall", f1 == f0,
+          "frame %d -> %d over %.2f s (check the mGBA window stayed responsive)" % (f0, f1, held_s))
+
+    stalled = []
+    for _ in range(frame_samples):
+        t = time.perf_counter()
+        link.frame()
+        stalled.append(time.perf_counter() - t)
+    check("FRAME cost, stalled (screenshot + reply)", True, _ms_stats(stalled))
+
+    rtt = []
+    for _ in range(frame_samples):
+        t = time.perf_counter()
+        link.status()
+        rtt.append(time.perf_counter() - t)
+    check("Command round trip, stalled", True, _ms_stats(rtt))
+    return f1
+
+
+def _check_key_press(link, check, base_frame, key_mask):
+    """Verifies scheduled KEYS (applied at or after F) and LATE detection for a past frame."""
+    # The bridge applies a mask at the first keysRead at or after F; mGBA fires keysRead only when
+    # the game reads the keys (which can be later on black/transition screens), and in 0.10.5 the
+    # read for frame N comes before the frame callback that stalls at N. Grant frame by frame
+    # (bounded) until the game has read the keys at or after F.
+    f_key = base_frame + KEY_LEAD_FRAMES
+    late = link.keys(f_key, key_mask)
+    target = f_key
+    for _ in range(KEY_READ_MAX_STEPS):
+        link.grant(target + 1)
+        st = _wait_for_frame(link, target + 1, FRAME_WAIT_TIMEOUT_SECONDS)
+        if st["read_frame"] is not None and st["read_frame"] >= f_key:
+            break
+        target = st["frame"]
+    applied_frame = st["applied_frame"]
+    lag_str = ("%d frames" % (applied_frame - f_key)) if applied_frame is not None else "-"
+    check("KEYS at frame F (emu:getKeys)",
+          late == 0 and applied_frame is not None and applied_frame >= f_key
+          and st["applied_mask"] == key_mask and st["read_keys"] == key_mask,
+          "F=%d: reply %s, applied at keysRead of frame %s (lag %s) with mask %s; getKeys at keysRead %s "
+          "(frame %s); stalled at %d"
+          % (f_key, "OK" if late == 0 else "LATE %d" % late, applied_frame, lag_str, st["applied_mask"],
+             st["read_keys"], st["read_frame"], st["frame"]))
+    link.keys(st["frame"], 0)
+    link.grant(st["frame"] + LATE_TEST_FRAMES)
+    st = _wait_for_frame(link, st["frame"] + LATE_TEST_FRAMES, FRAME_WAIT_TIMEOUT_SECONDS)
+    late_n = link.keys(st["frame"] - LATE_TEST_FRAMES, 0)
+    check("LATE", late_n >= LATE_TEST_FRAMES, "KEYS %d frames back -> LATE %d" % (LATE_TEST_FRAMES, late_n))
+
+
+def _check_save_load(link, check, state_path, expected_frame, action):
+    """Saves state if state_path is set, runs action(), then loads state back."""
+    if not state_path:
+        action()
+        return
+    saved = link.save(state_path)
+    check("SAVE", saved == expected_frame, "OK %d at frame %d" % (saved, expected_frame))
+    action()
+    loaded = link.load(state_path)
+    after = link.status()["frame"]
+    check("LOAD round trip", loaded == saved and after == saved,
+          "SAVE %d, LOAD %d, frame after %d" % (saved, loaded, after))
+
+
 def run_smoke(link, out, expect_code="BPRE", stall_seconds=2.0, state_path=None, frame_samples=30,
               key_mask=KEY["B"]):
-    """Runs the slice-0 checks; writes one result line per check to out. Returns True if all pass.
+    """Runs the bridge smoke checks; writes one result line per check to out. Returns True if all pass.
 
     The game is held paused by a GRANT for the whole run and, when state_path is given, restored to
     the saved state at the end, so the key press leaves no trace. On disconnect the bridge releases
@@ -212,69 +291,16 @@ def run_smoke(link, out, expect_code="BPRE", stall_seconds=2.0, state_path=None,
         check("GRANT stall", False, "bridge is in free mode; stall not tested")
         return all(results)
 
-    # Hold the emulator where it is.
-    cur = link.status()["frame"]
-    link.grant(cur)
-    time.sleep(0.1)
-    f0 = link.status()["frame"]
-    t0 = time.monotonic()
-    time.sleep(stall_seconds)
-    f1 = link.status()["frame"]
-    held_s = time.monotonic() - t0
-    check("GRANT stall", f1 == f0,
-          "frame %d -> %d over %.2f s (check the mGBA window stayed responsive)" % (f0, f1, held_s))
-
-    stalled = []
-    for _ in range(frame_samples):
-        t = time.perf_counter()
-        link.frame()
-        stalled.append(time.perf_counter() - t)
-    check("FRAME cost, stalled (screenshot + reply)", True, _ms_stats(stalled))
-
-    rtt = []
-    for _ in range(frame_samples):
-        t = time.perf_counter()
-        link.status()
-        rtt.append(time.perf_counter() - t)
-    check("Command round trip, stalled", True, _ms_stats(rtt))
-
-    saved = None
-    if state_path:
-        saved = link.save(state_path)
-        check("SAVE", saved == f1, "OK %d at frame %d" % (saved, f1))
-
-    # KEYS at frame F, read back from emu:getKeys() in the keysRead callback. The bridge applies a
-    # mask at the first keysRead at or after F; mGBA fires keysRead only when the game reads the keys,
-    # and in 0.10.5 the read for frame N comes before the frame callback that stalls at N. Grant
-    # frame by frame (bounded) until the game has read the keys at or after F.
-    f_key = f1 + 3
-    late = link.keys(f_key, key_mask)
-    target = f_key
-    for _ in range(30):
-        link.grant(target + 1)
-        st = _wait_for_frame(link, target + 1, 5.0)
-        if st["read_frame"] is not None and st["read_frame"] >= f_key:
-            break
-        target = st["frame"]
-    check("KEYS at frame F (emu:getKeys)",
-          late == 0 and st["applied_frame"] == f_key and st["applied_mask"] == key_mask
-          and st["read_keys"] == key_mask,
-          "F=%d: reply %s, applied at keysRead of frame %s with mask %s; getKeys at keysRead %s "
-          "(frame %s); stalled at %d"
-          % (f_key, "OK" if late == 0 else "LATE %d" % late, st["applied_frame"], st["applied_mask"],
-             st["read_keys"], st["read_frame"], st["frame"]))
-    link.keys(st["frame"], 0)
-    link.grant(st["frame"] + 2)
-    st = _wait_for_frame(link, st["frame"] + 2, 5.0)
-    late_n = link.keys(st["frame"] - 2, 0)
-    check("LATE", late_n >= 2, "KEYS 2 frames back -> LATE %d" % late_n)
-
-    if state_path:
-        loaded = link.load(state_path)
-        after = link.status()["frame"]
-        check("LOAD round trip", loaded == saved and after == saved,
-              "SAVE %d, LOAD %d, frame after %d" % (saved, loaded, after))
+    f1 = _check_stall(link, check, stall_seconds, frame_samples)
+    _check_save_load(link, check, state_path, f1, lambda: _check_key_press(link, check, f1, key_mask))
     return all(results)
+
+
+def _positive_int(value):
+    n = int(value)
+    if n < 1:
+        raise argparse.ArgumentTypeError("must be >= 1, got %r" % value)
+    return n
 
 
 def main(argv=None):
@@ -284,10 +310,10 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd")
     sub.add_parser("hello", help="print the HELLO reply")
     sub.add_parser("status", help="print the STATUS reply")
-    sm = sub.add_parser("smoke", help="run the slice-0 acceptance checks; prints a Markdown checklist")
+    sm = sub.add_parser("smoke", help="run the bridge smoke checks; prints a Markdown checklist")
     sm.add_argument("--expect-code", default="BPRE")
     sm.add_argument("--stall-seconds", type=float, default=2.0)
-    sm.add_argument("--samples", type=int, default=30)
+    sm.add_argument("--samples", type=_positive_int, default=30)
     sm.add_argument("--state-dir", default=os.path.expanduser("~/FRLGLab/mgba/smoke"),
                     help="where the round-trip state goes (never committed)")
     args = ap.parse_args(argv)
@@ -301,7 +327,7 @@ def main(argv=None):
             print(link.command("STATUS"))
         else:
             os.makedirs(args.state_dir, exist_ok=True)
-            state = os.path.join(args.state_dir, "slice0.ss")
+            state = os.path.join(args.state_dir, "smoke.ss")
             ok = run_smoke(link, sys.stdout, args.expect_code, args.stall_seconds, state, args.samples)
             return 0 if ok else 1
     return 0
