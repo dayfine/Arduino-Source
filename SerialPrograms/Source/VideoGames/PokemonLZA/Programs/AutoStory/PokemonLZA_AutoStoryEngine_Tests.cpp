@@ -747,23 +747,22 @@ UnitTestResult test_walk_pauses_before_each_leg(CancellableScope& scope){
 }
 
 
-struct EngineTestInput{
-    std::string name;
-    std::function<UnitTestResult(CancellableScope&)> body;
-};
-
-struct EngineTestExpectation{
-};
-
 struct EngineTestCase{
-    EngineTestInput input;
-    EngineTestExpectation expectation;
+    std::string name;
+    struct Input{
+        std::function<UnitTestResult(CancellableScope&)> body;
+    };
+    Input input;
+    //  What each body checks is in its own code: these cases are functions.
+    struct Expectation{
+    };
+    Expectation expectation;
 };
 
 class Test_AutoStoryEngine : public UnitTest{
 public:
     explicit Test_AutoStoryEngine(EngineTestCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryEngine - {}", test_case.input.name))
+        : UnitTest(std::format("PokemonLZA::AutoStoryEngine - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
@@ -782,30 +781,30 @@ private:
 
 
 const EngineTestCase ENGINE_TEST_CASES[] = {
-    {.input = {"01.00 opening: no presses, done on two looks at the platform after the autosave", test_opening_waits_for_platform}, .expectation = {}},
-    {.input = {"01.00 opening: one A at the arrival text with the advance arrow", test_opening_presses_through_arrival_text}, .expectation = {}},
-    {.input = {"01.01 start check: fails without the platform", test_start_check_needs_platform}, .expectation = {}},
-    {.input = {"01.01 text_to_choice: B through the text, done at the choice", test_text_to_choice}, .expectation = {}},
-    {.input = {"01.01 arrival_scenes: A through text and choice, done on the controls hint", test_arrival_ends_on_controls_hint}, .expectation = {}},
-    {.input = {"01.01 arrival_scenes: A through the ad's boxless subtitles", test_arrival_presses_through_the_ad}, .expectation = {}},
-    {.input = {"01.01 arrival_scenes: done on the mission banner once it has gone, A if it stays", test_arrival_ends_on_mission_banner}, .expectation = {}},
-    {.input = {"01.03 after_andi: A at the mission complete card, then the banner, A if it stays", test_after_andi_presses_complete_card}, .expectation = {}},
-    {.input = {"01.01 arrival_scenes: a quiet minute without the hint fails", test_arrival_quiet_fails}, .expectation = {}},
-    {.input = {"01.02 battle_area: done on the \"A: Talk\" prompt", test_battle_area_ends_on_interact_prompt}, .expectation = {}},
-    {.input = {"02.01 battle_zone_to_brigitte: a held walk waits, then holds each leg's angle", test_held_walk_inputs}, .expectation = {}},
-    {.input = {"face_heading: turns by the minimap's heading", test_face_heading}, .expectation = {}},
-    {.input = {"01.01 platform_to_plaza: no walk without free control", test_walk_needs_free_control}, .expectation = {}},
-    {.input = {"01.01 platform_to_plaza: ends on the white fade", test_walk_ends_on_white_fade}, .expectation = {}},
-    {.input = {"01.01 platform_to_plaza: fails at its bound", test_walk_fails_at_bound}, .expectation = {}},
-    {.input = {"refused: console actions off a console, tile walks, unknown actions", test_refused_steps}, .expectation = {}},
-    {.input = {"every checkpoint runs in step order, testing never saves", test_every_checkpoint_runs}, .expectation = {}},
-    {.input = {"reload_when_chained: reload between the rows, as its own event", test_reload_when_chained}, .expectation = {}},
-    {.input = {"reload_when_chained: no reload from the row's save or for other rows", test_no_reload_unless_chained}, .expectation = {}},
-    {.input = {"reload_when_chained: a reload onto the platform fails", test_reload_lands_on_older_save}, .expectation = {}},
-    {.input = {"reload_when_chained: straight through, no reload at a boundary", test_straight_through_has_no_reload}, .expectation = {}},
-    {.input = {"reload_when_chained: \"always\" reloads straight through too", test_straight_through_reloads_always}, .expectation = {}},
-    {.input = {"walk_to_prompt: walks until the A prompt, none when it shows", test_walk_to_prompt}, .expectation = {}},
-    {.input = {"breakpoints: a walk pauses before each leg", test_walk_pauses_before_each_leg}, .expectation = {}},
+    {.name = "01.00 opening: no presses, done on two looks at the platform after the autosave", .input = {test_opening_waits_for_platform}, .expectation = {}},
+    {.name = "01.00 opening: one A at the arrival text with the advance arrow", .input = {test_opening_presses_through_arrival_text}, .expectation = {}},
+    {.name = "01.01 start check: fails without the platform", .input = {test_start_check_needs_platform}, .expectation = {}},
+    {.name = "01.01 text_to_choice: B through the text, done at the choice", .input = {test_text_to_choice}, .expectation = {}},
+    {.name = "01.01 arrival_scenes: A through text and choice, done on the controls hint", .input = {test_arrival_ends_on_controls_hint}, .expectation = {}},
+    {.name = "01.01 arrival_scenes: A through the ad's boxless subtitles", .input = {test_arrival_presses_through_the_ad}, .expectation = {}},
+    {.name = "01.01 arrival_scenes: done on the mission banner once it has gone, A if it stays", .input = {test_arrival_ends_on_mission_banner}, .expectation = {}},
+    {.name = "01.03 after_andi: A at the mission complete card, then the banner, A if it stays", .input = {test_after_andi_presses_complete_card}, .expectation = {}},
+    {.name = "01.01 arrival_scenes: a quiet minute without the hint fails", .input = {test_arrival_quiet_fails}, .expectation = {}},
+    {.name = "01.02 battle_area: done on the \"A: Talk\" prompt", .input = {test_battle_area_ends_on_interact_prompt}, .expectation = {}},
+    {.name = "02.01 battle_zone_to_brigitte: a held walk waits, then holds each leg's angle", .input = {test_held_walk_inputs}, .expectation = {}},
+    {.name = "face_heading: turns by the minimap's heading", .input = {test_face_heading}, .expectation = {}},
+    {.name = "01.01 platform_to_plaza: no walk without free control", .input = {test_walk_needs_free_control}, .expectation = {}},
+    {.name = "01.01 platform_to_plaza: ends on the white fade", .input = {test_walk_ends_on_white_fade}, .expectation = {}},
+    {.name = "01.01 platform_to_plaza: fails at its bound", .input = {test_walk_fails_at_bound}, .expectation = {}},
+    {.name = "refused: console actions off a console, tile walks, unknown actions", .input = {test_refused_steps}, .expectation = {}},
+    {.name = "every checkpoint runs in step order, testing never saves", .input = {test_every_checkpoint_runs}, .expectation = {}},
+    {.name = "reload_when_chained: reload between the rows, as its own event", .input = {test_reload_when_chained}, .expectation = {}},
+    {.name = "reload_when_chained: no reload from the row's save or for other rows", .input = {test_no_reload_unless_chained}, .expectation = {}},
+    {.name = "reload_when_chained: a reload onto the platform fails", .input = {test_reload_lands_on_older_save}, .expectation = {}},
+    {.name = "reload_when_chained: straight through, no reload at a boundary", .input = {test_straight_through_has_no_reload}, .expectation = {}},
+    {.name = "reload_when_chained: \"always\" reloads straight through too", .input = {test_straight_through_reloads_always}, .expectation = {}},
+    {.name = "walk_to_prompt: walks until the A prompt, none when it shows", .input = {test_walk_to_prompt}, .expectation = {}},
+    {.name = "breakpoints: a walk pauses before each leg", .input = {test_walk_pauses_before_each_leg}, .expectation = {}},
 };
 
 void add_tests_AutoStoryEngine(UnitTestDatabase& database){

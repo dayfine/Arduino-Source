@@ -2,9 +2,13 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
+ *  Each kind of catch-plan choice is a table of cases, each a name, the
+ *  plates or patrol bounds it is given, and what it should choose.
+ *
  */
 
 #include <format>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -18,159 +22,293 @@ namespace PokemonLZA{
 
 namespace{
 
-LockTarget plate(double x, double y, std::optional<bool> caught = false){
+//  A lock-on target's plate: where it is on screen, and whether its
+//  species is caught (nothing: the mark wasn't read).
+struct Plate{
+    double x;
+    double y;
+    std::optional<bool> caught = false;
+};
+
+LockTarget lock_target(const Plate& plate){
     LockTarget target;
-    target.x = x;
-    target.y = y;
+    target.x = plate.x;
+    target.y = plate.y;
     target.width = 0.05;
-    target.caught = caught;
+    target.caught = plate.caught;
     return target;
+}
+
+std::vector<LockTarget> lock_targets(const std::vector<Plate>& plates){
+    std::vector<LockTarget> targets;
+    for (const Plate& plate : plates){
+        targets.push_back(lock_target(plate));
+    }
+    return targets;
 }
 
 std::string joined(const std::vector<int>& values){
     std::string out;
     for (const int value : values){
-        out += out.empty() ? std::to_string(value) : ", " + std::to_string(value);
+        out += out.empty() ? std::format("{}", value) : std::format(", {}", value);
     }
     return out;
 }
 
-UnitTestResult test_nearest_uncaught(Logger&){
-    //  The lowest plate wins, unless its species is caught; an unread mark
-    //  counts as not caught.
-    const std::vector<LockTarget> targets{
-        plate(0.50, 0.25), plate(0.55, 0.45, true), plate(0.45, 0.35, std::nullopt), plate(0.60, 0.30),
+std::string index_text(std::optional<size_t> index){
+    return index ? std::format("target {}", *index) : "no target";
+}
+
+
+//  nearest_uncaught(): the lowest plate whose species isn't caught.
+struct NearestCase{
+    std::string name;
+    struct Input{
+        std::vector<Plate> plates;
     };
-    const std::optional<size_t> best = nearest_uncaught(targets);
-    if (best != 2){
-        return std::format("Expected target 2, got {}.", best ? (int)*best : -1);
-    }
-    if (nearest_uncaught({plate(0.5, 0.4, true), plate(0.5, 0.5, true)})){
-        return "Expected no target when all are caught.";
-    }
-    if (nearest_uncaught({})){
-        return "Expected no target from no plates.";
-    }
-    return true;
-}
+    Input input;
+    struct Expectation{
+        std::optional<size_t> chosen;
+    };
+    Expectation expectation;
+};
 
-UnitTestResult test_far_target(Logger&){
-    if (!lock_target_far(plate(0.5, 0.20)) || lock_target_far(plate(0.5, 0.40))){
-        return "Expected a plate high on the screen to be far, one lower to be near.";
-    }
-    return true;
-}
+const NearestCase NEAREST_CASES[] = {
+    {
+        .name = "the lowest plate not caught; an unread mark counts as not caught",
+        .input = {.plates = {{0.50, 0.25}, {0.55, 0.45, true}, {0.45, 0.35, std::nullopt}, {0.60, 0.30}}},
+        .expectation = {.chosen = 2},
+    },
+    {
+        .name = "none when every species is caught",
+        .input = {.plates = {{0.5, 0.4, true}, {0.5, 0.5, true}}},
+        .expectation = {.chosen = std::nullopt},
+    },
+    {
+        .name = "none from no plates",
+        .input = {.plates = {}},
+        .expectation = {.chosen = std::nullopt},
+    },
+};
 
-UnitTestResult test_cycle_stops_at_edge(Logger&){
-    //  Three targets, then a flick that finds no other: back left to the
-    //  nearest, the middle one.
-    LockTargetCycle cycle(4);
-    const bool more = cycle.add(plate(0.50, 0.25)) && cycle.add(plate(0.52, 0.40)) && cycle.add(plate(0.48, 0.30));
-    if (!more || cycle.add(plate(0.49, 0.31))){
-        return "Expected the cycle to go on for three targets, then stop at the repeat.";
-    }
-    if (cycle.targets().size() != 3 || cycle.flicks_to(1) != -1){
-        return std::format("Expected 3 targets and 1 flick left, got {} and {}.", cycle.targets().size(), cycle.flicks_to(1));
-    }
-    return true;
-}
-
-UnitTestResult test_cycle_wraps_round(Logger&){
-    //  Two targets that go round: the lock is on the first again, so the
-    //  second is one flick right.
-    LockTargetCycle cycle(4);
-    cycle.add(plate(0.50, 0.25));
-    cycle.add(plate(0.50, 0.40));
-    if (cycle.add(plate(0.51, 0.26))){
-        return "Expected the cycle to stop when it comes round to the first target.";
-    }
-    if (cycle.targets().size() != 2 || cycle.flicks_to(1) != 1){
-        return std::format("Expected 2 targets and 1 flick right, got {} and {}.", cycle.targets().size(), cycle.flicks_to(1));
-    }
-    return true;
-}
-
-UnitTestResult test_cycle_bounded(Logger&){
-    LockTargetCycle cycle(4);
-    size_t views = 0;
-    for (int i = 0; i < 10; i++){
-        views++;
-        if (!cycle.add(plate(0.1 * i, 0.2 + 0.05 * i))){
-            break;
+class Test_NearestUncaught : public UnitTest{
+public:
+    explicit Test_NearestUncaught(const NearestCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: nearest target: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::optional<size_t> chosen = nearest_uncaught(lock_targets(m_case.input.plates));
+        if (chosen != m_case.expectation.chosen){
+            return std::format("Expected {}, got {}.", index_text(m_case.expectation.chosen), index_text(chosen));
         }
+        return true;
     }
-    if (views != 4 || cycle.targets().size() != 4 || cycle.flicks_to(3) != 0){
-        return std::format("Expected 4 views and the lock on the last, got {} views.", views);
-    }
-    return true;
-}
 
-UnitTestResult test_patrol_stops(Logger&){
-    struct Row{
+private:
+    const NearestCase& m_case;
+};
+
+
+//  lock_target_far(): a plate high on the screen is far.
+struct FarCase{
+    std::string name;
+    struct Input{
+        Plate plate;
+    };
+    Input input;
+    struct Expectation{
+        bool far;
+    };
+    Expectation expectation;
+};
+
+const FarCase FAR_CASES[] = {
+    {
+        .name = "a high plate is far",
+        .input = {.plate = {0.5, 0.20}},
+        .expectation = {.far = true},
+    },
+    {
+        .name = "a lower plate is near",
+        .input = {.plate = {0.5, 0.40}},
+        .expectation = {.far = false},
+    },
+};
+
+class Test_LockTargetFar : public UnitTest{
+public:
+    explicit Test_LockTargetFar(const FarCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: far target: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const bool far = lock_target_far(lock_target(m_case.input.plate));
+        if (far != m_case.expectation.far){
+            return std::format("Expected far: {}, got {}.", m_case.expectation.far, far);
+        }
+        return true;
+    }
+
+private:
+    const FarCase& m_case;
+};
+
+
+//  LockTargetCycle: the targets a flick at a time, until a flick finds no
+//  other, comes round to the first, or the cycle has seen max_views.
+struct CycleCase{
+    std::string name;
+    struct Input{
+        size_t max_views;
+        //  The target locked on after each flick, the first before any.
+        std::vector<Plate> views;
+        //  The target, in the cycle's order, to count the flicks to.
+        size_t flick_target;
+    };
+    Input input;
+    struct Expectation{
+        //  The views added, up to and with the one where the cycle stops.
+        size_t views_added;
+        size_t targets;
+        //  From the lock where the cycle stopped: left is negative.
+        int flicks;
+    };
+    Expectation expectation;
+};
+
+const CycleCase CYCLE_CASES[] = {
+    {
+        .name = "stops where a flick finds no other, the nearest back left",
+        .input = {.max_views = 4, .views = {{0.50, 0.25}, {0.52, 0.40}, {0.48, 0.30}, {0.49, 0.31}}, .flick_target = 1},
+        .expectation = {.views_added = 4, .targets = 3, .flicks = -1},
+    },
+    {
+        .name = "stops when it comes round to the first, the second a flick right",
+        .input = {.max_views = 4, .views = {{0.50, 0.25}, {0.50, 0.40}, {0.51, 0.26}}, .flick_target = 1},
+        .expectation = {.views_added = 3, .targets = 2, .flicks = 1},
+    },
+    {
+        .name = "is bounded by its views, the lock on the last",
+        .input = {
+            .max_views = 4,
+            .views = {{0.0, 0.20}, {0.1, 0.25}, {0.2, 0.30}, {0.3, 0.35}, {0.4, 0.40}, {0.5, 0.45}, {0.6, 0.50}},
+            .flick_target = 3,
+        },
+        .expectation = {.views_added = 4, .targets = 4, .flicks = 0},
+    },
+};
+
+class Test_LockTargetCycle : public UnitTest{
+public:
+    explicit Test_LockTargetCycle(const CycleCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: target cycle: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        LockTargetCycle cycle(m_case.input.max_views);
+        size_t added = 0;
+        for (const Plate& view : m_case.input.views){
+            added++;
+            if (!cycle.add(lock_target(view))){
+                break;
+            }
+        }
+        const size_t targets = cycle.targets().size();
+        const int flicks = cycle.flicks_to(m_case.input.flick_target);
+        const CycleCase::Expectation& expected = m_case.expectation;
+        if (added != expected.views_added || targets != expected.targets || flicks != expected.flicks){
+            return std::format(
+                "Expected {} views added, {} targets and {} flicks; got {}, {} and {}.",
+                expected.views_added, expected.targets, expected.flicks, added, targets, flicks
+            );
+        }
+        return true;
+    }
+
+private:
+    const CycleCase& m_case;
+};
+
+
+//  patrol_stops(): the distances a patrol walks to, near to far and back.
+struct PatrolCase{
+    std::string name;
+    struct Input{
         int near;
         int far;
         int step;
         int laps;
-        std::vector<int> expected;
     };
-    const Row rows[] = {
-        {60, 100, 20, 2, {60, 80, 100, 80, 60, 80, 100, 80, 60}},
-        {60, 100, 20, 1, {60, 80, 100, 80, 60}},
-        {60, 100, 30, 1, {60, 90, 100, 70, 60}},
-        {60, 100, 20, 0, {60}},
-        {60, 60, 20, 2, {60}},
+    Input input;
+    struct Expectation{
+        std::vector<int> stops;
     };
-    for (const Row& row : rows){
-        const std::vector<int> stops = patrol_stops(row.near, row.far, row.step, row.laps);
-        if (stops != row.expected){
-            return std::format("patrol_stops({}, {}, {}, {}): expected [{}], got [{}].", row.near, row.far, row.step, row.laps, joined(row.expected), joined(stops));
-        }
-    }
-    return true;
-}
-
-struct CatchPlanInput{
-    std::string name;
-    UnitTestResult (*body)(Logger&);
+    Expectation expectation;
 };
 
-struct CatchPlanExpectation{
+const PatrolCase PATROL_CASES[] = {
+    {
+        .name = "two laps of 60 to 100 by 20",
+        .input = {.near = 60, .far = 100, .step = 20, .laps = 2},
+        .expectation = {.stops = {60, 80, 100, 80, 60, 80, 100, 80, 60}},
+    },
+    {
+        .name = "one lap of 60 to 100 by 20",
+        .input = {.near = 60, .far = 100, .step = 20, .laps = 1},
+        .expectation = {.stops = {60, 80, 100, 80, 60}},
+    },
+    {
+        .name = "a step that doesn't divide the span stops at far",
+        .input = {.near = 60, .far = 100, .step = 30, .laps = 1},
+        .expectation = {.stops = {60, 90, 100, 70, 60}},
+    },
+    {
+        .name = "no laps stays near",
+        .input = {.near = 60, .far = 100, .step = 20, .laps = 0},
+        .expectation = {.stops = {60}},
+    },
+    {
+        .name = "near and far the same stays there",
+        .input = {.near = 60, .far = 60, .step = 20, .laps = 2},
+        .expectation = {.stops = {60}},
+    },
 };
 
-struct CatchPlanCase{
-    CatchPlanInput input;
-    CatchPlanExpectation expectation;
-};
-
-const CatchPlanCase CATCH_PLAN_CASES[] = {
-    {.input = {"Catches: the nearest target not caught", test_nearest_uncaught}, .expectation = {}},
-    {.input = {"Catches: a high plate is a far target", test_far_target}, .expectation = {}},
-    {.input = {"Catches: target cycle stops where a flick finds no other", test_cycle_stops_at_edge}, .expectation = {}},
-    {.input = {"Catches: target cycle stops when it comes round", test_cycle_wraps_round}, .expectation = {}},
-    {.input = {"Catches: target cycle is bounded", test_cycle_bounded}, .expectation = {}},
-    {.input = {"Catches: patrol stops between 60 and 100", test_patrol_stops}, .expectation = {}},
-};
-
-class Test_AutoStoryCatchPlan : public UnitTest{
+class Test_PatrolStops : public UnitTest{
 public:
-    explicit Test_AutoStoryCatchPlan(const CatchPlanCase& test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStory - {}", test_case.input.name))
+    explicit Test_PatrolStops(const PatrolCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: patrol stops: {}", test_case.name))
         , m_case(test_case)
     {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        return m_case.input.body(logger);
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const PatrolCase::Input& in = m_case.input;
+        const std::vector<int> stops = patrol_stops(in.near, in.far, in.step, in.laps);
+        if (stops != m_case.expectation.stops){
+            return std::format("Expected [{}], got [{}].", joined(m_case.expectation.stops), joined(stops));
+        }
+        return true;
     }
 
 private:
-    const CatchPlanCase& m_case;
+    const PatrolCase& m_case;
 };
 
 } // namespace
 
 
 void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
-    for (const CatchPlanCase& item : CATCH_PLAN_CASES){
-        database.add<Test_AutoStoryCatchPlan>(item);
+    for (const NearestCase& item : NEAREST_CASES){
+        database.add<Test_NearestUncaught>(item);
+    }
+    for (const FarCase& item : FAR_CASES){
+        database.add<Test_LockTargetFar>(item);
+    }
+    for (const CycleCase& item : CYCLE_CASES){
+        database.add<Test_LockTargetCycle>(item);
+    }
+    for (const PatrolCase& item : PATROL_CASES){
+        database.add<Test_PatrolStops>(item);
     }
 }
 
