@@ -51,7 +51,7 @@ Outcome mash_to_overworld(StoryBackend<PoseType>& backend){
     using namespace std::chrono_literals;
     for (size_t c = 0; c < MAX_TEXT_LOOKS; c++){
         const Observation<PoseType> now = backend.observe();
-        if (now.events.has(ScreenEvent::CAN_MOVE) && !now.events.has(ScreenEvent::TEXT_BOX)){
+        if (now.events.has(ScreenEvent::PLAYER_CAN_MOVE) && !now.events.has(ScreenEvent::DIALOG_BOX)){
             return outcome_ok();
         }
         backend.press(NintendoSwitch::BUTTON_A, 80ms, 120ms);
@@ -71,7 +71,7 @@ Outcome talk(StoryBackend<PoseType>& backend, const StoryActionCall&, RunState&)
     using namespace std::chrono_literals;
     backend.press(NintendoSwitch::BUTTON_A, 80ms, 120ms);
     for (size_t c = 0; c < MAX_OPEN_LOOKS; c++){
-        if (backend.observe().events.has(ScreenEvent::TEXT_BOX)){
+        if (backend.observe().events.has(ScreenEvent::DIALOG_BOX)){
             return mash_to_overworld(backend);
         }
         backend.wait(100ms);
