@@ -396,7 +396,7 @@ UnitTestResult test_leg_battle_place(Logger& logger){
         if (item.settled){
             record_tap_battle(walk, item.tap);
         }else{
-            walk.events.record({Pokemon::ScreenEvent::FADE_WHITE}, walk.started + Milliseconds(800 * (item.tap - 1) + 500));
+            walk.events.record({ScreenEvent::FADE_WHITE}, walk.started + Milliseconds(800 * (item.tap - 1) + 500));
         }
         const LegBattlePlace place = place_leg_battle(walk, 10);
         logger.log(leg_battle_line(item.name, walk, place));

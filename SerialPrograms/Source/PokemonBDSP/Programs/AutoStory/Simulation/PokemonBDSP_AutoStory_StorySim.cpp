@@ -103,16 +103,16 @@ std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
             beat_start += scene[beat].length;
             beat++;
         }
-        Pokemon::ScreenEvents look{Pokemon::ScreenEvent::PLAYER_CAN_MOVE, Pokemon::ScreenEvent::SCREEN_STILL, Pokemon::ScreenEvent::PLAYER_STILL};
+        ScreenEvents look{ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL, ScreenEvent::PLAYER_STILL};
         if (beat < scene.size()){
             const SimBeat& shown = scene[beat];
             look = {};
-            look.set(Pokemon::ScreenEvent::DIALOG_BOX, shown.line);
-            look.set(Pokemon::ScreenEvent::PLAYER_CAN_MOVE, shown.overworld);
-            look.set(Pokemon::ScreenEvent::SCREEN_STILL, !shown.moving);
-            look.set(Pokemon::ScreenEvent::PLAYER_STILL, !shown.at_player);
+            look.set(ScreenEvent::DIALOG_BOX, shown.line);
+            look.set(ScreenEvent::PLAYER_CAN_MOVE, shown.overworld);
+            look.set(ScreenEvent::SCREEN_STILL, !shown.moving);
+            look.set(ScreenEvent::PLAYER_STILL, !shown.at_player);
 
-            look.merge(Pokemon::fade_events(shown.fade));
+            look.merge(fade_events(shown.fade));
         }
         switch (judge.look(look, now)){
         case SceneMove::DONE:
@@ -689,15 +689,15 @@ constexpr size_t OPENING_LOOKS = 6;
 Pokemon::ScreenLook SimExecutor::look(bool fresh){
     const WallClock start = WallClock() + std::chrono::hours(1);
     Pokemon::ScreenLook out;
-    out.log.record({Pokemon::ScreenEvent::PLAYER_CAN_MOVE}, start);
+    out.log.record({ScreenEvent::PLAYER_CAN_MOVE}, start);
     if (std::exchange(m_dialog_rose, false)){
-        out.log.record({Pokemon::ScreenEvent::DIALOG_BOX, Pokemon::ScreenEvent::PLAYER_CAN_MOVE}, start + 33ms);
+        out.log.record({ScreenEvent::DIALOG_BOX, ScreenEvent::PLAYER_CAN_MOVE}, start + 33ms);
     }
     if (m_battle_opening){
-        out.log.record({Pokemon::ScreenEvent::FADE_WHITE}, start + 33ms);
+        out.log.record({ScreenEvent::FADE_WHITE}, start + 33ms);
         m_opening_looks = fresh ? 1 : m_opening_looks + 1;
         if (m_opening_looks >= OPENING_LOOKS){
-            out.log.record({Pokemon::ScreenEvent::BATTLE_STARTED}, start + BETWEEN_STEPS_LOOK - 33ms);
+            out.log.record({ScreenEvent::BATTLE_STARTED}, start + BETWEEN_STEPS_LOOK - 33ms);
         }
     }
     out.window = {.start = start, .end = start + BETWEEN_STEPS_LOOK};

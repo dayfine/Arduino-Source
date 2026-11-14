@@ -17,7 +17,7 @@ namespace PokemonBDSP{
 
 using Pokemon::Direction;
 using Pokemon::InterruptKind;
-using Pokemon::ScreenEvent;
+using PokemonAutomation::ScreenEvent;
 using Pokemon::TilePos;
 
 
@@ -80,7 +80,7 @@ LegBattlePlace place_leg_battle(const WalkResult& walk, size_t tiles, const LegB
 }
 
 std::string leg_battle_line(const std::string& label, const WalkResult& walk, const LegBattlePlace& place){
-    std::string out = std::format("{}: battle on the leg: {}", label, Pokemon::describe(place.verdict, walk.started));
+    std::string out = std::format("{}: battle on the leg: {}", label, describe(place.verdict, walk.started));
     if (place.moved){
         return out + std::format("; {} to {} tiles in.", place.moved->min, place.moved->max);
     }

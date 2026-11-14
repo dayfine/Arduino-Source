@@ -117,7 +117,7 @@ void ConsoleStepGuard::on_interrupt(const StoryStep& step, const Pokemon::Interr
 }
 
 void ConsoleStepGuard::on_screen(const StoryStep& step, const Pokemon::ScreenSettle& screen){
-    m_stream.log(std::format("[Screen] before {}: {}", step.name, Pokemon::describe(screen)));
+    m_stream.log(std::format("[Screen] before {}: {}", step.name, describe(screen)));
 }
 
 

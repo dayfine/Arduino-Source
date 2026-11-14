@@ -4,13 +4,16 @@
  *
  */
 
+#include <chrono>
 #include <format>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
-#include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "Pokemon_ScreenEvents.h"
+#include "CommonFramework/ImageTools/ImageStats.h"
+#include "ScreenEventLog.h"
+#include "ScreenEventTypes.h"
+#include "ScreenFades.h"
+#include "ScreenEvents.h"
 
 namespace PokemonAutomation{
-namespace Pokemon{
 
 
 std::string screen_event_name(ScreenEvent event){
@@ -80,7 +83,7 @@ WarpFade fade_in(const ScreenEvents& events){
     }
     return WarpFade::NONE;
 }
-std::string describe(const ScreenEvents& events){
+std::string describe(const ScreenEvents& events, std::string_view separator){
     std::string out;
     for (size_t c = 0; c < SCREEN_EVENT_COUNT; c++){
         const ScreenEvent event = (ScreenEvent)c;
@@ -88,7 +91,7 @@ std::string describe(const ScreenEvents& events){
             continue;
         }
         if (!out.empty()){
-            out += ", ";
+            out += separator;
         }
         out += screen_event_name(event);
     }
@@ -150,23 +153,6 @@ std::string describe(const ScreenEventLog& log, WallClock origin){
 }
 
 
-SwitchHomeObserver::SwitchHomeObserver(NintendoSwitch::ConsoleHandle& console, ScreenEventObserver& game)
-    : m_game(game)
-    , m_home(console, COLOR_RED)
-{}
-
-ScreenEvents SwitchHomeObserver::observe(const VideoSnapshot& frame, WallClock now){
-    if (frame && m_home.detect_only(*frame.frame)){
-        return {ScreenEvent::SWITCH_HOME_MENU};
-    }
-    return m_game.observe(frame, now);
-}
-
-void SwitchHomeObserver::make_overlays(VideoOverlaySet& items) const{
-    m_game.make_overlays(items);
-}
-
-
 ScreenEventWatcher::ScreenEventWatcher(ScreenEventObserver& observer, ScreenEvents stop_on)
     : VisualInferenceCallback("ScreenEventWatcher")
     , m_observer(observer)
@@ -201,5 +187,4 @@ void ScreenEventWatcher::reset(){
 
 
 
-} // namespace Pokemon
-} // namespace PokemonAutomation
+}  // namespace PokemonAutomation

@@ -17,6 +17,7 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
+#include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
@@ -188,7 +189,7 @@ void enter_player_name(VideoStream& stream, ProControllerContext& context, StepT
         context.wait_for_all_requests();
     }
     trace.action("Typing the player's name: " + name);
-    type_on_system_keyboard(stream, context, name);
+    FastCodeEntry::type_on_system_keyboard(stream, context, name);
     pbf_press_button(context, BUTTON_PLUS, 80ms, 0ms);
     if (!wait_for_keyboard(stream, context, true, 5s)){
         trace.fail("The keyboard stayed open after PLUS (OK).");

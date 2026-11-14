@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include "CommonTools/ScreenEvents/ScreenFades.h"
 #include "Pokemon_SceneJudges.h"
 
 namespace PokemonAutomation{
@@ -33,41 +34,40 @@ std::string describe(const WarpSeen& seen){
 }
 
 
-SceneMove TalkOver::look(const ScreenEvents& look, WallClock now){
-    if (look.has(ScreenEvent::BATTLE_STARTED)){
-        m_quiet_since = WallClock::max();
-        m_calm_since = WallClock::max();
+SceneMove TalkOver::look(const ScreenEvents& events, WallClock now){
+    if (events.has(ScreenEvent::BATTLE_STARTED)){
+        m_quiet_since.reset();
+        m_calm_since.reset();
         return SceneMove::BATTLE;
     }
-    m_fade_showing = fade_in(look);
+    m_fade_showing = fade_in(events);
     if (m_fade_showing != WarpFade::NONE){
         m_fade = m_fade_showing;
     }
-    m_banner |= look.has(ScreenEvent::LOCATION_BANNER);
-    const bool box = look.has(ScreenEvent::DIALOG_BOX);
+    m_banner |= events.has(ScreenEvent::LOCATION_BANNER);
+    const bool box = events.has(ScreenEvent::DIALOG_BOX);
     //  A fade is never calm: BDSP's overworld reads a black frame as no
     //  box, and black stays still, so a closing fade counted as quiet and
-    //  ended Mom's scene as it went down (lab-B 2026-11-09 14:33).
+    //  ended the scene as it went down.
     const bool calm = !box && m_fade_showing == WarpFade::NONE &&
-        look.has(ScreenEvent::PLAYER_CAN_MOVE) && warped();
-    const bool quiet = calm && look.has(m_rule.door ? ScreenEvent::PLAYER_STILL : ScreenEvent::SCREEN_STILL);
+        events.has(ScreenEvent::PLAYER_CAN_MOVE) && warped();
+    const bool quiet = calm && events.has(m_rule.door ? ScreenEvent::PLAYER_STILL : ScreenEvent::SCREEN_STILL);
     if (!calm){
-        m_calm_since = WallClock::max();
-    }else if (m_calm_since == WallClock::max()){
+        m_calm_since.reset();
+    }else if (!m_calm_since.has_value()){
         m_calm_since = now;
     }
     if (!quiet){
-        m_quiet_since = WallClock::max();
-    }else if (m_quiet_since == WallClock::max()){
+        m_quiet_since.reset();
+    }else if (!m_quiet_since.has_value()){
         m_quiet_since = now;
     }
     const Milliseconds quiet_for = m_rule.door ? TalkOverRule::DOOR_QUIET : TALK_OVER_QUIET;
     const Milliseconds calm_for = m_rule.door ? TalkOverRule::DOOR_CALM : TALK_OVER_CALM;
 
     const bool over =
-        (quiet && now - m_quiet_since >= quiet_for) ||
-        (calm && now - m_calm_since >= calm_for);
-
+        (quiet && now - *m_quiet_since >= quiet_for) ||
+        (calm && now - *m_calm_since >= calm_for);
     if (over && m_rule.end_on_quiet){
         return SceneMove::DONE;
     }

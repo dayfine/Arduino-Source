@@ -68,14 +68,8 @@ std::string describe(const ConnectedMaps& world, const std::optional<MapPlace>& 
     return std::format("{} {}", world.map(place->map).name, to_string(place->tile));
 }
 
-//  Where a step or a warp should put the player, or nothing for nowhere.
-struct PlaceExpectation{
-    std::optional<NamedPlace> place;
-};
-
 //  Why `actual` is not `expected`, if it is not.
-std::optional<std::string> mismatch(const ConnectedMaps& world, const std::optional<MapPlace>& actual, const PlaceExpectation& expectation){
-    const std::optional<NamedPlace>& expected = expectation.place;
+std::optional<std::string> mismatch(const ConnectedMaps& world, const std::optional<MapPlace>& actual, const std::optional<NamedPlace>& expected){
     std::optional<MapPlace> wanted;
     if (expected){
         wanted = MapPlace{*world.find(expected->map), expected->tile};
@@ -87,14 +81,18 @@ std::optional<std::string> mismatch(const ConnectedMaps& world, const std::optio
 }
 
 
-struct StepInput{
-    std::string_view name;
-    NamedPlace from;
-    Direction direction;
-};
 struct StepCase{
-    StepInput input;
-    PlaceExpectation expectation;
+    struct Input{
+        std::string_view name;
+        NamedPlace from;
+        Direction direction;
+    };
+    //  Where the step should put the player, or nothing for nowhere.
+    struct Expectation{
+        std::optional<NamedPlace> place;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 class Test_ConnectedMaps_Step : public UnitTest{
@@ -104,9 +102,9 @@ public:
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const ConnectedMaps world(test_maps());
-        const StepInput& input = m_scenario.input;
+        const StepCase::Input& input = m_scenario.input;
         const MapPlace from{*world.find(input.from.map), input.from.tile};
-        if (std::optional<std::string> error = mismatch(world, world.neighbour(from, input.direction), m_scenario.expectation)){
+        if (std::optional<std::string> error = mismatch(world, world.neighbour(from, input.direction), m_scenario.expectation.place)){
             return *error;
         }
         return true;
@@ -159,13 +157,17 @@ const StepCase STEP_CASES[] = {
 };
 
 
-struct WarpInput{
-    std::string_view name;
-    MapWarp warp;
-};
 struct WarpCase{
-    WarpInput input;
-    PlaceExpectation expectation;
+    struct Input{
+        std::string_view name;
+        MapWarp warp;
+    };
+    //  Where the warp should put the player, or nothing for nowhere.
+    struct Expectation{
+        std::optional<NamedPlace> place;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 class Test_ConnectedMaps_Warp : public UnitTest{
@@ -175,7 +177,7 @@ public:
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const ConnectedMaps world(test_maps());
-        if (std::optional<std::string> error = mismatch(world, world.warp_arrival(m_scenario.input.warp), m_scenario.expectation)){
+        if (std::optional<std::string> error = mismatch(world, world.warp_arrival(m_scenario.input.warp), m_scenario.expectation.place)){
             return *error;
         }
         return true;
@@ -204,17 +206,17 @@ const WarpCase WARP_CASES[] = {
 };
 
 
-struct StalePlaceInput{
-    std::string_view name;
-    size_t map;
-};
-struct StalePlaceExpectation{
-    //  Whether reading the place throws InternalProgramError.
-    bool rejected = false;
-};
 struct StalePlaceCase{
-    StalePlaceInput input;
-    StalePlaceExpectation expectation;
+    struct Input{
+        std::string_view name;
+        size_t map;
+    };
+    struct Expectation{
+        //  Whether reading the place throws InternalProgramError.
+        bool rejected = false;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 //  A place whose map index is past the loaded maps (from another world, or
