@@ -85,6 +85,7 @@ private:
             {"fuchsia-city", "Fuchsia City"},
             {"saffron-city", "Saffron City"},
             {"cinnabar-island", "Cinnabar Island"},
+            {"silph-co", "Silph Co"},
         }){
             JsonArray names;
             names.push_back(std::string(name));
