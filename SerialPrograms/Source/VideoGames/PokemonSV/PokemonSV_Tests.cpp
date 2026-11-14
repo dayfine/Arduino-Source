@@ -29,6 +29,7 @@
 #include "Inference/ItemPrinter/PokemonSV_ItemPrinterJobsDetector.h"
 #include "Programs/Farming/PokemonSV_BBQTests.h"
 #include "PokemonSV_Tests.h"
+#include "Inference/PokemonSV_BlueberryQuestDetector.h" 
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -58,6 +59,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_NormalBattleMenus(database);
     add_tests_LetsGoKillDetector(database);
     add_tests_BBQ(database);
+    add_tests_BlueberryQuestDetector(database);
 }
 
 

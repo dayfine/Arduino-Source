@@ -10,6 +10,7 @@
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/Images/ImageFilter.h"
 #include "VideoGames/PokemonSV/Inference/PokemonSV_BlueberryQuestReader.h"
+#include "Tests/ImageUnitTest.h"
 #include "PokemonSV_BlueberryQuestDetector.h"
 
 namespace PokemonAutomation{
@@ -108,8 +109,73 @@ bool BlueberryQuestWatcher::process_frame(const ImageViewRGB32& screen, WallCloc
 }
 
 
+//  One quest slot on a full frame of the quest panel.
+struct BlueberryQuestScenario{
+    std::string image;
+    BlueberryQuestDetector::QuestPosition position;
+    std::string expected_slug;
+    size_t width;
+    size_t height;
+};
 
+class Test_BlueberryQuestDetector : public ImageUnitTest{
+public:
+    Test_BlueberryQuestDetector(BlueberryQuestScenario scenario)
+        : ImageUnitTest(
+            "PokemonSV::BlueberryQuestDetector - " + scenario.image
+            + " - slot " + std::to_string((int)scenario.position + 1)
+            + " - " + std::to_string(scenario.width),
+            {scenario.image}
+        )
+        , m_scenario(std::move(scenario))
+    {}
 
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope&,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        ImageRGB32 image = images[0].scale_to(m_scenario.width, m_scenario.height);
+        BlueberryQuestDetector detector(logger, COLOR_RED, Language::ChineseTraditional, m_scenario.position);
+        const std::string actual = detector.detect_quest(image);
+        if (actual != m_scenario.expected_slug){
+            return "Expected quest \"" + m_scenario.expected_slug + "\", read \"" + actual + "\"";
+        }
+        return true;
+    }
+
+private:
+    const BlueberryQuestScenario m_scenario;
+};
+
+//  Every slot of one Traditional Chinese quest panel frame, at 1080p and 720p.
+static void add_tests_BlueberryQuestPanel(
+    UnitTestDatabase& database,
+    const std::string& image, const std::string (&slugs)[4]
+){
+    using enum BlueberryQuestDetector::QuestPosition;
+    const BlueberryQuestDetector::QuestPosition positions[] = {FIRST, SECOND, THIRD, FOURTH};
+    const std::pair<size_t, size_t> sizes[] = {{1920, 1080}, {1280, 720}};
+    for (size_t slot = 0; slot < 4; slot++){
+        for (const auto& [width, height] : sizes){
+            database.add<Test_BlueberryQuestDetector>(BlueberryQuestScenario{
+                .image = image,
+                .position = positions[slot],
+                .expected_slug = slugs[slot],
+                .width = width,
+                .height = height,
+            });
+        }
+    }
+}
+
+void add_tests_BlueberryQuestDetector(UnitTestDatabase& database){
+    //  Singleplayer without a red quest shows 3 quests, so the fourth slot reads
+    //  as nothing. "catch-any" reads "捕捉1隻..." on screen where the dictionary
+    //  has "捕捉一隻...".
+    add_tests_BlueberryQuestPanel(database, "PokemonSV/BlueberryPoints/6750.png", {"catch-any", "sneak-up", "auto-10", ""});
+    //  The first frame after rerolling the first quest.
+    add_tests_BlueberryQuestPanel(database, "PokemonSV/BlueberryPoints/6740.png", {"photo-swim", "sneak-up", "auto-10", ""});
+}
 
 
 

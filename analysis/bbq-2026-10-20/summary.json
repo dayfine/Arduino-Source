@@ -1,0 +1,44 @@
+{
+  "gross_bp": 2050,
+  "spent_bp": 90,
+  "net_bp": 1960,
+  "active_hours": 8.261419651666666,
+  "elapsed_hours": 8.638575355555556,
+  "net_bp_per_active_hour": 237.24735973248713,
+  "net_bp_per_elapsed_hour": 226.88926348712164,
+  "distributions": [
+    {
+      "minutes": 10,
+      "windows": 51,
+      "mean": 38.431372549019606,
+      "median": 10.0,
+      "p10": 0.0,
+      "p90": 120.0,
+      "minimum": 0,
+      "maximum": 210,
+      "zero_windows": 25
+    },
+    {
+      "minutes": 30,
+      "windows": 16,
+      "mean": 106.25,
+      "median": 65.0,
+      "p10": 0.0,
+      "p90": 255.0,
+      "minimum": 0,
+      "maximum": 410,
+      "zero_windows": 5
+    },
+    {
+      "minutes": 60,
+      "windows": 8,
+      "mean": 212.5,
+      "median": 175.0,
+      "p10": 0.0,
+      "p90": 430.99999999999994,
+      "minimum": 0,
+      "maximum": 690,
+      "zero_windows": 2
+    }
+  ]
+}

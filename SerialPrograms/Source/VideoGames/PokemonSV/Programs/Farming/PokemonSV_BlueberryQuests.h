@@ -7,6 +7,8 @@
 #ifndef PokemonAutomation_PokemonSV_BlueberryQuests_H
 #define PokemonAutomation_PokemonSV_BlueberryQuests_H
 
+#include <chrono>
+#include <string>
 #include <vector>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -18,6 +20,8 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonSV{
 
+// Save local diagnostic evidence under DEBUG_PATH()/BBQ, without telemetry.
+void log_bbq_snapshot(VideoStream& stream, const std::string& label);
 //Basic blue quests
 const std::set<BBQuests> blue_quests = {
     BBQuests::auto_10, BBQuests::make_tm, BBQuests::pickup_10, BBQuests::sneak_up, BBQuests::photo_fly, BBQuests::photo_swim, BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar, BBQuests::photo_savanna, BBQuests::tera_self_defeat, 
@@ -89,6 +93,14 @@ void quest_travel_500(
 );
 
 //Run around until you encounter a pokemon. Tera, then defeat it by spamming your first move.
+// Send out the lead at whatever is in front and wait for a battle. If none starts,
+// turn the camera about a quarter at a time, up to three times, and try again.
+// Returns true once the battle menu shows.
+bool send_out_and_look_around(
+    ConsoleHandle& console, ProControllerContext& context,
+    std::chrono::seconds first_wait, const std::string& target
+);
+
 void quest_tera_self_defeat(
     const ProgramInfo& info,
     ConsoleHandle& console, ProControllerContext& context,
