@@ -619,23 +619,15 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
     return last;
 }
 
-void catch_in_zone(
+namespace{
+
+//  Other species than Mareep stand at other distances from the far gate
+//  (the user, 2026-11-13): catch_at_stop() at stops back to 100 and
+//  forward to 60 again, 2 laps, 8 minutes at most.
+GrassCatches patrol_and_catch(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
     BattleAIOption& battle_ai, int new_species_wanted, int max_throws
 ){
-    //  Taunie's two rocks stand between the start and the marker: a step
-    //  right first, around them, from the start (a catch's autosave can
-    //  leave the save further on).
-    context.wait_for_all_requests();
-    const std::optional<ObjectiveMarker> start = read_objective_marker(console, console.video().snapshot());
-    if (start && start->distance >= 115){
-        pbf_move_left_joystick(context, {1, 0}, 1000ms, 300ms);
-    }
-    //  Mareep, the species still missing after the tutorial, graze in the
-    //  grass right of the road at 55-60 from the far gate (console B,
-    //  2026-11-10). Other species stand at other distances (the user,
-    //  2026-11-13): stops back to 100 and forward to 60 again, 2 laps.
-    walk_to_objective(console, context, 60, 90s);
     const std::vector<int> stops = patrol_stops(60, 100, 20, 2);
     const WallClock deadline = current_time() + 8min;
     GrassCatches result;
@@ -660,6 +652,29 @@ void catch_in_zone(
         ));
         result += stop;
     }
+    return result;
+}
+
+} // namespace
+
+
+void catch_in_zone(
+    ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
+    BattleAIOption& battle_ai, int new_species_wanted, int max_throws
+){
+    //  Taunie's two rocks stand between the start and the marker: a step
+    //  right first, around them, from the start (a catch's autosave can
+    //  leave the save further on).
+    context.wait_for_all_requests();
+    const std::optional<ObjectiveMarker> start = read_objective_marker(console, console.video().snapshot());
+    if (start && start->distance >= 115){
+        pbf_move_left_joystick(context, {1, 0}, 1000ms, 300ms);
+    }
+    //  Mareep, the species still missing after the tutorial, graze in the
+    //  grass right of the road at 55-60 from the far gate (console B,
+    //  2026-11-10).
+    walk_to_objective(console, context, 60, 90s);
+    const GrassCatches result = patrol_and_catch(env, console, context, battle_ai, new_species_wanted, max_throws);
     console.log(std::format("catch_in_zone(): {} new species in {} throws.", result.found, result.throws));
     //  A rerun from a save after the catch: only species already caught
     //  lock on along the road, so the quest is done.

@@ -129,28 +129,36 @@ UnitTestResult test_patrol_stops(Logger&){
     return true;
 }
 
-struct CatchPlanCase{
+struct CatchPlanInput{
     std::string name;
     UnitTestResult (*body)(Logger&);
 };
 
+struct CatchPlanExpectation{
+};
+
+struct CatchPlanCase{
+    CatchPlanInput input;
+    CatchPlanExpectation expectation;
+};
+
 const CatchPlanCase CATCH_PLAN_CASES[] = {
-    {"Catches: the nearest target not caught", test_nearest_uncaught},
-    {"Catches: a high plate is a far target", test_far_target},
-    {"Catches: target cycle stops where a flick finds no other", test_cycle_stops_at_edge},
-    {"Catches: target cycle stops when it comes round", test_cycle_wraps_round},
-    {"Catches: target cycle is bounded", test_cycle_bounded},
-    {"Catches: patrol stops between 60 and 100", test_patrol_stops},
+    {.input = {"Catches: the nearest target not caught", test_nearest_uncaught}, .expectation = {}},
+    {.input = {"Catches: a high plate is a far target", test_far_target}, .expectation = {}},
+    {.input = {"Catches: target cycle stops where a flick finds no other", test_cycle_stops_at_edge}, .expectation = {}},
+    {.input = {"Catches: target cycle stops when it comes round", test_cycle_wraps_round}, .expectation = {}},
+    {.input = {"Catches: target cycle is bounded", test_cycle_bounded}, .expectation = {}},
+    {.input = {"Catches: patrol stops between 60 and 100", test_patrol_stops}, .expectation = {}},
 };
 
 class Test_AutoStoryCatchPlan : public UnitTest{
 public:
     explicit Test_AutoStoryCatchPlan(const CatchPlanCase& test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStory - {}", test_case.name))
+        : UnitTest(std::format("PokemonLZA::AutoStory - {}", test_case.input.name))
         , m_case(test_case)
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        return m_case.body(logger);
+        return m_case.input.body(logger);
     }
 
 private:
