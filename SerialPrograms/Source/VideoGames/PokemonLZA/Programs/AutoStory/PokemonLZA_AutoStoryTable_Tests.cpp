@@ -479,6 +479,41 @@ UnitTestResult test_center_walk_row(Logger&){
     return true;
 }
 
+//  The production story the program's dropdowns list, by index (the start
+//  and end options store the index): ids, the rows ending on the game's
+//  autosave and the rows reloading before them. Console runs name rows by
+//  these indices (03.07d is 18, 03.08 is 19), so a change to how the files
+//  are read must leave them as they are.
+UnitTestResult test_production_rows(Logger&){
+    const std::vector<std::string> ids{
+        "01.00", "01.01", "01.02", "01.03",
+        "02.01", "02.02", "02.03", "02.04", "02.05", "02.06", "02.07",
+        "03.01", "03.02", "03.03", "03.04", "03.05", "03.06", "03.07", "03.07d", "03.08", "03.09",
+    };
+    const std::set<std::string, std::less<>> autosaves{
+        "01.00", "01.01", "01.02", "02.01", "02.02", "02.03", "02.04", "02.05", "02.06", "02.07", "03.01", "03.03",
+    };
+    const std::set<std::string, std::less<>> reload_when_chained{
+        "01.02", "02.02", "02.03", "02.04", "02.05", "02.07", "03.01", "03.02", "03.04",
+    };
+    const std::set<std::string, std::less<>> reload_always{"03.04"};
+    const StoryData& data = builtin_story_data();
+    if (data.checkpoints.size() != ids.size()){
+        return std::format("Expected {} rows, got {}.", ids.size(), data.checkpoints.size());
+    }
+    for (size_t index = 0; index < ids.size(); index++){
+        if (data.checkpoints[index].id != ids[index]){
+            return std::format("Row {}: expected {}, got {}.", index, ids[index], data.checkpoints[index].id);
+        }
+    }
+    if (data.autosaves != autosaves || data.reload_when_chained != reload_when_chained
+        || data.reload_always != reload_always || !data.dev_files.empty()
+    ){
+        return "Expected the built-in autosave and reload rows, and no dev files.";
+    }
+    return true;
+}
+
 struct AutoStoryTableCase{
     std::string name;
     struct Input{
@@ -586,6 +621,11 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     {
         .name = "Center walk: 03.07d is a story row between 03.07 and 03.08",
         .input = {.body = test_center_walk_row},
+        .expectation = {},
+    },
+    {
+        .name = "Story table: the production rows by dropdown index, with their autosaves and reloads",
+        .input = {.body = test_production_rows},
         .expectation = {},
     },
 };
