@@ -54,6 +54,7 @@ enum class StoryFailureClass{
     BATTLE_LOST,
     STATE_CHECK_FAILED,
     OPERATION_FAILED,
+    //  The last: the tests check that every class up to it has a row.
     SIM_MISMATCH,
 };
 
@@ -87,7 +88,8 @@ struct StoryFailureClassInfo{
 //  Every class, in the enum's order.
 const std::vector<StoryFailureClassInfo>& story_failure_classes();
 
-//  The row of `failure_class`.
+//  The row of `failure_class`. Throws InternalProgramError when the list
+//  has no row for it in the enum's place.
 const StoryFailureClassInfo& story_failure_class_info(StoryFailureClass failure_class);
 
 //  The class a sim fault injects. Every FaultClass has one (the tests

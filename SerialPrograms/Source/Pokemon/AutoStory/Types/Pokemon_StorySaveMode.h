@@ -3,8 +3,8 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  When an AutoStory run may save the game. A run's own verdict can be
- *  wrong (FRLG 00.31, 2026-11-10: a warp leg confirmed B3F while still on
- *  B4F), and a save made then overwrites the only good one. So a segment
+ *  wrong (a warp confirmed on the next floor while the player is still on
+ *  the one before), and a save made then overwrites the only good one. So a segment
  *  under test never saves, a verified one saves once at its end, and only
  *  a playthrough of verified segments saves at each checkpoint.
  *
