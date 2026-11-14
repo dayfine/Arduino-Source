@@ -11,6 +11,7 @@
 #include <string>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/Navigation/Pokemon_ConnectedMaps.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldObjects.h"
@@ -50,13 +51,12 @@ int route_cost(const RouteCosts& costs, RouteCost kind){
 namespace{
 
 
+using Pokemon::ConnectedMaps;
+using Pokemon::MapPlace;
+
 int find_map(const std::vector<MapData>& maps, const std::string& name){
-    for (size_t c = 0; c < maps.size(); c++){
-        if (maps[c].name == name){
-            return (int)c;
-        }
-    }
-    return -1;
+    const std::optional<size_t> index = ConnectedMaps(maps).find(name);
+    return index ? (int)*index : -1;
 }
 
 //  The player on one of the loaded maps.
@@ -92,19 +92,16 @@ struct Transition{
 
 //  The player taking `warp`, or nothing if it leads off the loaded maps.
 std::optional<Transition> take_warp(const std::vector<MapData>& maps, const MapWarp* warp){
-    if (warp == nullptr || !warp->to){
+    if (warp == nullptr){
         return std::nullopt;
     }
-    const int destination = find_map(maps, warp->to->map);
-    if (destination < 0){
+    const std::optional<MapPlace> arrival = ConnectedMaps(maps).warp_arrival(*warp);
+    if (!arrival){
         return std::nullopt;
     }
+    const int destination = (int)arrival->map;
     const MapData& map = maps[destination];
-    const auto arrival = map.points.find(warp->to->point);
-    if (arrival == map.points.end()){
-        return std::nullopt;
-    }
-    TilePos position = arrival->second;
+    TilePos position = arrival->tile;
     Transition transition;
     if (walks_out_on_arrival(map, position)){
         position = position.next(Direction::SOUTH);
@@ -119,43 +116,21 @@ std::optional<Transition> take_warp(const std::vector<MapData>& maps, const MapW
 //  Walking off the map's edge onto the map connected there, if it is loaded.
 std::optional<Transition> cross_edge(const std::vector<MapData>& maps, const Located& player, Direction direction){
     const MapData& map = maps[player.map];
-    for (const MapConnection& connection : map.connections){
-        if (connection.side != direction){
-            continue;
-        }
-        const int destination = find_map(maps, connection.to_map);
-        if (destination < 0){
-            return std::nullopt;
-        }
-        const MapData& to = maps[destination];
-        const TilePos here = player.state.position;
-        TilePos point;
-        switch (direction){
-        case Direction::NORTH:
-            point = {here.x - connection.offset, to.tiles.height - 1};
-            break;
-        case Direction::SOUTH:
-            point = {here.x - connection.offset, 0};
-            break;
-        case Direction::WEST:
-            point = {to.tiles.width - 1, here.y - connection.offset};
-            break;
-        case Direction::EAST:
-            point = {0, here.y - connection.offset};
-            break;
-        }
-        const StepKind kind = classify_step_onto(map, player.state, direction, to, point);
-        if (kind == StepKind::BLOCKED){
-            return std::nullopt;
-        }
-        Transition transition;
-        transition.next.map = destination;
-        transition.next.state = after_step_onto(map, player.state, to, point, kind);
-        transition.action = kind == StepKind::START_SURF ? RouteAction::SURF : RouteAction::WALK;
-        transition.dismounted = kind == StepKind::STOP_SURFING;
-        return transition;
+    const std::optional<MapPlace> across = ConnectedMaps(maps).across_edge(MapPlace{(size_t)player.map, player.state.position}, direction);
+    if (!across){
+        return std::nullopt;
     }
-    return std::nullopt;
+    const MapData& to = maps[across->map];
+    const StepKind kind = classify_step_onto(map, player.state, direction, to, across->tile);
+    if (kind == StepKind::BLOCKED){
+        return std::nullopt;
+    }
+    Transition transition;
+    transition.next.map = (int)across->map;
+    transition.next.state = after_step_onto(map, player.state, to, across->tile, kind);
+    transition.action = kind == StepKind::START_SURF ? RouteAction::SURF : RouteAction::WALK;
+    transition.dismounted = kind == StepKind::STOP_SURFING;
+    return transition;
 }
 
 //  Pressing `direction` once (field_control_avatar.c): an exit mat or a door
