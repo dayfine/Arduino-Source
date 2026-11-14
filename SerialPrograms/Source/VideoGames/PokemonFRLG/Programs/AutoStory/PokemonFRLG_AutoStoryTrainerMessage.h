@@ -11,6 +11,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryTrainerMessage_H
 
 #include <functional>
+#include "Common/Cpp/Time.h"
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -38,6 +39,16 @@ void clear_overworld_message(
 //  the spot pacing kept can be a tile off. A battle lost throws, as on a
 //  route.
 using PaceTrainerBattle = std::function<void()>;
+
+//  The longest wait_out_battle_exit() waits for the overworld.
+inline constexpr Milliseconds BATTLE_EXIT_TIMEOUT(10000);
+
+//  After a battle run from or won: waits until the overworld has shown
+//  nothing (wait_for_quiet_overworld()) for MovementMechanics::
+//  AFTER_BATTLE_QUIET, at most BATTLE_EXIT_TIMEOUT, and logs how the screen
+//  ended. A tap sent as the battle's black ends is lost (console B,
+//  2026-11-09, 08.01 winston_line).
+void wait_out_battle_exit(ConsoleHandle& console, ProControllerContext& context);
 
 
 

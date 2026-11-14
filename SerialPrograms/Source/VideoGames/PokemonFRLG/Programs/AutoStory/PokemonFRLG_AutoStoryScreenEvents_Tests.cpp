@@ -15,6 +15,7 @@
 #include <utility>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "PokemonFRLG_AutoStoryFrameReplay_Tests.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
 #include "PokemonFRLG_AutoStoryScreenEvents_Tests.h"
 
@@ -30,6 +31,9 @@ struct ScreenEventsCase{
         std::string name;
         //  The frame's colour; none for no frame.
         std::optional<uint32_t> color;
+        //  The colour of a square in the middle of the frame, around the
+        //  player; 0 for none.
+        uint32_t middle = 0;
     };
 
     struct Expectation{
@@ -52,6 +56,13 @@ public:
         if (m_case.input.color.has_value()){
             ImageRGB32 image(1920, 1080);
             image.fill(*m_case.input.color);
+            if (m_case.input.middle != 0){
+                for (size_t y = 380; y < 700; y++){
+                    for (size_t x = 800; x < 1120; x++){
+                        image.pixel(x, y) = m_case.input.middle;
+                    }
+                }
+            }
             frame = VideoSnapshot(std::move(image), WallClock());
         }
         FrlgScreenObserver observer;
@@ -82,12 +93,20 @@ const ScreenEventsCase SCREEN_EVENTS_CASES[] = {
         .input = {"a white screen is a white fade only", 0xffffffff},
         .expectation = {{ScreenEvent::FADE_WHITE}},
     },
+    {
+        //  Rock Tunnel without Flash (console B, 2026-11-09, 08.01): its
+        //  black read as a battle's text box before each step.
+        .input = {"a dark cave, black but for a lit middle, shows nothing", 0xff000000, 0xff8c7c64},
+        .expectation = {{}},
+    },
 };
 
 void add_tests_AutoStoryScreenEvents(UnitTestDatabase& database){
     for (const auto& item : SCREEN_EVENTS_CASES){
         database.add<Test_AutoStoryScreenEvents>(item);
     }
+    //  The same events on recorded console frames.
+    add_tests_AutoStoryFrameReplay(database);
 }
 
 

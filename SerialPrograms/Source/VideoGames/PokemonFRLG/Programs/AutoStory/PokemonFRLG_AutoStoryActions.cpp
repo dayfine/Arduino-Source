@@ -27,10 +27,15 @@
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_SelectionArrowDetector.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreen.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryGenderMenu.h"
+#include "PokemonFRLG_AutoStoryStepInterrupts.h"
+#include "PokemonFRLG_AutoStoryTrainerMessage.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -56,9 +61,6 @@ constexpr Milliseconds INTRO_TIMEOUT = 600000ms;
 //  "Wait about 8 s" after YES at the nurse (console B, 2026-11-01): 1.5 s
 //  between presses did not heal.
 constexpr Milliseconds HEAL_TIME = 8000ms;
-//  FRLG takes a tap this short as a turn, without a step.
-constexpr Milliseconds TURN_TAP = 40ms;
-constexpr Milliseconds TURN_SETTLE = 300ms;
 
 DpadPosition dpad(Direction direction){
     switch (direction){
@@ -164,7 +166,8 @@ void open_start_menu_row(ConsoleHandle& console, ProControllerContext& context, 
 
 
 //  The new game's intro, from the title screen. Everything but the names
-//  is advanced with A, which never hurts there (BOY is the default, YES to
+//  is advanced with A, which never hurts there (BOY is the default, the
+//  girl is picked on the BOY/GIRL menu (gender_menu_cursor()), YES to
 //  "So your name is ...?" and "Er, was it GREEN?"); B is never pressed
 //  outside the keyboard, since in the intro it goes back to the controls
 //  pages (console B, 2026-11-01). The controls pages read as a message box
@@ -188,10 +191,11 @@ public:
         PLAYER_NAME_TYPED,
     };
 
-    NewGameIntro(ConsoleHandle& console, ProControllerContext& context, std::string player_name, End end)
+    NewGameIntro(ConsoleHandle& console, ProControllerContext& context, std::string player_name, PlayerGender gender, End end)
         : m_console(console)
         , m_context(context)
         , m_player_name(std::move(player_name))
+        , m_gender(gender)
         , m_end(end)
     {}
 
@@ -247,7 +251,7 @@ private:
             type_player_name(false);
             return true;
         }
-        if (names(screen)){
+        if (gender_menu(screen) || names(screen)){
             m_last_dialog = current_time();
             m_last_press = m_last_dialog;
             return false;
@@ -264,6 +268,33 @@ private:
             return false;
         }
         return quiet(screen, now);
+    }
+
+    //  True if the BOY/GIRL menu showed and was handled. It comes before the
+    //  player's keyboard and is answered once.
+    bool gender_menu(const ImageViewRGB32& screen){
+        if (m_gender_picked || m_keyboards_seen > 0 || m_gender == PlayerGender::BOY){
+            return false;
+        }
+        const std::optional<int> row = gender_menu_cursor(screen);
+        switch (gender_menu_step(row, m_gender)){
+        case GenderMenuStep::DOWN:
+            m_console.log("New game: the BOY/GIRL menu, moving to GIRL.");
+            tap(m_context, DPAD_DOWN, 300ms);
+            break;
+        case GenderMenuStep::UP:
+            tap(m_context, DPAD_UP, 300ms);
+            break;
+        case GenderMenuStep::CONFIRM:
+            m_console.log("New game: the BOY/GIRL menu, picking GIRL.");
+            press(m_context, BUTTON_A, 2000ms);
+            m_gender_picked = true;
+            break;
+        case GenderMenuStep::NONE:
+            return false;
+        }
+        m_context.wait_for_all_requests();
+        return true;
     }
 
     //  True if a keyboard or the rival's name list showed and was handled.
@@ -375,10 +406,12 @@ private:
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     const std::string m_player_name;
+    const PlayerGender m_gender;
     const End m_end;
     WallClock m_last_dialog;
     WallClock m_last_press;
     bool m_dialog_seen = false;
+    bool m_gender_picked = false;
     size_t m_keyboards_seen = 0;
     size_t m_presets_picked = 0;
 };
@@ -579,12 +612,13 @@ std::optional<size_t> talk_and_count_pages(ConsoleHandle& console, ProController
     return pages;
 }
 
-void step_once(ProControllerContext& context, Direction direction, std::optional<Direction> facing){
+void step_once(ConsoleHandle& console, ProControllerContext& context, Direction direction, std::optional<Direction> facing, PlayerGender player){
     if (facing != direction){
-        pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
+        OverworldWalkSteps::turn_to(console, context, direction, player);
     }
-    //  A step, once started, finishes on its own.
-    pbf_press_dpad(context, dpad(direction), 120ms, 500ms);
+    //  A step, once started, finishes on its own. The release waits out the
+    //  lockout before a next step tap (MovementMechanics::STEP_TAP_LOCKOUT).
+    pbf_press_dpad(context, dpad(direction), MovementMechanics::STEP_TAP, MovementMechanics::STEP_TAP_RELEASE);
     context.wait_for_all_requests();
 }
 
@@ -598,27 +632,44 @@ std::optional<int> step_until_seen(int max_tiles, const std::function<void()>& s
     return std::nullopt;
 }
 
+void wait_out_battle_exit(ConsoleHandle& console, ProControllerContext& context){
+    context.wait_for_all_requests();
+    ConsoleScreenLook eyes(console, context);
+    const Pokemon::ScreenSettle settle = wait_for_quiet_overworld(
+        [&eyes](bool fresh){ return eyes.look(fresh); },
+        MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT
+    );
+    const bool quiet = quiet_overworld(settle, MovementMechanics::AFTER_BATTLE_QUIET);
+    console.log("Story: after the battle, " + Pokemon::describe(settle), quiet ? COLOR_BLACK : COLOR_RED);
+}
+
 std::optional<int> step_into_line(
     ConsoleHandle& console, ProControllerContext& context,
-    Direction direction, std::optional<Direction> facing, int max_tiles, Milliseconds watch
+    Direction direction, std::optional<Direction> facing, PlayerGender player, int max_tiles, Milliseconds watch
 ){
     return step_until_seen(
         max_tiles,
         [&]{
-            step_once(context, direction, facing);
+            step_once(console, context, direction, facing, player);
             facing = direction;
         },
         [&]{
             WhiteDialogWatcher message(COLOR_RED);
             BattleScreenWatcher battle(COLOR_RED);
-            return wait_until(console, context, watch, {message, battle}) >= 0;
+            const int seen = wait_until(console, context, std::max(watch, WILD_BATTLE_IN_LINE_WATCH), {message, battle});
+            if (seen == 1){
+                console.log("Story: a wild battle on the step into a trainer's line; running from it, then stepping on.", COLOR_ORANGE);
+                flee_battle(console, context);
+                wait_out_battle_exit(console, context);
+                return false;
+            }
+            return seen == 0;
         }
     );
 }
 
-void face_wall(ProControllerContext& context, Direction direction){
-    pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
-    context.wait_for_all_requests();
+void face_wall(ConsoleHandle& console, ProControllerContext& context, Direction direction, PlayerGender player){
+    OverworldWalkSteps::turn_to(console, context, direction, player);
 }
 
 SaveAction SaveDialog::next(SaveScreen screen){
@@ -933,14 +984,14 @@ void buy_items(
     mash_until_overworld(console, context, 20000ms);
 }
 
-void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name){
-    console.log("New game: from the title screen.");
-    NewGameIntro(console, context, player_name, NewGameIntro::End::BEDROOM).run();
+void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name, PlayerGender gender){
+    console.log(gender == PlayerGender::GIRL ? "New game: from the title screen, as the girl." : "New game: from the title screen, as the boy.");
+    NewGameIntro(console, context, player_name, gender, NewGameIntro::End::BEDROOM).run();
 }
 
-void play_new_game_to_player_name(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name){
+void play_new_game_to_player_name(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name, PlayerGender gender){
     console.log("New game: from the title screen to the player's keyboard, for SID Helper.");
-    NewGameIntro(console, context, player_name, NewGameIntro::End::PLAYER_NAME_TYPED).run();
+    NewGameIntro(console, context, player_name, gender, NewGameIntro::End::PLAYER_NAME_TYPED).run();
 }
 
 namespace{

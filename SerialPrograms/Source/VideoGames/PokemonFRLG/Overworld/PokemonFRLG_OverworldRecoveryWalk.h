@@ -15,6 +15,8 @@
 
 #include <optional>
 #include <vector>
+#include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "PokemonFRLG_OverworldRecovery.h"
@@ -24,6 +26,21 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
+
+
+//  TODO(forest drift, 2026-11-01): the threshold is a diagnostic's guess.
+//  How much each edge quarter of the game screen, clear of the player in the
+//  middle, may change when a tap toward a wall only bumps the player (the
+//  player's own animation, an animated tile). A step scrolls the whole map
+//  by a tile. Not yet measured on the console: a guess on the safe side.
+constexpr double WALL_TAP_MOVED_RMSD = 20.0;
+
+//  How much a counted tap scrolled the map: the largest RMSD between `before`
+//  and `after` over the four edge quarters (top, bottom, left, right) of
+//  `game`, all clear of the player in the middle. One band alone misses a
+//  step over a floor that repeats every tile (Rocket Hideout B3F, 09.02): a
+//  one-tile scroll leaves the band nearly the same.
+double tap_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game);
 
 
 //  Walks `route`, planned with `planning`, at `speed`, as
@@ -57,6 +74,7 @@ void walk_overworld_route_with_recovery(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
     const RoutePlanning& planning,
+    PlayerGender player,
     std::optional<Direction> facing = std::nullopt,
     const OverworldInterruptSet& interrupts = default_overworld_interrupts(),
     MoveSpeed speed = MoveSpeed::WALK

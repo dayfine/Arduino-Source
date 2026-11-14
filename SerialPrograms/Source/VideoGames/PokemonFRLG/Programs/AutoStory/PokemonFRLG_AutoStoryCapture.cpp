@@ -23,6 +23,7 @@
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
+#include "PokemonFRLG_AutoStoryPacing.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -416,11 +417,12 @@ bool pace_until_battle(Logger& logger, PatchSteps& steps, size_t max_steps){
 
 
 ConsolePatchSteps::ConsolePatchSteps(
-    ConsoleHandle& console, ProControllerContext& context, Direction pace, PaceSpot& spot,
+    ConsoleHandle& console, ProControllerContext& context, PlayerGender player, Direction pace, PaceSpot& spot,
     const PaceTrainerBattle& trainer_battle
 )
     : m_console(console)
     , m_context(context)
+    , m_player(player)
     , m_pace(pace)
     , m_spot(spot)
     , m_trainer_battle(trainer_battle)
@@ -432,7 +434,7 @@ bool ConsolePatchSteps::step(){
     const int ret = run_until<ProControllerContext>(
         m_console, m_context,
         [&](ProControllerContext& context){
-            step_once(context, way, m_spot.facing);
+            step_once(m_console, context, way, m_spot.facing, m_player);
         },
         {battle}
     );
@@ -470,19 +472,19 @@ void ConsolePatchSteps::dump_screen(std::string_view label){
 
 
 ConsoleCaptureActions::ConsoleCaptureActions(
-    ConsoleHandle& console, ProControllerContext& context, Language language,
+    ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player,
     PaceTrainerBattle trainer_battle
 )
     : m_console(console)
     , m_context(context)
     , m_language(language)
+    , m_player(player)
     , m_trainer_battle(std::move(trainer_battle))
 {}
 
 bool ConsoleCaptureActions::find_encounter(Direction pace){
-    PaceSpot spot;
-    ConsolePatchSteps steps(m_console, m_context, pace, spot, m_trainer_battle);
-    return pace_until_battle(m_console.logger(), steps, PACE_MAX_STEPS);
+    ConsolePatchSteps steps(m_console, m_context, m_player, pace, m_spot, m_trainer_battle);
+    return find_paced_encounter(m_console.logger(), console_bike_select(m_console, m_context, m_player), steps);
 }
 
 EncounterSeen ConsoleCaptureActions::read_encounter(){
@@ -502,6 +504,9 @@ EncounterSeen ConsoleCaptureActions::read_encounter(){
 bool ConsoleCaptureActions::flee(){
     try{
         flee_battle(m_console, m_context);
+        //  The pacing counts its taps: one lost to the battle's exit
+        //  would put it a tile off.
+        wait_out_battle_exit(m_console, m_context);
         return true;
     }catch (OperationFailedException& e){
         m_console.log("Capture: " + e.message(), COLOR_RED);

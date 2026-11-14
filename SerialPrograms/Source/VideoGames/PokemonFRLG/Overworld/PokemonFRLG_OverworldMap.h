@@ -19,6 +19,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
 #include "PokemonFRLG_OverworldObjects.h"
@@ -62,7 +63,6 @@ PlayerState after_step_onto(
     const MapData& from, const PlayerState& state,
     const MapData& to, const TilePos& destination, StepKind kind
 );
-
 
 
 } // namespace PokemonFRLG

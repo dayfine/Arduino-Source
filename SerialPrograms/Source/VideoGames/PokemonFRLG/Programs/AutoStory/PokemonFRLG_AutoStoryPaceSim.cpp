@@ -24,10 +24,7 @@ SimPatch::SimPatch(OverworldSim& sim, Direction pace, Direction back, std::funct
 
 bool SimPatch::step(){
     const Direction way = m_displaced ? m_back : m_pace;
-    if (m_sim.state().facing != way){
-        m_sim.tap(way);
-    }
-    m_sim.tap(way);
+    sim_step_once(m_sim, way);
     m_displaced = !m_displaced;
     return m_sim.watch({SimWatcher::FLASH}, std::chrono::milliseconds(1000)).has_value();
 }

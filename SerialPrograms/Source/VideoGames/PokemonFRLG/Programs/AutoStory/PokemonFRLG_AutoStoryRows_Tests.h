@@ -17,12 +17,15 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Rows 00.21 and 00.22 on the overworld sim (PokemonFRLG_AutoStoryVermilion_Tests.cpp).
+//  Rows 05.10 and 06.01 on the overworld sim (PokemonFRLG_AutoStoryVermilion_Tests.cpp).
 void add_tests_AutoStoryVermilion(UnitTestDatabase& database);
-//  Rows 00.23 to 00.25 on the overworld sim (PokemonFRLG_AutoStoryVermilionGym_Tests.cpp).
+//  Rows 06.02 to 06.04 on the overworld sim (PokemonFRLG_AutoStoryVermilionGym_Tests.cpp).
 void add_tests_AutoStoryVermilionGym(UnitTestDatabase& database);
-//  Rows from 00.26 on on the overworld sim (PokemonFRLG_AutoStoryCeladon_Tests.cpp).
+//  Rows from 07.01 on on the overworld sim (PokemonFRLG_AutoStoryCeladon_Tests.cpp),
+//  with add_tests_AutoStoryLavender().
 void add_tests_AutoStoryCeladon(UnitTestDatabase& database);
+//  Rows from 08.01 on on the overworld sim (PokemonFRLG_AutoStoryLavender_Tests.cpp).
+void add_tests_AutoStoryLavender(UnitTestDatabase& database);
 
 
 } // namespace PokemonFRLG

@@ -72,7 +72,7 @@ public:
     const std::map<std::string, int>& bag() const{
         return m_bag;
     }
-    //  "00.03/oak: a dialog pops up before it.", and how it was cleared.
+    //  "01.04/oak: a dialog pops up before it.", and how it was cleared.
     const std::vector<std::string>& dialog_notes() const{
         return m_dialog_notes;
     }
@@ -143,8 +143,12 @@ private:
     std::string walk(const StoryStep& step);
     std::string step_ahead(const StoryStep& step);
     std::string step_onto(const StoryStep& step);
+    std::string step_onto_warp(const RouteStep& warp);
     std::string cut(const StoryStep& step);
     std::string battle(const StoryStep& step);
+    Pokemon::StoryAction hideout_or_stub();
+    std::string hideout(const StoryStep& step);
+    std::string ended_on(const StoryStep& step);
 
     OverworldSim& m_sim;
     StoryPose m_at;

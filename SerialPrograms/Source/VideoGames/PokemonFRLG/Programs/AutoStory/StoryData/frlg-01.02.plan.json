@@ -1,0 +1,33 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "01.02",
+    "title": "after SID Helper: close the Trainer Card, save in the bedroom",
+    "start": {"map": "PalletTown_PlayersHouse_2F", "tiles": [[6, 6]], "facing": "north"},
+    "events": [
+      {
+        "id": "close_trainer_card",
+        "kind": "game_action",
+        "action": "close_trainer_card",
+        "declared_after": {"map": "PalletTown_PlayersHouse_2F", "tiles": [[6, 6]], "facing": "north"},
+        "why": "the Trainer Card SID Helper left open, or HOME"
+      },
+      {
+        "id": "options",
+        "kind": "options",
+        "why": "fast text; no switch prompt between a trainer's Pokemon"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "before_pokemon",
+    "live_start": true,
+    "notes": {
+      "checkpoint": [
+        "SID Helper confirms the name, finishes the intro and reads the Trainer Card from the START menu, without moving the player or saving."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}

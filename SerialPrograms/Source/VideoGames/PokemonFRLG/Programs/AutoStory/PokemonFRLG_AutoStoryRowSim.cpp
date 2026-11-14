@@ -13,9 +13,19 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "PokemonFRLG_AutoStoryLegs.h"
+#include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryHideoutLift.h"
+#include "PokemonFRLG_AutoStoryRooms.h"
+#include "PokemonFRLG_AutoStoryRoomLegs.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryViridianMart.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimField.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -372,6 +382,8 @@ Pokemon::StoryAction OverworldStepSim::action(StoryActionId id){
     case StoryActionId::BATTLE:
         body = &OverworldStepSim::battle;
         break;
+    case StoryActionId::GAME:
+        return hideout_or_stub();
     default:
         return m_stubs.stub();
     }
@@ -380,6 +392,79 @@ Pokemon::StoryAction OverworldStepSim::action(StoryActionId id){
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
     });
 }
+
+namespace{
+
+//  fight_battle()'s end on the overworld the sim shows after a battle won
+//  with a move: the battle loop's polls replayed through its EvolutionHold
+//  and BattleEndWatch, as BattleLoop::step() takes them. The overworld of a
+//  dark cave reads as the battle's text box with no HP box (console B,
+//  2026-11-09, 08.01 hiker_lenny: three 20 s holds for an evolution, then
+//  "no battle screen and no START menu for 60 s after the battle"). Empty
+//  once START would look for the overworld, else the loop's failure.
+std::string battle_end_on_sim(const OverworldSim& sim){
+    constexpr Milliseconds POLL(300);
+    //  The battle as the loop saw it: a Potion turn's bag, where START
+    //  looked for the overworld and found none (as hiker_lenny's turns 2,
+    //  4 and 5), then the last turn's text up to the win.
+    constexpr Milliseconds BAG(4000);
+    constexpr Milliseconds LAST_TEXT(10000);
+    //  The loop gives up on the overworld after this (BattleEndWatch's
+    //  NO_OVERWORLD); a little longer, so its failure shows.
+    constexpr Milliseconds GIVE_UP(65000);
+    const WallClock start{};
+    Supplies supplies;
+    EvolutionHold hold(supplies.lead);
+    BattleEndWatch watch;
+    watch.seen(BattleSeen::MENU, start);
+    Milliseconds at(0);
+    for (; at <= BAG; at += POLL){
+        watch.seen(BattleSeen::NONE, start + at);
+        if (watch.check_overworld(start + at)){
+            break;
+        }
+    }
+    hold.turn_taken(TurnChoice::MOVE);
+    for (; at <= LAST_TEXT; at += POLL){
+        watch.seen(BattleSeen::BATTLE, start + at);
+    }
+    const bool dark = sim.state().dark;
+    const BattleTextScreen overworld{.text_box = dark, .hp_box = false, .arrow = false, .yes_no = false, .dark_cave = dark};
+    for (; at <= LAST_TEXT + GIVE_UP; at += POLL){
+        if (watch.overworld_lost(start + at)){
+            return "fight_battle(): no battle screen and no START menu for 60 s after the battle.";
+        }
+        if (hold.holds(overworld)){
+            hold.held(EvolutionHold::MAX_HOLD, false);
+            at += EvolutionHold::MAX_HOLD;
+            continue;
+        }
+        watch.seen(BattleSeen::NONE, start + at);
+        if (watch.check_overworld(start + at)){
+            return "";
+        }
+    }
+    return "fight_battle(): START never looked for the overworld.";
+}
+
+//  wait_out_battle_exit() on `sim`: each look shows the sim's screens for
+//  BETWEEN_STEPS_LOOK.
+void sim_wait_out_battle_exit(OverworldSim& sim){
+    Milliseconds from = sim.state().time;
+    const auto look = [&sim, &from](bool fresh){
+        if (fresh){
+            from = sim.state().time;
+        }
+        sim.watch({}, BETWEEN_STEPS_LOOK);
+        return Pokemon::ScreenLook{
+            .log = screen_event_log(sim.state(), from),
+            .window = {.start = sim_wall_clock(from), .end = sim_wall_clock(sim.state().time)},
+        };
+    };
+    wait_for_quiet_overworld(look, MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
+}
+
+} // namespace
 
 //  A ROUTE or LEGS by the sim's walker, fighting a trainer who sees the
 //  player on the way.
@@ -390,7 +475,9 @@ std::string OverworldStepSim::walk(const StoryStep& step){
         return "";
     }
     const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = MapPosition{m_at.map, m_at.tile}, .label = step.name};
-    const std::string failure = route ? OverworldSimWalker(m_sim).run(*route, planning) : "no legs.";
+    SimWalkerRules rules;
+    rules.trainer_battle_end = battle_end_on_sim;
+    const std::string failure = route ? OverworldSimWalker(m_sim, rules).run(*route, planning) : "no legs.";
     m_at = route ? StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after} : m_at;
     return failure;
 }
@@ -403,26 +490,49 @@ std::string OverworldStepSim::step_ahead(const StoryStep& step){
         return step_onto(step);
     }
     const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
-    const auto tap = [this, direction]{
-        if (m_sim.state().facing != direction){
-            m_sim.tap(direction);
+    if (step.action.empty()){
+        if (const std::optional<RouteStep> warp = warp_press(story_maps(), MapPosition{m_at.map, m_at.tile}, direction)){
+            return step_onto_warp(*warp);
         }
-        m_sim.tap(direction);
+    }
+    const auto tap = [this, direction]{
+        sim_step_once(m_sim, direction);
     };
+    //  A wild battle, with no message before it, is run from, and the
+    //  stepping goes on, as step_into_line() does.
     const auto seen = [this]{
-        return m_sim.watch({SimWatcher::MESSAGE, SimWatcher::BATTLE_SCREEN}, TRAINER_LINE_WATCH).has_value();
+        const std::optional<SimSeen> shown = m_sim.watch(
+            {SimWatcher::MESSAGE, SimWatcher::BATTLE_SCREEN}, std::max(TRAINER_LINE_WATCH, WILD_BATTLE_IN_LINE_WATCH)
+        );
+        if (shown && shown->watcher == 1){
+            m_sim.handle_battle(SimBattleChoice::RUN);
+            sim_wait_out_battle_exit(m_sim);
+            return false;
+        }
+        return shown.has_value();
     };
     const int tiles = step.action == TRAINER_LINE_VARIANT ? TRAINER_LINE_TILES : 1;
     return step_until_seen(tiles, tap, seen) ? "" : "no trainer saw the player.";
 }
 
+//  take_warp_step() on the sim: the step, then its fade, with a step more
+//  twice while none shows (wait_out_warp()).
+std::string OverworldStepSim::step_onto_warp(const RouteStep& warp){
+    const int warps_before = m_sim.state().warps;
+    sim_step_once(m_sim, warp.direction);
+    for (int tap = 0; tap < 2 && m_sim.state().warps == warps_before; tap++){
+        sim_step_once(m_sim, warp.direction);
+    }
+    if (m_sim.state().warps == warps_before){
+        return std::format("no fade in and out after stepping onto the warp to {}.", warp.end.map);
+    }
+    m_sim.watch({}, OverworldWalkSteps::AFTER_WARP);
+    return "";
+}
+
 //  A hop() or step_onto(): one step, ending where the table says.
 std::string OverworldStepSim::step_onto(const StoryStep& step){
-    const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
-    if (m_sim.state().facing != direction){
-        m_sim.tap(direction);
-    }
-    m_sim.tap(direction);
+    sim_step_once(m_sim, Pokemon::story_arg<Direction>(step.args, "direction"));
     m_at = *story_pose(Pokemon::pose_of(*step.pose_after));
     return m_sim.state().position == MapPosition{m_at.map, m_at.tile} ? "" : "expected to end on " + to_string(MapPosition{m_at.map, m_at.tile}) + ".";
 }
@@ -432,12 +542,12 @@ std::string OverworldStepSim::step_onto(const StoryStep& step){
 std::string OverworldStepSim::cut(const StoryStep& step){
     const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
     if (m_sim.state().facing != direction){
-        m_sim.tap(direction);
+        sim_turn_to(m_sim, direction);
     }
-    if (!m_sim.cut_tree()){
+    if (!m_sim.use_field(SimField::CUT_TREE)){
         return "no tree to cut.";
     }
-    m_sim.tap(direction);
+    sim_step_once(m_sim, direction);
     m_at = StoryPose{m_at.map, m_at.tile.next(direction), direction};
     if (!(m_sim.state().position == MapPosition{m_at.map, m_at.tile})){
         return "expected to step onto the tree's tile " + to_string(MapPosition{m_at.map, m_at.tile}) + ".";
@@ -445,12 +555,125 @@ std::string OverworldStepSim::cut(const StoryStep& step){
     return "";
 }
 
+namespace{
+
+//  walk_room_legs() on the sim: a step tap a tile, each warp's fade and
+//  the walk out of a door waited out. A warp taken with no black fade
+//  fails, as on the console, unless the leg `dims`.
+std::string sim_walk_room_legs(OverworldSim& sim, const std::vector<RoomLeg>& legs){
+    for (const RoomLeg& leg : legs){
+        if (leg.tiles == 0){
+            sim_turn_to(sim, leg.direction);
+            continue;
+        }
+        const int warps_before = sim.state().warps;
+        const Milliseconds started = sim.state().time;
+        for (int tile = 0; tile < leg.tiles; tile++){
+            sim_step_once(sim, leg.direction);
+        }
+        if (!leg.warps){
+            continue;
+        }
+        const std::vector<SimShown>& shown = sim.state().shown;
+        const bool faded = std::any_of(shown.begin(), shown.end(), [&](const SimShown& s){
+            return s.screen == SimScreen::FADE && s.at >= started;
+        }) || sim.watch({SimWatcher::FADE}, OverworldWalkSteps::AFTER_WARP).has_value();
+        if (sim.state().warps != warps_before && !leg.dims && !faded){
+            return std::format("walk_overworld_route(): no fade in and out after walking onto the warp to {}.", leg.to);
+        }
+        sim.watch({}, OverworldWalkSteps::AFTER_WARP);
+    }
+    return "";
+}
+
+} // namespace
+
+namespace{
+
+//  Whether the sim can walk a Pokemon Center's way in or out of `step`:
+//  the map it ends on is built into the program. Celadon's Center has no
+//  map yet (08.03), so its way in is stubbed.
+bool center_walkable(const StoryStep& step){
+    if (!is_center_variant(step.action)){
+        return false;
+    }
+    const std::optional<StoryPose> after = step.pose_after ? story_pose(Pokemon::pose_of(*step.pose_after)) : std::nullopt;
+    const std::vector<std::pair<std::string, std::string>>& maps = overworld_map_json();
+    return after && std::any_of(maps.begin(), maps.end(), [&](const auto& map){ return map.first == after->map; });
+}
+
+} // namespace
+
+//  A scripted GAME step on the sim: the poster's switch, the lift's ride
+//  (its room coded, SimScript::lift_floors, rows as on the panel), or a
+//  Pokemon Center's way in or out (center_walkable()); any other GAME step
+//  is stubbed.
+Pokemon::StoryAction OverworldStepSim::hideout_or_stub(){
+    Pokemon::StoryAction stub = m_stubs.stub();
+    Pokemon::StoryAction sim = played([this](const StoryStep& step, RunState&){
+        const std::string failure = hideout(step);
+        return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
+    });
+    sim.act = [stub, played_act = sim.act](const StoryStep& step, RunState& state){
+        return is_hideout_step(step) || center_walkable(step)
+            ? played_act(step, state)
+            : stub.act(step, state);
+    };
+    sim.needs_console = stub.needs_console;
+    return sim;
+}
+
+std::string OverworldStepSim::hideout(const StoryStep& step){
+    if (step.action == POSTER_SWITCH_VARIANT){
+        return m_sim.use_field(SimField::POSTER_SWITCH) ? "" : "no poster ahead.";
+    }
+    if (is_center_variant(step.action)){
+        const std::string failure = sim_walk_room_legs(m_sim, center_legs(step.action));
+        return failure.empty() ? ended_on(step) : failure;
+    }
+    const std::optional<LiftRide> ride = parse_lift_floor_step(step);
+    if (!ride){
+        return "no lift ride \"" + step.action + "\".";
+    }
+    const std::string in = sim_walk_room_legs(m_sim, lift_in_legs());
+    if (!in.empty()){
+        return in;
+    }
+    if (!m_sim.use_field(SimField::LIFT_FLOOR, ride->to)){
+        return "no lift panel for \"" + step.action + "\".";
+    }
+    //  pick_lift_floor()'s wait for the ride.
+    sim_wait_out_battle_exit(m_sim);
+    const std::string out = sim_walk_room_legs(m_sim, lift_out_legs());
+    return out.empty() ? ended_on(step) : out;
+}
+
+//  After a scripted step: the player's pose, and whether it is the step's
+//  pose_after, if it has one.
+std::string OverworldStepSim::ended_on(const StoryStep& step){
+    const SimState& state = m_sim.state();
+    m_at = StoryPose{state.position.map, state.position.point, state.facing};
+    if (!step.pose_after){
+        return "";
+    }
+    const std::optional<StoryPose> expected = story_pose(Pokemon::pose_of(*step.pose_after));
+    if (!expected || !(MapPosition{expected->map, expected->tile} == state.position)){
+        return "expected to end on " + (expected ? to_string(MapPosition{expected->map, expected->tile}) : std::string("a pose")) + ".";
+    }
+    return "";
+}
+
 //  A battle from the trainer's message, which must be up, ending where the
-//  table says.
+//  table says, the battle loop's end played on the overworld after it.
 std::string OverworldStepSim::battle(const StoryStep& step){
     if (!m_sim.close_message() || m_sim.handle_battle(SimBattleChoice::FIGHT) != SimBattleEnd::ENDED){
         return "no_battle.";
     }
+    if (const std::string failure = battle_end_on_sim(m_sim); !failure.empty()){
+        return failure;
+    }
+    //  battle()'s wait_out_battle_exit().
+    sim_wait_out_battle_exit(m_sim);
     m_at = *story_pose(Pokemon::pose_of(*step.pose_after));
     if (!(m_sim.state().position == MapPosition{m_at.map, m_at.tile})){
         return "expected " + to_string(MapPosition{m_at.map, m_at.tile}) + ".";

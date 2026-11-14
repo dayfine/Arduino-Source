@@ -2,12 +2,12 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows from 00.26 on (StoryData/frlg-00.26.plan.json and after) on the
- *  overworld sim: 00.26 from where 00.25 ends, to the Fan Club's chairman,
+ *  Rows from 07.01 on (StoryData/frlg-07.01.plan.json and after) on the
+ *  overworld sim: 07.01 from where 06.04 ends, to the Fan Club's chairman,
  *  north past Route 6's trainers, through the tree into Cerulean, to the
  *  Bike Shop's clerk, the Mart and the nurse, with Oak's aide on
- *  Vermilion's (25, 7); and what its Mart step buys. 00.27 from where
- *  00.26 ends, east over Route 9 to Route 10's Pokemon Center.
+ *  Vermilion's (25, 7); and what its Mart step buys. 07.02 from where
+ *  07.01 ends, east over Route 9 to Route 10's Pokemon Center.
  *
  */
 
@@ -100,9 +100,9 @@ MapData& map_named(std::vector<MapData>& maps, const std::string& name){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No map " + name + ".");
 }
 
-//  The maps as 00.25 leaves them: story_maps() with Oak's aide on
+//  The maps as 06.04 leaves them: story_maps() with Oak's aide on
 //  Vermilion's (25, 7), shown by Lt. Surge's win, and Route 6's Jeff
-//  beaten (00.21). Isabelle and Elijah are not.
+//  beaten (05.10). Isabelle and Elijah are not.
 std::vector<MapData> maps_after_surge(){
     const std::vector<MapData> all = overworld_maps();
     std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
@@ -157,23 +157,23 @@ UnitTestResult starts_where_ends(const std::string& previous, const std::string&
     return true;
 }
 
-//  00.26 starts at Vermilion's nurse, where 00.25 ends.
+//  07.01 starts at Vermilion's nurse, where 06.04 ends.
 UnitTestResult test_starts_where_lt_surge_ends(){
-    return starts_where_ends("00.25", "00.26");
+    return starts_where_ends("06.04", "07.01");
 }
 
-//  00.27 starts at Cerulean's nurse, where 00.26 ends.
+//  07.02 starts at Cerulean's nurse, where 07.01 ends.
 UnitTestResult test_starts_where_bicycle_ends(){
-    return starts_where_ends("00.26", "00.27");
+    return starts_where_ends("07.01", "07.02");
 }
 
-//  00.26 on the sim from Vermilion's nurse to Cerulean's, the maps as
-//  00.25 leaves them: no trainer meets the player (Isabelle and Elijah
+//  07.01 on the sim from Vermilion's nurse to Cerulean's, the maps as
+//  06.04 leaves them: no trainer meets the player (Isabelle and Elijah
 //  stay unfought), no violation, each talk faces the one it's for (the
 //  chairman beside the player, the Bike Shop's clerk across the counter),
 //  and the walk ends at Cerulean's nurse.
 UnitTestResult test_bike_voucher_row(){
-    const StoryCheckpoint& row = checkpoint("00.26");
+    const StoryCheckpoint& row = checkpoint("07.01");
     const std::vector<MapData> maps = maps_after_surge();
     const MapData& city = *std::find_if(maps.begin(), maps.end(), [](const MapData& map){ return map.name == VERMILION; });
     if (object_at(city, {25, 7}) == nullptr){
@@ -188,7 +188,7 @@ UnitTestResult test_bike_voucher_row(){
             const bool counter = here.map == BIKE_SHOP;
             const MapObject* person = object_ahead(maps, here, counter ? 2 : 1);
             if (person == nullptr || (counter && object_ahead(maps, here, 1) != nullptr)){
-                return std::format("00.26/{}: no one to talk to from {}.", step.name, to_string(sim.state().position));
+                return std::format("07.01/{}: no one to talk to from {}.", step.name, to_string(sim.state().position));
             }
             talked_to.push_back(person->name);
         }
@@ -198,43 +198,43 @@ UnitTestResult test_bike_voucher_row(){
         //  A walk the sim's player didn't finish, stopped by someone the
         //  maps the program plans on don't have.
         if (!(sim.state().position == MapPosition{at.map, at.tile})){
-            return std::format("00.26/{}: expected {}, on {}.", step.name, to_string(MapPosition{at.map, at.tile}), to_string(sim.state().position));
+            return std::format("07.01/{}: expected {}, on {}.", step.name, to_string(MapPosition{at.map, at.tile}), to_string(sim.state().position));
         }
     }
     if (talked_to != std::vector<std::string>{"gentleman", "man"}){
-        return "00.26: expected to talk to the chairman, then the Bike Shop's clerk.";
+        return "07.01: expected to talk to the chairman, then the Bike Shop's clerk.";
     }
     if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
-        return "00.26: a battle or a violation on the way" + (sim.state().violations.empty() ? std::string(".") : ": " + sim.state().violations.back());
+        return "07.01: a battle or a violation on the way" + (sim.state().violations.empty() ? std::string(".") : ": " + sim.state().violations.back());
     }
     const MapPosition nurse{CERULEAN_CENTER, {7, 4}};
     if (!(sim.state().position == nurse)){
-        return "00.26: ended on " + to_string(sim.state().position) + ", not Cerulean's nurse.";
+        return "07.01: ended on " + to_string(sim.state().position) + ", not Cerulean's nurse.";
     }
     return true;
 }
 
-//  00.26's Mart step, at its money floor: 5 Repels and 2 Escape Ropes,
+//  07.01's Mart step, at its money floor: 5 Repels and 2 Escape Ropes,
 //  and 3000 or more left.
 UnitTestResult test_repels_and_escape_ropes(){
-    const StoryCheckpoint& row = checkpoint("00.26");
+    const StoryCheckpoint& row = checkpoint("07.01");
     const auto step = std::find_if(row.steps.begin(), row.steps.end(), [](const StoryStep& data){
         return data.action == MART_ACTION;
     });
     if (step == row.steps.end()){
-        return "00.26: expected a Mart step.";
+        return "07.01: expected a Mart step.";
     }
     const std::optional<MartPlan> parsed = mart_plan_of(step->args);
     if (!parsed){
-        return "00.26: expected a Mart plan.";
+        return "07.01: expected a Mart plan.";
     }
     const MartPlan& plan = *parsed;
     if (plan.map != CERULEAN_MART || !plan.money_floor){
-        return "00.26: expected the Mart step at Cerulean's Mart, with a money floor.";
+        return "07.01: expected the Mart step at Cerulean's Mart, with a money floor.";
     }
     const std::optional<std::vector<MartBuy>> buys = plan_mart_buys(mart_stock(plan.map), plan, *plan.money_floor);
     if (!buys){
-        return "00.26: the Mart step names an item Cerulean's Mart doesn't sell.";
+        return "07.01: the Mart step names an item Cerulean's Mart doesn't sell.";
     }
     size_t repels = 0;
     size_t escape_ropes = 0;
@@ -245,18 +245,18 @@ UnitTestResult test_repels_and_escape_ropes(){
         spent += buy.cost;
     }
     if (repels < 5 || escape_ropes != 2 || *plan.money_floor < spent + 3000){
-        return std::format("00.26: bought {} Repels and {} Escape Ropes for {} from {}.", repels, escape_ropes, spent, *plan.money_floor);
+        return std::format("07.01: bought {} Repels and {} Escape Ropes for {} from {}.", repels, escape_ropes, spent, *plan.money_floor);
     }
     return true;
 }
 
-//  00.27 on the sim from Cerulean's nurse to Route 10's, the maps as 00.26
+//  07.02 on the sim from Cerulean's nurse to Route 10's, the maps as 07.01
 //  leaves them, both trees grown back: the trees cut, Alicia, Jeremy and
 //  Conner fought where the table steps into their lines and no one else
 //  met (Brice, Caitlin and the rest unfought), no violation, each step
 //  ending where the table says, and the walk ending at Route 10's nurse.
 UnitTestResult test_route10_row(){
-    const StoryCheckpoint& row = checkpoint("00.27");
+    const StoryCheckpoint& row = checkpoint("07.02");
     const std::vector<MapData> maps = maps_after_surge();
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     OverworldSim sim(maps, MapPosition{at.map, at.tile}, *at.facing);
@@ -267,23 +267,23 @@ UnitTestResult test_route10_row(){
         //  A step into a trainer's line ends where the battle after it says.
         const bool into_line = step.kind == StoryStepKind::STEP && !step.action.empty();
         if (!into_line && !(sim.state().position == MapPosition{at.map, at.tile})){
-            return std::format("00.27/{}: expected {}, on {}.", step.name, to_string(MapPosition{at.map, at.tile}), to_string(sim.state().position));
+            return std::format("07.02/{}: expected {}, on {}.", step.name, to_string(MapPosition{at.map, at.tile}), to_string(sim.state().position));
         }
     }
     if (sim.state().trainers_beaten != std::vector<std::string>{"picnicker", "hiker", "bug_catcher"}){
-        return "00.27: expected to fight Alicia, Jeremy and Conner, no one else; fought " + std::to_string(sim.state().trainers_beaten.size()) + ".";
+        return "07.02: expected to fight Alicia, Jeremy and Conner, no one else; fought " + std::to_string(sim.state().trainers_beaten.size()) + ".";
     }
     if (!sim.state().violations.empty()){
-        return "00.27: a violation on the way: " + sim.state().violations.back();
+        return "07.02: a violation on the way: " + sim.state().violations.back();
     }
     const MapPosition nurse{ROUTE10_CENTER, {7, 4}};
     if (!(sim.state().position == nurse)){
-        return "00.27: ended on " + to_string(sim.state().position) + ", not Route 10's nurse.";
+        return "07.02: ended on " + to_string(sim.state().position) + ", not Route 10's nurse.";
     }
     return true;
 }
 
-//  The next row starts from 00.27's save in Route 10's Center, whose save
+//  The next row starts from 07.02's save in Route 10's Center, whose save
 //  card says ROUTE 10: a place of its own, not Route 1's.
 UnitTestResult test_route10_save_place(){
     if (save_card_place(ROUTE10_CENTER) != "route-10" || save_card_place("Route1") == "route-10"){
@@ -292,7 +292,7 @@ UnitTestResult test_route10_save_place(){
     return true;
 }
 
-//  00.27's walk from Route 9 (70, 8) to Route 10's nurse: its steps from
+//  07.02's walk from Route 9 (70, 8) to Route 10's nurse: its steps from
 //  route10_ledge_end to route10_nurse. Console B, 2026-11-09, the walk
 //  then planned in one ended its open legs a tile from a blocker, and both
 //  runs ended "no fade in and out" at the Center's door (13, 20):
@@ -303,14 +303,14 @@ UnitTestResult test_route10_save_place(){
 //  - run 2: the leg down column 16 ended a tile short, on (16, 20), west
 //    3 met the Center's east wall (15, 20) and north 1 ended on (16, 19).
 std::vector<StoryStep> route10_walk(){
-    const StoryCheckpoint& row = checkpoint("00.27");
+    const StoryCheckpoint& row = checkpoint("07.02");
     const auto named = [&row](std::string_view name){
         return std::find_if(row.steps.begin(), row.steps.end(), [&](const StoryStep& data){ return data.name == name; });
     };
     const auto first = named("route10_ledge_end");
     const auto last = named("route10_nurse");
     if (first == row.steps.end() || last == row.steps.end() || last < first){
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "00.27: no steps route10_ledge_end to route10_nurse.");
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "07.02: no steps route10_ledge_end to route10_nurse.");
     }
     return std::vector<StoryStep>(first, last + 1);
 }
@@ -322,7 +322,7 @@ const StoryPose ROUTE10_WALK_START{ROUTE9, {70, 8}, Direction::EAST};
 std::string route10_walk_rest(OverworldSim& sim, StoryPose at, const std::vector<StoryStep>& steps, size_t first){
     std::string failure;
     for (size_t c = first; c < steps.size() && failure.empty(); c++){
-        failure = row_step_on_sim(sim, at, steps[c], "00.27");
+        failure = row_step_on_sim(sim, at, steps[c], "07.02");
     }
     const MapPosition nurse{ROUTE10_CENTER, {7, 4}};
     if (!failure.empty() || !(sim.state().position == nurse)){
@@ -407,39 +407,39 @@ UnitTestResult test_route10_tile_off_after_open_legs(){
 
 const AutoStoryCeladonCase AUTO_STORY_CELADON_CASES[] = {
     {
-        .input = {"00.26 starts where 00.25 ends", test_starts_where_lt_surge_ends},
+        .input = {"07.01 starts where 06.04 ends", test_starts_where_lt_surge_ends},
         .expectation = {},
     },
     {
-        .input = {"00.26 the Fan Club, Route 6 and the Underground Path north, the Bike Shop, past Oak's aide", test_bike_voucher_row},
+        .input = {"07.01 the Fan Club, Route 6 and the Underground Path north, the Bike Shop, past Oak's aide", test_bike_voucher_row},
         .expectation = {},
     },
     {
-        .input = {"00.26 Repels and Escape Ropes, 3000 left", test_repels_and_escape_ropes},
+        .input = {"07.01 Repels and Escape Ropes, 3000 left", test_repels_and_escape_ropes},
         .expectation = {},
     },
     {
-        .input = {"00.27 starts where 00.26 ends", test_starts_where_bicycle_ends},
+        .input = {"07.02 starts where 07.01 ends", test_starts_where_bicycle_ends},
         .expectation = {},
     },
     {
-        .input = {"00.27 the two trees, Route 9's Alicia, Jeremy and Conner, to Route 10's Pokemon Center", test_route10_row},
+        .input = {"07.02 the two trees, Route 9's Alicia, Jeremy and Conner, to Route 10's Pokemon Center", test_route10_row},
         .expectation = {},
     },
     {
-        .input = {"00.27 saves in Route 10's Pokemon Center, ROUTE 10 on the save card", test_route10_save_place},
+        .input = {"07.02 saves in Route 10's Pokemon Center, ROUTE 10 on the save card", test_route10_save_place},
         .expectation = {},
     },
     {
-        .input = {"00.27 route10_nurse: the crossing onto Route 10 not held up", test_route10_crossing_not_held_up},
+        .input = {"07.02 route10_nurse: the crossing onto Route 10 not held up", test_route10_crossing_not_held_up},
         .expectation = {},
     },
     {
-        .input = {"00.27 route10_nurse: the leg down column 16 a tile short", test_route10_column_16_short},
+        .input = {"07.02 route10_nurse: the leg down column 16 a tile short", test_route10_column_16_short},
         .expectation = {},
     },
     {
-        .input = {"00.27 route10_nurse: a tile off after each open leg", test_route10_tile_off_after_open_legs},
+        .input = {"07.02 route10_nurse: a tile off after each open leg", test_route10_tile_off_after_open_legs},
         .expectation = {},
     },
 };
@@ -448,6 +448,7 @@ void add_tests_AutoStoryCeladon(UnitTestDatabase& database){
     for (const auto& item : AUTO_STORY_CELADON_CASES){
         database.add<Test_AutoStoryCeladon>(item);
     }
+    add_tests_AutoStoryLavender(database);
 }
 
 

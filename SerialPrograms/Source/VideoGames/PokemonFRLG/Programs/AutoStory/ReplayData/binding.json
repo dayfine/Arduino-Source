@@ -1,17 +1,17 @@
 {
   "format": "pokesim-story-replay-binding/1",
   "capture": {
-    "file": "data/story/native/frlg-parcel-00.05.json",
-    "sha256": "8b0c04f2e1507aee0f0927a8d022b8b431036431e95f8893aa7a2383360f8504",
+    "file": "data/story/native/frlg-parcel-02.01.json",
+    "sha256": "793abfef624f690c73cd0bb2e2a149da5f4c8654b50ffbd5905e27d88e1b0c04",
     "source_revision": "b170b7d2103e887ded825c37fdbdc19fd654fca8"
   },
-  "map_revision": "158b007ecd14efb5776ebdadc530c1a807ef3541",
+  "map_revision": "e52be04ed7bb007c7219c7d2c96963cf053e0000",
   "maps": {
-    "PalletTown_ProfessorOaksLab": "1dedda88f1238eccd6610cbff79c1e5d3cd21b516637b792654746e02b2cdbc8",
-    "PalletTown": "0dc7446f568097b36a9479954f01afe546cb64c82bb0efa91da0cb66ad950f9f",
-    "Route1": "78bf43c8bdf7a0c5dcb22880261626abc36d068c0dfbbc242056e12401c44033",
-    "ViridianCity": "6a671a0a0b06f78f566b89646f6b0f00c91c240a36300dff861f970455f99909",
-    "ViridianCity_Mart": "1b2b23f8f9a1b1fbe266f12bdac96cdf649d974b057e84bf9cba6befbaa15b3b"
+    "PalletTown_ProfessorOaksLab": "53d1c2b022cfadd2463fe405a60fb179562b2cc487ab4c5202f63cbc758d5109",
+    "PalletTown": "92ebe424c07773ba087b8fc8d2b8251876dd3b97b9aea47a1fee8d36abd6ab0c",
+    "Route1": "26ba91c2ecfdf0af8ccbdca9f21a522b68f93565594386c09af1011485de7781",
+    "ViridianCity": "c18f797d9fe5edf8fceb86f5e439778b44f78cf4397cd6b566f3ff7246c2d8cb",
+    "ViridianCity_Mart": "5e14587080521d433626347fa37024eb1ee36b4fe07a164e19e72714b1b755e8"
   },
   "capabilities": {
     "below_mart_door": {"capability": "frlg-runtime-route/1", "parameters": {}},

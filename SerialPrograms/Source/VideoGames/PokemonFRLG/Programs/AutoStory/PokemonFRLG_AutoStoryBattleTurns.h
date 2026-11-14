@@ -74,6 +74,9 @@ struct BattleTextScreen{
     bool arrow = false;
     //  A YES/NO box.
     bool yes_no = false;
+    //  The overworld of a cave dark without Flash (dark_cave_screen()),
+    //  whose black reads as the text box.
+    bool dark_cave = false;
 };
 
 //  Answer to an in-battle prompt dialogue.

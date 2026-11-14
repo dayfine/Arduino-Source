@@ -2,7 +2,7 @@
   "format": "pokesim-native-checkpoint-export/1",
   "game": "frlg",
   "checkpoint": {
-    "id": "00.05",
+    "id": "02.01",
     "title": "Route 1 to Viridian Mart: Oak's Parcel",
     "start": {
       "certainty": "tile",

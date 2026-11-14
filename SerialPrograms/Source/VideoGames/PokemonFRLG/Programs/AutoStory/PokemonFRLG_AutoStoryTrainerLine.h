@@ -36,6 +36,14 @@ std::optional<int> step_until_seen(int max_tiles, const std::function<void()>& s
 //  "!", then their words, as the route walker watches for a trainer
 //  with no tiles to walk up (PokemonFRLG_OverworldRecoveryWalk.cpp).
 inline constexpr Milliseconds TRAINER_LINE_WATCH(2500);
+//  How long a step into a trainer's line is watched for a wild battle it
+//  set off: its HP boxes, with no message before them, came over 5 s after
+//  the step in Mt. Moon (UNSEEN_BATTLE_WATCH). The trainer didn't see the
+//  player on that step (the game looks for trainers before it rolls for a
+//  wild battle), so it is run from and the stepping goes on: in Rock
+//  Tunnel the battle step after it found no trainer's message (the sim,
+//  2026-11-09).
+inline constexpr Milliseconds WILD_BATTLE_IN_LINE_WATCH(5000);
 
 //  How long a step into the line of a trainer who looks around waits for
 //  them to turn to the player (TRAINER_WAIT_VARIANT).
@@ -64,10 +72,11 @@ inline const std::string TRAINER_WAIT_VARIANT = "trainer_wait";
 
 //  From the overworld: step_until_seen() `direction`, turning first
 //  unless `facing` is `direction`, each step watched `watch` for a
-//  trainer's message or battle.
+//  trainer's message, and at least WILD_BATTLE_IN_LINE_WATCH for a wild
+//  battle, which is run from.
 std::optional<int> step_into_line(
     ConsoleHandle& console, ProControllerContext& context,
-    Pokemon::Direction direction, std::optional<Pokemon::Direction> facing, int max_tiles,
+    Pokemon::Direction direction, std::optional<Pokemon::Direction> facing, PlayerGender player, int max_tiles,
     Milliseconds watch = TRAINER_LINE_WATCH
 );
 

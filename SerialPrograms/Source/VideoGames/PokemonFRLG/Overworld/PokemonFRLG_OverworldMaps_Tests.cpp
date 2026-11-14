@@ -592,7 +592,7 @@ UnitTestResult check_found_again(const std::vector<MapData>& maps, const MapPosi
     return true;
 }
 
-//  00.11's way from Pewter into Route 3 and 00.12's over Route 3 and 4.
+//  04.01's way from Pewter into Route 3 and 04.02's over Route 3 and 4.
 UnitTestResult test_found_again_route3_route4(){
     const std::vector<MapData> maps = overworld_maps();
     const UnitTestResult into_route3 = check_found_again(maps, {"PewterCity", {17, 26}}, {"Route3", {13, 8}});
@@ -618,7 +618,7 @@ UnitTestResult test_trainer_stops(){
     };
     const Case cases[] = {
         {
-            .name = "Route 3, Lass Robin, east along row 9 (00.12)",
+            .name = "Route 3, Lass Robin, east along row 9 (04.02)",
             .start = {"Route3", {36, 9}}, .direction = Direction::EAST, .tiles = 11, .to_wall = true,
             .player = {"Route3", {40, 9}}, .trainer = {"Route3", {40, 10}},
         },

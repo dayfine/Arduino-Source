@@ -152,20 +152,29 @@ const std::string TEST_FIELD_JSON = R"({
 })";
 
 //  Stopped part-way east, the player holds back west to the wall, the
-//  shorter way, and walks back. Stopped part-way south above the ledges,
-//  which would be hopped, they hold back north.
+//  shorter way, and walks back. Stopped a tile further from that wall, they
+//  hold on east to the far wall: two more tiles held, one fewer to walk
+//  back on an open leg, which a wild battle would stop again. Stopped
+//  part-way south above the ledges, which would be hopped, they hold back
+//  north.
 UnitTestResult test_rules(){
     const std::vector<MapData> maps{parse_map(TEST_FIELD_JSON, "Field")};
     RouteStep east;
     east.direction = Direction::EAST;
-    east.tiles = 3;
-    east.end = {"Field", {4, 1}};
+    east.tiles = 2;
+    east.end = {"Field", {3, 1}};
     std::optional<Reanchor> anchor = plan_reanchor(maps, stop_candidates(maps, MapPosition{"Field", {1, 1}}, east, whole_leg(east)), east);
     if (!anchor || anchor->holds.size() != 1 || anchor->holds[0].direction != Direction::WEST || !(anchor->found.point == TilePos{1, 1})){
         return "Expected a hold west to (1, 1), got " + describe(anchor);
     }
     if (anchor->back.size() != 1 || !(anchor->back[0].end == east.end)){
-        return "Expected one leg back east to (4, 1), got " + describe(anchor);
+        return "Expected one leg back east to (3, 1), got " + describe(anchor);
+    }
+    east.tiles = 3;
+    east.end = {"Field", {4, 1}};
+    anchor = plan_reanchor(maps, stop_candidates(maps, MapPosition{"Field", {1, 1}}, east, whole_leg(east)), east);
+    if (!anchor || anchor->holds.size() != 1 || anchor->holds[0].direction != Direction::EAST || !(anchor->found.point == TilePos{6, 1})){
+        return "Expected a hold east to (6, 1), got " + describe(anchor);
     }
     RouteStep south;
     south.direction = Direction::SOUTH;

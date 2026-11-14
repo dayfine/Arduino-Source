@@ -464,6 +464,49 @@ public:
 };
 
 
+//  Regression, console B 2026-11-11, 09.02 (Rocket Hideout): a Grunt's
+//  battle ended with the starter poisoned at 21% HP and no Antidote, and the
+//  story walked on poisoned into the next battle. After a battle: an
+//  Antidote, else a Full Heal; a Potion for HP not green, or for poison
+//  nothing cured once the bar is under 3/4; the nurse for what's left.
+UnitTestResult test_poison_cured_after_battle(Logger&){
+    Supplies supplies;
+    supplies.status = StatusCondition::POISON;
+    supplies.hp_fill = 0.21;
+    supplies.hurt = true;
+    supplies.hp_red = true;
+    supplies.potions = 14;
+    supplies.antidotes = 1;
+    supplies.full_heals = 1;
+    if (recovery_items(supplies) != std::vector<std::string>{"antidote", "potion"}){
+        return "Expected an Antidote, then a Potion.";
+    }
+    supplies.antidotes = 0;
+    if (recovery_items(supplies) != std::vector<std::string>{"full-heal", "potion"}){
+        return "Expected a Full Heal with no Antidote, then a Potion.";
+    }
+    supplies.full_heals = 0;
+    if (recovery_items(supplies) != std::vector<std::string>{"potion"}){
+        return "Expected a Potion with nothing to cure poison.";
+    }
+    supplies.hurt = false;
+    supplies.hp_red = false;
+    supplies.hp_fill = 0.7;
+    if (recovery_items(supplies) != std::vector<std::string>{"potion"}){
+        return "Expected a Potion for a poisoned bar under 3/4.";
+    }
+    supplies.hp_fill = 0.9;
+    if (!recovery_items(supplies).empty() || !nurse_before_battle(supplies)){
+        return "Expected no Potion for a poisoned bar near full, and the nurse for the poison.";
+    }
+    supplies.status = StatusCondition::PARALYSIS;
+    supplies.full_heals = 1;
+    if (recovery_items(supplies) != std::vector<std::string>{"full-heal"}){
+        return "Expected a Full Heal for PAR with no Parlyz Heal.";
+    }
+    return true;
+}
+
 const AutoStoryItemsTestCase AUTO_STORY_ITEMS_CASES[] = {
     {
         .input = {.name = "Mart cursor stays on the row bought", .body = test_mart_cursor},
@@ -504,6 +547,10 @@ const AutoStoryItemsTestCase AUTO_STORY_ITEMS_CASES[] = {
     {
         .input = {.name = "the status badge: none, PSN, SLP", .body = test_status_badge},
         .expectation = {.description = "detects status conditions accurately from status bar image"},
+    },
+    {
+        .input = {.name = "poison after a battle: Antidote, else Full Heal, then a Potion", .body = test_poison_cured_after_battle},
+        .expectation = {.description = "cures a status left by a battle before the story walks on"},
     },
 };
 

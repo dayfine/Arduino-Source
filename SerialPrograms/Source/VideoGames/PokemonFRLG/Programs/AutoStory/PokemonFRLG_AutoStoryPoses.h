@@ -51,7 +51,7 @@ struct StoryPose{
 };
 
 //  The variant of a ROUTE or LEGS step that runs, with B held: the player
-//  has the Running Shoes (00.10 on).
+//  has the Running Shoes (03.03 on).
 inline const std::string RUN_VARIANT = "run";
 
 //  The GAME step that closes the Trainer Card SID Helper leaves open.
@@ -70,7 +70,8 @@ inline const std::string LEAVE_GIFT_SUMMARY = "leave_gift_summary";
 //  FLAG_TEMP), so the walk back cuts it again.
 inline const std::string CUT_TREE_VARIANT = "cut_tree";
 
-//  How `step`, a ROUTE or LEGS, moves the player: RUN_VARIANT runs.
+//  How `step`, a ROUTE or LEGS, moves the player: RUN_VARIANT runs,
+//  BIKE_VARIANT rides.
 MoveSpeed move_speed(const StoryStep& step);
 
 //  Converts a StoryPose to a general navigation Pose.

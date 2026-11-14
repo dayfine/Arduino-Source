@@ -80,27 +80,20 @@ struct StoryRunPlan{
     //  plays the new game to the player's keyboard and stops there.
     //  STARTER_RNG: the run stops after `rows`, the last of which saves at
     //  the starter's ball. GIFT_RNG: likewise, beside the Magikarp salesman;
-    //  with `rows` empty, the run started at 00.12b and takes Gift RNG from
+    //  with `rows` empty, the run started at 04.03 and takes Gift RNG from
     //  the save beside the salesman, where the row before `first` ends.
     StoryHandoff stop = StoryHandoff::NONE;
 };
 
 //  The rows of `checkpoints` from `first` to `last`, both inclusive, as a
 //  run with `handoffs` takes them: live-start rows only when the run
-//  starts there (00.12b with Gift RNG's handoff on starts at the handoff
+//  starts there (04.03 with Gift RNG's handoff on starts at the handoff
 //  instead), a run that reaches a handoff that is on stops for it, and
 //  a STARTER_RNG row whose handoff is off is joined with the row after it,
 //  under its own id.
 StoryRunPlan plan_story_run(
     const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last, const StoryHandoffs& handoffs
 );
-//  `legs` from `start` as route steps for the walker, each checked against
-//  the map: nothing if a step is blocked or leaves the map. A leg ends "to
-//  wall" if the next step its way is blocked.
-std::optional<std::vector<RouteStep>> fixed_route(
-    const std::vector<MapData>& maps, const MapPosition& start, const std::vector<StoryLeg>& legs
-);
-
 //  A way the player at `tile` can turn to without stepping: a wall there,
 //  with no one standing in it. West and east first: walking north or south
 //  into a sign would read it.

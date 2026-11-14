@@ -8,6 +8,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "PokemonFRLG_OverworldMaps.h"
+#include "PokemonFRLG_PokemonCenterRoom.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -78,11 +79,51 @@ constexpr std::string_view MAP_NAMES[] = {
     "Route9",
     "Route10",
     "Route10_PokemonCenter_1F",
+    //  Rock Tunnel to Lavender Town's Pokemon Center.
+    "RockTunnel_1F",
+    "RockTunnel_B1F",
+    "LavenderTown",
+    "LavenderTown_PokemonCenter_1F",
+    "LavenderTown_Mart",
+    //  West from Lavender: Route 8, the Underground Path under Saffron and
+    //  Route 7 to Celadon City.
+    "Route8",
+    "UndergroundPath_EastEntrance",
+    "UndergroundPath_EastWestTunnel",
+    "UndergroundPath_WestEntrance",
+    "Route7",
+    "CeladonCity",
+    //  The Game Corner's poster and the Rocket Hideout down to B4F.
+    "CeladonCity_GameCorner",
+    "RocketHideout_B1F",
+    "RocketHideout_B2F",
+    "RocketHideout_B3F",
+    "RocketHideout_B4F",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",
 };
 
+
+//  Whether `maps` has a map named `name`.
+bool has_map(const std::vector<MapData>& maps, const std::string& name){
+    return std::any_of(maps.begin(), maps.end(), [&](const MapData& map){ return map.name == name; });
+}
+
+//  The coded room (pokemon_center_room()) of each Pokemon Center whose
+//  door is on one of `maps` but which has no map file of its own:
+//  Celadon City's.
+void add_unmapped_centers(std::vector<MapData>& maps){
+    const size_t towns = maps.size();
+    for (size_t town = 0; town < towns; town++){
+        for (const MapWarp& warp : maps[town].warps){
+            if (warp.to && is_pokemon_center(warp.to->map) && !has_map(maps, warp.to->map)){
+                add_pokemon_center_room(maps, town);
+                break;
+            }
+        }
+    }
+}
 
 const std::vector<MapData>& all_maps(){
     static const std::vector<MapData> MAPS = []{
@@ -90,6 +131,7 @@ const std::vector<MapData>& all_maps(){
         for (std::string_view name : MAP_NAMES){
             maps.push_back(load_map(std::string(name)));
         }
+        add_unmapped_centers(maps);
         return maps;
     }();
     return MAPS;

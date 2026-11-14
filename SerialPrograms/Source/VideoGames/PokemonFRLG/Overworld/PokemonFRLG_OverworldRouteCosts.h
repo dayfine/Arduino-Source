@@ -38,12 +38,26 @@ enum class RouteCost{
     //  battle is likely to stop it: the walker can't tell where it did
     //  (console B, 2026-11-01, Route 1, four runs).
     OPEN_WILD_STOP,
+    //  Extra for a step onto a tile a trainer may see, any way it may look
+    //  (trainer_may_see()): a battle the route would rather not start. A
+    //  cost, not a ban: a route walks past a trainer when the way round
+    //  is much longer.
+    SIGHT_TILE,
+    //  Extra for an open leg whose tile past its end is one a trainer may
+    //  see: a leg that runs a tile on starts the battle (console B,
+    //  2026-11-11 15:03, Rocket Hideout B2F: a south 2 to (19, 5) went on
+    //  to (19, 6), in the Grunt's line). Below SIGHT_TILE: it takes a
+    //  missed stop to cost the battle.
+    SIGHT_OVERSHOOT,
 };
 //  Cost mapping table for path planning.
 using RouteCosts = std::map<RouteCost, int>;
 
 //  TILE 1, TURN 2, WARP 30, SURF 40, GRASS_TILE 20, OPEN_STOP 8,
-//  OPEN_WILD_STOP 300.
+//  OPEN_WILD_STOP 300, SIGHT_TILE 0, SIGHT_OVERSHOOT 0. The sight costs are
+//  off by default until beaten trainers and battles a story step wants are
+//  told apart: at 100 and 10 they moved Pewter City's and Pewter Gym's
+//  plans (the Gym's Camper is fought on the way to Brock).
 const RouteCosts& default_route_costs();
 
 //  `costs`'s cost for `kind`, or the default if it has none.

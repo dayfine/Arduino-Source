@@ -11,6 +11,9 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
@@ -149,6 +152,25 @@ Pokemon::StoryActionSpec grind_check_action_spec(){
     return spec;
 }
 
+//  The variants of the built-in ROUTE, LEGS and STEP that move the player
+//  another way: running, riding, tapping, and into a trainer's line.
+std::vector<Pokemon::StoryActionSpec> movement_variant_specs(std::span<const Pokemon::StoryActionSpec> builtin){
+    std::vector<Pokemon::StoryActionSpec> specs;
+    const auto variant = [&](StoryStepKind kind, const std::string& name){
+        Pokemon::StoryActionSpec spec = *Pokemon::find_story_action(builtin, kind, "");
+        spec.name = name;
+        specs.push_back(std::move(spec));
+    };
+    for (StoryStepKind kind : {StoryStepKind::ROUTE, StoryStepKind::LEGS}){
+        variant(kind, RUN_VARIANT);
+        variant(kind, BIKE_VARIANT);
+    }
+    variant(StoryStepKind::LEGS, TAPS_VARIANT);
+    variant(StoryStepKind::STEP, TRAINER_LINE_VARIANT);
+    variant(StoryStepKind::STEP, TRAINER_WAIT_VARIANT);
+    return specs;
+}
+
 } // namespace
 
 std::span<const Pokemon::StoryActionSpec> story_action_specs(){
@@ -169,15 +191,8 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
                 .why = "the trainer's party in order; attacks are chosen against the one out",
             });
         }
-        for (StoryStepKind kind : {StoryStepKind::ROUTE, StoryStepKind::LEGS}){
-            Pokemon::StoryActionSpec run = *Pokemon::find_story_action(builtin, kind, "");
-            run.name = "run";
-            specs.push_back(std::move(run));
-        }
-        for (const std::string& name : {TRAINER_LINE_VARIANT, TRAINER_WAIT_VARIANT}){
-            Pokemon::StoryActionSpec step = *Pokemon::find_story_action(builtin, StoryStepKind::STEP, "");
-            step.name = name;
-            specs.push_back(std::move(step));
+        for (Pokemon::StoryActionSpec spec : movement_variant_specs(builtin)){
+            specs.push_back(std::move(spec));
         }
         specs.push_back({.kind = StoryStepKind::GAME, .name = CLOSE_TRAINER_CARD, .args = {}});
         specs.push_back({.kind = StoryStepKind::GAME, .name = LEAVE_GIFT_SUMMARY, .args = {}});
@@ -189,6 +204,9 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
             pc_action_spec(), capture_action_spec(), fossil_action_spec(), level_action_spec(),
             mart_action_spec(), teach_action_spec(), grind_action_spec(), grind_check_action_spec(),
         }){
+            specs.push_back(std::move(spec));
+        }
+        for (Pokemon::StoryActionSpec spec : field_action_specs()){
             specs.push_back(std::move(spec));
         }
         return specs;

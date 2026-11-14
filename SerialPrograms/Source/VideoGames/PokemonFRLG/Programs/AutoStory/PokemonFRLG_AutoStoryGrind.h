@@ -55,7 +55,7 @@ namespace PokemonFRLG{
 GrindResult run_grind(Logger& logger, GrindActions& actions, const MemberReader& reader, const GrindPlan& plan);
 
 //  Before the walk out to the patch: whether the member `plan` grinds, as
-//  read, already has its level. Nothing is fought. 00.24 walked to Route
+//  read, already has its level. Nothing is fought. 06.03 walked to Route
 //  6's grass and back at Lv29 (console B, 2026-11-03).
 bool grind_reached_already(Logger& logger, GrindActions& actions, const MemberReader& reader, const GrindPlan& plan);
 
@@ -75,7 +75,7 @@ public:
     using HealTrip = std::function<bool(const GrindSpot& spot)>;
 
     ConsoleGrindActions(
-        ConsoleHandle& console, ProControllerContext& context, Language language,
+        ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player,
         Supplies& supplies, Pokemon::StoryCheckLevel checks, HealTrip heal_trip, PaceTrainerBattle trainer_battle
     );
 
@@ -89,6 +89,7 @@ private:
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     Language m_language;
+    PlayerGender m_player;
     Supplies& m_supplies;
     Pokemon::StoryCheckLevel m_checks;
     ConsoleCaptureActions m_encounters;

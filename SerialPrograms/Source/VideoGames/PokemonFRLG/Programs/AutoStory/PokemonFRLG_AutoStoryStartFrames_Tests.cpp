@@ -298,8 +298,8 @@ const ReadCase READ_CASES[] = {
 };
 
 
-//  console B, FRLG 00.27, 2026-11-09: the save stood outside Cerulean
-//  Center's door, not at the counter where 00.27 starts, and the run walked
+//  console B, FRLG 07.02, 2026-11-09: the save stood outside Cerulean
+//  Center's door, not at the counter where 07.02 starts, and the run walked
 //  off. A checkpoint of one walk with the console's start check on frames
 //  (add_start_check(), as build_checkpoint() adds it): the walk runs only
 //  when the screen after the save loads shows the kept frame's place, or
@@ -353,7 +353,7 @@ public:
 private:
     static Pokemon::Checkpoint one_walk(size_t& walks){
         Pokemon::Checkpoint checkpoint;
-        checkpoint.id = "00.27";
+        checkpoint.id = "07.02";
         Pokemon::Event walk;
         walk.name = "to_the_door";
         walk.act = [&walks](Pokemon::RunState&){
@@ -389,15 +389,15 @@ const StartCheckCase START_CHECK_CASES[] = {
 };
 
 
-//  The store, given two frames for 00.28 (outside the door, then the
-//  counter): what it finds for 00.28 and 00.27.
+//  The store, given two frames for 08.01 (outside the door, then the
+//  counter): what it finds for 08.01 and 07.02.
 struct StoreInput{
     std::string name;
     //  A folder to keep them in; none for the simulation's store.
     bool has_folder;
 };
 struct StoreExpectation{
-    //  00.28's frame is found, and is the last one kept (the counter).
+    //  08.01's frame is found, and is the last one kept (the counter).
     bool finds_last;
 };
 struct StoreCase{
@@ -424,17 +424,17 @@ public:
 
 private:
     UnitTestResult check(const StartFrameStore& store) const{
-        if (store.load("00.28")){
+        if (store.load("08.01")){
             return "expected no frame before one is kept";
         }
-        const bool kept = store.save("00.28", start_frame(outside_door()), "test")
-            && store.save("00.28", start_frame(at_counter()), "test");
-        const std::optional<ImageRGB32> found = store.load("00.28");
+        const bool kept = store.save("08.01", start_frame(outside_door()), "test")
+            && store.save("08.01", start_frame(at_counter()), "test");
+        const std::optional<ImageRGB32> found = store.load("08.01");
         const bool finds_last = kept && found && found->width() == 240 && found->height() == 160
             && same_start_place(compare_start_frames(*found, at_counter()));
-        if (finds_last != m_case.expectation.finds_last || store.load("00.27")){
+        if (finds_last != m_case.expectation.finds_last || store.load("07.02")){
             return std::format(
-                "expected 00.28's last frame {}found and none for 00.27; kept: {}, found: {}",
+                "expected 08.01's last frame {}found and none for 07.02; kept: {}, found: {}",
                 m_case.expectation.finds_last ? "" : "not ", kept, found.has_value()
             );
         }

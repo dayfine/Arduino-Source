@@ -88,6 +88,20 @@ jobs:
           ref: 'master'
           path: 'Arduino-Source/Packages'
 
+      # Fork only, until upstream Packages has them: the FRLG player sprite sheets
+      # AutoStory reads (PokemonFRLG_PlayerFacingReader.cpp; red is the boy, green
+      # the girl) are on dayfine/Packages branch lab/autostory-resources. Without
+      # them the AutoStoryResources test fails.
+      - name: Fetch fork-only AutoStory resources
+        if: github.repository == 'dayfine/Arduino-Source'
+        shell: bash
+        run: |
+          for FILE in Resources/PokemonFRLG/PlayerSprites/red_normal.png Resources/PokemonFRLG/PlayerSprites/green_normal.png; do
+            mkdir -p "Arduino-Source/Packages/$(dirname "$FILE")"
+            curl -fsSL --retry 3 -o "Arduino-Source/Packages/$FILE" \
+              "https://raw.githubusercontent.com/dayfine/Packages/lab/autostory-resources/$FILE"
+          done
+
       - name: Install Python for pinned map preparation
         uses: actions/setup-python@v5
         with:
@@ -95,7 +109,7 @@ jobs:
 
       - name: Prepare approved FRLG map resources
         id: map-resources
-        uses: dayfine/PokemonSimulation/integrations/arduino-source/verify-map-packs@906956e94fc912ae9adb0e44845da780f3bc7e4c
+        uses: dayfine/PokemonSimulation/integrations/arduino-source/verify-map-packs@d3eea1b5c04180f8b60eb98b0d65f70aca6b1abb
         with:
           layout: resources
           operation: prepare
@@ -106,7 +120,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: dayfine/PokemonSimulation
-          ref: 9cb12c52f5f055299e32c2a7cf43e7103c101e3e
+          ref: d3eea1b5c04180f8b60eb98b0d65f70aca6b1abb
           path: StoryReplaySource
 
       - name: Verify replay preview bytes and independently regenerate its route input
@@ -127,7 +141,7 @@ jobs:
           assert pin['status'] == 'preview-unmerged-PR-73' and revision == pin['revision']
           for name, entry in pin['files'].items():
               published = (source / entry['path']).read_bytes()
-              copied = (native / 'StoryData/frlg-parcel-00.05.json' if name == 'capture' else folder / (name + '.json')).read_bytes()
+              copied = (folder / (name + '.json')).read_bytes()
               assert hashlib.sha256(published).hexdigest() == entry['sha256'], name
               assert copied == published, name
           binding = load_binding(source / pin['files']['binding']['path'], source)
@@ -267,22 +281,24 @@ jobs:
           cd Arduino-Source/SerialPrograms
           mkdir bin
           cd bin
-          cmake .. -DQT_MAJOR:STRING=6 -DPA_SDL=ON -DPA_FRLG_STORY_EXPORT=ON -DPA_FRLG_STORY_REPLAY=ON ${{env.CMAKE_ADDITIONAL_FLAGS}}
+          cmake .. -DQT_MAJOR:STRING=6 -DPA_SDL=ON -DPA_FRLG_STORY_REPLAY=ON ${{env.CMAKE_ADDITIONAL_FLAGS}}
           # By default Ninja reads each compile's .d dependency file into its own database, then deletes it.
           # To keep them for the downstream clang-query cache (see .github/scripts/clang-query-cached.py), add
           # -d keepdepfile
           cmake --build . --config RelWithDebInfo --parallel ${{env.BUILD_PARALLEL}} -- -d keepdepfile
 
-      - name: Export evaluated FRLG Parcel checkpoint (Ubuntu)
+      # Since #260 the checkpoint is authored as JSON and the C++ writer is gone
+      # (StoryCheckpointExport no longer builds): check and upload the plan itself.
+      - name: Check authored FRLG Parcel checkpoint (Ubuntu)
         if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
         run: |
           cd Arduino-Source/SerialPrograms/bin
-          ./StoryCheckpointExport 00.05 > frlg-parcel.native.json
+          cp ../Source/VideoGames/PokemonFRLG/Programs/AutoStory/StoryData/frlg-02.01.plan.json frlg-parcel.native.json
           python3 - <<'PYTHON'
           import json
           from pathlib import Path
           data = json.loads(Path('frlg-parcel.native.json').read_text())
-          assert data['game'] == 'frlg' and data['checkpoint']['id'] == '00.05'
+          assert data['game'] == 'frlg' and data['checkpoint']['id'] == '02.01'
           assert len(data['checkpoint']['events']) == 3
           PYTHON
 

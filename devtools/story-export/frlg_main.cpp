@@ -1,7 +1,7 @@
 /*  Offline evaluated FRLG table export. No console or profile initialization.
  *  cmake -S SerialPrograms -B build -DPA_FRLG_STORY_EXPORT=ON
  *  cmake --build build --target StoryCheckpointExport -j4
- *  build/StoryCheckpointExport 00.05 > frlg-parcel.native.json
+ *  build/StoryCheckpointExport 02.01 > frlg-parcel.native.json
  *  Format the captured JSON with PokemonSimulation's contract formatter.
  */
 #include <iostream>

@@ -40,6 +40,13 @@ enum class TileKind : uint8_t{
     CLOSED_SOUTH,   //  '2'  not entered from it, nor left through it (the
     CLOSED_WEST,    //  '4'  number pad's arrows)
     CLOSED_EAST,    //  '6'
+    SPIN_NORTH,     //  'u'  open; stepping on it slides the player north
+    SPIN_SOUTH,     //  'd'  (Rocket Hideout and Viridian Gym spin tiles)
+    SPIN_WEST,      //  'l'
+    SPIN_EAST,      //  'r'
+    STOP_SPIN,      //  'o'  open; where a spin's slide stops
+    FALL_HOLE,      //  'H'  open; a hole that drops the player a floor
+    STRENGTH_BUTTON,//  'B'  open; Victory Road's switch for a boulder
 };
 //  The tile a glyph stands for, or nothing if it isn't one.
 std::optional<TileKind> tile_from_glyph(char glyph);

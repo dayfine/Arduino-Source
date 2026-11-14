@@ -112,7 +112,7 @@ std::string bound_text(const std::optional<WalkedTiles>& bound){
     return bound ? std::format("{} to {}", bound->min, bound->max) : std::string("no bound");
 }
 
-//  Console B, FRLG 00.27 run 2, 2026-11-09 (~/FRLGLab/captures/
+//  Console B, FRLG 07.02 run 2, 2026-11-09 (~/FRLGLab/captures/
 //  2026-11-09-0027-route10-legs.log): on the open leg "east 11" across
 //  Route 10, wild battles (Voltorb) showed only after the hold. The walker
 //  took the player to be anywhere on the leg ("stopped 0 to 11 tiles in")
@@ -120,7 +120,7 @@ std::string bound_text(const std::optional<WalkedTiles>& bound){
 //  the leg crosses Route 10's grass on row 10, the battle's flashes are
 //  missed, its text box ("Wild <Pokemon> appeared!") shows
 //  LATE_WILD_BATTLE_DELAY after its step and its HP boxes 800 ms after
-//  that, as in Mt. Moon (console B, 2026-11-03, row 00.13). After running,
+//  that, as in Mt. Moon (console B, 2026-11-03, row 04.05). After running,
 //  the walker must bound the player to a few tiles around the battle's.
 class Test_OverworldLateBattle : public UnitTest{
 public:

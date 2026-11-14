@@ -22,6 +22,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_AutoStoryStartMenu.h"
 
 namespace PokemonAutomation{
@@ -58,12 +59,15 @@ void answer_yes_no(ConsoleHandle& console, ProControllerContext& context, bool y
 
 //  From the overworld: one step `direction`, onto a trigger or into a door.
 //  `facing` is the way the player faces, if known; a player facing another
-//  way is turned first.
-void step_once(ProControllerContext& context, Pokemon::Direction direction, std::optional<Pokemon::Direction> facing);
+//  way is turned first (OverworldWalkSteps::turn_to()).
+void step_once(
+    ConsoleHandle& console, ProControllerContext& context,
+    Pokemon::Direction direction, std::optional<Pokemon::Direction> facing, PlayerGender player
+);
 
 //  From the overworld, turns to face `direction` without stepping: the
-//  player must have a wall that way.
-void face_wall(ProControllerContext& context, Pokemon::Direction direction);
+//  player must have a wall that way (OverworldWalkSteps::turn_to()).
+void face_wall(ConsoleHandle& console, ProControllerContext& context, Pokemon::Direction direction, PlayerGender player);
 
 
 

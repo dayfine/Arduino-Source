@@ -25,10 +25,13 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
+#include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
+#include "PokemonFRLG_AutoStoryGenderMenu.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
+#include "PokemonFRLG_AutoStoryPlanGolden.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -163,8 +166,31 @@ UnitTestResult check_legs(StoryPose& pose, const StoryStep& step){
     return true;
 }
 
-//  Plans `step` from `pose` and moves `pose` to its end.
-UnitTestResult check_route(StoryPose& pose, const StoryStep& step){
+//  One line per planned step for the golden: the step, then how it is
+//  walked where to_string() does not say.
+std::string golden_line(const RouteStep& step){
+    std::string line = std::format("  {}", to_string(step));
+    if (step.surfing){
+        line += " [surfing]";
+    }
+    if (step.walk_only){
+        line += " [walk only]";
+    }
+    if (step.tapped){
+        line += " [tapped]";
+    }
+    if (step.wild){
+        line += " [wild]";
+    }
+    for (int connection : step.connection_steps){
+        line += std::format(" [connection {}]", connection);
+    }
+    return line;
+}
+
+//  Plans `step` from `pose` and moves `pose` to its end; adds the plan to
+//  `golden`.
+UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<std::string>& golden){
     const MapPosition start{pose.map, pose.tile};
     std::optional<Direction> facing = pose.facing;
     if (!facing){
@@ -179,6 +205,11 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step){
     const std::optional<std::vector<RouteStep>> route = plan_overworld_route(story_maps(), start, goal, default_route_costs(), facing);
     if (!route){
         return step.name + ": no route from " + to_string(start) + " to " + to_string(goal.position) + ".";
+    }
+    golden.push_back(std::format("{} from {} facing {} to {}{}", step.name, to_string(start), direction_name(*facing),
+        to_string(goal.position), goal.facing ? std::format(" facing {}", direction_name(*goal.facing)) : ""));
+    for (const RouteStep& planned : *route){
+        golden.push_back(golden_line(planned));
     }
     const MapPosition end = follow_overworld_route(story_maps(), start, *route);
     if (!(end == goal.position)){
@@ -204,11 +235,11 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step){
     return true;
 }
 
-//  Follows `checkpoint` from its start; `pose` ends where it leaves the player.
-UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& pose){
+//  check_checkpoint()'s walk through the steps.
+UnitTestResult check_checkpoint_steps(const StoryCheckpoint& checkpoint, StoryPose& pose, std::vector<std::string>& golden){
     for (const StoryStep& step : checkpoint.steps){
         if (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
-            UnitTestResult result = step.kind == StoryStepKind::ROUTE ? check_route(pose, step) : check_legs(pose, step);
+            UnitTestResult result = step.kind == StoryStepKind::ROUTE ? check_route(pose, step, golden) : check_legs(pose, step);
             if (result.result != UnitTestResult::PASSED){
                 return checkpoint.id + " " + result.message;
             }
@@ -217,7 +248,7 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
             //  goes on from where the player stands.
             StoryPose nurse_pose = pose;
             StoryStep to_nurse = step;
-            UnitTestResult result = check_route(nurse_pose, to_nurse);
+            UnitTestResult result = check_route(nurse_pose, to_nurse, golden);
             if (result.result != UnitTestResult::PASSED){
                 return checkpoint.id + " " + result.message;
             }
@@ -232,10 +263,23 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
     return true;
 }
 
-UnitTestResult test_routes_and_chain(){
+//  Follows `checkpoint` from its start; `pose` ends where it leaves the
+//  player. Adds each planned route to `golden`, after the checkpoint's id.
+UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& pose, std::vector<std::string>& golden){
+    const size_t first = golden.size();
+    UnitTestResult result = check_checkpoint_steps(checkpoint, pose, golden);
+    for (size_t c = first; c < golden.size(); c++){
+        golden[c] = std::format("{} {}", checkpoint.id, golden[c]);
+    }
+    return result;
+}
+
+//  Plans every route of the story, each checkpoint from where the one
+//  before leaves the player, and adds the plans to `golden`.
+UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 34 || checkpoints[0].start){
-        return "Expected 34 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 39 || checkpoints[0].start){
+        return "Expected 39 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -248,12 +292,46 @@ UnitTestResult test_routes_and_chain(){
             }
             pose = start;
         }
-        UnitTestResult result = check_checkpoint(checkpoint, pose);
+        UnitTestResult result = check_checkpoint(checkpoint, pose, golden);
         if (result.result != UnitTestResult::PASSED){
             return result;
         }
     }
     return true;
+}
+
+UnitTestResult test_routes_and_chain(){
+    std::vector<std::string> golden;
+    return chain_story_routes(golden);
+}
+
+//  Every story route's plan against the stored copy in
+//  PokemonFRLG_AutoStoryPlanGolden.h. A change that should not alter any
+//  plan must leave this byte-identical. To regenerate after an intended plan
+//  change: run this suite, and replace the lines of FRLG_PLAN_GOLDEN with
+//  the lines the failure lists after "GOLDEN|".
+UnitTestResult test_golden_plans(){
+    std::vector<std::string> actual;
+    UnitTestResult result = chain_story_routes(actual);
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    const size_t stored = sizeof(FRLG_PLAN_GOLDEN) / sizeof(FRLG_PLAN_GOLDEN[0]);
+    size_t first_diff = 0;
+    while (first_diff < actual.size() && first_diff < stored && actual[first_diff] == FRLG_PLAN_GOLDEN[first_diff]){
+        first_diff++;
+    }
+    if (first_diff == actual.size() && first_diff == stored){
+        return true;
+    }
+    std::string message = std::format("plans differ from the golden at line {} ({} lines now, {} stored): now \"{}\", stored \"{}\". Now:",
+        first_diff + 1, actual.size(), stored,
+        first_diff < actual.size() ? std::string_view(actual[first_diff]) : std::string_view(),
+        first_diff < stored ? FRLG_PLAN_GOLDEN[first_diff] : std::string_view());
+    for (const std::string& line : actual){
+        message += std::format("\nGOLDEN|{}", line);
+    }
+    return message;
 }
 
 struct ExpectedLeg{
@@ -290,7 +368,7 @@ UnitTestResult check_legs_on(
     return true;
 }
 
-//  00.09, each walk from where the one before leaves the player.
+//  03.02, each walk from where the one before leaves the player.
 UnitTestResult test_pewter_gym_walks(){
     const MapPosition nurse{"PewterCity_PokemonCenter_1F", {7, 4}};
     //  In by the door's mat (6, 14), straight up column 6 to below Liam's row.
@@ -321,7 +399,7 @@ UnitTestResult test_pewter_gym_walks(){
     );
 }
 
-//  00.10: out of the Gym to the aide's top trigger. The route keeps off his
+//  03.03: out of the Gym to the aide's top trigger. The route keeps off his
 //  three trigger tiles (46, 21..23), which would start the scene a step
 //  early, and the step east from its end lands on (46, 21).
 UnitTestResult test_pewter_aide_walk(){
@@ -355,25 +433,28 @@ UnitTestResult test_pewter_aide_walk(){
     return true;
 }
 
-//  Every ROUTE and LEGS after the Running Shoes (00.10) runs; none before.
+//  Every ROUTE and LEGS after the Running Shoes (03.03) runs, or after the
+//  BICYCLE (07.01) may ride; none before.
 UnitTestResult test_runs_after_shoes(){
     bool has_shoes = false;
+    bool has_bike = false;
     size_t runs = 0;
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         for (const StoryStep& step : checkpoint.steps){
-            if (step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS){
+            if ((step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS) || step.action == TAPS_VARIANT){
                 continue;
             }
             const MoveSpeed expected = has_shoes ? MoveSpeed::RUN : MoveSpeed::WALK;
-            if (move_speed(step) != expected){
+            if (move_speed(step) != expected && !(has_bike && move_speed(step) == MoveSpeed::BIKE)){
                 return std::format("{}/{}: expected to {}, it would {}.", checkpoint.id, step.name, move_speed_name(expected), move_speed_name(move_speed(step)));
             }
             runs += has_shoes ? 1 : 0;
         }
-        has_shoes = has_shoes || checkpoint.id == "00.10";
+        has_shoes = has_shoes || checkpoint.id == "03.03";
+        has_bike = has_bike || checkpoint.id == "07.01";
     }
     if (!has_shoes || runs == 0){
-        return "No checkpoint 00.10, where the player gets the Running Shoes, or no route after it.";
+        return "No checkpoint 03.03, where the player gets the Running Shoes, or no route after it.";
     }
     return true;
 }
@@ -548,7 +629,8 @@ bool grass_held(const StoryPose& pose, const StoryStep& step){
 //  Moves `pose` past `step`, as check_checkpoint() does.
 UnitTestResult advance(StoryPose& pose, const StoryStep& step){
     if (step.kind == StoryStepKind::ROUTE){
-        return check_route(pose, step);
+        std::vector<std::string> golden;
+        return check_route(pose, step, golden);
     }
     if (step.kind == StoryStepKind::LEGS){
         return check_legs(pose, step);
@@ -605,7 +687,7 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
 //  From the Running Shoes on, routes and legs keep out of the grass (but
 //  in caves, which are all grass, onto a GRIND's or a capture's patch, and on legs held to walls round Route 6's trainers), off warps to maps not loaded and out of
 //  trainers' lines, but for the three Route 3 trainers, Mt. Moon's Grunt
-//  at (12, 20), Nugget Bridge's five, Route 25's four, Route 6's Jeff, Vermilion Gym's three and Route 9's three the table steps
+//  at (12, 20), Nugget Bridge's five, Route 25's four, Route 6's Jeff, Vermilion Gym's three, Route 9's three, Rock Tunnel's eight, Route 8's Rich and the Rocket Hideout's Lift Key Grunt the table steps
 //  in front of to fight; where they cross a wandering trainer's sight, the walk can place
 //  the player if the trainer stops them; and where they cross the sight of
 //  one who looks around, on a leg to a wall.
@@ -618,32 +700,33 @@ UnitTestResult test_trainer_lines(){
                 return result;
             }
         }
-        has_shoes = has_shoes || checkpoint.id == "00.10";
+        has_shoes = has_shoes || checkpoint.id == "03.03";
     }
-    if (beaten.size() != 20){
+    if (beaten.size() != 30){
         return "Expected to fight Colton, Greg and James on Route 3, the Grunt at (12, 20) in Mt. Moon, Nugget Bridge's five"
-            ", Franklin, Kelsey, Nob and Haley on Route 25, Jeff on Route 6, Dwayne, Baily and Tucker in Vermilion Gym and Alicia, Jeremy and Conner on Route 9; the table fights "
+            ", Franklin, Kelsey, Nob and Haley on Route 25, Jeff on Route 6, Dwayne, Baily and Tucker in Vermilion Gym, Alicia, Jeremy and Conner on Route 9"
+            ", Ashton, Winston, Martha, Allen, Lenny, Sofia, Dudley and Dana in Rock Tunnel, Rich on Route 8 and the Lift Key Grunt on B4F; the table fights "
             + std::to_string(beaten.size()) + " trainers.";
     }
     return true;
 }
 
-//  00.12's walk east over Route 3 crosses Lass Robin's sight (she wanders
+//  04.02's walk east over Route 3 crosses Lass Robin's sight (she wanders
 //  x 40, y 10..12, looking north and south, sight 3) on (40, 9) only: if
 //  she sees the player, the walk goes on from there (console B,
 //  2026-11-02, she stopped "east 11 (to wall)" there).
 UnitTestResult test_robin_crossing(){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        if (checkpoint.id != "00.12" || checkpoint.steps.empty() || checkpoint.steps[0].name != "route4_nurse"){
+        if (checkpoint.id != "04.02" || checkpoint.steps.empty() || checkpoint.steps[0].name != "route4_nurse"){
             continue;
         }
         const std::vector<std::optional<MapPosition>> expected{MapPosition{"Route3", {40, 9}}};
         if (wanderer_stops(one_tile(Pokemon::grid_pose_of(*checkpoint.start)), checkpoint.steps[0]) != expected){
-            return "Expected 00.12/route4_nurse to cross Lass Robin's sight once, the walk placing her stop on Route3 (40, 9).";
+            return "Expected 04.02/route4_nurse to cross Lass Robin's sight once, the walk placing her stop on Route3 (40, 9).";
         }
         return true;
     }
-    return "No step 00.12/route4_nurse.";
+    return "No step 04.02/route4_nurse.";
 }
 
 //  A scene the table starts on a step onto its trigger, and the walks of
@@ -699,14 +782,14 @@ UnitTestResult check_trigger(const TriggerCase& c){
     return "No step " + c.checkpoint + "/" + c.step + ".";
 }
 
-//  00.15b meets the rival on the middle of his three trigger tiles, row 6
+//  05.04 meets the rival on the middle of his three trigger tiles, row 6
 //  at x 22..24 north of Cerulean (VAR_MAP_SCENE_CERULEAN_CITY_RIVAL 0),
-//  and 00.16 the Rocket on the east one of his two, (10..11, 15) on Nugget
+//  and 05.05 the Rocket on the east one of his two, (10..11, 15) on Nugget
 //  Bridge (VAR_MAP_SCENE_ROUTE24 0), each from the tile below.
 UnitTestResult test_cerulean_triggers(){
     const TriggerCase CASES[] = {
-        {.checkpoint = "00.15b", .step = "rival_trigger", .map = "CeruleanCity", .y = 6, .x0 = 22, .x1 = 24, .onto_x = 23},
-        {.checkpoint = "00.16", .step = "rocket_trigger", .map = "Route24", .y = 15, .x0 = 10, .x1 = 11, .onto_x = 11},
+        {.checkpoint = "05.04", .step = "rival_trigger", .map = "CeruleanCity", .y = 6, .x0 = 22, .x1 = 24, .onto_x = 23},
+        {.checkpoint = "05.05", .step = "rocket_trigger", .map = "Route24", .y = 15, .x0 = 10, .x1 = 11, .onto_x = 11},
     };
     for (const TriggerCase& c : CASES){
         if (UnitTestResult result = check_trigger(c); result.result != UnitTestResult::PASSED){
@@ -716,13 +799,13 @@ UnitTestResult test_cerulean_triggers(){
     return true;
 }
 
-//  00.16 steps beside Nugget Bridge's five trainers from the south, one
+//  05.05 steps beside Nugget Bridge's five trainers from the south, one
 //  step at a time, each battle right after its step: Cale, Ali, Timmy,
 //  Reli and Ethan, by where they stand.
 UnitTestResult test_nugget_bridge_order(){
-    const StoryCheckpoint* checkpoint = find_checkpoint("00.16");
+    const StoryCheckpoint* checkpoint = find_checkpoint("05.05");
     if (checkpoint == nullptr){
-        return "No checkpoint 00.16.";
+        return "No checkpoint 05.05.";
     }
     const std::vector<StoryStep>& steps = checkpoint->steps;
     std::string met;
@@ -731,16 +814,16 @@ UnitTestResult test_nugget_bridge_order(){
         const MapData* map = find_map_named(pose.map);
         const MapObject* trainer = steps[c].kind == StoryStepKind::STEP && map ? trainer_seeing(*map, step_end(pose, steps[c], {}), {}, false) : nullptr;
         if (trainer != nullptr && (c + 1 == steps.size() || steps[c + 1].kind != StoryStepKind::BATTLE)){
-            return "00.16/" + steps[c].name + ": no battle right after the step.";
+            return "05.05/" + steps[c].name + ": no battle right after the step.";
         }
         met += trainer ? " " + to_string(TilePos{trainer->x, trainer->y}) : "";
         if (UnitTestResult result = advance(pose, steps[c]); result.result != UnitTestResult::PASSED){
-            return "00.16 " + result.message;
+            return "05.05 " + result.message;
         }
     }
     const std::string expected = " (12, 31) (10, 28) (12, 25) (10, 22) (12, 19)";
     if (met != expected){
-        return "00.16: expected the five bridge trainers south to north," + expected + "; met" + met + ".";
+        return "05.05: expected the five bridge trainers south to north," + expected + "; met" + met + ".";
     }
     return true;
 }
@@ -776,7 +859,7 @@ UnitTestResult test_save_places(){
 }
 
 //  A reload's save checked against the checkpoint's start: a save left in
-//  Pewter City (a new game whose save didn't happen) can't start 00.02 in
+//  Pewter City (a new game whose save didn't happen) can't start 01.03 in
 //  the bedroom. The check takes no checks level: Fast runs it too.
 UnitTestResult test_save_place_error(){
     struct Case{
@@ -941,11 +1024,11 @@ UnitTestResult test_intro_names(){
     return true;
 }
 
-//  00.12c stores the Magikarp Gift RNG bought; with Gift RNG off there is
+//  04.04 stores the Magikarp Gift RNG bought; with Gift RNG off there is
 //  none, and the deposit is skipped instead of refused.
 UnitTestResult test_magikarp_deposit_skippable(){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        if (checkpoint.id != "00.12c"){
+        if (checkpoint.id != "04.04"){
             continue;
         }
         for (const StoryStep& step : checkpoint.steps){
@@ -954,9 +1037,35 @@ UnitTestResult test_magikarp_deposit_skippable(){
                 return true;
             }
         }
-        return "00.12c: expected a deposit of the second slot, skipped if the party hasn't got it.";
+        return "04.04: expected a deposit of the second slot, skipped if the party hasn't got it.";
     }
-    return "No checkpoint 00.12c.";
+    return "No checkpoint 04.04.";
+}
+
+//  The BOY/GIRL menu, the boy then the girl: the boy is left to the A that
+//  advances the intro, as before; the girl moves down from BOY and is
+//  picked on GIRL.
+UnitTestResult test_intro_gender(){
+    struct Case{
+        std::string_view what;
+        std::optional<int> cursor_row;
+        PlayerGender wanted;
+        GenderMenuStep expected;
+    };
+    const std::vector<Case> cases{
+        {.what = "boy, no menu", .cursor_row = std::nullopt, .wanted = PlayerGender::BOY, .expected = GenderMenuStep::NONE},
+        {.what = "boy, cursor on BOY", .cursor_row = 0, .wanted = PlayerGender::BOY, .expected = GenderMenuStep::NONE},
+        {.what = "girl, no menu", .cursor_row = std::nullopt, .wanted = PlayerGender::GIRL, .expected = GenderMenuStep::NONE},
+        {.what = "girl, cursor on BOY", .cursor_row = 0, .wanted = PlayerGender::GIRL, .expected = GenderMenuStep::DOWN},
+        {.what = "girl, cursor on GIRL", .cursor_row = 1, .wanted = PlayerGender::GIRL, .expected = GenderMenuStep::CONFIRM},
+    };
+    for (const Case& c : cases){
+        const GenderMenuStep step = gender_menu_step(c.cursor_row, c.wanted);
+        if (step != c.expected){
+            return std::format("{}: expected step {}, got {}.", c.what, static_cast<int>(c.expected), static_cast<int>(step));
+        }
+    }
+    return true;
 }
 
 //  set_options()'s RIGHT presses from each value an old save can leave:
@@ -1005,6 +1114,10 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
         .expectation = {.description = "verifies route planning validity across all chained checkpoints"},
     },
     {
+        .input = {.name = "story route plans match the golden", .body = test_golden_plans},
+        .expectation = {.description = "keeps every story route's planned steps byte-identical to the stored copy"},
+    },
+    {
         .input = {.name = "step names are unique per checkpoint", .body = test_unique_names},
         .expectation = {.description = "ensures step identifier uniqueness within checkpoints"},
     },
@@ -1045,6 +1158,10 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
         .expectation = {.description = "verifies character and rival naming inputs"},
     },
     {
+        .input = {.name = "intro: the boy, then the girl, on the BOY/GIRL menu", .body = test_intro_gender},
+        .expectation = {.description = "leaves the boy to A; moves to GIRL and picks it"},
+    },
+    {
         .input = {.name = "options: RIGHT presses from the shown value", .body = test_option_presses},
         .expectation = {.description = "calculates Dpad RIGHT inputs for setting game options"},
     },
@@ -1057,7 +1174,7 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
         .expectation = {.description = "verifies trainer interruption on route 3"},
     },
     {
-        .input = {.name = "00.12c: the Magikarp's deposit is skipped without Gift RNG", .body = test_magikarp_deposit_skippable},
+        .input = {.name = "04.04: the Magikarp's deposit is skipped without Gift RNG", .body = test_magikarp_deposit_skippable},
         .expectation = {.description = "skips magikarp deposit when gift rng is disabled"},
     },
     {

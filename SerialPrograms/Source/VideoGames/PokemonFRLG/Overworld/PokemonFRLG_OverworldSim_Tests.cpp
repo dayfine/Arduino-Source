@@ -24,6 +24,8 @@
 #include "PokemonFRLG_OverworldLateBattle.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldSim.h"
+#include "PokemonFRLG_OverworldSimField.h"
+#include "PokemonFRLG_OverworldSpin.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -290,16 +292,16 @@ UnitTestResult test_forest_north_gate(){
     return true;
 }
 
-//  Console B, 2026-11-03, Mt. Moon 1F (row 00.13): a wild battle whose
+//  Console B, 2026-11-03, Mt. Moon 1F (row 04.05): a wild battle whose
 //  flashes were missed started on the leg south onto the ladder; its wipe
 //  passed for the ladder's fade, and the walker stopped as off the route,
 //  on the leg a tile short of the ladder. Here on the leg through the
 //  forest's grass onto its north gate: a battle on the leg's first or
 //  second step is run from, the player found again on the leg, and the
-//  gate reached through its warp. If the walk back onto the warp then
-//  ends short of it (hold 4: the leg, the hold that finds the player and
-//  its re-hold after the Bug Catcher), the route still stops on no fade.
-//  Without the rule it stops as off the route, as on the console.
+//  gate reached through its warp: the player is on the leg's line, and
+//  holds on to it. If that hold then ends well short of the warp (hold 2:
+//  the leg, then the hold on), the route still stops on no fade. Without the
+//  rule it stops as off the route, as on the console.
 UnitTestResult test_battle_on_warp_leg(){
     const SimCase c{.start = at("ViridianForest", 5, 20), .facing = Direction::NORTH, .goal = at("Route2_ViridianForest_NorthEntrance", 7, 9)};
     for (size_t tile : {1, 2}){
@@ -312,9 +314,9 @@ UnitTestResult test_battle_on_warp_leg(){
         }
     }
     SimCase no_warp = c;
-    no_warp.script.short_holds[4] = 2;
+    no_warp.script.short_holds[2] = 6;
     const std::optional<SimRun> short_back = run_with_battle_on_warp_leg(no_warp, 1);
-    if (!short_back || !stopped_with(*short_back, "no fade in and out") || short_back->state.warps != 0){
+    if (!short_back || !stopped_with(*short_back, "no fade holding on toward the warp") || short_back->state.warps != 0){
         return "Expected a stop on no fade when the walk back ends short of the warp:" + (short_back ? describe(*short_back) : "");
     }
     SimCase off = c;
@@ -519,7 +521,7 @@ UnitTestResult test_mart_exit(){
     return true;
 }
 
-//  Mt. Moon (story row 00.13): every floor tile has wild encounters, and
+//  Mt. Moon (story row 04.05): every floor tile has wild encounters, and
 //  the floors join by ladders taken on stepping onto them. From the Moon
 //  Stone (3, 2) on 1F down to the foot of B2F's ladder: two ladders, each
 //  a fade.
@@ -533,7 +535,7 @@ UnitTestResult test_mt_moon_ladders(){
 }
 
 //  The Moon Stone's ball (3, 2) on Mt. Moon 1F is a short way off the way
-//  down: from (11, 3), where 00.13's walk up column 11 ends, to face it
+//  down: from (11, 3), where 04.05's walk up column 11 ends, to face it
 //  and then on to B1F costs a few tiles more than going straight, and
 //  both walks end where they were planned to.
 UnitTestResult test_moon_stone_detour(){
@@ -564,7 +566,7 @@ UnitTestResult test_moon_stone_detour(){
 }
 
 //  Mt. Moon B2F: the Grunt at (37, 21) looks around (sight 3) over the
-//  only way east. 00.13 crosses his room on legs to walls; the sim's
+//  only way east. 04.05 crosses his room on legs to walls; the sim's
 //  trainers see every way they may look, so he sees the player on
 //  (37, 22), is fought, and the leg is held on to its wall.
 UnitTestResult test_mt_moon_grunt_mid_leg(){
@@ -582,7 +584,7 @@ UnitTestResult test_mt_moon_grunt_mid_leg(){
     return true;
 }
 
-//  Mt. Moon B2F: 00.13's open leg east along the bottom row, (8, 38) to
+//  Mt. Moon B2F: 04.05's open leg east along the bottom row, (8, 38) to
 //  (11, 38), ends a tile short with nothing on screen. The hold north
 //  after it would end on (10, 21), a column west of the Grunt's line the
 //  table steps into from (11, 21): the walker finds the player at walls
@@ -620,7 +622,7 @@ UnitTestResult test_mt_moon_late_battle(){
     return true;
 }
 
-//  Console B, 2026-11-03 (row 00.13, b2f_ladder_foot): a wild battle whose
+//  Console B, 2026-11-03 (row 04.05, b2f_ladder_foot): a wild battle whose
 //  flashes were missed started on "south 3 (warp)" from (5, 3) to 1F's
 //  ladder; its wipe passed for the ladder's fade, and the walker stopped as
 //  off the route, with the player on (5, 5). A battle on the leg's first or
@@ -648,7 +650,7 @@ UnitTestResult test_mt_moon_battle_on_ladder_leg(){
     return true;
 }
 
-//  Console B, 2026-11-03 (row 00.13, b2f_ladder_foot): on B1F a wild
+//  Console B, 2026-11-03 (row 04.05, b2f_ladder_foot): on B1F a wild
 //  battle started part-way down "south 15 (to wall)" from (3, 3), with its
 //  flashes missed. Its HP boxes came over 5 s after the step, after the
 //  leg's watch had ended on the battle's empty text box: the leg was taken
@@ -658,7 +660,9 @@ UnitTestResult test_mt_moon_battle_on_ladder_leg(){
 //  timing. The text box after the watch is now watched on for, the leg
 //  walked again to its wall, and the route reaches B2F's ladder. Without
 //  the rule the leg is taken as walked, and the run stops on no fade onto
-//  the ladder down to B2F, as it did.
+//  the ladder down to B2F, as it did (the console's walker stopped on the
+//  leg; this one, which holds on toward a warp after a wild battle, stops
+//  holding on).
 UnitTestResult test_mt_moon_battle_seen_after_wall_leg(){
     SimCase c{.start = at("MtMoon_B1F", 3, 3), .facing = Direction::SOUTH, .goal = at("MtMoon_B2F", 26, 21)};
     c.script.encounters = {{.grass_step = 13, .seen_late = true}};
@@ -679,13 +683,13 @@ UnitTestResult test_mt_moon_battle_seen_after_wall_leg(){
     const bool taken_as_walked = std::any_of(old.log.begin(), old.log.end(), [](const std::string& line){
         return line.find("south 15 (to wall): ended at MtMoon_B1F (3, 18) (walked)") != std::string::npos;
     });
-    if (!taken_as_walked || !stopped_with(old, "no fade in and out after walking onto the warp to MtMoon_B2F.")){
+    if (!taken_as_walked || !stopped_with(old, "no fade holding on toward the warp to MtMoon_B2F.")){
         return "Expected the leg taken as walked and the run stopped on no fade, as on the console, without the rule:" + describe(old);
     }
     return true;
 }
 
-//  Console B, 2026-11-03 (row 00.13, b2f_south): on Mt. Moon B2F a wild
+//  Console B, 2026-11-03 (row 04.05, b2f_south): on Mt. Moon B2F a wild
 //  battle started on the first step of "east 7 (to wall)" from (39, 14),
 //  along tiles closed on their north side, which the maps didn't mark as
 //  wild then: the leg watched only for messages, and the screen was black
@@ -787,7 +791,7 @@ UnitTestResult test_mt_moon_way_out(){
     return true;
 }
 
-//  Story row 00.14: from Route 4 east of Mt. Moon along the upper road to
+//  Story row 04.06: from Route 4 east of Mt. Moon along the upper road to
 //  above the ledge row 9, out of Lass Crissy's line (75, 3); one step
 //  south hops the ledge onto the lower road two tiles down; from there
 //  into Cerulean City and its Pokemon Center by one door. No route plans
@@ -812,7 +816,7 @@ UnitTestResult test_route4_to_cerulean(){
     return true;
 }
 
-//  Story rows 00.14b and 00.14c in Cerulean Gym (pokefirered map.json):
+//  Story rows 05.01 and 05.02 in Cerulean Gym (pokefirered map.json):
 //  from the Center into the Gym, up column 9 to (9, 13), west to (4, 13),
 //  then to walls round the pool's west and north sides and west to (9, 7)
 //  below Misty's platform, meeting no one; and back from beside her (9, 6)
@@ -861,7 +865,7 @@ UnitTestResult test_cerulean_gym_walks(){
     return true;
 }
 
-//  The straight ways in Cerulean Gym that 00.14b and 00.14c keep off: the
+//  The straight ways in Cerulean Gym that 05.01 and 05.02 keep off: the
 //  step onto (9, 12) meets Swimmer Luis, and the step onto (8, 7),
 //  misty_front, Picnicker Diana.
 UnitTestResult test_cerulean_gym_lines(){
@@ -885,7 +889,7 @@ UnitTestResult test_cerulean_gym_lines(){
     return true;
 }
 
-//  Story rows 00.15 and 00.16: out of Cerulean's Pokemon Center by its mat
+//  Story rows 05.03 and 05.05: out of Cerulean's Pokemon Center by its mat
 //  to below the rival's trigger row, and on north across the city's edge
 //  onto Nugget Bridge, below Cale's row, meeting no one.
 UnitTestResult test_cerulean_to_bridge(){
@@ -900,7 +904,7 @@ UnitTestResult test_cerulean_to_bridge(){
     return true;
 }
 
-//  Story row 00.16 up Nugget Bridge: the short legs between the five
+//  Story row 05.05 up Nugget Bridge: the short legs between the five
 //  trainers' rows meet no one; and the step from the tile below each row
 //  onto it is in that trainer's sight, beside them, so they fight there
 //  without walking: Cale, Ali, Timmy, Reli and Ethan.
@@ -930,7 +934,7 @@ UnitTestResult test_nugget_bridge_legs(){
 
 
 
-//  Story row 00.24 from Route 6 to Vermilion City's nurse: the open leg
+//  Story row 06.03 from Route 6 to Vermilion City's nurse: the open leg
 //  south 14 crosses onto Vermilion City and is held a tile longer for the
 //  game holding the player up there. It didn't: the player ended a tile
 //  south of (23, 7), the leg west on (15, 8), and the north 1 onto the
@@ -983,6 +987,9 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
         database.add<Test_OverworldSim>(item);
     }
     add_tests_OverworldLateBattle(database);
+    add_tests_OverworldWarpFade(database);
+    add_tests_OverworldSpin(database);
+    add_tests_OverworldBike(database);
 }
 
 
