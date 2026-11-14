@@ -29,6 +29,7 @@
 #include "VideoGames/PokemonSV/Resources/PokemonSV_Ingredients.h"
 #include "VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_IngredientSession.h"
 #include "VideoGames/PokemonSV/Inference/Picnics/PokemonSV_SandwichPlateDetector.h"
+#include "PokemonSV_SandwichEatingConsole.h"
 #include "PokemonSV_SandwichRoutines.h"
 
 // #include <iostream>
@@ -588,20 +589,10 @@ void finish_sandwich_eating(
     VideoStream& stream, ProControllerContext& context
 ){
     stream.overlay().add_log("Eating", COLOR_WHITE);
-    PicnicWatcher picnic_watcher;
-    int ret = run_until<ProControllerContext>(
-        stream, context,
-        [](ProControllerContext& context){
-            for (int i = 0; i < 20; i++){
-                pbf_press_button(context, BUTTON_A, 160ms, 3840ms);
-            }
-        },
-        {picnic_watcher}
-    );
-    if (ret < 0){
+    if (!wait_for_sandwich_picnic(stream, context)){
         dump_image_and_throw_recoverable_exception(
             info, stream, "PicnicNotDetected",
-            "finish_sandwich_eating(): cannot detect picnic after 60 seconds."
+            "finish_sandwich_eating(): cannot detect picnic after 80 seconds."
         );
     }
     stream.overlay().add_log("Finish eating", COLOR_WHITE);

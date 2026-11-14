@@ -1,0 +1,358 @@
+#include "Programs/ShinyHunting/PokemonSV_IsolatedHuntLoop.h"
+#include "PokemonSV_IsolatedHuntLoop_Tests.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonSV{
+namespace{
+
+struct LoopCase{
+    std::string name;
+    std::vector<IsolatedHuntRound> rounds = {};
+    IsolatedHuntLimits limits{.max_rounds = 2};
+    bool start_ok = true;
+    bool prepare_ok = true;
+    bool power_ok = true;
+    bool travel_ok = true;
+    bool refresh_ok = true;
+    bool reanchor_ok = true;
+    bool acquired = false;
+    bool pending_battle = false;
+    bool pending_refusal = false;
+    uint64_t reset_ms = 0;
+    uint64_t verify_ms = 0;
+    uint64_t travel_ms = 0;
+    IsolatedHuntBattleResult battle = IsolatedHuntBattleResult::STOP;
+    IsolatedHuntResult expected;
+    std::string steps;
+};
+
+class ScriptedHunt : public IsolatedHuntActions{
+public:
+    ScriptedHunt(const LoopCase& test) : m_test(test){}
+    std::string steps;
+    virtual bool reset_start(const IsolatedHuntRequest&) override{ steps += "start "; m_clock += m_test.reset_ms; return m_test.start_ok; }
+    virtual bool prepare_sandwich(const IsolatedHuntRequest&) override{ steps += "sandwich "; return m_test.prepare_ok; }
+    virtual bool verify_meal_power(const IsolatedHuntRequest&) override{
+        steps += "verify "; m_clock += m_test.verify_ms; return m_test.power_ok;
+    }
+    virtual bool travel_to_anchor(const IsolatedHuntRequest&) override{
+        steps += "travel ";
+        m_clock += m_test.travel_ms;
+        return m_travel++ == 0 ? m_test.travel_ok : m_test.reanchor_ok;
+    }
+    virtual IsolatedHuntRound clear_round(const IsolatedHuntRequest&) override{
+        steps += "clear ";
+        m_clock += 1000;
+        return m_next < m_test.rounds.size() ? m_test.rounds[m_next++] : IsolatedHuntRound{.kills = 2};
+    }
+    virtual bool refresh_spawns(const IsolatedHuntRequest&) override{ steps += "refresh "; return m_test.refresh_ok; }
+    virtual bool acquire_refused_target(const IsolatedHuntRequest&) override{ steps += "acquire "; return m_test.acquired; }
+    virtual IsolatedHuntBattleResult handle_battle(const IsolatedHuntRequest& request) override{
+        steps += "battle:" + request.ball + ":" + std::to_string(request.ball_limit) + " ";
+        return m_test.battle;
+    }
+    virtual bool battle_pending() const override{ return m_test.pending_battle; }
+    virtual bool refusal_pending() const override{ return m_test.pending_refusal; }
+    virtual uint64_t now_ms() const override{ return m_clock; }
+private:
+    const LoopCase& m_test;
+    size_t m_next = 0;
+    size_t m_travel = 0;
+    uint64_t m_clock = 0;
+};
+
+std::string describe(const IsolatedHuntResult& result){
+    return "stop=" + std::to_string((int)result.stop) + ", kills=" + std::to_string(result.kills) +
+        ", rounds=" + std::to_string(result.rounds) + ", encounters=" + std::to_string(result.encounters) +
+        ", refusals=" + std::to_string(result.refusals) + ", refreshes=" + std::to_string(result.refreshes);
+}
+
+std::vector<LoopCase> clearing_cases(){
+    return {
+        {
+            .name = "Sandwich before travel and bounded clearing",
+            .expected = {.stop = IsolatedHuntStop::ROUND_LIMIT, .kills = 4, .rounds = 2},
+            .steps = "start sandwich verify travel clear clear ",
+        },
+        {
+            .name = "Unresolved refusal never despawns target",
+            .rounds = {{.event = IsolatedHuntEvent::REFUSAL}},
+            .expected = {.stop = IsolatedHuntStop::UNRESOLVED_REFUSAL, .rounds = 1, .refusals = 1},
+            .steps = "start sandwich verify travel clear acquire ",
+        },
+    };
+}
+
+std::vector<LoopCase> battle_cases(){
+    return {
+        {
+            .name = "Battle policy stops with configured ball",
+            .rounds = {{.event = IsolatedHuntEvent::BATTLE}},
+            .expected = {.stop = IsolatedHuntStop::BATTLE_POLICY, .rounds = 1, .encounters = 1},
+            .steps = "start sandwich verify travel clear battle:luxury-ball:15 ",
+        },
+        {
+            .name = "Refusal acquisition delegates battle handling",
+            .rounds = {{.event = IsolatedHuntEvent::REFUSAL}}, .acquired = true,
+            .expected = {.stop = IsolatedHuntStop::BATTLE_POLICY, .rounds = 1, .encounters = 1, .refusals = 1},
+            .steps = "start sandwich verify travel clear acquire battle:luxury-ball:15 ",
+        },
+        {
+            .name = "Reanchor failure prevents more clearing",
+            .rounds = {{.event = IsolatedHuntEvent::BATTLE}}, .reanchor_ok = false,
+            .battle = IsolatedHuntBattleResult::CONTINUE,
+            .expected = {.stop = IsolatedHuntStop::TRAVEL_FAILED, .rounds = 1, .encounters = 1},
+            .steps = "start sandwich verify travel clear battle:luxury-ball:15 travel ",
+        },
+        {
+            .name = "Handled battle requires reanchor before more clearing",
+            .rounds = {{.event = IsolatedHuntEvent::BATTLE}}, .battle = IsolatedHuntBattleResult::CONTINUE,
+            .expected = {.stop = IsolatedHuntStop::ROUND_LIMIT, .kills = 2, .rounds = 2, .encounters = 1},
+            .steps = "start sandwich verify travel clear battle:luxury-ball:15 travel clear ",
+        },
+    };
+}
+
+std::vector<LoopCase> limit_cases(){
+    return {
+        {
+            .name = "Time limit checked between rounds", .limits = {.max_rounds = 2, .duration_ms = 500},
+            .expected = {.stop = IsolatedHuntStop::TIME_LIMIT, .kills = 2, .rounds = 1},
+            .steps = "start sandwich verify travel clear ",
+        },
+        {
+            .name = "Empty rounds refresh once then stop at bound",
+            .rounds = {{.kills = 0}, {.kills = 0}}, .limits = {.max_rounds = 5, .max_empty_rounds = 2},
+            .expected = {.stop = IsolatedHuntStop::NO_PROGRESS, .rounds = 2, .refreshes = 1},
+            .steps = "start sandwich verify travel clear refresh clear ",
+        },
+        {
+            .name = "Refresh failure does not resume", .rounds = {{.kills = 0}}, .refresh_ok = false,
+            .expected = {.stop = IsolatedHuntStop::REFRESH_FAILED, .rounds = 1},
+            .steps = "start sandwich verify travel clear refresh ",
+        },
+        {
+            .name = "Final round does not waste a refresh", .rounds = {{.kills = 0}}, .limits = {.max_rounds = 1},
+            .expected = {.stop = IsolatedHuntStop::ROUND_LIMIT, .rounds = 1},
+            .steps = "start sandwich verify travel clear ",
+        },
+        {
+            .name = "Expired time budget prevents refresh", .rounds = {{.kills = 0}},
+            .limits = {.max_rounds = 2, .duration_ms = 500},
+            .expected = {.stop = IsolatedHuntStop::TIME_LIMIT, .rounds = 1},
+            .steps = "start sandwich verify travel clear ",
+        },
+        {
+            .name = "Kills reset consecutive empty rounds", .rounds = {{.kills = 0}, {.kills = 2}, {.kills = 0}},
+            .limits = {.max_rounds = 3, .max_empty_rounds = 2},
+            .expected = {.stop = IsolatedHuntStop::ROUND_LIMIT, .kills = 2, .rounds = 3, .refreshes = 1},
+            .steps = "start sandwich verify travel clear refresh clear clear ",
+        },
+        {
+            .name = "Zero round budget rejected before ingredients", .limits = {.max_rounds = 0},
+            .expected = {.stop = IsolatedHuntStop::INVALID_PLAN}, .steps = "",
+        },
+    };
+}
+
+std::vector<LoopCase> setup_cases(){
+    return {
+        {
+            .name = "Maker completion without verified power cannot travel or roam", .power_ok = false,
+            .expected = {.stop = IsolatedHuntStop::POWER_UNVERIFIED}, .steps = "start sandwich verify ",
+        },
+        {
+            .name = "Sandwich failure prevents travel", .prepare_ok = false,
+            .expected = {.stop = IsolatedHuntStop::SETUP_FAILED}, .steps = "start sandwich ",
+        },
+        {
+            .name = "Travel failure prevents clearing", .travel_ok = false,
+            .expected = {.stop = IsolatedHuntStop::TRAVEL_FAILED}, .steps = "start sandwich verify travel ",
+        },
+        {
+            .name = "Battle failure prevents travel or clearing", .rounds = {{.event = IsolatedHuntEvent::BATTLE}},
+            .battle = IsolatedHuntBattleResult::FAILED,
+            .expected = {.stop = IsolatedHuntStop::BATTLE_FAILED, .rounds = 1, .encounters = 1},
+            .steps = "start sandwich verify travel clear battle:luxury-ball:15 ",
+        },
+    };
+}
+
+std::vector<LoopCase> interruption_cases(){
+    return {
+        {.name = "Setup refusal cannot reset or depart", .prepare_ok = false, .pending_refusal = true,
+            .expected = {.stop = IsolatedHuntStop::UNRESOLVED_REFUSAL, .refusals = 1},
+            .steps = "start sandwich acquire "},
+        {.name = "Central corridor dispatch checks marker before movement",
+            .limits = {.max_rounds = 2, .ascent = {.enabled = true}},
+            .expected = {.stop = IsolatedHuntStop::MARKER_MISSING}, .steps = "start sandwich verify travel "},
+        {.name = "Invalid corridor stops before ingredients",
+            .limits = {.max_rounds = 2, .ascent = {.enabled = true, .segment_ms = 0}},
+            .expected = {.stop = IsolatedHuntStop::INVALID_PLAN}, .steps = ""},
+        {
+            .name = "Verification battle stops before flight selection", .power_ok = false, .pending_battle = true,
+            .expected = {.stop = IsolatedHuntStop::BATTLE_POLICY, .encounters = 1},
+            .steps = "start sandwich verify battle:luxury-ball:15 ",
+        },
+        {
+            .name = "Setup battle uses shared policy and stops before travel",
+            .prepare_ok = false, .pending_battle = true, .battle = IsolatedHuntBattleResult::CONTINUE,
+            .expected = {.stop = IsolatedHuntStop::SETUP_FAILED, .encounters = 1},
+            .steps = "start sandwich battle:luxury-ball:15 ",
+        },
+        {
+            .name = "Travel battle uses shared policy and stops without blind continuation",
+            .travel_ok = false, .pending_battle = true, .battle = IsolatedHuntBattleResult::CONTINUE,
+            .expected = {.stop = IsolatedHuntStop::TRAVEL_FAILED, .encounters = 1},
+            .steps = "start sandwich verify travel battle:luxury-ball:15 ",
+        },
+        {
+            .name = "Shiny during travel obeys stop policy", .travel_ok = false, .pending_battle = true,
+            .expected = {.stop = IsolatedHuntStop::BATTLE_POLICY, .encounters = 1},
+            .steps = "start sandwich verify travel battle:luxury-ball:15 ",
+        },
+        {
+            .name = "Refresh battle is handled without more movement", .rounds = {{.kills = 0}},
+            .refresh_ok = false, .pending_battle = true,
+            .expected = {.stop = IsolatedHuntStop::BATTLE_POLICY, .rounds = 1, .encounters = 1},
+            .steps = "start sandwich verify travel clear refresh battle:luxury-ball:15 ",
+        },
+    };
+}
+
+std::vector<LoopCase> power_cases(){
+    return {
+        {
+            .name = "Supervision time counts against active power",
+            .limits = {.max_rounds = 2, .power_duration_ms = 500}, .verify_ms = 1000,
+            .expected = {.stop = IsolatedHuntStop::POWER_EXPIRED}, .steps = "start sandwich verify travel ",
+        },
+        {
+            .name = "Travel cannot silently exhaust sandwich power",
+            .limits = {.max_rounds = 2, .power_duration_ms = 500}, .travel_ms = 1000,
+            .expected = {.stop = IsolatedHuntStop::POWER_EXPIRED}, .steps = "start sandwich verify travel ",
+        },
+        {
+            .name = "Clearing stops when power expires",
+            .limits = {.max_rounds = 2, .power_duration_ms = 500},
+            .expected = {.stop = IsolatedHuntStop::POWER_EXPIRED, .kills = 2, .rounds = 1},
+            .steps = "start sandwich verify travel clear ",
+        },
+        {
+            .name = "Zero power budget rejected before ingredients",
+            .limits = {.max_rounds = 2, .power_duration_ms = 0},
+            .expected = {.stop = IsolatedHuntStop::INVALID_PLAN}, .steps = "",
+        },
+    };
+}
+
+std::vector<LoopCase> resume_cases(){
+    return {
+        {.name = "Anchor resume cannot silently make a fresh meal",
+            .limits = {.max_rounds = 2, .resume_at_anchor = true},
+            .expected = {.stop = IsolatedHuntStop::INVALID_PLAN}, .steps = ""},
+        {.name = "Existing meal at Central bypasses Zero Gate but retains power and local anchor checks",
+            .limits = {.max_rounds = 2, .use_existing_power = true, .resume_at_anchor = true}, .start_ok = false,
+            .expected = {.stop = IsolatedHuntStop::ROUND_LIMIT, .kills = 4, .rounds = 2},
+            .steps = "verify travel clear clear "},
+        {.name = "Existing power resumes clearing without making another sandwich",
+            .limits = {.max_rounds = 2, .use_existing_power = true}, .prepare_ok = false,
+            .expected = {.stop = IsolatedHuntStop::ROUND_LIMIT, .kills = 4, .rounds = 2},
+            .steps = "start verify travel clear clear "},
+        {.name = "Resume rejects missing or wrong active power without remaking",
+            .limits = {.max_rounds = 2, .use_existing_power = true}, .power_ok = false,
+            .expected = {.stop = IsolatedHuntStop::POWER_UNVERIFIED}, .steps = "start verify "},
+        {.name = "Resume uses remaining power budget including verification and travel",
+            .limits = {.max_rounds = 2, .power_duration_ms = 500, .use_existing_power = true}, .travel_ms = 1000,
+            .expected = {.stop = IsolatedHuntStop::POWER_EXPIRED}, .steps = "start verify travel "},
+        {.name = "Resume still dispatches the Central corridor",
+            .limits = {.max_rounds = 2, .ascent = {.enabled = true}, .use_existing_power = true},
+            .expected = {.stop = IsolatedHuntStop::MARKER_MISSING}, .steps = "start verify travel "},
+        {.name = "Resume counts Zero Gate realignment against remaining power",
+            .limits = {.max_rounds = 2, .power_duration_ms = 500, .use_existing_power = true}, .reset_ms = 1000,
+            .expected = {.stop = IsolatedHuntStop::POWER_EXPIRED}, .steps = "start verify travel "},
+    };
+}
+
+std::vector<LoopCase> loop_cases(){
+    auto tests = clearing_cases();
+    const auto resume = resume_cases();
+    tests.insert(tests.end(), resume.begin(), resume.end());
+    const auto battles = battle_cases();
+    tests.insert(tests.end(), battles.begin(), battles.end());
+    const auto limits = limit_cases();
+    tests.insert(tests.end(), limits.begin(), limits.end());
+    const auto interruptions = interruption_cases();
+    tests.insert(tests.end(), interruptions.begin(), interruptions.end());
+    const auto power = power_cases();
+    tests.insert(tests.end(), power.begin(), power.end());
+    const std::vector<LoopCase> starts{
+        {
+            .name = "Failed starting flight spends no ingredients", .start_ok = false,
+            .expected = {.stop = IsolatedHuntStop::START_FAILED}, .steps = "start ",
+        },
+        {
+            .name = "Battle during starting flight stops before ingredients", .start_ok = false, .pending_battle = true,
+            .expected = {.stop = IsolatedHuntStop::BATTLE_POLICY, .encounters = 1},
+            .steps = "start battle:luxury-ball:15 ",
+        },
+    };
+    tests.insert(tests.end(), starts.begin(), starts.end());
+    const auto setup = setup_cases();
+    tests.insert(tests.end(), setup.begin(), setup.end());
+    return tests;
+}
+
+}
+
+UnitTestResult test_isolated_hunt_loop(){
+    const IsolatedHuntRequest request{
+        .pokemon = "charcadet", .type = IsolatedEncounterType::FIRE,
+        .location = IsolatedHuntLocation::WEST_PROVINCE_ONE_CENTRAL,
+        .ball = "luxury-ball", .ball_limit = 15,
+    };
+    for (const auto& test : loop_cases()){
+        ScriptedHunt actions(test);
+        const auto result = run_isolated_hunt(request, test.limits, actions);
+        if (describe(result) != describe(test.expected) || actions.steps != test.steps){
+            return test.name + ": expected " + describe(test.expected) + " [" + test.steps +
+                "]; read " + describe(result) + " [" + actions.steps + "]";
+        }
+    }
+    return true;
+}
+
+UnitTestResult test_isolated_hunt_exit_policy(){
+    struct Case{ IsolatedHuntStop stop; bool expected; };
+    const std::vector<Case> cases{
+        {.stop = IsolatedHuntStop::ROUND_LIMIT, .expected = true},
+        {.stop = IsolatedHuntStop::TIME_LIMIT, .expected = true},
+        {.stop = IsolatedHuntStop::POWER_EXPIRED, .expected = true},
+        {.stop = IsolatedHuntStop::UNRESOLVED_REFUSAL, .expected = false},
+        {.stop = IsolatedHuntStop::BATTLE_POLICY, .expected = false},
+        {.stop = IsolatedHuntStop::BATTLE_FAILED, .expected = false},
+        {.stop = IsolatedHuntStop::NO_PROGRESS, .expected = false},
+        {.stop = IsolatedHuntStop::REFRESH_FAILED, .expected = false},
+        {.stop = IsolatedHuntStop::TRAVEL_FAILED, .expected = false},
+        {.stop = IsolatedHuntStop::SETUP_FAILED, .expected = false},
+        {.stop = IsolatedHuntStop::POWER_UNVERIFIED, .expected = false},
+        {.stop = IsolatedHuntStop::INVALID_PLAN, .expected = false},
+        {.stop = IsolatedHuntStop::START_FAILED, .expected = false},
+        {.stop = IsolatedHuntStop::MARKER_MISSING, .expected = false},
+        {.stop = IsolatedHuntStop::REANCHOR_FAILED, .expected = false},
+        {.stop = IsolatedHuntStop::CLEARING_TIMEOUT, .expected = false},
+    };
+    for (const auto& test : cases){
+        const bool actual = can_leave_isolated_hunt(test.stop);
+        if (actual != test.expected){
+            return "Expected departure=" + std::to_string(test.expected) + " for stop=" +
+                std::to_string((int)test.stop) + "; read " + std::to_string(actual);
+        }
+    }
+    return true;
+}
+
+}
+}
+}
