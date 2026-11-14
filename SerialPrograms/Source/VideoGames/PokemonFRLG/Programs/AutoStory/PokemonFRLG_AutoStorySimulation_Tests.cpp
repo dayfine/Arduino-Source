@@ -854,6 +854,30 @@ UnitTestResult test_dialogs_at_random(Logger& logger){
 }
 
 
+//  No ANSWER step follows a ROUTE or LEGS step. A walk closes a message
+//  that shows at its end with B (MessageInterrupt), which answers a YES/NO
+//  NO by itself, and the ANSWER after it then finds none. Console B,
+//  2026-11-14, 14.02b: Bill's scene ran as below_gym_door's warp out of
+//  Cinnabar Gym landed, the walk pressed through his question, and
+//  decline_bill failed with "answer_yes_no(): no YES/NO". A question that
+//  shows on arrival follows a STEP onto the warp, which leaves it up.
+UnitTestResult test_no_answer_after_walk(){
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (size_t c = 1; c < row.steps.size(); c++){
+            const StoryStep& walk = row.steps[c - 1];
+            const StoryStep& answer = row.steps[c];
+            if (answer.kind != StoryStepKind::ANSWER){
+                continue;
+            }
+            if (walk.kind == StoryStepKind::ROUTE || walk.kind == StoryStepKind::LEGS){
+                return std::format("{}/{}: follows the walk {}, which answers a YES/NO at its end with B.", row.id, answer.name, walk.name);
+            }
+        }
+    }
+    return true;
+}
+
+
 const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
     {.input = {.name = "new game to Brock, in order, each start where the last save stood", .body = test_whole_story}, .expectation = {.description = "runs full story progression from new game through Brock gym"}},
     {.input = {.name = "the steps it stubs need the console", .body = nullptr, .logged = test_stubbed_steps_need_the_console}, .expectation = {.description = "stubs each needs-console step of the whole story and plays the rest"}},
@@ -873,6 +897,7 @@ const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
     {.input = {.name = "the row after an RNG handoff runs off any start pose", .body = test_rows_after_rng_skip_start_check}, .expectation = {.description = "01.06, 04.03 and 09.04 start where the RNG program left the game"}},
     {.input = {.name = "a dialog pops up before every step", .body = test_dialog_before_every_step}, .expectation = {.description = "cleared between steps, the story passes; left up, a walk fails on it"}},
     {.input = {.name = "dialogs pop up before one step in five, over 5 seeds", .body = nullptr, .logged = test_dialogs_at_random}, .expectation = {.description = "every run passes with them cleared"}},
+    {.input = {.name = "an ANSWER never follows a walk", .body = test_no_answer_after_walk}, .expectation = {.description = "a YES/NO after a warp follows a STEP onto it, which leaves the question up"}},
 };
 
 } // namespace
