@@ -145,7 +145,7 @@ UnitTestResult test_opening_waits_for_platform(CancellableScope& scope){
 //  the platform). One A per text, none while it is still up, then the platform.
 UnitTestResult test_opening_presses_through_arrival_text(CancellableScope& scope){
     const auto arrival = [](Milliseconds at){
-        return with_reading(look_at(at, {EngineEvent::TEXT_BOX}), ADVANCE_ARROW_READING);
+        return with_reading(look_at(at, {EngineEvent::DIALOG_BOX}), ADVANCE_ARROW_READING);
     };
     FakeBackend backend = fake_plza({
         look_at(0ms, {EngineEvent::FADE_BLACK}),

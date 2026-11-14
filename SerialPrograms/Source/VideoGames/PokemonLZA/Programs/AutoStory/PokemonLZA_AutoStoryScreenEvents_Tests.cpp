@@ -20,8 +20,6 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
-using Pokemon::ScreenEvent;
-using Pokemon::ScreenEvents;
 
 namespace{
 
