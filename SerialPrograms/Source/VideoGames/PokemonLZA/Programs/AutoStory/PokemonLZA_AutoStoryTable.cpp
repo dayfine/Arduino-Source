@@ -47,30 +47,15 @@ bool first_game_action_is(const StoryCheckpoint& row, std::string_view action){
 
 } // namespace
 
-bool story_row_launches_game(const StoryCheckpoint& row){
-    return first_game_action_is(row, "launch_game_from_home");
-}
-
-bool story_row_confirms_new_game(const StoryCheckpoint& row){
+bool story_row_starts_without_save(const StoryCheckpoint& row){
     return first_game_action_is(row, "confirm_new_game");
 }
 
-bool story_row_starts_without_save(const StoryCheckpoint& row){
-    return story_row_launches_game(row) || story_row_confirms_new_game(row);
-}
-
 std::vector<StoryCheckpoint> story_run_rows(const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last){
-    std::vector<StoryCheckpoint> rows;
     if (first > last || last >= checkpoints.size()){
-        return rows;
+        return {};
     }
-    for (size_t index = first; index <= last; index++){
-        if (index > first && story_row_confirms_new_game(checkpoints[index])){
-            continue;
-        }
-        rows.push_back(checkpoints[index]);
-    }
-    return rows;
+    return std::vector<StoryCheckpoint>(checkpoints.begin() + first, checkpoints.begin() + last + 1);
 }
 
 

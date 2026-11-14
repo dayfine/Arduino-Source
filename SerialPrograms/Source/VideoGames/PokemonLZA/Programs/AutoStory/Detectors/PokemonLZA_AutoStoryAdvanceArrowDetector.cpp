@@ -23,10 +23,10 @@ namespace{
 
 //  A 4-connected blob of a mask: its bounds and its pixel count.
 struct Blob{
-    size_t min_x;
-    size_t min_y;
-    size_t max_x;
-    size_t max_y;
+    size_t min_x = 0;
+    size_t min_y = 0;
+    size_t max_x = 0;
+    size_t max_y = 0;
     size_t count = 0;
 };
 
