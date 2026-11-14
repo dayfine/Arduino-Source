@@ -5,8 +5,10 @@
  *  The execution fields of a checkpoint file (its JSON "execution") that
  *  every game reads the same way, and the sets of rows they mark: which
  *  rows end on the game's own autosave, which a run reloads before, and
- *  which are for lab runs only. The game reads its other execution fields
- *  itself (Pokemon_AuthoredCheckpointJson.h).
+ *  which are for lab runs only, and a game's story: its checkpoints and
+ *  those rows. The game reads its other execution fields itself
+ *  (Pokemon_AuthoredCheckpointJson.h); Pokemon_StoryFiles.h loads a story
+ *  from its files.
  *
  */
 
@@ -67,6 +69,13 @@ struct StoryRows{
     //  The dev files that replaced a built-in checkpoint, as (file name,
     //  path) (Pokemon_StoryDevFiles.h).
     std::vector<std::pair<std::string, std::string>> dev_files;
+};
+
+//  A game's story: its checkpoints in the order it plays them, and the rows
+//  their execution fields mark.
+template <typename Checkpoint>
+struct StoryData : StoryRows{
+    std::vector<Checkpoint> checkpoints;
 };
 
 //  How a run plays its checkpoints: the attempts each gets, and whether it
