@@ -54,6 +54,9 @@ struct StoryPose{
 //  has the Running Shoes (00.10 on).
 inline const std::string RUN_VARIANT = "run";
 
+//  The GAME step that closes the Trainer Card SID Helper leaves open.
+inline const std::string CLOSE_TRAINER_CARD = "close_trainer_card";
+
 //  How `step`, a ROUTE or LEGS, moves the player: RUN_VARIANT runs.
 MoveSpeed move_speed(const StoryStep& step);
 //  The maps the story plans on: every map to Brock, with the objects the

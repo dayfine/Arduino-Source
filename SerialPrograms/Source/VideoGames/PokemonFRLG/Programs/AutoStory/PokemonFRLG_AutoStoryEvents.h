@@ -59,6 +59,9 @@ struct StoryEnv{
     //  The game's language, for reading item names. In one the readers have
     //  no names for, the checks fall back to positions and counts.
     Language language = Language::English;
+    //  The name the new game's intro types for the player; empty keeps the
+    //  game's default name.
+    std::string player_name = {};
     //  The map the checkpoint under way starts on, where its save is: a
     //  reload checks the save card against it.
     std::string start_map = {};
@@ -114,6 +117,9 @@ public:
     virtual Pokemon::Outcome run(const StoryStep& step, Pokemon::RunState& state) override;
 
 private:
+    //  A GAME step by its action. CLOSE_TRAINER_CARD: back from SID Helper
+    //  (close_trainer_card()).
+    Pokemon::Outcome game(Pokemon::RunState& state, const StoryStep& step);
     //  How the console does `id`.
     Pokemon::StoryAction console_action(StoryActionId id);
 

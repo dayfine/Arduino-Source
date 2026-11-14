@@ -18,6 +18,10 @@
  *                  its start, for a run that loads its save;
  *      "lead"      optional: "after_brock", the starter as the story left
  *                  it by Brock (story_lead_after_brock());
+ *      "handoff"   optional: sid_helper or starter_rng, the RNG program
+ *                  the user may run there (StoryCheckpoint::handoff);
+ *      "live_start" optional, true: it starts from the game as another
+ *                  program left it (StoryCheckpoint::live_start);
  *      "notes"     optional: {"checkpoint" or a step's id: [lines]}, the
  *                  reasons behind a step that a reader of the file needs.
  *                  The program doesn't read them.
@@ -52,7 +56,9 @@ const std::vector<std::pair<std::string, std::string>>& autostory_checkpoint_jso
 //  action args it doesn't take, or has notes for a step it doesn't have.
 StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_view source);
 
-//  Checkpoints 00.01 to 00.10, in order: every file in StoryData/.
+//  Checkpoints 00.01 to 00.10, in order: every file in StoryData/. With
+//  00.01b, the way back in after SID Helper, after 00.01, and 00.04 split
+//  in two at Squirtle's ball for Starter RNG: 00.04 and 00.04b.
 const std::vector<StoryCheckpoint>& story_checkpoints();
 
 

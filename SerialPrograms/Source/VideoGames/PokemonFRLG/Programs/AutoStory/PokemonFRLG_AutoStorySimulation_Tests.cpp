@@ -165,6 +165,7 @@ private:
         case StoryStepKind::MASH:
         case StoryStepKind::BATTLE:
         case StoryStepKind::HEAL:
+        case StoryStepKind::GAME:
             return Pokemon::outcome_ok();
         default:
             return Pokemon::unsupported_step(step);
@@ -248,9 +249,11 @@ private:
 };
 
 
-//  One simulated run, segment built as the program builds it: each
-//  checkpoint saves at its end (hooks.save stands for save_game()).
+//  One simulated run, segment built as the program builds it: the rows a
+//  run takes with every handoff off, each saving at its end (hooks.save
+//  stands for save_game()).
 struct Simulation{
+    std::vector<StoryCheckpoint> rows = plan_story_run(story_checkpoints(), 0, story_checkpoints().size() - 1, StoryHandoffs{}).rows;
     FakeGame game;
     std::vector<std::string> lines;
     //  Where each save stood: the end of its checkpoint.
@@ -260,7 +263,7 @@ struct Simulation{
     Pokemon::SegmentReport run(const Pokemon::SegmentRange& range){
         Pokemon::Segment segment;
         segment.id = "00";
-        for (const StoryCheckpoint& data : story_checkpoints()){
+        for (const StoryCheckpoint& data : rows){
             segment.checkpoints.push_back(Pokemon::CheckpointSpec{
                 .id = data.id, .title = data.title, .saves = true,
                 .build = [this, &data]{
@@ -347,15 +350,15 @@ UnitTestResult test_whole_story(){
         return "Expected the whole story through:" + joined(sim.lines);
     }
     std::vector<std::string> ids;
-    for (const StoryCheckpoint& data : story_checkpoints()){
+    for (const StoryCheckpoint& data : sim.rows){
         ids.push_back(data.id);
     }
     if (sim.begun() != ids || sim.saves.size() != ids.size()){
         return "Expected each checkpoint once, in order, each saving at its end:" + joined(sim.game.trace);
     }
     //  Each checkpoint starts where the save before it stands.
-    for (size_t c = 1; c < story_checkpoints().size(); c++){
-        const StoryCheckpoint& data = story_checkpoints()[c];
+    for (size_t c = 1; c < sim.rows.size(); c++){
+        const StoryCheckpoint& data = sim.rows[c];
         const std::optional<StoryPose> start = story_pose(*start_pose(data));
         const std::optional<StoryPose> saved = story_pose(sim.saves[c - 1].second);
         const bool same = start && saved && start->map == saved->map && start->tile == saved->tile

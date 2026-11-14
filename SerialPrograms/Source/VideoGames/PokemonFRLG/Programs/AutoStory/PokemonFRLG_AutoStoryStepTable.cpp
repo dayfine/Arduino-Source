@@ -5,6 +5,7 @@
  */
 
 #include "Common/Cpp/Exceptions.h"
+#include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 
 namespace PokemonAutomation{
@@ -75,6 +76,7 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
             run.name = "run";
             specs.push_back(std::move(run));
         }
+        specs.push_back({.kind = StoryStepKind::GAME, .name = CLOSE_TRAINER_CARD, .args = {}});
         return specs;
     }();
     return SPECS;

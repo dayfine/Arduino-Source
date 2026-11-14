@@ -9,7 +9,7 @@
         "id": "intro",
         "kind": "new_game",
         "declared_after": {"map": "PalletTown_PlayersHouse_2F", "tiles": [[6, 6]], "facing": "north"},
-        "why": "Oak's speech, BOY, default names, rival GREEN"
+        "why": "Oak's speech, BOY, the player's name (default if none is set), rival GREEN"
       },
       {
         "id": "options",
@@ -20,6 +20,7 @@
   },
   "execution": {
     "menu": "before_pokemon",
+    "handoff": "sid_helper",
     "notes": {
       "intro": [
         "new_game.c: the bedroom at (6, 6), facing the TV."

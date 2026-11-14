@@ -5,6 +5,7 @@
  */
 
 #include <fstream>
+#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/StaticGlobals.h"
@@ -44,9 +45,18 @@
 #include "Overworld/PokemonFRLG_OverworldRoute.h"
 #include "Overworld/PokemonFRLG_OverworldWalk.h"
 #include "Overworld/PokemonFRLG_PlayerFacingReader.h"
+#include "Programs/PokemonFRLG_NamingScreenKeyboard_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryExport_Tests.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngPlanInputs_Tests.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngPlanLog_Tests.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngPlanTracker_Tests.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngPlan_Tests.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngSteps_Tests.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngTargetSearch_Tests.h"
+#include "Programs/RngManipulation/PokemonFRLG_StarterRngLoop_Tests.h"
 #include "Tests/TestUtils.h"
 
 #include "PokemonFRLG_Tests.h"
@@ -65,6 +75,17 @@ static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
     add_tests_SummaryMovesReader(database);
     add_tests_TeachScreenReader(database);
     add_tests_AutoStoryScreenEvents(database);
+}
+
+//  The RNG plan: its targets, attempts and the Starter RNG loop.
+static void add_tests_RngPlanning(UnitTestDatabase& database){
+    add_tests_RngTargetSearch(database);
+    add_tests_RngPlanInputs(database);
+    add_tests_RngPlan(database);
+    add_tests_RngPlanTracker(database);
+    add_tests_RngPlanLog(database);
+    add_tests_RngSteps(database);
+    add_tests_StarterRngLoop(database);
 }
 
 void add_tests(UnitTestDatabase& database){
@@ -108,6 +129,9 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStoryExport(database);
     add_tests_AutoStorySimulation(database);
     add_tests_AutoStoryItems(database);
+    add_tests_AutoStoryRngLoop(database);
+    add_tests_NamingScreen(database);
+    add_tests_RngPlanning(database);
 }
 
 
