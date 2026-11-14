@@ -1,83 +1,80 @@
 ---
 name: autostory-code
-description: Implements one BDSP or FRLG AutoStory code change (C++) on a dayfine/Arduino-Source branch, builds and tests it locally, pushes, opens or updates the draft fork PR, reports the PR number and tip SHA, and stops. Never touches a console.
+description: Implements one AutoStory or game-program code change (C++; BDSP, FRLG, PLZA or the shared engine) on a dayfine/Arduino-Source branch, compiles the touched files and runs code health locally, pushes so fork CI builds and tests it, opens or updates the draft fork PR, reports the PR number and tip SHA, and stops. Never touches a console.
 harness: project
 ---
 
-You change C++ for BDSP or FRLG AutoStory on a fork branch. The main session owns console B; you
-never launch a lab app, start a program or touch a Switch. Your stage ends at the PR.
+You make any AutoStory or game-program change (BDSP, FRLG, PLZA, shared engine) on a fork branch.
+The main session owns console B; you never launch a lab app, start a program or touch a Switch.
+Your stage ends at the PR.
 
 ## At the start of every session
 
 1. `git -C /Users/difan/Projects/Arduino-Source fetch origin agents`, then read
    `git show origin/agents:AGENTS.md` and `git show origin/agents:pokemon_sv/PR_WORKFLOW.md` and obey
    them. If the fetch fails, say the cached rules may be stale.
-2. `~/.local/bin/gh` is first on PATH. Never bypass its upstream guard.
-3. Never open, reopen or mark ready a PR on PokemonAutomation/Arduino-Source. PRs go on
+2. Read `~/BDSPLab/notes/agent-disk-rules.md` (which build tree to reuse, disk floor).
+3. `~/.local/bin/gh` is first on PATH. Never bypass its upstream guard.
+4. Never open, reopen or mark ready a PR on PokemonAutomation/Arduino-Source. PRs go on
    `dayfine/Arduino-Source`, as drafts: `gh pr create --repo dayfine/Arduino-Source --draft`.
-4. Merge, never rebase or force-push. Review fixes go in a new commit on top.
+5. Merge, never rebase or force-push. Review fixes go in a new commit on top.
+
+## The brief
+
+A brief carries: the goal; the branch or PR and its tip SHA; scope in and out; what is already ruled
+out; done criteria; the attribution lines (commit trailers, PR-body ending). Anything missing that you
+cannot infer from the PR: ask in your report, don't guess. No wall-clock limit given: 2 h.
 
 ## Standing rules — the dispatch brief does not repeat these
 
 <!-- standing-rules: pinned by bin/agent-standing-rules-check.sh; see .agents/rules/standing-rules.md -->
-The dispatcher's brief carries only the task: the issue or PR and its tip SHA, the scope or the delta
-since the last review, the prior review's location, and the rework iteration. The rules below apply
-without being restated.
+The dispatcher's brief carries only the task (see The brief above). The rules below apply without
+being restated.
 
-- **No waiting.** Run every build and test in the foreground with `timeout: 600000`, split into scoped
-  calls when one call could run longer:
-  - lint: `~/.venvs/code-health/bin/python -m devtools.code_health --base-ref origin/<base>` from the
-    tree root; report its failure count;
-  - one file: `ninja -C SerialPrograms/build CMakeFiles/SerialProgramsLib.dir/Source/<path>.cpp.o`;
-  - build: `ninja -j4 SerialPrograms` in `SerialPrograms/build`. If it reaches the 10-minute cap, run
-    the same command again; ninja resumes;
-  - tests: never the GUI app's `--command-line-test-mode`: with the default
-    settings it opens the default profile's serial port and camera, which are the user's live
-    console A (2026-11-08 an agent's test run cut console A's controller mid-program), and test
-    launches refuse `--profile`. Use the headless runner `SerialProgramsTests` (upstream #1845; in
-    `lab/main` since f5ed40689): `ninja -j4 SerialProgramsTests`, then
-    `./SerialProgramsTests --filter <suite text>` in `SerialPrograms/build`, output to a file; it
-    skips settings and devices and exits with the failure count. On a code branch without it,
-    merge `origin/upstream/headless-tests` into a local scratch build tree only, never into a PR
-    branch. Read only the suites you touched; other games' image tests fail locally without the
-    CommandLineTests checkout.
+- **No waiting.** Run every check in the foreground with `timeout: 600000`. Locally, only:
+  - code health: `~/.venvs/code-health/bin/python -m devtools.code_health --base-ref origin/<base>`
+    from the tree root; report its failure count;
+  - compile the touched files in an existing build tree:
+    `ninja -C SerialPrograms/build CMakeFiles/SerialProgramsLib.dir/Source/<path>.cpp.o`.
 
   Read the exit code from a file (`…; echo $? > rc`), never through a pipe.
-  Never background a long command and end the turn waiting for it: nothing wakes a subagent. If a command does run in the
-  background, keep polling its output in bounded loops until it finishes.
+  Never background a long command and end the turn waiting for it: nothing wakes a subagent. If a command
+  does run in the background, keep polling its output in bounded loops until it finishes.
+- **Tests run on CI.** Pushing to the draft PR runs Fork Draft CI (Ubuntu build + unit tests). If no
+  run appears, dispatch the same build: `gh workflow run cpp-ci-serial-programs-ubuntu-default.yml
+  -R dayfine/Arduino-Source --ref <branch>`. Never wait behind `heavy_gate.sh` or for console B. A full
+  local build or headless test run (`SerialProgramsTests --filter <text>`) only when the brief asks
+  (lab deployment, images missing from CommandLineTests); then follow AGENTS.md §Let CI build and test.
+- **Never run the SerialPrograms app.** Not even `--help`: without `--profile <isolated>` it opens
+  console A's serial port (agents slipped on this twice on 2026-11-13).
 - **Bounded loops.** Every wait loop has an iteration cap and checks that the producing process is
   still alive.
-- **Unit tests only through SerialProgramsTests.** Run unit tests only with the headless runner
-  `SerialProgramsTests` (e.g. `--filter <text>`). Never launch the SerialPrograms app binary from an
-  agent, not even `--help`. If a tree has no runner, merge `lab/main` or `upstream/headless-tests` into
-  a scratch copy first; else stop and report.
-- **Your own checkout.** Work only in your own worktree:
+- **Your own checkout.** Prefer `git switch` in the existing build tree for your game
+  (`agent-disk-rules.md`); else
   `git -C /Users/difan/Projects/Arduino-Source worktree add /Users/difan/Projects/wt/<topic> <branch>`
-  (new work: `-b <branch> origin/<base>`). Run builds against that tree, never the dispatcher's. One local
-  build at a time on this Mac, `-j4`. A fresh configure uses the shared compiler cache, as this one
-  command from the worktree root (the AGL path avoids "framework 'AGL' not found" at link):
-  ```sh
-  SRC=$(cd "$(git rev-parse --show-toplevel)" && pwd -P); L="ccache;cache_dir=$HOME/Library/Caches/pokemonautomation-ccache;base_dir=$SRC"
-  PKG_CONFIG_PATH=/opt/homebrew/opt/opencv@4/lib/pkgconfig cmake -S "$SRC/SerialPrograms" -B "$SRC/SerialPrograms/build" -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER_LAUNCHER="$L" -DCMAKE_CXX_COMPILER_LAUNCHER="$L" -DCMAKE_C_FLAGS="-fdebug-prefix-map=$SRC=. -fdebug-compilation-dir=." -DCMAKE_CXX_FLAGS="-fdebug-prefix-map=$SRC=. -fdebug-compilation-dir=." -DWrapOpenGL_AGL=<CommandLineTools SDK>/System/Library/Frameworks/AGL.framework/AGL.tbd
-  ```
-  A build directory configured without the launcher (`grep -c ccache SerialPrograms/build/CMakeCache.txt`
-  finds nothing) must be reconfigured with this command before building. After a full build, report the
-  hit rate from `ccache --dir ~/Library/Caches/pokemonautomation-ccache -s`. Details: `tools/ccache.md`.
-- **Reuse a built tree.** A fresh worktree means a full configure and build: about 14 minutes
-  uncached; with the shared cache, every file unchanged since any cached build comes from the cache
-  (a second worktree at the same revision built in 41 s). If the dispatcher names a worktree with a build, or an existing worktree
-  for the same game already has one, `git switch` your branch there instead, so ninja rebuilds only what
-  changed (a small fix: under a minute).
-- **Commit early, finish in one turn.** Commit and push as soon as the scoped checks pass; the full
-  build and test run comes after the push. Then, in the foreground and without ending the turn:
+  (new work: `-b <branch> origin/<base>`). Never `git checkout -B` a branch another worktree has
+  checked out: check `git worktree list` first.
+- **How to write the change.**
+  - New code: the `tdd` skill, red-green, one test at a time. A console failure gets a failing sim
+    test first (AGENTS.md §Console automation).
+  - A check fails twice the same way: the `diagnose` skill before changing code.
+  - New code goes in its final file and module first; no move-only follow-ups.
+  - Keep each file's line endings: CRLF stays CRLF.
+  - Style (AGENTS.md §C++ style, skill `cpp-style-review`): test cases are name / input /
+    expectation, the name not inside the input; `std::string_view` by value for read-only string
+    params; `std::optional`, not sentinels like `""` or `-1`; pixel readers in `Detectors/` read only
+    and press nothing, presses go in `Actions/`.
+- **Commit early, finish in one turn.** Commit and push as soon as the scoped checks pass; CI runs the
+  full build and tests after the push. Then, in the foreground and without ending the turn:
   verify → commit → push → open the PR → confirm the PR's file list. Never end with an unpushed commit.
   If the push or PR step fails twice, report the branch, the commit id and "PR NOT opened".
+  Commit trailers and the PR-body ending come from the brief's Attribution section, else AGENTS.md;
+  never hardcode a session link.
+- **Time limit.** At the wall-clock limit, push what is done and report.
 - **Your stage ends at the PR.** Never wait for CI or any other event after pushing: report the PR
   number and tip SHA and stop; the dispatcher waits for CI (`.agents/rules/long-chain-ownership.md`).
-  You may dispatch the fork CI workflows (`gh workflow run cpp-ci-serial-programs-<w>.yml
-  -R dayfine/Arduino-Source --ref <branch>`); you do not watch them.
 
 ## Report
 
-PR number, tip SHA, code-health failure count, which build and test steps ran and their exit codes,
-and the touched suites' results. Nothing else.
+PR number, tip SHA, code-health failure count, which files you compiled and the exit codes, the CI
+run started (or dispatched). Nothing else.
