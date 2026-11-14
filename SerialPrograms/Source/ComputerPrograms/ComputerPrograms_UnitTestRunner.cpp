@@ -35,12 +35,15 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 
+#include "Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner_Tests.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker_Tests.h"
 #include "Pokemon/Navigation/Pokemon_MapData_Tests.h"
+#include "Pokemon/Navigation/Pokemon_MoveMechanics_Tests.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog_Tests.h"
 #include "Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h"
 #include "Pokemon/Navigation/Pokemon_WallRecovery_Tests.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_SimGolden_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
 #include "VideoGames/PokemonLA/PokemonLA_Tests.h"
@@ -83,8 +86,11 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_LegWalker(ret);
     Pokemon::add_tests_WallRecovery(ret);
     Pokemon::add_tests_MapData(ret);
+    Pokemon::add_tests_ConnectedMaps(ret);
+    Pokemon::add_tests_MoveMechanics(ret);
     Pokemon::add_tests_RuntimeMap(ret);
     Pokemon::add_tests_RouteLog(ret);
+    Pokemon::add_tests_SimGolden(ret);
     Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
@@ -122,6 +128,25 @@ const StringSelectDatabase& TEST_DATABASE(){
     return DATABASE;
 }
 
+
+namespace{
+
+//  For each test in `UNIT_TESTS_ALL()` whose name contains `filter`, in name order, call
+//  `add_test(test)`. An empty `filter` matches all the tests. Return the number of tests
+//  visited.
+template <class AddTest>
+size_t add_tests_matching(const std::string& filter, AddTest&& add_test){
+    size_t count = 0;
+    for (const auto& test : UNIT_TESTS_ALL()){
+        if (filter.empty() || test.first.contains(filter)){
+            count++;
+            add_test(test.second);
+        }
+    }
+    return count;
+}
+
+}
 
 
 
@@ -253,15 +278,12 @@ void UnitTestRunner::on_config_value_changed(void* object){
     if (object == &SUBSTRING_TEST){
         std::string name = SUBSTRING_TEST;
         TESTS_TO_RUN.set("");
-        size_t count = 0;
-        for (const auto& test : UNIT_TESTS_ALL()){
-            if (test.first.contains(name)){
-                count++;
-                if (count <= 1000){
-                    TESTS_TO_RUN.append(test.first + "\n");
-                }
+        size_t num_shown = 0;
+        size_t count = add_tests_matching(name, [&](std::shared_ptr<const UnitTest> test){
+            if (++num_shown <= 1000){
+                TESTS_TO_RUN.append(test->name() + "\n");
             }
-        }
+        });
         if (count > 1000){
             TESTS_TO_RUN.append("<" + tostr_u_commas(count - 1000) + " more...>\n");
         }
@@ -292,6 +314,12 @@ void UnitTestRunner::program(ProgramEnvironment& env, CancellableScope& scope){
 
     const UnitTestDatabase& all_tests = UNIT_TESTS_ALL();
 
+    auto add_matching = [&](const std::string& filter){
+        add_tests_matching(filter, [&](std::shared_ptr<const UnitTest> test){
+            runner.add_test(test);
+        });
+    };
+
     switch ((RunMode)RUN_MODE){
     case RunMode::RUN_ONE:{
         auto iter = all_tests.find(SINGLE_TEST.slug());
@@ -305,21 +333,12 @@ void UnitTestRunner::program(ProgramEnvironment& env, CancellableScope& scope){
         runner.add_test(iter->second);
         break;
     }
-    case RunMode::RUN_SUBSTRING_MATCH:{
-        std::string name = SUBSTRING_TEST;
-        for (const auto& test : all_tests){
-            if (test.first.contains(name)){
-                runner.add_test(test.second);
-            }
-        }
+    case RunMode::RUN_SUBSTRING_MATCH:
+        add_matching(SUBSTRING_TEST);
         break;
-    }
-    case RunMode::RUN_ALL:{
-        for (const auto& test : all_tests){
-            runner.add_test(test.second);
-        }
+    case RunMode::RUN_ALL:
+        add_matching("");
         break;
-    }
     }
 
     runner.run();
@@ -381,7 +400,7 @@ void UnitTestRunner::on_test_finished(
 
 
 
-bool CommandLineUnitTestRunner::run(bool augment_color_distortions){
+bool CommandLineUnitTestRunner::run(bool augment_color_distortions, const std::string& test_substring){
     if (augment_color_distortions){
         //  Load the distortion data before any test runs. Each `ImageUnitTest` checks the global
         //  manager when it runs, and only runs with distortions if it is loaded.
@@ -407,8 +426,15 @@ bool CommandLineUnitTestRunner::run(bool augment_color_distortions){
         GlobalThreadPools::unlimited_normal()
     );
     runner.add_listener(*this);
-    for (const auto& test : UNIT_TESTS_ALL()){
-        runner.add_test(test.second);
+    size_t num_matching = add_tests_matching(test_substring, [&](std::shared_ptr<const UnitTest> test){
+        runner.add_test(test);
+    });
+    if (!test_substring.empty()){
+        if (num_matching == 0){
+            m_logger.log("No test name contains \"" + test_substring + "\". No tests will be run.", COLOR_ORANGE);
+        }else{
+            m_logger.log("Running the " + tostr_u_commas(num_matching) + " tests whose name contains \"" + test_substring + "\"");
+        }
     }
     runner.run();
 

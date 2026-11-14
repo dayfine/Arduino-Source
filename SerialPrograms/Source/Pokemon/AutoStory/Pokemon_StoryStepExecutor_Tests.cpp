@@ -727,18 +727,18 @@ UnitTestResult test_lint(){
 }
 
 
-struct StoryStepInput{
-    std::string name;
-    UnitTestResult (*test)();
-};
-
-struct StoryStepExpectation{
-    std::string_view description;
-};
-
 struct StoryStepTestCase{
-    StoryStepInput input;
-    StoryStepExpectation expectation;
+    struct Input{
+        std::string name;
+        UnitTestResult (*test)();
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryStepExecutor : public UnitTest{
