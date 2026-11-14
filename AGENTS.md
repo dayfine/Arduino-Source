@@ -27,6 +27,7 @@ code branches keep only a stub workflow that checks this branch out to run it. O
 | Console runs: a failure becomes a sim regression test, wait by detector, FRLG has one save slot | [Console automation](#console-automation-bdsp-and-frlg-autostory) | Red test before the fix; no fixed delays; never rerun an earlier checkpoint on a later save. |
 | C++ style, incl. `std::string_view` by value | [C++ style](#c-style), [Code conventions](#code-conventions-for-pr-branches) | Repo style first, then Google/Abseil as adopted there. |
 | Shell commands | [Commands: keep them tight](#commands-keep-them-tight) | One purpose per command, no broad scans, no `rm` on globs. |
+| Disk: keep ≥ 30 GB free; remove your own temp trees | [Disk](#disk) | `df -h ~` before a build, clone or CommandLineTests checkout; below 30 GB, stop and report. |
 
 **Agents and skills**
 
@@ -79,7 +80,7 @@ There are two different checks, and neither replaces the other:
 | BBQ notes and run records | [pokemon_sv/](pokemon_sv/) ([where to look first](#plans-and-state-where-to-look-first)) | Milestones, ledgers, runs. |
 | Harness and trial records | [harness/](harness/) | ccache trial, FRLG license notes, issue #40 state. |
 | Fork branch sync | launchd `com.dayfine.pa-sync`, 07:00: `~/Projects/pa-tools/sync_branches.py` | Needs `~/.zshenv` for `GH_TOKEN`. Logs: `~/Library/Logs/pa-sync/`. |
-| Lab disk GC | launchd `com.dayfine.lab-disk-gc`, 06:30: `~/BDSPLab/disk_gc.sh --apply` | Old shots, builds, idle pushed worktrees. Log: `~/Library/Logs/lab-disk-gc/gc.log`. Extend it, don't add jobs. |
+| Lab disk GC | launchd `com.dayfine.lab-disk-gc`, 06:30 daily and hourly when low: `~/BDSPLab/disk_gc.sh --apply` | Old shots, builds, idle pushed worktrees. Log: `~/Library/Logs/lab-disk-gc/gc.log`. Extend it, don't add jobs. |
 
 ## Session startup from a code checkout
 
@@ -142,6 +143,20 @@ obviously safe.
 - **No broad scans.** No `find`/`du`/`ls -R` from `/` or `~`, and no `system_profiler` in loops:
   they walk network volumes and trigger macOS privacy prompts. Use explicit paths.
 - **Wait with one background command,** not chained `sleep`s.
+
+## Disk
+
+Keep disk under control on this Mac (the user's request, 2026-11-02).
+
+- **Keep at least 30 GB free.** Run `df -h ~` before any build, clone or CommandLineTests
+  checkout. Below 30 GB, stop and report instead of starting.
+- **Prefer sparse or blobless clones** (`--filter=blob:none`, `git sparse-checkout`), and one build
+  folder per tree.
+- **Whoever creates a temp worktree or clone removes it** when the task ends, once it is clean and
+  pushed: `git worktree remove <path>`, or delete the clone.
+- **The disk GC job is a backstop, not your cleanup.** `~/BDSPLab/disk_gc.sh` (launchd
+  `com.dayfine.lab-disk-gc`, daily and hourly when low) removes idle clean pushed trees under
+  `~/.claude/jobs/*/tmp` and `/private/tmp/claude-wt`. Don't rely on it for your own.
 
 ## Roles
 
