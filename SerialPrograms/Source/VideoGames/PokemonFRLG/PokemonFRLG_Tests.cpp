@@ -64,6 +64,8 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows15_Tests.h"
 #include "Overworld/PokemonFRLG_OverworldGateMaps_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryGates_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryFailureClasses_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryLaunch_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows13_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows16_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows17_Tests.h"
@@ -136,6 +138,8 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryBoulders(database);
     add_tests_AutoStoryLeague(database);
     add_tests_AutoStoryGates(database);
+    add_tests_AutoStoryFailureClasses(database);
+    add_tests_AutoStoryLaunch(database);
     add_tests_OverworldGateMaps(database);
     add_tests_AutoStorySaffronGym(database);
 }

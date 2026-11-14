@@ -1636,6 +1636,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryGame.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryPoseConcept.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryPoseConcept.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryStepRunner.cpp
@@ -1690,6 +1694,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryFailureClasses.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryFailureClasses.h
+    Source/Pokemon/AutoStory/Pokemon_StoryFailureClasses_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryFailureClasses_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryInterrupts.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryInterrupts.h
     Source/Pokemon/AutoStory/Pokemon_StoryInterrupts_Tests.cpp
@@ -2247,8 +2255,16 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryGenderMenu.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryItems_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFaultSweep_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFailureClasses.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFailureClasses.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFailureClasses_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFailureClasses_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFaultSweep_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLavender_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLaunch.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLaunch.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLaunch_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLaunch_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTower_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySnorlax_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPartyRoster_Tests.cpp

@@ -91,24 +91,44 @@ struct MansionRow{
     std::vector<std::string> floors;
 };
 
+//  The story maps with Pokemon Mansion 3F's stairs from 2F (warp_0) landing
+//  the player a tile east of the warp (8, 3). Console B left the player on
+//  (9, 3) on all three 13.01 runs: the warp's leg screenshot shows the
+//  statue (12, 5) three tiles east, not four (2026-11-13 19:17, 2026-11-14
+//  01:26 and 02:12). The route believed (8, 3), and its open legs ended on
+//  (13, 6), a tile east of the statue's.
+const std::vector<MapData>& mansion_3f_arrival_east_maps(){
+    static const std::vector<MapData> maps = []{
+        std::vector<MapData> copy = story_maps();
+        for (MapData& map : copy){
+            if (map.name == "PokemonMansion_3F"){
+                map.points["warp_0"] = TilePos{9, 3};
+            }
+        }
+        return copy;
+    }();
+    return maps;
+}
+
 //  A row on the sim from its start, through the gates it has on a save
 //  (start_gates): every step lands (a route presses the statues it needs),
 //  the row ends on its postcondition's tile after the floors it should
 //  cross, the switch is as its last step says, and nobody but Lewis is met
-//  and no rule is broken on the way (checked after each step).
-UnitTestResult test_row(const MansionRow& expected){
+//  and no rule is broken on the way (checked after each step). The steps
+//  are planned on the story maps and walked on `sim_maps`.
+UnitTestResult test_row(const MansionRow& expected, const std::vector<MapData>& sim_maps = story_maps()){
     const StoryCheckpoint& row = checkpoint(expected.id);
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     SimScript script;
     script.gates = row.start_gates.value_or(Pokemon::GateState());
     std::optional<OverworldSim> sim;
-    sim.emplace(story_maps(), MapPosition{at.map, at.tile}, *at.facing, script);
+    sim.emplace(sim_maps, MapPosition{at.map, at.tile}, *at.facing, script);
     std::vector<std::string> floors;
     for (const StoryStep& step : row.steps){
         if (step.name == "escape_rope"){
             //  The rope's script has no map: the player stands where it says.
             at = *story_pose(Pokemon::pose_of(*step.pose_after));
-            sim.emplace(story_maps(), MapPosition{at.map, at.tile}, *at.facing, script);
+            sim.emplace(sim_maps, MapPosition{at.map, at.tile}, *at.facing, script);
         }else if (const std::string failure = row_step_on_sim(*sim, at, step, row.id); !failure.empty()){
             return std::format("{}: ended on {}; {}", row.id, to_string(sim->state().position), failure);
         }
@@ -153,6 +173,13 @@ const AutoStoryMansionCase AUTO_STORY_MANSION_CASES[] = {
     {
         .input = {.name = "13.01 Cinnabar to the Mansion's 3F room of holes", .body = []{ return test_row(ROW_13_01); }},
         .expectation = {.description = "through 1F and 2F to 3F's (19, 13) by a statue press, nobody met"},
+    },
+    {
+        .input = {
+            .name = "13.01 with 3F's stairs landing a tile east of the warp",
+            .body = []{ return test_row(ROW_13_01, mansion_3f_arrival_east_maps()); },
+        },
+        .expectation = {.description = "the statue pressed from (12, 6) all the same, on to 3F's (19, 13)"},
     },
     {
         .input = {.name = "13.02 3F's hole, 1F's stairs", .body = []{ return test_row(ROW_13_02); }},

@@ -33,6 +33,8 @@
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRngConsoleSteps.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRngLoop.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryFailureClasses.h"
+#include "PokemonFRLG_AutoStoryLaunch.h"
 #include "PokemonFRLG_AutoStoryRngLoop.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStory.h"
@@ -250,10 +252,12 @@ void require_preflight(ConsoleHandle& console, ProControllerContext& context){
     throw_if_not_started(console, Pokemon::StoryPreflight::read(console, context).check());
 }
 
-//  What FRLG lends the shared shell: the console's preflight; a load is a soft reset, checked
-//  against the save card for the map the checkpoint under way starts on,
-//  then the supplies the save had, read from its bag again; the engine's
-//  lines go to the console's log.
+//  What FRLG lends the shared shell: the console's preflight; a load is
+//  the game closed and launched again from HOME (launch_frlg_save()),
+//  checked against the save card for the map the checkpoint under way
+//  starts on, then the supplies the save had, read from its bag again; the
+//  engine's lines go to the console's log, each failure line tagged with
+//  its class (tag_failure_line()).
 Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, StoryEnv& story){
     Pokemon::StoryGameHooks game;
     game.preflight = [&story]{
@@ -263,12 +267,7 @@ Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, StoryEnv
         if (!story.has_save){
             return Pokemon::outcome_failed("no_save", "nothing saved yet");
         }
-        try{
-            soft_reset(story.console, story.context);
-        }catch (OperationFailedException& e){
-            return Pokemon::outcome_failed("reload_failed", e.message());
-        }
-        return Pokemon::outcome_ok();
+        return launch_frlg_save(story.console, story.context);
     };
     //  The save reloaded must be where the checkpoint starts: a save that
     //  didn't happen leaves an older one (console B, 2026-11-02: 01.03
@@ -295,7 +294,7 @@ Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, StoryEnv
         return Pokemon::outcome_ok();
     };
     game.log = [&env](const std::string& line){
-        env.console.log(line);
+        env.console.log(tag_failure_line(line));
     };
     //  The checkpoint and the step under way, for whoever watches the stream.
     game.status = [&env](const std::string& line){
