@@ -60,6 +60,8 @@ struct RoutePlanning{
     RouteCosts costs = default_route_costs();
     std::optional<MapPosition> start;
     std::string label = "Route";
+    //  The checkpoint the route belongs to, for its [Leg] records.
+    std::string checkpoint;
     WallCheck wall_check = WallCheck::TAP;
     OpenLegCheck open_leg_check = OpenLegCheck::REANCHOR;
 };

@@ -735,11 +735,17 @@ StepOutcome OverworldSimWalker::walk(const RouteStep& step, std::optional<Direct
         clear_late(interrupts(step), OPEN_MESSAGE_WATCH, 1);
     }
     check_overworld(step);
+    const MapPosition before = m_sim.state().position;
     if (const std::optional<WalkedTiles> walked = walk_step(step, facing)){
         return StepOutcome{.end = StepEnd::STOPPED, .walked = walked};
     }
     if (step.action == RouteAction::FACE){
         return StepOutcome{};
+    }
+    //  What the console reads off the screen: whether the map scrolled.
+    HoldMovement movement = HoldMovement::UNMEASURED;
+    if (step.action == RouteAction::WALK && !step.warps){
+        movement = m_sim.state().position == before ? HoldMovement::NONE : HoldMovement::MOVED;
     }
     size_t late = clear_late(interrupts(step), step.wild ? m_rules.after_wild_leg_watch : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG);
     if (late == 0){
@@ -747,7 +753,7 @@ StepOutcome OverworldSimWalker::walk(const RouteStep& step, std::optional<Direct
     }
     const bool done = late == 0 || step.warps || step.action != RouteAction::WALK;
     if (done){
-        return StepOutcome{};
+        return StepOutcome{.end = StepEnd::DONE, .walked = std::nullopt, .movement = movement};
     }
     return StepOutcome{.end = StepEnd::LATE, .walked = late_stop(step)};
 }

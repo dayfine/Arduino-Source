@@ -161,7 +161,7 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const 
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given. From a set of tiles
     //  the start isn't known: the walker reads the facing.
-    const RoutePlanning planning{.maps = &maps, .costs = story_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
+    const RoutePlanning planning{.maps = &maps, .costs = story_route_costs(), .start = start, .label = step.name, .checkpoint = env.checkpoint, .wall_check = wall_check(env)};
     walk_overworld_route_with_recovery(env.console, env.context, *route, planning, facing, interrupts, move_speed(step));
     log_arrival(env, step.name, target->map, target->tile);
     const std::optional<Direction> end_facing = route->empty() ? facing : std::optional<Direction>(route->back().facing_after);
@@ -185,7 +185,7 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     const OverworldInterruptSet interrupts = walk_interrupts(env, step);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
-    const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
+    const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = start, .label = step.name, .checkpoint = env.checkpoint, .wall_check = wall_check(env)};
     walk_overworld_route_with_recovery(env.console, env.context, *route, planning, facing, interrupts, move_speed(step));
     log_arrival(env, step.name, route->back().end.map, route->back().end.point);
     return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
@@ -888,6 +888,7 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
         [&env](const std::string& line){ env.console.log(line, COLOR_ORANGE); }
     );
     env.start_map = data.start ? Pokemon::grid_pose_of(*data.start).map : "";
+    env.checkpoint = data.id;
     env.start_menu = data.menu;
     const StartMenu menu = data.menu;
     checkpoint.save = [&env, menu, id = data.id](RunState&){
