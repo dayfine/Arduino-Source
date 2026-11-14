@@ -11,6 +11,7 @@
 #ifndef PokemonAutomation_Pokemon_StoryWireCases_H
 #define PokemonAutomation_Pokemon_StoryWireCases_H
 
+#include <cstddef>
 #include <string>
 
 namespace PokemonAutomation{

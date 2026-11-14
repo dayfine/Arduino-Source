@@ -11,7 +11,9 @@
 #include <array>
 #include <format>
 #include <iostream>
+#include <cstddef>
 #include <span>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <variant>
@@ -23,7 +25,11 @@
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
+#include "Pokemon/AutoStory/Types/Pokemon_DeclaredPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.h"
+#include "Pokemon/Navigation/Pokemon_Direction.h"
 #include "StoryWireCases.h"
 
 namespace PokemonAutomation{
@@ -233,10 +239,14 @@ JsonValue step_json(const StoryStep& step){
 JsonObject verified_json(const StoryVerification& verified){
     JsonObject out;
     out["steps_hash"] = JsonValue(verified.steps_hash);
-    for (const auto& [key, value] : {std::pair{"build", &verified.build}, {"date", &verified.date}, {"runs", &verified.runs}}){
-        if (!value->empty()){
-            out[key] = JsonValue(*value);
-        }
+    if (!verified.build.empty()){
+        out["build"] = JsonValue(verified.build);
+    }
+    if (!verified.date.empty()){
+        out["date"] = JsonValue(verified.date);
+    }
+    if (!verified.runs.empty()){
+        out["runs"] = JsonValue(verified.runs);
     }
     return out;
 }
@@ -367,9 +377,13 @@ std::string check_case(const JsonObject& test, std::span<const StoryActionSpec> 
     const std::string name = input.get_string_throw("name");
     const JsonValue* rejected = expectation.get_value("rejected");
     const bool want_rejected = rejected != nullptr && rejected->to_boolean_throw();
+    //  The case's own fields are read outside the try: a malformed case file
+    //  throws and fails the run, it is not a reader rejection.
+    const std::string record = input.get_string_throw("record");
+    const JsonValue& value = input.get_value_throw("value");
     JsonValue read;
     try{
-        read = read_record(input.get_string_throw("record"), input.get_value_throw("value"), name, actions);
+        read = read_record(record, value, name, actions);
     }catch (const ParseException& error){
         return want_rejected ? "" : std::format("Unexpected parse failure: {}", error.message());
     }

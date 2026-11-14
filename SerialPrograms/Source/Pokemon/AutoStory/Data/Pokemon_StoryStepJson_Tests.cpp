@@ -9,20 +9,23 @@
  *
  */
 
+#include <cstdint>
 #include <format>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <variant>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonValue.h"
+#include "Pokemon/AutoStory/Types/Pokemon_DeclaredPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.h"
+#include "Pokemon/Navigation/Pokemon_Direction.h"
 #include "Pokemon_StoryStepJson.h"
-#ifdef PA_STORY_DATA_STANDALONE
-#include "devtools/story-data-tests/StoryWireCases.h"
-#else
 #include "Pokemon_StoryStepJson_Tests.h"
-#endif
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -272,28 +275,21 @@ void add_tests_StoryStepJson(UnitTestDatabase& database){
     }
 }
 
+#else
+
+size_t run_story_step_json_cases(){
+    size_t failed = 0;
+    for (const WireCase& test : CASES){
+        const std::string error = check_case(test);
+        std::cout << test.input.name << ": " << (error.empty() ? "PASS" : error) << '\n';
+        failed += !error.empty();
+    }
+    return failed;
+}
+
 #endif
 
 
 
 } // namespace Pokemon
 } // namespace PokemonAutomation
-
-
-#ifdef PA_STORY_DATA_STANDALONE
-
-//  With a path, check PokemonSimulation's shared wire-case file instead.
-int main(int argc, char** argv){
-    if (argc == 2){
-        return PokemonAutomation::Pokemon::check_story_wire_cases(argv[1]) != 0;
-    }
-    int failed = 0;
-    for (const auto& test : PokemonAutomation::Pokemon::CASES){
-        const std::string error = PokemonAutomation::Pokemon::check_case(test);
-        std::cout << test.input.name << ": " << (error.empty() ? "PASS" : error) << '\n';
-        failed += !error.empty();
-    }
-    return failed != 0;
-}
-
-#endif

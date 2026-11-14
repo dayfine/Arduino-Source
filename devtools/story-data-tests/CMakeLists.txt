@@ -11,6 +11,7 @@ add_executable(StoryDataTests
     "${STORY}/Data/Pokemon_StoryStepJson.cpp"
     "${STORY}/Data/Pokemon_StoryStepJson_Tests.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/StoryWireCases.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/StoryDataMain.cpp"
     "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Pokemon_Direction.cpp"
     "${STORY}/Pokemon_BuiltinStoryActions.cpp"
     "${STORY}/Types/Pokemon_StoryActionArg.cpp"
@@ -30,6 +31,7 @@ get_target_property(STORY_DATA_SOURCES StoryDataTests SOURCES)
 list(REMOVE_ITEM STORY_DATA_SOURCES
     "${STORY}/Data/Pokemon_StoryStepJson_Tests.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/StoryWireCases.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/StoryDataMain.cpp"
     "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Pokemon_Direction.cpp")
 add_executable(AuthoredCheckpointTests ${STORY_DATA_SOURCES}
     "${STORY}/Data/Pokemon_AuthoredCheckpointJson.cpp"
