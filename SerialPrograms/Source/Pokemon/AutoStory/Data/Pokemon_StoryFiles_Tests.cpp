@@ -93,6 +93,8 @@ struct LoadCase{
     struct Input{
         std::vector<EmbeddedJsonFile> builtin;
         std::vector<StoryDevFile> dev_files = {};
+        //  Whether the game plays its rows in id order, not file-name order.
+        bool ordered_by_id = false;
     };
     Input input;
     struct Expectation{
@@ -111,6 +113,9 @@ const EmbeddedJsonFile ROW_2 = {"test-01.02.plan", file_text("01.02", R"({"dev_o
 StoryDevFile dev_file(std::string_view name, std::string text){
     return StoryDevFile{.name = std::string(name), .path = std::format("/dev/{}", name), .text = std::move(text)};
 }
+
+//  Named to come after 01.01 by file name, before it by id.
+const EmbeddedJsonFile ROW_0B_MENU = {"test-01.10.plan", file_text("01.00b", R"({"save": "menu"})")};
 
 const LoadCase LOAD_CASES[] = {
     {
@@ -186,13 +191,29 @@ const LoadCase LOAD_CASES[] = {
         .input = {.builtin = {ROW_0, {"test-00.00.plan", file_text("00.00", R"({"reload_when_chained": true})")}}},
         .expectation = {.error = "test-00.00.plan: reload_when_chained on a checkpoint with no save to reload"},
     },
+    {
+        .name = "the game's order, its reload after the autosave row it follows there",
+        .input = {.builtin = {ROW_1, ROW_0}, .ordered_by_id = true},
+        .expectation = {.summary = "rows 01.00 01.01 | titles Row Row | autosave 01.00 | chained 01.01 | always  | dev_only  | dev "},
+    },
+    {
+        .name = "the game's order, its reload after a row that does not autosave there fails",
+        .input = {.builtin = {ROW_0, ROW_1, ROW_0B_MENU}, .ordered_by_id = true},
+        .expectation = {.error = "test-01.01.plan: reload_when_chained after a checkpoint that does not end on the game's autosave"},
+    },
 };
 
 UnitTestResult check_load(const LoadCase& test){
+    StoryFileReader<StoryCheckpoint> reader = TEST_READER;
+    if (test.input.ordered_by_id){
+        reader.plays_before = [](const StoryCheckpoint& a, const StoryCheckpoint& b){
+            return a.id < b.id;
+        };
+    }
     std::string got;
     std::string error;
     try{
-        got = summary(load_story_data<StoryCheckpoint>(test.input.builtin, test.input.dev_files, TEST_READER));
+        got = summary(load_story_data<StoryCheckpoint>(test.input.builtin, test.input.dev_files, reader));
     }catch (const ParseException& e){
         error = e.message();
     }

@@ -17,6 +17,7 @@
 #ifndef PokemonAutomation_Pokemon_StoryFiles_H
 #define PokemonAutomation_Pokemon_StoryFiles_H
 
+#include <algorithm>
 #include <functional>
 #include <optional>
 #include <span>
@@ -31,13 +32,6 @@
 namespace PokemonAutomation{
 namespace Pokemon{
 
-
-//  A game's story: its checkpoints in order, and the rows their execution
-//  fields mark.
-template <typename Checkpoint>
-struct StoryData : StoryRows{
-    std::vector<Checkpoint> checkpoints;
-};
 
 //  What a game reads from one checkpoint file.
 template <typename Checkpoint>
@@ -59,14 +53,18 @@ struct StoryFileReader{
     //  Whether a row starts with no save to load (a new game): it may not
     //  reload. None set: every row starts from a save.
     std::function<bool(const Checkpoint&)> starts_without_save = {};
+    //  Whether the game plays checkpoint `a` before `b`, when that is not
+    //  the order of its files' names. None set: file-name order.
+    std::function<bool(const Checkpoint& a, const Checkpoint& b)> plays_before = {};
 };
 
 
-//  The story of the built-in checkpoint files `builtin`, in their order,
-//  each of `dev_files` in place of the built-in file of its name. Throws
-//  ParseException naming the file when a file does not parse, a dev file
-//  matches no built-in file, changes its checkpoint's id or fails the
-//  game's lint, or a row reloads a save it cannot count on.
+//  The story of the built-in checkpoint files `builtin`, in their order or
+//  the game's (StoryFileReader::plays_before), each of `dev_files` in place
+//  of the built-in file of its name. Throws ParseException naming the file
+//  when a file does not parse, a dev file matches no built-in file, changes
+//  its checkpoint's id or fails the game's lint, or a row reloads a save it
+//  cannot count on in the order the story plays.
 template <typename Checkpoint>
 StoryData<Checkpoint> load_story_data(
     std::span<const EmbeddedJsonFile> builtin, std::span<const StoryDevFile> dev_files,
@@ -151,21 +149,33 @@ StoryData<Checkpoint> load_story_data(
 ){
     detail::check_dev_file_names(builtin, dev_files);
     StoryData<Checkpoint> data;
+    struct SourcedRow{
+        StoryFileRow<Checkpoint> row;
+        std::string_view source;
+    };
+    std::vector<SourcedRow> rows;
     for (const auto& [name, text] : builtin){
         const StoryDevFile* dev = detail::find_dev_file(dev_files, name);
-        StoryFileRow<Checkpoint> row = dev == nullptr
-            ? reader.read(text, name)
-            : detail::read_dev_file(*dev, text, name, reader);
-        if (dev != nullptr){
-            data.dev_files.emplace_back(dev->name, dev->path);
+        if (dev == nullptr){
+            rows.push_back({reader.read(text, name), name});
+            continue;
         }
+        rows.push_back({detail::read_dev_file(*dev, text, name, reader), dev->path});
+        data.dev_files.emplace_back(dev->name, dev->path);
+    }
+    if (reader.plays_before){
+        std::stable_sort(rows.begin(), rows.end(), [&](const SourcedRow& a, const SourcedRow& b){
+            return reader.plays_before(a.row.checkpoint, b.row.checkpoint);
+        });
+    }
+    //  A reload loads the save the row before it in play ends on.
+    for (auto& [row, source] : rows){
         const bool new_game = reader.starts_without_save && reader.starts_without_save(row.checkpoint);
         detail::add_story_row(
             row.checkpoint.id, row.execution,
             new_game ? detail::RowSave::WITHOUT_SAVE : detail::RowSave::FROM_SAVE,
             data.checkpoints.empty() ? std::nullopt : std::optional<std::string_view>(data.checkpoints.back().id),
-            dev == nullptr ? std::string_view(name) : std::string_view(dev->path),
-            data
+            source, data
         );
         data.checkpoints.push_back(std::move(row.checkpoint));
     }
