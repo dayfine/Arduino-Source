@@ -14,8 +14,13 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryFieldMoves.h"
+#include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryPoses.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
+#include "PokemonFRLG_AutoStoryTrainerMessage.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -41,6 +46,58 @@ bool presses_through_text(StoryStepKind kind){
     default:
         return false;
     }
+}
+
+namespace{
+
+//  Whether `step`'s first input is A on what the player faces.
+bool presses_a_first(const Pokemon::StoryStep& step){
+    if (step.kind != StoryStepKind::GAME){
+        return false;
+    }
+    return step.action == CUT_TREE_VARIANT || step.action == PUSH_BOULDER_VARIANT
+        || step.action == POSTER_SWITCH_VARIANT || parse_surf_step(step).has_value();
+}
+
+} // namespace
+
+std::string clear_box_before_a(
+    const Pokemon::StoryStep& step,
+    const Pokemon::ScreenLookFunction& look, const std::function<void()>& clear_box
+){
+    if (!presses_a_first(step)){
+        return "";
+    }
+    const Pokemon::ScreenSettle before = Pokemon::judge_settle(look(true));
+    if (!before.showing.has(ScreenEvent::DIALOG_BOX)){
+        return "";
+    }
+    clear_box();
+    //  The overworld after the box, quiet as after a battle: its next input
+    //  is the step's A.
+    const Pokemon::ScreenSettle after = wait_for_quiet_overworld(
+        look, MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT
+    );
+    return std::format("Story: box open before {}: cleared with B, then {}.", step.name, Pokemon::describe(after));
+}
+
+Pokemon::StoryActionFunction clearing_box_first(
+    Pokemon::StoryActionFunction act, const Pokemon::StoryInterrupts& interrupts, Logger& logger
+){
+    return [act = std::move(act), &interrupts, &logger](const Pokemon::StoryStep& step, Pokemon::RunState& state){
+        const Pokemon::InterruptHandler* dialog = interrupts.handlers.find(InterruptKind::DIALOG);
+        const std::string cleared = clear_box_before_a(step, interrupts.look, [&]{
+            if (dialog != nullptr && dialog->handle){
+                Pokemon::InterruptVerdict verdict;
+                verdict.kind = InterruptKind::DIALOG;
+                dialog->handle(verdict, state);
+            }
+        });
+        if (!cleared.empty()){
+            logger.log(cleared, COLOR_ORANGE);
+        }
+        return act(step, state);
+    };
 }
 
 StepInterruptActions console_interrupt_actions(

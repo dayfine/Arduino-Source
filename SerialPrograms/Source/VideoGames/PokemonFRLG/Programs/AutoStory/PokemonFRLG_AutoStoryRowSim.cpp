@@ -377,6 +377,28 @@ std::optional<std::vector<RouteStep>> walked_route(
 }
 
 
+namespace{
+
+//  The boxes B goes through before a step, as clear_text()'s.
+constexpr int MAX_SIM_BOXES = 5;
+
+//  The sim's look between steps, as ConsoleScreenLook's: each shows the
+//  sim's screens for BETWEEN_STEPS_LOOK, from the last fresh one.
+Pokemon::ScreenLookFunction sim_screen_look(OverworldSim& sim){
+    return [&sim, from = sim.state().time](bool fresh) mutable{
+        if (fresh){
+            from = sim.state().time;
+        }
+        sim.watch({}, BETWEEN_STEPS_LOOK);
+        return Pokemon::ScreenLook{
+            .log = screen_event_log(sim.state(), from),
+            .window = {.start = sim_wall_clock(from), .end = sim_wall_clock(sim.state().time)},
+        };
+    };
+}
+
+} // namespace
+
 OverworldStepSim::OverworldStepSim(OverworldSim& sim, std::string row, StoryPose at)
     : Pokemon::TableExecutor(m_table, m_guard)
     , m_sim(sim)
@@ -387,6 +409,21 @@ OverworldStepSim::OverworldStepSim(OverworldSim& sim, std::string row, StoryPose
 }
 
 Pokemon::StoryAction OverworldStepSim::action(StoryActionId id){
+    Pokemon::StoryAction played_action = step_action(id);
+    //  As the console's StoryExecutor: a step that presses A first clears a
+    //  box left open, B at a time (OverworldWalkSteps::clear_text()).
+    played_action.act = [this, act = std::move(played_action.act)](const StoryStep& step, RunState& state){
+        clear_box_before_a(step, sim_screen_look(m_sim), [this]{
+            for (int c = 0; c < MAX_SIM_BOXES && m_sim.state().screen == SimScreen::MESSAGE; c++){
+                m_sim.close_message();
+            }
+        });
+        return act(step, state);
+    };
+    return played_action;
+}
+
+Pokemon::StoryAction OverworldStepSim::step_action(StoryActionId id){
     using Body = std::string (OverworldStepSim::*)(const StoryStep&);
     Body body = nullptr;
     switch (id){
@@ -474,18 +511,7 @@ std::string battle_end_on_sim(const OverworldSim& sim){
 //  wait_out_battle_exit() on `sim`: each look shows the sim's screens for
 //  BETWEEN_STEPS_LOOK.
 void sim_wait_out_battle_exit(OverworldSim& sim){
-    Milliseconds from = sim.state().time;
-    const auto look = [&sim, &from](bool fresh){
-        if (fresh){
-            from = sim.state().time;
-        }
-        sim.watch({}, BETWEEN_STEPS_LOOK);
-        return Pokemon::ScreenLook{
-            .log = screen_event_log(sim.state(), from),
-            .window = {.start = sim_wall_clock(from), .end = sim_wall_clock(sim.state().time)},
-        };
-    };
-    wait_for_quiet_overworld(look, MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
+    wait_for_quiet_overworld(sim_screen_look(sim), MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
 }
 
 } // namespace

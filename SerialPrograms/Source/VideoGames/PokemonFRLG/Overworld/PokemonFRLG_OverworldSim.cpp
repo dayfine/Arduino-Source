@@ -152,7 +152,8 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
     m_player = PlayerState{start.point, elevation_at(map(), start.point), false};
     m_state.facing = facing;
     m_state.on_bike = m_script.on_bike;
-    show(m_script.start_menu_open ? SimScreen::START_MENU : SimScreen::OVERWORLD, m_now);
+    m_frozen = m_script.message_open;
+    show(m_frozen ? SimScreen::MESSAGE : m_script.start_menu_open ? SimScreen::START_MENU : SimScreen::OVERWORLD, m_now);
     update_view();
 }
 

@@ -842,7 +842,7 @@ Pokemon::StoryAction StoryExecutor::console_action(StoryActionId id){
         }, .needs_console = true};
     }
     const ConsoleAction action = console_action_of(id);
-    return {.act = [this, action](const StoryStep& step, RunState& state){ return action(m_env, state, step); }, .needs_console = true};
+    return {.act = clearing_box_first([this, action](const StoryStep& step, RunState& state){ return action(m_env, state, step); }, m_interrupts, m_env.console.logger()), .needs_console = true};
 }
 
 

@@ -216,6 +216,13 @@ bool OverworldSim::choose_lift_floor(size_t floor){
 }
 
 bool OverworldSim::start_surf(){
+    //  The A closes a message box that is open, and no prompt comes (12.03,
+    //  console B, 2026-11-13).
+    if (m_state.screen == SimScreen::MESSAGE){
+        close_message();
+        violation(std::format("the A for Surf closed a message box on {}: no Surf prompt.", to_string(m_state.position)));
+        return false;
+    }
     const bool water = classify_step(map(), m_player, m_state.facing) == StepKind::START_SURF;
     if (!water || m_state.screen != SimScreen::OVERWORLD || m_frozen){
         violation("no water to Surf onto " + std::string(direction_name(m_state.facing)) + " of " + to_string(m_state.position) + ".");

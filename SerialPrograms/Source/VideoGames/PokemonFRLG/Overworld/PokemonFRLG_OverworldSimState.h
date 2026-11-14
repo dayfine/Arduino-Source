@@ -37,6 +37,11 @@ struct SimScript{
     Pokemon::GateState gates;
     //  The START menu is open at the start: the D-pad moves its cursor.
     bool start_menu_open = false;
+    //  Fault injection: a message box is open at the start, and the player
+    //  can't move until B or A closes it. 12.03's surf_off_middle_sand_bar
+    //  began so: the look before it ended on "dialog box showing (quiet
+    //  0.3 s)" (console B, 2026-11-13).
+    bool message_open = false;
     //  The hold numbered by the key (from 1) stops this many tiles short,
     //  with nothing on screen (the forest drift, console B, 2026-11-01).
     std::map<int, int> short_holds;

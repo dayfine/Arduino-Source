@@ -23,6 +23,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryFieldMoves.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
@@ -302,24 +303,62 @@ UnitTestResult test_spencer_walks(){
     return "No Route21_North.";
 }
 
-struct SurfInput{
-    std::string_view name;
-    UnitTestResult (*body)();
-};
-
-struct SurfExpectation{
-    std::string_view description;
-};
+//  A box open as each Surf step of 12.03 starts, from where the ROUTE step
+//  before it ends, as one was before surf_off_middle_sand_bar: Surf's A
+//  closed it and no prompt came (console B, 2026-11-13). Each step clears
+//  the box with B first and surfs onto the tile it declares.
+UnitTestResult test_box_open_before_each_surf(){
+    const StoryCheckpoint& row = row_12_03();
+    std::optional<StoryPose> before;
+    std::vector<std::string> failed;
+    int surfs = 0;
+    for (const StoryStep& step : row.steps){
+        if (step.kind == StoryStepKind::ROUTE){
+            before = one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target"));
+            continue;
+        }
+        const std::optional<Direction> water = parse_surf_step(step);
+        if (!water || !before){
+            continue;
+        }
+        surfs++;
+        SimScript script;
+        script.message_open = true;
+        OverworldSim sim(story_maps(), MapPosition{before->map, before->tile}, before->facing.value_or(*water), std::move(script));
+        StoryPose at = *before;
+        std::string failure = row_step_on_sim(sim, at, step, row.id);
+        if (failure.empty() && !sim.state().violations.empty()){
+            failure = std::format("a violation: {}", sim.state().violations.back());
+        }
+        if (!failure.empty()){
+            failed.push_back(failure);
+        }
+    }
+    if (surfs == 0){
+        return "12.03 has no Surf step after a ROUTE step.";
+    }
+    if (!failed.empty()){
+        return std::format("{} of {} Surf steps fail with a box open:{}", failed.size(), surfs, joined(failed));
+    }
+    return true;
+}
 
 struct SurfCase{
-    SurfInput input;
-    SurfExpectation expectation;
+    std::string_view name;
+    struct Input{
+        UnitTestResult (*body)();
+    };
+    Input input;
+    struct Expectation{
+        std::string_view description;
+    };
+    Expectation expectation;
 };
 
 class Test_AutoStorySurf : public UnitTest{
 public:
     explicit Test_AutoStorySurf(SurfCase test_case)
-        : UnitTest(std::format("PokemonFRLG::AutoStory - Surf: {}", test_case.input.name))
+        : UnitTest(std::format("PokemonFRLG::AutoStory - Surf: {}", test_case.name))
         , m_case(test_case)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -336,24 +375,34 @@ private:
 
 const SurfCase SURF_CASES[] = {
     {
-        .input = {.name = "Swimmer Spencer walks (8..16, 42..46) on Route21_North", .body = test_spencer_walks},
+        .name = "Swimmer Spencer walks (8..16, 42..46) on Route21_North",
+        .input = {.body = test_spencer_walks},
         .expectation = {.description = "his walk and line are in the trainer data the planner reads"},
     },
     {
-        .input = {.name = "12.03's legs on the water land or end at a wall", .body = test_no_open_water_legs},
+        .name = "12.03's legs on the water land or end at a wall",
+        .input = {.body = test_no_open_water_legs},
         .expectation = {.description = "no leg on Route 21's water ends in the open"},
     },
     {
-        .input = {.name = "12.03's routes go straight", .body = test_no_back_tracking},
+        .name = "12.03's routes go straight",
+        .input = {.body = test_no_back_tracking},
         .expectation = {.description = "no route step walks back, but a tile off a wall"},
     },
     {
-        .input = {.name = "12.03 with a message after each step on the water", .body = test_message_at_every_surf_step},
+        .name = "12.03 with a message after each step on the water",
+        .input = {.body = test_message_at_every_surf_step},
         .expectation = {.description = "every run ends below the Mansion's door"},
     },
     {
-        .input = {.name = "12.03 with a hold stopped short, unseen", .body = test_short_hold_never_goes_on_from_a_guess},
+        .name = "12.03 with a hold stopped short, unseen",
+        .input = {.body = test_short_hold_never_goes_on_from_a_guess},
         .expectation = {.description = "each run ends below the Mansion's door or fails, never elsewhere"},
+    },
+    {
+        .name = "12.03 with a box open as each Surf step starts",
+        .input = {.body = test_box_open_before_each_surf},
+        .expectation = {.description = "each clears the box with B and surfs onto its declared tile"},
     },
 };
 

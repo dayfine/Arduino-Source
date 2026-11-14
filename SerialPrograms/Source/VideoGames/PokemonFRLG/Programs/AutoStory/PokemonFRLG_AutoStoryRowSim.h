@@ -152,7 +152,10 @@ public:
     }
 
 private:
+    //  step_action(), after a box left open is cleared for a step that
+    //  presses A first (clear_box_before_a()).
     Pokemon::StoryAction action(StoryActionId id);
+    Pokemon::StoryAction step_action(StoryActionId id);
     std::string walk(const StoryStep& step);
     std::string step_ahead(const StoryStep& step);
     std::string step_onto(const StoryStep& step);
