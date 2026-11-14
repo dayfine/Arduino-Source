@@ -52,14 +52,14 @@ constexpr Milliseconds AUTOSAVE_QUIET = 5000ms;
 
 //  Text to press on: a box (or choice), or the advance chevron without one.
 bool text_shows(const ScreenObservation& look){
-    return look.events.has(EngineEvent::TEXT_BOX) || look.events.has(EngineEvent::CHOICE_BOX) ||
+    return look.events.has(EngineEvent::DIALOG_BOX) || look.events.has(EngineEvent::CHOICE_BOX) ||
         look.readings.contains(ADVANCE_ARROW_READING);
 }
 
 //  Something holds the player: text, a battle, a fade, the mission
 //  complete card.
 bool busy(const ScreenObservation& look){
-    return text_shows(look) || look.events.has(EngineEvent::BATTLE) ||
+    return text_shows(look) || look.events.has(EngineEvent::BATTLE_STARTED) ||
         look.events.has(EngineEvent::FADE_BLACK) || look.events.has(EngineEvent::FADE_WHITE) ||
         look.readings.contains(MISSION_COMPLETE_READING);
 }
@@ -197,7 +197,7 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
     if (m_config.goal == SceneMashGoal::CHOICE && choice){
         return SceneScreen::GOAL_CHOICE;
     }
-    if (m_config.goal == SceneMashGoal::BATTLE && look.events.has(EngineEvent::BATTLE)){
+    if (m_config.goal == SceneMashGoal::BATTLE && look.events.has(EngineEvent::BATTLE_STARTED)){
         return SceneScreen::GOAL_BATTLE;
     }
     if (look.events.has(EngineEvent::FADE_BLACK)){
@@ -222,7 +222,7 @@ SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
     if (m_config.goal == SceneMashGoal::OVERWORLD && banner_shows(look)){
         return m_banner_looks >= 1 ? SceneScreen::MISSION_BANNER : SceneScreen::BANNER_SHOWING;
     }
-    if (m_config.goal == SceneMashGoal::OVERWORLD && look.events.has(EngineEvent::CAN_MOVE)){
+    if (m_config.goal == SceneMashGoal::OVERWORLD && look.events.has(EngineEvent::PLAYER_CAN_MOVE)){
         if (m_party_bar_since && look.when - *m_party_bar_since >= PARTY_BAR_HOLD){
             return SceneScreen::CAN_MOVE;
         }
@@ -246,7 +246,7 @@ SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
     if (blind_press_due(look.when) && !look.events.has(EngineEvent::INTERACT_PROMPT)){
         return SceneScreen::BLIND_PRESS;
     }
-    return look.events.has(EngineEvent::STILL) ? SceneScreen::SCENE_STILL : SceneScreen::SCENE_MOVING;
+    return look.events.has(EngineEvent::SCREEN_STILL) ? SceneScreen::SCENE_STILL : SceneScreen::SCENE_MOVING;
 }
 
 namespace{
@@ -269,8 +269,8 @@ void SceneTimeline::record(const ScreenObservation& look){
     if (busy(look)){
         m_last_busy = look.when;
     }
-    const bool box = look.events.has(EngineEvent::TEXT_BOX) || look.events.has(EngineEvent::CHOICE_BOX);
-    track_since(look.events.has(EngineEvent::CAN_MOVE) && !box, look.when, m_party_bar_since);
+    const bool box = look.events.has(EngineEvent::DIALOG_BOX) || look.events.has(EngineEvent::CHOICE_BOX);
+    track_since(look.events.has(EngineEvent::PLAYER_CAN_MOVE) && !box, look.when, m_party_bar_since);
     track_since(control_shows(look) && !box, look.when, m_hint_since);
     m_banner_looks = banner_shows(look) && !box ? m_banner_looks + 1 : 0;
     const bool autosave = look.readings.contains(AUTOSAVE_READING);
@@ -289,8 +289,8 @@ namespace{
 std::string describe_look(const ScreenObservation& look){
     const std::pair<EngineEvent, std::string_view> names[] = {
         {EngineEvent::FADE_BLACK, "black fade"}, {EngineEvent::FADE_WHITE, "white fade"},
-        {EngineEvent::TEXT_BOX, "text box"}, {EngineEvent::BATTLE, "battle"},
-        {EngineEvent::CAN_MOVE, "party bar"}, {EngineEvent::STILL, "still"},
+        {EngineEvent::DIALOG_BOX, "text box"}, {EngineEvent::BATTLE_STARTED, "battle"},
+        {EngineEvent::PLAYER_CAN_MOVE, "party bar"}, {EngineEvent::SCREEN_STILL, "still"},
     };
     std::string text;
     for (const auto& [event, name] : names){
@@ -373,7 +373,7 @@ private:
                 const std::optional<WallClock> due = m_timeline.quiet_end_due();
                 const std::optional<WallClock> autosave_due = m_timeline.autosave_quiet_due();
                 return (due && look.when >= *due) || (autosave_due && look.when >= *autosave_due) ||
-                    m_timeline.blind_press_due(look.when) || !look.events.has(EngineEvent::STILL);
+                    m_timeline.blind_press_due(look.when) || !look.events.has(EngineEvent::SCREEN_STILL);
             });
             return;
         case SceneScreen::PARTY_BAR:

@@ -12,7 +12,7 @@
 
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_ButtonDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
@@ -37,13 +37,13 @@ namespace PokemonLZA{
 //  Follow-up: the party bar is missed in some rooms (Hotel Z's hall,
 //  za2_m3x). The tutorial's "Move / Control Camera" hint is the story
 //  backend's CONTROLS_HINT_READING (ControlsHintDetector), not an event here.
-class PlzaScreenObserver : public Pokemon::ScreenEventObserver{
+class PlzaScreenObserver : public ScreenEventObserver{
 public:
     PlzaScreenObserver();
 
-    virtual Pokemon::ScreenEvents observe(const VideoSnapshot& frame, WallClock now) override;
+    virtual ScreenEvents observe(const VideoSnapshot& frame, WallClock now) override;
     //  observe() for a frame that is not a snapshot (a ScreenState's read).
-    Pokemon::ScreenEvents read(const ImageViewRGB32& screen);
+    ScreenEvents read(const ImageViewRGB32& screen);
     virtual void make_overlays(VideoOverlaySet& items) const override;
 
 private:
@@ -82,7 +82,7 @@ enum class SceneMashAction{
 //  - with no box: BATTLE presses A (cards, the VS splash), a B mash presses
 //    B (it closes the screens a talk opens), an A mash waits (A would talk
 //    to whoever stands in front).
-SceneMashAction scene_mash_action(const Pokemon::ScreenEvents& events, SceneMashGoal goal, bool text_button_is_b);
+SceneMashAction scene_mash_action(const ScreenEvents& events, SceneMashGoal goal, bool text_button_is_b);
 
 //  How long a scene step's mash waits for its scene to show. 02.02's street
 //  scene shows its first box ~10 s in from the save (console B, 2026-11-10);
@@ -105,7 +105,7 @@ public:
     }
     //  Takes a frame's `events` at `now`; true once the window has passed
     //  without the scene.
-    bool never_started(const Pokemon::ScreenEvents& events, WallClock now);
+    bool never_started(const ScreenEvents& events, WallClock now);
 
 private:
     WallClock m_deadline;

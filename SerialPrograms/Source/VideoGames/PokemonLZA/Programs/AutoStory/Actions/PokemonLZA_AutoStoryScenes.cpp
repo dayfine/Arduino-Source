@@ -43,11 +43,11 @@ public:
         , m_quiet_from(current_time() + min_length)
         , m_last_busy(current_time())
     {}
-    bool reached(ConsoleHandle& console, const Pokemon::ScreenEvents& events, SceneMashAction action, WallClock now){
+    bool reached(ConsoleHandle& console, const ScreenEvents& events, SceneMashAction action, WallClock now){
         if (events.any_of({
-            Pokemon::ScreenEvent::DIALOG_BOX, Pokemon::ScreenEvent::CHOICE_BOX,
-            Pokemon::ScreenEvent::BATTLE_STARTED, Pokemon::ScreenEvent::FADE_BLACK,
-            Pokemon::ScreenEvent::FADE_WHITE,
+            ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX,
+            ScreenEvent::BATTLE_STARTED, ScreenEvent::FADE_BLACK,
+            ScreenEvent::FADE_WHITE,
         })){
             m_last_busy = now;
         }
@@ -93,14 +93,14 @@ void press_for(ProControllerContext& context, SceneMashAction action, Button tex
 
 //  Logs the frame's events whenever they change (the still-screen flag left
 //  out), so a run's log shows each scene's fades, boxes and party bar.
-void log_event_change(ConsoleHandle& console, const Pokemon::ScreenEvents& events, Pokemon::ScreenEvents& last){
-    Pokemon::ScreenEvents shown = events;
-    shown.set(Pokemon::ScreenEvent::SCREEN_STILL, false);
+void log_event_change(ConsoleHandle& console, const ScreenEvents& events, ScreenEvents& last){
+    ScreenEvents shown = events;
+    shown.set(ScreenEvent::SCREEN_STILL, false);
     if (shown == last){
         return;
     }
     last = shown;
-    console.log(std::format("mash_scene(): screen now: {}", Pokemon::describe(shown)));
+    console.log(std::format("mash_scene(): screen now: {}", describe(shown)));
 }
 
 } // namespace
@@ -142,7 +142,7 @@ void mash_scene_until(
 ){
     PlzaScreenObserver observer;
     OverworldEnd overworld(limits.quiet, limits.min_length);
-    Pokemon::ScreenEvents last_events;
+    ScreenEvents last_events;
     const WallClock start = current_time();
     SceneStart scene(start, limits.start_window.value_or(timeout));
     while (current_time() - start < timeout){
@@ -155,7 +155,7 @@ void mash_scene_until(
             pbf_press_button(context, BUTTON_A, 160ms, 840ms);
             continue;
         }
-        const Pokemon::ScreenEvents events = observer.observe(frame, now);
+        const ScreenEvents events = observer.observe(frame, now);
         log_event_change(console, events, last_events);
         if (limits.start_window && scene.never_started(events, now)){
             OperationFailedExceptionWithScreenshot::fire(

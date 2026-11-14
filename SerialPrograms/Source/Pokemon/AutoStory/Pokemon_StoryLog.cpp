@@ -21,7 +21,7 @@ std::string resets_text(size_t attempt){
 }
 
 //  "[Checkpoint] 00.04", or the game's own display text.
-std::string checkpoint_head(std::string_view checkpoint, std::string_view display_text){
+std::string checkpoint_prefix(std::string_view checkpoint, std::string_view display_text){
     if (!display_text.empty()){
         return std::string(display_text);
     }
@@ -38,32 +38,32 @@ std::string event_log_line(std::string_view checkpoint, size_t number, std::stri
 std::string checkpoint_start_line(
     std::string_view checkpoint, std::optional<size_t> events, std::string_view display_text
 ){
-    const std::string head = checkpoint_head(checkpoint, display_text);
+    const std::string prefix = checkpoint_prefix(checkpoint, display_text);
     if (!events){
-        return std::format("{}: start", head);
+        return std::format("{}: start", prefix);
     }
-    return std::format("{}: start, {} events", head, *events);
+    return std::format("{}: start, {} events", prefix, *events);
 }
 
 std::string checkpoint_attempt_line(
     std::string_view checkpoint, size_t attempt, std::optional<size_t> attempts, std::string_view display_text
 ){
-    const std::string head = checkpoint_head(checkpoint, display_text);
+    const std::string prefix = checkpoint_prefix(checkpoint, display_text);
     if (!attempts){
-        return std::format("{}: attempt {}", head, attempt);
+        return std::format("{}: attempt {}", prefix, attempt);
     }
-    return std::format("{}: attempt {}/{}", head, attempt, *attempts);
+    return std::format("{}: attempt {}/{}", prefix, attempt, *attempts);
 }
 
 std::string checkpoint_pass_line(std::string_view checkpoint, size_t attempt, std::string_view display_text){
     return std::format(
-        "{}: passed on attempt {} ({})", checkpoint_head(checkpoint, display_text), attempt, resets_text(attempt)
+        "{}: passed on attempt {} ({})", checkpoint_prefix(checkpoint, display_text), attempt, resets_text(attempt)
     );
 }
 
 std::string checkpoint_reset_line(std::string_view checkpoint, size_t next_attempt, std::string_view display_text){
     return std::format(
-        "{}: failed, resetting for attempt {}", checkpoint_head(checkpoint, display_text), next_attempt
+        "{}: failed, resetting for attempt {}", checkpoint_prefix(checkpoint, display_text), next_attempt
     );
 }
 
