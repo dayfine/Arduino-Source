@@ -24,7 +24,7 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryTable_H
 
 #include <vector>
-#include "Pokemon/AutoStory/Data/Pokemon_StoryFiles.h"
+#include "Pokemon/AutoStory/Data/Pokemon_StoryRowExecution.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 
 namespace PokemonAutomation{
