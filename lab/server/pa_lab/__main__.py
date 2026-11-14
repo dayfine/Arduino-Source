@@ -5,6 +5,7 @@
   python3 -m pa_lab kinds
   python3 -m pa_lab init-token ~/.config/pa-lab/token
   python3 -m pa_lab serve --config ~/.config/pa-lab/server.json
+  python3 -m pa_lab lease --config ~/.config/pa-lab/server.json show|claim-user|release-user
 
 Run from lab/server (or with lab/server on PYTHONPATH). Exit 0 valid, 1 invalid, 2 usage.
 """
@@ -31,6 +32,10 @@ def main(argv=None) -> int:
     init_token.add_argument('path')
     serve = sub.add_parser('serve', help='run the read-only MCP server (Streamable HTTP on 127.0.0.1)')
     serve.add_argument('--config', required=True)
+    lease = sub.add_parser('lease', help="show console B's lease, or (operator) claim or release it for the user")
+    lease.add_argument('--config', required=True)
+    lease.add_argument('action', choices=('show', 'claim-user', 'release-user'))
+    lease.add_argument('--console', default='B')
     args = parser.parse_args(argv)
 
     if args.command == 'check':
@@ -63,6 +68,8 @@ def main(argv=None) -> int:
         return 0
     if args.command == 'serve':
         return _serve(args.config)
+    if args.command == 'lease':
+        return _lease(args.config, args.action, args.console)
     parser.print_help()
     return 2
 
@@ -76,9 +83,14 @@ def _serve(path: str) -> int:
         print('error {}'.format(e))
         return 1
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s %(message)s')
-    readers = {name: lab_reader.ConsoleReader(name, entry.lab_dir, profile=entry.profile)
+    from pa_lab import control, db
+    plane = control.ControlPlane(db.Database(cfg.db_file), sorted(cfg.consoles))
+    readers = {name: lab_reader.ConsoleReader(name, entry.lab_dir, profile=entry.profile, control=plane)
                for name, entry in cfg.consoles.items()}
-    server = mcp_server.make_server(cfg.port, token, readers)
+    for reader in readers.values():  # restart reconciliation: apply what the app shows now
+        reader.console_state()
+    plane.compact()
+    server = mcp_server.make_server(cfg.port, token, readers, control_plane=plane)
     logging.getLogger('pa_lab.server').info('serving %s on http://127.0.0.1:%d%s',
                                             ', '.join(sorted(readers)), server.server_address[1],
                                             mcp_server.ENDPOINT)
@@ -88,6 +100,29 @@ def _serve(path: str) -> int:
         pass
     finally:
         server.server_close()
+    return 0
+
+
+def _lease(path: str, action: str, console: str) -> int:
+    import json
+    from pa_lab import control, db
+    try:
+        cfg = config.load(path)
+    except config.ConfigError as e:
+        print('error {}'.format(e))
+        return 1
+    plane = control.ControlPlane(db.Database(cfg.db_file), sorted(cfg.consoles))
+    try:
+        if action == 'claim-user':
+            lease = plane.claim_user(console)
+        elif action == 'release-user':
+            lease = plane.release_user(console)
+        else:
+            lease = plane.lease(console)
+    except control.Refused as e:
+        print('error {}'.format(e.refusal['message']))
+        return 1
+    print(json.dumps(lease, indent=2))
     return 0
 
 
