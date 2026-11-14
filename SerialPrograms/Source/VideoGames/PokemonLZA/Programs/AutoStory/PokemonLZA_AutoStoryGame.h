@@ -110,10 +110,13 @@ Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(StarterChoice starter
 
 //  Loads the save `row` starts from by next_start_load_action(), or keeps
 //  the running game for StartFrom::RUNNING_GAME, checking the start after
-//  each load (03.06: the nurse's "A" prompt at the Pokemon Center counter),
-//  and logs each load and check as "[Save]" and "[Checkpoint]" lines.
-//  Fails when the game is not at `row`'s start after what `from` allows:
-//  the run must not start from an unknown spot.
+//  each load (checkpoint_start_sign(): 03.06 and 03.07d, the nurse's "A"
+//  prompt at the Pokemon Center counter), and logs each load and check as
+//  "[Save]" and "[Checkpoint]" lines. When the backup save reached the
+//  start after the latest did not, saves with the menu's Report
+//  (StartLoadAction::REPORT_THEN_START). Fails when the game is not at
+//  `row`'s start after what `from` allows: the run must not start from an
+//  unknown spot.
 Pokemon::Outcome load_checkpoint_start(StoryEnv& env, Pokemon::StoryBackend<Pokemon::ZonePose>& backend, std::string_view row, StartFrom from);
 
 //  `rows` in order from the save the game is on, as
