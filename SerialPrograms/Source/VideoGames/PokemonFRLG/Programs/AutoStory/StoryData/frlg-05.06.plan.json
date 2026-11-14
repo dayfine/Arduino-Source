@@ -149,7 +149,7 @@
         "Youngster Dan (22, 4) looks around, sight 2, over the only way east, (20..21, 4). On (20, 4), a one-tile leg, he may see the player and walk up to (21, 4); so the way goes north from there to row 2, east, and down column 23 past him to (23, 5), off every tile he may walk up to. Where his sight is crossed, the leg ends on a wall or is one tile; if he looks the player's way, story_interrupts() fight him.",
         "Picnicker Kelsey (22, 8) faces east over (23..24, 8), across the only way on: fought on the step onto (24, 8); she walks up to (23, 8).",
         "Hiker Nob (27, 9) faces north over (27, 6..8), Camper Flint (28, 4) south over (28, 5..7): every way east crosses one. Nob is fought on the step onto (27, 8), beside him; the way on keeps off Flint's column, by one-tile legs and legs to walls.",
-        "Youngster Chad (36, 4) walks up and down column 36 (rows 2..7), so he may see any tile of it down to row 9. The way crosses his column on row 9, a leg to the water at (42, 9), where he can only walk up beside it.",
+        "Youngster Chad (36, 4) walks up and down column 36 (the map's wander box, rows 1..7), so he may see any tile of it down to row 9: every way east crosses it within his sight. The way crosses his column on row 9, a leg to the water at (42, 9), where he can only walk up beside it; if he sees the player, story_interrupts() fight him, as the sim, which looks from every tile of his box, always does.",
         "Lass Haley (42, 5) faces south over (42, 6..8), the only way east of x 42: fought on the step onto (42, 8); she walks up to (42, 7).",
         "The row saves inside the Sea Cottage, which the save card names ROUTE 25."
       ]

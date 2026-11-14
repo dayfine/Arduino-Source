@@ -471,7 +471,10 @@ UnitTestResult test_nugget_bridge_short(){
 //  Franklin, Kelsey, Nob and Haley are met on the steps into their lines
 //  and beaten there. The sim's trainers who look around see every way
 //  they may look, so Youngster Dan sees the player on (20, 4), walks up
-//  to (21, 4) and is fought there, off the way on.
+//  to (21, 4) and is fought there, off the way on. Youngster Chad wanders
+//  column 36 (rows 1..7, the map's wander box) and sees 2 tiles: every way
+//  east crosses his column within his sight, so the sim, from his box's
+//  tile (36, 7), sees the player on row 9 and fights him.
 UnitTestResult test_route25_trainers(){
     const StoryCheckpoint* row = &checkpoint_row("05.06");
     StoryPose at = *story_pose(Pokemon::pose_of(*row->start));
@@ -482,13 +485,13 @@ UnitTestResult test_route25_trainers(){
             return failure;
         }
     }
-    const std::vector<std::string> expected{"hiker", "youngster", "picnicker", "hiker", "lass"};
+    const std::vector<std::string> expected{"hiker", "youngster", "picnicker", "hiker", "youngster", "lass"};
     if (sim.state().trainers_beaten != expected){
         std::string beaten;
         for (const std::string& name : sim.state().trainers_beaten){
             beaten += " " + name;
         }
-        return "05.06: expected Franklin, Dan, Kelsey, Nob and Haley beaten; beat" + beaten + ".";
+        return "05.06: expected Franklin, Dan, Kelsey, Nob, Chad and Haley beaten; beat" + beaten + ".";
     }
     if (!(sim.state().position == MapPosition{"Route25_SeaCottage", {7, 8}})){
         return "05.06: expected to end in the Sea Cottage on (7, 8), not " + to_string(sim.state().position) + ".";
