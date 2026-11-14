@@ -75,9 +75,10 @@ using StoryArgValue = std::variant<
     std::vector<StoryLeg>,                  //  LEGS
     std::vector<std::string>,               //  WORDS
     std::vector<StoryItem>,                 //  ITEMS
-    std::vector<std::vector<int64_t>>,      //  INTEGER_ROWS: [[0, 4500], [90, 0]]
-    std::vector<StoryTimedLeg>              //  TIMED_LEGS: [[0, 4500], [90, 1200]]
+    std::vector<std::vector<int64_t>>,      //  INTEGER_ROWS: rows of any length, [[12, 7], [3, 9, 1], []]
+    std::vector<StoryTimedLeg>              //  TIMED_LEGS: [turn degrees, ms] pairs, [[0, 4500], [90, 1200]]
 >;
+static_assert(std::variant_size_v<StoryArgValue> == (size_t)StoryArgType::TIMED_LEGS + 1, "one StoryArgType per StoryArgValue type");
 
 //  A step's arguments by key.
 using StoryActionArgs = std::map<std::string, StoryArgValue, std::less<>>;
