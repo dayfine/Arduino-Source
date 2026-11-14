@@ -408,6 +408,9 @@ struct HoldShot{
     //  entering a town.
     bool banner = false;
     OffMap off_map = OffMap::NONE;
+    //  The bottom 160 rows a wall whose pattern repeats every 16 pixels
+    //  across, as along Pokemon Mansion B1F's south wall.
+    bool striped_bottom = false;
 };
 
 //  A 960x640 screen of 64-pixel tiles, each its own color, seen as `shot`.
@@ -417,11 +420,14 @@ ImageRGB32 tile_map(const HoldShot& shot){
         for (size_t x = 0; x < image.width(); x++){
             const uint32_t tile = (uint32_t)((x + shot.scroll_x) / 64 * 7 + (y + shot.scroll_y) / 64 * 13);
             const bool in_banner = shot.banner && x < 400 && y < 80;
+            const bool in_stripes = shot.striped_bottom && y >= 480;
             const bool off_map = shot.off_map == OffMap::ALL
                 || (shot.off_map == OffMap::TOP && y < 240)
                 || (shot.off_map == OffMap::BOTTOM && y >= 400);
             if (off_map){
                 image.pixel(x, y) = 0xff070707;
+            }else if (in_stripes){
+                image.pixel(x, y) = (x + shot.scroll_x) % 16 < 8 ? 0xff804020 : 0xffc08040;
             }else{
                 image.pixel(x, y) = in_banner ? 0xfff8f8f8 : 0xff000000 | (tile * 0x2f1b3d & 0x00ffffff);
             }
@@ -433,6 +439,8 @@ ImageRGB32 tile_map(const HoldShot& shot){
 struct HoldScrollInput{
     HoldShot before;
     HoldShot after;
+    //  The way the hold walked.
+    Direction direction = Direction::EAST;
 };
 struct HoldScrollExpectation{
     HoldMovement movement;
@@ -454,7 +462,7 @@ public:
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const ImageFloatBox game(0, 0, 1, 1);
-        const std::optional<double> change = hold_scroll_change(tile_map(m_case.input.before), tile_map(m_case.input.after), game);
+        const std::optional<double> change = hold_scroll_change(tile_map(m_case.input.before), tile_map(m_case.input.after), game, m_case.input.direction);
         const HoldMovement movement = hold_movement(change);
         if (movement == m_case.expectation.movement){
             return true;
@@ -475,7 +483,20 @@ const HoldScrollCase HOLD_SCROLL_CASES[] = {
     //  over the top of the screen, and was taken as walked ("changed by
     //  223.0"); every later tile was then 2 rows off.
     {.name = "a town's banner over a still map", .input = {.before = {}, .after = {.banner = true}}, .expectation = {.movement = HoldMovement::NONE}},
-    {.name = "a step south", .input = {.before = {}, .after = {.scroll_y = 64}}, .expectation = {.movement = HoldMovement::MOVED}},
+    {.name = "a step south", .input = {.before = {}, .after = {.scroll_y = 64}, .direction = Direction::SOUTH}, .expectation = {.movement = HoldMovement::MOVED}},
+    //  Pokemon Mansion B1F's south wall (console B, 2026-11-14 04:13,
+    //  13.03): a step west read as no move, the wall's pattern the same one
+    //  tile over.
+    {
+        .name = "a step west along a wall that repeats across",
+        .input = {.before = {.striped_bottom = true}, .after = {.scroll_x = 64, .striped_bottom = true}, .direction = Direction::WEST},
+        .expectation = {.movement = HoldMovement::MOVED},
+    },
+    {
+        .name = "standing beside a wall that repeats across",
+        .input = {.before = {.striped_bottom = true}, .after = {.striped_bottom = true}, .direction = Direction::WEST},
+        .expectation = {.movement = HoldMovement::NONE},
+    },
     //  Pokemon Mansion 1F's bottom row (console B, 2026-11-14 03:20, 13.02):
     //  a walk east of 13 tiles read as no move, the black below the map the
     //  same in both shots.
@@ -510,6 +531,8 @@ struct HoldFramesInput{
     //  Console B frames (1920x1080) in CommandLineTests.
     std::string before;
     std::string after;
+    //  The way the hold walked.
+    Direction direction;
 };
 struct HoldFramesCase{
     std::string name;
@@ -528,7 +551,7 @@ public:
         const ImageFloatBox game(0.09375, 0.00462963, 0.8125, 0.962963);
         const ImageRGB32 before(UNIT_TEST_RESOURCE_PATH() + m_case.input.before);
         const ImageRGB32 after(UNIT_TEST_RESOURCE_PATH() + m_case.input.after);
-        const std::optional<double> change = hold_scroll_change(before, after, game);
+        const std::optional<double> change = hold_scroll_change(before, after, game, m_case.input.direction);
         const HoldMovement movement = hold_movement(change);
         if (movement == m_case.expectation.movement){
             return true;
@@ -550,13 +573,28 @@ private:
 const HoldFramesCase HOLD_FRAMES_CASES[] = {
     {
         .name = "Pokemon Mansion 1F's bottom row, east 13",
-        .input = {.before = "PokemonFRLG/OverworldHold/PokemonMansion1F_Row33_Before.png", .after = "PokemonFRLG/OverworldHold/PokemonMansion1F_Row33_East13.png"},
+        .input = {.before = "PokemonFRLG/OverworldHold/PokemonMansion1F_Row33_Before.png", .after = "PokemonFRLG/OverworldHold/PokemonMansion1F_Row33_East13.png", .direction = Direction::EAST},
         .expectation = {.movement = HoldMovement::MOVED},
     },
     {
         .name = "Pokemon Mansion 1F's bottom row, held again at the wall",
-        .input = {.before = "PokemonFRLG/OverworldHold/PokemonMansion1F_Row33_East13.png", .after = "PokemonFRLG/OverworldHold/PokemonMansion1F_Row33_HeldAgain.png"},
+        .input = {.before = "PokemonFRLG/OverworldHold/PokemonMansion1F_Row33_East13.png", .after = "PokemonFRLG/OverworldHold/PokemonMansion1F_Row33_HeldAgain.png", .direction = Direction::EAST},
         .expectation = {.movement = HoldMovement::NONE},
+    },
+    //  Pokemon Mansion B1F (console B, 2026-11-14 04:13, 13.03): "west 1
+    //  (open)" from (25, 31) walked to (24, 31) but read "changed by 0.0":
+    //  the south wall below and the floorboards on the right look the same
+    //  one tile over. Held again, the player walked on to (23, 31), past the
+    //  statue's switch.
+    {
+        .name = "Pokemon Mansion B1F's south wall, west 1",
+        .input = {.before = "PokemonFRLG/OverworldHold/PokemonMansionB1F_Row31_Before.png", .after = "PokemonFRLG/OverworldHold/PokemonMansionB1F_Row31_West1.png", .direction = Direction::WEST},
+        .expectation = {.movement = HoldMovement::MOVED},
+    },
+    {
+        .name = "Pokemon Mansion B1F's south wall, west 1 held again",
+        .input = {.before = "PokemonFRLG/OverworldHold/PokemonMansionB1F_Row31_West1.png", .after = "PokemonFRLG/OverworldHold/PokemonMansionB1F_Row31_West1Again.png", .direction = Direction::WEST},
+        .expectation = {.movement = HoldMovement::MOVED},
     },
 };
 
