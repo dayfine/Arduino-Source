@@ -41,6 +41,7 @@
 #include "CommonFramework/ProgramSession.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "LabRequest.h"
+#include "LabFrames.h"
 #include "LabStateJson.h"
 
 namespace PokemonAutomation{
@@ -139,6 +140,7 @@ private:
     std::string run_start_or_stop(const LabRequest& request, bool start);
     std::string run_start(const LabRequest& request, const std::vector<std::string>& words);
     std::string run_popups(const std::vector<std::string>& words, std::ostream& out);
+    std::string run_snapshot(const std::vector<std::string>& words, LabCommandOutput& output);
     std::string run_on_ui(const std::function<std::string()>& body);
     void keep_awake();
     void write_state();
@@ -158,15 +160,14 @@ private:
         LabTransitionTracker& m_tracker;
     };
 
-    //  The newest frame of the selected console's video.
+    //  Counts the frames of the selected console's video, over every panel
+    //  since the app started, for state.json and "snapshot".
     class FrameListener : public VideoFrameListener{
     public:
         virtual void on_frame(std::shared_ptr<const VideoFrame> frame) override;
-        std::optional<LabFrameToken> latest() const;
+        LabFrames& frames(){ return m_frames; }
     private:
-        mutable Mutex m_lock;
-        uint64_t m_count = 0;   //  Frames since the app started, over every panel.
-        std::optional<LabFrameToken> m_latest;
+        LabFrames m_frames;
     };
 
     //  Moves the listeners from the old panel to `panel`. Call under m_panel_lock.

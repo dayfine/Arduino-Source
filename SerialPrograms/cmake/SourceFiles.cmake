@@ -799,8 +799,14 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Windows/LabChannel.h
     Source/CommonFramework/Windows/LabChannel_Tests.cpp
     Source/CommonFramework/Windows/LabChannel_Tests.h
+    Source/CommonFramework/Windows/LabFrames.cpp
+    Source/CommonFramework/Windows/LabFrames.h
     Source/CommonFramework/Windows/LabRequest.cpp
     Source/CommonFramework/Windows/LabRequest.h
+    Source/CommonFramework/Windows/LabSnapshot.cpp
+    Source/CommonFramework/Windows/LabSnapshot.h
+    Source/CommonFramework/Windows/LabSnapshot_Tests.cpp
+    Source/CommonFramework/Windows/LabSnapshot_Tests.h
     Source/CommonFramework/Windows/LabStateJson.cpp
     Source/CommonFramework/Windows/LabStateJson.h
     Source/CommonFramework/Windows/LabStateJson_Tests.cpp

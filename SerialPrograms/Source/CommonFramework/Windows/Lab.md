@@ -112,6 +112,7 @@ program.
 | `start [SECONDS]` | What clicking Start Program does. Refused unless the program is `STOPPED`. First waits up to `SECONDS` (default 30) for `controller=ready`, and refuses with `controller not connected` if it never is, instead of starting a program that would fail with "Incompatible Controller". |
 | `stop` | What clicking Stop Program does. Refused unless the program is `RUNNING`. The request goes on; the program stops in the background. |
 | `state` | Prints the state file's lines into the journal. (In the Command File Runner program, `state [image]` prints the detectors that fire instead; from the channel use `detect` per detector.) |
+| `snapshot LABEL [TIMEOUT_MS]` | Saves the first video frame newer than this line as `<request>_<LABEL>.png` and names it; see [Snapshot](#snapshot). Reads only: needs no owner token, no program state and no controller. |
 | `keepawake on\|off [seconds]` | While it is on and no program runs, presses B every `seconds` (default 15) so the console does not sleep. A running program pauses it. Off by default; off again when the app restarts. |
 | `popups [close]` | Lists the app's open message boxes (title and text), such as the "Error" box a failed program leaves. `close` presses each one's default button. |
 | `owner claim TOKEN`, `owner release` | The owner lock, below. |
@@ -165,6 +166,33 @@ These work on any game:
 Games add their own commands and detectors with
 `register_command_file_command()` and `register_command_file_detector()` (see
 `NintendoSwitch_CommandFileRunner.h`); `help` lists them.
+
+### Snapshot
+
+`snapshot LABEL [TIMEOUT_MS]` waits up to `TIMEOUT_MS` (100 to 60000,
+default 5000) for a frame of the selected console's video that arrives
+after the line starts, saves that frame, and prints one line naming it with
+the same `instance.id` and `frame_seq` that `state.json` uses. `LABEL` is 1
+to 64 of `A-Z a-z 0-9 _ -`. Unlike `shot`, it runs on any panel with video,
+whatever the program state and the controller; a panel with no video (the
+settings page, no panel) gives `unavailable`.
+
+| Line | Meaning |
+|---|---|
+| `snapshot saved instance=<uuid> frame_seq=<n> captured_at=<time> after=<n> path=<path>` | Saved. `frame_seq` and `captured_at` are the saved frame's; `after` is the newest `frame_seq` when the line started (0 before the first frame), so `frame_seq > after`. The path runs to the end of the line. |
+| `snapshot timeout instance=<uuid> after=<n> timeout_ms=<ms>` | No newer frame in time. The line fails: `timeout: no frame newer than frame_seq <n> within <ms> ms`. |
+| `snapshot unavailable instance=<uuid> reason=<reason>` | No frame to save. The line fails with `unavailable: ...`. `reason` is `no_video` (the selected panel has none), `panel_changed` (during the wait), `app_closing` or `save_failed`. |
+
+```
+request 5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10
+snapshot frame 2000
+```
+
+```
+snapshot saved instance=d8ea6a9d-1eab-4a40-b355-d88072b289a1 frame_seq=918275 captured_at=2026-11-14T06:10:12.124Z after=918274 path=.../Profiles/lab-B/Lab/outbox/r7_frame.png
+ok 2 snapshot frame 2000 @0-41ms
+end
+```
 
 ## Owner
 
@@ -303,7 +331,7 @@ two-line `state`) is gone. `start` and `stop` are lines in a request, and
 
 `add_tests_LabChannel()` covers the request format, the journal lines, the
 state text, the owner lock, the keep-awake schedule and the controller wait before `start` (`LabChannel - ...`
-unit tests); `add_tests_LabStateJson()` checks `state.json` against the
+unit tests); `add_tests_LabSnapshot()` covers `snapshot`'s arguments, its wait for a newer frame and its lines; `add_tests_LabStateJson()` checks `state.json` against the
 contract's golden files and where each start and stop is said to come from; `add_tests_CommandFileRunner()` covers the console commands'
 arguments. Run them with the app's `--command-line-test-mode`. Selecting,
 setting, starting and the presses need a live app and console.

@@ -12,6 +12,7 @@
 #include <unistd.h>
 #endif
 #include <QApplication>
+#include <QImage>
 #include <QCoreApplication>
 #include <QMessageBox>
 #include <QPushButton>
@@ -24,9 +25,11 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/ProgramSession.h"
+#include "CommonFramework/ImageTypes/ImageRGB32_Qt.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "CommonFramework/VideoPipeline/Backends/VideoFrameQt.h"
 #include "LabChannel.h"
+#include "LabSnapshot.h"
 
 namespace PokemonAutomation{
 
@@ -40,6 +43,9 @@ constexpr Milliseconds POLL_INTERVAL = 500ms;
 
 //  How often a worker waiting on the UI thread checks whether the app is closing.
 constexpr Milliseconds UI_WAIT_SLICE = 100ms;
+
+//  How often "snapshot" checks whether the app is closing while it waits for a frame.
+constexpr Milliseconds SNAPSHOT_WAIT_SLICE = 100ms;
 
 //  Lab/state.json calls the video live while its newest frame is at most this old.
 constexpr Milliseconds VIDEO_LIVE_MAX_AGE = 2000ms;
@@ -60,6 +66,35 @@ std::optional<std::string> startup_profile(){
     }
 #endif
     return std::nullopt;
+}
+
+
+//  The channel's own commands, for "help".
+void print_channel_help(std::ostream& out){
+    out <<
+        "channel:\n"
+        "  owner claim TOKEN | owner release   (then start with a line \"owner TOKEN\")\n"
+        "  select GAME:PROGRAM\n"
+        "  set OPTION_KEY JSON\n"
+        "  start [SECONDS] | stop   (start waits up to SECONDS, default 30, for the controller)\n"
+        "  state\n"
+        "  snapshot LABEL [TIMEOUT_MS]   (saves the first video frame newer than the call; default 5000 ms)\n"
+        "  keepawake on|off [seconds]\n"
+        "  popups [close]   (the app's message boxes; close presses their default button)\n  help\n";
+}
+
+//  Saves `frame` as a PNG at `path`. Returns false if it cannot.
+bool save_video_frame(const VideoFrame& frame, const std::string& path){
+    if (!frame.is_valid()){
+        return false;
+    }
+    //  As SnapshotManager converts the frames programs see.
+    QImage qimage = frame.frame.toImage();
+    if (qimage.format() != QImage::Format_ARGB32 && qimage.format() != QImage::Format_RGB32){
+        qimage = qimage.convertToFormat(QImage::Format_ARGB32);
+    }
+    const ImageRGB32 image = QImage_to_ImageRGB32(std::move(qimage));
+    return image && image.save(path);
 }
 
 
@@ -267,13 +302,8 @@ void LabChannel::ProgramListener::error(const std::string&){
 }
 
 void LabChannel::FrameListener::on_frame(std::shared_ptr<const VideoFrame> frame){
-    std::lock_guard<Mutex> lg(m_lock);
-    m_count++;
-    m_latest = LabFrameToken{m_count, frame->timestamp};
-}
-std::optional<LabFrameToken> LabChannel::FrameListener::latest() const{
-    std::lock_guard<Mutex> lg(m_lock);
-    return m_latest;
+    const WallClock captured_at = frame->timestamp;
+    m_frames.on_frame(captured_at, std::move(frame));
 }
 
 
@@ -379,15 +409,7 @@ std::string LabChannel::run_line(const LabRequest& request, const LabRequestLine
         return "owner: expected owner claim TOKEN, or owner release";
     }
     if (command == "help"){
-        output.out <<
-            "channel:\n"
-            "  owner claim TOKEN | owner release   (then start with a line \"owner TOKEN\")\n"
-            "  select GAME:PROGRAM\n"
-            "  set OPTION_KEY JSON\n"
-            "  start [SECONDS] | stop   (start waits up to SECONDS, default 30, for the controller)\n"
-            "  state\n"
-            "  keepawake on|off [seconds]\n"
-            "  popups [close]   (the app's message boxes; close presses their default button)\n  help\n";
+        print_channel_help(output.out);
         m_console->help(output.out);
         return "";
     }
@@ -395,6 +417,9 @@ std::string LabChannel::run_line(const LabRequest& request, const LabRequestLine
         write_state();
         output.out << m_written_state;
         return "";
+    }
+    if (command == "snapshot"){
+        return run_snapshot(words, output);
     }
     const LabConsoleCommands::Kind kind = m_console->kind(command);
     if (kind != LabConsoleCommands::Kind::READS_STREAM){
@@ -590,6 +615,51 @@ std::string LabChannel::run_popups(const std::vector<std::string>& words, std::o
     });
 }
 
+//  "snapshot LABEL [TIMEOUT_MS]": saves the first frame newer than this line
+//  and names it. Reads only, so it needs no owner token; it needs no program
+//  state or controller either, only the selected panel's video.
+std::string LabChannel::run_snapshot(const std::vector<std::string>& words, LabCommandOutput& output){
+    const std::expected<LabSnapshotArgs, std::string> args = parse_lab_snapshot(words);
+    if (!args){
+        return args.error();
+    }
+    auto reply = [&](const LabSnapshotReply& r){
+        output.out << r.line;
+        return r.error;
+    };
+    VideoFeed* video;
+    {
+        std::lock_guard<Mutex> lg(m_panel_lock);
+        video = m_video;
+    }
+    if (video == nullptr){
+        return reply(lab_snapshot_unavailable(m_instance_id, LabSnapshotUnavailable::NO_VIDEO));
+    }
+
+    const LabFrameWait wait = m_frame_listener.frames().wait_for_next_frame(
+        current_time() + args->timeout, SNAPSHOT_WAIT_SLICE,
+        [this]{ return m_stopping.load(std::memory_order_acquire); }
+    );
+    if (wait.cancelled){
+        return reply(lab_snapshot_unavailable(m_instance_id, LabSnapshotUnavailable::APP_CLOSING));
+    }
+    if (!wait.frame){
+        return reply(lab_snapshot_timeout(m_instance_id, wait.after, args->timeout));
+    }
+    {
+        //  A frame counted after a panel change may be another console's.
+        std::lock_guard<Mutex> lg(m_panel_lock);
+        if (m_video != video){
+            return reply(lab_snapshot_unavailable(m_instance_id, LabSnapshotUnavailable::PANEL_CHANGED));
+        }
+    }
+    const std::string path = output.outbox + output.request + "_" + args->label + ".png";
+    if (wait.frame->frame == nullptr || !save_video_frame(*wait.frame->frame, path)){
+        return reply(lab_snapshot_unavailable(m_instance_id, LabSnapshotUnavailable::SAVE_FAILED));
+    }
+    return reply(lab_snapshot_saved(m_instance_id, wait.frame->token, wait.after, path));
+}
+
 std::string LabChannel::run_on_ui(const std::function<std::string()>& body){
     struct Call{
         Mutex lock;
@@ -694,7 +764,7 @@ void LabChannel::write_state_json(WallClock now){
     state.pid = process_id();
     state.profile = startup_profile();
     state.last_transition = m_transitions.last();
-    state.frame = m_frame_listener.latest();
+    state.frame = m_frame_listener.frames().latest();
     state.video = lab_video_state(has_video, state.frame, now, VIDEO_LIVE_MAX_AGE);
     write_file_atomically(Filesystem::Path(folder() + "state.json"), lab_state_json_text(state));
 }
