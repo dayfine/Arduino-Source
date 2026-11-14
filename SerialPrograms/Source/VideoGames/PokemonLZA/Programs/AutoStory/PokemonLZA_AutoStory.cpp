@@ -123,19 +123,33 @@ AutoStory::AutoStory()
 
 namespace{
 
+//  Where the run takes its start from: the running game when RELOAD_AT_START
+//  is off, else the backup or the latest save. Both off-reload and the
+//  backup save at once is refused: keeping the game loads no save.
+StartFrom start_from(ConsoleHandle& console, const Pokemon::StoryRunOptions& run, bool backup_first){
+    if (run.RELOAD_AT_START){
+        return backup_first ? StartFrom::BACKUP_SAVE : StartFrom::LATEST_SAVE;
+    }
+    if (backup_first){
+        throw UserSetupError(console, "Start from the Backup Save loads a save: turn on Reload the Save at the Start.");
+    }
+    console.log("AutoStory: no reload at the start, keeping the running game.");
+    return StartFrom::RUNNING_GAME;
+}
+
 //  Checkpoints after the new game start from a save (01.01 from the
 //  platform autosave), so the run loads it first instead of assuming the
 //  game is already there: the latest save, or the backup save when the
-//  latest is past the start (load_checkpoint_start()). 01.00 starts
-//  without one.
+//  latest is past the start (load_checkpoint_start()); with `from`
+//  RUNNING_GAME, the game as it runs. 01.00 starts without one.
 void load_start_save(
     ConsoleHandle& console, StoryEnv& story, StoryBackend<ZonePose>& backend,
-    const std::vector<StoryCheckpoint>& rows, size_t first, bool backup_first
+    const std::vector<StoryCheckpoint>& rows, size_t first, StartFrom from
 ){
     if (story_row_starts_without_save(rows[first])){
         return;
     }
-    const Outcome loaded = load_checkpoint_start(story, backend, rows[first].id, backup_first);
+    const Outcome loaded = load_checkpoint_start(story, backend, rows[first].id, from);
     if (!loaded.succeeded()){
         throw OperationFailedException(
             ErrorReportMode::NO_ERROR_REPORT,
@@ -205,6 +219,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     if (first > last || last >= rows.size()){
         throw UserSetupError(env.console, "The start checkpoint must not come after the end checkpoint.");
     }
+    const StartFrom from = start_from(env.console, RUN, START_FROM_BACKUP_SAVE);
     connect_controller(env.console, context, rows[first]);
 
     StoryEnv story{
@@ -214,7 +229,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const StoryGame<ZonePose> game = run_game(story, STARTER, story_data, RUN.breakpoints(), context);
     StoryEngine<ZonePose> engine(game, backend);
     RunState state;
-    load_start_save(env.console, story, backend, rows, first, START_FROM_BACKUP_SAVE);
+    load_start_save(env.console, story, backend, rows, first, from);
 
     if (const std::optional<VerifyPolicy> verify = RUN.VERIFY.policy()){
         const VerifyReport report = engine.verify_checkpoint(rows[first], *verify, state);

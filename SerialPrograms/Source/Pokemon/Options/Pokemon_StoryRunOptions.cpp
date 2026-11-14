@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include <string_view>
 #include "Pokemon_StoryRunOptions.h"
 
 namespace PokemonAutomation{
@@ -41,6 +42,21 @@ const EnumDropdownDatabase<StoryBreakpoints>& StoryBreakpoints_Database(){
     });
     return database;
 }
+
+
+namespace{
+
+constexpr std::string_view SAVE_MODE_LABEL =
+    "<b>Save:</b><br>When the run saves the game. A failed run never saves. "
+    "None keeps the save the run started from; After verification saves once at the end, after the checkpoint "
+    "passed 2-3 times; Each checkpoint is for a playthrough of verified checkpoints.";
+
+constexpr std::string_view RELOAD_AT_START_LABEL =
+    "<b>Reload the Save at the Start:</b><br>Close the game and load the save before the first checkpoint. "
+    "Off: start from wherever the game is (resumed from HOME if need be), for a game already at the start checkpoint. "
+    "Later checkpoints reload as usual. Off needs Save set to None.";
+
+} // namespace
 
 
 std::string story_checkpoint_label(const StoryCheckpoint& checkpoint){
@@ -106,14 +122,8 @@ StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints, const 
         LockMode::LOCK_WHILE_RUNNING,
         Language::English
     )
-    , SAVE_MODE(
-        "<b>Save:</b><br>When the run saves the game. A failed run never saves. "
-        "None keeps the save the run started from; After verification saves once at the end, after the checkpoint "
-        "passed 2-3 times; Each checkpoint is for a playthrough of verified checkpoints.",
-        StorySaveMode_Database(),
-        LockMode::LOCK_WHILE_RUNNING,
-        StorySaveMode::NONE
-    )
+    , SAVE_MODE(std::string(SAVE_MODE_LABEL), StorySaveMode_Database(), LockMode::LOCK_WHILE_RUNNING, StorySaveMode::NONE)
+    , RELOAD_AT_START(std::string(RELOAD_AT_START_LABEL), LockMode::LOCK_WHILE_RUNNING, true)
     , POSTCONDITIONS_ONLY(
         "<b>Check postconditions only:</b><br>Run nothing: read where the game stands and check the end checkpoint's "
         "position, items and flags. What the game can't read yet is reported as not checked.",
@@ -131,6 +141,7 @@ StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints, const 
     PA_ADD_OPTION(LANGUAGE);
     PA_ADD_OPTION(VERIFY);
     PA_ADD_OPTION(SAVE_MODE);
+    PA_ADD_OPTION(RELOAD_AT_START);
     PA_ADD_OPTION(POSTCONDITIONS_ONLY);
     PA_ADD_OPTION(BREAKPOINTS);
 }
@@ -145,6 +156,10 @@ std::string StoryRunOptions::check_validity() const{
     }
     if (VERIFY.enabled() && POSTCONDITIONS_ONLY){
         return "Check postconditions only runs nothing: turn off Verify Mode.";
+    }
+    if (!RELOAD_AT_START && SAVE_MODE != StorySaveMode::NONE){
+        return "Reload the Save at the Start is off: the run starts from wherever the game is, which nothing checked, "
+            "so it must not save. Set Save to None or turn the reload on.";
     }
     return error;
 }

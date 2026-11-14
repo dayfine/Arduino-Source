@@ -177,6 +177,16 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
     {.name = "game on the overworld kept",
      .input = {.screens = then_settled({}), .request = {.running = Running::KEEP}},
      .expectation = {.inputs = "wait wait"}},
+    //  RELOAD_AT_START off (Pokemon_StoryRunOptions.h) on PLZA's loose
+    //  title check: a game already on the overworld, as console B's at
+    //  03.07d's start on 2026-11-14, is started from with no press.
+    {.name = "game on the overworld kept with a loose title check",
+     .input = {.screens = then_settled({}), .request = {.running = Running::KEEP}, .game_screens = GameScreens::AFTER_LAUNCH},
+     .expectation = {.inputs = "wait wait"}},
+    {.name = "kept game resumed from HOME with a loose title check",
+     .input = {.screens = then_settled({Screen::HOME_ON_GAME}), .request = {.running = Running::KEEP},
+               .game_screens = GameScreens::AFTER_LAUNCH},
+     .expectation = {.inputs = "A wait wait"}},
     {.name = "game on the overworld restarted",
      .input = {.screens = then_settled({Screen::OVERWORLD, Screen::HOME_ON_GAME, Screen::CLOSE_DIALOG, Screen::HOME_ON_GAME,
                                         Screen::BLACK, Screen::TITLE})},
