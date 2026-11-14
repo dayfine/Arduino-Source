@@ -46,6 +46,7 @@ namespace{
 //  From the end of the hold, through the fade out and in.
 constexpr Milliseconds WARP_TIMEOUT = 8000ms;
 constexpr Milliseconds SURF_PROMPT_TIMEOUT = 5000ms;
+constexpr int SURF_PROMPT_TRIES = 3;
 constexpr Milliseconds SURF_ANIMATION = 3000ms;
 //  A card-key door's message, and the door opening after it.
 constexpr Milliseconds GATE_MESSAGE_WAIT = 1500ms;
@@ -670,10 +671,21 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction
     if (!facing_water){
         pbf_press_dpad(context, dpad(direction), FACE_HOLD, FACE_SETTLE);
     }
-    pbf_press_button(context, BUTTON_A, 160ms, 0ms);
-    SelectionDialogWatcher prompt(COLOR_RED);
-    context.wait_for_all_requests();
-    if (wait_until(console, context, SURF_PROMPT_TIMEOUT, {prompt}) < 0){
+    //  A box left open by the walk takes the first A: on 12.03's middle sand
+    //  bar (console B, 2026-11-13) the step began with a box showing, its A
+    //  closed it and no prompt came, where an A by hand gave the prompt. So
+    //  up to SURF_PROMPT_TRIES A presses, each given its own wait.
+    bool prompted = false;
+    for (int i = 0; i < SURF_PROMPT_TRIES && !prompted; i++){
+        pbf_press_button(context, BUTTON_A, 160ms, 0ms);
+        SelectionDialogWatcher prompt(COLOR_RED);
+        context.wait_for_all_requests();
+        prompted = wait_until(console, context, SURF_PROMPT_TIMEOUT / SURF_PROMPT_TRIES, {prompt}) >= 0;
+        if (!prompted){
+            console.log("start_surf(): no Surf prompt after A " + std::to_string(i + 1) + ".");
+        }
+    }
+    if (!prompted){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
             "walk_overworld_route(): no Surf prompt facing the water.",
