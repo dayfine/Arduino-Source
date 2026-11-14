@@ -180,7 +180,7 @@ std::string check_registry(const RegistryCase& test, CancellableScope& scope){
     if (!lint.empty()){
         return "";
     }
-    FakeStoryBackend<GridPose> backend({.looks = {look({ScreenEvent::TEXT_BOX}), look({ScreenEvent::TEXT_BOX}), look({ScreenEvent::CAN_MOVE})}}, scope);
+    FakeStoryBackend<GridPose> backend({.looks = {look({ScreenEvent::DIALOG_BOX}), look({ScreenEvent::DIALOG_BOX}), look({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     RunState state;
     const Outcome outcome = registry.dispatch(backend, test.input.step, state);
     if (outcome.failure != test.expectation.failure){
@@ -248,7 +248,7 @@ const RunnerCase RUNNER_CASES[] = {
 std::string check_runner(const RunnerCase& test, CancellableScope& scope){
     const StoryGame<GridPose> game = test_game(test.input.door_open);
     const StoryActionRegistry<GridPose> registry(game);
-    FakeStoryBackend<GridPose> backend({.looks = {look({ScreenEvent::CAN_MOVE})}}, scope);
+    FakeStoryBackend<GridPose> backend({.looks = {look({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     StoryStepRunner<GridPose> runner(registry, backend);
     RunState state;
     state.flags.insert(test.input.flags.begin(), test.input.flags.end());
@@ -301,13 +301,13 @@ struct WarpCase{
 
 const WarpCase WARP_CASES[] = {
     {.input = {.name = "fade then B3F", .looks = {
-        look({}, on_map("RocketHideout_B4F")), look({ScreenEvent::FADE_BLACK}), look({ScreenEvent::CAN_MOVE}, on_map("RocketHideout_B3F")),
+        look({}, on_map("RocketHideout_B4F")), look({ScreenEvent::FADE_BLACK}), look({ScreenEvent::PLAYER_CAN_MOVE}, on_map("RocketHideout_B3F")),
      }}, .expectation = {}},
     //  The screen darkens at the stairs but no fade starts and the map
     //  stays B4F: the old wait took this for arrived (00.31's false pass).
-    {.input = {.name = "black_without_warp", .looks = {look({ScreenEvent::STILL}, on_map("RocketHideout_B4F"))}},
+    {.input = {.name = "black_without_warp", .looks = {look({ScreenEvent::SCREEN_STILL}, on_map("RocketHideout_B4F"))}},
      .expectation = {.failure = "warp_no_fade"}},
-    {.input = {.name = "fade back to B4F", .looks = {look({ScreenEvent::FADE_BLACK}), look({ScreenEvent::CAN_MOVE}, on_map("RocketHideout_B4F"))}},
+    {.input = {.name = "fade back to B4F", .looks = {look({ScreenEvent::FADE_BLACK}), look({ScreenEvent::PLAYER_CAN_MOVE}, on_map("RocketHideout_B4F"))}},
      .expectation = {.failure = "warp_wrong_map"}},
 };
 
