@@ -16,7 +16,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
@@ -29,8 +29,6 @@ namespace PokemonFRLG{
 
 namespace{
 
-using Pokemon::ScreenEvent;
-using Pokemon::ScreenEvents;
 using Pokemon::StoryStepKind;
 
 const WallClock T0 = WallClock() + std::chrono::hours(1);

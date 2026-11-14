@@ -26,7 +26,7 @@
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -44,7 +44,8 @@ namespace PokemonFRLG{
 
 //  Walks `route` from where it was planned, at `speed`. The player must be
 //  standing still on the overworld and not on the bike. `facing` is the way
-//  the player faces at the start; if not given, it is read from the screen.
+//  the player faces at the start; if not given, it is read from the screen
+//  with `player`'s sprites.
 //  Throws OperationFailedException if a warp's fade or the Surf prompt
 //  doesn't show, or a leg is interrupted too many times.
 void walk_overworld_route(
@@ -52,7 +53,8 @@ void walk_overworld_route(
     const std::vector<RouteStep>& route,
     std::optional<Direction> facing = std::nullopt,
     const OverworldInterruptSet& interrupts = default_overworld_interrupts(),
-    MoveSpeed speed = MoveSpeed::WALK
+    MoveSpeed speed = MoveSpeed::WALK,
+    PlayerGender player = PlayerGender::BOY
 );
 
 

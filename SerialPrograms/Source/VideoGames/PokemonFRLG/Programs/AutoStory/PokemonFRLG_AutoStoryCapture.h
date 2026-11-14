@@ -39,6 +39,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryTrainerMessage.h"
 #include "PokemonFRLG_AutoStoryCaptureRun.h"
@@ -108,7 +109,7 @@ constexpr size_t PACE_MAX_STEPS = 200;
 class ConsolePatchSteps : public PatchSteps{
 public:
     ConsolePatchSteps(
-        ConsoleHandle& console, ProControllerContext& context, Pokemon::Direction pace, PaceSpot& spot,
+        ConsoleHandle& console, ProControllerContext& context, PlayerGender player, Pokemon::Direction pace, PaceSpot& spot,
         const PaceTrainerBattle& trainer_battle
     );
 
@@ -122,6 +123,7 @@ public:
 private:
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
+    PlayerGender m_player;
     Pokemon::Direction m_pace;
     PaceSpot& m_spot;
     const PaceTrainerBattle& m_trainer_battle;
@@ -137,7 +139,7 @@ private:
 class ConsoleCaptureActions : public CaptureActions{
 public:
     ConsoleCaptureActions(
-        ConsoleHandle& console, ProControllerContext& context, Language language,
+        ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player,
         PaceTrainerBattle trainer_battle
     );
 
@@ -158,6 +160,7 @@ private:
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     Language m_language;
+    PlayerGender m_player;
     PaceTrainerBattle m_trainer_battle;
     //  Where pacing left the player, kept from one battle to the next.
     PaceSpot m_spot;

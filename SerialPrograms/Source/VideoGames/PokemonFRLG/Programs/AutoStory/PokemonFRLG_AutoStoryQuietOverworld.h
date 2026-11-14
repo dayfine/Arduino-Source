@@ -11,7 +11,7 @@
 
 #include "Common/Cpp/Time.h"
 #include "Pokemon/AutoStory/Pokemon_InterruptHandlers.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
