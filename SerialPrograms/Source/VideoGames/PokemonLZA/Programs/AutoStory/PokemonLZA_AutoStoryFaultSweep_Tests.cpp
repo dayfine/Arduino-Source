@@ -8,7 +8,9 @@
  *  ("walk_to_zone_gate_entrance") and A through a gate or door's prompt
  *  ("mash_to_move_hints" with press_a_first). A step the sim does not play
  *  (a console step, a scene) puts the player at its end, if it started at
- *  its start with no fade under way; else the player is off the story.
+ *  its start with no fade under way; else the player is off the story. A
+ *  look with no input taken since the look before shows the screen still
+ *  (SCREEN_STILL), as the console's frame diff does.
  *
  *  The sim faults it injects, each a class the console showed or could:
  *
@@ -88,18 +90,10 @@ const std::vector<std::string> SWEPT_ROWS{"03.07d", "03.08"};
 
 //  The sweeps the program fails today, by test name, with the likely fix.
 const std::map<std::string, std::string> KNOWN_FAILING{
-    {"PokemonLZA::AutoStory - Fault sweep: 03.07d, lost_tap",
-        "the timed walks (into_the_counter, out_of_pokemon_center, center_to_zone_1) read nothing on the way: a dropped hold or turn goes unseen until walk_to_zone_gate_entrance finds no gate (gate_not_seen, inputs 1-7); check where each walk ends (the minimap) before the next step. And a dropped A at the gate (input 21): mash_to_move_hints with press_a_first ends on the party bar under the gate's or door's prompt: end only once the prompt has gone (A again while it stays) or a fade has shown"},
-    {"PokemonLZA::AutoStory - Fault sweep: 03.07d, late_fade",
-        "enter_zone_1 is done before the gate's late fade starts: mash_to_move_hints with press_a_first ends on the party bar under the gate's or door's prompt: end only once the prompt has gone (A again while it stays) or a fade has shown"},
     {"PokemonLZA::AutoStory - Fault sweep: 03.07d, warp_no_op",
-        "enter_zone_1 is done with the player still outside the gate: mash_to_move_hints with press_a_first ends on the party bar under the gate's or door's prompt: end only once the prompt has gone (A again while it stays) or a fade has shown (on the console, walk_to_zone_1_start's green check then fails as zone_start_missed)"},
-    {"PokemonLZA::AutoStory - Fault sweep: 03.08, lost_tap",
-        "a dropped A at Wild Zone 1's far gate (leave_zone_1) or the lab's door (lab_lobby): mash_to_move_hints with press_a_first ends on the party bar under the gate's or door's prompt: end only once the prompt has gone (A again while it stays) or a fade has shown"},
-    {"PokemonLZA::AutoStory - Fault sweep: 03.08, late_fade",
-        "lab_lobby is done before the lab door's late fade starts: mash_to_move_hints with press_a_first ends on the party bar under the gate's or door's prompt: end only once the prompt has gone (A again while it stays) or a fade has shown"},
+        "enter_zone_1 is done with the player still outside the gate: after the gate's fade the prompt shows again. Pressing A again on a prompt after a fade is not safe: the zone's far side of the gate may show its own prompt (A Leave) where the warp lands, and A there would undo it; telling the two apart needs a reading of the place (the minimap's zone green). On the console, walk_to_zone_1_start's green check fails as zone_start_missed"},
     {"PokemonLZA::AutoStory - Fault sweep: 03.08, warp_no_op",
-        "leave_zone_1 or lab_lobby is done with the player still at the prompt: mash_to_move_hints with press_a_first ends on the party bar under the gate's or door's prompt: end only once the prompt has gone (A again while it stays) or a fade has shown"},
+        "leave_zone_1 or lab_lobby is done with the player still at the prompt: after the fade the prompt shows again. Pressing A again on a prompt after a fade is not safe: the street outside the zone's gate may show the gate's A Enter where the warp lands, and A there would undo it; telling the two apart needs a reading of the place"},
 };
 
 //  How much later than the clean run's a late fade starts.
@@ -352,6 +346,7 @@ private:
         if (index == m_faults.dropped_input || fading || locked){
             return false;
         }
+        m_moved = true;
         m_walk.facings.push_back(m_facing);
         m_walk.inputs.push_back(std::move(input));
         return true;
@@ -372,6 +367,7 @@ private:
         }
         m_last_fade_end = m_fade->end;
         m_fade.reset();
+        m_moved = true;
     }
 
     //  A slice of the walk to the gate.
@@ -427,6 +423,9 @@ private:
     std::optional<double> m_gate;
     std::optional<Fade> m_fade;
     std::optional<WallClock> m_last_fade_end;
+    //  An input was taken or a fade ended since the last look: the screen
+    //  changed.
+    bool m_moved = false;
     CleanRun m_record;
     std::vector<std::string> m_lines;
 };
@@ -440,6 +439,8 @@ Observation<ZonePose> RowSim::observe(){
         return look;
     }
     look.events.set(ScreenEvent::PLAYER_CAN_MOVE, true);
+    look.events.set(ScreenEvent::SCREEN_STILL, !m_moved);
+    m_moved = false;
     look.readings[std::string(Pokemon::STORY_HEADING)] = (int)std::lround(m_facing) % 360;
     if (prompt_shows()){
         look.events.set(ScreenEvent::INTERACT_PROMPT, true);

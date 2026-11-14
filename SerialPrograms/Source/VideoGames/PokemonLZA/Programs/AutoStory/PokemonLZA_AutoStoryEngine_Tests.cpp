@@ -787,6 +787,87 @@ UnitTestResult test_walk_pauses_before_each_leg(CancellableScope& scope){
 }
 
 
+//  The inputs of `backend` that start with `kind` ("hold", "press A").
+size_t count_inputs(const FakeBackend& backend, std::string_view kind){
+    return (size_t)std::ranges::count_if(backend.inputs(), [kind](const std::string& input){ return input.starts_with(kind); });
+}
+
+//  A walk's leg is played once more when the screen stays still after it
+//  (the game dropped the hold), and once when it moves.
+UnitTestResult test_walk_plays_still_leg_again(CancellableScope& scope){
+    StoryCheckpoint row;
+    row.id = "03.07d";
+    row.steps.push_back(StoryStep{.kind = Pokemon::StoryStepKind::GAME, .name = "center_to_zone_1", .why = "test", .action = "walk"});
+    row.steps.back().args["legs"] = std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .ms = 2000}};
+    {
+        FakeBackend backend = fake_plza({look_at(0ms)}, scope);
+        if (run_plza(backend, row).verdict != Pokemon::CheckpointVerdict::PASSED || count_inputs(backend, "hold") != 1){
+            return std::format("Moving: expected one hold, got [{}].", joined(backend.inputs()));
+        }
+    }
+    FakeBackend backend = fake_plza({look_at(0ms, {EngineEvent::SCREEN_STILL})}, scope);
+    if (run_plza(backend, row).verdict != Pokemon::CheckpointVerdict::PASSED || count_inputs(backend, "hold") != 2){
+        return std::format("Still: expected two holds, got [{}].", joined(backend.inputs()));
+    }
+    return true;
+}
+
+//  A gate's "A Enter" alone in a checkpoint (mash_to_move_hints with
+//  press_a_first).
+StoryCheckpoint enter_gate_row(){
+    StoryCheckpoint row;
+    row.id = "03.07d";
+    row.steps.push_back(StoryStep{
+        .kind = Pokemon::StoryStepKind::GAME, .name = "enter_zone_1", .why = "test", .action = "mash_to_move_hints",
+        .args = {{"press_a_first", true}},
+    });
+    return row;
+}
+
+//  Looks every 250 ms over each span: [from, to), with its events.
+struct LookSpan{
+    Milliseconds from;
+    Milliseconds to;
+    std::initializer_list<EngineEvent> events;
+};
+std::vector<Observation<ZonePose>> looks_over(std::initializer_list<LookSpan> spans){
+    std::vector<Observation<ZonePose>> looks;
+    for (const LookSpan& span : spans){
+        for (Milliseconds at = span.from; at < span.to; at += 250ms){
+            looks.push_back(look_at(at, span.events));
+        }
+    }
+    return looks;
+}
+
+//  press_a_first: the party bar under a gone prompt is not control before
+//  the gate's late fade (2 s after the A): the step waits the fade out.
+UnitTestResult test_prompt_waits_for_late_fade(CancellableScope& scope){
+    FakeBackend backend = fake_plza(looks_over({
+        {0ms, 2000ms, {EngineEvent::PLAYER_CAN_MOVE}}, {2000ms, 3000ms, {EngineEvent::FADE_BLACK}},
+        {3000ms, 6000ms, {EngineEvent::PLAYER_CAN_MOVE}},
+    }), scope);
+    if (run_plza(backend, enter_gate_row()).verdict != Pokemon::CheckpointVerdict::PASSED || count_inputs(backend, "press A") != 1){
+        return std::format("Expected a pass on one A, got [{}]: {}", joined(backend.inputs()), joined(backend.lines()));
+    }
+    if (line_index(backend.lines(), "mash_to_move_hints] fade_black") == backend.lines().size()){
+        return std::format("Expected the step to wait the fade out: {}", joined(backend.lines()));
+    }
+    return true;
+}
+
+//  press_a_first: A again when the prompt stays with no fade (a dropped A).
+UnitTestResult test_prompt_pressed_again_when_it_stays(CancellableScope& scope){
+    FakeBackend backend = fake_plza(looks_over({
+        {0ms, 3000ms, {EngineEvent::PLAYER_CAN_MOVE, EngineEvent::INTERACT_PROMPT}},
+        {3000ms, 4000ms, {EngineEvent::FADE_BLACK}}, {4000ms, 7000ms, {EngineEvent::PLAYER_CAN_MOVE}},
+    }), scope);
+    if (run_plza(backend, enter_gate_row()).verdict != Pokemon::CheckpointVerdict::PASSED || count_inputs(backend, "press A") != 2){
+        return std::format("Expected a pass on two A, got [{}]: {}", joined(backend.inputs()), joined(backend.lines()));
+    }
+    return true;
+}
+
 struct EngineTestCase{
     std::string name;
     struct Input{
@@ -847,6 +928,9 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.name = "reload_when_chained: \"always\" reloads straight through too", .input = {.body = test_straight_through_reloads_always}, .expectation = {}},
     {.name = "walk_to_prompt: walks until the A prompt, none when it shows", .input = {.body = test_walk_to_prompt}, .expectation = {}},
     {.name = "breakpoints: a walk pauses before each leg", .input = {.body = test_walk_pauses_before_each_leg}, .expectation = {}},
+    {.name = "walk: a leg the screen stays still after is played once more", .input = {.body = test_walk_plays_still_leg_again}, .expectation = {}},
+    {.name = "press_a_first: waits out a late fade, not done on the party bar", .input = {.body = test_prompt_waits_for_late_fade}, .expectation = {}},
+    {.name = "press_a_first: A again while the prompt stays with no fade", .input = {.body = test_prompt_pressed_again_when_it_stays}, .expectation = {}},
 };
 
 

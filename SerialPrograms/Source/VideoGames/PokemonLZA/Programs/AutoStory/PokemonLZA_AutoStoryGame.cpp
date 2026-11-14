@@ -220,6 +220,49 @@ Outcome gate_walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActi
     return walk_to_zone_gate_entrance(backend, heading, zone_gate_reader(), walk);
 }
 
+//  After A at a gate's or door's prompt: how long a fade or text may take
+//  to show (the sweep's late fade starts 1.8 s after the A), how often it
+//  is looked for, and how many times A is pressed while the prompt stays
+//  with neither (a dropped A).
+constexpr Milliseconds PROMPT_TAKEN_WAIT(3000);
+constexpr Milliseconds PROMPT_POLL(250);
+constexpr size_t PROMPT_PRESSES = 3;
+
+//  Whether `look` shows that A at a prompt was taken: a fade, or text.
+bool prompt_taken(const Pokemon::Observation<ZonePose>& look){
+    using PokemonAutomation::ScreenEvent;
+    return look.events.has(ScreenEvent::FADE_BLACK) || look.events.has(ScreenEvent::FADE_WHITE) ||
+        look.events.has(ScreenEvent::DIALOG_BOX) || look.events.has(ScreenEvent::CHOICE_BOX);
+}
+
+//  A at the A prompt the player stands at, then looks for up to
+//  PROMPT_TAKEN_WAIT until a fade or text shows; while the prompt stays
+//  with neither, A again, PROMPT_PRESSES times at most. The party bar
+//  shows under the prompt (console B, 2026-11-10), so the scene machine
+//  that follows would take it for control before a late fade. A prompt
+//  gone with no fade or text is left to the scene machine, as is one
+//  still up after the last A.
+void press_through_prompt(Pokemon::StoryBackend<ZonePose>& backend){
+    for (size_t press = 1; press <= PROMPT_PRESSES; press++){
+        backend.press(BUTTON_A, 160ms, 400ms);
+        bool prompt = true;
+        for (Milliseconds waited(0); waited < PROMPT_TAKEN_WAIT; waited += PROMPT_POLL){
+            backend.scope().throw_if_cancelled();
+            const Pokemon::Observation<ZonePose> look = backend.observe();
+            if (prompt_taken(look)){
+                return;
+            }
+            prompt = look.events.has(PokemonAutomation::ScreenEvent::INTERACT_PROMPT);
+            backend.wait(PROMPT_POLL);
+        }
+        if (!prompt){
+            backend.log(std::format("[PLZA] mash_to_move_hints: the prompt went with no fade in {} ms", PROMPT_TAKEN_WAIT.count()));
+            return;
+        }
+        backend.log(std::format("[PLZA] mash_to_move_hints: the prompt is still up {} ms after A {}", PROMPT_TAKEN_WAIT.count(), press));
+    }
+}
+
 //  Builds the handlers. The console actions hold the console; without one
 //  (a test, a simulation) their specs are console_only and the engine
 //  refuses them before their handler.
@@ -316,13 +359,14 @@ public:
     //  of control, A every 2 s, for text the detectors miss (01.01's ad).
     //  A banner that stays past the 10 s gets A up to 3 times (01.03's
     //  "MAIN MISSION 02"), so the step ends with control. "press_a_first"
-    //  presses A once at a prompt (02.03's Hotel Z door, "A Enter"), which
-    //  would otherwise end the step at once as control. "quiet_is_control"
+    //  presses A at a prompt (02.03's Hotel Z door, "A Enter"), which
+    //  would otherwise end the step at once as control, and waits for its
+    //  fade or text (press_through_prompt()). "quiet_is_control"
     //  ends it on the quiet time instead of failing, inside Hotel Z.
     static Handler move_hints(){
         return [](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
             if (Pokemon::story_arg<bool>(call.args, "press_a_first")){
-                backend.press(BUTTON_A, 160ms, 400ms);
+                press_through_prompt(backend);
             }
             SceneMachineConfig config;
             config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));

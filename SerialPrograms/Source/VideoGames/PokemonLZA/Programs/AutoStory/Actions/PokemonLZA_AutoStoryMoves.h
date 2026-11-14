@@ -71,9 +71,11 @@ Pokemon::Outcome face_heading(PlzaBackend& backend, const PlzaReader& reader, do
 
 //  From the overworld, walks as `move` says: faces its heading first, if it
 //  has one, then each leg's turn (and L to recenter the camera, since the
-//  walk goes where it looks) and walk. Nothing is read on the way: a leg
-//  that is cut short or blocked goes unnoticed, and a step that needs a
-//  prompt after the walk fails there instead. `heading` reads the compass
+//  walk goes where it looks) and walk. Not held: a look after each turn
+//  and each walk; one that shows the screen still (the game dropped the
+//  input) plays that turn or walk once more, then goes on. A leg cut short
+//  or blocked part way goes unnoticed, and a step that needs a prompt after
+//  the walk fails there instead. `heading` reads the compass
 //  (face_heading()). `pause`, if given, is the run's pause points: each leg
 //  is a breakpoint (StoryPausePoints::before_leg(), story_walk_leg_label()).
 Pokemon::Outcome run_story_move(
