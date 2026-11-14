@@ -186,17 +186,17 @@ namespace{
 //  A stream of frames into a ScreenEventLog, and its describe() text.
 struct ScreenEventLogCase{
     struct Frame{
-        int ms;
+        int ms = 0;
         std::vector<ScreenEvent> events;
     };
     struct Input{
-        size_t capacity;
+        size_t capacity = 0;
         std::vector<Frame> frames;
     };
     struct Expectation{
         //  describe() of the log, times from the first frame.
         std::string text;
-        size_t dropped;
+        size_t dropped = 0;
     };
 
     std::string name;

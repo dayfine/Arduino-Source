@@ -63,16 +63,32 @@ void check_in_story_order(
 
 namespace{
 
+//  Which row sequence the reload check applies to.
+enum class RunKind{
+    DEVELOPER,
+    USER,
+};
+
+//  Text naming `run` in a reload error.
+std::string_view run_suffix(RunKind run){
+    switch (run){
+    case RunKind::DEVELOPER:
+        return "";
+    case RunKind::USER:
+        return " in a user's run";
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown story run kind.");
+}
+
 //  Throws ParseException naming `source` unless `previous` ends on the
-//  game's autosave in `rows`; `run` says in whose run ("" or " in a
-//  user's run").
+//  game's autosave in `rows`, for `run`.
 void check_reload_after(
-    std::optional<std::string_view> previous, const StoryRows& rows, std::string_view run, std::string_view source
+    std::optional<std::string_view> previous, const StoryRows& rows, RunKind run, std::string_view source
 ){
     if (!previous || !rows.autosaves.contains(*previous)){
         throw ParseException(std::format(
             "{}: reload_when_chained after a checkpoint that does not end on the game's autosave{}: the reload would load an older save",
-            source, run
+            source, run_suffix(run)
         ));
     }
 }
@@ -87,9 +103,9 @@ void add_story_row(
         if (start == RowSave::WITHOUT_SAVE){
             throw ParseException(std::format("{}: reload_when_chained on a checkpoint with no save to reload", source));
         }
-        check_reload_after(previous.in_dev_run, rows, "", source);
+        check_reload_after(previous.in_dev_run, rows, RunKind::DEVELOPER, source);
         if (!execution.dev_only && previous.in_user_run != previous.in_dev_run){
-            check_reload_after(previous.in_user_run, rows, " in a user's run", source);
+            check_reload_after(previous.in_user_run, rows, RunKind::USER, source);
         }
         rows.reload_when_chained.emplace(id);
     }

@@ -185,6 +185,14 @@ const LoadCase LOAD_CASES[] = {
         .expectation = {.error = "test-01.01.plan: reload_when_chained after a checkpoint that does not end on the game's autosave"},
     },
     {
+        .name = "a dev-only reload after a user row that does not autosave fails",
+        .input = {.builtin = {
+            {"test-01.00.plan", file_text("01.00", R"({"save": "menu"})")},
+            {"test-01.01.plan", file_text("01.01", R"({"dev_only": true, "reload_when_chained": true})")},
+        }},
+        .expectation = {.error = "test-01.01.plan: reload_when_chained after a checkpoint that does not end on the game's autosave"},
+    },
+    {
         .name = "reload_when_chained after a dev-only autosave row, the user's row before it not autosaving, fails",
         .input = {.builtin = {
             {"test-01.00.plan", file_text("01.00", R"({"save": "menu"})")},

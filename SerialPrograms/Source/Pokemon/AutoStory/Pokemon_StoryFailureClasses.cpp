@@ -66,7 +66,6 @@ std::vector<StoryFailureClassInfo> run_rows(){
             },
             R::STOP,
         },
-
     };
 }
 
@@ -109,7 +108,6 @@ std::vector<StoryFailureClassInfo> walk_rows(){
             "the localizer: no pose, another map, another facing",
             {}, {}, R::RELOAD,
         },
-
     };
 }
 
@@ -140,7 +138,6 @@ std::vector<StoryFailureClassInfo> warp_rows(){
             "the floor reads dim; the walker's and the scene's reads fail there",
             {FaultClass::DARK_CAVE}, {}, R::STOP,
         },
-
     };
 }
 
@@ -227,9 +224,14 @@ std::vector<StoryFailureClassInfo> check_rows(){
 const std::vector<StoryFailureClassInfo>& class_rows(){
     static const std::vector<StoryFailureClassInfo> CLASSES = []{
         std::vector<StoryFailureClassInfo> rows;
-        for (std::vector<StoryFailureClassInfo> group : {run_rows(), walk_rows(), warp_rows(), scene_rows(), check_rows()}){
+        const auto append = [&rows](std::vector<StoryFailureClassInfo> group){
             rows.insert(rows.end(), std::make_move_iterator(group.begin()), std::make_move_iterator(group.end()));
-        }
+        };
+        append(run_rows());
+        append(walk_rows());
+        append(warp_rows());
+        append(scene_rows());
+        append(check_rows());
         return rows;
     }();
     return CLASSES;
