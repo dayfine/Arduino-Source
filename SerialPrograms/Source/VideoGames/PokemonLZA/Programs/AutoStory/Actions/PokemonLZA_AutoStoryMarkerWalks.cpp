@@ -4,8 +4,10 @@
  *
  */
 
+#include <algorithm>
 #include <cmath>
 #include <format>
+#include <optional>
 #include <string>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -53,8 +55,53 @@ std::optional<int> walk_from_objective(ConsoleHandle& console, ProControllerCont
     return last;
 }
 
+namespace{
+
+//  Turns the camera, without walking, until the objective marker sits at
+//  `x` on screen (15 turns at most). Returns the marker last read.
+std::optional<ObjectiveMarker> turn_marker_to(ConsoleHandle& console, ProControllerContext& context, double x){
+    std::optional<ObjectiveMarker> marker;
+    for (int i = 0; i < 15; i++){
+        context.wait_for_all_requests();
+        marker = read_objective_marker(console, console.video().snapshot());
+        if (!marker){
+            return marker;
+        }
+        const double off = marker->x - x;
+        if (std::abs(off) < 0.02){
+            return marker;
+        }
+        pbf_move_right_joystick(context, {off > 0 ? 0.4 : -0.4, 0}, Milliseconds((int)(std::min(1.0, std::abs(off) * 4) * 400)) + 60ms, 150ms);
+    }
+    return marker;
+}
+
+//  Walks with the far gate's marker held at ZONE_1_START_AIM_X until its
+//  distance reads `stop_at` or less, or `limit`. A read more than 12 from
+//  the last is a misread and skipped. Returns the last distance read.
+std::optional<int> walk_left_of_far_gate(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit){
+    const WallClock deadline = current_time() + limit;
+    std::optional<int> last;
+    while (current_time() < deadline){
+        const std::optional<ObjectiveMarker> marker = turn_marker_to(console, context, ZONE_1_START_AIM_X);
+        if (marker && marker->distance > 0 && (!last || std::abs(marker->distance - *last) <= 12)){
+            last = marker->distance;
+            if (*last <= stop_at){
+                console.log(std::format("walk_to_zone_1_start(): {} to the far gate, aimed left of it.", *last));
+                return last;
+            }
+        }
+        pbf_move_left_joystick(context, {0, 1}, 600ms, 0ms);
+    }
+    console.log(std::format("walk_to_zone_1_start(): not within {} in time (last read {}).", stop_at, last.value_or(-1)));
+    return last;
+}
+
+} // namespace
+
 void walk_to_zone_1_start(ConsoleHandle& console, ProControllerContext& context){
-    walk_to_objective(console, context, ZONE_1_START_DISTANCE + ZONE_1_START_OVERSHOOT, 60s);
+    walk_left_of_far_gate(console, context, ZONE_1_START_DISTANCE + ZONE_1_START_OVERSHOOT, 60s);
+    turn_marker_to(console, context, 0.5);
     context.wait_for_all_requests();
     const VideoSnapshot frame = console.video().snapshot();
     const std::optional<ObjectiveMarker> marker = read_objective_marker(console, frame);
