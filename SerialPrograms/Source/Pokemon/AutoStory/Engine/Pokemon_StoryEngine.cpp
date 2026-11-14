@@ -9,6 +9,7 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include "Pokemon/AutoStory/Pokemon_CheckpointAttempts.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon_StoryEngine.h"
 
@@ -234,26 +235,34 @@ template <StoryPose PoseType>
 StoryEngineReport StoryEngine<PoseType>::run_with_retries(
     const StoryCheckpoint& checkpoint, SavePoint point, size_t attempts, RunState& state, CheckpointRun& run
 ){
-    for (size_t attempt = 1; ; attempt++){
-        run.attempts = attempt;
-        StoryEngineReport report = run_checkpoint(checkpoint, point, state);
-        if (report.verdict == CheckpointVerdict::PASSED){
-            run.passed = true;
-            m_backend.log(checkpoint_pass_line(checkpoint.id, attempt));
-            return report;
-        }
-        if (attempt >= attempts || repeats_on_reload(report.run.failure)){
-            return report;
-        }
-        m_backend.log(std::format("[Segment] {}: failed, reloading for attempt {}/{}", checkpoint.id, attempt + 1, attempts));
-        const Outcome reloaded = reload(state);
-        if (!reloaded.succeeded()){
-            report.run.completed = false;
-            report.run.failed_name.clear();
-            report.run.failure = reloaded;
-            return report;
-        }
-    }
+    StoryEngineReport report;
+    const CheckpointAttempts loop{
+        .max_attempts = attempts,
+        .run = [&](size_t attempt){
+            run.attempts = attempt;
+            report = run_checkpoint(checkpoint, point, state);
+            if (report.verdict == CheckpointVerdict::PASSED){
+                return AttemptResult::PASSED;
+            }
+            return repeats_on_reload(report.run.failure) ? AttemptResult::FINAL : AttemptResult::FAILED;
+        },
+        .reset = [&](size_t next_attempt){
+            m_backend.log(checkpoint_reset_line(checkpoint.id, next_attempt, attempts));
+            const Outcome reloaded = reload(state);
+            if (!reloaded.succeeded()){
+                report.run.completed = false;
+                report.run.failed_name.clear();
+                report.run.failure = reloaded;
+                return false;
+            }
+            return true;
+        },
+        .log = [this](const std::string& line){
+            m_backend.log(line);
+        },
+    };
+    run.passed = run_checkpoint_attempts(checkpoint.id, loop).passed;
+    return report;
 }
 
 template <StoryPose PoseType>
