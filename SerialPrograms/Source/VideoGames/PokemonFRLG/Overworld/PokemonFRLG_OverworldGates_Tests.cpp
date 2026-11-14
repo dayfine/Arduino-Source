@@ -16,6 +16,7 @@
 #include "PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldSim.h"
+#include "PokemonFRLG_OverworldWalkGates.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -351,6 +352,41 @@ UnitTestResult test_failed_press_keeps_its_tile(){
     return true;
 }
 
+//  The statue's text as the game shows it after each A (pokefirered
+//  data/scripts/pokemon_mansion.inc, PokemonMansion_EventScript_SecretSwitch:
+//  "A secret switch!\p" "Press it?" with YES/NO): a page of its own first,
+//  then the prompt. `pages` more text pages before it, then the prompt.
+std::function<StatueScreen()> statue_text(int pages){
+    return [pages, presses = 0]() mutable{
+        presses++;
+        return presses <= pages ? StatueScreen::MORE_TEXT : StatueScreen::PROMPT;
+    };
+}
+
+//  13.01 mansion_holes (console B, 2026-11-13 19:17 and 2026-11-14 01:26):
+//  the press waited for YES/NO after one A, while "A secret switch!" showed
+//  with its page arrow until a second A. The prompt is reached by turning
+//  the pages first.
+UnitTestResult test_statue_pages_to_prompt(){
+    const std::optional<int> presses = page_to_switch_prompt(statue_text(1), 5);
+    if (presses != 2){
+        return std::format("Expected 2 presses of A to the prompt, got {}.", presses ? std::to_string(*presses) : "none");
+    }
+    return true;
+}
+
+//  A statue that shows no prompt (no text at all, or page after page)
+//  is not pressed forever.
+UnitTestResult test_statue_without_prompt_gives_up(){
+    if (page_to_switch_prompt([]{ return StatueScreen::NOTHING; }, 5)){
+        return "Took a screen with no text for the prompt.";
+    }
+    if (page_to_switch_prompt(statue_text(100), 5)){
+        return "Turned pages past the cap.";
+    }
+    return true;
+}
+
 //  The sim, like the game, does not open a card-key door for a player
 //  without the Card Key.
 UnitTestResult test_sim_door_stays_shut_without_card_key(){
@@ -379,6 +415,8 @@ const std::vector<GatesCase> GATES_CASES{
     {.input = {.name = "sim: face the statue, A, YES, walk through", .body = test_sim_presses_statue}, .expectation = {}},
     {.input = {.name = "sim: the door stays shut without the Card Key", .body = test_sim_door_stays_shut_without_card_key}, .expectation = {}},
     {.input = {.name = "sim: a failed press keeps the player on its tile", .body = test_failed_press_keeps_its_tile}, .expectation = {}},
+    {.input = {.name = "the statue's first page is turned to its prompt", .body = test_statue_pages_to_prompt}, .expectation = {}},
+    {.input = {.name = "a statue with no prompt is given up on", .body = test_statue_without_prompt_gives_up}, .expectation = {}},
 };
 
 } // namespace

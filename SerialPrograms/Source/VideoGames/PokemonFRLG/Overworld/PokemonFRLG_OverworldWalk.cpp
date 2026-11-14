@@ -177,6 +177,20 @@ Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
 } // namespace
 
 
+std::optional<int> page_to_switch_prompt(const std::function<StatueScreen()>& press_a_and_look, int max_pages){
+    for (int presses = 1; presses <= max_pages + 1; presses++){
+        const StatueScreen screen = press_a_and_look();
+        if (screen == StatueScreen::PROMPT){
+            return presses;
+        }
+        if (screen == StatueScreen::NOTHING){
+            return std::nullopt;
+        }
+    }
+    return std::nullopt;
+}
+
+
 namespace OverworldWalkSteps{
 
 DpadPosition dpad(Direction direction){
@@ -727,16 +741,30 @@ void open_gate(ConsoleHandle& console, ProControllerContext& context, Direction 
 
 void press_switch(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_statue){
     face_for_a(context, direction, facing_statue);
-    pbf_press_button(context, BUTTON_A, 160ms, 0ms);
-    SelectionDialogWatcher prompt(COLOR_RED);
-    context.wait_for_all_requests();
-    if (wait_until(console, context, SWITCH_PROMPT_TIMEOUT, {prompt}) < 0){
+    //  Each A, the first on the statue, then one per page: the prompt or a
+    //  page with its arrow, within SWITCH_PROMPT_TIMEOUT.
+    const std::optional<int> presses = page_to_switch_prompt([&]{
+        pbf_press_button(context, BUTTON_A, 160ms, 0ms);
+        SelectionDialogWatcher prompt(COLOR_RED);
+        AdvanceWhiteDialogWatcher page(COLOR_RED);
+        context.wait_for_all_requests();
+        switch (wait_until(console, context, SWITCH_PROMPT_TIMEOUT, {prompt, page})){
+        case 0:
+            return StatueScreen::PROMPT;
+        case 1:
+            return StatueScreen::MORE_TEXT;
+        default:
+            return StatueScreen::NOTHING;
+        }
+    }, MAX_TEXT_BOXES);
+    if (!presses){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
             "walk_overworld_route(): no prompt facing the statue.",
             console
         );
     }
+    console.log(std::format("Route: the statue's prompt after {} press(es) of A.", *presses));
     //  Yes is selected.
     pbf_press_button(context, BUTTON_A, 160ms, 1000ms);
     clear_text(console, context);
