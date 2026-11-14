@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The "press A to go on" chevron at the bottom right of a dialogue box or
- *  of the boxless subtitles of 01.01's ad.
+ *  of the boxless subtitles of the ad early in the story.
  *
  */
 

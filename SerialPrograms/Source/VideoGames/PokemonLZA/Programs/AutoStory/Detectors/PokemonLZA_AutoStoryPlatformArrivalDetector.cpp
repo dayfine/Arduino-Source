@@ -45,19 +45,19 @@ const PlatformRegion PLATFORM_REGIONS[] = {
     {"right", {1280.0 / 1920, 300.0 / 1080, 640.0 / 1920, 780.0 / 1080}, 16, 20},
 };
 
-//  The bounds of platform_matches(), from the opening's frames (console B,
-//  1920x1080: the platform reference and the 56 cutscene frames before
-//  it, measured with this code's cell averages):
-//  - the closest cutscene frame is 0056, the train's interior just before
-//    the platform: top 112.8, left 82.6, right 71.9; the next are the
-//    city flyovers 0022-0024 at top 134.7+, left 95.6+;
+//  The bounds of platform_matches(), from this code's cell averages on
+//  1920x1080, against the platform reference:
+//  - the closest cutscene scene, the train's interior just before the
+//    platform: top 112.8, left 82.6, right 71.9; the next, city flyovers:
+//    top 134.7+, left 95.6+;
 //  - the reference against itself moved 16 px: top 42.2, left 20.8,
-//    right 21.2; 10% darker: top 24.6, left 19.9, right 16.4.
-//  - the platform after loading its autosave (camera turned a little,
-//    2026-11-10): top 67.9-68.1, left 25.8-41.7, right 16.5-16.9.
-//  So the bounds sit between the loaded view and 0056: top 90 (23 below
-//  0056), left 55 (27 below). The right side holds a walking NPC and the companion, so it only
-//  has to be roughly the platform (120: a menu or another place is 140+).
+//    right 21.2; 10% darker: top 24.6, left 19.9, right 16.4;
+//  - the platform after loading its autosave (camera turned a little):
+//    top 67.9-68.1, left 25.8-41.7, right 16.5-16.9.
+//  So the bounds sit between the loaded view and the train's interior:
+//  top 90 (23 below it), left 55 (27 below). The right side holds a walking
+//  NPC and the companion, so it only has to be roughly the platform (120:
+//  a menu or another place is 140+).
 constexpr double PLATFORM_TOP_MAX = 90.0;
 constexpr double PLATFORM_LEFT_MAX = 55.0;
 constexpr double PLATFORM_RIGHT_MAX = 120.0;

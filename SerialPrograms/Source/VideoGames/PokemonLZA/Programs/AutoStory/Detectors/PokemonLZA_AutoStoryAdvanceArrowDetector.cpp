@@ -193,13 +193,11 @@ void AdvanceArrowDetector::make_overlays(VideoOverlaySet& items) const{
     items.add(m_color, m_area);
 }
 
-//  Measured on 1920x1080 (console B, 2026-11-10; 01.01's runs 1 and 2, the
-//  lab's and the user's opening frames, 459 frames): the chevron's 35
-//  frames (the ad's subtitles, white boxes, the opening's blue box) fill
-//  the V 0.53-0.70 with at most 1% stray pixels. Of the rest, the closest
-//  in size and shape is run 1's 0033 (a dark flyover blade, V 0.49 but
-//  16% stray); the closest with nothing around it fill the V 0.43 or less
-//  and are out of the chevron's size.
+//  On 1920x1080 the chevron (on the ad's subtitles, on white boxes, on the
+//  opening's blue box) fills the V 0.53-0.70 with at most 1% stray pixels.
+//  The closest other shape in size and shape, a dark blade of scenery,
+//  fills the V 0.49 but has 16% stray pixels; shapes with nothing around
+//  them fill the V 0.43 or less and are out of the chevron's size.
 bool AdvanceArrowDetector::detect(const ImageViewRGB32& screen){
     const double scale = double(screen.height()) / 1080;
     const ImageViewRGB32 area = extract_box_reference(screen, m_area);
