@@ -1484,6 +1484,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Options/Pokemon_NameSelectWidget.h
     Source/Pokemon/Options/Pokemon_StatsHuntFilter.cpp
     Source/Pokemon/Options/Pokemon_StatsHuntFilter.h
+    Source/Pokemon/Options/Pokemon_StoryRangeOptions.cpp
+    Source/Pokemon/Options/Pokemon_StoryRangeOptions.h
+    Source/Pokemon/Options/Pokemon_StoryRangeOptions_Tests.cpp
+    Source/Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h

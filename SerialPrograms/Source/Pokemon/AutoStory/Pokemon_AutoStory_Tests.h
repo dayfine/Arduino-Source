@@ -12,6 +12,7 @@
 #define PokemonAutomation_Pokemon_AutoStory_Tests_H
 
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
 
@@ -23,6 +24,7 @@ namespace Pokemon{
 inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_AutoStorySelect(database);
     add_tests_StoryLog(database);
+    add_tests_StoryRangeOptions(database);
 }
 
 
