@@ -280,6 +280,12 @@ file(GLOB CORE_LIBRARY_SOURCES
     Source/Controllers/Joystick.cpp
     Source/Controllers/Joystick.h
     Source/Controllers/JoystickTools.h
+    Source/Controllers/MgbaLink/MgbaLink_Connection.cpp
+    Source/Controllers/MgbaLink/MgbaLink_Connection.h
+    Source/Controllers/MgbaLink/MgbaLink_Protocol.cpp
+    Source/Controllers/MgbaLink/MgbaLink_Protocol.h
+    Source/Controllers/MgbaLink/MgbaLink_Tests.cpp
+    Source/Controllers/MgbaLink/MgbaLink_Tests.h
     Source/Controllers/NullController.cpp
     Source/Controllers/NullController.h
     Source/Controllers/PABotBase2/PABotBase2_CommandQueueManager.cpp
@@ -787,6 +793,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/VideoPipeline/VideoSourceOption.h
     Source/CommonFramework/VideoPipeline/Sources/VideoSource_Camera.cpp
     Source/CommonFramework/VideoPipeline/Sources/VideoSource_Camera.h
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_MgbaLink.cpp
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_MgbaLink.h
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_MgbaLink_Tests.cpp
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_MgbaLink_Tests.h
     Source/CommonFramework/VideoPipeline/Sources/VideoSource_Null.cpp
     Source/CommonFramework/VideoPipeline/Sources/VideoSource_Null.h
     Source/CommonFramework/VideoPipeline/Sources/VideoSource_StillImage.cpp

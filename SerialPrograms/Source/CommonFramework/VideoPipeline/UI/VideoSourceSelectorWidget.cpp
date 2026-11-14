@@ -9,6 +9,7 @@
 #include <QComboBox>
 #include <QPushButton>
 #include "Common/Qt/NoWheelComboBox.h"
+#include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/GlobalSettingsPanel.h"
 #include "CommonFramework/VideoPipeline/VideoPipelineOptions.h"
 #include "CommonFramework/Panels/ConsoleSettingsStretch.h"
@@ -138,6 +139,9 @@ void VideoSourceSelectorWidget::update_source_list(){
         m_session.save(option);
         m_sources.emplace_back(option.get_descriptor_from_cache(VideoSourceType::None));
         m_sources.emplace_back(option.get_descriptor_from_cache(VideoSourceType::StillImage));
+        if (STATIC_GLOBALS.DEVELOPER_MODE){
+            m_sources.emplace_back(option.get_descriptor_from_cache(VideoSourceType::MgbaLink));
+        }
     }
 
     //  Now add all the cameras.

@@ -12,6 +12,7 @@
 #include "Sources/VideoSource_Null.h"
 #include "Sources/VideoSource_StillImage.h"
 #include "Sources/VideoSource_Camera.h"
+#include "Sources/VideoSource_MgbaLink.h"
 
 #include "VideoSourceOption.h"
 
@@ -27,6 +28,7 @@ const EnumStringMap<VideoSourceType> VIDEO_TYPE_STRINGS{
     {VideoSourceType::StillImage,       "Still Image"},
     {VideoSourceType::VideoPlayback,    "Video Playback"},
     {VideoSourceType::Camera,           "Camera"},
+    {VideoSourceType::MgbaLink,         "mGBA Link"},
 };
 
 
@@ -56,6 +58,9 @@ std::shared_ptr<VideoSourceDescriptor> VideoSourceOption::get_descriptor_from_ca
         break;
     case VideoSourceType::Camera:
         descriptor.reset(new VideoSourceDescriptor_Camera());
+        break;
+    case VideoSourceType::MgbaLink:
+        descriptor.reset(new VideoSourceDescriptor_MgbaLink());
         break;
     default:;
         descriptor.reset(new VideoSourceDescriptor_Null());
@@ -135,6 +140,12 @@ void VideoSourceOption::load_json(const JsonValue& json){
             auto x = std::make_unique<VideoSourceDescriptor_Camera>();
             x->load_json(*params);
             m_descriptor_cache[VideoSourceType::Camera] = std::move(x);
+        }
+        params = obj->get_value(VIDEO_TYPE_STRINGS.get_string(VideoSourceType::MgbaLink));
+        if (params != nullptr){
+            auto x = std::make_unique<VideoSourceDescriptor_MgbaLink>();
+            x->load_json(*params);
+            m_descriptor_cache[VideoSourceType::MgbaLink] = std::move(x);
         }
 
         auto iter = m_descriptor_cache.find(VIDEO_TYPE_STRINGS.get_enum(*type, VideoSourceType::None));
