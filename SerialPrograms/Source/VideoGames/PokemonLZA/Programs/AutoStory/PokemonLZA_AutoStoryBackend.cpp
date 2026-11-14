@@ -31,6 +31,7 @@ using Pokemon::Direction;
 
 PlzaConsoleBackend::PlzaConsoleBackend(StoryEnv& env)
     : m_env(env)
+    , m_home(env.env.console, COLOR_RED)
 {}
 
 void PlzaConsoleBackend::press(Button button, Milliseconds hold, Milliseconds release){
@@ -58,7 +59,9 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
     m_env.context.wait_for_all_requests();
     VideoSnapshot frame = m_env.env.console.video().snapshot();
     Pokemon::Observation<Pokemon::ZonePose> look;
-    if (frame){
+    if (frame && m_home.detect(*frame.frame)){
+        look.events.set(PokemonAutomation::ScreenEvent::SWITCH_HOME_MENU, true);
+    }else if (frame){
         static_cast<ScreenObservation&>(look) = Pokemon::screen_observation(m_observer.read(*frame.frame));
         if (m_platform.detect(*frame.frame)){
             look.readings[std::string(PLATFORM_READING)] = 1;
