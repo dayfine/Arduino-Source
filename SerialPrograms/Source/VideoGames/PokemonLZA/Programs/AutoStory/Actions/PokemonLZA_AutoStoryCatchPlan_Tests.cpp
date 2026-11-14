@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "PokemonLZA_AutoStoryBracketWatch.h"
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 #include "PokemonLZA_AutoStoryCatchPlan_Tests.h"
 

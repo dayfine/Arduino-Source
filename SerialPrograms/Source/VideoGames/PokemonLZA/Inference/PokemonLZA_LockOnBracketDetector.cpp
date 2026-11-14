@@ -555,6 +555,6 @@ void add_tests_LockOnBracketDetector(UnitTestDatabase& database){
 }
 
 
-}
-}
-}
+} // namespace PokemonLZA
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

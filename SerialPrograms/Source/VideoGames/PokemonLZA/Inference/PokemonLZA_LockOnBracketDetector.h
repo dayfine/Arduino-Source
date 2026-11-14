@@ -44,6 +44,8 @@ struct LockOnBrackets{
 std::optional<LockOnBrackets> find_lock_on_brackets(const ImageViewRGB32& screen);
 
 
+//  find_lock_on_brackets() as a detector, drawing the pair found on
+//  `overlay` (when given) in `color`.
 class LockOnBracketDetector : public StaticScreenDetector{
 public:
     LockOnBracketDetector(Color color, VideoOverlay* overlay);
@@ -65,10 +67,11 @@ private:
 };
 
 
+//  The detector on console B's Wild Zone 1 frames (PokemonLZA/LockOnBracketDetector/).
 void add_tests_LockOnBracketDetector(UnitTestDatabase& database);
 
 
-}
-}
-}
+} // namespace PokemonLZA
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif
