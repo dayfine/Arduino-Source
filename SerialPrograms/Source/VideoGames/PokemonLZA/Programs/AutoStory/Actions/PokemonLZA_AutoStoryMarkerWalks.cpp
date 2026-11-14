@@ -63,10 +63,11 @@ namespace{
 constexpr int ZONE_1_START_OVERSHOOT = 2;
 
 //  Where 03.07d's last leg keeps the far gate's marker on screen (0 to 1):
-//  right of the middle, so the walk heads about 5 degrees left of the gate
-//  (the camera shows about 60 degrees across). Straight at the marker ended
-//  a bit right of 03.08's start (user, console B 2026-11-14 14:33).
-constexpr double ZONE_1_START_AIM_X = 0.5 + 5.0 / 60.0;
+//  right of the middle, so the walk heads about 2.5 degrees left of the
+//  gate (the camera shows about 60 degrees across). Straight at the marker
+//  ended a bit right of 03.08's start and 5 degrees a bit left (user,
+//  console B 2026-11-14 14:33 and 14:41); the user picked the middle.
+constexpr double ZONE_1_START_AIM_X = 0.5 + 2.5 / 60.0;
 
 //  Turns the camera, without walking, until the objective marker sits at
 //  `x` on screen (15 turns at most). Returns the marker last read.
