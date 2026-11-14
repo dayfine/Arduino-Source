@@ -8,6 +8,7 @@
 
 #include <functional>
 #include <format>
+#include <optional>
 #include <string>
 #include <string_view>
 #include "Common/Cpp/Exceptions.h"
@@ -128,35 +129,38 @@ UnitTestResult test_taps(){
     return true;
 }
 
-struct TypeTextInput{
-    std::string_view name;
-    std::string line;
-};
-
-struct TypeTextExpectation{
-    std::string text;       //  What "type" types.
-    std::string error;      //  The ParseException's message; "" if none.
-};
-
 struct TypeTextCase{
-    TypeTextInput input;
-    TypeTextExpectation expectation;
+    std::string name;
+    struct Input{
+        std::string line;
+    };
+    Input input;
+    struct Expectation{
+        std::string text = {};                  //  What "type" types; empty when it throws.
+        std::optional<std::string> error = {};  //  The ParseException's message, if it throws one.
+    };
+    Expectation expectation;
 };
 
 const TypeTextCase TYPE_TEXT_CASES[] = {
-    {.input = {.name = "a name", .line = "type Kosmos"}, .expectation = {.text = "Kosmos"}},
-    {.input = {.name = "a comment after the name", .line = "type Kosmos  # the player"}, .expectation = {.text = "Kosmos"}},
-    {.input = {.name = "no text", .line = "type"}, .expectation = {.error = "type: expected one word to type, got 0"}},
-    {.input = {.name = "two words", .line = "type Kos mos"}, .expectation = {.error = "type: expected one word to type, got 2"}},
+    {.name = "a name", .input = {.line = "type Kosmos"}, .expectation = {.text = "Kosmos"}},
+    {.name = "a comment after the name", .input = {.line = "type Kosmos  # the player"}, .expectation = {.text = "Kosmos"}},
+    {.name = "no text", .input = {.line = "type"}, .expectation = {.error = "type: expected one word to type, got 0"}},
+    {.name = "two words", .input = {.line = "type Kos mos"}, .expectation = {.error = "type: expected one word to type, got 2"}},
 };
 
 UnitTestResult check_type_text_case(const TypeTextCase& test){
     std::string text;
-    const std::string error = parse_error_message([&]{ text = parse_type_text(split_command_line(test.input.line)); });
+    std::optional<std::string> error;
+    try{
+        text = parse_type_text(split_command_line(test.input.line));
+    }catch (ParseException& e){
+        error = e.message();
+    }
     if (text != test.expectation.text || error != test.expectation.error){
         return std::format(
             "\"{}\": expected text \"{}\" and error \"{}\"; read \"{}\" and \"{}\"",
-            test.input.line, test.expectation.text, test.expectation.error, text, error
+            test.input.line, test.expectation.text, test.expectation.error.value_or("(none)"), text, error.value_or("(none)")
         );
     }
     return true;
@@ -165,7 +169,7 @@ UnitTestResult check_type_text_case(const TypeTextCase& test){
 class TypeTextTest : public UnitTest{
 public:
     explicit TypeTextTest(const TypeTextCase& test)
-        : UnitTest("NintendoSwitch::CommandFileRunner - type arguments, " + std::string(test.input.name))
+        : UnitTest("NintendoSwitch::CommandFileRunner - type arguments, " + test.name)
         , m_test(test)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{

@@ -138,17 +138,15 @@ These work on any game:
 
 Games add their own commands, detectors and readings with
 `register_command_file_command()`, `register_command_file_detector()` and
-`register_command_file_reading()` (see `NintendoSwitch_CommandFileRunner.h`),
+`register_command_file_reading()` (see `NintendoSwitch_CommandFileRunner.h` and
+`NintendoSwitch_CommandFileReading.h`),
 from their panel list's constructor; `help` lists them. A reading is a value
 rather than yes or no, such as a heading; `detect NAME` prints it. A game's
 detectors and readings are recorded before and after every command in the
 steps file.
 
-Pokemon Legends: Z-A adds its story actions (`PokemonLZA_AutoStoryCommands.h`):
-`lza_talk [A|B]`, `lza_talk_to`, `lza_pick N`, `lza_move ANGLE|ahead MS`,
-`lza_face ANGLE [TOL]`, `lza_fly PLACE [LANG]`, `lza_battle [now [S]]` and
-`lza_save`; the detectors `lza_dialog`, `lza_overworld`
-and `lza_arrow`; and the reading `lza_facing`.
+Each game's header lists its own, such as Pokemon Legends: Z-A's story
+actions in `PokemonLZA_AutoStoryCommands.h`.
 
 ## Owner
 
@@ -288,5 +286,6 @@ two-line `state`) is gone. `start` and `stop` are lines in a request, and
 `add_tests_LabChannel()` covers the request format, the journal lines, the
 state text, the owner lock, the keep-awake schedule and the controller wait before `start` (`LabChannel - ...`
 unit tests); `add_tests_CommandFileRunner()` covers the console commands'
-arguments and `add_tests_CommandFileRecorder()` the steps file's lines. Run them with the app's `--command-line-test-mode`. Selecting,
+arguments and `add_tests_CommandFileRecorder()` the steps file's lines. Run
+them with the app's `--command-line-test-mode`. Selecting,
 setting, starting and the presses need a live app and console.

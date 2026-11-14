@@ -1412,6 +1412,7 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Options/TurboMacroTable.h
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileParsing.cpp
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileParsing.h
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileReading.h
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRecorder.cpp
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRecorder.h
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRecorder_Tests.cpp

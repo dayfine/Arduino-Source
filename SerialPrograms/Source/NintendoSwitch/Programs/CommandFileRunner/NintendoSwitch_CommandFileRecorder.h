@@ -8,8 +8,8 @@
  *  such as devtools/lab/cfr_steps_to_story.py, which turns a story played by
  *  hand into story table rows. A line looks like:
  *
- *      {"after":{"lza_dialog":false,"lza_facing":87},"before":{...},
- *       "command":"lza_move","args":["90","1500"],"duration_ms":1640,
+ *      {"after":{"game_dialog":false,"game_facing":87},"before":{...},
+ *       "command":"game_move","args":["90","1500"],"duration_ms":1640,
  *       "end":"2026-11-08T21:04:12.517Z","line":3,"ok":true,
  *       "screenshot":".../probe_step_L3.jpg","start":"2026-11-08T21:04:10.877Z"}
  *

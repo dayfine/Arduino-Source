@@ -10,11 +10,13 @@
 #include <memory>
 #include <ostream>
 #include <numbers>
+#include <string_view>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileParsing.h"
+#include "NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileReading.h"
 #include "NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner.h"
 #include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_DirectionArrowDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
@@ -60,13 +62,13 @@ double parse_heading(const std::vector<std::string>& words, size_t index){
     return heading;
 }
 
-Language parse_language_code(const std::string& code){
+Language parse_language_code(std::string_view code){
     for (int c = (int)Language::English; c < (int)Language::EndOfList; c++){
         if (language_data((Language)c).code == code){
             return (Language)c;
         }
     }
-    throw ParseException("lza_fly: unknown language code: " + code);
+    throw ParseException(std::format("lza_fly: unknown language code: {}", code));
 }
 
 

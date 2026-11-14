@@ -8,7 +8,6 @@
 #include <format>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <vector>
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -23,30 +22,29 @@ namespace{
 //  2026-11-08T21:04:10.000Z.
 constexpr int64_t START_MS = 1794171850000;
 
-struct StepInput{
-    std::string_view name;
-    size_t line = 0;
-    std::vector<std::string> words;
-    int64_t duration_ms = 0;
-    std::string before;     //  The detectors' JSON object; "" for none.
-    std::string after;
-    std::optional<std::string> error;
-    std::string screenshot;
-};
-
-struct StepExpectation{
-    std::string json;
-};
-
 struct StepCase{
-    StepInput input;
-    StepExpectation expectation;
+    std::string name;
+    struct Input{
+        size_t line = 0;
+        std::vector<std::string> words = {};
+        int64_t duration_ms = 0;
+        std::optional<std::string> before = {};     //  The detectors' JSON object, if a game registered any.
+        std::optional<std::string> after = {};
+        std::optional<std::string> error = {};
+        std::string screenshot = {};
+    };
+    Input input;
+    struct Expectation{
+        std::string json;       //  The steps file's line, without the newline.
+    };
+    Expectation expectation;
 };
 
 const StepCase STEP_CASES[] = {
     {
+        .name = "ok without game state",
         .input = {
-            .name = "ok without game state", .line = 2, .words = {"press", "A"}, .duration_ms = 322,
+            .line = 2, .words = {"press", "A"}, .duration_ms = 322,
             .screenshot = "/outbox/probe_step_L2.jpg",
         },
         .expectation = {.json =
@@ -55,39 +53,41 @@ const StepCase STEP_CASES[] = {
         },
     },
     {
+        .name = "failed with game state",
         .input = {
-            .name = "failed with game state", .line = 7, .words = {"lza_move", "90", "1500"}, .duration_ms = 1640,
-            .before = R"json({"lza_dialog":false,"lza_facing":87})json",
-            .after = R"json({"lza_dialog":true,"lza_facing":null})json",
-            .error = "run_story_move(): a day/night change cut the run short.",
+            .line = 7, .words = {"game_move", "90", "1500"}, .duration_ms = 1640,
+            .before = R"json({"game_dialog":false,"game_facing":87})json",
+            .after = R"json({"game_dialog":true,"game_facing":null})json",
+            .error = "game_move: a day/night change cut the walk short.",
             .screenshot = "/outbox/probe_step_L7.jpg",
         },
         .expectation = {.json =
-            R"json({"after":{"lza_dialog":true,"lza_facing":null},"args":["90","1500"],)json"
-            R"json("before":{"lza_dialog":false,"lza_facing":87},"command":"lza_move","duration_ms":1640,)json"
-            R"json("end":"2026-11-08T21:04:11.640Z","error":"run_story_move(): a day/night change cut the run short.",)json"
+            R"json({"after":{"game_dialog":true,"game_facing":null},"args":["90","1500"],)json"
+            R"json("before":{"game_dialog":false,"game_facing":87},"command":"game_move","duration_ms":1640,)json"
+            R"json("end":"2026-11-08T21:04:11.640Z","error":"game_move: a day/night change cut the walk short.",)json"
             R"json("line":7,"ok":false,"screenshot":"/outbox/probe_step_L7.jpg","start":"2026-11-08T21:04:10.000Z"})json"
         },
     },
     {
-        .input = {.name = "no arguments", .line = 1, .words = {"lza_battle"}, .duration_ms = 0, .screenshot = "(no video frame)"},
+        .name = "no arguments",
+        .input = {.line = 1, .words = {"game_battle"}, .duration_ms = 0, .screenshot = "(no video frame)"},
         .expectation = {.json =
-            R"json({"args":[],"command":"lza_battle","duration_ms":0,"end":"2026-11-08T21:04:10.000Z",)json"
+            R"json({"args":[],"command":"game_battle","duration_ms":0,"end":"2026-11-08T21:04:10.000Z",)json"
             R"json("line":1,"ok":true,"screenshot":"(no video frame)","start":"2026-11-08T21:04:10.000Z"})json"
         },
     },
 };
 
-//  The object `text` holds, or an empty one for "".
-JsonObject json_object(const std::string& text){
-    if (text.empty()){
+//  The object `text` holds, or an empty one for none.
+JsonObject json_object(const std::optional<std::string>& text){
+    if (!text){
         return JsonObject();
     }
-    return parse_json(text).to_object_throw().clone();
+    return parse_json(*text).to_object_throw().clone();
 }
 
 UnitTestResult check_step_case(const StepCase& test){
-    const StepInput& input = test.input;
+    const StepCase::Input& input = test.input;
     const WallClock start{std::chrono::milliseconds(START_MS)};
     CommandFileStep step{
         .line = input.line,
@@ -109,7 +109,7 @@ UnitTestResult check_step_case(const StepCase& test){
 class StepJsonTest : public UnitTest{
 public:
     explicit StepJsonTest(const StepCase& test)
-        : UnitTest("NintendoSwitch::CommandFileRecorder - " + std::string(test.input.name))
+        : UnitTest("NintendoSwitch::CommandFileRecorder - " + test.name)
         , m_test(test)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{

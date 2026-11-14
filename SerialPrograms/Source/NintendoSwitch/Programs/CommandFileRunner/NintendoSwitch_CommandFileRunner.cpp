@@ -27,6 +27,7 @@
 #include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "NintendoSwitch_CommandFileParsing.h"
+#include "NintendoSwitch_CommandFileReading.h"
 #include "NintendoSwitch_CommandFileRecorder.h"
 #include "NintendoSwitch_CommandFileRunner.h"
 
@@ -71,6 +72,11 @@ constexpr Milliseconds DETECTOR_POLL_INTERVAL = 100ms;
 //  how many characters of earlier text it deletes at most.
 constexpr Milliseconds KEYBOARD_TIMEOUT = 5000ms;
 constexpr size_t KEYBOARD_MAX_DELETES = 40;
+
+//  "type": one B press deletes one character. The release leaves the field
+//  time to redraw before the next frame is checked for text.
+constexpr Milliseconds KEYBOARD_DELETE_HOLD = 80ms;
+constexpr Milliseconds KEYBOARD_DELETE_RELEASE = 250ms;
 
 //  How often an empty inbox is checked for a new file.
 constexpr Milliseconds INBOX_POLL_INTERVAL = 500ms;
@@ -558,7 +564,7 @@ private:
             if (!screen || !system_keyboard_field_has_text(screen)){
                 break;
             }
-            pbf_press_button(context(), BUTTON_B, 80ms, 250ms);
+            pbf_press_button(context(), BUTTON_B, KEYBOARD_DELETE_HOLD, KEYBOARD_DELETE_RELEASE);
         }
         FastCodeEntry::type_on_system_keyboard(console(), context(), text);
         pbf_press_button(context(), BUTTON_PLUS, BUTTON_HOLD, BUTTON_RELEASE);
@@ -592,8 +598,9 @@ private:
 
 namespace{
 
-//  Ends `step` as the command left the console and appends it to the steps file.
-void record_step(LineRunner& runner, CommandFileSession& session, CommandFileStep& step, std::optional<std::string> error){
+//  Appends `step` to the steps file, ended now as the command left the
+//  console, with `error` if the command failed.
+void record_step(LineRunner& runner, const CommandFileSession& session, CommandFileStep step, std::optional<std::string> error){
     step.end = current_time();
     step.error = std::move(error);
     step.after = runner.step_state();
@@ -623,13 +630,13 @@ bool run_command_file_line(CommandFileSession& session, const std::vector<std::s
     }catch (OperationCancelledException&){
         throw;
     }catch (Exception& e){
-        record_step(runner, session, step, e.message());
+        record_step(runner, session, std::move(step), e.message());
         throw;
     }catch (std::exception& e){
-        record_step(runner, session, step, std::string(e.what()));
+        record_step(runner, session, std::move(step), std::string(e.what()));
         throw;
     }
-    record_step(runner, session, step, std::nullopt);
+    record_step(runner, session, std::move(step), std::nullopt);
     return keep_going;
 }
 std::string save_command_file_screenshot(CommandFileSession& session, const std::string& label){

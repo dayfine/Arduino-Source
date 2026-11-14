@@ -58,4 +58,4 @@ Every command also adds one JSON line to `outbox/<name>.steps.jsonl`, with the f
 
 ## Tests
 
-`add_tests_CommandFileRunner()` covers the parsing of command arguments (`CommandFileRunner - ...` unit tests) and `add_tests_CommandFileRecorder()` the steps file's lines; the file and journal formats are covered by the lab channel's tests. The LZA commands' arguments and their lookup are `PokemonLZA::AutoStory Commands - ...` tests.
+`add_tests_CommandFileRunner()` covers the parsing of command arguments (`CommandFileRunner - ...` unit tests) and `add_tests_CommandFileRecorder()` the steps file's lines; the file and journal formats are covered by the lab channel's tests. Each game tests its own commands' arguments.

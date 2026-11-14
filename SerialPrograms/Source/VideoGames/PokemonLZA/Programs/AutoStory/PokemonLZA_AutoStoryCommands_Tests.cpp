@@ -8,7 +8,6 @@
 #include <functional>
 #include <map>
 #include <string>
-#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -71,45 +70,43 @@ std::string parse_line(const std::string& line){
 }
 
 
-struct ParseInput{
-    std::string_view name;
-    std::string line;
-};
-
-struct ParseExpectation{
-    std::string parsed;
-};
-
 struct ParseCase{
-    ParseInput input;
-    ParseExpectation expectation;
+    std::string name;
+    struct Input{
+        std::string line;
+    };
+    Input input;
+    struct Expectation{
+        std::string parsed;     //  What the parser read, or "error: <message>".
+    };
+    Expectation expectation;
 };
 
 const ParseCase PARSE_CASES[] = {
-    {.input = {.name = "talk mashes B by default", .line = "lza_talk"}, .expectation = {.parsed = "button B"}},
-    {.input = {.name = "talk with A", .line = "lza_talk A"}, .expectation = {.parsed = "button A"}},
-    {.input = {.name = "talk with another button", .line = "lza_talk X"}, .expectation = {.parsed = "error: lza_talk: expected A or B, got X"}},
-    {.input = {.name = "talk_to takes nothing", .line = "lza_talk_to now"}, .expectation = {.parsed = "error: lza_talk_to: expected 0 to 0 arguments, got 1"}},
-    {.input = {.name = "pick the second choice", .line = "lza_pick 1"}, .expectation = {.parsed = "choice 1"}},
-    {.input = {.name = "pick needs a whole number", .line = "lza_pick 1.5"}, .expectation = {.parsed = "error: lza_pick: the choice must be a whole number from 0, got 1.5"}},
-    {.input = {.name = "pick needs a choice", .line = "lza_pick"}, .expectation = {.parsed = "error: lza_pick: expected 1 to 1 arguments, got 0"}},
-    {.input = {.name = "move toward a heading", .line = "lza_move 90 1500"}, .expectation = {.parsed = "heading 90, turn 0 walk 1500 ms"}},
-    {.input = {.name = "move straight ahead", .line = "lza_move ahead 800"}, .expectation = {.parsed = "ahead, turn 0 walk 800 ms"}},
-    {.input = {.name = "move heading out of range", .line = "lza_move 360 800"}, .expectation = {.parsed = "error: lza_move: heading 360 is not in [0, 360)"}},
-    {.input = {.name = "move for no time", .line = "lza_move 90 0"}, .expectation = {.parsed = "error: lza_move: the walk time must be more than 0 ms, got 0"}},
-    {.input = {.name = "face with the default tolerance", .line = "lza_face 270"}, .expectation = {.parsed = "heading 270 +/- 10"}},
-    {.input = {.name = "face with a tolerance", .line = "lza_face 45 20"}, .expectation = {.parsed = "heading 45 +/- 20"}},
-    {.input = {.name = "face with no tolerance", .line = "lza_face 45 0"}, .expectation = {.parsed = "error: lza_face: the tolerance must be in (0, 180), got 0"}},
-    {.input = {.name = "fly in English by default", .line = "lza_fly centrico-plaza"}, .expectation = {.parsed = "centrico-plaza in eng"}},
-    {.input = {.name = "fly in French", .line = "lza_fly hotel-z fra"}, .expectation = {.parsed = "hotel-z in fra"}},
-    {.input = {.name = "fly to an unknown place", .line = "lza_fly paris"}, .expectation = {.parsed = "error: lza_fly: unknown place: paris"}},
-    {.input = {.name = "fly in an unknown language", .line = "lza_fly hotel-z xx"}, .expectation = {.parsed = "error: lza_fly: unknown language code: xx"}},
-    {.input = {.name = "battle that is starting", .line = "lza_battle"}, .expectation = {.parsed = "starting"}},
-    {.input = {.name = "battle in progress", .line = "lza_battle now"}, .expectation = {.parsed = "in progress, 180 s"}},
-    {.input = {.name = "battle in progress with a timeout", .line = "lza_battle now 60"}, .expectation = {.parsed = "in progress, 60 s"}},
-    {.input = {.name = "battle with another word", .line = "lza_battle later"}, .expectation = {.parsed = "error: lza_battle: expected \"now\", got later"}},
-    {.input = {.name = "battle with no timeout", .line = "lza_battle now 0"}, .expectation = {.parsed = "error: lza_battle: the timeout must be a whole number of seconds above 0, got 0"}},
-    {.input = {.name = "save takes nothing", .line = "lza_save now"}, .expectation = {.parsed = "error: lza_save: expected 0 to 0 arguments, got 1"}},
+    {.name = "talk mashes B by default", .input = {.line = "lza_talk"}, .expectation = {.parsed = "button B"}},
+    {.name = "talk with A", .input = {.line = "lza_talk A"}, .expectation = {.parsed = "button A"}},
+    {.name = "talk with another button", .input = {.line = "lza_talk X"}, .expectation = {.parsed = "error: lza_talk: expected A or B, got X"}},
+    {.name = "talk_to takes nothing", .input = {.line = "lza_talk_to now"}, .expectation = {.parsed = "error: lza_talk_to: expected 0 to 0 arguments, got 1"}},
+    {.name = "pick the second choice", .input = {.line = "lza_pick 1"}, .expectation = {.parsed = "choice 1"}},
+    {.name = "pick needs a whole number", .input = {.line = "lza_pick 1.5"}, .expectation = {.parsed = "error: lza_pick: the choice must be a whole number from 0, got 1.5"}},
+    {.name = "pick needs a choice", .input = {.line = "lza_pick"}, .expectation = {.parsed = "error: lza_pick: expected 1 to 1 arguments, got 0"}},
+    {.name = "move toward a heading", .input = {.line = "lza_move 90 1500"}, .expectation = {.parsed = "heading 90, turn 0 walk 1500 ms"}},
+    {.name = "move straight ahead", .input = {.line = "lza_move ahead 800"}, .expectation = {.parsed = "ahead, turn 0 walk 800 ms"}},
+    {.name = "move heading out of range", .input = {.line = "lza_move 360 800"}, .expectation = {.parsed = "error: lza_move: heading 360 is not in [0, 360)"}},
+    {.name = "move for no time", .input = {.line = "lza_move 90 0"}, .expectation = {.parsed = "error: lza_move: the walk time must be more than 0 ms, got 0"}},
+    {.name = "face with the default tolerance", .input = {.line = "lza_face 270"}, .expectation = {.parsed = "heading 270 +/- 10"}},
+    {.name = "face with a tolerance", .input = {.line = "lza_face 45 20"}, .expectation = {.parsed = "heading 45 +/- 20"}},
+    {.name = "face with no tolerance", .input = {.line = "lza_face 45 0"}, .expectation = {.parsed = "error: lza_face: the tolerance must be in (0, 180), got 0"}},
+    {.name = "fly in English by default", .input = {.line = "lza_fly centrico-plaza"}, .expectation = {.parsed = "centrico-plaza in eng"}},
+    {.name = "fly in French", .input = {.line = "lza_fly hotel-z fra"}, .expectation = {.parsed = "hotel-z in fra"}},
+    {.name = "fly to an unknown place", .input = {.line = "lza_fly paris"}, .expectation = {.parsed = "error: lza_fly: unknown place: paris"}},
+    {.name = "fly in an unknown language", .input = {.line = "lza_fly hotel-z xx"}, .expectation = {.parsed = "error: lza_fly: unknown language code: xx"}},
+    {.name = "battle that is starting", .input = {.line = "lza_battle"}, .expectation = {.parsed = "starting"}},
+    {.name = "battle in progress", .input = {.line = "lza_battle now"}, .expectation = {.parsed = "in progress, 180 s"}},
+    {.name = "battle in progress with a timeout", .input = {.line = "lza_battle now 60"}, .expectation = {.parsed = "in progress, 60 s"}},
+    {.name = "battle with another word", .input = {.line = "lza_battle later"}, .expectation = {.parsed = "error: lza_battle: expected \"now\", got later"}},
+    {.name = "battle with no timeout", .input = {.line = "lza_battle now 0"}, .expectation = {.parsed = "error: lza_battle: the timeout must be a whole number of seconds above 0, got 0"}},
+    {.name = "save takes nothing", .input = {.line = "lza_save now"}, .expectation = {.parsed = "error: lza_save: expected 0 to 0 arguments, got 1"}},
 };
 
 UnitTestResult check_parse_case(const ParseCase& test){
@@ -123,7 +120,7 @@ UnitTestResult check_parse_case(const ParseCase& test){
 class ParseTest : public UnitTest{
 public:
     explicit ParseTest(const ParseCase& test)
-        : UnitTest("PokemonLZA::AutoStory Commands - " + std::string(test.input.name))
+        : UnitTest("PokemonLZA::AutoStory Commands - " + test.name)
         , m_test(test)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -135,34 +132,32 @@ private:
 };
 
 
-struct LookupInput{
-    std::string_view name;
-    std::string command;
-};
-
-struct LookupExpectation{
-    CommandFileCommandKind kind = CommandFileCommandKind::UNKNOWN;
-};
-
 struct LookupCase{
-    LookupInput input;
-    LookupExpectation expectation;
+    std::string name;
+    struct Input{
+        std::string command;
+    };
+    Input input;
+    struct Expectation{
+        CommandFileCommandKind kind = CommandFileCommandKind::UNKNOWN;
+    };
+    Expectation expectation;
 };
 
 const LookupCase LOOKUP_CASES[] = {
-    {.input = {.name = "lookup talk", .command = "lza_talk"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
-    {.input = {.name = "lookup talk_to", .command = "lza_talk_to"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
-    {.input = {.name = "lookup pick", .command = "lza_pick"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
-    {.input = {.name = "lookup move", .command = "lza_move"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
-    {.input = {.name = "lookup face", .command = "lza_face"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
-    {.input = {.name = "lookup fly", .command = "lza_fly"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
-    {.input = {.name = "lookup battle", .command = "lza_battle"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
-    {.input = {.name = "lookup heal, which no action backs", .command = "lza_heal"}, .expectation = {.kind = CommandFileCommandKind::UNKNOWN}},
-    {.input = {.name = "lookup shop, which no action backs", .command = "lza_shop"}, .expectation = {.kind = CommandFileCommandKind::UNKNOWN}},
-    {.input = {.name = "lookup save", .command = "lza_save"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
-    {.input = {.name = "lookup the built-in type", .command = "type"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
-    {.input = {.name = "lookup the built-in detect", .command = "detect"}, .expectation = {.kind = CommandFileCommandKind::READS_STREAM}},
-    {.input = {.name = "lookup an unknown command", .command = "lza_dance"}, .expectation = {.kind = CommandFileCommandKind::UNKNOWN}},
+    {.name = "lookup talk", .input = {.command = "lza_talk"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
+    {.name = "lookup talk_to", .input = {.command = "lza_talk_to"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
+    {.name = "lookup pick", .input = {.command = "lza_pick"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
+    {.name = "lookup move", .input = {.command = "lza_move"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
+    {.name = "lookup face", .input = {.command = "lza_face"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
+    {.name = "lookup fly", .input = {.command = "lza_fly"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
+    {.name = "lookup battle", .input = {.command = "lza_battle"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
+    {.name = "lookup heal, which no action backs", .input = {.command = "lza_heal"}, .expectation = {.kind = CommandFileCommandKind::UNKNOWN}},
+    {.name = "lookup shop, which no action backs", .input = {.command = "lza_shop"}, .expectation = {.kind = CommandFileCommandKind::UNKNOWN}},
+    {.name = "lookup save", .input = {.command = "lza_save"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
+    {.name = "lookup the built-in type", .input = {.command = "type"}, .expectation = {.kind = CommandFileCommandKind::DRIVES_CONSOLE}},
+    {.name = "lookup the built-in detect", .input = {.command = "detect"}, .expectation = {.kind = CommandFileCommandKind::READS_STREAM}},
+    {.name = "lookup an unknown command", .input = {.command = "lza_dance"}, .expectation = {.kind = CommandFileCommandKind::UNKNOWN}},
 };
 
 UnitTestResult check_lookup_case(const LookupCase& test){
@@ -177,7 +172,7 @@ UnitTestResult check_lookup_case(const LookupCase& test){
 class LookupTest : public UnitTest{
 public:
     explicit LookupTest(const LookupCase& test)
-        : UnitTest("PokemonLZA::AutoStory Commands - " + std::string(test.input.name))
+        : UnitTest("PokemonLZA::AutoStory Commands - " + test.name)
         , m_test(test)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{

@@ -30,7 +30,8 @@
  *
  *  Games add their own commands, detectors and readings with
  *  register_command_file_command(), register_command_file_detector() and
- *  register_command_file_reading(), from their panel list's constructor
+ *  register_command_file_reading() (NintendoSwitch_CommandFileReading.h),
+ *  from their panel list's constructor
  *  (e.g. PokemonLZA_Panels.cpp), so this module includes no game headers.
  *
  */
@@ -43,11 +44,9 @@
 #include <ostream>
 #include <string>
 #include <vector>
-#include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/StaticTextOption.h"
 #include "Common/Cpp/Options/StringOption.h"
-#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Tools/ProgramEnvironment.h"
 #include "CommonTools/VisualDetector.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
@@ -81,10 +80,6 @@ using CommandFileCommand = std::function<void(CommandFileSession& session, const
 //  A screen detector, by name, for "detect", "wait_for", "expect" and "state".
 using CommandFileDetectorFactory = std::function<std::unique_ptr<StaticScreenDetector>(ConsoleHandle& console)>;
 
-//  A value read from a frame, such as the heading on a minimap: a number,
-//  a string or a bool, or null when the frame shows none.
-using CommandFileReading = std::function<JsonValue(ConsoleHandle& console, const ImageViewRGB32& screen)>;
-
 //  What a command does with the console, which decides when the lab channel
 //  lets it run.
 enum class CommandFileCommandKind{
@@ -101,9 +96,6 @@ void register_command_file_command(
 
 //  Adds a detector. A game's detectors are also recorded in every step.
 void register_command_file_detector(std::string name, CommandFileDetectorFactory factory);
-
-//  Adds a reading, which "detect" prints and every step records.
-void register_command_file_reading(std::string name, CommandFileReading reading);
 
 //  The kind of a built-in or registered command; UNKNOWN for any other name.
 CommandFileCommandKind command_file_command_kind(const std::string& name);
