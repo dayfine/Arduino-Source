@@ -37,18 +37,9 @@
         }
       },
       {
-        "id": "toward_zone_1_gate",
-        "kind": "game_action",
-        "why": "03.06's toward_zone_1_gate, unchanged (step 57): toward the gate. Left 45, right 15. Measured 2026-11-08 on console B. Taunie's wild zones tutorial does not replay here, so no scene step follows.",
-        "action": "walk",
-        "args": {
-          "legs": [[-45, 0], [15, 2500]]
-        }
-      },
-      {
         "id": "to_zone_1_gate",
         "kind": "game_action",
-        "why": "03.06's into_zone_1 covered the last 22 units (4.3 s) to the gate's \"A Enter\" after Taunie's scene; here straight on until the prompt shows instead, so an early or late stop of the timed legs does not matter: about 4.3 s expected, 10 s at most.",
+        "why": "straight on from where center_to_zone_1 ends: the gate is dead ahead there (console B 2026-11-14 02:00, by hand: ~6.5 s to the gate's 'A はいる'). 03.06's toward_zone_1_gate turn (left 45, right 15) was dropped: it followed Taunie's scene, which does not play here, and sent the player past the gate into the cafe (02:51 run).",
         "action": "walk_to_prompt",
         "args": {
           "timeout_ms": 10000
