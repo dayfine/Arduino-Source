@@ -30,6 +30,11 @@ using Pokemon::GridPose;
 namespace{
 
 
+//  The scripted console's "Close software?": the Switch's prompts
+//  (Pokemon::switch_launch_prompts()) read a look's frame, and a scripted
+//  look has none, so the test answers it from a reading.
+constexpr std::string_view CLOSE_SOFTWARE = "test.close_software";
+
 //  What the scripted console shows.
 enum class Screen{
     HOME,
@@ -48,7 +53,7 @@ Pokemon::Observation<GridPose> look(Screen screen){
         observation.events = ScreenEvents{ScreenEvent::SWITCH_HOME_MENU};
         break;
     case Screen::CLOSE_SOFTWARE:
-        observation.readings[std::string(FrlgLaunchReadings::CLOSE_SOFTWARE)] = 1;
+        observation.readings[std::string(CLOSE_SOFTWARE)] = 1;
         break;
     case Screen::CHECK_ONLINE:
         observation.readings[std::string(FrlgLaunchReadings::CHECK_ONLINE)] = 1;
@@ -176,7 +181,21 @@ UnitTestResult check_launch(const LaunchCase& test, CancellableScope& scope){
         looks.push_back(look(screen));
     }
     Pokemon::FakeStoryBackend<GridPose> backend({.looks = std::move(looks)}, scope);
-    const Pokemon::StoryLaunchPolicy policy = frlg_launch_policy({.handle_online_license_check = test.input.handle_online_license_check});
+    const std::vector<Pokemon::StoryLaunchPrompt> switch_prompts{{
+        .name = "close software",
+        .matches = [](const ScreenObservation& observation){
+            return observation.readings.contains(std::string(CLOSE_SOFTWARE));
+        },
+    }};
+    Pokemon::StoryLaunchPolicy policy = frlg_launch_policy(
+        switch_prompts,
+        {.handle_online_license_check = test.input.handle_online_license_check}
+    );
+    //  The scripted HOME has no frame to read a tile name from: its cursor
+    //  is on FireRed's tile.
+    policy.tile_selected = [](const ScreenObservation&){
+        return true;
+    };
     const Pokemon::Outcome outcome = Pokemon::launch_story_game(backend, policy, {});
     if (test.expectation.failure.empty() && !outcome.succeeded()){
         return std::format("expected success, got {}", Pokemon::to_string(outcome));

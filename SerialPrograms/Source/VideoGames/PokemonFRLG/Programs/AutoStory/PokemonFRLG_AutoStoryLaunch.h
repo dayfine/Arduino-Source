@@ -13,7 +13,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryLaunch_H
 
 #include <string_view>
-#include "Common/Cpp/Time.h"
+#include <vector>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryLaunch.h"
@@ -28,10 +28,6 @@ namespace PokemonFRLG{
 struct FrlgLaunchReadings{
     //  The load menu: CONTINUE, NEW GAME, OPTION (LoadMenuDetector).
     static constexpr std::string_view LOAD_MENU = "frlg.load_menu";
-    //  HOME's "Close software?".
-    static constexpr std::string_view CLOSE_SOFTWARE = "switch.close_software";
-    static constexpr std::string_view USER_SELECT = "switch.user_select";
-    static constexpr std::string_view UPDATE = "switch.update";
     //  "Checking if the software can be played...", the online license
     //  check.
     static constexpr std::string_view CHECK_ONLINE = "switch.check_online";
@@ -43,18 +39,20 @@ struct FrlgLaunchSettings{
     //  license online at each launch, and HOME shows for a few seconds
     //  after the tile's A, each look there answered with A again.
     bool handle_online_license_check = false;
-    //  The Switch settings' Close Game Delay, after A on "Close software?".
-    Milliseconds close_delay = Milliseconds(0);
 };
 
-//  FRLG: the Switch's prompts (Close software, the user select, the
-//  update, the license check) take A, Up Up A for the update; after the
+//  FRLG: the tile is "Pokémon FireRed Version" on HOME
+//  (Pokemon::switch_home_tile_named()); `switch_prompts` answer the
+//  Switch's own screens (Pokemon::switch_launch_prompts() on a console),
+//  and with the license check handled, its screen takes A; after the
 //  launch, any quiet screen before the load menu is the GBA's boot or its
 //  title and takes A; the load menu takes A, CONTINUE; after it, a dialog
 //  box (the "Previously on your quest" recap) takes B, and a quiet screen
-//  is the overworld. No HOME tile reader yet: the tile under the cursor is
-//  taken as FireRed's, as the RNG programs' reset does.
-Pokemon::StoryLaunchPolicy frlg_launch_policy(const FrlgLaunchSettings& settings);
+//  is the overworld.
+Pokemon::StoryLaunchPolicy frlg_launch_policy(
+    std::vector<Pokemon::StoryLaunchPrompt> switch_prompts,
+    const FrlgLaunchSettings& settings
+);
 
 //  The game closed from HOME and launched again onto its save, by the
 //  shared launch on `console`, with the program's Game Settings; then B
