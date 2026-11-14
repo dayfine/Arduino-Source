@@ -97,6 +97,10 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/Cpp/Hardware/Hardware_x86_Linux.tpp
     ../Common/Cpp/Hardware/Hardware_x86_Windows.tpp
     ../Common/Cpp/HttpServer/AbstractHttpServer.h
+    ../Common/Cpp/HttpServer/HttpServer.cpp
+    ../Common/Cpp/HttpServer/HttpServer.h
+    ../Common/Cpp/HttpServer/HttpServer_Tests.cpp
+    ../Common/Cpp/HttpServer/HttpServer_Tests.h
     ../Common/Cpp/ImageResolution.cpp
     ../Common/Cpp/ImageResolution.h
     ../Common/Cpp/Json/JsonArray.cpp
@@ -2206,6 +2210,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TrainerCardDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TrainerCardDetector.h
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BallReader.cpp
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BallReader.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.cpp
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.cpp
@@ -2358,6 +2364,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonHome/Inference/PokemonHome_GigantamaxDetector.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_OriginMarkReader.cpp
     Source/VideoGames/PokemonHome/Inference/PokemonHome_OriginMarkReader.h
+    Source/VideoGames/PokemonHome/Inference/PokemonHome_PageViewDetector.cpp
+    Source/VideoGames/PokemonHome/Inference/PokemonHome_PageViewDetector.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_SelectionArrowDetector.cpp
     Source/VideoGames/PokemonHome/Inference/PokemonHome_SelectionArrowDetector.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_ShinyDetector.cpp
