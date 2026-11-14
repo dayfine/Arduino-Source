@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -24,18 +25,171 @@ namespace PokemonBDSP{
 
 namespace{
 
-struct StoryDataInput{
-    std::string name;
+//  The built-in story table, plus one checkpoint file kept out of it.
+struct StoryTableInput{
+    std::string_view extra_file;
+};
+
+struct StoryTableExpectation{
+    //  Every built-in checkpoint id, in story order. 00.00 stops on failure
+    //  with no save; every other row reloads its save and retries.
+    std::vector<std::string_view> ids;
+    std::string_view extra_file_id;
+    std::string_view extra_file_saves_in;
+};
+
+struct StoryTableCase{
+    std::string_view name;
+    StoryTableInput input;
+    StoryTableExpectation expectation;
+};
+
+UnitTestResult check_story_table_case(const StoryTableCase& test_case){
+    const StoryTableExpectation& expected = test_case.expectation;
+    const auto& table = story_checkpoints();
+    if (table.size() != expected.ids.size()){
+        return std::format("Expected {} authored checkpoints, got {}", expected.ids.size(), table.size());
+    }
+    for (size_t i = 0; i < expected.ids.size(); i++){
+        if (table[i].id != expected.ids[i]){
+            return std::format("Checkpoint index {} mismatch: expected {}, got {}", i, expected.ids[i], table[i].id);
+        }
+        const bool first = i == 0;
+        const StoryFailure policy = first ? StoryFailure::STOP : StoryFailure::RELOAD_AND_RETRY;
+        if (table[i].on_failure != policy || table[i].saves_in.empty() != first){
+            return std::format("{}: wrong on_failure or saves_in \"{}\"", table[i].id, table[i].saves_in);
+        }
+        if (table[i].steps.empty()){
+            return std::format("{} has no steps", table[i].id);
+        }
+    }
+
+    const StoryCheckpoint extra = load_authored_checkpoint(test_case.input.extra_file);
+    if (extra.id != expected.extra_file_id || extra.on_failure != StoryFailure::RELOAD_AND_RETRY || extra.saves_in != expected.extra_file_saves_in){
+        return std::format("Failed to load {} correctly", test_case.input.extra_file);
+    }
+    return true;
+}
+
+class Test_StoryTable : public UnitTest{
+public:
+    explicit Test_StoryTable(StoryTableCase test_case)
+        : UnitTest(std::format("PokemonBDSP::StoryData - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return check_story_table_case(m_case);
+    }
+
+private:
+    StoryTableCase m_case;
+};
+
+const StoryTableCase STORY_TABLE_CASES[] = {
+    {
+        .name = "All 23 authored checkpoints load",
+        .input = {.extra_file = "bdsp-mine-01.03.plan"},
+        .expectation = {
+            .ids = {
+                "00.00", "00.01", "00.02", "00.03", "00.04", "00.04b", "00.04c", "00.04d",
+                "00.05", "00.05b", "00.05c",
+                "01.01", "01.02", "01.02b", "01.03", "01.04", "01.05", "01.06", "01.07", "01.08", "01.09", "01.10", "01.11",
+            },
+            .extra_file_id = "01.03",
+            .extra_file_saves_in = "Oreburgh City",
+        },
+    },
+};
+
+
+//  One checkpoint of the built-in story table, as loaded from its file.
+struct CheckpointInput{
+    std::string_view id;
+};
+
+struct CheckpointExpectation{
+    std::string_view title;
+    StoryFailure on_failure = StoryFailure::RELOAD_AND_RETRY;
+    std::string_view saves_in;
+    std::vector<std::string_view> step_names;
+};
+
+struct CheckpointCase{
+    std::string_view name;
+    CheckpointInput input;
+    CheckpointExpectation expectation;
+};
+
+UnitTestResult check_checkpoint_case(const CheckpointCase& test_case){
+    const CheckpointInput& input = test_case.input;
+    const CheckpointExpectation& expected = test_case.expectation;
+    const auto& table = story_checkpoints();
+    auto it = std::find_if(table.begin(), table.end(), [&](const StoryCheckpoint& cp){
+        return cp.id == input.id;
+    });
+    if (it == table.end()){
+        return std::format("{} checkpoint not found in table", input.id);
+    }
+    const StoryCheckpoint& cp = *it;
+    if (cp.title != expected.title){
+        return std::format("{} title: expected \"{}\", got \"{}\"", input.id, expected.title, cp.title);
+    }
+    if (cp.on_failure != expected.on_failure || cp.saves_in != expected.saves_in){
+        return std::format("{} policy mismatch (saves_in \"{}\")", input.id, cp.saves_in);
+    }
+    if (cp.steps.size() != expected.step_names.size()){
+        return std::format("{} expected {} steps, got {}", input.id, expected.step_names.size(), cp.steps.size());
+    }
+    for (size_t i = 0; i < expected.step_names.size(); i++){
+        if (cp.steps[i].name != expected.step_names[i]){
+            return std::format("{} step {} name mismatch: expected {}, got {}", input.id, i, expected.step_names[i], cp.steps[i].name);
+        }
+    }
+    return true;
+}
+
+class Test_StoryCheckpoint : public UnitTest{
+public:
+    explicit Test_StoryCheckpoint(CheckpointCase test_case)
+        : UnitTest(std::format("PokemonBDSP::StoryData - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return check_checkpoint_case(m_case);
+    }
+
+private:
+    CheckpointCase m_case;
+};
+
+const CheckpointCase CHECKPOINT_CASES[] = {
+    {
+        .name = "Parity: 01.02b checkpoint",
+        .input = {.id = "01.02b"},
+        .expectation = {
+            .title = "Oreburgh Center heal",
+            .saves_in = "Oreburgh City",
+            .step_names = {"below_barry", "barry", "barrys_lines", "below_the_centers_door", "heal_oreburgh_first"},
+        },
+    },
+};
+
+
+//  bdsp-00.01.plan with one change to its envelope (read_authored_checkpoint()).
+struct EnvelopeInput{
     void (*mutate)(JsonObject&) = nullptr;
 };
 
-struct StoryDataExpectation{
+struct EnvelopeExpectation{
     bool rejected = false;
 };
 
-struct StoryDataCase{
-    StoryDataInput input;
-    StoryDataExpectation expectation;
+struct EnvelopeCase{
+    std::string_view name;
+    EnvelopeInput input;
+    EnvelopeExpectation expectation;
 };
 
 void extra(JsonObject& root){
@@ -70,80 +224,14 @@ void bad_metadata_phase(JsonObject& root){
     root["metadata"] = std::move(meta);
 }
 
-UnitTestResult check_all_checkpoints_load(){
-    const auto& table = story_checkpoints();
-    if (table.size() != 22){
-        return std::format("Expected 22 authored checkpoints, got {}", table.size());
-    }
-
-    const std::vector<std::string> expected_ids{
-        "00.00", "00.01", "00.02", "00.03", "00.04", "00.04b", "00.04c", "00.04d",
-        "00.05", "00.05b", "00.05c",
-        "01.01", "01.02", "01.02b", "01.03", "01.04", "01.05", "01.06", "01.07", "01.08", "01.09", "01.10", "01.11"
-    };
-
-    for (size_t i = 0; i < expected_ids.size(); i++){
-        if (table[i].id != expected_ids[i]){
-            return std::format("Checkpoint index {} mismatch: expected {}, got {}", i, expected_ids[i], table[i].id);
-        }
-        if (table[i].id == "00.00"){
-            if (table[i].on_failure != StoryFailure::STOP || !table[i].saves_in.empty()){
-                return "00.00 must have on_failure=stop and empty saves_in";
-            }
-        }else{
-            if (table[i].on_failure != StoryFailure::RELOAD_AND_RETRY || table[i].saves_in.empty()){
-                return std::format("{} must have on_failure=reload_and_retry and non-empty saves_in", table[i].id);
-            }
-        }
-        if (table[i].steps.empty()){
-            return std::format("{} has no steps", table[i].id);
-        }
-    }
-
-    const StoryCheckpoint mine = load_authored_checkpoint("bdsp-mine-01.03.plan");
-    if (mine.id != "01.03" || mine.on_failure != StoryFailure::RELOAD_AND_RETRY || mine.saves_in != "Oreburgh City"){
-        return "Failed to load bdsp-mine-01.03.plan correctly";
-    }
-
-    return true;
-}
-
-UnitTestResult check_parity_01_02b(){
-    const auto& table = story_checkpoints();
-    auto it = std::find_if(table.begin(), table.end(), [](const StoryCheckpoint& cp){
-        return cp.id == "01.02b";
-    });
-    if (it == table.end()){
-        return "01.02b checkpoint not found in table";
-    }
-    const StoryCheckpoint& cp = *it;
-    if (cp.title != "Oreburgh Center heal"){
-        return "01.02b title mismatch";
-    }
-    if (cp.on_failure != StoryFailure::RELOAD_AND_RETRY || cp.saves_in != "Oreburgh City"){
-        return "01.02b policy mismatch";
-    }
-    if (cp.steps.size() != 5){
-        return std::format("01.02b expected 5 steps, got {}", cp.steps.size());
-    }
-    const std::vector<std::string> expected_step_names{
-        "below_barry", "barry", "barrys_lines", "below_the_centers_door", "heal_oreburgh_first"
-    };
-    for (size_t i = 0; i < expected_step_names.size(); i++){
-        if (cp.steps[i].name != expected_step_names[i]){
-            return std::format("01.02b step {} name mismatch: expected {}, got {}", i, expected_step_names[i], cp.steps[i].name);
-        }
-    }
-    return true;
-}
-
-UnitTestResult run_envelope_case(const StoryDataCase& test_case){
-    JsonValue val = authored_checkpoint_document("bdsp-00.01.plan");
+UnitTestResult run_envelope_case(const EnvelopeCase& test_case){
+    constexpr std::string_view PLAN_FILE = "bdsp-00.01.plan";
+    JsonValue val = authored_checkpoint_document(PLAN_FILE);
     if (test_case.input.mutate != nullptr){
         test_case.input.mutate(val.to_object_throw());
     }
     try{
-        StoryCheckpoint cp = read_authored_checkpoint(val, test_case.input.name);
+        StoryCheckpoint cp = read_authored_checkpoint(val, PLAN_FILE);
         if (test_case.expectation.rejected){
             return "Expected rejection but read_authored_checkpoint succeeded.";
         }
@@ -159,63 +247,60 @@ UnitTestResult run_envelope_case(const StoryDataCase& test_case){
     }
 }
 
-class Test_StoryData : public UnitTest{
+class Test_StoryEnvelope : public UnitTest{
 public:
-    explicit Test_StoryData(StoryDataCase test_case)
-        : UnitTest("PokemonBDSP::StoryData - " + test_case.input.name)
+    explicit Test_StoryEnvelope(EnvelopeCase test_case)
+        : UnitTest(std::format("PokemonBDSP::StoryData - Envelope: {}", test_case.name))
         , m_case(std::move(test_case))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        if (m_case.input.name == "All 22 authored checkpoints load"){
-            return check_all_checkpoints_load();
-        }
         return run_envelope_case(m_case);
     }
 
 private:
-    StoryDataCase m_case;
+    EnvelopeCase m_case;
 };
 
-const StoryDataCase STORY_DATA_CASES[] = {
+const EnvelopeCase ENVELOPE_CASES[] = {
     {
-        .input = {.name = "All 23 authored checkpoints load"},
+        .name = "valid 00.01 plan",
+        .input = {},
         .expectation = {.rejected = false},
     },
     {
-        .input = {.name = "Parity: 01.02b checkpoint"},
-        .expectation = {.rejected = false},
-    },
-    {
-        .input = {.name = "Envelope: valid 00.01 plan"},
-        .expectation = {.rejected = false},
-    },
-    {
-        .input = {.name = "Envelope: extra envelope field", .mutate = extra},
+        .name = "extra envelope field",
+        .input = {.mutate = extra},
         .expectation = {.rejected = true},
     },
     {
-        .input = {.name = "Envelope: wrong game", .mutate = wrong_game},
+        .name = "wrong game",
+        .input = {.mutate = wrong_game},
         .expectation = {.rejected = true},
     },
     {
-        .input = {.name = "Envelope: unknown failure policy", .mutate = wrong_policy},
+        .name = "unknown failure policy",
+        .input = {.mutate = wrong_policy},
         .expectation = {.rejected = true},
     },
     {
-        .input = {.name = "Envelope: missing save-card location for reload_and_retry", .mutate = missing_card},
+        .name = "missing save-card location for reload_and_retry",
+        .input = {.mutate = missing_card},
         .expectation = {.rejected = true},
     },
     {
-        .input = {.name = "Envelope: stop policy with start save", .mutate = stop_with_save},
+        .name = "stop policy with start save",
+        .input = {.mutate = stop_with_save},
         .expectation = {.rejected = true},
     },
     {
-        .input = {.name = "Envelope: unknown metadata field", .mutate = bad_metadata_field},
+        .name = "unknown metadata field",
+        .input = {.mutate = bad_metadata_field},
         .expectation = {.rejected = true},
     },
     {
-        .input = {.name = "Envelope: unknown metadata phase", .mutate = bad_metadata_phase},
+        .name = "unknown metadata phase",
+        .input = {.mutate = bad_metadata_phase},
         .expectation = {.rejected = true},
     },
 };
@@ -359,8 +444,14 @@ const DevFileCase DEV_FILE_CASES[] = {
 } // namespace
 
 void add_tests_AutoStory_StoryData(UnitTestDatabase& database){
-    for (const auto& item : STORY_DATA_CASES){
-        database.add<Test_StoryData>(item);
+    for (const auto& item : STORY_TABLE_CASES){
+        database.add<Test_StoryTable>(item);
+    }
+    for (const auto& item : CHECKPOINT_CASES){
+        database.add<Test_StoryCheckpoint>(item);
+    }
+    for (const auto& item : ENVELOPE_CASES){
+        database.add<Test_StoryEnvelope>(item);
     }
     for (const auto& item : DEV_FILE_CASES){
         database.add<Test_StoryDevFiles>(item);
