@@ -12,17 +12,24 @@
 #include "Inference/Box/PokemonFRLG_BoxCellReader.h"
 #include "Inference/Box/PokemonFRLG_BoxGenderReader.h"
 #include "Inference/Box/PokemonFRLG_BoxSelectionModeDetector.h"
+#include "Inference/Box/PokemonFRLG_PcScreenReader.h"
 #include "Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "Inference/Dialogs/PokemonFRLG_PrizeSelectDetector.h"
 #include "Inference/Map/PokemonFRLG_PokemonLeagueDetectors.h"
 #include "Inference/Menus/PokemonFRLG_BagDetector.h"
+#include "Inference/Menus/PokemonFRLG_ItemListReader.h"
+#include "Inference/Menus/PokemonFRLG_OptionMenuReader.h"
 #include "Inference/Menus/PokemonFRLG_PartyEmptySlotDetector.h"
 #include "Inference/Menus/PokemonFRLG_PartyHeldItemDetector.h"
 #include "Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
+#include "Inference/Menus/PokemonFRLG_SaveCardReader.h"
+#include "Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
+#include "Inference/Menus/PokemonFRLG_TeachScreenReader.h"
 #include "Inference/PokemonFRLG_BallReader.h"
 #include "Inference/PokemonFRLG_BattleLevelUpReader.h"
 #include "Inference/PokemonFRLG_BattleSelectionArrowDetector.h"
+#include "Inference/PokemonFRLG_BattleTextBoxDetector.h"
 #include "Inference/PokemonFRLG_PartyLevelUpReader.h"
 #include "Inference/PokemonFRLG_PokemonSpriteReader.h"
 #include "Inference/PokemonFRLG_ShinySymbolDetector.h"
@@ -38,6 +45,15 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
+
+static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
+    add_tests_ItemListReader(database);
+    add_tests_OptionMenuReader(database);
+    add_tests_SaveCardReader(database);
+    add_tests_SummaryMovesReader(database);
+    add_tests_TeachScreenReader(database);
+    add_tests_AutoStoryScreenEvents(database);
+}
 
 void add_tests(UnitTestDatabase& database){
     add_tests_AdvanceWhiteDialogDetector(database);
@@ -55,19 +71,21 @@ void add_tests(UnitTestDatabase& database){
     add_tests_BoxSorter(database);
     add_tests_EliteFourRoomDetector(database);
     add_tests_HallOfFameSavingDetector(database);
+    add_tests_PcScreenReader(database);
+    add_tests_SelectionDialogDetector(database);
+    add_tests_ShinySymbolDetector(database);
+    add_tests_StatsReader(database);
+    add_tests_SummarySpriteReader(database);
+    add_tests_WildEncounterReader(database);
+    add_tests_TrainerIdReader(database);
     add_tests_PartyEmptySlotDetector(database);
     add_tests_PartyHeldItemDetector(database);
     add_tests_PartyLevelUpReader(database);
     add_tests_PartyMenuDetector(database);
     add_tests_PrizeSelectDetector(database);
     add_tests_PartySlotDetector(database);
-    add_tests_StatsReader(database);
-    add_tests_SelectionDialogDetector(database);
-    add_tests_ShinySymbolDetector(database);
-    add_tests_SummarySpriteReader(database);
-    add_tests_TrainerIdReader(database);
-    add_tests_WildEncounterReader(database);
-    add_tests_AutoStoryScreenEvents(database);
+    add_tests_BattleTextBoxDetector(database);
+    add_tests_AutoStoryReaders(database);
 }
 
 
