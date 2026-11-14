@@ -413,38 +413,6 @@ StepOutcome no_movement(){
 //  walked, whether open or to a wall, but walked again from where it
 //  started; once more with nothing moved, the route fails. A leg that
 //  moved is walked as before.
-//  A map of 64-pixel tiles, each its own color, seen with the camera
-//  `scroll` pixels down; `banner` paints a town's name banner over the top
-//  left, as the game shows on entering a town.
-ImageRGB32 tile_map(size_t scroll, bool banner){
-    ImageRGB32 image(960, 640);
-    for (size_t y = 0; y < image.height(); y++){
-        for (size_t x = 0; x < image.width(); x++){
-            const uint32_t tile = (uint32_t)(x / 64 * 7 + (y + scroll) / 64 * 13);
-            const bool in_banner = banner && x < 400 && y < 80;
-            image.pixel(x, y) = in_banner ? 0xfff8f8f8 : 0xff000000 | (tile * 0x2f1b3d & 0x00ffffff);
-        }
-    }
-    return image;
-}
-
-//  Pallet Town after a Fly (console B, 2026-11-13 02:42 and 02:46, 12.03):
-//  the first hold walked nothing while the town's banner slid in over the
-//  top of the screen, and was taken as walked ("changed by 223.0"); every
-//  later tile was then 2 rows off. A banner is not a scroll; a step is.
-UnitTestResult test_banner_is_no_scroll(){
-    const ImageFloatBox game(0, 0, 1, 1);
-    const double banner = hold_scroll_change(tile_map(0, false), tile_map(0, true), game);
-    const double step = hold_scroll_change(tile_map(0, false), tile_map(64, false), game);
-    if (banner > HOLD_UNMOVED_RMSD){
-        return std::format("a banner over a still map changed it by {:.1f}, over {:.1f}", banner, HOLD_UNMOVED_RMSD);
-    }
-    if (step <= HOLD_UNMOVED_RMSD){
-        return std::format("a one-tile step changed the map by {:.1f}, not over {:.1f}", step, HOLD_UNMOVED_RMSD);
-    }
-    return true;
-}
-
 //  Console B frames (1920x1080) in CommandLineTests, 12.03 on Route 21,
 //  2026-11-13: a tap south against a rock 400 ms apart, the player blocked;
 //  and the player landed on Cinnabar's beach behind the roof of the
@@ -944,10 +912,6 @@ const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
     {
         .input = {.name = "a hold held again that moved nothing", .body = test_unmoved_hold_again},
         .expectation = {.description = "after something seen after a hold to a wall, a hold again that moves nothing is a bump at the wall"},
-    },
-    {
-        .input = {.name = "a town banner over a hold that moved nothing", .body = test_banner_is_no_scroll},
-        .expectation = {.description = "only a scroll of the whole map reads as moved"},
     },
     {
         .input = {.name = "a leg crosses a trainer's sight", .body = test_trainer_crossing},

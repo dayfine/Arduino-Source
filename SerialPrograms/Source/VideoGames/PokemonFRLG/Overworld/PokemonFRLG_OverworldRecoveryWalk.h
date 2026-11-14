@@ -59,16 +59,21 @@ bool surfing_on_screen(const ImageViewRGB32& screen, const ImageFloatBox& game);
 //  one-tile scroll leaves the band nearly the same.
 double tap_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game);
 //  How far the map in the game screen (`game`) moved between the shots
-//  before and after a hold, as an RMSD: a hold that walked even one tile
-//  scrolls the whole map by it, while a town's name banner sliding in over
-//  the top of the screen (Pallet Town after a Fly, console B, 2026-11-13
-//  02:46) is not a move.
-double hold_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game);
+//  before and after a hold, as an RMSD: the least over the four edge
+//  quarters (top, bottom, left, right) that show the map. A hold that
+//  walked even one tile scrolls the whole map by it, while a town's name
+//  banner sliding in over the top left of the screen (Pallet Town after a
+//  Fly, console B, 2026-11-13 02:46) is not a move. A quarter blank in both
+//  shots lies off the map's edge and is left out: the black below Pokemon
+//  Mansion 1F's bottom row read as no move after a walk east of 13 tiles
+//  (console B, 2026-11-14 03:20, 13.02). Nothing when no quarter shows the
+//  map.
+std::optional<double> hold_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game);
 
-//  How much hold_scroll_change() may read for a player who stood still (an
-//  animated tile, water). Not yet measured on the console: a guess, set low
-//  so that only a screen that did not move at all reads as not moved.
-constexpr double HOLD_UNMOVED_RMSD = 6.0;
+//  What a hold's hold_scroll_change() says: MOVED for a change over what a
+//  player who stood still may read, NONE for one at or under it, UNMEASURED
+//  with nothing to read.
+HoldMovement hold_movement(std::optional<double> change);
 
 
 //  Walks `route`, planned with `planning`, at `speed`, as
