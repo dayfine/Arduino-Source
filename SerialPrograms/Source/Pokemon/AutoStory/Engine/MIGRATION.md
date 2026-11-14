@@ -9,7 +9,7 @@ Each move deletes that game's executor; the last one deletes `StoryStepExecutor`
 1. **Backends.** Write a console backend: `StoryBackend<Pose>` over the console handle and the
    controller context, `kind()` CONSOLE. `observe()` waits for pending input
    (`wait_for_all_requests()`), takes a frame and fills `ScreenObservation::events` from the
-   game's detectors (fade, text box, choice box, interact prompt, battle, can move, still).
+   game's detectors (the `ScreenEvent`s of `CommonTools/ScreenEvents/ScreenEventTypes.h`).
    `stick(degrees, duration, release, pace)` holds the move stick at an angle, then lets go for
    `release` (a free-moving game's walk and turn; `hold()` is the 90-degree case). A game
    without tiles reports the way the player
