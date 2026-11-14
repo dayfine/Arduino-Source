@@ -47,7 +47,6 @@ enum class ScreenEvent : uint8_t{
 };
 //  How many ScreenEvent values there are.
 constexpr size_t SCREEN_EVENT_COUNT = 12;
-
 //  "dialog box", for the log.
 std::string screen_event_name(ScreenEvent event);
 
