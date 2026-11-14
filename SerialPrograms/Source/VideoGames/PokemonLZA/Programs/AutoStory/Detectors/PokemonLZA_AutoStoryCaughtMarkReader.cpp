@@ -5,6 +5,7 @@
  */
 
 #include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/Images/BinaryImage_FilterRgb32.h"
 #include "Kernels/Waterfill/Kernels_Waterfill_Session.h"
 #include "PokemonLZA_AutoStoryCaughtMarkReader.h"
@@ -19,11 +20,17 @@ using namespace Kernels::Waterfill;
 namespace{
 
 //  The name plate's HP bar: the widest flat green bar in the upper two
-//  thirds of the screen.
+//  thirds of the screen, 80 px wide or more at 1080p. The green is kept
+//  tight (red 0-90, green 175+, blue 90-145; the bar is about 45, 198,
+//  115): a wider range took in the bright grass around Bunnelby's plate
+//  (about 68, 160, 80), so the bar was no longer flat and the lock-on was
+//  missed (03.08, console B 2026-11-14). The player's own HP bar, over the
+//  head while a wild Pokemon attacks, is about 63 px wide; the plate's
+//  some 105-115 (Bunnelby's and Scatterbug's, the same frames).
 std::optional<ImagePixelBox> find_plate_bar(const ImageViewRGB32& screen){
     const double scale = screen.height() / 1080.0;
     const ImageViewRGB32 upper = extract_box_reference(screen, ImageFloatBox(0, 0, 1, 0.68));
-    PackedBinaryMatrix matrix = compress_rgb32_to_binary_range(upper, 0, 125, 150, 255, 60, 175);
+    PackedBinaryMatrix matrix = compress_rgb32_to_binary_range(upper, 0, 90, 175, 255, 90, 145);
     std::unique_ptr<WaterfillSession> session = make_WaterfillSession(matrix);
     std::unique_ptr<WaterfillIterator> iter = session->make_iterator((size_t)(150 * scale * scale));
     std::optional<ImagePixelBox> best;
@@ -31,7 +38,7 @@ std::optional<ImagePixelBox> find_plate_bar(const ImageViewRGB32& screen){
     while (iter->find_next(object, false)){
         const size_t w = object.width() + 1;
         const size_t h = object.height() + 1;
-        const bool flat = w >= 60 * scale && h <= 24 * scale && w >= 4 * h;
+        const bool flat = w >= 80 * scale && h <= 24 * scale && w >= 4 * h;
         if (!flat || object.area * 2 < w * h){
             continue;
         }
@@ -56,6 +63,18 @@ std::optional<ImageFloatBox> lock_target_plate_bar(const ImageViewRGB32& screen)
     );
 }
 
+LockTargetPlateDetector::LockTargetPlateDetector(Color color)
+    : m_color(color)
+{}
+
+void LockTargetPlateDetector::make_overlays(VideoOverlaySet& items) const{
+    items.add(m_color, ImageFloatBox(0, 0, 1, 0.68));
+}
+
+bool LockTargetPlateDetector::detect(const ImageViewRGB32& screen){
+    return lock_target_plate_bar(screen).has_value();
+}
+
 std::optional<bool> lock_target_caught(const ImageViewRGB32& screen){
     const std::optional<ImagePixelBox> bar = find_plate_bar(screen);
     if (!bar){
@@ -72,7 +91,10 @@ std::optional<bool> lock_target_caught(const ImageViewRGB32& screen){
         for (size_t x = min_x; x < max_x; x++){
             const Color pixel(screen.pixel(x, y));
             const int r = pixel.red();
-            red += r > 190 && r > pixel.green() + 70 && r > pixel.blue() + 50;
+            //  The ball's red is pinkish (blue about green); the gender
+            //  mark next to it, on every plate, is orange (green well over
+            //  blue) and is not counted (Scatterbug, console B 2026-11-14).
+            red += r > 190 && r > pixel.green() + 70 && r > pixel.blue() + 50 && pixel.blue() + 15 >= pixel.green();
             white += r > 215 && pixel.green() > 215 && pixel.blue() > 215;
         }
     }

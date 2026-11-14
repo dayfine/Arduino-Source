@@ -14,6 +14,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapZoneDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader.h"
+#include "PokemonLZA_AutoStoryBracketWatch.h"
 #include "PokemonLZA_AutoStoryCatches.h"
 #include "PokemonLZA_AutoStoryMarkerWalks.h"
 #include "PokemonLZA_AutoStoryZone1Road.h"
@@ -48,6 +49,13 @@ std::optional<int> walk_from_objective(ConsoleHandle& console, ProControllerCont
                 console.log(std::format("walk_from_objective(): {} from the objective.", *last));
                 return last;
             }
+        }
+        //  Back in the middle before each step: walking toward the camera
+        //  turns it, so with no steering the walk from 60 to 100 bent off
+        //  the road (console B, 2026-11-14: held up at 103).
+        const CameraTurn turn = marker ? camera_turn_toward(marker->x) : CameraTurn{};
+        if (turn.time.count() > 0){
+            pbf_move_right_joystick(context, {turn.stick_x, 0}, turn.time, 150ms);
         }
         pbf_move_left_joystick(context, {0, -1}, 600ms, 0ms);
     }

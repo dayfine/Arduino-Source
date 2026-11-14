@@ -28,7 +28,7 @@ namespace PokemonLZA{
 bool turn_to_pinned_marker(ProControllerContext& context, double x);
 
 //  Walks back away from the objective marker (the stick down: toward the
-//  camera, which stays on the marker) until its distance reads `stop_at`
+//  camera, turned back onto the marker before each step) until its distance reads `stop_at`
 //  or more, or `limit`. A read more than 12 from the last is a misread, as
 //  in walk_to_objective(). Returns the last distance read.
 std::optional<int> walk_from_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit);
