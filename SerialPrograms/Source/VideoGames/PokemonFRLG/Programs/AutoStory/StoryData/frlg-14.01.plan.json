@@ -66,12 +66,12 @@
       },
       {
         "id": "below_door_1",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[26, 11]], "facing": "north"}
+          "legs": [{"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 3}, {"direction": "north", "tiles": 1}]
         },
-        "why": "down, east and up column 26 to (26, 11), a tile short of door 1 (26..27, 8..9): the map has the door shut, so a leg ending on (26, 10) is held to that wall and runs through the open door (console B, 2026-11-14)"
+        "why": "a tap a tile: down to (23, 12), east along row 12 below the trainer on (25, 11) to (26, 12) and up to (26, 11), a tile short of door 1 (26..27, 8..9), whose map has it shut (a leg ending on (26, 10) is held to it and runs through the open door; console B, 2026-11-14). A route's open hold east a tile short would turn north into that trainer, as at door 5"
       },
       {
         "id": "to_door_1",
@@ -321,12 +321,12 @@
       },
       {
         "id": "below_door_5",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 19]], "facing": "north"}
+          "legs": [{"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 3}, {"direction": "north", "tiles": 1}]
         },
-        "why": "down, east and up column 5 to (5, 19), a tile short of door 5 (5..6, 16..17), as for door 1"
+        "why": "a tap a tile: down to (2, 20), east along row 20 below Burglar Dusty (4, 19) to (5, 20) and up to (5, 19), a tile short of door 5 (5..6, 16..17). A route went south to (2, 23), east 3 open and north 4: on the console the east hold ended a tile short, on Dusty's column, and north 4 stopped below him (console B, 2026-11-14)"
       },
       {
         "id": "to_door_5",
@@ -385,12 +385,12 @@
       },
       {
         "id": "below_door_6",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 11]], "facing": "north"}
+          "legs": [{"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 3}, {"direction": "north", "tiles": 1}]
         },
-        "why": "down, east and up column 5 to (5, 11), a tile short of door 6 (5..6, 8..9), as for door 1"
+        "why": "a tap a tile: down to (2, 12), east along row 12 below Super Nerd Zac (4, 11) to (5, 12) and up to (5, 11), a tile short of door 6 (5..6, 8..9). A route's open hold east a tile short would turn north into Zac, as at door 5"
       },
       {
         "id": "to_door_6",
@@ -437,7 +437,7 @@
         "Starts outside the Pokemon Mansion's door (8, 3) on (8, 4) facing south, where the Escape Rope out of the Mansion (13.04, pokeguy 1:20:24) leaves the player. 13.04 is authored separately; until it is in, this row's start is its own (starts_after_unauthored_rows()).",
         "PokeGuy's way (1:20:37 to 1:21:43): all six quiz machines answered right, each opening the next door, so none of the gym's eight trainers is fought. Answers (pokefirered CinnabarIsland_Gym scripts.inc): 1 YES, 2 NO, 3 NO, 4 NO, 5 YES, 6 NO. A wrong answer starts the room's trainer instead; the table has no branch for that.",
         "Every gym trainer has sight 0 (map.json trainer_sight_or_berry_tree_id): they fight only after a wrong answer or a talk, so no trainer lines here.",
-        "The doors are metatiles the quiz scripts swap (setmetatile in OpenDoorN); the map has them shut, one barrier tile each. Each is crossed by two plain steps with their ends declared, not a planned route, after a third plain step onto the tile next to it: a route ending there plans its last leg held to the shut door, and on the console that hold walks through the open one (door 2, console B, 2026-11-14), so the routes end a tile short. Door 4 is two floor tiles (11, 22..23) beside a corner a route reaches along row 23, so it is reached by taps instead (console B, 2026-11-14). On the sim they need the door opened (no sim support yet: the test moves the player over them).",
+        "The doors are metatiles the quiz scripts swap (setmetatile in OpenDoorN); the map has them shut, one barrier tile each. Each is crossed by two plain steps with their ends declared, not a planned route, after a third plain step onto the tile next to it: a route ending there plans its last leg held to the shut door, and on the console that hold walks through the open one (door 2, console B, 2026-11-14), so the routes end a tile short. Door 4 is two floor tiles (11, 22..23) beside a corner a route reaches along row 23, so it is reached by taps instead (console B, 2026-11-14). Doors 1, 5 and 6 are reached by taps too: a trainer stands on the column beside each door's, and a route's open hold a tile short turned up that column into him (door 5, console B, 2026-11-14). On the sim they need the door opened (no sim support yet: the test moves the player over them).",
         "We heal at Cinnabar's Center first; pokeguy doesn't (he fights Blaine at 24/126 HP with one Surf each).",
         "Ends in front of Blaine and saves there: his own pre-battle checkpoint (battle-checkpoint-retry), 14.02."
       ]

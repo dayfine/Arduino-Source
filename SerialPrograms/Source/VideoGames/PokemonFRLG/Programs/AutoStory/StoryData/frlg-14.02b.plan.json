@@ -107,12 +107,12 @@
       },
       {
         "id": "below_door_3",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 18]], "facing": "north"}
+          "legs": [{"direction": "east", "tiles": 5}, {"direction": "north", "tiles": 4}]
         },
-        "why": "east and up to (17, 18), a tile short of door 3, as for door 6"
+        "why": "a tap a tile: east along row 22 to (17, 22) and up column 17 to (17, 18), a tile short of door 3. The route's open hold east a tile short would turn north up column 16 into the trainer on (16, 18), as 14.01's below_door_5 did into Burglar Dusty (console B, 2026-11-14)"
       },
       {
         "id": "to_door_3",
@@ -264,7 +264,7 @@
     "notes": {
       "checkpoint": [
         "Starts in front of Blaine, where 14.02 ends after his battle and saves.",
-        "Out the way in: the quiz doors stay open while the player is in the gym (the flags are set and OnLoad reopens them), each crossed by two plain steps as in 14.01, after a plain step from a tile short of it (doors 6, 5, 3, 2 and 1; door 4 is reached by taps, as in 14.01).",
+        "Out the way in: the quiz doors stay open while the player is in the gym (the flags are set and OnLoad reopens them), each crossed by two plain steps as in 14.01, after a plain step from a tile short of it (doors 6, 5, 3, 2 and 1; doors 4 and 3 are reached by taps, as in 14.01, door 3's because a trainer stands on the column beside it).",
         "Outside, Bill's scene runs on the first frame (VAR_MAP_SCENE_CINNABAR_ISLAND 1, set by Blaine's win): NO to the Sevii trip, as pokeguy. He walks to the Center and waits there; the Center visit here doesn't talk to him.",
         "Ends at Cinnabar's nurse. PokeGuy flies to Celadon from outside the gym (1:23:45); 14.03 starts from Fly's landing in Celadon, so the Fly (a step type in #406) goes at 14.03's start or here once it is in."
       ]

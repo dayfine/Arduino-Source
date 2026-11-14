@@ -19,14 +19,17 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_MapUtil.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryMember.h"
+#include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryRows14_Tests.h"
@@ -220,6 +223,82 @@ UnitTestResult test_quiz_doors_on_map(){
     return doors == 6 ? UnitTestResult(true) : UnitTestResult(std::format("Expected 6 quiz doors, found {}.", doors));
 }
 
+//  Whether a person of the gym stands on `tile`.
+bool gym_person_on(const TilePos& tile){
+    for (const MapData& map : story_maps()){
+        if (map.name != GYM){
+            continue;
+        }
+        for (const Pokemon::MapObject& object : map.objects){
+            if (object.x == tile.x && object.y == tile.y){
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+//  The planned route of ROUTE step `step` from `from`: for each open hold
+//  (no wall ends it) that a turn follows, the person on the next leg's
+//  tiles if the hold ends a tile short. Empty if there is none. Console B,
+//  2026-11-14, 14.01 below_door_5: "east 3 (open)" ended a tile short, on
+//  Burglar Dusty's column, and "north 4" stopped below him.
+std::string short_hold_meets_person(const StoryStep& step, const StoryPose& from, const StoryPose& to){
+    const MapPosition start{from.map, from.tile};
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
+        story_maps(), start, RouteGoal{MapPosition{to.map, to.tile}, to.facing},
+        story_route_costs(), from.facing.value_or(Direction::NORTH)
+    );
+    if (!route){
+        return std::format("{}: no route from {}.", step.name, to_string(start));
+    }
+    for (size_t i = 0; i + 1 < route->size(); i++){
+        const RouteStep& hold = (*route)[i];
+        const RouteStep& next = (*route)[i + 1];
+        if (hold.action != RouteAction::WALK || next.action != RouteAction::WALK || hold.to_wall || hold.tapped || hold.direction == next.direction){
+            continue;
+        }
+        TilePos tile = hold.end.point.next(behind(hold.direction));
+        for (int n = 0; n < next.tiles; n++){
+            tile = tile.next(next.direction);
+            if (gym_person_on(tile)){
+                return std::format(
+                    "{}: \"{}\" a tile short leaves {} in the way of \"{}\".",
+                    step.name, to_string(hold), to_string(tile), to_string(next)
+                );
+            }
+        }
+    }
+    return "";
+}
+
+//  No ROUTE step inside the gym in 14.01 and 14.02b plans an open hold
+//  that, a tile short, puts a trainer in the way of the leg after it: the
+//  trainers stand beside the door columns, so those steps go a tap a tile.
+UnitTestResult test_short_holds_clear_of_trainers(){
+    for (std::string_view id : {"14.01", "14.02b"}){
+        const StoryCheckpoint& row = checkpoint(id);
+        std::optional<StoryPose> at = story_pose(Pokemon::pose_of(*row.start));
+        for (const StoryStep& step : row.steps){
+            const Pokemon::GridPose* target = Pokemon::value_if_at_it<Pokemon::GridPose>(step.args, step.args.find("target"));
+            const std::optional<StoryPose> to = target == nullptr ? std::nullopt : story_pose(Pokemon::pose_of(*target));
+            if (step.kind == StoryStepKind::ROUTE && at && to && at->map == GYM && to->map == GYM){
+                if (const std::string failure = short_hold_meets_person(step, *at, *to); !failure.empty()){
+                    return std::format("{} {}", id, failure);
+                }
+            }
+            if (step.pose_after){
+                at = story_pose(Pokemon::pose_of(*step.pose_after));
+            }else if (to){
+                at = to;
+            }else{
+                at.reset();
+            }
+        }
+    }
+    return true;
+}
+
 //  14.01 from outside the Mansion: the nurse, the gym and its six quiz
 //  doors, each walked through once open, nobody fought, to below Blaine, where 14.02 starts; 14.02,
 //  Blaine's battle, which ends where it starts; then 14.02b from there out
@@ -322,6 +401,10 @@ const AutoStoryCinnabarGymCase AUTO_STORY_CINNABAR_GYM_CASES[] = {
     {
         .input = {.name = "Cinnabar Gym's quiz doors are shut on the map", .body = test_quiz_doors_on_map},
         .expectation = {.description = "each of 14.01's door steps crosses one barrier tile between floor"},
+    },
+    {
+        .input = {.name = "Cinnabar Gym's open holds a tile short meet no trainer", .body = test_short_holds_clear_of_trainers},
+        .expectation = {.description = "no gym route in 14.01 or 14.02b turns onto a trainer after an open hold a tile short"},
     },
     {
         .input = {.name = "14.01 through the quiz to below Blaine, 14.02 on the spot and 14.02b back to the nurse", .body = test_gym_rows},
