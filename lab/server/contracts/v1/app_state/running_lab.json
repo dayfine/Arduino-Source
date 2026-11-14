@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "written_at": "2026-11-14T07:02:41.500Z",
+  "instance": {
+    "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+    "pid": 4411,
+    "profile": "lab-B"
+  },
+  "panel": {
+    "id": "PokemonBDSP:AutoStory",
+    "kind": "program"
+  },
+  "program": {
+    "state": "running",
+    "run_id": null,
+    "last_transition": {
+      "action": "start",
+      "source": "lab",
+      "request_id": "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10",
+      "at": "2026-11-14T07:01:03.250Z"
+    },
+    "paused": "01.04 leg 3"
+  },
+  "controller": {
+    "state": "ready"
+  },
+  "video": {
+    "state": "live",
+    "frame_seq": 921930,
+    "captured_at": "2026-11-14T07:02:41.466Z",
+    "signal": "unknown"
+  },
+  "observation": {
+    "game": {
+      "value": "PokemonBDSP",
+      "observed_at": "2026-11-14T07:01:02.900Z",
+      "detector": "bdsp_overworld",
+      "confidence": 0.97
+    },
+    "screen": {
+      "value": "unknown",
+      "observed_at": null
+    }
+  },
+  "channel": {
+    "last_request": "r42",
+    "last_error": null,
+    "owner_claimed": true
+  }
+}

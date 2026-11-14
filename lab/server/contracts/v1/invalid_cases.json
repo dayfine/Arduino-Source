@@ -1,0 +1,2454 @@
+[
+  {
+    "name": "truncated state.json (partial write)",
+    "kind": "app_state",
+    "input": {
+      "text": "{\"schema\": 1, \"written_at\": \"2026-11-14T06:10:12.124Z\", \"instance\": {\"id\": \"d8ea6a9d-1eab-4a40-b355-d88072b289a1\", \"pid\": 4411, \"profile\": \"lab-B\"}, \"panel\": {\"id\": \"PokemonFRLG:AutoStory\", \"kind\": \"program\"}, \"program\": {\"state\": \"stopped\", \"run_id\": null, \"last_transition\": {\"action\": \"stop\", \"source\": \"ui\", \"request_id\": null, \"at\": \"2026-11-14T06:10:10.0"
+    },
+    "expectation": {
+      "path": "$",
+      "contains": "malformed JSON"
+    }
+  },
+  {
+    "name": "not an object",
+    "kind": "app_state",
+    "input": {
+      "text": "[1, 2]"
+    },
+    "expectation": {
+      "path": "$",
+      "contains": "expected a JSON object"
+    }
+  },
+  {
+    "name": "missing schema",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "schema",
+      "contains": "required field is missing"
+    }
+  },
+  {
+    "name": "future schema",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 2,
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "schema",
+      "contains": "unsupported version 2"
+    }
+  },
+  {
+    "name": "schema as string",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": "1",
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "schema",
+      "contains": "expected an integer"
+    }
+  },
+  {
+    "name": "legacy upper-case state",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "STOPPED",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "program.state",
+      "contains": "is not one of"
+    }
+  },
+  {
+    "name": "unknown transition source",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "server",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "program.last_transition.source",
+      "contains": "is not one of ui, lab, program, error"
+    }
+  },
+  {
+    "name": "lab transition without request id",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "lab",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "program.last_transition.request_id",
+      "contains": "required when source is lab"
+    }
+  },
+  {
+    "name": "ui transition with request id",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10",
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "program.last_transition.request_id",
+      "contains": "must be null unless source is lab"
+    }
+  },
+  {
+    "name": "timestamp without milliseconds",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "written_at",
+      "contains": "not a UTC timestamp"
+    }
+  },
+  {
+    "name": "timestamp with offset",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12.124+00:00",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "written_at",
+      "contains": "not a UTC timestamp"
+    }
+  },
+  {
+    "name": "impossible date",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-02-30T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "written_at",
+      "contains": "not a real date"
+    }
+  },
+  {
+    "name": "upper-case uuid",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "D8EA6A9D-1EAB-4A40-B355-D88072B289A1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "instance.id",
+      "contains": "lower-case UUID"
+    }
+  },
+  {
+    "name": "missing instance pid",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "instance.pid",
+      "contains": "required field is missing"
+    }
+  },
+  {
+    "name": "negative frame seq",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": -1,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "video.frame_seq",
+      "contains": "below the minimum"
+    }
+  },
+  {
+    "name": "live video without frame",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": null,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "video.frame_seq",
+      "contains": "required when state is live"
+    }
+  },
+  {
+    "name": "bool for frame seq",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": true,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "video.frame_seq",
+      "contains": "expected an integer"
+    }
+  },
+  {
+    "name": "guessed signal value",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "no_hdmi"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "video.signal",
+      "contains": "is not one of"
+    }
+  },
+  {
+    "name": "observed game without time",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "PokemonFRLG",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "observation.game.observed_at",
+      "contains": "required when value is not unknown"
+    }
+  },
+  {
+    "name": "no_program on a program panel",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "no_program",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "program.state",
+      "contains": "no_program exactly when"
+    }
+  },
+  {
+    "name": "legacy controller word",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "none"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "controller.state",
+      "contains": "is not one of"
+    }
+  },
+  {
+    "name": "panel id with spaces",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "Pokemon FRLG",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:10:12.091Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "panel.id",
+      "contains": "not a valid panel id"
+    }
+  },
+  {
+    "name": "missing video section",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:10:12.124Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:AutoStory",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "ui",
+            "request_id": null,
+            "at": "2026-11-14T06:10:10.002Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "video",
+      "contains": "required field is missing"
+    }
+  },
+  {
+    "name": "save fact future schema",
+    "kind": "save_fact",
+    "input": {
+      "json": {
+        "schema": 7,
+        "game": "PokemonFRLG",
+        "slot": 0,
+        "checkpoint": "13.01",
+        "position": {
+          "map": "CINNABAR_ISLAND_POKEMON_MANSION_1F",
+          "x": 12,
+          "y": 27,
+          "facing": "up"
+        },
+        "saved_at": "2026-11-13T22:14:05.310Z",
+        "run_id": null,
+        "producer": {
+          "program": "PokemonFRLG:AutoStory",
+          "build": "lab/frlg-story-e4@1a2b3c4d"
+        }
+      }
+    },
+    "expectation": {
+      "path": "schema",
+      "contains": "unsupported version 7"
+    }
+  },
+  {
+    "name": "save fact negative slot",
+    "kind": "save_fact",
+    "input": {
+      "json": {
+        "schema": 1,
+        "game": "PokemonFRLG",
+        "slot": -1,
+        "checkpoint": "13.01",
+        "position": {
+          "map": "CINNABAR_ISLAND_POKEMON_MANSION_1F",
+          "x": 12,
+          "y": 27,
+          "facing": "up"
+        },
+        "saved_at": "2026-11-13T22:14:05.310Z",
+        "run_id": null,
+        "producer": {
+          "program": "PokemonFRLG:AutoStory",
+          "build": "lab/frlg-story-e4@1a2b3c4d"
+        }
+      }
+    },
+    "expectation": {
+      "path": "slot",
+      "contains": "below the minimum"
+    }
+  },
+  {
+    "name": "save position without map",
+    "kind": "save_fact",
+    "input": {
+      "json": {
+        "schema": 1,
+        "game": "PokemonFRLG",
+        "slot": 0,
+        "checkpoint": "13.01",
+        "position": {
+          "x": 12,
+          "y": 27,
+          "facing": "up"
+        },
+        "saved_at": "2026-11-13T22:14:05.310Z",
+        "run_id": null,
+        "producer": {
+          "program": "PokemonFRLG:AutoStory",
+          "build": "lab/frlg-story-e4@1a2b3c4d"
+        }
+      }
+    },
+    "expectation": {
+      "path": "position.map",
+      "contains": "required field is missing"
+    }
+  },
+  {
+    "name": "embedded app state future schema",
+    "kind": "console_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "console": "B",
+        "observed_at": "2026-11-14T06:10:12.400Z",
+        "availability": {
+          "state": "available",
+          "reason": null
+        },
+        "app": {
+          "schema": 2,
+          "written_at": "2026-11-14T06:10:12.124Z",
+          "instance": {
+            "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+            "pid": 4411,
+            "profile": "lab-B"
+          },
+          "panel": {
+            "id": "PokemonFRLG:AutoStory",
+            "kind": "program"
+          },
+          "program": {
+            "state": "stopped",
+            "run_id": null,
+            "last_transition": {
+              "action": "stop",
+              "source": "ui",
+              "request_id": null,
+              "at": "2026-11-14T06:10:10.002Z"
+            }
+          },
+          "controller": {
+            "state": "ready"
+          },
+          "video": {
+            "state": "live",
+            "frame_seq": 918274,
+            "captured_at": "2026-11-14T06:10:12.091Z",
+            "signal": "unknown"
+          },
+          "observation": {
+            "game": {
+              "value": "unknown",
+              "observed_at": null
+            },
+            "screen": {
+              "value": "unknown",
+              "observed_at": null
+            }
+          },
+          "channel": {
+            "last_request": "fs012327",
+            "last_error": null,
+            "owner_claimed": false
+          }
+        },
+        "lease": {
+          "state": "user",
+          "owner": "user",
+          "acquired_at": "2026-11-14T06:10:10.002Z",
+          "expires_at": null
+        },
+        "blocked": [
+          {
+            "code": "console_held_by_user",
+            "message": "The user clicked Stop in the app at 06:10; console B is theirs until they release it."
+          }
+        ]
+      }
+    },
+    "expectation": {
+      "path": "app.schema",
+      "contains": "unsupported version 2"
+    }
+  },
+  {
+    "name": "embedded app state bad field",
+    "kind": "console_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "console": "B",
+        "observed_at": "2026-11-14T06:10:12.400Z",
+        "availability": {
+          "state": "available",
+          "reason": null
+        },
+        "app": {
+          "schema": 1,
+          "written_at": "2026-11-14T06:10:12.124Z",
+          "instance": {
+            "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+            "pid": 4411,
+            "profile": "lab-B"
+          },
+          "panel": {
+            "id": "PokemonFRLG:AutoStory",
+            "kind": "program"
+          },
+          "program": {
+            "state": "paused",
+            "run_id": null,
+            "last_transition": {
+              "action": "stop",
+              "source": "ui",
+              "request_id": null,
+              "at": "2026-11-14T06:10:10.002Z"
+            }
+          },
+          "controller": {
+            "state": "ready"
+          },
+          "video": {
+            "state": "live",
+            "frame_seq": 918274,
+            "captured_at": "2026-11-14T06:10:12.091Z",
+            "signal": "unknown"
+          },
+          "observation": {
+            "game": {
+              "value": "unknown",
+              "observed_at": null
+            },
+            "screen": {
+              "value": "unknown",
+              "observed_at": null
+            }
+          },
+          "channel": {
+            "last_request": "fs012327",
+            "last_error": null,
+            "owner_claimed": false
+          }
+        },
+        "lease": {
+          "state": "user",
+          "owner": "user",
+          "acquired_at": "2026-11-14T06:10:10.002Z",
+          "expires_at": null
+        },
+        "blocked": [
+          {
+            "code": "console_held_by_user",
+            "message": "The user clicked Stop in the app at 06:10; console B is theirs until they release it."
+          }
+        ]
+      }
+    },
+    "expectation": {
+      "path": "app.program.state",
+      "contains": "is not one of"
+    }
+  },
+  {
+    "name": "console A is not allowed",
+    "kind": "console_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "console": "A",
+        "observed_at": "2026-11-14T06:10:12.400Z",
+        "availability": {
+          "state": "available",
+          "reason": null
+        },
+        "app": {
+          "schema": 1,
+          "written_at": "2026-11-14T06:10:12.124Z",
+          "instance": {
+            "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+            "pid": 4411,
+            "profile": "lab-B"
+          },
+          "panel": {
+            "id": "PokemonFRLG:AutoStory",
+            "kind": "program"
+          },
+          "program": {
+            "state": "stopped",
+            "run_id": null,
+            "last_transition": {
+              "action": "stop",
+              "source": "ui",
+              "request_id": null,
+              "at": "2026-11-14T06:10:10.002Z"
+            }
+          },
+          "controller": {
+            "state": "ready"
+          },
+          "video": {
+            "state": "live",
+            "frame_seq": 918274,
+            "captured_at": "2026-11-14T06:10:12.091Z",
+            "signal": "unknown"
+          },
+          "observation": {
+            "game": {
+              "value": "unknown",
+              "observed_at": null
+            },
+            "screen": {
+              "value": "unknown",
+              "observed_at": null
+            }
+          },
+          "channel": {
+            "last_request": "fs012327",
+            "last_error": null,
+            "owner_claimed": false
+          }
+        },
+        "lease": {
+          "state": "user",
+          "owner": "user",
+          "acquired_at": "2026-11-14T06:10:10.002Z",
+          "expires_at": null
+        },
+        "blocked": [
+          {
+            "code": "console_held_by_user",
+            "message": "The user clicked Stop in the app at 06:10; console B is theirs until they release it."
+          }
+        ]
+      }
+    },
+    "expectation": {
+      "path": "console",
+      "contains": "is not one of B"
+    }
+  },
+  {
+    "name": "user lease with expiry",
+    "kind": "console_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "console": "B",
+        "observed_at": "2026-11-14T06:10:12.400Z",
+        "availability": {
+          "state": "available",
+          "reason": null
+        },
+        "app": {
+          "schema": 1,
+          "written_at": "2026-11-14T06:10:12.124Z",
+          "instance": {
+            "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+            "pid": 4411,
+            "profile": "lab-B"
+          },
+          "panel": {
+            "id": "PokemonFRLG:AutoStory",
+            "kind": "program"
+          },
+          "program": {
+            "state": "stopped",
+            "run_id": null,
+            "last_transition": {
+              "action": "stop",
+              "source": "ui",
+              "request_id": null,
+              "at": "2026-11-14T06:10:10.002Z"
+            }
+          },
+          "controller": {
+            "state": "ready"
+          },
+          "video": {
+            "state": "live",
+            "frame_seq": 918274,
+            "captured_at": "2026-11-14T06:10:12.091Z",
+            "signal": "unknown"
+          },
+          "observation": {
+            "game": {
+              "value": "unknown",
+              "observed_at": null
+            },
+            "screen": {
+              "value": "unknown",
+              "observed_at": null
+            }
+          },
+          "channel": {
+            "last_request": "fs012327",
+            "last_error": null,
+            "owner_claimed": false
+          }
+        },
+        "lease": {
+          "state": "user",
+          "owner": "user",
+          "acquired_at": "2026-11-14T06:10:10.002Z",
+          "expires_at": "2026-11-14T06:40:10.002Z"
+        },
+        "blocked": [
+          {
+            "code": "console_held_by_user",
+            "message": "The user clicked Stop in the app at 06:10; console B is theirs until they release it."
+          }
+        ]
+      }
+    },
+    "expectation": {
+      "path": "lease.expires_at",
+      "contains": "user never expires"
+    }
+  },
+  {
+    "name": "running lease with expiry",
+    "kind": "console_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "console": "B",
+        "observed_at": "2026-11-14T07:02:42.000Z",
+        "availability": {
+          "state": "available",
+          "reason": null
+        },
+        "app": {
+          "schema": 1,
+          "written_at": "2026-11-14T07:02:41.500Z",
+          "instance": {
+            "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+            "pid": 4411,
+            "profile": "lab-B"
+          },
+          "panel": {
+            "id": "PokemonBDSP:AutoStory",
+            "kind": "program"
+          },
+          "program": {
+            "state": "running",
+            "run_id": null,
+            "last_transition": {
+              "action": "start",
+              "source": "lab",
+              "request_id": "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10",
+              "at": "2026-11-14T07:01:03.250Z"
+            },
+            "paused": "01.04 leg 3"
+          },
+          "controller": {
+            "state": "ready"
+          },
+          "video": {
+            "state": "live",
+            "frame_seq": 921930,
+            "captured_at": "2026-11-14T07:02:41.466Z",
+            "signal": "unknown"
+          },
+          "observation": {
+            "game": {
+              "value": "PokemonBDSP",
+              "observed_at": "2026-11-14T07:01:02.900Z",
+              "detector": "bdsp_overworld",
+              "confidence": 0.97
+            },
+            "screen": {
+              "value": "unknown",
+              "observed_at": null
+            }
+          },
+          "channel": {
+            "last_request": "r42",
+            "last_error": null,
+            "owner_claimed": true
+          }
+        },
+        "lease": {
+          "state": "agent_running",
+          "owner": "agent:bdsp-lane",
+          "acquired_at": "2026-11-14T07:00:30.000Z",
+          "expires_at": "2026-11-14T07:20:30.000Z"
+        },
+        "blocked": [
+          {
+            "code": "program_running",
+            "message": "PokemonBDSP:AutoStory is running."
+          }
+        ]
+      }
+    },
+    "expectation": {
+      "path": "lease.expires_at",
+      "contains": "agent_running never expires"
+    }
+  },
+  {
+    "name": "unavailable without reason",
+    "kind": "console_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "console": "B",
+        "observed_at": "2026-11-14T08:00:00.000Z",
+        "availability": {
+          "state": "unavailable",
+          "reason": null
+        },
+        "app": null,
+        "lease": {
+          "state": "free",
+          "owner": null,
+          "acquired_at": null,
+          "expires_at": null
+        },
+        "blocked": [
+          {
+            "code": "app_unavailable",
+            "message": "Lab/state.json has schema 2; this daemon reads 1.",
+            "evidence": {
+              "schema": 2
+            }
+          }
+        ]
+      }
+    },
+    "expectation": {
+      "path": "availability.reason",
+      "contains": "required when the app is unavailable"
+    }
+  },
+  {
+    "name": "available without app",
+    "kind": "console_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "console": "B",
+        "observed_at": "2026-11-14T06:10:12.400Z",
+        "availability": {
+          "state": "available",
+          "reason": null
+        },
+        "app": null,
+        "lease": {
+          "state": "user",
+          "owner": "user",
+          "acquired_at": "2026-11-14T06:10:10.002Z",
+          "expires_at": null
+        },
+        "blocked": [
+          {
+            "code": "console_held_by_user",
+            "message": "The user clicked Stop in the app at 06:10; console B is theirs until they release it."
+          }
+        ]
+      }
+    },
+    "expectation": {
+      "path": "app",
+      "contains": "required when availability.state is available"
+    }
+  },
+  {
+    "name": "known save without fact",
+    "kind": "save_resource",
+    "input": {
+      "json": {
+        "schema": 1,
+        "console": "B",
+        "status": "known",
+        "reason": "hooked_save",
+        "since": "2026-11-13T22:14:05.310Z",
+        "fact": null
+      }
+    },
+    "expectation": {
+      "path": "fact",
+      "contains": "required when status is known"
+    }
+  },
+  {
+    "name": "stale save with unknown reason",
+    "kind": "save_resource",
+    "input": {
+      "json": {
+        "schema": 1,
+        "console": "B",
+        "status": "stale",
+        "reason": "no_fact",
+        "since": "2026-11-14T06:10:10.002Z",
+        "fact": {
+          "schema": 1,
+          "game": "PokemonFRLG",
+          "slot": 0,
+          "checkpoint": "13.01",
+          "position": {
+            "map": "CINNABAR_ISLAND_POKEMON_MANSION_1F",
+            "x": 12,
+            "y": 27,
+            "facing": "up"
+          },
+          "saved_at": "2026-11-13T22:14:05.310Z",
+          "run_id": null,
+          "producer": {
+            "program": "PokemonFRLG:AutoStory",
+            "build": "lab/frlg-story-e4@1a2b3c4d"
+          }
+        }
+      }
+    },
+    "expectation": {
+      "path": "reason",
+      "contains": "must be one of"
+    }
+  },
+  {
+    "name": "request missing lease token",
+    "kind": "request",
+    "input": {
+      "json": {
+        "schema": 1,
+        "request_id": "9b1d7e44-6a2f-4c0e-8f13-2d5c8a90b6e1",
+        "client_id": "claude:frlg-lane",
+        "tool": "run_program",
+        "console": "B",
+        "arguments": {
+          "panel": "PokemonFRLG:AutoStory",
+          "options": {
+            "START_CHECKPOINT": "13.01",
+            "END_CHECKPOINT": "13.02",
+            "SAVE_MODE": "none"
+          },
+          "preflight_token": "example-preflight-token"
+        }
+      }
+    },
+    "expectation": {
+      "path": "lease_token",
+      "contains": "required for run_program"
+    }
+  },
+  {
+    "name": "acquire with lease token",
+    "kind": "request",
+    "input": {
+      "json": {
+        "schema": 1,
+        "request_id": "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10",
+        "client_id": "claude:frlg-lane",
+        "tool": "acquire_console",
+        "console": "B",
+        "arguments": {
+          "owner": "agent:frlg-lane",
+          "ttl_s": 1200
+        },
+        "lease_token": "x"
+      }
+    },
+    "expectation": {
+      "path": "lease_token",
+      "contains": "must be absent"
+    }
+  },
+  {
+    "name": "request unknown top-level field",
+    "kind": "request",
+    "input": {
+      "json": {
+        "schema": 1,
+        "request_id": "9b1d7e44-6a2f-4c0e-8f13-2d5c8a90b6e1",
+        "client_id": "claude:frlg-lane",
+        "tool": "run_program",
+        "console": "B",
+        "lease_token": "example-lease-token-not-real",
+        "arguments": {
+          "panel": "PokemonFRLG:AutoStory",
+          "options": {
+            "START_CHECKPOINT": "13.01",
+            "END_CHECKPOINT": "13.02",
+            "SAVE_MODE": "none"
+          },
+          "preflight_token": "example-preflight-token"
+        },
+        "inbox_path": "/tmp/x.txt"
+      }
+    },
+    "expectation": {
+      "path": "inbox_path",
+      "contains": "unknown field"
+    }
+  },
+  {
+    "name": "request unknown argument",
+    "kind": "request",
+    "input": {
+      "json": {
+        "schema": 1,
+        "request_id": "9b1d7e44-6a2f-4c0e-8f13-2d5c8a90b6e1",
+        "client_id": "claude:frlg-lane",
+        "tool": "run_program",
+        "console": "B",
+        "lease_token": "example-lease-token-not-real",
+        "arguments": {
+          "panel": "PokemonFRLG:AutoStory",
+          "options": {
+            "START_CHECKPOINT": "13.01",
+            "END_CHECKPOINT": "13.02",
+            "SAVE_MODE": "none"
+          },
+          "preflight_token": "example-preflight-token",
+          "row_index": 3
+        }
+      }
+    },
+    "expectation": {
+      "path": "arguments.row_index",
+      "contains": "unknown field"
+    }
+  },
+  {
+    "name": "run without preflight token",
+    "kind": "request",
+    "input": {
+      "json": {
+        "schema": 1,
+        "request_id": "9b1d7e44-6a2f-4c0e-8f13-2d5c8a90b6e1",
+        "client_id": "claude:frlg-lane",
+        "tool": "run_program",
+        "console": "B",
+        "lease_token": "example-lease-token-not-real",
+        "arguments": {
+          "panel": "PokemonFRLG:AutoStory",
+          "options": {
+            "START_CHECKPOINT": "13.01",
+            "END_CHECKPOINT": "13.02",
+            "SAVE_MODE": "none"
+          }
+        }
+      }
+    },
+    "expectation": {
+      "path": "arguments.preflight_token",
+      "contains": "required field is missing"
+    }
+  },
+  {
+    "name": "unknown tool",
+    "kind": "request",
+    "input": {
+      "json": {
+        "schema": 1,
+        "request_id": "9b1d7e44-6a2f-4c0e-8f13-2d5c8a90b6e1",
+        "client_id": "claude:frlg-lane",
+        "tool": "switch_game",
+        "console": "B",
+        "lease_token": "example-lease-token-not-real",
+        "arguments": {
+          "panel": "PokemonFRLG:AutoStory",
+          "options": {
+            "START_CHECKPOINT": "13.01",
+            "END_CHECKPOINT": "13.02",
+            "SAVE_MODE": "none"
+          },
+          "preflight_token": "example-preflight-token"
+        }
+      }
+    },
+    "expectation": {
+      "path": "tool",
+      "contains": "is not one of"
+    }
+  },
+  {
+    "name": "ttl too long",
+    "kind": "request",
+    "input": {
+      "json": {
+        "schema": 1,
+        "request_id": "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10",
+        "client_id": "claude:frlg-lane",
+        "tool": "acquire_console",
+        "console": "B",
+        "arguments": {
+          "owner": "agent:frlg-lane",
+          "ttl_s": 86400
+        }
+      }
+    },
+    "expectation": {
+      "path": "arguments.ttl_s",
+      "contains": "above the maximum"
+    }
+  },
+  {
+    "name": "empty cfr batch",
+    "kind": "request",
+    "input": {
+      "json": {
+        "schema": 1,
+        "request_id": "3e8a6c21-7f90-4b2d-a1c4-6d0e9b5f8a73",
+        "client_id": "claude:frlg-lane",
+        "tool": "cfr_batch",
+        "console": "B",
+        "lease_token": "example-lease-token-not-real",
+        "arguments": {
+          "lines": []
+        }
+      }
+    },
+    "expectation": {
+      "path": "arguments.lines",
+      "contains": "at least 1"
+    }
+  },
+  {
+    "name": "request missing version",
+    "kind": "request",
+    "input": {
+      "json": {
+        "request_id": "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10",
+        "client_id": "claude:frlg-lane",
+        "tool": "acquire_console",
+        "console": "B",
+        "arguments": {
+          "owner": "agent:frlg-lane",
+          "ttl_s": 1200
+        }
+      }
+    },
+    "expectation": {
+      "path": "schema",
+      "contains": "required field is missing"
+    }
+  },
+  {
+    "name": "completed record without result",
+    "kind": "request_record",
+    "input": {
+      "json": {
+        "schema": 1,
+        "request_id": "9b1d7e44-6a2f-4c0e-8f13-2d5c8a90b6e1",
+        "client_id": "claude:frlg-lane",
+        "tool": "run_program",
+        "status": "completed",
+        "created_at": "2026-11-14T06:20:00.000Z",
+        "completed_at": "2026-11-14T06:20:02.150Z",
+        "arguments": {
+          "panel": "PokemonFRLG:AutoStory",
+          "options": {
+            "START_CHECKPOINT": "13.01",
+            "END_CHECKPOINT": "13.02",
+            "SAVE_MODE": "none"
+          }
+        },
+        "result": null,
+        "refusal": null
+      }
+    },
+    "expectation": {
+      "path": "result",
+      "contains": "required when status is completed"
+    }
+  },
+  {
+    "name": "pending record with completion",
+    "kind": "request_record",
+    "input": {
+      "json": {
+        "schema": 1,
+        "request_id": "b4e1f0a7-2c3d-4e5f-9a8b-7c6d5e4f3a21",
+        "client_id": "claude:bdsp-lane",
+        "tool": "stop_program",
+        "status": "pending",
+        "created_at": "2026-11-14T07:05:00.000Z",
+        "completed_at": "2026-11-14T07:05:01.000Z",
+        "arguments": {},
+        "result": null,
+        "refusal": null
+      }
+    },
+    "expectation": {
+      "path": "completed_at",
+      "contains": "must be null when status is pending"
+    }
+  },
+  {
+    "name": "precheck refusal without check",
+    "kind": "refusal",
+    "input": {
+      "json": {
+        "schema": 1,
+        "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
+        "tool": "preflight_program",
+        "refusal": {
+          "code": "precheck_failed",
+          "message": "Free party slots: needs 1 empty slot, found 0.",
+          "evidence": {
+            "needed": 1,
+            "found": 0
+          }
+        }
+      }
+    },
+    "expectation": {
+      "path": "refusal.check",
+      "contains": "required for precheck_failed"
+    }
+  },
+  {
+    "name": "invalid_arguments without field",
+    "kind": "refusal",
+    "input": {
+      "json": {
+        "schema": 1,
+        "request_id": "9b1d7e44-6a2f-4c0e-8f13-2d5c8a90b6e1",
+        "tool": "run_program",
+        "refusal": {
+          "code": "invalid_arguments",
+          "message": "Checkpoint 13.07 is hidden without Developer Mode."
+        }
+      }
+    },
+    "expectation": {
+      "path": "refusal.field",
+      "contains": "required for invalid_arguments"
+    }
+  },
+  {
+    "name": "made-up refusal code",
+    "kind": "refusal",
+    "input": {
+      "json": {
+        "schema": 1,
+        "request_id": "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10",
+        "tool": "acquire_console",
+        "refusal": {
+          "code": "nope",
+          "message": "The user holds console B (Stop clicked in the app at 06:10); ask them to release it."
+        }
+      }
+    },
+    "expectation": {
+      "path": "refusal.code",
+      "contains": "is not one of"
+    }
+  },
+  {
+    "name": "event payload for the wrong type",
+    "kind": "event",
+    "input": {
+      "json": {
+        "schema": 1,
+        "seq": 1041,
+        "type": "video_lost",
+        "at": "2026-11-14T06:10:10.002Z",
+        "console": "B",
+        "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+        "request_id": null,
+        "payload": {
+          "source": "ui",
+          "run_id": null
+        }
+      }
+    },
+    "expectation": {
+      "path": "payload.last_frame_seq",
+      "contains": "required field is missing"
+    }
+  },
+  {
+    "name": "stopped event with server source",
+    "kind": "event",
+    "input": {
+      "json": {
+        "schema": 1,
+        "seq": 1041,
+        "type": "stopped",
+        "at": "2026-11-14T06:10:10.002Z",
+        "console": "B",
+        "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+        "request_id": null,
+        "payload": {
+          "source": "server",
+          "run_id": null
+        }
+      }
+    },
+    "expectation": {
+      "path": "payload.source",
+      "contains": "is not one of"
+    }
+  },
+  {
+    "name": "event seq zero",
+    "kind": "event",
+    "input": {
+      "json": {
+        "schema": 1,
+        "seq": 0,
+        "type": "stopped",
+        "at": "2026-11-14T06:10:10.002Z",
+        "console": "B",
+        "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+        "request_id": null,
+        "payload": {
+          "source": "ui",
+          "run_id": null
+        }
+      }
+    },
+    "expectation": {
+      "path": "seq",
+      "contains": "below the minimum"
+    }
+  },
+  {
+    "name": "event future schema",
+    "kind": "event",
+    "input": {
+      "json": {
+        "schema": 2,
+        "seq": 1041,
+        "type": "stopped",
+        "at": "2026-11-14T06:10:10.002Z",
+        "console": "B",
+        "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+        "request_id": null,
+        "payload": {
+          "source": "ui",
+          "run_id": null
+        }
+      }
+    },
+    "expectation": {
+      "path": "schema",
+      "contains": "unsupported version 2"
+    }
+  },
+  {
+    "name": "page out of order",
+    "kind": "event_page",
+    "input": {
+      "json": {
+        "schema": 1,
+        "events": [
+          {
+            "schema": 1,
+            "seq": 1043,
+            "type": "request_failed",
+            "at": "2026-11-14T06:18:01.020Z",
+            "console": "B",
+            "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+            "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
+            "payload": {
+              "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
+              "tool": "preflight_program",
+              "refusal": {
+                "code": "precheck_failed",
+                "check": "free_party_slots",
+                "message": "Free party slots: needs 1 empty slot, found 0.",
+                "evidence": {
+                  "needed": 1,
+                  "found": 0
+                }
+              }
+            }
+          },
+          {
+            "schema": 1,
+            "seq": 1042,
+            "type": "lease_changed",
+            "at": "2026-11-14T06:10:10.050Z",
+            "console": "B",
+            "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+            "request_id": null,
+            "payload": {
+              "old": {
+                "state": "agent_idle",
+                "owner": "agent:frlg-lane",
+                "acquired_at": "2026-11-14T06:12:00.000Z",
+                "expires_at": "2026-11-14T06:32:00.000Z"
+              },
+              "new": {
+                "state": "user",
+                "owner": "user",
+                "acquired_at": "2026-11-14T06:10:10.002Z",
+                "expires_at": null
+              }
+            }
+          },
+          {
+            "schema": 1,
+            "seq": 1041,
+            "type": "stopped",
+            "at": "2026-11-14T06:10:10.002Z",
+            "console": "B",
+            "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+            "request_id": null,
+            "payload": {
+              "source": "ui",
+              "run_id": null
+            }
+          }
+        ],
+        "next_after_seq": 1043
+      }
+    },
+    "expectation": {
+      "path": "events[1].seq",
+      "contains": "greater than the previous"
+    }
+  },
+  {
+    "name": "page cursor behind",
+    "kind": "event_page",
+    "input": {
+      "json": {
+        "schema": 1,
+        "events": [
+          {
+            "schema": 1,
+            "seq": 1041,
+            "type": "stopped",
+            "at": "2026-11-14T06:10:10.002Z",
+            "console": "B",
+            "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+            "request_id": null,
+            "payload": {
+              "source": "ui",
+              "run_id": null
+            }
+          },
+          {
+            "schema": 1,
+            "seq": 1042,
+            "type": "lease_changed",
+            "at": "2026-11-14T06:10:10.050Z",
+            "console": "B",
+            "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+            "request_id": null,
+            "payload": {
+              "old": {
+                "state": "agent_idle",
+                "owner": "agent:frlg-lane",
+                "acquired_at": "2026-11-14T06:12:00.000Z",
+                "expires_at": "2026-11-14T06:32:00.000Z"
+              },
+              "new": {
+                "state": "user",
+                "owner": "user",
+                "acquired_at": "2026-11-14T06:10:10.002Z",
+                "expires_at": null
+              }
+            }
+          },
+          {
+            "schema": 1,
+            "seq": 1043,
+            "type": "request_failed",
+            "at": "2026-11-14T06:18:01.020Z",
+            "console": "B",
+            "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+            "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
+            "payload": {
+              "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
+              "tool": "preflight_program",
+              "refusal": {
+                "code": "precheck_failed",
+                "check": "free_party_slots",
+                "message": "Free party slots: needs 1 empty slot, found 0.",
+                "evidence": {
+                  "needed": 1,
+                  "found": 0
+                }
+              }
+            }
+          }
+        ],
+        "next_after_seq": 1042
+      }
+    },
+    "expectation": {
+      "path": "next_after_seq",
+      "contains": "must equal the last event seq"
+    }
+  },
+  {
+    "name": "page event future schema",
+    "kind": "event_page",
+    "input": {
+      "json": {
+        "schema": 1,
+        "events": [
+          {
+            "schema": 3,
+            "seq": 1041,
+            "type": "stopped",
+            "at": "2026-11-14T06:10:10.002Z",
+            "console": "B",
+            "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+            "request_id": null,
+            "payload": {
+              "source": "ui",
+              "run_id": null
+            }
+          },
+          {
+            "schema": 1,
+            "seq": 1042,
+            "type": "lease_changed",
+            "at": "2026-11-14T06:10:10.050Z",
+            "console": "B",
+            "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+            "request_id": null,
+            "payload": {
+              "old": {
+                "state": "agent_idle",
+                "owner": "agent:frlg-lane",
+                "acquired_at": "2026-11-14T06:12:00.000Z",
+                "expires_at": "2026-11-14T06:32:00.000Z"
+              },
+              "new": {
+                "state": "user",
+                "owner": "user",
+                "acquired_at": "2026-11-14T06:10:10.002Z",
+                "expires_at": null
+              }
+            }
+          },
+          {
+            "schema": 1,
+            "seq": 1043,
+            "type": "request_failed",
+            "at": "2026-11-14T06:18:01.020Z",
+            "console": "B",
+            "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+            "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
+            "payload": {
+              "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
+              "tool": "preflight_program",
+              "refusal": {
+                "code": "precheck_failed",
+                "check": "free_party_slots",
+                "message": "Free party slots: needs 1 empty slot, found 0.",
+                "evidence": {
+                  "needed": 1,
+                  "found": 0
+                }
+              }
+            }
+          }
+        ],
+        "next_after_seq": 1043
+      }
+    },
+    "expectation": {
+      "path": "events[0].schema",
+      "contains": "unsupported version 3"
+    }
+  }
+]

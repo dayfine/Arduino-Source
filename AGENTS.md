@@ -64,6 +64,7 @@ There are two different checks, and neither replaces the other:
 
 | What | Where | Use |
 |---|---|---|
+| Lab server (pa-lab console daemon, #131): version-1 contracts | [lab/server/](lab/server/README.md) | Slice 0: goldens + parser; `python3 -m pa_lab check app_state <file>` from `lab/server`. |
 | Lab control: lock, channel, CFR batches | [lab/control/](lab/control/README.md) (`lablock.sh`, `labctl.sh`, `cfrun.sh`) | `sh lab/control/lablock.sh status`; one train on the console. Old copy: `devtools/lab` on `lab/main`. |
 | Console B helpers | [lab/scripts/](lab/scripts/README.md) (`lc.sh`, `sel.sh`, `cfr.sh`, `env.sh`) | `sh lab/scripts/lc.sh state`; `printf ... \| sh lab/scripts/cfr.sh NAME`. |
 | CFR syntax and the HOME gotcha | [lab/scripts/README.md](lab/scripts/README.md#cfr-batch-syntax) | Start each batch with a `shot`; at HOME, `press A` before any stick. |
