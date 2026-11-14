@@ -116,6 +116,14 @@ std::optional<RouteStep> warp_press(const std::vector<MapData>& maps, const MapP
     return step;
 }
 
+bool takes_mat_warp(const std::vector<MapData>& maps, const MapPosition& from, Direction direction){
+    const auto map = std::find_if(maps.begin(), maps.end(), [&](const MapData& data){ return data.name == from.map; });
+    if (map == maps.end() || !in_bounds(*map, from.point)){
+        return false;
+    }
+    return exit_mat(*map, from.point) == direction && warp_at(*map, from.point) != nullptr;
+}
+
 
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch

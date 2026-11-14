@@ -208,11 +208,16 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
 
 //  A step onto a warp (a door, a mat, stairs): done only once its fade
 //  shows and the screen after it leaves the scene, else it fails
-//  (wait_out_warp()). The pose after it is the table's.
-Outcome take_warp_step(StoryEnv& env, const RunState& state, const RouteStep& warp){
+//  (wait_out_warp()). The pose after it is the table's. Off an exit mat
+//  the press takes the warp from any facing, so it goes with no turn tap
+//  first: the turn tap took Cinnabar Gym's mat (25, 23) from facing west,
+//  and the read of the turn failed on the fade (console B, 2026-11-14
+//  08:44, 14.02b out_of_gym).
+Outcome take_warp_step(StoryEnv& env, const RunState& state, const MapPosition& from, const RouteStep& warp){
     env.context.wait_for_all_requests();
     const VideoSnapshot before = env.console.video().snapshot();
-    step_once(env.console, env.context, warp.direction, facing_of(state.pose), env.player_gender);
+    const std::optional<Direction> facing = takes_mat_warp(story_maps(), from, warp.direction) ? warp.direction : facing_of(state.pose);
+    step_once(env.console, env.context, warp.direction, facing, env.player_gender);
     OverworldWalkSteps::wait_out_warp(env.console, env.context, warp, before);
     env.console.log(std::format("Story: the step took the warp to {}.", warp.end.map));
     return Pokemon::outcome_ok();
@@ -233,8 +238,9 @@ Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
             return Pokemon::outcome_failed("no_trainer", std::format("{} s on the tile {}", TRAINER_WAIT_WATCH.count() / 1000, direction_name(direction)));
         }
     }else if (const std::optional<StoryPose> from = story_pose(state.pose)){
-        if (const std::optional<RouteStep> warp = warp_press(story_maps(), MapPosition{from->map, from->tile}, direction)){
-            return take_warp_step(env, state, *warp);
+        const MapPosition at{from->map, from->tile};
+        if (const std::optional<RouteStep> warp = warp_press(story_maps(), at, direction)){
+            return take_warp_step(env, state, at, *warp);
         }
         step_once(env.console, env.context, direction, facing_of(state.pose), env.player_gender);
     }else{
