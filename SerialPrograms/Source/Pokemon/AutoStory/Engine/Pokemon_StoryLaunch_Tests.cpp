@@ -79,6 +79,12 @@ enum class Backup{
     NONE,
 };
 
+//  How the test game finds its tile on HOME.
+enum class TileCheck{
+    READINGS,       //  the scripted "home.tile" reading
+    SWITCH_NAME,    //  switch_home_tile_named(), which reads the look's frame
+};
+
 //  How loose the test game's title and dialog checks are.
 enum class GameScreens{
     STRICT,         //  read whenever they show
@@ -88,13 +94,16 @@ enum class GameScreens{
 //  The test game: A on the title, `backup` for the backup save, A on each
 //  prompt (Up, Up, A on the update prompt; B on the game's dialog), and
 //  small bounds so a failure takes few looks.
-StoryLaunchPolicy test_policy(Backup backup, GameScreens game_screens){
+StoryLaunchPolicy test_policy(Backup backup, GameScreens game_screens, TileCheck tile_check){
     StoryLaunchPolicy policy;
     policy.game = "test";
     policy.tile_selected = [](const ScreenObservation& observation){
         const auto it = observation.readings.find(TILE);
         return it != observation.readings.end() && it->second == 1;
     };
+    if (tile_check == TileCheck::SWITCH_NAME){
+        policy.tile_selected = switch_home_tile_named(Language::English, "Pokémon Legends: Z-A");
+    }
     policy.tile_search = 2;
     policy.title = shows(Screen::TITLE);
     if (backup == Backup::PLZA){
@@ -132,6 +141,7 @@ struct LaunchCase{
         StoryLaunchRequest request = {};
         Backup backup = Backup::PLZA;
         GameScreens game_screens = GameScreens::STRICT;
+        TileCheck tile_check = TileCheck::READINGS;
     };
     struct Expectation{
         //  Empty: the launch succeeds; else a part of its failure's detail.
@@ -177,6 +187,9 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
      .expectation = {.inputs = "Left Left A wait wait"}},
     {.name = "game not on HOME",
      .input = {.screens = {Screen::HOME_OFF_GAME}},
+     .expectation = {.failure = "tile is not on HOME", .inputs = "Left Left Right Right Right Right"}},
+    {.name = "Switch tile check never launches without a frame",
+     .input = {.screens = {Screen::HOME_ON_GAME}, .tile_check = TileCheck::SWITCH_NAME},
      .expectation = {.failure = "tile is not on HOME", .inputs = "Left Left Right Right Right Right"}},
     {.name = "title ignores A",
      .input = {.screens = {Screen::TITLE}},
@@ -241,7 +254,7 @@ std::string check_launch(const LaunchCase& test, CancellableScope& scope){
         looks.push_back(look(screen));
     }
     FakeStoryBackend<GridPose> backend({.looks = std::move(looks)}, scope);
-    const Outcome outcome = launch_story_game(backend, test_policy(test.input.backup, test.input.game_screens), test.input.request);
+    const Outcome outcome = launch_story_game(backend, test_policy(test.input.backup, test.input.game_screens, test.input.tile_check), test.input.request);
     if (test.expectation.failure.empty() && !outcome.succeeded()){
         return std::format("expected success, got {}", to_string(outcome));
     }

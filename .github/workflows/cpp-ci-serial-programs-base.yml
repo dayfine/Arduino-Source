@@ -383,9 +383,9 @@ jobs:
         uses: actions/checkout@v7
         if: inputs.run-tests
         with:
-          # The fork's fixtures: upstream's, the SystemKeyboardDetector screenshots and pending FRLG image submissions.
+          # The fork's fixtures: upstream's, the SystemKeyboardDetector and HomeTileReader screenshots and pending FRLG image submissions.
           repository: 'dayfine/CommandLineTests'
-          ref: '3a6708327b225e71a329d77d8d067305ea4058d2'
+          ref: 'e75099a31353bc75ed3f9d502b0574172c8011aa'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded

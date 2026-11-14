@@ -1376,6 +1376,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeScreenObserver.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeScreenObserver.h
+    Source/NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.cpp
+    Source/NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.h
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.cpp
@@ -1694,6 +1696,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StorySwitchPrompts.cpp
+    Source/Pokemon/AutoStory/Pokemon_StorySwitchPrompts.h
     Source/Pokemon/AutoStory/Pokemon_TilePose.cpp
     Source/Pokemon/AutoStory/Pokemon_TilePose.h
     Source/Pokemon/AutoStory/Pokemon_TestExpect.h
