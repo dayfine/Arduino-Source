@@ -25,12 +25,6 @@
         "kind": "game_action",
         "why": "step 61: Taunie: tall grass, more Poke Balls, moves smash boulders",
         "action": "mash_to_move_hints"
-      },
-      {
-        "id": "fly_back_to_center",
-        "kind": "game_action",
-        "why": "back to Vert's Pokemon Center by fast travel after the tutorial (user, 2026-11-13), so 03.08 and its reruns start from one known spot and not wherever the catches ended. Here at 03.07's end rather than at 03.08's start (user's call): the menu save then holds the Center. UNVERIFIED, NEEDS CONSOLE: whether fast travel is open at this point of the story (the first map had no Travel Spots icon); when the game will not fly the step logs it, backs out of the map and leaves the player in the zone, and 03.08's first step walks on from there. Landing at the Center does not talk to the nurse.",
-        "action": "fly_to_center_or_stay"
       }
     ],
     "metadata": {

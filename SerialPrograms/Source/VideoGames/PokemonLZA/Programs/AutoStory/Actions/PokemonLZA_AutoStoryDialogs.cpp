@@ -130,6 +130,9 @@ std::optional<double> wait_for_choice_arrow(ConsoleHandle& console, ProControlle
 
 } // namespace
 
+//  TODO: unify with get_current_selector_index()
+//  (PokemonLZA_FastTravelNavigation.h) - the dialog choices' row spacing is
+//  not measured, so this counts rows down from the top.
 void choose_dialog_option(ConsoleHandle& console, ProControllerContext& context, size_t index){
     //  Some questions show their choices only after A closes the question's
     //  text: the Research Lab elevator's "which floor?" (console B,

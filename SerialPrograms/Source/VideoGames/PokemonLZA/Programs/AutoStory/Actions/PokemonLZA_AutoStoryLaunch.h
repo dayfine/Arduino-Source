@@ -8,8 +8,8 @@
  *  detector, so BDSP and FRLG can share it once it moves to the shared
  *  AutoStory core.
  *
- *  Why not upstream's close_game_from_home() / ensure_at_home()
- *  (NintendoSwitch_GameEntry.h): their retry paths press DOWN and HOME on
+ *  TODO: unify with close_game_from_home() / ensure_at_home()
+ *  (NintendoSwitch_GameEntry.h) - their retry paths press DOWN and HOME on
  *  the HOME menu, which moves HOME's cursor to another tile; a new game
  *  must launch the tile the user selected. An upstream option to keep the
  *  cursor would let this use them.

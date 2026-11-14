@@ -33,6 +33,8 @@ struct CheckpointExecution{
     bool reload_when_chained = false;
     //  "reload_when_chained": "always" (StoryData::reload_always).
     bool reload_always = false;
+    //  "dev_only": true (StoryData::dev_only).
+    bool dev_only = false;
 };
 
 //  A checkpoint file's checkpoint and its execution. `source` names the file
@@ -40,17 +42,26 @@ struct CheckpointExecution{
 std::pair<StoryCheckpoint, CheckpointExecution> read_checkpoint_file(std::string_view text, std::string_view source){
     CheckpointExecution read;
     const Pokemon::ExecutionReader read_execution = [&read](const JsonObject& execution, std::string_view where){
+        for (const auto& [key, value] : execution){
+            if (key != "save" && key != "reload_when_chained" && key != "dev_only"){
+                throw ParseException(std::format("{}: unknown execution field {}", where, key));
+            }
+        }
+        const JsonValue* dev_only = execution.get_value("dev_only");
+        if (dev_only != nullptr){
+            if (!dev_only->is_boolean() || !dev_only->to_boolean_default()){
+                throw ParseException(std::format("{}: dev_only is true or left out", where));
+            }
+            read.dev_only = true;
+        }
         const JsonValue* reload = execution.get_value("reload_when_chained");
         read.reload_when_chained = reload != nullptr;
         if (read.reload_when_chained){
-            Pokemon::validate_json_fields(execution, {"save", "reload_when_chained"}, where);
             const std::string* text = reload->to_string();
             read.reload_always = text != nullptr && *text == "always";
             if (!read.reload_always && (!reload->is_boolean() || !reload->to_boolean_default())){
                 throw ParseException(std::format("{}: reload_when_chained is true, \"always\" or left out", where));
             }
-        }else{
-            Pokemon::validate_json_fields(execution, {"save"}, where);
         }
         const std::string& save = execution.get_string_throw("save");
         if (save != "autosave" && save != "menu"){
@@ -148,6 +159,9 @@ StoryData load_story_data(std::span<const StoryDevFile> dev_files){
         if (execution.autosave){
             data.autosaves.insert(checkpoint.id);
         }
+        if (execution.dev_only){
+            data.dev_only.insert(checkpoint.id);
+        }
         data.checkpoints.push_back(std::move(checkpoint));
     }
     return data;
@@ -164,6 +178,16 @@ const std::vector<StoryCheckpoint>& story_checkpoints(){
 
 const std::set<std::string, std::less<>>& story_autosave_rows(){
     return builtin_story_data().autosaves;
+}
+
+std::vector<StoryCheckpoint> story_rows_for_mode(const StoryData& story, bool developer_mode){
+    std::vector<StoryCheckpoint> rows;
+    for (const StoryCheckpoint& row : story.checkpoints){
+        if (developer_mode || !story.dev_only.contains(row.id)){
+            rows.push_back(row);
+        }
+    }
+    return rows;
 }
 
 

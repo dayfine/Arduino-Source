@@ -27,6 +27,7 @@
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 #include "PokemonLZA_AutoStoryCatches.h"
 #include "PokemonLZA_AutoStoryDialogs.h"
+#include "PokemonLZA_AutoStoryMarkerWalks.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 #include "PokemonLZA_AutoStoryZone1Road.h"
 
@@ -52,6 +53,9 @@ ScreensPassed advance_text_and_cards(ConsoleHandle& console, ProControllerContex
 //  may drop the lock. Returns whether the Pokedex's "Registered!" banner
 //  showed meanwhile: a new species caught. A repeat catch or a break-out
 //  shows none.
+//  TODO: unify with the ZL + ZR throw of PokemonLZA_InPlaceCatcher.cpp and
+//  AsyncCommandSession (CommonTools/Async/InterruptableCommands.h) - the
+//  lock-on may drop between separate commands; needs a console test.
 bool throw_ball(ConsoleHandle& console, ProControllerContext& context){
     DetectorToFinder<DexRegisteredDetector> registered("DexRegisteredWatcher", 100ms);
     const int ret = run_until<ProControllerContext>(
@@ -501,17 +505,6 @@ GrassCatches catch_at_stop(
     return out;
 }
 
-//  Off screen, the game pins the marker to the edge with no digits
-//  (anything read there is noise): turns the camera to it. Returns whether
-//  the marker at `x` (0 to 1) was pinned.
-bool turn_to_pinned_marker(ProControllerContext& context, double x){
-    if (x >= 0.10 && x <= 0.90){
-        return false;
-    }
-    pbf_move_right_joystick(context, {x < 0.5 ? -0.5 : 0.5, 0}, 400ms, 200ms);
-    return true;
-}
-
 //  Turns the camera toward the marker at `x` (0 to 1) and walks 0.6 s on.
 void steer_and_step(ProControllerContext& context, double x){
     const double off = x - 0.5;
@@ -556,32 +549,6 @@ private:
     int m_still = 0;
     int m_sidesteps = 0;
 };
-
-//  Walks back away from the objective marker (the stick down: toward the
-//  camera, which stays on the marker) until its distance reads `stop_at`
-//  or more, or `limit`. A read more than 12 from the last is a misread, as
-//  in walk_to_objective(). Returns the last distance read.
-std::optional<int> walk_from_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit){
-    const WallClock deadline = current_time() + limit;
-    std::optional<int> last;
-    while (current_time() < deadline){
-        context.wait_for_all_requests();
-        const std::optional<ObjectiveMarker> marker = read_objective_marker(console, console.video().snapshot());
-        if (marker && turn_to_pinned_marker(context, marker->x)){
-            continue;
-        }
-        if (marker && marker->distance > 0 && (!last || std::abs(marker->distance - *last) <= 12)){
-            last = marker->distance;
-            if (*last >= stop_at){
-                console.log(std::format("walk_from_objective(): {} from the objective.", *last));
-                return last;
-            }
-        }
-        pbf_move_left_joystick(context, {0, -1}, 600ms, 0ms);
-    }
-    console.log(std::format("walk_from_objective(): not back to {} in time (last read {}).", stop_at, last.value_or(-1)));
-    return last;
-}
 
 } // namespace
 

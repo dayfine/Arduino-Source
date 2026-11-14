@@ -52,13 +52,27 @@ std::vector<int> road_stops_to_gate(std::span<const int> spots, std::optional<in
 //  The furthest the far gate reads from inside Wild Zone 1 at 03.08's
 //  start: 03.07's tutorial leaves the player near the entrance, about 115
 //  to 130 from it (catch_in_zone() steps around Taunie's rocks at 115 and
-//  up). A guess, NEEDS CONSOLE: from the Pokemon Center (where 03.07 flies
-//  to) the gate is further, behind the zone's entrance.
+//  up). A guess, NEEDS CONSOLE: from the Pokemon Center (where the lab's
+//  03.07d walks back to) the gate is further, behind the zone's entrance.
 inline constexpr int ZONE_1_START_MAX = 150;
 
 //  Whether a far-gate distance read at 03.08's start (nothing: none read)
 //  places the player inside Wild Zone 1 rather than at the Pokemon Center.
 bool starts_in_zone_1(std::optional<int> distance);
+
+//  How far Wild Zone 1's far gate reads in front of the Pokemon Center,
+//  where the lab's 03.07d walks back to: a guess, NEEDS CONSOLE. 03.06
+//  walks some 18 s from the Center to the entrance gate (~90 at ~5 a
+//  second, recorded 2026-11-08), and the entrance reads a little more than
+//  ZONE_1_START_MAX's 115 to 130 from inside.
+inline constexpr int CENTER_FROM_FAR_GATE = 220;
+
+//  Whether a far-gate distance read at the end of 03.07d (the lab's walk
+//  back to the Pokemon Center) places the player out of Wild Zone 1, so
+//  that 03.08's center_to_zone_1 walks to the zone from there: a distance
+//  read, and further than ZONE_1_START_MAX. With none read the end is
+//  unknown.
+bool left_zone_1(std::optional<int> distance);
 
 
 
