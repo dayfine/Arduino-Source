@@ -30,7 +30,7 @@ UnitTestResult judge_cell(Logger& logger, const FaultSweepCell& cell, const Faul
         return true;
     }
     std::string message = std::format("{} of {} variants fail {} ({}):", result.failures.size(), result.variants, cell.row, tag);
-    for (const FaultSweepFailure& failure : result.failures){
+    for (const FaultSweepResult::Failure& failure : result.failures){
         logger.log(std::format("| {} | {} | {} | {} | {} |", cell.row, failure.step, tag, failure.variant, failure.stopped));
         message += std::format("\n  {} {}: {}", failure.step, failure.variant, failure.stopped);
     }

@@ -31,37 +31,37 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  One injected variant that failed its row.
-struct FaultSweepFailure{
-    //  The row's step the fault was injected at.
-    std::string step;
-    //  Which variant of the fault: "warp 1", "seed 16".
-    std::string variant;
-    //  How the row stopped or where it ended instead.
-    std::string stopped;
-};
-
 //  What injecting one fault over one row found.
 struct FaultSweepResult{
+    //  One injected variant that failed its row.
+    struct Failure{
+        //  The row's step the fault was injected at.
+        std::string step;
+        //  Which variant of the fault: "warp 1", "seed 16".
+        std::string variant;
+        //  How the row stopped or where it ended instead.
+        std::string stopped;
+    };
+
     size_t variants = 0;
-    std::vector<FaultSweepFailure> failures = {};
+    std::vector<Failure> failures = {};
     //  Why the row was not swept (it fails clean, the fault has no chance
     //  in it); nothing when it was.
     std::optional<std::string> not_swept = std::nullopt;
 };
 
-//  A game's injector of one sim fault: runs every variant of it over the
-//  row named `row`.
-using FaultInjector = std::function<FaultSweepResult(Logger& logger, const std::string& row)>;
-
 //  A game's fault sweep, as data.
 struct StoryFaultSweep{
+    //  A game's injector of one sim fault: runs every variant of it over
+    //  the row named `row`.
+    using Injector = std::function<FaultSweepResult(Logger& logger, const std::string& row)>;
+
     //  The start of every test's name: "PokemonFRLG::AutoStory".
     std::string test_prefix;
     //  The story's rows to sweep, by id, in story order.
     std::vector<std::string> rows;
     //  An injector per sim fault the game's sim can inject.
-    std::map<FaultClass, FaultInjector> injectors;
+    std::map<FaultClass, Injector> injectors;
     //  The sweeps the program fails today, by test name, with the likely
     //  fix: such a test passes while it fails, and fails once it passes.
     std::map<std::string, std::string> known_failing = {};

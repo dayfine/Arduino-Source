@@ -28,7 +28,7 @@ namespace{
 constexpr std::string_view PREFIX = "Fake::AutoStory";
 
 //  An injector that reports `result` for every row.
-FaultInjector reporting(FaultSweepResult result){
+StoryFaultSweep::Injector reporting(FaultSweepResult result){
     return [result = std::move(result)](Logger&, const std::string&){
         return result;
     };
@@ -47,7 +47,7 @@ FaultSweepResult failing_result(){
 }
 
 //  A fake game's sweep: rows 01.01 and 01.02, the given injectors.
-StoryFaultSweep fake_sweep(std::map<FaultClass, FaultInjector> injectors, std::map<std::string, std::string> known_failing = {}){
+StoryFaultSweep fake_sweep(std::map<FaultClass, StoryFaultSweep::Injector> injectors, std::map<std::string, std::string> known_failing = {}){
     return StoryFaultSweep{
         .test_prefix = std::string(PREFIX),
         .rows = {"01.01", "01.02"},
@@ -80,7 +80,7 @@ public:
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        std::map<FaultClass, FaultInjector> injectors;
+        std::map<FaultClass, StoryFaultSweep::Injector> injectors;
         for (FaultClass fault : m_case.input.injected){
             injectors.emplace(fault, reporting(clean_result()));
         }
@@ -241,7 +241,7 @@ public:
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        std::map<FaultClass, FaultInjector> injectors;
+        std::map<FaultClass, StoryFaultSweep::Injector> injectors;
         for (FaultClass fault : m_case.input.injected){
             injectors.emplace(fault, reporting(clean_result()));
         }
