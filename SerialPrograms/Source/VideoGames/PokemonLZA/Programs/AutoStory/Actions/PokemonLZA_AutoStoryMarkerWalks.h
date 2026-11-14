@@ -1,12 +1,11 @@
-/*  PokemonLZA AutoStory - Walks back from the objective marker
+/*  PokemonLZA AutoStory - Walks by the objective marker's distance
  *
  *  From: https://github.com/PokemonAutomation/
  *
  *  Walks that keep the camera on the main mission's objective marker
  *  (read_objective_marker(), PokemonLZA_AutoStoryObjectiveMarkerReader.h)
- *  and walk back
- *  away from it: 03.08's road stops, and 03.07d back from Wild
- *  Zone 1 to the Pokemon Center.
+ *  and stop at a distance it reads: 03.08's road stops back from it, and
+ *  03.07d's last steps to 03.08's start in Wild Zone 1.
  *
  */
 
@@ -34,18 +33,14 @@ bool turn_to_pinned_marker(ProControllerContext& context, double x);
 //  in walk_to_objective(). Returns the last distance read.
 std::optional<int> walk_from_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit);
 
-//  03.07d, from where 03.07's catches end in Wild Zone 1 to the
-//  front of Vert's Pokemon Center, all walked back away from the objective
-//  marker (the zone's far gate), the reverse of 03.08's center_to_zone_1():
-//  to the entrance gate (the one 03.06 came in by) until its "A Leave" or
-//  a dialog shows, A and B to the street, then on until the far gate reads
-//  CENTER_FROM_FAR_GATE or 40 s. Throws OperationFailedException when no
-//  prompt shows in 60 s, or unless the last read is out of the zone
-//  (left_zone_1()), where 03.08 would take the player as in the zone and
-//  skip its walk. UNVERIFIED, NEEDS CONSOLE: that the entrance and the
-//  Center lie back from the marker with nothing in the way.
-void zone_1_back_to_center(ConsoleHandle& console, ProControllerContext& context);
-
+//  03.07d's last step, from just inside Wild Zone 1's entrance gate to
+//  where 03.08 starts: toward the objective marker (the zone's far gate)
+//  until it reads ZONE_1_START_DISTANCE plus ZONE_1_START_TOLERANCE or
+//  less (walk_to_objective(), 60 s), then checks the end on a fresh frame:
+//  the marker within the tolerance and the minimap's player arrow in the
+//  zone's green (at_zone_1_start()). Throws OperationFailedException with
+//  both readings when the end is not 03.08's start.
+void walk_to_zone_1_start(ConsoleHandle& console, ProControllerContext& context);
 
 
 } // namespace PokemonLZA

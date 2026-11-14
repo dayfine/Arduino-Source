@@ -99,16 +99,6 @@ void fly_to(ConsoleHandle& console, ProControllerContext& context, Language lang
 //  `location`.
 bool fly_to_or_stay(ConsoleHandle& console, ProControllerContext& context, Language language, Location location);
 
-//  03.08's start: from the Pokemon Center (03.07d walks back
-//  there; fast travel is not open yet at 03.07's end, console B
-//  2026-11-13), on to Wild Zone 1's entrance gate by the objective marker
-//  (walk_to_marker()), A at its "A Enter", B to the overworld. Where the
-//  player is in the zone already (starts_in_zone_1(): a run straight on
-//  from 03.07), nothing. UNVERIFIED, NEEDS
-//  CONSOLE: that the marker's way from the Center leads to the entrance
-//  gate's prompt. Throws OperationFailedException when no prompt shows.
-void center_to_zone_1(ConsoleHandle& console, ProControllerContext& context);
-
 
 
 } // namespace PokemonLZA
