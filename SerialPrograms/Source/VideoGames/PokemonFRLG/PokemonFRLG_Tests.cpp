@@ -189,6 +189,7 @@ static void add_tests_Overworld(UnitTestDatabase& database){
 //  The story's tables, plans and steps.
 static void add_tests_AutoStoryAll(UnitTestDatabase& database){
     add_tests_AutoStory(database);
+    add_tests_AutoStoryStoryFiles(database);
     add_tests_AutoStoryJson(database);
     add_tests_AutoStorySimulation(database);
     add_tests_AutoStoryRows(database);
