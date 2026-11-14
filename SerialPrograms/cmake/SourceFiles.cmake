@@ -1662,6 +1662,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StorySwitchPrompts.cpp
+    Source/Pokemon/AutoStory/Pokemon_StorySwitchPrompts.h
     Source/Pokemon/AutoStory/Pokemon_TilePose.cpp
     Source/Pokemon/AutoStory/Pokemon_TilePose.h
     Source/Pokemon/AutoStory/Pokemon_TestExpect.h
