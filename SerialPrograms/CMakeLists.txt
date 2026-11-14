@@ -226,6 +226,9 @@ include(cmake/CoreLib.cmake)
 # Create the GUI library
 add_library(SerialProgramsLib STATIC ${CORE_LIBRARY_SOURCES} ${LIBRARY_SOURCES})
 
+# Data files built into the program (see cmake/EmbedTextFiles.cmake).
+include(cmake/EmbedTextFiles.cmake)
+
 
 # Create binary target
 if (APPLE)

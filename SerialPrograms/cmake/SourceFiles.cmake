@@ -912,6 +912,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonTools/Options/TrainOCRModeOption.h
     Source/CommonTools/Resources/SpriteDatabase.cpp
     Source/CommonTools/Resources/SpriteDatabase.h
+    Source/CommonTools/ScreenMachine/ScreenMachine.cpp
+    Source/CommonTools/ScreenMachine/ScreenMachine.h
+    Source/CommonTools/ScreenMachine/StepTrace.cpp
+    Source/CommonTools/ScreenMachine/StepTrace.h
     Source/CommonTools/StartupChecks/StartProgramChecks.cpp
     Source/CommonTools/StartupChecks/StartProgramChecks.h
     Source/CommonTools/StartupChecks/VideoResolutionCheck.cpp
@@ -1471,6 +1475,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Inference/Pokemon_TrainPokemonOCR.h
     Source/Pokemon/Inference/Pokemon_TypeReader.cpp
     Source/Pokemon/Inference/Pokemon_TypeReader.h
+    Source/Pokemon/Navigation/Pokemon_Direction.cpp
+    Source/Pokemon/Navigation/Pokemon_Direction.h
+    Source/Pokemon/Navigation/Pokemon_Grid.cpp
+    Source/Pokemon/Navigation/Pokemon_Grid.h
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
     Source/Pokemon/Options/Pokemon_BoxSortingTable.h
     Source/Pokemon/Options/Pokemon_EncounterBotOptions.h
@@ -1499,10 +1507,28 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_CheckpointRetry.h
     Source/Pokemon/AutoStory/Pokemon_CheckpointRetry_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_CheckpointRetry_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryCheckpointTypes.h
+    Source/Pokemon/AutoStory/Pokemon_StoryEvent.h
+    Source/Pokemon/AutoStory/Pokemon_StoryEvents.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryEvents.h
+    Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryOutcome.h
+    Source/Pokemon/AutoStory/Pokemon_StoryPose.h
+    Source/Pokemon/AutoStory/Pokemon_StoryRunCounts_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryRunCounts_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StorySegments.cpp
+    Source/Pokemon/AutoStory/Pokemon_StorySegments.h
+    Source/Pokemon/AutoStory/Pokemon_StorySegments_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StorySegments_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_TilePose.cpp
+    Source/Pokemon/AutoStory/Pokemon_TilePose.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
     Source/Pokemon/Pokemon_BdspRng.cpp
