@@ -37,9 +37,10 @@ struct LaunchLook{
     const StoryLaunchPrompt* prompt = nullptr;
 };
 
-//  `look` as `policy` reads it. HOME first: a game's detectors may read
-//  HOME's plain screen as a quiet overworld.
-LaunchLook read_launch_look(const StoryLaunchPolicy& policy, const ScreenObservation& look){
+//  `look` as `policy` reads it, `launched` once the launch launched or
+//  closed the game. HOME first: a game's detectors may read HOME's plain
+//  screen as a quiet overworld.
+LaunchLook read_launch_look(const StoryLaunchPolicy& policy, const ScreenObservation& look, bool launched){
     if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
         return {.screen = LaunchScreen::HOME};
     }
@@ -47,11 +48,11 @@ LaunchLook read_launch_look(const StoryLaunchPolicy& policy, const ScreenObserva
         return {.screen = LaunchScreen::NEW_GAME};
     }
     for (const StoryLaunchPrompt& prompt : policy.prompts){
-        if (prompt.matches && prompt.matches(look)){
+        if ((launched || !prompt.after_launch) && prompt.matches && prompt.matches(look)){
             return {.screen = LaunchScreen::PROMPT, .prompt = &prompt};
         }
     }
-    if (policy.title(look)){
+    if ((launched || !policy.title_after_launch) && policy.title(look)){
         return {.screen = LaunchScreen::TITLE};
     }
     const bool overworld = policy.overworld ? policy.overworld(look) : look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
@@ -89,7 +90,7 @@ public:
     //  One look and its answer; the launch's end when this look ended it.
     std::optional<Outcome> step(){
         const Observation<PoseType> observation = m_backend.observe();
-        const LaunchLook look = read_launch_look(m_policy, observation);
+        const LaunchLook look = read_launch_look(m_policy, observation, m_launched || m_loading);
         if (look.screen != LaunchScreen::OVERWORLD){
             m_settled = 0;
         }
@@ -99,7 +100,7 @@ public:
         case LaunchScreen::NEW_GAME:
             return launch_failed(std::format("{}: the game shows a new game: no save to load, and a launch never starts one", m_policy.game));
         case LaunchScreen::PROMPT:
-            return press(look.prompt->name, look.prompt->press, look.prompt->max_presses);
+            return on_prompt(*look.prompt);
         case LaunchScreen::TITLE:
             return on_title();
         case LaunchScreen::OVERWORLD:
@@ -140,6 +141,16 @@ private:
         log("home", std::format("not on the game's tile: {}", button_to_string(button)));
         m_backend.press(button, Milliseconds(80), Milliseconds(400));
         return std::nullopt;
+    }
+
+    //  The prompt's lead-in presses, then its press.
+    std::optional<Outcome> on_prompt(const StoryLaunchPrompt& prompt){
+        if (m_presses[prompt.name] < prompt.max_presses){
+            for (const StoryLaunchPress& each : prompt.before){
+                m_backend.press(each.button, each.hold, each.release);
+            }
+        }
+        return press(prompt.name, prompt.press, prompt.max_presses);
     }
 
     std::optional<Outcome> on_title(){

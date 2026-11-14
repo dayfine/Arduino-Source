@@ -73,6 +73,13 @@ struct StoryLaunchPrompt{
     std::string name = {};
     std::function<bool(const ScreenObservation& look)> matches = {};
     StoryLaunchPress press = {};
+    //  Pressed in order before `press`, each time: the cursor moves to the
+    //  choice `press` picks (the update prompt's last choice).
+    std::vector<StoryLaunchPress> before = {};
+    //  Read only once this launch launched or closed the game: a screen
+    //  the game also shows in play (a dialog box, a choice), where a press
+    //  before the launch would answer the story instead.
+    bool after_launch = false;
     //  Presses it may take before the launch is stuck on it.
     size_t max_presses = 6;
 };
@@ -92,6 +99,10 @@ struct StoryLaunchPolicy{
     //  The title screen, which leads to the save. Required.
     std::function<bool(const ScreenObservation& look)> title = {};
     StoryLaunchPress title_press = {};
+    //  `title` is read only once this launch launched or closed the game:
+    //  a loose check (any quiet screen after the boot) that a game in play
+    //  would pass too.
+    bool title_after_launch = false;
     //  Pressed once on the title before `title_press` for Save::BACKUP.
     //  Empty: the game has no backup save, and a BACKUP launch fails
     //  before it presses anything.

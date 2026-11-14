@@ -41,6 +41,8 @@ enum class Screen{
     NEW_GAME,           //  the title's menu without a save
     BACKUP_CONFIRM,     //  "Load the backup save?"
     LOAD_MENU,          //  Continue / New Game
+    UPDATE,             //  the update prompt: Up twice to its last choice, then A
+    GAME_DIALOG,        //  the game's dialog box, in play or on the way
     OVERWORLD,
 };
 
@@ -77,9 +79,16 @@ enum class Backup{
     NONE,
 };
 
+//  How loose the test game's title and dialog checks are.
+enum class GameScreens{
+    STRICT,         //  read whenever they show
+    AFTER_LAUNCH,   //  read only once the launch launched the game
+};
+
 //  The test game: A on the title, `backup` for the backup save, A on each
-//  prompt, and small bounds so a failure takes few looks.
-StoryLaunchPolicy test_policy(Backup backup){
+//  prompt (Up, Up, A on the update prompt; B on the game's dialog), and
+//  small bounds so a failure takes few looks.
+StoryLaunchPolicy test_policy(Backup backup, GameScreens game_screens){
     StoryLaunchPolicy policy;
     policy.game = "test";
     policy.tile_selected = [](const ScreenObservation& observation){
@@ -97,7 +106,11 @@ StoryLaunchPolicy test_policy(Backup backup){
         {.name = "license check", .matches = shows(Screen::LICENSE_CHECK)},
         {.name = "backup confirm", .matches = shows(Screen::BACKUP_CONFIRM)},
         {.name = "load menu", .matches = shows(Screen::LOAD_MENU)},
+        {.name = "update", .matches = shows(Screen::UPDATE), .before = {{.button = BUTTON_UP}, {.button = BUTTON_UP}}},
+        {.name = "game dialog", .matches = shows(Screen::GAME_DIALOG), .press = {.button = BUTTON_B},
+         .after_launch = game_screens == GameScreens::AFTER_LAUNCH},
     };
+    policy.title_after_launch = game_screens == GameScreens::AFTER_LAUNCH;
     policy.presses_per_screen = 3;
     policy.max_looks = 12;
     return policy;
@@ -118,6 +131,7 @@ struct LaunchCase{
         std::vector<Screen> screens;
         StoryLaunchRequest request = {};
         Backup backup = Backup::PLZA;
+        GameScreens game_screens = GameScreens::STRICT;
     };
     struct Expectation{
         //  Empty: the launch succeeds; else a part of its failure's detail.
@@ -176,6 +190,17 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
     {.name = "kept game off the overworld takes B",
      .input = {.screens = then_settled({Screen::LOAD_MENU, Screen::BLACK}), .request = {.running = Running::KEEP}},
      .expectation = {.inputs = "A B wait wait"}},
+    {.name = "update prompt takes its lead-in presses",
+     .input = {.screens = then_settled({Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::UPDATE, Screen::BLACK, Screen::TITLE})},
+     .expectation = {.inputs = "X A Up Up A wait A wait wait"}},
+    {.name = "strict title in front is pressed",
+     .input = {.screens = then_settled({Screen::GAME_DIALOG, Screen::TITLE, Screen::BLACK})},
+     .expectation = {.inputs = "B A wait wait wait"}},
+    {.name = "loose title in front is left with HOME",
+     .input = {.screens = then_settled({Screen::GAME_DIALOG, Screen::TITLE, Screen::HOME_ON_GAME, Screen::HOME_ON_GAME,
+                                        Screen::BLACK, Screen::GAME_DIALOG, Screen::TITLE}),
+               .game_screens = GameScreens::AFTER_LAUNCH},
+     .expectation = {.inputs = "HOME HOME X A wait B A wait wait"}},
 };
 
 //  The fake backend's record of `input` ("A" -> "press A").
@@ -216,7 +241,7 @@ std::string check_launch(const LaunchCase& test, CancellableScope& scope){
         looks.push_back(look(screen));
     }
     FakeStoryBackend<GridPose> backend({.looks = std::move(looks)}, scope);
-    const Outcome outcome = launch_story_game(backend, test_policy(test.input.backup), test.input.request);
+    const Outcome outcome = launch_story_game(backend, test_policy(test.input.backup, test.input.game_screens), test.input.request);
     if (test.expectation.failure.empty() && !outcome.succeeded()){
         return std::format("expected success, got {}", to_string(outcome));
     }
