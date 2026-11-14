@@ -37,23 +37,47 @@ class ContractTests(unittest.TestCase):
         self.assertFalse(any('header-comment' in m for m in self.messages(documented)))
 
     def test_native_cases_separate_input_and_expectation_in_a_table(self):
-        good = '''struct Input{ int value; };
-struct Expectation{ int value; };
-struct Case{ Input input; Expectation expectation; };
+        good = '''struct Case{
+    std::string name;
+    struct Input{ int value; };
+    Input input;
+    struct Expectation{ int value; };
+    Expectation expectation;
+};
 class Test_Value : public UnitTest{
 public:
-    explicit Test_Value(Case scenario) : UnitTest(scenario.input.name){}
+    explicit Test_Value(Case scenario) : UnitTest(scenario.name){}
 };
-const Case CASES[] = {{.input = {.value = 1}, .expectation = {.value = 2}}};
+const Case CASES[] = {{.name = "one", .input = {.value = 1}, .expectation = {.value = 2}}};
 void add_tests(){
     for (const Case& scenario : CASES){
         database.add<Test_Value>(scenario);
     }
 }
 '''
-        bad = good.replace('Input input; Expectation expectation;', 'int value; int expected;')
+        bad = good.replace('Input input;', 'int value;').replace('Expectation expectation;', 'int expected;')
         self.assertTrue(any('test-case' in m for m in self.messages(bad, CPP)))
         self.assertFalse(any('test-case' in m for m in self.messages(good, CPP)))
+
+    def test_case_name_is_its_own_field_not_in_the_input(self):
+        name_in_input = '''struct Input{ std::string name; int value; };
+struct Expectation{ int value; };
+struct Case{ Input input; Expectation expectation; };
+class Test_Value : public UnitTest{
+public:
+    explicit Test_Value(Case scenario) : UnitTest(scenario.input.name){}
+};
+const Case CASES[] = {{.input = {.name = "one", .value = 1}, .expectation = {.value = 2}}};
+void add_tests(){
+    for (const Case& scenario : CASES){ database.add<Test_Value>(scenario); }
+}
+'''
+        self.assertTrue(any('test-case' in m for m in self.messages(name_in_input, CPP)))
+        both = name_in_input.replace('struct Case{ Input input;', 'struct Case{ std::string name; Input input;').replace(
+            '{{.input = {.name = "one", ', '{{.name = "one", .input = {')
+        self.assertTrue(any('test-case' in m for m in self.messages(both, CPP)))
+        fixed = both.replace('struct Input{ std::string name; int value; };', 'struct Input{ int value; };')
+        self.assertFalse(any('test-case' in m for m in self.messages(fixed, CPP)))
 
     def test_public_template_interface_precedes_internal_namespace(self):
         source = '''namespace DetailInternal{
@@ -69,12 +93,12 @@ template <typename T> T run(T value){ return value; }
     def test_case_table_rejects_positional_rows(self):
         source = '''struct Input{ int value; };
 struct Expectation{ int value; };
-struct Case{ Input input; Expectation expectation; };
+struct Case{ std::string name; Input input; Expectation expectation; };
 class Test_Value : public UnitTest{
 public:
-    explicit Test_Value(Case scenario) : UnitTest(scenario.input.name){}
+    explicit Test_Value(Case scenario) : UnitTest(scenario.name){}
 };
-const Case CASES[] = {{{1}, {2}}};
+const Case CASES[] = {{"one", {1}, {2}}};
 void add_tests(){
     for (const Case& scenario : CASES){ database.add<Test_Value>(scenario); }
 }
@@ -162,13 +186,13 @@ public:
     def test_constexpr_std_array_table_and_trailing_commas(self):
         source = """struct Input{ int value; };
 struct Expectation{ int value; };
-struct Case{ Input input; Expectation expectation; };
+struct Case{ std::string_view name; Input input; Expectation expectation; };
 class Test_Value : public UnitTest{
 public:
-    explicit Test_Value(Case scenario) : UnitTest(scenario.input.name){}
+    explicit Test_Value(Case scenario) : UnitTest(scenario.name){}
 };
 constexpr std::array<Case, 1> CASES = {
-    {.input = {.value = 1}, .expectation = {.value = 2},},
+    {.name = "one", .input = {.value = 1}, .expectation = {.value = 2},},
 };
 void add_tests(){ for (const auto& scenario : CASES){ database.add<Test_Value>(scenario); } }
 """
@@ -179,6 +203,7 @@ void add_tests(){ for (const auto& scenario : CASES){ database.add<Test_Value>(s
             source.replace('const auto& scenario : CASES', 'int i = 0; i < 1; i++'),
             source.replace('constexpr std::array<Case, 1> CASES', 'Case one_case'),
             source.replace('.expectation =', '.expected ='),
+            source.replace('.name = "one", ', ''),
         ):
             with self.subTest(source=broken):
                 self.assertTrue(any('test-case' in m for m in self.messages(broken, CPP)))

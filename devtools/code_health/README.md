@@ -228,19 +228,26 @@ and declarations are enforced; untouched legacy declarations are grandfathered.
   adjacent `//` or block/Doxygen comment counts. A definition can reuse its own
   documented declaration. Class members and namespaces themselves are excluded.
 - `test-case`: new/changed native `*_Tests.cpp` UnitTest classes take one aggregate case.
-  That case has exactly `input` and `expectation` fields, each a separate local
-  struct. A named C-array, `std::array`, or `std::vector` table contains designated
-  `.input` / `.expectation` rows and is consumed by a range-for for registration.
-  Include a descriptive name in the input and compare expected and observed values.
+  That case has exactly three fields, in order: `name`, `input` and `expectation`.
+  The name labels the case and is not part of what the code under test is given,
+  so it is its own field and never inside the input; `input` and `expectation` are
+  local structs (nested in the case is fine). A named C-array, `std::array`, or
+  `std::vector` table contains designated `.name` / `.input` / `.expectation` rows
+  and is consumed by a range-for for registration. Compare expected and observed values.
 
 ```cpp
-struct ValueInput{ std::string name; int value; };
-struct ValueExpectation{ int result; };
-struct ValueTestCase{ ValueInput input; ValueExpectation expectation; };
+struct ValueTestCase{
+    std::string name;
+    struct Input{ int value; };
+    Input input;
+    struct Expectation{ int result; };
+    Expectation expectation;
+};
 
 const ValueTestCase CASES[] = {
     {
-        .input = {.name = "increment", .value = 1},
+        .name = "increment",
+        .input = {.value = 1},
         .expectation = {.result = 2},
     },
 };
