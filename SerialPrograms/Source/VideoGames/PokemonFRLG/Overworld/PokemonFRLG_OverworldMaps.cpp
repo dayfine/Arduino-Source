@@ -150,8 +150,11 @@ constexpr std::string_view MAP_NAMES[] = {
     //  Route 21 north of it to Pallet Town (12.03).
     "CinnabarIsland",
     "CinnabarIsland_Gym",
+    //  Route 21 from Pallet Town south to Cinnabar (12.03), and Viridian Gym with its
+    //  spinner tiles (the map file's glyphs: PokemonFRLG_OverworldSpin.h).
     "Route21_North",
     "Route21_South",
+    "ViridianCity_Gym",
     //  Silph Co.'s floors, 1F to 11F (the lift's map, SilphCo_Elevator, is
     //  not built in).
     "SilphCo_1F",

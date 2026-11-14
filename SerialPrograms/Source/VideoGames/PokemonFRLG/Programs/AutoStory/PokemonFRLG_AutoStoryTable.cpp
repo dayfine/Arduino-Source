@@ -237,6 +237,7 @@ constexpr std::string_view STORY_ORDER[] = {
     "12.01", "12.02", "12.02b", "12.03",
     "13.01", "13.02", "13.03", "13.04", "14.01", "14.02", "14.02b",
     "14.03", "14.04", "14.04b", "15.01", "16.01",
+    "17.02", "17.03", "17.04", "17.04b",
 };
 
 //  `checkpoints` in STORY_ORDER's order. Throws ParseException for a
