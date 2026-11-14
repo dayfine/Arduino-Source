@@ -458,7 +458,6 @@ UnitTestResult test_restart_fly_reads_no_summary(Logger& logger){
 }
 
 struct AutoStoryPartyRosterInput{
-    std::string name;
     std::function<UnitTestResult(Logger&)> body;
 };
 
@@ -466,6 +465,7 @@ struct AutoStoryPartyRosterExpectation{
 };
 
 struct AutoStoryPartyRosterCase{
+    std::string name;
     AutoStoryPartyRosterInput input;
     AutoStoryPartyRosterExpectation expectation;
 };
@@ -473,7 +473,7 @@ struct AutoStoryPartyRosterCase{
 class Test_AutoStoryPartyRoster : public UnitTest{
 public:
     explicit Test_AutoStoryPartyRoster(AutoStoryPartyRosterCase test_case)
-        : UnitTest(std::format("PokemonFRLG::AutoStory - Party roster: {}", test_case.input.name))
+        : UnitTest(std::format("PokemonFRLG::AutoStory - Party roster: {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -489,28 +489,28 @@ private:
 };
 
 const AutoStoryPartyRosterCase AUTO_STORY_PARTY_ROSTER_CASES[] = {
-    {.input = {"a Fly by species opens the party once", test_first_lookup_opens_party_once}, .expectation = {}},
-    {.input = {"the second Fly reads no summary", test_second_lookup_reads_nothing}, .expectation = {}},
-    {.input = {"the cache holds the members read on the way", test_cache_holds_what_was_read}, .expectation = {}},
-    {.input = {"invalidate() reads the party again", test_invalidate_reads_again}, .expectation = {}},
-    {.input = {"a missing species closes the party", test_missing_species_closes}, .expectation = {}},
-    {.input = {"the first of two of a species wins", test_first_duplicate_wins}, .expectation = {}},
-    {.input = {"a lookup that doesn't keep the menu closes it", test_closes_when_not_kept}, .expectation = {}},
-    {.input = {"a cached slot for a TEACH opens nothing", test_cached_slot_opens_nothing}, .expectation = {}},
-    {.input = {"a Fly scan stops at the first menu with FLY", test_scan_stops_at_first_user}, .expectation = {}},
-    {.input = {"FLY is picked from its row on the menu", test_fly_row_from_menu}, .expectation = {}},
-    {.input = {"a recorded field move user opens only its menu", test_recorded_user_reads_no_summary}, .expectation = {}},
-    {.input = {"a stale record falls back to the scan and is updated", test_stale_record_scans_and_updates}, .expectation = {}},
-    {.input = {"a record of another species is checked by its menu", test_other_species_record_checked_by_menu}, .expectation = {}},
-    {.input = {"a scan records the user for the next Fly", test_scan_records_for_next_fly}, .expectation = {}},
-    {.input = {"invalidate() drops the field move users", test_invalidate_drops_records}, .expectation = {}},
-    {.input = {"no menu with FLY fails without flying", test_no_member_failure}, .expectation = {}},
-    {.input = {"an unread member menu is skipped for a later Fly user", test_unread_menu_skipped}, .expectation = {}},
-    {.input = {"an unread field move name is skipped for a later Fly user", test_unread_field_move_skipped}, .expectation = {}},
-    {.input = {"an unread menu and no Fly user fails as unread", test_unread_menu_without_fly_fails}, .expectation = {}},
-    {.input = {"the field move users' text reads back the same", test_users_text_round_trip}, .expectation = {}},
-    {.input = {"unreadable field move users' text is dropped", test_unreadable_users_text_dropped}, .expectation = {}},
-    {.input = {"a Fly after a restart opens only the recorded menu", test_restart_fly_reads_no_summary}, .expectation = {}},
+    {.name = "a Fly by species opens the party once", .input = {test_first_lookup_opens_party_once}, .expectation = {}},
+    {.name = "the second Fly reads no summary", .input = {test_second_lookup_reads_nothing}, .expectation = {}},
+    {.name = "the cache holds the members read on the way", .input = {test_cache_holds_what_was_read}, .expectation = {}},
+    {.name = "invalidate() reads the party again", .input = {test_invalidate_reads_again}, .expectation = {}},
+    {.name = "a missing species closes the party", .input = {test_missing_species_closes}, .expectation = {}},
+    {.name = "the first of two of a species wins", .input = {test_first_duplicate_wins}, .expectation = {}},
+    {.name = "a lookup that doesn't keep the menu closes it", .input = {test_closes_when_not_kept}, .expectation = {}},
+    {.name = "a cached slot for a TEACH opens nothing", .input = {test_cached_slot_opens_nothing}, .expectation = {}},
+    {.name = "a Fly scan stops at the first menu with FLY", .input = {test_scan_stops_at_first_user}, .expectation = {}},
+    {.name = "FLY is picked from its row on the menu", .input = {test_fly_row_from_menu}, .expectation = {}},
+    {.name = "a recorded field move user opens only its menu", .input = {test_recorded_user_reads_no_summary}, .expectation = {}},
+    {.name = "a stale record falls back to the scan and is updated", .input = {test_stale_record_scans_and_updates}, .expectation = {}},
+    {.name = "a record of another species is checked by its menu", .input = {test_other_species_record_checked_by_menu}, .expectation = {}},
+    {.name = "a scan records the user for the next Fly", .input = {test_scan_records_for_next_fly}, .expectation = {}},
+    {.name = "invalidate() drops the field move users", .input = {test_invalidate_drops_records}, .expectation = {}},
+    {.name = "no menu with FLY fails without flying", .input = {test_no_member_failure}, .expectation = {}},
+    {.name = "an unread member menu is skipped for a later Fly user", .input = {test_unread_menu_skipped}, .expectation = {}},
+    {.name = "an unread field move name is skipped for a later Fly user", .input = {test_unread_field_move_skipped}, .expectation = {}},
+    {.name = "an unread menu and no Fly user fails as unread", .input = {test_unread_menu_without_fly_fails}, .expectation = {}},
+    {.name = "the field move users' text reads back the same", .input = {test_users_text_round_trip}, .expectation = {}},
+    {.name = "unreadable field move users' text is dropped", .input = {test_unreadable_users_text_dropped}, .expectation = {}},
+    {.name = "a Fly after a restart opens only the recorded menu", .input = {test_restart_fly_reads_no_summary}, .expectation = {}},
 };
 
 } // namespace

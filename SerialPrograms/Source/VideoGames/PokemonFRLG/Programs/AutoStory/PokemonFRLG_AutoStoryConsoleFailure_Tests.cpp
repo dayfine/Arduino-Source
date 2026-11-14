@@ -80,7 +80,6 @@ SimScript script_of(const ConsoleFailure& failure){
 }
 
 struct ReplayInput{
-    std::string name;
 };
 struct ReplayExpectation{
     std::string description;
@@ -95,6 +94,7 @@ const std::string& fault_text(const std::string& name){
 }
 
 struct ReplayCase{
+    std::string name;
     ReplayInput input;
     ReplayExpectation expectation;
 };
@@ -102,7 +102,7 @@ struct ReplayCase{
 class Test_ConsoleFailureReplay : public UnitTest{
 public:
     explicit Test_ConsoleFailureReplay(ReplayCase test_case)
-        : UnitTest(std::format("PokemonFRLG::AutoStory - Console failure replay: {}", test_case.input.name))
+        : UnitTest(std::format("PokemonFRLG::AutoStory - Console failure replay: {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -117,7 +117,7 @@ public:
 
 private:
     UnitTestResult replay() const{
-        const std::string& name = m_case.input.name;
+        const std::string& name = m_case.name;
         const std::string text = fault_text(name);
         const ConsoleFailure failure = Pokemon::parse_console_failure(name, text);
         const JsonValue json = parse_json(text);
@@ -170,7 +170,8 @@ private:
 //  One row per file in ConsoleFailures/, named as the file without ".json".
 const ReplayCase CONSOLE_FAILURE_CASES[] = {
     {
-        .input = {.name = "12.03-22-22-pallet-shore-east-unmoved"},
+        .name = "12.03-22-22-pallet-shore-east-unmoved",
+        .input = {},
         .expectation = {.description = "a hold that moved nothing must not be walked as if it had"},
     },
 };

@@ -667,7 +667,10 @@ struct FaultSweepInput{
 //  Whether a sweep is expected to fail is KNOWN_FAILING's, by name.
 struct FaultSweepExpectation{
 };
+//  `name`: the fault class's in FAULT_SWEEP_CASES; "<row>, <fault class>"
+//  in a test.
 struct FaultSweepCase{
+    std::string name;
     FaultSweepInput input;
     FaultSweepExpectation expectation;
 };
@@ -685,7 +688,7 @@ const StoryCheckpoint& table_row(const std::string& id){
 class Test_AutoStoryFaultSweep : public UnitTest{
 public:
     explicit Test_AutoStoryFaultSweep(FaultSweepCase test_case)
-        : UnitTest(std::format("PokemonFRLG::AutoStory - Fault sweep: {}, {}", test_case.input.row, fault_class_name(test_case.input.fault)))
+        : UnitTest(std::format("PokemonFRLG::AutoStory - Fault sweep: {}", test_case.name))
         , m_fault(test_case.input.fault)
         , m_row(table_row(test_case.input.row))
     {}
@@ -752,15 +755,15 @@ private:
 //  SCENE_EARLY and BATTLE_OPENING, which need knobs the sims don't have yet
 //  (see the top of this file).
 const FaultSweepCase FAULT_SWEEP_CASES[] = {
-    {.input = {.fault = FaultClass::SCENE_END_POSE}, .expectation = {}},
-    {.input = {.fault = FaultClass::WILD_BATTLES}, .expectation = {}},
-    {.input = {.fault = FaultClass::LATE_FADE}, .expectation = {}},
-    {.input = {.fault = FaultClass::SLOW_FADE_IN}, .expectation = {}},
-    {.input = {.fault = FaultClass::DARK_CAVE}, .expectation = {}},
-    {.input = {.fault = FaultClass::LOST_TAP}, .expectation = {}},
-    {.input = {.fault = FaultClass::WARP_NO_OP}, .expectation = {}},
-    {.input = {.fault = FaultClass::UNSEEN_STEP}, .expectation = {}},
-    {.input = {.fault = FaultClass::MOUNT_LOST}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::SCENE_END_POSE)), .input = {.fault = FaultClass::SCENE_END_POSE}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::WILD_BATTLES)), .input = {.fault = FaultClass::WILD_BATTLES}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::LATE_FADE)), .input = {.fault = FaultClass::LATE_FADE}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::SLOW_FADE_IN)), .input = {.fault = FaultClass::SLOW_FADE_IN}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::DARK_CAVE)), .input = {.fault = FaultClass::DARK_CAVE}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::LOST_TAP)), .input = {.fault = FaultClass::LOST_TAP}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::WARP_NO_OP)), .input = {.fault = FaultClass::WARP_NO_OP}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::UNSEEN_STEP)), .input = {.fault = FaultClass::UNSEEN_STEP}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::MOUNT_LOST)), .input = {.fault = FaultClass::MOUNT_LOST}, .expectation = {}},
 };
 
 std::optional<std::string> talk_battle_hide_flag(const StoryStep& step){
@@ -780,7 +783,11 @@ void add_tests_AutoStoryFaultSweep(UnitTestDatabase& database){
             if (!row.start || !story_pose(Pokemon::pose_of(*row.start))){
                 continue;
             }
-            database.add<Test_AutoStoryFaultSweep>(FaultSweepCase{.input = {.fault = item.input.fault, .row = row.id}, .expectation = item.expectation});
+            database.add<Test_AutoStoryFaultSweep>(FaultSweepCase{
+                .name = std::format("{}, {}", row.id, item.name),
+                .input = {.fault = item.input.fault, .row = row.id},
+                .expectation = item.expectation,
+            });
         }
     }
 }

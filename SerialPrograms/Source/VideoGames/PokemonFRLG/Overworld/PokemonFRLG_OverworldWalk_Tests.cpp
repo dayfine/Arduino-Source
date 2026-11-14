@@ -29,7 +29,6 @@ using namespace OverworldWalkSteps;
 namespace{
 
 struct OverworldWalkInput{
-    std::string_view name;
     MoveSpeed speed;
     int tiles;
     bool to_wall;
@@ -44,6 +43,7 @@ struct OverworldWalkExpectation{
 };
 
 struct OverworldWalkTestCase{
+    std::string_view name;
     OverworldWalkInput input;
     OverworldWalkExpectation expectation;
 };
@@ -58,7 +58,7 @@ bool holds_b(const Pokemon::LegMover<ProControllerContext>& mover){
 class Test_OverworldWalk : public UnitTest{
 public:
     explicit Test_OverworldWalk(OverworldWalkTestCase scenario)
-        : UnitTest("PokemonFRLG::OverworldWalk - hold: " + std::string(scenario.input.name))
+        : UnitTest("PokemonFRLG::OverworldWalk - hold: " + std::string(scenario.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -91,52 +91,61 @@ private:
 //  surfing 133ms.
 const OverworldWalkTestCase OVERWORLD_WALK_CASES[] = {
     {
-        .input = {.name = "walk, open", .speed = MoveSpeed::WALK, .tiles = 5, .to_wall = false, .surfing = false},
+        .name = "walk, open",
+        .input = {.speed = MoveSpeed::WALK, .tiles = 5, .to_wall = false, .surfing = false},
         .expectation = {.hold = Milliseconds(4 * 267 + 133), .note = ""},
     },
     {
-        .input = {.name = "walk, to a wall", .speed = MoveSpeed::WALK, .tiles = 5, .to_wall = true, .surfing = false},
+        .name = "walk, to a wall",
+        .input = {.speed = MoveSpeed::WALK, .tiles = 5, .to_wall = true, .surfing = false},
         .expectation = {.hold = Milliseconds(7 * 267), .note = "[Speed] walk west: 5 tiles in 1335 ms, held 1869 ms"},
     },
     {
-        .input = {.name = "run, open", .speed = MoveSpeed::RUN, .tiles = 5, .to_wall = false, .surfing = false},
+        .name = "run, open",
+        .input = {.speed = MoveSpeed::RUN, .tiles = 5, .to_wall = false, .surfing = false},
         .expectation = {.hold = Milliseconds(4 * 133 + 66), .note = "", .runs = true},
     },
     {
-        .input = {.name = "run, to a wall", .speed = MoveSpeed::RUN, .tiles = 40, .to_wall = true, .surfing = false},
+        .name = "run, to a wall",
+        .input = {.speed = MoveSpeed::RUN, .tiles = 40, .to_wall = true, .surfing = false},
         .expectation = {.hold = Milliseconds(42 * 133), .note = "[Speed] run west: 40 tiles in 5320 ms, held 5586 ms", .runs = true},
     },
     {
-        .input = {.name = "run, indoors: walks", .speed = MoveSpeed::RUN, .tiles = 5, .to_wall = true, .surfing = false, .walk_only = true},
+        .name = "run, indoors: walks",
+        .input = {.speed = MoveSpeed::RUN, .tiles = 5, .to_wall = true, .surfing = false, .walk_only = true},
         .expectation = {.hold = Milliseconds(7 * 267), .note = "[Speed] walk west: 5 tiles in 1335 ms, held 1869 ms"},
     },
     {
-        .input = {.name = "run, indoors, open: walks", .speed = MoveSpeed::RUN, .tiles = 5, .to_wall = false, .surfing = false, .walk_only = true},
+        .name = "run, indoors, open: walks",
+        .input = {.speed = MoveSpeed::RUN, .tiles = 5, .to_wall = false, .surfing = false, .walk_only = true},
         .expectation = {.hold = Milliseconds(4 * 267 + 133), .note = ""},
     },
     {
-        .input = {.name = "run, surfing to a wall", .speed = MoveSpeed::RUN, .tiles = 3, .to_wall = true, .surfing = true},
+        .name = "run, surfing to a wall",
+        .input = {.speed = MoveSpeed::RUN, .tiles = 3, .to_wall = true, .surfing = true},
         .expectation = {.hold = Milliseconds(5 * 133), .note = ""},
     },
     {
-        .input = {.name = "walk, surfing", .speed = MoveSpeed::WALK, .tiles = 3, .to_wall = false, .surfing = true},
+        .name = "walk, surfing",
+        .input = {.speed = MoveSpeed::WALK, .tiles = 3, .to_wall = false, .surfing = true},
         .expectation = {.hold = Milliseconds(2 * 133 + 66), .note = ""},
     },
     //  Console B, 2026-11-09: on the bike, 1450ms moved 15 tiles and 50ms
     //  (a tap) one; 1736ms, held for "west 16 (open)", went past 16.
     {
-        .input = {.name = "bike, open 16", .speed = MoveSpeed::BIKE, .tiles = 16, .to_wall = false, .surfing = false},
+        .name = "bike, open 16",
+        .input = {.speed = MoveSpeed::BIKE, .tiles = 16, .to_wall = false, .surfing = false},
         .expectation = {.hold = Milliseconds(1550), .note = ""},
     },
     {
-        .input = {.name = "bike, open 1", .speed = MoveSpeed::BIKE, .tiles = 1, .to_wall = false, .surfing = false},
+        .name = "bike, open 1",
+        .input = {.speed = MoveSpeed::BIKE, .tiles = 1, .to_wall = false, .surfing = false},
         .expectation = {.hold = Milliseconds(50), .note = ""},
     },
 };
 
 
 struct TurnTapInput{
-    std::string name;
     //  SimScript::dropped_turn_taps.
     std::set<int> dropped_turn_taps;
     //  SimWalkerRules::confirm_turn.
@@ -157,6 +166,7 @@ struct TurnTapExpectation{
 };
 
 struct TurnTapCase{
+    std::string name;
     TurnTapInput input;
     TurnTapExpectation expectation;
 };
@@ -170,7 +180,7 @@ const MapPosition TURN_END{"ViridianForest", {12, 28}};
 class Test_OverworldTurnTap : public UnitTest{
 public:
     explicit Test_OverworldTurnTap(TurnTapCase test_case)
-        : UnitTest("PokemonFRLG::OverworldWalk - turn tap: " + test_case.input.name)
+        : UnitTest("PokemonFRLG::OverworldWalk - turn tap: " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -211,35 +221,38 @@ private:
 };
 
 const TurnTapCase TURN_TAP_CASES[] = {
-    {.input = {.name = "taken"}, .expectation = {.end = TURN_END}},
-    {.input = {.name = "dropped, tapped again", .dropped_turn_taps = {1}}, .expectation = {.end = TURN_END}},
-    {.input = {.name = "dropped twice, tapped again", .dropped_turn_taps = {1, 2}}, .expectation = {.end = TURN_END}},
-    {.input = {.name = "dropped, not checked: the leg only turns", .dropped_turn_taps = {1}, .confirm_turn = false}, .expectation = {.end = TURN_START}},
+    {.name = "taken", .input = {}, .expectation = {.end = TURN_END}},
+    {.name = "dropped, tapped again", .input = {.dropped_turn_taps = {1}}, .expectation = {.end = TURN_END}},
+    {.name = "dropped twice, tapped again", .input = {.dropped_turn_taps = {1, 2}}, .expectation = {.end = TURN_END}},
+    {.name = "dropped, not checked: the leg only turns", .input = {.dropped_turn_taps = {1}, .confirm_turn = false}, .expectation = {.end = TURN_START}},
     //  Console B, 2026-11-09 (08.03): on the Bicycle the turn tap took a
     //  step, each one-tile leg went two, and the walk to Route 8 ended on
     //  Route 12.
-    {.input = {.name = "on the bike, no turn tap", .on_bike = true}, .expectation = {.end = TURN_END}},
+    {.name = "on the bike, no turn tap", .input = {.on_bike = true}, .expectation = {.end = TURN_END}},
     //  Console B, 2026-11-11 (09.02 moon_stone): the game missed the tap of
     //  "face south" on Rocket Hideout B2F, the player still faced north, and
     //  A found nothing to pick up.
-    {.input = {.name = "face, taken", .action = RouteAction::FACE}, .expectation = {.end = TURN_START}},
-    {.input = {.name = "face, dropped, tapped again", .dropped_turn_taps = {1}, .action = RouteAction::FACE}, .expectation = {.end = TURN_START}},
+    {.name = "face, taken", .input = {.action = RouteAction::FACE}, .expectation = {.end = TURN_START}},
+    {.name = "face, dropped, tapped again", .input = {.dropped_turn_taps = {1}, .action = RouteAction::FACE}, .expectation = {.end = TURN_START}},
     //  Console B, 2026-11-13 11:06 (12.03 surf_route_21): north of
     //  Cinnabar's Center the roof's eave hid all but the player's head, the
     //  facing never read after the turn tap west, and the leg failed. A
     //  wanderer over the sprite steps off within the reads.
-    {.input = {.name = "facing hidden for 5 reads, then read", .hidden_facing_reads = 5}, .expectation = {.end = TURN_END}},
-    {.input = {.name = "facing never shows: taken as turned", .hidden_facing_reads = SIZE_MAX}, .expectation = {.end = TURN_END}},
-    {.input = {.name = "face, facing never shows: taken as turned", .action = RouteAction::FACE, .hidden_facing_reads = SIZE_MAX}, .expectation = {.end = TURN_START}},
+    {.name = "facing hidden for 5 reads, then read", .input = {.hidden_facing_reads = 5}, .expectation = {.end = TURN_END}},
+    {.name = "facing never shows: taken as turned", .input = {.hidden_facing_reads = SIZE_MAX}, .expectation = {.end = TURN_END}},
+    {.name = "face, facing never shows: taken as turned", .input = {.action = RouteAction::FACE, .hidden_facing_reads = SIZE_MAX}, .expectation = {.end = TURN_START}},
 };
 
 struct UnreadTurnInput{
-    std::string name;
     OverworldWalkSteps::UnreadTurn turn = {.at_known = true, .overworld_clear = true};
 };
-struct UnreadTurnCase{
-    UnreadTurnInput input;
+struct UnreadTurnExpectation{
     bool taken;
+};
+struct UnreadTurnCase{
+    std::string name;
+    UnreadTurnInput input;
+    UnreadTurnExpectation expectation;
 };
 
 //  OverworldWalkSteps::unread_turn_taken(): a turn whose facing never read
@@ -248,14 +261,14 @@ struct UnreadTurnCase{
 class Test_OverworldUnreadTurn : public UnitTest{
 public:
     explicit Test_OverworldUnreadTurn(UnreadTurnCase test_case)
-        : UnitTest("PokemonFRLG::OverworldWalk - unread turn: " + test_case.input.name)
+        : UnitTest("PokemonFRLG::OverworldWalk - unread turn: " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        if (OverworldWalkSteps::unread_turn_taken(m_case.input.turn) == m_case.taken){
+        if (OverworldWalkSteps::unread_turn_taken(m_case.input.turn) == m_case.expectation.taken){
             return true;
         }
-        return std::format("Expected {}.", m_case.taken ? "taken as turned" : "the leg to fail");
+        return std::format("Expected {}.", m_case.expectation.taken ? "taken as turned" : "the leg to fail");
     }
 
 private:
@@ -263,15 +276,14 @@ private:
 };
 
 const UnreadTurnCase UNREAD_TURN_CASES[] = {
-    {.input = {.name = "tile known, overworld clear (a roof's eave)"}, .taken = true},
-    {.input = {.name = "tile unknown", .turn = {.at_known = false, .overworld_clear = true}}, .taken = false},
-    {.input = {.name = "a box or a fade over the overworld", .turn = {.at_known = true, .overworld_clear = false}}, .taken = false},
-    {.input = {.name = "surfing, tile unknown", .turn = {.sprite = OverworldWalkSteps::TurnSprite::NOT_READ}}, .taken = true},
+    {.name = "tile known, overworld clear (a roof's eave)", .input = {}, .expectation = {.taken = true}},
+    {.name = "tile unknown", .input = {.turn = {.at_known = false, .overworld_clear = true}}, .expectation = {.taken = false}},
+    {.name = "a box or a fade over the overworld", .input = {.turn = {.at_known = true, .overworld_clear = false}}, .expectation = {.taken = false}},
+    {.name = "surfing, tile unknown", .input = {.turn = {.sprite = OverworldWalkSteps::TurnSprite::NOT_READ}}, .expectation = {.taken = true}},
 };
 
 
 struct TapMechanicsInput{
-    std::string name;
     //  The player's facing at the start.
     Direction facing = Direction::NORTH;
     //  The presses, on the sim.
@@ -287,6 +299,7 @@ struct TapMechanicsExpectation{
 };
 
 struct TapMechanicsCase{
+    std::string name;
     TapMechanicsInput input;
     TapMechanicsExpectation expectation;
 };
@@ -299,7 +312,7 @@ const MapPosition TAP_START{"Route10_PokemonCenter_1F", {3, 4}};
 class Test_OverworldTapMechanics : public UnitTest{
 public:
     explicit Test_OverworldTapMechanics(TapMechanicsCase test_case)
-        : UnitTest("PokemonFRLG::OverworldWalk - tap: " + test_case.input.name)
+        : UnitTest("PokemonFRLG::OverworldWalk - tap: " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -351,12 +364,12 @@ std::function<void(OverworldSim&)> step_once_east(int count){
 }
 
 const TapMechanicsCase TAP_MECHANICS_CASES[] = {
-    {.input = {.name = "133ms facing another way only turns", .presses = taps_east(1, LONGEST_TAP, Milliseconds(700))}, .expectation = {}},
-    {.input = {.name = "16ms facing that way steps once", .facing = Direction::EAST, .presses = taps_east(1, Milliseconds(16), Milliseconds(700))}, .expectation = {.steps = 1}},
-    {.input = {.name = "3 step taps 566ms apart take 2 steps", .presses = turn_then_taps(3, Milliseconds(500))}, .expectation = {.steps = 2, .ignored = 1}},
-    {.input = {.name = "3 step taps 666ms apart take 3 steps", .presses = turn_then_taps(3, Milliseconds(600))}, .expectation = {.steps = 3}},
-    {.input = {.name = "3 step taps with no release are one hold", .presses = turn_then_taps(3, Milliseconds(0))}, .expectation = {.steps = 1}},
-    {.input = {.name = "step_once 3 times takes 3 steps", .presses = step_once_east(3)}, .expectation = {.steps = 3}},
+    {.name = "133ms facing another way only turns", .input = {.presses = taps_east(1, LONGEST_TAP, Milliseconds(700))}, .expectation = {}},
+    {.name = "16ms facing that way steps once", .input = {.facing = Direction::EAST, .presses = taps_east(1, Milliseconds(16), Milliseconds(700))}, .expectation = {.steps = 1}},
+    {.name = "3 step taps 566ms apart take 2 steps", .input = {.presses = turn_then_taps(3, Milliseconds(500))}, .expectation = {.steps = 2, .ignored = 1}},
+    {.name = "3 step taps 666ms apart take 3 steps", .input = {.presses = turn_then_taps(3, Milliseconds(600))}, .expectation = {.steps = 3}},
+    {.name = "3 step taps with no release are one hold", .input = {.presses = turn_then_taps(3, Milliseconds(0))}, .expectation = {.steps = 1}},
+    {.name = "step_once 3 times takes 3 steps", .input = {.presses = step_once_east(3)}, .expectation = {.steps = 3}},
 };
 
 } // namespace
@@ -396,7 +409,6 @@ public:
 };
 
 struct MapEdgeInput{
-    std::string name;
     //  On Fuchsia's Center, FuchsiaCity_PokemonCenter_1F; -1 counts from
     //  the far side: the last column or row.
     TilePos tile;
@@ -405,6 +417,7 @@ struct MapEdgeExpectation{
     bool edge;
 };
 struct MapEdgeCase{
+    std::string name;
     MapEdgeInput input;
     MapEdgeExpectation expectation;
 };
@@ -417,7 +430,7 @@ struct MapEdgeCase{
 class Test_OverworldTurnOnMapEdge : public UnitTest{
 public:
     explicit Test_OverworldTurnOnMapEdge(MapEdgeCase test_case)
-        : UnitTest("PokemonFRLG::OverworldWalk - turn tap unread on a map's edge: " + test_case.input.name)
+        : UnitTest("PokemonFRLG::OverworldWalk - turn tap unread on a map's edge: " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -445,13 +458,13 @@ private:
 };
 
 const MapEdgeCase MAP_EDGE_CASES[] = {
-    {.input = {.name = "west column, beside the escalator (0, 5)", .tile = {0, 5}}, .expectation = {.edge = true}},
-    {.input = {.name = "north-west corner tile (0, 2)", .tile = {0, 2}}, .expectation = {.edge = true}},
-    {.input = {.name = "east column", .tile = {-1, 5}}, .expectation = {.edge = true}},
-    {.input = {.name = "south row", .tile = {7, -1}}, .expectation = {.edge = true}},
-    {.input = {.name = "the nurse's tile (7, 4)", .tile = {7, 4}}, .expectation = {.edge = false}},
-    {.input = {.name = "a column in (1, 5)", .tile = {1, 5}}, .expectation = {.edge = false}},
-    {.input = {.name = "off the map (-2, 5)", .tile = {-2, 5}}, .expectation = {.edge = false}},
+    {.name = "west column, beside the escalator (0, 5)", .input = {.tile = {0, 5}}, .expectation = {.edge = true}},
+    {.name = "north-west corner tile (0, 2)", .input = {.tile = {0, 2}}, .expectation = {.edge = true}},
+    {.name = "east column", .input = {.tile = {-1, 5}}, .expectation = {.edge = true}},
+    {.name = "south row", .input = {.tile = {7, -1}}, .expectation = {.edge = true}},
+    {.name = "the nurse's tile (7, 4)", .input = {.tile = {7, 4}}, .expectation = {.edge = false}},
+    {.name = "a column in (1, 5)", .input = {.tile = {1, 5}}, .expectation = {.edge = false}},
+    {.name = "off the map (-2, 5)", .input = {.tile = {-2, 5}}, .expectation = {.edge = false}},
 };
 
 void add_tests_OverworldWalk(UnitTestDatabase& database){
