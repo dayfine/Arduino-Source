@@ -17,6 +17,7 @@
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -26,7 +27,9 @@ namespace PokemonLZA{
 //  The shared events from PLZA's detectors:
 //  - DIALOG_BOX: a white dialogue box's bottom edge (FlatWhiteDialogDetector's
 //    strip, without its advance arrow: the box shows while the text still
-//    types), or a blue or teal box;
+//    types), or a blue or teal box. The transparent battle dialogue and the
+//    light-blue box are left out: no frame here has needed them, and the
+//    battle one would hide the party bar's PLAYER_CAN_MOVE in battles;
 //  - CHOICE_BOX: the selection arrow among a dialogue's choices;
 //  - INTERACT_PROMPT: an A prompt over the scene ("A Talk", "A Take Elevator");
 //  - BATTLE_STARTED: the battle HUD's hints at the bottom centre ("ZL: Focus
@@ -47,8 +50,7 @@ public:
     virtual void make_overlays(VideoOverlaySet& items) const override;
 
 private:
-    BlueDialogDetector m_blue_dialog;
-    TealDialogDetector m_teal_dialog;
+    StoryDialogDetector m_dialog;
     SelectionArrowDetector m_choice_arrow;
     ButtonDetector m_interact;
     ButtonDetector m_battle_hint;

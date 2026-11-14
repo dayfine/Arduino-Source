@@ -40,35 +40,10 @@ using namespace Kernels::Waterfill;
 
 namespace{
 
-//  What advance_text_and_cards() pressed A through.
-struct ScreensPassed{
-    bool card = false;
-    bool text = false;
-};
-
 //  A through text and tutorial cards until neither has shown for 3 s
 //  (30 s at most).
 ScreensPassed advance_text_and_cards(ConsoleHandle& console, ProControllerContext& context){
-    FlatWhiteDialogDetector white_dialog;
-    BlueDialogDetector blue_dialog;
-    TealDialogDetector teal_dialog;
-    ScreensPassed passed;
-    WallClock last_busy = current_time();
-    const WallClock deadline = last_busy + 30s;
-    while (current_time() < deadline && current_time() - last_busy < 3s){
-        context.wait_for_all_requests();
-        const VideoSnapshot screen = console.video().snapshot();
-        const bool card_now = screen && tutorial_card_shows(screen);
-        if (card_now || white_dialog.detect(screen) || blue_dialog.detect(screen) || teal_dialog.detect(screen)){
-            passed.card = passed.card || card_now;
-            passed.text = passed.text || !card_now;
-            last_busy = current_time();
-            pbf_press_button(context, BUTTON_A, 160ms, 840ms);
-        }else{
-            context.wait_for(250ms);
-        }
-    }
-    return passed;
+    return press_a_until_quiet(console, context, {}, 3s, 30s);
 }
 
 //  ZL held 0.5 s, then ZL+ZR held 1.5 s throws a ball at the locked target

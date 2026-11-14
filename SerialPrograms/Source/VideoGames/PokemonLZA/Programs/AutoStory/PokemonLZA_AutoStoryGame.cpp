@@ -69,6 +69,15 @@ using ConsoleBody = std::function<void(StoryEnv& env, const StoryActionArgs& arg
 //  call on the console, with no args.
 using ConsoleStep = void (*)(StoryEnv& env);
 
+//  Resets the game from HOME onto `save`.
+Outcome reload_save(StoryEnv& env, StartSave save){
+    go_home(env.env.console, env.context);
+    if (!reset_game_from_home(env.env, env.env.console, env.context, save == StartSave::BACKUP)){
+        return Pokemon::outcome_failed("reload_failed", "Failed to reset the game from HOME.");
+    }
+    return Pokemon::outcome_ok();
+}
+
 //  The GAME actions that are one ConsoleStep each, by name: console_only.
 const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
     static const std::map<std::string, ConsoleStep, std::less<>> actions{
@@ -108,8 +117,7 @@ const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
         //  before the last one, as a catch's autosave moves the save past a
         //  checkpoint's start (03.08, console B 2026-11-10).
         {"load_backup_save", [](StoryEnv& env){
-            go_home(env.env.console, env.context);
-            if (!reset_game_from_home(env.env, env.env.console, env.context, true)){
+            if (!reload_save(env, StartSave::BACKUP).succeeded()){
                 OperationFailedExceptionWithScreenshot::fire(
                     ErrorReportMode::SEND_ERROR_REPORT,
                     "load_backup_save: failed to reset the game from HOME.",
@@ -631,18 +639,6 @@ StoryMove story_walk_move(const StoryActionArgs& args, std::string_view legs){
     return move;
 }
 
-namespace{
-
-//  Resets the game from HOME onto `save`.
-Outcome reload_save(StoryEnv& env, StartSave save){
-    go_home(env.env.console, env.context);
-    if (!reset_game_from_home(env.env, env.env.console, env.context, save == StartSave::BACKUP)){
-        return Pokemon::outcome_failed("reload_failed", "Failed to reset the game from HOME.");
-    }
-    return Pokemon::outcome_ok();
-}
-
-} // namespace
 
 Pokemon::StoryGame<ZonePose> make_plza_story_game(
     StoryEnv& env, StarterChoice starter, std::set<std::string, std::less<>> autosave_rows
