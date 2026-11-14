@@ -32,6 +32,6 @@ void register_command_file_reading(std::string name, CommandFileReading reading)
 
 
 
-}
-}
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif
