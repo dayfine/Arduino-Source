@@ -174,6 +174,11 @@ const ReplayCase CONSOLE_FAILURE_CASES[] = {
         .input = {},
         .expectation = {.description = "a hold that moved nothing must not be walked as if it had"},
     },
+    {
+        .name = "14.01-05-48-quiz-2-west-short",
+        .input = {},
+        .expectation = {.description = "an open leg that ends the walk and stopped short must not end it as arrived"},
+    },
 };
 
 } // namespace

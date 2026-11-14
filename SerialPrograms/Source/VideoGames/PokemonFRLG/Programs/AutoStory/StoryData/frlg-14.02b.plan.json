@@ -11,9 +11,18 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 8]], "facing": "south"}
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 7]], "facing": "south"}
         },
-        "why": "down to above door 6, open since quiz 6"
+        "why": "down to (5, 7), a tile short of door 6, open since quiz 6: the map has the door shut, so a leg ending on (5, 8) is held to it and runs through the open door (as 14.01, console B, 2026-11-14)"
+      },
+      {
+        "id": "to_door_6",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 8]], "facing": "south"},
+        "why": "a step to above door 6 (5, 8)"
       },
       {
         "id": "into_door_6",
@@ -38,9 +47,18 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 16]], "facing": "south"}
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 15]], "facing": "south"}
         },
-        "why": "down to above door 5"
+        "why": "down to (5, 15), a tile short of door 5, as for door 6"
+      },
+      {
+        "id": "to_door_5",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 16]], "facing": "south"},
+        "why": "a step to above door 5 (5, 16)"
       },
       {
         "id": "into_door_5",
@@ -92,9 +110,18 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 17]], "facing": "north"}
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 18]], "facing": "north"}
         },
-        "why": "up and east to below door 3"
+        "why": "east and up to (17, 18), a tile short of door 3, as for door 6"
+      },
+      {
+        "id": "to_door_3",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[17, 17]], "facing": "north"},
+        "why": "a step to below door 3 (17, 17)"
       },
       {
         "id": "into_door_3",
@@ -119,9 +146,18 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 10]], "facing": "north"}
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 11]], "facing": "north"}
         },
-        "why": "up to below door 2"
+        "why": "up to (17, 11), a tile short of door 2, as for door 6: a hold to (17, 10) would run through the open door 2 into the top room, where above_door_1 starts east from (17, 8) (as 14.01's door 2 did, console B, 2026-11-14)"
+      },
+      {
+        "id": "to_door_2",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[17, 10]], "facing": "north"},
+        "why": "a step to below door 2 (17, 10)"
       },
       {
         "id": "into_door_2",
@@ -219,7 +255,7 @@
     "notes": {
       "checkpoint": [
         "Starts in front of Blaine, where 14.02 ends after his battle and saves.",
-        "Out the way in: the quiz doors stay open while the player is in the gym (the flags are set and OnLoad reopens them), each crossed by two plain steps as in 14.01.",
+        "Out the way in: the quiz doors stay open while the player is in the gym (the flags are set and OnLoad reopens them), each crossed by two plain steps as in 14.01, after a plain step from a tile short of it (doors 6, 5, 3 and 2; door 4's last leg runs along it, and door 1's ends in a hold down column 26 that takes up any overrun).",
         "Outside, Bill's scene runs on the first frame (VAR_MAP_SCENE_CINNABAR_ISLAND 1, set by Blaine's win): NO to the Sevii trip, as pokeguy. He walks to the Center and waits there; the Center visit here doesn't talk to him.",
         "Ends at Cinnabar's nurse. PokeGuy flies to Celadon from outside the gym (1:23:45); 14.03 starts from Fly's landing in Celadon, so the Fly (a step type in #406) goes at 14.03's start or here once it is in."
       ]

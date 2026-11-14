@@ -735,43 +735,42 @@ private:
         return starts;
     }
 
-    //  After `step`, an open leg from `start` (not known: not checked) that
-    //  ended with nothing seen, while m_plan[m_next] is the step after it.
-    //  A hold to a wall after a leg that ended short ends somewhere else
-    //  with nothing to show it (r16), unless it ends on its tile from
-    //  wherever the leg left the player. If it doesn't, finds the player at
-    //  walls first; without such holds, or if they and the way back walk
-    //  farther than OPEN_LEG_CHECK_TILES_PER_TILE times the leg, trusts the leg. Only there, and
-    //  only that far, to keep the check cheap: in Viridian Forest (r16) it
-    //  walks 10 tiles after "west 6", while after Route 1's "west 4" the
-    //  only holds walk 30. An open leg after a short one walks on off the
-    //  route, which isn't checked, except on the water: there an open leg
-    //  followed by another open leg is checked however far the holds walk,
-    //  and stops the route if none find the player (open_water_chain()).
-    //  A leg onto a spinner isn't checked: its taps wait out the slide and
-    //  its settle, and it ends on the stop. The
-    //  tiles short of its arrow left out that stop, and the hold west "to
-    //  the wall (7, 11)" after Rocket Hideout B2F's "east 2" to the stop
-    //  (14, 13) slid from there to (10, 15) (09.02, console B, 2026-11-11).
-    //  A leg tapped a tile at a time (counts_step_taps()) that ended DONE
-    //  had every tap seen to move: it ended on its tile, and a check walks
-    //  back over tiles already walked (09.02's B2F, console B, 2026-11-11
-    //  15:34: a hold back north to (21, 2) after "south 2" and to the wall
-    //  (17, 5) after "north 3"). A hold that scrolled (`movement`) left `start`.
+    //  After `step`, an open leg from `start` (not known: not checked) that ended with nothing seen, while
+    //  m_plan[m_next] is the step after it. A hold to a wall after a leg that ended short ends somewhere else
+    //  with nothing to show it (r16), unless it ends on its tile from wherever the leg left the player. If it
+    //  doesn't, finds the player at walls first; without such holds, or if they and the way back walk farther
+    //  than OPEN_LEG_CHECK_TILES_PER_TILE times the leg, trusts the leg. Only there, and only that far, to keep
+    //  the check cheap: in Viridian Forest (r16) it walks 10 tiles after "west 6", while after Route 1's
+    //  "west 4" the only holds walk 30. An open leg after a short one walks on off the route, which isn't
+    //  checked, except on the water: there an open leg followed by another open leg is checked however far
+    //  the holds walk, and stops the route if none find the player (open_water_chain()).
+    //  An open leg that ends the walk (only turns after it) is checked as one before a hold is: what comes
+    //  next, an A press or the next walk, counts on its tile. 14.01's "west 10 (open)" to below quiz machine
+    //  2 stopped against the machine a tile short after the screen had moved, and the walk ended "arrived at
+    //  (16, 3)" (console B, 2026-11-14 05:48).
+    //  A leg onto a spinner isn't checked: its taps wait out the slide and its settle, and it ends on the
+    //  stop. The tiles short of its arrow left out that stop, and the hold west "to the wall (7, 11)" after
+    //  Rocket Hideout B2F's "east 2" to the stop (14, 13) slid from there to (10, 15) (09.02, console B,
+    //  2026-11-11). A leg tapped a tile at a time (counts_step_taps()) that ended DONE had every tap seen to
+    //  move: it ended on its tile, and a check walks back over tiles already walked (09.02's B2F, console B,
+    //  2026-11-11 15:34: a hold back north to (21, 2) after "south 2" and to the wall (17, 5) after
+    //  "north 3"). A hold that scrolled (`movement`) left `start`.
     void check_open_leg(const RouteStep& step, const std::optional<MapPosition>& start, HoldMovement movement){
         if (maps() == nullptr || m_planning->open_leg_check != OpenLegCheck::REANCHOR || !start
             || counts_step_taps(step)
             || step.action != RouteAction::WALK || step.to_wall || step.warps || step.spin_tiles
-            || m_next >= m_plan.size()
         ){
             return;
         }
-        const bool water_chain = open_water_chain(step, m_plan[m_next]);
-        if (!(is_wall_hold(m_plan[m_next]) || is_slide(m_plan[m_next]) || water_chain)){
+        const bool last = std::all_of(m_plan.begin() + (std::ptrdiff_t)m_next, m_plan.end(), [](const RouteStep& next){
+            return next.action == RouteAction::FACE;
+        });
+        const bool water_chain = !last && open_water_chain(step, m_plan[m_next]);
+        if (!(last || is_wall_hold(m_plan[m_next]) || is_slide(m_plan[m_next]) || water_chain)){
             return;
         }
         const std::vector<StopCandidate> candidates = short_candidates(*maps(), *start, step, movement);
-        if (candidates.size() < 2 || (is_wall_hold(m_plan[m_next]) && hold_finds(*maps(), candidates, m_plan[m_next]))){
+        if (candidates.size() < 2 || (!last && is_wall_hold(m_plan[m_next]) && hold_finds(*maps(), candidates, m_plan[m_next]))){
             return;
         }
         const std::optional<Reanchor> anchor = plan_reanchor(*maps(), candidates, step, m_planning->costs);

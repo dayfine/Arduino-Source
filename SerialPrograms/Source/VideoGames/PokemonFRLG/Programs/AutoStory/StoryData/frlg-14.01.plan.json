@@ -69,9 +69,18 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[26, 10]], "facing": "north"}
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[26, 11]], "facing": "north"}
         },
-        "why": "east along row 10 to below door 1 (26..27, 8..9)"
+        "why": "down, east and up column 26 to (26, 11), a tile short of door 1 (26..27, 8..9): the map has the door shut, so a leg ending on (26, 10) is held to that wall and runs through the open door (console B, 2026-11-14)"
+      },
+      {
+        "id": "to_door_1",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[26, 10]], "facing": "north"},
+        "why": "a step to below door 1 (26, 10)"
       },
       {
         "id": "into_door_1",
@@ -132,9 +141,18 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 8]], "facing": "south"}
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 7]], "facing": "south"}
         },
-        "why": "down to above door 2 (17..18, 8..9), west of Avery"
+        "why": "down column 16 to the wall and east to (17, 7), a tile short of door 2 (17..18, 8..9), west of Avery: a leg ending on (17, 8) is held to the shut door on the map and ran through the open one to (17, 11) (console B, 2026-11-14)"
+      },
+      {
+        "id": "to_door_2",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[17, 8]], "facing": "south"},
+        "why": "a step into door 2's gap (17, 8)"
       },
       {
         "id": "into_door_2",
@@ -187,9 +205,18 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 15]], "facing": "south"}
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 14]], "facing": "south"}
         },
-        "why": "east and down to above door 3 (17..18, 15..16)"
+        "why": "down and east to (17, 14), a tile short of door 3 (17..18, 15..16), as for door 2"
+      },
+      {
+        "id": "to_door_3",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[17, 15]], "facing": "south"},
+        "why": "a step into door 3's gap (17, 15)"
       },
       {
         "id": "into_door_3",
@@ -297,9 +324,18 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 18]], "facing": "north"}
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 19]], "facing": "north"}
         },
-        "why": "east along row 18 to below door 5 (5..6, 16..17)"
+        "why": "down, east and up column 5 to (5, 19), a tile short of door 5 (5..6, 16..17), as for door 1"
+      },
+      {
+        "id": "to_door_5",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 18]], "facing": "north"},
+        "why": "a step to below door 5 (5, 18)"
       },
       {
         "id": "into_door_5",
@@ -352,9 +388,18 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 10]], "facing": "north"}
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 11]], "facing": "north"}
         },
-        "why": "east to below door 6 (5..6, 8..9)"
+        "why": "down, east and up column 5 to (5, 11), a tile short of door 6 (5..6, 8..9), as for door 1"
+      },
+      {
+        "id": "to_door_6",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 10]], "facing": "north"},
+        "why": "a step to below door 6 (5, 10)"
       },
       {
         "id": "into_door_6",
@@ -392,7 +437,7 @@
         "Starts outside the Pokemon Mansion's door (8, 3) on (8, 4) facing south, where the Escape Rope out of the Mansion (13.04, pokeguy 1:20:24) leaves the player. 13.04 is authored separately; until it is in, this row's start is its own (starts_after_unauthored_rows()).",
         "PokeGuy's way (1:20:37 to 1:21:43): all six quiz machines answered right, each opening the next door, so none of the gym's eight trainers is fought. Answers (pokefirered CinnabarIsland_Gym scripts.inc): 1 YES, 2 NO, 3 NO, 4 NO, 5 YES, 6 NO. A wrong answer starts the room's trainer instead; the table has no branch for that.",
         "Every gym trainer has sight 0 (map.json trainer_sight_or_berry_tree_id): they fight only after a wrong answer or a talk, so no trainer lines here.",
-        "The doors are metatiles the quiz scripts swap (setmetatile in OpenDoorN); the map has them shut, one barrier tile each. Each is crossed by two plain steps with their ends declared, not a planned route. On the sim they need the door opened (no sim support yet: the test moves the player over them).",
+        "The doors are metatiles the quiz scripts swap (setmetatile in OpenDoorN); the map has them shut, one barrier tile each. Each is crossed by two plain steps with their ends declared, not a planned route, after a third plain step onto the tile next to it: a route ending there plans its last leg held to the shut door, and on the console that hold walks through the open one (door 2, console B, 2026-11-14), so the routes end a tile short except at door 4, whose last leg runs along it. On the sim they need the door opened (no sim support yet: the test moves the player over them).",
         "We heal at Cinnabar's Center first; pokeguy doesn't (he fights Blaine at 24/126 HP with one Surf each).",
         "Ends in front of Blaine and saves there: his own pre-battle checkpoint (battle-checkpoint-retry), 14.02."
       ]
