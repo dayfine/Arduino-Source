@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Json/JsonObject.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 namespace PokemonAutomation{
@@ -44,7 +44,7 @@ ReplayData read_data(std::string_view capture, std::string_view binding, std::st
 //  A scripted screen between two steps: its frames, `ms` after the look
 //  starts, and how long the look lasts.
 struct ReplayScreen{
-    std::vector<std::pair<int, Pokemon::ScreenEvents>> frames;
+    std::vector<std::pair<int, ScreenEvents>> frames;
     int look_ms = 0;
 };
 //  The screen an interrupt shows between steps, by the scenario's kind:
