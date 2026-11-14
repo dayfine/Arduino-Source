@@ -28,13 +28,22 @@
         "why": "full HP and PP before the gym (pokeguy skips the Center; healing is the safe side)"
       },
       {
-        "id": "below_quiz_1",
+        "id": "to_gym_east_room",
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[23, 11]], "facing": "north"}
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[25, 16]], "facing": "north"}
         },
-        "why": "out of the Center, up to the gym's door (20, 4), unlocked by the SECRET KEY (CinnabarIsland_EventScript_CheckUnlockGym), and in the gym (no running) from the mat (25, 23) up the east rooms to below quiz machine 1 (22..23, 10), west of Burglar Quinn (25, 11)"
+        "why": "out of the Center, up to the gym's door (20, 4), unlocked by the SECRET KEY (CinnabarIsland_EventScript_CheckUnlockGym), and in the gym (no running) from the mat (25, 23) up to the wall (25, 15)"
+      },
+      {
+        "id": "below_quiz_1",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "east", "tiles": 3}, {"direction": "north", "tiles": 4}, {"direction": "west", "tiles": 5}, {"direction": "north", "tiles": 1}]
+        },
+        "why": "a tap a tile, as no wall ends the open legs: east to (28, 16), up column 28 to row 12, west to (23, 12) and up to below quiz machine 1 (22..23, 10), west of Burglar Quinn (25, 11); a held north 4 a tile long would meet Quinn on row 11"
       },
       {
         "id": "quiz_1",
@@ -83,13 +92,21 @@
         "why": "a step through door 1 onto (26, 8)"
       },
       {
-        "id": "below_quiz_2",
-        "kind": "route",
-        "action": "run",
+        "id": "to_quiz_2_machine",
+        "kind": "legs",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[16, 3]], "facing": "north"}
+          "legs": [{"direction": "north", "tiles": 6}, {"direction": "west", "tiles": 9}]
         },
-        "why": "west through the top room, above Super Nerd Erik (25, 4) and Avery (17, 5), to below quiz machine 2 (15..16, 2)"
+        "why": "up column 26 to the top wall (26, 2) and west along row 2, above Super Nerd Erik (25, 4), against quiz machine 2 (15..16, 2) on (17, 2): both legs end at a wall. Row 2 is floor east of the machine (pokefirered layout); a held north 5 to (26, 3) ran a tile on to (26, 2) and west 10 stopped at the machine (console B, 2026-11-14)"
+      },
+      {
+        "id": "below_quiz_2",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 1}, {"direction": "north", "tiles": 1}]
+        },
+        "why": "a tap a tile: down to (17, 4), above Super Nerd Avery (17, 5), west to (16, 4) and up to below quiz machine 2 (16, 2) on (16, 3)"
       },
       {
         "id": "quiz_2",
@@ -139,12 +156,12 @@
       },
       {
         "id": "below_quiz_3",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[14, 11]], "facing": "north"}
+          "legs": [{"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 3}, {"direction": "north", "tiles": 1}]
         },
-        "why": "west along row 11 past Burglar Ramon (16, 11) to below quiz machine 3 (13..14, 10)"
+        "why": "a tap a tile, as no wall ends the open legs: down to (17, 12), west along row 12 below Burglar Ramon (16, 11) to (14, 12) and up to below quiz machine 3 (13..14, 10)"
       },
       {
         "id": "quiz_3",
@@ -194,12 +211,12 @@
       },
       {
         "id": "below_quiz_4",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[14, 18]], "facing": "north"}
+          "legs": [{"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 3}, {"direction": "north", "tiles": 1}]
         },
-        "why": "west along row 18, past Super Nerd Derek (16, 18), to below quiz machine 4 (13..14, 17)"
+        "why": "a tap a tile, as no wall ends the open legs: down to (17, 19), west along row 19 below Super Nerd Derek (16, 18) to (14, 19) and up to below quiz machine 4 (13..14, 17)"
       },
       {
         "id": "quiz_4",
@@ -249,12 +266,12 @@
       },
       {
         "id": "below_quiz_5",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[2, 19]], "facing": "north"}
+          "legs": [{"direction": "west", "tiles": 8}, {"direction": "north", "tiles": 3}]
         },
-        "why": "west through the bottom-left room, past Burglar Dusty (4, 19), to below quiz machine 5 (1..2, 18)"
+        "why": "a tap a tile, as no wall ends the west leg: west along row 22 to (2, 22) and up, west of Burglar Dusty (4, 19), to below quiz machine 5 (1..2, 18)"
       },
       {
         "id": "quiz_5",
@@ -304,12 +321,12 @@
       },
       {
         "id": "below_quiz_6",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "CinnabarIsland_Gym", "tiles": [[2, 11]], "facing": "north"}
+          "legs": [{"direction": "north", "tiles": 4}, {"direction": "west", "tiles": 3}, {"direction": "north", "tiles": 1}]
         },
-        "why": "up and west to below quiz machine 6 (1..2, 10), west of Super Nerd Zac (4, 11)"
+        "why": "a tap a tile, as no wall ends the open legs: up column 5 to (5, 12), west along row 12 below Super Nerd Zac (4, 11) to (2, 12) and up to below quiz machine 6 (1..2, 10); a held north 4 a tile long would meet Zac on row 11"
       },
       {
         "id": "quiz_6",
