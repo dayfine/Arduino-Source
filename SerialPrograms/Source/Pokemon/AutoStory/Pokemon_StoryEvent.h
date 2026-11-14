@@ -10,6 +10,7 @@
 #define PokemonAutomation_Pokemon_StoryEvent_H
 
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <set>
@@ -66,6 +67,9 @@ struct Event{
     std::string why;
     //  Skipped when all of these hold (and there is at least one).
     std::vector<Condition> skip_if;
+    //  Run when the event is skipped: what the event leaves in the run
+    //  state that is already so (a door it opens, a flag it sets).
+    std::function<void(RunState&)> when_skipped;
     //  Must hold before `act`; a failure is "require_failed".
     std::vector<Condition> require;
     Act act;

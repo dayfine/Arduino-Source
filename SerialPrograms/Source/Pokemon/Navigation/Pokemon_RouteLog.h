@@ -4,8 +4,7 @@
  *
  *  The log lines a route walk writes, shared by the games' walkers so that
  *  every game's log reads the same and devtools/maps can draw any run's
- *  routes from it. These are BDSP AutoStory's route lines, lifted from
- *  PokemonBDSP_AutoStory_RouteWalk.cpp, with what the other games need:
+ *  routes from it. These are BDSP AutoStory's route lines, with what the other games need:
  *
  *      [Route] To the grass: plan from Route 202 (15, 25), Route 202 (16, 25): east 15 (to wall) to Route 202 (23, 25), Route 202 (30, 26); north 5 (to wall) to Route 202 (23, 24)
  *      [Route] Leg 1/2: east 15 (to wall) to Route 202 (23, 25), Route 202 (30, 26)
