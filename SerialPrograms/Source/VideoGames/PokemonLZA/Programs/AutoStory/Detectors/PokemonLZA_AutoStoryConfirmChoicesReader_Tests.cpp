@@ -58,114 +58,185 @@ ImageRGB32 flat_frame(uint32_t color){
     return image;
 }
 
+std::string describe_cursor(std::optional<size_t> cursor){
+    return cursor ? std::format("row {}", *cursor) : std::string("no Confirm Choices");
+}
+
+
 struct SyntheticInput{
+    std::string name;
     std::function<ImageRGB32()> frame;
 };
 
 struct SyntheticExpectation{
-    //  The row read; nullopt: not Confirm Choices.
-    std::optional<size_t> cursor;
+    std::optional<size_t> cursor;   //  The row read; none: not Confirm Choices.
 };
 
 struct SyntheticCase{
-    std::string name;
     SyntheticInput input;
     SyntheticExpectation expectation;
 };
 
 const SyntheticCase SYNTHETIC_CASES[] = {
-    {"row 0 highlighted", {[]{ return confirm_choices_frame({0}); }}, {0}},
-    {"row 1 highlighted", {[]{ return confirm_choices_frame({1}); }}, {1}},
-    {"Ready! highlighted", {[]{ return confirm_choices_frame({CONFIRM_CHOICES_READY_ROW}); }}, {CONFIRM_CHOICES_READY_ROW}},
-    {"no row highlighted", {[]{ return confirm_choices_frame({}); }}, {std::nullopt}},
-    {"two rows highlighted", {[]{ return confirm_choices_frame({0, 1}); }}, {std::nullopt}},
-    {"flat black", {[]{ return flat_frame(0xff000000); }}, {std::nullopt}},
-    {"flat white", {[]{ return flat_frame(WHITE); }}, {std::nullopt}},
-    {"flat background", {[]{ return flat_frame(BACKGROUND); }}, {std::nullopt}},
-    {"flat slate", {[]{ return flat_frame(SLATE); }}, {std::nullopt}},
-    {"empty frame", {[]{ return ImageRGB32(); }}, {std::nullopt}},
-    {"1 x 1 frame", {[]{ return ImageRGB32(1, 1); }}, {std::nullopt}},
-    {"40 x 20 frame", {[]{ return ImageRGB32(40, 20); }}, {std::nullopt}},
+    {.input = {.name = "row 0 highlighted", .frame = []{ return confirm_choices_frame({0}); }}, .expectation = {.cursor = 0}},
+    {.input = {.name = "row 1 highlighted", .frame = []{ return confirm_choices_frame({1}); }}, .expectation = {.cursor = 1}},
+    {
+        .input = {.name = "Ready! highlighted", .frame = []{ return confirm_choices_frame({CONFIRM_CHOICES_READY_ROW}); }},
+        .expectation = {.cursor = CONFIRM_CHOICES_READY_ROW},
+    },
+    {.input = {.name = "no row highlighted", .frame = []{ return confirm_choices_frame({}); }}, .expectation = {.cursor = std::nullopt}},
+    {.input = {.name = "two rows highlighted", .frame = []{ return confirm_choices_frame({0, 1}); }}, .expectation = {.cursor = std::nullopt}},
+    {.input = {.name = "flat black", .frame = []{ return flat_frame(0xff000000); }}, .expectation = {.cursor = std::nullopt}},
+    {.input = {.name = "flat white", .frame = []{ return flat_frame(WHITE); }}, .expectation = {.cursor = std::nullopt}},
+    {.input = {.name = "flat background", .frame = []{ return flat_frame(BACKGROUND); }}, .expectation = {.cursor = std::nullopt}},
+    {.input = {.name = "flat slate", .frame = []{ return flat_frame(SLATE); }}, .expectation = {.cursor = std::nullopt}},
+    {.input = {.name = "an empty frame", .frame = []{ return ImageRGB32(); }}, .expectation = {.cursor = std::nullopt}},
+    {.input = {.name = "a 1 x 1 frame", .frame = []{ return ImageRGB32(1, 1); }}, .expectation = {.cursor = std::nullopt}},
+    {.input = {.name = "a 40 x 20 frame", .frame = []{ return ImageRGB32(40, 20); }}, .expectation = {.cursor = std::nullopt}},
 };
-
-std::string describe_cursor(std::optional<size_t> cursor){
-    return cursor ? std::format("row {}", *cursor) : std::string("no Confirm Choices");
-}
 
 class Test_ConfirmChoicesSynthetic : public UnitTest{
 public:
-    explicit Test_ConfirmChoicesSynthetic(const SyntheticCase& test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStory - Confirm Choices reader: {}", test_case.name))
-        , m_case(test_case)
+    explicit Test_ConfirmChoicesSynthetic(const SyntheticCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Confirm Choices reader: {}", test.input.name))
+        , m_test(test)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::optional<size_t> cursor = read_confirm_choices_cursor(m_case.input.frame());
-        if (cursor != m_case.expectation.cursor){
+        const std::optional<size_t> cursor = read_confirm_choices_cursor(m_test.input.frame());
+        if (cursor != m_test.expectation.cursor){
+            return std::format("Expected {}, read {}.", describe_cursor(m_test.expectation.cursor), describe_cursor(cursor));
+        }
+        return true;
+    }
+
+private:
+    const SyntheticCase& m_test;
+};
+
+
+//  The folder named by the environment variable `variable`; none if it is
+//  unset or not a folder.
+std::optional<std::string> env_folder(std::string_view variable){
+    const auto* value = std::getenv(std::string(variable).c_str());
+    if (value == nullptr){
+        return std::nullopt;
+    }
+    std::string folder(value);
+    if (!Filesystem::is_directory(Filesystem::Path(folder))){
+        return std::nullopt;
+    }
+    return folder;
+}
+
+//  01.00's start check on console B's intro screens, from the folder in
+//  PLZA_INTRO_SCREENS: it accepts Confirm Choices as it opens, and refuses
+//  every other intro screen. A file the folder lacks is skipped.
+struct CaptureInput{
+    std::string name;
+    std::string_view file;
+};
+
+struct CaptureExpectation{
+    std::optional<size_t> cursor;
+};
+
+struct CaptureCase{
+    CaptureInput input;
+    CaptureExpectation expectation;
+};
+
+const CaptureCase CAPTURE_CASES[] = {
+    {.input = {.name = "Confirm Choices as it opens", .file = "confirm-choices.png"}, .expectation = {.cursor = 0}},
+    {.input = {.name = "HOME", .file = "home.png"}, .expectation = {.cursor = std::nullopt}},
+    {.input = {.name = "a game in front", .file = "in-game.png"}, .expectation = {.cursor = std::nullopt}},
+    {.input = {.name = "the language list", .file = "language-list.png"}, .expectation = {.cursor = std::nullopt}},
+    {.input = {.name = "the look picker", .file = "look-picker.png"}, .expectation = {.cursor = std::nullopt}},
+    {.input = {.name = "the name keyboard", .file = "keyboard.png"}, .expectation = {.cursor = std::nullopt}},
+};
+
+class Test_ConfirmChoicesCapture : public UnitTest{
+public:
+    explicit Test_ConfirmChoicesCapture(const CaptureCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Confirm Choices reader: {} (PLZA_INTRO_SCREENS)", test.input.name))
+        , m_test(test)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::optional<std::string> folder = env_folder("PLZA_INTRO_SCREENS");
+        if (!folder){
+            return UnitTestResult(UnitTestResult::SKIPPED, "PLZA_INTRO_SCREENS is not a folder.");
+        }
+        const std::string path = std::format("{}/{}", *folder, m_test.input.file);
+        if (!Filesystem::exists(Filesystem::Path(path))){
+            return UnitTestResult(UnitTestResult::SKIPPED, std::format("{} is not in the folder.", m_test.input.file));
+        }
+        const std::optional<size_t> cursor = read_confirm_choices_cursor(ImageRGB32(path));
+        if (cursor != m_test.expectation.cursor){
             return std::format(
-                "Expected {}, read {}.", describe_cursor(m_case.expectation.cursor), describe_cursor(cursor)
+                "{}: expected {}, read {}.", m_test.input.file, describe_cursor(m_test.expectation.cursor), describe_cursor(cursor)
             );
         }
         return true;
     }
 
 private:
-    const SyntheticCase& m_case;
+    const CaptureCase& m_test;
 };
 
-//  01.00's start check on console B's frames, from the folder in
-//  PLZA_INTRO_SCREENS: it accepts confirm-choices.png, "Change hair
-//  color" highlighted as the screen opens, and refuses every other intro
-//  screen there.
-class Test_ConfirmChoicesCapture : public UnitTest{
-public:
-    Test_ConfirmChoicesCapture()
-        : UnitTest("PokemonLZA::AutoStory - Confirm Choices reader: console B's intro screens (PLZA_INTRO_SCREENS)")
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const char* folder = std::getenv("PLZA_INTRO_SCREENS");
-        if (folder == nullptr || !Filesystem::is_directory(Filesystem::Path(folder))){
-            return UnitTestResult(UnitTestResult::SKIPPED, "PLZA_INTRO_SCREENS is not a folder.");
-        }
-        const std::optional<size_t> cursor = read_confirm_choices_cursor(ImageRGB32(std::format("{}/confirm-choices.png", folder)));
-        if (cursor != size_t(0)){
-            return "confirm-choices.png: expected Confirm Choices with row 0 highlighted.";
-        }
-        for (const std::string_view name : {"home.png", "in-game.png", "language-list.png", "look-picker.png", "keyboard.png"}){
-            const std::string path = std::format("{}/{}", folder, name);
-            if (!Filesystem::exists(Filesystem::Path(path))){
-                continue;
-            }
-            if (is_confirm_choices(ImageRGB32(path))){
-                return std::format("{}: expected 01.00 to refuse it.", name);
-            }
-        }
-        return true;
-    }
-};
 
 //  "Confirm Choices" on console B in each game language, one frame per
-//  highlighted row (2026-11-13). The file name ends in that row:
-//  PokemonLZA/AutoStoryConfirmChoices/<language>_<row>.png.
-class Test_ConfirmChoicesFrame : public ImageUnitTest{
+//  highlighted row (2026-11-13): PokemonLZA/AutoStoryConfirmChoices/
+//  <language>_<row>.png, row 0 to CONFIRM_CHOICES_READY_ROW. Each frame
+//  reads as its row.
+struct LanguageFramesInput{
+    std::string name;
+    std::string_view language;
+};
+
+struct LanguageFramesExpectation{
+};
+
+struct LanguageFramesCase{
+    LanguageFramesInput input;
+    LanguageFramesExpectation expectation;
+};
+
+const LanguageFramesCase LANGUAGE_FRAMES_CASES[] = {
+    {.input = {.name = "English", .language = "English"}, .expectation = {}},
+    {.input = {.name = "Spanish", .language = "Spanish"}, .expectation = {}},
+    {.input = {.name = "Latin American Spanish", .language = "SpanishLatAm"}, .expectation = {}},
+    {.input = {.name = "French", .language = "French"}, .expectation = {}},
+    {.input = {.name = "German", .language = "German"}, .expectation = {}},
+    {.input = {.name = "Italian", .language = "Italian"}, .expectation = {}},
+    {.input = {.name = "Japanese", .language = "Japanese"}, .expectation = {}},
+    {.input = {.name = "Korean", .language = "Korean"}, .expectation = {}},
+    {.input = {.name = "Simplified Chinese", .language = "ChineseSimplified"}, .expectation = {}},
+    {.input = {.name = "Traditional Chinese", .language = "ChineseTraditional"}, .expectation = {}},
+};
+
+std::vector<std::string> language_frame_paths(std::string_view language){
+    std::vector<std::string> paths;
+    for (size_t row = 0; row <= CONFIRM_CHOICES_READY_ROW; row++){
+        paths.push_back(std::format("PokemonLZA/AutoStoryConfirmChoices/{}_{}.png", language, row));
+    }
+    return paths;
+}
+
+class Test_ConfirmChoicesFrames : public ImageUnitTest{
 public:
-    explicit Test_ConfirmChoicesFrame(const std::string& image)
-        : ImageUnitTest("PokemonLZA::AutoStory - Confirm Choices - " + image, {image})
+    explicit Test_ConfirmChoicesFrames(const LanguageFramesCase& test)
+        : ImageUnitTest(
+            std::format("PokemonLZA::AutoStory - Confirm Choices - {}", test.input.name),
+            language_frame_paths(test.input.language)
+        )
     {}
     virtual UnitTestResult run_on_images(
         Logger&, CancellableScope&, const std::vector<ImageRGB32>& images
     ) const override{
-        const std::string& path = image_paths()[0];
-        const size_t underscore = path.rfind('_');
-        if (underscore == std::string::npos || underscore + 1 >= path.size()){
-            return "Error: the file name does not end in _<row>.";
-        }
-        const size_t expected = (size_t)(path[underscore + 1] - '0');
-        const std::optional<size_t> cursor = read_confirm_choices_cursor(images[0]);
-        if (!cursor){
-            return std::format("Expected Confirm Choices with row {} highlighted, read no Confirm Choices.", expected);
-        }
-        if (*cursor != expected){
-            return std::format("Expected row {} highlighted, read row {}.", expected, *cursor);
+        for (size_t row = 0; row < images.size(); row++){
+            const std::optional<size_t> cursor = read_confirm_choices_cursor(images[row]);
+            if (cursor != row){
+                return std::format("{}: expected row {}, read {}.", image_paths()[row], row, describe_cursor(cursor));
+            }
         }
         return true;
     }
@@ -175,17 +246,14 @@ public:
 
 
 void add_tests_AutoStoryConfirmChoicesReader(UnitTestDatabase& database){
-    for (const SyntheticCase& item : SYNTHETIC_CASES){
-        database.add<Test_ConfirmChoicesSynthetic>(item);
+    for (const SyntheticCase& test : SYNTHETIC_CASES){
+        database.add<Test_ConfirmChoicesSynthetic>(test);
     }
-    database.add<Test_ConfirmChoicesCapture>();
-    for (const std::string_view language : {
-        "English", "Spanish", "SpanishLatAm", "French", "German",
-        "Italian", "Japanese", "Korean", "ChineseSimplified", "ChineseTraditional",
-    }){
-        for (size_t row = 0; row <= CONFIRM_CHOICES_READY_ROW; row++){
-            database.add<Test_ConfirmChoicesFrame>(std::format("PokemonLZA/AutoStoryConfirmChoices/{}_{}.png", language, row));
-        }
+    for (const CaptureCase& test : CAPTURE_CASES){
+        database.add<Test_ConfirmChoicesCapture>(test);
+    }
+    for (const LanguageFramesCase& test : LANGUAGE_FRAMES_CASES){
+        database.add<Test_ConfirmChoicesFrames>(test);
     }
 }
 
