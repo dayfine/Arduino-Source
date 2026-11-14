@@ -16,7 +16,7 @@ import subprocess
 import sys
 
 
-PUBLISHER_REVISION = '40717c7c809c415c751fd7a348dfc1895f7ec3d7'
+PUBLISHER_REVISION = '906956e94fc912ae9adb0e44845da780f3bc7e4c'
 
 
 def main():

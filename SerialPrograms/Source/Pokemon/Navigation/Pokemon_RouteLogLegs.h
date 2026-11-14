@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Split out of Pokemon_RouteLog.h, unchanged; it includes this header.
+ *  The legs of a route as its log lines name them. Pokemon_RouteLog.h builds on it.
  *
  */
 

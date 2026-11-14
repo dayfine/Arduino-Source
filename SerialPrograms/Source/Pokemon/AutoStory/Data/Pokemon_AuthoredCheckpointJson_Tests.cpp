@@ -33,24 +33,24 @@ enum class Failure{
     MISSING_RESOURCE,
 };
 
-struct AuthoredInput{
-    std::string name;
-    std::string json;
-    std::string game = "frlg";
-    bool resource = false;
-    std::string file = "plan";
-};
-
-struct AuthoredExpectation{
-    std::string checkpoint = "00.05";
-    std::string execution = R"({"menu":"before_pokedex"})";
-    std::vector<std::string> events = {"first", "second"};
-    Failure failure = Failure::NONE;
-};
-
 struct AuthoredCase{
-    AuthoredInput input;
-    AuthoredExpectation expectation;
+    struct Input{
+        std::string name;
+        std::string json;
+        std::string game = "frlg";
+        bool resource = false;
+        std::string file = "plan";
+    };
+
+    struct Expectation{
+        std::string checkpoint = "00.05";
+        std::string execution = R"({"menu":"before_pokedex"})";
+        std::vector<std::string> events = {"first", "second"};
+        Failure failure = Failure::NONE;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const AuthoredCase CASES[] = {
