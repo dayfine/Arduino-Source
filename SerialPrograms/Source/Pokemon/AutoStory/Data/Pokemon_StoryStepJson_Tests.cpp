@@ -36,28 +36,28 @@ enum class Record{
     CHECKPOINT,
 };
 
-//  A record to read, and which kind it is.
-struct WireInput{
-    std::string_view name;
-    Record record = Record::STEP;
-    std::string_view json;
-};
-
 //  What a read gives.
 using ReadRecord = std::variant<GridPose, DeclaredPose, StoryStep, StoryCheckpoint>;
 
 //  "" when the record read is as expected, else what differs.
 using ReadCheck = std::string (*)(const ReadRecord& record);
 
-//  What reading it gives: a record the check accepts, or a rejection.
-struct WireExpectation{
-    ReadCheck check = nullptr;
-    bool rejected = false;
-};
-
 struct WireCase{
-    WireInput input;
-    WireExpectation expectation;
+    //  A record to read, and which kind it is.
+    struct Input{
+        std::string_view name;
+        Record record = Record::STEP;
+        std::string_view json;
+    };
+
+    //  What reading it gives: a record the check accepts, or a rejection.
+    struct Expectation{
+        ReadCheck check = nullptr;
+        bool rejected = false;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 std::string expect(bool ok, std::string_view what){
@@ -201,7 +201,7 @@ std::vector<StoryActionSpec> test_actions(){
 
 
 //  `input` read.
-ReadRecord read_record(const WireInput& input){
+ReadRecord read_record(const WireCase::Input& input){
     static const std::vector<StoryActionSpec> actions = test_actions();
     const JsonValue value = parse_json(std::string(input.json));
     switch (input.record){

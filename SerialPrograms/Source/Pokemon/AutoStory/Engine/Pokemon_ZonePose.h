@@ -13,6 +13,7 @@
 
 #include <string>
 #include "Pokemon/AutoStory/Types/Pokemon_DeclaredPose.h"
+#include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "Pokemon_StoryPoseConcept.h"
 
 namespace PokemonAutomation{
@@ -31,6 +32,9 @@ bool pose_matches(const ZonePose& actual, const ZonePose& target);
 
 //  "zone LumioseCity".
 std::string pose_text(const ZonePose& pose);
+
+//  `direction` as degrees clockwise of straight on (0, 90, 180, -90).
+double direction_degrees(Direction direction);
 
 //  No tiles: no built-in tile walks. It declares a place, whose name is the
 //  zone; the spot and heading wait for a position reader.

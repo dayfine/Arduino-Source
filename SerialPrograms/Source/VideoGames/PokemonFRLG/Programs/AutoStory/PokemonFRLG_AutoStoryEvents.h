@@ -86,8 +86,8 @@ struct StoryEnv{
     //  The next start check keeps the screen as its checkpoint's start
     //  frame and passes: the user saved there by hand.
     bool keep_start_frame = false;
-    //  The player a new game picks. The readers tell the boy from the girl
-    //  on their own, so a save of either needs no setting.
+    //  The player: the one a new game picks, and whose sprites the facing
+    //  reader matches. A save must be of this player.
     PlayerGender player_gender = PlayerGender::BOY;
 };
 
