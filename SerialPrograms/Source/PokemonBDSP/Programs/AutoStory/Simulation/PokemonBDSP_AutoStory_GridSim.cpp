@@ -377,9 +377,12 @@ bool GridSim::press_a(){
             m_player.trainer = trainer.name;
         }
     }
-    for (const SimWanderer& wanderer : m_wanderers){
+    for (SimWanderer& wanderer : m_wanderers){
         if (wanderer.pos == faced){
             m_player.dialog = true;
+            if (wanderer.goes_home){
+                wanderer.pos = *wanderer.goes_home;
+            }
         }
     }
     return m_player.dialog;

@@ -23,7 +23,6 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/Logging/Logger.h"
-#include "NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor_Tests.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryTrainers.h"
@@ -792,8 +791,6 @@ void add_tests_AutoStory_Actions(UnitTestDatabase& database){
     }
     //  The battle actions' own tests.
     add_tests_AutoStory_BattleActions(database);
-    //  The menu cursor's own tests, with those of the intro, its first user.
-    add_tests_MenuCursor(database);
 }
 
 

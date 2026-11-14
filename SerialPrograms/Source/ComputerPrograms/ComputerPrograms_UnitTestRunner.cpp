@@ -36,6 +36,7 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
 #include "NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner_Tests.h"
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
+#include "NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor_Tests.h"
 #include "NintendoSwitch/Controllers/SysbotBase/SysbotBase_Connection.h"
 
 #include "Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.h"
@@ -127,6 +128,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
     NintendoSwitch::add_tests_CommandFileRunner(ret);
     NintendoSwitch::Typewriter::add_tests_TypewriterTextMapping(ret);
+    NintendoSwitch::add_tests_MenuCursor(ret);
     NintendoSwitch::PokemonBDSP::add_tests(ret);
     NintendoSwitch::PokemonFRLG::add_tests(ret);
     NintendoSwitch::PokemonRSE::add_tests(ret);
