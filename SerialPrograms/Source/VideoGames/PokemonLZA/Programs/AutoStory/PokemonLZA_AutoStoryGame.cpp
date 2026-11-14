@@ -70,14 +70,11 @@ using ConsoleBody = std::function<void(StoryEnv& env, const StoryActionArgs& arg
 //  call on the console, with no args.
 using ConsoleStep = void (*)(StoryEnv& env);
 
-//  The game closed and launched again from HOME onto `save`, by the shared
-//  launch; fails as Pokemon::STORY_LAUNCH_FAILED.
+//  The game onto `save` by the shared launch (start_launch_request()):
+//  closed and launched again from HOME, or for StartSave::RUNNING kept as
+//  it runs; fails as Pokemon::STORY_LAUNCH_FAILED.
 Outcome reload_save(StoryEnv& env, Pokemon::StoryBackend<ZonePose>& backend, StartSave save){
-    const Pokemon::StoryLaunchRequest request{
-        .save = save == StartSave::BACKUP ? Pokemon::StoryLaunchRequest::Save::BACKUP : Pokemon::StoryLaunchRequest::Save::LATEST,
-        .running = Pokemon::StoryLaunchRequest::Running::RESTART,
-    };
-    return Pokemon::launch_story_game(backend, plza_launch_policy(env.env.console), request);
+    return Pokemon::launch_story_game(backend, plza_launch_policy(env.env.console), start_launch_request(save));
 }
 
 //  The GAME actions that are one ConsoleStep each, by name: console_only.
@@ -724,25 +721,57 @@ std::optional<bool> at_checkpoint_start(Pokemon::StoryBackend<ZonePose>& backend
 }
 
 std::string_view start_save_name(StartSave save){
-    return save == StartSave::BACKUP ? "the backup save" : "the latest save";
+    switch (save){
+    case StartSave::LATEST:
+        return "the latest save";
+    case StartSave::BACKUP:
+        return "the backup save";
+    case StartSave::RUNNING:
+        return "the running game";
+    }
+    return "?";
+}
+
+StartSave start_load_save(StartLoadAction action){
+    switch (action){
+    case StartLoadAction::LOAD_BACKUP:
+        return StartSave::BACKUP;
+    case StartLoadAction::RESUME:
+        return StartSave::RUNNING;
+    default:
+        return StartSave::LATEST;
+    }
+}
+
+//  What a run tried before stopping short of `from`'s start.
+std::string_view start_tried(StartFrom from){
+    switch (from){
+    case StartFrom::LATEST_SAVE:
+        return "the latest and the backup save";
+    case StartFrom::BACKUP_SAVE:
+        return "the backup save";
+    case StartFrom::RUNNING_GAME:
+        return "the running game (no reload)";
+    }
+    return "?";
 }
 
 } // namespace
 
-Outcome load_checkpoint_start(StoryEnv& env, Pokemon::StoryBackend<ZonePose>& backend, std::string_view row, bool backup_first){
+Outcome load_checkpoint_start(StoryEnv& env, Pokemon::StoryBackend<ZonePose>& backend, std::string_view row, StartFrom from){
     std::vector<StartLoad> loads;
     while (true){
-        const StartLoadAction action = next_start_load_action(backup_first, loads);
+        const StartLoadAction action = next_start_load_action(from, loads);
         if (action == StartLoadAction::START){
             return Pokemon::outcome_ok();
         }
         if (action == StartLoadAction::STOP){
-            const std::string_view tried = backup_first ? "the backup save" : "the latest and the backup save";
+            const std::string_view tried = start_tried(from);
             backend.log(std::format("[Checkpoint] {}: not at its start after {}, stopping", row, tried));
             return Pokemon::outcome_failed("not_at_start", std::format("not at {}'s start after {}", row, tried));
         }
-        const StartSave save = action == StartLoadAction::LOAD_BACKUP ? StartSave::BACKUP : StartSave::LATEST;
-        backend.log(std::format("[Save] {}: loading {}", row, start_save_name(save)));
+        const StartSave save = start_load_save(action);
+        backend.log(std::format("[Save] {}: {} {}", row, save == StartSave::RUNNING ? "keeping" : "loading", start_save_name(save)));
         const Outcome loaded = reload_save(env, backend, save);
         if (!loaded.succeeded()){
             return loaded;

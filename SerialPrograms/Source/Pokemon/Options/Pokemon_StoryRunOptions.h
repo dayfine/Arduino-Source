@@ -7,8 +7,9 @@
  *  (Pokemon_StoryRangeOptions.h) plus the run policy, read into the shared
  *  SegmentPolicy (Pokemon/AutoStory/Pokemon_StorySegments.h), the checks
  *  level (Types/Pokemon_StoryCheckLevel.h), the language the game's steps
- *  read text in, when the run saves (Types/Pokemon_StorySaveMode.h) and
- *  whether it only checks postconditions.
+ *  read text in, when the run saves (Types/Pokemon_StorySaveMode.h),
+ *  whether it reloads the save before its first checkpoint and whether it
+ *  only checks postconditions.
  *
  */
 
@@ -71,7 +72,8 @@ public:
     //  `languages`: the ones the game has (Pokemon_GameLanguages.h).
     StoryRunOptions(const StringSelectDatabase& checkpoints, const EnumDropdownDatabase<Language>& languages);
 
-    //  The range's check, then verify mode's: one checkpoint only.
+    //  The range's check, then verify mode's: one checkpoint only; then a
+    //  run without the reload at the start must not save.
     virtual std::string check_validity() const override;
 
     //  The policy these options set, with the save mode.
@@ -95,6 +97,12 @@ public:
     StoryVerifyOptions VERIFY;
     //  When the run saves; NONE (testing) by default.
     EnumDropdownOption<StorySaveMode> SAVE_MODE;
+    //  On (the default), the run loads the save before its first
+    //  checkpoint (StoryLaunchRequest::Running::RESTART). Off, it starts
+    //  from where the game is, resumed from HOME if need be (Running::KEEP);
+    //  later checkpoints reload as before. Off needs SAVE_MODE NONE: the
+    //  run must not save from a position nothing checked.
+    BooleanCheckBoxOption RELOAD_AT_START;
     //  On, nothing runs: the game reads where it stands and checks the end
     //  checkpoint's postconditions (Pokemon_StoryPostconditionCheck.h).
     BooleanCheckBoxOption POSTCONDITIONS_ONLY;
