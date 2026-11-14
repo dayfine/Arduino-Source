@@ -19,6 +19,7 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "PokemonFRLG_OverworldMap.h"
+#include "PokemonFRLG_OverworldPress.h"
 #include "PokemonFRLG_OverworldRouteCosts.h"
 
 namespace PokemonAutomation{

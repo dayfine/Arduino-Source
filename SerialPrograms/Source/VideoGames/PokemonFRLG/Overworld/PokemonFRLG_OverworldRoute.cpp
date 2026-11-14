@@ -20,34 +20,6 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-std::string to_string(const MapPosition& position){
-    return position.map + " " + to_string(position.point);
-}
-
-std::string to_string(const RouteStep& step){
-    std::string text;
-    switch (step.action){
-    case RouteAction::WALK:
-        text = std::format("walk {} {}", direction_name(step.direction), step.tiles);
-        if (step.warps){
-            text += " (warp)";
-        }
-        if (step.to_wall){
-            text += " (to wall)";
-        }
-        break;
-    case RouteAction::SURF:
-        text = "surf " + std::string(direction_name(step.direction));
-        break;
-    case RouteAction::FACE:
-        text = "face " + std::string(direction_name(step.direction));
-        break;
-    }
-    return text + " -> " + to_string(step.end);
-}
-
-
-
 const RouteCosts& default_route_costs(){
     static const RouteCosts COSTS{
         {RouteCost::TILE, 1},
@@ -371,6 +343,29 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
 } // namespace
 
 
+
+std::optional<OverworldPress> predict_overworld_press(
+    const std::vector<MapData>& maps, const OverworldPose& from, Direction direction
+){
+    const int map = find_map(maps, from.position.map);
+    if (map < 0){
+        return std::nullopt;
+    }
+    const Located start{map, {from.position.point, from.elevation, from.surfing}};
+    const auto next = press(maps, start, direction);
+    if (!next){
+        return std::nullopt;
+    }
+    return OverworldPress{
+        .pose = {
+            .position = {maps[next->next.map].name, next->next.state.position},
+            .elevation = next->next.state.elevation,
+            .surfing = next->next.state.surfing,
+            .facing = next->walked_out ? Direction::SOUTH : direction,
+        },
+        .warped = next->warped,
+    };
+}
 
 std::optional<std::vector<RouteStep>> plan_overworld_route(
     const std::vector<MapData>& maps,

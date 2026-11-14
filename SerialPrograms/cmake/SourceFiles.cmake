@@ -2016,7 +2016,9 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldPress.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteStrings.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h
@@ -2147,6 +2149,13 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryStepTable_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/JsonWriter.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/JsonWriter.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay_IO.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay_IO.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay_Executor.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay_Executor.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/LegacyJsonFormat.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/Json_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/Json_Tests.h
