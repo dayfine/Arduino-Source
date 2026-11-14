@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "request_id": "9b1d7e44-6a2f-4c0e-8f13-2d5c8a90b6e1",
+  "client_id": "claude:frlg-lane",
+  "tool": "run_program",
+  "console": "B",
+  "lease_token": "example-lease-token-not-real",
+  "arguments": {
+    "panel": "PokemonFRLG:AutoStory",
+    "options": {
+      "START_CHECKPOINT": "13.01",
+      "END_CHECKPOINT": "13.02",
+      "SAVE_MODE": "none"
+    },
+    "preflight_token": "example-preflight-token"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "written_at": "2026-11-14T05:00:00.000Z",
+  "instance": {
+    "id": "0c7b3f52-91d4-4e8a-a3f6-5b2e7d10c9a4",
+    "pid": 3902
+  },
+  "panel": {
+    "id": null,
+    "kind": "other"
+  },
+  "program": {
+    "state": "no_program",
+    "run_id": null,
+    "last_transition": null
+  },
+  "controller": {
+    "state": "no_console"
+  },
+  "video": {
+    "state": "missing",
+    "frame_seq": null,
+    "captured_at": null,
+    "signal": "unknown"
+  },
+  "observation": {
+    "game": {
+      "value": "unknown",
+      "observed_at": null
+    },
+    "screen": {
+      "value": "unknown",
+      "observed_at": null
+    }
+  },
+  "channel": {
+    "last_request": "r1",
+    "last_error": "The selected panel is not a program.",
+    "owner_claimed": false
+  }
+}
