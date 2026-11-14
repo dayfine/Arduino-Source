@@ -242,7 +242,7 @@ const RunnerCase RUNNER_CASES[] = {
     {.name = "declared end pose", .input = {.step = R"({"id": "s", "kind": "scene", "declared_after": {"map": "Route1", "tiles": [[1, 2]]}})"},
      .expectation = {.line = "[Step] s MASH/default: ok", .pose_map = "Route1"}},
     {.name = "talk to nobody fails", .input = {.step = R"({"id": "s", "kind": "talk"})"},
-     .expectation = {.failure = "talk_no_text", .line = "[Step] s TALK/default: failed: talk_no_text: A opened no text box"}},
+     .expectation = {.failure = "talk_no_text", .line = "[Step] s TALK/default: failed: talk_no_text: A opened no text box (class=screen_unread)"}},
 };
 
 std::string check_runner(const RunnerCase& test, CancellableScope& scope){
