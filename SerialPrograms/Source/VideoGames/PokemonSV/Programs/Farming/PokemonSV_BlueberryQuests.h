@@ -7,11 +7,13 @@
 #ifndef PokemonAutomation_PokemonSV_BlueberryQuests_H
 #define PokemonAutomation_PokemonSV_BlueberryQuests_H
 
+#include <optional>
 #include <vector>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_LetsGoTools.h"
 #include "VideoGames/PokemonSV/Options/PokemonSV_BBQOption.h"
+#include "PokemonSV_BBQPointsLedger.h"
 
 namespace PokemonAutomation{
     struct ProgramInfo;
@@ -51,29 +53,128 @@ int read_BP(const ProgramInfo& info, VideoStream& stream, ProControllerContext& 
 //Open the quest panel and read in the current quests.
 //Currently only supports singleplayer.
 //For multiplayer, we will want keep track of which quest are gold/red and scroll cursor down until all of the current player's blue quests are in.
+//If BP is not null, also read the BP balance from the same screenshot (-1 on OCR failure).
 std::vector<BBQuests> read_quests(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
-    const BBQOption& BBQ_OPTIONS
+    const BBQOption& BBQ_OPTIONS,
+    int* BP = nullptr
+);
+
+//What to do with the quests read from the panel. Slot 0 is the top quest on the panel.
+struct BBQuestPlan{
+    std::vector<BBQuests> to_do;        //Quests to attempt, in panel order.
+    std::vector<size_t> reroll_slots;   //Slots to reroll, in panel order.
+    bool reroll_all = false;            //Nothing to do and nothing rerolled: reroll every slot.
+};
+//BP it costs to reroll one quest: 50 for a red quest, 10 for a blue one.
+int reroll_cost(BBQuests quest);
+//Decide what to do with each quest from the options alone, without touching the game, so
+//the decision can be tested. Quests not possible are never run. Those not in the exclusions
+//table are rerolled, red or blue, so they do not hold a slot, as long as BP (the balance
+//read from the panel, if any) still covers their cost after the other planned rerolls; the
+//rest are skipped, and the doable quests run. A table row for one decides instead.
+//Out-of-egg hatch quests and quests set to reroll in the exclusions table are rerolled. A
+//quest with several table rows gets the action of each row, in table order. With nothing to
+//do, every quest not possible and not in the table is rerolled whatever the BP, or else
+//every quest.
+BBQuestPlan plan_quests(
+    Logger& logger,
+    const BBQOption& BBQ_OPTIONS,
+    const std::vector<BBQuests>& quest_list,
+    uint8_t eggs_hatched,
+    std::optional<int> bp
+);
+
+//Work selected from a panel, or a complete observed panel to replan after a reroll.
+//The observation is consumed once, before any further game actions.
+struct BBQuestBatch{
+    std::vector<BBQuests> to_do;
+    std::optional<std::vector<BBQuests>> observed_panel;
+};
+
+//The steps of rerolling one quest on the quest panel. They are injected so that the reroll
+//(which quest it pays for, when it gives up) runs in tests without a Switch.
+class BBQRerollActions{
+public:
+    virtual ~BBQRerollActions() = default;
+
+    //Open the quest panel from the overworld. Returns false if it did not open.
+    virtual bool open_panel() = 0;
+
+    //Press A on the quest under the cursor, which opens its reroll menu. Returns the slot of
+    //the quest the menu opened next to, or nothing if no menu was seen.
+    virtual std::optional<size_t> open_reroll_menu() = 0;
+
+    //Close the reroll menu without rerolling.
+    virtual void close_reroll_menu() = 0;
+
+    //Move the cursor down this many slots, or up if negative.
+    virtual void move_cursor(int slots) = 0;
+
+    //Choose to reroll in the open menu. This spends BP.
+    virtual void confirm_reroll() = 0;
+
+    //Close the quest panel and return to the overworld.
+    virtual void close_panel() = 0;
+
+    //Open the quest panel and read the quests on it, as read_quests() does.
+    virtual std::vector<BBQuests> read_quests() = 0;
+};
+
+enum class BBQRerollResult{
+    Rerolled,       //The quest in the slot was replaced.
+    PanelNotOpened, //Nothing was spent.
+    MenuNotFound,   //Nothing was spent.
+    NotReplaced,    //The reroll was confirmed, but the slot still shows the same quest.
+};
+
+//Reroll the quest in `slot` of `quests`, the quests last read from the panel. Only pays once
+//the reroll menu is open next to that slot, then reads the panel again to check the quest was
+//replaced. On Rerolled, `quests[slot]` is updated. observed_panel is populated
+//only when every slot is known and no other slot changed, so scheduling can
+//reuse it. A 3-slot read is only reused when `quests` had 3 slots.
+BBQRerollResult reroll_quest(
+    Logger& logger,
+    BBQRerollActions& actions,
+    std::vector<BBQuests>& quests,
+    size_t slot,
+    std::optional<std::vector<BBQuests>>& observed_panel
+);
+
+//Reroll the quest in `slot` of `quests` on the console, with reroll_quest(). Stops the program
+//if the reroll fails. Returns the observed panel when reusable. If ledger is not null, it records
+//the BP of each panel read and what the reroll should cost.
+std::optional<std::vector<BBQuests>> reroll_quest_slot(
+    const ProgramInfo& info,
+    VideoStream& stream, ProControllerContext& context,
+    const BBQOption& BBQ_OPTIONS,
+    std::vector<BBQuests>& quests,
+    size_t slot,
+    BBQPointsLedger* ledger = nullptr
 );
 
 //Determine which quests are possible and which quests are not. (ex. no eggs, reroll egg hatcher.)
 //Quests not possible are removed from the list. If the list is empty, then reroll all items.
-std::vector<BBQuests> process_quest_list(
+//If ledger is not null, it records every BP read here and what each reroll should cost.
+BBQuestBatch process_quest_list(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
-    std::vector<BBQuests>& quest_list,
-    uint8_t& eggs_hatched
+    const std::vector<BBQuests>& quest_list,
+    uint8_t eggs_hatched,
+    BBQPointsLedger* ledger = nullptr
 );
 
 //Take the current quest and calls the function to do it, then checks the quest was successful. Returns true if so.
+//If panel_after is given, it receives the quest panel read that checked the last attempt.
 bool process_and_do_quest(
     ProgramEnvironment& env,
     ConsoleHandle& console, ProControllerContext& context,
     BBQOption& BBQ_OPTIONS,
     BBQuests current_quest,
-    uint8_t& eggs_hatched
+    uint8_t& eggs_hatched,
+    std::vector<BBQuests>* panel_after = nullptr
 );
 
 //Iterate through TMs until a craftable one is found. Make the TM and return to position.
@@ -128,6 +229,9 @@ void quest_wash_pokemon(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context
 );
+
+//Open the box system from the overworld and check that the current box has an egg.
+bool box_has_egg(const ProgramInfo& info, ConsoleHandle& console, ProControllerContext& context);
 
 //Withdraw and hatch an egg
 void quest_hatch_egg(
