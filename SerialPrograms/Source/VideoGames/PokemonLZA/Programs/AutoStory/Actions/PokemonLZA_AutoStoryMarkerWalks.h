@@ -34,10 +34,11 @@ bool turn_to_pinned_marker(ProControllerContext& context, double x);
 std::optional<int> walk_from_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit);
 
 //  03.07d's last step, from just inside Wild Zone 1's entrance gate to
-//  where 03.08 starts: toward the objective marker (the zone's far gate)
-//  until it reads ZONE_1_START_DISTANCE + ZONE_1_START_OVERSHOOT or less
-//  (walk_to_objective(), 60 s), so the walk ends on 03.08's start frame's
-//  127 rather than 2 past it, then checks the end on a fresh frame:
+//  where 03.08 starts: about 5 degrees left of the objective marker (the
+//  zone's far gate, held at ZONE_1_START_AIM_X on screen) until it reads
+//  ZONE_1_START_DISTANCE + ZONE_1_START_OVERSHOOT or less (60 s), so the
+//  walk ends on 03.08's start frame's 127 rather than 2 past it; turns the
+//  camera back onto the marker, then checks the end on a fresh frame:
 //  the marker within the tolerance and the minimap's player arrow in the
 //  zone's green (at_zone_1_start()). Throws OperationFailedException with
 //  both readings when the end is not 03.08's start.
