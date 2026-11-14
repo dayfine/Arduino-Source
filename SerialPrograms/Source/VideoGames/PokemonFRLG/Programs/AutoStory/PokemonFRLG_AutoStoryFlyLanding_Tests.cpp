@@ -20,7 +20,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEventLog.h"
+#include "CommonTools/ScreenEvents/ScreenEventLog.h"
 #include "Tests/ImageUnitTest.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_AutoStoryFlyLanding.h"
@@ -32,8 +32,6 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 using Pokemon::Direction;
-using Pokemon::ScreenEvent;
-using Pokemon::ScreenEvents;
 
 namespace{
 
@@ -191,7 +189,7 @@ protected:
         //  Each frame is quiet; only the Pallet frame, after a fade, has a player to read.
         for (size_t c = 0; c < 3; c++){
             if (events_of(images[c]) != NOTHING){
-                return std::format("frame {} shows {}, not nothing", c, Pokemon::describe(events_of(images[c])));
+                return std::format("frame {} shows {}, not nothing", c, describe(events_of(images[c])));
             }
         }
         if (facing_of(images[0])){

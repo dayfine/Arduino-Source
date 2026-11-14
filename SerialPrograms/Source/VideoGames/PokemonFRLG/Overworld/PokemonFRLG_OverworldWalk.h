@@ -26,7 +26,7 @@
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"

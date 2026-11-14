@@ -185,7 +185,7 @@ Pokemon::ScreenLook StoryMapsSim::look(){
     Pokemon::ScreenLook out;
     out.log.record({}, start);
     if (std::exchange(m_dialog_rose, false)){
-        out.log.record({Pokemon::ScreenEvent::DIALOG_BOX}, start + Milliseconds(33));
+        out.log.record({ScreenEvent::DIALOG_BOX}, start + Milliseconds(33));
     }
     out.window = {.start = start, .end = start + BETWEEN_STEPS_LOOK};
     return out;
@@ -377,6 +377,28 @@ std::optional<std::vector<RouteStep>> walked_route(
 }
 
 
+namespace{
+
+//  The boxes B goes through before a step, as clear_text()'s.
+constexpr int MAX_SIM_BOXES = 5;
+
+//  The sim's look between steps, as ConsoleScreenLook's: each shows the
+//  sim's screens for BETWEEN_STEPS_LOOK, from the last fresh one.
+Pokemon::ScreenLookFunction sim_screen_look(OverworldSim& sim){
+    return [&sim, from = sim.state().time](bool fresh) mutable{
+        if (fresh){
+            from = sim.state().time;
+        }
+        sim.watch({}, BETWEEN_STEPS_LOOK);
+        return Pokemon::ScreenLook{
+            .log = screen_event_log(sim.state(), from),
+            .window = {.start = sim_wall_clock(from), .end = sim_wall_clock(sim.state().time)},
+        };
+    };
+}
+
+} // namespace
+
 OverworldStepSim::OverworldStepSim(OverworldSim& sim, std::string row, StoryPose at)
     : Pokemon::TableExecutor(m_table, m_guard)
     , m_sim(sim)
@@ -387,6 +409,21 @@ OverworldStepSim::OverworldStepSim(OverworldSim& sim, std::string row, StoryPose
 }
 
 Pokemon::StoryAction OverworldStepSim::action(StoryActionId id){
+    Pokemon::StoryAction played_action = step_action(id);
+    //  As the console's StoryExecutor: a step that presses A first clears a
+    //  box left open, B at a time (OverworldWalkSteps::clear_text()).
+    played_action.act = [this, act = std::move(played_action.act)](const StoryStep& step, RunState& state){
+        clear_box_before_a(step, sim_screen_look(m_sim), [this]{
+            for (int c = 0; c < MAX_SIM_BOXES && m_sim.state().screen == SimScreen::MESSAGE; c++){
+                m_sim.close_message();
+            }
+        });
+        return act(step, state);
+    };
+    return played_action;
+}
+
+Pokemon::StoryAction OverworldStepSim::step_action(StoryActionId id){
     using Body = std::string (OverworldStepSim::*)(const StoryStep&);
     Body body = nullptr;
     switch (id){
@@ -411,7 +448,8 @@ Pokemon::StoryAction OverworldStepSim::action(StoryActionId id){
     default:
         return m_stubs.stub();
     }
-    return played([this, body](const StoryStep& step, RunState&){
+    return played([this, body](const StoryStep& step, RunState& state){
+        m_beaten = beaten_trainers(state.flags);
         const std::string failure = (this->*body)(step);
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
     });
@@ -474,18 +512,7 @@ std::string battle_end_on_sim(const OverworldSim& sim){
 //  wait_out_battle_exit() on `sim`: each look shows the sim's screens for
 //  BETWEEN_STEPS_LOOK.
 void sim_wait_out_battle_exit(OverworldSim& sim){
-    Milliseconds from = sim.state().time;
-    const auto look = [&sim, &from](bool fresh){
-        if (fresh){
-            from = sim.state().time;
-        }
-        sim.watch({}, BETWEEN_STEPS_LOOK);
-        return Pokemon::ScreenLook{
-            .log = screen_event_log(sim.state(), from),
-            .window = {.start = sim_wall_clock(from), .end = sim_wall_clock(sim.state().time)},
-        };
-    };
-    wait_for_quiet_overworld(look, MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
+    wait_for_quiet_overworld(sim_screen_look(sim), MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
 }
 
 } // namespace
@@ -503,7 +530,10 @@ std::string OverworldStepSim::walk(const StoryStep& step){
         //  Already there.
         return "";
     }
-    const RoutePlanning planning{.maps = &maps, .gates = gates, .costs = story_route_costs(), .start = MapPosition{m_at.map, m_at.tile}, .label = step.name};
+    const RoutePlanning planning{
+        .maps = &maps, .gates = gates, .costs = story_route_costs(), .start = MapPosition{m_at.map, m_at.tile}, .label = step.name,
+        .beaten_trainers = m_beaten
+    };
     SimWalkerRules rules;
     rules.trainer_battle_end = battle_end_on_sim;
     //  A BIKE_VARIANT rides, as on the console, when the sim has the
@@ -781,9 +811,13 @@ std::string OverworldStepSim::battle(const StoryStep& step){
 }
 
 
-std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id){
+std::string row_step_on_sim(
+    OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id,
+    const std::set<std::string>& run_flags
+){
     OverworldStepSim executor(sim, id, at);
     RunState state;
+    state.flags = run_flags;
     const Outcome outcome = executor.run(step, state);
     at = executor.at();
     if (outcome.succeeded()){

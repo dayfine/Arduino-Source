@@ -50,6 +50,16 @@ const std::vector<MapData>& story_maps(const std::set<std::string>& run_flags){
     return maps;
 }
 
+std::set<std::string> beaten_trainers(const std::set<std::string>& run_flags){
+    std::set<std::string> beaten;
+    for (const std::string& flag : run_flags){
+        if (flag.starts_with(TRAINER_BEATEN_FLAG)){
+            beaten.insert(flag.substr(TRAINER_BEATEN_FLAG.size()));
+        }
+    }
+    return beaten;
+}
+
 
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch

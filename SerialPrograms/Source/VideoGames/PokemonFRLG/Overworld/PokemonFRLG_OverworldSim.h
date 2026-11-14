@@ -42,7 +42,7 @@
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "PokemonFRLG_MovementMechanics.h"
 #include "PokemonFRLG_BikeSpinPresses.h"
 #include "PokemonFRLG_BikeSpinMechanics.h"
@@ -116,6 +116,12 @@ public:
     //  Closes the message on screen with B. Returns whether a trainer's
     //  battle follows it.
     bool close_message();
+
+    //  Adds `watched` to SimState::trainer_watch: the walker watched that
+    //  long for trainers after a leg.
+    void count_trainer_watch(Milliseconds watched){
+        m_state.trainer_watch += watched;
+    }
 
     //  A on what the player faces, as `field` says (`floor`: the lift's).
     //  Returns whether it was there. (PokemonFRLG_OverworldSimField.cpp)
@@ -483,7 +489,7 @@ private:
     bool battle_on_its_way() const;
     void clear(const Interrupt& interrupt);
     void hold_to_warp(const RouteStep& step);
-    StepEnd watch_for_trainer(const RouteStep& step, int approach_tiles);
+    StepEnd watch_for_trainer(const RouteStep& step, const TrainerCrossing& crossing);
     bool moved_past_wall(const RouteStep& step);
     void check_overworld(const RouteStep& step);
     //  After a leg onto a spinner: the slide's time.

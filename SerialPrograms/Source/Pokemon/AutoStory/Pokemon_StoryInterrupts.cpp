@@ -11,6 +11,7 @@
 #include <string>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "CommonTools/ScreenEvents/ScreenFades.h"
 #include "Pokemon_StoryInterrupts.h"
 
 namespace PokemonAutomation{

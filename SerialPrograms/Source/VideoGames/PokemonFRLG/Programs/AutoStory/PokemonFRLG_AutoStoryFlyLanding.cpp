@@ -30,9 +30,9 @@ bool left_departure(const ImageViewRGB32& departure, const ImageViewRGB32& now, 
 }
 
 bool fly_faded(const Pokemon::ScreenLook& look){
-    for (const Pokemon::ScreenEventChange& change : look.log.changes()){
-        const bool fade = change.event == Pokemon::ScreenEvent::FADE_BLACK || change.event == Pokemon::ScreenEvent::FADE_WHITE;
-        if (fade && change.edge == Pokemon::ScreenEventEdge::ROSE){
+    for (const ScreenEventChange& change : look.log.changes()){
+        const bool fade = change.event == ScreenEvent::FADE_BLACK || change.event == ScreenEvent::FADE_WHITE;
+        if (fade && change.edge == ScreenEventEdge::ROSE){
             return true;
         }
     }

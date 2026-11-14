@@ -17,6 +17,7 @@
 #include <format>
 #include <functional>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -108,6 +109,9 @@ struct SimCase{
     std::optional<std::vector<RouteStep>> route = std::nullopt;
     WallCheck wall_check = WallCheck::TAP;
     OpenLegCheck open_leg_check = OpenLegCheck::REANCHOR;
+    //  The trainers beaten (trainer_id()): they stop no one on the sim, and
+    //  the walker doesn't watch for them.
+    std::set<std::string> beaten = {};
 };
 
 struct SimRun{
@@ -133,9 +137,12 @@ std::vector<RouteStep> planned(const SimCase& c){
 SimRun run_case(const SimCase& c){
     SimRun run;
     run.route = planned(c);
-    OverworldSim sim(maps(), c.start, c.facing, c.script);
+    OverworldSim sim(with_trainers_beaten(maps(), c.beaten), c.start, c.facing, c.script);
     OverworldSimWalker walker(sim, c.rules);
-    const RoutePlanning planning{.maps = &maps(), .costs = default_route_costs(), .start = c.start, .label = "Sim", .wall_check = c.wall_check, .open_leg_check = c.open_leg_check};
+    const RoutePlanning planning{
+        .maps = &maps(), .costs = default_route_costs(), .start = c.start, .label = "Sim",
+        .wall_check = c.wall_check, .open_leg_check = c.open_leg_check, .beaten_trainers = c.beaten
+    };
     run.failure = walker.run(run.route, planning);
     run.state = sim.state();
     run.log = walker.log();
@@ -1032,9 +1039,93 @@ const OverworldSimCase OVERWORLD_SIM_CASES[] = {
     {.input = {"Nugget Bridge: each trainer met on the step onto their row", test_nugget_bridge_legs}, .expectation = {},},    {.input = {"Route 6 into Vermilion's Pokemon Center, the crossing stalled or not", test_route6_to_vermilion_center}, .expectation = {}},
 };
 
+//  A walk across a trainer's sight on the sim, with the trainers it says
+//  beaten (trainer_id()).
+struct BeatenTrainerInput{
+    MapPosition start;
+    Direction facing = Direction::NORTH;
+    //  The goal: where the warp `goal_point` of `goal_map` puts the player.
+    std::string goal_map;
+    std::string goal_point;
+    std::set<std::string> beaten;
+};
+//  Whom the player fought, whether the walker watched after a leg, and
+//  whether it logged a beaten trainer it didn't watch for.
+struct BeatenTrainerExpectation{
+    std::vector<std::string> fought;
+    bool watched = false;
+    bool beaten_logged = false;
+};
+struct BeatenTrainerCase{
+    std::string name;
+    BeatenTrainerInput input;
+    BeatenTrainerExpectation expectation;
+};
+
+//  Pewter Gym's Camper Liam (3, 8) sees the walk from Brock to the door
+//  (test_trainer_on_way_out()).
+const std::string LIAM = "PewterCity_Gym/camper@3,8";
+
+const BeatenTrainerCase BEATEN_TRAINER_CASES[] = {
+    {
+        .name = "a beaten trainer's sight: no watch, no stop",
+        .input = {.start = MapPosition{"PewterCity_Gym", {6, 6}}, .facing = Direction::NORTH, .goal_map = "PewterCity", .goal_point = "warp_2", .beaten = {LIAM}},
+        .expectation = {.fought = {}, .watched = false, .beaten_logged = true},
+    },
+    {
+        .name = "a trainer not beaten still stops the player",
+        .input = {.start = MapPosition{"PewterCity_Gym", {6, 6}}, .facing = Direction::NORTH, .goal_map = "PewterCity", .goal_point = "warp_2", .beaten = {}},
+        //  He stops the hold itself: the leg doesn't end as planned, so no
+        //  watch follows it.
+        .expectation = {.fought = {"camper"}, .watched = false, .beaten_logged = false},
+    },
+};
+
+class Test_BeatenTrainer : public UnitTest{
+public:
+    explicit Test_BeatenTrainer(BeatenTrainerCase test_case)
+        : UnitTest("PokemonFRLG::OverworldSim - beaten trainers: " + test_case.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        try{
+            return check();
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    UnitTestResult check() const{
+        const BeatenTrainerInput& input = m_case.input;
+        const BeatenTrainerExpectation& expected = m_case.expectation;
+        SimCase c{.start = input.start, .facing = input.facing, .goal = arrival(input.goal_map, input.goal_point)};
+        c.beaten = input.beaten;
+        const SimRun now = run_case(c);
+        const bool beaten_logged = std::any_of(now.log.begin(), now.log.end(), [](const std::string& line){
+            return line.find("beaten, no watch") != std::string::npos;
+        });
+        const bool watched = now.state.trainer_watch > Milliseconds(0);
+        if (!arrived(now, c.goal) || now.state.trainers_beaten != expected.fought
+            || watched != expected.watched || beaten_logged != expected.beaten_logged
+        ){
+            return std::format(
+                "Expected {} fought, watched {}, a beaten trainer logged {}; watched {} ms:{}",
+                expected.fought.size(), expected.watched, expected.beaten_logged, now.state.trainer_watch.count(), describe(now)
+            );
+        }
+        return true;
+    }
+
+    BeatenTrainerCase m_case;
+};
+
 void add_tests_OverworldSim(UnitTestDatabase& database){
     for (const auto& item : OVERWORLD_SIM_CASES){
         database.add<Test_OverworldSim>(item);
+    }
+    for (const auto& item : BEATEN_TRAINER_CASES){
+        database.add<Test_BeatenTrainer>(item);
     }
     add_tests_OverworldLateBattle(database);
     add_tests_OverworldWarpFade(database);

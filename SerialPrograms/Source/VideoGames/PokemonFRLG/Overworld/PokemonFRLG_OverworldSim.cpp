@@ -52,16 +52,16 @@ WallClock sim_wall_clock(Milliseconds time){
 
 namespace{
 
-Pokemon::ScreenEvents observed_events(SimScreen screen){
+ScreenEvents observed_events(SimScreen screen){
     switch (screen){
     case SimScreen::MESSAGE:
-        return {Pokemon::ScreenEvent::DIALOG_BOX};
+        return {ScreenEvent::DIALOG_BOX};
     case SimScreen::BATTLE_WIPE:
     case SimScreen::FADE:
-        return {Pokemon::ScreenEvent::FADE_BLACK};
+        return {ScreenEvent::FADE_BLACK};
     case SimScreen::BATTLE_OPENING:
     case SimScreen::BATTLE:
-        return {Pokemon::ScreenEvent::BATTLE_STARTED};
+        return {ScreenEvent::BATTLE_STARTED};
     case SimScreen::OVERWORLD:
     case SimScreen::START_MENU:
     case SimScreen::BATTLE_FLASH:
@@ -72,8 +72,8 @@ Pokemon::ScreenEvents observed_events(SimScreen screen){
 
 } // namespace
 
-Pokemon::ScreenEventLog screen_event_log(const SimState& state, Milliseconds from){
-    Pokemon::ScreenEventLog log;
+ScreenEventLog screen_event_log(const SimState& state, Milliseconds from){
+    ScreenEventLog log;
     SimScreen screen = state.shown.empty() ? state.screen : state.shown.front().screen;
     size_t next = 0;
     for (; next < state.shown.size() && state.shown[next].at <= from; next++){
@@ -152,7 +152,8 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
     m_player = PlayerState{start.point, elevation_at(map(), start.point), false};
     m_state.facing = facing;
     m_state.on_bike = m_script.on_bike;
-    show(m_script.start_menu_open ? SimScreen::START_MENU : SimScreen::OVERWORLD, m_now);
+    m_frozen = m_script.message_open;
+    show(m_frozen ? SimScreen::MESSAGE : m_script.start_menu_open ? SimScreen::START_MENU : SimScreen::OVERWORLD, m_now);
     update_view();
 }
 
@@ -673,9 +674,6 @@ namespace{
 using namespace MovementMechanics;
 using namespace OverworldWalkSteps;
 
-//  As the console's watch for a trainer (PokemonFRLG_OverworldRecoveryWalk.cpp).
-constexpr Milliseconds TRAINER_NOTICE(1500);
-constexpr Milliseconds TRAINER_SPEAKS(1000);
 //  The console's wait for a warp's fade (wait_out_warp()).
 constexpr Milliseconds WARP_TIMEOUT(8000);
 
@@ -960,9 +958,16 @@ void OverworldSimWalker::hold_to_warp(const RouteStep& step){
     fail("walk_overworld_route(): no fade holding on toward the warp to " + step.end.map + ".");
 }
 
-StepEnd OverworldSimWalker::watch_for_trainer(const RouteStep& step, int approach_tiles){
-    const Milliseconds watch = TRAINER_NOTICE + TILE_TIME * approach_tiles + TRAINER_SPEAKS;
-    return clear_late(interrupts(step), watch, MAX_INTERRUPTIONS_PER_LEG) == 0 ? StepEnd::DONE : StepEnd::LATE;
+StepEnd OverworldSimWalker::watch_for_trainer(const RouteStep& step, const TrainerCrossing& crossing){
+    const Milliseconds from = m_sim.state().time;
+    const Milliseconds look = trainer_first_look(crossing);
+    const bool seen = clear_late(interrupts(step), look, MAX_INTERRUPTIONS_PER_LEG) > 0;
+    m_log.push_back(std::format("Route: {} crosses a trainer's sight; watch {} ms: {}.", to_string(step), look.count(), seen ? "something showed" : "nothing"));
+    if (seen){
+        clear_late(interrupts(step), trainer_full_watch(crossing.approach_tiles), MAX_INTERRUPTIONS_PER_LEG);
+    }
+    m_sim.count_trainer_watch(m_sim.state().time - from);
+    return seen ? StepEnd::LATE : StepEnd::DONE;
 }
 
 bool OverworldSimWalker::moved_past_wall(const RouteStep& step){
@@ -978,7 +983,7 @@ RouteCalls OverworldSimWalker::calls(){
     calls.log = [this](const std::string& message){ m_log.push_back(message); };
     calls.fail = [this](const std::string& message){ fail(message); };
     calls.moved_past_wall = [this](const RouteStep& step){ return moved_past_wall(step); };
-    calls.watch_for_trainer = [this](const RouteStep& step, int approach_tiles){ return watch_for_trainer(step, approach_tiles); };
+    calls.watch_for_trainer = [this](const RouteStep& step, const TrainerCrossing& crossing){ return watch_for_trainer(step, crossing); };
     //  As the console: the walking sprite shows, not where.
     calls.landed_on = [this](const MapPosition&){ return !m_sim.state().surfing; };
     return calls;

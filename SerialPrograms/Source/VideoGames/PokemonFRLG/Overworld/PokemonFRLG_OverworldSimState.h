@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldSimScreens.h"
 
@@ -37,6 +37,11 @@ struct SimScript{
     Pokemon::GateState gates;
     //  The START menu is open at the start: the D-pad moves its cursor.
     bool start_menu_open = false;
+    //  Fault injection: a message box is open at the start, and the player
+    //  can't move until B or A closes it. 12.03's surf_off_middle_sand_bar
+    //  began so: the look before it ended on "dialog box showing (quiet
+    //  0.3 s)" (console B, 2026-11-13).
+    bool message_open = false;
     //  The hold numbered by the key (from 1) stops this many tiles short,
     //  with nothing on screen (the forest drift, console B, 2026-11-01).
     std::map<int, int> short_holds;
@@ -192,6 +197,9 @@ struct SimState{
     //  (SimScript::off_bike_at_legs).
     int bike_legs = 0;
     std::vector<std::string> trainers_beaten;
+    //  The time the walker spent watching for trainers after legs across
+    //  their sight (watch_for_trainer()), fights included.
+    Milliseconds trainer_watch{0};
     //  Things the walker did that the game wouldn't let pass: D-pad holds
     //  under a battle, a trainer's battle fled, a battle fought that wasn't
     //  there.
@@ -212,7 +220,7 @@ WallClock sim_wall_clock(Milliseconds time);
 //  battle's wipe or a warp's fade. A battle's flashes are no uniform
 //  screen, and black below a small room, which the observer's battle text
 //  box detector may take for a box, isn't modelled.
-Pokemon::ScreenEventLog screen_event_log(const SimState& state, Milliseconds from);
+ScreenEventLog screen_event_log(const SimState& state, Milliseconds from);
 
 //  A watcher that fired: which (an index into the watchers asked for), and
 //  how long after the hold or watch started.

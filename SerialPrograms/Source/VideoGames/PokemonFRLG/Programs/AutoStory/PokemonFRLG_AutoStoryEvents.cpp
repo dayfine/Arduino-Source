@@ -135,7 +135,7 @@ std::optional<MapPosition> route_start(const Pokemon::Pose& pose){
 //  (OverworldInterruptSet::make_observer).
 OverworldInterruptSet walk_interrupts(StoryEnv& env, const StoryStep& step){
     OverworldInterruptSet out = story_interrupts(env.supplies, arg<bool>(step, "fight_wild"), env.checks, env.language);
-    out.make_observer = []() -> std::unique_ptr<Pokemon::ScreenEventObserver>{
+    out.make_observer = []() -> std::unique_ptr<ScreenEventObserver>{
         return std::make_unique<FrlgScreenObserver>();
     };
     return out;
@@ -174,7 +174,7 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const 
     const OverworldInterruptSet interrupts = walk_interrupts(env, step);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest. From a set of tiles: reads the facing.
-    const RoutePlanning planning{.maps = &maps, .gates = state.gates, .costs = story_route_costs(), .start = start, .label = step.name, .checkpoint = env.checkpoint, .wall_check = wall_check(env), .pause = &env.pause};
+    const RoutePlanning planning{.maps = &maps, .gates = state.gates, .costs = story_route_costs(), .start = start, .label = step.name, .checkpoint = env.checkpoint, .wall_check = wall_check(env), .pause = &env.pause, .beaten_trainers = beaten_trainers(state.flags)};
     walk_overworld_route_with_recovery(env.console, env.context, *route, planning, env.player_gender, facing, interrupts, move_speed(step));
     state.gates = gates_after_route(state.gates, *route);
     log_arrival(env, step.name, target->map, target->tile);
@@ -204,7 +204,7 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     const OverworldInterruptSet interrupts = walk_interrupts(env, step);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
-    const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = start, .label = step.name, .checkpoint = env.checkpoint, .wall_check = wall_check(env), .pause = &env.pause};
+    const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = start, .label = step.name, .checkpoint = env.checkpoint, .wall_check = wall_check(env), .pause = &env.pause, .beaten_trainers = beaten_trainers(state.flags)};
     walk_overworld_route_with_recovery(env.console, env.context, *route, planning, env.player_gender, facing, interrupts, move_speed(step));
     log_arrival(env, step.name, route->back().end.map, route->back().end.point);
     return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
@@ -842,7 +842,7 @@ Pokemon::StoryAction StoryExecutor::console_action(StoryActionId id){
         }, .needs_console = true};
     }
     const ConsoleAction action = console_action_of(id);
-    return {.act = [this, action](const StoryStep& step, RunState& state){ return action(m_env, state, step); }, .needs_console = true};
+    return {.act = clearing_box_first([this, action](const StoryStep& step, RunState& state){ return action(m_env, state, step); }, m_interrupts, m_env.console.logger()), .needs_console = true};
 }
 
 

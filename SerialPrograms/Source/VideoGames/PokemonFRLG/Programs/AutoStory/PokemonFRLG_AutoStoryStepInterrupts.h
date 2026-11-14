@@ -32,7 +32,8 @@
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "NintendoSwitch/Inference/NintendoSwitch_HomeScreenObserver.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryInterrupts.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
@@ -81,7 +82,7 @@ constexpr Milliseconds BETWEEN_STEPS_LOOK = Milliseconds(400);
 
 //  The console's look between steps: FrlgScreenObserver's events for
 //  BETWEEN_STEPS_LOOK, everything showing in it judged.
-//  The Switch's HOME menu comes first (Pokemon::SwitchHomeObserver), so a
+//  The Switch's HOME menu comes first (SwitchHomeObserver), so a
 //  step that starts on it fails instead of pressing buttons on HOME.
 class ConsoleScreenLook{
 public:
@@ -93,8 +94,8 @@ private:
     VideoStream& m_stream;
     ProControllerContext& m_context;
     FrlgScreenObserver m_observer;
-    Pokemon::SwitchHomeObserver m_eyes;
-    Pokemon::ScreenEventWatcher m_watcher;
+    SwitchHomeObserver m_eyes;
+    ScreenEventWatcher m_watcher;
     WallClock m_start;
 };
 
