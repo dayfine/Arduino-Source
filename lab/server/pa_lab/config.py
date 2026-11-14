@@ -2,6 +2,7 @@
 port and the bearer token file. It never reads `~/BDSPLab/consoles.json`, which also lists A.
 
   {"schema": 1, "host": "127.0.0.1", "port": 8765, "token_file": "~/.config/pa-lab/token",
+   "db_file": "~/.local/state/pa-lab/control.sqlite",
    "consoles": {"B": {"lab_dir": "~/Library/Application Support/SerialPrograms/Profiles/lab-B/Lab",
                       "profile": "lab-B"}}}
 """
@@ -17,7 +18,8 @@ from typing import Dict, Optional
 
 ALLOWED_CONSOLES = ('B',)
 LOOPBACK_HOSTS = ('127.0.0.1',)
-TOP_KEYS = ('schema', 'host', 'port', 'token_file', 'consoles')
+TOP_KEYS = ('schema', 'host', 'port', 'token_file', 'db_file', 'consoles')
+DEFAULT_DB_FILE = '~/.local/state/pa-lab/control.sqlite'
 CONSOLE_KEYS = ('lab_dir', 'profile')
 
 
@@ -32,11 +34,13 @@ class ConsoleConfig:
 
 
 class Config:
-    def __init__(self, host: str, port: int, token_file: Path, consoles: Dict[str, ConsoleConfig]):
+    def __init__(self, host: str, port: int, token_file: Path, consoles: Dict[str, ConsoleConfig],
+                 db_file: Optional[Path] = None):
         self.host = host
         self.port = port
         self.token_file = token_file
         self.consoles = consoles
+        self.db_file = db_file if db_file is not None else Path(os.path.expanduser(DEFAULT_DB_FILE))
 
 
 def _path(value, field: str) -> Path:
@@ -82,7 +86,8 @@ def load(path: Path) -> Config:
         if profile is not None and (not isinstance(profile, str) or not profile):
             raise ConfigError('{}.profile: expected a profile name'.format(field))
         out[name] = ConsoleConfig(_path(entry.get('lab_dir'), field + '.lab_dir'), profile)
-    return Config(host, port, _path(doc.get('token_file'), 'token_file'), out)
+    return Config(host, port, _path(doc.get('token_file'), 'token_file'), out,
+                  _path(doc.get('db_file', DEFAULT_DB_FILE), 'db_file'))
 
 
 def read_token(path: Path) -> str:

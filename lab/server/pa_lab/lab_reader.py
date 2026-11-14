@@ -6,8 +6,10 @@ daemon's resources around them, never editing the app's document. Anything it ca
 (no file, a torn or malformed file, an unsupported schema, another profile's app, a dead pid, a
 stale heartbeat) is an explicit `unavailable` state with the reason, never a guess.
 
-Slice 2 has no lease store (that is Slice 3), so the lease is only reported: the app's last
-transition from a UI Start/Stop means the user holds the console, with no timeout.
+With a control plane (Slice 3, `pa_lab.control`) the lease comes from its SQLite store, and every
+read of a live app is applied to it first (`observe`: UI takeover, run end, `stopped` events).
+Without one (Slice 2) the lease is only reported: the app's last transition from a UI Start/Stop
+means the user holds the console, with no timeout.
 """
 
 from __future__ import annotations
@@ -111,8 +113,10 @@ class ConsoleReader:
     def __init__(self, console: str, lab_dir: Path, profile: Optional[str] = None,
                  now: Callable[[], float] = timestamps.wall_clock,
                  pid_alive: Callable[[int], bool] = pid_alive,
-                 heartbeat_timeout_s: float = HEARTBEAT_TIMEOUT_S):
+                 heartbeat_timeout_s: float = HEARTBEAT_TIMEOUT_S,
+                 control: Optional[Any] = None):
         self.console = console
+        self.control = control
         self.lab_dir = Path(lab_dir)
         self.profile = profile
         self.now = now
@@ -150,11 +154,12 @@ class ConsoleReader:
         try:
             app = self.app_state()
         except Unavailable as e:
+            lease = self.control.lease(self.console) if self.control is not None else free_lease()
             doc = {'schema': 1, 'console': self.console, 'observed_at': observed_at,
                    'availability': {'state': 'unavailable', 'reason': e.reason},
-                   'app': None, 'lease': free_lease(), 'blocked': [_app_unavailable(e)]}
+                   'app': None, 'lease': lease, 'blocked': [_app_unavailable(e)]}
             return contracts.validate('console_state', doc).data
-        lease = reported_lease(app)
+        lease = self.control.observe(self.console, app) if self.control is not None else reported_lease(app)
         doc = {'schema': 1, 'console': self.console, 'observed_at': observed_at,
                'availability': {'state': 'available', 'reason': None},
                'app': app, 'lease': lease, 'blocked': blocked(self.console, app, lease)}
@@ -209,9 +214,13 @@ def blocked(console: str, app: Dict[str, Any], lease: Dict[str, Any]) -> List[Di
     out = []
     if lease['state'] == 'user':
         transition = app['program']['last_transition']
-        out.append({'code': 'console_held_by_user', 'message':
-                    'The user clicked {} in the app at {}; console {} is theirs until they release it.'.format(
-                        transition['action'].capitalize(), _clock_time(transition['at']), console)})
+        if transition is not None and transition['source'] == 'ui' and transition['at'] == lease['acquired_at']:
+            message = 'The user clicked {} in the app at {}; console {} is theirs until they release it.'.format(
+                transition['action'].capitalize(), _clock_time(transition['at']), console)
+        else:
+            message = 'The user holds console {} since {}; it is theirs until they release it.'.format(
+                console, _clock_time(lease['acquired_at']))
+        out.append({'code': 'console_held_by_user', 'message': message})
     state = app['program']['state']
     panel = app['panel']['id']
     if state == 'no_program':
