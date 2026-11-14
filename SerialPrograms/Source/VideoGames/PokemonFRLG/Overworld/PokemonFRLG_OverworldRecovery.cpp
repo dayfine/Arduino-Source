@@ -9,6 +9,7 @@
 #include <utility>
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
 #include "PokemonFRLG_OverworldBikeTaps.h"
+#include "PokemonFRLG_OverworldHeldInPlace.h"
 #include "PokemonFRLG_OverworldLegTrace.h"
 #include "PokemonFRLG_MovementMechanics.h"
 #include "PokemonFRLG_OverworldReanchor.h"
@@ -81,38 +82,6 @@ std::vector<StopCandidate> short_candidates(const std::vector<MapData>& maps, co
     std::vector<StopCandidate> candidates;
     for (size_t c = 0; c <= (size_t)OPEN_LEG_SHORTFALL && c + (movement == HoldMovement::MOVED ? 1 : 0) < tiles.size(); c++){
         candidates.push_back(StopCandidate{tiles[tiles.size() - 1 - c], std::nullopt});
-    }
-    return candidates;
-}
-
-//  Of the tiles a hold of `step`, a leg to a wall north or south, may
-//  start from, `starts`, where the hold stops below or above a sign, which
-//  it then reads: where the player stands when every hold of the leg is
-//  interrupted at once by a message.
-std::vector<StopCandidate> before_signs(const std::vector<MapData>& maps, const std::vector<MapPosition>& starts, const RouteStep& step){
-    std::vector<StopCandidate> candidates;
-    if (step.direction != Direction::NORTH && step.direction != Direction::SOUTH){
-        return candidates;
-    }
-    RouteStep held = step;
-    held.tiles += OPEN_LEG_SHORTFALL;
-    for (const MapPosition& start : starts){
-        const auto map = std::find_if(maps.begin(), maps.end(), [&](const MapData& data){
-            return data.name == start.map;
-        });
-        if (map == maps.end() || is_wall(*map, start.point)){
-            continue;
-        }
-        const std::vector<MapPosition> tiles = leg_tiles(maps, start, held);
-        if (tiles.empty() || tiles.back().map != start.map
-            || tile_at(*map, tiles.back().point.next(step.direction)) != TileKind::SIGN
-        ){
-            continue;
-        }
-        const StopCandidate candidate{tiles.back(), std::nullopt};
-        if (std::find(candidates.begin(), candidates.end(), candidate) == candidates.end()){
-            candidates.push_back(candidate);
-        }
     }
     return candidates;
 }
@@ -559,10 +528,30 @@ private:
             return false;
         }
         if (!start || maps() == nullptr){
-            m_calls.fail("walk_overworld_route(): " + leg + " moved nothing, and the tile it was held from isn't known to walk it again from.");
-            return false;
+            return after_unmoved_hold(step);
         }
         return rejoin(step, {StopCandidate{*start, std::nullopt}}, WalkedTiles{.min = 0, .max = 0});
+    }
+
+    //  `step`, the plan's first hold to find the player, moved nothing from
+    //  a tile not known, though it walks from each tile it may start from
+    //  (expected_tiles()): a person stood in the way. Of those tiles, and
+    //  the ones beside them across a way an open leg left unsure, the player
+    //  is on one with a person the maps place ahead (console B, 2026-11-14
+    //  07:16, 14.01 below_door_5: "east 3 (open)" ended a tile short, "north
+    //  4 (open)" stopped under Burglar Dusty, and the check's hold north
+    //  moved nothing). None: the route fails.
+    bool after_unmoved_hold(const RouteStep& step){
+        const int across = m_drift.unsure_across(step.direction) ? OPEN_LEG_SHORTFALL : 0;
+        const std::vector<StopCandidate> blocked = maps() == nullptr || m_next != 0
+            ? std::vector<StopCandidate>()
+            : before_people(*maps(), m_hold_from, step, across);
+        if (blocked.empty()){
+            m_calls.fail(std::format("walk_overworld_route(): {} moved nothing, and the tile it was held from isn't known to walk it again from.", to_string(step)));
+            return false;
+        }
+        m_calls.log(std::format("Route: {} moved nothing: the maps place a person ahead of the player.", to_string(step)));
+        return rejoin(step, blocked, WalkedTiles{.min = 0, .max = 0});
     }
 
     //  After a stop on `step`, from `start` if known. False once the route

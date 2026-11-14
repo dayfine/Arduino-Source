@@ -109,6 +109,10 @@ public:
         const bool unsure_along = step.direction == Direction::EAST || step.direction == Direction::WEST ? m_x : m_y;
         return step.to_wall && unsure_along ? std::max(0, step.tiles - 1) : step.tiles;
     }
+    //  Whether the player may be a tile off square to `direction`.
+    bool unsure_across(Direction direction) const{
+        return direction == Direction::EAST || direction == Direction::WEST ? m_y : m_x;
+    }
 
 private:
     bool& unsure(Direction direction){

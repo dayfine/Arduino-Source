@@ -2062,6 +2062,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBikeTaps.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBike_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldHeldInPlace.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldHeldInPlace.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGateMaps_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGateMaps_Tests.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGates_Tests.cpp

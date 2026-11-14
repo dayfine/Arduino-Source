@@ -16,6 +16,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "PokemonFRLG_OverworldHeldInPlace.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldSim.h"
@@ -251,6 +252,31 @@ UnitTestResult test_person_in_the_way(){
     return true;
 }
 
+//  A hold north that moved nothing from the south row: the player stands
+//  below the person, on a tile the hold was planned from or, with the way
+//  across unsure, one beside it; never below open floor.
+UnitTestResult test_hold_into_person(){
+    const std::vector<MapData> maps{parse_map(TEST_PERSON_JSON, "Person")};
+    RouteStep north;
+    north.direction = Direction::NORTH;
+    north.tiles = 1;
+    north.to_wall = true;
+    north.end = {"Person", {4, 1}};
+    const MapPosition below{"Person", {3, 2}};
+    const MapPosition beside{"Person", {4, 2}};
+    const std::vector<StopCandidate> expected{{.player = below, .trainer = std::nullopt}};
+    if (before_people(maps, {below, beside}, north, 0) != expected){
+        return "Expected the player below the person, from the tiles held from.";
+    }
+    if (!before_people(maps, {beside}, north, 0).empty()){
+        return "Expected no tile below a person on the hold's own column.";
+    }
+    if (before_people(maps, {beside}, north, 1) != expected){
+        return "Expected the player below the person, a tile across from the tile held from.";
+    }
+    return true;
+}
+
 
 //  A walk of `route` from `start` on the sim, with `script`'s faults: the
 //  walker's failure (empty if none), the sim's state, and both logs.
@@ -395,6 +421,10 @@ const OverworldReanchorTestCase OVERWORLD_REANCHOR_CASES[] = {
     {
         .input = {.name = "a person in the way", .body = test_person_in_the_way},
         .expectation = {.description = "avoids planning reanchor into dynamic map obstacle"},
+    },
+    {
+        .input = {.name = "a hold that moved nothing into a person", .body = test_hold_into_person},
+        .expectation = {.description = "places the player below the person the hold met"},
     },
     {
         .input = {.name = "sim: Pallet Town, a long leg, then the sign", .body = test_pallet_sign_after_long_leg},
