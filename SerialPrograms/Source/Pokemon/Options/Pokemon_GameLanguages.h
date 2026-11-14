@@ -5,9 +5,11 @@
  *  The languages each game can be played in, as dropdown databases for a
  *  program's language option. A program offers its game's set, so a user
  *  can't pick a language the game doesn't have. Every language a game ships
- *  in is listed, tested on console or not: code that needs the language
- *  (reading text) takes this option, never assumes one, and says so where
- *  it has no reader for a language.
+ *  in is listed, tested on console or not. Code that reads text takes this
+ *  option and never assumes a language. With no reader for the chosen
+ *  language, a name lookup throws InternalProgramError ("No data loaded for
+ *  this language.") and a story step falls back to positions, digits and the
+ *  screen.
  *
  */
 
@@ -33,7 +35,7 @@ const EnumDropdownDatabase<Language>& Gen8ToGen9Languages_Database();
 //  German, Spanish. On Switch each language is a separate version with no
 //  in-game language option (Nintendo of America sells English, French and
 //  Spanish, the latter two in their European form), so the user picks the
-//  version they own. The same six as upstream's FRLG programs.
+//  version they own.
 const EnumDropdownDatabase<Language>& FireRedLeafGreenLanguages_Database();
 
 
