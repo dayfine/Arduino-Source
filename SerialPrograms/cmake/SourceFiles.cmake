@@ -1829,6 +1829,10 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_ConsoleStory.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_ConsoleStory.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Launch.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Launch.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Launch_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Launch_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Maps_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Maps_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_PlannedRoute_Tests.cpp

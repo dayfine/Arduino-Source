@@ -12,6 +12,7 @@
 #include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_FaultSweep_Tests.h"
 #include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_SimFailureCases_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_RecoveryWalk_Tests.h"
+#include "Programs/AutoStory/PokemonBDSP_AutoStory_Launch_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_Maps_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_PlannedRoute_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_SimulatedRoute_Tests.h"
@@ -40,6 +41,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_DialogDetector(database);
     add_tests_MenuDetector(database);
     add_tests_AutoStory_Actions(database);
+    add_tests_AutoStory_Launch(database);
     add_tests_AutoStory_Maps(database);
     add_tests_AutoStory_StoryWorld(database);
     add_tests_AutoStory_RoutePlanner(database);

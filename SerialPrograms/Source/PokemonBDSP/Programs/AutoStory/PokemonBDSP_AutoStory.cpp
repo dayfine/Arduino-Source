@@ -13,7 +13,6 @@
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
-#include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPreflight.h"
 #include "Pokemon/AutoStory/Pokemon_StoryRun.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
@@ -22,19 +21,17 @@
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
-#include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_ConsoleStory.h"
+#include "PokemonBDSP_AutoStory_Launch.h"
 #include "PokemonBDSP_AutoStory_StoryData.h"
 #include "PokemonBDSP_AutoStory.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
-
-using namespace std::chrono_literals;
 
 
 BDSPAutoStory_Descriptor::BDSPAutoStory_Descriptor()
@@ -86,19 +83,17 @@ std::set<std::string> rows_that_stop(const std::vector<StoryCheckpoint>& rows){
     return ids;
 }
 
-//  What BDSP lends the shared shell: the console's preflight; a load is a
-//  reset from HOME, which loads the save the row made at its start; the
-//  engine's lines go to the console's log.
+//  What BDSP lends the shared shell: the console's preflight; a load is the
+//  shared launch from HOME (launch_bdsp_save()), which closes the game and
+//  loads the save the row made at its start; the engine's lines go to the
+//  console's log.
 Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     Pokemon::StoryGameHooks game;
     game.preflight = [&env, &context]{
         return Pokemon::StoryPreflight::read(env.console, context);
     };
     game.load_save = [&env, &context](Pokemon::RunState&){
-        if (!reset_game_from_home(env, env.console, context, true, 1000ms)){
-            return Pokemon::outcome_failed("reload_failed", "Failed to reset the game from HOME.");
-        }
-        return Pokemon::outcome_ok();
+        return launch_bdsp_save(env.console, context);
     };
     game.log = [&env](const std::string& line){
         env.log(line, COLOR_BLUE);
