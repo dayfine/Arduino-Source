@@ -14,6 +14,14 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+std::string event_log_line(std::string_view checkpoint, size_t number, std::string_view event, std::string_view status){
+    return std::format("[Event] {}/{} {}: {}", checkpoint, number, event, status);
+}
+
+std::string checkpoint_log_line(std::string_view checkpoint, std::string_view text){
+    return std::format("[Checkpoint] {}: {}", checkpoint, text);
+}
+
 std::string certainty_name(PoseCertainty certainty){
     switch (certainty){
     case PoseCertainty::TILE:
@@ -370,7 +378,7 @@ Outcome run_event_logging_throws(EventRun& run){
     }catch (...){
         const std::string what = current_exception_text();
         log_status(std::format("failed: {}", what), run);
-        run.log(std::format("[Checkpoint] {}: failed at {} {}: {}", run.checkpoint.id, run.number, run.event.name, what));
+        run.log(checkpoint_log_line(run.checkpoint.id, std::format("failed at {} {}: {}", run.number, run.event.name, what)));
         throw;
     }
 }
@@ -379,7 +387,7 @@ CheckpointReport stop_checkpoint(EventLogger& log, const std::string& id, Outcom
     std::string where = report.failed_event == 0
         ? ""
         : std::format(" at {} {}", report.failed_event, report.failed_name);
-    log(std::format("[Checkpoint] {}: failed{}: {}", id, where, to_string(failure)));
+    log(checkpoint_log_line(id, std::format("failed{}: {}", where, to_string(failure))));
     report.failure = std::move(failure);
     return report;
 }
@@ -412,6 +420,9 @@ CheckpointReport run_checkpoint(RunState& state, Checkpoint& checkpoint, EventLo
         EventRun run{checkpoint, c + 1, event, state, log, std::vector<size_t>(event.recoveries.size(), 0), 0};
         if (already_done(event, state)){
             log_status("skipped", run);
+            if (event.when_skipped){
+                event.when_skipped(state);
+            }
             report.events_skipped++;
             continue;
         }
@@ -428,7 +439,7 @@ CheckpointReport run_checkpoint(RunState& state, Checkpoint& checkpoint, EventLo
         return stop_checkpoint(log, id, std::move(finished), report);
     }
     report.completed = true;
-    log(std::format("[Checkpoint] {}: done, {} run, {} skipped", id, report.events_run, report.events_skipped));
+    log(checkpoint_log_line(id, std::format("done, {} run, {} skipped", report.events_run, report.events_skipped)));
     return report;
 }
 
