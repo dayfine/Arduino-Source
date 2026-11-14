@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include "PokemonLZA_AutoStoryWalkScreenChecks.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryFailures.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -66,7 +67,7 @@ Pokemon::Outcome check_can_walk(PlzaBackend& backend, std::string_view walk){
         }
         backend.wait(FREE_CONTROL_LOOK);
     }
-    return Pokemon::outcome_failed(
+    return plza_failed(
         "walk_not_free",
         std::format("{}: no free control within {} ms, last on {}", walk, FREE_CONTROL_WAIT.count(), busy)
     );
@@ -95,7 +96,7 @@ Pokemon::Outcome walk_until(
             return Pokemon::outcome_ok();
         }
     }
-    return Pokemon::outcome_failed("walk_no_end", std::format("{}: no end event within {} ms of the last leg", walk, hold.count()));
+    return plza_failed("walk_no_end", std::format("{}: no end event within {} ms of the last leg", walk, hold.count()));
 }
 
 

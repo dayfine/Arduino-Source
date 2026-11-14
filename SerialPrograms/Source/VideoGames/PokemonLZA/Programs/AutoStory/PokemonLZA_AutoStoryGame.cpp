@@ -36,6 +36,7 @@
 #include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryStepValidator.h"
 #include "PokemonLZA_AutoStoryGame.h"
+#include "PokemonLZA_AutoStoryFailures.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -252,7 +253,7 @@ public:
                 throw;
             }catch (OperationFailedException& e){
                 backend.log(std::format("[PLZA] {} failed: {}", name, e.message()));
-                return Pokemon::outcome_failed("operation_failed", e.message());
+                return plza_failed(std::string(console_step_failure(name)), e.message());
             }
             return Pokemon::outcome_ok();
         };
@@ -428,7 +429,7 @@ Outcome wait_for_platform(Pokemon::StoryBackend<ZonePose>& backend, Milliseconds
         progress.text_waiting = text_now;
         backend.wait(PLATFORM_POLL);
     }
-    return Pokemon::outcome_failed("platform_not_seen", std::format(
+    return plza_failed("platform_not_seen", std::format(
         "No platform on {} looks in a row within {} ms (autosave {}).",
         PLATFORM_LOOKS, timeout.count(), progress.autosave_seen ? "seen" : "not seen"
     ));
@@ -449,7 +450,7 @@ Outcome walk_to_prompt(Pokemon::StoryBackend<ZonePose>& backend, Milliseconds ti
             return Pokemon::outcome_ok();
         }
         if (walked >= timeout){
-            return Pokemon::outcome_failed("no_prompt", std::format("walk_to_prompt: no A prompt in {} ms of walking", timeout.count()));
+            return plza_failed("no_prompt", std::format("walk_to_prompt: no A prompt in {} ms of walking", timeout.count()));
         }
         backend.hold(Pokemon::Direction::NORTH, PROMPT_WALK_SLICE, Pokemon::StoryPace::WALK);
         walked += PROMPT_WALK_SLICE;
@@ -800,7 +801,7 @@ Outcome load_checkpoint_start(StoryEnv& env, Pokemon::StoryBackend<ZonePose>& ba
         if (action == StartLoadAction::STOP){
             const std::string_view tried = start_tried(from);
             backend.log(std::format("[Checkpoint] {}: not at its start after {}, stopping", row, tried));
-            return Pokemon::outcome_failed("not_at_start", std::format("not at {}'s start after {}", row, tried));
+            return plza_failed("not_at_start", std::format("not at {}'s start after {}", row, tried));
         }
         const StartSave save = start_load_save(action);
         backend.log(std::format("[Save] {}: {} {}", row, save == StartSave::RUNNING ? "keeping" : "loading", start_save_name(save)));
@@ -833,7 +834,7 @@ constexpr size_t BOUNDARY_LOOKS = 4;
 //  from, which a reload_when_chained row comes after, but an older one.
 Outcome reload_at_boundary(const Pokemon::StoryGame<ZonePose>& game, Pokemon::StoryBackend<ZonePose>& backend, std::string_view row){
     if (!game.reload){
-        return Pokemon::outcome_failed("no_reload", "this game has no reload");
+        return plza_failed("no_reload", "this game has no reload");
     }
     const Outcome reloaded = game.reload(backend);
     if (!reloaded.succeeded()){
@@ -844,7 +845,7 @@ Outcome reload_at_boundary(const Pokemon::StoryGame<ZonePose>& game, Pokemon::St
         backend.scope().throw_if_cancelled();
         streak = backend.observe().readings.contains(PLATFORM_READING) ? streak + 1 : 0;
         if (streak >= PLATFORM_LOOKS){
-            return Pokemon::outcome_failed("older_save", std::format(
+            return plza_failed("older_save", std::format(
                 "the reload did not land at {}'s start: the station platform shows, so it loaded an older save", row
             ));
         }

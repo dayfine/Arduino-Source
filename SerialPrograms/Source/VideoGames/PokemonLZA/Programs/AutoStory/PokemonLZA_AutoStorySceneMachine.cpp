@@ -13,6 +13,7 @@
 #include <vector>
 #include "CommonTools/ScreenMachine/ScreenMachine.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
+#include "PokemonLZA_AutoStoryFailures.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -453,7 +454,7 @@ Pokemon::Outcome scene_failure(std::string_view label, const std::string& failur
     }else if (failure.starts_with("The screen matches none")){
         kind = "scene_unknown";
     }
-    return Pokemon::outcome_failed(std::string(kind), std::format("{}: {}", label, failure));
+    return plza_failed(std::string(kind), std::format("{}: {}", label, failure));
 }
 
 //  Whether a new look shows the mission banner.
@@ -505,7 +506,7 @@ Pokemon::Outcome scene_outcome(
     if (result.terminal == scene_screen_name(SceneScreen::QUIET_END)){
         //  Nothing busy for the quiet time, and no party bar or controls
         //  hint: a cutscene with no text, or control the detectors miss.
-        return Pokemon::outcome_failed("scene_quiet", std::format(
+        return plza_failed("scene_quiet", std::format(
             "{}: nothing busy for {} ms and no sign of control.", label, config.quiet ? config.quiet->count() : 0
         ));
     }

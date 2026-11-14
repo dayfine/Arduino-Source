@@ -15,6 +15,7 @@
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_FastTravelNavigation.h"
 #include "PokemonLZA_AutoStoryMoves.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryFailures.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -54,10 +55,10 @@ Pokemon::Outcome face_heading(PlzaBackend& backend, const PlzaReader& reader, do
         now = read_heading(backend, reader);
     }
     if (!now){
-        return Pokemon::outcome_failed("heading_unread", "no look read the minimap's heading");
+        return plza_failed("heading_unread", "no look read the minimap's heading");
     }
     if (get_angle_between_facing_directions(*now, heading) > tolerance){
-        return Pokemon::outcome_failed(
+        return plza_failed(
             "heading_missed",
             std::format("facing {} deg, wanted {:.0f} +/- {:.0f}", *now, heading, tolerance)
         );
