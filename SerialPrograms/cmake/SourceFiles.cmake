@@ -97,6 +97,10 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/Cpp/Hardware/Hardware_x86_Linux.tpp
     ../Common/Cpp/Hardware/Hardware_x86_Windows.tpp
     ../Common/Cpp/HttpServer/AbstractHttpServer.h
+    ../Common/Cpp/HttpServer/HttpServer.cpp
+    ../Common/Cpp/HttpServer/HttpServer.h
+    ../Common/Cpp/HttpServer/HttpServer_Tests.cpp
+    ../Common/Cpp/HttpServer/HttpServer_Tests.h
     ../Common/Cpp/ImageResolution.cpp
     ../Common/Cpp/ImageResolution.h
     ../Common/Cpp/Json/JsonArray.cpp
@@ -1778,6 +1782,18 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Resources/Pokemon_PokemonNames.h
     Source/Pokemon/Resources/Pokemon_PokemonSlugs.cpp
     Source/Pokemon/Resources/Pokemon_PokemonSlugs.h
+    Source/PokemonBDSP/Inference/PokemonBDSP_NameListDetector.cpp
+    Source/PokemonBDSP/Inference/PokemonBDSP_NameListDetector.h
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.h
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_IntroMenuDetector.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_IntroMenuDetector.h
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_MenuCursorDetector.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_MenuCursorDetector.h
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_TrainerCardReader.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_TrainerCardReader.h
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_BattleBallReader.cpp
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_BattleBallReader.h
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.cpp
@@ -1804,6 +1820,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Inference/PokemonBDSP_MapDetector.h
     Source/PokemonBDSP/Inference/PokemonBDSP_MarkFinder.cpp
     Source/PokemonBDSP/Inference/PokemonBDSP_MarkFinder.h
+    Source/PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.cpp
+    Source/PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.h
     Source/PokemonBDSP/Inference/PokemonBDSP_MenuDetector.cpp
     Source/PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h
     Source/PokemonBDSP/Inference/PokemonBDSP_PokeballSpriteMatcher.cpp
@@ -1983,6 +2001,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TrainerCardDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TrainerCardDetector.h
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BallReader.cpp
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BallReader.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.cpp
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.cpp
@@ -2135,6 +2155,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonHome/Inference/PokemonHome_GigantamaxDetector.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_OriginMarkReader.cpp
     Source/VideoGames/PokemonHome/Inference/PokemonHome_OriginMarkReader.h
+    Source/VideoGames/PokemonHome/Inference/PokemonHome_PageViewDetector.cpp
+    Source/VideoGames/PokemonHome/Inference/PokemonHome_PageViewDetector.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_SelectionArrowDetector.cpp
     Source/VideoGames/PokemonHome/Inference/PokemonHome_SelectionArrowDetector.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_ShinyDetector.cpp
