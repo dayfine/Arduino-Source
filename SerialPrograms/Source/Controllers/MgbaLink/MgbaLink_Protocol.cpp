@@ -141,14 +141,21 @@ WallClock FrameClock::timestamp(uint64_t frame) const{
 }
 
 
-bool FrameClock::resync(WallClock now, uint64_t frame, WallDuration max_drift){
-    WallDuration drift = timestamp(frame) - now;
-    if (drift <= max_drift && -drift <= max_drift){
-        return false;
+FrameClock::Stamp FrameClock::stamp(WallClock now, uint64_t frame, WallDuration max_lag){
+    Stamp result;
+    WallClock time = timestamp(frame);
+    if (time > now || now - time > max_lag){
+        result.reanchored_after_lag = time < now;
+        m_t0 = now;
+        m_f0 = frame;
+        time = now;
     }
-    m_t0 = now;
-    m_f0 = frame;
-    return true;
+    if (m_last_stamp && time < *m_last_stamp){
+        time = *m_last_stamp;
+    }
+    m_last_stamp = time;
+    result.time = time;
+    return result;
 }
 
 }  // namespace MgbaLink

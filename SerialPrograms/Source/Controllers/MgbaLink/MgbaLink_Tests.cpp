@@ -5,11 +5,13 @@
  */
 
 #include <atomic>
+#include <chrono>
 #include <format>
 #include <functional>
 #include <random>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Concurrency/AsyncTask.h"
 #include "Common/Cpp/Concurrency/ConditionVariable.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -53,7 +55,7 @@ struct LineFramingCase{
 class Test_LineFraming : public UnitTest{
 public:
     Test_LineFraming(LineFramingCase test_case)
-        : UnitTest("Controllers::MgbaLink - line framing - " + test_case.name)
+        : UnitTest(std::format("Controllers::MgbaLink - line framing - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -128,7 +130,7 @@ std::optional<std::string> describe_reply(const ReplyInput& input){
 class Test_Reply : public UnitTest{
 public:
     Test_Reply(ReplyCase test_case)
-        : UnitTest("Controllers::MgbaLink - reply - " + test_case.name)
+        : UnitTest(std::format("Controllers::MgbaLink - reply - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -163,7 +165,7 @@ const WallClock CLOCK_T0 = WallClock() + std::chrono::hours(1000);
 class Test_FrameClock : public UnitTest{
 public:
     Test_FrameClock(FrameClockCase test_case)
-        : UnitTest("Controllers::MgbaLink - frame clock - " + test_case.name)
+        : UnitTest(std::format("Controllers::MgbaLink - frame clock - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -181,51 +183,81 @@ private:
 
 
 
-//  Re-anchoring when frame 1060 (1004.6 ms after the anchor) is read late.
-struct ResyncInput{
-    std::chrono::milliseconds read_after_anchor;
+//  Stamps for a series of reads, the clock anchored at (t0, frame 1000).
+//  Frame 1060 maps to 1004.6 ms after the anchor.
+struct ClockRead{
+    uint64_t frame = 0;
+    std::chrono::milliseconds read_after_anchor{};
 };
-struct ResyncExpectation{
-    bool resynced;
-    std::chrono::milliseconds frame_1060_after_anchor;
+ClockRead frame_read_at(uint64_t frame, std::chrono::milliseconds read_after_anchor){
+    return ClockRead{frame, read_after_anchor};
+}
+struct StampInput{
+    std::vector<ClockRead> reads;
 };
-struct ResyncCase{
+struct StampExpectation{
+    std::vector<std::chrono::milliseconds> stamps_after_anchor;
+    size_t lag_reanchors = 0;
+};
+struct StampCase{
     std::string name;
-    ResyncInput input;
-    ResyncExpectation expectation;
+    StampInput input;
+    StampExpectation expectation;
 };
 
-class Test_Resync : public UnitTest{
+std::string join_milliseconds(const std::vector<std::chrono::milliseconds>& values){
+    std::string text;
+    for (std::chrono::milliseconds value : values){
+        text += text.empty() ? "" : ", ";
+        text += std::to_string(value.count());
+    }
+    return text;
+}
+
+class Test_Stamp : public UnitTest{
 public:
-    Test_Resync(ResyncCase test_case)
-        : UnitTest("Controllers::MgbaLink - clock resync - " + test_case.name)
+    Test_Stamp(StampCase test_case)
+        : UnitTest(std::format("Controllers::MgbaLink - frame stamps - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         FrameClock clock(CLOCK_T0, 1000);
-        bool resynced = clock.resync(CLOCK_T0 + m_case.input.read_after_anchor, 1060, std::chrono::milliseconds(500));
-        WallDuration offset = clock.timestamp(1060) - CLOCK_T0;
-        if (resynced != m_case.expectation.resynced ||
-            std::chrono::duration_cast<std::chrono::milliseconds>(offset) != m_case.expectation.frame_1060_after_anchor
-        ){
-            return std::format("resynced={}", resynced);
+        std::vector<std::chrono::milliseconds> stamps;
+        size_t lag_reanchors = 0;
+        for (const ClockRead& read : m_case.input.reads){
+            FrameClock::Stamp stamp = clock.stamp(CLOCK_T0 + read.read_after_anchor, read.frame, std::chrono::milliseconds(500));
+            stamps.emplace_back(std::chrono::duration_cast<std::chrono::milliseconds>(stamp.time - CLOCK_T0));
+            lag_reanchors += stamp.reanchored_after_lag ? 1 : 0;
+        }
+        if (stamps != m_case.expectation.stamps_after_anchor || lag_reanchors != m_case.expectation.lag_reanchors){
+            return std::format(
+                "stamps [{}] ms with {} lag re-anchor(s), expected [{}] ms with {}",
+                join_milliseconds(stamps), lag_reanchors,
+                join_milliseconds(m_case.expectation.stamps_after_anchor), m_case.expectation.lag_reanchors
+            );
         }
         return true;
     }
 
 private:
-    ResyncCase m_case;
+    StampCase m_case;
 };
 
 
 
-//  A bridge stand-in: answers each command line from a script, or refuses
-//  the client with "ERR busy" as a bridge that already has one.
+//  How the fake bridge treats its client.
+enum class BridgeMode{
+    ANSWERS,    //  Answers each command line from a script.
+    BUSY,       //  Refuses the client with "ERR busy", as a bridge that has one.
+    HANGS,      //  Answers HELLO, then never answers again.
+};
+
+//  A bridge stand-in.
 class FakeBridge : public AbstractServerSocket::Listener{
 public:
-    FakeBridge(ThreadPool& thread_pool, bool busy)
+    FakeBridge(ThreadPool& thread_pool, BridgeMode mode)
         : m_server(thread_pool)
-        , m_busy(busy)
+        , m_mode(mode)
     {
         m_server.add_listener(*this);
     }
@@ -254,7 +286,7 @@ private:
         m_cv.notify_all();
     }
     virtual void on_connect() override{
-        if (m_busy){
+        if (m_mode == BridgeMode::BUSY){
             //  Closed once the client's first line is read (no reset that
             //  could drop this line before the client reads it).
             send("ERR busy\n");
@@ -270,7 +302,7 @@ private:
 
 private:
     FakeServerSocket m_server;
-    const bool m_busy;
+    const BridgeMode m_mode;
     LineSplitter m_splitter;
     Mutex m_lock;
     ConditionVariable m_cv;
@@ -297,7 +329,7 @@ std::optional<uint16_t> FakeBridge::start(){
 }
 
 void FakeBridge::on_receive_data(const void* data, size_t bytes){
-    if (m_busy){
+    if (m_mode == BridgeMode::BUSY){
         //  Record what the client sent, then refuse it.
         std::lock_guard<Mutex> lg(m_lock);
         m_commands.emplace_back("(refused)");
@@ -311,6 +343,9 @@ void FakeBridge::on_receive_data(const void* data, size_t bytes){
             std::lock_guard<Mutex> lg(m_lock);
             m_commands.emplace_back(line);
             m_cv.notify_all();
+        }
+        if (m_mode == BridgeMode::HANGS && line != "HELLO 1"){
+            continue;
         }
         std::string reply = reply_for(line);
         //  Two writes, so the client has to reassemble the line.
@@ -339,15 +374,18 @@ std::string FakeBridge::reply_for(std::string_view line){
     if (line == "BYE"){
         return "OK BYE\n";
     }
-    return "ERR unknown " + std::string(line.substr(0, line.find(' '))) + "\n";
+    return std::format("ERR unknown {}\n", line.substr(0, line.find(' ')));
 }
 
 
 
-//  A whole session against the fake bridge: open, FRAME, KEYS late and on
-//  time, an ERR reply, then close (BYE).
+//  A whole session against the fake bridge: open (twice, if asked), FRAME,
+//  KEYS late and on time, an ERR reply, then close (BYE).
 struct SessionInput{
-    bool bridge_busy;
+    BridgeMode bridge_mode = BridgeMode::ANSWERS;
+    bool open_twice = false;
+    //  Abort from another thread once the bridge has seen FRAME.
+    bool abort_after_frame = false;
 };
 struct SessionExpectation{
     std::vector<std::string> results;
@@ -359,45 +397,78 @@ struct SessionCase{
     SessionExpectation expectation;
 };
 
-std::vector<std::string> run_session(Logger& logger, ThreadPool& thread_pool, uint16_t port){
+std::string join_lines(const std::vector<std::string>& lines){
+    std::string text;
+    for (const std::string& line : lines){
+        text += text.empty() ? "<" : ", <";
+        text += line;
+        text += ">";
+    }
+    return text;
+}
+
+void run_commands(Connection& connection, std::vector<std::string>& results){
+    FrameReply frame = connection.frame();
+    results.emplace_back(std::format("frame {} {}", frame.frame, frame.path));
+    results.emplace_back(std::format("late {}", connection.keys(100, 1)));
+    results.emplace_back(std::format("late {}", connection.keys(130, 1)));
+    connection.command("FLY");
+    results.emplace_back("FLY accepted");
+}
+
+std::vector<std::string> run_session(
+    Logger& logger, ThreadPool& thread_pool, FakeBridge& bridge, uint16_t port, const SessionInput& input
+){
     std::vector<std::string> results;
-    MgbaLink_Connection connection(logger, thread_pool, "127.0.0.1", port);
+    Connection connection(logger, thread_pool, "127.0.0.1", port);
+    AsyncTask aborter;
     try{
         HelloReply hello = connection.open();
         results.emplace_back(std::format("hello {} {}", hello.game_code, hello.mode));
-        FrameReply frame = connection.frame();
-        results.emplace_back(std::format("frame {} {}", frame.frame, frame.path));
-        results.emplace_back(std::format("late {}", connection.keys(100, 1)));
-        results.emplace_back(std::format("late {}", connection.keys(130, 1)));
-        connection.command("FLY");
-        results.emplace_back("FLY accepted");
+        if (input.open_twice){
+            try{
+                connection.open();
+                results.emplace_back("second open accepted");
+            }catch (InternalProgramError&){
+                results.emplace_back("second open refused");
+            }
+        }
+        if (input.abort_after_frame){
+            aborter = thread_pool.dispatch_now_blocking([&]{
+                bridge.wait_for_commands(2);
+                connection.abort();
+            });
+        }
+        run_commands(connection, results);
     }catch (ConnectionException& e){
         bool busy = e.message().find("ERR busy") != std::string::npos;
-        results.emplace_back(busy ? "failed: ERR busy" : "failed: " + e.message());
+        results.emplace_back(busy ? "failed: ERR busy" : std::format("failed: {}", e.message()));
     }
+    aborter.wait_and_ignore_exceptions();
     return results;
 }
 
 class Test_Session : public UnitTest{
 public:
     Test_Session(SessionCase test_case)
-        : UnitTest("Controllers::MgbaLink - fake bridge - " + test_case.name)
+        : UnitTest(std::format("Controllers::MgbaLink - fake bridge - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         ThreadPool& thread_pool = GlobalThreadPools::unlimited_normal();
-        FakeBridge bridge(thread_pool, m_case.input.bridge_busy);
+        FakeBridge bridge(thread_pool, m_case.input.bridge_mode);
         std::optional<uint16_t> port = bridge.start();
         if (!port){
             return UnitTestResult(UnitTestResult::SKIPPED, "No free port for the fake bridge.");
         }
-        std::vector<std::string> results = run_session(logger, thread_pool, *port);
+        std::vector<std::string> results = run_session(logger, thread_pool, bridge, *port, m_case.input);
         if (results != m_case.expectation.results){
-            return std::format("result {}: <{}>", results.size(), results.empty() ? "" : results.back());
+            return std::format("results {}, expected {}", join_lines(results), join_lines(m_case.expectation.results));
         }
         bridge.wait_for_commands(m_case.expectation.bridge_saw.size());
-        if (bridge.commands() != m_case.expectation.bridge_saw){
-            return std::format("the bridge saw {} command(s)", bridge.commands().size());
+        std::vector<std::string> saw = bridge.commands();
+        if (saw != m_case.expectation.bridge_saw){
+            return std::format("the bridge saw {}, expected {}", join_lines(saw), join_lines(m_case.expectation.bridge_saw));
         }
         return true;
     }
@@ -446,7 +517,7 @@ void add_framing_and_reply_tests(UnitTestDatabase& database){
     }
 }
 
-void add_clock_and_session_tests(UnitTestDatabase& database){
+void add_clock_tests(UnitTestDatabase& database){
     //  One frame = 1000 / 59.7275 ms = 16742.7 us.
     const FrameClockCase FRAME_CLOCK_CASES[] = {
         {.name = "anchor frame", .input = {1000}, .expectation = {std::chrono::microseconds(0)}},
@@ -458,18 +529,32 @@ void add_clock_and_session_tests(UnitTestDatabase& database){
         database.add<Test_FrameClock>(test_case);
     }
 
-    const ResyncCase RESYNC_CASES[] = {
-        {.name = "small drift keeps the anchor", .input = {std::chrono::milliseconds(1100)}, .expectation = {false, std::chrono::milliseconds(1004)}},
-        {.name = "mGBA paused re-anchors", .input = {std::chrono::milliseconds(10000)}, .expectation = {true, std::chrono::milliseconds(10000)}},
+    using std::chrono::milliseconds;
+    const StampCase STAMP_CASES[] = {
+        {.name = "small lag keeps the anchor", .input = {{frame_read_at(1060, milliseconds(1100))}}, .expectation = {{milliseconds(1004)}, 0}},
+        {.name = "mGBA paused re-anchors at the read", .input = {{frame_read_at(1060, milliseconds(10000))}}, .expectation = {{milliseconds(10000)}, 1}},
+        {.name = "mGBA running ahead is stamped at the read", .input = {{frame_read_at(1060, milliseconds(900))}}, .expectation = {{milliseconds(900)}, 0}},
+        {
+            .name = "mGBA running ahead stays at or before each read",
+            .input = {{frame_read_at(1060, milliseconds(900)), frame_read_at(1120, milliseconds(1900))}},
+            .expectation = {{milliseconds(900), milliseconds(1900)}, 0},
+        },
+        {
+            .name = "frame number going back keeps stamps monotonic",
+            .input = {{frame_read_at(1060, milliseconds(1010)), frame_read_at(1059, milliseconds(1012))}},
+            .expectation = {{milliseconds(1004), milliseconds(1004)}, 0},
+        },
     };
-    for (const ResyncCase& test_case : RESYNC_CASES){
-        database.add<Test_Resync>(test_case);
+    for (const StampCase& test_case : STAMP_CASES){
+        database.add<Test_Stamp>(test_case);
     }
+}
 
+void add_session_tests(UnitTestDatabase& database){
     const SessionCase SESSION_CASES[] = {
         {
             .name = "session",
-            .input = {false},
+            .input = {},
             .expectation = {
                 {"hello BPRE paced", "frame 120 /tmp/mgba bridge.png", "late 20", "late 0", "failed: MgbaLink: FLY -> ERR unknown FLY"},
                 {"HELLO 1", "FRAME", "KEYS 100 1", "KEYS 130 1", "FLY", "BYE"},
@@ -477,8 +562,26 @@ void add_clock_and_session_tests(UnitTestDatabase& database){
         },
         {
             .name = "busy",
-            .input = {true},
+            .input = {.bridge_mode = BridgeMode::BUSY},
             .expectation = {{"failed: ERR busy"}, {"(refused)"}},
+        },
+        {
+            .name = "second open refused",
+            .input = {.open_twice = true},
+            .expectation = {
+                {"hello BPRE paced", "second open refused", "frame 120 /tmp/mgba bridge.png", "late 20", "late 0", "failed: MgbaLink: FLY -> ERR unknown FLY"},
+                {"HELLO 1", "FRAME", "KEYS 100 1", "KEYS 130 1", "FLY", "BYE"},
+            },
+        },
+        {
+            //  Without abort() FRAME would wait out the 5 s timeout, then
+            //  report "timed out"; aborted, it fails at once and skips BYE.
+            .name = "abort while waiting for a reply",
+            .input = {.bridge_mode = BridgeMode::HANGS, .abort_after_frame = true},
+            .expectation = {
+                {"hello BPRE paced", "failed: MgbaLink: No reply to FRAME (aborted)."},
+                {"HELLO 1", "FRAME"},
+            },
         },
     };
     for (const SessionCase& test_case : SESSION_CASES){
@@ -491,7 +594,8 @@ void add_clock_and_session_tests(UnitTestDatabase& database){
 
 void add_tests(UnitTestDatabase& database){
     add_framing_and_reply_tests(database);
-    add_clock_and_session_tests(database);
+    add_clock_tests(database);
+    add_session_tests(database);
 }
 
 

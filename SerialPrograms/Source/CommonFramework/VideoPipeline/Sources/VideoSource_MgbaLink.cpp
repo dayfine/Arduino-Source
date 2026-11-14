@@ -5,13 +5,17 @@
  */
 
 #include <charconv>
+#include <format>
+#include <QImage>
 #include <QPainter>
 #include <QTimer>
+#include <QVideoFrame>
 #include <QWidget>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/ImageTypes/ImageRGB32_Qt.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
+#include "CommonFramework/VideoPipeline/Backends/VideoFrameQt.h"
 #include "VideoSource_MgbaLink.h"
 
 namespace PokemonAutomation{
@@ -21,20 +25,62 @@ using namespace MgbaLink;
 
 namespace{
 
-//  Re-anchor the frame clock when a frame maps further than this from the
-//  time it was read (mGBA paused, or running free without GRANT pacing).
-constexpr std::chrono::milliseconds MAX_CLOCK_DRIFT(500);
+//  Re-anchor the frame clock when a frame maps further than this before
+//  the time it was read (mGBA paused, or slower than real time).
+constexpr std::chrono::milliseconds MAX_CLOCK_LAG(500);
 
 constexpr std::chrono::milliseconds RECONNECT_DELAY(2000);
 
 //  One GBA frame, rounded down: polling faster only repeats a frame number.
 constexpr std::chrono::milliseconds POLL_PERIOD(16);
 
+
+//  Forwards to "logger" every line but a repeat of the last one forwarded:
+//  a bridge that stays away fails the same way on every retry.
+class RepeatSuppressingLogger : public Logger{
+public:
+    explicit RepeatSuppressingLogger(Logger& logger)
+        : m_logger(logger)
+    {}
+
+    virtual void log(const std::string& msg, Color color) override{
+        {
+            std::lock_guard<Mutex> lg(m_lock);
+            if (msg == m_last){
+                return;
+            }
+            m_last = msg;
+        }
+        m_logger.log(msg, color);
+    }
+
+private:
+    Logger& m_logger;
+    Mutex m_lock;
+    std::string m_last;
+};
+
+bool is_local_host(std::string_view host){
+    return host == "127.0.0.1" || host == "localhost";
+}
+
 }  // namespace
 
 
 
 ImageRGB32 compose_mgba_frame(const ImageViewRGB32& gba_frame, const MgbaComposeGeometry& geometry){
+    if (geometry.box_x + geometry.box_width > geometry.canvas_width ||
+        geometry.box_y + geometry.box_height > geometry.canvas_height
+    ){
+        throw InternalProgramError(
+            nullptr, PA_CURRENT_FUNCTION,
+            std::format(
+                "mGBA box {}x{} at ({}, {}) does not fit in a {}x{} canvas.",
+                geometry.box_width, geometry.box_height, geometry.box_x, geometry.box_y,
+                geometry.canvas_width, geometry.canvas_height
+            )
+        );
+    }
     ImageRGB32 canvas(geometry.canvas_width, geometry.canvas_height);
     canvas.fill(0xff000000);
     const size_t src_width = gba_frame.width();
@@ -67,7 +113,11 @@ std::optional<std::pair<std::string, uint16_t>> parse_mgba_address(std::string_v
     if (port_text.empty() || result.ec != std::errc() || result.ptr != port_text.data() + port_text.size() || port == 0){
         return std::nullopt;
     }
-    return std::make_pair(std::string(address.substr(0, colon)), port);
+    std::string_view host = address.substr(0, colon);
+    if (!is_local_host(host)){
+        return std::nullopt;
+    }
+    return std::make_pair(std::string(host), port);
 }
 
 
@@ -107,7 +157,7 @@ std::unique_ptr<VideoSource> VideoSourceDescriptor_MgbaLink::make_VideoSource(
 
 
 VideoSource_MgbaLink::VideoSource_MgbaLink(Logger& logger, std::string address)
-    : VideoSource(logger, false)
+    : VideoSource(logger, true)
     , m_logger(logger)
     , m_address(std::move(address))
 {
@@ -120,6 +170,9 @@ VideoSource_MgbaLink::~VideoSource_MgbaLink(){
     {
         std::lock_guard<Mutex> lg(m_lock);
         m_stopping = true;
+        if (m_connection != nullptr){
+            m_connection->abort();
+        }
     }
     m_cv.notify_all();
     m_poller.wait_and_ignore_exceptions();
@@ -132,6 +185,9 @@ VideoSnapshot VideoSource_MgbaLink::snapshot_latest_blocking(){
 }
 VideoSnapshot VideoSource_MgbaLink::snapshot_recent_nonblocking(WallClock min_time){
     std::lock_guard<Mutex> lg(m_lock);
+    if (m_last.timestamp < min_time){
+        return VideoSnapshot();
+    }
     return m_last;
 }
 
@@ -144,23 +200,50 @@ bool VideoSource_MgbaLink::wait_or_stop(std::chrono::milliseconds duration){
 void VideoSource_MgbaLink::poll_loop(){
     std::optional<std::pair<std::string, uint16_t>> address = parse_mgba_address(m_address);
     if (!address){
-        m_logger.log("MgbaLink: invalid address \"" + m_address + "\"; expected host:port.", COLOR_RED);
+        m_logger.log(
+            "MgbaLink: invalid address \"" + m_address + "\"; expected 127.0.0.1:<port> or localhost:<port>.",
+            COLOR_RED
+        );
         return;
     }
+    m_logger.log(std::format(
+        "MgbaLink: polling {}; retrying every {} s while it is away.",
+        m_address, std::chrono::duration_cast<std::chrono::seconds>(RECONNECT_DELAY).count()
+    ));
+    RepeatSuppressingLogger logger(m_logger);
     do{
         try{
-            MgbaLink_Connection connection(
-                m_logger, GlobalThreadPools::unlimited_realtime(), address->first, address->second
-            );
-            connection.open();
-            poll_connected(connection);
-        }catch (Exception& e){
-            m_logger.log(e.message() + " Retrying in 2 s.", COLOR_ORANGE);
+            run_connection(logger, address->first, address->second);
+        }catch (Exception&){
+            //  Already logged (once) by the exception; retry.
         }
     }while (!wait_or_stop(RECONNECT_DELAY));
 }
 
-void VideoSource_MgbaLink::poll_connected(MgbaLink_Connection& connection){
+void VideoSource_MgbaLink::run_connection(Logger& logger, const std::string& host, uint16_t port){
+    Connection connection(logger, GlobalThreadPools::unlimited_realtime(), host, port);
+    {
+        std::lock_guard<Mutex> lg(m_lock);
+        if (m_stopping){
+            return;
+        }
+        m_connection = &connection;
+    }
+    try{
+        connection.open();
+        poll_connected(connection);
+    }catch (...){
+        std::lock_guard<Mutex> lg(m_lock);
+        m_connection = nullptr;
+        m_last = VideoSnapshot();
+        throw;
+    }
+    std::lock_guard<Mutex> lg(m_lock);
+    m_connection = nullptr;
+    m_last = VideoSnapshot();
+}
+
+void VideoSource_MgbaLink::poll_connected(Connection& connection){
     std::optional<FrameClock> clock;
     uint64_t last_frame = 0;
     do{
@@ -171,17 +254,45 @@ void VideoSource_MgbaLink::poll_connected(MgbaLink_Connection& connection){
         }
         if (!clock){
             clock.emplace(now, reply.frame);
-        }else if (clock->resync(now, reply.frame, MAX_CLOCK_DRIFT)){
-            m_logger.log("MgbaLink: frame clock re-anchored at frame " + std::to_string(reply.frame) + ".");
+        }
+        FrameClock::Stamp stamp = clock->stamp(now, reply.frame, MAX_CLOCK_LAG);
+        if (stamp.reanchored_after_lag){
+            m_logger.log(std::format("MgbaLink: frame clock re-anchored at frame {} (mGBA paused or slow).", reply.frame));
         }
         last_frame = reply.frame;
 
         //  Read the PNG before the next FRAME overwrites it.
         ImageRGB32 gba_frame(reply.path);
-        VideoSnapshot snapshot(compose_mgba_frame(gba_frame), clock->timestamp(reply.frame));
-        std::lock_guard<Mutex> lg(m_lock);
-        m_last = std::move(snapshot);
+        if (gba_frame.width() != reply.width || gba_frame.height() != reply.height){
+            throw ConnectionException(&m_logger, std::format(
+                "MgbaLink: FRAME {} said {}x{}, but {} is {}x{}.",
+                reply.frame, reply.width, reply.height, reply.path, gba_frame.width(), gba_frame.height()
+            ));
+        }
+        publish_frame(compose_mgba_frame(gba_frame), stamp.time);
     }while (!wait_or_stop(POLL_PERIOD));
+}
+
+void VideoSource_MgbaLink::publish_frame(ImageRGB32 frame, WallClock timestamp){
+    VideoSnapshot snapshot(std::move(frame), timestamp);
+    {
+        std::lock_guard<Mutex> lg(m_lock);
+        m_last = snapshot;
+    }
+
+    //  For the FPS readout, stream history and the no-video watchdog. The
+    //  QImage shares the snapshot's pixels and keeps them alive.
+    const ImageRGB32& pixels = *snapshot.frame;
+    QImage image(
+        (const uchar*)pixels.data(),
+        (int)pixels.width(),
+        (int)pixels.height(),
+        (qsizetype)pixels.bytes_per_row(),
+        QImage::Format_ARGB32,
+        [](void* owner){ delete static_cast<std::shared_ptr<const ImageRGB32>*>(owner); },
+        new std::shared_ptr<const ImageRGB32>(snapshot.frame)
+    );
+    report_source_frame(std::make_shared<VideoFrame>(timestamp, QVideoFrame(image)));
 }
 
 
@@ -206,6 +317,7 @@ private:
         }
         QPainter painter(this);
         painter.drawImage(QRect(0, 0, width(), height()), to_QImage_ref(*snapshot.frame));
+        m_source.report_rendered_frame(current_time());
     }
 
 private:

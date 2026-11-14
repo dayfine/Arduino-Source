@@ -6,6 +6,7 @@
 
 #include <format>
 #include <optional>
+#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "VideoSource_MgbaLink.h"
 #include "VideoSource_MgbaLink_Tests.h"
@@ -48,7 +49,7 @@ struct ComposeCase{
 class Test_Compose : public UnitTest{
 public:
     Test_Compose(ComposeCase test_case)
-        : UnitTest("CommonFramework::VideoSource_MgbaLink - compose - " + test_case.name)
+        : UnitTest(std::format("CommonFramework::VideoSource_MgbaLink - compose - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -86,18 +87,65 @@ struct AddressCase{
 class Test_Address : public UnitTest{
 public:
     Test_Address(AddressCase test_case)
-        : UnitTest("CommonFramework::VideoSource_MgbaLink - address - " + test_case.name)
+        : UnitTest(std::format("CommonFramework::VideoSource_MgbaLink - address - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        if (parse_mgba_address(m_case.input.address) != m_case.expectation.host_and_port){
-            return std::format("unexpected result for <{}>", m_case.input.address);
+        std::optional<std::pair<std::string, uint16_t>> parsed = parse_mgba_address(m_case.input.address);
+        if (parsed != m_case.expectation.host_and_port){
+            return std::format(
+                "parsed {}, expected {}",
+                describe(parsed), describe(m_case.expectation.host_and_port)
+            );
         }
         return true;
     }
 
 private:
+    static std::string describe(const std::optional<std::pair<std::string, uint16_t>>& host_and_port){
+        return host_and_port
+            ? std::format("<{}> port {}", host_and_port->first, host_and_port->second)
+            : std::string("nothing");
+    }
+
     AddressCase m_case;
+};
+
+
+//  compose_mgba_frame() refuses a box that does not fit the canvas.
+struct GeometryInput{
+    MgbaComposeGeometry geometry;
+};
+struct GeometryExpectation{
+    bool accepted = false;
+};
+struct GeometryCase{
+    std::string name;
+    GeometryInput input;
+    GeometryExpectation expectation;
+};
+
+class Test_Geometry : public UnitTest{
+public:
+    Test_Geometry(GeometryCase test_case)
+        : UnitTest(std::format("CommonFramework::VideoSource_MgbaLink - geometry - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        bool accepted = true;
+        try{
+            compose_mgba_frame(make_gba_frame(), m_case.input.geometry);
+        }catch (InternalProgramError&){
+            accepted = false;
+        }
+        if (accepted != m_case.expectation.accepted){
+            return std::format("accepted={}, expected {}", accepted, m_case.expectation.accepted);
+        }
+        return true;
+    }
+
+private:
+    GeometryCase m_case;
 };
 
 }  // namespace
@@ -132,9 +180,20 @@ void add_tests_VideoSource_MgbaLink(UnitTestDatabase& database){
         {.name = "port 0", .input = {"127.0.0.1:0"}, .expectation = {std::nullopt}},
         {.name = "port too large", .input = {"127.0.0.1:70000"}, .expectation = {std::nullopt}},
         {.name = "no host", .input = {":47801"}, .expectation = {std::nullopt}},
+        {.name = "remote host refused", .input = {"192.168.1.20:47801"}, .expectation = {std::nullopt}},
     };
     for (const AddressCase& test_case : ADDRESS_CASES){
         database.add<Test_Address>(test_case);
+    }
+
+    const GeometryCase GEOMETRY_CASES[] = {
+        {.name = "GAME_BOX at 1080p fits", .input = {MgbaComposeGeometry()}, .expectation = {true}},
+        {.name = "box fills the canvas", .input = {{.canvas_width = 240, .canvas_height = 160, .box_x = 0, .box_y = 0, .box_width = 240, .box_height = 160}}, .expectation = {true}},
+        {.name = "box past the right edge", .input = {{.box_x = 400}}, .expectation = {false}},
+        {.name = "box past the bottom edge", .input = {{.box_y = 50}}, .expectation = {false}},
+    };
+    for (const GeometryCase& test_case : GEOMETRY_CASES){
+        database.add<Test_Geometry>(test_case);
     }
 }
 

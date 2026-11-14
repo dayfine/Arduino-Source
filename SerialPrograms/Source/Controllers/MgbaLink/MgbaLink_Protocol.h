@@ -32,9 +32,9 @@ struct HelloReply{
 
 //  The fields of a "FRAME" reply (0.10.5: the frame is a PNG on disk).
 struct FrameReply{
-    uint64_t frame;
-    size_t width;
-    size_t height;
+    uint64_t frame = 0;
+    size_t width = 0;
+    size_t height = 0;
     std::string path;           //  PNG written by the bridge; may contain spaces.
 };
 
@@ -92,6 +92,13 @@ public:
     //  GBA frame rate: 16.78 MHz / 280,896 cycles per frame.
     static constexpr double GBA_FRAMES_PER_SECOND = 59.7275;
 
+    //  The time a frame is stamped with, and whether the clock had to catch
+    //  up with a paused or slow mGBA to get it.
+    struct Stamp{
+        WallClock time{};
+        bool reanchored_after_lag = false;
+    };
+
     FrameClock(WallClock t0, uint64_t f0)
         : m_t0(t0)
         , m_f0(f0)
@@ -99,11 +106,14 @@ public:
 
     WallClock timestamp(uint64_t frame) const;
 
-    //  While mGBA runs free (no GRANT pacing yet), its clock drifts against
-    //  the app's and stops while it is paused. If "frame" maps more than
-    //  "max_drift" away from "now", re-anchors at (now, frame) and returns
-    //  true.
-    bool resync(WallClock now, uint64_t frame, WallDuration max_drift);
+    //  The stamp for "frame", read from the bridge at "now". While mGBA runs
+    //  free (no GRANT pacing yet), its clock drifts against the app's and
+    //  stops while it is paused, so the clock re-anchors at (now, frame)
+    //  when "frame" maps after "now" (mGBA running ahead: a frame cannot be
+    //  stamped later than it was read) or more than "max_lag" before it
+    //  (mGBA paused or slow). Stamps never go backwards: a frame that maps
+    //  before the previous stamp (a LOAD) gets the previous stamp.
+    Stamp stamp(WallClock now, uint64_t frame, WallDuration max_lag);
 
     WallClock anchor_time() const{
         return m_t0;
@@ -115,8 +125,8 @@ public:
 private:
     WallClock m_t0;
     uint64_t m_f0;
+    std::optional<WallClock> m_last_stamp;
 };
-
 
 
 }  // namespace MgbaLink

@@ -8,6 +8,7 @@
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
+#include "CommonFramework/StaticGlobals.h"
 
 #include "Sources/VideoSource_Null.h"
 #include "Sources/VideoSource_StillImage.h"
@@ -147,7 +148,9 @@ void VideoSourceOption::load_json(const JsonValue& json){
 
         load_cached_descriptor<VideoSourceDescriptor_StillImage>(m_descriptor_cache, *obj, VideoSourceType::StillImage);
         load_cached_descriptor<VideoSourceDescriptor_Camera>(m_descriptor_cache, *obj, VideoSourceType::Camera);
-        load_cached_descriptor<VideoSourceDescriptor_MgbaLink>(m_descriptor_cache, *obj, VideoSourceType::MgbaLink);
+        if (STATIC_GLOBALS.DEVELOPER_MODE){
+            load_cached_descriptor<VideoSourceDescriptor_MgbaLink>(m_descriptor_cache, *obj, VideoSourceType::MgbaLink);
+        }
 
         auto iter = m_descriptor_cache.find(VIDEO_TYPE_STRINGS.get_enum(*type, VideoSourceType::None));
         if (iter == m_descriptor_cache.end()){

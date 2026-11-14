@@ -6,7 +6,9 @@
  *  lab/mgba/PROTOCOL.md on the fork's agents branch). Every command is one
  *  line and gets exactly one reply line; commands from several threads are
  *  serialized. The bridge holds one client at a time, so the destructor
- *  always says BYE, which also releases every key and grant it holds.
+ *  says BYE, which also releases every key and grant it holds (unless the
+ *  connection was aborted: then it only closes the socket, which the bridge
+ *  treats the same way).
  *
  *  Qt-free. The socket's receive thread comes from the thread pool passed in.
  *
@@ -33,24 +35,31 @@ namespace MgbaLink{
 
 
 //  A synchronous MgbaLink v1 client: open(), then one command at a time.
-class MgbaLink_Connection final : private AbstractClientSocket::Listener{
+class Connection final : private AbstractClientSocket::Listener{
 public:
-    MgbaLink_Connection(
+    Connection(
         Logger& logger,
         ThreadPool& thread_pool,
         std::string host,
         uint16_t port,
         std::chrono::milliseconds timeout = std::chrono::seconds(5)
     );
-    ~MgbaLink_Connection();
+    ~Connection();
 
     //  Connects and says "HELLO 1". Throws ConnectionException if the bridge
-    //  cannot be reached, refuses the client ("ERR busy") or replies with
-    //  anything but a v1 HELLO.
+    //  cannot be reached, refuses the client ("ERR busy"), replies with
+    //  anything but a v1 HELLO, or the connection is aborted. Call it once
+    //  per object (a second call throws InternalProgramError); to reconnect,
+    //  make a new Connection.
     HelloReply open();
 
     //  Sends "BYE" (best effort) and closes. Safe to call more than once.
     void close() noexcept;
+
+    //  Ends the connection without waiting for the bridge: open() or a
+    //  command in progress throws ConnectionException at once, as does every
+    //  later one, and close() skips BYE. Safe to call from any thread.
+    void abort() noexcept;
 
     //  Sends one command line and returns its reply line. Throws
     //  ConnectionException on a timeout, a lost connection or an "ERR" reply.
@@ -86,6 +95,8 @@ private:
     ConditionVariable m_cv;
     std::optional<std::string> m_connect_error;
     std::optional<std::string> m_disconnect_error;
+    bool m_opened = false;
+    bool m_aborted = false;
     LineSplitter m_splitter;
     std::deque<std::string> m_replies;
 
