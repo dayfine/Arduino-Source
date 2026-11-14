@@ -280,9 +280,9 @@ jobs:
         uses: actions/checkout@v7
         if: inputs.run-tests
         with:
-          # Complete fork fixtures include pending FRLG image submissions.
+          # The fork's fixtures: upstream's, the SystemKeyboardDetector screenshots and pending FRLG image submissions.
           repository: 'dayfine/CommandLineTests'
-          ref: 'd150a6c547434110a920f95ba7857b93d5bb9222'
+          ref: '3a6708327b225e71a329d77d8d067305ea4058d2'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded
