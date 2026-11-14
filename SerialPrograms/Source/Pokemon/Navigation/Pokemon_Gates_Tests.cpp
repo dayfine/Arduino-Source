@@ -224,6 +224,35 @@ UnitTestResult test_gate_errors(){
     return true;
 }
 
+//  A quiz door (Cinnabar Gym) parses, is a wall until the story opens it,
+//  and is never opened by facing it, as a card-key door is.
+UnitTestResult test_quiz_door_gate(){
+    const std::string text = R"({
+        "format": "pokesim-runtime-map/2", "name": "T",
+        "source": {"decomp_file": "x", "revision": "y", "date": "z"},
+        "tiles": ["...", "GG.", "..."], "points": {}, "warps": [], "connections": [],
+        "gates": {"door_1": {"tiles": [[0, 1], [1, 1]], "open_glyph": ".", "new_game": "closed",
+                             "opens_by": "quiz_answer", "flag": "FLAG_CINNABAR_GYM_QUIZ_1"}}
+    })";
+    const MapData map = parse_map(parse_json(text), "T.json");
+    const auto door = map.gates.find("door_1");
+    if (door == map.gates.end() || door->second.kind != GateKind::QUIZ_ANSWER || door->second.flag != "FLAG_CINNABAR_GYM_QUIZ_1"){
+        return "Expected door_1, a quiz door with its flag.";
+    }
+    GateState state;
+    if (resolved_tile(map, TilePos{0, 1}, state) != TileKind::WALL){
+        return "A shut quiz door is not a wall.";
+    }
+    if (closed_card_key_gate_faced(map, TilePos{0, 0}, Direction::SOUTH, state) != nullptr){
+        return "A quiz door is opened by facing it.";
+    }
+    state.opened.insert(gate_key("T", "door_1"));
+    if (resolved_tile(map, TilePos{1, 1}, state) != TileKind::OPEN){
+        return "An opened quiz door is not floor.";
+    }
+    return true;
+}
+
 
 //  State and tiles
 
@@ -429,6 +458,10 @@ private:
 };
 
 const GatesTestCase GATES_CASES[] = {
+    {
+        .input = {.name = "reads quiz doors", .test = test_quiz_door_gate},
+        .expectation = {.description = "a wall until opened by the story, never by facing it"},
+    },
     {
         .input = {.name = "reads card-key doors", .test = test_reads_card_key_doors},
         .expectation = {.description = "Silph 5F doors parse with tiles, flag, open glyph"},

@@ -24,6 +24,7 @@ namespace Pokemon{
 enum class GateKind{
     CARD_KEY,   //  "card_key_face_a": faced from a side tile and opened with A, once the player holds the Card Key
     SWITCH,     //  a switch's state (MapSwitch): open while the switch is `open_when_on`
+    QUIZ_ANSWER,    //  "quiz_answer": opened by the right answer at a quiz machine (Cinnabar Gym), never by a press on the gate
 };
 
 //  A barrier the story opens or closes: some tiles of the map that are `G`
@@ -35,7 +36,7 @@ struct MapGate{
     //  Whether a new game has it open.
     bool open_at_new_game = false;
     GateKind kind = GateKind::CARD_KEY;
-    //  CARD_KEY: the event flag the game sets once it is opened.
+    //  CARD_KEY, QUIZ_ANSWER: the event flag the game sets once it is opened.
     std::string flag = {};
     //  SWITCH: the switch (a key of MapData::switches, shared by the
     //  maps in its `floors`), and the state in which this gate is open.

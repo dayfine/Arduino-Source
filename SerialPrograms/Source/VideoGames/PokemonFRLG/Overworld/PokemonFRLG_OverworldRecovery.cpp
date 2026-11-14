@@ -301,7 +301,7 @@ public:
             const std::optional<TrainerCrossing> crossing = m_next >= m_holds ? crossing_here(step) : std::nullopt;
             report_progress(step);
             const StepOutcome outcome = judge_movement(step, m_steps.walk(step, m_facing, crossing));
-            m_on_caller_start = false;
+            m_leg_from_caller_start = std::exchange(m_on_caller_start, false);
             if (is_gate_step(step)){
                 if (!after_gate(step, outcome)){
                     return;
@@ -872,11 +872,12 @@ private:
             m_lines.plan(std::nullopt, m_plan);
             return true;
         }
-        //  Only one tile: the player stands there, still facing the leg's
-        //  way (also after a trainer walked up: Camper Liam, console B,
-        //  2026-11-01).
+        //  Only one tile: the player stands there, still facing the leg's way (also after a trainer walked up: Camper
+        //  Liam, console B, 2026-11-01). The given start of a leg that moved nothing is unseen (14.04b, 2026-11-14 12:44).
         if (candidates[0].trainer){
             m_lines.trainer_stopped(step, anchor->found);
+        }else if (m_leg_from_caller_start && walked.max == 0){
+            m_calls.log(std::format("Route: {} moved nothing: taken as still on {}, the route's given start, unconfirmed.", to_string(step), to_string(anchor->found)));
         }else{
             m_lines.found(anchor->found, 0);
         }
@@ -903,6 +904,7 @@ private:
     //  Nothing walked yet: the player is on the caller's start, as far as
     //  the caller knows.
     bool m_on_caller_start = false;
+    bool m_leg_from_caller_start = false;   //  the leg walked last started on the caller's start
     size_t m_next = 0;
     size_t m_stops = 0;
     size_t m_holds = 0;     //  of the plan, holds to walls that find the player

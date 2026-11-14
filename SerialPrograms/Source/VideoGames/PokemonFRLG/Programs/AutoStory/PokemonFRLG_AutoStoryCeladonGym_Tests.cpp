@@ -15,6 +15,7 @@
  */
 
 #include <algorithm>
+#include <cstdint>
 #include <format>
 #include <functional>
 #include <optional>
@@ -271,6 +272,49 @@ UnitTestResult test_gym_door_after_drifted_hold(int drift){
     return true;
 }
 
+//  14.04b's onto_column_2 and column_2_to_wall on a sim of the gym after
+//  Erika's win, from the wall (1, 10) facing south, where
+//  column_1_down_to_wall leaves the player. Console B, 2026-11-14 12:44:
+//  the tree (1, 11) hid the player's sprite, so the taps leg read no facing,
+//  and its one tap east only turned the player but read as a step; the leg
+//  took the player as on (2, 10), and the hold south from (1, 10) met the
+//  tree and "moved nothing twice". A taps leg from facing another way turns
+//  first, as a held leg does.
+UnitTestResult test_column_2_after_hidden_turn(){
+    const StoryCheckpoint& row = checkpoint("14.04b");
+    SimScript script;
+    script.hidden_facing_reads = SIZE_MAX;
+    script.seen_turn_taps = {1};
+    std::vector<MapData> maps = story_maps();
+    for (MapData& map : maps){
+        for (MapObject& object : map.objects){
+            if (map.name == GYM){
+                object.trainer.reset();
+            }
+        }
+    }
+    StoryPose at{GYM, {1, 10}, Direction::SOUTH};
+    OverworldSim sim(std::move(maps), MapPosition{at.map, at.tile}, *at.facing, script);
+    bool started = false;
+    for (const StoryStep& step : row.steps){
+        started = started || step.name == "onto_column_2";
+        if (!started){
+            continue;
+        }
+        if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
+            return std::format("14.04b: ended on {}; {}", to_string(sim.state().position), failure);
+        }
+        if (step.name == "column_2_to_wall"){
+            break;
+        }
+    }
+    const MapPosition wall{GYM, {2, 18}};
+    if (!(sim.state().position == wall)){
+        return std::format("14.04b: ended on {}, not at the wall {}.", to_string(sim.state().position), to_string(wall));
+    }
+    return true;
+}
+
 //  The lead as pokeguy brings it to Erika, without the Blizzard he
 //  teaches there (left out: no TM spent without the user): Surf, Water
 //  Pulse, Bite, Mega Kick. Against Tamia's, Lori's and Erika's Grass
@@ -384,6 +428,10 @@ const AutoStoryCeladonGymCase AUTO_STORY_CELADON_GYM_CASES[] = {
             return test_gym_door_after_drifted_hold(-1);
         }},
         .expectation = {.description = "ends below Tamia's line (2, 11): the hold's wall check finds the tile short, and taps reach the door's column"},
+    },
+    {
+        .input = {.name = "14.04b onto column 2 from the wall, the facing hidden and the turn read as a step", .body = test_column_2_after_hidden_turn},
+        .expectation = {.description = "the taps leg turns first, steps onto (2, 10), and column 2 is walked to the wall (2, 18)"},
     },
     {
         .input = {.name = "the lead's attacks against Celadon Gym", .body = test_lead_moves_against_grass},

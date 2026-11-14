@@ -515,6 +515,22 @@ private:
     InferenceSession m_session;
 };
 
+//  A taps leg from facing another way turns first, with a turn tap checked
+//  by the facing on screen, as a held leg does (walk_hold_step()): its
+//  first step tap would only turn the player, and where the sprite can't
+//  be read the screen check may take the turn for a step. Console B,
+//  2026-11-14 12:44, 14.04b onto_column_2: from the wall (1, 10) facing
+//  south, the tree below hid the sprite and the one tap east read as a
+//  step; the hold south after it met the tree.
+void turn_before_taps(
+    ConsoleHandle& console, ProControllerContext& context,
+    const RouteStep& step, const StepStart& from, MoveSpeed speed, PlayerGender player
+){
+    if (turns_first(step, speed, from.facing)){
+        turn_to(console, context, step.direction, player, TurnSprite::WALKING, from.at, UnreadTurn::then_for(step));
+    }
+}
+
 //  walk_step(), then a watch for what its last step set off. Not DONE if
 //  the player may have stopped short of the step's end: an open leg
 //  stopped, or something seen after the hold, which may have stopped it
@@ -536,6 +552,7 @@ StepOutcome walk_and_watch(
     const LegRecorder recorder(console, context, interrupts, step);
     StepWalk walked;
     if (counts_step_taps(step)){
+        turn_before_taps(console, context, step, from, speed, player);
         walked = walk_step_taps(console, context, step, interrupts, player);
     }else if (counts_bike_taps(step, speed)){
         walked = walk_bike_taps(console, context, step, interrupts, player);
