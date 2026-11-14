@@ -56,6 +56,10 @@ struct StoryFileReader{
     //  Whether the game plays checkpoint `a` before `b`, when that is not
     //  the order of its files' names. None set: file-name order.
     std::function<bool(const Checkpoint& a, const Checkpoint& b)> plays_before = {};
+    //  Whether the game's story order lists checkpoint `id`: a file whose
+    //  id it does not list is refused, not skipped or played out of place.
+    //  None set: the game keeps no list, and every id plays.
+    std::function<bool(std::string_view id)> in_story_order = {};
 };
 
 
@@ -63,8 +67,9 @@ struct StoryFileReader{
 //  the game's (StoryFileReader::plays_before), each of `dev_files` in place
 //  of the built-in file of its name. Throws ParseException naming the file
 //  when a file does not parse, a dev file matches no built-in file, changes
-//  its checkpoint's id or fails the game's lint, or a row reloads a save it
-//  cannot count on in the order the story plays.
+//  its checkpoint's id or fails the game's lint, a file's checkpoint id is
+//  not in the game's story order (StoryFileReader::in_story_order), or a
+//  row reloads a save it cannot count on in the order the story plays.
 template <typename Checkpoint>
 StoryData<Checkpoint> load_story_data(
     std::span<const EmbeddedJsonFile> builtin, std::span<const StoryDevFile> dev_files,
@@ -102,6 +107,12 @@ ParseException naming_path(const ParseException& error, std::string_view path);
 //  is not the built-in file's `builtin_id`, or `problems` is not empty.
 void check_dev_checkpoint(
     std::string_view path, std::string_view id, std::string_view builtin_id, const std::vector<std::string>& problems
+);
+
+//  Throws ParseException naming `source` and `id` when `in_story_order`
+//  is set and does not list `id`.
+void check_in_story_order(
+    const std::function<bool(std::string_view id)>& in_story_order, std::string_view id, std::string_view source
 );
 
 //  Whether a row starts from a save, which a reload can load.
@@ -162,6 +173,9 @@ StoryData<Checkpoint> load_story_data(
         }
         rows.push_back({detail::read_dev_file(*dev, text, name, reader), dev->path});
         data.dev_files.emplace_back(dev->name, dev->path);
+    }
+    for (const auto& [row, source] : rows){
+        detail::check_in_story_order(reader.in_story_order, row.checkpoint.id, source);
     }
     if (reader.plays_before){
         std::stable_sort(rows.begin(), rows.end(), [&](const SourcedRow& a, const SourcedRow& b){

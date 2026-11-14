@@ -19,6 +19,7 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActions.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 
 namespace PokemonAutomation{
@@ -31,6 +32,7 @@ using Pokemon::Direction;
 
 PlzaConsoleBackend::PlzaConsoleBackend(StoryEnv& env)
     : m_env(env)
+    , m_home(env.env.console, COLOR_RED)
 {}
 
 void PlzaConsoleBackend::press(Button button, Milliseconds hold, Milliseconds release){
@@ -58,7 +60,9 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
     m_env.context.wait_for_all_requests();
     VideoSnapshot frame = m_env.env.console.video().snapshot();
     Pokemon::Observation<Pokemon::ZonePose> look;
-    if (frame){
+    if (frame && m_home.detect(*frame.frame)){
+        look.events.set(PokemonAutomation::ScreenEvent::SWITCH_HOME_MENU, true);
+    }else if (frame){
         static_cast<ScreenObservation&>(look) = Pokemon::screen_observation(m_observer.read(*frame.frame));
         if (m_platform.detect(*frame.frame)){
             look.readings[std::string(PLATFORM_READING)] = 1;
@@ -79,6 +83,9 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
             look.readings[std::string(MISSION_COMPLETE_READING)] = 1;
         }else if (m_mission_banner.detect(*frame.frame)){
             look.readings[std::string(MISSION_BANNER_READING)] = 1;
+        }
+        if (tutorial_card_shows(*frame.frame)){
+            look.readings[std::string(TUTORIAL_CARD_READING)] = 1;
         }
         if (same_screen(m_previous, frame)){
             look.events.set(PokemonAutomation::ScreenEvent::SCREEN_STILL, true);
@@ -124,6 +131,9 @@ std::string look_text(const ScreenObservation& look){
     }
     if (look.readings.contains(MISSION_COMPLETE_READING)){
         text += "+mission_complete";
+    }
+    if (look.readings.contains(TUTORIAL_CARD_READING)){
+        text += "+tutorial_card";
     }
     return text;
 }

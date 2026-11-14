@@ -24,6 +24,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
@@ -113,14 +114,16 @@ public:
     virtual void hold(Pokemon::Direction direction, Milliseconds duration, Pokemon::StoryPace pace) override;
     virtual void stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace pace) override;
     virtual void wait(Milliseconds duration) override;
-    //  Once the inputs are done: PlzaScreenObserver's events on a frame
+    //  Once the inputs are done: SWITCH_HOME_MENU alone on the Switch's
+    //  HOME (PLZA's detectors may read its plain screen as the overworld);
+    //  else PlzaScreenObserver's events on a frame
     //  (Pokemon::screen_observation()), STILL when it barely differs from the frame
     //  of the look before, and the readings PLATFORM_READING,
     //  SKIP_PROMPT_READING, AUTOSAVE_READING, CONTROLS_HINT_READING,
     //  ADVANCE_ARROW_READING, MISSION_BANNER_READING and
     //  MISSION_COMPLETE_READING (which wins over the banner: the card has
-    //  the banner's bar). Logs each appearance of the autosave badge
-    //  (AutosaveSpots).
+    //  the banner's bar), and TUTORIAL_CARD_READING. Logs each appearance
+    //  of the autosave badge (AutosaveSpots).
     virtual Pokemon::Observation<Pokemon::ZonePose> observe() override;
     //  fight_battle() with the run's battle AI; a failure is an Outcome.
     virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs& args) override;
@@ -129,6 +132,7 @@ public:
 
 private:
     StoryEnv& m_env;
+    HomeMenuDetector m_home;
     PlzaScreenObserver m_observer;
     PlatformArrivalDetector m_platform;
     SkipPromptDetector m_skip_prompt;

@@ -17,13 +17,11 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
-#include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
-#include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h"
-#include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryLaunch.h"
 #include "VideoGames/PokemonLZA/Resources/PokemonLZA_Locations.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActions.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatches.h"
@@ -33,6 +31,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMoves.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
+#include "PokemonLZA_AutoStoryLaunch.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryStepValidator.h"
 #include "PokemonLZA_AutoStoryGame.h"
@@ -71,13 +70,14 @@ using ConsoleBody = std::function<void(StoryEnv& env, const StoryActionArgs& arg
 //  call on the console, with no args.
 using ConsoleStep = void (*)(StoryEnv& env);
 
-//  Resets the game from HOME onto `save`.
-Outcome reload_save(StoryEnv& env, StartSave save){
-    go_home(env.env.console, env.context);
-    if (!reset_game_from_home(env.env, env.env.console, env.context, save == StartSave::BACKUP)){
-        return Pokemon::outcome_failed("reload_failed", "Failed to reset the game from HOME.");
-    }
-    return Pokemon::outcome_ok();
+//  The game closed and launched again from HOME onto `save`, by the shared
+//  launch; fails as Pokemon::STORY_LAUNCH_FAILED.
+Outcome reload_save(StoryEnv& env, Pokemon::StoryBackend<ZonePose>& backend, StartSave save){
+    const Pokemon::StoryLaunchRequest request{
+        .save = save == StartSave::BACKUP ? Pokemon::StoryLaunchRequest::Save::BACKUP : Pokemon::StoryLaunchRequest::Save::LATEST,
+        .running = Pokemon::StoryLaunchRequest::Running::RESTART,
+    };
+    return Pokemon::launch_story_game(backend, plza_launch_policy(env.env.console), request);
 }
 
 //  The GAME actions that are one ConsoleStep each, by name: console_only.
@@ -86,18 +86,10 @@ const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
         {"confirm_new_game", [](StoryEnv& env){ confirm_new_game_choices(env.env.console, env.context); }},
         {"choose_0", [](StoryEnv& env){ choose_dialog_option(env.env.console, env.context, 0); }},
         {"choose_1", [](StoryEnv& env){ choose_dialog_option(env.env.console, env.context, 1); }},
-        {"story_battle_start", [](StoryEnv& env){
-            mash_scene(env.env.console, env.context, SceneMashGoal::BATTLE, BUTTON_A, 90s);
-        }},
         {"story_battle", [](StoryEnv& env){
             fight_battle_in_progress(env.env, env.env.console, env.context, env.battle_ai, 120s);
         }},
         {"talk_through_map_screen", [](StoryEnv& env){ talk_through_map_screen(env.env.console, env.context); }},
-        //  B through the talk closes the Pokedex entry (A only plays its
-        //  motions).
-        {"talk_to_pokedex_screen", [](StoryEnv& env){
-            mash_scene(env.env.console, env.context, SceneMashGoal::OVERWORLD, BUTTON_B, 90s);
-        }},
         {"climb_ladder", [](StoryEnv& env){ climb_ladder(env.env.console, env.context); }},
         {"catch_tutorial", [](StoryEnv& env){ catch_tutorial(env.env, env.env.console, env.context, env.battle_ai, 6); }},
         {"battle_then_catch", [](StoryEnv& env){
@@ -109,18 +101,6 @@ const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
         {"fly_to_center_or_stay", [](StoryEnv& env){ fly_to_or_stay(env.env.console, env.context, env.language, Location::VERT_POKEMON_CENTER); }},
         {"walk_to_zone_1_start", [](StoryEnv& env){ walk_to_zone_1_start(env.env.console, env.context); }},
         {"claim_mable_research_reward", [](StoryEnv& env){ claim_mable_research_reward(env.env.console, env.context); }},
-        //  For reruns in the lab: the title screen's Up + B + X loads the save
-        //  before the last one, as a catch's autosave moves the save past a
-        //  checkpoint's start (03.08, console B 2026-11-10).
-        {"load_backup_save", [](StoryEnv& env){
-            if (!reload_save(env, StartSave::BACKUP).succeeded()){
-                OperationFailedExceptionWithScreenshot::fire(
-                    ErrorReportMode::SEND_ERROR_REPORT,
-                    "load_backup_save: failed to reset the game from HOME.",
-                    env.env.console
-                );
-            }
-        }},
     };
     return actions;
 }
@@ -246,6 +226,19 @@ public:
                 ))(backend, call, state);
             }
             return walk_legs(backend, call, story_walk_move(call.args, key), heading);
+        };
+    }
+
+    //  "load_backup_save", for reruns in the lab: the title screen's Up +
+    //  B + X loads the save before the last one, as a catch's autosave moves
+    //  the save past a checkpoint's start (03.08, console B 2026-11-10).
+    Handler load_backup_save() const{
+        if (m_env == nullptr){
+            return console("load_backup_save", {});
+        }
+        StoryEnv& env = *m_env;
+        return [&env](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+            return reload_save(env, backend, StartSave::BACKUP);
         };
     }
 
@@ -448,6 +441,7 @@ const std::map<std::string, HandlerOf, std::less<>>& story_game_actions(){
     static const std::map<std::string, HandlerOf, std::less<>> actions{
         {"walk", [](const PlzaHandlers& handlers){ return handlers.walk(); }},
         {"approach_starter", [](const PlzaHandlers& handlers){ return handlers.approach_starter(); }},
+        {"load_backup_save", [](const PlzaHandlers& handlers){ return handlers.load_backup_save(); }},
         {"mash_to_move_hints", [](const PlzaHandlers&){ return PlzaHandlers::move_hints(); }},
         {"text_to_choice", [](const PlzaHandlers&){ return PlzaHandlers::text_to_choice(); }},
         {"wait_for_platform", [](const PlzaHandlers&){ return platform_handler(PlatformWait::PLATFORM_ONLY); }},
@@ -455,6 +449,18 @@ const std::map<std::string, HandlerOf, std::less<>>& story_game_actions(){
         {"walk_to_prompt", [](const PlzaHandlers&){
             return Handler([](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
                 return walk_to_prompt(backend, Milliseconds(Pokemon::story_arg<int64_t>(call.args, "timeout_ms")));
+            });
+        }},
+        {"story_battle_start", [](const PlzaHandlers&){
+            return Handler([](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+                return mash_scene(backend, SceneMashGoal::BATTLE, BUTTON_A, 90s);
+            });
+        }},
+        //  B through the talk closes the Pokedex entry (A only plays its
+        //  motions).
+        {"talk_to_pokedex_screen", [](const PlzaHandlers&){
+            return Handler([](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+                return mash_scene(backend, SceneMashGoal::OVERWORLD, BUTTON_B, 90s);
             });
         }},
     };
@@ -512,9 +518,9 @@ Handler plza_handler(const PlzaHandlers& handlers, const StoryActionSpec& spec){
         });
     case StoryStepKind::MASH:{
         const Button button = name == "a" ? BUTTON_A : BUTTON_B;
-        return handlers.console(name, [button](StoryEnv& env, const StoryActionArgs&){
-            mash_story_scene(env.env.console, env.context, button);
-        });
+        return [button](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+            return mash_story_scene(backend, button);
+        };
     }
     default:
         return game_handler(handlers, name);
@@ -544,6 +550,20 @@ Pokemon::StoryGame<ZonePose> plza_game_actions(StoryEnv* env, StarterChoice star
         game.actions.push_back({.spec = std::move(spec), .handler = std::move(handler)});
     }
     return game;
+}
+
+//  The specs of the console-only GAME actions: each ConsoleStep,
+//  load_backup_save, and the scene mashes that read the console's tutorial
+//  cards (TUTORIAL_CARD_READING).
+std::vector<StoryActionSpec> console_game_specs(){
+    std::vector<StoryActionSpec> specs;
+    for (const auto& [name, step] : console_game_actions()){
+        specs.push_back(console_only(game_spec(name)));
+    }
+    specs.push_back(console_only(game_spec("load_backup_save")));
+    specs.push_back(console_only(game_spec("story_battle_start")));
+    specs.push_back(console_only(game_spec("talk_to_pokedex_screen")));
+    return specs;
 }
 
 } // namespace
@@ -589,8 +609,8 @@ std::vector<StoryActionSpec> plza_story_action_specs(){
             optional_ms("timeout_ms", 240000, "no autosave and platform this long fails the step"),
         }),
     };
-    for (const auto& [name, step] : console_game_actions()){
-        specs.push_back(console_only(game_spec(name)));
+    for (StoryActionSpec& spec : console_game_specs()){
+        specs.push_back(std::move(spec));
     }
     specs.push_back(walk_spec());
     specs.push_back(approach_starter_spec());
@@ -657,8 +677,8 @@ Pokemon::StoryGame<ZonePose> make_plza_story_game(
         }
         return Pokemon::outcome_ok();
     };
-    game.reload = [&env](Pokemon::StoryBackend<ZonePose>&){
-        return reload_save(env, StartSave::LATEST);
+    game.reload = [&env](Pokemon::StoryBackend<ZonePose>& backend){
+        return reload_save(env, backend, StartSave::LATEST);
     };
     return game;
 }
@@ -723,7 +743,7 @@ Outcome load_checkpoint_start(StoryEnv& env, Pokemon::StoryBackend<ZonePose>& ba
         }
         const StartSave save = action == StartLoadAction::LOAD_BACKUP ? StartSave::BACKUP : StartSave::LATEST;
         backend.log(std::format("[Save] {}: loading {}", row, start_save_name(save)));
-        const Outcome loaded = reload_save(env, save);
+        const Outcome loaded = reload_save(env, backend, save);
         if (!loaded.succeeded()){
             return loaded;
         }

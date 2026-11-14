@@ -90,8 +90,8 @@ UnitTestResult test_story_walks_read(Logger&){
             }
         }
     }
-    if (walks != 26){
-        return std::format("Expected the 26 walks, found {}.", walks);
+    if (walks != 29){
+        return std::format("Expected the 29 walks, found {}.", walks);
     }
     const StoryStep* plaza = find_step(story_checkpoints(), "01.01", "platform_to_plaza");
     if (plaza == nullptr){
@@ -257,7 +257,6 @@ UnitTestResult test_every_row_ready(Logger&){
     return true;
 }
 
-//  scene_mash_action() on each kind of frame.
 //  A scene step's start window: a box, a choice or a battle within it
 //  starts the scene; fades and quiet frames alone (02.02's street missed
 //  after the Brigitte battle, console B, 2026-11-13) fail at its end, not
@@ -283,33 +282,84 @@ UnitTestResult test_scene_start_window(Logger&){
     return true;
 }
 
+//  SceneMash on each kind of frame, as a first look.
 UnitTestResult test_scene_mash_rule(Logger&){
     struct Case{
         std::string_view name;
         ScreenEvents events;
         SceneMashGoal goal;
-        bool text_b;
+        Button text_button;
         SceneMashAction expected;
     };
     const Case cases[] = {
-        {"box, A mash", {ScreenEvent::DIALOG_BOX}, SceneMashGoal::OVERWORLD, false, SceneMashAction::PRESS_TEXT},
-        {"box, B mash", {ScreenEvent::DIALOG_BOX}, SceneMashGoal::OVERWORLD, true, SceneMashAction::PRESS_TEXT},
-        {"choice takes the top", {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, SceneMashGoal::OVERWORLD, true, SceneMashAction::PRESS_A},
-        {"choice is the goal", {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, SceneMashGoal::CHOICE, true, SceneMashAction::DONE},
-        {"party bar", {ScreenEvent::PLAYER_CAN_MOVE}, SceneMashGoal::OVERWORLD, false, SceneMashAction::DONE},
-        {"party bar, not the goal", {ScreenEvent::PLAYER_CAN_MOVE}, SceneMashGoal::BATTLE, false, SceneMashAction::PRESS_A},
-        {"black fade waits", {ScreenEvent::FADE_BLACK}, SceneMashGoal::BATTLE, false, SceneMashAction::WAIT},
-        {"white fade waits", {ScreenEvent::FADE_WHITE}, SceneMashGoal::OVERWORLD, true, SceneMashAction::WAIT},
-        {"battle HUD", {ScreenEvent::BATTLE_STARTED}, SceneMashGoal::BATTLE, false, SceneMashAction::DONE},
-        {"card before a battle", {}, SceneMashGoal::BATTLE, false, SceneMashAction::PRESS_A},
-        {"quiet, A mash", {}, SceneMashGoal::OVERWORLD, false, SceneMashAction::WAIT},
-        {"quiet, B mash (map, Pokedex)", {}, SceneMashGoal::OVERWORLD, true, SceneMashAction::PRESS_B},
-        {"prompt alone, A mash", {ScreenEvent::INTERACT_PROMPT}, SceneMashGoal::OVERWORLD, false, SceneMashAction::WAIT},
+        {"box, A mash", {ScreenEvent::DIALOG_BOX}, SceneMashGoal::OVERWORLD, BUTTON_A, SceneMashAction::PRESS_TEXT},
+        {"box, B mash", {ScreenEvent::DIALOG_BOX}, SceneMashGoal::OVERWORLD, BUTTON_B, SceneMashAction::PRESS_TEXT},
+        {"choice takes the top", {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, SceneMashGoal::OVERWORLD, BUTTON_B, SceneMashAction::PRESS_A},
+        {"choice is the goal", {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, SceneMashGoal::CHOICE, BUTTON_B, SceneMashAction::DONE},
+        {"party bar, not held yet", {ScreenEvent::PLAYER_CAN_MOVE}, SceneMashGoal::OVERWORLD, BUTTON_A, SceneMashAction::WAIT},
+        {"party bar, not held yet, B mash", {ScreenEvent::PLAYER_CAN_MOVE}, SceneMashGoal::OVERWORLD, BUTTON_B, SceneMashAction::WAIT},
+        //  The party bar with a box or a choice is mid-scene: the box gets the
+        //  text button and the choice A (the old rule waited on the party bar).
+        {"party bar with a box", {ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, SceneMashGoal::OVERWORLD, BUTTON_B, SceneMashAction::PRESS_TEXT},
+        {"party bar with a choice", {ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, SceneMashGoal::OVERWORLD, BUTTON_A, SceneMashAction::PRESS_A},
+        {"party bar, not the goal", {ScreenEvent::PLAYER_CAN_MOVE}, SceneMashGoal::BATTLE, BUTTON_A, SceneMashAction::PRESS_A},
+        {"black fade waits", {ScreenEvent::FADE_BLACK}, SceneMashGoal::BATTLE, BUTTON_A, SceneMashAction::WAIT},
+        {"white fade waits", {ScreenEvent::FADE_WHITE}, SceneMashGoal::OVERWORLD, BUTTON_B, SceneMashAction::WAIT},
+        {"battle HUD", {ScreenEvent::BATTLE_STARTED}, SceneMashGoal::BATTLE, BUTTON_A, SceneMashAction::DONE},
+        {"card before a battle", {}, SceneMashGoal::BATTLE, BUTTON_A, SceneMashAction::PRESS_A},
+        {"quiet, A mash", {}, SceneMashGoal::OVERWORLD, BUTTON_A, SceneMashAction::WAIT},
+        {"quiet, B mash (map, Pokedex)", {}, SceneMashGoal::OVERWORLD, BUTTON_B, SceneMashAction::PRESS_B},
+        {"prompt alone, A mash", {ScreenEvent::INTERACT_PROMPT}, SceneMashGoal::OVERWORLD, BUTTON_A, SceneMashAction::WAIT},
     };
     for (const Case& item : cases){
-        const SceneMashAction got = scene_mash_action(item.events, item.goal, item.text_b);
+        SceneMash mash(item.goal, item.text_button);
+        const SceneMashAction got = mash.look(item.events, current_time());
         if (got != item.expected){
             return std::format("{}: expected action {}, got {}.", item.name, (int)item.expected, (int)got);
+        }
+    }
+    return true;
+}
+
+//  An OVERWORLD mash ends once the party bar has held OVERWORLD_HOLD
+//  (TalkOver's calm time): a box between lines starts the hold again.
+UnitTestResult test_scene_mash_party_bar_held(Logger&){
+    struct Look{
+        Milliseconds at;
+        ScreenEvents events;
+        SceneMashAction expected;
+    };
+    const ScreenEvents party_bar{ScreenEvent::PLAYER_CAN_MOVE};
+    const Look looks[] = {
+        {Milliseconds(0), party_bar, SceneMashAction::WAIT},
+        {Milliseconds(500), party_bar, SceneMashAction::WAIT},
+        {Milliseconds(600), {ScreenEvent::DIALOG_BOX}, SceneMashAction::PRESS_TEXT},
+        {Milliseconds(700), party_bar, SceneMashAction::WAIT},
+        {Milliseconds(1600), party_bar, SceneMashAction::WAIT},
+        {Milliseconds(1700), party_bar, SceneMashAction::DONE},
+    };
+    const WallClock start = current_time();
+    SceneMash mash(SceneMashGoal::OVERWORLD, BUTTON_A);
+    for (const Look& look : looks){
+        const SceneMashAction got = mash.look(look.events, start + look.at);
+        if (got != look.expected){
+            return std::format("at {} ms: expected action {}, got {}.", look.at.count(), (int)look.expected, (int)got);
+        }
+    }
+    return true;
+}
+
+//  A battle's HUD with the party bar is not the overworld: TalkOver's
+//  BATTLE_STARTED restarts the hold, so an OVERWORLD mash waits through it
+//  and does not end after OVERWORLD_HOLD.
+UnitTestResult test_scene_mash_battle_hud_not_overworld(Logger&){
+    const ScreenEvents battle_hud{ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::BATTLE_STARTED};
+    const WallClock start = current_time();
+    SceneMash mash(SceneMashGoal::OVERWORLD, BUTTON_A);
+    for (Milliseconds at(0); at <= Milliseconds(3000); at += Milliseconds(500)){
+        const SceneMashAction got = mash.look(battle_hud, start + at);
+        if (got != SceneMashAction::WAIT){
+            return std::format("at {} ms: expected action {}, got {}.", at.count(), (int)SceneMashAction::WAIT, (int)got);
         }
     }
     return true;
@@ -561,6 +611,16 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     {
         .name = "Scene mash: what each frame presses",
         .input = {.body = test_scene_mash_rule},
+        .expectation = {},
+    },
+    {
+        .name = "Scene mash: the party bar held a second ends an overworld mash",
+        .input = {.body = test_scene_mash_party_bar_held},
+        .expectation = {},
+    },
+    {
+        .name = "Scene mash: a battle HUD with the party bar does not end an overworld mash",
+        .input = {.body = test_scene_mash_battle_hud_not_overworld},
         .expectation = {},
     },
     {

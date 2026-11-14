@@ -42,6 +42,10 @@ constexpr std::string_view MISSION_BANNER_READING = "scene.mission_banner";
 //  over the mission's yellow bar) shows; it waits for A
 //  (MissionCompleteDetector). A look with it has no MISSION_BANNER_READING.
 constexpr std::string_view MISSION_COMPLETE_READING = "scene.mission_complete";
+//  The reading set to 1 while a tutorial card (or a splash) shows; only A
+//  turns its pages, B does not close it (tutorial_card_shows(),
+//  Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h).
+constexpr std::string_view TUTORIAL_CARD_READING = "scene.tutorial_card";
 
 
 
