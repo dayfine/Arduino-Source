@@ -103,6 +103,7 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryVermilionGym(database);
     add_tests_AutoStoryCeladon(database);
     add_tests_AutoStorySnorlax(database);
+    add_tests_AutoStorySlope(database);
 }
 
 void add_tests(UnitTestDatabase& database){

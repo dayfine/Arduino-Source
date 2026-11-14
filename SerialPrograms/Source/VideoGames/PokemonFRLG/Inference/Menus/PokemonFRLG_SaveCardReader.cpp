@@ -82,6 +82,7 @@ private:
             {"rocket-hideout", "Rocket Hideout"},
             {"pokemon-tower", "Pokemon Tower"},
             {"route-16", "Route 16"},
+            {"fuchsia-city", "Fuchsia City"},
         }){
             JsonArray names;
             names.push_back(std::string(name));
