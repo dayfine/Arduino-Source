@@ -533,6 +533,8 @@ GrassCatches catch_at_stop(
 ){
     GrassCatches out;
     for (int tries = 0; tries < 4 && out.found < new_species_wanted && out.throws < max_throws; tries++){
+        //  Level at the stop's start and after every lock-on and throw.
+        level_camera(console, context);
         if (wild_battle_on(console, context)){
             out += fight_back(env, console, context, battle_ai, max_throws - out.throws);
             continue;
@@ -555,6 +557,7 @@ GrassCatches catch_at_stop(
         }
         out += throw_at_target(env, console, context, battle_ai, max_throws - out.throws);
     }
+    level_camera(console, context);
     return out;
 }
 
