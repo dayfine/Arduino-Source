@@ -79,6 +79,12 @@ const WireCase CASES[] = {
         return expect(step.kind == StoryStepKind::GAME && step.why == "source reason" && step.action == "profile"
             && step.skip_if == std::vector<std::string>{"flag"} && step.pose_after == after, "every shared field read");
     }}},
+    {.input = {.name = "once per save", .json = R"({"id":"heal","kind":"game_action","action":"profile","once_per_save":true})"}, .expectation = {.check = [](const ReadRecord& record){
+        return expect(step_of(record).once_per_save, "a once_per_save step");
+    }}},
+    {.input = {.name = "every time by default", .json = R"({"id":"heal","kind":"game_action","action":"profile"})"}, .expectation = {.check = [](const ReadRecord& record){
+        return expect(!step_of(record).once_per_save, "a step run every time");
+    }}},
     {.input = {.name = "route fills its fallback", .json = R"({"id":"r","kind":"route","args":{"target":{"map":"A","tiles":[[1,2]]}}})"}, .expectation = {.check = [](const ReadRecord& record){
         const StoryActionArgs expected = {{"fight_wild", false}, {"target", GridPose{.map = "A", .tiles = {{1, 2}}, .facing = std::nullopt}}};
         return expect(step_of(record).args == expected, "the target and fight_wild false");

@@ -324,7 +324,9 @@ DeclaredPose read_declared_pose(const JsonValue& value, std::string_view source)
 }
 
 StoryStep read_story_step(const JsonValue& value, std::string_view source, std::span<const StoryActionSpec> actions){
-    const JsonObject& root = fields(value, {"id", "kind", "why", "action", "args", "skip_if", "declared_after"}, source);
+    const JsonObject& root = fields(
+        value, {"id", "kind", "why", "action", "args", "skip_if", "declared_after", "once_per_save"}, source
+    );
     StoryStep result;
     result.name = root.get_string_throw("id");
     if (result.name.empty()){
@@ -343,6 +345,9 @@ StoryStep read_story_step(const JsonValue& value, std::string_view source, std::
     }
     if (const JsonValue* field = root.get_value("declared_after")){
         result.pose_after = read_declared_pose(*field, source);
+    }
+    if (const JsonValue* field = root.get_value("once_per_save")){
+        result.once_per_save = field->to_boolean_throw(std::string(source));
     }
     return result;
 }

@@ -131,6 +131,8 @@ const EngineCase ENGINE_CASES[] = {
     {.name = "failed run never saves", .input = {.phase = "reproduction", .end_map = ""},
      .expectation = {.mode = StorySaveMode::PER_CHECKPOINT, .verdict = CheckpointVerdict::FAILED, .saves = 0,
                      .line = "[Save] 00.31: run failed: not saved"}},
+    {.name = "save step skipped while testing", .input = {.phase = "testing", .steps = SAVE_STEPS},
+     .expectation = {.mode = StorySaveMode::NONE, .saves = 0, .line = "[Save] save step skipped: save mode none"}},
     {.name = "save step skipped while verifying", .input = {.phase = "verification", .steps = SAVE_STEPS},
      .expectation = {.mode = StorySaveMode::AFTER_VERIFICATION, .saves = 1, .line = "[Save] save step skipped: save mode after_verification"}},
     {.name = "save step saves in reproduction", .input = {.phase = "reproduction", .steps = SAVE_STEPS},
