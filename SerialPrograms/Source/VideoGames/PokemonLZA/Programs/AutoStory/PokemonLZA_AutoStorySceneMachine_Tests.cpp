@@ -524,23 +524,28 @@ const SceneMachineCase SCENE_MACHINE_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"02.04 check_in: quiet after the scene is control, before blind A", test_check_in_quiet_is_control},
+        .name = "02.04 check_in: quiet after the scene is control, before blind A",
+        .input = {.body = test_check_in_quiet_is_control},
         .expectation = {},
     },
     {
-        .input = {"the autosave badge, then 5 s with no box, is control", test_autosave_then_quiet_is_control},
+        .name = "the autosave badge, then 5 s with no box, is control",
+        .input = {.body = test_autosave_then_quiet_is_control},
         .expectation = {},
     },
     {
-        .input = {"no autosave badge: no early quiet end", test_no_autosave_no_early_end},
+        .name = "no autosave badge: no early quiet end",
+        .input = {.body = test_no_autosave_no_early_end},
         .expectation = {},
     },
     {
-        .input = {"the autosave log names each badge once, with its event", test_autosave_spots},
+        .name = "the autosave log names each badge once, with its event",
+        .input = {.body = test_autosave_spots},
         .expectation = {},
     },
     {
-        .input = {"without a quiet time a still screen never ends it", test_no_quiet_never_ends_still},
+        .name = "without a quiet time a still screen never ends it",
+        .input = {.body = test_no_quiet_never_ends_still},
         .expectation = {},
     },
     {

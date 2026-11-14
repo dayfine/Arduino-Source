@@ -532,63 +532,78 @@ private:
 
 const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     {
-        .name = "Story table: rows lint against PLZA's engine actions", .input = {test_story_table_lints},
+        .name = "Story table: rows lint against PLZA's engine actions",
+        .input = {.body = test_story_table_lints},
         .expectation = {},
     },
     {
-        .name = "Story table: every walk reads its legs", .input = {test_story_walks_read},
+        .name = "Story table: every walk reads its legs",
+        .input = {.body = test_story_walks_read},
         .expectation = {},
     },
     {
-        .name = "Story table: actions not implemented say what they wait for", .input = {test_not_implemented_actions},
+        .name = "Story table: actions not implemented say what they wait for",
+        .input = {.body = test_not_implemented_actions},
         .expectation = {},
     },
     {
-        .name = "Starters: the walk to Chikorita is recorded", .input = {test_starter_moves},
+        .name = "Starters: the walk to Chikorita is recorded",
+        .input = {.body = test_starter_moves},
         .expectation = {},
     },
     {
-        .name = "Dev checkpoints: replace the built-in file of their name, fail naming the file", .input = {test_dev_override},
+        .name = "Dev checkpoints: replace the built-in file of their name, fail naming the file",
+        .input = {.body = test_dev_override},
         .expectation = {},
     },
     {
-        .name = "Story table: the autosave rows, and 01.03 saves through the menu", .input = {test_autosave_rows},
+        .name = "Story table: the autosave rows, and 01.03 saves through the menu",
+        .input = {.body = test_autosave_rows},
         .expectation = {},
     },
     {
-        .name = "Story table: 03.05 heals at the Pokemon Center and saves there", .input = {test_mm3_heal_row},
+        .name = "Story table: 03.05 heals at the Pokemon Center and saves there",
+        .input = {.body = test_mm3_heal_row},
         .expectation = {},
     },
     {
-        .name = "Story table: every row is ready", .input = {test_every_row_ready},
+        .name = "Story table: every row is ready",
+        .input = {.body = test_every_row_ready},
         .expectation = {},
     },
     {
-        .name = "reload_when_chained: only true, only after an autosave row, never on a new game row", .input = {test_reload_when_chained_field},
+        .name = "reload_when_chained: only true, only after an autosave row, never on a new game row",
+        .input = {.body = test_reload_when_chained_field},
         .expectation = {},
     },
     {
-        .name = "reload_when_chained: 01.02 after 01.01's autosave", .input = {test_mm1_reload_when_chained},
+        .name = "reload_when_chained: 01.02 after 01.01's autosave",
+        .input = {.body = test_mm1_reload_when_chained},
         .expectation = {},
     },
     {
-        .name = "reload_when_chained: \"always\" on 03.04, after 03.03's autosave", .input = {test_0304_reloads_always},
+        .name = "reload_when_chained: \"always\" on 03.04, after 03.03's autosave",
+        .input = {.body = test_0304_reloads_always},
         .expectation = {},
     },
     {
-        .name = "Scene mash: a scene that never starts fails at its start window", .input = {test_scene_start_window},
+        .name = "Scene mash: a scene that never starts fails at its start window",
+        .input = {.body = test_scene_start_window},
         .expectation = {},
     },
     {
-        .name = "Scene mash: what each frame presses", .input = {test_scene_mash_rule},
+        .name = "Scene mash: what each frame presses",
+        .input = {.body = test_scene_mash_rule},
         .expectation = {},
     },
     {
-        .name = "Start checks: 01.00 starts the new game without a save; a run plays every row", .input = {test_new_game_rows},
+        .name = "Start checks: 01.00 starts the new game without a save; a run plays every row",
+        .input = {.body = test_new_game_rows},
         .expectation = {},
     },
     {
-        .name = "Dev-only rows: 03.07d only in Developer Mode, between 03.07 and 03.08", .input = {test_dev_only_rows},
+        .name = "Dev-only rows: 03.07d only in Developer Mode, between 03.07 and 03.08",
+        .input = {.body = test_dev_only_rows},
         .expectation = {},
     },
 };
