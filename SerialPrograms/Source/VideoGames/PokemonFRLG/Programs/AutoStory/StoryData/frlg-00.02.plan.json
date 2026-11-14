@@ -1,0 +1,23 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.02",
+    "title": "bedroom to Pallet Town",
+    "start": {"map": "PalletTown_PlayersHouse_2F", "tiles": [[6, 6]], "facing": "north"},
+    "events": [
+      {
+        "id": "front_door",
+        "kind": "route",
+        "args": {
+          "target": {"map": "PalletTown", "tiles": [[6, 8]]}
+        },
+        "why": "down the stairs and out of the house"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "before_pokemon"
+  },
+  "metadata": {"phase": "testing"}
+}

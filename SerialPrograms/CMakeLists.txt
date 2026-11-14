@@ -236,6 +236,8 @@ pa_embed_text_files(SerialProgramsLib "${FRLG_MAP_RESOURCES}"
     VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h PokemonAutomation::NintendoSwitch::PokemonFRLG overworld_map_json)
 pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonFRLG/Programs/AutoStory/BattleData
     VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleData.h PokemonAutomation::NintendoSwitch::PokemonFRLG autostory_battle_json)
+pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonFRLG/Programs/AutoStory/StoryData
+    VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.h PokemonAutomation::NintendoSwitch::PokemonFRLG autostory_checkpoint_json)
 
 
 # Create binary target
@@ -955,6 +957,7 @@ if(COMMAND_LINE_EXE)
     include(Source/CommandLine/CommandLineExecutable.cmake)
 endif()
 
+include(../devtools/story-export/FRLG.cmake)
 if(PA_PYTHON_BINDINGS)
     # Python bindings (GUI-free) from subdirectory
     include(Source/PythonBindings/PythonBindings.cmake)
