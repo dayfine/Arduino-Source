@@ -1,0 +1,13 @@
+{
+  "about": "lab-B 2026-11-12 18:27-18:42, 01.02: by_the_east_mouth's counted taps went two tiles past the leg's end onto the Gate's east warp, its fade unseen; into_oreburgh then saw no fade and no OreburghCity banner.",
+  "checkpoint": "01.02",
+  "faults": [
+    {"kind": "moved_further", "step": "by_the_east_mouth", "direction": "east", "tiles": 2, "fade": "unseen", "far_pose_of": "into_oreburgh"}
+  ],
+  "failed": {"step": "into_oreburgh", "error": "no_banner"},
+  "frame": "",
+  "evidence": [
+    "[Leg] by_the_east_mouth leg 7: east 3 planned, moved 2, dead_reckoned at (26, 22)",
+    "into_oreburgh: no fade and no OreburghCity banner in 4 taps east"
+  ]
+}

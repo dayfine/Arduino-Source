@@ -231,6 +231,9 @@ add_library(SerialProgramsLib STATIC ${CORE_LIBRARY_SOURCES} ${LIBRARY_SOURCES})
 include(cmake/EmbedTextFiles.cmake)
 pa_embed_text_files(SerialProgramsLib Source/Pokemon/Navigation/TestMaps
     Pokemon/Navigation/Pokemon_NavigationTestMaps.h PokemonAutomation::Pokemon navigation_test_map_json)
+pa_embed_text_files(SerialProgramsLib Source/PokemonBDSP/Programs/AutoStory/Simulation/ConsoleFailures
+    PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_ConsoleFailureData.h
+    PokemonAutomation::NintendoSwitch::PokemonBDSP console_failure_json)
 # Prepared data is validated by the shared publisher tooling. No source-map
 # fallback or network download is performed during configuration.
 set(POKESIM_TOOLS_SOURCE "$ENV{POKESIM_TOOLS_SOURCE}" CACHE PATH "Pinned PokemonSimulation tools checkout")
