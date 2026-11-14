@@ -166,6 +166,47 @@ UnitTestResult test_route_presses_statue(){
 }
 
 
+//  A hall with a statue on its north wall above the fourth column, whose
+//  switch opens the barrier south of the sixth, to a room below. Nothing
+//  stops a leg east on the statue's tile.
+const std::vector<MapData>& statue_hall_maps(){
+    static const std::vector<MapData> MAPS{parse_map(R"({
+        "format": "pokesim-runtime-map/2", "name": "GateStatueHall", "points": {}, "warps": [], "connections": [], "source": {"decomp_file": "", "revision": "test", "date": "2026-11-13"},
+        "tiles": ["##########", "#........#", "#####G####", "#........#", "##########"],
+        "gates": {"barrier_1": {"tiles": [[5, 2]], "open_glyph": ".", "new_game": "closed", "switch": "mansion", "open_when": "on"}},
+        "switches": {"mansion": {"flag": "FLAG_TEST_SWITCH", "toggle": true, "floors": ["GateStatueHall"],
+            "statues": [{"coord": [3, 0], "face_from": [3, 1], "facing": "north"}]}}
+    })", "GateStatueHall")};
+    return MAPS;
+}
+
+//  13.01 mansion_holes (console B, 2026-11-13 19:17), Pokemon Mansion 3F:
+//  "east 4 (open)" to the statue's tile (12, 6) ran a tile long, and the
+//  press north from (13, 6) found no statue. An open leg onto the tile a
+//  switch is pressed from is tapped, a tile a tap, each checked to have
+//  moved, so it ends on that tile.
+UnitTestResult test_route_taps_onto_statue(){
+    const MapPosition start{"GateStatueHall", {1, 1}};
+    const MapPosition goal{"GateStatueHall", {5, 3}};
+    const auto route = plan_overworld_route_gated(
+        statue_hall_maps(), start, RouteGoal{goal, std::nullopt}, GateState(), with_card_key(false)
+    );
+    if (!route){
+        return "No route past the barrier.";
+    }
+    for (size_t c = 1; c < route->size(); c++){
+        if ((*route)[c].action != RouteAction::PRESS_SWITCH){
+            continue;
+        }
+        const RouteStep& before = (*route)[c - 1];
+        if (before.action != RouteAction::WALK || !(before.to_wall || before.tapped)){
+            return "Expected the leg onto the statue's tile tapped or to a wall:" + describe(*route);
+        }
+        return true;
+    }
+    return "Expected a press-switch step:" + describe(*route);
+}
+
 //  A room with a sign on its north wall, above the third column, and a
 //  card-key door, open, in a corner out of the way.
 const std::vector<MapData>& sign_maps(){
@@ -286,6 +327,7 @@ const std::vector<GatesCase> GATES_CASES{
     {.input = {.name = "no route through a card-key gate without the Card Key", .body = test_route_needs_card_key}, .expectation = {}},
     {.input = {.name = "an open gate is walked through", .body = test_route_through_open_gate}, .expectation = {}},
     {.input = {.name = "the route presses a statue for a switch's barrier", .body = test_route_presses_statue}, .expectation = {}},
+    {.input = {.name = "the leg onto a statue's tile is tapped", .body = test_route_taps_onto_statue}, .expectation = {}},
     {.input = {.name = "a gated plan keeps the stop-risk costs", .body = test_gated_plan_keeps_stop_risk}, .expectation = {}},
     {.input = {.name = "sim: face the door, A, walk through", .body = test_sim_opens_gate}, .expectation = {}},
     {.input = {.name = "sim: face the statue, A, YES, walk through", .body = test_sim_presses_statue}, .expectation = {}},
