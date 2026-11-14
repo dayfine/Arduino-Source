@@ -18,7 +18,7 @@ CheckpointAttemptsResult run_checkpoint_attempts(std::string_view checkpoint, co
         const AttemptResult outcome = attempts.run(attempt);
         if (outcome == AttemptResult::PASSED){
             result.passed = true;
-            attempts.log(checkpoint_pass_line(checkpoint, attempt, attempts.display_text));
+            attempts.log(checkpoint_pass_line(checkpoint, attempt, attempts.add_checkpoint_prefix));
             return result;
         }
         if (outcome == AttemptResult::FINAL || attempt >= attempts.max_attempts){

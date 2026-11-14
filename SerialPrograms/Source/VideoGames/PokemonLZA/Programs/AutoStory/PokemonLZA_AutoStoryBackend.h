@@ -27,7 +27,6 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryIntro.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAdvanceArrowDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAutosaveDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryControlsHintDetector.h"
@@ -56,10 +55,9 @@ enum class StarterChoice{
 struct StoryEnv{
     SingleSwitchProgramEnvironment& env;
     ProControllerContext& context;
-    //  The new game's name and look.
-    NewGameChoices new_game;
-    //  The game's language: the new game's pick, and the steps that read text.
-    Language language = Language::English;
+    //  The language the game is set to, for the steps that read text (the
+    //  fast travel menu's place names).
+    Language language = Language::None;
     BattleAIOption& battle_ai;
 };
 

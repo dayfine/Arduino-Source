@@ -675,13 +675,13 @@ struct RetryCase{
 const RetryCase RETRY_CASES[] = {
     {.input = {.name = "pass after a reload", .failures = 1, .attempts = 3},
      .expectation = {.passed = true, .attempts = 2, .lines = {
-        "[Segment] 01: failed, reloading for attempt 2/3",
+        "[Checkpoint] 01: failed, resetting for attempt 2/3",
         "[Test] reload",
         "[Checkpoint] 01: passed on attempt 2 (1 reset)",
      }}},
     {.input = {.name = "stop after the last attempt", .failures = 5, .attempts = 2},
      .expectation = {.passed = false, .attempts = 2, .lines = {
-        "[Segment] 01: failed, reloading for attempt 2/2",
+        "[Checkpoint] 01: failed, resetting for attempt 2/2",
         "[Test] reload",
      }}},
 };

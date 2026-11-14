@@ -3,10 +3,8 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  01.00's start: the new game's "Confirm Choices" screen, after the
- *  language, look and name were chosen by hand. Its detector is in
- *  PokemonLZA_AutoStoryIntroScreens.h; 00.00's name step
- *  (type_player_name(), PokemonLZA_AutoStoryScenes.h) presses through the
- *  same screen with the same moves.
+ *  language, look and name were chosen by hand. Its reader is in
+ *  Detectors/PokemonLZA_AutoStoryConfirmChoicesReader.h.
  *
  */
 

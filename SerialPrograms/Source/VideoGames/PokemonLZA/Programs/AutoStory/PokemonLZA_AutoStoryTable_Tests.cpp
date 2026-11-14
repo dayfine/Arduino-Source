@@ -14,8 +14,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
@@ -33,9 +31,8 @@ using Pokemon::StoryCheckpoint;
 using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
 
-//  The table: ids unique and in order, each row but the new game's (00.00
-//  and 01.00) starts somewhere, and each lints against PLZA's actions in
-//  the engine.
+//  The table: ids unique and in order, each row but the new game's (01.00)
+//  starts somewhere, and each lints against PLZA's actions in the engine.
 UnitTestResult test_story_table_lints(Logger&){
     std::string previous;
     for (const StoryCheckpoint& row : story_checkpoints()){
@@ -51,8 +48,8 @@ UnitTestResult test_story_table_lints(Logger&){
             return problems[0];
         }
     }
-    if (story_checkpoints().size() < 2 || story_checkpoints()[0].id != "00.00" || story_checkpoints()[1].id != "01.00"){
-        return "Expected the table to start at 00.00 and 01.00, the new game.";
+    if (story_checkpoints().empty() || story_checkpoints()[0].id != "01.00"){
+        return "Expected the table to start at 01.00, the new game.";
     }
     return true;
 }
@@ -427,39 +424,15 @@ UnitTestResult test_dev_override(Logger&){
 }
 
 
-//  A black start frame (the previous run stopped in a dark scene) trips the
-//  black border check: a run from 00.00, which launches the game, leaves the
-//  check to HOME; a run from any later row still refuses on it.
-UnitTestResult test_black_start_frame(Logger&){
-    ImageRGB32 black(1920, 1080);
-    black.fill(0xff000000);
-    BlackBorderDetector border;
-    if (!border.detect(black)){
-        return "Expected the black border check to refuse an all-black frame.";
-    }
-    for (const StoryCheckpoint& row : story_checkpoints()){
-        const bool launches = story_row_launches_game(row);
-        if (launches != (row.id == "00.00")){
-            return std::format("{}: launches the game: {}; only 00.00 should.", row.id, launches);
-        }
-    }
-    return true;
-}
-
-//  The new game's two starts: 00.00 launches from HOME and plays every
-//  choice, 01.00 starts on "Confirm Choices" after the choices made by hand.
-//  Neither loads a save, every later row does, and a run from 00.00 skips
-//  01.00, which it has played.
+//  The new game's start: 01.00 starts on "Confirm Choices" after the
+//  choices made by hand, without a save; every later row loads one. A run
+//  plays every row from its start to its end.
 UnitTestResult test_new_game_rows(Logger&){
     const std::vector<StoryCheckpoint>& rows = story_checkpoints();
     for (const StoryCheckpoint& row : rows){
-        const bool confirms = story_row_confirms_new_game(row);
-        if (confirms != (row.id == "01.00")){
-            return std::format("{}: starts on Confirm Choices: {}; only 01.00 should.", row.id, confirms);
-        }
         const bool no_save = story_row_starts_without_save(row);
-        if (no_save != (row.id == "00.00" || row.id == "01.00")){
-            return std::format("{}: starts without a save: {}; only 00.00 and 01.00 should.", row.id, no_save);
+        if (no_save != (row.id == "01.00")){
+            return std::format("{}: starts without a save: {}; only 01.00 should.", row.id, no_save);
         }
     }
     const size_t last = rows.size() - 1;
@@ -470,12 +443,8 @@ UnitTestResult test_new_game_rows(Logger&){
         }
         return text;
     };
-    const std::vector<StoryCheckpoint> from_setup = story_run_rows(rows, 0, last);
-    if (from_setup.size() != rows.size() - 1 || from_setup[0].id != "00.00" || (from_setup.size() > 1 && from_setup[1].id == "01.00")){
-        return std::format("A run from 00.00: expected every row but 01.00, got {}.", ids(from_setup));
-    }
-    const std::vector<StoryCheckpoint> from_confirm = story_run_rows(rows, 1, last);
-    if (from_confirm.size() != rows.size() - 1 || from_confirm[0].id != "01.00"){
+    const std::vector<StoryCheckpoint> from_confirm = story_run_rows(rows, 0, last);
+    if (from_confirm.size() != rows.size() || from_confirm[0].id != "01.00"){
         return std::format("A run from 01.00: expected every row from 01.00, got {}.", ids(from_confirm));
     }
     if (!story_run_rows(rows, 1, 0).empty() || !story_run_rows(rows, 0, rows.size()).empty()){
@@ -484,46 +453,28 @@ UnitTestResult test_new_game_rows(Logger&){
     return true;
 }
 
-//  The dev-only rows: 03.07d alone, between 03.07 and 03.08. Developer Mode
-//  lists and plays it; a user's run neither lists nor plays it, so 03.07
-//  and 03.08 sit next to each other there.
-UnitTestResult test_dev_only_rows(Logger&){
-    const StoryData& story = builtin_story_data();
-    if (story.dev_only != std::set<std::string, std::less<>>{"03.07d"}){
-        return "Expected 03.07d to be the only dev-only row.";
+//  03.07d, the walk back to the Pokemon Center, is a story row like any
+//  other: fast travel is not open at 03.07's end, so every run lists and
+//  plays it, between 03.07 and 03.08.
+UnitTestResult test_center_walk_row(Logger&){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    size_t index = 0;
+    while (index < rows.size() && rows[index].id != "03.07d"){
+        index++;
     }
-    const auto index_of = [](const std::vector<StoryCheckpoint>& rows, std::string_view id) -> size_t{
-        for (size_t i = 0; i < rows.size(); i++){
-            if (rows[i].id == id){
-                return i;
-            }
-        }
-        return rows.size();
-    };
-    const std::vector<StoryCheckpoint> dev = story_rows_for_mode(story, true);
-    const size_t dev_index = index_of(dev, "03.07d");
-    if (dev.size() != story.checkpoints.size() || dev_index == dev.size()
-        || dev[dev_index - 1].id != "03.07" || dev[dev_index + 1].id != "03.08"
+    if (index == 0 || index + 1 >= rows.size()
+        || rows[index - 1].id != "03.07" || rows[index + 1].id != "03.08"
     ){
-        return "Developer Mode: expected every row, 03.07d between 03.07 and 03.08.";
-    }
-    const std::vector<StoryCheckpoint> user = story_rows_for_mode(story, false);
-    const size_t user_index = index_of(user, "03.07");
-    if (user.size() != story.checkpoints.size() - 1 || index_of(user, "03.07d") != user.size()
-        || user_index + 1 >= user.size() || user[user_index + 1].id != "03.08"
-    ){
-        return "A user's run: expected every row but 03.07d, 03.08 right after 03.07.";
+        return "Expected 03.07d in the story rows, between 03.07 and 03.08.";
     }
     const std::string text = builtin_text("plza-03.07d.plan");
-    const std::string_view field = "\"dev_only\": true";
+    const std::string_view field = "\"save\": \"menu\"";
     if (text.find(field) == std::string::npos){
-        return "Expected \"dev_only\": true in plza-03.07d.plan.json.";
+        return "Expected \"save\": \"menu\" in plza-03.07d.plan.json.";
     }
-    for (const std::string_view bad : {"\"dev_only\": false", "\"dev_only\": \"yes\"", "\"dev_mode\": true"}){
-        const std::string error = dev_load_error("plza-03.07d.plan.json", replaced(text, field, bad));
-        if (error.find("/dev/plza-03.07d.plan.json") == std::string::npos){
-            return std::format("Expected {} to fail naming its file, got \"{}\".", bad, error);
-        }
+    const std::string error = dev_load_error("plza-03.07d.plan.json", replaced(text, field, "\"save\": \"menu\", \"dev_only\": true"));
+    if (error.find("/dev/plza-03.07d.plan.json") == std::string::npos){
+        return std::format("Expected an unknown \"dev_only\" field to fail naming its file, got \"{}\".", error);
     }
     return true;
 }
@@ -563,67 +514,78 @@ private:
 
 const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     {
-        .name = "Story table: rows lint against PLZA's engine actions", .input = {test_story_table_lints},
+        .name = "Story table: rows lint against PLZA's engine actions",
+        .input = {.body = test_story_table_lints},
         .expectation = {},
     },
     {
-        .name = "Story table: every walk reads its legs", .input = {test_story_walks_read},
+        .name = "Story table: every walk reads its legs",
+        .input = {.body = test_story_walks_read},
         .expectation = {},
     },
     {
-        .name = "Story table: actions not implemented say what they wait for", .input = {test_not_implemented_actions},
+        .name = "Story table: actions not implemented say what they wait for",
+        .input = {.body = test_not_implemented_actions},
         .expectation = {},
     },
     {
-        .name = "Starters: the walk to Chikorita is recorded", .input = {test_starter_moves},
+        .name = "Starters: the walk to Chikorita is recorded",
+        .input = {.body = test_starter_moves},
         .expectation = {},
     },
     {
-        .name = "Dev checkpoints: replace the built-in file of their name, fail naming the file", .input = {test_dev_override},
+        .name = "Dev checkpoints: replace the built-in file of their name, fail naming the file",
+        .input = {.body = test_dev_override},
         .expectation = {},
     },
     {
-        .name = "Story table: the autosave rows, and 01.03 saves through the menu", .input = {test_autosave_rows},
+        .name = "Story table: the autosave rows, and 01.03 saves through the menu",
+        .input = {.body = test_autosave_rows},
         .expectation = {},
     },
     {
-        .name = "Story table: 03.05 heals at the Pokemon Center and saves there", .input = {test_mm3_heal_row},
+        .name = "Story table: 03.05 heals at the Pokemon Center and saves there",
+        .input = {.body = test_mm3_heal_row},
         .expectation = {},
     },
     {
-        .name = "Story table: every row is ready", .input = {test_every_row_ready},
+        .name = "Story table: every row is ready",
+        .input = {.body = test_every_row_ready},
         .expectation = {},
     },
     {
-        .name = "reload_when_chained: only true, only after an autosave row, never on a new game row", .input = {test_reload_when_chained_field},
+        .name = "reload_when_chained: only true, only after an autosave row, never on a new game row",
+        .input = {.body = test_reload_when_chained_field},
         .expectation = {},
     },
     {
-        .name = "reload_when_chained: 01.02 after 01.01's autosave", .input = {test_mm1_reload_when_chained},
+        .name = "reload_when_chained: 01.02 after 01.01's autosave",
+        .input = {.body = test_mm1_reload_when_chained},
         .expectation = {},
     },
     {
-        .name = "reload_when_chained: \"always\" on 03.04, after 03.03's autosave", .input = {test_0304_reloads_always},
+        .name = "reload_when_chained: \"always\" on 03.04, after 03.03's autosave",
+        .input = {.body = test_0304_reloads_always},
         .expectation = {},
     },
     {
-        .name = "Scene mash: a scene that never starts fails at its start window", .input = {test_scene_start_window},
+        .name = "Scene mash: a scene that never starts fails at its start window",
+        .input = {.body = test_scene_start_window},
         .expectation = {},
     },
     {
-        .name = "Scene mash: what each frame presses", .input = {test_scene_mash_rule},
+        .name = "Scene mash: what each frame presses",
+        .input = {.body = test_scene_mash_rule},
         .expectation = {},
     },
     {
-        .name = "Start checks: a black start frame refuses every row but 00.00", .input = {test_black_start_frame},
+        .name = "Start checks: 01.00 starts the new game without a save; a run plays every row",
+        .input = {.body = test_new_game_rows},
         .expectation = {},
     },
     {
-        .name = "Start checks: 00.00 and 01.00 start the new game without a save; a run from 00.00 skips 01.00", .input = {test_new_game_rows},
-        .expectation = {},
-    },
-    {
-        .name = "Dev-only rows: 03.07d only in Developer Mode, between 03.07 and 03.08", .input = {test_dev_only_rows},
+        .name = "Center walk: 03.07d is a story row between 03.07 and 03.08",
+        .input = {.body = test_center_walk_row},
         .expectation = {},
     },
 };

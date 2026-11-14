@@ -17,11 +17,13 @@ size_t run_checkpoint_with_retries(
     const CheckpointRetryActions& actions,
     AutoStoryStats& stats
 ){
-    actions.log(checkpoint_start_line(checkpoint_text, std::nullopt, checkpoint_text));
+    actions.log(checkpoint_start_line(checkpoint_text, /*events=*/std::nullopt, /*add_checkpoint_prefix=*/false));
     const CheckpointAttempts attempts{
         .max_attempts = policy.max_attempts,
         .run = [&](size_t attempt){
-            actions.log(checkpoint_attempt_line(checkpoint_text, attempt, policy.max_attempts, checkpoint_text));
+            actions.log(checkpoint_attempt_line(
+                checkpoint_text, attempt, policy.max_attempts, /*add_checkpoint_prefix=*/false
+            ));
             try{
                 actions.run(attempt);
                 return AttemptResult::PASSED;
@@ -37,14 +39,16 @@ size_t run_checkpoint_with_retries(
             }
         },
         .reset = [&](size_t next_attempt){
-            actions.log(checkpoint_reset_line(checkpoint_text, next_attempt, checkpoint_text));
+            actions.log(checkpoint_reset_line(
+                checkpoint_text, next_attempt, /*attempts=*/std::nullopt, /*add_checkpoint_prefix=*/false
+            ));
             actions.reset();
             stats.m_reset++;
             actions.update_stats();
             return true;
         },
         .log = actions.log,
-        .display_text = checkpoint_text,
+        .add_checkpoint_prefix = false,
     };
     return run_checkpoint_attempts(checkpoint_text, attempts).attempts;
 }

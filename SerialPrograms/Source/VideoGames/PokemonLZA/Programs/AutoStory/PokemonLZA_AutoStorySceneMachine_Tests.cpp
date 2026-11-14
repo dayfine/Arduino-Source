@@ -449,23 +449,21 @@ UnitTestResult test_move_ends(Logger&){
 }
 
 
-struct SceneMachineInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct SceneMachineExpectation{
-};
-
 struct SceneMachineCase{
-    SceneMachineInput input;
-    SceneMachineExpectation expectation;
+    std::string name;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    Input input;
+    struct Expectation{
+    };
+    Expectation expectation;
 };
 
 class Test_AutoStorySceneMachine : public UnitTest{
 public:
     explicit Test_AutoStorySceneMachine(SceneMachineCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStorySceneMachine - {}", test_case.input.name))
+        : UnitTest(std::format("PokemonLZA::AutoStorySceneMachine - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -481,75 +479,93 @@ private:
 
 const SceneMachineCase SCENE_MACHINE_CASES[] = {
     {
-        .input = {"quiet end waits for the scene's minimum length", test_quiet_waits_for_min_length},
+        .name = "quiet end waits for the scene's minimum length",
+        .input = {.body = test_quiet_waits_for_min_length},
         .expectation = {},
     },
     {
-        .input = {"a box or a fade restarts the quiet time", test_quiet_restarts_on_busy},
+        .name = "a box or a fade restarts the quiet time",
+        .input = {.body = test_quiet_restarts_on_busy},
         .expectation = {},
     },
     {
-        .input = {"the party bar held a second ends the scene", test_party_bar_held},
+        .name = "the party bar held a second ends the scene",
+        .input = {.body = test_party_bar_held},
         .expectation = {},
     },
     {
-        .input = {"the controls hint held a second ends the scene", test_controls_hint_held},
+        .name = "the controls hint held a second ends the scene",
+        .input = {.body = test_controls_hint_held},
         .expectation = {},
     },
     {
-        .input = {"the ad's subtitles: A at the chevron, blind A, none at the hint", test_ad_subtitles},
+        .name = "the ad's subtitles: A at the chevron, blind A, none at the hint",
+        .input = {.body = test_ad_subtitles},
         .expectation = {},
     },
     {
-        .input = {"the mission banner on two looks ends the scene", test_mission_banner_ends},
+        .name = "the mission banner on two looks ends the scene",
+        .input = {.body = test_mission_banner_ends},
         .expectation = {},
     },
     {
-        .input = {"the mission complete card: A, busy, wins over the banner", test_mission_complete_presses_a},
+        .name = "the mission complete card: A, busy, wins over the banner",
+        .input = {.body = test_mission_complete_presses_a},
         .expectation = {},
     },
     {
-        .input = {"the mission banner does not end a mash to a choice", test_mission_banner_only_overworld},
+        .name = "the mission banner does not end a mash to a choice",
+        .input = {.body = test_mission_banner_only_overworld},
         .expectation = {},
     },
     {
-        .input = {"blind presses keep the quiet end, and only in an A mash", test_blind_press_keeps_quiet},
+        .name = "blind presses keep the quiet end, and only in an A mash",
+        .input = {.body = test_blind_press_keeps_quiet},
         .expectation = {},
     },
     {
-        .input = {"02.04 check_in: quiet after the scene is control, before blind A", test_check_in_quiet_is_control},
+        .name = "02.04 check_in: quiet after the scene is control, before blind A",
+        .input = {.body = test_check_in_quiet_is_control},
         .expectation = {},
     },
     {
-        .input = {"the autosave badge, then 5 s with no box, is control", test_autosave_then_quiet_is_control},
+        .name = "the autosave badge, then 5 s with no box, is control",
+        .input = {.body = test_autosave_then_quiet_is_control},
         .expectation = {},
     },
     {
-        .input = {"no autosave badge: no early quiet end", test_no_autosave_no_early_end},
+        .name = "no autosave badge: no early quiet end",
+        .input = {.body = test_no_autosave_no_early_end},
         .expectation = {},
     },
     {
-        .input = {"the autosave log names each badge once, with its event", test_autosave_spots},
+        .name = "the autosave log names each badge once, with its event",
+        .input = {.body = test_autosave_spots},
         .expectation = {},
     },
     {
-        .input = {"without a quiet time a still screen never ends it", test_no_quiet_never_ends_still},
+        .name = "without a quiet time a still screen never ends it",
+        .input = {.body = test_no_quiet_never_ends_still},
         .expectation = {},
     },
     {
-        .input = {"B through the text to the choice", test_text_to_choice},
+        .name = "B through the text to the choice",
+        .input = {.body = test_text_to_choice},
         .expectation = {},
     },
     {
-        .input = {"A through the cards to the battle HUD", test_to_battle},
+        .name = "A through the cards to the battle HUD",
+        .input = {.body = test_to_battle},
         .expectation = {},
     },
     {
-        .input = {"what each state presses", test_state_actions},
+        .name = "what each state presses",
+        .input = {.body = test_state_actions},
         .expectation = {},
     },
     {
-        .input = {"walks that end on a fade", test_move_ends},
+        .name = "walks that end on a fade",
+        .input = {.body = test_move_ends},
         .expectation = {},
     },
 };

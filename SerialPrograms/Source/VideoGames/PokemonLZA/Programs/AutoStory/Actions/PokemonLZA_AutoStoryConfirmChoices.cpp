@@ -7,13 +7,12 @@
 #include <format>
 #include <optional>
 #include <string>
-#include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "PokemonLZA_AutoStoryIntroScreens.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryConfirmChoicesReader.h"
 #include "PokemonLZA_AutoStoryConfirmChoices.h"
 
 namespace PokemonAutomation{
@@ -44,18 +43,6 @@ std::optional<size_t> read_confirm_choices_now(
     }
 }
 
-//  One press of confirm_choices_moves() on "Confirm Choices".
-void press_confirm_key(ConsoleHandle& console, ProControllerContext& context, IntroKey key){
-    if (key == IntroKey::A){
-        console.log("AutoStory intro: Confirm Choices: A on \"Ready!\".");
-        pbf_press_button(context, BUTTON_A, 160ms, 2000ms);
-    }else{
-        console.log("AutoStory intro: Confirm Choices: DOWN.");
-        pbf_press_dpad(context, DPAD_DOWN, 160ms, 500ms);
-    }
-    context.wait_for_all_requests();
-}
-
 } // namespace
 
 
@@ -65,7 +52,7 @@ size_t require_confirm_choices(ConsoleHandle& console, ProControllerContext& con
         throw UserSetupError(
             console,
             "AutoStory: 01.00 starts on the new game's \"Confirm Choices\" screen, with the language, look and name "
-            "already chosen. It is not on screen; nothing was pressed. Start from 00.00 to have the program choose them."
+            "already chosen by hand. It is not on screen; nothing was pressed."
         );
     }
     console.log(std::format("AutoStory intro: Confirm Choices on screen, row {} highlighted.", *cursor));
@@ -75,14 +62,14 @@ size_t require_confirm_choices(ConsoleHandle& console, ProControllerContext& con
 void confirm_new_game_choices(ConsoleHandle& console, ProControllerContext& context){
     std::optional<size_t> cursor = require_confirm_choices(console, context);
     for (size_t press = 0; press < 6 && cursor; press++){
-        const std::optional<std::vector<IntroKey>> moves = confirm_choices_moves(*cursor);
-        if (!moves){
-            break;
-        }
-        press_confirm_key(console, context, moves->front());
-        if (moves->front() == IntroKey::A){
+        if (*cursor == CONFIRM_CHOICES_READY_ROW){
+            console.log("AutoStory intro: Confirm Choices: A on \"Ready!\".");
+            pbf_press_button(context, BUTTON_A, 160ms, 2000ms);
+            context.wait_for_all_requests();
             return;
         }
+        console.log("AutoStory intro: Confirm Choices: DOWN.");
+        pbf_press_dpad(context, DPAD_DOWN, 160ms, 500ms);
         cursor = read_confirm_choices_now(console, context, 1000ms, "confirm-choices-moved");
         if (cursor){
             console.log(std::format("AutoStory intro: Confirm Choices: the highlight is on row {}.", *cursor));
