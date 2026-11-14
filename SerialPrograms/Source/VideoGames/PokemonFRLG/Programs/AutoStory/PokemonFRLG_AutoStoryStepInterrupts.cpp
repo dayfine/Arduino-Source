@@ -105,7 +105,7 @@ Pokemon::ScreenLook ConsoleScreenLook::look(bool fresh){
 
 
 bool quiet_overworld(const Pokemon::ScreenSettle& settle, Milliseconds quiet){
-    return settle.seen && settle.showing == Pokemon::ScreenEvents{} && settle.quiet >= quiet;
+    return settle.seen && settle.showing == ScreenEvents{} && settle.quiet >= quiet;
 }
 
 Pokemon::ScreenSettle wait_for_quiet_overworld(

@@ -135,7 +135,7 @@ std::optional<MapPosition> route_start(const Pokemon::Pose& pose){
 //  (OverworldInterruptSet::make_observer).
 OverworldInterruptSet walk_interrupts(StoryEnv& env, const StoryStep& step){
     OverworldInterruptSet out = story_interrupts(env.supplies, arg<bool>(step, "fight_wild"), env.checks, env.language);
-    out.make_observer = []() -> std::unique_ptr<Pokemon::ScreenEventObserver>{
+    out.make_observer = []() -> std::unique_ptr<ScreenEventObserver>{
         return std::make_unique<FrlgScreenObserver>();
     };
     return out;

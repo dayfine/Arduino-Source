@@ -21,8 +21,6 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-using Pokemon::ScreenEvent;
-using Pokemon::ScreenEvents;
 
 namespace{
 

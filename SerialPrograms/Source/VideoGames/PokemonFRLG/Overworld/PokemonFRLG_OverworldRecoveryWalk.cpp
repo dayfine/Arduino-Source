@@ -407,7 +407,7 @@ public:
         const OverworldInterruptSet& interrupts, const RouteStep& step
     )
         : m_observer(records(interrupts, step) ? interrupts.make_observer() : nullptr)
-        , m_watcher(m_observer ? std::make_unique<Pokemon::ScreenEventWatcher>(*m_observer) : nullptr)
+        , m_watcher(m_observer ? std::make_unique<ScreenEventWatcher>(*m_observer) : nullptr)
         , m_session(context, console, callbacks())
     {}
 
@@ -436,8 +436,8 @@ private:
         return {*m_watcher};
     }
 
-    std::unique_ptr<Pokemon::ScreenEventObserver> m_observer;
-    std::unique_ptr<Pokemon::ScreenEventWatcher> m_watcher;
+    std::unique_ptr<ScreenEventObserver> m_observer;
+    std::unique_ptr<ScreenEventWatcher> m_watcher;
     //  With no watcher it runs nothing.
     InferenceSession m_session;
 };
