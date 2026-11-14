@@ -662,6 +662,17 @@ private:
             m_held_again = true;
             return true;
         }
+        if (outcome.end == StepEnd::STOPPED && outcome.blocked && step.tapped){
+            //  A tap that showed no step may have stepped unseen; the player
+            //  is somewhere on the leg, and its wall ends a hold wherever
+            //  they are. Held, not tapped again: a tap at the wall would
+            //  show no step once more (14.01's taps legs in Cinnabar Gym,
+            //  the unseen step sweep, 2026-11-14).
+            m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, "a tap showed no step; holding to the wall");
+            m_plan[m_next].tapped = false;
+            m_held_again = true;
+            return true;
+        }
         if (outcome.end == StepEnd::STOPPED){
             return after_blocked(step, start);
         }

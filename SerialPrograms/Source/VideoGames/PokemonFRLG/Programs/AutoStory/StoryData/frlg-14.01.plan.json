@@ -28,6 +28,15 @@
         "why": "full HP and PP before the gym (pokeguy skips the Center; healing is the safe side)"
       },
       {
+        "id": "center_northwest_corner",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 7}, {"direction": "north", "tiles": 2}]
+        },
+        "why": "from the nurse to the Center's wall west (0, 4) and up to the wall (0, 2), as in 12.01: legs to walls, so the walk out starts from a known tile even if the Center script left the player a tile off the nurse; from one off, the walk out ended on a side tile of the mat, (6, 8) or (8, 8), which warps only on a step south into the wall (scene end pose sweep)"
+      },
+      {
         "id": "to_gym_east_room",
         "kind": "route",
         "action": "run",
