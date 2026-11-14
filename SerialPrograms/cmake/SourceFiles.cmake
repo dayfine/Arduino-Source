@@ -97,6 +97,10 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/Cpp/Hardware/Hardware_x86_Linux.tpp
     ../Common/Cpp/Hardware/Hardware_x86_Windows.tpp
     ../Common/Cpp/HttpServer/AbstractHttpServer.h
+    ../Common/Cpp/HttpServer/HttpServer.cpp
+    ../Common/Cpp/HttpServer/HttpServer.h
+    ../Common/Cpp/HttpServer/HttpServer_Tests.cpp
+    ../Common/Cpp/HttpServer/HttpServer_Tests.h
     ../Common/Cpp/ImageResolution.cpp
     ../Common/Cpp/ImageResolution.h
     ../Common/Cpp/Json/JsonArray.cpp
@@ -1618,6 +1622,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_CheckpointRetry_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_CheckpointRetry_Tests.h
     Source/Pokemon/AutoStory/Pokemon_FadeProfiles.h
+    Source/Pokemon/AutoStory/Pokemon_FrameReplay.cpp
+    Source/Pokemon/AutoStory/Pokemon_FrameReplay.h
+    Source/Pokemon/AutoStory/Pokemon_FrameReplay_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_FrameReplay_Tests.h
     Source/Pokemon/AutoStory/Pokemon_InterruptHandlers.h
     Source/Pokemon/AutoStory/Pokemon_Interrupts.cpp
     Source/Pokemon/AutoStory/Pokemon_Interrupts.h
@@ -1966,6 +1974,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TeachTextReader.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TrainerCardDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TrainerCardDetector.h
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BallReader.cpp
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BallReader.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.cpp
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.cpp
@@ -2135,6 +2145,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCheckpoints.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFrameReplay_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFrameReplay_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLegs.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLegs.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFieldMoveSteps.cpp
@@ -2472,6 +2484,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonHome/Inference/PokemonHome_GigantamaxDetector.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_OriginMarkReader.cpp
     Source/VideoGames/PokemonHome/Inference/PokemonHome_OriginMarkReader.h
+    Source/VideoGames/PokemonHome/Inference/PokemonHome_PageViewDetector.cpp
+    Source/VideoGames/PokemonHome/Inference/PokemonHome_PageViewDetector.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_SelectionArrowDetector.cpp
     Source/VideoGames/PokemonHome/Inference/PokemonHome_SelectionArrowDetector.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_ShinyDetector.cpp
