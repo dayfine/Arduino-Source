@@ -60,17 +60,6 @@ inline constexpr int ZONE_1_START_DISTANCE = 127;
 //  marker reads whole units and a walk stops a step or two late.
 inline constexpr int ZONE_1_START_TOLERANCE = 10;
 
-//  How many units past its stop distance walk_to_objective() ends on the
-//  zone 1 road: 2 on every console B run (asked 137, read 135; asked 127,
-//  read 125; 2026-11-14). 03.07d stops this much early so it ends on 127.
-inline constexpr int ZONE_1_START_OVERSHOOT = 2;
-
-//  Where 03.07d's last leg keeps the far gate's marker on screen (0 to 1):
-//  right of the middle, so the walk heads about 5 degrees left of the gate
-//  (the camera shows about 60 degrees across). Straight at the marker ended
-//  a bit right of 03.08's start (user, console B 2026-11-14 14:33).
-inline constexpr double ZONE_1_START_AIM_X = 0.5 + 5.0 / 60.0;
-
 //  Whether 03.07d's end is 03.08's start: a far-gate distance read
 //  (nothing: none read) within ZONE_1_START_TOLERANCE of
 //  ZONE_1_START_DISTANCE, and the minimap's player arrow in the wild
