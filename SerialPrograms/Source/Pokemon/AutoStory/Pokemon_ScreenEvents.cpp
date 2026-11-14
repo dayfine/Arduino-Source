@@ -27,7 +27,6 @@ std::string screen_event_name(ScreenEvent event){
     case ScreenEvent::SCREEN_STILL:     return "screen still";
     case ScreenEvent::SWITCH_HOME_MENU: return "Switch HOME menu";
     case ScreenEvent::PLAYER_STILL:     return "player still";
-
     }
     return "?";
 }

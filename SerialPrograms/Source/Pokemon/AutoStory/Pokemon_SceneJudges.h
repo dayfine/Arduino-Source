@@ -81,11 +81,9 @@ constexpr Milliseconds TALK_OVER_QUIET = Milliseconds(5000);
 //  grass can keep the screen from ever being still.
 constexpr Milliseconds TALK_OVER_CALM = Milliseconds(15000);
 
-
 //  When a talk or a scene is over, from looks alone. A look is a frame's
 //  events: DIALOG_BOX, PLAYER_CAN_MOVE, SCREEN_STILL (PLAYER_STILL for a
 //  door's settle), a fade,
-
 //  LOCATION_BANNER (the expected map's) and BATTLE_STARTED are read.
 //  It is over only once every fade has come back up, no box shows, and
 //  the overworld has been quiet (or calm) since: a look that shows a fade
