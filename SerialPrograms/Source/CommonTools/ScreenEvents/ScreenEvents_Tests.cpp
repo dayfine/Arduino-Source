@@ -132,23 +132,22 @@ UnitTestResult test_watcher(){
 }
 
 
-struct ScreenEventsInput{
-    std::string name;
-    std::function<UnitTestResult()> body;
-};
-
-struct ScreenEventsExpectation{
-};
-
 struct ScreenEventsCase{
-    ScreenEventsInput input;
-    ScreenEventsExpectation expectation;
+    struct Input{
+        std::function<UnitTestResult()> body;
+    };
+    struct Expectation{
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_ScreenEvents : public UnitTest{
 public:
     explicit Test_ScreenEvents(ScreenEventsCase test_case)
-        : UnitTest(std::format("CommonTools::ScreenEvents - {}", test_case.input.name))
+        : UnitTest(std::format("CommonTools::ScreenEvents - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -164,15 +163,18 @@ private:
 
 const ScreenEventsCase SCREEN_EVENTS_CASES[] = {
     {
-        .input = {"a set of events, its fade and its log text", test_set_and_describe},
+        .name = "a set of events, its fade and its log text",
+        .input = {.body = test_set_and_describe},
         .expectation = {},
     },
     {
-        .input = {"a fade is uniform, dark or white; a textured floor is none", test_fade_of_screen},
+        .name = "a fade is uniform, dark or white; a textured floor is none",
+        .input = {.body = test_fade_of_screen},
         .expectation = {},
     },
     {
-        .input = {"an observer as a watcher records and stops", test_watcher},
+        .name = "an observer as a watcher records and stops",
+        .input = {.body = test_watcher},
         .expectation = {},
     },
 };
