@@ -1,0 +1,55 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "14.02",
+    "title": "Blaine and the VOLCANOBADGE",
+    "start": {"map": "CinnabarIsland_Gym", "tiles": [[5, 5]], "facing": "north"},
+    "events": [
+      {
+        "id": "lead_lv40_for_blaine",
+        "kind": "game_action",
+        "action": "level",
+        "args": {"slot": 1, "min": 40},
+        "why": "the precondition for Blaine: the lead at least Lv40, pokeguy's Blastoise here (PokemonSimulation docs/battles/pokeguy-conditions.md, blaine: B recovery, no X items, from 24/126 HP: 100/100 wins, 90.0% to 100.0%); at his level or above, those sims stand for this fight and no new one is needed; below it, the run stops here, before the fight"
+      },
+      {
+        "id": "challenge_blaine",
+        "kind": "talk",
+        "why": "Blaine (5, 4)"
+      },
+      {
+        "id": "blaine",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LEADER_BLAINE",
+          "foes": ["growlithe", "ponyta", "rapidash", "arcanine"],
+          "policy": "solo-recovery",
+          "foe_threats": [
+            [60, 21, 14, 44, 23, 0, 0],
+            [69, 23, 17, 50, 26, 0, 0],
+            [93, 25, 19, 54, 28, 0, 0],
+            [84, 39, 27, 84, 43, 0, 0]
+          ]
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 5]], "facing": "north"},
+        "why": "Blaine (TRAINER_LEADER_BLAINE), fought by pokeguy's policy B (solo-recovery: cure and heal by safety, no setup; the doc's blaine row, foe_threats from its stats): Growlithe Lv42, Ponyta Lv40, Rapidash Lv42, Arcanine Lv47 (pokeguy: one Surf each, 1:21:44 to 1:23:09); then the VOLCANOBADGE and TM38 Fire Blast, read to the overworld with the battle's text"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Blaine (5, 4), talked to from below, from the save in front of him (14.01): Growlithe Lv42, Ponyta Lv40, Rapidash Lv42, Arcanine Lv47 (sParty_LeaderBlaine); then the VOLCANOBADGE and TM38 Fire Blast. The lead's Surf (taught in 12.01) is 2x on all four.",
+        "A boss battle is its own checkpoint (user, 2026-11-12): Blaine's fight is all this row does. It ends in front of Blaine after the VOLCANOBADGE and TM38 text, and saves there; 14.02b goes on out of the gym."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "CinnabarIsland_Gym", "tiles": [[5, 5]], "facing": "north"}
+    }
+  }
+}

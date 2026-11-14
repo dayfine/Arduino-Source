@@ -146,8 +146,10 @@ constexpr std::string_view MAP_NAMES[] = {
     //  Route 7's east gate, where the guard takes the TEA, and Saffron City.
     "Route7_EastEntrance",
     "SaffronCity",
-    //  Cinnabar Island, and Route 21 north of it to Pallet Town (12.03).
+    //  Cinnabar Island's Center and Blaine's gym, through its quiz doors, and
+    //  Route 21 north of it to Pallet Town (12.03).
     "CinnabarIsland",
+    "CinnabarIsland_Gym",
     "Route21_North",
     "Route21_South",
     //  Silph Co.'s floors, 1F to 11F (the lift's map, SilphCo_Elevator, is

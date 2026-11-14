@@ -3,8 +3,8 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The golden's lines from segment 15 on, after
- *  PokemonFRLG_AutoStoryPlanGolden12.h's. The test reads FRLG_PLAN_GOLDEN,
- *  FRLG_PLAN_GOLDEN_10, FRLG_PLAN_GOLDEN_11, FRLG_PLAN_GOLDEN_12, then these.
+ *  PokemonFRLG_AutoStoryPlanGolden14.h's. The test reads FRLG_PLAN_GOLDEN,
+ *  FRLG_PLAN_GOLDEN_10, FRLG_PLAN_GOLDEN_11, FRLG_PLAN_GOLDEN_12, FRLG_PLAN_GOLDEN_14, then these.
  *
  */
 
@@ -17,7 +17,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-//  The stored plan lines from segment 15 on, after FRLG_PLAN_GOLDEN_12's.
+//  The stored plan lines from segment 15 on, after FRLG_PLAN_GOLDEN_14's.
 inline constexpr std::string_view FRLG_PLAN_GOLDEN_15[] = {
     "15.01 west_of_tea_guard from CeladonCity_PokemonCenter_1F (7, 4) facing north to Route7_EastEntrance (5, 4) facing east",
     "15.01   walk south 5 (warp) -> CeladonCity (48, 12) [walk only]",
