@@ -219,14 +219,6 @@ UnitTestResult test_scene_mash_rule(Logger&){
 }
 
 
-struct AutoStoryTableInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct AutoStoryTableExpectation{
-};
-
 //  The new game's start: 01.00 starts on "Confirm Choices" after the
 //  choices made by hand, without a save; every later row loads one. A run
 //  plays every row from its start to its end.
@@ -257,14 +249,20 @@ UnitTestResult test_new_game_rows(Logger&){
 }
 
 struct AutoStoryTableCase{
-    AutoStoryTableInput input;
-    AutoStoryTableExpectation expectation;
+    std::string name;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    Input input;
+    struct Expectation{
+    };
+    Expectation expectation;
 };
 
 class Test_AutoStoryTable : public UnitTest{
 public:
     explicit Test_AutoStoryTable(AutoStoryTableCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStory - {}", test_case.input.name))
+        : UnitTest(std::format("PokemonLZA::AutoStory - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -284,35 +282,35 @@ private:
 
 const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     {
-        .input = {"Story table: rows lint against PLZA's engine actions", test_story_table_lints},
+        .name = "Story table: rows lint against PLZA's engine actions", .input = {.body = test_story_table_lints},
         .expectation = {},
     },
     {
-        .input = {"Story table: actions not implemented say what they wait for", test_not_implemented_actions},
+        .name = "Story table: actions not implemented say what they wait for", .input = {.body = test_not_implemented_actions},
         .expectation = {},
     },
     {
-        .input = {"Story table: the autosave rows, and 01.03 saves through the menu", test_autosave_rows},
+        .name = "Story table: the autosave rows, and 01.03 saves through the menu", .input = {.body = test_autosave_rows},
         .expectation = {},
     },
     {
-        .input = {"Story table: every row is ready", test_every_row_ready},
+        .name = "Story table: every row is ready", .input = {.body = test_every_row_ready},
         .expectation = {},
     },
     {
-        .input = {"reload_when_chained: only true, only after an autosave row, never on a new game row", test_reload_when_chained_field},
+        .name = "reload_when_chained: only true, only after an autosave row, never on a new game row", .input = {.body = test_reload_when_chained_field},
         .expectation = {},
     },
     {
-        .input = {"Scene mash: a scene that never starts fails at its start window", test_scene_start_window},
+        .name = "Scene mash: a scene that never starts fails at its start window", .input = {.body = test_scene_start_window},
         .expectation = {},
     },
     {
-        .input = {"Scene mash: what each frame presses", test_scene_mash_rule},
+        .name = "Scene mash: what each frame presses", .input = {.body = test_scene_mash_rule},
         .expectation = {},
     },
     {
-        .input = {"Start checks: 01.00 starts the new game without a save; a run plays every row", test_new_game_rows},
+        .name = "Start checks: 01.00 starts the new game without a save; a run plays every row", .input = {.body = test_new_game_rows},
         .expectation = {},
     },
 };

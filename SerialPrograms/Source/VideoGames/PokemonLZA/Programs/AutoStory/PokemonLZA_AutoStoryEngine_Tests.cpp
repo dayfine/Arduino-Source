@@ -475,23 +475,21 @@ UnitTestResult test_walk_pauses_before_each_leg(CancellableScope& scope){
 }
 
 
-struct EngineTestInput{
-    std::string name;
-    std::function<UnitTestResult(CancellableScope&)> body;
-};
-
-struct EngineTestExpectation{
-};
-
 struct EngineTestCase{
-    EngineTestInput input;
-    EngineTestExpectation expectation;
+    std::string name;
+    struct Input{
+        std::function<UnitTestResult(CancellableScope&)> body;
+    };
+    Input input;
+    struct Expectation{
+    };
+    Expectation expectation;
 };
 
 class Test_AutoStoryEngine : public UnitTest{
 public:
     explicit Test_AutoStoryEngine(EngineTestCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryEngine - {}", test_case.input.name))
+        : UnitTest(std::format("PokemonLZA::AutoStoryEngine - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
@@ -510,17 +508,17 @@ private:
 
 
 const EngineTestCase ENGINE_TEST_CASES[] = {
-    {.input = {"01.00 opening: no presses, done on two looks at the platform after the autosave", test_opening_waits_for_platform}, .expectation = {}},
-    {.input = {"01.00 opening: one A at the arrival text with the advance arrow", test_opening_presses_through_arrival_text}, .expectation = {}},
-    {.input = {"face_heading: turns by the minimap's heading", test_face_heading}, .expectation = {}},
-    {.input = {"refused: console actions off a console, tile walks, unknown actions", test_refused_steps}, .expectation = {}},
-    {.input = {"every checkpoint runs in step order, testing never saves", test_every_checkpoint_runs}, .expectation = {}},
-    {.input = {"reload_when_chained: reload between the rows, as its own event", test_reload_when_chained}, .expectation = {}},
-    {.input = {"reload_when_chained: no reload from the row's save or for other rows", test_no_reload_unless_chained}, .expectation = {}},
-    {.input = {"reload_when_chained: a reload onto the platform fails", test_reload_lands_on_older_save}, .expectation = {}},
-    {.input = {"reload_when_chained: straight through, no reload at a boundary", test_straight_through_has_no_reload}, .expectation = {}},
-    {.input = {"walk_to_prompt: walks until the A prompt, none when it shows", test_walk_to_prompt}, .expectation = {}},
-    {.input = {"breakpoints: a walk pauses before each leg", test_walk_pauses_before_each_leg}, .expectation = {}},
+    {.name = "01.00 opening: no presses, done on two looks at the platform after the autosave", .input = {.body = test_opening_waits_for_platform}, .expectation = {}},
+    {.name = "01.00 opening: one A at the arrival text with the advance arrow", .input = {.body = test_opening_presses_through_arrival_text}, .expectation = {}},
+    {.name = "face_heading: turns by the minimap's heading", .input = {.body = test_face_heading}, .expectation = {}},
+    {.name = "refused: console actions off a console, tile walks, unknown actions", .input = {.body = test_refused_steps}, .expectation = {}},
+    {.name = "every checkpoint runs in step order, testing never saves", .input = {.body = test_every_checkpoint_runs}, .expectation = {}},
+    {.name = "reload_when_chained: reload between the rows, as its own event", .input = {.body = test_reload_when_chained}, .expectation = {}},
+    {.name = "reload_when_chained: no reload from the row's save or for other rows", .input = {.body = test_no_reload_unless_chained}, .expectation = {}},
+    {.name = "reload_when_chained: a reload onto the platform fails", .input = {.body = test_reload_lands_on_older_save}, .expectation = {}},
+    {.name = "reload_when_chained: straight through, no reload at a boundary", .input = {.body = test_straight_through_has_no_reload}, .expectation = {}},
+    {.name = "walk_to_prompt: walks until the A prompt, none when it shows", .input = {.body = test_walk_to_prompt}, .expectation = {}},
+    {.name = "breakpoints: a walk pauses before each leg", .input = {.body = test_walk_pauses_before_each_leg}, .expectation = {}},
 };
 
 void add_tests_AutoStoryEngine(UnitTestDatabase& database){
