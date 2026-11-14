@@ -31,10 +31,6 @@ std::string checkpoint_prefix(std::string_view checkpoint, std::string_view disp
 } // namespace
 
 
-std::string event_log_line(std::string_view checkpoint, size_t number, std::string_view event, std::string_view status){
-    return std::format("[Event] {}/{} {}: {}", checkpoint, number, event, status);
-}
-
 std::string checkpoint_start_line(
     std::string_view checkpoint, std::optional<size_t> events, std::string_view display_text
 ){
@@ -61,17 +57,14 @@ std::string checkpoint_pass_line(std::string_view checkpoint, size_t attempt, st
     );
 }
 
-std::string checkpoint_reset_line(std::string_view checkpoint, size_t next_attempt, std::string_view display_text){
-    return std::format(
-        "{}: failed, resetting for attempt {}", checkpoint_prefix(checkpoint, display_text), next_attempt
-    );
-}
-
-std::string segment_reload_line(std::string_view segment, std::string_view checkpoint, size_t next_attempt, size_t attempts){
-    return std::format(
-        "[Segment] {}: {} failed, reloading for attempt {}/{}",
-        segment, checkpoint, next_attempt, attempts
-    );
+std::string checkpoint_reset_line(
+    std::string_view checkpoint, size_t next_attempt, std::optional<size_t> attempts, std::string_view display_text
+){
+    const std::string prefix = checkpoint_prefix(checkpoint, display_text);
+    if (!attempts){
+        return std::format("{}: failed, resetting for attempt {}", prefix, next_attempt);
+    }
+    return std::format("{}: failed, resetting for attempt {}/{}", prefix, next_attempt, *attempts);
 }
 
 std::string story_short_line(std::string_view line){
