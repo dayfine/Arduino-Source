@@ -373,6 +373,8 @@ std::string save_card_place(const std::string& map){
         {"SaffronCity", "saffron-city"},
         {"CinnabarIsland", "cinnabar-island"},
         {"SilphCo", "silph-co"},
+        {"CinnabarIsland", "cinnabar-island"},
+        {"PokemonMansion", "pokemon-mansion"},
     };
     for (const auto& [prefix, place] : PLACES){
         if (map == prefix || map.rfind(prefix + "_", 0) == 0){

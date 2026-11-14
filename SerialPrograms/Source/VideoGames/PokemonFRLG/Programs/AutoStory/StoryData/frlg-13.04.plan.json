@@ -1,0 +1,168 @@
+{
+    "format": "pokesim-authored-checkpoint/1",
+    "game": "frlg",
+    "checkpoint": {
+        "id": "13.04",
+        "title": "Pokemon Mansion B1F to the SECRET KEY, out by an Escape Rope",
+        "start": {
+            "map": "PokemonMansion_B1F",
+            "tiles": [
+                [
+                    27,
+                    6
+                ]
+            ],
+            "facing": "north"
+        },
+        "events": [
+            {
+                "id": "to_opening",
+                "kind": "legs",
+                "action": "taps",
+                "args": {
+                    "legs": [
+                        {
+                            "direction": "east",
+                            "tiles": 3
+                        },
+                        {
+                            "direction": "south",
+                            "tiles": 4
+                        },
+                        {
+                            "direction": "west",
+                            "tiles": 17
+                        }
+                    ]
+                },
+                "why": "a tap a tile in the set state: east to (30, 6), down to (30, 10) and west along row 10 to (13, 10), east of the opening (12, 10-12), set open (closed on the map)"
+            },
+            {
+                "id": "into_opening",
+                "kind": "step",
+                "args": {
+                    "direction": "west"
+                },
+                "declared_after": {
+                    "map": "PokemonMansion_B1F",
+                    "tiles": [
+                        [
+                            12,
+                            10
+                        ]
+                    ],
+                    "facing": "west"
+                },
+                "why": "a step onto (12, 10): open only in the set state"
+            },
+            {
+                "id": "through_opening",
+                "kind": "step",
+                "args": {
+                    "direction": "west"
+                },
+                "declared_after": {
+                    "map": "PokemonMansion_B1F",
+                    "tiles": [
+                        [
+                            11,
+                            10
+                        ]
+                    ],
+                    "facing": "west"
+                },
+                "why": "a step through onto (11, 10)"
+            },
+            {
+                "id": "to_key",
+                "kind": "legs",
+                "action": "taps",
+                "args": {
+                    "legs": [
+                        {
+                            "direction": "west",
+                            "tiles": 3
+                        },
+                        {
+                            "direction": "north",
+                            "tiles": 4
+                        },
+                        {
+                            "direction": "west",
+                            "tiles": 3
+                        }
+                    ]
+                },
+                "why": "a tap a tile: west to (8, 10), up column 8 to (8, 6) and west to (5, 6), above the SECRET KEY (5, 7)"
+            },
+            {
+                "id": "face_key",
+                "kind": "step",
+                "args": {
+                    "direction": "south"
+                },
+                "declared_after": {
+                    "map": "PokemonMansion_B1F",
+                    "tiles": [
+                        [
+                            5,
+                            6
+                        ]
+                    ],
+                    "facing": "south"
+                },
+                "why": "turn south to the ball"
+            },
+            {
+                "id": "secret_key",
+                "kind": "talk",
+                "why": "the SECRET KEY (pokeguy 1:20:21)"
+            },
+            {
+                "id": "escape_rope",
+                "kind": "game_action",
+                "action": "use_item",
+                "args": {
+                    "item": "escape-rope"
+                },
+                "declared_after": {
+                    "map": "CinnabarIsland",
+                    "tiles": [
+                        [
+                            8,
+                            4
+                        ]
+                    ],
+                    "facing": "south"
+                },
+                "why": "out to the Mansion's door (pokeguy 1:20:24-36, his ESCAPE ROPE count 3 to 2); the player stands on (8, 4), where 14.01 starts"
+            }
+        ]
+    },
+    "execution": {
+        "menu": "full",
+        "notes": {
+            "checkpoint": [
+                "Starts below B1F's second statue, at (27, 6), where 13.03 ends, the flag set. Ends outside the Mansion door on Cinnabar (8, 4) facing south, where 14.01 starts.",
+                "Barriers: Switch model (pokefirered data/scripts/pokemon_mansion.inc, PokemonMansion_*F scripts.inc; one global flag, set on a press and applied on each floor's load; the pack's maps are the flag-clear state only). Assumed per floor (read from pokefirered; the overlay data on PokemonSimulation's maps/frlg-mansion-switches branch, seen 2026-11-12, has the same tiles open or closed per state): 1F set: (22-24,10-11), (27-29,25-26), (32-34,25-26) open, (31-33,18-19) closed. 2F set: (24-26,14-15), (10,30-32) open, (12,4-8) closed, (10,28-29) wall. 3F set: (17-19,11-12) open, (21,4-8) closed. B1F set: (12,10-12), (20-22,22-23) open, (33-35,20-21) and (16,28-30) closed. Clear = the map as it is.",
+                "The walk west along row 10 crosses (12, 10-12), which is closed on the pack's map and open in the set state: its two steps are declared because the pack's map has the barrier there.",
+                "Not taken: the FULL RESTORE (2F (2, 29)) and TM22 (1F (6, 21)); pokeguy leaves by Escape Rope after the key (1:20:24-36)."
+            ]
+        }
+    },
+    "metadata": {
+        "phase": "testing",
+        "postconditions": {
+            "position": {
+                "map": "CinnabarIsland",
+                "tiles": [
+                    [
+                        8,
+                        4
+                    ]
+                ],
+                "facing": "south"
+            }
+        }
+    }
+}
