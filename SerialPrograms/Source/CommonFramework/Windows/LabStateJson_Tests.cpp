@@ -406,6 +406,7 @@ enum class Step{
     STOPPING,
     STOPPED,
     ERROR_REPORTED,
+    PANEL_CHANGED,
 };
 struct TransitionInput{
     std::vector<Step> steps;
@@ -443,6 +444,9 @@ void apply(LabTransitionTracker& tracker, Step step, WallClock now){
     case Step::ERROR_REPORTED:
         tracker.on_error();
         return;
+    case Step::PANEL_CHANGED:
+        tracker.reset_program(ProgramState::STOPPED);
+        return;
     }
 }
 UnitTestResult check(const TransitionCase& c){
@@ -479,6 +483,11 @@ private:
 };
 const TransitionCase TRANSITION_CASES[] = {
     {.name = "nothing yet", .input = {.steps = {}}, .expectation = {.action = std::nullopt}},
+    {
+        .name = "transition of the previous panel is forgotten",
+        .input = {.steps = {Step::RUNNING, Step::PANEL_CHANGED}},
+        .expectation = {.action = std::nullopt},
+    },
     {
         .name = "UI start",
         .input = {.steps = {Step::RUNNING}},

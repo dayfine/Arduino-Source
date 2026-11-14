@@ -97,6 +97,7 @@ void LabTransitionTracker::reset_program(ProgramState state){
     m_state = state;
     m_error = false;
     m_expected.reset();
+    m_last.reset();
 }
 std::optional<LabTransition> LabTransitionTracker::last() const{
     std::lock_guard<Mutex> lg(m_lock);

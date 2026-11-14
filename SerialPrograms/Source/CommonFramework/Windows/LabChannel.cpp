@@ -288,6 +288,8 @@ void LabChannel::attach_listeners(PanelSession* panel){
     if (m_program != nullptr){
         m_transitions.reset_program(m_program->current_state());
         m_program->add_listener(m_program_listener);
+    }else{
+        m_transitions.reset_program(ProgramState::STOPPED);
     }
     if (m_video != nullptr){
         m_video->add_frame_listener(m_frame_listener);

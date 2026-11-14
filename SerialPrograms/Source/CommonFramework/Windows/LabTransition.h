@@ -66,7 +66,7 @@ public:
     void on_state_change(ProgramState state, WallClock now);
     void on_error();
 
-    //  A different program is selected: its state starts over.
+    //  A different panel is selected: its state starts over, including the last transition.
     void reset_program(ProgramState state);
 
     std::optional<LabTransition> last() const;
