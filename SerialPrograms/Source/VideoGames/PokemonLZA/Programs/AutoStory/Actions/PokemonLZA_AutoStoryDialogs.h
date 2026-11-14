@@ -14,7 +14,6 @@
 #include <functional>
 #include <string_view>
 #include "Common/Cpp/Time.h"
-#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -60,15 +59,11 @@ ScreensPassed press_a_until_quiet(
 //  dialogue box shows; throws OperationFailedException if none does.
 void talk_to_facing(ConsoleHandle& console, ProControllerContext& context);
 
-//  Where a dialogue's choices are drawn, and choose_dialog_option() looks
-//  for the selection arrow: the restaurant receptionist's (RestaurantFarmer).
-//  Other dialogues' choices are assumed to sit there.
-const ImageFloatBox& dialog_choice_box();
-
 //  With a dialogue's choices on screen, picks choice `index` (0 is the top):
-//  waits for the selection arrow, presses down until it has moved `index`
-//  rows, then A. Throws OperationFailedException if the arrow never shows or
-//  does not move.
+//  waits for the selection arrow in dialog_choice_box()
+//  (Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h), presses down until it
+//  has moved `index` rows, then A. Throws OperationFailedException if the
+//  arrow never shows or does not move.
 void choose_dialog_option(ConsoleHandle& console, ProControllerContext& context, size_t index);
 
 
