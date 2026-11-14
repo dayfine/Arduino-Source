@@ -2270,8 +2270,8 @@
               "old": {
                 "state": "agent_idle",
                 "owner": "agent:frlg-lane",
-                "acquired_at": "2026-11-14T06:12:00.000Z",
-                "expires_at": "2026-11-14T06:32:00.000Z"
+                "acquired_at": "2026-11-14T06:00:00.000Z",
+                "expires_at": "2026-11-14T06:20:00.000Z"
               },
               "new": {
                 "state": "user",
@@ -2335,8 +2335,8 @@
               "old": {
                 "state": "agent_idle",
                 "owner": "agent:frlg-lane",
-                "acquired_at": "2026-11-14T06:12:00.000Z",
-                "expires_at": "2026-11-14T06:32:00.000Z"
+                "acquired_at": "2026-11-14T06:00:00.000Z",
+                "expires_at": "2026-11-14T06:20:00.000Z"
               },
               "new": {
                 "state": "user",
@@ -2409,8 +2409,8 @@
               "old": {
                 "state": "agent_idle",
                 "owner": "agent:frlg-lane",
-                "acquired_at": "2026-11-14T06:12:00.000Z",
-                "expires_at": "2026-11-14T06:32:00.000Z"
+                "acquired_at": "2026-11-14T06:00:00.000Z",
+                "expires_at": "2026-11-14T06:20:00.000Z"
               },
               "new": {
                 "state": "user",
@@ -2449,6 +2449,54 @@
     "expectation": {
       "path": "events[0].schema",
       "contains": "unsupported version 3"
+    }
+  },
+  {
+    "name": "program_failed carrying a passed verdict",
+    "kind": "event",
+    "input": {
+      "json": {
+        "schema": 1,
+        "seq": 1107,
+        "type": "program_failed",
+        "at": "2026-11-14T07:30:12.700Z",
+        "console": "B",
+        "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+        "request_id": "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10",
+        "payload": {
+          "run_id": null,
+          "verdict": "passed",
+          "checkpoint": "01.04"
+        }
+      }
+    },
+    "expectation": {
+      "path": "payload.verdict",
+      "contains": "is not one of"
+    }
+  },
+  {
+    "name": "request_id uuid with a trailing newline",
+    "kind": "event",
+    "input": {
+      "json": {
+        "schema": 1,
+        "seq": 1107,
+        "type": "program_failed",
+        "at": "2026-11-14T07:30:12.700Z",
+        "console": "B",
+        "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+        "request_id": "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10\n",
+        "payload": {
+          "run_id": null,
+          "verdict": "failed",
+          "checkpoint": "01.04"
+        }
+      }
+    },
+    "expectation": {
+      "path": "request_id",
+      "contains": "lower-case UUID"
     }
   }
 ]

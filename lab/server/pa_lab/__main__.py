@@ -27,8 +27,12 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == 'check':
-        with open(args.path, 'rb') as f:
-            data = f.read()
+        try:
+            with open(args.path, 'rb') as f:
+                data = f.read()
+        except OSError as e:
+            print('error {}: {}'.format(args.path, e.strerror or e))
+            return 2
         try:
             parsed = contracts.parse(args.kind, data)
         except contracts.ContractError as e:
