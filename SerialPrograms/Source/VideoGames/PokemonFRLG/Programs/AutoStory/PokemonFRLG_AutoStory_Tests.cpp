@@ -147,7 +147,7 @@ void apply_step_effects(const StoryStep& step){
 
 //  The story's maps as the walk's flags make them.
 const std::vector<MapData>& walk_story_maps(){
-    return story_maps(walk_state().run_flags);
+    return run_story_maps(walk_state().run_flags);
 }
 
 const MapData* find_map_named(const std::string& name){

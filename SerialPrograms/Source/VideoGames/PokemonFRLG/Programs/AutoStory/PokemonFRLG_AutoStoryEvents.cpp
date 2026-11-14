@@ -310,7 +310,7 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!nurse_before_battle(supplies)){
         return Pokemon::outcome_ok();
     }
-    Outcome walked = walk_route(env, state, step, story_maps(state.flags));
+    Outcome walked = walk_route(env, state, step, run_story_maps(state.flags));
     if (!walked.succeeded()){
         return walked;
     }
@@ -501,7 +501,7 @@ bool talk_until_message(ConsoleHandle& console, ProControllerContext& context, c
 
 
 bool walked(StoryEnv& env, RunState& state, const StoryStep& step){
-    const Outcome outcome = walk_route(env, state, step, story_maps(state.flags));
+    const Outcome outcome = walk_route(env, state, step, run_story_maps(state.flags));
     if (outcome.succeeded() && outcome.pose){
         state.pose = *outcome.pose;
     }
@@ -763,7 +763,7 @@ ConsoleAction console_action_of(StoryActionId id){
             return Pokemon::outcome_ok();
         };
     case StoryActionId::ROUTE:
-        return [](StoryEnv& env, RunState& state, const StoryStep& step){ return walk_route(env, state, step, story_maps(state.flags)); };
+        return [](StoryEnv& env, RunState& state, const StoryStep& step){ return walk_route(env, state, step, run_story_maps(state.flags)); };
     case StoryActionId::LEGS:
         return walk_legs;
     case StoryActionId::STEP:
