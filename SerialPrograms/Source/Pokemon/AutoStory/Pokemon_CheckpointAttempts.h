@@ -49,9 +49,10 @@ struct CheckpointAttempts{
     //  not, which ends the loop.
     std::function<bool(size_t next_attempt)> reset;
     CheckpointLogger log;
-    //  The game's own text for the checkpoint, if its lines use one
+    //  False when `checkpoint` is the game's own text that already says it
+    //  is a checkpoint, so the pass line leaves out "[Checkpoint] "
     //  (checkpoint_start_line()).
-    std::string_view display_text = "";
+    bool add_checkpoint_prefix = true;
 };
 
 //  What the loop came to.
