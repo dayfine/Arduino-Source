@@ -9,6 +9,7 @@
 
 #include <deque>
 #include <QNetworkReply>
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
 #include "Common/Cpp/Concurrency/ConditionVariable.h"
@@ -52,14 +53,14 @@ public:
         const QUrl& url, std::chrono::milliseconds delay,
         const JsonObject& obj,
         std::shared_ptr<PendingFileSend> file,
-        std::function<void()> finish_callback = nullptr
+        MoveOnlyFunction<void()> finish_callback = nullptr
     );
     void send(
         Logger& logger,
         const QUrl& url, std::chrono::milliseconds delay,
         const JsonObject& obj,
         std::vector<std::shared_ptr<PendingFileSend>> files,
-        std::function<void()> finish_callback = nullptr
+        MoveOnlyFunction<void()> finish_callback = nullptr
     );
 
     static DiscordWebhookSender& instance();
