@@ -37,7 +37,7 @@ size_t run_checkpoint_with_retries(
             }
         },
         .reset = [&](size_t next_attempt){
-            actions.log(checkpoint_reset_line(checkpoint_text, next_attempt, checkpoint_text));
+            actions.log(checkpoint_reset_line(checkpoint_text, next_attempt, std::nullopt, checkpoint_text));
             actions.reset();
             stats.m_reset++;
             actions.update_stats();
