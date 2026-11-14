@@ -21,6 +21,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "Pokemon_StoryBackend.h"
@@ -35,6 +36,9 @@ namespace Pokemon{
 struct StoryActionCall{
     const StoryStep& step;
     const StoryActionArgs& args;
+    //  The run's pause points: an action that walks legs calls
+    //  before_leg() before each (Pokemon_StoryBreakpoints.h).
+    StoryPausePoints& pause;
 };
 
 //  An action's code: reads its call's args and drives the backend. A
@@ -118,6 +122,14 @@ struct StoryGame{
     //  What can stop a step part-way (a wild battle, a trainer who saw
     //  us), built for each checkpoint run. Optional.
     std::function<std::vector<Interrupt>(StoryBackend<PoseType>& backend)> interrupts = {};
+    //  Where the run pauses for the user to look at the console, and what a
+    //  pause does: the engine calls the hook with a label such as
+    //  "12.03/5 pallet_shore" before each step, and the walk action with
+    //  "12.03/5 pallet_shore leg 2/5 east 4 -> (10, 10)" before each leg
+    //  (only with LEGS). Optional: with no hook, or OFF, a run never pauses.
+    //  The hook returns when the run goes on, or when the run is cancelled.
+    StoryBreakpoints breakpoints = StoryBreakpoints::OFF;
+    StoryPauseHook pause_point = {};
 };
 
 

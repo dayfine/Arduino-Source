@@ -26,6 +26,7 @@
 #include "CommonFramework/Language.h"
 #include "CommonTools/Options/StringSelectOption.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StorySaveMode.h"
@@ -81,6 +82,8 @@ public:
     StoryCheckLevel check_level() const;
     //  The game's language, for the steps that read text.
     Language language() const;
+    //  Where the run pauses (StoryGame::breakpoints).
+    StoryBreakpoints breakpoints() const;
 
 public:
     SimpleIntegerOption<uint8_t> ATTEMPTS_PER_CHECKPOINT;
@@ -95,6 +98,9 @@ public:
     //  On, nothing runs: the game reads where it stands and checks the end
     //  checkpoint's postconditions (Pokemon_StoryPostconditionCheck.h).
     BooleanCheckBoxOption POSTCONDITIONS_ONLY;
+    //  A debugger's breakpoints: pause before each step or leg for the user
+    //  to look at the console. Only a lab build waits (set_story_pause_wait()).
+    EnumDropdownOption<StoryBreakpoints> BREAKPOINTS;
 };
 
 
