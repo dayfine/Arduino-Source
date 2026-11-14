@@ -6,7 +6,6 @@ Run without Qt, controllers, profiles or game saves:
 cmake -S devtools/story-data-tests -B build/story-data-tests
 cmake --build build/story-data-tests -j4
 ctest --test-dir build/story-data-tests --output-on-failure
-build/story-data-tests/StoryDataTests /path/to/PokemonSimulation/data/story/wire-conformance.json
 ```
 
 For a multi-configuration generator, add `--config Debug` to the build,
@@ -14,15 +13,18 @@ For a multi-configuration generator, add `--config Debug` to the build,
 The same native cases are registered in the application's unit-test runner.
 
 `Pokemon_StoryStepJson` encodes and reads the common `StoryCheckpoint`,
-`StoryStep` and tile-based `Pose` records. It retains action order, alternative
-tiles, certainty, absent facing and explicit false/zero values. Unknown fields,
-action/position tags and invalid primitive types fail. Native default values
-are omitted canonically; encoding does not establish semantic route validity.
+`StoryStep` and `GridPose` records. It keeps action order, alternative tiles
+and absent facing, and fills arg fallbacks. Unknown fields, kinds, actions and
+args, invalid primitive types and missing required args fail. Encoding does not
+establish semantic route validity.
 
-The portable workflow also reads the 31 synthetic conformance cases at
+The portable workflow checks the Python reader against the synthetic
+conformance cases at
 [PokemonSimulation revision 866613f](https://github.com/dayfine/PokemonSimulation/tree/866613fa03e5c4a5eb7e57c91b59fafb44fc7ee3/data/story).
-Python reads the same input/expectation records. This fixture revision is a
-contract-test dependency, not an approved map-resource revision.
+Those cases still use the older pose and per-kind step fields, so the native
+reader, which reads steps as an action plus typed args, no longer runs them.
+This fixture revision is a contract-test dependency, not an approved
+map-resource revision.
 
 See the [shared checkpoint contract](https://github.com/dayfine/PokemonSimulation/blob/866613fa03e5c4a5eb7e57c91b59fafb44fc7ee3/docs/story/CHECKPOINT_CONTRACT.md)
 for the field boundary and proposed common requirements, state, save/retry and
