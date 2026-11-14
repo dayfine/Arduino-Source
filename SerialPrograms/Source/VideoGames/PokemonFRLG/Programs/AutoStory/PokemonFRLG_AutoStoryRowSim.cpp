@@ -169,7 +169,7 @@ Pokemon::ScreenLook StoryMapsSim::look(){
     Pokemon::ScreenLook out;
     out.log.record({}, start);
     if (std::exchange(m_dialog_rose, false)){
-        out.log.record({Pokemon::ScreenEvent::DIALOG_BOX}, start + Milliseconds(33));
+        out.log.record({ScreenEvent::DIALOG_BOX}, start + Milliseconds(33));
     }
     out.window = {.start = start, .end = start + BETWEEN_STEPS_LOOK};
     return out;
