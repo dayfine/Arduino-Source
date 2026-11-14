@@ -63,11 +63,9 @@ SceneMove TalkOver::look(const ScreenEvents& events, WallClock now){
     }
     const Milliseconds quiet_for = m_rule.door ? TalkOverRule::DOOR_QUIET : TALK_OVER_QUIET;
     const Milliseconds calm_for = m_rule.door ? TalkOverRule::DOOR_CALM : TALK_OVER_CALM;
-
     const bool over =
         (quiet && now - *m_quiet_since >= quiet_for) ||
         (calm && now - *m_calm_since >= calm_for);
-
     if (over && m_rule.end_on_quiet){
         return SceneMove::DONE;
     }
