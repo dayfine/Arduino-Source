@@ -1968,6 +1968,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TeachTextReader.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TrainerCardDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TrainerCardDetector.h
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BallReader.cpp
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BallReader.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.cpp
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.cpp
