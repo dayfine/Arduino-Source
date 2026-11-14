@@ -30,6 +30,13 @@ const ScreenState* classify(const std::vector<ScreenState>& states, const ImageV
 } // namespace
 
 
+bool same_screen(const VideoSnapshot& a, const VideoSnapshot& b){
+    if (!a || !b || a->width() != b->width() || a->height() != b->height()){
+        return false;
+    }
+    return ImageMatch::pixel_RMSD(a, b) < 2.0;
+}
+
 const ScreenState* match_screen_state(const std::vector<ScreenState>& states, const ScreenObservation& observation){
     for (const ScreenState& state : states){
         if (state.matches_observation && state.matches_observation(observation)){
@@ -100,9 +107,7 @@ std::optional<std::string> ScreenMachineChecks::unchanged_problem(const ScreenSt
 }
 
 std::optional<std::string> ScreenMachineChecks::problem(const ScreenState& state, VideoSnapshot frame, WallClock when){
-    const bool same_size = m_last_frame && frame &&
-        m_last_frame->width() == frame->width() && m_last_frame->height() == frame->height();
-    if (same_size && ImageMatch::pixel_RMSD(m_last_frame, frame) < 2.0){
+    if (same_screen(m_last_frame, frame)){
         std::optional<std::string> stalled = unchanged_problem(state, when);
         if (stalled){
             return stalled;
