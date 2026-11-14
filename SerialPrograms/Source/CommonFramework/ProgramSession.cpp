@@ -4,9 +4,11 @@
  *
  */
 
+#include <format>
 #include <future>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/PanicDump.h"
+#include "Common/Cpp/ScopeExit.h"
 #include "Common/Cpp/Logging/GlobalLogger.h"
 #include "CommonFramework/GlobalSettingsPanel.h"
 #include "CommonFramework/Logging/Logger.h"
@@ -64,11 +66,12 @@ void ProgramSession::remove_listener(Listener& listener){
 
 
 
-ProgramSession::ProgramSession(const ProgramDescriptor& descriptor)
+ProgramSession::ProgramSession(const ProgramDescriptor& descriptor, RunRecordStore& run_records)
     : m_descriptor(descriptor)
     , m_instance_id(ProgramTracker::instance().add_program(*this))
+    , m_run_recorder(run_records, global_logger_raw())
 //    , m_logger(global_logger_raw(), "Program:" + std::to_string(m_instance_id))
-    , m_logger(global_logger_raw(), "Program")
+    , m_logger(m_run_recorder, "Program")
     , m_last_state_change(current_time())
     , m_state(ProgramState::STOPPED)
     , m_scope(nullptr)
@@ -186,6 +189,9 @@ void ProgramSession::push_stats(){
 }
 void ProgramSession::push_error(const std::string& message){
     m_listeners.run_method(&Listener::error, message);
+    //  A diagnostic in the run's record, not its outcome: the stats-save
+    //  error and the download warnings come through here too.
+    m_run_recorder.event({.kind = "error", .text = message});
 }
 
 void ProgramSession::push_download_error(const std::string& message){
@@ -237,38 +243,8 @@ std::string ProgramSession::start_program(){
         m_logger.log("Program is not ready.", COLOR_RED);
         return "Program is not ready.";
 
-    case ProgramState::STOPPED:{
-        std::string error = check_validity();
-        if (!error.empty()){
-            m_logger.log(error, COLOR_RED);
-            return error;
-        }
-
-        //  Wait for previous program thread to finish.
-        join_program_thread();
-
-        //  Now start the program.
-        m_logger.log("Starting program...");
-        m_last_state_change.store(current_time(), std::memory_order_relaxed);
-        set_state(ProgramState::RUNNING);
-        m_program_thread = GlobalThreadPools::unlimited_realtime().dispatch_now_blocking(
-            [this]{
-                run_with_catch(
-                    "ProgramSession::start_program()",
-                    [this]{ run_program(); }
-                );
-            }
-        );
-#if 0
-        m_thread = Thread([this]{
-            run_with_catch(
-                "ProgramSession::start_program()",
-                [this]{ run_program(); }
-            );
-        });
-#endif
-        return "";
-    }
+    case ProgramState::STOPPED:
+        return start_accepted_run();
     case ProgramState::RUNNING:
         m_logger.log("Program is already running.", COLOR_RED);
         return "Program is already running.";
@@ -300,6 +276,7 @@ std::string ProgramSession::stop_program(){
         case ProgramState::RUNNING:
             m_logger.log("Stopping program...");
             set_state(ProgramState::STOPPING);
+            m_run_recorder.stopping();
             break;
         case ProgramState::STOPPING:
             m_logger.log("Program is already stopping.", COLOR_RED);
@@ -319,23 +296,119 @@ std::string ProgramSession::stop_program(){
 
 
 
-void ProgramSession::run_program(){
+//  Under the lock, for a stopped session: checks the settings, then starts
+//  the program thread. The run is accepted here: its record exists before
+//  the program thread can report anything.
+std::string ProgramSession::start_accepted_run(){
+    std::string error = check_validity();
+    if (!error.empty()){
+        m_logger.log(error, COLOR_RED);
+        return error;
+    }
+
+    //  Wait for previous program thread to finish.
+    join_program_thread();
+
+    m_logger.log("Starting program...");
+    m_last_state_change.store(current_time(), std::memory_order_relaxed);
+    m_run_recorder.begin(identifier(), settings_json());
+    set_state(ProgramState::RUNNING);
+    try{
+        m_program_thread = dispatch_program_thread([this]{
+            run_with_catch(
+                "ProgramSession::start_program()",
+                [this]{ run_program_and_record(); }
+            );
+        });
+    }catch (Exception& e){
+        return abandon_run(std::format("The program thread could not be started: {}", e.message()));
+    }catch (std::exception& e){
+        return abandon_run(std::format("The program thread could not be started: {}", e.what()));
+    }
+    return "";
+}
+
+//  No thread, so no run: closes the record and leaves the session stopped,
+//  so the next start can try again. Returns `message` for start_program().
+std::string ProgramSession::abandon_run(std::string message){
+    m_logger.log(message, COLOR_RED);
+    m_run_recorder.finish({.outcome = RunOutcome::FAILED, .error = message});
+    set_state(ProgramState::STOPPED);
+    return message;
+}
+
+AsyncTask ProgramSession::dispatch_program_thread(std::function<void()> body){
+    return GlobalThreadPools::unlimited_realtime().dispatch_now_blocking(std::move(body));
+}
+
+void ProgramSession::run_program_and_record(){
+    //  Exactly one result per run: whichever way the thread leaves, the
+    //  record is closed, and a path that set none is a failure, never a
+    //  success. An exception that escapes run_program() (as today it does
+    //  for a validity check that fails after the start) is its result.
+    std::optional<RunResult> result;
+    ScopeExit finish_run([&]{
+        m_run_recorder.finish(result.value_or(RunResult{
+            .outcome = RunOutcome::FAILED,
+            .error = "The program thread ended without a result.",
+        }));
+    });
+    try{
+        result = run_program();
+    }catch (Exception& e){
+        result = RunResult{.outcome = RunOutcome::FAILED, .error = e.message().empty() ? e.name() : e.message()};
+        throw;
+    }catch (std::exception& e){
+        result = RunResult{.outcome = RunOutcome::FAILED, .error = e.what()};
+        throw;
+    }
+}
+
+//  Under the lock: false when the run was stopped before the thread got
+//  going. Throws when the settings are no longer valid. Loads the stats.
+bool ProgramSession::prepare_run(){
+    std::lock_guard<Mutex> lg(m_lock);
+    if (current_state() != ProgramState::RUNNING){
+        return false;
+    }
+
+    std::string error = check_validity();
+    if (!error.empty()){
+        throw UserSetupError(logger(), std::move(error));
+    }
+
+    m_current_stats = m_descriptor.make_stats();
+    load_historical_stats();
+    push_stats();
+    return true;
+}
+
+//  The run's result when the resources it needs could not be downloaded.
+std::optional<RunResult> ProgramSession::download_resources(){
+    if (download_prereqs(*m_scope)){
+        return std::nullopt;
+    }
+    //  The details were reported as "error" events. A stop during the
+    //  download is a cancellation, not a failure.
+    if (current_state() == ProgramState::STOPPING){
+        return RunResult{.outcome = RunOutcome::CANCELLED};
+    }
+    return RunResult{.outcome = RunOutcome::FAILED, .error = "A required resource could not be downloaded."};
+}
+
+void ProgramSession::end_run(){
+    std::lock_guard<Mutex> lg(m_lock);
+    push_stats();
+    update_historical_stats_with_current();
+    set_state(ProgramState::STOPPED);
+}
+
+RunResult ProgramSession::run_program(){
     SleepSuppressScope sleep_scope(GlobalSettings::instance().SLEEP_SUPPRESS->PROGRAM_RUNNING);
+    RunResult result;
 
-    {
-        std::lock_guard<Mutex> lg(m_lock);
-        if (current_state() != ProgramState::RUNNING){
-            return;
-        }
-
-        std::string error = check_validity();
-        if (!error.empty()){
-            throw UserSetupError(logger(), std::move(error));
-        }
-
-        m_current_stats = m_descriptor.make_stats();
-        load_historical_stats();
-        push_stats();
+    if (!prepare_run()){
+        return {.outcome = RunOutcome::CANCELLED};
     }
 
     m_instance->options().reset_state();
@@ -349,8 +422,8 @@ void ProgramSession::run_program(){
 
     {
         RunningProgramScope running_scope(*this);
-        if (!download_prereqs(*m_scope)){
-            return;
+        if (std::optional<RunResult> failed = download_resources()){
+            return *failed;
         }
         std::unique_ptr<ProgramEnvironment> env = make_env(program_info);
         try{
@@ -360,10 +433,13 @@ void ProgramSession::run_program(){
             internal_run_program(*env);
             env->log_to_ui("- Program Finished -");
             logger().log("Program finished normally!", COLOR_BLUE);
+            result.outcome = RunOutcome::COMPLETED;
         }catch (OperationCancelledException&){
             env->log_to_ui("- Program Stopped -");
+            result.outcome = RunOutcome::CANCELLED;
         }catch (ProgramCancelledException&){
             env->log_to_ui("- Program Stopped -");
+            result.outcome = RunOutcome::CANCELLED;
         }catch (ProgramFinishedException& e){
             logger().log("Program finished early!", COLOR_BLUE);
             env->log_to_ui("- Program Finished -");
@@ -372,6 +448,8 @@ void ProgramSession::run_program(){
                 e.message(),
                 e.screenshot_view()
             );
+            result.outcome = RunOutcome::COMPLETED;
+            result.frame = e.screenshot();
         }catch (InvalidConnectionStateException& e){
             logger().log("Program stopped due to connection issue.", COLOR_RED);
             env->log_to_ui("- Invalid Connection -", COLOR_RED);
@@ -380,6 +458,7 @@ void ProgramSession::run_program(){
                 message = e.name();
             }
             report_error(message);
+            result.error = message;
         }catch (FatalProgramException& e){
             logger().log("Program stopped with an exception!", COLOR_RED);
             env->log_to_ui("- Program Error -", COLOR_RED);
@@ -390,6 +469,8 @@ void ProgramSession::run_program(){
             }
             report_error(message);
             e.send_fatal_error_notif_and_telemetry_report(*env, m_instance->NOTIFICATION_ERROR_FATAL);
+            result.error = message;
+            result.frame = e.screenshot();
         }catch (OperationFailedExceptionWithScreenshot& e){
             logger().log("Program stopped with an exception!", COLOR_RED);
             env->log_to_ui("- Program Error -", COLOR_RED);
@@ -400,6 +481,8 @@ void ProgramSession::run_program(){
             }
             report_error(message);
             e.send_fatal_error_notif_and_telemetry_report(*env, m_instance->NOTIFICATION_ERROR_FATAL);
+            result.error = message;
+            result.frame = e.screenshot();
         }catch (OperationFailedException& e){ // no screenshot
             logger().log("Program stopped with an exception!", COLOR_RED);
             env->log_to_ui("- Program Error -", COLOR_RED);
@@ -410,6 +493,7 @@ void ProgramSession::run_program(){
             }
             report_error(message);
             e.send_fatal_error_notif_and_telemetry_report(*env, m_instance->NOTIFICATION_ERROR_FATAL);
+            result.error = message;
         }catch (Exception& e){
             logger().log("Program stopped with an exception!", COLOR_RED);
             env->log_to_ui("- Program Error -", COLOR_RED);
@@ -422,6 +506,7 @@ void ProgramSession::run_program(){
                 *env, m_instance->NOTIFICATION_ERROR_FATAL,
                 message
             );
+            result.error = message;
         }catch (std::exception& e){
             logger().log("Program stopped with an exception!", COLOR_RED);
             env->log_to_ui("- Program Error -", COLOR_RED);
@@ -434,6 +519,7 @@ void ProgramSession::run_program(){
                 *env, m_instance->NOTIFICATION_ERROR_FATAL,
                 message
             );
+            result.error = message;
         }catch (...){
             logger().log("Program stopped with an exception!", COLOR_RED);
             env->log_to_ui("- Unknown Error -", COLOR_RED);
@@ -442,15 +528,12 @@ void ProgramSession::run_program(){
                 *env, m_instance->NOTIFICATION_ERROR_FATAL,
                 "Unknown error."
             );
+            result.error = "Unknown error.";
         }
     }
 
-    {
-        std::lock_guard<Mutex> lg(m_lock);
-        push_stats();
-        update_historical_stats_with_current();
-        set_state(ProgramState::STOPPED);
-    }
+    end_run();
+    return result;
 }
 
 

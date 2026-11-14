@@ -33,6 +33,10 @@ const ProgramInfo& ProgramEnvironment::program_info() const{
     return m_program_info;
 }
 
+void record_run_event(ProgramEnvironment& env, RunEvent event){
+    env.m_session.m_run_recorder.event(std::move(event));
+}
+
 
 void ProgramEnvironment::update_stats(){
     m_session.report_stats_changed();

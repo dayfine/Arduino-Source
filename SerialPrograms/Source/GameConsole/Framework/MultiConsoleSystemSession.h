@@ -47,7 +47,10 @@ public:
     //  Construct the multi-console session.
     //  By default it constructs the generic console. But you can inject your
     //  own factory for your own custom subclass.
+    //  `base_logger` is what the consoles' loggers write through; see
+    //  ConsoleSystemSession.
     MultiConsoleSystemSession(
+        Logger& base_logger,
         MultiConsoleSystemOption& option,
         bool allow_commands_while_locked,
         std::optional<uint64_t> program_tracking_id = {}
@@ -85,6 +88,7 @@ public:
 
 private:
     Logger& m_logger;
+    Logger& m_base_logger;      //  What the consoles' loggers write through.
     MultiConsoleSystemOption& m_option;
 
     bool m_allow_commands_while_locked;
