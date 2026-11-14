@@ -307,10 +307,14 @@ const EnvelopeCase ENVELOPE_CASES[] = {
 
 
 //  A dev file in place of a built-in checkpoint file (load_bdsp_story()).
-struct DevFileInput{
-    std::string file;               //  the dev file's name; empty: no dev file
+struct DevFile{
+    std::string file;               //  the dev file's name
     std::string_view builtin;       //  the built-in file it starts from
     void (*mutate)(JsonObject&) = nullptr;
+};
+
+struct DevFileInput{
+    std::vector<DevFile> files;
 };
 
 struct DevFileExpectation{
@@ -337,15 +341,24 @@ void other_id(JsonObject& root){
     root.get_object_throw("checkpoint")["id"] = "00.99";
 }
 
+void end_on_autosave(JsonObject& root){
+    root.get_object_throw("execution")["save"] = "autosave";
+}
+
+void reload_when_chained(JsonObject& root){
+    root.get_object_throw("execution")["reload_when_chained"] = true;
+}
+
 std::vector<Pokemon::StoryDevFile> dev_files_of(const DevFileInput& input){
-    if (input.file.empty()){
-        return {};
+    std::vector<Pokemon::StoryDevFile> files;
+    for (const DevFile& file : input.files){
+        JsonValue document = authored_checkpoint_document(file.builtin);
+        if (file.mutate != nullptr){
+            file.mutate(document.to_object_throw());
+        }
+        files.push_back({.name = file.file, .path = std::format("AutoStoryDev/bdsp/{}", file.file), .text = document.dump()});
     }
-    JsonValue document = authored_checkpoint_document(input.builtin);
-    if (input.mutate != nullptr){
-        input.mutate(document.to_object_throw());
-    }
-    return {{.name = input.file, .path = std::format("AutoStoryDev/bdsp/{}", input.file), .text = document.dump()}};
+    return files;
 }
 
 //  The loaded story in one line: 00.01's title, the dev_only rows, how
@@ -411,32 +424,40 @@ private:
 const DevFileCase DEV_FILE_CASES[] = {
     {
         .name = "Dev file: none, the built-in rows in id order",
-        .input = {.file = "", .builtin = ""},
+        .input = {},
         .expectation = {.summary = "Bedroom to the Verity Lakefront | dev_only | 23 user rows | dev"},
     },
     {
         .name = "Dev file: replaces the built-in file of its name",
-        .input = {.file = "bdsp-00.01.plan.json", .builtin = "bdsp-00.01.plan", .mutate = retitle},
+        .input = {.files = {{.file = "bdsp-00.01.plan.json", .builtin = "bdsp-00.01.plan", .mutate = retitle}}},
         .expectation = {.summary = "Retimed | dev_only | 23 user rows | dev bdsp-00.01.plan.json"},
     },
     {
         .name = "Dev file: an out-of-order file's row stays in id order",
-        .input = {.file = "bdsp-mine-01.03.plan.json", .builtin = "bdsp-mine-01.03.plan"},
+        .input = {.files = {{.file = "bdsp-mine-01.03.plan.json", .builtin = "bdsp-mine-01.03.plan"}}},
         .expectation = {.summary = "Bedroom to the Verity Lakefront | dev_only | 23 user rows | dev bdsp-mine-01.03.plan.json"},
     },
     {
+        .name = "Dev file: bdsp-mine-01.03 reloads after 01.02b, the row before it by id",
+        .input = {.files = {
+            {.file = "bdsp-01.02b.plan.json", .builtin = "bdsp-01.02b.plan", .mutate = end_on_autosave},
+            {.file = "bdsp-mine-01.03.plan.json", .builtin = "bdsp-mine-01.03.plan", .mutate = reload_when_chained},
+        }},
+        .expectation = {.summary = "Bedroom to the Verity Lakefront | dev_only | 23 user rows | dev bdsp-01.02b.plan.json bdsp-mine-01.03.plan.json"},
+    },
+    {
         .name = "Dev file: a dev_only row is not listed for a user",
-        .input = {.file = "bdsp-00.01.plan.json", .builtin = "bdsp-00.01.plan", .mutate = mark_dev_only},
+        .input = {.files = {{.file = "bdsp-00.01.plan.json", .builtin = "bdsp-00.01.plan", .mutate = mark_dev_only}}},
         .expectation = {.summary = "Bedroom to the Verity Lakefront | dev_only 00.01 | 22 user rows | dev bdsp-00.01.plan.json"},
     },
     {
         .name = "Dev file: named like no built-in file, refused",
-        .input = {.file = "bdsp-99.99.plan.json", .builtin = "bdsp-00.01.plan"},
+        .input = {.files = {{.file = "bdsp-99.99.plan.json", .builtin = "bdsp-00.01.plan"}}},
         .expectation = {.rejected = true},
     },
     {
         .name = "Dev file: changes the checkpoint id, refused",
-        .input = {.file = "bdsp-00.01.plan.json", .builtin = "bdsp-00.01.plan", .mutate = other_id},
+        .input = {.files = {{.file = "bdsp-00.01.plan.json", .builtin = "bdsp-00.01.plan", .mutate = other_id}}},
         .expectation = {.rejected = true},
     },
 };

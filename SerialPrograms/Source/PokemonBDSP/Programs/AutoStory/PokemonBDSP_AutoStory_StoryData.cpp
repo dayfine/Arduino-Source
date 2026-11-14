@@ -4,7 +4,6 @@
  *
  */
 
-#include <algorithm>
 #include <format>
 #include <utility>
 #include "Common/Cpp/Exceptions.h"
@@ -180,11 +179,12 @@ Pokemon::StoryData<StoryCheckpoint> load_bdsp_story(std::span<const Pokemon::Sto
         .read = [](std::string_view text, std::string_view source){
             return read_story_file(parse_json(std::string(text)), source);
         },
+        //  The story plays its rows in id order (bdsp-mine-01.03 after 01.02b).
+        .plays_before = [](const StoryCheckpoint& a, const StoryCheckpoint& b){
+            return a.id < b.id;
+        },
     });
-    std::vector<StoryCheckpoint>& result = story.checkpoints;
-    std::sort(result.begin(), result.end(), [](const StoryCheckpoint& a, const StoryCheckpoint& b){
-        return a.id < b.id;
-    });
+    const std::vector<StoryCheckpoint>& result = story.checkpoints;
     for (size_t c = 1; c < result.size(); c++){
         if (result[c].id == result[c - 1].id){
             throw ParseException("Two authored checkpoints are " + result[c].id + ".");
