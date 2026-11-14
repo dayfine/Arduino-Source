@@ -65,18 +65,6 @@ int LockTargetCycle::flicks_to(size_t index) const{
 }
 
 
-std::vector<int> alternating_stops(std::span<const int> spots, size_t visits){
-    std::vector<int> stops;
-    if (spots.empty()){
-        return stops;
-    }
-    for (size_t i = 0; i < visits; i++){
-        stops.push_back(spots[i % spots.size()]);
-    }
-    return stops;
-}
-
-
 
 } // namespace PokemonLZA
 } // namespace NintendoSwitch

@@ -5,20 +5,27 @@
     "id": "03.08",
     "title": "Five species, into the Research Lab",
     "start": {
-      "place": "WildZone1"
+      "place": "LumioseCity",
+      "spot": "PokemonCenter"
     },
     "events": [
       {
+        "id": "center_to_zone_1",
+        "kind": "game_action",
+        "why": "from Vert's Pokemon Center (03.07 flies there) by the objective marker to Wild Zone 1's \"A Enter\", A, into the zone; where 03.07's fly fell back, the far gate reads 150 or less and the player is in the zone already: nothing. UNVERIFIED, NEEDS CONSOLE: the marker's way from the Center to the entrance gate, and the 150 bound.",
+        "action": "center_to_zone_1"
+      },
+      {
         "id": "catch_more_species",
         "kind": "game_action",
-        "why": "step 64: the lab gate asks for five registered species (3/5 after the tutorial, 4/5 with Scatterbug). Catch more here in Wild Zone 1 before leaving, so the gate's scene finds 5/5: Mareep, in the grass right of the road at 60 from the far gate; only the Pokedex's \"Registered!\" banner counts, since repeats (Fletchling, Scatterbug) do not register (catch_in_zone).",
+        "why": "step 64: the lab gate asks for five registered species, 3/5 after the tutorial: two new ones here in Wild Zone 1 before leaving, Scatterbug (on the road at 100 from the far gate) and Mareep (in the grass right of the road at 60), so the gate's scene finds 5/5 (user, 2026-11-13; console B 2026-11-13 caught only Scatterbug with one wanted). Patrol 100, 60, 100, 60, ...: walking to 100 and back brings Pokemon back at 60; 10 visits, 10 minutes, 12 throws at most. Only the Pokedex's \"Registered!\" banner counts, since repeats (Fletchling, Bunnelby) do not register; the mission panel's counter is not read (catch_in_zone).",
         "action": "catch_in_zone"
       },
       {
         "id": "zone_1_to_far_gate",
         "kind": "game_action",
-        "why": "step 62: on across Wild Zone 1 to its far gate's \"A Leave\", by the objective marker (the timed legs started at the rocks; the catches leave us elsewhere).",
-        "action": "walk_to_marker"
+        "why": "step 62: on across Wild Zone 1 to its far gate's \"A Leave\": back onto the road at the catch spots (60, and 100 first when further) and from there by the objective marker. A walk straight at the marker from the last catch (96) left the zone on its west side and pressed into a building, last read 49 (console B, 2026-11-13). On the marker with no prompt counts as through the gate (walk_to_zone_gate).",
+        "action": "walk_to_zone_gate"
       },
       {
         "id": "leave_zone_1",

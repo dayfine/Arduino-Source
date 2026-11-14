@@ -18,6 +18,7 @@
 #include "PokemonLZA_AutoStoryBracketWatch.h"
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 #include "PokemonLZA_AutoStoryCatchPlan_Tests.h"
+#include "PokemonLZA_AutoStoryZone1Road.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -377,18 +378,18 @@ struct StopsCase{
 
 const StopsCase STOPS_CASES[] = {
     {
-        .name = "Wild Zone 1's spots, three times each",
-        .input = {.spots = {std::begin(CATCH_SPOTS), std::end(CATCH_SPOTS)}, .visits = 6},
-        .expectation = {.stops = {96, 57, 96, 57, 96, 57}},
+        .name = "Wild Zone 1's spots, 100 first, then 60",
+        .input = {.spots = {std::begin(CATCH_SPOTS), std::end(CATCH_SPOTS)}, .visits = 4},
+        .expectation = {.stops = {100, 60, 100, 60}},
     },
     {
         .name = "an odd count ends on the first spot",
-        .input = {.spots = {96, 57}, .visits = 3},
-        .expectation = {.stops = {96, 57, 96}},
+        .input = {.spots = {100, 60}, .visits = 3},
+        .expectation = {.stops = {100, 60, 100}},
     },
     {
         .name = "no visits, no stops",
-        .input = {.spots = {96, 57}, .visits = 0},
+        .input = {.spots = {100, 60}, .visits = 0},
         .expectation = {.stops = {}},
     },
     {
@@ -416,6 +417,127 @@ private:
     const StopsCase& m_case;
 };
 
+
+//  road_stops_to_gate(): back onto the road before the far gate.
+struct GateCase{
+    std::string name;
+    struct Input{
+        std::vector<int> spots;
+        std::optional<int> distance;
+    };
+    Input input;
+    struct Expectation{
+        std::vector<int> stops;
+    };
+    Expectation expectation;
+};
+
+const GateCase GATE_CASES[] = {
+    {
+        .name = "after a catch at 100: on to 60",
+        .input = {.spots = {std::begin(CATCH_SPOTS), std::end(CATCH_SPOTS)}, .distance = 100},
+        .expectation = {.stops = {60}},
+    },
+    {
+        .name = "before both spots: through both, furthest first",
+        .input = {.spots = {60, 100}, .distance = 130},
+        .expectation = {.stops = {100, 60}},
+    },
+    {
+        .name = "at 60: 60 again",
+        .input = {.spots = {100, 60}, .distance = 60},
+        .expectation = {.stops = {60}},
+    },
+    {
+        .name = "off the road nearer the gate (console B, last read 49): back to 60",
+        .input = {.spots = {100, 60}, .distance = 49},
+        .expectation = {.stops = {60}},
+    },
+    {
+        .name = "no distance read: every spot",
+        .input = {.spots = {100, 60}, .distance = std::nullopt},
+        .expectation = {.stops = {100, 60}},
+    },
+    {
+        .name = "no spots, no stops",
+        .input = {.spots = {}, .distance = 80},
+        .expectation = {.stops = {}},
+    },
+};
+
+class Test_RoadStopsToGate : public UnitTest{
+public:
+    explicit Test_RoadStopsToGate(const GateCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: road stops to the gate: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::vector<int> stops = road_stops_to_gate(m_case.input.spots, m_case.input.distance);
+        if (stops != m_case.expectation.stops){
+            return std::format("Expected [{}], got [{}].", joined(m_case.expectation.stops), joined(stops));
+        }
+        return true;
+    }
+
+private:
+    const GateCase& m_case;
+};
+
+
+//  starts_in_zone_1(): 03.08 starts in the zone or at the Pokemon Center.
+struct ZoneStartCase{
+    std::string name;
+    struct Input{
+        std::optional<int> distance;
+    };
+    Input input;
+    struct Expectation{
+        bool in_zone;
+    };
+    Expectation expectation;
+};
+
+const ZoneStartCase ZONE_START_CASES[] = {
+    {
+        .name = "where 03.07's tutorial ends",
+        .input = {.distance = 125},
+        .expectation = {.in_zone = true},
+    },
+    {
+        .name = "at the bound",
+        .input = {.distance = ZONE_1_START_MAX},
+        .expectation = {.in_zone = true},
+    },
+    {
+        .name = "further: at the Pokemon Center",
+        .input = {.distance = ZONE_1_START_MAX + 1},
+        .expectation = {.in_zone = false},
+    },
+    {
+        .name = "no distance read: not taken as in the zone",
+        .input = {.distance = std::nullopt},
+        .expectation = {.in_zone = false},
+    },
+};
+
+class Test_StartsInZone1 : public UnitTest{
+public:
+    explicit Test_StartsInZone1(const ZoneStartCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: 03.08 starts in Wild Zone 1: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const bool in_zone = starts_in_zone_1(m_case.input.distance);
+        if (in_zone != m_case.expectation.in_zone){
+            return std::format("Expected {}, got {}.", m_case.expectation.in_zone, in_zone);
+        }
+        return true;
+    }
+
+private:
+    const ZoneStartCase& m_case;
+};
+
 } // namespace
 
 
@@ -437,6 +559,12 @@ void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
     }
     for (const StopsCase& item : STOPS_CASES){
         database.add<Test_AlternatingStops>(item);
+    }
+    for (const GateCase& item : GATE_CASES){
+        database.add<Test_RoadStopsToGate>(item);
+    }
+    for (const ZoneStartCase& item : ZONE_START_CASES){
+        database.add<Test_StartsInZone1>(item);
     }
 }
 
