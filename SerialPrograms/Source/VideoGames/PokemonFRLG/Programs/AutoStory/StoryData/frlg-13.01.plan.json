@@ -16,6 +16,70 @@
         },
         "events": [
             {
+                "id": "mansion_3f",
+                "kind": "route",
+                "action": "run",
+                "args": {
+                    "target": {
+                        "map": "PokemonMansion_3F",
+                        "tiles": [
+                            [
+                                8,
+                                3
+                            ]
+                        ],
+                        "facing": "east"
+                    }
+                },
+                "why": "from below the Mansion door (8, 3), where 12.03 ends, north into it, then 1F up its stairs and 2F's northern rooms to the stairs (9, 3), up to 3F. The stairs leave the player a tile east of the warp (8, 3) on console B (9, 3 on all three 13.01 runs, 2026-11-13 19:17 to 2026-11-14 02:12), so the steps after it find the statue's tile from a wall"
+            },
+            {
+                "id": "statue_row",
+                "kind": "legs",
+                "action": "taps",
+                "args": {
+                    "legs": [
+                        {
+                            "direction": "south",
+                            "tiles": 2
+                        }
+                    ]
+                },
+                "why": "a tap a tile down to row 5, the statue's (12, 5): (8, 5), or (9, 5) when the stairs left the player a tile east"
+            },
+            {
+                "id": "statue_wall",
+                "kind": "legs",
+                "action": "run",
+                "args": {
+                    "legs": [
+                        {
+                            "direction": "east",
+                            "tiles": 3
+                        }
+                    ]
+                },
+                "why": "east along row 5 to the statue's west side, (11, 5): the statue stops the hold there from either tile, the funnel the open legs onto its tile lacked (they ended on (13, 6) three times)"
+            },
+            {
+                "id": "statue_tile",
+                "kind": "legs",
+                "action": "taps",
+                "args": {
+                    "legs": [
+                        {
+                            "direction": "south",
+                            "tiles": 1
+                        },
+                        {
+                            "direction": "east",
+                            "tiles": 1
+                        }
+                    ]
+                },
+                "why": "a tap a tile from (11, 5) to the tile below the statue, (12, 6), the one it is pressed from facing north"
+            },
+            {
                 "id": "mansion_holes",
                 "kind": "route",
                 "action": "run",
@@ -31,7 +95,7 @@
                         "facing": "south"
                     }
                 },
-                "why": "from below the Mansion door (8, 3), where 12.03 ends, north into it, then 1F up its stairs, 2F's northern rooms to the stairs (9, 3), and on 3F through the barrier (17-19, 11-12) that a statue press opens: the route presses the statue the cheapest way and walks on to (19, 13), the room of holes",
+                "why": "from below the statue (12, 6): the route presses it north, which opens the barrier (17-19, 11-12), and walks on to (19, 13), the room of holes",
                 "gates_after": {
                     "switches": {
                         "mansion": true
