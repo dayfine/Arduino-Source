@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "console": "B",
+  "observed_at": "2026-11-14T08:00:00.000Z",
+  "availability": {
+    "state": "unavailable",
+    "reason": "unsupported_schema"
+  },
+  "app": null,
+  "lease": {
+    "state": "free",
+    "owner": null,
+    "acquired_at": null,
+    "expires_at": null
+  },
+  "blocked": [
+    {
+      "code": "app_unavailable",
+      "message": "Lab/state.json has schema 2; this daemon reads 1.",
+      "evidence": {
+        "schema": 2
+      }
+    }
+  ]
+}

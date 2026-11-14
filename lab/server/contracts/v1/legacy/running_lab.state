@@ -1,0 +1,7 @@
+seq=r42
+state=RUNNING
+program=PokemonBDSP:AutoStory
+controller=ready
+owner=pa-lab-daemon
+error=
+paused=01.04 leg 3

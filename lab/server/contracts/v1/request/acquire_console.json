@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "request_id": "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10",
+  "client_id": "claude:frlg-lane",
+  "tool": "acquire_console",
+  "console": "B",
+  "arguments": {
+    "owner": "agent:frlg-lane",
+    "ttl_s": 1200
+  }
+}

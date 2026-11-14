@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "request_id": "3e8a6c21-7f90-4b2d-a1c4-6d0e9b5f8a73",
+  "client_id": "claude:frlg-lane",
+  "tool": "cfr_batch",
+  "console": "B",
+  "lease_token": "example-lease-token-not-real",
+  "arguments": {
+    "lines": [
+      "shot before",
+      "press B 160 640",
+      "shot after"
+    ]
+  }
+}

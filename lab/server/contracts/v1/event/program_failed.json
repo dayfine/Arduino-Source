@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "seq": 1107,
+  "type": "program_failed",
+  "at": "2026-11-14T07:30:12.700Z",
+  "console": "B",
+  "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+  "request_id": "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10",
+  "payload": {
+    "run_id": null,
+    "verdict": "failed",
+    "checkpoint": "01.04"
+  }
+}

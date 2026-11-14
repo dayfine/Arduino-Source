@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "seq": 1042,
+  "type": "lease_changed",
+  "at": "2026-11-14T06:10:10.050Z",
+  "console": "B",
+  "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+  "request_id": null,
+  "payload": {
+    "old": {
+      "state": "agent_idle",
+      "owner": "agent:frlg-lane",
+      "acquired_at": "2026-11-14T06:12:00.000Z",
+      "expires_at": "2026-11-14T06:32:00.000Z"
+    },
+    "new": {
+      "state": "user",
+      "owner": "user",
+      "acquired_at": "2026-11-14T06:10:10.002Z",
+      "expires_at": null
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "game": "PokemonFRLG",
+  "slot": 0,
+  "checkpoint": null,
+  "position": null,
+  "saved_at": "2026-11-12T19:40:00.000Z",
+  "run_id": null,
+  "producer": {
+    "program": "PokemonFRLG:StaticRng",
+    "build": "lab/main@0f1e2d3c"
+  }
+}

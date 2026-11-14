@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "written_at": "2026-11-14T06:10:12.124Z",
+  "instance": {
+    "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+    "pid": 4411,
+    "profile": "lab-B"
+  },
+  "panel": {
+    "id": "PokemonFRLG:AutoStory",
+    "kind": "program"
+  },
+  "program": {
+    "state": "stopped",
+    "run_id": null,
+    "last_transition": {
+      "action": "stop",
+      "source": "ui",
+      "request_id": null,
+      "at": "2026-11-14T06:10:10.002Z"
+    }
+  },
+  "controller": {
+    "state": "ready"
+  },
+  "video": {
+    "state": "live",
+    "frame_seq": 918274,
+    "captured_at": "2026-11-14T06:10:12.091Z",
+    "signal": "unknown"
+  },
+  "observation": {
+    "game": {
+      "value": "unknown",
+      "observed_at": null
+    },
+    "screen": {
+      "value": "unknown",
+      "observed_at": null
+    }
+  },
+  "channel": {
+    "last_request": "fs012327",
+    "last_error": null,
+    "owner_claimed": false
+  }
+}

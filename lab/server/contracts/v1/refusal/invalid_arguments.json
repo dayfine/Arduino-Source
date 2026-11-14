@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "request_id": "9b1d7e44-6a2f-4c0e-8f13-2d5c8a90b6e1",
+  "tool": "run_program",
+  "refusal": {
+    "code": "invalid_arguments",
+    "field": "options.START_CHECKPOINT",
+    "message": "Checkpoint 13.07 is hidden without Developer Mode."
+  }
+}
