@@ -964,7 +964,10 @@ std::string approach_off_tile(const std::vector<RouteStep>& legs){
 //  The walk before an A press (a TALK: a person, an item, a sign) ends on
 //  its tile: tapped from a tile the walk knows, or against a wall. 10.05's
 //  approach to the Rare Candy, "west 4" and "south 6" held open, ended a
-//  tile west and met a gravestone (console B, 2026-11-12 04:39).
+//  tile west and met a gravestone (console B, 2026-11-12 04:39). 14.01's
+//  approach to quiz machine 2, "north 5" held open, ended a tile north on
+//  (26, 2) and "west 10" stopped against the machine on (17, 2)
+//  (console B, 2026-11-14 05:48).
 //  PASSED_ON_CONSOLE: approaches before 10.05 that passed their console
 //  runs as held legs (a follow-up to tap them). 13.03 and 13.04 plan their statue
 //  approaches (PRESS_SWITCH) and have not run on a console, nor has 16.05's walk to the
@@ -975,10 +978,7 @@ UnitTestResult test_approaches_end_on_their_tile(){
         "02.02/below_oak", "03.02/before_brock", "05.07/below_bill_clefairy", "05.07/pc_front",
         "05.07/beside_bill", "06.01/behind_captain", "07.01/beside_chairman", "07.01/bike_clerk",
         "09.01/below_poster_guard", "09.02/below_left_guard", "09.03/above_tea_woman", "10.01/below_fly_woman", "13.03/to_elixir", "13.04/to_key",
-        //  Not run on a console: 14.01 (#410) predates this rule. Its quiz machine approaches are held
-        //  open routes; tap them (follow-up) and drop these.
-        "14.01/below_quiz_1", "14.01/below_quiz_2", "14.01/below_quiz_3", "14.01/below_quiz_4",
-        "14.01/below_quiz_5", "14.01/below_quiz_6", "16.05/below_president",
+        "16.05/below_president",
     };
     std::string wrong;
     size_t count = 0;
