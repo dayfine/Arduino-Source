@@ -318,7 +318,7 @@ bool platform_look(Pokemon::StoryBackend<ZonePose>& backend, const ScreenObserva
 //  A text box with the advance arrow: the opening's last line ("Your train
 //  has arrived in Lumiose City!") waits for A (console B, 2026-11-13).
 bool text_waiting_for_a(const ScreenObservation& look){
-    return look.events.has(PokemonAutomation::ScreenEvent::TEXT_BOX) && look.readings.contains(ADVANCE_ARROW_READING);
+    return look.events.has(PokemonAutomation::ScreenEvent::DIALOG_BOX) && look.readings.contains(ADVANCE_ARROW_READING);
 }
 
 //  The station platform after the opening cutscene: PLATFORM_READING on

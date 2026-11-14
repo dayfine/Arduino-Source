@@ -236,8 +236,6 @@ UnitTestResult test_every_row_ready(Logger&){
 //  after the Brigitte battle, console B, 2026-11-13) fail at its end, not
 //  before.
 UnitTestResult test_scene_start_window(Logger&){
-    using Pokemon::ScreenEvent;
-    using Pokemon::ScreenEvents;
     const WallClock start = current_time();
     const auto at = [start](int64_t seconds){
         return start + Milliseconds(seconds * 1000);
@@ -259,8 +257,6 @@ UnitTestResult test_scene_start_window(Logger&){
 }
 
 UnitTestResult test_scene_mash_rule(Logger&){
-    using Pokemon::ScreenEvent;
-    using Pokemon::ScreenEvents;
     struct Case{
         std::string_view name;
         ScreenEvents events;
