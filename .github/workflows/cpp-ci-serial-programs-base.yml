@@ -120,7 +120,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: dayfine/PokemonSimulation
-          ref: d3eea1b5c04180f8b60eb98b0d65f70aca6b1abb
+          ref: bb8e884c3c2c15885e0a7651b02e472c9a583754
           path: StoryReplaySource
 
       - name: Verify replay preview bytes and independently regenerate its route input
