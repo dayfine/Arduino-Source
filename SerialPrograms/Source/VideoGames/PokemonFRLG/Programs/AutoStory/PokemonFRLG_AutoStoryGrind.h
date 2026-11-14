@@ -75,7 +75,7 @@ public:
     using HealTrip = std::function<bool(const GrindSpot& spot)>;
 
     ConsoleGrindActions(
-        ConsoleHandle& console, ProControllerContext& context, Language language,
+        ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player,
         Supplies& supplies, Pokemon::StoryCheckLevel checks, HealTrip heal_trip, PaceTrainerBattle trainer_battle
     );
 
@@ -89,6 +89,7 @@ private:
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     Language m_language;
+    PlayerGender m_player;
     Supplies& m_supplies;
     Pokemon::StoryCheckLevel m_checks;
     ConsoleCaptureActions m_encounters;
