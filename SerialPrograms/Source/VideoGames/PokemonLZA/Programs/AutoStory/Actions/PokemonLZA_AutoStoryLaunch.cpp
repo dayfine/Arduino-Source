@@ -11,6 +11,7 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/StartupChecks/StartProgramChecks.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"     //  NintendoSwitch_CloseGameDetector.h needs it first.
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -50,23 +51,14 @@ LaunchMove next_launch_move(LaunchStart start, bool home_pressed){
 }
 
 
-namespace{
-
-//  Until `check` holds on a frame, or `timeout`.
 bool wait_for_screen(ConsoleHandle& console, ProControllerContext& context, const ScreenCheck& check, Milliseconds timeout){
-    const WallClock deadline = current_time() + timeout;
-    while (true){
-        context.wait_for_all_requests();
-        const VideoSnapshot frame = console.video().snapshot();
-        if (frame && check(frame)){
-            return true;
-        }
-        if (current_time() >= deadline){
-            return false;
-        }
-        context.wait_for(250ms);
-    }
+    DetectorToFinder<ScreenCheckDetector> screen("ScreenCheckWatcher", Milliseconds(0), check);
+    context.wait_for_all_requests();
+    return wait_until(console, context, timeout, {screen}) == 0;
 }
+
+
+namespace{
 
 //  On HOME with the tile selected: X, and if the close dialog shows the
 //  game was running, so A to close it and back to HOME. X on a game that is

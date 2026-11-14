@@ -17,7 +17,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
 #include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h"
-#include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
+#include "PokemonLZA_AutoStoryDialogs.h"
 #include "PokemonLZA_AutoStoryIntro.h"
 #include "PokemonLZA_AutoStoryIntroScreens.h"
 #include "PokemonLZA_AutoStoryLanguageList.h"
@@ -33,7 +33,7 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  When an OVERWORLD mash is over: the party bar held a second, or (with a
+//  When an OVERWORLD mash is over: the party bar held OVERWORLD_HOLD, or (with a
 //  quiet time) nothing busy on screen for that long once the scene's
 //  minimum length has passed.
 class OverworldEnd{
@@ -56,7 +56,7 @@ public:
         }else if (!m_can_move_since){
             m_can_move_since = now;
         }
-        if (m_can_move_since && now - *m_can_move_since >= 1000ms){
+        if (m_can_move_since && now - *m_can_move_since >= OVERWORLD_HOLD){
             return true;
         }
         if (m_quiet && now >= m_quiet_from && now - m_last_busy >= *m_quiet){
@@ -253,16 +253,10 @@ void wait_for_language_list(
     ConsoleHandle& console, ProControllerContext& context,
     Milliseconds timeout, std::string_view failure
 ){
-    const WallClock deadline = current_time() + timeout;
-    while (current_time() < deadline){
-        context.wait_for_all_requests();
-        const VideoSnapshot frame = console.video().snapshot();
-        if (frame && is_language_list(frame)){
-            console.log("AutoStory intro: language-list: detected.");
-            dump_debug_image(console, "PokemonLZA/AutoStory/Intro", "language-list", frame);
-            return;
-        }
-        context.wait_for(250ms);
+    if (wait_for_screen(console, context, [](const ImageViewRGB32& frame){ return is_language_list(frame); }, timeout)){
+        console.log("AutoStory intro: language-list: detected.");
+        dump_intro_frame(console, context, "language-list");
+        return;
     }
     OperationFailedExceptionWithScreenshot::fire(
         ErrorReportMode::SEND_ERROR_REPORT,
@@ -306,15 +300,12 @@ void move_language_cursor(ConsoleHandle& console, ProControllerContext& context,
 //  Throws OperationFailedException if it does not.
 void wait_for_system_keyboard(ConsoleHandle& console, ProControllerContext& context, bool gone, Milliseconds timeout){
     SystemKeyboardDetector keyboard;
-    const WallClock deadline = current_time() + timeout;
-    while (current_time() < deadline){
-        context.wait_for_all_requests();
-        const VideoSnapshot frame = console.video().snapshot();
-        if (frame && keyboard.detect(frame) != gone){
-            console.log(std::format("AutoStory intro: keyboard: {}.", gone ? "closed" : "detected"));
-            return;
-        }
-        context.wait_for(250ms);
+    const ScreenCheck keyboard_as_wanted = [&keyboard, gone](const ImageViewRGB32& frame){
+        return keyboard.detect(frame) != gone;
+    };
+    if (wait_for_screen(console, context, keyboard_as_wanted, timeout)){
+        console.log(std::format("AutoStory intro: keyboard: {}.", gone ? "closed" : "detected"));
+        return;
     }
     OperationFailedExceptionWithScreenshot::fire(
         ErrorReportMode::SEND_ERROR_REPORT,
@@ -382,16 +373,10 @@ void press_look_picker_key(ConsoleHandle& console, ProControllerContext& context
 //  Until the look picker shows, or `timeout`. Saves its first frame to
 //  DebugDumps. Throws OperationFailedException if it does not show.
 void wait_for_look_picker(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout){
-    const WallClock deadline = current_time() + timeout;
-    while (current_time() < deadline){
-        context.wait_for_all_requests();
-        const VideoSnapshot frame = console.video().snapshot();
-        if (frame && is_look_picker(frame)){
-            console.log("AutoStory intro: look-picker: detected.");
-            dump_debug_image(console, "PokemonLZA/AutoStory/Intro", "look-picker", frame);
-            return;
-        }
-        context.wait_for(250ms);
+    if (wait_for_screen(console, context, [](const ImageViewRGB32& frame){ return is_look_picker(frame); }, timeout)){
+        console.log("AutoStory intro: look-picker: detected.");
+        dump_intro_frame(console, context, "look-picker");
+        return;
     }
     OperationFailedExceptionWithScreenshot::fire(
         ErrorReportMode::SEND_ERROR_REPORT,
@@ -528,39 +513,20 @@ void type_player_name(
 }
 
 //  Taunie's talk, the Map & Missions card, the first map and the rest of her
-//  talk: A and B in turn, until the party bar has shown for a second. A pages
+//  talk: A and B in turn, until the party bar has held (OVERWORLD_HOLD). A pages
 //  the talk and the card; B closes the map, which takes no A. The map is not
 //  waited for: MapDetector needs the Travel Spots icon, and on console B
 //  (2026-11-13) it never fired on this first map in 60 s of A.
 void talk_through_map_screen(ConsoleHandle& console, ProControllerContext& context){
-    OverworldPartySelectionDetector party;
-    const WallClock deadline = current_time() + 120s;
-    std::optional<WallClock> party_since;
-    bool press_a = true;
-    while (current_time() < deadline){
-        context.wait_for_all_requests();
-        const VideoSnapshot frame = console.video().snapshot();
-        const WallClock now = current_time();
-        if (frame && party.detect(frame)){
-            if (!party_since){
-                party_since = now;
-            }
-            if (now - *party_since >= 1000ms){
-                console.log("talk_through_map_screen(): the party bar held a second: back in the overworld.");
-                return;
-            }
-            context.wait_for(250ms);
-            continue;
-        }
-        party_since.reset();
-        pbf_press_button(context, press_a ? BUTTON_A : BUTTON_B, 160ms, 840ms);
-        press_a = !press_a;
-    }
-    OperationFailedExceptionWithScreenshot::fire(
-        ErrorReportMode::SEND_ERROR_REPORT,
-        "talk_through_map_screen(): no overworld within 120 s of A and B in turn.",
-        console
+    press_until_overworld(
+        console, context,
+        [](ProControllerContext& context){
+            pbf_press_button(context, BUTTON_A, 160ms, 840ms);
+            pbf_press_button(context, BUTTON_B, 160ms, 840ms);
+        },
+        120s, "talk_through_map_screen(): no overworld within 120 s of A and B in turn."
     );
+    console.log("talk_through_map_screen(): the party bar held: back in the overworld.");
 }
 
 void climb_ladder(ConsoleHandle&, ProControllerContext& context){

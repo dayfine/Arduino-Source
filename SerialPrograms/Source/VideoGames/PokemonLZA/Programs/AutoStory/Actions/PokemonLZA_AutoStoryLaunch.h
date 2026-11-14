@@ -8,6 +8,12 @@
  *  detector, so BDSP and FRLG can share it once it moves to the shared
  *  AutoStory core.
  *
+ *  Why not upstream's close_game_from_home() / ensure_at_home()
+ *  (NintendoSwitch_GameEntry.h): their retry paths press DOWN and HOME on
+ *  the HOME menu, which moves HOME's cursor to another tile; a new game
+ *  must launch the tile the user selected. An upstream option to keep the
+ *  cursor would let this use them.
+ *
  */
 
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryLaunch_H
@@ -15,8 +21,10 @@
 
 #include <functional>
 #include <string_view>
+#include <utility>
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
+#include "CommonTools/VisualDetector.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 
@@ -27,6 +35,25 @@ namespace PokemonLZA{
 
 //  A detector for one screen.
 using ScreenCheck = std::function<bool(const ImageViewRGB32& frame)>;
+
+//  A ScreenCheck as a detector, for wait_until().
+class ScreenCheckDetector : public StaticScreenDetector{
+public:
+    explicit ScreenCheckDetector(ScreenCheck check)
+        : m_check(std::move(check))
+    {}
+    virtual void make_overlays(VideoOverlaySet&) const override{}
+    virtual bool detect(const ImageViewRGB32& screen) override{
+        return m_check(screen);
+    }
+
+private:
+    ScreenCheck m_check;
+};
+
+//  Until `check` holds on a frame (wait_until()), or `timeout`. Returns
+//  whether it held.
+bool wait_for_screen(ConsoleHandle& console, ProControllerContext& context, const ScreenCheck& check, Milliseconds timeout);
 
 
 //  The screen the launch step reads.

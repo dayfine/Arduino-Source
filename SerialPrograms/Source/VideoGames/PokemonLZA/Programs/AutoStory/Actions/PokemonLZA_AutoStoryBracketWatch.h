@@ -71,6 +71,21 @@ struct CameraTurn{
 //  objective marker.
 CameraTurn camera_turn_toward(double x);
 
+//  One look of a catch stop's camera sweep: the turn before it, and whether
+//  to watch for brackets after it.
+struct SweepLook{
+    CameraTurn turn;
+    bool watch = true;
+};
+
+//  A catch stop's sweep from facing along the road: a look straight on,
+//  then `steps` turns of `step` toward the grass right of the road with a
+//  look after each, then `steps` turns back with no look, so the camera
+//  ends where it started. From mid-road, the user's catches were in that
+//  grass (Mareep) or on the road (Scatterbug), the camera turned right
+//  (console B, 2026-11-13); the patrol facing along the road saw none.
+std::vector<SweepLook> camera_sweep(CameraTurn step, int steps);
+
 
 
 } // namespace PokemonLZA

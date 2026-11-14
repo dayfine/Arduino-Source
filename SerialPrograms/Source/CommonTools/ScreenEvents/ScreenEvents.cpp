@@ -8,6 +8,7 @@
 #include <format>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
+#include "CommonTools/Images/SolidColorTest.h"
 #include "ScreenEventLog.h"
 #include "ScreenEventTypes.h"
 #include "ScreenFades.h"
@@ -97,12 +98,18 @@ std::string describe(const ScreenEvents& events, std::string_view separator){
 }
 
 
+//  Black is is_black() (SolidColorTest, BlackScreenDetector's test) with
+//  the fade's thresholds.
+//  White is not is_white(): that also wants an even grey, and a fade to
+//  white can be tinted.
 WarpFade fade_of(const ImageStats& middle){
+    if (is_black(middle, FADE_MAX_DARK_SUM, FADE_MAX_STDDEV_SUM)){
+        return WarpFade::BLACK;
+    }
     if (middle.stddev.sum() > FADE_MAX_STDDEV_SUM){
         return WarpFade::NONE;
     }
-    const double sum = middle.average.sum();
-    return sum <= FADE_MAX_DARK_SUM ? WarpFade::BLACK : sum >= FADE_MIN_WHITE_SUM ? WarpFade::WHITE : WarpFade::NONE;
+    return middle.average.sum() >= FADE_MIN_WHITE_SUM ? WarpFade::WHITE : WarpFade::NONE;
 }
 WarpFade fade_of_screen(const ImageViewRGB32& screen){
     return fade_of(image_stats(extract_box_reference(screen, ImageFloatBox(0.1, 0.1, 0.8, 0.8))));

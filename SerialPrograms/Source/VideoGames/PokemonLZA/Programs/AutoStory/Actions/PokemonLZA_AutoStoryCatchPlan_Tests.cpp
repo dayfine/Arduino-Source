@@ -362,6 +362,88 @@ private:
 };
 
 
+//  camera_sweep(): a catch stop's looks toward the grass right of the
+//  road and back. Each look as text: the turn before it ("stick x ms",
+//  none when no turn), then "look" when it watches.
+struct SweepCase{
+    std::string name;
+    struct Input{
+        CameraTurn step;
+        int steps;
+    };
+    Input input;
+    struct Expectation{
+        std::vector<std::string> looks;
+    };
+    Expectation expectation;
+};
+
+const SweepCase SWEEP_CASES[] = {
+    {
+        .name = "three steps right, a look after each, then back with none",
+        .input = {.step = {0.5, std::chrono::milliseconds(400)}, .steps = 3},
+        .expectation = {.looks = {
+            "look", "0.5 400 look", "0.5 400 look", "0.5 400 look", "-0.5 400", "-0.5 400", "-0.5 400",
+        }},
+    },
+    {
+        .name = "one step",
+        .input = {.step = {0.4, std::chrono::milliseconds(300)}, .steps = 1},
+        .expectation = {.looks = {"look", "0.4 300 look", "-0.4 300"}},
+    },
+    {
+        .name = "no steps: one look straight on",
+        .input = {.step = {0.5, std::chrono::milliseconds(400)}, .steps = 0},
+        .expectation = {.looks = {"look"}},
+    },
+    {
+        .name = "negative steps: one look straight on",
+        .input = {.step = {0.5, std::chrono::milliseconds(400)}, .steps = -2},
+        .expectation = {.looks = {"look"}},
+    },
+};
+
+std::string sweep_look_text(const SweepLook& look){
+    std::string out;
+    if (look.turn.time.count() > 0){
+        out = std::format("{} {}", look.turn.stick_x, look.turn.time.count());
+    }
+    if (look.watch){
+        out += out.empty() ? "look" : " look";
+    }
+    return out;
+}
+
+std::string joined_text(const std::vector<std::string>& values){
+    std::string out;
+    for (const std::string& value : values){
+        out += out.empty() ? value : std::format(", {}", value);
+    }
+    return out;
+}
+
+class Test_CameraSweep : public UnitTest{
+public:
+    explicit Test_CameraSweep(const SweepCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: camera sweep: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        std::vector<std::string> looks;
+        for (const SweepLook& look : camera_sweep(m_case.input.step, m_case.input.steps)){
+            looks.push_back(sweep_look_text(look));
+        }
+        if (looks != m_case.expectation.looks){
+            return std::format("Expected [{}], got [{}].", joined_text(m_case.expectation.looks), joined_text(looks));
+        }
+        return true;
+    }
+
+private:
+    const SweepCase& m_case;
+};
+
+
 //  alternating_stops(): back and forth over the catch spots.
 struct StopsCase{
     std::string name;
@@ -556,6 +638,9 @@ void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
     }
     for (const TurnCase& item : TURN_CASES){
         database.add<Test_CameraTurn>(item);
+    }
+    for (const SweepCase& item : SWEEP_CASES){
+        database.add<Test_CameraSweep>(item);
     }
     for (const StopsCase& item : STOPS_CASES){
         database.add<Test_AlternatingStops>(item);

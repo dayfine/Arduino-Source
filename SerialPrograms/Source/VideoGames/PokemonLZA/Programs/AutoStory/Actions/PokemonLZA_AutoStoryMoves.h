@@ -94,7 +94,9 @@ void fly_to(ConsoleHandle& console, ProControllerContext& context, Language lang
 //  fly_to(), where not flying is no failure: when the game would not fly
 //  (fast travel not unlocked yet, pursued, the place not listed), logs it,
 //  backs out of the map to the overworld and returns false; the player is
-//  where it was. Returns true in the overworld at `location`.
+//  where it was. A map with no Travel Spots icon (fast travel not open)
+//  is found in 5 s, not open_map()'s 30. Returns true in the overworld at
+//  `location`.
 bool fly_to_or_stay(ConsoleHandle& console, ProControllerContext& context, Language language, Location location);
 
 //  03.08's start: where 03.07 flew to the Pokemon Center, on to Wild Zone

@@ -58,6 +58,19 @@ CameraTurn camera_turn_toward(double x){
     return turn;
 }
 
+std::vector<SweepLook> camera_sweep(CameraTurn step, int steps){
+    std::vector<SweepLook> looks;
+    looks.push_back(SweepLook{});
+    for (int i = 0; i < steps; i++){
+        looks.push_back(SweepLook{step, true});
+    }
+    const CameraTurn back{-step.stick_x, step.time};
+    for (int i = 0; i < steps; i++){
+        looks.push_back(SweepLook{back, false});
+    }
+    return looks;
+}
+
 
 
 } // namespace PokemonLZA
