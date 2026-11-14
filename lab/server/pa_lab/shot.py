@@ -84,7 +84,9 @@ def _wait_for_journal(console: ConsoleReader, sleep: Callable[[float], None], de
     journal = lab_dir / 'outbox' / (name + '.out')
     while True:
         if journal.exists():
-            return journal.read_text(encoding='utf-8', errors='replace').splitlines()
+            lines = journal.read_text(encoding='utf-8', errors='replace').splitlines()
+            if lines and lines[-1] == 'end':  # the app may still be writing it
+                return lines
         if console.now() >= deadline:
             break
         sleep(POLL_S)

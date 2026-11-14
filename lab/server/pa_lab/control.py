@@ -1,4 +1,4 @@
-"""The durable control plane: leases, request records, tickets and events (Slice 3 of fork #131).
+"""The durable control plane: leases, request records, tickets and events.
 
 Everything here is a row in the daemon's SQLite file (`pa_lab.db`), changed only inside one
 `BEGIN IMMEDIATE` transaction, so a crash or a second daemon cannot split a decision:
@@ -27,7 +27,7 @@ import secrets
 import sqlite3
 import threading
 import time
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple
 
 from pa_lab import contracts, timestamps
 from pa_lab.db import Database
@@ -37,6 +37,11 @@ MAX_WAIT_S = 60.0
 DEFAULT_PAGE = 100
 MAX_PAGE = 500
 POLL_S = 0.2  # another process's writes are seen by polling; this process's wake the waiters
+
+
+LEASE_COLUMNS = frozenset({
+    'state', 'owner', 'client_id', 'token_hash', 'acquired_at', 'expires_at', 'ttl_s', 'run_request_id',
+    'run_instance_id', 'run_started_at', 'ended_token_hash', 'ended_reason', 'updated_at'})
 
 
 class Refused(Exception):
@@ -115,10 +120,15 @@ class ControlPlane:
             self._expire_due(conn, console)
             return lease_doc(self._lease_row(conn, console))
 
-    def request_status(self, client_id: str, request_id: str) -> Dict[str, Any]:
-        """The caller's own request record (a ticket while pending); the lease token is redacted."""
-        row = self.db.read().execute('SELECT * FROM requests WHERE client_id = ? AND request_id = ?',
-                                     (client_id, request_id)).fetchone()
+    def request_status(self, client_id: str, console: Any, request_id: str) -> Dict[str, Any]:
+        """The caller's own request record on `console` (a ticket while pending); the lease token is redacted.
+
+        A request id reused across tools is several rows; the newest is returned.
+        """
+        self._check_console(console)
+        row = self.db.read().execute(
+            'SELECT * FROM requests WHERE client_id = ? AND console = ? AND request_id = ? '
+            'ORDER BY created_at DESC, tool LIMIT 1', (client_id, console, request_id)).fetchone()
         if row is None:
             raise Refused('invalid_arguments', 'No request {} from this client.'.format(request_id),
                           field='request_id')
@@ -178,7 +188,7 @@ class ControlPlane:
         handler = {'acquire_console': self._acquire, 'renew_console': self._renew,
                    'release_console': self._release}.get(req['tool'])
         if handler is None:
-            raise Refused('invalid_arguments', '{} is not served before Slice 5.'.format(req['tool']), field='tool')
+            raise Refused('invalid_arguments', '{} is not served yet.'.format(req['tool']), field='tool')
         with self._writing() as conn:
             existing = self._existing(conn, req, args, token_hash)
             if existing is not None:
@@ -198,7 +208,7 @@ class ControlPlane:
             self._request_event(conn, req['console'], req['request_id'], req['tool'], result, refusal)
             return self._record(self._request_row(conn, client_id, req['tool'], req['request_id']))
 
-    # ---- tickets (long operations; Slice 5 starts and resolves them) --------------------------
+    # ---- tickets (long operations; the daemon starts and resolves them) --------------------------
 
     def open_ticket(self, client_id: str, request: Dict[str, Any]) -> Dict[str, Any]:
         """Stores a `pending` record for a long operation, once. An exact retry gets the same record."""
@@ -236,7 +246,7 @@ class ControlPlane:
     # ---- runs and the operator ----------------------------------------------------------------
 
     def begin_run(self, console: str, lease_token: str, request_id: str, instance_id: str) -> Dict[str, Any]:
-        """agent_idle -> agent_running for the lease holder (Slice 5's run_program calls this once
+        """agent_idle -> agent_running for the lease holder (run_program calls this once
         the app reports the start). A running lease never expires."""
         self._check_console(console)
         with self._writing() as conn:
@@ -453,6 +463,9 @@ class ControlPlane:
                    instance_id: Optional[str] = None, at: Optional[str] = None, **fields: Any) -> None:
         old = lease_doc(self._lease_row(conn, console))
         fields['updated_at'] = self._stamp()
+        unknown = set(fields) - LEASE_COLUMNS
+        if unknown:
+            raise ValueError('not lease columns: {}'.format(sorted(unknown)))
         assignments = ', '.join('{} = ?'.format(name) for name in fields)
         conn.execute('UPDATE leases SET {} WHERE console = ?'.format(assignments), (*fields.values(), console))
         new = lease_doc(self._lease_row(conn, console))

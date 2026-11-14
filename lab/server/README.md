@@ -216,7 +216,7 @@ otherwise `lease_invalid`. `lease_changed` events carry `old`, `new` and a `reas
 name. The record keeps the normalized arguments (defaults filled in) and the result or refusal.
 An exact retry gets the stored record, refusals included, even after a restart; the same key with
 other arguments is `request_id_reused`. `request_status(console, request_id)` reads the caller's
-own record; the lease token never appears in a status read or an event.
+own record on that console (the newest, if one id was used for several tools); the lease token never appears in a status read or an event.
 
 **Tickets** are request records with status `pending`: `open_ticket` / `resolve_ticket` are the
 store side of Slice 5's long operations. They survive restarts and resolve once.

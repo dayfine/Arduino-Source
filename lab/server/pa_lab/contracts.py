@@ -19,10 +19,10 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 SUPPORTED_VERSIONS = (1,)
 
-TIMESTAMP_RE = re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$')
-UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
-PANEL_ID_RE = re.compile(r'^[A-Za-z0-9_]+:[A-Za-z0-9_]+$')
-GAME_ID_RE = re.compile(r'^[A-Za-z][A-Za-z0-9_]*$')
+TIMESTAMP_RE = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z')
+UUID_RE = re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+PANEL_ID_RE = re.compile(r'[A-Za-z0-9_]+:[A-Za-z0-9_]+')
+GAME_ID_RE = re.compile(r'[A-Za-z][A-Za-z0-9_]*')
 UNKNOWN = 'unknown'
 
 
@@ -109,7 +109,7 @@ class Str(Spec):
             ctx.error(path, 'expected a string, got {}'.format(_type_name(value)))
         elif value == '':
             ctx.error(path, 'must not be empty')
-        elif self.pattern is not None and not self.pattern.match(value):
+        elif self.pattern is not None and not self.pattern.fullmatch(value):
             ctx.error(path, '{!r} is not a valid {}'.format(value, self.label))
         return value
 
@@ -170,7 +170,7 @@ class Timestamp(Spec):
     label = 'timestamp (UTC, YYYY-MM-DDTHH:MM:SS.sssZ)'
 
     def check(self, value, path, ctx):
-        if not isinstance(value, str) or not TIMESTAMP_RE.match(value):
+        if not isinstance(value, str) or not TIMESTAMP_RE.fullmatch(value):
             ctx.error(path, '{!r} is not a UTC timestamp like 2026-11-14T06:10:12.124Z'.format(value))
             return value
         try:
@@ -184,7 +184,7 @@ class Uuid(Spec):
     label = 'uuid (lower-case, 8-4-4-4-12)'
 
     def check(self, value, path, ctx):
-        if not isinstance(value, str) or not UUID_RE.match(value):
+        if not isinstance(value, str) or not UUID_RE.fullmatch(value):
             ctx.error(path, '{!r} is not a lower-case UUID'.format(value))
         return value
 
@@ -646,8 +646,9 @@ EVENT_PAYLOADS: Dict[str, Spec] = {
                               F('result', AnyObject())]),
     'request_failed': Obj([F('request_id', Uuid()), F('tool', Enum(*TOOL_ARGUMENTS)), F('refusal', REFUSAL)]),
 }
-EVENT_PAYLOADS['program_failed'] = EVENT_PAYLOADS['program_finished']
-EVENT_PAYLOADS['video_back'] = EVENT_PAYLOADS['video_lost']
+EVENT_PAYLOADS['program_failed'] = Obj([F('run_id', Nullable(Str())), F('verdict', Enum('failed')),
+                                        F('checkpoint', Nullable(Str()))])
+EVENT_PAYLOADS['video_back'] = Obj([F('frame_seq', Nullable(Int(minimum=0)))])
 EVENT_PAYLOADS['autosave'] = EVENT_PAYLOADS['save']
 
 EVENT = Obj([
@@ -697,6 +698,15 @@ AUTHORS: Dict[str, str] = {
 
 
 # ---- entry points --------------------------------------------------------------------------------
+
+def check_object(spec: Spec, value: Any) -> Any:
+    """Checks `value` against one spec; returns it as checked or raises ContractError."""
+    ctx = _Ctx()
+    out = spec.check(value, '', ctx)
+    if ctx.errors:
+        raise ContractError('object', ctx.errors)
+    return out
+
 
 def validate(kind: str, value: Any) -> Parsed:
     if kind not in _SPECS:

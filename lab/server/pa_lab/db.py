@@ -1,4 +1,4 @@
-"""The daemon's SQLite file: migrations, connections and write transactions (Slice 3 of fork #131).
+"""The daemon's SQLite file: migrations, connections and write transactions.
 
 SQLite is the source of truth for leases, request records (idempotency and tickets), events and
 event cursors; JSONL is only ever an export. Every write runs in `BEGIN IMMEDIATE`, so two

@@ -158,7 +158,7 @@ class RetryTests(PlaneTest):
     def test_status_reads_and_events_never_show_the_lease_token(self):
         request = acquire()
         token = self.plane.execute('claude:frlg-lane', request)['result']['lease_token']
-        status = self.plane.request_status('claude:frlg-lane', request['request_id'])
+        status = self.plane.request_status('claude:frlg-lane', 'B', request['request_id'])
         self.assertNotIn('lease_token', status['result'])
         for event in self.events():
             self.assertNotIn(token, str(event))
@@ -167,7 +167,7 @@ class RetryTests(PlaneTest):
         request = acquire()
         self.plane.execute('claude:frlg-lane', request)
         with self.assertRaises(control.Refused):
-            self.plane.request_status('claude:bdsp-lane', request['request_id'])
+            self.plane.request_status('claude:bdsp-lane', 'B', request['request_id'])
 
     def test_an_invalid_request_is_refused_and_not_stored(self):
         cases = [
@@ -279,7 +279,7 @@ class ReconciliationTests(PlaneTest):
                   'lease_token': 't', 'arguments': {}}
         self.assertEqual(self.plane.open_ticket('claude:frlg-lane', ticket)['status'], 'pending')
         self.restart()
-        self.assertEqual(self.plane.request_status('claude:frlg-lane', ticket['request_id'])['status'], 'pending')
+        self.assertEqual(self.plane.request_status('claude:frlg-lane', 'B', ticket['request_id'])['status'], 'pending')
         done = self.plane.resolve_ticket('claude:frlg-lane', 'stop_program', ticket['request_id'],
                                          result={'stopped_at': '2026-11-14T06:00:02.000Z'})
         again = self.plane.resolve_ticket('claude:frlg-lane', 'stop_program', ticket['request_id'],
@@ -377,7 +377,7 @@ class CompactionTests(PlaneTest):
         self.fill(3)
         self.clock.sleep(30 * 86400)
         self.restart(control.Retention(keep_events=0)).compact()
-        self.assertEqual(self.plane.request_status('claude:frlg-lane', ticket['request_id'])['status'], 'pending')
+        self.assertEqual(self.plane.request_status('claude:frlg-lane', 'B', ticket['request_id'])['status'], 'pending')
         kept = self.plane.db.read().execute('SELECT seq, request_id FROM events').fetchall()
         self.assertEqual([(r['seq'], r['request_id']) for r in kept], [(1, ticket['request_id'])])
 

@@ -10,8 +10,8 @@
     "old": {
       "state": "agent_idle",
       "owner": "agent:frlg-lane",
-      "acquired_at": "2026-11-14T06:12:00.000Z",
-      "expires_at": "2026-11-14T06:32:00.000Z"
+      "acquired_at": "2026-11-14T06:00:00.000Z",
+      "expires_at": "2026-11-14T06:20:00.000Z"
     },
     "new": {
       "state": "user",

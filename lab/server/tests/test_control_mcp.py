@@ -87,6 +87,8 @@ class ControlServerTest(unittest.TestCase):
                  expectation='invalid_arguments'),
             dict(name='wait over 60 s', input=('next_events', dict(console='B', after_seq=0, timeout_s=61)),
                  expectation='invalid_arguments'),
+            dict(name='request_status on console A', input=('request_status', dict(console='A', request_id=str(uuid.uuid4()))),
+                 expectation='console_not_allowed'),
         ]
         for case in cases:
             with self.subTest(case['name']):
