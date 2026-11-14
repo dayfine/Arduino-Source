@@ -5,7 +5,7 @@
  *  Items the story uses from the bag on the overworld, as PokeGuy's run
  *  does: a Repel or Super Repel before long walks through grass and caves,
  *  renewed when it wears off; an Escape Rope out of the Rocket Hideout;
- *  and the Bicycle. The bag is read with read_bag_pocket(), so the step
+ *  and the Bicycle. The bag is read with read_whole_pocket(), so the step
  *  finds its item wherever the pocket keeps it.
  *
  */

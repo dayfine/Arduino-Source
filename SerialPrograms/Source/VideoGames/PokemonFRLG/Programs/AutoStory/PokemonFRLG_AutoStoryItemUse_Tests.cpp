@@ -7,6 +7,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <map>
 #include <optional>
@@ -25,6 +26,7 @@
 #include "PokemonFRLG_AutoStoryFieldSteps.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
+#include "PokemonFRLG_AutoStoryPocketList.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -36,6 +38,36 @@ namespace{
 
 //  A use_item step's positional key, for game_step_of().
 const std::string_view ITEM[] = {"item"};
+
+//  A pocket's list as the game scrolls it (item_shown_row()): six rows
+//  shown, the cursor goes down to the fourth, then the list scrolls under
+//  it until the CANCEL shows. The CANCEL may be unread.
+class SimPocketList : public PocketList{
+public:
+    SimPocketList(std::vector<BagRow> rows, bool cancel_read = true)
+        : m_rows(std::move(rows))
+    {
+        m_rows.push_back(cancel_read ? BagRow{"cancel", -1} : BagRow{"", -1});
+    }
+    virtual std::optional<BagRow> read_shown(int shown) override{
+        const size_t row = m_top + (size_t)shown;
+        return row < m_rows.size() ? m_rows[row] : BagRow{};
+    }
+    virtual void cursor_down() override{
+        if (m_cursor + 1 < m_rows.size()){
+            m_cursor++;
+        }
+        constexpr size_t SHOWN = ITEM_LIST_ROWS;
+        constexpr size_t STOP = SHOWN / 2;
+        const size_t bottom = m_rows.size() > SHOWN ? m_rows.size() - SHOWN : 0;
+        m_top = std::min(m_cursor > STOP ? m_cursor - STOP : 0, bottom);
+    }
+
+private:
+    std::vector<BagRow> m_rows;
+    size_t m_cursor = 0;
+    size_t m_top = 0;
+};
 
 //  A bag on the sim: its pockets, each item used takes one, a bag that may
 //  not open.
@@ -52,6 +84,8 @@ public:
     std::vector<std::string> used;
     std::vector<std::string> used_on_lead;
     std::vector<std::string> registered;
+    //  The rows used, each the DOWN presses from the top to it.
+    std::vector<size_t> rows_used;
     bool open = false;
 
     virtual bool open_pocket(BagPocket pocket) override{
@@ -60,9 +94,11 @@ public:
         return opens;
     }
     virtual std::vector<BagRow> read_pocket() override{
-        return pockets[m_pocket];
+        SimPocketList list(pockets[m_pocket]);
+        return read_whole_pocket(list).rows;
     }
     virtual void use_row(size_t row) override{
+        rows_used.push_back(row);
         BagRow& item = pockets[m_pocket][row];
         if (is_repel(item.item) && repel_says == RepelUse::LINGERED){
             return;
@@ -118,6 +154,8 @@ struct ItemUseInput{
 struct ItemUseExpectation{
     ItemUseEnd end;
     std::vector<std::string> used;
+    //  The DOWN presses from the top to the row used, where it matters.
+    std::optional<size_t> downs = std::nullopt;
 };
 struct ItemUseCase{
     std::string name;
@@ -145,7 +183,9 @@ public:
             ? renew_repel(logger, bag, item)
             : use_items_from_bag(logger, bag, item, m_case.input.count).end;
         const bool lead_ok = is_party_item(item) || is_lead_recovery_item(item) ? bag.used_on_lead == bag.used : bag.used_on_lead.empty();
-        if (end != m_case.expectation.end || bag.used != m_case.expectation.used || bag.open || !lead_ok){
+        const std::optional<size_t> downs = m_case.expectation.downs;
+        const bool downs_ok = !downs || (!bag.rows_used.empty() && bag.rows_used.back() == *downs);
+        if (end != m_case.expectation.end || bag.used != m_case.expectation.used || bag.open || !lead_ok || !downs_ok){
             return std::format(
                 "\"{}\": {} using {} item(s), bag {}; expected {} using {}.", variant,
                 item_use_end_name(end), bag.used.size(), bag.open ? "open" : "closed",
@@ -277,6 +317,20 @@ const ItemUseCase ITEM_USE_CASES[] = {
         },
         .expectation = {.end = ItemUseEnd::USED, .used = {"rare-candy"}},
     },
+    //  Console B, 2026-11-14 (14.03 rare_candies_lead): the RARE CANDY 7th
+    //  of 11 rows, below the first six shown; reading those only ended the
+    //  step with "no rare-candy left".
+    {
+        .name = "a Rare Candy on row 7, below the first page",
+        .input = {
+            .variant = "use_item rare-candy",
+            .items = {
+                {"moon-stone", 2}, {"potion", 6}, {"nugget", 1}, {"repel", 2}, {"escape-rope", 4}, {"super-repel", 4},
+                {"rare-candy", 3}, {"x-special", 18}, {"x-speed", 6}, {"x-accuracy", 5}, {"guard-spec", 2},
+            },
+        },
+        .expectation = {.end = ItemUseEnd::USED, .used = {"rare-candy"}, .downs = 6},
+    },
     {
         .name = "no Rare Candy in the bag",
         .input = {
@@ -406,6 +460,77 @@ UnitTestResult test_variants_and_bike(){
     }
     return true;
 }
+
+struct PocketReadInput{
+    std::vector<BagRow> rows;
+    bool cancel_read = true;
+};
+struct PocketReadExpectation{
+    size_t rows;
+    //  The DOWN presses the read took (as many UP back to the top).
+    size_t downs;
+};
+struct PocketReadCase{
+    std::string name;
+    PocketReadInput input;
+    PocketReadExpectation expectation;
+};
+
+class Test_ReadWholePocket : public UnitTest{
+public:
+    explicit Test_ReadWholePocket(PocketReadCase test_case)
+        : UnitTest(std::format("PokemonFRLG::AutoStoryItemUse - whole pocket: {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        SimPocketList list(m_case.input.rows, m_case.input.cancel_read);
+        const PocketRead read = read_whole_pocket(list);
+        if (read.rows.size() != m_case.expectation.rows || read.downs != m_case.expectation.downs){
+            return std::format(
+                "Read {} rows with {} DOWN; expected {} with {}.",
+                read.rows.size(), read.downs, m_case.expectation.rows, m_case.expectation.downs
+            );
+        }
+        for (size_t c = 0; c < read.rows.size(); c++){
+            if (read.rows[c].item != m_case.input.rows[c].item || read.rows[c].count != m_case.input.rows[c].count){
+                return std::format("Row {}: read {}, expected {}.", c + 1, read.rows[c].item, m_case.input.rows[c].item);
+            }
+        }
+        return true;
+    }
+
+private:
+    PocketReadCase m_case;
+};
+
+//  14.03's Items pocket (console B, 2026-11-14), 11 rows and the CANCEL.
+const std::vector<BagRow> ELEVEN_ROWS = {
+    {"moon-stone", 2}, {"potion", 6}, {"nugget", 1}, {"repel", 2}, {"escape-rope", 4}, {"super-repel", 4},
+    {"rare-candy", 3}, {"x-special", 18}, {"x-speed", 6}, {"x-accuracy", 5}, {"guard-spec", 2},
+};
+
+const PocketReadCase POCKET_READ_CASES[] = {
+    {
+        .name = "three rows: one page, no DOWN",
+        .input = {.rows = {{"potion", 3}, {"repel", 2}, {"escape-rope", 1}}},
+        .expectation = {.rows = 3, .downs = 0},
+    },
+    {
+        .name = "six rows: the CANCEL scrolls in",
+        .input = {.rows = {{"potion", 3}, {"repel", 2}, {"escape-rope", 1}, {"nugget", 1}, {"moon-stone", 1}, {"x-speed", 2}}},
+        .expectation = {.rows = 6, .downs = 4},
+    },
+    {
+        .name = "eleven rows: scrolled to the CANCEL",
+        .input = {.rows = ELEVEN_ROWS},
+        .expectation = {.rows = 11, .downs = 9},
+    },
+    {
+        .name = "eleven rows, the CANCEL unread: until the list stops",
+        .input = {.rows = ELEVEN_ROWS, .cancel_read = false},
+        .expectation = {.rows = 11, .downs = 10},
+    },
+};
 
 struct StepDoneInput{
     ItemUseEnd end;
@@ -580,6 +705,9 @@ void add_tests_AutoStoryItemUse(UnitTestDatabase& database){
     }
     for (const AutoStoryItemUseBodyCase& item : ITEM_USE_BODY_CASES){
         database.add<Test_AutoStoryItemUseBody>(item);
+    }
+    for (const PocketReadCase& item : POCKET_READ_CASES){
+        database.add<Test_ReadWholePocket>(item);
     }
     for (const StepDoneCase& item : STEP_DONE_CASES){
         database.add<Test_ItemUseStepDone>(item);

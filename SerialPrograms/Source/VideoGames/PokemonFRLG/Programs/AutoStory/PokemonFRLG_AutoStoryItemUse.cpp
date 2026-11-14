@@ -19,6 +19,7 @@
 #include "PokemonFRLG_AutoStoryBagUse.h"
 #include "PokemonFRLG_AutoStoryBag.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
+#include "PokemonFRLG_AutoStoryPocketList.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 
 namespace PokemonAutomation{
@@ -294,12 +295,12 @@ bool ConsoleItemUseActions::open_pocket(BagPocket pocket){
 }
 
 std::vector<BagRow> ConsoleItemUseActions::read_pocket(){
-    m_context.wait_for_all_requests();
-    VideoSnapshot screen = m_console.video().snapshot();
-    if (!screen){
-        return {};
+    const PocketRead read = read_open_pocket(m_console, m_context, m_language);
+    //  Back to the top, where use_row() counts its DOWN presses from.
+    for (size_t c = 0; c < read.downs; c++){
+        pbf_press_dpad(m_context, DPAD_UP, CURSOR_TAP, CURSOR_WAIT);
     }
-    return read_bag_pocket(m_console.logger(), m_language, screen);
+    return read.rows;
 }
 
 void ConsoleItemUseActions::use_row(size_t row){
