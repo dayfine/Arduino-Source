@@ -369,7 +369,14 @@ std::optional<std::vector<RouteStep>> walked_route(
 ){
     const MapPosition start{at.map, at.tile};
     if (step.kind == StoryStepKind::LEGS){
-        return fixed_route(maps, start, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
+        //  Tapped a tile at a time, as walk_legs() taps them on the console.
+        std::optional<std::vector<RouteStep>> route = fixed_route(maps, start, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
+        if (route && step.action == TAPS_VARIANT){
+            for (RouteStep& leg : *route){
+                leg.tapped = true;
+            }
+        }
+        return route;
     }
     const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
     const RouteGoal goal{{target->map, target->tile}, target->facing};
