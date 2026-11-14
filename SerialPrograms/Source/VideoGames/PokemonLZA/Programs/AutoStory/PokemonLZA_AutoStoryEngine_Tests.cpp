@@ -160,7 +160,7 @@ UnitTestResult test_start_check_needs_platform(CancellableScope& scope){
 //  A walk starts only on free control: platform_to_plaza on a text box
 //  waits for it, then fails with no input but its waits.
 UnitTestResult test_walk_needs_free_control(CancellableScope& scope){
-    FakeBackend backend = fake_plza({look_at(0ms, {EngineEvent::TEXT_BOX})}, scope);
+    FakeBackend backend = fake_plza({look_at(0ms, {EngineEvent::DIALOG_BOX})}, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "platform_to_plaza"));
     if (report.run.completed || report.run.failure.failure != "walk_not_free"){
         return std::format("Expected walk_not_free, got {}", to_string(report.run.failure));
@@ -267,8 +267,8 @@ UnitTestResult test_face_heading(CancellableScope& scope){
 //  Pancham cornered (text_to_choice): B through the text, done at the
 //  choice without pressing it.
 UnitTestResult test_text_to_choice(CancellableScope& scope){
-    const Observation<ZonePose> choice = look_at(2000ms, {EngineEvent::TEXT_BOX, EngineEvent::CHOICE_BOX});
-    FakeBackend backend = fake_plza({look_at(0ms, {EngineEvent::TEXT_BOX}), choice}, scope);
+    const Observation<ZonePose> choice = look_at(2000ms, {EngineEvent::DIALOG_BOX, EngineEvent::CHOICE_BOX});
+    FakeBackend backend = fake_plza({look_at(0ms, {EngineEvent::DIALOG_BOX}), choice}, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.02", "pancham_cornered"));
     if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
         return std::format("Expected the scene to end at the choice: {}", to_string(report.run.failure));
@@ -281,10 +281,10 @@ UnitTestResult test_text_to_choice(CancellableScope& scope){
 //  once the controls hint has shown a second.
 UnitTestResult test_arrival_ends_on_controls_hint(CancellableScope& scope){
     FakeBackend backend = fake_plza({
-        look_at(0ms, {EngineEvent::TEXT_BOX}),
+        look_at(0ms, {EngineEvent::DIALOG_BOX}),
         look_at(1000ms),
         look_at(21000ms),
-        look_at(22000ms, {EngineEvent::TEXT_BOX, EngineEvent::CHOICE_BOX}),
+        look_at(22000ms, {EngineEvent::DIALOG_BOX, EngineEvent::CHOICE_BOX}),
         look_at(23000ms),
         with_reading(look_at(24000ms), CONTROLS_HINT_READING),
         with_reading(look_at(24500ms), CONTROLS_HINT_READING),
@@ -312,7 +312,7 @@ UnitTestResult test_arrival_ends_on_controls_hint(CancellableScope& scope){
 //  hint. The prompt held a second ends the step; no press at it.
 UnitTestResult test_battle_area_ends_on_interact_prompt(CancellableScope& scope){
     FakeBackend backend = fake_plza({
-        look_at(0ms, {EngineEvent::TEXT_BOX}),
+        look_at(0ms, {EngineEvent::DIALOG_BOX}),
         look_at(1000ms, {EngineEvent::FADE_BLACK}),
         look_at(3000ms),
         look_at(3250ms, {EngineEvent::INTERACT_PROMPT}),
@@ -367,7 +367,7 @@ UnitTestResult test_arrival_presses_through_the_ad(CancellableScope& scope){
 UnitTestResult test_arrival_ends_on_mission_banner(CancellableScope& scope){
     for (const bool goes : {true, false}){
         std::vector<Observation<ZonePose>> looks{
-            look_at(0ms, {EngineEvent::TEXT_BOX}),
+            look_at(0ms, {EngineEvent::DIALOG_BOX}),
             look_at(500ms),
             with_reading(look_at(1000ms), MISSION_BANNER_READING),
             with_reading(look_at(1250ms), MISSION_BANNER_READING),
@@ -399,7 +399,7 @@ UnitTestResult test_arrival_ends_on_mission_banner(CancellableScope& scope){
 UnitTestResult test_after_andi_presses_complete_card(CancellableScope& scope){
     for (const bool goes : {true, false}){
         std::vector<Observation<ZonePose>> looks{
-            look_at(0ms, {EngineEvent::TEXT_BOX}),
+            look_at(0ms, {EngineEvent::DIALOG_BOX}),
             with_reading(look_at(500ms), MISSION_COMPLETE_READING),
             with_reading(look_at(1000ms), MISSION_COMPLETE_READING),
             look_at(1500ms),
