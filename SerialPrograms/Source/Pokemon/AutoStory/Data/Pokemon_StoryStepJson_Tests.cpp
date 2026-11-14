@@ -3,8 +3,9 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Each case reads a record from JSON: accepted cases check the values
- *  read, rejected cases check that the read fails. The Python reader's
- *  shared case file is checked on the Python side.
+ *  read, rejected cases check that the read fails. The standalone
+ *  StoryDataTests also checks PokemonSimulation's shared case file when given
+ *  its path (devtools/story-data-tests/StoryWireCases.h).
  *
  */
 
@@ -17,7 +18,9 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Pokemon_StoryStepJson.h"
-#ifndef PA_STORY_DATA_STANDALONE
+#ifdef PA_STORY_DATA_STANDALONE
+#include "devtools/story-data-tests/StoryWireCases.h"
+#else
 #include "Pokemon_StoryStepJson_Tests.h"
 #endif
 
@@ -279,7 +282,11 @@ void add_tests_StoryStepJson(UnitTestDatabase& database){
 
 #ifdef PA_STORY_DATA_STANDALONE
 
-int main(){
+//  With a path, check PokemonSimulation's shared wire-case file instead.
+int main(int argc, char** argv){
+    if (argc == 2){
+        return PokemonAutomation::Pokemon::check_story_wire_cases(argv[1]) != 0;
+    }
     int failed = 0;
     for (const auto& test : PokemonAutomation::Pokemon::CASES){
         const std::string error = PokemonAutomation::Pokemon::check_case(test);
