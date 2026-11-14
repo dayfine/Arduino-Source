@@ -930,3 +930,21 @@ later change):
 
 Plain names such as `run`, `trainer_line`, `cut_tree` and `bike` take no
 arguments and stay as they are.
+
+## 11. Declared poses by game kind (user, 2026-11-10)
+
+A checkpoint's `start` and a step's `declared_after` are a `DeclaredPose`
+(`Types/Pokemon_DeclaredPose.h`): either a `TileDeclared` for the tile games
+(FRLG, BDSP), `{"map": "PalletTown", "tiles": [[3, 4]], "facing": "north"}`
+as before, or a `ZoneDeclared` for a game with no tile grid (PLZA),
+`{"place": "LumioseCity", "spot": "HotelZ", "heading": 90}` with `spot` and
+`heading` optional. A pose with both `map` and `place` fails to load. Each
+pose type names the kind it declares (`StoryPoseTraits<Pose>::Declared`) and
+reads it with `from_declared()`; the engine's lint fails a checkpoint that
+declares the other kind (`check_declared<Pose>()`).
+
+Step arguments stay one closed variant. Games with no tiles walk by
+`TIMED_LEGS` (`[[turn degrees, ms], ...]`), and the lint fails a step or a
+game action of such a game that uses a tile argument (`DIRECTION`, `LEGS`,
+`GRID_POSE`). PLZA's walk legs, today `INTEGER_ROWS`, move to `TIMED_LEGS`
+in its own chain.

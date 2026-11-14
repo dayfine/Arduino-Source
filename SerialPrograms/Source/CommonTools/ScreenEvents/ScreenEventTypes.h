@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <string>
+#include <string_view>
 
 namespace PokemonAutomation{
 
@@ -82,8 +83,9 @@ private:
 
     uint32_t m_bits = 0;
 };
-//  "dialog box, player can move"; "nothing" when empty.
-std::string describe(const ScreenEvents& events);
+//  "dialog box, player can move" (joined by `separator`); "nothing" when
+//  empty.
+std::string describe(const ScreenEvents& events, std::string_view separator = ", ");
 
 
 

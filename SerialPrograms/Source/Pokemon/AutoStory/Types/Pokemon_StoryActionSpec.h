@@ -36,6 +36,10 @@ struct StoryActionSpec{
     StoryStepKind kind = StoryStepKind::GAME;
     std::string name;
     std::vector<StoryArgSpec> args;
+    //  It reads or presses through screens only a console shows (menus, a
+    //  keyboard, a battle AI): the engine refuses it on any other backend
+    //  (StoryBackendKind) with the failure "console_only".
+    bool console_only = false;
 };
 
 //  Each way `args` don't fit `spec`: a key it doesn't name, a value of

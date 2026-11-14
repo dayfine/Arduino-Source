@@ -36,6 +36,15 @@ struct StoryLeg{
     bool operator==(const StoryLeg& other) const = default;
 };
 
+//  A leg of a timed walk in a game with no tiles: turn `turn` degrees
+//  (clockwise, from the way the player faces), then walk for `ms`.
+struct StoryTimedLeg{
+    int turn = 0;
+    int ms = 0;
+
+    bool operator==(const StoryTimedLeg& other) const = default;
+};
+
 //  An item and how many to get.
 struct StoryItem{
     std::string item;
@@ -55,6 +64,8 @@ enum class StoryArgType{
     LEGS,
     WORDS,
     ITEMS,
+    INTEGER_ROWS,
+    TIMED_LEGS,
 };
 
 //  One argument's value; the index is its StoryArgType.
@@ -63,7 +74,9 @@ using StoryArgValue = std::variant<
     Direction, GridPose,                    //  DIRECTION, GRID_POSE
     std::vector<StoryLeg>,                  //  LEGS
     std::vector<std::string>,               //  WORDS
-    std::vector<StoryItem>                  //  ITEMS
+    std::vector<StoryItem>,                 //  ITEMS
+    std::vector<std::vector<int64_t>>,      //  INTEGER_ROWS: [[0, 4500], [90, 0]]
+    std::vector<StoryTimedLeg>              //  TIMED_LEGS: [[0, 4500], [90, 1200]]
 >;
 
 //  A step's arguments by key.

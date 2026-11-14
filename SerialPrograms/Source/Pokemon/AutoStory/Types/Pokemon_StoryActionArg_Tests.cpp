@@ -36,21 +36,21 @@ const StoryActionSpec& mart_spec(){
     return spec;
 }
 
-//  Args checked against the Mart's spec, then filled in.
-struct ArgsInput{
-    std::string_view name;
-    StoryActionArgs args;
-};
-
-//  The errors joined by "; ", and the args with their fallbacks.
-struct ArgsExpectation{
-    std::string_view error = {};
-    StoryActionArgs filled = {};
-};
-
 struct ArgsCase{
-    ArgsInput input;
-    ArgsExpectation expectation;
+    //  Args checked against the Mart's spec, then filled in.
+    struct Input{
+        std::string_view name;
+        StoryActionArgs args;
+    };
+
+    //  The errors joined by "; ", and the args with their fallbacks.
+    struct Expectation{
+        std::string_view error = {};
+        StoryActionArgs filled = {};
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const ArgsCase CASES[] = {

@@ -15,7 +15,7 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Pokemon_GridPose.h"
+#include "Pokemon_DeclaredPose.h"
 #include "Pokemon_StoryActionArg.h"
 #include "Pokemon_StoryStepKind.h"
 
@@ -50,7 +50,7 @@ struct StoryStep{
     bool once_per_save = false;
     //  Where the step leaves the player, when its action does not say: the
     //  end of a scene that moves the player.
-    std::optional<GridPose> pose_after;
+    std::optional<DeclaredPose> pose_after;
 };
 
 

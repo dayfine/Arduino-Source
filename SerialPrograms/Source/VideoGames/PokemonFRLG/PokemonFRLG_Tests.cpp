@@ -29,6 +29,7 @@
 #include "Inference/PokemonFRLG_StatsReader.h"
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents_Tests.h"
 #include "Programs/BoxOrganization/PokemonFRLG_BoxSorter_Tests.h"
 #include "Tests/TestUtils.h"
 
@@ -66,6 +67,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_SummarySpriteReader(database);
     add_tests_TrainerIdReader(database);
     add_tests_WildEncounterReader(database);
+    add_tests_AutoStoryScreenEvents(database);
 }
 
 

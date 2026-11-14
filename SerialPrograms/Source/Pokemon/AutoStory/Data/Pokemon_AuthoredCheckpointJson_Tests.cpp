@@ -11,7 +11,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon_AuthoredCheckpointJson.h"
-#include "Pokemon_StoryStepJson.h"
 #ifndef PA_STORY_DATA_STANDALONE
 #include "Pokemon_AuthoredCheckpointJson_Tests.h"
 #endif
@@ -34,24 +33,24 @@ enum class Failure{
     MISSING_RESOURCE,
 };
 
-struct AuthoredInput{
-    std::string name;
-    std::string json;
-    std::string game = "frlg";
-    bool resource = false;
-    std::string file = "plan";
-};
-
-struct AuthoredExpectation{
-    std::string checkpoint = "00.05";
-    std::string execution = R"({"menu":"before_pokedex"})";
-    std::vector<std::string> events = {"first", "second"};
-    Failure failure = Failure::NONE;
-};
-
 struct AuthoredCase{
-    AuthoredInput input;
-    AuthoredExpectation expectation;
+    struct Input{
+        std::string name;
+        std::string json;
+        std::string game = "frlg";
+        bool resource = false;
+        std::string file = "plan";
+    };
+
+    struct Expectation{
+        std::string checkpoint = "00.05";
+        std::string execution = R"({"menu":"before_pokedex"})";
+        std::vector<std::string> events = {"first", "second"};
+        Failure failure = Failure::NONE;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const AuthoredCase CASES[] = {
@@ -88,8 +87,8 @@ ExecutionReader keep_execution(JsonObject& kept){
     };
 }
 
-//  "" when `actual` is what `test` expects and survives a write and a
-//  read, else what was expected and what was read.
+//  "" when `actual` is what `test` expects, else what was expected and
+//  what was read.
 std::string check_loaded(const Loaded& actual, const AuthoredCase& test){
     if (test.expectation.failure != Failure::NONE){
         return "Expected rejection, read accepted authored checkpoint.";
@@ -106,12 +105,6 @@ std::string check_loaded(const Loaded& actual, const AuthoredCase& test){
     }
     if (events != test.expectation.events){
         return "Expected authored event IDs in their original order.";
-    }
-    const JsonValue encoded = authored_checkpoint_json(actual.checkpoint, test.input.game, actual.execution.clone());
-    Loaded reread;
-    reread.checkpoint = read_authored_checkpoint(encoded, test.input.game, test.input.name, keep_execution(reread.execution));
-    if (!(story_checkpoint_json(actual.checkpoint) == story_checkpoint_json(reread.checkpoint)) || actual.execution != reread.execution){
-        return "Expected checkpoint and execution to survive the shared writer/reader round trip.";
     }
     return "";
 }

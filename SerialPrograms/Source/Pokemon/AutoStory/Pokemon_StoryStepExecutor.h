@@ -38,6 +38,7 @@
 #include <vector>
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_TilePose.h"
+#include "Types/Pokemon_DeclaredPose.h"
 #include "Types/Pokemon_GridPose.h"
 #include "Types/Pokemon_StoryCheckpoint.h"
 #include "Types/Pokemon_StoryStep.h"
@@ -70,6 +71,12 @@ public:
 
 //  `pose` as the engine's Pose: a TilePose, TILE for one tile, SET for several.
 Pose pose_of(const GridPose& pose);
+
+//  A declared pose as a grid pose: a place reads as a map with no tiles.
+GridPose grid_pose_of(const DeclaredPose& pose);
+
+//  pose_of(grid_pose_of(pose)).
+Pose pose_of(const DeclaredPose& pose);
 
 //  "unsupported_step: TRAIN train_in_grass": what an executor without the kind returns.
 Outcome unsupported_step(const StoryStep& step);
