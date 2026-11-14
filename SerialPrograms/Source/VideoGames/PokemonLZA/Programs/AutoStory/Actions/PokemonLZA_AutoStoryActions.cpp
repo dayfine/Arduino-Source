@@ -114,8 +114,9 @@ namespace{
 //  Whether the report page's Save button (its cursor arrow, where
 //  save_game_to_menu() looks for it) shows within `timeout`.
 bool save_button_shows(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout){
-    //  save_game_to_menu()'s box (PokemonLZA_BasicNavigation.cpp), which it
-    //  keeps inline; a copy until upstream names it.
+    //  TODO: unify with save_game_to_menu() (PokemonLZA_BasicNavigation.cpp),
+    //  which keeps this box inline - naming it there adds a symbol to a
+    //  header at the code-health symbol limit.
     SelectionArrowWatcher save_button(
         COLOR_GREEN, &console.overlay(), SelectionArrowType::RIGHT, {0.287118, 0.638835, 0.064410, 0.108738}
     );

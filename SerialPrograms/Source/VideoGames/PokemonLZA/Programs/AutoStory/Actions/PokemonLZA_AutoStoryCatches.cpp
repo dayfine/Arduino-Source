@@ -52,6 +52,9 @@ ScreensPassed advance_text_and_cards(ConsoleHandle& console, ProControllerContex
 //  may drop the lock. Returns whether the Pokedex's "Registered!" banner
 //  showed meanwhile: a new species caught. A repeat catch or a break-out
 //  shows none.
+//  TODO: unify with the ZL + ZR throw of PokemonLZA_InPlaceCatcher.cpp and
+//  AsyncCommandSession (CommonTools/Async/InterruptableCommands.h) - the
+//  lock-on may drop between separate commands; needs a console test.
 bool throw_ball(ConsoleHandle& console, ProControllerContext& context){
     DetectorToFinder<DexRegisteredDetector> registered("DexRegisteredWatcher", 100ms);
     const int ret = run_until<ProControllerContext>(
