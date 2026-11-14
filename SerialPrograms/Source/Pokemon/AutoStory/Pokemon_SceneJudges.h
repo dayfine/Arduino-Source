@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Judgements a story step makes from screen events (Pokemon_ScreenEvents.h)
- *  over time, not from one look (#268's design note): a warp is a fade or
+ *  Judgements a story step makes from screen events (CommonTools/ScreenEvents/ScreenEvents.h)
+ *  over time, not from one look: a warp is a fade or
  *  the banner of the map arrived on, and a talk or a scene is over when the
  *  overworld has been quiet for a while. Pure: tests drive them with
  *  scripted scenes, and every game shares them.
@@ -16,13 +16,13 @@
 #include <optional>
 #include <string>
 #include "Common/Cpp/Time.h"
-#include "Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  What a walk or a step saw of a warp (#268): a fade or the location
+//  What a walk or a step saw of a warp: a fade or the location
 //  banner of the map arrived on. Either one alone is the warp.
 struct WarpSeen{
     WarpFade fade = WarpFade::NONE;
@@ -49,6 +49,15 @@ enum class SceneMove{
     DONE,       //  The talk or scene is over.
 };
 
+//  The overworld with no box and a still screen this long ends it: a scene
+//  pauses while someone walks off, a scripted walk-in can run 5 s with no
+//  text before someone speaks, and a speech pauses for a fanfare. The clock
+//  is the last look that was not quiet.
+inline constexpr Milliseconds TALK_OVER_QUIET = Milliseconds(5000);
+//  The overworld with no box this long ends it, still or not (the rule's
+//  `calm`): wanderers or grass can keep the screen from ever being still.
+inline constexpr Milliseconds TALK_OVER_CALM = Milliseconds(15000);
+
 //  What ends a talk-over, besides the quiet.
 struct TalkOverRule{
     //  A map change must come first: a fade or the banner. Only the quiet
@@ -57,16 +66,12 @@ struct TalkOverRule{
     //  False when a battle is to follow (a trainer's lines pause for more
     //  than 4 s before it): no quiet ends the talk then.
     bool end_on_quiet = true;
+    //  How long the overworld with no box ends it, still or not. Shorter
+    //  for a game whose PLAYER_CAN_MOVE cue shows only briefly between
+    //  lines: PLZA's party bar, held 1 s, is the overworld; its city is
+    //  rarely still.
+    Milliseconds calm = TALK_OVER_CALM;
 };
-
-//  The overworld with no box and a still screen this long ends it: a scene
-//  pauses while someone walks off, a scripted walk-in can run 5 s with no
-//  text before someone speaks, and a speech pauses for a fanfare. The clock
-//  is the last look that was not quiet.
-constexpr Milliseconds TALK_OVER_QUIET = Milliseconds(5000);
-//  The overworld with no box this long ends it, still or not: wanderers or
-//  grass can keep the screen from ever being still.
-constexpr Milliseconds TALK_OVER_CALM = Milliseconds(15000);
 
 //  When a talk or a scene is over, from looks alone. A look is a frame's
 //  events: DIALOG_BOX, PLAYER_CAN_MOVE, SCREEN_STILL, a fade,

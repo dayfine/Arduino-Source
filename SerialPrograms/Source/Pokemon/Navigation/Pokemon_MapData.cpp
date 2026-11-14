@@ -572,6 +572,10 @@ MapStatue read_statue(const JsonObject& object, const std::string& where){
     return statue;
 }
 
+TilePos read_button(const JsonObject& object, const std::string& where){
+    return read_pair_field(object, "coord", where);
+}
+
 MapSwitch read_switch(const std::string& id, const JsonObject& object, const std::string& where){
     MapSwitch result;
     result.id = id;
@@ -593,6 +597,7 @@ MapSwitch read_switch(const std::string& id, const JsonObject& object, const std
         result.floors.push_back(*floor);
     }
     result.statues = read_list<MapStatue>(object, "statues", where, read_statue);
+    result.buttons = read_list<TilePos>(object, "buttons", where, read_button);
     return result;
 }
 
@@ -681,6 +686,9 @@ void check_gates(const MapData& map, const std::string& where){
             const std::string statue_where = std::format("{}switches.{}.statues[{}]", where, id, c);
             check_inside(map.tiles, result.statues[c].tile, statue_where);
             check_inside(map.tiles, result.statues[c].face_from, statue_where);
+        }
+        for (size_t c = 0; c < result.buttons.size(); c++){
+            check_inside(map.tiles, result.buttons[c], std::format("{}switches.{}.buttons[{}]", where, id, c));
         }
     }
 }

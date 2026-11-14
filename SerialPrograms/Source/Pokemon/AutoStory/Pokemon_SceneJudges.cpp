@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include "CommonTools/ScreenEvents/ScreenFades.h"
 #include "Pokemon_SceneJudges.h"
 
 namespace PokemonAutomation{
@@ -63,7 +64,7 @@ SceneMove TalkOver::look(const ScreenEvents& events, WallClock now){
     }
     const bool over =
         (quiet && now - *m_quiet_since >= TALK_OVER_QUIET) ||
-        (calm && now - *m_calm_since >= TALK_OVER_CALM);
+        (calm && now - *m_calm_since >= m_rule.calm);
     if (over && m_rule.end_on_quiet){
         return SceneMove::DONE;
     }

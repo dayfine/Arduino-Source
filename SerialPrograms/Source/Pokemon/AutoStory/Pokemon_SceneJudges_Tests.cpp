@@ -7,6 +7,7 @@
  */
 
 #include <format>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -36,17 +37,17 @@ UnitTestResult test_warp_seen(){
 
 
 //  A scripted scene: a look per beat, a second apart. Returns the beat
-//  TalkOver first says `want` at, or -1.
-int first_beat(const std::vector<ScreenEvents>& beats, SceneMove want, TalkOver& judge){
+//  TalkOver first says `want` at, if any.
+std::optional<size_t> first_beat(const std::vector<ScreenEvents>& beats, SceneMove want, TalkOver& judge){
     const Milliseconds every = 1000ms;
     WallClock now = WallClock();
     for (size_t c = 0; c < beats.size(); c++){
         if (judge.look(beats[c], now) == want){
-            return (int)c;
+            return c;
         }
         now += every;
     }
-    return -1;
+    return std::nullopt;
 }
 
 const ScreenEvents QUIET{ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL};
@@ -70,7 +71,7 @@ UnitTestResult test_talk_over(){
         TalkOverRule rule;
         std::vector<ScreenEvents> beats;
         SceneMove want;
-        int beat;
+        std::optional<size_t> beat;  //  Unset: never says `want`.
     };
     const std::vector<Row> rows = {
         {"5 s of quiet ends it", {}, repeat(QUIET, 8), SceneMove::DONE, 5},
@@ -78,27 +79,35 @@ UnitTestResult test_talk_over(){
         {"a box is answered", {}, {BOX}, SceneMove::NEXT, 0},
         {"no box is a B press", {}, {QUIET}, SceneMove::B, 0},
         {"15 s calm but moving ends it", {}, repeat(CALM, 20), SceneMove::DONE, 15},
+        //  PLZA: its party bar never shows mid-scene for long, and its
+        //  city never stands still.
+        {"a shorter calm rule ends it sooner", {.calm = 1000ms}, repeat(CALM, 5), SceneMove::DONE, 1},
+        {"a shorter calm rule still waits out a box", {.calm = 1000ms},
+            concat(concat({CALM}, {BOX}), repeat(CALM, 5)), SceneMove::DONE, 3},
         {"a warp rule waits for the fade", {.warp = true},
             concat(concat(repeat(QUIET, 8), {ScreenEvents{ScreenEvent::FADE_BLACK}}), repeat(QUIET, 8)),
             SceneMove::DONE, 14},
         {"a banner is the warp too", {.warp = true},
             concat({ScreenEvents{ScreenEvent::LOCATION_BANNER, ScreenEvent::PLAYER_CAN_MOVE}}, repeat(QUIET, 8)),
             SceneMove::DONE, 6},
-        {"no quiet ends a talk before a battle", {.end_on_quiet = false}, repeat(QUIET, 30), SceneMove::DONE, -1},
+        {"no quiet ends a talk before a battle", {.end_on_quiet = false}, repeat(QUIET, 30), SceneMove::DONE, std::nullopt},
         {"a battle", {.end_on_quiet = false}, concat(repeat(QUIET, 6), {ScreenEvents{ScreenEvent::BATTLE_STARTED}}), SceneMove::BATTLE, 6},
         //  Quiet, then the scene's closing fade: the scene must not end at
         //  the fade's start, or the next step's input lands in the fade.
         {"a closing fade starts the quiet over", {},
             concat(concat(repeat(QUIET, 4), repeat(FADED, 3)), repeat(QUIET, 8)),
             SceneMove::DONE, 12},
-        {"a fade still down never ends it", {}, concat(repeat(QUIET, 3), repeat(FADED, 20)), SceneMove::DONE, -1},
-        {"a fade is never calm", {}, concat(repeat(CALM, 10), repeat(CALM_FADED, 10)), SceneMove::DONE, -1},
+        {"a fade still down never ends it", {}, concat(repeat(QUIET, 3), repeat(FADED, 20)), SceneMove::DONE, std::nullopt},
+        {"a fade is never calm", {}, concat(repeat(CALM, 10), repeat(CALM_FADED, 10)), SceneMove::DONE, std::nullopt},
     };
     for (const Row& row : rows){
         TalkOver judge(row.rule);
-        const int got = first_beat(row.beats, row.want, judge);
+        const std::optional<size_t> got = first_beat(row.beats, row.want, judge);
         if (got != row.beat){
-            return std::format("{}: expected beat {}, got {} ({})", row.name, row.beat, got, judge.describe());
+            const auto show = [](const std::optional<size_t>& beat){
+                return beat ? std::to_string(*beat) : std::string("none");
+            };
+            return std::format("{}: expected beat {}, got {} ({})", row.name, show(row.beat), show(got), judge.describe());
         }
     }
     return true;
