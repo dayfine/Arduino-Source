@@ -1,0 +1,50 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "19.01a",
+    "title": "Viridian's Mart: potions before the rival on Route 22",
+    "start": {
+      "map": "ViridianCity_PokemonCenter_1F",
+      "tiles": [[7, 4]],
+      "facing": "north"
+    },
+    "events": [
+      {
+        "id": "viridian_mart_clerk",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "ViridianCity_Mart", "tiles": [[4, 3]], "facing": "west"}
+        },
+        "why": "out of the Center and along the street to the Mart's door, in and up to the counter, facing the clerk (as 02.03)"
+      },
+      {
+        "id": "buy_potions",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "ViridianCity_Mart",
+          "items": [{"item": "potion", "quantity": 4}],
+          "fill_to": 4
+        },
+        "why": "Potions up to 4 in the bag, as in PokeGuy's bag at the Route 22 rival (potion x4, superpotion x4, xaccuracy x4, xspecial x17, xspeed x5, guardspec x2; PokemonSimulation docs/battles/pokeguy-conditions.md); the Super Potions are 12.01's. Early in the row, so a failed purchase stops it before the walk. Buys 4 less what the bag holds, skipped at 4"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts at Viridian's nurse, where 17.04b ends. The Mart's clerk is first in the checkpoint: the potions are bought before the rival, and 19.01 starts in the Mart with the bag as it should be.",
+        "Ends in the Viridian Mart at (4, 3) facing the clerk, where 19.01 starts."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "ViridianCity_Mart", "tiles": [[4, 3]], "facing": "west"}
+    }
+  }
+}

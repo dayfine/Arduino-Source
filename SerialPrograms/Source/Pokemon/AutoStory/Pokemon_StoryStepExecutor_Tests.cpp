@@ -50,6 +50,9 @@ public:
     std::map<std::string, size_t> failures_left;
     //  The pose each step started from, by name.
     std::vector<std::pair<std::string, std::string>> poses_seen;
+    //  The gates and the run flags each step started with, by name.
+    std::vector<std::pair<std::string, GateState>> gates_seen;
+    std::vector<std::pair<std::string, std::set<std::string>>> flags_seen;
     //  The checkpoints begun, one per attempt.
     std::vector<std::string> attempts;
     //  Game steps by name that change nothing in the game.
@@ -61,6 +64,8 @@ public:
 
     virtual Outcome run(const StoryStep& step, RunState& state) override{
         poses_seen.emplace_back(step.name, to_string(state.pose));
+        gates_seen.emplace_back(step.name, state.gates);
+        flags_seen.emplace_back(step.name, state.flags);
         trace.push_back(std::format("{} {}", story_step_kind_name(step.kind), step.name));
         if (failing.contains(step.name)){
             return outcome_failed("blocked", std::format("{} was blocked", step.name));
@@ -290,6 +295,51 @@ UnitTestResult test_pose_propagation(){
     }
     if (to_string(result.state.pose) != "Lab (6, 4) facing north (tile)"){
         return std::format("Expected the run to end at the scene's end, got {}", to_string(result.state.pose));
+    }
+    return true;
+}
+
+//  A checkpoint whose save has Silph's first door open: a step opens the
+//  second and gives the Card Key, a failing step changes nothing.
+StoryCheckpoint silph_checkpoint(){
+    StoryStep key = make(StoryStepKind::TALK, "card_key");
+    key.gates_after = GateChange{.opened = {"SilphCo_5F/door_2"}};
+    key.flags_after = {"card_key_held"};
+    StoryStep blocked = make(StoryStepKind::TALK, "blocked");
+    blocked.gates_after = GateChange{.opened = {"SilphCo_5F/door_3"}};
+    blocked.flags_after = {"never"};
+    GateState start;
+    start.opened.insert("SilphCo_5F/door_1");
+    return StoryCheckpoint{
+        .id = "16.02",
+        .title = "Silph",
+        .steps = {make(StoryStepKind::TALK, "before"), key, make(StoryStepKind::TALK, "after"), blocked},
+        .start_gates = start,
+        .start_flags = {"has_pass"},
+    };
+}
+
+UnitTestResult test_gate_state_carried(){
+    const StoryCheckpoint data = silph_checkpoint();
+    FakeExecutor executor;
+    executor.failing = {"blocked"};
+    const Run result = run(data, executor);
+    if (executor.gates_seen.size() != 4){
+        return std::format("Expected four steps run, got {}:{}", executor.gates_seen.size(), joined(executor.trace));
+    }
+    const GateState& before = executor.gates_seen[0].second;
+    const GateState& after = executor.gates_seen[2].second;
+    if (before.opened != std::set<std::string>{"SilphCo_5F/door_1"} || !executor.flags_seen[0].second.contains("has_pass")){
+        return "Expected the save's own gates and flags at the first step.";
+    }
+    if (executor.flags_seen[1].second.contains("card_key_held")){
+        return "The Card Key was held before its step was done.";
+    }
+    if (after.opened != std::set<std::string>{"SilphCo_5F/door_1", "SilphCo_5F/door_2"} || !executor.flags_seen[2].second.contains("card_key_held")){
+        return "Expected door_2 open and the Card Key held after the step that gave it.";
+    }
+    if (result.state.gates.opened.contains("SilphCo_5F/door_3") || result.state.flags.contains("never")){
+        return "A step that failed changed the gates or the flags.";
     }
     return true;
 }
@@ -771,6 +821,10 @@ const StoryStepTestCase STORY_STEP_CASES[] = {
     {
         .input = {.name = "a failure names its step", .test = test_failure_names_the_step},
         .expectation = {.description = "records failing step identifier on error"},
+    },
+    {
+        .input = {.name = "gate state and run flags carried from the save through the steps", .test = test_gate_state_carried},
+        .expectation = {.description = "applies start_gates, start_flags, gates_after and flags_after in order"},
     },
     {
         .input = {.name = "unsupported kinds and lost battles", .test = test_unsupported_and_lost_battles},

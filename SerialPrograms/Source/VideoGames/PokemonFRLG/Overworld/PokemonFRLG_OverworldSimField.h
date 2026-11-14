@@ -41,10 +41,21 @@ enum class SimField{
     //  Each step on the water then takes SimTiming::surf_tile, and a step
     //  onto land gets the player off.
     SURF,
+    //  The boulder the player faces (an object named "pushable_boulder")
+    //  pushed one tile on, if the tile beyond is free ground: it moves there
+    //  and the player's next step takes the tile it left. Strength is the
+    //  console's: the sim does not ask for it.
+    PUSH_BOULDER,
     //  Not A: Fly from the party menu to the town numbered `floor` in
     //  kanto_fly_towns(), outdoors: the fade, then the player on its landing
     //  tile facing south, still for SimTiming::fly.
     FLY,
+    //  The card-key gate the player faces (a `G` tile of a map's `gates`),
+    //  with SimScript::card_key_held: its message, and the gate is open.
+    OPEN_GATE,
+    //  The statue the player faces (a map's `switches`): the prompt, YES, and
+    //  the switch flips, with every gate that follows it on every map.
+    PRESS_SWITCH,
 };
 
 //  Register the tests of the Bicycle's taps and SELECT on a made-up map.

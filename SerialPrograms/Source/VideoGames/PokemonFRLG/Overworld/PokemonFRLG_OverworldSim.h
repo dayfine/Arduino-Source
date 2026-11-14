@@ -111,6 +111,11 @@ public:
     //  A on what the player faces, as `field` says (`floor`: the lift's).
     //  Returns whether it was there. (PokemonFRLG_OverworldSimField.cpp)
     bool use_field(SimField field, size_t floor = 0);
+    //  What stands on the current map now: a pushed boulder is where it was
+    //  pushed to, a cut tree is gone.
+    const std::vector<MapObject>& objects() const{
+        return m_maps[m_map].objects;
+    }
 
 private:
     //  A screen that shows at `at`; `unfreeze`: the player can move again.
@@ -169,7 +174,15 @@ private:
     bool cut_tree();
     bool choose_lift_floor(size_t floor);
     bool push_poster_switch();
+    //  SimField::PUSH_BOULDER. (PokemonFRLG_OverworldSimField.cpp)
+    bool push_boulder();
     bool start_surf();
+    //  A on the gate or the statue the player faces; false, as a violation,
+    //  if there is none or the Card Key is missing.
+    bool open_gate();
+    bool press_switch();
+    //  Reads each map's gate tiles through the gates of m_state.
+    void read_gates();
     bool fly_to_town(size_t town);
     //  The trees cut come back, as after a warp.
     void regrow_cut_trees();
@@ -196,6 +209,8 @@ private:
     const MapData& map() const{ return m_maps[m_map]; }
 
     std::vector<MapData> m_maps;
+    //  The maps as loaded, with the gates closed or open as the map says.
+    std::vector<MapData> m_source_maps;
     SimScript m_script;
     int m_map = 0;
     PlayerState m_player;
@@ -432,6 +447,11 @@ private:
     //  Nothing: a Surf is never stopped part-way.
     //  (PokemonFRLG_OverworldSimField.cpp)
     std::optional<WalkedTiles> surf(const RouteStep& step);
+    //  OPEN_GATE, PRESS_SWITCH: turned to the gate or statue, A (and YES),
+    //  as use_field(). (PokemonFRLG_OverworldSimField.cpp)
+    std::optional<WalkedTiles> use_gate(const RouteStep& step);
+    //  The hold of a WALK step. (PokemonFRLG_OverworldSimField.cpp)
+    Pokemon::LegSpec leg_spec(const RouteStep& step) const;
     bool after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
     bool fade_over_since(Milliseconds from) const;
     //  after_warp() on a fade seen with no warp: fails, or with
@@ -475,6 +495,8 @@ void add_tests_OverworldSim(UnitTestDatabase& database);
 void add_tests_OverworldWarpFade(UnitTestDatabase& database);
 //  Register the tests of the way a warp leaves the player facing.
 void add_tests_OverworldStairs(UnitTestDatabase& database);
+//  Register the tests of gated routes, and of the sim opening gates.
+void add_tests_OverworldGates(UnitTestDatabase& database);
 
 
 } // namespace PokemonFRLG

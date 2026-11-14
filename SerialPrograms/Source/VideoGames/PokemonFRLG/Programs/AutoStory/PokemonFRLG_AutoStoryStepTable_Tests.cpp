@@ -53,6 +53,9 @@ StoryActionId old_game_dispatch(const StoryStep& step){
     if (step.action == CUT_TREE_VARIANT){
         return StoryActionId::CUT_TREE;
     }
+    if (step.action == PUSH_BOULDER_VARIANT){
+        return StoryActionId::PUSH_BOULDER;
+    }
     if (step.action == TRASH_CANS_VARIANT){
         return StoryActionId::TRASH_CANS;
     }

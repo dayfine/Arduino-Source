@@ -9,6 +9,7 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/StaticGlobals.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents_Tests.h"
 #include "Inference/Box/PokemonFRLG_BoxCellOccupiedDetector.h"
 #include "Inference/Box/PokemonFRLG_BoxCellReader.h"
 #include "Inference/Box/PokemonFRLG_BoxGenderReader.h"
@@ -37,7 +38,6 @@
 #include "Inference/PokemonFRLG_StatsReader.h"
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
-#include "Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents_Tests.h"
 #include "Programs/BoxOrganization/PokemonFRLG_BoxSorter_Tests.h"
 #include "Overworld/PokemonFRLG_OverworldMaps.h"
 #include "Overworld/PokemonFRLG_OverworldReanchor.h"
@@ -61,6 +61,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows13_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows16_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows17_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryRows19_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTrashCans.h"
 #include "Programs/AutoStory/Data/Json_Tests.h"
@@ -120,6 +121,8 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStorySilph(database);
     add_tests_AutoStoryMansion(database);
     add_tests_AutoStoryViridian(database);
+    add_tests_AutoStoryVictoryRoad(database);
+    add_tests_AutoStoryBoulders(database);
 }
 
 void add_tests(UnitTestDatabase& database){

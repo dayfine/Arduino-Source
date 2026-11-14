@@ -43,6 +43,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldTrainerCrossing.h"
@@ -57,7 +58,11 @@ namespace PokemonFRLG{
 //  (with the event flags the caller set) and the costs; and, for the route
 //  log (Pokemon_RouteLog.h), where it starts and what the caller calls it.
 struct RoutePlanning{
+    //  The maps as loaded: a gate tile is a wall until `gates` has it open.
+    //  The run reads them through the gates, which each OPEN_GATE or
+    //  PRESS_SWITCH step it walks changes.
     const std::vector<MapData>* maps = nullptr;
+    Pokemon::GateState gates;
     RouteCosts costs = default_route_costs();
     std::optional<MapPosition> start;
     std::string label = "Route";

@@ -147,6 +147,8 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Sim: start on a map that isn't loaded: " + start.map);
     }
     add_coded_field();
+    m_state.gates = m_script.gates;
+    read_gates();
     m_player = PlayerState{start.point, elevation_at(map(), start.point), false};
     m_state.facing = facing;
     m_state.on_bike = m_script.on_bike;
@@ -837,21 +839,15 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     if (step.action == RouteAction::SURF){
         return surf(step);
     }
+    if (step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH){
+        return use_gate(step);
+    }
     if (turns_first(step, m_speed, facing)){
         sim_turn_to(m_sim, step.direction, m_rules.confirm_turn);
     }
     const int warps_before = m_sim.state().warps;
     const std::vector<Interrupt>& ints = interrupts(step);
-    Pokemon::LegSpec leg;
-    leg.direction = step.direction;
-    leg.tiles = step.tiles + step.warp_slack;
-    leg.to_wall = step.to_wall;
-    leg.tile_time = tile_time(step, m_speed);
-    leg.stop_on_interrupt = !step.to_wall;
-    leg.stop_if_blocked = step.to_wall && m_rules.stop_if_blocked;
-    if (m_rules.hold_over_connections){
-        leg.stalled_steps = step.connection_steps;
-    }
+    const Pokemon::LegSpec leg = leg_spec(step);
     Pokemon::LegCalls calls;
     calls.hold_watching = [&](Milliseconds hold) -> std::optional<Pokemon::HoldOutcome>{
         const std::optional<SimSeen> seen = hold_watching(step, hold, ints);
@@ -901,7 +897,7 @@ StepOutcome OverworldSimWalker::walk_ridden(const RouteStep& step, std::optional
     }else if (const std::optional<WalkedTiles> walked = walk_step(step, facing)){
         return StepOutcome{.end = StepEnd::STOPPED, .walked = walked};
     }
-    if (step.action == RouteAction::FACE){
+    if (step.action == RouteAction::FACE || step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH){
         return StepOutcome{};
     }
     size_t late = clear_late(interrupts(step), step.wild ? m_rules.after_wild_leg_watch : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG);

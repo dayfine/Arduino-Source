@@ -43,6 +43,7 @@
 #include "PokemonFRLG_AutoStoryPlanGolden16.h"
 #include "PokemonFRLG_AutoStoryPlanGolden17.h"
 #include "PokemonFRLG_AutoStoryPlanGolden13.h"
+#include "PokemonFRLG_AutoStoryPlanGolden19.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
@@ -292,8 +293,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 //  start: starts_after_unauthored_rows()), and adds the plans to `golden`.
 UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 70 || checkpoints[0].start){
-        return "Expected 70 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 76 || checkpoints[0].start){
+        return "Expected 76 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -343,6 +344,7 @@ UnitTestResult test_golden_plans(){
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_15), std::end(FRLG_PLAN_GOLDEN_15));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_16), std::end(FRLG_PLAN_GOLDEN_16));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_17_GYM), std::end(FRLG_PLAN_GOLDEN_17_GYM));
+    golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_19), std::end(FRLG_PLAN_GOLDEN_19));
     const size_t stored = golden.size();
     size_t first_diff = 0;
     while (first_diff < actual.size() && first_diff < stored && actual[first_diff] == golden[first_diff]){
@@ -1077,7 +1079,7 @@ UnitTestResult test_save_places(){
     if (save_card_place("Route24") != "route-24" || save_card_place("Route25_SeaCottage") != "route-25"){
         return "Wrong save card places on Route 24 and 25.";
     }
-    if (!save_card_place("Route22").empty() || !save_card_place("Route2").empty()){
+    if (!save_card_place("Route9").empty() || !save_card_place("Route2").empty()){
         return "A place for a map the table doesn't use.";
     }
     return true;
@@ -1099,7 +1101,7 @@ UnitTestResult test_save_place_error(){
         {.start_map = "PalletTown_PlayersHouse_2F", .place = "", .error = false},
         {.start_map = "ViridianForest", .place = "viridian-city", .error = true},
         //  A map with no known place isn't checked.
-        {.start_map = "Route22", .place = "pewter-city", .error = false},
+        {.start_map = "Route9", .place = "pewter-city", .error = false},
     };
     for (const Case& c : CASES){
         const std::string error = save_place_error(c.start_map, c.place);

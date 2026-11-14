@@ -14,6 +14,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldReanchor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
@@ -158,7 +159,7 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const 
         return Pokemon::outcome_failed("bad_target", Pokemon::to_string(target_pose));
     }
     const RouteGoal goal{{target->map, target->tile}, target->facing};
-    const std::optional<std::vector<RouteStep>> route = plan_story_route(maps, state.pose, facing, goal);
+    const std::optional<std::vector<RouteStep>> route = plan_story_route(maps, state.pose, facing, goal, state.gates, Pokemon::gate_rules_of(state));
     if (!route){
         return Pokemon::outcome_failed("no_route", Pokemon::to_string(state.pose) + " to " + to_string(goal.position));
     }
@@ -167,10 +168,10 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const 
     }
     const OverworldInterruptSet interrupts = walk_interrupts(env, step);
     //  Planning lets the walker recover a stopped open leg: it plans back to
-    //  the leg's end, then walks the rest as given. From a set of tiles
-    //  the start isn't known: the walker reads the facing.
-    const RoutePlanning planning{.maps = &maps, .costs = story_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
+    //  the leg's end, then walks the rest. From a set of tiles: reads the facing.
+    const RoutePlanning planning{.maps = &maps, .gates = state.gates, .costs = story_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
     walk_overworld_route_with_recovery(env.console, env.context, *route, planning, env.player_gender, facing, interrupts, move_speed(step));
+    state.gates = gates_after_route(state.gates, *route);
     log_arrival(env, step.name, target->map, target->tile);
     const std::optional<Direction> end_facing = route->empty() ? facing : std::optional<Direction>(route->back().facing_after);
     return Pokemon::outcome_ok(to_pose(StoryPose{target->map, target->tile, end_facing}));
@@ -362,6 +363,8 @@ std::string save_card_place(const std::string& map){
         {"CeruleanCity", "cerulean-city"},
         {"Route24", "route-24"},
         {"Route25", "route-25"},
+        {"Route22", "route-22"},
+        {"Route23", "route-23"},
         {"VermilionCity", "vermilion-city"},
         {"Route10", "route-10"},
         {"LavenderTown", "lavender-town"},
@@ -435,7 +438,8 @@ Pokemon::Pose paced_pose(const Pokemon::Pose& patch, const StoryStep& step){
 
 std::optional<std::vector<RouteStep>> plan_story_route(
     const std::vector<MapData>& maps, const Pokemon::Pose& pose,
-    std::optional<Direction> facing, const RouteGoal& goal
+    std::optional<Direction> facing, const RouteGoal& goal,
+    const Pokemon::GateState& gates, const Pokemon::GateRules& rules
 ){
     std::vector<MapPosition> tiles;
     for (const TilePos& tile : Pokemon::tiles_of(pose)){
@@ -449,7 +453,7 @@ std::optional<std::vector<RouteStep>> plan_story_route(
     if (!holds->empty()){
         facing = holds->back().facing_after;
     }
-    std::optional<std::vector<RouteStep>> route = plan_overworld_route(maps, from, goal, story_route_costs(), facing);
+    std::optional<std::vector<RouteStep>> route = plan_overworld_route_gated(maps, from, goal, gates, rules, story_route_costs(), facing);
     if (route){
         route->insert(route->begin(), holds->begin(), holds->end());
     }
@@ -609,6 +613,33 @@ Outcome cut_tree(StoryEnv& env, RunState& state, const StoryStep& step){
     return Pokemon::outcome_ok(to_pose(StoryPose{here->map, here->tile.next(direction), direction}));
 }
 
+//  PUSH_BOULDER_VARIANT: the boulder in the step's direction, Strength
+//  used if the step says so, and `tiles` steps pushing it on. Not yet
+//  checked on the console.
+Outcome push_boulder(StoryEnv& env, RunState& state, const StoryStep& step){
+    const std::optional<StoryPose> here = story_pose(state.pose);
+    if (!here){
+        return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
+    }
+    const Direction direction = arg<Direction>(step, "direction");
+    const int64_t tiles = arg<int64_t>(step, "tiles");
+    if (here->facing != direction){
+        //  The boulder is in the way: a tap only turns the player to it.
+        face_wall(env.console, env.context, direction, env.player_gender);
+    }
+    if (arg<bool>(step, "activate")){
+        pbf_press_button(env.context, BUTTON_A, 160ms, 800ms);
+        answer_yes_no(env.console, env.context, true, BUTTON_B, YES_NO_TIMEOUT);
+        mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
+    }
+    StoryPose at = *here;
+    for (int64_t c = 0; c < tiles; c++){
+        step_once(env.console, env.context, direction, direction, env.player_gender);
+        at = StoryPose{at.map, at.tile.next(direction), direction};
+    }
+    return Pokemon::outcome_ok(to_pose(at));
+}
+
 //  Vermilion Gym's trash cans on the console: a walk to each can's stand
 //  (a ROUTE planned on trash_can_maps()), A, and its pages counted.
 class ConsoleTrashCans{
@@ -713,6 +744,8 @@ ConsoleAction game_console_action(StoryActionId id){
         };
     case StoryActionId::CUT_TREE:
         return cut_tree;
+    case StoryActionId::PUSH_BOULDER:
+        return push_boulder;
     case StoryActionId::TRASH_CANS:
         return open_gym_door;
     case StoryActionId::GAME:

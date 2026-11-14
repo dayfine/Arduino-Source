@@ -21,11 +21,12 @@ namespace PokemonFRLG{
 //  the story's order (STORY_ORDER in PokemonFRLG_AutoStoryTable.cpp) ends.
 //  17.02 starts at Saffron's Center nurse, where no row before it in the
 //  order ends (Silph Co.'s 16.01 ends on a pad on 5F; the rest of Silph Co.
-//  and Sabrina are not authored). 14.01 starts outside the Pokemon Mansion,
+//  and Sabrina are not authored). 19.05 starts at Victory Road's second-floor exit, after the
+//  cave's floors, whose boulder puzzles are not authored (19.04). 14.01 starts outside the Pokemon Mansion,
 //  after its Escape Rope (13.04), which is not authored. An id leaves this
 //  list once the rows before it are in.
 inline bool starts_after_unauthored_rows(std::string_view id){
-    return id == "17.02" || id == "14.01";
+    return id == "17.02" || id == "14.01" || id == "19.05";
 }
 
 
