@@ -19,24 +19,22 @@ namespace Pokemon{
 
 namespace{
 
-struct RngHandoffInput{
-    std::string_view name;
-    UnitTestResult (*body)(Logger& logger);
-};
-
-struct RngHandoffExpectation{
-    std::string_view description;
-};
-
 struct RngHandoffTestCase{
-    RngHandoffInput input;
-    RngHandoffExpectation expectation;
+    struct Input{
+        UnitTestResult (*body)(Logger& logger);
+    };
+    struct Expectation{
+        std::string_view description;
+    };
+    std::string_view name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_RngHandoff : public UnitTest{
 public:
     explicit Test_RngHandoff(RngHandoffTestCase scenario)
-        : UnitTest("Pokemon::StoryRngHandoff - " + std::string(scenario.input.name))
+        : UnitTest("Pokemon::StoryRngHandoff - " + std::string(scenario.name))
         , m_scenario(scenario)
     {}
 
@@ -154,23 +152,28 @@ UnitTestResult test_stop_report(Logger& logger){
 
 const RngHandoffTestCase RNG_HANDOFF_CASES[] = {
     {
-        .input = {.name = "RUN takes precedence over STOP", .body = test_mode},
+        .name = "RUN takes precedence over STOP",
+        .input = {.body = test_mode},
         .expectation = {.description = "RUN wins when both options are on"},
     },
     {
-        .input = {.name = "a stop reports its message and lines", .body = test_stop_report},
+        .name = "a stop reports its message and lines",
+        .input = {.body = test_stop_report},
         .expectation = {.description = "log, overlay and notification text agree"},
     },
     {
-        .input = {.name = "a success is ok", .body = test_success},
+        .name = "a success is ok",
+        .input = {.body = test_success},
         .expectation = {.description = "an ok outcome after one call"},
     },
     {
-        .input = {.name = "a failure throws without a retry", .body = test_failure},
+        .name = "a failure throws without a retry",
+        .input = {.body = test_failure},
         .expectation = {.description = "OperationFailedException after one call"},
     },
     {
-        .input = {.name = "a user's turn is returned, not an error", .body = test_user_turn},
+        .name = "a user's turn is returned, not an error",
+        .input = {.body = test_user_turn},
         .expectation = {.description = "the message comes back; a failure still throws"},
     },
 };

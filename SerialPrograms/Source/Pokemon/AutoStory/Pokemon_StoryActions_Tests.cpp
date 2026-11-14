@@ -255,7 +255,6 @@ UnitTestResult test_guard_stop_rethrows(){
 
 struct StoryActionsCase{
     struct Input{
-        std::string_view name;
         UnitTestResult (*test)();
     };
 
@@ -263,6 +262,7 @@ struct StoryActionsCase{
         std::string_view description;
     };
 
+    std::string_view name;
     Input input;
     Expectation expectation;
 };
@@ -270,7 +270,7 @@ struct StoryActionsCase{
 class Test_StoryActions : public UnitTest{
 public:
     explicit Test_StoryActions(StoryActionsCase scenario)
-        : UnitTest(std::format("Pokemon::StoryActions - {}", scenario.input.name))
+        : UnitTest(std::format("Pokemon::StoryActions - {}", scenario.name))
         , m_scenario(scenario)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -283,27 +283,33 @@ private:
 
 const StoryActionsCase STORY_ACTIONS_CASES[] = {
     {
-        .input = {.name = "table: exact, then any kind, then the kind's default", .test = test_lookup_order},
+        .name = "table: exact, then any kind, then the kind's default",
+        .input = {.test = test_lookup_order},
         .expectation = {.description = "finds the most specific action, or none"},
     },
     {
-        .input = {.name = "table: a second action for a key throws", .test = test_duplicate_actions_throw},
+        .name = "table: a second action for a key throws",
+        .input = {.test = test_duplicate_actions_throw},
         .expectation = {.description = "keeps the first action and rejects nameless any-kind actions"},
     },
     {
-        .input = {.name = "lint: steps without an action", .test = test_lint_names_steps_without_actions},
+        .name = "lint: steps without an action",
+        .input = {.test = test_lint_names_steps_without_actions},
         .expectation = {.description = "names each step the table has no action for"},
     },
     {
-        .input = {.name = "executor: the table, then the binding", .test = test_executor_uses_table_then_binding},
+        .name = "executor: the table, then the binding",
+        .input = {.test = test_executor_uses_table_then_binding},
         .expectation = {.description = "a step without a table action is the binding's or unsupported, guarded before every step"},
     },
     {
-        .input = {.name = "executor: a console failure fails the step", .test = test_guard_turns_failures_into_outcomes},
+        .name = "executor: a console failure fails the step",
+        .input = {.test = test_guard_turns_failures_into_outcomes},
         .expectation = {.description = "turns OperationFailedException into operation_failed and tells the guard"},
     },
     {
-        .input = {.name = "executor: a stop row rethrows", .test = test_guard_stop_rethrows},
+        .name = "executor: a stop row rethrows",
+        .input = {.test = test_guard_stop_rethrows},
         .expectation = {.description = "rethrows on a stop row and passes other exceptions through"},
     },
 };

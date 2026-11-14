@@ -331,7 +331,6 @@ UnitTestResult test_unreachable(){
 
 struct LegPlannerTestCase{
     struct Input{
-        std::string name;
         UnitTestResult (*test)();
     };
 
@@ -339,6 +338,7 @@ struct LegPlannerTestCase{
         std::string_view description;
     };
 
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -346,7 +346,7 @@ struct LegPlannerTestCase{
 class Test_LegPlanner : public UnitTest{
 public:
     explicit Test_LegPlanner(LegPlannerTestCase scenario)
-        : UnitTest(std::format("Pokemon::LegPlanner - {}", scenario.input.name))
+        : UnitTest(std::format("Pokemon::LegPlanner - {}", scenario.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -359,47 +359,58 @@ private:
 
 const LegPlannerTestCase LEG_PLANNER_CASES[] = {
     {
-        .input = {.name = "prefers legs that end at a wall", .test = test_prefers_wall_legs},
+        .name = "prefers legs that end at a wall",
+        .input = {.test = test_prefers_wall_legs},
         .expectation = {.description = "ends last leg against a wall rather than in the open"},
     },
     {
-        .input = {.name = "a person is not a wall", .test = test_person_is_not_a_wall},
+        .name = "a person is not a wall",
+        .input = {.test = test_person_is_not_a_wall},
         .expectation = {.description = "does not treat an NPC obstacle as a wall to stop against"},
     },
     {
-        .input = {.name = "avoids tall grass", .test = test_avoids_grass},
+        .name = "avoids tall grass",
+        .input = {.test = test_avoids_grass},
         .expectation = {.description = "routes around tall grass tiles when cheaper"},
     },
     {
-        .input = {.name = "one-way tile", .test = test_one_way_tile},
+        .name = "one-way tile",
+        .input = {.test = test_one_way_tile},
         .expectation = {.description = "respects directional one-way constraints"},
     },
     {
-        .input = {.name = "a warp ends the leg", .test = test_warp_ends_leg},
+        .name = "a warp ends the leg",
+        .input = {.test = test_warp_ends_leg},
         .expectation = {.description = "terminates the current leg upon entering a warp"},
     },
     {
-        .input = {.name = "turns to face the goal", .test = test_goal_facing},
+        .name = "turns to face the goal",
+        .input = {.test = test_goal_facing},
         .expectation = {.description = "adds a final turn leg to match required goal orientation"},
     },
     {
-        .input = {.name = "nothing through a wall", .test = test_unreachable},
+        .name = "nothing through a wall",
+        .input = {.test = test_unreachable},
         .expectation = {.description = "returns empty plan when destination is blocked"},
     },
     {
-        .input = {.name = "a leg through grass is wild", .test = test_wild_leg},
+        .name = "a leg through grass is wild",
+        .input = {.test = test_wild_leg},
         .expectation = {.description = "marks leg as wild when stepping through grass"},
     },
     {
-        .input = {.name = "an open stop after grass is weighed", .test = test_open_wild_stop},
+        .name = "an open stop after grass is weighed",
+        .input = {.test = test_open_wild_stop},
         .expectation = {.description = "prefers wall stops over open stops following grass"},
     },
     {
-        .input = {.name = "the weight needs a wild step", .test = test_open_stop_without_grass},
+        .name = "the weight needs a wild step",
+        .input = {.test = test_open_stop_without_grass},
         .expectation = {.description = "does not penalize open stop when route has no grass"},
     },
     {
-        .input = {.name = "a new leg is not wild", .test = test_wild_ends_with_leg},
+        .name = "a new leg is not wild",
+        .input = {.test = test_wild_ends_with_leg},
         .expectation = {.description = "clears wild status on subsequent non-grass legs"},
     },
 };

@@ -587,7 +587,6 @@ std::string segment_no_reload_for_console_only(CancellableScope& scope){
 //  only when the one before saved at its end (#329).
 struct SegmentCase{
     struct Input{
-        std::string_view name;
         StoryPhase phase;
         //  Which checkpoint fails once: 0 or 1.
         size_t flaky = 0;
@@ -599,18 +598,19 @@ struct SegmentCase{
         size_t saves = 0;
     };
 
+    std::string_view name;
     Input input;
     Expectation expectation;
 };
 
 const SegmentCase SEGMENT_CASES[] = {
-    {.input = {.name = "first retries while testing", .phase = StoryPhase::TESTING, .flaky = 0},
+    {.name = "first retries while testing", .input = {.phase = StoryPhase::TESTING, .flaky = 0},
      .expectation = {.completed = true, .reloads = 1, .saves = 0}},
-    {.input = {.name = "second does not retry while testing", .phase = StoryPhase::TESTING, .flaky = 1},
+    {.name = "second does not retry while testing", .input = {.phase = StoryPhase::TESTING, .flaky = 1},
      .expectation = {.completed = false, .reloads = 0, .saves = 0}},
-    {.input = {.name = "second does not retry while verifying", .phase = StoryPhase::VERIFICATION, .flaky = 1},
+    {.name = "second does not retry while verifying", .input = {.phase = StoryPhase::VERIFICATION, .flaky = 1},
      .expectation = {.completed = false, .reloads = 0, .saves = 0}},
-    {.input = {.name = "second retries after a reproduction save", .phase = StoryPhase::REPRODUCTION, .flaky = 1},
+    {.name = "second retries after a reproduction save", .input = {.phase = StoryPhase::REPRODUCTION, .flaky = 1},
      .expectation = {.completed = true, .reloads = 1, .saves = 2}},
 };
 
@@ -640,7 +640,7 @@ std::string check_segment(const SegmentCase& test, CancellableScope& scope){
 class StorySegmentTest : public UnitTest{
 public:
     explicit StorySegmentTest(SegmentCase test)
-        : UnitTest(std::format("Pokemon::StoryEngine segment - {}", test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine segment - {}", test.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
@@ -655,7 +655,6 @@ private:
 //  reload and pass lines and attempt counts as its own loop had.
 struct RetryCase{
     struct Input{
-        std::string_view name;
         //  Calls of the checkpoint's action that fail before one passes.
         size_t failures = 0;
         size_t attempts = 0;
@@ -668,18 +667,19 @@ struct RetryCase{
         std::vector<std::string_view> lines;
     };
 
+    std::string_view name;
     Input input;
     Expectation expectation;
 };
 
 const RetryCase RETRY_CASES[] = {
-    {.input = {.name = "pass after a reload", .failures = 1, .attempts = 3},
+    {.name = "pass after a reload", .input = {.failures = 1, .attempts = 3},
      .expectation = {.passed = true, .attempts = 2, .lines = {
         "[Checkpoint] 01: failed, resetting for attempt 2/3",
         "[Test] reload",
         "[Checkpoint] 01: passed on attempt 2 (1 reset)",
      }}},
-    {.input = {.name = "stop after the last attempt", .failures = 5, .attempts = 2},
+    {.name = "stop after the last attempt", .input = {.failures = 5, .attempts = 2},
      .expectation = {.passed = false, .attempts = 2, .lines = {
         "[Checkpoint] 01: failed, resetting for attempt 2/2",
         "[Test] reload",
@@ -711,7 +711,7 @@ std::string check_retry(const RetryCase& test, CancellableScope& scope){
 class StoryRetryTest : public UnitTest{
 public:
     explicit StoryRetryTest(RetryCase test)
-        : UnitTest(std::format("Pokemon::StoryEngine retry - {}", test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine retry - {}", test.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
@@ -749,7 +749,6 @@ std::string verify_saves_after_all_passed(CancellableScope& scope){
 struct RunsCase{
     //  One check above, by name.
     struct Input{
-        std::string_view name;
         std::string (*check)(CancellableScope& scope);
     };
 
@@ -758,33 +757,34 @@ struct RunsCase{
         std::string_view error = {};
     };
 
+    std::string_view name;
     Input input;
     Expectation expectation;
 };
 
 const RunsCase RUNS_CASES[] = {
-    {.input = {.name = "zone checkpoint on a fake backend", .check = &zone_checkpoint_runs}, .expectation = {}},
-    {.input = {.name = "zone start with tiles fails the lint", .check = &zone_rejects_tiles}, .expectation = {}},
-    {.input = {.name = "tile start with a place fails the lint", .check = &grid_rejects_places}, .expectation = {}},
-    {.input = {.name = "zone game rejects tile args", .check = &zone_rejects_tile_args}, .expectation = {}},
-    {.input = {.name = "tile actions only with tiles", .check = &tile_actions_only_with_tiles}, .expectation = {}},
-    {.input = {.name = "stick and heading", .check = &stick_and_heading}, .expectation = {}},
-    {.input = {.name = "buttons by name", .check = &buttons_by_name}, .expectation = {}},
-    {.input = {.name = "waiting states may stay still", .check = &still_states}, .expectation = {}},
-    {.input = {.name = "readers opt in to postconditions", .check = &readers_opt_in}, .expectation = {}},
-    {.input = {.name = "observation machine ends", .check = &observation_machine_ends}, .expectation = {}},
-    {.input = {.name = "observation machine fails", .check = &observation_machine_fails}, .expectation = {}},
-    {.input = {.name = "handler sees its step", .check = &handler_sees_step}, .expectation = {}},
-    {.input = {.name = "save gets its checkpoint", .check = &save_gets_checkpoint}, .expectation = {}},
-    {.input = {.name = "console_only refused off console", .check = &console_only_refused}, .expectation = {}},
-    {.input = {.name = "no reload for console_only", .check = &segment_no_reload_for_console_only}, .expectation = {}},
-    {.input = {.name = "verify saves after all passed", .check = &verify_saves_after_all_passed}, .expectation = {}},
+    {.name = "zone checkpoint on a fake backend", .input = {.check = &zone_checkpoint_runs}, .expectation = {}},
+    {.name = "zone start with tiles fails the lint", .input = {.check = &zone_rejects_tiles}, .expectation = {}},
+    {.name = "tile start with a place fails the lint", .input = {.check = &grid_rejects_places}, .expectation = {}},
+    {.name = "zone game rejects tile args", .input = {.check = &zone_rejects_tile_args}, .expectation = {}},
+    {.name = "tile actions only with tiles", .input = {.check = &tile_actions_only_with_tiles}, .expectation = {}},
+    {.name = "stick and heading", .input = {.check = &stick_and_heading}, .expectation = {}},
+    {.name = "buttons by name", .input = {.check = &buttons_by_name}, .expectation = {}},
+    {.name = "waiting states may stay still", .input = {.check = &still_states}, .expectation = {}},
+    {.name = "readers opt in to postconditions", .input = {.check = &readers_opt_in}, .expectation = {}},
+    {.name = "observation machine ends", .input = {.check = &observation_machine_ends}, .expectation = {}},
+    {.name = "observation machine fails", .input = {.check = &observation_machine_fails}, .expectation = {}},
+    {.name = "handler sees its step", .input = {.check = &handler_sees_step}, .expectation = {}},
+    {.name = "save gets its checkpoint", .input = {.check = &save_gets_checkpoint}, .expectation = {}},
+    {.name = "console_only refused off console", .input = {.check = &console_only_refused}, .expectation = {}},
+    {.name = "no reload for console_only", .input = {.check = &segment_no_reload_for_console_only}, .expectation = {}},
+    {.name = "verify saves after all passed", .input = {.check = &verify_saves_after_all_passed}, .expectation = {}},
 };
 
 class StoryEngineRunsTest : public UnitTest{
 public:
     explicit StoryEngineRunsTest(RunsCase test)
-        : UnitTest(std::format("Pokemon::StoryEngine runs - {}", test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine runs - {}", test.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{

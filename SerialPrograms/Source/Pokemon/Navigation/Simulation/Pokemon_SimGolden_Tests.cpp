@@ -24,7 +24,6 @@ namespace{
 
 struct SimGoldenTestCase{
     struct Input{
-        std::string name;
         UnitTestResult (*body)(Logger& logger);
     };
 
@@ -32,6 +31,7 @@ struct SimGoldenTestCase{
         std::string_view description;
     };
 
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -39,7 +39,7 @@ struct SimGoldenTestCase{
 class Test_SimGolden : public UnitTest{
 public:
     explicit Test_SimGolden(SimGoldenTestCase scenario)
-        : UnitTest("Pokemon::Navigation - Sim golden: " + scenario.input.name)
+        : UnitTest("Pokemon::Navigation - Sim golden: " + scenario.name)
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -127,13 +127,13 @@ UnitTestResult test_missing_golden_fails(Logger& logger){
 }
 
 const SimGoldenTestCase SIM_GOLDEN_CASES[] = {
-    {.input = {.name = "the golden's path is beside the test's source", .body = test_path_beside_source}, .expectation = {}},
-    {.input = {.name = "the text is a comment line, then a line each", .body = test_text}, .expectation = {}},
-    {.input = {.name = "CRLF and LF text compare the same", .body = test_same_text_ignoring_crlf}, .expectation = {}},
-    {.input = {.name = "the first differing line is reported", .body = test_first_differing_line}, .expectation = {}},
-    {.input = {.name = "a line more or less is reported", .body = test_extra_line}, .expectation = {}},
-    {.input = {.name = "goldens are written with exactly one CRLF a line", .body = test_with_crlf}, .expectation = {}},
-    {.input = {.name = "a missing golden fails", .body = test_missing_golden_fails}, .expectation = {}},
+    {.name = "the golden's path is beside the test's source", .input = {.body = test_path_beside_source}, .expectation = {}},
+    {.name = "the text is a comment line, then a line each", .input = {.body = test_text}, .expectation = {}},
+    {.name = "CRLF and LF text compare the same", .input = {.body = test_same_text_ignoring_crlf}, .expectation = {}},
+    {.name = "the first differing line is reported", .input = {.body = test_first_differing_line}, .expectation = {}},
+    {.name = "a line more or less is reported", .input = {.body = test_extra_line}, .expectation = {}},
+    {.name = "goldens are written with exactly one CRLF a line", .input = {.body = test_with_crlf}, .expectation = {}},
+    {.name = "a missing golden fails", .input = {.body = test_missing_golden_fails}, .expectation = {}},
 };
 
 } // namespace
