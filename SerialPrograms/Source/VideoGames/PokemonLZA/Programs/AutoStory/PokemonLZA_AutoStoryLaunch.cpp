@@ -6,7 +6,10 @@
 
 #include <chrono>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <vector>
+#include "CommonFramework/Language.h"
 #include "Pokemon/AutoStory/Pokemon_StorySwitchPrompts.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
@@ -23,6 +26,12 @@ using Pokemon::StoryLaunchPrompt;
 
 
 namespace{
+
+//  The name HOME shows above the game's tile, in console B's language.
+//  Console B, 2026-11-14: a launch that took any tile opened FireRed once
+//  it had been played last and moved to the first tile.
+constexpr std::string_view HOME_TILE_NAME = "Pokémon Legends: Z-A";
+constexpr Language HOME_LANGUAGE = Language::English;
 
 //  Where the title's "use the backup save?" arrow shows (reset_game_from_home()).
 const ImageFloatBox BACKUP_ARROW_BOX{0.2, 0.5, 0.6, 0.3};
@@ -70,9 +79,7 @@ std::vector<StoryLaunchPrompt> plza_prompts(){
 StoryLaunchPolicy plza_launch_policy(ConsoleHandle& console){
     StoryLaunchPolicy policy;
     policy.game = "plza";
-    policy.tile_selected = [](const ScreenObservation&){
-        return true;
-    };
+    policy.tile_selected = Pokemon::switch_home_tile_named(HOME_LANGUAGE, std::string(HOME_TILE_NAME));
     policy.title = plza_title;
     policy.title_after_launch = true;
     policy.title_press = {.button = BUTTON_A, .hold = 160ms, .release = 1000ms};
