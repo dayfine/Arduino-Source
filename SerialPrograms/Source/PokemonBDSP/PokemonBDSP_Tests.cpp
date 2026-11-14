@@ -8,10 +8,12 @@
 #include "Inference/PokemonBDSP_DialogDetector.h"
 #include "Inference/PokemonBDSP_MenuDetector.h"
 #include "Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions_Tests.h"
+#include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_FrozenTrainer_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_Maps_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_PlannedRoute_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_SimulatedRoute_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_RoutePlanner_Tests.h"
+#include "Programs/AutoStory/PokemonBDSP_AutoStory_Segment00_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_StoryMaps_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_StoryWorld_Tests.h"
 #include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StoryActions_Tests.h"
@@ -39,12 +41,14 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStory_RoutePlanner(database);
     add_tests_AutoStory_RouteBench(database);
     add_tests_AutoStory_StoryMaps(database);
+    add_tests_AutoStory_Segment00(database);
     add_tests_AutoStory_StoryData(database);
     add_tests_AutoStory_StoryTable(database);
     add_tests_AutoStory_Walk(database);
     add_tests_AutoStory_WildBattlePolicy(database);
     add_tests_AutoStory_PlannedRoute(database);
     add_tests_AutoStory_SimulatedRoute(database);
+    add_tests_AutoStory_FrozenTrainer(database);
     add_tests_AutoStory_WallBattleSim(database);
     add_tests_AutoStory_StoryActions(database);
     add_tests_StarterRng(database);
