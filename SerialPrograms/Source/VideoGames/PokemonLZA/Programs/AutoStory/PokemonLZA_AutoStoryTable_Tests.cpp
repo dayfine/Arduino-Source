@@ -54,6 +54,60 @@ UnitTestResult test_story_table_lints(Logger&){
     return true;
 }
 
+//  The step `name` of checkpoint `id` in `checkpoints`; null if none.
+const StoryStep* find_step(const std::vector<StoryCheckpoint>& checkpoints, std::string_view id, std::string_view name){
+    for (const StoryCheckpoint& row : checkpoints){
+        for (const StoryStep& step : row.steps){
+            if (row.id == id && step.name == name){
+                return &step;
+            }
+        }
+    }
+    return nullptr;
+}
+
+//  `move`'s legs as [turn, ms] pairs, for messages and comparisons.
+std::vector<std::pair<int, int64_t>> leg_pairs(const StoryMove& move){
+    std::vector<std::pair<int, int64_t>> pairs;
+    for (const StoryWalkLeg& leg : move.legs){
+        pairs.emplace_back((int)leg.turn, leg.walk.count());
+    }
+    return pairs;
+}
+
+//  Every walk reads as a move with legs (its args passed the lint), and
+//  platform_to_plaza reads as recorded, ending on the white fade.
+UnitTestResult test_story_walks_read(Logger&){
+    size_t walks = 0;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryStep& step : row.steps){
+            if (step.kind != StoryStepKind::GAME || step.action != "walk"){
+                continue;
+            }
+            walks++;
+            if (story_walk_move(step.args, "legs").legs.empty()){
+                return std::format("{} {}: no legs.", row.id, step.name);
+            }
+        }
+    }
+    if (walks != 2){
+        return std::format("Expected the 2 recorded walks, found {}.", walks);
+    }
+    const StoryStep* plaza = find_step(story_checkpoints(), "01.01", "platform_to_plaza");
+    if (plaza == nullptr){
+        return "Expected 01.01 platform_to_plaza.";
+    }
+    const std::vector<std::pair<int, int64_t>> expected{{0, 4500}, {90, 10000}};
+    if (leg_pairs(story_walk_move(plaza->args, "legs")) != expected){
+        return "Expected platform_to_plaza's legs [[0, 4500], [90, 10000]].";
+    }
+    const auto end = plaza->args.find("end");
+    if (end == plaza->args.end() || std::get<std::string>(end->second) != "fade_white"){
+        return "Expected platform_to_plaza to end on the white fade.";
+    }
+    return true;
+}
+
 //  Each action that is not implemented says what it waits for, is no move's
 //  name, and is in a step.
 UnitTestResult test_not_implemented_actions(Logger&){
@@ -151,6 +205,19 @@ UnitTestResult test_reload_when_chained_field(Logger&){
     return true;
 }
 
+//  01.02 reloads when run after 01.01, whose autosave is 01.02's start;
+//  with 01.01 saving through the menu instead, 01.02's reload is refused.
+UnitTestResult test_mm1_reload_when_chained(Logger&){
+    if (!builtin_story_data().reload_when_chained.contains("01.02")){
+        return "Expected 01.02 to reload when chained.";
+    }
+    const std::string problem = load_problem(dev_with_execution("01.01", R"("save": "menu")"));
+    if (problem.find("does not end on the game's autosave") == std::string::npos){
+        return std::format("01.01 saving through the menu: expected 01.02's reload refused, got \"{}\".", problem);
+    }
+    return true;
+}
+
 //  A run can play every row: none names an action that is not implemented.
 UnitTestResult test_every_row_ready(Logger&){
     const size_t ready = story_rows_ready(story_checkpoints());
@@ -213,6 +280,100 @@ UnitTestResult test_scene_mash_rule(Logger&){
         const SceneMashAction got = scene_mash_action(item.events, item.goal, item.text_b);
         if (got != item.expected){
             return std::format("{}: expected action {}, got {}.", item.name, (int)item.expected, (int)got);
+        }
+    }
+    return true;
+}
+
+//  Chikorita's walk is recorded in 01.03's approach_starter, and only hers.
+UnitTestResult test_starter_moves(Logger&){
+    const StoryStep* approach = find_step(story_checkpoints(), "01.03", "approach_starter");
+    if (approach == nullptr || approach->action != "approach_starter"){
+        return "Expected 01.03 approach_starter.";
+    }
+    if (approach->args.contains("tepig") || approach->args.contains("totodile")){
+        return "Expected only Chikorita's walk.";
+    }
+    if (!approach->args.contains("chikorita")){
+        return "Expected the walk to Chikorita.";
+    }
+    const std::vector<std::pair<int, int64_t>> expected{{-70, 750}};
+    if (leg_pairs(story_walk_move(approach->args, "chikorita")) != expected){
+        return "Expected Chikorita's walk [[-70, 750]].";
+    }
+    return true;
+}
+
+//  The built-in text of checkpoint file `name` ("plza-01.02.plan").
+std::string builtin_text(std::string_view name){
+    for (const auto& [file, text] : autostory_checkpoint_json()){
+        if (file == name){
+            return text;
+        }
+    }
+    return "";
+}
+
+//  `text` with its first `from` replaced by `to`.
+std::string replaced(std::string text, std::string_view from, std::string_view to){
+    const size_t at = text.find(from);
+    if (at != std::string::npos){
+        text.replace(at, from.size(), to);
+    }
+    return text;
+}
+
+//  The ParseException message of load_story_data() on the one dev file
+//  `text`; empty if it loads.
+std::string dev_load_error(std::string_view name, std::string text){
+    const StoryDevFile dev{.name = std::string(name), .path = std::format("/dev/{}", name), .text = std::move(text)};
+    try{
+        load_story_data(std::span<const StoryDevFile>(&dev, 1));
+    }catch (ParseException& e){
+        return e.message();
+    }
+    return "";
+}
+
+//  A dev file replaces the built-in checkpoint of its name and no other,
+//  and is named; a bad one (not JSON, a leg of 3 numbers, a negative walk,
+//  an unknown file, another id) fails naming its path.
+UnitTestResult test_dev_override(Logger&){
+    const std::string chase = builtin_text("plza-01.02.plan");
+    const std::string_view legs = "[[-15, 4000], [-75, 3500]";
+    if (chase.find(legs) == std::string::npos){
+        return "Expected chase_pancham's legs in plza-01.02.plan.json.";
+    }
+    const StoryDevFile dev{
+        .name = "plza-01.02.plan.json", .path = "/dev/plza-01.02.plan.json",
+        .text = replaced(chase, legs, "[[-15, 4200], [-75, 3500]"),
+    };
+    const StoryData data = load_story_data(std::span<const StoryDevFile>(&dev, 1));
+    if (data.dev_files.size() != 1 || data.dev_files[0].first != dev.name || data.dev_files[0].second != dev.path){
+        return "Expected the dev file to be named with its path.";
+    }
+    if (data.checkpoints.size() != story_checkpoints().size() || data.autosaves != story_autosave_rows()){
+        return "Expected the same rows and autosaves as the built-in story.";
+    }
+    const StoryStep* tuned = find_step(data.checkpoints, "01.02", "chase_pancham");
+    if (tuned == nullptr || leg_pairs(story_walk_move(tuned->args, "legs")).front() != std::pair<int, int64_t>(-15, 4200)){
+        return "Expected the dev file's first leg, [-15, 4200].";
+    }
+    const StoryStep* plaza = find_step(data.checkpoints, "01.01", "platform_to_plaza");
+    if (plaza == nullptr || leg_pairs(story_walk_move(plaza->args, "legs")).front() != std::pair<int, int64_t>(0, 4500)){
+        return "Expected 01.01 to stay built-in.";
+    }
+    const std::pair<std::string, std::string> bad[] = {
+        {"plza-01.02.plan.json", "{ not json"},
+        {"plza-01.02.plan.json", replaced(chase, legs, "[[-15, 4000, 1], [-75, 3500]")},
+        {"plza-01.02.plan.json", replaced(chase, legs, "[[-15, -4000], [-75, 3500]")},
+        {"plza-09.99.plan.json", chase},
+        {"plza-01.02.plan.json", replaced(chase, "\"01.02\"", "\"01.09\"")},
+    };
+    for (const auto& [name, text] : bad){
+        const std::string error = dev_load_error(name, text);
+        if (error.find(std::format("/dev/{}", name)) == std::string::npos){
+            return std::format("Expected {} to fail naming its path, got \"{}\".", name, error);
         }
     }
     return true;
@@ -287,8 +448,23 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
+        .name = "Story table: every walk reads its legs",
+        .input = {.body = test_story_walks_read},
+        .expectation = {},
+    },
+    {
         .name = "Story table: actions not implemented say what they wait for",
         .input = {.body = test_not_implemented_actions},
+        .expectation = {},
+    },
+    {
+        .name = "Starters: the walk to Chikorita is recorded",
+        .input = {.body = test_starter_moves},
+        .expectation = {},
+    },
+    {
+        .name = "Dev checkpoints: replace the built-in file of their name, fail naming the file",
+        .input = {.body = test_dev_override},
         .expectation = {},
     },
     {
@@ -304,6 +480,11 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     {
         .name = "reload_when_chained: only true, only after an autosave row, never on a new game row",
         .input = {.body = test_reload_when_chained_field},
+        .expectation = {},
+    },
+    {
+        .name = "reload_when_chained: 01.02 after 01.01's autosave",
+        .input = {.body = test_mm1_reload_when_chained},
         .expectation = {},
     },
     {

@@ -42,8 +42,9 @@ StoryData load_story_data(std::span<const StoryDevFile> dev_files);
 const StoryData& builtin_story_data();
 
 //  The built-in story (load_story_data() with no dev files), read once:
-//  what the tests, the lint and the program's dropdowns use. The first,
-//  01.00, plays a new game to the station platform without a save, from
+//  what the tests, the lint and the program's dropdowns use: 01.xx Main
+//  Mission 01 (new game, Pancham, the starter). Only the first, 01.00,
+//  starts without a save: it plays a new game to the station platform from
 //  the new game's "Confirm Choices", its choices made by hand.
 const std::vector<Pokemon::StoryCheckpoint>& story_checkpoints();
 

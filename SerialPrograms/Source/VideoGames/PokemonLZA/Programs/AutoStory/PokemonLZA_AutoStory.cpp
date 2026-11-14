@@ -40,7 +40,7 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "PokemonLZA:AutoStory",
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Play the main story of Pokemon Legends: Z-A. Prototype: plays a new game to the station platform, as recorded on a console. "
+        "Play the main story of Pokemon Legends: Z-A. Prototype: Main Mission 01 as recorded on a console; plays from a new game to the starter and Andi. "
         "Start a new game and pick its language, look and name by hand: checkpoint 01.00 starts on the Confirm Choices screen that follows. "
         "It checks that screen, presses nothing anywhere else, and picks Ready!. Later checkpoints load their save first. "
         "Set Game Language to the language the game is set to: the program reads place names in it.",
@@ -82,6 +82,16 @@ AutoStory::AutoStory()
         true
     )
     , RUN(checkpoint_database(), Gen8ToGen9Languages_Database())
+    , STARTER(
+        "<b>Starter Pokemon:</b>",
+        {
+            {StarterChoice::CHIKORITA, "chikorita", "Chikorita"},
+            {StarterChoice::TEPIG,     "tepig",     "Tepig"},
+            {StarterChoice::TOTODILE,  "totodile",  "Totodile"},
+        },
+        LockMode::LOCK_WHILE_RUNNING,
+        StarterChoice::CHIKORITA
+    )
     , RELOAD_AT_BOUNDARIES(
         "<b>Reload at Checkpoint Boundaries:</b><br>Reload the save before a checkpoint whose plan asks for it "
         "when the run comes from the checkpoint before. Off: run straight on. A failed checkpoint's retry reloads either way.",
@@ -98,6 +108,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(LANGUAGE);
     RUN.LANGUAGE.set_visibility(ConfigOptionState::HIDDEN);
     PA_ADD_OPTION(RUN);
+    PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(BATTLE_AI);
     PA_ADD_OPTION(RELOAD_AT_BOUNDARIES);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
@@ -153,11 +164,13 @@ void connect_controller(ConsoleHandle& console, ProControllerContext& context, c
     require_player(console, context, BUTTON_L);
 }
 
-//  PLZA's game for a run on `story`, pausing at `breakpoints` (the
+//  PLZA's game for a run on `story` with `starter`, pausing at `breakpoints` (the
 //  BREAKPOINTS option): before each step, or each leg too, where a lab build
 //  waits for the user (Pokemon_StoryBreakpoints.h).
-StoryGame<ZonePose> run_game(StoryEnv& story, const StoryData& data, StoryBreakpoints breakpoints, CancellableScope& scope){
-    StoryGame<ZonePose> game = make_plza_story_game(story, data.autosaves);
+StoryGame<ZonePose> run_game(
+    StoryEnv& story, StarterChoice starter, const StoryData& data, StoryBreakpoints breakpoints, CancellableScope& scope
+){
+    StoryGame<ZonePose> game = make_plza_story_game(story, starter, data.autosaves);
     game.breakpoints = breakpoints;
     game.pause_point = make_story_pause_hook(scope);
     return game;
@@ -190,7 +203,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         .env = env, .context = context, .language = LANGUAGE, .battle_ai = BATTLE_AI
     };
     PlzaConsoleBackend backend(story);
-    const StoryGame<ZonePose> game = run_game(story, story_data, RUN.breakpoints(), context);
+    const StoryGame<ZonePose> game = run_game(story, STARTER, story_data, RUN.breakpoints(), context);
     StoryEngine<ZonePose> engine(game, backend);
     RunState state;
     load_start_save(env.console, game, backend, rows, first);

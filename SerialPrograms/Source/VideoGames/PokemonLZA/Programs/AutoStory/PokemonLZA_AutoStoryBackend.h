@@ -41,6 +41,14 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+//  The starters Mission 1 offers. The player picks one by walking up to it
+//  and talking to it.
+enum class StarterChoice{
+    CHIKORITA,
+    TEPIG,
+    TOTODILE,
+};
+
 //  The console a run plays on, for the actions only a console can do
 //  (menus, OCR, the battle AI).
 struct StoryEnv{

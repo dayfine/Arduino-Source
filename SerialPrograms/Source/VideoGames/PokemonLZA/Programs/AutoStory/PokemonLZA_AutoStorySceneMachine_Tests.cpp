@@ -320,6 +320,33 @@ UnitTestResult test_to_battle(Logger&){
     });
 }
 
+//  platform_to_plaza is the walk that ends on an event (the white fade),
+//  and every walk that ends on one holds a last leg that walks.
+UnitTestResult test_move_ends(Logger&){
+    std::vector<std::string> ending;
+    for (const Pokemon::StoryCheckpoint& row : story_checkpoints()){
+        for (const Pokemon::StoryStep& step : row.steps){
+            const auto end = step.args.find("end");
+            if (step.action != "walk" || end == step.args.end()){
+                continue;
+            }
+            ending.push_back(step.name);
+            const StoryMove move = story_walk_move(step.args, "legs");
+            if (move.legs.empty() || move.legs.back().walk <= 0ms){
+                return std::format("{}: its last leg has no walk to hold until the event.", step.name);
+            }
+            const std::string& fade = std::get<std::string>(end->second);
+            if (fade != "fade_white" && fade != "fade_black"){
+                return std::format("{}: ends on {}, not a fade.", step.name, fade);
+            }
+        }
+    }
+    if (ending != std::vector<std::string>{"platform_to_plaza"}){
+        return std::format("Expected only platform_to_plaza to end on an event, {} do.", ending.size());
+    }
+    return true;
+}
+
 
 struct SceneMachineCase{
     std::string name;
@@ -413,6 +440,11 @@ const SceneMachineCase SCENE_MACHINE_CASES[] = {
     {
         .name = "what each state presses",
         .input = {.body = test_state_actions},
+        .expectation = {},
+    },
+    {
+        .name = "walks that end on a fade",
+        .input = {.body = test_move_ends},
         .expectation = {},
     },
 };

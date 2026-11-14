@@ -11,7 +11,8 @@
  *  legs: a relative turn and a walk time each (PokemonLZA_AutoStoryGame.h).
  *
  *  Recorded 2026-11-08/09 on console B, played step by step from a new
- *  game. Every walk was measured walking, not dashing. Steps the game
+ *  game through Main Mission 01. Every walk was measured walking, not
+ *  dashing. Steps the game
  *  has no code for yet are GAME steps of story_actions_not_implemented().
  *
  *  This is the story as data, with no IO: the checkpoint files it is read

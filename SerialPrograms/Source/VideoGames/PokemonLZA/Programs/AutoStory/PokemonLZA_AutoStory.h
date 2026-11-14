@@ -57,6 +57,7 @@ private:
     //  The start and end checkpoints, attempts and checks. Its own language
     //  dropdown is hidden: LANGUAGE above is PLZA's.
     Pokemon::StoryRunOptions RUN;
+    EnumDropdownOption<StarterChoice> STARTER;
     BattleAIOption BATTLE_AI;
     //  Off: a run of several checkpoints runs straight on at the rows whose
     //  plans say "reload_when_chained"; on: it reloads the save there.
