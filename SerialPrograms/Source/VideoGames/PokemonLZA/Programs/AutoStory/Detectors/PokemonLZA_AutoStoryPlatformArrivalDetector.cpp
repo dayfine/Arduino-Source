@@ -4,7 +4,9 @@
  *
  */
 
+#include <charconv>
 #include <cmath>
+#include <iterator>
 #include <format>
 #include <string>
 #include <string_view>
@@ -25,8 +27,8 @@ namespace PokemonLZA{
 
 namespace{
 
-//  A region of the frame and the cells it is averaged into. On 1920x1080
-//  (the user's design, 2026-11-10): the top band y 0-300 across; the left
+//  A region of the frame and the cells it is averaged into. On 1920x1080:
+//  the top band y 0-300 across; the left
 //  side x 0-640 and the right side x 1280-1920, both y 300-1080. The player
 //  (x 780-1200, y 330-1080) is in none of them. Each cell is 30x30 (top) or
 //  40x39 pixels (sides).
@@ -43,22 +45,25 @@ const PlatformRegion PLATFORM_REGIONS[] = {
     {"right", {1280.0 / 1920, 300.0 / 1080, 640.0 / 1920, 780.0 / 1080}, 16, 20},
 };
 
-//  The bounds of platform_matches(), from the opening's frames (console B,
-//  1920x1080: the platform reference and the 56 cutscene frames before
-//  it, measured with this code's cell averages):
-//  - the closest cutscene frame is 0056, the train's interior just before
-//    the platform: top 112.8, left 82.6, right 71.9; the next are the
-//    city flyovers 0022-0024 at top 134.7+, left 95.6+;
+//  The bounds of platform_matches(), from this code's cell averages on
+//  1920x1080, against the platform reference:
+//  - the closest cutscene scene, the train's interior just before the
+//    platform: top 112.8, left 82.6, right 71.9; the next, city flyovers:
+//    top 134.7+, left 95.6+;
 //  - the reference against itself moved 16 px: top 42.2, left 20.8,
-//    right 21.2; 10% darker: top 24.6, left 19.9, right 16.4.
-//  - the platform after loading its autosave (camera turned a little,
-//    2026-11-10): top 67.9-68.1, left 25.8-41.7, right 16.5-16.9.
-//  So the bounds sit between the loaded view and 0056: top 90 (23 below
-//  0056), left 55 (27 below). The right side holds a walking NPC and the companion, so it only
-//  has to be roughly the platform (120: a menu or another place is 140+).
+//    right 21.2; 10% darker: top 24.6, left 19.9, right 16.4;
+//  - the platform after loading its autosave (camera turned a little):
+//    top 67.9-68.1, left 25.8-41.7, right 16.5-16.9.
+//  So the bounds sit between the loaded view and the train's interior:
+//  top 90 (23 below it), left 55 (27 below). The right side holds a walking
+//  NPC and the companion, so it only has to be roughly the platform (120:
+//  a menu or another place is 140+).
 constexpr double PLATFORM_TOP_MAX = 90.0;
 constexpr double PLATFORM_LEFT_MAX = 55.0;
 constexpr double PLATFORM_RIGHT_MAX = 120.0;
+
+//  The largest distance: every channel of every cell 255 apart, sqrt(3) * 255.
+constexpr double MAX_PLATFORM_DISTANCE = 441.7;
 
 using Cells = std::vector<FloatPixel>;
 
@@ -80,10 +85,17 @@ Cells region_cells(const ImageViewRGB32& screen, const PlatformRegion& region){
     return cells;
 }
 
-//  "rrggbb" to its color.
-FloatPixel hex_pixel(const std::string& hex, size_t offset){
+//  The "rrggbb" at `offset` of `hex` as a color. Throws ParseException for
+//  a character that is not a hex digit.
+FloatPixel hex_pixel(std::string_view hex, size_t offset){
     const auto channel = [&](size_t index){
-        return (double)std::stoi(hex.substr(offset + index * 2, 2), nullptr, 16);
+        const std::string_view digits = hex.substr(offset + index * 2, 2);
+        int value = 0;
+        const auto [end, error] = std::from_chars(digits.data(), digits.data() + digits.size(), value, 16);
+        if (error != std::errc() || end != digits.data() + digits.size()){
+            throw ParseException(std::format("plza-platform.json: \"{}\" is not a hex color channel.", digits));
+        }
+        return (double)value;
     };
     return FloatPixel(channel(0), channel(1), channel(2));
 }
@@ -146,8 +158,8 @@ double cells_rmsd(const Cells& reference, const Cells& cells){
 
 PlatformDistances platform_distances(const ImageViewRGB32& screen){
     const std::vector<Cells>& reference = platform_reference();
-    double distance[3] = {};
-    for (size_t index = 0; index < 3; index++){
+    double distance[std::size(PLATFORM_REGIONS)] = {};
+    for (size_t index = 0; index < std::size(PLATFORM_REGIONS); index++){
         distance[index] = cells_rmsd(reference[index], region_cells(screen, PLATFORM_REGIONS[index]));
     }
     return PlatformDistances{.top = distance[0], .left = distance[1], .right = distance[2]};
@@ -163,7 +175,7 @@ ImageRGB32 platform_reference_image(size_t width, size_t height){
     ImageRGB32 image(width, height);
     image.fill(0xff000000);
     const std::vector<Cells>& reference = platform_reference();
-    for (size_t index = 0; index < 3; index++){
+    for (size_t index = 0; index < std::size(PLATFORM_REGIONS); index++){
         const PlatformRegion& region = PLATFORM_REGIONS[index];
         const ImagePixelBox box = floatbox_to_pixelbox(width, height, region.box);
         for (size_t y = box.min_y; y < box.max_y; y++){
@@ -194,6 +206,11 @@ void PlatformArrivalDetector::make_overlays(VideoOverlaySet& items) const{
 }
 
 bool PlatformArrivalDetector::detect(const ImageViewRGB32& screen){
+    if (screen.width() == 0 || screen.height() == 0){
+        //  No frame: as far from the platform as a frame can be.
+        m_last = PlatformDistances{.top = MAX_PLATFORM_DISTANCE, .left = MAX_PLATFORM_DISTANCE, .right = MAX_PLATFORM_DISTANCE};
+        return false;
+    }
     m_last = platform_distances(screen);
     return platform_matches(m_last);
 }

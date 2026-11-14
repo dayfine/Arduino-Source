@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The "press A to go on" chevron at the bottom right of a dialogue box or
- *  of the boxless subtitles of 01.01's ad.
+ *  of the boxless subtitles of the ad early in the story.
  *
  */
 
@@ -22,7 +22,7 @@ namespace PokemonLZA{
 //  The "press A to go on" chevron (a V about 32x19 on 1920x1080) at the
 //  right end of a dialogue box and of boxless subtitles: dark on a white
 //  box, white on a blue box and on the ad's subtitles. Found by shape in
-//  x 1370-1480, y 930-1050: a blob of white (every channel 235+) or dark
+//  x 1370-1480, y 930-1050: a blob of white (red and green 235+, blue 220+) or dark
 //  (every channel 110 or under) pixels the size of the chevron, filling a
 //  V, with no other pixel of its colour around it. Text is not read, so
 //  any language matches.

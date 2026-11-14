@@ -8,13 +8,13 @@
 #include <optional>
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
-#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h"
 #include "PokemonLZA_AutoStoryDialogs.h"
 
 namespace PokemonAutomation{
@@ -64,12 +64,6 @@ void talk_to_facing(ConsoleHandle& console, ProControllerContext& context){
             console
         );
     }
-}
-
-
-const ImageFloatBox& dialog_choice_box(){
-    static const ImageFloatBox box{0.654308, 0.481553, 0.295529, 0.312621};
-    return box;
 }
 
 namespace{

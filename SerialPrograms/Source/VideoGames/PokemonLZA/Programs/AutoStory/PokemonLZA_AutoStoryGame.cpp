@@ -70,12 +70,6 @@ using ConsoleStep = void (*)(StoryEnv& env);
 //  The GAME actions that are one ConsoleStep each, by name: console_only.
 const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
     static const std::map<std::string, ConsoleStep, std::less<>> actions{
-        {"launch_game_from_home", [](StoryEnv& env){ launch_game_from_home(env.env.console, env.context); }},
-        {"new_game_language", [](StoryEnv& env){ new_game_language(env.env.console, env.context, env.language); }},
-        {"pick_look", [](StoryEnv& env){ pick_player_look(env.env.console, env.context, env.new_game.look); }},
-        {"type_player_name", [](StoryEnv& env){
-            type_player_name(env.env.console, env.context, env.new_game.name, env.new_game.name_first_letter_auto_caps);
-        }},
         {"confirm_new_game", [](StoryEnv& env){ confirm_new_game_choices(env.env.console, env.context); }},
         {"choose_0", [](StoryEnv& env){ choose_dialog_option(env.env.console, env.context, 0); }},
         {"choose_1", [](StoryEnv& env){ choose_dialog_option(env.env.console, env.context, 1); }},

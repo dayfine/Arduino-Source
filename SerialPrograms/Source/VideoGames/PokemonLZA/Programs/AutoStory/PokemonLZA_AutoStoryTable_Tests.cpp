@@ -14,8 +14,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
@@ -33,9 +31,8 @@ using Pokemon::StoryCheckpoint;
 using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
 
-//  The table: ids unique and in order, each row but the new game's (00.00
-//  and 01.00) starts somewhere, and each lints against PLZA's actions in
-//  the engine.
+//  The table: ids unique and in order, each row but the new game's (01.00)
+//  starts somewhere, and each lints against PLZA's actions in the engine.
 UnitTestResult test_story_table_lints(Logger&){
     std::string previous;
     for (const StoryCheckpoint& row : story_checkpoints()){
@@ -51,8 +48,8 @@ UnitTestResult test_story_table_lints(Logger&){
             return problems[0];
         }
     }
-    if (story_checkpoints().size() < 2 || story_checkpoints()[0].id != "00.00" || story_checkpoints()[1].id != "01.00"){
-        return "Expected the table to start at 00.00 and 01.00, the new game.";
+    if (story_checkpoints().empty() || story_checkpoints()[0].id != "01.00"){
+        return "Expected the table to start at 01.00, the new game.";
     }
     return true;
 }
@@ -222,47 +219,15 @@ UnitTestResult test_scene_mash_rule(Logger&){
 }
 
 
-struct AutoStoryTableInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct AutoStoryTableExpectation{
-};
-
-//  A black start frame (the previous run stopped in a dark scene) trips the
-//  black border check: a run from 00.00, which launches the game, leaves the
-//  check to HOME; a run from any later row still refuses on it.
-UnitTestResult test_black_start_frame(Logger&){
-    ImageRGB32 black(1920, 1080);
-    black.fill(0xff000000);
-    BlackBorderDetector border;
-    if (!border.detect(black)){
-        return "Expected the black border check to refuse an all-black frame.";
-    }
-    for (const StoryCheckpoint& row : story_checkpoints()){
-        const bool launches = story_row_launches_game(row);
-        if (launches != (row.id == "00.00")){
-            return std::format("{}: launches the game: {}; only 00.00 should.", row.id, launches);
-        }
-    }
-    return true;
-}
-
-//  The new game's two starts: 00.00 launches from HOME and plays every
-//  choice, 01.00 starts on "Confirm Choices" after the choices made by hand.
-//  Neither loads a save, every later row does, and a run from 00.00 skips
-//  01.00, which it has played.
+//  The new game's start: 01.00 starts on "Confirm Choices" after the
+//  choices made by hand, without a save; every later row loads one. A run
+//  plays every row from its start to its end.
 UnitTestResult test_new_game_rows(Logger&){
     const std::vector<StoryCheckpoint>& rows = story_checkpoints();
     for (const StoryCheckpoint& row : rows){
-        const bool confirms = story_row_confirms_new_game(row);
-        if (confirms != (row.id == "01.00")){
-            return std::format("{}: starts on Confirm Choices: {}; only 01.00 should.", row.id, confirms);
-        }
         const bool no_save = story_row_starts_without_save(row);
-        if (no_save != (row.id == "00.00" || row.id == "01.00")){
-            return std::format("{}: starts without a save: {}; only 00.00 and 01.00 should.", row.id, no_save);
+        if (no_save != (row.id == "01.00")){
+            return std::format("{}: starts without a save: {}; only 01.00 should.", row.id, no_save);
         }
     }
     const size_t last = rows.size() - 1;
@@ -273,12 +238,8 @@ UnitTestResult test_new_game_rows(Logger&){
         }
         return text;
     };
-    const std::vector<StoryCheckpoint> from_setup = story_run_rows(rows, 0, last);
-    if (from_setup.size() != rows.size() - 1 || from_setup[0].id != "00.00" || (from_setup.size() > 1 && from_setup[1].id == "01.00")){
-        return std::format("A run from 00.00: expected every row but 01.00, got {}.", ids(from_setup));
-    }
-    const std::vector<StoryCheckpoint> from_confirm = story_run_rows(rows, 1, last);
-    if (from_confirm.size() != rows.size() - 1 || from_confirm[0].id != "01.00"){
+    const std::vector<StoryCheckpoint> from_confirm = story_run_rows(rows, 0, last);
+    if (from_confirm.size() != rows.size() || from_confirm[0].id != "01.00"){
         return std::format("A run from 01.00: expected every row from 01.00, got {}.", ids(from_confirm));
     }
     if (!story_run_rows(rows, 1, 0).empty() || !story_run_rows(rows, 0, rows.size()).empty()){
@@ -288,14 +249,20 @@ UnitTestResult test_new_game_rows(Logger&){
 }
 
 struct AutoStoryTableCase{
-    AutoStoryTableInput input;
-    AutoStoryTableExpectation expectation;
+    std::string name;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    Input input;
+    struct Expectation{
+    };
+    Expectation expectation;
 };
 
 class Test_AutoStoryTable : public UnitTest{
 public:
     explicit Test_AutoStoryTable(AutoStoryTableCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStory - {}", test_case.input.name))
+        : UnitTest(std::format("PokemonLZA::AutoStory - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -315,39 +282,43 @@ private:
 
 const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     {
-        .input = {"Story table: rows lint against PLZA's engine actions", test_story_table_lints},
+        .name = "Story table: rows lint against PLZA's engine actions",
+        .input = {.body = test_story_table_lints},
         .expectation = {},
     },
     {
-        .input = {"Story table: actions not implemented say what they wait for", test_not_implemented_actions},
+        .name = "Story table: actions not implemented say what they wait for",
+        .input = {.body = test_not_implemented_actions},
         .expectation = {},
     },
     {
-        .input = {"Story table: the autosave rows, and 01.03 saves through the menu", test_autosave_rows},
+        .name = "Story table: the autosave rows, and 01.03 saves through the menu",
+        .input = {.body = test_autosave_rows},
         .expectation = {},
     },
     {
-        .input = {"Story table: every row is ready", test_every_row_ready},
+        .name = "Story table: every row is ready",
+        .input = {.body = test_every_row_ready},
         .expectation = {},
     },
     {
-        .input = {"reload_when_chained: only true, only after an autosave row, never on a new game row", test_reload_when_chained_field},
+        .name = "reload_when_chained: only true, only after an autosave row, never on a new game row",
+        .input = {.body = test_reload_when_chained_field},
         .expectation = {},
     },
     {
-        .input = {"Scene mash: a scene that never starts fails at its start window", test_scene_start_window},
+        .name = "Scene mash: a scene that never starts fails at its start window",
+        .input = {.body = test_scene_start_window},
         .expectation = {},
     },
     {
-        .input = {"Scene mash: what each frame presses", test_scene_mash_rule},
+        .name = "Scene mash: what each frame presses",
+        .input = {.body = test_scene_mash_rule},
         .expectation = {},
     },
     {
-        .input = {"Start checks: a black start frame refuses every row but 00.00", test_black_start_frame},
-        .expectation = {},
-    },
-    {
-        .input = {"Start checks: 00.00 and 01.00 start the new game without a save; a run from 00.00 skips 01.00", test_new_game_rows},
+        .name = "Start checks: 01.00 starts the new game without a save; a run plays every row",
+        .input = {.body = test_new_game_rows},
         .expectation = {},
     },
 };
