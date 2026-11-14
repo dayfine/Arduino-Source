@@ -93,20 +93,23 @@ constexpr double HOLD_UNMOVED_RMSD = 6.0;
 constexpr Milliseconds STALE_FRAME_WAIT = std::chrono::milliseconds(100);
 constexpr int STALE_FRAME_WAITS = 20;
 
-//  Whether `band` of `screen` (in the game screen `game`) looks the same one
-//  tile over along `direction`, as a stand-still would read: a scroll that
-//  way by whole tiles leaves it the same. One color off the map's edge does
-//  (Pokemon Mansion 1F's bottom row, 13.02), and so do a wall or floorboards
-//  whose pattern repeats along the walk (Pokemon Mansion B1F's south wall,
-//  0.0 after a step west, 13.03; both console B, 2026-11-14).
-bool same_one_tile_over(const ImageViewRGB32& screen, const ImageFloatBox& band, const ImageFloatBox& game, Direction direction){
+//  The most whole tiles a walk may scroll that a band can repeat over and
+//  still be left out by repeats_along_walk(): rows of trees repeat every two
+//  tiles (Celadon City's south yard, 14.03).
+constexpr size_t MAX_REPEAT_TILES = 2;
+
+//  Whether `band` of `screen` (in the game screen `game`) looks the same
+//  `tiles` tiles over along `direction`. With less than one tile of the band
+//  left to compare, it doesn't.
+bool same_tiles_over(const ImageViewRGB32& screen, const ImageFloatBox& band, const ImageFloatBox& game, Direction direction, size_t tiles){
     const ImageViewRGB32 view = extract_box_reference(screen, band);
     const bool across = direction == Direction::EAST || direction == Direction::WEST;
-    const size_t shift = across
+    const size_t tile = across
         ? (size_t)(screen.width() * game.width / 15 + 0.5)
         : (size_t)(screen.height() * game.height / 10 + 0.5);
+    const size_t shift = tile * tiles;
     const size_t length = across ? view.width() : view.height();
-    if (shift == 0 || shift >= length){
+    if (tile == 0 || shift + tile > length){
         return false;
     }
     const ImageViewRGB32 from = across
@@ -116,6 +119,23 @@ bool same_one_tile_over(const ImageViewRGB32& screen, const ImageFloatBox& band,
         ? view.sub_image(shift, 0, length - shift, view.height())
         : view.sub_image(0, shift, view.width(), length - shift);
     return ImageMatch::pixel_RMSD(from, to) <= HOLD_UNMOVED_RMSD;
+}
+
+//  Whether `band` of `screen` (in the game screen `game`) repeats along
+//  `direction` every few whole tiles (up to MAX_REPEAT_TILES), so that a
+//  walk that way by a multiple of them reads as a stand-still. One color off
+//  the map's edge does (Pokemon Mansion 1F's bottom row, 13.02), so do a
+//  wall or floorboards whose pattern repeats along the walk (Pokemon Mansion
+//  B1F's south wall, 0.0 after a step west, 13.03), and so does a row of
+//  trees two tiles apart (Celadon City's south yard, 0.0 after a walk west of
+//  36 tiles, 14.03; all console B, 2026-11-14).
+bool repeats_along_walk(const ImageViewRGB32& screen, const ImageFloatBox& band, const ImageFloatBox& game, Direction direction){
+    for (size_t tiles = 1; tiles <= MAX_REPEAT_TILES; tiles++){
+        if (same_tiles_over(screen, band, game, direction, tiles)){
+            return true;
+        }
+    }
+    return false;
 }
 
 } // namespace
@@ -747,7 +767,7 @@ std::optional<double> hold_scroll_change(const ImageViewRGB32& before, const Ima
     //  left) or water only some.
     std::optional<double> least;
     for (const ImageFloatBox& band : edge_bands(game)){
-        if (same_one_tile_over(before, band, game, direction) && same_one_tile_over(after, band, game, direction)){
+        if (repeats_along_walk(before, band, game, direction) && repeats_along_walk(after, band, game, direction)){
             continue;
         }
         const double change = ImageMatch::pixel_RMSD(extract_box_reference(before, band), extract_box_reference(after, band));
