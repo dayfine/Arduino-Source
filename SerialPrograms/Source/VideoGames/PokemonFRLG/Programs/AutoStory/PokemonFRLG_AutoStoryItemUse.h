@@ -33,8 +33,8 @@ namespace PokemonFRLG{
 
 
 //  The GAME step that uses an item from the bag on the overworld, its
-//  args the item's slug as read_item_list_name() names it, and for an item
-//  used on a Pokemon the party slot (none the story uses yet).
+//  args the item's slug as read_item_list_name() names it and, for an item
+//  used up more than once (the Rare Candy), its count.
 inline const std::string USE_ITEM_VARIANT = "use_item";
 //  The GAME step that gets on the registered Bicycle with SELECT
 //  (OverworldWalkSteps::get_on_bike()). The ROUTE steps after it ride
@@ -53,8 +53,12 @@ inline const std::string REGISTER_BIKE_VARIANT = "register_bike";
 
 //  The item a use_item step uses (with "safari", from the Safari Zone's
 //  START menu, step_start_menu()), or nothing if it isn't one, the item
-//  isn't one the story uses from the bag, or it names a slot.
+//  isn't one the story uses from the bag, or it names a slot or a count
+//  that is out of range. An item for a Pokemon (is_party_item()) goes on
+//  the lead.
 std::optional<std::string> parse_use_item_step(const Pokemon::StoryStep& step);
+//  How often the step uses its item ("count", 1 to 99; 1 if left out).
+size_t use_item_count(const Pokemon::StoryStep& step);
 //  Whether `step` is one of this file's steps.
 bool is_item_use_step(const Pokemon::StoryStep& step);
 

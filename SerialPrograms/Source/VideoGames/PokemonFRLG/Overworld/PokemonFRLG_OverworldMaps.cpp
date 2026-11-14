@@ -93,6 +93,8 @@ constexpr std::string_view MAP_NAMES[] = {
     "UndergroundPath_WestEntrance",
     "Route7",
     "CeladonCity",
+    //  Celadon Gym, past the tree Cut fells.
+    "CeladonCity_Gym",
     //  The Game Corner's poster and the Rocket Hideout down to B4F.
     "CeladonCity_GameCorner",
     "RocketHideout_B1F",
@@ -141,6 +143,10 @@ constexpr std::string_view MAP_NAMES[] = {
     //  Koga's gym, and the Warden's house (GOLD TEETH for HM04).
     "FuchsiaCity_Gym",
     "FuchsiaCity_WardensHouse",
+    //  Cinnabar Island, and Route 21 north of it to Pallet Town (12.03).
+    "CinnabarIsland",
+    "Route21_North",
+    "Route21_South",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",
@@ -167,11 +173,28 @@ void add_unmapped_centers(std::vector<MapData>& maps){
     }
 }
 
+//  Pallet Town's fat man wanders over (7..19, 15..19), which holds the whole
+//  shore (7..10, 16) the way onto Route 21's water goes by. A planned route
+//  never crosses a wanderer's box, so none would reach the water. He stands on
+//  his own tile (13, 17) in the planner's model: east of the shore, off the
+//  way; a person in the way on the console is waited out (12.03).
+void waive_pallet_fat_man_box(MapData& map){
+    if (map.name != "PalletTown"){
+        return;
+    }
+    for (MapObject& object : map.objects){
+        if (object.name == "fat_man"){
+            object.wander.reset();
+        }
+    }
+}
+
 const std::vector<MapData>& all_maps(){
     static const std::vector<MapData> MAPS = []{
         std::vector<MapData> maps;
         for (std::string_view name : MAP_NAMES){
             maps.push_back(load_map(std::string(name)));
+            waive_pallet_fat_man_box(maps.back());
         }
         add_unmapped_centers(maps);
         return maps;

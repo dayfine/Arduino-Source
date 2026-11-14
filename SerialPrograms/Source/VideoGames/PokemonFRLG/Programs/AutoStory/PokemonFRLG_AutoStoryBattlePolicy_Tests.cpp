@@ -464,6 +464,10 @@ UnitTestResult test_plan_tower_rival(){
     return check_policy_step("10.03", "rival_tower", {.spa = 2, .outspeed = true, .guard_accuracy = true, .torrent_power = true});
 }
 
+UnitTestResult test_plan_erika(){
+    return check_policy_step("14.04", "erika", {.spa = 1, .accuracy = 2, .outspeed = true, .guard_accuracy = true});
+}
+
 
 struct AutoStoryBattlePolicyInput{
     std::string name;
@@ -561,6 +565,10 @@ const std::vector<AutoStoryBattlePolicyCase> AUTO_STORY_BATTLE_POLICY_CASES = {
     {
         .input = {.name = "plan: 12.02 koga names the policy, goals and foes", .body = test_plan_koga},
         .expectation = {.description = "the policy, goals and 4 foe rows"},
+    },
+    {
+        .input = {.name = "plan: 14.04 erika names the policy, goals and foes", .body = test_plan_erika},
+        .expectation = {.description = "the policy, goals and 3 foe rows"},
     },
     {
         .input = {.name = "plan: 10.03 rival_tower names the policy, goals and foes", .body = test_plan_tower_rival},

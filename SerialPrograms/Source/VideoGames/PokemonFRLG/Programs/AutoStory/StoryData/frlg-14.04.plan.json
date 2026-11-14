@@ -1,0 +1,58 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "14.04",
+    "title": "Celadon Gym: Erika, the RAINBOWBADGE and TM19",
+    "start": {"map": "CeladonCity_Gym", "tiles": [[6, 5]], "facing": "north"},
+    "events": [
+      {
+        "id": "lead_lv44_for_erika",
+        "kind": "game_action",
+        "action": "level",
+        "args": {"slot": 1, "min": 44},
+        "why": "the precondition for Erika: the lead at least Lv44, pokeguy's Blastoise here (PokemonSimulation docs/battles/pokeguy-conditions.md, erika: C2 setup to Sp. Atk +1, accuracy +2 and outspeed, Guard Spec first, from 35/137 HP: 567/620 wins, 91.5%, 85.2% to 95.8%); at his level or above, those sims stand for this fight and no new one is needed; below it, the run stops here, before the fight"
+      },
+      {
+        "id": "challenge_erika",
+        "kind": "talk",
+        "why": "Erika (6, 4)"
+      },
+      {
+        "id": "erika",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LEADER_ERIKA",
+          "foes": ["victreebel", "tangela", "vileplume"],
+          "policy": "goal-based-setup",
+          "setup_spa": 1,
+          "setup_accuracy": 2,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": true,
+          "foe_threats": [
+            [45, 0, 1, 60, 30, 0, 0],
+            [33, 18, 8, 42, 20, 0, 0],
+            [34, 0, 2, 60, 30, 0, 0]
+          ]
+        },
+        "declared_after": {"map": "CeladonCity_Gym", "tiles": [[6, 5]], "facing": "north"},
+        "why": "Erika (TRAINER_LEADER_ERIKA), fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +1, accuracy +2 and outspeed by X items; the doc's erika row, foe_threats the rows PokemonSimulation's planning_risk() gives for each foe leading against the entry state, 35/137): Victreebel Lv29, Tangela Lv24, Vileplume Lv29; then the RAINBOWBADGE and TM19, read to the overworld with the battle's text (pokeguy 1:26:04 to 1:27:06)"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Erika (6, 4), talked to from below, from the save in front of her (14.03): Victreebel Lv29, Tangela Lv24 and Vileplume Lv29 (sParty_LeaderErika); then the RAINBOWBADGE and TM19 Giga Drain. Her win sets every gym trainer beaten (CeladonCity_Gym_EventScript_DefeatedErika, set_gym_trainers 4).",
+        "A boss battle is its own checkpoint (user, 2026-11-12): Erika's fight is all this row does. It ends in front of Erika after the RAINBOWBADGE and TM19 text, and saves there; 14.04b goes on out of the gym."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "CeladonCity_Gym", "tiles": [[6, 5]], "facing": "north"}
+    }
+  }
+}

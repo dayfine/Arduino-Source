@@ -17,7 +17,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-//  The stored plan lines from segment 12 on, after FRLG_PLAN_GOLDEN_11's.
+//  The stored plan lines of segment 12 (12.01 to 12.03, Fuchsia to Cinnabar), after FRLG_PLAN_GOLDEN_11's.
 inline constexpr std::string_view FRLG_PLAN_GOLDEN_12[] = {
     "12.01 face_center_door from FuchsiaCity (25, 32) facing south to FuchsiaCity (25, 32) facing north",
     "12.01   face north -> FuchsiaCity (25, 32)",
@@ -87,6 +87,68 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN_12[] = {
     "12.02b   walk north 5 (to wall) -> FuchsiaCity (11, 32)",
     "12.02b   walk east 14 -> FuchsiaCity (25, 32)",
     "12.02b   face north -> FuchsiaCity (25, 32)",
+    "12.03 outside_fuchsia_center from FuchsiaCity_PokemonCenter_1F (0, 2) facing north to FuchsiaCity (25, 32) facing south",
+    "12.03   walk south 3 (to wall) -> FuchsiaCity_PokemonCenter_1F (0, 5) [walk only]",
+    "12.03   walk east 7 -> FuchsiaCity_PokemonCenter_1F (7, 5) [walk only]",
+    "12.03   walk south 4 (warp) -> FuchsiaCity (25, 32) [walk only]",
+    "12.03 pallet_shore from PalletTown (6, 8) facing south to PalletTown (8, 16) facing south",
+    "12.03   walk south 2 (to wall) -> PalletTown (6, 10)",
+    "12.03   walk east 4 -> PalletTown (10, 10)",
+    "12.03   walk south 6 (to wall) -> PalletTown (10, 16)",
+    "12.03   walk west 2 -> PalletTown (8, 16)",
+    "12.03   face south -> PalletTown (8, 16)",
+    "12.03 surf_route_21 from PalletTown (8, 17) facing south to CinnabarIsland (14, 12) facing north",
+    "12.03   walk south 29 -> Route21_North (8, 26) [surfing] [wild] [connection 3]",
+    "12.03   walk south 1 -> Route21_North (8, 27) [surfing] [wild]",
+    "12.03   surf north -> Route21_North (8, 26) [wild]",
+    "12.03   walk east 5 -> Route21_North (13, 26) [surfing] [wild]",
+    "12.03   walk east 1 -> Route21_North (14, 26) [surfing] [wild]",
+    "12.03   surf west -> Route21_North (13, 26) [wild]",
+    "12.03   walk south 68 -> Route21_South (13, 44) [surfing] [wild] [connection 24]",
+    "12.03   walk south 1 -> Route21_South (13, 45) [surfing] [wild]",
+    "12.03   walk south 10 -> CinnabarIsland (13, 5) [connection 5]",
+    "12.03   walk east 8 (to wall) -> CinnabarIsland (21, 5)",
+    "12.03   walk south 7 -> CinnabarIsland (21, 12)",
+    "12.03   walk west 7 -> CinnabarIsland (14, 12)",
+    "12.03   face north -> CinnabarIsland (14, 12)",
+};
+
+//  The stored plan lines of Erika's rows, 14.03 to 14.04b, after the rows of Blaine's
+//  (14.01 to 14.02b) in the story's order.
+inline constexpr std::string_view FRLG_PLAN_GOLDEN_12_CELADON[] = {
+    "14.03 cinnabar_outside from CinnabarIsland_PokemonCenter_1F (7, 4) facing north to CinnabarIsland (14, 12) facing south",
+    "14.03   walk south 5 (warp) -> CinnabarIsland (14, 12) [walk only]",
+    "14.03 above_gym_tree from CeladonCity (48, 12) facing south to CeladonCity (40, 34) facing south",
+    "14.03   walk west 7 -> CeladonCity (41, 12)",
+    "14.03   walk south 13 (to wall) -> CeladonCity (41, 25)",
+    "14.03   walk west 10 -> CeladonCity (31, 25)",
+    "14.03   walk south 8 (to wall) -> CeladonCity (31, 33)",
+    "14.03   walk east 9 -> CeladonCity (40, 33)",
+    "14.03   walk south 1 -> CeladonCity (40, 34)",
+    "14.03 below_tamia_line from CeladonCity (40, 35) facing south to CeladonCity_Gym (2, 11) facing north",
+    "14.03   walk south 2 (to wall) -> CeladonCity (40, 37)",
+    "14.03   walk west 29 -> CeladonCity (11, 37)",
+    "14.03   walk north 7 (warp) -> CeladonCity_Gym (6, 18)",
+    "14.03   walk west 4 -> CeladonCity_Gym (2, 18) [walk only]",
+    "14.03   walk north 7 -> CeladonCity_Gym (2, 11) [walk only]",
+    "14.03 below_erika from CeladonCity_Gym (6, 5) facing east to CeladonCity_Gym (6, 5) facing north",
+    "14.03   face north -> CeladonCity_Gym (6, 5) [walk only]",
+    "14.04b below_gym_tree_out from CeladonCity_Gym (2, 18) facing south to CeladonCity (40, 36) facing north",
+    "14.04b   walk east 4 -> CeladonCity_Gym (6, 18) [walk only] [tapped]",
+    "14.04b   walk south 1 (warp) -> CeladonCity (11, 31) [walk only]",
+    "14.04b   walk south 6 (to wall) -> CeladonCity (11, 37)",
+    "14.04b   walk east 30 (to wall) -> CeladonCity (41, 37)",
+    "14.04b   walk north 1 (to wall) -> CeladonCity (41, 36)",
+    "14.04b   walk west 1 -> CeladonCity (40, 36)",
+    "14.04b   face north -> CeladonCity (40, 36)",
+    "14.04b celadon_below_center from CeladonCity (40, 35) facing north to CeladonCity (48, 12) facing north",
+    "14.04b   walk north 3 -> CeladonCity (40, 32)",
+    "14.04b   walk west 9 -> CeladonCity (31, 32)",
+    "14.04b   walk north 8 (to wall) -> CeladonCity (31, 24)",
+    "14.04b   walk east 12 -> CeladonCity (43, 24)",
+    "14.04b   walk north 12 (to wall) -> CeladonCity (43, 12)",
+    "14.04b   walk east 5 -> CeladonCity (48, 12)",
+    "14.04b   face north -> CeladonCity (48, 12)",
 };
 
 } // namespace PokemonFRLG
