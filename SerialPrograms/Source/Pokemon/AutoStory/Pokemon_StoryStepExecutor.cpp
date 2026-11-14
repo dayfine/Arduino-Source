@@ -121,8 +121,17 @@ Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor
     if (data.start || data.start_gates || !data.start_flags.empty()){
         checkpoint.events.push_back(from_save_event(data));
     }
-    for (const StoryStep& step : data.steps){
+    for (size_t index = 0; index < data.steps.size(); index++){
+        const StoryStep& step = data.steps[index];
         checkpoint.events.push_back(story_event(step, executor));
+        if (StoryPausePoints* pause = executor.pause_points()){
+            checkpoint.events.back().act = [
+                act = std::move(checkpoint.events.back().act), pause, label = story_step_pause_label(data.id, index, step.name)
+            ](RunState& state) mutable{
+                pause->before_step(label);
+                return act(state);
+            };
+        }
         if (prepared != nullptr && step.once_per_save){
             run_once_per_save(std::format("{}/{}", data.id, step.name), checkpoint.events.back(), *prepared);
         }
