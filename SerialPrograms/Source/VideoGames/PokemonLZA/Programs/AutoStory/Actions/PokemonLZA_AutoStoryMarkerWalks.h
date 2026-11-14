@@ -3,7 +3,8 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Walks that keep the camera on the main mission's objective marker
- *  (read_objective_marker(), PokemonLZA_AutoStoryCatches.h) and walk back
+ *  (read_objective_marker(), PokemonLZA_AutoStoryObjectiveMarkerReader.h)
+ *  and walk back
  *  away from it: 03.08's road stops, and 03.07d back from Wild
  *  Zone 1 to the Pokemon Center.
  *

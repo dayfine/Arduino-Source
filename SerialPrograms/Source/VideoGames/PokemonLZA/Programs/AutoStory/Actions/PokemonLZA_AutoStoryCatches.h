@@ -12,8 +12,6 @@
 
 #include <optional>
 #include "Common/Cpp/Time.h"
-#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
-#include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/Tools/ProgramEnvironment.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -51,19 +49,7 @@ void battle_then_catch(
     BattleAIOption& battle_ai, int max_rounds
 );
 
-//  The main mission's objective marker in the overworld: an orange hexagon
-//  "!" with the distance above it in white digits.
-struct ObjectiveMarker{
-    //  The hexagon's middle, 0 (left edge) to 1 (right edge).
-    double x = 0;
-    //  The digits read; -1 when they did not read.
-    int distance = -1;
-};
-
-//  The marker on `screen`, if it shows (the minimap's own marker aside).
-std::optional<ObjectiveMarker> read_objective_marker(Logger& logger, const ImageViewRGB32& screen);
-
-//  Walks toward the objective marker: turns the camera to keep it in the
+//  Walks toward the objective marker (read_objective_marker()): turns the camera to keep it in the
 //  middle (to find it when it is behind) and walks on, until its distance
 //  reads `stop_at` or less, or (with `stop_at` 0) an A prompt or a dialog
 //  shows, or `limit`. Returns the last distance read.
