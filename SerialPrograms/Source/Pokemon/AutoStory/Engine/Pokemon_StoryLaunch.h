@@ -120,6 +120,11 @@ struct StoryLaunchPolicy{
     size_t settled_looks = 3;
     //  The wait between looks at a screen with nothing to press.
     Milliseconds poll = Milliseconds(500);
+    //  After A on the game's tile, how long HOME may still show (its zoom
+    //  into the game, a check or the user select in front of it) before
+    //  the launch takes A again: until then each look at HOME waits, as
+    //  another A there would launch the game again.
+    Milliseconds launch_wait = Milliseconds(30000);
     //  Presses HOME, the title, an overworld to leave or a screen the
     //  policy doesn't know may take before the launch is stuck there.
     size_t presses_per_screen = 6;
