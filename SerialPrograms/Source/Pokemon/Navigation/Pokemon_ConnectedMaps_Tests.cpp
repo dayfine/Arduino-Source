@@ -7,8 +7,8 @@
  *  door warps into:
  *
  *      world x:  -1  0  1  2  3  4  5
- *      y 0..2:   [ Route (6 wide)     ]
- *      y 3..5:      [ Town (4)  ][Lake]
+ *      y 0..2:   [ Route (6 wide) ]
+ *      y 3..5:      [ Town (4) ][Lake]
  *
  */
 
@@ -18,6 +18,7 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_ConnectedMaps.h"
 #include "Pokemon_ConnectedMaps_Tests.h"
@@ -68,13 +69,7 @@ std::string describe(const ConnectedMaps& world, const std::optional<MapPlace>& 
 }
 
 //  Why `actual` is not `expected`, if it is not.
-//  Where a step or a warp should put the player, or nothing for nowhere.
-struct PlaceExpectation{
-    std::optional<NamedPlace> place;
-};
-
-std::optional<std::string> mismatch(const ConnectedMaps& world, const std::optional<MapPlace>& actual, const PlaceExpectation& expectation){
-    const std::optional<NamedPlace>& expected = expectation.place;
+std::optional<std::string> mismatch(const ConnectedMaps& world, const std::optional<MapPlace>& actual, const std::optional<NamedPlace>& expected){
     std::optional<MapPlace> wanted;
     if (expected){
         wanted = MapPlace{*world.find(expected->map), expected->tile};
@@ -86,14 +81,18 @@ std::optional<std::string> mismatch(const ConnectedMaps& world, const std::optio
 }
 
 
-struct StepInput{
-    std::string_view name;
-    NamedPlace from;
-    Direction direction;
-};
 struct StepCase{
-    StepInput input;
-    PlaceExpectation expectation;
+    struct Input{
+        std::string_view name;
+        NamedPlace from;
+        Direction direction;
+    };
+    //  Where the step should put the player, or nothing for nowhere.
+    struct Expectation{
+        std::optional<NamedPlace> place;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 class Test_ConnectedMaps_Step : public UnitTest{
@@ -103,9 +102,9 @@ public:
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const ConnectedMaps world(test_maps());
-        const StepInput& input = m_scenario.input;
+        const StepCase::Input& input = m_scenario.input;
         const MapPlace from{*world.find(input.from.map), input.from.tile};
-        if (std::optional<std::string> error = mismatch(world, world.neighbour(from, input.direction), m_scenario.expectation)){
+        if (std::optional<std::string> error = mismatch(world, world.neighbour(from, input.direction), m_scenario.expectation.place)){
             return *error;
         }
         return true;
@@ -136,6 +135,14 @@ const StepCase STEP_CASES[] = {
         .expectation = {.place = NamedPlace{"Town", {3, 1}}},
     },
     {
+        .input = {.name = "north out of the lake onto the route's last column", .from = {"Lake", {0, 0}}, .direction = Direction::NORTH},
+        .expectation = {.place = NamedPlace{"Route", {5, 2}}},
+    },
+    {
+        .input = {.name = "north out of the lake past the route's span", .from = {"Lake", {1, 0}}, .direction = Direction::NORTH},
+        .expectation = {.place = std::nullopt},
+    },
+    {
         .input = {.name = "an edge no map joins", .from = {"Town", {0, 1}}, .direction = Direction::WEST},
         .expectation = {.place = std::nullopt},
     },
@@ -150,13 +157,17 @@ const StepCase STEP_CASES[] = {
 };
 
 
-struct WarpInput{
-    std::string_view name;
-    MapWarp warp;
-};
 struct WarpCase{
-    WarpInput input;
-    PlaceExpectation expectation;
+    struct Input{
+        std::string_view name;
+        MapWarp warp;
+    };
+    //  Where the warp should put the player, or nothing for nowhere.
+    struct Expectation{
+        std::optional<NamedPlace> place;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 class Test_ConnectedMaps_Warp : public UnitTest{
@@ -166,7 +177,7 @@ public:
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const ConnectedMaps world(test_maps());
-        if (std::optional<std::string> error = mismatch(world, world.warp_arrival(m_scenario.input.warp), m_scenario.expectation)){
+        if (std::optional<std::string> error = mismatch(world, world.warp_arrival(m_scenario.input.warp), m_scenario.expectation.place)){
             return *error;
         }
         return true;
@@ -195,6 +206,53 @@ const WarpCase WARP_CASES[] = {
 };
 
 
+struct StalePlaceCase{
+    struct Input{
+        std::string_view name;
+        size_t map;
+    };
+    struct Expectation{
+        //  Whether reading the place throws InternalProgramError.
+        bool rejected = false;
+    };
+    Input input;
+    Expectation expectation;
+};
+
+//  A place whose map index is past the loaded maps (from another world, or
+//  one that has since shrunk) is an InternalProgramError, not a read past
+//  the end.
+class Test_ConnectedMaps_StalePlace : public UnitTest{
+public:
+    explicit Test_ConnectedMaps_StalePlace(StalePlaceCase scenario)
+        : UnitTest(std::format("Pokemon::ConnectedMaps - {}", scenario.input.name)), m_scenario(std::move(scenario))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const ConnectedMaps world(test_maps());
+        const MapPlace stale{m_scenario.input.map, {0, 0}};
+        bool rejected = false;
+        try{
+            world.neighbour(stale, Direction::NORTH);
+        }catch (const InternalProgramError&){
+            rejected = true;
+        }
+        if (rejected != m_scenario.expectation.rejected){
+            return std::format("Map {} of {} was {}, expected it {}.", stale.map, world.size(),
+                rejected ? "rejected" : "read", m_scenario.expectation.rejected ? "rejected" : "read");
+        }
+        return true;
+    }
+private:
+    StalePlaceCase m_scenario;
+};
+
+const StalePlaceCase STALE_PLACE_CASES[] = {
+    {.input = {.name = "the last map index is read", .map = 3}, .expectation = {.rejected = false}},
+    {.input = {.name = "a map index one past the last is rejected", .map = 4}, .expectation = {.rejected = true}},
+    {.input = {.name = "a map index far past the last is rejected", .map = 1000}, .expectation = {.rejected = true}},
+};
+
+
 } // namespace
 
 void add_tests_ConnectedMaps(UnitTestDatabase& database){
@@ -203,6 +261,9 @@ void add_tests_ConnectedMaps(UnitTestDatabase& database){
     }
     for (const WarpCase& scenario : WARP_CASES){
         database.add<Test_ConnectedMaps_Warp>(scenario);
+    }
+    for (const StalePlaceCase& scenario : STALE_PLACE_CASES){
+        database.add<Test_ConnectedMaps_StalePlace>(scenario);
     }
 }
 

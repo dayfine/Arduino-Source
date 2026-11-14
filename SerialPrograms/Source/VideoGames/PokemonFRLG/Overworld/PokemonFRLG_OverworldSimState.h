@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldSimScreens.h"
 
@@ -161,7 +161,7 @@ WallClock sim_wall_clock(Milliseconds time);
 //  battle's wipe or a warp's fade. A battle's flashes are no uniform
 //  screen, and black below a small room, which the observer's battle text
 //  box detector may take for a box, isn't modelled.
-Pokemon::ScreenEventLog screen_event_log(const SimState& state, Milliseconds from);
+ScreenEventLog screen_event_log(const SimState& state, Milliseconds from);
 
 //  A watcher that fired: which (an index into the watchers asked for), and
 //  how long after the hold or watch started.

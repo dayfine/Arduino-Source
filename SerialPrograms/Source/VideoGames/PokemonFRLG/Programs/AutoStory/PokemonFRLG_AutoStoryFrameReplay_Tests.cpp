@@ -97,7 +97,7 @@ public:
 
         FrlgScreenObserver observer;
         const Pokemon::ReplayWindow whole{0ms, m_case.input.hold + WARP_WAIT};
-        const Pokemon::ScreenEventLog log = Pokemon::replay_events(*source, whole, observer, T0);
+        const ScreenEventLog log = Pokemon::replay_events(*source, whole, observer, T0);
         const Pokemon::InterruptWindow window{T0, T0 + whole.end};
         const std::string warp = Pokemon::warp_judgement_name(
             Pokemon::judge_warp(log, window, Pokemon::InterruptKnobs{}, Pokemon::SceneChange::UNKNOWN).judgement
@@ -111,7 +111,7 @@ public:
             return std::format(
                 "expected watcher \"{}\", warp \"{}\", interrupt \"{}\"; got \"{}\", \"{}\", \"{}\"; events:\n{}",
                 expected.watcher, expected.warp, expected.interrupt, watcher, warp, interrupt,
-                Pokemon::describe(log, T0)
+                describe(log, T0)
             );
         }
         return true;
