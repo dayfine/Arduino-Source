@@ -1,0 +1,75 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.02",
+    "title": "Out of Hotel Z, battle Taunie",
+    "start": {
+      "place": "HotelZ"
+    },
+    "events": [
+      {
+        "id": "to_hotel_front_door",
+        "kind": "game_action",
+        "why": "step 40: across the lobby to the front door's \"A Leave\". Stops at the door. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 6000]]
+        }
+      },
+      {
+        "id": "leave_hotel_z",
+        "kind": "game_action",
+        "why": "steps 40-41: A Leave at the door (a scene step ends at once on its prompt), the Main Menu tutorial card",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
+      },
+      {
+        "id": "to_taunie_at_gate",
+        "kind": "game_action",
+        "why": "step 41: to Taunie at the gate, \"A Talk Taunie\". Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 3000]]
+        }
+      },
+      {
+        "id": "talk_to_taunie",
+        "kind": "talk",
+        "why": "step 42: A at Taunie"
+      },
+      {
+        "id": "battle_totodile",
+        "kind": "game_action",
+        "why": "steps 42-43: A through her talk and challenge (no A hint, a subtitle with no text box), then beat Totodile, until \"We're not done just yet!\"",
+        "action": "story_battle"
+      },
+      {
+        "id": "battle_tepig",
+        "kind": "game_action",
+        "why": "step 44: A through the Type Matchups tutorial (3 pages) and Tepig's send-out, then beat Tepig, until Taunie's speech",
+        "action": "story_battle"
+      },
+      {
+        "id": "after_taunie_battle",
+        "kind": "game_action",
+        "why": "step 45: Taunie's talk and the Map & Missions card with A, the map closed with B, her talk with B",
+        "action": "talk_through_map_screen"
+      },
+      {
+        "id": "taunie_runs_off",
+        "kind": "game_action",
+        "why": "step 45: the Main Missions card (A turns its pages; a scene step only waits on it), Taunie runs off (console B, 2026-11-10)",
+        "action": "mash_to_move_hints"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "menu",
+    "reload_when_chained": true
+  }
+}

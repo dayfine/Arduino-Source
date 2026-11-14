@@ -1,0 +1,70 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.08",
+    "title": "Five species, into the Research Lab",
+    "start": {
+      "place": "WildZone1"
+    },
+    "events": [
+      {
+        "id": "catch_more_species",
+        "kind": "game_action",
+        "why": "step 64: the lab gate asks for five registered species, 3/5 after the tutorial: two new ones here in Wild Zone 1 before leaving, Scatterbug (on the road at 100 from the far gate) and Mareep (in the grass right of the road at 60), so the gate's scene finds 5/5 (user, 2026-11-13; console B 2026-11-13 caught only Scatterbug with one wanted). Patrol 100, 60, 100, 60, ...: walking to 100 and back brings Pokemon back at 60; 10 visits, 10 minutes, 12 throws at most. Only the Pokedex's \"Registered!\" banner counts, since repeats (Fletchling, Bunnelby) do not register; the mission panel's counter is not read (catch_in_zone).",
+        "action": "catch_in_zone"
+      },
+      {
+        "id": "zone_1_to_far_gate",
+        "kind": "game_action",
+        "why": "step 62: on across Wild Zone 1 to its far gate's \"A Leave\": back onto the road at the catch spots (60, and 100 first when further) and from there by the objective marker. A walk straight at the marker from the last catch (96) left the zone on its west side and pressed into a building, last read 49 (console B, 2026-11-13). On the marker with no prompt counts as through the gate (walk_to_zone_gate).",
+        "action": "walk_to_zone_gate"
+      },
+      {
+        "id": "leave_zone_1",
+        "kind": "game_action",
+        "why": "step 62: A Leave, out on the street (a plain scene step ends at once on the gate's prompt with the party bar up; console B, 2026-11-10)",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
+      },
+      {
+        "id": "to_research_lab",
+        "kind": "game_action",
+        "why": "step 63: across to the Pokemon Research Lab's gate, into Taunie's scene, by the objective marker: out of the zone's gate the player faces whichever way it faced before (the timed legs from 2026-11-08 depended on that; console B, 2026-11-10).",
+        "action": "walk_to_marker"
+      },
+      {
+        "id": "research_lab_gate",
+        "kind": "scene",
+        "why": "step 63: Taunie at the lab gate; with five species registered she goes on",
+        "action": "a"
+      },
+      {
+        "id": "five_registered",
+        "kind": "scene",
+        "why": "step 65: Taunie's scene at the lab gate after 5/5",
+        "action": "a"
+      },
+      {
+        "id": "up_the_lab_steps",
+        "kind": "game_action",
+        "why": "step 65: up the steps to the lab's \"A Enter\", by the objective marker.",
+        "action": "walk_to_marker"
+      },
+      {
+        "id": "lab_lobby",
+        "kind": "game_action",
+        "why": "steps 65-66: A Enter, the receptionist: third floor; autosave (A first: the door's prompt shows with the party bar up)",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "menu"
+  }
+}

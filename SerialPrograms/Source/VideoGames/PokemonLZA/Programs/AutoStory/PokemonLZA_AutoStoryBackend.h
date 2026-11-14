@@ -19,10 +19,12 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include "Common/Cpp/Time.h"
 #include "CommonFramework/Language.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
@@ -79,6 +81,25 @@ void story_turn(PlzaBackend& backend, double degrees);
 PlzaReader heading_reader(StoryEnv& env);
 
 
+//  Where the game autosaved, for the log: each appearance of the autosave
+//  badge once, as "[Autosave] 02.04/3 check_in", the event the engine last
+//  logged as started. The badge shows 1-3 s; one looked away from (a missed
+//  look) less than AUTOSAVE_GAP is the same appearance.
+class AutosaveSpots{
+public:
+    //  Takes in a log line; "[Event] 02.04/3 check_in: start" (the engine's
+    //  event_log_line()) names the event.
+    void on_log(std::string_view line);
+
+    //  A look at `when`: the log line when it shows a new appearance.
+    std::optional<std::string> on_look(bool badge, WallClock when);
+
+private:
+    std::string m_event = "(before the first event)";
+    std::optional<WallClock> m_last_badge;
+};
+
+
 //  PLZA on the console: the controller and PlzaScreenObserver.
 //  code-health: allow public_methods -- the engine's backend calls; nothing PLZA adds
 class PlzaConsoleBackend : public PlzaBackend{
@@ -93,13 +114,16 @@ public:
     virtual void hold(Pokemon::Direction direction, Milliseconds duration, Pokemon::StoryPace pace) override;
     virtual void stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace pace) override;
     virtual void wait(Milliseconds duration) override;
-    //  Once the inputs are done: PlzaScreenObserver's events on a frame
+    //  Once the inputs are done: SWITCH_HOME_MENU alone on the Switch's
+    //  HOME (PLZA's detectors may read its plain screen as the overworld);
+    //  else PlzaScreenObserver's events on a frame
     //  (Pokemon::screen_observation()), STILL when it barely differs from the frame
     //  of the look before, and the readings PLATFORM_READING,
     //  SKIP_PROMPT_READING, AUTOSAVE_READING, CONTROLS_HINT_READING,
     //  ADVANCE_ARROW_READING, MISSION_BANNER_READING and
     //  MISSION_COMPLETE_READING (which wins over the banner: the card has
-    //  the banner's bar).
+    //  the banner's bar), and TUTORIAL_CARD_READING. Logs each appearance
+    //  of the autosave badge (AutosaveSpots).
     virtual Pokemon::Observation<Pokemon::ZonePose> observe() override;
     //  fight_battle() with the run's battle AI; a failure is an Outcome.
     virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs& args) override;
@@ -108,10 +132,12 @@ public:
 
 private:
     StoryEnv& m_env;
+    HomeMenuDetector m_home;
     PlzaScreenObserver m_observer;
     PlatformArrivalDetector m_platform;
     SkipPromptDetector m_skip_prompt;
     AutosaveDetector m_autosave;
+    AutosaveSpots m_autosave_spots;
     ControlsHintDetector m_controls_hint;
     AdvanceArrowDetector m_advance_arrow;
     MainMissionBannerDetector m_mission_banner;

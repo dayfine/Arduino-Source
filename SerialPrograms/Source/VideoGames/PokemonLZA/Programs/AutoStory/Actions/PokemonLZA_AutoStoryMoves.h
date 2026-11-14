@@ -56,7 +56,7 @@ struct StoryMove{
     //  so a held walk starts without one.
     bool held = false;
     //  A wait before the walk looks for free control: for the NPCs to move
-    //  off (02.01), or for a ride's fade to start (02.04's elevator). The
+    //  off (02.01), or for a ride's fade to start (02.05's elevator). The
     //  walk's caller waits it; run_story_move() does not.
     Milliseconds wait_first = Milliseconds(0);
 };
@@ -90,6 +90,14 @@ std::string story_walk_leg_label(size_t index, size_t count, const StoryWalkLeg&
 //  OperationFailedException if the game would not fly (pursued, or the
 //  place is not unlocked).
 void fly_to(ConsoleHandle& console, ProControllerContext& context, Language language, Location location);
+
+//  fly_to(), where not flying is no failure: when the game would not fly
+//  (fast travel not unlocked yet, pursued, the place not listed), logs it,
+//  backs out of the map to the overworld and returns false; the player is
+//  where it was. A map with no Travel Spots icon (fast travel not open)
+//  is found in 5 s, not open_map()'s 30. Returns true in the overworld at
+//  `location`.
+bool fly_to_or_stay(ConsoleHandle& console, ProControllerContext& context, Language language, Location location);
 
 
 

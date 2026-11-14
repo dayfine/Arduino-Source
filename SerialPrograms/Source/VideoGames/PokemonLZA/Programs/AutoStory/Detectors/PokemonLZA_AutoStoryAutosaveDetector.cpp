@@ -17,16 +17,16 @@ namespace PokemonLZA{
 
 namespace{
 
-//  The icon, and the strips around it (left, above, below) clear of white
-//  and cyan, `dx` pixels (of 1920) right of where the Chinese badge has
-//  them.
+//  The icon (white, with a cyan glow, dim or bright), and the strips around
+//  it (left, above, below) clear of white and bright cyan, `dx` pixels (of
+//  1920) right of where the Chinese badge has them.
 bool autosave_icon_at(
     const ImageViewRGB32& screen, const ImageFloatBox& icon,
     std::initializer_list<ImageFloatBox> around, double dx
 ){
     const ImageFloatBox icon_here = shifted(icon, dx);
     const double white = white_share(screen, icon_here);
-    if (white < 0.08 || white > 0.40 || cyan_share(screen, icon_here) < 0.25){
+    if (white < 0.08 || white > 0.40 || dim_cyan_share(screen, icon_here) < 0.25){
         return false;
     }
     for (const ImageFloatBox& box : around){
@@ -66,6 +66,11 @@ void AutosaveDetector::make_overlays(VideoOverlaySet& items) const{
 //  in that span, but glows on past it: the strips 14 px above and below the
 //  icon are 22%+ white or cyan there and empty around the badge; they must
 //  stay under 5%.
+//  The icon's glow is dim over a dark or lamp-lit scene (about 28, 70, 85
+//  on 02.04's check-in wall, console B 2026-11-13: frame 0075 of the 13:46
+//  run, in Japanese, icon at dx 36), so the icon's glow is dim_cyan_share():
+//  of the 3569 PLZA captures on console B to 2026-11-13 it finds 11 more
+//  badges, every one a real badge, and no new false one.
 bool AutosaveDetector::detect(const ImageViewRGB32& screen){
     for (double dx = 0; dx <= 240; dx += 4){
         if (autosave_icon_at(screen, m_icon, {m_left, m_above, m_below}, dx)){

@@ -28,6 +28,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "PokemonLZA_AutoStoryBackend.h"
+#include "PokemonLZA_AutoStoryStartLoad.h"
 #include "PokemonLZA_AutoStoryTable.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMoves.h"
 
@@ -65,8 +66,10 @@ const std::map<std::string, std::string, std::less<>>& story_actions_not_impleme
 //              "confirm_new_game" (01.00, on "Confirm Choices");
 //              "choose_0" / "choose_1" (that row of the choices on screen);
 //              "story_battle_start" (A to the battle), "story_battle"
-//              (attack until a dialog shows); or an action of
-//              story_actions_not_implemented()
+//              (attack until a dialog shows); "talk_through_map_screen",
+//              "talk_to_pokedex_screen", "climb_ladder"; the catches
+//              "catch_tutorial", "battle_then_catch", "catch_in_zone"; or
+//              an action of story_actions_not_implemented()
 //
 //  Every action that works through the game's own screens is console_only.
 //  BATTLE is the built-in "fight" (the backend's battle), SAVE the
@@ -95,7 +98,7 @@ StoryMove story_walk_move(const Pokemon::StoryActionArgs& args, std::string_view
 //  compass with heading_reader(). The save waits out the game's autosave at
 //  the end of the checkpoints of `autosave_rows` (the run's
 //  StoryData::autosaves) and saves through the menu after the others; the
-//  reload resets the game from HOME.
+//  reload resets the game from HOME onto the latest save.
 Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(
     StoryEnv& env, StarterChoice starter, std::set<std::string, std::less<>> autosave_rows
 );
@@ -105,9 +108,17 @@ Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(
 //  carry, and there is no save or reload.
 Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(StarterChoice starter);
 
+//  Loads the save `row` starts from by next_start_load_action(), checking
+//  the start after each load (03.06: the nurse's "A" prompt at the Pokemon
+//  Center counter), and logs each load and check as "[Save]" and
+//  "[Checkpoint]" lines. Fails when the game is not at `row`'s start after
+//  the latest and the backup save: the run must not start from an unknown
+//  spot.
+Pokemon::Outcome load_checkpoint_start(StoryEnv& env, Pokemon::StoryBackend<Pokemon::ZonePose>& backend, std::string_view row, bool backup_first);
+
 //  `rows` in order from the save the game is on, as
 //  StoryEngine::run_segment() runs them, `policy`'s attempts per checkpoint.
-//  With StoryRunPolicy::BoundaryReload::AT_PLAN_BOUNDARIES, a row of `story`'s
+//  With Pokemon::StoryRunPolicy::BoundaryReload::AT_PLAN_BOUNDARIES, a row of `story`'s
 //  reload_when_chained after the run's first starts as from its save: the
 //  run's segment stops before it, the event "reload_at_boundary" reloads
 //  the save (`game`'s reload, the autosave the row before ended on) and
@@ -116,7 +127,7 @@ Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(StarterChoice starter
 //  before such a row ends its segment, so it ends at SavePoint::RUN_END.
 Pokemon::SegmentReport run_plza_segment(
     const Pokemon::StoryGame<Pokemon::ZonePose>& game, const StoryData& story,
-    std::span<const Pokemon::StoryCheckpoint> rows, const StoryRunPolicy& policy,
+    std::span<const Pokemon::StoryCheckpoint> rows, const Pokemon::StoryRunPolicy& policy,
     Pokemon::StoryEngine<Pokemon::ZonePose>& engine, Pokemon::StoryBackend<Pokemon::ZonePose>& backend,
     Pokemon::RunState& state
 );

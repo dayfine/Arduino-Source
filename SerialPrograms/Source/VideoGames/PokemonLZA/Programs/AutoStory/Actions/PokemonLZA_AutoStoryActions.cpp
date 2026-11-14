@@ -12,6 +12,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_RunFromBattleDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
@@ -28,50 +29,42 @@ namespace PokemonLZA{
 using namespace std::chrono_literals;
 
 
-StoryActionNotImplemented::StoryActionNotImplemented(std::string message)
-    : OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, std::move(message))
-{}
-
-
 void fight_battle(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
     BattleAIOption& battle_ai
 ){
-    RunFromBattleWatcher battle_menu(COLOR_GREEN, &console.overlay(), 10ms);
-    OverworldPartySelectionWatcher overworld(COLOR_WHITE, &console.overlay(), 100ms);
-    TrainerBattleState battle_state(battle_ai);
     //  The battle's text first: the overworld only ends it once it has
     //  begun, and it must begin within a minute.
-    const WallClock start_deadline = current_time() + 60s;
-    bool started = false;
-    while (true){
-        context.wait_for_all_requests();
-        const int ret = run_until<ProControllerContext>(
-            console, context,
-            [](ProControllerContext& context){
-                pbf_mash_button(context, BUTTON_B, 120s);
-            },
-            {battle_menu, overworld}
+    RunFromBattleWatcher battle_menu(COLOR_GREEN, &console.overlay(), 10ms);
+    context.wait_for_all_requests();
+    const int started = run_until<ProControllerContext>(
+        console, context,
+        [](ProControllerContext& context){
+            pbf_mash_button(context, BUTTON_B, 60s);
+        },
+        {battle_menu}
+    );
+    if (started < 0){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "fight_battle(): no battle began within a minute.",
+            console
         );
-        if (ret == 0){
-            started = true;
-            if (!battle_state.attempt_one_attack(env, console, context)){
-                pbf_press_button(context, BUTTON_UP, 500ms, 1000ms);
-            }
-            continue;
+    }
+    TrainerBattleState battle_state(battle_ai);
+    OverworldPartySelectionWatcher overworld(COLOR_WHITE, &console.overlay(), 100ms);
+    const int ended = run_battle_until(
+        env, console, context, battle_state, overworld, 120s,
+        [](ProControllerContext& context){
+            pbf_press_button(context, BUTTON_UP, 500ms, 1000ms);
         }
-        if (ret == 1 && started){
-            return;
-        }
-        if (ret < 0 || current_time() > start_deadline){
-            OperationFailedExceptionWithScreenshot::fire(
-                ErrorReportMode::SEND_ERROR_REPORT,
-                "fight_battle(): no battle began within a minute, or its menu was gone for two.",
-                console
-            );
-        }
-        //  The overworld before the battle: its text has not started it yet.
-        context.wait_for(500ms);
+    );
+    if (ended < 0){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "fight_battle(): the battle's menu was gone for two minutes.",
+            console
+        );
     }
 }
 
@@ -82,15 +75,13 @@ void fight_battle_in_progress(
     BattleAIOption& battle_ai, std::chrono::seconds timeout
 ){
     TrainerBattleState battle_state(battle_ai);
-    FlatWhiteDialogDetector white_dialog;
-    BlueDialogDetector blue_dialog;
-    TealDialogDetector teal_dialog;
+    StoryDialogDetector any_dialog;
     const WallClock deadline = current_time() + timeout;
     bool attacked = false;
     while (true){
         context.wait_for_all_requests();
         const VideoSnapshot screen = console.video().snapshot();
-        const bool dialog = white_dialog.detect(screen) || blue_dialog.detect(screen) || teal_dialog.detect(screen);
+        const bool dialog = any_dialog.detect(screen);
         if (dialog && attacked){
             return;
         }
@@ -118,6 +109,9 @@ namespace{
 //  Whether the report page's Save button (its cursor arrow, where
 //  save_game_to_menu() looks for it) shows within `timeout`.
 bool save_button_shows(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout){
+    //  TODO: unify with save_game_to_menu() (PokemonLZA_BasicNavigation.cpp),
+    //  which keeps this box inline - naming it there adds a symbol to a
+    //  header at the code-health symbol limit.
     SelectionArrowWatcher save_button(
         COLOR_GREEN, &console.overlay(), SelectionArrowType::RIGHT, {0.287118, 0.638835, 0.064410, 0.108738}
     );
@@ -174,6 +168,27 @@ void save_story_game(ConsoleHandle& console, ProControllerContext& context){
         }
     }
     mash_to_overworld(console, context, BUTTON_B, 10s);
+}
+
+void claim_mable_research_reward(ConsoleHandle& console, ProControllerContext& context){
+    overworld_to_main_menu(console, context);
+    for (int i = 0; i < 3; i++){
+        pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
+    }
+    pbf_press_button(context, BUTTON_A, 160ms, 2840ms);
+
+    //  The page opens on Rewards under Mable's lines on the level 2 reward,
+    //  TM004 Rock Smash (console B, 2026-11-10): A while a dialog shows,
+    //  until none has for 3 s, then B back to the overworld, through her
+    //  talk after the menu closes (over 20 s; console B, 2026-11-10).
+    if (press_a_until_quiet(console, context, {.item_receive = true}, 3s, 60s).timed_out){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "claim_mable_research_reward(): Mable's lines did not end within 60 s.",
+            console
+        );
+    }
+    mash_to_overworld(console, context, BUTTON_B, 60s);
 }
 
 

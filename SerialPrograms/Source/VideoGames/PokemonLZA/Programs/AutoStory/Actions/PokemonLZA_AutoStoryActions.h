@@ -8,8 +8,8 @@
  *  Each is a short function over the LZA battle and menu code that already
  *  exists (TrainerBattle, BasicNavigation, the dialog and selection-arrow
  *  detectors). An action the game has no code for yet throws
- *  StoryActionNotImplemented, naming what is missing, instead of pressing
- *  buttons blind.
+ *  Pokemon::StoryActionNotImplemented, naming what is missing, instead of
+ *  pressing buttons blind.
  *
  */
 
@@ -17,8 +17,6 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryActions_H
 
 #include <chrono>
-#include <string>
-#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Tools/ProgramEnvironment.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -27,19 +25,6 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
-
-
-//  A story action this game has no code for yet. The story executor lets
-//  it end the run instead of reloading and trying again, since every
-//  attempt would fail the same way.
-class StoryActionNotImplemented : public OperationFailedException{
-public:
-    explicit StoryActionNotImplemented(std::string message);
-
-    virtual const char* name() const override{
-        return "StoryActionNotImplemented";
-    }
-};
 
 
 //  From a trainer's or a wild Pokemon's battle starting, fights it with
@@ -69,6 +54,11 @@ void fight_battle_in_progress(
 //  overworld and one more try; throws OperationFailedException if that
 //  fails too.
 void save_story_game(ConsoleHandle& console, ProControllerContext& context);
+
+//  From the overworld: the main menu, DOWN x3 to "Mable's Research" (as
+//  recorded on 2026-11-09), A; through Mable's lines on the reward, back
+//  to the overworld.
+void claim_mable_research_reward(ConsoleHandle& console, ProControllerContext& context);
 
 
 

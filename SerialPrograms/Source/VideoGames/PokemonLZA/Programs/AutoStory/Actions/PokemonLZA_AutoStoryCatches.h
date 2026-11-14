@@ -1,0 +1,104 @@
+/*  PokemonLZA AutoStory - Catches
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  Wild Zone 1's catches (03.07's tutorial, 03.08's five species), from
+ *  console B, 2026-11-10.
+ *
+ */
+
+#ifndef PokemonAutomation_PokemonLZA_AutoStoryCatches_H
+#define PokemonAutomation_PokemonLZA_AutoStoryCatches_H
+
+#include <optional>
+#include "Common/Cpp/Time.h"
+#include "CommonFramework/Tools/ProgramEnvironment.h"
+#include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
+#include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonLZA{
+
+
+//  03.07's first catch (Fletchling): ZL locks on, ZL+ZR held 1.5 s throws
+//  (0.5 s only aims). A break-out brings two or three lines from Taunie and
+//  control back; the catch brings her lines and then the "Battling wild
+//  Pokemon" cards (console B, 2026-11-10). So: lock with ZL held, choose
+//  the nearest target and walk toward it when far (as catch_in_zone()
+//  does), throw, A through her lines, again until a card shows, then A
+//  through the cards. When a
+//  break-out starts a wild battle, the rest of the throws go after
+//  `battle_ai`'s attacks (weaken_then_throw). Throws
+//  OperationFailedException after `max_throws` throws with no card.
+void catch_tutorial(
+    ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
+    BattleAIOption& battle_ai, int max_throws
+);
+
+//  03.07's second catch (Bunnelby), after the cards: A past its "weaken
+//  it" banner (D-pad up is ignored while it shows), D-pad up sends the
+//  partner out (again, twice at most per round, after two lock-ons with no
+//  move symbols), then rounds of TrainerBattleState attacks (3 that land),
+//  a throw and A through any lines (weaken_then_throw), until no target
+//  locks on for a round: caught. Throws OperationFailedException after
+//  `max_rounds`.
+void battle_then_catch(
+    ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
+    BattleAIOption& battle_ai, int max_rounds
+);
+
+//  Walks toward the objective marker (read_objective_marker()): turns the camera to keep it in the
+//  middle (to find it when it is behind) and walks on, until its distance
+//  reads `stop_at` or less, or (with `stop_at` 0) an A prompt or a dialog
+//  shows, or `limit`. Returns the last distance read.
+std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit);
+
+//  03.08's catches for the "register five species" quest (3/5 after the
+//  tutorial): walks toward the objective (Wild Zone 1's far gate, around
+//  Taunie's rocks from the start), then goes back and forth between the
+//  user's two catch spots (CATCH_SPOTS): 100 from the objective
+//  (Scatterbug on the plaza's road) and 60 (Mareep by the gate),
+//  PATROL_VISITS visits, 10 minutes at most. At each stop
+//  it fights a wild battle that is on, else watches for the lock-on
+//  brackets the game draws around one wild Pokemon (6 s at most), turns
+//  the camera to the tallest (the nearest), holds ZL until the move
+//  symbols show the lock, cycles the targets with ZL held, walks toward
+//  the nearest one not caught when it is far, and throws without letting
+//  ZL go, counting the Pokedex's "Registered!" banners. A break-out that
+//  starts a wild battle gets `battle_ai`'s attacks before the next throws.
+//  When only species already caught lock on (a rerun from a save after the
+//  catch), the quest is taken as done. Otherwise throws
+//  OperationFailedException with fewer than `new_species_wanted` new
+//  species after the patrol or `max_throws`.
+void catch_in_zone(
+    ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
+    BattleAIOption& battle_ai, int new_species_wanted, int max_throws
+);
+
+//  On to the objective marker until an A prompt (a gate's "Leave", a door's
+//  "Enter") or a dialog (a scene that starts on arriving) shows. Where a
+//  walk starts facing whichever way the last scene left the player (out of
+//  a wild zone's gate), the marker sets the way, not timed legs (03.08,
+//  console B 2026-11-10). Throws OperationFailedException when neither
+//  shows within 90 s.
+void walk_to_marker(ConsoleHandle& console, ProControllerContext& context);
+
+//  03.08, after the catches, to Wild Zone 1's far gate: back onto the road
+//  at the catch spots first (road_stops_to_gate()), then on to the
+//  objective marker until the gate's "A Leave" prompt or a dialog shows. A
+//  walk straight at the marker from where the catches ended left the zone
+//  and ran into a building (console B, 2026-11-13). Arriving on the marker
+//  with no prompt is taken as through the gate already. Throws
+//  OperationFailedException when a road stop is not reached, or when the
+//  walk is held up short of the gate (walk_to_objective()'s sidesteps
+//  spent).
+void walk_to_zone_gate(ConsoleHandle& console, ProControllerContext& context);
+
+
+
+} // namespace PokemonLZA
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
+#endif

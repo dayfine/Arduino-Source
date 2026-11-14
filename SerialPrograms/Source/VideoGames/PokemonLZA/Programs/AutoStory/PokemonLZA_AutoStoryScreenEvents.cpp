@@ -6,7 +6,6 @@
 
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
-#include "CommonTools/Images/SolidColorTest.h"
 #include "CommonTools/ScreenEvents/ScreenFades.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
@@ -20,12 +19,16 @@ namespace{
 
 //  Where an interact prompt shows: over the scene, above the bottom hints
 //  (the battle HUD's "X A Select Move" is lower).
+//  This is run_towards_gate_with_A_button()'s box (PokemonLZA_BasicNavigation)
+//  cut 0.05 shorter at the bottom, where upstream's reaches the battle HUD's
+//  hints (BATTLE_HINT_BOX) and would read every battle frame as a prompt.
+//  walk_to_prompt() reads this event through the story backend, rather than
+//  calling run_towards_gate_with_A_button(), so the sim runs it too, and it
+//  walks: the story's legs are timed at walking pace.
 const ImageFloatBox INTERACT_PROMPT_BOX{0.3, 0.2, 0.4, 0.65};
 //  The battle HUD's hints at the bottom centre: the A of "X A: Select Move"
 //  (za2_hud_s3, za2_atk*: 15 of 15 battle frames, none of 442 others).
 const ImageFloatBox BATTLE_HINT_BOX{0.40, 0.84, 0.20, 0.10};
-//  A white dialogue box's bottom edge, FlatWhiteDialogDetector's strip.
-const ImageFloatBox WHITE_BOX_EDGE{0.265, 0.931, 0.465, 0.020};
 
 } // namespace
 
@@ -35,8 +38,15 @@ bool SceneStart::never_started(const ScreenEvents& events, WallClock now){
     return !m_seen && now >= m_deadline;
 }
 
-SceneMashAction scene_mash_action(const ScreenEvents& events, SceneMashGoal goal, bool text_button_is_b){
-    switch (goal){
+SceneMash::SceneMash(SceneMashGoal goal, Button text_button)
+    : m_goal(goal)
+    , m_text_button(text_button)
+    , m_talk(Pokemon::TalkOverRule{.calm = OVERWORLD_HOLD})
+{}
+
+SceneMashAction SceneMash::look(const ScreenEvents& events, WallClock now){
+    const Pokemon::SceneMove move = m_talk.look(events, now);
+    switch (m_goal){
     case SceneMashGoal::CHOICE:
         if (events.has(ScreenEvent::CHOICE_BOX)){
             return SceneMashAction::DONE;
@@ -48,7 +58,7 @@ SceneMashAction scene_mash_action(const ScreenEvents& events, SceneMashGoal goal
         }
         break;
     case SceneMashGoal::OVERWORLD:
-        if (events.has(ScreenEvent::PLAYER_CAN_MOVE)){
+        if (move == Pokemon::SceneMove::DONE){
             return SceneMashAction::DONE;
         }
         break;
@@ -62,16 +72,18 @@ SceneMashAction scene_mash_action(const ScreenEvents& events, SceneMashGoal goal
     if (events.has(ScreenEvent::DIALOG_BOX)){
         return SceneMashAction::PRESS_TEXT;
     }
-    if (goal == SceneMashGoal::BATTLE){
+    if (m_goal == SceneMashGoal::BATTLE){
         return SceneMashAction::PRESS_A;
     }
-    return text_button_is_b ? SceneMashAction::PRESS_B : SceneMashAction::WAIT;
+    if (m_goal == SceneMashGoal::OVERWORLD && events.has(ScreenEvent::PLAYER_CAN_MOVE)){
+        return SceneMashAction::WAIT;
+    }
+    return m_text_button == BUTTON_B ? SceneMashAction::PRESS_B : SceneMashAction::WAIT;
 }
 
 
 PlzaScreenObserver::PlzaScreenObserver()
-    : m_blue_dialog(COLOR_BLUE)
-    , m_teal_dialog(COLOR_GREEN)
+    : m_dialog({.white = WhiteDialogPart::BOX_ONLY})
     , m_choice_arrow(COLOR_YELLOW, nullptr, SelectionArrowType::RIGHT, dialog_choice_box())
     , m_interact(COLOR_RED, ButtonType::ButtonA, INTERACT_PROMPT_BOX)
     , m_battle_hint(COLOR_CYAN, ButtonType::ButtonA, BATTLE_HINT_BOX)
@@ -91,8 +103,7 @@ ScreenEvents PlzaScreenObserver::read(const ImageViewRGB32& screen){
         //  A uniform screen has no box, prompt or HUD to read.
         return out;
     }
-    const bool box = is_white(extract_box_reference(screen, WHITE_BOX_EDGE), 500.0, 20.0)
-        || m_blue_dialog.detect(screen) || m_teal_dialog.detect(screen);
+    const bool box = m_dialog.detect(screen);
     out.set(ScreenEvent::DIALOG_BOX, box);
     out.set(ScreenEvent::CHOICE_BOX, m_choice_arrow.detect(screen));
     out.set(ScreenEvent::INTERACT_PROMPT, !box && m_interact.detect(screen));
@@ -102,9 +113,7 @@ ScreenEvents PlzaScreenObserver::read(const ImageViewRGB32& screen){
 }
 
 void PlzaScreenObserver::make_overlays(VideoOverlaySet& items) const{
-    items.add(COLOR_RED, WHITE_BOX_EDGE);
-    m_blue_dialog.make_overlays(items);
-    m_teal_dialog.make_overlays(items);
+    m_dialog.make_overlays(items);
     m_choice_arrow.make_overlays(items);
     m_interact.make_overlays(items);
     m_battle_hint.make_overlays(items);

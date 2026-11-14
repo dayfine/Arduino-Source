@@ -11,8 +11,8 @@
  *  legs: a relative turn and a walk time each (PokemonLZA_AutoStoryGame.h).
  *
  *  Recorded 2026-11-08/09 on console B, played step by step from a new
- *  game through Main Mission 02. Every walk was measured walking, not
- *  dashing. Steps the game
+ *  game to the quest "Return to Hotel Z to meet up with Taunie" in Main
+ *  Mission 03. Every walk was measured walking, not dashing. Steps the game
  *  has no code for yet are GAME steps of story_actions_not_implemented().
  *
  *  This is the story as data, with no IO: the checkpoint files it is read
@@ -23,11 +23,8 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryTable_H
 #define PokemonAutomation_PokemonLZA_AutoStoryTable_H
 
-#include <functional>
-#include <set>
-#include <string>
-#include <utility>
 #include <vector>
+#include "Pokemon/AutoStory/Data/Pokemon_StoryRowExecution.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 
 namespace PokemonAutomation{
@@ -35,36 +32,11 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The story a run plays: its checkpoints in order, and the ids of those
-//  that end on one of the game's autosaves and do not save themselves
-//  (their JSON "execution": {"save": "autosave"}).
-struct StoryData{
-    std::vector<Pokemon::StoryCheckpoint> checkpoints;
-    std::set<std::string, std::less<>> autosaves;
-    //  The ids of the rows a run reloads the save before when it played the
-    //  row before them too ("execution": {"reload_when_chained": true}), so
-    //  they start as from their save. Each comes after an autosave row,
-    //  whose autosave is its start save.
-    std::set<std::string, std::less<>> reload_when_chained;
-    //  The dev files that replaced a built-in checkpoint, as (file name,
-    //  path).
-    std::vector<std::pair<std::string, std::string>> dev_files;
-};
-
-//  How a run plays its checkpoints: the attempts each gets, and whether it
-//  reloads at the plan's boundaries.
-struct StoryRunPolicy{
-    //  Whether a run of several checkpoints reloads the save at a row of
-    //  StoryData::reload_when_chained (AT_PLAN_BOUNDARIES) or runs on from
-    //  the state the row before left (STRAIGHT_THROUGH). A failed
-    //  checkpoint's retries reload as usual either way.
-    enum class BoundaryReload{
-        AT_PLAN_BOUNDARIES,
-        STRAIGHT_THROUGH,
-    };
-    size_t attempts_per_checkpoint = 1;
-    BoundaryReload boundary_reload = BoundaryReload::AT_PLAN_BOUNDARIES;
-};
+//  The story a run plays: its checkpoints in order, and the rows their
+//  execution marks (Pokemon_StoryRowExecution.h): the autosave rows, which
+//  do not save themselves ("save": "autosave"), and the rows a run reloads
+//  before ("reload_when_chained").
+using StoryData = Pokemon::StoryData<Pokemon::StoryCheckpoint>;
 
 //  Whether `row` of `story` saves through the menu at its end: every row
 //  but the autosave rows. The menu (X, then R) can save from the start of
@@ -79,12 +51,6 @@ size_t story_rows_ready(const std::vector<Pokemon::StoryCheckpoint>& checkpoints
 //  "Confirm Choices" screen, the language, look and name chosen by hand
 //  (its first step is the GAME action "confirm_new_game"): 01.00.
 bool story_row_starts_without_save(const Pokemon::StoryCheckpoint& row);
-
-//  The rows a run from `first` to `last` of `checkpoints` plays, in order.
-//  Empty if `first` comes after `last` or `last` is past the end.
-std::vector<Pokemon::StoryCheckpoint> story_run_rows(
-    const std::vector<Pokemon::StoryCheckpoint>& checkpoints, size_t first, size_t last
-);
 
 
 

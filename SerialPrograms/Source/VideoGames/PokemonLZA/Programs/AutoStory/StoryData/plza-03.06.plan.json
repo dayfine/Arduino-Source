@@ -1,0 +1,70 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.06",
+    "title": "To Wild Zone 1",
+    "start": {
+      "place": "LumioseCity",
+      "spot": "PokemonCenter"
+    },
+    "events": [
+      {
+        "id": "out_of_pokemon_center",
+        "kind": "game_action",
+        "why": "UNVERIFIED, NEEDS CONSOLE: from the nurse's counter after 03.05's heal back to where 03.04's scene left the player, facing as it did, so the legs below (measured from there) still hold. Reverses 03.05's back_to_nurse (right, then into the counter): turn around, walk back 1.5 s (that walk is under 2 s; the time back is a guess), then right to face as the scene left the player.",
+        "action": "walk",
+        "args": {
+          "legs": [[180, 1500], [90, 0]]
+        }
+      },
+      {
+        "id": "center_to_zone_1",
+        "kind": "game_action",
+        "why": "step 56: from the Pokemon Center to Wild Zone 1's gate. ~5 units/s; the first 2 s replace a dash test of the same distance. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 2000], [0, 3000], [0, 6000]]
+        }
+      },
+      {
+        "id": "toward_zone_1_gate",
+        "kind": "game_action",
+        "why": "step 57: toward the gate, into Taunie's scene. Left 45, right 15. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[-45, 0], [15, 2500]]
+        }
+      },
+      {
+        "id": "wild_zones_tutorial",
+        "kind": "scene",
+        "why": "step 57: Taunie on wild zones, the Wild Zones card",
+        "action": "a"
+      },
+      {
+        "id": "into_zone_1",
+        "kind": "game_action",
+        "why": "step 58: to the gate's \"A Enter\". 22 units at ~5.1 units/s. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 4300]]
+        }
+      },
+      {
+        "id": "enter_zone_1",
+        "kind": "game_action",
+        "why": "step 58: A Enter at the gate (a scene step ends at once on its prompt), Taunie, the Throwing Poke Balls card",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "menu"
+  }
+}

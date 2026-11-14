@@ -6,8 +6,12 @@
 
 #include <format>
 #include <optional>
+#include <string>
+#include "Common/Cpp/Color.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapDetector.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_FastTravelNavigation.h"
 #include "PokemonLZA_AutoStoryMoves.h"
@@ -123,6 +127,47 @@ void fly_to(ConsoleHandle& console, ProControllerContext& context, Language lang
             console
         );
     }
+}
+
+namespace{
+
+//  How long map_shows_travel_spots() waits for the map's Travel Spots icon.
+constexpr Milliseconds TRAVEL_SPOTS_WAIT = 5000ms;
+
+//  Opens the map and closes it again (map_to_overworld()): whether it
+//  showed the Travel Spots icon by Y within TRAVEL_SPOTS_WAIT. Before fast
+//  travel opens in the story, the map's Y line is the main mission instead
+//  (console B, 2026-11-13, end of 03.07, the Wild Zone 1 panel open):
+//  open_map() needs that icon (MapDetector), pressed + every 5 s, closing
+//  the map it had opened, and gave up after 30 s.
+bool map_shows_travel_spots(ConsoleHandle& console, ProControllerContext& context){
+    pbf_press_button(context, BUTTON_PLUS, 240ms, 40ms);
+    context.wait_for_all_requests();
+    MapWatcher map(COLOR_RED, &console.overlay());
+    const int ret = wait_until(console, context, TRAVEL_SPOTS_WAIT, {map});
+    map_to_overworld(console, context);
+    return ret == 0;
+}
+
+} // namespace
+
+bool fly_to_or_stay(ConsoleHandle& console, ProControllerContext& context, Language language, Location location){
+    const std::string& slug = get_location_item_from_enum(location).slug;
+    if (!map_shows_travel_spots(console, context)){
+        console.log(std::format("fly_to_or_stay(): no Travel Spots on the map (fast travel not open yet): staying, not flying to {}.", slug), COLOR_RED);
+        return false;
+    }
+    try{
+        const FastTravelState state = open_map_and_fly_to(console, context, language, location);
+        if (state == FastTravelState::SUCCESS){
+            return true;
+        }
+        console.log(std::format("fly_to_or_stay(): no fly to {} (state {}): staying.", slug, static_cast<int>(state)), COLOR_RED);
+    }catch (OperationFailedException& e){
+        console.log(std::format("fly_to_or_stay(): no fly to {} ({}): staying.", slug, e.message()), COLOR_RED);
+    }
+    map_to_overworld(console, context);
+    return false;
 }
 
 

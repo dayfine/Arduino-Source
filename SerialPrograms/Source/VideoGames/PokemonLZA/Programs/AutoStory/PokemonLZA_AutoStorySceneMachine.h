@@ -14,7 +14,9 @@
  *  it to go, pressing A if it stays. The card a main mission ends with
  *  (MISSION_COMPLETE_READING) waits for A: the machine presses A at it,
  *  and it counts as busy. The advance chevron (ADVANCE_ARROW_READING) is
- *  text to press on, with or without a box.
+ *  text to press on, with or without a box. The autosave badge
+ *  (AUTOSAVE_READING), then 5 s with nothing busy, ends the scene as
+ *  control, before the minimum length: the game saves once a scene is over.
  *
  *  The walks between the scenes are Actions/PokemonLZA_AutoStoryWalkScreenChecks.h.
  *
@@ -52,7 +54,7 @@ struct SceneMachineConfig{
     //  still frame longer than `quiet`.
     Milliseconds min_length = Milliseconds(0);
     //  The quiet end is control, not a failure: Hotel Z's halls and rooms
-    //  show no party bar or prompt (02.04, console B 2026-11-10).
+    //  show no party bar or prompt (02.05, console B 2026-11-10).
     bool quiet_is_control = false;
     //  OVERWORLD with A: presses A every 2 s once nothing
     //  busy and no sign of control has shown for this long, for text the
@@ -76,6 +78,7 @@ enum class SceneScreen{
     CONTROLS_HINT,  //  terminal: the tutorial's controls hint, held a second
     HINT_SHOWING,   //  wait: the controls hint, not held a second yet
     QUIET_END,      //  terminal, failing: nothing busy for the quiet time, past the minimum length
+    AUTOSAVE_QUIET, //  terminal: the autosave badge, then nothing busy for AUTOSAVE_QUIET
     BLIND_PRESS,    //  A: nothing busy and no sign of control for blind_press_after
     SCENE_MOVING,   //  no box, the screen changing: a cutscene, or the player in control
     SCENE_STILL,    //  no box, the screen still since the read before
@@ -111,6 +114,11 @@ public:
     //  without a quiet time.
     std::optional<WallClock> quiet_end_due() const;
 
+    //  When the autosave quiet end is due if nothing busy shows before:
+    //  AUTOSAVE_QUIET after the badge and after the last busy look, with no
+    //  minimum length; none before the badge or outside an OVERWORLD mash.
+    std::optional<WallClock> autosave_quiet_due() const;
+
     //  Whether a blind A press is due at `now` (blind_press_after).
     bool blind_press_due(WallClock now) const;
 
@@ -129,6 +137,8 @@ private:
     std::optional<WallClock> m_hint_since;
     //  The looks in a row with the mission banner.
     size_t m_banner_looks = 0;
+    //  The last look with the autosave badge.
+    std::optional<WallClock> m_last_autosave;
 
     //  classify() past the fades, boxes and the goal.
     SceneScreen classify_open(const ScreenObservation& look) const;

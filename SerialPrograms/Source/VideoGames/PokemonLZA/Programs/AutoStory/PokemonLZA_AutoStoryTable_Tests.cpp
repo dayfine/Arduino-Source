@@ -90,8 +90,8 @@ UnitTestResult test_story_walks_read(Logger&){
             }
         }
     }
-    if (walks != 12){
-        return std::format("Expected the 12 recorded walks, found {}.", walks);
+    if (walks != 29){
+        return std::format("Expected the 29 walks, found {}.", walks);
     }
     const StoryStep* plaza = find_step(story_checkpoints(), "01.01", "platform_to_plaza");
     if (plaza == nullptr){
@@ -151,9 +151,41 @@ UnitTestResult test_autosave_rows(Logger&){
     return true;
 }
 
+//  03.05 heals at the Pokemon Center and ends there: talk to the nurse,
+//  her scene, then the checkpoint's save. Healing writes a save, so the
+//  title screen's backup save (Up + B + X) lands on 03.05's end for
+//  Main Mission 03's retries (user, 2026-11-13).
+UnitTestResult test_mm3_heal_row(Logger&){
+    const StoryCheckpoint* heal = nullptr;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        if (row.id == "03.05"){
+            heal = &row;
+        }
+    }
+    if (heal == nullptr || heal->steps.size() < 2){
+        return "Expected 03.05, the heal, with at least two steps.";
+    }
+    const StoryStep& talk = heal->steps[heal->steps.size() - 2];
+    const StoryStep& scene = heal->steps.back();
+    if (talk.name != "talk_to_nurse" || talk.kind != StoryStepKind::TALK){
+        return "Expected 03.05 to talk to the nurse before its last step.";
+    }
+    if (scene.name != "heal_party" || scene.kind != StoryStepKind::MASH){
+        return "Expected 03.05 to end on the nurse's heal_party scene.";
+    }
+    if (!story_row_saves(builtin_story_data(), *heal)){
+        return "Expected 03.05 to save after the heal.";
+    }
+    const StoryStep* leave = find_step(story_checkpoints(), "03.06", "out_of_pokemon_center");
+    if (leave == nullptr || leave->kind != StoryStepKind::GAME || leave->action != "walk"){
+        return "Expected 03.06 to walk out of the Pokemon Center.";
+    }
+    return true;
+}
+
 //  The built-in file of checkpoint `id` with its execution's save line
 //  replaced by `execution` (the fields after "execution": {), as a dev file.
-StoryDevFile dev_with_execution(std::string_view id, std::string_view execution){
+Pokemon::StoryDevFile dev_with_execution(std::string_view id, std::string_view execution){
     for (const auto& [name, text] : autostory_checkpoint_json()){
         if (name != std::format("plza-{}.plan", id)){
             continue;
@@ -163,43 +195,30 @@ StoryDevFile dev_with_execution(std::string_view id, std::string_view execution)
         if (at != std::string::npos){
             edited.replace(at, std::string_view("\"save\": \"autosave\"").size(), execution);
         }
-        return StoryDevFile{.name = std::format("{}.json", name), .path = std::format("dev/{}.json", name), .text = edited};
+        return Pokemon::StoryDevFile{.name = std::format("{}.json", name), .path = std::format("dev/{}.json", name), .text = edited};
     }
-    return StoryDevFile{};
+    return Pokemon::StoryDevFile{};
 }
 
-//  The ParseException load_story_data() throws for `dev`; empty when it
-//  loads.
-std::string load_problem(const StoryDevFile& dev){
+//  The ParseException message of load_story_data() on the one dev file
+//  `dev`; empty if it loads.
+std::string load_problem(const Pokemon::StoryDevFile& dev){
     try{
-        load_story_data(std::vector<StoryDevFile>{dev});
+        load_story_data(std::span<const Pokemon::StoryDevFile>(&dev, 1));
     }catch (ParseException& e){
         return e.message();
     }
     return "";
 }
 
-//  "reload_when_chained" in a checkpoint's execution: only true, and only on
-//  a row with a save to reload after a row that ends on the autosave.
+//  01.00, the new game (story_row_starts_without_save()), has no save to
+//  reload: the shared loader refuses its "reload_when_chained".
 UnitTestResult test_reload_when_chained_field(Logger&){
-    struct Case{
-        std::string_view execution;
-        std::string_view problem;
-    };
-    const Case cases[] = {
-        {R"("save": "autosave", "reload_when_chained": "yes")", "true or left out"},
-        {R"("save": "autosave", "reload_when_chained": false)", "true or left out"},
-        {R"("save": "autosave", "reload_when_chained": true)", "no save to reload"},
-    };
-    for (const Case& item : cases){
-        const std::string problem = load_problem(dev_with_execution("01.00", item.execution));
-        if (problem.find(item.problem) == std::string::npos){
-            return std::format("01.00 with {}: expected a problem with \"{}\", got \"{}\".", item.execution, item.problem, problem);
-        }
-    }
-    for (const StoryCheckpoint& row : story_checkpoints()){
-        if (story_row_starts_without_save(row) && builtin_story_data().reload_when_chained.contains(row.id)){
-            return std::format("{} starts without a save but reloads when chained.", row.id);
+    for (std::string_view reload : {"true", "\"always\""}){
+        const std::string execution = std::format("\"save\": \"autosave\", \"reload_when_chained\": {}", reload);
+        const std::string problem = load_problem(dev_with_execution("01.00", execution));
+        if (problem.find("no save to reload") == std::string::npos){
+            return std::format("01.00 with {}: expected \"no save to reload\", got \"{}\".", execution, problem);
         }
     }
     return true;
@@ -218,6 +237,17 @@ UnitTestResult test_mm1_reload_when_chained(Logger&){
     return true;
 }
 
+//  03.04 reloads even in a run straight through: its walk to the nurse
+//  starts from 03.03's autosave, not from where 03.03's scene leaves the
+//  player (console B, 2026-11-13).
+UnitTestResult test_0304_reloads_always(Logger&){
+    const StoryData& data = builtin_story_data();
+    if (!data.reload_always.contains("03.04") || !data.autosaves.contains("03.03")){
+        return "Expected 03.04 to always reload, after 03.03's autosave.";
+    }
+    return true;
+}
+
 //  A run can play every row: none names an action that is not implemented.
 UnitTestResult test_every_row_ready(Logger&){
     const size_t ready = story_rows_ready(story_checkpoints());
@@ -227,7 +257,6 @@ UnitTestResult test_every_row_ready(Logger&){
     return true;
 }
 
-//  scene_mash_action() on each kind of frame.
 //  A scene step's start window: a box, a choice or a battle within it
 //  starts the scene; fades and quiet frames alone (02.02's street missed
 //  after the Brigitte battle, console B, 2026-11-13) fail at its end, not
@@ -253,33 +282,84 @@ UnitTestResult test_scene_start_window(Logger&){
     return true;
 }
 
+//  SceneMash on each kind of frame, as a first look.
 UnitTestResult test_scene_mash_rule(Logger&){
     struct Case{
         std::string_view name;
         ScreenEvents events;
         SceneMashGoal goal;
-        bool text_b;
+        Button text_button;
         SceneMashAction expected;
     };
     const Case cases[] = {
-        {"box, A mash", {ScreenEvent::DIALOG_BOX}, SceneMashGoal::OVERWORLD, false, SceneMashAction::PRESS_TEXT},
-        {"box, B mash", {ScreenEvent::DIALOG_BOX}, SceneMashGoal::OVERWORLD, true, SceneMashAction::PRESS_TEXT},
-        {"choice takes the top", {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, SceneMashGoal::OVERWORLD, true, SceneMashAction::PRESS_A},
-        {"choice is the goal", {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, SceneMashGoal::CHOICE, true, SceneMashAction::DONE},
-        {"party bar", {ScreenEvent::PLAYER_CAN_MOVE}, SceneMashGoal::OVERWORLD, false, SceneMashAction::DONE},
-        {"party bar, not the goal", {ScreenEvent::PLAYER_CAN_MOVE}, SceneMashGoal::BATTLE, false, SceneMashAction::PRESS_A},
-        {"black fade waits", {ScreenEvent::FADE_BLACK}, SceneMashGoal::BATTLE, false, SceneMashAction::WAIT},
-        {"white fade waits", {ScreenEvent::FADE_WHITE}, SceneMashGoal::OVERWORLD, true, SceneMashAction::WAIT},
-        {"battle HUD", {ScreenEvent::BATTLE_STARTED}, SceneMashGoal::BATTLE, false, SceneMashAction::DONE},
-        {"card before a battle", {}, SceneMashGoal::BATTLE, false, SceneMashAction::PRESS_A},
-        {"quiet, A mash", {}, SceneMashGoal::OVERWORLD, false, SceneMashAction::WAIT},
-        {"quiet, B mash (map, Pokedex)", {}, SceneMashGoal::OVERWORLD, true, SceneMashAction::PRESS_B},
-        {"prompt alone, A mash", {ScreenEvent::INTERACT_PROMPT}, SceneMashGoal::OVERWORLD, false, SceneMashAction::WAIT},
+        {"box, A mash", {ScreenEvent::DIALOG_BOX}, SceneMashGoal::OVERWORLD, BUTTON_A, SceneMashAction::PRESS_TEXT},
+        {"box, B mash", {ScreenEvent::DIALOG_BOX}, SceneMashGoal::OVERWORLD, BUTTON_B, SceneMashAction::PRESS_TEXT},
+        {"choice takes the top", {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, SceneMashGoal::OVERWORLD, BUTTON_B, SceneMashAction::PRESS_A},
+        {"choice is the goal", {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, SceneMashGoal::CHOICE, BUTTON_B, SceneMashAction::DONE},
+        {"party bar, not held yet", {ScreenEvent::PLAYER_CAN_MOVE}, SceneMashGoal::OVERWORLD, BUTTON_A, SceneMashAction::WAIT},
+        {"party bar, not held yet, B mash", {ScreenEvent::PLAYER_CAN_MOVE}, SceneMashGoal::OVERWORLD, BUTTON_B, SceneMashAction::WAIT},
+        //  The party bar with a box or a choice is mid-scene: the box gets the
+        //  text button and the choice A (the old rule waited on the party bar).
+        {"party bar with a box", {ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, SceneMashGoal::OVERWORLD, BUTTON_B, SceneMashAction::PRESS_TEXT},
+        {"party bar with a choice", {ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, SceneMashGoal::OVERWORLD, BUTTON_A, SceneMashAction::PRESS_A},
+        {"party bar, not the goal", {ScreenEvent::PLAYER_CAN_MOVE}, SceneMashGoal::BATTLE, BUTTON_A, SceneMashAction::PRESS_A},
+        {"black fade waits", {ScreenEvent::FADE_BLACK}, SceneMashGoal::BATTLE, BUTTON_A, SceneMashAction::WAIT},
+        {"white fade waits", {ScreenEvent::FADE_WHITE}, SceneMashGoal::OVERWORLD, BUTTON_B, SceneMashAction::WAIT},
+        {"battle HUD", {ScreenEvent::BATTLE_STARTED}, SceneMashGoal::BATTLE, BUTTON_A, SceneMashAction::DONE},
+        {"card before a battle", {}, SceneMashGoal::BATTLE, BUTTON_A, SceneMashAction::PRESS_A},
+        {"quiet, A mash", {}, SceneMashGoal::OVERWORLD, BUTTON_A, SceneMashAction::WAIT},
+        {"quiet, B mash (map, Pokedex)", {}, SceneMashGoal::OVERWORLD, BUTTON_B, SceneMashAction::PRESS_B},
+        {"prompt alone, A mash", {ScreenEvent::INTERACT_PROMPT}, SceneMashGoal::OVERWORLD, BUTTON_A, SceneMashAction::WAIT},
     };
     for (const Case& item : cases){
-        const SceneMashAction got = scene_mash_action(item.events, item.goal, item.text_b);
+        SceneMash mash(item.goal, item.text_button);
+        const SceneMashAction got = mash.look(item.events, current_time());
         if (got != item.expected){
             return std::format("{}: expected action {}, got {}.", item.name, (int)item.expected, (int)got);
+        }
+    }
+    return true;
+}
+
+//  An OVERWORLD mash ends once the party bar has held OVERWORLD_HOLD
+//  (TalkOver's calm time): a box between lines starts the hold again.
+UnitTestResult test_scene_mash_party_bar_held(Logger&){
+    struct Look{
+        Milliseconds at;
+        ScreenEvents events;
+        SceneMashAction expected;
+    };
+    const ScreenEvents party_bar{ScreenEvent::PLAYER_CAN_MOVE};
+    const Look looks[] = {
+        {Milliseconds(0), party_bar, SceneMashAction::WAIT},
+        {Milliseconds(500), party_bar, SceneMashAction::WAIT},
+        {Milliseconds(600), {ScreenEvent::DIALOG_BOX}, SceneMashAction::PRESS_TEXT},
+        {Milliseconds(700), party_bar, SceneMashAction::WAIT},
+        {Milliseconds(1600), party_bar, SceneMashAction::WAIT},
+        {Milliseconds(1700), party_bar, SceneMashAction::DONE},
+    };
+    const WallClock start = current_time();
+    SceneMash mash(SceneMashGoal::OVERWORLD, BUTTON_A);
+    for (const Look& look : looks){
+        const SceneMashAction got = mash.look(look.events, start + look.at);
+        if (got != look.expected){
+            return std::format("at {} ms: expected action {}, got {}.", look.at.count(), (int)look.expected, (int)got);
+        }
+    }
+    return true;
+}
+
+//  A battle's HUD with the party bar is not the overworld: TalkOver's
+//  BATTLE_STARTED restarts the hold, so an OVERWORLD mash waits through it
+//  and does not end after OVERWORLD_HOLD.
+UnitTestResult test_scene_mash_battle_hud_not_overworld(Logger&){
+    const ScreenEvents battle_hud{ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::BATTLE_STARTED};
+    const WallClock start = current_time();
+    SceneMash mash(SceneMashGoal::OVERWORLD, BUTTON_A);
+    for (Milliseconds at(0); at <= Milliseconds(3000); at += Milliseconds(500)){
+        const SceneMashAction got = mash.look(battle_hud, start + at);
+        if (got != SceneMashAction::WAIT){
+            return std::format("at {} ms: expected action {}, got {}.", at.count(), (int)SceneMashAction::WAIT, (int)got);
         }
     }
     return true;
@@ -326,35 +406,23 @@ std::string replaced(std::string text, std::string_view from, std::string_view t
 //  The ParseException message of load_story_data() on the one dev file
 //  `text`; empty if it loads.
 std::string dev_load_error(std::string_view name, std::string text){
-    const StoryDevFile dev{.name = std::string(name), .path = std::format("/dev/{}", name), .text = std::move(text)};
-    try{
-        load_story_data(std::span<const StoryDevFile>(&dev, 1));
-    }catch (ParseException& e){
-        return e.message();
-    }
-    return "";
+    return load_problem({.name = std::string(name), .path = std::format("/dev/{}", name), .text = std::move(text)});
 }
 
-//  A dev file replaces the built-in checkpoint of its name and no other,
-//  and is named; a bad one (not JSON, a leg of 3 numbers, a negative walk,
-//  an unknown file, another id) fails naming its path.
+//  A dev file replaces the built-in checkpoint of its name and no other; a
+//  walk PLZA's reader refuses (a leg of 3 numbers, a negative walk) fails
+//  naming its path.
 UnitTestResult test_dev_override(Logger&){
     const std::string chase = builtin_text("plza-01.02.plan");
     const std::string_view legs = "[[-15, 4000], [-75, 3500]";
     if (chase.find(legs) == std::string::npos){
         return "Expected chase_pancham's legs in plza-01.02.plan.json.";
     }
-    const StoryDevFile dev{
+    const Pokemon::StoryDevFile dev{
         .name = "plza-01.02.plan.json", .path = "/dev/plza-01.02.plan.json",
         .text = replaced(chase, legs, "[[-15, 4200], [-75, 3500]"),
     };
-    const StoryData data = load_story_data(std::span<const StoryDevFile>(&dev, 1));
-    if (data.dev_files.size() != 1 || data.dev_files[0].first != dev.name || data.dev_files[0].second != dev.path){
-        return "Expected the dev file to be named with its path.";
-    }
-    if (data.checkpoints.size() != story_checkpoints().size() || data.autosaves != story_autosave_rows()){
-        return "Expected the same rows and autosaves as the built-in story.";
-    }
+    const StoryData data = load_story_data(std::span<const Pokemon::StoryDevFile>(&dev, 1));
     const StoryStep* tuned = find_step(data.checkpoints, "01.02", "chase_pancham");
     if (tuned == nullptr || leg_pairs(story_walk_move(tuned->args, "legs")).front() != std::pair<int, int64_t>(-15, 4200)){
         return "Expected the dev file's first leg, [-15, 4200].";
@@ -363,17 +431,10 @@ UnitTestResult test_dev_override(Logger&){
     if (plaza == nullptr || leg_pairs(story_walk_move(plaza->args, "legs")).front() != std::pair<int, int64_t>(0, 4500)){
         return "Expected 01.01 to stay built-in.";
     }
-    const std::pair<std::string, std::string> bad[] = {
-        {"plza-01.02.plan.json", "{ not json"},
-        {"plza-01.02.plan.json", replaced(chase, legs, "[[-15, 4000, 1], [-75, 3500]")},
-        {"plza-01.02.plan.json", replaced(chase, legs, "[[-15, -4000], [-75, 3500]")},
-        {"plza-09.99.plan.json", chase},
-        {"plza-01.02.plan.json", replaced(chase, "\"01.02\"", "\"01.09\"")},
-    };
-    for (const auto& [name, text] : bad){
-        const std::string error = dev_load_error(name, text);
-        if (error.find(std::format("/dev/{}", name)) == std::string::npos){
-            return std::format("Expected {} to fail naming its path, got \"{}\".", name, error);
+    for (const std::string_view bad_legs : {"[[-15, 4000, 1], [-75, 3500]", "[[-15, -4000], [-75, 3500]"}){
+        const std::string error = dev_load_error("plza-01.02.plan.json", replaced(chase, legs, bad_legs));
+        if (error.find("/dev/plza-01.02.plan.json") == std::string::npos){
+            return std::format("Expected legs {} to fail naming the file, got \"{}\".", bad_legs, error);
         }
     }
     return true;
@@ -381,30 +442,74 @@ UnitTestResult test_dev_override(Logger&){
 
 
 //  The new game's start: 01.00 starts on "Confirm Choices" after the
-//  choices made by hand, without a save; every later row loads one. A run
-//  plays every row from its start to its end.
+//  choices made by hand, without a save; every later row loads one.
 UnitTestResult test_new_game_rows(Logger&){
-    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
-    for (const StoryCheckpoint& row : rows){
+    for (const StoryCheckpoint& row : story_checkpoints()){
         const bool no_save = story_row_starts_without_save(row);
         if (no_save != (row.id == "01.00")){
             return std::format("{}: starts without a save: {}; only 01.00 should.", row.id, no_save);
         }
     }
-    const size_t last = rows.size() - 1;
-    const auto ids = [](const std::vector<StoryCheckpoint>& run){
-        std::string text;
-        for (const StoryCheckpoint& row : run){
-            text += (text.empty() ? "" : " ") + row.id;
-        }
-        return text;
-    };
-    const std::vector<StoryCheckpoint> from_confirm = story_run_rows(rows, 0, last);
-    if (from_confirm.size() != rows.size() || from_confirm[0].id != "01.00"){
-        return std::format("A run from 01.00: expected every row from 01.00, got {}.", ids(from_confirm));
+    return true;
+}
+
+//  03.07d, the walk back to the Pokemon Center, is a story row like any
+//  other: fast travel is not open at 03.07's end, so every run lists and
+//  plays it, between 03.07 and 03.08.
+UnitTestResult test_center_walk_row(Logger&){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    size_t index = 0;
+    while (index < rows.size() && rows[index].id != "03.07d"){
+        index++;
     }
-    if (!story_run_rows(rows, 1, 0).empty() || !story_run_rows(rows, 0, rows.size()).empty()){
-        return "Expected no rows for a start after the end or an end past the table.";
+    if (index == 0 || index + 1 >= rows.size()
+        || rows[index - 1].id != "03.07" || rows[index + 1].id != "03.08"
+    ){
+        return "Expected 03.07d in the story rows, between 03.07 and 03.08.";
+    }
+    const std::string text = builtin_text("plza-03.07d.plan");
+    const std::string_view field = "\"save\": \"menu\"";
+    if (text.find(field) == std::string::npos){
+        return "Expected \"save\": \"menu\" in plza-03.07d.plan.json.";
+    }
+    const std::string error = dev_load_error("plza-03.07d.plan.json", replaced(text, field, "\"save\": \"menu\", \"dev_only\": true"));
+    if (error.find("/dev/plza-03.07d.plan.json") == std::string::npos){
+        return std::format("Expected an unknown \"dev_only\" field to fail naming its file, got \"{}\".", error);
+    }
+    return true;
+}
+
+//  The production story the program's dropdowns list, by index (the start
+//  and end options store the index): ids, the rows ending on the game's
+//  autosave and the rows reloading before them. Console runs name rows by
+//  these indices (03.07d is 18, 03.08 is 19), so a change to how the files
+//  are read must leave them as they are.
+UnitTestResult test_production_rows(Logger&){
+    const std::vector<std::string> ids{
+        "01.00", "01.01", "01.02", "01.03",
+        "02.01", "02.02", "02.03", "02.04", "02.05", "02.06", "02.07",
+        "03.01", "03.02", "03.03", "03.04", "03.05", "03.06", "03.07", "03.07d", "03.08", "03.09",
+    };
+    const std::set<std::string, std::less<>> autosaves{
+        "01.00", "01.01", "01.02", "02.01", "02.02", "02.03", "02.04", "02.05", "02.06", "02.07", "03.01", "03.03",
+    };
+    const std::set<std::string, std::less<>> reload_when_chained{
+        "01.02", "02.02", "02.03", "02.04", "02.05", "02.07", "03.01", "03.02", "03.04",
+    };
+    const std::set<std::string, std::less<>> reload_always{"03.04"};
+    const StoryData& data = builtin_story_data();
+    if (data.checkpoints.size() != ids.size()){
+        return std::format("Expected {} rows, got {}.", ids.size(), data.checkpoints.size());
+    }
+    for (size_t index = 0; index < ids.size(); index++){
+        if (data.checkpoints[index].id != ids[index]){
+            return std::format("Row {}: expected {}, got {}.", index, ids[index], data.checkpoints[index].id);
+        }
+    }
+    if (data.autosaves != autosaves || data.reload_when_chained != reload_when_chained
+        || data.reload_always != reload_always || !data.dev_files.empty()
+    ){
+        return "Expected the built-in autosave and reload rows, and no dev files.";
     }
     return true;
 }
@@ -415,6 +520,7 @@ struct AutoStoryTableCase{
         std::function<UnitTestResult(Logger&)> body;
     };
     Input input;
+    //  What each body checks is in its own code: these cases are functions.
     struct Expectation{
     };
     Expectation expectation;
@@ -473,18 +579,28 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
+        .name = "Story table: 03.05 heals at the Pokemon Center and saves there",
+        .input = {.body = test_mm3_heal_row},
+        .expectation = {},
+    },
+    {
         .name = "Story table: every row is ready",
         .input = {.body = test_every_row_ready},
         .expectation = {},
     },
     {
-        .name = "reload_when_chained: only true, only after an autosave row, never on a new game row",
+        .name = "reload_when_chained: never on the new game row",
         .input = {.body = test_reload_when_chained_field},
         .expectation = {},
     },
     {
         .name = "reload_when_chained: 01.02 after 01.01's autosave",
         .input = {.body = test_mm1_reload_when_chained},
+        .expectation = {},
+    },
+    {
+        .name = "reload_when_chained: \"always\" on 03.04, after 03.03's autosave",
+        .input = {.body = test_0304_reloads_always},
         .expectation = {},
     },
     {
@@ -498,8 +614,28 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
-        .name = "Start checks: 01.00 starts the new game without a save; a run plays every row",
+        .name = "Scene mash: the party bar held a second ends an overworld mash",
+        .input = {.body = test_scene_mash_party_bar_held},
+        .expectation = {},
+    },
+    {
+        .name = "Scene mash: a battle HUD with the party bar does not end an overworld mash",
+        .input = {.body = test_scene_mash_battle_hud_not_overworld},
+        .expectation = {},
+    },
+    {
+        .name = "Start checks: 01.00 starts the new game without a save",
         .input = {.body = test_new_game_rows},
+        .expectation = {},
+    },
+    {
+        .name = "Center walk: 03.07d is a story row between 03.07 and 03.08",
+        .input = {.body = test_center_walk_row},
+        .expectation = {},
+    },
+    {
+        .name = "Story table: the production rows by dropdown index, with their autosaves and reloads",
+        .input = {.body = test_production_rows},
         .expectation = {},
     },
 };

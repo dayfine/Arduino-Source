@@ -7,7 +7,7 @@
  *  (Pokemon/AutoStory), from the start checkpoint to the end one.
  *
  *  For lab tuning: at each start, a checkpoint file in
- *  <user files>/AutoStoryDev/plza/ (story_dev_folder()), e.g.
+ *  <user files>/AutoStoryDev/plza/ (story_dev_folder("plza")), e.g.
  *  plza-02.01.plan.json, replaces the built-in one of the same name, so a
  *  walk's legs can be retimed without a rebuild. The log names each file
  *  used; a bad one fails the run.
@@ -62,6 +62,9 @@ private:
     //  Off: a run of several checkpoints runs straight on at the rows whose
     //  plans say "reload_when_chained"; on: it reloads the save there.
     BooleanCheckBoxOption RELOAD_AT_BOUNDARIES;
+    //  On: the run starts from the backup save; off: from the latest, or
+    //  the backup save when the latest is past the start check.
+    BooleanCheckBoxOption START_FROM_BACKUP_SAVE;
 
     GoHomeWhenDoneOption GO_HOME_WHEN_DONE;
     EventNotificationsOption NOTIFICATIONS;

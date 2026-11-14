@@ -11,6 +11,7 @@
 #include <format>
 #include <functional>
 #include <iterator>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -33,6 +34,7 @@ namespace PokemonLZA{
 using namespace std::chrono_literals;
 using Pokemon::Observation;
 using Pokemon::StoryCheckpoint;
+using Pokemon::StoryRunPolicy;
 using Pokemon::StoryStep;
 using Pokemon::ZonePose;
 using EngineEvent = PokemonAutomation::ScreenEvent;
@@ -454,6 +456,41 @@ UnitTestResult test_arrival_quiet_fails(CancellableScope& scope){
     return true;
 }
 
+//  02.02's street scene (a "scene" step, A): A at each box and at the
+//  tutorial card, a wait while the party bar shows between lines, done once
+//  it has held a second (TalkOver's calm time, OVERWORLD_HOLD).
+UnitTestResult test_scene_step_presses_to_overworld(CancellableScope& scope){
+    FakeBackend backend = fake_plza({
+        look_at(0ms, {EngineEvent::DIALOG_BOX}),
+        with_reading(look_at(1000ms), TUTORIAL_CARD_READING),
+        look_at(2000ms, {EngineEvent::PLAYER_CAN_MOVE}),
+        look_at(2500ms, {EngineEvent::DIALOG_BOX}),
+        look_at(3000ms, {EngineEvent::PLAYER_CAN_MOVE}),
+        look_at(4000ms, {EngineEvent::PLAYER_CAN_MOVE}),
+    }, scope, Pokemon::StoryBackendKind::CONSOLE);
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("02.02", "street_scene"));
+    if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
+        return std::format("Expected the scene to end in the overworld: {}", to_string(report.run.failure));
+    }
+    return expect_inputs(backend, {"press A", "press A", "wait 250ms", "press A", "wait 250ms"});
+}
+
+//  A scene step not at its scene's trigger (02.02 after the Brigitte
+//  battle, console B, 2026-11-13): no box, choice or battle in the start
+//  window fails it, before an A mash talks to whoever stands in front.
+UnitTestResult test_scene_step_never_started(CancellableScope& scope){
+    FakeBackend backend = fake_plza({
+        look_at(0ms, {EngineEvent::FADE_BLACK}),
+        look_at(20000ms),
+        look_at(46000ms),
+    }, scope, Pokemon::StoryBackendKind::CONSOLE);
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("02.02", "street_scene"));
+    if (report.verdict == Pokemon::CheckpointVerdict::PASSED || report.run.failure.failure != "scene_never_started"){
+        return std::format("Expected a scene with no box to fail as scene_never_started, got {}", to_string(report.run.failure));
+    }
+    return expect_inputs(backend, {"wait 250ms", "wait 250ms"});
+}
+
 //  What PLZA refuses: console actions fail as console_only off a console,
 //  and tile walks and unknown actions fail the lint.
 UnitTestResult test_refused_steps(CancellableScope& scope){
@@ -560,7 +597,8 @@ struct BoundaryRun{
 //  game's reload counts itself.
 BoundaryRun run_boundary(
     std::vector<std::string> ids, std::vector<bool> platform, CancellableScope& scope,
-    StoryRunPolicy::BoundaryReload boundary_reload = StoryRunPolicy::BoundaryReload::AT_PLAN_BOUNDARIES
+    StoryRunPolicy::BoundaryReload boundary_reload = StoryRunPolicy::BoundaryReload::AT_PLAN_BOUNDARIES,
+    std::set<std::string, std::less<>> reload_always = {}
 ){
     std::vector<Observation<ZonePose>> looks;
     for (size_t i = 0; i < platform.size(); i++){
@@ -577,6 +615,7 @@ BoundaryRun run_boundary(
     };
     StoryData story;
     story.reload_when_chained = {"B"};
+    story.reload_always = std::move(reload_always);
     std::vector<StoryCheckpoint> rows;
     for (std::string& id : ids){
         rows.push_back(platform_row(std::move(id)));
@@ -625,6 +664,19 @@ UnitTestResult test_no_reload_unless_chained(CancellableScope& scope){
         if (!run.report.completed || run.reloads != 0 || line_index(run.lines, "reload_at_boundary") != run.lines.size()){
             return std::format("Expected no reload for {}: {}", joined(ids), joined(run.lines));
         }
+    }
+    return true;
+}
+
+//  Run straight through, a row that always reloads still reloads after the
+//  row before.
+UnitTestResult test_straight_through_reloads_always(CancellableScope& scope){
+    const BoundaryRun run = run_boundary(
+        {"A", "B"}, {true, true, false, false, false, false, true, true}, scope,
+        StoryRunPolicy::BoundaryReload::STRAIGHT_THROUGH, {"B"}
+    );
+    if (!run.report.completed || run.reloads != 1){
+        return std::format("Expected A and B with one reload, got {} reloads: {}", run.reloads, joined(run.lines));
     }
     return true;
 }
@@ -738,6 +790,7 @@ struct EngineTestCase{
         std::function<UnitTestResult(CancellableScope&)> body;
     };
     Input input;
+    //  What each body checks is in its own code: these cases are functions.
     struct Expectation{
     };
     Expectation expectation;
@@ -774,6 +827,8 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.name = "01.01 arrival_scenes: done on the mission banner once it has gone, A if it stays", .input = {.body = test_arrival_ends_on_mission_banner}, .expectation = {}},
     {.name = "01.03 after_andi: A at the mission complete card, then the banner, A if it stays", .input = {.body = test_after_andi_presses_complete_card}, .expectation = {}},
     {.name = "01.01 arrival_scenes: a quiet minute without the hint fails", .input = {.body = test_arrival_quiet_fails}, .expectation = {}},
+    {.name = "02.02 street_scene: A at boxes and cards, done once the party bar holds", .input = {.body = test_scene_step_presses_to_overworld}, .expectation = {}},
+    {.name = "02.02 street_scene: no box in the start window fails", .input = {.body = test_scene_step_never_started}, .expectation = {}},
     {.name = "01.02 battle_area: done on the \"A: Talk\" prompt", .input = {.body = test_battle_area_ends_on_interact_prompt}, .expectation = {}},
     {.name = "02.01 battle_zone_to_brigitte: a held walk waits, then holds each leg's angle", .input = {.body = test_held_walk_inputs}, .expectation = {}},
     {.name = "face_heading: turns by the minimap's heading", .input = {.body = test_face_heading}, .expectation = {}},
@@ -786,13 +841,101 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.name = "reload_when_chained: no reload from the row's save or for other rows", .input = {.body = test_no_reload_unless_chained}, .expectation = {}},
     {.name = "reload_when_chained: a reload onto the platform fails", .input = {.body = test_reload_lands_on_older_save}, .expectation = {}},
     {.name = "reload_when_chained: straight through, no reload at a boundary", .input = {.body = test_straight_through_has_no_reload}, .expectation = {}},
+    {.name = "reload_when_chained: \"always\" reloads straight through too", .input = {.body = test_straight_through_reloads_always}, .expectation = {}},
     {.name = "walk_to_prompt: walks until the A prompt, none when it shows", .input = {.body = test_walk_to_prompt}, .expectation = {}},
     {.name = "breakpoints: a walk pauses before each leg", .input = {.body = test_walk_pauses_before_each_leg}, .expectation = {}},
 };
 
+
+namespace{
+
+//  next_start_load_action(): the loads a run makes before its first
+//  checkpoint, from the start checks each load gives.
+struct StartLoadCase{
+    std::string name;
+    struct Input{
+        bool backup_first;
+        //  The start check after each load, in order; nothing: no check.
+        std::vector<std::optional<bool>> checks;
+    };
+    Input input;
+    struct Expectation{
+        std::vector<StartLoadAction> actions;
+    };
+    Expectation expectation;
+};
+
+using enum StartLoadAction;
+
+const StartLoadCase START_LOAD_CASES[] = {
+    {.name = "the latest save at the start: start", .input = {.backup_first = false, .checks = {true}}, .expectation = {.actions = {LOAD_LATEST, START}}},
+    {.name = "no start check: start from the latest save", .input = {.backup_first = false, .checks = {std::nullopt}}, .expectation = {.actions = {LOAD_LATEST, START}}},
+    {.name = "the latest save past the start, the backup at it: start from the backup", .input = {.backup_first = false, .checks = {false, true}}, .expectation = {.actions = {LOAD_LATEST, LOAD_BACKUP, START}}},
+    {.name = "neither save at the start: stop", .input = {.backup_first = false, .checks = {false, false}}, .expectation = {.actions = {LOAD_LATEST, LOAD_BACKUP, STOP}}},
+    {.name = "backup first, at the start: start", .input = {.backup_first = true, .checks = {true}}, .expectation = {.actions = {LOAD_BACKUP, START}}},
+    {.name = "backup first, not at the start: stop", .input = {.backup_first = true, .checks = {false}}, .expectation = {.actions = {LOAD_BACKUP, STOP}}},
+};
+
+std::string_view action_name(StartLoadAction action){
+    switch (action){
+    case LOAD_LATEST:
+        return "load latest";
+    case LOAD_BACKUP:
+        return "load backup";
+    case START:
+        return "start";
+    case STOP:
+        return "stop";
+    }
+    return "?";
+}
+
+std::string action_names(const std::vector<StartLoadAction>& actions){
+    std::string out;
+    for (StartLoadAction action : actions){
+        out += std::format("{}{}", out.empty() ? "" : ", ", action_name(action));
+    }
+    return out;
+}
+
+class Test_StartLoad : public UnitTest{
+public:
+    explicit Test_StartLoad(const StartLoadCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStoryEngine - start load: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        std::vector<StartLoad> loads;
+        std::vector<StartLoadAction> actions;
+        while (actions.size() < 5){
+            const StartLoadAction action = next_start_load_action(m_case.input.backup_first, loads);
+            actions.push_back(action);
+            if (action == START || action == STOP){
+                break;
+            }
+            if (loads.size() >= m_case.input.checks.size()){
+                return std::format("Loaded more than the {} checks given: {}.", m_case.input.checks.size(), action_names(actions));
+            }
+            loads.push_back({.save = action == LOAD_BACKUP ? StartSave::BACKUP : StartSave::LATEST, .at_start = m_case.input.checks[loads.size()]});
+        }
+        if (actions != m_case.expectation.actions){
+            return std::format("Expected [{}], got [{}].", action_names(m_case.expectation.actions), action_names(actions));
+        }
+        return true;
+    }
+
+private:
+    const StartLoadCase& m_case;
+};
+
+} // namespace
+
 void add_tests_AutoStoryEngine(UnitTestDatabase& database){
     for (const EngineTestCase& item : ENGINE_TEST_CASES){
         database.add<Test_AutoStoryEngine>(item);
+    }
+    for (const StartLoadCase& item : START_LOAD_CASES){
+        database.add<Test_StartLoad>(item);
     }
 }
 

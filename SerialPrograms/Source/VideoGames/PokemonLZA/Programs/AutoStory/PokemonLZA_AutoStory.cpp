@@ -8,6 +8,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
@@ -40,7 +41,7 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "PokemonLZA:AutoStory",
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Play the main story of Pokemon Legends: Z-A. Prototype: Main Missions 01-02 as recorded on a console; plays from a new game through the first night at Hotel Z. "
+        "Play the main story of Pokemon Legends: Z-A. Prototype: Main Missions 01-03 as recorded on a console; plays from a new game to Mable's Rock Smash TM. "
         "Start a new game and pick its language, look and name by hand: checkpoint 01.00 starts on the Confirm Choices screen that follows. "
         "It checks that screen, presses nothing anywhere else, and picks Ready!. Later checkpoints load their save first. "
         "Set Game Language to the language the game is set to: the program reads place names in it.",
@@ -70,6 +71,14 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
+constexpr std::string_view RELOAD_AT_BOUNDARIES_LABEL =
+    "<b>Reload at Checkpoint Boundaries:</b><br>Reload the save before a checkpoint whose plan asks for it "
+    "when the run comes from the checkpoint before. Off: run straight on. A failed checkpoint's retry reloads either way.";
+constexpr std::string_view START_FROM_BACKUP_SAVE_LABEL =
+    "<b>Start from the Backup Save:</b><br>The run starts by loading the backup save "
+    "(title screen Up + B + X), the save before the latest. Off: it loads the latest save and, when a checkpoint "
+    "with a start check is not at its start there, the backup save. Later reloads load the latest save either way.";
+
 } // namespace
 
 
@@ -92,12 +101,8 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         StarterChoice::CHIKORITA
     )
-    , RELOAD_AT_BOUNDARIES(
-        "<b>Reload at Checkpoint Boundaries:</b><br>Reload the save before a checkpoint whose plan asks for it "
-        "when the run comes from the checkpoint before. Off: run straight on. A failed checkpoint's retry reloads either way.",
-        LockMode::LOCK_WHILE_RUNNING,
-        false
-    )
+    , RELOAD_AT_BOUNDARIES(std::string(RELOAD_AT_BOUNDARIES_LABEL), LockMode::LOCK_WHILE_RUNNING, false)
+    , START_FROM_BACKUP_SAVE(std::string(START_FROM_BACKUP_SAVE_LABEL), LockMode::LOCK_WHILE_RUNNING, false)
     , GO_HOME_WHEN_DONE(false)
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
@@ -111,6 +116,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(BATTLE_AI);
     PA_ADD_OPTION(RELOAD_AT_BOUNDARIES);
+    PA_ADD_OPTION(START_FROM_BACKUP_SAVE);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
@@ -119,15 +125,17 @@ namespace{
 
 //  Checkpoints after the new game start from a save (01.01 from the
 //  platform autosave), so the run loads it first instead of assuming the
-//  game is already there. 01.00 starts without one.
+//  game is already there: the latest save, or the backup save when the
+//  latest is past the start (load_checkpoint_start()). 01.00 starts
+//  without one.
 void load_start_save(
-    ConsoleHandle& console, const StoryGame<ZonePose>& game, StoryBackend<ZonePose>& backend,
-    const std::vector<StoryCheckpoint>& rows, size_t first
+    ConsoleHandle& console, StoryEnv& story, StoryBackend<ZonePose>& backend,
+    const std::vector<StoryCheckpoint>& rows, size_t first, bool backup_first
 ){
     if (story_row_starts_without_save(rows[first])){
         return;
     }
-    const Outcome loaded = game.reload(backend);
+    const Outcome loaded = load_checkpoint_start(story, backend, rows[first].id, backup_first);
     if (!loaded.succeeded()){
         throw OperationFailedException(
             ErrorReportMode::NO_ERROR_REPORT,
@@ -138,13 +146,13 @@ void load_start_save(
 }
 
 //  The story for this run: the built-in checkpoints, with those of
-//  story_dev_folder() in their place, read now so a run after an edit
+//  story_dev_folder("plza") in their place, read now so a run after an edit
 //  plays the edited walks. Logs each dev file it uses; a bad one fails the
 //  run.
 StoryData load_run_story(ConsoleHandle& console){
-    const std::string folder = story_dev_folder();
+    const std::string folder = story_dev_folder("plza");
     try{
-        StoryData data = load_story_data(read_story_dev_files(folder));
+        StoryData data = load_story_data(read_story_dev_files(folder, "plza"));
         for (const auto& [name, path] : data.dev_files){
             console.log(std::format("AutoStory: using dev checkpoint {} from {}", name, path));
         }
@@ -206,7 +214,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const StoryGame<ZonePose> game = run_game(story, STARTER, story_data, RUN.breakpoints(), context);
     StoryEngine<ZonePose> engine(game, backend);
     RunState state;
-    load_start_save(env.console, game, backend, rows, first);
+    load_start_save(env.console, story, backend, rows, first, START_FROM_BACKUP_SAVE);
 
     if (const std::optional<VerifyPolicy> verify = RUN.VERIFY.policy()){
         const VerifyReport report = engine.verify_checkpoint(rows[first], *verify, state);
@@ -222,7 +230,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
         return;
     }
-    const std::vector<StoryCheckpoint> checkpoints = story_run_rows(rows, first, last);
+    const std::vector<StoryCheckpoint> checkpoints = story_run_rows(std::span<const StoryCheckpoint>(rows), first, last);
     const SegmentReport report = run_plza_segment(game, story_data, checkpoints, run_policy(RUN, RELOAD_AT_BOUNDARIES, env.console), engine, backend, state);
     record_story_counts(report.story_counts(), env.current_stats<AutoStoryStats>());
     env.update_stats();

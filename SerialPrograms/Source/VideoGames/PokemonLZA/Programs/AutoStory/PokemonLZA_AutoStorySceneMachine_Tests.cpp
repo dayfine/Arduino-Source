@@ -9,6 +9,7 @@
 
 #include <format>
 #include <functional>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -41,6 +42,8 @@ struct Read{
     bool banner = false;
     //  The mission complete card (MISSION_COMPLETE_READING) shows.
     bool complete = false;
+    //  The autosave badge (AUTOSAVE_READING) shows.
+    bool autosave = false;
 };
 
 //  Feeds `reads` to a timeline as the machine does (classify, then record
@@ -65,6 +68,9 @@ UnitTestResult check_reads(const SceneMachineConfig& config, const std::vector<R
         }
         if (read.complete){
             look.readings[std::string(MISSION_COMPLETE_READING)] = 1;
+        }
+        if (read.autosave){
+            look.readings[std::string(AUTOSAVE_READING)] = 1;
         }
         const SceneScreen got = timeline.classify(look);
         if (got != read.expected){
@@ -241,6 +247,101 @@ UnitTestResult test_blind_press_keeps_quiet(Logger& logger){
         {0ms, NOTHING, false, SceneScreen::DIALOG, false, true},
         {30000ms, NOTHING, true, SceneScreen::SCENE_STILL},
     });
+}
+
+//  02.04's check_in: the party bar without its D-pad hint reads as
+//  nothing, so 5 s quiet past the 30 s minimum is control. The text-free
+//  opening gets blind A; after the scene the quiet end comes before any
+//  blind A, which could talk to Taunie or AZ (console B, 2026-11-13).
+UnitTestResult test_check_in_quiet_is_control(Logger&){
+    SceneMachineConfig config = arrival_config();
+    config.quiet = 5000ms;
+    config.min_length = 30000ms;
+    config.quiet_is_control = true;
+    return check_reads(config, {
+        {0ms, NOTHING, false, SceneScreen::SCENE_MOVING},
+        {5000ms, NOTHING, false, SceneScreen::BLIND_PRESS},
+        {5400ms, NOTHING, false, SceneScreen::SCENE_MOVING},
+        {16700ms, DIALOG, false, SceneScreen::DIALOG},
+        {18000ms, NOTHING, false, SceneScreen::SCENE_MOVING},
+        {20000ms, DIALOG, false, SceneScreen::DIALOG},
+        {22000ms, NOTHING, false, SceneScreen::SCENE_MOVING},
+        {24000ms, DIALOG, false, SceneScreen::DIALOG},
+        {75000ms, DIALOG, false, SceneScreen::DIALOG},
+        {75400ms, NOTHING, false, SceneScreen::SCENE_MOVING},
+        {79900ms, NOTHING, true, SceneScreen::SCENE_STILL},
+        {80000ms, NOTHING, true, SceneScreen::QUIET_END},
+    });
+}
+
+//  The autosave badge, then 5 s with no box, ends the scene as control
+//  before the minimum length and the minute's quiet time; a box after the
+//  badge starts the 5 s again, and the badge is a cue, so no blind A
+//  comes before (02.04's check-in autosaves after AZ's talk, console B
+//  2026-11-13).
+UnitTestResult test_autosave_then_quiet_is_control(Logger&){
+    SceneMachineConfig config = arrival_config();
+    config.min_length = 30000ms;
+    return check_reads(config, {
+        {0ms, DIALOG, false, SceneScreen::DIALOG},
+        {2000ms, NOTHING, false, SceneScreen::SCENE_MOVING, false, false, false, false, true},
+        {3000ms, NOTHING, false, SceneScreen::SCENE_MOVING, false, false, false, false, true},
+        {4000ms, DIALOG, false, SceneScreen::DIALOG},
+        {5000ms, NOTHING, false, SceneScreen::SCENE_MOVING},
+        {8900ms, NOTHING, true, SceneScreen::SCENE_STILL},
+        {9000ms, NOTHING, true, SceneScreen::AUTOSAVE_QUIET},
+    });
+}
+
+//  With no badge, the same scene waits out the minute's quiet time.
+UnitTestResult test_no_autosave_no_early_end(Logger&){
+    SceneMachineConfig config = arrival_config();
+    config.min_length = 30000ms;
+    config.blind_press_after = std::nullopt;
+    return check_reads(config, {
+        {0ms, DIALOG, false, SceneScreen::DIALOG},
+        {9000ms, NOTHING, true, SceneScreen::SCENE_STILL},
+        {59900ms, NOTHING, true, SceneScreen::SCENE_STILL},
+        {60000ms, NOTHING, true, SceneScreen::QUIET_END},
+    });
+}
+
+//  The autosave log names each appearance of the badge once, with the
+//  event last started; a look without it shorter than the gap between
+//  autosaves is the same appearance.
+UnitTestResult test_autosave_spots(Logger&){
+    const WallClock start = current_time();
+    AutosaveSpots spots;
+    spots.on_log("[Event] 02.04/2 walk_to_desk: start");
+    spots.on_log("[Event] 02.04/2 walk_to_desk: done");
+    spots.on_log("[Event] 02.04/3 check_in: start");
+    spots.on_log("[Step] check_in GAME/mash_to_move_hints: ok");
+    const std::pair<Milliseconds, bool> looks[] = {
+        {0ms, false}, {250ms, true}, {500ms, true}, {750ms, false}, {1000ms, true}, {1250ms, false},
+    };
+    std::vector<std::string> lines;
+    for (const auto& [at, badge] : looks){
+        std::optional<std::string> line = spots.on_look(badge, start + at);
+        if (line){
+            lines.push_back(*line);
+        }
+    }
+    spots.on_log("[Event] 02.05/1 take_elevator_up: start");
+    std::optional<std::string> later = spots.on_look(true, start + 60000ms);
+    if (later){
+        lines.push_back(*later);
+    }
+    const std::vector<std::string> expected = {
+        "[Autosave] 02.04/3 check_in", "[Autosave] 02.05/1 take_elevator_up",
+    };
+    if (lines != expected){
+        std::string got;
+        for (const std::string& line : lines){
+            got += std::format("\"{}\" ", line);
+        }
+        return std::format("Expected the two appearances with their events, got: {}", got);
+    }
+    return true;
 }
 
 //  Without a quiet time only the party bar ends an overworld scene: a
@@ -420,6 +521,26 @@ const SceneMachineCase SCENE_MACHINE_CASES[] = {
     {
         .name = "blind presses keep the quiet end, and only in an A mash",
         .input = {.body = test_blind_press_keeps_quiet},
+        .expectation = {},
+    },
+    {
+        .name = "02.04 check_in: quiet after the scene is control, before blind A",
+        .input = {.body = test_check_in_quiet_is_control},
+        .expectation = {},
+    },
+    {
+        .name = "the autosave badge, then 5 s with no box, is control",
+        .input = {.body = test_autosave_then_quiet_is_control},
+        .expectation = {},
+    },
+    {
+        .name = "no autosave badge: no early quiet end",
+        .input = {.body = test_no_autosave_no_early_end},
+        .expectation = {},
+    },
+    {
+        .name = "the autosave log names each badge once, with its event",
+        .input = {.body = test_autosave_spots},
         .expectation = {},
     },
     {

@@ -15,7 +15,9 @@
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryDialogs.h"
+#include "PokemonLZA_AutoStoryScenes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -24,38 +26,80 @@ namespace PokemonLZA{
 using namespace std::chrono_literals;
 
 
-void mash_to_overworld(ConsoleHandle& console, ProControllerContext& context, Button button, Milliseconds timeout){
-    //  The party list shows between lines of a scene too; a second of it is
-    //  the overworld.
-    OverworldPartySelectionWatcher overworld(COLOR_WHITE, &console.overlay(), 1000ms);
+void press_until_overworld(
+    ConsoleHandle& console, ProControllerContext& context,
+    const std::function<void(ProControllerContext&)>& presses,
+    Milliseconds timeout, std::string_view failure
+){
+    OverworldPartySelectionWatcher overworld(COLOR_WHITE, &console.overlay(), OVERWORLD_HOLD);
     context.wait_for_all_requests();
     const int ret = run_until<ProControllerContext>(
         console, context,
-        [button, timeout](ProControllerContext& context){
-            pbf_mash_button(context, button, timeout);
+        [&presses, timeout](ProControllerContext& context){
+            const WallClock deadline = current_time() + timeout;
+            while (current_time() < deadline){
+                presses(context);
+                context.wait_for_all_requests();
+            }
         },
         {overworld}
     );
     if (ret < 0){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
-            std::format("mash_to_overworld(): no overworld after {} ms.", timeout.count()),
+            std::string(failure),
             console
         );
     }
 }
 
+void mash_to_overworld(ConsoleHandle& console, ProControllerContext& context, Button button, Milliseconds timeout){
+    press_until_overworld(
+        console, context,
+        [button, timeout](ProControllerContext& context){
+            pbf_mash_button(context, button, timeout);
+        },
+        timeout, std::format("mash_to_overworld(): no overworld after {} ms.", timeout.count())
+    );
+}
+
+ScreensPassed press_a_until_quiet(
+    ConsoleHandle& console, ProControllerContext& context,
+    StoryDialogKinds kinds, Milliseconds quiet, Milliseconds timeout
+){
+    StoryDialogDetector any_dialog(kinds);
+    ScreensPassed passed;
+    WallClock last_busy = current_time();
+    const WallClock deadline = last_busy + timeout;
+    while (current_time() - last_busy < quiet){
+        if (current_time() >= deadline){
+            passed.timed_out = true;
+            return passed;
+        }
+        context.wait_for_all_requests();
+        const VideoSnapshot screen = console.video().snapshot();
+        const bool card_now = screen && tutorial_card_shows(screen);
+        if (card_now || (screen && any_dialog.detect(screen))){
+            passed.card = passed.card || card_now;
+            passed.text = passed.text || !card_now;
+            last_busy = current_time();
+            pbf_press_button(context, BUTTON_A, 160ms, 840ms);
+        }else{
+            context.wait_for(250ms);
+        }
+    }
+    return passed;
+}
+
 void talk_to_facing(ConsoleHandle& console, ProControllerContext& context){
-    FlatWhiteDialogWatcher white(COLOR_RED, &console.overlay());
-    BlueDialogWatcher blue(COLOR_BLUE, &console.overlay());
-    TealDialogWatcher teal(COLOR_GREEN, &console.overlay());
+    StoryDialogWatcher dialog;
     context.wait_for_all_requests();
     const int ret = run_until<ProControllerContext>(
         console, context,
         [](ProControllerContext& context){
             pbf_press_button(context, BUTTON_A, 160ms, 5000ms);
         },
-        {white, blue, teal}
+        {dialog}
     );
     if (ret < 0){
         OperationFailedExceptionWithScreenshot::fire(
@@ -81,6 +125,9 @@ std::optional<double> wait_for_choice_arrow(ConsoleHandle& console, ProControlle
 
 } // namespace
 
+//  TODO: unify with get_current_selector_index()
+//  (PokemonLZA_FastTravelNavigation.h) - the dialog choices' row spacing is
+//  not measured, so this counts rows down from the top.
 void choose_dialog_option(ConsoleHandle& console, ProControllerContext& context, size_t index){
     //  Some questions show their choices only after A closes the question's
     //  text: the Research Lab elevator's "which floor?" (console B,

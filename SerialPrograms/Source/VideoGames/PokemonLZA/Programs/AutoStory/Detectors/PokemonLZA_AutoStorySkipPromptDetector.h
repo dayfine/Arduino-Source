@@ -21,6 +21,9 @@ namespace PokemonLZA{
 //  The cutscene's "(+) Hold button to skip" badge at the top right: the
 //  white (+) icon, white text on the badge, and the badge's dark, even
 //  strip under the text.
+//  TODO: unify with ButtonDetector's ButtonType::ButtonPlus
+//  (Inference/PokemonLZA_ButtonDetector.h) - no PLZA frames yet to verify
+//  its Plus template on this badge.
 class SkipPromptDetector : public StaticScreenDetector{
 public:
     explicit SkipPromptDetector(Color color = COLOR_MAGENTA);

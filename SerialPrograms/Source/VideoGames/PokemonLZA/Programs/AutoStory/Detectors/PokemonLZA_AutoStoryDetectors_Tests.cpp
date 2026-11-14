@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Synthetic frames, and console frames (1920x1080 JPEG) from
+ *  Synthetic frames, and console frames (1920x1080 JPEG or PNG) from
  *  CommandLineTests/PokemonLZA/AutoStoryDetectors/, one folder per scene
  *  sequence.
  *
@@ -26,6 +26,7 @@
 #include "PokemonLZA_AutoStoryControlsHintDetector.h"
 #include "PokemonLZA_AutoStoryDetectors_Tests.h"
 #include "PokemonLZA_AutoStoryMainMissionBannerDetector.h"
+#include "PokemonLZA_AutoStoryMinimapZoneDetector.h"
 #include "PokemonLZA_AutoStoryMissionCompleteDetector.h"
 #include "PokemonLZA_AutoStoryPlatformArrivalDetector.h"
 #include "PokemonLZA_AutoStorySkipPromptDetector.h"
@@ -51,6 +52,7 @@ struct DetectorReads{
     std::optional<bool> advance_arrow = {};
     std::optional<bool> mission_banner = {};
     std::optional<bool> mission_complete = {};
+    std::optional<bool> minimap_zone = {};
 };
 
 struct DetectorField{
@@ -65,6 +67,7 @@ const DetectorField DETECTOR_FIELDS[] = {
     {"advance arrow", &DetectorReads::advance_arrow},
     {"mission banner", &DetectorReads::mission_banner},
     {"mission complete", &DetectorReads::mission_complete},
+    {"minimap zone", &DetectorReads::minimap_zone},
 };
 
 //  `reads` with every detector checked: one it leaves unset must not fire.
@@ -108,13 +111,14 @@ struct StoryDetectors{
     AdvanceArrowDetector arrow;
     MainMissionBannerDetector banner;
     MissionCompleteDetector complete;
+    MinimapZoneDetector zone;
 
     DetectorReads read(const ImageViewRGB32& frame){
         return DetectorReads{
             .platform = platform.detect(frame), .skip_prompt = skip.detect(frame),
             .autosave = autosave.detect(frame), .controls_hint = hint.detect(frame),
             .advance_arrow = arrow.detect(frame), .mission_banner = banner.detect(frame),
-            .mission_complete = complete.detect(frame),
+            .mission_complete = complete.detect(frame), .minimap_zone = zone.detect(frame),
         };
     }
 };
@@ -188,6 +192,17 @@ ImageRGB32 chevron_sized_block_frame(){
     return image;
 }
 
+//  The autosave badge's pencil, 48 px right of the Chinese badge's (where
+//  the shorter Japanese text puts it), over `background`: a white stroke 4 px
+//  wide in a `glow` band 12 px wide.
+ImageRGB32 autosave_badge_frame(uint32_t background, uint32_t glow){
+    ImageRGB32 image(WIDTH, HEIGHT);
+    image.fill(background);
+    fill_box(1655, 73, 1667, 104, glow, image);
+    fill_box(1659, 73, 1663, 104, 0xffffffff, image);
+    return image;
+}
+
 //  How mission_banner_frame() draws the icon.
 enum class BannerIcon{
     NONE,
@@ -227,6 +242,21 @@ constexpr uint32_t BOX_TEXT_DARK = 0xff323648;
 constexpr uint32_t HINT_SKY_BLUE = 0xff7dd2fa;
 constexpr uint32_t BANNER_YELLOW = 0xfffad228;
 constexpr uint32_t COMPLETE_GREEN = 0xffa5f07d;
+constexpr uint32_t ZONE_GREEN = 0xffa0f0c0;
+constexpr uint32_t ARROW_BLUE = 0xff00a0f0;
+constexpr uint32_t MAP_BEIGE = 0xffe0d0b0;
+
+//  The minimap's middle on `ground` (the zone's translucent green, or the
+//  city map's beige), with the player's arrow (a 10 x 20 blue block at the
+//  middle) when `arrow`.
+ImageRGB32 minimap_frame(uint32_t ground, bool arrow){
+    ImageRGB32 image = solid_frame(GRAY);
+    fill_box(40, 40, 320, 320, ground, image);
+    if (arrow){
+        fill_box(175, 170, 185, 190, ARROW_BLUE, image);
+    }
+    return image;
+}
 
 struct SyntheticFrameCase{
     std::string name;
@@ -249,13 +279,16 @@ const SyntheticFrameCase SYNTHETIC_FRAME_CASES[] = {
     {
         .name = "a black frame",
         .input = {.frame = []{ return solid_frame(BLACK); }},
-        .expectation = {.reads = {.skip_prompt = false, .autosave = false, .controls_hint = false, .advance_arrow = false}},
+        .expectation = {.reads = {
+            .skip_prompt = false, .autosave = false, .controls_hint = false, .advance_arrow = false, .minimap_zone = false,
+        }},
     },
     {
         .name = "a white frame",
         .input = {.frame = []{ return solid_frame(WHITE); }},
         .expectation = {.reads = {
             .skip_prompt = false, .autosave = false, .controls_hint = false, .advance_arrow = false, .mission_banner = false,
+            .minimap_zone = false,
         }},
     },
     {
@@ -277,6 +310,24 @@ const SyntheticFrameCase SYNTHETIC_FRAME_CASES[] = {
         .name = "the skip badge",
         .input = {.frame = skip_badge_frame},
         .expectation = {.reads = {.skip_prompt = true, .autosave = false}},
+    },
+    //  The autosave badge's glow is bright over a dark sky and dim over a
+    //  lamp-lit wall (about 28, 70, 85: 02.04's check-in, console B
+    //  2026-11-13, frame 0075, which the badge detector missed).
+    {
+        .name = "the autosave badge with a bright glow",
+        .input = {.frame = []{ return autosave_badge_frame(0xff101418, 0xff28c8e6); }},
+        .expectation = {.reads = {.autosave = true}},
+    },
+    {
+        .name = "the autosave badge with a dim glow over a dark wall",
+        .input = {.frame = []{ return autosave_badge_frame(0xff252722, 0xff1c4655); }},
+        .expectation = {.reads = {.autosave = true}},
+    },
+    {
+        .name = "the autosave badge's white stroke with no glow",
+        .input = {.frame = []{ return autosave_badge_frame(0xff252722, 0xff252722); }},
+        .expectation = {.reads = {.autosave = false}},
     },
     {
         .name = "the controls hint card",
@@ -332,6 +383,26 @@ const SyntheticFrameCase SYNTHETIC_FRAME_CASES[] = {
         .name = "a frame all in the card's green",
         .input = {.frame = []{ return solid_frame(COMPLETE_GREEN); }},
         .expectation = {.reads = {.mission_complete = false}},
+    },
+    {
+        .name = "the minimap in a wild zone: the player's arrow on the zone's green",
+        .input = {.frame = []{ return minimap_frame(ZONE_GREEN, true); }},
+        .expectation = {.reads = {.minimap_zone = true}},
+    },
+    {
+        .name = "the zone's green on the minimap without the player's arrow",
+        .input = {.frame = []{ return minimap_frame(ZONE_GREEN, false); }},
+        .expectation = {.reads = {.minimap_zone = false}},
+    },
+    {
+        .name = "the minimap in the city: the player's arrow on the map's beige",
+        .input = {.frame = []{ return minimap_frame(MAP_BEIGE, true); }},
+        .expectation = {.reads = {.minimap_zone = false}},
+    },
+    {
+        .name = "a frame all in the zone's green",
+        .input = {.frame = []{ return solid_frame(ZONE_GREEN); }},
+        .expectation = {.reads = {.minimap_zone = false}},
     },
 };
 
@@ -430,9 +501,15 @@ std::optional<DetectorReads> arrival_to_mission_banner(std::string_view name){
     };
 }
 
-//  Every detector as named; the banner on 0181-0189, no complete card.
+//  Every detector as named; the banner on 0181-0189, no complete card. The
+//  autosave badge on 0197 too: it is named "nothing" but shows the badge
+//  (Traditional Chinese, top right), right after the black fade.
 std::optional<DetectorReads> arrival_past_mission_banner(std::string_view name){
-    return as_named(name);
+    DetectorReads want = as_named(name);
+    if (name.starts_with("0197-")){
+        want.autosave = true;
+    }
+    return want;
 }
 
 //  As named, and the complete card on 0045 and 0046 (named "nothing"); the
@@ -440,6 +517,20 @@ std::optional<DetectorReads> arrival_past_mission_banner(std::string_view name){
 std::optional<DetectorReads> mission_complete_to_next_banner(std::string_view name){
     DetectorReads want = as_named(name);
     want.mission_complete = name.starts_with("0045-") || name.starts_with("0046-");
+    return want;
+}
+
+//  03.07's last catches to 03.08's start in Wild Zone 1 (PNG): three black
+//  fades, one city frame and the autosave as named; the minimap shows the
+//  player in the zone's green on the last three (0075-0077), 0077 being
+//  where 03.08 starts (the far gate at 127).
+std::optional<DetectorReads> catches_to_zone_1_start(std::string_view name){
+    const std::optional<int> index = frame_number(name, 0, 4);
+    if (!index){
+        return std::nullopt;
+    }
+    DetectorReads want = as_named(name);
+    want.minimap_zone = *index >= 75;
     return want;
 }
 
@@ -489,6 +580,11 @@ const FrameFolderCase FRAME_FOLDER_CASES[] = {
         .input = {.folder = "MissionCompleteToNextBanner"},
         .expectation = {.frames = 139, .reads = mission_complete_to_next_banner},
     },
+    {
+        .name = "the catches to 03.08's start in Wild Zone 1",
+        .input = {.folder = "CatchesToZone1Start"},
+        .expectation = {.frames = 8, .reads = catches_to_zone_1_start},
+    },
 };
 
 UnitTestResult check_frame_folder(const FrameFolderCase& test, Logger& logger){
@@ -501,7 +597,7 @@ UnitTestResult check_frame_folder(const FrameFolderCase& test, Logger& logger){
     std::string failures;
     for (const Filesystem::Path& path : Filesystem::list_directory(folder)){
         const std::string name = path.filename().string();
-        if (!name.ends_with(".jpg")){
+        if (!name.ends_with(".jpg") && !name.ends_with(".png")){
             continue;
         }
         const std::optional<DetectorReads> want = test.expectation.reads(name);
