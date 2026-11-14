@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
-#include "Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "Pokemon_Transitions.h"
 
 namespace PokemonAutomation{
