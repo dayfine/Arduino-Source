@@ -210,7 +210,7 @@ Pose StoryExecutor::walk_to(const Pose& from, const Pose& goal, const StoryStep&
     };
     const RouteWalkPlan plan{
         [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
-        label_of(step), {}, *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK
+        label_of(step), {}, *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK, pause_points()
     };
     const std::vector<TilePos> at = walk_route(stream(), context(), run_from_wild_battle, *maps, start, trainers, plan);
     sights = std::move(trainers.sights);
@@ -246,12 +246,33 @@ Outcome StoryExecutor::route(RunState& state, const StoryStep& step){
 
 namespace{
 
+//  The breakpoint before leg `index` of `count` of a LEGS step, when `at` is
+//  the one tile the leg starts on, to the tile it ends on.
+void pause_before_leg(
+    Pokemon::StoryPausePoints* pause, size_t index, size_t count, const Pokemon::StoryLeg& leg, const std::vector<TilePos>& at
+){
+    if (pause == nullptr){
+        return;
+    }
+    std::optional<TilePos> end;
+    if (at.size() == 1){
+        end = at[0];
+        for (int c = 0; c < leg.tiles; c++){
+            end = end->next(leg.direction);
+        }
+    }
+    pause->before_leg(Pokemon::story_leg_pause_label(index, count, leg.direction, leg.tiles, end));
+}
+
 //  A LEGS step "to_dialogue": taps its one leg until a dialogue starts on the
 //  way, wherever it starts (Dawn's at Sandgem's edge, r35/r36: an exact tile
 //  and banner raced her scene). The scene's lines are the next step's.
-Outcome leg_to_dialogue(VideoStream& stream, ProControllerContext& context, const StoryStep& step, const std::string& checkpoint){
+Outcome leg_to_dialogue(
+    VideoStream& stream, ProControllerContext& context, const StoryStep& step, const std::string& checkpoint, Pokemon::StoryPausePoints* pause
+){
     const auto& legs_list = story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs");
     const Pokemon::StoryLeg& leg = legs_list.front();
+    pause_before_leg(pause, 0, 1, leg, {});
     route_turn(stream, context, leg.direction);
     const auto [x, y] = dpad_of(leg.direction);
     const WalkResult walk = walk_tiles_dpad(stream, context, run_from_wild_battle, {x, y}, (size_t)leg.tiles, step.name);
@@ -270,9 +291,12 @@ Outcome leg_to_dialogue(VideoStream& stream, ProControllerContext& context, cons
 //  A LEGS step "to_map": runs its one leg until the location banner of
 //  pose_after's map shows, wherever it shows. A straight run along an open
 //  row needs no tile count (r41, r42: Sandgem's row 11 took us into the lab).
-Outcome leg_to_map(VideoStream& stream, ProControllerContext& context, const StoryStep& step, const std::string& checkpoint){
+Outcome leg_to_map(
+    VideoStream& stream, ProControllerContext& context, const StoryStep& step, const std::string& checkpoint, Pokemon::StoryPausePoints* pause
+){
     const auto& legs_list = story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs");
     const Pokemon::StoryLeg& leg = legs_list.front();
+    pause_before_leg(pause, 0, 1, leg, {});
     const std::string map = step.pose_after ? Pokemon::grid_pose_of(*step.pose_after).map : "";
     route_turn(stream, context, leg.direction);
     const auto [x, y] = dpad_of(leg.direction);
@@ -290,23 +314,27 @@ Outcome leg_to_map(VideoStream& stream, ProControllerContext& context, const Sto
 Outcome StoryExecutor::legs(RunState& state, const StoryStep& step){
     const auto& legs_list = story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs");
     if (step.action == "to_wall"){
-        for (const Pokemon::StoryLeg& leg : legs_list){
+        for (size_t index = 0; index < legs_list.size(); index++){
+            const Pokemon::StoryLeg& leg = legs_list[index];
+            pause_before_leg(pause_points(), index, legs_list.size(), leg, {});
             walk_until_stopped(stream(), context(), leg.direction, (size_t)leg.tiles, label_of(step));
         }
         return Pokemon::outcome_ok();
     }
     if (step.action == "to_dialogue"){
-        return leg_to_dialogue(stream(), context(), step, m_checkpoint);
+        return leg_to_dialogue(stream(), context(), step, m_checkpoint, pause_points());
     }
     if (step.action == "to_map"){
-        return leg_to_map(stream(), context(), step, m_checkpoint);
+        return leg_to_map(stream(), context(), step, m_checkpoint, pause_points());
     }
     const bool one_short_ok = step.action == "one_short_ok";
     if (!one_short_ok && !step.action.empty() && step.action != "legs"){
         return Pokemon::outcome_failed("unknown_action", step.action);
     }
     std::vector<TilePos> at = Pokemon::tiles_of(state.pose);
-    for (const Pokemon::StoryLeg& leg : legs_list){
+    for (size_t index = 0; index < legs_list.size(); index++){
+        const Pokemon::StoryLeg& leg = legs_list[index];
+        pause_before_leg(pause_points(), index, legs_list.size(), leg, at);
         //  Facing another way, a tap only turns (r256): turn first.
         route_turn(stream(), context(), leg.direction);
         const auto [x, y] = dpad_of(leg.direction);

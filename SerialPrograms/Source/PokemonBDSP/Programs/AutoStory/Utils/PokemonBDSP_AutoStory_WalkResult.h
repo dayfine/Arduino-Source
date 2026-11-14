@@ -16,7 +16,7 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "Pokemon/AutoStory/Pokemon_SceneJudges.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -51,17 +51,11 @@ enum class WalkOrigin{ CURRENT_LEG, MAY_PRECEDE_LEG };
 //  The fade and warp judgements are shared (Pokemon_ScreenEvents.h,
 //  Pokemon_SceneJudges.h); BDSP's walks and steps fill them.
 //  How a screen's fade looks.
-using Pokemon::WarpFade;
 //  "black fade", for the log.
-using Pokemon::warp_fade_name;
 //  A fade's most texture (the walk's black-screen watcher uses it too).
-using Pokemon::FADE_MAX_STDDEV_SUM;
 //  A dark fade's brightest rgb sum (likewise).
-using Pokemon::FADE_MAX_DARK_SUM;
 //  The fade a screen's middle shows, from its stats.
-using Pokemon::fade_of;
 //  The fade a screen shows.
-using Pokemon::fade_of_screen;
 //  What a walk or a step saw of a warp: a fade or a banner.
 using Pokemon::WarpSeen;
 
@@ -83,7 +77,7 @@ struct WalkResult{
     //  The shared judges read it (Pokemon::classify_interrupt()) to tell
     //  what stopped the walk and when its step was taken. Empty where
     //  nothing recorded it.
-    Pokemon::ScreenEventLog events{};
+    ScreenEventLog events{};
     //  When the walk's first input went in; `events` are timed against it.
     WallClock started = {};
     //  Chunks that moved after the last wild battle was run from: the taps

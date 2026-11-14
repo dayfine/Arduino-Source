@@ -51,7 +51,7 @@ Outcome mash_to_overworld(StoryBackend<PoseType>& backend){
     using namespace std::chrono_literals;
     for (size_t c = 0; c < MAX_TEXT_LOOKS; c++){
         const Observation<PoseType> now = backend.observe();
-        if (now.events.has(ScreenEvent::CAN_MOVE) && !now.events.has(ScreenEvent::TEXT_BOX)){
+        if (now.events.has(ScreenEvent::PLAYER_CAN_MOVE) && !now.events.has(ScreenEvent::DIALOG_BOX)){
             return outcome_ok();
         }
         backend.press(NintendoSwitch::BUTTON_A, 80ms, 120ms);
@@ -71,7 +71,7 @@ Outcome talk(StoryBackend<PoseType>& backend, const StoryActionCall&, RunState&)
     using namespace std::chrono_literals;
     backend.press(NintendoSwitch::BUTTON_A, 80ms, 120ms);
     for (size_t c = 0; c < MAX_OPEN_LOOKS; c++){
-        if (backend.observe().events.has(ScreenEvent::TEXT_BOX)){
+        if (backend.observe().events.has(ScreenEvent::DIALOG_BOX)){
             return mash_to_overworld(backend);
         }
         backend.wait(100ms);
@@ -97,7 +97,15 @@ inline std::optional<Pose> after_legs(const Pose& start, const std::vector<Story
 template <StoryPose PoseType>
 Outcome walk_legs(StoryBackend<PoseType>& backend, const StoryActionCall& call, RunState& state){
     const std::vector<StoryLeg>& legs = story_arg<std::vector<StoryLeg>>(call.args, "legs");
-    for (const StoryLeg& leg : legs){
+    const std::vector<TilePos> start = tiles_of(state.pose);
+    std::optional<TilePos> tile = start.size() == 1 ? std::optional<TilePos>(start[0]) : std::nullopt;
+    for (size_t index = 0; index < legs.size(); index++){
+        const StoryLeg& leg = legs[index];
+        for (int c = 0; tile && c < leg.tiles; c++){
+            tile = tile->next(leg.direction);
+        }
+        call.pause.before_leg(story_leg_pause_label(index, legs.size(), leg.direction, leg.tiles, tile));
+        backend.scope().throw_if_cancelled();
         for (int c = 0; c < leg.tiles; c++){
             backend.tap(leg.direction);
         }

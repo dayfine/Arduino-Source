@@ -583,6 +583,32 @@ UnitTestResult test_once_per_save_verify(){
 }
 
 
+//  An executor with pause points pauses before each of its checkpoint's steps,
+//  labelled with the checkpoint and the step's place; a skipped step does not
+//  pause, as it does not run.
+UnitTestResult test_pause_points(){
+    StoryCheckpoint data = lab_checkpoint();
+    data.steps[1].skip_if = {"done"};
+    std::vector<std::string> paused;
+    FakeExecutor executor;
+    executor.conditions = {"done"};
+    StoryPausePoints pause(StoryBreakpoints::STEPS, [&paused](std::string_view label){
+        paused.emplace_back(label);
+    });
+    executor.set_pause_points(&pause);
+    const Run result = run(data, executor);
+    const std::vector<std::string> expected{
+        "00.03/1 below_trigger", "00.03/3 to_the_lab", "00.03/4 talk_oak", "00.03/5 potions", "00.03/6 dance",
+    };
+    if (paused != expected){
+        return std::format("Expected a pause before each step that ran:{}{}", joined(paused), joined(result.lines));
+    }
+    FakeExecutor plain;
+    const Run quiet = run(data, plain);
+    return quiet.report.completed ? UnitTestResult(true) : UnitTestResult(joined(quiet.lines));
+}
+
+
 //  Two sections of a story, as BDSP has segments 00 and 01.
 const std::vector<StoryCheckpoint>& two_sections(){
     static const std::vector<StoryCheckpoint> rows{
@@ -727,18 +753,18 @@ UnitTestResult test_lint(){
 }
 
 
-struct StoryStepInput{
-    std::string name;
-    UnitTestResult (*test)();
-};
-
-struct StoryStepExpectation{
-    std::string_view description;
-};
-
 struct StoryStepTestCase{
-    StoryStepInput input;
-    StoryStepExpectation expectation;
+    struct Input{
+        std::string name;
+        UnitTestResult (*test)();
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryStepExecutor : public UnitTest{
@@ -779,6 +805,10 @@ const StoryStepTestCase STORY_STEP_CASES[] = {
     {
         .input = {.name = "tables as a segment, with a reload", .test = test_segment_of_tables},
         .expectation = {.description = "converts step tables into segment with checkpoint reload support"},
+    },
+    {
+        .input = {.name = "pause points pause before each step", .test = test_pause_points},
+        .expectation = {.description = "calls the game's pause points before each step that runs"},
     },
     {
         .input = {.name = "lint", .test = test_lint},

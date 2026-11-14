@@ -16,6 +16,7 @@
 #include <vector>
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
@@ -53,6 +54,8 @@ struct RouteWalkPlan{
     RobustPlanCosts costs = route_plan_costs();
     //  The pace of legs to a wall, which their tile counts are timed by.
     MoveSpeed speed = MoveSpeed::WALK;
+    //  The run's breakpoints: a pause before each leg (LEGS mode). None: never.
+    Pokemon::StoryPausePoints* pause = nullptr;
 };
 
 //  Walks from any of the world tiles `from` of `maps` until every tile the

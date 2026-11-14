@@ -19,7 +19,9 @@
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Pokemon_RouteLogLegs.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_WalkDpad.h"
@@ -97,6 +99,10 @@ private:
     ProControllerContext& m_context;
     const WildBattleEscape& m_escape;
 };
+
+//  A leg is about to be walked: its line to `io`'s log (note(), STATUS),
+//  then the breakpoint before it, if the run has `pause`.
+void leg_started(RouteIO& io, size_t number, size_t count, const Pokemon::PlannedRouteLeg& leg, Pokemon::StoryPausePoints* pause);
 
 
 

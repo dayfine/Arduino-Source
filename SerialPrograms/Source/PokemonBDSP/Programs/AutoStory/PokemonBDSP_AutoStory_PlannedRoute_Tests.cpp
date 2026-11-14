@@ -198,6 +198,34 @@ StoryWorld make_world(const std::vector<std::string>& rows){
 }
 
 
+//  A leg that starts is logged as the route log writes it, then paused
+//  before, in LEGS mode: its place, direction, tiles and the one tile it
+//  ends on; no destination when it may end on several.
+UnitTestResult test_pause_before_leg(Logger&){
+    Script script;
+    ScriptedRouteIO io(script);
+    std::vector<std::string> paused;
+    Pokemon::StoryPausePoints pause(Pokemon::StoryBreakpoints::LEGS, [&paused](std::string_view label){
+        paused.emplace_back(label);
+    });
+    pause.before_step("01.04/3 gym");
+    const Pokemon::PlannedRouteLeg one{
+        .leg = {.direction = Direction::EAST, .tiles = 4}, .after = {{.map = "Test", .pos = {10, 10}}}
+    };
+    Pokemon::PlannedRouteLeg several = one;
+    several.after.push_back({.map = "Test", .pos = {11, 10}});
+    leg_started(io, 2, 5, one, &pause);
+    leg_started(io, 3, 5, several, &pause);
+    leg_started(io, 4, 5, one, nullptr);
+    const std::vector<std::string> expected{
+        "01.04/3 gym", "01.04/3 gym leg 2/5 east 4 -> (10, 10)", "01.04/3 gym leg 3/5 east 4",
+    };
+    if (paused != expected || script.notes.size() != 3){
+        return std::format("Expected {} pauses and 3 log lines, got {} and {}.", expected.size(), paused.size(), script.notes.size());
+    }
+    return true;
+}
+
 //  r54: a trainer's line froze the check walk at a leg's wall; after the
 //  battle the walk on reached the wall, but the check still judged the
 //  frozen walk's DIALOG and failed. The walk on is what counts.
@@ -754,6 +782,10 @@ private:
 
 
 const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
+    {
+        .input = {"a leg's breakpoint", test_pause_before_leg},
+        .expectation = {},
+    },
     {
         .input = {"a trainer on a wall leg, then on to the wall", test_wall_leg_trainer_on_the_way},
         .expectation = {},
