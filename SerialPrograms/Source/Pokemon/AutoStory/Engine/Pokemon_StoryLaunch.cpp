@@ -10,6 +10,8 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
+#include "NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.h"
 #include "Pokemon_StoryLaunch.h"
 
 namespace PokemonAutomation{
@@ -120,6 +122,14 @@ private:
     //  The cursor to the game's tile, then the game closed if it must
     //  load again, then A on the tile.
     std::optional<Outcome> on_home(const ScreenObservation& observation){
+        if (m_launch_pressed && m_home_waited < m_policy.launch_wait){
+            if (m_home_waited == Milliseconds(0)){
+                log("home", "waiting for the game to start");
+            }
+            m_home_waited += m_policy.poll;
+            m_backend.wait(m_policy.poll);
+            return std::nullopt;
+        }
         if (!m_policy.tile_selected(observation)){
             return move_to_tile();
         }
@@ -128,6 +138,8 @@ private:
             return press("home", {.button = BUTTON_X}, m_policy.presses_per_screen, "close the game");
         }
         m_launched = true;
+        m_launch_pressed = true;
+        m_home_waited = Milliseconds(0);
         return press("home", {.button = BUTTON_A}, m_policy.presses_per_screen, "launch the game");
     }
 
@@ -220,11 +232,22 @@ private:
     //  A on the game's tile, or the title: until the overworld, a screen
     //  the policy doesn't know is the game booting or loading.
     bool m_launched = false;
+    //  A was pressed on the game's tile, and HOME has shown for
+    //  `m_home_waited` since.
+    bool m_launch_pressed = false;
+    Milliseconds m_home_waited = Milliseconds(0);
     bool m_backup_sent = false;
 };
 
 
 } // namespace
+
+
+std::function<bool(const ScreenObservation& look)> switch_home_tile_named(Language language, std::string name){
+    return [language, name = std::move(name)](const ScreenObservation& look){
+        return look.frame && look.frame->frame && selected_home_tile_is(language, *look.frame->frame, name);
+    };
+}
 
 
 template <StoryPose PoseType>

@@ -28,6 +28,7 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/Time.h"
+#include "CommonFramework/Language.h"
 #include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
@@ -90,7 +91,8 @@ struct StoryLaunchPolicy{
     std::string game = {};
     //  On HOME: whether the cursor is on this game's tile. The launch
     //  presses A on HOME only then, as A launches whatever tile is
-    //  selected. Required.
+    //  selected. Required; on a Switch, switch_home_tile_named() with the
+    //  name HOME shows for the game.
     std::function<bool(const ScreenObservation& look)> tile_selected = {};
     //  How far the tile search moves each way: Left `tile_search` times
     //  (the most recently played games are leftmost), then Right twice as
@@ -118,6 +120,11 @@ struct StoryLaunchPolicy{
     size_t settled_looks = 3;
     //  The wait between looks at a screen with nothing to press.
     Milliseconds poll = Milliseconds(500);
+    //  After A on the game's tile, how long HOME may still show (its zoom
+    //  into the game, a check or the user select in front of it) before
+    //  the launch takes A again: until then each look at HOME waits, as
+    //  another A there would launch the game again.
+    Milliseconds launch_wait = Milliseconds(30000);
     //  Presses HOME, the title, an overworld to leave or a screen the
     //  policy doesn't know may take before the launch is stuck there.
     size_t presses_per_screen = 6;
@@ -125,6 +132,12 @@ struct StoryLaunchPolicy{
     //  loading at most.
     size_t max_looks = 360;
 };
+
+//  A `tile_selected` for a Switch game: HOME's cursor is on the tile whose
+//  name, above the game row, contains `name` ("Pokémon Legends: Z-A"),
+//  read in `language`, the console's (NintendoSwitch_HomeTileReader.h).
+//  False on a look without a frame, as in a simulation.
+std::function<bool(const ScreenObservation& look)> switch_home_tile_named(Language language, std::string name);
 
 //  The failure of a launch that did not reach the overworld; its detail
 //  says where it stopped. Nothing in the story answers it: no reload, no

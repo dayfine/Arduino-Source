@@ -103,7 +103,6 @@ private:
 };
 
 struct ItemUseInput{
-    std::string name;
     std::string variant;
     std::vector<BagRow> items;
     std::vector<BagRow> key_items;
@@ -121,6 +120,7 @@ struct ItemUseExpectation{
     std::vector<std::string> used;
 };
 struct ItemUseCase{
+    std::string name;
     ItemUseInput input;
     ItemUseExpectation expectation;
 };
@@ -128,7 +128,7 @@ struct ItemUseCase{
 class Test_AutoStoryItemUse : public UnitTest{
 public:
     explicit Test_AutoStoryItemUse(ItemUseCase test_case)
-        : UnitTest("PokemonFRLG::AutoStoryItemUse - " + test_case.input.name)
+        : UnitTest("PokemonFRLG::AutoStoryItemUse - " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -161,32 +161,32 @@ private:
 
 const ItemUseCase ITEM_USE_CASES[] = {
     {
+        .name = "a Repel below the Potions",
         .input = {
-            .name = "a Repel below the Potions",
             .variant = "use_item repel",
             .items = {{"potion", 15}, {"repel", 5}, {"escape-rope", 2}},
         },
         .expectation = {.end = ItemUseEnd::USED, .used = {"repel"}},
     },
     {
+        .name = "the Escape Rope with its count unread",
         .input = {
-            .name = "the Escape Rope with its count unread",
             .variant = "use_item escape-rope",
             .items = {{"potion", 15}, {"", -1}, {"escape-rope", -1}},
         },
         .expectation = {.end = ItemUseEnd::USED, .used = {"escape-rope"}},
     },
     {
+        .name = "no Super Repel bought",
         .input = {
-            .name = "no Super Repel bought",
             .variant = "use_item super-repel",
             .items = {{"potion", 15}, {"repel", 5}},
         },
         .expectation = {.end = ItemUseEnd::NONE_LEFT, .used = {}},
     },
     {
+        .name = "the bag doesn't open",
         .input = {
-            .name = "the bag doesn't open",
             .variant = "use_item repel",
             .items = {{"repel", 5}},
             .opens = false,
@@ -194,8 +194,8 @@ const ItemUseCase ITEM_USE_CASES[] = {
         .expectation = {.end = ItemUseEnd::NO_BAG, .used = {}},
     },
     {
+        .name = "the Bicycle from the Key Items",
         .input = {
-            .name = "the Bicycle from the Key Items",
             .variant = "ride_bike",
             .items = {{"bicycle", 1}},
             .key_items = {{"", -1}, {"bicycle", -1}},
@@ -203,8 +203,8 @@ const ItemUseCase ITEM_USE_CASES[] = {
         .expectation = {.end = ItemUseEnd::USED, .used = {"bicycle"}},
     },
     {
+        .name = "a Repel wore off: another used",
         .input = {
-            .name = "a Repel wore off: another used",
             .variant = "use_item repel",
             .items = {{"repel", 1}},
             .renew = true,
@@ -212,8 +212,8 @@ const ItemUseCase ITEM_USE_CASES[] = {
         .expectation = {.end = ItemUseEnd::USED, .used = {"repel"}},
     },
     {
+        .name = "the last Repel wore off: none left",
         .input = {
-            .name = "the last Repel wore off: none left",
             .variant = "use_item repel",
             .items = {{"repel", 0}},
             .renew = true,
@@ -224,8 +224,8 @@ const ItemUseCase ITEM_USE_CASES[] = {
     //  lingered from before the save and wore off on Route 21, with none
     //  used after it.
     {
+        .name = "a Repel still on: lingered, none used",
         .input = {
-            .name = "a Repel still on: lingered, none used",
             .variant = "use_item repel",
             .items = {{"repel", 4}},
             .repel_says = RepelUse::LINGERED,
@@ -233,8 +233,8 @@ const ItemUseCase ITEM_USE_CASES[] = {
         .expectation = {.end = ItemUseEnd::LINGERED, .used = {}},
     },
     {
+        .name = "a Repel's message unread: taken as used",
         .input = {
-            .name = "a Repel's message unread: taken as used",
             .variant = "use_item repel",
             .items = {{"repel", 4}},
             .repel_says = RepelUse::UNREAD,
@@ -242,8 +242,8 @@ const ItemUseCase ITEM_USE_CASES[] = {
         .expectation = {.end = ItemUseEnd::USED, .used = {"repel"}},
     },
     {
+        .name = "the last Repel wore off: a Super Repel instead",
         .input = {
-            .name = "the last Repel wore off: a Super Repel instead",
             .variant = "use_item repel",
             .items = {{"potion", 3}, {"repel", 0}, {"super-repel", 5}},
             .renew = true,
@@ -251,8 +251,8 @@ const ItemUseCase ITEM_USE_CASES[] = {
         .expectation = {.end = ItemUseEnd::USED, .used = {"super-repel"}},
     },
     {
+        .name = "two Repels asked: one, as a second would linger",
         .input = {
-            .name = "two Repels asked: one, as a second would linger",
             .variant = "use_item repel",
             .items = {{"repel", 4}},
             .count = 2,
@@ -260,8 +260,8 @@ const ItemUseCase ITEM_USE_CASES[] = {
         .expectation = {.end = ItemUseEnd::USED, .used = {"repel"}},
     },
     {
+        .name = "two Rare Candies on the lead, the bag holding five",
         .input = {
-            .name = "two Rare Candies on the lead, the bag holding five",
             .variant = "use_item rare-candy",
             .items = {{"potion", 3}, {"rare-candy", 5}},
             .count = 2,
@@ -269,8 +269,8 @@ const ItemUseCase ITEM_USE_CASES[] = {
         .expectation = {.end = ItemUseEnd::USED, .used = {"rare-candy", "rare-candy"}},
     },
     {
+        .name = "two Rare Candies asked, one in the bag: the one is used",
         .input = {
-            .name = "two Rare Candies asked, one in the bag: the one is used",
             .variant = "use_item rare-candy",
             .items = {{"rare-candy", 1}},
             .count = 2,
@@ -278,8 +278,8 @@ const ItemUseCase ITEM_USE_CASES[] = {
         .expectation = {.end = ItemUseEnd::USED, .used = {"rare-candy"}},
     },
     {
+        .name = "no Rare Candy in the bag",
         .input = {
-            .name = "no Rare Candy in the bag",
             .variant = "use_item rare-candy",
             .items = {{"potion", 3}},
             .count = 2,
@@ -287,8 +287,8 @@ const ItemUseCase ITEM_USE_CASES[] = {
         .expectation = {.end = ItemUseEnd::NONE_LEFT, .used = {}},
     },
     {
+        .name = "a Rare Candy whose level-up never shows",
         .input = {
-            .name = "a Rare Candy whose level-up never shows",
             .variant = "use_item rare-candy",
             .items = {{"rare-candy", 2}},
             .count = 2,
@@ -297,8 +297,8 @@ const ItemUseCase ITEM_USE_CASES[] = {
         .expectation = {.end = ItemUseEnd::NOT_USED, .used = {}},
     },
     {
+        .name = "an Escape Rope is no Repel to renew",
         .input = {
-            .name = "an Escape Rope is no Repel to renew",
             .variant = "use_item escape-rope",
             .items = {{"escape-rope", 2}},
             .renew = true,
@@ -307,16 +307,16 @@ const ItemUseCase ITEM_USE_CASES[] = {
     },
     //  The healing steps' items, by slug: a use_item step doesn't take them.
     {
+        .name = "an Elixir on the lead, back to the bag",
         .input = {
-            .name = "an Elixir on the lead, back to the bag",
             .variant = "elixir",
             .items = {{"potion", 4}, {"max-elixir", 1}, {"elixir", 1}, {"full-restore", 12}},
         },
         .expectation = {.end = ItemUseEnd::USED, .used = {"elixir"}},
     },
     {
+        .name = "an Elixir whose bag never comes back",
         .input = {
-            .name = "an Elixir whose bag never comes back",
             .variant = "elixir",
             .items = {{"elixir", 1}},
             .no_bag_back = true,
@@ -324,16 +324,16 @@ const ItemUseCase ITEM_USE_CASES[] = {
         .expectation = {.end = ItemUseEnd::NOT_USED, .used = {}},
     },
     {
+        .name = "no Elixir in the bag, only a Max Elixir",
         .input = {
-            .name = "no Elixir in the bag, only a Max Elixir",
             .variant = "elixir",
             .items = {{"max-elixir", 1}},
         },
         .expectation = {.end = ItemUseEnd::NONE_LEFT, .used = {}},
     },
     {
+        .name = "a Full Restore on the lead",
         .input = {
-            .name = "a Full Restore on the lead",
             .variant = "full-restore",
             .items = {{"potion", 4}, {"full-restore", 12}},
         },
@@ -408,7 +408,6 @@ UnitTestResult test_variants_and_bike(){
 }
 
 struct StepDoneInput{
-    std::string name;
     ItemUseEnd end;
     //  The step's "if_any" arg.
     bool if_any = false;
@@ -417,6 +416,7 @@ struct StepDoneExpectation{
     bool done;
 };
 struct StepDoneCase{
+    std::string name;
     StepDoneInput input;
     StepDoneExpectation expectation;
 };
@@ -424,7 +424,7 @@ struct StepDoneCase{
 class Test_ItemUseStepDone : public UnitTest{
 public:
     explicit Test_ItemUseStepDone(StepDoneCase test_case)
-        : UnitTest(std::format("PokemonFRLG::AutoStoryItemUse - step done: {}", test_case.input.name))
+        : UnitTest(std::format("PokemonFRLG::AutoStoryItemUse - step done: {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -439,17 +439,16 @@ private:
 };
 
 const StepDoneCase STEP_DONE_CASES[] = {
-    {.input = {.name = "used", .end = ItemUseEnd::USED}, .expectation = {.done = true}},
-    {.input = {.name = "a Repel lingered", .end = ItemUseEnd::LINGERED}, .expectation = {.done = true}},
-    {.input = {.name = "none left", .end = ItemUseEnd::NONE_LEFT}, .expectation = {.done = false}},
-    {.input = {.name = "none left, if_any", .end = ItemUseEnd::NONE_LEFT, .if_any = true}, .expectation = {.done = true}},
-    {.input = {.name = "none left, if_any false", .end = ItemUseEnd::NONE_LEFT, .if_any = false}, .expectation = {.done = false}},
-    {.input = {.name = "no bag, if_any", .end = ItemUseEnd::NO_BAG, .if_any = true}, .expectation = {.done = false}},
+    {.name = "used", .input = {.end = ItemUseEnd::USED}, .expectation = {.done = true}},
+    {.name = "a Repel lingered", .input = {.end = ItemUseEnd::LINGERED}, .expectation = {.done = true}},
+    {.name = "none left", .input = {.end = ItemUseEnd::NONE_LEFT}, .expectation = {.done = false}},
+    {.name = "none left, if_any", .input = {.end = ItemUseEnd::NONE_LEFT, .if_any = true}, .expectation = {.done = true}},
+    {.name = "none left, if_any false", .input = {.end = ItemUseEnd::NONE_LEFT, .if_any = false}, .expectation = {.done = false}},
+    {.name = "no bag, if_any", .input = {.end = ItemUseEnd::NO_BAG, .if_any = true}, .expectation = {.done = false}},
 };
 
 //  A Super Repel step of the story table, PokeGuy's (FRLG_POKEGUY_15934_VIDEO_NOTES.md).
 struct SuperRepelInput{
-    std::string name;
     std::string_view checkpoint;
     std::string_view step;
 };
@@ -463,6 +462,7 @@ struct SuperRepelExpectation{
     size_t in_bag;
 };
 struct SuperRepelCase{
+    std::string name;
     SuperRepelInput input;
     SuperRepelExpectation expectation;
 };
@@ -470,7 +470,7 @@ struct SuperRepelCase{
 class Test_SuperRepelStep : public UnitTest{
 public:
     explicit Test_SuperRepelStep(SuperRepelCase test_case)
-        : UnitTest(std::format("PokemonFRLG::AutoStoryItemUse - {}", test_case.input.name))
+        : UnitTest(std::format("PokemonFRLG::AutoStoryItemUse - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -521,23 +521,25 @@ private:
 
 const SuperRepelCase SUPER_REPEL_CASES[] = {
     {
-        .input = {.name = "12.03's Super Repel before the Fly to Pallet", .checkpoint = "12.03", .step = "super_repel_fuchsia"},
+        .name = "12.03's Super Repel before the Fly to Pallet",
+        .input = {.checkpoint = "12.03", .step = "super_repel_fuchsia"},
         .expectation = {.previous = "", .next = "outside_fuchsia_center", .in_bag = 5},
     },
     {
-        .input = {.name = "13.01's Super Repel after 3F's statue", .checkpoint = "13.01", .step = "super_repel_mansion"},
+        .name = "13.01's Super Repel after 3F's statue",
+        .input = {.checkpoint = "13.01", .step = "super_repel_mansion"},
         .expectation = {.previous = "mansion_holes", .next = "", .in_bag = 4},
     },
 };
 
 struct AutoStoryItemUseBodyInput{
-    std::string name;
     UnitTestResult (*body)();
 };
 struct AutoStoryItemUseBodyExpectation{
     std::string description;
 };
 struct AutoStoryItemUseBodyCase{
+    std::string name;
     AutoStoryItemUseBodyInput input;
     AutoStoryItemUseBodyExpectation expectation;
 };
@@ -545,7 +547,7 @@ struct AutoStoryItemUseBodyCase{
 class Test_AutoStoryItemUseBody : public UnitTest{
 public:
     explicit Test_AutoStoryItemUseBody(AutoStoryItemUseBodyCase test_case)
-        : UnitTest("PokemonFRLG::AutoStoryItemUse - " + test_case.input.name)
+        : UnitTest("PokemonFRLG::AutoStoryItemUse - " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -558,11 +560,13 @@ private:
 
 const AutoStoryItemUseBodyCase ITEM_USE_BODY_CASES[] = {
     {
-        .input = {.name = "variants and the bike's pace", .body = test_variants_and_bike},
+        .name = "variants and the bike's pace",
+        .input = {.body = test_variants_and_bike},
         .expectation = {.description = "the story's bag items, ride_bike, and the bike's pace outdoors only"},
     },
     {
-        .input = {.name = "the Repels tried after one wore off", .body = test_repel_renew_order},
+        .name = "the Repels tried after one wore off",
+        .input = {.body = test_repel_renew_order},
         .expectation = {.description = "the smallest that lasts the steps left, or the one used, then larger, then smaller"},
     },
 };

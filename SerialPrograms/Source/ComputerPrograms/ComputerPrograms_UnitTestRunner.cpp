@@ -34,6 +34,7 @@
 
 #include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h"
+#include "NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
 #include "NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner_Tests.h"
@@ -88,7 +89,6 @@ bool matches_any(std::string_view test_name, std::span<const std::string_view> f
 
 UnitTestDatabase make_UNIT_TESTS_ALL(){
     UnitTestDatabase ret;
-
     add_tests_QtEventThreadPool(ret, GlobalThreadPools::computation_normal());
     add_tests_Sockets(ret, GlobalThreadPools::unlimited_normal());
     add_tests_HttpServer(ret, GlobalThreadPools::unlimited_normal());
@@ -123,6 +123,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
+    NintendoSwitch::add_tests_HomeTileReader(ret);
     NintendoSwitch::add_tests_SystemKeyboardDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
     NintendoSwitch::add_tests_CommandFileRunner(ret);

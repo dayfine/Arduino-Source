@@ -14,16 +14,13 @@
 #include <vector>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-//  Before the detectors: CloseGameDetector.h uses ConsoleHandle without it.
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
-#include "NintendoSwitch/Inference/NintendoSwitch_CloseGameDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
-#include "NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.h"
-#include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
-#include "NintendoSwitch/NintendoSwitch_Settings.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h"
+#include "Pokemon/AutoStory/Pokemon_StorySwitchPrompts.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_LoadMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkMoves.h"
@@ -81,28 +78,17 @@ std::function<bool(const ScreenObservation&)> showing(std::string_view reading){
     };
 }
 
-//  The Switch's own screens on the way, each answered by one press.
-std::vector<StoryLaunchPrompt> switch_prompts(const FrlgLaunchSettings& settings){
-    const StoryLaunchPress scroll_up{.button = BUTTON_UP, .hold = 40ms, .release = 40ms};
-    std::vector<StoryLaunchPrompt> prompts{
-        {.name = "close software", .matches = showing(FrlgLaunchReadings::CLOSE_SOFTWARE),
-         .press = {.button = BUTTON_A, .hold = 160ms, .release = settings.close_delay}},
-        {.name = "user select", .matches = showing(FrlgLaunchReadings::USER_SELECT),
-         .press = {.button = BUTTON_A, .hold = 160ms}},
-        {.name = "update prompt", .matches = showing(FrlgLaunchReadings::UPDATE),
-         .press = {.button = BUTTON_A, .hold = 160ms}, .before = {scroll_up, scroll_up}},
-    };
-    if (settings.handle_online_license_check){
-        //  As the RNG programs' hard reset: a second on the check, then A.
-        prompts.push_back({.name = "license check", .matches = showing(FrlgLaunchReadings::CHECK_ONLINE),
-                           .press = {.button = BUTTON_A, .hold = 160ms, .release = 1840ms}});
-    }
-    return prompts;
+//  The online license check: as the RNG programs' hard reset, a second on
+//  it, then A.
+StoryLaunchPrompt license_check_prompt(){
+    return {.name = "license check", .matches = showing(FrlgLaunchReadings::CHECK_ONLINE),
+            .press = {.button = BUTTON_A, .hold = 160ms, .release = 1840ms}};
 }
 
 
 //  The console, for the launch alone: presses, and looks that read HOME,
-//  the Switch's prompts and FRLG's screens into the launch's readings.
+//  the license check and FRLG's screens into the launch's readings (the
+//  Switch's prompts read the look's frame themselves).
 //  code-health: allow public_methods -- the StoryBackend interface; nothing to split
 class FrlgLaunchBackend : public Pokemon::StoryBackend<GridPose>{
 public:
@@ -110,9 +96,7 @@ public:
         : m_console(console)
         , m_context(context)
         , m_home(console, COLOR_RED)
-        , m_close(console)
-        , m_user_select(console)
-        , m_update(console)
+        , m_black(COLOR_BLUE, {0.1, 0.15, 0.8, 0.7})
         , m_load_menu(COLOR_BLUE)
     {}
 
@@ -151,9 +135,8 @@ private:
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     HomeMenuDetector m_home;
-    CloseGameDetector m_close;
-    StartGameUserSelectDetector m_user_select;
-    UpdatePopupDetector m_update;
+    //  The boot's black screen, as the RNG programs' hard reset reads it.
+    BlackScreenDetector m_black;
     CheckOnlineDetector m_check_online;
     LoadMenuDetector m_load_menu;
     FrlgScreenObserver m_observer;
@@ -161,9 +144,6 @@ private:
 
 void FrlgLaunchBackend::read_prompts(const ImageViewRGB32& frame, ScreenObservation& look){
     const std::pair<std::string_view, bool> readings[] = {
-        {FrlgLaunchReadings::CLOSE_SOFTWARE, m_close.detect(frame)},
-        {FrlgLaunchReadings::USER_SELECT, m_user_select.detect(frame)},
-        {FrlgLaunchReadings::UPDATE, m_update.detect(frame)},
         {FrlgLaunchReadings::CHECK_ONLINE, m_check_online.detect(frame)},
         {FrlgLaunchReadings::LOAD_MENU, m_load_menu.detect(frame)},
     };
@@ -178,7 +158,11 @@ Pokemon::Observation<GridPose> FrlgLaunchBackend::observe(){
     m_context.wait_for_all_requests();
     VideoSnapshot frame = m_console.video().snapshot();
     Pokemon::Observation<GridPose> look;
-    if (frame && m_home.detect(*frame.frame)){
+    if (frame && m_black.detect(*frame.frame)){
+        //  The game booting or loading: never HOME, whose dark theme is
+        //  dark too.
+        look.events.set(ScreenEvent::FADE_BLACK, true);
+    }else if (frame && m_home.detect(*frame.frame)){
         //  Alone: FRLG's detectors may read HOME's plain screen as quiet.
         look.events.set(ScreenEvent::SWITCH_HOME_MENU, true);
     }else if (frame){
@@ -196,13 +180,14 @@ Pokemon::Observation<GridPose> FrlgLaunchBackend::observe(){
 } // namespace
 
 
-StoryLaunchPolicy frlg_launch_policy(const FrlgLaunchSettings& settings){
+StoryLaunchPolicy frlg_launch_policy(
+    std::vector<StoryLaunchPrompt> switch_prompts,
+    const FrlgLaunchSettings& settings
+){
     const auto chosen = std::make_shared<ContinueChosen>();
     StoryLaunchPolicy policy;
     policy.game = "frlg";
-    policy.tile_selected = [](const ScreenObservation&){
-        return true;
-    };
+    policy.tile_selected = Pokemon::switch_home_tile_named(Language::English, "Pokémon FireRed Version");
     //  The GBA's boot and title, read only after the launch, as the
     //  overworld is quiet too.
     policy.title = [chosen](const ScreenObservation& look){
@@ -210,7 +195,10 @@ StoryLaunchPolicy frlg_launch_policy(const FrlgLaunchSettings& settings){
     };
     policy.title_after_launch = true;
     policy.title_press = {.button = BUTTON_A, .hold = 160ms, .release = 1000ms};
-    policy.prompts = switch_prompts(settings);
+    policy.prompts = std::move(switch_prompts);
+    if (settings.handle_online_license_check){
+        policy.prompts.push_back(license_check_prompt());
+    }
     policy.prompts.push_back({
         .name = "load menu",
         .matches = [chosen](const ScreenObservation& look){
@@ -235,18 +223,17 @@ StoryLaunchPolicy frlg_launch_policy(const FrlgLaunchSettings& settings){
         return chosen->chosen && quiet(look);
     };
     policy.settled_looks = 4;
-    //  The title takes A through the boot's logos too, a second apart; HOME
-    //  takes A through the license check's seconds on it.
-    policy.presses_per_screen = settings.handle_online_license_check ? 24 : 12;
+    //  The title takes A through the boot's logos too, a second apart.
+    policy.presses_per_screen = 12;
     return policy;
 }
 
 Pokemon::Outcome launch_frlg_save(ConsoleHandle& console, ProControllerContext& context){
     FrlgLaunchBackend backend(console, context);
-    const StoryLaunchPolicy policy = frlg_launch_policy({
-        .handle_online_license_check = GameSettings::instance().HANDLE_ONLINE_LICENSE_CHECK,
-        .close_delay = ConsoleSettings::instance().CLOSE_GAME_DELAY,
-    });
+    const StoryLaunchPolicy policy = frlg_launch_policy(
+        Pokemon::switch_launch_prompts(console),
+        {.handle_online_license_check = GameSettings::instance().HANDLE_ONLINE_LICENSE_CHECK}
+    );
     const Pokemon::StoryLaunchRequest request{
         .save = Pokemon::StoryLaunchRequest::Save::LATEST,
         .running = Pokemon::StoryLaunchRequest::Running::RESTART,

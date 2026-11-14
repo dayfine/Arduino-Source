@@ -36,9 +36,12 @@ Pokemon::Pose paced_pose(const Pokemon::Pose& patch, const StoryStep& step);
 //  the objects the game hides after the Hall of Fame removed, as the lab's
 //  frlg_route does, and those a new game hides until their scene (the
 //  S.S. Anne's rival on the Captain's door).
-//  With `run_flags` (a run's, default none): without the Rockets once
+//  No default argument: a temporary set bound to the reference parameter
+//  makes GCC take the returned reference as possibly dangling.
+const std::vector<MapData>& story_maps();
+//  The story's maps for a run with `run_flags`: without the Rockets once
 //  SILPH_CLEARED_FLAG is among them.
-const std::vector<MapData>& story_maps(const std::set<std::string>& run_flags = {});
+const std::vector<MapData>& story_maps(const std::set<std::string>& run_flags);
 //  The run flag Giovanni's step on 11F sets: the story's maps from then on
 //  have no Rockets in Silph Co. or Saffron City (15.01 to 16.xx before it
 //  have them).

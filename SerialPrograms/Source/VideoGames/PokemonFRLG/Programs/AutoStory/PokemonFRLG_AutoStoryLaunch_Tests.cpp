@@ -30,6 +30,11 @@ using Pokemon::GridPose;
 namespace{
 
 
+//  The scripted console's "Close software?": the Switch's prompts
+//  (Pokemon::switch_launch_prompts()) read a look's frame, and a scripted
+//  look has none, so the test answers it from a reading.
+constexpr std::string_view CLOSE_SOFTWARE = "test.close_software";
+
 //  What the scripted console shows.
 enum class Screen{
     HOME,
@@ -48,7 +53,7 @@ Pokemon::Observation<GridPose> look(Screen screen){
         observation.events = ScreenEvents{ScreenEvent::SWITCH_HOME_MENU};
         break;
     case Screen::CLOSE_SOFTWARE:
-        observation.readings[std::string(FrlgLaunchReadings::CLOSE_SOFTWARE)] = 1;
+        observation.readings[std::string(CLOSE_SOFTWARE)] = 1;
         break;
     case Screen::CHECK_ONLINE:
         observation.readings[std::string(FrlgLaunchReadings::CHECK_ONLINE)] = 1;
@@ -110,6 +115,15 @@ std::string a_presses(size_t count){
     return text;
 }
 
+//  `count` waits, by space.
+std::string waits(size_t count){
+    std::string text;
+    for (size_t c = 0; c < count; c++){
+        text += c == 0 ? "wait" : " wait";
+    }
+    return text;
+}
+
 const std::vector<LaunchCase> LAUNCH_CASES = {
     {.name = "reload from the overworld",
      .input = {.screens = then_settled({Screen::QUIET, Screen::HOME, Screen::CLOSE_SOFTWARE, Screen::HOME,
@@ -127,14 +141,18 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
      .input = {.screens = then_settled({Screen::HOME, Screen::HOME, Screen::CHECK_ONLINE, Screen::HOME,
                                         Screen::QUIET, Screen::LOAD_MENU}),
                .handle_online_license_check = true},
-     .expectation = {.inputs = "X A A A A A wait wait wait"}},
+     .expectation = {.inputs = "X A A wait A A wait wait wait"}},
+    //  Console B, 2026-11-14 02:41: HOME showed for about 1.5 s after the
+    //  A on the tile; each look there took A again, and the launch failed
+    //  as stuck on HOME while the game booted. HOME now waits.
+    {.name = "HOME for 1.5 s after the launch, then the boot",
+     .input = {.screens = then_settled(joined({Screen::QUIET, Screen::HOME, Screen::CLOSE_SOFTWARE, Screen::HOME},
+                                              joined(home_looks(3), {Screen::BLACK, Screen::QUIET, Screen::LOAD_MENU, Screen::BLACK})))},
+     .expectation = {.inputs = "HOME X A A wait wait wait wait A A wait wait wait wait"}},
     {.name = "license check's HOME, handled",
      .input = {.screens = then_settled(joined(home_looks(13), {Screen::BLACK, Screen::QUIET, Screen::LOAD_MENU})),
                .handle_online_license_check = true},
-     .expectation = {.inputs = "X " + a_presses(12) + " wait A A wait wait wait"}},
-    {.name = "license check's HOME, not handled",
-     .input = {.screens = then_settled(joined(home_looks(13), {Screen::BLACK, Screen::QUIET, Screen::LOAD_MENU}))},
-     .expectation = {.failure = "stuck on home", .inputs = "X " + a_presses(11)}},
+     .expectation = {.inputs = "X A " + waits(11) + " wait A A wait wait wait"}},
     {.name = "a title that never leads to the load menu",
      .input = {.screens = {Screen::HOME, Screen::HOME, Screen::QUIET}},
      .expectation = {.failure = "stuck on title", .inputs = "X A " + a_presses(12)}},
@@ -176,7 +194,21 @@ UnitTestResult check_launch(const LaunchCase& test, CancellableScope& scope){
         looks.push_back(look(screen));
     }
     Pokemon::FakeStoryBackend<GridPose> backend({.looks = std::move(looks)}, scope);
-    const Pokemon::StoryLaunchPolicy policy = frlg_launch_policy({.handle_online_license_check = test.input.handle_online_license_check});
+    const std::vector<Pokemon::StoryLaunchPrompt> switch_prompts{{
+        .name = "close software",
+        .matches = [](const ScreenObservation& observation){
+            return observation.readings.contains(std::string(CLOSE_SOFTWARE));
+        },
+    }};
+    Pokemon::StoryLaunchPolicy policy = frlg_launch_policy(
+        switch_prompts,
+        {.handle_online_license_check = test.input.handle_online_license_check}
+    );
+    //  The scripted HOME has no frame to read a tile name from: its cursor
+    //  is on FireRed's tile.
+    policy.tile_selected = [](const ScreenObservation&){
+        return true;
+    };
     const Pokemon::Outcome outcome = Pokemon::launch_story_game(backend, policy, {});
     if (test.expectation.failure.empty() && !outcome.succeeded()){
         return std::format("expected success, got {}", Pokemon::to_string(outcome));

@@ -184,7 +184,7 @@ private:
 //  failure, "<id>/<step>: <why> On <where>.", or empty.
 std::string row_step_on_sim(
     OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id,
-    const std::set<std::string>& run_flags = {}
+    const std::set<std::string>& run_flags = std::set<std::string>()
 );
 
 

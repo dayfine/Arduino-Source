@@ -35,7 +35,6 @@ namespace PokemonFRLG{
 namespace{
 
 struct AutoStoryLeagueInput{
-    std::string name;
     std::function<UnitTestResult()> body;
 };
 
@@ -44,6 +43,7 @@ struct AutoStoryLeagueExpectation{
 };
 
 struct AutoStoryLeagueCase{
+    std::string name;
     AutoStoryLeagueInput input;
     AutoStoryLeagueExpectation expectation;
 };
@@ -51,7 +51,7 @@ struct AutoStoryLeagueCase{
 class Test_AutoStoryLeague : public UnitTest{
 public:
     explicit Test_AutoStoryLeague(AutoStoryLeagueCase test_case)
-        : UnitTest(std::format("PokemonFRLG::AutoStory - Simulation: {}", test_case.input.name))
+        : UnitTest(std::format("PokemonFRLG::AutoStory - Simulation: {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -267,45 +267,53 @@ UnitTestResult test_pokeguy_items_between_fights(){
 
 const AutoStoryLeagueCase AUTO_STORY_LEAGUE_CASES[] = {
     {
-        .input = {.name = "20.01a Indigo Plateau's Mart counter", .body = test_indigo_mart_counter},
+        .name = "20.01a Indigo Plateau's Mart counter",
+        .input = {.body = test_indigo_mart_counter},
         .expectation = {.description = "the counter (2, 7), where 20.01 starts"},
     },
     {
-        .input = {.name = "20.01 the League's door, into Lorelei's room", .body = []{
+        .name = "20.01 the League's door, into Lorelei's room",
+        .input = {.body = []{
             return walk_to_room("20.01", "enter_loreleis_room", "PokemonLeague_LoreleisRoom");
         }},
         .expectation = {.description = "Lorelei's room, no trainer met"},
     },
     {
-        .input = {.name = "20.02 around Lorelei to below her door", .body = []{
+        .name = "20.02 around Lorelei to below her door",
+        .input = {.body = []{
             return walk_to_door("20.02", "loreleis_door", MapPosition{"PokemonLeague_LoreleisRoom", {6, 3}});
         }},
         .expectation = {.description = "Lorelei's room (6, 3) facing north"},
     },
     {
-        .input = {.name = "20.03 around Bruno to below his door", .body = []{
+        .name = "20.03 around Bruno to below his door",
+        .input = {.body = []{
             return walk_to_door("20.03", "brunos_door", MapPosition{"PokemonLeague_BrunosRoom", {6, 3}});
         }},
         .expectation = {.description = "Bruno's room (6, 3) facing north"},
     },
     {
-        .input = {.name = "20.04 around Agatha to below her door", .body = []{
+        .name = "20.04 around Agatha to below her door",
+        .input = {.body = []{
             return walk_to_door("20.04", "agathas_door", MapPosition{"PokemonLeague_AgathasRoom", {6, 3}});
         }},
         .expectation = {.description = "Agatha's room (6, 3) facing north"},
     },
     {
-        .input = {.name = "20.05 around Lance to below the Champion's door", .body = []{
+        .name = "20.05 around Lance to below the Champion's door",
+        .input = {.body = []{
             return walk_to_door("20.05", "champions_door", MapPosition{"PokemonLeague_LancesRoom", {6, 6}});
         }},
         .expectation = {.description = "Lance's room (6, 6) facing north"},
     },
     {
-        .input = {.name = "20.01 to 20.05 the League's foe rows are the generator's", .body = test_foe_threats_are_the_generators},
+        .name = "20.01 to 20.05 the League's foe rows are the generator's",
+        .input = {.body = test_foe_threats_are_the_generators},
         .expectation = {.description = "PokemonSimulation planning_risk() rows"},
     },
     {
-        .input = {.name = "20.04 and 20.05 PokeGuy's Full Restore after Agatha and Elixir after Lance", .body = test_pokeguy_items_between_fights},
+        .name = "20.04 and 20.05 PokeGuy's Full Restore after Agatha and Elixir after Lance",
+        .input = {.body = test_pokeguy_items_between_fights},
         .expectation = {.description = "heal_after_agatha full_restore; restore_pp elixir before the Champion's door"},
     },
 };

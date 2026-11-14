@@ -34,7 +34,6 @@ namespace PokemonFRLG{
 namespace{
 
 struct AutoStorySaffronGymInput{
-    std::string name;
     std::function<UnitTestResult()> body;
 };
 
@@ -43,6 +42,7 @@ struct AutoStorySaffronGymExpectation{
 };
 
 struct AutoStorySaffronGymCase{
+    std::string name;
     AutoStorySaffronGymInput input;
     AutoStorySaffronGymExpectation expectation;
 };
@@ -50,7 +50,7 @@ struct AutoStorySaffronGymCase{
 class Test_AutoStorySaffronGym : public UnitTest{
 public:
     explicit Test_AutoStorySaffronGym(AutoStorySaffronGymCase test_case)
-        : UnitTest(std::format("PokemonFRLG::AutoStory - Simulation: {}", test_case.input.name))
+        : UnitTest(std::format("PokemonFRLG::AutoStory - Simulation: {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -166,7 +166,8 @@ UnitTestResult test_cameron_sees_row_21(){
     StoryStep along;
     along.kind = StoryStepKind::ROUTE;
     along.name = "along_row_21";
-    along.args = {{"target", Pokemon::GridPose{"SaffronCity_Gym", {{20, 21}}, Direction::WEST}}, {"fight_wild", false}};
+    const Pokemon::GridPose target{"SaffronCity_Gym", {{20, 21}}, Direction::WEST};
+    along.args = {{"target", target}, {"fight_wild", false}};
     const std::string failure = row_step_on_sim(sim, at, along, "18.01");
     if (failure.empty() && sim.state().trainers_beaten.empty() && sim.state().violations.empty()){
         return "A walk along row 21 was not seen by Cameron (24, 18).";
@@ -176,15 +177,18 @@ UnitTestResult test_cameron_sees_row_21(){
 
 const AutoStorySaffronGymCase AUTO_STORY_SAFFRON_GYM_CASES[] = {
     {
-        .input = {.name = "18.01 Saffron Gym's pads from the door to below Sabrina", .body = test_pads_to_sabrina},
+        .name = "18.01 Saffron Gym's pads from the door to below Sabrina",
+        .input = {.body = test_pads_to_sabrina},
         .expectation = {.description = "four pads, landing in the rooms in order, below Sabrina, nobody met"},
     },
     {
-        .input = {.name = "18.02 Saffron Gym's pads back out to the Center's door", .body = test_pads_out_to_center},
+        .name = "18.02 Saffron Gym's pads back out to the Center's door",
+        .input = {.body = test_pads_out_to_center},
         .expectation = {.description = "four pads the other way, below Saffron's Center door, nobody met"},
     },
     {
-        .input = {.name = "Saffron Gym: Cameron sees a walk along row 21", .body = test_cameron_sees_row_21},
+        .name = "Saffron Gym: Cameron sees a walk along row 21",
+        .input = {.body = test_cameron_sees_row_21},
         .expectation = {.description = "the sim meets a trainer on row 21, so the rows' row 22 is a real detour"},
     },
 };

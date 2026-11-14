@@ -65,7 +65,6 @@ std::vector<ScriptedFrame> joined(std::vector<ScriptedFrame> a, const std::vecto
 }
 
 struct FlyLandingInput{
-    std::string name;
     std::vector<ScriptedFrame> frames;
     //  What the facing read returns, once asked.
     std::optional<Direction> facing;
@@ -82,6 +81,7 @@ struct FlyLandingExpectation{
 };
 
 struct FlyLandingCase{
+    std::string name;
     FlyLandingInput input;
     FlyLandingExpectation expectation;
 };
@@ -89,7 +89,7 @@ struct FlyLandingCase{
 class Test_AutoStoryFlyLanding : public UnitTest{
 public:
     explicit Test_AutoStoryFlyLanding(FlyLandingCase test_case)
-        : UnitTest(std::format("PokemonFRLG::AutoStoryFlyLanding - {}", test_case.input.name))
+        : UnitTest(std::format("PokemonFRLG::AutoStoryFlyLanding - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
 
@@ -127,31 +127,38 @@ const ScreenEvents WHITE = {ScreenEvent::FADE_WHITE};
 
 const FlyLandingCase CASES[] = {
     {
-        .input = {"the black band and a quiet Fuchsia, no fade: not landed", repeated(NOTHING, 15), Direction::SOUTH},
+        .name = "the black band and a quiet Fuchsia, no fade: not landed",
+        .input = {repeated(NOTHING, 15), Direction::SOUTH},
         .expectation = {false, false, false},
     },
     {
-        .input = {"a fade then quiet, still the departure town: not landed", joined(repeated(BLACK, 5), repeated(NOTHING, 26)), Direction::WEST, false},
+        .name = "a fade then quiet, still the departure town: not landed",
+        .input = {joined(repeated(BLACK, 5), repeated(NOTHING, 26)), Direction::WEST, false},
         .expectation = {false, false, true},
     },
     {
-        .input = {"a fade then quiet, the player on screen: landed", joined(repeated(BLACK, 5), repeated(NOTHING, 12)), Direction::SOUTH},
+        .name = "a fade then quiet, the player on screen: landed",
+        .input = {joined(repeated(BLACK, 5), repeated(NOTHING, 12)), Direction::SOUTH},
         .expectation = {true, true},
     },
     {
-        .input = {"a white fade then quiet, the player on screen: landed", joined(repeated(WHITE, 5), repeated(NOTHING, 12)), Direction::SOUTH},
+        .name = "a white fade then quiet, the player on screen: landed",
+        .input = {joined(repeated(WHITE, 5), repeated(NOTHING, 12)), Direction::SOUTH},
         .expectation = {true, true},
     },
     {
-        .input = {"a fade then quiet, no readable facing: not landed", joined(repeated(BLACK, 5), repeated(NOTHING, 12)), std::nullopt},
+        .name = "a fade then quiet, no readable facing: not landed",
+        .input = {joined(repeated(BLACK, 5), repeated(NOTHING, 12)), std::nullopt},
         .expectation = {false, true},
     },
     {
-        .input = {"a fade, quiet for less than AFTER_BATTLE_QUIET: not landed", joined(repeated(BLACK, 5), repeated(NOTHING, 4)), Direction::SOUTH},
+        .name = "a fade, quiet for less than AFTER_BATTLE_QUIET: not landed",
+        .input = {joined(repeated(BLACK, 5), repeated(NOTHING, 4)), Direction::SOUTH},
         .expectation = {false, false, false},
     },
     {
-        .input = {"still faded: not landed", repeated(BLACK, 20), Direction::SOUTH},
+        .name = "still faded: not landed",
+        .input = {repeated(BLACK, 20), Direction::SOUTH},
         .expectation = {false, false, false},
     },
 };
