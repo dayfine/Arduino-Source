@@ -27,6 +27,8 @@
 #include "Pokemon_SceneJudges_Tests.h"
 #include "Pokemon_StoryActions_Tests.h"
 #include "Pokemon_StoryEvents_Tests.h"
+#include "Pokemon_StoryFailureClasses_Tests.h"
+#include "Pokemon_StoryFaultSweep_Tests.h"
 #include "Pokemon_StoryInterrupts_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
 #include "Pokemon_StoryRngHandoff_Tests.h"
@@ -49,6 +51,8 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryRunCounts(database);
     add_tests_CheckpointRetry(database);
     add_tests_StoryLog(database);
+    add_tests_StoryFailureClasses(database);
+    add_tests_StoryFaultSweep(database);
     add_tests_StoryRngHandoff(database);
     add_tests_StoryRangeOptions(database);
     add_tests_StoryRunOptions(database);
