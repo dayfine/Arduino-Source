@@ -116,8 +116,9 @@ void fly_to(ConsoleHandle& console, ProControllerContext& context, Language lang
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
             std::format(
-                "fly_to(): could not fly to {} (state {}).",
-                get_location_item_from_enum(location).slug, static_cast<int>(state)
+                "fly_to(): could not fly to {} (state {}). The fast travel menu is read in {}: "
+                "check that the Game Language option matches the game.",
+                get_location_item_from_enum(location).slug, static_cast<int>(state), language_data(language).name
             ),
             console
         );
