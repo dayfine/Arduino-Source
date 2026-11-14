@@ -92,6 +92,11 @@ StoryLaunchPolicy plza_launch_policy(ConsoleHandle& console){
     }
     //  The title takes A through the boot's logos too, a second apart.
     policy.presses_per_screen = 12;
+    //  Console B, 2026-11-14: after the title's A, the load's black, then
+    //  a tips screen (a blue band, a spinner) that plza_title() passes for
+    //  10 s and more. 30 looks of 500 ms or more: longer than the boot's
+    //  12 s black, which an A on a logo is followed by too.
+    policy.title_load_looks = 30;
     return policy;
 }
 

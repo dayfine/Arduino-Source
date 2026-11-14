@@ -39,10 +39,18 @@ struct LaunchLook{
     const StoryLaunchPrompt* prompt = nullptr;
 };
 
-//  `look` as `policy` reads it, `launched` once the launch launched or
-//  closed the game. HOME first: a game's detectors may read HOME's plain
-//  screen as a quiet overworld.
-LaunchLook read_launch_look(const StoryLaunchPolicy& policy, const ScreenObservation& look, bool launched){
+//  Which of the policy's loose checks a look may pass.
+struct LaunchReadable{
+    //  The launch launched or closed the game: the checks read only after.
+    bool launched = false;
+    //  No title press's fade holds the title check off.
+    bool title = true;
+};
+
+//  `look` as `policy` reads it. HOME first: a game's detectors may read
+//  HOME's plain screen as a quiet overworld.
+LaunchLook read_launch_look(const StoryLaunchPolicy& policy, const ScreenObservation& look, LaunchReadable readable){
+    const bool launched = readable.launched;
     if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
         return {.screen = LaunchScreen::HOME};
     }
@@ -54,7 +62,7 @@ LaunchLook read_launch_look(const StoryLaunchPolicy& policy, const ScreenObserva
             return {.screen = LaunchScreen::PROMPT, .prompt = &prompt};
         }
     }
-    if ((launched || !policy.title_after_launch) && policy.title(look)){
+    if (readable.title && (launched || !policy.title_after_launch) && policy.title(look)){
         return {.screen = LaunchScreen::TITLE};
     }
     const bool overworld = policy.overworld ? policy.overworld(look) : look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
@@ -92,7 +100,8 @@ public:
     //  One look and its answer; the launch's end when this look ended it.
     std::optional<Outcome> step(){
         const Observation<PoseType> observation = m_backend.observe();
-        const LaunchLook look = read_launch_look(m_policy, observation, m_launched || m_loading);
+        const LaunchLook look = read_launch_look(m_policy, observation, {.launched = m_launched || m_loading, .title = m_title_held_looks == 0});
+        count_title_hold(observation);
         if (look.screen != LaunchScreen::OVERWORLD){
             m_settled = 0;
         }
@@ -165,7 +174,19 @@ private:
                 m_backend.press(each.button, each.hold, each.release);
             }
         }
+        m_title_pressed = true;
         return press("title", m_policy.title_press, m_policy.presses_per_screen);
+    }
+
+    //  A black fade after a title press starts the title's hold; each
+    //  other look shortens it.
+    void count_title_hold(const ScreenObservation& observation){
+        if (m_title_pressed && observation.events.has(ScreenEvent::FADE_BLACK)){
+            m_title_pressed = false;
+            m_title_held_looks = m_policy.title_load_looks;
+        }else if (m_title_held_looks > 0){
+            m_title_held_looks--;
+        }
     }
 
     std::optional<Outcome> on_overworld(){
@@ -223,6 +244,10 @@ private:
     //  the policy doesn't know is the game booting or loading.
     bool m_launched = false;
     bool m_backup_sent = false;
+    //  A title press with no black fade since.
+    bool m_title_pressed = false;
+    //  Looks left on which the title is not read (title_load_looks).
+    size_t m_title_held_looks = 0;
 };
 
 
