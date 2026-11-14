@@ -1606,6 +1606,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryActions_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryActions_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryCheckpointTypes.h
+    Source/Pokemon/AutoStory/Pokemon_StoryCertainty.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryCertainty.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvent.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.h
@@ -1619,6 +1621,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryLog.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryMonteCarlo.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryMonteCarlo.h
     Source/Pokemon/AutoStory/Pokemon_StoryOutcome.h
     Source/Pokemon/AutoStory/Pokemon_StoryPose.h
     Source/Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.cpp
@@ -1649,6 +1653,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg_Tests.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h
+    Source/Pokemon/AutoStory/Types/Pokemon_BadgeCheck.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_BadgeCheck.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
