@@ -61,12 +61,17 @@ inline const std::string CLOSE_TRAINER_CARD = "close_trainer_card";
 //  the overworld.
 inline const std::string LEAVE_GIFT_SUMMARY = "leave_gift_summary";
 
+//  The GAME step that cuts the tree the player faces, `direction`
+//  (pokefirered data/scripts/field_moves.inc, EventScript_CutTree): A,
+//  "This tree looks like it can be CUT down! Would you like to CUT it?"
+//  YES, "<MON> used CUT!", the tree falls; then a step onto its tile. With
+//  no Pokemon that knows Cut there is no YES/NO, and the step fails. The
+//  tree grows back when the player leaves the map (its hide flag is a
+//  FLAG_TEMP), so the walk back cuts it again.
+inline const std::string CUT_TREE_VARIANT = "cut_tree";
+
 //  How `step`, a ROUTE or LEGS, moves the player: RUN_VARIANT runs.
 MoveSpeed move_speed(const StoryStep& step);
-//  The maps the story plans on: every map to Route 4's Pokemon Center, with
-//  the objects the game hides after the Hall of Fame removed, as the lab's
-//  frlg_route does.
-const std::vector<MapData>& story_maps();
 
 //  Converts a StoryPose to a general navigation Pose.
 Pokemon::Pose to_pose(const StoryPose& pose);

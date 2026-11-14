@@ -53,6 +53,8 @@ constexpr Milliseconds TAP_TIME(340);
 constexpr Milliseconds NO_BATTLE_WAIT(15000);
 constexpr Milliseconds BATTLE_TIME(10000);
 constexpr Milliseconds MESSAGE_CLOSE(1000);
+//  The questions, "<MON> used CUT!" and the tree falling.
+constexpr Milliseconds CUT_TIME(4000);
 //  Rows of black below a small room, seen from this near its bottom.
 constexpr int BLACK_BELOW_ROWS = 5;
 constexpr int SMALL_ROOM_ROWS = 20;
@@ -301,6 +303,10 @@ bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
     update_view();
     if (step.warped){
         m_state.warps++;
+        for (auto& [index, tree] : m_cut_trees){
+            m_maps[index].objects.push_back(tree);
+        }
+        m_cut_trees.clear();
         m_frozen = true;
         schedule(pressed + timing.tile, SimScreen::FADE, false);
         schedule(pressed + timing.tile + timing.fade, SimScreen::OVERWORLD, true);
@@ -371,7 +377,7 @@ void OverworldSim::walk_hold(Direction direction, Milliseconds duration, int sho
             bump(direction, pressed);
             return;
         }
-        if (step->map != m_map && !step->warped){
+        if (m_script.connections_stall && step->map != m_map && !step->warped){
             //  The step onto a connected map waits a tile while the game
             //  loads it: a hold timed by its tiles alone ended a tile short
             //  (console B, 2026-11-03, rows 00.14, 00.16 and 00.20).
@@ -476,6 +482,24 @@ bool OverworldSim::close_message(){
     schedule(m_now + m_script.timing.trainer_battle, SimScreen::BATTLE, false);
     note("the trainer's battle starts.");
     return true;
+}
+
+bool OverworldSim::cut_tree(){
+    std::vector<MapObject>& objects = m_maps[m_map].objects;
+    const TilePos ahead = m_player.position.next(m_state.facing);
+    for (size_t c = 0; c < objects.size(); c++){
+        if (objects[c].name == "cut_tree" && objects[c].x == ahead.x && objects[c].y == ahead.y
+            && m_state.screen == SimScreen::OVERWORLD && !m_frozen
+        ){
+            m_cut_trees.emplace_back(m_map, objects[c]);
+            objects.erase(objects.begin() + c);
+            advance_to(m_now + CUT_TIME);
+            note("cut the tree on " + to_string(MapPosition{map().name, ahead}) + ".");
+            return true;
+        }
+    }
+    violation("no tree to cut " + std::string(direction_name(m_state.facing)) + " of " + to_string(m_state.position) + ".");
+    return false;
 }
 
 
@@ -614,7 +638,7 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     const std::vector<Interrupt>& ints = interrupts(step);
     Pokemon::LegSpec leg;
     leg.direction = step.direction;
-    leg.tiles = step.tiles;
+    leg.tiles = step.tiles + step.warp_slack;
     leg.to_wall = step.to_wall;
     leg.tile_time = TILE_TIME;
     leg.stop_on_interrupt = !step.to_wall;

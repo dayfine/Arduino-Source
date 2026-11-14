@@ -61,6 +61,17 @@ std::optional<GrindPlan> grind_plan_of(const Pokemon::StoryActionArgs& args);
 //  The table's GRIND step: `nurse` is where the player faces the nurse.
 Pokemon::StoryStep grind_step(std::string name, std::string why, const GrindPlan& plan, Pokemon::GridPose nurse);
 
+//  The GAME action that checks a GRIND step's plan before the walk out to
+//  its patch: GRIND_ACTION's args but the nurse.
+inline const std::string GRIND_CHECK_ACTION = "grind_check";
+//  `plan` as GRIND_CHECK_ACTION's args; grind_plan_of() reads them back.
+Pokemon::StoryActionArgs grind_check_args(const GrindPlan& plan);
+
+//  The table's check before the walk out to a GRIND step's patch: when the
+//  lead already has what `plan` grinds for, the step sets a run flag named
+//  `name`, which the walk out, the GRIND step and the way back skip_if.
+Pokemon::StoryStep grind_check_step(std::string name, std::string why, const GrindPlan& plan);
+
 
 
 } // namespace PokemonFRLG

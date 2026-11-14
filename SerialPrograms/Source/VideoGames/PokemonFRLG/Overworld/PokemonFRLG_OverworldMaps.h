@@ -6,8 +6,10 @@
  *  new game in Pallet Town through Viridian City, Route 2 and Viridian
  *  Forest to Brock's gym in Pewter City, Route 3, Mt. Moon and Route 4;
  *  and Cerulean City, its Pokemon Center, Mart and Gym, Route 24 (Nugget
- *  Bridge) and Route 25 to Bill's Sea Cottage, and the three floors of
- *  Cerulean Cave, where Mewtwo waits on B1F.
+ *  Bridge) and Route 25 to Bill's Sea Cottage; the burgled house, Route 5,
+ *  the Underground Path and Route 6 to Vermilion City and its Pokemon
+ *  Center, and the S.S. Anne's corridors to the Captain's office; and the
+ *  three floors of Cerulean Cave, where Mewtwo waits on B1F.
  *
  *  Each map is a pinned PokemonSimulation JSON resource, prepared under
  *  Packages/Resources/Pokemon/Maps/frlg and built into the program by CMake

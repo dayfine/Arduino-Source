@@ -302,7 +302,32 @@ UnitTestResult test_grind_args(){
     return true;
 }
 
+//  The check in the Center before the walk out: a lead already at the
+//  plan's level needs no trip (00.24 walked to Route 6's grass and back at
+//  Lv29, console B, 2026-11-03); one short of it does. Nothing is fought
+//  either way.
+UnitTestResult test_grind_reached_already(){
+    QuietLogger logger;
+    for (const unsigned level : {16u, 19u}){
+        FakePatch patch;
+        patch.level = level;
+        const bool reached = grind_reached_already(logger, patch, [&patch](size_t slot){
+            return patch.read_member(slot);
+        }, squirtle_to(19));
+        if (reached != (level >= 19) || patch.encounters != 0 || patch.heals != 0 || !patch.error.empty()){
+            return std::format("Lv{}: reached {}, {} encounters, {} heals {}.", level, reached, patch.encounters, patch.heals, patch.error);
+        }
+    }
+    const Pokemon::StoryStep check = grind_check_step("lead_ready", "", squirtle_to(30));
+    const std::optional<GrindPlan> back = grind_plan_of(check.args);
+    if (check.action != GRIND_CHECK_ACTION || !back || back->level != 30 || check.args.contains("nurse")){
+        return "The check's args didn't read back as its plan, or had a nurse.";
+    }
+    return true;
+}
+
 } // namespace
+
 
 
 const AutoStoryGrindCase AUTO_STORY_GRIND_CASES[] = {
@@ -312,6 +337,10 @@ const AutoStoryGrindCase AUTO_STORY_GRIND_CASES[] = {
     },
     {
         .input = {"the step's args", test_grind_args},
+        .expectation = {},
+    },
+    {
+        .input = {"reached already: no walk out to the patch", test_grind_reached_already},
         .expectation = {},
     },
 };

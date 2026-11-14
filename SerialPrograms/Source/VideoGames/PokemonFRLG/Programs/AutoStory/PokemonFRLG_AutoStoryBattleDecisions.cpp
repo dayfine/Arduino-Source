@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <format>
 #include <iterator>
 #include <string>
@@ -38,6 +39,10 @@ constexpr Milliseconds BATTLE_GONE = std::chrono::milliseconds(3000);
 constexpr Milliseconds OVERWORLD_CHECK = std::chrono::milliseconds(3000);
 //  A and B pressed blind for this long with no battle menu: give up.
 constexpr Milliseconds BLIND_PRESSES = std::chrono::milliseconds(30000);
+//  No battle on screen for this long, and START has not opened the menu:
+//  stop. Longer than a gym leader's speech after the battle and a
+//  whiteout's walk to the nurse, with B pressed through them.
+constexpr Milliseconds NO_OVERWORLD = std::chrono::milliseconds(60000);
 //  Turns a move turned down is left alone: the longest Disable (pret
 //  battle_script_commands.c Cmd_disablelastusedattack, 2 to 5 turns).
 constexpr int DISABLE_TURNS = 5;
@@ -49,6 +54,9 @@ constexpr Milliseconds REFUSED_WITHIN = std::chrono::milliseconds(7000);
 constexpr size_t LOW_ATTACK_PP = 10;
 //  The move prompts a turn can bring: two moves offered, NO then YES each.
 constexpr int MOVE_PROMPTS = 4;
+//  The levels the lead can gain in a battle, for the moves it can be
+//  offered: a story battle gives one or two.
+constexpr uint8_t MAX_LEVELS_IN_BATTLE = 3;
 //  The HP a Potion heals (pret src/data/items.h).
 constexpr double POTION_HP = 20;
 
@@ -126,11 +134,16 @@ bool nurse_before_battle(const Supplies& supplies){
 BattleDecisions::BattleDecisions(Supplies& supplies, BattleKind kind)
     : m_supplies(supplies)
     , m_kind(kind)
-{}
+{
+    if (supplies.lead.level > 0){
+        m_level_cap = static_cast<uint8_t>(std::min(battle_level(supplies.lead) + MAX_LEVELS_IN_BATTLE, 255));
+    }
+}
 
 TurnAction BattleDecisions::turn(const PartyStatus& status){
     m_turns++;
     m_move_prompts = 0;
+    m_declined_delete = false;
     m_before_forget.reset();
     count_down_refused();
     m_last_move_slot.reset();
@@ -243,8 +256,10 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
     }
     const bool done = result == TurnResult::DONE;
     if (!done && choice == TurnChoice::MOVE){
-        if (m_last_move_slot){
+        if (m_last_move_slot && !m_no_pp_read.insert(*m_last_move_slot).second){
             no_pp_left(m_supplies.lead, *m_last_move_slot);
+        }else{
+            move_refused();
         }
         return;
     }
@@ -299,6 +314,10 @@ PromptAnswer BattleDecisions::prompt(bool lead_box_gone){
     }
     PartyMember learning = m_supplies.lead;
     const LearnDecision decision = learn_move(learning);
+    if (!decision.move || (m_level_cap && battle_level(learning) > *m_level_cap)){
+        //  No move the lead can have reached: not a move prompt.
+        return PromptAnswer{.answer = YesNo::NO};
+    }
     if (decision.forget_slot){
         m_before_forget = m_supplies.lead;
         return PromptAnswer{.answer = YesNo::YES, .forget_slot = decision.forget_slot, .learned = std::move(learning)};
@@ -376,6 +395,10 @@ void MoveRefusalWatch::no_battle_screen(){
     m_list_back = m_chosen.has_value();
 }
 
+bool MoveRefusalWatch::no_pp_due(WallClock now) const{
+    return m_chosen && now - *m_chosen < REFUSED_WITHIN;
+}
+
 bool MoveRefusalWatch::refused(WallClock now){
     const bool refused = m_chosen && m_list_back && now - *m_chosen < REFUSED_WITHIN;
     m_chosen.reset();
@@ -388,6 +411,10 @@ bool BattleEndWatch::pressed_blind(WallClock now){
         m_blind_since = now;
     }
     return now - *m_blind_since >= BLIND_PRESSES;
+}
+
+bool BattleEndWatch::overworld_lost(WallClock now) const{
+    return m_last_battle && m_last_check && now - *m_last_battle >= NO_OVERWORLD;
 }
 
 

@@ -65,6 +65,12 @@ struct RouteStep{
     //  by the tiles alone ended a tile short (console B, 2026-11-03, rows
     //  00.14, 00.16 and 00.20).
     std::vector<int> connection_steps = {};
+    //  WALK onto a warp: how many tiles further the player may stand from
+    //  it than planned, which the hold goes on for, stopping at the fade.
+    //  An open leg over a map connection before it may end a tile further
+    //  on, when the game doesn't hold the player up there (console B,
+    //  2026-11-03, row 00.24). Set by with_warp_slack() when a route runs.
+    int warp_slack = 0;
     //  Which way the player faces after the step. Arriving at a door or a
     //  cave mouth, the game walks the player a tile out, facing south.
     Direction facing_after = Direction::NORTH;

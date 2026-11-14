@@ -27,7 +27,7 @@ enum class RouteCost{
     TILE,
     TURN,           //  extra for a leg in a new direction
     WARP,           //  the fade in and out
-    SURF,           //  the dialog and the animation
+    SURF,           //  the dialog and the animation; below 0, never
     GRASS_TILE,     //  extra for tall grass, where wild Pokemon appear
     //  Extra for a leg that ends where the player could keep walking: it has
     //  to be timed, and if a message or a battle stops it part-way, where

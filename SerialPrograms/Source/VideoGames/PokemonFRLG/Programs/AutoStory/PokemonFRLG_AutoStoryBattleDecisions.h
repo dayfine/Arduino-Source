@@ -20,6 +20,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryBattleDecisions_H
 
 #include <cstddef>
+#include <cstdint>
 #include <map>
 #include <optional>
 #include <set>
@@ -48,11 +49,15 @@ public:
 
     //  A YES/NO in or after the battle. With the lead's box gone and the
     //  opponent's there, it is "Use next POKEMON?"; else the move prompts:
-    //  "Delete a move to make room?", then "Stop learning?" after a NO, or
-    //  after YES and a move list closed with nothing forgotten. Past
-    //  MOVE_PROMPTS since the last turn, a plain YES, which ends them
-    //  either way (console B, 2026-11-03: NO and YES out of step with the
-    //  game went round for 75 s).
+    //  "Delete a move to make room?", then "Stop learning?" after a NO (in
+    //  the same turn), or after YES and a move list closed with nothing
+    //  forgotten. Past MOVE_PROMPTS since the last turn, a plain YES, which
+    //  ends them either way (console B, 2026-11-03: NO and YES out of step
+    //  with the game went round for 75 s). With no move the lead can have
+    //  reached to offer (none left, or one more than MAX_LEVELS_IN_BATTLE
+    //  above its level read before the battle), it is no move prompt, such
+    //  as the trainer's "Will <player> change POKEMON?": NO, and the lead
+    //  is left as it was.
     PromptAnswer prompt(bool lead_box_gone);
 
     //  The party list opened with the lead fainted: the slot to send in,
@@ -100,6 +105,11 @@ private:
     std::string m_hit_by;
     //  The slots the game turned down, and the turns until they are tried again.
     std::map<size_t, int> m_refused;
+    //  The slots "no PP left" was read for once.
+    std::set<size_t> m_no_pp_read;
+    //  The highest level a move offered can be for, from the lead's level
+    //  read before the battle; none if it wasn't read.
+    std::optional<uint8_t> m_level_cap;
     //  The members sent in after the lead fainted.
     std::set<size_t> m_sent;
 };
@@ -158,6 +168,10 @@ public:
     //  BLIND_PRESSES with no battle menu: the loop stops, and the walker,
     //  which finds the player again, goes on.
     bool pressed_blind(WallClock now);
+    //  True once START has looked for the overworld and no battle has shown
+    //  for NO_OVERWORLD: neither is coming back (console B, 2026-11-03,
+    //  after losing to Lt. Surge: 8 minutes of + and B on a grey screen).
+    bool overworld_lost(WallClock now) const;
 
 private:
     std::optional<WallClock> m_last_battle;
@@ -173,6 +187,10 @@ private:
 class MoveRefusalWatch{
 public:
     void move_chosen(WallClock now);
+    //  Whether a "no PP left" read at `now` counts: no later than a
+    //  refusal's menu would come (console B, 2026-11-03, m68: one read 37 s
+    //  after the battle's last move, as the battle ended).
+    bool no_pp_due(WallClock now) const;
     //  No battle screen read while the battle goes on.
     void no_battle_screen();
     //  At the battle menu: true if the move chosen before it was turned down.

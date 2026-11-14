@@ -45,6 +45,13 @@ TextEnd advance_text(ConsoleHandle& console, ProControllerContext& context, Mill
 //  advance_text() to the overworld.
 void mash_until_overworld(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout);
 
+//  From the overworld, facing something that answers A with a message (a
+//  sign, Vermilion Gym's trash cans): A, then how many pages the message
+//  has, one or two, then on to the overworld. Language-free: one A after
+//  the first page has printed either closes the message or shows its
+//  second page. Nothing if no message showed.
+std::optional<size_t> talk_and_count_pages(ConsoleHandle& console, ProControllerContext& context);
+
 //  Advances text with `advance` until a YES/NO shows, then answers it. B
 //  answers NO. Throws OperationFailedException after `timeout`.
 void answer_yes_no(ConsoleHandle& console, ProControllerContext& context, bool yes, Button advance, Milliseconds timeout);

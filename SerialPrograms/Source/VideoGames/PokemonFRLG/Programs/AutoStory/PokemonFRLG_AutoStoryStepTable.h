@@ -41,7 +41,20 @@ enum class StoryActionId{
     HEAL,
     SHOP,
     READY,
-    //  A GAME step: one only FRLG has.
+    //  CLOSE_TRAINER_CARD: back from SID Helper (close_trainer_card()).
+    CLOSE_TRAINER_CARD,
+    //  LEAVE_GIFT_SUMMARY: back from Gift RNG (leave_gift_summary()).
+    LEAVE_GIFT_SUMMARY,
+    //  CUT_TREE_VARIANT: the tree ahead cut, and a step onto its tile.
+    CUT_TREE,
+    //  TRASH_CANS_VARIANT: the search for Vermilion Gym's switches.
+    TRASH_CANS,
+    //  Any other GAME step: a capture or a PC deposit or withdrawal
+    //  (capture_step(), pc_step() in PokemonFRLG_AutoStoryCapture.h); a
+    //  shiny met in a capture stops the program without reloading. A MART,
+    //  TEACH, LEVEL, GRIND or fossil CHOICE
+    //  (PokemonFRLG_AutoStoryAbilities.h); a GRIND heals by routing to its
+    //  target, the nurse, and back.
     GAME,
 };
 //  "route", "game": the action's name in logs and test traces.
@@ -60,10 +73,11 @@ const std::vector<StoryActionRow>& story_action_rows();
 //  The actions FRLG's steps name, with the args each takes: the built-in
 //  ones (Pokemon_BuiltinStoryActions.h), then a ROUTE and a LEGS named
 //  "run" (RUN_VARIANT), which take the same args and run with B held,
-//  a STEP named "trainer_line" (TRAINER_LINE_VARIANT), which steps on
-//  until a trainer sees the player, then FRLG's GAME actions: closing the Trainer Card or the Gift RNG
-//  summary, a PC transfer, a capture, the fossil, a LEVEL check, a Mart,
-//  a TEACH and a GRIND, each with the args it declares.
+//  STEPs named "trainer_line" (TRAINER_LINE_VARIANT) and "trainer_wait"
+//  (TRAINER_WAIT_VARIANT), then FRLG's GAME actions: closing the Trainer
+//  Card or the Gift RNG summary, cutting a tree, the trash cans, a PC
+//  transfer, a capture, the fossil, a LEVEL check, a Mart, a TEACH and a
+//  GRIND, each with the args it declares.
 //  A story file is read against these.
 std::span<const Pokemon::StoryActionSpec> story_action_specs();
 

@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include "Common/Cpp/Exceptions.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryChoice.h"
@@ -15,6 +16,7 @@
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
+#include "PokemonFRLG_AutoStoryTrashCans.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -37,6 +39,10 @@ std::string_view story_action_name(StoryActionId id){
     case StoryActionId::HEAL:       return "heal";
     case StoryActionId::SHOP:       return "shop";
     case StoryActionId::READY:      return "ready";
+    case StoryActionId::CLOSE_TRAINER_CARD: return "close_trainer_card";
+    case StoryActionId::LEAVE_GIFT_SUMMARY: return "leave_gift_summary";
+    case StoryActionId::CUT_TREE:   return "cut_tree";
+    case StoryActionId::TRASH_CANS: return "trash_cans";
     case StoryActionId::GAME:       return "game";
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown story action.");
@@ -56,6 +62,10 @@ const std::vector<StoryActionRow>& story_action_rows(){
         {StoryStepKind::HEAL,       "", StoryActionId::HEAL},
         {StoryStepKind::SHOP,       "", StoryActionId::SHOP},
         {StoryStepKind::READY,      "", StoryActionId::READY},
+        {StoryStepKind::GAME,       CLOSE_TRAINER_CARD, StoryActionId::CLOSE_TRAINER_CARD},
+        {StoryStepKind::GAME,       LEAVE_GIFT_SUMMARY, StoryActionId::LEAVE_GIFT_SUMMARY},
+        {StoryStepKind::GAME,       CUT_TREE_VARIANT,   StoryActionId::CUT_TREE},
+        {StoryStepKind::GAME,       TRASH_CANS_VARIANT, StoryActionId::TRASH_CANS},
         {StoryStepKind::GAME,       "", StoryActionId::GAME},
     };
     return ROWS;
@@ -131,6 +141,14 @@ Pokemon::StoryActionSpec grind_action_spec(){
     }};
 }
 
+//  GRIND_CHECK_ACTION's args: GRIND_ACTION's but the nurse.
+Pokemon::StoryActionSpec grind_check_action_spec(){
+    Pokemon::StoryActionSpec spec = grind_action_spec();
+    spec.name = GRIND_CHECK_ACTION;
+    std::erase_if(spec.args, [](const Pokemon::StoryArgSpec& arg){ return arg.key == "nurse"; });
+    return spec;
+}
+
 } // namespace
 
 std::span<const Pokemon::StoryActionSpec> story_action_specs(){
@@ -156,14 +174,20 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
             run.name = "run";
             specs.push_back(std::move(run));
         }
-        Pokemon::StoryActionSpec trainer_line = *Pokemon::find_story_action(builtin, StoryStepKind::STEP, "");
-        trainer_line.name = TRAINER_LINE_VARIANT;
-        specs.push_back(std::move(trainer_line));
+        for (const std::string& name : {TRAINER_LINE_VARIANT, TRAINER_WAIT_VARIANT}){
+            Pokemon::StoryActionSpec step = *Pokemon::find_story_action(builtin, StoryStepKind::STEP, "");
+            step.name = name;
+            specs.push_back(std::move(step));
+        }
         specs.push_back({.kind = StoryStepKind::GAME, .name = CLOSE_TRAINER_CARD, .args = {}});
         specs.push_back({.kind = StoryStepKind::GAME, .name = LEAVE_GIFT_SUMMARY, .args = {}});
+        specs.push_back({.kind = StoryStepKind::GAME, .name = CUT_TREE_VARIANT, .args = {
+            required_arg("direction", StoryArgType::DIRECTION, "the way to the tree, which the step then walks onto"),
+        }});
+        specs.push_back({.kind = StoryStepKind::GAME, .name = TRASH_CANS_VARIANT, .args = {}});
         for (Pokemon::StoryActionSpec spec : {
             pc_action_spec(), capture_action_spec(), fossil_action_spec(), level_action_spec(),
-            mart_action_spec(), teach_action_spec(), grind_action_spec(),
+            mart_action_spec(), teach_action_spec(), grind_action_spec(), grind_check_action_spec(),
         }){
             specs.push_back(std::move(spec));
         }
@@ -181,9 +205,13 @@ Pokemon::StoryActionTable make_story_action_table(const StoryActionBinding& bind
         }
         table.add(row.kind, row.variant, std::move(action));
     }
-    //  FRLG's own GAME actions: the GAME row's action, with each one's args.
+    //  FRLG's GAME actions without a row of their own: the GAME row's
+    //  action, with each one's args.
     for (const Pokemon::StoryActionSpec& spec : story_action_specs()){
-        if (spec.kind != StoryStepKind::GAME || spec.name.empty()){
+        const bool has_row = std::ranges::any_of(story_action_rows(), [&](const StoryActionRow& row){
+            return row.kind == spec.kind && row.variant == spec.name;
+        });
+        if (spec.kind != StoryStepKind::GAME || spec.name.empty() || has_row){
             continue;
         }
         Pokemon::StoryAction action = bind(StoryActionId::GAME);

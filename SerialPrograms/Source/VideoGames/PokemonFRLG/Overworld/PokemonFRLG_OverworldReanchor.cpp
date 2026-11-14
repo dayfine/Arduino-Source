@@ -285,6 +285,30 @@ WalkedTiles walked_near(const RouteStep& step, int estimate, Milliseconds tile_t
     };
 }
 
+std::vector<RouteStep> with_warp_slack(std::vector<RouteStep> route){
+    const auto same_axis = [](Direction a, Direction b){ return (int)a % 2 == (int)b % 2; };
+    std::optional<Direction> further;
+    for (RouteStep& step : route){
+        if (step.action != RouteAction::WALK){
+            continue;
+        }
+        if (step.warps){
+            if (further && step.direction != *further && same_axis(step.direction, *further)){
+                step.warp_slack = 1;
+            }
+            further.reset();
+            continue;
+        }
+        if (step.to_wall && further && same_axis(step.direction, *further)){
+            further.reset();
+        }
+        if (!step.to_wall && !step.connection_steps.empty()){
+            further = step.direction;
+        }
+    }
+    return route;
+}
+
 WalkedTiles whole_leg(const RouteStep& step){
     return WalkedTiles{.min = 0, .max = step.tiles};
 }

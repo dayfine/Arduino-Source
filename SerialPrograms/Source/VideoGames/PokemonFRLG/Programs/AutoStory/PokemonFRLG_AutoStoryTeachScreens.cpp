@@ -171,6 +171,7 @@ TeachPrompt ScreenTeachActions::member_answer(){
     bool incompatible = false;
     bool texts = false;
     size_t prompts = 0;
+    size_t unplaced = 0;
     for (size_t c = 0; c < MAX_LOOKS; c++){
         const TeachView view = m_screens.look();
         switch (view.screen){
@@ -182,10 +183,17 @@ TeachPrompt ScreenTeachActions::member_answer(){
             texts = true;
             press(TeachPress::A);
             break;
+        case TeachScreen::TM_SCENE:
+            return through_scene() ? TeachPrompt::LEARNED : TeachPrompt::FAILED;
         case TeachScreen::OTHER:
             //  A tutor's party menu closes onto the overworld once learned.
             if (m_tutor && texts){
                 return TeachPrompt::LEARNED;
+            }
+            //  A TM's: the scene, not placed (the first look may be the
+            //  party menu closing).
+            if (!m_tutor && ++unplaced > 1){
+                return through_scene() ? TeachPrompt::LEARNED : TeachPrompt::FAILED;
             }
             break;
         case TeachScreen::PARTY_YES_NO:
@@ -208,6 +216,38 @@ TeachPrompt ScreenTeachActions::member_answer(){
         }
     }
     return TeachPrompt::FAILED;
+}
+
+bool ScreenTeachActions::through_scene(){
+    bool learned = false;
+    for (size_t c = 0; c < MAX_LOOKS; c++){
+        const TeachView view = m_screens.look();
+        switch (view.screen){
+        case TeachScreen::TM_SCENE:
+        case TeachScreen::OTHER:
+            //  A on every look, "learned" too: the forget's "Poof!" has
+            //  read as "learned" (console B, 2026-11-03) and waits for A.
+            //  The wobble and the real "learned" run on their own: an A
+            //  then is lost, or opens the TM's menu once the TM CASE is
+            //  back, which leave() closes.
+            learned |= view.text == TeachText::LEARNED;
+            press(TeachPress::A);
+            break;
+        case TeachScreen::TM_CASE:
+        case TeachScreen::ITEM_MENU:
+        case TeachScreen::BAG:
+            return true;
+        default:
+            m_logger.log(std::format("Teach: {} after the TM's scene: not learned.", teach_screen_name(view.screen)), COLOR_RED);
+            return false;
+        }
+    }
+    if (learned){
+        m_logger.log("Teach: the TM CASE didn't show after \"learned\"; reading the moves will tell.", COLOR_ORANGE);
+        return true;
+    }
+    m_logger.log("Teach: the TM's scene didn't end.", COLOR_RED);
+    return false;
 }
 
 void ScreenTeachActions::answer_to_forget(const TeachView& view){
@@ -254,10 +294,10 @@ ForgetEnd ScreenTeachActions::forget(size_t slot){
             if (picked && m_tutor){
                 return ForgetEnd::LEARNED;
             }
-            //  After the pick, its messages: B pages through them, once the
-            //  moves page has closed (the first look).
-            if (picked && ++unplaced > 1){
-                press(TeachPress::B);
+            //  A TM's scene; one not placed once the moves page has closed
+            //  (the first look).
+            if (picked && (view.screen == TeachScreen::TM_SCENE || ++unplaced > 1)){
+                return through_scene() ? ForgetEnd::LEARNED : ForgetEnd::FAILED;
             }
             break;
         }
@@ -300,6 +340,7 @@ void ScreenTeachActions::dump_screen(std::string_view label){
 }
 
 bool ScreenTeachActions::leave(){
+    bool scene_seen = false;
     for (size_t c = 0; c < MAX_LOOKS; c++){
         const TeachView view = m_screens.look();
         switch (view.screen){
@@ -307,13 +348,22 @@ bool ScreenTeachActions::leave(){
         case TeachScreen::ITEM_MENU:
         case TeachScreen::TM_CASE:
         case TeachScreen::PARTY_PROMPT:
-        case TeachScreen::TM_SCENE:
             press(TeachPress::B);
             break;
         case TeachScreen::PARTY_TEXT:
         case TeachScreen::PARTY_YES_NO:
         case TeachScreen::KNOWN_MOVES:
             stop_teaching();
+            break;
+        case TeachScreen::TM_SCENE:
+            //  B would cancel it: to its end, then out. Once: a scene
+            //  that A didn't end is stuck.
+            if (scene_seen){
+                m_logger.log("Teach: the TM's scene is still up.", COLOR_RED);
+                return false;
+            }
+            scene_seen = true;
+            through_scene();
             break;
         case TeachScreen::OTHER:
             return m_screens.to_overworld();
@@ -402,6 +452,7 @@ TeachView ConsoleTeachScreens::read_view(const ImageViewRGB32& image, TeachScree
     case TeachScreen::PARTY_PROMPT:
     case TeachScreen::PARTY_TEXT:
     case TeachScreen::PARTY_YES_NO:
+    case TeachScreen::TM_SCENE:
         view.text = read_teach_text(logger, m_language, image);
         break;
     default:

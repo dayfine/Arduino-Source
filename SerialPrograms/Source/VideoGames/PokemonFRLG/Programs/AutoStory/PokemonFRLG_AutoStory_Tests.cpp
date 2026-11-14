@@ -234,8 +234,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 
 UnitTestResult test_routes_and_chain(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 27 || checkpoints[0].start){
-        return "Expected 27 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 32 || checkpoints[0].start){
+        return "Expected 32 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -386,11 +386,11 @@ bool looks_around(const MapObject& object){
 }
 
 //  The trainer on `map` who would see the player on `tile`, other than the
-//  `beaten`. Wanderers and those who look around are left out: no route
-//  can plan around one (see wanderer_stops() and held_past_lookers()).
-const MapObject* trainer_seeing(const MapData& map, const TilePos& tile, const std::set<const MapObject*>& beaten){
+//  `beaten`. Wanderers and those who look around are left out (no route can plan round one: wanderer_stops(),
+//  held_past_lookers()); with `lookers`, only those who look around, met by a wait (TRAINER_WAIT_VARIANT).
+const MapObject* trainer_seeing(const MapData& map, const TilePos& tile, const std::set<const MapObject*>& beaten, bool lookers){
     for (const MapObject& object : map.objects){
-        if (object.trainer && !object.wander && !looks_around(object) && !beaten.contains(&object) && trainer_may_see(map, object, tile)){
+        if (object.trainer && !object.wander && looks_around(object) == lookers && !beaten.contains(&object) && trainer_may_see(map, object, tile)){
             return &object;
         }
     }
@@ -411,7 +411,7 @@ TilePos step_end(const StoryPose& pose, const StoryStep& step, const std::set<co
     step_until_seen(
         TRAINER_LINE_TILES,
         [&]{ tile = tile.next(direction); },
-        [&]{ return trainer_seeing(*map, tile, beaten) != nullptr; }
+        [&]{ return trainer_seeing(*map, tile, beaten, false) != nullptr; }
     );
     return tile;
 }
@@ -441,7 +441,7 @@ std::vector<RouteStep> legs_walked(const StoryPose& pose, const StoryStep& step)
         const MapData* map = find_map_named(pose.map);
         const std::optional<Direction> facing = pose.facing ? pose.facing : map ? wall_beside(*map, pose.tile) : std::nullopt;
         const StoryPose target = one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target"));
-        route = plan_overworld_route(story_maps(), start, RouteGoal{{target.map, target.tile}, target.facing}, default_route_costs(), facing);
+        route = plan_overworld_route(story_maps(), start, RouteGoal{{target.map, target.tile}, target.facing}, story_route_costs(), facing);
     }
     return route ? *route : std::vector<RouteStep>{};
 }
@@ -484,15 +484,15 @@ std::vector<std::optional<MapPosition>> wanderer_stops(const StoryPose& pose, co
 //  the player's way, they walk up beside the leg, and the walker holds it
 //  on to its wall after the battle. Or the leg is one tile: the trainer
 //  sees the player when the step is done, on its end. Empty if so, else
-//  the leg that doesn't.
-std::string held_past_lookers(const StoryPose& pose, const StoryStep& step){
+//  the leg that doesn't. Trainers in `beaten` see no one.
+std::string held_past_lookers(const StoryPose& pose, const StoryStep& step, const std::set<const MapObject*>& beaten){
     MapPosition from{pose.map, pose.tile};
     for (const RouteStep& leg : legs_walked(pose, step)){
         const MapData* map = find_map_named(from.map);
         bool crosses = false;
-        for (const MapPosition& tile : leg.action == RouteAction::WALK ? leg_tiles(story_maps(), from, leg) : std::vector<MapPosition>{}){
-            for (const MapObject& object : map ? map->objects : std::vector<MapObject>{}){
-                crosses |= looks_around(object) && trainer_may_see(*map, object, tile.point);
+        for (const MapPosition& tile : leg.action == RouteAction::WALK && map ? leg_tiles(story_maps(), from, leg) : std::vector<MapPosition>{}){
+            for (const MapObject& object : map->objects){
+                crosses |= looks_around(object) && !beaten.contains(&object) && trainer_may_see(*map, object, tile.point);
             }
         }
         if (crosses && !leg.to_wall && leg.tiles != 1){
@@ -532,11 +532,17 @@ std::string tile_problem(const MapPosition& tile, const std::set<const MapObject
     if (warp != nullptr && !warp->to){
         return "onto a warp to a map not loaded at " + to_string(tile);
     }
-    const MapObject* trainer = trainer_seeing(*map, tile.point, beaten);
+    const MapObject* trainer = trainer_seeing(*map, tile.point, beaten, false);
     if (trainer != nullptr){
         return "in the line of the trainer at " + to_string(TilePos{trainer->x, trainer->y}) + " at " + to_string(tile);
     }
     return "";
+}
+
+//  LEGS whose legs through grass end on walls or are one tile (Route 6).
+bool grass_held(const StoryPose& pose, const StoryStep& step){
+    const std::vector<RouteStep> legs = legs_walked(pose, step);
+    return step.kind == StoryStepKind::LEGS && std::all_of(legs.begin(), legs.end(), [](const RouteStep& leg){ return !leg.wild || leg.to_wall || leg.tiles == 1; });
 }
 
 //  Moves `pose` past `step`, as check_checkpoint() does.
@@ -570,7 +576,7 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
         for (const MapPosition& tile : walks ? tiles_walked(pose, step) : std::vector<MapPosition>{}){
             const StoryPose end = to_patch ? one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")) : StoryPose{};
             const bool patch = to_patch && tile.map == end.map && tile.point == end.tile;
-            if (const std::string problem = tile_problem(tile, beaten); !problem.empty() && !(patch && problem.starts_with("in the grass"))){
+            if (const std::string problem = tile_problem(tile, beaten); !problem.empty() && !((patch || grass_held(pose, step)) && problem.starts_with("in the grass"))){
                 return where + problem;
             }
         }
@@ -578,11 +584,11 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
         if (std::count(stops.begin(), stops.end(), std::nullopt) > 0){
             return where + "crosses a wandering trainer's sight where the walk can't tell where they'd stop the player.";
         }
-        if (const std::string problem = walks ? held_past_lookers(pose, step) : ""; !problem.empty()){
+        if (const std::string problem = walks ? held_past_lookers(pose, step, beaten) : ""; !problem.empty()){
             return where + problem;
         }
         const MapData* map = find_map_named(pose.map);
-        const MapObject* trainer = step.kind == StoryStepKind::STEP && map ? trainer_seeing(*map, step_end(pose, step, beaten), beaten) : nullptr;
+        const MapObject* trainer = step.kind == StoryStepKind::STEP && map ? trainer_seeing(*map, step_end(pose, step, beaten), beaten, step.action == TRAINER_WAIT_VARIANT) : nullptr;
         if (trainer != nullptr && (c + 1 == checkpoint.steps.size() || checkpoint.steps[c + 1].kind != StoryStepKind::BATTLE)){
             return where + "steps into a trainer's line with no battle after it.";
         }
@@ -597,9 +603,9 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
 }
 
 //  From the Running Shoes on, routes and legs keep out of the grass (but
-//  in caves, which are all grass, and onto a GRIND's or a capture's patch), off warps to maps not loaded and out of
+//  in caves, which are all grass, onto a GRIND's or a capture's patch, and on legs held to walls round Route 6's trainers), off warps to maps not loaded and out of
 //  trainers' lines, but for the three Route 3 trainers, Mt. Moon's Grunt
-//  at (12, 20), Nugget Bridge's five and Route 25's four the table steps
+//  at (12, 20), Nugget Bridge's five, Route 25's four, Route 6's Jeff and Vermilion Gym's three the table steps
 //  in front of to fight; where they cross a wandering trainer's sight, the walk can place
 //  the player if the trainer stops them; and where they cross the sight of
 //  one who looks around, on a leg to a wall.
@@ -614,9 +620,9 @@ UnitTestResult test_trainer_lines(){
         }
         has_shoes = has_shoes || checkpoint.id == "00.10";
     }
-    if (beaten.size() != 13){
+    if (beaten.size() != 17){
         return "Expected to fight Colton, Greg and James on Route 3, the Grunt at (12, 20) in Mt. Moon, Nugget Bridge's five"
-            " and Franklin, Kelsey, Nob and Haley on Route 25; the table fights "
+            ", Franklin, Kelsey, Nob and Haley on Route 25, Jeff on Route 6 and Dwayne, Baily and Tucker in Vermilion Gym; the table fights "
             + std::to_string(beaten.size()) + " trainers.";
     }
     return true;
@@ -723,7 +729,7 @@ UnitTestResult test_nugget_bridge_order(){
     StoryPose pose = one_tile(Pokemon::grid_pose_of(*checkpoint->start));
     for (size_t c = 0; c < steps.size(); c++){
         const MapData* map = find_map_named(pose.map);
-        const MapObject* trainer = steps[c].kind == StoryStepKind::STEP && map ? trainer_seeing(*map, step_end(pose, steps[c], {}), {}) : nullptr;
+        const MapObject* trainer = steps[c].kind == StoryStepKind::STEP && map ? trainer_seeing(*map, step_end(pose, steps[c], {}), {}, false) : nullptr;
         if (trainer != nullptr && (c + 1 == steps.size() || steps[c + 1].kind != StoryStepKind::BATTLE)){
             return "00.16/" + steps[c].name + ": no battle right after the step.";
         }

@@ -37,6 +37,10 @@ std::optional<int> step_until_seen(int max_tiles, const std::function<void()>& s
 //  with no tiles to walk up (PokemonFRLG_OverworldRecoveryWalk.cpp).
 inline constexpr Milliseconds TRAINER_LINE_WATCH(2500);
 
+//  How long a step into the line of a trainer who looks around waits for
+//  them to turn to the player (TRAINER_WAIT_VARIANT).
+inline constexpr Milliseconds TRAINER_WAIT_WATCH(30000);
+
 //  The variant of a STEP into a trainer's line: a tile at a time, at most
 //  TRAINER_LINE_TILES, until the trainer sees the player
 //  (step_until_seen()). The battle after it starts on the trainer's row
@@ -45,12 +49,26 @@ inline const std::string TRAINER_LINE_VARIANT = "trainer_line";
 //  Maximum tiles to step into a trainer's line of sight.
 inline constexpr int TRAINER_LINE_TILES = 3;
 
+//  The variant of a STEP into the line of a trainer who looks around
+//  (MOVEMENT_TYPE_LOOK_AROUND): one tile, then a wait of up to
+//  TRAINER_WAIT_WATCH for the trainer to turn to the player. Indoors, where
+//  the player can't run, such a trainer turns a random way every 32 to 128
+//  frames (pokefirered event_object_movement.c, MovementType_LookAround;
+//  it turns to the player only when the player runs), so they face the
+//  player within 30 s all but about 1 time in 500; and the game checks
+//  their sight every frame (ProcessPlayerFieldInput()), not only after a
+//  step. Stepped into from outside their sight onto the second tile of
+//  their line, the player is always seen there, and the trainer walks up
+//  one tile.
+inline const std::string TRAINER_WAIT_VARIANT = "trainer_wait";
+
 //  From the overworld: step_until_seen() `direction`, turning first
-//  unless `facing` is `direction`, each step watched TRAINER_LINE_WATCH
-//  for a trainer's message or battle.
+//  unless `facing` is `direction`, each step watched `watch` for a
+//  trainer's message or battle.
 std::optional<int> step_into_line(
     ConsoleHandle& console, ProControllerContext& context,
-    Pokemon::Direction direction, std::optional<Pokemon::Direction> facing, int max_tiles
+    Pokemon::Direction direction, std::optional<Pokemon::Direction> facing, int max_tiles,
+    Milliseconds watch = TRAINER_LINE_WATCH
 );
 
 

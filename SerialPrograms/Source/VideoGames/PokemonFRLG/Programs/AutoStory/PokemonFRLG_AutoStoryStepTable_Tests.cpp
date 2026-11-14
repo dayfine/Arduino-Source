@@ -18,7 +18,9 @@
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
+#include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_AutoStoryTrashCans.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -35,6 +37,23 @@ const StoryStepKind ALL_KINDS[] = {
     StoryStepKind::BATTLE, StoryStepKind::TRAIN, StoryStepKind::HEAL, StoryStepKind::SHOP,
     StoryStepKind::SAVE, StoryStepKind::READY, StoryStepKind::GAME,
 };
+
+//  The action StoryExecutor::game() ran for a GAME `step` before the table.
+StoryActionId old_game_dispatch(const StoryStep& step){
+    if (step.action == CLOSE_TRAINER_CARD){
+        return StoryActionId::CLOSE_TRAINER_CARD;
+    }
+    if (step.action == LEAVE_GIFT_SUMMARY){
+        return StoryActionId::LEAVE_GIFT_SUMMARY;
+    }
+    if (step.action == CUT_TREE_VARIANT){
+        return StoryActionId::CUT_TREE;
+    }
+    if (step.action == TRASH_CANS_VARIANT){
+        return StoryActionId::TRASH_CANS;
+    }
+    return StoryActionId::GAME;
+}
 
 //  The action StoryExecutor ran for `step` before the table: the shared
 //  per-kind dispatch (StoryStepExecutor::run()) into the kinds it
@@ -53,7 +72,7 @@ std::optional<StoryActionId> old_dispatch(const StoryStep& step){
     case StoryStepKind::HEAL:       return StoryActionId::HEAL;
     case StoryStepKind::SHOP:       return StoryActionId::SHOP;
     case StoryStepKind::READY:      return StoryActionId::READY;
-    case StoryStepKind::GAME:       return StoryActionId::GAME;
+    case StoryStepKind::GAME:       return old_game_dispatch(step);
     case StoryStepKind::TRAIN:
     case StoryStepKind::SAVE:
         return std::nullopt;
@@ -113,6 +132,9 @@ std::string parity_error(FakeGame& game, const StoryStep& step){
 }
 
 //  Every kind, with no variant, an unknown one, and each one a row names.
+//  The table finds a row by the variant's first word, where game() compared
+//  the whole variant; the rows' variants are one word, as every authored
+//  step's is (test_parity_story_steps()).
 std::vector<StoryStep> every_kind_and_variant(){
     std::vector<std::string> variants{"", "no_such_variant", "no_such_variant key=1"};
     for (const StoryActionRow& row : story_action_rows()){

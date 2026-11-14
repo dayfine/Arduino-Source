@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <chrono>
 #include <format>
 #include <functional>
@@ -362,6 +363,107 @@ UnitTestResult test_cerulean_maps(){
     return true;
 }
 
+//  Cerulean's burgled house, Route 5, the Underground Path, Route 6,
+//  Vermilion City and the S.S. Anne load and join: from Cerulean's Pokemon
+//  Center a route plans through the house, its back yard and the
+//  Underground Path to Vermilion's nurse, and from there onto
+//  the ship and up to the Captain. The rival a new game hides
+//  (FLAG_HIDE_SS_ANNE_RIVAL, flag set "new_game") stands on the Captain's
+//  door until then: with him there, no route reaches the Captain. With
+//  Surf's cost below 0, no route surfs.
+UnitTestResult test_vermilion_maps(){
+    const std::vector<MapData> all = overworld_maps();
+    for (std::string_view name : {
+        "CeruleanCity_House2", "Route5", "UndergroundPath_NorthEntrance", "UndergroundPath_NorthSouthTunnel", "UndergroundPath_SouthEntrance",
+        "Route6", "VermilionCity", "VermilionCity_PokemonCenter_1F",
+        "SSAnne_Exterior", "SSAnne_1F_Corridor", "SSAnne_2F_Corridor", "SSAnne_CaptainsOffice",
+    }){
+        if (built_in(all, std::string(name)) == nullptr){
+            return std::format("Missing map {}.", name);
+        }
+    }
+    const std::set<std::string> new_game = map_flag_set(all, "new_game");
+    if (new_game.count("FLAG_HIDE_SS_ANNE_RIVAL") == 0){
+        return "Expected FLAG_HIDE_SS_ANNE_RIVAL in flag set new_game.";
+    }
+    const std::vector<MapData> maps = overworld_maps(new_game);
+    const MapPosition nurse{"VermilionCity_PokemonCenter_1F", map_point(maps, "VermilionCity_PokemonCenter_1F", "nurse_front")};
+    if (nurse.point != TilePos{7, 4}){
+        return "Unexpected nurse_front in Vermilion's Pokemon Center.";
+    }
+    if (!plans_from_cerulean_nurse(maps, RouteGoal{nurse, Direction::NORTH})){
+        return "No route from Cerulean's Pokemon Center through the burgled house and the Underground Path to Vermilion's.";
+    }
+    const RouteGoal captain{MapPosition{"SSAnne_CaptainsOffice", {5, 5}}, Direction::NORTH};
+    RouteCosts walking = default_route_costs();
+    walking[RouteCost::SURF] = -1;
+    const std::optional<std::vector<RouteStep>> aboard = plan_overworld_route(maps, nurse, captain, walking, Direction::NORTH);
+    if (!aboard){
+        return "No route from Vermilion's Pokemon Center onto the S.S. Anne to the Captain.";
+    }
+    //  The harbor's water (20..23, 23..27) is the shorter way south; a
+    //  player without Surf walks round it.
+    for (const RouteStep& step : *aboard){
+        if (step.action == RouteAction::SURF){
+            return "Expected the way aboard on land, not " + to_string(step) + ".";
+        }
+    }
+    if (plan_overworld_route(all, nurse, captain, default_route_costs(), Direction::NORTH)){
+        return "Expected the rival on the Captain's door to block the way while shown.";
+    }
+    return true;
+}
+
+//  Vermilion Gym loads and joins the city by its door (14, 25), behind the
+//  tree (19, 24), an object Cut removes: from the Center no route on land
+//  reaches the gym, from the tree's tile one does. The beams on rows 6 and
+//  7 are written off (OPENED_TILES), so a route reaches Lt. Surge (5, 2);
+//  the cans on rows 10, 12 and 14 are walls. Dwayne (8, 13) and Baily
+//  (2, 11) look every way, sight 3; Tucker (7, 8) west.
+UnitTestResult test_vermilion_gym_map(){
+    const std::vector<MapData> maps = overworld_maps(map_flag_set(overworld_maps(), "new_game"));
+    const MapData* gym = built_in(maps, "VermilionCity_Gym");
+    if (gym == nullptr){
+        return "Missing map VermilionCity_Gym.";
+    }
+    RouteCosts walking = default_route_costs();
+    walking[RouteCost::SURF] = -1;
+    const MapPosition nurse{"VermilionCity_PokemonCenter_1F", {7, 4}};
+    const RouteGoal door{MapPosition{"VermilionCity_Gym", {5, 18}}, std::nullopt};
+    if (plan_overworld_route(maps, nurse, door, walking, Direction::NORTH)){
+        return "Expected the tree (19, 24) to shut the gym off from the Center.";
+    }
+    if (!plan_overworld_route(maps, MapPosition{"VermilionCity", {19, 24}}, door, walking, Direction::SOUTH)){
+        return "No route from the tree's tile into the gym.";
+    }
+    if (!plan_overworld_route(maps, MapPosition{"VermilionCity_Gym", {5, 8}}, RouteGoal{MapPosition{"VermilionCity_Gym", {5, 3}}, Direction::NORTH}, walking, Direction::NORTH)){
+        return "Expected a route through the beams, off, to Lt. Surge.";
+    }
+    for (int can : {1, 3, 5, 7, 9}){
+        for (int row : {10, 12, 14}){
+            if (tile_at(*gym, TilePos{can, row}) != TileKind::WALL){
+                return std::format("Expected a can at ({}, {}).", can, row);
+            }
+        }
+    }
+    struct Seen{
+        std::string_view name;
+        TilePos tile;
+        bool seen;
+    };
+    for (const Seen& check : std::initializer_list<Seen>{
+        {"sailor", {8, 15}, true}, {"sailor", {7, 15}, false}, {"sailor", {5, 13}, true}, {"sailor", {4, 13}, false},
+        {"balding_man", {2, 13}, true}, {"balding_man", {3, 13}, false}, {"balding_man", {5, 11}, true}, {"balding_man", {6, 11}, false},
+        {"gentleman", {4, 8}, true}, {"gentleman", {5, 9}, false}, {"gentleman", {8, 8}, false},
+    }){
+        const auto object = std::find_if(gym->objects.begin(), gym->objects.end(), [&](const MapObject& o){ return o.name == check.name; });
+        if (object == gym->objects.end() || trainer_may_see(*gym, *object, check.tile) != check.seen){
+            return std::format("{} {} ({}, {}).", check.name, check.seen ? "should see" : "shouldn't see", check.tile.x, check.tile.y);
+        }
+    }
+    return true;
+}
+
 //  A planned step walks where its map doesn't let the player run, and only
 //  there: out of Pewter's Pokemon Center to the Gym.
 UnitTestResult test_walk_only_indoors(){
@@ -618,6 +720,14 @@ const OverworldMapsTestCase OVERWORLD_MAPS_CASES[] = {
     {
         .input = {.name = "Cerulean's Mart and Gym, Route 25 and Bill's Sea Cottage", .body = test_cerulean_maps},
         .expectation = {.description = "validates Cerulean City, Gym, Mart, Route 25 and Sea Cottage map data"},
+    },
+    {
+        .input = {.name = "Route 5 and 6 to Vermilion City and the S.S. Anne", .body = test_vermilion_maps},
+        .expectation = {.description = "validates Route 5, Route 6, Vermilion City and S.S. Anne maps"},
+    },
+    {
+        .input = {.name = "Vermilion Gym: behind the tree, beams, cans and trainers' sight", .body = test_vermilion_gym_map},
+        .expectation = {.description = "validates Vermilion Gym layout, electric fences and trainer sightlines"},
     },
 };
 

@@ -36,6 +36,11 @@ struct SimScript{
     //  don't mark as grass: Mt. Moon B2F's tiles closed on one side ('8')
     //  are cave floor too (console B, 2026-11-03).
     std::set<std::string> wild_floor_maps;
+    //  Whether the game holds the player up a tile on a step onto a
+    //  connected map. It did north onto Nugget Bridge (console B,
+    //  2026-11-03, rows 00.16 and 00.20), not south from Route 6 into
+    //  Vermilion City (row 00.24).
+    bool connections_stall = true;
     SimTiming timing;
 };
 

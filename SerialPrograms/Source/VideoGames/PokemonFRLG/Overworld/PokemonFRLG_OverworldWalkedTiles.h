@@ -38,6 +38,15 @@ constexpr Milliseconds STOP_TIMING_SLACK(300);
 //  (Pokemon::LegResult::tiles), give or take STOP_TIMING_SLACK at
 //  `tile_time` a tile: a tile either side walking, two running.
 WalkedTiles walked_near(const RouteStep& step, int estimate, Milliseconds tile_time);
+//  `route` with RouteStep::warp_slack set. An open leg over a map
+//  connection is held a tile longer for the game holding the player up
+//  there, which it doesn't always do: south from Route 6 into Vermilion
+//  City it didn't, the player ended a tile further south, and the north 1
+//  onto the Pokemon Center's door stopped below it (console B, 2026-11-03,
+//  row 00.24). Until a leg to a wall that way or a warp places the player
+//  again, they may stand a tile further on; a warp walked back that way is
+//  held a tile further for it.
+std::vector<RouteStep> with_warp_slack(std::vector<RouteStep> route);
 //  Anywhere on `step`, for a stop the timing doesn't place.
 WalkedTiles whole_leg(const RouteStep& step);
 

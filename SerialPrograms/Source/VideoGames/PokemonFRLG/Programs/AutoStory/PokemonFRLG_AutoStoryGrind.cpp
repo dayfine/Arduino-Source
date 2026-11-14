@@ -32,15 +32,20 @@ std::string_view grind_end_name(GrindEnd end){
 }
 
 
-Pokemon::StoryActionArgs grind_args(const GrindPlan& plan, Pokemon::GridPose nurse){
+Pokemon::StoryActionArgs grind_check_args(const GrindPlan& plan){
     Pokemon::StoryActionArgs args{
         {"slot", int64_t(plan.member + 1)},
         {"level", int64_t(plan.level)},
         {"encounters", int64_t(plan.max_encounters)},
         {"pace", plan.pace},
         {"heal_every", int64_t(plan.heal_every)},
-        {"nurse", std::move(nurse)},
     };
+    return args;
+}
+
+Pokemon::StoryActionArgs grind_args(const GrindPlan& plan, Pokemon::GridPose nurse){
+    Pokemon::StoryActionArgs args = grind_check_args(plan);
+    args.emplace("nurse", std::move(nurse));
     return args;
 }
 
@@ -66,6 +71,16 @@ Pokemon::StoryStep grind_step(std::string name, std::string why, const GrindPlan
     step.why = std::move(why);
     step.action = GRIND_ACTION;
     step.args = grind_args(plan, std::move(nurse));
+    return step;
+}
+
+Pokemon::StoryStep grind_check_step(std::string name, std::string why, const GrindPlan& plan){
+    Pokemon::StoryStep step;
+    step.kind = Pokemon::StoryStepKind::GAME;
+    step.name = std::move(name);
+    step.why = std::move(why);
+    step.action = GRIND_CHECK_ACTION;
+    step.args = grind_check_args(plan);
     return step;
 }
 
@@ -109,6 +124,10 @@ public:
                 return end(GrindEnd::FAILED, "the last trip to the nurse failed");
             }
         }
+    }
+    //  The member, read, has what the plan grinds for. Nothing fought.
+    bool reached_already(){
+        return m_plan.member == 0 && read_level() && over() && m_result.end == GrindEnd::REACHED;
     }
 
 private:
@@ -194,6 +213,12 @@ GrindResult run_grind(Logger& logger, GrindActions& actions, const MemberReader&
     GrindResult result = GrindRun(logger, actions, reader, plan).run();
     logger.log(grind_message(plan, result), result.end == GrindEnd::REACHED ? COLOR_BLACK : COLOR_RED);
     return result;
+}
+
+bool grind_reached_already(Logger& logger, GrindActions& actions, const MemberReader& reader, const GrindPlan& plan){
+    const bool reached = GrindRun(logger, actions, reader, plan).reached_already();
+    logger.log(reached ? "Grind: reached already; no walk out to the patch." : "Grind: not reached yet; out to the patch.");
+    return reached;
 }
 
 std::string grind_message(const GrindPlan& plan, const GrindResult& result){

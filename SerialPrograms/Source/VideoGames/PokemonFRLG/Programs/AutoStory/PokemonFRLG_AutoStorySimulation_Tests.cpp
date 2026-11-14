@@ -5,11 +5,11 @@
  *  A run of the whole story table, new game to the Boulder Badge, without
  *  the console: story_checkpoints() built into engine checkpoints by the
  *  shared builder, saving at each end as the program does, run by the
- *  shared runner with the program's retry policy, against a fake game.
- *  The fake plans each ROUTE on the story maps from where the run's pose
- *  says we stand (turning to a wall when the facing is unknown, as the
- *  program does), walks each LEGS on them, steps onto triggers, and passes
- *  every other step unless told to fail it.
+ *  shared runner with the program's retry policy, on the simulation of the
+ *  story maps (StoryMapsSim): the story's action table as the console's,
+ *  bound to the simulation, which plans each ROUTE on the story maps from
+ *  where the run's pose says we stand, walks each LEGS on them, steps onto
+ *  triggers and stubs what needs the console, unless told to fail a step.
  *
  */
 
@@ -17,7 +17,9 @@
 #include <format>
 #include <functional>
 #include <map>
+#include <memory>
 #include <optional>
+#include <random>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -32,6 +34,7 @@
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryPaceSim.h"
+#include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
@@ -68,70 +71,14 @@ const StoryCheckpoint& checkpoint_row(std::string_view id){
     return *row;
 }
 
-const MapData* map_named(const std::string& name){
-    for (const MapData& map : story_maps()){
-        if (map.name == name){
-            return &map;
-        }
-    }
-    return nullptr;
-}
-
-//  Whether the player, at the end of a WALK `step`, stops there holding on:
-//  the map's edge, a wall, or water to Surf onto, but no warp of any kind,
-//  even one to a map that isn't loaded.
-bool stops_past_end(const RouteStep& step){
-    const MapData& map = *map_named(step.end.map);
-    const TilePos here = step.end.point;
-    const TilePos ahead = here.next(step.direction);
-    if (!in_bounds(map, ahead)){
-        return true;
-    }
-    if (warps_on_step(map, ahead) || exit_mat(map, here) == step.direction
-        || (step.direction == Direction::NORTH && is_door(map, ahead))
-    ){
-        return false;
-    }
-    const StepKind kind = classify_step(map, PlayerState{here, elevation_at(map, here), step.surfing}, step.direction);
-    return kind == StepKind::BLOCKED || kind == StepKind::START_SURF;
-}
-
-//  The first leg of `route` to a wall that holding on would carry past its
-//  end, or nothing (console B, 2026-11-02: one rode Route 4's Pokemon
-//  Center escalator).
-std::optional<std::string> overrun_wall_leg(const std::vector<RouteStep>& route){
-    for (const RouteStep& step : route){
-        if (step.to_wall && !stops_past_end(step)){
-            return to_string(step);
-        }
-    }
-    return std::nullopt;
-}
-
-//  Where the run stands, with a facing: a wall beside it when unknown.
-struct Standing{
-    MapPosition position;
-    Direction facing = Direction::NORTH;
-    std::string error;
-};
-Standing standing(const Pokemon::Pose& pose){
-    const std::optional<StoryPose> at = story_pose(pose);
-    if (!at){
-        return {{}, Direction::NORTH, "no one-tile pose: " + Pokemon::to_string(pose)};
-    }
-    std::optional<Direction> facing = at->facing;
-    if (!facing){
-        const MapData* map = map_named(at->map);
-        facing = map ? wall_beside(*map, at->tile) : std::nullopt;
-    }
-    if (!facing){
-        return {{}, Direction::NORTH, "facing unknown and no wall beside " + to_string(MapPosition{at->map, at->tile})};
-    }
-    return {{at->map, at->tile}, *facing, ""};
-}
-
-class FakeGame : public Pokemon::StoryStepExecutor{
+//  The story on the story maps (StoryMapsSim), with a trace of what ran
+//  and steps told to fail.
+class FakeGame : public StoryMapsSim{
 public:
+    explicit FakeGame(StorySimKnobs knobs = {})
+        : StoryMapsSim(std::move(knobs))
+    {}
+
     struct Failure{
         std::string failure;
         size_t times = 0;
@@ -141,10 +88,9 @@ public:
     std::map<std::string, Failure> failures;
     //  Where the save loaded stands, when not at its checkpoint's start.
     std::optional<StoryPose> save_stands;
-    //  What the Mart sold, by its list's names.
-    std::map<std::string, int> bag;
 
     virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override{
+        StoryMapsSim::begin_attempt(data);
         m_row = data.id;
         trace.push_back("begin " + data.id);
     }
@@ -156,136 +102,10 @@ public:
             failure->second.times--;
             return Pokemon::outcome_failed(failure->second.failure, key);
         }
-        return act(state, step);
+        return StoryMapsSim::run(step, state);
     }
+
 private:
-    //  The step by its kind, as the console does it (StoryExecutor), with
-    //  nothing done on a screen.
-    Outcome act(RunState& state, const StoryStep& step){
-        switch (step.kind){
-        case StoryStepKind::ROUTE:
-            return walk_to(state.pose, step);
-        case StoryStepKind::LEGS:
-            return legs(state, step);
-        case StoryStepKind::STEP:
-            return take_step(state, step);
-        case StoryStepKind::READY:
-            return ready(state, step);
-        case StoryStepKind::SHOP:
-            return shop(step);
-        case StoryStepKind::TRAIN:
-        case StoryStepKind::SAVE:
-            return Pokemon::unsupported_step(step);
-        default:
-            //  Nothing on a screen; pacing leaves the player on either of
-            //  its tiles, as on the console.
-            return Pokemon::outcome_ok(paced_pose(state.pose, step));
-        }
-    }
-    Outcome legs(RunState& state, const StoryStep& step){
-        const Standing at = standing(state.pose);
-        if (!at.error.empty()){
-            return Pokemon::outcome_failed("no_pose", at.error);
-        }
-        const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), at.position, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
-        if (!route || route->empty()){
-            return Pokemon::outcome_failed("bad_legs", to_string(at.position));
-        }
-        return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
-    }
-    //  A step into a trainer's line goes on until a trainer can see the
-    //  player, as step_until_seen() does on the console.
-    Outcome take_step(RunState& state, const StoryStep& step){
-        const std::optional<StoryPose> at = story_pose(state.pose);
-        if (!at){
-            return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
-        }
-        const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
-        const MapData* map = map_named(at->map);
-        if (step.action != TRAINER_LINE_VARIANT || map == nullptr){
-            return Pokemon::outcome_ok(to_pose(StoryPose{at->map, at->tile.next(direction), direction}));
-        }
-        TilePos onto = at->tile;
-        const std::optional<int> stepped = step_until_seen(
-            TRAINER_LINE_TILES,
-            [&]{ onto = onto.next(direction); },
-            [&]{
-                return std::any_of(map->objects.begin(), map->objects.end(), [&](const MapObject& object){
-                    return object.trainer && trainer_may_see(*map, object, onto);
-                });
-            }
-        );
-        if (!stepped){
-            return Pokemon::outcome_failed("no_trainer", to_string(MapPosition{at->map, onto}));
-        }
-        return Pokemon::outcome_ok(to_pose(StoryPose{at->map, onto, direction}));
-    }
-    //  The nurse's way must plan too, but the run goes on from where it stands.
-    Outcome ready(RunState& state, const StoryStep& step){
-        const Outcome to_nurse = walk_to(state.pose, step);
-        return to_nurse.succeeded() ? Pokemon::outcome_ok() : to_nurse;
-    }
-    //  The Viridian Mart's list as the game shows it. After a purchase the
-    //  cursor stays on the row bought (console B, 2026-11-01), so each
-    //  order moves it from there, as buy_items() does since ad5d40885.
-    Outcome shop(const StoryStep& step){
-        const std::vector<Pokemon::StoryItem>& items = Pokemon::story_arg<std::vector<Pokemon::StoryItem>>(step.args, "items");
-        static const std::vector<std::string> LIST{"poke_ball", "potion", "antidote", "parlyz_heal", "cancel"};
-        const std::optional<std::vector<MartOrder>> orders = viridian_mart_orders(items);
-        if (!orders){
-            return Pokemon::outcome_failed("unknown_item", step.name);
-        }
-        int cursor = 0;
-        for (size_t c = 0; c < orders->size(); c++){
-            const MartOrder& order = (*orders)[c];
-            //  The presses: down or up from where the cursor is.
-            cursor += order.row - cursor;
-            if (cursor < 0 || cursor >= (int)LIST.size() || LIST[cursor] == "cancel"){
-                return Pokemon::outcome_failed("mart_cancel", std::format("order {} ends on row {}", c + 1, cursor + 1));
-            }
-            if (LIST[cursor] != items[c].item){
-                return Pokemon::outcome_failed("wrong_item", std::format("{} instead of {}", LIST[cursor], items[c].item));
-            }
-            bag[LIST[cursor]] += order.quantity;
-        }
-        return Pokemon::outcome_ok();
-    }
-
-    Outcome walk_to(const Pokemon::Pose& pose, const StoryStep& step){
-        if (Pokemon::tiles_of(pose).size() > 1){
-            //  From the tiles a pacing step leaves: the route must plan, and
-            //  test_routes_after_pacing() walks it on the sim from each.
-            const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
-            const RouteGoal goal{{target->map, target->tile}, target->facing};
-            const std::optional<std::vector<RouteStep>> route = plan_story_route(story_maps(), pose, std::nullopt, goal);
-            if (!route || route->empty()){
-                return Pokemon::outcome_failed("no_route", Pokemon::to_string(pose) + " to " + to_string(goal.position));
-            }
-            return Pokemon::outcome_ok(to_pose(StoryPose{target->map, target->tile, route->back().facing_after}));
-        }
-        const Standing at = standing(pose);
-        if (!at.error.empty()){
-            return Pokemon::outcome_failed("no_pose", at.error);
-        }
-        const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
-        const RouteGoal goal{{target->map, target->tile}, target->facing};
-        const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
-            story_maps(), at.position, goal, default_route_costs(), at.facing
-        );
-        if (!route){
-            return Pokemon::outcome_failed("no_route", to_string(at.position) + " to " + to_string(goal.position));
-        }
-        const MapPosition end = follow_overworld_route(story_maps(), at.position, *route);
-        if (!(end == goal.position)){
-            return Pokemon::outcome_failed("wrong_end", to_string(end));
-        }
-        if (const std::optional<std::string> leg = overrun_wall_leg(*route)){
-            return Pokemon::outcome_failed("wall_overrun", *leg);
-        }
-        const Direction facing = route->empty() ? at.facing : route->back().facing_after;
-        return Pokemon::outcome_ok(to_pose(StoryPose{target->map, target->tile, facing}));
-    }
-
     std::string m_row;
 };
 
@@ -294,6 +114,10 @@ private:
 //  run takes with every handoff off, each saving at its end (hooks.save
 //  stands for save_game()).
 struct Simulation{
+    explicit Simulation(StorySimKnobs knobs = {})
+        : game(std::move(knobs))
+    {}
+
     std::vector<StoryCheckpoint> rows = plan_story_run(story_checkpoints(), 0, story_checkpoints().size() - 1, StoryHandoffs{}).rows;
     FakeGame game;
     std::vector<std::string> lines;
@@ -354,6 +178,8 @@ struct Simulation{
 struct AutoStorySimulationInput{
     std::string name;
     UnitTestResult (*body)();
+    //  A body that logs, run instead of `body` if given.
+    UnitTestResult (*logged)(Logger&) = {};
 };
 
 struct AutoStorySimulationExpectation{
@@ -371,9 +197,9 @@ public:
         : UnitTest("PokemonFRLG::AutoStory - Simulation: " + scenario.input.name)
         , m_scenario(std::move(scenario))
     {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         try{
-            return m_scenario.input.body();
+            return m_scenario.input.logged ? m_scenario.input.logged(logger) : m_scenario.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
@@ -414,12 +240,38 @@ UnitTestResult test_whole_story(){
     }
     //  00.07's shopping, with the cursor staying on each row bought.
     const std::map<std::string, int> bought{{"potion", 5}, {"antidote", 3}, {"parlyz_heal", 1}};
-    if (sim.game.bag != bought){
+    if (sim.game.bag() != bought){
         std::string text;
-        for (const auto& item : sim.game.bag){
+        for (const auto& item : sim.game.bag()){
             text += std::format(" {} {}", item.second, item.first);
         }
         return "Expected 5 Potions, 3 Antidotes and 1 Parlyz Heal; bought" + text + ".";
+    }
+    return true;
+}
+
+//  The whole story through the table as the simulation binds it, each
+//  row's stubs logged: a step is stubbed exactly when its action needs the
+//  console, so no step the simulation plays is passed over.
+UnitTestResult test_stubbed_steps_need_the_console(Logger& logger){
+    Simulation sim;
+    if (!sim.run({}).completed){
+        return "Expected the whole story through:" + joined(sim.lines);
+    }
+    logger.log("Steps the simulation does not play, by row:\n" + stub_report(sim.game.stubs().rows()));
+    for (const RowStubs& stubs : sim.game.stubs().rows()){
+        const auto row = std::find_if(sim.rows.begin(), sim.rows.end(), [&](const StoryCheckpoint& data){ return data.id == stubs.row; });
+        if (row == sim.rows.end()){
+            return "Stubs for no row: " + stubs.row;
+        }
+        for (const StoryStep& step : row->steps){
+            const Pokemon::StoryAction* action = sim.game.actions().find(step);
+            const bool stubbed = std::ranges::find(stubs.steps, step.name) != stubs.steps.end();
+            if (action == nullptr || stubbed != action->needs_console){
+                return std::format("{} {}: {}, but its action {} the console.", row->id, step.name,
+                    stubbed ? "stubbed" : "played", action != nullptr && action->needs_console ? "needs" : "does not need");
+            }
+        }
     }
     return true;
 }
@@ -478,18 +330,6 @@ UnitTestResult test_gives_up_after_attempts(){
         return "Expected 00.09 tried 3 times, then a stop on Brock:" + joined(sim.game.trace) + joined(sim.lines);
     }
     return true;
-}
-
-//  The route the program walks for `step`, a ROUTE or LEGS, from `at`:
-//  planned, or the legs laid out.
-std::optional<std::vector<RouteStep>> walked_route(const StoryPose& at, const StoryStep& step){
-    const MapPosition start{at.map, at.tile};
-    if (step.kind == StoryStepKind::LEGS){
-        return fixed_route(story_maps(), start, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
-    }
-    const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
-    const RouteGoal goal{{target->map, target->tile}, target->facing};
-    return plan_overworld_route(story_maps(), start, goal, default_route_costs(), at.facing);
 }
 
 //  Walks `step` of 00.14 on `sim` from `at`, where the table says the
@@ -553,49 +393,6 @@ UnitTestResult test_cerulean_entry_short(){
         }
     }
     return true;
-}
-
-//  Runs `step` of row `id` on `sim` as the program does: routes and legs
-//  by the sim's walker from `at`, where the table says the player stands,
-//  fighting a trainer who sees the player on the way; a step one tap at a
-//  time, or for a step into a trainer's line by step_until_seen(), each
-//  watched for the trainer; a battle from the trainer's message, which
-//  must be up. Moves `at` to where the table says the step ends. Returns
-//  the failure, or empty.
-std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id){
-    const std::string where = id + "/" + step.name + ": ";
-    const auto on = [&sim]{ return " On " + to_string(sim.state().position) + "."; };
-    if (step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::ROUTE){
-        const std::optional<std::vector<RouteStep>> route = walked_route(at, step);
-        const RoutePlanning planning{.maps = &story_maps(), .start = MapPosition{at.map, at.tile}, .label = step.name};
-        const std::string failure = route ? OverworldSimWalker(sim).run(*route, planning) : "no legs.";
-        at = route ? StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after} : at;
-        return failure.empty() ? "" : where + failure + on();
-    }
-    if (step.kind == StoryStepKind::STEP){
-        const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
-        const auto tap = [&sim, direction]{
-            if (sim.state().facing != direction){
-                sim.tap(direction);
-            }
-            sim.tap(direction);
-        };
-        const auto seen = [&sim]{
-            return sim.watch({SimWatcher::MESSAGE, SimWatcher::BATTLE_SCREEN}, TRAINER_LINE_WATCH).has_value();
-        };
-        const int tiles = step.action == TRAINER_LINE_VARIANT ? TRAINER_LINE_TILES : 1;
-        return step_until_seen(tiles, tap, seen) ? "" : where + "no trainer saw the player." + on();
-    }
-    if (step.kind == StoryStepKind::BATTLE){
-        if (!sim.close_message() || sim.handle_battle(SimBattleChoice::FIGHT) != SimBattleEnd::ENDED){
-            return where + "no_battle." + on();
-        }
-        at = *story_pose(Pokemon::pose_of(*step.pose_after));
-        if (!(sim.state().position == MapPosition{at.map, at.tile})){
-            return where + "expected " + to_string(MapPosition{at.map, at.tile}) + "." + on();
-        }
-    }
-    return "";
 }
 
 //  Console B, 2026-11-03 (row 00.16), twice: the open leg north from
@@ -963,8 +760,59 @@ UnitTestResult test_out_of_bill_cottage(){
 }
 
 
+//  Someone talks to the player before every step (StorySimKnobs::
+//  dialog_before): cleared between steps, the whole story still passes;
+//  left up, as before the executor looked, a walk fails on it.
+UnitTestResult test_dialog_before_every_step(){
+    const auto always = [](const std::string&, const std::string&){
+        return true;
+    };
+    Simulation cleared({.dialog_before = always});
+    if (!cleared.run({}).completed){
+        return "Expected the story through, a dialog before every step cleared:" + joined(cleared.lines);
+    }
+    Simulation left({.dialog_before = always, .clear_interrupts = false});
+    const bool completed = left.run({}).completed;
+    const auto stopped = [](const std::string& line){
+        return line.find("is still up") != std::string::npos;
+    };
+    if (completed || std::ranges::none_of(left.lines, stopped)){
+        return "Expected a dialog left up to stop a walk:" + joined(left.lines);
+    }
+    return true;
+}
+
+//  Dialogs pop up at random before one step in five: how many whole runs
+//  pass with them cleared between steps, and with them left up.
+UnitTestResult test_dialogs_at_random(Logger& logger){
+    constexpr uint32_t SEEDS = 5;
+    size_t passes[2] = {0, 0};
+    for (uint32_t seed = 1; seed <= SEEDS; seed++){
+        for (bool clear : {false, true}){
+            const auto rng = std::make_shared<std::mt19937>(seed);
+            Simulation sim({
+                .dialog_before = [rng](const std::string&, const std::string&){
+                    return std::bernoulli_distribution(0.2)(*rng);
+                },
+                .clear_interrupts = clear,
+            });
+            passes[clear] += sim.run({}).completed ? 1 : 0;
+        }
+    }
+    logger.log(std::format(
+        "Dialogs before one step in five, {} seeds: {} passed left up, {} cleared between steps.",
+        SEEDS, passes[0], passes[1]
+    ));
+    if (passes[1] != SEEDS){
+        return std::format("Expected every run through with the dialogs cleared, {} of {}.", passes[1], SEEDS);
+    }
+    return true;
+}
+
+
 const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
     {.input = {.name = "new game to Brock, in order, each start where the last save stood", .body = test_whole_story}, .expectation = {.description = "runs full story progression from new game through Brock gym"}},
+    {.input = {.name = "the steps it stubs need the console", .body = nullptr, .logged = test_stubbed_steps_need_the_console}, .expectation = {.description = "stubs each needs-console step of the whole story and plays the rest"}},
     {.input = {.name = "start and end checkpoints", .body = test_start_and_end}, .expectation = {.description = "executes segment bounded by start and end checkpoints"}},
     {.input = {.name = "a failed walk reloads its checkpoint's save", .body = test_retry_from_save}, .expectation = {.description = "reloads checkpoint save state on simulated movement failure"}},
     {.input = {.name = "a battle lost every time stops after 3 attempts", .body = test_gives_up_after_attempts}, .expectation = {.description = "aborts after three consecutive battle blackouts"}},
@@ -978,6 +826,8 @@ const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
     {.input = {.name = "00.20 onto the grass out of Shane's sight, the leg west a tile short", .body = test_oddish_patch_west_short}, .expectation = {.description = "recovers when approaching grass patch with short western leg"}},
     {.input = {.name = "the routes after pacing, from either of its tiles", .body = test_routes_after_pacing}, .expectation = {.description = "plans valid routes regardless of which pacing tile character ends on"}},
     {.input = {.name = "a save off the start pose stops before any step", .body = test_save_off_start_pose}, .expectation = {.description = "fails the start check without walking or saving"}},
+    {.input = {.name = "a dialog pops up before every step", .body = test_dialog_before_every_step}, .expectation = {.description = "cleared between steps, the story passes; left up, a walk fails on it"}},
+    {.input = {.name = "dialogs pop up before one step in five, over 5 seeds", .body = nullptr, .logged = test_dialogs_at_random}, .expectation = {.description = "every run passes with them cleared"}},
 };
 
 } // namespace

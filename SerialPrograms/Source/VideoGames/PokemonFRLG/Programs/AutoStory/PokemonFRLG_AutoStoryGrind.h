@@ -54,6 +54,11 @@ namespace PokemonFRLG{
 //  From the overworld in the patch: grinds as `plan` says.
 GrindResult run_grind(Logger& logger, GrindActions& actions, const MemberReader& reader, const GrindPlan& plan);
 
+//  Before the walk out to the patch: whether the member `plan` grinds, as
+//  read, already has its level. Nothing is fought. 00.24 walked to Route
+//  6's grass and back at Lv29 (console B, 2026-11-03).
+bool grind_reached_already(Logger& logger, GrindActions& actions, const MemberReader& reader, const GrindPlan& plan);
+
 //  Formats a log message summarizing the grind result.
 std::string grind_message(const GrindPlan& plan, const GrindResult& result);
 
