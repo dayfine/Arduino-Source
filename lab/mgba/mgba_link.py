@@ -205,7 +205,7 @@ def run_smoke(link, out, expect_code="BPRE", stall_seconds=2.0, state_path=None,
         fr = link.frame()
         running.append(time.perf_counter() - t)
     size = os.path.getsize(fr["path"]) if os.path.exists(fr["path"]) else 0
-    check("FRAME cost, running", size > 0 and (fr["w"], fr["h"]) == (240, 160),
+    check("FRAME round trip, running (includes the wait for the next frame)", size > 0 and (fr["w"], fr["h"]) == (240, 160),
           "%s; %dx%d, file %d bytes" % (_ms_stats(running), fr["w"], fr["h"], size))
 
     if not paced:
@@ -229,7 +229,7 @@ def run_smoke(link, out, expect_code="BPRE", stall_seconds=2.0, state_path=None,
         t = time.perf_counter()
         link.frame()
         stalled.append(time.perf_counter() - t)
-    check("FRAME cost, stalled", True, _ms_stats(stalled))
+    check("FRAME cost, stalled (screenshot + reply)", True, _ms_stats(stalled))
 
     rtt = []
     for _ in range(frame_samples):
@@ -243,15 +243,24 @@ def run_smoke(link, out, expect_code="BPRE", stall_seconds=2.0, state_path=None,
         saved = link.save(state_path)
         check("SAVE", saved == f1, "OK %d at frame %d" % (saved, f1))
 
-    # KEYS at frame F, read back from emu:getKeys() at the keysRead of frame F.
+    # KEYS at frame F, read back from emu:getKeys() in the keysRead callback. The bridge applies a
+    # mask at the first keysRead at or after F; mGBA fires keysRead only when the game reads the keys,
+    # and in 0.10.5 the read for frame N comes before the frame callback that stalls at N. Grant
+    # frame by frame (bounded) until the game has read the keys at or after F.
     f_key = f1 + 3
     late = link.keys(f_key, key_mask)
-    link.grant(f_key + 1)
-    st = _wait_for_frame(link, f_key + 1, 5.0)
+    target = f_key
+    for _ in range(30):
+        link.grant(target + 1)
+        st = _wait_for_frame(link, target + 1, 5.0)
+        if st["read_frame"] is not None and st["read_frame"] >= f_key:
+            break
+        target = st["frame"]
     check("KEYS at frame F (emu:getKeys)",
           late == 0 and st["applied_frame"] == f_key and st["applied_mask"] == key_mask
-          and st["read_frame"] == f_key and st["read_keys"] == key_mask,
-          "F=%d: reply %s, applied at %s mask %s, getKeys at keysRead %s (frame %s), stalled at %d"
+          and st["read_keys"] == key_mask,
+          "F=%d: reply %s, applied at keysRead of frame %s with mask %s; getKeys at keysRead %s "
+          "(frame %s); stalled at %d"
           % (f_key, "OK" if late == 0 else "LATE %d" % late, st["applied_frame"], st["applied_mask"],
              st["read_keys"], st["read_frame"], st["frame"]))
     link.keys(st["frame"], 0)
