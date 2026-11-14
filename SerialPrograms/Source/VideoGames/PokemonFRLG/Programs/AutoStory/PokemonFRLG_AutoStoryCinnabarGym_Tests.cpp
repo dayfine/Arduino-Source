@@ -82,11 +82,26 @@ const StoryCheckpoint& checkpoint(std::string_view id){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No checkpoint {}.", id));
 }
 
-//  The rows on the sim, which can't open the quiz doors (the scripts swap
-//  their metatiles) or walk into a Center with no map. Kept across sims:
-//  the trainers fought.
+//  The tiles each quiz door's script turns to floor, door N's at [N - 1]
+//  (pokefirered CinnabarIsland_Gym scripts.inc, OpenDoorN's setmetatile
+//  calls without the collision bit). The map has the doors shut.
+const std::vector<TilePos> QUIZ_DOOR_FLOORS[] = {
+    {{26, 8}, {27, 8}, {26, 9}, {27, 9}, {26, 10}, {27, 10}, {28, 10}},
+    {{17, 8}, {18, 8}, {17, 9}, {18, 9}, {17, 10}, {18, 10}, {19, 10}},
+    {{17, 15}, {18, 15}, {17, 16}, {18, 16}, {17, 17}, {18, 17}, {19, 17}},
+    {{11, 22}, {11, 23}},
+    {{5, 16}, {6, 16}, {5, 17}, {6, 17}, {5, 18}, {6, 18}, {7, 18}},
+    {{5, 8}, {6, 8}, {5, 9}, {6, 9}, {5, 10}, {6, 10}, {7, 10}},
+};
+
+//  The rows on the sim, whose gym opens each quiz door as the console does
+//  once its quiz is answered, while the walker plans on the story's maps,
+//  where the doors are shut: a leg held to a shut door runs through the
+//  open one, as on the console. The sim can't walk into a Center with no
+//  map. Kept across sims: the trainers fought.
 struct GymWalk{
     StoryPose at;
+    std::vector<MapData> maps = story_maps();
     std::optional<OverworldSim> sim;
     std::vector<std::string> fought;
 
@@ -97,11 +112,27 @@ struct GymWalk{
     }
     //  A fresh sim on `at`, after a step it can't walk.
     void place(){
+        place_on(MapPosition{at.map, at.tile}, *at.facing);
+    }
+    //  Quiz door `door` (1 to 6) opens where the player stands.
+    void open_door(size_t door){
+        for (MapData& map : maps){
+            if (map.name != GYM){
+                continue;
+            }
+            for (const TilePos& tile : QUIZ_DOOR_FLOORS[door - 1]){
+                Pokemon::cell_at(tile, map.tiles) = TileKind::OPEN;
+            }
+        }
+        const SimState& state = sim->state();
+        place_on(state.position, state.facing);
+    }
+    void place_on(const MapPosition& position, Direction facing){
         if (sim){
             const std::vector<std::string>& beaten = sim->state().trainers_beaten;
             fought.insert(fought.end(), beaten.begin(), beaten.end());
         }
-        sim.emplace(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+        sim.emplace(maps, position, facing);
     }
     std::vector<std::string> all_fought() const{
         std::vector<std::string> all = fought;
@@ -111,20 +142,25 @@ struct GymWalk{
     }
 };
 
-//  A step of a row on the sim: row_step_on_sim(), but a step through a
-//  quiz door, the way into the Center and Blaine's battle, which a talk
-//  starts, leave the player where the table says.
+//  A step of a row on the sim: row_step_on_sim(), but the way into the
+//  Center and Blaine's battle, which a talk starts, leave the player where
+//  the table says, and "door_N_opens" opens quiz door N.
 std::string gym_step_on_sim(const StoryStep& step, const std::string& id, GymWalk& walk){
-    const bool door = step.kind == StoryStepKind::STEP && (step.name.starts_with("into_door_") || step.name.starts_with("through_door_"));
     const bool center = step.action == CENTER_ENTER_VARIANT;
-    if (door || center || (step.kind == StoryStepKind::BATTLE && step.name == "blaine")){
+    if (center || (step.kind == StoryStepKind::BATTLE && step.name == "blaine")){
         walk.at = *story_pose(Pokemon::pose_of(*step.pose_after));
-        if (door || center){
+        if (center){
             walk.place();
         }
         return "";
     }
-    return row_step_on_sim(*walk.sim, walk.at, step, id);
+    const std::string failure = row_step_on_sim(*walk.sim, walk.at, step, id);
+    constexpr std::string_view OPENS_PREFIX = "door_";
+    constexpr std::string_view OPENS_SUFFIX = "_opens";
+    if (failure.empty() && step.name.starts_with(OPENS_PREFIX) && step.name.ends_with(OPENS_SUFFIX)){
+        walk.open_door((size_t)(step.name[OPENS_PREFIX.size()] - '0'));
+    }
+    return failure;
 }
 
 //  Row `id`'s steps on the sim from `walk.at`: the failure, or empty.
@@ -185,7 +221,7 @@ UnitTestResult test_quiz_doors_on_map(){
 }
 
 //  14.01 from outside the Mansion: the nurse, the gym and its six quiz
-//  doors, nobody fought, to below Blaine, where 14.02 starts; 14.02,
+//  doors, each walked through once open, nobody fought, to below Blaine, where 14.02 starts; 14.02,
 //  Blaine's battle, which ends where it starts; then 14.02b from there out
 //  of the gym to the nurse.
 UnitTestResult test_gym_rows(){
