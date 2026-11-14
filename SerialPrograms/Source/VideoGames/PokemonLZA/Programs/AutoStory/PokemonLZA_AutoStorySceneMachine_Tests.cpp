@@ -351,55 +351,68 @@ private:
 
 const SceneMachineCase SCENE_MACHINE_CASES[] = {
     {
-        .name = "quiet end waits for the scene's minimum length", .input = {.body = test_quiet_waits_for_min_length},
+        .name = "quiet end waits for the scene's minimum length",
+        .input = {.body = test_quiet_waits_for_min_length},
         .expectation = {},
     },
     {
-        .name = "a box or a fade restarts the quiet time", .input = {.body = test_quiet_restarts_on_busy},
+        .name = "a box or a fade restarts the quiet time",
+        .input = {.body = test_quiet_restarts_on_busy},
         .expectation = {},
     },
     {
-        .name = "the party bar held a second ends the scene", .input = {.body = test_party_bar_held},
+        .name = "the party bar held a second ends the scene",
+        .input = {.body = test_party_bar_held},
         .expectation = {},
     },
     {
-        .name = "the controls hint held a second ends the scene", .input = {.body = test_controls_hint_held},
+        .name = "the controls hint held a second ends the scene",
+        .input = {.body = test_controls_hint_held},
         .expectation = {},
     },
     {
-        .name = "the ad's subtitles: A at the chevron, blind A, none at the hint", .input = {.body = test_ad_subtitles},
+        .name = "the ad's subtitles: A at the chevron, blind A, none at the hint",
+        .input = {.body = test_ad_subtitles},
         .expectation = {},
     },
     {
-        .name = "the mission banner on two looks ends the scene", .input = {.body = test_mission_banner_ends},
+        .name = "the mission banner on two looks ends the scene",
+        .input = {.body = test_mission_banner_ends},
         .expectation = {},
     },
     {
-        .name = "the mission complete card: A, busy, wins over the banner", .input = {.body = test_mission_complete_presses_a},
+        .name = "the mission complete card: A, busy, wins over the banner",
+        .input = {.body = test_mission_complete_presses_a},
         .expectation = {},
     },
     {
-        .name = "the mission banner does not end a mash to a choice", .input = {.body = test_mission_banner_only_overworld},
+        .name = "the mission banner does not end a mash to a choice",
+        .input = {.body = test_mission_banner_only_overworld},
         .expectation = {},
     },
     {
-        .name = "blind presses keep the quiet end, and only in an A mash", .input = {.body = test_blind_press_keeps_quiet},
+        .name = "blind presses keep the quiet end, and only in an A mash",
+        .input = {.body = test_blind_press_keeps_quiet},
         .expectation = {},
     },
     {
-        .name = "without a quiet time a still screen never ends it", .input = {.body = test_no_quiet_never_ends_still},
+        .name = "without a quiet time a still screen never ends it",
+        .input = {.body = test_no_quiet_never_ends_still},
         .expectation = {},
     },
     {
-        .name = "B through the text to the choice", .input = {.body = test_text_to_choice},
+        .name = "B through the text to the choice",
+        .input = {.body = test_text_to_choice},
         .expectation = {},
     },
     {
-        .name = "A through the cards to the battle HUD", .input = {.body = test_to_battle},
+        .name = "A through the cards to the battle HUD",
+        .input = {.body = test_to_battle},
         .expectation = {},
     },
     {
-        .name = "what each state presses", .input = {.body = test_state_actions},
+        .name = "what each state presses",
+        .input = {.body = test_state_actions},
         .expectation = {},
     },
 };

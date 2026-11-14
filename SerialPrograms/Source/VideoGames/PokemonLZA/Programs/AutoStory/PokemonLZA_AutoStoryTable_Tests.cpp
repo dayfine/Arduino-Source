@@ -282,35 +282,43 @@ private:
 
 const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     {
-        .name = "Story table: rows lint against PLZA's engine actions", .input = {.body = test_story_table_lints},
+        .name = "Story table: rows lint against PLZA's engine actions",
+        .input = {.body = test_story_table_lints},
         .expectation = {},
     },
     {
-        .name = "Story table: actions not implemented say what they wait for", .input = {.body = test_not_implemented_actions},
+        .name = "Story table: actions not implemented say what they wait for",
+        .input = {.body = test_not_implemented_actions},
         .expectation = {},
     },
     {
-        .name = "Story table: the autosave rows, and 01.03 saves through the menu", .input = {.body = test_autosave_rows},
+        .name = "Story table: the autosave rows, and 01.03 saves through the menu",
+        .input = {.body = test_autosave_rows},
         .expectation = {},
     },
     {
-        .name = "Story table: every row is ready", .input = {.body = test_every_row_ready},
+        .name = "Story table: every row is ready",
+        .input = {.body = test_every_row_ready},
         .expectation = {},
     },
     {
-        .name = "reload_when_chained: only true, only after an autosave row, never on a new game row", .input = {.body = test_reload_when_chained_field},
+        .name = "reload_when_chained: only true, only after an autosave row, never on a new game row",
+        .input = {.body = test_reload_when_chained_field},
         .expectation = {},
     },
     {
-        .name = "Scene mash: a scene that never starts fails at its start window", .input = {.body = test_scene_start_window},
+        .name = "Scene mash: a scene that never starts fails at its start window",
+        .input = {.body = test_scene_start_window},
         .expectation = {},
     },
     {
-        .name = "Scene mash: what each frame presses", .input = {.body = test_scene_mash_rule},
+        .name = "Scene mash: what each frame presses",
+        .input = {.body = test_scene_mash_rule},
         .expectation = {},
     },
     {
-        .name = "Start checks: 01.00 starts the new game without a save; a run plays every row", .input = {.body = test_new_game_rows},
+        .name = "Start checks: 01.00 starts the new game without a save; a run plays every row",
+        .input = {.body = test_new_game_rows},
         .expectation = {},
     },
 };
