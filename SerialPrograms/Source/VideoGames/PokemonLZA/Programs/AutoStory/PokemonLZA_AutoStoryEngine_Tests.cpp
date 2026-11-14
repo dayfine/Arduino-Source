@@ -456,6 +456,41 @@ UnitTestResult test_arrival_quiet_fails(CancellableScope& scope){
     return true;
 }
 
+//  02.02's street scene (a "scene" step, A): A at each box and at the
+//  tutorial card, a wait while the party bar shows between lines, done once
+//  it has held a second (TalkOver's calm time, OVERWORLD_HOLD).
+UnitTestResult test_scene_step_presses_to_overworld(CancellableScope& scope){
+    FakeBackend backend = fake_plza({
+        look_at(0ms, {EngineEvent::DIALOG_BOX}),
+        with_reading(look_at(1000ms), TUTORIAL_CARD_READING),
+        look_at(2000ms, {EngineEvent::PLAYER_CAN_MOVE}),
+        look_at(2500ms, {EngineEvent::DIALOG_BOX}),
+        look_at(3000ms, {EngineEvent::PLAYER_CAN_MOVE}),
+        look_at(4000ms, {EngineEvent::PLAYER_CAN_MOVE}),
+    }, scope, Pokemon::StoryBackendKind::CONSOLE);
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("02.02", "street_scene"));
+    if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
+        return std::format("Expected the scene to end in the overworld: {}", to_string(report.run.failure));
+    }
+    return expect_inputs(backend, {"press A", "press A", "wait 250ms", "press A", "wait 250ms"});
+}
+
+//  A scene step not at its scene's trigger (02.02 after the Brigitte
+//  battle, console B, 2026-11-13): no box, choice or battle in the start
+//  window fails it, before an A mash talks to whoever stands in front.
+UnitTestResult test_scene_step_never_started(CancellableScope& scope){
+    FakeBackend backend = fake_plza({
+        look_at(0ms, {EngineEvent::FADE_BLACK}),
+        look_at(20000ms),
+        look_at(46000ms),
+    }, scope, Pokemon::StoryBackendKind::CONSOLE);
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("02.02", "street_scene"));
+    if (report.verdict == Pokemon::CheckpointVerdict::PASSED || report.run.failure.failure != "scene_never_started"){
+        return std::format("Expected a scene with no box to fail as scene_never_started, got {}", to_string(report.run.failure));
+    }
+    return expect_inputs(backend, {"wait 250ms", "wait 250ms"});
+}
+
 //  What PLZA refuses: console actions fail as console_only off a console,
 //  and tile walks and unknown actions fail the lint.
 UnitTestResult test_refused_steps(CancellableScope& scope){
@@ -792,6 +827,8 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.name = "01.01 arrival_scenes: done on the mission banner once it has gone, A if it stays", .input = {.body = test_arrival_ends_on_mission_banner}, .expectation = {}},
     {.name = "01.03 after_andi: A at the mission complete card, then the banner, A if it stays", .input = {.body = test_after_andi_presses_complete_card}, .expectation = {}},
     {.name = "01.01 arrival_scenes: a quiet minute without the hint fails", .input = {.body = test_arrival_quiet_fails}, .expectation = {}},
+    {.name = "02.02 street_scene: A at boxes and cards, done once the party bar holds", .input = {.body = test_scene_step_presses_to_overworld}, .expectation = {}},
+    {.name = "02.02 street_scene: no box in the start window fails", .input = {.body = test_scene_step_never_started}, .expectation = {}},
     {.name = "01.02 battle_area: done on the \"A: Talk\" prompt", .input = {.body = test_battle_area_ends_on_interact_prompt}, .expectation = {}},
     {.name = "02.01 battle_zone_to_brigitte: a held walk waits, then holds each leg's angle", .input = {.body = test_held_walk_inputs}, .expectation = {}},
     {.name = "face_heading: turns by the minimap's heading", .input = {.body = test_face_heading}, .expectation = {}},

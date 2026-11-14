@@ -19,6 +19,7 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActions.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 
 namespace PokemonAutomation{
@@ -83,6 +84,9 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
         }else if (m_mission_banner.detect(*frame.frame)){
             look.readings[std::string(MISSION_BANNER_READING)] = 1;
         }
+        if (tutorial_card_shows(*frame.frame)){
+            look.readings[std::string(TUTORIAL_CARD_READING)] = 1;
+        }
         if (same_screen(m_previous, frame)){
             look.events.set(PokemonAutomation::ScreenEvent::SCREEN_STILL, true);
         }
@@ -127,6 +131,9 @@ std::string look_text(const ScreenObservation& look){
     }
     if (look.readings.contains(MISSION_COMPLETE_READING)){
         text += "+mission_complete";
+    }
+    if (look.readings.contains(TUTORIAL_CARD_READING)){
+        text += "+tutorial_card";
     }
     return text;
 }

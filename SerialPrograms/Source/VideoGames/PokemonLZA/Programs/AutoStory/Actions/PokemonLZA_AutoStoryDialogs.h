@@ -18,15 +18,12 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
-
-//  How long the party bar (OverworldPartySelectionDetector) must hold to be
-//  the overworld: it also shows between the lines of a scene.
-constexpr Milliseconds OVERWORLD_HOLD(1000);
 
 //  From a dialogue or a scene, runs `presses` (repeating it) until the
 //  overworld is back: OverworldPartySelectionWatcher held OVERWORLD_HOLD.

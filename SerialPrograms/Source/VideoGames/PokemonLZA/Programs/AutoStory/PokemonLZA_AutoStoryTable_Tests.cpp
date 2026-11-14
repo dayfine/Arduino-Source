@@ -257,7 +257,6 @@ UnitTestResult test_every_row_ready(Logger&){
     return true;
 }
 
-//  scene_mash_action() on each kind of frame.
 //  A scene step's start window: a box, a choice or a battle within it
 //  starts the scene; fades and quiet frames alone (02.02's street missed
 //  after the Brigitte battle, console B, 2026-11-13) fail at its end, not
@@ -283,6 +282,7 @@ UnitTestResult test_scene_start_window(Logger&){
     return true;
 }
 
+//  SceneMash on each kind of frame, as a first look.
 UnitTestResult test_scene_mash_rule(Logger&){
     struct Case{
         std::string_view name;
@@ -296,7 +296,8 @@ UnitTestResult test_scene_mash_rule(Logger&){
         {"box, B mash", {ScreenEvent::DIALOG_BOX}, SceneMashGoal::OVERWORLD, true, SceneMashAction::PRESS_TEXT},
         {"choice takes the top", {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, SceneMashGoal::OVERWORLD, true, SceneMashAction::PRESS_A},
         {"choice is the goal", {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, SceneMashGoal::CHOICE, true, SceneMashAction::DONE},
-        {"party bar", {ScreenEvent::PLAYER_CAN_MOVE}, SceneMashGoal::OVERWORLD, false, SceneMashAction::DONE},
+        {"party bar, not held yet", {ScreenEvent::PLAYER_CAN_MOVE}, SceneMashGoal::OVERWORLD, false, SceneMashAction::WAIT},
+        {"party bar, not held yet, B mash", {ScreenEvent::PLAYER_CAN_MOVE}, SceneMashGoal::OVERWORLD, true, SceneMashAction::WAIT},
         {"party bar, not the goal", {ScreenEvent::PLAYER_CAN_MOVE}, SceneMashGoal::BATTLE, false, SceneMashAction::PRESS_A},
         {"black fade waits", {ScreenEvent::FADE_BLACK}, SceneMashGoal::BATTLE, false, SceneMashAction::WAIT},
         {"white fade waits", {ScreenEvent::FADE_WHITE}, SceneMashGoal::OVERWORLD, true, SceneMashAction::WAIT},
@@ -307,9 +308,38 @@ UnitTestResult test_scene_mash_rule(Logger&){
         {"prompt alone, A mash", {ScreenEvent::INTERACT_PROMPT}, SceneMashGoal::OVERWORLD, false, SceneMashAction::WAIT},
     };
     for (const Case& item : cases){
-        const SceneMashAction got = scene_mash_action(item.events, item.goal, item.text_b);
+        SceneMash mash(item.goal, item.text_b);
+        const SceneMashAction got = mash.look(item.events, current_time());
         if (got != item.expected){
             return std::format("{}: expected action {}, got {}.", item.name, (int)item.expected, (int)got);
+        }
+    }
+    return true;
+}
+
+//  An OVERWORLD mash ends once the party bar has held OVERWORLD_HOLD
+//  (TalkOver's calm time): a box between lines starts the hold again.
+UnitTestResult test_scene_mash_party_bar_held(Logger&){
+    struct Look{
+        Milliseconds at;
+        ScreenEvents events;
+        SceneMashAction expected;
+    };
+    const ScreenEvents party_bar{ScreenEvent::PLAYER_CAN_MOVE};
+    const Look looks[] = {
+        {Milliseconds(0), party_bar, SceneMashAction::WAIT},
+        {Milliseconds(500), party_bar, SceneMashAction::WAIT},
+        {Milliseconds(600), {ScreenEvent::DIALOG_BOX}, SceneMashAction::PRESS_TEXT},
+        {Milliseconds(700), party_bar, SceneMashAction::WAIT},
+        {Milliseconds(1600), party_bar, SceneMashAction::WAIT},
+        {Milliseconds(1700), party_bar, SceneMashAction::DONE},
+    };
+    const WallClock start = current_time();
+    SceneMash mash(SceneMashGoal::OVERWORLD, false);
+    for (const Look& look : looks){
+        const SceneMashAction got = mash.look(look.events, start + look.at);
+        if (got != look.expected){
+            return std::format("at {} ms: expected action {}, got {}.", look.at.count(), (int)look.expected, (int)got);
         }
     }
     return true;
@@ -561,6 +591,11 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     {
         .name = "Scene mash: what each frame presses",
         .input = {.body = test_scene_mash_rule},
+        .expectation = {},
+    },
+    {
+        .name = "Scene mash: the party bar held a second ends an overworld mash",
+        .input = {.body = test_scene_mash_party_bar_held},
         .expectation = {},
     },
     {

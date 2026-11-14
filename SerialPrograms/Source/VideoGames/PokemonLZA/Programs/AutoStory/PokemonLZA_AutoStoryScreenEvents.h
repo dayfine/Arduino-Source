@@ -13,6 +13,7 @@
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
+#include "Pokemon/AutoStory/Pokemon_SceneJudges.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_ButtonDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
@@ -74,17 +75,33 @@ enum class SceneMashAction{
     DONE,           //  the goal shows
 };
 
-//  How a scene mash reads a frame's events (the console loop is
-//  mash_scene() in PokemonLZA_AutoStoryActions.h):
-//  - the goal's event ends it (OVERWORLD: PLAYER_CAN_MOVE; the caller holds
-//    it a second, since the party bar also shows between lines);
+//  How long the party bar (PLAYER_CAN_MOVE) must hold to be the overworld:
+//  it also shows between the lines of a scene.
+constexpr Milliseconds OVERWORLD_HOLD(1000);
+
+//  How a scene mash reads frames (the loop is mash_scene() in
+//  Actions/PokemonLZA_AutoStoryScenes.h), one look at a time:
+//  - the goal ends it: CHOICE and BATTLE on their event, OVERWORLD when the
+//    shared Pokemon::TalkOver says the talk is over, with its calm time set
+//    to OVERWORLD_HOLD: the party bar held a second, no box or fade since;
 //  - a fade waits;
 //  - a choice takes its top row with A, except when the goal is the choice;
 //  - a box gets the text button;
-//  - with no box: BATTLE presses A (cards, the VS splash), a B mash presses
-//    B (it closes the screens a talk opens), an A mash waits (A would talk
-//    to whoever stands in front).
-SceneMashAction scene_mash_action(const ScreenEvents& events, SceneMashGoal goal, bool text_button_is_b);
+//  - with no box: BATTLE presses A (cards, the VS splash); in an OVERWORLD
+//    mash the party bar not held yet waits; else a B mash presses B
+//    (TalkOver's B: it closes the screens a talk opens), an A mash waits
+//    (A would talk to whoever stands in front).
+class SceneMash{
+public:
+    SceneMash(SceneMashGoal goal, bool text_button_is_b);
+
+    SceneMashAction look(const ScreenEvents& events, WallClock now);
+
+private:
+    SceneMashGoal m_goal;
+    bool m_text_button_is_b;
+    Pokemon::TalkOver m_talk;
+};
 
 //  How long a scene step's mash waits for its scene to show. 02.02's street
 //  scene shows its first box ~10 s in from the save (console B, 2026-11-10);

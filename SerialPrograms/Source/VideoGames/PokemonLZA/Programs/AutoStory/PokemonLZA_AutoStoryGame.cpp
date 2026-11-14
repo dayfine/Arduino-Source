@@ -86,18 +86,10 @@ const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
         {"confirm_new_game", [](StoryEnv& env){ confirm_new_game_choices(env.env.console, env.context); }},
         {"choose_0", [](StoryEnv& env){ choose_dialog_option(env.env.console, env.context, 0); }},
         {"choose_1", [](StoryEnv& env){ choose_dialog_option(env.env.console, env.context, 1); }},
-        {"story_battle_start", [](StoryEnv& env){
-            mash_scene(env.env.console, env.context, SceneMashGoal::BATTLE, BUTTON_A, 90s);
-        }},
         {"story_battle", [](StoryEnv& env){
             fight_battle_in_progress(env.env, env.env.console, env.context, env.battle_ai, 120s);
         }},
         {"talk_through_map_screen", [](StoryEnv& env){ talk_through_map_screen(env.env.console, env.context); }},
-        //  B through the talk closes the Pokedex entry (A only plays its
-        //  motions).
-        {"talk_to_pokedex_screen", [](StoryEnv& env){
-            mash_scene(env.env.console, env.context, SceneMashGoal::OVERWORLD, BUTTON_B, 90s);
-        }},
         {"climb_ladder", [](StoryEnv& env){ climb_ladder(env.env.console, env.context); }},
         {"catch_tutorial", [](StoryEnv& env){ catch_tutorial(env.env, env.env.console, env.context, env.battle_ai, 6); }},
         {"battle_then_catch", [](StoryEnv& env){
@@ -459,6 +451,18 @@ const std::map<std::string, HandlerOf, std::less<>>& story_game_actions(){
                 return walk_to_prompt(backend, Milliseconds(Pokemon::story_arg<int64_t>(call.args, "timeout_ms")));
             });
         }},
+        {"story_battle_start", [](const PlzaHandlers&){
+            return Handler([](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+                return mash_scene(backend, SceneMashGoal::BATTLE, BUTTON_A, 90s);
+            });
+        }},
+        //  B through the talk closes the Pokedex entry (A only plays its
+        //  motions).
+        {"talk_to_pokedex_screen", [](const PlzaHandlers&){
+            return Handler([](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+                return mash_scene(backend, SceneMashGoal::OVERWORLD, BUTTON_B, 90s);
+            });
+        }},
     };
     return actions;
 }
@@ -514,9 +518,9 @@ Handler plza_handler(const PlzaHandlers& handlers, const StoryActionSpec& spec){
         });
     case StoryStepKind::MASH:{
         const Button button = name == "a" ? BUTTON_A : BUTTON_B;
-        return handlers.console(name, [button](StoryEnv& env, const StoryActionArgs&){
-            mash_story_scene(env.env.console, env.context, button);
-        });
+        return [button](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+            return mash_story_scene(backend, button);
+        };
     }
     default:
         return game_handler(handlers, name);
@@ -548,14 +552,17 @@ Pokemon::StoryGame<ZonePose> plza_game_actions(StoryEnv* env, StarterChoice star
     return game;
 }
 
-//  The specs of the console-only GAME actions: each ConsoleStep, and
-//  load_backup_save.
+//  The specs of the console-only GAME actions: each ConsoleStep,
+//  load_backup_save, and the scene mashes that read the console's tutorial
+//  cards (TUTORIAL_CARD_READING).
 std::vector<StoryActionSpec> console_game_specs(){
     std::vector<StoryActionSpec> specs;
     for (const auto& [name, step] : console_game_actions()){
         specs.push_back(console_only(game_spec(name)));
     }
     specs.push_back(console_only(game_spec("load_backup_save")));
+    specs.push_back(console_only(game_spec("story_battle_start")));
+    specs.push_back(console_only(game_spec("talk_to_pokedex_screen")));
     return specs;
 }
 

@@ -122,7 +122,7 @@ public:
     //  SKIP_PROMPT_READING, AUTOSAVE_READING, CONTROLS_HINT_READING,
     //  ADVANCE_ARROW_READING, MISSION_BANNER_READING and
     //  MISSION_COMPLETE_READING (which wins over the banner: the card has
-    //  the banner's bar). Logs each appearance of the autosave badge
+    //  the banner's bar), and TUTORIAL_CARD_READING. Logs each appearance of the autosave badge
     //  (AutosaveSpots).
     virtual Pokemon::Observation<Pokemon::ZonePose> observe() override;
     //  fight_battle() with the run's battle AI; a failure is an Outcome.
