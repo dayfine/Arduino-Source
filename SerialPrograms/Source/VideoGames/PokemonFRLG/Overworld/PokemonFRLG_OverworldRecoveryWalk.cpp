@@ -16,7 +16,6 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
-#include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/Async/InferenceSession.h"
@@ -84,19 +83,35 @@ std::array<ImageFloatBox, 4> edge_bands(const ImageFloatBox& game){
     };
 }
 
-//  Most a band's color may spread (the sum of its channels' stddev) and
-//  still be blank: one color, as off the map's edge. A band of the map
-//  spreads 90 or more (Pokemon Mansion 1F, console B, 2026-11-14).
-constexpr double BLANK_BAND_STDDEV = 10.0;
-
-bool blank_band(const ImageViewRGB32& band){
-    return image_stats(band).stddev.sum() <= BLANK_BAND_STDDEV;
-}
-
 //  How much hold_scroll_change() may read for a player who stood still (an
 //  animated tile, water). Not yet measured on the console: a guess, set low
 //  so that only a screen that did not move at all reads as not moved.
 constexpr double HOLD_UNMOVED_RMSD = 6.0;
+
+//  Whether `band` of `screen` (in the game screen `game`) looks the same one
+//  tile over along `direction`, as a stand-still would read: a scroll that
+//  way by whole tiles leaves it the same. One color off the map's edge does
+//  (Pokemon Mansion 1F's bottom row, 13.02), and so do a wall or floorboards
+//  whose pattern repeats along the walk (Pokemon Mansion B1F's south wall,
+//  0.0 after a step west, 13.03; both console B, 2026-11-14).
+bool same_one_tile_over(const ImageViewRGB32& screen, const ImageFloatBox& band, const ImageFloatBox& game, Direction direction){
+    const ImageViewRGB32 view = extract_box_reference(screen, band);
+    const bool across = direction == Direction::EAST || direction == Direction::WEST;
+    const size_t shift = across
+        ? (size_t)(screen.width() * game.width / 15 + 0.5)
+        : (size_t)(screen.height() * game.height / 10 + 0.5);
+    const size_t length = across ? view.width() : view.height();
+    if (shift == 0 || shift >= length){
+        return false;
+    }
+    const ImageViewRGB32 from = across
+        ? view.sub_image(0, 0, length - shift, view.height())
+        : view.sub_image(0, 0, view.width(), length - shift);
+    const ImageViewRGB32 to = across
+        ? view.sub_image(shift, 0, length - shift, view.height())
+        : view.sub_image(0, shift, view.width(), length - shift);
+    return ImageMatch::pixel_RMSD(from, to) <= HOLD_UNMOVED_RMSD;
+}
 
 } // namespace
 
@@ -330,7 +345,7 @@ bool on_dark_cave(ConsoleHandle& console){
 //  a one-tile open leg is let go half-way through its step).
 HoldMovement measure_movement(
     ConsoleHandle& console, ProControllerContext& context,
-    const VideoSnapshot& before, Milliseconds first_tile, WallClock hold_start
+    const VideoSnapshot& before, Direction direction, Milliseconds first_tile, WallClock hold_start
 ){
     const Milliseconds since_start = std::chrono::duration_cast<Milliseconds>(current_time() - hold_start);
     if (since_start < first_tile + TURN_SETTLE){
@@ -341,11 +356,11 @@ HoldMovement measure_movement(
     if (!before || !after){
         return HoldMovement::UNMEASURED;
     }
-    const std::optional<double> change = hold_scroll_change(*before.frame, *after.frame, GameSettings::instance().GAME_BOX);
+    const std::optional<double> change = hold_scroll_change(*before.frame, *after.frame, GameSettings::instance().GAME_BOX, direction);
     if (change){
         console.log(std::format("Position check: the screen changed by {:.1f} over the hold.", *change));
     }else{
-        console.log("Position check: no edge of the screen shows the map, before or after the hold: not measured.", COLOR_ORANGE);
+        console.log(std::format("Position check: no edge of the screen would show a step {}, before or after the hold: not measured.", direction_name(direction)), COLOR_ORANGE);
     }
     return hold_movement(change);
 }
@@ -382,7 +397,7 @@ StepWalk walk_hold_step(
         return out;
     }
     if (!step.warps){
-        out.movement = measure_movement(console, context, before, tile_time(step, speed), out.hold_start);
+        out.movement = measure_movement(console, context, before, step.direction, tile_time(step, speed), out.hold_start);
         return out;
     }
     wait_out_warp(console, context, step, fade, before);
@@ -710,17 +725,15 @@ RouteCalls console_route_calls(
 
 } // namespace
 
-std::optional<double> hold_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game){
-    //  A scroll moves every band that shows the map; a town's banner (top
+std::optional<double> hold_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game, Direction direction){
+    //  A scroll moves every band that would show it; a town's banner (top
     //  left) or water only some.
     std::optional<double> least;
     for (const ImageFloatBox& band : edge_bands(game)){
-        const ImageViewRGB32 from = extract_box_reference(before, band);
-        const ImageViewRGB32 to = extract_box_reference(after, band);
-        if (blank_band(from) && blank_band(to)){
+        if (same_one_tile_over(before, band, game, direction) && same_one_tile_over(after, band, game, direction)){
             continue;
         }
-        const double change = ImageMatch::pixel_RMSD(from, to);
+        const double change = ImageMatch::pixel_RMSD(extract_box_reference(before, band), extract_box_reference(after, band));
         least = least ? std::min(*least, change) : change;
     }
     return least;
