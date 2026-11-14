@@ -3,9 +3,9 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The console-free choices behind Wild Zone 1's catches: which lock-on
- *  target to throw at, whether to walk toward it first, and where along
- *  the road to look (the brackets to turn to are in
- *  PokemonLZA_AutoStoryBracketWatch.h).
+ *  target to throw at and whether to walk toward it first (the brackets
+ *  to turn to are in PokemonLZA_AutoStoryBracketWatch.h, the stops along
+ *  the road in PokemonLZA_AutoStoryZone1Road.h).
  *
  */
 
@@ -13,7 +13,6 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryCatchPlan_H
 
 #include <optional>
-#include <span>
 #include <vector>
 
 namespace PokemonAutomation{
@@ -77,16 +76,6 @@ private:
     size_t m_current = 0;
     bool m_done = false;
 };
-
-//  Wild Zone 1's two catch spots, as distances from the objective marker,
-//  where the user caught on a walk by hand (console B, 2026-11-13): 96,
-//  the plaza by the green advertising column (Scatterbug on the road), and
-//  57, just before the far gate (Mareep in the grass right of the road and
-//  on it).
-inline constexpr int CATCH_SPOTS[] = {96, 57};
-
-//  `visits` stops going back and forth over `spots`: {96, 57, 96, ...}.
-std::vector<int> alternating_stops(std::span<const int> spots, size_t visits);
 
 
 

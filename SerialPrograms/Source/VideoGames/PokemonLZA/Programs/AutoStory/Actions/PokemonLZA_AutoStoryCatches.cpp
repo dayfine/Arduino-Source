@@ -26,7 +26,9 @@
 #include "PokemonLZA_AutoStoryBracketWatch.h"
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 #include "PokemonLZA_AutoStoryCatches.h"
+#include "PokemonLZA_AutoStoryDialogs.h"
 #include "PokemonLZA_AutoStoryScenes.h"
+#include "PokemonLZA_AutoStoryZone1Road.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -690,15 +692,18 @@ std::optional<int> walk_to_stop(ConsoleHandle& console, ProControllerContext& co
     return walk_to_objective(console, context, stop, last ? 30s : 90s);
 }
 
-//  catch_at_stop() at the user's two catch spots (CATCH_SPOTS, 96 and 57),
-//  back and forth, 3 visits each, 8 minutes at most. A wild battle that
-//  starts on the way is fought at the next stop.
+//  The patrol's visits to CATCH_SPOTS at most (5 rounds).
+constexpr size_t PATROL_VISITS = 10;
+
+//  catch_at_stop() at the user's two catch spots (CATCH_SPOTS, 100 and
+//  60), back and forth (PATROL_VISITS visits), 10 minutes at most. A wild
+//  battle that starts on the way is fought at the next stop.
 GrassCatches patrol_and_catch(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
     BattleAIOption& battle_ai, int new_species_wanted, int max_throws
 ){
-    const std::vector<int> stops = alternating_stops(CATCH_SPOTS, 6);
-    const WallClock deadline = current_time() + 8min;
+    const std::vector<int> stops = alternating_stops(CATCH_SPOTS, PATROL_VISITS);
+    const WallClock deadline = current_time() + 10min;
     GrassCatches result;
     std::optional<int> last;
     for (size_t i = 0; i < stops.size() && result.found < new_species_wanted && result.throws < max_throws; i++){
@@ -765,6 +770,62 @@ void walk_to_marker(ConsoleHandle& console, ProControllerContext& context){
             console
         );
     }
+}
+
+namespace{
+
+//  Whether an A prompt or a dialog shows now.
+bool prompt_or_dialog_shows(ConsoleHandle& console, ProControllerContext& context){
+    PlzaScreenObserver observer;
+    context.wait_for_all_requests();
+    const ScreenEvents events = observer.observe(console.video().snapshot(), current_time());
+    return events.any_of({ScreenEvent::INTERACT_PROMPT, ScreenEvent::DIALOG_BOX});
+}
+
+//  The objective's distance on the screen now, if it reads.
+std::optional<int> objective_distance_now(ConsoleHandle& console, ProControllerContext& context){
+    context.wait_for_all_requests();
+    const std::optional<ObjectiveMarker> marker = read_objective_marker(console, console.video().snapshot());
+    if (!marker || marker->distance <= 0){
+        return std::nullopt;
+    }
+    return marker->distance;
+}
+
+} // namespace
+
+void walk_to_zone_gate(ConsoleHandle& console, ProControllerContext& context){
+    std::optional<int> at = objective_distance_now(console, context);
+    for (int stop : road_stops_to_gate(CATCH_SPOTS, at)){
+        console.log(std::format("walk_to_zone_gate(): to {} on the road, from {}.", stop, at.value_or(-1)));
+        const bool toward = !at || stop <= *at;
+        const std::optional<int> reached = walk_to_stop(console, context, at, stop);
+        const bool arrived = reached && (toward ? *reached <= stop : *reached >= stop);
+        if (!arrived){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT,
+                std::format("walk_to_zone_gate(): not back on the road at {} (last read {}).", stop, reached.value_or(-1)),
+                console
+            );
+        }
+        at = reached;
+    }
+    face_objective(console, context);
+    const std::optional<int> last = walk_to_objective(console, context, 0, 60s);
+    if (prompt_or_dialog_shows(console, context)){
+        return;
+    }
+    //  On the marker with no prompt: through the gate already, out on the
+    //  street. The next step's A at no prompt does nothing.
+    if (last && *last <= 3){
+        console.log(std::format("walk_to_zone_gate(): at the gate ({}) with no prompt: taken as out of the zone.", *last));
+        return;
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format("walk_to_zone_gate(): no \"A Leave\" prompt at the far gate, held up at {} from it.", last.value_or(-1)),
+        console
+    );
 }
 
 namespace{

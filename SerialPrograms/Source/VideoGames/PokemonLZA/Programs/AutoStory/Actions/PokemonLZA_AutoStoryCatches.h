@@ -69,12 +69,12 @@ std::optional<ObjectiveMarker> read_objective_marker(Logger& logger, const Image
 //  shows, or `limit`. Returns the last distance read.
 std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit);
 
-//  03.08's catch for the "register five species" quest (4/5 after the
-//  tutorial and its repeats): walks toward the objective (Wild Zone 1's far
-//  gate, around Taunie's rocks from the start), then goes back and forth
-//  between the two spots where the user caught by hand (console B,
-//  2026-11-13): 96 from the objective (Scatterbug on the plaza's road) and
-//  57 (Mareep by the gate), 3 visits each, 8 minutes at most. At each stop
+//  03.08's catches for the "register five species" quest (3/5 after the
+//  tutorial): walks toward the objective (Wild Zone 1's far gate, around
+//  Taunie's rocks from the start), then goes back and forth between the
+//  user's two catch spots (CATCH_SPOTS): 100 from the objective
+//  (Scatterbug on the plaza's road) and 60 (Mareep by the gate),
+//  PATROL_VISITS visits, 10 minutes at most. At each stop
 //  it fights a wild battle that is on, else watches for the lock-on
 //  brackets the game draws around one wild Pokemon (6 s at most), turns
 //  the camera to the tallest (the nearest), holds ZL until the move
@@ -98,6 +98,17 @@ void catch_in_zone(
 //  console B 2026-11-10). Throws OperationFailedException when neither
 //  shows within 90 s.
 void walk_to_marker(ConsoleHandle& console, ProControllerContext& context);
+
+//  03.08, after the catches, to Wild Zone 1's far gate: back onto the road
+//  at the catch spots first (road_stops_to_gate()), then on to the
+//  objective marker until the gate's "A Leave" prompt or a dialog shows. A
+//  walk straight at the marker from where the catches ended left the zone
+//  and ran into a building (console B, 2026-11-13). Arriving on the marker
+//  with no prompt is taken as through the gate already. Throws
+//  OperationFailedException when a road stop is not reached, or when the
+//  walk is held up short of the gate (walk_to_objective()'s sidesteps
+//  spent).
+void walk_to_zone_gate(ConsoleHandle& console, ProControllerContext& context);
 
 
 

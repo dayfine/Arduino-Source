@@ -91,6 +91,20 @@ std::string story_walk_leg_label(size_t index, size_t count, const StoryWalkLeg&
 //  place is not unlocked).
 void fly_to(ConsoleHandle& console, ProControllerContext& context, Language language, Location location);
 
+//  fly_to(), where not flying is no failure: when the game would not fly
+//  (fast travel not unlocked yet, pursued, the place not listed), logs it,
+//  backs out of the map to the overworld and returns false; the player is
+//  where it was. Returns true in the overworld at `location`.
+bool fly_to_or_stay(ConsoleHandle& console, ProControllerContext& context, Language language, Location location);
+
+//  03.08's start: where 03.07 flew to the Pokemon Center, on to Wild Zone
+//  1's entrance gate by the objective marker (walk_to_marker()), A at its
+//  "A Enter", B to the overworld. Where the fly fell back and the player is
+//  in the zone already (starts_in_zone_1()), nothing. UNVERIFIED, NEEDS
+//  CONSOLE: that the marker's way from the Center leads to the entrance
+//  gate's prompt. Throws OperationFailedException when no prompt shows.
+void center_to_zone_1(ConsoleHandle& console, ProControllerContext& context);
+
 
 
 } // namespace PokemonLZA

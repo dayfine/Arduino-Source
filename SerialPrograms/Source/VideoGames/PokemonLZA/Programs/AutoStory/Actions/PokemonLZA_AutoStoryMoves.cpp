@@ -5,12 +5,18 @@
  */
 
 #include <format>
+#include <limits>
 #include <optional>
+#include <string>
+#include "Common/Cpp/Color.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_FastTravelNavigation.h"
+#include "PokemonLZA_AutoStoryCatches.h"
+#include "PokemonLZA_AutoStoryDialogs.h"
 #include "PokemonLZA_AutoStoryMoves.h"
+#include "PokemonLZA_AutoStoryZone1Road.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -122,6 +128,35 @@ void fly_to(ConsoleHandle& console, ProControllerContext& context, Language lang
             console
         );
     }
+}
+
+bool fly_to_or_stay(ConsoleHandle& console, ProControllerContext& context, Language language, Location location){
+    const std::string& slug = get_location_item_from_enum(location).slug;
+    try{
+        const FastTravelState state = open_map_and_fly_to(console, context, language, location);
+        if (state == FastTravelState::SUCCESS){
+            return true;
+        }
+        console.log(std::format("fly_to_or_stay(): no fly to {} (state {}): staying.", slug, static_cast<int>(state)), COLOR_RED);
+    }catch (OperationFailedException& e){
+        console.log(std::format("fly_to_or_stay(): no fly to {} ({}): staying.", slug, e.message()), COLOR_RED);
+    }
+    map_to_overworld(console, context);
+    return false;
+}
+
+void center_to_zone_1(ConsoleHandle& console, ProControllerContext& context){
+    //  Any distance ends the walk at once: this only finds the marker
+    //  (turning the camera to it when it is behind) and reads it.
+    const std::optional<int> start = walk_to_objective(console, context, std::numeric_limits<int>::max(), 20s);
+    if (starts_in_zone_1(start)){
+        console.log(std::format("center_to_zone_1(): {} from the far gate: in Wild Zone 1 already.", start.value_or(-1)));
+        return;
+    }
+    console.log(std::format("center_to_zone_1(): {} from the far gate: to the zone's \"A Enter\".", start.value_or(-1)));
+    walk_to_marker(console, context);
+    pbf_press_button(context, BUTTON_A, 160ms, 840ms);
+    mash_to_overworld(console, context, BUTTON_B, 60s);
 }
 
 
