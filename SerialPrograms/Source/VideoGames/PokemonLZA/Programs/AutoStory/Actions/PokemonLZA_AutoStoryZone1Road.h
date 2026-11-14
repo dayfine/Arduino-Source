@@ -11,6 +11,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryZone1Road_H
 #define PokemonAutomation_PokemonLZA_AutoStoryZone1Road_H
 
+#include <chrono>
 #include <optional>
 #include <span>
 #include <vector>
@@ -27,6 +28,14 @@ namespace PokemonLZA{
 //  the road and on it). The patrol goes 100, 60, 100, 60, ...: walking to
 //  100 and back makes the Pokemon at 60 come back when none showed there.
 inline constexpr int CATCH_SPOTS[] = {100, 60};
+
+//  The left stick held right (facing the far gate) that takes the player
+//  from where the walk to a catch spot ends to the middle of the road: the
+//  walk ended on the left sidewalk or grass at both spots, by the stall at
+//  60 and the advertising column at 100 (console B, 2026-11-13), and the
+//  user caught from mid-road. The way back is the same time left. A guess
+//  from the shots (the road some 5 m wide there), NEEDS CONSOLE.
+inline constexpr std::chrono::milliseconds ROAD_MIDDLE_STEP{1000};
 
 //  `visits` stops going back and forth over `spots`: {100, 60, 100, ...}.
 std::vector<int> alternating_stops(std::span<const int> spots, size_t visits);

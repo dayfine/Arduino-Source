@@ -366,10 +366,10 @@ std::optional<BracketSighting> read_brackets(ConsoleHandle& console){
 }
 
 //  Stands still and watches for the brackets (BracketWatch: on 1.5 s after
-//  the first, 6 s at most), logging each one seen at stop `at` (the
+//  the first, `limit` at most), logging each one seen at stop `at` (the
 //  distance read there). Returns the tallest: the nearest Pokemon.
-std::optional<BracketSighting> watch_for_brackets(ConsoleHandle& console, ProControllerContext& context, int at){
-    BracketWatch watch(1500ms, 6000ms);
+std::optional<BracketSighting> watch_for_brackets(ConsoleHandle& console, ProControllerContext& context, int at, Milliseconds limit){
+    BracketWatch watch(1500ms, limit);
     const WallClock start = current_time();
     while (!watch.done()){
         context.wait_for_all_requests();
@@ -385,6 +385,45 @@ std::optional<BracketSighting> watch_for_brackets(ConsoleHandle& console, ProCon
     }
     console.log(std::format("catch_in_zone(): at {}: {} sightings of brackets.", at, watch.sightings().size()));
     return watch.nearest();
+}
+
+//  A catch stop's camera sweep (camera_sweep()): 4 looks, the turn between
+//  two about what camera_turn_toward() gives for a third of the screen
+//  (the "look further right" turn). NEEDS CONSOLE: how far right the last
+//  look sees; the user's catches were in the grass right of the road.
+constexpr CameraTurn SWEEP_STEP{0.5, 400ms};
+constexpr int SWEEP_STEPS = 3;
+
+//  How long each look of the sweep watches for brackets: shorter than a
+//  lone look's 6 s, as the sweep looks 4 times.
+constexpr Milliseconds SWEEP_LOOK_LIMIT = 3000ms;
+
+void turn_camera(ProControllerContext& context, const CameraTurn& turn){
+    if (turn.time.count() > 0){
+        pbf_move_right_joystick(context, {turn.stick_x, 0}, turn.time, 300ms);
+    }
+}
+
+//  Sweeps the camera from straight on toward the grass right of the road
+//  and back (camera_sweep()), watching for brackets at each look
+//  (watch_for_brackets()). Returns the nearest brackets of the first look
+//  that saw any, the camera left there; nothing (the camera back straight
+//  on) when no look did.
+std::optional<BracketSighting> sweep_for_brackets(ConsoleHandle& console, ProControllerContext& context, int at){
+    const std::vector<SweepLook> looks = camera_sweep(SWEEP_STEP, SWEEP_STEPS);
+    for (size_t i = 0; i < looks.size(); i++){
+        turn_camera(context, looks[i].turn);
+        if (!looks[i].watch){
+            continue;
+        }
+        const std::optional<BracketSighting> seen = watch_for_brackets(console, context, at, SWEEP_LOOK_LIMIT);
+        if (seen){
+            console.log(std::format("catch_in_zone(): at {}: brackets at look {} of the sweep.", at, i));
+            return seen;
+        }
+    }
+    context.wait_for_all_requests();
+    return std::nullopt;
 }
 
 //  Turns the camera toward `target` (camera_turn_toward()) so the
@@ -424,8 +463,8 @@ GrassCatches fight_back(
 
 //  At one stop (`at` from the objective), 4 tries at most, until
 //  `new_species_wanted` new species or `max_throws`: a wild battle on is
-//  fought (fight_back()); otherwise it watches for brackets
-//  (watch_for_brackets()), turns the camera to the tallest, holds ZL until
+//  fought (fight_back()); otherwise it sweeps the camera for brackets
+//  (sweep_for_brackets()), turns the camera to the tallest, holds ZL until
 //  the move symbols show the lock, chooses the nearest target not caught
 //  and walks toward it when far (aim_choose_approach()), and throws. No
 //  brackets: on to the next stop. All species caught: turns the camera
@@ -440,9 +479,9 @@ GrassCatches catch_at_stop(
             out += fight_back(env, console, context, battle_ai, max_throws - out.throws);
             continue;
         }
-        const std::optional<BracketSighting> target = watch_for_brackets(console, context, at);
+        const std::optional<BracketSighting> target = sweep_for_brackets(console, context, at);
         if (!target){
-            console.log(std::format("catch_in_zone(): no brackets at {}.", at));
+            console.log(std::format("catch_in_zone(): no brackets at {} in the sweep.", at));
             break;
         }
         turn_to_brackets(console, context, *target);
@@ -670,9 +709,19 @@ std::optional<int> walk_to_stop(ConsoleHandle& console, ProControllerContext& co
 //  The patrol's visits to CATCH_SPOTS at most (5 rounds).
 constexpr size_t PATROL_VISITS = 10;
 
+//  Steps sideways with the camera on the objective (face_objective()):
+//  right onto the middle of the road, or back left (ROAD_MIDDLE_STEP).
+void step_across_road(ConsoleHandle& console, ProControllerContext& context, bool right){
+    face_objective(console, context);
+    pbf_move_left_joystick(context, {right ? 1.0 : -1.0, 0}, ROAD_MIDDLE_STEP, 300ms);
+    context.wait_for_all_requests();
+}
+
 //  catch_at_stop() at the user's two catch spots (CATCH_SPOTS, 100 and
-//  60), back and forth (PATROL_VISITS visits), 10 minutes at most. A wild
-//  battle that starts on the way is fought at the next stop.
+//  60), back and forth (PATROL_VISITS visits), 10 minutes at most: at each,
+//  a step right to the middle of the road first and back left after, so
+//  the walks between the spots go as before. A wild battle that starts on
+//  the way is fought at the next stop.
 GrassCatches patrol_and_catch(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
     BattleAIOption& battle_ai, int new_species_wanted, int max_throws
@@ -688,10 +737,11 @@ GrassCatches patrol_and_catch(
         }
         const std::optional<int> at = walk_to_stop(console, context, last, stops[i]);
         last = at ? at : stops[i];
-        face_objective(console, context);
+        step_across_road(console, context, true);
         const GrassCatches stop = catch_at_stop(
             env, console, context, battle_ai, at.value_or(-1), new_species_wanted - result.found, max_throws - result.throws
         );
+        step_across_road(console, context, false);
         console.log(std::format(
             "catch_in_zone(): stop {} of {} at {} (for {}): {} throws, {} new species, {} locks on caught species only.",
             i + 1, stops.size(), at.value_or(-1), stops[i], stop.throws, stop.found, stop.caught_seen
