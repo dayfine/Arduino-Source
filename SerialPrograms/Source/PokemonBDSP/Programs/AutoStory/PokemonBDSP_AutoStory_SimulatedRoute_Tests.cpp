@@ -60,13 +60,16 @@ struct RouteFailed{
 //  The console as a small simulator: the player stands on one tile of
 //  `world`, walls and `obstacles` stop them, and every walk and tap moves
 //  them. Fails the case after `max_calls` calls (a walker that loops).
+//  `speed` is the fastest the player goes: a walk paced to run goes at a
+//  walk until the player has the running shoes, as the walker counts it.
 // code-health: allow public_methods -- a RouteIO fake: the interface's seven overrides plus three test knobs
 class SimulatedRouteIO : public RouteIO{
 public:
-    SimulatedRouteIO(const StoryWorld& world, TilePos at, std::vector<TilePos> obstacles, std::vector<std::string>& notes)
+    SimulatedRouteIO(const StoryWorld& world, TilePos at, std::vector<TilePos> obstacles, MoveSpeed speed, std::vector<std::string>& notes)
         : m_world(world)
         , m_at(at)
         , m_obstacles(std::move(obstacles))
+        , m_speed(speed)
         , m_notes(notes)
     {}
 
@@ -79,7 +82,7 @@ public:
 
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override{
         count_call();
-        const MoveSpeed speed = walk.options.pace == DpadPace::RUN ? MoveSpeed::RUN : MoveSpeed::WALK;
+        const MoveSpeed speed = walk.options.pace == DpadPace::RUN ? m_speed : MoveSpeed::WALK;
         const Milliseconds per_tile = route_ms_per_tile(walk.direction, speed);
         if (m_overshoot && walk.limit > ROUTE_START_DELAY){
             //  A hold timed for n tiles (ROUTE_START_DELAY, then half a
@@ -168,6 +171,7 @@ private:
     const StoryWorld& m_world;
     TilePos m_at;
     std::vector<TilePos> m_obstacles;
+    MoveSpeed m_speed;
     std::vector<std::string>& m_notes;
     size_t m_calls = 0;
     size_t m_walked = 0;
@@ -197,7 +201,7 @@ UnitTestResult test_blocked_from_several_tiles(Logger&){
     }
     const TilePos goal{52, 41};
     std::vector<std::string> notes;
-    SimulatedRouteIO io(world, {53, 41}, {{54, 41}}, notes);
+    SimulatedRouteIO io(world, {53, 41}, {{54, 41}}, MoveSpeed::WALK, notes);
     RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){}};
     try{
         walk_route(io, world, from, trainers, {
@@ -244,7 +248,7 @@ UnitTestResult test_jubilife_center_held_overshoot(Logger&){
     for (const MoveSpeed speed : {MoveSpeed::RUN, MoveSpeed::WALK}){
         const std::string_view pace = speed == MoveSpeed::RUN ? "running" : "walking";
         std::vector<std::string> notes;
-        SimulatedRouteIO io(world, from, {}, notes);
+        SimulatedRouteIO io(world, from, {}, speed, notes);
         io.overshoot_timed_holds(true);
         RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){}};
         try{
@@ -273,7 +277,7 @@ UnitTestResult test_jubilife_center_kids(Logger&){
     const TilePos from{48, 62};
     const TilePos goal{52, 41};
     std::vector<std::string> notes;
-    SimulatedRouteIO io(world, from, {{52, 46}, {54, 46}}, notes);
+    SimulatedRouteIO io(world, from, {{52, 46}, {54, 46}}, MoveSpeed::WALK, notes);
     RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){}};
     try{
         walk_route(io, world, {from}, trainers, {
@@ -354,7 +358,7 @@ std::string sweep_story_route(const StoryRoute& route, bool overshoot, std::vect
     }
     for (const TilePos& from : start){
         std::vector<std::string> notes;
-        SimulatedRouteIO io(*world, from, {}, notes);
+        SimulatedRouteIO io(*world, from, {}, MoveSpeed::WALK, notes);
         io.overshoot_timed_holds(overshoot);
         RouteTrainers trainers{.sights = story_trainers(*world), .fight = [](const std::string&){}};
         try{
