@@ -507,7 +507,9 @@ UnitTestResult test_unmoved_leg(){
         {walk(Direction::EAST, 3, {"Hall", {5, 1}})},
         {wall},
     };
-    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = MapPosition{"Hall", {2, 1}}, .label = "Route", .wall_check = WallCheck::SKIP};
+    //  Open legs trusted: an open leg that ends the walk is checked at walls (check_open_leg()), which
+    //  this retry of a hold that moved nothing isn't about.
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = MapPosition{"Hall", {2, 1}}, .label = "Route", .wall_check = WallCheck::SKIP, .open_leg_check = OpenLegCheck::TRUST};
     for (const std::vector<RouteStep>& route : legs){
         const std::string name = to_string(route[0]);
         ScriptedRoute once;
