@@ -53,6 +53,14 @@ void check_dev_checkpoint(
     }
 }
 
+void check_in_story_order(
+    const std::function<bool(std::string_view id)>& in_story_order, std::string_view id, std::string_view source
+){
+    if (in_story_order && !in_story_order(id)){
+        throw ParseException(std::format("{}: checkpoint {} is not in the game's story order", source, id));
+    }
+}
+
 void add_story_row(
     std::string_view id, const StoryRowExecution& execution, RowSave start,
     std::optional<std::string_view> previous_id, std::string_view source, StoryRows& rows

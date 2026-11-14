@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <optional>
 #include <set>
@@ -95,6 +96,8 @@ struct LoadCase{
         std::vector<StoryDevFile> dev_files = {};
         //  Whether the game plays its rows in id order, not file-name order.
         bool ordered_by_id = false;
+        //  The ids the game's story order lists; none: the game lists none.
+        std::optional<std::vector<std::string>> story_order = std::nullopt;
     };
     Input input;
     struct Expectation{
@@ -201,6 +204,34 @@ const LoadCase LOAD_CASES[] = {
         .input = {.builtin = {ROW_0, ROW_1, ROW_0B_MENU}, .ordered_by_id = true},
         .expectation = {.error = "test-01.01.plan: reload_when_chained after a checkpoint that does not end on the game's autosave"},
     },
+    {
+        .name = "every id in the game's story order loads",
+        .input = {.builtin = {ROW_0, ROW_1}, .story_order = std::vector<std::string>{"01.00", "01.01"}},
+        .expectation = {.summary = "rows 01.00 01.01 | titles Row Row | autosave 01.00 | chained 01.01 | always  | dev_only  | dev "},
+    },
+    {
+        .name = "a built-in file whose id is not in the game's story order fails naming the file and the id",
+        .input = {.builtin = {ROW_0, ROW_1}, .story_order = std::vector<std::string>{"01.00"}},
+        .expectation = {.error = "test-01.01.plan: checkpoint 01.01 is not in the game's story order"},
+    },
+    {
+        .name = "a dev file in the game's story order replaces the built-in file",
+        .input = {
+            .builtin = {ROW_0, ROW_1},
+            .dev_files = {dev_file("test-01.01.plan.json", file_text("01.01", R"({"reload_when_chained": true})", "Retimed"))},
+            .story_order = std::vector<std::string>{"01.00", "01.01"},
+        },
+        .expectation = {.summary = "rows 01.00 01.01 | titles Row Retimed | autosave 01.00 | chained 01.01 | always  | dev_only  | dev test-01.01.plan.json@/dev/test-01.01.plan.json"},
+    },
+    {
+        .name = "a dev file whose id is not in the game's story order fails naming its path and the id",
+        .input = {
+            .builtin = {ROW_0},
+            .dev_files = {dev_file("test-01.00.plan.json", file_text("01.00", R"({"save": "autosave"})"))},
+            .story_order = std::vector<std::string>{"01.01"},
+        },
+        .expectation = {.error = "/dev/test-01.00.plan.json: checkpoint 01.00 is not in the game's story order"},
+    },
 };
 
 UnitTestResult check_load(const LoadCase& test){
@@ -208,6 +239,11 @@ UnitTestResult check_load(const LoadCase& test){
     if (test.input.ordered_by_id){
         reader.plays_before = [](const StoryCheckpoint& a, const StoryCheckpoint& b){
             return a.id < b.id;
+        };
+    }
+    if (test.input.story_order){
+        reader.in_story_order = [&order = *test.input.story_order](std::string_view id){
+            return std::find(order.begin(), order.end(), id) != order.end();
         };
     }
     std::string got;
