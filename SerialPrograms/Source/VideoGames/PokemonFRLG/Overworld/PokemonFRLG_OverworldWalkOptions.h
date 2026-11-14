@@ -10,11 +10,13 @@
 #ifndef PokemonAutomation_PokemonFRLG_OverworldWalkOptions_H
 #define PokemonAutomation_PokemonFRLG_OverworldWalkOptions_H
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -39,6 +41,11 @@ using OverworldInterrupts = Pokemon::LegInterrupts<ConsoleHandle, ProControllerC
 struct OverworldInterruptSet{
     OverworldInterrupts wild;
     OverworldInterrupts other;
+    //  What an open leg's screens are recorded with, as timed events through
+    //  its hold and the watch after, to place a wild battle seen only after
+    //  the hold (PokemonFRLG_OverworldLateBattle.h). Not set: not recorded,
+    //  and such a battle may have stopped the player anywhere on the leg.
+    std::function<std::unique_ptr<ScreenEventObserver>()> make_observer = {};
 };
 
 //  A wild battle, run from, and a message (e.g. "REPEL's effect wore off..."),

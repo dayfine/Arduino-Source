@@ -73,6 +73,12 @@ struct SimTiming{
     Milliseconds trainer_battle{2000};  //  after the trainer's message closes
 };
 
+//  A screen the sim showed, and when, from its start.
+struct SimShown{
+    Milliseconds at{0};
+    SimScreen screen = SimScreen::OVERWORLD;
+};
+
 
 
 } // namespace PokemonFRLG

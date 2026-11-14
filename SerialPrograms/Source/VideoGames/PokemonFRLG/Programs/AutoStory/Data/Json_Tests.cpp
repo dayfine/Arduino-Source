@@ -1,27 +1,35 @@
 /*  FRLG Checkpoint Export Tests
  *  From: https://github.com/PokemonAutomation/
  */
+
+#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
-#include "PokemonFRLG_AutoStoryExport.h"
-#include "PokemonFRLG_AutoStoryTable.h"
-#include "PokemonFRLG_AutoStoryExport_Tests.h"
+#include "JsonWriter.h"
+#include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
+#include "Json_Tests.h"
+
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
+
 namespace{
+
 struct ExportInput{
     std::string_view id;
     bool custom = false;
 };
+
 struct ExportExpectation{
     std::string_view menu;
     std::string_view native_json = {};
 };
+
 struct ExportCase{
     ExportInput input;
     ExportExpectation expectation;
 };
+
 const ExportCase CASES[] = {
     {.input = {.id = "00.05"}, .expectation = {.menu = "before_pokedex"}},
     {.input = {.id = "00.05", .custom = true}, .expectation = {
@@ -29,6 +37,7 @@ const ExportCase CASES[] = {
         .native_json = R"({"menu":"full","supplies":{"potions":2,"antidotes":3,"parlyz_heals":4,"pocket":["antidote",""],"status":"PSN","hurt":true,"hp_red":true,"hp_fill":0.25,"lead":{"species":"wartortle","moves":[{"move":"bite","pp":0}],"moves_through_level":18,"moves_read":true,"level":19,"stats":{"hp":50,"attack":20,"defense":30,"sp_attack":40,"sp_defense":35,"speed":25}},"protected_slots":[0,2],"foes":["staryu"],"trainer":"misty","risk":"high","foe_out":"staryu","wild_foes":["pidgey"]}})"
     }},
 };
+
 void customize(StoryCheckpoint& row){
     row.menu = StartMenu::FULL;
     Supplies& state = row.supplies;
@@ -50,6 +59,7 @@ void customize(StoryCheckpoint& row){
     state.foe_out = "staryu";
     state.wild_foes = {"pidgey"};
 }
+
 std::string check_export(StoryCheckpoint row, const ExportCase& test){
     if (test.input.custom){
         customize(row);
@@ -65,6 +75,7 @@ std::string check_export(StoryCheckpoint row, const ExportCase& test){
     }
     return "";
 }
+
 class ExportTest : public UnitTest{
 public:
     explicit ExportTest(ExportCase test)
@@ -81,12 +92,16 @@ public:
 private:
     ExportCase m_test;
 };
+
+
 } // namespace
-void add_tests_AutoStoryExport(UnitTestDatabase& database){
+
+void add_tests_AutoStoryJson(UnitTestDatabase& database){
     for (const ExportCase& test : CASES){
         database.add<ExportTest>(test);
     }
 }
+
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch
 } // namespace PokemonAutomation

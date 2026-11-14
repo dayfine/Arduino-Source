@@ -45,3 +45,13 @@ Native map, story, transition and recovery tests must run from this tree without
 the old map directory before adopting this handoff in the owning chain. This
 fork setup is not yet an upstream resource submission: handoff must make the
 required data available through the agreed Packages repository/process.
+
+## Full native test fixtures
+
+Fork CI pins `dayfine/CommandLineTests` at
+`d150a6c547434110a920f95ba7857b93d5bb9222`. This includes the pending FRLG
+fixture submissions needed by the existing native image tests and preserves
+all current upstream fixture files. It is a test-data pin, independent of the
+map resource lock. The upstream-only fixture checkout lacked 69 required frames;
+those failures must not be skipped or treated as passing detector tests.
+Upstream handoff must also arrange publication of the required image fixtures.

@@ -1,25 +1,22 @@
-/*  FRLG Authored Checkpoint Export
+/*  Legacy FRLG Checkpoint JSON Writer
  *  From: https://github.com/PokemonAutomation/
  */
+
 #include <limits>
 #include <utility>
-#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
-#include "PokemonFRLG_AutoStoryExport.h"
+#include "LegacyJsonFormat.h"
+#include "JsonWriter.h"
+
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
+
+
 namespace{
-std::string_view menu_name(StartMenu menu){
-    switch (menu){
-    case StartMenu::BEFORE_POKEMON: return "before_pokemon";
-    case StartMenu::BEFORE_POKEDEX: return "before_pokedex";
-    case StartMenu::FULL: return "full";
-    }
-    throw ParseException("Unsupported FRLG START menu.");
-}
+
 JsonArray strings(const std::vector<std::string>& values){
     JsonArray result;
     for (const std::string& value : values){
@@ -27,12 +24,14 @@ JsonArray strings(const std::vector<std::string>& values){
     }
     return result;
 }
+
 int64_t count(size_t value){
     if (value > (size_t)std::numeric_limits<int64_t>::max()){
         throw ParseException("FRLG checkpoint count exceeds JSON integer range.");
     }
     return (int64_t)value;
 }
+
 JsonObject stats_json(const Stats& stats){
     JsonObject result;
     result["hp"] = stats.hp;
@@ -43,6 +42,7 @@ JsonObject stats_json(const Stats& stats){
     result["speed"] = stats.speed;
     return result;
 }
+
 JsonObject member_json(const PartyMember& member){
     JsonObject result;
     result["species"] = member.species;
@@ -60,6 +60,7 @@ JsonObject member_json(const PartyMember& member){
     result["stats"] = member.stats ? JsonValue(stats_json(*member.stats)) : JsonValue();
     return result;
 }
+
 JsonObject supplies_json(const Supplies& supplies){
     JsonObject result;
     result["potions"] = supplies.potions;
@@ -83,20 +84,25 @@ JsonObject supplies_json(const Supplies& supplies){
     result["wild_foes"] = strings(supplies.wild_foes);
     return result;
 }
+
+
 } // namespace
+
 JsonValue story_checkpoint_export(const StoryCheckpoint& checkpoint){
     JsonObject result;
-    result["format"] = "pokesim-native-checkpoint-export/1";
-    result["game"] = "frlg";
-    result["status"] = "native-table-export";
+    result["format"] = std::string(StoryJsonInternal::FORMAT);
+    result["game"] = std::string(StoryJsonInternal::GAME);
+    result["status"] = std::string(StoryJsonInternal::STATUS);
     JsonObject native;
-    native["menu"] = std::string(menu_name(checkpoint.menu));
+    native["menu"] = std::string(StoryJsonInternal::menu_name(checkpoint.menu));
     native["supplies"] = supplies_json(checkpoint.supplies);
     result["native_fields"] = std::move(native);
-    result["state_basis"] = "native-table-bookkeeping";
-    result["unbound"] = strings({"runtime_configuration", "map_pins", "executor_bindings", "entry_evidence", "effective_save_retry_policy"});
+    result["state_basis"] = std::string(StoryJsonInternal::STATE_BASIS);
+    result["unbound"] = strings(StoryJsonInternal::unbound_fields());
     return result;
 }
+
+
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch
 } // namespace PokemonAutomation

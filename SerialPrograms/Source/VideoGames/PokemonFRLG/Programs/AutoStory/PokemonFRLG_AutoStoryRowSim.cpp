@@ -15,6 +15,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
+#include "PokemonFRLG_AutoStoryViridianMart.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -394,9 +395,13 @@ std::string OverworldStepSim::walk(const StoryStep& step){
     return failure;
 }
 
-//  A step one tap at a time, or for a step into a trainer's line by
+//  A hop() or step_onto() (a plain step the table says the end of); else
+//  a step one tap at a time, or for a step into a trainer's line by
 //  step_until_seen(), each watched for the trainer.
 std::string OverworldStepSim::step_ahead(const StoryStep& step){
+    if (step.action.empty() && step.pose_after){
+        return step_onto(step);
+    }
     const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
     const auto tap = [this, direction]{
         if (m_sim.state().facing != direction){
@@ -409,6 +414,17 @@ std::string OverworldStepSim::step_ahead(const StoryStep& step){
     };
     const int tiles = step.action == TRAINER_LINE_VARIANT ? TRAINER_LINE_TILES : 1;
     return step_until_seen(tiles, tap, seen) ? "" : "no trainer saw the player.";
+}
+
+//  A hop() or step_onto(): one step, ending where the table says.
+std::string OverworldStepSim::step_onto(const StoryStep& step){
+    const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+    if (m_sim.state().facing != direction){
+        m_sim.tap(direction);
+    }
+    m_sim.tap(direction);
+    m_at = *story_pose(Pokemon::pose_of(*step.pose_after));
+    return m_sim.state().position == MapPosition{m_at.map, m_at.tile} ? "" : "expected to end on " + to_string(MapPosition{m_at.map, m_at.tile}) + ".";
 }
 
 //  A CUT_TREE_VARIANT step: turned to the tree, cut, and a step onto its

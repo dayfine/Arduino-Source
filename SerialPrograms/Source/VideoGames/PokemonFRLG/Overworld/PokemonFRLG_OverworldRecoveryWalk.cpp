@@ -6,14 +6,18 @@
 
 #include <format>
 #include <memory>
+#include <optional>
+#include <vector>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "CommonTools/Async/InferenceSession.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
+#include "PokemonFRLG_OverworldLateBattle.h"
 #include "PokemonFRLG_OverworldRecoveryWalk.h"
 
 namespace PokemonAutomation{
@@ -41,13 +45,20 @@ Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
     return leg;
 }
 
-//  One step of a route, for a player facing `facing`. If an open leg
-//  stopped part-way, returns how far the timing puts the player along it.
-std::optional<WalkedTiles> walk_step(
+//  How one step's walk went: if an open leg stopped part-way, how far the
+//  timing puts the player along it; and when its hold started.
+struct StepWalk{
+    std::optional<WalkedTiles> stopped;
+    WallClock hold_start;
+};
+
+//  One step of a route, for a player facing `facing`.
+StepWalk walk_step(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, std::optional<Direction> facing,
     const OverworldInterruptSet& interrupts, MoveSpeed speed
 ){
+    StepWalk out{std::nullopt, current_time()};
     switch (step.action){
     case RouteAction::WALK:{
         //  Turning first, with a tap, makes the hold start from a standstill
@@ -59,19 +70,23 @@ std::optional<WalkedTiles> walk_step(
         if (const std::string note = speed_note(step, speed); !note.empty()){
             console.log(note);
         }
+        context.wait_for_all_requests();
+        out.hold_start = current_time();
         const Pokemon::LegResult result = Pokemon::walk_leg(
             console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other,
             leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG
         );
         if (result.stopped){
-            return walked_near(step, result.tiles, tile_time(step, speed));
+            out.stopped = walked_near(step, result.tiles, tile_time(step, speed));
+            return out;
         }
         if (step.warps){
             wait_out_warp(console, context, step);
             static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
             if (run_from_battle_after_warp(console, context)){
                 console.log("Route: a wild battle, not the warp to " + step.end.map + "; the player is on " + to_string(step) + " before the warp.", COLOR_ORANGE);
-                return walked_before_warp(step);
+                out.stopped = walked_before_warp(step);
+                return out;
             }
         }
         break;
@@ -83,8 +98,53 @@ std::optional<WalkedTiles> walk_step(
         pbf_press_dpad(context, dpad(step.direction), FACE_HOLD, STEP_RELEASE);
         break;
     }
-    return std::nullopt;
+    return out;
 }
+
+//  An open leg's screens, recorded with the interrupts' observer from
+//  before its hold until the watch after it ends, alongside the walker's
+//  own watchers. Records nothing for other steps, or with no observer.
+class LegRecorder{
+public:
+    LegRecorder(
+        ConsoleHandle& console, ProControllerContext& context,
+        const OverworldInterruptSet& interrupts, const RouteStep& step
+    )
+        : m_observer(records(interrupts, step) ? interrupts.make_observer() : nullptr)
+        , m_watcher(m_observer ? std::make_unique<ScreenEventWatcher>(*m_observer) : nullptr)
+        , m_session(context, console, callbacks())
+    {}
+
+    //  Where what was seen after `step`'s hold, from `hold_start`, stopped
+    //  the player (place_late_stop()); nothing if not recorded or not placed.
+    std::optional<WalkedTiles> place(
+        ConsoleHandle& console, const RouteStep& step, Milliseconds tile_time, WallClock hold_start
+    ) const{
+        if (!m_watcher){
+            return std::nullopt;
+        }
+        const LateStop stop = place_late_stop(step, tile_time, m_watcher->log(), hold_start, current_time());
+        console.log(late_stop_line(step, stop, hold_start), COLOR_ORANGE);
+        return stop.walked;
+    }
+
+private:
+    static bool records(const OverworldInterruptSet& interrupts, const RouteStep& step){
+        const bool open_leg = step.action == RouteAction::WALK && !step.to_wall && !step.warps;
+        return open_leg && interrupts.make_observer;
+    }
+    std::vector<PeriodicInferenceCallback> callbacks() const{
+        if (!m_watcher){
+            return {};
+        }
+        return {*m_watcher};
+    }
+
+    std::unique_ptr<ScreenEventObserver> m_observer;
+    std::unique_ptr<ScreenEventWatcher> m_watcher;
+    //  With no watcher it runs nothing.
+    InferenceSession m_session;
+};
 
 //  walk_step(), then a watch for what its last step set off. Not DONE if
 //  the player may have stopped short of the step's end: an open leg
@@ -104,8 +164,10 @@ StepOutcome walk_and_watch(
     }
     clear_open_message(console, context, step.wild ? interrupts.wild : interrupts.other, step);
     check_overworld(console, context, step);
-    if (const std::optional<WalkedTiles> walked = walk_step(console, context, step, facing, interrupts, speed)){
-        return StepOutcome{.end = StepEnd::STOPPED, .walked = walked};
+    const LegRecorder recorder(console, context, interrupts, step);
+    const StepWalk walked = walk_step(console, context, step, facing, interrupts, speed);
+    if (walked.stopped){
+        return StepOutcome{.end = StepEnd::STOPPED, .walked = walked.stopped};
     }
     if (step.action == RouteAction::FACE){
         return StepOutcome{};
@@ -118,7 +180,10 @@ StepOutcome walk_and_watch(
     }
     //  After a warp it was checked for already.
     const bool done = late == 0 || step.warps || step.action != RouteAction::WALK;
-    return StepOutcome{.end = done ? StepEnd::DONE : StepEnd::LATE, .walked = std::nullopt};
+    if (done){
+        return StepOutcome{};
+    }
+    return StepOutcome{.end = StepEnd::LATE, .walked = recorder.place(console, step, tile_time(step, speed), walked.hold_start)};
 }
 
 //  Holds on along `step`, stopped part-way off the grass, until its warp's

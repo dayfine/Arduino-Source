@@ -113,10 +113,12 @@ std::optional<std::vector<RouteStep>> walked_route(const StoryPose& at, const St
 
 //  A row's steps on the OverworldSim as the program does them: routes and
 //  legs by the sim's walker from where the table says the player stands,
-//  fighting a trainer who sees the player on the way; a step one tap at a
-//  time, or for a step into a trainer's line by step_until_seen(), each
-//  watched for the trainer; a battle from the trainer's message, which
-//  must be up; a cut tree cut and stepped onto. The rest is stubbed.
+//  fighting a trainer who sees the player on the way; a hop down a ledge
+//  (hop()) or a step onto the tile before one (step_onto()), to where the
+//  table says; a step one tap at a time, or for a step into a trainer's
+//  line by step_until_seen(), each watched for the trainer; a battle from
+//  the trainer's message, which must be up; a cut tree cut and stepped
+//  onto. The rest is stubbed.
 class OverworldStepSim : public Pokemon::TableExecutor{
 public:
     //  `sim` must outlive the executor.
@@ -140,6 +142,7 @@ private:
     Pokemon::StoryAction action(StoryActionId id);
     std::string walk(const StoryStep& step);
     std::string step_ahead(const StoryStep& step);
+    std::string step_onto(const StoryStep& step);
     std::string cut(const StoryStep& step);
     std::string battle(const StoryStep& step);
 

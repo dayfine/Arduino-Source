@@ -22,6 +22,7 @@
 #include <random>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -303,18 +304,25 @@ UnitTestResult test_retry_from_save(){
 }
 
 //  console B, FRLG 00.27, 2026-11-09: the save stood below Cerulean Center's
-//  door, and the run walked as if from the counter where 00.27 starts. 00.09
-//  from below Pewter Center's door (17, 25) stops before any step or save.
+//  door (22, 19), and the run walked as if from the counter where 00.27
+//  starts. It, and 00.09 from below Pewter Center's door (17, 25), stop
+//  before any step or save.
 UnitTestResult test_save_off_start_pose(){
-    Simulation sim;
-    sim.game.save_stands = StoryPose{"PewterCity", TilePos{17, 26}, Direction::SOUTH};
-    const Pokemon::SegmentReport report = sim.run({.from = "00.09", .to = "00.09"});
-    const auto stepped = [](const std::string& item){ return item.starts_with("00.09/"); };
-    const auto told = [](const std::string& line){ return line.starts_with("start pose mismatch: "); };
-    if (report.completed || report.failure.failure != "start_failed" || !sim.saves.empty()
-        || std::ranges::any_of(sim.game.trace, stepped) || std::ranges::none_of(sim.lines, told)
-    ){
-        return "Expected 00.09 stopped at its start check, the mismatch logged:" + joined(sim.game.trace) + joined(sim.lines);
+    const std::pair<std::string, StoryPose> CASES[] = {
+        {"00.09", StoryPose{"PewterCity", TilePos{17, 26}, Direction::SOUTH}},
+        {"00.27", StoryPose{"CeruleanCity", TilePos{22, 20}, Direction::SOUTH}},
+    };
+    for (const auto& [id, save] : CASES){
+        Simulation sim;
+        sim.game.save_stands = save;
+        const Pokemon::SegmentReport report = sim.run({.from = id, .to = id});
+        const auto stepped = [&id](const std::string& item){ return item.starts_with(id + "/"); };
+        const auto told = [](const std::string& line){ return line.starts_with("start pose mismatch: "); };
+        if (report.completed || report.failure.failure != "start_failed" || !sim.saves.empty()
+            || std::ranges::any_of(sim.game.trace, stepped) || std::ranges::none_of(sim.lines, told)
+        ){
+            return "Expected " + id + " stopped at its start check, the mismatch logged:" + joined(sim.game.trace) + joined(sim.lines);
+        }
     }
     return true;
 }

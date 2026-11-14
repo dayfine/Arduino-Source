@@ -1,0 +1,229 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.27",
+    "title": "East over Route 9 to Route 10's Pokemon Center: the two trees, Alicia, Jeremy and Conner",
+    "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "above_cerulean_tree",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity", "tiles": [[26, 31]], "facing": "south"}
+        },
+        "why": "out of the Center, south through the city to above the tree (26, 32), grown back"
+      },
+      {
+        "id": "cut_cerulean_tree",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CeruleanCity", "tiles": [[26, 32]], "facing": "south"},
+        "why": "the tree; a step onto its tile"
+      },
+      {
+        "id": "west_of_route9_tree",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route9", "tiles": [[1, 8]], "facing": "east"}
+        },
+        "why": "down to row 33, east and up column 39 or 40 to row 18, east out of the city onto Route 9, west of its tree (2, 8)"
+      },
+      {
+        "id": "cut_route9_tree",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {
+          "direction": "east"
+        },
+        "declared_after": {"map": "Route9", "tiles": [[2, 8]], "facing": "east"},
+        "why": "Route 9's tree; a step onto its tile"
+      },
+      {
+        "id": "above_alicia_line",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route9", "tiles": [[11, 9]], "facing": "south"}
+        },
+        "why": "east to (11, 9), above the west end of Alicia's line"
+      },
+      {
+        "id": "alicia_line",
+        "kind": "step",
+        "action": "trainer_line",
+        "args": {
+          "direction": "south"
+        },
+        "why": "onto (11, 10), in Alicia's line: she walks up to (12, 10)"
+      },
+      {
+        "id": "picnicker_alicia",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_PICNICKER_ALICIA",
+          "foes": ["oddish", "bellsprout", "oddish", "bellsprout"]
+        },
+        "declared_after": {"map": "Route9", "tiles": [[11, 10]], "facing": "east"},
+        "why": "Oddish, Bellsprout, Oddish and Bellsprout, Lv18"
+      },
+      {
+        "id": "alicia_ledge_hop",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "Route9", "tiles": [[11, 12]], "facing": "south"},
+        "why": "down the ledge (11, 11)"
+      },
+      {
+        "id": "west_of_jeremy_sight",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route9", "tiles": [[19, 13]], "facing": "east"}
+        },
+        "why": "down to row 13 and east along it to (19, 13), west of Jeremy's north line"
+      },
+      {
+        "id": "jeremy_sight",
+        "kind": "step",
+        "action": "trainer_wait",
+        "args": {
+          "direction": "east"
+        },
+        "why": "onto (20, 13), four above Jeremy (20, 17): when he looks north he walks up to (20, 14)"
+      },
+      {
+        "id": "hiker_jeremy",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_HIKER_JEREMY",
+          "foes": ["machop", "onix"]
+        },
+        "declared_after": {"map": "Route9", "tiles": [[20, 13]], "facing": "south"},
+        "why": "Machop and Onix, Lv20"
+      },
+      {
+        "id": "below_conner_line",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route9", "tiles": [[52, 8]], "facing": "north"}
+        },
+        "why": "east along row 13 and up column 52 to (52, 8), below the east end of Conner's line"
+      },
+      {
+        "id": "conner_line",
+        "kind": "step",
+        "action": "trainer_line",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto (52, 7), the end of Conner's line: he walks up to (51, 7)"
+      },
+      {
+        "id": "bug_catcher_conner",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_BUG_CATCHER_CONNER",
+          "foes": ["caterpie", "weedle", "venonat"]
+        },
+        "declared_after": {"map": "Route9", "tiles": [[52, 7]], "facing": "west"},
+        "why": "Caterpie, Weedle and Venonat, Lv20"
+      },
+      {
+        "id": "round_brice",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 2}, {"direction": "west", "tiles": 1}, {"direction": "north", "tiles": 2}, {"direction": "west", "tiles": 3}, {"direction": "north", "tiles": 2}, {"direction": "east", "tiles": 16}, {"direction": "south", "tiles": 1}]
+        },
+        "why": "up to the ledge (52, 4), up column 51 to Brice's row, west to the rock (48, 3) (or (48, 1)), up to (48, 1), east along row 1 to the rock (64, 1), down to (64, 2)"
+      },
+      {
+        "id": "above_east_ledge",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "Route9", "tiles": [[64, 3]], "facing": "south"},
+        "why": "onto (64, 3), above the ledge (64, 4)"
+      },
+      {
+        "id": "east_ledge_hop",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "Route9", "tiles": [[64, 5]], "facing": "south"},
+        "why": "down the ledge (64, 4)"
+      },
+      {
+        "id": "above_caitlin_line",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "south", "tiles": 3}, {"direction": "east", "tiles": 6}]
+        },
+        "why": "down column 64 to row 8, east along it to (70, 8): above Caitlin's line (61..64, 9)"
+      },
+      {
+        "id": "route10_ledge_end",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route10", "tiles": [[17, 11]], "facing": "east"}
+        },
+        "why": "east onto Route 10, down to row 11 west of the grass and east along it to the wall (17, 11), above the fence post (17, 12)"
+      },
+      {
+        "id": "below_center_door",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 1}, {"direction": "south", "tiles": 12}, {"direction": "west", "tiles": 1}, {"direction": "north", "tiles": 2}, {"direction": "west", "tiles": 5}, {"direction": "east", "tiles": 3}]
+        },
+        "why": "into the ledge's gap (16, 11), down column 16 to row 23, a tile west, up to the Center's wall (15, 21), west along row 21 to the wall (10, 21), east to (13, 21), below the door"
+      },
+      {
+        "id": "route10_nurse",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route10_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "up onto the Center's door (13, 20), to the nurse"
+      },
+      {
+        "id": "heal_route10",
+        "kind": "heal",
+        "why": "full HP"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "East out of Cerulean over Route 9 to Route 10's Pokemon Center (pokeguy 45:12 to 47:27), on foot: the Bicycle isn't registered yet.",
+        "Cerulean (CeruleanCity map.json): the way east, column 39..40 up from row 33 to rows 18..19 and out of the city's east edge, is reached from the city only through the tree (26, 32), grown back since 00.26 (its flag is a FLAG_TEMP), or the burgled house. Cut from above. Route 9 joins the city's rows 18..19 by its rows 8..9 (offset -10); its tree (2, 8) (FLAG_TEMP_12) closes them, (2, 9) being rock: cut from (1, 8), west of it.",
+        "Route 9 (Route9 map.json, scripts.inc), its ledges all facing south. Of its nine trainers, three can't be walked around, as in pokeguy's run, where Jeremy happened to look away:",
+        "Picnicker Alicia (14, 10) faces west, sight 3, over (11..13, 10), the only tiles above the ledge row 11 the way west goes down by: fought on the step onto (11, 10); she walks up to (12, 10). Then down the ledge (11, 11).",
+        "Hiker Jeremy (20, 17) looks north and west (FACE_UP_AND_LEFT), sight 4: north over (20, 13..16), every way east of column 19 below the rocks of row 12. Fought on (20, 13), waiting for him to look north (trainer_wait); he walks up to (20, 14).",
+        "Bug Catcher Conner (49, 7) faces east, sight 3, over (50..52, 7): the way north from row 13 is column 52 alone (the ledges of row 11 face south), and row 7 is the way onto the ridge. Fought on the step onto (52, 7); he walks up to (51, 7).",
+        "Hiker Brice wanders row 2 (50..56), looking west and east, sight 1, over (49..57, 2), and the way up from the ledges of row 4 is (50..51, 4) below him. The leg up column 51 ends on row 3 if he stands at (51, 2), else it goes on to (51, 1) past him, and he may see the player there; either way the legs to walls after it meet on (48, 1): west to the rock (48, 3) or (48, 1), up to (48, 1). Row 1 is clear of his sight; east along it to the rock (64, 1) and down column 64 past the hidden Rare Candy (63, 2), not picked up. A held leg down to (64, 3) would hop the ledge (64, 4) and go on, so the last tile is one step, then the hop.",
+        "Picnicker Caitlin (60, 9) faces east over (61..64, 9): the way to Route 10 goes along row 8, above her line, by legs to (70, 8), a tile short of the edge. Camper Chris (26, 7), Bug Catcher Brent (26, 1), Camper Drew (36, 6) and Hiker Alan (61, 16) are off the way; TM40 (12, 17) is left.",
+        "Route 10 (Route10 map.json) joins Route 9's rows 8..10 by its own; its north part, down to the Center's door (13, 20), has no trainer on the way and its grass is walked round. The trees west of the door (10, 20..26) stay. The walk there ends its open legs where a tile of error can't reach a blocker, and finds its place again on walls (console B, 2026-11-09, two runs \"no fade\" at the door): the step onto Route 10 is not always held up, so the player may stand a tile further east, and the leg along row 11 holds to the wall (17, 11) instead of ending on (16, 11) by count. The 12 tiles down column 16 may end a tile short or long: from rows 22..29 a tile west and up to the Center's wall (15, 20) all end on (15, 21). West along row 21 to the wall (9, 21) ends on (10, 21), three west of the door's column: the only count no wall after it checks.",
+        "The nurse, and the save in Route 10's Center: the save card names ROUTE 10."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}

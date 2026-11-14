@@ -23,10 +23,12 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
+#include "PokemonFRLG_AutoStoryScreenEvents.h"
 #include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryTeachScreens.h"
 #include "PokemonFRLG_AutoStoryTrashCans.h"
+#include "PokemonFRLG_AutoStoryViridianMart.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -114,6 +116,17 @@ std::optional<MapPosition> route_start(const Pokemon::Pose& pose){
     return MapPosition{pose.map, tiles[0]};
 }
 
+//  The story's interrupts for `step`'s walk, with FRLG's screen observer,
+//  which places a wild battle seen only after an open leg's hold
+//  (OverworldInterruptSet::make_observer).
+OverworldInterruptSet walk_interrupts(StoryEnv& env, const StoryStep& step){
+    OverworldInterruptSet out = story_interrupts(env.supplies, arg<bool>(step, "fight_wild"), env.checks, env.language);
+    out.make_observer = []() -> std::unique_ptr<ScreenEventObserver>{
+        return std::make_unique<FrlgScreenObserver>();
+    };
+    return out;
+}
+
 //  `maps`: where the route is planned; the story's but where a step knows
 //  better (the trash cans' walks, past trainers who have walked up).
 Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const std::vector<MapData>& maps = story_maps()){
@@ -144,7 +157,7 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const 
     if (!start){
         env.console.log("Story: " + step.name + ": on one of " + Pokemon::to_string(state.pose) + "; holds to walls first, to one tile.");
     }
-    const OverworldInterruptSet interrupts = story_interrupts(env.supplies, arg<bool>(step, "fight_wild"), env.checks, env.language);
+    const OverworldInterruptSet interrupts = walk_interrupts(env, step);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given. From a set of tiles
     //  the start isn't known: the walker reads the facing.
@@ -169,7 +182,7 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!facing || !route || route->empty()){
         return Pokemon::outcome_failed("bad_legs", to_string(start));
     }
-    const OverworldInterruptSet interrupts = story_interrupts(env.supplies, arg<bool>(step, "fight_wild"), env.checks, env.language);
+    const OverworldInterruptSet interrupts = walk_interrupts(env, step);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
     const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
@@ -253,74 +266,8 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
     return walked;
 }
 
-//  Viridian Mart before the Boulder Badge (pokefirered ViridianCity_Mart_Items):
-//  POKE BALL, POTION (300), ANTIDOTE (100), PARLYZ HEAL (200). Each item
-//  the story buys: its row, and where the bag's count is kept.
-struct MartItem{
-    std::string_view item;
-    int row;
-    int Supplies::* count;
-    //  The name the item list reader reads (read_item_list_name()).
-    std::string_view slug;
-};
-constexpr MartItem VIRIDIAN_MART_ITEMS[] = {
-    {.item = "potion", .row = 1, .count = &Supplies::potions, .slug = "potion"},
-    {.item = "antidote", .row = 2, .count = &Supplies::antidotes, .slug = "antidote"},
-    {.item = "parlyz_heal", .row = 3, .count = &Supplies::parlyz_heals, .slug = "parlyz-heal"},
-};
-
-const MartItem* viridian_mart_item(const std::string& name){
-    for (const MartItem& item : VIRIDIAN_MART_ITEMS){
-        if (name == item.item){
-            return &item;
-        }
-    }
-    return nullptr;
-}
-
-Outcome shop(StoryEnv& env, const StoryStep& step){
-    const std::optional<std::vector<MartOrder>> orders = viridian_mart_orders(arg<std::vector<Pokemon::StoryItem>>(step, "items"));
-    if (!orders){
-        return Pokemon::outcome_failed("unknown_item", step.name);
-    }
-    //  2000 of the 3000 a new game starts with, plus the rival's prize.
-    buy_items(env.console, env.context, *orders, env.checks, env.language);
-    for (const Pokemon::StoryItem& item : arg<std::vector<Pokemon::StoryItem>>(step, "items")){
-        env.supplies.*viridian_mart_item(item.item)->count += (int)item.quantity;
-    }
-    if (!checks_screen(env.checks)){
-        return Pokemon::outcome_ok();
-    }
-    //  The counts from the bag, not from the orders: a wrong row once bought
-    //  Parlyz Heals for Antidotes unnoticed (console B, 2026-11-01).
-    const std::vector<BagRow> rows = read_items_pocket(env.console, env.context, env.language);
-    if (rows.empty()){
-        env.console.log("Story: couldn't read the Items pocket; keeping the counts ordered.", COLOR_ORANGE);
-        return Pokemon::outcome_ok();
-    }
-    for (const std::string& item : set_from_bag(env.supplies, rows)){
-        env.console.log(std::format(
-            "Story: couldn't read how many {} the bag holds; counting {}.",
-            item, item_count(env.supplies, item)
-        ), COLOR_ORANGE);
-    }
-    return Pokemon::outcome_ok();
-}
-
 } // namespace
 
-
-std::optional<std::vector<MartOrder>> viridian_mart_orders(const std::vector<Pokemon::StoryItem>& items){
-    std::vector<MartOrder> orders;
-    for (const Pokemon::StoryItem& wanted : items){
-        const MartItem* found = viridian_mart_item(wanted.item);
-        if (found == nullptr){
-            return std::nullopt;
-        }
-        orders.push_back(MartOrder{found->row, (int)wanted.quantity, found->slug});
-    }
-    return orders;
-}
 
 const RouteCosts& story_route_costs(){
     static const RouteCosts COSTS = []{
@@ -371,6 +318,7 @@ std::string save_card_place(const std::string& map){
         {"Route24", "route-24"},
         {"Route25", "route-25"},
         {"VermilionCity", "vermilion-city"},
+        {"Route10", "route-10"},
     };
     for (const auto& [prefix, place] : PLACES){
         if (map == prefix || map.rfind(prefix + "_", 0) == 0){
@@ -748,7 +696,7 @@ ConsoleAction console_action_of(StoryActionId id){
             return Pokemon::outcome_ok();
         };
     case StoryActionId::SHOP:
-        return [](StoryEnv& env, RunState&, const StoryStep& step){ return shop(env, step); };
+        return [](StoryEnv& env, RunState&, const StoryStep& step){ return viridian_shop(env, step); };
     case StoryActionId::READY:
         return get_ready;
     default:

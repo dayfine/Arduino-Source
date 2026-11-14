@@ -53,9 +53,10 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPcStorage.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryAbilities.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryRows_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTrashCans.h"
-#include "Programs/AutoStory/PokemonFRLG_AutoStoryExport_Tests.h"
+#include "Programs/AutoStory/Data/Json_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_GiftRngAttempts_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanInputs_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanLog_Tests.h"
@@ -100,6 +101,7 @@ static void add_tests_RngPlanning(UnitTestDatabase& database){
 static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryVermilion(database);
     add_tests_AutoStoryVermilionGym(database);
+    add_tests_AutoStoryCeladon(database);
 }
 
 void add_tests(UnitTestDatabase& database){
@@ -141,7 +143,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_OverworldSim(database);
     add_tests_PlayerFacingReader(database);
     add_tests_AutoStory(database);
-    add_tests_AutoStoryExport(database);
+    add_tests_AutoStoryJson(database);
     add_tests_AutoStorySimulation(database);
     add_tests_AutoStoryRows(database);
     add_tests_AutoStoryTrashCans(database);

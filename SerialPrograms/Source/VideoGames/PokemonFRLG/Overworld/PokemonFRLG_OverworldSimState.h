@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldSimScreens.h"
 
@@ -61,7 +62,22 @@ struct SimState{
     //  there.
     std::vector<std::string> violations;
     std::vector<std::string> log;
+    //  The sim's clock, from its start.
+    Milliseconds time{0};
+    //  Each screen as it showed, oldest first, from `screen` at the start.
+    std::vector<SimShown> shown;
 };
+
+//  A time on the sim's clock as a WallClock, for the shared judges.
+WallClock sim_wall_clock(Milliseconds time);
+
+//  The screens `state` showed from `from` until its time, as the walker's
+//  screen observer (FrlgScreenObserver) reports them: a message's box, a
+//  battle's text box with or without its HP boxes, and the black of a
+//  battle's wipe or a warp's fade. A battle's flashes are no uniform
+//  screen, and black below a small room, which the observer's battle text
+//  box detector may take for a box, isn't modelled.
+ScreenEventLog screen_event_log(const SimState& state, Milliseconds from);
 
 //  A watcher that fired: which (an index into the watchers asked for), and
 //  how long after the hold or watch started.
