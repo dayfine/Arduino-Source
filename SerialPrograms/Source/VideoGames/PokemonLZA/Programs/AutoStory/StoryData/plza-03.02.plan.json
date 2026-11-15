@@ -11,7 +11,7 @@
       {
         "id": "to_hotel_front_door",
         "kind": "game_action",
-        "why": "step 40: across the lobby to the front door's \"A Leave\". Stops at the door. Measured 2026-11-08 on console B, walk not run.",
+        "why": "step 40: across the lobby to the front door's \"A Leave\". Stops at the door.",
         "action": "walk",
         "args": {
           "legs": [[0, 6000]]
@@ -27,7 +27,7 @@
       {
         "id": "to_taunie_at_gate",
         "kind": "game_action",
-        "why": "step 41: to Taunie at the gate, \"A Talk Taunie\". Measured 2026-11-08 on console B, walk not run.",
+        "why": "step 41: to Taunie at the gate, \"A Talk Taunie\".",
         "action": "walk",
         "args": {
           "legs": [[0, 3000]]
@@ -59,13 +59,13 @@
       {
         "id": "taunie_runs_off",
         "kind": "game_action",
-        "why": "step 45: the Main Missions card (A turns its pages; a scene step only waits on it), Taunie runs off (console B, 2026-11-10)",
+        "why": "step 45: the Main Missions card (A turns its pages; a scene step only waits on it), Taunie runs off",
         "action": "mash_to_move_hints"
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+      "source": "played step by step from a new game"
     }
   },
   "execution": {

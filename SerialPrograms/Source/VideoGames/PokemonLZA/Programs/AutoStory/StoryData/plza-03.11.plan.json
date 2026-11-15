@@ -11,7 +11,7 @@
       {
         "id": "to_mable",
         "kind": "game_action",
-        "why": "step 68: from the 3F autosave as it loads (facing the desk, the elevator panel to the right), around the left end of the desk and the counter behind it, into her talk: left 0.9 s, back to the desk's way 1.3 s (to the bookshelf wall), right until her talk starts (a fade, then her box; about 1.2 s). Measured by hand 2026-11-14 on console B, walking (-90 = left, was written 270). The 2026-11-10 legs (straight 0.7 s, right 1.2 s, right 1.6 s) were measured from a hand save at the elevator door facing the windows, and walk into a wall from the autosave (r6, r7). The last leg is held until her dialog box shows; none by its end fails the step (r6, 2026-11-14: it ended facing a wall).",
+        "why": "step 68: from the 3F autosave as it loads (facing the desk, the elevator panel to the right), around the left end of the desk and the counter behind it, into her talk: left 0.9 s, back to the desk's way 1.3 s (to the bookshelf wall), right until her talk starts (a fade, then her box; about 1.2 s). The legs hold only from the autosave's facing. The last leg is held until her dialog box shows; none by its end fails the step.",
         "action": "walk",
         "args": {
           "legs": [[-90, 900], [90, 1300], [90, 1600]],
@@ -38,7 +38,7 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.10 at its 3F autosave (user, 2026-11-14). Starts on 3F at the elevator in the Director's Office, as the reloaded autosave leaves the player: facing the desk, the objective marker beyond it, the elevator panel on the right. to_mable's legs were measured from there; after the ride the facing differs, so a run from 03.10 reloads the save first (reload_when_chained)"
+      "source": "played step by step from a new game. Starts on 3F at the elevator in the Director's Office, as the reloaded autosave leaves the player: facing the desk, the objective marker beyond it, the elevator panel on the right. to_mable's legs are from there; after the ride the facing differs, so a run from 03.10 reloads the save first (reload_when_chained)"
     }
   },
   "execution": {

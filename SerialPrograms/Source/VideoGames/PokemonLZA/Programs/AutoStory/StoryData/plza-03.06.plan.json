@@ -21,7 +21,7 @@
       {
         "id": "center_to_zone_1",
         "kind": "game_action",
-        "why": "step 56: from the Pokemon Center to Wild Zone 1's gate. ~5 units/s; the first 2 s replace a dash test of the same distance. Measured 2026-11-08 on console B, walk not run.",
+        "why": "step 56: from the Pokemon Center to Wild Zone 1's gate. ~5 units/s; the first 2 s replace a dash test of the same distance.",
         "action": "walk",
         "args": {
           "legs": [[0, 2000], [0, 3000], [0, 6000]]
@@ -30,7 +30,7 @@
       {
         "id": "toward_zone_1_gate",
         "kind": "game_action",
-        "why": "step 57: toward the gate, into Taunie's scene. Left 45, right 15. Measured 2026-11-08 on console B, walk not run.",
+        "why": "step 57: toward the gate, into Taunie's scene. Left 45, right 15.",
         "action": "walk",
         "args": {
           "legs": [[-45, 0], [15, 2500]]
@@ -45,7 +45,7 @@
       {
         "id": "to_zone_1_gate",
         "kind": "game_action",
-        "why": "step 58, after Taunie's scene: faces the street's heading toward Wild Zone 1's gate by the minimap (246: the arrow on the frame with the gate dead ahead from mid-street, console B 2026-11-14 13:40, Zone1Gate/gate_ahead.png), then walks steered by the gate's two lime pillars on screen until its A prompt (walk_to_zone_gate_entrance, shared with 03.08's walk to the far gate). Fails as gate_not_seen when no gate shows in the first second. Replaces the timed 4.3 s walk (22 units at ~5.1 units/s).",
+        "why": "step 58, after Taunie's scene: faces the street's heading toward Wild Zone 1's gate by the minimap (246: the arrow with the gate dead ahead from mid-street), then walks steered by the gate's two lime pillars on screen until its A prompt (walk_to_zone_gate_entrance, shared with 03.08's walk to the far gate). Fails as gate_not_seen when no gate shows in the first second.",
         "action": "walk_to_zone_gate_entrance",
         "args": {
           "heading": 246,
@@ -62,7 +62,7 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+      "source": "played step by step from a new game"
     }
   },
   "execution": {
