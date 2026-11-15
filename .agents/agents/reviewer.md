@@ -36,7 +36,7 @@ being restated.
   when one call could run longer: code health
   (`~/.venvs/code-health/bin/python -m devtools.code_health --base-ref origin/<base>`) and, only when
   a claim needs it, one compile
-  (`ninja -C <build> CMakeFiles/SerialProgramsLib.dir/Source/<path>.cpp.o`) in an existing build
+  (through `HEAVY_GATE_NOWAIT=1 sh ~/BDSPLab/heavy_gate.sh`: `ninja -C <build> CMakeFiles/SerialProgramsLib.dir/Source/<path>.cpp.o`) in an existing build
   tree. Builds and tests are CI's: read the PR's checks instead. Read the exit code from a file
   (`…; echo $? > rc`), never through a pipe.
   Never background a long command and end the turn waiting for it: nothing wakes a subagent. If a command
