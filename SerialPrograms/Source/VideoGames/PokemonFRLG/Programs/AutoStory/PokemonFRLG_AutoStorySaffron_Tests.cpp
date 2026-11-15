@@ -148,6 +148,43 @@ UnitTestResult test_route7_gate_running_crossing_not_held_up(){
     return true;
 }
 
+//  15.01 west_of_tea_guard as console B ran it (2026-11-14 22:27, run 3):
+//  from the gate's wall (15, 11) facing north, "north 1" onto the door's
+//  tile (15, 10), an exit mat taken east, then "east 1 (warp)". The turn
+//  tap east took the warp, its fade passed while the turn was read, and the
+//  hold and the two steps more walked on inside the gate: "no fade in and
+//  out after walking onto the warp".
+UnitTestResult test_route7_gate_door_turn_tap(){
+    const StoryCheckpoint& row = checkpoint("15.01");
+    StoryPose at{"Route7", {15, 11}, Direction::NORTH};
+    SimScript script;
+    script.timing.tile = MovementMechanics::RUN_TILE_TIME;
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing, script);
+    SimWalkerRules rules;
+    rules.speed = MoveSpeed::RUN;
+    for (const StoryStep& step : row.steps){
+        if (step.name != "west_of_tea_guard"){
+            continue;
+        }
+        const std::optional<std::vector<RouteStep>> route = walked_route(at, step, story_maps(), sim.state().gates);
+        if (!route || route->empty()){
+            return std::format("15.01 {}: no route from {}.", step.name, to_string(MapPosition{at.map, at.tile}));
+        }
+        const RoutePlanning planning{
+            .maps = &story_maps(), .gates = sim.state().gates, .costs = story_route_costs(),
+            .start = MapPosition{at.map, at.tile}, .label = step.name
+        };
+        if (const std::string failure = OverworldSimWalker(sim, rules).run(*route, planning); !failure.empty()){
+            return std::format("15.01 {}: ended on {}; {}", step.name, to_string(sim.state().position), failure);
+        }
+    }
+    const MapPosition west_of_trigger{"Route7_EastEntrance", {5, 4}};
+    if (!(sim.state().position == west_of_trigger)){
+        return std::format("15.01: ended on {}, not west of the guard's trigger, {}.", to_string(sim.state().position), to_string(west_of_trigger));
+    }
+    return true;
+}
+
 const AutoStorySaffronCase AUTO_STORY_SAFFRON_CASES[] = {
     {
         .input = {.name = "15.01 Route 7's gate with the TEA to Saffron's Center", .body = test_route7_to_saffron},
@@ -156,6 +193,10 @@ const AutoStorySaffronCase AUTO_STORY_SAFFRON_CASES[] = {
     {
         .input = {.name = "15.01 running, the crossing onto Route 7 not held up", .body = test_route7_gate_running_crossing_not_held_up},
         .expectation = {.description = "a column long after the crossing, the walk still ends at the gate's guard"},
+    },
+    {
+        .input = {.name = "15.01 west_of_tea_guard from the gate's wall, the door an exit mat", .body = test_route7_gate_door_turn_tap},
+        .expectation = {.description = "the press east off the door's tile takes the warp with no turn tap first; ends west of the guard's trigger"},
     },
 };
 
