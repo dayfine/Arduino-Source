@@ -135,18 +135,34 @@ void fill_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t c
     }
 }
 
+//  A disk of radius `radius` centered on (`center_x`, `center_y`).
+void fill_disk(size_t center_x, size_t center_y, size_t radius, uint32_t color, ImageRGB32& image){
+    for (size_t y = center_y - radius; y <= center_y + radius; y++){
+        for (size_t x = center_x - radius; x <= center_x + radius; x++){
+            const double dx = static_cast<double>(x) - static_cast<double>(center_x);
+            const double dy = static_cast<double>(y) - static_cast<double>(center_y);
+            if (dx * dx + dy * dy <= static_cast<double>(radius * radius)){
+                image.pixel(x, y) = color;
+            }
+        }
+    }
+}
+
 ImageRGB32 solid_frame(uint32_t color){
     ImageRGB32 image(WIDTH, HEIGHT);
     image.fill(color);
     return image;
 }
 
-//  The skip badge drawn on black: the white icon, white text strokes (one
-//  column in four), the dark strip under them.
+//  The skip badge drawn on black: the (+) icon (a white disk, its plus
+//  dark, as the ButtonPlus template), white text strokes (one column in
+//  four), the dark strip under them.
 ImageRGB32 skip_badge_frame(){
     ImageRGB32 image = solid_frame(0xff000000);
     fill_box(1500, 100, 1920, 175, 0xff2c2c30, image);
-    fill_box(1564, 128, 1586, 150, 0xffffffff, image);
+    fill_disk(1575, 139, 11, 0xffffffff, image);
+    fill_box(1569, 138, 1582, 141, 0xff2c2c30, image);
+    fill_box(1574, 133, 1577, 146, 0xff2c2c30, image);
     for (size_t x = 1630; x < 1875; x += 4){
         fill_box(x, 124, x + 1, 156, 0xffffffff, image);
     }

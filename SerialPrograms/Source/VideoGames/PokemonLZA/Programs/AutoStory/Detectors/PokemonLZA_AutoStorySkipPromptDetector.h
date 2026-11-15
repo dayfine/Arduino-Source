@@ -12,6 +12,7 @@
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonTools/VisualDetector.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_ButtonDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -19,11 +20,8 @@ namespace PokemonLZA{
 
 
 //  The cutscene's "(+) Hold button to skip" badge at the top right: the
-//  white (+) icon, white text on the badge, and the badge's dark, even
-//  strip under the text.
-//  TODO: unify with ButtonDetector's ButtonType::ButtonPlus
-//  (Inference/PokemonLZA_ButtonDetector.h) - no PLZA frames yet to verify
-//  its Plus template on this badge.
+//  (+) icon (ButtonDetector's ButtonType::ButtonPlus), white text on the
+//  badge, and the badge's dark, even strip under the text.
 class SkipPromptDetector : public StaticScreenDetector{
 public:
     explicit SkipPromptDetector(Color color = COLOR_MAGENTA);
@@ -33,7 +31,7 @@ public:
 
 private:
     Color m_color;
-    ImageFloatBox m_icon;
+    ButtonDetector m_icon;
     ImageFloatBox m_text;
     ImageFloatBox m_strip;
 };

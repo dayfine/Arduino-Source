@@ -16,6 +16,13 @@ const ImageFloatBox& dialog_choice_box(){
     return box;
 }
 
+const ImageFloatBox& dialog_choice_rows_box(){
+    static const ImageFloatBox box{0.654308, 644.0 / 1080, 0.295529, 320.0 / 1080};
+    return box;
+}
+
+const double DIALOG_CHOICE_ROW_SPACING = 24.0 / 1080;
+
 
 
 } // namespace PokemonLZA

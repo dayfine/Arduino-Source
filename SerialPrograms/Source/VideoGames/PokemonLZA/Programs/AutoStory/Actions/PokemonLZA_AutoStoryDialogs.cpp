@@ -4,8 +4,10 @@
  *
  */
 
+#include <cstdlib>
 #include <format>
 #include <optional>
+#include <string>
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -14,6 +16,7 @@
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
+#include "VideoGames/PokemonLZA/Programs/PokemonLZA_FastTravelNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryDialogs.h"
@@ -112,50 +115,73 @@ void talk_to_facing(ConsoleHandle& console, ProControllerContext& context){
 
 namespace{
 
-//  The selection arrow's top among the choices, once it has held still;
-//  none if it does not show within `timeout`.
-std::optional<double> wait_for_choice_arrow(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout){
+//  Whether the selection arrow shows among the choices, held still, within
+//  `timeout`.
+bool choice_arrow_shows(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout){
     SelectionArrowWatcher arrow(COLOR_YELLOW, &console.overlay(), SelectionArrowType::RIGHT, dialog_choice_box());
     context.wait_for_all_requests();
-    if (wait_until(console, context, timeout, {arrow}) < 0){
+    return wait_until(console, context, timeout, {arrow}) >= 0;
+}
+
+//  The choice row the selection arrow is on, counted from the top of
+//  dialog_choice_rows_box(); none if it is not in the rows.
+std::optional<size_t> read_choice_row(ConsoleHandle& console){
+    const int row = get_current_selector_index(console, dialog_choice_rows_box(), DIALOG_CHOICE_ROW_SPACING);
+    if (row < 0){
         return std::nullopt;
     }
-    return arrow.last_detected().y;
+    return static_cast<size_t>(row);
 }
 
 } // namespace
 
-//  TODO: unify with get_current_selector_index()
-//  (PokemonLZA_FastTravelNavigation.h) - the dialog choices' row spacing is
-//  not measured, so this counts rows down from the top.
+int dialog_choice_moves(size_t current, size_t target){
+    return static_cast<int>(target) - static_cast<int>(current);
+}
+
 void choose_dialog_option(ConsoleHandle& console, ProControllerContext& context, size_t index){
     //  Some questions show their choices only after A closes the question's
     //  text: the Research Lab elevator's "which floor?" (console B,
     //  2026-11-10). A press comes only after 3 s without choices, so it
     //  cannot pick the first choice the moment the choices appear.
-    std::optional<double> row = wait_for_choice_arrow(console, context, 3s);
-    for (int press = 0; !row && press < 3; press++){
+    bool shows = choice_arrow_shows(console, context, 3s);
+    for (int press = 0; !shows && press < 3; press++){
         pbf_press_button(context, BUTTON_A, 160ms, 240ms);
-        row = wait_for_choice_arrow(console, context, 3s);
+        shows = choice_arrow_shows(console, context, 3s);
     }
-    if (!row){
+    if (!shows){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
             "choose_dialog_option(): no choices on screen.",
             console
         );
     }
-    for (size_t moved = 0; moved < index; moved++){
-        pbf_press_dpad(context, DPAD_DOWN, 160ms, 240ms);
-        const std::optional<double> next = wait_for_choice_arrow(console, context, 2s);
-        if (!next || *next <= *row){
+    const std::optional<size_t> row = read_choice_row(console);
+    if (!row){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "choose_dialog_option(): the arrow is outside the choice rows (dialog_choice_rows_box()).",
+            console
+        );
+    }
+    const int moves = dialog_choice_moves(*row, index);
+    const DpadPosition direction = moves > 0 ? DPAD_DOWN : DPAD_UP;
+    for (int moved = 0; moved < std::abs(moves); moved++){
+        pbf_press_dpad(context, direction, 160ms, 240ms);
+    }
+    if (moves != 0){
+        choice_arrow_shows(console, context, 2s);
+        const std::optional<size_t> now = read_choice_row(console);
+        if (now != index){
             OperationFailedExceptionWithScreenshot::fire(
                 ErrorReportMode::SEND_ERROR_REPORT,
-                std::format("choose_dialog_option(): the arrow did not move down to choice {}.", moved + 1),
+                std::format(
+                    "choose_dialog_option(): the arrow is on row {}, not {}, after {} presses from row {}.",
+                    now ? std::to_string(*now) : "none", index, moves, *row
+                ),
                 console
             );
         }
-        row = next;
     }
     pbf_press_button(context, BUTTON_A, 160ms, 240ms);
     context.wait_for_all_requests();
