@@ -19,6 +19,7 @@
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "Pokemon/AutoStory/Pokemon_SceneJudges.h"
+#include "Pokemon/AutoStory/Pokemon_Settle.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 
 namespace PokemonAutomation{
@@ -26,29 +27,23 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
-//  The judgement is shared (Pokemon_SceneJudges.h): it reads the screen
-//  events BdspScreenObserver reports.
+//  The judgement and the loop are shared (Pokemon_SceneJudges.h,
+//  Pokemon_Settle.h): they read the screen events BdspScreenObserver reports.
 //  What to do after a look.
 using Pokemon::SceneMove;
 //  What ends a talk-over, besides the quiet.
 using Pokemon::TalkOverRule;
 //  When a talk or a scene is over, from looks alone.
 using Pokemon::TalkOver;
+//  What ends a settle.
+using Pokemon::SettleKind;
+//  How a settle looks (look_every: the release after a press) and its cap.
+using Pokemon::SettleRule;
+//  The rule of a SettleKind: the one table.
+using Pokemon::settle_rule;
 
-//  One press is held this long,
+//  One press is held this long, then released for the rule's look_every.
 constexpr Milliseconds TALK_OVER_HOLD = Milliseconds(80);
-//  then released this long before the next look.
-constexpr Milliseconds TALK_OVER_RELEASE = Milliseconds(1200);
-//  A door's settle (TalkOverRule::door) has no text to wait out: it looks
-//  this often, to see its short still spell when it comes.
-constexpr Milliseconds TALK_OVER_DOOR_RELEASE = Milliseconds(200);
-//  The release before the next look under `rule`.
-inline Milliseconds talk_over_release(const TalkOverRule& rule){
-    return rule.door ? TALK_OVER_DOOR_RELEASE : TALK_OVER_RELEASE;
-}
-
-//  How long a talk-over may take before the step fails.
-constexpr Milliseconds TALK_OVER_LIMIT = Milliseconds(120000);
 
 
 //  What counts as a battle starting during a talk-over.
@@ -65,7 +60,7 @@ enum class TalkOverWatch{
 struct TalkOverSpec{
     //  Pressed while a box shows: B, or A for lines that give an item.
     Button next = BUTTON_B;
-    TalkOverRule rule = {};
+    SettleRule settle = {};
     TalkOverWatch watch = TalkOverWatch::SCENE;
     //  The expected map's banner name for TalkOverRule::warp ("" for a fade only).
     std::string banner = "";
@@ -78,7 +73,7 @@ enum class TalkOverEnd{
 };
 
 //  Presses through any text and scene on the console until TalkOver says it
-//  is over. Fails with a screenshot after TALK_OVER_LIMIT.
+//  is over (run_settle()). Fails with a screenshot after the rule's cap.
 TalkOverEnd talk_over(VideoStream& stream, ProControllerContext& context, const std::string& label, const TalkOverSpec& spec = {});
 
 

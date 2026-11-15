@@ -26,7 +26,12 @@
  *  - SLOW_FADE_IN: every warp's fade-in runs long, so a move after a fade
  *    with no settle() between goes nowhere (lab-B 2026-11-10, 00.04b
  *    heal_sandgem: a fixed 1500 ms wait, then the walk to the nurse
- *    stopped on "transition"). SimWorldKnobs::slow_fade_in.
+ *    stopped on "transition"). SimWorldKnobs::slow_fade_in; a Center's
+ *    inside fades in for 4 s, waited out by the program's door settle
+ *    (SimCenterDoors::fade_in).
+ *  - LATE_FADE: a Pokemon Center's fades come after the runs in and out
+ *    end, so neither run sees one: the visit reads the inside instead, or
+ *    waits for the fade (SimCenterDoors::late_fade).
  *
  *  Missed and short fades are swept by SimFailureCases_Tests (every single
  *  missed fade, banner and fade hold).
@@ -85,6 +90,7 @@ enum class FaultClass{
     GRASS_BATTLES,
     SCENE_EARLY,
     SLOW_FADE_IN,
+    LATE_FADE,
     //  Not swept yet: the measured movement table's lost taps (#293).
     LOST_TAP,
 };
@@ -100,6 +106,8 @@ std::string_view fault_class_name(FaultClass fault){
         return "scene starts during the walk before it";
     case FaultClass::SLOW_FADE_IN:
         return "slow fade-in after every warp";
+    case FaultClass::LATE_FADE:
+        return "late fades at a Pokemon Center's doors";
     case FaultClass::LOST_TAP:
         return "lost tap";
     }
@@ -320,11 +328,35 @@ UnitTestResult sweep_grass_battles(Logger& logger, const StoryCheckpoint& row){
     return sweep_variants(logger, row, FaultClass::GRASS_BATTLES, {row_variant(logger, "", "a battle each 8 grass tiles", row, std::move(knobs))});
 }
 
-//  Row `row` with every warp's fade-in slow, all through the row.
+//  How long a Center's inside fades in under SLOW_FADE_IN: the slow one of
+//  center_inside_settles (SimFailureCases_Tests).
+constexpr Milliseconds SLOW_CENTER_FADE_IN = Milliseconds(4000);
+
+//  Row `row` with every warp's fade-in slow, all through the row, a
+//  Center's too.
 UnitTestResult sweep_slow_fade_in(Logger& logger, const StoryCheckpoint& row){
     SimWorldKnobs knobs;
     knobs.slow_fade_in = true;
+    for (const StoryStep& step : row.steps){
+        if (step.kind == StoryStepKind::HEAL){
+            knobs.centers[step.name] = {.fade_in = SLOW_CENTER_FADE_IN};
+        }
+    }
     return sweep_variants(logger, row, FaultClass::SLOW_FADE_IN, {row_variant(logger, "", "a slow fade-in after every warp", row, std::move(knobs))});
+}
+
+//  Row `row` with each Center visit's fades late, one visit at a time.
+UnitTestResult sweep_late_fade(Logger& logger, const StoryCheckpoint& row){
+    std::vector<SweepVariant> variants;
+    for (const StoryStep& step : row.steps){
+        if (step.kind != StoryStepKind::HEAL){
+            continue;
+        }
+        SimWorldKnobs knobs;
+        knobs.centers[step.name] = {.late_fade = true};
+        variants.push_back(row_variant(logger, step.name, "late fades at both doors", row, std::move(knobs)));
+    }
+    return sweep_variants(logger, row, FaultClass::LATE_FADE, variants);
 }
 
 //  The route before scene step `c` of `steps`, right before it or before
@@ -398,6 +430,8 @@ UnitTestResult sweep_fault(Logger& logger, FaultClass fault, const StoryCheckpoi
         return sweep_scene_early(logger, row);
     case FaultClass::SLOW_FADE_IN:
         return sweep_slow_fade_in(logger, row);
+    case FaultClass::LATE_FADE:
+        return sweep_late_fade(logger, row);
     case FaultClass::LOST_TAP:
         break;
     }
@@ -459,6 +493,7 @@ const FaultSweepCase FAULT_SWEEP_CASES[] = {
     {.name = std::string(fault_class_name(FaultClass::GRASS_BATTLES)), .input = {.fault = FaultClass::GRASS_BATTLES}, .expectation = {}},
     {.name = std::string(fault_class_name(FaultClass::SCENE_EARLY)), .input = {.fault = FaultClass::SCENE_EARLY}, .expectation = {}},
     {.name = std::string(fault_class_name(FaultClass::SLOW_FADE_IN)), .input = {.fault = FaultClass::SLOW_FADE_IN}, .expectation = {}},
+    {.name = std::string(fault_class_name(FaultClass::LATE_FADE)), .input = {.fault = FaultClass::LATE_FADE}, .expectation = {}},
 };
 
 void add_tests_AutoStory_FaultSweep(UnitTestDatabase& database){

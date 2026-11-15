@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <format>
 #include <optional>
 #include <vector>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
@@ -452,7 +453,7 @@ void heal_inside_pokemon_center(
     VideoStream& stream, ProControllerContext& context,
     const std::string& label
 ){
-    talk_over(stream, context, label + ": inside the Center", {.rule = {.door = true}});
+    talk_over(stream, context, std::format("{}: inside the Center", label), {.settle = settle_rule(SettleKind::DOOR)});
     talk_to_nurse(stream, context, label);
     route_status(stream, label + ": healed; walking out.");
 
@@ -465,7 +466,7 @@ void talk_to_nurse(
 ){
     //  The nurse's counter is straight ahead of the door: one held run north
     //  until the counter stops us, then A. The caller settled the door's
-    //  fade-in (TalkOverRule::door), so the run is not lost in it.
+    //  fade-in (SettleKind::DOOR), so the run is not lost in it.
     route_status(stream, label + ": running to the nurse.");
     pbf_controller_state(context, BUTTON_B, DPAD_UP, {0, 0}, {0, 0}, NURSE_RUN_HOLD);
     pbf_press_button(context, BUTTON_A, 80ms, 0ms);

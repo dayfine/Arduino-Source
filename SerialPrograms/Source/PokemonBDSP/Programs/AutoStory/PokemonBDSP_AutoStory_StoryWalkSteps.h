@@ -17,6 +17,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include "Pokemon/AutoStory/Pokemon_CenterVisit.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvent.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPose.h"
@@ -33,24 +34,32 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
-//  How a run north into a Pokemon Center's door got us in.
-enum class CenterEntry{
-    FADED,      //  its fade showed
-    INSIDE,     //  no fade, but the inside shows: the run went on in, as
-                //  far as the nurse's counter (lab-B 2026-11-08, Oreburgh)
-    LINED_UP,   //  no fade and no inside: lined up with the lit doorway
-};
+//  A Pokemon Center visit (Pokemon::run_center_visit()) on a StoryStepIO:
+//  the doors are runs north in and south out, running with `run`, and the
+//  settles are the step IO's, so the inside's fade-in is waited out before
+//  the walk to the nurse (lab-B 2026-11-10, 00.04b). The console and the
+//  simulation give the reads, the lineup and the nurse.
+class BdspCenterVisit : public Pokemon::CenterVisitIO{
+public:
+    BdspCenterVisit(StoryStepIO& io, bool run)
+        : m_io(io)
+        , m_run(run)
+    {}
 
-//  Runs north into the Pokemon Center's door ahead, running with `run`.
-//  After its fade, waits until the inside is a quiet overworld (settle()):
-//  a walk while it still fades in goes nowhere (lab-B 2026-11-10, 00.04b).
-//  Without a fade, `inside` says whether the Center's inside shows, and if
-//  not, `line_up` lines up with the lit doorway and walks in (or fails).
-CenterEntry run_into_center(
-    StoryStepIO& io, bool run,
-    const std::function<bool()>& inside, const std::function<void()>& line_up,
-    const std::string& label
-);
+    virtual WarpSeen walk_in() override{
+        return m_io.run_into_door(Pokemon::Direction::NORTH, m_run);
+    }
+    virtual WarpSeen walk_out() override{
+        return m_io.run_into_door(Pokemon::Direction::SOUTH, m_run);
+    }
+    virtual void settle(SettleKind kind, std::string_view label) override{
+        m_io.settle(BUTTON_B, std::string(label), kind, "");
+    }
+
+protected:
+    StoryStepIO& m_io;
+    bool m_run;
+};
 
 //  Where a leg's taps end, and how many of them moved.
 struct TappedEnd{

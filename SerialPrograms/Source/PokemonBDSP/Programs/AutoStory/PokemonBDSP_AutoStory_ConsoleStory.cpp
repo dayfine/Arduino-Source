@@ -76,6 +76,68 @@ std::string label_of(const StoryStep& step){
     return label;
 }
 
+//  The Center visit on the console: a turn before each door run, the
+//  lit-doorway lineup, the nurse, and the reads of the inside.
+class ConsoleCenterVisit : public BdspCenterVisit{
+public:
+    ConsoleCenterVisit(VideoStream& stream, ProControllerContext& context, StoryStepIO& io, bool run, std::string label)
+        : BdspCenterVisit(io, run)
+        , m_stream(stream)
+        , m_context(context)
+        , m_label(std::move(label))
+    {}
+
+    virtual WarpSeen walk_in() override{
+        route_turn(m_stream, m_context, Direction::NORTH);
+        return BdspCenterVisit::walk_in();
+    }
+    //  The lineup is for when the run in finds no door: people on the way
+    //  can leave the route unsure of the column (r59, Jubilife). Below
+    //  Sandgem's door the lineup read 0.7 tile off and stepped us off it (r48).
+    virtual void line_up_and_walk_in() override{
+        enter_lit_door(m_stream, m_context, m_label);
+    }
+    //  The Center's own views, or any room: the walk out's room check
+    //  caught r143a still inside.
+    virtual Pokemon::CenterPlace place() override{
+        m_context.wait_for_all_requests();
+        const VideoSnapshot screen = m_stream.video().snapshot();
+        if (!screen){
+            return Pokemon::CenterPlace::UNKNOWN;
+        }
+        const bool inside = pokemon_center_inside(*screen.frame) || indoors(*screen.frame);
+        return inside ? Pokemon::CenterPlace::INSIDE : Pokemon::CenterPlace::OUTSIDE;
+    }
+    virtual void heal() override{
+        talk_to_nurse(m_stream, m_context, m_label);
+        //  Her last line ("We hope to see you again!") can still be up, and a
+        //  line stops the run out at once (r62): B until none shows.
+        ShortDialogDetector line;
+        for (size_t presses = 0; presses < 10; presses++){
+            m_context.wait_for_all_requests();
+            const VideoSnapshot screen = m_stream.video().snapshot();
+            if (!screen || !line.detect(*screen.frame)){
+                break;
+            }
+            pbf_press_button(m_context, BUTTON_B, 80ms, 700ms);
+        }
+    }
+    //  Out the same way: south until the fade. The walk out's indoor check
+    //  read "not a room" a step from the counter and stopped inside (r50, r59).
+    virtual WarpSeen walk_out() override{
+        route_turn(m_stream, m_context, Direction::SOUTH);
+        return BdspCenterVisit::walk_out();
+    }
+    virtual void log(std::string_view line) override{
+        m_stream.log(std::string(line));
+    }
+
+private:
+    VideoStream& m_stream;
+    ProControllerContext& m_context;
+    std::string m_label;
+};
+
 //  The screen at a failed step, kept: the retry resets the game.
 void save_failure_screenshot(VideoStream& stream, size_t attempt){
     VideoSnapshot screen = stream.video().snapshot();
@@ -248,52 +310,11 @@ Outcome ConsoleStory::train(RunState&, const StoryStep& step){
 }
 
 Outcome ConsoleStory::heal(RunState&, const StoryStep& step){
-    //  From the planned tile below the door, run in like any door. The lit-
-    //  doorway lineup is for when the run in finds no door: people on the
-    //  way can leave the route unsure of the column (r59, Jubilife). Below
-    //  Sandgem's door the lineup read 0.7 tile off and stepped us off it (r48).
-    //  With no fade, the run can have gone on in to the counter (lab-B
-    //  2026-11-08, Oreburgh).
-    route_turn(stream(), context(), Direction::NORTH);
-    const CenterEntry in = run_into_center(m_io, m_walks.can_run(), [this]{
-        context().wait_for_all_requests();
-        const VideoSnapshot screen = stream().video().snapshot();
-        return screen && pokemon_center_inside(*screen.frame);
-    }, [&]{
-        enter_lit_door(stream(), context(), label_of(step));
-    }, label_of(step));
-    stream().log(std::format("[{}] {}: north into the Center: {}.", m_checkpoint, step.name,
-        in == CenterEntry::FADED ? "faded" : in == CenterEntry::INSIDE ? "no fade, but inside" : "no fade; lined up by sight"));
-    talk_to_nurse(stream(), context(), label_of(step));
-    //  Her last line ("We hope to see you again!") can still be up, and a
-    //  line stops the run out at once (r62): B until none shows.
-    ShortDialogDetector line;
-    for (size_t presses = 0; presses < 10; presses++){
-        context().wait_for_all_requests();
-        const VideoSnapshot screen = stream().video().snapshot();
-        if (!screen || !line.detect(*screen.frame)){
-            break;
-        }
-        pbf_press_button(context(), BUTTON_B, 80ms, 700ms);
-    }
-    //  Out the same way: south until the fade. The walk out's indoor check
-    //  read "not a room" a step from the counter and stopped inside (r50, r59).
-    route_turn(stream(), context(), Direction::SOUTH);
-    const bool out = m_io.run_into_door(Direction::SOUTH, m_walks.can_run()).any();
-    stream().log(std::format("[{}] {}: south out of the Center: {}.", m_checkpoint, step.name, out ? "faded" : "no fade yet"));
-    if (out){
-        m_io.settle(BUTTON_B, label_of(step), SettleKind::DOOR, "");
-    }else{
-        m_io.settle(BUTTON_B, label_of(step), SettleKind::AFTER_WARP, "");
-    }
-
-    //  r143a's heal said it had walked out while still inside.
-    context().wait_for_all_requests();
-    VideoSnapshot screen = stream().video().snapshot();
-    if (screen && indoors(*screen.frame)){
-        fail_step(stream(), label_of(step) + ": still inside the Pokemon Center.");
-    }
-    return Pokemon::outcome_ok();
+    //  From the planned tile below the door, run in like any door, and out
+    //  again to the tile below it. With no fade, the run can have gone on in
+    //  to the counter (lab-B 2026-11-08, Oreburgh).
+    ConsoleCenterVisit visit(stream(), context(), m_io, m_walks.can_run(), label_of(step));
+    return Pokemon::run_center_visit(std::format("[{}] {}", m_checkpoint, step.name), visit);
 }
 
 Outcome ConsoleStory::save(RunState&, const StoryStep& step){

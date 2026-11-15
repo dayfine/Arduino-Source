@@ -286,7 +286,7 @@ UnitTestResult roark_badge_speech(Logger& logger){
     return passes(early);
 }
 
-//  The door's settle inside a Pokemon Center (TalkOverRule::door; the
+//  The door's settle inside a Pokemon Center (SettleKind::DOOR; the
 //  heal's, lab-B 2026-11-10 00.04b and 2026-11-11 01:28, where the talk's
 //  5 s quiet took 18 s with visitors about). Visitors walking about, even
 //  right past the player, must not hold it up: over within 3 s of the fade
@@ -309,7 +309,7 @@ UnitTestResult center_inside_settles(Logger& logger){
             sim_fade("the Center's door fade", inside.fade),
             inside.after,
         };
-        const std::string over = play_scene(scene, {.door = true});
+        const std::string over = play_scene(scene, settle_rule(SettleKind::DOOR));
         logger.log(std::format("Center inside, {}: {}", inside.what, over));
         const long long least = inside.fade.count();
         const long long most = (inside.fade + most_after_fade).count();
@@ -328,6 +328,26 @@ UnitTestResult nurse_in_one_run(Logger&){
     if (NURSE_RUN_HOLD < needed){
         return std::format("the run to the nurse holds {} ms, under the {} ms of {} tiles at walking pace.",
             NURSE_RUN_HOLD.count(), needed.count(), CENTER_MAT_TO_COUNTER_TILES);
+    }
+    return true;
+}
+
+//  00.04b's heal at Sandgem's Center, the program's visit
+//  (run_center_visit()), with the Center's doors as `doors`: why the row
+//  stopped, or "".
+std::string sandgem_heal(Logger& logger, SimCenterDoors doors, bool slow_fade_in){
+    SimWorldKnobs knobs;
+    knobs.slow_fade_in = slow_fade_in;
+    knobs.centers["heal_sandgem"] = doors;
+    return run_case(logger, "00.04b", "00.04b", {.fade = {}, .banner = {}}, std::move(knobs));
+}
+
+//  r143a: the run out of the Center stopped short of the door, on a fade
+//  that was not the door's: the visit fails heal_exit, not the next walk.
+UnitTestResult center_run_out_stays_inside(Logger& logger){
+    const std::string stopped = sandgem_heal(logger, {.stays_inside = true}, false);
+    if (stopped.find(Pokemon::CENTER_NOT_LEFT) == std::string::npos){
+        return std::format("the run out stayed inside, but the row {}", stopped.empty() ? std::string("passed") : stopped);
     }
     return true;
 }
@@ -656,6 +676,13 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.name = "01.04 Roark's badge speech: the fanfare's pause, then a scene", .input = {roark_badge_speech}, .expectation = {}},
     {.name = "inside a Pokemon Center, the door's settle ends within 3 s of the fade-up with visitors walking, never during the fade", .input = {center_inside_settles}, .expectation = {}},
     {.name = "inside a Pokemon Center, one held run north from the door mat reaches the nurse", .input = {nurse_in_one_run}, .expectation = {}},
+    {.name = "00.04b the Center fades in for 4 s: the walk to the nurse waits it out (lab-B 2026-11-10)", .input = {[](Logger& logger){
+        return passes(sandgem_heal(logger, {.fade_in = 4000ms}, true));
+    }}, .expectation = {}},
+    {.name = "00.04b the Center's fades come after the runs in and out", .input = {[](Logger& logger){
+        return passes(sandgem_heal(logger, {.late_fade = true}, true));
+    }}, .expectation = {}},
+    {.name = "00.04b the run out of the Center stops inside: heal_exit (r143a)", .input = {center_run_out_stays_inside}, .expectation = {}},
     {.name = "01.07 after the tag battle the grunts run off before anyone speaks", .input = {grunts_run_off_before_rowan}, .expectation = {}},
     {.name = "00.03 Rowan's scene opens with no box and fades home", .input = {rowans_scene_opens_with_no_box}, .expectation = {}},
     {.name = "00.03 Mom's scene ends with a closing fade: over once it is back up (lab-B 2026-11-09)", .input = {moms_scene_ends_with_a_fade}, .expectation = {}},
