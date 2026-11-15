@@ -48,6 +48,10 @@ struct TrainerStop{
 struct StopCandidate{
     MapPosition player;
     std::optional<TrainerStop> trainer;
+    //  On a leg tapped a tile at a time (RouteStep::tapped), the tile one
+    //  past the taps seen to move: where a tap that moved but read as not
+    //  moved left the player, the way on open.
+    bool past_seen_taps = false;
 
     bool operator==(const StopCandidate& other) const = default;
 };

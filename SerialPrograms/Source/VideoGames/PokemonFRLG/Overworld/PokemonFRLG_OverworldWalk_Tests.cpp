@@ -631,37 +631,74 @@ const HoldFramesCase HOLD_FRAMES_CASES[] = {
 } // namespace
 
 
-//  Console B, 2026-11-11 15:36 (09.02 beside_moon_stone): the step tap of
-//  "east 1 (open)" from Rocket Hideout B2F (1, 4), facing east already,
-//  moved the player but the screen check read no move; the walker tapped
-//  again and ended on (3, 4), not (2, 4).
+struct UnseenStepTapInput{
+    //  The player's tile, facing `direction` already, and the tapped open
+    //  leg's one tile that way, whose step tap moves but reads as not moved.
+    MapPosition start;
+    Direction direction;
+};
+struct UnseenStepTapExpectation{
+    MapPosition end;
+};
+struct UnseenStepTapCase{
+    std::string name;
+    UnseenStepTapInput input;
+    UnseenStepTapExpectation expectation;
+};
+
+const UnseenStepTapCase UNSEEN_STEP_TAP_CASES[] = {
+    {
+        //  Console B, 2026-11-11 15:36 (09.02 beside_moon_stone): the walker
+        //  tapped again and ended on (3, 4), not (2, 4).
+        .name = "Rocket Hideout B2F east",
+        .input = {.start = {"RocketHideout_B2F", {1, 4}}, .direction = Direction::EAST},
+        .expectation = {.end = {"RocketHideout_B2F", {2, 4}}},
+    },
+    {
+        //  10.05 tower_6f_below_jennifer_line, the unseen step sweep: the
+        //  only tile within the blocked tap's slack with a wall ahead is
+        //  (16, 4), so the walker took the player to be there, not on
+        //  (16, 7), and walked on from it.
+        .name = "Pokemon Tower 6F north, a wall within the slack",
+        .input = {.start = {"PokemonTower_6F", {16, 8}}, .direction = Direction::NORTH},
+        .expectation = {.end = {"PokemonTower_6F", {16, 7}}},
+    },
+};
+
+//  A tapped open leg of one tile whose step tap moved the player, read by
+//  the walker as not moved: it must end on the leg's tile, not tap again
+//  into a second one or walk on from another.
 class Test_OverworldUnseenStepTap : public UnitTest{
 public:
-    Test_OverworldUnseenStepTap()
-        : UnitTest("PokemonFRLG::OverworldWalk - step tap read as not moved")
+    explicit Test_OverworldUnseenStepTap(UnseenStepTapCase test_case)
+        : UnitTest(std::format("PokemonFRLG::OverworldWalk - step tap read as not moved: {}", test_case.name))
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         static const std::vector<MapData> MAPS = overworld_maps();
-        const MapPosition start{"RocketHideout_B2F", {1, 4}};
-        const MapPosition end{"RocketHideout_B2F", {2, 4}};
-        RouteStep east;
-        east.action = RouteAction::WALK;
-        east.direction = Direction::EAST;
-        east.tiles = 1;
-        east.tapped = true;
-        east.facing_after = Direction::EAST;
-        east.end = end;
+        const MapPosition& start = m_case.input.start;
+        const MapPosition& end = m_case.expectation.end;
+        RouteStep leg;
+        leg.action = RouteAction::WALK;
+        leg.direction = m_case.input.direction;
+        leg.tiles = 1;
+        leg.tapped = true;
+        leg.facing_after = m_case.input.direction;
+        leg.end = end;
         SimScript script;
         script.unseen_step_taps = {1};
-        OverworldSim sim(MAPS, start, Direction::EAST, script);
+        OverworldSim sim(MAPS, start, m_case.input.direction, script);
         OverworldSimWalker walker(sim);
         const RoutePlanning planning{.maps = &MAPS, .costs = default_route_costs(), .start = start, .label = "Sim"};
-        const std::string failure = walker.run({east}, planning);
+        const std::string failure = walker.run({leg}, planning);
         if (sim.state().position == end){
             return true;
         }
         return std::format("Expected the leg to end on {}; ended on {}, failure \"{}\".", to_string(end), to_string(sim.state().position), failure);
     }
+
+private:
+    UnseenStepTapCase m_case;
 };
 
 struct MapEdgeInput{
@@ -776,7 +813,9 @@ void add_tests_OverworldWalk(UnitTestDatabase& database){
     for (const TapMechanicsCase& item : TAP_MECHANICS_CASES){
         database.add<Test_OverworldTapMechanics>(item);
     }
-    database.add<Test_OverworldUnseenStepTap>();
+    for (const UnseenStepTapCase& item : UNSEEN_STEP_TAP_CASES){
+        database.add<Test_OverworldUnseenStepTap>(item);
+    }
     for (const UnreadTurnCase& item : UNREAD_TURN_CASES){
         database.add<Test_OverworldUnreadTurn>(item);
     }

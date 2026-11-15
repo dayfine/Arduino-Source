@@ -98,8 +98,6 @@ const std::map<std::string, std::string> KNOWN_FAILING{
         "below_fuji_house plans from (4, 7), where Mr. Fuji's script warps the player (warp 4, 7, exact); from a tile off, no wall in his house funnels the walk onto (3, 4): legs that re-anchor, if the console shows the warp can land elsewhere"},
     {"PokemonFRLG::AutoStory - Fault sweep: 18.01, late fade",
         "pad_to_top_right: a pad hop stays on SaffronCity_Gym, so a fade seen late (or a slow fade-in) leaves no scene change to confirm the warp and the step finds no fade: a scene check for a warp within one map (the player's tile moved from the pad), as the walker's scene_confirms_missed_fade does for a leg"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 10.05, unseen step",
-        "tower_6f_below_jennifer_line and above_tower_rare_candy (taps) on Pokemon Tower 6F, swept since the rows' sim taps a taps leg as the console does: a step tap of a tapped leg that moved but read as not moved is tapped again a tile on, and the walk bumps its wall ('interrupted right away, again') or stops part-way 9 times: after a tap read as unmoved, find the player at walls before tapping on, as after a hold that moved nothing"},
     {"PokemonFRLG::AutoStory - Fault sweep: 09.01, unseen step",
         "Rocket Hideout's arrow maze: an unseen tap leaves the player on the leg's start or its end, and from what the screen shows the two look alike: a test tap toward a tile blocked from one but not the other tells them apart"},
     {"PokemonFRLG::AutoStory - Fault sweep: 08.03, mount lost",
