@@ -12,7 +12,8 @@
  *  order from a worker thread and then moved to "Lab/done/". Its journal
  *  "Lab/outbox/<name>.out" has one line per command and ends with "end".
  *  "Lab/state" is rewritten after every request and whenever the program
- *  state changes.
+ *  state changes; "Lab/state.json" (LabStateJson.h) at every poll, for the
+ *  lab server.
  *
  *  The channel owns the worker and the files. Anything that touches the
  *  window (select, start, stop, set) runs on the UI thread through the
@@ -37,7 +38,11 @@
 #include "Common/Cpp/Concurrency/ConditionVariable.h"
 #include "CommonFramework/Globals.h"
 #include "CommonFramework/Panels/PanelSession.h"
+#include "CommonFramework/ProgramSession.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "LabRequest.h"
+#include "LabFrames.h"
+#include "LabStateJson.h"
 
 namespace PokemonAutomation{
 
@@ -90,6 +95,10 @@ public:
     //  "" when `panel` has no console. Read for the state file and by "start".
     virtual std::string controller_status(PanelSession& panel) = 0;
 
+    //  The video of the console of `panel`, or nullptr if it has none.
+    //  Called on the UI thread.
+    virtual VideoFeed* video(PanelSession& panel) = 0;
+
     //  The press that keeps the console awake ("keepawake on").
     virtual void keep_awake(PanelSession& panel, CancellableScope& scope) = 0;
 
@@ -127,12 +136,42 @@ private:
     std::string run_line(const LabRequest& request, const LabRequestLine& line, LabCommandOutput& output);
     std::string run_console_command(const std::vector<std::string>& words, LabCommandOutput& output);
     std::string run_on_console(const std::function<void(PanelSession& panel, CancellableScope& scope)>& body);
-    std::string run_ui_command(const LabRequestLine& line, std::ostream& out);
-    std::string run_start(const std::vector<std::string>& words);
+    std::string run_ui_command(const LabRequest& request, const LabRequestLine& line, std::ostream& out);
+    std::string run_start_or_stop(const LabRequest& request, bool start);
+    std::string run_start(const LabRequest& request, const std::vector<std::string>& words);
     std::string run_popups(const std::vector<std::string>& words, std::ostream& out);
+    std::string run_snapshot(const std::vector<std::string>& words, LabCommandOutput& output);
     std::string run_on_ui(const std::function<std::string()>& body);
     void keep_awake();
     void write_state();
+    void write_state_json(WallClock now);
+
+    //  Follows the program's starts and stops for LabTransitionTracker.
+    class ProgramListener : public ProgramSession::Listener{
+    public:
+        explicit ProgramListener(LabTransitionTracker& tracker) : m_tracker(tracker) {}
+        virtual void state_change(ProgramState state) override;
+        virtual void stats_update(const StatsTracker*, const StatsTracker*) override{}
+        virtual void error(const std::string& message) override;
+        virtual void download_error(const std::string&) override{}
+        virtual void download_added(std::shared_ptr<ResourceDownload>) override{}
+        virtual void all_downloads_done() override{}
+    private:
+        LabTransitionTracker& m_tracker;
+    };
+
+    //  Counts the frames of the selected console's video, over every panel
+    //  since the app started, for state.json and "snapshot".
+    class FrameListener : public VideoFrameListener{
+    public:
+        virtual void on_frame(std::shared_ptr<const VideoFrame> frame) override;
+        LabFrames& frames(){ return m_frames; }
+    private:
+        LabFrames m_frames;
+    };
+
+    //  Moves the listeners from the old panel to `panel`. Call under m_panel_lock.
+    void attach_listeners(PanelSession* panel);
 
     //  The state of the selected program. Call under m_panel_lock.
     void read_program_state(std::string& state, std::string& program, bool& running) const;
@@ -148,9 +187,17 @@ private:
     //  changes it with set_panel(), which first cancels m_active_scope.
     Mutex m_panel_lock;
     PanelSession* m_panel = nullptr;
+    ProgramSession* m_program = nullptr;    //  m_panel, if a program.
+    VideoFeed* m_video = nullptr;           //  m_panel's video, if any.
     Mutex m_scope_lock;
     CancellableScope* m_active_scope = nullptr;
     bool m_panel_changing = false;
+
+    //  For Lab/state.json.
+    const std::string m_instance_id;
+    LabTransitionTracker m_transitions;
+    ProgramListener m_program_listener{m_transitions};
+    FrameListener m_frame_listener;
 
     //  Owned by the worker thread.
     LabOwner m_owner;
