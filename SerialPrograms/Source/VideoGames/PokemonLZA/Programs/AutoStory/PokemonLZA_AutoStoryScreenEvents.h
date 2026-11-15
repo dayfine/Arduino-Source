@@ -1,0 +1,48 @@
+/*  PokemonLZA AutoStory - Screen events
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  PLZA's detectors as the shared screen events
+ *  (CommonTools/ScreenEvents/ScreenEvents.h), for the story backend.
+ *
+ */
+
+#ifndef PokemonAutomation_PokemonLZA_AutoStoryScreenEvents_H
+#define PokemonAutomation_PokemonLZA_AutoStoryScreenEvents_H
+
+#include "Common/Cpp/Time.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonLZA{
+
+
+//  The shared events from PLZA's detectors:
+//  - FADE_BLACK / FADE_WHITE: fade_of_screen();
+//  - DIALOG_BOX: a white dialogue box's bottom edge (StoryDialogDetector's
+//    BOX_ONLY: the box shows while the text still types), or a blue or
+//    teal box.
+//  A fading screen has no box to read.
+class PlzaScreenObserver : public ScreenEventObserver{
+public:
+    PlzaScreenObserver();
+
+    virtual ScreenEvents observe(const VideoSnapshot& frame, WallClock now) override;
+
+    //  observe() for a frame that is not a snapshot.
+    ScreenEvents read(const ImageViewRGB32& screen);
+
+    virtual void make_overlays(VideoOverlaySet& items) const override;
+
+private:
+    StoryDialogDetector m_dialog;
+};
+
+
+
+} // namespace PokemonLZA
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
+#endif
