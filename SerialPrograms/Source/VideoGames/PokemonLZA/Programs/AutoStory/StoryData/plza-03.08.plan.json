@@ -15,10 +15,17 @@
         "action": "catch_in_zone"
       },
       {
+        "id": "zone_1_back_to_road",
+        "kind": "game_action",
+        "why": "step 62: back onto the road at the catch spots (60, and 100 first when further), facing the objective marker. The marker is not on the far gate but past it to its left, behind the zone's fence: a walk at it from 60 was held up at 36 and wandered to 49 inside the zone (console B, 2026-11-13 and 2026-11-14).",
+        "action": "walk_back_to_zone_road"
+      },
+      {
         "id": "zone_1_to_far_gate",
         "kind": "game_action",
-        "why": "step 62: on across Wild Zone 1 to its far gate's \"A Leave\": back onto the road at the catch spots (60, and 100 first when further) and from there by the objective marker. A walk straight at the marker from the last catch (96) left the zone on its west side and pressed into a building, last read 49 (console B, 2026-11-13). On the marker with no prompt counts as through the gate (walk_to_zone_gate).",
-        "action": "walk_to_zone_gate"
+        "why": "step 62: from 60 the far gate's green pillars are straight down the road; walked by hand to its \"A Leave\" prompt in about 4.7 s, the marker reading 41 there (console B, 2026-11-14). Steered by the pillars on screen.",
+        "action": "walk_to_zone_gate_entrance",
+        "args": {"timeout_ms": 15000}
       },
       {
         "id": "leave_zone_1",

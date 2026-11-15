@@ -853,14 +853,6 @@ void walk_to_marker(ConsoleHandle& console, ProControllerContext& context){
 
 namespace{
 
-//  Whether an A prompt or a dialog shows now.
-bool prompt_or_dialog_shows(ConsoleHandle& console, ProControllerContext& context){
-    PlzaScreenObserver observer;
-    context.wait_for_all_requests();
-    const ScreenEvents events = observer.observe(console.video().snapshot(), current_time());
-    return events.any_of({ScreenEvent::INTERACT_PROMPT, ScreenEvent::DIALOG_BOX});
-}
-
 //  The objective's distance on the screen now, if it reads.
 std::optional<int> objective_distance_now(ConsoleHandle& console, ProControllerContext& context){
     context.wait_for_all_requests();
@@ -873,38 +865,23 @@ std::optional<int> objective_distance_now(ConsoleHandle& console, ProControllerC
 
 } // namespace
 
-void walk_to_zone_gate(ConsoleHandle& console, ProControllerContext& context){
+void walk_back_to_zone_road(ConsoleHandle& console, ProControllerContext& context){
     std::optional<int> at = objective_distance_now(console, context);
     for (int stop : road_stops_to_gate(CATCH_SPOTS, at)){
-        console.log(std::format("walk_to_zone_gate(): to {} on the road, from {}.", stop, at.value_or(-1)));
+        console.log(std::format("walk_back_to_zone_road(): to {} on the road, from {}.", stop, at.value_or(-1)));
         const bool toward = !at || stop <= *at;
         const std::optional<int> reached = walk_to_stop(console, context, at, stop);
         const bool arrived = reached && (toward ? *reached <= stop : *reached >= stop);
         if (!arrived){
             OperationFailedExceptionWithScreenshot::fire(
                 ErrorReportMode::SEND_ERROR_REPORT,
-                std::format("walk_to_zone_gate(): not back on the road at {} (last read {}).", stop, reached.value_or(-1)),
+                std::format("walk_back_to_zone_road(): not back on the road at {} (last read {}).", stop, reached.value_or(-1)),
                 console
             );
         }
         at = reached;
     }
     face_objective(console, context);
-    const std::optional<int> last = walk_to_objective(console, context, 0, 60s);
-    if (prompt_or_dialog_shows(console, context)){
-        return;
-    }
-    //  On the marker with no prompt: through the gate already, out on the
-    //  street. The next step's A at no prompt does nothing.
-    if (last && *last <= 3){
-        console.log(std::format("walk_to_zone_gate(): at the gate ({}) with no prompt: taken as out of the zone.", *last));
-        return;
-    }
-    OperationFailedExceptionWithScreenshot::fire(
-        ErrorReportMode::SEND_ERROR_REPORT,
-        std::format("walk_to_zone_gate(): no \"A Leave\" prompt at the far gate, held up at {} from it.", last.value_or(-1)),
-        console
-    );
 }
 
 namespace{

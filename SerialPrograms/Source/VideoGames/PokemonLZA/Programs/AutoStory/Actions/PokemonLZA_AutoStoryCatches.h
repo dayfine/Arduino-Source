@@ -101,16 +101,16 @@ void catch_in_zone(
 //  shows within 90 s.
 void walk_to_marker(ConsoleHandle& console, ProControllerContext& context);
 
-//  03.08, after the catches, to Wild Zone 1's far gate: back onto the road
-//  at the catch spots first (road_stops_to_gate()), then on to the
-//  objective marker until the gate's "A Leave" prompt or a dialog shows. A
-//  walk straight at the marker from where the catches ended left the zone
-//  and ran into a building (console B, 2026-11-13). Arriving on the marker
-//  with no prompt is taken as through the gate already. Throws
-//  OperationFailedException when a road stop is not reached, or when the
-//  walk is held up short of the gate (walk_to_objective()'s sidesteps
-//  spent).
-void walk_to_zone_gate(ConsoleHandle& console, ProControllerContext& context);
+//  03.08, after the catches: back onto the road at the catch spots
+//  (road_stops_to_gate()), ending at the one nearest the far gate (60),
+//  facing the objective marker. From 60 the far gate's pillars are straight
+//  down the road, some 5 s on; the marker is not on the gate but past it
+//  and to its left, behind the zone's fence, so a walk at the marker was
+//  held up at 36 and wandered off (console B, 2026-11-13 and 2026-11-14).
+//  The walk through the gate is walk_to_zone_gate_entrance()'s, steered by
+//  the pillars on screen. Throws OperationFailedException when a road stop
+//  is not reached.
+void walk_back_to_zone_road(ConsoleHandle& console, ProControllerContext& context);
 
 
 
