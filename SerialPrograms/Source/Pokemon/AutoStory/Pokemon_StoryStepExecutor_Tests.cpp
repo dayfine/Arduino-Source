@@ -431,8 +431,7 @@ UnitTestResult test_story_stats(){
 //  Fast when chosen.
 UnitTestResult test_run_options(){
     StoryRunOptions options(two_sections_database(), Gen8ToGen9Languages_Database());
-    const SegmentPolicy policy = options.policy();
-    if (policy.attempts_per_checkpoint != 3 || options.check_level() != StoryCheckLevel::DEFAULT){
+    if (options.ATTEMPTS_PER_CHECKPOINT != 3 || options.check_level() != StoryCheckLevel::DEFAULT){
         return "Expected 3 attempts, no stop at the first failure, and Thorough checks by default.";
     }
     options.CHECKS.set(StoryCheckLevel::FAST);
@@ -446,30 +445,6 @@ UnitTestResult test_run_options(){
     options.LANGUAGE.set(Language::Japanese);
     if (options.language() != Language::Japanese || !options.check_validity().empty()){
         return "Expected Japanese to be chosen and valid, reader or not.";
-    }
-    return true;
-}
-
-//  Verify mode: off by default; 3 runs and 2 passes when on, for one
-//  checkpoint only, never needing more passes than runs.
-UnitTestResult test_verify_options(){
-    StoryRunOptions options(two_sections_database(), Gen8ToGen9Languages_Database());
-    if (options.VERIFY.policy()){
-        return "Expected verify mode off by default.";
-    }
-    options.VERIFY.set_enabled(true);
-    if (options.check_validity().empty()){
-        return "Expected verify mode refused over more than one checkpoint.";
-    }
-    options.END_CHECKPOINT.set_by_index(options.start_index());
-    const std::optional<VerifyPolicy> policy = options.VERIFY.policy();
-    if (!options.check_validity().empty() || !policy || policy->runs != 3 || policy->passes_needed != 2){
-        return std::format("Expected 3 runs and 2 passes on one checkpoint: {}", options.check_validity());
-    }
-    options.VERIFY.RUNS.set(2);
-    options.VERIFY.PASSES.set(3);
-    if (options.check_validity().empty()){
-        return "Expected more passes than runs refused.";
     }
     return true;
 }
@@ -529,7 +504,6 @@ const StoryStepTestCase STORY_STEP_CASES[] = {
     {.name = "pause points pause before each step", .test = test_pause_points},
     {.name = "lint", .test = test_lint},
     {.name = "the run options' defaults", .test = test_run_options},
-    {.name = "the run options' verify mode", .test = test_verify_options},
     {.name = "start and end checkpoint dropdowns", .test = test_checkpoint_dropdowns},
     {.name = "a segment's run in the AutoStory stats", .test = test_story_stats},
 };
