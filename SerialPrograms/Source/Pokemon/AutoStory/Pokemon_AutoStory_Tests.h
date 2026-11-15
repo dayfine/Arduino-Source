@@ -2,9 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The unit tests of the pieces every AutoStory program shares, story
- *  engine or not. add_tests_AutoStory() is the one entry point the unit
- *  test runner calls; a new shared AutoStory suite registers there.
+ *  The unit tests of the pieces every AutoStory program shares.
+ *  add_tests_AutoStory() is the one entry point the unit test runner calls;
+ *  a new shared AutoStory suite registers there.
  *
  */
 
@@ -17,14 +17,16 @@
 #include "Data/Pokemon_StoryStepJson_Tests.h"
 #include "Engine/Pokemon_CoveredWatch_Tests.h"
 #include "Engine/Pokemon_FrameCoverage_Tests.h"
+#include "Engine/Pokemon_StoryBackend_Tests.h"
+#include "Engine/Pokemon_StoryEngine_Tests.h"
 #include "Engine/Pokemon_StoryEnginePolicy_Tests.h"
-#include "Engine/Pokemon_StoryLaunch_Tests.h"
 #include "Engine/Pokemon_StoryEngineRuns_Tests.h"
 #include "Engine/Pokemon_StoryEngineSaveRetry_Tests.h"
-#include "Engine/Pokemon_StoryEngine_Tests.h"
-#include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
+#include "Engine/Pokemon_StoryLaunch_Tests.h"
+#include "Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
+#include "Pokemon_CheckpointAttempts_Tests.h"
 #include "Pokemon_CheckpointRetry_Tests.h"
 #include "Pokemon_Interrupts_Tests.h"
 #include "Pokemon_SceneJudges_Tests.h"
@@ -35,8 +37,8 @@
 #include "Pokemon_StoryInterrupts_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
 #include "Pokemon_StoryRngHandoff_Tests.h"
-#include "Pokemon_StoryRunCounts_Tests.h"
 #include "Pokemon_StoryRun_Tests.h"
+#include "Pokemon_StoryRunCounts_Tests.h"
 #include "Pokemon_StorySavePolicy_Tests.h"
 #include "Pokemon_StorySegments_Tests.h"
 #include "Pokemon_StoryStepExecutor_Tests.h"
@@ -79,6 +81,8 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_Transitions(database);
     add_tests_StoryActions(database);
     add_tests_StoryInterrupts(database);
+    add_tests_StoryBackend(database);
+    add_tests_CheckpointAttempts(database);
 }
 
 

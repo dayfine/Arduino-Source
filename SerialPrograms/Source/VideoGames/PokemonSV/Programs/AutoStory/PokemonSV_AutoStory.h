@@ -16,7 +16,7 @@
 #include "CommonTools/Options/StringSelectOption.h"
 #include "CommonTools/Options/LanguageOCROption.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
-#include "Pokemon/Options/Pokemon_StoryRangeOptions.h"
+#include "Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions.h"
 #include "PokemonSV_AutoStoryTools.h"
 
 namespace PokemonAutomation{
@@ -70,7 +70,7 @@ private:
     std::string start_checkpoint_description();
     std::string end_checkpoint_description();
 
-    //  The checkpoint range of the chosen section.
+    //  The checkpoint range of the chosen story section.
     const Pokemon::StoryRangeOptions& checkpoint_range() const;
 
 private:
@@ -89,9 +89,9 @@ private:
     StringSelectOption STARTPOINT_MAINSTORY;
     StringSelectOption ENDPOINT_MAINSTORY;
 
-    //  The shared start/end checkpoint range of each section. Their
-    //  dropdowns are added to this program's options directly, under the
-    //  keys saved settings already use.
+    //  The start/end checkpoint range of each section. Their dropdowns are
+    //  added to this program's options directly, under the keys saved
+    //  settings already use.
     Pokemon::StoryRangeOptions TUTORIAL_CHECKPOINTS;
     Pokemon::StoryRangeOptions MAINSTORY_CHECKPOINTS;
 

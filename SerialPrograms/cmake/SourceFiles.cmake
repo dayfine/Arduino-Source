@@ -921,6 +921,8 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonTools/ScreenEvents/ScreenFades.h
     Source/CommonTools/ScreenMachine/ScreenMachine.cpp
     Source/CommonTools/ScreenMachine/ScreenMachine.h
+    Source/CommonTools/ScreenMachine/ScreenMachine_Tests.cpp
+    Source/CommonTools/ScreenMachine/ScreenMachine_Tests.h
     Source/CommonTools/ScreenMachine/ScreenObservation.h
     Source/CommonTools/ScreenMachine/StepTrace.cpp
     Source/CommonTools/ScreenMachine/StepTrace.h
@@ -1549,10 +1551,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Options/Pokemon_NameSelectWidget.h
     Source/Pokemon/Options/Pokemon_StatsHuntFilter.cpp
     Source/Pokemon/Options/Pokemon_StatsHuntFilter.h
-    Source/Pokemon/Options/Pokemon_StoryRangeOptions.cpp
-    Source/Pokemon/Options/Pokemon_StoryRangeOptions.h
-    Source/Pokemon/Options/Pokemon_StoryRangeOptions_Tests.cpp
-    Source/Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h
     Source/Pokemon/Options/Pokemon_StoryRunOptions.cpp
     Source/Pokemon/Options/Pokemon_StoryRunOptions.h
     Source/Pokemon/Options/Pokemon_StoryRunOptions_Tests.cpp
@@ -1589,6 +1587,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBuiltinActions.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBuiltinActions.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine.cpp
@@ -1616,6 +1616,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryStepRunner.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ZonePose.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_ZonePose.h
+    Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions.cpp
+    Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions.h
+    Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions_Tests.cpp
+    Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions_Tests.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
@@ -1635,6 +1639,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h
     Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts.cpp
     Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts.h
+    Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts_Tests.h
     Source/Pokemon/AutoStory/Pokemon_CheckpointRetry.cpp
     Source/Pokemon/AutoStory/Pokemon_CheckpointRetry.h
     Source/Pokemon/AutoStory/Pokemon_CheckpointRetry_Tests.cpp
@@ -1676,9 +1682,11 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryLog.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryOutcome.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryOutcome.h
     Source/Pokemon/AutoStory/Pokemon_StoryOutcomeClass.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryOutcomeClass.h
+    Source/Pokemon/AutoStory/Pokemon_StoryPose.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryPose.h
     Source/Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h
@@ -2534,6 +2542,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox_Tests.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector_Tests.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMainMissionBannerDetector.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMainMissionBannerDetector.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapZoneDetector.cpp
@@ -2575,6 +2585,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine_Tests.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents_Tests.cpp

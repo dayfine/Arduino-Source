@@ -4,8 +4,7 @@
  *
  *  The start and end checkpoint dropdowns of an AutoStory program, over one
  *  list of the story's checkpoints, and the check that the start does not
- *  come after the end. StoryRunOptions (Pokemon_StoryRunOptions.h) is this
- *  group plus the run policy.
+ *  come after the end.
  *
  */
 
@@ -13,6 +12,7 @@
 #define PokemonAutomation_Pokemon_StoryRangeOptions_H
 
 #include <string>
+#include <string_view>
 #include "Common/Cpp/Options/GroupOption.h"
 #include "CommonTools/Options/StringSelectOption.h"
 
@@ -20,28 +20,34 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  A program shows the group, or adds START_CHECKPOINT and END_CHECKPOINT
-//  to its own options under its own keys (keeping the keys its saved
-//  settings already use) and calls check_validity() from its own.
+//  The options in an AutoStory program that pick the range of checkpoints
+//  to run.
 class StoryRangeOptions : public GroupOption{
 public:
-    //  `checkpoints`: the dropdown database (make_story_select_database()
-    //  or story_checkpoint_database()), kept alive by the caller. The
-    //  dropdowns start on its first and last entries. `end_lock`:
-    //  UNLOCK_WHILE_RUNNING for a program that reads the end after each
-    //  checkpoint, so the end can be moved during a run.
+    //  The labels of the two dropdowns.
+    struct DropdownLabels{
+        std::string start;
+        std::string end;
+    };
+    static DropdownLabels default_labels();
+
+    //  `checkpoints`: the dropdown database (make_story_select_database()),
+    //  kept alive by the caller. The dropdowns start on its first and last
+    //  entries. `end_lock`: UNLOCK_WHILE_RUNNING for a program that reads
+    //  the end after each checkpoint, so the end can be moved during a run.
     StoryRangeOptions(
-        std::string label, const StringSelectDatabase& checkpoints,
-        LockMode end_lock = LockMode::LOCK_WHILE_RUNNING
+        std::string_view label,
+        const StringSelectDatabase& checkpoints,
+        LockMode end_lock = LockMode::LOCK_WHILE_RUNNING,
+        DropdownLabels labels = default_labels()
     );
 
     //  The checkpoints chosen, by index in the database, both inclusive.
     size_t start_index() const;
     size_t end_index() const;
-    //  "The start checkpoint comes after the end checkpoint." if it does.
+    //  Checks that the start checkpoint does not come after the end.
     virtual std::string check_validity() const override;
 
-public:
     StringSelectOption START_CHECKPOINT;
     StringSelectOption END_CHECKPOINT;
 };

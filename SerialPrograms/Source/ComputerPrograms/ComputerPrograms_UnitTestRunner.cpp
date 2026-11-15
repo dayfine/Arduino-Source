@@ -28,6 +28,7 @@
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "CommonTools/OCR/OCR_Tests.h"
 #include "CommonTools/ScreenEvents/ScreenEvents_Tests.h"
+#include "CommonTools/ScreenMachine/ScreenMachine_Tests.h"
 
 #include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h"
@@ -86,7 +87,6 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_AudioFileLoader(ret);
     add_tests_LabControl(ret);
     OCR::add_tests(ret);
-    add_tests_ScreenEvents(ret);
     Kernels::add_tests(ret);
     Pokemon::add_tests_LegPlanner(ret);
     Pokemon::add_tests_LegWalker(ret);
@@ -99,6 +99,8 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_SimFaults(ret);
     Pokemon::add_tests_SimGolden(ret);
     Pokemon::add_tests_AutoStory(ret);
+    add_tests_ScreenEvents(ret);
+    add_tests_ScreenMachine(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_HomeTileReader(ret);

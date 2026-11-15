@@ -245,7 +245,7 @@ jobs:
         uses: actions/checkout@v7
         if: inputs.run-tests
         with:
-          # The fork's fixtures: upstream's plus the SystemKeyboardDetector, HomeTileReader and PLZA AutoStory frames (dayfine/CommandLineTests plza/all-frames).
+          # The fork's fixtures: upstream's plus the PLZA AutoStory frames (Confirm Choices, opening and arrival folders), dayfine/CommandLineTests PR #18.
           repository: 'dayfine/CommandLineTests'
           ref: '533242774aac1f1dd4e08eb57352975cc98860bb'
           path: 'CommandLineTests'

@@ -6,6 +6,7 @@
 
 #include <format>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -127,12 +128,75 @@ const StoryRangeCase STORY_RANGE_CASES[] = {
     },
 };
 
+//  The dropdown labels a program passes, and the labels the dropdowns show.
+struct StoryRangeLabelsCase{
+    //  The labels passed to the constructor; none uses the default.
+    struct Input{
+        std::optional<StoryRangeOptions::DropdownLabels> labels;
+    };
+
+    //  The labels of the start and end dropdowns.
+    struct Expectation{
+        std::string start;
+        std::string end;
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
+};
+
+class Test_StoryRangeLabels : public UnitTest{
+public:
+    Test_StoryRangeLabels(StoryRangeLabelsCase test_case)
+        : UnitTest(std::format("Pokemon::StoryRangeOptions labels - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::optional<StoryRangeOptions::DropdownLabels>& labels = m_case.input.labels;
+        const StoryRangeOptions range = labels
+            ? StoryRangeOptions("Checkpoints", main_story_database(), LockMode::LOCK_WHILE_RUNNING, *labels)
+            : StoryRangeOptions("Checkpoints", main_story_database());
+        const StoryRangeLabelsCase::Expectation& expected = m_case.expectation;
+        if (range.START_CHECKPOINT.label() != expected.start || range.END_CHECKPOINT.label() != expected.end){
+            return std::format(
+                "Expected labels \"{}\" and \"{}\", got \"{}\" and \"{}\"",
+                expected.start, expected.end, range.START_CHECKPOINT.label(), range.END_CHECKPOINT.label()
+            );
+        }
+        return true;
+    }
+
+private:
+    const StoryRangeLabelsCase m_case;
+};
+
+const StoryRangeLabelsCase STORY_RANGE_LABELS_CASES[] = {
+    {
+        .name = "the shared labels by default",
+        .input = {.labels = std::nullopt},
+        .expectation = {
+            .start = "<b>Start checkpoint:</b><br>The program starts from this checkpoint's save.",
+            .end = "<b>End checkpoint:</b><br>The program stops after this checkpoint.",
+        },
+    },
+    {
+        .name = "a program keeps its own labels",
+        .input = {.labels = StoryRangeOptions::DropdownLabels{.start = "<b>Start Checkpoint:</b>", .end = "<b>End Checkpoint:</b>"}},
+        .expectation = {.start = "<b>Start Checkpoint:</b>", .end = "<b>End Checkpoint:</b>"},
+    },
+};
+
 } // namespace
 
 
 void add_tests_StoryRangeOptions(UnitTestDatabase& database){
     for (const StoryRangeCase& test_case : STORY_RANGE_CASES){
         database.add<Test_StoryRange>(test_case);
+    }
+    for (const StoryRangeLabelsCase& test_case : STORY_RANGE_LABELS_CASES){
+        database.add<Test_StoryRangeLabels>(test_case);
     }
 }
 

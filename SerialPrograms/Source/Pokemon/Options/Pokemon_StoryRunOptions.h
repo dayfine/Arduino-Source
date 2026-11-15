@@ -31,7 +31,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StorySaveMode.h"
-#include "Pokemon_StoryRangeOptions.h"
+#include "Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

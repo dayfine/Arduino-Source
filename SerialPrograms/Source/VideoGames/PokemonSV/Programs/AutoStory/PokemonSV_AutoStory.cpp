@@ -5,6 +5,7 @@
  */
 
 
+
 #if 0
 #include "CommonFramework/Exceptions/UnexpectedBattleException.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -27,7 +28,6 @@
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
-#include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "VideoGames/PokemonSwSh/Inference/PokemonSwSh_IvJudgeReader.h"
 #include "VideoGames/PokemonSV/PokemonSV_Settings.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_DirectionDetector.h"
@@ -347,10 +347,6 @@ AutoStory::~AutoStory(){
     ENDPOINT_TUTORIAL.remove_listener(*this);
     STARTPOINT_MAINSTORY.remove_listener(*this);
     ENDPOINT_MAINSTORY.remove_listener(*this);    
-    TUTORIAL_CHECKPOINTS.START_CHECKPOINT.remove_listener(*this);
-    TUTORIAL_CHECKPOINTS.END_CHECKPOINT.remove_listener(*this);
-    MAINSTORY_CHECKPOINTS.START_CHECKPOINT.remove_listener(*this);
-    MAINSTORY_CHECKPOINTS.END_CHECKPOINT.remove_listener(*this);
     ENABLE_TEST_CHECKPOINTS.remove_listener(*this);
     ENABLE_MISC_TEST.remove_listener(*this);
     TEST_PBF_LEFT_JOYSTICK.remove_listener(*this);
@@ -400,8 +396,18 @@ AutoStory::AutoStory()
         std::to_string(ALL_SEGMENTS_SELECT_DATABASE().case_list().size()-1)
     )       
     //  The end is read after each checkpoint, so it stays unlocked.
-    , TUTORIAL_CHECKPOINTS("Tutorial Checkpoints", TUTORIAL_CHECKPOINTS_SELECT_DATABASE(), LockMode::UNLOCK_WHILE_RUNNING)
-    , MAINSTORY_CHECKPOINTS("Main Story Checkpoints", MAINSTORY_CHECKPOINTS_SELECT_DATABASE(), LockMode::UNLOCK_WHILE_RUNNING)
+    , TUTORIAL_CHECKPOINTS(
+        "Tutorial Checkpoints",
+        TUTORIAL_CHECKPOINTS_SELECT_DATABASE(),
+        LockMode::UNLOCK_WHILE_RUNNING,
+        {.start = "<b>Start Checkpoint:</b>", .end = "<b>End Checkpoint:</b>"}
+    )
+    , MAINSTORY_CHECKPOINTS(
+        "Main Story Checkpoints",
+        MAINSTORY_CHECKPOINTS_SELECT_DATABASE(),
+        LockMode::UNLOCK_WHILE_RUNNING,
+        {.start = "<b>Start Checkpoint:</b>", .end = "<b>End Checkpoint:</b>"}
+    )
     , SETUP_NOTE{
         "NOTE: Make sure you have selected the correct Start Point. "
         "Make sure your player character is in the exact correct start position for that Start Point, "
@@ -724,7 +730,7 @@ AutoStory::AutoStory()
     TUTORIAL_CHECKPOINTS.START_CHECKPOINT.add_listener(*this);
     TUTORIAL_CHECKPOINTS.END_CHECKPOINT.add_listener(*this);
     MAINSTORY_CHECKPOINTS.START_CHECKPOINT.add_listener(*this);
-    MAINSTORY_CHECKPOINTS.END_CHECKPOINT.add_listener(*this);
+    MAINSTORY_CHECKPOINTS.END_CHECKPOINT.add_listener(*this);  
 
     ENABLE_ADVANCED_MODE.add_listener(*this); 
 
@@ -1052,17 +1058,17 @@ const Pokemon::StoryRangeOptions& AutoStory::checkpoint_range() const{
 
 size_t AutoStory::get_start_checkpoint_index(){
     return story_index(
-        STORY_SECTION == StorySection::MAIN_STORY,
-        checkpoint_range().start_index(),
-        INDEX_OF_LAST_TUTORIAL_CHECKPOINT + 1
+        /*main_story=*/STORY_SECTION == StorySection::MAIN_STORY,
+        /*index_in_section=*/checkpoint_range().start_index(),
+        /*first_main_story_index=*/INDEX_OF_LAST_TUTORIAL_CHECKPOINT + 1
     );
 }
 
 size_t AutoStory::get_end_checkpoint_index(){
     return story_index(
-        STORY_SECTION == StorySection::MAIN_STORY,
-        checkpoint_range().end_index(),
-        INDEX_OF_LAST_TUTORIAL_CHECKPOINT + 1
+        /*main_story=*/STORY_SECTION == StorySection::MAIN_STORY,
+        /*index_in_section=*/checkpoint_range().end_index(),
+        /*first_main_story_index=*/INDEX_OF_LAST_TUTORIAL_CHECKPOINT + 1
     );
 }
 
@@ -1201,8 +1207,8 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     }
 
     if (ENABLE_ADVANCED_MODE){
-        if (!checkpoint_range().check_validity().empty()){
-            throw UserSetupError(env.logger(), checkpoint_range().check_validity());
+        if (get_start_checkpoint_index() > get_end_checkpoint_index()){
+            throw UserSetupError(env.logger(), "The start checkpoint cannot be later than the end segment.");
         }
 
     }else{
@@ -1215,7 +1221,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     require_player(env.console, context, BUTTON_L);
 
     if (ENABLE_ADVANCED_MODE){
-        env.console.log(Pokemon::checkpoint_start_line(ALL_AUTO_STORY_CHECKPOINT_LIST()[get_start_checkpoint_index()]->name()), COLOR_ORANGE);
+        env.console.log("Start Checkpoint " + ALL_AUTO_STORY_CHECKPOINT_LIST()[get_start_checkpoint_index()]->name(), COLOR_ORANGE);        
     }else{
         env.console.log("Start Segment " + ALL_AUTO_STORY_SEGMENT_LIST()[get_start_segment_index()]->name(), COLOR_ORANGE);
     }
