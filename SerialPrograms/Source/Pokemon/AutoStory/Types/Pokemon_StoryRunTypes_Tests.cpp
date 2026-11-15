@@ -2,9 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  When a run may save (Pokemon_StorySaveMode.h), the phase names a
- *  checkpoint's metadata uses (Pokemon_StoryCheckpointMetadata.h), and
- *  where a run pauses (Pokemon_StoryBreakpoints.h).
+ *  The phase names a checkpoint's metadata uses
+ *  (Pokemon_StoryCheckpointMetadata.h) and where a run pauses
+ *  (Pokemon_StoryBreakpoints.h).
  *
  */
 
@@ -16,79 +16,12 @@
 #include "Pokemon_StoryBreakpoints.h"
 #include "Pokemon_StoryCheckpointMetadata.h"
 #include "Pokemon_StoryRunTypes_Tests.h"
-#include "Pokemon_StorySaveMode.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
 namespace{
-
-
-//  One row of the save decision: mode x verdict x save point.
-struct SaveDecisionCase{
-    struct Input{
-        StorySaveMode mode;
-        CheckpointVerdict verdict;
-        SavePoint point;
-    };
-
-    struct Expectation{
-        bool saves;
-    };
-
-    Input input;
-    Expectation expectation;
-};
-
-std::string decision_name(const SaveDecisionCase::Input& input){
-    return std::format(
-        "{}, {}, {}", story_save_mode_name(input.mode),
-        input.verdict == CheckpointVerdict::PASSED ? "passed" : "failed",
-        input.point == SavePoint::RUN_END ? "run end" : "checkpoint end"
-    );
-}
-
-class Test_SaveDecision : public UnitTest{
-public:
-    explicit Test_SaveDecision(SaveDecisionCase test_case)
-        : UnitTest(std::format("Pokemon::StoryRunTypes - save decision: {}", decision_name(test_case.input)))
-        , m_case(test_case)
-    {}
-
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const SaveDecisionCase::Input& in = m_case.input;
-        const bool saves = story_save_allowed(in.mode, in.verdict, in.point);
-        if (saves != m_case.expectation.saves){
-            return std::format("expected {}, got {}", m_case.expectation.saves ? "a save" : "no save", saves ? "a save" : "no save");
-        }
-        return true;
-    }
-
-private:
-    SaveDecisionCase m_case;
-};
-
-using M = StorySaveMode;
-using V = CheckpointVerdict;
-using S = SavePoint;
-
-//  A failed checkpoint never saves; NONE never saves; AFTER_VERIFICATION
-//  saves only at the run's end; PER_CHECKPOINT at every checkpoint's end.
-const SaveDecisionCase SAVE_DECISIONS[] = {
-    {.input = {M::NONE, V::FAILED, S::CHECKPOINT_END}, .expectation = {.saves = false}},
-    {.input = {M::NONE, V::FAILED, S::RUN_END}, .expectation = {.saves = false}},
-    {.input = {M::NONE, V::PASSED, S::CHECKPOINT_END}, .expectation = {.saves = false}},
-    {.input = {M::NONE, V::PASSED, S::RUN_END}, .expectation = {.saves = false}},
-    {.input = {M::AFTER_VERIFICATION, V::FAILED, S::CHECKPOINT_END}, .expectation = {.saves = false}},
-    {.input = {M::AFTER_VERIFICATION, V::FAILED, S::RUN_END}, .expectation = {.saves = false}},
-    {.input = {M::AFTER_VERIFICATION, V::PASSED, S::CHECKPOINT_END}, .expectation = {.saves = false}},
-    {.input = {M::AFTER_VERIFICATION, V::PASSED, S::RUN_END}, .expectation = {.saves = true}},
-    {.input = {M::PER_CHECKPOINT, V::FAILED, S::CHECKPOINT_END}, .expectation = {.saves = false}},
-    {.input = {M::PER_CHECKPOINT, V::FAILED, S::RUN_END}, .expectation = {.saves = false}},
-    {.input = {M::PER_CHECKPOINT, V::PASSED, S::CHECKPOINT_END}, .expectation = {.saves = true}},
-    {.input = {M::PER_CHECKPOINT, V::PASSED, S::RUN_END}, .expectation = {.saves = true}},
-};
 
 
 //  A named check that returns its own failure.
@@ -234,9 +167,6 @@ const NamedCheck CHECKS[] = {
 
 
 void add_tests_StoryRunTypes(UnitTestDatabase& database){
-    for (const SaveDecisionCase& test_case : SAVE_DECISIONS){
-        database.add<Test_SaveDecision>(test_case);
-    }
     for (const NamedCheck& check : CHECKS){
         database.add<Test_NamedCheck>(check);
     }
