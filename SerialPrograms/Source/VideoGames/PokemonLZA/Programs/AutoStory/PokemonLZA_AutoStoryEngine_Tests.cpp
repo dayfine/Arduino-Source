@@ -24,7 +24,6 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
 #include "PokemonLZA_AutoStoryGame.h"
-#include "PokemonLZA_AutoStoryLaunch.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMoves.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
@@ -90,7 +89,7 @@ Pokemon::StoryEngineReport run_plza(FakeBackend& backend, const StoryCheckpoint&
     const Pokemon::StoryGame<ZonePose> game = make_plza_story_game(StarterChoice::CHIKORITA);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
-    return engine.run_checkpoint(checkpoint, Pokemon::SavePoint::RUN_END, state);
+    return engine.run_checkpoint(checkpoint, state);
 }
 
 std::string joined(const std::vector<std::string>& lines){
@@ -665,7 +664,7 @@ UnitTestResult test_every_checkpoint_runs(CancellableScope& scope){
             expected.push_back(std::format("{}/{}", Pokemon::story_step_kind_name(step.kind), spec ? spec->name : "?"));
         }
         Pokemon::RunState state;
-        const Pokemon::StoryEngineReport report = engine.run_checkpoint(checkpoint, Pokemon::SavePoint::RUN_END, state);
+        const Pokemon::StoryEngineReport report = engine.run_checkpoint(checkpoint, state);
         if (report.verdict != Pokemon::CheckpointVerdict::PASSED || report.saved){
             return std::format("{}: expected a pass with no save, got {} ({}).", checkpoint.id,
                 report.verdict == Pokemon::CheckpointVerdict::PASSED ? "a save" : "a failure", to_string(report.run.failure));
@@ -878,7 +877,7 @@ UnitTestResult test_walk_pauses_before_each_leg(CancellableScope& scope){
     FakeBackend backend = fake_plza({look_at(0ms)}, scope);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
-    if (engine.run_checkpoint(row, Pokemon::SavePoint::RUN_END, state).verdict != Pokemon::CheckpointVerdict::PASSED){
+    if (engine.run_checkpoint(row, state).verdict != Pokemon::CheckpointVerdict::PASSED){
         return std::format("Expected the walk to pass: {}", joined(backend.lines()));
     }
     const std::vector<std::string> expected{
@@ -1043,62 +1042,9 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
 };
 
 
-namespace{
-
-//  plza_title(): which looks after the launch take the title's A.
-struct LaunchTitleCase{
-    std::string name;
-    struct Input{
-        std::vector<EngineEvent> events;
-    };
-    Input input;
-    struct Expectation{
-        bool title;
-    };
-    Expectation expectation;
-};
-
-const LaunchTitleCase LAUNCH_TITLE_CASES[] = {
-    //  The title's centred "PRESS (A) BUTTON" reads
-    //  as an A prompt; the launch waited on it.
-    {.name = "PRESS (A) BUTTON read as an A prompt", .input = {.events = {EngineEvent::INTERACT_PROMPT}}, .expectation = {.title = true}},
-    {.name = "a plain screen", .input = {.events = {}}, .expectation = {.title = true}},
-    {.name = "an A prompt on the overworld", .input = {.events = {EngineEvent::INTERACT_PROMPT, EngineEvent::PLAYER_CAN_MOVE}}, .expectation = {.title = false}},
-    {.name = "the overworld", .input = {.events = {EngineEvent::PLAYER_CAN_MOVE}}, .expectation = {.title = false}},
-    {.name = "a black fade", .input = {.events = {EngineEvent::FADE_BLACK}}, .expectation = {.title = false}},
-    {.name = "a battle", .input = {.events = {EngineEvent::BATTLE_STARTED}}, .expectation = {.title = false}},
-};
-
-class Test_LaunchTitle : public UnitTest{
-public:
-    explicit Test_LaunchTitle(const LaunchTitleCase& test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryEngine - launch title: {}", test_case.name))
-        , m_case(test_case)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        ScreenObservation look;
-        for (EngineEvent event : m_case.input.events){
-            look.events.set(event, true);
-        }
-        look.frame = VideoSnapshot(ImageRGB32(16, 9), current_time());
-        if (plza_title(look) != m_case.expectation.title){
-            return std::format("Expected title = {}.", m_case.expectation.title);
-        }
-        return true;
-    }
-
-private:
-    const LaunchTitleCase& m_case;
-};
-
-} // namespace
-
 void add_tests_AutoStoryEngine(UnitTestDatabase& database){
     for (const EngineTestCase& item : ENGINE_TEST_CASES){
         database.add<Test_AutoStoryEngine>(item);
-    }
-    for (const LaunchTitleCase& item : LAUNCH_TITLE_CASES){
-        database.add<Test_LaunchTitle>(item);
     }
 }
 

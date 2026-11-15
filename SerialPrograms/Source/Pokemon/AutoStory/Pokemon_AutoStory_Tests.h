@@ -21,7 +21,6 @@
 #include "Engine/Pokemon_StoryEnginePolicy_Tests.h"
 #include "Engine/Pokemon_StoryEngineRuns_Tests.h"
 #include "Engine/Pokemon_StoryEngineSaveRetry_Tests.h"
-#include "Engine/Pokemon_StoryLaunch_Tests.h"
 #include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions_Tests.h"
 #include "Pokemon_SceneJudges_Tests.h"
@@ -29,8 +28,6 @@
 #include "Pokemon_StoryFailureClasses_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
 #include "Pokemon_StorySavePolicy_Tests.h"
-#include "Pokemon_StorySegmentSaves_Tests.h"
-#include "Pokemon_StorySegments_Tests.h"
 #include "Pokemon_StoryStepExecutor_Tests.h"
 #include "Types/Pokemon_StoryActionArg_Tests.h"
 #include "Types/Pokemon_StoryRunTypes_Tests.h"
@@ -54,14 +51,11 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryEngineRuns(database);
     add_tests_StoryEngineSaveRetry(database);
     add_tests_StoryEngine(database);
-    add_tests_StorySegments(database);
     add_tests_StorySavePolicy(database);
     add_tests_SceneJudges(database);
     add_tests_StoryFiles(database);
     add_tests_StoryRangeOptions(database);
     add_tests_StoryRunOptions(database);
-    add_tests_StoryLaunch(database);
-    add_tests_StorySegmentSaves(database);
     add_tests_StoryRunTypes(database);
 }
 

@@ -220,7 +220,7 @@ UnitTestResult check_plan_step(const PlanStepCase& test, CancellableScope& scope
     const Pokemon::StoryGame<ZonePose> game = make_plza_story_game(StarterChoice::CHIKORITA);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
-    const Pokemon::StoryEngineReport report = engine.run_checkpoint(*row, Pokemon::SavePoint::RUN_END, state);
+    const Pokemon::StoryEngineReport report = engine.run_checkpoint(*row, state);
     if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
         return std::format("{}: expected a pass, got {}.", id, to_string(report.run.failure));
     }

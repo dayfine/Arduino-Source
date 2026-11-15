@@ -21,7 +21,8 @@
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryLaunch.h"
+#include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
+#include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
 #include "VideoGames/PokemonLZA/Resources/PokemonLZA_Locations.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActions.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatches.h"
@@ -32,7 +33,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMoves.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
-#include "PokemonLZA_AutoStoryLaunch.h"
+
 #include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryStepValidator.h"
 #include "PokemonLZA_AutoStoryGame.h"
@@ -72,12 +73,29 @@ using ConsoleBody = std::function<void(StoryEnv& env, const StoryActionArgs& arg
 //  call on the console, with no args.
 using ConsoleStep = void (*)(StoryEnv& env);
 
-//  The game onto `save` by the shared launch (start_launch_request()):
-//  closed and launched again from HOME, or for StartSave::RUNNING kept as
-//  it runs; fails as Pokemon::STORY_LAUNCH_FAILED.
+//  The game onto `save`: closed from HOME and started again by
+//  reset_game_from_home(), which answers the backup save's arrow and the
+//  dialogs and waits for the overworld; StartSave::RUNNING keeps the game as
+//  it runs. Fails as "launch_failed".
 Outcome reload_save(StoryEnv& env, Pokemon::StoryBackend<ZonePose>& backend, StartSave save){
-    return Pokemon::launch_story_game(backend, plza_launch_policy(env.env.console), start_launch_request(save));
+    if (save == StartSave::RUNNING){
+        backend.log("[Launch] keeping the running game");
+        return Pokemon::outcome_ok();
+    }
+    go_home(env.env.console, env.context);
+    if (!reset_game_from_home(env.env, env.env.console, env.context, save == StartSave::BACKUP)){
+        return Pokemon::outcome_failed("launch_failed", "the game did not reach the overworld after the reload");
+    }
+    return Pokemon::outcome_ok();
 }
+
+//  Whether a checkpoint that passed and whose row does not autosave saves
+//  through the menu at its end (StoryGame::save). Off keeps the behavior the
+//  runs so far had: no menu save from the engine, so the 03.06 -> 03.08
+//  backup-save recovery still finds 03.06's save. Turning it on is the
+//  user's decision (01.03, 03.02, 03.04, 03.06, 03.08 and 03.11 would start
+//  saving).
+constexpr bool MENU_SAVE_AT_CHECKPOINT_END = false;
 
 //  The GAME actions that are one ConsoleStep each, by name: console_only.
 const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
@@ -758,6 +776,9 @@ Pokemon::StoryGame<ZonePose> make_plza_story_game(
         if (autosave_rows.contains(checkpoint.id)){
             backend.log(std::format("[Save] {}: the game autosaved at its end", checkpoint.id));
             return Pokemon::outcome_ok();
+        }
+        if (!MENU_SAVE_AT_CHECKPOINT_END){
+            return Pokemon::outcome_failed("menu_save_off", "MENU_SAVE_AT_CHECKPOINT_END is off: no menu save");
         }
         try{
             save_story_game(env.env.console, env.context);

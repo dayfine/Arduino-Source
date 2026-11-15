@@ -1376,8 +1376,6 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h
-    Source/NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.cpp
-    Source/NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.h
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.cpp
@@ -1498,7 +1496,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryEnginePolicy.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEnginePolicy.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEnginePolicy_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEnginePolicy_Tests.h
@@ -1509,10 +1506,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryGame.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch.cpp
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch_Tests.cpp
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryPoseConcept.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryPoseConcept.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryStepRunner.cpp
@@ -1555,18 +1548,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h
     Source/Pokemon/AutoStory/Pokemon_StorySavePolicy_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StorySavePolicy_Tests.h
-    Source/Pokemon/AutoStory/Pokemon_StorySegmentSaves_Tests.cpp
-    Source/Pokemon/AutoStory/Pokemon_StorySegmentSaves_Tests.h
-    Source/Pokemon/AutoStory/Pokemon_StorySegments.cpp
-    Source/Pokemon/AutoStory/Pokemon_StorySegments.h
-    Source/Pokemon/AutoStory/Pokemon_StorySegments_Tests.cpp
-    Source/Pokemon/AutoStory/Pokemon_StorySegments_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.h
-    Source/Pokemon/AutoStory/Pokemon_StorySwitchPrompts.cpp
-    Source/Pokemon/AutoStory/Pokemon_StorySwitchPrompts.h
     Source/Pokemon/AutoStory/Pokemon_TestExpect.h
     Source/Pokemon/AutoStory/Pokemon_TilePose.cpp
     Source/Pokemon/AutoStory/Pokemon_TilePose.h
@@ -1588,8 +1573,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryPostconditions.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryRunTypes_Tests.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryRunTypes_Tests.h
-    Source/Pokemon/AutoStory/Types/Pokemon_StorySaveMode.cpp
-    Source/Pokemon/AutoStory/Types/Pokemon_StorySaveMode.h
     Source/Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
@@ -2490,8 +2473,6 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryFailures_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame.h
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryLaunch.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryLaunch.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h
