@@ -1,6 +1,97 @@
 # PLZA AutoStory: plan for the upstream PR chain and the verification runs
 
-Status: **proposal for the user to approve, 2026-11-14.** Nothing is restructured yet.
+## Your TODOs
+
+State on 2026-11-15. Agents never open upstream PRs or write their descriptions: every upstream
+step below is yours. Each item says what to do and what we recommend.
+
+1. **Answer the eleven plan questions** (details in section 5). Reply "agree" or give your call:
+   1. Q1 split S2? Already done finer than planned: S1 is #529-#534, S2 is #535-#545. Recommend: keep that split.
+   2. Q2 one PR per Main Mission? Recommend: yes, keep #565, #566, #567 separate.
+   3. Q3 fault sweep upstream? Recommend: yes, as one shared PR after #567, once its two known-failing rows (warp_no_op, 03.06 and 03.08) are fixed. It is not in today's chain.
+   4. Q4 `BREAKPOINTS` option upstream? Recommend: no option on the upstream panel; keep the small engine hook.
+   5. Q5 dev-folder override upstream? Recommend: no folder scan upstream; keep the `dev_files` span as the test seam.
+   6. Q6 pass rule? Recommend: 3/3 for walks and scenes, 2/3 for the battles 01.03 (Andi) and 03.02 (Taunie).
+   7. Q7 who opens the CommandLineTests PR (C1)? Recommend: you, from a branch an agent prepares on dayfine/CommandLineTests.
+   8. Q8 branch names? Already `plza/upstream/<s1-01|...|p4-02>`. Recommend: keep; set `upstream-bound` on each branch before its handoff.
+   9. Q9 old fork PRs? Recommend: close #416, #354, #355, #356, #335 and the umbrella drafts #522, #524, #525 with a link to the re-split chain; keep #492 until the fault sweep PR (Q3) replaces it, and #418 (CFR) on the fork.
+   10. Q10 S0b on S0a? Moot: both merged into fork main today (#519 shared stats, #520 `CheckpointId`). Recommend: hand them upstream in that order.
+   11. Q11 which branch the verification runs use? Recommend: today's tip `plza/fault-sweep`; carry the records over as the test notes of the P and M PRs.
+2. **Review the shared PRs yourself before each handoff.** All 17 shared PRs (#529-#545) are
+   infra, which upstream reviews strictly; read each one in full. The agent review left every one
+   at NEEDS_REWORK, each at an older SHA than its tip; ask for a re-review at the tip and wait
+   for a clean one first. For the PLZA PRs (#555-#569) the API review says LGTM with nits on half of
+   them; read at least #559 (console backend), #563 (catches) and #568 (story game, +4.2k), the
+   ones that drive the console.
+3. **Land the test frames upstream (C1) before #544.** CI on #544 and every PR above it fails
+   only with `FileException`: the frames in `NintendoSwitch/HomeTileReader`,
+   `PokemonLZA/AutoStoryDetectors` and `PokemonLZA/AutoStoryScreenEvents` (plus the five folders
+   in section 2) are on dayfine/CommandLineTests, not PokemonAutomation/CommandLineTests. Open
+   that PR on PokemonAutomation/CommandLineTests; an agent prepares the branch and file list.
+4. **Open the upstream PRs, one at a time, under the three-open limit.** Two of yours are open
+   upstream now (#1881 FRLG free party slots, #1845 command-line test mode), so one slot is free.
+   Order: #519 (shared stats) first, then #520 (`CheckpointId`), then #529 and up the chain
+   bottom first, always the lowest unopened one as a slot frees. Each upstream PR targets `main`;
+   you write its description (the fork draft's body is the factual handoff note to draw on).
+5. **Before each handoff, ask for the pre-flight**: an agent merges `main` into the branch, fixes
+   every code-health finding (advisory ones too; CI's code-health fails today on 13 PRs, listed
+   below), confirms Fork Draft CI green, and reports the tested SHA. You then open the PR.
+6. **Console verification (section 4.2)** is ours, but tell us when console B is free for the
+   3x runs per checkpoint; the P/M PRs link their results.
+
+## Chain
+
+Fork drafts on dayfine/Arduino-Source, bottom first. #519 and #520 merged into fork `main` today
+and #529 was retargeted to `main` (its branch is 2 commits behind `main`; merge `main` in before
+handoff). CI: "pass" = Fork Draft CI (Ubuntu build + unit tests), code-health and tabs all
+pass; failing checks are named. "frames" = Ubuntu build fails only on test frames not yet on
+upstream's CommandLineTests (TODO 3). Review = last agent verdict. All are open drafts.
+
+| PR | Branch | Base | What | CI | Review |
+|---|---|---|---|---|---|
+| #519 | `autostory/shared-stats` | `main` | shared AutoStory stats, Runs, clearer labels (S0a) | - | merged into fork main |
+| #520 | `autostory/checkpoint-id` | `main` | `CheckpointId` value type (S0b) | - | merged into fork main |
+| #529 | `plza/upstream/s1-01` | `main` | tile grid, step kinds, action args, built-in action table | pass | NEEDS_REWORK |
+| #530 | `plza/upstream/s1-02` | s1-01 | story log, failure classes, step outcome | code-health | NEEDS_REWORK |
+| #531 | `plza/upstream/s1-03` | s1-02 | steps, checkpoints, breakpoints, save modes as data | code-health | NEEDS_REWORK |
+| #532 | `plza/upstream/s1-04` | s1-03 | checkpoint as story events, outcome classes, tile poses | code-health | NEEDS_REWORK |
+| #533 | `plza/upstream/s1-05` | s1-04 | tile-game step executor, story JSON readers | code-health | NEEDS_REWORK |
+| #534 | `plza/upstream/s1-06` | s1-05 | CommonTools screen events | pass | NEEDS_REWORK |
+| #535 | `plza/upstream/s2-01` | s1-06 | checkpoint attempts, story segments | code-health | NEEDS_REWORK |
+| #536 | `plza/upstream/s2-02` | s2-01 | read a story from checkpoint files | pass | NEEDS_REWORK |
+| #537 | `plza/upstream/s2-03` | s2-02 | frame coverage, covered watches, scene judges | code-health | NEEDS_REWORK |
+| #538 | `plza/upstream/s2-04` | s2-03 | story backend interface | pass | NEEDS_REWORK |
+| #539 | `plza/upstream/s2-05` | s2-04 | action registry, built-in actions, step runner | pass | NEEDS_REWORK |
+| #540 | `plza/upstream/s2-06` | s2-05 | postcondition checks, engine save policy | code-health | NEEDS_REWORK |
+| #541 | `plza/upstream/s2-07` | s2-06 | CommonTools screen machine and step trace | code-health | NEEDS_REWORK |
+| #542 | `plza/upstream/s2-08` | s2-07 | the story engine | code-health | NEEDS_REWORK |
+| #543 | `plza/upstream/s2-09` | s2-08 | run options, language and checkpoint range dropdowns | pass | NEEDS_REWORK |
+| #544 | `plza/upstream/s2-10` | s2-09 | NintendoSwitch: which HOME tile is selected | frames | NEEDS_REWORK |
+| #545 | `plza/upstream/s2-11` | s2-10 | launch a game to its save through Switch prompts | frames | NEEDS_REWORK |
+| #555 | `plza/upstream/p1-01` | s2-11 | LZA lock-on bracket and party bar detectors | frames | none yet |
+| #556 | `plza/upstream/p1-02` | p1-01 | story scene detectors | frames | LGTM with nits |
+| #557 | `plza/upstream/p1-03` | p1-02 | dialog, choice, Confirm Choices, objective marker readers | frames | none yet |
+| #558 | `plza/upstream/p2-01` | p1-03 | screen readings, failure classes, screen events | frames | LGTM with nits |
+| #559 | `plza/upstream/p2-02` | p2-01 | console backend: dialogs, scenes, battles | frames | none yet |
+| #560 | `plza/upstream/p2-03` | p2-02 | the scene machine | frames | LGTM with nits |
+| #561 | `plza/upstream/p2-04` | p2-03 | timed walks, walk screen checks, step checks | frames | none yet |
+| #562 | `plza/upstream/p2-05` | p2-04 | start load, launch, Confirm Choices, zone gate walk | frames, code-health | LGTM with nits |
+| #563 | `plza/upstream/p3-01` | p2-05 | catch plan, catch stop, lock-on watch | frames | LGTM with nits |
+| #564 | `plza/upstream/p3-02` | p3-01 | Wild Zone 1 catches, objective marker walks | frames, code-health | none yet |
+| #565 | `plza/upstream/m1-01` | p3-02 | Main Mission 01 plans (01.01-01.03) | frames | LGTM with nits |
+| #566 | `plza/upstream/m2-01` | m1-01 | Main Mission 02 plans (02.01-02.07) | frames | none yet |
+| #567 | `plza/upstream/m3-01` | m2-01 | Main Mission 03 plans (03.01-03.11) | frames | LGTM with nits |
+| #568 | `plza/upstream/p4-01` | m3-01 | the story game and its table | frames, code-health | LGTM with nits |
+| #569 | `plza/upstream/p4-02` | p4-01 | the program | frames | none yet |
+
+Not in the chain: #522 (`plza/upstream/s1`, base `autostory/checkpoint-id`, CI code-health),
+#524 (`s2a`, pass) and #525 (`s2b`, pass) are the earlier three-PR cut that #529-#545 re-split;
+close them (Q9). #418 (CFR actions) and #492 (fault sweep) stay fork-only for now.
+
+The rest of this doc is the plan of 2026-11-14 that the chain above was built from.
+
+
+Status: **proposal for the user to approve, 2026-11-14.** The fork chain was rebuilt on 2026-11-15 (see Chain above).
 Written after the user's call: "PLZA -- this is done, so next step is to tidy things up and
 get every PR in a good shape: have the proper PR chain structure for what we really need (for
 upstream); have a clear testing instruction (which we will also execute again in the next couple
