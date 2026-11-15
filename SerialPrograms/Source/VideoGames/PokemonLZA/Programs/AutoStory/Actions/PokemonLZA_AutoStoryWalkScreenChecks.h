@@ -25,9 +25,10 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Fails as "walk_not_free" unless two looks 150 ms apart show no box,
-//  choice, fade or battle: a walk started anywhere else walks blind. The
-//  tutorial has no party bar, so it is not required.
+//  Fails as "walk_not_free" unless, within 15 s, two looks in a row 250 ms
+//  apart show no mission banner, advance arrow, choice, dialog box, battle
+//  or fade: a walk started anywhere else walks blind. The tutorial has no
+//  party bar, so it is not required.
 Pokemon::Outcome check_can_walk(PlzaBackend& backend, std::string_view walk);
 
 //  After a walk's legs with no end event: one look, which on a console

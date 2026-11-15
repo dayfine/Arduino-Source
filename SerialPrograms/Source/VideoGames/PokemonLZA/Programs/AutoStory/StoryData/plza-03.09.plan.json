@@ -11,7 +11,7 @@
       {
         "id": "to_research_lab",
         "kind": "game_action",
-        "why": "step 63: across to the Pokemon Research Lab's gate, into Taunie's scene, by the objective marker: out of the zone's gate the player faces whichever way it faced before (the timed legs from 2026-11-08 depended on that; console B, 2026-11-10).",
+        "why": "step 63: across to the Pokemon Research Lab's gate, into Taunie's scene, by the objective marker: out of the zone's gate the player faces whichever way it faced before, so timed legs would not hold.",
         "action": "walk_to_marker"
       },
       {
@@ -42,7 +42,7 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.08 (user, 2026-11-14). Starts on the street just outside Wild Zone 1's far gate, where 03.08 ends; ends at the lab lobby's autosave, 03.10's start, so it saves no further (user, 2026-11-14)"
+      "source": "played step by step from a new game. Starts on the street just outside Wild Zone 1's far gate, where 03.08 ends; ends at the lab lobby's autosave, 03.10's start, so it saves no further"
     }
   },
   "execution": {

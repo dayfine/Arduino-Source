@@ -25,9 +25,33 @@ namespace PokemonLZA{
 using namespace std::chrono_literals;
 
 
-//  the right stick down held 1500 ms pins the
-//  pitch at its lowest; from there the stick up held 600 ms gives the
-//  walking pitch (400 ms is still too low, 1000 ms looks at the sky).
+namespace{
+
+//  Whether two distance reads agree: within what a few steps cover.
+bool reads_agree(int a, int b){
+    return a >= b - 12 && a <= b + 12;
+}
+
+} // namespace
+
+bool DistanceReads::accept(int distance){
+    if (m_last && !reads_agree(distance, *m_last)){
+        m_rejected = m_rejected_read && reads_agree(distance, *m_rejected_read) ? m_rejected + 1 : 1;
+        m_rejected_read = distance;
+        if (m_rejected < 3){
+            return false;
+        }
+    }
+    m_rejected_read.reset();
+    m_rejected = 0;
+    m_last = distance;
+    return true;
+}
+
+
+//  level_camera() holds the right stick down 1500 ms to pin the pitch at
+//  its lowest, then up 600 ms for the walking pitch (400 ms is still too
+//  low, 1000 ms looks at the sky).
 constexpr Milliseconds CAMERA_PITCH_DOWN_HOLD = 1500ms;
 constexpr Milliseconds CAMERA_PITCH_UP_HOLD = 600ms;
 
@@ -47,19 +71,16 @@ bool turn_to_pinned_marker(ProControllerContext& context, double x){
 
 std::optional<int> walk_from_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit){
     const WallClock deadline = current_time() + limit;
-    std::optional<int> last;
+    DistanceReads reads;
     while (current_time() < deadline){
         context.wait_for_all_requests();
         const std::optional<ObjectiveMarker> marker = read_objective_marker(console, console.video().snapshot());
         if (marker && turn_to_pinned_marker(context, marker->x)){
             continue;
         }
-        if (marker && marker->distance > 0 && (!last || std::abs(marker->distance - *last) <= 12)){
-            last = marker->distance;
-            if (*last >= stop_at){
-                console.log(std::format("walk_from_objective(): {} from the objective.", *last));
-                return last;
-            }
+        if (marker && marker->distance > 0 && reads.accept(marker->distance) && *reads.last() >= stop_at){
+            console.log(std::format("walk_from_objective(): {} from the objective.", *reads.last()));
+            return reads.last();
         }
         //  Back in the middle before each step: walking toward the camera
         //  turns it, so with no steering the walk from 60 to 100 bent off
@@ -70,8 +91,8 @@ std::optional<int> walk_from_objective(ConsoleHandle& console, ProControllerCont
         }
         pbf_move_left_joystick(context, {0, -1}, 600ms, 0ms);
     }
-    console.log(std::format("walk_from_objective(): not back to {} in time (last read {}).", stop_at, last.value_or(-1)));
-    return last;
+    console.log(std::format("walk_from_objective(): not back to {} in time (last read {}).", stop_at, reads.last().value_or(-1)));
+    return reads.last();
 }
 
 void check_out_of_wild_zone(ConsoleHandle& console, ProControllerContext& context){

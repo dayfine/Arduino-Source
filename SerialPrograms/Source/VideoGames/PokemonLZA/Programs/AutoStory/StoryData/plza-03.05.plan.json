@@ -12,7 +12,7 @@
       {
         "id": "back_to_nurse",
         "kind": "game_action",
-        "why": "back to the nurse after 03.04's scene: turn right and walk into the counter, which faces her (user, console B, 2026-11-13); the counter stops the walk, so 2 s is safe.",
+        "why": "back to the nurse after 03.04's scene: turn right and walk into the counter, which faces her; the counter stops the walk, so 2 s is safe.",
         "action": "walk",
         "args": {
           "legs": [[90, 2000]]
@@ -26,12 +26,12 @@
       {
         "id": "heal_party",
         "kind": "scene",
-        "why": "the nurse heals the party (A takes a question's top answer), until control at the counter. Healing writes a save, so the title screen's Up + B + X backup save is this spot after the checkpoint's menu save (user, 2026-11-13). UNVERIFIED, NEEDS CONSOLE: the nurse's lines were not recorded."
+        "why": "the nurse heals the party (A takes a question's top answer), until control at the counter. Healing writes a save, so the title screen's Up + B + X backup save is this spot after the checkpoint's menu save. UNVERIFIED, NEEDS CONSOLE: the nurse's lines were not recorded."
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "added 2026-11-13 so Main Mission 03 has a backup save to retry from; no console recording: every step is unverified and needs console"
+      "source": "gives Main Mission 03 a backup save to retry from; not recorded yet: every step is unverified"
     }
   },
   "execution": {
