@@ -456,7 +456,8 @@ std::optional<Reanchor> plan_reanchor(
     const std::vector<MapData>& maps,
     const std::vector<StopCandidate>& candidates,
     const RouteStep& step,
-    const RouteCosts& costs
+    const RouteCosts& costs,
+    std::optional<Direction> end_facing
 ){
     if (candidates.empty() || step.action != RouteAction::WALK){
         return std::nullopt;
@@ -478,9 +479,9 @@ std::optional<Reanchor> plan_reanchor(
         const Direction facing = at.holds.empty() ? step.direction : at.holds.back().direction;
         //  The way back keeps clear of every trainer who may stand in it if
         //  it can, and must walk the same whether they do or not.
-        std::optional<std::vector<RouteStep>> back = plan_overworld_route(clear_of_trainers, at.at, RouteGoal{step.end, std::nullopt}, costs, facing);
+        std::optional<std::vector<RouteStep>> back = plan_overworld_route(clear_of_trainers, at.at, RouteGoal{step.end, end_facing}, costs, facing);
         if (!back && !trainers.empty()){
-            back = plan_overworld_route(maps, at.at, RouteGoal{step.end, std::nullopt}, costs, facing);
+            back = plan_overworld_route(maps, at.at, RouteGoal{step.end, end_facing}, costs, facing);
         }
         if (!back || (!trainers.empty() && !walks_same_everywhere(worlds, positions, at.at, *back))){
             continue;
