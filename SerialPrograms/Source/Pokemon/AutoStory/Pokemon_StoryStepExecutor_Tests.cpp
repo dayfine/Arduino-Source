@@ -20,8 +20,10 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon_AutoStoryStats.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_BuiltinStoryActions.h"
+#include "Pokemon_StorySegments.h"
 #include "Pokemon_StoryStepExecutor.h"
 #include "Pokemon_TilePose.h"
 #include "Pokemon_StoryStepExecutor_Tests.h"
@@ -325,6 +327,259 @@ UnitTestResult test_unsupported_and_lost_battles(){
     return true;
 }
 
+//  Runs `tables` as one segment whose saves and reloads go into the
+//  executor's trace and whose log lines go into `lines`. Whatever blocked a
+//  step has gone by the reload.
+SegmentReport run_tables(std::span<const StoryCheckpoint> tables, FakeExecutor& executor, std::vector<std::string>& lines){
+    Segment segment;
+    segment.id = "00";
+    for (const StoryCheckpoint& data : tables){
+        segment.checkpoints.push_back(CheckpointSpec{
+            .id = data.id, .title = data.title, .saves = true,
+            .build = [&data, &executor]{ return build_story_checkpoint(data, executor); },
+        });
+    }
+    SegmentHooks hooks;
+    hooks.save = [&executor](RunState&){
+        executor.trace.push_back("save");
+        return outcome_ok();
+    };
+    hooks.reload = [&executor](RunState&){
+        executor.trace.push_back("reload");
+        executor.failing.clear();
+        return outcome_ok();
+    };
+    hooks.log = [&lines](const std::string& line){ lines.push_back(line); };
+    RunState state;
+    return run_segment(SegmentRange{}, SegmentPolicy{}, segment, hooks, state);
+}
+
+UnitTestResult test_segment_of_tables(){
+    //  Two rows built into a segment, run with saves and a reload from the
+    //  game's hooks: the second row's first attempt fails, its retry starts
+    //  over from its start pose.
+    const std::vector<StoryCheckpoint> tables{
+        lab_checkpoint(),
+        StoryCheckpoint{
+            .id = "00.04",
+            .title = "the parcel",
+            .start = declared("Lab", {6, 4}, Direction::NORTH),
+            .steps = {make(StoryStepKind::TALK, "give_parcel")},
+        },
+    };
+    FakeExecutor executor;
+    executor.failing = {"give_parcel"};
+    std::vector<std::string> lines;
+    const SegmentReport report = run_tables(tables, executor, lines);
+    const std::vector<std::string> tail{"save", "TALK give_parcel", "reload", "TALK give_parcel", "save"};
+    const bool tail_matches = executor.trace.size() >= tail.size()
+        && std::equal(tail.begin(), tail.end(), executor.trace.end() - (std::ptrdiff_t)tail.size());
+    if (!report.completed || report.reloads != 1 || !tail_matches){
+        return std::format("Expected 00.04 reloaded once and passed:{}{}", joined(executor.trace), joined(lines));
+    }
+    //  Each attempt is begun anew: 00.03 once, 00.04 twice.
+    if (executor.attempts != std::vector<std::string>{"00.03", "00.04", "00.04"}){
+        return std::format("Expected the executor told of each attempt:{}", joined(executor.attempts));
+    }
+    //  The report and the log tell a one-shot pass from a retried one.
+    const bool runs_ok = report.runs.size() == 2
+        && report.runs[0].one_shot() && report.runs[0].attempts == 1
+        && !report.runs[1].one_shot() && report.runs[1].attempts == 2 && report.runs[1].passed
+        && report.one_shot_passes() == 1;
+    const auto has = [&lines](std::string_view line){
+        return std::find(lines.begin(), lines.end(), line) != lines.end();
+    };
+    if (!runs_ok
+        || !has("[Checkpoint] 00.03: passed on attempt 1 (one-shot)")
+        || !has("[Checkpoint] 00.04: passed on attempt 2 (1 reset)")
+        || !has("[Segment] 00: 1 of 2 checkpoints one-shot")
+    ){
+        return std::format("Expected 00.03 one-shot and 00.04 passed on attempt 2:{}", joined(lines));
+    }
+    return true;
+}
+
+
+//  The two tables of test_segment_of_tables() as a segment run by `executor`,
+//  with hooks that write saves and reloads into its trace.
+struct PolicyLab{
+    std::vector<StoryCheckpoint> tables{
+        lab_checkpoint(),
+        StoryCheckpoint{
+            .id = "00.04",
+            .title = "the parcel",
+            .start = declared("Lab", {6, 4}, Direction::NORTH),
+            .steps = {make(StoryStepKind::TALK, "give_parcel")},
+        },
+    };
+    FakeExecutor executor;
+    std::vector<std::string> lines;
+
+    SegmentReport run(const SegmentPolicy& policy){
+        Segment segment;
+        segment.id = "00";
+        for (const StoryCheckpoint& data : tables){
+            segment.checkpoints.push_back(CheckpointSpec{
+                .id = data.id, .title = data.title, .saves = true,
+                .build = [&data, this]{ return build_story_checkpoint(data, executor); },
+            });
+        }
+        SegmentHooks hooks;
+        hooks.save = [this](RunState&){
+            executor.trace.push_back("save");
+            return outcome_ok();
+        };
+        hooks.reload = [this](RunState&){
+            executor.trace.push_back("reload");
+            return outcome_ok();
+        };
+        hooks.log = [this](const std::string& line){ lines.push_back(line); };
+        RunState state;
+        return run_segment(SegmentRange{}, policy, segment, hooks, state);
+    }
+    bool has(std::string_view line) const{
+        return std::find(lines.begin(), lines.end(), line) != lines.end();
+    }
+    size_t count(std::string_view item) const{
+        return (size_t)std::count(executor.trace.begin(), executor.trace.end(), item);
+    }
+};
+
+UnitTestResult test_policy_attempts_then_fail(){
+    //  Three attempts by default, then the segment stops on the last one's failure.
+    PolicyLab lab;
+    lab.executor.failing = {"give_parcel"};
+    const SegmentReport report = lab.run(SegmentPolicy{});
+    if (report.completed || report.reloads != 2 || lab.count("TALK give_parcel") != 3
+        || report.runs.size() != 2 || report.runs[1].passed || report.runs[1].attempts != 3
+        || report.failed_checkpoint != "00.04" || report.failure.failure != "blocked"
+    ){
+        return std::format("Expected 00.04 tried 3 times, then failed:{}{}", joined(lab.executor.trace), joined(lab.lines));
+    }
+    return true;
+}
+
+UnitTestResult test_policy_stop_at_first_failure(){
+    PolicyLab lab;
+    lab.executor.failing = {"give_parcel"};
+    const SegmentReport report = lab.run(SegmentPolicy{.attempts_per_checkpoint = 1});
+    if (report.completed || report.reloads != 0 || lab.count("reload") != 0
+        || lab.count("TALK give_parcel") != 1
+    ){
+        return std::format("Expected a stop at the first failure, with no reload:{}{}", joined(lab.executor.trace), joined(lab.lines));
+    }
+    return true;
+}
+
+//  A boss's checkpoint: a TEACH of a move the lead knows (changes
+//  nothing), a TEACH that teaches, both once per save, then the battle,
+//  lost on the first attempt. The segment's saves empty `prepared`.
+struct BossLab{
+    StoryCheckpoint table{
+        .id = "00.15b",
+        .title = "the rival",
+        .start = declared("Cerulean", {23, 7}, Direction::NORTH),
+        .steps = {once("teach_known"), once("teach_new"), make(StoryStepKind::BATTLE, "rival")},
+    };
+    FakeExecutor executor;
+    PreparedSteps prepared;
+    std::vector<std::string> lines;
+
+    static StoryStep once(std::string name){
+        StoryStep step = make(StoryStepKind::GAME, name);
+        step.action = name;
+        step.once_per_save = true;
+        return step;
+    }
+    BossLab(){
+        executor.unchanged = {"teach_known"};
+    }
+    Segment segment(){
+        Segment segment;
+        segment.id = "00";
+        segment.checkpoints.push_back(CheckpointSpec{
+            .id = table.id, .title = table.title, .saves = true,
+            .build = [this]{ return build_story_checkpoint(table, executor, &prepared); },
+        });
+        return segment;
+    }
+    SegmentHooks hooks(){
+        SegmentHooks hooks;
+        hooks.save = [this](RunState&){
+            executor.trace.push_back("save");
+            prepared.clear();
+            return outcome_ok();
+        };
+        hooks.reload = [this](RunState&){
+            executor.trace.push_back("reload");
+            return outcome_ok();
+        };
+        hooks.log = [this](const std::string& line){ lines.push_back(line); };
+        return hooks;
+    }
+    size_t count(std::string_view item) const{
+        return (size_t)std::count(executor.trace.begin(), executor.trace.end(), item);
+    }
+};
+
+//  A retry after a reload of the same save skips the preparation that
+//  changed nothing and goes to the battle; the TEACH that taught runs
+//  again, as the reload undid it. The save at the end empties the memory.
+UnitTestResult test_once_per_save_retry(){
+    BossLab lab;
+    StoryStep battle = make(StoryStepKind::BATTLE, "rival");
+    battle.args = {{"may_lose", true}};
+    lab.table.steps.back() = battle;
+    lab.executor.failures_left = {{"rival", 1}};
+    Segment segment = lab.segment();
+    SegmentHooks hooks = lab.hooks();
+    RunState state;
+    const SegmentReport report = run_segment(SegmentRange{}, SegmentPolicy{}, segment, hooks, state);
+    if (!report.completed || report.reloads != 1 || lab.count("GAME teach_known") != 1
+        || lab.count("GAME teach_new") != 2 || lab.count("BATTLE rival") != 2
+    ){
+        return std::format("Expected the known TEACH once, the new one twice, the battle twice:{}{}", joined(lab.executor.trace), joined(lab.lines));
+    }
+    if (!lab.prepared.empty()){
+        return "Expected the save to empty the prepared steps.";
+    }
+    return true;
+}
+
+//  Verify mode: three runs from one save; the preparation that changed
+//  nothing runs in the first only.
+UnitTestResult test_once_per_save_verify(){
+    BossLab lab;
+    StoryStep battle = make(StoryStepKind::BATTLE, "rival");
+    battle.args = {{"may_lose", true}};
+    lab.table.steps.back() = battle;
+    Segment segment = lab.segment();
+    SegmentHooks hooks = lab.hooks();
+    RunState state;
+    const VerifyReport report = verify_checkpoint("00.15b", VerifyPolicy{}, segment, hooks, state);
+    if (!report.verified || report.runs != 3 || lab.count("GAME teach_known") != 1
+        || lab.count("GAME teach_new") != 3 || lab.count("BATTLE rival") != 3
+    ){
+        return std::format("Expected the known TEACH once in 3 runs, the new one each run:{}{}", joined(lab.executor.trace), joined(lab.lines));
+    }
+    //  Without the memory, every run prepares.
+    FakeExecutor plain;
+    plain.unchanged = {"teach_known"};
+    Segment without;
+    without.id = "00";
+    without.checkpoints.push_back(CheckpointSpec{
+        .id = lab.table.id, .title = "", .saves = true,
+        .build = [&]{ return build_story_checkpoint(lab.table, plain); },
+    });
+    RunState again;
+    verify_checkpoint("00.15b", VerifyPolicy{}, without, hooks, again);
+    if (std::count(plain.trace.begin(), plain.trace.end(), "GAME teach_known") != 3){
+        return std::format("Expected every run to prepare without PreparedSteps:{}", joined(plain.trace));
+    }
+    return true;
+}
+
+
 //  An executor with pause points pauses before each of its checkpoint's steps,
 //  labelled with the checkpoint and the step's place; a skipped step does not
 //  pause, as it does not run.
@@ -350,6 +605,23 @@ UnitTestResult test_pause_points(){
     return quiet.report.completed ? UnitTestResult(true) : UnitTestResult(joined(quiet.lines));
 }
 
+
+//  A segment's report in the shared AutoStory stats.
+UnitTestResult test_story_stats(){
+    SegmentReport report;
+    report.reloads = 2;
+    report.runs = {
+        CheckpointRun{.id = "00.03", .passed = true, .attempts = 1},
+        CheckpointRun{.id = "00.04", .passed = true, .attempts = 3},
+        CheckpointRun{.id = "00.05", .passed = false, .attempts = 1},
+    };
+    AutoStoryStats stats;
+    record_story_counts(report.story_counts(), stats);
+    if (stats.m_segments_started != 1 || stats.m_checkpoints_started != 3 || stats.m_resets != 2){
+        return "Expected 1 segment, 3 checkpoints started and 2 resets.";
+    }
+    return true;
+}
 
 UnitTestResult test_lint(){
     StoryStep no_target = make(StoryStepKind::ROUTE, "walk");
@@ -427,12 +699,36 @@ const StoryStepTestCase STORY_STEP_CASES[] = {
         .expectation = {.description = "flags unsupported step types and handles battle defeat"},
     },
     {
+        .name = "tables as a segment, with a reload", .input = {.test = test_segment_of_tables},
+        .expectation = {.description = "converts step tables into segment with checkpoint reload support"},
+    },
+    {
         .name = "pause points pause before each step", .input = {.test = test_pause_points},
         .expectation = {.description = "calls the game's pause points before each step that runs"},
     },
     {
         .name = "lint", .input = {.test = test_lint},
         .expectation = {.description = "verifies lint validation rules on story checkpoints"},
+    },
+    {
+        .name = "a segment's run in the AutoStory stats", .input = {.test = test_story_stats},
+        .expectation = {.description = "updates story run statistics following segment completion"},
+    },
+    {
+        .name = "policy: attempts per checkpoint, then fail", .input = {.test = test_policy_attempts_then_fail},
+        .expectation = {.description = "enforces max checkpoint attempt policy before terminal failure"},
+    },
+    {
+        .name = "policy: one attempt stops at the first failure", .input = {.test = test_policy_stop_at_first_failure},
+        .expectation = {.description = "halts without a reload when a checkpoint has one attempt"},
+    },
+    {
+        .name = "once per save: a retry skips what changed nothing", .input = {.test = test_once_per_save_retry},
+        .expectation = {.description = "skips steps that changed nothing during once per save retry"},
+    },
+    {
+        .name = "once per save: verify runs prepare once", .input = {.test = test_once_per_save_verify},
+        .expectation = {.description = "executes once per save prepare step only once during verification"},
     },
 };
 
