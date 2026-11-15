@@ -62,17 +62,17 @@ void add_tests_AutoStoryStats(UnitTestDatabase& database){
         {
             .name = "old labels fill the new ones",
             .input = {.saved_line = "Checkpoint: 12 - Segment: 3 - Reset: 1"},
-            .expectation = {.line = "Runs: 0 - Segments Started: 3 - Checkpoints Passed: 12 - Resets: 1"},
+            .expectation = {.line = "Runs: 0 - Segments Started: 3 - Checkpoints Started: 12 - Resets: 1"},
         },
         {
             .name = "new labels load as they are",
-            .input = {.saved_line = "Runs: 4 - Segments Started: 3 - Checkpoints Passed: 1,234 - Resets: 2"},
-            .expectation = {.line = "Runs: 4 - Segments Started: 3 - Checkpoints Passed: 1,234 - Resets: 2"},
+            .input = {.saved_line = "Runs: 4 - Segments Started: 3 - Checkpoints Started: 1,234 - Resets: 2"},
+            .expectation = {.line = "Runs: 4 - Segments Started: 3 - Checkpoints Started: 1,234 - Resets: 2"},
         },
         {
             .name = "old and new labels add up",
-            .input = {.saved_line = "Checkpoint: 10 - Checkpoints Passed: 5 - Runs: 1"},
-            .expectation = {.line = "Runs: 1 - Segments Started: 0 - Checkpoints Passed: 15 - Resets: 0"},
+            .input = {.saved_line = "Checkpoint: 10 - Checkpoints Started: 5 - Runs: 1"},
+            .expectation = {.line = "Runs: 1 - Segments Started: 0 - Checkpoints Started: 15 - Resets: 0"},
         },
     };
     for (const AutoStoryStatsScenario& scenario : load_cases){
