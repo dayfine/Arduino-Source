@@ -49,7 +49,8 @@ void pause_before_leg(PlzaBackend& backend, Pokemon::StoryPausePoints* pause, co
 //  Whether the screen on a fresh look has not changed since the look
 //  before (SCREEN_STILL): the input in between did nothing, a dropped turn
 //  or a dropped hold. A walk into a wall that already stops the player
-//  (03.07d's into_the_counter) reads still too, and plays its leg twice.
+//  (a walk into the nurse's counter) reads still too, and plays its leg
+//  twice.
 bool screen_still(PlzaBackend& backend){
     return backend.observe().events.has(PokemonAutomation::ScreenEvent::SCREEN_STILL);
 }

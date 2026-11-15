@@ -26,10 +26,6 @@ const std::vector<PlzaFailure>& plza_failures(){
         //  away from the heading it turned to, is a pose not as planned.
         {"gate_not_seen", C::POSE_LOST},
         {"heading_missed", C::POSE_LOST},
-        //  walk_to_zone_1_start's end check: the zone's far gate read short
-        //  of 127 (by 2, console B 2026-11-14) or the arrow outside the
-        //  zone's green.
-        {"zone_start_missed", C::WALK_SHORT},
         //  walk_back_to_zone_road's stops: a catch spot on Wild Zone 1's
         //  road the objective's distance never reached (03.08).
         {"zone_road_missed", C::WALK_SHORT},
@@ -75,9 +71,6 @@ Pokemon::Outcome plza_failed(std::string name, std::string detail){
 }
 
 std::string_view console_step_failure(std::string_view action){
-    if (action == "walk_to_zone_1_start"){
-        return "zone_start_missed";
-    }
     if (action == "walk_back_to_zone_road"){
         return "zone_road_missed";
     }

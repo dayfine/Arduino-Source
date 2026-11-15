@@ -900,7 +900,7 @@ size_t count_inputs(const FakeBackend& backend, std::string_view kind){
 //  (the game dropped the hold), and once when it moves.
 UnitTestResult test_walk_plays_still_leg_again(CancellableScope& scope){
     StoryCheckpoint row;
-    row.id = "03.07d";
+    row.id = "03.06";
     row.steps.push_back(StoryStep{.kind = Pokemon::StoryStepKind::GAME, .name = "center_to_zone_1", .why = "test", .action = "walk"});
     row.steps.back().args["legs"] = std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .ms = 2000}};
     {
@@ -920,7 +920,7 @@ UnitTestResult test_walk_plays_still_leg_again(CancellableScope& scope){
 //  press_a_first).
 StoryCheckpoint enter_gate_row(){
     StoryCheckpoint row;
-    row.id = "03.07d";
+    row.id = "03.06";
     row.steps.push_back(StoryStep{
         .kind = Pokemon::StoryStepKind::GAME, .name = "enter_zone_1", .why = "test", .action = "mash_to_move_hints",
         .args = {{"press_a_first", true}},

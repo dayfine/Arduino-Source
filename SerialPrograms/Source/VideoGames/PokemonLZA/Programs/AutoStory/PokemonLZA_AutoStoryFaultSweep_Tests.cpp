@@ -31,16 +31,13 @@
  *  model). The PLZA failures seen on console B that no sim fault injects
  *  are classed by their failure names instead (PokemonLZA_AutoStoryFailures.h):
  *  a missed gate (no_prompt, screen_unread), stuck on the title
- *  (launch_failed), the zone start short by 2 (zone_start_missed,
- *  walk_short), 03.08's walk back to the road short of a catch spot
+ *  (launch_failed), 03.08's walk back to the road short of a catch spot
  *  (zone_road_missed, walk_short). 03.08's catches (catch_in_zone) throw
  *  for many reasons and stay operation_failed.
  *
  *  The sim's world is small: the player is at the end of a row's step (a
  *  spot), facing a compass heading. A timed walk reaches its end only on the
- *  inputs and facings of the row's clean run (or, for a walk into a wall
- *  that funnels it, the inputs and a facing within FUNNEL_TOLERANCE); a
- *  walk to a gate gets there when it walks the gate's way: its heading,
+ *  inputs and facings of the row's clean run; a walk to a gate gets there when it walks the gate's way: its heading,
  *  or with none (03.08's, from the road at 60) the way the clean run faced
  *  at the walk's start. Each row runs clean first; a variant fails when the
  *  row then fails or ends elsewhere.
@@ -90,16 +87,13 @@ namespace{
 const std::string TEST_PREFIX = "PokemonLZA::AutoStory";
 
 //  The rows swept.
-const std::vector<std::string> SWEPT_ROWS{"03.07d", "03.08"};
+const std::vector<std::string> SWEPT_ROWS{"03.08"};
 
 //  The sweeps the program fails today, by test name, with the likely fix.
 const std::map<std::string, std::string> KNOWN_FAILING{
-    {"PokemonLZA::AutoStory - Fault sweep: 03.07d, warp_no_op",
-        "enter_zone_1 is done with the player still outside the gate: after the gate's fade the prompt shows again. A again on any prompt after a fade is not safe: the zone's side of the gate may show its own prompt (A Leave) where the warp lands, and A there would undo it. "
-        "Likely fix: after the fade, read the minimap's zone green (MinimapZoneDetector); still outside it with the prompt up, press A again. Today walk_to_zone_1_start's green check fails it on the console as zone_start_missed"},
     {"PokemonLZA::AutoStory - Fault sweep: 03.08, warp_no_op",
         "leave_zone_1 is done with the player still at the far gate's A Leave: after the fade the prompt shows again. A again on any prompt after a fade is not safe: the street outside the gate may show the gate's A Enter where the warp lands, and A there would undo it. "
-        "Likely fix: after the fade, read the minimap's zone green (MinimapZoneDetector); still inside it with the prompt up, press A again; and an end check that the arrow is out of the green, so 03.08b never starts in the zone"},
+        "Likely fix: after the fade, read the minimap's zone green (MinimapZoneDetector); still inside it with the prompt up, press A again; and an end check that the arrow is out of the green, so 03.09 never starts in the zone"},
 };
 
 //  How much later than the clean run's a late fade starts.
@@ -122,13 +116,6 @@ constexpr double GATE_WALK_CONE = 20;
 constexpr double VIEW_DEGREES = 60;
 //  A turn: story_turn()'s stick is this short and released.
 constexpr Milliseconds TURN_STICK = 150ms;
-//  How far off its clean facing a funnel walk still ends against its wall.
-constexpr double FUNNEL_TOLERANCE = 45;
-
-//  Walks into a wall that sets the player whatever its facing at the start:
-//  03.07d's walk into the nurse's counter, "whatever way the camera turned
-//  at the load" (console B, 2026-11-14, 3 of 3).
-const std::set<std::string, std::less<>> FUNNEL_WALKS{"into_the_counter"};
 
 //  The degrees from `from` to `to`, -180 to 180.
 double turn_between(double from, double to){
@@ -224,7 +211,7 @@ public:
         return m_record;
     }
     //  Where the row ended, when not at the end of its step `last` with
-    //  the game settled: "at 03.07d's to_zone_1_gate", "off the story: ...".
+    //  the game settled: "at 03.08's zone_1_to_far_gate", "off the story: ...".
     std::optional<std::string> off_end(std::string_view last) const{
         if (m_spot == last && !m_fade){
             return std::nullopt;
@@ -407,7 +394,7 @@ private:
     }
 
     //  A timed walk ends where the clean run's did on its inputs, at its
-    //  facings (a funnel's within FUNNEL_TOLERANCE).
+    //  facings.
     bool walk_reached() const{
         if (m_spot != start_of(m_step)){
             return false;
@@ -419,9 +406,8 @@ private:
         if (clean.inputs != m_walk.inputs){
             return false;
         }
-        const double tolerance = FUNNEL_WALKS.contains(step().name) ? FUNNEL_TOLERANCE : 1;
         for (size_t i = 0; i < clean.facings.size(); i++){
-            if (std::abs(turn_between(clean.facings[i], m_walk.facings[i])) > tolerance){
+            if (std::abs(turn_between(clean.facings[i], m_walk.facings[i])) > 1){
                 return false;
             }
         }
@@ -676,8 +662,8 @@ struct GateClassCase{
 
 const GateClassCase GATE_CLASS_CASES[] = {
     {
-        .name = "03.07d's missed gate is logged as class=pose_lost",
-        .input = {.row = "03.07d"},
+        .name = "03.06's missed gate is logged as class=pose_lost",
+        .input = {.row = "03.06"},
         .expectation = {.failure = "gate_not_seen", .tag = "(class=pose_lost)"},
     },
     {
