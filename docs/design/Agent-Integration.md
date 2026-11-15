@@ -326,9 +326,10 @@ is never blocked by a 30-second controller wait or a long CFR batch. As built in
 waits on that frame listener for the first frame newer than the line (100-60000 ms, default
 5000), saves `<request>_<LABEL>.png`, and prints `snapshot saved instance=… frame_seq=…
 captured_at=… after=… path=…`, or fails with `snapshot timeout …` or `snapshot unavailable …
-reason=no_video|panel_changed|app_closing|save_failed`. It still runs as a line on the
-channel's one worker, so moving it off that worker (its own request path served beside the
-inbox worker) is the remaining Slice 1 item.
+reason=no_video|panel_changed|app_closing|save_failed`. A request of `snapshot` lines only
+(what `shot` writes) runs on its own pool worker beside the inbox worker (`lab/slice1-gaps`),
+so it never waits behind a long request; a `snapshot` line inside another request still runs
+in order with it.
 
 ### Program contract and preflight
 
@@ -463,10 +464,13 @@ Built so far: #481 (`lab/observation-seam`, 629bfde88) writes `Lab/state.json` b
 unchanged legacy `Lab/state`, rewritten at every 500 ms poll, and adds the `snapshot`
 command (see Tools). Its `frame_seq` counts frames at `VideoSession`'s frame listener in one
 counter per app instance that survives panel switches, which is decision 1. Where #481 differs
-from the decisions above, these are the remaining Slice 1 items: the transition source is
-inferred in the channel (it marks its own start/stop just before calling them, and everything
-else reads as `ui`) instead of passed into `ProgramSession`; writes are not yet split into
-immediate and throttled; `snapshot` still runs on the channel's one worker.
+from the decisions above, #481 left three Slice 1 items, which `lab/slice1-gaps` closes:
+`ProgramSession`'s start and stop take an `ActionSource` and the request id and keep the last
+transition, latching the stop's asker through `STOPPING` → `STOPPED` (`ProgramTransition.h`;
+the Start/Stop button and integrations pass `ui`, the channel `lab`); `Lab/state.json` is
+rewritten at once on a logical change and otherwise at most once a second; a request of
+`snapshot` lines only runs on a second pool worker beside the inbox worker, which checks the
+inbox every 100 ms.
 
 App-side slices follow the repo's hard rules (AGENTS.md), which this design must not bend:
 

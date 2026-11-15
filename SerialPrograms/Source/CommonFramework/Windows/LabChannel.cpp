@@ -31,6 +31,7 @@
 #include "LabChannel.h"
 #include "LabProgramContract.h"
 #include "LabSnapshot.h"
+#include "LabTransition.h"
 
 namespace PokemonAutomation{
 
@@ -41,6 +42,9 @@ namespace{
 
 //  How often the inbox and the program state are checked.
 constexpr Milliseconds POLL_INTERVAL = 500ms;
+
+//  How often the second worker checks the inbox for snapshot requests.
+constexpr Milliseconds SNAPSHOT_POLL_INTERVAL = 100ms;
 
 //  How often a worker waiting on the UI thread checks whether the app is closing.
 constexpr Milliseconds UI_WAIT_SLICE = 100ms;
@@ -118,7 +122,8 @@ void write_file_atomically(const Filesystem::Path& path, const std::string& text
 //  Returns the error message of the start or stop, or empty on success.
 //  Unlike the Start/Stop button, a refused start (e.g. an option that fails
 //  check_validity()) goes to the journal, so the request stops there.
-std::string start_or_stop(PanelSession* panel, bool start){
+//  `request_id` names the lab request in the program's last transition.
+std::string start_or_stop(PanelSession* panel, bool start, const std::string& request_id){
     ProgramSession* program = dynamic_cast<ProgramSession*>(panel);
     if (program == nullptr){
         return "The selected panel is not a program.";
@@ -128,7 +133,9 @@ std::string start_or_stop(PanelSession* panel, bool start){
     if (state != from){
         return "Program is " + program_state_name(state) + ".";
     }
-    return start ? program->start_program() : program->stop_program();
+    return start
+        ? program->start_program(ActionSource::LAB, request_id)
+        : program->stop_program(ActionSource::LAB, request_id);
 }
 
 //  The value at a dotted key path ("NOTIFICATIONS.Enabled") in a JSON
@@ -247,6 +254,7 @@ LabChannel::LabChannel(LabChannelCallbacks callbacks, std::unique_ptr<LabConsole
     //  the Qt thread-adoption workaround, and the worker must be gone before
     //  the members it uses are.
     m_worker = GlobalThreadPools::unlimited_normal().dispatch([this]{ run(); });
+    m_snapshot_worker = GlobalThreadPools::unlimited_normal().dispatch([this]{ run_snapshots(); });
 }
 LabChannel::~LabChannel(){
     m_stopping.store(true, std::memory_order_release);
@@ -256,6 +264,7 @@ LabChannel::~LabChannel(){
     }
     set_panel(nullptr);
     m_worker.wait_and_ignore_exceptions();
+    m_snapshot_worker.wait_and_ignore_exceptions();
 }
 
 const std::string& LabChannel::folder(){
@@ -274,35 +283,20 @@ void LabChannel::set_panel(PanelSession* panel){
     std::lock_guard<Mutex> lg(m_panel_lock);
     attach_listeners(panel);
     m_panel = panel;
+    m_selected_at = current_time();
     std::lock_guard<Mutex> lg2(m_scope_lock);
     m_panel_changing = false;
 }
 
 void LabChannel::attach_listeners(PanelSession* panel){
-    if (m_program != nullptr){
-        m_program->remove_listener(m_program_listener);
-    }
     if (m_video != nullptr){
         m_video->remove_frame_listener(m_frame_listener);
     }
     m_program = dynamic_cast<ProgramSession*>(panel);
     m_video = panel == nullptr ? nullptr : m_console->video(*panel);
-    if (m_program != nullptr){
-        m_transitions.reset_program(m_program->current_state());
-        m_program->add_listener(m_program_listener);
-    }else{
-        m_transitions.reset_program(ProgramState::STOPPED);
-    }
     if (m_video != nullptr){
         m_video->add_frame_listener(m_frame_listener);
     }
-}
-
-void LabChannel::ProgramListener::state_change(ProgramState state){
-    m_tracker.on_state_change(state, current_time());
-}
-void LabChannel::ProgramListener::error(const std::string&){
-    m_tracker.on_error();
 }
 
 void LabChannel::FrameListener::on_frame(std::shared_ptr<const VideoFrame> frame){
@@ -348,24 +342,82 @@ void LabChannel::poll(){
         global_logger_tagged().log("Lab: reading requests from " + folder() + "inbox");
     }
 
-    std::optional<Filesystem::Path> file;
-    while (!m_stopping.load(std::memory_order_acquire) && (file = next_request_file(folder() + "inbox"))){
-        handle_request(*file);
+    //  Oldest first; after each request the inbox is read again, so one
+    //  written meanwhile is not skipped.
+    bool ran = true;
+    while (ran && !m_stopping.load(std::memory_order_acquire)){
+        ran = false;
+        for (const Filesystem::Path& file : request_files(folder() + "inbox")){
+            if (m_stopping.load(std::memory_order_acquire)){
+                break;
+            }
+            if (take_request(file, false)){
+                ran = true;
+                break;
+            }
+        }
     }
     keep_awake();
     write_state();
 }
 
-void LabChannel::handle_request(const Filesystem::Path& file){
-    const std::string name = file.stem().string();
+void LabChannel::run_snapshots(){
+    while (true){
+        {
+            std::unique_lock<Mutex> lg(m_idle_lock);
+            if (m_stopping.load(std::memory_order_acquire)){
+                return;
+            }
+            m_idle_cv.wait_for(lg, SNAPSHOT_POLL_INTERVAL);
+        }
+        if (m_stopping.load(std::memory_order_acquire)){
+            return;
+        }
+        try{
+            poll_snapshots();
+        }catch (Exception& e){
+            global_logger_tagged().log("Lab: snapshot: " + e.to_str(), COLOR_RED);
+        }catch (std::exception& e){
+            global_logger_tagged().log(std::string("Lab: snapshot: ") + e.what(), COLOR_RED);
+        }
+    }
+}
+
+void LabChannel::poll_snapshots(){
+    const std::string inbox = folder() + "inbox";
+    if (!Filesystem::is_directory(Filesystem::Path(inbox))){
+        return;
+    }
+    for (const Filesystem::Path& file : request_files(inbox)){
+        if (m_stopping.load(std::memory_order_acquire)){
+            return;
+        }
+        take_request(file, true);
+    }
+}
+
+bool LabChannel::take_request(const Filesystem::Path& file, bool snapshots){
     std::string text;
     if (!file_to_string(file.string(), text)){
-        global_logger_tagged().log("Lab: cannot read " + file.string(), COLOR_RED);
+        //  The other worker took it, or the lab server withdrew it.
+        return false;
     }
-    Filesystem::rename(file, Filesystem::Path(folder() + "done/" + file.filename().string()));
-    global_logger_tagged().log("Lab: running " + name);
-
     const LabRequest request = parse_lab_request(text);
+    if (is_lab_snapshot_request(request) != snapshots){
+        return false;
+    }
+    //  The move is the claim: only one worker's rename succeeds.
+    std::error_code ec;
+    Filesystem::rename(file, Filesystem::Path(folder() + "done/" + file.filename().string()), ec);
+    if (ec){
+        return false;
+    }
+    run_request(file.stem().string(), request, snapshots);
+    return true;
+}
+
+void LabChannel::run_request(const std::string& name, const LabRequest& request, bool snapshots){
+    global_logger_tagged().log("Lab: running " + name);
     std::ostringstream out;
     LabCommandOutput output{out, folder() + "outbox/", name, 0};
     const Filesystem::Path out_path(output.outbox + name + ".out");
@@ -376,7 +428,8 @@ void LabChannel::handle_request(const Filesystem::Path& file){
     for (const LabRequestLine& line : request.lines){
         const WallClock line_start = current_time();
         output.line = line.number;
-        error = run_line(request, line, output);
+        //  A snapshot request's lines touch nothing the inbox worker owns.
+        error = snapshots ? run_snapshot(line.words, output) : run_line(request, line, output);
         if (!error.empty()){
             out << journal_error(line.number, line.text, error);
             break;
@@ -393,9 +446,9 @@ void LabChannel::handle_request(const Filesystem::Path& file){
     Filesystem::remove(out_path);
     Filesystem::rename(tmp_path, out_path);
 
-    m_state.seq = name;
-    m_state.error = error;
-    m_written_state.clear();
+    std::lock_guard<Mutex> lg(m_last_request_lock);
+    m_last_request = name;
+    m_last_error = error;
 }
 
 std::string LabChannel::run_line(const LabRequest& request, const LabRequestLine& line, LabCommandOutput& output){
@@ -559,19 +612,13 @@ std::string LabChannel::run_ui_command(const LabRequest& request, const LabReque
     return run_start_or_stop(request, false);
 }
 
-//  Starts or stops the program on the UI thread, telling m_transitions first
-//  that this start or stop is the lab's. On the UI thread no click of the
-//  Start/Stop button can come in between.
+//  Starts or stops the program on the UI thread, as the lab with the
+//  request's id (a new one if the request has none), so the program's last
+//  transition names this request.
 std::string LabChannel::run_start_or_stop(const LabRequest& request, bool start){
-    const LabTransitionAction action = start ? LabTransitionAction::START : LabTransitionAction::STOP;
     const std::string id = request.id ? *request.id : new_lab_uuid();
     return run_on_ui([&]{
-        m_transitions.expect_lab(action, id);
-        std::string error = start_or_stop(m_callbacks.current_panel(), start);
-        if (!error.empty()){
-            m_transitions.cancel_lab();
-        }
-        return error;
+        return start_or_stop(m_callbacks.current_panel(), start, id);
     });
 }
 
@@ -766,6 +813,11 @@ void LabChannel::write_state(){
         read_program_state(m_state.state, m_state.program, running);
         m_state.controller = read_controller_status();
     }
+    {
+        std::lock_guard<Mutex> lg(m_last_request_lock);
+        m_state.seq = m_last_request;
+        m_state.error = m_last_error;
+    }
     m_state.owner = m_owner.token();
     std::string text = lab_state_text(m_state);
     const Filesystem::Path path(folder() + "state");
@@ -776,23 +828,34 @@ void LabChannel::write_state(){
     write_state_json(current_time());
 }
 
-//  Rewritten at every poll: "written_at" is the heartbeat.
+//  Checked at every poll: written at once on a logical change, else about
+//  once a second, the heartbeat ("written_at") and the newest frame.
 void LabChannel::write_state_json(WallClock now){
+    LabAppState state;
     bool has_video;
     {
         std::lock_guard<Mutex> lg(m_panel_lock);
         has_video = m_video != nullptr;
+        if (m_program != nullptr){
+            state.last_transition = lab_transition_since(m_program->last_transition(), m_selected_at);
+        }
     }
-    LabAppState state;
     state.legacy = m_state;
     state.written_at = now;
     state.instance_id = m_instance_id;
     state.pid = process_id();
     state.profile = startup_profile();
-    state.last_transition = m_transitions.last();
     state.frame = m_frame_listener.frames().latest();
     state.video = lab_video_state(has_video, state.frame, now, VIDEO_LIVE_MAX_AGE);
-    write_file_atomically(Filesystem::Path(folder() + "state.json"), lab_state_json_text(state));
+
+    const Filesystem::Path path(folder() + "state.json");
+    if (!Filesystem::exists(path)){
+        m_state_json.reset();
+    }
+    const std::optional<std::string> text = m_state_json.text_to_write(state);
+    if (text){
+        write_file_atomically(path, *text);
+    }
 }
 
 

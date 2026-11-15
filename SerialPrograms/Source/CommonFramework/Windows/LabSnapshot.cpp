@@ -86,6 +86,18 @@ std::string_view reason_name(LabSnapshotUnavailable reason){
 }  // namespace
 
 
+bool is_lab_snapshot_request(const LabRequest& request){
+    if (request.lines.empty()){
+        return false;
+    }
+    for (const LabRequestLine& line : request.lines){
+        if (line.words[0] != "snapshot"){
+            return false;
+        }
+    }
+    return true;
+}
+
 LabSnapshotReply lab_snapshot_saved(
     std::string_view instance_id, const LabFrameToken& frame, uint64_t after, std::string_view path
 ){

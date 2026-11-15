@@ -40,68 +40,13 @@ bool is_lab_uuid(std::string_view text){
 }
 
 
-
-void LabTransitionTracker::expect_lab(LabTransitionAction action, std::string request_id){
-    std::lock_guard<Mutex> lg(m_lock);
-    m_expected = Expected{action, std::move(request_id)};
-}
-void LabTransitionTracker::cancel_lab(){
-    std::lock_guard<Mutex> lg(m_lock);
-    m_expected.reset();
-}
-
-LabTransitionSource LabTransitionTracker::source_of(LabTransitionAction action, std::optional<std::string>& request_id){
-    if (!m_expected || m_expected->action != action){
-        return LabTransitionSource::UI;
+std::optional<ProgramTransition> lab_transition_since(
+    std::optional<ProgramTransition> last, WallClock selected_at
+){
+    if (last && last->at < selected_at){
+        return std::nullopt;
     }
-    request_id = std::move(m_expected->request_id);
-    m_expected.reset();
-    return LabTransitionSource::LAB;
-}
-
-void LabTransitionTracker::on_state_change(ProgramState state, WallClock now){
-    std::lock_guard<Mutex> lg(m_lock);
-    const ProgramState previous = m_state;
-    m_state = state;
-    std::optional<std::string> request_id;
-    switch (state){
-    case ProgramState::RUNNING:{
-        m_error = false;
-        const LabTransitionSource source = source_of(LabTransitionAction::START, request_id);
-        m_last = LabTransition{LabTransitionAction::START, source, std::move(request_id), now};
-        return;
-    }
-    case ProgramState::STOPPING:{
-        const LabTransitionSource source = source_of(LabTransitionAction::STOP, request_id);
-        m_last = LabTransition{LabTransitionAction::STOP, source, std::move(request_id), now};
-        return;
-    }
-    case ProgramState::STOPPED:
-        //  After STOPPING the stop is already named. Straight from RUNNING,
-        //  nobody asked: the program ended by itself.
-        if (previous == ProgramState::RUNNING){
-            const LabTransitionSource source = m_error ? LabTransitionSource::PROGRAM_ERROR : LabTransitionSource::PROGRAM;
-            m_last = LabTransition{LabTransitionAction::STOP, source, std::nullopt, now};
-        }
-        return;
-    case ProgramState::NOT_READY:
-        return;
-    }
-}
-void LabTransitionTracker::on_error(){
-    std::lock_guard<Mutex> lg(m_lock);
-    m_error = true;
-}
-void LabTransitionTracker::reset_program(ProgramState state){
-    std::lock_guard<Mutex> lg(m_lock);
-    m_state = state;
-    m_error = false;
-    m_expected.reset();
-    m_last.reset();
-}
-std::optional<LabTransition> LabTransitionTracker::last() const{
-    std::lock_guard<Mutex> lg(m_lock);
-    return m_last;
+    return last;
 }
 
 

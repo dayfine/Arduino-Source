@@ -23,12 +23,12 @@ takes effect at the next launch.
 
 | Path | Direction | Meaning |
 |---|---|---|
-| `Lab/inbox/<name>.txt` | script writes | A request: one command per line, run in order. Requests run one at a time, in name order. |
+| `Lab/inbox/<name>.txt` | script writes | A request: one command per line, run in order. Requests run one at a time, in name order; a request of `snapshot` lines only runs beside them (see [Snapshot](#snapshot)). |
 | `Lab/done/<name>.txt` | app moves | The request, moved here when it starts. |
 | `Lab/outbox/<name>.out` | app writes | The request's journal (below). It appears only once the request has finished; `<name>.tmp` shows the progress so far. |
 | `Lab/outbox/<name>_<label>.png`, `.mp4` | app writes | Files that `shot`, `shots` and `history` save. |
 | `Lab/state` | app writes | The channel's state, rewritten after every request and whenever the program state changes. |
-| `Lab/state.json` | app writes | The same state and more, for the lab server: rewritten at every poll. See [state.json](#statejson). |
+| `Lab/state.json` | app writes | The same state and more, for the lab server: rewritten at once when the state changes, else about once a second. See [state.json](#statejson). |
 
 Write a request somewhere else and then move it into `inbox`, so the app
 never reads a half-written file. Only `.txt` files are read.
@@ -85,13 +85,24 @@ the fields; `python3 -m pa_lab check app_state <file>` checks one). It
 holds the state file's fields (as `program.state` in lower case, `panel`,
 `controller.state` and `channel`), and also:
 
-- `written_at`: rewritten at every poll (500 ms), even when nothing changed.
+- `written_at`: the heartbeat. The file is checked at every poll (500 ms)
+  and rewritten at once when anything but `written_at`, `video.frame_seq`
+  and `video.captured_at` changed: a new `instance.id`, a finished request
+  (`channel.last_request`), a start or stop, the video state. When only
+  those three moved, it is rewritten at most once a second, with the newest
+  frame. A long request (a `walk`) still holds the poll, and the heartbeat,
+  until it ends.
 - `instance.id`: a new UUID at every app start; `instance.pid`; on macOS
   `instance.profile`, the `--profile` name.
 - `program.last_transition`: the last start or stop, and where it came
   from: `lab` (a request, with its `request_id`), `ui` (the Start/Stop
   button, or anything else outside the channel), `program` (it finished by
-  itself) or `error` (it ended with an error). `null` until the first one.
+  itself) or `error` (it ended with an error). `null` until the first one,
+  and again after a panel switch until that panel's program starts or
+  stops. The program records who asked as it starts or stops
+  (`ProgramSession`, `ProgramTransition.h`), and a stop keeps its asker
+  through `stopping` to `stopped`: an error or the run's end after a Stop
+  does not change who stopped it.
 - `video.frame_seq` and `captured_at`: the newest frame from the console's
   video, counted since the app started. `state` is `live` while that frame
   is at most 2 s old, `stale` when older, `missing` without video.
@@ -178,6 +189,14 @@ the same `instance.id` and `frame_seq` that `state.json` uses. `LABEL` is 1
 to 64 of `A-Z a-z 0-9 _ -`. Unlike `shot`, it runs on any panel with video,
 whatever the program state and the controller; a panel with no video (the
 settings page, no panel) gives `unavailable`.
+
+A request whose commands are all `snapshot` lines (the lab server's `shot`
+writes `request <uuid>` and `snapshot frame <ms>`) runs on a second worker
+that checks the inbox every 100 ms, so it never waits behind a long request
+on the first (a `start` waiting for the controller, a batch of presses). Its
+journal, `done/` move and `seq` are the same as any request's; requests
+taken by the two workers may finish out of name order. A `snapshot` line in
+any other request runs in order with that request's other lines.
 
 | Line | Meaning |
 |---|---|
@@ -362,6 +381,7 @@ two-line `state`) is gone. `start` and `stop` are lines in a request, and
 `add_tests_LabChannel()` covers the request format, the journal lines, the
 state text, the owner lock, the keep-awake schedule and the controller wait before `start` (`LabChannel - ...`
 unit tests); `add_tests_LabSnapshot()` covers `snapshot`'s arguments, its wait for a newer frame and its lines; `add_tests_LabStateJson()` checks `state.json` against the
-contract's golden files and where each start and stop is said to come from; `add_tests_CommandFileRunner()` covers the console commands'
+contract's golden files, which transition it names after a panel switch, and when it is rewritten; `add_tests_ProgramTransition()` covers
+who each start and stop is said to come from; `add_tests_CommandFileRunner()` covers the console commands'
 arguments. Run them with the app's `--command-line-test-mode`. Selecting,
 setting, starting and the presses need a live app and console.

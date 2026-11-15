@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  "Lab/state.json" against the lab server's version-1 goldens, the video
- *  state, and where each start and stop is said to come from.
+ *  state, which transition it names, and when it is rewritten.
  *
  *  The goldens are copies of lab/server/contracts/v1/app_state/{stopped_ui,
  *  running_lab,no_program}.json on the fork's agents branch (fork PR #478 at
@@ -18,6 +18,7 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "LabStateJson.h"
+#include "LabTransition.h"
 #include "LabStateJson_Tests.h"
 
 namespace PokemonAutomation{
@@ -191,8 +192,8 @@ LabAppState stopped_ui(){
     state.instance_id = "d8ea6a9d-1eab-4a40-b355-d88072b289a1";
     state.pid = 4411;
     state.profile = "lab-B";
-    state.last_transition = LabTransition{
-        .action = LabTransitionAction::STOP, .source = LabTransitionSource::UI,
+    state.last_transition = ProgramTransition{
+        .action = ProgramAction::STOP, .source = ActionSource::UI,
         .request_id = std::nullopt, .at = utc(2026, 11, 14, hms(6, 10, 10, 2)),
     };
     state.video = LabVideoState::LIVE;
@@ -210,8 +211,8 @@ LabAppState running_lab(){
     state.instance_id = "d8ea6a9d-1eab-4a40-b355-d88072b289a1";
     state.pid = 4411;
     state.profile = "lab-B";
-    state.last_transition = LabTransition{
-        .action = LabTransitionAction::START, .source = LabTransitionSource::LAB,
+    state.last_transition = ProgramTransition{
+        .action = ProgramAction::START, .source = ActionSource::LAB,
         .request_id = "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10", .at = utc(2026, 11, 14, hms(7, 1, 3, 250)),
     };
     state.paused = "01.04 leg 3";
@@ -397,80 +398,36 @@ const VideoCase VIDEO_CASES[] = {
 };
 
 
-//  A state change, or a call the lab channel makes.
-enum class Step{
-    EXPECT_LAB_START,
-    EXPECT_LAB_STOP,
-    CANCEL_LAB,
-    RUNNING,
-    STOPPING,
-    STOPPED,
-    ERROR_REPORTED,
-    PANEL_CHANGED,
+//  lab_transition_since()
+struct SinceInput{
+    std::optional<Milliseconds> transition_at;  //  From the selection; none: no transition yet.
 };
-struct TransitionInput{
-    std::vector<Step> steps;
+struct SinceExpectation{
+    bool kept;
 };
-struct TransitionExpectation{
-    std::optional<LabTransitionAction> action;  //  None: no transition yet.
-    LabTransitionSource source = LabTransitionSource::UI;
-    bool has_request_id = false;
-};
-struct TransitionCase{
+struct SinceCase{
     std::string name;
-    TransitionInput input;
-    TransitionExpectation expectation;
+    SinceInput input;
+    SinceExpectation expectation;
 };
-void apply(LabTransitionTracker& tracker, Step step, WallClock now){
-    switch (step){
-    case Step::EXPECT_LAB_START:
-        tracker.expect_lab(LabTransitionAction::START, "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10");
-        return;
-    case Step::EXPECT_LAB_STOP:
-        tracker.expect_lab(LabTransitionAction::STOP, "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10");
-        return;
-    case Step::CANCEL_LAB:
-        tracker.cancel_lab();
-        return;
-    case Step::RUNNING:
-        tracker.on_state_change(ProgramState::RUNNING, now);
-        return;
-    case Step::STOPPING:
-        tracker.on_state_change(ProgramState::STOPPING, now);
-        return;
-    case Step::STOPPED:
-        tracker.on_state_change(ProgramState::STOPPED, now);
-        return;
-    case Step::ERROR_REPORTED:
-        tracker.on_error();
-        return;
-    case Step::PANEL_CHANGED:
-        tracker.reset_program(ProgramState::STOPPED);
-        return;
+UnitTestResult check(const SinceCase& c){
+    const WallClock selected_at = utc(2026, 11, 14, hms(6, 0, 0, 0));
+    std::optional<ProgramTransition> last;
+    if (c.input.transition_at){
+        last = ProgramTransition{
+            .action = ProgramAction::START, .source = ActionSource::UI,
+            .request_id = std::nullopt, .at = selected_at + *c.input.transition_at,
+        };
     }
-}
-UnitTestResult check(const TransitionCase& c){
-    LabTransitionTracker tracker;
-    WallClock now = utc(2026, 11, 14, hms(6, 0, 0, 0));
-    for (Step step : c.input.steps){
-        now += 1s;
-        apply(tracker, step, now);
-    }
-    const std::optional<LabTransition> last = tracker.last();
-    if (!c.expectation.action){
-        return last ? UnitTestResult("expected no transition") : UnitTestResult(true);
-    }
-    if (!last || last->action != *c.expectation.action || last->source != c.expectation.source){
-        return "wrong action or source";
-    }
-    if (last->request_id.has_value() != c.expectation.has_request_id){
-        return "a request id goes with a lab source only";
+    const bool kept = lab_transition_since(last, selected_at).has_value();
+    if (kept != c.expectation.kept){
+        return std::format("expected kept={}", c.expectation.kept);
     }
     return true;
 }
-class Test_LabTransition : public UnitTest{
+class Test_LabTransitionSince : public UnitTest{
 public:
-    explicit Test_LabTransition(TransitionCase test_case)
+    explicit Test_LabTransitionSince(SinceCase test_case)
         : UnitTest(std::format("CommonFramework::LabStateJson - transition - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
@@ -479,59 +436,152 @@ public:
     }
 
 private:
-    TransitionCase m_case;
+    SinceCase m_case;
 };
-const TransitionCase TRANSITION_CASES[] = {
-    {.name = "nothing yet", .input = {.steps = {}}, .expectation = {.action = std::nullopt}},
+const SinceCase SINCE_CASES[] = {
+    {.name = "nothing yet", .input = {.transition_at = std::nullopt}, .expectation = {.kept = false}},
+    {.name = "after the selection", .input = {.transition_at = 1500ms}, .expectation = {.kept = true}},
+    {.name = "at the selection", .input = {.transition_at = 0ms}, .expectation = {.kept = true}},
     {
-        .name = "transition of the previous panel is forgotten",
-        .input = {.steps = {Step::RUNNING, Step::PANEL_CHANGED}},
-        .expectation = {.action = std::nullopt},
+        .name = "transition of an earlier selection is forgotten",
+        .input = {.transition_at = -1500ms},
+        .expectation = {.kept = false},
+    },
+};
+
+
+//  What changed in the state since the previous call to LabStateJsonThrottle.
+enum class Change{
+    NOTHING,            //  Only the heartbeat.
+    NEW_FRAME,
+    PROGRAM_STARTED,
+    REQUEST_FINISHED,
+    VIDEO_STALE,
+    APP_RESTARTED,
+    FILE_GONE,
+};
+struct ThrottleCall{
+    Milliseconds after;     //  Since the previous call.
+    Change change;
+};
+struct ThrottleInput{
+    std::vector<ThrottleCall> calls;
+};
+struct ThrottleExpectation{
+    std::vector<bool> written;  //  Per call.
+};
+struct ThrottleCase{
+    std::string name;
+    ThrottleInput input;
+    ThrottleExpectation expectation;
+};
+void apply(Change change, LabAppState& state, LabStateJsonThrottle& throttle){
+    switch (change){
+    case Change::NOTHING:
+        return;
+    case Change::NEW_FRAME:
+        state.frame->seq++;
+        state.frame->captured_at = state.written_at;
+        return;
+    case Change::PROGRAM_STARTED:
+        state.legacy.state = "RUNNING";
+        state.last_transition = ProgramTransition{
+            .action = ProgramAction::START, .source = ActionSource::LAB,
+            .request_id = "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10", .at = state.written_at,
+        };
+        return;
+    case Change::REQUEST_FINISHED:
+        state.legacy.seq += "+";
+        return;
+    case Change::VIDEO_STALE:
+        state.video = LabVideoState::STALE;
+        return;
+    case Change::APP_RESTARTED:
+        state.instance_id = "0c7b3f52-91d4-4e8a-a3f6-5b2e7d10c9a4";
+        state.frame->seq = 1;
+        return;
+    case Change::FILE_GONE:
+        throttle.reset();
+        return;
+    }
+}
+UnitTestResult check(const ThrottleCase& c){
+    LabStateJsonThrottle throttle(1000ms);
+    LabAppState state = stopped_ui();
+    std::vector<bool> written;
+    for (const ThrottleCall& call : c.input.calls){
+        state.written_at += call.after;
+        apply(call.change, state, throttle);
+        const std::optional<std::string> text = throttle.text_to_write(state);
+        if (text && *text != lab_state_json_text(state)){
+            return "a write must carry the newest state";
+        }
+        written.push_back(text.has_value());
+    }
+    if (written != c.expectation.written){
+        std::string got;
+        for (bool w : written){
+            got += w ? "w" : "-";
+        }
+        return std::format("wrong writes: {}", got);
+    }
+    return true;
+}
+class Test_LabStateThrottle : public UnitTest{
+public:
+    explicit Test_LabStateThrottle(ThrottleCase test_case)
+        : UnitTest(std::format("CommonFramework::LabStateJson - throttle - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return check(m_case);
+    }
+
+private:
+    ThrottleCase m_case;
+};
+const ThrottleCase THROTTLE_CASES[] = {
+    {
+        .name = "first state is written",
+        .input = {.calls = {{0ms, Change::NOTHING}}},
+        .expectation = {.written = {true}},
     },
     {
-        .name = "UI start",
-        .input = {.steps = {Step::RUNNING}},
-        .expectation = {.action = LabTransitionAction::START, .source = LabTransitionSource::UI},
+        .name = "heartbeat at most once per interval",
+        .input = {.calls = {{0ms, Change::NOTHING}, {500ms, Change::NOTHING}, {500ms, Change::NOTHING}}},
+        .expectation = {.written = {true, false, true}},
     },
     {
-        .name = "lab start",
-        .input = {.steps = {Step::EXPECT_LAB_START, Step::RUNNING}},
-        .expectation = {.action = LabTransitionAction::START, .source = LabTransitionSource::LAB, .has_request_id = true},
+        .name = "frames coalesce, the newest is written",
+        .input = {.calls = {
+            {0ms, Change::NOTHING}, {100ms, Change::NEW_FRAME}, {100ms, Change::NEW_FRAME}, {900ms, Change::NEW_FRAME},
+        }},
+        .expectation = {.written = {true, false, false, true}},
     },
     {
-        .name = "UI stop after a lab start",
-        .input = {.steps = {Step::EXPECT_LAB_START, Step::RUNNING, Step::STOPPING, Step::STOPPED}},
-        .expectation = {.action = LabTransitionAction::STOP, .source = LabTransitionSource::UI},
+        .name = "start is written at once",
+        .input = {.calls = {{0ms, Change::NOTHING}, {100ms, Change::PROGRAM_STARTED}}},
+        .expectation = {.written = {true, true}},
     },
     {
-        .name = "lab stop",
-        .input = {.steps = {Step::RUNNING, Step::EXPECT_LAB_STOP, Step::STOPPING, Step::STOPPED}},
-        .expectation = {.action = LabTransitionAction::STOP, .source = LabTransitionSource::LAB, .has_request_id = true},
+        .name = "finished request is written at once",
+        .input = {.calls = {{0ms, Change::NOTHING}, {100ms, Change::REQUEST_FINISHED}}},
+        .expectation = {.written = {true, true}},
     },
     {
-        .name = "program finished by itself",
-        .input = {.steps = {Step::RUNNING, Step::STOPPED}},
-        .expectation = {.action = LabTransitionAction::STOP, .source = LabTransitionSource::PROGRAM},
+        .name = "stale video is written at once",
+        .input = {.calls = {{0ms, Change::NOTHING}, {100ms, Change::VIDEO_STALE}}},
+        .expectation = {.written = {true, true}},
     },
     {
-        .name = "program ended with an error",
-        .input = {.steps = {Step::RUNNING, Step::ERROR_REPORTED, Step::STOPPED}},
-        .expectation = {.action = LabTransitionAction::STOP, .source = LabTransitionSource::PROGRAM_ERROR},
+        .name = "restart is written at once",
+        .input = {.calls = {{0ms, Change::NOTHING}, {100ms, Change::APP_RESTARTED}}},
+        .expectation = {.written = {true, true}},
     },
     {
-        .name = "error of an earlier run is forgotten",
-        .input = {.steps = {Step::RUNNING, Step::ERROR_REPORTED, Step::STOPPED, Step::RUNNING, Step::STOPPED}},
-        .expectation = {.action = LabTransitionAction::STOP, .source = LabTransitionSource::PROGRAM},
-    },
-    {
-        .name = "refused lab start, then UI start",
-        .input = {.steps = {Step::EXPECT_LAB_START, Step::CANCEL_LAB, Step::RUNNING}},
-        .expectation = {.action = LabTransitionAction::START, .source = LabTransitionSource::UI},
-    },
-    {
-        .name = "a lab stop is not taken for a start",
-        .input = {.steps = {Step::EXPECT_LAB_STOP, Step::RUNNING}},
-        .expectation = {.action = LabTransitionAction::START, .source = LabTransitionSource::UI},
+        .name = "missing file is written at once",
+        .input = {.calls = {{0ms, Change::NOTHING}, {100ms, Change::FILE_GONE}}},
+        .expectation = {.written = {true, true}},
     },
 };
 
@@ -549,8 +599,11 @@ void add_tests_LabStateJson(UnitTestDatabase& database){
     for (const VideoCase& c : VIDEO_CASES){
         database.add<Test_LabVideoState>(c);
     }
-    for (const TransitionCase& c : TRANSITION_CASES){
-        database.add<Test_LabTransition>(c);
+    for (const SinceCase& c : SINCE_CASES){
+        database.add<Test_LabTransitionSince>(c);
+    }
+    for (const ThrottleCase& c : THROTTLE_CASES){
+        database.add<Test_LabStateThrottle>(c);
     }
 }
 

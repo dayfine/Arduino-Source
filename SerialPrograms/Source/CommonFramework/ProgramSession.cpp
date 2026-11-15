@@ -177,6 +177,15 @@ void ProgramSession::set_state(ProgramState state){
     m_state.store(state, std::memory_order_relaxed);
     m_listeners.run_method(&Listener::state_change, state);
 }
+void ProgramSession::mark_started(ActionSource source, std::optional<std::string> request_id){
+    const WallClock now = current_time();
+    m_last_state_change.store(now, std::memory_order_relaxed);
+    m_transitions.started(source, std::move(request_id), now);
+}
+void ProgramSession::set_finished(){
+    m_transitions.finished(current_time());
+    set_state(ProgramState::STOPPED);
+}
 void ProgramSession::push_stats(){
     m_listeners.run_method(
         &Listener::stats_update,
@@ -185,6 +194,7 @@ void ProgramSession::push_stats(){
     );
 }
 void ProgramSession::push_error(const std::string& message){
+    m_transitions.error_reported();
     m_listeners.run_method(&Listener::error, message);
 }
 
@@ -227,7 +237,7 @@ void ProgramSession::update_historical_stats_with_current(){
 }
 
 
-std::string ProgramSession::start_program(){
+std::string ProgramSession::start_program(ActionSource source, std::optional<std::string> request_id){
     m_logger.log("Received Program Start Request");
     std::lock_guard<Mutex> lg(m_lock);
 
@@ -249,7 +259,7 @@ std::string ProgramSession::start_program(){
 
         //  Now start the program.
         m_logger.log("Starting program...");
-        m_last_state_change.store(current_time(), std::memory_order_relaxed);
+        mark_started(source, std::move(request_id));
         set_state(ProgramState::RUNNING);
         m_program_thread = GlobalThreadPools::unlimited_realtime().dispatch_now_blocking(
             [this]{
@@ -284,7 +294,7 @@ std::string ProgramSession::start_program(){
         "Invalid State: " + std::to_string((int)state)
     );
 }
-std::string ProgramSession::stop_program(){
+std::string ProgramSession::stop_program(ActionSource source, std::optional<std::string> request_id){
     m_logger.log("Received Stop Request");
     {
         std::lock_guard<Mutex> lg(m_lock);
@@ -299,6 +309,7 @@ std::string ProgramSession::stop_program(){
             return "Program is already stopped.";
         case ProgramState::RUNNING:
             m_logger.log("Stopping program...");
+            m_transitions.stop_requested(source, std::move(request_id), current_time());
             set_state(ProgramState::STOPPING);
             break;
         case ProgramState::STOPPING:
@@ -449,7 +460,7 @@ void ProgramSession::run_program(){
         std::lock_guard<Mutex> lg(m_lock);
         push_stats();
         update_historical_stats_with_current();
-        set_state(ProgramState::STOPPED);
+        set_finished();
     }
 }
 
