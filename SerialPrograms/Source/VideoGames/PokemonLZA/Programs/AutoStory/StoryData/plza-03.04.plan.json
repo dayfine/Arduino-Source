@@ -40,7 +40,6 @@
     }
   },
   "execution": {
-    "save": "menu",
     "reload_when_chained": "always"
   }
 }

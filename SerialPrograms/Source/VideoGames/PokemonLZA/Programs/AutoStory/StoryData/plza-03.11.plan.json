@@ -41,8 +41,5 @@
       "source": "played step by step from a new game. Starts on 3F at the elevator in the Director's Office, as the reloaded autosave leaves the player: facing the desk, the objective marker beyond it, the elevator panel on the right. to_mable's legs are from there; after the ride the facing differs, so a run from 03.10 reloads the save first (reload_when_chained)"
     }
   },
-  "execution": {
-    "save": "menu",
-    "reload_when_chained": true
-  }
+  "execution": {}
 }
