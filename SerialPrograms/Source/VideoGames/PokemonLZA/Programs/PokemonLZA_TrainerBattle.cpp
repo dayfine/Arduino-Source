@@ -12,6 +12,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
+#include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_RunFromBattleDetector.h"
 #include "PokemonLZA_TrainerBattle.h"
 
 //#include <iostream>
@@ -137,6 +138,41 @@ void TrainerBattleState::run_lock_recovery(ConsoleHandle& console, ProController
     ssf_press_right_joystick(context, {-1, 0},  0ms, 1000ms, 0ms);
     pbf_mash_button(context, BUTTON_ZL, 1000ms);
     context.wait_for_all_requests();
+}
+
+
+int run_battle_until(
+    ProgramEnvironment& env,
+    ConsoleHandle& console,
+    ProControllerContext& context,
+    TrainerBattleState& battle_state,
+    VisualInferenceCallback& end_watcher,
+    Milliseconds mash_time,
+    const std::function<void(ProControllerContext&)>& after_failed_attack
+){
+    while (true){
+        RunFromBattleWatcher battle_menu(COLOR_GREEN, &console.overlay(), 10ms);
+        context.wait_for_all_requests();
+        int ret = run_until<ProControllerContext>(
+            console, context,
+            [mash_time](ProControllerContext& context){
+                pbf_mash_button(context, BUTTON_B, mash_time);
+            },
+            {battle_menu, end_watcher}
+        );
+        switch (ret){
+        case 0:
+            console.log("Detected battle menu.");
+            if (!battle_state.attempt_one_attack(env, console, context) && after_failed_attack){
+                after_failed_attack(context);
+            }
+            continue;
+        case 1:
+            return 0;
+        default:
+            return -1;
+        }
+    }
 }
 
 
