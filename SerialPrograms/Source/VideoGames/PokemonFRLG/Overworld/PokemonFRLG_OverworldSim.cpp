@@ -45,7 +45,6 @@ std::string_view sim_screen_name(SimScreen screen){
     return "?";
 }
 
-
 WallClock sim_wall_clock(Milliseconds time){
     return WallClock() + time;
 }
@@ -991,6 +990,7 @@ RouteCalls OverworldSimWalker::calls(){
     calls.watch_for_trainer = [this](const RouteStep& step, const TrainerCrossing& crossing){ return watch_for_trainer(step, crossing); };
     //  As the console: the walking sprite shows, not where.
     calls.landed_on = [this](const MapPosition&){ return !m_sim.state().surfing; };
+    calls.riding = [this](const RouteStep&){ return m_sim.state().on_bike; };
     return calls;
 }
 
