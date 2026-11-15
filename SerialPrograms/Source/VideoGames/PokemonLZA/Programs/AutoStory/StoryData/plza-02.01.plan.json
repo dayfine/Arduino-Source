@@ -11,7 +11,7 @@
       {
         "id": "battle_zone_to_brigitte",
         "kind": "game_action",
-        "why": "step 18: through the Battle Zone until Taunie's \"Almost there!\" and Brigitte's scene. Held legs, played on console B over CFR 2026-11-10: wait 3 s, +10 deg 4.25 s, L then right 6 s, L then right 6.5 s.",
+        "why": "step 18: through the Battle Zone until Taunie's \"Almost there!\" and Brigitte's scene: wait 3 s, +10 deg 4.25 s, L then right 6 s, L then right 6.5 s.",
         "action": "walk",
         "args": {
           "legs": [[10, 4250], [90, 6000], [90, 6500]],
@@ -40,7 +40,7 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split at the autosave after Brigitte (2026-11-10)"
+      "source": "played step by step from a new game; ends at the autosave after Brigitte"
     }
   },
   "execution": {
