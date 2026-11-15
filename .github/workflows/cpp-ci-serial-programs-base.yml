@@ -87,7 +87,7 @@ jobs:
           # Upstream master plus the BDSP AutoStory option-screen templates (22 PNGs the
           # AutoStoryResources test requires); drop this once they are merged upstream.
           repository: 'dayfine/Packages'
-          ref: '7d108a255bfbd4923af1fb0cf49245f2c2483594'
+          ref: 'b4d7d42516ab68aa84bdbcae52bdc0c9c8171445'
           path: 'Arduino-Source/Packages'
 
       - name: Prepare pinned BDSP map resources
