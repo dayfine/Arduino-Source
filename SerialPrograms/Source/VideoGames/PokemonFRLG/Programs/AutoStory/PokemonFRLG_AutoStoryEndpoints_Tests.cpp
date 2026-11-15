@@ -451,6 +451,11 @@ const AutoStoryEndpointCase AUTO_STORY_ENDPOINT_CASES[] = {
         .expectation = {.map = "FuchsiaCity_PokemonCenter_1F", .tile = {7, 4}, .facing = Direction::NORTH},
     },
     {
+        .name = "13.01 Cinnabar to the Pokemon Mansion: 1F and 2F up to 3F's room of holes, the statue switch pressed on the way",
+        .input = {.checkpoint = "13.01"},
+        .expectation = {.map = "PokemonMansion_3F", .tile = {19, 13}, .facing = Direction::SOUTH},
+    },
+    {
         .name = "13.02 Pokemon Mansion 3F's hole to 1F, 1F's stairs to B1F",
         .input = {.checkpoint = "13.02"},
         .expectation = {.map = "PokemonMansion_B1F", .tile = {34, 29}, .facing = Direction::WEST},
@@ -599,7 +604,6 @@ const EndpointExemption ENDPOINT_EXEMPTIONS[] = {
     {.checkpoint = "06.02", .reason = "Vermilion Gym's Cut tree and trash cans: PokemonFRLG_AutoStoryVermilionGym_Tests.cpp"},
     {.checkpoint = "09.01", .reason = "the poster guard's step ends on (11, 3), not (11, 2): PokemonFRLG_AutoStoryHideout_Tests.cpp"},
     {.checkpoint = "12.03", .reason = "Route 21's Surf landing on the sand bar needs the Surf state the generic walk lacks: PokemonFRLG_AutoStorySurf_Tests.cpp"},
-    {.checkpoint = "13.01", .reason = "red: the sim ends on 3F's (19, 13) facing north, the plan declares south; not the trainer turn (no trainer sees mansion_holes' legs: Simon wanders (6..8, 12..14), Braydon (22, 13) sees only (22, 14)), not yet root-caused"},
     {.checkpoint = "14.01", .reason = "ends on LEGS taps (the quiz machines): no declared end (checkpoint_end_pose())"},
     {.checkpoint = "14.02b", .reason = "the quiz doors' gates are shut on a fresh sim: PokemonFRLG_AutoStoryCinnabarGym_Tests.cpp"},
     {.checkpoint = "14.04b", .reason = "Celadon Gym's legs need the cut tree: PokemonFRLG_AutoStoryCeladonGym_Tests.cpp"},
