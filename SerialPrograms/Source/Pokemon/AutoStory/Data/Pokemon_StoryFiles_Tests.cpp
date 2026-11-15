@@ -71,7 +71,7 @@ std::vector<std::string> ids(const std::vector<StoryCheckpoint>& rows){
     return result;
 }
 
-//  "rows 01.00 01.01 | autosave 01.00 | chained 01.01 | always  | dev_only  | dev x.json"
+//  "rows 01.00 01.01 | titles Row Row | autosave 01.00 | unverified  | chained 01.01 | always  | dev_only  | dev x.json"
 std::string summary(const StoryData<StoryCheckpoint>& data){
     std::vector<std::string> dev;
     for (const auto& [name, path] : data.dev_files){
@@ -82,8 +82,9 @@ std::string summary(const StoryData<StoryCheckpoint>& data){
         titles.push_back(row.title);
     }
     return std::format(
-        "rows {} | titles {} | autosave {} | chained {} | always {} | dev_only {} | dev {}",
-        joined(ids(data.checkpoints)), joined(titles), joined(data.autosaves), joined(data.reload_when_chained),
+        "rows {} | titles {} | autosave {} | unverified {} | chained {} | always {} | dev_only {} | dev {}",
+        joined(ids(data.checkpoints)), joined(titles), joined(data.autosaves), joined(data.unverified_autosaves),
+        joined(data.reload_when_chained),
         joined(data.reload_always), joined(data.dev_only), joined(dev)
     );
 }
@@ -111,25 +112,25 @@ struct LoadCase{
 
 const EmbeddedJsonFile ROW_0 = {"test-01.00.plan", file_text("01.00", R"({"save": "autosave"})")};
 const EmbeddedJsonFile ROW_1 = {"test-01.01.plan", file_text("01.01", R"({"reload_when_chained": true, "note": 1})")};
-const EmbeddedJsonFile ROW_2 = {"test-01.02.plan", file_text("01.02", R"({"dev_only": true, "save": "menu"})")};
+const EmbeddedJsonFile ROW_2 = {"test-01.02.plan", file_text("01.02", R"({"dev_only": true, "save": "unverified"})")};
 
 StoryDevFile dev_file(std::string_view name, std::string text){
     return StoryDevFile{.name = std::string(name), .path = std::format("/dev/{}", name), .text = std::move(text)};
 }
 
 //  Named to come after 01.01 by file name, before it by id.
-const EmbeddedJsonFile ROW_0B_MENU = {"test-01.10.plan", file_text("01.00b", R"({"save": "menu"})")};
+const EmbeddedJsonFile ROW_0B_NO_SAVE = {"test-01.10.plan", file_text("01.00b", "{}")};
 
 const LoadCase LOAD_CASES[] = {
     {
         .name = "built-in files in order, their shared execution fields read",
         .input = {.builtin = {ROW_0, ROW_1, ROW_2}},
-        .expectation = {.summary = "rows 01.00 01.01 01.02 | titles Row Row Row | autosave 01.00 | chained 01.01 | always  | dev_only 01.02 | dev "},
+        .expectation = {.summary = "rows 01.00 01.01 01.02 | titles Row Row Row | autosave 01.00 | unverified 01.02 | chained 01.01 | always  | dev_only 01.02 | dev "},
     },
     {
         .name = "reload_when_chained always",
         .input = {.builtin = {ROW_0, {"test-01.01.plan", file_text("01.01", R"({"reload_when_chained": "always"})")}}},
-        .expectation = {.summary = "rows 01.00 01.01 | titles Row Row | autosave 01.00 | chained 01.01 | always 01.01 | dev_only  | dev "},
+        .expectation = {.summary = "rows 01.00 01.01 | titles Row Row | autosave 01.00 | unverified  | chained 01.01 | always 01.01 | dev_only  | dev "},
     },
     {
         .name = "a dev file replaces the built-in file of its name and is named",
@@ -137,7 +138,7 @@ const LoadCase LOAD_CASES[] = {
             .builtin = {ROW_0, ROW_1},
             .dev_files = {dev_file("test-01.01.plan.json", file_text("01.01", R"({"reload_when_chained": true})", "Retimed"))},
         },
-        .expectation = {.summary = "rows 01.00 01.01 | titles Row Retimed | autosave 01.00 | chained 01.01 | always  | dev_only  | dev test-01.01.plan.json@/dev/test-01.01.plan.json"},
+        .expectation = {.summary = "rows 01.00 01.01 | titles Row Retimed | autosave 01.00 | unverified  | chained 01.01 | always  | dev_only  | dev test-01.01.plan.json@/dev/test-01.01.plan.json"},
     },
     {
         .name = "a dev file that is not JSON fails naming its path",
@@ -170,9 +171,29 @@ const LoadCase LOAD_CASES[] = {
         .expectation = {.error = "dev_only is true or left out"},
     },
     {
-        .name = "a save other than autosave or menu fails",
+        .name = "save autosave",
+        .input = {.builtin = {ROW_0}},
+        .expectation = {.summary = "rows 01.00 | titles Row | autosave 01.00 | unverified  | chained  | always  | dev_only  | dev "},
+    },
+    {
+        .name = "save unverified",
+        .input = {.builtin = {{"test-01.00.plan", file_text("01.00", R"({"save": "unverified"})")}}},
+        .expectation = {.summary = "rows 01.00 | titles Row | autosave  | unverified 01.00 | chained  | always  | dev_only  | dev "},
+    },
+    {
+        .name = "save left out",
+        .input = {.builtin = {{"test-01.00.plan", file_text("01.00", "{}")}}},
+        .expectation = {.summary = "rows 01.00 | titles Row | autosave  | unverified  | chained  | always  | dev_only  | dev "},
+    },
+    {
+        .name = "save menu fails",
+        .input = {.builtin = {{"test-01.00.plan", file_text("01.00", R"({"save": "menu"})")}}},
+        .expectation = {.error = "save is \"autosave\", \"unverified\" or left out"},
+    },
+    {
+        .name = "a save other than autosave or unverified fails",
         .input = {.builtin = {{"test-01.00.plan", file_text("01.00", R"({"save": "card"})")}}},
-        .expectation = {.error = "save is \"autosave\", \"menu\" or left out"},
+        .expectation = {.error = "save is \"autosave\", \"unverified\" or left out"},
     },
     {
         .name = "reload_when_chained false fails",
@@ -181,22 +202,27 @@ const LoadCase LOAD_CASES[] = {
     },
     {
         .name = "reload_when_chained after a row that does not autosave fails",
-        .input = {.builtin = {{"test-01.00.plan", file_text("01.00", R"({"save": "menu"})")}, ROW_1}},
+        .input = {.builtin = {{"test-01.00.plan", file_text("01.00", "{}")}, ROW_1}},
+        .expectation = {.error = "test-01.01.plan: reload_when_chained after a checkpoint that does not end on the game's autosave"},
+    },
+    {
+        .name = "reload_when_chained after an unverified autosave fails",
+        .input = {.builtin = {{"test-01.00.plan", file_text("01.00", R"({"save": "unverified"})")}, ROW_1}},
         .expectation = {.error = "test-01.01.plan: reload_when_chained after a checkpoint that does not end on the game's autosave"},
     },
     {
         .name = "a dev-only reload after a dev-only autosave row, the user's row before it not autosaving, loads",
         .input = {.builtin = {
-            {"test-01.00.plan", file_text("01.00", R"({"save": "menu"})")},
+            {"test-01.00.plan", file_text("01.00", "{}")},
             {"test-01.005.plan", file_text("01.005", R"({"dev_only": true, "save": "autosave"})")},
             {"test-01.01.plan", file_text("01.01", R"({"dev_only": true, "reload_when_chained": true})")},
         }},
-        .expectation = {.summary = "rows 01.00 01.005 01.01 | titles Row Row Row | autosave 01.005 | chained 01.01 | always  | dev_only 01.005 01.01 | dev "},
+        .expectation = {.summary = "rows 01.00 01.005 01.01 | titles Row Row Row | autosave 01.005 | unverified  | chained 01.01 | always  | dev_only 01.005 01.01 | dev "},
     },
     {
         .name = "reload_when_chained after a dev-only autosave row, the user's row before it not autosaving, fails",
         .input = {.builtin = {
-            {"test-01.00.plan", file_text("01.00", R"({"save": "menu"})")},
+            {"test-01.00.plan", file_text("01.00", "{}")},
             {"test-01.005.plan", file_text("01.005", R"({"dev_only": true, "save": "autosave"})")},
             ROW_1,
         }},
@@ -209,7 +235,7 @@ const LoadCase LOAD_CASES[] = {
             {"test-01.005.plan", file_text("01.005", R"({"dev_only": true, "save": "autosave"})")},
             ROW_1,
         }},
-        .expectation = {.summary = "rows 01.00 01.005 01.01 | titles Row Row Row | autosave 01.00 01.005 | chained 01.01 | always  | dev_only 01.005 | dev "},
+        .expectation = {.summary = "rows 01.00 01.005 01.01 | titles Row Row Row | autosave 01.00 01.005 | unverified  | chained 01.01 | always  | dev_only 01.005 | dev "},
     },
     {
         .name = "reload_when_chained on the first row fails",
@@ -224,17 +250,17 @@ const LoadCase LOAD_CASES[] = {
     {
         .name = "the game's order, its reload after the autosave row it follows there",
         .input = {.builtin = {ROW_1, ROW_0}, .ordered_by_id = true},
-        .expectation = {.summary = "rows 01.00 01.01 | titles Row Row | autosave 01.00 | chained 01.01 | always  | dev_only  | dev "},
+        .expectation = {.summary = "rows 01.00 01.01 | titles Row Row | autosave 01.00 | unverified  | chained 01.01 | always  | dev_only  | dev "},
     },
     {
         .name = "the game's order, its reload after a row that does not autosave there fails",
-        .input = {.builtin = {ROW_0, ROW_1, ROW_0B_MENU}, .ordered_by_id = true},
+        .input = {.builtin = {ROW_0, ROW_1, ROW_0B_NO_SAVE}, .ordered_by_id = true},
         .expectation = {.error = "test-01.01.plan: reload_when_chained after a checkpoint that does not end on the game's autosave"},
     },
     {
         .name = "every id in the game's story order loads",
         .input = {.builtin = {ROW_0, ROW_1}, .story_order = std::vector<std::string>{"01.00", "01.01"}},
-        .expectation = {.summary = "rows 01.00 01.01 | titles Row Row | autosave 01.00 | chained 01.01 | always  | dev_only  | dev "},
+        .expectation = {.summary = "rows 01.00 01.01 | titles Row Row | autosave 01.00 | unverified  | chained 01.01 | always  | dev_only  | dev "},
     },
     {
         .name = "a built-in file whose id is not in the game's story order fails naming the file and the id",
@@ -248,7 +274,7 @@ const LoadCase LOAD_CASES[] = {
             .dev_files = {dev_file("test-01.01.plan.json", file_text("01.01", R"({"reload_when_chained": true})", "Retimed"))},
             .story_order = std::vector<std::string>{"01.00", "01.01"},
         },
-        .expectation = {.summary = "rows 01.00 01.01 | titles Row Retimed | autosave 01.00 | chained 01.01 | always  | dev_only  | dev test-01.01.plan.json@/dev/test-01.01.plan.json"},
+        .expectation = {.summary = "rows 01.00 01.01 | titles Row Retimed | autosave 01.00 | unverified  | chained 01.01 | always  | dev_only  | dev test-01.01.plan.json@/dev/test-01.01.plan.json"},
     },
     {
         .name = "a dev file whose id is not in the game's story order fails naming its path and the id",
