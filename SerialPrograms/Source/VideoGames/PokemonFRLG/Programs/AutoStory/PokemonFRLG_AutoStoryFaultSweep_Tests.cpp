@@ -358,9 +358,7 @@ RowRun run_row(
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     std::vector<MapData> maps = row_maps(row);
     auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, at.facing.value_or(Direction::SOUTH), script);
-    //  The run flags as the console's run state has them: the row's start
-    //  flags, then each step's flags_after (17.03: Takashi stands where he
-    //  walked up to after his battle, trainer_at).
+    //  The run's flags: the start's, then each step's flags_after (trainer_at).
     std::set<std::string> flags = start_flag_set(row);
     const auto add = [&out](const SimState& state){
         out.time += state.time;
