@@ -919,7 +919,11 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonTools/ScreenEvents/ScreenEvents_Tests.h
     Source/CommonTools/ScreenEvents/ScreenEventTypes.h
     Source/CommonTools/ScreenEvents/ScreenFades.h
+    Source/CommonTools/ScreenMachine/ScreenMachine.cpp
+    Source/CommonTools/ScreenMachine/ScreenMachine.h
     Source/CommonTools/ScreenMachine/ScreenObservation.h
+    Source/CommonTools/ScreenMachine/StepTrace.cpp
+    Source/CommonTools/ScreenMachine/StepTrace.h
     Source/CommonTools/StartupChecks/StartProgramChecks.cpp
     Source/CommonTools/StartupChecks/StartProgramChecks.h
     Source/CommonTools/StartupChecks/VideoResolutionCheck.cpp
@@ -1476,6 +1480,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage.h
     Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage_Tests.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.cpp
