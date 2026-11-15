@@ -1,0 +1,46 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.04",
+    "title": "Pokemon Center, the Pokedex",
+    "start": {
+      "place": "LumioseCity"
+    },
+    "events": [
+      {
+        "id": "into_pokemon_center",
+        "kind": "game_action",
+        "why": "step 53: into the Pokemon Center, to the nurse's \"A Talk\". The last turn (\"right\") had no angle recorded: 90 is a guess. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 3000], [20, 2000], [-90, 2000], [90, 0]]
+        }
+      },
+      {
+        "id": "talk_to_nurse",
+        "kind": "talk",
+        "why": "step 53: A at the nurse"
+      },
+      {
+        "id": "pokedex_app",
+        "kind": "game_action",
+        "why": "step 54: the Pokedex app (\"Ready!\"), Chikorita's entry, B on its screen",
+        "action": "talk_to_pokedex_screen"
+      },
+      {
+        "id": "after_pokedex",
+        "kind": "scene",
+        "why": "step 55: the nurse's wrap-up, Taunie outside; autosave"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "menu",
+    "reload_when_chained": "always"
+  }
+}
