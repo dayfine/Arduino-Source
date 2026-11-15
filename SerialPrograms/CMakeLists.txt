@@ -66,6 +66,8 @@ find_package(Threads REQUIRED)
 # Define a toggle option (ON by default)
 option(COMMAND_LINE_EXE "Build the optional executable" ON)
 
+# Build SerialProgramsTests, which runs the unit tests without the GUI.
+option(TEST_RUNNER_EXE "Build the unit test executable, SerialProgramsTests" ON)
 # Build the _pa_core Python (pybind11) module; see Source/PythonBindings/README.md.
 # OFF by default because it needs a Python interpreter with development headers
 # and pybind11 (a system package or `pip install pybind11`).
@@ -243,6 +245,27 @@ if (APPLE)
     # https://stackoverflow.com/questions/53560288/how-to-create-a-macos-app-bundle-with-cmake
     # https://cmake.org/cmake/help/latest/command/add_executable.html
     add_executable(SerialPrograms MACOSX_BUNDLE ${SerialPrograms_ICON} ${EXECUTABLE_SOURCES})
+    # Compiled identity survives Finder/TCC relaunch without command-line arguments.
+    set(PA_LAB_PROFILE "" CACHE STRING "Bind this lab binary to one macOS settings profile")
+    if(NOT PA_LAB_PROFILE STREQUAL "")
+        if(NOT PA_LAB_PROFILE MATCHES "^[A-Za-z0-9_][A-Za-z0-9_-]*$")
+            message(FATAL_ERROR "PA_LAB_PROFILE must contain only ASCII letters, digits, '_' or '-'.")
+        endif()
+        target_compile_definitions(SerialPrograms PRIVATE PA_LAB_PROFILE="${PA_LAB_PROFILE}")
+    endif()
+
+    # Receipt binds packaging to the linked binary, not just a CMake cache value.
+    set_property(TARGET SerialPrograms APPEND PROPERTY LINK_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/LabBuildReceipt.cmake")
+    add_custom_command(TARGET SerialPrograms POST_BUILD
+        COMMAND "${CMAKE_COMMAND}"
+            "-DBINARY=$<TARGET_FILE:SerialPrograms>"
+            "-DPROFILE=${PA_LAB_PROFILE}"
+            "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/.."
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/LabBuildReceipt.cmake"
+        VERBATIM
+    )
+
     set_target_properties(SerialPrograms PROPERTIES
         BUNDLE True
         MACOSX_BUNDLE_GUI_IDENTIFIER PokemonAutomation.SerialPrograms
@@ -373,6 +396,10 @@ if(NOT EXISTS "${DEST_DIR}/Scripts")
         COMMAND ${CMAKE_COMMAND} -E echo "[Deploy] Copying scripts"
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${SCRIPTS_DIR}" "${DEST_DIR}/Scripts"
     )
+endif()
+
+if(TEST_RUNNER_EXE)
+    include(Source/Tests/TestRunnerExecutable.cmake)
 endif()
 
 if (WIN32)
@@ -950,6 +977,15 @@ if(COMMAND_LINE_EXE)
     # Add command-line executable (GUI-free) from subdirectory
     include(Source/CommandLine/CommandLineExecutable.cmake)
 endif()
+
+# The registered cross-process tests use this GUI-free native runner as their child.
+add_subdirectory(Source/CommonFramework/Devices)
+if(WIN32)
+    set_target_properties(LabDeviceAccessTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${WIN_DEPLOY_DIR}")
+else()
+    set_target_properties(LabDeviceAccessTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "$<TARGET_FILE_DIR:SerialPrograms>")
+endif()
+add_dependencies(SerialPrograms LabDeviceAccessTests)
 
 if(PA_PYTHON_BINDINGS)
     # Python bindings (GUI-free) from subdirectory

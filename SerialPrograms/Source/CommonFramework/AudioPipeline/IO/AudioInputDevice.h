@@ -17,6 +17,7 @@ using NativeAudioSource = QAudioSource;
 #include "Common/Cpp/StreamConverters.h"
 #include "Kernels/AudioPipeline/Kernels_AudioPipeline.h"
 #include "CommonFramework/AudioPipeline/AudioFormat.h"
+#include "CommonFramework/Devices/LabDeviceRuntime.h"
 
 class QAudioFormat;
 
@@ -87,6 +88,7 @@ protected:
 
 
 private:
+    std::unique_ptr<LabDeviceLease> m_device_lease;
     std::unique_ptr<NativeAudioSource> m_source;
     Kernels::AudioPipeline::SampleFormat m_sample_type;
     size_t m_sample_rate;

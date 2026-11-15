@@ -119,6 +119,12 @@ GlobalSettings::GlobalSettings()
         LockMode::UNLOCK_WHILE_RUNNING,
         false
     )
+    , CONSOLE_SETTINGS_COLLAPSED(
+        "<b>Start with console settings collapsed:</b><br>"
+        "Each program's \"Console N Settings\" box starts folded up. Click its title to open it.",
+        LockMode::UNLOCK_WHILE_RUNNING,
+        false
+    )
     , KEYBOARD_CONTROLS_LAYOUT(
         CONSTRUCT_TOKEN,
         "<b>System Keyboard Layout:</b><br>"
@@ -205,6 +211,7 @@ GlobalSettings::GlobalSettings()
     PA_ADD_OPTION(WINDOW_SIZE);
     PA_ADD_OPTION(LOG_WINDOW_SIZE);
     PA_ADD_OPTION(LOG_WINDOW_STARTUP);
+    PA_ADD_OPTION(CONSOLE_SETTINGS_COLLAPSED);
 
     PA_ADD_OPTION(KEYBOARD_CONTROLS_LAYOUT);
     PA_ADD_OPTION(DEVICE_ALIASES);

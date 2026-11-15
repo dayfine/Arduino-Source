@@ -1,0 +1,21 @@
+name: Lab instance tools
+on:
+  pull_request:
+    paths:
+      - 'devtools/lab/**'
+      - 'SerialPrograms/cmake/LabBuildReceipt.cmake'
+      - 'SerialPrograms/CMakeLists.txt'
+      - '.github/workflows/lab-instance-tools.yml'
+  workflow_dispatch:
+jobs:
+  offline-preparation:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python3 -m unittest discover -s devtools/lab -p 'test_lab_instance.py' -v

@@ -34,6 +34,7 @@
 #include "CommonFramework/Options/Environment/ThemeSelectorOption.h"
 #include "CommonFramework/Options/QtWidget/WallpaperWidget.h"
 #include "CommonFramework/Windows/DpiScaler.h"
+#include "NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_LabCommands.h"
 #include "WindowTracker.h"
 #include "ButtonDiagram.h"
 #include "MainWindow.h"
@@ -288,10 +289,26 @@ MainWindow::MainWindow(QWidget* parent)
     GlobalSettings::instance().WALLPAPER.add_listener(*this);
     SystemSleepController::instance().add_listener(*this);
     update_wallpaper();
+
+    //  Let lab scripts drive the app through files, if the lab folder exists.
+    //  See LabChannel.h. Nothing runs otherwise.
+    m_lab_channel = LabChannel::start_if_enabled(
+        LabChannelCallbacks{
+            .current_panel = [this]{ return m_current_panel.get(); },
+            .select_program = [this](const std::string& identifier){
+                return m_program_list->select_program(identifier);
+            },
+        },
+        std::make_unique<NintendoSwitch::SwitchLabCommands>()
+    );
+    if (m_lab_channel){
+        m_lab_channel->set_panel(m_current_panel.get());
+    }
 //    cout << "Done constructing" << endl;
 }
 MainWindow::~MainWindow(){
     close_panel();
+    m_lab_channel.reset();
     SystemSleepController::instance().remove_listener(*this);
     GlobalSettings::instance().WINDOW_SIZE->WIDTH.remove_listener(*this);
     GlobalSettings::instance().WINDOW_SIZE->HEIGHT.remove_listener(*this);
@@ -359,6 +376,9 @@ void MainWindow::close_panel() noexcept{
     if (m_current_panel == nullptr){
         return;
     }
+    if (m_lab_channel){
+        m_lab_channel->set_panel(nullptr);
+    }
 
     try{
         m_current_panel->save_settings();
@@ -410,6 +430,9 @@ void MainWindow::load_panel(
         m_current_panel_descriptor = std::move(descriptor);
         m_current_panel = std::move(panel);
         m_right_panel_layout->addWidget(m_current_panel_widget);
+        if (m_lab_channel){
+            m_lab_channel->set_panel(m_current_panel.get());
+        }
         return;
     }catch (Exception& e){
         e.log(global_logger_tagged());

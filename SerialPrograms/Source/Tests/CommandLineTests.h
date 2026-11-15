@@ -5,7 +5,9 @@
  *  Run all the unit tests from the command line, without launching the GUI.
  *
  *  How to run:
- *  Launch the program with the argument "--command-line-test-mode", or set
+ *  Run the SerialProgramsTests executable (Tests/TestRunner_Main.cpp): it runs only the tests,
+ *  with no GUI, no settings and no device scans, and takes "--filter <text>" and "--list".
+ *  Or launch the program with the argument "--command-line-test-mode", or set
  *  "20-GlobalSettings": "COMMAND_LINE_TESTS": "RUN" to true in SerialPrograms-Settings.json.
  *
  *  How the tests work:
@@ -32,11 +34,6 @@
  *  loaded, no test runs and the program returns 1. See SerialPrograms/Source/Tests/ImageUnitTest.h
  *  and Common/Cpp/TestRunners/TestImageDistortionManager.h.
  *
- *  Substring filter:
- *  Pass "--test-substring <value>" to only run the tests whose name contains <value> (case
- *  sensitive, the same matching as the GUI's "Run All Tests Containing This Substring" mode).
- *  Without it, all the tests are run. An empty value runs all the tests too.
- *
  *  The same tests can also be run from the GUI with the "Unit Test Runner" program, which can
  *  run a single test, the tests matching a substring, or all tests.
  */
@@ -45,9 +42,9 @@
 #ifndef PokemonAutomation_Tests_CommandLineTests_H
 #define PokemonAutomation_Tests_CommandLineTests_H
 
-
-#include <string>
-
+#include <cstddef>
+#include <span>
+#include <string_view>
 
 namespace PokemonAutomation{
 
@@ -56,10 +53,13 @@ namespace PokemonAutomation{
 // This function is only called when GlobalSettings::COMMAND_LINE_TEST_MODE is true.
 // `augment_color_distortions` is set by the "--augment-color-distortions" argument: also run image tests
 // with color distortion augmentation, using the distortion data from the test repo.
-// `test_substring` is set by the "--test-substring <value>" argument: only run the tests whose name
-// contains that substring. An empty string runs all the tests.
 // Return 0 if all tests are passed, and 1 if any test failed or the distortion data can't be loaded.
-int run_command_line_tests(bool augment_color_distortions, const std::string& test_substring);
+int run_command_line_tests(bool augment_color_distortions);
+
+// Run the unit tests whose names contain any of `filters`, or all of them if `filters` is empty,
+// and print the results to stdout. Return the number of failed tests, or 1 if
+// `augment_color_distortions` is set and the distortion data can't be loaded.
+size_t run_unit_tests(bool augment_color_distortions, std::span<const std::string_view> filters);
 
 
 

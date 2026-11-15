@@ -141,21 +141,14 @@ void CameraVideoSource::init(
         ", FPS: " + std::to_string(m_fps)
     );
 
-    m_camera.reset(new QCameraThread(m_logger, *device, format));
+    m_camera = QCameraThread::try_create(m_logger, *device, format);
+    if (!m_camera){
+        return;
+    }
 
     m_capture_session.reset(new QMediaCaptureSession());
     m_capture_session->setCamera(&m_camera->camera());
 
-#if 0
-    connect(m_camera.get(), &QCamera::errorOccurred, this, [&](){
-        if (m_camera->error() == QCamera::NoError){
-            return;
-        }
-        m_logger.log("QCamera error: " + m_camera->errorString().toStdString(), COLOR_RED);
-    });
-
-    m_camera->start();
-#endif
 }
 
 
