@@ -16,6 +16,7 @@
 #include "Pokemon_StoryEvents_Tests.h"
 #include "Pokemon_StoryFailureClasses_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
+#include "Pokemon_StorySegmentSaves_Tests.h"
 #include "Pokemon_StorySegments_Tests.h"
 #include "Pokemon_StoryStepExecutor_Tests.h"
 #include "Types/Pokemon_StoryActionArg_Tests.h"
@@ -34,6 +35,7 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryStepExecutor(database);
     add_tests_StoryStepJson(database);
     add_tests_StorySegments(database);
+    add_tests_StorySegmentSaves(database);
     add_tests_StoryRunTypes(database);
 }
 
