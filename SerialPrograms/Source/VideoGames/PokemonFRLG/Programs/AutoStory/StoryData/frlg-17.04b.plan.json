@@ -14,6 +14,12 @@
       ],
       "facing": "north"
     },
+    "start_flags": [
+      "trainer_beaten:ViridianCity_Gym/cooltrainer_m@13,7",
+      "trainer_at:ViridianCity_Gym/cooltrainer_m@13,7=14,7",
+      "trainer_beaten:ViridianCity_Gym/black_belt@10,2",
+      "trainer_at:ViridianCity_Gym/black_belt@10,2=10,4"
+    ],
     "events": [
       {
         "id": "gym_exit",
