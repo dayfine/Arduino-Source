@@ -5,15 +5,12 @@
  */
 
 #include <format>
-#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon_AuthoredCheckpointJson.h"
-#ifndef PA_STORY_DATA_STANDALONE
 #include "Pokemon_AuthoredCheckpointJson_Tests.h"
-#endif
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -126,8 +123,6 @@ std::string check_case(const AuthoredCase& test){
 }
 
 
-#ifndef PA_STORY_DATA_STANDALONE
-
 class AuthoredJsonTest : public UnitTest{
 public:
     explicit AuthoredJsonTest(AuthoredCase test)
@@ -144,13 +139,9 @@ private:
     AuthoredCase m_case;
 };
 
-#endif
-
 
 } // namespace
 
-
-#ifndef PA_STORY_DATA_STANDALONE
 
 void add_tests_AuthoredCheckpointJson(UnitTestDatabase& database){
     for (const AuthoredCase& test : CASES){
@@ -158,24 +149,7 @@ void add_tests_AuthoredCheckpointJson(UnitTestDatabase& database){
     }
 }
 
-#endif
-
 
 
 } // namespace Pokemon
 } // namespace PokemonAutomation
-
-
-#ifdef PA_STORY_DATA_STANDALONE
-
-int main(){
-    int failed = 0;
-    for (const auto& test : PokemonAutomation::Pokemon::CASES){
-        const std::string error = PokemonAutomation::Pokemon::check_case(test);
-        std::cout << test.name << ": " << (error.empty() ? "PASS" : error) << '\n';
-        failed += !error.empty();
-    }
-    return failed != 0;
-}
-
-#endif
