@@ -64,6 +64,11 @@ struct StoryEnv{
     //  The run's check level (StoryRunOptions::CHECKS): how much the steps
     //  read to confirm what they did.
     Pokemon::StoryCheckLevel checks = Pokemon::StoryCheckLevel::DEFAULT;
+    //  Whether observe() saves a frame each time the look's events change
+    //  (and every 2 s) under SCREENSHOTS_PATH()/PLZA-capture/, to find the
+    //  screens the detectors miss. Off by default: a long run writes
+    //  thousands of images.
+    bool capture_looks = false;
 };
 
 
@@ -147,9 +152,10 @@ private:
     MainMissionBannerDetector m_mission_banner;
     MissionCompleteDetector m_mission_complete;
     VideoSnapshot m_previous;
-    //  Every look's events, and a frame each time they change (and every
-    //  CAPTURE_EVERY), go to the log and a capture folder: the record of
-    //  what the detectors saw, to find the screens they miss.
+    //  With StoryEnv::capture_looks: every look's events, and a frame each
+    //  time they change (and every CAPTURE_EVERY), go to the log and a
+    //  capture folder: the record of what the detectors saw, to find the
+    //  screens they miss.
     void capture(const Pokemon::Observation<Pokemon::ZonePose>& look);
     std::string m_capture_folder;
     std::optional<std::string> m_captured_text;

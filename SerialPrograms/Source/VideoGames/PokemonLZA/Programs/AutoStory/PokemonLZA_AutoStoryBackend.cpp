@@ -145,7 +145,7 @@ constexpr Milliseconds CAPTURE_EVERY(2000);
 } // namespace
 
 void PlzaConsoleBackend::capture(const Pokemon::Observation<Pokemon::ZonePose>& look){
-    if (!look.frame || !look.frame->frame){
+    if (!m_env.capture_looks || !look.frame || !look.frame->frame){
         return;
     }
     const std::string text = look_text(look);
@@ -227,7 +227,8 @@ void story_turn(PlzaBackend& backend, double degrees){
 PlzaReader heading_reader(StoryEnv& env){
     return [&env](PlzaBackend&, Pokemon::Observation<Pokemon::ZonePose>& observation){
         const double heading = get_facing_direction(env.env.console, env.context);
-        observation.readings[std::string(Pokemon::STORY_HEADING)] = (int)std::lround(heading) % 360;
+        const int degrees = static_cast<int>(std::lround(heading));
+        observation.readings[std::string(Pokemon::STORY_HEADING)] = ((degrees % 360) + 360) % 360;
     };
 }
 

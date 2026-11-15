@@ -11,7 +11,7 @@
       {
         "id": "chase_pancham",
         "kind": "game_action",
-        "why": "step 11: after Pancham, through the archway, around the starters into the scene. NEEDS TUNING. Measured 2026-11-08 on console B, walk not run. The sidestep around the starters had no time recorded: 1000 ms is a placeholder. The first turn is from where the player faces (L first), as from the save; a run from 01.01 reloads the save first (reload_when_chained), since 01.01's scenes leave the player turned to the boy and the chase went the wrong way from there (console B, 2026-11-13).",
+        "why": "step 11: after Pancham, through the archway, around the starters into the scene. A 0 ms leg only turns. The sidestep around the starters (1000 ms) is not measured yet. The first turn is from where the player faces (L first), as from the save; a run from 01.01 reloads the save first (reload_when_chained), since 01.01's scenes leave the player turned to the boy.",
         "action": "walk",
         "args": {
           "legs": [[-15, 4000], [-75, 3500], [90, 9000], [-90, 0], [90, 1000], [-90, 4000]]
@@ -41,7 +41,7 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 01.01 at the MAIN MISSION 01 autosave (2026-11-10)"
+      "source": "played step by step from a new game; starts at the MAIN MISSION 01 autosave"
     }
   },
   "execution": {

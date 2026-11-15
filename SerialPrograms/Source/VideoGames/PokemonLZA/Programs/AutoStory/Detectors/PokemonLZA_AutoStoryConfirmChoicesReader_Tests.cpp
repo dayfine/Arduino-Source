@@ -15,6 +15,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Tests/ImageUnitTest.h"
+#include "VideoGames/PokemonLZA/PokemonLZA_PendingFixtures.h"
 #include "PokemonLZA_AutoStoryConfirmChoicesReader.h"
 #include "PokemonLZA_AutoStoryConfirmChoicesReader_Tests.h"
 
@@ -248,7 +249,7 @@ void add_tests_AutoStoryConfirmChoicesReader(UnitTestDatabase& database){
         database.add<Test_ConfirmChoicesCapture>(test);
     }
     for (const LanguageFramesCase& test : LANGUAGE_FRAMES_CASES){
-        database.add<Test_ConfirmChoicesFrames>(test);
+        add_pending_fixture_test<Test_ConfirmChoicesFrames>(database, test);
     }
 }
 

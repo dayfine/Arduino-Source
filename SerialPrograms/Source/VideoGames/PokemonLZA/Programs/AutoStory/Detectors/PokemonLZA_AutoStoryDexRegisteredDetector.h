@@ -23,8 +23,7 @@ namespace PokemonLZA{
 //  The ring's left and right arcs cyan (x 852-872 and 1100-1120, y 140-220
 //  on 1920x1080) and the slate "No.###" tag under it (x 845-945, y
 //  268-298) with its white text. Only shapes and colors are read, so any
-//  language matches. Tuned on Mareep's banner: the
-//  rule matched its 2 frames and none of 553 other console frames.
+//  language matches.
 class DexRegisteredDetector : public StaticScreenDetector{
 public:
     explicit DexRegisteredDetector(Color color = COLOR_CYAN);
