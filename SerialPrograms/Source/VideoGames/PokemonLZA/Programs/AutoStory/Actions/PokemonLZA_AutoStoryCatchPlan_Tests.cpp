@@ -18,6 +18,7 @@
 #include "PokemonLZA_AutoStoryBracketWatch.h"
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 #include "PokemonLZA_AutoStoryCatchPlan_Tests.h"
+#include "PokemonLZA_AutoStorySpeciesCheck.h"
 #include "PokemonLZA_AutoStoryZone1Road.h"
 
 namespace PokemonAutomation{
@@ -203,18 +204,6 @@ struct SpeciesCheckCase{
     Expectation expectation;
 };
 
-std::string tally_text(SpeciesTally tally){
-    switch (tally){
-    case SpeciesTally::BANNERS:
-        return "banners";
-    case SpeciesTally::INFERRED:
-        return "inferred";
-    case SpeciesTally::SHORT:
-        return "short";
-    }
-    return "?";
-}
-
 //  2 new species wanted, 5 in the Pokedex.
 const SpeciesCheckCase SPECIES_CHECK_CASES[] = {
     {
@@ -285,7 +274,7 @@ public:
         const SpeciesCheckCase::Expectation& want = m_case.expectation;
         const SpeciesTally tally = species_tally(in.patrol, 2);
         if (tally != want.tally){
-            return std::format("Expected the tally {}, got {}.", tally_text(want.tally), tally_text(tally));
+            return std::format("Expected the tally {}, got {}.", species_tally_text(want.tally), species_tally_text(tally));
         }
         const bool read = read_dex_count(in.checks, tally);
         if (read != want.read_dex){

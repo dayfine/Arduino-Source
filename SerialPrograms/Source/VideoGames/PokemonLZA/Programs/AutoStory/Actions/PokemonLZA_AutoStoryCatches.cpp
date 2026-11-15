@@ -27,6 +27,7 @@
 #include "PokemonLZA_AutoStoryDialogs.h"
 #include "PokemonLZA_AutoStoryMarkerWalks.h"
 #include "PokemonLZA_AutoStoryScenes.h"
+#include "PokemonLZA_AutoStorySpeciesCheck.h"
 #include "PokemonLZA_AutoStoryZone1Road.h"
 
 namespace PokemonAutomation{
@@ -789,19 +790,6 @@ GrassCatches patrol_and_catch(
         result += stop;
     }
     return result;
-}
-
-//  The tally, for the log.
-std::string_view species_tally_text(SpeciesTally tally){
-    switch (tally){
-    case SpeciesTally::BANNERS:
-        return "all by the banner";
-    case SpeciesTally::INFERRED:
-        return "not all by the banner";
-    case SpeciesTally::SHORT:
-        return "short";
-    }
-    return "?";
 }
 
 //  The Pokedex's count of registered species. Not read yet: there is no
