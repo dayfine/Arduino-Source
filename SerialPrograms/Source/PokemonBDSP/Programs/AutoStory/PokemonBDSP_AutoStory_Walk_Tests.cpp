@@ -384,6 +384,77 @@ UnitTestResult test_view_shift(Logger&){
         return true;
 }
 
+//  StillTapFrames: a tap read as still whose change is near the walk's
+//  steps saves its frames, at most `max_pairs` a walk.
+struct StillTapFramesTestCase{
+    std::string name;
+    struct Input{
+        size_t max_pairs;
+        std::vector<TapChunk> taps;
+    };
+    Input input;
+    struct Expectation{
+        std::vector<size_t> saved_chunks;
+    };
+    Expectation expectation;
+};
+
+//  A tap of a walk whose steps changed the screen by 40.
+TapChunk tap_of(size_t chunk, double change, bool moved){
+    return {.chunk = chunk, .change = change, .largest = 40, .moved = moved};
+}
+
+std::vector<StillTapFramesTestCase> still_tap_frames_cases(){
+    return {
+        {
+            "a still tap with 60% of a step's change is saved",
+            {.max_pairs = 10, .taps = {tap_of(1, 40, true), tap_of(2, 24, false)}},
+            {.saved_chunks = {2}},
+        },
+        {
+            "a bump well under a step's change is not",
+            {.max_pairs = 10, .taps = {tap_of(1, 40, true), tap_of(2, 13, false)}},
+            {.saved_chunks = {}},
+        },
+        {
+            "a moved tap is not",
+            {.max_pairs = 10, .taps = {tap_of(1, 40, true)}},
+            {.saved_chunks = {}},
+        },
+        {
+            "no more than max_pairs a walk",
+            {.max_pairs = 2, .taps = {tap_of(1, 40, false), tap_of(2, 40, false), tap_of(3, 40, false)}},
+            {.saved_chunks = {1, 2}},
+        },
+    };
+}
+
+//  The chunks whose frames StillTapFrames saved, through a fake save hook.
+std::vector<size_t> still_tap_frames_saved(const StillTapFramesTestCase::Input& input){
+    const ImageRGB32 frame(16, 9);
+    std::vector<size_t> saved;
+    StillTapFrames frames(
+        [&saved](const ImageViewRGB32&, const ImageViewRGB32&, size_t chunk){
+            saved.push_back(chunk);
+        },
+        input.max_pairs
+    );
+    for (const TapChunk& tap : input.taps){
+        frames.keep_if_suspect(tap, frame, frame);
+    }
+    return saved;
+}
+
+UnitTestResult test_still_tap_frames(Logger&){
+    for (const StillTapFramesTestCase& item : still_tap_frames_cases()){
+        const std::vector<size_t> saved = still_tap_frames_saved(item.input);
+        if (saved != item.expectation.saved_chunks){
+            return std::format("{}: saved {} pair(s), expected {}.", item.name, saved.size(), item.expectation.saved_chunks.size());
+        }
+    }
+    return true;
+}
+
 //  pokemon_center_on_screen(): the Center's warm floor in a room. r79 read
 //  Jubilife's yellow plaza as a Center and called a won battle lost.
 UnitTestResult test_pokemon_center_on_screen(Logger&){
@@ -552,6 +623,10 @@ const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
     },
     {
         .input = {"a step scrolls the view; moving scenery does not", test_view_shift},
+        .expectation = {},
+    },
+    {
+        .input = {"a tap read still near a step's change keeps its frames", test_still_tap_frames},
         .expectation = {},
     },
     {

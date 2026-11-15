@@ -7,8 +7,13 @@
  */
 
 #include <algorithm>
+#include <format>
+#include <string_view>
 #include <utility>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/PrettyPrint.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
@@ -170,10 +175,32 @@ ViewShift walk_view_shift(const ImageViewRGB32& before, const ImageViewRGB32& af
 }
 
 bool tap_moved(const ImageViewRGB32& before, const ImageViewRGB32& after, double line){
+    return read_tap(before, after, line).moved;
+}
+
+TapRead read_tap(const ImageViewRGB32& before, const ImageViewRGB32& after, double line){
+    TapRead read;
     if (indoors(after)){
-        return walk_screen_change(before, after) >= line;
+        read.moved = walk_screen_change(before, after) >= line;
+        return read;
     }
-    return walk_view_shift(before, after).scrolled();
+    read.shift = walk_view_shift(before, after);
+    read.moved = read.shift->scrolled();
+    return read;
+}
+
+StillTapFrames::StillTapFrames(Save save, size_t max_pairs)
+    : m_save(std::move(save))
+    , m_max_pairs(max_pairs)
+{}
+
+void StillTapFrames::keep_if_suspect(const TapChunk& tap, const ImageViewRGB32& before, const ImageViewRGB32& after){
+    constexpr double NEAR_A_STEP = 0.6;
+    if (tap.moved || tap.change < NEAR_A_STEP * tap.largest || m_saved >= m_max_pairs || !m_save){
+        return;
+    }
+    m_saved++;
+    m_save(before, after, tap.chunk);
 }
 } // namespace detail
 
@@ -187,6 +214,31 @@ public:
         : DetectorToFinder("BattleDialogWatcher", std::chrono::milliseconds(250), color)
     {}
 };
+
+//  One line a tap: what tap_moved() saw, to tell a missed step from a bump.
+std::string describe_tap(std::string_view label, const TapChunk& tap, double line, const TapRead& read){
+    std::string text = std::format("[Walk] {}: tap {}: change {:.1f}", label, tap.chunk, tap.change);
+    if (read.shift){
+        const ViewShift& shift = *read.shift;
+        const std::string ratio = shift.shifted > 0 ? std::format("{:.2f}", shift.unshifted / shift.shifted) : "inf";
+        text += std::format(", shift ({}, {}), unshifted {:.2f}, shifted {:.2f}, ratio {}",
+            shift.dx, shift.dy, shift.unshifted, shift.shifted, ratio);
+    }else{
+        text += std::format(", indoors, line {:.1f}", line);
+    }
+    return std::format("{}, {}.", text, read.moved ? "moved" : "still");
+}
+
+//  Screenshots/AutoStory/route/<time>-<leg>-chunk<N>-before.png and -after.png,
+//  next to the frames where each leg ended.
+void save_still_tap(VideoStream& stream, std::string_view label, const ImageViewRGB32& before, const ImageViewRGB32& after, size_t chunk){
+    const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
+    Filesystem::create_directories(Filesystem::Path(folder));
+    const std::string stem = std::format("{}{}-{}-chunk{}", folder, now_to_filestring(), normalize_location_name(std::string(label)), chunk);
+    before.save(std::format("{}-before.png", stem));
+    after.save(std::format("{}-after.png", stem));
+    stream.log(std::format("[Walk] {}: tap {} read still near a step's change; frames saved as {}-before/after.png.", label, chunk, stem));
+}
 
 VideoSnapshot snapshot_or_fail(VideoStream& stream, const std::string& label){
     VideoSnapshot frame = stream.video().snapshot();
@@ -386,6 +438,9 @@ public:
         , m_escape(escape)
         , m_spec(spec)
         , m_dpad(spec.stick.x < 0 ? DPAD_LEFT : spec.stick.x > 0 ? DPAD_RIGHT : spec.stick.y > 0 ? DPAD_UP : DPAD_DOWN)
+        , m_still_frames([this](const ImageViewRGB32& before, const ImageViewRGB32& after, size_t chunk){
+            save_still_tap(m_stream, m_spec.label, before, after, chunk);
+        })
     {}
 
     WalkResult run(){
@@ -510,7 +565,7 @@ private:
         //  Taps count what scrolled the view, not scenery that moved (r84:
         //  cloud shadows read as steps).
         const bool still = m_spec.input == WalkInput::TAPS
-            ? !tap_moved(*m_before.frame, *after.frame, still_line(change))
+            ? !tap_moved_logged(*after.frame, change)
             : change < still_line(change);
         if (!still){
             //  A quiet tap and then a moving one: the first moved too. What
@@ -527,6 +582,17 @@ private:
         }
         m_before = std::move(after);
         return {ChunkNext::NEXT_CHUNK, WalkStop::LIMIT};
+    }
+
+    //  tap_moved() for this chunk's tap, logged, and its frames kept if it
+    //  read still with a change near the walk's steps.
+    bool tap_moved_logged(const ImageViewRGB32& after, double change){
+        const double line = still_line(change);
+        const TapRead read = read_tap(*m_before.frame, after, line);
+        const TapChunk tap{.chunk = m_chunks, .change = change, .largest = m_largest, .moved = read.moved};
+        m_stream.log(describe_tap(m_spec.label, tap, line, read));
+        m_still_frames.keep_if_suspect(tap, *m_before.frame, after);
+        return read.moved;
     }
 
     //  The largest change a chunk of this walk made is a step. A bump into an
@@ -630,6 +696,7 @@ private:
     size_t m_moved_at_battle = 0;
     double m_largest = 0;
     LocationBannerWatcher m_banner;
+    StillTapFrames m_still_frames;
 };
 
 WalkResult walk_until_spec(

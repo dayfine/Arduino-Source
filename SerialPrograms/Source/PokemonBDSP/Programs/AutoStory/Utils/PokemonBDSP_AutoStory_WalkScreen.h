@@ -9,6 +9,7 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_WalkScreen_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_WalkScreen_H
 
+#include <functional>
 #include <optional>
 #include <string>
 #include "Common/Cpp/Time.h"
@@ -67,6 +68,44 @@ ViewShift walk_view_shift(const ImageViewRGB32& before, const ImageViewRGB32& af
 //  screen change of at least `line` counts, as it did before.
 bool tap_moved(const ImageViewRGB32& before, const ImageViewRGB32& after, double line);
 
+//  How a tap's frames read, as tap_moved() decides: outside, the view's
+//  shift; inside, only the screen change against `line`.
+struct TapRead{
+    std::optional<ViewShift> shift;     //  none indoors
+    bool moved = false;
+};
+//  tap_moved(), with the shift it read outside.
+TapRead read_tap(const ImageViewRGB32& before, const ImageViewRGB32& after, double line);
+
+//  One tap of a walk, as the walk read it.
+struct TapChunk{
+    size_t chunk = 0;       //  1 for the walk's first
+    double change = 0;      //  walk_screen_change() over the tap
+    double largest = 0;     //  the walk's largest change so far, this one included
+    bool moved = false;
+};
+
+//  Keeps the frames of taps that read as still although the screen changed
+//  by at least 60% of the walk's largest change: steps the shift check may
+//  have missed (00.01 below_barrys_warning: north 18 counted 3 while the
+//  player walked about 5, and no frames were kept to see why). At most
+//  `max_pairs` pairs a walk.
+class StillTapFrames{
+public:
+    using Save = std::function<void(const ImageViewRGB32& before, const ImageViewRGB32& after, size_t chunk)>;
+
+    explicit StillTapFrames(Save save, size_t max_pairs = 10);
+
+    //  Calls the save hook with the tap's frames if the tap is suspect and
+    //  the walk has pairs left.
+    void keep_if_suspect(const TapChunk& tap, const ImageViewRGB32& before, const ImageViewRGB32& after);
+
+private:
+    Save m_save;
+    size_t m_max_pairs;
+    size_t m_saved = 0;
+};
+
 } // namespace detail
 
 //  View scroll shift calculation.
@@ -75,6 +114,14 @@ using detail::ViewShift;
 using detail::walk_view_shift;
 //  Whether the player moved between before and after frames.
 using detail::tap_moved;
+//  How a tap's frames read, for the walk's log.
+using detail::TapRead;
+//  tap_moved(), with the shift it read outside.
+using detail::read_tap;
+//  One tap of a walk, as the walk read it.
+using detail::TapChunk;
+//  The frames of taps that read as still but may have stepped.
+using detail::StillTapFrames;
 
 
 //  Whether two frames show different scenes: a change walking cannot make
