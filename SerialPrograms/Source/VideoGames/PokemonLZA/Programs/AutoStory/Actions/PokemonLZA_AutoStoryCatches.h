@@ -81,13 +81,18 @@ struct ZoneCatchGoal{
 //  the nearest one not caught when it is far, and throws without letting
 //  ZL go, counting the Pokedex's "Registered!" banners. A break-out that
 //  starts a wild battle gets `battle_ai`'s attacks before the next throws.
-//  When only species already caught lock on (a rerun from a save after the
-//  catch), the quest is taken as done. The Pokedex's count is read when
-//  the tally is not all banners, or at THOROUGH and TESTING checks
-//  (read_dex_count()), and then decides (enough_species()). Throws
-//  OperationFailedException, still in the zone, when short of
-//  `goal.dex_species` in the Pokedex or, unread, of `goal.new_species`
-//  new species after the patrol or `goal.max_throws`.
+//  The overworld party bar's filled slots (PartyBarDetector), read before
+//  the first stop and after each stop that threw, end the patrol at
+//  `goal.dex_species` (party_has_species()): every catch is a new species,
+//  so the filled slots are the registered species, and the banner is
+//  missed at times. When only species already caught lock on (a rerun
+//  from a save after the catch), the quest is taken as done. Unread, the
+//  Pokedex's count is read when the tally is not all banners, or at
+//  THOROUGH and TESTING checks (read_dex_count()), and then decides
+//  (enough_species()). Throws OperationFailedException, still in the zone,
+//  when short of `goal.dex_species` in the party bar or the Pokedex or,
+//  unread, of `goal.new_species` new species after the patrol or
+//  `goal.max_throws`.
 void catch_in_zone(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
     BattleAIOption& battle_ai, const ZoneCatchGoal& goal

@@ -292,6 +292,67 @@ private:
 };
 
 
+//  party_has_species(): when the party bar's filled slots end the patrol.
+struct PartyCountCase{
+    std::string name;
+    struct Input{
+        std::optional<int> filled_slots;
+        int dex_species;
+    };
+    Input input;
+    struct Expectation{
+        bool done;
+    };
+    Expectation expectation;
+};
+
+const PartyCountCase PARTY_COUNT_CASES[] = {
+    {
+        .name = "five filled slots of five species end the patrol",
+        .input = {.filled_slots = 5, .dex_species = 5},
+        .expectation = {.done = true},
+    },
+    {
+        .name = "more filled slots than species end it too",
+        .input = {.filled_slots = 6, .dex_species = 5},
+        .expectation = {.done = true},
+    },
+    {
+        .name = "four filled slots of five go on",
+        .input = {.filled_slots = 4, .dex_species = 5},
+        .expectation = {.done = false},
+    },
+    {
+        .name = "a party bar not read goes on",
+        .input = {.filled_slots = std::nullopt, .dex_species = 5},
+        .expectation = {.done = false},
+    },
+    {
+        .name = "no slot read (no bar on screen) goes on",
+        .input = {.filled_slots = 0, .dex_species = 5},
+        .expectation = {.done = false},
+    },
+};
+
+class Test_PartyCount : public UnitTest{
+public:
+    explicit Test_PartyCount(const PartyCountCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: party count: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const bool done = party_has_species(m_case.input.filled_slots, m_case.input.dex_species);
+        if (done != m_case.expectation.done){
+            return std::format("Expected {}, got {}.", m_case.expectation.done ? "done" : "go on", done ? "done" : "go on");
+        }
+        return true;
+    }
+
+private:
+    const PartyCountCase& m_case;
+};
+
+
 //  lock_target_far(): a plate high on the screen is far.
 struct FarCase{
     std::string name;
@@ -833,6 +894,9 @@ void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
     }
     for (const SpeciesCheckCase& item : SPECIES_CHECK_CASES){
         database.add<Test_SpeciesCheck>(item);
+    }
+    for (const PartyCountCase& item : PARTY_COUNT_CASES){
+        database.add<Test_PartyCount>(item);
     }
     for (const FarCase& item : FAR_CASES){
         database.add<Test_LockTargetFar>(item);

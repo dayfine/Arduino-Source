@@ -17,6 +17,7 @@
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_AlertEyeDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_LockOnBracketDetector.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryCaughtMarkReader.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDexRegisteredDetector.h"
@@ -780,16 +781,46 @@ void step_across_road(ConsoleHandle& console, ProControllerContext& context, boo
 //  the walks between the spots go as before; it turns back at once where a
 //  new species was caught (spot_visit()). A wild battle that starts on the
 //  way is fought at the next stop.
-GrassCatches patrol_and_catch(
+//  The party bar's filled slots, read before the first stop and after each
+//  stop that threw, end it at `goal.dex_species` (party_has_species()).
+struct Patrol{
+    GrassCatches catches;
+    //  The party bar's filled slots at the last read; none: not read.
+    std::optional<int> party_slots;
+};
+
+//  The party bar's filled slots, when the bar shows within 2 s (none: it
+//  did not, a dialog or a fade still on; or it read no slot, a misread).
+std::optional<int> read_party_slots(ConsoleHandle& console, ProControllerContext& context){
+    context.wait_for_all_requests();
+    DetectorToFinder<PartyBarDetector> bar("PartyBarWatcher", 100ms, COLOR_RED, &console.overlay());
+    if (wait_until(console, context, 2s, {bar}) < 0){
+        console.log("catch_in_zone(): the party bar did not show within 2 s: its slots not read.");
+        return std::nullopt;
+    }
+    console.log(std::format("catch_in_zone(): the party bar shows {} filled slots.", bar.filled_slots()));
+    if (bar.filled_slots() == 0){
+        return std::nullopt;
+    }
+    return bar.filled_slots();
+}
+
+Patrol patrol_and_catch(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
-    BattleAIOption& battle_ai, int new_species_wanted, int max_throws
+    BattleAIOption& battle_ai, const ZoneCatchGoal& goal
 ){
     const std::vector<int> stops = alternating_stops(CATCH_SPOTS, PATROL_VISITS);
     const WallClock deadline = current_time() + 10min;
-    GrassCatches result;
+    Patrol patrol;
+    GrassCatches& result = patrol.catches;
+    patrol.party_slots = read_party_slots(console, context);
+    if (party_has_species(patrol.party_slots, goal.dex_species)){
+        console.log(std::format("catch_in_zone(): the party already holds {} species: nothing to catch.", goal.dex_species));
+        return patrol;
+    }
     std::vector<int> caught_at;
     std::optional<int> last;
-    for (size_t i = 0; i < stops.size() && result.found < new_species_wanted && result.throws < max_throws; i++){
+    for (size_t i = 0; i < stops.size() && result.found < goal.new_species && result.throws < goal.max_throws; i++){
         if (current_time() > deadline){
             console.log("catch_in_zone(): out of time for the patrol.");
             break;
@@ -802,7 +833,7 @@ GrassCatches patrol_and_catch(
         }
         step_across_road(console, context, true);
         const GrassCatches stop = catch_at_stop(
-            env, console, context, battle_ai, at.value_or(-1), max_throws - result.throws
+            env, console, context, battle_ai, at.value_or(-1), goal.max_throws - result.throws
         );
         step_across_road(console, context, false);
         console.log(std::format(
@@ -813,8 +844,15 @@ GrassCatches patrol_and_catch(
         if (stop.found > 0){
             caught_at.push_back(stops[i]);
         }
+        if (stop.throws > 0){
+            patrol.party_slots = read_party_slots(console, context);
+            if (party_has_species(patrol.party_slots, goal.dex_species)){
+                console.log(std::format("catch_in_zone(): the party holds {} species: the patrol is done.", goal.dex_species));
+                break;
+            }
+        }
     }
-    return result;
+    return patrol;
 }
 
 //  The Pokedex's count of registered species. Not read yet: there is no
@@ -841,21 +879,27 @@ void catch_in_zone(
     if (start && start->distance >= 115){
         pbf_move_left_joystick(context, {1, 0}, 1000ms, 300ms);
     }
-    const GrassCatches result = patrol_and_catch(env, console, context, battle_ai, goal.new_species, goal.max_throws);
+    const Patrol patrol = patrol_and_catch(env, console, context, battle_ai, goal);
+    const GrassCatches& result = patrol.catches;
     const SpeciesTally tally = species_tally(result, goal.new_species);
     console.log(std::format(
-        "catch_in_zone(): {} new species ({} by a plate only) in {} throws, {} locks on caught species only: {}.",
-        result.found, result.found_by_plate, result.throws, result.caught_seen, species_tally_text(tally)
+        "catch_in_zone(): {} new species ({} by a plate only) in {} throws, {} locks on caught species only: {}; the party bar: {}.",
+        result.found, result.found_by_plate, result.throws, result.caught_seen, species_tally_text(tally),
+        patrol.party_slots ? std::format("{} filled slots", *patrol.party_slots) : std::string("not read")
     ));
-    std::optional<int> dex_count;
-    if (read_dex_count(goal.checks, tally)){
+    if (party_has_species(patrol.party_slots, goal.dex_species)){
+        return;
+    }
+    //  The party bar's count, read, stands in for the Pokedex's.
+    std::optional<int> dex_count = patrol.party_slots;
+    if (!dex_count && read_dex_count(goal.checks, tally)){
         dex_count = read_dex_species_count(console);
     }
     if (!enough_species(tally, dex_count, goal.dex_species)){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
             dex_count
-                ? std::format("catch_in_zone(): the Pokedex has {} species of {}.", *dex_count, goal.dex_species)
+                ? std::format("catch_in_zone(): the party holds {} species of {} ({} new by the banners in {} throws).", *dex_count, goal.dex_species, result.found, result.throws)
                 : std::format("catch_in_zone(): {} new species of {} in {} throws.", result.found, goal.new_species, result.throws),
             console
         );
