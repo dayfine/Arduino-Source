@@ -29,6 +29,7 @@
 #include <string>
 #include <string_view>
 #include "Common/Cpp/Time.h"
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
@@ -156,6 +157,9 @@ Pokemon::Outcome run_scene_machine(
     PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
 );
 
+//  Registers the scene machine's tests: its states on sequences of events,
+//  no frames needed.
+void add_tests_AutoStorySceneMachine(UnitTestDatabase& database);
 
 
 

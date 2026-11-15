@@ -21,11 +21,13 @@
 #include "Inference/PokemonLZA_OverworldPartySelectionDetector.h"
 #include "Inference/PokemonLZA_PartyBarDetector.h"
 #include "Inference/PokemonLZA_SelectionArrowDetector.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStoryEngine_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryFailures.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryStartLoad_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchStop_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryDialogs_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryGateWalk_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryConfirmChoicesReader_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDetectors_Tests.h"
@@ -33,6 +35,7 @@
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryZoneGateReader_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStoryTable_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -57,16 +60,20 @@ void add_tests(UnitTestDatabase& database){
     add_tests_OverworldPartySelectionDetector(database);
     add_tests_PartyBarDetector(database);
     add_tests_SelectionArrowDetector(database);
+    add_tests_AutoStory_StoryTable(database);
     add_tests_AutoStoryScreenEvents(database);
     add_tests_AutoStoryDetectors(database);
     add_tests_AutoStoryConfirmChoicesReader(database);
     add_tests_AutoStoryDialogChoiceBox(database);
     add_tests_AutoStoryObjectiveMarkerReader(database);
     add_tests_AutoStoryZoneGateReader(database);
+    add_tests_AutoStoryGateWalk(database);
     add_tests_AutoStoryFailures(database);
     add_tests_AutoStoryCatchPlan(database);
     add_tests_AutoStoryCatchStop(database);
     add_tests_AutoStoryDialogs(database);
+    add_tests_AutoStorySceneMachine(database);
+    add_tests_AutoStoryEngine(database);
     add_tests_AutoStoryStartLoad(database);
 
 }
