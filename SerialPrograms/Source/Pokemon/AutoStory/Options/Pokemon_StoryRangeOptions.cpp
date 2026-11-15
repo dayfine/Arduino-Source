@@ -19,21 +19,23 @@ StoryRangeOptions::DropdownLabels StoryRangeOptions::default_labels(){
 }
 
 StoryRangeOptions::StoryRangeOptions(
-    std::string label, const StringSelectDatabase& checkpoints,
-    LockMode end_lock, DropdownLabels labels
+    std::string_view label,
+    const StringSelectDatabase& checkpoints,
+    LockMode end_lock,
+    DropdownLabels labels
 )
-    : GroupOption(std::move(label), LockMode::LOCK_WHILE_RUNNING)
+    : GroupOption(std::string(label), LockMode::LOCK_WHILE_RUNNING)
     , START_CHECKPOINT(
         std::move(labels.start),
         checkpoints,
         LockMode::LOCK_WHILE_RUNNING,
-        0
+        /*default_index=*/0
     )
     , END_CHECKPOINT(
         std::move(labels.end),
         checkpoints,
         end_lock,
-        checkpoints.size() == 0 ? 0 : checkpoints.size() - 1
+        /*default_index=*/checkpoints.size() == 0 ? 0 : checkpoints.size() - 1
     )
 {
     PA_ADD_OPTION(START_CHECKPOINT);
