@@ -44,13 +44,13 @@ struct ScriptedReadingsCase{
 };
 
 std::string reading_name(const std::optional<int>& reading){
-    return reading ? std::to_string(*reading) : "no frame";
+    return reading ? std::format("{}", *reading) : "no frame";
 }
 
 class Test_ScriptedReadings : public UnitTest{
 public:
     explicit Test_ScriptedReadings(ScriptedReadingsCase test_case)
-        : UnitTest("Pokemon::ScriptedReadings - " + test_case.name)
+        : UnitTest(std::format("Pokemon::ScriptedReadings - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{

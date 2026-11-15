@@ -544,7 +544,7 @@ public:
 class Test_ReadTextBox : public ImageUnitTest{
 public:
     Test_ReadTextBox(const std::string& image, bool expected)
-        : ImageUnitTest("PokemonFRLG::AutoStoryBattle read_text_screen - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::AutoStoryBattle read_text_screen - {}", image), {image})
         , m_expected(expected)
     {}
 

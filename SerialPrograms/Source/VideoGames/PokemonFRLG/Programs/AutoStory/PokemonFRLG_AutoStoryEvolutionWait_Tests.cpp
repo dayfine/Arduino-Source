@@ -145,7 +145,7 @@ UnitTestResult check_run(const ExitRun& run, const EvolutionWaitExpectation& exp
 class Test_EvolutionWait : public UnitTest{
 public:
     explicit Test_EvolutionWait(EvolutionWaitCase test_case)
-        : UnitTest("PokemonFRLG::AutoStoryEvolutionWait - " + test_case.name)
+        : UnitTest(std::format("PokemonFRLG::AutoStoryEvolutionWait - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
