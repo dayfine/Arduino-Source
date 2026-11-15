@@ -13,6 +13,13 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+std::string_view LockTarget::caught_text() const{
+    if (!caught){
+        return "caught mark unread";
+    }
+    return *caught ? "caught" : "not caught";
+}
+
 bool lock_target_far(const LockTarget& target){
     return target.y < FAR_PLATE_Y;
 }
@@ -32,6 +39,27 @@ std::optional<size_t> nearest_uncaught(const std::vector<LockTarget>& targets){
         }
     }
     return best;
+}
+
+std::optional<NewSpeciesSign> ThrowSeen::new_species() const{
+    if (registered){
+        return NewSpeciesSign::BANNER;
+    }
+    if (plate_caught == false && target_gone){
+        return NewSpeciesSign::PLATE_NOT_CAUGHT;
+    }
+    return std::nullopt;
+}
+
+std::string_view ThrowSeen::new_species_text() const{
+    const std::optional<NewSpeciesSign> sign = new_species();
+    if (!sign){
+        return "no new species";
+    }
+    if (*sign == NewSpeciesSign::BANNER){
+        return "a new species: banner";
+    }
+    return "a new species: plate was not caught, target gone";
 }
 
 

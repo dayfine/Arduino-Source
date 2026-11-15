@@ -46,10 +46,10 @@ ScreensPassed advance_text_and_cards(ConsoleHandle& console, ProControllerContex
 
 //  ZL held 0.5 s, then ZL+ZR held 1.5 s throws a ball at the locked target
 //  (0.5 s of ZR only aims), then the ball's flight, shakes and any loading
-//  screen. ZL is never let go between the lock and the throw: a release
-//  may drop the lock. Returns whether the Pokedex's "Registered!" banner
-//  showed meanwhile: a new species caught. A repeat catch or a break-out
-//  shows none.
+//  screen: 10 s (the banner showed 6.9 s in; an 8 s window missed it with
+//  frames 1 s late, 03.08, console B 2026-11-14). ZL is never let go
+//  between the lock and the throw. Returns whether the Pokedex's
+//  "Registered!" banner showed: a new species caught.
 //  TODO: unify with the ZL + ZR throw of PokemonLZA_InPlaceCatcher.cpp and
 //  AsyncCommandSession (CommonTools/Async/InterruptableCommands.h) - the
 //  lock-on may drop between separate commands; needs a console test.
@@ -60,7 +60,7 @@ bool throw_ball(ConsoleHandle& console, ProControllerContext& context){
         [](ProControllerContext& context){
             pbf_controller_state(context, BUTTON_ZL, DPAD_NONE, {0, 0}, {0, 0}, 500ms);
             pbf_controller_state(context, BUTTON_ZL | BUTTON_ZR, DPAD_NONE, {0, 0}, {0, 0}, 1500ms);
-            pbf_wait(context, 6000ms);
+            pbf_wait(context, 8000ms);
         },
         {registered}
     );
@@ -231,17 +231,10 @@ private:
 //  A full flick of the right stick: what moves the lock to the next target.
 constexpr double TARGET_FLICK = 0.8;
 
-std::string_view caught_text(const std::optional<bool>& caught){
-    if (!caught){
-        return "caught mark unread";
-    }
-    return *caught ? "caught" : "not caught";
-}
-
 void log_target(ConsoleHandle& console, std::string_view caller, std::string_view what, const LockTarget& target){
     console.log(std::format(
         "{}: {}: plate at ({:.2f}, {:.2f}), {:.3f} wide, {}.",
-        caller, what, target.x, target.y, target.width, caught_text(target.caught)
+        caller, what, target.x, target.y, target.width, target.caught_text()
     ));
 }
 
@@ -354,18 +347,23 @@ struct GrassCatches{
     }
 };
 
-//  A throw at the target locked on to, then weaken_then_throw() when it
-//  broke out into a wild battle, `max_throws` in all at most.
+//  A throw at `target`, then weaken_then_throw() when it broke out into a
+//  wild battle, `max_throws` in all at most (ThrowSeen counts).
 GrassCatches throw_at_target(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
-    BattleAIOption& battle_ai, int max_throws
+    BattleAIOption& battle_ai, const LockTarget& target, int max_throws
 ){
     GrassCatches out;
     out.throws = 1;
-    out.found = throw_ball(console, context) ? 1 : 0;
-    console.log(std::format("catch_in_zone(): throw: {}.", out.found > 0 ? "a new species registered" : "no new species"));
+    const bool registered = throw_ball(console, context);
     advance_text_and_cards(console, context);
-    if (out.found == 0 && max_throws > 1 && wild_battle_on(console, context)){
+    const bool battle = !registered && wild_battle_on(console, context);
+    const bool gone = !registered && !battle && target.caught == false
+        && !HeldZl(console, context).wait_for_plate(LOCK_ON_WAIT);
+    const ThrowSeen seen{registered, target.caught, gone};
+    out.found = seen.new_species() ? 1 : 0;
+    console.log(std::format("catch_in_zone(): throw: {}.", seen.new_species_text()));
+    if (out.found == 0 && max_throws > 1 && battle){
         console.log("catch_in_zone(): the throw broke out: battle, weakening.");
         const WeakenThrows weakened = weaken_then_throw(
             env, console, context, battle_ai, CatchSign::REGISTERED, max_throws - 1, "catch_in_zone()"
@@ -553,7 +551,7 @@ GrassCatches catch_at_stop(
             pbf_move_right_joystick(context, {0.5, 0}, 400ms, 300ms);
             continue;
         }
-        out += throw_at_target(env, console, context, battle_ai, max_throws - out.throws);
+        out += throw_at_target(env, console, context, battle_ai, *choice.target, max_throws - out.throws);
     }
     if (out.found > 0){
         console.log(std::format("catch_in_zone(): caught at {}: the stop ends, on to the next.", at));
