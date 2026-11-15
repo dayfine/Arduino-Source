@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <format>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -261,6 +262,133 @@ const RunTestCase RUN_CASES[] = {
     },
 };
 
+
+
+//  A look of a game that only watches: its events, and how long they had
+//  shown unchanged when the look ended (none: not known).
+struct WatchedLook{
+    ScreenEvents events;
+    std::optional<Milliseconds> unchanged_for = std::nullopt;
+};
+
+//  The screen a watching game sees: each look watches `look_every` and
+//  moves the clock on by it; the script's looks in order, then its last
+//  one for good. Presses do nothing.
+class WatchingSettleIO : public SettleIO{
+public:
+    WatchingSettleIO(std::vector<WatchedLook> looks, Milliseconds look_every)
+        : m_looks(std::move(looks))
+        , m_look_every(look_every)
+    {}
+
+    virtual SettleLook look() override{
+        const size_t index = m_count < m_looks.size() ? m_count : m_looks.size() - 1;
+        m_count++;
+        m_now += m_look_every;
+        const WatchedLook& seen = m_looks[index];
+        std::optional<WallClock> since;
+        if (seen.unchanged_for.has_value()){
+            since = m_now - *seen.unchanged_for;
+        }
+        return {.events = seen.events, .when = m_now, .since = since};
+    }
+    virtual void press(SceneMove, Milliseconds) override{}
+    virtual bool flee_battle() override{
+        m_flees++;
+        return true;
+    }
+    virtual void log(std::string_view) override{}
+
+    size_t looks() const{
+        return m_count;
+    }
+    size_t flees() const{
+        return m_flees;
+    }
+
+private:
+    const std::vector<WatchedLook> m_looks;
+    const Milliseconds m_look_every;
+    size_t m_count = 0;
+    size_t m_flees = 0;
+    WallClock m_now = WallClock();
+};
+
+//  run_settle() for a game that only watches (FRLG).
+struct WatchTestCase{
+    struct Input{
+        SettleRule rule;
+        std::vector<WatchedLook> looks;
+    };
+
+    struct Expectation{
+        SettleEnd::Result result;
+        //  The looks it took before it ended.
+        size_t looks;
+        //  The flee_battle() calls.
+        size_t flees = 0;
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
+};
+
+class Test_Watch : public UnitTest{
+public:
+    explicit Test_Watch(WatchTestCase test_case)
+        : UnitTest(std::format("Pokemon::Settle - watch: {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        WatchingSettleIO io(m_case.input.looks, m_case.input.rule.look_every);
+        const SettleEnd end = run_settle(m_case.input.rule, "Step", io);
+        if (end.result != m_case.expectation.result){
+            return std::format("expected {}, got {} ({})", result_name(m_case.expectation.result), result_name(end.result), end.text);
+        }
+        const UnitTestResult looks = expect_equal("looks", std::to_string(io.looks()), std::to_string(m_case.expectation.looks));
+        if (looks.result != UnitTestResult::PASSED){
+            return looks;
+        }
+        return expect_equal("flees", std::to_string(io.flees()), std::to_string(m_case.expectation.flees));
+    }
+
+private:
+    const WatchTestCase m_case;
+};
+
+//  A door's settle looked at every 400 ms, as FRLG watches.
+SettleRule watched_door(bool watch_battles){
+    SettleRule rule = settle_rule(SettleKind::DOOR);
+    rule.look_every = 400ms;
+    rule.watch_battles = watch_battles;
+    return rule;
+}
+
+const WatchTestCase WATCH_CASES[] = {
+    {
+        //  Quiet from 50 ms into the first look: 1 s of it by the third
+        //  look's end (1200 ms), not the fourth (1600 ms, 1 s from the
+        //  first look's end).
+        .name = "a quiet that began early in a look counts from then",
+        .input = {.rule = watched_door(false), .looks = {{QUIET, 350ms}, {QUIET, 750ms}, {QUIET, 1150ms}, {QUIET, 1550ms}}},
+        .expectation = {.result = SettleEnd::Result::QUIET, .looks = 3},
+    },
+    {
+        .name = "with no since, the quiet counts from the look",
+        .input = {.rule = watched_door(false), .looks = {{QUIET}}},
+        .expectation = {.result = SettleEnd::Result::QUIET, .looks = 4},
+    },
+    {
+        //  1 s of quiet after the battle: from the third look (1200 ms)
+        //  to the sixth (2400 ms).
+        .name = "a battle on screen is watched, not fled",
+        .input = {.rule = watched_door(true), .looks = {{QUIET}, {BATTLE}, {QUIET}}},
+        .expectation = {.result = SettleEnd::Result::QUIET, .looks = 6, .flees = 0},
+    },
+};
+
 } // namespace
 
 
@@ -270,6 +398,9 @@ void add_tests_Settle(UnitTestDatabase& database){
     }
     for (const RunTestCase& item : RUN_CASES){
         database.add<Test_Run>(item);
+    }
+    for (const WatchTestCase& item : WATCH_CASES){
+        database.add<Test_Watch>(item);
     }
 }
 

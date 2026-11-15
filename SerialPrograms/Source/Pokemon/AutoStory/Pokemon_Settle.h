@@ -13,6 +13,7 @@
 #ifndef PokemonAutomation_Pokemon_Settle_H
 #define PokemonAutomation_Pokemon_Settle_H
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include "Common/Cpp/Time.h"
@@ -46,6 +47,10 @@ struct SettleRule{
     Milliseconds look_every = Milliseconds(1200);
     //  How long it may take before it fails.
     Milliseconds cap = Milliseconds(120000);
+    //  For a game that only watches: a battle on screen is watched like any
+    //  other unsettled screen, until the overworld is quiet after it. No
+    //  flee_battle(), no press; its look() is the wait.
+    bool watch_battles = false;
 };
 
 //  The rule of `kind`.
@@ -56,6 +61,10 @@ SettleRule settle_rule(SettleKind kind);
 struct SettleLook{
     ScreenEvents events;
     WallClock when;
+    //  Since when the screen has shown `events` unchanged, for a look that
+    //  watches a span: a quiet that began early in it counts from then, not
+    //  from `when`. None: from `when`.
+    std::optional<WallClock> since = std::nullopt;
 };
 
 //  What run_settle() needs of a game: its looks and its presses.
