@@ -49,29 +49,33 @@ ScreensPassed advance_text_and_cards(ConsoleHandle& console, ProControllerContex
 
 //  ZL held 0.5 s, then ZL+ZR held 1.5 s (ZL never let go from the lock; 0.5 s
 //  of ZR only aims) throws, then 8 s for the flight, shakes and the banner (it
-//  showed 6.9 s in, 03.08). Returns whether the Pokedex's "Registered!" banner
-//  (a new species) showed, judged on the frames watched: UNKNOWN when a gap
-//  could hide it (REGISTERED_BANNER_WATCH).
+//  showed 6.9 s in, 03.08), and REGISTERED_BANNER_EXTRA_WAIT more when it
+//  has not shown by then. Returns whether the Pokedex's "Registered!" banner
+//  (a new species) showed.
 //  TODO: unify with the ZL + ZR throw of PokemonLZA_InPlaceCatcher.cpp and
 //  AsyncCommandSession (CommonTools/Async/InterruptableCommands.h) - the
 //  lock-on may drop between separate commands; needs a console test.
-Pokemon::WatchResult throw_ball(ConsoleHandle& console, ProControllerContext& context){
+bool throw_ball(ConsoleHandle& console, ProControllerContext& context){
     DetectorToFinder<DexRegisteredDetector> registered("DexRegisteredWatcher", REGISTERED_BANNER_HOLD);
-    const Pokemon::WatchResult banner = Pokemon::run_watched<ProControllerContext>(
+    int ret = run_until<ProControllerContext>(
         console, context,
         [](ProControllerContext& context){
             pbf_controller_state(context, BUTTON_ZL, DPAD_NONE, {0, 0}, {0, 0}, 500ms);
             pbf_controller_state(context, BUTTON_ZL | BUTTON_ZR, DPAD_NONE, {0, 0}, {0, 0}, 1500ms);
             pbf_wait(context, 8000ms);
         },
-        REGISTERED_BANNER_WATCH, registered
+        {registered}
     );
-    console.log(std::format("throw_ball(): the Registered! banner: {}.", Pokemon::describe(banner)));
-    if (banner.verdict == Pokemon::WatchVerdict::SEEN){
+    if (ret < 0){
+        ret = wait_until(console, context, REGISTERED_BANNER_EXTRA_WAIT, {registered});
+    }
+    const bool seen = ret == 0;
+    console.log(std::format("throw_ball(): the Registered! banner {}.", seen ? "showed" : "did not show"));
+    if (seen){
         context.wait_for(3000ms);
     }
     context.wait_for_all_requests();
-    return banner;
+    return seen;
 }
 
 //  Whether a wild battle is on: its Run prompt ("-" at the left), which
@@ -150,7 +154,7 @@ WeakenThrows weaken_then_throw(
             return out;
         }
         advance_text_and_cards(console, context);
-        const bool registered = throw_ball(console, context).verdict == Pokemon::WatchVerdict::SEEN;
+        const bool registered = throw_ball(console, context);
         out.throws++;
         const bool card = advance_text_and_cards(console, context).card;
         console.log(std::format("{}: round {}: {} attacks landed, then a throw.", caller, out.throws, landed));
@@ -344,7 +348,7 @@ GrassCatches throw_at_target(
     GrassCatches out;
     LockTarget aimed = target;
     while (out.throws < max_throws && out.throws < THROWS_AT_ONE_TARGET){
-        const bool registered = throw_ball(console, context).verdict == Pokemon::WatchVerdict::SEEN;
+        const bool registered = throw_ball(console, context);
         out.throws++;
         advance_text_and_cards(console, context);
         const bool battle = !registered && wild_battle_on(console, context);
