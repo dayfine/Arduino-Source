@@ -3,15 +3,12 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Each case reads a record from JSON: accepted cases check the values
- *  read, rejected cases check that the read fails. The standalone
- *  StoryDataTests also checks PokemonSimulation's shared case file when given
- *  its path (devtools/story-data-tests/StoryWireCases.h).
+ *  read, rejected cases check that the read fails.
  *
  */
 
 #include <cstdint>
 #include <format>
-#include <iostream>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -175,13 +172,13 @@ const WireCase CASES[] = {
     {.name = "unknown action name", .input = {.json = R"({"id":"a","kind":"game_action","action":"dance"})"}, .expectation = {.rejected = true}},
     {.name = "fractional arg", .input = {.json = R"({"id":"a","kind":"game_action","action":"mart","args":{"map":"M","budget":1.5}})"}, .expectation = {.rejected = true}},
     {.name = "args not an object", .input = {.json = R"({"id":"a","kind":"game_action","action":"mart","args":["map"]})"}, .expectation = {.rejected = true}},
-    {.name = "old field", .input = {.json = R"({"id":"a","kind":"battle","may_lose":true})"}, .expectation = {.rejected = true}},
-    {.name = "old variant", .input = {.json = R"({"id":"a","kind":"game_action","variant":"mart"})"}, .expectation = {.rejected = true}},
+    {.name = "may_lose outside args", .input = {.json = R"({"id":"a","kind":"battle","may_lose":true})"}, .expectation = {.rejected = true}},
+    {.name = "variant instead of action", .input = {.json = R"({"id":"a","kind":"game_action","variant":"mart"})"}, .expectation = {.rejected = true}},
     {.name = "unknown field", .input = {.json = R"({"id":"a","kind":"talk","mystery":0})"}, .expectation = {.rejected = true}},
     {.name = "unknown kind", .input = {.json = R"({"id":"a","kind":"magic"})"}, .expectation = {.rejected = true}},
     {.name = "boolean count", .input = {.json = R"({"id":"a","kind":"train","args":{"battles":false}})"}, .expectation = {.rejected = true}},
     {.name = "wrong bool", .input = {.json = R"({"id":"a","kind":"answer","args":{"yes":0}})"}, .expectation = {.rejected = true}},
-    {.name = "old pose", .input = {.record = Record::POSE, .json = R"({"map":"M","certainty":"unknown","where":{"kind":"unknown"}})"}, .expectation = {.rejected = true}},
+    {.name = "certainty and where in a pose", .input = {.record = Record::POSE, .json = R"({"map":"M","certainty":"unknown","where":{"kind":"unknown"}})"}, .expectation = {.rejected = true}},
     {.name = "bad coordinate", .input = {.record = Record::POSE, .json = R"({"map":"M","tiles":[[0,true]]})"}, .expectation = {.rejected = true}},
     {.name = "declared map and place", .input = {.record = Record::DECLARED, .json = R"({"map":"M","place":"HotelZ"})"}, .expectation = {.rejected = true}},
     {.name = "declared place with tiles", .input = {.record = Record::DECLARED, .json = R"({"place":"HotelZ","tiles":[[1,2]]})"}, .expectation = {.rejected = true}},
@@ -243,8 +240,6 @@ std::string check_case(const WireCase& test){
 }
 
 
-#ifndef PA_STORY_DATA_STANDALONE
-
 class StoryJsonTest : public UnitTest{
 public:
     explicit StoryJsonTest(WireCase test)
@@ -261,33 +256,15 @@ private:
     WireCase m_case;
 };
 
-#endif
-
 
 } // namespace
 
-
-#ifndef PA_STORY_DATA_STANDALONE
 
 void add_tests_StoryStepJson(UnitTestDatabase& database){
     for (const WireCase& test : CASES){
         database.add<StoryJsonTest>(test);
     }
 }
-
-#else
-
-size_t run_story_step_json_cases(){
-    size_t failed = 0;
-    for (const WireCase& test : CASES){
-        const std::string error = check_case(test);
-        std::cout << test.name << ": " << (error.empty() ? "PASS" : error) << '\n';
-        failed += !error.empty();
-    }
-    return failed;
-}
-
-#endif
 
 
 
