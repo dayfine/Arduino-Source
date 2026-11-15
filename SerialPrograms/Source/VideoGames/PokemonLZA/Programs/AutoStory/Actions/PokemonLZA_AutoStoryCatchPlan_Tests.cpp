@@ -455,6 +455,14 @@ const WatchCase WATCH_CASES[] = {
         .input = {.settle_ms = 1000, .limit_ms = 6000, .frames = {{0, std::nullopt}, {2500, {{0.60, 0.09}}}, {3000, std::nullopt}, {3500, std::nullopt}}},
         .expectation = {.frames_watched = 4, .chosen_x = 0.60},
     },
+    {
+        .name = "a catch stop's watch ends at the first brackets, to lock on while the Pokemon is there",
+        .input = {
+            .settle_ms = (int)BRACKET_SETTLE.count(), .limit_ms = 3000,
+            .frames = {{0, std::nullopt}, {300, {{0.30, 0.07}}}, {600, {{0.70, 0.10}}}},
+        },
+        .expectation = {.frames_watched = 2, .chosen_x = 0.30},
+    },
 };
 
 class Test_BracketWatch : public UnitTest{

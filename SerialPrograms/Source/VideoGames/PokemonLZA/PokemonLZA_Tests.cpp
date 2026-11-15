@@ -23,6 +23,7 @@
 #include "Programs/AutoStory/PokemonLZA_AutoStoryEngine_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryStartLoad_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchStop_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryGateWalk_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryConfirmChoicesReader_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDetectors_Tests.h"
@@ -62,6 +63,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStoryZoneGateReader(database);
     add_tests_AutoStoryGateWalk(database);
     add_tests_AutoStoryCatchPlan(database);
+    add_tests_AutoStoryCatchStop(database);
     add_tests_AutoStorySceneMachine(database);
     add_tests_AutoStoryEngine(database);
     add_tests_AutoStoryStartLoad(database);

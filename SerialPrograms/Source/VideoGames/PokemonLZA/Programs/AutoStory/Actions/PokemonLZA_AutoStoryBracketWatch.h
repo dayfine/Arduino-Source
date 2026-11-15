@@ -58,6 +58,13 @@ private:
     std::vector<BracketSighting> m_sightings;
 };
 
+//  How long a catch stop watches on after the first brackets: none, so
+//  the lock goes on while the Pokemon is there. Watching 1.5 s more for
+//  nearer ones gained nothing: every look on console B saw one Pokemon,
+//  its brackets pulsing between 0.08 and 0.10 tall, and Pokemon walked off
+//  while it waited (2026-11-14, 17:2x to 17:4x).
+inline constexpr std::chrono::milliseconds BRACKET_SETTLE{0};
+
 //  A turn of the camera with the right stick: `stick_x` (right when
 //  positive) held for `time`.
 struct CameraTurn{
