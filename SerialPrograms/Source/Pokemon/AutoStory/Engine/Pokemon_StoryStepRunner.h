@@ -4,9 +4,8 @@
  *
  *  Runs one story step on a backend: skips it when its skip_if conditions
  *  hold, runs its action through the registry, writes its declared end
- *  pose into the outcome, and logs a "[Step]" line. The one step executor
- *  of every game, on a console or in a simulation; it replaces
- *  StoryStepExecutor and the games' own executors.
+ *  pose into the outcome, and logs a "[Step]" line. One step executor for
+ *  every game that has a StoryBackend, on a console or in a simulation.
  *
  */
 

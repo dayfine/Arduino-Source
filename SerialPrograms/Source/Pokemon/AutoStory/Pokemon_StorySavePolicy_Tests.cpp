@@ -2,16 +2,14 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  When a run saves (Types/Pokemon_StorySaveMode.h): the decision table,
- *  then the segment runner and verify mode in each mode against a world
- *  that only records what happened. Then the postcondition check
- *  (Pokemon_StoryPostconditionCheck.h) on FRLG 00.31's end state.
+ *  The engine's save policy (Engine/Pokemon_StoryEnginePolicy.h): the
+ *  steps hash and the save mode a checkpoint's phase and recorded hash
+ *  give. Then the postcondition check (Pokemon_StoryPostconditionCheck.h)
+ *  on a checkpoint's end state.
  *
  */
 
-#include <algorithm>
 #include <format>
-#include <map>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -20,9 +18,9 @@
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Data/Pokemon_StoryStepJson.h"
+#include "Engine/Pokemon_StoryEnginePolicy.h"
 #include "Pokemon_StoryPostconditionCheck.h"
 #include "Pokemon_StorySavePolicy_Tests.h"
-#include "Pokemon_StorySegments.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -31,254 +29,138 @@ namespace Pokemon{
 namespace{
 
 
-//  One row of the decision table.
-struct SaveDecision{
-    StorySaveMode mode;
-    CheckpointVerdict verdict;
-    SavePoint point;
-    bool saves;
-};
-
-constexpr SaveDecision SAVE_DECISIONS[] = {
-    {StorySaveMode::NONE,                CheckpointVerdict::FAILED, SavePoint::CHECKPOINT_END, false},
-    {StorySaveMode::NONE,                CheckpointVerdict::FAILED, SavePoint::RUN_END,        false},
-    {StorySaveMode::NONE,                CheckpointVerdict::PASSED, SavePoint::CHECKPOINT_END, false},
-    {StorySaveMode::NONE,                CheckpointVerdict::PASSED, SavePoint::RUN_END,        false},
-    {StorySaveMode::AFTER_VERIFICATION,  CheckpointVerdict::FAILED, SavePoint::CHECKPOINT_END, false},
-    {StorySaveMode::AFTER_VERIFICATION,  CheckpointVerdict::FAILED, SavePoint::RUN_END,        false},
-    {StorySaveMode::AFTER_VERIFICATION,  CheckpointVerdict::PASSED, SavePoint::CHECKPOINT_END, false},
-    {StorySaveMode::AFTER_VERIFICATION,  CheckpointVerdict::PASSED, SavePoint::RUN_END,        true},
-    {StorySaveMode::PER_CHECKPOINT,      CheckpointVerdict::FAILED, SavePoint::CHECKPOINT_END, false},
-    {StorySaveMode::PER_CHECKPOINT,      CheckpointVerdict::FAILED, SavePoint::RUN_END,        false},
-    {StorySaveMode::PER_CHECKPOINT,      CheckpointVerdict::PASSED, SavePoint::CHECKPOINT_END, true},
-    {StorySaveMode::PER_CHECKPOINT,      CheckpointVerdict::PASSED, SavePoint::RUN_END,        true},
-};
-
-UnitTestResult test_decision_table(){
-    for (const SaveDecision& row : SAVE_DECISIONS){
-        if (story_save_allowed(row.mode, row.verdict, row.point) != row.saves){
-            return std::format(
-                "Wrong decision for {}{}{}", story_save_mode_name(row.mode),
-                row.verdict == CheckpointVerdict::PASSED ? ", passed" : ", failed",
-                row.point == SavePoint::RUN_END ? ", run end" : ", mid-run"
-            );
-        }
-    }
-    return true;
-}
-
-
-//  A world of three checkpoints that only records what happened: each
-//  checkpoint's walk, each save and each reload.
-struct Lab{
-    std::vector<std::string> trace;
-    std::vector<std::string> lines;
-    //  Checkpoints whose walk fails this many more times.
-    std::map<std::string, int> failures;
-    //  The game's postcondition check: none when unset.
-    std::optional<Outcome> postconditions;
-
-    SegmentHooks hooks(){
-        SegmentHooks hooks;
-        hooks.save = [this](RunState&){
-            trace.push_back("save");
-            return outcome_ok();
-        };
-        hooks.reload = [this](RunState&){
-            trace.push_back("reload");
-            return outcome_ok();
-        };
-        hooks.log = [this](const std::string& line){ lines.push_back(line); };
-        if (postconditions){
-            hooks.check_postconditions = [this](const std::string& id, RunState&){
-                trace.push_back(std::format("check {}", id));
-                return *postconditions;
-            };
-        }
-        return hooks;
-    }
-    bool has(const std::string& line) const{
-        return std::find(lines.begin(), lines.end(), line) != lines.end();
-    }
-    std::string all() const{
-        std::string text;
-        for (const std::string& line : lines){
-            text += std::format("\n{}", line);
-        }
-        return text;
-    }
-};
-
-CheckpointSpec walk_row(std::string id, Lab& lab){
-    CheckpointSpec spec;
-    spec.id = id;
-    spec.saves = true;
-    spec.build = [&lab, id]{
-        Checkpoint checkpoint;
-        checkpoint.id = id;
-        Event walk;
-        walk.name = "walk";
-        walk.act = [&lab, id](RunState&){
-            lab.trace.push_back(id);
-            int& left = lab.failures[id];
-            if (left > 0){
-                left--;
-                return outcome_failed("blocked", "a wanderer on the path");
-            }
-            return outcome_ok();
-        };
-        Recovery stop;
-        stop.kind = RecoveryKind::STOP;
-        walk.recoveries.push_back(std::move(stop));
-        checkpoint.events.push_back(std::move(walk));
-        return checkpoint;
+struct HashCase{
+    //  Two checkpoints' events, hashed with the built-in actions.
+    struct Input{
+        std::string_view a;
+        std::string_view b;
     };
-    return spec;
+
+    //  Whether they hash the same, and `a`'s hash when pinned: a change to it
+    //  means every recorded verification goes stale.
+    struct Expectation{
+        bool same = true;
+        std::optional<std::string_view> hash_a = std::nullopt;
+    };
+
+    std::string_view name;
+    Input input;
+    Expectation expectation;
+};
+
+inline constexpr std::string_view ROUTE_B3F = R"([{"id": "go", "kind": "route", "args": {"target": {"map": "RocketHideout_B3F", "tiles": [[12, 13]]}}}])";
+
+const HashCase HASH_CASES[] = {
+    {.name = "pinned", .input = {.a = ROUTE_B3F, .b = ROUTE_B3F},
+     .expectation = {.same = true, .hash_a = "sha256:13bc877c960a15cd0ed2f37248fa8336308b048a865623dde7654d41ac7147b8"}},
+    {.name = "whitespace is not hashed", .input = {.a = R"([{"id": "t", "kind": "talk"}])", .b = R"([ { "id":"t",  "kind":"talk" } ])"},
+     .expectation = {.same = true}},
+    {.name = "why differs", .input = {.a = R"([{"id": "t", "kind": "talk", "why": "a"}])", .b = R"([{"id": "t", "kind": "talk", "why": "b"}])"},
+     .expectation = {.same = false}},
+    {.name = "written fallback differs", .input = {.a = R"([{"id": "f", "kind": "battle"}])", .b = R"([{"id": "f", "kind": "battle", "args": {"may_lose": false}}])"},
+     .expectation = {.same = false}},
+    {.name = "another target differs", .input = { .a = ROUTE_B3F,
+               .b = R"([{"id": "go", "kind": "route", "args": {"target": {"map": "RocketHideout_B3F", "tiles": [[12, 14]]}}}])"},
+     .expectation = {.same = false}},
+    {.name = "another step name differs", .input = {.a = R"([{"id": "t", "kind": "talk"}])", .b = R"([{"id": "u", "kind": "talk"}])"},
+     .expectation = {.same = false}},
+};
+
+std::string hash_of(std::string_view events, std::string_view source){
+    const std::string json = std::format(R"({{"id": "x", "title": "x", "events": {}}})", events);
+    return story_steps_hash(read_story_checkpoint(parse_json(json), source));
 }
 
-Segment three_rows(Lab& lab){
-    Segment segment;
-    segment.id = "00";
-    for (std::string_view id : {"00.01", "00.02", "00.03"}){
-        segment.checkpoints.push_back(walk_row(std::string(id), lab));
+std::string check_hash(const HashCase& test){
+    const std::string a = hash_of(test.input.a, test.name);
+    const std::string b = hash_of(test.input.b, test.name);
+    if ((a == b) != test.expectation.same){
+        return std::format("{}{}: {}, {}", "expected the hashes ", (test.expectation.same ? "equal" : "different"), a, b);
     }
-    return segment;
+    if (test.expectation.hash_a && a != *test.expectation.hash_a){
+        return std::format("expected the pinned hash {}, got {}", *test.expectation.hash_a, a);
+    }
+    return "";
 }
 
-SegmentReport run_in(StorySaveMode mode, Lab& lab){
-    Segment segment = three_rows(lab);
-    SegmentHooks hooks = lab.hooks();
-    RunState state;
-    return run_segment(SegmentRange{}, SegmentPolicy{.save_mode = mode}, segment, hooks, state);
-}
+class Test_StepsHash : public UnitTest{
+public:
+    explicit Test_StepsHash(HashCase test)
+        : UnitTest(std::format("Pokemon::StorySavePolicy - steps hash: {}", test.name))
+        , m_case(std::move(test))
+    {}
 
-UnitTestResult test_none_never_saves(){
-    Lab lab;
-    const SegmentReport report = run_in(StorySaveMode::NONE, lab);
-    const std::vector<std::string> expected = {"00.01", "00.02", "00.03"};
-    if (!report.completed || lab.trace != expected){
-        return std::format("Expected three checkpoints and no save:{}", lab.all());
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::string error = check_hash(m_case);
+        return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
     }
-    if (!lab.has("[Segment] 00: save mode none") || !lab.has("[Checkpoint] 00.02: not saving (save mode none)")){
-        return std::format("Expected the skipped saves logged:{}", lab.all());
-    }
-    return true;
-}
 
-UnitTestResult test_per_checkpoint_saves_each(){
-    Lab lab;
-    const SegmentReport report = run_in(StorySaveMode::PER_CHECKPOINT, lab);
-    const std::vector<std::string> expected = {"00.01", "save", "00.02", "save", "00.03", "save"};
-    if (!report.completed || lab.trace != expected){
-        return std::format("Expected a save after each checkpoint:{}", lab.all());
-    }
-    return true;
-}
-
-UnitTestResult test_after_verification_saves_at_the_end(){
-    Lab lab;
-    const SegmentReport report = run_in(StorySaveMode::AFTER_VERIFICATION, lab);
-    const std::vector<std::string> expected = {"00.01", "00.02", "00.03", "save"};
-    if (!report.completed || lab.trace != expected){
-        return std::format("Expected one save, at the end:{}", lab.all());
-    }
-    if (!lab.has("[Postcondition] 00.03: not checked: the game has no postcondition check")){
-        return std::format("Expected the missing check logged as not checked:{}", lab.all());
-    }
-    return true;
-}
-
-UnitTestResult test_after_verification_checks_before_saving(){
-    Lab lab;
-    lab.postconditions = outcome_ok();
-    const SegmentReport report = run_in(StorySaveMode::AFTER_VERIFICATION, lab);
-    const std::vector<std::string> expected = {"00.01", "00.02", "00.03", "check 00.03", "save"};
-    if (!report.completed || lab.trace != expected){
-        return std::format("Expected the check, then the save:{}", lab.all());
-    }
-    return true;
-}
-
-//  FRLG 00.31, 2026-11-10: the run said it passed on the wrong floor.
-UnitTestResult test_failed_postconditions_never_save(){
-    Lab lab;
-    lab.postconditions = outcome_failed("postconditions", "map: expected RocketHideout_B3F, read RocketHideout_B4F");
-    const SegmentReport report = run_in(StorySaveMode::AFTER_VERIFICATION, lab);
-    if (report.completed || report.failed_checkpoint != "00.03"){
-        return std::format("Expected the run failed at its last checkpoint:{}", lab.all());
-    }
-    if (std::find(lab.trace.begin(), lab.trace.end(), "save") != lab.trace.end()){
-        return std::format("A run whose postconditions failed must not save:{}", lab.all());
-    }
-    if (!lab.has("[Checkpoint] 00.03: postconditions failed, not saving")){
-        return std::format("Expected the refused save logged:{}", lab.all());
-    }
-    return true;
-}
-
-//  Without per-checkpoint saves, a reload would go back to the run's start.
-UnitTestResult test_no_reload_after_the_first(){
-    Lab lab;
-    lab.failures["00.02"] = 1;
-    const SegmentReport report = run_in(StorySaveMode::NONE, lab);
-    const std::vector<std::string> expected = {"00.01", "00.02"};
-    if (report.completed || report.reloads != 0 || lab.trace != expected){
-        return std::format("Expected 00.02 to fail without a reload:{}", lab.all());
-    }
-    if (!lab.has("[Segment] 00: 00.02 failed; save mode none left no save at its start, so no reload")){
-        return std::format("Expected why it didn't reload:{}", lab.all());
-    }
-    return true;
-}
-
-UnitTestResult test_first_row_still_reloads(){
-    Lab lab;
-    lab.failures["00.01"] = 1;
-    const SegmentReport report = run_in(StorySaveMode::NONE, lab);
-    const std::vector<std::string> expected = {"00.01", "reload", "00.01", "00.02", "00.03"};
-    if (!report.completed || report.reloads != 1 || lab.trace != expected){
-        return std::format("Expected the first checkpoint retried from the start save:{}", lab.all());
-    }
-    return true;
-}
-
-VerifyReport verify_in(StorySaveMode mode, Lab& lab){
-    Segment segment = three_rows(lab);
-    SegmentHooks hooks = lab.hooks();
-    RunState state;
-    const VerifyPolicy policy{.runs = 3, .passes_needed = 2, .save_mode = mode};
-    return verify_checkpoint("00.02", policy, segment, hooks, state);
-}
-
-UnitTestResult test_verify_saves_once_every_run_passed(){
-    Lab lab;
-    const VerifyReport report = verify_in(StorySaveMode::AFTER_VERIFICATION, lab);
-    const std::vector<std::string> expected = {"00.02", "reload", "00.02", "reload", "00.02", "save"};
-    if (!report.verified || !report.saved || lab.trace != expected){
-        return std::format("Expected one save, after the last run:{}", lab.all());
-    }
-    if (!lab.has("[Verify] 00.02: every run passed: saved at the end state")){
-        return std::format("Expected the save logged:{}", lab.all());
-    }
-    return true;
-}
-
-UnitTestResult test_verify_no_save_after_a_failed_run(){
-    Lab lab;
-    lab.failures["00.02"] = 1;
-    const VerifyReport report = verify_in(StorySaveMode::AFTER_VERIFICATION, lab);
-    if (!report.verified || report.saved || std::find(lab.trace.begin(), lab.trace.end(), "save") != lab.trace.end()){
-        return std::format("Verified 2/3, but a failed run means no save:{}", lab.all());
-    }
-    if (!lab.has("[Verify] 00.02: not every run passed: not saving")){
-        return std::format("Expected why it didn't save:{}", lab.all());
-    }
-    return true;
-}
+private:
+    HashCase m_case;
+};
 
 
-//  FRLG 00.31's end, in the shared format: beside B3F's Rare Candy, with
-//  the LIFT KEY and both Rare Candies.
+//  The save mode of a run of checkpoint "00.31" in `phase`, verified with
+//  `recorded` (none: never verified), whose steps now hash to "sha256:now".
+struct SaveDecisionCase{
+    std::string_view name;
+    struct Input{
+        StoryPhase phase;
+        std::optional<std::string_view> recorded;
+    };
+
+    struct Expectation{
+        StorySaveMode mode;
+        std::string_view reason;
+    };
+
+    Input input;
+    Expectation expectation;
+};
+
+const SaveDecisionCase SAVE_DECISION_CASES[] = {
+    {.name = "testing never saves", .input = {.phase = StoryPhase::TESTING, .recorded = "sha256:now"},
+     .expectation = {.mode = StorySaveMode::NONE, .reason = "[Save] 00.31: phase testing: save mode none"}},
+    {.name = "verification saves after its runs", .input = {.phase = StoryPhase::VERIFICATION, .recorded = "sha256:now"},
+     .expectation = {.mode = StorySaveMode::AFTER_VERIFICATION, .reason = "[Save] 00.31: phase verification: save mode after_verification"}},
+    {.name = "reproduction saves each checkpoint", .input = {.phase = StoryPhase::REPRODUCTION, .recorded = "sha256:now"},
+     .expectation = {.mode = StorySaveMode::PER_CHECKPOINT, .reason = "[Save] 00.31: phase reproduction: save mode per_checkpoint"}},
+    {.name = "changed steps are testing", .input = {.phase = StoryPhase::REPRODUCTION, .recorded = "sha256:old"},
+     .expectation = {.mode = StorySaveMode::NONE,
+                     .reason = "[Save] 00.31: phase reproduction but steps_hash mismatch (recorded sha256:old, now sha256:now): treated as testing, save mode none"}},
+    {.name = "never verified is testing", .input = {.phase = StoryPhase::VERIFICATION, .recorded = std::nullopt},
+     .expectation = {.mode = StorySaveMode::NONE,
+                     .reason = "[Save] 00.31: phase verification but never verified: treated as testing, save mode none"}},
+};
+
+class Test_SaveDecision : public UnitTest{
+public:
+    explicit Test_SaveDecision(SaveDecisionCase test)
+        : UnitTest(std::format("Pokemon::StorySavePolicy - save decision: {}", test.name))
+        , m_case(std::move(test))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        StoryCheckpoint checkpoint;
+        checkpoint.id = "00.31";
+        checkpoint.metadata.phase = m_case.input.phase;
+        if (m_case.input.recorded){
+            checkpoint.metadata.verified = StoryVerification{.steps_hash = std::string(*m_case.input.recorded)};
+        }
+        const StorySaveDecision decision = decide_story_save(checkpoint, "sha256:now");
+        if (decision.mode != m_case.expectation.mode || decision.reason != m_case.expectation.reason){
+            return std::format("got {}: {}", story_save_mode_name(decision.mode), decision.reason);
+        }
+        return true;
+    }
+
+private:
+    SaveDecisionCase m_case;
+};
+
+
+//  A checkpoint that ends beside B3F's Rare Candy, with the LIFT KEY and
+//  both Rare Candies.
 inline constexpr std::string_view CHECKPOINT_0031 = R"({
     "id": "00.31",
     "title": "Rocket Hideout to the LIFT KEY",
@@ -329,7 +211,8 @@ UnitTestResult test_postconditions_pass(){
     return true;
 }
 
-//  The 2026-11-10 false pass: still on B4F, the Rare Candy not picked up.
+//  A run that reports success while still on B4F, the Rare Candy not
+//  picked up.
 UnitTestResult test_postconditions_fail(){
     const PostconditionReport report = check_postconditions(checkpoint_0031(), read_0031("RocketHideout_B4F", 1));
     const std::vector<std::string> lines = postcondition_log_lines(report);
@@ -399,106 +282,46 @@ UnitTestResult test_end_pose_from_the_plan(){
 }
 
 
-// A save-policy scenario and its expected result.
-struct SavePolicyCase{
-    //  The scenario to run.
+//  A named test; it returns its own failure.
+struct SavePolicyTest{
     std::string name;
-    struct Input{
-        UnitTestResult (*test)() = nullptr;
-    };
-
-    //  What the scenario checks; it returns its own failure.
-    struct Expectation{
-        std::string_view description;
-    };
-
-    Input input;
-    Expectation expectation;
+    UnitTestResult (*test)();
 };
 
 class Test_StorySavePolicy : public UnitTest{
 public:
-    explicit Test_StorySavePolicy(SavePolicyCase test_case)
-        : UnitTest(std::format("Pokemon::StorySavePolicy - {}", test_case.name))
-        , m_case(std::move(test_case))
+    explicit Test_StorySavePolicy(SavePolicyTest test)
+        : UnitTest(std::format("Pokemon::StorySavePolicy - {}", test.name))
+        , m_test(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_case.input.test();
+        return m_test.test();
     }
 
 private:
-    SavePolicyCase m_case;
+    SavePolicyTest m_test;
 };
 
-const SavePolicyCase SAVE_POLICY_CASES[] = {
-    {
-        .name = "decision table", .input = {.test = test_decision_table},
-        .expectation = {.description = "mode x verdict x save point, all twelve rows"},
-    },
-    {
-        .name = "none never saves", .input = {.test = test_none_never_saves},
-        .expectation = {.description = "three passing checkpoints, no save, each skip logged"},
-    },
-    {
-        .name = "per checkpoint saves each", .input = {.test = test_per_checkpoint_saves_each},
-        .expectation = {.description = "a save after every passing checkpoint"},
-    },
-    {
-        .name = "after verification saves at the end", .input = {.test = test_after_verification_saves_at_the_end},
-        .expectation = {.description = "one save after the last checkpoint; no check logged as not checked"},
-    },
-    {
-        .name = "after verification checks before saving", .input = {.test = test_after_verification_checks_before_saving},
-        .expectation = {.description = "the game's postcondition check runs before the save"},
-    },
-    {
-        .name = "failed postconditions never save", .input = {.test = test_failed_postconditions_never_save},
-        .expectation = {.description = "a failed check fails the run and refuses the save"},
-    },
-    {
-        .name = "no reload after the first checkpoint", .input = {.test = test_no_reload_after_the_first},
-        .expectation = {.description = "a later checkpoint has no save to reload, so it fails at once"},
-    },
-    {
-        .name = "the first checkpoint still reloads", .input = {.test = test_first_row_still_reloads},
-        .expectation = {.description = "the first checkpoint reloads the run's start save"},
-    },
-    {
-        .name = "verify saves once every run passed", .input = {.test = test_verify_saves_once_every_run_passed},
-        .expectation = {.description = "3/3 passed: one save at the end of run 3"},
-    },
-    {
-        .name = "verify: no save after a failed run", .input = {.test = test_verify_no_save_after_a_failed_run},
-        .expectation = {.description = "2/3 verified, but no save"},
-    },
-    {
-        .name = "postconditions: json", .input = {.test = test_postconditions_json},
-        .expectation = {.description = "00.31's postconditions read and written back"},
-    },
-    {
-        .name = "postconditions: pass", .input = {.test = test_postconditions_pass},
-        .expectation = {.description = "B3F (12, 13) north, LIFT_KEY 1, RARE_CANDY 2: passed"},
-    },
-    {
-        .name = "postconditions: fail", .input = {.test = test_postconditions_fail},
-        .expectation = {.description = "still on B4F with 1 Rare Candy: failed"},
-    },
-    {
-        .name = "postconditions: not checked", .input = {.test = test_postconditions_not_checked},
-        .expectation = {.description = "unread parts are not checked, never passed"},
-    },
-    {
-        .name = "postconditions: end pose from the plan", .input = {.test = test_end_pose_from_the_plan},
-        .expectation = {.description = "the last route's target, or unknown after legs"},
-    },
+const SavePolicyTest SAVE_POLICY_TESTS[] = {
+    {.name = "postconditions: json", .test = test_postconditions_json},
+    {.name = "postconditions: pass", .test = test_postconditions_pass},
+    {.name = "postconditions: fail", .test = test_postconditions_fail},
+    {.name = "postconditions: not checked", .test = test_postconditions_not_checked},
+    {.name = "postconditions: end pose from the plan", .test = test_end_pose_from_the_plan},
 };
 
 } // namespace
 
 
 void add_tests_StorySavePolicy(UnitTestDatabase& database){
-    for (const SavePolicyCase& test_case : SAVE_POLICY_CASES){
-        database.add<Test_StorySavePolicy>(test_case);
+    for (const HashCase& test : HASH_CASES){
+        database.add<Test_StepsHash>(test);
+    }
+    for (const SaveDecisionCase& test : SAVE_DECISION_CASES){
+        database.add<Test_SaveDecision>(test);
+    }
+    for (const SavePolicyTest& test : SAVE_POLICY_TESTS){
+        database.add<Test_StorySavePolicy>(test);
     }
 }
 

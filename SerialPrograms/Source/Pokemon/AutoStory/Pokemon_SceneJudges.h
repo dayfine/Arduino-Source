@@ -89,7 +89,7 @@ public:
 
     //  Whether the warp the rule asks for has shown (true without one).
     bool warped() const;
-    //  What it has seen, for the log: "black fade, banner read".
+    //  What it has seen, for the log: "black back up, banner read".
     std::string describe() const;
 
 private:

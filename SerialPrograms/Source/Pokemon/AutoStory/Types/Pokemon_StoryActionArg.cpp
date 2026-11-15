@@ -11,7 +11,9 @@ namespace Pokemon{
 
 
 StoryArgType story_arg_type(const StoryArgValue& value){
-    return (StoryArgType)value.index();
+    //  The alternatives are declared in StoryArgType's order. A variant left
+    //  valueless by an exception would give variant_npos; none is kept.
+    return static_cast<StoryArgType>(value.index());
 }
 
 

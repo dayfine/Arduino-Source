@@ -67,8 +67,7 @@ bool has_line(const FakeStoryBackend<GridPose>& backend, std::string_view line){
 
 //  The worked example of a game's own action: a door or stairs warp. A
 //  warp is a fade out, then a fade in on the target's map. No fade is not
-//  "arrived": FRLG 00.31 (console B, 2026-11-10) took it so and saved on
-//  the wrong floor.
+//  "arrived": a run that takes it so goes on, and saves, on the wrong floor.
 Outcome take_warp(StoryBackend<GridPose>& backend, const StoryActionCall& call, RunState&){
     const Direction direction = story_arg<Direction>(call.args, "direction");
     const GridPose& to = story_arg<GridPose>(call.args, "to");
@@ -304,7 +303,7 @@ const WarpCase WARP_CASES[] = {
         look({}, on_map("RocketHideout_B4F")), look({ScreenEvent::FADE_BLACK}), look({ScreenEvent::PLAYER_CAN_MOVE}, on_map("RocketHideout_B3F")),
      }}, .expectation = {}},
     //  The screen darkens at the stairs but no fade starts and the map
-    //  stays B4F: the old wait took this for arrived (00.31's false pass).
+    //  stays B4F: a wait for a dark screen alone would take this for arrived.
     {.name = "black_without_warp", .input = {.looks = {look({ScreenEvent::SCREEN_STILL}, on_map("RocketHideout_B4F"))}},
      .expectation = {.failure = "warp_no_fade"}},
     {.name = "fade back to B4F", .input = {.looks = {look({ScreenEvent::FADE_BLACK}), look({ScreenEvent::PLAYER_CAN_MOVE}, on_map("RocketHideout_B4F"))}},
