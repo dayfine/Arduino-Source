@@ -34,8 +34,7 @@ Outcome teach(Logger& logger, const TeachPlan& plan, StoryAbilities& abilities){
     if (result.end == TeachEnd::LEARNED){
         return Pokemon::outcome_ok();
     }
-    //  NO_ITEM: skipped, with run_teach()'s log line.
-    if (result.end == TeachEnd::ALREADY_KNOWN || result.end == TeachEnd::NO_ITEM){
+    if (result.end == TeachEnd::ALREADY_KNOWN){
         return Pokemon::outcome_unchanged();
     }
     return Pokemon::outcome_failed(std::format("teach_{}", teach_end_name(result.end)), teach_message(plan, result));

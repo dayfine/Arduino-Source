@@ -40,7 +40,7 @@
                         "surf"
                     ]
                 },
-                "why": "TM14 Blizzard over Dig, as 13.03 teaches it (pokeguy's moves here: Surf, Water Pulse, Bite, Blizzard; the user approved the TM spend 2026-11-12), unless the lead knows it: console B's lead came to the rival with Dig (2026-11-15, run 6) and lost to Venusaur; PokemonSimulation's silph-rival sim of that entry (Lv43, 136/136) wins 35% by C2 with Dig and 99% with Blizzard. Keep list: every move the lead can know but Dig; skipped if the bag has no TM14"
+                "why": "TM14 Blizzard over Dig, as 13.03 teaches it (pokeguy's moves here: Surf, Water Pulse, Bite, Blizzard; the user approved the TM spend 2026-11-12), unless the lead knows it: console B's lead came to the rival with Dig (2026-11-15, run 6) and lost to Venusaur; PokemonSimulation's silph-rival sim of that entry (Lv43, 136/136) wins 35% by C2 with Dig and 99% with Blizzard. Keep list: every move the lead can know but Dig. 13.03 teaches it first, so this step finds it known; with neither Blizzard nor TM14 the step fails, as the plan picked TM14 up"
             },
             {
                 "id": "to_3f_trainer",

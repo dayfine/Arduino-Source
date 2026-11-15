@@ -128,8 +128,14 @@ private:
     bool move_cursor_to(TeachScreen screen, size_t row);
     //  In the bag: to KEY ITEMS.
     bool to_key_items();
+    //  On the list `screen`: DOWN, then UP, one row at a time until the rows
+    //  shown have `name` or the list ends either way. The last view read:
+    //  without `name` if the list hasn't got it; nothing if the list didn't
+    //  show or no rows were read.
+    std::optional<TeachView> scroll_to_row(TeachScreen screen, std::string_view name);
     //  On the list `screen`: A on the row `name`, then A on the item menu's
-    //  top row (OPEN or USE). NOT_IN_CASE: the rows read haven't got it.
+    //  top row (OPEN or USE). NOT_IN_CASE: the list, scrolled through end to
+    //  end, hasn't got it.
     ItemOpen open_row(TeachScreen screen, std::string_view name);
     //  After A on a member: what it showed.
     TeachPrompt member_answer();

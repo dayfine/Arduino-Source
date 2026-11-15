@@ -117,6 +117,12 @@ struct FakeTeachGame{
     size_t looks = 0;
     //  The TM in use, by row.
     size_t tm = 0;
+    //  The TM CASE's rows shown at once (pokefirered tm_case.c: five), the
+    //  top one shown, and the row its cursor opens on: the game keeps both
+    //  from the last time it was open.
+    size_t tm_rows_shown = 5;
+    size_t tm_scroll = 0;
+    size_t tm_open_cursor = 0;
     std::vector<std::string> presses = {};
     std::vector<std::string> dumps = {};
     std::string error = {};
@@ -130,6 +136,18 @@ std::vector<std::string> tm_rows(const FakeTeachGame& game){
         }
     }
     return rows;
+}
+
+//  The TM CASE's top row shown: the list scrolls by one when the cursor
+//  moves past either end of the rows shown.
+size_t tm_top_row(const FakeTeachGame& game){
+    if (game.cursor < game.tm_scroll){
+        return game.cursor;
+    }
+    if (game.cursor >= game.tm_scroll + game.tm_rows_shown){
+        return game.cursor + 1 - game.tm_rows_shown;
+    }
+    return game.tm_scroll;
 }
 
 void show_texts(FakeTeachGame& game, std::deque<TeachText> texts, FakeScreen after){
@@ -274,7 +292,7 @@ void press_bag(FakeTeachGame& game, TeachPress press){
 void press_bag_menu(FakeTeachGame& game, TeachPress press){
     if (press == TeachPress::A && game.cursor == 0){
         game.screen = FakeScreen::TM_CASE;
-        game.cursor = 0;
+        game.cursor = game.tm_open_cursor;
     }else if (press == TeachPress::A || press == TeachPress::B){
         game.screen = FakeScreen::BAG;
         game.cursor = game.bag_cursor;
@@ -293,7 +311,9 @@ void press_tm_case(FakeTeachGame& game, TeachPress press){
         game.screen = FakeScreen::TM_MENU;
         game.cursor = 0;
     }else{
+        game.tm_scroll = tm_top_row(game);
         move_cursor(game, press, rows + 1);
+        game.tm_scroll = tm_top_row(game);
     }
 }
 
@@ -399,8 +419,14 @@ TeachView view_of(const FakeTeachGame& game){
     case FakeScreen::BAG_MENU:
     case FakeScreen::TM_MENU:
         return {.screen = TeachScreen::ITEM_MENU, .cursor = game.cursor};
-    case FakeScreen::TM_CASE:
-        return {.screen = TeachScreen::TM_CASE, .cursor = game.cursor, .rows = tm_rows(game)};
+    case FakeScreen::TM_CASE:{
+        //  The rows shown, CLOSE not read.
+        const size_t top = tm_top_row(game);
+        const std::vector<std::string> rows = tm_rows(game);
+        const size_t end = std::min(rows.size(), top + game.tm_rows_shown);
+        return {.screen = TeachScreen::TM_CASE, .cursor = game.cursor - top,
+            .rows = std::vector<std::string>(rows.begin() + std::min(top, rows.size()), rows.begin() + end)};
+    }
     case FakeScreen::PROMPT:
         return {.screen = TeachScreen::PARTY_PROMPT, .text = TeachText::TEACH_WHICH};
     case FakeScreen::TEXT:
@@ -521,6 +547,26 @@ void wartortle_dig(FakeTeachGame& game){
 void no_tm03(FakeTeachGame& game){
     game.tms = {{"rock-tomb", 1}};
 }
+//  Console B, 13.03 (2026-11-14): nine in the TM CASE, five shown; TM14
+//  BLIZZARD is the sixth, below them.
+void nine_tms(FakeTeachGame& game){
+    game.tms = {
+        {"cut", 1}, {"fly", 1}, {"surf", 1}, {"strength", 1}, {"toxic", 1},
+        {"blizzard", 1}, {"giga-drain", 1}, {"shock-wave", 1}, {"fire-blast", 1},
+    };
+    game.compatible.insert("blizzard");
+}
+//  Left open on CLOSE: BLIZZARD to CLOSE shown, TOXIC above them.
+void nine_tms_left_on_close(FakeTeachGame& game){
+    nine_tms(game);
+    game.compatible.insert("toxic");
+    game.tm_open_cursor = 9;
+    game.tm_scroll = 5;
+}
+void nine_tms_no_blizzard(FakeTeachGame& game){
+    nine_tms(game);
+    game.tms[5].count = 0;
+}
 //  Console B, 2026-11-03: the step stopped pressing on "Poof!" read as
 //  "learned", and waited 5 minutes.
 void wartortle_dig_poof_learned(FakeTeachGame& game){
@@ -571,7 +617,7 @@ std::vector<ScreensCase> screens_cases(){
             .moves = {"bite", "bubble", "withdraw", "water-pulse"},
         },
         {
-            .name = "no TM03 in the TM CASE: skipped, back to the overworld",
+            .name = "no TM03 in the TM CASE: failed, back to the overworld",
             .setup = no_tm03,
             .end = TeachEnd::NO_ITEM,
             .moves = {"bite", "tail-whip", "bubble", "withdraw"},
@@ -582,6 +628,32 @@ std::vector<ScreensCase> screens_cases(){
             .end = TeachEnd::REFUSED,
             .moves = {"bite", "tail-whip", "bubble", "withdraw"},
             .tm03 = 1,
+        },
+    };
+}
+
+//  A TM CASE longer than the rows it shows.
+std::vector<ScreensCase> long_case_screens_cases(){
+    const TeachPlan blizzard{.item = "tm14", .move = "blizzard", .member = 0, .forget_move = "tail-whip"};
+    return {
+        {
+            .name = "console B 13.03: TM14 on the sixth row, below the five shown",
+            .setup = nine_tms,
+            .plan = blizzard,
+            .moves = {"bite", "blizzard", "bubble", "withdraw"},
+        },
+        {
+            .name = "TM06 above the rows shown, the TM CASE left on CLOSE",
+            .setup = nine_tms_left_on_close,
+            .plan = {.item = "tm06", .move = "toxic", .member = 0, .forget_move = "tail-whip"},
+            .moves = {"bite", "toxic", "bubble", "withdraw"},
+        },
+        {
+            .name = "no TM14 in a TM CASE of eight: failed after its last row",
+            .setup = nine_tms_no_blizzard,
+            .plan = blizzard,
+            .end = TeachEnd::NO_ITEM,
+            .moves = {"bite", "tail-whip", "bubble", "withdraw"},
         },
     };
 }
@@ -685,7 +757,7 @@ UnitTestResult check_screens_case(const ScreensCase& item){
         return std::format("{}: didn't end on the overworld; presses: {}.", item.name, presses);
     }
     //  A debug image for each failure, none otherwise.
-    const bool failed = item.end == TeachEnd::FAILED || item.end == TeachEnd::REFUSED;
+    const bool failed = item.end == TeachEnd::FAILED || item.end == TeachEnd::REFUSED || item.end == TeachEnd::NO_ITEM;
     if (failed == game.dumps.empty()){
         return std::format("{}: {} debug images.", item.name, game.dumps.size());
     }
@@ -717,7 +789,7 @@ UnitTestResult test_stuck_scene(){
 }
 
 UnitTestResult test_screens(){
-    for (const std::vector<ScreensCase>& cases : {screens_cases(), scene_screens_cases(), tutor_screens_cases()}){
+    for (const std::vector<ScreensCase>& cases : {screens_cases(), long_case_screens_cases(), scene_screens_cases(), tutor_screens_cases()}){
         for (const ScreensCase& item : cases){
             const UnitTestResult result = check_screens_case(item);
             if (result.result != UnitTestResult::PASSED){
