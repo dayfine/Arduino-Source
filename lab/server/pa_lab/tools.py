@@ -1,6 +1,6 @@
 """The read-only tools of Slice 2 (fork #131): argument checks and `ensure_game`.
 
-`shot` lives in pa_lab/shot.py. No tool here presses a button, starts or stops a program, or
+`shot` lives in pa_lab/shot.py; `describe_program` and `game_open` in pa_lab/app_query.py. No tool here presses a button, starts or stops a program, or
 changes what the app shows; mutating tools arrive with leases (Slices 3 and 5).
 """
 
@@ -27,6 +27,8 @@ ARGUMENTS: Dict[str, Obj] = {
           required=False),
         F('max_age_ms', Int(minimum=100, maximum=600000), required=False, doc='default 5000'),
     ], open=False),
+    'describe_program': Obj([F('console', Str())], open=False),
+    'game_open': Obj([F('console', Str())], open=False),
 }
 
 

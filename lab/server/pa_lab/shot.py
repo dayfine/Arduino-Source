@@ -68,10 +68,11 @@ def _check_start(app: Dict[str, Any]) -> None:
 # app writes after its next 500 ms poll. A local socket is the likely replacement if poll latency
 # or missed events become a measured problem; the alternatives are in lab/tooling's
 # docs/design/Agent-Integration.md, "Transport: now and later".
-def _write_request(lab_dir: Path, name: str, request_id: str, timeout_ms: int) -> Path:
+def write_request(lab_dir: Path, name: str, request_id: str, line: str) -> Path:
+    """`line` is fixed text built by the daemon; no caller string reaches the inbox."""
     part = lab_dir / 'outbox' / (name + '.part')
     inbox = lab_dir / 'inbox' / (name + '.txt')
-    part.write_text('request {}\nsnapshot {} {}\n'.format(request_id, LABEL, timeout_ms), encoding='utf-8')
+    part.write_text('request {}\n{}\n'.format(request_id, line), encoding='utf-8')
     os.replace(part, inbox)
     return inbox
 
@@ -83,8 +84,8 @@ def _withdraw(inbox: Path) -> None:
         pass
 
 
-def _wait_for_journal(console: ConsoleReader, sleep: Callable[[float], None], deadline: float,
-                      lab_dir: Path, name: str, inbox: Path) -> List[str]:
+def wait_for_journal(console: ConsoleReader, sleep: Callable[[float], None], deadline: float,
+                     lab_dir: Path, name: str, inbox: Path, command: str = 'snapshot') -> List[str]:
     journal = lab_dir / 'outbox' / (name + '.out')
     while True:
         if journal.exists():
@@ -95,8 +96,8 @@ def _wait_for_journal(console: ConsoleReader, sleep: Callable[[float], None], de
             break
         sleep(POLL_S)
     _withdraw(inbox)
-    raise Refused('timeout', 'The app did not answer the snapshot request in time (busy with another '
-                  'request?).', {'request': name})
+    raise Refused('timeout', 'The app did not answer the {} request in time (busy with another '
+                  'request?).'.format(command), {'request': name})
 
 
 def _check_instance(reply_instance: str, instance_id: str) -> None:
@@ -182,9 +183,9 @@ def take_shot(console: ConsoleReader, arguments: Dict[str, Any],
 
     request_id = str(new_uuid())
     name = 'palab_shot_' + request_id.replace('-', '')
-    inbox = _write_request(console.lab_dir, name, request_id, timeout_ms)
+    inbox = write_request(console.lab_dir, name, request_id, 'snapshot {} {}'.format(LABEL, timeout_ms))
     deadline = started + (timeout_ms + ANSWER_GRACE_MS) / 1000.0
-    lines = _wait_for_journal(console, sleep, deadline, console.lab_dir, name, inbox)
+    lines = wait_for_journal(console, sleep, deadline, console.lab_dir, name, inbox)
     png_path = console.lab_dir / 'outbox' / '{}_{}.png'.format(name, LABEL)
     frame = _parse_saved(lines, instance_id, png_path)
     age_ms = int(round((console.now() - timestamps.parse(frame['captured_at'])) * 1000))

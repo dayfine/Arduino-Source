@@ -6,7 +6,7 @@ here pushes). Every request must carry `Authorization: Bearer <token>`, a loopba
 `Mcp-Session-Id`. The bearer token is never logged or returned.
 
 Resources: `console://B/state` (console_state), `console://B/save` (save_resource).
-Tools: `shot`, `ensure_game`; with a control plane also `acquire_console`,
+Tools: `shot`, `ensure_game`, `describe_program`, `game_open`; with a control plane also `acquire_console`,
 `renew_console`, `release_console`, `next_events` and `request_status`. Nothing here presses a
 button or starts or stops a program: that is not served yet.
 """
@@ -25,7 +25,7 @@ import secrets
 import threading
 from typing import Any, Callable, Dict, Optional, Tuple
 
-from pa_lab import contracts, control, shot, tools
+from pa_lab import app_query, contracts, control, shot, tools
 from pa_lab.lab_reader import ConsoleReader, Unavailable
 
 LOG = logging.getLogger('pa_lab.server')
@@ -48,7 +48,8 @@ RESOURCE_NOT_FOUND = -32002
 INSTRUCTIONS = (
     'Read-only view of lab console B. Read console://B/state before acting on the console and '
     'console://B/save for the last known save. shot returns a PNG newer than the call; ensure_game '
-    'only verifies, it never navigates. Unknown observations are never success.')
+    'only verifies, it never navigates. describe_program gives the selected program\'s option contract; '
+    'game_open says whether a game is in front. Unknown observations are never success.')
 
 TOOL_LIST = [
     {
@@ -87,7 +88,38 @@ TOOL_LIST = [
         },
         'annotations': {'readOnlyHint': True, 'destructiveHint': False, 'idempotentHint': True},
     },
+    {
+        'name': 'describe_program',
+        'title': "The selected program's option contract",
+        'description': "The selected program's id and the static contract of its options (keys, types, "
+                       'defaults, bounds, enum entries) and its prechecks (the string "unsupported" until the '
+                       'program declares them). Read-only; needs no lease. Refuses when the selected panel is '
+                       'not a program.',
+        'inputSchema': {
+            'type': 'object',
+            'properties': {'console': {'type': 'string', 'enum': ['B']}},
+            'required': ['console'],
+            'additionalProperties': False,
+        },
+        'annotations': {'readOnlyHint': True, 'destructiveHint': False, 'idempotentHint': True},
+    },
+    {
+        'name': 'game_open',
+        'title': 'Is a game in front',
+        'description': 'Whether a game is in front of the console now: open true, or open false with reason '
+                       'home, user_select, black (loading or no signal) or no_video. It does not tell one game '
+                       'from another; use ensure_game for that. Read-only; needs no lease.',
+        'inputSchema': {
+            'type': 'object',
+            'properties': {'console': {'type': 'string', 'enum': ['B']}},
+            'required': ['console'],
+            'additionalProperties': False,
+        },
+        'annotations': {'readOnlyHint': True, 'destructiveHint': False, 'idempotentHint': False},
+    },
 ]
+
+APP_QUERIES = {'describe_program': app_query.describe_program, 'game_open': app_query.game_open}
 
 
 _REQUEST_ID = {'type': 'string', 'description': 'client-generated lower-case UUID; a retry reuses it'}
@@ -220,7 +252,7 @@ class LabMcp:
         return {'contents': [{'uri': uri, 'mimeType': 'application/json', 'text': _json_text(doc)}]}
 
     def _call_tool(self, name: Any, arguments: Any) -> Dict[str, Any]:
-        if name not in ('shot', 'ensure_game'):
+        if name not in ('shot', 'ensure_game') and name not in APP_QUERIES:
             raise RpcError(INVALID_PARAMS, 'Unknown tool: {}'.format(name))
         if not isinstance(arguments, dict):
             return self._refused(name, {'code': 'invalid_arguments', 'field': 'arguments',
@@ -235,6 +267,10 @@ class LabMcp:
                 result = tools.ensure_game(reader, arguments)
                 return {'content': [{'type': 'text', 'text': _json_text(result)}],
                         'structuredContent': result, 'isError': not result['verified']}
+            if name in APP_QUERIES:
+                result = APP_QUERIES[name](reader, arguments)
+                return {'content': [{'type': 'text', 'text': _json_text(result)}],
+                        'structuredContent': result, 'isError': False}
             result = self.take_shot(reader, arguments)
         except tools.InvalidArguments as e:
             return self._refused(name, e.refusal())

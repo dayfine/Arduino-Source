@@ -19,8 +19,10 @@ tickets and events in SQLite. Nothing presses a button yet: that is Slice 5.
 | `pa_lab/lab_reader.py` | Strict reads of `Lab/state.json` and `Lab/save.json`; `console://B/state` and `/save` |
 | `pa_lab/tools.py`, `pa_lab/shot.py` | `ensure_game` (verification only) and `shot` (newer than the call) |
 | `pa_lab/mcp_server.py` | MCP over Streamable HTTP on `127.0.0.1`: bearer, Host/Origin, sessions, size caps |
-| `tests/fake_lab.py` | A fake `Lab/` folder and a fake app answering `snapshot` requests, in temp dirs |
+| `pa_lab/app_query.py` | `describe_program` and `game_open`: one-line reads through the app's channel (#504) |
+| `tests/fake_lab.py` | A fake `Lab/` folder and a fake app answering `snapshot`, `describe_program` and `game_open` requests, in temp dirs |
 | `tests/test_{lab_reader,ensure_game,shot,config,mcp_server}.py` | Slice 2's fake-lab tests |
+| `tests/test_app_query.py` | `describe_program` and `game_open` against the fake app |
 | `pa_lab/db.py` | The SQLite file: migrations (`PRAGMA user_version`), owner-only file, `BEGIN IMMEDIATE` writes |
 | `pa_lab/control.py` | Leases, idempotent requests, tickets, events, `next_events`, reconciliation, compaction |
 | `tests/test_{db,control,control_concurrency,control_mcp}.py` | Slice 3's tests: restarts, threads and processes racing, kills mid-write |
@@ -188,6 +190,29 @@ journal names, and only when complete (signature and `IEND`). Refusals: `timeout
 or the saved frame is older than `max_age_ms`), `video_bad_signal`, `app_unavailable` (a reply
 from another instance: `evidence.reason` `instance_replaced`; `panel_changed`, `app_closing`,
 `save_failed` as `evidence.reason`; a line error or an incomplete PNG).
+
+**`describe_program(console)`** and **`game_open(console)`** send the app's channel commands of
+the same names (#504, `Lab.md` "Describe program" and "Screen"); both read only and need no
+lease, owner token or program state. Each reads `state.json` (the app is up; its `instance.id`),
+writes the fixed request `request <uuid>` / `<command>` into `Lab/inbox` as `shot` does, waits
+up to 5 s + 2 s for the journal, and reads `state.json` again. Arguments are closed: only
+`console` (no `game_open image`).
+
+- `describe_program` parses `describe_program <JSON>` and returns it as `program`:
+  `{"id", "options", "prechecks", "schema": 1}` (the option entries as the app prints them) with
+  `prechecks_supported`. `prechecks` is the string `unsupported` until the program declares a
+  list (#485); that is a valid reply, not an error. A list is passed through.
+- `game_open` parses `game_open yes` / `game_open no REASON` and returns `open` and `reason`
+  (`null`, `home`, `user_select`, `black` or `no_video`). `open: false` is an answer, not a tool
+  error; it does not tell one game from another (`ensure_game` does).
+
+| What the daemon finds | Refusal |
+|---|---|
+| `describe_program: the selected panel is not a program.` | `panel_not_program` |
+| `schema` other than 1 | `unsupported_schema` |
+| a failed line, no single reply line and `ok` line, bad JSON, a missing `id`/`options`/`prechecks`, an unknown `game_open` reason | `app_unavailable` (the journal in `evidence`) |
+| a reply from another instance | `app_unavailable`, `evidence.reason` `instance_replaced` |
+| no journal within 7 s | `timeout`; the request is withdrawn from the inbox |
 
 ## Slice 3: the durable control plane
 
