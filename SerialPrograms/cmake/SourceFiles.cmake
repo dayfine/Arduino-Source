@@ -1468,14 +1468,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_CoveredWatch.cpp
-    Source/Pokemon/AutoStory/Engine/Pokemon_CoveredWatch.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_CoveredWatch_Tests.cpp
-    Source/Pokemon/AutoStory/Engine/Pokemon_CoveredWatch_Tests.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage.cpp
-    Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage_Tests.cpp
-    Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.cpp
@@ -1536,7 +1528,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.h
-    Source/Pokemon/AutoStory/Pokemon_TestExpect.h
     Source/Pokemon/AutoStory/Pokemon_TilePose.cpp
     Source/Pokemon/AutoStory/Pokemon_TilePose.h
     Source/Pokemon/AutoStory/Types/Pokemon_DeclaredPose.h
