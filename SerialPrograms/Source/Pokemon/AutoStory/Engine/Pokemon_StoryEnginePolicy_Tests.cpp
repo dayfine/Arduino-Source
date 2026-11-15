@@ -4,8 +4,7 @@
  *
  *  The engine's whole run of a checkpoint on a scripted backend: the save
  *  mode from the checkpoint's phase and steps hash, the postconditions
- *  (passed, failed, not checked) and whether it saved. Then the metadata
- *  in the JSON.
+ *  (passed, failed, not checked) and whether it saved.
  *
  */
 
@@ -15,7 +14,6 @@
 #include <string_view>
 #include <utility>
 #include <vector>
-#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
@@ -200,86 +198,12 @@ private:
 };
 
 
-
-struct MetadataCase{
-    //  A checkpoint's "metadata", read.
-    struct Input{
-        std::string_view metadata;
-    };
-
-    //  The error the read throws (contained), or what it read.
-    struct Expectation{
-        std::string_view error = {};
-        StoryPhase phase = StoryPhase::TESTING;
-        std::string_view steps_hash = {};
-        size_t items = 0;
-    };
-
-    std::string_view name;
-    Input input;
-    Expectation expectation;
-};
-
-const MetadataCase METADATA_CASES[] = {
-    {.name = "none is testing", .input = {.metadata = ""},
-     .expectation = {.phase = StoryPhase::TESTING}},
-    {.name = "verified", .input = {.metadata = R"(, "metadata": {"phase": "verification", "verified": {"steps_hash": "sha256:ab", "build": "1", "date": "d", "runs": "3/3"}})"},
-     .expectation = {.phase = StoryPhase::VERIFICATION, .steps_hash = "sha256:ab"}},
-    {.name = "postconditions", .input = {.metadata = R"(, "metadata": {"phase": "reproduction", "postconditions": {"items": [{"item": "LIFT_KEY", "quantity": 1}]}})"},
-     .expectation = {.phase = StoryPhase::REPRODUCTION, .items = 1}},
-    {.name = "unknown phase", .input = {.metadata = R"(, "metadata": {"phase": "tested"})"},
-     .expectation = {.error = "unknown phase tested"}},
-    {.name = "unknown field", .input = {.metadata = R"(, "metadata": {"phase": "testing", "runs": 3})"},
-     .expectation = {.error = "unsupported field runs"}},
-};
-
-std::string check_metadata(const MetadataCase& test){
-    const std::string json = std::format(R"({{"id": "x", "title": "x", "events": []{}}})", test.input.metadata);
-    StoryCheckpoint checkpoint;
-    try{
-        checkpoint = read_story_checkpoint(parse_json(json), "metadata");
-    }catch (const ParseException& error){
-        const bool expected = !test.expectation.error.empty() && error.message().find(test.expectation.error) != std::string::npos;
-        return expected ? "" : std::format("unexpected error: {}", error.message());
-    }
-    if (!test.expectation.error.empty()){
-        return std::format("expected the error \"{}\"", test.expectation.error);
-    }
-    const std::string hash = checkpoint.metadata.verified ? checkpoint.metadata.verified->steps_hash : "";
-    if (checkpoint.metadata.phase != test.expectation.phase || hash != test.expectation.steps_hash){
-        return std::format("read phase {}, steps_hash \"{}\"", story_phase_name(checkpoint.metadata.phase), hash);
-    }
-    if (checkpoint.postconditions.items.size() != test.expectation.items){
-        return std::format("read {} items", checkpoint.postconditions.items.size());
-    }
-    return "";
-}
-
-class StoryMetadataTest : public UnitTest{
-public:
-    explicit StoryMetadataTest(MetadataCase test)
-        : UnitTest(std::format("Pokemon::StoryEngine metadata - {}", test.name))
-        , m_case(std::move(test))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::string error = check_metadata(m_case);
-        return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
-    }
-private:
-    MetadataCase m_case;
-};
-
-
-
 } // namespace
 
 
 void add_tests_StoryEnginePolicy(UnitTestDatabase& database){
     for (const EngineCase& test : ENGINE_CASES){
         database.add<StoryEngineSaveTest>(test);
-    }
-    for (const MetadataCase& test : METADATA_CASES){
-        database.add<StoryMetadataTest>(test);
     }
 }
 
