@@ -47,42 +47,44 @@ handoff). CI: "pass" = Fork Draft CI (Ubuntu build + unit tests), code-health an
 pass; failing checks are named. "frames" = Ubuntu build fails only on test frames not yet on
 upstream's CommandLineTests (TODO 3). Review = last agent verdict. All are open drafts.
 
-| PR | Branch | Base | What | CI | Review |
-|---|---|---|---|---|---|
-| #519 | `autostory/shared-stats` | `main` | shared AutoStory stats, Runs, clearer labels (S0a) | - | merged into fork main |
-| #520 | `autostory/checkpoint-id` | `main` | `CheckpointId` value type (S0b) | - | merged into fork main |
-| #529 | `plza/upstream/s1-01` | `main` | tile grid, step kinds, action args, built-in action table | pass | NEEDS_REWORK |
-| #530 | `plza/upstream/s1-02` | s1-01 | story log, failure classes, step outcome | code-health | NEEDS_REWORK |
-| #531 | `plza/upstream/s1-03` | s1-02 | steps, checkpoints, breakpoints, save modes as data | code-health | NEEDS_REWORK |
-| #532 | `plza/upstream/s1-04` | s1-03 | checkpoint as story events, outcome classes, tile poses | code-health | NEEDS_REWORK |
-| #533 | `plza/upstream/s1-05` | s1-04 | tile-game step executor, story JSON readers | code-health | NEEDS_REWORK |
-| #534 | `plza/upstream/s1-06` | s1-05 | CommonTools screen events | pass | NEEDS_REWORK |
-| #535 | `plza/upstream/s2-01` | s1-06 | checkpoint attempts, story segments | code-health | NEEDS_REWORK |
-| #536 | `plza/upstream/s2-02` | s2-01 | read a story from checkpoint files | pass | NEEDS_REWORK |
-| #537 | `plza/upstream/s2-03` | s2-02 | frame coverage, covered watches, scene judges | code-health | NEEDS_REWORK |
-| #538 | `plza/upstream/s2-04` | s2-03 | story backend interface | pass | NEEDS_REWORK |
-| #539 | `plza/upstream/s2-05` | s2-04 | action registry, built-in actions, step runner | pass | NEEDS_REWORK |
-| #540 | `plza/upstream/s2-06` | s2-05 | postcondition checks, engine save policy | code-health | NEEDS_REWORK |
-| #541 | `plza/upstream/s2-07` | s2-06 | CommonTools screen machine and step trace | code-health | NEEDS_REWORK |
-| #542 | `plza/upstream/s2-08` | s2-07 | the story engine | code-health | NEEDS_REWORK |
-| #543 | `plza/upstream/s2-09` | s2-08 | run options, language and checkpoint range dropdowns | pass | NEEDS_REWORK |
-| #544 | `plza/upstream/s2-10` | s2-09 | NintendoSwitch: which HOME tile is selected | frames | NEEDS_REWORK |
-| #545 | `plza/upstream/s2-11` | s2-10 | launch a game to its save through Switch prompts | frames | NEEDS_REWORK |
-| #555 | `plza/upstream/p1-01` | s2-11 | LZA lock-on bracket and party bar detectors | frames | none yet |
-| #556 | `plza/upstream/p1-02` | p1-01 | story scene detectors | frames | LGTM with nits |
-| #557 | `plza/upstream/p1-03` | p1-02 | dialog, choice, Confirm Choices, objective marker readers | frames | none yet |
-| #558 | `plza/upstream/p2-01` | p1-03 | screen readings, failure classes, screen events | frames | LGTM with nits |
-| #559 | `plza/upstream/p2-02` | p2-01 | console backend: dialogs, scenes, battles | frames | none yet |
-| #560 | `plza/upstream/p2-03` | p2-02 | the scene machine | frames | LGTM with nits |
-| #561 | `plza/upstream/p2-04` | p2-03 | timed walks, walk screen checks, step checks | frames | none yet |
-| #562 | `plza/upstream/p2-05` | p2-04 | start load, launch, Confirm Choices, zone gate walk | frames, code-health | LGTM with nits |
-| #563 | `plza/upstream/p3-01` | p2-05 | catch plan, catch stop, lock-on watch | frames | LGTM with nits |
-| #564 | `plza/upstream/p3-02` | p3-01 | Wild Zone 1 catches, objective marker walks | frames, code-health | none yet |
-| #565 | `plza/upstream/m1-01` | p3-02 | Main Mission 01 plans (01.01-01.03) | frames | LGTM with nits |
-| #566 | `plza/upstream/m2-01` | m1-01 | Main Mission 02 plans (02.01-02.07) | frames | none yet |
-| #567 | `plza/upstream/m3-01` | m2-01 | Main Mission 03 plans (03.01-03.11) | frames | LGTM with nits |
-| #568 | `plza/upstream/p4-01` | m3-01 | the story game and its table | frames, code-health | LGTM with nits |
-| #569 | `plza/upstream/p4-02` | p4-01 | the program | frames | none yet |
+| PR | Branch | Base | What | Size (+lines, files) | CI | Review |
+|---|---|---|---|---|---|---|
+| #519 | `autostory/shared-stats` | `main` | shared AutoStory stats, Runs, clearer labels (S0a) | +210/-62, 48 | - | approved; merged into fork main then reverted (a4debbe5e) — hand upstream from the branch |
+| #520 | `autostory/checkpoint-id` | `main` | `CheckpointId` value type (S0b) | +496, 6 | - | approved; merged into fork main then reverted (a4debbe5e) — hand upstream from the branch |
+| #529 | `plza/upstream/s1-01` | `autostory/checkpoint-id` | tile grid, step kinds, action args, built-in action table | +924, 19 | pass | NEEDS_REWORK |
+| #530 | `plza/upstream/s1-02` | s1-01 | story log, failure classes, step outcome | +1307, 14 | code-health | NEEDS_REWORK |
+| #531 | `plza/upstream/s1-03` | s1-02 | steps, checkpoints, breakpoints, save modes as data | +954, 16 | code-health | NEEDS_REWORK |
+| #532 | `plza/upstream/s1-04` | s1-03 | checkpoint as story events, outcome classes, tile poses | +1454, 10 | code-health | NEEDS_REWORK |
+| #533 | `plza/upstream/s1-05` | s1-04 | tile-game step executor, story JSON readers | +1525, 10 | code-health | NEEDS_REWORK |
+| #534 | `plza/upstream/s1-06` | s1-05 | CommonTools screen events | +816, 9 | pass | NEEDS_REWORK |
+| #535 | `plza/upstream/s2-01` | s1-06 | checkpoint attempts, story segments | +2112/-3, 16 | code-health | NEEDS_REWORK |
+| #536 | `plza/upstream/s2-02` | s2-01 | read a story from checkpoint files | +1365, 13 | pass | NEEDS_REWORK |
+| #537 | `plza/upstream/s2-03` | s2-02 | frame coverage, covered watches, scene judges | +1193, 15 | code-health | NEEDS_REWORK |
+| #538 | `plza/upstream/s2-04` | s2-03 | story backend interface | +606, 11 | pass | NEEDS_REWORK |
+| #539 | `plza/upstream/s2-05` | s2-04 | action registry, built-in actions, step runner | +1362, 12 | pass | NEEDS_REWORK |
+| #540 | `plza/upstream/s2-06` | s2-05 | postcondition checks, engine save policy | +813, 8 | code-health | NEEDS_REWORK |
+| #541 | `plza/upstream/s2-07` | s2-06 | CommonTools screen machine and step trace | +935, 10 | code-health | NEEDS_REWORK |
+| #542 | `plza/upstream/s2-08` | s2-07 | the story engine | +1743, 10 | code-health | NEEDS_REWORK |
+| #543 | `plza/upstream/s2-09` | s2-08 | run options, language and checkpoint range dropdowns | +1051, 17 | pass | NEEDS_REWORK |
+| #544 | `plza/upstream/s2-10` | s2-09 | NintendoSwitch: which HOME tile is selected | +309, 4 | frames | NEEDS_REWORK |
+| #545 | `plza/upstream/s2-11` | s2-10 | launch a game to its save through Switch prompts | +987, 8 | frames | NEEDS_REWORK |
+| #555 | `plza/upstream/p1-01` | s2-11 | LZA lock-on bracket and party bar detectors | +982, 7 | frames | none yet |
+| #556 | `plza/upstream/p1-02` | p1-01 | story scene detectors | +2492, 27 | frames | LGTM with nits |
+| #557 | `plza/upstream/p1-03` | p1-02 | dialog, choice, Confirm Choices, objective marker readers | +1464/-1, 22 | frames | none yet |
+| #558 | `plza/upstream/p2-01` | p1-03 | screen readings, failure classes, screen events | +798, 9 | frames | LGTM with nits |
+| #559 | `plza/upstream/p2-02` | p2-01 | console backend: dialogs, scenes, battles | +1491/-1, 14 | frames | none yet |
+| #560 | `plza/upstream/p2-03` | p2-02 | the scene machine | +730, 3 | frames | LGTM with nits |
+| #561 | `plza/upstream/p2-04` | p2-03 | timed walks, walk screen checks, step checks | +714, 8 | frames | none yet |
+| #562 | `plza/upstream/p2-05` | p2-04 | start load, launch, Confirm Choices, zone gate walk | +1337, 16 | frames, code-health | LGTM with nits |
+| #563 | `plza/upstream/p3-01` | p2-05 | catch plan, catch stop, lock-on watch | +2146, 16 | frames | LGTM with nits |
+| #564 | `plza/upstream/p3-02` | p3-01 | Wild Zone 1 catches, objective marker walks | +1353, 5 | frames, code-health | none yet |
+| #565 | `plza/upstream/m1-01` | p3-02 | Main Mission 01 plans (01.01-01.03) | +180, 4 | frames | LGTM with nits |
+| #566 | `plza/upstream/m2-01` | m1-01 | Main Mission 02 plans (02.01-02.07) | +351, 7 | frames | none yet |
+| #567 | `plza/upstream/m3-01` | m2-01 | Main Mission 03 plans (03.01-03.11) | +602, 11 | frames | LGTM with nits |
+| #568 | `plza/upstream/p4-01` | m3-01 | the story game and its table | +4175, 17 | frames, code-health | LGTM with nits |
+| #569 | `plza/upstream/p4-02` | p4-01 | the program | +342, 4 | frames | none yet |
+
+Totals (added lines): S0 #519-#520 +0.7k; S1 #529-#534 +7.0k; S2 #535-#545 +12.5k; P #555-#564, #568-#569 +18.0k; M #565-#567 +1.1k; whole chain 34 PRs, +39.3k. Largest: #568 +4.2k, #556 +2.5k, #563 +2.1k, #535 +2.1k.
 
 Not in the chain: #522 (`plza/upstream/s1`, base `autostory/checkpoint-id`, CI code-health),
 #524 (`s2a`, pass) and #525 (`s2b`, pass) are the earlier three-PR cut that #529-#545 re-split;
