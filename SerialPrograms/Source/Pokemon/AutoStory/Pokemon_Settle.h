@@ -36,14 +36,6 @@ enum class SettleKind{
     DOOR,
 };
 
-//  A door's settle: the player still this long after the fade is back up
-//  ends it; a walk any earlier could still go nowhere in the fade-in
-//  (BDSP lab-B 2026-11-10, 00.04b's nurse).
-inline constexpr Milliseconds DOOR_QUIET = Milliseconds(1000);
-//  A door's settle: the overworld back up this long ends it, still or not
-//  (someone walking past the player the whole time).
-inline constexpr Milliseconds DOOR_CALM = Milliseconds(2500);
-
 //  How a settle looks and how long it may take.
 struct SettleRule{
     //  What ends it.
@@ -83,20 +75,21 @@ public:
 };
 
 //  How a settle ended.
-enum class SettleResult{
-    QUIET,      //  The rule's end: the overworld quiet (or calm).
-    BATTLE,     //  A battle the IO did not flee.
-    TIMED_OUT,  //  The cap: the step fails.
-};
 struct SettleEnd{
-    SettleResult result;
+    enum class Result{
+        QUIET,      //  The rule's end: the overworld quiet (or calm).
+        BATTLE,     //  A battle the IO did not flee.
+        TIMED_OUT,  //  The cap: the step fails.
+    };
+
+    Result result;
     //  What it saw ("black fade back up"); for TIMED_OUT, the failure.
     std::string text;
 };
 
 //  Looks and presses until `rule` says the game has settled, a battle
 //  ends it, or the cap. `label` names the step in the log and the failure.
-SettleEnd run_settle(SettleIO& io, const SettleRule& rule, std::string_view label);
+SettleEnd run_settle(const SettleRule& rule, std::string_view label, SettleIO& io);
 
 
 

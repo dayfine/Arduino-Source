@@ -140,11 +140,11 @@ std::vector<ScreenEvents> concat(std::vector<ScreenEvents> a, const std::vector<
     return a;
 }
 
-std::string_view result_name(SettleResult result){
+std::string_view result_name(SettleEnd::Result result){
     switch (result){
-    case SettleResult::QUIET:       return "quiet";
-    case SettleResult::BATTLE:      return "battle";
-    case SettleResult::TIMED_OUT:   return "timed out";
+    case SettleEnd::Result::QUIET:       return "quiet";
+    case SettleEnd::Result::BATTLE:      return "battle";
+    case SettleEnd::Result::TIMED_OUT:   return "timed out";
     }
     return "?";
 }
@@ -160,7 +160,7 @@ struct RunTestCase{
     };
 
     struct Expectation{
-        SettleResult result;
+        SettleEnd::Result result;
         //  The presses (ScriptedSettleIO::presses()).
         std::string presses;
         //  The end's text, checked for a timeout only: its failure.
@@ -181,11 +181,11 @@ public:
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         ScriptedSettleIO io(m_case.input.looks, m_case.input.flee);
-        const SettleEnd end = run_settle(io, m_case.input.rule, "Step");
+        const SettleEnd end = run_settle(m_case.input.rule, "Step", io);
         if (end.result != m_case.expectation.result){
             return std::format("expected {}, got {} ({})", result_name(m_case.expectation.result), result_name(end.result), end.text);
         }
-        if (end.result == SettleResult::TIMED_OUT){
+        if (end.result == SettleEnd::Result::TIMED_OUT){
             const UnitTestResult text = expect_equal("failure", end.text, m_case.expectation.failure);
             if (text.result != UnitTestResult::PASSED){
                 return text;
@@ -208,38 +208,38 @@ const RunTestCase RUN_CASES[] = {
     {
         .name = "a talk presses B while quiet, until 5 s of it",
         .input = {.rule = settle_rule(SettleKind::TALK), .looks = {QUIET}},
-        .expectation = {.result = SettleResult::QUIET, .presses = "BBBBB"},
+        .expectation = {.result = SettleEnd::Result::QUIET, .presses = "BBBBB"},
     },
     {
         .name = "a box is answered with the talk's button",
         .input = {.rule = settle_rule(SettleKind::TALK), .looks = concat(repeat(BOX, 2), {QUIET})},
-        .expectation = {.result = SettleResult::QUIET, .presses = "NNBBBBB"},
+        .expectation = {.result = SettleEnd::Result::QUIET, .presses = "NNBBBBB"},
     },
     {
         .name = "a door's settle ends 1 s after the fade is back up",
         .input = {.rule = settle_rule(SettleKind::DOOR), .looks = concat(repeat(FADED, 3), {QUIET})},
-        .expectation = {.result = SettleResult::QUIET, .presses = "BBBBBBBB"},
+        .expectation = {.result = SettleEnd::Result::QUIET, .presses = "BBBBBBBB"},
     },
     {
         .name = "people walking about do not hold a door's settle up",
         .input = {.rule = settle_rule(SettleKind::DOOR), .looks = {PEOPLE_WALKING}},
-        .expectation = {.result = SettleResult::QUIET, .presses = "BBBBB"},
+        .expectation = {.result = SettleEnd::Result::QUIET, .presses = "BBBBB"},
     },
     {
         .name = "a wild battle is fled and the settle goes on",
         .input = {.rule = settle_rule(SettleKind::DOOR), .looks = concat({QUIET, BATTLE}, {QUIET})},
-        .expectation = {.result = SettleResult::QUIET, .presses = "BFBBBBB"},
+        .expectation = {.result = SettleEnd::Result::QUIET, .presses = "BFBBBBB"},
     },
     {
         .name = "a battle not fled ends it",
         .input = {.rule = talk_before_battle(), .looks = concat(repeat(BOX, 2), {BATTLE}), .flee = false},
-        .expectation = {.result = SettleResult::BATTLE, .presses = "NNF"},
+        .expectation = {.result = SettleEnd::Result::BATTLE, .presses = "NNF"},
     },
     {
         .name = "no fade or banner by the cap is a map mismatch",
         .input = {.rule = {.judge = {.warp = true}, .look_every = 1000ms, .cap = 3000ms}, .looks = {QUIET}},
         .expectation = {
-            .result = SettleResult::TIMED_OUT, .presses = "BBB",
+            .result = SettleEnd::Result::TIMED_OUT, .presses = "BBB",
             .failure = "Step: no fade or banner within 3 s, so we are not where the step goes (map mismatch).",
         },
     },
@@ -247,7 +247,7 @@ const RunTestCase RUN_CASES[] = {
         .name = "no quiet overworld by the cap",
         .input = {.rule = {.look_every = 1000ms, .cap = 3000ms}, .looks = {BOX}},
         .expectation = {
-            .result = SettleResult::TIMED_OUT, .presses = "NNN",
+            .result = SettleEnd::Result::TIMED_OUT, .presses = "NNN",
             .failure = "Step: not back on a quiet overworld within 3 s.",
         },
     },
@@ -255,7 +255,7 @@ const RunTestCase RUN_CASES[] = {
         .name = "no battle by the cap after a trainer's talk",
         .input = {.rule = {.judge = {.end_on_quiet = false}, .look_every = 1000ms, .cap = 3000ms}, .looks = {QUIET}},
         .expectation = {
-            .result = SettleResult::TIMED_OUT, .presses = "BBB",
+            .result = SettleEnd::Result::TIMED_OUT, .presses = "BBB",
             .failure = "Step: no battle within 3 s of the talk.",
         },
     },

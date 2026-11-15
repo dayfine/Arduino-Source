@@ -12,6 +12,18 @@
 namespace PokemonAutomation{
 namespace Pokemon{
 
+namespace{
+
+//  A door's settle: the player still this long after the fade is back up
+//  ends it; a walk any earlier could still go nowhere in the fade-in
+//  (BDSP lab-B 2026-11-10, 00.04b's nurse).
+constexpr Milliseconds DOOR_QUIET = Milliseconds(1000);
+//  A door's settle: the overworld back up this long ends it, still or not
+//  (someone walking past the player the whole time).
+constexpr Milliseconds DOOR_CALM = Milliseconds(2500);
+
+} // namespace
+
 
 SettleRule settle_rule(SettleKind kind){
     switch (kind){
@@ -46,7 +58,7 @@ std::string timed_out(const TalkOver& judge, const SettleRule& rule, std::string
 } // namespace
 
 
-SettleEnd run_settle(SettleIO& io, const SettleRule& rule, std::string_view label){
+SettleEnd run_settle(const SettleRule& rule, std::string_view label, SettleIO& io){
     TalkOver judge(rule.judge);
     std::optional<WallClock> deadline;
     while (true){
@@ -61,11 +73,11 @@ SettleEnd run_settle(SettleIO& io, const SettleRule& rule, std::string_view labe
         switch (move){
         case SceneMove::DONE:
             io.log(std::format("[Settle] {}: over; {}.", label, judge.describe()));
-            return {SettleResult::QUIET, judge.describe()};
+            return {SettleEnd::Result::QUIET, judge.describe()};
         case SceneMove::BATTLE:
             if (!io.flee_battle()){
                 io.log(std::format("[Settle] {}: a battle started.", label));
-                return {SettleResult::BATTLE, judge.describe()};
+                return {SettleEnd::Result::BATTLE, judge.describe()};
             }
             io.log(std::format("[Settle] {}: fled a wild battle.", label));
             continue;
@@ -76,8 +88,8 @@ SettleEnd run_settle(SettleIO& io, const SettleRule& rule, std::string_view labe
         }
     }
     const std::string failure = timed_out(judge, rule, label);
-    io.log("[Settle] " + failure);
-    return {SettleResult::TIMED_OUT, failure};
+    io.log(std::format("[Settle] {}", failure));
+    return {SettleEnd::Result::TIMED_OUT, failure};
 }
 
 

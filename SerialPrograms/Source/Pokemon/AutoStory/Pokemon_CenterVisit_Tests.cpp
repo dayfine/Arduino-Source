@@ -25,13 +25,15 @@ namespace Pokemon{
 namespace{
 
 
-//  A game whose doors and reads are scripted. It writes each call down.
+//  A game whose doors and reads are scripted. It writes each call down
+//  in `calls`, in order: "in settle_door inside heal ...".
 class FakeCenterVisitIO : public CenterVisitIO{
 public:
-    FakeCenterVisitIO(WarpSeen in, std::vector<CenterPlace> places, WarpSeen out)
+    FakeCenterVisitIO(WarpSeen in, std::vector<CenterPlace> places, WarpSeen out, std::string& calls)
         : m_in(std::move(in))
         , m_places(std::move(places))
         , m_out(std::move(out))
+        , m_calls(calls)
     {}
 
     virtual WarpSeen walk_in() override{
@@ -59,11 +61,6 @@ public:
     }
     virtual void log(std::string_view) override{}
 
-    //  The calls in order: "in settle_door inside heal ...".
-    const std::string& calls() const{
-        return m_calls;
-    }
-
 private:
     void note(std::string_view call){
         if (!m_calls.empty()){
@@ -76,7 +73,7 @@ private:
     const std::vector<CenterPlace> m_places;
     const WarpSeen m_out;
     size_t m_next = 0;
-    std::string m_calls;
+    std::string& m_calls;
 };
 
 const WarpSeen FADE{.fade = WarpFade::BLACK};
@@ -110,14 +107,15 @@ public:
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        FakeCenterVisitIO io(m_case.input.in, m_case.input.places, m_case.input.out);
-        const Outcome outcome = run_center_visit(io, "Heal");
+        std::string calls;
+        FakeCenterVisitIO io(m_case.input.in, m_case.input.places, m_case.input.out, calls);
+        const Outcome outcome = run_center_visit("Heal", io);
         const std::string got = outcome.succeeded() ? "succeeded" : outcome.failure;
         const UnitTestResult result = expect_equal("outcome", got, m_case.expectation.failure.value_or("succeeded"));
         if (result.result != UnitTestResult::PASSED){
             return result;
         }
-        return expect_equal("calls", io.calls(), m_case.expectation.calls);
+        return expect_equal("calls", calls, m_case.expectation.calls);
     }
 
 private:

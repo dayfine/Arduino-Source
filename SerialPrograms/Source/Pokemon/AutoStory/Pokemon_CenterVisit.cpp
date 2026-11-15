@@ -26,7 +26,7 @@ std::string_view place_name(CenterPlace place){
 } // namespace
 
 
-Outcome enter_center(CenterVisitIO& io, std::string_view label){
+Outcome enter_center(std::string_view label, CenterVisitIO& io){
     //  Every way in settles before the walk to the nurse: the inside can
     //  still be fading in whether or not the walk saw the fade. With no
     //  fade, the walk can have gone on in as far as the counter (BDSP lab-B
@@ -50,7 +50,7 @@ Outcome enter_center(CenterVisitIO& io, std::string_view label){
     return outcome_ok();
 }
 
-Outcome leave_center(CenterVisitIO& io, std::string_view label){
+Outcome leave_center(std::string_view label, CenterVisitIO& io){
     //  With no fade seen yet, the fade can still be to come: the settle
     //  waits for it, and fails when none shows.
     const WarpSeen seen = io.walk_out();
@@ -63,14 +63,14 @@ Outcome leave_center(CenterVisitIO& io, std::string_view label){
     return outcome_ok();
 }
 
-Outcome run_center_visit(CenterVisitIO& io, std::string_view label){
-    Outcome in = enter_center(io, label);
+Outcome run_center_visit(std::string_view label, CenterVisitIO& io){
+    Outcome in = enter_center(label, io);
     if (!in.succeeded()){
         return in;
     }
     io.heal();
     io.log(std::format("[Center] {}: healed.", label));
-    return leave_center(io, label);
+    return leave_center(label, io);
 }
 
 
