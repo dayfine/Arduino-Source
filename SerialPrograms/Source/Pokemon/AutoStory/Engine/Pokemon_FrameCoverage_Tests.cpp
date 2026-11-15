@@ -3,11 +3,13 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  A watch window judged on scripted frame times: each case is the capture
- *  times of the frames a watcher inspected (ms after the window opened, in
- *  the order inspected), whether it fired, and where the window ends.
+ *  times of the frames a watcher inspected (ms after the window opened,
+ *  fractions allowed, in the order inspected), whether it fired, and where
+ *  the window ends.
  *
  */
 
+#include <chrono>
 #include <format>
 #include <string>
 #include <string_view>
@@ -26,21 +28,21 @@ namespace{
 
 const WallClock WINDOW_START = WallClock() + Milliseconds(1000000);
 
-WallClock at(int64_t ms){
-    return WINDOW_START + Milliseconds(ms);
+WallClock at(double ms){
+    return WINDOW_START + std::chrono::duration_cast<WallDuration>(std::chrono::duration<double, std::milli>(ms));
 }
 
 //  `count` frames `period` ms apart from `first`.
-std::vector<int64_t> frames_every(int64_t first, int64_t period, size_t count){
-    std::vector<int64_t> out;
+std::vector<double> frames_every(double first, double period, size_t count){
+    std::vector<double> out;
     for (size_t c = 0; c < count; c++){
-        out.push_back(first + period * (int64_t)c);
+        out.push_back(first + period * (double)c);
     }
     return out;
 }
 
 //  `a` then `b`.
-std::vector<int64_t> joined(std::vector<int64_t> a, const std::vector<int64_t>& b){
+std::vector<double> joined(std::vector<double> a, const std::vector<double>& b){
     a.insert(a.end(), b.begin(), b.end());
     return a;
 }
@@ -48,9 +50,9 @@ std::vector<int64_t> joined(std::vector<int64_t> a, const std::vector<int64_t>& 
 
 struct CoverageCase{
     struct Input{
-        std::vector<int64_t> frames;
+        std::vector<double> frames;
         bool fired = false;
-        int64_t window_end = 8000;
+        double window_end = 8000;
         Milliseconds max_gap = Milliseconds(100);
     };
     struct Expectation{
@@ -96,12 +98,15 @@ const std::vector<CoverageCase> COVERAGE_CASES = {
     {.name = "gaps of exactly the max gap still cover",
      .input = {.frames = frames_every(0, 100, 11), .window_end = 1000},
      .expectation = {.verdict = WatchVerdict::NOT_SEEN, .frames = 11, .largest_gap = Milliseconds(100), .reached_end = true}},
+    {.name = "a gap a fraction of a ms over the max gap does not cover",
+     .input = {.frames = {0, 100.5, 200}, .window_end = 200},
+     .expectation = {.verdict = WatchVerdict::UNKNOWN, .frames = 3, .largest_gap = Milliseconds(101), .reached_end = true}},
 };
 
 
 std::string check_coverage(const CoverageCase& test){
     FrameCoverage coverage(WINDOW_START);
-    for (int64_t ms : test.input.frames){
+    for (double ms : test.input.frames){
         coverage.record(at(ms));
     }
     const WallClock end = at(test.input.window_end);

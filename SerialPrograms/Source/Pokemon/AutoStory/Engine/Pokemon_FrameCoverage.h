@@ -17,6 +17,7 @@
 #ifndef PokemonAutomation_Pokemon_FrameCoverage_H
 #define PokemonAutomation_Pokemon_FrameCoverage_H
 
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <vector>
@@ -36,6 +37,10 @@ public:
     //  handing over the same frame again), adds nothing.
     void record(WallClock frame);
 
+    //  When the window opened.
+    WallClock start() const{
+        return m_start;
+    }
     //  How many distinct frames were recorded.
     size_t frames() const{
         return m_frames.size();
@@ -46,7 +51,8 @@ public:
     //  window up to `deadline` is over in frame time, not only in wall time.
     bool reached(WallClock deadline) const;
     //  The longest part of [start, `end`] no inspected frame was captured
-    //  in: before the first frame, between two, or after the last.
+    //  in: before the first frame, between two, or after the last. Rounded
+    //  up to whole ms, so a gap a fraction over a limit is over it.
     Milliseconds largest_gap(WallClock end) const;
 
 private:

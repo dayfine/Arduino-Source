@@ -4,8 +4,10 @@
  *
  *  CoveredWatcher on scripted frames: each case is the capture times of
  *  the frames the pivot hands over (ms after the watch opened, repeats
- *  included), when the wrapped watcher fires and where the watch's frame
- *  deadline is, and on which frame the wrapper asks the session to stop.
+ *  included), when the wrapped watcher fires, where the window ends and
+ *  how long a tail is watched past it, and on which frame the wrapper asks
+ *  the session to stop. A watcher with a hold is scripted as one that fires
+ *  a hold after the screen shows.
  *
  */
 
@@ -61,7 +63,8 @@ struct WatchCase{
     struct Input{
         std::vector<int64_t> frames;
         std::optional<int64_t> fires_at = std::nullopt;
-        std::optional<int64_t> stop_at = std::nullopt;
+        std::optional<int64_t> end = std::nullopt;
+        int64_t tail = 0;
     };
     struct Expectation{
         //  The index of the frame the wrapper stops on; none: it never stops.
@@ -81,27 +84,36 @@ const std::vector<WatchCase> WATCH_CASES = {
     {.name = "the watcher fires",
      .input = {.frames = {0, 33, 66, 99}, .fires_at = 66},
      .expectation = {.stops_on = 2, .fired = true, .frames = 3, .watcher_calls = 3}},
-    {.name = "a frame at the deadline stops the watch without firing",
-     .input = {.frames = {0, 33, 66, 99}, .stop_at = 50},
+    {.name = "a frame at the window's end stops the watch without firing",
+     .input = {.frames = {0, 33, 66, 99}, .end = 50},
      .expectation = {.stops_on = 2, .fired = false, .frames = 3, .watcher_calls = 3}},
-    {.name = "the watcher firing on the deadline frame counts as fired",
-     .input = {.frames = {0, 33, 66}, .fires_at = 60, .stop_at = 50},
+    {.name = "the watcher firing on the end frame counts as fired",
+     .input = {.frames = {0, 33, 66}, .fires_at = 60, .end = 50},
      .expectation = {.stops_on = 2, .fired = true, .frames = 3, .watcher_calls = 3}},
-    {.name = "no deadline and no fire never stops",
+    {.name = "no end and no fire never stops",
      .input = {.frames = {0, 33, 66}},
      .expectation = {.stops_on = std::nullopt, .fired = false, .frames = 3, .watcher_calls = 3}},
-    {.name = "old frames handed over again do not reach the deadline",
-     .input = {.frames = {0, 10, 10, 10}, .stop_at = 40},
+    {.name = "old frames handed over again do not reach the end",
+     .input = {.frames = {0, 10, 10, 10}, .end = 40},
      .expectation = {.stops_on = std::nullopt, .fired = false, .frames = 2, .watcher_calls = 4}},
+    {.name = "a screen showing in the window's last hold fires in the tail",
+     .input = {.frames = {0, 33, 66, 99, 132, 165, 198}, .fires_at = 80 + 100, .end = 100, .tail = 100},
+     .expectation = {.stops_on = 6, .fired = true, .frames = 7, .watcher_calls = 7}},
+    {.name = "the watch stops a tail after the window's end without a fire",
+     .input = {.frames = {0, 33, 66, 99, 132, 165, 198, 231, 264}, .end = 100, .tail = 100},
+     .expectation = {.stops_on = 7, .fired = false, .frames = 8, .watcher_calls = 8}},
+    {.name = "a frame captured before the window opened is not handed to the watcher",
+     .input = {.frames = {-40, 10}, .fires_at = -100},
+     .expectation = {.stops_on = 1, .fired = true, .frames = 1, .watcher_calls = 1}},
 };
 
 
 std::string check_watch(const WatchCase& test){
     ScriptedWatcher watcher(test.input.fires_at ? std::optional<WallClock>(at(*test.input.fires_at)) : std::nullopt);
-    CoveredWatcher covered(watcher, WATCH_START);
-    if (test.input.stop_at){
-        covered.stop_at(at(*test.input.stop_at));
-    }
+    CoveredWatcher covered(
+        watcher, WATCH_START, Milliseconds(test.input.tail),
+        test.input.end ? std::optional<WallClock>(at(*test.input.end)) : std::nullopt
+    );
     std::optional<size_t> stopped;
     for (size_t c = 0; c < test.input.frames.size(); c++){
         if (covered.process_frame(VideoSnapshot(ImageRGB32(), at(test.input.frames[c])))){

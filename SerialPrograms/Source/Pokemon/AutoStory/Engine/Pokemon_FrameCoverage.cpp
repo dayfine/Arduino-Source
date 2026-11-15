@@ -47,7 +47,7 @@ Milliseconds FrameCoverage::largest_gap(WallClock end) const{
         previous = clamped;
     }
     largest = std::max(largest, end - previous);
-    return std::chrono::duration_cast<Milliseconds>(largest);
+    return std::chrono::ceil<Milliseconds>(largest);
 }
 
 
