@@ -58,11 +58,9 @@ Pokemon::Outcome mash_scene(
 Pokemon::Outcome mash_story_scene(PlzaBackend& backend, Button text_button, SceneOpening opening);
 
 
-//  Taunie's talk after her battle (03.02): A through it and the "Map &
-//  Missions" card (A turns its pages, B turns back) until the map shows,
-//  B to close the map (A would place a pin), then B through the rest of the
-//  talk to the overworld. Throws
-//  OperationFailedException if the map does not show within 60 s.
+//  Taunie's talk after her battle (03.02), the "Map & Missions" card, the
+//  first map and the rest of her talk: A and B in turn until the overworld
+//  has held. Throws OperationFailedException if it has not within 120 s.
 void talk_through_map_screen(ConsoleHandle& console, ProControllerContext& context);
 
 //  Facing the side street's wall (03.03): sidestep right to the ladder
