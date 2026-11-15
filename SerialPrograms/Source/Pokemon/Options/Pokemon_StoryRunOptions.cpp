@@ -40,7 +40,7 @@ std::string story_checkpoint_label(const StoryCheckpoint& checkpoint){
 
 
 
-StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints, const EnumDropdownDatabase<Language>& languages)
+StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints)
     : StoryRangeOptions("Story Run", checkpoints)
     , ATTEMPTS_PER_CHECKPOINT(
         "<b>Attempts per checkpoint:</b><br>A failed checkpoint reloads its save and runs again, up to this many times in all. "
@@ -54,18 +54,12 @@ StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints, const 
         LockMode::LOCK_WHILE_RUNNING,
         StoryCheckLevel::DEFAULT
     )
-    , LANGUAGE(
-        "<b>Game language:</b><br>For the few reads that need text (item names in a shop or the Bag). "
-        "Story steps never match dialogue text; with no reader for this language they check positions, digits and the screen instead.",
-        languages,
-        LockMode::LOCK_WHILE_RUNNING,
-        Language::English
-    )
+
     , RELOAD_AT_START(std::string(RELOAD_AT_START_LABEL), LockMode::LOCK_WHILE_RUNNING, true)
 {
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
     PA_ADD_OPTION(CHECKS);
-    PA_ADD_OPTION(LANGUAGE);
+
     PA_ADD_OPTION(RELOAD_AT_START);
 }
 
@@ -73,9 +67,6 @@ StoryCheckLevel StoryRunOptions::check_level() const{
     return CHECKS;
 }
 
-Language StoryRunOptions::language() const{
-    return LANGUAGE;
-}
 
 
 
