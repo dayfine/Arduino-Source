@@ -15,6 +15,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Kernels/Waterfill/Kernels_Waterfill_Session.h"
 #include "Tests/ImageUnitTest.h"
+#include "VideoGames/PokemonLZA/PokemonLZA_PendingFixtures.h"
 #include "PokemonLZA_LockOnBracketDetector.h"
 
 namespace PokemonAutomation{
@@ -42,8 +43,8 @@ constexpr int MIN_RISE = 30;
 constexpr double NEAR_SIDE = 2;
 constexpr double FAR_SIDE = 6;
 
-//  The lowest the brackets' middle sits, as a share of the screen's height:
-//  the console's arcs were at 0.35 to 0.61.
+//  The highest on screen the brackets' middle may be, as a share of the
+//  screen's height: the arcs in the test frames are at 0.35 to 0.61.
 constexpr double MIN_MIDDLE_Y = 0.20;
 
 struct Rgb{
@@ -60,11 +61,11 @@ int brightness(const Rgb& c){
     return c.r + c.g + c.b;
 }
 
-//  Whether `pixel` rises above the darkest of `screen`'s pixels `near` to
-//  `far` away from x on row y, toward `direction` (1 or -1).
-bool rises_above_side(const ImageViewRGB32& screen, size_t x, size_t y, const Rgb& pixel, int direction, size_t near, size_t far){
+//  Whether `pixel` rises above the darkest of `screen`'s pixels `near_offset`
+//  to `far_offset` away from x on row y, toward `direction` (1 or -1).
+bool rises_above_side(const ImageViewRGB32& screen, size_t x, size_t y, const Rgb& pixel, int direction, size_t near_offset, size_t far_offset){
     Rgb darkest{255, 255, 255};
-    for (size_t k = near; k <= far; k++){
+    for (size_t k = near_offset; k <= far_offset; k++){
         const Rgb side = to_rgb(screen.pixel(direction > 0 ? x + k : x - k, y));
         if (brightness(side) < brightness(darkest)){
             darkest = side;
@@ -74,20 +75,20 @@ bool rises_above_side(const ImageViewRGB32& screen, size_t x, size_t y, const Rg
 }
 
 PackedBinaryMatrix arc_pixels(const ImageViewRGB32& screen, double scale){
-    const size_t near = std::max<size_t>(1, (size_t)std::lround(NEAR_SIDE * scale));
-    const size_t far = std::max(near + 1, (size_t)std::lround(FAR_SIDE * scale));
+    const size_t near_offset = std::max<size_t>(1, (size_t)std::lround(NEAR_SIDE * scale));
+    const size_t far_offset = std::max(near_offset + 1, (size_t)std::lround(FAR_SIDE * scale));
     PackedBinaryMatrix matrix(screen.width(), screen.height());
     matrix.set_zero();
-    if (screen.width() <= 2 * far){
+    if (screen.width() <= 2 * far_offset){
         return matrix;
     }
     for (size_t y = 0; y < screen.height(); y++){
-        for (size_t x = far; x < screen.width() - far; x++){
+        for (size_t x = far_offset; x < screen.width() - far_offset; x++){
             const Rgb pixel = to_rgb(screen.pixel(x, y));
             if (std::min({pixel.r, pixel.g, pixel.b}) < MIN_CHANNEL){
                 continue;
             }
-            if (rises_above_side(screen, x, y, pixel, -1, near, far) && rises_above_side(screen, x, y, pixel, 1, near, far)){
+            if (rises_above_side(screen, x, y, pixel, -1, near_offset, far_offset) && rises_above_side(screen, x, y, pixel, 1, near_offset, far_offset)){
                 matrix.set(x, y, true);
             }
         }
@@ -319,9 +320,8 @@ bool LockOnBracketDetector::detect(const ImageViewRGB32& screen){
 
 namespace{
 
-//  The test frames are from the console in Wild Zone 1: the
-//  wz1_gate/road/grass/none/stall frames from a video at 1280x720, the
-//  ones named with a time from screenshots at 1920x1080 on the user's walk.
+//  The test frames are from Wild Zone 1: the wz1_gate/road/grass/none/stall
+//  frames at 1280x720, the ones named with a time at 1920x1080.
 
 struct BracketCase{
     std::string name;
@@ -528,11 +528,11 @@ public:
         }
         //  Within 1% of the screen of the labelled middle, and within 15%
         //  of its height.
-        const bool near = found
+        const bool is_near = found
             && std::abs(found->x - expected->x) <= 0.01
             && std::abs(found->y - expected->y) <= 0.01
             && std::abs(found->height - expected->height) <= 0.15 * expected->height;
-        if (!near){
+        if (!is_near){
             return std::format(
                 "Expected brackets at ({:.3f}, {:.3f}), {:.3f} tall; got {}.",
                 expected->x, expected->y, expected->height, brackets_text(found)
@@ -550,7 +550,7 @@ private:
 
 void add_tests_LockOnBracketDetector(UnitTestDatabase& database){
     for (const BracketCase& item : BRACKET_CASES){
-        database.add<Test_LockOnBracketDetector>(item);
+        add_pending_fixture_test<Test_LockOnBracketDetector>(database, item);
     }
 }
 

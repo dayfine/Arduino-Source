@@ -7,9 +7,7 @@
  *  PokemonLZA_AutoStoryMoves.h and the scenes in PokemonLZA_AutoStoryScenes.h.
  *  Each is a short function over the LZA battle and menu code that already
  *  exists (TrainerBattle, BasicNavigation, the dialog and selection-arrow
- *  detectors). An action the game has no code for yet throws
- *  Pokemon::StoryActionNotImplemented, naming what is missing, instead of
- *  pressing buttons blind.
+ *  detectors).
  *
  */
 
