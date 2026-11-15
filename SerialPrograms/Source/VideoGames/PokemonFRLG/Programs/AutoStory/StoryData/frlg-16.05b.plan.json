@@ -50,6 +50,15 @@
                     "master_ball_skipped"
                 ],
                 "why": "the president gives the MASTER BALL (SilphCo_11F_EventScript_President, FLAG_GOT_MASTER_BALL_FROM_SILPH); skipped by the program's option and in a SPEEDRUN (pokeguy skips it, 1:32:51)"
+            },
+            {
+                "id": "master_ball_obtained",
+                "kind": "scene",
+                "skip_if": [
+                    "master_ball_skipped"
+                ],
+                "declared_after": {"map": "SilphCo_11F", "tiles": [[9, 10]], "facing": "north"},
+                "why": "the president's thanks, the MASTER BALL and his last line, to the overworld (SilphCo_11F_EventScript_President); the talk returns at his first message, and the save's Start presses went into it (console B, 2026-11-15)"
             }
         ]
     },

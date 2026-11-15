@@ -1435,6 +1435,30 @@ UnitTestResult test_unique_names(){
     }
     return true;
 }
+//  A talk returns as soon as its first message opens, so a talk that ends
+//  its checkpoint leaves that message up and the save's + presses go into
+//  it (16.05b's president, 2026-11-15). Each talk is followed by a step
+//  that runs whenever the talk does: one whose skip_if is part of the
+//  talk's.
+UnitTestResult test_no_talk_ends_checkpoint(){
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        for (size_t i = 0; i < checkpoint.steps.size(); i++){
+            const StoryStep& talk = checkpoint.steps[i];
+            if (talk.kind != StoryStepKind::TALK){
+                continue;
+            }
+            const bool followed = std::any_of(checkpoint.steps.begin() + i + 1, checkpoint.steps.end(), [&](const StoryStep& step){
+                return std::ranges::all_of(step.skip_if, [&](const std::string& name){
+                    return std::ranges::find(talk.skip_if, name) != talk.skip_if.end();
+                });
+            });
+            if (!followed){
+                return std::format("{}: talk {} ends the checkpoint with its message open.", checkpoint.id, talk.name);
+            }
+        }
+    }
+    return true;
+}
 //  The intro's names: the player's keyboard first, then the rival's list,
 //  where a preset is picked; a keyboard after the player's means the list
 //  was missed.
@@ -1568,6 +1592,10 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
     {
         .input = {.name = "step names are unique per checkpoint", .body = test_unique_names},
         .expectation = {.description = "ensures step identifier uniqueness within checkpoints"},
+    },
+    {
+        .input = {.name = "no talk ends a checkpoint", .body = test_no_talk_ends_checkpoint},
+        .expectation = {.description = "a step that runs whenever the talk does follows each talk, so the save never opens into its message"},
     },
     {
         .input = {.name = "every save has a place on the save card", .body = test_save_places},
