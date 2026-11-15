@@ -18,6 +18,7 @@
 #include "PokemonLZA_AutoStoryBracketWatch.h"
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 #include "PokemonLZA_AutoStoryCatchPlan_Tests.h"
+#include "PokemonLZA_AutoStorySpeciesCheck.h"
 #include "PokemonLZA_AutoStoryZone1Road.h"
 
 namespace PokemonAutomation{
@@ -180,6 +181,114 @@ public:
 
 private:
     const NewSpeciesCase& m_case;
+};
+
+
+//  species_tally(), read_dex_count() and enough_species(): how sure the
+//  patrol's own count is, whether to open the Pokedex for the count, and
+//  whether the zone's quest is done.
+struct SpeciesCheckCase{
+    std::string name;
+    struct Input{
+        GrassCatches patrol = {};
+        Pokemon::StoryCheckLevel checks = Pokemon::StoryCheckLevel::DEFAULT;
+        //  The Pokedex's count, when read.
+        std::optional<int> dex_count = std::nullopt;
+    };
+    Input input;
+    struct Expectation{
+        SpeciesTally tally;
+        bool read_dex;
+        bool enough;
+    };
+    Expectation expectation;
+};
+
+//  2 new species wanted, 5 in the Pokedex.
+const SpeciesCheckCase SPECIES_CHECK_CASES[] = {
+    {
+        .name = "two banners at default checks: sure, no Pokedex",
+        .input = {.patrol = {.found = 2, .throws = 3}},
+        .expectation = {.tally = SpeciesTally::BANNERS, .read_dex = false, .enough = true},
+    },
+    {
+        .name = "two banners at thorough checks: the Pokedex is read",
+        .input = {.patrol = {.found = 2, .throws = 3}, .checks = Pokemon::StoryCheckLevel::THOROUGH, .dex_count = 5},
+        .expectation = {.tally = SpeciesTally::BANNERS, .read_dex = true, .enough = true},
+    },
+    {
+        .name = "two banners at testing checks: the Pokedex is read",
+        .input = {.patrol = {.found = 2, .throws = 3}, .checks = Pokemon::StoryCheckLevel::TESTING, .dex_count = 5},
+        .expectation = {.tally = SpeciesTally::BANNERS, .read_dex = true, .enough = true},
+    },
+    {
+        .name = "thorough checks, a Pokedex short of five fails",
+        .input = {.patrol = {.found = 2, .throws = 3}, .checks = Pokemon::StoryCheckLevel::THOROUGH, .dex_count = 4},
+        .expectation = {.tally = SpeciesTally::BANNERS, .read_dex = true, .enough = false},
+    },
+    {
+        .name = "thorough checks, an unread Pokedex keeps the banners' count",
+        .input = {.patrol = {.found = 2, .throws = 3}, .checks = Pokemon::StoryCheckLevel::THOROUGH},
+        .expectation = {.tally = SpeciesTally::BANNERS, .read_dex = true, .enough = true},
+    },
+    {
+        .name = "one new species by its plate only: inferred, the Pokedex is read",
+        .input = {.patrol = {.found = 2, .found_by_plate = 1, .throws = 2}, .dex_count = 5},
+        .expectation = {.tally = SpeciesTally::INFERRED, .read_dex = true, .enough = true},
+    },
+    {
+        .name = "inferred, a Pokedex short of five fails",
+        .input = {.patrol = {.found = 2, .found_by_plate = 1, .throws = 2}, .dex_count = 4},
+        .expectation = {.tally = SpeciesTally::INFERRED, .read_dex = true, .enough = false},
+    },
+    {
+        .name = "a rerun seeing only caught species: inferred, the Pokedex is read",
+        .input = {.patrol = {.caught_seen = 3}, .dex_count = 5},
+        .expectation = {.tally = SpeciesTally::INFERRED, .read_dex = true, .enough = true},
+    },
+    {
+        .name = "a rerun seeing only caught species, Pokedex unread: taken as done",
+        .input = {.patrol = {.caught_seen = 3}},
+        .expectation = {.tally = SpeciesTally::INFERRED, .read_dex = true, .enough = true},
+    },
+    {
+        .name = "one new species: short, the Pokedex is read",
+        .input = {.patrol = {.found = 1, .throws = 12}},
+        .expectation = {.tally = SpeciesTally::SHORT, .read_dex = true, .enough = false},
+    },
+    {
+        .name = "short, but the Pokedex has five: banners missed, done",
+        .input = {.patrol = {.found = 1, .throws = 12}, .dex_count = 5},
+        .expectation = {.tally = SpeciesTally::SHORT, .read_dex = true, .enough = true},
+    },
+};
+
+class Test_SpeciesCheck : public UnitTest{
+public:
+    explicit Test_SpeciesCheck(const SpeciesCheckCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: species check: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const SpeciesCheckCase::Input& in = m_case.input;
+        const SpeciesCheckCase::Expectation& want = m_case.expectation;
+        const SpeciesTally tally = species_tally(in.patrol, 2);
+        if (tally != want.tally){
+            return std::format("Expected the tally {}, got {}.", species_tally_text(want.tally), species_tally_text(tally));
+        }
+        const bool read = read_dex_count(in.checks, tally);
+        if (read != want.read_dex){
+            return std::format("Expected read the Pokedex: {}, got {}.", want.read_dex, read);
+        }
+        const bool enough = enough_species(tally, in.dex_count, 5);
+        if (enough != want.enough){
+            return std::format("Expected enough: {}, got {}.", want.enough, enough);
+        }
+        return true;
+    }
+
+private:
+    const SpeciesCheckCase& m_case;
 };
 
 
@@ -713,6 +822,9 @@ void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
     }
     for (const NewSpeciesCase& item : NEW_SPECIES_CASES){
         database.add<Test_NewSpeciesSign>(item);
+    }
+    for (const SpeciesCheckCase& item : SPECIES_CHECK_CASES){
+        database.add<Test_SpeciesCheck>(item);
     }
     for (const FarCase& item : FAR_CASES){
         database.add<Test_LockTargetFar>(item);

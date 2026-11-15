@@ -82,9 +82,12 @@ StoryLaunchPolicy plza_launch_policy(ConsoleHandle& console){
     policy.title = plza_title;
     policy.title_after_launch = true;
     policy.title_press = {.button = BUTTON_A, .hold = 160ms, .release = 1000ms};
+    //  Up, B and X held together: Up first, then B + X, only shows the
+    //  title again and its A loads the latest save (console B, 2026-11-14).
+    //  Held together they open the BACKUP card, whose "start from the
+    //  backup" the title press then takes.
     policy.backup_save = {
-        StoryLaunchPress{.button = BUTTON_UP, .hold = 200ms, .release = 200ms},
-        StoryLaunchPress{.button = BUTTON_B | BUTTON_X, .hold = 1000ms, .release = 200ms},
+        StoryLaunchPress{.button = BUTTON_UP | BUTTON_B | BUTTON_X, .hold = 1500ms, .release = 1500ms},
     };
     //  The backup save's buttons only on the title's "PRESS (A) BUTTON",
     //  which reads as an A prompt: the boot's logos pass plza_title() too.
