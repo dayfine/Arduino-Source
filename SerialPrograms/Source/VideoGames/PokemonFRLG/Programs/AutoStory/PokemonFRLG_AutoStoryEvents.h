@@ -107,7 +107,7 @@ struct StoryEnv{
     //  restores into `party.users`. The program starts it from its settings
     //  and keeps it there.
     SavedFieldMoveUsers saved_field_moves = {};
-    //  The program's "Take the Master Ball" option: 16.05's talk with Silph
+    //  The program's "Take the Master Ball" option: 16.05b's talk with Silph
     //  Co.'s president (skip_if master_ball_skipped).
     bool take_master_ball = true;
     //  The run's breakpoints (the BREAKPOINTS option): StoryExecutor pauses
