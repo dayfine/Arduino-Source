@@ -226,7 +226,6 @@ UnitTestResult test_watch_along(){
 
 struct LegWalkerTestCase{
     struct Input{
-        std::string name;
         UnitTestResult (*test)();
     };
 
@@ -234,6 +233,7 @@ struct LegWalkerTestCase{
         std::string_view description;
     };
 
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -241,7 +241,7 @@ struct LegWalkerTestCase{
 class Test_LegWalker : public UnitTest{
 public:
     explicit Test_LegWalker(LegWalkerTestCase scenario)
-        : UnitTest(std::format("Pokemon::LegWalker - {}", scenario.input.name))
+        : UnitTest(std::format("Pokemon::LegWalker - {}", scenario.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -254,39 +254,48 @@ private:
 
 const LegWalkerTestCase LEG_WALKER_CASES[] = {
     {
-        .input = {.name = "hold times", .test = test_hold_times},
+        .name = "hold times",
+        .input = {.test = test_hold_times},
         .expectation = {.description = "verifies open and wall leg hold durations"},
     },
     {
-        .input = {.name = "tiles before an interrupt", .test = test_tiles_before_interrupt},
+        .name = "tiles before an interrupt",
+        .input = {.test = test_tiles_before_interrupt},
         .expectation = {.description = "computes traversed tiles before an interrupt occurred"},
     },
     {
-        .input = {.name = "a wall leg is walked again", .test = test_wall_leg_walked_again},
+        .name = "a wall leg is walked again",
+        .input = {.test = test_wall_leg_walked_again},
         .expectation = {.description = "re-executes entire wall leg following an interrupt"},
     },
     {
-        .input = {.name = "an open leg walks the rest", .test = test_open_leg_rest_walked},
+        .name = "an open leg walks the rest",
+        .input = {.test = test_open_leg_rest_walked},
         .expectation = {.description = "walks only the remaining tiles on an open leg"},
     },
     {
-        .input = {.name = "an open leg interrupted at its end", .test = test_open_leg_interrupted_at_end},
+        .name = "an open leg interrupted at its end",
+        .input = {.test = test_open_leg_interrupted_at_end},
         .expectation = {.description = "does not re-walk an open leg interrupted at its final tile"},
     },
     {
-        .input = {.name = "gives up after too many interruptions", .test = test_too_many_interruptions},
+        .name = "gives up after too many interruptions",
+        .input = {.test = test_too_many_interruptions},
         .expectation = {.description = "throws when interrupt count exceeds limit"},
     },
     {
-        .input = {.name = "an open leg stops at an interrupt", .test = test_open_leg_stops},
+        .name = "an open leg stops at an interrupt",
+        .input = {.test = test_open_leg_stops},
         .expectation = {.description = "aborts remaining movement when stop_on_interrupt is set"},
     },
     {
-        .input = {.name = "a wall leg blocked by a sign stops", .test = test_wall_leg_blocked},
+        .name = "a wall leg blocked by a sign stops",
+        .input = {.test = test_wall_leg_blocked},
         .expectation = {.description = "aborts wall movement when blocked prematurely repeatedly"},
     },
     {
-        .input = {.name = "a watcher along a hold never stops it", .test = test_watch_along},
+        .name = "a watcher along a hold never stops it",
+        .input = {.test = test_watch_along},
         .expectation = {.description = "WatchAlong keeps its watcher's firing and returns false"},
     },
 };

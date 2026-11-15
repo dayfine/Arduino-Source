@@ -1592,6 +1592,14 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_CoveredWatch.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_CoveredWatch.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_CoveredWatch_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_CoveredWatch_Tests.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.cpp
@@ -1610,6 +1618,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEnginePolicy_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngineRuns_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngineRuns_Tests.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngineSaveRetry_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngineSaveRetry_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.cpp
@@ -1642,6 +1652,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.cpp
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h
+    Source/Pokemon/AutoStory/Pokemon_CenterVisit.cpp
+    Source/Pokemon/AutoStory/Pokemon_CenterVisit.h
+    Source/Pokemon/AutoStory/Pokemon_CenterVisit_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_CenterVisit_Tests.h
     Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts.cpp
     Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts.h
     Source/Pokemon/AutoStory/Pokemon_CheckpointRetry.cpp
@@ -1659,6 +1673,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_SceneJudges.h
     Source/Pokemon/AutoStory/Pokemon_SceneJudges_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_SceneJudges_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_Settle.cpp
+    Source/Pokemon/AutoStory/Pokemon_Settle.h
+    Source/Pokemon/AutoStory/Pokemon_Settle_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_Settle_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryActions.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryActions.h
     Source/Pokemon/AutoStory/Pokemon_StoryActions_Tests.cpp
@@ -1669,6 +1687,14 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryFailureClasses.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryFailureClasses.h
+    Source/Pokemon/AutoStory/Pokemon_StoryFailureClasses_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryFailureClasses_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryFaultSweep.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryFaultSweep.h
+    Source/Pokemon/AutoStory/Pokemon_StoryFaultSweep_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryFaultSweep_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryInterrupts.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryInterrupts.h
     Source/Pokemon/AutoStory/Pokemon_StoryInterrupts_Tests.cpp
@@ -1678,6 +1704,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryOutcome.h
+    Source/Pokemon/AutoStory/Pokemon_StoryOutcomeClass.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryOutcomeClass.h
     Source/Pokemon/AutoStory/Pokemon_StoryPose.h
     Source/Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h
@@ -1711,6 +1739,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg_Tests.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h

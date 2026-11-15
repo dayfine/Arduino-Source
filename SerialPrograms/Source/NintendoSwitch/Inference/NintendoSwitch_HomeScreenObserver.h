@@ -21,8 +21,8 @@ namespace NintendoSwitch{
 
 //  A game's observer behind a look at the Switch itself: a frame showing
 //  the HOME menu shows SWITCH_HOME_MENU and nothing else, as a game's
-//  detectors may read HOME's plain screen as a quiet overworld (BDSP,
-//  lab-B 2026-11-09). Every other frame is the game's to read.
+//  detectors may read HOME's plain screen as a quiet overworld. Every
+//  other frame is the game's to read.
 class SwitchHomeObserver : public ScreenEventObserver{
 public:
     SwitchHomeObserver(ConsoleHandle& console, ScreenEventObserver& game);
