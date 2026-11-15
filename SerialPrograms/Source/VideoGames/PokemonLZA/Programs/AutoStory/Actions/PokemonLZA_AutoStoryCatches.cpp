@@ -332,21 +332,6 @@ void face_objective(ConsoleHandle& console, ProControllerContext& context){
     }
 }
 
-//  What catch_at_stop() did: new species registered, throws, and locks on
-//  that found only species already caught.
-struct GrassCatches{
-    int found = 0;
-    int throws = 0;
-    int caught_seen = 0;
-
-    GrassCatches& operator+=(const GrassCatches& other){
-        found += other.found;
-        throws += other.throws;
-        caught_seen += other.caught_seen;
-        return *this;
-    }
-};
-
 //  A throw at `target`, then weaken_then_throw() when it broke out into a
 //  wild battle, `max_throws` in all at most (ThrowSeen counts).
 GrassCatches throw_at_target(
@@ -361,7 +346,9 @@ GrassCatches throw_at_target(
     const bool gone = !registered && !battle && target.caught == false
         && !HeldZl(console, context).wait_for_plate(LOCK_ON_WAIT);
     const ThrowSeen seen{registered, target.caught, gone};
-    out.found = seen.new_species() ? 1 : 0;
+    const std::optional<NewSpeciesSign> sign = seen.new_species();
+    out.found = sign ? 1 : 0;
+    out.found_by_plate = sign == NewSpeciesSign::PLATE_NOT_CAUGHT ? 1 : 0;
     console.log(std::format("catch_in_zone(): throw: {}.", seen.new_species_text()));
     if (out.found == 0 && max_throws > 1 && battle){
         console.log("catch_in_zone(): the throw broke out: battle, weakening.");
@@ -804,12 +791,34 @@ GrassCatches patrol_and_catch(
     return result;
 }
 
+//  The tally, for the log.
+std::string_view species_tally_text(SpeciesTally tally){
+    switch (tally){
+    case SpeciesTally::BANNERS:
+        return "all by the banner";
+    case SpeciesTally::INFERRED:
+        return "not all by the banner";
+    case SpeciesTally::SHORT:
+        return "short";
+    }
+    return "?";
+}
+
+//  The Pokedex's count of registered species. Not read yet: there is no
+//  reader for the Pokedex screen (no frames of it to build one from), so
+//  the count is left unread and catch_in_zone() keeps its own tally. The
+//  menu is not opened until the reader can read what it shows.
+std::optional<int> read_dex_species_count(ConsoleHandle& console){
+    console.log("catch_in_zone(): the Pokedex's count is wanted, but there is no reader for its screen yet: keeping the tally.");
+    return std::nullopt;
+}
+
 } // namespace
 
 
 void catch_in_zone(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
-    BattleAIOption& battle_ai, int new_species_wanted, int max_throws
+    BattleAIOption& battle_ai, const ZoneCatchGoal& goal
 ){
     //  Taunie's two rocks stand between the start and the marker: a step
     //  right first, around them, from the start (a catch's autosave can
@@ -819,18 +828,22 @@ void catch_in_zone(
     if (start && start->distance >= 115){
         pbf_move_left_joystick(context, {1, 0}, 1000ms, 300ms);
     }
-    const GrassCatches result = patrol_and_catch(env, console, context, battle_ai, new_species_wanted, max_throws);
-    console.log(std::format("catch_in_zone(): {} new species in {} throws.", result.found, result.throws));
-    //  A rerun from a save after the catch: only species already caught
-    //  lock on along the road, so the quest is done.
-    if (result.found == 0 && result.throws == 0 && result.caught_seen > 0){
-        console.log("catch_in_zone(): only species already caught here: taking the quest as done.");
-        return;
+    const GrassCatches result = patrol_and_catch(env, console, context, battle_ai, goal.new_species, goal.max_throws);
+    const SpeciesTally tally = species_tally(result, goal.new_species);
+    console.log(std::format(
+        "catch_in_zone(): {} new species ({} by a plate only) in {} throws, {} locks on caught species only: {}.",
+        result.found, result.found_by_plate, result.throws, result.caught_seen, species_tally_text(tally)
+    ));
+    std::optional<int> dex_count;
+    if (read_dex_count(goal.checks, tally)){
+        dex_count = read_dex_species_count(console);
     }
-    if (result.found < new_species_wanted){
+    if (!enough_species(tally, dex_count, goal.dex_species)){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
-            std::format("catch_in_zone(): {} new species of {} in {} throws.", result.found, new_species_wanted, result.throws),
+            dex_count
+                ? std::format("catch_in_zone(): the Pokedex has {} species of {}.", *dex_count, goal.dex_species)
+                : std::format("catch_in_zone(): {} new species of {} in {} throws.", result.found, goal.new_species, result.throws),
             console
         );
     }

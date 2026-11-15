@@ -93,7 +93,12 @@ const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
         {"battle_then_catch", [](StoryEnv& env){
             battle_then_catch(env.env, env.env.console, env.context, env.battle_ai, 6);
         }},
-        {"catch_in_zone", [](StoryEnv& env){ catch_in_zone(env.env, env.env.console, env.context, env.battle_ai, 2, 12); }},
+        //  03.08: 3 species after the tutorial, 2 more for the lab gate's 5.
+        {"catch_in_zone", [](StoryEnv& env){
+            catch_in_zone(env.env, env.env.console, env.context, env.battle_ai, ZoneCatchGoal{
+                .new_species = 2, .dex_species = 5, .max_throws = 12, .checks = env.checks
+            });
+        }},
         {"walk_to_marker", [](StoryEnv& env){ walk_to_marker(env.env.console, env.context); }},
         {"walk_to_zone_gate", [](StoryEnv& env){ walk_to_zone_gate(env.env.console, env.context); }},
         {"fly_to_center_or_stay", [](StoryEnv& env){ fly_to_or_stay(env.env.console, env.context, env.language, Location::VERT_POKEMON_CENTER); }},

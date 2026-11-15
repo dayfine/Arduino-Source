@@ -15,6 +15,7 @@
 #include "CommonFramework/Tools/ProgramEnvironment.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
 
 namespace PokemonAutomation{
@@ -55,6 +56,16 @@ void battle_then_catch(
 //  shows, or `limit`. Returns the last distance read.
 std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit);
 
+//  What catch_in_zone() is after: `new_species` new species caught, so
+//  the Pokedex has `dex_species`, in `max_throws` at most; `checks` is the
+//  run's check level.
+struct ZoneCatchGoal{
+    int new_species = 0;
+    int dex_species = 0;
+    int max_throws = 0;
+    Pokemon::StoryCheckLevel checks = Pokemon::StoryCheckLevel::DEFAULT;
+};
+
 //  03.08's catches for the "register five species" quest (3/5 after the
 //  tutorial): walks toward the objective (Wild Zone 1's far gate, around
 //  Taunie's rocks from the start), then goes back and forth between the
@@ -71,12 +82,15 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
 //  ZL go, counting the Pokedex's "Registered!" banners. A break-out that
 //  starts a wild battle gets `battle_ai`'s attacks before the next throws.
 //  When only species already caught lock on (a rerun from a save after the
-//  catch), the quest is taken as done. Otherwise throws
-//  OperationFailedException with fewer than `new_species_wanted` new
-//  species after the patrol or `max_throws`.
+//  catch), the quest is taken as done. The Pokedex's count is read when
+//  the tally is not all banners, or at THOROUGH and TESTING checks
+//  (read_dex_count()), and then decides (enough_species()). Throws
+//  OperationFailedException, still in the zone, when short of
+//  `goal.dex_species` in the Pokedex or, unread, of `goal.new_species`
+//  new species after the patrol or `goal.max_throws`.
 void catch_in_zone(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
-    BattleAIOption& battle_ai, int new_species_wanted, int max_throws
+    BattleAIOption& battle_ai, const ZoneCatchGoal& goal
 );
 
 //  On to the objective marker until an A prompt (a gate's "Leave", a door's

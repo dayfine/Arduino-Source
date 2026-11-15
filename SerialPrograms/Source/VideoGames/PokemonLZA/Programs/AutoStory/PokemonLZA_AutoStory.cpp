@@ -226,7 +226,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     connect_controller(env.console, context, rows[first]);
 
     StoryEnv story{
-        .env = env, .context = context, .language = LANGUAGE, .battle_ai = BATTLE_AI
+        .env = env, .context = context, .language = LANGUAGE, .battle_ai = BATTLE_AI, .checks = RUN.check_level()
     };
     PlzaConsoleBackend backend(story);
     const StoryGame<ZonePose> game = run_game(story, STARTER, story_data, RUN.breakpoints(), context);
