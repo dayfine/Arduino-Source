@@ -1509,6 +1509,12 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_LegWalker.h
     Source/Pokemon/Navigation/Pokemon_LegWalker_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_LegWalker_Tests.h
+    Source/Pokemon/Navigation/Pokemon_LegReplay.cpp
+    Source/Pokemon/Navigation/Pokemon_LegReplay.h
+    Source/Pokemon/Navigation/Pokemon_LegTrace.cpp
+    Source/Pokemon/Navigation/Pokemon_LegTrace.h
+    Source/Pokemon/Navigation/Pokemon_LegTrace_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_LegTrace_Tests.h
     Source/Pokemon/Navigation/Pokemon_MapData.cpp
     Source/Pokemon/Navigation/Pokemon_MapData.h
     Source/Pokemon/Navigation/Pokemon_MapData_Tests.cpp
@@ -1529,6 +1535,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_RouteScorer.h
     Source/Pokemon/Navigation/Pokemon_RouteScorer_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_RouteScorer_Tests.h
+    Source/Pokemon/Navigation/Simulation/Pokemon_KnownFailing.cpp
+    Source/Pokemon/Navigation/Simulation/Pokemon_KnownFailing.h
+    Source/Pokemon/Navigation/Simulation/Pokemon_KnownFailing_Tests.cpp
+    Source/Pokemon/Navigation/Simulation/Pokemon_KnownFailing_Tests.h
     Source/Pokemon/Navigation/Simulation/Pokemon_SimFaults.cpp
     Source/Pokemon/Navigation/Simulation/Pokemon_SimFaults.h
     Source/Pokemon/Navigation/Simulation/Pokemon_SimFaults_Tests.cpp
@@ -1537,6 +1547,14 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Simulation/Pokemon_SimGolden.h
     Source/Pokemon/Navigation/Simulation/Pokemon_SimGolden_Tests.cpp
     Source/Pokemon/Navigation/Simulation/Pokemon_SimGolden_Tests.h
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimSeeds.cpp
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimSeeds.h
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimSeeds_Tests.cpp
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimSeeds_Tests.h
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimSweep.cpp
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimSweep.h
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimSweep_Tests.cpp
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimSweep_Tests.h
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
     Source/Pokemon/Options/Pokemon_BoxSortingTable.h
     Source/Pokemon/Options/Pokemon_EncounterBotOptions.h
