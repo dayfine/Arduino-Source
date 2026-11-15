@@ -43,7 +43,10 @@ struct LaunchLook{
 struct LaunchReadable{
     //  The launch launched or closed the game: the checks read only after.
     bool launched = false;
-    //  No title press's fade holds the title check off.
+    //  No title press's fade holds the title check off, and a title read
+    //  only after the launch (title_after_launch) waits for the A on the
+    //  game's tile: right after the close, before HOME, a screen passes
+    //  PLZA's loose title check (console B, 2026-11-14).
     bool title = true;
 };
 
@@ -100,7 +103,7 @@ public:
     //  One look and its answer; the launch's end when this look ended it.
     std::optional<Outcome> step(){
         const Observation<PoseType> observation = m_backend.observe();
-        const LaunchLook look = read_launch_look(m_policy, observation, {.launched = m_launched || m_loading, .title = m_title_held_looks == 0});
+        const LaunchLook look = read_launch_look(m_policy, observation, {.launched = m_launched || m_loading, .title = m_title_held_looks == 0 && (m_launched || !m_policy.title_after_launch)});
         count_title_hold(observation);
         if (look.screen != LaunchScreen::OVERWORLD){
             m_settled = 0;

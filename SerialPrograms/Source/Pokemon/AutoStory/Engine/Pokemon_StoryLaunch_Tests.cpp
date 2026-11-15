@@ -196,6 +196,14 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
                                         Screen::BACKUP_CONFIRM, Screen::BLACK}),
                .request = {.save = Save::BACKUP, .running = Running::KEEP}},
      .expectation = {.inputs = "HOME X A Up B+X A A wait wait wait"}},
+    //  Console B, 2026-11-14: after the close, a screen before HOME passed
+    //  PLZA's loose title check; the backup's buttons went there and the
+    //  real title took only A, so the latest save loaded.
+    {.name = "backup save waits for the title after the game's launch",
+     .input = {.screens = then_settled({Screen::OVERWORLD, Screen::HOME_ON_GAME, Screen::CLOSE_DIALOG, Screen::TITLE,
+                                        Screen::HOME_ON_GAME, Screen::BLACK, Screen::TITLE, Screen::BACKUP_CONFIRM, Screen::BLACK}),
+               .request = {.save = Save::BACKUP, .running = Running::KEEP}, .game_screens = GameScreens::AFTER_LAUNCH},
+     .expectation = {.inputs = "HOME X A wait A wait Up B+X A A wait wait wait"}},
     {.name = "backup save the game does not have",
      .input = {.screens = then_settled({}), .request = {.save = Save::BACKUP}, .backup = Backup::NONE},
      .expectation = {.failure = "no backup save", .inputs = ""}},
