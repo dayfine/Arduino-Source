@@ -514,6 +514,8 @@ checkout of this branch; edit it here and PR the change, not the local copy.
   style review of a fork PR, against the user's own review themes.
 - [skills/codex-dispatch/SKILL.md](skills/codex-dispatch/SKILL.md): hand bounded tasks to Codex
   and use it as an advisory reviewer.
+- [skills/dispatch/SKILL.md](skills/dispatch/SKILL.md): the main session's lane board and
+  10-minute loop for coding subagents (briefs, branch claims, at most 3 agents, relays).
 
 ## Agent skills
 
