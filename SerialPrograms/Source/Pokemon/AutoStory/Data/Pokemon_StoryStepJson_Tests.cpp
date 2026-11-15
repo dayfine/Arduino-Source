@@ -161,6 +161,15 @@ const WireCase CASES[] = {
             && post.position == position && post.items == items && post.flags == flags,
             "the phase, position, item and flag");
     }}},
+    {.name = "checkpoint without metadata is testing", .input = {.record = Record::CHECKPOINT, .json = R"({"id":"x","title":"X","events":[]})"}, .expectation = {.check = [](const ReadRecord& record){
+        const StoryCheckpoint& checkpoint = std::get<StoryCheckpoint>(record);
+        return expect(checkpoint.metadata.phase == StoryPhase::TESTING && !checkpoint.metadata.verified, "the testing phase and no verification");
+    }}},
+    {.name = "verified checkpoint", .input = {.record = Record::CHECKPOINT, .json = R"({"id":"x","title":"X","events":[],"metadata":{"phase":"verification","verified":{"steps_hash":"sha256:ab","build":"1","date":"d","runs":"3/3"}}})"}, .expectation = {.check = [](const ReadRecord& record){
+        const StoryCheckpointMetadata& metadata = std::get<StoryCheckpoint>(record).metadata;
+        return expect(metadata.phase == StoryPhase::VERIFICATION && metadata.verified && metadata.verified->steps_hash == "sha256:ab",
+            "the verification phase and its steps hash");
+    }}},
     {.name = "integer rows, not rows", .input = {.json = R"({"id":"w","kind":"game_action","action":"walk","args":{"legs":[0,4500]}})"}, .expectation = {.rejected = true}},
     {.name = "integer rows, fraction", .input = {.json = R"({"id":"w","kind":"game_action","action":"walk","args":{"legs":[[0,4.5]]}})"}, .expectation = {.rejected = true}},
     {.name = "timed leg of three numbers", .input = {.json = R"({"id":"w","kind":"game_action","action":"timed_walk","args":{"legs":[[0,4500,1]]}})"}, .expectation = {.rejected = true}},
@@ -184,6 +193,8 @@ const WireCase CASES[] = {
     {.name = "declared place with tiles", .input = {.record = Record::DECLARED, .json = R"({"place":"HotelZ","tiles":[[1,2]]})"}, .expectation = {.rejected = true}},
     {.name = "declared map with heading", .input = {.record = Record::DECLARED, .json = R"({"map":"M","heading":90})"}, .expectation = {.rejected = true}},
     {.name = "declared neither", .input = {.record = Record::DECLARED, .json = R"({"spot":"Lobby"})"}, .expectation = {.rejected = true}},
+    {.name = "unknown phase", .input = {.record = Record::CHECKPOINT, .json = R"({"id":"x","title":"X","events":[],"metadata":{"phase":"tested"}})"}, .expectation = {.rejected = true}},
+    {.name = "unknown metadata field", .input = {.record = Record::CHECKPOINT, .json = R"({"id":"x","title":"X","events":[],"metadata":{"phase":"testing","runs":3}})"}, .expectation = {.rejected = true}},
     {.name = "duplicate events", .input = {.record = Record::CHECKPOINT, .json = R"({"id":"x","title":"X","events":[{"id":"a","kind":"talk"},{"id":"a","kind":"talk"}]})"}, .expectation = {.rejected = true}},
 };
 

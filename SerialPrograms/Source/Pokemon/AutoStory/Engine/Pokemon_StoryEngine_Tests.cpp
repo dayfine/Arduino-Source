@@ -5,12 +5,14 @@
  *  The engine's lower layers on a scripted backend: the action registry
  *  (lint and dispatch, a game's action replacing a built-in), the step
  *  runner (skip_if from flags and readers, the declared end pose, the
- *  "[Step]" line), and the worked example of a game action, take_warp.
+ *  "[Step]" line), the worked example of a game action, take_warp, and the
+ *  scripted backend's inputs.
  *
  */
 
 #include <chrono>
 #include <format>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -345,6 +347,92 @@ private:
 };
 
 
+
+//  The move stick at an angle, and the heading reading; a turn lets
+//  go of the stick for its release.
+std::string stick_and_heading(CancellableScope& scope){
+    Observation<ZonePose> facing_east;
+    facing_east.readings[std::string(STORY_HEADING)] = 90;
+    FakeStoryBackend<ZonePose> backend({.looks = {facing_east, {}}}, scope);
+    backend.stick(45, 150ms, 0ms, StoryPace::WALK);
+    backend.stick(-90, 300ms, 0ms, StoryPace::RUN);
+    backend.stick(90, 150ms, 300ms, StoryPace::WALK);
+    if (story_heading(backend.observe()) != 90){
+        return "expected the heading 90";
+    }
+    if (story_heading(backend.observe())){
+        return "expected no heading where nothing read it";
+    }
+    const std::string expected = "stick 45deg 150ms walk, stick -90deg 300ms run, stick 90deg 150ms walk, release 300ms";
+    const std::string got = joined(backend.inputs());
+    return got == expected ? "" : std::format("expected inputs \"{}\", got \"{}\"", expected, got);
+}
+
+//  The fake logs each press by the button's name.
+std::string buttons_by_name(CancellableScope& scope){
+    FakeStoryBackend<ZonePose> backend({}, scope);
+    for (const NintendoSwitch::Button button : {
+        NintendoSwitch::BUTTON_L, NintendoSwitch::BUTTON_R, NintendoSwitch::BUTTON_PLUS,
+        NintendoSwitch::BUTTON_A, NintendoSwitch::BUTTON_B, NintendoSwitch::BUTTON_ZL,
+    }){
+        backend.press(button, 80ms, 120ms);
+    }
+    const std::string expected = "press L, press R, press +, press A, press B, press ZL";
+    const std::string got = joined(backend.inputs());
+    return got == expected ? "" : std::format("expected inputs \"{}\", got \"{}\"", expected, got);
+}
+
+//  An action sees its step.
+std::string handler_sees_step(CancellableScope& scope){
+    StoryGame<GridPose> game;
+    std::shared_ptr<std::string> seen = std::make_shared<std::string>();
+    game.actions.push_back({
+        .spec = {.kind = StoryStepKind::GAME, .name = "scene", .args = {}},
+        .handler = [seen](StoryBackend<GridPose>&, const StoryActionCall& call, RunState&){
+            *seen = std::format("{} / {}", call.step.name, call.step.why);
+            return outcome_ok();
+        },
+    });
+    const StoryActionRegistry<GridPose> registry(game);
+    FakeStoryBackend<GridPose> backend({}, scope);
+    StoryStep step = make_step(StoryStepKind::GAME, "scene", {});
+    step.name = "opening";
+    step.why = "the long intro";
+    RunState state;
+    const Outcome outcome = registry.dispatch(backend, step, state);
+    if (!outcome.succeeded()){
+        return std::format("expected a pass, got {}", to_string(outcome));
+    }
+    return *seen == "opening / the long intro" ? "" : std::format("expected the step, got \"{}\"", *seen);
+}
+
+//  A named test; it returns its error, empty when it passed.
+struct NamedCheck{
+    std::string_view name;
+    std::string (*check)(CancellableScope& scope);
+};
+
+const NamedCheck NAMED_CHECKS[] = {
+    {.name = "stick and heading", .check = &stick_and_heading},
+    {.name = "buttons by name", .check = &buttons_by_name},
+    {.name = "handler sees its step", .check = &handler_sees_step},
+};
+
+class StoryEngineCheckTest : public UnitTest{
+public:
+    explicit StoryEngineCheckTest(NamedCheck test)
+        : UnitTest(std::format("Pokemon::StoryEngine - {}", test.name))
+        , m_case(std::move(test))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
+        const std::string error = m_case.check(scope);
+        return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
+    }
+private:
+    NamedCheck m_case;
+};
+
+
 } // namespace
 
 
@@ -357,6 +445,9 @@ void add_tests_StoryEngine(UnitTestDatabase& database){
     }
     for (const WarpCase& test : WARP_CASES){
         database.add<StoryTakeWarpTest>(test);
+    }
+    for (const NamedCheck& test : NAMED_CHECKS){
+        database.add<StoryEngineCheckTest>(test);
     }
 }
 
