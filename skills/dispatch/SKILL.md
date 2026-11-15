@@ -89,6 +89,11 @@ A lane never goes `idle` without a `next`; if the queue is empty, `next` = "plan
 4. ASK → repeat the open question to the user in one line (once per 2 h), keep the lane waiting-user.
 5. Pulse sentence names what the tick started. Skip the tick while the user is driving B or mid-conversation.
 
+Console B state for the tick: call the pa-lab MCP tool `console_status` (`{"console": "B"}`; read-only, it
+only reads lab-B's files) when the server is loaded (`/mcp` lists `pa-lab`); otherwise run `sh ~/BDSPLab/checkin.sh`.
+Both report the same app pid, Lab/state, last run lines, last press and newest failure frame; checkin.sh adds
+PR checks, spend and disk. Server setup: [lab/server/README.md](../../lab/server/README.md#read-only-stdio-mode-mcpjson).
+
 ### Loop
 
 Install with `/loop 10m` and this prompt, verbatim:

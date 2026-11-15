@@ -4,7 +4,8 @@
   python3 -m pa_lab describe app_state
   python3 -m pa_lab kinds
   python3 -m pa_lab init-token ~/.config/pa-lab/token
-  python3 -m pa_lab serve --config ~/.config/pa-lab/server.json
+  python3 -m pa_lab serve --config ~/.config/pa-lab/server.json [--read-only]
+  python3 -m pa_lab serve-stdio --profile-dir ~/Library/Application\\ Support/SerialPrograms/Profiles/lab-B
   python3 -m pa_lab lease --config ~/.config/pa-lab/server.json show|claim-user|release-user
 
 Run from lab/server (or with lab/server on PYTHONPATH). Exit 0 valid, 1 invalid, 2 usage.
@@ -32,6 +33,11 @@ def main(argv=None) -> int:
     init_token.add_argument('path')
     serve = sub.add_parser('serve', help='run the read-only MCP server (Streamable HTTP on 127.0.0.1)')
     serve.add_argument('--config', required=True)
+    serve.add_argument('--read-only', action='store_true',
+                       help='serve only console_status and the resources: no inbox tools, no control plane')
+    stdio = sub.add_parser('serve-stdio', help='run the read-only MCP server on stdio (for .mcp.json)')
+    stdio.add_argument('--profile-dir', required=True, help="the console's SerialPrograms profile folder")
+    stdio.add_argument('--keepawake-log', default='~/BDSPLab/keepawake.log')
     lease = sub.add_parser('lease', help="show console B's lease, or (operator) claim or release it for the user")
     lease.add_argument('--config', required=True)
     lease.add_argument('action', choices=('show', 'claim-user', 'release-user'))
@@ -71,14 +77,17 @@ def main(argv=None) -> int:
         print('wrote {}'.format(args.path))
         return 0
     if args.command == 'serve':
-        return _serve(args.config)
+        return _serve(args.config, args.read_only)
+    if args.command == 'serve-stdio':
+        from pa_lab import stdio_server
+        return stdio_server.main(args.profile_dir, args.keepawake_log)
     if args.command == 'lease':
         return _lease(args.config, args.action, args.console)
     parser.print_help()
     return 2
 
 
-def _serve(path: str) -> int:
+def _serve(path: str, read_only: bool = False) -> int:
     from pa_lab import lab_reader, mcp_server
     try:
         cfg = config.load(path)
@@ -87,6 +96,15 @@ def _serve(path: str) -> int:
         print('error {}'.format(e))
         return 1
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s %(message)s')
+    if read_only:
+        from pathlib import Path
+        from pa_lab import status
+        statuses = {name: status.ProfileStatus(name, Path(entry.lab_dir).parent,
+                                               keepawake_log=Path.home() / 'BDSPLab' / 'keepawake.log')
+                    for name, entry in cfg.consoles.items()}
+        readers = {name: s.reader for name, s in statuses.items()}
+        server = mcp_server.make_server(cfg.port, token, readers, statuses=statuses, read_only=True)
+        return _serve_forever(server, readers, mcp_server.ENDPOINT)
     from pa_lab import control, db
     plane = control.ControlPlane(db.Database(cfg.db_file), sorted(cfg.consoles))
     readers = {name: lab_reader.ConsoleReader(name, entry.lab_dir, profile=entry.profile, control=plane)
@@ -95,9 +113,13 @@ def _serve(path: str) -> int:
         reader.console_state()
     plane.compact()
     server = mcp_server.make_server(cfg.port, token, readers, control_plane=plane)
+    return _serve_forever(server, readers, mcp_server.ENDPOINT)
+
+
+def _serve_forever(server, readers, endpoint: str) -> int:
     logging.getLogger('pa_lab.server').info('serving %s on http://127.0.0.1:%d%s',
                                             ', '.join(sorted(readers)), server.server_address[1],
-                                            mcp_server.ENDPOINT)
+                                            endpoint)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
