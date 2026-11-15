@@ -19,6 +19,7 @@
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
+#include "PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h"
 #include "PokemonBDSP_AutoStory_ConsoleStory.h"
 #include "PokemonBDSP_AutoStory_StarterRng.h"
 #include "PokemonBDSP_AutoStory_StoryCheckpoint.h"
@@ -60,6 +61,7 @@ private:
     Pokemon::StoryRunOptions RUN;
     BooleanCheckBoxOption NEW_GAME_INTRO;
     StringOption PLAYER_NAME;
+    PlayerModelOption PLAYER_LOOK;
     EnumDropdownOption<StarterChoice> STARTER;
     //  The RNG program the run stops for (StoryHandoff), or runs in 00.02.
     BooleanCheckBoxOption STOP_FOR_STARTER_RNG;

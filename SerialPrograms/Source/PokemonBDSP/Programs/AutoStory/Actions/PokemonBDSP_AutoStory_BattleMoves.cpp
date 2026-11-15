@@ -221,6 +221,10 @@ GrayBox gray_box(const ImageViewRGB32& box){
             ret.gray[y * box.width() + x] = (int)(((pixel >> 16) & 0xff) + ((pixel >> 8) & 0xff) + (pixel & 0xff)) / 3;
         }
     }
+    if (ret.gray.empty()){
+        // Nothing to read: a box outside the frame, or an empty image.
+        return ret;
+    }
     std::vector<int> sorted = ret.gray;
     std::nth_element(sorted.begin(), sorted.begin() + sorted.size() / 2, sorted.end());
     const int background = sorted[sorted.size() / 2];
@@ -259,6 +263,9 @@ std::string read_move_name(const ImageViewRGB32& screen, const ImageFloatBox& bu
     const ImageFloatBox name_box{button.x + button.width * 0.17, button.y + button.height * 0.08,
         button.width * 0.53, button.height * 0.80};
     const GrayBox box = gray_box(extract_box_reference(screen, name_box));
+    if (box.gray.empty()){
+        return "";
+    }
     const auto [band_top, band_bottom] = tallest_text_band(box);
     // Black text on white, with a margin, for the OCR.
     const size_t pad = 6;

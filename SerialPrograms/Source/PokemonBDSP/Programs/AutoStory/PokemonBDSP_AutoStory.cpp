@@ -24,6 +24,7 @@
 #include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRngAttempts.h"
+#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
@@ -150,7 +151,16 @@ BDSPAutoStory::BDSPAutoStory()
         "until the player is in control in the bedroom. Only when starting at 00.00.",
         LockMode::LOCK_WHILE_RUNNING, false
     )
-    , PLAYER_NAME(false, "<b>Player name:</b><br>For a new game. Letters and digits.", LockMode::LOCK_WHILE_RUNNING, "Kosmos", "Kosmos")
+    , PLAYER_NAME(
+        false,
+        "<b>Player name:</b><br>For a new game. Letters and digits.",
+        LockMode::LOCK_WHILE_RUNNING, "Kosmos", "Kosmos"
+    )
+    , PLAYER_LOOK(
+        "<b>Player's look:</b><br>For a new game: the look picked on the appearance grid. "
+        "The portraits row by row: 1 Lucas light, 2 Lucas dark, 3 Dawn dark-haired, 4 Dawn dark; "
+        "5 Lucas blond, 6 Lucas brown, 7 Dawn blond, 8 Dawn brown-haired."
+    )
     , STARTER(
         "<b>Starter Pokemon:</b>",
         {
@@ -179,6 +189,7 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(NEW_GAME_INTRO);
     PA_ADD_OPTION(PLAYER_NAME);
+    PA_ADD_OPTION(PLAYER_LOOK);
     PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(STOP_FOR_STARTER_RNG);
     add_option(STARTER_RNG.run(), "RUN_STARTER_RNG");
@@ -307,7 +318,8 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     //  The reads that use text (Location.h) take the game's language from here.
     set_story_language(RUN.language());
 
-    StoryEnv story{env, context, STARTER, PLAYER_NAME, {}};
+    const bool new_game = first == 0 && NEW_GAME_INTRO;
+    StoryEnv story{env, context, STARTER, PLAYER_NAME, IntroPicks{RUN.language(), PLAYER_LOOK.index()}, {}};
     if (STARTER_RNG.run()){
         story.run_starter_rng = make_starter_rng_hook(
             env, context, STARTER_RNG, STARTER_RNG.config(RUN.language(), STARTER), NOTIFICATION_ERROR_RECOVERABLE
@@ -319,7 +331,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
         StoryHandoffs{.starter_rng = Pokemon::rng_handoff_mode({.stop = STOP_FOR_STARTER_RNG, .run = STARTER_RNG.run()})}
     );
     executor.set_stop_rows(rows_that_stop(plan));
-    run_plan(env, context, plan, first == 0 && NEW_GAME_INTRO, executor);
+    run_plan(env, context, plan, new_game, executor);
 }
 
 void BDSPAutoStory::run_plan(

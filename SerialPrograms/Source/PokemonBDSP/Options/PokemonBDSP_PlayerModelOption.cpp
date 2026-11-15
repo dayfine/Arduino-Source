@@ -5,6 +5,7 @@
  */
 
 #include <string>
+#include <utility>
 #include <vector>
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
@@ -42,9 +43,14 @@ const PlayerModelIcons& PLAYER_MODEL_ICONS(){
 
 
 PlayerModelOption::PlayerModelOption()
-    : StringSelectOption(
+    : PlayerModelOption(
         "<b>Character model:</b><br>The appearance chosen for the player character. "
-        "Each one is watched through a different eye template.",
+        "Each one is watched through a different eye template."
+    )
+{}
+PlayerModelOption::PlayerModelOption(std::string label)
+    : StringSelectOption(
+        std::move(label),
         PLAYER_MODEL_ICONS().database,
         LockMode::LOCK_WHILE_RUNNING,
         "model-1"

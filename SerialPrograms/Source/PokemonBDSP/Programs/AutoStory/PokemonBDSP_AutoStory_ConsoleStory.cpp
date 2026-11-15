@@ -193,7 +193,7 @@ Outcome ConsoleStory::run_action(const StoryStep& step, RunState& state){
 
 
 Outcome ConsoleStory::new_game(RunState&, const StoryStep&){
-    play_new_game_intro(m_env.env, context(), m_env.player_name);
+    play_new_game_intro(m_env.env, context(), m_env.intro_picks, m_env.player_name);
     return Pokemon::outcome_ok();
 }
 
