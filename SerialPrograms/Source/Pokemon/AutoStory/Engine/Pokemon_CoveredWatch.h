@@ -101,6 +101,16 @@ WatchResult run_watched(
     VideoStream& stream, ControllerContext& context,
     std::function<void(ControllerContext& context)>&& command,
     const WatchLimits& limits, VisualInferenceCallback& watcher
+);
+
+
+
+
+template <typename ControllerContext>
+WatchResult run_watched(
+    VideoStream& stream, ControllerContext& context,
+    std::function<void(ControllerContext& context)>&& command,
+    const WatchLimits& limits, VisualInferenceCallback& watcher
 ){
     CoveredWatcher covered(watcher, current_time(), limits.tail);
     run_until<ControllerContext>(stream, context, std::move(command), {covered}, limits.period);
