@@ -61,12 +61,12 @@ void talk_to_facing(ConsoleHandle& console, ProControllerContext& context);
 int dialog_choice_moves(size_t current, size_t target);
 
 //  With a dialogue's choices on screen, picks choice `index` (0 is the top):
-//  waits for the selection arrow in dialog_choice_box()
-//  (Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h), reads its row with
-//  get_current_selector_index() (Programs/PokemonLZA_FastTravelNavigation.h)
-//  on dialog_choice_rows_box(), presses the difference, reads the row
-//  again, then A. Throws OperationFailedException if the arrow never shows,
-//  is outside the rows, or is not on row `index` after the presses.
+//  waits for the selection arrow in dialog_choice_box(), reads the
+//  highlighted row with read_dialog_choice_rows() (both in
+//  Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h), presses the difference,
+//  reads the row again, then A. Throws OperationFailedException if the arrow
+//  never shows, no highlighted row reads, or the highlight is not on row
+//  `index` after the presses.
 void choose_dialog_option(ConsoleHandle& console, ProControllerContext& context, size_t index);
 
 

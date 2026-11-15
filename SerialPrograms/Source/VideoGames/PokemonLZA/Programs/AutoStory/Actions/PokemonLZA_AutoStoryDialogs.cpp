@@ -16,7 +16,6 @@
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
-#include "VideoGames/PokemonLZA/Programs/PokemonLZA_FastTravelNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryDialogs.h"
@@ -123,14 +122,19 @@ bool choice_arrow_shows(ConsoleHandle& console, ProControllerContext& context, M
     return wait_until(console, context, timeout, {arrow}) >= 0;
 }
 
-//  The choice row the selection arrow is on, counted from the top of
-//  dialog_choice_rows_box(); none if it is not in the rows.
+//  The highlighted choice row, 0 the top, read with read_dialog_choice_rows();
+//  none if no choice menu reads.
 std::optional<size_t> read_choice_row(ConsoleHandle& console){
-    const int row = get_current_selector_index(console, dialog_choice_rows_box(), DIALOG_CHOICE_ROW_SPACING);
-    if (row < 0){
+    const VideoSnapshot screen = console.video().snapshot();
+    if (!screen){
         return std::nullopt;
     }
-    return static_cast<size_t>(row);
+    const std::optional<DialogChoiceRows> rows = read_dialog_choice_rows(screen);
+    if (!rows){
+        return std::nullopt;
+    }
+    console.log(std::format("Choice row {} of {} highlighted.", rows->selected, rows->count));
+    return rows->selected;
 }
 
 } // namespace
@@ -160,7 +164,7 @@ void choose_dialog_option(ConsoleHandle& console, ProControllerContext& context,
     if (!row){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
-            "choose_dialog_option(): the arrow is outside the choice rows (dialog_choice_rows_box()).",
+            "choose_dialog_option(): no highlighted choice row reads (read_dialog_choice_rows()).",
             console
         );
     }
@@ -176,7 +180,7 @@ void choose_dialog_option(ConsoleHandle& console, ProControllerContext& context,
             OperationFailedExceptionWithScreenshot::fire(
                 ErrorReportMode::SEND_ERROR_REPORT,
                 std::format(
-                    "choose_dialog_option(): the arrow is on row {}, not {}, after {} presses from row {}.",
+                    "choose_dialog_option(): the highlight is on row {}, not {}, after {} presses from row {}.",
                     now ? std::to_string(*now) : "none", index, moves, *row
                 ),
                 console

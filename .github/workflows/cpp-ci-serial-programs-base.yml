@@ -247,7 +247,7 @@ jobs:
         with:
           # The fork's fixtures: upstream's plus the SystemKeyboardDetector, HomeTileReader and PLZA AutoStory frames.
           repository: 'dayfine/CommandLineTests'
-          ref: 'd658635351d99d981c3c332b9369eba37ca164cf'
+          ref: '0195f3b0c6ffb15bf6df176cfd3a64d781346fcf'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded

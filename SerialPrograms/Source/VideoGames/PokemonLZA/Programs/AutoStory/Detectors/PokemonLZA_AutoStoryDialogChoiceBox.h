@@ -3,17 +3,19 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Where a dialogue's choices are drawn, for the selection arrow's
- *  detector: the screen events' choice box and choose_dialog_option()
- *  (Actions/PokemonLZA_AutoStoryDialogs.h) both read it, and the choice
- *  rows as get_current_selector_index()
- *  (Programs/PokemonLZA_FastTravelNavigation.h) counts them.
+ *  detector (the screen events' choice box and choose_dialog_option() in
+ *  Actions/PokemonLZA_AutoStoryDialogs.h), and a reader for the choice
+ *  rows: how many there are and which one is highlighted.
  *
  */
 
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryDialogChoiceBox_H
 #define PokemonAutomation_PokemonLZA_AutoStoryDialogChoiceBox_H
 
+#include <cstddef>
+#include <optional>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -24,17 +26,21 @@ namespace PokemonLZA{
 //  (RestaurantFarmer). Other dialogues' choices are assumed to sit there.
 const ImageFloatBox& dialog_choice_box();
 
-//  The choice rows for get_current_selector_index(): its top is half a row
-//  gap above the top row's arrow, four rows tall. Measured on the tourist
-//  choice (two rows; on 1920x1080 the panel's top at y 640, the arrow
-//  y 656-712, the rows 80 apart). Other choices are assumed to put their
-//  top row there.
-const ImageFloatBox& dialog_choice_rows_box();
+//  A dialogue's choice menu as read: how many rows it has, and the
+//  highlighted one, 0 the top.
+struct DialogChoiceRows{
+    size_t count = 0;
+    size_t selected = 0;
+};
 
-//  The gap between one choice row's arrow and the next, as
-//  get_current_selector_index() takes it: the row pitch less the arrow's
-//  height (80 - 56 of 1080).
-extern const double DIALOG_CHOICE_ROW_SPACING;
+//  Reads the choice menu on `frame`. The menu's panel is bottom-anchored:
+//  its last row sits at the same place whatever the row count, and each
+//  further row adds one row pitch on top. So the rows are counted from the
+//  bottom up, each either highlighted (white) or plain (dark blue, its
+//  text's start bright on it), until a slot is neither; the selected row is
+//  then counted from the top. None if no row, or not exactly one, is
+//  highlighted.
+std::optional<DialogChoiceRows> read_dialog_choice_rows(const ImageViewRGB32& frame);
 
 
 
