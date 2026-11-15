@@ -69,12 +69,20 @@ SettleEnd run_settle(const SettleRule& rule, std::string_view label, SettleIO& i
         if (look.when >= *deadline){
             break;
         }
+        if (look.since.has_value() && *look.since < look.when){
+            //  The screen showed these events from `since` on: the judge
+            //  sees them then too, so their quiet counts from there.
+            judge.look(look.events, *look.since);
+        }
         const SceneMove move = judge.look(look.events, look.when);
         switch (move){
         case SceneMove::DONE:
             io.log(std::format("[Settle] {}: over; {}.", label, judge.describe()));
             return {SettleEnd::Result::QUIET, judge.describe()};
         case SceneMove::BATTLE:
+            if (rule.watch_battles){
+                continue;
+            }
             if (!io.flee_battle()){
                 io.log(std::format("[Settle] {}: a battle started.", label));
                 return {SettleEnd::Result::BATTLE, judge.describe()};
