@@ -5,12 +5,14 @@
  *  The option contract of "describe_program" for each option type, on a
  *  program's options built here: keys, types, defaults (not the current
  *  values), bounds and enum entries, nested groups, and static options left
- *  out.
+ *  out; and the program's precheck list, or "unsupported" without one.
  *
  */
 
 #include <format>
+#include <optional>
 #include <string>
+#include <vector>
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
@@ -173,6 +175,7 @@ const OptionCase OPTION_CASES[] = {
 
 struct ProgramInput{
     std::string id;
+    std::optional<std::vector<PrecheckSummary>> prechecks;
 };
 struct ProgramExpectation{
     size_t options;             //  Entries in "options": the static note is left out.
@@ -186,7 +189,7 @@ struct ProgramCase{
 
 UnitTestResult check(const ProgramCase& c){
     SampleOptions sample;
-    JsonObject contract = lab_program_contract(c.input.id, sample.options);
+    JsonObject contract = lab_program_contract(c.input.id, sample.options, c.input.prechecks);
     const JsonArray* options = contract.get_array(std::string("options"));
     if (options == nullptr || options->size() != c.expectation.options){
         return std::format("expected {} options in\n{}", c.expectation.options, JsonValue(std::move(contract)).dump(-1));
@@ -220,6 +223,31 @@ const ProgramCase PROGRAM_CASES[] = {
         .expectation = {
             .options = 8,
             .head = R"({"id":"PokemonFRLG:AutoStory","options":null,"prechecks":"unsupported","schema":1})",
+        },
+    },
+    {
+        .name = "a declared precheck list, in order",
+        .input = {
+            .id = "PokemonFRLG:GiftRng",
+            .prechecks = std::vector<PrecheckSummary>{
+                {.name = "black_border", .needs = "No black border around the game.", .skippable = false},
+                {.name = "free_party_slots", .needs = "1 free party slot.", .skippable = true},
+            },
+        },
+        .expectation = {
+            .options = 8,
+            .head = R"({"id":"PokemonFRLG:GiftRng","options":null,"prechecks":[{"name":"black_border","needs":"No black border around the game.","skippable":false},{"name":"free_party_slots","needs":"1 free party slot.","skippable":true}],"schema":1})",
+        },
+    },
+    {
+        .name = "an empty list declares no needs, not unsupported",
+        .input = {
+            .id = "PokemonFRLG:AutoStory",
+            .prechecks = std::vector<PrecheckSummary>{},
+        },
+        .expectation = {
+            .options = 8,
+            .head = R"({"id":"PokemonFRLG:AutoStory","options":null,"prechecks":[],"schema":1})",
         },
     },
 };

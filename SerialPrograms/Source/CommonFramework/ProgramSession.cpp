@@ -95,6 +95,12 @@ void ProgramSession::join_program_thread() noexcept{
 const std::string& ProgramSession::identifier() const{
     return m_descriptor.identifier();
 }
+std::optional<std::vector<PrecheckSummary>> ProgramSession::precheck_summaries() const{
+    if (m_instance == nullptr){
+        return std::nullopt;
+    }
+    return m_instance->precheck_summaries();
+}
 std::string ProgramSession::current_stats() const{
     std::lock_guard<Mutex> lg(m_lock);
     if (m_current_stats){

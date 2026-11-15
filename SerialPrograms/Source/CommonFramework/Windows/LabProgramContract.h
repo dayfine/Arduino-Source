@@ -18,10 +18,13 @@
 #ifndef PokemonAutomation_LabProgramContract_H
 #define PokemonAutomation_LabProgramContract_H
 
+#include <optional>
 #include <string_view>
+#include <vector>
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Options/BatchOption.h"
+#include "CommonFramework/Panels/ProgramDescriptor.h"
 
 namespace PokemonAutomation{
 
@@ -38,8 +41,13 @@ constexpr int LAB_PROGRAM_CONTRACT_SCHEMA = 1;
 JsonArray lab_option_contract(const BatchOption& options);
 
 //  The whole reply: {"schema", "id", "options", "prechecks"}. `prechecks`
-//  is "unsupported" until the program declares a precheck list.
-JsonObject lab_program_contract(std::string_view id, const BatchOption& options);
+//  lists the program's prechecks in order, each {"name", "needs",
+//  "skippable"}, or is "unsupported" when the program declares no list.
+JsonObject lab_program_contract(
+    std::string_view id,
+    const BatchOption& options,
+    const std::optional<std::vector<PrecheckSummary>>& prechecks
+);
 
 
 

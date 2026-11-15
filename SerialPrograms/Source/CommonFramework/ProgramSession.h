@@ -79,6 +79,10 @@ public:
     uint64_t instance_id() const{ return m_instance_id; }
     Logger& logger(){ return m_logger; }
 
+    //  The program's precheck list (ProgramInstance::precheck_summaries()),
+    //  read without running it. Nothing when it declares none.
+    std::optional<std::vector<PrecheckSummary>> precheck_summaries() const;
+
 
     // - return struct that contains the list of missing resources and boolean upgrade_warning.
     // - upgrade_warning: is true if we need to warn the user to upgrade CC. 

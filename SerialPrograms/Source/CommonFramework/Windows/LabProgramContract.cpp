@@ -118,6 +118,18 @@ std::optional<JsonObject> describe_choice(const ConfigOption& option){
     return std::nullopt;
 }
 
+JsonArray precheck_list(const std::vector<PrecheckSummary>& prechecks){
+    JsonArray list;
+    for (const PrecheckSummary& check : prechecks){
+        JsonObject item;
+        item["name"] = check.name;
+        item["needs"] = check.needs;
+        item["skippable"] = check.skippable;
+        list.push_back(std::move(item));
+    }
+    return list;
+}
+
 //  The fields of `option` for its entry: "type" and those of that type.
 JsonObject describe_option(const ConfigOption& option){
     std::optional<JsonObject> described = describe_group(option);
@@ -152,12 +164,20 @@ JsonArray lab_option_contract(const BatchOption& options){
     return contract;
 }
 
-JsonObject lab_program_contract(std::string_view id, const BatchOption& options){
+JsonObject lab_program_contract(
+    std::string_view id,
+    const BatchOption& options,
+    const std::optional<std::vector<PrecheckSummary>>& prechecks
+){
     JsonObject contract;
     contract["schema"] = LAB_PROGRAM_CONTRACT_SCHEMA;
     contract["id"] = std::string(id);
     contract["options"] = lab_option_contract(options);
-    contract["prechecks"] = "unsupported";
+    if (prechecks){
+        contract["prechecks"] = precheck_list(*prechecks);
+    }else{
+        contract["prechecks"] = "unsupported";
+    }
     return contract;
 }
 
