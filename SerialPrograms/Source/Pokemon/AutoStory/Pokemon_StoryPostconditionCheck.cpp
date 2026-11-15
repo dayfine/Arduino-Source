@@ -186,7 +186,8 @@ std::optional<GridPose> checkpoint_end_pose(const StoryCheckpoint& checkpoint){
         if (std::optional<GridPose> target = pose_arg(*step)){
             return target;
         }
-        if (step->kind == StoryStepKind::LEGS){
+        //  Taps and single steps move the player without saying where to.
+        if (step->kind == StoryStepKind::LEGS || step->kind == StoryStepKind::STEP){
             return std::nullopt;
         }
     }
