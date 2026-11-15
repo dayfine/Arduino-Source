@@ -3,20 +3,17 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Checking a step's args against an action's spec and filling in its
- *  fallbacks. Built standalone (PA_STORY_DATA_STANDALONE), it runs without
- *  the application.
+ *  fallbacks.
  *
  */
 
 #include <format>
-#include <iostream>
+#include <optional>
 #include <string>
 #include <string_view>
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon_StoryActionArg.h"
-#ifndef PA_STORY_DATA_STANDALONE
 #include "Pokemon_StoryActionArg_Tests.h"
-#endif
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -67,8 +64,8 @@ const ArgsCase CASES[] = {
 };
 
 
-//  "" when `test` reads as expected, else what differs.
-std::string check_case(const ArgsCase& test){
+//  What differs from the expectation, if anything.
+std::optional<std::string> check_case(const ArgsCase& test){
     std::string error;
     for (const std::string& each : story_args_errors(mart_spec(), test.input.args)){
         error += (error.empty() ? "" : "; ") + each;
@@ -84,11 +81,9 @@ std::string check_case(const ArgsCase& test){
     if (floor == nullptr || *floor != story_arg<int64_t>(args, "floor")){
         return "reads floor otherwise";
     }
-    return "";
+    return std::nullopt;
 }
 
-
-#ifndef PA_STORY_DATA_STANDALONE
 
 class StoryActionArgTest : public UnitTest{
 public:
@@ -98,21 +93,17 @@ public:
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::string error = check_case(m_case);
-        return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
+        const std::optional<std::string> error = check_case(m_case);
+        return error ? UnitTestResult(*error) : UnitTestResult(true);
     }
 
 private:
     ArgsCase m_case;
 };
 
-#endif
-
 
 } // namespace
 
-
-#ifndef PA_STORY_DATA_STANDALONE
 
 void add_tests_StoryActionArg(UnitTestDatabase& database){
     for (const ArgsCase& test : CASES){
@@ -120,24 +111,7 @@ void add_tests_StoryActionArg(UnitTestDatabase& database){
     }
 }
 
-#endif
-
 
 
 } // namespace Pokemon
 } // namespace PokemonAutomation
-
-
-#ifdef PA_STORY_DATA_STANDALONE
-
-int main(){
-    int failed = 0;
-    for (const auto& test : PokemonAutomation::Pokemon::CASES){
-        const std::string error = PokemonAutomation::Pokemon::check_case(test);
-        std::cout << test.name << ": " << (error.empty() ? "PASS" : error) << '\n';
-        failed += !error.empty();
-    }
-    return failed != 0;
-}
-
-#endif

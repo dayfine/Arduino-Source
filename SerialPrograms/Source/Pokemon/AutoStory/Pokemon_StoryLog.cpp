@@ -21,8 +21,8 @@ std::string resets_text(size_t attempt){
 }
 
 //  "[Checkpoint] 00.04", or the game's own checkpoint text unchanged.
-std::string checkpoint_prefix(std::string_view checkpoint, bool add_checkpoint_prefix){
-    if (!add_checkpoint_prefix){
+std::string checkpoint_prefix(std::string_view checkpoint, CheckpointPrefix prefix_kind){
+    if (prefix_kind == CheckpointPrefix::AS_GIVEN){
         return std::string(checkpoint);
     }
     return std::format("[Checkpoint] {}", checkpoint);
@@ -32,9 +32,9 @@ std::string checkpoint_prefix(std::string_view checkpoint, bool add_checkpoint_p
 
 
 std::string checkpoint_start_line(
-    std::string_view checkpoint, std::optional<size_t> events, bool add_checkpoint_prefix
+    std::string_view checkpoint, std::optional<size_t> events, CheckpointPrefix prefix_kind
 ){
-    const std::string prefix = checkpoint_prefix(checkpoint, add_checkpoint_prefix);
+    const std::string prefix = checkpoint_prefix(checkpoint, prefix_kind);
     if (!events){
         return std::format("{}: start", prefix);
     }
@@ -42,26 +42,26 @@ std::string checkpoint_start_line(
 }
 
 std::string checkpoint_attempt_line(
-    std::string_view checkpoint, size_t attempt, std::optional<size_t> attempts, bool add_checkpoint_prefix
+    std::string_view checkpoint, size_t attempt, std::optional<size_t> attempts, CheckpointPrefix prefix_kind
 ){
-    const std::string prefix = checkpoint_prefix(checkpoint, add_checkpoint_prefix);
+    const std::string prefix = checkpoint_prefix(checkpoint, prefix_kind);
     if (!attempts){
         return std::format("{}: attempt {}", prefix, attempt);
     }
     return std::format("{}: attempt {}/{}", prefix, attempt, *attempts);
 }
 
-std::string checkpoint_pass_line(std::string_view checkpoint, size_t attempt, bool add_checkpoint_prefix){
+std::string checkpoint_pass_line(std::string_view checkpoint, size_t attempt, CheckpointPrefix prefix_kind){
     return std::format(
         "{}: passed on attempt {} ({})",
-        checkpoint_prefix(checkpoint, add_checkpoint_prefix), attempt, resets_text(attempt)
+        checkpoint_prefix(checkpoint, prefix_kind), attempt, resets_text(attempt)
     );
 }
 
 std::string checkpoint_reset_line(
-    std::string_view checkpoint, size_t next_attempt, std::optional<size_t> attempts, bool add_checkpoint_prefix
+    std::string_view checkpoint, size_t next_attempt, std::optional<size_t> attempts, CheckpointPrefix prefix_kind
 ){
-    const std::string prefix = checkpoint_prefix(checkpoint, add_checkpoint_prefix);
+    const std::string prefix = checkpoint_prefix(checkpoint, prefix_kind);
     if (!attempts){
         return std::format("{}: failed, resetting for attempt {}", prefix, next_attempt);
     }
