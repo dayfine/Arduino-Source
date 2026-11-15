@@ -21,6 +21,11 @@
  *  worker through the LabConsoleCommands of the console type
  *  (NintendoSwitch_LabCommands.h).
  *
+ *  The inbox/outbox file pair, polled every 500 ms, is the transport between
+ *  the lab server and the app. A local socket is the likely replacement if
+ *  poll latency or missed events become a measured problem; the alternatives
+ *  are in docs/design/Agent-Integration.md, "Transport: now and later".
+ *
  */
 
 #ifndef PokemonAutomation_LabChannel_H

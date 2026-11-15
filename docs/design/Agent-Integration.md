@@ -123,6 +123,28 @@ The daemon lives with the lab tooling on `agents` (`lab/server/`), in a venv lik
 code-health one, with its fake-lab tests beside it. App-side slices go on branches from
 `lab/tooling` (#107), where the lab channel lives, so this design PR stays documentation only.
 
+## Transport: now and later
+
+Today the daemon and the app talk through a file pair: the daemon writes a request to
+`Lab/inbox/<name>.txt` (atomic rename), the app polls the folder every 500 ms, runs it and
+writes the journal `Lab/outbox/<name>.out`. It stays because it works, anyone can debug it by
+hand with `ls` and `cat`, requests and journals survive an app restart, and once no script
+writes `Lab/inbox` the daemon is its only writer, so there are no races between writers. Its
+costs are up to 500 ms latency per request and no push: the daemon learns about changes by
+polling `Lab/state.json` too.
+
+Alternatives, with what would justify each:
+
+| Option | Gains | Costs | Trigger |
+|---|---|---|---|
+| Local socket or named pipe (`QLocalSocket`-style, one per console) | Requests answered without the poll delay; the app can push events (state change, frame saved) instead of being polled | Connection lifecycle and reconnect on app restart; a server thread in the app that follows the thread rules in `AGENTS.md` (pool workers, `Mutex` wrappers, no raw `std::thread`); harder to inspect by hand | Poll latency or missed events measured as a problem in console sessions |
+| MCP or HTTP endpoint inside the app | No daemon hop; agents talk to the app directly | The app grows a network server, auth and MCP versioning; leases and the event sequence would move into C++; much harder to keep the app side upstreamable | Only if the daemon itself becomes the bottleneck, which nothing suggests today |
+| The daemon's SQLite control DB as the queue | One durable store for requests, leases and events; no separate file state | The app would link SQLite and share a schema with the daemon; still polled, so no latency gain; cross-process locking on one DB | If request durability or ordering across restarts ever needs more than the file pair gives |
+
+The likely next step is the socket, kept behind the same request/journal format so the file pair
+can remain as a fallback for debugging. Do it only when polling latency or event loss is
+measured as a problem; until then the file pair stays.
+
 ## Resources (read-only, first implementation slice)
 
 The app keeps the legacy key/value `Lab/state` (`seq`, `state`, `program`, `controller`,
