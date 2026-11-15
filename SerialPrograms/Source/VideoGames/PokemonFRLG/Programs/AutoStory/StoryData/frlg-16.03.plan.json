@@ -21,6 +21,28 @@
         ],
         "events": [
             {
+                "id": "teach_blizzard",
+                "kind": "game_action",
+                "action": "teach",
+                "args": {
+                    "item": "tm14",
+                    "move": "blizzard",
+                    "slot": 1,
+                    "keep": [
+                        "tackle",
+                        "withdraw",
+                        "tail-whip",
+                        "water-gun",
+                        "bubble",
+                        "bite",
+                        "mega-kick",
+                        "water-pulse",
+                        "surf"
+                    ]
+                },
+                "why": "TM14 Blizzard over Dig, as 13.03 teaches it (pokeguy's moves here: Surf, Water Pulse, Bite, Blizzard; the user approved the TM spend 2026-11-12), unless the lead knows it: console B's lead came to the rival with Dig (2026-11-15, run 6) and lost to Venusaur; PokemonSimulation's silph-rival sim of that entry (Lv43, 136/136) wins 35% by C2 with Dig and 99% with Blizzard. Keep list: every move the lead can know but Dig; skipped if the bag has no TM14"
+            },
+            {
                 "id": "to_3f_trainer",
                 "kind": "route",
                 "action": "run",
@@ -126,6 +148,58 @@
                         "growlithe",
                         "alakazam",
                         "venusaur"
+                    ],
+                    "policy": "goal-based-setup",
+                    "setup_spa": 2,
+                    "setup_accuracy": 2,
+                    "setup_outspeed": true,
+                    "setup_guard_accuracy": true,
+                    "foe_threats": [
+                        [
+                            76,
+                            18,
+                            17,
+                            39,
+                            19,
+                            0,
+                            0
+                        ],
+                        [
+                            78,
+                            40,
+                            15,
+                            40,
+                            40,
+                            0,
+                            0
+                        ],
+                        [
+                            51,
+                            14,
+                            5,
+                            32,
+                            16,
+                            0,
+                            0
+                        ],
+                        [
+                            93,
+                            0,
+                            4,
+                            44,
+                            22,
+                            0,
+                            0
+                        ],
+                        [
+                            76,
+                            46,
+                            26,
+                            96,
+                            48,
+                            0,
+                            0
+                        ]
                     ]
                 },
                 "declared_after": {
@@ -138,7 +212,7 @@
                     ],
                     "facing": "south"
                 },
-                "why": "the rival (TRAINER_RIVAL_SILPH_BULBASAUR, for a Squirtle): Pidgeot Lv37, Gyarados Lv38, Growlithe Lv35, Alakazam Lv35, Venusaur Lv40; then he leaves (VAR_MAP_SCENE_SILPH_CO_7F 1)"
+                "why": "the rival (TRAINER_RIVAL_SILPH_BULBASAUR, for a Squirtle): Pidgeot Lv37, Gyarados Lv38, Growlithe Lv35, Alakazam Lv35, Venusaur Lv40, fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +2 and accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first; the doc's silph-rival row, pokeguy 1:28:54 to 1:30:09); foe_threats are the rows PokemonSimulation's planning_risk() gives for each foe leading against console B's entry (Lv43, 136/136, 2026-11-15 run 6); without the policy the lead attacked from turn 1, Venusaur slept it and the battle was lost (sim of that entry: 12% of 500); then he leaves (VAR_MAP_SCENE_SILPH_CO_7F 1)"
             }
         ]
     },
