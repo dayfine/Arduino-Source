@@ -68,20 +68,21 @@ std::optional<std::vector<DpadPosition>> look_pick_moves(size_t cursor, const In
 std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& screen);
 
 namespace detail{
+//  How often the language select may come up, its pick included, before the
+//  intro fails. After the pick it stays up while the game loads the
+//  language, and each look takes A (a pick whose A was dropped): Japanese's
+//  load took the pick and 10 looks (lab-B 2026-11-15), about 6 s.
+inline constexpr size_t INTRO_LANGUAGE_SELECT_VISITS = 30;
 //  Short names of BDSP_LANGUAGE_GRID's items, in its order, for capture
 //  mode's file names: "en", "ja-kana", "es", "ja", ...
 const std::vector<std::string_view>& bdsp_language_tags();
 //  The progress a new intro starts from: which of `picks` need a menu.
 IntroProgress intro_start(const IntroPicks& picks);
 //  Whether the intro restarts the game when `screen` (classify_intro_screen())
-//  shows at its start: not on a screen of the intro itself, which it takes up
-//  from there.
+//  shows at its start: on every screen but the user select and the language
+//  select, which come before the language is picked. Past the pick the game's
+//  language may not be the one asked for, and nothing on screen tells it.
 bool intro_restart_needed(std::string_view screen);
-//  The progress an intro taken up on `screen` starts from: a pick whose
-//  screen is past is not made again, and one that may be past (from a
-//  dialogue, the look) is made only if its screen still shows. From a
-//  keyboard it types the player's name: it cannot tell the rival's.
-IntroProgress intro_resume(const IntroPicks& picks, std::string_view screen);
 //  Why `name` cannot be typed on a keyboard that takes `limit` characters,
 //  or nullopt when it fits or the limit was not read.
 std::optional<std::string> name_limit_problem(std::string_view name, std::optional<size_t> limit);
@@ -123,8 +124,8 @@ private:
 //  From the title screen or any intro screen of a game with no save, with BDSP
 //  running in front: from HOME it throws UserSetupError, since the restart would
 //  launch whatever tile HOME's cursor is on, as it does for picks no menu has.
-//  On a screen of the intro (intro_restart_needed()) it takes the intro up
-//  from there, without closing the game. Otherwise it restarts the game, so it
+//  On the user select or the language select (intro_restart_needed()) it takes
+//  the intro up from there, without closing the game. Otherwise it restarts the game, so it
 //  starts from the title, waits out the black boot (up to
 //  INTRO_BOOT_LIMIT) without pressing anything, and fails if no BDSP screen shows within
 //  INTRO_TIME_BEFORE_BDSP of screens. Picks the language and the look in

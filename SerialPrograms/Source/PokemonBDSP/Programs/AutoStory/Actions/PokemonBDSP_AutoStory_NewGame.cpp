@@ -95,31 +95,7 @@ IntroProgress intro_start(const IntroPicks& picks){
     return progress;
 }
 bool intro_restart_needed(std::string_view screen){
-    return !(screen == "user-select" || screen == "language-select" || screen == "look-select" ||
-        screen == "keyboard" || screen == "dialog" || screen == "rival-list-tell" || screen == "rival-list-preset");
-}
-IntroProgress intro_resume(const IntroPicks& picks, std::string_view screen){
-    IntroProgress progress = intro_start(picks);
-    if (screen == "user-select" || screen == "language-select"){
-        return progress;
-    }
-    //  Every other intro screen comes after the language.
-    progress.language_pending = false;
-    if (screen == "look-select"){
-        //  It shows: the cursor may be anywhere, so read it and pick.
-        progress.look_pending = true;
-        return progress;
-    }
-    if (screen == "dialog"){
-        //  Rowan before the look select, or the names after it.
-        progress.picks_may_be_past = true;
-        return progress;
-    }
-    progress.look_pending = false;
-    if (screen == "rival-list-tell" || screen == "rival-list-preset"){
-        progress.player_named = true;
-    }
-    return progress;
+    return !(screen == "user-select" || screen == "language-select");
 }
 std::optional<std::string> name_limit_problem(std::string_view name, std::optional<size_t> limit){
     if (!limit){
@@ -193,7 +169,7 @@ IntroStep decide_intro_step(std::string_view screen, const IntroProgress& progre
         return IntroStep::FAIL_NOT_IN_GAME;
     }
     if (screen == "keyboard"){
-        if (!progress.player_named && (progress.language_pending || progress.look_pending) && !progress.picks_may_be_past){
+        if (!progress.player_named && (progress.language_pending || progress.look_pending)){
             return IntroStep::FAIL_PICK_MISSED;
         }
         return progress.player_named ? IntroStep::CANCEL_RIVAL_KEYBOARD : IntroStep::ENTER_PLAYER_NAME;
@@ -712,7 +688,7 @@ std::vector<ScreenState> intro_states(IntroRun& run){
             [&run]{ act(run, "keyboard"); }, {"rival-list-tell", "dialog", "black", "other"}, 3},
         {"language-select",
             [=](const ImageViewRGB32& s){ return screen_is(s, "language-select"); }, nullptr,
-            [&run]{ act(run, "language-select"); }, {}, 10},
+            [&run]{ act(run, "language-select"); }, {}, INTRO_LANGUAGE_SELECT_VISITS},
         {"look-select",
             [=](const ImageViewRGB32& s){ return screen_is(s, "look-select"); }, nullptr,
             [&run]{ act(run, "look-select"); }, {}, 10},
@@ -787,16 +763,13 @@ void play_new_game_intro(
 
     const VideoSnapshot start = require_game_in_front(env, context);
     const std::string first = start ? classify_intro_screen(&env.console, *start.frame) : "other";
-    IntroProgress progress;
     if (intro_restart_needed(first)){
         restart_game(env, context, trace);
-        progress = intro_start(picks);
     }else{
-        //  Never close the game on an intro screen: what was picked stays.
-        trace.action("The intro shows (" + first + "): taking it up there, without a restart.");
-        progress = intro_resume(picks, first);
+        //  Nothing is picked yet, and the user select would go away with a restart.
+        trace.action("The intro shows (" + first + "), before the language pick: taking it up there, without a restart.");
     }
-    IntroRun run{env, context, trace, picks, player_name, current_time(), progress, 0};
+    IntroRun run{env, context, trace, picks, player_name, current_time(), intro_start(picks), 0};
     run.language_target = *language_item(picks.game_language);
     trace.action(std::string("Picks: language ") + language_data(picks.game_language).name +
         " (item " + std::to_string(run.language_target) + "), look " + std::to_string(picks.look + 1) + ".");
