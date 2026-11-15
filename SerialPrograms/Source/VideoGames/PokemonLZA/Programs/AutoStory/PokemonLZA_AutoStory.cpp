@@ -19,7 +19,7 @@
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
-#include "Pokemon/Options/Pokemon_GameLanguages.h"
+
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_LocationNameReader.h"
 #include "Actions/PokemonLZA_AutoStoryConfirmChoices.h"
@@ -96,7 +96,7 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         true
     )
-    , RUN(checkpoint_database(), Gen8ToGen9Languages_Database())
+    , RUN(checkpoint_database())
     , STARTER(
         "<b>Starter Pokemon:</b>",
         {
@@ -118,7 +118,7 @@ AutoStory::AutoStory()
     })
 {
     PA_ADD_OPTION(LANGUAGE);
-    RUN.LANGUAGE.set_visibility(ConfigOptionState::HIDDEN);
+
     PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(BATTLE_AI);
