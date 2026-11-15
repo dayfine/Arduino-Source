@@ -8,7 +8,6 @@
  */
 
 #include <format>
-#include <functional>
 #include <optional>
 #include <string>
 #include <utility>
@@ -17,7 +16,8 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Pokemon_Interrupts.h"
 #include "Pokemon_Interrupts_Tests.h"
-#include "Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
+#include "Pokemon_TestExpect.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -27,13 +27,6 @@ namespace{
 using namespace std::chrono_literals;
 
 const WallClock T0 = WallClock() + std::chrono::hours(1);
-
-UnitTestResult expect_equal(const std::string& what, const std::string& got, const std::string& expected){
-    if (got == expected){
-        return true;
-    }
-    return std::format("{}: expected \"{}\", got \"{}\"", what, expected, got);
-}
 
 //  One frame of a synthetic scene: its events, at `ms` after T0.
 struct Frame{
@@ -186,23 +179,22 @@ UnitTestResult test_watcher_log(){
 }
 
 
-struct InterruptsInput{
-    std::string name;
-    std::function<UnitTestResult()> body;
-};
-
-struct InterruptsExpectation{
-};
-
 struct InterruptsCase{
-    InterruptsInput input;
-    InterruptsExpectation expectation;
+    struct Input{
+        UnitTestResult (*body)();
+    };
+    struct Expectation{
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_Interrupts : public UnitTest{
 public:
     explicit Test_Interrupts(InterruptsCase test_case)
-        : UnitTest(std::format("Pokemon::Interrupts - {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::Interrupts - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -214,33 +206,32 @@ private:
 };
 
 
-//  A synthetic scene, and the window of it to judge.
-struct ClassifyInput{
-    std::string name;
-    std::vector<Frame> frames;
-    int until_ms = 0;
-    InterruptKnobs knobs = {};
-    int window_from_ms = 0;
-};
-
-struct ClassifyExpectation{
-    //  describe(verdict, T0).
-    std::string verdict;
-};
-
 struct ClassifyCase{
-    ClassifyInput input;
-    ClassifyExpectation expectation;
+    //  A synthetic scene, and the window of it to judge.
+    struct Input{
+        std::vector<Frame> frames;
+        int until_ms = 0;
+        InterruptKnobs knobs = {};
+        int window_from_ms = 0;
+    };
+    struct Expectation{
+        //  describe(verdict, T0).
+        std::string verdict;
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_InterruptClassify : public UnitTest{
 public:
     explicit Test_InterruptClassify(ClassifyCase test_case)
-        : UnitTest(std::format("Pokemon::Interrupts - classify: {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::Interrupts - classify: {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const ClassifyInput& input = m_case.input;
+        const ClassifyCase::Input& input = m_case.input;
         const ScreenEventLog log = log_of(input.frames, input.until_ms);
         const InterruptWindow window{T0 + Milliseconds(input.window_from_ms), T0 + Milliseconds(input.until_ms)};
         const InterruptVerdict verdict = classify_interrupt(log, window, input.knobs);
@@ -252,32 +243,31 @@ private:
 };
 
 
-//  A synthetic scene, classified over all of it, and the lags to time it.
-struct StepTimeInput{
-    std::string name;
-    std::vector<Frame> frames;
-    int until_ms = 0;
-    std::vector<EventLag> lags;
-};
-
-struct StepTimeExpectation{
-    //  "+700 ms" from T0, or "none".
-    std::string step;
-};
-
 struct StepTimeCase{
-    StepTimeInput input;
-    StepTimeExpectation expectation;
+    //  A synthetic scene, classified over all of it, and the lags to time it.
+    struct Input{
+        std::vector<Frame> frames;
+        int until_ms = 0;
+        std::vector<EventLag> lags;
+    };
+    struct Expectation{
+        //  "+700 ms" from T0, or "none".
+        std::string step;
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_InterruptStepTime : public UnitTest{
 public:
     explicit Test_InterruptStepTime(StepTimeCase test_case)
-        : UnitTest(std::format("Pokemon::Interrupts - step time: {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::Interrupts - step time: {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const StepTimeInput& input = m_case.input;
+        const StepTimeCase::Input& input = m_case.input;
         const InterruptVerdict verdict = classify_interrupt(log_of(input.frames, input.until_ms), whole(input.until_ms), {});
         const std::optional<WallClock> step = interrupt_step_time(verdict, input.lags);
         const std::string got = step
@@ -295,123 +285,147 @@ private:
 
 const InterruptsCase INTERRUPTS_CASES[] = {
     {
-        .input = {"the log keeps rises and falls in order, timed", test_log_records_rises_and_falls},
+        .name = "the log keeps rises and falls in order, timed",
+        .input = {test_log_records_rises_and_falls},
         .expectation = {},
     },
     {
-        .input = {"a full log drops its oldest changes and says so", test_log_overflow_and_clear},
+        .name = "a full log drops its oldest changes and says so",
+        .input = {test_log_overflow_and_clear},
         .expectation = {},
     },
     {
-        .input = {"an empty log is no interrupt and no fade", test_empty_log},
+        .name = "an empty log is no interrupt and no fade",
+        .input = {test_empty_log},
         .expectation = {},
     },
     {
-        .input = {"a warp is down, held, back up, not the same scene", test_judge_warp},
+        .name = "a warp is down, held, back up, not the same scene",
+        .input = {test_judge_warp},
         .expectation = {},
     },
     {
-        .input = {"a watcher keeps a timed log", test_watcher_log},
+        .name = "a watcher keeps a timed log",
+        .input = {test_watcher_log},
         .expectation = {},
     },
 };
 
 const ClassifyCase CLASSIFY_CASES[] = {
     {
-        .input = {"an encounter's white flash, then the battle",
+        .name = "an encounter's white flash, then the battle",
+        .input = {
             {{0, WALK}, {1000, WHITE}, {1300, ScreenEvents()}, {3000, BATTLE}}, 3000},
         .expectation = {"wild encounter: +1000 ms white fade rose, +3000 ms battle started rose"},
     },
     {
-        .input = {"a wild battle's opening text comes after its flash",
+        .name = "a wild battle's opening text comes after its flash",
+        .input = {
             {{0, WALK}, {1000, WHITE}, {1300, BATTLE_TEXT}, {2500, BATTLE}}, 2500},
         .expectation = {"wild encounter: +1000 ms white fade rose, +2500 ms battle started rose"},
     },
     {
-        .input = {"a trainer's lines, a pause, the battle's fade",
+        .name = "a trainer's lines, a pause, the battle's fade",
+        .input = {
             {{0, WALK}, {1000, BOX}, {2000, WALK}, {6000, BLACK}, {6400, BATTLE}}, 6400},
         .expectation = {"trainer sight: +1000 ms dialog box rose, +6000 ms black fade rose, +6400 ms battle started rose"},
     },
     {
-        .input = {"a trainer's lines, then the battle with no fade seen",
+        .name = "a trainer's lines, then the battle with no fade seen",
+        .input = {
             {{0, WALK}, {1000, BOX}, {2000, BATTLE}}, 2000},
         .expectation = {"trainer sight: +1000 ms dialog box rose, +2000 ms battle started rose"},
     },
     {
-        .input = {"a box and no battle", {{0, WALK}, {1000, BOX}}, 20000},
+        .name = "a box and no battle",
+        .input = {{{0, WALK}, {1000, BOX}}, 20000},
         .expectation = {"dialog: +1000 ms dialog box rose"},
     },
     {
-        .input = {"a cave exit's white fade, and no battle for 8 s",
+        .name = "a cave exit's white fade, and no battle for 8 s",
+        .input = {
             {{0, WALK}, {1000, WHITE}, {1600, WALK}}, 12000},
         .expectation = {"warp: +1000 ms white fade rose, +1600 ms white fade fell"},
     },
     {
-        .input = {"a white fade too recent to rule out a battle",
+        .name = "a white fade too recent to rule out a battle",
+        .input = {
             {{0, WALK}, {1000, WHITE}, {1600, WALK}}, 4000},
         .expectation = {"unsettled: +1000 ms white fade rose, +1600 ms white fade fell"},
     },
     {
-        .input = {"a fade still showing", {{0, WALK}, {1000, BLACK}}, 3000},
+        .name = "a fade still showing",
+        .input = {{{0, WALK}, {1000, BLACK}}, 3000},
         .expectation = {"unsettled: +1000 ms black fade rose"},
     },
     {
-        .input = {"a banner after the white settles it at once",
+        .name = "a banner after the white settles it at once",
+        .input = {
             {{0, WALK}, {1000, WHITE}, {1600, WALK}, {2000, BANNER}}, 2500},
         .expectation = {"warp: +1000 ms white fade rose, +1600 ms white fade fell, +2000 ms location banner rose"},
     },
     {
-        .input = {"a box during a fade is the scene cut's",
+        .name = "a box during a fade is the scene cut's",
+        .input = {
             {{0, WALK}, {1000, BLACK}, {1300, ScreenEvents{ScreenEvent::FADE_BLACK, ScreenEvent::DIALOG_BOX}},
                 {1800, BOX}, {3000, WALK}}, 12000},
         .expectation = {"warp: +1000 ms black fade rose, +1800 ms black fade fell"},
     },
     {
-        .input = {"a door's fade long before a battle is not the battle's",
+        .name = "a door's fade long before a battle is not the battle's",
+        .input = {
             {{0, WALK}, {500, BLACK}, {900, WALK}, {20000, BATTLE}}, 20000},
         .expectation = {"wild encounter: +20000 ms battle started rose"},
     },
     {
-        .input = {"a box up before the window is not this interrupt's",
+        .name = "a box up before the window is not this interrupt's",
+        .input = {
             {{0, BOX}, {1000, WALK}, {3000, WHITE}, {3300, WALK}, {5000, BATTLE}}, 5000, {}, 500},
         .expectation = {"wild encounter: +3000 ms white fade rose, +5000 ms battle started rose"},
     },
     {
-        .input = {"a one-frame flicker is no fade with a hold to meet",
+        .name = "a one-frame flicker is no fade with a hold to meet",
+        .input = {
             {{0, WALK}, {1000, BLACK}, {1050, WALK}}, 12000, {.min_fade_hold = 200ms}},
         .expectation = {"none"},
     },
     {
-        .input = {"a one-frame fade is a warp by default",
+        .name = "a one-frame fade is a warp by default",
+        .input = {
             {{0, WALK}, {1000, BLACK}, {1050, WALK}}, 12000},
         .expectation = {"warp: +1000 ms black fade rose, +1050 ms black fade fell"},
     },
     {
-        .input = {"a walk with nothing in it", {{0, WALK}}, 5000},
+        .name = "a walk with nothing in it",
+        .input = {{{0, WALK}}, 5000},
         .expectation = {"none"},
     },
 };
 
 const StepTimeCase STEP_TIME_CASES[] = {
     {
-        .input = {"a wild battle's box, its fade untimed",
+        .name = "a wild battle's box, its fade untimed",
+        .input = {
             {{0, WALK}, {1500, BLACK}, {2000, ScreenEvents()}, {4400, BATTLE}}, 6000,
             {{ScreenEvent::BATTLE_STARTED, 3700ms}}},
         .expectation = {"+700 ms"},
     },
     {
-        .input = {"the first timed rise wins",
+        .name = "the first timed rise wins",
+        .input = {
             {{0, WALK}, {1500, BLACK}, {2000, ScreenEvents()}, {4400, BATTLE}}, 6000,
             {{ScreenEvent::BATTLE_STARTED, 3700ms}, {ScreenEvent::FADE_BLACK, 1000ms}}},
         .expectation = {"+500 ms"},
     },
     {
-        .input = {"no lags, no time",
+        .name = "no lags, no time",
+        .input = {
             {{0, WALK}, {4400, BATTLE}}, 6000, {}},
         .expectation = {"none"},
     },
     {
-        .input = {"no interrupt, no time",
+        .name = "no interrupt, no time",
+        .input = {
             {{0, WALK}}, 6000, {{ScreenEvent::BATTLE_STARTED, 3700ms}}},
         .expectation = {"none"},
     },

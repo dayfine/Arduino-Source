@@ -5,7 +5,10 @@
  */
 
 #include <algorithm>
+#include <chrono>
 #include <format>
+#include <string_view>
+#include "CommonTools/ScreenEvents/ScreenFades.h"
 #include "Pokemon_Interrupts.h"
 
 namespace PokemonAutomation{

@@ -130,18 +130,22 @@ TransitionTracker::Level TransitionTracker::level_of(const ImageStats& middle) c
 }
 
 std::optional<Transition> TransitionTracker::push(const TransitionSample& sample){
+    //  No stats (an empty or dropped frame) would read as uniform and dark.
+    if (sample.middle.count == 0){
+        return std::nullopt;
+    }
     switch (level_of(sample.middle)){
     case Level::SCENE:
         return on_scene(sample);
     case Level::PARTIAL_DARK:
-        return on_partial(sample, false);
+        return on_partial(sample, /*white=*/false);
     case Level::PARTIAL_WHITE:
-        return on_partial(sample, true);
+        return on_partial(sample, /*white=*/true);
     case Level::DARK:
-        on_uniform(sample, false);
+        on_uniform(sample, /*white=*/false);
         return std::nullopt;
     case Level::WHITE:
-        on_uniform(sample, true);
+        on_uniform(sample, /*white=*/true);
         return std::nullopt;
     }
     return std::nullopt;

@@ -347,8 +347,8 @@ UnitTestResult test_unsettled_before_a_battle(){
 }
 
 //  A battle's opening still playing when a walk step begins: the walk
-//  before it ended in grass or in a trainer's sight (BDSP fault sweep, 51
-//  steps of 00.01-01.11). The looks wait for the battle, past max_looks,
+//  before it ended in grass or in a trainer's sight. The looks wait for the
+//  battle, past max_looks,
 //  and its handler clears it before the step.
 UnitTestResult test_opening_before_a_walk(ScreenLook opening, ScreenLook battle, const std::string& kind, const std::string& handler){
     FakeGame game;
@@ -492,8 +492,7 @@ UnitTestResult test_screen_before_each_step(){
     });
 }
 
-//  The program started on the HOME menu (lab-B 2026-11-09 15:31: "before
-//  save: settled overworld", then X on HOME and a 22-tile walk on it). The
+//  The program started with the game closed and the HOME menu showing. The
 //  screen is told as HOME and the step fails at once, before any input,
 //  and before a step that starts on a battle's opening too.
 UnitTestResult test_home_menu_before_a_step(){
@@ -568,6 +567,78 @@ UnitTestResult test_home_menu_stops_the_segment(){
     return true;
 }
 
+//  A handler that drives the console can lose it. That fails the step as
+//  interrupt_failed, like a handler that returns a failure: it must not
+//  escape the executor, and the step is not run.
+UnitTestResult test_handler_throws(){
+    FakeGame game;
+    game.screens = {dialog()};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    interrupts.handlers = InterruptHandlerTable();
+    interrupts.handlers.add(InterruptKind::DIALOG, InterruptHandler{
+        .handle = [&game](const InterruptVerdict&, RunState&) -> Outcome{
+            game.trace.push_back("clear dialog");
+            throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "the console is gone");
+        },
+        .pose = InterruptPose::UNCHANGED,
+    });
+    try{
+        const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
+        if (run.outcome.failure != "interrupt_failed"){
+            return std::format("Expected interrupt_failed, got {}", to_string(run.outcome));
+        }
+    }catch (OperationFailedException& e){
+        return std::format("The handler's failure escaped the executor: {}", e.message());
+    }
+    return expect_trace(game, {"look", "clear dialog", "told dialog interrupt_failed: dialog: operation_failed: the console is gone"});
+}
+
+//  The same loss after a step failed, while the executor looks for what
+//  explains the failure: the step's own failure is kept.
+UnitTestResult test_handler_throws_after_a_failure(){
+    FakeGame game;
+    game.screens = {quiet(), dialog()};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    interrupts.handlers = InterruptHandlerTable();
+    interrupts.handlers.add(InterruptKind::DIALOG, InterruptHandler{
+        .handle = [&game](const InterruptVerdict&, RunState&) -> Outcome{
+            game.trace.push_back("clear dialog");
+            throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "the console is gone");
+        },
+        .pose = InterruptPose::UNCHANGED,
+    });
+    try{
+        const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"), FakeAction{.failures = 1});
+        if (run.outcome.failure != "dialog"){
+            return std::format("Expected the step's own failure, got {}", to_string(run.outcome));
+        }
+    }catch (OperationFailedException& e){
+        return std::format("The handler's failure escaped the executor: {}", e.message());
+    }
+    return true;
+}
+
+//  A step that fails and then shows the HOME menu did not fail on its own:
+//  the game is not running, so the segment must stop instead of recovering
+//  or reloading with the game closed.
+UnitTestResult test_home_menu_after_a_failed_step(){
+    for (bool throws : {false, true}){
+        FakeGame game;
+        game.screens = {quiet(), home_menu()};
+        StoryInterrupts interrupts = fake_interrupts(game);
+        const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"), FakeAction{.failures = 1, .throws = throws});
+        if (run.outcome.failure != "game_not_running"){
+            return std::format("Expected game_not_running after a step that {} and then showed HOME, got {}",
+                throws ? "threw" : "failed", to_string(run.outcome));
+        }
+        const size_t runs = static_cast<size_t>(std::count(game.trace.begin(), game.trace.end(), "run walk"));
+        if (runs != 1){
+            return std::format("Expected the step run once, got {} runs", runs);
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_settle_of_a_look(){
     struct Row{
         std::string name;
@@ -592,24 +663,24 @@ UnitTestResult test_settle_of_a_look(){
 }
 
 
-struct StoryInterruptsInput{
-    std::string_view name;
-    UnitTestResult (*test)();
-};
-
-struct StoryInterruptsExpectation{
-    std::string_view description;
-};
-
 struct StoryInterruptsCase{
-    StoryInterruptsInput input;
-    StoryInterruptsExpectation expectation;
+    struct Input{
+        UnitTestResult (*test)();
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    std::string_view name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryInterrupts : public UnitTest{
 public:
     explicit Test_StoryInterrupts(StoryInterruptsCase scenario)
-        : UnitTest(std::format("Pokemon::StoryInterrupts - {}", scenario.input.name))
+        : UnitTest(std::format("Pokemon::StoryInterrupts - {}", scenario.name))
         , m_scenario(scenario)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -622,100 +693,139 @@ private:
 
 const StoryInterruptsCase STORY_INTERRUPTS_CASES[] = {
     {
-        .input = {.name = "no interrupts set: no look", .test = test_no_interrupts_set},
+        .name = "no interrupts set: no look",
+        .input = {.test = test_no_interrupts_set},
         .expectation = {.description = "the executor runs the step as before"},
     },
     {
-        .input = {.name = "a quiet screen: one look, then the step", .test = test_quiet_screen},
+        .name = "a quiet screen: one look, then the step",
+        .input = {.test = test_quiet_screen},
         .expectation = {.description = "nothing cleared, the pose kept"},
     },
     {
-        .input = {.name = "a wild encounter before a step", .test = test_wild_encounter},
+        .name = "a wild encounter before a step",
+        .input = {.test = test_wild_encounter},
         .expectation = {.description = "the wild handler, then the step"},
     },
     {
-        .input = {.name = "a trainer's sight before a step", .test = test_trainer_sight},
+        .name = "a trainer's sight before a step",
+        .input = {.test = test_trainer_sight},
         .expectation = {.description = "the trainer handler, then the step"},
     },
     {
-        .input = {.name = "a dialog before a step", .test = test_dialog},
+        .name = "a dialog before a step",
+        .input = {.test = test_dialog},
         .expectation = {.description = "the dialog handler, then the step"},
     },
     {
-        .input = {.name = "a warp before a step", .test = test_warp},
+        .name = "a warp before a step",
+        .input = {.test = test_warp},
         .expectation = {.description = "the warp handler, the pose lost, then the step"},
     },
     {
-        .input = {.name = "a step that starts on it", .test = test_step_starts_on_it},
+        .name = "a step that starts on it",
+        .input = {.test = test_step_starts_on_it},
         .expectation = {.description = "a MASH's box is the step's, not an interrupt"},
     },
     {
-        .input = {.name = "a handler that fails fails the step", .test = test_handler_fails_the_step},
+        .name = "a handler that fails fails the step",
+        .input = {.test = test_handler_fails_the_step},
         .expectation = {.description = "interrupt_failed, the step not run"},
     },
     {
-        .input = {.name = "a kind with no handler fails the step", .test = test_unhandled_kind},
+        .name = "a kind with no handler fails the step",
+        .input = {.test = test_unhandled_kind},
         .expectation = {.description = "unhandled_interrupt, the step not run"},
     },
     {
-        .input = {.name = "unsettled: look again until it settles", .test = test_unsettled_looks_again},
+        .name = "unsettled: look again until it settles",
+        .input = {.test = test_unsettled_looks_again},
         .expectation = {.description = "a white with no battle after it is a warp"},
     },
     {
-        .input = {.name = "unsettled: at most max_looks looks", .test = test_unsettled_is_bounded},
+        .name = "unsettled: at most max_looks looks",
+        .input = {.test = test_unsettled_is_bounded},
         .expectation = {.description = "a door's fade: interrupt_unsettled after three looks"},
     },
     {
-        .input = {.name = "unsettled: a battle's opening before a battle step", .test = test_unsettled_before_a_battle},
+        .name = "unsettled: a battle's opening before a battle step",
+        .input = {.test = test_unsettled_before_a_battle},
         .expectation = {.description = "the step's, after one look"},
     },
     {
-        .input = {.name = "unsettled: a wild battle's opening before a walk", .test = test_wild_opening_before_a_walk},
+        .name = "unsettled: a wild battle's opening before a walk",
+        .input = {.test = test_wild_opening_before_a_walk},
         .expectation = {.description = "waits for the battle, clears it, then the walk"},
     },
     {
-        .input = {.name = "unsettled: a trainer battle's opening before a walk", .test = test_trainer_opening_before_a_walk},
+        .name = "unsettled: a trainer battle's opening before a walk",
+        .input = {.test = test_trainer_opening_before_a_walk},
         .expectation = {.description = "waits for the battle, fights it, then the walk"},
     },
     {
-        .input = {.name = "unsettled: at most max_opening_looks for an opening", .test = test_opening_is_bounded},
+        .name = "unsettled: at most max_opening_looks for an opening",
+        .input = {.test = test_opening_is_bounded},
         .expectation = {.description = "a white with no battle: interrupt_unsettled"},
     },
     {
-        .input = {.name = "a failed step an interrupt explains runs again", .test = test_failed_outcome_explained},
+        .name = "a failed step an interrupt explains runs again",
+        .input = {.test = test_failed_outcome_explained},
         .expectation = {.description = "cleared after the failure, then the step again"},
     },
     {
-        .input = {.name = "a thrown step an interrupt explains runs again", .test = test_thrown_failure_explained},
+        .name = "a thrown step an interrupt explains runs again",
+        .input = {.test = test_thrown_failure_explained},
         .expectation = {.description = "the console's failure too"},
     },
     {
-        .input = {.name = "a failed step with nothing on screen fails", .test = test_failure_not_explained},
+        .name = "a failed step with nothing on screen fails",
+        .input = {.test = test_failure_not_explained},
         .expectation = {.description = "the step's own failure, run once"},
     },
     {
-        .input = {.name = "too many interrupts fail the step", .test = test_too_many_interrupts},
+        .name = "too many interrupts fail the step",
+        .input = {.test = test_too_many_interrupts},
         .expectation = {.description = "the step's failure once max_per_step are cleared"},
     },
     {
-        .input = {.name = "table: one handler a kind that can be cleared", .test = test_table_rejects},
+        .name = "table: one handler a kind that can be cleared",
+        .input = {.test = test_table_rejects},
         .expectation = {.description = "rejects NONE, UNSETTLED and a second handler"},
     },
     {
-        .input = {.name = "the screen before each step, for the log", .test = test_screen_before_each_step},
+        .name = "the screen before each step, for the log",
+        .input = {.test = test_screen_before_each_step},
         .expectation = {.description = "a fade still down is told, and fails unsettled; a quiet overworld is settled"},
     },
     {
-        .input = {.name = "how a look ended", .test = test_settle_of_a_look},
+        .name = "how a look ended",
+        .input = {.test = test_settle_of_a_look},
         .expectation = {.description = "the last frame's events and how long they held"},
     },
     {
-        .input = {.name = "the HOME menu before a step", .test = test_home_menu_before_a_step},
+        .name = "the HOME menu before a step",
+        .input = {.test = test_home_menu_before_a_step},
         .expectation = {.description = "told as HOME; game_not_running before any input"},
     },
     {
-        .input = {.name = "the HOME menu stops the segment", .test = test_home_menu_stops_the_segment},
+        .name = "the HOME menu stops the segment",
+        .input = {.test = test_home_menu_stops_the_segment},
         .expectation = {.description = "no recovery in place, no reload"},
+    },
+    {
+        .name = "a handler that throws fails the step",
+        .input = {.test = test_handler_throws},
+        .expectation = {.description = "interrupt_failed, the step not run, nothing escapes"},
+    },
+    {
+        .name = "a handler that throws after a failed step",
+        .input = {.test = test_handler_throws_after_a_failure},
+        .expectation = {.description = "the step's own failure, nothing escapes"},
+    },
+    {
+        .name = "the HOME menu after a failed step",
+        .input = {.test = test_home_menu_after_a_failed_step},
+        .expectation = {.description = "game_not_running instead of the step's failure, run once"},
     },
 };
 

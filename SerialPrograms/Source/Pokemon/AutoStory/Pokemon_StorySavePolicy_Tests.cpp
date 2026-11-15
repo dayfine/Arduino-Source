@@ -377,6 +377,14 @@ UnitTestResult test_end_pose_from_the_plan(){
     if (!end || end->map != "RocketHideout_B3F" || end->tiles != std::vector<TilePos>{TilePos{12, 13}}){
         return "Expected the last route's target as the end.";
     }
+    StoryCheckpoint stepped = checkpoint;
+    StoryStep step;
+    step.kind = StoryStepKind::STEP;
+    step.name = "one more";
+    stepped.steps.push_back(std::move(step));
+    if (checkpoint_end_pose(stepped)){
+        return "A step after the last target leaves the end unknown.";
+    }
     StoryStep legs;
     legs.kind = StoryStepKind::LEGS;
     legs.name = "taps";
@@ -391,27 +399,27 @@ UnitTestResult test_end_pose_from_the_plan(){
 }
 
 
-//  The scenario to run.
-struct SavePolicyInput{
-    std::string name;
-    UnitTestResult (*test)() = nullptr;
-};
-
-//  What the scenario checks; it returns its own failure.
-struct SavePolicyExpectation{
-    std::string_view description;
-};
-
 // A save-policy scenario and its expected result.
 struct SavePolicyCase{
-    SavePolicyInput input;
-    SavePolicyExpectation expectation;
+    //  The scenario to run.
+    std::string name;
+    struct Input{
+        UnitTestResult (*test)() = nullptr;
+    };
+
+    //  What the scenario checks; it returns its own failure.
+    struct Expectation{
+        std::string_view description;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StorySavePolicy : public UnitTest{
 public:
     explicit Test_StorySavePolicy(SavePolicyCase test_case)
-        : UnitTest(std::format("Pokemon::StorySavePolicy - {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::StorySavePolicy - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -424,63 +432,63 @@ private:
 
 const SavePolicyCase SAVE_POLICY_CASES[] = {
     {
-        .input = {.name = "decision table", .test = test_decision_table},
+        .name = "decision table", .input = {.test = test_decision_table},
         .expectation = {.description = "mode x verdict x save point, all twelve rows"},
     },
     {
-        .input = {.name = "none never saves", .test = test_none_never_saves},
+        .name = "none never saves", .input = {.test = test_none_never_saves},
         .expectation = {.description = "three passing checkpoints, no save, each skip logged"},
     },
     {
-        .input = {.name = "per checkpoint saves each", .test = test_per_checkpoint_saves_each},
+        .name = "per checkpoint saves each", .input = {.test = test_per_checkpoint_saves_each},
         .expectation = {.description = "a save after every passing checkpoint"},
     },
     {
-        .input = {.name = "after verification saves at the end", .test = test_after_verification_saves_at_the_end},
+        .name = "after verification saves at the end", .input = {.test = test_after_verification_saves_at_the_end},
         .expectation = {.description = "one save after the last checkpoint; no check logged as not checked"},
     },
     {
-        .input = {.name = "after verification checks before saving", .test = test_after_verification_checks_before_saving},
+        .name = "after verification checks before saving", .input = {.test = test_after_verification_checks_before_saving},
         .expectation = {.description = "the game's postcondition check runs before the save"},
     },
     {
-        .input = {.name = "failed postconditions never save", .test = test_failed_postconditions_never_save},
+        .name = "failed postconditions never save", .input = {.test = test_failed_postconditions_never_save},
         .expectation = {.description = "a failed check fails the run and refuses the save"},
     },
     {
-        .input = {.name = "no reload after the first checkpoint", .test = test_no_reload_after_the_first},
+        .name = "no reload after the first checkpoint", .input = {.test = test_no_reload_after_the_first},
         .expectation = {.description = "a later checkpoint has no save to reload, so it fails at once"},
     },
     {
-        .input = {.name = "the first checkpoint still reloads", .test = test_first_row_still_reloads},
+        .name = "the first checkpoint still reloads", .input = {.test = test_first_row_still_reloads},
         .expectation = {.description = "the first checkpoint reloads the run's start save"},
     },
     {
-        .input = {.name = "verify saves once every run passed", .test = test_verify_saves_once_every_run_passed},
+        .name = "verify saves once every run passed", .input = {.test = test_verify_saves_once_every_run_passed},
         .expectation = {.description = "3/3 passed: one save at the end of run 3"},
     },
     {
-        .input = {.name = "verify: no save after a failed run", .test = test_verify_no_save_after_a_failed_run},
+        .name = "verify: no save after a failed run", .input = {.test = test_verify_no_save_after_a_failed_run},
         .expectation = {.description = "2/3 verified, but no save"},
     },
     {
-        .input = {.name = "postconditions: json", .test = test_postconditions_json},
+        .name = "postconditions: json", .input = {.test = test_postconditions_json},
         .expectation = {.description = "00.31's postconditions read and written back"},
     },
     {
-        .input = {.name = "postconditions: pass", .test = test_postconditions_pass},
+        .name = "postconditions: pass", .input = {.test = test_postconditions_pass},
         .expectation = {.description = "B3F (12, 13) north, LIFT_KEY 1, RARE_CANDY 2: passed"},
     },
     {
-        .input = {.name = "postconditions: fail", .test = test_postconditions_fail},
+        .name = "postconditions: fail", .input = {.test = test_postconditions_fail},
         .expectation = {.description = "still on B4F with 1 Rare Candy: failed"},
     },
     {
-        .input = {.name = "postconditions: not checked", .test = test_postconditions_not_checked},
+        .name = "postconditions: not checked", .input = {.test = test_postconditions_not_checked},
         .expectation = {.description = "unread parts are not checked, never passed"},
     },
     {
-        .input = {.name = "postconditions: end pose from the plan", .test = test_end_pose_from_the_plan},
+        .name = "postconditions: end pose from the plan", .input = {.test = test_end_pose_from_the_plan},
         .expectation = {.description = "the last route's target, or unknown after legs"},
     },
 };

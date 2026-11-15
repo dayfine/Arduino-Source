@@ -26,6 +26,12 @@ namespace{
 
 //  Color bars are seven flat vertical stripes of different colors.
 constexpr size_t BAR_COUNT = 7;
+//  Each stripe is sampled in its middle, away from its edges: inset by this
+//  fraction of its width on each side, and from the top for this fraction of
+//  the frame's height.
+constexpr double BAR_INSET = 0.25;
+constexpr double BAR_TOP = 0.1;
+constexpr double BAR_HEIGHT = 0.5;
 //  A stripe flatter than this (stddev sum) is one solid color.
 constexpr double BAR_MAX_STDDEV = 30;
 //  Two stripes this far apart (RGB distance) are different bars.
@@ -37,7 +43,7 @@ bool shows_color_bars(const ImageViewRGB32& frame){
     std::array<FloatPixel, BAR_COUNT> bars;
     for (size_t c = 0; c < BAR_COUNT; c++){
         const double width = 1.0 / BAR_COUNT;
-        const ImageFloatBox stripe(c * width + width * 0.25, 0.1, width * 0.5, 0.5);
+        const ImageFloatBox stripe(c * width + width * BAR_INSET, BAR_TOP, width * (1 - 2 * BAR_INSET), BAR_HEIGHT);
         const ImageStats stats = image_stats(extract_box_reference(frame, stripe));
         if (stats.stddev.sum() > BAR_MAX_STDDEV){
             return false;

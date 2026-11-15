@@ -49,6 +49,9 @@ enum class FaultClass{
     LOST_TAP,
     //  A step tap that moved the player, read as not moved.
     UNSEEN_STEP,
+    //  A leg that rides (the Bicycle) starts with the player off the mount,
+    //  walking at foot pace.
+    MOUNT_LOST,
 };
 
 //  Every fault class, in the enum's order.

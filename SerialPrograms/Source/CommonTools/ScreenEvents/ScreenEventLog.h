@@ -2,31 +2,22 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Split out of Pokemon_ScreenEvents.h, unchanged; it includes this header.
+ *  The screen events of a stream of frames, in order and timed.
  *
  */
 
-#ifndef PokemonAutomation_Pokemon_ScreenEventLog_H
-#define PokemonAutomation_Pokemon_ScreenEventLog_H
+#ifndef PokemonAutomation_CommonTools_ScreenEvents_ScreenEventLog_H
+#define PokemonAutomation_CommonTools_ScreenEvents_ScreenEventLog_H
 
-#include <atomic>
+#include <cstddef>
 #include <cstdint>
 #include <deque>
-#include <initializer_list>
 #include <optional>
 #include <string>
-#include "Common/Cpp/Concurrency/Mutex.h"
 #include "Common/Cpp/Time.h"
-#include "CommonFramework/ImageTools/ImageStats.h"
-#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
-#include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
-#include "Pokemon_ScreenFades.h"
+#include "ScreenEventTypes.h"
 
 namespace PokemonAutomation{
-namespace Pokemon{
 
 
 //  Whether an event started or stopped showing.
@@ -51,8 +42,8 @@ constexpr size_t SCREEN_EVENT_LOG_CAPACITY = 256;
 
 //  The events of a stream of frames, in order and timed: what rose and fell
 //  when, not only what was seen (ScreenEventWatcher::seen()). The judges that
-//  care about order read it (Pokemon_Interrupts.h): a flash then a battle is
-//  an encounter, a box then a battle a trainer's sight.
+//  care about order read it: a flash then a battle is an encounter, a box
+//  then a battle a trainer's sight.
 //
 //  It keeps the newest `capacity` changes and counts the ones it dropped.
 //  Not thread-safe; ScreenEventWatcher guards its own.
@@ -95,6 +86,5 @@ std::string describe(const ScreenEventLog& log, WallClock origin);
 
 
 
-} // namespace Pokemon
-} // namespace PokemonAutomation
+}  // namespace PokemonAutomation
 #endif

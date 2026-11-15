@@ -15,8 +15,10 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_StoryEvents_Tests.h"
+#include "Pokemon_StoryOutcomeClass.h"
 #include "Pokemon_TilePose.h"
 
 namespace PokemonAutomation{
@@ -248,7 +250,8 @@ UnitTestResult test_stop_names_failed_event(){
         return "Nothing after the failed event should run.";
     }
     if (!lines.has("[Event] 00.04/2 talk_mom: recover: stop (expect_failed): four rows cover the mat to the TV")
-        || lines.lines.back() != "[Checkpoint] 00.04: failed at 2 talk_mom: expect_failed: dialogue opened"
+        || !lines.has("[Event] 00.04/2 talk_mom: failed: expect_failed: dialogue opened (class=state_check_failed)")
+        || lines.lines.back() != "[Checkpoint] 00.04: failed at 2 talk_mom: expect_failed: dialogue opened (class=state_check_failed)"
     ){
         return std::format("Unexpected log:{}", lines.all());
     }
@@ -271,6 +274,49 @@ UnitTestResult test_unmatched_failure_stops(){
         return std::format("A failure no recovery names should stop at once:{}", lines.all());
     }
     if (!lines.has("[Event] 00.04/1 probe_for_mom: failed: probe_exhausted: 4 rows")){
+        return std::format("Unexpected log:{}", lines.all());
+    }
+    return true;
+}
+
+//  A game's own failure name with the class the game gives it.
+UnitTestResult test_failure_names_its_class(){
+    Checkpoint checkpoint = make_checkpoint();
+    checkpoint.events.push_back(make_event("probe_for_mom", [](RunState&){
+        return outcome_failed("probe_exhausted", "4 rows", StoryFailureClass::POSE_LOST);
+    }));
+    RunState state;
+    Lines lines;
+    EventLogger log = lines.logger();
+    const CheckpointReport report = run_checkpoint(state, checkpoint, log);
+    if (failure_class_of(report.failure) != StoryFailureClass::POSE_LOST){
+        return std::format("Expected the report's failure of class pose_lost:{}", lines.all());
+    }
+    if (!lines.has("[Event] 00.04/1 probe_for_mom: failed: probe_exhausted: 4 rows (class=pose_lost)")
+        || lines.lines.back() != "[Checkpoint] 00.04: failed at 1 probe_for_mom: probe_exhausted: 4 rows (class=pose_lost)"
+    ){
+        return std::format("Unexpected log:{}", lines.all());
+    }
+    return true;
+}
+
+//  A game's action that throws OperationFailedException: the exception goes
+//  on, the log names its class.
+UnitTestResult test_throw_names_its_class(){
+    Checkpoint checkpoint = make_checkpoint();
+    checkpoint.events.push_back(make_event("talk_mom", [](RunState&) -> Outcome{
+        throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "no dialog");
+    }));
+    RunState state;
+    Lines lines;
+    EventLogger log = lines.logger();
+    try{
+        run_checkpoint(state, checkpoint, log);
+        return "Expected the exception to go on.";
+    }catch (OperationFailedException&){}
+    if (!lines.has("[Event] 00.04/1 talk_mom: failed: OperationFailedException: no dialog (class=operation_failed)")
+        || lines.lines.back() != "[Checkpoint] 00.04: failed at 1 talk_mom: OperationFailedException: no dialog (class=operation_failed)"
+    ){
         return std::format("Unexpected log:{}", lines.all());
     }
     return true;
@@ -611,24 +657,24 @@ UnitTestResult test_lint(){
 }
 
 
-struct StoryEventInput{
-    std::string name;
-    UnitTestResult (*test)();
-};
-
-struct StoryEventExpectation{
-    std::string_view description;
-};
-
 struct StoryEventTestCase{
-    StoryEventInput input;
-    StoryEventExpectation expectation;
+    std::string name;
+    struct Input{
+        UnitTestResult (*test)();
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryEvents : public UnitTest{
 public:
     explicit Test_StoryEvents(StoryEventTestCase scenario)
-        : UnitTest(std::format("Pokemon::StoryEvents - {}", scenario.input.name))
+        : UnitTest(std::format("Pokemon::StoryEvents - {}", scenario.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -641,63 +687,71 @@ private:
 
 const StoryEventTestCase STORY_EVENT_CASES[] = {
     {
-        .input = {.name = "events run in order", .test = test_runs_events_in_order},
+        .name = "events run in order", .input = {.test = test_runs_events_in_order},
         .expectation = {.description = "executes registered events in sequence and records traces"},
     },
     {
-        .input = {.name = "a done event is skipped", .test = test_skips_done_event},
+        .name = "a done event is skipped", .input = {.test = test_skips_done_event},
         .expectation = {.description = "bypasses event execution when skip condition is satisfied"},
     },
     {
-        .input = {.name = "a failed expect is waited out", .test = test_expect_failure_waited_out},
+        .name = "a failed expect is waited out", .input = {.test = test_expect_failure_waited_out},
         .expectation = {.description = "retries transient expectation failure until timeout"},
     },
     {
-        .input = {.name = "recoveries escalate to a re-anchor", .test = test_escalates_to_reanchor},
+        .name = "recoveries escalate to a re-anchor", .input = {.test = test_escalates_to_reanchor},
         .expectation = {.description = "escalates recovery strategy to re-anchor when wait fails"},
     },
     {
-        .input = {.name = "a stop names the failed event", .test = test_stop_names_failed_event},
+        .name = "a stop names the failed event", .input = {.test = test_stop_names_failed_event},
         .expectation = {.description = "records identifier of the failed event upon stopping"},
     },
     {
-        .input = {.name = "an unanswered failure stops", .test = test_unmatched_failure_stops},
+        .name = "an unanswered failure stops", .input = {.test = test_unmatched_failure_stops},
         .expectation = {.description = "stops checkpoint execution when failure has no handler"},
     },
     {
-        .input = {.name = "an interrupt mid-event", .test = test_interrupt_mid_event},
+        .name = "a failure names its class", .input = {.test = test_failure_names_its_class},
+        .expectation = {.description = "logs the class a game gives its own failure name"},
+    },
+    {
+        .name = "a throw names its class", .input = {.test = test_throw_names_its_class},
+        .expectation = {.description = "logs operation_failed for an OperationFailedException that goes on"},
+    },
+    {
+        .name = "an interrupt mid-event", .input = {.test = test_interrupt_mid_event},
         .expectation = {.description = "handles asynchronous interruption during event execution"},
     },
     {
-        .input = {.name = "an interrupt rechecks the expects", .test = test_interrupt_recheck_expect},
+        .name = "an interrupt rechecks the expects", .input = {.test = test_interrupt_recheck_expect},
         .expectation = {.description = "re-evaluates expected conditions after an interrupt clears"},
     },
     {
-        .input = {.name = "too many interrupts", .test = test_too_many_interrupts},
+        .name = "too many interrupts", .input = {.test = test_too_many_interrupts},
         .expectation = {.description = "aborts execution when interrupt count exceeds threshold"},
     },
     {
-        .input = {.name = "resume after a reload", .test = test_resume_after_reload},
+        .name = "resume after a reload", .input = {.test = test_resume_after_reload},
         .expectation = {.description = "resumes story execution cleanly following save reload"},
     },
     {
-        .input = {.name = "start, end and save", .test = test_start_end_and_save},
+        .name = "start, end and save", .input = {.test = test_start_end_and_save},
         .expectation = {.description = "validates start conditions, end conditions, and state save"},
     },
     {
-        .input = {.name = "pose certainty", .test = test_pose_certainty},
+        .name = "pose certainty", .input = {.test = test_pose_certainty},
         .expectation = {.description = "tracks and adjusts player pose confidence levels"},
     },
     {
-        .input = {.name = "the position is the game's", .test = test_position_is_the_games},
+        .name = "the position is the game's", .input = {.test = test_position_is_the_games},
         .expectation = {.description = "preserves game-specific coordinate representations"},
     },
     {
-        .input = {.name = "an action returns its pose", .test = test_outcome_pose},
+        .name = "an action returns its pose", .input = {.test = test_outcome_pose},
         .expectation = {.description = "updates run pose from successful event action outcome"},
     },
     {
-        .input = {.name = "lint", .test = test_lint},
+        .name = "lint", .input = {.test = test_lint},
         .expectation = {.description = "validates checkpoint structural integrity and rules"},
     },
 };

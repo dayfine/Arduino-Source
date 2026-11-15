@@ -17,7 +17,6 @@ namespace PokemonBDSP{
 
 using Pokemon::Direction;
 using Pokemon::InterruptKind;
-using Pokemon::ScreenEvent;
 using Pokemon::TilePos;
 
 

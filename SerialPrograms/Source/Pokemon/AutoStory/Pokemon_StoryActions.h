@@ -23,7 +23,6 @@
 #include <functional>
 #include <map>
 #include <optional>
-#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -109,6 +108,17 @@ public:
 };
 
 
+//  What a look at the screen after a step failed found.
+enum class AfterFailure{
+    //  Nothing explains the failure: it is the step's own.
+    KEEP,
+    //  An interrupt explains it and is cleared: the step runs again.
+    RETRY,
+    //  The game is not running (the Switch's HOME menu): the failure is
+    //  that, and the step is not run again.
+    GAME_NOT_RUNNING,
+};
+
 //  Runs each step with the table's action for it, inside `guard`.
 class TableExecutor : public StoryStepExecutor{
 public:
@@ -138,7 +148,7 @@ protected:
 
 private:
     std::optional<Outcome> clear_interrupts(const StoryStep& step, RunState& state, size_t& cleared);
-    bool cleared_after_failure(const StoryStep& step, RunState& state, size_t& cleared);
+    AfterFailure look_after_failure(const StoryStep& step, RunState& state, size_t& cleared);
 
     const StoryActionTable& m_table;
     StepGuard& m_guard;

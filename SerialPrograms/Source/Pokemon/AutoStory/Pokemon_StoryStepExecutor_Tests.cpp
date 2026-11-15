@@ -583,6 +583,32 @@ UnitTestResult test_once_per_save_verify(){
 }
 
 
+//  An executor with pause points pauses before each of its checkpoint's steps,
+//  labelled with the checkpoint and the step's place; a skipped step does not
+//  pause, as it does not run.
+UnitTestResult test_pause_points(){
+    StoryCheckpoint data = lab_checkpoint();
+    data.steps[1].skip_if = {"done"};
+    std::vector<std::string> paused;
+    FakeExecutor executor;
+    executor.conditions = {"done"};
+    StoryPausePoints pause(StoryBreakpoints::STEPS, [&paused](std::string_view label){
+        paused.emplace_back(label);
+    });
+    executor.set_pause_points(&pause);
+    const Run result = run(data, executor);
+    const std::vector<std::string> expected{
+        "00.03/1 below_trigger", "00.03/3 to_the_lab", "00.03/4 talk_oak", "00.03/5 potions", "00.03/6 dance",
+    };
+    if (paused != expected){
+        return std::format("Expected a pause before each step that ran:{}{}", joined(paused), joined(result.lines));
+    }
+    FakeExecutor plain;
+    const Run quiet = run(data, plain);
+    return quiet.report.completed ? UnitTestResult(true) : UnitTestResult(joined(quiet.lines));
+}
+
+
 //  Two sections of a story, as BDSP has segments 00 and 01.
 const std::vector<StoryCheckpoint>& two_sections(){
     static const std::vector<StoryCheckpoint> rows{
@@ -727,24 +753,24 @@ UnitTestResult test_lint(){
 }
 
 
-struct StoryStepInput{
-    std::string name;
-    UnitTestResult (*test)();
-};
-
-struct StoryStepExpectation{
-    std::string_view description;
-};
-
 struct StoryStepTestCase{
-    StoryStepInput input;
-    StoryStepExpectation expectation;
+    std::string name;
+    struct Input{
+        UnitTestResult (*test)();
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryStepExecutor : public UnitTest{
 public:
     explicit Test_StoryStepExecutor(StoryStepTestCase scenario)
-        : UnitTest(std::format("Pokemon::StoryStepExecutor - {}", scenario.input.name))
+        : UnitTest(std::format("Pokemon::StoryStepExecutor - {}", scenario.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -757,63 +783,67 @@ private:
 
 const StoryStepTestCase STORY_STEP_CASES[] = {
     {
-        .input = {.name = "steps run in table order", .test = test_events_in_table_order},
+        .name = "steps run in table order", .input = {.test = test_events_in_table_order},
         .expectation = {.description = "executes story steps sequentially as defined in table"},
     },
     {
-        .input = {.name = "skip_if asks the executor", .test = test_skip_if},
+        .name = "skip_if asks the executor", .input = {.test = test_skip_if},
         .expectation = {.description = "delegates skip condition check to executor"},
     },
     {
-        .input = {.name = "each step starts where the last left the player", .test = test_pose_propagation},
+        .name = "each step starts where the last left the player", .input = {.test = test_pose_propagation},
         .expectation = {.description = "propagates player pose across sequential step executions"},
     },
     {
-        .input = {.name = "a failure names its step", .test = test_failure_names_the_step},
+        .name = "a failure names its step", .input = {.test = test_failure_names_the_step},
         .expectation = {.description = "records failing step identifier on error"},
     },
     {
-        .input = {.name = "unsupported kinds and lost battles", .test = test_unsupported_and_lost_battles},
+        .name = "unsupported kinds and lost battles", .input = {.test = test_unsupported_and_lost_battles},
         .expectation = {.description = "flags unsupported step types and handles battle defeat"},
     },
     {
-        .input = {.name = "tables as a segment, with a reload", .test = test_segment_of_tables},
+        .name = "tables as a segment, with a reload", .input = {.test = test_segment_of_tables},
         .expectation = {.description = "converts step tables into segment with checkpoint reload support"},
     },
     {
-        .input = {.name = "lint", .test = test_lint},
+        .name = "pause points pause before each step", .input = {.test = test_pause_points},
+        .expectation = {.description = "calls the game's pause points before each step that runs"},
+    },
+    {
+        .name = "lint", .input = {.test = test_lint},
         .expectation = {.description = "verifies lint validation rules on story checkpoints"},
     },
     {
-        .input = {.name = "the run options' defaults", .test = test_run_options},
+        .name = "the run options' defaults", .input = {.test = test_run_options},
         .expectation = {.description = "validates initial default story run option values"},
     },
     {
-        .input = {.name = "the run options' verify mode", .test = test_verify_options},
+        .name = "the run options' verify mode", .input = {.test = test_verify_options},
         .expectation = {.description = "configures verification mode options and passes count"},
     },
     {
-        .input = {.name = "start and end checkpoint dropdowns", .test = test_checkpoint_dropdowns},
+        .name = "start and end checkpoint dropdowns", .input = {.test = test_checkpoint_dropdowns},
         .expectation = {.description = "populates start and end dropdown selections correctly"},
     },
     {
-        .input = {.name = "a segment's run in the AutoStory stats", .test = test_story_stats},
+        .name = "a segment's run in the AutoStory stats", .input = {.test = test_story_stats},
         .expectation = {.description = "updates story run statistics following segment completion"},
     },
     {
-        .input = {.name = "policy: attempts per checkpoint, then fail", .test = test_policy_attempts_then_fail},
+        .name = "policy: attempts per checkpoint, then fail", .input = {.test = test_policy_attempts_then_fail},
         .expectation = {.description = "enforces max checkpoint attempt policy before terminal failure"},
     },
     {
-        .input = {.name = "policy: one attempt stops at the first failure", .test = test_policy_stop_at_first_failure},
+        .name = "policy: one attempt stops at the first failure", .input = {.test = test_policy_stop_at_first_failure},
         .expectation = {.description = "halts without a reload when a checkpoint has one attempt"},
     },
     {
-        .input = {.name = "once per save: a retry skips what changed nothing", .test = test_once_per_save_retry},
+        .name = "once per save: a retry skips what changed nothing", .input = {.test = test_once_per_save_retry},
         .expectation = {.description = "skips steps that changed nothing during once per save retry"},
     },
     {
-        .input = {.name = "once per save: verify runs prepare once", .test = test_once_per_save_verify},
+        .name = "once per save: verify runs prepare once", .input = {.test = test_once_per_save_verify},
         .expectation = {.description = "executes once per save prepare step only once during verification"},
     },
 };

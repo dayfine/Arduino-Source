@@ -10,6 +10,7 @@
  */
 
 #include <format>
+#include <optional>
 #include <string>
 #include <utility>
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -21,38 +22,36 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-using Pokemon::ScreenEvent;
-using Pokemon::ScreenEvents;
 
 namespace{
 
-struct ScreenEventsInput{
-    std::string name;
-    //  The frame's colour; 0 for no frame.
-    uint32_t color;
-};
-
-struct ScreenEventsExpectation{
-    ScreenEvents events;
-};
-
 struct ScreenEventsCase{
-    ScreenEventsInput input;
-    ScreenEventsExpectation expectation;
+    struct Input{
+        //  The frame's colour; none for no frame.
+        std::optional<uint32_t> color;
+    };
+
+    struct Expectation{
+        ScreenEvents events;
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_AutoStoryScreenEvents : public UnitTest{
 public:
     explicit Test_AutoStoryScreenEvents(ScreenEventsCase test_case)
-        : UnitTest(std::format("PokemonFRLG::AutoStoryScreenEvents - {}", test_case.input.name))
+        : UnitTest(std::format("PokemonFRLG::AutoStoryScreenEvents - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         VideoSnapshot frame;
-        if (m_case.input.color != 0){
+        if (m_case.input.color.has_value()){
             ImageRGB32 image(1920, 1080);
-            image.fill(m_case.input.color);
+            image.fill(*m_case.input.color);
             frame = VideoSnapshot(std::move(image), WallClock());
         }
         FrlgScreenObserver observer;
@@ -72,15 +71,18 @@ private:
 
 const ScreenEventsCase SCREEN_EVENTS_CASES[] = {
     {
-        .input = {"no frame shows nothing", 0},
+        .name = "no frame shows nothing",
+        .input = {std::nullopt},
         .expectation = {{}},
     },
     {
-        .input = {"a black screen is a black fade only", 0xff000000},
+        .name = "a black screen is a black fade only",
+        .input = {0xff000000},
         .expectation = {{ScreenEvent::FADE_BLACK}},
     },
     {
-        .input = {"a white screen is a white fade only", 0xffffffff},
+        .name = "a white screen is a white fade only",
+        .input = {0xffffffff},
         .expectation = {{ScreenEvent::FADE_WHITE}},
     },
 };

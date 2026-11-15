@@ -10,6 +10,12 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+void record_story_counts(const StoryRunCounts& counts, AutoStoryStats& stats){
+    stats.m_segment += counts.segments;
+    stats.m_checkpoint += counts.checkpoints;
+    stats.m_reset += counts.resets;
+}
+
 bool CheckpointRun::one_shot() const{
     return passed && attempts == 1;
 }
