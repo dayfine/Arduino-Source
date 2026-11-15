@@ -20,7 +20,6 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "Pokemon_AutoStorySelect.h"
 #include "Pokemon_AutoStoryStats.h"
@@ -398,7 +397,7 @@ UnitTestResult test_checkpoint_dropdowns(){
     ){
         return "Unexpected label.";
     }
-    StoryRunOptions options(database, Gen8ToGen9Languages_Database());
+    StoryRunOptions options(database);
     if (options.start_index() != 0 || options.end_index() != 2 || !options.check_validity().empty()){
         return "Expected the whole story by default.";
     }
@@ -430,21 +429,13 @@ UnitTestResult test_story_stats(){
 //  The program's option group: 3 attempts, no stop, Thorough, by default;
 //  Fast when chosen.
 UnitTestResult test_run_options(){
-    StoryRunOptions options(two_sections_database(), Gen8ToGen9Languages_Database());
+    StoryRunOptions options(two_sections_database());
     if (options.ATTEMPTS_PER_CHECKPOINT != 3 || options.check_level() != StoryCheckLevel::DEFAULT){
         return "Expected 3 attempts, no stop at the first failure, and Thorough checks by default.";
     }
     options.CHECKS.set(StoryCheckLevel::FAST);
     if (options.check_level() != StoryCheckLevel::FAST){
         return "Expected Fast checks once chosen.";
-    }
-    //  Every game language can be chosen, read or not.
-    if (options.language() != Language::English){
-        return "Expected English by default.";
-    }
-    options.LANGUAGE.set(Language::Japanese);
-    if (options.language() != Language::Japanese || !options.check_validity().empty()){
-        return "Expected Japanese to be chosen and valid, reader or not.";
     }
     return true;
 }
