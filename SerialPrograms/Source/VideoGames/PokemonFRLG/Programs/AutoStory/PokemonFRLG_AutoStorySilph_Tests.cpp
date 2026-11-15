@@ -317,7 +317,7 @@ UnitTestResult test_rival_trigger_walk_ends_facing_west(){
     OverworldSimWalker walker(sim);
     const RoutePlanning planning{.maps = &maps, .costs = story_route_costs(), .start = pad, .label = "to_rival_trigger"};
     if (const std::string failure = walker.run(*route, planning); !failure.empty()){
-        return "The walk failed: " + failure;
+        return std::format("The walk failed: {}", failure);
     }
     const std::vector<std::string>& log = walker.log();
     const bool found_at_walls = std::any_of(log.begin(), log.end(), [](const std::string& line){
