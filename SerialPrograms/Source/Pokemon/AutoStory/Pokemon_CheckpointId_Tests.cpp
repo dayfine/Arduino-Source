@@ -190,7 +190,15 @@ void add_parse_tests(UnitTestDatabase& database){
         {.name = "segment and checkpoint", .input = {.text = "03.08"}, .expectation = {.id = "03.08", .segment = "03"}},
         {.name = "first checkpoint", .input = {.text = "00.00"}, .expectation = {.id = "00.00", .segment = "00"}},
         {.name = "largest id", .input = {.text = "99.99"}, .expectation = {.id = "99.99", .segment = "99"}},
-        {.name = "letter suffix", .input = {.text = "03.08b"}, .expectation = {}},
+        {.name = "letter suffix", .input = {.text = "12.02b"}, .expectation = {.id = "12.02b", .segment = "12"}},
+        {.name = "first letter", .input = {.text = "00.12a"}, .expectation = {.id = "00.12a", .segment = "00"}},
+        {.name = "last letter", .input = {.text = "03.08z"}, .expectation = {.id = "03.08z", .segment = "03"}},
+        {.name = "uppercase letter", .input = {.text = "03.08B"}, .expectation = {}},
+        {.name = "two letters", .input = {.text = "03.08bc"}, .expectation = {}},
+        {.name = "digit after the letter", .input = {.text = "03.08b1"}, .expectation = {}},
+        {.name = "third checkpoint digit", .input = {.text = "03.081"}, .expectation = {}},
+        {.name = "punctuation suffix", .input = {.text = "03.08!"}, .expectation = {}},
+        {.name = "letter in the segment", .input = {.text = "0b.08"}, .expectation = {}},
         {.name = "one-digit segment", .input = {.text = "3.08"}, .expectation = {}},
         {.name = "one-digit checkpoint", .input = {.text = "03.8"}, .expectation = {}},
         {.name = "three-digit segment", .input = {.text = "100.08"}, .expectation = {}},
@@ -212,18 +220,38 @@ void add_order_tests(UnitTestDatabase& database){
     const std::vector<OrderScenario> order_cases{
         {
             .name = "same id",
-            .input = {.left = {3, 8}, .right = {3, 8}},
+            .input = {.left = {3, 8, '\0'}, .right = {3, 8, '\0'}},
             .expectation = {.order = std::strong_ordering::equal},
         },
         {
             .name = "later checkpoint in the same segment",
-            .input = {.left = {3, 9}, .right = {3, 8}},
+            .input = {.left = {3, 9, '\0'}, .right = {3, 8, '\0'}},
             .expectation = {.order = std::strong_ordering::greater},
         },
         {
             .name = "segment wins over checkpoint",
-            .input = {.left = {2, 99}, .right = {3, 0}},
+            .input = {.left = {2, 99, '\0'}, .right = {3, 0, '\0'}},
             .expectation = {.order = std::strong_ordering::less},
+        },
+        {
+            .name = "no suffix before a suffix",
+            .input = {.left = {12, 2, '\0'}, .right = {12, 2, 'b'}},
+            .expectation = {.order = std::strong_ordering::less},
+        },
+        {
+            .name = "suffixes in letter order",
+            .input = {.left = {12, 2, 'b'}, .right = {12, 2, 'c'}},
+            .expectation = {.order = std::strong_ordering::less},
+        },
+        {
+            .name = "suffix before the next checkpoint",
+            .input = {.left = {12, 2, 'c'}, .right = {12, 3, '\0'}},
+            .expectation = {.order = std::strong_ordering::less},
+        },
+        {
+            .name = "same suffix",
+            .input = {.left = {12, 2, 'b'}, .right = {12, 2, 'b'}},
+            .expectation = {.order = std::strong_ordering::equal},
         },
     };
     for (const OrderScenario& scenario : order_cases){
@@ -247,6 +275,16 @@ void add_segment_start_tests(UnitTestDatabase& database){
             .name = "each new segment starts once",
             .input = {.passed = {"02.04", "02.05", "03.00", "03.01", "04.00"}},
             .expectation = {.starts = {"02.04", "03.00", "04.00"}},
+        },
+        {
+            .name = "suffix does not start a segment",
+            .input = {.passed = {"12.01", "12.02", "12.02b", "12.03"}},
+            .expectation = {.starts = {"12.01"}},
+        },
+        {
+            .name = "suffixed checkpoint can start a segment",
+            .input = {.passed = {"00.12", "00.12b", "01.00"}},
+            .expectation = {.starts = {"00.12", "01.00"}},
         },
         {
             .name = "empty run starts nothing",

@@ -32,7 +32,7 @@ std::optional<uint8_t> parse_two_digits(std::string_view text){
 
 
 std::optional<CheckpointId> CheckpointId::parse(std::string_view text){
-    if (text.size() != 5 || text[2] != '.'){
+    if ((text.size() != 5 && text.size() != 6) || text[2] != '.'){
         return std::nullopt;
     }
     std::optional<uint8_t> segment = parse_two_digits(text.substr(0, 2));
@@ -40,11 +40,22 @@ std::optional<CheckpointId> CheckpointId::parse(std::string_view text){
     if (!segment || !checkpoint){
         return std::nullopt;
     }
-    return CheckpointId{*segment, *checkpoint};
+    char suffix = '\0';
+    if (text.size() == 6){
+        suffix = text[5];
+        if (suffix < 'a' || suffix > 'z'){
+            return std::nullopt;
+        }
+    }
+    return CheckpointId{*segment, *checkpoint, suffix};
 }
 
 std::string CheckpointId::to_string() const{
-    return std::format("{:02}.{:02}", segment, checkpoint);
+    std::string ret = std::format("{:02}.{:02}", segment, checkpoint);
+    if (suffix != '\0'){
+        ret += suffix;
+    }
+    return ret;
 }
 
 std::string CheckpointId::segment_string() const{
