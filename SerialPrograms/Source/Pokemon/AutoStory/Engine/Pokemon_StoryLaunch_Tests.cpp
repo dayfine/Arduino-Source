@@ -39,6 +39,7 @@ enum class Screen{
     LICENSE_CHECK,      //  the online license check
     BLACK,              //  a boot or a load
     TITLE,
+    TITLE_UNREAD,       //  the title, on a look its check misses
     NEW_GAME,           //  the title's menu without a save
     BACKUP_CONFIRM,     //  "Load the backup save?"
     LOAD_MENU,          //  Continue / New Game
@@ -132,6 +133,7 @@ StoryLaunchPolicy test_policy(Backup backup, GameScreens game_screens, TileCheck
     policy.title_after_launch = game_screens == GameScreens::AFTER_LAUNCH;
     policy.overworld_after_load = overworld_check == OverworldCheck::AFTER_LOAD;
     policy.presses_per_screen = 3;
+    policy.load_black_looks = 3;
     policy.launch_wait = Milliseconds(2000);
     policy.max_looks = 12;
     return policy;
@@ -264,6 +266,14 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
                            Screen::TITLE, Screen::OVERWORLD},
                .game_screens = GameScreens::AFTER_LAUNCH, .overworld_check = OverworldCheck::AFTER_LOAD},
      .expectation = {.failure = "stuck on title", .inputs = "X A wait A wait A A"}},
+    //  A title press dropped, and the title, its check missing it, left
+    //  idle until the attract movie came up through a black: that black
+    //  is too long after the press to be the load.
+    {.name = "a black long after a dropped title press is not the load",
+     .input = {.screens = {Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::BLACK, Screen::TITLE, Screen::TITLE_UNREAD,
+                           Screen::TITLE_UNREAD, Screen::TITLE_UNREAD, Screen::BLACK, Screen::OVERWORLD},
+               .game_screens = GameScreens::AFTER_LAUNCH, .overworld_check = OverworldCheck::AFTER_LOAD},
+     .expectation = {.failure = "stuck on title", .inputs = "X A wait A wait wait wait wait A A"}},
     {.name = "kept overworld needs no load",
      .input = {.screens = then_settled({}), .request = {.running = Running::KEEP},
                .game_screens = GameScreens::AFTER_LAUNCH, .overworld_check = OverworldCheck::AFTER_LOAD},
