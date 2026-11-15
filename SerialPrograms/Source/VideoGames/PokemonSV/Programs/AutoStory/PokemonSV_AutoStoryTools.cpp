@@ -15,7 +15,6 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
-#include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "VideoGames/PokemonSV/Inference/Battles/PokemonSV_NormalBattleMenus.h"
 #include "VideoGames/PokemonSV/Inference/Dialogs/PokemonSV_DialogDetector.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldDetector.h"
@@ -1190,7 +1189,7 @@ void record_sv_checkpoint_saved(
     Pokemon::record_checkpoint_saved(
         [&env](){ env.update_stats(); },
         [&](std::string_view message){ send_program_status_notification(env, notif_status_update, std::string(message)); },
-        stats
+        stats.m_checkpoint
     );
 }
 
@@ -1514,7 +1513,7 @@ void checkpoint_reattempt_loop(
             },
             std::format("{}\n", checkpoint_text)
         ),
-        stats
+        stats.m_reset
     );
 }
 
@@ -1542,7 +1541,7 @@ void checkpoint_reattempt_loop_tutorial(
             },
             ""
         ),
-        stats
+        stats.m_reset
     );
 }
 

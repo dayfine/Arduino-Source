@@ -4,6 +4,7 @@
  *
  */
 
+#include <atomic>
 #include <cstdint>
 #include <format>
 #include <string>
@@ -52,7 +53,7 @@ struct CheckpointRetryRecord{
     std::vector<std::string> log;
 };
 
-CheckpointRetryRecord run_case(const CheckpointRetryInput& input, AutoStoryStats& stats){
+CheckpointRetryRecord run_case(const CheckpointRetryInput& input, std::atomic<uint64_t>& resets){
     CheckpointRetryRecord record;
     size_t attempts = 0;
     CheckpointRetryActions actions{
@@ -77,7 +78,7 @@ CheckpointRetryRecord run_case(const CheckpointRetryInput& input, AutoStoryStats
         },
     };
     try{
-        record.passed_on = run_checkpoint_with_retries("Checkpoint:: 01", input.policy, actions, stats);
+        record.passed_on = run_checkpoint_with_retries("Checkpoint:: 01", input.policy, actions, resets);
     }catch (GaveUp&){
         record.passed_on = 0;
     }
@@ -92,8 +93,8 @@ public:
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        AutoStoryStats stats;
-        const CheckpointRetryRecord record = run_case(m_case.input, stats);
+        std::atomic<uint64_t> resets{0};
+        const CheckpointRetryRecord record = run_case(m_case.input, resets);
         const CheckpointRetryExpectation& expected = m_case.expectation;
         if (record.passed_on != expected.passed_on){
             return std::format("Expected a pass on attempt {}, got {}", expected.passed_on, record.passed_on);
@@ -101,10 +102,10 @@ public:
         if (record.reports != expected.reports){
             return std::format("Expected {} reports, got {}", expected.reports.size(), record.reports.size());
         }
-        if (record.resets != expected.resets || stats.m_reset.load() != expected.resets){
+        if (record.resets != expected.resets || resets.load() != expected.resets){
             return std::format(
                 "Expected {} resets, got {} (stats {})",
-                expected.resets, record.resets, stats.m_reset.load()
+                expected.resets, record.resets, resets.load()
             );
         }
         if (record.log != expected.log){
@@ -306,21 +307,21 @@ public:
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        AutoStoryStats stats;
+        std::atomic<uint64_t> checkpoints{0};
         size_t updates = 0;
         std::vector<std::string> messages;
         for (size_t i = 0; i < m_case.input.saves; i++){
             record_checkpoint_saved(
                 [&](){ updates++; },
                 [&](std::string_view message){ messages.emplace_back(message); },
-                stats
+                checkpoints
             );
         }
         const CheckpointSavedExpectation& expected = m_case.expectation;
-        if (stats.m_checkpoint.load() != expected.checkpoints || updates != expected.updates){
+        if (checkpoints.load() != expected.checkpoints || updates != expected.updates){
             return std::format(
                 "Expected {} checkpoints and {} updates, got {} and {}",
-                expected.checkpoints, expected.updates, stats.m_checkpoint.load(), updates
+                expected.checkpoints, expected.updates, checkpoints.load(), updates
             );
         }
         if (messages != expected.messages){

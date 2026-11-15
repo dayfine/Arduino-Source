@@ -14,12 +14,13 @@
 #ifndef PokemonAutomation_Pokemon_CheckpointRetry_H
 #define PokemonAutomation_Pokemon_CheckpointRetry_H
 
+#include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <string_view>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
-#include "Pokemon_AutoStoryStats.h"
 #include "Pokemon_CheckpointAttempts.h"
 
 namespace PokemonAutomation{
@@ -60,24 +61,26 @@ struct CheckpointRetryActions{
 //  attempt and reset lines, until an attempt passes, and returns that
 //  attempt's number. SV's lines name the checkpoint by `checkpoint_text`
 //  ("Checkpoint:: 004 - 02 ..."), its display text. After the last attempt
-//  fails it calls `give_up` and rethrows. Each reset adds to `stats.m_reset`.
+//  fails it calls `give_up` and rethrows. Each reset adds 1 to `resets`, the
+//  game's reset counter (SV passes its stats' m_reset).
 size_t run_checkpoint_with_retries(
     std::string_view checkpoint_text,
     const CheckpointRetryPolicy& policy,
     const CheckpointRetryActions& actions,
-    AutoStoryStats& stats
+    std::atomic<uint64_t>& resets
 );
 
 
 //  The status message sent after the game saved at a checkpoint.
 inline constexpr std::string_view CHECKPOINT_SAVED_MESSAGE = "Saved at checkpoint.";
 
-//  Counts a checkpoint the game just saved at, publishes the stats and
-//  sends CHECKPOINT_SAVED_MESSAGE through `notify`.
+//  Counts a checkpoint the game just saved at in `checkpoints` (SV passes
+//  its stats' m_checkpoint), publishes the stats and sends
+//  CHECKPOINT_SAVED_MESSAGE through `notify`.
 void record_checkpoint_saved(
     const CheckpointStep& update_stats,
     const std::function<void(std::string_view message)>& notify,
-    AutoStoryStats& stats
+    std::atomic<uint64_t>& checkpoints
 );
 
 

@@ -15,7 +15,7 @@ size_t run_checkpoint_with_retries(
     std::string_view checkpoint_text,
     const CheckpointRetryPolicy& policy,
     const CheckpointRetryActions& actions,
-    AutoStoryStats& stats
+    std::atomic<uint64_t>& resets
 ){
     actions.log(checkpoint_start_line(checkpoint_text, /*events=*/std::nullopt, /*add_checkpoint_prefix=*/false));
     const CheckpointAttempts attempts{
@@ -43,7 +43,7 @@ size_t run_checkpoint_with_retries(
                 checkpoint_text, next_attempt, /*attempts=*/std::nullopt, /*add_checkpoint_prefix=*/false
             ));
             actions.reset();
-            stats.m_reset++;
+            resets++;
             actions.update_stats();
             return true;
         },
@@ -57,9 +57,9 @@ size_t run_checkpoint_with_retries(
 void record_checkpoint_saved(
     const CheckpointStep& update_stats,
     const std::function<void(std::string_view message)>& notify,
-    AutoStoryStats& stats
+    std::atomic<uint64_t>& checkpoints
 ){
-    stats.m_checkpoint++;
+    checkpoints++;
     update_stats();
     notify(CHECKPOINT_SAVED_MESSAGE);
 }
