@@ -26,7 +26,7 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN_15[] = {
     "15.01   walk east 8 (to wall) -> Route7 (15, 11)",
     "15.01   face north -> Route7 (15, 11)",
     "15.01 west_of_tea_guard from Route7 (15, 11) facing north to Route7_EastEntrance (5, 4) facing east",
-    "15.01   walk north 1 -> Route7 (15, 10)",
+    "15.01   walk north 1 -> Route7 (15, 10) [tapped]",
     "15.01   walk east 1 (warp) -> Route7_EastEntrance (1, 5)",
     "15.01   walk east 4 -> Route7_EastEntrance (5, 5)",
     "15.01   walk north 1 (to wall) -> Route7_EastEntrance (5, 4)",
