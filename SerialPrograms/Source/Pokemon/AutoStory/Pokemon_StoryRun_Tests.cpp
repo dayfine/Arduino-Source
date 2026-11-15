@@ -64,7 +64,6 @@ struct FakeGame{
 //  A start as the program asks for it, and what the game must have done.
 struct StartCase{
     struct Input{
-        std::string name;
         StoryStart start;
         std::string place_error;
         StoryPreflight preflight;
@@ -75,6 +74,7 @@ struct StartCase{
         size_t rereads;
         bool save_loaded;
     };
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -99,7 +99,7 @@ std::string_view start_name(StoryStart start){
 class Test_StoryStart : public UnitTest{
 public:
     Test_StoryStart(StartCase test_case)
-        : UnitTest(std::format("Pokemon::StoryRun - start: {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::StoryRun - start: {}", test_case.name))
         , m_case(std::move(test_case))
     {}
 
@@ -137,37 +137,45 @@ const StartCase START_CASES[] = {
     //  A game left at a later checkpoint must not be walked from: a
     //  checkpoint with a save loads that save first.
     {
-        .input = {.name = "a checkpoint with a save loads it first", .start = StoryStart::FROM_SAVE, .place_error = "", .preflight = READY},
+        .name = "a checkpoint with a save loads it first",
+        .input = {.start = StoryStart::FROM_SAVE, .place_error = "", .preflight = READY},
         .expectation = {.succeeds = true, .loads = 1, .rereads = 1, .save_loaded = true},
     },
     {
-        .input = {.name = "a save in the wrong place fails before rereading it", .start = StoryStart::FROM_SAVE, .place_error = "The save is in Pewter City.", .preflight = READY},
+        .name = "a save in the wrong place fails before rereading it",
+        .input = {.start = StoryStart::FROM_SAVE, .place_error = "The save is in Pewter City.", .preflight = READY},
         .expectation = {.succeeds = false, .loads = 1, .rereads = 0, .save_loaded = false},
     },
     {
-        .input = {.name = "a new game loads nothing", .start = StoryStart::NEW_GAME, .place_error = "", .preflight = READY},
+        .name = "a new game loads nothing",
+        .input = {.start = StoryStart::NEW_GAME, .place_error = "", .preflight = READY},
         .expectation = {.succeeds = true, .loads = 0, .rereads = 0, .save_loaded = false},
     },
     {
-        .input = {.name = "a live start loads nothing", .start = StoryStart::LIVE, .place_error = "", .preflight = READY},
+        .name = "a live start loads nothing",
+        .input = {.start = StoryStart::LIVE, .place_error = "", .preflight = READY},
         .expectation = {.succeeds = true, .loads = 0, .rereads = 0, .save_loaded = false},
     },
     //  The game is on the HOME menu: every press would go to the console's
     //  menus, so the preflight stops the run before any press.
     {
-        .input = {.name = "the HOME menu stops the run before the load", .start = StoryStart::FROM_SAVE, .place_error = "", .preflight = ON_HOME},
+        .name = "the HOME menu stops the run before the load",
+        .input = {.start = StoryStart::FROM_SAVE, .place_error = "", .preflight = ON_HOME},
         .expectation = {.succeeds = false, .loads = 0, .rereads = 0, .save_loaded = false},
     },
     {
-        .input = {.name = "the HOME menu stops a live start", .start = StoryStart::LIVE, .place_error = "", .preflight = ON_HOME},
+        .name = "the HOME menu stops a live start",
+        .input = {.start = StoryStart::LIVE, .place_error = "", .preflight = ON_HOME},
         .expectation = {.succeeds = false, .loads = 0, .rereads = 0, .save_loaded = false},
     },
     {
-        .input = {.name = "dead video stops the run before the load", .start = StoryStart::FROM_SAVE, .place_error = "", .preflight = NO_VIDEO},
+        .name = "dead video stops the run before the load",
+        .input = {.start = StoryStart::FROM_SAVE, .place_error = "", .preflight = NO_VIDEO},
         .expectation = {.succeeds = false, .loads = 0, .rereads = 0, .save_loaded = false},
     },
     {
-        .input = {.name = "a controller not ready stops the run before the load", .start = StoryStart::FROM_SAVE, .place_error = "", .preflight = NO_CONTROLLER},
+        .name = "a controller not ready stops the run before the load",
+        .input = {.start = StoryStart::FROM_SAVE, .place_error = "", .preflight = NO_CONTROLLER},
         .expectation = {.succeeds = false, .loads = 0, .rereads = 0, .save_loaded = false},
     },
 };
@@ -177,12 +185,12 @@ const StartCase START_CASES[] = {
 //  the story's, naming every check that failed.
 struct PreflightCase{
     struct Input{
-        std::string name;
         StoryPreflight preflight;
     };
     struct Expectation{
         std::string outcome;
     };
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -190,7 +198,7 @@ struct PreflightCase{
 class Test_StoryPreflight : public UnitTest{
 public:
     Test_StoryPreflight(PreflightCase test_case)
-        : UnitTest(std::format("Pokemon::StoryRun - preflight: {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::StoryRun - preflight: {}", test_case.name))
         , m_case(std::move(test_case))
     {}
 
@@ -207,13 +215,15 @@ private:
 };
 
 const PreflightCase PREFLIGHT_CASES[] = {
-    {.input = {.name = "a ready console passes", .preflight = READY}, .expectation = {.outcome = ""}},
+    {.name = "a ready console passes", .input = {.preflight = READY}, .expectation = {.outcome = ""}},
     {
-        .input = {.name = "the HOME menu", .preflight = ON_HOME},
+        .name = "the HOME menu",
+        .input = {.preflight = ON_HOME},
         .expectation = {.outcome = "precondition_failed: the game is not running"},
     },
     {
-        .input = {.name = "every check failed", .preflight = StoryPreflight{}},
+        .name = "every check failed",
+        .input = {.preflight = StoryPreflight{}},
         .expectation = {.outcome = "precondition_failed: no live video; the controller is not ready; the game is not running"},
     },
 };
@@ -229,6 +239,7 @@ struct FirstSaveCase{
     struct Expectation{
         bool saves;
     };
+    std::string_view name;
     Input input;
     Expectation expectation;
 };
@@ -236,7 +247,7 @@ struct FirstSaveCase{
 class Test_StoryFirstSave : public UnitTest{
 public:
     Test_StoryFirstSave(FirstSaveCase test_case)
-        : UnitTest(std::format("Pokemon::StoryRun - first save: {}", start_name(test_case.input.start)))
+        : UnitTest(std::format("Pokemon::StoryRun - first save: {}", test_case.name))
         , m_case(test_case)
     {}
 
@@ -252,22 +263,22 @@ private:
 };
 
 const FirstSaveCase FIRST_SAVE_CASES[] = {
-    {.input = {.start = StoryStart::NEW_GAME}, .expectation = {.saves = true}},
-    {.input = {.start = StoryStart::FROM_SAVE}, .expectation = {.saves = false}},
-    {.input = {.start = StoryStart::LIVE}, .expectation = {.saves = false}},
+    {.name = "a new game", .input = {.start = StoryStart::NEW_GAME}, .expectation = {.saves = true}},
+    {.name = "its save", .input = {.start = StoryStart::FROM_SAVE}, .expectation = {.saves = false}},
+    {.name = "the game as it is", .input = {.start = StoryStart::LIVE}, .expectation = {.saves = false}},
 };
 
 
 //  A failed attempt's reload loads the save through the game.
 struct ReloadCase{
     struct Input{
-        std::string name;
     };
     struct Expectation{
         size_t loads;
         size_t rereads;
         std::string log_line;
     };
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -275,7 +286,7 @@ struct ReloadCase{
 class Test_StoryReload : public UnitTest{
 public:
     Test_StoryReload(const ReloadCase& test_case)
-        : UnitTest(std::format("Pokemon::StoryRun - {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::StoryRun - {}", test_case.name))
         , m_case(test_case)
     {}
 
@@ -298,7 +309,8 @@ private:
 
 const ReloadCase RELOAD_CASES[] = {
     {
-        .input = {.name = "a retry reloads the save"},
+        .name = "a retry reloads the save",
+        .input = {},
         .expectation = {.loads = 1, .rereads = 1, .log_line = "[Story] retry: loading the save"},
     },
 };
@@ -308,7 +320,6 @@ const ReloadCase RELOAD_CASES[] = {
 //  nothing in the game: no reload, no save, no reset to HOME.
 struct FailureCase{
     struct Input{
-        std::string name;
         std::string checkpoint;
         std::string event;
         std::string stopped_after;
@@ -316,6 +327,7 @@ struct FailureCase{
     struct Expectation{
         std::string message;
     };
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -323,7 +335,7 @@ struct FailureCase{
 class Test_StoryFailureLeavesGame : public UnitTest{
 public:
     Test_StoryFailureLeavesGame(const FailureCase& test_case)
-        : UnitTest(std::format("Pokemon::StoryRun - {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::StoryRun - {}", test_case.name))
         , m_case(test_case)
     {}
 
@@ -361,7 +373,8 @@ private:
 
 const FailureCase FAILURE_CASES[] = {
     {
-        .input = {.name = "a failed run leaves the game where it failed", .checkpoint = "00.04b", .event = "talk_mom", .stopped_after = "00.05"},
+        .name = "a failed run leaves the game where it failed",
+        .input = {.checkpoint = "00.04b", .event = "talk_mom", .stopped_after = "00.05"},
         .expectation = {.message = "AutoStory stopped at 00.04b talk_mom: expect_failed: dialogue opened"},
     },
 };
@@ -370,12 +383,12 @@ const FailureCase FAILURE_CASES[] = {
 //  A completed run logs and returns the line the finish notification sends.
 struct FinishedCase{
     struct Input{
-        std::string name;
         std::string last_checkpoint;
     };
     struct Expectation{
         std::string line;
     };
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -383,7 +396,7 @@ struct FinishedCase{
 class Test_StoryFinished : public UnitTest{
 public:
     Test_StoryFinished(const FinishedCase& test_case)
-        : UnitTest(std::format("Pokemon::StoryRun - {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::StoryRun - {}", test_case.name))
         , m_case(test_case)
     {}
 
@@ -406,7 +419,8 @@ private:
 
 const FinishedCase FINISHED_CASES[] = {
     {
-        .input = {.name = "a completed run is done through its last checkpoint", .last_checkpoint = "00.05"},
+        .name = "a completed run is done through its last checkpoint",
+        .input = {.last_checkpoint = "00.05"},
         .expectation = {.line = "AutoStory: done through 00.05."},
     },
 };
@@ -415,13 +429,13 @@ const FinishedCase FINISHED_CASES[] = {
 //  A verify run short of its passes throws with the summary.
 struct VerifyCase{
     struct Input{
-        std::string name;
         std::string checkpoint;
         size_t passes;
     };
     struct Expectation{
         std::string message;
     };
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -429,7 +443,7 @@ struct VerifyCase{
 class Test_StoryVerifyFailed : public UnitTest{
 public:
     Test_StoryVerifyFailed(const VerifyCase& test_case)
-        : UnitTest(std::format("Pokemon::StoryRun - {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::StoryRun - {}", test_case.name))
         , m_case(test_case)
     {}
 
@@ -459,7 +473,8 @@ private:
 
 const VerifyCase VERIFY_CASES[] = {
     {
-        .input = {.name = "an unverified checkpoint fails with its summary", .checkpoint = "00.15b", .passes = 1},
+        .name = "an unverified checkpoint fails with its summary",
+        .input = {.checkpoint = "00.15b", .passes = 1},
         .expectation = {.message = "AutoStory verify: 00.15b 1/3 passed, 2 needed."},
     },
 };
