@@ -146,7 +146,7 @@ void play_new_game_intro(
 //  select, for a game with no save running in front. Per language it
 //  restarts the game, picks the language and `look` (an item of
 //  BDSP_LOOK_GRID), and records what shows after the look's A, pressing
-//  nothing, as <Screenshots>/<tag>_after-look_NN.png (bdsp_language_tags(),
+//  nothing, as <Screenshots>/<tag>_after-look_NNN.png (bdsp_language_tags(),
 //  NN from 00 in order; FrameBurst). Each round saves the screen as the look
 //  is about to be picked as <tag>_before-look-pick.png, and the first round
 //  the one before the language pick as <tag>_before-language-pick.png. It
