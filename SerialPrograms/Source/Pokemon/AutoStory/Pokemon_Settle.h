@@ -55,7 +55,9 @@ struct SettleRule{
     //  the next look watches only until it has held long enough
     //  (SettleIO::watch()), so the settle ends when the quiet does, timed
     //  from the change that began it, not at the end of the next whole
-    //  look. It never presses: its looks are the wait.
+    //  look. It never presses: its looks are the wait. So a game that
+    //  presses through text (BDSP) must not turn it on as it is: it would
+    //  sit in the talk until `cap`.
     bool keep_watching = false;
 };
 

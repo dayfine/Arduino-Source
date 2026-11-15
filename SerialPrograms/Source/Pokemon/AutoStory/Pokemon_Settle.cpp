@@ -56,6 +56,16 @@ std::string timed_out(const TalkOver& judge, const SettleRule& rule, std::string
     return std::format("{}: not back on a quiet overworld within {} s.", label, seconds);
 }
 
+//  How long the next look watches, for a rule that keeps watching: until
+//  the quiet (or calm) the judge saw at `now` has held long enough, at most
+//  a whole look. None: a plain look().
+std::optional<Milliseconds> next_span(const SettleRule& rule, const TalkOver& judge, WallClock now){
+    if (!rule.keep_watching){
+        return std::nullopt;
+    }
+    return std::min(rule.look_every, judge.left(now).value_or(rule.look_every));
+}
+
 } // namespace
 
 
@@ -78,9 +88,7 @@ SettleEnd run_settle(const SettleRule& rule, std::string_view label, SettleIO& i
             judge.look(look.events, *look.since);
         }
         const SceneMove move = judge.look(look.events, look.when);
-        if (rule.keep_watching){
-            span = std::min(rule.look_every, judge.left(look.when).value_or(rule.look_every));
-        }
+        span = next_span(rule, judge, look.when);
         switch (move){
         case SceneMove::DONE:
             io.log(std::format("[Settle] {}: over; {}.", label, judge.describe()));

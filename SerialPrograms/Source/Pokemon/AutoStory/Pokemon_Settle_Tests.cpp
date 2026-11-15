@@ -524,6 +524,20 @@ const TimingTestCase TIMING_CASES[] = {
         .expectation = {.result = SettleEnd::Result::QUIET, .ends_at = 1550ms, .looks = 4},
     },
     {
+        //  Quiet from 210 ms: 1 s of it at 1210 ms, seen only at the look
+        //  that ends at 1600 ms.
+        .name = "without keeping watch, a quiet due early in a look waits for its end",
+        .input = {.rule = timed_door(false), .timeline = {{0ms, BOX}, {210ms, QUIET}}},
+        .expectation = {.result = SettleEnd::Result::QUIET, .ends_at = 1600ms, .looks = 4, .presses = 3},
+    },
+    {
+        //  Looks of 400, 400, 400, then the 10 ms left: almost a whole look
+        //  saved.
+        .name = "keeping watch, a quiet due early in a look ends it then",
+        .input = {.rule = timed_door(true), .timeline = {{0ms, BOX}, {210ms, QUIET}}},
+        .expectation = {.result = SettleEnd::Result::QUIET, .ends_at = 1210ms, .looks = 4},
+    },
+    {
         .name = "keeping watch, a quiet the screen had from the start ends it at 1 s",
         .input = {.rule = timed_door(true), .timeline = {{0ms, QUIET}}},
         .expectation = {.result = SettleEnd::Result::QUIET, .ends_at = 1000ms, .looks = 3},
