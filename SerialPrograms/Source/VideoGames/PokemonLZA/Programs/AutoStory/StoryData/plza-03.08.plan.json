@@ -23,9 +23,9 @@
       {
         "id": "zone_1_to_far_gate",
         "kind": "game_action",
-        "why": "step 62: from 60 the far gate's green pillars are straight down the road; walked by hand to its \"A Leave\" prompt in about 4.7 s, the marker reading 41 there (console B, 2026-11-14). Steered by the pillars on screen.",
+        "why": "step 62: from 60 the far gate's green pillars are straight down the road; walked by hand to its \"A Leave\" prompt in about 4.7 s, the marker reading 41 there (console B, 2026-11-14). Steered by the pillars on screen, after facing 265: the camera read 259 at the prompt with the gate right of centre (x 0.68), and after the catches the gate was off screen once in 3 (console B, 2026-11-14).",
         "action": "walk_to_zone_gate_entrance",
-        "args": {"timeout_ms": 15000}
+        "args": {"heading": 265, "timeout_ms": 15000}
       },
       {
         "id": "leave_zone_1",
