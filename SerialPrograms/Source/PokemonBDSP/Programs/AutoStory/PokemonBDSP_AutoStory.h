@@ -62,6 +62,8 @@ private:
     BooleanCheckBoxOption NEW_GAME_INTRO;
     StringOption PLAYER_NAME;
     PlayerModelOption PLAYER_LOOK;
+    //  Developer: shoot the intro's screens in every language instead of a run.
+    BooleanCheckBoxOption CAPTURE_INTRO_SCREENS;
     EnumDropdownOption<StarterChoice> STARTER;
     //  The RNG program the run stops for (StoryHandoff), or runs in 00.02.
     BooleanCheckBoxOption STOP_FOR_STARTER_RNG;

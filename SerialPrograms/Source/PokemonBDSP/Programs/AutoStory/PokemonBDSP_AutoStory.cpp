@@ -72,6 +72,29 @@ constexpr std::string_view STARTER_RNG_HANDOFF_TEXT =
     "When it is done, close the Summary page and the menu, let Rowan's scene finish so the player stands "
     "on the Verity Lakefront overworld, save, and start AutoStory at 00.03.";
 
+std::string stop_for_starter_rng_help(){
+    return std::format(
+        "<b>Stop for Starter RNG:</b><br>Off by default. Ignored while Run Starter RNG in AutoStory is on. {}",
+        STARTER_RNG_HANDOFF_TEXT
+    );
+}
+
+constexpr std::string_view PLAYER_NAME_HELP =
+    "<b>Player name:</b><br>For a new game. Letters and digits, typed on the Switch's Latin keyboard. "
+    "If the game takes fewer characters in its language, the intro stops at the name screen.";
+
+constexpr std::string_view PLAYER_LOOK_HELP =
+    "<b>Player's look:</b><br>For a new game: the look picked on the appearance grid. "
+    "The portraits row by row: 1 Lucas light, 2 Lucas dark, 3 Dawn dark-haired, 4 Dawn dark; "
+    "5 Lucas blond, 6 Lucas brown, 7 Dawn blond, 8 Dawn brown-haired. "
+    "The new game's language is Game language above (Japanese: the kana one).";
+
+constexpr std::string_view CAPTURE_INTRO_SCREENS_HELP =
+    "<b>Capture intro screens (developer):</b><br>Instead of a run: for a game with no save, running in front. "
+    "For each language the game lists, restarts the game, picks the language and the look above, "
+    "and saves the name keyboard to the Screenshots folder as &lt;lang&gt;_keyboard.png; "
+    "the first round also saves en_language-list.png and en_look-picker.png. Ends on the last keyboard.";
+
 //  The start and end dropdowns' entries: segments 00 and 01 joined, 00.00
 //  to 01.11. The options hold a reference to it.
 const StringSelectDatabase& checkpoint_database(){
@@ -151,16 +174,9 @@ BDSPAutoStory::BDSPAutoStory()
         "until the player is in control in the bedroom. Only when starting at 00.00.",
         LockMode::LOCK_WHILE_RUNNING, false
     )
-    , PLAYER_NAME(
-        false,
-        "<b>Player name:</b><br>For a new game. Letters and digits.",
-        LockMode::LOCK_WHILE_RUNNING, "Kosmos", "Kosmos"
-    )
-    , PLAYER_LOOK(
-        "<b>Player's look:</b><br>For a new game: the look picked on the appearance grid. "
-        "The portraits row by row: 1 Lucas light, 2 Lucas dark, 3 Dawn dark-haired, 4 Dawn dark; "
-        "5 Lucas blond, 6 Lucas brown, 7 Dawn blond, 8 Dawn brown-haired."
-    )
+    , PLAYER_NAME(false, std::string(PLAYER_NAME_HELP), LockMode::LOCK_WHILE_RUNNING, "Kosmos", "Kosmos")
+    , PLAYER_LOOK(std::string(PLAYER_LOOK_HELP))
+    , CAPTURE_INTRO_SCREENS(std::string(CAPTURE_INTRO_SCREENS_HELP), LockMode::LOCK_WHILE_RUNNING, false)
     , STARTER(
         "<b>Starter Pokemon:</b>",
         {
@@ -171,14 +187,7 @@ BDSPAutoStory::BDSPAutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         StarterChoice::CHIMCHAR
     )
-    , STOP_FOR_STARTER_RNG(
-        std::format(
-            "<b>Stop for Starter RNG:</b><br>Off by default. Ignored while Run Starter RNG in AutoStory is on. {}",
-            STARTER_RNG_HANDOFF_TEXT
-        ),
-        LockMode::LOCK_WHILE_RUNNING,
-        false
-    )
+    , STOP_FOR_STARTER_RNG(stop_for_starter_rng_help(), LockMode::LOCK_WHILE_RUNNING, false)
     , NOTIFICATIONS({
         &STARTER_RNG.notification_shiny(),
         &NOTIFICATION_PROGRAM_FINISH,
@@ -190,6 +199,7 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(NEW_GAME_INTRO);
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(PLAYER_LOOK);
+    PA_ADD_OPTION(CAPTURE_INTRO_SCREENS);
     PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(STOP_FOR_STARTER_RNG);
     add_option(STARTER_RNG.run(), "RUN_STARTER_RNG");
@@ -309,6 +319,11 @@ std::vector<StoryCheckpoint> load_run_rows(ConsoleHandle& console){
 } // namespace
 
 void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    if (CAPTURE_INTRO_SCREENS){
+        capture_intro_screens(env, context, PLAYER_LOOK.index());
+        send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH, "Intro screens captured.");
+        return;
+    }
     const std::vector<StoryCheckpoint> checkpoints = load_run_rows(env.console);
     const size_t first = RUN.start_index();
     const size_t last = RUN.end_index();
@@ -319,6 +334,10 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     set_story_language(RUN.language());
 
     const bool new_game = first == 0 && NEW_GAME_INTRO;
+    //  Starter RNG watches the player's eyes through the look's template.
+    if (new_game && STARTER_RNG.run() && STARTER_RNG.player_model().index() != PLAYER_LOOK.index()){
+        throw UserSetupError(env.console, "The Starter RNG character model must be the new game's look (Player's look).");
+    }
     StoryEnv story{env, context, STARTER, PLAYER_NAME, IntroPicks{RUN.language(), PLAYER_LOOK.index()}, {}};
     if (STARTER_RNG.run()){
         story.run_starter_rng = make_starter_rng_hook(

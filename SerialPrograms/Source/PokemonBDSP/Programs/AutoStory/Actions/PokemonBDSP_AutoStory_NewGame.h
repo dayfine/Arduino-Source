@@ -9,6 +9,7 @@
  *  Both menus are read by their detector (PokemonBDSP_AutoStory_IntroMenuDetector.h).
  *
  */
+// code-health: allow header_symbols -- the intro's entry points (play, capture), its two menus' data and its screen classifier
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_NewGame_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_NewGame_H
@@ -16,6 +17,7 @@
 #include <cstddef>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Language.h"
@@ -65,17 +67,35 @@ std::optional<std::vector<DpadPosition>> look_pick_moves(size_t cursor, const In
 std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& screen);
 
 namespace detail{
+//  Short names of BDSP_LANGUAGE_GRID's items, in its order, for capture
+//  mode's file names: "en", "ja-kana", "es", "ja", ...
+const std::vector<std::string_view>& bdsp_language_tags();
 //  The progress a new intro starts from: which of `picks` need a menu.
 IntroProgress intro_start(const IntroPicks& picks);
+//  Whether the intro restarts the game when `screen` (classify_intro_screen())
+//  shows at its start: not on a screen of the intro itself, which it takes up
+//  from there.
+bool intro_restart_needed(std::string_view screen);
+//  The progress an intro taken up on `screen` starts from: a pick whose
+//  screen is past is not made again, and one that may be past (from a
+//  dialogue, the look) is made only if its screen still shows. From a
+//  keyboard it types the player's name: it cannot tell the rival's.
+IntroProgress intro_resume(const IntroPicks& picks, std::string_view screen);
+//  Why `name` cannot be typed on a keyboard that takes `limit` characters,
+//  or nullopt when it fits or the limit was not read.
+std::optional<std::string> name_limit_problem(std::string_view name, std::optional<size_t> limit);
 } // namespace detail
 
 //  From the title screen or any intro screen of a game with no save, with BDSP
 //  running in front: from HOME it throws UserSetupError, since the restart would
-//  launch whatever tile HOME's cursor is on, as it does for picks no menu has. Restarts the game first, so it
-//  always starts from the title, waits out the black boot (up to
+//  launch whatever tile HOME's cursor is on, as it does for picks no menu has.
+//  On a screen of the intro (intro_restart_needed()) it takes the intro up
+//  from there, without closing the game. Otherwise it restarts the game, so it
+//  starts from the title, waits out the black boot (up to
 //  INTRO_BOOT_LIMIT) without pressing anything, and fails if no BDSP screen shows within
 //  INTRO_TIME_BEFORE_BDSP of screens. Picks the language and the look in
-//  `picks`, names the player `player_name` and picks the rival's default name
+//  `picks`, names the player `player_name` (failing at the name screen,
+//  nothing typed, when the keyboard takes fewer characters) and picks the rival's default name
 //  (Barry) from the list. The language and look selects are read, moved on
 //  and read again before their A. The player's keyboard showing with a pick
 //  still to make fails. Each step reads the
@@ -87,6 +107,15 @@ void play_new_game_intro(
     const IntroPicks& picks,
     const std::string& player_name
 );
+
+//  Developer: shoots the intro's screens for each language of the language
+//  select, for a game with no save running in front. Per language it
+//  restarts the game, picks the language and `look` (an item of
+//  BDSP_LOOK_GRID), and saves the name keyboard that follows as
+//  <Screenshots>/<tag>_keyboard.png (bdsp_language_tags()); the first round
+//  also saves <tag>_language-list.png and <tag>_look-picker.png before
+//  their picks. Leaves the game on the last language's keyboard.
+void capture_intro_screens(SingleSwitchProgramEnvironment& env, ProControllerContext& context, size_t look);
 
 
 } // namespace PokemonBDSP

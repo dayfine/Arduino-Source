@@ -5,9 +5,11 @@
  */
 
 #include <algorithm>
+#include <format>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -24,6 +26,7 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_NameListDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_IntroMenuDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_NameLimitReader.h"
 #include "PokemonBDSP_AutoStory_IntroProbe.h"
 #include "PokemonBDSP_AutoStory_IntroSteps.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
@@ -46,6 +49,19 @@ const std::vector<Language>& bdsp_language_menu(){
     };
     return menu;
 }
+
+namespace detail{
+const std::vector<std::string_view>& bdsp_language_tags(){
+    static const std::vector<std::string_view> tags{
+        "en", "ja-kana",
+        "es", "ja",
+        "fr", "ko",
+        "de", "zh-Hans",
+        "it", "zh-Hant",
+    };
+    return tags;
+}
+} // namespace detail
 
 namespace{
 
@@ -77,6 +93,53 @@ IntroProgress intro_start(const IntroPicks& picks){
     progress.language_pending = true;
     progress.look_pending = picks.look != 0;
     return progress;
+}
+bool intro_restart_needed(std::string_view screen){
+    return !(screen == "user-select" || screen == "language-select" || screen == "look-select" ||
+        screen == "keyboard" || screen == "dialog" || screen == "rival-list-tell" || screen == "rival-list-preset");
+}
+IntroProgress intro_resume(const IntroPicks& picks, std::string_view screen){
+    IntroProgress progress = intro_start(picks);
+    if (screen == "user-select" || screen == "language-select"){
+        return progress;
+    }
+    //  Every other intro screen comes after the language.
+    progress.language_pending = false;
+    if (screen == "look-select"){
+        //  It shows: the cursor may be anywhere, so read it and pick.
+        progress.look_pending = true;
+        return progress;
+    }
+    if (screen == "dialog"){
+        //  Rowan before the look select, or the names after it.
+        progress.picks_may_be_past = true;
+        return progress;
+    }
+    progress.look_pending = false;
+    if (screen == "rival-list-tell" || screen == "rival-list-preset"){
+        progress.player_named = true;
+    }
+    return progress;
+}
+std::optional<std::string> name_limit_problem(std::string_view name, std::optional<size_t> limit){
+    if (!limit){
+        return std::nullopt;
+    }
+    //  Characters, not UTF-8 bytes: count the bytes that start one.
+    size_t characters = 0;
+    for (char c : name){
+        if (((unsigned char)c & 0xc0) != 0x80){
+            characters++;
+        }
+    }
+    if (characters <= *limit){
+        return std::nullopt;
+    }
+    return std::format(
+        "The name keyboard takes at most {} characters in this language, and the player name \"{}\" has {}. "
+        "Stopped at the name screen with nothing typed: pick a name of at most {} characters and start again.",
+        *limit, name, characters, *limit
+    );
 }
 } // namespace detail
 
@@ -130,7 +193,7 @@ IntroStep decide_intro_step(std::string_view screen, const IntroProgress& progre
         return IntroStep::FAIL_NOT_IN_GAME;
     }
     if (screen == "keyboard"){
-        if (!progress.player_named && (progress.language_pending || progress.look_pending)){
+        if (!progress.player_named && (progress.language_pending || progress.look_pending) && !progress.picks_may_be_past){
             return IntroStep::FAIL_PICK_MISSED;
         }
         return progress.player_named ? IntroStep::CANCEL_RIVAL_KEYBOARD : IntroStep::ENTER_PLAYER_NAME;
@@ -255,6 +318,15 @@ void enter_player_name(VideoStream& stream, ProControllerContext& context, StepT
         pbf_press_button(context, BUTTON_B, 60ms, 250ms);
         context.wait_for_all_requests();
     }
+    //  The keyboard drops presses past its limit: stop before typing.
+    VideoSnapshot screen = stream.video().snapshot();
+    const std::optional<size_t> limit = screen ? read_keyboard_name_limit(*screen.frame) : std::nullopt;
+    trace.action(limit
+        ? std::format("The keyboard takes up to {} characters.", *limit)
+        : std::string("The keyboard's character counter did not read; typing anyway."));
+    if (const std::optional<std::string> problem = name_limit_problem(name, limit)){
+        trace.fail(*problem);
+    }
     trace.action("Typing the player's name: " + name);
     FastCodeEntry::type_on_system_keyboard(stream, context, name);
     pbf_press_button(context, BUTTON_PLUS, 80ms, 0ms);
@@ -276,7 +348,36 @@ struct IntroRun{
     size_t x_without_menu = 0;
     //  X opened something and B closed it, from a still screen.
     bool in_control = false;
+    //  The language select's item to pick.
+    size_t language_target = 0;
+    //  Capture mode (capture_intro_screens()): the run ends on the player's
+    //  keyboard, saved as <capture_tag>_keyboard.png, and with
+    //  `capture_menus` the two selects are saved before their picks.
+    bool capture = false;
+    bool capture_menus = false;
+    std::string capture_tag;
+    bool capture_done = false;
 };
+
+//  Saves the frame on screen now as <Screenshots>/<tag>_<what>.png.
+void save_capture(IntroRun& run, std::string_view what){
+    run.context.wait_for_all_requests();
+    const VideoSnapshot screen = run.env.console.video().snapshot();
+    if (!screen){
+        run.trace.fail("No video frame to capture.");
+    }
+    const std::string path = std::format("{}{}_{}.png", SCREENSHOTS_PATH(), run.capture_tag, what);
+    screen.frame->save(path);
+    run.trace.action("Captured " + path);
+}
+
+//  Capture mode: the name keyboard after the look's A. Saved after its
+//  slide-in, also when the keyboard detector does not know its layout.
+void capture_keyboard(IntroRun& run){
+    pbf_wait(run.context, 2000ms);
+    save_capture(run, "keyboard");
+    run.capture_done = true;
+}
 
 void press(IntroRun& run, Button button){
     pbf_press_button(run.context, button, 80ms, 0ms);
@@ -340,7 +441,7 @@ void probe_for_menu(IntroRun& run){
     const XProbeResult result = x_from_still_screen(run);
     run.in_control = result == XProbeResult::IN_CONTROL;
     if (result != XProbeResult::NOTHING){
-        return;     //  The next read sees the menu, or the in-control state, and finishes.
+        return;     //  The next read sees the menu, or the finished state, and finishes.
     }
     run.trace.action("X opened no menu; B again before the next X.");
     if (++run.x_without_menu >= INTRO_X_WITHOUT_MENU){
@@ -400,12 +501,21 @@ bool pick_on_grid(IntroRun& run, const IntroMenu& menu, size_t target){
 
 //  PICK_LANGUAGE or PICK_LOOK.
 void pick_on_intro_menu(IntroRun& run, IntroStep step){
-    if (step == IntroStep::PICK_LANGUAGE){
-        if (pick_on_grid(run, LANGUAGE_MENU, *language_item(run.picks.game_language))){
+    const bool language = step == IntroStep::PICK_LANGUAGE;
+    if (run.capture_menus){
+        save_capture(run, language ? "language-list" : "look-picker");
+    }
+    if (language){
+        if (pick_on_grid(run, LANGUAGE_MENU, run.language_target)){
             run.progress.language_pending = false;
         }
-    }else if (pick_on_grid(run, LOOK_MENU, run.picks.look)){
+        return;
+    }
+    if (pick_on_grid(run, LOOK_MENU, run.picks.look)){
         run.progress.look_pending = false;
+        if (run.capture){
+            capture_keyboard(run);
+        }
     }
 }
 
@@ -432,6 +542,15 @@ IntroStep next_intro_step(IntroRun& run, std::string_view screen){
         " was read.");
 }
 
+//  ENTER_PLAYER_NAME: types the name, or in capture mode shoots the keyboard.
+void name_player(IntroRun& run){
+    if (run.capture){
+        capture_keyboard(run);
+        return;
+    }
+    enter_player_name(run.env.console, run.context, run.trace, run.player_name);
+}
+
 //  Carries out what decide_intro_step() chose for `screen`.
 void act(IntroRun& run, std::string_view screen){
     const IntroStep step = next_intro_step(run, screen);
@@ -450,7 +569,7 @@ void act(IntroRun& run, std::string_view screen){
         pick_on_intro_menu(run, step);
         return;
     case IntroStep::ENTER_PLAYER_NAME:
-        enter_player_name(run.env.console, run.context, run.trace, run.player_name);
+        name_player(run);
         return;
     case IntroStep::CANCEL_RIVAL_KEYBOARD:
         //  Opened from "I'll tell you..."; inputs during the slide-in are dropped.
@@ -506,9 +625,10 @@ std::vector<ScreenState> intro_states(IntroRun& run){
         return classify_intro_screen(&run.env.console, screen) == name;
     };
     return {
-        {"in-control",
-            [&run](const ImageViewRGB32&){ return run.in_control; }, nullptr,
-            [&run]{ run.trace.action("X opened and B closed the menu from a still bedroom: the player is in control."); },
+        //  The player in control without the menu read, or capture mode's keyboard shot.
+        {"finished",
+            [&run](const ImageViewRGB32&){ return run.in_control || run.capture_done; }, nullptr,
+            [&run]{ run.trace.action(run.capture_done ? "Keyboard captured." : "X opened and B closed the menu from a still bedroom: the player is in control."); },
             {}, 1, true},
         {"user-select",
             [=](const ImageViewRGB32& s){ return screen_is(s, "user-select"); }, nullptr,
@@ -518,7 +638,7 @@ std::vector<ScreenState> intro_states(IntroRun& run){
             [&run]{ act(run, "home"); }, {}, 1},
         {"player-keyboard",
             [=, &run](const ImageViewRGB32& s){ return !run.progress.player_named && screen_is(s, "keyboard"); }, nullptr,
-            [&run]{ act(run, "keyboard"); }, {"dialog", "black", "other"}, 1},
+            [&run]{ act(run, "keyboard"); }, {"finished", "dialog", "black", "other"}, 1},
         {"rival-keyboard",
             [=, &run](const ImageViewRGB32& s){ return run.progress.player_named && screen_is(s, "keyboard"); }, nullptr,
             [&run]{ act(run, "keyboard"); }, {"rival-list-tell", "dialog", "black", "other"}, 3},
@@ -550,6 +670,33 @@ std::vector<ScreenState> intro_states(IntroRun& run){
     };
 }
 
+//  The restart reopens the game HOME's cursor is on, which is the game
+//  running in front only while it runs: with none running (r1, 2026-11-01),
+//  closing it fails, HOME is pressed again, the cursor goes to the first
+//  tile, and another game was launched. So BDSP must be running in front.
+//  Returns the frame on screen, if any.
+VideoSnapshot require_game_in_front(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    context.wait_for_all_requests();
+    VideoSnapshot start = env.console.video().snapshot();
+    if (start && HomeMenuDetector(env.console, COLOR_RED).detect(start)){
+        throw UserSetupError(env.console,
+            "Start a new game with BDSP running in front, not from the Switch's HOME menu: "
+            "the intro restarts the game in front.");
+    }
+    return start;
+}
+
+//  Only closes and reopens the game: the states take it from the user select
+//  on. reset_game_from_home() waits for a loaded save's black screen to end, and a
+//  new game's first screen is a dialog on black, so it would sit there until its
+//  timeout.
+void restart_game(SingleSwitchProgramEnvironment& env, ProControllerContext& context, StepTrace& trace){
+    trace.action("Restarting the game.");
+    go_home(env.console, context);
+    from_home_close_and_reopen_game(env.console, context, true);
+    wait_out_boot(env.console, context, trace);
+}
+
 } // namespace
 
 
@@ -570,34 +717,49 @@ void play_new_game_intro(
         throw UserSetupError(env.console, "The player's look must be one of BDSP's eight.");
     }
 
-    //  The restart below reopens the game HOME's cursor is on, which is the
-    //  game running in front only while it runs: with none running (r1,
-    //  2026-11-01), closing it fails, HOME is pressed again, the cursor goes
-    //  to the first tile, and another game was launched. So BDSP must be
-    //  running in front when the intro starts.
-    context.wait_for_all_requests();
-    VideoSnapshot start = stream.video().snapshot();
-    if (start && HomeMenuDetector(env.console, COLOR_RED).detect(start)){
-        throw UserSetupError(env.console,
-            "Start a new game with BDSP running in front, not from the Switch's HOME menu: "
-            "the intro restarts the game in front.");
+    const VideoSnapshot start = require_game_in_front(env, context);
+    const std::string first = start ? classify_intro_screen(&env.console, *start.frame) : "other";
+    IntroProgress progress;
+    if (intro_restart_needed(first)){
+        restart_game(env, context, trace);
+        progress = intro_start(picks);
+    }else{
+        //  Never close the game on an intro screen: what was picked stays.
+        trace.action("The intro shows (" + first + "): taking it up there, without a restart.");
+        progress = intro_resume(picks, first);
     }
-
-    //  Only close and reopen the game: the states below take it from the user select
-    //  on. reset_game_from_home() waits for a loaded save's black screen to end, and a
-    //  new game's first screen is a dialog on black, so it would sit there until its
-    //  timeout.
-    trace.action("Restarting the game.");
-    go_home(env.console, context);
-    from_home_close_and_reopen_game(env.console, context, true);
-
-    wait_out_boot(stream, context, trace);
-    IntroRun run{env, context, trace, picks, player_name, current_time(), intro_start(picks), 0};
+    IntroRun run{env, context, trace, picks, player_name, current_time(), progress, 0};
+    run.language_target = *language_item(picks.game_language);
     trace.action(std::string("Picks: language ") + language_data(picks.game_language).name +
-        ", look " + std::to_string(picks.look + 1) + ".");
+        " (item " + std::to_string(run.language_target) + "), look " + std::to_string(picks.look + 1) + ".");
     const std::vector<ScreenState> states = intro_states(run);
     run_screen_machine(stream, context, states, std::chrono::minutes(15), trace);
     trace.action("Intro done.");
+}
+
+void capture_intro_screens(SingleSwitchProgramEnvironment& env, ProControllerContext& context, size_t look){
+    StepTrace trace(env.console, "IntroCapture");
+    const IntroPicks picks{Language::English, look};
+    if (!look_pick_moves(0, picks)){
+        throw UserSetupError(env.console, "The player's look must be one of BDSP's eight.");
+    }
+    require_game_in_front(env, context);
+    const std::string no_name;
+    const std::vector<std::string_view>& tags = bdsp_language_tags();
+    for (size_t item = 0; item < tags.size(); item++){
+        //  No save exists, so each restart plays the intro from the start.
+        restart_game(env, context, trace);
+        IntroRun run{env, context, trace, picks, no_name, current_time(), intro_start(picks), 0};
+        run.progress.look_pending = true;
+        run.language_target = item;
+        run.capture = true;
+        run.capture_menus = item == 0;
+        run.capture_tag = std::string(tags[item]);
+        trace.action("Capturing language item " + std::to_string(item) + " (" + run.capture_tag + ").");
+        const std::vector<ScreenState> states = intro_states(run);
+        run_screen_machine(env.console, context, states, std::chrono::minutes(10), trace);
+    }
+    trace.action("Captured " + std::to_string(tags.size()) + " languages to " + SCREENSHOTS_PATH());
 }
 
 

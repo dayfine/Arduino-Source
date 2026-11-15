@@ -46,6 +46,9 @@ struct IntroProgress{
     //  The first look needs no menu: A takes it.
     bool language_pending = false;
     bool look_pending = false;
+    //  The intro was taken up past the screen of a pending pick, which may
+    //  have been made before: the player's keyboard does not fail on it.
+    bool picks_may_be_past = false;
     bool player_named = false;
     //  A preset name was picked from the rival's list, and how many screens
     //  have shown since without the list coming back. "Barry, is it?" and

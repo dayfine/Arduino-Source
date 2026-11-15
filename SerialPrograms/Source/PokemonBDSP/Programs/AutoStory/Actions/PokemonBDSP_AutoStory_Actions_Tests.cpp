@@ -13,6 +13,7 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
@@ -26,6 +27,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_IntroMenuDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_NameLimitReader.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 #include "PokemonBDSP_AutoStory_Center.h"
@@ -362,6 +364,116 @@ UnitTestResult test_intro_pick_steps(Logger&){
     const IntroProgress run3 = intro_start(IntroPicks{Language::French, 2});
     if (!run3.language_pending || !run3.look_pending){
         return "French and Model 3 need both menus.";
+    }
+    return true;
+}
+
+//  Taken up on an intro screen, the intro restarts nothing and makes only
+//  the picks still ahead; anywhere else it restarts the game.
+UnitTestResult test_intro_resume(Logger&){
+    struct Input{
+        std::string_view screen;
+    };
+    struct Expectation{
+        bool restart;
+        bool language_pending;
+        bool look_pending;
+        bool picks_may_be_past;
+        bool player_named;
+    };
+    struct Case{
+        std::string_view name;
+        Input input;
+        Expectation expectation;
+    };
+    const Case cases[] = {
+        {"the title or a logo",     {"other"},              {true,  true,  true,  false, false}},
+        {"black",                   {"black"},              {true,  true,  true,  false, false}},
+        {"the bedroom's menu",      {"menu"},               {true,  true,  true,  false, false}},
+        {"the user select",         {"user-select"},        {false, true,  true,  false, false}},
+        {"the language select",     {"language-select"},    {false, true,  true,  false, false}},
+        {"the look select",         {"look-select"},        {false, false, true,  false, false}},
+        {"a dialogue",              {"dialog"},             {false, false, true,  true,  false}},
+        {"the player's keyboard",   {"keyboard"},           {false, false, false, false, false}},
+        {"the rival's name list",   {"rival-list-tell"},    {false, false, false, false, true}},
+        {"a preset rival name",     {"rival-list-preset"},  {false, false, false, false, true}},
+    };
+    const IntroPicks picks{Language::Japanese, 6};
+    for (const Case& c : cases){
+        const Expectation& e = c.expectation;
+        if (intro_restart_needed(c.input.screen) != e.restart){
+            return std::string("Wrong restart for ") + std::string(c.name) + ".";
+        }
+        if (e.restart){
+            continue;
+        }
+        const IntroProgress progress = intro_resume(picks, c.input.screen);
+        if (progress.language_pending != e.language_pending || progress.look_pending != e.look_pending ||
+            progress.picks_may_be_past != e.picks_may_be_past || progress.player_named != e.player_named
+        ){
+            return std::string("Wrong progress taken up on ") + std::string(c.name) + ".";
+        }
+    }
+    //  From a dialogue past the look select, the keyboard types the name.
+    if (decide_intro_step("keyboard", intro_resume(picks, "dialog")) != IntroStep::ENTER_PLAYER_NAME){
+        return "Taken up on a dialogue, the player's keyboard must take the name.";
+    }
+    return true;
+}
+
+//  The keyboard's counter gives the name's limit; a longer name stops the
+//  intro, an unread limit does not.
+UnitTestResult test_name_limit(Logger&){
+    struct ParseCase{
+        std::string_view name;
+        std::string_view input;
+        std::optional<size_t> expectation;
+    };
+    const ParseCase parse_cases[] = {
+        {"an empty field",          "0/6",      6},
+        {"OCR's newline",           "0/5\n",    5},
+        {"spaces",                  " 0 / 12 ", 12},
+        {"a typed name",            "6/12",     12},
+        {"nothing",                 "",         std::nullopt},
+        {"no limit",                "0/",       std::nullopt},
+        {"a zero limit",            "0/0",      std::nullopt},
+        {"text",                    "Name",     std::nullopt},
+        {"text after it",           "0/6 x",    std::nullopt},
+    };
+    for (const ParseCase& c : parse_cases){
+        if (parse_keyboard_counter(c.input) != c.expectation){
+            return std::string("Wrong limit for ") + std::string(c.name) + ".";
+        }
+    }
+    struct FitCase{
+        std::string_view name;
+        std::string_view input_name;
+        std::optional<size_t> input_limit;
+        bool expectation_fails;
+    };
+    const FitCase fit_cases[] = {
+        {"Kosmos in 12",            "Kosmos",   12,             false},
+        {"Kosmos in 6",             "Kosmos",   6,              false},
+        {"Kosmos in 5",             "Kosmos",   5,              true},
+        {"limit not read",          "Kosmos",   std::nullopt,   false},
+        {"two-byte letters in 5",   "\xc3\xa9\xc3\xa9\xc3\xa9", 5, false},
+    };
+    for (const FitCase& c : fit_cases){
+        if (name_limit_problem(c.input_name, c.input_limit).has_value() != c.expectation_fails){
+            return std::string("Wrong fit for ") + std::string(c.name) + ".";
+        }
+    }
+    return true;
+}
+
+//  Capture mode names a file per language select item; Japanese twice.
+UnitTestResult test_language_tags(Logger&){
+    const std::vector<std::string_view>& tags = bdsp_language_tags();
+    if (tags.size() != LANGUAGE_SELECT_BUTTONS || tags.size() != bdsp_language_menu().size()){
+        return "One tag per language select button.";
+    }
+    if (tags[1] != "ja-kana" || bdsp_language_menu()[1] != Language::Japanese){
+        return "Item 1 is the kana Japanese.";
     }
     return true;
 }
@@ -750,6 +862,18 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
     },
     {
         .input = {"new-game intro: steps until the picks are made", test_intro_pick_steps},
+        .expectation = {},
+    },
+    {
+        .input = {"new-game intro: taken up on the screen it shows", test_intro_resume},
+        .expectation = {},
+    },
+    {
+        .input = {"new-game intro: the name keyboard's limit", test_name_limit},
+        .expectation = {},
+    },
+    {
+        .input = {"new-game intro: capture file per language", test_language_tags},
         .expectation = {},
     },
     {
