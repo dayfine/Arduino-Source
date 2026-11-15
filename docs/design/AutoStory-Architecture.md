@@ -267,8 +267,10 @@ from Brock to the Hall of Fame, the Sevii Islands and Mewtwo are drafted as tabl
   doesn't mean the place is unreachable: re-localise against a nearer anchor or stop, never
   retry the same search with bigger limits. Plan between regions through connections and
   warps, so no map set becomes one huge canvas.
-- **Not covered yet:** HMs and field moves, puzzles, the party beyond the starter, RNG hand-offs,
-  naming with a keyboard ([#81](https://github.com/dayfine/Arduino-Source/pull/81), [#62](https://github.com/dayfine/Arduino-Source/pull/62)).
+- **Not covered yet:** HMs and field moves, puzzles, the party beyond the starter, RNG hand-offs.
+  The Switch keyboard driver ([#62](https://github.com/dayfine/Arduino-Source/pull/62)) is on
+  `nav/shared` and console-tested in BDSP and PLZA; FRLG's in-game naming screen is
+  [#81](https://github.com/dayfine/Arduino-Source/pull/81).
 
 ## 8. Detail kept from earlier proposals
 
@@ -284,7 +286,8 @@ The event model proposed checkpoints as data before the story tables existed. Th
   (Nav2's recoveries). A route as data in a small fixed vocabulary interpreted by code
   (Honorbuddy quest profiles, pokebot-gen3's modes). Not taken: a general planner (GOAP, HTN)
   or a behaviour-tree runtime. The story is a fixed order; the only search is the tile planner.
-- **Rows are C++, maps are JSON.** The event model left open whether checkpoints are JSON
+- **Rows are C++, maps are JSON.** Superseded: on the engine every checkpoint is a JSON file
+  (`Pokemon/AutoStory/Engine/MIGRATION.md` step 3). The event model left open whether checkpoints are JSON
   files or C++ literals. They are initializer-list rows: reviewers read them in the diff, the
   compiler checks them, and upstream ships no data files for programs. Maps stay JSON because
   they are generated from the decomp.

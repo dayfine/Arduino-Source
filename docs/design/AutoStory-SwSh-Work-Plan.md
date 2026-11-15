@@ -38,7 +38,7 @@ It isolates the new problem: closed-loop movement in a free-moving game.
 ### Gate B: the prototype's full target
 
 Continue from Gate A through the starter, Slumbering Weald, Wedgehurst Lab, Route 2, Magnolia's
-house, the second station visit and the train to the first Wild Area. This replaces the full scope of
+house, the second station visit and the train to the first Wild Area. This covers the full scope of
 #1207 after Gate A proves the navigation and screen contracts.
 
 The first Wild Area is a separate feasibility gate. Early towns and routes may keep the camera
@@ -58,46 +58,58 @@ without console evidence.
 
 ### 2.1 Shared AutoStory stack on the fork
 
-The current fork stack already supplies the game-neutral pieces. They are prerequisites, not files
-to copy into Sword/Shield:
+The game-neutral pieces live on the fork branch `nav/shared`, the trunk for AutoStory work: it
+carries `Pokemon/AutoStory/Engine/`, `CommonTools/ScreenEvents/`, `CommonTools/ScreenMachine/`, the
+Switch keyboard driver, the failure classes and the story launch. They are prerequisites, not files
+to copy into Sword/Shield, and none of them is on upstream `main`. **Every SwSh slice from S1 on
+bases on `nav/shared`** (or on a SwSh parent that does) and names that parent in its banner.
 
-| Piece | Existing owner | Sword/Shield use |
+| Piece | Where on `nav/shared` | Sword/Shield use |
 |---|---|---|
-| Story action registry, backend, JSON plans and scripted fake | `Pokemon/AutoStory/Engine/` | Register SwSh actions and run the same plans on a console or scripted test |
-| Checkpoint save modes, retries, logs and postconditions | `Pokemon/AutoStory/` | Reload the last verified save after a failed checkpoint |
-| Free-moving `stick()` backend input | `Pokemon_StoryBackend` | Turn and walk in bounded slices |
+| Action registry, built-in actions, `StoryGame` hooks, JSON checkpoints, lint | `Pokemon/AutoStory/Engine/` (contract in `Engine/MIGRATION.md`) | Register SwSh handlers under the engine's kinds and names (section 3) |
+| Checkpoint save modes, retries, logs and postconditions | `Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h` | Reload the last verified save after a failed checkpoint |
+| Free-moving input and facing | `StoryBackend::stick()`, the `"heading"` reading (`STORY_HEADING`) | Turn and walk in bounded slices; report facing if the game shows it |
 | Named-area pose | `Pokemon::ZonePose` | Carry `PostwickHome`, `Postwick`, `HopHouse` and `Wedgehurst` before an exact position reader exists |
-| Shared screen events and scene judgements | `CommonTools/ScreenEvents/`, `Pokemon/AutoStory/` | Interpret SwSh detectors as dialog, choice, fade, battle and player-control events |
-| Failure capture, frame replay and breakpoints | fork AutoStory stack | Preserve what a failed action saw and pause before a step or walk leg |
-| Feedback-driven Switch system keyboard | `NintendoSwitch/Inference/` and `Programs/FastCodeEntry/` on the fork stack | Type the player name after a SwSh fixture verifies the same keyboard layout |
+| Scripted backend | `FakeStoryBackend<Pose>` | Run the checkpoint plans offline, including `console_only` code with a CONSOLE script |
+| Shared screen events and scene loops | `CommonTools/ScreenEvents/`, `run_screen_machine_on_observations()` in `CommonTools/ScreenMachine/` | Interpret SwSh detectors as dialog, choice, fade, battle and player-control events |
+| Launch from HOME to the overworld on a save | `Engine/Pokemon_StoryLaunch.*` (fork #477) | Reload and resume; it never starts a new game, so `new_game` runs after it (section 3) |
+| Failure classes | `Pokemon/AutoStory/Pokemon_StoryFailureClasses.*` (fork #479) | Name each S9 fault and the retry it implies |
+| Shared story files and dev-folder override | `Pokemon/AutoStory/Data/Pokemon_StoryFiles.h` (fork #474) | Load `StoryData/` checkpoints and override them from a dev folder |
+| Breakpoints before each step and leg | fork #448 | Pause before a walk leg while measuring |
+| Feedback-driven Switch system keyboard | `NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.*`, `NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.*` (fork #62) | Type the player name after a SwSh fixture verifies the same keyboard layout |
 
-Fork [PR #114](https://github.com/dayfine/Arduino-Source/pull/114) holds the shared navigation/core
-stack and fork [PR #332](https://github.com/dayfine/Arduino-Source/pull/332) the story engine. They
-were merged into their parent branches, not upstream `main`; a SwSh implementation branch must name
-its exact parent rather than assume these APIs are upstream.
+Frame replay (fork #306) and failure capture (fork #308) are **not** on `nav/shared`: both are open
+on `nav/grid-story-steps`. S9 depends on them merging (section 10).
 
-Pokemon Legends: Z-A is the closest structural precedent. Its console backend, screen observer,
-scene machine and landmark-steered walks show how a game without tiles plugs into the engine. Its
+No game runs on the engine yet. `Engine/MIGRATION.md` moves FRLG, BDSP and PLZA onto it in that
+order; FRLG and BDSP still use their own executors. The PLZA adapter is the closest structural
+precedent and is still open: fork #354 (base #416, which bases on #448 in `nav/shared`). It shows how
+a game without tiles plugs in: a console backend, a screen-event adapter, a scene machine, a
+`StoryGame` and JSON checkpoints. Its walks are **not** visually steered. `PokemonLZA_AutoStoryMoves.h`
+uses recorded turns and timed walks, the compass and fast travel: walks are `TIMED_LEGS` args, turns
+are `stick()` after the camera recenter, and the minimap arrow is the `"heading"` reading. Its only
+visual arrival check is `PlatformArrivalDetector` (`wait_for_platform`, `walk_to_prompt`). Its
 detectors, timings and route actions remain PLZA-specific and are not copied into SwSh.
 
 ### 2.2 Sword/Shield code on upstream main
 
 | Existing code | Reuse status | Work before story use |
 |---|---|---|
-| `DialogBoxDetector`, `DialogTriangleDetector` | candidate reuse | Test opening dialog variants and quiet frames |
+| `BlackDialogBoxDetector`, `WhiteDialogBoxDetector` (`PokemonSwSh_DialogBoxDetector.h`), `DialogTriangleDetector` | candidate reuse | Test opening dialog variants and quiet frames |
 | `MainMenuDetector`, `PartyMenuDetector`, `BoxMenuDetector` | candidate reuse | Add opening-story and first-save fixtures |
-| `SelectionArrowDetector`, Rotom Phone cursor reader | candidate reuse | Verify the language/appearance/options/choice layouts separately |
-| black/white fade detectors in `CommonTools` | reuse | Test each opening door and scene transition |
+| `SelectionArrowDetector`, `RotomPhoneMenuArrowFinder` | candidate reuse | Verify the language/appearance/options/choice layouts separately |
+| `BlackScreenOverWatcher`, `WhiteScreenOverWatcher` (`CommonTools/VisualDetectors/BlackScreenDetector.h`) | reuse | Test each opening door and scene transition |
 | `save_game()`, `menus_to_mainmenu()` | strong reuse candidate | Wrap as an `Outcome`; verify first-save prompts and return to control |
-| SwSh game start/reset routines | partial reuse | Existing-save entry is implemented; fresh-save/title handling is not |
-| `StandardBattleMenu`, `StartBattle`, battle-dialog and EXP detectors | Gate B candidate | Register story-specific image cases before building a trainer loop |
+| `PokemonSwSh_GameEntry` start/reset routines | partial reuse | Existing-save entry is implemented; fresh-save/title handling is not |
+| `StandardBattleMenuDetector`, `StartBattleWatcher`, battle-dialog and EXP detectors | Gate B candidate | Register story-specific image cases before building a trainer loop |
 | `basic_catcher()` and `ReceivePokemonDetector` | Gate B candidate | Wrap all results; cover nickname, full party and post-catch return |
 | party/box detectors and `menus_to_boxsystem()` | Gate B candidate | Add verified move-order and deposit actions instead of fixed cursor scripts |
-| Y-Comm icon detector | later reuse | It cannot prove the early overworld before Y-Comm is unlocked |
-| overworld mark tracker and trajectory table | limited evidence | It follows exclamation/question marks, not doors or route landmarks; its steering maths may inform the pilot |
+| `YCommIconDetector` | later reuse | It cannot prove the early overworld before Y-Comm is unlocked |
+| `OverworldTargetTracker`, `OverworldTrajectory` (`Programs/OverworldBot/`), `MarkFinder` | limited evidence | It follows exclamation/question marks, not doors or route landmarks; its steering maths may inform the pilot |
 
-"Candidate" is intentional: a detector being used by another program does not establish its false
-positive/negative behavior on the opening story.
+Paths are under `SerialPrograms/Source/VideoGames/PokemonSwSh/` on `main`. "Candidate" is
+intentional: a detector being used by another program does not establish its false positive/negative
+behavior on the opening story.
 
 ### 2.3 What must be invented
 
@@ -106,12 +118,13 @@ The new work is bounded to the game adapter and the evidence it needs:
 - a SwSh screen observer, console backend, action registry and story table on the shared engine;
 - fresh-save, language, appearance and options detection;
 - an early player-control cue that works before Y-Comm;
-- landmark readers and a bounded visual waypoint walker;
+- walk actions in PLZA's shape (recorded turns, timed legs, a heading reading), plus a visual
+  endpoint reader only where R0 shows a timed leg cannot end reliably;
 - named opening poses and observed checkpoint postconditions;
 - Gate B only: a story battle loop and complete catch/party outcomes around the existing primitives.
 
-The work does not invent another checkpoint engine, JSON contract, retry loop, keyboard driver or
-generic tile planner.
+The work does not invent another checkpoint engine, JSON contract, retry loop, launch, keyboard
+driver or generic tile planner.
 
 ### 2.4 What #1207 contributes
 
@@ -133,29 +146,54 @@ unchanged. Each becomes evidence for a bounded action with an observable end sta
 
 ## 3. Actions required
 
-An action has a documented start screen, end screen, safe inputs, timeout and failure result. New
-game actions use existing story kinds where their meaning fits; game-specific mechanics remain
-named `GAME` actions rather than adding generic kinds prematurely.
+The engine's adapter contract (`Engine/MIGRATION.md` on `nav/shared`) decides where each piece
+goes. Built-in actions (`mash`; `talk`, which fails as `talk_no_text` when A opens no text; `answer`
+with its `yes` arg; `fight`; `save`) run on the game's screen events; a game replaces one only when
+it needs the game's map or menus, and **a replacement uses the built-in's kind and name**. `legs`
+and `face` exist only for tile poses, so a SwSh step naming them fails the lint, and the built-in
+`route` takes a `GRID_POSE` target, so a `ZonePose` game walks with its own `GAME` steps as PLZA
+does. Hook kinds (`new_game`, `options`, `ready`, `heal`, `shop`, `train`) are registered by the game
+under the same rule. Anything else is a `GAME` step.
+An action that works only through console screens (menus, the keyboard, a battle AI) sets
+`spec.console_only`: the engine refuses it off a console and never reloads for it, so scripted
+tests run it with a CONSOLE `FakeStoryBackend` script.
 
-| Action | Gate | Reuse | New contract |
-|---|---:|---|---|
-| `launch_fresh_save` | A | generic Switch launch | Reach a recognized no-save screen; reject an existing save without input |
-| `choose_language` | A | selection movement | Read the language screen, select the configured row, verify the next screen |
-| `choose_appearance` | A | selection movement | Select a supported appearance and verify the name handoff |
-| `enter_player_name` | A | system keyboard driver | Wait for the keyboard, type, confirm separately, verify the game returns |
-| `mash_scene_to_control` | A | shared scene machine/judges | Advance recognized text and choices until a SwSh control cue holds |
-| `set_story_options` | A | main-menu navigation | Read each supported row/value, change only mismatches, return to control |
-| `interact` | A | A press, dialog/fade events | Confirm the requested scene, prompt or transition started |
-| `choose_dialog_row` | A | arrow detection | Move from the observed row, confirm once, verify the choice closed |
-| `walk_to_landmark` | A | backend `stick()` | Steer from landmark observations until its explicit arrival condition |
-| `walk_until_event` | A | fade/dialog/control events | Move in short slices until the requested event or the bound |
-| `save_story_game` | A | `save_game()` | Verify first-save completion and control restored; return an `Outcome` |
-| `reload_story_save` | A | close/reopen/load routines | Verify the expected area/control cue before a retry starts |
-| `verify_station_approach` | A | landmark reader | Establish the Gate A postcondition without starting Leon's scene |
-| `choose_starter` | B | action/choice framework | Identify or reliably approach the configured starter and verify receipt |
-| `fight_story_battle` | B | battle detectors | Bounded move choice through victory/loss and return to the requested screen |
-| `catch_story_pokemon` | B | `basic_catcher()` | Report caught/fainted/own-fainted/out-of-balls/unsupported follow-up exactly |
-| `reorder_move` / `deposit_party` | B | party/box readers | Observe cursor and result rather than replay a fixed menu script |
+Every action states its start screen, end screen, safe inputs, timeout and failure result.
+
+| Engine kind / name | Gate | SwSh handler | console_only | Contract |
+|---|---:|---|:---:|---|
+| `NEW_GAME` / `new_game` (hook) | A | no-save title, language, appearance, keyboard name, Rose introduction | yes | Starts where the title shows no save (after #477's launch, which never starts a new game); rejects an existing save without input; ends at observed player control in `PostwickHome` |
+| `OPTIONS` / `options` (hook) | A | Rotom Phone options menu | yes | Read each supported row/value, change only mismatches, return to control |
+| `MASH` / `mash` (built-in) | A | none: SwSh supplies dialog, choice, fade and control events from `observe()` | no | Ends on the SwSh control cue; replace under the same kind and name only if R0 shows the built-in cannot |
+| `TALK` / `talk` (built-in) | A | none | no | A at what the player faces; fails as `talk_no_text` when no text opens |
+| `ANSWER` / `answer` with `yes` (built-in) | A | none for yes/no | no | A choice with more than two rows becomes a `GAME` step only if R0 finds one on the route |
+| `GAME` / `walk` | A | as PLZA's `walk`: `TIMED_LEGS` legs, the heading it faces first, the event it ends on (section 6) | no | Bounded legs; ends on its endpoint event or returns `lost`/timed out |
+| `GAME` / `walk_to_prompt` | A | as PLZA's: straight on in short `stick()` slices until an A prompt (or a fade or dialog) shows | no | Ends on the requested event or its bound |
+| `BATTLE` / `fight` (built-in) | B | `SwShConsoleBackend::battle()` over the existing battle detectors | battle AI: yes | Bounded move choice through victory/loss and return to the requested screen |
+| `GAME` / `choose_starter` | B | choice framework | yes | Identify or reliably approach the configured starter and verify receipt |
+| `GAME` / `catch_story_pokemon` | B | `basic_catcher()` | yes | Report caught/fainted/own-fainted/out-of-balls/unsupported follow-up exactly |
+| `GAME` / `reorder_move`, `deposit_party` | B | party/box readers | yes | Observe cursor and result rather than replay a fixed menu script |
+
+`StoryGame` hooks are not actions and are not registered:
+
+| Hook | SwSh handler |
+|---|---|
+| `save(backend, checkpoint)` | wraps `save_game()`; verifies first-save completion and returned control. The engine owns the SAVE step, so SwSh never registers `save` |
+| `reload` | close the game and run #477's launch to the overworld on the save; verify the expected area and control cue before a retry |
+| `begin_attempt` | clear per-attempt state; check the preconditions of section 9 item 11 |
+| `interrupts` | Gate B: wild and trainer battles during a walk |
+
+Readers (`StoryGameReader`), each saying what it `supplies`:
+
+- `"pose"`: the `ZonePose` area from the control cue and area evidence;
+- `"heading"` (`STORY_HEADING`, read with `story_heading()`): the player's facing, if SwSh shows a
+  minimap or compass that R0 confirms;
+- the Gate A station-approach postcondition, opted in with `StoryReaderUse::AFTER_CHECKPOINT` (cheap
+  and safe on any end screen); it replaces the earlier `verify_station_approach` action.
+
+Checkpoints are JSON in `StoryData/` with `metadata.phase`. A unit test loads every checkpoint, lints
+it with `StoryActionRegistry::lint` and checks `verified.steps_hash` for verification and
+reproduction checkpoints, as MIGRATION.md step 3 requires.
 
 ## 4. Detectors and readers required
 
@@ -185,12 +223,15 @@ change, change it in its owning detector PR with non-story regression cases too.
 | opening choice box | stop before selecting an unsupported choice | positive choices and ordinary dialogs |
 | options menu and row/value reader | idempotent settings | every row changed by the program, both values |
 | interaction prompt, if stable | end a walk before A | bag, doors, NPCs and negative overworld frames |
-| named landmarks | steer and establish checkpoint anchors | approach sequence, occlusion and wrong-facing negatives |
+| minimap/compass heading, if shown | the `"heading"` reading for turns | each Gate A map, several facings |
+| named landmarks, only where R0 needs them | a visual endpoint for a timed leg | approach sequence, occlusion, wrong-facing and other-hour negatives |
 | station approach | Gate A postcondition | several arrival offsets and nearby non-station views |
 
 The early control cue is the first detector risk. "No dialog" is not sufficient: cutscenes and
-loading frames also lack a dialog. Prefer a stable HUD or interaction affordance; otherwise combine
-several weak cues and require them to hold.
+loading frames also lack a dialog. PLZA's `ControlsHintDetector` and `mash_to_move_hints` (on
+`plza/story-base`, fork #354) are the pattern: a stable on-screen controls hint that appears only
+with control. Look for the SwSh equivalent first; otherwise combine several weak cues and require
+them to hold.
 
 ### 4.3 Gate B detectors
 
@@ -200,25 +241,32 @@ detectors are inputs, not complete outcomes.
 
 ## 5. Game routines and layout
 
-The implementation should follow the free-moving game shape already proven structurally by PLZA:
+The implementation follows the shape of PLZA's adapter (open fork #354, `plza/story-base`). SwSh
+lives at `SerialPrograms/Source/VideoGames/PokemonSwSh/` on `main`; #1207's
+`PokemonSwSh/Programs/AutoStory/` is the path from before that move.
 
 ```text
-PokemonSwSh/Programs/AutoStory/
+SerialPrograms/Source/VideoGames/PokemonSwSh/Programs/AutoStory/
   PokemonSwSh_AutoStory.{h,cpp}              program and options
   PokemonSwSh_AutoStoryBackend.{h,cpp}       controller, video, observations, battle call
-  PokemonSwSh_AutoStoryGame.{h,cpp}          actions, readers, save/reload, interrupts
+  PokemonSwSh_AutoStoryGame.{h,cpp}          action handlers, readers, save/reload, interrupts
+  PokemonSwSh_AutoStoryReadings.h            reading names shared by backend, readers and tests
   PokemonSwSh_AutoStoryScreenEvents.{h,cpp}  detector-to-event adapter
+  PokemonSwSh_AutoStorySceneMachine.{h,cpp}  scene states over the shared observation runner
+  PokemonSwSh_AutoStoryStepValidator.{h,cpp} SwSh-specific step checks beside the engine lint
+  PokemonSwSh_AutoStoryTable.{h,cpp}         segments and checkpoint list
+  PokemonSwSh_AutoStoryStoryFiles.{h,cpp}    StoryData/ loading over #474's shared story files
   Actions/
-    PokemonSwSh_AutoStoryOpening.*
+    PokemonSwSh_AutoStoryNewGame.*
     PokemonSwSh_AutoStoryScenes.*
     PokemonSwSh_AutoStoryOptions.*
-    PokemonSwSh_AutoStoryWalks.*
+    PokemonSwSh_AutoStoryMoves.*
     PokemonSwSh_AutoStoryBattles.*           Gate B
   Detectors/
     PokemonSwSh_AutoStoryNewGame.*
-    PokemonSwSh_AutoStoryControl.*
+    PokemonSwSh_AutoStoryControlsHint.*
     PokemonSwSh_AutoStoryOptions.*
-    PokemonSwSh_AutoStoryLandmarks.*
+    PokemonSwSh_AutoStoryLandmarks.*         only if section 6 needs them
   StoryData/
     swsh-00.xx.plan.json
 ```
@@ -232,27 +280,42 @@ The important routines are:
 3. `make_swsh_story_game()`: registers actions/readers and owns save, reload and interrupt hooks.
 4. SwSh scene machine: uses the shared observation runner; every recognized state takes one safe
    step, and quiet/unknown screens have bounds.
-5. Visual walk controller: steers to one named landmark and reports arrived, lost, interrupted or
-   timed out.
+5. Walk actions: recorded turns and timed legs with a heading check, ending on an endpoint event;
+   each reports arrived, lost, interrupted or timed out.
 6. Scripted backend cases: run the exact checkpoint plans through success, dropped input, detector
    miss, retry and exhaustion without a console.
 
 ## 6. The 3D navigation pilot
 
-Do not make a global navigation abstraction before one SwSh route works. The first primitive is a
-bounded visual waypoint:
+Do not make a global navigation abstraction before one SwSh route works.
 
-1. A landmark reader returns horizontal bearing, apparent size and confidence.
-2. The walker turns or walks for a short slice.
-3. It releases the stick and observes again.
-4. It corrects the next slice from the new reading.
-5. It ends on a fade, dialog, interaction prompt, landmark threshold or explicit endpoint reader.
-6. If the landmark disappears, it performs a small bounded scan.
-7. If the scan does not reacquire it, the action returns `lost`; the checkpoint reloads rather than
-   continuing blind.
+**Walk shape.** SwSh walks are expected to follow PLZA's model: recorded turns, timed legs and a
+minimap/compass heading, written as `TIMED_LEGS` args to a `GAME` `walk` step. The final arg shape
+is decided after R0 play and a movement-mechanics study (section 9 item 5). If SwSh walks need
+anything PLZA lacks, such as a visual endpoint inside a leg, that is a change to `StoryStepJson` and
+the lint, and it lands as a shared-engine PR on `nav/shared` before S5.
 
-Short measured legs are acceptable only between two observed anchors, marked as assumed in the
-route log and bounded by the endpoint detector. A long hold from #1207 is not an anchor.
+A walk leg:
+
+1. Turns with `stick()` and checks the `"heading"` reading where the game shows one.
+2. Walks a timed slice, releases the stick and observes again.
+3. Ends on a fade, dialog, interaction prompt or explicit endpoint reader.
+4. Returns `lost` when its endpoint has not appeared within the leg's bound; the checkpoint reloads
+   rather than continuing blind.
+
+A timed leg is acceptable only between two observed anchors, marked as assumed in the route log and
+bounded by the endpoint detector. A long hold from #1207 is not an anchor.
+
+**Landmark steering has no precedent on the engine.** PLZA's only visual arrival is
+`PlatformArrivalDetector`. The project's one landmark loop is upstream #1717's BDSP `match_landmarks`
+(`docs/design/AutoStory.md` §4.3): `TM_CCOEFF_NORMED` per landmark, a margin over the best
+competitor, several landmarks that must agree, a fine then coarse pass, three consecutive hits,
+one-axis nudges and lost/give-up bounds. If R0 shows a SwSh leg needs a visual endpoint, adopt that
+loop's shape, including its failure modes. In r28 (`AutoStory-Lessons.md`) its landmark scores fell
+to 0.41 and 0.60 after the console clock drifted 3.5 h from the reference captures, and pinning the
+Switch clock to avoid that broke runs on its own (r108; `AutoStory-Navigation-Stack.md`, "Drop the
+clock pin"). Galar's towns follow the real-time day/night cycle, so day/night handling is settled
+before S5 (section 9 item 7), not left as a support decision.
 
 Use named poses initially:
 
@@ -265,8 +328,8 @@ Postwick / road_to_wedgehurst
 Wedgehurst / station_approach
 ```
 
-`ZonePose` can carry the area while action-specific readings carry the landmark. Define a new exact
-pose type only after a position reader has demonstrated coordinates or another stable representation.
+`ZonePose` can carry the area while action-specific readings carry the heading and endpoint.
+Define a new exact pose type only after a position reader has demonstrated coordinates or another stable representation.
 
 ## 7. Gate A checkpoints
 
@@ -277,8 +340,8 @@ checkpoint still has one saved start and a separately observed end.
 |---|---|---|---|
 | 00.00 Fresh start | recognized no-save launch | language, appearance, name, Rose introduction | player control in `PostwickHome` |
 | 00.01 Bag | saved/control in home | options, walk to bag, interact, clear scene | bag obtained, control restored in home |
-| 00.02 Hop's house | saved/control in home | leave through fade, landmark route, enter Hop's house, clear scene | control at a recorded Hop-house anchor |
-| 00.03 Station approach | saved/control after Hop's scene | leave, follow road landmarks, stop before Leon | `Wedgehurst/station_approach`, no station scene started |
+| 00.02 Hop's house | saved/control in home | leave through fade, timed walk, enter Hop's house, clear scene | control at a recorded Hop-house anchor |
+| 00.03 Station approach | saved/control after Hop's scene | leave, timed walk along the road, stop before Leon | `Wedgehurst/station_approach`, no station scene started |
 
 If 00.00 cannot save before its end, it remains one fresh-start checkpoint and later checkpoints
 start only after the first verified save. Do not pretend a scene boundary is reloadable.
@@ -312,34 +375,38 @@ consume or change.
 3. Find the early player-control cue before Y-Comm.
 4. Verify first-save, overwrite, autosave and reload behavior. Determine when autosave can be disabled
    and what the opening reload returns to.
-5. Measure camera and stick behavior on each Gate A map: turn rate, displacement, collisions and
-   whether camera recentering is automatic.
-6. Identify at least one stable landmark for every walk and collect wrong-facing, occluded and nearby
-   negative frames.
+5. Movement-mechanics study on each Gate A map: turn rate, displacement per held time, collisions,
+   whether the camera recenters, and whether a minimap or compass gives the heading. It decides the
+   walk arg shape (section 6).
+6. Identify an endpoint event for every walk, and a stable landmark only where no event exists;
+   collect wrong-facing, occluded and nearby negative frames.
+7. Settle day/night before S5. Galar's towns follow the Switch clock, and #1717's landmarks failed
+   across hours (r28) while pinning the clock broke runs (r108). Choose cues that hold across the
+   hours, or per-hour references as `match_lighting_pair` did, and record the hours each was tested.
 
 ### Support decisions
 
-7. Start with one declared matrix: English game, QWERTY Switch 1 system keyboard, one version,
+8. Start with one declared matrix: English game, QWERTY Switch 1 system keyboard, one version,
    16:9 and the normal capture resolution. Add a matrix row only with fixtures and a live pass.
-8. Check Sword versus Shield differences before the station, then the legendary scene separately.
-9. Check whether time, weather, NPC motion or display brightness changes a Gate A landmark.
-10. Decide which settings are required for reliable execution. Record their values as a precondition
+9. Check Sword versus Shield differences before the station, then the legendary scene separately.
+10. Check whether weather, NPC motion or display brightness changes a Gate A cue.
+11. Decide which settings are required for reliable execution. Record their values as a precondition
     and verify them rather than replaying #1207's cursor counts.
 
 ### Gate B research
 
-11. Characterize each existing battle detector on the starter/Hop and Weald battle screens.
-12. Determine the minimal battle policy per starter, possible losses and any move-learn/evolution
+12. Characterize each existing battle detector on the starter/Hop and Weald battle screens.
+13. Determine the minimal battle policy per starter, possible losses and any move-learn/evolution
     prompts before the Wild Area.
-13. Exercise `basic_catcher()` on the tutorial and ordinary early catches, including party-full and
+14. Exercise `basic_catcher()` on the tutorial and ordinary early catches, including party-full and
     nickname paths.
-14. Measure where the camera model changes and whether a useful objective, minimap or landmark cue
+15. Measure where the camera model changes and whether a useful objective, minimap or landmark cue
     exists in the Wild Area.
 
 ## 10. Implementation and PR sequence
 
-Each code PR is a child of its real shared parent and owns the new files it adds. No PR copies shared
-engine files. Exact line counts wait for the evidence slice.
+Each code PR bases on `nav/shared` or a SwSh parent on it, and owns the new files it adds. No PR
+copies shared engine files. Exact line counts wait for the evidence slice.
 
 | Slice | Deliverable | Acceptance before the next slice |
 |---|---|---|
@@ -348,11 +415,11 @@ engine files. Exact line counts wait for the evidence slice.
 | S2 | backend, `StoryGame`, program shell and empty table | scripted dispatch, save/reload, retry/exhaustion and log cases pass |
 | S3 | fresh-save, language, appearance, name and intro actions | three fresh starts reach observed control; a dropped press fails boundedly |
 | S4 | options and first save/reload | save, injected failure, reload and resume return to the expected state |
-| S5 | one landmark-walk primitive | repeated prepared-save walks reach one nearby anchor; loss stops safely |
+| S5 | one walk primitive in PLZA's shape (a shared-engine PR first if section 6 needs one) | repeated prepared-save walks reach one nearby anchor; loss stops safely |
 | S6 | 00.01 home/bag | three consecutive runs from its own start state |
 | S7 | 00.02 Hop's house | three consecutive runs; door and scene failures reload correctly |
 | S8 | 00.03 station approach | three consecutive runs and five Gate A end-to-end runs |
-| S9 | frame replay and fault sweep | dropped presses, missed events, stale looks and lost landmarks terminate/retry as designed |
+| S9 | frame replay and fault sweep over #479's failure classes; needs open #306 and #308 merged into `nav/shared` | dropped presses, missed events, stale looks and lost walks terminate/retry as designed |
 
 The detector and route evidence should be offered to #1207's author with the engine integration.
 Do not edit, close, reopen or mark ready their upstream PR. Any agent-created implementation PR stays
@@ -365,14 +432,20 @@ Gate A is complete only when:
 - every action states its start screen, end screen, timeout and failure result;
 - no action presses through an unknown screen except a documented safe input with a finite bound;
 - each detector has positive and near-negative image cases;
-- every walk observes between bounded movement slices and stops on landmark loss;
+- every walk observes between bounded movement slices and stops when its endpoint does not appear;
 - each saved checkpoint passes three times in a row from its own save;
 - the complete Gate A route passes five times in a row from a fresh profile;
-- an injected dropped input, missed detector and lost landmark cause a finite failure/retry, not
+- an injected dropped input, missed detector and lost walk cause a finite failure/retry, not
   drift into the next step;
 - logs name checkpoint, event, action, observations and stop reason, and retain failed frames;
 - the authored plans lint and run through scripted replay;
-- visual walking remains explicitly console-only offline until a measured SwSh motion model exists.
+- every console failure becomes a red-first regression test (AGENTS.md, MIGRATION.md step 5).
+
+Walk failures have no motion model to replay in. **Proposed, user to confirm:** the red-first test
+for a walk failure is a frame replay of the failing reader over the captured failure frames (#306),
+plus a `FakeStoryBackend` script carrying the observed `"heading"` and endpoint readings that
+reproduces the `lost` result. This depends on fork #306 (frame replay) and #308 (failure capture),
+both open on `nav/grid-story-steps`; until they merge into `nav/shared`, S9 cannot start.
 
 The immediate task is R0, followed by running the existing dialog/menu/arrow/fade detectors over the
 captured opening frames. That evidence tells us whether Gate A's first implementation risk is screen
