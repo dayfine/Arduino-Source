@@ -306,7 +306,10 @@ std::vector<MartCase> mart_cases_4(){
 //  covers them (user, 2026-11-15): a short purse skips the line, the step
 //  done, where without if_affordable it fails.
 std::vector<MartCase> mart_cases_5(){
-    const MartPlan full_heals{.map = "IndigoPlateau_PokemonCenter_1F", .lines = {{"full-heal", 2}}, .if_affordable = true};
+    const std::vector<MartLine> two_full_heals{{"full-heal", 2}};
+    const std::vector<MartLine> restore_then_heal{{"full-restore", 1}, {"full-heal", 1}};
+    const MartPlan full_heals{.map = "IndigoPlateau_PokemonCenter_1F", .lines = two_full_heals, .if_affordable = true};
+    const MartPlan restore_first{.map = "IndigoPlateau_PokemonCenter_1F", .lines = restore_then_heal, .if_affordable = true};
     return {
         {
             .name = "if_affordable: both bought when the money covers them",
@@ -329,7 +332,7 @@ std::vector<MartCase> mart_cases_5(){
         },
         {
             .name = "if_affordable: a line skipped, the cheaper next one still bought",
-            .plan = {.map = "IndigoPlateau_PokemonCenter_1F", .lines = {{"full-restore", 1}, {"full-heal", 1}}, .if_affordable = true},
+            .plan = restore_first,
             .money = 700,
             .bag = {{"full-heal", 1}},
             .money_after = 100,
@@ -556,27 +559,36 @@ struct ApprovedShopping{
     size_t money_after;
 };
 
+//  A plan of one line: `quantity` of `item` at `map`'s Mart.
+MartPlan one_line(std::string map, std::string item, size_t quantity){
+    return {.map = std::move(map), .lines = {MartLine{std::move(item), quantity}}};
+}
+
 const std::vector<ApprovedShopping>& approved_shopping(){
+    MartPlan status_heals = one_line("ViridianCity_Mart", "antidote", 1);
+    status_heals.lines.push_back({"parlyz-heal", 2});
+    MartPlan full_heals = one_line("IndigoPlateau_PokemonCenter_1F", "full-heal", 2);
+    full_heals.if_affordable = true;
     static const std::vector<ApprovedShopping> shopping{
         {
             .checkpoint = "12.03", .step = "buy_super_potions_for_silph", .before = "16.01",
-            .plan = {.map = "FuchsiaCity_Mart", .lines = {{"super-potion", 4}}},
+            .plan = one_line("FuchsiaCity_Mart", "super-potion", 4),
             .money = 2800, .bag = {{"super-potion", 4}}, .money_after = 0,
         },
         {
             .checkpoint = "18.03", .step = "buy_x_accuracies", .before = "19.01",
-            .plan = {.map = "CeladonCity_DepartmentStore_5F", .lines = {{"x-accuracy", 2}}},
+            .plan = one_line("CeladonCity_DepartmentStore_5F", "x-accuracy", 2),
             .money = 1900, .bag = {{"x-accuracy", 2}}, .money_after = 0,
         },
         {
             .checkpoint = "19.01a", .step = "buy_status_heals", .before = "19.01",
-            .plan = {.map = "ViridianCity_Mart", .lines = {{"antidote", 1}, {"parlyz-heal", 2}}},
+            .plan = status_heals,
             .money = 500, .bag = {{"antidote", 1}, {"parlyz-heal", 2}}, .money_after = 0,
         },
         {
             //  After 13 Full Restores, money for one Full Heal: skipped.
             .checkpoint = "20.01a", .step = "buy_full_heals", .before = "20.01",
-            .plan = {.map = "IndigoPlateau_PokemonCenter_1F", .lines = {{"full-heal", 2}}, .if_affordable = true},
+            .plan = full_heals,
             .money = 1100, .bag = {}, .money_after = 1100,
         },
     };
