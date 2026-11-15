@@ -61,11 +61,12 @@ private:
 int party_bar_filled_slots(const ImageViewRGB32& screen);
 
 
+//  Registers the detector's image tests (CommandLineTests/PokemonLZA/PartyBarDetector/).
 void add_tests_PartyBarDetector(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonLZA
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif
