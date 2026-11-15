@@ -10,6 +10,7 @@
  */
 
 #include <chrono>
+#include <format>
 #include <functional>
 #include <optional>
 #include <string>
@@ -478,6 +479,71 @@ UnitTestResult test_language_tags(Logger&){
     return true;
 }
 
+//  The screen at each 250 ms poll, a letter per look. Past the end the last
+//  letter holds, or with `cycle` the letters start over.
+struct BurstInput{
+    std::string screens;
+    bool cycle = false;
+};
+struct BurstResult{
+    size_t saves;
+    std::optional<std::chrono::milliseconds> stop_at;
+    bool operator==(const BurstResult&) const = default;
+};
+//  Runs FrameBurst over `input`, a change being any other letter.
+BurstResult run_burst(const BurstInput& input){
+    using std::chrono::milliseconds;
+    FrameBurst burst;
+    char saved = 0;
+    char previous = 0;
+    BurstResult result{0, std::nullopt};
+    const std::string& screens = input.screens;
+    milliseconds at(0);
+    for (size_t i = 0; i < 400 && !result.stop_at; i++, at += milliseconds(250)){
+        const char screen = i < screens.size() ? screens[i]
+            : input.cycle ? screens[i % screens.size()] : screens.back();
+        const auto change = [screen](char other){ return other == screen ? 0.0 : 100.0; };
+        const BurstStep step = burst.see(at, change(saved), change(previous));
+        previous = screen;
+        if (step.save){
+            saved = screen;
+            result.saves++;
+        }
+        if (step.stop){
+            result.stop_at = at;
+        }
+    }
+    return result;
+}
+
+//  Capture mode's recording after the look: a frame on each change and each
+//  second, until the screen holds still for CAPTURE_STILL_FOR (not before
+//  CAPTURE_MIN_LENGTH), or CAPTURE_MAX_LENGTH.
+UnitTestResult test_after_look_burst(Logger&){
+    using std::chrono::milliseconds;
+    using Input = BurstInput;
+    using Expectation = BurstResult;
+    struct Case{
+        std::string name;
+        Input input;
+        Expectation expectation;
+    };
+    const Case cases[] = {
+        {"a fade, then the keyboard from 1.5 s", {"LLssssK"},              {9, milliseconds(8000)}},
+        {"still from the start",                  {"L"},                    {9, milliseconds(8000)}},
+        {"a change at 6 s",                       {std::string(24, 'L') + "K"}, {10, milliseconds(9000)}},
+        {"never still",                           {"ab", true},             {121, CAPTURE_MAX_LENGTH}},
+    };
+    for (const Case& c : cases){
+        const BurstResult got = run_burst(c.input);
+        if (got != c.expectation){
+            return std::format("{}: {} frames saved, stopped at {}.", c.name, got.saves,
+                got.stop_at ? std::format("{} ms", got.stop_at->count()) : std::string("never"));
+        }
+    }
+    return true;
+}
+
 //  The intro's two selects from lab-B 2026-11-09 (each cursor on its first
 //  item), the screens one A before and after the look select, and screens
 //  that are neither. Screenshots are in the unit test resources; a missing
@@ -874,6 +940,10 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
     },
     {
         .input = {"new-game intro: capture file per language", test_language_tags},
+        .expectation = {},
+    },
+    {
+        .input = {"new-game intro: capture records what follows the look", test_after_look_burst},
         .expectation = {},
     },
     {
