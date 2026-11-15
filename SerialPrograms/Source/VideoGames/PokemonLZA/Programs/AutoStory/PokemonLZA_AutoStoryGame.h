@@ -7,8 +7,8 @@
  *  JSON is read against.
  *
  *  The actions that read or press through the game's own screens are
- *  console_only: the engine refuses them elsewhere. The new game's opening
- *  and the walks run on any backend.
+ *  console_only: the engine refuses them elsewhere. The new game's opening,
+ *  the walks and the scene machine run on any backend.
  *
  */
 
@@ -47,6 +47,8 @@ namespace PokemonLZA{
 //                              (check_can_walk()), until its end event if it
 //                              has one (walk_until()), else until its legs
 //                              have run (finish_walk())
+//      "mash_to_move_hints"    A through scenes until the player has control
+//                              (run_scene_machine()): 01.01's arrival
 //
 //  Later slices add rows here, each with its handler.
 const std::vector<Pokemon::StoryActionSpec>& plza_story_specs();

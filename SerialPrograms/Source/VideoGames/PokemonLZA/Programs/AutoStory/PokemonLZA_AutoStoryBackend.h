@@ -24,6 +24,8 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAdvanceArrowDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAutosaveDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryControlsHintDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMainMissionBannerDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryPlatformArrivalDetector.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 
@@ -66,8 +68,9 @@ public:
     //  HOME (PLZA's detectors may read its plain screen as the game); else
     //  PlzaScreenObserver's events on a frame (Pokemon::screen_observation()),
     //  SCREEN_STILL when it barely differs from the frame of the look before,
-    //  and the readings PLATFORM_READING, AUTOSAVE_READING and
-    //  ADVANCE_ARROW_READING.
+    //  and the readings PLATFORM_READING, AUTOSAVE_READING,
+    //  CONTROLS_HINT_READING, ADVANCE_ARROW_READING and
+    //  MISSION_BANNER_READING.
     virtual Pokemon::Observation<Pokemon::ZonePose> observe() override;
 
     //  To the console's log and the stream's overlay log: the checkpoint and
@@ -81,7 +84,9 @@ private:
     PlzaScreenObserver m_observer;
     PlatformArrivalDetector m_platform;
     AutosaveDetector m_autosave;
+    ControlsHintDetector m_controls_hint;
     AdvanceArrowDetector m_advance_arrow;
+    MainMissionBannerDetector m_mission_banner;
     VideoSnapshot m_previous;
 };
 

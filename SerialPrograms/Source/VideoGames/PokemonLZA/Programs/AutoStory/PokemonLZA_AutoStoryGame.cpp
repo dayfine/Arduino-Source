@@ -19,6 +19,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryConfirmChoices.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
 #include "PokemonLZA_AutoStoryReadings.h"
+#include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryGame.h"
 
 namespace PokemonAutomation{
@@ -69,6 +70,7 @@ std::vector<StoryActionSpec> make_specs(){
                 .why = "\"fade_white\", \"fade_black\" or \"dialog\": the last leg is held until it shows, its ms the bound",
             },
         }),
+        game_spec("mash_to_move_hints"),
     };
 }
 
@@ -215,6 +217,23 @@ Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
 }
 
 
+//  "mash_to_move_hints": A through the scenes (a choice takes its top
+//  row, the advance chevron its text) until the player has control: the
+//  controls hint held a second, or a main mission's banner on two looks
+//  (01.01's arrival ends on "MAIN MISSION 01"; the step returns once it has
+//  gone, 10 s at most). 01.01's arrival takes ~240 s on the console, hence
+//  360 s. A text-free cutscene (01.01's city flyover, ~20 s) is not
+//  control: a minute with nothing busy fails the step. After 5 s with
+//  nothing busy and no sign of control, A every 2 s, for text the detectors
+//  miss (01.01's ad).
+Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    SceneMachineConfig config;
+    config.quiet = 60s;
+    config.blind_press_after = 5s;
+    return run_scene_machine(backend, "mash_to_move_hints", config, 360s);
+}
+
+
 //  The handler of each of plza_story_specs(), by name.
 Handler plza_handler(StoryEnv* env, const StoryActionSpec& spec){
     if (spec.name == "confirm_new_game"){
@@ -225,6 +244,9 @@ Handler plza_handler(StoryEnv* env, const StoryActionSpec& spec){
     }
     if (spec.name == "opening_to_platform"){
         return platform_handler(PlatformWait::AFTER_AUTOSAVE);
+    }
+    if (spec.name == "mash_to_move_hints"){
+        return move_hints_step;
     }
     return walk_step;
 }

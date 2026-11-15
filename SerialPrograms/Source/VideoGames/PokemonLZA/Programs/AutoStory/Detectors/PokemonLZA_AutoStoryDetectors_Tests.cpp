@@ -23,7 +23,9 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "PokemonLZA_AutoStoryAdvanceArrowDetector.h"
 #include "PokemonLZA_AutoStoryAutosaveDetector.h"
+#include "PokemonLZA_AutoStoryControlsHintDetector.h"
 #include "PokemonLZA_AutoStoryDetectors_Tests.h"
+#include "PokemonLZA_AutoStoryMainMissionBannerDetector.h"
 #include "PokemonLZA_AutoStoryPlatformArrivalDetector.h"
 
 namespace PokemonAutomation{
@@ -42,7 +44,9 @@ constexpr size_t HEIGHT = 1080;
 struct DetectorReads{
     std::optional<bool> platform = {};
     std::optional<bool> autosave = {};
+    std::optional<bool> controls_hint = {};
     std::optional<bool> advance_arrow = {};
+    std::optional<bool> mission_banner = {};
 };
 
 struct DetectorField{
@@ -52,7 +56,9 @@ struct DetectorField{
 const DetectorField DETECTOR_FIELDS[] = {
     {"platform", &DetectorReads::platform},
     {"autosave", &DetectorReads::autosave},
+    {"controls hint", &DetectorReads::controls_hint},
     {"advance arrow", &DetectorReads::advance_arrow},
+    {"mission banner", &DetectorReads::mission_banner},
 };
 
 //  `reads` with every detector checked: one it leaves unset must not fire.
@@ -91,12 +97,15 @@ std::string mismatches(const DetectorReads& got, const DetectorReads& want){
 struct StoryDetectors{
     PlatformArrivalDetector platform;
     AutosaveDetector autosave;
+    ControlsHintDetector hint;
     AdvanceArrowDetector arrow;
+    MainMissionBannerDetector banner;
 
     DetectorReads read(const ImageViewRGB32& frame){
         return DetectorReads{
             .platform = platform.detect(frame), .autosave = autosave.detect(frame),
-            .advance_arrow = arrow.detect(frame),
+            .controls_hint = hint.detect(frame), .advance_arrow = arrow.detect(frame),
+            .mission_banner = banner.detect(frame),
         };
     }
 };
@@ -115,6 +124,15 @@ void fill_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t c
 ImageRGB32 solid_frame(uint32_t color){
     ImageRGB32 image(WIDTH, HEIGHT);
     image.fill(color);
+    return image;
+}
+
+//  The controls hint's card drawn on black: sky blue with a dark block for
+//  the top of its "?".
+ImageRGB32 controls_hint_frame(){
+    ImageRGB32 image = solid_frame(0xff000000);
+    fill_box(946, 868, 972, 902, 0xff7dd2fa, image);
+    fill_box(956, 879, 962, 886, 0xff1c7db0, image);
     return image;
 }
 
@@ -160,12 +178,33 @@ ImageRGB32 autosave_badge_frame(uint32_t background, uint32_t glow){
     return image;
 }
 
+//  How mission_banner_frame() draws the icon.
+enum class BannerIcon{
+    NONE,
+    DRAWN,
+};
+
+//  The mission banner drawn on a grey scene: the yellow bar, and with
+//  BannerIcon::DRAWN the icon's white hexagon (as a block) with the orange
+//  stroke, `dx` right of where the detector expects it.
+ImageRGB32 mission_banner_frame(size_t dx, BannerIcon icon){
+    ImageRGB32 image = solid_frame(0xff606060);
+    fill_box(345, 410, 1590, 600, 0xfffad228, image);
+    if (icon == BannerIcon::DRAWN){
+        fill_box(700 + dx, 327, 738 + dx, 370, 0xffffffff, image);
+        fill_box(716 + dx, 336, 720 + dx, 357, 0xfff07020, image);
+    }
+    return image;
+}
+
 constexpr uint32_t WHITE = 0xffffffff;
 constexpr uint32_t BLACK = 0xff000000;
 constexpr uint32_t GRAY = 0xff808080;
 constexpr uint32_t AD_LIGHT_BLUE = 0xffc1ecf0;
 constexpr uint32_t BOX_WHITE = 0xfffcfcf7;
 constexpr uint32_t BOX_TEXT_DARK = 0xff323648;
+constexpr uint32_t HINT_SKY_BLUE = 0xff7dd2fa;
+constexpr uint32_t BANNER_YELLOW = 0xfffad228;
 
 struct SyntheticFrameCase{
     std::string name;
@@ -229,6 +268,16 @@ const SyntheticFrameCase SYNTHETIC_FRAME_CASES[] = {
         .expectation = {.reads = {.autosave = false}},
     },
     {
+        .name = "the controls hint card",
+        .input = {.frame = controls_hint_frame},
+        .expectation = {.reads = {.controls_hint = true}},
+    },
+    {
+        .name = "a frame all in the hint card's blue (a sky)",
+        .input = {.frame = []{ return solid_frame(HINT_SKY_BLUE); }},
+        .expectation = {.reads = {.controls_hint = false}},
+    },
+    {
         .name = "a white chevron on the ad's light blue",
         .input = {.frame = []{ return chevron_frame(AD_LIGHT_BLUE, WHITE); }},
         .expectation = {.reads = {.advance_arrow = true}},
@@ -242,6 +291,26 @@ const SyntheticFrameCase SYNTHETIC_FRAME_CASES[] = {
         .name = "a solid block the chevron's size",
         .input = {.frame = chevron_sized_block_frame},
         .expectation = {.reads = {.advance_arrow = false}},
+    },
+    {
+        .name = "the mission banner",
+        .input = {.frame = []{ return mission_banner_frame(0, BannerIcon::DRAWN); }},
+        .expectation = {.reads = {.mission_banner = true}},
+    },
+    {
+        .name = "the mission banner with its icon 40 px right",
+        .input = {.frame = []{ return mission_banner_frame(40, BannerIcon::DRAWN); }},
+        .expectation = {.reads = {.mission_banner = true}},
+    },
+    {
+        .name = "the mission banner's bar without the icon",
+        .input = {.frame = []{ return mission_banner_frame(0, BannerIcon::NONE); }},
+        .expectation = {.reads = {.mission_banner = false}},
+    },
+    {
+        .name = "a frame all in the bar's yellow",
+        .input = {.frame = []{ return solid_frame(BANNER_YELLOW); }},
+        .expectation = {.reads = {.mission_banner = false}},
     },
 };
 
@@ -283,7 +352,8 @@ DetectorReads as_named(std::string_view name){
     };
     return DetectorReads{
         .platform = has("+platform"), .autosave = has("+autosave"),
-        .advance_arrow = has("+advance_arrow"),
+        .controls_hint = has("+controls_hint"), .advance_arrow = has("+advance_arrow"),
+        .mission_banner = has("+mission_banner"),
     };
 }
 
@@ -292,8 +362,8 @@ std::optional<DetectorReads> opening(std::string_view){
     return DetectorReads{};
 }
 
-//  The platform (as named), the walk, the white fade, the title card, the
-//  text-free flyover, the starters, the tourist choice and the start of the
+//  The platform (as named) with the controls hint (0001-0006), the walk,
+//  the white fade, the title card, the text-free flyover, the starters, the tourist choice and the start of the
 //  ad: no autosave badge, the advance chevron only on the one box with its
 //  text done (0040).
 std::optional<DetectorReads> arrival_to_ad(std::string_view name){
@@ -303,7 +373,7 @@ std::optional<DetectorReads> arrival_to_ad(std::string_view name){
     }
     return DetectorReads{
         .platform = name.find("+platform") != std::string_view::npos,
-        .advance_arrow = *index == 40,
+        .controls_hint = *index <= 6, .advance_arrow = *index == 40,
     };
 }
 
@@ -318,12 +388,14 @@ std::optional<DetectorReads> arrival_to_ad_subtitles(std::string_view name){
     const bool box_arrow = *index == 44 || *index == 49 || *index == 53 || *index == 78;
     return DetectorReads{
         .platform = name.find("+platform") != std::string_view::npos,
+        .controls_hint = *index <= 6,
         .advance_arrow = box_arrow || (*index >= 93 && *index <= 115),
     };
 }
 
 //  As arrival_to_ad_subtitles(), on through the ad and the bag scene. The
-//  platform and the advance chevron as named.
+//  platform, the controls hint and the advance chevron as named; the
+//  mission banner on 0181 only, the last frame.
 std::optional<DetectorReads> arrival_to_mission_banner(std::string_view name){
     const std::optional<int> index = frame_number(name, 0, 4);
     if (!index){
@@ -331,11 +403,13 @@ std::optional<DetectorReads> arrival_to_mission_banner(std::string_view name){
     }
     return DetectorReads{
         .platform = name.find("+platform") != std::string_view::npos,
+        .controls_hint = name.find("+controls_hint") != std::string_view::npos,
         .advance_arrow = name.find("+advance_arrow") != std::string_view::npos,
+        .mission_banner = *index == 181,
     };
 }
 
-//  Every detector as named. The autosave badge on 0197 too: it is named
+//  Every detector as named: the banner on 0181-0189. The autosave badge on 0197 too: it is named
 //  "nothing" but shows the badge
 //  (Traditional Chinese, top right), right after the black fade.
 std::optional<DetectorReads> arrival_past_mission_banner(std::string_view name){

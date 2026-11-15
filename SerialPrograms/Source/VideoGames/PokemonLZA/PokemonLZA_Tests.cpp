@@ -23,6 +23,7 @@
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDetectors_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStorySceneMachine_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -49,6 +50,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStoryConfirmChoicesReader(database);
     add_tests_AutoStoryDialogDetector(database);
     add_tests_AutoStoryGame(database);
+    add_tests_AutoStorySceneMachine(database);
 
 }
 

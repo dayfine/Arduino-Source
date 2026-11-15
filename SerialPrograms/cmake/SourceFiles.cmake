@@ -914,7 +914,13 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonTools/ScreenEvents/ScreenEvents_Tests.cpp
     Source/CommonTools/ScreenEvents/ScreenEvents_Tests.h
     Source/CommonTools/ScreenEvents/ScreenFades.h
+    Source/CommonTools/ScreenMachine/ScreenMachine.cpp
+    Source/CommonTools/ScreenMachine/ScreenMachine.h
+    Source/CommonTools/ScreenMachine/ScreenMachine_Tests.cpp
+    Source/CommonTools/ScreenMachine/ScreenMachine_Tests.h
     Source/CommonTools/ScreenMachine/ScreenObservation.h
+    Source/CommonTools/ScreenMachine/StepTrace.cpp
+    Source/CommonTools/ScreenMachine/StepTrace.h
     Source/CommonTools/StartupChecks/StartProgramChecks.cpp
     Source/CommonTools/StartupChecks/StartProgramChecks.h
     Source/CommonTools/StartupChecks/VideoResolutionCheck.cpp
@@ -2314,12 +2320,16 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryConfirmChoicesReader.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryConfirmChoicesReader_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryConfirmChoicesReader_Tests.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryControlsHintDetector.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryControlsHintDetector.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDetectors_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDetectors_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector_Tests.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMainMissionBannerDetector.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMainMissionBannerDetector.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryPixelShares.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryPixelShares.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryPlatformArrivalDetector.cpp
@@ -2333,6 +2343,10 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine_Tests.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStoryFiles.cpp

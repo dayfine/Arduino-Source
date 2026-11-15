@@ -10,6 +10,7 @@
  */
 
 #include <format>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -60,7 +61,7 @@ const StoryDataCase STORY_DATA_CASES[] = {
     {
         .name = "the built-in story loads and passes the lint",
         .input = {},
-        .expectation = {.rows = "01.00:new_game:unverified 01.01:from_save"},
+        .expectation = {.rows = "01.00:new_game:unverified 01.01:from_save:unverified"},
     },
 };
 
@@ -116,8 +117,8 @@ const LintCase LINT_CASES[] = {
     },
     {
         .name = "an action PLZA does not have fails",
-        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "m", .why = "", .action = "mash_to_move_hints", .args = {}}},
-        .expectation = {.errors = "01.01 step 1 m: unknown action \"mash_to_move_hints\" for GAME"},
+        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "m", .why = "", .action = "text_to_choice", .args = {}}},
+        .expectation = {.errors = "01.01 step 1 m: unknown action \"text_to_choice\" for GAME"},
     },
 };
 
@@ -134,9 +135,11 @@ UnitTestResult check_lint(const LintCase& test){
 }
 
 
-//  A look with `events` and the readings named in `readings`.
-Observation<ZonePose> look(ScreenEvents events, std::vector<std::string_view> readings = {}){
+//  A look with `events` and the readings named in `readings`, `at` after
+//  the scripts' common start.
+Observation<ZonePose> look(ScreenEvents events, std::vector<std::string_view> readings = {}, Milliseconds at = Milliseconds(0)){
     Observation<ZonePose> observation;
+    observation.when = WallClock::min() + at;
     observation.events = events;
     for (std::string_view reading : readings){
         observation.readings[std::string(reading)] = 1;
@@ -153,13 +156,29 @@ const Observation<ZonePose> WHITE_FADE = look({ScreenEvent::FADE_WHITE});
 const Observation<ZonePose> BLACK_FADE = look({ScreenEvent::FADE_BLACK});
 const Observation<ZonePose> DIALOG = look({ScreenEvent::DIALOG_BOX});
 
+//  01.01's walk off the platform into the white fade: the platform held
+//  for the start check and the walk's free control, then the fade.
+std::vector<Observation<ZonePose>> walk_into_white_fade(){
+    return {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, WHITE_FADE};
+}
 
-//  The built-in checkpoint `id`, from its step `first_step` (from 0) on.
-StoryCheckpoint builtin_row(std::string_view id, size_t first_step){
+//  `first`, then `then`.
+std::vector<Observation<ZonePose>> concat(std::vector<Observation<ZonePose>> first, const std::vector<Observation<ZonePose>>& then){
+    first.insert(first.end(), then.begin(), then.end());
+    return first;
+}
+
+
+//  The built-in checkpoint `id`, its `steps` steps from step `first_step`
+//  (from 0) on.
+StoryCheckpoint builtin_row(std::string_view id, size_t first_step, size_t steps){
     for (const StoryCheckpoint& row : builtin_story_data().checkpoints){
         if (row.id == id){
             StoryCheckpoint part = row;
             part.steps.erase(part.steps.begin(), part.steps.begin() + first_step);
+            if (steps < part.steps.size()){
+                part.steps.resize(steps);
+            }
             return part;
         }
     }
@@ -170,9 +189,11 @@ StoryCheckpoint builtin_row(std::string_view id, size_t first_step){
 struct RunCase{
     std::string name;
     struct Input{
-        //  The built-in checkpoint, from its step `first_step` (from 0) on.
+        //  The built-in checkpoint, its `steps` steps from step `first_step`
+        //  (from 0) on.
         std::string checkpoint;
         size_t first_step = 0;
+        size_t steps = std::numeric_limits<size_t>::max();
         std::vector<Observation<ZonePose>> looks;
     };
     Input input;
@@ -214,7 +235,7 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "01.01 walks off the platform into the white fade",
-        .input = {.checkpoint = "01.01", .first_step = 0, .looks = {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, WHITE_FADE}},
+        .input = {.checkpoint = "01.01", .first_step = 0, .steps = 2, .looks = walk_into_white_fade()},
         .expectation = {
             .verdict = "done",
             .inputs = "wait 300ms, wait 250ms, hold north 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
@@ -223,7 +244,7 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "01.01's walk plays a dropped leg again",
-        .input = {.checkpoint = "01.01", .first_step = 0, .looks = {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, STILL, PLATFORM, WHITE_FADE}},
+        .input = {.checkpoint = "01.01", .first_step = 0, .steps = 2, .looks = {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, STILL, PLATFORM, WHITE_FADE}},
         .expectation = {
             .verdict = "done",
             .inputs = "wait 300ms, wait 250ms, hold north 4500ms walk, hold north 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
@@ -232,7 +253,7 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "01.01's walk ends on a black fade",
-        .input = {.checkpoint = "01.01", .first_step = 1, .looks = {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, BLACK_FADE}},
+        .input = {.checkpoint = "01.01", .first_step = 1, .steps = 1, .looks = {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, BLACK_FADE}},
         .expectation = {.verdict = "done", .line = "[PLZA] platform_to_plaza: a black fade after 250 ms of the last leg: the scene takes over."},
     },
     {
@@ -250,6 +271,40 @@ const RunCase RUN_CASES[] = {
         .input = {.checkpoint = "01.01", .first_step = 0, .looks = {CUTSCENE}},
         .expectation = {.verdict = "failed at on_platform: platform_not_seen"},
     },
+    {
+        .name = "01.01 runs from the platform through the arrival to the mission banner",
+        .input = {.checkpoint = "01.01", .first_step = 0, .looks = concat(walk_into_white_fade(), {
+            WHITE_FADE,
+            look({}, {}, Milliseconds(1000)),
+            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(1500)),
+            look({}, {MISSION_BANNER_READING}, Milliseconds(2000)),
+            look({}, {MISSION_BANNER_READING}, Milliseconds(2250)),
+            look({}, {}, Milliseconds(2500)),
+        })},
+        .expectation = {.verdict = "done", .line = "[PLZA mash_to_move_hints] done on mission_banner."},
+    },
+    {
+        .name = "01.01's arrival ends on the controls hint held a second",
+        .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
+            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)),
+            look({}, {CONTROLS_HINT_READING}, Milliseconds(1000)),
+            look({}, {CONTROLS_HINT_READING}, Milliseconds(1500)),
+            look({}, {CONTROLS_HINT_READING}, Milliseconds(2000)),
+        }},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A, wait 250ms, wait 250ms",
+            .line = "[PLZA mash_to_move_hints] done on controls_hint.",
+        },
+    },
+    {
+        .name = "01.01's arrival fails after a minute with nothing going on",
+        .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
+            look({}, {}, Milliseconds(0)),
+            look({}, {}, Milliseconds(60000)),
+        }},
+        .expectation = {.verdict = "failed at arrival_scenes: scene_quiet"},
+    },
 };
 
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
@@ -257,7 +312,7 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
-    const std::vector<StoryCheckpoint> rows{builtin_row(test.input.checkpoint, test.input.first_step)};
+    const std::vector<StoryCheckpoint> rows{builtin_row(test.input.checkpoint, test.input.first_step, test.input.steps)};
     const Pokemon::SegmentReport report = engine.run_segment("test", rows, 1, state);
     const std::string verdict = report.completed
         ? "done"
