@@ -995,7 +995,6 @@ void add_tests_AutoStoryEngine(UnitTestDatabase& database){
 }
 
 
-
 } // namespace PokemonLZA
 } // namespace NintendoSwitch
 } // namespace PokemonAutomation
