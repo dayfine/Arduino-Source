@@ -777,7 +777,7 @@ private:
         if (candidates.size() < 2 || (!last && is_wall_hold(m_plan[m_next]) && hold_finds(*maps(), candidates, m_plan[m_next]))){
             return;
         }
-        const std::optional<Reanchor> anchor = plan_reanchor(*maps(), candidates, step, m_planning->costs);
+        const std::optional<Reanchor> anchor = plan_reanchor(*maps(), candidates, step, m_planning->costs, last ? std::optional(step.facing_after) : std::nullopt);
         if (water_chain && (!anchor || anchor->holds.empty())){
             m_calls.fail(std::format(
                 "walk_overworld_route(): {} on the water may have ended short with nothing seen, and {} after it is open too; "
@@ -871,7 +871,7 @@ private:
         }
         const std::optional<Reanchor> anchor = candidates.empty()
             ? std::nullopt
-            : plan_reanchor(*maps(), candidates, step, m_planning->costs);
+            : plan_reanchor(*maps(), candidates, step, m_planning->costs, m_next + 1 == m_plan.size() ? std::optional(step.facing_after) : std::nullopt);
         if (!anchor){
             m_calls.fail(
                 "walk_overworld_route(): stopped part-way on " + to_string(step)

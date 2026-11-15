@@ -295,6 +295,46 @@ UnitTestResult test_rival_row(){
     return true;
 }
 
+//  16.03 to_rival_trigger from 7F's pad (5, 4): "west 2 (open)" to (3, 4)
+//  ends where a hold can't tell a tile short from none, so the walker finds
+//  the player at walls and walks back, its last leg "north 1 (to wall)". The
+//  route must still end facing west, as planned: the rival_trigger step's
+//  tap west then only turned the player, who never stepped onto the
+//  trigger (2, 4) (pokefirered data/maps/SilphCo_7F/map.json, coord_events
+//  (2, 4) and (2, 5), SilphCo_7F_EventScript_RivalTriggerTop) and the
+//  rival's battle never came (console B, 2026-11-15 00:28, 16.03 run 5).
+UnitTestResult test_rival_trigger_walk_ends_facing_west(){
+    const std::vector<MapData> maps = maps_after_16_02();
+    const MapPosition pad{"SilphCo_7F", {5, 4}};
+    const MapPosition beside_trigger{"SilphCo_7F", {3, 4}};
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
+        maps, pad, RouteGoal{beside_trigger, Direction::WEST}, story_route_costs(), Direction::WEST
+    );
+    if (!route || route->empty()){
+        return "No route from 7F's pad to (3, 4).";
+    }
+    OverworldSim sim(maps, pad, Direction::WEST);
+    OverworldSimWalker walker(sim);
+    const RoutePlanning planning{.maps = &maps, .costs = story_route_costs(), .start = pad, .label = "to_rival_trigger"};
+    if (const std::string failure = walker.run(*route, planning); !failure.empty()){
+        return std::format("The walk failed: {}", failure);
+    }
+    const std::vector<std::string>& log = walker.log();
+    const bool found_at_walls = std::any_of(log.begin(), log.end(), [](const std::string& line){
+        return line.find("finding the player at walls") != std::string::npos;
+    });
+    if (!found_at_walls){
+        return "Expected the walker to find the player at walls after \"west 2 (open)\", as on the console.";
+    }
+    if (!(sim.state().position == beside_trigger) || sim.state().facing != Direction::WEST){
+        return std::format(
+            "Expected {} facing west, got {} facing {}.",
+            to_string(beside_trigger), to_string(sim.state().position), direction_name(sim.state().facing)
+        );
+    }
+    return true;
+}
+
 //  16.03b's checkpoint: Gift RNG's Lapras, on 7F beside the employee.
 UnitTestResult test_lapras_handoff(){
     const StoryCheckpoint& gift = checkpoint("16.03b");
@@ -463,7 +503,8 @@ UnitTestResult test_corridor_rocket_stands_where_he_stopped(){
     if (std::find(start.begin(), start.end(), flag) == start.end()){
         return "16.03 does not start with " + flag + ".";
     }
-    const std::vector<MapData>& maps = run_story_maps({flag});
+    const std::set<std::string> run_flags{flag};
+    const std::vector<MapData>& maps = run_story_maps(run_flags);
     if (!has_object_at(maps, "SilphCo_5F", 11, 21)){
         return "The run's maps have nobody on SilphCo_5F (11, 21), where the Rocket stopped.";
     }
@@ -485,6 +526,10 @@ const AutoStorySilphCase AUTO_STORY_SILPH_CASES[] = {
     {
         .input = {.name = "16.03 3F's Card Key door, the pad to 7F and the rival; 16.03b to the employee", .body = test_rival_row},
         .expectation = {.description = "opens 3F's door_2, ends by the employee on 7F"},
+    },
+    {
+        .input = {.name = "16.03 the walk to the rival's trigger, found again at walls", .body = test_rival_trigger_walk_ends_facing_west},
+        .expectation = {.description = "after the holds and the way back, on (3, 4) facing west, the trigger (2, 4) a tap ahead"},
     },
     {
         .input = {.name = "16.03b/16.04 the Lapras by Gift RNG", .body = test_lapras_handoff},
