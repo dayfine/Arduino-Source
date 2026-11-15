@@ -533,8 +533,9 @@ UnitTestResult test_walk_ends_in_mables_talk(CancellableScope& scope){
         return std::format("Expected the walk to end in Mable's talk: {}", to_string(report.run.failure));
     }
     return expect_inputs(backend, {
-        "wait 250ms", "hold north 700ms walk",
-        "press L", "stick 90deg 150ms walk, release 100ms", "press L", "hold north 1200ms walk",
+        "wait 250ms",
+        "press L", "stick 270deg 150ms walk, release 100ms", "press L", "hold north 900ms walk",
+        "press L", "stick 90deg 150ms walk, release 100ms", "press L", "hold north 1300ms walk",
         "press L", "stick 90deg 150ms walk, release 100ms", "press L",
         "hold north 250ms walk", "hold north 250ms walk",
     });
