@@ -657,18 +657,10 @@ UnitTestResult test_lint(){
 }
 
 
+//  A named test; it returns its own failure.
 struct StoryEventTestCase{
     std::string name;
-    struct Input{
-        UnitTestResult (*test)();
-    };
-
-    struct Expectation{
-        std::string_view description;
-    };
-
-    Input input;
-    Expectation expectation;
+    UnitTestResult (*test)();
 };
 
 class Test_StoryEvents : public UnitTest{
@@ -678,7 +670,7 @@ public:
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_scenario.input.test();
+        return m_scenario.test();
     }
 
 private:
@@ -686,74 +678,23 @@ private:
 };
 
 const StoryEventTestCase STORY_EVENT_CASES[] = {
-    {
-        .name = "events run in order", .input = {.test = test_runs_events_in_order},
-        .expectation = {.description = "executes registered events in sequence and records traces"},
-    },
-    {
-        .name = "a done event is skipped", .input = {.test = test_skips_done_event},
-        .expectation = {.description = "bypasses event execution when skip condition is satisfied"},
-    },
-    {
-        .name = "a failed expect is waited out", .input = {.test = test_expect_failure_waited_out},
-        .expectation = {.description = "retries transient expectation failure until timeout"},
-    },
-    {
-        .name = "recoveries escalate to a re-anchor", .input = {.test = test_escalates_to_reanchor},
-        .expectation = {.description = "escalates recovery strategy to re-anchor when wait fails"},
-    },
-    {
-        .name = "a stop names the failed event", .input = {.test = test_stop_names_failed_event},
-        .expectation = {.description = "records identifier of the failed event upon stopping"},
-    },
-    {
-        .name = "an unanswered failure stops", .input = {.test = test_unmatched_failure_stops},
-        .expectation = {.description = "stops checkpoint execution when failure has no handler"},
-    },
-    {
-        .name = "a failure names its class", .input = {.test = test_failure_names_its_class},
-        .expectation = {.description = "logs the class a game gives its own failure name"},
-    },
-    {
-        .name = "a throw names its class", .input = {.test = test_throw_names_its_class},
-        .expectation = {.description = "logs operation_failed for an OperationFailedException that goes on"},
-    },
-    {
-        .name = "an interrupt mid-event", .input = {.test = test_interrupt_mid_event},
-        .expectation = {.description = "handles asynchronous interruption during event execution"},
-    },
-    {
-        .name = "an interrupt rechecks the expects", .input = {.test = test_interrupt_recheck_expect},
-        .expectation = {.description = "re-evaluates expected conditions after an interrupt clears"},
-    },
-    {
-        .name = "too many interrupts", .input = {.test = test_too_many_interrupts},
-        .expectation = {.description = "aborts execution when interrupt count exceeds threshold"},
-    },
-    {
-        .name = "resume after a reload", .input = {.test = test_resume_after_reload},
-        .expectation = {.description = "resumes story execution cleanly following save reload"},
-    },
-    {
-        .name = "start, end and save", .input = {.test = test_start_end_and_save},
-        .expectation = {.description = "validates start conditions, end conditions, and state save"},
-    },
-    {
-        .name = "pose certainty", .input = {.test = test_pose_certainty},
-        .expectation = {.description = "tracks and adjusts player pose confidence levels"},
-    },
-    {
-        .name = "the position is the game's", .input = {.test = test_position_is_the_games},
-        .expectation = {.description = "preserves game-specific coordinate representations"},
-    },
-    {
-        .name = "an action returns its pose", .input = {.test = test_outcome_pose},
-        .expectation = {.description = "updates run pose from successful event action outcome"},
-    },
-    {
-        .name = "lint", .input = {.test = test_lint},
-        .expectation = {.description = "validates checkpoint structural integrity and rules"},
-    },
+    {.name = "events run in order", .test = test_runs_events_in_order},
+    {.name = "a done event is skipped", .test = test_skips_done_event},
+    {.name = "a failed expect is waited out", .test = test_expect_failure_waited_out},
+    {.name = "recoveries escalate to a re-anchor", .test = test_escalates_to_reanchor},
+    {.name = "a stop names the failed event", .test = test_stop_names_failed_event},
+    {.name = "an unanswered failure stops", .test = test_unmatched_failure_stops},
+    {.name = "a failure names its class", .test = test_failure_names_its_class},
+    {.name = "a throw names its class", .test = test_throw_names_its_class},
+    {.name = "an interrupt mid-event", .test = test_interrupt_mid_event},
+    {.name = "an interrupt rechecks the expects", .test = test_interrupt_recheck_expect},
+    {.name = "too many interrupts", .test = test_too_many_interrupts},
+    {.name = "resume after a reload", .test = test_resume_after_reload},
+    {.name = "start, end and save", .test = test_start_end_and_save},
+    {.name = "pose certainty", .test = test_pose_certainty},
+    {.name = "the position is the game's", .test = test_position_is_the_games},
+    {.name = "an action returns its pose", .test = test_outcome_pose},
+    {.name = "lint", .test = test_lint},
 };
 
 } // namespace

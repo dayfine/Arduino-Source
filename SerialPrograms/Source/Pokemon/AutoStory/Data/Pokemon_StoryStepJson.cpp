@@ -27,7 +27,9 @@ namespace Pokemon{
 namespace{
 
 
-//  The wire names of the step kinds.
+//  The wire names of the step kinds. They are not story_step_kind_name()'s
+//  log names: the JSON names a MASH step "scene" and a GAME step
+//  "game_action", after what the story author writes.
 constexpr std::array<std::pair<StoryStepKind, std::string_view>, 15> KINDS{{
     {StoryStepKind::NEW_GAME, "new_game"},
     {StoryStepKind::OPTIONS, "options"},
@@ -46,13 +48,6 @@ constexpr std::array<std::pair<StoryStepKind, std::string_view>, 15> KINDS{{
     {StoryStepKind::GAME, "game_action"},
 }};
 
-//  The wire names of the directions.
-constexpr std::array<std::pair<Direction, std::string_view>, 4> DIRECTIONS{{
-    {Direction::NORTH, "north"},
-    {Direction::EAST, "east"},
-    {Direction::SOUTH, "south"},
-    {Direction::WEST, "west"},
-}};
 
 
 //  `value` as an object with no field outside `keys`.
@@ -75,6 +70,16 @@ Enum read_enum(const std::array<std::pair<Enum, std::string_view>, N>& names, st
     for (const auto& [value, label] : names){
         if (label == name){
             return value;
+        }
+    }
+    throw ParseException(std::format("{}: unsupported value {}", source, name));
+}
+
+//  A direction by its direction_name(): "north", "east", ...
+Direction read_direction(std::string_view name, std::string_view source){
+    for (Direction direction : ALL_DIRECTIONS){
+        if (direction_name(direction) == name){
+            return direction;
         }
     }
     throw ParseException(std::format("{}: unsupported value {}", source, name));
@@ -108,7 +113,7 @@ std::vector<StoryLeg> read_legs(const JsonValue& value, std::string_view source)
     std::vector<StoryLeg> result;
     for (const JsonValue& item : value.to_array_throw(std::string(source))){
         const JsonObject& row = fields(item, {"direction", "tiles"}, source);
-        result.push_back({.direction = read_enum(DIRECTIONS, row.get_string_throw("direction"), source),
+        result.push_back({.direction = read_direction(row.get_string_throw("direction"), source),
                           .tiles = integer(row.get_value_throw("tiles"), source)});
     }
     return result;
@@ -169,7 +174,7 @@ StoryArgValue read_arg(const JsonValue& value, StoryArgType type, std::string_vi
     case StoryArgType::WORD:
         return value.to_string_throw(std::string(source));
     case StoryArgType::DIRECTION:
-        return read_enum(DIRECTIONS, value.to_string_throw(std::string(source)), source);
+        return read_direction(value.to_string_throw(std::string(source)), source);
     case StoryArgType::GRID_POSE:
         return read_grid_pose(value, source);
     case StoryArgType::LEGS:
@@ -295,7 +300,7 @@ GridPose read_grid_pose(const JsonValue& value, std::string_view source){
         result.tiles = read_tiles(*field, source);
     }
     if (const JsonValue* field = root.get_value("facing")){
-        result.facing = read_enum(DIRECTIONS, field->to_string_throw(), source);
+        result.facing = read_direction(field->to_string_throw(), source);
     }
     return result;
 }
