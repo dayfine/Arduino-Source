@@ -381,9 +381,13 @@ bool arrived_without_fade(
     if (scrolled_rmsd(now_box, later_box, 0, 0) >= SAME_SCENE_RMSD){
         return false;
     }
-    //  Water's waves make any scene after it look like another one: a door
-    //  north has to show the building it leads into.
-    if (step.direction == Direction::NORTH && !black_below(later_box)){
+    //  A still screen is no proof of a warp: a wall stops the player as
+    //  still, and water's waves make any scene after it look like another
+    //  one. The screen has to show a building's or a gate's map, with the
+    //  black below it (console B, 2026-11-14 20:27, 15.01: "east 9 (warp)"
+    //  held into Route 7's gate wall a row above its door was taken as the
+    //  warp).
+    if (!black_below(later_box)){
         return false;
     }
     return warp_left_scene(before, later, game, step.direction, step.tiles + step.warp_slack + 2);
