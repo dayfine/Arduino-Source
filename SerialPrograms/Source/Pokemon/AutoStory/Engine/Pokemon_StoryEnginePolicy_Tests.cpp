@@ -2,9 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The engine's whole run of a checkpoint on a scripted backend: the save
- *  mode from the checkpoint's phase and steps hash, the postconditions
- *  (passed, failed, not checked) and whether it saved.
+ *  The engine's whole run of a checkpoint on a scripted backend: the
+ *  postconditions (passed, failed, not checked) and whether it saved: at
+ *  the end of a checkpoint that passed, and at each SAVE step.
  *
  */
 
@@ -30,23 +30,16 @@ namespace{
 
 //  A checkpoint's end in the shared format, its steps given: beside B3F's
 //  Rare Candy, facing north, with two Rare Candies.
-std::string checkpoint_0031(std::string_view phase, std::string_view steps){
+std::string checkpoint_0031(std::string_view steps){
     return std::format(R"({{"id": "00.31", "title": "Rocket Hideout", "events": {},
-        "metadata": {{"phase": "{}", "source": "test", "postconditions": {{
+        "metadata": {{"source": "test", "postconditions": {{
             "position": {{"map": "RocketHideout_B3F", "tiles": [[12, 13]], "facing": "north"}},
             "items": [{{"item": "RARE_CANDY", "quantity": 2}}]
-        }}}}}})", steps, phase);
+        }}}}}})", steps);
 }
 
 inline constexpr std::string_view TALK_STEPS = R"([{"id": "b3f_rare_candy", "kind": "talk", "why": "the second candy"}])";
 inline constexpr std::string_view SAVE_STEPS = R"([{"id": "b3f_rare_candy", "kind": "talk"}, {"id": "save_here", "kind": "save"}])";
-
-//  The verification a checkpoint records.
-enum class HashRecord{
-    MATCHING,   //  of these steps
-    STALE,      //  of other steps
-    MISSING,    //  none
-};
 
 //  A look at B3F (12, 13) or wherever `map` is.
 Observation<GridPose> end_look(std::string map){
@@ -80,20 +73,17 @@ StoryGame<GridPose> engine_game(std::optional<int> candies){
 
 
 struct EngineCase{
-    //  One engine run of 00.31 in `phase`, the player ending on `end_map`.
+    //  One engine run of 00.31, the player ending on `end_map`.
     struct Input{
-        std::string_view phase;
-        HashRecord hash = HashRecord::MATCHING;
         std::string_view steps = TALK_STEPS;
         //  Where the talk leaves the player; empty: the talk opens no text.
         std::string_view end_map = "RocketHideout_B3F";
         std::optional<int> candies = 2;
     };
 
-    //  The save mode chosen, the verdict, whether the game saved (each save
-    //  logs "[Test] save") and a line the run logged.
+    //  The verdict, how many times the game saved (each save logs
+    //  "[Test] save") and a line the run logged.
     struct Expectation{
-        StorySaveMode mode = StorySaveMode::NONE;
         CheckpointVerdict verdict = CheckpointVerdict::PASSED;
         size_t saves = 0;
         std::string_view line = {};
@@ -105,34 +95,20 @@ struct EngineCase{
 };
 
 const EngineCase ENGINE_CASES[] = {
-    {.name = "testing never saves", .input = {.phase = "testing"},
-     .expectation = {.mode = StorySaveMode::NONE, .saves = 0, .line = "[Save] 00.31: phase testing: save mode none"}},
-    {.name = "verification saves at the end", .input = {.phase = "verification"},
-     .expectation = {.mode = StorySaveMode::AFTER_VERIFICATION, .saves = 1, .line = "[Save] 00.31: saved"}},
-    {.name = "reproduction saves", .input = {.phase = "reproduction"},
-     .expectation = {.mode = StorySaveMode::PER_CHECKPOINT, .saves = 1, .line = "[Save] 00.31: phase reproduction: save mode per_checkpoint"}},
-    {.name = "stale steps_hash is testing", .input = {.phase = "verification", .hash = HashRecord::STALE},
-     .expectation = {.mode = StorySaveMode::NONE, .saves = 0, .line = "[Save] 00.31: phase verification but steps_hash mismatch (recorded sha256:old, now "}},
-    {.name = "never verified is testing", .input = {.phase = "reproduction", .hash = HashRecord::MISSING},
-     .expectation = {.mode = StorySaveMode::NONE, .saves = 0, .line = "[Save] 00.31: phase reproduction but never verified: treated as testing, save mode none"}},
-    {.name = "B4F false pass fails postconditions", .input = {.phase = "verification", .end_map = "RocketHideout_B4F"},
-     .expectation = {.mode = StorySaveMode::AFTER_VERIFICATION, .verdict = CheckpointVerdict::FAILED, .saves = 0,
+    {.name = "a pass saves at the end", .input = {},
+     .expectation = {.saves = 1, .line = "[Save] 00.31: saved"}},
+    {.name = "B4F false pass fails postconditions", .input = {.end_map = "RocketHideout_B4F"},
+     .expectation = {.verdict = CheckpointVerdict::FAILED, .saves = 0,
                      .line = "[Postcondition] 00.31 map: failed: expected RocketHideout_B3F, read RocketHideout_B4F"}},
-    {.name = "unread bag is not checked", .input = {.phase = "verification", .candies = std::nullopt},
-     .expectation = {.mode = StorySaveMode::AFTER_VERIFICATION, .saves = 1,
-                     .line = "[Postcondition] 00.31: 3 passed, 0 failed, 1 not checked: incomplete"}},
-    {.name = "wrong candy count fails", .input = {.phase = "reproduction", .candies = 1},
-     .expectation = {.mode = StorySaveMode::PER_CHECKPOINT, .verdict = CheckpointVerdict::FAILED, .saves = 0,
+    {.name = "unread bag is not checked", .input = {.candies = std::nullopt},
+     .expectation = {.saves = 1, .line = "[Postcondition] 00.31: 3 passed, 0 failed, 1 not checked: incomplete"}},
+    {.name = "wrong candy count fails", .input = {.candies = 1},
+     .expectation = {.verdict = CheckpointVerdict::FAILED, .saves = 0,
                      .line = "[Postcondition] 00.31 item RARE_CANDY: failed: expected 2, read 1"}},
-    {.name = "failed run never saves", .input = {.phase = "reproduction", .end_map = ""},
-     .expectation = {.mode = StorySaveMode::PER_CHECKPOINT, .verdict = CheckpointVerdict::FAILED, .saves = 0,
-                     .line = "[Save] 00.31: run failed: not saved"}},
-    {.name = "save step skipped while testing", .input = {.phase = "testing", .steps = SAVE_STEPS},
-     .expectation = {.mode = StorySaveMode::NONE, .saves = 0, .line = "[Save] save step skipped: save mode none"}},
-    {.name = "save step skipped while verifying", .input = {.phase = "verification", .steps = SAVE_STEPS},
-     .expectation = {.mode = StorySaveMode::AFTER_VERIFICATION, .saves = 1, .line = "[Save] save step skipped: save mode after_verification"}},
-    {.name = "save step saves in reproduction", .input = {.phase = "reproduction", .steps = SAVE_STEPS},
-     .expectation = {.mode = StorySaveMode::PER_CHECKPOINT, .saves = 2, .line = "[Step] save_here SAVE/default: ok"}},
+    {.name = "failed run never saves", .input = {.end_map = ""},
+     .expectation = {.verdict = CheckpointVerdict::FAILED, .saves = 0, .line = "[Save] 00.31: run failed: not saved"}},
+    {.name = "save step saves", .input = {.steps = SAVE_STEPS},
+     .expectation = {.saves = 2, .line = "[Step] save_here SAVE/default: ok"}},
 };
 
 //  A text box, then the overworld on `end_map`; only the overworld when
@@ -163,20 +139,11 @@ std::string check_engine(const EngineCase& test, CancellableScope& scope){
     const StoryGame<GridPose> game = engine_game(test.input.candies);
     FakeStoryBackend<GridPose> backend({.looks = engine_looks(test.input.end_map)}, scope);
     StoryEngine<GridPose> engine(game, backend);
-    StoryCheckpoint checkpoint = read_story_checkpoint(
-        parse_json(checkpoint_0031(test.input.phase, test.input.steps)), test.name, engine.registry().specs()
+    const StoryCheckpoint checkpoint = read_story_checkpoint(
+        parse_json(checkpoint_0031(test.input.steps)), test.name, engine.registry().specs()
     );
-    if (test.input.hash != HashRecord::MISSING){
-        checkpoint.metadata.verified = StoryVerification{
-            .steps_hash = test.input.hash == HashRecord::MATCHING ? engine.steps_hash(checkpoint) : "sha256:old",
-            .build = "abc", .date = "2026-11-10", .runs = "3/3",
-        };
-    }
     RunState state;
-    const StoryEngineReport report = engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state);
-    if (report.save.mode != test.expectation.mode){
-        return std::format("expected save mode {}, got {}", story_save_mode_name(test.expectation.mode), story_save_mode_name(report.save.mode));
-    }
+    const StoryEngineReport report = engine.run_checkpoint(checkpoint, state);
     if (report.verdict != test.expectation.verdict){
         return std::format("expected the checkpoint {}", test.expectation.verdict == CheckpointVerdict::PASSED ? "passed" : "failed");
     }
