@@ -5,8 +5,11 @@
  *  Shows the picture of an mGBA instance running "bridge.lua" (MgbaLink v1).
  *  Each new emulated frame is composed into a 1920x1080 frame at FRLG's
  *  GAME_BOX with nearest-neighbour scaling, so detectors see console
- *  geometry, and is stamped with the time its frame number maps to, never
- *  later than the time it was read. Developer mode only (fork lab tooling).
+ *  geometry. While mGBA runs no faster than 59.7275 fps, a frame is stamped
+ *  with the time its frame number maps to; when it runs ahead (e.g. synced
+ *  to a 60 Hz display), with the time it was read. Never later than the
+ *  read time. The source reconnects itself, so it opts out of the session
+ *  no-video watchdog. Developer mode only (fork lab tooling).
  *
  */
 
@@ -126,7 +129,7 @@ private:
 
     void poll_loop();
     void run_connection(Logger& logger, const std::string& host, uint16_t port);
-    void poll_connected(MgbaLink::Connection& connection);
+    void poll_connected(Logger& logger, MgbaLink::Connection& connection);
     void publish_frame(ImageRGB32 frame, WallClock timestamp);
     bool wait_or_stop(std::chrono::milliseconds duration);
 

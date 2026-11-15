@@ -157,7 +157,7 @@ std::unique_ptr<VideoSource> VideoSourceDescriptor_MgbaLink::make_VideoSource(
 
 
 VideoSource_MgbaLink::VideoSource_MgbaLink(Logger& logger, std::string address)
-    : VideoSource(logger, true)
+    : VideoSource(logger, false)
     , m_logger(logger)
     , m_address(std::move(address))
 {
@@ -231,7 +231,7 @@ void VideoSource_MgbaLink::run_connection(Logger& logger, const std::string& hos
     }
     try{
         connection.open();
-        poll_connected(connection);
+        poll_connected(logger, connection);
     }catch (...){
         std::lock_guard<Mutex> lg(m_lock);
         m_connection = nullptr;
@@ -243,7 +243,7 @@ void VideoSource_MgbaLink::run_connection(Logger& logger, const std::string& hos
     m_last = VideoSnapshot();
 }
 
-void VideoSource_MgbaLink::poll_connected(Connection& connection){
+void VideoSource_MgbaLink::poll_connected(Logger& logger, Connection& connection){
     std::optional<FrameClock> clock;
     uint64_t last_frame = 0;
     do{
@@ -264,7 +264,7 @@ void VideoSource_MgbaLink::poll_connected(Connection& connection){
         //  Read the PNG before the next FRAME overwrites it.
         ImageRGB32 gba_frame(reply.path);
         if (gba_frame.width() != reply.width || gba_frame.height() != reply.height){
-            throw ConnectionException(&m_logger, std::format(
+            throw ConnectionException(&logger, std::format(
                 "MgbaLink: FRAME {} said {}x{}, but {} is {}x{}.",
                 reply.frame, reply.width, reply.height, reply.path, gba_frame.width(), gba_frame.height()
             ));
@@ -280,8 +280,8 @@ void VideoSource_MgbaLink::publish_frame(ImageRGB32 frame, WallClock timestamp){
         m_last = snapshot;
     }
 
-    //  For the FPS readout, stream history and the no-video watchdog. The
-    //  QImage shares the snapshot's pixels and keeps them alive.
+    //  For the FPS readout and stream history. The QImage shares the
+    //  snapshot's pixels and keeps them alive.
     const ImageRGB32& pixels = *snapshot.frame;
     QImage image(
         (const uchar*)pixels.data(),
