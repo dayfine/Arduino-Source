@@ -9,6 +9,7 @@
 #include <map>
 #include <optional>
 #include <sstream>
+#include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
@@ -24,6 +25,7 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
+#include "NintendoSwitch_CommandFileGameOpen.h"
 #include "NintendoSwitch_CommandFileParsing.h"
 #include "NintendoSwitch_CommandFileRunner.h"
 
@@ -211,11 +213,11 @@ private:
         using enum CommandFileCommandKind;
         static const std::map<std::string, Builtin> BUILTINS{
             {"press",       {"press BTN[+BTN] [hold_ms] [release_ms]", DRIVES_CONSOLE, &LineRunner::press}},
-            {"dpad",        {"dpad UP|DOWN|LEFT|RIGHT [hold_ms] [release_ms]", DRIVES_CONSOLE, &LineRunner::dpad}},
+            {"dpad",        {"dpad UP|DOWN|LEFT|RIGHT [hold_ms] [release_ms] [BTN[+BTN]]   (buttons held with it)", DRIVES_CONSOLE, &LineRunner::dpad}},
             {"taps",        {"taps DIR N [all] [hold_ms] [release_ms] [still_rmsd]   (D-pad taps, each reported moved or still)", DRIVES_CONSOLE, &LineRunner::taps}},
-            {"stick",       {"stick L|R x y [hold_ms] [release_ms]   (x, y from -1 to 1)", DRIVES_CONSOLE, &LineRunner::stick}},
+            {"stick",       {"stick L|R x y [hold_ms] [release_ms] [BTN[+BTN]]   (x, y from -1 to 1; buttons held with it)", DRIVES_CONSOLE, &LineRunner::stick}},
             {"wait",        {"wait ms", DRIVES_CONSOLE, &LineRunner::wait}},
-            {"walk",        {"walk x y [max_ms] [still_rmsd]   (left stick until the screen holds still)", DRIVES_CONSOLE, &LineRunner::walk}},
+            {"walk",        {"walk x y [max_ms] [still_rmsd] [BTN[+BTN]]   (left stick, and buttons, until the screen holds still)", DRIVES_CONSOLE, &LineRunner::walk}},
             {"shot",        {"shot label", READS_STREAM, &LineRunner::shot}},
             {"shots",       {"shots label count [interval_ms]", READS_STREAM, &LineRunner::shots}},
             {"history",     {"history label   (save the console's recent video, if Stream History is on)", READS_STREAM, &LineRunner::history}},
@@ -223,6 +225,7 @@ private:
             {"wait_for",    {"wait_for detector [timeout_ms]   (reports a timeout)", READS_STREAM, &LineRunner::wait_for}},
             {"expect",      {"expect detector [timeout_ms]   (fails on a timeout)", READS_STREAM, &LineRunner::wait_for}},
             {"state",       {"state [image]   (every detector that fires)", READS_STREAM, &LineRunner::state}},
+            {"game_open",   {"game_open [image]   (whether a game is in front: not Home, the user select or a black screen)", READS_STREAM, &LineRunner::game_open}},
             {"close_game",  {"close_game   (from anywhere to Home with the game closed)", DRIVES_CONSOLE, &LineRunner::close_game}},
             {"help",        {"help", READS_STREAM, &LineRunner::help}},
         };
@@ -256,10 +259,16 @@ private:
         );
     }
     void dpad(const std::vector<std::string>& words){
-        pbf_press_dpad(
-            context(), parse_dpad(required_arg(words, 1)),
-            optional_duration(words, 2, DPAD_HOLD), optional_duration(words, 3, DPAD_RELEASE)
-        );
+        const DpadPosition direction = parse_dpad(required_arg(words, 1));
+        const Milliseconds hold = optional_duration(words, 2, DPAD_HOLD);
+        const Milliseconds release = optional_duration(words, 3, DPAD_RELEASE);
+        const Button buttons = optional_buttons(words, 4);
+        if (buttons == BUTTON_NONE){
+            pbf_press_dpad(context(), direction, hold, release);
+            return;
+        }
+        pbf_controller_state(context(), buttons, direction, {}, {}, hold);
+        pbf_wait(context(), release);
     }
     //  Taps the D-pad N times and reports, for each tap, whether the screen
     //  changed more than `still` between the frame before and after it: a step
@@ -303,12 +312,21 @@ private:
         const JoystickPosition position{optional_number(words, 2, 0), optional_number(words, 3, 0)};
         const Milliseconds hold = optional_duration(words, 4, STICK_HOLD);
         const Milliseconds release = optional_duration(words, 5, STICK_RELEASE);
-        if (side == "L"){
-            pbf_move_left_joystick(context(), position, hold, release);
-        }else if (side == "R"){
-            pbf_move_right_joystick(context(), position, hold, release);
-        }else{
+        const Button buttons = optional_buttons(words, 6);
+        if (side != "L" && side != "R"){
             throw ParseException("stick: expected L or R, got " + side);
+        }
+        if (buttons != BUTTON_NONE){
+            //  One controller state for the whole hold, so the game sees the
+            //  buttons and the stick together (B held runs in BDSP).
+            const JoystickPosition left = side == "L" ? position : JoystickPosition();
+            const JoystickPosition right = side == "R" ? position : JoystickPosition();
+            pbf_controller_state(context(), buttons, DPAD_NONE, left, right, hold);
+            pbf_wait(context(), release);
+        }else if (side == "L"){
+            pbf_move_left_joystick(context(), position, hold, release);
+        }else{
+            pbf_move_right_joystick(context(), position, hold, release);
         }
     }
     void wait(const std::vector<std::string>& words){
@@ -318,10 +336,12 @@ private:
     //  sign, someone in the way) or max_ms passes, and reports how long it
     //  moved. Measuring a map with walks that stop on their own: a timed
     //  hold moves a different number of tiles from one try to the next.
+    //  Buttons on the line are held with the stick (B to run in BDSP).
     void walk(const std::vector<std::string>& words){
         const JoystickPosition position{optional_number(words, 1, 0), optional_number(words, 2, 0)};
         const Milliseconds limit = optional_duration(words, 3, WALK_LIMIT);
         const double still = optional_number(words, 4, WALK_STILL_RMSD);
+        const Button buttons = optional_buttons(words, 5);
         VideoSnapshot before = current_frame();
         if (!before){
             throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "walk: no video frame");
@@ -331,7 +351,11 @@ private:
         int quiet = 0;
         std::string changes;
         while (walked < limit && quiet < 2){
-            pbf_move_left_joystick(context(), position, WALK_SLICE, 0ms);
+            if (buttons == BUTTON_NONE){
+                pbf_move_left_joystick(context(), position, WALK_SLICE, 0ms);
+            }else{
+                pbf_controller_state(context(), buttons, DPAD_NONE, position, {}, WALK_SLICE);
+            }
             VideoSnapshot after = current_frame();
             if (!after){
                 break;
@@ -417,6 +441,33 @@ private:
         }
         VideoSnapshot screen = current_frame();
         out() << "state " << (screen ? detectors_firing(screen) : "(no video frame)") << "\n";
+    }
+    //  "game_open [image]": prints "game_open yes", or "game_open no <reason>"
+    //  (game_closed_reason()). Reads only; never fails the line.
+    void game_open(const std::vector<std::string>& words){
+        GameOpenScreen seen;
+        if (words.size() > 1){
+            seen = game_open_screen(load_image(words[1]));
+        }else{
+            VideoSnapshot screen = current_frame();
+            if (screen){
+                seen = game_open_screen(screen);
+            }
+        }
+        const std::optional<std::string_view> reason = game_closed_reason(seen);
+        if (reason){
+            out() << "game_open no " << *reason << "\n";
+        }else{
+            out() << "game_open yes\n";
+        }
+    }
+    GameOpenScreen game_open_screen(const ImageViewRGB32& screen){
+        return GameOpenScreen{
+            .has_frame = true,
+            .home = HomeMenuDetector(console(), COLOR_RED).detect(screen),
+            .user_select = StartGameUserSelectDetector(console()).detect(screen),
+            .black = BlackScreenDetector().detect(screen),
+        };
     }
     void close_game(const std::vector<std::string>&){
         go_home(console(), context());
@@ -614,8 +665,8 @@ void CommandFileRunner::program(SingleSwitchProgramEnvironment& env, ProControll
     env.log("Command File Runner: waiting for command files in " + root + "inbox");
 
     while (true){
-        std::optional<Filesystem::Path> file = next_request_file(root + "inbox");
-        if (!file){
+        const std::vector<Filesystem::Path> files = request_files(root + "inbox");
+        if (files.empty()){
             if (STOP_WHEN_INBOX_EMPTY){
                 env.log("Command File Runner: inbox is empty.");
                 return;
@@ -623,7 +674,7 @@ void CommandFileRunner::program(SingleSwitchProgramEnvironment& env, ProControll
             context.wait_for(INBOX_POLL_INTERVAL);
             continue;
         }
-        if (!run_command_file(env, context, root, *file)){
+        if (!run_command_file(env, context, root, files.front())){
             env.log("Command File Runner: stop.");
             return;
         }
