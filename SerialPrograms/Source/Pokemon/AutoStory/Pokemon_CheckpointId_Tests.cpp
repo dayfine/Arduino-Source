@@ -8,6 +8,7 @@
 #include <format>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Pokemon_CheckpointId.h"
@@ -86,7 +87,7 @@ struct OrderScenario{
     OrderExpectation expectation;
 };
 
-const char* order_name(std::strong_ordering order){
+std::string_view order_name(std::strong_ordering order){
     if (order < 0){
         return "less";
     }
@@ -180,32 +181,30 @@ private:
 };
 
 
-}  // namespace
-
-
-
-void add_tests_CheckpointId(UnitTestDatabase& database){
+void add_parse_tests(UnitTestDatabase& database){
     const std::vector<ParseScenario> parse_cases{
-        {.name = "segment and checkpoint",  .input = {.text = "03.08"}, .expectation = {.id = "03.08", .segment = "03"}},
-        {.name = "first checkpoint",        .input = {.text = "00.00"}, .expectation = {.id = "00.00", .segment = "00"}},
-        {.name = "largest id",              .input = {.text = "99.99"}, .expectation = {.id = "99.99", .segment = "99"}},
-        {.name = "letter suffix",           .input = {.text = "03.08b"}},
-        {.name = "one-digit segment",       .input = {.text = "3.08"}},
-        {.name = "one-digit checkpoint",    .input = {.text = "03.8"}},
-        {.name = "three-digit segment",     .input = {.text = "100.08"}},
-        {.name = "three-digit checkpoint",  .input = {.text = "03.100"}},
-        {.name = "no dot",                  .input = {.text = "0308"}},
-        {.name = "other separator",         .input = {.text = "03-08"}},
-        {.name = "extra part",              .input = {.text = "03.08.01"}},
-        {.name = "segment only",            .input = {.text = "03"}},
-        {.name = "sign",                    .input = {.text = "+3.08"}},
-        {.name = "spaces",                  .input = {.text = " 3.08"}},
-        {.name = "empty",                   .input = {.text = ""}},
+        {.name = "segment and checkpoint", .input = {.text = "03.08"}, .expectation = {.id = "03.08", .segment = "03"}},
+        {.name = "first checkpoint", .input = {.text = "00.00"}, .expectation = {.id = "00.00", .segment = "00"}},
+        {.name = "largest id", .input = {.text = "99.99"}, .expectation = {.id = "99.99", .segment = "99"}},
+        {.name = "letter suffix", .input = {.text = "03.08b"}, .expectation = {}},
+        {.name = "one-digit segment", .input = {.text = "3.08"}, .expectation = {}},
+        {.name = "one-digit checkpoint", .input = {.text = "03.8"}, .expectation = {}},
+        {.name = "three-digit segment", .input = {.text = "100.08"}, .expectation = {}},
+        {.name = "three-digit checkpoint", .input = {.text = "03.100"}, .expectation = {}},
+        {.name = "no dot", .input = {.text = "0308"}, .expectation = {}},
+        {.name = "other separator", .input = {.text = "03-08"}, .expectation = {}},
+        {.name = "extra part", .input = {.text = "03.08.01"}, .expectation = {}},
+        {.name = "segment only", .input = {.text = "03"}, .expectation = {}},
+        {.name = "sign", .input = {.text = "+3.08"}, .expectation = {}},
+        {.name = "spaces", .input = {.text = " 3.08"}, .expectation = {}},
+        {.name = "empty", .input = {.text = ""}, .expectation = {}},
     };
     for (const ParseScenario& scenario : parse_cases){
         database.add<Test_CheckpointIdParse>(scenario);
     }
+}
 
+void add_order_tests(UnitTestDatabase& database){
     const std::vector<OrderScenario> order_cases{
         {
             .name = "same id",
@@ -226,7 +225,9 @@ void add_tests_CheckpointId(UnitTestDatabase& database){
     for (const OrderScenario& scenario : order_cases){
         database.add<Test_CheckpointIdOrder>(scenario);
     }
+}
 
+void add_segment_start_tests(UnitTestDatabase& database){
     const std::vector<SegmentStartScenario> segment_cases{
         {
             .name = "first checkpoint of a run starts its segment",
@@ -252,6 +253,17 @@ void add_tests_CheckpointId(UnitTestDatabase& database){
     for (const SegmentStartScenario& scenario : segment_cases){
         database.add<Test_CheckpointIdSegmentStart>(scenario);
     }
+}
+
+
+}  // namespace
+
+
+
+void add_tests_CheckpointId(UnitTestDatabase& database){
+    add_parse_tests(database);
+    add_order_tests(database);
+    add_segment_start_tests(database);
 }
 
 
