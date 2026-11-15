@@ -51,8 +51,10 @@ std::optional<int> walk_from_objective(ConsoleHandle& console, ProControllerCont
 void walk_to_zone_1_start(ConsoleHandle& console, ProControllerContext& context);
 
 //  After A at a wild zone's gate on the way out: the minimap's player arrow
-//  out of the zone's green (MinimapZoneDetector) on one of 4 frames 0.5 s
-//  apart. An A the game dropped leaves the player at the gate inside the
+//  out of the zone's green (MinimapZoneDetector) on one of 4 looks, walking
+//  on 600 ms away from the gate before each look after the first: just
+//  outside the gate the arrow still touches the green's edge (console B,
+//  2026-11-14). An A the game dropped leaves the player at the gate inside the
 //  zone with the step after it passing on the prompt and party bar (the
 //  fault sweep's lost tap). Throws OperationFailedException when the arrow
 //  stays in the green.

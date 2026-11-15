@@ -113,11 +113,11 @@ const GateWalkCase GATE_WALK_CASES[] = {
         .expectation = {.failure = std::nullopt, .inputs = {slice(-15), slice(-15), slice(-15)}},
     },
     {
-        .name = "no gate in the first second fails",
-        .input = {.looks = {{}}},
+        .name = "no gate in the first 3 seconds fails",
+        .input = {.looks = {{}}, .timeout = 15000ms},
         .expectation = {
-            .failure = "gate_not_seen", .inputs = {slice(0), slice(0), slice(0), slice(0)},
-            .message = "no gate on 5 looks",
+            .failure = "gate_not_seen", .inputs = std::vector<std::string>(12, slice(0)),
+            .message = "no gate on 13 looks",
         },
     },
     {

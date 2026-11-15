@@ -22,8 +22,10 @@ namespace{
 
 //  One slice of the walk between looks, as walk_to_prompt()'s.
 constexpr Milliseconds GATE_WALK_SLICE(250);
-//  Walking this long without a look at the gate fails the walk.
-constexpr Milliseconds GATE_FIRST_SEEN_WITHIN(1000);
+//  Walking this long without a look at the gate fails the walk. From
+//  Wild Zone 1's catch spot at 60 the far gate is small at first: 1 s
+//  missed it once (console B, 2026-11-14).
+constexpr Milliseconds GATE_FIRST_SEEN_WITHIN(3000);
 //  The screen's width in degrees of view, for the steer: a guess.
 constexpr double VIEW_DEGREES = 60;
 //  Closer to the middle than this, the gate is dead ahead.

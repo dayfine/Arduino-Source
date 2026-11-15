@@ -158,13 +158,17 @@ void walk_to_zone_1_start(ConsoleHandle& console, ProControllerContext& context)
 void check_out_of_wild_zone(ConsoleHandle& console, ProControllerContext& context){
     MinimapZoneDetector zone;
     for (int look = 0; look < 4; look++){
+        if (look > 0){
+            //  On, away from the gate: just outside it the arrow still
+            //  touches the zone's green edge (console B, 2026-11-14).
+            pbf_move_left_joystick(context, {0, 1}, 600ms, 200ms);
+        }
         context.wait_for_all_requests();
         const VideoSnapshot frame = console.video().snapshot();
         if (frame && !zone.detect(frame)){
             console.log(std::format("check_out_of_wild_zone(): the minimap's arrow is out of the zone's green (look {}).", look + 1));
             return;
         }
-        context.wait_for(500ms);
     }
     OperationFailedExceptionWithScreenshot::fire(
         ErrorReportMode::SEND_ERROR_REPORT,
