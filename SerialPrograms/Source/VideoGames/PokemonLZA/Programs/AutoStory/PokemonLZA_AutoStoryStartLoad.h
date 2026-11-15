@@ -15,7 +15,7 @@
 #include <span>
 #include <string_view>
 #include "CommonTools/ScreenEvents/ScreenEventTypes.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryLaunch.h"
+
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -31,9 +31,6 @@ enum class StartSave{
     RUNNING,
 };
 
-//  The shared launch's request for `save`: LATEST and BACKUP close a
-//  running game and load that save; RUNNING keeps a game on the overworld.
-Pokemon::StoryLaunchRequest start_launch_request(StartSave save);
 
 //  Where a run takes its first checkpoint's start from, as the user set it.
 enum class StartFrom{
