@@ -22,7 +22,25 @@ constexpr std::chrono::milliseconds CANCEL_POLL_PERIOD(50);
 //  1.5 frames.
 constexpr std::chrono::milliseconds ONE_FRAME(17);
 
+//  "GRANT 0" holds the emulator where it is and says which frame that is.
+uint64_t hold_and_read_frame(Logger& logger, Connection& connection){
+    std::string reply = connection.command("GRANT 0");
+    std::optional<uint64_t> frame = parse_ok_frame_reply(reply);
+    if (!frame){
+        throw ConnectionException(&logger, std::format("MgbaLink: unexpected GRANT reply: {}", reply));
+    }
+    return *frame;
+}
+
 }  // namespace
+
+
+JumpCommand JumpCommand::load_state(std::string_view file){
+    return JumpCommand(std::format("LOAD {}", file));
+}
+JumpCommand JumpCommand::reset(){
+    return JumpCommand("RESET");
+}
 
 
 KeySender::KeySender(
@@ -69,7 +87,8 @@ KeySender::Attachment& KeySender::attach(){
         ));
     }
     if (m_attachment && m_attachment->serial == link->serial){
-        if (m_pacer && !m_pacer->running()){
+        //  No pacer: a LOAD or RESET lost the connection before granting again.
+        if (!m_pacer || !m_pacer->running()){
             throw ConnectionException(&m_logger, "MgbaLink: the connection to mGBA was lost.");
         }
         return *m_attachment;
@@ -80,15 +99,11 @@ KeySender::Attachment& KeySender::attach(){
     m_attachment.reset();
     m_input_log = InputLog();
 
-    //  "GRANT 0" holds the emulator where it is and says which frame that
-    //  is: the anchor. The pacer releases it from there.
+    //  The frame the emulator is held on is the anchor. The pacer releases
+    //  it from there.
     WallClock now = current_time();
-    std::string reply = link->connection->command("GRANT 0");
-    std::optional<uint64_t> frame = parse_ok_frame_reply(reply);
-    if (!frame){
-        throw ConnectionException(&m_logger, "MgbaLink: unexpected GRANT reply: " + reply);
-    }
-    FrameClock clock(now, *frame);
+    uint64_t frame = hold_and_read_frame(m_logger, *link->connection);
+    FrameClock clock(now, frame);
     m_attachment.emplace(Attachment{
         .serial = link->serial,
         .connection = link->connection,
@@ -96,7 +111,7 @@ KeySender::Attachment& KeySender::attach(){
         .schedule = KeySchedule(clock),
     });
     m_pacer.emplace(m_logger, m_thread_pool, link->connection, clock, m_grant_period);
-    m_logger.log(std::format("MgbaLink: controller on {} anchored at frame {}.", m_address, *frame));
+    m_logger.log(std::format("MgbaLink: controller on {} anchored at frame {}.", m_address, frame));
     return *m_attachment;
 }
 
@@ -218,6 +233,47 @@ void KeySender::replace_on_next(){
     m_epoch++;
     m_replace_pending = true;
     m_cv.notify_all();
+}
+
+uint64_t KeySender::jump(const JumpCommand& command){
+    std::lock_guard<Mutex> lg(m_lock);
+    //  What waits to be sent was meant for the frames before the jump.
+    m_epoch++;
+    m_replace_pending = false;
+    m_cv.notify_all();
+    Attachment& attachment = attach();
+    std::shared_ptr<Connection> link = connection(attachment);
+    std::string_view line = command.line();
+    std::string_view name = line.substr(0, line.find(' '));
+
+    //  Stop granting first: a grant on the old frames would stall mGBA
+    //  after a jump ahead, or let it run free after a jump back.
+    m_pacer.reset();
+    WallClock now;
+    uint64_t frame = 0;
+    try{
+        link->command(line);
+        now = current_time();
+        frame = hold_and_read_frame(m_logger, *link);
+    }catch (ConnectionException&){
+        //  A refused command leaves mGBA where it was: the old clock holds.
+        m_pacer.emplace(m_logger, m_thread_pool, attachment.connection, attachment.clock, m_grant_period);
+        throw;
+    }
+
+    //  The bridge dropped its queued KEYS but still holds the last keys it
+    //  applied: release them on the first frame of the new timeline.
+    bool keys_sent = attachment.last_sent_frame.has_value();
+    attachment.clock = FrameClock(now, frame);
+    attachment.last_sent_frame.reset();
+    m_input_log = InputLog();
+    if (keys_sent){
+        send(attachment, KeysCommand{frame, 0});
+    }
+    restart_schedule(attachment);
+    m_pacer.emplace(m_logger, m_thread_pool, attachment.connection, attachment.clock, m_grant_period);
+    m_logger.log(std::format("MgbaLink: {} on {}: re-anchored at frame {}.", name, m_address, frame));
+    return frame;
 }
 
 std::string KeySender::input_log_text() const{

@@ -14,8 +14,14 @@
  *  then. A cancel then drops what is not sent yet and releases the keys at
  *  the first frame no sent command can override.
  *
+ *  LOAD and RESET move mGBA to another frame, under the clock's anchor. The
+ *  sender stops granting, drops what is not sent yet, sends the command
+ *  (the bridge clears its queued KEYS and holds at the new frame), reads
+ *  the new frame with "GRANT 0", anchors a new clock and input log there,
+ *  releases the keys on that frame, and grants again.
+ *
  *  Qt-free. Thread-safe: push() and wait_for_all() come from the issuing
- *  thread, cancel() and replace_on_next() from any thread.
+ *  thread; cancel(), replace_on_next() and jump() from any thread.
  *
  */
 
@@ -27,6 +33,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include "Common/Cpp/CancellableScope.h"
 #include "Common/Cpp/Concurrency/ConditionVariable.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
@@ -39,6 +46,27 @@
 
 namespace PokemonAutomation{
 namespace MgbaLink{
+
+
+//  "LOAD <file>" or "RESET": a command that moves mGBA to another frame.
+class JumpCommand{
+public:
+    //  Loads the mGBA save state "file" (a path on the Mac running mGBA).
+    static JumpCommand load_state(std::string_view file);
+    //  Resets the GBA.
+    static JumpCommand reset();
+
+    const std::string& line() const{
+        return m_line;
+    }
+
+private:
+    explicit JumpCommand(std::string line)
+        : m_line(std::move(line))
+    {}
+
+    std::string m_line;
+};
 
 
 //  Sends one controller's key states to the mGBA published under an address.
@@ -86,7 +114,16 @@ public:
     //  and the keys it holds replace the current ones.
     void replace_on_next();
 
-    //  "<frame> <mask>" per change since the clock was anchored.
+    //  Sends "command" and re-anchors the clock on the frame mGBA is on
+    //  after it. Drops what is not sent yet: a waiting push() returns
+    //  without sending. Returns the new anchor frame. Throws
+    //  ConnectionException if no connection is published, it is lost, or
+    //  the bridge refuses ("ERR load failed"); a refused command leaves the
+    //  old clock running.
+    uint64_t jump(const JumpCommand& command);
+
+    //  "<frame> <mask>" per change since the clock was anchored (at connect,
+    //  or at the last LOAD or RESET).
     std::string input_log_text() const;
 
 private:
