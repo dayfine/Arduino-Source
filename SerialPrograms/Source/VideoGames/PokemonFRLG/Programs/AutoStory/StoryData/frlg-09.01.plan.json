@@ -164,9 +164,9 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "RocketHideout_B3F", "tiles": [[15, 18]], "facing": "west"}
+          "target": {"map": "RocketHideout_B3F", "tiles": [[15, 18]], "facing": "east"}
         },
-        "why": "east up B4F's stairs (11, 15) to B3F's (15, 18)"
+        "why": "east up B4F's stairs (11, 15) to B3F's (15, 18), arriving facing east: a turn west there would take the stairs back down (pokefirered TryArrowWarp: a held press the stairs' way warps)"
       },
       {
         "id": "b3f_down_to_row_20",

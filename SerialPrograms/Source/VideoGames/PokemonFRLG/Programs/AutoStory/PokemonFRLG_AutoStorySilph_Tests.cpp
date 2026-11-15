@@ -23,6 +23,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryMovedTrainers.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
@@ -114,6 +115,7 @@ public:
         : m_row(checkpoint(id))
         , m_at(*story_pose(Pokemon::pose_of(*m_row.start)))
         , m_sim(maps, MapPosition{m_at.map, m_at.tile}, *m_at.facing, script_of(m_row))
+        , m_flags(m_row.start_flags.begin(), m_row.start_flags.end())
     {}
 
     //  Each step in turn; the failure of the first that fails, or empty.
@@ -127,9 +129,12 @@ public:
                 m_floors.push_back(m_sim.state().position.map);
                 continue;
             }
-            if (const std::string failure = row_step_on_sim(m_sim, m_at, step, m_row.id); !failure.empty()){
+            //  The run's flags as the program's state has them at the step: the
+            //  row's start flags and what the steps before set (flags_after).
+            if (const std::string failure = row_step_on_sim(m_sim, m_at, step, m_row.id, m_flags); !failure.empty()){
                 return failure;
             }
+            m_flags.insert(step.flags_after.begin(), step.flags_after.end());
             m_floors.push_back(m_sim.state().position.map);
         }
         return "";
@@ -164,6 +169,7 @@ private:
     const StoryCheckpoint& m_row;
     StoryPose m_at;
     OverworldSim m_sim;
+    std::set<std::string> m_flags;
     std::vector<std::string> m_floors;
 };
 
@@ -188,10 +194,30 @@ std::vector<MapData> with_beaten(std::vector<MapData> maps, std::string_view map
     return maps;
 }
 
+//  `maps` with the trainer at `at` on `map_name` beaten and standing on
+//  (`stop_x`, `stop_y`): where he stopped when he walked up to the player
+//  and sight ended, and where the game leaves him after his fight.
+std::vector<MapData> with_beaten_at(std::vector<MapData> maps, std::string_view map_name, int x, int y, int stop_x, int stop_y){
+    for (MapData& map : maps){
+        for (MapObject& object : map.objects){
+            if (map.name == map_name && object.x == x && object.y == y){
+                object.x = stop_x;
+                object.y = stop_y;
+                object.wander.reset();
+                object.trainer.reset();
+            }
+        }
+    }
+    return maps;
+}
+
 //  The maps a row after 16.02 starts on: the Rocket at 5F's (9, 21), beaten by
-//  16.02 on its way, no longer sees the player (his fight is in the save).
+//  16.02 on its way, no longer sees the player (his fight is in the save) and
+//  stands on (11, 21), where he stopped beside the player who waited on
+//  (12, 21) for him (console B, 2026-11-14 run 4: he blocked 16.03's walk
+//  west along row 21).
 std::vector<MapData> maps_after_16_02(){
-    return with_beaten(story_maps(), "SilphCo_5F", 9, 21);
+    return with_beaten_at(story_maps(), "SilphCo_5F", 9, 21, 11, 21);
 }
 
 //  Row `id` walked on the sim: the steps run, no rule broken, the gates the
@@ -418,6 +444,35 @@ UnitTestResult test_master_ball_option(){
     return true;
 }
 
+//  The Rocket 16.02 fights walked up to the player from (9, 21) and stopped on
+//  (11, 21); a beaten trainer stays where he stopped and blocks that tile
+//  (console B, 2026-11-14 run 4: 16.03's "west 11" ended against him two
+//  tiles short of the pad). 16.02's battle records where he stands
+//  (TRAINER_AT_FLAG), 16.03 starts with it, and the maps the run plans on
+//  (run_story_maps()) have him there, not on his spawn tile.
+UnitTestResult test_corridor_rocket_stands_where_he_stopped(){
+    const std::string flag = std::string(TRAINER_AT_FLAG) + "SilphCo_5F/rocket_m@9,21=11,21";
+    const std::vector<StoryStep>& steps = checkpoint("16.02").steps;
+    const bool set_by_battle = std::any_of(steps.begin(), steps.end(), [&](const StoryStep& step){
+        return step.kind == StoryStepKind::BATTLE && std::find(step.flags_after.begin(), step.flags_after.end(), flag) != step.flags_after.end();
+    });
+    if (!set_by_battle){
+        return "16.02 has no battle that sets " + flag + ".";
+    }
+    const std::vector<std::string>& start = checkpoint("16.03").start_flags;
+    if (std::find(start.begin(), start.end(), flag) == start.end()){
+        return "16.03 does not start with " + flag + ".";
+    }
+    const std::vector<MapData>& maps = run_story_maps({flag});
+    if (!has_object_at(maps, "SilphCo_5F", 11, 21)){
+        return "The run's maps have nobody on SilphCo_5F (11, 21), where the Rocket stopped.";
+    }
+    if (has_object_at(maps, "SilphCo_5F", 9, 21)){
+        return "The run's maps still have the Rocket on his spawn tile SilphCo_5F (9, 21).";
+    }
+    return true;
+}
+
 const AutoStorySilphCase AUTO_STORY_SILPH_CASES[] = {
     {
         .input = {.name = "16.01 Silph Co.'s stairs to 3F and its pad to 5F", .body = test_pad_to_5f},
@@ -454,6 +509,10 @@ const AutoStorySilphCase AUTO_STORY_SILPH_CASES[] = {
     {
         .input = {.name = "16.02 fights the Rocket by the corridor for 16.03's start flag", .body = test_corridor_rocket_fought},
         .expectation = {.description = "a trainer_wait step, then his battle with trainer_beaten:SilphCo_5F/rocket_m@9,21 after it; 16.03 starts with the flag"},
+    },
+    {
+        .input = {.name = "the corridor Rocket stands where he stopped after 16.02", .body = test_corridor_rocket_stands_where_he_stopped},
+        .expectation = {.description = "16.02's battle sets trainer_at:SilphCo_5F/rocket_m@9,21=11,21; 16.03 starts with it; the run's maps have him on (11, 21), not (9, 21)"},
     },
     {
         .input = {.name = "silph_cleared is set by the Giovanni step", .body = test_silph_cleared_flag},
