@@ -54,11 +54,40 @@ class DescribeProgramTests(AppQueryTest):
         self.assertEqual(lines[1:], ['describe_program'])
 
     def test_a_precheck_list_is_supported(self):
-        doc = dict(PROGRAM_CONTRACT, prechecks=[{'name': 'game_open', 'needs': 'a game in front'}])
-        self.app.replies['describe_program'] = describe_line(doc)
-        result = self.ask('describe_program')
-        self.assertTrue(result['prechecks_supported'])
-        self.assertEqual(result['program']['prechecks'], doc['prechecks'])
+        cases = [
+            dict(name='two checks, in order',
+                 input=[{'name': 'black_border', 'needs': 'No black border.', 'skippable': False},
+                        {'name': 'free_party_slots', 'needs': '1 free party slot.', 'skippable': True}],
+                 expectation=['black_border', 'free_party_slots']),
+            dict(name='an empty list needs nothing', input=[], expectation=[]),
+        ]
+        for case in cases:
+            with self.subTest(case['name']):
+                self.setUp()
+                doc = dict(PROGRAM_CONTRACT, prechecks=case['input'])
+                self.app.replies['describe_program'] = describe_line(doc)
+                result = self.ask('describe_program')
+                self.assertTrue(result['prechecks_supported'])
+                self.assertEqual([c['name'] for c in result['program']['prechecks']], case['expectation'])
+                self.assertEqual(result['program']['prechecks'], case['input'])
+
+    def test_a_bad_precheck_entry_is_refused(self):
+        good = {'name': 'black_border', 'needs': 'No black border.', 'skippable': False}
+        cases = [
+            dict(name='not an object', input=['black_border'], expectation='prechecks'),
+            dict(name='no name', input=[{k: v for k, v in good.items() if k != 'name'}], expectation='prechecks'),
+            dict(name='empty name', input=[dict(good, name='')], expectation='prechecks'),
+            dict(name='needs not a string', input=[dict(good, needs=None)], expectation='prechecks'),
+            dict(name='skippable not a bool', input=[dict(good, skippable='no')], expectation='prechecks'),
+            dict(name='a name twice', input=[good, dict(good, skippable=True)], expectation='prechecks'),
+        ]
+        for case in cases:
+            with self.subTest(case['name']):
+                self.setUp()
+                self.app.replies['describe_program'] = describe_line(dict(PROGRAM_CONTRACT, prechecks=case['input']))
+                refusal = self.refusal('describe_program')
+                self.assertEqual(refusal['code'], 'app_unavailable')
+                self.assertIn(case['expectation'], refusal['message'])
 
     def test_refusals(self):
         bad_options = dict(PROGRAM_CONTRACT, options=['LANGUAGE'])

@@ -5,7 +5,8 @@ token, no program state and no lease:
 
 - `describe_program` prints `describe_program <JSON>`, the selected program's id and the static
   contract of its options: `{"id", "options", "prechecks", "schema": 1}`. `prechecks` is the
-  string `unsupported` until the program declares a precheck list (#485); a list after that.
+  string `unsupported` when the program declares no precheck list; otherwise the list in run
+  order, each `{"name", "needs", "skippable"}` with a unique non-empty name (#511).
 - `game_open` prints `game_open yes`, or `game_open no REASON` with REASON `home`,
   `user_select`, `black` or `no_video`. It never fails the line and does not tell one game from
   another.
@@ -83,6 +84,21 @@ def _one_reply(lines: List[str], pattern: 're.Pattern[str]', command: str):
     return replies[0]
 
 
+def _good_precheck(entry: Any) -> bool:
+    return (isinstance(entry, dict) and isinstance(entry.get('name'), str) and bool(entry['name'])
+            and isinstance(entry.get('needs'), str) and isinstance(entry.get('skippable'), bool))
+
+
+def _good_prechecks(prechecks: Any) -> bool:
+    """`unsupported`, or a list of well-formed entries with unique names."""
+    if prechecks == PRECHECKS_UNSUPPORTED:
+        return True
+    if not isinstance(prechecks, list) or not all(_good_precheck(entry) for entry in prechecks):
+        return False
+    names = [entry['name'] for entry in prechecks]
+    return len(names) == len(set(names))
+
+
 def _check_contract(doc: Any, lines: List[str]) -> Dict[str, Any]:
     if not isinstance(doc, dict):
         raise Refused('app_unavailable', 'describe_program did not print a JSON object.', {'journal': lines})
@@ -94,8 +110,7 @@ def _check_contract(doc: Any, lines: List[str]) -> Dict[str, Any]:
         problems.append('id')
     if not isinstance(doc.get('options'), list) or not all(isinstance(o, dict) for o in doc['options']):
         problems.append('options')
-    prechecks = doc.get('prechecks')
-    if prechecks != PRECHECKS_UNSUPPORTED and not isinstance(prechecks, list):
+    if not _good_prechecks(doc.get('prechecks')):
         problems.append('prechecks')
     if problems:
         raise Refused('app_unavailable', 'describe_program printed a bad {}.'.format(', '.join(problems)),

@@ -200,8 +200,12 @@ up to 5 s + 2 s for the journal, and reads `state.json` again. Arguments are clo
 
 - `describe_program` parses `describe_program <JSON>` and returns it as `program`:
   `{"id", "options", "prechecks", "schema": 1}` (the option entries as the app prints them) with
-  `prechecks_supported`. `prechecks` is the string `unsupported` until the program declares a
-  list (#485); that is a valid reply, not an error. A list is passed through.
+  `prechecks_supported`. `prechecks` is the string `unsupported` when the program declares no
+  list; that is a valid reply, not an error, and never means the checks passed. Otherwise it
+  is the program's checks in run order, each `{"name", "needs", "skippable"}` (#511): `name` a
+  non-empty string, unique in the list; `needs` the one line of what the program needs;
+  `skippable` whether the user can turn the check off. An empty list means the program needs
+  nothing. The list is passed through.
 - `game_open` parses `game_open yes` / `game_open no REASON` and returns `open` and `reason`
   (`null`, `home`, `user_select`, `black` or `no_video`). `open: false` is an answer, not a tool
   error; it does not tell one game from another (`ensure_game` does).
@@ -210,7 +214,7 @@ up to 5 s + 2 s for the journal, and reads `state.json` again. Arguments are clo
 |---|---|
 | `describe_program: the selected panel is not a program.` | `panel_not_program` |
 | `schema` other than 1 | `unsupported_schema` |
-| a failed line, no single reply line and `ok` line, bad JSON, a missing `id`/`options`/`prechecks`, an unknown `game_open` reason | `app_unavailable` (the journal in `evidence`) |
+| a failed line, no single reply line and `ok` line, bad JSON, a missing `id`/`options`/`prechecks`, a precheck entry without a name, `needs` or boolean `skippable`, a name twice, an unknown `game_open` reason | `app_unavailable` (the journal in `evidence`) |
 | a reply from another instance | `app_unavailable`, `evidence.reason` `instance_replaced` |
 | no journal within 7 s | `timeout`; the request is withdrawn from the inbox |
 
