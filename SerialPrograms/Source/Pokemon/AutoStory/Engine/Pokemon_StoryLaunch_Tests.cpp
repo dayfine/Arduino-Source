@@ -44,6 +44,7 @@ enum class Screen{
     LOAD_MENU,          //  Continue / New Game
     UPDATE,             //  the update prompt: Up twice to its last choice, then A
     GAME_DIALOG,        //  the game's dialog box, in play or on the way
+    LOGO,               //  a boot logo, which a loose title check passes
     OVERWORLD,
 };
 
@@ -95,6 +96,12 @@ enum class GameScreens{
     AFTER_LAUNCH,   //  read only once the launch launched the game
 };
 
+//  Which screens the test game's title check passes.
+enum class TitleCheck{
+    TITLE,              //  the title only
+    LOOSE,              //  the title and the boot's logos; the backup save only on the title
+};
+
 //  The test game's bounds that a case may change.
 struct Bounds{
     size_t title_load_looks = 0;
@@ -104,7 +111,7 @@ struct Bounds{
 //  The test game: A on the title, `backup` for the backup save, A on each
 //  prompt (Up, Up, A on the update prompt; B on the game's dialog), and
 //  small bounds so a failure takes few looks.
-StoryLaunchPolicy test_policy(Backup backup, GameScreens game_screens, TileCheck tile_check, Bounds bounds){
+StoryLaunchPolicy test_policy(Backup backup, GameScreens game_screens, TileCheck tile_check, TitleCheck title_check, Bounds bounds){
     StoryLaunchPolicy policy;
     policy.game = "test";
     policy.tile_selected = [](const ScreenObservation& observation){
@@ -116,6 +123,12 @@ StoryLaunchPolicy test_policy(Backup backup, GameScreens game_screens, TileCheck
     }
     policy.tile_search = 2;
     policy.title = shows(Screen::TITLE);
+    if (title_check == TitleCheck::LOOSE){
+        policy.title = [](const ScreenObservation& observation){
+            return shows(Screen::TITLE)(observation) || shows(Screen::LOGO)(observation);
+        };
+        policy.backup_title = shows(Screen::TITLE);
+    }
     if (backup == Backup::PLZA){
         policy.backup_save = {{.button = BUTTON_UP}, {.button = BUTTON_B | BUTTON_X, .hold = Milliseconds(1000)}};
     }
@@ -153,6 +166,7 @@ struct LaunchCase{
         Backup backup = Backup::PLZA;
         GameScreens game_screens = GameScreens::STRICT;
         TileCheck tile_check = TileCheck::READINGS;
+        TitleCheck title_check = TitleCheck::TITLE;
         Bounds bounds = {};
     };
     struct Expectation{
@@ -204,6 +218,14 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
                                         Screen::HOME_ON_GAME, Screen::BLACK, Screen::TITLE, Screen::BACKUP_CONFIRM, Screen::BLACK}),
                .request = {.save = Save::BACKUP, .running = Running::KEEP}, .game_screens = GameScreens::AFTER_LAUNCH},
      .expectation = {.inputs = "HOME X A wait A wait Up B+X A A wait wait wait"}},
+    //  Console B, 2026-11-14: the backup's buttons went to a boot logo that
+    //  passed the loose title check; the title took only A.
+    {.name = "backup save waits past the boot's logos for the title",
+     .input = {.screens = then_settled({Screen::OVERWORLD, Screen::HOME_ON_GAME, Screen::CLOSE_DIALOG, Screen::HOME_ON_GAME,
+                                        Screen::LOGO, Screen::LOGO, Screen::TITLE, Screen::BACKUP_CONFIRM, Screen::BLACK}),
+               .request = {.save = Save::BACKUP, .running = Running::KEEP}, .game_screens = GameScreens::AFTER_LAUNCH,
+               .title_check = TitleCheck::LOOSE},
+     .expectation = {.inputs = "HOME X A A wait wait Up B+X A A wait wait wait"}},
     {.name = "backup save the game does not have",
      .input = {.screens = then_settled({}), .request = {.save = Save::BACKUP}, .backup = Backup::NONE},
      .expectation = {.failure = "no backup save", .inputs = ""}},
@@ -302,7 +324,7 @@ std::string check_launch(const LaunchCase& test, CancellableScope& scope){
         looks.push_back(look(screen));
     }
     FakeStoryBackend<GridPose> backend({.looks = std::move(looks)}, scope);
-    const Outcome outcome = launch_story_game(backend, test_policy(test.input.backup, test.input.game_screens, test.input.tile_check, test.input.bounds), test.input.request);
+    const Outcome outcome = launch_story_game(backend, test_policy(test.input.backup, test.input.game_screens, test.input.tile_check, test.input.title_check, test.input.bounds), test.input.request);
     if (test.expectation.failure.empty() && !outcome.succeeded()){
         return std::format("expected success, got {}", to_string(outcome));
     }

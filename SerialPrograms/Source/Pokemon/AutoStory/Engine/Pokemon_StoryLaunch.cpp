@@ -116,7 +116,7 @@ public:
         case LaunchScreen::PROMPT:
             return on_prompt(*look.prompt);
         case LaunchScreen::TITLE:
-            return on_title();
+            return on_title(observation);
         case LaunchScreen::OVERWORLD:
             return on_overworld();
         case LaunchScreen::OTHER:
@@ -167,10 +167,15 @@ private:
         return press(prompt.name, prompt.press, prompt.max_presses);
     }
 
-    std::optional<Outcome> on_title(){
+    std::optional<Outcome> on_title(const ScreenObservation& observation){
         m_loading = true;
         m_launched = true;
-        if (m_request.save == StoryLaunchRequest::Save::BACKUP && !m_backup_sent){
+        const bool backup = m_request.save == StoryLaunchRequest::Save::BACKUP && !m_backup_sent;
+        if (backup && m_policy.backup_title && !m_policy.backup_title(observation)){
+            m_backend.wait(m_policy.poll);
+            return std::nullopt;
+        }
+        if (backup){
             m_backup_sent = true;
             log("title", "the backup save");
             for (const StoryLaunchPress& each : m_policy.backup_save){

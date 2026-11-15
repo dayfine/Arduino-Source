@@ -109,6 +109,12 @@ struct StoryLaunchPolicy{
     //  Empty: the game has no backup save, and a BACKUP launch fails
     //  before it presses anything.
     std::vector<StoryLaunchPress> backup_save = {};
+    //  Where `backup_save` goes: the title proper. A loose `title` passes
+    //  the boot's logos too, where those presses do nothing and the title's
+    //  next press loads the latest save (console B, 2026-11-14). Until it
+    //  shows, a BACKUP launch waits on title looks without a press. Empty:
+    //  the first title look takes them.
+    std::function<bool(const ScreenObservation& look)> backup_title = {};
     //  A screen that would start a new game: there is no save. The launch
     //  fails there without a press. Optional.
     std::function<bool(const ScreenObservation& look)> new_game = {};
