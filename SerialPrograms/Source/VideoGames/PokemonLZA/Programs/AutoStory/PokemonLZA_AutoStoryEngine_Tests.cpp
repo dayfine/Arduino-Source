@@ -264,16 +264,17 @@ Observation<ZonePose> facing(Milliseconds at, int heading){
     return look;
 }
 
-//  face_heading() turns by the difference to the heading a look reads and
-//  stops once a look reads it within the tolerance; with no heading read it
-//  fails before any input.
+//  face_heading() turns by the difference to the heading a look reads,
+//  stops once a look reads it within the tolerance and ends with L, so the
+//  camera looks where the player faces; with no heading read it fails
+//  before any input.
 UnitTestResult test_face_heading(CancellableScope& scope){
     FakeBackend backend = fake_plza({facing(0ms, 0), facing(500ms, 88)}, scope);
     const Pokemon::Outcome faced = face_heading(backend, PlzaReader(), 90, 10);
     if (!faced.succeeded()){
         return std::format("Expected to face 90 degrees: {}", to_string(faced));
     }
-    const UnitTestResult turned = expect_inputs(backend, {"press L", "stick 90deg 150ms walk, release 100ms"});
+    const UnitTestResult turned = expect_inputs(backend, {"press L", "stick 90deg 150ms walk, release 100ms", "press L"});
     if (turned.result != UnitTestResult::PASSED){
         return turned;
     }
