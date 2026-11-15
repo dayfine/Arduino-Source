@@ -1643,6 +1643,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_CheckpointRetry.h
     Source/Pokemon/AutoStory/Pokemon_CheckpointRetry_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_CheckpointRetry_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_ConsoleReadings.h
     Source/Pokemon/AutoStory/Pokemon_FadeProfiles.h
     Source/Pokemon/AutoStory/Pokemon_FrameReplay.cpp
     Source/Pokemon/AutoStory/Pokemon_FrameReplay.h
@@ -2199,6 +2200,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvolutionWait_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvolutionWait_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFrameReplay_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFrameReplay_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLegs.cpp

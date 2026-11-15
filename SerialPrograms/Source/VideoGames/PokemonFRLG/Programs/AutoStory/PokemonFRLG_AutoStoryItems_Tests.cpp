@@ -38,6 +38,7 @@
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryBattleTurns.h"
+#include "PokemonFRLG_AutoStoryEvolutionWait_Tests.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
 #include "PokemonFRLG_AutoStoryNewMembers.h"

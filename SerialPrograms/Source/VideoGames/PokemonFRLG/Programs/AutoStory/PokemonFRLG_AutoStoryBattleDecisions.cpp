@@ -510,15 +510,13 @@ void EvolutionHold::held(Milliseconds held, bool lead_fainted){
     evolve(m_lead);
 }
 
-Milliseconds wait_out_evolution(
-    Pokemon::ReadingSource<BattleTextScreen>& source, const EvolutionHold& hold, Milliseconds poll
-){
+Milliseconds EvolutionHold::wait_out(Milliseconds poll, Pokemon::ReadingSource<BattleTextScreen>& source) const{
     const WallClock start = source.now();
-    bool holds = true;
-    while (holds && source.now() - start < EvolutionHold::MAX_HOLD){
+    bool still = true;
+    while (still && source.now() - start < MAX_HOLD){
         source.wait(poll);
         const std::optional<BattleTextScreen> screen = source.read();
-        holds = !screen || hold.holds(*screen);
+        still = !screen || holds(*screen);
     }
     return std::chrono::duration_cast<Milliseconds>(source.now() - start);
 }

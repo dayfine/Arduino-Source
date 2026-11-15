@@ -173,6 +173,10 @@ public:
     //  Such a screen showed for `held` with nothing pressed: long enough,
     //  and the lead evolved (unless it had fainted).
     void held(Milliseconds held, bool lead_fainted);
+    //  Nothing pressed while it holds for what `source` reads, a look every
+    //  `poll`, up to MAX_HOLD; a look with no frame holds on. How long it
+    //  held, for held().
+    Milliseconds wait_out(Milliseconds poll, Pokemon::ReadingSource<BattleTextScreen>& source) const;
 
 private:
     PartyMember& m_lead;
@@ -182,13 +186,6 @@ private:
     bool m_ran_out = false;
     Milliseconds m_held = Milliseconds::zero();
 };
-
-//  Nothing pressed while `hold` holds for what `source` reads, a look
-//  every `poll`, up to EvolutionHold::MAX_HOLD; a look with no frame holds
-//  on. How long it held, for EvolutionHold::held().
-Milliseconds wait_out_evolution(
-    Pokemon::ReadingSource<BattleTextScreen>& source, const EvolutionHold& hold, Milliseconds poll
-);
 
 
 //  What the battle loop saw of the battle at a poll.
@@ -278,8 +275,6 @@ private:
 
 //  Registers AutoStory party management unit tests.
 void add_tests_AutoStoryParty(UnitTestDatabase& database);
-//  Registers the battle loop's evolution waits on scripted readings.
-void add_tests_AutoStoryEvolutionWait(UnitTestDatabase& database);
 
 
 

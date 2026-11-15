@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The battle loop after its last turn, on scripted readings
- *  (Pokemon_ScriptedReadings.h): wait_out_evolution() for each hold, B
+ *  (Pokemon_ScriptedReadings.h): EvolutionHold::wait_out() for each hold, B
  *  otherwise, and START once the battle is gone, as between_turns(),
  *  battle_gone() and no_battle_screen() in PokemonFRLG_AutoStoryBattle.cpp
  *  run them. Regression for 16.05 (console B, 2026-11-15): black at Silph
@@ -21,6 +21,7 @@
 #include "Pokemon/AutoStory/Pokemon_ScriptedReadings.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattleTurns.h"
+#include "PokemonFRLG_AutoStoryEvolutionWait_Tests.h"
 #include "PokemonFRLG_AutoStorySupplies.h"
 
 namespace PokemonAutomation{
@@ -72,7 +73,7 @@ ExitRun run_exit(std::vector<ScriptedReading<BattleTextScreen>> script, Millisec
     while (source.elapsed() < RUN_LIMIT){
         const std::optional<BattleTextScreen> screen = source.read();
         if (screen && hold.holds(*screen)){
-            const Milliseconds held = wait_out_evolution(source, hold, POLL);
+            const Milliseconds held = hold.wait_out(POLL, source);
             hold.held(held, false);
             run.holds.push_back(held);
             continue;
@@ -91,7 +92,7 @@ ExitRun run_exit(std::vector<ScriptedReading<BattleTextScreen>> script, Millisec
 
 
 struct EvolutionWaitInput{
-    std::vector<ScriptedReading<BattleTextScreen>> script = {};
+    std::vector<ScriptedReading<BattleTextScreen>> script;
     //  From when START opens the menu.
     Milliseconds overworld_from = Milliseconds(0);
 };
@@ -103,7 +104,7 @@ struct HoldRange{
 };
 
 struct EvolutionWaitExpectation{
-    std::vector<HoldRange> holds = {};
+    std::vector<HoldRange> holds;
     //  START opens the menu by then, from the start.
     Milliseconds left_by = Milliseconds(0);
     //  Whether the loop took the lead for evolved; none: not checked.
@@ -111,9 +112,9 @@ struct EvolutionWaitExpectation{
 };
 
 struct EvolutionWaitCase{
-    std::string name = {};
-    EvolutionWaitInput input = {};
-    EvolutionWaitExpectation expectation = {};
+    std::string name;
+    EvolutionWaitInput input;
+    EvolutionWaitExpectation expectation;
 };
 
 UnitTestResult check_run(const ExitRun& run, const EvolutionWaitExpectation& expected, const Supplies& supplies){

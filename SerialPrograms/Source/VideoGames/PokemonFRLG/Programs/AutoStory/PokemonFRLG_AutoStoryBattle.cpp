@@ -8,13 +8,13 @@
 #include <cstdlib>
 #include <format>
 #include <memory>
-#include <optional>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "Pokemon/AutoStory/Pokemon_ConsoleReadings.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
@@ -319,36 +319,6 @@ void send_member(ProControllerContext& context, size_t slot){
 }
 
 
-//  The screen as the evolution check reads it: a wait on the controller,
-//  then a snapshot through read_text_screen().
-class ConsoleTextReadings : public Pokemon::ReadingSource<BattleTextScreen>{
-public:
-    ConsoleTextReadings(ConsoleHandle& console, ProControllerContext& context)
-        : m_console(console)
-        , m_context(context)
-    {}
-
-    virtual void wait(Milliseconds duration) override{
-        pbf_wait(m_context, duration);
-        m_context.wait_for_all_requests();
-    }
-    virtual std::optional<BattleTextScreen> read() override{
-        VideoSnapshot screen = m_console.video().snapshot();
-        if (!screen){
-            return std::nullopt;
-        }
-        return read_text_screen(screen);
-    }
-    virtual WallClock now() const override{
-        return current_time();
-    }
-
-private:
-    ConsoleHandle& m_console;
-    ProControllerContext& m_context;
-};
-
-
 class BattleLoop{
 public:
     BattleLoop(
@@ -482,8 +452,8 @@ private:
 
     //  Nothing pressed while the screen may be an evolution, up to MAX_HOLD.
     void hold_for_evolution(){
-        ConsoleTextReadings readings(m_console, m_context);
-        const Milliseconds held = wait_out_evolution(readings, m_evolution, POLL);
+        Pokemon::ConsoleReadings<BattleTextScreen> readings(m_console, m_context, read_text_screen);
+        const Milliseconds held = m_evolution.wait_out(POLL, readings);
         const WallClock end = current_time();
         if (held >= 2000ms){
             m_console.log(std::format("Battle: no B for {} s, for an evolution.", held.count() / 1000));

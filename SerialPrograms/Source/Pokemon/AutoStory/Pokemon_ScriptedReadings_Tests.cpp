@@ -27,20 +27,20 @@ using namespace std::chrono_literals;
 const WallClock T0 = WallClock() + std::chrono::hours(1);
 
 struct ScriptedReadingsInput{
-    std::vector<ScriptedReading<int>> script = {};
+    std::vector<ScriptedReading<int>> script;
     //  Waited before each read.
-    std::vector<Milliseconds> waits = {};
+    std::vector<Milliseconds> waits;
 };
 
 struct ScriptedReadingsExpectation{
     //  One per wait.
-    std::vector<std::optional<int>> readings = {};
+    std::vector<std::optional<int>> readings;
 };
 
 struct ScriptedReadingsCase{
-    std::string name = {};
-    ScriptedReadingsInput input = {};
-    ScriptedReadingsExpectation expectation = {};
+    std::string name;
+    ScriptedReadingsInput input;
+    ScriptedReadingsExpectation expectation;
 };
 
 std::string reading_name(const std::optional<int>& reading){
