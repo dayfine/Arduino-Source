@@ -46,7 +46,5 @@
       "source": "played step by step from a new game; starts at the battle area autosave"
     }
   },
-  "execution": {
-    "save": "menu"
-  }
+  "execution": {}
 }
