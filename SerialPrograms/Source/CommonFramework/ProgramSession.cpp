@@ -182,6 +182,10 @@ void ProgramSession::mark_started(ActionSource source, std::optional<std::string
     m_last_state_change.store(now, std::memory_order_relaxed);
     m_transitions.started(source, std::move(request_id), now);
 }
+void ProgramSession::set_finished(){
+    m_transitions.finished(current_time());
+    set_state(ProgramState::STOPPED);
+}
 void ProgramSession::push_stats(){
     m_listeners.run_method(
         &Listener::stats_update,
@@ -456,8 +460,7 @@ void ProgramSession::run_program(){
         std::lock_guard<Mutex> lg(m_lock);
         push_stats();
         update_historical_stats_with_current();
-        m_transitions.finished(current_time());
-        set_state(ProgramState::STOPPED);
+        set_finished();
     }
 }
 

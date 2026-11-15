@@ -156,6 +156,8 @@ private:
     void set_state(ProgramState state);
     //  Records the start time and who asked, before the state goes RUNNING.
     void mark_started(ActionSource source, std::optional<std::string> request_id);
+    //  The run ended: records who ended it, unless a stop was asked for, and goes STOPPED.
+    void set_finished();
     void push_stats();
     void push_error(const std::string& message);
     void push_download_error(const std::string& message);
