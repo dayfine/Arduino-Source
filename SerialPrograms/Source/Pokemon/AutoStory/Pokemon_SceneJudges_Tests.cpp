@@ -14,7 +14,6 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_SceneJudges.h"
 #include "Pokemon_SceneJudges_Tests.h"
-#include "Pokemon_TestExpect.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -22,18 +21,6 @@ namespace Pokemon{
 namespace{
 
 using namespace std::chrono_literals;
-
-
-UnitTestResult test_warp_seen(){
-    WarpSeen seen = note_warp({}, {ScreenEvent::DIALOG_BOX}, "Route 203");
-    if (seen.any()){
-        return "a dialog box with no banner event counted as a warp";
-    }
-    seen = note_warp(seen, {ScreenEvent::FADE_BLACK}, "");
-    seen = note_warp(seen, {ScreenEvent::FADE_WHITE, ScreenEvent::LOCATION_BANNER}, "Route 203");
-    seen = note_warp(seen, {ScreenEvent::LOCATION_BANNER}, "Oreburgh Gate");
-    return expect_equal("describe(WarpSeen)", describe(seen), "black fade, banner \"Route 203\"");
-}
 
 
 //  A scripted scene: a look per beat, a second apart. Returns the beat
@@ -164,7 +151,6 @@ private:
 
 
 const SceneJudgesCase SCENE_JUDGES_CASES[] = {
-    {.name = "a warp is the first fade and the first banner seen", .body = test_warp_seen},
     {.name = "talk-over from scripted events", .body = test_talk_over},
 };
 

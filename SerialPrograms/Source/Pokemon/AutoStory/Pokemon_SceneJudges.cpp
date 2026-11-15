@@ -12,28 +12,6 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-WarpSeen note_warp(WarpSeen seen, const ScreenEvents& events, const std::string& banner_read){
-    if (seen.fade == WarpFade::NONE){
-        seen.fade = fade_in(events);
-    }
-    if (seen.banner.empty() && events.has(ScreenEvent::LOCATION_BANNER)){
-        seen.banner = banner_read;
-    }
-    return seen;
-}
-
-std::string describe(const WarpSeen& seen){
-    if (!seen.any()){
-        return "nothing";
-    }
-    std::string out = seen.fade == WarpFade::NONE ? "" : warp_fade_name(seen.fade);
-    if (!seen.banner.empty()){
-        out += std::format("{}banner \"{}\"", out.empty() ? "" : ", ", seen.banner);
-    }
-    return out;
-}
-
-
 SceneMove TalkOver::look(const ScreenEvents& events, WallClock now){
     if (events.has(ScreenEvent::BATTLE_STARTED)){
         m_quiet_since.reset();
