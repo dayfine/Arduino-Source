@@ -64,6 +64,10 @@ def _check_start(app: Dict[str, Any]) -> None:
         raise Refused('video_bad_signal', 'The video shows {}.'.format(signal.replace('_', ' ')))
 
 
+# Transport: a file in Lab/inbox (atomic rename), answered by a journal in Lab/outbox that the
+# app writes after its next 500 ms poll. A local socket is the likely replacement if poll latency
+# or missed events become a measured problem; the alternatives are in lab/tooling's
+# docs/design/Agent-Integration.md, "Transport: now and later".
 def _write_request(lab_dir: Path, name: str, request_id: str, timeout_ms: int) -> Path:
     part = lab_dir / 'outbox' / (name + '.part')
     inbox = lab_dir / 'inbox' / (name + '.txt')
