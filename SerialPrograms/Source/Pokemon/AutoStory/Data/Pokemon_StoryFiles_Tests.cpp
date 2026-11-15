@@ -228,6 +228,72 @@ UnitTestResult check_rows(const RowsCase& test){
 }
 
 
+struct SegmentsCase{
+    std::string name;
+    struct Input{
+        std::vector<std::string> rows;
+        std::set<std::string, std::less<>> reload_when_chained = {};
+    };
+    Input input;
+    struct Expectation{
+        //  The segments' ids, " | " between segments.
+        std::string segments;
+    };
+    Expectation expectation;
+};
+
+const SegmentsCase SEGMENTS_CASES[] = {
+    {
+        .name = "no reload: one segment",
+        .input = {.rows = {"01.00", "01.01", "01.02"}},
+        .expectation = {.segments = "01.00 01.01 01.02"},
+    },
+    {
+        .name = "a reload before a row in the middle",
+        .input = {.rows = {"01.00", "01.01", "01.02"}, .reload_when_chained = {"01.02"}},
+        .expectation = {.segments = "01.00 01.01 | 01.02"},
+    },
+    {
+        .name = "a reload before every row after the first",
+        .input = {.rows = {"01.01", "01.02", "01.03"}, .reload_when_chained = {"01.02", "01.03"}},
+        .expectation = {.segments = "01.01 | 01.02 | 01.03"},
+    },
+    {
+        .name = "the run's first row does not start a second segment",
+        .input = {.rows = {"01.02", "01.03"}, .reload_when_chained = {"01.02"}},
+        .expectation = {.segments = "01.02 01.03"},
+    },
+    {
+        .name = "no rows, no segments",
+        .input = {.rows = {}, .reload_when_chained = {"01.02"}},
+        .expectation = {.segments = ""},
+    },
+};
+
+UnitTestResult check_segments(const SegmentsCase& test){
+    std::vector<StoryCheckpoint> rows;
+    for (const std::string& id : test.input.rows){
+        StoryCheckpoint row;
+        row.id = id;
+        rows.push_back(std::move(row));
+    }
+    StoryRows story;
+    story.reload_when_chained = test.input.reload_when_chained;
+    std::vector<std::string> segments;
+    for (const std::vector<StoryCheckpoint>& segment : story_run_segments<StoryCheckpoint>(rows, story)){
+        segments.push_back(joined(ids(segment)));
+    }
+    std::string got;
+    for (const std::string& segment : segments){
+        got += (got.empty() ? "" : " | ") + segment;
+    }
+    if (got != test.expectation.segments){
+        return std::format("expected \"{}\", got \"{}\"", test.expectation.segments, got);
+    }
+    return true;
+}
+
+
 template <typename Case>
 class StoryFilesTest : public UnitTest{
 public:
@@ -257,6 +323,9 @@ void add_tests_StoryFiles(UnitTestDatabase& database){
     }
     for (const RowsCase& test : ROWS_CASES){
         database.add<StoryFilesTest<RowsCase>>("rows", test, check_rows);
+    }
+    for (const SegmentsCase& test : SEGMENTS_CASES){
+        database.add<StoryFilesTest<SegmentsCase>>("segments", test, check_segments);
     }
 }
 

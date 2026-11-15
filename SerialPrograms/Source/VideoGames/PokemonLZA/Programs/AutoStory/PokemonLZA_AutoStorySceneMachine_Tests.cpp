@@ -58,12 +58,21 @@ const ScreenEvents DIALOG{ScreenEvent::DIALOG_BOX};
 const ScreenEvents STILL{ScreenEvent::SCREEN_STILL};
 const ScreenEvents WHITE{ScreenEvent::FADE_WHITE};
 const ScreenEvents BLACK{ScreenEvent::FADE_BLACK};
+const ScreenEvents CHOICE{ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX};
 
 //  mash_to_move_hints' config: a minute quiet, blind A after 5 s.
 SceneMachineConfig arrival_config(){
     SceneMachineConfig config;
     config.quiet = 60000ms;
     config.blind_press_after = 5000ms;
+    return config;
+}
+
+//  text_to_choice's config: B through the text, ending at the choice box.
+SceneMachineConfig choice_config(){
+    SceneMachineConfig config;
+    config.stop_at_choice = true;
+    config.text_button = BUTTON_B;
     return config;
 }
 
@@ -199,6 +208,16 @@ const TimelineCase TIMELINE_CASES[] = {
         }},
     },
     {
+        .name = "a machine that stops at choices ends on the choice box, after the text before it",
+        .input = {.config = choice_config(), .looks = {look_at(0ms, DIALOG), look_at(500ms), look_at(1000ms, CHOICE)}},
+        .expectation = {.states = {SceneScreen::DIALOG, SceneScreen::SCENE_MOVING, SceneScreen::CHOICE}},
+    },
+    {
+        .name = "a machine that does not stop at choices takes the choice as text",
+        .input = {.config = arrival_config(), .looks = {look_at(0ms, CHOICE)}},
+        .expectation = {.states = {SceneScreen::DIALOG}},
+    },
+    {
         .name = "without a quiet time a still screen never ends the scene",
         .input = {.config = {}, .looks = {
             look_at(0ms, STILL), look_at(300000ms, STILL), look_at(300100ms, BLACK),
@@ -236,14 +255,15 @@ struct StateCase{
     Input input;
     struct Expectation{
         bool terminal = false;
-        bool presses_a = false;
+        bool presses = false;
     };
     Expectation expectation;
 };
 
 const StateCase STATE_CASES[] = {
-    {.name = "a box gets A", .input = {SceneScreen::DIALOG}, .expectation = {.presses_a = true}},
-    {.name = "a blind press is A", .input = {SceneScreen::BLIND_PRESS}, .expectation = {.presses_a = true}},
+    {.name = "a box gets the text button", .input = {SceneScreen::DIALOG}, .expectation = {.presses = true}},
+    {.name = "a blind press is A", .input = {SceneScreen::BLIND_PRESS}, .expectation = {.presses = true}},
+    {.name = "the choice box ends the scene", .input = {SceneScreen::CHOICE}, .expectation = {.terminal = true}},
     {.name = "a fade waits", .input = {SceneScreen::FADE_WHITE}, .expectation = {}},
     {.name = "a still scene waits", .input = {SceneScreen::SCENE_STILL}, .expectation = {}},
     {.name = "the hint not held yet waits", .input = {SceneScreen::HINT_SHOWING}, .expectation = {}},
@@ -254,9 +274,9 @@ const StateCase STATE_CASES[] = {
 
 UnitTestResult check_state(const StateCase& test){
     const bool terminal = scene_screen_terminal(test.input.screen);
-    const bool presses_a = scene_screen_presses_a(test.input.screen);
-    if (terminal != test.expectation.terminal || presses_a != test.expectation.presses_a){
-        return std::format("{}: terminal {}, presses A {}", scene_screen_name(test.input.screen), terminal, presses_a);
+    const bool presses = scene_screen_presses(test.input.screen);
+    if (terminal != test.expectation.terminal || presses != test.expectation.presses){
+        return std::format("{}: terminal {}, presses {}", scene_screen_name(test.input.screen), terminal, presses);
     }
     return true;
 }
@@ -265,8 +285,9 @@ UnitTestResult check_state(const StateCase& test){
 struct RunCase{
     std::string name;
     struct Input{
-        //  The backend's looks, the last repeating; arrival_config().
+        //  The backend's looks, the last repeating.
         std::vector<Observation<ZonePose>> looks;
+        SceneMachineConfig config = arrival_config();
     };
     Input input;
     struct Expectation{
@@ -274,6 +295,8 @@ struct RunCase{
         std::string verdict;
         //  How many times A was pressed.
         size_t a_presses = 0;
+        //  How many times B was pressed.
+        size_t b_presses = 0;
         //  A log line the run wrote, if any is checked.
         std::string line = {};
     };
@@ -328,6 +351,11 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] fade_white: white fade"},
     },
     {
+        .name = "01.02's Pancham: B through the text, done on the choice box",
+        .input = {.looks = {look_at(0ms), look_at(5000ms, DIALOG), look_at(6000ms, DIALOG), look_at(7000ms, CHOICE)}, .config = choice_config()},
+        .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 2, .line = "[PLZA test] done on choice."},
+    },
+    {
         .name = "a minute with nothing going on fails as scene_quiet",
         .input = {.looks = {look_at(0ms), look_at(60000ms)}},
         .expectation = {.verdict = "failed: scene_quiet", .a_presses = 0},
@@ -356,7 +384,7 @@ const RunCase RUN_CASES[] = {
 
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
-    const Pokemon::Outcome outcome = run_scene_machine(backend, "test", arrival_config(), 360s);
+    const Pokemon::Outcome outcome = run_scene_machine(backend, "test", test.input.config, 360s);
     const std::string verdict = outcome.succeeded() ? "done" : std::format("failed: {}", outcome.failure);
     if (verdict != test.expectation.verdict){
         return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.verdict, verdict, joined(backend.lines(), "\n"));
@@ -364,6 +392,10 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     const size_t a_presses = (size_t)std::count(backend.inputs().begin(), backend.inputs().end(), "press A");
     if (a_presses != test.expectation.a_presses){
         return std::format("expected {} A presses, got {}: {}", test.expectation.a_presses, a_presses, joined(backend.inputs(), ", "));
+    }
+    const size_t b_presses = (size_t)std::count(backend.inputs().begin(), backend.inputs().end(), "press B");
+    if (b_presses != test.expectation.b_presses){
+        return std::format("expected {} B presses, got {}: {}", test.expectation.b_presses, b_presses, joined(backend.inputs(), ", "));
     }
     if (test.expectation.line.empty()){
         return true;

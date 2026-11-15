@@ -197,6 +197,18 @@ ImageRGB32 mission_banner_frame(size_t dx, BannerIcon icon){
     return image;
 }
 
+//  The white title card after the plaza's white fade ("POKEMON LEGENDS:
+//  Z-A" centered in black, x 450-1450, y 520-560): 01.01's end, where a
+//  rerun from 01.01 finds the game before it reloads. Each letter a black
+//  block 30 px wide, 20 px apart.
+ImageRGB32 title_card_frame(){
+    ImageRGB32 image = solid_frame(0xffffffff);
+    for (size_t x = 450; x + 30 <= 1450; x += 50){
+        fill_box(x, 520, x + 30, 560, 0xff000000, image);
+    }
+    return image;
+}
+
 constexpr uint32_t WHITE = 0xffffffff;
 constexpr uint32_t BLACK = 0xff000000;
 constexpr uint32_t GRAY = 0xff808080;
@@ -232,7 +244,12 @@ const SyntheticFrameCase SYNTHETIC_FRAME_CASES[] = {
     {
         .name = "a white frame",
         .input = {.frame = []{ return solid_frame(WHITE); }},
-        .expectation = {.reads = {.autosave = false, .advance_arrow = false}},
+        .expectation = {.reads = {.platform = false, .autosave = false, .advance_arrow = false}},
+    },
+    {
+        .name = "the white title card is not the platform",
+        .input = {.frame = title_card_frame},
+        .expectation = {.reads = {.platform = false}},
     },
     {
         .name = "a gray frame",

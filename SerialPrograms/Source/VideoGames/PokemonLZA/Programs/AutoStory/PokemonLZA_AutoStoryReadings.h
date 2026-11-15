@@ -39,6 +39,13 @@ constexpr std::string_view ADVANCE_ARROW_READING = "scene.advance_arrow";
 //  (MainMissionBannerDetector).
 constexpr std::string_view MISSION_BANNER_READING = "scene.mission_banner";
 
+//  With a choice box on screen (ScreenEvent::CHOICE_BOX), how many rows
+//  the menu has (read_dialog_choice_rows()); unset when they do not read.
+constexpr std::string_view CHOICE_ROWS_READING = "choice.rows";
+
+//  With CHOICE_ROWS_READING, the highlighted row, 0 the top.
+constexpr std::string_view CHOICE_SELECTED_READING = "choice.selected";
+
 
 
 } // namespace PokemonLZA

@@ -31,7 +31,7 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "PokemonLZA:AutoStory",
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Play the main story of Pokemon Legends: Z-A. Prototype: from a new game to walking off the station platform. "
+        "Play the main story of Pokemon Legends: Z-A. Prototype: from a new game to the battle area of Main Mission 01. "
         "Start a new game and pick its language, look and name by hand: checkpoint 01.00 starts on the Confirm Choices screen that follows. "
         "It checks that screen, presses nothing anywhere else, and picks Ready!. Later checkpoints load the latest save first.",
         PanelQualityStanding::DEVELOPER,
@@ -111,14 +111,15 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
 
     StoryEnv story{.env = env, .context = context};
     PlzaConsoleBackend backend(story);
-    const StoryGame<ZonePose> game = make_plza_story_game(story, story_data.autosaves);
+    const StoryGame<ZonePose> game = make_plza_story_game(story, story_data);
     StoryEngine<ZonePose> engine(game, backend);
     RunState state;
 
     //  A run that starts after the new game starts from the latest save
-    //  (01.01: the platform autosave), not from wherever the game is.
+    //  (01.01: the platform autosave), not from wherever the game is, and
+    //  stops if that save is older than its start.
     if (!story_row_starts_without_save(rows[first])){
-        const Outcome loaded = game.reload(backend);
+        const Outcome loaded = load_checkpoint_start(game, backend, rows[first]);
         if (!loaded.succeeded()){
             throw OperationFailedException(
                 ErrorReportMode::NO_ERROR_REPORT,
@@ -129,7 +130,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     }
 
     const std::vector<StoryCheckpoint> checkpoints = story_run_rows(std::span<const StoryCheckpoint>(rows), first, last);
-    const SegmentReport report = engine.run_segment("PLZA", checkpoints, ATTEMPTS_PER_CHECKPOINT, state);
+    const SegmentReport report = run_plza_segments(game, story_data, checkpoints, ATTEMPTS_PER_CHECKPOINT, engine, backend, state);
     if (!report.completed){
         throw OperationFailedException(
             ErrorReportMode::NO_ERROR_REPORT,

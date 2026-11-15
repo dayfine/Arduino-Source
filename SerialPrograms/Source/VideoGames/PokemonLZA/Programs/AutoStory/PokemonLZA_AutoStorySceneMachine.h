@@ -13,6 +13,8 @@
  *  a main mission's banner (MISSION_BANNER_READING) shows on two looks in a
  *  row: it shows as the scene hands over control, and the machine then
  *  waits for it to go. 01.01's arrival scenes end on one or the other.
+ *  A machine that stops at a choice (SceneMachineConfig::stop_at_choice)
+ *  ends when the choice box shows instead: 01.02's "Battle with Pokemon!".
  *
  */
 
@@ -23,6 +25,7 @@
 #include <string_view>
 #include "Common/Cpp/Time.h"
 #include "CommonTools/ScreenMachine/ScreenObservation.h"
+#include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 
@@ -44,13 +47,19 @@ struct SceneMachineConfig{
     //  shown for this long, for text the detectors miss (01.01's ad). A does
     //  not skip a cutscene.
     std::optional<Milliseconds> blind_press_after = std::nullopt;
+    //  Ends at the choice box (CHOICE_BOX) instead of taking its top row.
+    bool stop_at_choice = false;
+    //  The button that advances text: B where an A could land on a choice
+    //  that shows the moment the text ends.
+    Button text_button = BUTTON_A;
 };
 
 //  The states a scene machine tells apart, in the order it tries them.
 enum class SceneScreen{
     FADE_BLACK,     //  wait until it lifts
     FADE_WHITE,     //  wait until it lifts
-    DIALOG,         //  A: a box (its choice's top row too), or the advance chevron
+    CHOICE,         //  terminal: the choice box, with stop_at_choice
+    DIALOG,         //  the text button: a box (A: its choice's top row too), or the advance chevron
     MISSION_BANNER, //  terminal: a main mission's banner, on a second look
     BANNER_SHOWING, //  wait: the banner, on its first look
     CONTROLS_HINT,  //  terminal: the tutorial's controls hint, held a second
@@ -67,8 +76,9 @@ std::string_view scene_screen_name(SceneScreen screen);
 //  Whether the machine ends after this state's step.
 bool scene_screen_terminal(SceneScreen screen);
 
-//  Whether this state's step is A; the others wait.
-bool scene_screen_presses_a(SceneScreen screen);
+//  Whether this state's step presses (DIALOG the config's text button,
+//  BLIND_PRESS A); the others wait.
+bool scene_screen_presses(SceneScreen screen);
 
 //  The time-dependent part of the machine, apart from the backend so tests
 //  can feed it looks: when the screen was last busy, since when the hint
@@ -108,7 +118,8 @@ private:
 
 //  Presses through scenes until the controls hint has held a second, or
 //  the mission banner has shown on two looks (then waits up to 10 s for it
-//  to go), on run_screen_machine(). `label` names its log lines ("[PLZA
+//  to go), or with `config.stop_at_choice` the choice box shows, on
+//  run_screen_machine(). `label` names its log lines ("[PLZA
 //  mash_to_move_hints] dialog: text box"). Fails as "scene_quiet" on the
 //  quiet end, "scene_timeout" when `timeout` passes (by the looks' time),
 //  and "scene_stuck" on a state that comes up too often or a screen that

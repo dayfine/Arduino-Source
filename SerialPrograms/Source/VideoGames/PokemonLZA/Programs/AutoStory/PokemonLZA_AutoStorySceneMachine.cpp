@@ -56,7 +56,7 @@ bool busy(const ScreenObservation& look){
 }
 
 constexpr SceneScreen ALL_SCREENS[] = {
-    SceneScreen::FADE_BLACK, SceneScreen::FADE_WHITE, SceneScreen::DIALOG,
+    SceneScreen::FADE_BLACK, SceneScreen::FADE_WHITE, SceneScreen::CHOICE, SceneScreen::DIALOG,
     SceneScreen::MISSION_BANNER, SceneScreen::BANNER_SHOWING,
     SceneScreen::CONTROLS_HINT, SceneScreen::HINT_SHOWING,
     SceneScreen::QUIET_END, SceneScreen::BLIND_PRESS,
@@ -81,6 +81,8 @@ std::string_view scene_screen_name(SceneScreen screen){
         return "fade_black";
     case SceneScreen::FADE_WHITE:
         return "fade_white";
+    case SceneScreen::CHOICE:
+        return "choice";
     case SceneScreen::DIALOG:
         return "dialog";
     case SceneScreen::MISSION_BANNER:
@@ -104,11 +106,11 @@ std::string_view scene_screen_name(SceneScreen screen){
 }
 
 bool scene_screen_terminal(SceneScreen screen){
-    return screen == SceneScreen::MISSION_BANNER || screen == SceneScreen::CONTROLS_HINT ||
-        screen == SceneScreen::QUIET_END;
+    return screen == SceneScreen::CHOICE || screen == SceneScreen::MISSION_BANNER ||
+        screen == SceneScreen::CONTROLS_HINT || screen == SceneScreen::QUIET_END;
 }
 
-bool scene_screen_presses_a(SceneScreen screen){
+bool scene_screen_presses(SceneScreen screen){
     return screen == SceneScreen::DIALOG || screen == SceneScreen::BLIND_PRESS;
 }
 
@@ -140,6 +142,9 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
     }
     if (look.events.has(ScreenEvent::FADE_WHITE)){
         return SceneScreen::FADE_WHITE;
+    }
+    if (m_config.stop_at_choice && look.events.has(ScreenEvent::CHOICE_BOX)){
+        return SceneScreen::CHOICE;
     }
     if (text_shows(look)){
         return SceneScreen::DIALOG;
@@ -189,7 +194,8 @@ namespace{
 std::string describe_look(const ScreenObservation& look){
     const std::pair<ScreenEvent, std::string_view> events[] = {
         {ScreenEvent::FADE_BLACK, "black fade"}, {ScreenEvent::FADE_WHITE, "white fade"},
-        {ScreenEvent::DIALOG_BOX, "text box"}, {ScreenEvent::SCREEN_STILL, "still"},
+        {ScreenEvent::DIALOG_BOX, "text box"}, {ScreenEvent::CHOICE_BOX, "choice box"},
+        {ScreenEvent::SCREEN_STILL, "still"},
     };
     const std::pair<std::string_view, std::string_view> readings[] = {
         {CONTROLS_HINT_READING, "controls hint"}, {ADVANCE_ARROW_READING, "advance arrow"},
@@ -218,6 +224,7 @@ public:
     SceneRunner(PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, WallClock start)
         : m_backend(backend)
         , m_label(label)
+        , m_text_button(config.text_button)
         , m_timeline(config, start)
     {}
 
@@ -237,8 +244,8 @@ public:
         if (scene_screen_terminal(screen)){
             return;
         }
-        if (scene_screen_presses_a(screen)){
-            m_backend.press(BUTTON_A, 160ms, 240ms);
+        if (scene_screen_presses(screen)){
+            m_backend.press(screen == SceneScreen::DIALOG ? m_text_button : BUTTON_A, 160ms, 240ms);
             return;
         }
         wait(screen);
@@ -283,6 +290,7 @@ private:
 
     PlzaBackend& m_backend;
     std::string m_label;
+    Button m_text_button;
     SceneTimeline m_timeline;
     std::optional<SceneScreen> m_logged_screen;
     std::string m_logged_events;

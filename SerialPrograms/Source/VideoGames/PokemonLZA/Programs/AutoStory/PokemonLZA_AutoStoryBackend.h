@@ -70,7 +70,8 @@ public:
     //  SCREEN_STILL when it barely differs from the frame of the look before,
     //  and the readings PLATFORM_READING, AUTOSAVE_READING,
     //  CONTROLS_HINT_READING, ADVANCE_ARROW_READING and
-    //  MISSION_BANNER_READING.
+    //  MISSION_BANNER_READING; with CHOICE_BOX, CHOICE_ROWS_READING and
+    //  CHOICE_SELECTED_READING.
     virtual Pokemon::Observation<Pokemon::ZonePose> observe() override;
 
     //  To the console's log and the stream's overlay log: the checkpoint and

@@ -42,9 +42,12 @@ StoryAction<ZonePose> game_action(std::string name, StoryActionHandler<ZonePose>
     };
 }
 
-//  The test game. Its save saves the checkpoints of `autosaves`; its
-//  reload works unless `reload_fails`.
-StoryGame<ZonePose> test_game(TestWorld& world, std::set<std::string> autosaves, bool reload_fails){
+//  The test game. Its save saves the checkpoints of `autosaves`, fails on
+//  those of `save_failures` and does not save at the others; its reload
+//  works unless `reload_fails`.
+StoryGame<ZonePose> test_game(
+    TestWorld& world, std::set<std::string> autosaves, std::set<std::string> save_failures, bool reload_fails
+){
     StoryGame<ZonePose> game;
     game.id = "test";
     game.actions.push_back(game_action("ok", [](StoryBackend<ZonePose>&, const StoryActionCall&, RunState&){
@@ -78,8 +81,13 @@ StoryGame<ZonePose> test_game(TestWorld& world, std::set<std::string> autosaves,
         }
         return outcome_failed("no_fade", "no white fade in 3 slices");
     }));
-    game.save = [autosaves = std::move(autosaves)](StoryBackend<ZonePose>&, const StoryCheckpoint& checkpoint){
-        return autosaves.contains(checkpoint.id) ? outcome_ok() : outcome_failed("no_autosave");
+    game.save = [autosaves = std::move(autosaves), save_failures = std::move(save_failures)](
+        StoryBackend<ZonePose>&, const StoryCheckpoint& checkpoint
+    ){
+        if (autosaves.contains(checkpoint.id)){
+            return outcome_ok();
+        }
+        return save_failures.contains(checkpoint.id) ? outcome_failed("save_error", "the disk is full") : outcome_not_saved("no autosave here");
     };
     game.reload = [reload_fails](StoryBackend<ZonePose>& backend){
         backend.press(NintendoSwitch::BUTTON_HOME, 80ms, 80ms);
@@ -135,6 +143,7 @@ struct SegmentCase{
         std::vector<StoryCheckpoint> checkpoints;
         size_t attempts = 1;
         std::set<std::string> autosaves = {};
+        std::set<std::string> save_failures = {};
         bool reload_fails = false;
         std::vector<Observation<ZonePose>> looks = {};
         StoryBackendKind kind = StoryBackendKind::SCRIPT;
@@ -156,6 +165,16 @@ const SegmentCase SEGMENT_CASES[] = {
         .name = "two checkpoints pass and save",
         .input = {.checkpoints = {checkpoint_of("01.00", {"ok", "press_a"}), checkpoint_of("01.01", {"ok"})}, .autosaves = {"01.00", "01.01"}},
         .expectation = {.summary = "done | runs 01.00:pass/1 01.01:pass/1 | reloads 0", .inputs = "press A", .line = "[Save] 01.00: saved"},
+    },
+    {
+        .name = "a checkpoint the game does not save at is not saved, with the reason",
+        .input = {.checkpoints = {checkpoint_of("01.00", {"ok"})}},
+        .expectation = {.summary = "done | runs 01.00:pass/1 | reloads 0", .inputs = "", .line = "[Save] 01.00: not saved (no autosave here)"},
+    },
+    {
+        .name = "a save that fails is logged as failed",
+        .input = {.checkpoints = {checkpoint_of("01.00", {"ok"})}, .save_failures = {"01.00"}},
+        .expectation = {.summary = "done | runs 01.00:pass/1 | reloads 0", .inputs = "", .line = "[Save] 01.00: save failed: save_error: the disk is full"},
     },
     {
         .name = "a failed step stops the segment with its event",
@@ -220,7 +239,7 @@ const SegmentCase SEGMENT_CASES[] = {
 
 UnitTestResult check_segment(const SegmentCase& test, CancellableScope& scope){
     TestWorld world;
-    const StoryGame<ZonePose> game = test_game(world, test.input.autosaves, test.input.reload_fails);
+    const StoryGame<ZonePose> game = test_game(world, test.input.autosaves, test.input.save_failures, test.input.reload_fails);
     FakeStoryBackend<ZonePose> backend({.looks = test.input.looks, .kind = test.input.kind}, scope);
     StoryEngine<ZonePose> engine(game, backend);
     RunState state;
