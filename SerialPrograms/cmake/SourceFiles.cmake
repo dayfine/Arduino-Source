@@ -1483,45 +1483,45 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
+    Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.h
     Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson_Tests.cpp
-Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson_Tests.h
-Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.cpp
-Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.h
-Pokemon/AutoStory/Data/Pokemon_StoryFiles_Tests.cpp
-Pokemon/AutoStory/Data/Pokemon_StoryFiles_Tests.h
-Pokemon/AutoStory/Data/Pokemon_StoryFiles.cpp
-Pokemon/AutoStory/Data/Pokemon_StoryFiles.h
-Pokemon/AutoStory/Data/Pokemon_StoryRowExecution.cpp
-Pokemon/AutoStory/Data/Pokemon_StoryRowExecution.h
-Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.cpp
-Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.h
-Pokemon/AutoStory/Data/Pokemon_StoryStepJson.cpp
-Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h
-Pokemon/AutoStory/Engine/Pokemon_ZonePose.cpp
-Pokemon/AutoStory/Engine/Pokemon_ZonePose.h
-Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
-Pokemon/AutoStory/Pokemon_MapUtil.h
-Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
-Pokemon/AutoStory/Pokemon_StoryLog_Tests.h
-Pokemon/AutoStory/Pokemon_StoryLog.cpp
-Pokemon/AutoStory/Pokemon_StoryLog.h
-Pokemon/AutoStory/Pokemon_StoryOutcome.cpp
-Pokemon/AutoStory/Pokemon_StoryOutcome.h
-Pokemon/AutoStory/Pokemon_StoryPose.cpp
-Pokemon/AutoStory/Pokemon_StoryPose.h
-Pokemon/AutoStory/Types/Pokemon_DeclaredPose.h
-Pokemon/AutoStory/Types/Pokemon_StoryActionArg_Tests.cpp
-Pokemon/AutoStory/Types/Pokemon_StoryActionArg_Tests.h
-Pokemon/AutoStory/Types/Pokemon_StoryActionArg.cpp
-Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h
-Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.cpp
-Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h
-Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
-Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.cpp
-Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.h
-Pokemon/AutoStory/Types/Pokemon_StoryStep.h
-Pokemon/AutoStory/Types/Pokemon_StoryStepKind.cpp
-Pokemon/AutoStory/Types/Pokemon_StoryStepKind.h
+    Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson_Tests.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles_Tests.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles_Tests.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryRowExecution.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryRowExecution.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_ZonePose.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_ZonePose.h
+    Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_MapUtil.h
+    Source/Pokemon/AutoStory/Pokemon_StoryLog.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryLog.h
+    Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryOutcome.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryOutcome.h
+    Source/Pokemon/AutoStory/Pokemon_StoryPose.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryPose.h
+    Source/Pokemon/AutoStory/Types/Pokemon_DeclaredPose.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg_Tests.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg_Tests.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
     Source/Pokemon/Pokemon_BdspRng.cpp
