@@ -381,6 +381,60 @@ UnitTestResult test_giovanni_row(){
     return true;
 }
 
+//  16.05's step named `name`; none if it has none.
+const StoryStep* giovanni_row_step(std::string_view name){
+    for (const StoryStep& step : checkpoint("16.05").steps){
+        if (step.name == name){
+            return &step;
+        }
+    }
+    return nullptr;
+}
+
+//  16.05 below_president from where Giovanni's battle leaves the player:
+//  (5, 15) facing east, to Giovanni, who walked down to (6, 15) (pokefirered
+//  data/maps/SilphCo_11F/scripts.inc, SilphCo_11F_Movement_GiovanniApproachLeft
+//  and _PlayerFaceGiovanni). The walk is planned from the giovanni step's
+//  declared pose. With that pose facing north, "north 5" was held with no
+//  turn first: the hold turned the player, went 4 tiles to (5, 11), and
+//  "east 4" stopped on the table at (6, 11); the walker found the player
+//  again at the wrong tile and ended below the table, where the president's
+//  talk opened no message (console B, 2026-11-15 13:02, 16.05).
+UnitTestResult test_president_walk_after_giovanni(){
+    const StoryStep* giovanni = giovanni_row_step("giovanni");
+    const StoryStep* below = giovanni_row_step("below_president");
+    if (giovanni == nullptr || below == nullptr || !giovanni->pose_after){
+        return "16.05 has no giovanni step with a pose after it, or no below_president.";
+    }
+    const StoryPose at = *story_pose(Pokemon::pose_of(*giovanni->pose_after));
+    const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(below->args, "target")));
+    if (!at.facing || !target){
+        return "16.05: the giovanni step's pose has no facing, or below_president has no target.";
+    }
+    const std::set<std::string> flags{std::string(SILPH_CLEARED_FLAG)};
+    const std::vector<MapData>& maps = run_story_maps(flags);
+    const MapPosition start{at.map, at.tile};
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
+        maps, start, RouteGoal{{target->map, target->tile}, target->facing}, story_route_costs(), *at.facing
+    );
+    if (!route || route->empty()){
+        return std::format("No route from {} to the president.", to_string(start));
+    }
+    OverworldSim sim(maps, MapPosition{"SilphCo_11F", {5, 15}}, Direction::EAST);
+    const RoutePlanning planning{.maps = &maps, .costs = story_route_costs(), .start = start, .label = "below_president"};
+    if (const std::string failure = OverworldSimWalker(sim).run(*route, planning, at.facing); !failure.empty()){
+        return std::format("16.05: ended on {}; {}", to_string(sim.state().position), failure);
+    }
+    const MapPosition president_talk{"SilphCo_11F", {9, 10}};
+    if (!(sim.state().position == president_talk) || sim.state().facing != Direction::NORTH){
+        return std::format(
+            "16.05: ended on {} facing {}, not {} facing north.",
+            to_string(sim.state().position), direction_name(sim.state().facing), to_string(president_talk)
+        );
+    }
+    return true;
+}
+
 //  16.06: the walk back down to Saffron's Center on the maps with no Rocket in
 //  Silph Co. or Saffron City.
 UnitTestResult test_return_row(){
@@ -631,6 +685,10 @@ const AutoStorySilphCase AUTO_STORY_SILPH_CASES[] = {
     {
         .input = {.name = "16.05 11F's Card Key door and Giovanni", .body = test_giovanni_row},
         .expectation = {.description = "one Rocket fought, 11F's door opened, ends below the president"},
+    },
+    {
+        .input = {.name = "16.05 to the president from where Giovanni's battle leaves the player", .body = test_president_walk_after_giovanni},
+        .expectation = {.description = "from (5, 15) facing east, ends on (9, 10) facing north"},
     },
     {
         .input = {.name = "16.06 back to Saffron's Center with no Rockets", .body = test_return_row},
