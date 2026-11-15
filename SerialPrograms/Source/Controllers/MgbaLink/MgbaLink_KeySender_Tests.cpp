@@ -548,11 +548,13 @@ void add_sender_tests(UnitTestDatabase& database){
             },
         },
         {
-            //  Up is held from frame +5 on, two states after A.
+            //  Up is held from frame +10 on, two states after A. Ends are
+            //  placed from app time: 3 x 80 ms is 14.33 frames, so Up is
+            //  released on +14, not on 3 x 5 = +15.
             .name = "a later state waits for its turn",
             .input = {.actions = {push(GBA_KEY_A, 80), push(GBA_KEY_NONE, 80), push(GBA_KEY_UP, 80), wait_for_all()}},
             .expectation = {
-                .commands = {"GRANT 0", "KEYS +0 1", "KEYS +5 0", "KEYS +10 64", "KEYS +15 0", "GRANT run-on"},
+                .commands = {"GRANT 0", "KEYS +0 1", "KEYS +5 0", "KEYS +10 64", "KEYS +14 0", "GRANT run-on"},
                 .max_run_time = milliseconds(2000),
             },
         },
