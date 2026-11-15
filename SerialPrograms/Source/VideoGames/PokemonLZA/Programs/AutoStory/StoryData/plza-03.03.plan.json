@@ -11,7 +11,7 @@
       {
         "id": "through_hotel_gate",
         "kind": "game_action",
-        "why": "step 46: through the Hotel Z gate passage into the scene.",
+        "why": "through the Hotel Z gate passage into the scene.",
         "action": "walk",
         "args": {
           "legs": [[0, 7000]]
@@ -20,13 +20,13 @@
       {
         "id": "rock_pile_scene",
         "kind": "game_action",
-        "why": "step 46: Taunie at the rocks blocking the street",
+        "why": "Taunie at the rocks blocking the street",
         "action": "mash_to_move_hints"
       },
       {
         "id": "side_street_to_wall",
         "kind": "game_action",
-        "why": "step 47: down the side street to the wall across it. 6 s down the side street, 2 s across.",
+        "why": "down the side street to the wall across it. 6 s down the side street, 2 s across.",
         "action": "walk",
         "args": {
           "legs": [[0, 8000]]
@@ -35,19 +35,19 @@
       {
         "id": "climb_ladder",
         "kind": "game_action",
-        "why": "steps 48-49: sidestep right 0.6 s, face up (150 ms), A Climb Up, hold up ~4-6 s",
+        "why": "sidestep right 0.6 s, face up (150 ms), A Climb Up, hold up ~4-6 s",
         "action": "climb_ladder"
       },
       {
         "id": "rooftop_scene",
         "kind": "game_action",
-        "why": "step 50: Taunie on the roof",
+        "why": "Taunie on the roof",
         "action": "mash_to_move_hints"
       },
       {
         "id": "off_the_roof",
         "kind": "game_action",
-        "why": "step 51: off the roof's edge, down to South Boulevard. Walks off the edge and drops.",
+        "why": "off the roof's edge, down to South Boulevard. Walks off the edge and drops.",
         "action": "walk",
         "args": {
           "legs": [[0, 4000]]
@@ -56,7 +56,7 @@
       {
         "id": "south_boulevard",
         "kind": "game_action",
-        "why": "step 52: Taunie walks to the Pokemon Center, until Station Front",
+        "why": "Taunie walks to the Pokemon Center, until Station Front",
         "action": "mash_to_move_hints"
       }
     ],
