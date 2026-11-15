@@ -92,12 +92,16 @@ struct Reanchor{
 //  the player, the one that walks the fewest tiles, holds and way back
 //  together, with tiles of open legs weighted over held ones. Nothing if
 //  no holds bring them all to one tile, or no way back walks the same from
-//  there.
+//  there. With `end_facing`, the way back ends facing that way: the route's
+//  last leg must leave the player facing as planned, or a step after it only
+//  turns them (16.03's rival_trigger, a tap west after a way back that ended
+//  "north 1 (to wall)" beside the trigger; console B, 2026-11-15 00:28).
 std::optional<Reanchor> plan_reanchor(
     const std::vector<MapData>& maps,
     const std::vector<StopCandidate>& candidates,
     const RouteStep& step,
-    const RouteCosts& costs = default_route_costs()
+    const RouteCosts& costs = default_route_costs(),
+    std::optional<Direction> end_facing = std::nullopt
 );
 
 //  Holds to walls that bring the player to one tile from every one of
