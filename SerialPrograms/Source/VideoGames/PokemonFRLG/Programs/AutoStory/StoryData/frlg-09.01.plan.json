@@ -208,6 +208,12 @@
         "id": "b3f_rare_candy",
         "kind": "talk",
         "why": "pick up the Rare Candy: two, with Route 9's"
+      },
+      {
+        "id": "found_b3f_rare_candy",
+        "kind": "scene",
+        "declared_after": {"map": "RocketHideout_B3F", "tiles": [[12, 13]], "facing": "north"},
+        "why": "\"<player> found a RARE CANDY!\", then the pocket line; the ball is gone. The talk returns at the first message, so the save must not follow it"
       }
     ]
   },

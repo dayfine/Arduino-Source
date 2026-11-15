@@ -88,6 +88,12 @@
                 "flags_after": [
                     "card_key_held"
                 ]
+            },
+            {
+                "id": "found_card_key",
+                "kind": "scene",
+                "declared_after": {"map": "SilphCo_5F", "tiles": [[21, 21]], "facing": "east"},
+                "why": "\"<player> found a CARD KEY!\", then the pocket line; the ball is gone. The talk returns at the first message, so the save must not follow it"
             }
         ]
     },
