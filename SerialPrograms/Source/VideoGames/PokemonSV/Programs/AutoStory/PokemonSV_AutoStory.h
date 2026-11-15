@@ -16,7 +16,7 @@
 #include "CommonTools/Options/StringSelectOption.h"
 #include "CommonTools/Options/LanguageOCROption.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
-#include "Pokemon/Options/Pokemon_StoryRangeOptions.h"
+#include "Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions.h"
 #include "PokemonSV_AutoStoryTools.h"
 
 namespace PokemonAutomation{

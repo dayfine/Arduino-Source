@@ -12,6 +12,7 @@
 #define PokemonAutomation_Pokemon_StoryRangeOptions_H
 
 #include <string>
+#include <string_view>
 #include "Common/Cpp/Options/GroupOption.h"
 #include "CommonTools/Options/StringSelectOption.h"
 
@@ -19,9 +20,8 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  A program shows the group, or adds START_CHECKPOINT and END_CHECKPOINT
-//  to its own options under its own keys (keeping the keys its saved
-//  settings already use) and calls check_validity() from its own.
+//  The options in an AutoStory program that pick the range of checkpoints
+//  to run.
 class StoryRangeOptions : public GroupOption{
 public:
     //  The labels of the two dropdowns.
@@ -36,7 +36,8 @@ public:
     //  entries. `end_lock`: UNLOCK_WHILE_RUNNING for a program that reads
     //  the end after each checkpoint, so the end can be moved during a run.
     StoryRangeOptions(
-        std::string label, const StringSelectDatabase& checkpoints,
+        std::string_view label,
+        const StringSelectDatabase& checkpoints,
         LockMode end_lock = LockMode::LOCK_WHILE_RUNNING,
         DropdownLabels labels = default_labels()
     );
@@ -44,10 +45,9 @@ public:
     //  The checkpoints chosen, by index in the database, both inclusive.
     size_t start_index() const;
     size_t end_index() const;
-    //  "The start checkpoint comes after the end checkpoint." if it does.
+    //  Checks that the start checkpoint does not come after the end.
     virtual std::string check_validity() const override;
 
-public:
     StringSelectOption START_CHECKPOINT;
     StringSelectOption END_CHECKPOINT;
 };
