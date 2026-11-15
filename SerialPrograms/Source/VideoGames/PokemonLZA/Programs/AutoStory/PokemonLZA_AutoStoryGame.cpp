@@ -87,10 +87,6 @@ Outcome reload_save(StoryEnv& env, Pokemon::StoryBackend<ZonePose>& backend, Sta
     return Pokemon::outcome_ok();
 }
 
-//  Off (the user's call, pending): a passed non-autosave row does not save
-//  through the menu, as before, so the 03.06 -> 03.08 backup recovery holds.
-constexpr bool MENU_SAVE_AT_CHECKPOINT_END = false;
-
 //  The GAME actions that are one ConsoleStep each, by name: console_only.
 const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
     static const std::map<std::string, ConsoleStep, std::less<>> actions{
@@ -766,20 +762,12 @@ Pokemon::StoryGame<ZonePose> make_plza_story_game(
         .name = std::string(Pokemon::STORY_HEADING), .supplies = {std::string(Pokemon::STORY_HEADING)},
         .use = Pokemon::StoryReaderUse::ON_REQUEST, .console_only = true, .read = heading_reader(env),
     });
-    game.save = [&env, autosave_rows = std::move(autosave_rows)](Pokemon::StoryBackend<ZonePose>& backend, const Pokemon::StoryCheckpoint& checkpoint){
+    game.save = [autosave_rows = std::move(autosave_rows)](Pokemon::StoryBackend<ZonePose>& backend, const Pokemon::StoryCheckpoint& checkpoint){
         if (autosave_rows.contains(checkpoint.id)){
             backend.log(std::format("[Save] {}: the game autosaved at its end", checkpoint.id));
             return Pokemon::outcome_ok();
         }
-        if (!MENU_SAVE_AT_CHECKPOINT_END){
-            return Pokemon::outcome_failed("menu_save_off", "MENU_SAVE_AT_CHECKPOINT_END is off: no menu save");
-        }
-        try{
-            save_story_game(env.env.console, env.context);
-        }catch (OperationFailedException& e){
-            return Pokemon::outcome_failed("save_failed", e.message());
-        }
-        return Pokemon::outcome_ok();
+        return Pokemon::outcome_failed("no_autosave", "the row does not end on an autosave a run log has shown");
     };
     game.reload = [&env](Pokemon::StoryBackend<ZonePose>& backend){
         return reload_save(env, backend, StartSave::LATEST);

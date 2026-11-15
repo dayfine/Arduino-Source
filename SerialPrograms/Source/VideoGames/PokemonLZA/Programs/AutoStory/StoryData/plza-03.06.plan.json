@@ -65,7 +65,5 @@
       "source": "played step by step from a new game"
     }
   },
-  "execution": {
-    "save": "menu"
-  }
+  "execution": {}
 }

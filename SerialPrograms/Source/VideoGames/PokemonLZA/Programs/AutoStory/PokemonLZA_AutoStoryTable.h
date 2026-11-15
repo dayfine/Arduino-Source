@@ -33,15 +33,10 @@ namespace PokemonLZA{
 
 
 //  The story a run plays: its checkpoints in order, and the rows their
-//  execution marks (Pokemon_StoryRowExecution.h): the autosave rows, which
-//  do not save themselves ("save": "autosave"), and the rows a run reloads
-//  before ("reload_when_chained").
+//  execution marks (Pokemon_StoryRowExecution.h): the rows ending on the
+//  game's autosave ("save": "autosave", or "unverified" until a run's log
+//  shows it), and the rows a run reloads before ("reload_when_chained").
 using StoryData = Pokemon::StoryData<Pokemon::StoryCheckpoint>;
-
-//  Whether `row` of `story` saves through the menu at its end: every row
-//  but the autosave rows. The menu (X, then R) can save from the start of
-//  the story too: 01.03 saves through it after Andi.
-bool story_row_saves(const StoryData& story, const Pokemon::StoryCheckpoint& row);
 
 //  How many rows of `checkpoints` from the first need no action of
 //  story_actions_not_implemented(): the part of the story a run can play.

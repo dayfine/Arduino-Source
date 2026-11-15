@@ -32,8 +32,6 @@ namespace{
 StoryFileRow<StoryCheckpoint> read_checkpoint_file(std::string_view text, std::string_view source){
     StoryRowExecution read;
     const Pokemon::ExecutionReader read_execution = [&read](const JsonObject& execution, std::string_view where){
-        //  Every PLZA file says how its row saves.
-        execution.get_string_throw("save");
         read = Pokemon::read_story_row_execution(execution, where, {});
         if (read.dev_only){
             throw ParseException(std::format("{}: unknown execution field dev_only", where));

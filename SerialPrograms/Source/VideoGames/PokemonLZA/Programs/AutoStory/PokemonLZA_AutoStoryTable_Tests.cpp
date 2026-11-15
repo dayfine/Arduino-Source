@@ -133,20 +133,21 @@ UnitTestResult test_not_implemented_actions(Logger&){
     return true;
 }
 
-//  Every autosave row is in the table, and 01.03 saves through the menu
-//  (the menu can save from the start of the story).
+//  Every autosave row, seen or unverified, is in the table, and 01.03 ends
+//  on no save.
 UnitTestResult test_autosave_rows(Logger&){
+    const StoryData& data = builtin_story_data();
     size_t seen = 0;
     for (const StoryCheckpoint& row : story_checkpoints()){
-        if (row.id == "01.03" && !story_row_saves(builtin_story_data(), row)){
-            return "Expected 01.03 to save through the menu.";
+        if (row.id == "01.03" && (data.autosaves.contains(row.id) || data.unverified_autosaves.contains(row.id))){
+            return "Expected 01.03 to end on no save.";
         }
-        if (!story_row_saves(builtin_story_data(), row)){
+        if (data.autosaves.contains(row.id) || data.unverified_autosaves.contains(row.id)){
             seen++;
         }
     }
-    if (seen != story_autosave_rows().size()){
-        return std::format("Expected {} autosave rows in the table, found {}.", story_autosave_rows().size(), seen);
+    if (seen != data.autosaves.size() + data.unverified_autosaves.size()){
+        return std::format("Expected {} autosave rows in the table, found {}.", data.autosaves.size() + data.unverified_autosaves.size(), seen);
     }
     return true;
 }
@@ -173,8 +174,8 @@ UnitTestResult test_mm3_heal_row(Logger&){
     if (scene.name != "heal_party" || scene.kind != StoryStepKind::MASH){
         return "Expected 03.05 to end on the nurse's heal_party scene.";
     }
-    if (!story_row_saves(builtin_story_data(), *heal)){
-        return "Expected 03.05 to save after the heal.";
+    if (!story_autosave_rows().contains("03.05")){
+        return "Expected 03.05 to end on the game's autosave after the heal.";
     }
     const StoryStep* leave = find_step(story_checkpoints(), "03.06", "out_of_pokemon_center");
     if (leave == nullptr || leave->kind != StoryStepKind::GAME || leave->action != "walk"){
@@ -183,17 +184,23 @@ UnitTestResult test_mm3_heal_row(Logger&){
     return true;
 }
 
-//  The built-in file of checkpoint `id` with its execution's save line
-//  replaced by `execution` (the fields after "execution": {), as a dev file.
+//  The built-in file of checkpoint `id` with its execution's fields
+//  replaced by `execution` (the fields between "execution": { and }), as a
+//  dev file.
 Pokemon::StoryDevFile dev_with_execution(std::string_view id, std::string_view execution){
+    constexpr std::string_view EXECUTION = "\"execution\": {";
     for (const auto& [name, text] : autostory_checkpoint_json()){
         if (name != std::format("plza-{}.plan", id)){
             continue;
         }
         std::string edited = text;
-        const size_t at = edited.find("\"save\": \"autosave\"");
-        if (at != std::string::npos){
-            edited.replace(at, std::string_view("\"save\": \"autosave\"").size(), execution);
+        const size_t start = edited.find(EXECUTION);
+        if (start != std::string::npos){
+            const size_t fields = start + EXECUTION.size();
+            const size_t end = edited.find('}', fields);
+            if (end != std::string::npos){
+                edited.replace(fields, end - fields, execution);
+            }
         }
         return Pokemon::StoryDevFile{.name = std::format("{}.json", name), .path = std::format("dev/{}.json", name), .text = edited};
     }
@@ -224,15 +231,15 @@ UnitTestResult test_reload_when_chained_field(Logger&){
     return true;
 }
 
-//  01.02 reloads when run after 01.01, whose autosave is 01.02's start;
-//  with 01.01 saving through the menu instead, 01.02's reload is refused.
+//  01.01's autosave is unverified (no run log shows it yet), so 01.02 does
+//  not reload when chained, and a dev file that makes it reload is refused.
 UnitTestResult test_mm1_reload_when_chained(Logger&){
-    if (!builtin_story_data().reload_when_chained.contains("01.02")){
-        return "Expected 01.02 to reload when chained.";
+    if (builtin_story_data().reload_when_chained.contains("01.02")){
+        return "Expected 01.02 not to reload when chained.";
     }
-    const std::string problem = load_problem(dev_with_execution("01.01", R"("save": "menu")"));
+    const std::string problem = load_problem(dev_with_execution("01.02", R"("save": "unverified", "reload_when_chained": true)"));
     if (problem.find("does not end on the game's autosave") == std::string::npos){
-        return std::format("01.01 saving through the menu: expected 01.02's reload refused, got \"{}\".", problem);
+        return std::format("01.02 reloading after 01.01's unverified autosave: expected it refused, got \"{}\".", problem);
     }
     return true;
 }
@@ -484,8 +491,8 @@ UnitTestResult test_zone_1_exit_row(Logger&){
 //  03.10 ends on the game's autosave on 3F, after the elevator ride; 03.11
 //  starts there, from Mable's walk on ("if this is the
 //  auto save, we should divide a checkpoint here"). to_mable's legs were
-//  measured from the reloaded save, whose facing the ride does not leave, so
-//  03.11 reloads it when chained after 03.10.
+//  measured from the reloaded save, whose facing the ride does not leave;
+//  03.11 does not reload it while no run's log has shown that autosave.
 UnitTestResult test_director_office_row(Logger&){
     const std::vector<StoryCheckpoint>& rows = story_checkpoints();
     size_t index = 0;
@@ -504,8 +511,8 @@ UnitTestResult test_director_office_row(Logger&){
         return "Expected 03.11 to run from to_mable to leave_mable.";
     }
     const StoryData& data = builtin_story_data();
-    if (!data.autosaves.contains("03.10") || data.autosaves.contains("03.11") || !data.reload_when_chained.contains("03.11")){
-        return "Expected 03.10 to end on the autosave and 03.11 to reload it when chained.";
+    if (!data.unverified_autosaves.contains("03.10") || data.autosaves.contains("03.11") || data.reload_when_chained.contains("03.11")){
+        return "Expected 03.10 to end on an unverified autosave and 03.11 not to reload it when chained.";
     }
     return true;
 }
@@ -523,17 +530,15 @@ UnitTestResult test_production_rows(Logger&){
         "03.01", "03.02", "03.03", "03.04", "03.05", "03.06", "03.07", "03.08", "03.09", "03.10",
         "03.11",
     };
+    //  The rows a run's log showed [Autosave] at the end of.
     const std::set<std::string, std::less<>> autosaves{
-        "01.00", "01.01", "01.02", "02.01", "02.02", "02.03", "02.04", "02.05", "02.06", "02.07", "03.01", "03.03",
-        //  03.08 ends on the street outside Wild Zone 1, which does not
-        //  autosave; 03.09 ends on the Research Lab lobby's (user).
-        "03.09",
-        //  03.10 ends on the Director's Office's, on 3F (user).
-        "03.10",
+        "02.06", "03.01", "03.03", "03.05", "03.07", "03.08", "03.09",
     };
-    const std::set<std::string, std::less<>> reload_when_chained{
-        "01.02", "02.02", "02.03", "02.04", "02.05", "02.07", "03.01", "03.02", "03.04", "03.11",
+    //  Believed to end on the game's autosave, not yet seen in a run's log.
+    const std::set<std::string, std::less<>> unverified_autosaves{
+        "01.00", "01.01", "01.02", "02.01", "02.02", "02.03", "02.04", "02.05", "02.07", "03.10",
     };
+    const std::set<std::string, std::less<>> reload_when_chained{"02.07", "03.02", "03.04"};
     const std::set<std::string, std::less<>> reload_always{"03.04"};
     const StoryData& data = builtin_story_data();
     if (data.checkpoints.size() != ids.size()){
@@ -544,7 +549,8 @@ UnitTestResult test_production_rows(Logger&){
             return std::format("Row {}: expected {}, got {}.", index, ids[index], data.checkpoints[index].id);
         }
     }
-    if (data.autosaves != autosaves || data.reload_when_chained != reload_when_chained
+    if (data.autosaves != autosaves || data.unverified_autosaves != unverified_autosaves
+        || data.reload_when_chained != reload_when_chained
         || data.reload_always != reload_always || !data.dev_files.empty()
     ){
         return "Expected the built-in autosave and reload rows, and no dev files.";
@@ -612,12 +618,12 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
-        .name = "Story table: the autosave rows, and 01.03 saves through the menu",
+        .name = "Story table: the autosave rows, and 01.03 ends on no save",
         .input = {.body = test_autosave_rows},
         .expectation = {},
     },
     {
-        .name = "Story table: 03.05 heals at the Pokemon Center and saves there",
+        .name = "Story table: 03.05 heals at the Pokemon Center and autosaves there",
         .input = {.body = test_mm3_heal_row},
         .expectation = {},
     },
@@ -632,7 +638,7 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
-        .name = "reload_when_chained: 01.02 after 01.01's autosave",
+        .name = "reload_when_chained: refused on 01.02, after 01.01's unverified autosave",
         .input = {.body = test_mm1_reload_when_chained},
         .expectation = {},
     },
@@ -672,7 +678,7 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
-        .name = "Director's Office: 03.10 ends on the 3F autosave, 03.11 reloads it for Mable",
+        .name = "Director's Office: 03.10 ends on the 3F autosave, unverified; 03.11 does not reload it",
         .input = {.body = test_director_office_row},
         .expectation = {},
     },
