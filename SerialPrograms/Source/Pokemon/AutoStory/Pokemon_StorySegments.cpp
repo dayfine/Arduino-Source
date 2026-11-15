@@ -8,6 +8,7 @@
 #include <utility>
 #include "Pokemon_CheckpointAttempts.h"
 #include "Pokemon_StoryLog.h"
+#include "Pokemon_StoryOutcomeClass.h"
 #include "Pokemon_StorySegments.h"
 
 namespace PokemonAutomation{
@@ -220,7 +221,7 @@ SegmentReport stop_segment(const std::string& id, Outcome failure, SegmentHooks&
             where += std::format(" {}", report.failed_event);
         }
     }
-    say(std::format("[Segment] {}: failed{}: {}", id, where, to_string(failure)), hooks);
+    say(std::format("[Segment] {}: failed{}: {}", id, where, to_string_with_class(failure)), hooks);
     report.failure = std::move(failure);
     return report;
 }
@@ -286,7 +287,7 @@ bool verify_run(
         "[Verify] {}: run {}/{} failed{}: {}",
         spec.id, run, policy.runs,
         result.failed_name.empty() ? "" : std::format(" at {}", result.failed_name),
-        to_string(result.failure)
+        to_string_with_class(result.failure)
     ), hooks);
     return false;
 }

@@ -121,13 +121,21 @@ enum class RowSave{
     WITHOUT_SAVE,   //  a new game
 };
 
+//  The rows a row follows in play: in a developer's run, and in a user's,
+//  which skips the dev-only rows. None for the first row.
+struct PreviousRows{
+    std::optional<std::string_view> in_dev_run;
+    std::optional<std::string_view> in_user_run;
+};
+
 //  Adds row `id` to the sets of `rows`. Throws ParseException naming
-//  `source` when it reloads and starts WITHOUT_SAVE or the row before it,
-//  `previous_id`, does not end on the game's autosave: a reload loads the
-//  last save, which must be that autosave.
+//  `source` when it reloads and starts WITHOUT_SAVE or a row it follows
+//  (`previous`: in a developer's run; and in a user's, unless it is
+//  dev-only itself) does not end on the game's autosave: a reload loads
+//  the last save, which must be that autosave.
 void add_story_row(
     std::string_view id, const StoryRowExecution& execution, RowSave start,
-    std::optional<std::string_view> previous_id, std::string_view source, StoryRows& rows
+    const PreviousRows& previous, std::string_view source, StoryRows& rows
 );
 
 //  The dev file `dev`'s row, in place of the built-in file `builtin_name`:
@@ -182,15 +190,23 @@ StoryData<Checkpoint> load_story_data(
             return reader.plays_before(a.row.checkpoint, b.row.checkpoint);
         });
     }
-    //  A reload loads the save the row before it in play ends on.
+    //  A reload loads the save the row before it in play ends on, in a
+    //  developer's run and in a user's.
+    std::optional<size_t> last_user_row;
     for (auto& [row, source] : rows){
         const bool new_game = reader.starts_without_save && reader.starts_without_save(row.checkpoint);
+        const detail::PreviousRows previous{
+            .in_dev_run = data.checkpoints.empty() ? std::nullopt : std::optional<std::string_view>(data.checkpoints.back().id),
+            .in_user_run = last_user_row ? std::optional<std::string_view>(data.checkpoints[*last_user_row].id) : std::nullopt,
+        };
         detail::add_story_row(
             row.checkpoint.id, row.execution,
             new_game ? detail::RowSave::WITHOUT_SAVE : detail::RowSave::FROM_SAVE,
-            data.checkpoints.empty() ? std::nullopt : std::optional<std::string_view>(data.checkpoints.back().id),
-            source, data
+            previous, source, data
         );
+        if (!row.execution.dev_only){
+            last_user_row = data.checkpoints.size();
+        }
         data.checkpoints.push_back(std::move(row.checkpoint));
     }
     return data;

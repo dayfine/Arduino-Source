@@ -51,7 +51,8 @@ std::string story_checkpoint_label(const StoryCheckpoint& checkpoint){
 
 StoryVerifyOptions::StoryVerifyOptions()
     : GroupOption(
-        "Verify Mode: run the start checkpoint (also the end) from its save several times, never saving at its end",
+        "Verify Mode: run the start checkpoint (also the end) from its save several times. "
+        "Only with Save set to After verification does the last run save at its end, when every run passed",
         LockMode::LOCK_WHILE_RUNNING,
         EnableMode::DEFAULT_DISABLED
     )
@@ -108,8 +109,9 @@ StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints, const 
     )
     , SAVE_MODE(
         "<b>Save:</b><br>When the run saves the game. A failed run never saves. "
-        "None keeps the save the run started from; After verification saves once at the end, after the checkpoint "
-        "passed 2-3 times; Each checkpoint is for a playthrough of verified checkpoints.",
+        "None keeps the save the run started from. After verification saves once, at the end of a run that passed "
+        "(in Verify Mode, at the end of the last run, when every run passed). Each checkpoint saves after each "
+        "checkpoint that passed, for a playthrough of verified checkpoints.",
         StorySaveMode_Database(),
         LockMode::LOCK_WHILE_RUNNING,
         StorySaveMode::NONE
