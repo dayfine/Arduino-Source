@@ -69,12 +69,14 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimField.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryFieldMoves.h"
 #include "PokemonFRLG_AutoStoryHideoutLift.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryFaultSweep_Tests.h"
@@ -175,10 +177,16 @@ std::set<std::string> gyms_cleared_before(const StoryCheckpoint& row){
     return gyms;
 }
 
+//  The run flags row `row` starts with: its start_flags.
+std::set<std::string> start_flag_set(const StoryCheckpoint& row){
+    return std::set<std::string>(row.start_flags.begin(), row.start_flags.end());
+}
+
 //  sweep_maps() as row `row` starts: the gyms cleared before it with no
-//  trainer left to see the player.
+//  trainer left to see the player, nor the trainers its start_flags have
+//  beaten (16.03: the Rocket by 5F's corridor, whom 16.02's walk fights).
 std::vector<MapData> row_maps(const StoryCheckpoint& row){
-    std::vector<MapData> maps = sweep_maps();
+    std::vector<MapData> maps = with_trainers_beaten(sweep_maps(), beaten_trainers(start_flag_set(row)));
     const std::set<std::string> cleared = gyms_cleared_before(row);
     for (MapData& map : maps){
         if (!cleared.contains(map.name)){
@@ -293,7 +301,7 @@ bool run_row_step(
     out.facing_before.emplace(c, sim.state().facing);
     out.gates_before.emplace(c, sim.state().gates);
     const size_t warps_before = sim.state().warped_from.size();
-    out.failure = row_step_on_sim(sim, at, row.steps[c], row.id);
+    out.failure = row_step_on_sim(sim, at, row.steps[c], row.id, start_flag_set(row));
     const std::vector<std::string>& warped = sim.state().warped_from;
     out.warped_from[c].assign(warped.begin() + warps_before, warped.end());
     const bool let_pass = unscripted(out.failure) && (!scripted || scripted->contains(c));
