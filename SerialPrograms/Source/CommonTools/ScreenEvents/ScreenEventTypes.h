@@ -36,6 +36,7 @@ enum class ScreenEvent : uint8_t{
 };
 //  How many ScreenEvent values there are.
 constexpr size_t SCREEN_EVENT_COUNT = 11;
+static_assert((size_t)ScreenEvent::SWITCH_HOME_MENU + 1 == SCREEN_EVENT_COUNT, "SWITCH_HOME_MENU is the last ScreenEvent");
 //  "dialog box", for the log.
 std::string screen_event_name(ScreenEvent event);
 

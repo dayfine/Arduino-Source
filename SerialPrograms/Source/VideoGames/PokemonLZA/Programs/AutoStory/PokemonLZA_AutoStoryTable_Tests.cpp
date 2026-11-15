@@ -482,7 +482,8 @@ UnitTestResult test_center_walk_row(Logger&){
 //  03.08 ends out on the street, just through Wild Zone 1's far gate
 //  (user, 2026-11-14: "the end of 03.08 should be exit wild zone 1"); the
 //  walk on into the Research Lab is 03.08b, whose lobby autosave is 03.09's
-//  start.
+//  start. (A minimap check after it was dropped: just outside the gate the
+//  arrow still reads in the zone's green; console B, 2026-11-14.)
 UnitTestResult test_zone_1_exit_row(Logger&){
     const std::vector<StoryCheckpoint>& rows = story_checkpoints();
     size_t index = 0;
@@ -496,7 +497,8 @@ UnitTestResult test_zone_1_exit_row(Logger&){
     }
     const StoryCheckpoint& zone = rows[index - 1];
     const StoryCheckpoint& lab = rows[index];
-    if (zone.steps.empty() || zone.steps.back().name != "leave_zone_1"){
+    const size_t steps = zone.steps.size();
+    if (steps == 0 || zone.steps.back().name != "leave_zone_1"){
         return "Expected 03.08 to end with leave_zone_1.";
     }
     if (lab.steps.empty() || lab.steps.front().name != "to_research_lab" || lab.steps.back().name != "lab_lobby"){

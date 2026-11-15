@@ -89,6 +89,10 @@ Pokemon::Outcome face_heading(PlzaBackend& backend, const PlzaReader& reader, do
             std::format("facing {} deg, wanted {:.0f} +/- {:.0f}", *now, heading, tolerance)
         );
     }
+    //  The turn moves the player, not the camera: L puts the camera behind
+    //  the player, so a walk forward and the screen readers go the new way
+    //  (console B, 2026-11-14).
+    backend.press(BUTTON_L, 100ms, 150ms);
     return Pokemon::outcome_ok();
 }
 
