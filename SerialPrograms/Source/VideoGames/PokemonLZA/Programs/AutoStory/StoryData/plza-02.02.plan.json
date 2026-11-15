@@ -1,0 +1,72 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "02.02",
+    "title": "Main Mission 02: after Brigitte to Hotel Z",
+    "start": {
+      "place": "LumioseCity"
+    },
+    "events": [
+      {
+        "id": "to_blocked_street",
+        "kind": "game_action",
+        "why": "step 21: on until the black fade into the street the trainers block. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 2000], [-75, 3500], [90, 3000]]
+        }
+      },
+      {
+        "id": "street_scene",
+        "kind": "scene",
+        "why": "step 21: a Pokemon drives the trainers off (no battle)",
+        "action": "a"
+      },
+      {
+        "id": "to_battle_zone_gate",
+        "kind": "game_action",
+        "why": "step 22: on to the gate's \"A Leave\" until its prompt shows. From the save the street scene ends at the gate (console B, 2026-11-10: no walk then); after the Brigitte battle it ended at the near end of the street, facing the gate (2026-11-13).",
+        "action": "walk_to_prompt",
+        "args": {
+          "timeout_ms": 10000
+        }
+      },
+      {
+        "id": "leave_battle_zone",
+        "kind": "talk",
+        "why": "step 22: A at the gate's \"A Leave\" (to_battle_zone_gate walked there); Taunie's first line ~3.5 s later (console B, 2026-11-10)"
+      },
+      {
+        "id": "out_of_battle_zone",
+        "kind": "scene",
+        "why": "step 23: Taunie: out of the Battle Zone, Hotel Z's just through here",
+        "action": "a"
+      },
+      {
+        "id": "through_covered_passage",
+        "kind": "game_action",
+        "why": "step 23: through the wooden door and the covered passage into the Hotel Z scene. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[75, 3000], [40, 1500], [0, 3000]],
+          "held": true
+        }
+      },
+      {
+        "id": "hotel_z_arrival",
+        "kind": "scene",
+        "why": "step 23: the Hotel Z arrival scene",
+        "action": "a"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 02.01 at the autosave after Brigitte (2026-11-10); split at the autosave in front of Hotel Z (2026-11-10)"
+    }
+  },
+  "execution": {
+    "save": "autosave",
+    "reload_when_chained": true
+  }
+}
