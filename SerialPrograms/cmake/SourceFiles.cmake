@@ -1486,7 +1486,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBuiltinActions.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryEnginePolicy.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEnginePolicy.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h
@@ -1533,12 +1532,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h
     Source/Pokemon/AutoStory/Pokemon_StorySavePolicy_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StorySavePolicy_Tests.h
-    Source/Pokemon/AutoStory/Pokemon_StorySegmentSaves_Tests.cpp
-    Source/Pokemon/AutoStory/Pokemon_StorySegmentSaves_Tests.h
-    Source/Pokemon/AutoStory/Pokemon_StorySegments.cpp
-    Source/Pokemon/AutoStory/Pokemon_StorySegments.h
-    Source/Pokemon/AutoStory/Pokemon_StorySegments_Tests.cpp
-    Source/Pokemon/AutoStory/Pokemon_StorySegments_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.cpp
@@ -1562,8 +1555,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryPostconditions.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryRunTypes_Tests.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryRunTypes_Tests.h
-    Source/Pokemon/AutoStory/Types/Pokemon_StorySaveMode.cpp
-    Source/Pokemon/AutoStory/Types/Pokemon_StorySaveMode.h
     Source/Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
