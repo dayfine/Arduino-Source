@@ -42,10 +42,10 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.08 (user, 2026-11-14). Starts on the street just outside Wild Zone 1's far gate, where 03.08 ends; ends at the lab lobby's autosave, 03.09's start"
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.08 (user, 2026-11-14). Starts on the street just outside Wild Zone 1's far gate, where 03.08 ends; ends at the lab lobby's autosave, 03.09's start, so it saves no further (user, 2026-11-14)"
     }
   },
   "execution": {
-    "save": "menu"
+    "save": "autosave"
   }
 }

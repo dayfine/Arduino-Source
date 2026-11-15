@@ -518,6 +518,9 @@ UnitTestResult test_production_rows(Logger&){
     };
     const std::set<std::string, std::less<>> autosaves{
         "01.00", "01.01", "01.02", "02.01", "02.02", "02.03", "02.04", "02.05", "02.06", "02.07", "03.01", "03.03",
+        //  03.08 ends on the street outside Wild Zone 1, which does not
+        //  autosave; 03.08b ends on the Research Lab lobby's (user, 2026-11-14).
+        "03.08b",
     };
     const std::set<std::string, std::less<>> reload_when_chained{
         "01.02", "02.02", "02.03", "02.04", "02.05", "02.07", "03.01", "03.02", "03.04",
