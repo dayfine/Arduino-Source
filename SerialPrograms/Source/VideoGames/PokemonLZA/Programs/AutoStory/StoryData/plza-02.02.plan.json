@@ -66,7 +66,6 @@
     }
   },
   "execution": {
-    "save": "autosave",
-    "reload_when_chained": true
+    "save": "unverified"
   }
 }

@@ -41,6 +41,6 @@
     }
   },
   "execution": {
-    "save": "menu"
+    "save": "autosave"
   }
 }

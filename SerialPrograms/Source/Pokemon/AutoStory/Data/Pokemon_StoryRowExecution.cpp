@@ -36,16 +36,19 @@ bool is_true(const JsonValue& value){
     return value.is_boolean() && value.to_boolean_default();
 }
 
-bool read_autosave(const JsonObject& execution, std::string_view where){
+StoryRowSave read_save(const JsonObject& execution, std::string_view where){
     const JsonValue* save = execution.get_value("save");
     if (save == nullptr){
-        return false;
+        return StoryRowSave::NONE;
     }
     const std::string* text = save->to_string();
-    if (text == nullptr || (*text != "autosave" && *text != "menu")){
-        throw ParseException(std::format("{}: save is \"autosave\", \"menu\" or left out", where));
+    if (text != nullptr && *text == "autosave"){
+        return StoryRowSave::AUTOSAVE;
     }
-    return *text == "autosave";
+    if (text != nullptr && *text == "unverified"){
+        return StoryRowSave::UNVERIFIED;
+    }
+    throw ParseException(std::format("{}: save is \"autosave\", \"unverified\" or left out", where));
 }
 
 StoryReload read_reload(const JsonObject& execution, std::string_view where){
@@ -86,7 +89,7 @@ StoryRowExecution read_story_row_execution(
         }
     }
     return StoryRowExecution{
-        .autosave = read_autosave(execution, where),
+        .save = read_save(execution, where),
         .reload = read_reload(execution, where),
         .dev_only = read_dev_only(execution, where),
     };
