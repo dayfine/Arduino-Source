@@ -11,19 +11,19 @@
       {
         "id": "to_front_counter",
         "kind": "game_action",
-        "why": "step 26: along the counter for 2.5 s, then the 0 ms leg turns to face the clerk, to the clerk's \"A Talk\".",
+        "why": "along the counter for 2.5 s, then the 0 ms leg turns to face the clerk, to the clerk's \"A Talk\".",
         "action": "walk",
         "args": {"legs": [[-5, 2500], [-85, 0]]}
       },
       {
         "id": "talk_to_clerk",
         "kind": "talk",
-        "why": "step 26: A at the clerk (\"A Talk ???\")"
+        "why": "A at the clerk (\"A Talk ???\")"
       },
       {
         "id": "check_in",
         "kind": "game_action",
-        "why": "steps 26-27: from the clerk's talk straight through Taunie, AZ, the check-in scene and the Key to Room 202, until control facing the elevator, where the game autosaves. There is no free control between the clerk and the elevator. The lobby shows the party bar without its D-pad hint, which the party bar detector keys on, so the step ends on 5 s quiet after the scene. The 30 s minimum covers the text-free ~17 s opening with AZ",
+        "why": "from the clerk's talk straight through Taunie, AZ, the check-in scene and the Key to Room 202, until control facing the elevator, where the game autosaves. There is no free control between the clerk and the elevator. The lobby shows the party bar without its D-pad hint, which the party bar detector keys on, so the step ends on 5 s quiet after the scene. The 30 s minimum covers the text-free ~17 s opening with AZ",
         "action": "mash_to_move_hints",
         "args": {"press_a_first": true, "quiet_ms": 5000, "min_length_ms": 30000, "quiet_is_control": true}
       }

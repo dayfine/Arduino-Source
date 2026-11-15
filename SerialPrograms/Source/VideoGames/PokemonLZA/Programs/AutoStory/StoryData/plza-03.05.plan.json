@@ -26,15 +26,15 @@
       {
         "id": "heal_party",
         "kind": "scene",
-        "why": "the nurse heals the party (A takes a question's top answer), until control at the counter. Healing writes a save, so the title screen's Up + B + X backup save is this spot after the checkpoint's menu save. UNVERIFIED, NEEDS CONSOLE: the nurse's lines were not recorded."
+        "why": "the nurse heals the party (A takes a question's top answer), until control at the counter. Healing writes the game's own save at the counter, 03.06's start, so the program adds no menu save (it would write the same spot again). UNVERIFIED, NEEDS CONSOLE: the nurse's lines were not recorded."
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "gives Main Mission 03 a backup save to retry from; not recorded yet: every step is unverified"
+      "source": "gives Main Mission 03 a save at the counter to retry from: 03.06's start check looks for it, and falls back to the backup save when the latest is past it. Not recorded yet: every step is unverified"
     }
   },
   "execution": {
-    "save": "menu"
+    "save": "autosave"
   }
 }
