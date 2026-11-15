@@ -38,18 +38,6 @@ bool CoveredWatcher::process_frame(const VideoSnapshot& frame){
 }
 
 
-WatchResult watch_for(
-    VideoStream& stream, CancellableScope& scope, Milliseconds duration,
-    const WatchLimits& limits, VisualInferenceCallback& watcher
-){
-    const WallClock start = current_time();
-    const WallClock end = start + duration;
-    CoveredWatcher covered(watcher, start, limits.tail, end);
-    wait_until(stream, scope, end + limits.tail + limits.cap, {covered}, limits.period);
-    return judge_watch(covered.fired(), covered.coverage(), end, limits.max_gap);
-}
-
-
 
 } // namespace Pokemon
 } // namespace PokemonAutomation

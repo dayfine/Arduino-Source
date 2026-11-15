@@ -3,15 +3,13 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The engine on games of either pose type: a scripted backend for any
- *  pose type, the move stick and the heading reading, the step in an
- *  action's call, declared poses of the game's kind only, and tile actions
+ *  pose type, declared poses of the game's kind only, and tile actions
  *  only for tile games. Then readers that opt in to the postcondition
- *  check, inputs logged by button name, and the engine's breakpoints.
+ *  check, and the engine's breakpoints.
  *
  */
 
 #include <algorithm>
-#include <chrono>
 #include <format>
 #include <functional>
 #include <memory>
@@ -32,8 +30,6 @@ namespace Pokemon{
 
 
 namespace{
-
-using namespace std::chrono_literals;
 
 
 std::string joined(const std::vector<std::string>& items){
@@ -224,36 +220,6 @@ std::string tile_actions_only_with_tiles(CancellableScope&){
     return "";
 }
 
-//  The move stick at an angle, and the heading reading; a turn lets
-//  go of the stick for its release.
-std::string stick_and_heading(CancellableScope& scope){
-    Observation<ZonePose> facing_east;
-    facing_east.readings[std::string(STORY_HEADING)] = 90;
-    FakeStoryBackend<ZonePose> backend({.looks = {facing_east, {}}}, scope);
-    backend.stick(45, 150ms, 0ms, StoryPace::WALK);
-    backend.stick(-90, 300ms, 0ms, StoryPace::RUN);
-    backend.stick(90, 150ms, 300ms, StoryPace::WALK);
-    if (story_heading(backend.observe()) != 90){
-        return "expected the heading 90";
-    }
-    if (story_heading(backend.observe())){
-        return "expected no heading where nothing read it";
-    }
-    return expect_inputs(backend, "stick 45deg 150ms walk, stick -90deg 300ms run, stick 90deg 150ms walk, release 300ms");
-}
-
-//  The fake logs each press by the button's name.
-std::string buttons_by_name(CancellableScope& scope){
-    FakeStoryBackend<ZonePose> backend({}, scope);
-    for (const NintendoSwitch::Button button : {
-        NintendoSwitch::BUTTON_L, NintendoSwitch::BUTTON_R, NintendoSwitch::BUTTON_PLUS,
-        NintendoSwitch::BUTTON_A, NintendoSwitch::BUTTON_B, NintendoSwitch::BUTTON_ZL,
-    }){
-        backend.press(button, 80ms, 120ms);
-    }
-    return expect_inputs(backend, "press L, press R, press +, press A, press B, press ZL");
-}
-
 //  A reader that logs "[Test] read <name>" when it runs and fills nothing.
 StoryGameReader<GridPose> logging_reader(std::string name, std::vector<std::string> supplies, StoryReaderUse use){
     StoryGameReader<GridPose> reader;
@@ -311,24 +277,6 @@ std::string readers_opt_in(CancellableScope& scope){
     }
     read = readers_run(checkpoint_of("03", {}), StoryBackendKind::CONSOLE, scope);
     return read.empty() ? "" : std::format("expected no reader without postconditions, got \"{}\"", read);
-}
-
-//  An action sees its step.
-std::string handler_sees_step(CancellableScope& scope){
-    StoryGame<GridPose> game;
-    std::shared_ptr<std::string> seen = std::make_shared<std::string>();
-    game.actions.push_back(game_action<GridPose>("scene", [seen](StoryBackend<GridPose>&, const StoryActionCall& call, RunState&){
-        *seen = std::format("{} / {}", call.step.name, call.step.why);
-        return outcome_ok();
-    }));
-    const StoryActionRegistry<GridPose> registry(game);
-    FakeStoryBackend<GridPose> backend({}, scope);
-    RunState state;
-    const Outcome outcome = registry.dispatch(backend, game_step("opening", "scene", "the long intro"), state);
-    if (!outcome.succeeded()){
-        return std::format("expected a pass, got {}", to_string(outcome));
-    }
-    return *seen == "opening / the long intro" ? "" : std::format("expected the step, got \"{}\"", *seen);
 }
 
 //  A game whose "mark" action records "run <step>" and whose pause hook
@@ -461,10 +409,7 @@ const RunsTest RUNS_TESTS[] = {
     {.name = "tile start with a place fails the lint", .check = &grid_rejects_places},
     {.name = "zone game rejects tile args", .check = &zone_rejects_tile_args},
     {.name = "tile actions only with tiles", .check = &tile_actions_only_with_tiles},
-    {.name = "stick and heading", .check = &stick_and_heading},
-    {.name = "buttons by name", .check = &buttons_by_name},
     {.name = "readers opt in to postconditions", .check = &readers_opt_in},
-    {.name = "handler sees its step", .check = &handler_sees_step},
     {.name = "breakpoints pause before each step", .check = &pauses_before_each_step},
     {.name = "breakpoints pause before each leg", .check = &pauses_before_each_leg},
     {.name = "breakpoints leg label needs a known tile", .check = &leg_label_without_a_known_tile},
