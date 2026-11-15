@@ -21,9 +21,9 @@ namespace Pokemon{
 namespace{
 
 
-//  The old executor interface over the step runner, so the engine builds
-//  its events with build_story_checkpoint() (from_save, once_per_save).
-//  Goes once StoryStepExecutor is deleted and that code moves here.
+//  The StoryStepExecutor interface over the step runner, so the engine
+//  builds its events with build_story_checkpoint() (from_save,
+//  once_per_save), as the segment runner does.
 template <StoryPose PoseType>
 class RunnerExecutor : public StoryStepExecutor{
 public:

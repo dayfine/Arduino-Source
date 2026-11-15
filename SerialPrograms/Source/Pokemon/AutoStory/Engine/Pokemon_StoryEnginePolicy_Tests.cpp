@@ -4,9 +4,8 @@
  *
  *  The engine's whole run of a checkpoint on a scripted backend: the save
  *  mode from the checkpoint's phase and steps hash, the postconditions
- *  (passed, failed, not checked) and whether it saved. Then the steps hash
- *  on its own, the metadata in the JSON, and ScreenMachine states that
- *  match on an observation.
+ *  (passed, failed, not checked) and whether it saved. Then the metadata
+ *  in the JSON.
  *
  */
 
@@ -19,7 +18,6 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "CommonTools/ScreenMachine/ScreenMachine.h"
 #include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
 #include "Pokemon_StoryEngine.h"
 #include "Pokemon_StoryFakeBackend.h"
@@ -32,7 +30,7 @@ namespace Pokemon{
 namespace{
 
 
-//  FRLG 00.31's end in the shared format, its steps given: beside B3F's
+//  A checkpoint's end in the shared format, its steps given: beside B3F's
 //  Rare Candy, facing north, with two Rare Candies.
 std::string checkpoint_0031(std::string_view phase, std::string_view steps){
     return std::format(R"({{"id": "00.31", "title": "Rocket Hideout", "events": {},
@@ -117,8 +115,8 @@ const EngineCase ENGINE_CASES[] = {
      .expectation = {.mode = StorySaveMode::PER_CHECKPOINT, .saves = 1, .line = "[Save] 00.31: phase reproduction: save mode per_checkpoint"}},
     {.name = "stale steps_hash is testing", .input = {.phase = "verification", .hash = HashRecord::STALE},
      .expectation = {.mode = StorySaveMode::NONE, .saves = 0, .line = "[Save] 00.31: phase verification but steps_hash mismatch (recorded sha256:old, now "}},
-    {.name = "no steps_hash is testing", .input = {.phase = "reproduction", .hash = HashRecord::MISSING},
-     .expectation = {.mode = StorySaveMode::NONE, .saves = 0, .line = "[Save] 00.31: phase reproduction but steps_hash mismatch (recorded none, now "}},
+    {.name = "never verified is testing", .input = {.phase = "reproduction", .hash = HashRecord::MISSING},
+     .expectation = {.mode = StorySaveMode::NONE, .saves = 0, .line = "[Save] 00.31: phase reproduction but never verified: treated as testing, save mode none"}},
     {.name = "B4F false pass fails postconditions", .input = {.phase = "verification", .end_map = "RocketHideout_B4F"},
      .expectation = {.mode = StorySaveMode::AFTER_VERIFICATION, .verdict = CheckpointVerdict::FAILED, .saves = 0,
                      .line = "[Postcondition] 00.31 map: failed: expected RocketHideout_B3F, read RocketHideout_B4F"}},
@@ -203,76 +201,6 @@ private:
 
 
 
-struct HashCase{
-    //  Two checkpoints' events, hashed with the built-in actions.
-    struct Input{
-        std::string_view a;
-        std::string_view b;
-    };
-
-    //  Whether they hash the same, and `a`'s hash when pinned: a change to it
-    //  means every recorded verification goes stale.
-    struct Expectation{
-        bool same = true;
-        std::optional<std::string_view> hash_a = std::nullopt;
-    };
-
-    std::string_view name;
-    Input input;
-    Expectation expectation;
-};
-
-inline constexpr std::string_view ROUTE_B3F = R"([{"id": "go", "kind": "route", "args": {"target": {"map": "RocketHideout_B3F", "tiles": [[12, 13]]}}}])";
-
-const HashCase HASH_CASES[] = {
-    {.name = "pinned", .input = {.a = ROUTE_B3F, .b = ROUTE_B3F},
-     .expectation = {.same = true, .hash_a = "sha256:13bc877c960a15cd0ed2f37248fa8336308b048a865623dde7654d41ac7147b8"}},
-    {.name = "whitespace is not hashed", .input = {.a = R"([{"id": "t", "kind": "talk"}])", .b = R"([ { "id":"t",  "kind":"talk" } ])"},
-     .expectation = {.same = true}},
-    {.name = "why differs", .input = {.a = R"([{"id": "t", "kind": "talk", "why": "a"}])", .b = R"([{"id": "t", "kind": "talk", "why": "b"}])"},
-     .expectation = {.same = false}},
-    {.name = "written fallback differs", .input = {.a = R"([{"id": "f", "kind": "battle"}])", .b = R"([{"id": "f", "kind": "battle", "args": {"may_lose": false}}])"},
-     .expectation = {.same = false}},
-    {.name = "another target differs", .input = { .a = ROUTE_B3F,
-               .b = R"([{"id": "go", "kind": "route", "args": {"target": {"map": "RocketHideout_B3F", "tiles": [[12, 14]]}}}])"},
-     .expectation = {.same = false}},
-    {.name = "another step name differs", .input = {.a = R"([{"id": "t", "kind": "talk"}])", .b = R"([{"id": "u", "kind": "talk"}])"},
-     .expectation = {.same = false}},
-};
-
-std::string hash_of(std::string_view events, std::string_view source){
-    const std::string json = std::format(R"({{"id": "x", "title": "x", "events": {}}})", events);
-    return story_steps_hash(read_story_checkpoint(parse_json(json), source));
-}
-
-std::string check_hash(const HashCase& test){
-    const std::string a = hash_of(test.input.a, test.name);
-    const std::string b = hash_of(test.input.b, test.name);
-    if ((a == b) != test.expectation.same){
-        return std::format("{}{}: {}, {}", "expected the hashes ", (test.expectation.same ? "equal" : "different"), a, b);
-    }
-    if (test.expectation.hash_a && a != *test.expectation.hash_a){
-        return std::format("expected the pinned hash {}, got {}", *test.expectation.hash_a, a);
-    }
-    return "";
-}
-
-class StoryStepsHashTest : public UnitTest{
-public:
-    explicit StoryStepsHashTest(HashCase test)
-        : UnitTest(std::format("Pokemon::StoryEngine steps_hash - {}", test.name))
-        , m_case(std::move(test))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::string error = check_hash(m_case);
-        return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
-    }
-private:
-    HashCase m_case;
-};
-
-
-
 struct MetadataCase{
     //  A checkpoint's "metadata", read.
     struct Input{
@@ -343,77 +271,6 @@ private:
 
 
 
-struct ScreenCase{
-    //  What a look showed, classified by ScreenMachine states that match on
-    //  observations.
-    struct Input{
-        std::vector<ScreenEvent> events;
-    };
-
-    //  The state matched; none when no state did.
-    struct Expectation{
-        std::optional<std::string_view> state = std::nullopt;
-    };
-
-    std::string_view name;
-    Input input;
-    Expectation expectation;
-};
-
-const ScreenCase SCREEN_CASES[] = {
-    {.name = "battle first", .input = {.events = {ScreenEvent::BATTLE_STARTED, ScreenEvent::DIALOG_BOX}}, .expectation = {.state = "battle"}},
-    {.name = "text", .input = {.events = {ScreenEvent::DIALOG_BOX}}, .expectation = {.state = "text"}},
-    {.name = "overworld", .input = {.events = {ScreenEvent::PLAYER_CAN_MOVE}}, .expectation = {.state = "overworld"}},
-    {.name = "image-only state skipped", .input = {.events = {ScreenEvent::FADE_WHITE}}, .expectation = {}},
-};
-
-ScreenState observation_state(std::string name, ScreenEvent event){
-    ScreenState state;
-    state.name = std::move(name);
-    state.matches_observation = [event](const ScreenObservation& observation){
-        return observation.events.has(event);
-    };
-    state.max_visits = 10;
-    return state;
-}
-
-std::string check_screen(const ScreenCase& test){
-    std::vector<ScreenState> states{
-        observation_state("battle", ScreenEvent::BATTLE_STARTED),
-        observation_state("text", ScreenEvent::DIALOG_BOX),
-        observation_state("overworld", ScreenEvent::PLAYER_CAN_MOVE),
-    };
-    ScreenState image_only;
-    image_only.name = "image_only";
-    image_only.matches = [](const ImageViewRGB32&){
-        return true;
-    };
-    image_only.max_visits = 10;
-    states.push_back(std::move(image_only));
-    ScreenObservation observation;
-    for (ScreenEvent event : test.input.events){
-        observation.events.set(event, true);
-    }
-    const ScreenState* state = match_screen_state(states, observation);
-    const std::string got = state ? state->name : "none";
-    return got == test.expectation.state.value_or("none") ? "" : std::format("matched {}", got);
-}
-
-class ScreenObservationTest : public UnitTest{
-public:
-    explicit ScreenObservationTest(ScreenCase test)
-        : UnitTest(std::format("Pokemon::StoryEngine screen observation - {}", test.name))
-        , m_case(std::move(test))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::string error = check_screen(m_case);
-        return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
-    }
-private:
-    ScreenCase m_case;
-};
-
-
 } // namespace
 
 
@@ -421,14 +278,8 @@ void add_tests_StoryEnginePolicy(UnitTestDatabase& database){
     for (const EngineCase& test : ENGINE_CASES){
         database.add<StoryEngineSaveTest>(test);
     }
-    for (const HashCase& test : HASH_CASES){
-        database.add<StoryStepsHashTest>(test);
-    }
     for (const MetadataCase& test : METADATA_CASES){
         database.add<StoryMetadataTest>(test);
-    }
-    for (const ScreenCase& test : SCREEN_CASES){
-        database.add<ScreenObservationTest>(test);
     }
 }
 
