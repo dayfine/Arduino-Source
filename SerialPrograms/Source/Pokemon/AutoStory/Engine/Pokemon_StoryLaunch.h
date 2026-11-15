@@ -116,6 +116,12 @@ struct StoryLaunchPolicy{
     std::vector<StoryLaunchPrompt> prompts = {};
     //  The player in control. Unset: the look shows PLAYER_CAN_MOVE.
     std::function<bool(const ScreenObservation& look)> overworld = {};
+    //  Once the launch closed the game or saw its title, the overworld
+    //  counts only after a `title_press` and then the load's black
+    //  (FADE_BLACK); until then an overworld look takes `title_press`.
+    //  BDSP's title plays an attract movie, a town with people walking,
+    //  that reads as the overworld.
+    bool overworld_after_load = false;
     //  Looks in a row the overworld must show before the launch is done.
     size_t settled_looks = 3;
     //  The wait between looks at a screen with nothing to press.
