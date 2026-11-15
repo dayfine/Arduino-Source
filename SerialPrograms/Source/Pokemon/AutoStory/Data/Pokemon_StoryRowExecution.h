@@ -36,12 +36,17 @@ enum class StoryReload{
     ALWAYS,         //  "always": even straight through; only its save starts its walk
 };
 
+//  What a row's "save" says about the game's own save at its end. The
+//  program never saves for a row.
+enum class StoryRowSave{
+    NONE,           //  left out: the game does not save at the row's end
+    AUTOSAVE,       //  "autosave": a run's log showed the game autosave there
+    UNVERIFIED,     //  "unverified": believed to autosave there, not yet seen in a run's log; a reload does not count on it
+};
+
 //  What a checkpoint file's shared execution fields say.
 struct StoryRowExecution{
-    //  "save": "autosave": the game saves by itself at the row's end, so the
-    //  program does not. "menu" or left out: the program saves, when the
-    //  save policy lets it.
-    bool autosave = false;
+    StoryRowSave save = StoryRowSave::NONE;
     StoryReload reload = StoryReload::NEVER;
     //  "dev_only": true: a walk the story does not need, kept for testing
     //  a part of it (developer mode lists and plays it, a user's run does
@@ -61,6 +66,9 @@ StoryRowExecution read_story_row_execution(
 //  The rows of a story the shared execution fields mark, by id.
 struct StoryRows{
     std::set<std::string, std::less<>> autosaves;
+    //  The StoryRowSave::UNVERIFIED rows, for a run to report the autosave
+    //  it sees there.
+    std::set<std::string, std::less<>> unverified_autosaves;
     //  WHEN_CHAINED and ALWAYS rows; each comes after an autosave row,
     //  whose autosave is its start save.
     std::set<std::string, std::less<>> reload_when_chained;
