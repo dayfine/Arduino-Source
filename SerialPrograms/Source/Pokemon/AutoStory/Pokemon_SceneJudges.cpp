@@ -4,6 +4,8 @@
  *
  */
 
+#include <algorithm>
+#include <chrono>
 #include <format>
 #include "CommonTools/ScreenEvents/ScreenFades.h"
 #include "Pokemon_SceneJudges.h"
@@ -73,6 +75,26 @@ SceneMove TalkOver::look(const ScreenEvents& events, WallClock now){
 
 bool TalkOver::warped() const{
     return !m_rule.warp || m_fade != WarpFade::NONE || m_banner;
+}
+
+std::optional<Milliseconds> TalkOver::left(WallClock now) const{
+    if (!m_rule.end_on_quiet){
+        return std::nullopt;
+    }
+    std::optional<Milliseconds> out;
+    const auto take = [&](const std::optional<WallClock>& since, Milliseconds need){
+        if (!since.has_value()){
+            return;
+        }
+        const Milliseconds held = std::chrono::duration_cast<Milliseconds>(now - *since);
+        const Milliseconds rest = std::max(need - held, Milliseconds(0));
+        if (!out.has_value() || rest < *out){
+            out = rest;
+        }
+    };
+    take(m_quiet_since, m_rule.quiet);
+    take(m_calm_since, m_rule.calm);
+    return out;
 }
 
 std::string TalkOver::describe() const{

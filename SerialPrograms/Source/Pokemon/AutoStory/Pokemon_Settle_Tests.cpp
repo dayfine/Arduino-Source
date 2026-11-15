@@ -389,6 +389,158 @@ const WatchTestCase WATCH_CASES[] = {
     },
 };
 
+
+
+//  The screen from a time on, in ms from the settle's start.
+struct ScreenFrom{
+    Milliseconds from;
+    ScreenEvents events;
+};
+
+//  The screen a watching game sees, as a timeline: a look watches the
+//  span it is asked for (look(): the rule's look_every) and ends on what
+//  the timeline shows then, since the change that began it.
+class TimelineSettleIO : public SettleIO{
+public:
+    TimelineSettleIO(std::vector<ScreenFrom> timeline, Milliseconds look_every)
+        : m_timeline(std::move(timeline))
+        , m_look_every(look_every)
+    {}
+
+    virtual SettleLook look() override{
+        return watch(m_look_every);
+    }
+    virtual SettleLook watch(Milliseconds span) override{
+        m_seen.now += span;
+        m_seen.looks++;
+        const ScreenFrom* showing = &m_timeline.front();
+        for (const ScreenFrom& item : m_timeline){
+            if (item.from <= m_seen.now){
+                showing = &item;
+            }
+        }
+        return {.events = showing->events, .when = WallClock() + m_seen.now, .since = WallClock() + showing->from};
+    }
+    virtual void press(SceneMove, Milliseconds) override{
+        m_seen.presses++;
+    }
+    virtual bool flee_battle() override{
+        return true;
+    }
+    virtual void log(std::string_view) override{}
+
+    //  What the settle did: when its last look ended (from its start), its
+    //  looks and its press() calls.
+    struct Seen{
+        Milliseconds now = Milliseconds(0);
+        size_t looks = 0;
+        size_t presses = 0;
+    };
+    const Seen& seen() const{
+        return m_seen;
+    }
+
+private:
+    const std::vector<ScreenFrom> m_timeline;
+    const Milliseconds m_look_every;
+    Seen m_seen;
+};
+
+//  run_settle() for a game that watches a timeline: when it ends.
+struct TimingTestCase{
+    struct Input{
+        SettleRule rule;
+        std::vector<ScreenFrom> timeline;
+    };
+
+    struct Expectation{
+        SettleEnd::Result result;
+        //  When it ended, from its start.
+        Milliseconds ends_at;
+        //  The looks it took.
+        size_t looks;
+        //  The press() calls: a rule that keeps watching makes none.
+        size_t presses = 0;
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
+};
+
+class Test_Timing : public UnitTest{
+public:
+    explicit Test_Timing(TimingTestCase test_case)
+        : UnitTest(std::format("Pokemon::Settle - timing: {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        TimelineSettleIO io(m_case.input.timeline, m_case.input.rule.look_every);
+        const SettleEnd end = run_settle(m_case.input.rule, "Step", io);
+        if (end.result != m_case.expectation.result){
+            return std::format("expected {}, got {} ({})", result_name(m_case.expectation.result), result_name(end.result), end.text);
+        }
+        const TimelineSettleIO::Seen& seen = io.seen();
+        const UnitTestResult ends_at = expect_equal(
+            "ends at (ms)", std::to_string(seen.now.count()), std::to_string(m_case.expectation.ends_at.count())
+        );
+        if (ends_at.result != UnitTestResult::PASSED){
+            return ends_at;
+        }
+        const UnitTestResult looks = expect_equal("looks", std::to_string(seen.looks), std::to_string(m_case.expectation.looks));
+        if (looks.result != UnitTestResult::PASSED){
+            return looks;
+        }
+        return expect_equal("presses", std::to_string(seen.presses), std::to_string(m_case.expectation.presses));
+    }
+
+private:
+    const TimingTestCase m_case;
+};
+
+//  A door's settle looked at every 400 ms, as FRLG watches, that keeps
+//  watching or not.
+SettleRule timed_door(bool keep_watching){
+    SettleRule rule = watched_door(true);
+    rule.keep_watching = keep_watching;
+    return rule;
+}
+
+//  The overworld with the player walking: calm, never quiet.
+const ScreenEvents PLAYER_WALKING{ScreenEvent::PLAYER_CAN_MOVE};
+
+const TimingTestCase TIMING_CASES[] = {
+    {
+        //  Quiet from 550 ms: 1 s of it at 1550 ms, seen at the look that
+        //  ends at 1600 ms.
+        .name = "without keeping watch, it ends at a whole look's end",
+        .input = {.rule = timed_door(false), .timeline = {{0ms, BOX}, {550ms, QUIET}}},
+        .expectation = {.result = SettleEnd::Result::QUIET, .ends_at = 1600ms, .looks = 4, .presses = 3},
+    },
+    {
+        .name = "keeping watch, it ends 1 s after the box closed",
+        .input = {.rule = timed_door(true), .timeline = {{0ms, BOX}, {550ms, QUIET}}},
+        .expectation = {.result = SettleEnd::Result::QUIET, .ends_at = 1550ms, .looks = 4},
+    },
+    {
+        .name = "keeping watch, a quiet the screen had from the start ends it at 1 s",
+        .input = {.rule = timed_door(true), .timeline = {{0ms, QUIET}}},
+        .expectation = {.result = SettleEnd::Result::QUIET, .ends_at = 1000ms, .looks = 3},
+    },
+    {
+        //  Quiet from 0, broken by a box at 700 ms; quiet again from 900 ms.
+        .name = "keeping watch, a quiet broken before its end starts over",
+        .input = {.rule = timed_door(true), .timeline = {{0ms, QUIET}, {700ms, BOX}, {900ms, QUIET}}},
+        .expectation = {.result = SettleEnd::Result::QUIET, .ends_at = 1900ms, .looks = 5},
+    },
+    {
+        .name = "keeping watch, the calm of a walking player ends it at 2.5 s",
+        .input = {.rule = timed_door(true), .timeline = {{0ms, PLAYER_WALKING}}},
+        .expectation = {.result = SettleEnd::Result::QUIET, .ends_at = 2500ms, .looks = 7},
+    },
+};
+
 } // namespace
 
 
@@ -401,6 +553,9 @@ void add_tests_Settle(UnitTestDatabase& database){
     }
     for (const WatchTestCase& item : WATCH_CASES){
         database.add<Test_Watch>(item);
+    }
+    for (const TimingTestCase& item : TIMING_CASES){
+        database.add<Test_Timing>(item);
     }
 }
 

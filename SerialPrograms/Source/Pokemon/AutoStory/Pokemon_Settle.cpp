@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <chrono>
 #include <format>
 #include <optional>
@@ -61,8 +62,10 @@ std::string timed_out(const TalkOver& judge, const SettleRule& rule, std::string
 SettleEnd run_settle(const SettleRule& rule, std::string_view label, SettleIO& io){
     TalkOver judge(rule.judge);
     std::optional<WallClock> deadline;
+    //  For a rule that keeps watching: how long the next look watches.
+    std::optional<Milliseconds> span;
     while (true){
-        const SettleLook look = io.look();
+        const SettleLook look = span.has_value() ? io.watch(*span) : io.look();
         if (!deadline.has_value()){
             deadline = look.when + rule.cap;
         }
@@ -75,6 +78,9 @@ SettleEnd run_settle(const SettleRule& rule, std::string_view label, SettleIO& i
             judge.look(look.events, *look.since);
         }
         const SceneMove move = judge.look(look.events, look.when);
+        if (rule.keep_watching){
+            span = std::min(rule.look_every, judge.left(look.when).value_or(rule.look_every));
+        }
         switch (move){
         case SceneMove::DONE:
             io.log(std::format("[Settle] {}: over; {}.", label, judge.describe()));
@@ -91,6 +97,9 @@ SettleEnd run_settle(const SettleRule& rule, std::string_view label, SettleIO& i
             continue;
         case SceneMove::NEXT:
         case SceneMove::B:
+            if (rule.keep_watching){
+                continue;
+            }
             io.press(move, rule.look_every);
             continue;
         }

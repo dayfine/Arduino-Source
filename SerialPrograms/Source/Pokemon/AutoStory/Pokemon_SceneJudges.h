@@ -95,6 +95,10 @@ public:
 
     //  Whether the warp the rule asks for has shown (true without one).
     bool warped() const;
+    //  How much longer the quiet or calm the last look showed must hold to
+    //  end it, as of `now`; none when the screen is neither, or no quiet
+    //  ends it (TalkOverRule::end_on_quiet).
+    std::optional<Milliseconds> left(WallClock now) const;
     //  What it has seen, for the log: "black fade, banner read".
     std::string describe() const;
 

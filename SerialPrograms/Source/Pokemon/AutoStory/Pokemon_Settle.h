@@ -51,6 +51,12 @@ struct SettleRule{
     //  other unsettled screen, until the overworld is quiet after it. No
     //  flee_battle(), no press; its look() is the wait.
     bool watch_battles = false;
+    //  For a game that only watches: once the screen is quiet (or calm),
+    //  the next look watches only until it has held long enough
+    //  (SettleIO::watch()), so the settle ends when the quiet does, timed
+    //  from the change that began it, not at the end of the next whole
+    //  look. It never presses: its looks are the wait.
+    bool keep_watching = false;
 };
 
 //  The rule of `kind`.
@@ -74,6 +80,12 @@ public:
 
     //  The screen now.
     virtual SettleLook look() = 0;
+    //  For a rule that keeps watching: the screen after watching it for
+    //  `span`, with since when it has shown that (SettleLook::since). A
+    //  game whose looks take a set time keeps this default: look().
+    virtual SettleLook watch(Milliseconds){
+        return look();
+    }
     //  Answers a look (SceneMove::NEXT: the talk's button; SceneMove::B:
     //  B), then waits `wait`. A game that only watches waits.
     virtual void press(SceneMove move, Milliseconds wait) = 0;
