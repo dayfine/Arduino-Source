@@ -652,6 +652,19 @@ private:
         const RouteStep& step, const StepOutcome& outcome,
         const std::optional<MapPosition>& start, const std::optional<TrainerCrossing>& crossing
     ){
+        if (outcome.end == StepEnd::STOPPED && outcome.blocked && step.tapped){
+            //  A tap that showed no step may have stepped unseen; the player
+            //  is somewhere on the leg, and its wall ends a hold wherever
+            //  they are. Held, not tapped again: a tap at the wall would
+            //  show no step once more (14.01's taps legs in Cinnabar Gym,
+            //  the unseen step sweep, 2026-11-14). Before the wild battles'
+            //  walk again, which would tap it again: a blocked tap is no
+            //  battle (10.04's Pokemon Tower taps legs).
+            m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, "a tap showed no step; holding to the wall");
+            m_plan[m_next].tapped = false;
+            m_held_again = true;
+            return true;
+        }
         if (outcome.end == StepEnd::STOPPED && step.wild){
             //  Where wild battles start, one on the first step held again
             //  after another interrupt stops the hold the same way: Cooper's
@@ -659,17 +672,6 @@ private:
             //  sim, 2026-11-09). Walked again, as after any stop; a sign
             //  that interrupts every hold ends the route at MAX_ROUTE_STOPS.
             m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, "interrupted again right away where wild battles start; walking it again");
-            m_held_again = true;
-            return true;
-        }
-        if (outcome.end == StepEnd::STOPPED && outcome.blocked && step.tapped){
-            //  A tap that showed no step may have stepped unseen; the player
-            //  is somewhere on the leg, and its wall ends a hold wherever
-            //  they are. Held, not tapped again: a tap at the wall would
-            //  show no step once more (14.01's taps legs in Cinnabar Gym,
-            //  the unseen step sweep, 2026-11-14).
-            m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, "a tap showed no step; holding to the wall");
-            m_plan[m_next].tapped = false;
             m_held_again = true;
             return true;
         }

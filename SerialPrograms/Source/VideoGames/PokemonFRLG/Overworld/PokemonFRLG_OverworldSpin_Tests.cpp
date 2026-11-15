@@ -285,6 +285,8 @@ UnitTestResult lift_ride(bool pick, const MapPosition& expected){
     if (pick && !sim.use_field(SimField::LIFT_FLOOR, 1)){
         return std::string("No floor 1 on the lift's panel.");
     }
+    //  The ride holds the player still until it stops (SimTiming::lift_ride).
+    sim.watch({}, script.timing.lift_ride);
     sim.hold(Direction::SOUTH, MovementMechanics::TILE_TIME, MovementMechanics::STEP_RELEASE, std::chrono::milliseconds(3000), {});
     if (!(sim.state().position == expected)){
         return "Expected " + to_string(expected) + ", ended on " + to_string(sim.state().position) + ".";

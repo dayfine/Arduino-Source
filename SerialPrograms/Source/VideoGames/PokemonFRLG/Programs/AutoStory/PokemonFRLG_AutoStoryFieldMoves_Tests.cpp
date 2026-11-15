@@ -192,6 +192,17 @@ UnitTestResult test_legs_from_water(){
     return true;
 }
 
+//  A leg up to the water, with no Surf yet, ends at it as at a wall: held
+//  south down Route 18's west end, it reaches the water's edge (8, 10)
+//  from a row north of it too (11.02's route18_west_wall).
+UnitTestResult test_leg_to_water_is_to_wall(){
+    const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), MapPosition{"Route18", {8, 9}}, {{Direction::SOUTH, 1}});
+    if (!route || route->size() != 1 || !(*route)[0].to_wall){
+        return std::string("Expected south 1 to Route 18's water to end to the wall.");
+    }
+    return true;
+}
+
 //  Viridian City's pond on the sim, as a row runs it: Surf east from its
 //  west shore, the legs across it surfing, and off it onto the east shore.
 UnitTestResult test_surf_legs_on_sim(){
@@ -263,6 +274,10 @@ const FieldMovesCase CASES[] = {
     {
         .input = {.name = "legs from the water", .body = test_legs_from_water},
         .expectation = {.description = "surfing legs, and a one-tile leg off the water"},
+    },
+    {
+        .input = {.name = "leg to the water", .body = test_leg_to_water_is_to_wall},
+        .expectation = {.description = "ends to the wall, as before a wall"},
     },
     {
         .input = {.name = "surf and legs on the sim", .body = test_surf_legs_on_sim},

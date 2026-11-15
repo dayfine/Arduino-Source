@@ -26,7 +26,7 @@ inline const std::string TAPS_VARIANT = "taps";
 
 //  `legs` from `start` as route steps for the walker, each checked against
 //  the map: nothing if a step is blocked or leaves the map. A leg ends "to
-//  wall" if the next step its way is blocked.
+//  wall" if the next step its way is blocked, or is onto water to Surf.
 std::optional<std::vector<RouteStep>> fixed_route(
     const std::vector<MapData>& maps, const MapPosition& start, const std::vector<Pokemon::StoryLeg>& legs
 );
