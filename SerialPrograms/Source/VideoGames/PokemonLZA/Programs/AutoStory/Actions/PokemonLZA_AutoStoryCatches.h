@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Wild Zone 1's catches (03.07's tutorial, 03.08's five species), from
- * .
+ *  Wild Zone 1's catches (03.07's tutorial, 03.08's five species).
  *
  */
 

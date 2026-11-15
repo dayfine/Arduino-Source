@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <string>
 #include <string_view>
@@ -94,11 +95,14 @@ Pokemon::Outcome walk_until(
     }
     //  The slices stop the stick between them for as long as a look takes;
     //  the player barely slows.
-    for (Milliseconds held = 0ms; held < hold; held += HOLD_SLICE){
-        backend.hold(Pokemon::Direction::NORTH, HOLD_SLICE, Pokemon::StoryPace::WALK);
+    for (Milliseconds held = 0ms; held < hold;){
+        //  The last slice holds only what is left, so the leg walks its time.
+        const Milliseconds slice = std::min(HOLD_SLICE, hold - held);
+        backend.hold(Pokemon::Direction::NORTH, slice, Pokemon::StoryPace::WALK);
+        held += slice;
         const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
         if (look.events.has(end)){
-            backend.log(std::format("{}: the end event after {} ms of the last leg.", walk, (held + HOLD_SLICE).count()));
+            backend.log(std::format("{}: the end event after {} ms of the last leg.", walk, held.count()));
             return Pokemon::outcome_ok();
         }
         //  A black fade is the scene at the walk's end taking over (03.11's
@@ -106,7 +110,7 @@ Pokemon::Outcome walk_until(
         //  her box more than 5 s after it, past a camera pan): the step after
         //  the walk waits for what the scene shows.
         if (look.events.has(EngineEvent::FADE_BLACK)){
-            backend.log(std::format("{}: a black fade after {} ms of the last leg: the scene takes over.", walk, (held + HOLD_SLICE).count()));
+            backend.log(std::format("{}: a black fade after {} ms of the last leg: the scene takes over.", walk, held.count()));
             return Pokemon::outcome_ok();
         }
     }
