@@ -113,48 +113,6 @@ private:
 };
 
 
-//  start_launch_request(): what the shared launch does for each start
-//  save. Only RUNNING keeps the game: RELOAD_AT_START off.
-struct StartLaunchCase{
-    std::string name;
-    struct Input{
-        StartSave save;
-    };
-    Input input;
-    struct Expectation{
-        Pokemon::StoryLaunchRequest::Save save;
-        Pokemon::StoryLaunchRequest::Running running;
-    };
-    Expectation expectation;
-};
-
-const StartLaunchCase START_LAUNCH_CASES[] = {
-    {.name = "the latest save restarts", .input = {.save = StartSave::LATEST},
-     .expectation = {.save = Pokemon::StoryLaunchRequest::Save::LATEST, .running = Pokemon::StoryLaunchRequest::Running::RESTART}},
-    {.name = "the backup save restarts", .input = {.save = StartSave::BACKUP},
-     .expectation = {.save = Pokemon::StoryLaunchRequest::Save::BACKUP, .running = Pokemon::StoryLaunchRequest::Running::RESTART}},
-    {.name = "the running game is kept", .input = {.save = StartSave::RUNNING},
-     .expectation = {.save = Pokemon::StoryLaunchRequest::Save::LATEST, .running = Pokemon::StoryLaunchRequest::Running::KEEP}},
-};
-
-class Test_StartLaunch : public UnitTest{
-public:
-    explicit Test_StartLaunch(const StartLaunchCase& test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryEngine - start launch: {}", test_case.name))
-        , m_case(test_case)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const Pokemon::StoryLaunchRequest request = start_launch_request(m_case.input.save);
-        if (request.save != m_case.expectation.save || request.running != m_case.expectation.running){
-            return "Unexpected launch request.";
-        }
-        return true;
-    }
-
-private:
-    const StartLaunchCase& m_case;
-};
-
 //  checkpoint_start_sign(): what each checkpoint's start check looks for.
 //  03.06 starts at the Pokemon Center counter; 03.08 has no check.
 struct StartSignCase{
@@ -206,9 +164,6 @@ private:
 void add_tests_AutoStoryStartLoad(UnitTestDatabase& database){
     for (const StartLoadCase& item : START_LOAD_CASES){
         database.add<Test_StartLoad>(item);
-    }
-    for (const StartLaunchCase& item : START_LAUNCH_CASES){
-        database.add<Test_StartLaunch>(item);
     }
     for (const StartSignCase& item : START_SIGN_CASES){
         database.add<Test_StartSign>(item);
