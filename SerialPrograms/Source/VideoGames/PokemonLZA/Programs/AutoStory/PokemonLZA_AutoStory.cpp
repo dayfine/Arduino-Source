@@ -5,7 +5,6 @@
  */
 
 #include <format>
-#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -199,7 +198,7 @@ StoryRunPolicy run_policy(const Pokemon::StoryRunOptions& run, const BooleanChec
     }else{
         logger.log("AutoStory: runs straight through checkpoint boundaries, no reload.");
     }
-    return {.attempts_per_checkpoint = run.policy().attempts_per_checkpoint, .boundary_reload = boundary_reload};
+    return {.attempts_per_checkpoint = run.ATTEMPTS_PER_CHECKPOINT, .boundary_reload = boundary_reload};
 }
 
 } // namespace
@@ -223,21 +222,6 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     RunState state;
     load_start_save(env.console, story, backend, rows, first, from);
 
-    if (const std::optional<VerifyPolicy> verify = RUN.VERIFY.policy()){
-        const VerifyReport report = engine.verify_checkpoint(rows[first], *verify, state);
-        if (!report.verified){
-            throw OperationFailedException(
-                ErrorReportMode::NO_ERROR_REPORT,
-                std::format(
-                    "AutoStory verify: {} {}/{} passed, {} needed{}", report.checkpoint, report.passes, report.runs,
-                    verify->passes_needed, report.failure.succeeded() ? std::string() : std::format(": {}", to_string(report.failure))
-                )
-            );
-        }
-        send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
-        GO_HOME_WHEN_DONE.run_end_of_program(context);
-        return;
-    }
     const std::vector<StoryCheckpoint> checkpoints = story_run_rows(std::span<const StoryCheckpoint>(rows), first, last);
     const SegmentReport report = run_plza_segment(game, story_data, checkpoints, run_policy(RUN, RELOAD_AT_BOUNDARIES, env.console), engine, backend, state);
     record_story_counts(report.story_counts(), env.current_stats<AutoStoryStats>());
