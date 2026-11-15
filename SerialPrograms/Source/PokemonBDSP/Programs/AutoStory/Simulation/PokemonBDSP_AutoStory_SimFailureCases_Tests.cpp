@@ -23,6 +23,7 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -630,6 +631,16 @@ private:
 
 } // namespace
 
+//  00.01's walk up Twinleaf's exit toward Barry's warning, with the taps
+//  north the walker read still by the "201" banner (lab-B 2026-11-15, taps
+//  13 and 14 of north 18; the player moved on both): the row still passes,
+//  the run north ending on the warning's trigger row.
+UnitTestResult barrys_warning_with_still_taps(Logger& logger){
+    SimWorldKnobs knobs;
+    knobs.still_taps = {{.step = "below_barrys_warning", .direction = Direction::NORTH, .taps = {13, 14}}};
+    return passes(run_case(logger, "00.01", "00.01", {.fade = {}, .banner = {}}, std::move(knobs)));
+}
+
 const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"01.05 through_the_gate's last leg runs a tile on (lab-B 2026-11-08 15:31)", [](Logger& logger){
         return passes(run_case(logger, "01.05", "01.05", {.fade = {}, .banner = {}}, gate_slide(SimFade::DIM, false)));
@@ -647,6 +658,8 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
         return gate_old_walk_slides(logger, SimFade::WHITE, true);
     }}, .expectation = {}},
     {.input = {"01.05 through_the_gate is one run west", gate_plan_one_run}, .expectation = {}},
+    {.input = {"00.01 taps 13 and 14 up Twinleaf's exit read still: the run north still ends in Barry's warning (lab-B 2026-11-15)",
+        barrys_warning_with_still_taps}, .expectation = {}},
     {.input = {"any one missed fade or banner from 00.00 to 01.11: every row still passes", [](Logger& logger){
         return every_single_miss(logger, {});
     }}, .expectation = {}},
