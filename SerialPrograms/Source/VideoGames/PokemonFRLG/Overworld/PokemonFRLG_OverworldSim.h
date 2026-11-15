@@ -206,6 +206,9 @@ private:
     //  Reads each map's gate tiles through the gates of m_state.
     void read_gates();
     bool fly_to_town(size_t town);
+    //  The script's gates, open at the start: a cut tree's gate open has
+    //  its tree cut, to come back after a warp as one cut_tree() cuts.
+    void open_start_gates();
     //  The trees cut come back, as after a warp.
     void regrow_cut_trees();
     bool after_step(const Step& step, Milliseconds pressed);

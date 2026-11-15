@@ -147,8 +147,7 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Sim: start on a map that isn't loaded: " + start.map);
     }
     add_coded_field();
-    m_state.gates = m_script.gates;
-    read_gates();
+    open_start_gates();
     m_player = PlayerState{start.point, elevation_at(map(), start.point), false};
     m_state.facing = facing;
     m_state.on_bike = m_script.on_bike;

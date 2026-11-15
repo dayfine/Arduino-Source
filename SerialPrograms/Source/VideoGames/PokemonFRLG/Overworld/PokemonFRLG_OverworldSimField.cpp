@@ -369,6 +369,23 @@ std::optional<WalkedTiles> OverworldSimWalker::surf(const RouteStep& step){
     return std::nullopt;
 }
 
+void OverworldSim::open_start_gates(){
+    m_state.gates = m_script.gates;
+    read_gates();
+    for (size_t index = 0; index < m_maps.size(); index++){
+        std::vector<MapObject>& objects = m_maps[index].objects;
+        for (size_t c = objects.size(); c-- > 0;){
+            const std::optional<std::string> key = objects[c].name == "cut_tree"
+                ? cut_gate_key(m_maps, MapPosition{m_maps[index].name, TilePos{objects[c].x, objects[c].y}})
+                : std::nullopt;
+            if (key && m_state.gates.opened.contains(*key)){
+                m_cut_trees.emplace_back((int)index, objects[c]);
+                objects.erase(objects.begin() + c);
+            }
+        }
+    }
+}
+
 void OverworldSim::regrow_cut_trees(){
     for (auto& [index, tree] : m_cut_trees){
         m_maps[index].objects.push_back(tree);
