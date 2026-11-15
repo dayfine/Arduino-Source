@@ -67,7 +67,7 @@ ScreenEvents observed_events(SimScreen screen){
     case SimScreen::BATTLE_FLASH:
         break;
     }
-    return {};
+    return {ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::PLAYER_STILL};
 }
 
 } // namespace

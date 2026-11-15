@@ -164,6 +164,7 @@ private:
     std::string cut(const StoryStep& step);
     std::string push_boulder(const StoryStep& step);
     std::string battle(const StoryStep& step);
+    Pokemon::StoryAction heal_or_stub();
     Pokemon::StoryAction hideout_or_stub();
     std::string hideout(const StoryStep& step);
     std::string ended_on(const StoryStep& step);
@@ -175,6 +176,9 @@ private:
     std::set<std::string> m_beaten;
     SimStepGuard m_guard;
     SimStubs m_stubs;
+    //  The last step was a Center's way in that the sim stubbed: the
+    //  player is still outside, so a heal next is stubbed too.
+    bool m_center_entry_stubbed = false;
     Pokemon::StoryActionTable m_table;
 };
 

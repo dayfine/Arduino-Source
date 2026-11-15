@@ -11,11 +11,13 @@
 
 #include <functional>
 #include <string>
+#include <string_view>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/Time.h"
 #include "Pokemon/AutoStory/Pokemon_StoryInterrupts.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_InterruptHandlers.h"
+#include "Pokemon/AutoStory/Pokemon_Settle.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
 
 namespace PokemonAutomation{
@@ -23,19 +25,27 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Whether a look ended on FRLG's overworld at rest: nothing showing (no
-//  box, fade or battle; FrlgScreenObserver reports no PLAYER_CAN_MOVE, so
-//  Pokemon::is_settled() never holds) for at least `quiet`.
+//  Whether a look ended on FRLG's overworld at rest (QUIET_OVERWORLD: no
+//  box, fade or battle) for at least `quiet`.
 bool quiet_overworld(const Pokemon::ScreenSettle& settle, Milliseconds quiet);
 
-//  Looks with `look`, fresh and then on from it, until it ends on
-//  quiet_overworld() for `quiet`, or has looked for `timeout`. Returns how
-//  the last look ended. After a battle, the next tap waits for this
-//  (MovementMechanics::AFTER_BATTLE_QUIET): one sent at its black's end
-//  is lost (BATTLE_EXIT_LOCKOUT).
-Pokemon::ScreenSettle wait_for_quiet_overworld(
-    const Pokemon::ScreenLookFunction& look, Milliseconds quiet, Milliseconds timeout
+//  FRLG's wait for the overworld at rest: the shared DOOR settle
+//  (Pokemon::settle_rule()), its quiet the same second as
+//  MovementMechanics::AFTER_BATTLE_QUIET, with a look every
+//  BETWEEN_STEPS_LOOK and `cap`.
+Pokemon::SettleRule quiet_overworld_rule(Milliseconds cap);
+
+//  Waits with Pokemon::run_settle() and quiet_overworld_rule(`timeout`),
+//  looking with `look`, fresh and then on from it. It only watches: no
+//  button, and a battle still showing is waited out like any other
+//  screen. After a battle, the next tap waits for this: one sent at its
+//  black's end is lost (BATTLE_EXIT_LOCKOUT). `label` names the wait in a
+//  timeout's text.
+Pokemon::SettleEnd wait_for_quiet_overworld(
+    const Pokemon::ScreenLookFunction& look, std::string_view label, Milliseconds timeout
 );
+//  How the wait ended, for the log: "quiet overworld", or why not.
+std::string describe(const Pokemon::SettleEnd& end);
 
 //  Before a step whose first input is A on what the player faces (Surf,
 //  Cut, Strength, the hideout's poster): a box still open would take that

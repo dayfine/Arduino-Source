@@ -14,7 +14,6 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonTools/Async/InferenceRoutines.h"
-#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryFieldMoves.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
@@ -75,10 +74,8 @@ std::string clear_box_before_a(
     clear_box();
     //  The overworld after the box, quiet as after a battle: its next input
     //  is the step's A.
-    const Pokemon::ScreenSettle after = wait_for_quiet_overworld(
-        look, MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT
-    );
-    return std::format("Story: box open before {}: cleared with B, then {}.", step.name, Pokemon::describe(after));
+    const Pokemon::SettleEnd after = wait_for_quiet_overworld(look, step.name, BATTLE_EXIT_TIMEOUT);
+    return std::format("Story: box open before {}: cleared with B, then {}.", step.name, describe(after));
 }
 
 Pokemon::StoryActionFunction clearing_box_first(
@@ -162,25 +159,66 @@ Pokemon::ScreenLook ConsoleScreenLook::look(bool fresh){
 
 
 bool quiet_overworld(const Pokemon::ScreenSettle& settle, Milliseconds quiet){
-    return settle.seen && settle.showing == ScreenEvents{} && settle.quiet >= quiet;
+    return settle.seen && settle.showing == QUIET_OVERWORLD && settle.quiet >= quiet;
 }
 
-Pokemon::ScreenSettle wait_for_quiet_overworld(
-    const Pokemon::ScreenLookFunction& look, Milliseconds quiet, Milliseconds timeout
-){
-    Pokemon::ScreenLook seen = look(true);
-    Pokemon::ScreenSettle settle = Pokemon::judge_settle(seen);
-    //  Each look takes about BETWEEN_STEPS_LOOK; the cap also ends a look
-    //  that takes no time.
-    const size_t max_looks = (size_t)(timeout / BETWEEN_STEPS_LOOK) + 1;
-    for (size_t looks = 1; looks < max_looks && !quiet_overworld(settle, quiet); looks++){
-        if (seen.window.end - seen.window.start >= timeout){
-            break;
-        }
-        seen = look(false);
-        settle = Pokemon::judge_settle(seen);
+Pokemon::SettleRule quiet_overworld_rule(Milliseconds cap){
+    Pokemon::SettleRule rule = Pokemon::settle_rule(Pokemon::SettleKind::DOOR);
+    rule.look_every = BETWEEN_STEPS_LOOK;
+    rule.cap = cap;
+    rule.watch_battles = true;
+    return rule;
+}
+
+namespace{
+
+//  run_settle()'s looks on FRLG: each watches BETWEEN_STEPS_LOOK, the
+//  first fresh, and ends on what its last frame showed, since the frame
+//  that first showed it.
+class WatchingSettleIO : public Pokemon::SettleIO{
+public:
+    explicit WatchingSettleIO(const Pokemon::ScreenLookFunction& look)
+        : m_look(look)
+    {}
+
+    virtual Pokemon::SettleLook look() override{
+        const Pokemon::ScreenLook seen = m_look(std::exchange(m_fresh, false));
+        const Pokemon::ScreenSettle settle = Pokemon::judge_settle(seen);
+        return {.events = seen.log.showing(), .when = seen.window.end, .since = seen.window.end - settle.quiet};
     }
-    return settle;
+    //  No button: the next look's watch is the wait.
+    virtual void press(Pokemon::SceneMove, Milliseconds) override{}
+    //  Never called: the rule watches battles (quiet_overworld_rule()).
+    virtual bool flee_battle() override{
+        return true;
+    }
+    //  The caller logs how it ended.
+    virtual void log(std::string_view) override{}
+
+private:
+    const Pokemon::ScreenLookFunction& m_look;
+    bool m_fresh = true;
+};
+
+} // namespace
+
+Pokemon::SettleEnd wait_for_quiet_overworld(
+    const Pokemon::ScreenLookFunction& look, std::string_view label, Milliseconds timeout
+){
+    WatchingSettleIO io(look);
+    return Pokemon::run_settle(quiet_overworld_rule(timeout), label, io);
+}
+
+std::string describe(const Pokemon::SettleEnd& end){
+    switch (end.result){
+    case Pokemon::SettleEnd::Result::QUIET:
+        return "quiet overworld";
+    case Pokemon::SettleEnd::Result::BATTLE:
+        return "a battle";
+    case Pokemon::SettleEnd::Result::TIMED_OUT:
+        break;
+    }
+    return end.text;
 }
 
 

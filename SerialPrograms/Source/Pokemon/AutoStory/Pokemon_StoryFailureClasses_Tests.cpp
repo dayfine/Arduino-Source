@@ -18,6 +18,7 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon_StoryFailureClasses.h"
@@ -104,6 +105,8 @@ const OutcomeClassTestCase OUTCOME_CASES[] = {
     {.name = "checkpoint end", .input = {"end_failed"}, .expectation = {C::STATE_CHECK_FAILED}},
     {.name = "postconditions", .input = {"postconditions_failed"}, .expectation = {C::STATE_CHECK_FAILED}},
     {.name = "operation", .input = {"operation_failed"}, .expectation = {C::OPERATION_FAILED}},
+    {.name = "no Center after its door", .input = {"heal_enter"}, .expectation = {C::POSE_LOST}},
+    {.name = "still in the Center after its door", .input = {"heal_exit"}, .expectation = {C::WARP_NO_OP}},
     {.name = "a game's own name", .input = {"no_banner"}, .expectation = {std::nullopt}},
     {.name = "empty", .input = {""}, .expectation = {std::nullopt}},
 };
@@ -149,6 +152,19 @@ UnitTestResult rows_in_enum_order(){
         }
     }
     return true;
+}
+
+UnitTestResult every_class_has_a_row(){
+    const size_t count = static_cast<size_t>(StoryFailureClass::SIM_MISMATCH) + 1;
+    if (story_failure_classes().size() != count){
+        return std::format("{} rows for {} classes", story_failure_classes().size(), count);
+    }
+    try{
+        story_failure_class_info(static_cast<StoryFailureClass>(count));
+    }catch (const InternalProgramError&){
+        return true;
+    }
+    return std::string("a class past the last row did not throw");
 }
 
 UnitTestResult every_sim_fault_maps_to_one_class(){
@@ -236,6 +252,7 @@ UnitTestResult no_class_without_a_tag(){
 
 const ListCheckTestCase LIST_CHECKS[] = {
     {.name = "rows in the enum's order", .input = {rows_in_enum_order}, .expectation = {"story_failure_class_info() indexes by the enum"}},
+    {.name = "every class has a row", .input = {every_class_has_a_row}, .expectation = {"no class reads past the table"}},
     {.name = "every sim fault maps to one class", .input = {every_sim_fault_maps_to_one_class}, .expectation = {"the sweeps' faults all have a class"}},
     {.name = "no outcome name in two classes", .input = {no_outcome_in_two_classes}, .expectation = {"a failure name has one class"}},
     {.name = "ids round-trip", .input = {ids_round_trip}, .expectation = {"each id is unique and its tag alone reads back"}},

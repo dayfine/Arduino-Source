@@ -22,6 +22,8 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PokemonCenterRoom.h"
+#include "PokemonFRLG_AutoStoryCenterHeal.h"
 #include "PokemonFRLG_AutoStoryFieldMoves.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryHideoutLift.h"
@@ -453,12 +455,15 @@ Pokemon::StoryAction OverworldStepSim::step_action(StoryActionId id){
     case StoryActionId::BATTLE:
         body = &OverworldStepSim::battle;
         break;
+    case StoryActionId::HEAL:
+        return heal_or_stub();
     case StoryActionId::GAME:
         return hideout_or_stub();
     default:
         return m_stubs.stub();
     }
     return played([this, body](const StoryStep& step, RunState& state){
+        m_center_entry_stubbed = false;
         m_beaten = beaten_trainers(state.flags);
         const std::string failure = (this->*body)(step);
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
@@ -522,7 +527,7 @@ std::string battle_end_on_sim(const OverworldSim& sim){
 //  wait_out_battle_exit() on `sim`: each look shows the sim's screens for
 //  BETWEEN_STEPS_LOOK.
 void sim_wait_out_battle_exit(OverworldSim& sim){
-    wait_for_quiet_overworld(sim_screen_look(sim), MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
+    wait_for_quiet_overworld(sim_screen_look(sim), "after the battle", BATTLE_EXIT_TIMEOUT);
 }
 
 //  wait_out_warp() on `sim`: the fade watched to its end, as the console's
@@ -705,6 +710,54 @@ std::string sim_walk_room_legs(OverworldSim& sim, const std::vector<RoomLeg>& le
     return "";
 }
 
+//  A Center visit's walk on the sim that failed: the failure.
+struct SimVisitFailure{
+    std::string failure;
+};
+
+//  The program's Center visit on the sim: the walks are the room's legs
+//  as walk_room_legs() takes them (sim_walk_room_legs()), the read is
+//  whether the player stands in a Center's room, and the nurse is not
+//  played.
+class SimCenterVisit : public FrlgCenterVisit{
+public:
+    explicit SimCenterVisit(OverworldSim& sim)
+        : m_sim(sim)
+    {}
+
+    virtual Pokemon::WarpSeen walk_in() override{
+        return walk(center_enter_legs());
+    }
+    virtual void line_up_and_walk_in() override{
+        throw SimVisitFailure{std::format("no fade at the Center's door from {}.", to_string(m_sim.state().position))};
+    }
+    virtual Pokemon::CenterPlace place() override{
+        return is_pokemon_center(m_sim.state().position.map) ? Pokemon::CenterPlace::INSIDE : Pokemon::CenterPlace::OUTSIDE;
+    }
+    virtual void heal() override{}
+    virtual Pokemon::WarpSeen walk_out() override{
+        return walk(center_exit_legs());
+    }
+    virtual void log(std::string_view) override{}
+
+private:
+    //  The legs, and whether a fade showed on the way.
+    Pokemon::WarpSeen walk(const std::vector<RoomLeg>& legs){
+        const Milliseconds started = m_sim.state().time;
+        const std::string failure = sim_walk_room_legs(m_sim, legs);
+        if (!failure.empty()){
+            throw SimVisitFailure{failure};
+        }
+        const std::vector<SimShown>& shown = m_sim.state().shown;
+        const bool faded = std::any_of(shown.begin(), shown.end(), [&](const SimShown& s){
+            return s.screen == SimScreen::FADE && s.at >= started;
+        });
+        return faded ? Pokemon::WarpSeen{.fade = WarpFade::BLACK} : Pokemon::WarpSeen{};
+    }
+
+    OverworldSim& m_sim;
+};
+
 } // namespace
 
 namespace{
@@ -764,10 +817,13 @@ Pokemon::StoryAction OverworldStepSim::hideout_or_stub(){
         const std::string failure = hideout(step);
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
     });
-    sim.act = [stub, played_act = sim.act](const StoryStep& step, RunState& state){
-        return is_hideout_step(step) || center_walkable(step) || field_move_simulated(step)
-            ? played_act(step, state)
-            : stub.act(step, state);
+    sim.act = [this, stub, played_act = sim.act](const StoryStep& step, RunState& state){
+        if (is_hideout_step(step) || center_walkable(step) || field_move_simulated(step)){
+            m_center_entry_stubbed = false;
+            return played_act(step, state);
+        }
+        m_center_entry_stubbed = is_center_variant(step.action) && step.action != CENTER_EXIT_VARIANT;
+        return stub.act(step, state);
     };
     sim.needs_console = stub.needs_console;
     return sim;
@@ -778,8 +834,16 @@ std::string OverworldStepSim::hideout(const StoryStep& step){
         return m_sim.use_field(SimField::POSTER_SWITCH) ? "" : "no poster ahead.";
     }
     if (is_center_variant(step.action)){
-        const std::string failure = sim_walk_room_legs(m_sim, center_legs(step.action));
-        return failure.empty() ? ended_on(step) : failure;
+        SimCenterVisit visit(m_sim);
+        try{
+            const Outcome walked = run_center_step(step, visit);
+            if (!walked.succeeded()){
+                return walked.detail;
+            }
+        }catch (const SimVisitFailure& visit_failure){
+            return visit_failure.failure;
+        }
+        return ended_on(step);
     }
     if (is_field_move_step(step)){
         const std::string failure = sim_field_move(step, m_sim);
@@ -800,6 +864,25 @@ std::string OverworldStepSim::hideout(const StoryStep& step){
     sim_wait_out_battle_exit(m_sim);
     const std::string out = sim_walk_room_legs(m_sim, lift_out_legs());
     return out.empty() ? ended_on(step) : out;
+}
+
+//  The nurse on the sim (heal_at_nurse()): only in a Center's room. After
+//  a way in the sim stubbed (no map of the Center: Celadon, Saffron), the
+//  player never left the town, so the heal is stubbed too.
+Pokemon::StoryAction OverworldStepSim::heal_or_stub(){
+    Pokemon::StoryAction stub = m_stubs.stub();
+    Pokemon::StoryAction sim = played([this](const StoryStep& step, RunState&){
+        SimCenterVisit visit(m_sim);
+        const Outcome healed = heal_at_nurse(step.name, visit);
+        return healed.succeeded() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", healed.detail);
+    });
+    sim.act = [this, stub, played_act = sim.act](const StoryStep& step, RunState& state){
+        const bool stubbed = m_center_entry_stubbed;
+        m_center_entry_stubbed = false;
+        return stubbed ? stub.act(step, state) : played_act(step, state);
+    };
+    sim.needs_console = stub.needs_console;
+    return sim;
 }
 
 //  After a scripted step: the player's pose, and whether it is the step's

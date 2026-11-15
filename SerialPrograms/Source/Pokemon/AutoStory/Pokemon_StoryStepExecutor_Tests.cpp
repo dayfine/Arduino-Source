@@ -831,8 +831,8 @@ UnitTestResult test_lint(){
 
 
 struct StoryStepTestCase{
+    std::string name;
     struct Input{
-        std::string name;
         UnitTestResult (*test)();
     };
 
@@ -847,7 +847,7 @@ struct StoryStepTestCase{
 class Test_StoryStepExecutor : public UnitTest{
 public:
     explicit Test_StoryStepExecutor(StoryStepTestCase scenario)
-        : UnitTest(std::format("Pokemon::StoryStepExecutor - {}", scenario.input.name))
+        : UnitTest(std::format("Pokemon::StoryStepExecutor - {}", scenario.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -860,75 +860,75 @@ private:
 
 const StoryStepTestCase STORY_STEP_CASES[] = {
     {
-        .input = {.name = "steps run in table order", .test = test_events_in_table_order},
+        .name = "steps run in table order", .input = {.test = test_events_in_table_order},
         .expectation = {.description = "executes story steps sequentially as defined in table"},
     },
     {
-        .input = {.name = "skip_if asks the executor", .test = test_skip_if},
+        .name = "skip_if asks the executor", .input = {.test = test_skip_if},
         .expectation = {.description = "delegates skip condition check to executor"},
     },
     {
-        .input = {.name = "each step starts where the last left the player", .test = test_pose_propagation},
+        .name = "each step starts where the last left the player", .input = {.test = test_pose_propagation},
         .expectation = {.description = "propagates player pose across sequential step executions"},
     },
     {
-        .input = {.name = "a failure names its step", .test = test_failure_names_the_step},
+        .name = "a failure names its step", .input = {.test = test_failure_names_the_step},
         .expectation = {.description = "records failing step identifier on error"},
     },
     {
-        .input = {.name = "gate state and run flags carried from the save through the steps", .test = test_gate_state_carried},
+        .name = "gate state and run flags carried from the save through the steps", .input = {.test = test_gate_state_carried},
         .expectation = {.description = "applies start_gates, start_flags, gates_after and flags_after in order"},
     },
     {
-        .input = {.name = "a skipped step's gates_after is applied", .test = test_skipped_step_gates_applied},
+        .name = "a skipped step's gates_after is applied", .input = {.test = test_skipped_step_gates_applied},
         .expectation = {.description = "the gates a skipped step opened are open for the steps after it"},
     },
     {
-        .input = {.name = "unsupported kinds and lost battles", .test = test_unsupported_and_lost_battles},
+        .name = "unsupported kinds and lost battles", .input = {.test = test_unsupported_and_lost_battles},
         .expectation = {.description = "flags unsupported step types and handles battle defeat"},
     },
     {
-        .input = {.name = "tables as a segment, with a reload", .test = test_segment_of_tables},
+        .name = "tables as a segment, with a reload", .input = {.test = test_segment_of_tables},
         .expectation = {.description = "converts step tables into segment with checkpoint reload support"},
     },
     {
-        .input = {.name = "pause points pause before each step", .test = test_pause_points},
+        .name = "pause points pause before each step", .input = {.test = test_pause_points},
         .expectation = {.description = "calls the game's pause points before each step that runs"},
     },
     {
-        .input = {.name = "lint", .test = test_lint},
+        .name = "lint", .input = {.test = test_lint},
         .expectation = {.description = "verifies lint validation rules on story checkpoints"},
     },
     {
-        .input = {.name = "the run options' defaults", .test = test_run_options},
+        .name = "the run options' defaults", .input = {.test = test_run_options},
         .expectation = {.description = "validates initial default story run option values"},
     },
     {
-        .input = {.name = "the run options' verify mode", .test = test_verify_options},
+        .name = "the run options' verify mode", .input = {.test = test_verify_options},
         .expectation = {.description = "configures verification mode options and passes count"},
     },
     {
-        .input = {.name = "start and end checkpoint dropdowns", .test = test_checkpoint_dropdowns},
+        .name = "start and end checkpoint dropdowns", .input = {.test = test_checkpoint_dropdowns},
         .expectation = {.description = "populates start and end dropdown selections correctly"},
     },
     {
-        .input = {.name = "a segment's run in the AutoStory stats", .test = test_story_stats},
+        .name = "a segment's run in the AutoStory stats", .input = {.test = test_story_stats},
         .expectation = {.description = "updates story run statistics following segment completion"},
     },
     {
-        .input = {.name = "policy: attempts per checkpoint, then fail", .test = test_policy_attempts_then_fail},
+        .name = "policy: attempts per checkpoint, then fail", .input = {.test = test_policy_attempts_then_fail},
         .expectation = {.description = "enforces max checkpoint attempt policy before terminal failure"},
     },
     {
-        .input = {.name = "policy: one attempt stops at the first failure", .test = test_policy_stop_at_first_failure},
+        .name = "policy: one attempt stops at the first failure", .input = {.test = test_policy_stop_at_first_failure},
         .expectation = {.description = "halts without a reload when a checkpoint has one attempt"},
     },
     {
-        .input = {.name = "once per save: a retry skips what changed nothing", .test = test_once_per_save_retry},
+        .name = "once per save: a retry skips what changed nothing", .input = {.test = test_once_per_save_retry},
         .expectation = {.description = "skips steps that changed nothing during once per save retry"},
     },
     {
-        .input = {.name = "once per save: verify runs prepare once", .test = test_once_per_save_verify},
+        .name = "once per save: verify runs prepare once", .input = {.test = test_once_per_save_verify},
         .expectation = {.description = "executes once per save prepare step only once during verification"},
     },
 };

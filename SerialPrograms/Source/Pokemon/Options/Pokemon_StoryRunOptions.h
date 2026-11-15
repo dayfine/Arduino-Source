@@ -44,9 +44,10 @@ std::string story_checkpoint_label(const StoryCheckpoint& checkpoint);
 
 
 //  Verify mode, off by default (verify_checkpoint()): the start checkpoint
-//  RUNS times from its save, never saving at its end; verified when at
-//  least PASSES pass. For a battle that has lost twice or more, given its
-//  own checkpoint saved right before it.
+//  RUNS times from its save; verified when at least PASSES pass. Only the
+//  last run may save, at its end, when SAVE_MODE is After verification
+//  and every run passed. For a battle that has lost twice or more, given
+//  its own checkpoint saved right before it.
 class StoryVerifyOptions : public GroupOption{
 public:
     StoryVerifyOptions();

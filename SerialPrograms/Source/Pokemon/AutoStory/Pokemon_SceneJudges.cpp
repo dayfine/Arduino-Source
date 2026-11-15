@@ -51,7 +51,7 @@ SceneMove TalkOver::look(const ScreenEvents& events, WallClock now){
     //  ended the scene as it went down.
     const bool calm = !box && m_fade_showing == WarpFade::NONE &&
         events.has(ScreenEvent::PLAYER_CAN_MOVE) && warped();
-    const bool quiet = calm && events.has(ScreenEvent::SCREEN_STILL);
+    const bool quiet = calm && events.has(m_rule.still);
     if (!calm){
         m_calm_since.reset();
     }else if (!m_calm_since.has_value()){
@@ -63,7 +63,7 @@ SceneMove TalkOver::look(const ScreenEvents& events, WallClock now){
         m_quiet_since = now;
     }
     const bool over =
-        (quiet && now - *m_quiet_since >= TALK_OVER_QUIET) ||
+        (quiet && now - *m_quiet_since >= m_rule.quiet) ||
         (calm && now - *m_calm_since >= m_rule.calm);
     if (over && m_rule.end_on_quiet){
         return SceneMove::DONE;
