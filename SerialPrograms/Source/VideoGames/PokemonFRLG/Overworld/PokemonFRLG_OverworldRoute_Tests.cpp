@@ -11,6 +11,8 @@
 #include <format>
 #include <functional>
 #include <string>
+#include <string_view>
+#include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_OverworldMaps.h"
@@ -478,7 +480,84 @@ UnitTestResult test_ground_only_elevation_left_out(){
     return true;
 }
 
+struct RevisitInput{
+    std::vector<RouteStep> route;
+};
+struct RevisitExpectation{
+    std::vector<MapPosition> revisited;
+};
+struct RevisitCase{
+    std::string_view name;
+    RevisitInput input;
+    RevisitExpectation expectation;
+};
+
+RouteStep sign_room_walk(Direction direction, int tiles, TilePos end, bool to_wall){
+    RouteStep step;
+    step.direction = direction;
+    step.tiles = tiles;
+    step.to_wall = to_wall;
+    step.end = MapPosition{"SignRoom", end};
+    return step;
+}
+
+//  The routes from the sign room's (1, 3), its south-west corner.
+const MapPosition SIGN_ROOM_CORNER{"SignRoom", {1, 3}};
+const MapPosition SIGN_ROOM_SOUTH_MIDDLE{"SignRoom", {2, 3}};
+const std::vector<RouteStep> EAST_AND_BACK{
+    sign_room_walk(Direction::EAST, 2, {3, 3}, true),
+    sign_room_walk(Direction::WEST, 1, {2, 3}, false),
+};
+const std::vector<RouteStep> EAST_THEN_NORTH{
+    sign_room_walk(Direction::EAST, 2, {3, 3}, true),
+    sign_room_walk(Direction::NORTH, 2, {3, 1}, true),
+};
+const std::vector<RouteStep> ROUND_TO_THE_CORNER{
+    sign_room_walk(Direction::NORTH, 2, {1, 1}, true),
+    sign_room_walk(Direction::EAST, 1, {2, 1}, false),
+    sign_room_walk(Direction::SOUTH, 2, {2, 3}, true),
+    sign_room_walk(Direction::WEST, 1, {1, 3}, true),
+};
+
+//  revisited_tiles() on the sign room: a leg back over the one before
+//  crosses its tiles again; a turn the other way doesn't.
+UnitTestResult test_revisited_tiles(){
+    const std::vector<MapData> maps{parse_map(TEST_SIGN_ROOM_JSON, "SignRoom")};
+    const RevisitCase CASES[] = {
+        {
+            .name = "east to the wall, then back west",
+            .input = {.route = EAST_AND_BACK},
+            .expectation = {.revisited = {SIGN_ROOM_SOUTH_MIDDLE}},
+        },
+        {
+            .name = "east, then north",
+            .input = {.route = EAST_THEN_NORTH},
+            .expectation = {.revisited = {}},
+        },
+        {
+            .name = "round the room to the start",
+            .input = {.route = ROUND_TO_THE_CORNER},
+            .expectation = {.revisited = {SIGN_ROOM_CORNER}},
+        },
+    };
+    for (const RevisitCase& test_case : CASES){
+        const std::vector<MapPosition> revisited = revisited_tiles(maps, SIGN_ROOM_CORNER, test_case.input.route, {});
+        if (revisited != test_case.expectation.revisited){
+            std::string text;
+            for (const MapPosition& tile : revisited){
+                text += std::format(" {}", to_string(tile));
+            }
+            return std::format("{}: revisited{}:{}", test_case.name, text.empty() ? " none" : text, describe(test_case.input.route));
+        }
+    }
+    return true;
+}
+
 const RouteTestCase ROUTE_CASES[] = {
+    {
+        .input = {.name = "tiles a route crosses twice", .body = test_revisited_tiles},
+        .expectation = {.description = "revisited_tiles() lists the tiles a route steps on again"},
+    },
     {
         .input = {.name = "route through a warp", .body = test_route_through_warp},
         .expectation = {.description = "route through a warp"},
