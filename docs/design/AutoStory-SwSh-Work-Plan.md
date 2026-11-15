@@ -479,7 +479,7 @@ Gate A is complete only when:
 - the authored plans lint and run through scripted replay;
 - every console failure becomes a red-first regression test (AGENTS.md, MIGRATION.md step 5).
 
-Walk failures have no motion model to replay in. **Proposed, user to confirm:** the red-first test
+Walk failures have no motion model to replay in. **Decided (user, 2026-11-15):** the red-first test
 for a walk failure is a frame replay of the failing reader over the captured failure frames (#306),
 plus a `FakeStoryBackend` script carrying the observed `"heading"` and endpoint readings that
 reproduces the `lost` result. This depends on fork #306 (frame replay) and #308 (failure capture),
