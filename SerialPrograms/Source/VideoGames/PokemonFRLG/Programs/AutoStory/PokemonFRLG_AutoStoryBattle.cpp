@@ -123,6 +123,8 @@ BattleScreen read_battle_screen(const ImageViewRGB32& screen, bool confirmed){
     return BattleScreen::NONE;
 }
 
+}  // namespace
+
 BattleTextScreen read_text_screen(const ImageViewRGB32& screen){
     return BattleTextScreen{
         .text_box = BattleTextBoxDetector(COLOR_RED).detect(screen),
@@ -132,6 +134,8 @@ BattleTextScreen read_text_screen(const ImageViewRGB32& screen){
         .dark_cave = OverworldWalkSteps::dark_cave_screen(screen),
     };
 }
+
+namespace{
 
 //  The player's Pokemon gone while the opponent's is still there.
 bool starter_fainted(const ImageViewRGB32& screen){
