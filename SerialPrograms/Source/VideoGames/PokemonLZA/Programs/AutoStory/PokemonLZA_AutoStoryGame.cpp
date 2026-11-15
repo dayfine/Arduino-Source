@@ -73,10 +73,8 @@ using ConsoleBody = std::function<void(StoryEnv& env, const StoryActionArgs& arg
 //  call on the console, with no args.
 using ConsoleStep = void (*)(StoryEnv& env);
 
-//  The game onto `save`: closed from HOME and started again by
-//  reset_game_from_home(), which answers the backup save's arrow and the
-//  dialogs and waits for the overworld; StartSave::RUNNING keeps the game as
-//  it runs. Fails as "launch_failed".
+//  The game onto `save` by reset_game_from_home() (backup arrow, dialogs,
+//  overworld wait); RUNNING keeps the game. Fails as "launch_failed".
 Outcome reload_save(StoryEnv& env, Pokemon::StoryBackend<ZonePose>& backend, StartSave save){
     if (save == StartSave::RUNNING){
         backend.log("[Launch] keeping the running game");
@@ -89,12 +87,8 @@ Outcome reload_save(StoryEnv& env, Pokemon::StoryBackend<ZonePose>& backend, Sta
     return Pokemon::outcome_ok();
 }
 
-//  Whether a checkpoint that passed and whose row does not autosave saves
-//  through the menu at its end (StoryGame::save). Off keeps the behavior the
-//  runs so far had: no menu save from the engine, so the 03.06 -> 03.08
-//  backup-save recovery still finds 03.06's save. Turning it on is the
-//  user's decision (01.03, 03.02, 03.04, 03.06, 03.08 and 03.11 would start
-//  saving).
+//  Off (the user's call, pending): a passed non-autosave row does not save
+//  through the menu, as before, so the 03.06 -> 03.08 backup recovery holds.
 constexpr bool MENU_SAVE_AT_CHECKPOINT_END = false;
 
 //  The GAME actions that are one ConsoleStep each, by name: console_only.
