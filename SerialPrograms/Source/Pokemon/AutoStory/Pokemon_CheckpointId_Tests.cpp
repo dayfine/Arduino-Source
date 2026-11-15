@@ -26,9 +26,13 @@ struct ParseInput{
     std::string text;
 };
 
+struct ParsedId{
+    std::string id;
+    std::string segment;
+};
+
 struct ParseExpectation{
-    std::optional<std::string> id;
-    std::optional<std::string> segment;
+    std::optional<ParsedId> parsed;
 };
 
 struct ParseScenario{
@@ -47,7 +51,7 @@ public:
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const std::optional<CheckpointId> got = CheckpointId::parse(m_scenario.input.text);
         const ParseExpectation& expected = m_scenario.expectation;
-        if (!expected.id){
+        if (!expected.parsed){
             if (got){
                 return std::format("Expected \"{}\" to be rejected, got {}", m_scenario.input.text, got->to_string());
             }
@@ -56,11 +60,11 @@ public:
         if (!got){
             return std::format("Expected \"{}\" to parse, it was rejected", m_scenario.input.text);
         }
-        if (got->to_string() != *expected.id){
-            return std::format("Expected id {}, got {}", *expected.id, got->to_string());
+        if (got->to_string() != expected.parsed->id){
+            return std::format("Expected id {}, got {}", expected.parsed->id, got->to_string());
         }
-        if (got->segment_string() != *expected.segment){
-            return std::format("Expected segment {}, got {}", *expected.segment, got->segment_string());
+        if (got->segment_string() != expected.parsed->segment){
+            return std::format("Expected segment {}, got {}", expected.parsed->segment, got->segment_string());
         }
         return true;
     }
@@ -73,8 +77,8 @@ private:
 //  Ordering: two ids, how the first compares to the second.
 
 struct OrderInput{
-    CheckpointId left;
-    CheckpointId right;
+    std::string left;
+    std::string right;
 };
 
 struct OrderExpectation{
@@ -105,13 +109,21 @@ public:
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::strong_ordering got = m_scenario.input.left <=> m_scenario.input.right;
+        const std::optional<CheckpointId> left = CheckpointId::parse(m_scenario.input.left);
+        const std::optional<CheckpointId> right = CheckpointId::parse(m_scenario.input.right);
+        if (!left || !right){
+            return std::format(
+                "Bad checkpoint id \"{}\" or \"{}\" in the test input",
+                m_scenario.input.left, m_scenario.input.right
+            );
+        }
+        const std::strong_ordering got = *left <=> *right;
         if (got != m_scenario.expectation.order){
             return std::format(
                 "Expected {} to be {} than {}, got {}",
-                m_scenario.input.left.to_string(),
+                m_scenario.input.left,
                 order_name(m_scenario.expectation.order),
-                m_scenario.input.right.to_string(),
+                m_scenario.input.right,
                 order_name(got)
             );
         }
@@ -187,12 +199,12 @@ private:
 
 void add_parse_tests(UnitTestDatabase& database){
     const std::vector<ParseScenario> parse_cases{
-        {.name = "segment and checkpoint", .input = {.text = "03.08"}, .expectation = {.id = "03.08", .segment = "03"}},
-        {.name = "first checkpoint", .input = {.text = "00.00"}, .expectation = {.id = "00.00", .segment = "00"}},
-        {.name = "largest id", .input = {.text = "99.99"}, .expectation = {.id = "99.99", .segment = "99"}},
-        {.name = "letter suffix", .input = {.text = "12.02b"}, .expectation = {.id = "12.02b", .segment = "12"}},
-        {.name = "first letter", .input = {.text = "00.12a"}, .expectation = {.id = "00.12a", .segment = "00"}},
-        {.name = "last letter", .input = {.text = "03.08z"}, .expectation = {.id = "03.08z", .segment = "03"}},
+        {.name = "segment and checkpoint", .input = {.text = "03.08"}, .expectation = {.parsed = ParsedId{.id = "03.08", .segment = "03"}}},
+        {.name = "first checkpoint", .input = {.text = "00.00"}, .expectation = {.parsed = ParsedId{.id = "00.00", .segment = "00"}}},
+        {.name = "largest id", .input = {.text = "99.99"}, .expectation = {.parsed = ParsedId{.id = "99.99", .segment = "99"}}},
+        {.name = "letter suffix", .input = {.text = "12.02b"}, .expectation = {.parsed = ParsedId{.id = "12.02b", .segment = "12"}}},
+        {.name = "first letter", .input = {.text = "00.12a"}, .expectation = {.parsed = ParsedId{.id = "00.12a", .segment = "00"}}},
+        {.name = "last letter", .input = {.text = "03.08z"}, .expectation = {.parsed = ParsedId{.id = "03.08z", .segment = "03"}}},
         {.name = "uppercase letter", .input = {.text = "03.08B"}, .expectation = {}},
         {.name = "two letters", .input = {.text = "03.08bc"}, .expectation = {}},
         {.name = "digit after the letter", .input = {.text = "03.08b1"}, .expectation = {}},
@@ -220,37 +232,37 @@ void add_order_tests(UnitTestDatabase& database){
     const std::vector<OrderScenario> order_cases{
         {
             .name = "same id",
-            .input = {.left = {3, 8, '\0'}, .right = {3, 8, '\0'}},
+            .input = {.left = "03.08", .right = "03.08"},
             .expectation = {.order = std::strong_ordering::equal},
         },
         {
             .name = "later checkpoint in the same segment",
-            .input = {.left = {3, 9, '\0'}, .right = {3, 8, '\0'}},
+            .input = {.left = "03.09", .right = "03.08"},
             .expectation = {.order = std::strong_ordering::greater},
         },
         {
             .name = "segment wins over checkpoint",
-            .input = {.left = {2, 99, '\0'}, .right = {3, 0, '\0'}},
+            .input = {.left = "02.99", .right = "03.00"},
             .expectation = {.order = std::strong_ordering::less},
         },
         {
             .name = "no suffix before a suffix",
-            .input = {.left = {12, 2, '\0'}, .right = {12, 2, 'b'}},
+            .input = {.left = "12.02", .right = "12.02b"},
             .expectation = {.order = std::strong_ordering::less},
         },
         {
             .name = "suffixes in letter order",
-            .input = {.left = {12, 2, 'b'}, .right = {12, 2, 'c'}},
+            .input = {.left = "12.02b", .right = "12.02c"},
             .expectation = {.order = std::strong_ordering::less},
         },
         {
             .name = "suffix before the next checkpoint",
-            .input = {.left = {12, 2, 'c'}, .right = {12, 3, '\0'}},
+            .input = {.left = "12.02c", .right = "12.03"},
             .expectation = {.order = std::strong_ordering::less},
         },
         {
             .name = "same suffix",
-            .input = {.left = {12, 2, 'b'}, .right = {12, 2, 'b'}},
+            .input = {.left = "12.02b", .right = "12.02b"},
             .expectation = {.order = std::strong_ordering::equal},
         },
     };

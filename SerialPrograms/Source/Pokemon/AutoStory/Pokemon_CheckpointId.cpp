@@ -40,31 +40,32 @@ std::optional<CheckpointId> CheckpointId::parse(std::string_view text){
     if (!segment || !checkpoint){
         return std::nullopt;
     }
-    char suffix = '\0';
+    std::optional<char> suffix;
     if (text.size() == 6){
-        suffix = text[5];
-        if (suffix < 'a' || suffix > 'z'){
+        const char letter = text[5];
+        if (letter < 'a' || letter > 'z'){
             return std::nullopt;
         }
+        suffix = letter;
     }
     return CheckpointId{*segment, *checkpoint, suffix};
 }
 
 std::string CheckpointId::to_string() const{
-    std::string ret = std::format("{:02}.{:02}", segment, checkpoint);
-    if (suffix != '\0'){
-        ret += suffix;
+    std::string ret = std::format("{:02}.{:02}", m_segment, m_checkpoint);
+    if (m_suffix){
+        ret += *m_suffix;
     }
     return ret;
 }
 
 std::string CheckpointId::segment_string() const{
-    return std::format("{:02}", segment);
+    return std::format("{:02}", m_segment);
 }
 
 
 bool starts_segment(std::optional<CheckpointId> previous, CheckpointId next){
-    return !previous || previous->segment != next.segment;
+    return !previous || previous->segment() != next.segment();
 }
 
 
