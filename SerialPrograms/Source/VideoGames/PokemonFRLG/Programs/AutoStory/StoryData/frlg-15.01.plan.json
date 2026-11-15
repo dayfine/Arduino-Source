@@ -7,13 +7,22 @@
     "start": {"map": "CeladonCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
     "events": [
       {
+        "id": "to_gate_wall",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route7", "tiles": [[15, 11]], "facing": "north"}
+        },
+        "why": "out of Celadon's Center (its ground floor coded), east through the city onto Route 7 and, in two legs that end at walls, to the gate's west wall a row below its door (15, 10): south down column 7 to the row behind the underground path house's roof, where row 12 stops the player, then east to the gate. Dead-reckoned, the walk ran a column long on the crossing east (the game didn't hold the player up there) and the hold south down column 8 hopped its ledge, which took two of its tiles, and ended a row short, against the gate's wall (console B, 2026-11-14 20:23 and 20:27); held to walls, column 7 or 8 ends on row 11 alike"
+      },
+      {
         "id": "west_of_tea_guard",
         "kind": "route",
         "action": "run",
         "args": {
           "target": {"map": "Route7_EastEntrance", "tiles": [[5, 4]], "facing": "east"}
         },
-        "why": "out of Celadon's Center (its ground floor coded), east through the city and along Route 7 into its east gate (pokeguy bikes, 1:27:07 to 1:27:30), to (5, 4), a tile west of the guard's top trigger (6, 4)"
+        "why": "a step north onto the door's tile (15, 10), east through the gate's west door (pokeguy bikes, 1:27:07 to 1:27:30), to (5, 4), a tile west of the guard's top trigger (6, 4)"
       },
       {
         "id": "tea_trigger",

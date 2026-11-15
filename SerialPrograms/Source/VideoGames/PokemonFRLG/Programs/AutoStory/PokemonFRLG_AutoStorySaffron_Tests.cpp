@@ -21,6 +21,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
@@ -107,10 +108,54 @@ UnitTestResult test_route7_to_saffron(){
     return true;
 }
 
+//  15.01's walk to the gate as console B ran it (2026-11-14 20:23 and
+//  20:27, twice alike): running, and the game not holding the player up on
+//  the crossing east onto Route 7, so the open leg east ran a column long,
+//  onto column 8. Dead-reckoned, "south 8" down that column hopped the
+//  ledge on row 8, which took two of its tiles, and ended on row 9; "east 9
+//  (warp)" then held into the gate's wall a row above its door. Held to
+//  walls, the walk ends at the door from column 7 or 8 alike.
+UnitTestResult test_route7_gate_running_crossing_not_held_up(){
+    const StoryCheckpoint& row = checkpoint("15.01");
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    SimScript script;
+    script.timing.tile = MovementMechanics::RUN_TILE_TIME;
+    script.connections_stall = false;
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing, script);
+    SimWalkerRules rules;
+    rules.speed = MoveSpeed::RUN;
+    for (const StoryStep& step : row.steps){
+        if (step.name == "tea_trigger"){
+            break;
+        }
+        const std::optional<std::vector<RouteStep>> route = walked_route(at, step, story_maps(), sim.state().gates);
+        if (!route || route->empty()){
+            return std::format("15.01 {}: no route from {}.", step.name, to_string(MapPosition{at.map, at.tile}));
+        }
+        const RoutePlanning planning{
+            .maps = &story_maps(), .gates = sim.state().gates, .costs = story_route_costs(),
+            .start = MapPosition{at.map, at.tile}, .label = step.name
+        };
+        if (const std::string failure = OverworldSimWalker(sim, rules).run(*route, planning); !failure.empty()){
+            return std::format("15.01 {}: ended on {}; {}", step.name, to_string(sim.state().position), failure);
+        }
+        at = StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after};
+    }
+    const MapPosition west_of_trigger{"Route7_EastEntrance", {5, 4}};
+    if (!(sim.state().position == west_of_trigger)){
+        return std::format("15.01: ended on {}, not west of the guard's trigger, {}.", to_string(sim.state().position), to_string(west_of_trigger));
+    }
+    return true;
+}
+
 const AutoStorySaffronCase AUTO_STORY_SAFFRON_CASES[] = {
     {
         .input = {.name = "15.01 Route 7's gate with the TEA to Saffron's Center", .body = test_route7_to_saffron},
         .expectation = {.description = "onto the guard's trigger, below Saffron's Center door, nobody met"},
+    },
+    {
+        .input = {.name = "15.01 running, the crossing onto Route 7 not held up", .body = test_route7_gate_running_crossing_not_held_up},
+        .expectation = {.description = "a column long after the crossing, the walk still ends at the gate's guard"},
     },
 };
 

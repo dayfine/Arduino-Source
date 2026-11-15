@@ -70,7 +70,7 @@ void OverworldSim::take_steps(Direction direction, Milliseconds pressed, Millise
             return;
         }
         tile = tile_time();
-        pressed += step->ledge ? tile * 2 : tile;
+        pressed += step->ledge ? LEDGE_HOP_TIME : tile;
     }
 }
 
