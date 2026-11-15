@@ -1374,6 +1374,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h
+    Source/NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.cpp
+    Source/NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.h
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.cpp
@@ -1505,6 +1507,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryGame.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryPoseConcept.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryPoseConcept.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryStepRunner.cpp
@@ -1551,6 +1557,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StorySwitchPrompts.cpp
+    Source/Pokemon/AutoStory/Pokemon_StorySwitchPrompts.h
     Source/Pokemon/AutoStory/Pokemon_TestExpect.h
     Source/Pokemon/AutoStory/Pokemon_TilePose.cpp
     Source/Pokemon/AutoStory/Pokemon_TilePose.h
@@ -1606,6 +1614,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
     Source/Pokemon/Options/Pokemon_BoxSortingTable.h
     Source/Pokemon/Options/Pokemon_EncounterBotOptions.h
+    Source/Pokemon/Options/Pokemon_GameLanguages.cpp
+    Source/Pokemon/Options/Pokemon_GameLanguages.h
     Source/Pokemon/Options/Pokemon_HomeSpriteSelectOption.cpp
     Source/Pokemon/Options/Pokemon_HomeSpriteSelectOption.h
     Source/Pokemon/Options/Pokemon_IvJudgeOption.cpp
@@ -1626,6 +1636,14 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_CheckpointId.h
     Source/Pokemon/AutoStory/Pokemon_CheckpointId_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_CheckpointId_Tests.h
+    Source/Pokemon/Options/Pokemon_StoryRangeOptions.cpp
+    Source/Pokemon/Options/Pokemon_StoryRangeOptions.h
+    Source/Pokemon/Options/Pokemon_StoryRangeOptions_Tests.cpp
+    Source/Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h
+    Source/Pokemon/Options/Pokemon_StoryRunOptions.cpp
+    Source/Pokemon/Options/Pokemon_StoryRunOptions.h
+    Source/Pokemon/Options/Pokemon_StoryRunOptions_Tests.cpp
+    Source/Pokemon/Options/Pokemon_StoryRunOptions_Tests.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
     Source/Pokemon/Pokemon_BdspRng.cpp
