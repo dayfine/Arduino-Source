@@ -36,20 +36,20 @@ void StoryPausePoints::set_log(std::function<void(std::string_view line)> log){
     m_log = std::move(log);
 }
 
-void StoryPausePoints::before_step(const std::string& label){
+void StoryPausePoints::before_step(std::string_view label){
     m_step_label = label;
     if (m_mode != StoryBreakpoints::OFF){
         pause(label);
     }
 }
 
-void StoryPausePoints::before_leg(const std::string& leg_label){
+void StoryPausePoints::before_leg(std::string_view leg_label){
     if (m_mode == StoryBreakpoints::LEGS){
         pause(std::format("{} {}", m_step_label, leg_label));
     }
 }
 
-void StoryPausePoints::pause(const std::string& label){
+void StoryPausePoints::pause(std::string_view label){
     if (!m_hook){
         return;
     }
@@ -63,25 +63,12 @@ void StoryPausePoints::pause(const std::string& label){
 }
 
 
-namespace{
-
-StoryPauseWait& installed_wait(){
-    static StoryPauseWait wait;
-    return wait;
-}
-
-} // namespace
-
-void set_story_pause_wait(StoryPauseWait wait){
-    installed_wait() = std::move(wait);
-}
-
-StoryPauseHook make_story_pause_hook(CancellableScope& scope){
-    if (!installed_wait()){
+StoryPauseHook make_story_pause_hook(StoryPauseWait wait, CancellableScope& scope){
+    if (!wait){
         return {};
     }
-    return [&scope](std::string_view label){
-        installed_wait()(label, scope);
+    return [wait = std::move(wait), &scope](std::string_view label){
+        wait(label, scope);
     };
 }
 
