@@ -23,11 +23,13 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryRows16_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_AutoStoryTrainerLine.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -118,8 +120,9 @@ public:
     std::string run(){
         for (const StoryStep& step : m_row.steps){
             //  The sim has no trigger scenes: a scripted battle (the rival's, Giovanni's)
-            //  is taken as won where it leaves the player.
-            if (step.kind == StoryStepKind::BATTLE){
+            //  is taken as won where it leaves the player. A trainer's battle, his
+            //  message up after the step into his line, is fought.
+            if (step.kind == StoryStepKind::BATTLE && m_sim.state().screen != SimScreen::MESSAGE){
                 m_at = *story_pose(Pokemon::pose_of(*step.pose_after));
                 m_floors.push_back(m_sim.state().position.map);
                 continue;
@@ -346,6 +349,30 @@ UnitTestResult test_saffron_rocket_removed(){
     return true;
 }
 
+//  16.02 fights the Rocket by 5F's corridor (9, 21) on purpose and sets the
+//  flag 16.03 starts with: he faces north or east by turns
+//  (MOVEMENT_TYPE_FACE_UP_AND_RIGHT), so a walk that only ended in his sight
+//  fought him when he happened to face east; a wait on the edge of his sight
+//  (TRAINER_WAIT_VARIANT) fights him every run (user, 2026-11-14).
+UnitTestResult test_corridor_rocket_fought(){
+    const std::string flag = std::string(TRAINER_BEATEN_FLAG) + "SilphCo_5F/rocket_m@9,21";
+    const std::vector<StoryStep>& steps = checkpoint("16.02").steps;
+    const auto battle = std::find_if(steps.begin(), steps.end(), [&](const StoryStep& step){
+        return step.kind == StoryStepKind::BATTLE && std::find(step.flags_after.begin(), step.flags_after.end(), flag) != step.flags_after.end();
+    });
+    if (battle == steps.end()){
+        return "16.02 has no battle that sets " + flag + ".";
+    }
+    if (battle == steps.begin() || std::prev(battle)->action != TRAINER_WAIT_VARIANT){
+        return "16.02's Rocket battle does not follow a trainer_wait step onto the edge of his sight.";
+    }
+    const std::vector<std::string>& start = checkpoint("16.03").start_flags;
+    if (std::find(start.begin(), start.end(), flag) == start.end()){
+        return "16.03 does not start with " + flag + ".";
+    }
+    return true;
+}
+
 //  silph_cleared is set by the Giovanni step, nothing earlier.
 UnitTestResult test_silph_cleared_flag(){
     for (const std::string_view id : {"16.01", "16.02", "16.03", "16.03b", "16.04"}){
@@ -423,6 +450,10 @@ const AutoStorySilphCase AUTO_STORY_SILPH_CASES[] = {
     {
         .input = {.name = "the Saffron Rocket is gone after Silph Co.", .body = test_saffron_rocket_removed},
         .expectation = {.description = "present for no flags, hidden by silph_cleared"},
+    },
+    {
+        .input = {.name = "16.02 fights the Rocket by the corridor for 16.03's start flag", .body = test_corridor_rocket_fought},
+        .expectation = {.description = "a trainer_wait step, then his battle with trainer_beaten:SilphCo_5F/rocket_m@9,21 after it; 16.03 starts with the flag"},
     },
     {
         .input = {.name = "silph_cleared is set by the Giovanni step", .body = test_silph_cleared_flag},

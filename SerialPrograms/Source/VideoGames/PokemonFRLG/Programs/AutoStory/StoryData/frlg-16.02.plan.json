@@ -3,7 +3,7 @@
     "game": "frlg",
     "checkpoint": {
         "id": "16.02",
-        "title": "Silph Co. 5F: the pad pair to the bottom corridor, the CARD KEY",
+        "title": "Silph Co. 5F: the pad pair to the bottom corridor, the Rocket there, the CARD KEY",
         "start": {
             "map": "SilphCo_5F",
             "tiles": [
@@ -25,13 +25,46 @@
                         "tiles": [
                             [
                                 12,
-                                21
+                                20
                             ]
                         ],
-                        "facing": "south"
+                        "facing": "east"
                     }
                 },
-                "why": "5F's pad (10, 20) to 9F's (22, 18) and back is the only way into the bottom corridor: east and down to its wall (12, 21)"
+                "why": "5F's pad (10, 20) to 9F's (22, 18) and back is the only way into the bottom corridor: east to its wall (12, 20), a tile above the Rocket's (9, 21) line along row 21"
+            },
+            {
+                "id": "grunt_sight",
+                "kind": "step",
+                "action": "trainer_wait",
+                "args": {
+                    "direction": "south"
+                },
+                "why": "onto (12, 21), three east of the Rocket (9, 21), the edge of his sight (3) along row 21: he faces north or east by turns (MOVEMENT_TYPE_FACE_UP_AND_RIGHT), so he sees the player within the wait and walks up to (11, 21); a walk that only ended on this tile fought him when he happened to face east (user, 2026-11-14)"
+            },
+            {
+                "id": "rocket_grunt",
+                "kind": "battle",
+                "args": {
+                    "trainer": "TRAINER_TEAM_ROCKET_GRUNT_28",
+                    "foes": [
+                        "arbok"
+                    ]
+                },
+                "declared_after": {
+                    "map": "SilphCo_5F",
+                    "tiles": [
+                        [
+                            12,
+                            21
+                        ]
+                    ],
+                    "facing": "south"
+                },
+                "why": "Grunt1 (SilphCo_5F_EventScript_Grunt1): Arbok Lv33; beaten here every run, so 16.03's start flag holds by construction",
+                "flags_after": [
+                    "trainer_beaten:SilphCo_5F/rocket_m@9,21"
+                ]
             },
             {
                 "id": "to_card_key_ball",
@@ -45,7 +78,7 @@
                         }
                     ]
                 },
-                "why": "a tap a tile east along row 21 to (21, 21), west of the CARD KEY's ball (22, 21)"
+                "why": "a tap a tile east along row 21 from (12, 21) to (21, 21), west of the CARD KEY's ball (22, 21); the beaten Rocket stands behind at (11, 21)"
             },
             {
                 "id": "card_key",
@@ -61,7 +94,7 @@
         "menu": "full",
         "notes": {
             "checkpoint": [
-                "Starts on 5F's pad (15, 7), where 16.01 ends. The CARD KEY's ball (22, 21) is on the runtime map (SilphCo_5F items); pokeguy has it at 1:28:11. Ends beside it with the key: the doors open to a face-and-A from now on (card_key_held)."
+                "Starts on 5F's pad (15, 7), where 16.01 ends. The Rocket at (9, 21) (Grunt1, sight 3 north and east by turns) is fought on purpose from the edge of his line, (12, 21), by a wait for him to face east: 16.03 starts with trainer_beaten:SilphCo_5F/rocket_m@9,21 and plans past him. The CARD KEY's ball (22, 21) is on the runtime map (SilphCo_5F items); pokeguy has it at 1:28:11. Ends beside it with the key: the doors open to a face-and-A from now on (card_key_held)."
             ]
         }
     },
