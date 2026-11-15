@@ -1445,6 +1445,20 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_TypewriterTextMapping.h
     Source/PanelLists.cpp
     Source/PanelLists.h
+    Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.cpp
+    Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h
+    Source/Pokemon/AutoStory/Pokemon_MapUtil.h
+    Source/Pokemon/AutoStory/Types/Pokemon_DeclaredPose.h
+    Source/Pokemon/AutoStory/Types/Pokemon_GridPose.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg_Tests.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg_Tests.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.h
     Source/Pokemon/Inference/Pokemon_AbilityReader.cpp
     Source/Pokemon/Inference/Pokemon_AbilityReader.h
     Source/Pokemon/Inference/Pokemon_BerryNameReader.cpp
@@ -1467,6 +1481,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Inference/Pokemon_TrainPokemonOCR.h
     Source/Pokemon/Inference/Pokemon_TypeReader.cpp
     Source/Pokemon/Inference/Pokemon_TypeReader.h
+    Source/Pokemon/Navigation/Pokemon_Direction.cpp
+    Source/Pokemon/Navigation/Pokemon_Direction.h
+    Source/Pokemon/Navigation/Pokemon_Grid.cpp
+    Source/Pokemon/Navigation/Pokemon_Grid.h
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
     Source/Pokemon/Options/Pokemon_BoxSortingTable.h
     Source/Pokemon/Options/Pokemon_EncounterBotOptions.h
