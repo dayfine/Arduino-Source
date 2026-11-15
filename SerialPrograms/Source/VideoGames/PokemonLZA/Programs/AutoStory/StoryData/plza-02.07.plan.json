@@ -29,7 +29,7 @@
     }
   },
   "execution": {
-    "save": "autosave",
+    "save": "unverified",
     "reload_when_chained": true
   }
 }
