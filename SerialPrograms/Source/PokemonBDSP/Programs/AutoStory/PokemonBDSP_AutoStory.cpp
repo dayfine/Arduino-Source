@@ -92,8 +92,10 @@ constexpr std::string_view PLAYER_LOOK_HELP =
 constexpr std::string_view CAPTURE_INTRO_SCREENS_HELP =
     "<b>Capture intro screens (developer):</b><br>Instead of a run: for a game with no save, running in front. "
     "For each language the game lists, restarts the game, picks the language and the look above, "
-    "and saves the name keyboard to the Screenshots folder as &lt;lang&gt;_keyboard.png; "
-    "the first round also saves en_language-list.png and en_look-picker.png. Ends on the last keyboard.";
+    "and records what shows after the look, pressing nothing, to the Screenshots folder as "
+    "&lt;lang&gt;_after-look_NN.png (a frame per change and per second, until the screen holds still). "
+    "Also saves &lt;lang&gt;_before-look-pick.png, and en_before-language-pick.png on the first round. "
+    "Never types a name; ends where the last recording ended.";
 
 //  The start and end dropdowns' entries: segments 00 and 01 joined, 00.00
 //  to 01.11. The options hold a reference to it.

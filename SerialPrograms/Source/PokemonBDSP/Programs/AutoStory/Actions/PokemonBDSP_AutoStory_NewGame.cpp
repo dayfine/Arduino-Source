@@ -285,6 +285,19 @@ void record_intro_step(IntroProgress& progress, IntroStep step){
         return;
     }
 }
+
+BurstStep FrameBurst::see(std::chrono::milliseconds at, double from_saved, double from_previous){
+    if (from_previous > CAPTURE_CHANGE){
+        m_last_change = at;
+    }
+    BurstStep step;
+    step.save = !m_last_saved || from_saved > CAPTURE_CHANGE || at - *m_last_saved >= CAPTURE_EVERY;
+    if (step.save){
+        m_last_saved = at;
+    }
+    step.stop = at >= CAPTURE_MAX_LENGTH || (at >= CAPTURE_MIN_LENGTH && at - m_last_change >= CAPTURE_STILL_FOR);
+    return step;
+}
 } // namespace detail
 
 namespace{
@@ -350,32 +363,86 @@ struct IntroRun{
     bool in_control = false;
     //  The language select's item to pick.
     size_t language_target = 0;
-    //  Capture mode (capture_intro_screens()): the run ends on the player's
-    //  keyboard, saved as <capture_tag>_keyboard.png, and with
-    //  `capture_menus` the two selects are saved before their picks.
+    //  Capture mode (capture_intro_screens()): the run ends with the
+    //  recording after the look's A, saved as <capture_tag>_after-look_NN.png;
+    //  the screen is saved before the look's pick, and with
+    //  `capture_language_pick` before the language's.
     bool capture = false;
-    bool capture_menus = false;
+    bool capture_language_pick = false;
     std::string capture_tag;
     bool capture_done = false;
 };
 
-//  Saves the frame on screen now as <Screenshots>/<tag>_<what>.png.
+//  Saves `frame` as <Screenshots>/<tag>_<what>.png.
+void save_frame(IntroRun& run, const VideoSnapshot& frame, std::string_view what){
+    const std::string path = std::format("{}{}_{}.png", SCREENSHOTS_PATH(), run.capture_tag, what);
+    frame.frame->save(path);
+    run.trace.action("Captured " + path);
+}
+
+//  Saves the frame on screen now, whatever it shows, as <Screenshots>/<tag>_<what>.png.
 void save_capture(IntroRun& run, std::string_view what){
     run.context.wait_for_all_requests();
     const VideoSnapshot screen = run.env.console.video().snapshot();
     if (!screen){
-        run.trace.fail("No video frame to capture.");
+        run.trace.action(std::format("No video frame for {}_{}: nothing saved.", run.capture_tag, what));
+        return;
     }
-    const std::string path = std::format("{}{}_{}.png", SCREENSHOTS_PATH(), run.capture_tag, what);
-    screen.frame->save(path);
-    run.trace.action("Captured " + path);
+    save_frame(run, screen, what);
 }
 
-//  Capture mode: the name keyboard after the look's A. Saved after its
-//  slide-in, also when the keyboard detector does not know its layout.
-void capture_keyboard(IntroRun& run){
-    pbf_wait(run.context, 2000ms);
-    save_capture(run, "keyboard");
+//  How much the whole screen changed from `before` to `after`, pixel RMSD;
+//  large when either is missing.
+double frame_change(const VideoSnapshot& before, const VideoSnapshot& after){
+    if (!before || !after){
+        return 1000;
+    }
+    return ImageMatch::pixel_RMSD(*before.frame, *after.frame);
+}
+
+//  Polls between capture mode's frames after the look.
+const Milliseconds CAPTURE_POLL = 250ms;
+
+//  Capture mode, from the look's A: records what the game shows next as
+//  <tag>_after-look_NN.png (FrameBurst decides which frames and when to
+//  stop), reading nothing on it. It presses nothing. On lab-B (2026-11-09,
+//  English) the look's A goes straight to the system name keyboard, and on
+//  that keyboard no button is safe: A types the key under the cursor, B
+//  deletes a character or, on an empty field, closes the keyboard, PLUS
+//  confirms the name, X cancels it (CANCEL_RIVAL_KEYBOARD), and the D-pad
+//  and sticks move the cursor the next A types from. So dialogue that some
+//  language may show before its keyboard is not advanced: the recording
+//  runs at least CAPTURE_MIN_LENGTH and ends on it, and the trace says so.
+void record_after_look(IntroRun& run){
+    VideoStream& stream = run.env.console;
+    run.context.wait_for_all_requests();
+    const WallClock start = current_time();
+    FrameBurst burst;
+    VideoSnapshot saved;
+    VideoSnapshot previous;
+    size_t count = 0;
+    std::chrono::milliseconds at(0);
+    //  Bounded by CAPTURE_MAX_LENGTH: FrameBurst stops there, and so does a feed with no frames.
+    while (at < CAPTURE_MAX_LENGTH){
+        VideoSnapshot frame = stream.video().snapshot();
+        at = std::chrono::duration_cast<std::chrono::milliseconds>(current_time() - start);
+        if (frame){
+            const BurstStep step = burst.see(at, frame_change(saved, frame), frame_change(previous, frame));
+            if (step.save){
+                save_frame(run, frame, std::format("after-look_{:02}", count++));
+                saved = frame;
+            }
+            previous = std::move(frame);
+            if (step.stop){
+                break;
+            }
+        }
+        run.context.wait_for(CAPTURE_POLL);
+    }
+    run.trace.action(std::format(
+        "Recorded {} frames over {} s after the look's pick, pressing nothing. If the last ones show "
+        "dialogue rather than the name keyboard, that dialogue blocks the keyboard in capture mode.",
+        count, at.count() / 1000));
     run.capture_done = true;
 }
 
@@ -502,8 +569,8 @@ bool pick_on_grid(IntroRun& run, const IntroMenu& menu, size_t target){
 //  PICK_LANGUAGE or PICK_LOOK.
 void pick_on_intro_menu(IntroRun& run, IntroStep step){
     const bool language = step == IntroStep::PICK_LANGUAGE;
-    if (run.capture_menus){
-        save_capture(run, language ? "language-list" : "look-picker");
+    if (language ? run.capture_language_pick : run.capture){
+        save_capture(run, language ? "before-language-pick" : "before-look-pick");
     }
     if (language){
         if (pick_on_grid(run, LANGUAGE_MENU, run.language_target)){
@@ -514,7 +581,7 @@ void pick_on_intro_menu(IntroRun& run, IntroStep step){
     if (pick_on_grid(run, LOOK_MENU, run.picks.look)){
         run.progress.look_pending = false;
         if (run.capture){
-            capture_keyboard(run);
+            record_after_look(run);
         }
     }
 }
@@ -542,10 +609,11 @@ IntroStep next_intro_step(IntroRun& run, std::string_view screen){
         " was read.");
 }
 
-//  ENTER_PLAYER_NAME: types the name, or in capture mode shoots the keyboard.
+//  ENTER_PLAYER_NAME: types the name, or in capture mode records the screen
+//  as after the look, typing nothing.
 void name_player(IntroRun& run){
     if (run.capture){
-        capture_keyboard(run);
+        record_after_look(run);
         return;
     }
     enter_player_name(run.env.console, run.context, run.trace, run.player_name);
@@ -625,10 +693,10 @@ std::vector<ScreenState> intro_states(IntroRun& run){
         return classify_intro_screen(&run.env.console, screen) == name;
     };
     return {
-        //  The player in control without the menu read, or capture mode's keyboard shot.
+        //  The player in control without the menu read, or capture mode's recording done.
         {"finished",
             [&run](const ImageViewRGB32&){ return run.in_control || run.capture_done; }, nullptr,
-            [&run]{ run.trace.action(run.capture_done ? "Keyboard captured." : "X opened and B closed the menu from a still bedroom: the player is in control."); },
+            [&run]{ run.trace.action(run.capture_done ? "Recording after the look done." : "X opened and B closed the menu from a still bedroom: the player is in control."); },
             {}, 1, true},
         {"user-select",
             [=](const ImageViewRGB32& s){ return screen_is(s, "user-select"); }, nullptr,
@@ -753,7 +821,8 @@ void capture_intro_screens(SingleSwitchProgramEnvironment& env, ProControllerCon
         run.progress.look_pending = true;
         run.language_target = item;
         run.capture = true;
-        run.capture_menus = item == 0;
+        //  The language list shows before any language is picked: once is enough.
+        run.capture_language_pick = item == 0;
         run.capture_tag = std::string(tags[item]);
         trace.action("Capturing language item " + std::to_string(item) + " (" + run.capture_tag + ").");
         const std::vector<ScreenState> states = intro_states(run);

@@ -9,11 +9,12 @@
  *  Both menus are read by their detector (PokemonBDSP_AutoStory_IntroMenuDetector.h).
  *
  */
-// code-health: allow header_symbols -- the intro's entry points (play, capture), its two menus' data and its screen classifier
+// code-health: allow header_symbols -- the intro's entry points (play, capture), its two menus' data, its screen classifier and capture mode's recording policy
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_NewGame_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_NewGame_H
 
+#include <chrono>
 #include <cstddef>
 #include <optional>
 #include <string>
@@ -84,6 +85,39 @@ IntroProgress intro_resume(const IntroPicks& picks, std::string_view screen);
 //  Why `name` cannot be typed on a keyboard that takes `limit` characters,
 //  or nullopt when it fits or the limit was not read.
 std::optional<std::string> name_limit_problem(std::string_view name, std::optional<size_t> limit);
+
+//  Capture mode's recording after the look's A, which reads nothing on the
+//  screen: frames are polled, one is saved when it changed or a while after
+//  the last, and the recording stops when the screen holds still.
+//  A change between two frames, pixel RMSD over the whole screen, larger
+//  than this is a change: a frame that far from the last saved is saved.
+inline constexpr double CAPTURE_CHANGE = 4;
+//  A frame is saved at least this long after the last saved.
+inline constexpr std::chrono::milliseconds CAPTURE_EVERY = std::chrono::seconds(1);
+//  The recording stops when no poll changed the screen for this long...
+inline constexpr std::chrono::milliseconds CAPTURE_STILL_FOR = std::chrono::seconds(3);
+//  ...but not before this, which leaves dialogue that pauses before the
+//  keyboard time to show in the frames,
+inline constexpr std::chrono::milliseconds CAPTURE_MIN_LENGTH = std::chrono::seconds(8);
+//  and at the latest at this.
+inline constexpr std::chrono::milliseconds CAPTURE_MAX_LENGTH = std::chrono::seconds(30);
+//  What the recording does with one polled frame.
+struct BurstStep{
+    bool save = false;
+    bool stop = false;
+};
+//  The recording's save and stop decisions; times are since it began.
+class FrameBurst{
+public:
+    //  The frame polled at `at`: `from_saved` is its change from the last
+    //  saved frame (any value before the first save), `from_previous` from
+    //  the frame polled before it.
+    BurstStep see(std::chrono::milliseconds at, double from_saved, double from_previous);
+
+private:
+    std::optional<std::chrono::milliseconds> m_last_saved;
+    std::chrono::milliseconds m_last_change{0};
+};
 } // namespace detail
 
 //  From the title screen or any intro screen of a game with no save, with BDSP
@@ -111,10 +145,13 @@ void play_new_game_intro(
 //  Developer: shoots the intro's screens for each language of the language
 //  select, for a game with no save running in front. Per language it
 //  restarts the game, picks the language and `look` (an item of
-//  BDSP_LOOK_GRID), and saves the name keyboard that follows as
-//  <Screenshots>/<tag>_keyboard.png (bdsp_language_tags()); the first round
-//  also saves <tag>_language-list.png and <tag>_look-picker.png before
-//  their picks. Leaves the game on the last language's keyboard.
+//  BDSP_LOOK_GRID), and records what shows after the look's A, pressing
+//  nothing, as <Screenshots>/<tag>_after-look_NN.png (bdsp_language_tags(),
+//  NN from 00 in order; FrameBurst). Each round saves the screen as the look
+//  is about to be picked as <tag>_before-look-pick.png, and the first round
+//  the one before the language pick as <tag>_before-language-pick.png. It
+//  never types or confirms a name, and leaves the game where the last
+//  recording ended.
 void capture_intro_screens(SingleSwitchProgramEnvironment& env, ProControllerContext& context, size_t look);
 
 
