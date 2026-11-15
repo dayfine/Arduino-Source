@@ -18,6 +18,7 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "LabStateJson.h"
+#include "LabTransition.h"
 #include "LabStateJson_Tests.h"
 
 namespace PokemonAutomation{
@@ -474,7 +475,7 @@ struct ThrottleCase{
     ThrottleInput input;
     ThrottleExpectation expectation;
 };
-void apply(LabAppState& state, LabStateJsonThrottle& throttle, Change change){
+void apply(Change change, LabAppState& state, LabStateJsonThrottle& throttle){
     switch (change){
     case Change::NOTHING:
         return;
@@ -510,7 +511,7 @@ UnitTestResult check(const ThrottleCase& c){
     std::vector<bool> written;
     for (const ThrottleCall& call : c.input.calls){
         state.written_at += call.after;
-        apply(state, throttle, call.change);
+        apply(call.change, state, throttle);
         const std::optional<std::string> text = throttle.text_to_write(state);
         if (text && *text != lab_state_json_text(state)){
             return "a write must carry the newest state";
@@ -522,7 +523,7 @@ UnitTestResult check(const ThrottleCase& c){
         for (bool w : written){
             got += w ? "w" : "-";
         }
-        return "wrong writes: " + got;
+        return std::format("wrong writes: {}", got);
     }
     return true;
 }

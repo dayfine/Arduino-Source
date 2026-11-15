@@ -88,10 +88,6 @@ UnitTestResult test_request_files(){
     if (error.empty() && names != std::vector<std::string>{"b.txt", "c.txt"}){
         error = "Expected b.txt, c.txt: the .txt files by name, skipping other files and folders.";
     }
-    const std::optional<Filesystem::Path> next = next_request_file(inbox.string());
-    if (error.empty() && (!next || next->filename().string() != "b.txt")){
-        error = "Expected b.txt next: the first .txt file by name.";
-    }
     Filesystem::remove_all(inbox);
     if (!error.empty()){
         return error;

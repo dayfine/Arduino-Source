@@ -9,6 +9,7 @@
 #include <map>
 #include <optional>
 #include <sstream>
+#include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
@@ -635,8 +636,8 @@ void CommandFileRunner::program(SingleSwitchProgramEnvironment& env, ProControll
     env.log("Command File Runner: waiting for command files in " + root + "inbox");
 
     while (true){
-        std::optional<Filesystem::Path> file = next_request_file(root + "inbox");
-        if (!file){
+        const std::vector<Filesystem::Path> files = request_files(root + "inbox");
+        if (files.empty()){
             if (STOP_WHEN_INBOX_EMPTY){
                 env.log("Command File Runner: inbox is empty.");
                 return;
@@ -644,7 +645,7 @@ void CommandFileRunner::program(SingleSwitchProgramEnvironment& env, ProControll
             context.wait_for(INBOX_POLL_INTERVAL);
             continue;
         }
-        if (!run_command_file(env, context, root, *file)){
+        if (!run_command_file(env, context, root, files.front())){
             env.log("Command File Runner: stop.");
             return;
         }

@@ -40,9 +40,6 @@ std::optional<Seconds> parse_seconds(const std::string& word);
 //  The ".txt" files in `inbox`, sorted by name: the order requests run in.
 std::vector<Filesystem::Path> request_files(const std::string& inbox);
 
-//  The ".txt" file in `inbox` whose name sorts first, if any.
-std::optional<Filesystem::Path> next_request_file(const std::string& inbox);
-
 
 //  One command line of a request, with its line number for the journal.
 struct LabRequestLine{

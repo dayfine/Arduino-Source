@@ -10,6 +10,7 @@
 #include <format>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "ProgramTransition.h"
@@ -22,7 +23,7 @@ namespace{
 using namespace std::chrono_literals;
 
 
-constexpr const char* REQUEST_ID = "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10";
+constexpr std::string_view REQUEST_ID = "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10";
 
 //  One step ProgramSession reports.
 enum class Step{
@@ -51,19 +52,19 @@ struct LatchCase{
 WallClock step_time(size_t step){
     return WallClock{} + Seconds(1000 + step);
 }
-void apply(ProgramTransitionLatch& latch, Step step, WallClock now){
+void apply(Step step, WallClock now, ProgramTransitionLatch& latch){
     switch (step){
     case Step::UI_START:
         latch.started(ActionSource::UI, std::nullopt, now);
         return;
     case Step::LAB_START:
-        latch.started(ActionSource::LAB, REQUEST_ID, now);
+        latch.started(ActionSource::LAB, std::string(REQUEST_ID), now);
         return;
     case Step::UI_STOP:
         latch.stop_requested(ActionSource::UI, std::nullopt, now);
         return;
     case Step::LAB_STOP:
-        latch.stop_requested(ActionSource::LAB, REQUEST_ID, now);
+        latch.stop_requested(ActionSource::LAB, std::string(REQUEST_ID), now);
         return;
     case Step::ERROR_REPORTED:
         latch.error_reported();
@@ -76,7 +77,7 @@ void apply(ProgramTransitionLatch& latch, Step step, WallClock now){
 UnitTestResult check(const LatchCase& c){
     ProgramTransitionLatch latch;
     for (size_t i = 0; i < c.input.steps.size(); i++){
-        apply(latch, c.input.steps[i], step_time(i + 1));
+        apply(c.input.steps[i], step_time(i + 1), latch);
     }
     const std::optional<ProgramTransition> last = latch.last();
     const LatchExpectation& expected = c.expectation;

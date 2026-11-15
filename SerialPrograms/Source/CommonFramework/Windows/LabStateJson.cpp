@@ -309,16 +309,6 @@ std::string lab_state_json_text(const LabAppState& state){
 }
 
 
-std::optional<ProgramTransition> lab_transition_since(
-    std::optional<ProgramTransition> last, WallClock selected_at
-){
-    if (last && last->at < selected_at){
-        return std::nullopt;
-    }
-    return last;
-}
-
-
 std::optional<std::string> LabStateJsonThrottle::text_to_write(const LabAppState& state){
     LabAppState logical = state;
     logical.written_at = WallClock{};

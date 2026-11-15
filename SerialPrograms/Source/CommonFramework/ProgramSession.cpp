@@ -177,6 +177,11 @@ void ProgramSession::set_state(ProgramState state){
     m_state.store(state, std::memory_order_relaxed);
     m_listeners.run_method(&Listener::state_change, state);
 }
+void ProgramSession::mark_started(ActionSource source, std::optional<std::string> request_id){
+    const WallClock now = current_time();
+    m_last_state_change.store(now, std::memory_order_relaxed);
+    m_transitions.started(source, std::move(request_id), now);
+}
 void ProgramSession::push_stats(){
     m_listeners.run_method(
         &Listener::stats_update,
@@ -250,9 +255,7 @@ std::string ProgramSession::start_program(ActionSource source, std::optional<std
 
         //  Now start the program.
         m_logger.log("Starting program...");
-        const WallClock now = current_time();
-        m_last_state_change.store(now, std::memory_order_relaxed);
-        m_transitions.started(source, std::move(request_id), now);
+        mark_started(source, std::move(request_id));
         set_state(ProgramState::RUNNING);
         m_program_thread = GlobalThreadPools::unlimited_realtime().dispatch_now_blocking(
             [this]{

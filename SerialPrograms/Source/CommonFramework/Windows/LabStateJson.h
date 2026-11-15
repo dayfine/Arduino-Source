@@ -79,14 +79,6 @@ struct LabAppState{
 std::string lab_state_json_text(const LabAppState& state);
 
 
-//  The selected program's last transition (ProgramSession::last_transition()),
-//  unless it is older than the selection at `selected_at`: a start or stop
-//  from before the panel was selected again is not news to the lab server.
-std::optional<ProgramTransition> lab_transition_since(
-    std::optional<ProgramTransition> last, WallClock selected_at
-);
-
-
 //  When to rewrite "Lab/state.json". A logical change (anything but
 //  "written_at", "frame_seq" and "captured_at") is written at once, so a
 //  restart (a new instance id), a finished request or a start or stop is

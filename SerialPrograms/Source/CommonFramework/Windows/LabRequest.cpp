@@ -91,14 +91,6 @@ std::vector<Filesystem::Path> request_files(const std::string& inbox){
     return files;
 }
 
-std::optional<Filesystem::Path> next_request_file(const std::string& inbox){
-    std::vector<Filesystem::Path> files = request_files(inbox);
-    if (files.empty()){
-        return std::nullopt;
-    }
-    return std::move(files.front());
-}
-
 
 LabRequest parse_lab_request(const std::string& text){
     LabRequest request;

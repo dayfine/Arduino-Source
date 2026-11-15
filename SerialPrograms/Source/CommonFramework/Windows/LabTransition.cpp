@@ -40,5 +40,15 @@ bool is_lab_uuid(std::string_view text){
 }
 
 
+std::optional<ProgramTransition> lab_transition_since(
+    std::optional<ProgramTransition> last, WallClock selected_at
+){
+    if (last && last->at < selected_at){
+        return std::nullopt;
+    }
+    return last;
+}
+
+
 
 }  // namespace PokemonAutomation
