@@ -126,6 +126,9 @@ private:
     std::optional<TeachView> wait_for(TeachScreen screen, size_t looks = 12);
     //  On `screen`: the cursor to `row`. False if it didn't get there.
     bool move_cursor_to(TeachScreen screen, size_t row);
+    //  On the list `screen`: the cursor onto the row `name`, which the rows
+    //  shown have. False if it didn't get there or `name` left the rows.
+    bool move_cursor_onto(TeachScreen screen, std::string_view name);
     //  In the bag: to KEY ITEMS.
     bool to_key_items();
     //  On the list `screen`: DOWN, then UP, one row at a time until the rows

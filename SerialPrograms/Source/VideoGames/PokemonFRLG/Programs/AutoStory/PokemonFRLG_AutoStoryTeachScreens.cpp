@@ -91,6 +91,30 @@ bool ScreenTeachActions::move_cursor_to(TeachScreen screen, size_t row){
     return false;
 }
 
+bool ScreenTeachActions::move_cursor_onto(TeachScreen screen, std::string_view name){
+    for (size_t c = 0; c < TEACH_LIST_ROWS * 2; c++){
+        const TeachView view = m_screens.look();
+        if (view.screen != screen || !view.cursor){
+            m_logger.log(std::format("Teach: lost the cursor on {}.", teach_screen_name(screen)), COLOR_RED);
+            return false;
+        }
+        //  Found again in each view: a long list scrolls under a cursor
+        //  that stays off its bottom row.
+        const auto found = std::find(view.rows.begin(), view.rows.end(), name);
+        if (found == view.rows.end()){
+            m_logger.log(std::format("Teach: {} left the rows on {} ({}).", name, teach_screen_name(screen), rows_text(view.rows)), COLOR_RED);
+            return false;
+        }
+        const size_t row = size_t(found - view.rows.begin());
+        if (*view.cursor == row){
+            return true;
+        }
+        press(*view.cursor < row ? TeachPress::DOWN : TeachPress::UP);
+    }
+    m_logger.log(std::format("Teach: the cursor didn't reach {} on {}.", name, teach_screen_name(screen)), COLOR_RED);
+    return false;
+}
+
 bool ScreenTeachActions::to_key_items(){
     for (size_t c = 0; c < 4; c++){
         const std::optional<TeachView> view = wait_for(TeachScreen::BAG);
@@ -153,11 +177,10 @@ ItemOpen ScreenTeachActions::open_row(TeachScreen screen, std::string_view name)
     if (!view){
         return ItemOpen::FAILED;
     }
-    const auto found = std::find(view->rows.begin(), view->rows.end(), name);
-    if (found == view->rows.end()){
+    if (std::find(view->rows.begin(), view->rows.end(), name) == view->rows.end()){
         return ItemOpen::NOT_IN_CASE;
     }
-    if (!move_cursor_to(screen, size_t(found - view->rows.begin()))){
+    if (!move_cursor_onto(screen, name)){
         return ItemOpen::FAILED;
     }
     press(TeachPress::A);

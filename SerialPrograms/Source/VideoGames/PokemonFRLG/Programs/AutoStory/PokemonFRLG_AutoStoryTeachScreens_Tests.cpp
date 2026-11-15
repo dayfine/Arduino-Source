@@ -117,7 +117,7 @@ struct FakeTeachGame{
     size_t looks = 0;
     //  The TM in use, by row.
     size_t tm = 0;
-    //  The TM CASE's rows shown at once (pokefirered tm_case.c: five), the
+    //  The TM CASE's rows shown at once (five, the last cut in half), the
     //  top one shown, and the row its cursor opens on: the game keeps both
     //  from the last time it was open.
     size_t tm_rows_shown = 5;
@@ -138,16 +138,20 @@ std::vector<std::string> tm_rows(const FakeTeachGame& game){
     return rows;
 }
 
-//  The TM CASE's top row shown: the list scrolls by one when the cursor
-//  moves past either end of the rows shown.
-size_t tm_top_row(const FakeTeachGame& game){
-    if (game.cursor < game.tm_scroll){
-        return game.cursor;
+//  The TM CASE scrolls rather than put the cursor on its bottom row shown
+//  while rows are left below (console B, 16.03, 2026-11-15: the arrow
+//  stayed on the fourth row of five and the rows moved up one per DOWN), or
+//  on its top row while rows are left above (assumed the same).
+void scroll_tm_case(FakeTeachGame& game){
+    //  The TMs and CLOSE.
+    const size_t total = tm_rows(game).size() + 1;
+    const size_t shown = game.tm_rows_shown;
+    while (game.cursor + 2 > game.tm_scroll + shown && game.tm_scroll + shown < total){
+        game.tm_scroll++;
     }
-    if (game.cursor >= game.tm_scroll + game.tm_rows_shown){
-        return game.cursor + 1 - game.tm_rows_shown;
+    while (game.cursor < game.tm_scroll + 1 && game.tm_scroll > 0){
+        game.tm_scroll--;
     }
-    return game.tm_scroll;
 }
 
 void show_texts(FakeTeachGame& game, std::deque<TeachText> texts, FakeScreen after){
@@ -311,9 +315,8 @@ void press_tm_case(FakeTeachGame& game, TeachPress press){
         game.screen = FakeScreen::TM_MENU;
         game.cursor = 0;
     }else{
-        game.tm_scroll = tm_top_row(game);
         move_cursor(game, press, rows + 1);
-        game.tm_scroll = tm_top_row(game);
+        scroll_tm_case(game);
     }
 }
 
@@ -421,7 +424,7 @@ TeachView view_of(const FakeTeachGame& game){
         return {.screen = TeachScreen::ITEM_MENU, .cursor = game.cursor};
     case FakeScreen::TM_CASE:{
         //  The rows shown, CLOSE not read.
-        const size_t top = tm_top_row(game);
+        const size_t top = game.tm_scroll;
         const std::vector<std::string> rows = tm_rows(game);
         const size_t end = std::min(rows.size(), top + game.tm_rows_shown);
         return {.screen = TeachScreen::TM_CASE, .cursor = game.cursor - top,
@@ -563,6 +566,12 @@ void nine_tms_left_on_close(FakeTeachGame& game){
     game.tm_open_cursor = 9;
     game.tm_scroll = 5;
 }
+//  Console B, 16.03 (2026-11-15): TM14 BLIZZARD on the sixth row, as in
+//  13.03; ROCK TOMB last.
+void ten_tms(FakeTeachGame& game){
+    nine_tms(game);
+    game.tms.push_back({"rock-tomb", 1});
+}
 void nine_tms_no_blizzard(FakeTeachGame& game){
     nine_tms(game);
     game.tms[5].count = 0;
@@ -639,6 +648,12 @@ std::vector<ScreensCase> long_case_screens_cases(){
         {
             .name = "console B 13.03: TM14 on the sixth row, below the five shown",
             .setup = nine_tms,
+            .plan = blizzard,
+            .moves = {"bite", "blizzard", "bubble", "withdraw"},
+        },
+        {
+            .name = "console B 16.03: the cursor stays on the fourth row while the rows scroll",
+            .setup = ten_tms,
             .plan = blizzard,
             .moves = {"bite", "blizzard", "bubble", "withdraw"},
         },
