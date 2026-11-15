@@ -120,12 +120,12 @@
                             15
                         ]
                     ],
-                    "facing": "north"
+                    "facing": "east"
                 },
                 "flags_after": [
                     "silph_cleared"
                 ],
-                "why": "Giovanni (TRAINER_BOSS_GIOVANNI_2): Nidorino Lv37, Kangaskhan Lv35, Rhyhorn Lv37, Nidoqueen Lv41; then he and the Rockets leave Silph Co. and Saffron City (FLAG_HIDE_SAFFRON_ROCKETS), the story's maps from here have none"
+                "why": "Giovanni (TRAINER_BOSS_GIOVANNI_2): Nidorino Lv37, Kangaskhan Lv35, Rhyhorn Lv37, Nidoqueen Lv41; then he and the Rockets leave Silph Co. and Saffron City (FLAG_HIDE_SAFFRON_ROCKETS), the story's maps from here have none. He walks down to (6, 15) and the player turns east to him (SilphCo_11F_Movement_GiovanniApproachLeft, _PlayerFaceGiovanni), so the battle leaves the player facing east"
             },
             {
                 "id": "below_president",
