@@ -2,10 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The engine's save policy (Engine/Pokemon_StoryEnginePolicy.h): the
- *  steps hash and the save mode a checkpoint's phase and recorded hash
- *  give. Then the postcondition check (Pokemon_StoryPostconditionCheck.h)
- *  on a checkpoint's end state.
+ *  The postcondition check (Pokemon_StoryPostconditionCheck.h) on a
+ *  checkpoint's end state.
  *
  */
 
@@ -18,7 +16,6 @@
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Data/Pokemon_StoryStepJson.h"
-#include "Engine/Pokemon_StoryEnginePolicy.h"
 #include "Pokemon_StoryPostconditionCheck.h"
 #include "Pokemon_StorySavePolicy_Tests.h"
 
@@ -27,136 +24,6 @@ namespace Pokemon{
 
 
 namespace{
-
-
-struct HashCase{
-    //  Two checkpoints' events, hashed with the built-in actions.
-    struct Input{
-        std::string_view a;
-        std::string_view b;
-    };
-
-    //  Whether they hash the same, and `a`'s hash when pinned: a change to it
-    //  means every recorded verification goes stale.
-    struct Expectation{
-        bool same = true;
-        std::optional<std::string_view> hash_a = std::nullopt;
-    };
-
-    std::string_view name;
-    Input input;
-    Expectation expectation;
-};
-
-inline constexpr std::string_view ROUTE_B3F = R"([{"id": "go", "kind": "route", "args": {"target": {"map": "RocketHideout_B3F", "tiles": [[12, 13]]}}}])";
-
-const HashCase HASH_CASES[] = {
-    {.name = "pinned", .input = {.a = ROUTE_B3F, .b = ROUTE_B3F},
-     .expectation = {.same = true, .hash_a = "sha256:13bc877c960a15cd0ed2f37248fa8336308b048a865623dde7654d41ac7147b8"}},
-    {.name = "whitespace is not hashed", .input = {.a = R"([{"id": "t", "kind": "talk"}])", .b = R"([ { "id":"t",  "kind":"talk" } ])"},
-     .expectation = {.same = true}},
-    {.name = "why differs", .input = {.a = R"([{"id": "t", "kind": "talk", "why": "a"}])", .b = R"([{"id": "t", "kind": "talk", "why": "b"}])"},
-     .expectation = {.same = false}},
-    {.name = "written fallback differs", .input = {.a = R"([{"id": "f", "kind": "battle"}])", .b = R"([{"id": "f", "kind": "battle", "args": {"may_lose": false}}])"},
-     .expectation = {.same = false}},
-    {.name = "another target differs", .input = { .a = ROUTE_B3F,
-               .b = R"([{"id": "go", "kind": "route", "args": {"target": {"map": "RocketHideout_B3F", "tiles": [[12, 14]]}}}])"},
-     .expectation = {.same = false}},
-    {.name = "another step name differs", .input = {.a = R"([{"id": "t", "kind": "talk"}])", .b = R"([{"id": "u", "kind": "talk"}])"},
-     .expectation = {.same = false}},
-};
-
-std::string hash_of(std::string_view events, std::string_view source){
-    const std::string json = std::format(R"({{"id": "x", "title": "x", "events": {}}})", events);
-    return story_steps_hash(read_story_checkpoint(parse_json(json), source));
-}
-
-std::string check_hash(const HashCase& test){
-    const std::string a = hash_of(test.input.a, test.name);
-    const std::string b = hash_of(test.input.b, test.name);
-    if ((a == b) != test.expectation.same){
-        return std::format("{}{}: {}, {}", "expected the hashes ", (test.expectation.same ? "equal" : "different"), a, b);
-    }
-    if (test.expectation.hash_a && a != *test.expectation.hash_a){
-        return std::format("expected the pinned hash {}, got {}", *test.expectation.hash_a, a);
-    }
-    return "";
-}
-
-class Test_StepsHash : public UnitTest{
-public:
-    explicit Test_StepsHash(HashCase test)
-        : UnitTest(std::format("Pokemon::StorySavePolicy - steps hash: {}", test.name))
-        , m_case(std::move(test))
-    {}
-
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::string error = check_hash(m_case);
-        return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
-    }
-
-private:
-    HashCase m_case;
-};
-
-
-//  The save mode of a run of checkpoint "00.31" in `phase`, verified with
-//  `recorded` (none: never verified), whose steps now hash to "sha256:now".
-struct SaveDecisionCase{
-    std::string_view name;
-    struct Input{
-        StoryPhase phase;
-        std::optional<std::string_view> recorded;
-    };
-
-    struct Expectation{
-        StorySaveMode mode;
-        std::string_view reason;
-    };
-
-    Input input;
-    Expectation expectation;
-};
-
-const SaveDecisionCase SAVE_DECISION_CASES[] = {
-    {.name = "testing never saves", .input = {.phase = StoryPhase::TESTING, .recorded = "sha256:now"},
-     .expectation = {.mode = StorySaveMode::NONE, .reason = "[Save] 00.31: phase testing: save mode none"}},
-    {.name = "verification saves after its runs", .input = {.phase = StoryPhase::VERIFICATION, .recorded = "sha256:now"},
-     .expectation = {.mode = StorySaveMode::AFTER_VERIFICATION, .reason = "[Save] 00.31: phase verification: save mode after_verification"}},
-    {.name = "reproduction saves each checkpoint", .input = {.phase = StoryPhase::REPRODUCTION, .recorded = "sha256:now"},
-     .expectation = {.mode = StorySaveMode::PER_CHECKPOINT, .reason = "[Save] 00.31: phase reproduction: save mode per_checkpoint"}},
-    {.name = "changed steps are testing", .input = {.phase = StoryPhase::REPRODUCTION, .recorded = "sha256:old"},
-     .expectation = {.mode = StorySaveMode::NONE,
-                     .reason = "[Save] 00.31: phase reproduction but steps_hash mismatch (recorded sha256:old, now sha256:now): treated as testing, save mode none"}},
-    {.name = "never verified is testing", .input = {.phase = StoryPhase::VERIFICATION, .recorded = std::nullopt},
-     .expectation = {.mode = StorySaveMode::NONE,
-                     .reason = "[Save] 00.31: phase verification but never verified: treated as testing, save mode none"}},
-};
-
-class Test_SaveDecision : public UnitTest{
-public:
-    explicit Test_SaveDecision(SaveDecisionCase test)
-        : UnitTest(std::format("Pokemon::StorySavePolicy - save decision: {}", test.name))
-        , m_case(std::move(test))
-    {}
-
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        StoryCheckpoint checkpoint;
-        checkpoint.id = "00.31";
-        checkpoint.metadata.phase = m_case.input.phase;
-        if (m_case.input.recorded){
-            checkpoint.metadata.verified = StoryVerification{.steps_hash = std::string(*m_case.input.recorded)};
-        }
-        const StorySaveDecision decision = decide_story_save(checkpoint, "sha256:now");
-        if (decision.mode != m_case.expectation.mode || decision.reason != m_case.expectation.reason){
-            return std::format("got {}: {}", story_save_mode_name(decision.mode), decision.reason);
-        }
-        return true;
-    }
-
-private:
-    SaveDecisionCase m_case;
-};
 
 
 //  A checkpoint that ends beside B3F's Rare Candy, with the LIFT KEY and
@@ -314,12 +181,6 @@ const SavePolicyTest SAVE_POLICY_TESTS[] = {
 
 
 void add_tests_StorySavePolicy(UnitTestDatabase& database){
-    for (const HashCase& test : HASH_CASES){
-        database.add<Test_StepsHash>(test);
-    }
-    for (const SaveDecisionCase& test : SAVE_DECISION_CASES){
-        database.add<Test_SaveDecision>(test);
-    }
     for (const SavePolicyTest& test : SAVE_POLICY_TESTS){
         database.add<Test_StorySavePolicy>(test);
     }

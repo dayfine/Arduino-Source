@@ -121,7 +121,7 @@ std::string zone_checkpoint_runs(CancellableScope& scope){
         "events": [{"id": "walk", "kind": "game_action", "action": "fine", "declared_after": {"place": "HotelZLobby"}}]
     })"), "zone", engine.registry().specs());
     RunState state;
-    const StoryEngineReport report = engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state);
+    const StoryEngineReport report = engine.run_checkpoint(checkpoint, state);
     if (report.verdict != CheckpointVerdict::PASSED){
         return std::format("expected a pass, got {}", to_string(report.run.failure));
     }
@@ -140,7 +140,7 @@ std::string zone_rejects_tiles(CancellableScope& scope){
         return std::format("expected one start problem, got \"{}\"", joined(lint));
     }
     RunState state;
-    const StoryEngineReport report = engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state);
+    const StoryEngineReport report = engine.run_checkpoint(checkpoint, state);
     if (report.run.failure.failure != "lint_failed"){
         return std::format("expected lint_failed, got {}", to_string(report.run.failure));
     }
@@ -319,7 +319,7 @@ std::string pauses_before_each_step(CancellableScope& scope){
     const StoryCheckpoint checkpoint = checkpoint_of("12.03", {game_step("first", "mark"), legs_step("shore"), game_step("last", "mark")});
     RunState state;
     state.pose = tile_pose("Shore", {TilePos{5, 5}}, Direction::NORTH);
-    if (!engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state).run.completed){
+    if (!engine.run_checkpoint(checkpoint, state).run.completed){
         return joined(backend.lines());
     }
     const std::string error = expect_events(*events, {
@@ -342,7 +342,7 @@ std::string pauses_before_each_leg(CancellableScope& scope){
     const StoryCheckpoint checkpoint = checkpoint_of("12.03", {game_step("first", "mark"), legs_step("shore")});
     RunState state;
     state.pose = tile_pose("Shore", {TilePos{5, 5}}, Direction::NORTH);
-    if (!engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state).run.completed){
+    if (!engine.run_checkpoint(checkpoint, state).run.completed){
         return joined(backend.lines());
     }
     const std::string error = expect_events(*events, {
@@ -364,7 +364,7 @@ std::string leg_label_without_a_known_tile(CancellableScope& scope){
     StoryEngine<GridPose> engine(game, backend);
     const StoryCheckpoint checkpoint = checkpoint_of("12.03", {legs_step("shore")});
     RunState state;
-    engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state);
+    engine.run_checkpoint(checkpoint, state);
     return expect_events(*events, {
         "pause 12.03/1 shore", "pause 12.03/1 shore leg 1/2 north 2", "pause 12.03/1 shore leg 2/2 east 3",
     });
@@ -378,7 +378,7 @@ std::string off_never_pauses(CancellableScope& scope){
     StoryEngine<GridPose> engine(game, backend);
     const StoryCheckpoint checkpoint = checkpoint_of("12.03", {game_step("first", "mark"), legs_step("shore")});
     RunState state;
-    engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state);
+    engine.run_checkpoint(checkpoint, state);
     const std::string error = expect_events(*events, {"run first"});
     if (!error.empty()){
         return error;
@@ -388,7 +388,7 @@ std::string off_never_pauses(CancellableScope& scope){
     FakeStoryBackend<GridPose> quiet({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     StoryEngine<GridPose> quiet_engine(no_hook, quiet);
     state = RunState();
-    quiet_engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state);
+    quiet_engine.run_checkpoint(checkpoint, state);
     for (const std::string& line : quiet.lines()){
         if (line.starts_with("[Break]")){
             return std::format("a game with no hook logged {}", line);
