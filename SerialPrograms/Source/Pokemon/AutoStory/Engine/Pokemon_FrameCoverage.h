@@ -6,9 +6,9 @@
  *  are enough to say a screen did not show. The inference pivot polls a
  *  watcher every period with the newest converted frame, and that frame
  *  can be the one it saw last time or one captured a second ago: under CPU
- *  load (ConvertFrame at 150 ms mean, PLZA 03.08 on 2026-11-14) a watcher
- *  that polled 160 times over 8 s may have seen a few frames with second-long
- *  holes between them, and a 2 s "Registered to the Pokedex" banner fell
+ *  load, when converting a frame takes longer than the poll period, a
+ *  watcher that polled 160 times over 8 s may have seen a few frames with
+ *  second-long holes between them, wide enough for a 2 s banner to fall
  *  into one. So a window is judged on the capture times of the frames
  *  inspected (VideoSnapshot::timestamp), not on polls or wall time.
  *

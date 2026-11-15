@@ -46,12 +46,18 @@ StorySaveDecision decide_story_save(const StoryCheckpoint& checkpoint, std::stri
     if (metadata.phase == StoryPhase::TESTING){
         return {.mode = StorySaveMode::NONE, .reason = std::format("[Save] {}: phase testing: save mode none", checkpoint.id)};
     }
-    if (!metadata.verified || metadata.verified->steps_hash != steps_hash){
+    if (!metadata.verified){
+        return {
+            .mode = StorySaveMode::NONE,
+            .reason = std::format("[Save] {}: phase {} but never verified: treated as testing, save mode none", checkpoint.id, phase),
+        };
+    }
+    if (metadata.verified->steps_hash != steps_hash){
         return {
             .mode = StorySaveMode::NONE,
             .reason = std::format(
                 "[Save] {}: phase {} but steps_hash mismatch (recorded {}, now {}): treated as testing, save mode none",
-                checkpoint.id, phase, metadata.verified ? metadata.verified->steps_hash : "none", steps_hash
+                checkpoint.id, phase, metadata.verified->steps_hash, steps_hash
             ),
         };
     }
