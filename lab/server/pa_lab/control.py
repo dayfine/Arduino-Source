@@ -42,7 +42,8 @@ MAX_WAIT_S = 60.0
 DEFAULT_PAGE = 100
 MAX_PAGE = 500
 POLL_S = 0.2  # another process's writes are seen by polling; this process's wake the waiters
-ACTION_TOOLS = ('stop_program',)
+ACTION_TOOLS = ('stop_program', 'cfr_batch')
+SAVE_STALE_KEY = 'save_stale:{}'  # meta row: the newest mutation that may have changed the game's save
 
 
 LEASE_COLUMNS = frozenset({
@@ -300,6 +301,22 @@ class ControlPlane:
             return self._record(self._request_row(conn, client_id, req['tool'], req['request_id'])), \
                 status == 'pending'
 
+    def mark_save_stale(self, console: str, reason: str) -> str:
+        """Records that something outside a hooked program may have changed the game (a CFR batch):
+        `console://<id>/save` is stale from now until a newer program-authored save fact. Returns the time."""
+        self._check_console(console)
+        with self._writing() as conn:
+            stamp = self._stamp()
+            conn.execute('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)',
+                         (SAVE_STALE_KEY.format(console), _json({'reason': reason, 'at': stamp})))
+            return stamp
+
+    def save_stale_mark(self, console: str) -> Optional[Dict[str, Any]]:
+        """The newest mark_save_stale on `console` ({reason, at}), or None."""
+        self._check_console(console)
+        value = self._meta(self.db.read(), SAVE_STALE_KEY.format(console), '')
+        return json.loads(value) if value else None
+
     # ---- runs and the operator ----------------------------------------------------------------
 
     def begin_run(self, console: str, lease_token: str, request_id: str, instance_id: str) -> Dict[str, Any]:
@@ -519,7 +536,8 @@ class ControlPlane:
         self._request_event(conn, row['console'], row['request_id'], row['tool'], result, refusal)
 
     def _resolve_actions(self, conn, console: str, app: Dict[str, Any]) -> None:
-        """Resolves the console's pending stop_program tickets from what the app reports.
+        """Resolves the console's pending stop_program tickets from what the app reports (and fails a
+        pending cfr_batch whose app instance is gone).
 
         - another app instance than the one the stop was sent to: failed, `instance_replaced`;
         - a UI Start/Stop at or after the call: failed, the user holds the console;
@@ -529,17 +547,20 @@ class ControlPlane:
           (`outcome: ended`), since that is the run's terminal event.
         Timestamps compare as strings: both are UTC with milliseconds and `Z`.
         """
-        rows = conn.execute("SELECT * FROM requests WHERE console = ? AND status = 'pending' AND tool = 'stop_program'",
-                            (console,)).fetchall()
+        rows = conn.execute("SELECT * FROM requests WHERE console = ? AND status = 'pending' AND tool IN (?, ?)",
+                            (console,) + ACTION_TOOLS).fetchall()
         instance = app['instance']['id']
         program = app['program']
         transition = program['last_transition']
         for row in rows:
             if row['instance_id'] != instance:
                 self._resolve(conn, row, None, {
-                    'code': 'app_unavailable', 'message': 'The app restarted before the stop was confirmed.',
+                    'code': 'app_unavailable', 'message': 'The app restarted before the {} was confirmed.'.format(
+                        'stop' if row['tool'] == 'stop_program' else 'batch'),
                     'evidence': {'reason': 'instance_replaced', 'instance_id': row['instance_id'],
                                  'new_instance_id': instance}})
+                continue
+            if row['tool'] == 'cfr_batch':  # its journal resolves it (pa_lab/actions.py), not a transition
                 continue
             if transition is None or (transition['at'] < row['created_at'] and
                                       transition['request_id'] != row['request_id']):

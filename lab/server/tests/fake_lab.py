@@ -117,6 +117,10 @@ class FakeApp:
     takes it, and `stop` is refused unless the program is `running`. Otherwise the program goes
     `stopping` with `last_transition {stop, lab, <request id>}` and, at the next tick (or at once
     with `stop_at_once`), `stopped`. `stop_silent` takes the request without writing a journal.
+
+    A `palab_cfr_batch_*` request (Slice 5b's cfr_batch) claims the channel the same way, then runs
+    its lines in order: each is `ok` unless the program is not stopped or the line is in
+    `batch_errors` (line -> reason), which ends the batch. `batch_silent` takes it without a journal.
     """
 
     def __init__(self, lab, clock):
@@ -139,6 +143,8 @@ class FakeApp:
         self.channel_owner = None
         self.stop_at_once = False
         self.stop_silent = False
+        self.batch_errors = {}
+        self.batch_silent = False
         self.requests = []
         self.pending = []
         clock.on_sleep.append(self.tick)
@@ -165,6 +171,9 @@ class FakeApp:
         self.requests.append(text)
         line = text.splitlines()[-1]
         words = line.split()
+        if request.stem.startswith('palab_cfr_batch_'):
+            self.batch(request.stem, text.splitlines())
+            return
         if words == ['stop']:
             self.stop(request.stem, text.splitlines())
             return
@@ -212,6 +221,28 @@ class FakeApp:
                                         'at': timestamps.format(self.clock.now())},
             'channel.owner_claimed': True})
         out.write_text('ok 3 owner claim {} @0-1ms\nok 4 stop @1-2ms\nend\n'.format(owner), encoding='utf-8')
+
+    def batch(self, name, lines):
+        if self.batch_silent:
+            return
+        owner = lines[0].split()[1]
+        out = self.lab.dir / 'outbox' / (name + '.out')
+        if self.channel_owner not in (None, owner):
+            out.write_text('error 3 (owner claim {}): owned by {}\nend\n'.format(owner, self.channel_owner),
+                           encoding='utf-8')
+            return
+        self.channel_owner = owner
+        journal = ['ok 3 owner claim {} @0-1ms'.format(owner)]
+        state = self.lab.state['program']['state']
+        for number, line in enumerate(lines[3:], start=4):
+            reason = self.batch_errors.get(line)
+            if reason is None and state != 'stopped':
+                reason = 'the program is {}'.format(state.upper())
+            if reason is not None:
+                journal.append('error {} ({}): {}'.format(number, line, reason))
+                break
+            journal.append('ok {} {} @0-1ms'.format(number, line))
+        out.write_text('\n'.join(journal + ['end']) + '\n', encoding='utf-8')
 
     def continue_snapshot(self, pending):
         video = self.lab.state['video']

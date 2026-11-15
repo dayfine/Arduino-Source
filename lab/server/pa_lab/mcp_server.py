@@ -8,7 +8,8 @@ here pushes). Every request must carry `Authorization: Bearer <token>`, a loopba
 Resources: `console://B/state` (console_state), `console://B/save` (save_resource).
 Tools: `shot`, `ensure_game`, `describe_program`, `game_open`; with a control plane also `acquire_console`,
 `renew_console`, `release_console`, `next_events`, `request_status` and the first leased action,
-`stop_program` (Slice 5, pa_lab/actions.py). Nothing here starts a program or presses a button yet.
+`stop_program` and the debug-only `cfr_batch` (Slice 5, pa_lab/actions.py, allowlist in pa_lab/cfr.py).
+Nothing here starts a program yet.
 """
 
 from __future__ import annotations
@@ -168,6 +169,16 @@ CONTROL_TOOL_LIST = [
                     'the user takes the console or the app restarts first.',
      'inputSchema': _schema({'request_id': _REQUEST_ID, 'lease_token': _LEASE_TOKEN},
                             ['request_id', 'lease_token']), 'annotations': _MUTATING},
+    {'name': 'cfr_batch', 'title': 'Run a short batch of console commands',
+     'description': 'Debug only. Under your lease, with the program stopped, sends 1-200 console lines (press, dpad, '
+                    'stick, wait, taps, walk, shot, shots, detect, wait_for, expect, game_open) and returns the '
+                    "app's journal: outcome done, or line_failed with failed_line. Every line is allowlisted and "
+                    'bounded; the batch must fit in 60 s. Marks console://B/save stale. Retry with the same '
+                    'request_id to collect a batch still pending.',
+     'inputSchema': _schema({'request_id': _REQUEST_ID, 'lease_token': _LEASE_TOKEN,
+                             'lines': {'type': 'array', 'items': {'type': 'string'}, 'minItems': 1, 'maxItems': 200}},
+                            ['request_id', 'lease_token', 'lines']),
+     'annotations': {'readOnlyHint': False, 'destructiveHint': True, 'idempotentHint': True}},
     {'name': 'request_status', 'title': 'Request or ticket status',
      'description': "This client's request record: pending, completed, refused or failed.",
      'inputSchema': _schema({'request_id': _REQUEST_ID}, ['request_id']), 'annotations': _READ},
@@ -330,8 +341,8 @@ class LabMcp:
                 if owner is None:
                     raise control.Refused('app_unavailable', 'No channel owner is configured for console {}; '
                                           'set consoles.{}.channel_owner or profile.'.format(console, console))
-                record = actions.stop_program(self.control, reader, client, self._request(name, console, args),
-                                              owner, sleep=self.sleep)
+                record = actions.ACTIONS[name](self.control, reader, client, self._request(name, console, args),
+                                               owner, sleep=self.sleep)
                 if record['refusal'] is not None:
                     return self._refused(name, record['refusal'], record['request_id'])
                 result = record

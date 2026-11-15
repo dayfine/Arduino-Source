@@ -25,6 +25,28 @@ park on the call: they read `request_status` or wait in `next_events` for the ti
      and resolves from the state as above.
 
 No caller string reaches the inbox: the request id is a checked UUID and the rest is fixed text.
+
+`cfr_batch(console, request_id, lease_token, lines)` (5b) sends console lines (presses, waits,
+screen reads) that `pa_lab/cfr.py` allows, and waits for their journal:
+
+1. As above, the app's state is read and applied first.
+2. `begin_action` checks the lease; the batch is refused (stored) unless every line is allowed
+   and its worst case fits in `cfr.BATCH_MAX_MS`, the program is `stopped` on a program panel,
+   the controller is `ready` and the video `live`.
+3. `console://<id>/save` is marked stale (`cfr_batch`) before anything is sent: from here on the
+   game may differ from the last save fact, even if the batch never runs.
+4. Send `owner T` / `request <request_id>` / `owner claim T` / the lines, and wait for the journal
+   for the batch's worst case plus the answer time:
+   - all `ok`: completed, `outcome: done`, with the journal;
+   - a batch line failed (an `expect` timed out, a press refused): completed,
+     `outcome: line_failed`, `failed_line` (1-based, as in `lines`), `error` and the journal: the
+     batch ran up to that line, which is an answer, not a server fault;
+   - the owner lines failed: failed, `app_unavailable`, nothing ran;
+   - no journal in time: `refused`, `timeout` if the request was still in the inbox (withdrawn,
+     nothing ran); otherwise `failed`, `timeout`: the batch may have run in part.
+5. An exact retry sends nothing; if the stored ticket is still `pending` (the daemon stopped while
+   waiting), the retry collects the journal the same way. An app restart fails a pending batch
+   (`observe`).
 """
 
 from __future__ import annotations
@@ -34,13 +56,18 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from pa_lab import control, shot
+import re
+
+from pa_lab import cfr, control, shot, timestamps
 from pa_lab.lab_reader import ConsoleReader, Unavailable
 
 STOP_ANSWER_MS = 5000
 JOURNAL_POLL_S = 0.05
 
-__all__ = ['stop_program', 'request_text']
+__all__ = ['stop_program', 'cfr_batch', 'ACTIONS', 'request_text']
+
+JOURNAL_ERROR_RE = re.compile(r'^error ([0-9]+) ')
+OWNER_LINES = 3  # owner, request, owner claim: a journal line number above this is a batch line
 
 
 def request_text(owner: str, request_id: str, commands: List[str]) -> str:
@@ -139,3 +166,95 @@ def stop_program(plane: control.ControlPlane, reader: ConsoleReader, client_id: 
             'evidence': {'journal': lines}})
     reader.console_state()  # applies observe: the stop may already be reported
     return plane.record(client_id, 'stop_program', request_id)
+
+
+def _batch_refusal(app: Dict[str, Any]) -> Optional[control.Refused]:
+    """Why a batch cannot run on the app as it is now, or None. Stricter than the app, which only
+    refuses presses while a program runs: a batch needs a stopped program panel, a ready
+    controller and live video (so its shots and detectors see the console)."""
+    state = app['program']['state']
+    panel = app['panel']['id']
+    if state == 'no_program':
+        return control.Refused('panel_not_program', 'The selected panel is not a program; a batch needs its console.')
+    if state in ('running', 'stopping'):
+        return control.Refused('program_running', '{} is {}; stop it first.'.format(panel, state))
+    if state != 'stopped':
+        return control.Refused('program_not_stopped', '{} is {}.'.format(panel, state.replace('_', ' ')))
+    if app['controller']['state'] != 'ready':
+        return control.Refused('controller_not_ready', 'The controller is {}.'.format(
+            app['controller']['state'].replace('_', ' ')))
+    if app['video']['state'] != 'live':
+        return control.Refused('video_stale', 'The video is {}.'.format(app['video']['state']))
+    return None
+
+
+def _batch_name(request_id: str) -> str:
+    return 'palab_cfr_batch_{}'.format(request_id.replace('-', ''))
+
+
+def _batch_result(plane: control.ControlPlane, client_id: str, request_id: str, instance_id: str,
+                  lines: List[str]) -> Dict[str, Any]:
+    errors = [JOURNAL_ERROR_RE.match(line) for line in lines]
+    failed = next(((m, line) for m, line in zip(errors, lines) if m is not None), None)
+    if failed is not None and int(failed[0].group(1)) <= OWNER_LINES:
+        return plane.resolve_ticket(client_id, 'cfr_batch', request_id, refusal={
+            'code': 'app_unavailable', 'message': 'The app refused the batch: {}'.format(failed[1]),
+            'evidence': {'journal': lines}})
+    result = {'outcome': 'done', 'instance_id': instance_id, 'journal': lines}
+    if failed is not None:
+        result.update(outcome='line_failed', failed_line=int(failed[0].group(1)) - OWNER_LINES, error=failed[1])
+    return plane.resolve_ticket(client_id, 'cfr_batch', request_id, result=result)
+
+
+def _collect(plane: control.ControlPlane, reader: ConsoleReader, client_id: str, request_id: str,
+             instance_id: str, deadline: float, sleep: Callable[[float], None]) -> Dict[str, Any]:
+    name = _batch_name(request_id)
+    lines = _journal(reader, sleep, deadline, name)
+    if lines is not None:
+        return _batch_result(plane, client_id, request_id, instance_id, lines)
+    if _withdrawn(reader.lab_dir / 'inbox' / (name + '.txt')):
+        return plane.resolve_ticket(client_id, 'cfr_batch', request_id, refusal={
+            'code': 'timeout', 'message': 'The app did not take the batch in time; nothing was sent.',
+            'evidence': {'request': name}}, acted=False)
+    return plane.resolve_ticket(client_id, 'cfr_batch', request_id, refusal={
+        'code': 'timeout', 'message': 'The app took the batch but wrote no journal in time; it may have run in part.',
+        'evidence': {'request': name}})
+
+
+def cfr_batch(plane: control.ControlPlane, reader: ConsoleReader, client_id: str, request: Dict[str, Any],
+              owner: str, sleep: Callable[[float], None] = time.sleep) -> Dict[str, Any]:
+    """Runs one cfr_batch request; returns its request_record (completed, refused or failed; pending
+    only when the daemon is stopped while waiting). Raises control.Refused as stop_program does."""
+    started = reader.now()
+    try:
+        app = reader.app_state()
+    except Unavailable as e:
+        app, unavailable = None, e
+    else:
+        plane.observe(reader.console, app)
+
+    def decide(lease_row) -> Optional[Dict[str, Any]]:
+        if app is None:
+            refusal = unavailable.refusal()
+            raise control.Refused(refusal.pop('code'), refusal.pop('message'), **refusal)
+        cfr.check(request['arguments']['lines'])
+        refused = _batch_refusal(app)
+        if refused is not None:
+            raise refused
+        return None
+
+    record, send = plane.begin_action(client_id, request, None if app is None else app['instance']['id'], decide)
+    if record['status'] != 'pending':
+        return record
+    request_id = record['request_id']
+    budget_s = (cfr.check(record['arguments']['lines']) + STOP_ANSWER_MS + shot.ANSWER_GRACE_MS) / 1000.0
+    if not send:
+        deadline = timestamps.parse(record['created_at']) + budget_s
+        return _collect(plane, reader, client_id, request_id, app['instance']['id'] if app else None,
+                        deadline, sleep)
+    plane.mark_save_stale(reader.console, 'cfr_batch')
+    _send(reader.lab_dir, _batch_name(request_id), request_text(owner, request_id, record['arguments']['lines']))
+    return _collect(plane, reader, client_id, request_id, app['instance']['id'], started + budget_s, sleep)
+
+
+ACTIONS = {'stop_program': stop_program, 'cfr_batch': cfr_batch}

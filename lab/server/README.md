@@ -4,8 +4,8 @@ The local server designed in `docs/design/Agent-Integration.md` (fork #131, bran
 `design/agent-integration`). Slice 0: the version-1 contracts, golden examples and a parser.
 Slice 2: the attach-only read server ([below](#slice-2-the-attach-only-read-server)). Slice 3: the
 durable control plane ([below](#slice-3-the-durable-control-plane)): leases, request records,
-tickets and events in SQLite. Slice 5 ([below](#slice-5-leased-actions)), first sub-slice: `stop_program`,
-the first leased action. Nothing starts a program or presses a button yet.
+tickets and events in SQLite. Slice 5 ([below](#slice-5-leased-actions)): `stop_program`, the first
+leased action, and `cfr_batch`, allowlisted console lines for debugging. Nothing starts a program yet.
 
 | Path | What |
 |---|---|
@@ -29,6 +29,8 @@ the first leased action. Nothing starts a program or presses a button yet.
 | `tests/test_{db,control,control_concurrency,control_mcp}.py` | Slice 3's tests: restarts, threads and processes racing, kills mid-write |
 | `pa_lab/actions.py` | Leased actions (Slice 5): `stop_program`, the channel request it sends and how its reply is read |
 | `tests/test_actions.py` | Slice 5's tests: the ticket, retries, refusals, UI takeover, app restart, a terminal event before the response |
+| `pa_lab/cfr.py` | The `cfr_batch` allowlist: allowed commands, bounds, the batch's worst-case time |
+| `tests/test_cfr.py`, `tests/test_cfr_batch.py` | Slice 5b's tests: every allowed and refused line form; the batch's refusals, journal, save staleness and races |
 
 Stdlib only (Python 3.8+), so no venv: the MCP transport is small enough to write on
 `http.server`. Run the tests from the repo root:
@@ -272,9 +274,9 @@ with a silent gap.
 
 ## Slice 5: leased actions
 
-Built so far: `stop_program`, the first tool that changes what the app does. The rest of Slice 5
-(`preflight_program`, `run_program`, `cfr_batch`) needs app-side commands first; see the list in
-the PR that added this section.
+Built so far: `stop_program`, the first tool that changes what the app does, and `cfr_batch`
+([below](#cfr_batch)). `preflight_program` and `run_program` need app-side commands first; see the
+list in the PR that added this section.
 
 **A leased action is a ticket.** `stop_program(console, request_id, lease_token)` returns its
 request record at once: `pending` until the app reports the outcome, which arrives as a
@@ -316,3 +318,41 @@ default token. The app puts `request_id` on `program.last_transition` and keeps 
 
 A stop by this lease holder ends `agent_running` as before (`lease_changed`, reason `run_ended`).
 `begin_run` (Slice 3) is still entered only by tests: `run_program` will call it.
+
+### cfr_batch
+
+`cfr_batch(console, request_id, lease_token, lines)` is for debugging between runs: 1-200 lines of
+the app's console commands (Lab.md "Console"), sent under the lease as one channel request after
+the same `owner` / `request` / `owner claim` lines as `stop_program`. Raw writes to `Lab/inbox`
+are still not exposed: `pa_lab/cfr.py` checks every line before anything is stored or sent.
+
+| Allowed | Bounds |
+|---|---|
+| `press BTN[+BTN] [hold] [release]` | buttons `A B X Y L R ZL ZR PLUS MINUS LCLICK RCLICK HOME` (no `CAPTURE`); hold, release 0-10000 ms |
+| `dpad DIR [hold] [release] [BTN[+BTN]]`, `stick L\|R x y [hold] [release] [BTN[+BTN]]` | x, y -1..1 (3 decimals) |
+| `wait ms` | 0-30000 |
+| `taps DIR N [all] [hold] [release] [still]`, `walk x y [max] [still] [BTN[+BTN]]` | N 1-20; max 200-10000 |
+| `shot LABEL`, `shots LABEL count [interval]` | label `A-Z a-z 0-9 _ -`, 1-64; count 1-10; interval 100-5000 |
+| `detect D`, `wait_for D [timeout]`, `expect D [timeout]`, `game_open` | detector names only (no image path); timeout 0-30000 |
+
+Everything else is refused (`invalid_arguments`, `field` = `arguments.lines[i]`): channel
+commands, `close_game`, `history`, `snapshot`, `state`, game-registered commands, comments, blank
+lines and lines not in canonical form (single spaces). The sum of the lines' worst cases must fit
+in 60 s (`field` = `arguments.lines`), so the call, which waits for the journal, is bounded.
+
+The call also refuses (stored, nothing sent) unless the program is `stopped` on a program panel,
+the controller `ready` and the video `live`. Then it marks `console://B/save` stale (reason
+`cfr_batch`, kept in the database across restarts) before sending: only a program-authored save
+newer than the batch makes the fact `known` again.
+
+| The journal shows | Record |
+|---|---|
+| every line `ok` | completed, `outcome: done`, `journal` |
+| a batch line failed (an `expect` timeout, a refused press) | completed, `outcome: line_failed`, `failed_line` (1-based), `error`, `journal` |
+| the owner lines failed (`owned by <other>`) | failed, `app_unavailable`; nothing ran |
+| (nothing in time, request still in the inbox) | withdrawn; refused, `timeout` |
+| (nothing in time, the app took it) | failed, `timeout`; it may have run in part |
+| (the app restarted while it was pending) | failed, `app_unavailable`, `evidence.reason: instance_replaced` |
+
+An exact retry sends nothing; a retry of a ticket left `pending` (the daemon stopped while
+waiting) collects its journal.

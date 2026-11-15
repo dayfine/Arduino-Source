@@ -46,7 +46,7 @@ class ControlServerTest(unittest.TestCase):
         _, body = self.client.rpc('tools/list')
         names = [t['name'] for t in body['result']['tools']]
         self.assertEqual(names, ['shot', 'ensure_game', 'describe_program', 'game_open', 'acquire_console', 'renew_console', 'release_console',
-                                 'next_events', 'stop_program', 'request_status'])
+                                 'next_events', 'stop_program', 'cfr_batch', 'request_status'])
 
     def test_acquire_then_state_shows_the_lease_and_a_retry_matches(self):
         request_id = str(uuid.uuid4())

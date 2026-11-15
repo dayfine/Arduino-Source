@@ -182,9 +182,16 @@ class ConsoleReader:
         except Unavailable:
             app = None
         transition = app['program']['last_transition'] if app is not None else None
-        if transition is not None and transition['source'] == 'ui' and \
-                timestamps.parse(transition['at']) > timestamps.parse(fact['saved_at']):
-            doc.update(status='stale', reason='user_lease', since=transition['at'])
+        marks = []  # (at, reason): what happened after the fact that may have changed the game
+        if transition is not None and transition['source'] == 'ui':
+            marks.append((transition['at'], 'user_lease'))
+        mark = self.control.save_stale_mark(self.console) if self.control is not None else None
+        if mark is not None:
+            marks.append((mark['at'], mark['reason']))
+        marks = [m for m in marks if timestamps.parse(m[0]) > timestamps.parse(fact['saved_at'])]
+        if marks:
+            at, reason = max(marks, key=lambda m: timestamps.parse(m[0]))
+            doc.update(status='stale', reason=reason, since=at)
         return contracts.validate('save_resource', doc).data
 
 
