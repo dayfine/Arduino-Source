@@ -507,25 +507,58 @@ UnitTestResult test_zone_1_exit_row(Logger&){
     return true;
 }
 
+//  03.09 ends on the game's autosave on 3F, after the elevator ride; 03.09b
+//  starts there, from Mable's walk on (user, 2026-11-14: "if this is the
+//  auto save, we should divide a checkpoint here"). to_mable's legs were
+//  measured from the reloaded save, whose facing the ride does not leave, so
+//  03.09b reloads it when chained after 03.09.
+UnitTestResult test_director_office_row(Logger&){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    size_t index = 0;
+    while (index < rows.size() && rows[index].id != "03.09b"){
+        index++;
+    }
+    if (index == 0 || index >= rows.size() || rows[index - 1].id != "03.09"){
+        return "Expected 03.09b in the story rows, right after 03.09.";
+    }
+    const StoryCheckpoint& ride = rows[index - 1];
+    const StoryCheckpoint& mable = rows[index];
+    if (ride.steps.empty() || ride.steps.front().name != "to_lab_elevator" || ride.steps.back().name != "arrive_3f"){
+        return "Expected 03.09 to run from to_lab_elevator to arrive_3f.";
+    }
+    if (mable.steps.empty() || mable.steps.front().name != "to_mable" || mable.steps.back().name != "leave_mable"){
+        return "Expected 03.09b to run from to_mable to leave_mable.";
+    }
+    const StoryData& data = builtin_story_data();
+    if (!data.autosaves.contains("03.09") || data.autosaves.contains("03.09b") || !data.reload_when_chained.contains("03.09b")){
+        return "Expected 03.09 to end on the autosave and 03.09b to reload it when chained.";
+    }
+    return true;
+}
+
 //  The production story the program's dropdowns list, by index (the start
 //  and end options store the index): ids, the rows ending on the game's
 //  autosave and the rows reloading before them. Console runs name rows by
-//  these indices (03.07d is 18, 03.08 is 19, 03.08b is 20), so a change to how the files
+//  these indices (03.07d is 18, 03.08 is 19, 03.08b is 20,
+//  03.09 is 21, 03.09b is 22), so a change to how the files
 //  are read must leave them as they are.
 UnitTestResult test_production_rows(Logger&){
     const std::vector<std::string> ids{
         "01.00", "01.01", "01.02", "01.03",
         "02.01", "02.02", "02.03", "02.04", "02.05", "02.06", "02.07",
         "03.01", "03.02", "03.03", "03.04", "03.05", "03.06", "03.07", "03.07d", "03.08", "03.08b", "03.09",
+        "03.09b",
     };
     const std::set<std::string, std::less<>> autosaves{
         "01.00", "01.01", "01.02", "02.01", "02.02", "02.03", "02.04", "02.05", "02.06", "02.07", "03.01", "03.03",
         //  03.08 ends on the street outside Wild Zone 1, which does not
         //  autosave; 03.08b ends on the Research Lab lobby's (user, 2026-11-14).
         "03.08b",
+        //  03.09 ends on the Director's Office's, on 3F (user, 2026-11-14).
+        "03.09",
     };
     const std::set<std::string, std::less<>> reload_when_chained{
-        "01.02", "02.02", "02.03", "02.04", "02.05", "02.07", "03.01", "03.02", "03.04",
+        "01.02", "02.02", "02.03", "02.04", "02.05", "02.07", "03.01", "03.02", "03.04", "03.09b",
     };
     const std::set<std::string, std::less<>> reload_always{"03.04"};
     const StoryData& data = builtin_story_data();
@@ -667,6 +700,11 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     {
         .name = "Zone 1 exit: 03.08 ends through the far gate, 03.08b walks into the lab",
         .input = {.body = test_zone_1_exit_row},
+        .expectation = {},
+    },
+    {
+        .name = "Director's Office: 03.09 ends on the 3F autosave, 03.09b reloads it for Mable",
+        .input = {.body = test_director_office_row},
         .expectation = {},
     },
     {

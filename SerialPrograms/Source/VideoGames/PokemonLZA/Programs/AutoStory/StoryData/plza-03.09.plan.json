@@ -3,7 +3,7 @@
   "game": "plza",
   "checkpoint": {
     "id": "03.09",
-    "title": "Mable's research, the Rock Smash TM",
+    "title": "Up the Research Lab's elevator to the Director's Office",
     "start": {
       "place": "PokemonResearchLab"
     },
@@ -32,41 +32,14 @@
         "id": "arrive_3f",
         "kind": "scene",
         "why": "step 67: the ride, until control on 3F"
-      },
-      {
-        "id": "to_mable",
-        "kind": "game_action",
-        "why": "step 68: from the 3F elevator's door, facing out (the windows), around the left end of the desk and the counter behind it, into her talk: straight 0.7 s, right 1.2 s, right 1.6 s. Measured 2026-11-10 on console B, walking, from the 3F autosave loaded (not after the ride). The last leg is held until her dialog box shows; none by its end fails the step (r6, 2026-11-14: it ended facing a wall).",
-        "action": "walk",
-        "args": {
-          "legs": [[0, 700], [90, 1200], [90, 1600]],
-          "end": "dialog"
-        }
-      },
-      {
-        "id": "mable_talk",
-        "kind": "scene",
-        "why": "step 69: Mable's research requests, until control in her office: A takes her first question's top answer (\"Yes\") and closes her \"Press X...\" line. A talk: control before her box or choice does not end it.",
-        "action": "talk"
-      },
-      {
-        "id": "rock_smash_tm",
-        "kind": "game_action",
-        "why": "step 70: Mable's Research, Rewards: TM004 Rock Smash",
-        "action": "claim_mable_research_reward"
-      },
-      {
-        "id": "leave_mable",
-        "kind": "scene",
-        "why": "step 71: out of the menu, through Mable's talk, until control in her office"
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Starts at the lab lobby's autosave (03.08b's end); ends on the game's autosave on 3F after the ride (log: \"[Autosave] 03.09/5 arrive_3f\"), 03.09b's start, so it saves no further (user, 2026-11-14)"
     }
   },
   "execution": {
-    "save": "menu"
+    "save": "autosave"
   }
 }
