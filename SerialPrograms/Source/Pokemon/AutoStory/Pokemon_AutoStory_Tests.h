@@ -2,9 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The unit tests of the pieces every AutoStory program shares, story
- *  engine or not. add_tests_AutoStory() is the one entry point the unit
- *  test runner calls; a new shared AutoStory suite registers there.
+ *  The unit tests of the pieces every AutoStory program shares.
+ *  add_tests_AutoStory() is the one entry point the unit test runner calls;
+ *  a new shared AutoStory suite registers there.
  *
  */
 
@@ -15,6 +15,8 @@
 #include "Data/Pokemon_AuthoredCheckpointJson_Tests.h"
 #include "Data/Pokemon_StoryFiles_Tests.h"
 #include "Data/Pokemon_StoryStepJson_Tests.h"
+#include "Options/Pokemon_StoryRangeOptions_Tests.h"
+#include "Pokemon_AutoStorySelect_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
 #include "Types/Pokemon_StoryActionArg_Tests.h"
 
@@ -24,6 +26,8 @@ namespace Pokemon{
 
 // Registers every shared AutoStory suite, for the unit test runner.
 inline void add_tests_AutoStory(UnitTestDatabase& database){
+    add_tests_AutoStorySelect(database);
+    add_tests_StoryRangeOptions(database);
     add_tests_StoryActionArg(database);
     add_tests_StoryLog(database);
     add_tests_StoryStepJson(database);
