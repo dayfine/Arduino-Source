@@ -12,9 +12,11 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+namespace{
+
 const EnumDropdownDatabase<StoryCheckLevel>& StoryCheckLevel_Database(){
     static const EnumDropdownDatabase<StoryCheckLevel> database({
-        {StoryCheckLevel::TESTING,  "testing",  "Testing: run each checkpoint 3 times to be sure it really passes"},
+        {StoryCheckLevel::TESTING,  "testing",  "Testing: check everything, as Thorough does, while a checkpoint is new"},
         {StoryCheckLevel::THOROUGH, "thorough", "Thorough: check everything for the user (Bag items, Pok\u00e9mon stats, preconditions)"},
         {StoryCheckLevel::DEFAULT,  "default",  "Default: check the most important things, assume the rest is fine"},
         {StoryCheckLevel::FAST,     "fast",     "Fast: minimal checks"},
@@ -32,9 +34,6 @@ const EnumDropdownDatabase<StorySaveMode>& StorySaveMode_Database(){
     });
     return database;
 }
-
-
-namespace{
 
 constexpr std::string_view SAVE_MODE_LABEL =
     "<b>Save:</b><br>When the run saves the game. A failed run never saves. "

@@ -2,10 +2,10 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A game's story read from its checkpoint files: the checked-in ones,
- *  built into the program (cmake/EmbedTextFiles.cmake), each replaced by
- *  the dev file of the same name if there is one (Pokemon_StoryDevFiles.h),
- *  so a walk can be retimed on the console without a rebuild. The game
+ *  A game's story read from its checkpoint files: the game's own files,
+ *  passed in by name and text, each replaced by the dev file of the same
+ *  name if there is one (Pokemon_StoryDevFiles.h), so a walk can be
+ *  retimed on the console without a rebuild. The game
  *  reads each file into its own checkpoint type; this reads the shared
  *  execution fields (Pokemon_StoryRowExecution.h) into the rows they mark,
  *  and checks what holds for every game: a dev file replaces a built-in

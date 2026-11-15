@@ -45,7 +45,8 @@ constexpr double NAME_HEIGHT = 0.06;
 constexpr double NAME_LEAD = 0.015;
 constexpr double NAME_RIGHT = 0.98;
 //  The name's cyan (ARGB), dark text on HOME's light background once
-//  filtered: red low, green and blue high.
+//  filtered: red at most 150 and blue at least 150, any green. The name's
+//  blue-cyan text passes; the white tile and the grey background do not.
 constexpr uint32_t NAME_MINS = 0xff000096;
 constexpr uint32_t NAME_MAXS = 0xff96ffff;
 
@@ -131,7 +132,7 @@ bool selected_home_tile_is(Language language, const ImageViewRGB32& screen, std:
 
 namespace{
 
-//  The names HOME shows for the two games on console B's frames.
+//  The names HOME shows for the two games in the test frames.
 constexpr std::string_view FIRERED = "Pokémon FireRed Version";
 constexpr std::string_view LEGENDS_ZA = "Pokémon Legends: Z-A";
 
@@ -157,8 +158,8 @@ struct HomeTileCase{
     Expectation expectation;
 };
 
-//  Console B, 2026-11-14: HOME after the order changed (the game played
-//  last moves to the first tile), and the user select over HOME.
+//  HOME after the order changed (the game played last moves to the first
+//  tile), and the user select over HOME.
 const std::vector<HomeTileCase> HOME_TILE_CASES = {
     {.name = "FireRed on the first tile 1",
      .input = {.image = "NintendoSwitch/HomeTileReader/FireRedFirstTile_1.png"},

@@ -2,9 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The list's own checks: every sim fault and every engine failure name
- *  maps to one class, and every class id reads back from the text a log
- *  line or run record writes.
+ *  The list's own checks: every engine failure name maps to one class, and
+ *  every class id reads back from the text a log line or run record writes.
  *
  */
 
@@ -75,8 +74,7 @@ private:
 
 using C = StoryFailureClass;
 
-//  Every failure name the engine's code returns (autostory/engine), and
-//  #477's launch_failed.
+//  Every failure name the story engine returns, and the game launch's.
 const OutcomeClassTestCase OUTCOME_CASES[] = {
     {.name = "HOME menu", .input = {"game_not_running"}, .expectation = {C::GAME_NOT_RUNNING}},
     {.name = "launch", .input = {"launch_failed"}, .expectation = {C::LAUNCH_FAILED}},
@@ -110,36 +108,25 @@ const OutcomeClassTestCase OUTCOME_CASES[] = {
 };
 
 
-//  A check over the whole list.
-struct ListCheckTestCase{
-    //  The check, run over story_failure_classes().
-    struct Input{
-        UnitTestResult (*check)();
-    };
-
-    //  What holds when the check passes.
-    struct Expectation{
-        std::string_view holds;
-    };
-
-    std::string name;
-    Input input;
-    Expectation expectation;
+//  A named check over the whole list.
+struct ListCheck{
+    std::string_view name;
+    UnitTestResult (*check)();
 };
 
 class Test_ListCheck : public UnitTest{
 public:
-    explicit Test_ListCheck(ListCheckTestCase test_case)
-        : UnitTest(std::format("Pokemon::StoryFailureClasses - {}", test_case.name))
-        , m_case(std::move(test_case))
+    explicit Test_ListCheck(ListCheck check)
+        : UnitTest(std::format("Pokemon::StoryFailureClasses - {}", check.name))
+        , m_check(check)
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_case.input.check();
+        return m_check.check();
     }
 
 private:
-    const ListCheckTestCase m_case;
+    const ListCheck m_check;
 };
 
 UnitTestResult rows_in_enum_order(){
@@ -232,14 +219,15 @@ UnitTestResult no_class_without_a_tag(){
     return true;
 }
 
-const ListCheckTestCase LIST_CHECKS[] = {
-    {.name = "rows in the enum's order", .input = {rows_in_enum_order}, .expectation = {"story_failure_class_info() indexes by the enum"}},
-    {.name = "every class has a row", .input = {every_class_has_a_row}, .expectation = {"no class reads past the table"}},
-    {.name = "no outcome name in two classes", .input = {no_outcome_in_two_classes}, .expectation = {"a failure name has one class"}},
-    {.name = "ids round-trip", .input = {ids_round_trip}, .expectation = {"each id is unique and its tag alone reads back"}},
-    {.name = "tags round-trip through a log line", .input = {tags_round_trip_through_a_log_line}, .expectation = {"the run log names the class"}},
-    {.name = "tags round-trip through a run record", .input = {tags_round_trip_through_a_run_record}, .expectation = {"a run record names the class"}},
-    {.name = "no class without a tag", .input = {no_class_without_a_tag}, .expectation = {"untagged or unknown text has no class"}},
+const ListCheck LIST_CHECKS[] = {
+    //  story_failure_class_info() indexes by the enum.
+    {.name = "rows in the enum's order", .check = rows_in_enum_order},
+    {.name = "every class has a row", .check = every_class_has_a_row},
+    {.name = "no outcome name in two classes", .check = no_outcome_in_two_classes},
+    {.name = "ids round-trip", .check = ids_round_trip},
+    {.name = "tags round-trip through a log line", .check = tags_round_trip_through_a_log_line},
+    {.name = "tags round-trip through a run record", .check = tags_round_trip_through_a_run_record},
+    {.name = "no class without a tag", .check = no_class_without_a_tag},
 };
 
 } // namespace
@@ -249,8 +237,8 @@ void add_tests_StoryFailureClasses(UnitTestDatabase& database){
     for (const OutcomeClassTestCase& test_case : OUTCOME_CASES){
         database.add<Test_OutcomeClass>(test_case);
     }
-    for (const ListCheckTestCase& test_case : LIST_CHECKS){
-        database.add<Test_ListCheck>(test_case);
+    for (const ListCheck& check : LIST_CHECKS){
+        database.add<Test_ListCheck>(check);
     }
 }
 

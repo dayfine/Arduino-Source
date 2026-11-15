@@ -24,103 +24,6 @@ std::string checkpoint_log_line(std::string_view checkpoint, std::string_view te
     return std::format("[Checkpoint] {}: {}", checkpoint, text);
 }
 
-std::string certainty_name(PoseCertainty certainty){
-    switch (certainty){
-    case PoseCertainty::TILE:
-        return "tile";
-    case PoseCertainty::COLUMN:
-        return "column";
-    case PoseCertainty::ROW:
-        return "row";
-    case PoseCertainty::SET:
-        return "set";
-    case PoseCertainty::UNKNOWN:
-        return "unknown";
-    }
-    return "?";
-}
-
-bool certainty_covers(PoseCertainty have, PoseCertainty need){
-    switch (need){
-    case PoseCertainty::UNKNOWN:
-        return true;
-    case PoseCertainty::SET:
-        return have != PoseCertainty::UNKNOWN;
-    case PoseCertainty::COLUMN:
-    case PoseCertainty::ROW:
-        return have == need || have == PoseCertainty::TILE;
-    case PoseCertainty::TILE:
-        return have == PoseCertainty::TILE;
-    }
-    return false;
-}
-
-std::string to_string(const Pose& pose){
-    std::string text = pose.map.empty() ? "?" : pose.map;
-    if (pose.where){
-        const std::string where = pose.where->describe();
-        if (!where.empty()){
-            text += std::format(" {}", where);
-        }
-    }
-    return std::format("{} ({})", text, certainty_name(pose.certainty));
-}
-
-
-bool Outcome::succeeded() const{
-    return failure.empty();
-}
-Outcome outcome_ok(std::optional<Pose> pose){
-    Outcome outcome;
-    outcome.pose = std::move(pose);
-    return outcome;
-}
-
-Outcome outcome_unchanged(){
-    Outcome outcome;
-    outcome.changed_nothing = true;
-    return outcome;
-}
-
-Outcome outcome_failed(std::string failure, std::string detail, std::optional<StoryFailureClass> failure_class){
-    Outcome outcome;
-    outcome.failure = std::move(failure);
-    outcome.detail = std::move(detail);
-    outcome.failure_class = failure_class;
-    return outcome;
-}
-std::string to_string(const Outcome& outcome){
-    return outcome.detail.empty() ? outcome.failure : std::format("{}: {}", outcome.failure, outcome.detail);
-}
-
-Outcome outcome_game_not_running(){
-    return outcome_failed(std::string(GAME_NOT_RUNNING), "the game is not running: the Switch HOME menu is showing");
-}
-
-Condition condition(std::string name, Check check){
-    return Condition{std::move(name), std::move(check)};
-}
-
-Condition pose_known(std::string map, PoseCertainty need){
-    std::string name = std::format("pose {}{}", certainty_name(need), map.empty() ? "" : std::format(" on {}", map));
-    return condition(std::move(name), [map = std::move(map), need](RunState& state){
-        return (map.empty() || state.pose.map == map) && certainty_covers(state.pose.certainty, need);
-    });
-}
-
-std::string recovery_name(RecoveryKind kind){
-    switch (kind){
-    case RecoveryKind::WAIT:
-        return "wait";
-    case RecoveryKind::REANCHOR:
-        return "re-anchor";
-    case RecoveryKind::STOP:
-        return "stop";
-    }
-    return "?";
-}
-
-
 namespace{
 
 //  Runs an action; if it succeeded knowing where it left the player, that
@@ -170,25 +73,6 @@ Outcome attempt_event(Event& event, RunState& state){
     return check_expects(event, state);
 }
 
-} // namespace
-
-void apply_interrupt_pose(InterruptPose effect, Pose& pose){
-    switch (effect){
-    case InterruptPose::UNCHANGED:
-        return;
-    case InterruptPose::WITHIN_SET:
-        if (pose.certainty != PoseCertainty::UNKNOWN){
-            pose.certainty = PoseCertainty::SET;
-        }
-        return;
-    case InterruptPose::LOST:
-        pose.where.reset();
-        pose.certainty = PoseCertainty::UNKNOWN;
-        return;
-    }
-}
-
-namespace{
 
 
 //  One event being run, with what it has used up.

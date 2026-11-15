@@ -29,9 +29,11 @@
 #include "Pokemon_StoryFailureClasses_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
 #include "Pokemon_StorySavePolicy_Tests.h"
+#include "Pokemon_StorySegmentSaves_Tests.h"
 #include "Pokemon_StorySegments_Tests.h"
 #include "Pokemon_StoryStepExecutor_Tests.h"
 #include "Types/Pokemon_StoryActionArg_Tests.h"
+#include "Types/Pokemon_StoryRunTypes_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -59,6 +61,8 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryRangeOptions(database);
     add_tests_StoryRunOptions(database);
     add_tests_StoryLaunch(database);
+    add_tests_StorySegmentSaves(database);
+    add_tests_StoryRunTypes(database);
 }
 
 

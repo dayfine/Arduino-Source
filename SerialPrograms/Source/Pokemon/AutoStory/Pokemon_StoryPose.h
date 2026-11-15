@@ -2,22 +2,16 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Split out of Pokemon_StoryEvents.h, unchanged; it includes this header.
+ *  Where the player is believed to be, and how sure the run is of it.
  *
  */
 
 #ifndef PokemonAutomation_Pokemon_StoryPose_H
 #define PokemonAutomation_Pokemon_StoryPose_H
 
-#include <cstddef>
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
-#include <string_view>
-#include <vector>
-#include "Common/Cpp/MoveOnlyFunction.h"
-#include "Pokemon_StoryLog.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -32,14 +26,14 @@ enum class PoseCertainty{
     SET,
     UNKNOWN,
 };
-// Returns the string label for a pose certainty level.
+//  "tile", "column", ...: for log lines.
 std::string certainty_name(PoseCertainty certainty);
 
 //  Whether a pose known to `have` is good enough for an event that needs `need`.
 bool certainty_covers(PoseCertainty have, PoseCertainty need);
 
 //  Where on a map the player is, in the game's own terms: tiles and a
-//  facing in a 2D game (Pokemon_TilePose.h), a map point or a fly point in
+//  facing in a 2D game, a map point or a fly point in
 //  an open-world one. The engine only carries and prints it; the game's
 //  actions read it back.
 struct Position{
@@ -61,7 +55,7 @@ struct Pose{
     PoseCertainty certainty = PoseCertainty::UNKNOWN;
     std::shared_ptr<const Position> where;
 };
-// Formats a Pose as a human-readable string.
+//  "Route 201 (10, 20) facing north (tile)": for log lines.
 std::string to_string(const Pose& pose);
 
 

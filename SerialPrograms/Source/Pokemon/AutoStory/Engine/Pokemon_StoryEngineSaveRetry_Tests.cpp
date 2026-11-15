@@ -131,7 +131,7 @@ StoryStep save_step(std::string name){
     return step;
 }
 
-//  Gap 6: the save is told its checkpoint, at the end and at a SAVE step.
+//  The save is told its checkpoint, at the end and at a SAVE step.
 std::string save_gets_checkpoint(CancellableScope& scope){
     StoryGame<GridPose> game = flaky_game<GridPose>(0);
     FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
@@ -172,7 +172,7 @@ std::string no_retry_after_a_save_step(CancellableScope& scope){
         : std::format("expected the no-retry line: {}", joined(backend.lines()));
 }
 
-//  Gap 8: a console_only action is refused, before any input, on a backend
+//  A console_only action is refused, before any input, on a backend
 //  that is no console; it runs on one.
 StoryGame<GridPose> console_game(){
     StoryGame<GridPose> game = flaky_game<GridPose>(0);
@@ -205,7 +205,7 @@ std::string console_only_refused(CancellableScope& scope){
     return expect_inputs(console, "press X");
 }
 
-//  Gap 7 and 8: no reload for a console_only failure, which every attempt
+//  No reload for a console_only failure, which every attempt
 //  would repeat.
 std::string segment_no_reload_for_console_only(CancellableScope& scope){
     const StoryGame<GridPose> game = console_game();
@@ -220,8 +220,8 @@ std::string segment_no_reload_for_console_only(CancellableScope& scope){
     return count_lines(backend, "[Test] reload") == 0 ? "" : "expected no reload";
 }
 
-//  Gap 7: the first checkpoint is retried after a reload; one after it
-//  only when the one before saved at its end (#329).
+//  The first checkpoint is retried after a reload; one after it
+//  only when the one before saved at its end.
 struct SegmentCase{
     struct Input{
         StoryPhase phase;
@@ -359,7 +359,7 @@ private:
     RetryCase m_case;
 };
 
-//  Gap 7: verify runs a checkpoint 3 times from one save, saving only at
+//  Verify runs a checkpoint 3 times from one save, saving only at
 //  the end of the last, and only when every run passed.
 std::string verify_saves_after_all_passed(CancellableScope& scope){
     for (size_t failures = 0; failures < 2; failures++){
@@ -382,42 +382,32 @@ std::string verify_saves_after_all_passed(CancellableScope& scope){
     return "";
 }
 
-struct RunsCase{
-    //  One check above, by name.
-    struct Input{
-        std::string (*check)(CancellableScope& scope);
-    };
-
-    //  The check's error: none.
-    struct Expectation{
-        std::string_view error = {};
-    };
-
+//  A named test; it returns its error, empty when it passed.
+struct RunsTest{
     std::string_view name;
-    Input input;
-    Expectation expectation;
+    std::string (*check)(CancellableScope& scope);
 };
 
-const RunsCase RUNS_CASES[] = {
-    {.name = "save gets its checkpoint", .input = {.check = &save_gets_checkpoint}, .expectation = {}},
-    {.name = "no retry after a save step", .input = {.check = &no_retry_after_a_save_step}, .expectation = {}},
-    {.name = "console_only refused off console", .input = {.check = &console_only_refused}, .expectation = {}},
-    {.name = "no reload for console_only", .input = {.check = &segment_no_reload_for_console_only}, .expectation = {}},
-    {.name = "verify saves after all passed", .input = {.check = &verify_saves_after_all_passed}, .expectation = {}},
+const RunsTest RUNS_TESTS[] = {
+    {.name = "save gets its checkpoint", .check = &save_gets_checkpoint},
+    {.name = "no retry after a save step", .check = &no_retry_after_a_save_step},
+    {.name = "console_only refused off console", .check = &console_only_refused},
+    {.name = "no reload for console_only", .check = &segment_no_reload_for_console_only},
+    {.name = "verify saves after all passed", .check = &verify_saves_after_all_passed},
 };
 
 class StoryEngineRunsTest : public UnitTest{
 public:
-    explicit StoryEngineRunsTest(RunsCase test)
+    explicit StoryEngineRunsTest(RunsTest test)
         : UnitTest(std::format("Pokemon::StoryEngine runs - {}", test.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
-        const std::string error = m_case.input.check(scope);
-        return error == m_case.expectation.error ? UnitTestResult(true) : UnitTestResult(error);
+        const std::string error = m_case.check(scope);
+        return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
     }
 private:
-    RunsCase m_case;
+    RunsTest m_case;
 };
 
 
@@ -425,7 +415,7 @@ private:
 
 
 void add_tests_StoryEngineSaveRetry(UnitTestDatabase& database){
-    for (const RunsCase& test : RUNS_CASES){
+    for (const RunsTest& test : RUNS_TESTS){
         database.add<StoryEngineRunsTest>(test);
     }
     for (const SegmentCase& test : SEGMENT_CASES){
