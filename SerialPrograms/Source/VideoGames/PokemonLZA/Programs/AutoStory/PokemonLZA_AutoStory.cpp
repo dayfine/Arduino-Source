@@ -16,8 +16,8 @@
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
-#include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "Pokemon/Options/Pokemon_GameLanguages.h"
@@ -81,6 +81,10 @@ constexpr std::string_view START_FROM_BACKUP_SAVE_LABEL =
     "Later reloads load the latest save either way.<br>"
     "<font color=\"red\">Warning: a run from the backup save saves over the latest save (the start's Report, "
     "the game's autosaves, the checkpoints' saves). The progress in the latest save is lost.</font>";
+constexpr std::string_view CAPTURE_LOOKS_LABEL =
+    "<b>Save Screen Captures:</b><br>Save a screenshot each time what the program sees on screen changes, "
+    "and every 2 s, to Screenshots/PLZA-capture/. For finding screens the program misses: a long run writes "
+    "thousands of images.";
 
 } // namespace
 
@@ -106,6 +110,7 @@ AutoStory::AutoStory()
     )
     , RELOAD_AT_BOUNDARIES(std::string(RELOAD_AT_BOUNDARIES_LABEL), LockMode::LOCK_WHILE_RUNNING, false)
     , START_FROM_BACKUP_SAVE(std::string(START_FROM_BACKUP_SAVE_LABEL), LockMode::LOCK_WHILE_RUNNING, false)
+    , CAPTURE_LOOKS(std::string(CAPTURE_LOOKS_LABEL), LockMode::LOCK_WHILE_RUNNING, false)
     , GO_HOME_WHEN_DONE(false)
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
@@ -120,6 +125,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(BATTLE_AI);
     PA_ADD_OPTION(RELOAD_AT_BOUNDARIES);
     PA_ADD_OPTION(START_FROM_BACKUP_SAVE);
+    PA_ADD_OPTION(CAPTURE_LOOKS);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
@@ -129,11 +135,11 @@ namespace{
 //  Where the run takes its start from: the running game when RELOAD_AT_START
 //  is off, else the backup or the latest save. Both off-reload and the
 //  backup save at once is refused: keeping the game loads no save.
-StartFrom start_from(ConsoleHandle& console, const Pokemon::StoryRunOptions& run, bool backup_first){
+StartFrom start_from(ConsoleHandle& console, const Pokemon::StoryRunOptions& run, const BooleanCheckBoxOption& start_from_backup_save){
     if (run.RELOAD_AT_START){
-        return backup_first ? StartFrom::BACKUP_SAVE : StartFrom::LATEST_SAVE;
+        return start_from_backup_save ? StartFrom::BACKUP_SAVE : StartFrom::LATEST_SAVE;
     }
-    if (backup_first){
+    if (start_from_backup_save){
         throw UserSetupError(console, "Start from the Backup Save loads a save: turn on Reload the Save at the Start.");
     }
     console.log("AutoStory: no reload at the start, keeping the running game.");
@@ -175,12 +181,14 @@ void connect_controller(ConsoleHandle& console, ProControllerContext& context, c
 //  `run`'s attempts per checkpoint, and the boundary reload `reload_at_boundaries`
 //  picks; logs which.
 StoryRunPolicy run_policy(const Pokemon::StoryRunOptions& run, const BooleanCheckBoxOption& reload_at_boundaries, Logger& logger){
+    StoryRunPolicy::BoundaryReload boundary_reload = StoryRunPolicy::BoundaryReload::STRAIGHT_THROUGH;
     if (reload_at_boundaries){
         logger.log("AutoStory: reloads the save at checkpoint boundaries whose plan asks for it.");
-        return {.attempts_per_checkpoint = run.policy().attempts_per_checkpoint, .boundary_reload = StoryRunPolicy::BoundaryReload::AT_PLAN_BOUNDARIES};
+        boundary_reload = StoryRunPolicy::BoundaryReload::AT_PLAN_BOUNDARIES;
+    }else{
+        logger.log("AutoStory: runs straight through checkpoint boundaries, no reload.");
     }
-    logger.log("AutoStory: runs straight through checkpoint boundaries, no reload.");
-    return {.attempts_per_checkpoint = run.policy().attempts_per_checkpoint, .boundary_reload = StoryRunPolicy::BoundaryReload::STRAIGHT_THROUGH};
+    return {.attempts_per_checkpoint = run.policy().attempts_per_checkpoint, .boundary_reload = boundary_reload};
 }
 
 } // namespace
@@ -190,14 +198,18 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const std::vector<StoryCheckpoint>& rows = story_data.checkpoints;
     const size_t first = RUN.start_index();
     const size_t last = RUN.end_index();
-    if (first > last || last >= rows.size()){
+    if (last >= rows.size()){
+        throw UserSetupError(env.console, "The checkpoint selection is out of range: pick the start and end checkpoints again.");
+    }
+    if (first > last){
         throw UserSetupError(env.console, "The start checkpoint must not come after the end checkpoint.");
     }
     const StartFrom from = start_from(env.console, RUN, START_FROM_BACKUP_SAVE);
     connect_controller(env.console, context, rows[first]);
 
     StoryEnv story{
-        .env = env, .context = context, .language = LANGUAGE, .battle_ai = BATTLE_AI, .checks = RUN.check_level()
+        .env = env, .context = context, .language = LANGUAGE, .battle_ai = BATTLE_AI, .checks = RUN.check_level(),
+        .capture_looks = CAPTURE_LOOKS,
     };
     PlzaConsoleBackend backend(story);
     const StoryGame<ZonePose> game = make_plza_story_game(story, STARTER, story_data.autosaves);
@@ -217,6 +229,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
             );
         }
         send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
+        GO_HOME_WHEN_DONE.run_end_of_program(context);
         return;
     }
     const std::vector<StoryCheckpoint> checkpoints = story_run_rows(std::span<const StoryCheckpoint>(rows), first, last);

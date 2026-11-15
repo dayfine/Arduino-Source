@@ -59,6 +59,9 @@ private:
     //  On: the run starts from the backup save; off: from the latest, or
     //  the backup save when the latest is past the start check.
     BooleanCheckBoxOption START_FROM_BACKUP_SAVE;
+    //  On: the backend saves a frame each time the look's events change
+    //  (StoryEnv::capture_looks).
+    BooleanCheckBoxOption CAPTURE_LOOKS;
 
     GoHomeWhenDoneOption GO_HOME_WHEN_DONE;
     EventNotificationsOption NOTIFICATIONS;
