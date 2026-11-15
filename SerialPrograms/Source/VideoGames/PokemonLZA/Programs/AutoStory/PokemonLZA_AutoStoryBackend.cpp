@@ -21,6 +21,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActions.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryBackend.h"
+#include "PokemonLZA_AutoStoryFailures.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -170,7 +171,7 @@ Pokemon::Outcome PlzaConsoleBackend::battle(const Pokemon::StoryActionArgs&){
     }catch (Pokemon::StoryActionNotImplemented&){
         throw;
     }catch (OperationFailedException& e){
-        return Pokemon::outcome_failed("battle_failed", e.message());
+        return plza_failed("battle_failed", e.message());
     }
     return Pokemon::outcome_ok();
 }

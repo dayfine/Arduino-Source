@@ -10,6 +10,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryZoneGateReader.h"
 #include "PokemonLZA_AutoStoryGateWalk.h"
 #include "PokemonLZA_AutoStoryMoves.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryFailures.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -121,12 +122,12 @@ Pokemon::Outcome walk_to_zone_gate_entrance(
             angle = gate_steer_degrees(read->x / 1000.0);
         }
         if (!last && walked >= GATE_FIRST_SEEN_WITHIN){
-            return Pokemon::outcome_failed("gate_not_seen", std::format(
+            return plza_failed("gate_not_seen", std::format(
                 "walk_to_zone_gate_entrance: {} in {} ms of walking", gate_readings(seen, looks, last), walked.count()
             ));
         }
         if (walked >= walk.timeout){
-            return Pokemon::outcome_failed("no_prompt", std::format(
+            return plza_failed("no_prompt", std::format(
                 "walk_to_zone_gate_entrance: no A prompt in {} ms of walking, {}", walk.timeout.count(), gate_readings(seen, looks, last)
             ));
         }

@@ -7,6 +7,7 @@
 #include <format>
 #include <optional>
 #include <string>
+#include <string_view>
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -15,6 +16,7 @@
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_FastTravelNavigation.h"
 #include "PokemonLZA_AutoStoryMoves.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryFailures.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -44,6 +46,32 @@ void pause_before_leg(PlzaBackend& backend, Pokemon::StoryPausePoints* pause, co
     backend.scope().throw_if_cancelled();
 }
 
+//  Whether the screen on a fresh look has not changed since the look
+//  before (SCREEN_STILL): the input in between did nothing, a dropped turn
+//  or a dropped hold. A walk into a wall that already stops the player
+//  (a walk into the nurse's counter) reads still too, and plays its leg
+//  twice.
+bool screen_still(PlzaBackend& backend){
+    return backend.observe().events.has(PokemonAutomation::ScreenEvent::SCREEN_STILL);
+}
+
+//  A recorded turn: story_turn(), then L to recenter the camera, since the
+//  walk goes where it looks.
+void turn_and_recenter(PlzaBackend& backend, double degrees){
+    story_turn(backend, degrees);
+    backend.press(BUTTON_L, 100ms, 150ms);
+}
+
+//  `input`, played again once when the screen stays still after it.
+template <typename Input>
+void play_checked(PlzaBackend& backend, std::string_view what, Input&& input){
+    input();
+    if (screen_still(backend)){
+        backend.log(std::format("[PLZA] walk: the screen stayed still after {}; once more", what));
+        input();
+    }
+}
+
 } // namespace
 
 
@@ -54,10 +82,10 @@ Pokemon::Outcome face_heading(PlzaBackend& backend, const PlzaReader& reader, do
         now = read_heading(backend, reader);
     }
     if (!now){
-        return Pokemon::outcome_failed("heading_unread", "no look read the minimap's heading");
+        return plza_failed("heading_unread", "no look read the minimap's heading");
     }
     if (get_angle_between_facing_directions(*now, heading) > tolerance){
-        return Pokemon::outcome_failed(
+        return plza_failed(
             "heading_missed",
             std::format("facing {} deg, wanted {:.0f} +/- {:.0f}", *now, heading, tolerance)
         );
@@ -102,16 +130,20 @@ Pokemon::Outcome run_story_move(
         }
         return Pokemon::outcome_ok();
     }
+    //  The look the first input is checked against.
+    backend.observe();
     for (size_t index = 0; index < move.legs.size(); index++){
         const StoryWalkLeg& leg = move.legs[index];
         pause_before_leg(backend, pause, move, index);
         if (leg.turn != 0){
-            //  The walk goes where the camera looks: recenter it after the turn.
-            story_turn(backend, leg.turn);
-            backend.press(BUTTON_L, 100ms, 150ms);
+            play_checked(backend, std::format("the turn of {}", story_walk_leg_label(index, move.legs.size(), leg)), [&]{
+                turn_and_recenter(backend, leg.turn);
+            });
         }
         if (leg.walk > Milliseconds(0)){
-            backend.hold(Pokemon::Direction::NORTH, leg.walk, Pokemon::StoryPace::WALK);
+            play_checked(backend, std::format("the walk of {}", story_walk_leg_label(index, move.legs.size(), leg)), [&]{
+                backend.hold(Pokemon::Direction::NORTH, leg.walk, Pokemon::StoryPace::WALK);
+            });
         }
     }
     return Pokemon::outcome_ok();

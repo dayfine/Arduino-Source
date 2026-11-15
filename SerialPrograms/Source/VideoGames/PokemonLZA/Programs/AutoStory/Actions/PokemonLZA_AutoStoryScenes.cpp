@@ -10,6 +10,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryDialogs.h"
 #include "PokemonLZA_AutoStoryScenes.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryFailures.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -89,7 +90,7 @@ Pokemon::Outcome mash_scene(
         log_event_change(backend, look.events, last_events);
         const bool never_started = started->scene.never_started(look.events, look.when);
         if (start_window && never_started){
-            return Pokemon::outcome_failed("scene_never_started", std::format(
+            return plza_failed("scene_never_started", std::format(
                 "mash_scene(): the scene never started (player not at its trigger?): no box, choice or battle in {} ms.",
                 start_window->count()
             ));
@@ -100,7 +101,7 @@ Pokemon::Outcome mash_scene(
         }
         press_for(backend, action, text_button);
     }
-    return Pokemon::outcome_failed("scene_timeout", std::format("mash_scene(): the goal did not show within {} ms.", timeout.count()));
+    return plza_failed("scene_timeout", std::format("mash_scene(): the goal did not show within {} ms.", timeout.count()));
 }
 
 Pokemon::Outcome mash_story_scene(PlzaBackend& backend, Button text_button, SceneOpening opening){

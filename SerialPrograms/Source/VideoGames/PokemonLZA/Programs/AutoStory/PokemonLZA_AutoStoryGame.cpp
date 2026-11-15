@@ -36,6 +36,7 @@
 #include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryStepValidator.h"
 #include "PokemonLZA_AutoStoryGame.h"
+#include "PokemonLZA_AutoStoryFailures.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -232,6 +233,49 @@ Outcome gate_walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActi
     return walk_to_zone_gate_entrance(backend, heading, zone_gate_reader(), walk);
 }
 
+//  After A at a gate's or door's prompt: how long a fade or text may take
+//  to show (the sweep's late fade starts 1.8 s after the A), how often it
+//  is looked for, and how many times A is pressed while the prompt stays
+//  with neither (a dropped A).
+constexpr Milliseconds PROMPT_TAKEN_WAIT(3000);
+constexpr Milliseconds PROMPT_POLL(250);
+constexpr size_t PROMPT_PRESSES = 3;
+
+//  Whether `look` shows that A at a prompt was taken: a fade, or text.
+bool prompt_taken(const Pokemon::Observation<ZonePose>& look){
+    using PokemonAutomation::ScreenEvent;
+    return look.events.has(ScreenEvent::FADE_BLACK) || look.events.has(ScreenEvent::FADE_WHITE) ||
+        look.events.has(ScreenEvent::DIALOG_BOX) || look.events.has(ScreenEvent::CHOICE_BOX);
+}
+
+//  A at the A prompt the player stands at, then looks for up to
+//  PROMPT_TAKEN_WAIT until a fade or text shows; while the prompt stays
+//  with neither, A again, PROMPT_PRESSES times at most. The party bar
+//  shows under the prompt (console B, 2026-11-10), so the scene machine
+//  that follows would take it for control before a late fade. A prompt
+//  gone with no fade or text is left to the scene machine, as is one
+//  still up after the last A.
+void press_through_prompt(Pokemon::StoryBackend<ZonePose>& backend){
+    for (size_t press = 1; press <= PROMPT_PRESSES; press++){
+        backend.press(BUTTON_A, 160ms, 400ms);
+        bool prompt = true;
+        for (Milliseconds waited(0); waited < PROMPT_TAKEN_WAIT; waited += PROMPT_POLL){
+            backend.scope().throw_if_cancelled();
+            const Pokemon::Observation<ZonePose> look = backend.observe();
+            if (prompt_taken(look)){
+                return;
+            }
+            prompt = look.events.has(PokemonAutomation::ScreenEvent::INTERACT_PROMPT);
+            backend.wait(PROMPT_POLL);
+        }
+        if (!prompt){
+            backend.log(std::format("[PLZA] mash_to_move_hints: the prompt went with no fade in {} ms", PROMPT_TAKEN_WAIT.count()));
+            return;
+        }
+        backend.log(std::format("[PLZA] mash_to_move_hints: the prompt is still up {} ms after A {}", PROMPT_TAKEN_WAIT.count(), press));
+    }
+}
+
 //  Builds the handlers. The console actions hold the console; without one
 //  (a test, a simulation) their specs are console_only and the engine
 //  refuses them before their handler.
@@ -265,7 +309,7 @@ public:
                 throw;
             }catch (OperationFailedException& e){
                 backend.log(std::format("[PLZA] {} failed: {}", name, e.message()));
-                return Pokemon::outcome_failed("operation_failed", e.message());
+                return plza_failed(std::string(console_step_failure(name)), e.message());
             }
             return Pokemon::outcome_ok();
         };
@@ -328,13 +372,14 @@ public:
     //  of control, A every 2 s, for text the detectors miss (01.01's ad).
     //  A banner that stays past the 10 s gets A up to 3 times (01.03's
     //  "MAIN MISSION 02"), so the step ends with control. "press_a_first"
-    //  presses A once at a prompt (02.03's Hotel Z door, "A Enter"), which
-    //  would otherwise end the step at once as control. "quiet_is_control"
+    //  presses A at a prompt (02.03's Hotel Z door, "A Enter"), which
+    //  would otherwise end the step at once as control, and waits for its
+    //  fade or text (press_through_prompt()). "quiet_is_control"
     //  ends it on the quiet time instead of failing, inside Hotel Z.
     static Handler move_hints(){
         return [](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
             if (Pokemon::story_arg<bool>(call.args, "press_a_first")){
-                backend.press(BUTTON_A, 160ms, 400ms);
+                press_through_prompt(backend);
             }
             SceneMachineConfig config;
             config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));
@@ -441,7 +486,7 @@ Outcome wait_for_platform(Pokemon::StoryBackend<ZonePose>& backend, Milliseconds
         progress.text_waiting = text_now;
         backend.wait(PLATFORM_POLL);
     }
-    return Pokemon::outcome_failed("platform_not_seen", std::format(
+    return plza_failed("platform_not_seen", std::format(
         "No platform on {} looks in a row within {} ms (autosave {}).",
         PLATFORM_LOOKS, timeout.count(), progress.autosave_seen ? "seen" : "not seen"
     ));
@@ -462,7 +507,7 @@ Outcome walk_to_prompt(Pokemon::StoryBackend<ZonePose>& backend, Milliseconds ti
             return Pokemon::outcome_ok();
         }
         if (walked >= timeout){
-            return Pokemon::outcome_failed("no_prompt", std::format("walk_to_prompt: no A prompt in {} ms of walking", timeout.count()));
+            return plza_failed("no_prompt", std::format("walk_to_prompt: no A prompt in {} ms of walking", timeout.count()));
         }
         backend.hold(Pokemon::Direction::NORTH, PROMPT_WALK_SLICE, Pokemon::StoryPace::WALK);
         walked += PROMPT_WALK_SLICE;
@@ -837,7 +882,7 @@ Outcome load_checkpoint_start(StoryEnv& env, Pokemon::StoryBackend<ZonePose>& ba
         if (action == StartLoadAction::STOP){
             const std::string_view tried = start_tried(from);
             backend.log(std::format("[Checkpoint] {}: not at its start after {}, stopping", row, tried));
-            return Pokemon::outcome_failed("not_at_start", std::format("not at {}'s start after {}", row, tried));
+            return plza_failed("not_at_start", std::format("not at {}'s start after {}", row, tried));
         }
         const StartSave save = start_load_save(action);
         backend.log(std::format("[Save] {}: {} {}", row, save == StartSave::RUNNING ? "keeping" : "loading", start_save_name(save)));
@@ -864,7 +909,7 @@ constexpr size_t BOUNDARY_LOOKS = 4;
 //  from, which a reload_when_chained row comes after, but an older one.
 Outcome reload_at_boundary(const Pokemon::StoryGame<ZonePose>& game, Pokemon::StoryBackend<ZonePose>& backend, std::string_view row){
     if (!game.reload){
-        return Pokemon::outcome_failed("no_reload", "this game has no reload");
+        return plza_failed("no_reload", "this game has no reload");
     }
     const Outcome reloaded = game.reload(backend);
     if (!reloaded.succeeded()){
@@ -875,7 +920,7 @@ Outcome reload_at_boundary(const Pokemon::StoryGame<ZonePose>& game, Pokemon::St
         backend.scope().throw_if_cancelled();
         streak = backend.observe().readings.contains(PLATFORM_READING) ? streak + 1 : 0;
         if (streak >= PLATFORM_LOOKS){
-            return Pokemon::outcome_failed("older_save", std::format(
+            return plza_failed("older_save", std::format(
                 "the reload did not land at {}'s start: the station platform shows, so it loaded an older save", row
             ));
         }
