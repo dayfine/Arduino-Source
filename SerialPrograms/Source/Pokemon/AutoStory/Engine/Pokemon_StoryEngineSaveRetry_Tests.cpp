@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Checkpoint saves, segment retries, verification runs and failures that
- *  must stop instead of retrying.
+ *  Checkpoint saves, segment retries and failures that must stop instead
+ *  of retrying.
  *
  */
 
@@ -84,16 +84,6 @@ StoryCheckpoint checkpoint_of(std::string id, std::vector<StoryStep> steps){
     return checkpoint;
 }
 
-//  `checkpoint` in `phase`, verified with its steps as they are now.
-template <StoryPose PoseType>
-StoryCheckpoint in_phase(StoryCheckpoint checkpoint, StoryPhase phase, const StoryEngine<PoseType>& engine){
-    checkpoint.metadata.phase = phase;
-    checkpoint.metadata.verified = StoryVerification{
-        .steps_hash = engine.steps_hash(checkpoint), .build = "abc", .date = "2026-11-10", .runs = "3/3",
-    };
-    return checkpoint;
-}
-
 //  A GAME action of no args.
 template <StoryPose PoseType>
 StoryAction<PoseType> game_action(std::string name, StoryActionHandler<PoseType> handler){
@@ -136,11 +126,9 @@ std::string save_gets_checkpoint(CancellableScope& scope){
     StoryGame<GridPose> game = flaky_game<GridPose>(0);
     FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     StoryEngine<GridPose> engine(game, backend);
-    const StoryCheckpoint checkpoint = in_phase(
-        checkpoint_of("02.01", {game_step("walk", "fine"), save_step("save_here")}), StoryPhase::REPRODUCTION, engine
-    );
+    const StoryCheckpoint checkpoint = checkpoint_of("02.01", {game_step("walk", "fine"), save_step("save_here")});
     RunState state;
-    const StoryEngineReport report = engine.run_checkpoint(checkpoint, SavePoint::CHECKPOINT_END, state);
+    const StoryEngineReport report = engine.run_checkpoint(checkpoint, state);
     if (!report.saved){
         return "expected the checkpoint to save at its end";
     }
@@ -155,10 +143,9 @@ std::string no_retry_after_a_save_step(CancellableScope& scope){
     StoryGame<GridPose> game = flaky_game<GridPose>(1);
     FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
     StoryEngine<GridPose> engine(game, backend);
-    const std::vector<StoryCheckpoint> checkpoints{in_phase(
+    const std::vector<StoryCheckpoint> checkpoints{
         checkpoint_of("02.01", {game_step("walk", "fine"), save_step("save_here"), game_step("talk", "flaky")}),
-        StoryPhase::REPRODUCTION, engine
-    )};
+    };
     RunState state;
     const SegmentReport report = engine.run_segment("seg", checkpoints, 3, state);
     if (report.completed || report.failed_event != "talk" || report.failure.failure != "flaky_failed"){
@@ -220,11 +207,10 @@ std::string segment_no_reload_for_console_only(CancellableScope& scope){
     return count_lines(backend, "[Test] reload") == 0 ? "" : "expected no reload";
 }
 
-//  The first checkpoint is retried after a reload; one after it
-//  only when the one before saved at its end.
+//  A failed checkpoint is retried after a reload: the first from the save
+//  the run started on, the second from the save the first made at its end.
 struct SegmentCase{
     struct Input{
-        StoryPhase phase;
         //  Which checkpoint fails once: 0 or 1.
         size_t flaky = 0;
     };
@@ -241,13 +227,9 @@ struct SegmentCase{
 };
 
 const SegmentCase SEGMENT_CASES[] = {
-    {.name = "first retries while testing", .input = {.phase = StoryPhase::TESTING, .flaky = 0},
-     .expectation = {.completed = true, .reloads = 1, .saves = 0}},
-    {.name = "second does not retry while testing", .input = {.phase = StoryPhase::TESTING, .flaky = 1},
-     .expectation = {.completed = false, .reloads = 0, .saves = 0}},
-    {.name = "second does not retry while verifying", .input = {.phase = StoryPhase::VERIFICATION, .flaky = 1},
-     .expectation = {.completed = false, .reloads = 0, .saves = 0}},
-    {.name = "second retries after a reproduction save", .input = {.phase = StoryPhase::REPRODUCTION, .flaky = 1},
+    {.name = "first retries", .input = {.flaky = 0},
+     .expectation = {.completed = true, .reloads = 1, .saves = 2}},
+    {.name = "second retries after the first saved", .input = {.flaky = 1},
      .expectation = {.completed = true, .reloads = 1, .saves = 2}},
 };
 
@@ -258,7 +240,7 @@ std::string check_segment(const SegmentCase& test, CancellableScope& scope){
     std::vector<StoryCheckpoint> checkpoints;
     for (size_t c = 0; c < 2; c++){
         const std::string action = c == test.input.flaky ? "flaky" : "fine";
-        checkpoints.push_back(in_phase(checkpoint_of(std::format("0{}", c + 1), {game_step("walk", action)}), test.input.phase, engine));
+        checkpoints.push_back(checkpoint_of(std::format("0{}", c + 1), {game_step("walk", action)}));
     }
     RunState state;
     const SegmentReport report = engine.run_segment("seg", checkpoints, 3, state);
@@ -359,29 +341,6 @@ private:
     RetryCase m_case;
 };
 
-//  Verify runs a checkpoint 3 times from one save, saving only at
-//  the end of the last, and only when every run passed.
-std::string verify_saves_after_all_passed(CancellableScope& scope){
-    for (size_t failures = 0; failures < 2; failures++){
-        const StoryGame<GridPose> game = flaky_game<GridPose>(failures);
-        FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
-        StoryEngine<GridPose> engine(game, backend);
-        const StoryCheckpoint checkpoint = in_phase(checkpoint_of("00.15b", {game_step("battle", "flaky")}), StoryPhase::VERIFICATION, engine);
-        RunState state;
-        const VerifyReport report = engine.verify_checkpoint(checkpoint, VerifyPolicy{.runs = 3, .passes_needed = 2}, state);
-        const size_t saves = count_lines(backend, "[Test] save 00.15b");
-        const size_t reloads = count_lines(backend, "[Test] reload");
-        const size_t passes = 3 - failures;
-        if (!report.verified || report.passes != passes || reloads != 2 || saves != (failures == 0 ? 1 : 0) || report.saved != (failures == 0)){
-            return std::format(
-                "{} failures: expected verified, {} passes, 2 reloads, {} saves; got {}, {}, {}, {}",
-                failures, passes, failures == 0 ? 1 : 0, report.verified, report.passes, reloads, saves
-            );
-        }
-    }
-    return "";
-}
-
 //  A named test; it returns its error, empty when it passed.
 struct RunsTest{
     std::string_view name;
@@ -393,7 +352,6 @@ const RunsTest RUNS_TESTS[] = {
     {.name = "no retry after a save step", .check = &no_retry_after_a_save_step},
     {.name = "console_only refused off console", .check = &console_only_refused},
     {.name = "no reload for console_only", .check = &segment_no_reload_for_console_only},
-    {.name = "verify saves after all passed", .check = &verify_saves_after_all_passed},
 };
 
 class StoryEngineRunsTest : public UnitTest{
