@@ -3,8 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Judgements a story step makes from screen events (CommonTools/ScreenEvents/ScreenEvents.h)
- *  over time, not from one look: a warp is a fade or
- *  the banner of the map arrived on, and a talk or a scene is over when the
+ *  over time, not from one look: a talk or a scene is over when the
  *  overworld has been quiet for a while. Pure: tests drive them with
  *  scripted scenes, and every game shares them.
  *
@@ -20,24 +19,6 @@
 
 namespace PokemonAutomation{
 namespace Pokemon{
-
-
-//  What a walk or a step saw of a warp: a fade or the location
-//  banner of the map arrived on. Either one alone is the warp.
-struct WarpSeen{
-    WarpFade fade = WarpFade::NONE;
-    //  The banner read, "" if none.
-    std::string banner = {};
-
-    bool any() const{
-        return fade != WarpFade::NONE || !banner.empty();
-    }
-};
-//  `seen` after a frame's events: their fade, and `banner_read` when they
-//  show LOCATION_BANNER. The first of each counts.
-WarpSeen note_warp(WarpSeen seen, const ScreenEvents& events, const std::string& banner_read);
-//  How it was seen, for the log: a black fade, banner "Route 203".
-std::string describe(const WarpSeen& seen);
 
 
 //  What to do after a look.
