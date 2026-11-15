@@ -9,6 +9,7 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_WalkScreen_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_WalkScreen_H
 
+#include <array>
 #include <functional>
 #include <optional>
 #include <string>
@@ -39,16 +40,11 @@ constexpr double WALK_SCENE_CHANGE = 120.0;
 
 namespace detail{
 
-//  How the view scrolled between two frames, on 192x108 copies: the shift
-//  (dx, dy) of `before` that best lines up with `after`, leaving out the
-//  middle where the player stands, and the mean difference per colour
-//  channel (0 to 255) with and without it. Outside, the camera follows the
-//  player, so a step scrolls everything one way; a TV, a conveyor, a
-//  passer-by or a cloud shadow changes part of the view with no common
-//  scroll. In r83's and r84's Floaroma video, frames 300 ms apart while
-//  standing (screen changes up to 57, cloud shadows, text boxes) never read
-//  as scrolled; walking read a shift 2 to 6 times better than none.
-struct ViewShift{
+//  How one horizontal band of the view scrolled between two frames, on
+//  smoothed 192x108 copies: the shift (dx, dy) of `before` that best lines
+//  up with `after`, leaving out the middle where the player stands, and the
+//  mean difference per colour channel (0 to 255) with and without it.
+struct BandShift{
     int dx = 0;
     int dy = 0;
     double unshifted = 0;
@@ -56,11 +52,32 @@ struct ViewShift{
 
     //  A shift lines up at least twice as well as none, and none leaves a
     //  real difference.
+    bool lines_up() const;
+};
+
+//  How the view scrolled between two frames, band by band from the top.
+//  Outside, the camera follows the player, so a step scrolls everything one
+//  way; a TV, a conveyor, a passer-by or a cloud shadow changes part of the
+//  view with no common scroll. In r83's and r84's Floaroma video, frames
+//  300 ms apart while standing (screen changes up to 57, cloud shadows, text
+//  boxes) never read as scrolled. The camera looks down at an angle, so a
+//  step north or south scrolls the near rows further than the far ones: on
+//  Twinleaf's path (00.01 below_barrys_warning, 2026-11-15) 7 pixels at the
+//  top and 10 at the bottom, and one shift for the whole view lined up only
+//  1.7 to 1.9 times better than none. Each band alone is close to one shift.
+struct ViewShift{
+    static constexpr size_t BANDS = 4;
+    std::array<BandShift, BANDS> bands;
+
+    //  At least 3 bands line up, with shifts the same way.
     bool scrolled() const;
 };
 
 //  Calculates the view scroll shift between before and after images.
 ViewShift walk_view_shift(const ImageViewRGB32& before, const ImageViewRGB32& after);
+
+//  Each band's shift and how much better than none it lines up, for logs.
+std::string describe_view_shift(const ViewShift& shift);
 
 //  Whether the player moved between `before` and `after`, frames around a
 //  D-pad tap. Outside: only if the view scrolled. Inside, the camera can
@@ -108,10 +125,14 @@ private:
 
 } // namespace detail
 
+//  One band's scroll shift.
+using detail::BandShift;
 //  View scroll shift calculation.
 using detail::ViewShift;
 //  Calculates the view scroll shift between before and after images.
 using detail::walk_view_shift;
+//  Each band's shift, for logs.
+using detail::describe_view_shift;
 //  Whether the player moved between before and after frames.
 using detail::tap_moved;
 //  How a tap's frames read, for the walk's log.
