@@ -29,6 +29,8 @@ jobs:
         run: sh lab/control/lablock_test.sh 20
       - name: Lab disk GC deployment rule test
         run: sh lab/scripts/disk_gc_test.sh
+      - name: Dispatch lane board test
+        run: sh skills/dispatch/scripts/lanes_test.sh
       - name: Python syntax
         run: python3 -m py_compile $(git ls-files 'tools/*.py' 'bin/*.py' 'lab/*.py' 'devtools/*.py')
       - uses: actions/setup-python@v6
