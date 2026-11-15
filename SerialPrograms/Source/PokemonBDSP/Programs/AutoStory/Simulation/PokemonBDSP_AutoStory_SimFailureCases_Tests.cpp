@@ -9,16 +9,16 @@
  *  as a battle, banners missed or gone, dim floors, late first lines and
  *  people who wander.
  *
- *  A case the program fails today is on KNOWN_FAILING with the change that
- *  is to fix it. Its test passes while the case still fails, and fails
+ *  A case the program fails today is on known_failing() (the shared
+ *  Pokemon_KnownFailing.h) with the change that is to fix it. Its test passes while the case still fails, and fails
  *  once the case passes: then take it off the list.
  *
  */
 
+#include <cstdint>
 #include <cstdio>
 #include <format>
 #include <functional>
-#include <map>
 #include <optional>
 #include <set>
 #include <string>
@@ -30,6 +30,8 @@
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_KnownFailing.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_SimSeeds.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
@@ -56,13 +58,16 @@ using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
 
-//  Cases the program fails today, with what is to fix each.
-const std::map<std::string, std::string> KNOWN_FAILING{
-    {"01.05 through_the_gate is one run west", "planner: goal kinds and ms costs (PLANNER_DESIGN.md)"},
-    {"any one missed fade or banner from 00.00 to 01.11: every row still passes",
-        "a third signal where a warp gives one (ONE_SIGNAL_STEPS): position (PLANNER_DESIGN.md 2, 4)"},
-    {"01.08 with Route 204's youngster wandering (12..14, 2)", "planner: one recovery rule, a sidestep round a wanderer (PLANNER_DESIGN.md 4, 7)"},
-};
+//  Cases the program fails today, by case name, with what is to fix each.
+const Pokemon::KnownFailing& known_failing(){
+    static const Pokemon::KnownFailing list({
+        {"01.05 through_the_gate is one run west", "planner: goal kinds and ms costs (PLANNER_DESIGN.md)"},
+        {"any one missed fade or banner from 00.00 to 01.11: every row still passes",
+            "a third signal where a warp gives one (ONE_SIGNAL_STEPS): position (PLANNER_DESIGN.md 2, 4)"},
+        {"01.08 with Route 204's youngster wandering (12..14, 2)", "planner: one recovery rule, a sidestep round a wanderer (PLANNER_DESIGN.md 4, 7)"},
+    });
+    return list;
+}
 
 //  Warps that give one signal only (#268 slice 1: door = fade or banner), so
 //  a miss there leaves nothing to go on: a fade and no banner (stairs, into
@@ -244,20 +249,17 @@ UnitTestResult roark_speaks_late(Logger& logger){
     return passes(run_case(logger, "01.03", "01.03", {.fade = {}, .banner = {}}, {.first_line = {{talk, 7000ms}}}));
 }
 
-//  `row` with everyone on its maps walking their wander boxes, seeds 1 to 8.
+//  How many seeds wanderers_move() runs.
+constexpr uint32_t WANDER_SEEDS = 8;
+
+//  `row` with everyone on its maps walking their wander boxes, seeds 1 to
+//  WANDER_SEEDS.
 UnitTestResult wanderers_move(Logger& logger, const std::string& row){
-    std::vector<std::string> failed;
-    for (uint64_t seed = 1; seed <= 8; seed++){
+    const Pokemon::SeedsResult seeds = Pokemon::run_seeds(logger, std::format("{} wanderers", row), [&](uint32_t seed){
         const std::string stopped = run_case(logger, row, row, {.fade = {}, .banner = {}}, {.wander_seed = seed});
-        if (!stopped.empty()){
-            failed.push_back(std::format("seed {}: {}", seed, stopped));
-        }
-    }
-    std::string out = std::format("{} of 8 seeds fail:", failed.size());
-    for (const std::string& line : failed){
-        out += "\n  " + line;
-    }
-    return failed.empty() ? UnitTestResult(true) : UnitTestResult(out);
+        return Pokemon::SeedRun{.failure = stopped.empty() ? std::nullopt : std::optional<std::string>(stopped)};
+    }, WANDER_SEEDS);
+    return Pokemon::sweep_result(logger, row, "wanderers", seeds.seeds, seeds.failures);
 }
 
 //  Roark's badge speech after the battle: four lines, the fanfare's pause
@@ -589,13 +591,14 @@ UnitTestResult old_walk_hands_moms_call_over(Logger& logger){
 }
 
 struct FailureCaseInput{
-    std::string name;
     std::function<UnitTestResult(Logger&)> body;
 };
-//  Whether a case is expected to fail is KNOWN_FAILING's, by name.
+//  Whether a case is expected to fail is known_failing()'s, by name.
 struct FailureCaseExpectation{
 };
+//  `name`: the console failure, as known_failing() keys it.
 struct FailureCase{
+    std::string name;
     FailureCaseInput input;
     FailureCaseExpectation expectation;
 };
@@ -603,25 +606,13 @@ struct FailureCase{
 class Test_AutoStoryFailureCase : public UnitTest{
 public:
     explicit Test_AutoStoryFailureCase(FailureCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - Console failure on the sim: " + test_case.input.name)
+        : UnitTest(std::format("PokemonBDSP::AutoStory - Console failure on the sim: {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        UnitTestResult result;
-        try{
-            result = m_case.input.body(logger);
-        }catch (Exception& e){
-            result = std::string(e.name()) + ": " + e.message();
-        }
-        const auto known = KNOWN_FAILING.find(m_case.input.name);
-        if (known == KNOWN_FAILING.end()){
-            return result;
-        }
-        if (result.result == UnitTestResult::PASSED){
-            return "on KNOWN_FAILING (" + known->second + ") but passes now: take it off the list.";
-        }
-        logger.log("Known failing until " + known->second + ": " + result.message);
-        return true;
+        return known_failing().run(logger, m_case.name, [&]{
+            return m_case.input.body(logger);
+        });
     }
 
 private:
@@ -631,63 +622,109 @@ private:
 } // namespace
 
 const FailureCase AUTO_STORY_FAILURE_CASES[] = {
-    {.input = {"01.05 through_the_gate's last leg runs a tile on (lab-B 2026-11-08 15:31)", [](Logger& logger){
+    {.name = "01.05 through_the_gate's last leg runs a tile on (lab-B 2026-11-08 15:31)", .input = {[](Logger& logger){
         return passes(run_case(logger, "01.05", "01.05", {.fade = {}, .banner = {}}, gate_slide(SimFade::DIM, false)));
     }}, .expectation = {}},
-    {.input = {"01.05 old walk slides onto the Gate's west mouth, dim fade, banner gone", [](Logger& logger){
+    {.name = "01.05 old walk slides onto the Gate's west mouth, dim fade, banner gone", .input = {[](Logger& logger){
         return gate_old_walk_slides(logger, SimFade::DIM, false);
     }}, .expectation = {}},
-    {.input = {"01.05 old walk slides onto the Gate's west mouth, dim fade, banner up", [](Logger& logger){
+    {.name = "01.05 old walk slides onto the Gate's west mouth, dim fade, banner up", .input = {[](Logger& logger){
         return gate_old_walk_slides(logger, SimFade::DIM, true);
     }}, .expectation = {}},
-    {.input = {"01.05 old walk slides onto the Gate's west mouth, black fade", [](Logger& logger){
+    {.name = "01.05 old walk slides onto the Gate's west mouth, black fade", .input = {[](Logger& logger){
         return gate_old_walk_slides(logger, SimFade::BLACK, true);
     }}, .expectation = {}},
-    {.input = {"01.05 old walk slides onto the Gate's west mouth, white fade", [](Logger& logger){
+    {.name = "01.05 old walk slides onto the Gate's west mouth, white fade", .input = {[](Logger& logger){
         return gate_old_walk_slides(logger, SimFade::WHITE, true);
     }}, .expectation = {}},
-    {.input = {"01.05 through_the_gate is one run west", gate_plan_one_run}, .expectation = {}},
-    {.input = {"any one missed fade or banner from 00.00 to 01.11: every row still passes", [](Logger& logger){
+    {.name = "01.05 through_the_gate is one run west", .input = {gate_plan_one_run}, .expectation = {}},
+    {.name = "any one missed fade or banner from 00.00 to 01.11: every row still passes", .input = {[](Logger& logger){
         return every_single_miss(logger, {});
     }}, .expectation = {}},
-    {.input = {"any one missed fade or banner at a warp that shows both: its row still passes", [](Logger& logger){
+    {.name = "any one missed fade or banner at a warp that shows both: its row still passes", .input = {[](Logger& logger){
         return every_single_miss(logger, ONE_SIGNAL_STEPS);
     }}, .expectation = {}},
-    {.input = {"any one fade with its hold unseen from 00.00 to 01.11: every row still passes", every_single_hold_miss}, .expectation = {}},
-    {.input = {"01.02 to 01.05 at night, the Gate's dim floor", night_and_dim_floors}, .expectation = {}},
-    {.input = {"01.03 Roark's first line 7 s after the A press", roark_speaks_late}, .expectation = {}},
-    {.input = {"01.03 with Oreburgh's people wandering (the pokefan on 45, 37..39)", [](Logger& logger){
+    {.name = "any one fade with its hold unseen from 00.00 to 01.11: every row still passes", .input = {every_single_hold_miss}, .expectation = {}},
+    {.name = "01.02 to 01.05 at night, the Gate's dim floor", .input = {night_and_dim_floors}, .expectation = {}},
+    {.name = "01.03 Roark's first line 7 s after the A press", .input = {roark_speaks_late}, .expectation = {}},
+    {.name = "01.03 with Oreburgh's people wandering (the pokefan on 45, 37..39)", .input = {[](Logger& logger){
         return wanderers_move(logger, "01.03");
     }}, .expectation = {}},
-    {.input = {"01.08 with Route 204's youngster wandering (12..14, 2)", [](Logger& logger){
+    {.name = "01.08 with Route 204's youngster wandering (12..14, 2)", .input = {[](Logger& logger){
         return wanderers_move(logger, "01.08");
     }}, .expectation = {}},
-    {.input = {"01.04 Roark's badge speech: the fanfare's pause, then a scene", roark_badge_speech}, .expectation = {}},
-    {.input = {"inside a Pokemon Center, the door's settle ends within 3 s of the fade-up with visitors walking, never during the fade", center_inside_settles}, .expectation = {}},
-    {.input = {"inside a Pokemon Center, one held run north from the door mat reaches the nurse", nurse_in_one_run}, .expectation = {}},
-    {.input = {"01.07 after the tag battle the grunts run off before anyone speaks", grunts_run_off_before_rowan}, .expectation = {}},
-    {.input = {"00.03 Rowan's scene opens with no box and fades home", rowans_scene_opens_with_no_box}, .expectation = {}},
-    {.input = {"00.03 Mom's scene ends with a closing fade: over once it is back up (lab-B 2026-11-09)", moms_scene_ends_with_a_fade}, .expectation = {}},
-    {.input = {"00.02 the Starly battle's opening still plays after the starter (lab-B 2026-11-09)", starly_opening_after_the_starter}, .expectation = {}},
-    {.input = {"00.03 out of the house from (6, 8), where Rowan's scene ends, and from a column west", home_from_each_scene_end}, .expectation = {}},
-    {.input = {"00.03 the walk into Rowan's scene routes onto his row and stops on his trigger mid-run", rowans_scene_from_each_start}, .expectation = {}},
-    {.input = {"00.03 the walk into Sandgem stops on Dawn's trigger mid-run", dawns_scene_mid_run}, .expectation = {}},
-    {.input = {"00.04 Mom's call fires above the mat, on (6, 9): the walk ends in it, her hat scene plays it (lab-B 2026-11-09 17:29)", moms_call_above_the_mat}, .expectation = {}},
-    {.input = {"00.04 the old walk round Mom to (6, 9) runs into her call: it hands it to her hat scene, not fights it (lab-B 2026-11-09 17:29)", old_walk_hands_moms_call_over}, .expectation = {}},
-    {.input = {"00.04b the run into Sandgem stops two columns west: the walk still ends below the Center's door (lab-B 2026-11-09 20:09)", sandgem_entry_two_columns_west}, .expectation = {}},
-    {.input = {"00.04 to the ledge column with a wild battle on each pass through Route 201's grass (lab-B 2026-11-09 16:14)", [](Logger& logger){
+    {.name = "01.04 Roark's badge speech: the fanfare's pause, then a scene", .input = {roark_badge_speech}, .expectation = {}},
+    {.name = "inside a Pokemon Center, the door's settle ends within 3 s of the fade-up with visitors walking, never during the fade", .input = {center_inside_settles}, .expectation = {}},
+    {.name = "inside a Pokemon Center, one held run north from the door mat reaches the nurse", .input = {nurse_in_one_run}, .expectation = {}},
+    {.name = "01.07 after the tag battle the grunts run off before anyone speaks", .input = {grunts_run_off_before_rowan}, .expectation = {}},
+    {.name = "00.03 Rowan's scene opens with no box and fades home", .input = {rowans_scene_opens_with_no_box}, .expectation = {}},
+    {.name = "00.03 Mom's scene ends with a closing fade: over once it is back up (lab-B 2026-11-09)", .input = {moms_scene_ends_with_a_fade}, .expectation = {}},
+    {.name = "00.02 the Starly battle's opening still plays after the starter (lab-B 2026-11-09)", .input = {starly_opening_after_the_starter}, .expectation = {}},
+    {.name = "00.03 out of the house from (6, 8), where Rowan's scene ends, and from a column west", .input = {home_from_each_scene_end}, .expectation = {}},
+    {.name = "00.03 the walk into Rowan's scene routes onto his row and stops on his trigger mid-run", .input = {rowans_scene_from_each_start}, .expectation = {}},
+    {.name = "00.03 the walk into Sandgem stops on Dawn's trigger mid-run", .input = {dawns_scene_mid_run}, .expectation = {}},
+    {.name = "00.04 Mom's call fires above the mat, on (6, 9): the walk ends in it, her hat scene plays it (lab-B 2026-11-09 17:29)", .input = {moms_call_above_the_mat}, .expectation = {}},
+    {.name = "00.04 the old walk round Mom to (6, 9) runs into her call: it hands it to her hat scene, not fights it (lab-B 2026-11-09 17:29)", .input = {old_walk_hands_moms_call_over}, .expectation = {}},
+    {.name = "00.04b the run into Sandgem stops two columns west: the walk still ends below the Center's door (lab-B 2026-11-09 20:09)", .input = {sandgem_entry_two_columns_west}, .expectation = {}},
+    {.name = "00.04 to the ledge column with a wild battle on each pass through Route 201's grass (lab-B 2026-11-09 16:14)", .input = {[](Logger& logger){
         return passes(ledge_walk_in_grass(logger, {}));
     }}, .expectation = {}},
     //  It failed there with "too many plans" until replans crossed the
     //  grass on legs to a wall (replan_costs(), 2026-11-09).
-    {.input = {"00.04 the old walk to the ledge column, west to row 5's wall through the grass, now passes", [](Logger& logger){
+    {.name = "00.04 the old walk to the ledge column, west to row 5's wall through the grass, now passes", .input = {[](Logger& logger){
         return passes(ledge_walk_in_grass(logger, {"to_the_signs_row"}));
     }}, .expectation = {}},
 };
 
+namespace{
+
+//  The console failure cases: AUTO_STORY_FAILURE_CASES.
+struct KnownFailingNamesInput{
+};
+//  Every known_failing() entry names one of them: one renamed would
+//  otherwise drop off the list and fail the suite.
+struct KnownFailingNamesExpectation{
+};
+struct KnownFailingNamesCase{
+    std::string name;
+    KnownFailingNamesInput input;
+    KnownFailingNamesExpectation expectation;
+};
+
+class Test_AutoStoryFailureCasesKnownFailing : public UnitTest{
+public:
+    explicit Test_AutoStoryFailureCasesKnownFailing(const KnownFailingNamesCase& test_case)
+        : UnitTest(std::format("PokemonBDSP::AutoStory - Console failure on the sim: {}", test_case.name))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        std::set<std::string> names;
+        for (const FailureCase& item : AUTO_STORY_FAILURE_CASES){
+            names.insert(item.name);
+        }
+        const std::vector<std::string> stale = known_failing().stale(names);
+        if (stale.empty()){
+            return true;
+        }
+        std::string out = "KNOWN_FAILING names no such case:";
+        for (const std::string& entry : stale){
+            out += std::format("\n  {}", entry);
+        }
+        return out;
+    }
+};
+
+const KnownFailingNamesCase KNOWN_FAILING_NAMES_CASES[] = {
+    {.name = "every known failing entry names a case", .input = {}, .expectation = {}},
+};
+
+} // namespace
+
 void add_tests_AutoStory_SimFailureCases(UnitTestDatabase& database){
     for (const auto& item : AUTO_STORY_FAILURE_CASES){
         database.add<Test_AutoStoryFailureCase>(item);
+    }
+    for (const KnownFailingNamesCase& item : KNOWN_FAILING_NAMES_CASES){
+        database.add<Test_AutoStoryFailureCasesKnownFailing>(item);
     }
 }
 
