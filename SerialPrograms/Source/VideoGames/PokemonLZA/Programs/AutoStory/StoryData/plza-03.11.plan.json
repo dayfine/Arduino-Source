@@ -2,7 +2,7 @@
   "format": "pokesim-authored-checkpoint/1",
   "game": "plza",
   "checkpoint": {
-    "id": "03.09b",
+    "id": "03.11",
     "title": "Mable's research, the Rock Smash TM",
     "start": {
       "place": "PokemonResearchLab"
@@ -38,7 +38,7 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.09 at its 3F autosave (user, 2026-11-14). Starts on 3F at the elevator in the Director's Office, as the reloaded autosave leaves the player: facing the desk, the objective marker beyond it, the elevator panel on the right. to_mable's legs were measured from there; after the ride the facing differs, so a run from 03.09 reloads the save first (reload_when_chained)"
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.10 at its 3F autosave (user, 2026-11-14). Starts on 3F at the elevator in the Director's Office, as the reloaded autosave leaves the player: facing the desk, the objective marker beyond it, the elevator panel on the right. to_mable's legs were measured from there; after the ride the facing differs, so a run from 03.10 reloads the save first (reload_when_chained)"
     }
   },
   "execution": {

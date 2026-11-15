@@ -181,7 +181,7 @@ void claim_mable_research_reward(ConsoleHandle& console, ProControllerContext& c
     //  TM004 Rock Smash (console B, 2026-11-10): A while a dialog shows,
     //  until none has for 3 s, then B back to the overworld, through her
     //  talk after the menu closes (over 20 s; console B, 2026-11-10).
-    //  No line at all: the page did not open on her reward (03.09 r6,
+    //  No line at all: the page did not open on her reward (03.10 r6,
     //  console B 2026-11-14: not in her office, the claim passed on X alone).
     const ScreensPassed passed = press_a_until_quiet(console, context, {.item_receive = true}, 3s, 60s);
     if (passed.timed_out){

@@ -907,7 +907,7 @@ void catch_in_zone(
 }
 
 //  How long walk_to_marker() waits, after the walk, for the objective's
-//  prompt or dialog. A scene at the objective (03.08b's lab gate) takes the
+//  prompt or dialog. A scene at the objective (03.09's lab gate) takes the
 //  marker away first and starts its talk 9 to 11 s later (console B,
 //  2026-11-14: three runs saw the dialog only at the end of the walk's
 //  camera sweep, the fourth missed it).

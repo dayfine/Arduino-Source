@@ -30,7 +30,7 @@ enum class SceneOpening{
     //  Yes: the step before may have played the scene out already.
     CONTROL_ENDS,
     //  No: control counts only after a box, choice or battle (SceneStart).
-    //  A talk the step exists for: 03.09's mable_talk passed on control
+    //  A talk the step exists for: 03.10's mable_talk passed on control
     //  alone with no talk (console B, 2026-11-14).
     TALK_FIRST,
 };

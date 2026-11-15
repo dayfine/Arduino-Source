@@ -47,7 +47,7 @@ struct ScreensPassed{
 };
 
 //  press_a_until_quiet()'s clock. Both times count from the first look,
-//  not from the call: the presses sent before it still run then (03.09,
+//  not from the call: the presses sent before it still run then (03.10,
 //  console B 2026-11-14: the menu's A and its 3 s ran out the quiet time,
 //  and the claim ended on one look with no dialog seen).
 class QuietPresses{

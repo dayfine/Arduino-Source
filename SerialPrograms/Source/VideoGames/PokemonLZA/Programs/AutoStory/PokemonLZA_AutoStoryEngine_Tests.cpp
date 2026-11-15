@@ -495,7 +495,7 @@ UnitTestResult test_scene_step_never_started(CancellableScope& scope){
     return expect_inputs(backend, {"wait 250ms", "wait 250ms"});
 }
 
-//  03.09's to_lab_elevator, a walk with no end event: once its legs are
+//  03.10's to_lab_elevator, a walk with no end event: once its legs are
 //  in, one look, which on a console waits for them to run, so the step
 //  ends where the walk does (console B, 2026-11-14: to_mable returned
 //  0.4 s in, before its 3.5 s of legs).
@@ -505,7 +505,7 @@ UnitTestResult test_walk_looks_after_its_legs(CancellableScope& scope){
         look_at(250ms, {EngineEvent::PLAYER_CAN_MOVE}),
         look_at(1500ms, {EngineEvent::INTERACT_PROMPT}),
     }, scope);
-    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("03.09", "to_lab_elevator"));
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("03.10", "to_lab_elevator"));
     if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
         return std::format("Expected the walk to pass: {}", to_string(report.run.failure));
     }
@@ -519,7 +519,7 @@ UnitTestResult test_walk_looks_after_its_legs(CancellableScope& scope){
     return expect_inputs(backend, {"wait 250ms", "hold north 1000ms walk"});
 }
 
-//  03.09b's to_mable walks into Mable's talk: its last leg is held until her
+//  03.11's to_mable walks into Mable's talk: its last leg is held until her
 //  dialog box shows.
 UnitTestResult test_walk_ends_in_mables_talk(CancellableScope& scope){
     FakeBackend backend = fake_plza({
@@ -528,7 +528,7 @@ UnitTestResult test_walk_ends_in_mables_talk(CancellableScope& scope){
         look_at(3000ms, {EngineEvent::PLAYER_CAN_MOVE}),
         look_at(3250ms, {EngineEvent::DIALOG_BOX}),
     }, scope);
-    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("03.09b", "to_mable"));
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("03.11", "to_mable"));
     if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
         return std::format("Expected the walk to end in Mable's talk: {}", to_string(report.run.failure));
     }
@@ -541,7 +541,7 @@ UnitTestResult test_walk_ends_in_mables_talk(CancellableScope& scope){
     });
 }
 
-//  03.09b's to_mable when a black fade shows in the held last leg: the scene
+//  03.11's to_mable when a black fade shows in the held last leg: the scene
 //  at the walk's end takes over, so the walk ends there, with no slice after
 //  the fade (console B, 2026-11-14 r9: Mable's box came over 5 s after the
 //  fade, past a camera pan).
@@ -552,7 +552,7 @@ UnitTestResult test_walk_ends_on_black_fade(CancellableScope& scope){
         look_at(3000ms, {EngineEvent::FADE_BLACK}),
         look_at(3250ms),
     }, scope);
-    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("03.09b", "to_mable"));
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("03.11", "to_mable"));
     if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
         return std::format("Expected the walk to end on the black fade: {}", to_string(report.run.failure));
     }
@@ -565,7 +565,7 @@ UnitTestResult test_walk_ends_on_black_fade(CancellableScope& scope){
     });
 }
 
-//  03.09b's mable_talk (a "talk" scene) on free control with no box or
+//  03.11's mable_talk (a "talk" scene) on free control with no box or
 //  choice: control does not end it before her talk shows; the start window
 //  fails it, with no press (r6, console B 2026-11-14: it passed at once).
 UnitTestResult test_talk_scene_needs_the_talk(CancellableScope& scope){
@@ -574,14 +574,14 @@ UnitTestResult test_talk_scene_needs_the_talk(CancellableScope& scope){
         look_at(20000ms, {EngineEvent::PLAYER_CAN_MOVE}),
         look_at(46000ms, {EngineEvent::PLAYER_CAN_MOVE}),
     }, scope, Pokemon::StoryBackendKind::CONSOLE);
-    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("03.09b", "mable_talk"));
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("03.11", "mable_talk"));
     if (report.verdict == Pokemon::CheckpointVerdict::PASSED || report.run.failure.failure != "scene_never_started"){
         return std::format("Expected the talk scene to fail as scene_never_started, got {}", to_string(report.run.failure));
     }
     return expect_inputs(backend, {"wait 250ms", "wait 250ms"});
 }
 
-//  03.09b's mable_talk: B through her lines, A at her question's top answer,
+//  03.11's mable_talk: B through her lines, A at her question's top answer,
 //  done once the party bar holds after the talk.
 UnitTestResult test_talk_scene_ends_after_the_talk(CancellableScope& scope){
     FakeBackend backend = fake_plza({
@@ -591,7 +591,7 @@ UnitTestResult test_talk_scene_ends_after_the_talk(CancellableScope& scope){
         look_at(2000ms, {EngineEvent::PLAYER_CAN_MOVE}),
         look_at(3000ms, {EngineEvent::PLAYER_CAN_MOVE}),
     }, scope, Pokemon::StoryBackendKind::CONSOLE);
-    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("03.09b", "mable_talk"));
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("03.11", "mable_talk"));
     if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
         return std::format("Expected the talk scene to end in the overworld: {}", to_string(report.run.failure));
     }
@@ -951,11 +951,11 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.name = "reload_when_chained: \"always\" reloads straight through too", .input = {.body = test_straight_through_reloads_always}, .expectation = {}},
     {.name = "walk_to_prompt: walks until the A prompt, none when it shows", .input = {.body = test_walk_to_prompt}, .expectation = {}},
     {.name = "breakpoints: a walk pauses before each leg", .input = {.body = test_walk_pauses_before_each_leg}, .expectation = {}},
-    {.name = "03.09 to_lab_elevator: one look once the legs are in", .input = {.body = test_walk_looks_after_its_legs}, .expectation = {}},
-    {.name = "03.09b to_mable: the last leg held until Mable's dialog box", .input = {.body = test_walk_ends_in_mables_talk}, .expectation = {}},
-    {.name = "03.09b to_mable: a black fade in the last leg ends the walk", .input = {.body = test_walk_ends_on_black_fade}, .expectation = {}},
-    {.name = "03.09b mable_talk: free control before her talk fails at the start window", .input = {.body = test_talk_scene_needs_the_talk}, .expectation = {}},
-    {.name = "03.09b mable_talk: B through her lines, A at her question, done on control", .input = {.body = test_talk_scene_ends_after_the_talk}, .expectation = {}},
+    {.name = "03.10 to_lab_elevator: one look once the legs are in", .input = {.body = test_walk_looks_after_its_legs}, .expectation = {}},
+    {.name = "03.11 to_mable: the last leg held until Mable's dialog box", .input = {.body = test_walk_ends_in_mables_talk}, .expectation = {}},
+    {.name = "03.11 to_mable: a black fade in the last leg ends the walk", .input = {.body = test_walk_ends_on_black_fade}, .expectation = {}},
+    {.name = "03.11 mable_talk: free control before her talk fails at the start window", .input = {.body = test_talk_scene_needs_the_talk}, .expectation = {}},
+    {.name = "03.11 mable_talk: B through her lines, A at her question, done on control", .input = {.body = test_talk_scene_ends_after_the_talk}, .expectation = {}},
 };
 
 

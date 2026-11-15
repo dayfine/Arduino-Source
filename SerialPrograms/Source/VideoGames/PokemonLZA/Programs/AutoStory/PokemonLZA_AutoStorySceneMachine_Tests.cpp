@@ -422,7 +422,7 @@ UnitTestResult test_to_battle(Logger&){
     });
 }
 
-//  platform_to_plaza (the white fade) and 03.09's to_mable (Mable's
+//  platform_to_plaza (the white fade) and 03.10's to_mable (Mable's
 //  dialog box) are the walks that end on an event, and every walk that
 //  ends on one holds a last leg that walks.
 UnitTestResult test_move_ends(Logger&){

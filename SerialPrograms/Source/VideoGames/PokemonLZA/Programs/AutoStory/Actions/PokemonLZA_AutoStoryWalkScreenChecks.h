@@ -32,7 +32,7 @@ Pokemon::Outcome check_can_walk(PlzaBackend& backend, std::string_view walk);
 
 //  After a walk's legs with no end event: one look, which on a console
 //  waits for the legs' inputs to run (observe()), so the step ends where
-//  the walk does, not when its inputs are queued (03.09's to_mable
+//  the walk does, not when its inputs are queued (03.10's to_mable
 //  returned 0.4 s in, before its 3.5 s of legs: console B, 2026-11-14).
 //  Logs what the screen shows there.
 void finish_walk(PlzaBackend& backend, std::string_view walk);

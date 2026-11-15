@@ -100,7 +100,7 @@ Pokemon::Outcome walk_until(
             backend.log(std::format("{}: the end event after {} ms of the last leg.", walk, (held + HOLD_SLICE).count()));
             return Pokemon::outcome_ok();
         }
-        //  A black fade is the scene at the walk's end taking over (03.09b's
+        //  A black fade is the scene at the walk's end taking over (03.11's
         //  Mable, console B 2026-11-14: the fade 1-6 s into the last leg,
         //  her box more than 5 s after it, past a camera pan): the step after
         //  the walk waits for what the scene shows.

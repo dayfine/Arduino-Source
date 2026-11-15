@@ -104,7 +104,7 @@ struct QuietPressesCase{
 
 const QuietPressesCase QUIET_PRESSES_CASES[] = {
     {
-        //  03.09's claim (console B, 2026-11-14): the menu's A and its 3 s
+        //  03.10's claim (console B, 2026-11-14): the menu's A and its 3 s
         //  ran before the first look, which ended the claim on one look.
         .name = "first look 5 s after the presses, nothing busy: the quiet time starts there",
         .input = {.looks = {{.at = 5000ms, .busy = false}, {.at = 7000ms, .busy = false}, {.at = 8000ms, .busy = false}}},
