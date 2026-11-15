@@ -22,9 +22,12 @@
 #ifndef PokemonAutomation_Pokemon_CoveredWatch_H
 #define PokemonAutomation_Pokemon_CoveredWatch_H
 
+#include <functional>
 #include <optional>
 #include "Common/Cpp/Time.h"
+#include "CommonFramework/Tools/VideoStream.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
 #include "Pokemon_FrameCoverage.h"
 
@@ -68,6 +71,56 @@ private:
     std::optional<WallClock> m_end;
     bool m_fired = false;
 };
+
+
+
+//  How a covered watch judges and bounds its window. The zero defaults are
+//  the strictest: no gap is small enough for NOT_SEEN, no tail, no cap.
+struct WatchLimits{
+    //  judge_watch().
+    Milliseconds max_gap = Milliseconds(0);
+    //  The watcher's hold: how long past the window's end to keep watching.
+    Milliseconds tail = Milliseconds(0);
+    //  How much longer than the end plus the tail to wait in wall time for
+    //  a frame captured that late.
+    Milliseconds cap = Milliseconds(0);
+    //  How often the watcher is handed the newest frame. At most `max_gap`,
+    //  or frames cannot be inspected often enough to cover the window.
+    Milliseconds period = Milliseconds(50);
+};
+
+
+//  Runs `command` with `watcher` live over the window from now to the
+//  command's end. When the command ends without a fire, keeps watching
+//  until a frame captured `limits.tail` after that end has been inspected,
+//  at most `limits.cap` longer in wall time, so the window is judged on
+//  frames up to its end and a screen that shows just as the command ends
+//  is still caught.
+template <typename ControllerContext>
+WatchResult run_watched(
+    VideoStream& stream, ControllerContext& context,
+    std::function<void(ControllerContext& context)>&& command,
+    const WatchLimits& limits, VisualInferenceCallback& watcher
+);
+
+
+
+
+template <typename ControllerContext>
+WatchResult run_watched(
+    VideoStream& stream, ControllerContext& context,
+    std::function<void(ControllerContext& context)>&& command,
+    const WatchLimits& limits, VisualInferenceCallback& watcher
+){
+    CoveredWatcher covered(watcher, current_time(), limits.tail);
+    run_until<ControllerContext>(stream, context, std::move(command), {covered}, limits.period);
+    const WallClock end = current_time();
+    if (!covered.fired()){
+        covered.end_at(end);
+        wait_until(stream, context, end + limits.tail + limits.cap, {covered}, limits.period);
+    }
+    return judge_watch(covered.fired(), covered.coverage(), end, limits.max_gap);
+}
 
 
 
