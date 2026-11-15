@@ -31,7 +31,8 @@ namespace OverworldWalkSteps{
 //  Whether a WALK `step` at `speed` starts with a turn tap, for a player
 //  facing `facing`: on foot facing another way (or an unknown way), so the
 //  hold starts facing the right way. Never on the Bicycle, where a tap
-//  takes a step (MovementMechanics::BIKE_TAP_ONLY_TURNS).
+//  takes a step (MovementMechanics::BIKE_TAP_ONLY_TURNS). Never off an exit
+//  mat its way (RouteStep::off_exit_mat), where the tap takes the warp.
 bool turns_first(const RouteStep& step, MoveSpeed speed, std::optional<Direction> facing);
 
 //  Whether `step` at `speed` is walked a tap at a time, each a tile

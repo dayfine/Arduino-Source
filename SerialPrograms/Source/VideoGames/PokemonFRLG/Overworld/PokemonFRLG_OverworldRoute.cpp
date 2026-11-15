@@ -595,6 +595,7 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
         }
         step.to_wall = step.to_wall && !step.spin_tiles;
         step.tapped = !step.surfing && onto_warp_sideways(maps[leg.end.map], step);
+        step.off_exit_mat = step.warps && exit_mat(maps[leg.start.map], leg.start.state.position) == step.direction;
         step.sign_ahead = !step.to_wall && !step.warps && reads_sign_ahead(maps[leg.end.map], leg.end.state.position, step.direction);
     }
     const std::vector<MapPosition> tiles = leg_tiles(maps, MapPosition{maps[leg.start.map].name, leg.start.state.position}, step);
