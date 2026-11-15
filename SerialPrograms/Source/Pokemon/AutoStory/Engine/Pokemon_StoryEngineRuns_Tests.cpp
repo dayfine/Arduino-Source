@@ -2,14 +2,11 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  What a game needs from the engine to drop its own workarounds (the PLZA
- *  move, #335): a scripted backend for any pose type, the move stick and
- *  the heading reading, the choice and interact events, a screen machine
- *  over observations, the step in an action's call, declared poses of the
- *  game's kind only, and tile actions only for tile games.
- *  Then what PLZA found on the engine: readers opt in to the postcondition
- *  check, inputs logged by button name, waiting states may stay still, and
- *  the stick's release. It also checks the engine's breakpoints.
+ *  The engine on games of either pose type: a scripted backend for any
+ *  pose type, the move stick and the heading reading, the step in an
+ *  action's call, declared poses of the game's kind only, and tile actions
+ *  only for tile games. Then readers that opt in to the postcondition
+ *  check, inputs logged by button name, and the engine's breakpoints.
  *
  */
 
@@ -25,8 +22,6 @@
 #include <vector>
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "CommonTools/ScreenMachine/ScreenMachine.h"
 #include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
 #include "Pokemon_StoryEngine.h"
 #include "Pokemon_StoryFakeBackend.h"
@@ -119,7 +114,7 @@ StoryGame<PoseType> flaky_game(size_t failures){
 }
 
 
-//  Gap 1 and 9: a zone game's checkpoint read from JSON whose start names
+//  A zone game's checkpoint read from JSON whose start names
 //  only its zone, run on the scripted backend of its pose type.
 std::string zone_checkpoint_runs(CancellableScope& scope){
     StoryGame<ZonePose> game = flaky_game<ZonePose>(0);
@@ -137,7 +132,7 @@ std::string zone_checkpoint_runs(CancellableScope& scope){
     return state.pose.map == "HotelZLobby" ? "" : std::format("expected the run's pose in HotelZLobby, got \"{}\"", state.pose.map);
 }
 
-//  Gap 9: a declared tile pose is no zone.
+//  A declared tile pose is no zone.
 std::string zone_rejects_tiles(CancellableScope& scope){
     StoryGame<ZonePose> game = flaky_game<ZonePose>(0);
     FakeStoryBackend<ZonePose> backend({}, scope);
@@ -204,7 +199,7 @@ std::string zone_rejects_tile_args(CancellableScope&){
     return lint == expected ? "" : std::format("expected \"{}\", got \"{}\"", expected, lint);
 }
 
-//  Gap 10: no tile actions in a zone game, so a legs step fails the lint;
+//  No tile actions in a zone game, so a legs step fails the lint;
 //  a tile game keeps them.
 std::string tile_actions_only_with_tiles(CancellableScope&){
     StoryStep legs;
@@ -229,7 +224,7 @@ std::string tile_actions_only_with_tiles(CancellableScope&){
     return "";
 }
 
-//  Gap 2: the move stick at an angle, and the heading reading; a turn lets
+//  The move stick at an angle, and the heading reading; a turn lets
 //  go of the stick for its release.
 std::string stick_and_heading(CancellableScope& scope){
     Observation<ZonePose> facing_east;
@@ -257,167 +252,6 @@ std::string buttons_by_name(CancellableScope& scope){
         backend.press(button, 80ms, 120ms);
     }
     return expect_inputs(backend, "press L, press R, press +, press A, press B, press ZL");
-}
-
-//  Gap 3 and 4: a screen machine over observations, its states matching
-//  the choice and interact events, ends on its terminal state.
-std::vector<ScreenState> choice_states(std::vector<std::string>& acted){
-    const auto state = [&acted](std::string name, ScreenEvent event){
-        ScreenState result;
-        result.name = name;
-        result.matches_observation = [event](const ScreenObservation& observation){
-            return observation.events.has(event);
-        };
-        result.act = [&acted, name]{
-            acted.push_back(name);
-        };
-        result.max_visits = 3;
-        return result;
-    };
-    std::vector<ScreenState> states{
-        state("choice", ScreenEvent::CHOICE_BOX),
-        state("prompt", ScreenEvent::INTERACT_PROMPT),
-        state("text", ScreenEvent::DIALOG_BOX),
-    };
-    states[0].terminal = true;
-    return states;
-}
-
-//  The machine over `events`, one look each, the last repeating, a second
-//  apart.
-ScreenMachineResult run_on_events(
-    const std::vector<ScreenEvent>& events, CancellableScope& scope, Milliseconds timeout,
-    std::vector<std::string>& acted, std::vector<std::string>& lines
-){
-    const std::vector<ScreenState> states = choice_states(acted);
-    StepTrace trace("test", [&lines](const std::string& line){
-        lines.push_back(line);
-    });
-    size_t next = 0;
-    const WallClock start = current_time();
-    const std::function<ScreenObservation()> observe = [&]{
-        ScreenObservation observation;
-        observation.when = start + std::chrono::seconds(next);
-        observation.events.set(events[std::min(next, events.size() - 1)], true);
-        next++;
-        return observation;
-    };
-    return run_screen_machine_on_observations(observe, scope, states, timeout, trace);
-}
-
-std::string observation_machine_ends(CancellableScope& scope){
-    std::vector<std::string> acted;
-    std::vector<std::string> lines;
-    const ScreenMachineResult result = run_on_events(
-        {ScreenEvent::INTERACT_PROMPT, ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, scope, 60s, acted, lines
-    );
-    if (!result.succeeded() || result.terminal != "choice"){
-        return std::format("expected the run to end on choice, got \"{}\"", result.failure);
-    }
-    if (joined(acted) != "prompt, text, choice"){
-        return std::format("expected the states to act in order, got {}", joined(acted));
-    }
-    if (lines.size() != 3 || !lines[0].starts_with("[test] screen 1: prompt at ")){
-        return std::format("expected a trace line per screen, got {}", joined(lines));
-    }
-    return "";
-}
-
-std::string observation_machine_fails(CancellableScope& scope){
-    std::vector<std::string> acted;
-    std::vector<std::string> lines;
-    ScreenMachineResult result = run_on_events({ScreenEvent::BATTLE_STARTED}, scope, 60s, acted, lines);
-    if (result.failure != "The screen matches none of the known states."){
-        return std::format("expected no state to match, got \"{}\"", result.failure);
-    }
-    result = run_on_events({ScreenEvent::DIALOG_BOX}, scope, 60s, acted, lines);
-    if (!result.failure.starts_with("Screen \"text\" came up more than 3 times")){
-        return std::format("expected text to come up too often, got \"{}\"", result.failure);
-    }
-    result = run_on_events({ScreenEvent::DIALOG_BOX, ScreenEvent::INTERACT_PROMPT, ScreenEvent::DIALOG_BOX}, scope, 1s, acted, lines);
-    if (result.failure != "Did not finish within 1s."){
-        return std::format("expected the looks' time to run out, got \"{}\"", result.failure);
-    }
-    return "";
-}
-
-//  A look `seconds` after `start` on a uniform frame of `shade`, showing
-//  `event`.
-Observation<ZonePose> framed_look(WallClock start, int seconds, uint32_t shade, ScreenEvent event){
-    Observation<ZonePose> observation;
-    observation.when = start + std::chrono::seconds(seconds);
-    observation.events.set(event, true);
-    ImageRGB32 image(16, 16);
-    image.fill(shade);
-    observation.frame = VideoSnapshot(std::move(image), observation.when);
-    return observation;
-}
-
-//  A fade that waits (still up to 30 s), a box whose step presses A, and
-//  the overworld that ends the run, over `looks` on a fake backend.
-ScreenMachineResult run_still_states(const std::vector<Observation<ZonePose>>& looks, CancellableScope& scope){
-    FakeStoryBackend<ZonePose> backend({.looks = looks}, scope);
-    ScreenState fade;
-    fade.name = "fade";
-    fade.matches_observation = [](const ScreenObservation& observation){
-        return observation.events.has(ScreenEvent::FADE_BLACK);
-    };
-    fade.max_visits = SIZE_MAX;
-    fade.max_still = 30s;
-    ScreenState text;
-    text.name = "text";
-    text.matches_observation = [](const ScreenObservation& observation){
-        return observation.events.has(ScreenEvent::DIALOG_BOX);
-    };
-    text.act = [&backend]{
-        backend.press(NintendoSwitch::BUTTON_A, 80ms, 120ms);
-    };
-    text.max_visits = SIZE_MAX;
-    ScreenState done;
-    done.name = "done";
-    done.matches_observation = [](const ScreenObservation& observation){
-        return observation.events.has(ScreenEvent::PLAYER_CAN_MOVE);
-    };
-    done.max_visits = SIZE_MAX;
-    done.terminal = true;
-    const std::vector<ScreenState> states{fade, text, done};
-    StepTrace trace("test", [](const std::string&){});
-    const std::function<ScreenObservation()> observe = [&backend]() -> ScreenObservation{
-        return backend.observe();
-    };
-    return run_screen_machine_on_observations(observe, scope, states, 600s, trace);
-}
-
-//  A waiting state may stay still up to its own limit; a state that
-//  presses and changes nothing is a stall after 8 looks.
-std::string still_states(CancellableScope& scope){
-    const WallClock start = current_time();
-    std::vector<Observation<ZonePose>> waits;
-    for (int second = 0; second < 12; second++){
-        waits.push_back(framed_look(start, second, 0xff000000, ScreenEvent::FADE_BLACK));
-    }
-    waits.push_back(framed_look(start, 12, 0xff808080, ScreenEvent::PLAYER_CAN_MOVE));
-    ScreenMachineResult result = run_still_states(waits, scope);
-    if (result.terminal != "done"){
-        return std::format("expected a 12 s still fade to end on done, got \"{}\"", result.failure);
-    }
-    std::vector<Observation<ZonePose>> too_long;
-    for (int second = 0; second < 40; second++){
-        too_long.push_back(framed_look(start, second, 0xff000000, ScreenEvent::FADE_BLACK));
-    }
-    result = run_still_states(too_long, scope);
-    if (result.failure != "The screen stayed still on \"fade\" for more than 30s."){
-        return std::format("expected the fade to stay still too long, got \"{}\"", result.failure);
-    }
-    std::vector<Observation<ZonePose>> presses;
-    for (int second = 0; second < 12; second++){
-        presses.push_back(framed_look(start, second, 0xffffffff, ScreenEvent::DIALOG_BOX));
-    }
-    result = run_still_states(presses, scope);
-    if (result.failure != "The screen stopped changing: 8 steps on \"text\" did nothing."){
-        return std::format("expected the box to stall, got \"{}\"", result.failure);
-    }
-    return "";
 }
 
 //  A reader that logs "[Test] read <name>" when it runs and fills nothing.
@@ -479,7 +313,7 @@ std::string readers_opt_in(CancellableScope& scope){
     return read.empty() ? "" : std::format("expected no reader without postconditions, got \"{}\"", read);
 }
 
-//  Gap 5: an action sees its step.
+//  An action sees its step.
 std::string handler_sees_step(CancellableScope& scope){
     StoryGame<GridPose> game;
     std::shared_ptr<std::string> seen = std::make_shared<std::string>();
@@ -615,73 +449,40 @@ std::string off_never_pauses(CancellableScope& scope){
     return "";
 }
 
-//  A lab wait is called with the label and the run's scope; none installed,
-//  no hook.
-std::string pause_hook_from_the_installed_wait(CancellableScope& scope){
-    if (make_story_pause_hook(scope)){
-        return "expected no hook while no wait is installed";
-    }
-    std::vector<std::string> waited;
-    set_story_pause_wait([&](std::string_view label, CancellableScope& with){
-        waited.push_back(std::format("{} {}", label, &with == &scope));
-    });
-    const StoryPauseHook hook = make_story_pause_hook(scope);
-    if (hook){
-        hook("12.03/1 first");
-    }
-    set_story_pause_wait({});
-    return waited == std::vector<std::string>{"12.03/1 first true"} ? "" : std::format("expected the wait to get the label and the scope: {}", joined(waited));
-}
-
-
-struct RunsCase{
-    //  One check above, by name.
-    struct Input{
-        std::string (*check)(CancellableScope& scope);
-    };
-
-    //  The check's error: none.
-    struct Expectation{
-        std::string_view error = {};
-    };
-
+//  A named test; it returns its error, empty when it passed.
+struct RunsTest{
     std::string_view name;
-    Input input;
-    Expectation expectation;
+    std::string (*check)(CancellableScope& scope);
 };
 
-const RunsCase RUNS_CASES[] = {
-    {.name = "zone checkpoint on a fake backend", .input = {.check = &zone_checkpoint_runs}, .expectation = {}},
-    {.name = "zone start with tiles fails the lint", .input = {.check = &zone_rejects_tiles}, .expectation = {}},
-    {.name = "tile start with a place fails the lint", .input = {.check = &grid_rejects_places}, .expectation = {}},
-    {.name = "zone game rejects tile args", .input = {.check = &zone_rejects_tile_args}, .expectation = {}},
-    {.name = "tile actions only with tiles", .input = {.check = &tile_actions_only_with_tiles}, .expectation = {}},
-    {.name = "stick and heading", .input = {.check = &stick_and_heading}, .expectation = {}},
-    {.name = "buttons by name", .input = {.check = &buttons_by_name}, .expectation = {}},
-    {.name = "waiting states may stay still", .input = {.check = &still_states}, .expectation = {}},
-    {.name = "readers opt in to postconditions", .input = {.check = &readers_opt_in}, .expectation = {}},
-    {.name = "observation machine ends", .input = {.check = &observation_machine_ends}, .expectation = {}},
-    {.name = "observation machine fails", .input = {.check = &observation_machine_fails}, .expectation = {}},
-    {.name = "handler sees its step", .input = {.check = &handler_sees_step}, .expectation = {}},
-    {.name = "breakpoints pause before each step", .input = {.check = &pauses_before_each_step}, .expectation = {}},
-    {.name = "breakpoints pause before each leg", .input = {.check = &pauses_before_each_leg}, .expectation = {}},
-    {.name = "breakpoints leg label needs a known tile", .input = {.check = &leg_label_without_a_known_tile}, .expectation = {}},
-    {.name = "breakpoints off never pauses", .input = {.check = &off_never_pauses}, .expectation = {}},
-    {.name = "breakpoints hook uses the installed wait", .input = {.check = &pause_hook_from_the_installed_wait}, .expectation = {}},
+const RunsTest RUNS_TESTS[] = {
+    {.name = "zone checkpoint on a fake backend", .check = &zone_checkpoint_runs},
+    {.name = "zone start with tiles fails the lint", .check = &zone_rejects_tiles},
+    {.name = "tile start with a place fails the lint", .check = &grid_rejects_places},
+    {.name = "zone game rejects tile args", .check = &zone_rejects_tile_args},
+    {.name = "tile actions only with tiles", .check = &tile_actions_only_with_tiles},
+    {.name = "stick and heading", .check = &stick_and_heading},
+    {.name = "buttons by name", .check = &buttons_by_name},
+    {.name = "readers opt in to postconditions", .check = &readers_opt_in},
+    {.name = "handler sees its step", .check = &handler_sees_step},
+    {.name = "breakpoints pause before each step", .check = &pauses_before_each_step},
+    {.name = "breakpoints pause before each leg", .check = &pauses_before_each_leg},
+    {.name = "breakpoints leg label needs a known tile", .check = &leg_label_without_a_known_tile},
+    {.name = "breakpoints off never pauses", .check = &off_never_pauses},
 };
 
 class StoryEngineRunsTest : public UnitTest{
 public:
-    explicit StoryEngineRunsTest(RunsCase test)
+    explicit StoryEngineRunsTest(RunsTest test)
         : UnitTest(std::format("Pokemon::StoryEngine runs - {}", test.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
-        const std::string error = m_case.input.check(scope);
-        return error == m_case.expectation.error ? UnitTestResult(true) : UnitTestResult(error);
+        const std::string error = m_case.check(scope);
+        return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
     }
 private:
-    RunsCase m_case;
+    RunsTest m_case;
 };
 
 
@@ -689,7 +490,7 @@ private:
 
 
 void add_tests_StoryEngineRuns(UnitTestDatabase& database){
-    for (const RunsCase& test : RUNS_CASES){
+    for (const RunsTest& test : RUNS_TESTS){
         database.add<StoryEngineRunsTest>(test);
     }
 }

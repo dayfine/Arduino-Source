@@ -9,8 +9,6 @@
  *  the step runner, checks the postconditions with the game's readers, and
  *  saves only as the checkpoint's phase allows (Pokemon_StoryEnginePolicy.h).
  *
- *  See MIGRATION.md in this folder for moving a game onto it.
- *
  */
 
 #ifndef PokemonAutomation_Pokemon_StoryEngine_H

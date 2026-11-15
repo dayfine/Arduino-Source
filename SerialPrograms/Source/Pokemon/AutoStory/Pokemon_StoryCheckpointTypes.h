@@ -2,7 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Split out of Pokemon_StoryEvents.h, unchanged; it includes this header.
+ *  A checkpoint as the event runner sees it: its events, the interrupts
+ *  that can stop one part-way, its start and end checks, and the report of
+ *  a run of it.
  *
  */
 
@@ -49,7 +51,7 @@ struct Interrupt{
 void apply_interrupt_pose(InterruptPose effect, Pose& pose);
 
 
-// Story milestone containing pre/post conditions and a series of events.
+//  The stretch of story between two saves, as events.
 struct Checkpoint{
     std::string id;
     //  Must hold before the first event (the save it starts from).
@@ -60,6 +62,8 @@ struct Checkpoint{
     std::vector<Condition> end;
     //  Saves the game after the end check, if set.
     Act save;
+    //  More interrupts than this in one event (wild battles, trainers) is
+    //  a loop, not bad luck: the event fails as "too_many_interrupts".
     size_t max_interrupts_per_event = 5;
 };
 
@@ -76,7 +80,7 @@ struct CheckpointReport{
     size_t events_skipped = 0;
 };
 
-// Callback receiver for story event execution log messages.
+//  Where the runner writes its log lines.
 using EventLogger = MoveOnlyFunction<void(const std::string& line)>;
 
 

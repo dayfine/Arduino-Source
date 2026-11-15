@@ -5,9 +5,9 @@
  *  A watch for a screen that ends in frame time and reports whether its
  *  frames cover the window (Pokemon_FrameCoverage.h). run_until() and
  *  wait_until() end a watch in wall time and return -1 for "did not fire"
- *  whether the watcher inspected a frame every 33 ms or one a second: the
- *  PLZA 03.08 catch (2026-11-14) read a missed "Registered" banner as "no
- *  new species". These wrappers keep those routines and the watcher as
+ *  whether the watcher inspected a frame every 33 ms or one a second, so a
+ *  banner that showed between two inspected frames reads as "it did not
+ *  show". These wrappers keep those routines and the watcher as
  *  they are, record the capture times of the frames the watcher was
  *  handed, keep watching past the window's end until a frame captured a
  *  tail after it has been inspected (bounded by a wall-clock cap), and

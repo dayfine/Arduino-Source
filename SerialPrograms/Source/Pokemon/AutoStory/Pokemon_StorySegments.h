@@ -54,8 +54,7 @@ struct SegmentHooks{
     EventLogger log;
     //  Optional: each [Segment], [Checkpoint] and [Event] line again,
     //  without its tag ("00.03/2 below_oaks_trigger: start"), for the video
-    //  overlay, so whoever watches the stream sees the step under way; and,
-    //  once run records land (#132), for the run's events.
+    //  overlay, so whoever watches the stream sees the step under way.
     EventLogger status;
     //  Optional: the game's postcondition check of a checkpoint, by id
     //  (check_postconditions(), Pokemon_StoryPostconditionCheck.h), run
@@ -81,10 +80,9 @@ SegmentReport run_segment(
 
 
 //  Verify mode, for a checkpoint that must be shown to hold up (a battle
-//  lost twice or more gets its own checkpoint, saved right before it, and is
-//  verified this way): the checkpoint run `runs` times, each from the same
-//  save. The checkpoint never saves at its end, so each run after the first
-//  reloads the save the first started from.
+//  that does not always go the same way): the checkpoint run `runs` times,
+//  each from the same save. The checkpoint never saves at its end, so each
+//  run after the first reloads the save the first started from.
 struct VerifyPolicy{
     size_t runs = 3;
     //  Passing runs the checkpoint needs to be verified.

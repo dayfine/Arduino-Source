@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef PokemonAutomation_StoryStepJson_H
-#define PokemonAutomation_StoryStepJson_H
+#ifndef PokemonAutomation_Pokemon_StoryStepJson_H
+#define PokemonAutomation_Pokemon_StoryStepJson_H
 
 #include <span>
 #include <string_view>
