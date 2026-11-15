@@ -103,7 +103,15 @@ Pokemon::Outcome walk_to_zone_gate_entrance(
         }
         looks++;
         if (look.events.has(PokemonAutomation::ScreenEvent::INTERACT_PROMPT)){
-            backend.log(std::format("[PLZA] walk_to_zone_gate_entrance: the A prompt shows after {} ms ({})", walked.count(), gate_readings(seen, looks, last)));
+            //  The heading at the prompt: the street's way through the gate,
+            //  for a plan's `heading` (none read: -1).
+            if (heading){
+                heading(backend, look);
+            }
+            backend.log(std::format(
+                "[PLZA] walk_to_zone_gate_entrance: the A prompt shows after {} ms ({}), heading {}",
+                walked.count(), gate_readings(seen, looks, last), Pokemon::story_heading(look).value_or(-1)
+            ));
             return Pokemon::outcome_ok();
         }
         const std::optional<GateRead> read = gate_on(look);
