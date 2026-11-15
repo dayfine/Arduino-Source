@@ -11,7 +11,7 @@
       {
         "id": "battle_zone_to_brigitte",
         "kind": "game_action",
-        "why": "step 18: through the Battle Zone until Taunie's \"Almost there!\" and Brigitte's scene: wait 3 s, +10 deg 4.25 s, L then right 6 s, L then right 6.5 s.",
+        "why": "through the Battle Zone until Taunie's \"Almost there!\" and Brigitte's scene: wait 3 s, +10 deg 4.25 s, L then right 6 s, L then right 6.5 s.",
         "action": "walk",
         "args": {
           "legs": [[10, 4250], [90, 6000], [90, 6500]],
@@ -22,19 +22,19 @@
       {
         "id": "brigitte_battle_start",
         "kind": "game_action",
-        "why": "step 19: A through her talk to \"Brigitte sent out Cleffa!\"",
+        "why": "A through her talk to \"Brigitte sent out Cleffa!\"",
         "action": "story_battle_start"
       },
       {
         "id": "brigitte_battle",
         "kind": "game_action",
-        "why": "step 19: beat Brigitte's Cleffa (Lv 7), until her speech",
+        "why": "beat Brigitte's Cleffa (Lv 7), until her speech",
         "action": "story_battle"
       },
       {
         "id": "after_brigitte",
         "kind": "scene",
-        "why": "step 20: Brigitte's and Taunie's talk, until free control alone in the plaza",
+        "why": "Brigitte's and Taunie's talk, until free control alone in the plaza",
         "action": "a"
       }
     ],

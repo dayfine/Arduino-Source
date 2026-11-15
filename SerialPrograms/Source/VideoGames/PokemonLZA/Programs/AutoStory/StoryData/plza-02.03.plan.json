@@ -11,14 +11,14 @@
       {
         "id": "to_hotel_z_door",
         "kind": "game_action",
-        "why": "step 24: up the steps to the door's \"A Enter\" (3-4.5 s).",
+        "why": "up the steps to the door's \"A Enter\" (3-4.5 s).",
         "action": "walk",
         "args": {"legs": [[0, 4500]]}
       },
       {
         "id": "hotel_z_lobby",
         "kind": "game_action",
-        "why": "steps 24-25: A Enter at the door, the loading screen, the lobby scene with Taunie (a plain scene step would end at once on the door's prompt). The game autosaves in the lobby here: loading this stretch's save puts you inside, before the clerk",
+        "why": "A Enter at the door, the loading screen, the lobby scene with Taunie (a plain scene step would end at once on the door's prompt). The game autosaves in the lobby here: loading this stretch's save puts you inside, before the clerk",
         "action": "mash_to_move_hints",
         "args": {"press_a_first": true}
       }
