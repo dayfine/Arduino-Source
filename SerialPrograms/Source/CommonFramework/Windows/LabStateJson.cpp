@@ -171,15 +171,15 @@ std::string_view video_state_name(LabVideoState state){
     return "missing";
 }
 
-std::string_view source_name(LabTransitionSource source){
+std::string_view source_name(ActionSource source){
     switch (source){
-    case LabTransitionSource::UI:
+    case ActionSource::UI:
         return "ui";
-    case LabTransitionSource::LAB:
+    case ActionSource::LAB:
         return "lab";
-    case LabTransitionSource::PROGRAM:
+    case ActionSource::PROGRAM:
         return "program";
-    case LabTransitionSource::PROGRAM_ERROR:
+    case ActionSource::PROGRAM_ERROR:
         return "error";
     }
     return "ui";
@@ -190,13 +190,13 @@ std::optional<std::string> unless_empty(const std::string& text){
 }
 
 
-void write_transition(const std::optional<LabTransition>& transition, OrderedJsonWriter& json){
+void write_transition(const std::optional<ProgramTransition>& transition, OrderedJsonWriter& json){
     if (!transition){
         json.value("last_transition", "null");
         return;
     }
     json.open("last_transition");
-    json.value("action", json_string(transition->action == LabTransitionAction::START ? "start" : "stop"));
+    json.value("action", json_string(transition->action == ProgramAction::START ? "start" : "stop"));
     json.value("source", json_string(source_name(transition->source)));
     json.value("request_id", json_nullable(transition->request_id));
     json.value("at", json_timestamp(transition->at));
@@ -306,6 +306,33 @@ std::string lab_state_json_text(const LabAppState& state){
 
     json.close();
     return json.text();
+}
+
+
+std::optional<ProgramTransition> lab_transition_since(
+    std::optional<ProgramTransition> last, WallClock selected_at
+){
+    if (last && last->at < selected_at){
+        return std::nullopt;
+    }
+    return last;
+}
+
+
+std::optional<std::string> LabStateJsonThrottle::text_to_write(const LabAppState& state){
+    LabAppState logical = state;
+    logical.written_at = WallClock{};
+    logical.frame.reset();
+    std::string key = lab_state_json_text(logical);
+    if (m_logical && *m_logical == key && state.written_at - m_written_at < m_interval){
+        return std::nullopt;
+    }
+    m_logical = std::move(key);
+    m_written_at = state.written_at;
+    return lab_state_json_text(state);
+}
+void LabStateJsonThrottle::reset(){
+    m_logical.reset();
 }
 
 

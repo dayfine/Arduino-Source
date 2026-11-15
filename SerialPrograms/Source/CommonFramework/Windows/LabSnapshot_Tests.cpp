@@ -300,6 +300,64 @@ const ReplyCase REPLY_CASES[] = {
 };
 
 
+//  is_lab_snapshot_request()
+struct RequestInput{
+    std::string text;   //  The request file.
+};
+struct RequestExpectation{
+    bool snapshot_only;
+};
+struct RequestCase{
+    std::string name;
+    RequestInput input;
+    RequestExpectation expectation;
+};
+class Test_LabSnapshotRequest : public UnitTest{
+public:
+    explicit Test_LabSnapshotRequest(RequestCase test_case)
+        : UnitTest(std::format("CommonFramework::LabSnapshot - request - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const bool snapshot_only = is_lab_snapshot_request(parse_lab_request(m_case.input.text));
+        if (snapshot_only != m_case.expectation.snapshot_only){
+            return std::format("expected snapshot_only={}", m_case.expectation.snapshot_only);
+        }
+        return true;
+    }
+
+private:
+    RequestCase m_case;
+};
+const RequestCase REQUEST_CASES[] = {
+    {
+        .name = "the lab server's shot",
+        .input = {.text = "request 5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10\nsnapshot frame 5000\n"},
+        .expectation = {.snapshot_only = true},
+    },
+    {
+        .name = "two snapshots with an owner line",
+        .input = {.text = "owner lab-B\nsnapshot a\n# a comment\nsnapshot b 200\n"},
+        .expectation = {.snapshot_only = true},
+    },
+    {
+        .name = "snapshot then a press",
+        .input = {.text = "snapshot a\npress A\n"},
+        .expectation = {.snapshot_only = false},
+    },
+    {
+        .name = "start",
+        .input = {.text = "request 5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10\nstart\n"},
+        .expectation = {.snapshot_only = false},
+    },
+    {
+        .name = "no commands",
+        .input = {.text = "request 5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10\n"},
+        .expectation = {.snapshot_only = false},
+    },
+};
+
+
 }  // namespace
 
 
@@ -313,6 +371,9 @@ void add_tests_LabSnapshot(UnitTestDatabase& database){
     }
     for (const ReplyCase& c : REPLY_CASES){
         database.add<Test_LabSnapshotReply>(c);
+    }
+    for (const RequestCase& c : REQUEST_CASES){
+        database.add<Test_LabSnapshotRequest>(c);
     }
 }
 

@@ -8,6 +8,9 @@
  *  the fork's agents branch): keys in contract order, 2-space indent, "\n"
  *  at the end, UTC timestamps with milliseconds.
  *
+ *  A logical change is written at once; the heartbeat and the frame counter
+ *  alone at most once a second (LabStateJsonThrottle).
+ *
  */
 
 #ifndef PokemonAutomation_LabStateJson_H
@@ -17,8 +20,8 @@
 #include <optional>
 #include <string>
 #include "Common/Cpp/Time.h"
+#include "CommonFramework/ProgramTransition.h"
 #include "LabRequest.h"
-#include "LabTransition.h"
 
 namespace PokemonAutomation{
 
@@ -62,7 +65,7 @@ struct LabAppState{
     uint64_t pid = 0;
     std::optional<std::string> profile;
 
-    std::optional<LabTransition> last_transition;
+    std::optional<ProgramTransition> last_transition;
     std::optional<std::string> paused;
 
     LabVideoState video = LabVideoState::MISSING;
@@ -74,6 +77,42 @@ struct LabAppState{
 
 //  The text of "Lab/state.json".
 std::string lab_state_json_text(const LabAppState& state);
+
+
+//  The selected program's last transition (ProgramSession::last_transition()),
+//  unless it is older than the selection at `selected_at`: a start or stop
+//  from before the panel was selected again is not news to the lab server.
+std::optional<ProgramTransition> lab_transition_since(
+    std::optional<ProgramTransition> last, WallClock selected_at
+);
+
+
+//  When to rewrite "Lab/state.json". A logical change (anything but
+//  "written_at", "frame_seq" and "captured_at") is written at once, so a
+//  restart (a new instance id), a finished request or a start or stop is
+//  never held back. A state that differs only in those fields is written at
+//  most once per `interval`: a burst of polls and frames is one write. Each
+//  call decides on the newest state, so the last state of a burst is the one
+//  written once the interval has passed. Used by the channel's worker only.
+class LabStateJsonThrottle{
+public:
+    static constexpr Milliseconds DEFAULT_INTERVAL = Milliseconds(1000);
+
+    explicit LabStateJsonThrottle(Milliseconds interval = DEFAULT_INTERVAL)
+        : m_interval(interval)
+    {}
+
+    //  The text to write for `state` now, or nullopt to skip this write.
+    std::optional<std::string> text_to_write(const LabAppState& state);
+
+    //  The file is gone: the next call writes.
+    void reset();
+
+private:
+    Milliseconds m_interval;
+    std::optional<std::string> m_logical;  //  Of the last state written.
+    WallClock m_written_at;
+};
 
 
 

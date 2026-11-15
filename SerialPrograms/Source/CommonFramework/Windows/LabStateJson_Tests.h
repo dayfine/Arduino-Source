@@ -12,7 +12,7 @@
 namespace PokemonAutomation{
 
 
-//  Adds the tests of Lab/state.json and LabTransitionTracker.
+//  Adds the tests of Lab/state.json: its text, transition and throttle.
 void add_tests_LabStateJson(UnitTestDatabase& database);
 
 

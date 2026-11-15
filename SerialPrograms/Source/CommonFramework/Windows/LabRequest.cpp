@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <cerrno>
 #include <cstdlib>
 #include <format>
@@ -77,17 +78,25 @@ std::optional<Seconds> parse_seconds(const std::string& word){
     return Seconds(seconds);
 }
 
-std::optional<Filesystem::Path> next_request_file(const std::string& inbox){
-    std::optional<Filesystem::Path> next;
+std::vector<Filesystem::Path> request_files(const std::string& inbox){
+    std::vector<Filesystem::Path> files;
     for (const Filesystem::Path& path : Filesystem::list_directory(Filesystem::Path(inbox))){
-        if (!Filesystem::is_regular_file(path) || path.extension().string() != ".txt"){
-            continue;
-        }
-        if (!next || path.string() < next->string()){
-            next = path;
+        if (Filesystem::is_regular_file(path) && path.extension().string() == ".txt"){
+            files.push_back(path);
         }
     }
-    return next;
+    std::sort(files.begin(), files.end(), [](const Filesystem::Path& a, const Filesystem::Path& b){
+        return a.string() < b.string();
+    });
+    return files;
+}
+
+std::optional<Filesystem::Path> next_request_file(const std::string& inbox){
+    std::vector<Filesystem::Path> files = request_files(inbox);
+    if (files.empty()){
+        return std::nullopt;
+    }
+    return std::move(files.front());
 }
 
 

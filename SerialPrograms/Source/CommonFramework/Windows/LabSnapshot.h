@@ -21,6 +21,7 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/Time.h"
+#include "LabRequest.h"
 #include "LabStateJson.h"
 
 namespace PokemonAutomation{
@@ -39,6 +40,13 @@ struct LabSnapshotArgs{
 //  The words of a "snapshot LABEL [TIMEOUT_MS]" line, or the error for the
 //  journal. A label is 1 to 64 of [A-Za-z0-9_-], so it stays a file name.
 std::expected<LabSnapshotArgs, std::string> parse_lab_snapshot(const std::vector<std::string>& words);
+
+
+//  Whether `request` has commands and all of them are "snapshot" lines. The
+//  channel serves such a request beside its inbox worker, so a snapshot never
+//  waits behind a long request (a controller wait, a batch of presses); any
+//  other request runs in order on the worker, its "snapshot" lines included.
+bool is_lab_snapshot_request(const LabRequest& request);
 
 
 //  Why a snapshot has no frame to save, besides a timeout.

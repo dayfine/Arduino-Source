@@ -37,6 +37,9 @@ std::string line_after_words(const std::string& line, size_t count);
 //  A whole number of seconds, at least 1, as written on a command line.
 std::optional<Seconds> parse_seconds(const std::string& word);
 
+//  The ".txt" files in `inbox`, sorted by name: the order requests run in.
+std::vector<Filesystem::Path> request_files(const std::string& inbox);
+
 //  The ".txt" file in `inbox` whose name sorts first, if any.
 std::optional<Filesystem::Path> next_request_file(const std::string& inbox);
 

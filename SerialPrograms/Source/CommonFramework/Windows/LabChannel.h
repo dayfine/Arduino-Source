@@ -11,9 +11,11 @@
  *  A request is a file "Lab/inbox/<name>.txt", one command per line, run in
  *  order from a worker thread and then moved to "Lab/done/". Its journal
  *  "Lab/outbox/<name>.out" has one line per command and ends with "end".
+ *  A request of "snapshot" lines only runs on a second worker beside the
+ *  first, so a shot never waits behind a long request.
  *  "Lab/state" is rewritten after every request and whenever the program
- *  state changes; "Lab/state.json" (LabStateJson.h) at every poll, for the
- *  lab server.
+ *  state changes; "Lab/state.json" (LabStateJson.h) at once on a logical
+ *  change and otherwise about once a second, for the lab server.
  *
  *  The channel owns the worker and the files. Anything that touches the
  *  window (select, start, stop, set) runs on the UI thread through the
@@ -137,7 +139,14 @@ private:
 
     void run();
     void poll();
-    void handle_request(const Filesystem::Path& file);
+    //  The second worker: serves the requests is_lab_snapshot_request() picks.
+    void run_snapshots();
+    void poll_snapshots();
+    //  Moves the request in `file` to done/ and runs it, if it is a snapshot
+    //  request exactly when `snapshots` is true. Returns whether it ran: not
+    //  when it is the other worker's, or already gone.
+    bool take_request(const Filesystem::Path& file, bool snapshots);
+    void run_request(const std::string& name, const LabRequest& request, bool snapshots);
     std::string run_line(const LabRequest& request, const LabRequestLine& line, LabCommandOutput& output);
     std::string run_console_command(const std::vector<std::string>& words, LabCommandOutput& output);
     std::string run_on_console(const std::function<void(PanelSession& panel, CancellableScope& scope)>& body);
@@ -151,20 +160,6 @@ private:
     void write_state();
     void write_state_json(WallClock now);
 
-    //  Follows the program's starts and stops for LabTransitionTracker.
-    class ProgramListener : public ProgramSession::Listener{
-    public:
-        explicit ProgramListener(LabTransitionTracker& tracker) : m_tracker(tracker) {}
-        virtual void state_change(ProgramState state) override;
-        virtual void stats_update(const StatsTracker*, const StatsTracker*) override{}
-        virtual void error(const std::string& message) override;
-        virtual void download_error(const std::string&) override{}
-        virtual void download_added(std::shared_ptr<ResourceDownload>) override{}
-        virtual void all_downloads_done() override{}
-    private:
-        LabTransitionTracker& m_tracker;
-    };
-
     //  Counts the frames of the selected console's video, over every panel
     //  since the app started, for state.json and "snapshot".
     class FrameListener : public VideoFrameListener{
@@ -175,7 +170,7 @@ private:
         LabFrames m_frames;
     };
 
-    //  Moves the listeners from the old panel to `panel`. Call under m_panel_lock.
+    //  Moves the frame listener from the old panel's video to `panel`'s. Call under m_panel_lock.
     void attach_listeners(PanelSession* panel);
 
     //  The state of the selected program. Call under m_panel_lock.
@@ -188,33 +183,40 @@ private:
     LabChannelCallbacks m_callbacks;
     std::unique_ptr<LabConsoleCommands> m_console;
 
-    //  The selected panel, read on the worker under this lock. The UI thread
+    //  The selected panel, read on the workers under this lock. The UI thread
     //  changes it with set_panel(), which first cancels m_active_scope.
     Mutex m_panel_lock;
     PanelSession* m_panel = nullptr;
     ProgramSession* m_program = nullptr;    //  m_panel, if a program.
     VideoFeed* m_video = nullptr;           //  m_panel's video, if any.
+    WallClock m_selected_at;                //  When m_panel was selected.
     Mutex m_scope_lock;
     CancellableScope* m_active_scope = nullptr;
     bool m_panel_changing = false;
 
     //  For Lab/state.json.
     const std::string m_instance_id;
-    LabTransitionTracker m_transitions;
-    ProgramListener m_program_listener{m_transitions};
     FrameListener m_frame_listener;
+
+    //  The last request either worker finished: Lab/state's "seq" and "error".
+    Mutex m_last_request_lock;
+    std::string m_last_request;
+    std::string m_last_error;
 
     //  Owned by the worker thread.
     LabOwner m_owner;
     KeepAwakeSchedule m_keep_awake;
     LabState m_state;
     std::string m_written_state;
+    LabStateJsonThrottle m_state_json;
     bool m_folder_ready = false;
 
     Mutex m_idle_lock;
     ConditionVariable m_idle_cv;
     std::atomic<bool> m_stopping{false};
-    AsyncTask m_worker;     //  Waited for in the destructor, before the members above go.
+    //  Waited for in the destructor, before the members above go.
+    AsyncTask m_worker;
+    AsyncTask m_snapshot_worker;
 };
 
 

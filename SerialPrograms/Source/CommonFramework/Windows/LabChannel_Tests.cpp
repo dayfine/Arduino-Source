@@ -12,6 +12,7 @@
 #include <format>
 #include <optional>
 #include <string>
+#include <vector>
 #include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "LabRequest.h"
@@ -64,7 +65,7 @@ UnitTestResult test_line_after_words(){
     return true;
 }
 
-UnitTestResult test_next_file(){
+UnitTestResult test_request_files(){
     const Filesystem::Path inbox = Filesystem::unique_temp_path(
         Filesystem::application_scratch_path() / "LabChannelTest"
     );
@@ -73,16 +74,23 @@ UnitTestResult test_next_file(){
         FileIO file(inbox / name, FileMode::WRITE);
     };
     std::string error;
-    if (next_request_file(inbox.string())){
-        error = "An empty inbox has no next file.";
+    if (!request_files(inbox.string()).empty()){
+        error = "An empty inbox has no request files.";
     }
     touch("b.txt");
     touch("a.out");
     touch("c.txt");
     Filesystem::create_directories(inbox / "a.txt");
+    std::vector<std::string> names;
+    for (const Filesystem::Path& path : request_files(inbox.string())){
+        names.push_back(path.filename().string());
+    }
+    if (error.empty() && names != std::vector<std::string>{"b.txt", "c.txt"}){
+        error = "Expected b.txt, c.txt: the .txt files by name, skipping other files and folders.";
+    }
     const std::optional<Filesystem::Path> next = next_request_file(inbox.string());
     if (error.empty() && (!next || next->filename().string() != "b.txt")){
-        error = "Expected b.txt: the first .txt file by name, skipping other files and folders.";
+        error = "Expected b.txt next: the first .txt file by name.";
     }
     Filesystem::remove_all(inbox);
     if (!error.empty()){
@@ -374,7 +382,7 @@ private:
 void add_tests_LabChannel(UnitTestDatabase& database){
     database.add<Test_LabChannel>("split a line", test_split_line);
     database.add<Test_LabChannel>("line after words", test_line_after_words);
-    database.add<Test_LabChannel>("next inbox file", test_next_file);
+    database.add<Test_LabChannel>("inbox files", test_request_files);
     database.add<Test_LabChannel>("parse a request", test_parse_request);
     database.add<Test_LabChannel>("request id", test_parse_request_id);
     database.add<Test_LabChannel>("uuid", test_uuid);

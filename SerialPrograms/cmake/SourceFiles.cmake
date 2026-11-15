@@ -686,6 +686,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/PersistentSettings.h
     Source/CommonFramework/ProgramSession.cpp
     Source/CommonFramework/ProgramSession.h
+    Source/CommonFramework/ProgramTransition.cpp
+    Source/CommonFramework/ProgramTransition.h
+    Source/CommonFramework/ProgramTransition_Tests.cpp
+    Source/CommonFramework/ProgramTransition_Tests.h
     Source/CommonFramework/ProgramStats/StatsDatabase.cpp
     Source/CommonFramework/ProgramStats/StatsDatabase.h
     Source/CommonFramework/ProgramStats/StatsTracking.cpp
