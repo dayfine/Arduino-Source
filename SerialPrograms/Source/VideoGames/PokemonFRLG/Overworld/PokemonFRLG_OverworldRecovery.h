@@ -122,6 +122,12 @@ struct RouteCalls{
     //  if not. The console reads only whether they surf. Not set: not
     //  checked.
     std::function<bool(const MapPosition& tile)> landed_on;
+    //  Whether the player rides the Bicycle after `step`, the route's last
+    //  leg. A way back to its end after a re-anchor then ends with no turn
+    //  to its facing: there a tap steps a tile
+    //  (MovementMechanics::BIKE_TAP_ONLY_TURNS), and the next leg's hold
+    //  turns the player anyway. Not set: on foot.
+    std::function<bool(const RouteStep& step)> riding;
 };
 
 
