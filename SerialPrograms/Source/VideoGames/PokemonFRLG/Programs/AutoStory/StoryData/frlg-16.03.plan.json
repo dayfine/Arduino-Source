@@ -15,7 +15,8 @@
             "facing": "east"
         },
         "start_flags": [
-            "card_key_held"
+            "card_key_held",
+            "trainer_beaten:SilphCo_5F/rocket_m@9,21"
         ],
         "events": [
             {

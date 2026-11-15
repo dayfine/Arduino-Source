@@ -44,8 +44,9 @@
  *
  *  The sim plays walks, steps, cuts and trainers' battles; after a step it
  *  does not play, the player is put on the table's pose. Each row runs
- *  clean first; a row that fails clean, or has no start, is not swept. A
- *  variant fails when the row then fails or ends elsewhere. A sweep the
+ *  clean first, from its start_gates and start_flags: a row that fails
+ *  clean fails its "clean run" test and is not swept; a row with no start
+ *  is not swept. A variant fails when the row then fails or ends elsewhere. A sweep the
  *  program fails today is on KNOWN_FAILING with its likely fix: its test
  *  passes while it still fails, and fails once it passes.
  *
@@ -68,12 +69,14 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimField.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryFieldMoves.h"
 #include "PokemonFRLG_AutoStoryHideoutLift.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryFaultSweep_Tests.h"
@@ -96,20 +99,18 @@ const std::map<std::string, std::string> KNOWN_FAILING{
         "below_oak on Route 1 gives up after 9 stops part-way (seeds 16, 30): count stops that make no progress, not every battle"},
     {"PokemonFRLG::AutoStory - Fault sweep: 10.06, scene end pose",
         "below_fuji_house plans from (4, 7), where Mr. Fuji's script warps the player (warp 4, 7, exact); from a tile off, no wall in his house funnels the walk onto (3, 4): legs that re-anchor, if the console shows the warp can land elsewhere"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 11.01, warp no-op",
-        "fly_celadon: a Fly that doesn't leave Lavender Town goes unseen, and east_of_snorlax walks from Lavender to Route 16 by Routes 8 and 7 instead: check the fly lands on its town's tile (FlyTown::landing) before the step ends"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 12.03, warp no-op",
-        "fly_pallet: a Fly that doesn't leave Fuchsia City goes unseen, and the row, which walks on from Fuchsia's streets to Pallet's shore, ends on Cinnabar's nurse tile: the same fix as 11.01's, the fly landing on its town's tile (FlyTown::landing) checked before the step ends"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 14.03, warp no-op",
-        "fly_celadon: a Fly that doesn't leave Cinnabar Island goes unseen, and the row, which walks on from Celadon's heal spot, ends below Erika: the same fix as 11.01's, the fly landing on its town's tile (FlyTown::landing) checked before the step ends"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 17.02, warp no-op",
-        "fly_viridian: a Fly that doesn't leave Saffron City goes unseen, and the row, which walks on from Saffron's streets, ends on Viridian's Gym tile: the same fix as 11.01's, the fly landing on its town's tile (FlyTown::landing) checked before the step ends"},
     {"PokemonFRLG::AutoStory - Fault sweep: 18.01, late fade",
         "pad_to_top_right: a pad hop stays on SaffronCity_Gym, so a fade seen late (or a slow fade-in) leaves no scene change to confirm the warp and the step finds no fade: a scene check for a warp within one map (the player's tile moved from the pad), as the walker's scene_confirms_missed_fade does for a leg"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 10.05, unseen step",
-        "tower_6f_below_jennifer_line and above_tower_rare_candy (taps) on Pokemon Tower 6F, swept since the rows' sim taps a taps leg as the console does: a step tap of a tapped leg that moved but read as not moved is tapped again a tile on, and the walk bumps its wall ('interrupted right away, again') or stops part-way 9 times: after a tap read as unmoved, find the player at walls before tapping on, as after a hold that moved nothing"},
     {"PokemonFRLG::AutoStory - Fault sweep: 09.01, unseen step",
         "Rocket Hideout's arrow maze: an unseen tap leaves the player on the leg's start or its end, and from what the screen shows the two look alike: a test tap toward a tile blocked from one but not the other tells them apart"},
+    {"PokemonFRLG::AutoStory - Fault sweep: 04.05, clean run",
+        "route4_east plans no legs from Mt. Moon B2F (14, 8), past the helix gap: the planner's way out of B2F over story_maps(), not yet looked at"},
+    {"PokemonFRLG::AutoStory - Fault sweep: 06.02, clean run",
+        "below_gym_tree walks onto the gym's door warp and sees no fade (VermilionCity_Gym (4, 12)): the door's warp on the sim after trash_cans, which the sim stubs, not yet looked at"},
+    {"PokemonFRLG::AutoStory - Fault sweep: 09.02, clean run",
+        "b2f_arrows_to_lift_room moves nothing twice from RocketHideout_B2F (1, 4) after moon_stone, a talk the sim stubs: the arrow tiles' spin from that tile on the sim, not yet looked at"},
+    {"PokemonFRLG::AutoStory - Fault sweep: 17.03, clean run",
+        "Takashi (10, 2) walks up to (10, 4) when he sees the player on (10, 5) and stays there after the battle, so below_giovanni's way north up column 10 is blocked (moved nothing twice); on the console too: the route after a line battle planned with the trainer who walked up as a wall (with_trainers()), or a way to Takashi from row 3"},
     {"PokemonFRLG::AutoStory - Fault sweep: 08.03, mount lost",
         "riding with no fault, route7_underground_exit's warp to UndergroundPath_EastEntrance is not confirmed on the sim (the screen after the fade reads as before the hold): the sim's warp off the Bicycle, before this class can sweep 08.03"},
 };
@@ -157,6 +158,47 @@ const std::vector<MapData>& sweep_maps(){
     return maps;
 }
 
+//  The gyms whose leader the story beats before row `row`: every trainer
+//  there is beaten with the leader (the leader's script's set_gym_trainers),
+//  so none of them sees the player on a later row's walk (17.04b past
+//  Takashi, 14.04b past Erika's trainers).
+std::set<std::string> gyms_cleared_before(const StoryCheckpoint& row){
+    std::set<std::string> gyms;
+    for (const StoryCheckpoint& earlier : story_checkpoints()){
+        if (earlier.id == row.id){
+            break;
+        }
+        for (const StoryStep& step : earlier.steps){
+            if (step.kind == StoryStepKind::BATTLE && step.pose_after && Pokemon::story_arg<std::string>(step.args, "trainer").starts_with("TRAINER_LEADER_")){
+                gyms.insert(Pokemon::grid_pose_of(*step.pose_after).map);
+            }
+        }
+    }
+    return gyms;
+}
+
+//  The run flags row `row` starts with: its start_flags.
+std::set<std::string> start_flag_set(const StoryCheckpoint& row){
+    return std::set<std::string>(row.start_flags.begin(), row.start_flags.end());
+}
+
+//  sweep_maps() as row `row` starts: the gyms cleared before it with no
+//  trainer left to see the player, nor the trainers its start_flags have
+//  beaten (16.03: the Rocket by 5F's corridor, whom 16.02's walk fights).
+std::vector<MapData> row_maps(const StoryCheckpoint& row){
+    std::vector<MapData> maps = with_trainers_beaten(sweep_maps(), beaten_trainers(start_flag_set(row)));
+    const std::set<std::string> cleared = gyms_cleared_before(row);
+    for (MapData& map : maps){
+        if (!cleared.contains(map.name)){
+            continue;
+        }
+        for (MapObject& object : map.objects){
+            object.trainer.reset();
+        }
+    }
+    return maps;
+}
+
 //  `script` with the lifts' floors, for sweep_maps()' lift rooms.
 SimScript with_lifts(SimScript script){
     script.lift_floors[std::string(LIFT_MAP)] = rocket_hideout_lift_exits();
@@ -192,6 +234,7 @@ struct RowRun{
     //  Where the player stood before each step, by index.
     std::map<size_t, MapPosition> before;
     std::map<size_t, Direction> facing_before;
+    std::map<size_t, Pokemon::GateState> gates_before;
     //  The maps each step warped from, by index.
     std::map<size_t, std::vector<std::string>> warped_from;
     //  The step `failure` is from; none for a violation or a row's end.
@@ -256,8 +299,9 @@ bool run_row_step(
 ){
     out.before.emplace(c, sim.state().position);
     out.facing_before.emplace(c, sim.state().facing);
+    out.gates_before.emplace(c, sim.state().gates);
     const size_t warps_before = sim.state().warped_from.size();
-    out.failure = row_step_on_sim(sim, at, row.steps[c], row.id);
+    out.failure = row_step_on_sim(sim, at, row.steps[c], row.id, start_flag_set(row));
     const std::vector<std::string>& warped = sim.state().warped_from;
     out.warped_from[c].assign(warped.begin() + warps_before, warped.end());
     const bool let_pass = unscripted(out.failure) && (!scripted || scripted->contains(c));
@@ -279,9 +323,21 @@ void play_ride_bike(OverworldSim& sim, const SimScript& script, const StoryStep&
     }
 }
 
-//  `script` for a new sim after `state`'s, riding if that one was.
-SimScript still_riding(SimScript script, const SimState& state){
-    script.on_bike = state.on_bike;
+//  `script` with what row `row` starts with: its start_gates open and,
+//  from its start_flags, the Card Key held (16.03 to 16.06's doors, 14.04b's
+//  cut tree, 19.04d's switch).
+SimScript with_row_start(SimScript script, const StoryCheckpoint& row){
+    script.gates = row.start_gates.value_or(Pokemon::GateState());
+    script.card_key_held = std::find(row.start_flags.begin(), row.start_flags.end(), "card_key_held") != row.start_flags.end();
+    return script;
+}
+
+//  `script` for a new sim after `sim`, riding if that one was, with its
+//  gates and the Card Key if it had them.
+SimScript carried_over(SimScript script, const OverworldSim& sim){
+    script.on_bike = sim.state().on_bike;
+    script.gates = sim.state().gates;
+    script.card_key_held = sim.card_key_held();
     return script;
 }
 
@@ -295,11 +351,11 @@ RowRun run_row(
     const StoryCheckpoint& row, const SimScript& row_script, const Landings& landings = {},
     const std::optional<std::set<size_t>>& scripted = std::nullopt
 ){
-    const SimScript script = with_lifts(row_script);
+    const SimScript script = with_lifts(with_row_start(row_script, row));
     RowRun out;
     std::optional<MapPosition> off_maps;
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
-    std::vector<MapData> maps = sweep_maps();
+    std::vector<MapData> maps = row_maps(row);
     auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, at.facing.value_or(Direction::SOUTH), script);
     const auto add = [&out](const SimState& state){
         out.time += state.time;
@@ -328,7 +384,7 @@ RowRun run_row(
         }
         if (!(sim->state().position == land) || hidden){
             add(sim->state());
-            sim = std::make_unique<OverworldSim>(maps, land, at.facing.value_or(sim->state().facing), still_riding(script, sim->state()));
+            sim = std::make_unique<OverworldSim>(maps, land, at.facing.value_or(sim->state().facing), carried_over(script, *sim));
         }
     }
     if (out.failure.empty() && !sim->state().violations.empty()){
@@ -538,10 +594,11 @@ std::string line_with_battle(const StoryCheckpoint& row, const RowRun& clean, si
     const MapPosition from = clean.before.at(c);
     const auto next = clean.before.find(c + 1);
     const MapPosition last = next == clean.before.end() ? clean.end : next->second;
-    SimScript script;
+    SimScript script = with_row_start(SimScript{}, row);
+    script.gates = clean.gates_before.at(c);
     script.wild_floor_maps = {from.map};
     script.encounters = {SimEncounter{.grass_step = battle_step}};
-    OverworldSim sim(sweep_maps(), from, clean.facing_before.at(c), script);
+    OverworldSim sim(row_maps(row), from, clean.facing_before.at(c), script);
     StoryPose at{from.map, from.point, clean.facing_before.at(c)};
     const std::string failure = row_step_on_sim(sim, at, row.steps[c], row.id);
     if (!failure.empty()){
@@ -659,9 +716,9 @@ UnitTestResult sweep_mount_lost(Logger& logger, const StoryCheckpoint& row){
 }
 
 //  A fault class swept over row `row` (empty in FAULT_SWEEP_CASES: each
-//  row with a start).
+//  row with a start); no fault: the row's clean run alone.
 struct FaultSweepInput{
-    FaultClass fault = FaultClass::SCENE_END_POSE;
+    std::optional<FaultClass> fault = std::nullopt;
     std::string row = {};
 };
 //  Whether a sweep is expected to fail is KNOWN_FAILING's, by name.
@@ -713,11 +770,18 @@ public:
 private:
     UnitTestResult sweep(Logger& logger) const{
         const RowRun clean = run_row(m_row, SimScript{});
+        if (!m_fault){
+            if (!clean.failure.empty()){
+                return std::format("the row fails clean: {}", clean.failure);
+            }
+            return true;
+        }
         if (!clean.failure.empty()){
+            //  Its "clean run" test fails.
             logger.log(std::format("Fault sweep {}: not swept, the row fails clean: {}", m_row.id, clean.failure));
             return true;
         }
-        switch (m_fault){
+        switch (*m_fault){
         case FaultClass::SCENE_END_POSE:
             return sweep_scene_end_pose(logger, m_row, clean);
         case FaultClass::WILD_BATTLES:
@@ -744,7 +808,7 @@ private:
         return true;
     }
 
-    FaultClass m_fault;
+    std::optional<FaultClass> m_fault;
     const StoryCheckpoint& m_row;
 };
 
@@ -755,6 +819,7 @@ private:
 //  SCENE_EARLY and BATTLE_OPENING, which need knobs the sims don't have yet
 //  (see the top of this file).
 const FaultSweepCase FAULT_SWEEP_CASES[] = {
+    {.name = "clean run", .input = {.fault = std::nullopt}, .expectation = {}},
     {.name = std::string(fault_class_name(FaultClass::SCENE_END_POSE)), .input = {.fault = FaultClass::SCENE_END_POSE}, .expectation = {}},
     {.name = std::string(fault_class_name(FaultClass::WILD_BATTLES)), .input = {.fault = FaultClass::WILD_BATTLES}, .expectation = {}},
     {.name = std::string(fault_class_name(FaultClass::LATE_FADE)), .input = {.fault = FaultClass::LATE_FADE}, .expectation = {}},

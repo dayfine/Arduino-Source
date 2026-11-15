@@ -20,9 +20,9 @@
         "kind": "legs",
         "action": "taps",
         "args": {
-          "legs": [{"direction": "north", "tiles": 2}, {"direction": "west", "tiles": 2}, {"direction": "north", "tiles": 1}]
+          "legs": [{"direction": "north", "tiles": 2}, {"direction": "west", "tiles": 2}]
         },
-        "why": "a tap a tile: up to the wall (18, 7), on (18, 8), west to (16, 8) and up to (16, 7), below Jennifer's line (15..17, 6)"
+        "why": "a tap a tile: up to the wall (18, 7), on (18, 8), and west to (16, 8), two tiles below Jennifer's line (15..17, 6). No tap up to (16, 7): a tap there that stepped unseen leaves the player on (16, 7) or (16, 8), and the hold that finds them again goes up column 16 to its wall through her line, so she is fought before jennifer_line (the unseen step sweep, step tap 8)"
       },
       {
         "id": "jennifer_line",
@@ -31,7 +31,7 @@
         "args": {
           "direction": "north"
         },
-        "why": "onto (16, 6) in Jennifer's line: she faces west from (18, 6) and walks to (17, 6)"
+        "why": "up from (16, 8) onto (16, 6) in Jennifer's line, two taps: she faces west from (18, 6) and walks to (17, 6)"
       },
       {
         "id": "channeler_jennifer",

@@ -297,6 +297,21 @@ UnitTestResult test_sim_cuts_tree_gate(){
     return true;
 }
 
+//  A sim started with a cut tree's gate open (a row's start_gates: a save
+//  keeps the tree cut) has the tree cut too: the player walks over its
+//  tile, and a warp grows it back, as one the sim cut. The sweep's 14.04b
+//  clean run bumped Celadon Gym's inner tree (3, 5), its gate open.
+UnitTestResult test_sim_starts_with_tree_cut(){
+    SimScript script;
+    script.gates.opened.insert("TreeHall/cut_tree_4_1");
+    OverworldSim sim(tree_maps(), MapPosition{"TreeHall", {3, 1}}, Direction::EAST, script);
+    sim_step_once(sim, Direction::EAST);
+    if (!(sim.state().position == MapPosition{"TreeHall", {4, 1}})){
+        return "The player did not step onto the cut tree's tile, ended on " + to_string(sim.state().position) + ".";
+    }
+    return true;
+}
+
 //  Walks `route` in the sim from `start`, with the Card Key as `card_key`.
 struct SimRun{
     std::string failure;
@@ -472,6 +487,7 @@ const std::vector<GatesCase> GATES_CASES{
     {.input = {.name = "a statue with no prompt is given up on", .body = test_statue_without_prompt_gives_up}, .expectation = {}},
     {.input = {.name = "a cut tree's gate opens, clears its tree and grows back", .body = test_cut_tree_opens_and_regrows}, .expectation = {}},
     {.input = {.name = "sim: cut the tree, step onto its tile", .body = test_sim_cuts_tree_gate}, .expectation = {}},
+    {.input = {.name = "sim: a tree whose gate is open at the start is cut", .body = test_sim_starts_with_tree_cut}, .expectation = {}},
 };
 
 } // namespace

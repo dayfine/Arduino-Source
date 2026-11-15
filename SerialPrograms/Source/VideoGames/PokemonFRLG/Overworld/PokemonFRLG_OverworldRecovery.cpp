@@ -590,8 +590,8 @@ private:
         return rejoin(step, blocked_ahead(step, candidates_on(longer, start, walked)), walked);
     }
 
-    //  Of `candidates`, where a Bicycle tap along `step` stopped the
-    //  player, those the maps block the way ahead of; all of them if none.
+    //  Of `candidates`, where a tap along `step` showed no step, those the maps block the way ahead of or past the
+    //  taps seen to move (10.05's Tower 6F column 16: not only its wall 3 tiles on); all of them if none.
     std::vector<StopCandidate> blocked_ahead(const RouteStep& step, std::vector<StopCandidate> candidates) const{
         std::vector<StopCandidate> blocked;
         for (const StopCandidate& candidate : candidates){
@@ -599,7 +599,7 @@ private:
             ahead.direction = step.direction;
             ahead.tiles = 1;
             ahead.surfing = step.surfing;
-            if (!candidate.trainer && leg_tiles(*maps(), candidate.player, ahead).size() < 2){
+            if (candidate.past_seen_taps || (!candidate.trainer && leg_tiles(*maps(), candidate.player, ahead).size() < 2)){
                 blocked.push_back(candidate);
             }
         }

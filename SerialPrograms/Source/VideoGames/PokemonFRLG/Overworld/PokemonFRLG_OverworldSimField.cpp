@@ -313,6 +313,12 @@ bool OverworldSim::fly_to_town(size_t town){
         violation(std::format("no Fly to town {} from {}.", town, to_string(m_state.position)));
         return false;
     }
+    if (m_script.dead_warp_maps.contains(map().name)){
+        //  A Fly is a warp: from a map whose warps are dead it doesn't take
+        //  off, no fade and no move (the warp no-op fault class).
+        note(std::format("Fly to town {} from {} does nothing.", town, to_string(m_state.position)));
+        return true;
+    }
     m_state.warped_from.push_back(map().name);
     m_state.warps++;
     regrow_cut_trees();
@@ -361,6 +367,23 @@ std::optional<WalkedTiles> OverworldSimWalker::surf(const RouteStep& step){
         fail("walk_overworld_route(): no Surf prompt facing the water.");
     }
     return std::nullopt;
+}
+
+void OverworldSim::open_start_gates(){
+    m_state.gates = m_script.gates;
+    read_gates();
+    for (size_t index = 0; index < m_maps.size(); index++){
+        std::vector<MapObject>& objects = m_maps[index].objects;
+        for (size_t c = objects.size(); c-- > 0;){
+            const std::optional<std::string> key = objects[c].name == "cut_tree"
+                ? cut_gate_key(m_maps, MapPosition{m_maps[index].name, TilePos{objects[c].x, objects[c].y}})
+                : std::nullopt;
+            if (key && m_state.gates.opened.contains(*key)){
+                m_cut_trees.emplace_back((int)index, objects[c]);
+                objects.erase(objects.begin() + c);
+            }
+        }
+    }
 }
 
 void OverworldSim::regrow_cut_trees(){

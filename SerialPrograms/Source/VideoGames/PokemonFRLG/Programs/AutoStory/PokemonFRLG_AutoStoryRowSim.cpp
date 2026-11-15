@@ -525,6 +525,21 @@ void sim_wait_out_battle_exit(OverworldSim& sim){
     wait_for_quiet_overworld(sim_screen_look(sim), MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
 }
 
+//  wait_out_warp() on `sim`: the fade watched to its end, as the console's
+//  BlackScreenOverWatcher does, then AFTER_WARP. A fade that ends late is
+//  waited out, not taken as over AFTER_WARP after the step: the next
+//  taps went in while the game still took none (the late fade sweep:
+//  17.04b's walk to Viridian's nurse ended a tile short, 14.02b's route
+//  after Cinnabar Gym's door started frozen).
+void sim_wait_out_warp(OverworldSim& sim){
+    constexpr Milliseconds POLL(100);
+    constexpr Milliseconds FADE_TIMEOUT(8000);
+    for (Milliseconds waited(0); sim.state().screen == SimScreen::FADE && waited < FADE_TIMEOUT; waited += POLL){
+        sim.watch({}, POLL);
+    }
+    sim.watch({}, OverworldWalkSteps::AFTER_WARP);
+}
+
 } // namespace
 
 //  A ROUTE or LEGS by the sim's walker, fighting a trainer who sees the
@@ -609,7 +624,7 @@ std::string OverworldStepSim::step_onto_warp(const RouteStep& warp){
     if (m_sim.state().warps == warps_before){
         return std::format("no fade in and out after stepping onto the warp to {}.", warp.end.map);
     }
-    m_sim.watch({}, OverworldWalkSteps::AFTER_WARP);
+    sim_wait_out_warp(m_sim);
     return "";
 }
 
@@ -685,7 +700,7 @@ std::string sim_walk_room_legs(OverworldSim& sim, const std::vector<RoomLeg>& le
         if (sim.state().warps != warps_before && !leg.dims && !faded){
             return std::format("walk_overworld_route(): no fade in and out after walking onto the warp to {}.", leg.to);
         }
-        sim.watch({}, OverworldWalkSteps::AFTER_WARP);
+        sim_wait_out_warp(sim);
     }
     return "";
 }

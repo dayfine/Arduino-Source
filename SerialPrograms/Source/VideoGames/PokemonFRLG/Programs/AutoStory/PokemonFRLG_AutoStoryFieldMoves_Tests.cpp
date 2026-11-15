@@ -158,6 +158,25 @@ UnitTestResult test_fly_on_sim(){
     return true;
 }
 
+//  A Fly that doesn't take off (warp no-op: Lavender Town's warps dead)
+//  leaves the player where they stood, and the row's step fails there
+//  instead of going on as if landed (11.01's warp no-op sweep).
+UnitTestResult test_fly_no_takeoff_on_sim(){
+    const MapPosition lavender{"LavenderTown", {6, 6}};
+    SimScript script;
+    script.dead_warp_maps = {lavender.map};
+    OverworldSim sim(story_maps(), lavender, Direction::SOUTH, script);
+    StoryPose at{lavender.map, lavender.point, Direction::SOUTH};
+    const std::string failure = row_step_on_sim(sim, at, fly_step("fly_celadon", 1, "CeladonCity"), "11.01");
+    if (failure.empty()){
+        return std::format("A Fly that didn't take off passed, on {}.", to_string(sim.state().position));
+    }
+    if (!(sim.state().position == lavender)){
+        return std::format("After a Fly that didn't take off, on {}, not on Lavender's (6, 6).", to_string(sim.state().position));
+    }
+    return true;
+}
+
 StoryStep legs_step(std::string name, std::vector<StoryLeg> legs){
     StoryStep step;
     step.kind = Pokemon::StoryStepKind::LEGS;
@@ -270,6 +289,10 @@ const FieldMovesCase CASES[] = {
     {
         .input = {.name = "fly on the sim", .body = test_fly_on_sim},
         .expectation = {.description = "Lavender Town to Celadon City's landing tile"},
+    },
+    {
+        .input = {.name = "fly with no takeoff on the sim", .body = test_fly_no_takeoff_on_sim},
+        .expectation = {.description = "the step fails in Lavender Town"},
     },
     {
         .input = {.name = "legs from the water", .body = test_legs_from_water},

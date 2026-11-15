@@ -361,7 +361,7 @@ std::vector<StopCandidate> stop_candidates(
         return candidates;
     }
     for (int c = std::max(0, walked.min); c <= last; c++){
-        add_unique(candidates, StopCandidate{.player = tiles[c], .trainer = std::nullopt});
+        add_unique(candidates, StopCandidate{.player = tiles[c], .trainer = std::nullopt, .past_seen_taps = step.tapped && c == walked.min + 1});
     }
     //  A leg onto a spinner that took all its tiles slid on to its stop
     //  (09.02 run 8, console B, 2026-11-11: a tap onto B2F's arrow (16, 6)

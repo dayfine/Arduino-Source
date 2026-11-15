@@ -99,8 +99,9 @@ struct SimScript{
     //  (09.02, console B, 2026-11-11 14:25).
     bool holds_end_at_slide_stop = false;
     //  Fault injection: maps whose warps do nothing: a step or press onto
-    //  one leaves the player where they were, with no fade, as a wall would
-    //  (the warp no-op fault class, PokemonFRLG_AutoStoryFaultSweep_Tests.cpp).
+    //  one, or a Fly from one, leaves the player where they were, with no
+    //  fade, as a wall would (the warp no-op fault class,
+    //  PokemonFRLG_AutoStoryFaultSweep_Tests.cpp).
     std::set<std::string> dead_warp_maps;
     //  Fault injection: legs on the Bicycle counted out a tap at a time
     //  (SimState::bike_legs), by number from 1, that start with
