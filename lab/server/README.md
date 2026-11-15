@@ -26,6 +26,8 @@ tickets and events in SQLite. Nothing presses a button yet: that is Slice 5.
 | `pa_lab/db.py` | The SQLite file: migrations (`PRAGMA user_version`), owner-only file, `BEGIN IMMEDIATE` writes |
 | `pa_lab/control.py` | Leases, idempotent requests, tickets, events, `next_events`, reconciliation, compaction |
 | `tests/test_{db,control,control_concurrency,control_mcp}.py` | Slice 3's tests: restarts, threads and processes racing, kills mid-write |
+| `pa_lab/status.py`, `pa_lab/stdio_server.py`, `smoke_readonly.py` | Read-only stdio mode for `.mcp.json`: `console_status` ([below](#read-only-stdio-mode-mcpjson)) |
+| `tests/test_status_readonly.py` | `console_status` and the read-only gate against a fake profile |
 
 Stdlib only (Python 3.8+), so no venv: the MCP transport is small enough to write on
 `http.server`. Run the tests from the repo root:
@@ -217,6 +219,31 @@ up to 5 s + 2 s for the journal, and reads `state.json` again. Arguments are clo
 | a failed line, no single reply line and `ok` line, bad JSON, a missing `id`/`options`/`prechecks`, a precheck entry without a name, `needs` or boolean `skippable`, a name twice, an unknown `game_open` reason | `app_unavailable` (the journal in `evidence`) |
 | a reply from another instance | `app_unavailable`, `evidence.reason` `instance_replaced` |
 | no journal within 7 s | `timeout`; the request is withdrawn from the inbox |
+
+## Read-only stdio mode (`.mcp.json`)
+
+`python -m pa_lab serve-stdio --profile-dir <profile>` serves MCP over stdio for a Claude Code
+`.mcp.json` entry: no port, token or daemon. It is read-only by construction (`LabMcp(read_only=True)`):
+the `console://B/state` and `/save` resources and one tool, `console_status`
+(`pa_lab/status.py`), which reports what `~/BDSPLab/checkin.sh` does: the app's pid and deployment,
+the legacy `Lab/state` fields (owner token dropped), `console://B/state`, the last `Program State:`
+and run lines, the last press, the last `keepawake.log` line, the newest failure frame and
+screenshot paths and the last log lines. `shot`, `describe_program`, `game_open` (they write into
+`Lab/inbox`) and every control tool are neither listed nor callable. `serve --read-only` gives the
+same tool set over HTTP.
+
+The project entry in `~/Projects/Arduino-Source/.mcp.json` (local, never committed):
+
+```json
+{"mcpServers": {"pa-lab": {"type": "stdio", "command": "/Users/difan/.venvs/lab-claude/bin/python",
+  "args": ["-m", "pa_lab", "serve-stdio",
+           "--profile-dir", "/Users/difan/Library/Application Support/SerialPrograms/Profiles/lab-B",
+           "--keepawake-log", "/Users/difan/BDSPLab/keepawake.log"],
+  "env": {"PYTHONPATH": "/Users/difan/Projects/Arduino-Source-agents/lab/server"}}}}
+```
+
+Smoke test (reads files only): `~/.venvs/lab-claude/bin/python lab/server/smoke_readonly.py [profile]`
+starts the server as `.mcp.json` does and prints `console_status` once. Tests: `tests/test_status_readonly.py`.
 
 ## Slice 3: the durable control plane
 

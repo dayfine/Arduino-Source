@@ -9,6 +9,10 @@ Resources: `console://B/state` (console_state), `console://B/save` (save_resourc
 Tools: `shot`, `ensure_game`, `describe_program`, `game_open`; with a control plane also `acquire_console`,
 `renew_console`, `release_console`, `next_events` and `request_status`. Nothing here presses a
 button or starts or stops a program: that is not served yet.
+
+Read-only mode (`read_only=True`, `serve-stdio`): only `console_status` and the resources. Every tool
+that writes into `Lab/inbox` (`shot`, `describe_program`, `game_open`) and every control tool is
+neither listed nor callable.
 """
 
 from __future__ import annotations
@@ -25,7 +29,7 @@ import secrets
 import threading
 from typing import Any, Callable, Dict, Optional, Tuple
 
-from pa_lab import app_query, contracts, control, shot, tools
+from pa_lab import app_query, contracts, control, shot, status, tools
 from pa_lab.lab_reader import ConsoleReader, Unavailable
 
 LOG = logging.getLogger('pa_lab.server')
@@ -119,6 +123,27 @@ TOOL_LIST = [
     },
 ]
 
+CONSOLE_STATUS_TOOL = {
+    'name': 'console_status',
+    'title': 'Console status (check-in)',
+    'description': "What ~/BDSPLab/checkin.sh reports, read from the console's profile folder: the lab app's pid "
+                   'and deployment, the Lab/state fields, console://B/state, the last Program State line, the last '
+                   'run lines (checkpoint passed/failed, Starting Program), the last press time, the last '
+                   'keepawake line, the newest failure frame and screenshot paths, and the last log lines. Reads '
+                   'files only; sends nothing to the app.',
+    'inputSchema': {
+        'type': 'object',
+        'properties': {
+            'console': {'type': 'string', 'enum': ['B']},
+            'log_lines': {'type': 'integer', 'minimum': 0, 'maximum': status.MAX_LOG_LINES,
+                          'default': status.DEFAULT_LOG_LINES},
+        },
+        'required': ['console'],
+        'additionalProperties': False,
+    },
+    'annotations': {'readOnlyHint': True, 'destructiveHint': False, 'idempotentHint': True},
+}
+
 APP_QUERIES = {'describe_program': app_query.describe_program, 'game_open': app_query.game_open}
 
 
@@ -184,14 +209,29 @@ def _json_text(value: Any) -> str:
 
 
 class LabMcp:
-    """JSON-RPC methods, without the transport. `consoles` is the allowlist: console id -> reader."""
+    """JSON-RPC methods, without the transport. `consoles` is the allowlist: console id -> reader.
+
+    `statuses` (console id -> ProfileStatus) adds `console_status`. `read_only` serves only that tool
+    and the resources: no inbox tools, no control plane."""
 
     def __init__(self, consoles: Dict[str, ConsoleReader],
                  take_shot: Callable[..., Dict[str, Any]] = shot.take_shot,
-                 control_plane: Optional[control.ControlPlane] = None):
+                 control_plane: Optional[control.ControlPlane] = None,
+                 statuses: Optional[Dict[str, status.ProfileStatus]] = None,
+                 read_only: bool = False):
+        if read_only and control_plane is not None:
+            raise ValueError('a read-only server has no control plane')
         self.consoles = consoles
         self.take_shot = take_shot
         self.control = control_plane
+        self.statuses = statuses or {}
+        self.read_only = read_only
+
+    def tool_list(self):
+        status_tools = [CONSOLE_STATUS_TOOL] if self.statuses else []
+        if self.read_only:
+            return status_tools
+        return TOOL_LIST + status_tools + (CONTROL_TOOL_LIST if self.control is not None else [])
 
     def call(self, method: str, params: Dict[str, Any], client: str = 'unnamed') -> Dict[str, Any]:
         if method == 'ping':
@@ -203,8 +243,12 @@ class LabMcp:
         if method == 'resources/read':
             return self._read_resource(params.get('uri'))
         if method == 'tools/list':
-            return {'tools': TOOL_LIST + (CONTROL_TOOL_LIST if self.control is not None else [])}
+            return {'tools': self.tool_list()}
         if method == 'tools/call':
+            if params.get('name') not in [t['name'] for t in self.tool_list()]:
+                raise RpcError(INVALID_PARAMS, 'Unknown tool: {}'.format(params.get('name')))
+            if params.get('name') == 'console_status':
+                return self._call_status(params.get('arguments', {}))
             if self.control is not None and params.get('name') in [t['name'] for t in CONTROL_TOOL_LIST]:
                 return self._call_control(client, params.get('name'), params.get('arguments', {}))
             return self._call_tool(params.get('name'), params.get('arguments', {}))
@@ -283,6 +327,29 @@ class LabMcp:
                              'mimeType': 'image/png'},
                             {'type': 'text', 'text': _json_text(result)}],
                 'structuredContent': result, 'isError': False}
+
+    def _call_status(self, arguments: Any) -> Dict[str, Any]:
+        name = 'console_status'
+        if not isinstance(arguments, dict):
+            return self._refused(name, {'code': 'invalid_arguments', 'field': 'arguments',
+                                        'message': 'expected an object'})
+        unknown = sorted(set(arguments) - {'console', 'log_lines'})
+        if unknown:
+            return self._refused(name, {'code': 'invalid_arguments', 'field': unknown[0],
+                                        'message': 'unknown argument'})
+        reader = self.statuses.get(arguments.get('console')) if isinstance(arguments.get('console'), str) else None
+        if reader is None:
+            return self._refused(name, {'code': 'console_not_allowed', 'message':
+                                        'Console {!r} is not served; only {}.'.format(
+                                            arguments.get('console'), ', '.join(sorted(self.statuses)))})
+        log_lines = arguments.get('log_lines', status.DEFAULT_LOG_LINES)
+        if isinstance(log_lines, bool) or not isinstance(log_lines, int) or \
+                not 0 <= log_lines <= status.MAX_LOG_LINES:
+            return self._refused(name, {'code': 'invalid_arguments', 'field': 'log_lines',
+                                        'message': 'expected 0..{}'.format(status.MAX_LOG_LINES)})
+        result = reader.console_status(log_lines)
+        return {'content': [{'type': 'text', 'text': _json_text(result)}], 'structuredContent': result,
+                'isError': False}
 
     def _call_control(self, client: str, name: str, arguments: Any) -> Dict[str, Any]:
         if not isinstance(arguments, dict):
