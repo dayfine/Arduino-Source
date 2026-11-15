@@ -104,7 +104,7 @@ const LoadCase LOAD_CASES[] = {
     {
         .name = "built-in files in order, their shared execution fields read",
         .input = {.builtin = {ROW_0, ROW_1, ROW_2}},
-        .expectation = {.summary = "rows 01.00 01.01 01.02 | titles Row Row Row | autosave 01.00 | unverified 01.02 | chained 01.01 | always  "},
+        .expectation = {.summary = "rows 01.00 01.01 01.02 | titles Row Row Row | autosave 01.00 | unverified 01.02 | chained 01.01 | always "},
     },
     {
         .name = "reload_when_chained always",
