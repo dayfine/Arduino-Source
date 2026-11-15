@@ -11,7 +11,7 @@
       {
         "id": "chase_pancham",
         "kind": "game_action",
-        "why": "step 11: after Pancham, through the archway, around the starters into the scene. A 0 ms leg only turns. The sidestep around the starters (1000 ms) is not measured yet. The first turn is from where the player faces (L first), as from the save; a run from 01.01 reloads the save first (reload_when_chained), since 01.01's scenes leave the player turned to the boy.",
+        "why": "after Pancham, through the archway, around the starters into the scene. A 0 ms leg only turns. The sidestep around the starters (1000 ms) is not measured yet. The first turn is from where the player faces (L first), as from the save; a run from 01.01 reloads the save first (reload_when_chained), since 01.01's scenes leave the player turned to the boy.",
         "action": "walk",
         "args": {
           "legs": [[-15, 4000], [-75, 3500], [90, 9000], [-90, 0], [90, 1000], [-90, 4000]]
@@ -20,19 +20,19 @@
       {
         "id": "pancham_cornered",
         "kind": "game_action",
-        "why": "step 12: the scene up to its choice",
+        "why": "the scene up to its choice",
         "action": "text_to_choice"
       },
       {
         "id": "battle_with_pokemon",
         "kind": "game_action",
-        "why": "step 12: choose \"Battle with Pokemon!\" (second choice)",
+        "why": "choose \"Battle with Pokemon!\" (second choice)",
         "action": "choose_1"
       },
       {
         "id": "battle_area",
         "kind": "game_action",
-        "why": "step 12: the scene until free control in the battle area; autosave",
+        "why": "the scene until free control in the battle area; autosave",
         "action": "mash_to_move_hints",
         "args": {
           "min_length_ms": 20000

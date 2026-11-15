@@ -11,7 +11,7 @@
       {
         "id": "approach_starter",
         "kind": "game_action",
-        "why": "step 13: walk up to the starter and stop at the \"A Talk Chikorita\" prompt. Only Chikorita's path exists.",
+        "why": "walk up to the starter and stop at the \"A Talk Chikorita\" prompt. Only Chikorita's path exists.",
         "action": "approach_starter",
         "args": {
           "chikorita": [[-70, 750]]
@@ -20,24 +20,24 @@
       {
         "id": "talk_to_starter",
         "kind": "talk",
-        "why": "step 13: A at \"A Talk Chikorita\""
+        "why": "A at \"A Talk Chikorita\""
       },
       {
         "id": "andi_battle_start",
         "kind": "game_action",
-        "why": "steps 14-15: choose it, the pre-battle talk, \"Go! Chikorita!\", the battling tutorial",
+        "why": "choose Chikorita, the pre-battle talk, \"Go! Chikorita!\", the battling tutorial",
         "action": "story_battle_start"
       },
       {
         "id": "andi_battle",
         "kind": "game_action",
-        "why": "step 16: beat Andi's Pancham (Lv 6), until Andi's speech",
+        "why": "beat Andi's Pancham (Lv 6), until Andi's speech",
         "action": "story_battle"
       },
       {
         "id": "after_andi",
         "kind": "game_action",
-        "why": "step 17: fist bump, night in the Battle Zone, the Main Mission 02 banner and its autosave; the MAIN MISSION 01 COMPLETE card waits for A",
+        "why": "fist bump, night in the Battle Zone, the Main Mission 02 banner and its autosave; the MAIN MISSION 01 COMPLETE card waits for A",
         "action": "mash_to_move_hints"
       }
     ],
