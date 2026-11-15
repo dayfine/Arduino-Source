@@ -15,7 +15,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "NintendoSwitch_CommandFileParsing.h"
-#include "NintendoSwitch_CommandFileRunner.h"
+#include "NintendoSwitch_CommandFileGameOpen.h"
 #include "NintendoSwitch_CommandFileRunner_Tests.h"
 
 namespace PokemonAutomation{

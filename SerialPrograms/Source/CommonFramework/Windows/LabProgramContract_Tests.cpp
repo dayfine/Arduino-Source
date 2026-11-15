@@ -225,7 +225,7 @@ const ProgramCase PROGRAM_CASES[] = {
 };
 
 
-}
+}  // namespace
 
 
 

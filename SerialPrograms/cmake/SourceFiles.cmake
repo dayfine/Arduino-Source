@@ -1412,6 +1412,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Options/NintendoSwitch_StartInGripMenuOption.h
     Source/NintendoSwitch/Options/TurboMacroTable.cpp
     Source/NintendoSwitch/Options/TurboMacroTable.h
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileGameOpen.cpp
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileGameOpen.h
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileParsing.cpp
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileParsing.h
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner.cpp

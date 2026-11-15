@@ -45,9 +45,7 @@ public:
     bool horizontal() const;
     FixedLimitVector<ConfigOption*> options() const;
 
-    //  Each option with the key it is saved under in to_json(), in the order
-    //  they were added. Static options have an empty key.
-    const std::vector<std::pair<ConfigOption*, std::string>>& keyed_options() const;
+    friend const std::vector<std::pair<ConfigOption*, std::string>>& keyed_options(const BatchOption& batch);
 
 
 private:
@@ -55,6 +53,12 @@ private:
     Pimpl<Data> m_data;
 };
 
+
+
+
+//  Each option of `batch` with the key it is saved under in to_json(), in the
+//  order they were added. Static options have an empty key.
+const std::vector<std::pair<ConfigOption*, std::string>>& keyed_options(const BatchOption& batch);
 
 
 

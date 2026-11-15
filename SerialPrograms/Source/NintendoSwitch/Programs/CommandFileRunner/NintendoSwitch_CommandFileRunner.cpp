@@ -24,6 +24,7 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
+#include "NintendoSwitch_CommandFileGameOpen.h"
 #include "NintendoSwitch_CommandFileParsing.h"
 #include "NintendoSwitch_CommandFileRunner.h"
 
@@ -493,22 +494,6 @@ private:
 }
 
 
-
-std::optional<std::string_view> game_closed_reason(const GameOpenScreen& screen){
-    if (!screen.has_frame){
-        return "no_video";
-    }
-    if (screen.home){
-        return "home";
-    }
-    if (screen.user_select){
-        return "user_select";
-    }
-    if (screen.black){
-        return "black";
-    }
-    return std::nullopt;
-}
 
 CommandFileCommandKind command_file_command_kind(const std::string& name){
     return LineRunner::kind(name);

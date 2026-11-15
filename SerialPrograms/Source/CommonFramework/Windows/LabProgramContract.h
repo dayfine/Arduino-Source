@@ -43,5 +43,5 @@ JsonObject lab_program_contract(std::string_view id, const BatchOption& options)
 
 
 
-}
+}  // namespace PokemonAutomation
 #endif
