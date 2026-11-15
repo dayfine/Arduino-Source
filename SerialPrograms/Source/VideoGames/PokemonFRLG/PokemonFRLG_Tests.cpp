@@ -56,6 +56,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryAbilities.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPartyRoster.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryEndpoints_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStorySurf_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryHealing.h"
@@ -137,6 +138,7 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryVictoryRoad(database);
     add_tests_AutoStoryBoulders(database);
     add_tests_AutoStoryLeague(database);
+    add_tests_AutoStoryEndpoints(database);
     add_tests_AutoStoryGates(database);
     add_tests_AutoStoryFailureClasses(database);
     add_tests_AutoStoryLaunch(database);
