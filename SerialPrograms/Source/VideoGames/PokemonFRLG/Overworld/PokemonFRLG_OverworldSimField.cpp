@@ -111,6 +111,11 @@ bool OverworldSim::cut_tree(){
         ){
             m_cut_trees.emplace_back(m_map, objects[c]);
             objects.erase(objects.begin() + c);
+            //  The tree's gate, if the map has one, opens with it.
+            if (const std::optional<std::string> key = cut_gate_key(m_maps, MapPosition{map().name, ahead})){
+                m_state.gates.opened.insert(*key);
+                read_gates();
+            }
             advance_to(m_now + CUT_TIME);
             note("cut the tree on " + to_string(MapPosition{map().name, ahead}) + ".");
             return true;
@@ -236,6 +241,11 @@ bool OverworldSim::start_surf(){
     return true;
 }
 
+void OverworldSim::change_gates(const Pokemon::GateChange& change){
+    Pokemon::apply_gate_change(m_state.gates, change);
+    read_gates();
+}
+
 void OverworldSim::read_gates(){
     //  Only the tiles: the objects the sim has changed stay as they are.
     //  Maps without a gate were not copied.
@@ -358,6 +368,10 @@ void OverworldSim::regrow_cut_trees(){
         m_maps[index].objects.push_back(tree);
     }
     m_cut_trees.clear();
+    if (!m_state.gate_maps.empty()){
+        regrow_cut_gates(m_state.gate_maps, m_state.gates);
+        read_gates();
+    }
 }
 
 bool OverworldSim::push_poster_switch(){

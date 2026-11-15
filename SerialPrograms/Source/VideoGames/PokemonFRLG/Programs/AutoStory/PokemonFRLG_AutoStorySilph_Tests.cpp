@@ -310,7 +310,7 @@ UnitTestResult test_giovanni_row(){
 //  Silph Co. or Saffron City.
 UnitTestResult test_return_row(){
     const std::set<std::string> flags{std::string(SILPH_CLEARED_FLAG)};
-    const RowResult result = walk_row("16.06", with_beaten(story_maps(flags), "SilphCo_5F", 9, 21));
+    const RowResult result = walk_row("16.06", with_beaten(run_story_maps(flags), "SilphCo_5F", 9, 21));
     if (const std::string wrong = wrong_end("16.06", result, MapPosition{"SaffronCity", {24, 39}}); !wrong.empty()){
         return wrong;
     }
@@ -337,10 +337,10 @@ UnitTestResult test_saffron_rocket_removed(){
     if (!has_object_at(story_maps(), "SaffronCity", 46, 13)){
         return "No Rocket at Saffron (46, 13) before Silph Co. is cleared.";
     }
-    if (!has_object_at(story_maps({"card_key_held"}), "SaffronCity", 46, 13)){
+    if (!has_object_at(run_story_maps({"card_key_held"}), "SaffronCity", 46, 13)){
         return "Another flag hides the Rocket at Saffron (46, 13).";
     }
-    if (has_object_at(story_maps({std::string(SILPH_CLEARED_FLAG)}), "SaffronCity", 46, 13)){
+    if (has_object_at(run_story_maps({std::string(SILPH_CLEARED_FLAG)}), "SaffronCity", 46, 13)){
         return "A Rocket still stands at Saffron (46, 13) after Silph Co.";
     }
     return true;

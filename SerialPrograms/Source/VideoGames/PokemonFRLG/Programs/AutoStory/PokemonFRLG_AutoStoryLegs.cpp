@@ -71,7 +71,11 @@ std::optional<std::vector<RouteStep>> fixed_route(
                 return std::nullopt;
             }
         }
-        step.to_wall = !step.spin_tiles && classify_step(*map, player, leg.direction) == StepKind::BLOCKED;
+        //  Water ahead stops a hold as a wall does, until the player Surfs
+        //  (stops_at()): 11.02's "south 1" down to Route 18's water finds
+        //  the row from a tile north of it too.
+        const StepKind ahead = classify_step(*map, player, leg.direction);
+        step.to_wall = !step.spin_tiles && (ahead == StepKind::BLOCKED || ahead == StepKind::START_SURF);
         step.end = MapPosition{map->name, player.position};
         route.push_back(step);
     }

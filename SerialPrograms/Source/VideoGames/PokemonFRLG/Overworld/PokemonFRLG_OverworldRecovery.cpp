@@ -301,7 +301,7 @@ public:
             const std::optional<TrainerCrossing> crossing = m_next >= m_holds ? crossing_here(step) : std::nullopt;
             report_progress(step);
             const StepOutcome outcome = judge_movement(step, m_steps.walk(step, m_facing, crossing));
-            m_on_caller_start = false;
+            m_leg_from_caller_start = std::exchange(m_on_caller_start, false);
             if (is_gate_step(step)){
                 if (!after_gate(step, outcome)){
                     return;
@@ -652,6 +652,19 @@ private:
         const RouteStep& step, const StepOutcome& outcome,
         const std::optional<MapPosition>& start, const std::optional<TrainerCrossing>& crossing
     ){
+        if (outcome.end == StepEnd::STOPPED && outcome.blocked && step.tapped){
+            //  A tap that showed no step may have stepped unseen; the player
+            //  is somewhere on the leg, and its wall ends a hold wherever
+            //  they are. Held, not tapped again: a tap at the wall would
+            //  show no step once more (14.01's taps legs in Cinnabar Gym,
+            //  the unseen step sweep, 2026-11-14). Before the wild battles'
+            //  walk again, which would tap it again: a blocked tap is no
+            //  battle (10.04's Pokemon Tower taps legs).
+            m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, "a tap showed no step; holding to the wall");
+            m_plan[m_next].tapped = false;
+            m_held_again = true;
+            return true;
+        }
         if (outcome.end == StepEnd::STOPPED && step.wild){
             //  Where wild battles start, one on the first step held again
             //  after another interrupt stops the hold the same way: Cooper's
@@ -736,17 +749,19 @@ private:
     //  An open leg that ends the walk (only turns after it) is checked as one before a hold is: what comes
     //  next, an A press or the next walk, counts on its tile. 14.01's "west 10 (open)" to below quiz machine
     //  2 stopped against the machine a tile short after the screen had moved, and the walk ended "arrived at
-    //  (16, 3)" (console B, 2026-11-14 05:48).
+    //  (16, 3)" (console B, 2026-11-14 05:48). Not if its holds pass a trainer's sight: the next step may be
+    //  that trainer's line (07.02's conner_line), and a leg that ends a walk was trusted before.
     //  A leg onto a spinner isn't checked: its taps wait out the slide and its settle, and it ends on the
     //  stop. The tiles short of its arrow left out that stop, and the hold west "to the wall (7, 11)" after
     //  Rocket Hideout B2F's "east 2" to the stop (14, 13) slid from there to (10, 15) (09.02, console B,
     //  2026-11-11). A leg tapped a tile at a time (counts_step_taps()) that ended DONE had every tap seen to
     //  move: it ended on its tile, and a check walks back over tiles already walked (09.02's B2F, console B,
     //  2026-11-11 15:34: a hold back north to (21, 2) after "south 2" and to the wall (17, 5) after
-    //  "north 3"). A hold that scrolled (`movement`) left `start`.
+    //  "north 3"). A hold that scrolled (`movement`) left `start`. One that moved nothing and ended DONE is a
+    //  bump into the wall judge_movement() found the player at already: not checked.
     void check_open_leg(const RouteStep& step, const std::optional<MapPosition>& start, HoldMovement movement){
         if (maps() == nullptr || m_planning->open_leg_check != OpenLegCheck::REANCHOR || !start
-            || counts_step_taps(step)
+            || movement == HoldMovement::NONE || counts_step_taps(step)
             || step.action != RouteAction::WALK || step.to_wall || step.warps || step.spin_tiles
         ){
             return;
@@ -769,6 +784,10 @@ private:
                 "no holds to walls find the player: stopped rather than go on from a guess.",
                 to_string(step), to_string(m_plan[m_next])
             ));
+            return;
+        }
+        if (last && anchor && anchor->in_sight){
+            m_calls.log(std::format("Route: the holds that find the player if {} ended short pass a trainer's sight; taken as walked.", to_string(step)));
             return;
         }
         if (!anchor || anchor->holds.empty() || (!water_chain && reanchor_tiles(*anchor) > OPEN_LEG_CHECK_TILES_PER_TILE * step.tiles)){
@@ -866,11 +885,12 @@ private:
             m_lines.plan(std::nullopt, m_plan);
             return true;
         }
-        //  Only one tile: the player stands there, still facing the leg's
-        //  way (also after a trainer walked up: Camper Liam, console B,
-        //  2026-11-01).
+        //  Only one tile: the player stands there, still facing the leg's way (also after a trainer walked up: Camper
+        //  Liam, console B, 2026-11-01). The given start of a leg that moved nothing is unseen (14.04b, 2026-11-14 12:44).
         if (candidates[0].trainer){
             m_lines.trainer_stopped(step, anchor->found);
+        }else if (m_leg_from_caller_start && walked.max == 0){
+            m_calls.log(std::format("Route: {} moved nothing: taken as still on {}, the route's given start, unconfirmed.", to_string(step), to_string(anchor->found)));
         }else{
             m_lines.found(anchor->found, 0);
         }
@@ -897,6 +917,7 @@ private:
     //  Nothing walked yet: the player is on the caller's start, as far as
     //  the caller knows.
     bool m_on_caller_start = false;
+    bool m_leg_from_caller_start = false;   //  the leg walked last started on the caller's start
     size_t m_next = 0;
     size_t m_stops = 0;
     size_t m_holds = 0;     //  of the plan, holds to walls that find the player

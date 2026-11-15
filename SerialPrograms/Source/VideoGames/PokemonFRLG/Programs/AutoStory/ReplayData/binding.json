@@ -5,12 +5,12 @@
     "sha256": "793abfef624f690c73cd0bb2e2a149da5f4c8654b50ffbd5905e27d88e1b0c04",
     "source_revision": "b170b7d2103e887ded825c37fdbdc19fd654fca8"
   },
-  "map_revision": "e52be04ed7bb007c7219c7d2c96963cf053e0000",
+  "map_revision": "c1962ffb18adf8a29ac4c7ba906372bae1c0b1d1",
   "maps": {
     "PalletTown_ProfessorOaksLab": "53d1c2b022cfadd2463fe405a60fb179562b2cc487ab4c5202f63cbc758d5109",
     "PalletTown": "92ebe424c07773ba087b8fc8d2b8251876dd3b97b9aea47a1fee8d36abd6ab0c",
     "Route1": "26ba91c2ecfdf0af8ccbdca9f21a522b68f93565594386c09af1011485de7781",
-    "ViridianCity": "c18f797d9fe5edf8fceb86f5e439778b44f78cf4397cd6b566f3ff7246c2d8cb",
+    "ViridianCity": "e1d3e20b047138e7132874ea92a8117f4db20ec677d797469127931a01deeff7",
     "ViridianCity_Mart": "5e14587080521d433626347fa37024eb1ee36b4fe07a164e19e72714b1b755e8"
   },
   "capabilities": {

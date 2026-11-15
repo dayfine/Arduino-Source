@@ -79,6 +79,9 @@ struct Reanchor{
     //  From `found` back to the stopped leg's end, walking the same from
     //  there whichever candidate it was (a trainer who walked up stays).
     std::vector<RouteStep> back;
+    //  Whether the holds, from any candidate, pass a tile a trainer may see:
+    //  no other way found the player.
+    bool in_sight = false;
 };
 
 //  After `step` stopped part-way, from `candidates`: of the ways that find

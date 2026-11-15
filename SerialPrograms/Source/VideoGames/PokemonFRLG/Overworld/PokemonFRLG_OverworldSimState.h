@@ -73,7 +73,9 @@ struct SimScript{
     //  Fault injection: the reads of the facing after each turn tap that
     //  show no player, as when a roof's eave, a tree or a wanderer is drawn
     //  over the sprite (Cinnabar, north of the Center: console B,
-    //  2026-11-13 11:06, 12.03 surf_route_21); SIZE_MAX: none shows.
+    //  2026-11-13 11:06, 12.03 surf_route_21); SIZE_MAX: none shows, nor
+    //  the reads before each tap of a taps leg (the tree below Celadon
+    //  Gym's (1, 10): console B, 2026-11-14 12:44, 14.04b onto_column_2).
     size_t hidden_facing_reads = 0;
     //  Fault injection: walker step taps that moved the player, by number
     //  from 1 among those that moved, which the walker's screen check reads

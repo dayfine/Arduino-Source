@@ -485,8 +485,8 @@ std::optional<Reanchor> plan_reanchor(
         if (!back || (!trainers.empty() && !walks_same_everywhere(worlds, positions, at.at, *back))){
             continue;
         }
-        Reanchor anchor{.holds = at.holds, .found = at.at, .back = std::move(*back)};
-        const int cost = reanchor_cost(anchor) + (holds_in_sight(worlds, positions, anchor.holds) ? IN_SIGHT_COST : 0);
+        Reanchor anchor{.holds = at.holds, .found = at.at, .back = std::move(*back), .in_sight = holds_in_sight(worlds, positions, at.holds)};
+        const int cost = reanchor_cost(anchor) + (anchor.in_sight ? IN_SIGHT_COST : 0);
         if (!best || cost < best_cost){
             best = std::move(anchor);
             best_cost = cost;

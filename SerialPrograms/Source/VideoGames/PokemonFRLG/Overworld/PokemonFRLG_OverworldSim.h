@@ -76,6 +76,9 @@ public:
     bool card_key_held() const{ return m_script.card_key_held; }
     //  The player picks up the Card Key: A on a card-key gate opens it from now on.
     void give_card_key(){ m_script.card_key_held = true; }
+    //  The story opens gates or sets switches (a step's gates_after, such as
+    //  a quiz answered at Cinnabar Gym): the maps redraw them.
+    void change_gates(const Pokemon::GateChange& change);
 
     //  Whether the walker's screen check reads its last step tap as a
     //  step: one that moved the player from `before`, but for

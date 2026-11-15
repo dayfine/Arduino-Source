@@ -8,6 +8,7 @@
  *
  */
 
+#include <cstdint>
 #include <format>
 #include "PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_OverworldSimField.h"
@@ -188,7 +189,9 @@ StepOutcome OverworldSimWalker::walk_step_taps(const RouteStep& step){
     calls.clear = [&](size_t index){ clear(ints[index]); };
     calls.log = [&](const std::string& message){ m_log.push_back(message); };
     calls.facing = [&]() -> std::optional<Direction>{
-        if (m_sim.state().screen != SimScreen::OVERWORLD){
+        //  A sprite that never shows (SimScript::hidden_facing_reads
+        //  SIZE_MAX) reads before each tap too.
+        if (m_sim.state().screen != SimScreen::OVERWORLD || m_sim.hidden_facing_reads() == SIZE_MAX){
             return std::nullopt;
         }
         return m_sim.state().facing;

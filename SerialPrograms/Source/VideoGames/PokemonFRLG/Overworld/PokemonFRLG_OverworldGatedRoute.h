@@ -16,6 +16,7 @@
 #define PokemonAutomation_PokemonFRLG_OverworldGatedRoute_H
 
 #include <optional>
+#include <string>
 #include <vector>
 #include "Pokemon/Navigation/Pokemon_GatedTypes.h"
 #include "PokemonFRLG_OverworldRoute.h"
@@ -44,9 +45,18 @@ Pokemon::GateState gates_after_route(const Pokemon::GateState& before, const std
 bool has_gates(const std::vector<MapData>& maps);
 
 //  `maps` with the gate tiles of each as `gates` makes them: a closed gate
-//  is a wall (a GATE tile), an open one its open tile. What a walk reads
-//  its tiles from, as the maps stay as loaded.
+//  is a wall (a GATE tile), an open one its open tile, and no object stands
+//  on an open one (a cut tree's object is gone with the tree). What a walk
+//  reads its tiles from, as the maps stay as loaded.
 std::vector<MapData> resolve_maps(const std::vector<MapData>& maps, const Pokemon::GateState& gates);
+
+//  The key (Pokemon::gate_key()) of the cut tree's gate on `tree`, if a
+//  cut tree's gate is there.
+std::optional<std::string> cut_gate_key(const std::vector<MapData>& maps, const MapPosition& tree);
+
+//  Closes every cut tree's gate in `gates`: a warp clears the trees' hide
+//  flags (FLAG_TEMP_*), so every tree cut grows back.
+void regrow_cut_gates(const std::vector<MapData>& maps, Pokemon::GateState& gates);
 
 
 

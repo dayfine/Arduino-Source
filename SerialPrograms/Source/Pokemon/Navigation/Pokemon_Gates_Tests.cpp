@@ -224,6 +224,64 @@ UnitTestResult test_gate_errors(){
     return true;
 }
 
+//  A quiz door (Cinnabar Gym) parses, is a wall until the story opens it,
+//  and is never opened by facing it, as a card-key door is.
+UnitTestResult test_quiz_door_gate(){
+    const std::string text = R"({
+        "format": "pokesim-runtime-map/2", "name": "T",
+        "source": {"decomp_file": "x", "revision": "y", "date": "z"},
+        "tiles": ["...", "GG.", "..."], "points": {}, "warps": [], "connections": [],
+        "gates": {"door_1": {"tiles": [[0, 1], [1, 1]], "open_glyph": ".", "new_game": "closed",
+                             "opens_by": "quiz_answer", "flag": "FLAG_CINNABAR_GYM_QUIZ_1"}}
+    })";
+    const MapData map = parse_map(parse_json(text), "T.json");
+    const auto door = map.gates.find("door_1");
+    if (door == map.gates.end() || door->second.kind != GateKind::QUIZ_ANSWER || door->second.flag != "FLAG_CINNABAR_GYM_QUIZ_1"){
+        return "Expected door_1, a quiz door with its flag.";
+    }
+    GateState state;
+    if (resolved_tile(map, TilePos{0, 1}, state) != TileKind::WALL){
+        return "A shut quiz door is not a wall.";
+    }
+    if (closed_card_key_gate_faced(map, TilePos{0, 0}, Direction::SOUTH, state) != nullptr){
+        return "A quiz door is opened by facing it.";
+    }
+    state.opened.insert(gate_key("T", "door_1"));
+    if (resolved_tile(map, TilePos{1, 1}, state) != TileKind::OPEN){
+        return "An opened quiz door is not floor.";
+    }
+    return true;
+}
+
+//  A cut tree parses as a one-tile gate over its ground, a wall until the
+//  tree is cut, and is never opened by facing it.
+UnitTestResult test_cut_tree_gate(){
+    const std::string text = R"({
+        "format": "pokesim-runtime-map/2", "name": "T",
+        "source": {"decomp_file": "x", "revision": "y", "date": "z"},
+        "tiles": ["...", ".G.", "..."], "points": {}, "warps": [], "connections": [],
+        "gates": {"cut_tree_1_1": {"tiles": [[1, 1]], "open_glyph": "~", "new_game": "closed",
+                                   "opens_by": "cut", "flag": "FLAG_TEMP_13"}}
+    })";
+    const MapData map = parse_map(parse_json(text), "T.json");
+    const auto tree = map.gates.find("cut_tree_1_1");
+    if (tree == map.gates.end() || tree->second.kind != GateKind::CUT || tree->second.flag != "FLAG_TEMP_13"){
+        return "Expected cut_tree_1_1, a cut tree with its flag.";
+    }
+    GateState state;
+    if (resolved_tile(map, TilePos{1, 1}, state) != TileKind::WALL){
+        return "A standing tree is not a wall.";
+    }
+    if (closed_card_key_gate_faced(map, TilePos{1, 0}, Direction::SOUTH, state) != nullptr){
+        return "A tree is opened by facing it.";
+    }
+    state.opened.insert(gate_key("T", "cut_tree_1_1"));
+    if (resolved_tile(map, TilePos{1, 1}, state) != TileKind::TALL_GRASS){
+        return "A cut tree's tile is not its ground.";
+    }
+    return true;
+}
+
 
 //  State and tiles
 
@@ -429,6 +487,14 @@ private:
 };
 
 const GatesTestCase GATES_CASES[] = {
+    {
+        .input = {.name = "reads quiz doors", .test = test_quiz_door_gate},
+        .expectation = {.description = "a wall until opened by the story, never by facing it"},
+    },
+    {
+        .input = {.name = "reads cut trees", .test = test_cut_tree_gate},
+        .expectation = {.description = "a wall over its ground until cut, never opened by facing it"},
+    },
     {
         .input = {.name = "reads card-key doors", .test = test_reads_card_key_doors},
         .expectation = {.description = "Silph 5F doors parse with tiles, flag, open glyph"},

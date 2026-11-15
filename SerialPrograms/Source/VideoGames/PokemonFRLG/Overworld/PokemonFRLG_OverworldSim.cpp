@@ -872,6 +872,9 @@ StepOutcome OverworldSimWalker::walk_ridden(const RouteStep& step, std::optional
     const MapPosition before = m_sim.state().position;
     const bool tapped = counts_step_taps(step) || (m_rules.count_bike_taps && counts_bike_taps(step, m_speed));
     if (tapped){
+        if (counts_step_taps(step) && turns_first(step, m_speed, facing)){  //  as walk_and_watch() turns first
+            turn_or_fail(step);
+        }
         const StepOutcome outcome = counts_step_taps(step) ? walk_step_taps(step) : walk_bike_taps(step);
         if (outcome.end != StepEnd::DONE){
             return outcome;

@@ -46,7 +46,7 @@ const std::vector<MapData>& story_maps(){
     return maps;
 }
 
-const std::vector<MapData>& story_maps(const std::set<std::string>& run_flags){
+const std::vector<MapData>& run_story_maps(const std::set<std::string>& run_flags){
     if (run_flags.contains(std::string(SILPH_CLEARED_FLAG))){
         static const std::vector<MapData> cleared = make_story_maps(true);
         return cleared;

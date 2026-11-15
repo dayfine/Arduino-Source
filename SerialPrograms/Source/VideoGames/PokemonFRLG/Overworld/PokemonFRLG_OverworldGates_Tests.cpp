@@ -79,6 +79,18 @@ const std::vector<MapData>& statue_maps(){
     return MAPS;
 }
 
+//  The same corridor with a cut tree at (4, 1): the tree's object and its
+//  gate over the floor.
+const std::vector<MapData>& tree_maps(){
+    static const std::vector<MapData> MAPS{parse_map(R"({
+        "format": "pokesim-runtime-map/2", "name": "TreeHall", "points": {}, "warps": [], "connections": [], "source": {"decomp_file": "", "revision": "test", "date": "2026-11-14"},
+        "tiles": ["#########", "#...G...#", "#########"],
+        "gates": {"cut_tree_4_1": {"tiles": [[4, 1]], "open_glyph": ".", "new_game": "closed", "opens_by": "cut", "flag": "FLAG_TEMP_1"}},
+        "npcs": [{"name": "cut_tree", "coord": [4, 1], "hide_flag": "FLAG_TEMP_1"}]
+    })", "TreeHall")};
+    return MAPS;
+}
+
 const MapPosition HALL_START{"GateHall", {1, 1}};
 const MapPosition HALL_GOAL{"GateHall", {6, 1}};
 const MapPosition STATUE_START{"GateStatue", {1, 1}};
@@ -240,6 +252,47 @@ UnitTestResult test_gated_plan_keeps_stop_risk(){
     }
     if (describe(*gated) != describe(*plain)){
         return "The gated plan differs from the plain one, which weighs the stop under the sign:" + describe(*gated) + "\n  against" + describe(*plain);
+    }
+    return true;
+}
+
+//  A cut tree's gate: cut_gate_key() names it, resolve_maps() takes the tree
+//  away once it is open, so a plain route walks over its tile, and
+//  regrow_cut_gates() closes it again.
+UnitTestResult test_cut_tree_opens_and_regrows(){
+    const MapPosition tree{"TreeHall", {4, 1}};
+    const std::optional<std::string> key = cut_gate_key(tree_maps(), tree);
+    if (key != "TreeHall/cut_tree_4_1" || cut_gate_key(tree_maps(), MapPosition{"TreeHall", {3, 1}})){
+        return "cut_gate_key() does not name the tree's gate only.";
+    }
+    const MapPosition start{"TreeHall", {1, 1}};
+    const MapPosition goal{"TreeHall", {6, 1}};
+    if (plan_overworld_route(resolve_maps(tree_maps(), GateState()), start, RouteGoal{goal, std::nullopt})){
+        return "A route walked through a standing tree.";
+    }
+    GateState cut;
+    cut.opened.insert(*key);
+    const std::vector<MapData> open = resolve_maps(tree_maps(), cut);
+    if (object_at(open[0], tree.point) != nullptr || !plan_overworld_route(open, start, RouteGoal{goal, std::nullopt})){
+        return "The cut tree still stands in the way.";
+    }
+    cut.opened.insert("GateHall/door_1");
+    regrow_cut_gates(tree_maps(), cut);
+    if (cut.opened != std::set<std::string>{"GateHall/door_1"}){
+        return "regrow_cut_gates() left the tree cut or closed another gate.";
+    }
+    return true;
+}
+
+//  The sim cuts the tree: its gate opens and the player walks over its tile.
+UnitTestResult test_sim_cuts_tree_gate(){
+    OverworldSim sim(tree_maps(), MapPosition{"TreeHall", {3, 1}}, Direction::EAST);
+    if (!sim.use_field(SimField::CUT_TREE) || !sim.state().gates.opened.contains("TreeHall/cut_tree_4_1")){
+        return "Cutting the tree did not open its gate.";
+    }
+    sim_step_once(sim, Direction::EAST);
+    if (!(sim.state().position == MapPosition{"TreeHall", {4, 1}})){
+        return "The player did not step onto the cut tree's tile, ended on " + to_string(sim.state().position) + ".";
     }
     return true;
 }
@@ -417,6 +470,8 @@ const std::vector<GatesCase> GATES_CASES{
     {.input = {.name = "sim: a failed press keeps the player on its tile", .body = test_failed_press_keeps_its_tile}, .expectation = {}},
     {.input = {.name = "the statue's first page is turned to its prompt", .body = test_statue_pages_to_prompt}, .expectation = {}},
     {.input = {.name = "a statue with no prompt is given up on", .body = test_statue_without_prompt_gives_up}, .expectation = {}},
+    {.input = {.name = "a cut tree's gate opens, clears its tree and grows back", .body = test_cut_tree_opens_and_regrows}, .expectation = {}},
+    {.input = {.name = "sim: cut the tree, step onto its tile", .body = test_sim_cuts_tree_gate}, .expectation = {}},
 };
 
 } // namespace
