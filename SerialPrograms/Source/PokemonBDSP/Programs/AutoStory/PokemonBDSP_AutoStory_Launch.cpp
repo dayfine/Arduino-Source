@@ -125,7 +125,6 @@ Pokemon::Observation<GridPose> BdspLaunchBackend::observe(){
 StoryLaunchPolicy bdsp_launch_policy(std::vector<StoryLaunchPrompt> switch_prompts){
     StoryLaunchPolicy policy;
     policy.game = "bdsp";
-    policy.overworld_after_load = true;
     policy.tile_selected = [
         diamond = Pokemon::switch_home_tile_named(HOME_LANGUAGE, std::string(DIAMOND_TILE)),
         pearl = Pokemon::switch_home_tile_named(HOME_LANGUAGE, std::string(PEARL_TILE))
