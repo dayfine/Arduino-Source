@@ -170,8 +170,10 @@ private:
 
     OverworldSim& m_sim;
     StoryPose m_at;
-    //  The trainers the step's run flags say are beaten (beaten_trainers()):
-    //  the walker doesn't watch for them.
+    //  The step's run flags: the maps the program plans on are theirs
+    //  (run_story_maps()), and the walker doesn't watch for the trainers they
+    //  say are beaten (m_beaten, beaten_trainers()).
+    std::set<std::string> m_flags;
     std::set<std::string> m_beaten;
     SimStepGuard m_guard;
     SimStubs m_stubs;

@@ -45,7 +45,6 @@ std::string_view sim_screen_name(SimScreen screen){
     return "?";
 }
 
-
 WallClock sim_wall_clock(Milliseconds time){
     return WallClock() + time;
 }
@@ -488,8 +487,8 @@ void OverworldSim::walk_hold(Direction direction, Milliseconds duration, int sho
     const Milliseconds end = m_now + duration;
     Milliseconds pressed = m_now;
     if (m_state.facing != direction){
-        //  Holding through a turn lost a tile on the console, on foot.
-        pressed += m_state.on_bike ? Milliseconds(0) : tile;
+        //  Holding through a turn lost a tile on the console, on foot; off an exit mat its way, none.
+        pressed += m_state.on_bike || exit_mat(map(), m_player.position) == direction ? Milliseconds(0) : tile;
         m_state.facing = direction;
     }
     take_steps(direction, pressed, end, (int)((end - pressed + tile - 1ms) / tile) - short_by);
@@ -544,9 +543,9 @@ void OverworldSim::tap(Direction direction, Milliseconds duration, Milliseconds 
         hold_on(direction, start + duration);
     }else if (m_state.on_bike && drops_bike_tap(start)){
         m_last_tap.reset();
-    }else if (m_state.facing != direction && !m_state.on_bike){
-        //  From a standstill a tap only turns the player, even one as long
-        //  as LONGEST_TAP. Not on the Bicycle: there it steps.
+    }else if (m_state.facing != direction && !m_state.on_bike && exit_mat(map(), m_player.position) != direction){
+        //  From a standstill a tap only turns the player, even one as long as LONGEST_TAP. Not on the Bicycle: there it steps.
+        //  Nor off an exit mat its way: there it takes the warp (console B, 2026-11-14: 14.02b Cinnabar Gym, 15.01 Route 7's gate).
         m_last_tap = TapPress{direction, start, start + duration, m_state.facing, 0};
         if (drops_turn_tap()){
             m_state.turn_taps_dropped++;
@@ -991,6 +990,7 @@ RouteCalls OverworldSimWalker::calls(){
     calls.watch_for_trainer = [this](const RouteStep& step, const TrainerCrossing& crossing){ return watch_for_trainer(step, crossing); };
     //  As the console: the walking sprite shows, not where.
     calls.landed_on = [this](const MapPosition&){ return !m_sim.state().surfing; };
+    calls.riding = [this](const RouteStep&){ return m_sim.state().on_bike; };
     return calls;
 }
 

@@ -4,9 +4,13 @@
  *
  */
 
+#include <format>
+#include <map>
 #include <set>
 #include <string>
+#include "Common/Cpp/Concurrency/Mutex.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
+#include "PokemonFRLG_AutoStoryMovedTrainers.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 
 namespace PokemonAutomation{
@@ -46,12 +50,38 @@ const std::vector<MapData>& story_maps(){
     return maps;
 }
 
+namespace{
+
+//  story_maps() without the Rockets (SILPH_CLEARED_FLAG).
+const std::vector<MapData>& cleared_story_maps(){
+    static const std::vector<MapData> maps = make_story_maps(true);
+    return maps;
+}
+
+} // namespace
+
 const std::vector<MapData>& run_story_maps(const std::set<std::string>& run_flags){
-    if (run_flags.contains(std::string(SILPH_CLEARED_FLAG))){
-        static const std::vector<MapData> cleared = make_story_maps(true);
-        return cleared;
+    const bool cleared = run_flags.contains(std::string(SILPH_CLEARED_FLAG));
+    const std::vector<MapData>& base = cleared ? cleared_story_maps() : story_maps();
+    const std::vector<TrainerMove> moved = moved_trainers(run_flags);
+    if (moved.empty()){
+        return base;
     }
-    return story_maps();
+    //  One copy per set of trainers moved, kept while the program runs:
+    //  callers hold references into it. `run_flags` is a set, so the key
+    //  lists the moves in one order.
+    std::string key = cleared ? "cleared" : "all";
+    for (const TrainerMove& move : moved){
+        key += std::format("|{}={},{}", move.trainer, move.x, move.y);
+    }
+    static Mutex lock;
+    static std::map<std::string, std::vector<MapData>> moved_maps;
+    LockGuard<Mutex> guard(lock);
+    auto it = moved_maps.find(key);
+    if (it == moved_maps.end()){
+        it = moved_maps.emplace(key, with_trainers_moved(base, moved)).first;
+    }
+    return it->second;
 }
 
 std::set<std::string> beaten_trainers(const std::set<std::string>& run_flags){

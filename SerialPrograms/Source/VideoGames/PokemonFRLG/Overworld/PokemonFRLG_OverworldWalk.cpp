@@ -244,7 +244,7 @@ Milliseconds tile_time(const RouteStep& step, MoveSpeed speed){
 }
 
 bool turns_first(const RouteStep& step, MoveSpeed speed, std::optional<Direction> facing){
-    if (facing == step.direction){
+    if (facing == step.direction || step.off_exit_mat){
         return false;
     }
     return step.surfing || step_speed(step, speed) != MoveSpeed::BIKE || BIKE_TAP_ONLY_TURNS;
