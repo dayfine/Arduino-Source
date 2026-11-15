@@ -98,9 +98,10 @@ private:
 //  drops it when the connection is lost, so a dead bridge shows no video.
 //
 //  The bridge holds one client at a time, so this source takes its only
-//  slot. A controller for the same mGBA (slice 2: KEYS, GRANT) must not open
-//  a second connection: it has to share this one (Connection serializes
-//  commands from several threads).
+//  slot. While open, the connection is published in MgbaLink::link_registry()
+//  under the source's address; the mGBA controller for the same address
+//  sends KEYS and GRANT on it (Connection serializes commands from several
+//  threads).
 class VideoSource_MgbaLink : public VideoSource{
 public:
     VideoSource_MgbaLink(Logger& logger, std::string address);

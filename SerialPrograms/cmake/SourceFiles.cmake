@@ -286,8 +286,16 @@ file(GLOB CORE_LIBRARY_SOURCES
     Source/Controllers/MgbaLink/MgbaLink_Keys.h
     Source/Controllers/MgbaLink/MgbaLink_Keys_Tests.cpp
     Source/Controllers/MgbaLink/MgbaLink_Keys_Tests.h
+    Source/Controllers/MgbaLink/MgbaLink_KeySender.cpp
+    Source/Controllers/MgbaLink/MgbaLink_KeySender.h
+    Source/Controllers/MgbaLink/MgbaLink_KeySender_Tests.cpp
+    Source/Controllers/MgbaLink/MgbaLink_KeySender_Tests.h
+    Source/Controllers/MgbaLink/MgbaLink_Pacer.cpp
+    Source/Controllers/MgbaLink/MgbaLink_Pacer.h
     Source/Controllers/MgbaLink/MgbaLink_Protocol.cpp
     Source/Controllers/MgbaLink/MgbaLink_Protocol.h
+    Source/Controllers/MgbaLink/MgbaLink_SharedLink.cpp
+    Source/Controllers/MgbaLink/MgbaLink_SharedLink.h
     Source/Controllers/MgbaLink/MgbaLink_Tests.cpp
     Source/Controllers/MgbaLink/MgbaLink_Tests.h
     Source/Controllers/NullController.cpp
@@ -326,10 +334,16 @@ file(GLOB CORE_LIBRARY_SOURCES
     Source/NintendoSwitch/Controllers/Joycon/NintendoSwitch_Joycon_from_Keyboard.h
     Source/NintendoSwitch/Controllers/Joycon/NintendoSwitch_JoyconState.cpp
     Source/NintendoSwitch/Controllers/Joycon/NintendoSwitch_JoyconState.h
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_Descriptor.cpp
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_Descriptor.h
     Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap.cpp
     Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap.h
     Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap_Tests.cpp
     Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap_Tests.h
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_ProController.cpp
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_ProController.h
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_SelectorWidget.cpp
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_SelectorWidget.h
     Source/NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.cpp
     Source/NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h
     Source/NintendoSwitch/Controllers/NintendoSwitch_ControllerSettings.cpp

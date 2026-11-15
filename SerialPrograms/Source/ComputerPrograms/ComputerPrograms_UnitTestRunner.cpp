@@ -25,6 +25,7 @@
 #include "CommonFramework/Windows/LabChannel_Tests.h"
 #include "CommonFramework/VideoPipeline/Sources/VideoSource_MgbaLink_Tests.h"
 #include "Controllers/MgbaLink/MgbaLink_Keys_Tests.h"
+#include "Controllers/MgbaLink/MgbaLink_KeySender_Tests.h"
 #include "Controllers/MgbaLink/MgbaLink_Tests.h"
 #include "NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap_Tests.h"
 #include "CommonFramework/Windows/LabSnapshot_Tests.h"
@@ -77,6 +78,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_LabChannel(ret);
     MgbaLink::add_tests(ret);
     MgbaLink::add_key_tests(ret);
+    MgbaLink::add_key_sender_tests(ret);
     NintendoSwitch::add_tests_MgbaLinkKeyMap(ret);
     add_tests_VideoSource_MgbaLink(ret);
     add_tests_LabSnapshot(ret);
