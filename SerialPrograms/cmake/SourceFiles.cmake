@@ -1376,8 +1376,6 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h
-    Source/NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.cpp
-    Source/NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.h
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.cpp
