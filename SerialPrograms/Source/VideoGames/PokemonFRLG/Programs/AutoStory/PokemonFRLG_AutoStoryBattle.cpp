@@ -19,6 +19,7 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleHpBarReader.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleTextBoxDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
@@ -122,15 +123,19 @@ BattleScreen read_battle_screen(const ImageViewRGB32& screen, bool confirmed){
     return BattleScreen::NONE;
 }
 
+}  // namespace
+
 BattleTextScreen read_text_screen(const ImageViewRGB32& screen){
     return BattleTextScreen{
-        .text_box = BattleDialogDetector(COLOR_RED).detect(screen),
+        .text_box = BattleTextBoxDetector(COLOR_RED).detect(screen),
         .hp_box = BattleScreenDetector(COLOR_RED).detect(screen),
         .arrow = AdvanceBattleDialogDetector(COLOR_RED).detect(screen),
         .yes_no = battle_yes_no_shows(screen) || yes_no_cursor(screen).has_value(),
         .dark_cave = OverworldWalkSteps::dark_cave_screen(screen),
     };
 }
+
+namespace{
 
 //  The player's Pokemon gone while the opponent's is still there.
 bool starter_fainted(const ImageViewRGB32& screen){
