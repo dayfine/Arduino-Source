@@ -463,7 +463,8 @@ UnitTestResult test_corridor_rocket_stands_where_he_stopped(){
     if (std::find(start.begin(), start.end(), flag) == start.end()){
         return "16.03 does not start with " + flag + ".";
     }
-    const std::vector<MapData>& maps = run_story_maps({flag});
+    const std::set<std::string> run_flags{flag};
+    const std::vector<MapData>& maps = run_story_maps(run_flags);
     if (!has_object_at(maps, "SilphCo_5F", 11, 21)){
         return "The run's maps have nobody on SilphCo_5F (11, 21), where the Rocket stopped.";
     }
