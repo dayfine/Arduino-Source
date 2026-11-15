@@ -86,6 +86,11 @@ StoryLaunchPolicy plza_launch_policy(ConsoleHandle& console){
         StoryLaunchPress{.button = BUTTON_UP, .hold = 200ms, .release = 200ms},
         StoryLaunchPress{.button = BUTTON_B | BUTTON_X, .hold = 1000ms, .release = 200ms},
     };
+    //  The backup save's buttons only on the title's "PRESS (A) BUTTON",
+    //  which reads as an A prompt: the boot's logos pass plza_title() too.
+    policy.backup_title = [](const ScreenObservation& look){
+        return look.events.has(ScreenEvent::INTERACT_PROMPT) && plza_title(look);
+    };
     policy.prompts = Pokemon::switch_launch_prompts(console);
     for (StoryLaunchPrompt& prompt : plza_prompts()){
         policy.prompts.push_back(std::move(prompt));
