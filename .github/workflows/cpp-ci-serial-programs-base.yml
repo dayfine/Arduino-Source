@@ -245,9 +245,7 @@ jobs:
         uses: actions/checkout@v7
         if: inputs.run-tests
         with:
-          # The fork's fixtures: upstream's plus the HomeTileReader frames (fork only until they land upstream).
-          repository: 'dayfine/CommandLineTests'
-          ref: '0195f3b0c6ffb15bf6df176cfd3a64d781346fcf'
+          repository: 'PokemonAutomation/CommandLineTests'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded
