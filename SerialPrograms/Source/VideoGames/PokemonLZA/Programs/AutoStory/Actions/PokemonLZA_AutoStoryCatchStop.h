@@ -3,9 +3,9 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The console-free choices of one stop on Wild Zone 1's catch patrol:
- *  whether to stop at a spot at all, what to do after a throw, and when to
- *  reset the camera's pitch (the target choice is in
- *  PokemonLZA_AutoStoryCatchPlan.h).
+ *  whether to stop at a spot at all, how a throw watches for the Pokedex's
+ *  "Registered!" banner, what to do after a throw, and when to reset the
+ *  camera's pitch (the target choice is in PokemonLZA_AutoStoryCatchPlan.h).
  *
  */
 
@@ -14,6 +14,8 @@
 
 #include <optional>
 #include <span>
+#include "Common/Cpp/Time.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_CoveredWatch.h"
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 
 namespace PokemonAutomation{
@@ -34,6 +36,27 @@ enum class SpotVisit{
 //  back when one was caught there, as its species is the one there
 //  (Scatterbug at 100; the user, console B 2026-11-14); else catch.
 SpotVisit spot_visit(int spot, std::span<const int> caught_at);
+
+//  How long the throw's watcher (DexRegisteredDetector) must see the
+//  "Registered!" banner before it fires.
+inline constexpr Milliseconds REGISTERED_BANNER_HOLD(100);
+
+//  How a throw watches for the banner, in frame time (Pokemon_CoveredWatch.h).
+//  The banner shows about 2 s, and the watcher fires on two frames on it a
+//  hold apart, so no gap under (2000 - 100) / 2 ms can hide it; 500 ms
+//  leaves room for a shorter showing and still passes frames 150 ms apart
+//  (ConvertFrame's mean under load). A longer gap reads UNKNOWN, not "not
+//  seen", and the plate decides (ThrowSeen): the banner showed 6.9 s in
+//  while frames came a second apart, and run_until() read "not seen"
+//  (03.08, console B 2026-11-14). The tail is the hold: a banner showing in
+//  the window's last hold fires after it. The cap waits 2 s for a frame
+//  captured that late.
+inline constexpr Pokemon::WatchLimits REGISTERED_BANNER_WATCH{
+    .max_gap = Milliseconds(500),
+    .tail = REGISTERED_BANNER_HOLD,
+    .cap = Milliseconds(2000),
+    .period = Milliseconds(50),
+};
 
 //  What a catch stop does after a throw at a locked target.
 enum class AfterThrow{
