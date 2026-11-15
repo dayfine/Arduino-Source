@@ -94,7 +94,6 @@ void print_command_file_help(std::ostream& out);
 
 
 
-
 class CommandFileRunner_Descriptor : public SingleSwitchProgramDescriptor{
 public:
     CommandFileRunner_Descriptor();
