@@ -21,7 +21,10 @@
 #include "Inference/PokemonLZA_OverworldPartySelectionDetector.h"
 #include "Inference/PokemonLZA_PartyBarDetector.h"
 #include "Inference/PokemonLZA_SelectionArrowDetector.h"
+#include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryConfirmChoicesReader_Tests.h"
+#include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDetectors_Tests.h"
+#include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -47,6 +50,9 @@ void add_tests(UnitTestDatabase& database){
     add_tests_PartyBarDetector(database);
     add_tests_SelectionArrowDetector(database);
     add_tests_AutoStoryDetectors(database);
+    add_tests_AutoStoryConfirmChoicesReader(database);
+    add_tests_AutoStoryDialogChoiceBox(database);
+    add_tests_AutoStoryObjectiveMarkerReader(database);
 
 }
 
