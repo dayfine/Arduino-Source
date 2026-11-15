@@ -430,6 +430,21 @@ std::optional<size_t> attack_slot_against(const PartyMember& member, const std::
     return plan;
 }
 
+void learn_taught(std::string_view move, std::string_view forgot, PartyMember& member){
+    const KnownMove taught{.move = std::string(move), .pp = max_pp(move)};
+    if (!forgot.empty()){
+        for (KnownMove& known : member.moves){
+            if (known.move == forgot){
+                known = taught;
+                return;
+            }
+        }
+    }
+    if (member.moves.size() < MAX_MOVES && !knows(member, move)){
+        member.moves.emplace_back(taught);
+    }
+}
+
 size_t attack_pp(const PartyMember& member){
     size_t pp = 0;
     for (const KnownMove& known : member.moves){

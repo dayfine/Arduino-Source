@@ -10,10 +10,13 @@
 #include <format>
 #include <functional>
 #include <string>
+#include <string_view>
+#include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
+#include "PokemonFRLG_AutoStoryParty.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -259,6 +262,66 @@ UnitTestResult test_teach_records_fly_user(){
 }
 
 
+//  A TM Case holding the TM, and a lead with four moves that forgets the
+//  one asked: its moves read after teaching hold the new one in its place.
+class LearningTeach : public TeachActions{
+public:
+    explicit LearningTeach(std::vector<std::string> moves)
+        : moves(std::move(moves))
+    {}
+    virtual ItemOpen open_item(std::string_view, std::string_view move) override{
+        m_move = move;
+        return ItemOpen::OPENED;
+    }
+    virtual TeachPrompt choose_member(size_t) override{ return TeachPrompt::DELETE_PROMPT; }
+    virtual ForgetEnd forget(size_t slot) override{
+        moves[slot] = m_move;
+        return ForgetEnd::LEARNED;
+    }
+    virtual void stop_teaching() override{}
+    virtual bool leave() override{ return true; }
+    virtual void dump_screen(std::string_view) override{}
+
+    std::vector<std::string> moves;
+
+private:
+    std::string m_move;
+};
+
+//  The battles' lead knows a move taught to party slot 1: console B taught
+//  Blizzard over Dig before the Silph rival (2026-11-15, 16.03 run 8), but
+//  the battle kept the moves read at the save's load and attacked Venusaur
+//  with Bite. A TEACH to another slot leaves the lead as it is.
+UnitTestResult test_teach_updates_battle_lead(){
+    StubGame game;
+    QuietLogger logger;
+    LearningTeach teach({"bite", "water-pulse", "surf", "dig"});
+    const MemberReader members = [&teach](size_t slot) -> std::optional<MemberInfo>{
+        return MemberInfo{.species = slot == 0 ? "blastoise" : "lapras", .level = 43, .moves = teach.moves};
+    };
+    PartyMember lead = member_from_summary(
+        "blastoise", 43, {{"bite", 25, 25}, {"water-pulse", 20, 20}, {"surf", 14, 15}, {"dig", 10, 10}}, std::nullopt
+    );
+    StoryAbilities abilities{members, game.mart, teach, game.patch, game.fossils, {}, nullptr, &lead};
+    const Pokemon::StoryStep step = teach_step("teach_blizzard", "", {.item = "tm14", .move = "blizzard", .member = 0, .forget_move = "dig"});
+    run_ability_game_step(logger, nullptr, step, abilities);
+    if (lead.moves.size() != 4 || lead.moves[3].move != "blizzard" || lead.moves[3].pp != 5 || lead.moves[2].pp != 14){
+        return "the lead's slot 4 isn't Blizzard at 5 PP, the others kept.";
+    }
+    constexpr size_t BLIZZARD = 3;
+    if (attack_slot_against(lead, {"venusaur"}) != BLIZZARD){
+        return "expected Blizzard against Venusaur after the TEACH.";
+    }
+    LearningTeach other({"bite", "water-pulse", "surf", "blizzard"});
+    StoryAbilities second{members, game.mart, other, game.patch, game.fossils, {}, nullptr, &lead};
+    run_ability_game_step(logger, nullptr, teach_step("teach_slot2", "", {.item = "tm13", .move = "ice-beam", .member = 1, .forget_move = "surf"}), second);
+    if (lead.moves[2].move != "surf"){
+        return "a TEACH to party slot 2 changed the lead's moves.";
+    }
+    return true;
+}
+
+
 //  A shiny in a GRIND stops the program, not the checkpoint: a reload
 //  would lose it.
 UnitTestResult test_grind_shiny_stops(){
@@ -308,6 +371,10 @@ const AutoStoryAbilitiesCase AUTO_STORY_ABILITIES_CASES[] = {
     },
     {
         .input = {"a Fly after a TEACH reads no summary", test_teach_records_fly_user},
+        .expectation = {},
+    },
+    {
+        .input = {"a TEACH to the lead changes the battles' lead", test_teach_updates_battle_lead},
         .expectation = {},
     },
     {
