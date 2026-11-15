@@ -127,6 +127,12 @@
         "id": "poke_flute",
         "kind": "talk",
         "why": "Mr. Fuji gives the POKE FLUTE (FLAG_GOT_POKE_FLUTE), no YES/NO"
+      },
+      {
+        "id": "poke_flute_obtained",
+        "kind": "scene",
+        "declared_after": {"map": "LavenderTown_VolunteerPokemonHouse", "tiles": [[3, 4]], "facing": "north"},
+        "why": "Mr. Fuji's lines and the POKE FLUTE, to the overworld. The talk returns at his first message, so the save must not follow it"
       }
     ]
   },
