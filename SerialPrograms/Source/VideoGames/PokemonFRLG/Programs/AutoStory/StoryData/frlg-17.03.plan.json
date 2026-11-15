@@ -14,6 +14,10 @@
       ],
       "facing": "north"
     },
+    "start_flags": [
+      "trainer_beaten:ViridianCity_Gym/cooltrainer_m@13,7",
+      "trainer_at:ViridianCity_Gym/cooltrainer_m@13,7=14,7"
+    ],
     "events": [
       {
         "id": "below_takashi_line",
@@ -64,7 +68,11 @@
           ],
           "facing": "north"
         },
-        "why": "Takashi (TRAINER_BLACK_BELT_TAKASHI): Machoke Lv38, Machop Lv38, Machoke Lv38, Machoke Lv43"
+        "why": "Takashi (TRAINER_BLACK_BELT_TAKASHI): Machoke Lv38, Machop Lv38, Machoke Lv38, Machoke Lv43; he walked up from (10, 2) to (10, 4) when he saw the player on (10, 5) (pokefirered TrainerApproachPlayer: approach distance 3, one tile short) and stands there from now on (trainer_at; TrainerSeeFunc_PrepareToEngage: OverrideTemplateCoordsForObjectEvent), across column 10 north of the player",
+        "flags_after": [
+          "trainer_beaten:ViridianCity_Gym/black_belt@10,2",
+          "trainer_at:ViridianCity_Gym/black_belt@10,2=10,4"
+        ]
       },
       {
         "id": "below_giovanni",
@@ -82,7 +90,7 @@
             "facing": "north"
           }
         },
-        "why": "west along row 3 and down to (2, 3), facing Giovanni (2, 2)"
+        "why": "round Takashi, who stands on (10, 4) since his battle, to (2, 3), facing Giovanni (2, 2)"
       }
     ]
   },

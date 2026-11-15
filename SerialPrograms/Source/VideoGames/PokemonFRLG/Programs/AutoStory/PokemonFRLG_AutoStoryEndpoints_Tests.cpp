@@ -340,6 +340,12 @@ const AutoStoryEndpointCase AUTO_STORY_ENDPOINT_CASES[] = {
         .expectation = {.map = "VermilionCity_PokemonCenter_1F", .tile = {7, 4}, .facing = Direction::NORTH},
     },
     {
+        .name = "06.03 Route 6's grass until the lead is Lv31, then through the open beams to Lt. Surge",
+        //  06.02 fights Dwayne, Baily and Tucker.
+        .input = {.checkpoint = "06.03", .trainers_beaten_on = "VermilionCity_Gym"},
+        .expectation = {.map = "VermilionCity_Gym", .tile = {5, 3}, .facing = Direction::NORTH},
+    },
+    {
         .name = "06.04 Vermilion Gym: Lt. Surge, the THUNDERBADGE, then the Center",
         .input = {.checkpoint = "06.04"},
         .expectation = {.map = "VermilionCity_PokemonCenter_1F", .tile = {7, 4}, .facing = Direction::NORTH},
@@ -398,6 +404,11 @@ const AutoStoryEndpointCase AUTO_STORY_ENDPOINT_CASES[] = {
         .name = "10.03 Pokemon Tower 2F: the rival",
         .input = {.checkpoint = "10.03"},
         .expectation = {.map = "PokemonTower_2F", .tile = {16, 6}, .facing = Direction::NORTH},
+    },
+    {
+        .name = "10.04 Pokemon Tower 3F to 5F: a Super Repel, Ruth and Tammy",
+        .input = {.checkpoint = "10.04"},
+        .expectation = {.map = "PokemonTower_5F", .tile = {18, 7}, .facing = Direction::SOUTH},
     },
     {
         .name = "10.05 Pokemon Tower 6F: Jennifer, Emilia, the Rare Candy and the Marowak ghost",
@@ -490,6 +501,16 @@ const AutoStoryEndpointCase AUTO_STORY_ENDPOINT_CASES[] = {
         .expectation = {.map = "SilphCo_7F", .tile = {1, 7}, .facing = Direction::WEST},
     },
     {
+        .name = "17.02 Saffron to Viridian Gym: Fly, Warren",
+        .input = {.checkpoint = "17.02"},
+        .expectation = {.map = "ViridianCity_Gym", .tile = {15, 7}, .facing = Direction::NORTH},
+    },
+    {
+        .name = "17.03 Viridian Gym: Takashi, to Giovanni",
+        .input = {.checkpoint = "17.03"},
+        .expectation = {.map = "ViridianCity_Gym", .tile = {2, 3}, .facing = Direction::NORTH},
+    },
+    {
         .name = "17.04 Viridian Gym: Giovanni and the EARTHBADGE",
         .input = {.checkpoint = "17.04"},
         .expectation = {.map = "ViridianCity_Gym", .tile = {2, 3}, .facing = Direction::NORTH},
@@ -576,11 +597,9 @@ const EndpointExemption ENDPOINT_EXEMPTIONS[] = {
     {.checkpoint = "04.05", .reason = "its helix_gap step is a plain step the sim reads as a trainer's line, and no trainer is there"},
     {.checkpoint = "05.01", .reason = "ends on LEGS taps (Cerulean Gym): no declared end (checkpoint_end_pose())"},
     {.checkpoint = "06.02", .reason = "Vermilion Gym's Cut tree and trash cans: PokemonFRLG_AutoStoryVermilionGym_Tests.cpp"},
-    {.checkpoint = "06.03", .reason = "red: the walk to Lt. Surge ends on (5, 4), one tile short of the declared (5, 3)"},
     {.checkpoint = "09.01", .reason = "the poster guard's step ends on (11, 3), not (11, 2): PokemonFRLG_AutoStoryHideout_Tests.cpp"},
-    {.checkpoint = "10.04", .reason = "red: the sim turns the player to the trainer who walks up (OverworldSim::trainer_sees), so Tammy leaves them facing east; pokefirered's TrainerSeeFunc_PrepareToEngage does not turn the player, the plan's south stands"},
     {.checkpoint = "12.03", .reason = "Route 21's Surf landing on the sand bar needs the Surf state the generic walk lacks: PokemonFRLG_AutoStorySurf_Tests.cpp"},
-    {.checkpoint = "13.01", .reason = "red: the Mansion's holes leave the sim facing north, the plan declares south"},
+    {.checkpoint = "13.01", .reason = "red: the sim ends on 3F's (19, 13) facing north, the plan declares south; not the trainer turn (no trainer sees mansion_holes' legs: Simon wanders (6..8, 12..14), Braydon (22, 13) sees only (22, 14)), not yet root-caused"},
     {.checkpoint = "14.01", .reason = "ends on LEGS taps (the quiz machines): no declared end (checkpoint_end_pose())"},
     {.checkpoint = "14.02b", .reason = "the quiz doors' gates are shut on a fresh sim: PokemonFRLG_AutoStoryCinnabarGym_Tests.cpp"},
     {.checkpoint = "14.04b", .reason = "Celadon Gym's legs need the cut tree: PokemonFRLG_AutoStoryCeladonGym_Tests.cpp"},
@@ -588,8 +607,6 @@ const EndpointExemption ENDPOINT_EXEMPTIONS[] = {
     {.checkpoint = "16.03", .reason = "Silph Co.'s card-key doors and pads: PokemonFRLG_AutoStorySilph_Tests.cpp"},
     {.checkpoint = "16.05", .reason = "Silph Co.'s card-key doors and pads: PokemonFRLG_AutoStorySilph_Tests.cpp"},
     {.checkpoint = "16.06", .reason = "Silph Co.'s card-key doors and pads: PokemonFRLG_AutoStorySilph_Tests.cpp"},
-    {.checkpoint = "17.02", .reason = "red: the sim turns the player to Warren as he walks up (OverworldSim::trainer_sees), so the row ends on (15, 7) facing west; pokefirered's TrainerSeeFunc_PrepareToEngage does not turn the player, the plan's north stands. The tile is checked by PokemonFRLG_AutoStoryViridian_Tests.cpp"},
-    {.checkpoint = "17.03", .reason = "red, known: Takashi stands in the way after his battle, and below_giovanni stops on (10, 5) (the fault sweep's known-failing clean run)"},
     {.checkpoint = "19.03", .reason = "the soul guard's gate scene moves the player: PokemonFRLG_AutoStoryGates_Tests.cpp"},
     {.checkpoint = "19.04b", .reason = "Victory Road's boulders and floor switches: PokemonFRLG_AutoStoryBoulders_Tests.cpp"},
     {.checkpoint = "19.04c", .reason = "Victory Road's boulders and floor switches: PokemonFRLG_AutoStoryBoulders_Tests.cpp"},

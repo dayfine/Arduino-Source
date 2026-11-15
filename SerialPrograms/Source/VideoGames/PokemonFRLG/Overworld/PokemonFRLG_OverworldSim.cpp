@@ -343,10 +343,9 @@ bool OverworldSim::trainer_sees(Milliseconds pressed){
         trainer.x = stop.x;
         trainer.y = stop.y;
         trainer.wander.reset();
-        //  The player turns to face the trainer.
-        for (Direction direction : {Direction::NORTH, Direction::EAST, Direction::SOUTH, Direction::WEST}){
-            m_state.facing = m_player.position.next(direction) == stop ? direction : m_state.facing;
-        }
+        //  The player keeps their facing: the game doesn't turn them to the
+        //  trainer (pokefirered TrainerSeeFunc_PrepareToEngage(), the turn
+        //  commented out).
         m_trainer_speaking = c;
         m_frozen = true;
         schedule(pressed + m_script.timing.tile * (1 + approach) + m_script.timing.trainer_notice, SimScreen::MESSAGE, false);
