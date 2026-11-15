@@ -1459,9 +1459,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryLog.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryOutcome.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryOutcome.h
+    Source/Pokemon/AutoStory/Pokemon_StoryPose.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryPose.h
-    Source/Pokemon/AutoStory/Types/Pokemon_DeclaredPose.h
     Source/Pokemon/AutoStory/Types/Pokemon_GridPose.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h
