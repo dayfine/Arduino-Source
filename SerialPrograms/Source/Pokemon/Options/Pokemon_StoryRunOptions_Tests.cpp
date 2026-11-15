@@ -11,7 +11,6 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
-#include "Pokemon_GameLanguages.h"
 #include "Pokemon_StoryRunOptions.h"
 #include "Pokemon_StoryRunOptions_Tests.h"
 
@@ -54,7 +53,7 @@ public:
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        StoryRunOptions run(two_checkpoints(), Gen8ToGen9Languages_Database());
+        StoryRunOptions run(two_checkpoints());
         if (!run.RELOAD_AT_START){
             return "Expected the reload at the start on by default.";
         }

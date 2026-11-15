@@ -5,9 +5,8 @@
  *  The options every AutoStory program shows for where to start and end, how
  *  hard to try and how much to check: the shared range group
  *  (Pokemon_StoryRangeOptions.h) plus the attempts per checkpoint, the
- *  checks level (Types/Pokemon_StoryCheckLevel.h), the language the game's
- *  steps read text in, and whether it reloads the save before its first
- *  checkpoint.
+ *  checks level (Types/Pokemon_StoryCheckLevel.h) and whether it reloads
+ *  the save before its first checkpoint.
  *
  */
 
@@ -19,7 +18,7 @@
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
-#include "CommonFramework/Language.h"
+
 #include "CommonTools/Options/StringSelectOption.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
@@ -44,20 +43,14 @@ class StoryRunOptions : public StoryRangeOptions{
 public:
     //  `checkpoints`: story_checkpoint_database() of the game's story, kept
     //  alive by the caller; the dropdowns start on its first and last.
-    //  `languages`: the ones the game has (Pokemon_GameLanguages.h).
-    StoryRunOptions(const StringSelectDatabase& checkpoints, const EnumDropdownDatabase<Language>& languages);
+    explicit StoryRunOptions(const StringSelectDatabase& checkpoints);
 
     //  The checks level, for the game's steps to read.
     StoryCheckLevel check_level() const;
-    //  The game's language, for the steps that read text.
-    Language language() const;
 
 public:
     SimpleIntegerOption<uint8_t> ATTEMPTS_PER_CHECKPOINT;
     EnumDropdownOption<StoryCheckLevel> CHECKS;
-    //  Any language the game has, whether or not a reader supports it:
-    //  steps without one use language-free checks, so none is refused.
-    EnumDropdownOption<Language> LANGUAGE;
     //  On (the default), the run loads the save before its first
     //  checkpoint. Off, it starts from where the game is; later checkpoints
     //  reload as before.
