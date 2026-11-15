@@ -42,7 +42,7 @@ std::string AutoStory_Segment_03::end_text() const{
 
 void AutoStory_Segment_03::run_segment(SingleSwitchProgramEnvironment& env, ProControllerContext& context, AutoStoryOptions options, AutoStoryStats& stats) const{
 
-    stats.m_segment++;
+    stats.m_segments_started++;
     env.update_stats();
     context.wait_for_all_requests();
     env.console.log("Start Segment " + name(), COLOR_ORANGE);

@@ -1208,7 +1208,6 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     StartProgramChecks::check_performance_class_wired_or_wireless(context);
     assert_16_9_720p_min(env.logger(), env.console);
 
-
     // test code
     if (TEST_FLYPOINT_LOCATIONS || TEST_MOVE_CURSOR_OFFSET_FROM_FLYPOINT || ENABLE_TEST_CHECKPOINTS || ENABLE_MISC_TEST || TEST_PBF_LEFT_JOYSTICK || TEST_PBF_JOYSTICK2 || TEST_CHANGE_DIRECTION || TEST_CURRENT_DIRECTION){
         test_code(env, context);
@@ -1225,6 +1224,9 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
             throw UserSetupError(env.logger(), "The start segment cannot be later than the end segment.");
         }
     }
+
+    env.current_stats<AutoStoryStats>().m_runs++;
+    env.update_stats();
 
     //  Connect the controller.
     require_player(env.console, context, BUTTON_L);
@@ -1278,11 +1280,9 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
             env.console.log("Ensure the minimap is unlocked.");
             confirm_minimap_unlocked(env, context);
         }
-
     }
 
     run_autostory(env, context);
-    
     send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
     GO_HOME_WHEN_DONE.run_end_of_program(context);
 }
