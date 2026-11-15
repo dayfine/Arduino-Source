@@ -206,6 +206,13 @@ IntroStep decide_intro_step(std::string_view screen, const IntroProgress& progre
     if (!progress.game_confirmed && progress.unconfirmed_for >= INTRO_TIME_BEFORE_BDSP){
         return IntroStep::FAIL_NOT_BDSP;
     }
+    //  Between the language pick and the look pick, an unknown screen is a fade or
+    //  a cutscene frame, and the look select can show for a frame before it reads
+    //  as one (A on that frame takes look 1). Wait there; the
+    //  professor's lines are read as dialog and take their A.
+    if (!progress.language_pending && progress.look_pending){
+        return IntroStep::WAIT;
+    }
     return IntroStep::ADVANCE;
 }
 bool intro_screen_confirms_bdsp(std::string_view screen){

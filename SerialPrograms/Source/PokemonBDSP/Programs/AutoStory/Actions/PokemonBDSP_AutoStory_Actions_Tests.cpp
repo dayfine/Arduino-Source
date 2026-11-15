@@ -259,6 +259,11 @@ UnitTestResult test_intro_gate(Logger&){
     if (decide_intro_step("other", progress) != IntroStep::ADVANCE){
         return "Once BDSP's dialogue has shown, the clock stops.";
     }
+    IntroProgress before_look = progress;
+    before_look.look_pending = true;
+    if (decide_intro_step("other", before_look) != IntroStep::WAIT){
+        return "Between the language pick and the look pick, an unknown screen waits: A there can take the default look.";
+    }
     return check_confirming_screens();
 }
 
