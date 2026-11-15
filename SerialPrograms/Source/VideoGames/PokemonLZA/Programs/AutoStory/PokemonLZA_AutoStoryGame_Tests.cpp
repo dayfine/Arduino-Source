@@ -440,24 +440,24 @@ const LoadCase LOAD_CASES[] = {
         .name = "01.02's start: loaded, and off the platform",
         .input = {.checkpoint = "01.02", .looks = {CUTSCENE}},
         .expectation = {
-            .verdict = "done", .inputs = "press Home, wait 300ms, wait 300ms, wait 300ms, wait 300ms",
+            .verdict = "done", .inputs = "press HOME, wait 300ms, wait 300ms, wait 300ms, wait 300ms",
             .line = "[Checkpoint] 01.02: off the station platform, as at its start",
         },
     },
     {
         .name = "01.02's start on the platform is an older save",
         .input = {.checkpoint = "01.02", .looks = {PLATFORM}},
-        .expectation = {.verdict = "older_save", .inputs = "press Home, wait 300ms"},
+        .expectation = {.verdict = "older_save", .inputs = "press HOME, wait 300ms"},
     },
     {
         .name = "one platform look is not the platform",
         .input = {.checkpoint = "01.02", .looks = {PLATFORM, CUTSCENE, PLATFORM, CUTSCENE}},
-        .expectation = {.verdict = "done", .inputs = "press Home, wait 300ms, wait 300ms, wait 300ms, wait 300ms"},
+        .expectation = {.verdict = "done", .inputs = "press HOME, wait 300ms, wait 300ms, wait 300ms, wait 300ms"},
     },
     {
         .name = "01.01's start is left to its first step's platform check",
         .input = {.checkpoint = "01.01", .looks = {CUTSCENE}},
-        .expectation = {.verdict = "done", .inputs = "press Home"},
+        .expectation = {.verdict = "done", .inputs = "press HOME"},
     },
     {
         .name = "a game with no reload cannot load",
@@ -543,7 +543,7 @@ UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
     if (verdict != test.expectation.verdict){
         return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.verdict, verdict, joined(backend.lines(), "\n"));
     }
-    const size_t reloads = (size_t)std::count(backend.inputs().begin(), backend.inputs().end(), "press Home");
+    const size_t reloads = (size_t)std::count(backend.inputs().begin(), backend.inputs().end(), "press HOME");
     if (reloads != test.expectation.reloads){
         return std::format("expected {} reloads, got {}: {}", test.expectation.reloads, reloads, joined(backend.inputs(), ", "));
     }
