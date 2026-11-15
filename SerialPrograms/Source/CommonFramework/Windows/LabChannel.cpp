@@ -29,6 +29,7 @@
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "CommonFramework/VideoPipeline/Backends/VideoFrameQt.h"
 #include "LabChannel.h"
+#include "LabProgramContract.h"
 #include "LabSnapshot.h"
 
 namespace PokemonAutomation{
@@ -79,6 +80,7 @@ void print_channel_help(std::ostream& out){
         "  start [SECONDS] | stop   (start waits up to SECONDS, default 30, for the controller)\n"
         "  state\n"
         "  snapshot LABEL [TIMEOUT_MS]   (saves the first video frame newer than the call; default 5000 ms)\n"
+        "  describe_program   (the selected program's id and option contract, as one line of JSON)\n"
         "  keepawake on|off [seconds]\n"
         "  popups [close]   (the app's message boxes; close presses their default button)\n  help\n";
 }
@@ -423,6 +425,9 @@ std::string LabChannel::run_line(const LabRequest& request, const LabRequestLine
     if (command == "snapshot"){
         return run_snapshot(words, output);
     }
+    if (command == "describe_program"){
+        return run_describe_program(words, output.out);
+    }
     const LabConsoleCommands::Kind kind = m_console->kind(command);
     if (kind != LabConsoleCommands::Kind::READS_STREAM){
         std::string error = m_owner.check(request.owner);
@@ -440,6 +445,25 @@ std::string LabChannel::run_line(const LabRequest& request, const LabRequestLine
         return "Unknown command: " + command + " (try \"help\")";
     }
     return run_console_command(words, output);
+}
+
+//  "describe_program": the selected program's id and the static contract of
+//  its options (LabProgramContract.h), as one line of JSON. Reads only.
+std::string LabChannel::run_describe_program(const std::vector<std::string>& words, std::ostream& out){
+    if (words.size() != 1){
+        return "describe_program: expected describe_program";
+    }
+    std::lock_guard<Mutex> lg(m_panel_lock);
+    if (m_panel == nullptr || m_program == nullptr){
+        return "describe_program: the selected panel is not a program.";
+    }
+    const BatchOption* options = m_console->options(*m_panel);
+    if (options == nullptr){
+        return "describe_program: the selected program has no options the lab can read.";
+    }
+    JsonValue contract = lab_program_contract(m_program->descriptor().identifier(), *options);
+    out << "describe_program " << contract.dump(-1) << "\n";
+    return "";
 }
 
 std::string LabChannel::run_console_command(const std::vector<std::string>& words, LabCommandOutput& output){

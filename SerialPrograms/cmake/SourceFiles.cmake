@@ -819,6 +819,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Windows/LabChannel_Tests.h
     Source/CommonFramework/Windows/LabFrames.cpp
     Source/CommonFramework/Windows/LabFrames.h
+    Source/CommonFramework/Windows/LabProgramContract.cpp
+    Source/CommonFramework/Windows/LabProgramContract.h
+    Source/CommonFramework/Windows/LabProgramContract_Tests.cpp
+    Source/CommonFramework/Windows/LabProgramContract_Tests.h
     Source/CommonFramework/Windows/LabRequest.cpp
     Source/CommonFramework/Windows/LabRequest.h
     Source/CommonFramework/Windows/LabSnapshot.cpp
@@ -1416,6 +1420,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Options/NintendoSwitch_StartInGripMenuOption.h
     Source/NintendoSwitch/Options/TurboMacroTable.cpp
     Source/NintendoSwitch/Options/TurboMacroTable.h
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileGameOpen.cpp
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileGameOpen.h
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileParsing.cpp
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileParsing.h
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner.cpp

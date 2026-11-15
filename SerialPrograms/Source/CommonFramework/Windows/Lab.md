@@ -112,6 +112,7 @@ program.
 | `start [SECONDS]` | What clicking Start Program does. Refused unless the program is `STOPPED`. First waits up to `SECONDS` (default 30) for `controller=ready`, and refuses with `controller not connected` if it never is, instead of starting a program that would fail with "Incompatible Controller". |
 | `stop` | What clicking Stop Program does. Refused unless the program is `RUNNING`. The request goes on; the program stops in the background. |
 | `state` | Prints the state file's lines into the journal. (In the Command File Runner program, `state [image]` prints the detectors that fire instead; from the channel use `detect` per detector.) |
+| `describe_program` | Prints the selected program's id and the static contract of its options as one line, `describe_program <JSON>`; see [Describe program](#describe-program). Reads only: needs no owner token and no console. Refused when the selected panel is not a program. |
 | `snapshot LABEL [TIMEOUT_MS]` | Saves the first video frame newer than this line as `<request>_<LABEL>.png` and names it; see [Snapshot](#snapshot). Reads only: needs no owner token, no program state and no controller. |
 | `keepawake on\|off [seconds]` | While it is on and no program runs, presses B every `seconds` (default 15) so the console does not sleep. A running program pauses it. Off by default; off again when the app restarts. |
 | `popups [close]` | Lists the app's open message boxes (title and text), such as the "Error" box a failed program leaves. `close` presses each one's default button. |
@@ -122,7 +123,7 @@ program.
 
 These run on the selected program's console. A press runs only while no
 program runs (`STOPPED`); the commands that only read the screen (`shot`,
-`shots`, `history`, `detect`, `wait_for`, `expect`) run any time.
+`shots`, `history`, `detect`, `wait_for`, `expect`, `game_open`) run any time.
 
 #### Controller
 
@@ -142,6 +143,7 @@ program runs (`STOPPED`); the commands that only read the screen (`shot`,
 | `shot label` | Saves the current frame as `<request>_<label>.png` in the outbox. | |
 | `shots label count [interval]` | Saves `count` frames, `<label>_0` to `<label>_<count-1>`, one every `interval`. | interval 500 |
 | `history label` | Saves the console's recent video as `<request>_<label>.mp4` in the outbox, when Stream History is on. Run it right after a program to keep a recording of that run. | |
+| `game_open [image]` | Prints `game_open yes` when a game is in front, or `game_open no REASON` with `REASON` `home` (the Home menu), `user_select` ("Who is using the software?"), `black` (a black screen: loading, or no signal) or `no_video`. It does not tell one game from another. Never fails the line. With `image`, it checks a saved picture, as `detect` does. | |
 | `detect detector [image]` | Runs a detector once and prints `yes` or `no`. With `image`, it runs on a saved picture instead of the live video: an absolute path, or a file name in the outbox. | |
 | `wait_for detector [timeout]` | Checks the video every 100 ms until the detector fires. Prints how long it took, or `timeout`. | timeout 5000 |
 | `expect detector [timeout]` | The same as `wait_for`, but a timeout fails the line. | timeout 5000 |
@@ -193,6 +195,34 @@ snapshot saved instance=d8ea6a9d-1eab-4a40-b355-d88072b289a1 frame_seq=918275 ca
 ok 2 snapshot frame 2000 @0-41ms
 end
 ```
+
+### Describe program
+
+`describe_program` tells the lab server what the selected program takes,
+without running it or touching the console. The JSON (version 1, keys
+sorted):
+
+```
+describe_program {"id":"PokemonFRLG:AutoStory","options":[...],"prechecks":"unsupported","schema":1}
+```
+
+- `id`: the program's identifier, as `select` takes it.
+- `options`: one entry per option the settings file saves, in the order the
+  program shows them. Each has `key` (what `set` takes; a group's options
+  are under the group's key, so `set GROUP.KEY`), `type`, and by type:
+
+  | `type` | Fields |
+  |---|---|
+  | `boolean`, `string` | `default` |
+  | `integer`, `number` | `default`, `min`, `max` (`null` when a number has no bound) |
+  | `enum`, `select` | `default` and `entries`, each `{"slug", "enabled"}`; `set` takes the slug |
+  | `group` | `toggleable` (it has its own `Enabled` key) and its own `options` |
+  | `other` | nothing yet: the contract does not describe that type |
+
+  The defaults are the program's defaults, not the values it holds now.
+  Which options show and whether a combination is valid depend on the other
+  options' values; they are not part of the contract.
+- `prechecks`: `unsupported` until the program declares a precheck list.
 
 ## Owner
 
