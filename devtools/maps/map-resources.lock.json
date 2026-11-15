@@ -1,0 +1,11 @@
+{
+  "format": "pokesim-map-resource-lock/1",
+  "repository": "dayfine/PokemonSimulation",
+  "games": {
+    "bdsp": {
+      "revision": "4b886bbead2e85c42f15bfb0b5ac735c159db039",
+      "manifest_path": "data/maps/runtime-manifest.json",
+      "manifest_sha256": "eeca55d046c02d5866b54f48abe90dc5dc4c59d483cd0edd7a857d374d85dd2c"
+    }
+  }
+}

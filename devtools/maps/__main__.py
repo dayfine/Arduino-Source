@@ -10,7 +10,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import decomp, fetch, grid_source, route_log, svg
+from . import fetch, grid_source, route_log, svg
 
 CACHE = Path.home() / '.cache' / 'maps'
 
@@ -26,7 +26,7 @@ def main(argv=None):
     sub = parser.add_subparsers(dest='command', required=True)
     dec = sub.add_parser('decomp', help="decode a map's tile grid and objects from the pret decompilation")
     dec.add_argument('map', help='the map header name, e.g. ROUTE_204_NORTH or RAVAGED_PATH')
-    dec.add_argument('--repo', default=decomp.Platinum.REPO, choices=[decomp.Platinum.REPO, decomp.Diamond.REPO],
+    dec.add_argument('--repo', default="pret/pokeplatinum", choices=["pret/pokeplatinum", "pret/pokediamond"],
                      help='which decompilation to read (default: pret/pokeplatinum)')
     dec.add_argument('--rect', nargs=4, type=int, metavar=('X0', 'Z0', 'W', 'H'),
                      help="world rectangle to decode; default: the map's own cell(s)")
@@ -53,6 +53,10 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     if args.command == 'decomp':
+        try:
+            from pokesim.maps import dppt_map_decomp_parser as decomp
+        except ModuleNotFoundError:
+            parser.error('Set PYTHONPATH to the pinned PokemonSimulation src directory; see devtools/maps/RESOURCE_MAPS.md.')
         game = decomp.game_for(args.repo, args.cache / 'decomp', args.local)
         decoded = decomp.decode(game, args.map, tuple(args.rect) if args.rect else None)
         print(decomp.render_text(decoded) if args.text else decomp.render_cpp(decoded))

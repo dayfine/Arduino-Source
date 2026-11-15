@@ -1,5 +1,11 @@
 # Map tools for AutoStory routes
 
+BDSP maps are now pinned external build resources. See
+[RESOURCE_MAPS.md](RESOURCE_MAPS.md) for preparation, publishing prerequisites
+and native validation. The Sinnoh decomp CLI below forwards to the shared
+PokemonSimulation parser; set `PYTHONPATH=/path/to/pokesim/src`. Author map
+corrections and run decoder/builder tests there. Image fetch/overlay remain local.
+
 Offline helpers that give a route planner its tile grid (standard library
 only, Python 3.8+): a decoder for the Pokemon Platinum and Diamond
 decompilations, an overlay that draws a grid and a run's routes over the map
@@ -136,6 +142,25 @@ its 12 px rows, and `--level ROW:PX` for each cliff, meaning rows from `ROW`
 down sit `PX` lower than the rows above (about 24 px per level; repeat the
 option per cliff, reading the rows off the picture). Town maps drawn at 16 px
 rows need neither.
+
+## Console route against the simulation's: `leg_trace.py`
+
+Each walked leg writes a `[Leg] {json}` line (SerialPrograms
+`Pokemon_LegTrace.h`): the plan, the taps that moved, where it ended and how
+that is known, and what interrupted it. The simulation writes the same; its
+trace of 00.04 is checked in as `Simulation/leg_trace_00.04.golden.json`.
+
+```sh
+python3 -m devtools.maps.leg_trace replay run.log -o console.json
+python3 -m devtools.maps.leg_trace diff run.log \
+    SerialPrograms/Source/PokemonBDSP/Programs/AutoStory/Simulation/leg_trace_00.04.golden.json
+```
+
+`diff` grades each leg OK, drift (off, but re-synced by a later wall or
+count), LARGE or masked (an interruption, until the route re-syncs), prints a
+line per checkpoint, and exits 1 on any LARGE. The thresholds are constants
+at the top of `leg_trace.py`. A log from before the records reads from its
+route lines instead.
 
 ## Maps without a decomp: `levels.py`
 
