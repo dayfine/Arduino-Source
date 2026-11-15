@@ -2,9 +2,10 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows 18.01 and 18.02 (StoryData/frlg-18.0[12].plan.json) on the overworld
- *  sim: Saffron Gym's teleport pads, from the door to the tile below Sabrina
- *  and back out to Saffron's Center, with no trainer met on the way.
+ *  Rows 18.01, 18.02 and 18.02b (StoryData/frlg-18.02*.plan.json ...) on the
+ *  overworld sim: Saffron Gym's teleport pads, from the door to the tile below
+ *  Sabrina and back out to Saffron's Center, with no trainer met on the way;
+ *  Sabrina's battle is a checkpoint of its own.
  *
  */
 
@@ -133,10 +134,25 @@ UnitTestResult test_pads_to_sabrina(){
     return true;
 }
 
-//  The way out: the same pads the other way, each pair linked both ways,
-//  then the door onto Saffron City and the street to below the Center's door.
+//  A boss battle is its own checkpoint (user, 2026-11-12): 18.02 ends with
+//  Sabrina's battle, in front of her, and 18.02b starts there.
+UnitTestResult test_sabrina_own_checkpoint(){
+    const std::vector<StoryStep>& steps = checkpoint("18.02").steps;
+    if (steps.empty() || steps.back().kind != StoryStepKind::BATTLE || steps.back().name != "sabrina"){
+        return "18.02 does not end with Sabrina's battle.";
+    }
+    const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("18.02b").start));
+    const MapPosition below_sabrina{"SaffronCity_Gym", {14, 12}};
+    if (next.map != below_sabrina.map || !(next.tile == below_sabrina.point) || next.facing != Direction::NORTH){
+        return "18.02b doesn't start in front of Sabrina, where her battle leaves the player.";
+    }
+    return true;
+}
+
+//  The way out (18.02b): the same pads the other way, each pair linked both
+//  ways, then the door onto Saffron City and the street to below the Center's door.
 UnitTestResult test_pads_out_to_center(){
-    const PadWalk walk = walk_pads(checkpoint("18.02"));
+    const PadWalk walk = walk_pads(checkpoint("18.02b"));
     if (!walk.failure.empty()){
         return walk.failure;
     }
@@ -144,14 +160,14 @@ UnitTestResult test_pads_out_to_center(){
         {"SaffronCity_Gym", {0, 7}}, {"SaffronCity_Gym", {20, 7}}, {"SaffronCity_Gym", {20, 20}}, {"SaffronCity_Gym", {18, 20}},
     };
     if (walk.landings != expected){
-        return "18.02: the pads did not land on (0, 7), (20, 7), (20, 20) and (18, 20), in that order.";
+        return "18.02b: the pads did not land on (0, 7), (20, 7), (20, 20) and (18, 20), in that order.";
     }
     const MapPosition below_center{"SaffronCity", {24, 39}};
     if (!(walk.end == below_center)){
-        return std::format("18.02: ended on {}, not below Saffron's Center door {}.", to_string(walk.end), to_string(below_center));
+        return std::format("18.02b: ended on {}, not below Saffron's Center door {}.", to_string(walk.end), to_string(below_center));
     }
     if (!walk.clean){
-        return "18.02: met a trainer or broke a rule on the way.";
+        return "18.02b: met a trainer or broke a rule on the way.";
     }
     return true;
 }
@@ -182,7 +198,12 @@ const AutoStorySaffronGymCase AUTO_STORY_SAFFRON_GYM_CASES[] = {
         .expectation = {.description = "four pads, landing in the rooms in order, below Sabrina, nobody met"},
     },
     {
-        .name = "18.02 Saffron Gym's pads back out to the Center's door",
+        .name = "18.02 Sabrina's battle is its own checkpoint",
+        .input = {.body = test_sabrina_own_checkpoint},
+        .expectation = {.description = "18.02 ends with her battle; 18.02b starts in front of her"},
+    },
+    {
+        .name = "18.02b Saffron Gym's pads back out to the Center's door",
         .input = {.body = test_pads_out_to_center},
         .expectation = {.description = "four pads the other way, below Saffron's Center door, nobody met"},
     },

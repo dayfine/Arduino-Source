@@ -122,7 +122,7 @@ const std::string RUN_GIFT_RNG_TEXT =
 
 const std::string TAKE_MASTER_BALL_TEXT =
     "<b>Take the Master Ball:</b><br>On by default. After Giovanni on Silph Co.'s 11F, talk to the president for the "
-    "Master Ball (16.05). Off, or with the checks on SPEEDRUN, skips it.";
+    "Master Ball (16.05b). Off, or with the checks on SPEEDRUN, skips it.";
 
 // code-health: allow function_lines -- a flat list of the program's options, each one line of its own; splitting it hides which belong
 AutoStory::AutoStory()

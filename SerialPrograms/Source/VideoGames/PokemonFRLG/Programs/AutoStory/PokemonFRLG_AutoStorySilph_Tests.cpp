@@ -369,21 +369,31 @@ UnitTestResult test_after_gift_row(){
 
 //  16.05: the pad to 11F, down its left wall out of the Rocket's column, the
 //  Rocket beside the player (his fight), the Card Key door and Giovanni's
-//  trigger, then to the president.
+//  trigger; it ends with his battle, where it leaves the player (a boss
+//  battle is its own checkpoint), and 16.05b starts there.
 UnitTestResult test_giovanni_row(){
     const RowResult result = walk_row("16.05", maps_after_16_02());
-    if (const std::string wrong = wrong_end("16.05", result, MapPosition{"SilphCo_11F", {9, 10}}); !wrong.empty()){
+    const MapPosition after_giovanni{"SilphCo_11F", {5, 15}};
+    if (const std::string wrong = wrong_end("16.05", result, after_giovanni); !wrong.empty()){
         return wrong;
     }
     if (result.trainers.size() != size_t(1)){
         return "16.05: the Rocket at (2, 19) did not fight alone.";
     }
+    const std::vector<StoryStep>& steps = checkpoint("16.05").steps;
+    if (steps.empty() || steps.back().name != "giovanni"){
+        return "16.05 does not end with Giovanni's battle.";
+    }
+    const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("16.05b").start));
+    if (next.map != after_giovanni.map || !(next.tile == after_giovanni.point) || next.facing != Direction::EAST){
+        return "16.05b doesn't start where 16.05 ends, facing east.";
+    }
     return true;
 }
 
-//  16.05's step named `name`; none if it has none.
-const StoryStep* giovanni_row_step(std::string_view name){
-    for (const StoryStep& step : checkpoint("16.05").steps){
+//  Checkpoint `id`'s step named `name`; none if it has none.
+const StoryStep* step_of_row(std::string_view id, std::string_view name){
+    for (const StoryStep& step : checkpoint(id).steps){
         if (step.name == name){
             return &step;
         }
@@ -391,7 +401,7 @@ const StoryStep* giovanni_row_step(std::string_view name){
     return nullptr;
 }
 
-//  16.05 below_president from where Giovanni's battle leaves the player:
+//  16.05b below_president from where Giovanni's battle leaves the player:
 //  (5, 15) facing east, to Giovanni, who walked down to (6, 15) (pokefirered
 //  data/maps/SilphCo_11F/scripts.inc, SilphCo_11F_Movement_GiovanniApproachLeft
 //  and _PlayerFaceGiovanni). The walk is planned from the giovanni step's
@@ -401,10 +411,10 @@ const StoryStep* giovanni_row_step(std::string_view name){
 //  again at the wrong tile and ended below the table, where the president's
 //  talk opened no message (console B, 2026-11-15 13:02, 16.05).
 UnitTestResult test_president_walk_after_giovanni(){
-    const StoryStep* giovanni = giovanni_row_step("giovanni");
-    const StoryStep* below = giovanni_row_step("below_president");
+    const StoryStep* giovanni = step_of_row("16.05", "giovanni");
+    const StoryStep* below = step_of_row("16.05b", "below_president");
     if (giovanni == nullptr || below == nullptr || !giovanni->pose_after){
-        return "16.05 has no giovanni step with a pose after it, or no below_president.";
+        return "16.05 has no giovanni step with a pose after it, or 16.05b no below_president.";
     }
     const StoryPose at = *story_pose(Pokemon::pose_of(*giovanni->pose_after));
     const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(below->args, "target")));
@@ -423,12 +433,12 @@ UnitTestResult test_president_walk_after_giovanni(){
     OverworldSim sim(maps, MapPosition{"SilphCo_11F", {5, 15}}, Direction::EAST);
     const RoutePlanning planning{.maps = &maps, .costs = story_route_costs(), .start = start, .label = "below_president"};
     if (const std::string failure = OverworldSimWalker(sim).run(*route, planning, at.facing); !failure.empty()){
-        return std::format("16.05: ended on {}; {}", to_string(sim.state().position), failure);
+        return std::format("16.05b: ended on {}; {}", to_string(sim.state().position), failure);
     }
     const MapPosition president_talk{"SilphCo_11F", {9, 10}};
     if (!(sim.state().position == president_talk) || sim.state().facing != Direction::NORTH){
         return std::format(
-            "16.05: ended on {} facing {}, not {} facing north.",
+            "16.05b: ended on {} facing {}, not {} facing north.",
             to_string(sim.state().position), direction_name(sim.state().facing), to_string(president_talk)
         );
     }
@@ -515,9 +525,11 @@ UnitTestResult test_silph_cleared_flag(){
     if (!set){
         return "16.05's Giovanni step does not set silph_cleared.";
     }
-    const std::vector<std::string>& start = checkpoint("16.06").start_flags;
-    if (std::find(start.begin(), start.end(), SILPH_CLEARED_FLAG) == start.end()){
-        return "16.06 does not start with silph_cleared.";
+    for (const std::string_view id : {"16.05b", "16.06"}){
+        const std::vector<std::string>& start = checkpoint(id).start_flags;
+        if (std::find(start.begin(), start.end(), SILPH_CLEARED_FLAG) == start.end()){
+            return std::format("{} does not start with silph_cleared.", id);
+        }
     }
     return true;
 }
@@ -534,12 +546,12 @@ UnitTestResult test_master_ball_option(){
     if (!StoryExecutor::master_ball_skipped(true, StoryCheckLevel::SPEEDRUN)){
         return "The Master Ball is taken in a SPEEDRUN.";
     }
-    const StoryCheckpoint& row = checkpoint("16.05");
+    const StoryCheckpoint& row = checkpoint("16.05b");
     const bool skippable = std::any_of(row.steps.begin(), row.steps.end(), [](const StoryStep& step){
         return step.name == "master_ball" && step.skip_if == std::vector<std::string>{"master_ball_skipped"};
     });
     if (!skippable){
-        return "16.05's master_ball step is not skip_if master_ball_skipped.";
+        return "16.05b's master_ball step is not skip_if master_ball_skipped.";
     }
     return true;
 }
@@ -684,10 +696,10 @@ const AutoStorySilphCase AUTO_STORY_SILPH_CASES[] = {
     },
     {
         .input = {.name = "16.05 11F's Card Key door and Giovanni", .body = test_giovanni_row},
-        .expectation = {.description = "one Rocket fought, 11F's door opened, ends below the president"},
+        .expectation = {.description = "one Rocket fought, 11F's door opened, ends with Giovanni's battle where 16.05b starts"},
     },
     {
-        .input = {.name = "16.05 to the president from where Giovanni's battle leaves the player", .body = test_president_walk_after_giovanni},
+        .input = {.name = "16.05b to the president from where Giovanni's battle leaves the player", .body = test_president_walk_after_giovanni},
         .expectation = {.description = "from (5, 15) facing east, ends on (9, 10) facing north"},
     },
     {
@@ -708,7 +720,7 @@ const AutoStorySilphCase AUTO_STORY_SILPH_CASES[] = {
     },
     {
         .input = {.name = "silph_cleared is set by the Giovanni step", .body = test_silph_cleared_flag},
-        .expectation = {.description = "16.05's giovanni sets it; 16.06 starts with it"},
+        .expectation = {.description = "16.05's giovanni sets it; 16.05b and 16.06 start with it"},
     },
     {
         .input = {.name = "the Master Ball option and SPEEDRUN", .body = test_master_ball_option},

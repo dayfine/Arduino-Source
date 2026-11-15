@@ -102,7 +102,7 @@ private:
     //  Runs Gift RNG's attempts in the program after 04.02 (the Magikarp)
     //  and 09.03 (the Eevee).
     BooleanCheckBoxOption RUN_GIFT_RNG;
-    //  Takes the Master Ball from Silph Co.'s president (16.05), unless the
+    //  Takes the Master Ball from Silph Co.'s president (16.05b), unless the
     //  run is a SPEEDRUN.
     BooleanCheckBoxOption TAKE_MASTER_BALL;
     StarterRngPlanOptions RNG_PLAN;

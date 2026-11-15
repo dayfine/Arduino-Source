@@ -18,7 +18,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Rows 18.01 and 18.02, Saffron Gym's pads, on the overworld sim
+//  Rows 18.01 to 18.02b, Saffron Gym's pads, on the overworld sim
 //  (PokemonFRLG_AutoStorySaffronGym_Tests.cpp).
 void add_tests_AutoStorySaffronGym(UnitTestDatabase& database);
 

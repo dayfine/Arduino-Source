@@ -41,6 +41,54 @@
             "nidoqueen",
             "nidoking",
             "rhydon"
+          ],
+          "policy": "solo-recovery",
+          "foe_threats": [
+            [
+              27,
+              45,
+              36,
+              126,
+              59,
+              0,
+              0
+            ],
+            [
+              105,
+              36,
+              36,
+              75,
+              37,
+              1,
+              0
+            ],
+            [
+              71,
+              41,
+              41,
+              84,
+              42,
+              0,
+              0
+            ],
+            [
+              81,
+              48,
+              45,
+              99,
+              49,
+              0,
+              0
+            ],
+            [
+              27,
+              52,
+              41,
+              140,
+              69,
+              0,
+              0
+            ]
           ]
         },
         "declared_after": {
@@ -53,7 +101,7 @@
           ],
           "facing": "north"
         },
-        "why": "Giovanni: Rhyhorn Lv45, Dugtrio Lv42, Nidoqueen Lv44, Nidoking Lv45, Rhydon Lv50; then the EARTHBADGE and TM26 Earthquake"
+        "why": "Giovanni: Rhyhorn Lv45, Dugtrio Lv42, Nidoqueen Lv44, Nidoking Lv45, Rhydon Lv50; then the EARTHBADGE and TM26 Earthquake. Fought by pokeguy's B (solo-recovery: cure and heal by safety, no setup): the doc's giovanni-gym is an A fight, and B is its default runtime (PokemonSimulation docs/battles/pokeguy-conditions.md, Strategy rules); foe_threats are planning_risk() for each foe leading against the doc's entry (Blastoise Lv48), Dugtrio's Mud-Slap lowering accuracy"
       }
     ]
   },

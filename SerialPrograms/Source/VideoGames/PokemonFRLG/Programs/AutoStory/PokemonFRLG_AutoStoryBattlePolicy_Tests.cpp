@@ -525,6 +525,80 @@ UnitTestResult test_plan_bruno(){
     return true;
 }
 
+//  What a boss's step resolves to: the policy, the doc's setup goals and
+//  the generator's foe rows (PokemonSimulation planning_risk() for each foe
+//  leading against the fight's pokeguy entry, as the League's).
+struct ResolvedPolicy{
+    BattlePolicyKind kind = BattlePolicyKind::NONE;
+    SetupGoals goals = {};
+    std::vector<std::vector<int64_t>> rows = {};
+};
+
+UnitTestResult check_resolved_policy(std::string_view id, std::string_view name, const ResolvedPolicy& expected){
+    const StoryStep& step = battle_step(id, name);
+    const BattlePolicy policy = battle_policy_of(step.args);
+    if (policy.kind != expected.kind){
+        return std::format("{} {}: the step does not resolve to the doc's policy.", id, name);
+    }
+    const SetupGoals& goals = policy.goals;
+    const SetupGoals& want = expected.goals;
+    if (goals.spa != want.spa || goals.accuracy != want.accuracy || goals.outspeed != want.outspeed
+        || goals.guard_accuracy != want.guard_accuracy || goals.torrent_power != want.torrent_power
+        || goals.target_torrent != want.target_torrent
+    ){
+        return std::format("{} {}: the setup goals differ from the doc's.", id, name);
+    }
+    if (arg_of<std::vector<std::vector<int64_t>>>(step, "foe_threats") != expected.rows || policy.foes.size() != expected.rows.size()){
+        return std::format("{} {}: foe_threats are not the generator's rows.", id, name);
+    }
+    return true;
+}
+
+//  Silph Co.'s Giovanni (doc: silph-giovanni, C). Without a policy the step
+//  fought potions-only: console B's lead attacked from turn 1, poisoned,
+//  never used an X item, and lost twice (2026-11-15, 16.05).
+UnitTestResult test_plan_silph_giovanni(){
+    return check_resolved_policy("16.05", "giovanni", {
+        .kind = BattlePolicyKind::GOAL_BASED_SETUP,
+        .goals = {.spa = 1, .outspeed = true, .guard_accuracy = true},
+        .rows = {
+            {64, 15, 11, 45, 21, 0, 0},     //  Nidorino
+            {70, 26, 12, 63, 31, 0, 0},     //  Kangaskhan
+            {34, 18, 13, 112, 55, 0, 0},    //  Rhyhorn
+            {79, 19, 12, 52, 26, 0, 0},     //  Nidoqueen
+        },
+    });
+}
+
+//  Sabrina (doc: sabrina, C): no Sp. Atk goal, X Speed to outspeed Alakazam.
+UnitTestResult test_plan_sabrina(){
+    return check_resolved_policy("18.02", "sabrina", {
+        .kind = BattlePolicyKind::GOAL_BASED_SETUP,
+        .goals = {.outspeed = true, .guard_accuracy = true},
+        .rows = {
+            {84, 0, 5, 57, 28, 0, 0},       //  Kadabra
+            {71, 0, 3, 45, 22, 0, 0},       //  Mr. Mime
+            {73, 12, 12, 26, 13, 0, 0},     //  Venomoth
+            {108, 47, 47, 96, 48, 0, 0},    //  Alakazam
+        },
+    });
+}
+
+//  Viridian's Giovanni (doc: giovanni-gym, A): A fights run B, the doc's
+//  default runtime, so solo-recovery; Dugtrio's Mud-Slap lowers accuracy.
+UnitTestResult test_plan_giovanni_gym(){
+    return check_resolved_policy("17.04", "giovanni", {
+        .kind = BattlePolicyKind::SOLO_RECOVERY,
+        .rows = {
+            {27, 45, 36, 126, 59, 0, 0},    //  Rhyhorn
+            {105, 36, 36, 75, 37, 1, 0},    //  Dugtrio
+            {71, 41, 41, 84, 42, 0, 0},     //  Nidoqueen
+            {81, 48, 45, 99, 49, 0, 0},     //  Nidoking
+            {27, 52, 41, 140, 69, 0, 0},    //  Rhydon (the doc's Lv50 Rhyhorn)
+        },
+    });
+}
+
 
 struct AutoStoryBattlePolicyInput{
     std::string name;
@@ -642,6 +716,18 @@ const std::vector<AutoStoryBattlePolicyCase> AUTO_STORY_BATTLE_POLICY_CASES = {
     {
         .input = {.name = "plan: 10.03 rival_tower names the policy, goals and foes", .body = test_plan_tower_rival},
         .expectation = {.description = "the policy, goals and 5 foe rows"},
+    },
+    {
+        .input = {.name = "plan: 16.05 giovanni resolves to the doc's C2", .body = test_plan_silph_giovanni},
+        .expectation = {.description = "goal-based-setup, Sp. Atk +1, outspeed, Guard Spec first, 4 generator rows"},
+    },
+    {
+        .input = {.name = "plan: 18.02 sabrina resolves to the doc's C2", .body = test_plan_sabrina},
+        .expectation = {.description = "goal-based-setup, outspeed, Guard Spec first, 4 generator rows"},
+    },
+    {
+        .input = {.name = "plan: 17.04 giovanni resolves to the doc's B", .body = test_plan_giovanni_gym},
+        .expectation = {.description = "solo-recovery, 5 generator rows"},
     },
 };
 

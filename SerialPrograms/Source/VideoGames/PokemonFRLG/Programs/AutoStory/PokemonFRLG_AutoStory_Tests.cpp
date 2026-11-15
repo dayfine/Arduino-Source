@@ -400,8 +400,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 //  start: starts_after_unauthored_rows()), and adds the plans to `golden`.
 UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 93 || checkpoints[0].start){
-        return "Expected 93 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 95 || checkpoints[0].start){
+        return "Expected 95 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     walk_state() = WalkGates{};
@@ -970,7 +970,7 @@ std::string approach_off_tile(const std::vector<RouteStep>& legs){
 //  (console B, 2026-11-14 05:48).
 //  PASSED_ON_CONSOLE: approaches before 10.05 that passed their console
 //  runs as held legs (a follow-up to tap them). 13.03 and 13.04 plan their statue
-//  approaches (PRESS_SWITCH) and have not run on a console, nor has 16.05's walk to the
+//  approaches (PRESS_SWITCH) and have not run on a console, nor has 16.05b's walk to the
 //  president: it ends at (9, 10) facing north, the only tile that faces him, with no wall to
 //  end a leg against (tap it once Silph Co. has run).
 UnitTestResult test_approaches_end_on_their_tile(){
@@ -978,7 +978,7 @@ UnitTestResult test_approaches_end_on_their_tile(){
         "02.02/below_oak", "03.02/before_brock", "05.07/below_bill_clefairy", "05.07/pc_front",
         "05.07/beside_bill", "06.01/behind_captain", "07.01/beside_chairman", "07.01/bike_clerk",
         "09.01/below_poster_guard", "09.02/below_left_guard", "09.03/above_tea_woman", "10.01/below_fly_woman", "13.03/to_elixir", "13.04/to_key",
-        "16.05/below_president",
+        "16.05b/below_president",
     };
     std::string wrong;
     size_t count = 0;
