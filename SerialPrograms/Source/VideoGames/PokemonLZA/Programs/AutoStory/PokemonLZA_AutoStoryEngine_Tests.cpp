@@ -180,10 +180,10 @@ UnitTestResult test_walk_needs_free_control(CancellableScope& scope){
 
 //  platform_to_plaza: the first leg, the turn (L, the stick tapped at 90
 //  degrees) and L again, then the last leg held in slices until the white
-//  fade.
+//  fade. Looks: 2 of free control, 3 around the legs' inputs, 1 per slice.
 UnitTestResult test_walk_ends_on_white_fade(CancellableScope& scope){
     FakeBackend backend = fake_plza({
-        look_at(0ms), look_at(150ms),
+        look_at(0ms), look_at(150ms), look_at(250ms), look_at(4750ms), look_at(5000ms),
         look_at(12000ms), look_at(12250ms), look_at(12500ms, {EngineEvent::FADE_WHITE}),
     }, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "platform_to_plaza"));

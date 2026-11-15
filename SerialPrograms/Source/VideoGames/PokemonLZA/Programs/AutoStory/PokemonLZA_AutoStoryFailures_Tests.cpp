@@ -36,6 +36,7 @@ const FailureClassCase FAILURE_CLASS_CASES[] = {
     {.name = "a missed gate is a pose lost", .input = {.failure = "gate_not_seen"}, .expectation = {.tag = "class=pose_lost"}},
     {.name = "no A prompt is a screen unread", .input = {.failure = "no_prompt"}, .expectation = {.tag = "class=screen_unread"}},
     {.name = "a zone start missed is a walk short", .input = {.failure = "zone_start_missed"}, .expectation = {.tag = "class=walk_short"}},
+    {.name = "a road stop missed is a walk short", .input = {.failure = "zone_road_missed"}, .expectation = {.tag = "class=walk_short"}},
     {.name = "not at the start is a wrong start", .input = {.failure = "not_at_start"}, .expectation = {.tag = "class=wrong_start"}},
     {.name = "a shared name keeps the shared class", .input = {.failure = "operation_failed"}, .expectation = {.tag = "class=operation_failed"}},
     {.name = "an unknown name has no class", .input = {.failure = "no_such_failure"}, .expectation = {.tag = std::nullopt}},
@@ -92,6 +93,33 @@ UnitTestResult check_name_table(const NameTableCase& test){
     return true;
 }
 
+//  The failure name of a console step that throws.
+struct ConsoleStepCase{
+    std::string name;
+    struct Input{
+        std::string action;
+    };
+    Input input;
+    struct Expectation{
+        std::string failure;
+    };
+    Expectation expectation;
+};
+
+const ConsoleStepCase CONSOLE_STEP_CASES[] = {
+    {.name = "03.07d's walk to the zone's start", .input = {.action = "walk_to_zone_1_start"}, .expectation = {.failure = "zone_start_missed"}},
+    {.name = "03.08's walk back to the road", .input = {.action = "walk_back_to_zone_road"}, .expectation = {.failure = "zone_road_missed"}},
+    {.name = "03.08's catches keep the shared name", .input = {.action = "catch_in_zone"}, .expectation = {.failure = "operation_failed"}},
+};
+
+UnitTestResult check_console_step(const ConsoleStepCase& test){
+    const std::string_view failure = console_step_failure(test.input.action);
+    if (failure != test.expectation.failure){
+        return std::format("Expected {}, got {}.", test.expectation.failure, failure);
+    }
+    return true;
+}
+
 class Test_FailureClass : public UnitTest{
 public:
     explicit Test_FailureClass(const FailureClassCase& test)
@@ -120,6 +148,20 @@ private:
     const NameTableCase& m_test;
 };
 
+class Test_ConsoleStep : public UnitTest{
+public:
+    explicit Test_ConsoleStep(const ConsoleStepCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Console step failure: {}", test.name))
+        , m_test(test)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return check_console_step(m_test);
+    }
+
+private:
+    const ConsoleStepCase& m_test;
+};
+
 } // namespace
 
 
@@ -129,6 +171,9 @@ void add_tests_AutoStoryFailures(UnitTestDatabase& database){
     }
     for (const NameTableCase& test : NAME_TABLE_CASES){
         database.add<Test_NameTable>(test);
+    }
+    for (const ConsoleStepCase& test : CONSOLE_STEP_CASES){
+        database.add<Test_ConsoleStep>(test);
     }
 }
 

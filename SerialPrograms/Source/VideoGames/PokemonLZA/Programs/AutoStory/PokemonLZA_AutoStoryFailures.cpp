@@ -30,6 +30,9 @@ const std::vector<PlzaFailure>& plza_failures(){
         //  of 127 (by 2, console B 2026-11-14) or the arrow outside the
         //  zone's green.
         {"zone_start_missed", C::WALK_SHORT},
+        //  walk_back_to_zone_road's stops: a catch spot on Wild Zone 1's
+        //  road the objective's distance never reached (03.08).
+        {"zone_road_missed", C::WALK_SHORT},
         //  A walk held until a fade that never showed.
         {"walk_no_end", C::LATE_FADE},
         //  A walk that never got free control: a banner, text or a fade
@@ -71,6 +74,9 @@ Pokemon::Outcome plza_failed(std::string name, std::string detail){
 std::string_view console_step_failure(std::string_view action){
     if (action == "walk_to_zone_1_start"){
         return "zone_start_missed";
+    }
+    if (action == "walk_back_to_zone_road"){
+        return "zone_road_missed";
     }
     return "operation_failed";
 }

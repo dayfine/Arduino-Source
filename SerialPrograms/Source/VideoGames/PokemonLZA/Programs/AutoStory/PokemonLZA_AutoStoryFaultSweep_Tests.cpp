@@ -32,14 +32,18 @@
  *  are classed by their failure names instead (PokemonLZA_AutoStoryFailures.h):
  *  a missed gate (no_prompt, screen_unread), stuck on the title
  *  (launch_failed), the zone start short by 2 (zone_start_missed,
- *  walk_short).
+ *  walk_short), 03.08's walk back to the road short of a catch spot
+ *  (zone_road_missed, walk_short). 03.08's catches (catch_in_zone) throw
+ *  for many reasons and stay operation_failed.
  *
  *  The sim's world is small: the player is at the end of a row's step (a
  *  spot), facing a compass heading. A timed walk reaches its end only on the
  *  inputs and facings of the row's clean run (or, for a walk into a wall
  *  that funnels it, the inputs and a facing within FUNNEL_TOLERANCE); a
- *  walk to a gate gets there when it walks the gate's way. Each row runs
- *  clean first; a variant fails when the row then fails or ends elsewhere.
+ *  walk to a gate gets there when it walks the gate's way: its heading,
+ *  or with none (03.08's, from the road at 60) the way the clean run faced
+ *  at the walk's start. Each row runs clean first; a variant fails when the
+ *  row then fails or ends elsewhere.
  *
  */
 
@@ -91,9 +95,11 @@ const std::vector<std::string> SWEPT_ROWS{"03.07d", "03.08"};
 //  The sweeps the program fails today, by test name, with the likely fix.
 const std::map<std::string, std::string> KNOWN_FAILING{
     {"PokemonLZA::AutoStory - Fault sweep: 03.07d, warp_no_op",
-        "enter_zone_1 is done with the player still outside the gate: after the gate's fade the prompt shows again. Pressing A again on a prompt after a fade is not safe: the zone's far side of the gate may show its own prompt (A Leave) where the warp lands, and A there would undo it; telling the two apart needs a reading of the place (the minimap's zone green). On the console, walk_to_zone_1_start's green check fails as zone_start_missed"},
+        "enter_zone_1 is done with the player still outside the gate: after the gate's fade the prompt shows again. A again on any prompt after a fade is not safe: the zone's side of the gate may show its own prompt (A Leave) where the warp lands, and A there would undo it. "
+        "Likely fix: after the fade, read the minimap's zone green (MinimapZoneDetector); still outside it with the prompt up, press A again. Today walk_to_zone_1_start's green check fails it on the console as zone_start_missed"},
     {"PokemonLZA::AutoStory - Fault sweep: 03.08, warp_no_op",
-        "leave_zone_1 or lab_lobby is done with the player still at the prompt: after the fade the prompt shows again. Pressing A again on a prompt after a fade is not safe: the street outside the zone's gate may show the gate's A Enter where the warp lands, and A there would undo it; telling the two apart needs a reading of the place"},
+        "leave_zone_1 is done with the player still at the far gate's A Leave: after the fade the prompt shows again. A again on any prompt after a fade is not safe: the street outside the gate may show the gate's A Enter where the warp lands, and A there would undo it. "
+        "Likely fix: after the fade, read the minimap's zone green (MinimapZoneDetector); still inside it with the prompt up, press A again; and an end check that the arrow is out of the green, so 03.08b never starts in the zone"},
 };
 
 //  How much later than the clean run's a late fade starts.
@@ -234,6 +240,7 @@ public:
         m_gate.reset();
         if (sim_step(step()) == SimStep::GATE && m_spot == start_of(index)){
             m_gate = GATE_DISTANCE;
+            m_gate_bearing = gate_bearing(index);
         }
     }
     //  The step started by begin_step() is over.
@@ -317,6 +324,20 @@ private:
     WallClock now() const{
         return m_start + m_clock;
     }
+    //  The compass bearing of the gate from step `index`'s start: its
+    //  heading arg, else the facing the clean run had there. 03.08's walk
+    //  has no heading: walk_back_to_zone_road faces the objective, past the
+    //  gate to its left, and the walk steers by the gate's pillars.
+    double gate_bearing(size_t index) const{
+        const auto heading = step().args.find("heading");
+        if (heading != step().args.end()){
+            return (double)std::get<int64_t>(heading->second);
+        }
+        if (m_clean == nullptr || index == 0){
+            return m_facing;
+        }
+        return m_clean->end_facing.at(start_of(index));
+    }
     bool prompt_shows() const{
         return m_prompt_spots.contains(m_spot) && !m_fade;
     }
@@ -375,8 +396,7 @@ private:
         if (!m_gate || sim_step(step()) != SimStep::GATE){
             return;
         }
-        const double bearing = (double)std::get<int64_t>(step().args.at("heading"));
-        if (std::abs(turn_between(m_facing + degrees, bearing)) > GATE_WALK_CONE){
+        if (std::abs(turn_between(m_facing + degrees, m_gate_bearing)) > GATE_WALK_CONE){
             return;
         }
         *m_gate -= UNITS_PER_MS * (double)duration.count();
@@ -421,6 +441,8 @@ private:
     CleanRun::Walk m_walk;
     //  How far the walk to the gate has left; none when no gate is ahead.
     std::optional<double> m_gate;
+    //  The gate's compass bearing (gate_bearing()) while m_gate is set.
+    double m_gate_bearing = 0;
     std::optional<Fade> m_fade;
     std::optional<WallClock> m_last_fade_end;
     //  An input was taken or a fade ended since the last look: the screen
@@ -446,7 +468,7 @@ Observation<ZonePose> RowSim::observe(){
         look.events.set(ScreenEvent::INTERACT_PROMPT, true);
     }
     if (m_gate && sim_step(step()) == SimStep::GATE){
-        const double off = turn_between(m_facing, (double)std::get<int64_t>(step().args.at("heading")));
+        const double off = turn_between(m_facing, m_gate_bearing);
         if (std::abs(off) <= GATE_IN_VIEW){
             look.readings[std::string(ZONE_GATE_X_READING)] = (int)std::lround(500 + off * 1000 / VIEW_DEGREES);
             look.readings[std::string(ZONE_GATE_WIDTH_READING)] = 150;
@@ -636,8 +658,8 @@ std::shared_ptr<const Pokemon::StoryFaultSweep> plza_fault_sweep(){
 
 
 //  A row's walk to a zone's gate through PLZA's engine, on looks facing
-//  the step's heading with no gate on screen: the failure line carries the
-//  class of PLZA's own failure name.
+//  the step's heading (if it has one) with no gate on screen: the failure
+//  line carries the class of PLZA's own failure name.
 struct GateClassCase{
     std::string name;
     struct Input{
@@ -658,6 +680,11 @@ const GateClassCase GATE_CLASS_CASES[] = {
         .input = {.row = "03.07d"},
         .expectation = {.failure = "gate_not_seen", .tag = "(class=pose_lost)"},
     },
+    {
+        .name = "03.08's missed far gate is logged as class=pose_lost",
+        .input = {.row = "03.08"},
+        .expectation = {.failure = "gate_not_seen", .tag = "(class=pose_lost)"},
+    },
 };
 
 UnitTestResult check_gate_class(const GateClassCase& test, CancellableScope& scope){
@@ -674,7 +701,10 @@ UnitTestResult check_gate_class(const GateClassCase& test, CancellableScope& sco
     Observation<ZonePose> look;
     look.when = current_time();
     look.events.set(ScreenEvent::PLAYER_CAN_MOVE, true);
-    look.readings[std::string(Pokemon::STORY_HEADING)] = (int)std::get<int64_t>(one.steps[0].args.at("heading"));
+    const auto heading = one.steps[0].args.find("heading");
+    if (heading != one.steps[0].args.end()){
+        look.readings[std::string(Pokemon::STORY_HEADING)] = (int)std::get<int64_t>(heading->second);
+    }
     Pokemon::FakeStoryBackend<ZonePose> backend(Pokemon::FakeStoryScript<ZonePose>{
         .looks = {look}, .battle = Pokemon::outcome_ok(), .kind = Pokemon::StoryBackendKind::SCRIPT,
     }, scope);
