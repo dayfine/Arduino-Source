@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  What a checkpoint's JSON says about the checkpoint rather than how to
- *  play it: its phase (autostory/SAVE_POLICY.md on the notes branch), the
+ *  play it: its phase (testing, verification or reproduction, below), the
  *  steps it was verified with, and where it came from. The engine picks
  *  the save mode from the phase, and only while the steps still hash to
  *  the verified ones (Engine/Pokemon_StoryEnginePolicy.h).
