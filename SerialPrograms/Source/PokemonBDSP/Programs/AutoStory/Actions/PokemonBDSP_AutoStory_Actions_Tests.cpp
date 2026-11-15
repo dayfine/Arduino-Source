@@ -347,7 +347,7 @@ UnitTestResult test_intro_pick_steps(Logger&){
         {"the look select",                 "look-select", false, true, IntroStep::PICK_LOOK},
         {"the look select, picked",         "look-select", false, false, IntroStep::ADVANCE},
         {"Rowan, look to pick",             "dialog",   false,  true,   IntroStep::ADVANCE},
-        {"a cutscene, look to pick",        "other",    false,  true,   IntroStep::ADVANCE},
+        {"a cutscene, look to pick",        "other",    false,  true,   IntroStep::WAIT},
         {"both picked",                     "dialog",   false,  false,  IntroStep::ADVANCE},
         {"black, look to pick",             "black",    false,  true,   IntroStep::WAIT},
         {"the user select",                 "user-select", true, true,  IntroStep::SELECT_USER},
@@ -782,7 +782,7 @@ UnitTestResult test_school_lamp(Logger& logger){
 UnitTestResult test_move_menu_unreadable(Logger&){
     BattleMoveMenuState moves;
     moves.move_count = 2;
-    moves.buttons[0] = ImageFloatBox{0.5, 0.5, 0.4, 0.1};
+    moves.buttons[0] = ImageFloatBox{1.1, 0.5, 0.4, 0.1};
     moves.buttons[1] = ImageFloatBox{1.5, 1.5, 0.4, 0.1};
     const ImageRGB32 frame(64, 36);
     const ImageViewRGB32 inputs[] = {ImageViewRGB32(), frame};
@@ -791,8 +791,10 @@ UnitTestResult test_move_menu_unreadable(Logger&){
         if (slots.size() != 2){
             return "read_move_menu returned " + std::to_string(slots.size()) + " slots, expected 2.";
         }
-        if (!slots[1].slug.empty() || slots[1].pp != -1){
-            return "a button outside the frame read a move.";
+        for (const MoveSlot& slot : slots){
+            if (!slot.slug.empty() || slot.pp != -1){
+                return "a button outside the frame read a move.";
+            }
         }
     }
     return true;

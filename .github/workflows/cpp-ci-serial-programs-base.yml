@@ -87,7 +87,7 @@ jobs:
           # Upstream master plus the BDSP AutoStory option-screen templates (22 PNGs the
           # AutoStoryResources test requires); drop this once they are merged upstream.
           repository: 'dayfine/Packages'
-          ref: '7d108a255bfbd4923af1fb0cf49245f2c2483594'
+          ref: 'b4d7d42516ab68aa84bdbcae52bdc0c9c8171445'
           path: 'Arduino-Source/Packages'
 
       - name: Prepare pinned BDSP map resources
@@ -257,9 +257,9 @@ jobs:
         uses: actions/checkout@v7
         if: inputs.run-tests
         with:
-          # The fork's fixtures: upstream's plus the SystemKeyboardDetector and HomeTileReader screenshots.
+          # The fork's fixtures: upstream's plus the SystemKeyboardDetector, HomeTileReader and BDSP MenuDetector screenshots.
           repository: 'dayfine/CommandLineTests'
-          ref: 'eae4697738d5fe18975e77c05a4e01216bed68e7'
+          ref: '248d24fc7d1803c5187aae680d37ad1c5c0f13e7'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded

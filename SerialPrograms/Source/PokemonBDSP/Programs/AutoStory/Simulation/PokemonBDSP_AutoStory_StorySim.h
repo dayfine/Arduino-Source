@@ -102,6 +102,16 @@ enum class SimFade{
 //  player lands on `far` (the sim's maps have no warps' destinations), the
 //  walk sees the fade as `fade` looks, and the far map's banner is still up
 //  for the next step (`banner_up`) or gone (01.05, lab-B 2026-11-08 15:31).
+//  D-pad taps that move but read still: the walker's view shift missed
+//  them (00.01 below_barrys_warning, lab-B 2026-11-15: taps 13 and 14 north
+//  up Twinleaf's exit, by the "201" banner). On step `step`'s taps toward
+//  `direction`, the taps numbered `taps` (from 1).
+struct SimStillTaps{
+    std::string step;
+    Pokemon::Direction direction = Pokemon::Direction::NORTH;
+    std::set<size_t> taps;
+};
+
 struct SimSlide{
     std::string step;
     Pokemon::Direction direction = Pokemon::Direction::WEST;
@@ -190,6 +200,8 @@ struct SimWorldKnobs{
     //  goes nowhere (lab-B 2026-11-10, 00.04b heal_sandgem walked to the
     //  nurse 1500 ms after the Center's fade and stopped on "transition").
     bool slow_fade_in = false;
+    //  Taps that move but read still (SimStillTaps).
+    std::vector<SimStillTaps> still_taps = {};
 };
 
 namespace detail{
@@ -220,6 +232,8 @@ public:
 
 private:
     WalkResult slide_on(const SimSlide& slide, WalkResult result);
+    //  walk_taps() a tap at a time, `misread`'s taps read still.
+    WalkResult taps_misread(Pokemon::Direction direction, size_t tiles, const std::string& label, const SimStillTaps& misread);
 
     GridSim& m_grid;
     SimMisses& m_misses;

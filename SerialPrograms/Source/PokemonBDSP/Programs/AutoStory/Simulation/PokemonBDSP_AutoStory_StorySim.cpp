@@ -287,7 +287,12 @@ WalkResult SimKnobRouteIO::walk_to_wall(const RouteWallWalk& walk){
 
 WalkResult SimKnobRouteIO::walk_taps(Direction direction, size_t tiles, const std::string& label){
     check_fade_in(label);
-    const WalkResult result = GridSimRouteIO::walk_taps(direction, tiles, label);
+    const auto misread = std::find_if(m_knobs.still_taps.begin(), m_knobs.still_taps.end(), [&](const SimStillTaps& item){
+        return item.step == m_step && item.direction == direction;
+    });
+    const WalkResult result = misread == m_knobs.still_taps.end()
+        ? GridSimRouteIO::walk_taps(direction, tiles, label)
+        : taps_misread(direction, tiles, label, *misread);
     if (result.stop != WalkStop::LIMIT || m_slid_steps.contains(m_step)){
         return result;
     }
@@ -297,6 +302,31 @@ WalkResult SimKnobRouteIO::walk_taps(Direction direction, size_t tiles, const st
             return slide_on(item, result);
         }
     }
+    return result;
+}
+
+//  As the console's walk_tiles_dpad() reads them: a tap read still after one
+//  read still ends the walk BLOCKED; a tap that reads moved after one read
+//  still counts that one too.
+WalkResult SimKnobRouteIO::taps_misread(Direction direction, size_t tiles, const std::string& label, const SimStillTaps& misread){
+    WalkResult result{.stop = WalkStop::LIMIT, .walked = 0ms, .wild_battles = 0, .moved_chunks = 0};
+    size_t unchanged = 0;
+    for (size_t tap = 1; tap <= tiles && result.stop == WalkStop::LIMIT; tap++){
+        const WalkResult one = GridSimRouteIO::walk_taps(direction, 1, label);
+        result.walked += one.walked;
+        result.wild_battles += one.wild_battles;
+        result.stop = one.stop;
+        const bool moved = one.moved_chunks > 0 && !misread.taps.contains(tap);
+        if (moved){
+            result.moved_chunks += 1 + unchanged;
+        }
+        unchanged = moved ? 0 : unchanged + 1;
+        if (result.stop == WalkStop::LIMIT && unchanged >= 2){
+            result.stop = WalkStop::BLOCKED;
+        }
+    }
+    note(std::format("[Sim] {}: {} taps {}, taps read still {}, {} counted, {}.", label, tiles, direction_name(direction),
+        misread.taps.size(), result.moved_chunks, walk_stop_name(result.stop)), RouteNote::LOG);
     return result;
 }
 
