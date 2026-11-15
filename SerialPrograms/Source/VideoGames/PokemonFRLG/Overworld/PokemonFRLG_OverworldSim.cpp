@@ -994,10 +994,10 @@ RouteCalls OverworldSimWalker::calls(){
     return calls;
 }
 
-std::string OverworldSimWalker::run(const std::vector<RouteStep>& route, const RoutePlanning& planning){
+std::string OverworldSimWalker::run(const std::vector<RouteStep>& route, const RoutePlanning& planning, std::optional<Direction> believed_facing){
     m_at_known = planning.start.has_value();
     try{
-        run_route(route, m_sim.state().facing, &planning, calls());
+        run_route(route, believed_facing.value_or(m_sim.state().facing), &planning, calls());
     }catch (OperationFailedException& e){
         return e.message();
     }

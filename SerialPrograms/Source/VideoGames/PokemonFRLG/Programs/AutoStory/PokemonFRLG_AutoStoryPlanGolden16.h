@@ -74,7 +74,7 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN_16[] = {
     "16.05   walk east 3 -> SilphCo_11F (5, 18)",
     "16.05   open gate north -> SilphCo_11F (5, 18)",
     "16.05   walk north 2 -> SilphCo_11F (5, 16)",
-    "16.05 below_president from SilphCo_11F (5, 15) facing north to SilphCo_11F (9, 10) facing north",
+    "16.05 below_president from SilphCo_11F (5, 15) facing east to SilphCo_11F (9, 10) facing north",
     "16.05   walk north 5 -> SilphCo_11F (5, 10)",
     "16.05   walk east 4 -> SilphCo_11F (9, 10)",
     "16.05   face north -> SilphCo_11F (9, 10)",

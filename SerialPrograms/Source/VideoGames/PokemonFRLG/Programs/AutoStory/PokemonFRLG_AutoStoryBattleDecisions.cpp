@@ -8,6 +8,7 @@
 #include <cmath>
 #include <format>
 #include <iterator>
+#include <optional>
 #include <string>
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
@@ -507,6 +508,17 @@ void EvolutionHold::held(Milliseconds held, bool lead_fainted){
     }
     m_evolved = true;
     evolve(m_lead);
+}
+
+Milliseconds EvolutionHold::wait_out(Milliseconds poll, Pokemon::ReadingSource<BattleTextScreen>& source) const{
+    const WallClock start = source.now();
+    bool still = true;
+    while (still && source.now() - start < MAX_HOLD){
+        source.wait(poll);
+        const std::optional<BattleTextScreen> screen = source.read();
+        still = !screen || holds(*screen);
+    }
+    return std::chrono::duration_cast<Milliseconds>(source.now() - start);
 }
 
 void BattleEndWatch::seen(BattleSeen what, WallClock now){

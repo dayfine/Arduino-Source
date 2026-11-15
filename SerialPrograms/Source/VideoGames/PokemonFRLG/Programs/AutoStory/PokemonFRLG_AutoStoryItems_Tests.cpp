@@ -38,6 +38,7 @@
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryBattleTurns.h"
+#include "PokemonFRLG_AutoStoryEvolutionWait_Tests.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
 #include "PokemonFRLG_AutoStoryNewMembers.h"
@@ -539,6 +540,25 @@ public:
     }
 };
 
+//  read_text_screen()'s text box on console B's captures.
+class Test_ReadTextBox : public ImageUnitTest{
+public:
+    Test_ReadTextBox(const std::string& image, bool expected)
+        : ImageUnitTest(std::format("PokemonFRLG::AutoStoryBattle read_text_screen - {}", image), {image})
+        , m_expected(expected)
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        return read_text_screen(images[0]).text_box == m_expected;
+    }
+
+private:
+    bool m_expected;
+};
+
 //  repel_wore_off_shows() on console B's captures named
 //  <anything>_<True or False>.png, in English.
 class Test_RepelWoreOff : public ImageUnitTest{
@@ -898,6 +918,7 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
     //  16.05, Silph Co. (console B, 2026-11-15): black at the map's edge
     //  read as the battle's text box after a win; three holds, a stop.
     database.add<Test_EvolutionHold>("PokemonFRLG/AutoStoryBattle/SilphCo_AfterWin_BlackBelow_False.png");
+    database.add<Test_ReadTextBox>("PokemonFRLG/AutoStoryBattle/SilphCo_AfterWin_BlackBelow_False.png", false);
     //  12.03 on Route 21 (console B, 2026-11-13 10:06 and 11:02): "REPEL's
     //  effect wore off..." still being typed; Spencer's battle text isn't it.
     database.add<Test_RepelWoreOff>("PokemonFRLG/AutoStoryRepel/Route21_RepelWoreOff_True.png");
@@ -908,6 +929,7 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
     database.add<Test_FoeHp>("PokemonFRLG/AutoStoryBattle/SSAnneRival_Raticate_FoeHp_7of48.png");
     //  The battle's choices, registered here to keep add_tests() within its size.
     add_tests_AutoStoryParty(database);
+    add_tests_AutoStoryEvolutionWait(database);
     add_tests_AutoStoryBattlePolicy(database);
 }
 

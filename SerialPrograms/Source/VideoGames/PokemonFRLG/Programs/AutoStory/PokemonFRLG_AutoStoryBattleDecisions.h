@@ -27,6 +27,7 @@
 #include <string>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/AutoStory/Pokemon_ScriptedReadings.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryParty.h"
@@ -172,6 +173,10 @@ public:
     //  Such a screen showed for `held` with nothing pressed: long enough,
     //  and the lead evolved (unless it had fainted).
     void held(Milliseconds held, bool lead_fainted);
+    //  Nothing pressed while it holds for what `source` reads, a look every
+    //  `poll`, up to MAX_HOLD; a look with no frame holds on. How long it
+    //  held, for held().
+    Milliseconds wait_out(Milliseconds poll, Pokemon::ReadingSource<BattleTextScreen>& source) const;
 
 private:
     PartyMember& m_lead;

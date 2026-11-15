@@ -14,6 +14,7 @@
 #include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "Pokemon/AutoStory/Pokemon_ConsoleReadings.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
@@ -427,7 +428,7 @@ private:
             return true;
         }
         if (m_evolution.holds(read_text_screen(screen))){
-            wait_out_evolution();
+            hold_for_evolution();
             return true;
         }
         return false;
@@ -450,17 +451,10 @@ private:
     }
 
     //  Nothing pressed while the screen may be an evolution, up to MAX_HOLD.
-    void wait_out_evolution(){
-        const WallClock start = current_time();
-        bool holds = true;
-        while (holds && current_time() - start < EvolutionHold::MAX_HOLD){
-            pbf_wait(m_context, POLL);
-            m_context.wait_for_all_requests();
-            VideoSnapshot screen = m_console.video().snapshot();
-            holds = !screen || m_evolution.holds(read_text_screen(screen));
-        }
+    void hold_for_evolution(){
+        Pokemon::ConsoleReadings<BattleTextScreen> readings(m_console, m_context, read_text_screen);
+        const Milliseconds held = m_evolution.wait_out(POLL, readings);
         const WallClock end = current_time();
-        const Milliseconds held = std::chrono::duration_cast<Milliseconds>(end - start);
         if (held >= 2000ms){
             m_console.log(std::format("Battle: no B for {} s, for an evolution.", held.count() / 1000));
         }

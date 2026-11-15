@@ -25,6 +25,7 @@
 #include "Pokemon_FrameReplay_Tests.h"
 #include "Pokemon_Interrupts_Tests.h"
 #include "Pokemon_SceneJudges_Tests.h"
+#include "Pokemon_ScriptedReadings_Tests.h"
 #include "Pokemon_StoryActions_Tests.h"
 #include "Pokemon_StoryEvents_Tests.h"
 #include "Pokemon_StoryFailureClasses_Tests.h"
@@ -69,6 +70,7 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_Interrupts(database);
     add_tests_Transitions(database);
     add_tests_FrameReplay(database);
+    add_tests_ScriptedReadings(database);
     add_tests_StoryActions(database);
     add_tests_StoryInterrupts(database);
 }

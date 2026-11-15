@@ -440,9 +440,16 @@ public:
     //  console's does.
     RouteCalls calls();
 
-    //  run_route() from the sim's facing, planned with `planning`. Returns
-    //  the failure's message, or empty if the route was walked.
-    std::string run(const std::vector<RouteStep>& route, const RoutePlanning& planning);
+    //  run_route() from the facing the program believes, `believed_facing`
+    //  (the sim's own if none), planned with `planning`. A belief that is
+    //  not the sim's facing walks as the console did: the first hold turns
+    //  the player and loses a tile (console B, 2026-11-15 13:02, 16.05
+    //  below_president). Returns the failure's message, or empty if the
+    //  route was walked.
+    std::string run(
+        const std::vector<RouteStep>& route, const RoutePlanning& planning,
+        std::optional<Direction> believed_facing = std::nullopt
+    );
 
     const std::vector<std::string>& log() const{ return m_log; }
 
