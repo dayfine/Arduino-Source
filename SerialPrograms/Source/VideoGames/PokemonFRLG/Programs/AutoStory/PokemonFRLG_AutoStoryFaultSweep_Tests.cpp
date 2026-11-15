@@ -11,7 +11,7 @@
  *    within one of the table's pose, while the program goes on from the
  *    table's (BDSP 01.04, lab-B 2026-11-09).
  *  - WILD_BATTLES: wild battles at the game's own odds on every map with
- *    land encounters, over GAME_ODDS_SEEDS seeds (08.01's Rock Tunnel).
+ *    land encounters, over DEFAULT_SWEEP_SEEDS seeds (08.01's Rock Tunnel).
  *  - LATE_FADE: every warp's fade ends LATE_FADE later than the sim's
  *    usual (07.02's warp to Cerulean City).
  *  - SLOW_FADE_IN: after every warp's fade the new map fades in for
@@ -47,25 +47,36 @@
  *  clean first, from its start_gates and start_flags: a row that fails
  *  clean fails its "clean run" test and is not swept; a row with no start
  *  is not swept. A variant fails when the row then fails or ends elsewhere. A sweep the
- *  program fails today is on KNOWN_FAILING with its likely fix: its test
+ *  program fails today is on known_failing() with its likely fix: its test
  *  passes while it still fails, and fails once it passes.
+ *
+ *  The runner (variants, seeds, clean first, the known-failing list) is
+ *  the shared one (Pokemon_SimSweep.h, Pokemon_SimSeeds.h,
+ *  Pokemon_KnownFailing.h); this file keeps FRLG's rows and how each
+ *  class runs on its sim.
  *
  */
 
 #include <algorithm>
+#include <cstdint>
 #include <format>
+#include <functional>
 #include <map>
 #include <memory>
-#include <numeric>
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_KnownFailing.h"
 #include "Pokemon/Navigation/Simulation/Pokemon_SimFaults.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_SimSeeds.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_SimSweep.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
@@ -92,26 +103,30 @@ using namespace std::chrono_literals;
 
 using Pokemon::FaultClass;
 using Pokemon::fault_class_name;
+using Pokemon::SweepVariant;
 
 //  Sweeps the program fails today, by test name, with the likely fix.
-const std::map<std::string, std::string> KNOWN_FAILING{
-    {"PokemonFRLG::AutoStory - Fault sweep: 02.02, wild battles",
-        "below_oak on Route 1 gives up after 9 stops part-way (seeds 16, 30): count stops that make no progress, not every battle"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 10.06, scene end pose",
-        "below_fuji_house plans from (4, 7), where Mr. Fuji's script warps the player (warp 4, 7, exact); from a tile off, no wall in his house funnels the walk onto (3, 4): legs that re-anchor, if the console shows the warp can land elsewhere"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 09.01, unseen step",
-        "Rocket Hideout's arrow maze: an unseen tap leaves the player on the leg's start or its end, and from what the screen shows the two look alike: a test tap toward a tile blocked from one but not the other tells them apart"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 04.05, clean run",
-        "route4_east plans no legs from Mt. Moon B2F (14, 8), past the helix gap: the planner's way out of B2F over story_maps(), not yet looked at"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 06.02, clean run",
-        "below_gym_tree walks onto the gym's door warp and sees no fade (VermilionCity_Gym (4, 12)): the door's warp on the sim after trash_cans, which the sim stubs, not yet looked at"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 09.02, clean run",
-        "b2f_arrows_to_lift_room moves nothing twice from RocketHideout_B2F (1, 4) after moon_stone, a talk the sim stubs: the arrow tiles' spin from that tile on the sim, not yet looked at"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 17.03, clean run",
-        "Takashi (10, 2) walks up to (10, 4) when he sees the player on (10, 5) and stays there after the battle, so below_giovanni's way north up column 10 is blocked (moved nothing twice); on the console too: the route after a line battle planned with the trainer who walked up as a wall (with_trainers()), or a way to Takashi from row 3"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 08.03, mount lost",
-        "riding with no fault, route7_underground_exit's warp to UndergroundPath_EastEntrance is not confirmed on the sim (the screen after the fade reads as before the hold): the sim's warp off the Bicycle, before this class can sweep 08.03"},
-};
+const Pokemon::KnownFailing& known_failing(){
+    static const Pokemon::KnownFailing list({
+        {"PokemonFRLG::AutoStory - Fault sweep: 02.02, wild battles",
+            "below_oak on Route 1 gives up after 9 stops part-way (seeds 16, 30): count stops that make no progress, not every battle"},
+        {"PokemonFRLG::AutoStory - Fault sweep: 10.06, scene end pose",
+            "below_fuji_house plans from (4, 7), where Mr. Fuji's script warps the player (warp 4, 7, exact); from a tile off, no wall in his house funnels the walk onto (3, 4): legs that re-anchor, if the console shows the warp can land elsewhere"},
+        {"PokemonFRLG::AutoStory - Fault sweep: 09.01, unseen step",
+            "Rocket Hideout's arrow maze: an unseen tap leaves the player on the leg's start or its end, and from what the screen shows the two look alike: a test tap toward a tile blocked from one but not the other tells them apart"},
+        {"PokemonFRLG::AutoStory - Fault sweep: 04.05, clean run",
+            "route4_east plans no legs from Mt. Moon B2F (14, 8), past the helix gap: the planner's way out of B2F over story_maps(), not yet looked at"},
+        {"PokemonFRLG::AutoStory - Fault sweep: 06.02, clean run",
+            "below_gym_tree walks onto the gym's door warp and sees no fade (VermilionCity_Gym (4, 12)): the door's warp on the sim after trash_cans, which the sim stubs, not yet looked at"},
+        {"PokemonFRLG::AutoStory - Fault sweep: 09.02, clean run",
+            "b2f_arrows_to_lift_room moves nothing twice from RocketHideout_B2F (1, 4) after moon_stone, a talk the sim stubs: the arrow tiles' spin from that tile on the sim, not yet looked at"},
+        {"PokemonFRLG::AutoStory - Fault sweep: 17.03, clean run",
+            "Takashi (10, 2) walks up to (10, 4) when he sees the player on (10, 5) and stays there after the battle, so below_giovanni's way north up column 10 is blocked (moved nothing twice); on the console too: the route after a line battle planned with the trainer who walked up as a wall (with_trainers()), or a way to Takashi from row 3"},
+        {"PokemonFRLG::AutoStory - Fault sweep: 08.03, mount lost",
+            "riding with no fault, route7_underground_exit's warp to UndergroundPath_EastEntrance is not confirmed on the sim (the screen after the fade reads as before the hold): the sim's warp off the Bicycle, before this class can sweep 08.03"},
+    });
+    return list;
+}
 
 //  The land encounter rates of the maps the story walks (pokefirered
 //  src/data/wild_encounters.json, FireRed). Mt. Moon's floor is wild
@@ -125,7 +140,6 @@ const std::map<std::string, int> STORY_ENCOUNTER_RATES{
 //  Caves wild on every floor tile, also where the maps mark no wild tiles
 //  (Mt. Moon B2F, console B, 2026-11-03).
 const std::set<std::string> WILD_FLOOR_MAPS{"MtMoon_1F", "MtMoon_B1F", "MtMoon_B2F"};
-constexpr unsigned GAME_ODDS_SEEDS = 30;
 //  The caves the story walks dark: no Flash before Lavender Town.
 const std::set<std::string> DARK_MAPS{"RockTunnel_1F", "RockTunnel_B1F"};
 //  Seeds of wild battles at the game's odds in the dark, after a run
@@ -412,35 +426,22 @@ RowRun run_row(
     return out;
 }
 
-//  Why `run` differs from the clean run `clean`, or "".
-std::string differs(const RowRun& run, const RowRun& clean){
-    if (!run.failure.empty()){
-        return run.failure;
-    }
-    if (!(run.end == clean.end)){
-        return std::format("ended on {}, not {}.", to_string(run.end), to_string(clean.end));
-    }
-    return "";
+//  Why `run` differs from the clean run `clean`, or nothing.
+std::optional<std::string> differs(const RowRun& run, const RowRun& clean){
+    const std::optional<std::string> failure = run.failure.empty() ? std::nullopt : std::optional<std::string>(run.failure);
+    return Pokemon::variant_failure(failure, to_string(run.end), to_string(clean.end));
 }
 
-//  One injected variant that failed its row.
-struct SweepFailure{
-    std::string step;
-    std::string variant;
-    std::string stopped;
-};
+//  The sweep of `fault` over row `row` with `variants`.
+UnitTestResult sweep_variants(Logger& logger, const StoryCheckpoint& row, FaultClass fault, const std::vector<SweepVariant>& variants){
+    return Pokemon::run_sweep(logger, row.id, fault_class_name(fault), variants);
+}
 
-UnitTestResult sweep_result(Logger& logger, FaultClass fault, const std::string& row, size_t variants, const std::vector<SweepFailure>& failures){
-    logger.log(std::format("Fault sweep {} {}: {} variants, {} fail.", row, fault_class_name(fault), variants, failures.size()));
-    if (failures.empty()){
-        return true;
-    }
-    std::string out = std::format("{} of {} variants fail {}:", failures.size(), variants, row);
-    for (const SweepFailure& failure : failures){
-        logger.log(std::format("| {} | {} | {} | {} | {} |", row, failure.step, fault_class_name(fault), failure.variant, failure.stopped));
-        out += std::format("\n  {} {}: {}", failure.step, failure.variant, failure.stopped);
-    }
-    return out;
+//  A variant over the whole row: row `row` with `script`, against `clean`.
+SweepVariant whole_row_variant(std::string label, const StoryCheckpoint& row, const RowRun& clean, SimScript script){
+    return {"", std::move(label), [&row, &clean, script = std::move(script)]{
+        return differs(run_row(row, script, {}, clean.scripted), clean);
+    }};
 }
 
 //  The open tiles within one of `pose`, diagonals too: where a scene can
@@ -465,11 +466,17 @@ std::vector<TilePos> open_neighbors(const StoryPose& pose){
     return out;
 }
 
+//  Row `row`'s step `c` ending on `tile`, not its pose_after.
+SweepVariant end_pose_variant(const StoryCheckpoint& row, const RowRun& clean, size_t c, TilePos tile){
+    return {row.steps[c].name, std::format("ends on {}", to_string(tile)), [&row, &clean, c, tile]{
+        return differs(run_row(row, SimScript{}, {{c, tile}}, clean.scripted), clean);
+    }};
+}
+
 //  Row `row`'s stubbed steps that moved the player and have a walk after
 //  them, each ending on every open tile next to the table's pose in turn.
 UnitTestResult sweep_scene_end_pose(Logger& logger, const StoryCheckpoint& row, const RowRun& clean){
-    std::vector<SweepFailure> failures;
-    size_t variants = 0;
+    std::vector<SweepVariant> variants;
     for (size_t c = 0; c < row.steps.size(); c++){
         const StoryStep& step = row.steps[c];
         const std::optional<StoryPose> after = step.pose_after ? story_pose(Pokemon::pose_of(*step.pose_after)) : std::nullopt;
@@ -482,77 +489,54 @@ UnitTestResult sweep_scene_end_pose(Logger& logger, const StoryCheckpoint& row, 
             continue;
         }
         for (const TilePos& tile : open_neighbors(*after)){
-            variants++;
-            const std::string stopped = differs(run_row(row, SimScript{}, {{c, tile}}, clean.scripted), clean);
-            if (!stopped.empty()){
-                failures.push_back({step.name, std::format("ends on {}", to_string(tile)), stopped});
-            }
+            variants.push_back(end_pose_variant(row, clean, c, tile));
         }
     }
-    return sweep_result(logger, FaultClass::SCENE_END_POSE, row.id, variants, failures);
-}
-
-//  The mean of `values`, "-" if none.
-std::string mean_of(const std::vector<double>& values){
-    if (values.empty()){
-        return "-";
-    }
-    return std::format("{:.1f}", std::accumulate(values.begin(), values.end(), 0.) / values.size());
+    return sweep_variants(logger, row, FaultClass::SCENE_END_POSE, variants);
 }
 
 //  Row `row` with wild battles at the game's odds, from each seed. Logs
 //  passed, time, tiles walked again and time lost per battle.
 UnitTestResult sweep_wild_battles(Logger& logger, const StoryCheckpoint& row, const RowRun& clean){
-    std::vector<SweepFailure> failures;
-    std::vector<double> seconds, again, lost;
     int battles = 0;
-    for (unsigned seed = 1; seed <= GAME_ODDS_SEEDS; seed++){
+    const Pokemon::SeedsResult seeds = Pokemon::run_seeds(logger, std::format("{} wild battles", row.id), [&](uint32_t seed){
         SimScript script;
         script.encounter_rates = STORY_ENCOUNTER_RATES;
         script.encounter_seed = seed;
         script.wild_floor_maps = WILD_FLOOR_MAPS;
         const RowRun run = run_row(row, script, {}, clean.scripted);
         battles += run.wild_battles;
-        const std::string stopped = differs(run, clean);
-        if (!stopped.empty()){
-            failures.push_back({"", std::format("seed {}", seed), stopped});
-            continue;
+        Pokemon::SeedRun out{.failure = differs(run, clean)};
+        if (out.failure){
+            return out;
         }
-        seconds.push_back(run.time.count() / 1000.);
-        again.push_back(run.steps - clean.steps);
+        out.measures["time (s)"] = run.time.count() / 1000.;
+        out.measures["tiles walked again"] = run.steps - clean.steps;
         if (run.wild_battles > 0){
-            lost.push_back((run.time - clean.time - run.in_wild_battles).count() / 1000. / run.wild_battles);
+            out.measures["s lost per battle"] = (run.time - clean.time - run.in_wild_battles).count() / 1000. / run.wild_battles;
         }
-    }
-    logger.log(std::format(
-        "Fault sweep {} wild battles: passed {}/{}, {} battles; of those passed: time (s) mean {}, clean {:.1f}; tiles walked again mean {}; s lost per battle mean {}",
-        row.id, GAME_ODDS_SEEDS - failures.size(), GAME_ODDS_SEEDS, battles, mean_of(seconds), clean.time.count() / 1000., mean_of(again), mean_of(lost)
-    ));
-    return sweep_result(logger, FaultClass::WILD_BATTLES, row.id, GAME_ODDS_SEEDS, failures);
+        return out;
+    });
+    logger.log(std::format("Fault sweep {} wild battles: {} battles, clean time {:.1f} s.", row.id, battles, clean.time.count() / 1000.));
+    return Pokemon::sweep_result(logger, row.id, fault_class_name(FaultClass::WILD_BATTLES), seeds.seeds, seeds.failures);
 }
 
 //  Row `row` with every warp's fade ending LATE_FADE late.
 UnitTestResult sweep_late_fade(Logger& logger, const StoryCheckpoint& row, const RowRun& clean){
     SimScript script;
     script.timing.fade += LATE_FADE;
-    const std::string stopped = differs(run_row(row, script, {}, clean.scripted), clean);
-    std::vector<SweepFailure> failures;
-    if (!stopped.empty()){
-        failures.push_back({"", std::format("every fade {} ms late", LATE_FADE.count()), stopped});
-    }
-    return sweep_result(logger, FaultClass::LATE_FADE, row.id, 1, failures);
+    return sweep_variants(logger, row, FaultClass::LATE_FADE, {
+        whole_row_variant(std::format("every fade {} ms late", LATE_FADE.count()), row, clean, std::move(script)),
+    });
 }
 
 //  Row `row` with every warp's new map fading in for SLOW_FADE_IN.
 UnitTestResult sweep_slow_fade_in(Logger& logger, const StoryCheckpoint& row, const RowRun& clean){
     SimScript script;
     script.timing.fade_in = SLOW_FADE_IN;
-    const std::string stopped = differs(run_row(row, script, {}, clean.scripted), clean);
-    std::vector<SweepFailure> failures;
-    if (!stopped.empty()){
-        failures.push_back({"", std::format("every warp fading in {} ms", SLOW_FADE_IN.count()), stopped});
-    }
-    return sweep_result(logger, FaultClass::SLOW_FADE_IN, row.id, 1, failures);
+    return sweep_variants(logger, row, FaultClass::SLOW_FADE_IN, {
+        whole_row_variant(std::format("every warp fading in {} ms", SLOW_FADE_IN.count()), row, clean, std::move(script)),
+    });
 }
 
 //  Row `row` with DARK_MAPS dark: once with no wild battles, then with
@@ -569,7 +553,7 @@ UnitTestResult sweep_dark_cave(Logger& logger, const StoryCheckpoint& row, const
         logger.log(std::format("Fault sweep {}: not swept, the row walks no dark cave.", row.id));
         return true;
     }
-    std::vector<SweepFailure> failures;
+    std::vector<SweepVariant> variants;
     for (unsigned seed = 0; seed <= DARK_CAVE_SEEDS; seed++){
         SimScript script;
         script.dark_maps = DARK_MAPS;
@@ -578,12 +562,9 @@ UnitTestResult sweep_dark_cave(Logger& logger, const StoryCheckpoint& row, const
             script.encounter_seed = seed;
             script.wild_floor_maps = WILD_FLOOR_MAPS;
         }
-        const std::string stopped = differs(run_row(row, script, {}, clean.scripted), clean);
-        if (!stopped.empty()){
-            failures.push_back({"", seed == 0 ? std::string("no wild battles") : std::format("seed {}", seed), stopped});
-        }
+        variants.push_back(whole_row_variant(seed == 0 ? std::string("no wild battles") : std::format("seed {}", seed), row, clean, std::move(script)));
     }
-    return sweep_result(logger, FaultClass::DARK_CAVE, row.id, DARK_CAVE_SEEDS + 1, failures);
+    return sweep_variants(logger, row, FaultClass::DARK_CAVE, variants);
 }
 
 //  How many tiles row `row`'s step `c`, into a trainer's line, steps onto
@@ -606,8 +587,8 @@ int line_tiles_before_last(const StoryCheckpoint& row, const RowRun& clean, size
 
 //  Row `row`'s step `c`, into a trainer's line, alone from where the clean
 //  run `clean` took it, with a wild battle on its `battle_step`th step: why
-//  it fails or ends off the clean run's tile, or "".
-std::string line_with_battle(const StoryCheckpoint& row, const RowRun& clean, size_t c, int battle_step){
+//  it fails or ends off the clean run's tile, or nothing.
+std::optional<std::string> line_with_battle(const StoryCheckpoint& row, const RowRun& clean, size_t c, int battle_step){
     const MapPosition from = clean.before.at(c);
     const auto next = clean.before.find(c + 1);
     const MapPosition last = next == clean.before.end() ? clean.end : next->second;
@@ -618,20 +599,13 @@ std::string line_with_battle(const StoryCheckpoint& row, const RowRun& clean, si
     OverworldSim sim(row_maps(row), from, clean.facing_before.at(c), script);
     StoryPose at{from.map, from.point, clean.facing_before.at(c)};
     const std::string failure = row_step_on_sim(sim, at, row.steps[c], row.id);
-    if (!failure.empty()){
-        return failure;
-    }
-    if (!(sim.state().position == last)){
-        return std::format("ended on {}, not {}.", to_string(sim.state().position), to_string(last));
-    }
-    return "";
+    return Pokemon::variant_failure(failure.empty() ? std::nullopt : std::optional<std::string>(failure), to_string(sim.state().position), to_string(last));
 }
 
 //  Row `row` with a wild battle on each tile of each step into a trainer's
 //  line before its last, one at a time: the tap after it must not be lost.
 UnitTestResult sweep_lost_tap(Logger& logger, const StoryCheckpoint& row, const RowRun& clean){
-    std::vector<SweepFailure> failures;
-    size_t variants = 0;
+    std::vector<SweepVariant> variants;
     for (size_t c = 0; c < row.steps.size(); c++){
         const StoryStep& step = row.steps[c];
         if (step.kind != StoryStepKind::STEP || step.action != TRAINER_LINE_VARIANT || clean.scripted.contains(c)){
@@ -639,13 +613,12 @@ UnitTestResult sweep_lost_tap(Logger& logger, const StoryCheckpoint& row, const 
         }
         const int tiles = line_tiles_before_last(row, clean, c);
         for (int battle_step = 1; battle_step <= tiles; battle_step++){
-            variants++;
-            if (const std::string stopped = line_with_battle(row, clean, c, battle_step); !stopped.empty()){
-                failures.push_back({step.name, std::format("a wild battle on step {}", battle_step), stopped});
-            }
+            variants.push_back({step.name, std::format("a wild battle on step {}", battle_step), [&row, &clean, c, battle_step]{
+                return line_with_battle(row, clean, c, battle_step);
+            }});
         }
     }
-    return sweep_result(logger, FaultClass::LOST_TAP, row.id, variants, failures);
+    return sweep_variants(logger, row, FaultClass::LOST_TAP, variants);
 }
 
 //  The steps of the clean run `clean` of `row` that warp, by index: the
@@ -670,38 +643,34 @@ std::vector<std::pair<size_t, std::string>> first_warps_by_map(const StoryCheckp
 //  Row `row` with the warps of each map it warps from doing nothing, one
 //  map at a time: the step onto the first of them must stop the row.
 UnitTestResult sweep_warp_no_op(Logger& logger, const StoryCheckpoint& row, const RowRun& clean){
-    std::vector<SweepFailure> failures;
-    const std::vector<std::pair<size_t, std::string>> warps = first_warps_by_map(row, clean);
-    for (const auto& [c, map] : warps){
-        SimScript script;
-        script.dead_warp_maps = {map};
-        const RowRun run = run_row(row, script, {}, clean.scripted);
-        if (run.failed_at == c){
-            continue;
-        }
-        const std::string variant = "every warp on " + map + " does nothing";
-        if (run.failure.empty()){
-            failures.push_back({row.steps[c].name, variant, std::format("not stopped: the row went on and ended on {}.", to_string(run.end))});
-        }else{
-            failures.push_back({row.steps[c].name, variant, std::format("stopped at {}, not here: {}", run.failed_at ? row.steps[*run.failed_at].name : "the row's end", run.failure)});
-        }
+    std::vector<SweepVariant> variants;
+    for (const auto& [c, map] : first_warps_by_map(row, clean)){
+        variants.push_back({row.steps[c].name, std::format("every warp on {} does nothing", map), [&row, &clean, c, map]() -> std::optional<std::string>{
+            SimScript script;
+            script.dead_warp_maps = {map};
+            const RowRun run = run_row(row, script, {}, clean.scripted);
+            if (run.failed_at == c){
+                return std::nullopt;
+            }
+            if (run.failure.empty()){
+                return std::format("not stopped: the row went on and ended on {}.", to_string(run.end));
+            }
+            return std::format("stopped at {}, not here: {}", run.failed_at ? row.steps[*run.failed_at].name : "the row's end", run.failure);
+        }});
     }
-    return sweep_result(logger, FaultClass::WARP_NO_OP, row.id, warps.size(), failures);
+    return sweep_variants(logger, row, FaultClass::WARP_NO_OP, variants);
 }
 
 //  Row `row` with each step tap that moved the player read as not moved,
 //  one at a time, counted across the row's sims.
 UnitTestResult sweep_unseen_step(Logger& logger, const StoryCheckpoint& row, const RowRun& clean){
-    std::vector<SweepFailure> failures;
+    std::vector<SweepVariant> variants;
     for (int tap = 1; tap <= clean.moved_step_taps; tap++){
         SimScript script;
         script.unseen_step_taps = {tap};
-        const std::string stopped = differs(run_row(row, script, {}, clean.scripted), clean);
-        if (!stopped.empty()){
-            failures.push_back({"", std::format("step tap {} read as not moved", tap), stopped});
-        }
+        variants.push_back(whole_row_variant(std::format("step tap {} read as not moved", tap), row, clean, std::move(script)));
     }
-    return sweep_result(logger, FaultClass::UNSEEN_STEP, row.id, (size_t)clean.moved_step_taps, failures);
+    return sweep_variants(logger, row, FaultClass::UNSEEN_STEP, variants);
 }
 
 //  Row `row` riding: the Bicycle registered and ride_bike played on the
@@ -716,20 +685,45 @@ UnitTestResult sweep_mount_lost(Logger& logger, const StoryCheckpoint& row){
         logger.log(std::format("Fault sweep {}: not swept, the row rides no leg counted out on the Bicycle.", row.id));
         return true;
     }
-    std::vector<SweepFailure> failures;
     if (!clean.failure.empty()){
-        failures.push_back({"", "riding, no fault", clean.failure});
-        return sweep_result(logger, FaultClass::MOUNT_LOST, row.id, 1, failures);
+        return Pokemon::sweep_result(logger, row.id, fault_class_name(FaultClass::MOUNT_LOST), 1, {{"", "riding, no fault", clean.failure}});
     }
+    std::vector<SweepVariant> variants;
     for (int leg = 1; leg <= clean.bike_legs; leg++){
         SimScript script = riding;
         script.off_bike_at_legs = {leg};
-        const std::string stopped = differs(run_row(row, script, {}, clean.scripted), clean);
-        if (!stopped.empty()){
-            failures.push_back({"", std::format("bike leg {} starts off the Bicycle", leg), stopped});
-        }
+        variants.push_back(whole_row_variant(std::format("bike leg {} starts off the Bicycle", leg), row, clean, std::move(script)));
     }
-    return sweep_result(logger, FaultClass::MOUNT_LOST, row.id, (size_t)clean.bike_legs, failures);
+    return sweep_variants(logger, row, FaultClass::MOUNT_LOST, variants);
+}
+
+//  Class `fault` swept over row `row`, which runs clean as `clean`.
+UnitTestResult sweep_fault(Logger& logger, FaultClass fault, const StoryCheckpoint& row, const RowRun& clean){
+    switch (fault){
+    case FaultClass::SCENE_END_POSE:
+        return sweep_scene_end_pose(logger, row, clean);
+    case FaultClass::WILD_BATTLES:
+        return sweep_wild_battles(logger, row, clean);
+    case FaultClass::LATE_FADE:
+        return sweep_late_fade(logger, row, clean);
+    case FaultClass::SLOW_FADE_IN:
+        return sweep_slow_fade_in(logger, row, clean);
+    case FaultClass::DARK_CAVE:
+        return sweep_dark_cave(logger, row, clean);
+    case FaultClass::LOST_TAP:
+        return sweep_lost_tap(logger, row, clean);
+    case FaultClass::WARP_NO_OP:
+        return sweep_warp_no_op(logger, row, clean);
+    case FaultClass::UNSEEN_STEP:
+        return sweep_unseen_step(logger, row, clean);
+    case FaultClass::MOUNT_LOST:
+        return sweep_mount_lost(logger, row);
+    case FaultClass::SCENE_EARLY:
+    case FaultClass::BATTLE_OPENING:
+        //  Not in FAULT_SWEEP_CASES: no test is made.
+        break;
+    }
+    return true;
 }
 
 //  A fault class swept over row `row` (empty in FAULT_SWEEP_CASES: each
@@ -759,70 +753,36 @@ const StoryCheckpoint& table_row(const std::string& id){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No row " + id);
 }
 
+//  The name of the fault sweep test of case `name`.
+std::string fault_sweep_test_name(std::string_view name){
+    return std::format("PokemonFRLG::AutoStory - Fault sweep: {}", name);
+}
+
 class Test_AutoStoryFaultSweep : public UnitTest{
 public:
     explicit Test_AutoStoryFaultSweep(FaultSweepCase test_case)
-        : UnitTest(std::format("PokemonFRLG::AutoStory - Fault sweep: {}", test_case.name))
+        : UnitTest(fault_sweep_test_name(test_case.name))
         , m_fault(test_case.input.fault)
         , m_row(table_row(test_case.input.row))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        UnitTestResult result;
-        try{
-            result = sweep(logger);
-        }catch (Exception& e){
-            result = std::string(e.name()) + ": " + e.message();
-        }
-        const auto known = KNOWN_FAILING.find(name());
-        if (known == KNOWN_FAILING.end()){
-            return result;
-        }
-        if (result.result == UnitTestResult::PASSED){
-            return "on KNOWN_FAILING (" + known->second + ") but passes now: take it off the list.";
-        }
-        logger.log("Known failing until " + known->second + ": " + result.message);
-        return true;
+        return known_failing().run(logger, name(), [&]{ return sweep(logger); });
     }
 
 private:
     UnitTestResult sweep(Logger& logger) const{
         const RowRun clean = run_row(m_row, SimScript{});
+        const std::optional<std::string> clean_failure = clean.failure.empty() ? std::nullopt : std::optional<std::string>(clean.failure);
         if (!m_fault){
-            if (!clean.failure.empty()){
-                return std::format("the row fails clean: {}", clean.failure);
+            if (clean_failure){
+                return std::format("the row fails clean: {}", *clean_failure);
             }
             return true;
         }
-        if (!clean.failure.empty()){
-            //  Its "clean run" test fails.
-            logger.log(std::format("Fault sweep {}: not swept, the row fails clean: {}", m_row.id, clean.failure));
-            return true;
-        }
-        switch (*m_fault){
-        case FaultClass::SCENE_END_POSE:
-            return sweep_scene_end_pose(logger, m_row, clean);
-        case FaultClass::WILD_BATTLES:
-            return sweep_wild_battles(logger, m_row, clean);
-        case FaultClass::LATE_FADE:
-            return sweep_late_fade(logger, m_row, clean);
-        case FaultClass::SLOW_FADE_IN:
-            return sweep_slow_fade_in(logger, m_row, clean);
-        case FaultClass::DARK_CAVE:
-            return sweep_dark_cave(logger, m_row, clean);
-        case FaultClass::LOST_TAP:
-            return sweep_lost_tap(logger, m_row, clean);
-        case FaultClass::WARP_NO_OP:
-            return sweep_warp_no_op(logger, m_row, clean);
-        case FaultClass::UNSEEN_STEP:
-            return sweep_unseen_step(logger, m_row, clean);
-        case FaultClass::MOUNT_LOST:
-            return sweep_mount_lost(logger, m_row);
-        case FaultClass::SCENE_EARLY:
-        case FaultClass::BATTLE_OPENING:
-            //  Not in FAULT_SWEEP_CASES: no test is made.
-            break;
-        }
-        return true;
+        //  A row that fails clean fails its "clean run" test.
+        return Pokemon::sweep_clean_first(logger, m_row.id, clean_failure, [&]{
+            return sweep_fault(logger, *m_fault, m_row, clean);
+        });
     }
 
     std::optional<FaultClass> m_fault;
@@ -859,18 +819,73 @@ std::optional<std::string> talk_battle_hide_flag(const StoryStep& step){
     return found->second;
 }
 
-void add_tests_AutoStoryFaultSweep(UnitTestDatabase& database){
+namespace{
+
+//  Each of FAULT_SWEEP_CASES over each row with a start.
+std::vector<FaultSweepCase> fault_sweep_cases(){
+    std::vector<FaultSweepCase> out;
     for (const FaultSweepCase& item : FAULT_SWEEP_CASES){
         for (const StoryCheckpoint& row : story_checkpoints()){
             if (!row.start || !story_pose(Pokemon::pose_of(*row.start))){
                 continue;
             }
-            database.add<Test_AutoStoryFaultSweep>(FaultSweepCase{
+            out.push_back({
                 .name = std::format("{}, {}", row.id, item.name),
                 .input = {.fault = item.input.fault, .row = row.id},
                 .expectation = item.expectation,
             });
         }
+    }
+    return out;
+}
+
+//  The fault sweep tests made: fault_sweep_cases().
+struct KnownFailingNamesInput{
+};
+//  Every known_failing() entry names one of them: one renamed would
+//  otherwise drop off the list and fail the suite.
+struct KnownFailingNamesExpectation{
+};
+struct KnownFailingNamesCase{
+    std::string name;
+    KnownFailingNamesInput input;
+    KnownFailingNamesExpectation expectation;
+};
+
+class Test_AutoStoryFaultSweepKnownFailing : public UnitTest{
+public:
+    explicit Test_AutoStoryFaultSweepKnownFailing(const KnownFailingNamesCase& test_case)
+        : UnitTest(fault_sweep_test_name(test_case.name))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        std::set<std::string> names;
+        for (const FaultSweepCase& test_case : fault_sweep_cases()){
+            names.insert(fault_sweep_test_name(test_case.name));
+        }
+        const std::vector<std::string> stale = known_failing().stale(names);
+        if (stale.empty()){
+            return true;
+        }
+        std::string out = "KNOWN_FAILING names no such test:";
+        for (const std::string& entry : stale){
+            out += std::format("\n  {}", entry);
+        }
+        return out;
+    }
+};
+
+const KnownFailingNamesCase KNOWN_FAILING_NAMES_CASES[] = {
+    {.name = "every known failing entry names a test", .input = {}, .expectation = {}},
+};
+
+} // namespace
+
+void add_tests_AutoStoryFaultSweep(UnitTestDatabase& database){
+    for (const FaultSweepCase& test_case : fault_sweep_cases()){
+        database.add<Test_AutoStoryFaultSweep>(test_case);
+    }
+    for (const KnownFailingNamesCase& test_case : KNOWN_FAILING_NAMES_CASES){
+        database.add<Test_AutoStoryFaultSweepKnownFailing>(test_case);
     }
 }
 
