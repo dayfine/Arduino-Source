@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <format>
 #include <memory>
+#include <optional>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
@@ -318,6 +319,36 @@ void send_member(ProControllerContext& context, size_t slot){
 }
 
 
+//  The screen as the evolution check reads it: a wait on the controller,
+//  then a snapshot through read_text_screen().
+class ConsoleTextReadings : public Pokemon::ReadingSource<BattleTextScreen>{
+public:
+    ConsoleTextReadings(ConsoleHandle& console, ProControllerContext& context)
+        : m_console(console)
+        , m_context(context)
+    {}
+
+    virtual void wait(Milliseconds duration) override{
+        pbf_wait(m_context, duration);
+        m_context.wait_for_all_requests();
+    }
+    virtual std::optional<BattleTextScreen> read() override{
+        VideoSnapshot screen = m_console.video().snapshot();
+        if (!screen){
+            return std::nullopt;
+        }
+        return read_text_screen(screen);
+    }
+    virtual WallClock now() const override{
+        return current_time();
+    }
+
+private:
+    ConsoleHandle& m_console;
+    ProControllerContext& m_context;
+};
+
+
 class BattleLoop{
 public:
     BattleLoop(
@@ -427,7 +458,7 @@ private:
             return true;
         }
         if (m_evolution.holds(read_text_screen(screen))){
-            wait_out_evolution();
+            hold_for_evolution();
             return true;
         }
         return false;
@@ -450,17 +481,10 @@ private:
     }
 
     //  Nothing pressed while the screen may be an evolution, up to MAX_HOLD.
-    void wait_out_evolution(){
-        const WallClock start = current_time();
-        bool holds = true;
-        while (holds && current_time() - start < EvolutionHold::MAX_HOLD){
-            pbf_wait(m_context, POLL);
-            m_context.wait_for_all_requests();
-            VideoSnapshot screen = m_console.video().snapshot();
-            holds = !screen || m_evolution.holds(read_text_screen(screen));
-        }
+    void hold_for_evolution(){
+        ConsoleTextReadings readings(m_console, m_context);
+        const Milliseconds held = wait_out_evolution(readings, m_evolution, POLL);
         const WallClock end = current_time();
-        const Milliseconds held = std::chrono::duration_cast<Milliseconds>(end - start);
         if (held >= 2000ms){
             m_console.log(std::format("Battle: no B for {} s, for an evolution.", held.count() / 1000));
         }

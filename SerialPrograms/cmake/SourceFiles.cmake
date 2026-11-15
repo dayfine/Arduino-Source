@@ -1658,6 +1658,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_SceneJudges.h
     Source/Pokemon/AutoStory/Pokemon_SceneJudges_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_SceneJudges_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_ScriptedReadings.h
+    Source/Pokemon/AutoStory/Pokemon_ScriptedReadings_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_ScriptedReadings_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryActions.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryActions.h
     Source/Pokemon/AutoStory/Pokemon_StoryActions_Tests.cpp
@@ -2195,6 +2198,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCheckpoints.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvolutionWait_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFrameReplay_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFrameReplay_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLegs.cpp

@@ -27,6 +27,7 @@
 #include <string>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/AutoStory/Pokemon_ScriptedReadings.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryParty.h"
@@ -182,6 +183,13 @@ private:
     Milliseconds m_held = Milliseconds::zero();
 };
 
+//  Nothing pressed while `hold` holds for what `source` reads, a look
+//  every `poll`, up to EvolutionHold::MAX_HOLD; a look with no frame holds
+//  on. How long it held, for EvolutionHold::held().
+Milliseconds wait_out_evolution(
+    Pokemon::ReadingSource<BattleTextScreen>& source, const EvolutionHold& hold, Milliseconds poll
+);
+
 
 //  What the battle loop saw of the battle at a poll.
 enum class BattleSeen{
@@ -270,6 +278,8 @@ private:
 
 //  Registers AutoStory party management unit tests.
 void add_tests_AutoStoryParty(UnitTestDatabase& database);
+//  Registers the battle loop's evolution waits on scripted readings.
+void add_tests_AutoStoryEvolutionWait(UnitTestDatabase& database);
 
 
 
