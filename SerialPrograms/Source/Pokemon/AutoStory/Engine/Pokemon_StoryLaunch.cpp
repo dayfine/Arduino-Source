@@ -178,6 +178,8 @@ private:
                 m_backend.press(each.button, each.hold, each.release);
             }
         }
+        //  A black before this title was not the load.
+        m_load_seen = false;
         m_title_pressed = true;
         return press("title", m_policy.title_press, m_policy.presses_per_screen);
     }
@@ -187,7 +189,8 @@ private:
             return press("overworld", {.button = BUTTON_HOME}, m_policy.presses_per_screen, "HOME, to load the save");
         }
         if (m_policy.overworld_after_load && m_loading && !m_load_seen){
-            m_title_pressed = true;
+            //  Not the load's press: on the movie, it goes back to the
+            //  title through a black.
             return press(
                 "title", m_policy.title_press, m_policy.presses_per_screen,
                 std::format("no load yet, so the title's attract movie: {}", button_to_string(m_policy.title_press.button))
@@ -248,10 +251,11 @@ private:
     bool m_launch_pressed = false;
     Milliseconds m_home_waited = Milliseconds(0);
     bool m_backup_sent = false;
-    //  The title press was sent (on the title, or for
-    //  `overworld_after_load` on its attract movie).
+    //  The title press was sent on a look `policy.title` read as the
+    //  title; a press on the attract movie (`overworld_after_load`) is not.
     bool m_title_pressed = false;
-    //  A black screen showed after the title press: the save loading.
+    //  A black screen showed after the title press, and the title has not
+    //  shown since: the save loading.
     bool m_load_seen = false;
 };
 
