@@ -23,6 +23,7 @@ enum class VideoSourceType{
     StillImage,
     VideoPlayback,
     Camera,
+    MgbaLink,   //  Developer mode only (fork lab tooling).
 };
 
 

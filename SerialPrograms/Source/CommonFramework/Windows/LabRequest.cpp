@@ -4,10 +4,12 @@
  *
  */
 
+#include <algorithm>
 #include <cerrno>
 #include <cstdlib>
 #include <format>
 #include <sstream>
+#include "LabTransition.h"
 #include "LabRequest.h"
 
 namespace PokemonAutomation{
@@ -76,17 +78,17 @@ std::optional<Seconds> parse_seconds(const std::string& word){
     return Seconds(seconds);
 }
 
-std::optional<Filesystem::Path> next_request_file(const std::string& inbox){
-    std::optional<Filesystem::Path> next;
+std::vector<Filesystem::Path> request_files(const std::string& inbox){
+    std::vector<Filesystem::Path> files;
     for (const Filesystem::Path& path : Filesystem::list_directory(Filesystem::Path(inbox))){
-        if (!Filesystem::is_regular_file(path) || path.extension().string() != ".txt"){
-            continue;
-        }
-        if (!next || path.string() < next->string()){
-            next = path;
+        if (Filesystem::is_regular_file(path) && path.extension().string() == ".txt"){
+            files.push_back(path);
         }
     }
-    return next;
+    std::sort(files.begin(), files.end(), [](const Filesystem::Path& a, const Filesystem::Path& b){
+        return a.string() < b.string();
+    });
+    return files;
 }
 
 
@@ -108,6 +110,11 @@ LabRequest parse_lab_request(const std::string& text){
         //  halfway through.
         if (request.lines.empty() && request.owner.empty() && words.size() == 2 && words[0] == "owner"){
             request.owner = words[1];
+            continue;
+        }
+        //  A malformed id is left as a command, which then fails as unknown.
+        if (request.lines.empty() && !request.id && words.size() == 2 && words[0] == "request" && is_lab_uuid(words[1])){
+            request.id = words[1];
             continue;
         }
         request.lines.push_back({number, line, std::move(words)});

@@ -66,6 +66,13 @@ Button parse_buttons(const std::string& text){
     return buttons;
 }
 
+Button optional_buttons(const std::vector<std::string>& words, size_t index){
+    if (index >= words.size()){
+        return BUTTON_NONE;
+    }
+    return parse_buttons(words[index]);
+}
+
 DpadPosition parse_dpad(const std::string& text){
     static const std::map<std::string, DpadPosition> NAMES{
         {"UP", DPAD_UP}, {"DOWN", DPAD_DOWN}, {"LEFT", DPAD_LEFT}, {"RIGHT", DPAD_RIGHT},

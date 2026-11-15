@@ -288,6 +288,24 @@ file(GLOB CORE_LIBRARY_SOURCES
     Source/Controllers/Joystick.cpp
     Source/Controllers/Joystick.h
     Source/Controllers/JoystickTools.h
+    Source/Controllers/MgbaLink/MgbaLink_Connection.cpp
+    Source/Controllers/MgbaLink/MgbaLink_Connection.h
+    Source/Controllers/MgbaLink/MgbaLink_Keys.cpp
+    Source/Controllers/MgbaLink/MgbaLink_Keys.h
+    Source/Controllers/MgbaLink/MgbaLink_Keys_Tests.cpp
+    Source/Controllers/MgbaLink/MgbaLink_Keys_Tests.h
+    Source/Controllers/MgbaLink/MgbaLink_KeySender.cpp
+    Source/Controllers/MgbaLink/MgbaLink_KeySender.h
+    Source/Controllers/MgbaLink/MgbaLink_KeySender_Tests.cpp
+    Source/Controllers/MgbaLink/MgbaLink_KeySender_Tests.h
+    Source/Controllers/MgbaLink/MgbaLink_Pacer.cpp
+    Source/Controllers/MgbaLink/MgbaLink_Pacer.h
+    Source/Controllers/MgbaLink/MgbaLink_Protocol.cpp
+    Source/Controllers/MgbaLink/MgbaLink_Protocol.h
+    Source/Controllers/MgbaLink/MgbaLink_SharedLink.cpp
+    Source/Controllers/MgbaLink/MgbaLink_SharedLink.h
+    Source/Controllers/MgbaLink/MgbaLink_Tests.cpp
+    Source/Controllers/MgbaLink/MgbaLink_Tests.h
     Source/Controllers/NullController.cpp
     Source/Controllers/NullController.h
     Source/Controllers/PABotBase2/PABotBase2_CommandQueueManager.cpp
@@ -324,6 +342,12 @@ file(GLOB CORE_LIBRARY_SOURCES
     Source/NintendoSwitch/Controllers/Joycon/NintendoSwitch_Joycon_from_Keyboard.h
     Source/NintendoSwitch/Controllers/Joycon/NintendoSwitch_JoyconState.cpp
     Source/NintendoSwitch/Controllers/Joycon/NintendoSwitch_JoyconState.h
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap.cpp
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap.h
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap_Tests.cpp
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap_Tests.h
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_ProController.cpp
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_ProController.h
     Source/NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.cpp
     Source/NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h
     Source/NintendoSwitch/Controllers/NintendoSwitch_ControllerSettings.cpp
@@ -685,6 +709,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/PersistentSettings.h
     Source/CommonFramework/ProgramSession.cpp
     Source/CommonFramework/ProgramSession.h
+    Source/CommonFramework/ProgramTransition.cpp
+    Source/CommonFramework/ProgramTransition.h
+    Source/CommonFramework/ProgramTransition_Tests.cpp
+    Source/CommonFramework/ProgramTransition_Tests.h
     Source/CommonFramework/ProgramStats/StatsDatabase.cpp
     Source/CommonFramework/ProgramStats/StatsDatabase.h
     Source/CommonFramework/ProgramStats/StatsTracking.cpp
@@ -806,6 +834,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/VideoPipeline/VideoSourceOption.h
     Source/CommonFramework/VideoPipeline/Sources/VideoSource_Camera.cpp
     Source/CommonFramework/VideoPipeline/Sources/VideoSource_Camera.h
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_MgbaLink.cpp
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_MgbaLink.h
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_MgbaLink_Tests.cpp
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_MgbaLink_Tests.h
     Source/CommonFramework/VideoPipeline/Sources/VideoSource_Null.cpp
     Source/CommonFramework/VideoPipeline/Sources/VideoSource_Null.h
     Source/CommonFramework/VideoPipeline/Sources/VideoSource_StillImage.cpp
@@ -818,8 +850,24 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Windows/LabChannel.h
     Source/CommonFramework/Windows/LabChannel_Tests.cpp
     Source/CommonFramework/Windows/LabChannel_Tests.h
+    Source/CommonFramework/Windows/LabFrames.cpp
+    Source/CommonFramework/Windows/LabFrames.h
+    Source/CommonFramework/Windows/LabProgramContract.cpp
+    Source/CommonFramework/Windows/LabProgramContract.h
+    Source/CommonFramework/Windows/LabProgramContract_Tests.cpp
+    Source/CommonFramework/Windows/LabProgramContract_Tests.h
     Source/CommonFramework/Windows/LabRequest.cpp
     Source/CommonFramework/Windows/LabRequest.h
+    Source/CommonFramework/Windows/LabSnapshot.cpp
+    Source/CommonFramework/Windows/LabSnapshot.h
+    Source/CommonFramework/Windows/LabSnapshot_Tests.cpp
+    Source/CommonFramework/Windows/LabSnapshot_Tests.h
+    Source/CommonFramework/Windows/LabStateJson.cpp
+    Source/CommonFramework/Windows/LabStateJson.h
+    Source/CommonFramework/Windows/LabStateJson_Tests.cpp
+    Source/CommonFramework/Windows/LabStateJson_Tests.h
+    Source/CommonFramework/Windows/LabTransition.cpp
+    Source/CommonFramework/Windows/LabTransition.h
     Source/CommonFramework/Windows/MainWindow.cpp
     Source/CommonFramework/Windows/MainWindow.h
     Source/CommonFramework/Windows/WindowTracker.cpp
@@ -1348,6 +1396,10 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h
     Source/NintendoSwitch/Controllers/Joycon/NintendoSwitch_JoyconTable.cpp
     Source/NintendoSwitch/Controllers/Joycon/NintendoSwitch_JoyconTable.h
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_Descriptor.cpp
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_Descriptor.h
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_SelectorWidget.cpp
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_SelectorWidget.h
     Source/NintendoSwitch/Controllers/Procon/NintendoSwitch_ProControllerTable.cpp
     Source/NintendoSwitch/Controllers/Procon/NintendoSwitch_ProControllerTable.h
     Source/NintendoSwitch/Controllers/SysbotBase/SysbotBase3_ControllerState.h
@@ -1412,6 +1464,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Options/NintendoSwitch_StartInGripMenuOption.h
     Source/NintendoSwitch/Options/TurboMacroTable.cpp
     Source/NintendoSwitch/Options/TurboMacroTable.h
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileGameOpen.cpp
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileGameOpen.h
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileParsing.cpp
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileParsing.h
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner.cpp
