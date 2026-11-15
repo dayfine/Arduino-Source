@@ -492,6 +492,6 @@ also assert that nothing is dispatched after `lost`: the fake backend's recorded
 (`FakeStoryBackend`) hold no press or stick from the walk or any later step after the one that
 returned `lost`, and the next input, if any, is the reload's.
 
-The immediate task is R0, followed by running the existing dialog/menu/arrow/fade detectors over the
-captured opening frames. That evidence tells us whether Gate A's first implementation risk is screen
-perception, navigation, or both.
+The immediate task is [R0](AutoStory-SwSh-R0-Evidence.md), followed by running the existing
+dialog/menu/arrow/fade detectors over the captured opening frames. That evidence tells us whether
+Gate A's first implementation risk is screen perception, navigation, or both.
