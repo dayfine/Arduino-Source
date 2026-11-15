@@ -36,7 +36,6 @@
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
-#include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryRoutePose.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
 #include "PokemonFRLG_AutoStorySlopeRun.h"
@@ -533,12 +532,10 @@ bool grind_heal_trip(StoryEnv& env, RunState& state, const StoryStep& step, cons
         return false;
     }
     //  PP too: a grind's battles spend more than its attacks have.
-    if (!heal_in_center(env, walk.name).succeeded()){
-        return false;
-    }
+    const bool healed = heal_in_center(env, walk.name).succeeded();
     walk.name = step.name + "_back_to_patch";
     walk.args["target"] = Pokemon::GridPose{back->map, {back->tile}, back->facing};
-    return walked(env, state, walk);
+    return healed && walked(env, state, walk);
 }
 
 //  A trainer saw the player pacing `step` on `patch` (console B,
@@ -687,12 +684,11 @@ Outcome open_gym_door(StoryEnv& env, RunState& state, const StoryStep& step){
     return Pokemon::outcome_ok(state.pose);
 }
 
-//  The GAME steps without a row of their own: a Pokemon Center's door, a
-//  capture or a PC deposit or withdrawal, a MART, TEACH, LEVEL, GRIND or
-//  fossil CHOICE.
+//  The GAME steps without a row of their own: a Center's door, a capture
+//  or a PC deposit or withdrawal, a MART, TEACH, LEVEL, GRIND or fossil CHOICE.
 Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
-    if (is_center_variant(step.action)){
-        return center_step(env, step);
+    if (std::optional<Outcome> center = center_step(env, step)){
+        return *center;
     }
     const Pokemon::Pose patch = state.pose;
     ConsoleCaptureActions capture(env.console, env.context, env.language, env.player_gender, [&]{ pace_trainer_battle(env, state, step, patch); });
@@ -795,9 +791,7 @@ ConsoleAction console_action_of(StoryActionId id){
     case StoryActionId::BATTLE:
         return [](StoryEnv& env, RunState&, const StoryStep& step){ return battle(env, step); };
     case StoryActionId::HEAL:
-        return [](StoryEnv& env, RunState&, const StoryStep& step){
-            return heal_in_center(env, step.name);
-        };
+        return [](StoryEnv& env, RunState&, const StoryStep& step){ return heal_in_center(env, step.name); };
     case StoryActionId::SHOP:
         return [](StoryEnv& env, RunState&, const StoryStep& step){ return viridian_shop(env, step); };
     case StoryActionId::READY:

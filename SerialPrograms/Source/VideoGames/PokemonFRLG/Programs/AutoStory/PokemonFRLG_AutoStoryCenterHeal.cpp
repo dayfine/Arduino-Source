@@ -11,6 +11,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PokemonCenterFloorReader.h"
 #include "PokemonFRLG_AutoStoryCenterHeal.h"
 #include "PokemonFRLG_AutoStoryRoomLegs.h"
+#include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStorySupplies.h"
 
 namespace PokemonAutomation{
@@ -92,7 +93,10 @@ private:
 } // namespace
 
 
-Outcome center_step(StoryEnv& env, const Pokemon::StoryStep& step){
+std::optional<Outcome> center_step(StoryEnv& env, const Pokemon::StoryStep& step){
+    if (!is_center_variant(step.action)){
+        return std::nullopt;
+    }
     ConsoleCenterVisit visit(env);
     return run_center_step(step, visit);
 }

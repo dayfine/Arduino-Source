@@ -729,7 +729,7 @@ public:
         return walk(center_enter_legs());
     }
     virtual void line_up_and_walk_in() override{
-        throw SimVisitFailure{"no fade at the Center's door from " + to_string(m_sim.state().position) + "."};
+        throw SimVisitFailure{std::format("no fade at the Center's door from {}.", to_string(m_sim.state().position))};
     }
     virtual Pokemon::CenterPlace place() override{
         return is_pokemon_center(m_sim.state().position.map) ? Pokemon::CenterPlace::INSIDE : Pokemon::CenterPlace::OUTSIDE;

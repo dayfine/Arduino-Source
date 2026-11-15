@@ -13,6 +13,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryCenterHeal_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryCenterHeal_H
 
+#include <optional>
 #include <string_view>
 #include "Pokemon/AutoStory/Pokemon_CenterVisit.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
@@ -44,10 +45,13 @@ Pokemon::Outcome run_center_step(const Pokemon::StoryStep& step, Pokemon::Center
 //  else, or with no frame, fails Pokemon::CENTER_NOT_ENTERED before her.
 Pokemon::Outcome heal_at_nurse(std::string_view label, Pokemon::CenterVisitIO& io);
 
-//  On the console: run_center_step(), and heal_at_nurse() with upstream's
-//  heal_at_pokecenter() as the nurse and the party's HP and PP then
-//  counted full in env.supplies (healed_by_nurse()).
-Pokemon::Outcome center_step(StoryEnv& env, const Pokemon::StoryStep& step);
+//  run_center_step() on the console, if `step` is a Center's
+//  (is_center_variant()); nothing for another step.
+std::optional<Pokemon::Outcome> center_step(StoryEnv& env, const Pokemon::StoryStep& step);
+
+//  heal_at_nurse() on the console: upstream's heal_at_pokecenter() as the
+//  nurse, the party's HP and PP then counted full in env.supplies
+//  (healed_by_nurse()).
 Pokemon::Outcome heal_in_center(StoryEnv& env, std::string_view label);
 
 
