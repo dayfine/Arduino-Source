@@ -127,7 +127,7 @@ private:
 //  start a segment.
 
 struct SegmentStartInput{
-    std::vector<CheckpointId> passed;
+    std::vector<std::string> passed;
 };
 
 struct SegmentStartExpectation{
@@ -161,9 +161,13 @@ public:
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         std::vector<std::string> got;
         std::optional<CheckpointId> previous;
-        for (CheckpointId next : m_scenario.input.passed){
-            if (starts_segment(previous, next)){
-                got.emplace_back(next.to_string());
+        for (const std::string& text : m_scenario.input.passed){
+            const std::optional<CheckpointId> next = CheckpointId::parse(text);
+            if (!next){
+                return std::format("Bad checkpoint id \"{}\" in the test input", text);
+            }
+            if (starts_segment(previous, *next)){
+                got.emplace_back(next->to_string());
             }
             previous = next;
         }
@@ -231,17 +235,17 @@ void add_segment_start_tests(UnitTestDatabase& database){
     const std::vector<SegmentStartScenario> segment_cases{
         {
             .name = "first checkpoint of a run starts its segment",
-            .input = {.passed = {{3, 8}}},
+            .input = {.passed = {"03.08"}},
             .expectation = {.starts = {"03.08"}},
         },
         {
             .name = "checkpoints in one segment start it once",
-            .input = {.passed = {{3, 8}, {3, 9}, {3, 10}}},
+            .input = {.passed = {"03.08", "03.09", "03.10"}},
             .expectation = {.starts = {"03.08"}},
         },
         {
             .name = "each new segment starts once",
-            .input = {.passed = {{2, 4}, {2, 5}, {3, 0}, {3, 1}, {4, 0}}},
+            .input = {.passed = {"02.04", "02.05", "03.00", "03.01", "04.00"}},
             .expectation = {.starts = {"02.04", "03.00", "04.00"}},
         },
         {
