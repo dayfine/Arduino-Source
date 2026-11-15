@@ -114,6 +114,39 @@ the matching code PR: `AutoStoryConfirmChoices` (30), `LockOnBracketDetector` (3
 `AutoStoryDialogChoices` (1). The `.github/workflows` edits that point CI at the fork's
 CommandLineTests never go upstream; the upstream chain keeps `PokemonAutomation/CommandLineTests`.
 
+### Dependency closure, measured 2026-11-14 (batch 1)
+
+Include closure of `VideoGames/PokemonLZA/Programs/AutoStory` on `plza/fault-sweep` 24133e149,
+tests and the fault sweep left out: **121 files, +12.0k lines** outside the PLZA folder (vs
+`autostory/checkpoint-id`). Nothing from `Pokemon/Navigation` tile navigation, the SV retry core
+(#391: `CheckpointRetry`, `StoryRun`, interrupts, `StoryActions`) or the keyboard is in it. It does
+pull `Pokemon/Navigation/{Pokemon_Direction,Pokemon_Grid}` and `Pokemon_TilePose`: the backend's
+`tap(Direction)`, `GridPose` (woven into the step executor, postcondition check and step JSON) and
+the engine's `GridPose` instantiations need them; cutting them is a rewrite, so they stay.
+
+Rebuilt fork PRs, each one's own change with its tests:
+
+| PR | Branch, tip | Own size | Of it, tests |
+|---|---|---|---|
+| S1 #522 | `plza/upstream/s1` 5236786c6 | 72 files, +7.5k | +2.8k |
+| S2a #524 | `plza/upstream/s2a` 5f5f6d205 | 69 files, +9.4k (loader +1.0k of it) | +4.4k |
+| S2b #525 | `plza/upstream/s2b` 00c6ceb84 | 25 files, +2.3k | +0.9k |
+
+S2a is under 10k with the loader, so no S2a'. Where the cut differs from section 3:
+- Failure classes are in S1, not S2b: `Outcome` carries `std::optional<StoryFailureClass>`. Their
+  sim-fault mapping (`injected_by`, `story_failure_class_of(FaultClass)`) is cut, which drops
+  `Pokemon_SimFaults`; it returns with the fault sweep (S3, after M3).
+- `record_story_counts()` writes #520's stats (Segments Started, Checkpoints Started, Resets);
+  a segment report now counts checkpoints started, not passed.
+- The `BREAKPOINTS` option is out of `StoryRunOptions`; the engine's pause hook and
+  `StoryBreakpoints` type stay (S1). PLZA's `Moves.h` still includes the type.
+- `Pokemon_StoryDevFiles.h` keeps only the `StoryDevFile` struct (the loader's test seam); the
+  folder scan (`story_dev_folder`, `read_story_dev_files`) is out, so P2's `StoryFiles` passes none.
+- `cmake/EmbedTextFiles.cmake` waits for P2, its first caller.
+- The shared suites register through `Pokemon_AutoStory_Tests.h` (`add_tests_AutoStory()`).
+- C1 needs `NintendoSwitch/HomeTileReader/` (6 frames) too: S2b's HomeTileReader test reads them,
+  so S2b's fork CI pins `dayfine/CommandLineTests` at 0195f3b0c as `plza/fault-sweep` does.
+
 ### Fork- or lab-only, stays out
 
 | Item | Where today | Why it stays |
