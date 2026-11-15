@@ -105,8 +105,8 @@ std::vector<StoryFailureClassInfo> walk_rows(){
         {
             C::POSE_LOST, "pose_lost",
             "where the player is or faces is unknown or not what the map says",
-            "the localizer: no pose, another map, another facing",
-            {}, {}, R::RELOAD,
+            "the localizer: no pose, another map, another facing; no Center after its door",
+            {}, {"heal_enter"}, R::RELOAD,
         },
     };
 }
@@ -118,7 +118,7 @@ std::vector<StoryFailureClassInfo> warp_rows(){
             C::WARP_NO_OP, "warp_no_op",
             "a step onto a warp shows the fade's black but does not warp",
             "the map or tile after the fade is the one before it",
-            {FaultClass::WARP_NO_OP}, {}, R::RETRY_STEP,
+            {FaultClass::WARP_NO_OP}, {"heal_exit"}, R::RETRY_STEP,
         },
         {
             C::LATE_FADE, "late_fade",

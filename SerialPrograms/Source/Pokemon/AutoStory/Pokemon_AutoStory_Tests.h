@@ -24,9 +24,11 @@
 #include "Engine/Pokemon_StoryEngine_Tests.h"
 #include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
+#include "Pokemon_CenterVisit_Tests.h"
 #include "Pokemon_CheckpointRetry_Tests.h"
 #include "Pokemon_Interrupts_Tests.h"
 #include "Pokemon_SceneJudges_Tests.h"
+#include "Pokemon_Settle_Tests.h"
 #include "Pokemon_StoryActions_Tests.h"
 #include "Pokemon_StoryEvents_Tests.h"
 #include "Pokemon_StoryFailureClasses_Tests.h"
@@ -73,6 +75,8 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_FrameCoverage(database);
     add_tests_CoveredWatch(database);
     add_tests_SceneJudges(database);
+    add_tests_Settle(database);
+    add_tests_CenterVisit(database);
     add_tests_Interrupts(database);
     add_tests_Transitions(database);
     add_tests_StoryActions(database);

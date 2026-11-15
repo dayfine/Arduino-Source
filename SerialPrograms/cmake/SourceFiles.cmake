@@ -1631,6 +1631,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.cpp
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h
+    Source/Pokemon/AutoStory/Pokemon_CenterVisit.cpp
+    Source/Pokemon/AutoStory/Pokemon_CenterVisit.h
+    Source/Pokemon/AutoStory/Pokemon_CenterVisit_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_CenterVisit_Tests.h
     Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts.cpp
     Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts.h
     Source/Pokemon/AutoStory/Pokemon_CheckpointRetry.cpp
@@ -1648,6 +1652,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_SceneJudges.h
     Source/Pokemon/AutoStory/Pokemon_SceneJudges_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_SceneJudges_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_Settle.cpp
+    Source/Pokemon/AutoStory/Pokemon_Settle.h
+    Source/Pokemon/AutoStory/Pokemon_Settle_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_Settle_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryActions.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryActions.h
     Source/Pokemon/AutoStory/Pokemon_StoryActions_Tests.cpp

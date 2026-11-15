@@ -5,8 +5,9 @@
  *  The launch on a scripted console: each case is the screens the console
  *  shows, look by look (the last repeats), and the presses the launch must
  *  make, or where it must fail. The test game's screens are readings its
- *  policy reads; HOME is the shared SWITCH_HOME_MENU event and the
- *  overworld the shared PLAYER_CAN_MOVE.
+ *  policy reads; HOME is the shared SWITCH_HOME_MENU event, a boot's or
+ *  load's black the shared FADE_BLACK and the overworld the shared
+ *  PLAYER_CAN_MOVE.
  *
  */
 
@@ -38,6 +39,7 @@ enum class Screen{
     LICENSE_CHECK,      //  the online license check
     BLACK,              //  a boot or a load
     TITLE,
+    TITLE_UNREAD,       //  the title, on a look its check misses
     NEW_GAME,           //  the title's menu without a save
     BACKUP_CONFIRM,     //  "Load the backup save?"
     LOAD_MENU,          //  Continue / New Game
@@ -59,6 +61,9 @@ Observation<GridPose> look(Screen screen){
         return observation;
     case Screen::OVERWORLD:
         observation.events = ScreenEvents{ScreenEvent::PLAYER_CAN_MOVE};
+        return observation;
+    case Screen::BLACK:
+        observation.events = ScreenEvents{ScreenEvent::FADE_BLACK};
         return observation;
     default:
         observation.readings[std::string(SCREEN)] = (int)screen;
@@ -91,10 +96,16 @@ enum class GameScreens{
     AFTER_LAUNCH,   //  read only once the launch launched the game
 };
 
+//  When the test game's overworld counts after the launch closed it.
+enum class OverworldCheck{
+    ANY_TIME,
+    AFTER_LOAD,     //  only after a title press and the load's black
+};
+
 //  The test game: A on the title, `backup` for the backup save, A on each
 //  prompt (Up, Up, A on the update prompt; B on the game's dialog), and
 //  small bounds so a failure takes few looks.
-StoryLaunchPolicy test_policy(Backup backup, GameScreens game_screens, TileCheck tile_check){
+StoryLaunchPolicy test_policy(Backup backup, GameScreens game_screens, TileCheck tile_check, OverworldCheck overworld_check){
     StoryLaunchPolicy policy;
     policy.game = "test";
     policy.tile_selected = [](const ScreenObservation& observation){
@@ -120,7 +131,9 @@ StoryLaunchPolicy test_policy(Backup backup, GameScreens game_screens, TileCheck
          .after_launch = game_screens == GameScreens::AFTER_LAUNCH},
     };
     policy.title_after_launch = game_screens == GameScreens::AFTER_LAUNCH;
+    policy.overworld_after_load = overworld_check == OverworldCheck::AFTER_LOAD;
     policy.presses_per_screen = 3;
+    policy.load_black_looks = 3;
     policy.launch_wait = Milliseconds(2000);
     policy.max_looks = 12;
     return policy;
@@ -143,6 +156,7 @@ struct LaunchCase{
         Backup backup = Backup::PLZA;
         GameScreens game_screens = GameScreens::STRICT;
         TileCheck tile_check = TileCheck::READINGS;
+        OverworldCheck overworld_check = OverworldCheck::ANY_TIME;
     };
     struct Expectation{
         //  Empty: the launch succeeds; else a part of its failure's detail.
@@ -225,6 +239,45 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
                                         Screen::BLACK, Screen::GAME_DIALOG, Screen::TITLE}),
                .game_screens = GameScreens::AFTER_LAUNCH},
      .expectation = {.inputs = "HOME HOME X A wait B A wait wait"}},
+    //  Console B, 2026-11-15 03:42 (BDSP): after the launch the title's
+    //  attract movie, a town with people walking, read as the overworld
+    //  and settled before the title took a press.
+    {.name = "attract movie never counts as the overworld",
+     .input = {.screens = {Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::BLACK, Screen::OVERWORLD},
+               .game_screens = GameScreens::AFTER_LAUNCH, .overworld_check = OverworldCheck::AFTER_LOAD},
+     .expectation = {.failure = "stuck on title", .inputs = "X A wait A A A"}},
+    {.name = "attract movie takes the title press",
+     .input = {.screens = then_settled({Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::BLACK, Screen::OVERWORLD,
+                                        Screen::TITLE, Screen::BLACK}),
+               .game_screens = GameScreens::AFTER_LAUNCH, .overworld_check = OverworldCheck::AFTER_LOAD},
+     .expectation = {.inputs = "X A wait A A wait wait wait"}},
+    //  Console B, 2026-11-15 04:21 (BDSP, Japanese): the title press on the
+    //  attract movie went back to the title through a black, and that
+    //  black counted as the load; the title, read as the overworld,
+    //  settled. Only a press on a recognised title starts the load.
+    {.name = "a black after the attract movie's press is not the load",
+     .input = {.screens = {Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::BLACK, Screen::OVERWORLD, Screen::BLACK,
+                           Screen::OVERWORLD},
+               .game_screens = GameScreens::AFTER_LAUNCH, .overworld_check = OverworldCheck::AFTER_LOAD},
+     .expectation = {.failure = "stuck on title", .inputs = "X A wait A wait A A"}},
+    //  A title that shows again after a black: that black was not the load.
+    {.name = "the title again after a black is not loaded",
+     .input = {.screens = {Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::BLACK, Screen::TITLE, Screen::BLACK,
+                           Screen::TITLE, Screen::OVERWORLD},
+               .game_screens = GameScreens::AFTER_LAUNCH, .overworld_check = OverworldCheck::AFTER_LOAD},
+     .expectation = {.failure = "stuck on title", .inputs = "X A wait A wait A A"}},
+    //  A title press dropped, and the title, its check missing it, left
+    //  idle until the attract movie came up through a black: that black
+    //  is too long after the press to be the load.
+    {.name = "a black long after a dropped title press is not the load",
+     .input = {.screens = {Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::BLACK, Screen::TITLE, Screen::TITLE_UNREAD,
+                           Screen::TITLE_UNREAD, Screen::TITLE_UNREAD, Screen::BLACK, Screen::OVERWORLD},
+               .game_screens = GameScreens::AFTER_LAUNCH, .overworld_check = OverworldCheck::AFTER_LOAD},
+     .expectation = {.failure = "stuck on title", .inputs = "X A wait A wait wait wait wait A A"}},
+    {.name = "kept overworld needs no load",
+     .input = {.screens = then_settled({}), .request = {.running = Running::KEEP},
+               .game_screens = GameScreens::AFTER_LAUNCH, .overworld_check = OverworldCheck::AFTER_LOAD},
+     .expectation = {.inputs = "wait wait"}},
 };
 
 //  The fake backend's record of `input` ("A" -> "press A").
@@ -265,7 +318,7 @@ std::string check_launch(const LaunchCase& test, CancellableScope& scope){
         looks.push_back(look(screen));
     }
     FakeStoryBackend<GridPose> backend({.looks = std::move(looks)}, scope);
-    const Outcome outcome = launch_story_game(backend, test_policy(test.input.backup, test.input.game_screens, test.input.tile_check), test.input.request);
+    const Outcome outcome = launch_story_game(backend, test_policy(test.input.backup, test.input.game_screens, test.input.tile_check, test.input.overworld_check), test.input.request);
     if (test.expectation.failure.empty() && !outcome.succeeded()){
         return std::format("expected success, got {}", to_string(outcome));
     }

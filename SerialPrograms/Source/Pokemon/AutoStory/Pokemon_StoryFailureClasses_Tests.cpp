@@ -105,6 +105,8 @@ const OutcomeClassTestCase OUTCOME_CASES[] = {
     {.name = "checkpoint end", .input = {"end_failed"}, .expectation = {C::STATE_CHECK_FAILED}},
     {.name = "postconditions", .input = {"postconditions_failed"}, .expectation = {C::STATE_CHECK_FAILED}},
     {.name = "operation", .input = {"operation_failed"}, .expectation = {C::OPERATION_FAILED}},
+    {.name = "no Center after its door", .input = {"heal_enter"}, .expectation = {C::POSE_LOST}},
+    {.name = "still in the Center after its door", .input = {"heal_exit"}, .expectation = {C::WARP_NO_OP}},
     {.name = "a game's own name", .input = {"no_banner"}, .expectation = {std::nullopt}},
     {.name = "empty", .input = {""}, .expectation = {std::nullopt}},
 };
