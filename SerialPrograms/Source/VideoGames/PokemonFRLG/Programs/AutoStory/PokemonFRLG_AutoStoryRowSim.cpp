@@ -456,14 +456,14 @@ Pokemon::StoryAction OverworldStepSim::step_action(StoryActionId id){
         body = &OverworldStepSim::battle;
         break;
     case StoryActionId::HEAL:
-        body = &OverworldStepSim::heal;
-        break;
+        return heal_or_stub();
     case StoryActionId::GAME:
         return hideout_or_stub();
     default:
         return m_stubs.stub();
     }
     return played([this, body](const StoryStep& step, RunState& state){
+        m_center_entry_stubbed = false;
         m_beaten = beaten_trainers(state.flags);
         const std::string failure = (this->*body)(step);
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
@@ -817,10 +817,13 @@ Pokemon::StoryAction OverworldStepSim::hideout_or_stub(){
         const std::string failure = hideout(step);
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
     });
-    sim.act = [stub, played_act = sim.act](const StoryStep& step, RunState& state){
-        return is_hideout_step(step) || center_walkable(step) || field_move_simulated(step)
-            ? played_act(step, state)
-            : stub.act(step, state);
+    sim.act = [this, stub, played_act = sim.act](const StoryStep& step, RunState& state){
+        if (is_hideout_step(step) || center_walkable(step) || field_move_simulated(step)){
+            m_center_entry_stubbed = false;
+            return played_act(step, state);
+        }
+        m_center_entry_stubbed = is_center_variant(step.action) && step.action != CENTER_EXIT_VARIANT;
+        return stub.act(step, state);
     };
     sim.needs_console = stub.needs_console;
     return sim;
@@ -863,11 +866,23 @@ std::string OverworldStepSim::hideout(const StoryStep& step){
     return out.empty() ? ended_on(step) : out;
 }
 
-//  The nurse on the sim (heal_at_nurse()): only in a Center's room.
-std::string OverworldStepSim::heal(const StoryStep& step){
-    SimCenterVisit visit(m_sim);
-    const Outcome healed = heal_at_nurse(step.name, visit);
-    return healed.succeeded() ? "" : healed.detail;
+//  The nurse on the sim (heal_at_nurse()): only in a Center's room. After
+//  a way in the sim stubbed (no map of the Center: Celadon, Saffron), the
+//  player never left the town, so the heal is stubbed too.
+Pokemon::StoryAction OverworldStepSim::heal_or_stub(){
+    Pokemon::StoryAction stub = m_stubs.stub();
+    Pokemon::StoryAction sim = played([this](const StoryStep& step, RunState&){
+        SimCenterVisit visit(m_sim);
+        const Outcome healed = heal_at_nurse(step.name, visit);
+        return healed.succeeded() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", healed.detail);
+    });
+    sim.act = [this, stub, played_act = sim.act](const StoryStep& step, RunState& state){
+        const bool stubbed = m_center_entry_stubbed;
+        m_center_entry_stubbed = false;
+        return stubbed ? stub.act(step, state) : played_act(step, state);
+    };
+    sim.needs_console = stub.needs_console;
+    return sim;
 }
 
 //  After a scripted step: the player's pose, and whether it is the step's
