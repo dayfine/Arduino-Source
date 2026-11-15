@@ -41,6 +41,9 @@ namespace{
 constexpr size_t MAX_LOOKS = 40;
 //  Looks at the same moves page after A on a move: the game refused it.
 constexpr size_t MOVES_PAGE_STILL = 8;
+//  Presses one way through a list longer than its rows shown: past the
+//  TM CASE's 58 TMs, 8 HMs and CLOSE.
+constexpr size_t MAX_LIST_PRESSES = 70;
 
 std::string rows_text(const std::vector<std::string>& rows){
     std::string text;
@@ -109,16 +112,50 @@ bool ScreenTeachActions::to_key_items(){
     return false;
 }
 
+std::optional<TeachView> ScreenTeachActions::scroll_to_row(TeachScreen screen, std::string_view name){
+    std::optional<TeachView> view = wait_for(screen);
+    std::vector<std::string> seen;
+    //  DOWN to the list's end, then UP to its top: the list opens where it
+    //  was left.
+    for (const TeachPress way : {TeachPress::DOWN, TeachPress::UP}){
+        for (size_t c = 0; view && c < MAX_LIST_PRESSES; c++){
+            if (view->rows.empty()){
+                m_logger.log(std::format("Teach: no rows read on {}.", teach_screen_name(screen)), COLOR_RED);
+                return std::nullopt;
+            }
+            for (const std::string& row : view->rows){
+                if (std::find(seen.begin(), seen.end(), row) == seen.end()){
+                    seen.push_back(row);
+                }
+            }
+            if (std::find(view->rows.begin(), view->rows.end(), name) != view->rows.end()){
+                return view;
+            }
+            press(way);
+            std::optional<TeachView> next = wait_for(screen);
+            //  Neither the cursor nor the rows moved: the list's end.
+            const bool still = next && next->cursor == view->cursor && next->rows == view->rows;
+            view = std::move(next);
+            if (still){
+                break;
+            }
+        }
+    }
+    if (view){
+        m_logger.log(std::format("Teach: no {} in {} ({}).", name, teach_screen_name(screen), rows_text(seen)), COLOR_RED);
+        return view;
+    }
+    return std::nullopt;
+}
+
 ItemOpen ScreenTeachActions::open_row(TeachScreen screen, std::string_view name){
-    const std::optional<TeachView> view = wait_for(screen);
+    const std::optional<TeachView> view = scroll_to_row(screen, name);
     if (!view){
         return ItemOpen::FAILED;
     }
     const auto found = std::find(view->rows.begin(), view->rows.end(), name);
     if (found == view->rows.end()){
-        m_logger.log(std::format("Teach: no {} in {} ({}).", name, teach_screen_name(screen), rows_text(view->rows)), COLOR_RED);
-        //  No rows: nothing was read.
-        return view->rows.empty() ? ItemOpen::FAILED : ItemOpen::NOT_IN_CASE;
+        return ItemOpen::NOT_IN_CASE;
     }
     if (!move_cursor_to(screen, size_t(found - view->rows.begin()))){
         return ItemOpen::FAILED;

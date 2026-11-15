@@ -75,7 +75,8 @@ enum class TeachEnd{
     REFUSED,
     //  The member's moves couldn't be read: nothing was pressed.
     UNREAD,
-    //  The TM or HM isn't in the TM CASE: skipped, nothing taught.
+    //  The TM or HM isn't in the TM CASE: nothing taught, the step fails
+    //  (the plan picked it up earlier).
     NO_ITEM,
     FAILED,
 };

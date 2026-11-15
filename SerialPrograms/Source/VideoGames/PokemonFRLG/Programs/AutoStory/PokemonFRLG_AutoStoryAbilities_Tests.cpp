@@ -156,7 +156,7 @@ std::vector<StepCase> step_cases(){
         {"level unread", [](StubGame& game){ game.level.reset(); }, level_step("check", "", {.slot = 0, .level = 16}), "level_unread"},
         {"a Mart purchase that fails", none, mart, "mart_failed"},
         {"a move it knows already succeeds", none, teach_step("teach", "", {.item = "hm03", .move = "surf", .member = 0}), "unchanged"},
-        {"a TM not in the TM Case is skipped", none, teach_step("teach", "", {.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "water-gun"}), "unchanged"},
+        {"a TM not in the TM Case fails", none, teach_step("teach", "", {.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "water-gun"}), "teach_no_item"},
         {"a level that can't be read stops a GRIND", [](StubGame& game){ game.level.reset(); }, grind, "grind_unread"},
         {"a GRIND without a nurse", none, game_step(GRIND_ACTION, {{"slot", int64_t(1)}, {"level", int64_t(20)}}), "bad_args"},
         {"no YES/NO at the fossil", none, fossil_step("fossil", "", Fossil::HELIX), "fossil_failed"},

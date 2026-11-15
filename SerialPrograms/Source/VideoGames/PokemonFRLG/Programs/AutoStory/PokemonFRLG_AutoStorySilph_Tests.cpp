@@ -3,17 +3,20 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Rows 16.01 to 16.06 (StoryData/frlg-16.01.plan.json ...) on the overworld sim: from
- *  Saffron's nurse into Silph Co., up to 3F and through its pad to 5F.
+ *  Saffron's nurse into Silph Co., up to 3F and through its pad to 5F;
+ *  the 7F rival's fight as PokeGuy fought it.
  *
  */
 
 #include <algorithm>
+#include <cstdint>
 #include <format>
 #include <functional>
 #include <optional>
 #include <set>
 #include <string>
 #include <string_view>
+#include <variant>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -22,14 +25,17 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
+#include "PokemonFRLG_AutoStoryBattlePolicyData.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryMovedTrainers.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
+#include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryRows16_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_AutoStoryTeachPlan.h"
 #include "PokemonFRLG_AutoStoryTrainerLine.h"
 
 namespace PokemonAutomation{
@@ -514,6 +520,89 @@ UnitTestResult test_corridor_rocket_stands_where_he_stopped(){
     return true;
 }
 
+//  16.03's step named `name`; none if it has none.
+const StoryStep* rival_row_step(std::string_view name){
+    for (const StoryStep& step : checkpoint("16.03").steps){
+        if (step.name == name){
+            return &step;
+        }
+    }
+    return nullptr;
+}
+
+//  The 7F rival by PokeGuy's C2 (PokemonSimulation docs/battles/pokeguy-conditions.md,
+//  silph-rival: Sp. Atk +2, accuracy +2, outspeed, Guard Spec first). Without it,
+//  console B's lead attacked from turn 1, Venusaur slept it and the battle
+//  was lost (2026-11-15 01:22, 16.03 run 6); the sim of that entry wins 12%
+//  of 500, and 99% with the policy and Blizzard. The rows are PokemonSimulation's
+//  planning_risk() for each foe leading against that entry (Lv43, 136/136).
+UnitTestResult test_rival_fought_by_policy(){
+    const StoryStep* rival = rival_row_step("rival");
+    if (rival == nullptr || rival->kind != StoryStepKind::BATTLE){
+        return "16.03 has no rival battle step.";
+    }
+    const BattlePolicy policy = battle_policy_of(rival->args);
+    if (policy.kind != BattlePolicyKind::GOAL_BASED_SETUP){
+        return "16.03 rival: expected the goal-based-setup policy.";
+    }
+    const SetupGoals& goals = policy.goals;
+    if (goals.spa != 2 || goals.accuracy != 2 || !goals.outspeed || !goals.guard_accuracy
+        || goals.torrent_power || goals.target_torrent
+    ){
+        return "16.03 rival: expected the doc's goals, Sp. Atk +2, accuracy +2, outspeed and Guard Spec first.";
+    }
+    const auto found = rival->args.find("foe_threats");
+    const auto* rows = found == rival->args.end() ? nullptr : std::get_if<std::vector<std::vector<int64_t>>>(&found->second);
+    const std::vector<std::vector<int64_t>> expected = {
+        {76, 18, 17, 39, 19, 0, 0},     //  Pidgeot
+        {78, 40, 15, 40, 40, 0, 0},     //  Gyarados
+        {51, 14, 5, 32, 16, 0, 0},      //  Growlithe
+        {93, 0, 4, 44, 22, 0, 0},       //  Alakazam
+        {76, 46, 26, 96, 48, 0, 0},     //  Venusaur
+    };
+    if (rows == nullptr || *rows != expected){
+        return "16.03 rival: foe_threats are not the generator's rows for console B's entry.";
+    }
+    return true;
+}
+
+//  Before the walk, TM14 Blizzard over Dig, as 13.03 teaches it: console B's
+//  lead came to the rival with Dig (2026-11-15, 16.03 run 6), and Blizzard is
+//  what wins against Venusaur. A lead that knows it already is left as it is.
+UnitTestResult test_blizzard_before_rival(){
+    const std::vector<StoryStep>& steps = checkpoint("16.03").steps;
+    if (steps.empty() || steps[0].kind != StoryStepKind::GAME || steps[0].action != TEACH_ACTION){
+        return "16.03: expected it to start with a TEACH.";
+    }
+    const std::optional<TeachPlan> plan = teach_plan_of(steps[0].args);
+    if (!plan || plan->item != "tm14" || plan->move != "blizzard" || plan->member != 0){
+        return "16.03: expected TM14 Blizzard on the lead.";
+    }
+    const TeachDecision console_b = decide_teach(*plan, {"bite", "water-pulse", "surf", "dig"});
+    if (!console_b.error.empty() || console_b.forget != std::optional<size_t>(3)){
+        return std::format("16.03: expected Blizzard over Dig on console B's lead: {}", console_b.error);
+    }
+    if (!decide_teach(*plan, {"bite", "water-pulse", "surf", "blizzard"}).already_known){
+        return "16.03: a lead that knows Blizzard should be left as it is.";
+    }
+    return true;
+}
+
+//  The lead's attack against the rival's Venusaur: Blizzard, the one that
+//  is super effective (PokeGuy: one Blizzard, 1:29:39).
+UnitTestResult test_blizzard_against_venusaur(){
+    PartyMember lead;
+    lead.species = "blastoise";
+    lead.moves_read = true;
+    lead.level = 43;
+    lead.moves = {{"bite", 25}, {"water-pulse", 20}, {"surf", 14}, {"blizzard", 5}};
+    constexpr size_t BLIZZARD = 3;
+    if (attack_slot_against(lead, {"venusaur"}) != BLIZZARD){
+        return "Expected Blizzard against Venusaur.";
+    }
+    return true;
+}
+
 const AutoStorySilphCase AUTO_STORY_SILPH_CASES[] = {
     {
         .input = {.name = "16.01 Silph Co.'s stairs to 3F and its pad to 5F", .body = test_pad_to_5f},
@@ -566,6 +655,18 @@ const AutoStorySilphCase AUTO_STORY_SILPH_CASES[] = {
     {
         .input = {.name = "the Master Ball option and SPEEDRUN", .body = test_master_ball_option},
         .expectation = {.description = "skipped when the option is off or in a SPEEDRUN"},
+    },
+    {
+        .input = {.name = "16.03 the rival by PokeGuy's C2 policy", .body = test_rival_fought_by_policy},
+        .expectation = {.description = "goal-based-setup to Sp. Atk +2 and accuracy +2, outspeed, PokemonSimulation planning_risk() rows"},
+    },
+    {
+        .input = {.name = "16.03 TM14 Blizzard before the rival", .body = test_blizzard_before_rival},
+        .expectation = {.description = "a TEACH first: Blizzard over Dig, nothing if the lead knows it"},
+    },
+    {
+        .input = {.name = "16.03 the lead's attack against the rival's Venusaur", .body = test_blizzard_against_venusaur},
+        .expectation = {.description = "Blizzard"},
     },
 };
 

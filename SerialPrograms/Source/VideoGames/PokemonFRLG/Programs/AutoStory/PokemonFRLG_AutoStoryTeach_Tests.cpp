@@ -320,7 +320,7 @@ std::vector<TeachCase> teach_cases_3(){
             .opened = false,
         },
         {
-            .name = "an item the TM Case hasn't got: skipped",
+            .name = "an item the TM Case hasn't got: failed",
             .plan = {.item = "hm05", .move = "flash", .member = 2, .forget_move = "acid"},
             .end = TeachEnd::NO_ITEM,
             .moves = {"absorb", "cut", "poison-powder", "acid"},
