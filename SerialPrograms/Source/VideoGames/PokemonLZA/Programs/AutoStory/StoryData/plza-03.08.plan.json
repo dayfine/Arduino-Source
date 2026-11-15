@@ -37,7 +37,7 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "played step by step from a new game. Ends out on the street just through the far gate; the walk on into the lab is 03.09. Short on species, it fails inside the zone (catch_more_species). A rerun starts from this checkpoint's start save, 03.07's last catch autosave, not from 03.06: each catch here autosaves past that start, so after one catch the start is the backup save (the title's Up + B + X loads the save before the latest), and after two no save holds it. The Pokemon Center counter save, 03.06's start, is written by 03.05's heal and is no longer the backup once 03.07 has caught"
+      "source": "played step by step from a new game. Ends out on the street just through the far gate; the walk on into the lab is 03.09. Short on species, it fails inside the zone (catch_more_species). A failure here cannot reset normally: its catches autosave like 03.07's, so reloading the latest save lands past this checkpoint's start. The reset is the backup save (the title's Up + B + X), which is 03.06's save at the Pokemon Center counter, so a rerun restarts from 03.06 and plays 03.06, 03.07 and 03.08 again. No plan field says this yet: reload_when_chained reloads the latest save"
     }
   },
   "execution": {

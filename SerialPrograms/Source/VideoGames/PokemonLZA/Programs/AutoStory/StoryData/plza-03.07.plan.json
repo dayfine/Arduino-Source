@@ -29,7 +29,7 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "played step by step from a new game. Ends on the game's autosave: each catch saves by itself. Whether that save reloads before or after Taunie's talk (after_catches) is not checked"
+      "source": "played step by step from a new game. Ends on the game's autosave: each catch saves by itself, so the latest save moves past 03.07's start, and the backup save (the title's Up + B + X) holds 03.06's save, not a spot inside the zone. Whether the last catch save reloads before or after Taunie's talk (after_catches) is not checked"
     }
   },
   "execution": {
