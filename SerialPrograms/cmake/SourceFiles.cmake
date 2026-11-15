@@ -334,16 +334,12 @@ file(GLOB CORE_LIBRARY_SOURCES
     Source/NintendoSwitch/Controllers/Joycon/NintendoSwitch_Joycon_from_Keyboard.h
     Source/NintendoSwitch/Controllers/Joycon/NintendoSwitch_JoyconState.cpp
     Source/NintendoSwitch/Controllers/Joycon/NintendoSwitch_JoyconState.h
-    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_Descriptor.cpp
-    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_Descriptor.h
     Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap.cpp
     Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap.h
     Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap_Tests.cpp
     Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap_Tests.h
     Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_ProController.cpp
     Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_ProController.h
-    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_SelectorWidget.cpp
-    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_SelectorWidget.h
     Source/NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.cpp
     Source/NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h
     Source/NintendoSwitch/Controllers/NintendoSwitch_ControllerSettings.cpp
@@ -1366,6 +1362,10 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h
     Source/NintendoSwitch/Controllers/Joycon/NintendoSwitch_JoyconTable.cpp
     Source/NintendoSwitch/Controllers/Joycon/NintendoSwitch_JoyconTable.h
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_Descriptor.cpp
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_Descriptor.h
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_SelectorWidget.cpp
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_SelectorWidget.h
     Source/NintendoSwitch/Controllers/Procon/NintendoSwitch_ProControllerTable.cpp
     Source/NintendoSwitch/Controllers/Procon/NintendoSwitch_ProControllerTable.h
     Source/NintendoSwitch/Controllers/SysbotBase/SysbotBase3_ControllerState.h
