@@ -81,6 +81,19 @@ class FakeLab:
         os.replace(tmp, path)
 
 
+PROGRAM_CONTRACT = {
+    'id': 'PokemonFRLG:AutoStory',
+    'options': [
+        {'key': 'LANGUAGE', 'type': 'enum', 'default': 'en',
+         'entries': [{'slug': 'en', 'enabled': True}, {'slug': 'ja', 'enabled': False}]},
+        {'key': 'START_SEGMENT', 'type': 'integer', 'default': 0, 'min': 0, 'max': 40},
+        {'key': 'NOTIFICATIONS', 'type': 'group', 'toggleable': True,
+         'options': [{'key': 'Enabled', 'type': 'boolean', 'default': True}]},
+    ],
+    'prechecks': 'unsupported',
+    'schema': 1,
+}
+
 PNG = b'\x89PNG\r\n\x1a\n' + b'\x00\x00\x00\rIHDR' + b'\x00' * 17 + b'\x00\x00\x00\x00IEND\xaeB`\x82'
 
 
@@ -94,6 +107,10 @@ class FakeApp:
     (the line fails without a snapshot line), `unavailable` (a `snapshot unavailable` reason),
     `reply_instance` (the instance the reply names), `reply_dir` (the folder the reply's path
     names; the PNG is still saved in outbox/), `png` (the bytes the app saves).
+
+    `describe_program` and `game_open` (#504) are answered at once: `replies[command]` is the
+    printed text (default below), `line_errors[command]` fails the line instead, and
+    `restart_on` names a command whose answer comes from a new app instance.
     """
 
     def __init__(self, lab, clock):
@@ -106,6 +123,13 @@ class FakeApp:
         self.reply_instance = None
         self.reply_dir = None
         self.png = PNG
+        self.replies = {
+            'describe_program': 'describe_program ' + json.dumps(PROGRAM_CONTRACT, sort_keys=True,
+                                                                 separators=(',', ':')) + '\n',
+            'game_open': 'game_open yes\n',
+        }
+        self.line_errors = {}
+        self.restart_on = None
         self.requests = []
         self.pending = []
         clock.on_sleep.append(self.tick)
@@ -130,6 +154,9 @@ class FakeApp:
         self.requests.append(text)
         line = text.splitlines()[-1]
         words = line.split()
+        if words[0] in self.replies:
+            self.answer(request.stem, line, words[0])
+            return
         pending = {'name': request.stem, 'line': line, 'label': words[1], 'timeout_ms': int(words[2]),
                    'started': self.clock.now(), 'after': self.lab.state['video']['frame_seq'] or 0}
         if self.journal_error is not None:
@@ -139,6 +166,15 @@ class FakeApp:
                 self.instance(), self.unavailable), 'unavailable: ' + self.unavailable)
         else:
             self.pending.append(pending)
+
+    def answer(self, name, line, command):
+        if self.restart_on == command:
+            self.lab.update_state(**{'instance.id': '11111111-2222-4333-8444-555555555555'})
+        pending = {'name': name, 'line': line}
+        if command in self.line_errors:
+            self.finish(pending, '', self.line_errors[command])
+        else:
+            self.finish(pending, self.replies[command])
 
     def continue_snapshot(self, pending):
         video = self.lab.state['video']

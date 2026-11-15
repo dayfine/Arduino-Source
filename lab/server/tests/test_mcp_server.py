@@ -12,7 +12,7 @@ import time
 import unittest
 
 from pa_lab import lab_reader, mcp_server, timestamps
-from tests.fake_lab import PNG, FakeApp, FakeLab, golden
+from tests.fake_lab import PNG, PROGRAM_CONTRACT, FakeApp, FakeLab, golden
 
 TOKEN = 'test-token-' + 'x' * 32
 
@@ -170,7 +170,7 @@ class ProtocolTests(ServerTest):
         _, body = self.client.rpc('resources/list')
         self.assertEqual([r['uri'] for r in body['result']['resources']], ['console://B/state', 'console://B/save'])
         _, body = self.client.rpc('tools/list')
-        self.assertEqual([t['name'] for t in body['result']['tools']], ['shot', 'ensure_game'])
+        self.assertEqual([t['name'] for t in body['result']['tools']], ['shot', 'ensure_game', 'describe_program', 'game_open'])
 
     def test_state_resource(self):
         state = self.client.read('console://B/state')
@@ -215,6 +215,35 @@ class ProtocolTests(ServerTest):
         self.assertTrue(result['isError'])
         result = self.client.tool('ensure_game', console='B', expected='Pokemon BDSP')
         self.assertEqual(result['structuredContent']['refusal']['field'], 'expected')
+
+    def test_describe_program(self):
+        result = self.client.tool('describe_program', console='B')
+        self.assertFalse(result['isError'], result)
+        self.assertEqual(result['structuredContent']['program'], PROGRAM_CONTRACT)
+        self.assertEqual(json.loads(result['content'][0]['text']), result['structuredContent'])
+
+    def test_describe_program_on_a_settings_panel_is_a_refusal(self):
+        self.app.line_errors['describe_program'] = 'describe_program: the selected panel is not a program.'
+        result = self.client.tool('describe_program', console='B')
+        self.assertTrue(result['isError'])
+        self.assertEqual(result['structuredContent']['refusal']['code'], 'panel_not_program')
+
+    def test_game_open(self):
+        result = self.client.tool('game_open', console='B')
+        self.assertFalse(result['isError'], result)
+        self.assertEqual((result['structuredContent']['open'], result['structuredContent']['reason']), (True, None))
+        self.app.replies['game_open'] = 'game_open no home\n'
+        result = self.client.tool('game_open', console='B')
+        self.assertFalse(result['isError'], result)
+        self.assertEqual((result['structuredContent']['open'], result['structuredContent']['reason']),
+                         (False, 'home'))
+
+    def test_app_queries_refuse_unknown_arguments(self):
+        for name in ('describe_program', 'game_open'):
+            with self.subTest(name):
+                result = self.client.tool(name, console='B', image='/etc/passwd')
+                self.assertTrue(result['isError'])
+                self.assertEqual(result['structuredContent']['refusal']['field'], 'image')
 
     def test_unknown_method_and_tool(self):
         _, body = self.client.rpc('tools/press')
