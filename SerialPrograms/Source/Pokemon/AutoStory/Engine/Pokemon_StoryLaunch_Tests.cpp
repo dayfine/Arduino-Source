@@ -249,6 +249,21 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
                                         Screen::TITLE, Screen::BLACK}),
                .game_screens = GameScreens::AFTER_LAUNCH, .overworld_check = OverworldCheck::AFTER_LOAD},
      .expectation = {.inputs = "X A wait A A wait wait wait"}},
+    //  Console B, 2026-11-15 04:21 (BDSP, Japanese): the title press on the
+    //  attract movie went back to the title through a black, and that
+    //  black counted as the load; the title, read as the overworld,
+    //  settled. Only a press on a recognised title starts the load.
+    {.name = "a black after the attract movie's press is not the load",
+     .input = {.screens = {Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::BLACK, Screen::OVERWORLD, Screen::BLACK,
+                           Screen::OVERWORLD},
+               .game_screens = GameScreens::AFTER_LAUNCH, .overworld_check = OverworldCheck::AFTER_LOAD},
+     .expectation = {.failure = "stuck on title", .inputs = "X A wait A wait A A"}},
+    //  A title that shows again after a black: that black was not the load.
+    {.name = "the title again after a black is not loaded",
+     .input = {.screens = {Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::BLACK, Screen::TITLE, Screen::BLACK,
+                           Screen::TITLE, Screen::OVERWORLD},
+               .game_screens = GameScreens::AFTER_LAUNCH, .overworld_check = OverworldCheck::AFTER_LOAD},
+     .expectation = {.failure = "stuck on title", .inputs = "X A wait A wait A A"}},
     {.name = "kept overworld needs no load",
      .input = {.screens = then_settled({}), .request = {.running = Running::KEEP},
                .game_screens = GameScreens::AFTER_LAUNCH, .overworld_check = OverworldCheck::AFTER_LOAD},
