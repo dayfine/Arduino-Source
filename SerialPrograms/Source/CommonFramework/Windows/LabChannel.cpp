@@ -521,7 +521,9 @@ std::string LabChannel::run_describe_program(const std::vector<std::string>& wor
     if (options == nullptr){
         return "describe_program: the selected program has no options the lab can read.";
     }
-    JsonValue contract = lab_program_contract(m_program->descriptor().identifier(), *options);
+    JsonValue contract = lab_program_contract(
+        m_program->descriptor().identifier(), *options, m_program->precheck_summaries()
+    );
     out << "describe_program " << contract.dump(-1) << "\n";
     return "";
 }

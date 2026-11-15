@@ -241,7 +241,12 @@ describe_program {"id":"PokemonFRLG:AutoStory","options":[...],"prechecks":"unsu
   The defaults are the program's defaults, not the values it holds now.
   Which options show and whether a combination is valid depend on the other
   options' values; they are not part of the contract.
-- `prechecks`: `unsupported` until the program declares a precheck list.
+- `prechecks`: the checks the program runs before it starts, in that order,
+  each `{"name", "needs", "skippable"}`: a stable name (`black_border`,
+  `free_party_slots`, ...), one line of what the program needs, and whether
+  the user can turn it off. `unsupported` when the program declares no
+  precheck list (`ProgramInstance::precheck_summaries()`); that never means
+  the checks passed. An empty list means the program needs nothing.
 
 ## Owner
 
