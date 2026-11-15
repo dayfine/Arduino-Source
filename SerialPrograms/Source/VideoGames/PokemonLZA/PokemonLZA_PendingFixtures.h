@@ -24,6 +24,13 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+//  Adds the image test `TestType(args...)`, skipped while its images are
+//  missing.
+template <typename TestType, class... Args>
+void add_pending_fixture_test(UnitTestDatabase& database, Args&&... args);
+
+
+
 //  Runs `test` when every one of its images is in the test repo, and skips
 //  it otherwise.
 class PendingFixtureTest : public UnitTest{
@@ -49,8 +56,8 @@ private:
 };
 
 
-//  Adds the image test `TestType(args...)`, skipped while its images are
-//  missing.
+
+
 template <typename TestType, class... Args>
 void add_pending_fixture_test(UnitTestDatabase& database, Args&&... args){
     database += std::make_shared<PendingFixtureTest>(std::make_shared<TestType>(std::forward<Args>(args)...));
