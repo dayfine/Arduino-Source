@@ -64,6 +64,7 @@ There are two different checks, and neither replaces the other:
 
 | What | Where | Use |
 |---|---|---|
+| Lab server (pa-lab console daemon, #131): version-1 contracts | [lab/server/](lab/server/README.md) | Slice 0: goldens + parser; `python3 -m pa_lab check app_state <file>` from `lab/server`. |
 | Lab control: lock, channel, CFR batches | [lab/control/](lab/control/README.md) (`lablock.sh`, `labctl.sh`, `cfrun.sh`) | `sh lab/control/lablock.sh status`; one train on the console. Old copy: `devtools/lab` on `lab/main`. |
 | Console B helpers | [lab/scripts/](lab/scripts/README.md) (`lc.sh`, `sel.sh`, `cfr.sh`, `env.sh`) | `sh lab/scripts/lc.sh state`; `printf ... \| sh lab/scripts/cfr.sh NAME`. |
 | CFR syntax and the HOME gotcha | [lab/scripts/README.md](lab/scripts/README.md#cfr-batch-syntax) | Start each batch with a `shot`; at HOME, `press A` before any stick. |
@@ -178,7 +179,9 @@ checkout and finish commands): `autostory-code`, `pr-maintenance`, `run-records`
 A dispatch brief points at the definition (`git show origin/agents:.agents/agents/<name>.md`, or
 `subagent_type: <name>` once linked into `~/.claude/agents/` from a checkout of this branch, as for
 skills) and carries only the task, as its `## The brief` section lists: goal, branch or PR and tip
-SHA, scope in and out, what is ruled out, done criteria, attribution lines (default time limit 2 h).
+SHA, scope in and out, what is ruled out, done criteria (default time limit 2 h). No attribution lines: commits get no
+Co-Authored-By or Claude-Session trailers and PR bodies no "Generated with Claude Code" line or
+session link (user, 2026-11-14).
 Don't restate the standing rules in a brief. `sh bin/agent-standing-rules-check.sh` and
 `sh bin/agent-harness-check.sh` must pass; the Harness Check workflow runs them on PRs into `agents`.
 
@@ -511,6 +514,8 @@ checkout of this branch; edit it here and PR the change, not the local copy.
   style review of a fork PR, against the user's own review themes.
 - [skills/codex-dispatch/SKILL.md](skills/codex-dispatch/SKILL.md): hand bounded tasks to Codex
   and use it as an advisory reviewer.
+- [skills/dispatch/SKILL.md](skills/dispatch/SKILL.md): the main session's lane board and
+  10-minute loop for coding subagents (briefs, branch claims, at most 3 agents, relays).
 
 ## Agent skills
 

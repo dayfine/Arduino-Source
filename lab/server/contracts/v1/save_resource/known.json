@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "console": "B",
+  "status": "known",
+  "reason": "hooked_save",
+  "since": "2026-11-13T22:14:05.310Z",
+  "fact": {
+    "schema": 1,
+    "game": "PokemonFRLG",
+    "slot": 0,
+    "checkpoint": "13.01",
+    "position": {
+      "map": "CINNABAR_ISLAND_POKEMON_MANSION_1F",
+      "x": 12,
+      "y": 27,
+      "facing": "up"
+    },
+    "saved_at": "2026-11-13T22:14:05.310Z",
+    "run_id": null,
+    "producer": {
+      "program": "PokemonFRLG:AutoStory",
+      "build": "lab/frlg-story-e4@1a2b3c4d"
+    }
+  }
+}

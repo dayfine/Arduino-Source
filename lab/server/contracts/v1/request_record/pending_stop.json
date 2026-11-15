@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "request_id": "b4e1f0a7-2c3d-4e5f-9a8b-7c6d5e4f3a21",
+  "client_id": "claude:bdsp-lane",
+  "tool": "stop_program",
+  "status": "pending",
+  "created_at": "2026-11-14T07:05:00.000Z",
+  "completed_at": null,
+  "arguments": {},
+  "result": null,
+  "refusal": null
+}

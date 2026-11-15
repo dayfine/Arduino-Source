@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "request_id": "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10",
+  "tool": "acquire_console",
+  "refusal": {
+    "code": "console_held_by_user",
+    "message": "The user holds console B (Stop clicked in the app at 06:10); ask them to release it."
+  }
+}
