@@ -65,6 +65,24 @@ double gate_steer_degrees(double x){
     return std::round(off * VIEW_DEGREES);
 }
 
+//  Logs the walk's end at the A prompt, with the heading there: the street's
+//  way through the gate, for a plan's `heading` (none read: -1).
+void log_gate_prompt(
+    PlzaBackend& backend,
+    const PlzaReader& heading,
+    Pokemon::Observation<Pokemon::ZonePose>& look,
+    Milliseconds walked,
+    std::string_view readings
+){
+    if (heading){
+        heading(backend, look);
+    }
+    backend.log(std::format(
+        "[PLZA] walk_to_zone_gate_entrance: the A prompt shows after {} ms ({}), heading {}",
+        walked.count(), readings, Pokemon::story_heading(look).value_or(-1)
+    ));
+}
+
 } // namespace
 
 
@@ -104,15 +122,7 @@ Pokemon::Outcome walk_to_zone_gate_entrance(
         }
         looks++;
         if (look.events.has(PokemonAutomation::ScreenEvent::INTERACT_PROMPT)){
-            //  The heading at the prompt: the street's way through the gate,
-            //  for a plan's `heading` (none read: -1).
-            if (heading){
-                heading(backend, look);
-            }
-            backend.log(std::format(
-                "[PLZA] walk_to_zone_gate_entrance: the A prompt shows after {} ms ({}), heading {}",
-                walked.count(), gate_readings(seen, looks, last), Pokemon::story_heading(look).value_or(-1)
-            ));
+            log_gate_prompt(backend, heading, look, walked, gate_readings(seen, looks, last));
             return Pokemon::outcome_ok();
         }
         const std::optional<GateRead> read = gate_on(look);
