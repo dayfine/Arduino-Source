@@ -377,6 +377,14 @@ UnitTestResult test_end_pose_from_the_plan(){
     if (!end || end->map != "RocketHideout_B3F" || end->tiles != std::vector<TilePos>{TilePos{12, 13}}){
         return "Expected the last route's target as the end.";
     }
+    StoryCheckpoint stepped = checkpoint;
+    StoryStep step;
+    step.kind = StoryStepKind::STEP;
+    step.name = "one more";
+    stepped.steps.push_back(std::move(step));
+    if (checkpoint_end_pose(stepped)){
+        return "A step after the last target leaves the end unknown.";
+    }
     StoryStep legs;
     legs.kind = StoryStepKind::LEGS;
     legs.name = "taps";
