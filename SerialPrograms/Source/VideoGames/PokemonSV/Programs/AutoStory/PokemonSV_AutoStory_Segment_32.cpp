@@ -49,7 +49,7 @@ void AutoStory_Segment_32::run_segment(
 ) const{
     
 
-    stats.m_segments_started++;
+    stats.m_segment++;
     env.update_stats();
     context.wait_for_all_requests();
     env.console.log("Start Segment " + name(), COLOR_ORANGE);

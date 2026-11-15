@@ -1483,9 +1483,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
-    Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.h
-    Source/Pokemon/AutoStory/Pokemon_AutoStoryStats_Tests.cpp
-    Source/Pokemon/AutoStory/Pokemon_AutoStoryStats_Tests.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
     Source/Pokemon/Pokemon_BdspRng.cpp
