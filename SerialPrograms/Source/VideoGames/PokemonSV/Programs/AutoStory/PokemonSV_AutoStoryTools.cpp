@@ -1179,7 +1179,7 @@ void get_on_or_off_ride(const ProgramInfo& info, VideoStream& stream, ProControl
 
 void checkpoint_save(SingleSwitchProgramEnvironment& env, ProControllerContext& context, EventNotificationOption& notif_status_update, AutoStoryStats& stats){
     save_game_from_overworld(env.program_info(), env.console, context);
-    stats.m_checkpoints_passed++;
+    stats.m_checkpoints_started++;
     env.update_stats();
     send_program_status_notification(env, notif_status_update, "Saved at checkpoint.");        
 }
@@ -1502,7 +1502,7 @@ void checkpoint_reattempt_loop_tutorial(
     try{
         if(i==0){
             save_game_tutorial(env.program_info(), env.console, context);
-            stats.m_checkpoints_passed++;
+            stats.m_checkpoints_started++;
             env.update_stats();
             send_program_status_notification(env, notif_status_update, "Saved at checkpoint.");     
         }
