@@ -134,6 +134,7 @@ UnitTestResult test_indoors_any_light(Logger&){
             {.name = "evening outside, orange all over", .fill = 0xffe0a040, .dark_bottom = 0, .indoors = false},
             {.name = "a room: orange, black below its floor", .fill = 0xffe0a040, .dark_bottom = 0.10, .indoors = true},
             {.name = "a fade: black all over", .fill = 0xff000000, .dark_bottom = 0, .indoors = false},
+            {.name = "a big room: orange, a narrow black band below its floor", .fill = 0xffe0a040, .dark_bottom = 0.015, .indoors = true},
             {.name = "orange with a thin shadow at the bottom", .fill = 0xffe0a040, .dark_bottom = 0.01, .indoors = false},
             {.name = "daytime grass", .fill = 0xff60b040, .dark_bottom = 0.10, .indoors = false},
         };
