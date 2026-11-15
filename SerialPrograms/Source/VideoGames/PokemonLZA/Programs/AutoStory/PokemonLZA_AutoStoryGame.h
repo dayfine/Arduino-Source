@@ -101,9 +101,8 @@ StoryMove story_walk_move(const Pokemon::StoryActionArgs& args, std::string_view
 //  `starter` is the one approach_starter walks to; the walks read the
 //  compass with heading_reader(). The save waits out the game's autosave at
 //  the end of the checkpoints of `autosave_rows` (the run's
-//  StoryData::autosaves); after the others it saves through the menu only
-//  when MENU_SAVE_AT_CHECKPOINT_END is on (off for now: a user decision).
-//  The reload resets the game from HOME onto the latest save.
+//  StoryData::autosaves); after the others nothing saves, and it fails as
+//  "no_autosave". The reload resets the game from HOME onto the latest save.
 Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(
     StoryEnv& env, StarterChoice starter, std::set<std::string, std::less<>> autosave_rows
 );

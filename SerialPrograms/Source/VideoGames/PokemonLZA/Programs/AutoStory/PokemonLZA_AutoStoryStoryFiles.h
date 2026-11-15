@@ -34,7 +34,7 @@ namespace PokemonLZA{
 const std::vector<std::pair<std::string, std::string>>& autostory_checkpoint_json();
 
 //  How the shared loader reads a PLZA checkpoint file: its execution has
-//  only the shared "save" (required) and "reload_when_chained"; "dev_only"
+//  only the shared "save" and "reload_when_chained"; "dev_only"
 //  is refused, since PLZA lists every row. A dev file must pass
 //  plza_story_lint(), and 01.00 (story_row_starts_without_save()) has no
 //  save to reload.
@@ -60,10 +60,9 @@ const StoryData& builtin_story_data();
 //  choices made by hand.
 const std::vector<Pokemon::StoryCheckpoint>& story_checkpoints();
 
-//  The built-in rows that end on one of the game's autosaves. Each ends
-//  where the game autosaved in the recording, so the next row reloads
-//  there. The menu (X, then R) can save from the start of the story too:
-//  01.03 saves through it after Andi.
+//  The built-in rows that end on one of the game's autosaves, as a run's log
+//  showed it ("save": "autosave"). Each ends where the game autosaved, so
+//  the next row can reload there.
 const std::set<std::string, std::less<>>& story_autosave_rows();
 
 

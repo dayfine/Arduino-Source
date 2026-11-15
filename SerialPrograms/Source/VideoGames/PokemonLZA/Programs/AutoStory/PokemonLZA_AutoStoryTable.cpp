@@ -17,10 +17,6 @@ using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
 
 
-bool story_row_saves(const StoryData& story, const StoryCheckpoint& row){
-    return !story.autosaves.contains(row.id);
-}
-
 size_t story_rows_ready(const std::vector<StoryCheckpoint>& checkpoints){
     size_t ready = 0;
     for (const StoryCheckpoint& checkpoint : checkpoints){
