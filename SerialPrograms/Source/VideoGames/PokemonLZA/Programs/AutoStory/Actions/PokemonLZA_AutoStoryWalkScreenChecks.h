@@ -5,7 +5,8 @@
  *  What a story walk (run_story_move(), PokemonLZA_AutoStoryMoves.h) reads
  *  of the screen, since the walk itself reads nothing: before it, that the
  *  player has free control (check_can_walk()); during its last leg, the
- *  fade it ends on (walk_until()).
+ *  event it ends on (walk_until()); after it, where it stopped
+ *  (finish_walk()).
  *
  */
 
@@ -29,8 +30,16 @@ namespace PokemonLZA{
 //  tutorial has no party bar, so it is not required.
 Pokemon::Outcome check_can_walk(PlzaBackend& backend, std::string_view walk);
 
+//  After a walk's legs with no end event: one look, which on a console
+//  waits for the legs' inputs to run (observe()), so the step ends where
+//  the walk does, not when its inputs are queued (03.09's to_mable
+//  returned 0.4 s in, before its 3.5 s of legs: console B, 2026-11-14).
+//  Logs what the screen shows there.
+void finish_walk(PlzaBackend& backend, std::string_view walk);
+
 //  Walks `move`, holding its last leg in slices of 250 ms until a look
-//  shows `end` (a fade), the leg's time as the upper bound. Fails as
+//  shows `end` (a fade, or the box of a talk the walk runs into), the
+//  leg's time as the upper bound. Fails as
 //  "walk_no_end" if `end` does not show within it. `heading` reads the
 //  compass (face_heading()); `pause` is as for run_story_move().
 Pokemon::Outcome walk_until(

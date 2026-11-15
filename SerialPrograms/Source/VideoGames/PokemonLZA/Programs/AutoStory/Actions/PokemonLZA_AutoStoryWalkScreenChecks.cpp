@@ -72,6 +72,11 @@ Pokemon::Outcome check_can_walk(PlzaBackend& backend, std::string_view walk){
     );
 }
 
+void finish_walk(PlzaBackend& backend, std::string_view walk){
+    const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+    backend.log(std::format("[PLZA] {}: legs done, screen now: {}", walk, describe(look.events)));
+}
+
 Pokemon::Outcome walk_until(
     PlzaBackend& backend, std::string_view walk, const StoryMove& move, const PlzaReader& heading, EngineEvent end,
     Pokemon::StoryPausePoints* pause

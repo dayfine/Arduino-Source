@@ -51,11 +51,15 @@ const std::map<std::string, std::string, std::less<>>& story_actions_not_impleme
 //      ANSWER  "answer"    the first choice for yes, the second for no
 //      MASH    "mash"      B through the text until the overworld is back
 //      MASH    "a"         A through it
+//      MASH    "talk"      B through a talk that must show: free control
+//                          before a box or choice does not end it
+//                          (SceneOpening::TALK_FIRST)
 //      GAME    "walk" (args "legs", [[turn, ms], ...] as story_walk_move()
-//              reads them; "end", "fade_white" or "fade_black"; "heading"),
-//              walked once the screen shows free control
-//              (check_can_walk()), until its end fade if it has one
-//              (walk_until()); "approach_starter" (args "chikorita",
+//              reads them; "end", "fade_white", "fade_black" or "dialog";
+//              "heading"), walked once the screen shows free control
+//              (check_can_walk()), until its end event if it has one
+//              (walk_until()), else until its legs have run
+//              (finish_walk()); "approach_starter" (args "chikorita",
 //              "tepig", "totodile", each a walk's legs: the run's starter's
 //              is walked as "walk" would, a starter with none is not
 //              implemented); the platform waits "wait_for_platform" and

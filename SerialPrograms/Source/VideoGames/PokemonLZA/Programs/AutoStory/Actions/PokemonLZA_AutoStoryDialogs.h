@@ -12,6 +12,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <optional>
 #include <string_view>
 #include "Common/Cpp/Time.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
@@ -45,8 +46,39 @@ struct ScreensPassed{
     bool timed_out = false;     //  still busy at the timeout
 };
 
+//  press_a_until_quiet()'s clock. Both times count from the first look,
+//  not from the call: the presses sent before it still run then (03.09,
+//  console B 2026-11-14: the menu's A and its 3 s ran out the quiet time,
+//  and the claim ended on one look with no dialog seen).
+class QuietPresses{
+public:
+    //  What press_a_until_quiet() does on a look.
+    enum class Step{
+        PRESS_A,    //  a dialog or card shows
+        WAIT,       //  nothing shows, not for `quiet` yet
+        QUIET,      //  nothing has shown for `quiet`: done
+        TIMED_OUT,  //  `timeout` since the first look, still busy
+    };
+
+    QuietPresses(Milliseconds quiet, Milliseconds timeout)
+        : m_quiet(quiet)
+        , m_timeout(timeout)
+    {}
+
+    //  A look at `now`, `busy` when a dialog or card shows.
+    Step look(bool busy, WallClock now);
+
+private:
+    Milliseconds m_quiet;
+    Milliseconds m_timeout;
+    std::optional<WallClock> m_first;
+    std::optional<WallClock> m_last_busy;
+};
+
 //  A through tutorial cards and the dialogue boxes of `kinds`
-//  (StoryDialogDetector) until none has shown for `quiet`, or `timeout`.
+//  (StoryDialogDetector) until none has shown for `quiet`, or `timeout`
+//  (QuietPresses: both from the first look, once the presses sent before
+//  the call have run).
 ScreensPassed press_a_until_quiet(
     ConsoleHandle& console, ProControllerContext& context,
     StoryDialogKinds kinds, Milliseconds quiet, Milliseconds timeout

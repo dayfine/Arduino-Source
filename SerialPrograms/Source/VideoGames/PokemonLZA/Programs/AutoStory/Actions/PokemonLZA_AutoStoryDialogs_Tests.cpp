@@ -2,14 +2,16 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A table of cases, each a name, the row the cursor is on and the row
- *  wanted, and the presses that get there.
+ *  Tables of cases: each a name, the row the cursor is on and the row
+ *  wanted, and the presses that get there; or a name, the looks of A
+ *  through dialogs until quiet, and what each look does.
  *
  */
 
 #include <cstddef>
 #include <format>
 #include <string>
+#include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonLZA_AutoStoryDialogs.h"
 #include "PokemonLZA_AutoStoryDialogs_Tests.h"
@@ -17,6 +19,8 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
+
+using namespace std::chrono_literals;
 
 
 namespace{
@@ -81,12 +85,76 @@ private:
     const ChoiceMovesCase& m_case;
 };
 
+//  QuietPresses: what each look does, quiet 3 s and timeout 10 s.
+struct QuietPressesCase{
+    std::string name;
+    struct Look{
+        Milliseconds at;    //  after the presses were sent
+        bool busy;          //  a dialog or a tutorial card on screen
+    };
+    struct Input{
+        std::vector<Look> looks;
+    };
+    Input input;
+    struct Expectation{
+        std::vector<QuietPresses::Step> steps;
+    };
+    Expectation expectation;
+};
+
+const QuietPressesCase QUIET_PRESSES_CASES[] = {
+    {
+        //  03.09's claim (console B, 2026-11-14): the menu's A and its 3 s
+        //  ran before the first look, which ended the claim on one look.
+        .name = "first look 5 s after the presses, nothing busy: the quiet time starts there",
+        .input = {.looks = {{.at = 5000ms, .busy = false}, {.at = 7000ms, .busy = false}, {.at = 8000ms, .busy = false}}},
+        .expectation = {.steps = {QuietPresses::Step::WAIT, QuietPresses::Step::WAIT, QuietPresses::Step::QUIET}},
+    },
+    {
+        .name = "busy looks get A, the quiet time counts from the last",
+        .input = {.looks = {{.at = 0ms, .busy = true}, {.at = 1000ms, .busy = true}, {.at = 3500ms, .busy = false}, {.at = 4000ms, .busy = false}}},
+        .expectation = {.steps = {QuietPresses::Step::PRESS_A, QuietPresses::Step::PRESS_A, QuietPresses::Step::WAIT, QuietPresses::Step::QUIET}},
+    },
+    {
+        .name = "still busy at the timeout from the first look: timed out",
+        .input = {.looks = {{.at = 2000ms, .busy = true}, {.at = 7000ms, .busy = true}, {.at = 12000ms, .busy = true}}},
+        .expectation = {.steps = {QuietPresses::Step::PRESS_A, QuietPresses::Step::PRESS_A, QuietPresses::Step::TIMED_OUT}},
+    },
+};
+
+class Test_QuietPresses : public UnitTest{
+public:
+    explicit Test_QuietPresses(const QuietPressesCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Dialogs: quiet presses: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const WallClock sent = current_time();
+        QuietPresses clock(3000ms, 10000ms);
+        const std::vector<Look>& looks = m_case.input.looks;
+        for (size_t i = 0; i < looks.size(); i++){
+            const QuietPresses::Step step = clock.look(looks[i].busy, sent + looks[i].at);
+            if (step != m_case.expectation.steps[i]){
+                return std::format("Look {}: expected step {}, got {}.", i, (int)m_case.expectation.steps[i], (int)step);
+            }
+        }
+        return true;
+    }
+
+private:
+    using Look = QuietPressesCase::Look;
+    const QuietPressesCase& m_case;
+};
+
 } // namespace
 
 
 void add_tests_AutoStoryDialogs(UnitTestDatabase& database){
     for (const ChoiceMovesCase& item : CHOICE_MOVES_CASES){
         database.add<Test_ChoiceMoves>(item);
+    }
+    for (const QuietPressesCase& item : QUIET_PRESSES_CASES){
+        database.add<Test_QuietPresses>(item);
     }
 }
 

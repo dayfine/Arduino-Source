@@ -153,7 +153,7 @@ StoryActionSpec walk_spec(){
         legs_arg("legs", true, "the legs: [turn in degrees, clockwise (negative: left), walk ms] each"),
         StoryArgSpec{
             .key = "end", .type = StoryArgType::WORD, .required = false, .fallback = std::nullopt,
-            .why = "\"fade_white\" or \"fade_black\": the last leg is held until it shows, its ms the bound",
+            .why = "\"fade_white\", \"fade_black\" or \"dialog\": the last leg is held until it shows, its ms the bound",
         },
         StoryArgSpec{
             .key = "heading", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
@@ -181,8 +181,9 @@ StoryActionSpec approach_starter_spec(){
 
 
 
-//  `move`, once the screen shows free control; held until the fade of
-//  `call`'s "end" arg, if it names one. Each leg is a breakpoint.
+//  `move`, once the screen shows free control; held until the event of
+//  `call`'s "end" arg, if it names one, else finished with one look
+//  (finish_walk()). Each leg is a breakpoint.
 Outcome walk_legs(
     Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, const StoryMove& move,
     const PlzaReader& heading
@@ -197,11 +198,18 @@ Outcome walk_legs(
         return free;
     }
     const auto end = args.find("end");
-    std::optional<PokemonAutomation::ScreenEvent> fade;
+    std::optional<PokemonAutomation::ScreenEvent> end_event;
     if (end != args.end()){
-        fade = walk_end_event(std::get<std::string>(end->second));
+        end_event = walk_end_event(std::get<std::string>(end->second));
     }
-    return fade ? walk_until(backend, name, move, heading, *fade, &call.pause) : run_story_move(backend, move, heading, &call.pause);
+    if (end_event){
+        return walk_until(backend, name, move, heading, *end_event, &call.pause);
+    }
+    const Outcome walked = run_story_move(backend, move, heading, &call.pause);
+    if (walked.succeeded()){
+        finish_walk(backend, name);
+    }
+    return walked;
 }
 
 //  A walk's body, with the run's compass reader for the heading it faces.
@@ -554,8 +562,9 @@ Handler plza_handler(const PlzaHandlers& handlers, const StoryActionSpec& spec){
         });
     case StoryStepKind::MASH:{
         const Button button = name == "a" ? BUTTON_A : BUTTON_B;
-        return [button](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
-            return mash_story_scene(backend, button);
+        const SceneOpening opening = name == "talk" ? SceneOpening::TALK_FIRST : SceneOpening::CONTROL_ENDS;
+        return [button, opening](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+            return mash_story_scene(backend, button, opening);
         };
     }
     default:
@@ -617,6 +626,7 @@ std::vector<StoryActionSpec> plza_story_action_specs(){
         console_only(builtin_spec(StoryStepKind::ANSWER, "answer")),
         console_only(builtin_spec(StoryStepKind::MASH, "mash")),
         console_only(StoryActionSpec{.kind = StoryStepKind::MASH, .name = "a", .args = {}}),
+        console_only(StoryActionSpec{.kind = StoryStepKind::MASH, .name = "talk", .args = {}}),
         game_spec("mash_to_move_hints", {
             optional_ms("min_length_ms", 0, "the scene's rough length: no quiet failure before it"),
             optional_ms("quiet_ms", 60000, "nothing busy and no control this long fails the step"),

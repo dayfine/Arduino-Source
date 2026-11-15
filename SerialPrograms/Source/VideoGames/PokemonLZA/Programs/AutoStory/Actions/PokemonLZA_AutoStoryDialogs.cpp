@@ -65,32 +65,52 @@ void mash_to_overworld(ConsoleHandle& console, ProControllerContext& context, Bu
     );
 }
 
+QuietPresses::Step QuietPresses::look(bool busy, WallClock now){
+    if (!m_first){
+        m_first = now;
+        m_last_busy = now;
+    }
+    if (busy){
+        m_last_busy = now;
+    }else if (now - *m_last_busy >= m_quiet){
+        return QuietPresses::Step::QUIET;
+    }
+    if (now - *m_first >= m_timeout){
+        return QuietPresses::Step::TIMED_OUT;
+    }
+    return busy ? QuietPresses::Step::PRESS_A : QuietPresses::Step::WAIT;
+}
+
 ScreensPassed press_a_until_quiet(
     ConsoleHandle& console, ProControllerContext& context,
     StoryDialogKinds kinds, Milliseconds quiet, Milliseconds timeout
 ){
     StoryDialogDetector any_dialog(kinds);
     ScreensPassed passed;
-    WallClock last_busy = current_time();
-    const WallClock deadline = last_busy + timeout;
-    while (current_time() - last_busy < quiet){
-        if (current_time() >= deadline){
-            passed.timed_out = true;
-            return passed;
-        }
+    QuietPresses clock(quiet, timeout);
+    while (true){
         context.wait_for_all_requests();
         const VideoSnapshot screen = console.video().snapshot();
         const bool card_now = screen && tutorial_card_shows(screen);
-        if (card_now || (screen && any_dialog.detect(screen))){
+        const bool busy = card_now || (screen && any_dialog.detect(screen));
+        if (busy){
             passed.card = passed.card || card_now;
             passed.text = passed.text || !card_now;
-            last_busy = current_time();
+        }
+        switch (clock.look(busy, current_time())){
+        case QuietPresses::Step::QUIET:
+            return passed;
+        case QuietPresses::Step::TIMED_OUT:
+            passed.timed_out = true;
+            return passed;
+        case QuietPresses::Step::PRESS_A:
             pbf_press_button(context, BUTTON_A, 160ms, 840ms);
-        }else{
+            break;
+        case QuietPresses::Step::WAIT:
             context.wait_for(250ms);
+            break;
         }
     }
-    return passed;
 }
 
 void talk_to_facing(ConsoleHandle& console, ProControllerContext& context){

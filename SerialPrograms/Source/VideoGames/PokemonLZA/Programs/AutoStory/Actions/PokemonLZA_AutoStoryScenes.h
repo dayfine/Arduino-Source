@@ -25,9 +25,20 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+//  Whether free control ends a scene mash before its scene has shown.
+enum class SceneOpening{
+    //  Yes: the step before may have played the scene out already.
+    CONTROL_ENDS,
+    //  No: control counts only after a box, choice or battle (SceneStart).
+    //  A talk the step exists for: 03.09's mable_talk passed on control
+    //  alone with no talk (console B, 2026-11-14).
+    TALK_FIRST,
+};
+
 //  From a scene, presses through it as SceneMash says on `backend`'s
 //  looks, until `goal` shows (OVERWORLD: the party bar held a second, by
-//  the shared TalkOver). `text_button` advances the text (A or B).
+//  the shared TalkOver; with TALK_FIRST `opening`, only once the scene
+//  has shown). `text_button` advances the text (A or B).
 //  A tutorial card (TUTORIAL_CARD_READING) gets A whatever `text_button`
 //  is: only A turns its pages. With a `start_window`, the scene must start
 //  (SceneStart) within it. Fails as "scene_never_started" when it does not,
@@ -35,15 +46,16 @@ namespace PokemonLZA{
 //  (by the looks' time).
 Pokemon::Outcome mash_scene(
     PlzaBackend& backend, SceneMashGoal goal, Button text_button, Milliseconds timeout,
-    std::optional<Milliseconds> start_window = std::nullopt
+    std::optional<Milliseconds> start_window = std::nullopt,
+    SceneOpening opening = SceneOpening::CONTROL_ENDS
 );
 
 //  A "scene" step: mash_scene() to the overworld with `text_button`, up to
 //  120 s (a scene can hold a ~25 s black screen: 02.07's first evening),
 //  and the scene must start within SCENE_START_WINDOW: a run not at the
 //  scene's trigger fails there, before an A mash talks to whoever stands
-//  in front.
-Pokemon::Outcome mash_story_scene(PlzaBackend& backend, Button text_button);
+//  in front. `opening` says whether control before the scene ends it.
+Pokemon::Outcome mash_story_scene(PlzaBackend& backend, Button text_button, SceneOpening opening);
 
 
 //  Taunie's talk after her battle (03.02): A through it and the "Map &

@@ -57,7 +57,8 @@ void save_story_game(ConsoleHandle& console, ProControllerContext& context);
 
 //  From the overworld: the main menu, DOWN x3 to "Mable's Research" (as
 //  recorded on 2026-11-09), A; through Mable's lines on the reward, back
-//  to the overworld.
+//  to the overworld. Throws OperationFailedException when no line shows
+//  (no reward claimed) or the lines do not end within 60 s.
 void claim_mable_research_reward(ConsoleHandle& console, ProControllerContext& context);
 
 

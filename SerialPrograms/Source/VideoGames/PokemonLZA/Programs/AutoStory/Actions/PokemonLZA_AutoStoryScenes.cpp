@@ -57,7 +57,7 @@ void press_for(PlzaBackend& backend, SceneMashAction action, Button text_button)
 
 Pokemon::Outcome mash_scene(
     PlzaBackend& backend, SceneMashGoal goal, Button text_button, Milliseconds timeout,
-    std::optional<Milliseconds> start_window
+    std::optional<Milliseconds> start_window, SceneOpening opening
 ){
     SceneMash mash(goal, text_button);
     ScreenEvents last_events;
@@ -87,14 +87,15 @@ Pokemon::Outcome mash_scene(
             continue;
         }
         log_event_change(backend, look.events, last_events);
-        if (start_window && started->scene.never_started(look.events, look.when)){
+        const bool never_started = started->scene.never_started(look.events, look.when);
+        if (start_window && never_started){
             return Pokemon::outcome_failed("scene_never_started", std::format(
                 "mash_scene(): the scene never started (player not at its trigger?): no box, choice or battle in {} ms.",
                 start_window->count()
             ));
         }
         const SceneMashAction action = mash.look(look.events, look.when);
-        if (action == SceneMashAction::DONE){
+        if (action == SceneMashAction::DONE && (opening == SceneOpening::CONTROL_ENDS || started->scene.seen())){
             return Pokemon::outcome_ok();
         }
         press_for(backend, action, text_button);
@@ -102,8 +103,8 @@ Pokemon::Outcome mash_scene(
     return Pokemon::outcome_failed("scene_timeout", std::format("mash_scene(): the goal did not show within {} ms.", timeout.count()));
 }
 
-Pokemon::Outcome mash_story_scene(PlzaBackend& backend, Button text_button){
-    return mash_scene(backend, SceneMashGoal::OVERWORLD, text_button, Milliseconds(120000), SCENE_START_WINDOW);
+Pokemon::Outcome mash_story_scene(PlzaBackend& backend, Button text_button, SceneOpening opening){
+    return mash_scene(backend, SceneMashGoal::OVERWORLD, text_button, Milliseconds(120000), SCENE_START_WINDOW, opening);
 }
 
 

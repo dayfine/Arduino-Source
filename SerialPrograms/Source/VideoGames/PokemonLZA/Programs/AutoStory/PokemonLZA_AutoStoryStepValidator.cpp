@@ -78,13 +78,17 @@ std::string_view starter_key(StarterChoice starter){
     return "";
 }
 
-//  A walk's "end" arg as the event it ends on: a fade.
+//  A walk's "end" arg as the event it ends on: a fade, or the dialog box
+//  of a talk the walk runs into.
 std::optional<PokemonAutomation::ScreenEvent> walk_end_event(std::string_view end){
     if (end == "fade_white"){
         return PokemonAutomation::ScreenEvent::FADE_WHITE;
     }
     if (end == "fade_black"){
         return PokemonAutomation::ScreenEvent::FADE_BLACK;
+    }
+    if (end == "dialog"){
+        return PokemonAutomation::ScreenEvent::DIALOG_BOX;
     }
     return std::nullopt;
 }
@@ -126,14 +130,14 @@ std::vector<std::string> plza_step_arg_errors(const Pokemon::StoryStep& step){
     if (end != step.args.end()){
         const std::string& name = std::get<std::string>(end->second);
         if (!walk_end_event(name)){
-            errors.push_back(std::format("{}: end {} is not \"fade_white\" or \"fade_black\"", step.name, name));
+            errors.push_back(std::format("{}: end {} is not \"fade_white\", \"fade_black\" or \"dialog\"", step.name, name));
         }
         if (rows.empty() || rows.back().ms <= 0){
             errors.push_back(std::format("{}: the last leg has no walk to hold until the end", step.name));
         }
         const auto held = step.args.find("held");
         if (held != step.args.end() && std::get<bool>(held->second)){
-            errors.push_back(std::format("{}: a held walk cannot end on a fade yet", step.name));
+            errors.push_back(std::format("{}: a held walk cannot end on an event yet", step.name));
         }
     }
     const auto wait = step.args.find("wait_ms");

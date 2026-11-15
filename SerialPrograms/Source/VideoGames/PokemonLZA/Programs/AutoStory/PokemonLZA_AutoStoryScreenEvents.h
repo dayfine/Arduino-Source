@@ -124,6 +124,10 @@ public:
     void see(){
         m_seen = true;
     }
+    //  Whether a frame or see() has shown the scene.
+    bool seen() const{
+        return m_seen;
+    }
     //  Takes a frame's `events` at `now`; true once the window has passed
     //  without the scene.
     bool never_started(const ScreenEvents& events, WallClock now);
