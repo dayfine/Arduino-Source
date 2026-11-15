@@ -282,6 +282,10 @@ file(GLOB CORE_LIBRARY_SOURCES
     Source/Controllers/JoystickTools.h
     Source/Controllers/MgbaLink/MgbaLink_Connection.cpp
     Source/Controllers/MgbaLink/MgbaLink_Connection.h
+    Source/Controllers/MgbaLink/MgbaLink_Keys.cpp
+    Source/Controllers/MgbaLink/MgbaLink_Keys.h
+    Source/Controllers/MgbaLink/MgbaLink_Keys_Tests.cpp
+    Source/Controllers/MgbaLink/MgbaLink_Keys_Tests.h
     Source/Controllers/MgbaLink/MgbaLink_Protocol.cpp
     Source/Controllers/MgbaLink/MgbaLink_Protocol.h
     Source/Controllers/MgbaLink/MgbaLink_Tests.cpp
@@ -322,6 +326,10 @@ file(GLOB CORE_LIBRARY_SOURCES
     Source/NintendoSwitch/Controllers/Joycon/NintendoSwitch_Joycon_from_Keyboard.h
     Source/NintendoSwitch/Controllers/Joycon/NintendoSwitch_JoyconState.cpp
     Source/NintendoSwitch/Controllers/Joycon/NintendoSwitch_JoyconState.h
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap.cpp
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap.h
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap_Tests.cpp
+    Source/NintendoSwitch/Controllers/MgbaLink/NintendoSwitch_MgbaLink_KeyMap_Tests.h
     Source/NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.cpp
     Source/NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h
     Source/NintendoSwitch/Controllers/NintendoSwitch_ControllerSettings.cpp
