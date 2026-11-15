@@ -28,7 +28,7 @@ bool plza_title(const ScreenObservation& look);
 //  PLZA on `console`: the Switch's prompts, then the game's own, as
 //  reset_game_from_home() answered them: the backup save's arrow takes A,
 //  a dialog box B. The title (plza_title()) takes A; the backup save is Up,
-//  then B + X held for a second, on it. No HOME tile reader yet: the tile
+//  B and X held together on it. No HOME tile reader yet: the tile
 //  under the cursor is taken as PLZA's, as reset_game_from_home() did.
 Pokemon::StoryLaunchPolicy plza_launch_policy(ConsoleHandle& console);
 

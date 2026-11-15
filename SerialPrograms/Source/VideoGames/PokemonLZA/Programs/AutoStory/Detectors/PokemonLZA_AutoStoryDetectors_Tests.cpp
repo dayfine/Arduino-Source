@@ -23,6 +23,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "PokemonLZA_AutoStoryAdvanceArrowDetector.h"
 #include "PokemonLZA_AutoStoryAutosaveDetector.h"
+#include "PokemonLZA_AutoStoryCaughtMarkReader.h"
 #include "PokemonLZA_AutoStoryControlsHintDetector.h"
 #include "PokemonLZA_AutoStoryDetectors_Tests.h"
 #include "PokemonLZA_AutoStoryMainMissionBannerDetector.h"
@@ -406,6 +407,124 @@ const SyntheticFrameCase SYNTHETIC_FRAME_CASES[] = {
     },
 };
 
+//  The lock-on name plate's HP bar (lock_target_plate_bar()), drawn as on
+//  console B's 03.08 frames (2026-11-14, 640 px, scaled here to 1920):
+//  the bar about 45, 198, 115 and 108 x 18 under the target's name; the
+//  bright grass around it (68, 160, 80, Bunnelby's plate at 60) and the
+//  player's own HP bar (63 x 12, over the head while a wild Pokemon
+//  attacks). Above the bar's right end, the gender mark (an orange disk
+//  with a white sign, about 255, 118, 68) and, for a species already
+//  caught, a Poke Ball (pinkish red over white, about 255, 107, 110):
+//  Scatterbug's plate shows only the first, Bunnelby's both.
+constexpr uint32_t PLATE_BAR_GREEN = 0xff2dc673;
+constexpr uint32_t GENDER_ORANGE = 0xffff7644;
+constexpr uint32_t BALL_RED = 0xffff6b6e;
+constexpr uint32_t BRIGHT_GRASS = 0xff44a050;
+constexpr uint32_t DARK_GROUND = 0xff303030;
+
+//  What plate_frame() draws besides `ground`.
+struct PlateDrawing{
+    bool plate_bar = false;     //  at x 950, y 515
+    bool player_bar = false;    //  at x 990, y 560
+    bool gender_mark = false;   //  at x 1020, y 430
+    bool ball_mark = false;     //  at x 1056, y 430
+};
+
+ImageRGB32 plate_frame(uint32_t ground, PlateDrawing drawing){
+    ImageRGB32 image = solid_frame(ground);
+    if (drawing.plate_bar){
+        fill_box(950, 515, 1058, 533, PLATE_BAR_GREEN, image);
+    }
+    if (drawing.player_bar){
+        fill_box(990, 560, 1053, 572, PLATE_BAR_GREEN, image);
+    }
+    if (drawing.gender_mark){
+        fill_box(1020, 430, 1044, 454, GENDER_ORANGE, image);
+        fill_box(1028, 438, 1036, 446, WHITE, image);
+    }
+    if (drawing.ball_mark){
+        fill_box(1056, 430, 1080, 442, BALL_RED, image);
+        fill_box(1056, 442, 1080, 454, WHITE, image);
+    }
+    return image;
+}
+
+struct PlateFrameCase{
+    std::string name;
+    struct Input{
+        std::function<ImageRGB32()> frame;
+    };
+    Input input;
+    struct Expectation{
+        //  The bar's left edge as a share of the width; none: no plate.
+        std::optional<double> bar_x = {};
+        //  lock_target_caught(); none: not checked.
+        std::optional<bool> caught = {};
+    };
+    Expectation expectation;
+};
+
+const PlateFrameCase PLATE_FRAME_CASES[] = {
+    {
+        .name = "the plate's bar on dark ground",
+        .input = {.frame = []{ return plate_frame(DARK_GROUND, {.plate_bar = true}); }},
+        .expectation = {.bar_x = 950.0 / WIDTH},
+    },
+    {
+        .name = "the plate's bar on the bright grass it touches",
+        .input = {.frame = []{ return plate_frame(BRIGHT_GRASS, {.plate_bar = true}); }},
+        .expectation = {.bar_x = 950.0 / WIDTH},
+    },
+    {
+        .name = "the plate's bar and the player's HP bar",
+        .input = {.frame = []{ return plate_frame(BRIGHT_GRASS, {.plate_bar = true, .player_bar = true}); }},
+        .expectation = {.bar_x = 950.0 / WIDTH},
+    },
+    {
+        .name = "a plate with the gender mark only (Scatterbug, not caught)",
+        .input = {.frame = []{ return plate_frame(DARK_GROUND, {.plate_bar = true, .gender_mark = true}); }},
+        .expectation = {.bar_x = 950.0 / WIDTH, .caught = false},
+    },
+    {
+        .name = "a plate with the gender mark and the Poke Ball (Bunnelby, caught)",
+        .input = {.frame = []{ return plate_frame(DARK_GROUND, {.plate_bar = true, .gender_mark = true, .ball_mark = true}); }},
+        .expectation = {.bar_x = 950.0 / WIDTH, .caught = true},
+    },
+    {
+        .name = "the player's HP bar alone",
+        .input = {.frame = []{ return plate_frame(DARK_GROUND, {.player_bar = true}); }},
+        .expectation = {},
+    },
+    {
+        .name = "bright grass alone",
+        .input = {.frame = []{ return plate_frame(BRIGHT_GRASS, {}); }},
+        .expectation = {},
+    },
+    {
+        .name = "a frame all in the bar's green",
+        .input = {.frame = []{ return solid_frame(PLATE_BAR_GREEN); }},
+        .expectation = {},
+    },
+};
+
+UnitTestResult check_plate_frame(const PlateFrameCase& test, Logger& logger){
+    const ImageRGB32 frame = test.input.frame();
+    const std::optional<ImageFloatBox> bar = lock_target_plate_bar(frame);
+    const std::optional<double> want = test.expectation.bar_x;
+    if (bar){
+        logger.log(std::format("{}: bar at ({:.3f}, {:.3f}), {:.3f} wide.", test.name, bar->x, bar->y, bar->width));
+    }else{
+        logger.log(std::format("{}: no bar.", test.name));
+    }
+    if (bar.has_value() != want.has_value() || (bar && std::abs(bar->x - *want) > 0.002)){
+        return std::format("Wrong on {}: expected {}.", test.name, want ? std::format("a bar at x = {:.3f}", *want) : std::string("no bar"));
+    }
+    if (test.expectation.caught && lock_target_caught(frame) != test.expectation.caught){
+        return std::format("Wrong on {}: expected the caught mark {}.", test.name, *test.expectation.caught ? "read" : "not read");
+    }
+    return true;
+}
+
 UnitTestResult check_synthetic_frame(const SyntheticFrameCase& test, Logger& logger){
     StoryDetectors detectors;
     const DetectorReads got = detectors.read(test.input.frame());
@@ -636,6 +755,20 @@ private:
     const SyntheticFrameCase& m_test;
 };
 
+class Test_PlateFrame : public UnitTest{
+public:
+    explicit Test_PlateFrame(const PlateFrameCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStoryDetectors - lock-on plate: {}", test.name))
+        , m_test(test)
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        return check_plate_frame(m_test, logger);
+    }
+
+private:
+    const PlateFrameCase& m_test;
+};
+
 class Test_FrameFolder : public UnitTest{
 public:
     explicit Test_FrameFolder(const FrameFolderCase& test)
@@ -656,6 +789,9 @@ private:
 void add_tests_AutoStoryDetectors(UnitTestDatabase& database){
     for (const SyntheticFrameCase& test : SYNTHETIC_FRAME_CASES){
         database.add<Test_SyntheticFrame>(test);
+    }
+    for (const PlateFrameCase& test : PLATE_FRAME_CASES){
+        database.add<Test_PlateFrame>(test);
     }
     for (const FrameFolderCase& test : FRAME_FOLDER_CASES){
         database.add<Test_FrameFolder>(test);

@@ -43,7 +43,10 @@ struct LaunchLook{
 struct LaunchReadable{
     //  The launch launched or closed the game: the checks read only after.
     bool launched = false;
-    //  No title press's fade holds the title check off.
+    //  No title press's fade holds the title check off, and a title read
+    //  only after the launch (title_after_launch) waits for the A on the
+    //  game's tile: right after the close, before HOME, a screen passes
+    //  PLZA's loose title check (console B, 2026-11-14).
     bool title = true;
 };
 
@@ -100,7 +103,7 @@ public:
     //  One look and its answer; the launch's end when this look ended it.
     std::optional<Outcome> step(){
         const Observation<PoseType> observation = m_backend.observe();
-        const LaunchLook look = read_launch_look(m_policy, observation, {.launched = m_launched || m_loading, .title = m_title_held_looks == 0});
+        const LaunchLook look = read_launch_look(m_policy, observation, {.launched = m_launched || m_loading, .title = m_title_held_looks == 0 && (m_launched || !m_policy.title_after_launch)});
         count_title_hold(observation);
         if (look.screen != LaunchScreen::OVERWORLD){
             m_settled = 0;
@@ -113,7 +116,7 @@ public:
         case LaunchScreen::PROMPT:
             return on_prompt(*look.prompt);
         case LaunchScreen::TITLE:
-            return on_title();
+            return on_title(observation);
         case LaunchScreen::OVERWORLD:
             return on_overworld();
         case LaunchScreen::OTHER:
@@ -174,10 +177,15 @@ private:
         return press(prompt.name, prompt.press, prompt.max_presses);
     }
 
-    std::optional<Outcome> on_title(){
+    std::optional<Outcome> on_title(const ScreenObservation& observation){
         m_loading = true;
         m_launched = true;
-        if (m_request.save == StoryLaunchRequest::Save::BACKUP && !m_backup_sent){
+        const bool backup = m_request.save == StoryLaunchRequest::Save::BACKUP && !m_backup_sent;
+        if (backup && m_policy.backup_title && !m_policy.backup_title(observation)){
+            m_backend.wait(m_policy.poll);
+            return std::nullopt;
+        }
+        if (backup){
             m_backup_sent = true;
             log("title", "the backup save");
             for (const StoryLaunchPress& each : m_policy.backup_save){

@@ -15,6 +15,7 @@
 #include "CommonFramework/Tools/ProgramEnvironment.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
 
 namespace PokemonAutomation{
@@ -55,26 +56,41 @@ void battle_then_catch(
 //  shows, or `limit`. Returns the last distance read.
 std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit);
 
+//  What catch_in_zone() is after: `new_species` new species caught, so
+//  the Pokedex has `dex_species`, in `max_throws` at most; `checks` is the
+//  run's check level.
+struct ZoneCatchGoal{
+    int new_species = 0;
+    int dex_species = 0;
+    int max_throws = 0;
+    Pokemon::StoryCheckLevel checks = Pokemon::StoryCheckLevel::DEFAULT;
+};
+
 //  03.08's catches for the "register five species" quest (3/5 after the
 //  tutorial): walks toward the objective (Wild Zone 1's far gate, around
 //  Taunie's rocks from the start), then goes back and forth between the
 //  user's two catch spots (CATCH_SPOTS): 100 from the objective
 //  (Scatterbug on the plaza's road) and 60 (Mareep by the gate),
 //  PATROL_VISITS visits, 10 minutes at most. At each stop
-//  it fights a wild battle that is on, else watches for the lock-on
+//  it fights a wild battle that is on (the Run prompt, or the alert eye of
+//  a wild Pokemon attacking: one of a species already caught is fought
+//  off, others weakened and caught), else watches for the lock-on
 //  brackets the game draws around one wild Pokemon (6 s at most), turns
-//  the camera to the tallest (the nearest), holds ZL until the move
-//  symbols show the lock, cycles the targets with ZL held, walks toward
+//  the camera to the tallest (the nearest), holds ZL until the target's
+//  name plate shows the lock (3 s at most), cycles the targets with ZL held, walks toward
 //  the nearest one not caught when it is far, and throws without letting
 //  ZL go, counting the Pokedex's "Registered!" banners. A break-out that
 //  starts a wild battle gets `battle_ai`'s attacks before the next throws.
 //  When only species already caught lock on (a rerun from a save after the
-//  catch), the quest is taken as done. Otherwise throws
-//  OperationFailedException with fewer than `new_species_wanted` new
-//  species after the patrol or `max_throws`.
+//  catch), the quest is taken as done. The Pokedex's count is read when
+//  the tally is not all banners, or at THOROUGH and TESTING checks
+//  (read_dex_count()), and then decides (enough_species()). Throws
+//  OperationFailedException, still in the zone, when short of
+//  `goal.dex_species` in the Pokedex or, unread, of `goal.new_species`
+//  new species after the patrol or `goal.max_throws`.
 void catch_in_zone(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
-    BattleAIOption& battle_ai, int new_species_wanted, int max_throws
+    BattleAIOption& battle_ai, const ZoneCatchGoal& goal
 );
 
 //  On to the objective marker until an A prompt (a gate's "Leave", a door's
@@ -85,16 +101,16 @@ void catch_in_zone(
 //  shows within 90 s.
 void walk_to_marker(ConsoleHandle& console, ProControllerContext& context);
 
-//  03.08, after the catches, to Wild Zone 1's far gate: back onto the road
-//  at the catch spots first (road_stops_to_gate()), then on to the
-//  objective marker until the gate's "A Leave" prompt or a dialog shows. A
-//  walk straight at the marker from where the catches ended left the zone
-//  and ran into a building (console B, 2026-11-13). Arriving on the marker
-//  with no prompt is taken as through the gate already. Throws
-//  OperationFailedException when a road stop is not reached, or when the
-//  walk is held up short of the gate (walk_to_objective()'s sidesteps
-//  spent).
-void walk_to_zone_gate(ConsoleHandle& console, ProControllerContext& context);
+//  03.08, after the catches: back onto the road at the catch spots
+//  (road_stops_to_gate()), ending at the one nearest the far gate (60),
+//  facing the objective marker. From 60 the far gate's pillars are straight
+//  down the road, some 5 s on; the marker is not on the gate but past it
+//  and to its left, behind the zone's fence, so a walk at the marker was
+//  held up at 36 and wandered off (console B, 2026-11-13 and 2026-11-14).
+//  The walk through the gate is walk_to_zone_gate_entrance()'s, steered by
+//  the pillars on screen. Throws OperationFailedException when a road stop
+//  is not reached.
+void walk_back_to_zone_road(ConsoleHandle& console, ProControllerContext& context);
 
 
 
