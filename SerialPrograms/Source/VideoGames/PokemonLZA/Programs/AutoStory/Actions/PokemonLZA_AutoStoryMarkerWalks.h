@@ -32,10 +32,32 @@ bool turn_to_pinned_marker(ProControllerContext& context, double x);
 //  (horizon in the middle, far markers in the upper third).
 void level_camera(ConsoleHandle& console, ProControllerContext& context);
 
+//  The marker's distance reads, with misreads dropped. A read far from the
+//  last one is a misread: a 0.6 s step covers about 3. Below: 36 can read
+//  as "3" or 29; above: 110 as "1110", which would then reject every true
+//  read after it. So three agreeing reads in a row far from the last mean
+//  the last read was the wrong one, and they are taken.
+class DistanceReads{
+public:
+    std::optional<int> last() const{
+        return m_last;
+    }
+
+    //  Whether `distance` (a read above 0) is taken as the last read.
+    bool accept(int distance);
+
+private:
+    std::optional<int> m_last;
+    //  Reads far from `m_last` in a row that agree with each other.
+    std::optional<int> m_rejected_read;
+    int m_rejected = 0;
+};
+
+
 //  Walks back away from the objective marker (the stick down: toward the
 //  camera, turned back onto the marker before each step) until its distance reads `stop_at`
-//  or more, or `limit`. A read more than 12 from the last is a misread, as
-//  in walk_to_objective(). Returns the last distance read.
+//  or more, or `limit`. Misreads are dropped by DistanceReads, as in
+//  walk_to_objective(). Returns the last distance read.
 std::optional<int> walk_from_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit);
 
 //  After A at a wild zone's gate on the way out: the minimap's player arrow
