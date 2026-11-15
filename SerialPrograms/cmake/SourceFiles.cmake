@@ -919,6 +919,7 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonTools/ScreenEvents/ScreenEvents_Tests.h
     Source/CommonTools/ScreenEvents/ScreenEventTypes.h
     Source/CommonTools/ScreenEvents/ScreenFades.h
+    Source/CommonTools/ScreenMachine/ScreenObservation.h
     Source/CommonTools/StartupChecks/StartProgramChecks.cpp
     Source/CommonTools/StartupChecks/StartProgramChecks.h
     Source/CommonTools/StartupChecks/VideoResolutionCheck.cpp
@@ -1475,6 +1476,15 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage.h
     Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage_Tests.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryGame.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryPoseConcept.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryPoseConcept.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_ZonePose.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_ZonePose.h
     Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.cpp
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h
