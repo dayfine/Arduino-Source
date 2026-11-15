@@ -4,7 +4,8 @@ The local server designed in `docs/design/Agent-Integration.md` (fork #131, bran
 `design/agent-integration`). Slice 0: the version-1 contracts, golden examples and a parser.
 Slice 2: the attach-only read server ([below](#slice-2-the-attach-only-read-server)). Slice 3: the
 durable control plane ([below](#slice-3-the-durable-control-plane)): leases, request records,
-tickets and events in SQLite. Nothing presses a button yet: that is Slice 5.
+tickets and events in SQLite. Slice 5 ([below](#slice-5-leased-actions)), first sub-slice: `stop_program`,
+the first leased action. Nothing starts a program or presses a button yet.
 
 | Path | What |
 |---|---|
@@ -26,6 +27,8 @@ tickets and events in SQLite. Nothing presses a button yet: that is Slice 5.
 | `pa_lab/db.py` | The SQLite file: migrations (`PRAGMA user_version`), owner-only file, `BEGIN IMMEDIATE` writes |
 | `pa_lab/control.py` | Leases, idempotent requests, tickets, events, `next_events`, reconciliation, compaction |
 | `tests/test_{db,control,control_concurrency,control_mcp}.py` | Slice 3's tests: restarts, threads and processes racing, kills mid-write |
+| `pa_lab/actions.py` | Leased actions (Slice 5): `stop_program`, the channel request it sends and how its reply is read |
+| `tests/test_actions.py` | Slice 5's tests: the ticket, retries, refusals, UI takeover, app restart, a terminal event before the response |
 
 Stdlib only (Python 3.8+), so no venv: the MCP transport is small enough to write on
 `http.server`. Run the tests from the repo root:
@@ -137,7 +140,9 @@ python3 -m pa_lab serve --config ~/.config/pa-lab/server.json
                     "profile": "lab-B"}}}
 ```
 
-The config is the server's own, closed, and must list exactly `B`; it never reads
+The config is the server's own, closed, and must list exactly `B`. `consoles.B.channel_owner`
+(optional, one word, default the profile) is the token Slice 5's actions claim the app's channel
+with; it never reads
 `~/BDSPLab/consoles.json`. A Claude Code client adds it as an HTTP MCP server at
 `http://127.0.0.1:8765/mcp` with the header `Authorization: Bearer <token>`.
 
@@ -264,3 +269,50 @@ every event after an active cursor (one used in the last 7 days), every event of
 and every pending record; finished records go after 7 days. A cursor behind the compacted range
 is refused (`invalid_arguments`, field `after_seq`, `evidence.compacted_through`), never served
 with a silent gap.
+
+## Slice 5: leased actions
+
+Built so far: `stop_program`, the first tool that changes what the app does. The rest of Slice 5
+(`preflight_program`, `run_program`, `cfr_batch`) needs app-side commands first; see the list in
+the PR that added this section.
+
+**A leased action is a ticket.** `stop_program(console, request_id, lease_token)` returns its
+request record at once: `pending` until the app reports the outcome, which arrives as a
+`request_completed` / `request_failed` event (`next_events`) and in `request_status`. The tool
+does not wait for the program to stop. `ControlPlane.begin_action` stores the call in one
+transaction with the lease check: an exact retry gets the stored record and sends nothing; the
+lease must be held by the token (an idle lease is renewed by the call); a program that is not
+`running` completes at once with `outcome: not_running`; otherwise the record is `pending` and
+remembers the app instance it was sent to (`requests.instance_id`, migration 2).
+
+**The channel request** (Lab.md "Requests", "Owner") is fixed text:
+
+```
+owner lab-B
+request <request_id>
+owner claim lab-B
+stop
+```
+
+The daemon claims the channel with `channel_owner` before each action rather than once at
+attach, so it works across app restarts and beside `lab/scripts/lc.sh`, which uses the same
+default token. The app puts `request_id` on `program.last_transition` and keeps it from
+`stopping` to `stopped`.
+
+**What resolves the ticket.** The app's report, applied by `observe` on every read of
+`console://B/state`, every `request_status`, and every poll of a waiting `next_events`:
+
+| The app shows | Ticket |
+|---|---|
+| `stopped`, `last_transition` `{stop, lab, <this request_id>}` | completed, `outcome: stopped` |
+| `stopping` with that transition | still pending |
+| `stopped` by `program` or `error` at or after the call | completed, `outcome: ended` (the run's own end) |
+| a UI Start/Stop at or after the call | failed, `console_held_by_user`; the lease becomes `user` |
+| another `instance.id` | failed, `app_unavailable`, `evidence.reason: instance_replaced` |
+| (the stop line failed and nothing runs) | completed, `outcome: not_running` |
+| (the stop line failed otherwise, e.g. `owned by <other>`) | failed, `app_unavailable`, the journal in `evidence` |
+| (no journal within 7 s and the request still in the inbox) | withdrawn; `refused`, `timeout`: nothing was sent |
+| (no journal within 7 s and the app took the request) | still pending; the rows above resolve it |
+
+A stop by this lease holder ends `agent_running` as before (`lease_changed`, reason `run_ended`).
+`begin_run` (Slice 3) is still entered only by tests: `run_program` will call it.

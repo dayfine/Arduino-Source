@@ -111,6 +111,12 @@ class FakeApp:
     `describe_program` and `game_open` (#504) are answered at once: `replies[command]` is the
     printed text (default below), `line_errors[command]` fails the line instead, and
     `restart_on` names a command whose answer comes from a new app instance.
+
+    A request ending in `stop` (Slice 5's stop_program) is run as the channel does: the `owner`
+    first line must match a claimed `channel_owner` (or the channel is free), `owner claim T`
+    takes it, and `stop` is refused unless the program is `running`. Otherwise the program goes
+    `stopping` with `last_transition {stop, lab, <request id>}` and, at the next tick (or at once
+    with `stop_at_once`), `stopped`. `stop_silent` takes the request without writing a journal.
     """
 
     def __init__(self, lab, clock):
@@ -130,6 +136,9 @@ class FakeApp:
         }
         self.line_errors = {}
         self.restart_on = None
+        self.channel_owner = None
+        self.stop_at_once = False
+        self.stop_silent = False
         self.requests = []
         self.pending = []
         clock.on_sleep.append(self.tick)
@@ -142,6 +151,8 @@ class FakeApp:
             changes['video.state'] = 'live'
             changes['video.captured_at'] = now
         self.lab.update_state(**changes)
+        if self.lab.state['program']['state'] == 'stopping':
+            self.lab.update_state(**{'program.state': 'stopped'})
         for pending in list(self.pending):
             self.continue_snapshot(pending)
         if self.serve:
@@ -154,6 +165,9 @@ class FakeApp:
         self.requests.append(text)
         line = text.splitlines()[-1]
         words = line.split()
+        if words == ['stop']:
+            self.stop(request.stem, text.splitlines())
+            return
         if words[0] in self.replies:
             self.answer(request.stem, line, words[0])
             return
@@ -175,6 +189,29 @@ class FakeApp:
             self.finish(pending, '', self.line_errors[command])
         else:
             self.finish(pending, self.replies[command])
+
+    def stop(self, name, lines):
+        if self.stop_silent:
+            return
+        owner = lines[0].split()[1]
+        request_id = lines[1].split()[1]
+        out = (self.lab.dir / 'outbox' / (name + '.out'))
+        if self.channel_owner not in (None, owner):
+            out.write_text('error 3 (owner claim {}): owned by {}\nend\n'.format(owner, self.channel_owner),
+                           encoding='utf-8')
+            return
+        self.channel_owner = owner
+        state = self.lab.state['program']['state']
+        if state != 'running':
+            out.write_text('ok 3 owner claim {} @0-1ms\nerror 4 (stop): the program is {}, not RUNNING\nend\n'.format(
+                owner, state.upper()), encoding='utf-8')
+            return
+        self.lab.update_state(**{
+            'program.state': 'stopped' if self.stop_at_once else 'stopping',
+            'program.last_transition': {'action': 'stop', 'source': 'lab', 'request_id': request_id,
+                                        'at': timestamps.format(self.clock.now())},
+            'channel.owner_claimed': True})
+        out.write_text('ok 3 owner claim {} @0-1ms\nok 4 stop @1-2ms\nend\n'.format(owner), encoding='utf-8')
 
     def continue_snapshot(self, pending):
         video = self.lab.state['video']

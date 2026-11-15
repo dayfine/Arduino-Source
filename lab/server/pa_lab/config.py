@@ -1,5 +1,7 @@
 """The daemon's own config (Slice 2 of fork #131): a one-entry allowlist (console B), the loopback
 port and the bearer token file. It never reads `~/BDSPLab/consoles.json`, which also lists A.
+`channel_owner` (optional; default the profile name, which is what `lab/scripts/lc.sh` uses) is the
+token the daemon claims the app's channel with before a leased action (Slice 5, Lab.md "Owner").
 
   {"schema": 1, "host": "127.0.0.1", "port": 8765, "token_file": "~/.config/pa-lab/token",
    "db_file": "~/.local/state/pa-lab/control.sqlite",
@@ -11,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 import secrets
 import stat
@@ -19,8 +22,9 @@ from typing import Dict, Optional
 ALLOWED_CONSOLES = ('B',)
 LOOPBACK_HOSTS = ('127.0.0.1',)
 TOP_KEYS = ('schema', 'host', 'port', 'token_file', 'db_file', 'consoles')
+OWNER_RE = re.compile(r'^[A-Za-z0-9_.-]{1,64}$')
 DEFAULT_DB_FILE = '~/.local/state/pa-lab/control.sqlite'
-CONSOLE_KEYS = ('lab_dir', 'profile')
+CONSOLE_KEYS = ('lab_dir', 'profile', 'channel_owner')
 
 
 class ConfigError(ValueError):
@@ -28,9 +32,10 @@ class ConfigError(ValueError):
 
 
 class ConsoleConfig:
-    def __init__(self, lab_dir: Path, profile: Optional[str]):
+    def __init__(self, lab_dir: Path, profile: Optional[str], channel_owner: Optional[str] = None):
         self.lab_dir = lab_dir
         self.profile = profile
+        self.channel_owner = channel_owner if channel_owner is not None else profile
 
 
 class Config:
@@ -85,7 +90,11 @@ def load(path: Path) -> Config:
         profile = entry.get('profile')
         if profile is not None and (not isinstance(profile, str) or not profile):
             raise ConfigError('{}.profile: expected a profile name'.format(field))
-        out[name] = ConsoleConfig(_path(entry.get('lab_dir'), field + '.lab_dir'), profile)
+        owner = entry.get('channel_owner', profile)
+        if owner is not None and (not isinstance(owner, str) or not OWNER_RE.match(owner)):
+            raise ConfigError('{}.channel_owner: expected one word of A-Z a-z 0-9 _ . - (it defaults to the '
+                              'profile)'.format(field))
+        out[name] = ConsoleConfig(_path(entry.get('lab_dir'), field + '.lab_dir'), profile, owner)
     return Config(host, port, _path(doc.get('token_file'), 'token_file'), out,
                   _path(doc.get('db_file', DEFAULT_DB_FILE), 'db_file'))
 

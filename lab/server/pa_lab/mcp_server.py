@@ -7,8 +7,8 @@ here pushes). Every request must carry `Authorization: Bearer <token>`, a loopba
 
 Resources: `console://B/state` (console_state), `console://B/save` (save_resource).
 Tools: `shot`, `ensure_game`, `describe_program`, `game_open`; with a control plane also `acquire_console`,
-`renew_console`, `release_console`, `next_events` and `request_status`. Nothing here presses a
-button or starts or stops a program: that is not served yet.
+`renew_console`, `release_console`, `next_events`, `request_status` and the first leased action,
+`stop_program` (Slice 5, pa_lab/actions.py). Nothing here starts a program or presses a button yet.
 """
 
 from __future__ import annotations
@@ -23,9 +23,10 @@ import logging
 import re
 import secrets
 import threading
+import time
 from typing import Any, Callable, Dict, Optional, Tuple
 
-from pa_lab import app_query, contracts, control, shot, tools
+from pa_lab import actions, app_query, contracts, control, shot, tools
 from pa_lab.lab_reader import ConsoleReader, Unavailable
 
 LOG = logging.getLogger('pa_lab.server')
@@ -49,7 +50,8 @@ INSTRUCTIONS = (
     'Read-only view of lab console B. Read console://B/state before acting on the console and '
     'console://B/save for the last known save. shot returns a PNG newer than the call; ensure_game '
     'only verifies, it never navigates. describe_program gives the selected program\'s option contract; '
-    'game_open says whether a game is in front. Unknown observations are never success.')
+    'game_open says whether a game is in front. Unknown observations are never success. '
+    'stop_program (with a lease) returns a ticket: follow it with request_status or next_events.')
 
 TOOL_LIST = [
     {
@@ -158,12 +160,21 @@ CONTROL_TOOL_LIST = [
                              'limit': {'type': 'integer', 'minimum': 1, 'maximum': control.MAX_PAGE,
                                        'default': control.DEFAULT_PAGE}},
                             ['after_seq']), 'annotations': _READ},
+    {'name': 'stop_program', 'title': 'Stop the running program',
+     'description': 'Asks the app to stop the running program, once, under your lease. Returns the request record: '
+                    'pending until the app reports the program stopped by this request (completed, outcome '
+                    'stopped), or the run ended by itself (outcome ended); completed at once with outcome '
+                    'not_running when nothing runs. Follow it with request_status or next_events. Fails if '
+                    'the user takes the console or the app restarts first.',
+     'inputSchema': _schema({'request_id': _REQUEST_ID, 'lease_token': _LEASE_TOKEN},
+                            ['request_id', 'lease_token']), 'annotations': _MUTATING},
     {'name': 'request_status', 'title': 'Request or ticket status',
      'description': "This client's request record: pending, completed, refused or failed.",
      'inputSchema': _schema({'request_id': _REQUEST_ID}, ['request_id']), 'annotations': _READ},
 ]
 
 LEASE_TOOLS = ('acquire_console', 'renew_console', 'release_console')
+REQUEST_TOOLS = LEASE_TOOLS + control.ACTION_TOOLS  # keyed by request_id; refusals echo it
 
 
 class RpcError(Exception):
@@ -188,10 +199,14 @@ class LabMcp:
 
     def __init__(self, consoles: Dict[str, ConsoleReader],
                  take_shot: Callable[..., Dict[str, Any]] = shot.take_shot,
-                 control_plane: Optional[control.ControlPlane] = None):
+                 control_plane: Optional[control.ControlPlane] = None,
+                 channel_owners: Optional[Dict[str, str]] = None,
+                 sleep: Callable[[float], None] = time.sleep):
         self.consoles = consoles
         self.take_shot = take_shot
         self.control = control_plane
+        self.channel_owners = channel_owners or {}
+        self.sleep = sleep
 
     def call(self, method: str, params: Dict[str, Any], client: str = 'unnamed') -> Dict[str, Any]:
         if method == 'ping':
@@ -299,24 +314,55 @@ class LabMcp:
                 if 'after_seq' not in args:
                     raise control.Refused('invalid_arguments', 'required', field='after_seq')
                 result = self.control.next_events(client, console, args['after_seq'], args.get('timeout_s', 0),
-                                                  args.get('limit', control.DEFAULT_PAGE))
+                                                  args.get('limit', control.DEFAULT_PAGE),
+                                                  refresh=self._refresher(console))
             elif name == 'request_status':
                 if set(args) != {'request_id'} or request_id is None:
                     raise control.Refused('invalid_arguments', 'expects request_id', field='request_id')
+                self._refresher(console)()
                 result = self.control.request_status(client, console, request_id)
+            elif name in control.ACTION_TOOLS:
+                reader = self._console(console)
+                owner = self.channel_owners.get(console)
+                if reader is None:
+                    raise control.Refused('console_not_allowed', 'Console {!r} is not served; only {}.'.format(
+                        console, ', '.join(sorted(self.consoles))))
+                if owner is None:
+                    raise control.Refused('app_unavailable', 'No channel owner is configured for console {}; '
+                                          'set consoles.{}.channel_owner or profile.'.format(console, console))
+                record = actions.stop_program(self.control, reader, client, self._request(name, console, args),
+                                              owner, sleep=self.sleep)
+                if record['refusal'] is not None:
+                    return self._refused(name, record['refusal'], record['request_id'])
+                result = record
             else:
-                request = {'schema': 1, 'request_id': args.pop('request_id', None), 'tool': name,
-                           'console': console, 'arguments': args}
-                if 'lease_token' in args:
-                    request['lease_token'] = args.pop('lease_token')
-                record = self.control.execute(client, request)
+                record = self.control.execute(client, self._request(name, console, args))
                 if record['refusal'] is not None:
                     return self._refused(name, record['refusal'], record['request_id'])
                 result = record
         except control.Refused as e:
-            return self._refused(name, e.refusal, request_id if name in LEASE_TOOLS else None)
+            return self._refused(name, e.refusal, request_id if name in REQUEST_TOOLS else None)
         return {'content': [{'type': 'text', 'text': _json_text(result)}], 'structuredContent': result,
                 'isError': False}
+
+    @staticmethod
+    def _request(name: str, console: Any, args: Dict[str, Any]) -> Dict[str, Any]:
+        """The request document of a keyed call; the lease token goes beside the arguments."""
+        args = dict(args)
+        request = {'schema': 1, 'request_id': args.pop('request_id', None), 'tool': name, 'console': console,
+                   'arguments': args}
+        if 'lease_token' in args:
+            request['lease_token'] = args.pop('lease_token')
+        return request
+
+    def _refresher(self, console: Any) -> Callable[[], None]:
+        """Reads the console's state, which applies `observe` (run ends, pending action tickets)."""
+        reader = self._console(console)
+
+        def refresh() -> None:
+            if reader is not None:
+                reader.console_state()
+        return refresh
 
     @staticmethod
     def _refused(tool: str, refusal: Dict[str, Any], request_id: Optional[str] = None) -> Dict[str, Any]:

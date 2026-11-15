@@ -43,6 +43,11 @@ class ConfigTests(unittest.TestCase):
             dict(name='relative lab dir', input={'consoles.B': {'lab_dir': 'Lab'}}, expectation='consoles.B.lab_dir'),
             dict(name='unknown key', input={'mutations': True}, expectation='mutations'),
             dict(name='future schema', input={'schema': 2}, expectation='schema'),
+            dict(name='channel owner with a space', input={'consoles.B.channel_owner': 'lab B'},
+                 expectation='consoles.B.channel_owner'),
+            dict(name='profile unusable as the channel owner',
+                 input={'consoles.B': {'lab_dir': '/x/Lab', 'profile': 'lab B'}},
+                 expectation='consoles.B.channel_owner'),
         ]
         for case in cases:
             with self.subTest(case['name']):
@@ -56,6 +61,17 @@ class ConfigTests(unittest.TestCase):
                 with self.assertRaises(config.ConfigError) as raised:
                     config.load(self.write(doc))
                 self.assertIn(case['expectation'], str(raised.exception))
+
+    def test_the_channel_owner_defaults_to_the_profile(self):
+        cases = [
+            dict(name='default', input={}, expectation='lab-B'),
+            dict(name='explicit', input={'channel_owner': 'pa-lab-daemon'}, expectation='pa-lab-daemon'),
+        ]
+        for case in cases:
+            with self.subTest(case['name']):
+                doc = self.good()
+                doc['consoles']['B'].update(case['input'])
+                self.assertEqual(config.load(self.write(doc)).consoles['B'].channel_owner, case['expectation'])
 
     def test_token_file_is_owner_only(self):
         self.assertEqual(os.stat(self.token).st_mode & 0o777, 0o600)

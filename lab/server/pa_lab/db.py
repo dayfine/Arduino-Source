@@ -86,6 +86,11 @@ MIGRATIONS: List[List[str]] = [
         )""",
         "CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
     ],
+    # 2 (Slice 5): the app instance a leased action was sent to, so a pending ticket fails when that
+    # instance is gone rather than waiting for a transition that can no longer come.
+    [
+        "ALTER TABLE requests ADD COLUMN instance_id TEXT",
+    ],
 ]
 
 SCHEMA_VERSION = len(MIGRATIONS)

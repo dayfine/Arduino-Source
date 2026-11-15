@@ -17,6 +17,11 @@ Everything here is a row in the daemon's SQLite file (`pa_lab.db`), changed only
 - **Reconciliation.** `observe(app)` is applied whenever the daemon reads the app's state and
   once at start: it applies each new transition exactly once (UI takeover, `stopped` events)
   and ends a running lease whose app instance is gone.
+- **Leased actions** (Slice 5). `begin_action` checks the lease and the action's own
+  precondition and stores the call once: refused, completed at once, or a `pending` ticket that
+  remembers the app instance it was sent to. `observe` resolves the ticket from what the app
+  reports (`_resolve_actions`): the app's terminal transition, not the tool's reply, is the
+  completion.
 """
 
 from __future__ import annotations
@@ -27,7 +32,7 @@ import secrets
 import sqlite3
 import threading
 import time
-from typing import Any, Dict, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Optional, Sequence, Tuple
 
 from pa_lab import contracts, timestamps
 from pa_lab.db import Database
@@ -37,6 +42,7 @@ MAX_WAIT_S = 60.0
 DEFAULT_PAGE = 100
 MAX_PAGE = 500
 POLL_S = 0.2  # another process's writes are seen by polling; this process's wake the waiters
+ACTION_TOOLS = ('stop_program',)
 
 
 LEASE_COLUMNS = frozenset({
@@ -137,11 +143,13 @@ class ControlPlane:
         return record
 
     def next_events(self, client_id: str, console: str, after_seq: Any, timeout_s: Any = 0,
-                    limit: Any = DEFAULT_PAGE) -> Dict[str, Any]:
+                    limit: Any = DEFAULT_PAGE, refresh: Optional[Callable[[], Any]] = None) -> Dict[str, Any]:
         """Events with seq > after_seq, oldest first, waiting up to timeout_s (<= 60) for one.
 
         `after_seq` is also the client's confirmed position: compaction keeps everything after it,
         so a client that lost a response asks again with the same cursor and loses nothing.
+        `refresh` (the server's read of the app, which applies `observe`) runs before each look, so
+        a run's end or a pending action's terminal transition becomes an event while a client waits.
         """
         self._check_console(console)
         after_seq = self._int_arg('after_seq', after_seq, 0, None)
@@ -166,6 +174,8 @@ class ControlPlane:
                          (client_id, console, after_seq, self._stamp()))
         deadline = time.monotonic() + timeout_s
         while True:
+            if refresh is not None:
+                refresh()
             rows = self.db.read().execute(
                 'SELECT * FROM events WHERE console = ? AND seq > ? ORDER BY seq LIMIT ?',
                 (console, after_seq, limit)).fetchall()
@@ -224,24 +234,71 @@ class ControlPlane:
             return self._record(self._request_row(conn, client_id, req['tool'], req['request_id']))
 
     def resolve_ticket(self, client_id: str, tool: str, request_id: str, result: Optional[Dict[str, Any]] = None,
-                       refusal: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Completes (result) or fails (refusal) a pending ticket once; later calls return the record."""
+                       refusal: Optional[Dict[str, Any]] = None, acted: bool = True) -> Dict[str, Any]:
+        """Completes (result) or fails (refusal) a pending ticket once; later calls return the record.
+
+        A refusal is `failed` (after acting) unless `acted` is False: then nothing reached the app
+        and the record is `refused`, as if it had been refused before acting.
+        """
         if (result is None) == (refusal is None):
             raise ValueError('resolve_ticket needs exactly one of result and refusal')
         with self._writing() as conn:
             row = self._request_row(conn, client_id, tool, request_id)
             if row is None:
                 raise Refused('invalid_arguments', 'No ticket {}.'.format(request_id), field='request_id')
-            if row['status'] != 'pending':
-                return self._record(row)
-            status = 'completed' if refusal is None else 'failed'
-            conn.execute('UPDATE requests SET status = ?, completed_at = ?, result = ?, refusal = ? '
-                         'WHERE client_id = ? AND tool = ? AND request_id = ?',
-                         (status, self._stamp(), None if result is None else _json(result),
-                          None if refusal is None else _json(refusal), client_id, tool, request_id))
-            record = self._record(self._request_row(conn, client_id, tool, request_id))
-            self._request_event(conn, row['console'], request_id, tool, result, refusal)
-            return record
+            self._resolve(conn, row, result, refusal, acted)
+            return self._record(self._request_row(conn, client_id, tool, request_id))
+
+    def record(self, client_id: str, tool: str, request_id: str) -> Dict[str, Any]:
+        """One request record as stored (the lease token never is)."""
+        row = self.db.read().execute('SELECT * FROM requests WHERE client_id = ? AND tool = ? AND request_id = ?',
+                                     (client_id, tool, request_id)).fetchone()
+        if row is None:
+            raise Refused('invalid_arguments', 'No request {}.'.format(request_id), field='request_id')
+        return self._record(row)
+
+    # ---- leased actions (Slice 5) --------------------------------------------------------------
+
+    def begin_action(self, client_id: str, request: Dict[str, Any], instance_id: str,
+                     decide: Callable[[sqlite3.Row], Optional[Dict[str, Any]]]) -> Tuple[Dict[str, Any], bool]:
+        """Stores one leased action call once and says whether the caller must now send it.
+
+        In one transaction: an exact retry gets its stored record (and is not sent again); the
+        lease must be held by the request's token (an idle lease is renewed by the call); then
+        `decide(lease_row)` raises Refused (stored `refused`), returns a result (stored `completed`:
+        nothing to do), or returns None: the record is a `pending` ticket bound to `instance_id`,
+        and the second value is True. Raises Refused only for a request that cannot be keyed.
+        """
+        req, args, token_hash = self._parse_request(client_id, request)
+        if req['tool'] not in ACTION_TOOLS:
+            raise Refused('invalid_arguments', '{} is not served yet.'.format(req['tool']), field='tool')
+        console = req['console']
+        with self._writing() as conn:
+            existing = self._existing(conn, req, args, token_hash)
+            if existing is not None:
+                return existing, False
+            self._expire_due(conn, console)
+            stamp = self._stamp()
+            try:
+                row = self._held(conn, console, token_hash)
+                if row['state'] == 'agent_idle':
+                    conn.execute('UPDATE leases SET expires_at = ?, updated_at = ? WHERE console = ?',
+                                 (timestamps.format(self.now() + row['ttl_s']), stamp, console))
+                result, refusal = decide(self._lease_row(conn, console)), None
+            except Refused as e:
+                result, refusal = None, e.refusal
+            status = 'refused' if refusal is not None else ('pending' if result is None else 'completed')
+            conn.execute('INSERT INTO requests (client_id, tool, request_id, console, token_hash, status, created_at, '
+                         'completed_at, arguments, result, refusal, instance_id) '
+                         'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                         (client_id, req['tool'], req['request_id'], console, token_hash, status, stamp,
+                          None if status == 'pending' else stamp, _json(args),
+                          None if result is None else _json(result), None if refusal is None else _json(refusal),
+                          instance_id))
+            if status != 'pending':
+                self._request_event(conn, console, req['request_id'], req['tool'], result, refusal)
+            return self._record(self._request_row(conn, client_id, req['tool'], req['request_id'])), \
+                status == 'pending'
 
     # ---- runs and the operator ----------------------------------------------------------------
 
@@ -286,7 +343,8 @@ class ControlPlane:
         - a new UI transition revokes any agent lease and installs the user lease (no timeout);
         - a new stop transition is a `stopped` event with its source;
         - a running lease ends (back to agent_idle with a fresh TTL) when its run's stop is
-          reported or its app instance is gone.
+          reported or its app instance is gone;
+        - a pending leased action resolves from the app's terminal transition (`_resolve_actions`).
         """
         self._check_console(console)
         instance = app['instance']['id']
@@ -310,6 +368,7 @@ class ControlPlane:
                                  instance_id=instance, request_id=transition['request_id'], at=transition['at'])
                 if transition['source'] == 'ui':
                     self._take_over(conn, console, transition['at'], 'ui_takeover', instance)
+            self._resolve_actions(conn, console, app)
             conn.execute('INSERT OR REPLACE INTO observations (console, instance_id, transition_key, program_state, '
                          'observed_at) VALUES (?, ?, ?, ?, ?)',
                          (console, instance, key if transition is not None else
@@ -446,6 +505,58 @@ class ControlPlane:
         else:
             self._append(conn, 'request_failed', console,
                          {'request_id': request_id, 'tool': tool, 'refusal': refusal}, request_id=request_id)
+
+    def _resolve(self, conn, row: sqlite3.Row, result: Optional[Dict[str, Any]], refusal: Optional[Dict[str, Any]],
+                 acted: bool = True) -> None:
+        """Completes or fails one pending record, once; a resolved record is left as it is."""
+        if row['status'] != 'pending':
+            return
+        status = 'completed' if refusal is None else ('failed' if acted else 'refused')
+        conn.execute('UPDATE requests SET status = ?, completed_at = ?, result = ?, refusal = ? '
+                     'WHERE client_id = ? AND tool = ? AND request_id = ?',
+                     (status, self._stamp(), None if result is None else _json(result),
+                      None if refusal is None else _json(refusal), row['client_id'], row['tool'], row['request_id']))
+        self._request_event(conn, row['console'], row['request_id'], row['tool'], result, refusal)
+
+    def _resolve_actions(self, conn, console: str, app: Dict[str, Any]) -> None:
+        """Resolves the console's pending stop_program tickets from what the app reports.
+
+        - another app instance than the one the stop was sent to: failed, `instance_replaced`;
+        - a UI Start/Stop at or after the call: failed, the user holds the console;
+        - the stop transition carrying the ticket's request id, and the program `stopped`:
+          completed (`outcome: stopped`); while `stopping` the ticket stays pending;
+        - the program ended by itself (`program`/`error`) at or after the call: completed
+          (`outcome: ended`), since that is the run's terminal event.
+        Timestamps compare as strings: both are UTC with milliseconds and `Z`.
+        """
+        rows = conn.execute("SELECT * FROM requests WHERE console = ? AND status = 'pending' AND tool = 'stop_program'",
+                            (console,)).fetchall()
+        instance = app['instance']['id']
+        program = app['program']
+        transition = program['last_transition']
+        for row in rows:
+            if row['instance_id'] != instance:
+                self._resolve(conn, row, None, {
+                    'code': 'app_unavailable', 'message': 'The app restarted before the stop was confirmed.',
+                    'evidence': {'reason': 'instance_replaced', 'instance_id': row['instance_id'],
+                                 'new_instance_id': instance}})
+                continue
+            if transition is None or (transition['at'] < row['created_at'] and
+                                      transition['request_id'] != row['request_id']):
+                continue
+            done = {'outcome': 'stopped', 'instance_id': instance, 'run_id': program['run_id'],
+                    'source': transition['source'], 'stopped_at': transition['at'], 'program_state': program['state']}
+            if transition['source'] == 'ui':
+                self._resolve(conn, row, None, {
+                    'code': 'console_held_by_user', 'message': 'The user clicked {} in the app at {}.'.format(
+                        transition['action'].capitalize(), _clock_time(transition['at'])),
+                    'evidence': {'since': transition['at']}})
+            elif program['state'] != 'stopped' or transition['action'] != 'stop':
+                continue
+            elif transition['source'] == 'lab' and transition['request_id'] == row['request_id']:
+                self._resolve(conn, row, done, None)
+            elif transition['source'] in ('program', 'error'):
+                self._resolve(conn, row, dict(done, outcome='ended'), None)
 
     # ---- lease rows
 

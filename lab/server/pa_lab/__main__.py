@@ -94,7 +94,9 @@ def _serve(path: str) -> int:
     for reader in readers.values():  # restart reconciliation: apply what the app shows now
         reader.console_state()
     plane.compact()
-    server = mcp_server.make_server(cfg.port, token, readers, control_plane=plane)
+    server = mcp_server.make_server(cfg.port, token, readers, control_plane=plane,
+                                    channel_owners={name: entry.channel_owner for name, entry in cfg.consoles.items()
+                                                    if entry.channel_owner is not None})
     logging.getLogger('pa_lab.server').info('serving %s on http://127.0.0.1:%d%s',
                                             ', '.join(sorted(readers)), server.server_address[1],
                                             mcp_server.ENDPOINT)
