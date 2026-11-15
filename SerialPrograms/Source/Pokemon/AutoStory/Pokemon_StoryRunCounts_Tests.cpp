@@ -29,7 +29,7 @@ struct StoryCountsTestCase{
 
     //  The stats after them: counts add up rather than replace.
     struct Expectation{
-        uint64_t segments;
+        uint64_t runs;
         uint64_t checkpoints;
         uint64_t resets;
     };
@@ -46,16 +46,16 @@ public:
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        AutoStoryStats stats;
+        StoryRunStats stats;
         for (const StoryRunCounts& counts : m_case.input.added){
             record_story_counts(counts, stats);
         }
         const StoryCountsTestCase::Expectation& expected = m_case.expectation;
-        if (stats.m_segment != expected.segments || stats.m_checkpoint != expected.checkpoints || stats.m_reset != expected.resets){
+        if (stats.m_runs != expected.runs || stats.m_checkpoints_passed != expected.checkpoints || stats.m_resets != expected.resets){
             return std::format(
-                "Expected {} segments, {} checkpoints and {} resets, got {}, {} and {}",
-                expected.segments, expected.checkpoints, expected.resets,
-                stats.m_segment.load(), stats.m_checkpoint.load(), stats.m_reset.load()
+                "Expected {} runs, {} checkpoints passed and {} resets, got {}, {} and {}",
+                expected.runs, expected.checkpoints, expected.resets,
+                stats.m_runs.load(), stats.m_checkpoints_passed.load(), stats.m_resets.load()
             );
         }
         return true;
@@ -67,15 +67,15 @@ private:
 
 const StoryCountsTestCase STORY_COUNTS_CASES[] = {
     {
-        .name = "a segment's counts in the stats", .input = {.added = {{.segments = 1, .checkpoints = 2, .resets = 3}}},
-        .expectation = {.segments = 1, .checkpoints = 2, .resets = 3},
+        .name = "a run's counts in the stats", .input = {.added = {{.runs = 1, .checkpoints = 2, .resets = 3}}},
+        .expectation = {.runs = 1, .checkpoints = 2, .resets = 3},
     },
     {
         .name = "a checkpoint loop's counts add up",
         .input = {
-            .added = {{.segments = 0, .checkpoints = 1, .resets = 0}, {.segments = 0, .checkpoints = 0, .resets = 1}, {.segments = 0, .checkpoints = 1, .resets = 0}},
+            .added = {{.runs = 0, .checkpoints = 1, .resets = 0}, {.runs = 0, .checkpoints = 0, .resets = 1}, {.runs = 0, .checkpoints = 1, .resets = 0}},
         },
-        .expectation = {.segments = 0, .checkpoints = 2, .resets = 1},
+        .expectation = {.runs = 0, .checkpoints = 2, .resets = 1},
     },
 };
 

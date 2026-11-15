@@ -44,15 +44,16 @@ struct SegmentRange{
 
 //  What a story run adds to the program's stats.
 struct StoryRunCounts{
-    size_t segments = 0;
+    //  Program runs.
+    size_t runs = 0;
     //  Checkpoints passed (and saved at).
     size_t checkpoints = 0;
     //  Game resets or reloads after failed attempts.
     size_t resets = 0;
 };
 
-//  Adds `counts` to the shared AutoStory stats.
-void record_story_counts(const StoryRunCounts& counts, AutoStoryStats& stats);
+//  Adds `counts` to a story engine's AutoStory stats.
+void record_story_counts(const StoryRunCounts& counts, StoryRunStats& stats);
 
 
 // Summary of checkpoint attempts and pass status.
@@ -80,7 +81,7 @@ struct SegmentReport{
 
     size_t one_shot_passes() const;
     //  What the run adds to the program's stats (record_story_counts()):
-    //  the segment, each checkpoint that passed, each reload.
+    //  the run, each checkpoint that passed, each reload.
     StoryRunCounts story_counts() const;
 };
 

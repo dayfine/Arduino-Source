@@ -131,7 +131,7 @@ void log_story_failure(StoryGameHooks& game){
     log_line(std::string(STORY_LEFT_WHERE_FAILED), game);
 }
 
-std::string finish_story_run(const SegmentReport& report, std::string_view last, AutoStoryStats& stats, StoryGameHooks& game){
+std::string finish_story_run(const SegmentReport& report, std::string_view last, StoryRunStats& stats, StoryGameHooks& game){
     record_story_counts(report.story_counts(), stats);
     if (!report.completed){
         log_story_failure(game);

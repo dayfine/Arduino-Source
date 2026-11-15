@@ -82,7 +82,7 @@ SegmentHooks story_segment_hooks(StoryGameHooks& game);
 //  Ends a run: its counts into `stats`, then the failure line and an
 //  OperationFailedException if it stopped short, else "AutoStory: done
 //  through <last>." Returns that line, for the finish notification.
-std::string finish_story_run(const SegmentReport& report, std::string_view last, AutoStoryStats& stats, StoryGameHooks& game);
+std::string finish_story_run(const SegmentReport& report, std::string_view last, StoryRunStats& stats, StoryGameHooks& game);
 
 //  Ends a verify run: the summary, and the failure line and an
 //  OperationFailedException unless verified. Returns the summary.

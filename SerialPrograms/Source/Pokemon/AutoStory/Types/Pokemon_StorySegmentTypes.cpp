@@ -10,10 +10,10 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-void record_story_counts(const StoryRunCounts& counts, AutoStoryStats& stats){
-    stats.m_segment += counts.segments;
-    stats.m_checkpoint += counts.checkpoints;
-    stats.m_reset += counts.resets;
+void record_story_counts(const StoryRunCounts& counts, StoryRunStats& stats){
+    stats.m_runs += counts.runs;
+    stats.m_checkpoints_passed += counts.checkpoints;
+    stats.m_resets += counts.resets;
 }
 
 bool CheckpointRun::one_shot() const{
@@ -29,7 +29,7 @@ size_t SegmentReport::one_shot_passes() const{
 }
 
 StoryRunCounts SegmentReport::story_counts() const{
-    StoryRunCounts counts{.segments = 1, .checkpoints = 0, .resets = reloads};
+    StoryRunCounts counts{.runs = 1, .checkpoints = 0, .resets = reloads};
     for (const CheckpointRun& run : runs){
         if (run.passed){
             counts.checkpoints++;

@@ -347,7 +347,7 @@ public:
         report.failed_checkpoint = m_case.input.checkpoint;
         report.failed_event = m_case.input.event;
         report.failure = outcome_failed("expect_failed", "dialogue opened");
-        AutoStoryStats stats;
+        StoryRunStats stats;
         std::string message;
         try{
             finish_story_run(report, m_case.input.stopped_after, stats, game);
@@ -405,10 +405,13 @@ public:
         StoryGameHooks game = fake.hooks();
         SegmentReport report;
         report.completed = true;
-        AutoStoryStats stats;
+        StoryRunStats stats;
         const std::string done = finish_story_run(report, m_case.input.last_checkpoint, stats, game);
         if (done != m_case.expectation.line || !fake.logged(done)){
             return std::format("Unexpected finish line: {}", done);
+        }
+        if (stats.m_runs.load() != 1){
+            return std::format("Expected the run counted once, got {} runs", stats.m_runs.load());
         }
         return true;
     }

@@ -663,7 +663,7 @@ UnitTestResult test_checkpoint_dropdowns(){
     return true;
 }
 
-//  A segment's report in the shared AutoStory stats.
+//  A run's report in the AutoStory stats.
 UnitTestResult test_story_stats(){
     SegmentReport report;
     report.reloads = 2;
@@ -672,10 +672,10 @@ UnitTestResult test_story_stats(){
         CheckpointRun{.id = "00.04", .passed = true, .attempts = 3},
         CheckpointRun{.id = "00.05", .passed = false, .attempts = 1},
     };
-    AutoStoryStats stats;
+    StoryRunStats stats;
     record_story_counts(report.story_counts(), stats);
-    if (stats.m_segment != 1 || stats.m_checkpoint != 2 || stats.m_reset != 2){
-        return "Expected 1 segment, 2 checkpoints and 2 resets.";
+    if (stats.m_runs != 1 || stats.m_checkpoints_passed != 2 || stats.m_resets != 2){
+        return "Expected 1 run, 2 checkpoints passed and 2 resets.";
     }
     return true;
 }
