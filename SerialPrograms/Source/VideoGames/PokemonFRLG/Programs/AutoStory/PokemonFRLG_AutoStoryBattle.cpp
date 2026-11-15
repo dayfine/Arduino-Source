@@ -20,6 +20,7 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleHpBarReader.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleTextBoxDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkWatches.h"
@@ -122,9 +123,11 @@ BattleScreen read_battle_screen(const ImageViewRGB32& screen, bool confirmed){
     return BattleScreen::NONE;
 }
 
+//  The text box by its frame (BattleTextBoxDetector): its blue alone also
+//  reads on the near-black below a small map (Silph Co. 5F, 2026-11-14).
 BattleTextScreen read_text_screen(const ImageViewRGB32& screen){
     return BattleTextScreen{
-        .text_box = BattleDialogDetector(COLOR_RED).detect(screen),
+        .text_box = BattleTextBoxDetector(COLOR_RED).detect(screen),
         .hp_box = BattleScreenDetector(COLOR_RED).detect(screen),
         .arrow = AdvanceBattleDialogDetector(COLOR_RED).detect(screen),
         .yes_no = battle_yes_no_shows(screen) || yes_no_cursor(screen).has_value(),

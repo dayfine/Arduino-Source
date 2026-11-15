@@ -302,7 +302,7 @@ UnitTestResult test_rival_row(){
 //  tap west then only turned the player, who never stepped onto the
 //  trigger (2, 4) (pokefirered data/maps/SilphCo_7F/map.json, coord_events
 //  (2, 4) and (2, 5), SilphCo_7F_EventScript_RivalTriggerTop) and the
-//  rival's battle never came (console B, 2026-11-15 00:28, 16.03 run 5).
+//  rival's battle never came (console B, 2026-11-14 00:28, 16.03 run 5).
 UnitTestResult test_rival_trigger_walk_ends_facing_west(){
     const std::vector<MapData> maps = maps_after_16_02();
     const MapPosition pad{"SilphCo_7F", {5, 4}};

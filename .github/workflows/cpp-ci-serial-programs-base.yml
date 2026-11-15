@@ -385,9 +385,9 @@ jobs:
         uses: actions/checkout@v7
         if: inputs.run-tests
         with:
-          # The fork's fixtures: upstream's, the SystemKeyboardDetector and HomeTileReader screenshots and pending FRLG image submissions (Fly landing, party menu, Route 21 battle and Pokemon Mansion 1F and B1F hold frames).
+          # The fork's fixtures: upstream's, the SystemKeyboardDetector and HomeTileReader screenshots and pending FRLG image submissions (Fly landing, party menu, Route 21 battle and Pokemon Mansion 1F and B1F hold frames, Silph Co. 5F overworld).
           repository: 'dayfine/CommandLineTests'
-          ref: 'f68c0b0e6cd1cf2d6d882fb49c3f99c9881ec1f4'
+          ref: '1ec000796442d7f0ef82551e05bf84f27e1695ef'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded

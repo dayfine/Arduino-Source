@@ -14,7 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Registers the screen-event adapter's unit tests (synthetic frames).
+//  Registers the screen-event adapter's unit tests (synthetic and console frames).
 void add_tests_AutoStoryScreenEvents(UnitTestDatabase& database);
 
 
