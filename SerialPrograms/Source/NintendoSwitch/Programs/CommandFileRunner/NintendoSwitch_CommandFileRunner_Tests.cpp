@@ -3,15 +3,19 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Reading the arguments of console commands, with no console: button and
- *  D-pad names, numbers, and the "taps" line.
+ *  D-pad names, numbers, and the "taps" line; and what "game_open" makes
+ *  of what its detectors saw.
  */
 
 #include <functional>
 #include <format>
+#include <optional>
 #include <string>
+#include <string_view>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "NintendoSwitch_CommandFileParsing.h"
+#include "NintendoSwitch_CommandFileRunner.h"
 #include "NintendoSwitch_CommandFileRunner_Tests.h"
 
 namespace PokemonAutomation{
@@ -144,6 +148,64 @@ UnitTestResult test_taps(){
     return true;
 }
 
+struct GameOpenInput{
+    GameOpenScreen screen;
+};
+struct GameOpenExpectation{
+    std::optional<std::string_view> reason;    //  nullopt: a game is in front.
+};
+struct GameOpenCase{
+    std::string name;
+    GameOpenInput input;
+    GameOpenExpectation expectation;
+};
+const GameOpenCase GAME_OPEN_CASES[] = {
+    {
+        .name = "a game frame",
+        .input = {.screen = {.has_frame = true}},
+        .expectation = {.reason = std::nullopt},
+    },
+    {
+        .name = "no frame",
+        .input = {.screen = {.has_frame = false}},
+        .expectation = {.reason = "no_video"},
+    },
+    {
+        .name = "Home menu",
+        .input = {.screen = {.has_frame = true, .home = true}},
+        .expectation = {.reason = "home"},
+    },
+    {
+        .name = "user select",
+        .input = {.screen = {.has_frame = true, .user_select = true}},
+        .expectation = {.reason = "user_select"},
+    },
+    {
+        .name = "black screen",
+        .input = {.screen = {.has_frame = true, .black = true}},
+        .expectation = {.reason = "black"},
+    },
+    {
+        //  Home's dark theme can also read as black: Home names the screen.
+        .name = "Home over black",
+        .input = {.screen = {.has_frame = true, .home = true, .black = true}},
+        .expectation = {.reason = "home"},
+    },
+};
+
+UnitTestResult test_game_open(){
+    for (const GameOpenCase& c : GAME_OPEN_CASES){
+        const std::optional<std::string_view> reason = game_closed_reason(c.input.screen);
+        if (reason != c.expectation.reason){
+            return std::format(
+                "game_open, {}: expected {}, got {}", c.name,
+                c.expectation.reason.value_or("open"), reason.value_or("open")
+            );
+        }
+    }
+    return true;
+}
+
 class Test_CommandFileRunner : public UnitTest{
 public:
     Test_CommandFileRunner(std::string name, std::function<UnitTestResult()> body)
@@ -168,6 +230,7 @@ void add_tests_CommandFileRunner(UnitTestDatabase& database){
     database.add<Test_CommandFileRunner>("held buttons", test_held_buttons);
     database.add<Test_CommandFileRunner>("D-pad", test_dpad);
     database.add<Test_CommandFileRunner>("taps arguments", test_taps);
+    database.add<Test_CommandFileRunner>("game_open", test_game_open);
 }
 
 

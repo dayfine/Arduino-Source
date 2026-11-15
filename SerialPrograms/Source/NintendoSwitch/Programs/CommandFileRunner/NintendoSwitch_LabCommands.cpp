@@ -107,6 +107,11 @@ VideoFeed* SwitchLabCommands::video(PanelSession& panel){
     return program == nullptr ? nullptr : &program->system().video();
 }
 
+const BatchOption* SwitchLabCommands::options(PanelSession& panel){
+    GameConsole::ConsoleProgramSession* program = dynamic_cast<GameConsole::ConsoleProgramSession*>(&panel);
+    return program == nullptr ? nullptr : dynamic_cast<const BatchOption*>(&program->options());
+}
+
 void SwitchLabCommands::keep_awake(PanelSession& panel, CancellableScope& scope){
     LabConsole console(panel, scope);
     pbf_press_button(console.context(), BUTTON_B, 80ms, 0ms);

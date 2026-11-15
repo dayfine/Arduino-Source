@@ -33,8 +33,10 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/StaticTextOption.h"
@@ -91,6 +93,20 @@ std::string save_command_file_screenshot(CommandFileSession& session, const std:
 
 //  The lines "help" prints: every command and detector.
 void print_command_file_help(std::ostream& out);
+
+
+//  What the detectors of "game_open" saw on one frame.
+struct GameOpenScreen{
+    bool has_frame = false;
+    bool home = false;          //  The Switch Home menu.
+    bool user_select = false;   //  "Who is using the software?"
+    bool black = false;         //  A black screen: a loading screen or no signal, so no game seen.
+};
+
+//  Why no game is in front on `screen` ("no_video", "home", "user_select" or
+//  "black"), or nullopt when a game is. "game_open" says which game it is
+//  not: a game's own detector has to tell its game from another's.
+std::optional<std::string_view> game_closed_reason(const GameOpenScreen& screen);
 
 
 

@@ -223,6 +223,7 @@ private:
             {"wait_for",    {"wait_for detector [timeout_ms]   (reports a timeout)", READS_STREAM, &LineRunner::wait_for}},
             {"expect",      {"expect detector [timeout_ms]   (fails on a timeout)", READS_STREAM, &LineRunner::wait_for}},
             {"state",       {"state [image]   (every detector that fires)", READS_STREAM, &LineRunner::state}},
+            {"game_open",   {"game_open [image]   (whether a game is in front: not Home, the user select or a black screen)", READS_STREAM, &LineRunner::game_open}},
             {"close_game",  {"close_game   (from anywhere to Home with the game closed)", DRIVES_CONSOLE, &LineRunner::close_game}},
             {"help",        {"help", READS_STREAM, &LineRunner::help}},
         };
@@ -439,6 +440,33 @@ private:
         VideoSnapshot screen = current_frame();
         out() << "state " << (screen ? detectors_firing(screen) : "(no video frame)") << "\n";
     }
+    //  "game_open [image]": prints "game_open yes", or "game_open no <reason>"
+    //  (game_closed_reason()). Reads only; never fails the line.
+    void game_open(const std::vector<std::string>& words){
+        GameOpenScreen seen;
+        if (words.size() > 1){
+            seen = game_open_screen(load_image(words[1]));
+        }else{
+            VideoSnapshot screen = current_frame();
+            if (screen){
+                seen = game_open_screen(screen);
+            }
+        }
+        const std::optional<std::string_view> reason = game_closed_reason(seen);
+        if (reason){
+            out() << "game_open no " << *reason << "\n";
+        }else{
+            out() << "game_open yes\n";
+        }
+    }
+    GameOpenScreen game_open_screen(const ImageViewRGB32& screen){
+        return GameOpenScreen{
+            .has_frame = true,
+            .home = HomeMenuDetector(console(), COLOR_RED).detect(screen),
+            .user_select = StartGameUserSelectDetector(console()).detect(screen),
+            .black = BlackScreenDetector().detect(screen),
+        };
+    }
     void close_game(const std::vector<std::string>&){
         go_home(console(), context());
         close_game_from_home(console(), context());
@@ -465,6 +493,22 @@ private:
 }
 
 
+
+std::optional<std::string_view> game_closed_reason(const GameOpenScreen& screen){
+    if (!screen.has_frame){
+        return "no_video";
+    }
+    if (screen.home){
+        return "home";
+    }
+    if (screen.user_select){
+        return "user_select";
+    }
+    if (screen.black){
+        return "black";
+    }
+    return std::nullopt;
+}
 
 CommandFileCommandKind command_file_command_kind(const std::string& name){
     return LineRunner::kind(name);

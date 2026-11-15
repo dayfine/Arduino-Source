@@ -7,6 +7,9 @@
 #ifndef PokemonAutomation_Options_BatchOption_H
 #define PokemonAutomation_Options_BatchOption_H
 
+#include <string>
+#include <utility>
+#include <vector>
 #include "Common/Cpp/Containers/Pimpl.h"
 #include "Common/Cpp/Containers/FixedLimitVector.h"
 #include "ConfigOption.h"
@@ -41,6 +44,10 @@ public:
 
     bool horizontal() const;
     FixedLimitVector<ConfigOption*> options() const;
+
+    //  Each option with the key it is saved under in to_json(), in the order
+    //  they were added. Static options have an empty key.
+    const std::vector<std::pair<ConfigOption*, std::string>>& keyed_options() const;
 
 
 private:

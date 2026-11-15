@@ -41,6 +41,7 @@
 #include "Common/Cpp/Concurrency/AsyncTask.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
 #include "Common/Cpp/Concurrency/ConditionVariable.h"
+#include "Common/Cpp/Options/BatchOption.h"
 #include "CommonFramework/Globals.h"
 #include "CommonFramework/Panels/PanelSession.h"
 #include "CommonFramework/ProgramSession.h"
@@ -104,6 +105,10 @@ public:
     //  Called on the UI thread.
     virtual VideoFeed* video(PanelSession& panel) = 0;
 
+    //  The options of the program `panel`, or nullptr if it is not a program
+    //  of this console type. Read by "describe_program".
+    virtual const BatchOption* options(PanelSession& panel) = 0;
+
     //  The press that keeps the console awake ("keepawake on").
     virtual void keep_awake(PanelSession& panel, CancellableScope& scope) = 0;
 
@@ -146,6 +151,7 @@ private:
     std::string run_start(const LabRequest& request, const std::vector<std::string>& words);
     std::string run_popups(const std::vector<std::string>& words, std::ostream& out);
     std::string run_snapshot(const std::vector<std::string>& words, LabCommandOutput& output);
+    std::string run_describe_program(const std::vector<std::string>& words, std::ostream& out);
     std::string run_on_ui(const std::function<std::string()>& body);
     void keep_awake();
     void write_state();
