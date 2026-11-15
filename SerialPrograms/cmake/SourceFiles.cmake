@@ -2394,6 +2394,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Options/PokemonLZA_ShinyDetectedAction.h
     Source/VideoGames/PokemonLZA/PokemonLZA_Panels.cpp
     Source/VideoGames/PokemonLZA/PokemonLZA_Panels.h
+    Source/VideoGames/PokemonLZA/PokemonLZA_PendingFixtures.h
     Source/VideoGames/PokemonLZA/PokemonLZA_Settings.cpp
     Source/VideoGames/PokemonLZA/PokemonLZA_Settings.h
     Source/VideoGames/PokemonLZA/PokemonLZA_Tests.cpp

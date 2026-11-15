@@ -78,6 +78,8 @@ void play_checked(PlzaBackend& backend, std::string_view what, Input&& input){
 Pokemon::Outcome face_heading(PlzaBackend& backend, const PlzaReader& reader, double heading, double tolerance){
     std::optional<int> now = read_heading(backend, reader);
     for (size_t attempt = 0; attempt < 4 && now && get_angle_between_facing_directions(*now, heading) > tolerance; attempt++){
+        //  The stick's direction wraps, so a difference past 180 still
+        //  turns the short way.
         story_turn(backend, heading - *now);
         now = read_heading(backend, reader);
     }
@@ -91,8 +93,7 @@ Pokemon::Outcome face_heading(PlzaBackend& backend, const PlzaReader& reader, do
         );
     }
     //  The turn moves the player, not the camera: L puts the camera behind
-    //  the player, so a walk forward and the screen readers go the new way
-    //.
+    //  the player, so a walk forward and the screen readers go the new way.
     backend.press(BUTTON_L, 100ms, 150ms);
     return Pokemon::outcome_ok();
 }

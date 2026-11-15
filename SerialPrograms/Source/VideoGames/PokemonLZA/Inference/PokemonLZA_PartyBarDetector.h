@@ -29,7 +29,9 @@ namespace PokemonLZA{
 //  on rows 1028-1031, slot i from x = 86 + 76.4 * i, 52 wide.
 class PartyBarDetector : public StaticScreenDetector{
 public:
-    PartyBarDetector(Color color = COLOR_RED, VideoOverlay* overlay = nullptr);
+    static constexpr size_t PARTY_SIZE = 6;
+
+    explicit PartyBarDetector(Color color = COLOR_RED, VideoOverlay* overlay = nullptr);
 
     virtual void make_overlays(VideoOverlaySet& items) const override;
 
@@ -52,8 +54,8 @@ private:
 
     OverworldPartySelectionDetector m_selection;
     //  Each slot's HP bar and, above it, the card between icon and bar.
-    std::array<ImageFloatBox, 6> m_bar_boxes;
-    std::array<ImageFloatBox, 6> m_card_boxes;
+    std::array<ImageFloatBox, PARTY_SIZE> m_bar_boxes;
+    std::array<ImageFloatBox, PARTY_SIZE> m_card_boxes;
     int m_filled_slots = 0;
 };
 
