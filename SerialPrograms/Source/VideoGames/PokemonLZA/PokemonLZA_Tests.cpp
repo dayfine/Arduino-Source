@@ -22,11 +22,13 @@
 #include "Inference/PokemonLZA_PartyBarDetector.h"
 #include "Inference/PokemonLZA_SelectionArrowDetector.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryFailures.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStoryStartLoad_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryDialogs_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryConfirmChoicesReader_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDetectors_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader_Tests.h"
+#include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryZoneGateReader_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h"
 
@@ -58,8 +60,10 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStoryConfirmChoicesReader(database);
     add_tests_AutoStoryDialogChoiceBox(database);
     add_tests_AutoStoryObjectiveMarkerReader(database);
+    add_tests_AutoStoryZoneGateReader(database);
     add_tests_AutoStoryFailures(database);
     add_tests_AutoStoryDialogs(database);
+    add_tests_AutoStoryStartLoad(database);
 
 }
 
