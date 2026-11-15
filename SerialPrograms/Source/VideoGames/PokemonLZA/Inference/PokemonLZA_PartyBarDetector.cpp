@@ -51,7 +51,7 @@ double brightness(Color color){
     return (color.red() + color.green() + color.blue()) / 3.0;
 }
 
-}
+} // namespace
 
 
 PartyBarDetector::PartyBarDetector(Color color, VideoOverlay* overlay)
@@ -172,7 +172,7 @@ private:
     const PartyBarCase& m_case;
 };
 
-}
+} // namespace
 
 
 void add_tests_PartyBarDetector(UnitTestDatabase& database){
@@ -183,6 +183,6 @@ void add_tests_PartyBarDetector(UnitTestDatabase& database){
 
 
 
-}
-}
-}
+} // namespace PokemonLZA
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
