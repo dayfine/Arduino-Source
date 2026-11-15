@@ -184,7 +184,7 @@ const SegmentCase SEGMENT_CASES[] = {
     {
         .name = "a failed checkpoint passes after a reload",
         .input = {.checkpoints = {checkpoint_of("01.01", {"fail_once"})}, .attempts = 3},
-        .expectation = {.summary = "done | runs 01.01:pass/2 | reloads 1", .inputs = "press Home", .line = "[Checkpoint] 01.01: failed, resetting for attempt 2/3"},
+        .expectation = {.summary = "done | runs 01.01:pass/2 | reloads 1", .inputs = "press HOME", .line = "[Checkpoint] 01.01: failed, resetting for attempt 2/3"},
     },
     {
         .name = "no reload after a checkpoint that did not save",
@@ -194,12 +194,12 @@ const SegmentCase SEGMENT_CASES[] = {
     {
         .name = "a reload after a checkpoint that saved",
         .input = {.checkpoints = {checkpoint_of("01.00", {"ok"}), checkpoint_of("01.01", {"fail"})}, .attempts = 2, .autosaves = {"01.00"}},
-        .expectation = {.summary = "failed at 01.01 fail: scripted_failure | runs 01.00:pass/1 01.01:fail/2 | reloads 1", .inputs = "press Home"},
+        .expectation = {.summary = "failed at 01.01 fail: scripted_failure | runs 01.00:pass/1 01.01:fail/2 | reloads 1", .inputs = "press HOME"},
     },
     {
         .name = "a failed reload ends the segment",
         .input = {.checkpoints = {checkpoint_of("01.01", {"fail"})}, .attempts = 3, .reload_fails = true},
-        .expectation = {.summary = "failed at 01.01 : reload_failed | runs 01.01:fail/1 | reloads 0", .inputs = "press Home"},
+        .expectation = {.summary = "failed at 01.01 : reload_failed | runs 01.01:fail/1 | reloads 0", .inputs = "press HOME"},
     },
     {
         .name = "the game not running is not retried",
