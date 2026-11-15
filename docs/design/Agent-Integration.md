@@ -307,7 +307,7 @@ Each tool validates before it acts and returns JSON, or a refusal naming the fai
 | `preflight_program(console, panel, options)` | Lease required because detectors may use app resources, but performs no controller action. Rejects unknown keys and disabled values, stages the candidate options, evaluates dynamic visibility and `check_validity`, then has the app run the program's prechecks in order; always restores the prior options. Returns the checks run, the first failure's name and user message, and evidence. |
 | `run_program(console, panel, options, preflight_token)` | Lease. Requires a still-current successful preflight bound to app instance, panel, the candidate options' hash, observation versions and lease. Starts once and returns request/run ids. |
 | `stop_program(console)` | Lease. Requests Stop once; success is the matching `last_transition{source: lab, request_id}` or a terminal run event, not merely a stopped snapshot. |
-| `cfr_batch(console, lines)` | Lease, program stopped. Debug-only allowlisted command batch; marks the save fact stale. Raw writes to `Lab/inbox` are not exposed. |
+| `cfr_batch(console, lines)` | Lease, program stopped. Debug-only allowlisted command batch on the selected panel's console (Slice 7b); marks the save fact stale. Raw writes to `Lab/inbox` are not exposed. |
 
 `switch_game` is deliberately absent from the first design. Current common routines can
 resume or start the selected HOME tile, but cannot reliably select an arbitrary title by
@@ -584,30 +584,41 @@ missing audio permission, crash/restart and refusal to kill an unrelated process
 
 ### Slice 7b — retire CFR
 
-Settled by the user (2026-11-14): the daemon replaces CFR. Today CFR is a program panel (the
-Lab Console's Command File Runner) fed batches through `Lab/inbox` by `lcB.sh`, `cfB.sh` and
-`cfr.sh`. To press a button an agent must select that panel, which resets controller and
-video, and Start runs whatever panel is selected. A backgrounded panel switch killed the user's
-10.01 run that way.
+Settled by the user (2026-11-14, option B): each panel keeps its own console, and the seam is
+the lab channel that already exists (`Lab/inbox`, #507). Its console commands act on whichever
+Switch program panel is selected, while that panel's program is stopped. There is no app-wide
+console owner: option A (an always-on seam beside the snapshot seam that owns console B's
+controller and video for the app's lifetime) was rejected, because it would put a second owner
+on the controller every program already owns through its panel.
 
-- Move CFR's command set (`press`, `stick`, `dpad`, `shot`, `state`/`detect`, `close_game`)
-  into an always-on app-level seam beside the snapshot seam: it owns console B's controller
-  and video for the app's lifetime, not a panel. No panel holds the controller, so nothing
-  ever switches panels to press a button.
-- The daemon exposes each command as a typed tool (`press(console, buttons, hold_ms,
-  release_ms)`, ...) with validated ranges, replacing Slice 5's `cfr_batch`. Every press is one
-  request record and marks the save fact stale (Slice 6).
-- Respect the user lease: a Start or Stop clicked in the app hands B to the user. Raw presses
-  need an `agent-idle` lease and are refused while a program runs or the user holds B. On
-  2026-11-14 hand presses landed during a run; the seam checks program state itself, so a stray
-  request cannot repeat that even when it bypasses the daemon.
-- Delete the CFR panel and the inbox's command lines. The file pair stays only as the daemon's
-  owner-token-gated transport (Rollout); no script writes `Lab/inbox`.
+Why no new seam is needed, from the agent report that stopped before coding: the channel
+already runs the full CFR command set (`press`, `dpad`, `taps`, `stick`, `wait`, `walk`,
+`shot`, `shots`, `history`, `detect`, `wait_for`, `expect`, `game_open`, `close_game`, `help`;
+`keepawake` is the channel's own) through `SwitchLabCommands`, which calls the Command File
+Runner's line runner on the selected program's console. It refuses a command that drives the
+controller unless the program is `STOPPED` ("Program is RUNNING; only commands that read the
+screen run now.") and, once the channel is claimed, unless the request carries the owner token;
+a panel change cancels a running command ("cancelled: the panel changed."). Commands that only
+read the screen run in any state and need no token. So the thing that killed the user's 10.01
+run, selecting the CFR panel to press a button, is already unnecessary; what remains is to stop
+doing it.
 
-Acceptance: native tests cover the seam's refusals (program running, user lease, no owner
-token) and a press during a panel change; fake-lab tests cover each tool's ranges and request
-records; a console-B session drives a story leg's debugging with the typed tools only, with no
-panel selected for it, while `run_program` on another panel starts without a switch.
+- No script selects a panel to press a button. The in-tree `cfrun.sh` and `labctl.sh` already
+  write `Lab/inbox` for the selected panel. The lab scripts outside the tree that still write
+  the CFR panel's `CommandFiles/` or the Lab Console's `LabConsole/` (`cfB.sh`, `lcB.sh`,
+  `cfr.sh` on the agents branch, the CFR fallback in `keepawake.sh`) move to `Lab/inbox` on the
+  selected panel and exit non-zero with the app's refusal when that program is running.
+- The daemon's `cfr_batch` (Slice 5) stays the typed front for the same lines: lease, program
+  stopped, allowlisted commands. Once the scripts are retired it is the transport's only writer.
+- The CFR panel: nothing in the code tree needs it besides its registration in
+  `NintendoSwitch_Panels.cpp`; the scripts above and the deployed lab builds they drive still
+  do. Delete the panel (keeping the line runner the channel calls) once those scripts write
+  `Lab/inbox`.
+
+Acceptance: `LabChannel - console command refusal` covers the gate (a press is refused in every
+state but `STOPPED`, a read runs in any state); `LabChannel - owner lock` covers the token; a
+console-B session debugs a story leg with `cfrun.sh` on the selected program's panel, with no
+panel switch, and `run_program` on that panel starts without one.
 
 ### Slice 8 — optional local-operations worker
 
@@ -633,7 +644,7 @@ the file channel: it remains the app/daemon compatibility boundary.
 | 3 | `switch_guard.sh`, `run_watch.sh`, `watch_run.sh`, `stage_watch.sh`, `full_run_watch.sh`, `plza_watch*.sh` |
 | 5 | `stopB.sh`, `run_from_save.sh`, `reload.sh`, `preflight_B.sh`, `stage_run.sh`, `cfB.sh`, `cfrB.sh`; `labctl.sh` and `cfrun.sh` as agent entry points |
 | 7 | `labrun.sh`, `lab_panel.sh`, `start_B.sh`, `stage_launch.sh`, `lablock.sh` |
-| 7b | the CFR panel and script writes to `Lab/inbox`; `lcB.sh`, `cfr.sh`, `sel.sh`; `labctl.sh` and `cfrun.sh` entirely; CFR batches in `keepawake.sh` and the leg scripts (`smash_walk.sh`, `fight_lc.sh`, ...) move to the tools |
+| 7b | the CFR panel and script writes to `CommandFiles/` and `LabConsole/`; `lcB.sh`, `cfr.sh`, `sel.sh` as panel switchers; CFR batches in `keepawake.sh` and the leg scripts (`smash_walk.sh`, `fight_lc.sh`, ...) move to `Lab/inbox` on the selected panel, then to `cfr_batch` |
 | 8 | `labbuild.sh`, `heavy_gate.sh`, `make_slot_b.sh`, `plza_rebuild.sh` |
 
 `disk_gc.sh` and the launchd jobs stay, as before.

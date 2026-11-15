@@ -57,6 +57,12 @@ namespace PokemonAutomation{
 
 std::string program_state_name(ProgramState state);
 
+//  Why a console command may not run for the selected program now, or ""
+//  when it may: a command that drives the controller (a press, a stick, a
+//  walk) runs only while the program is STOPPED; a command that only reads
+//  the screen runs in any state.
+std::string console_command_refusal(ProgramState state, bool reads_only);
+
 
 //  The window, as the channel sees it. Both are called on the UI thread only.
 struct LabChannelCallbacks{
