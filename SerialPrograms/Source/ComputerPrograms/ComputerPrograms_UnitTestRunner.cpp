@@ -25,6 +25,8 @@
 #include "CommonFramework/Windows/LabChannel_Tests.h"
 #include "CommonFramework/VideoPipeline/Sources/VideoSource_MgbaLink_Tests.h"
 #include "Controllers/MgbaLink/MgbaLink_Tests.h"
+#include "CommonFramework/Windows/LabSnapshot_Tests.h"
+#include "CommonFramework/Windows/LabStateJson_Tests.h"
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "CommonTools/OCR/OCR_Tests.h"
 
@@ -73,6 +75,8 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_LabChannel(ret);
     MgbaLink::add_tests(ret);
     add_tests_VideoSource_MgbaLink(ret);
+    add_tests_LabSnapshot(ret);
+    add_tests_LabStateJson(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
     Pokemon::add_tests_AutoStorySelect(ret);

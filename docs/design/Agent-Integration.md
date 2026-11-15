@@ -556,6 +556,33 @@ record with the correct source.
 Acceptance: tests use fake processes/PIDs; manual tests cover stale pidfiles, wrong profile,
 missing audio permission, crash/restart and refusal to kill an unrelated process.
 
+### Slice 7b — retire CFR
+
+Settled by the user (2026-11-14): the daemon replaces CFR. Today CFR is a program panel (the
+Lab Console's Command File Runner) fed batches through `Lab/inbox` by `lcB.sh`, `cfB.sh` and
+`cfr.sh`. To press a button an agent must select that panel, which resets controller and
+video, and Start runs whatever panel is selected. A backgrounded panel switch killed the user's
+10.01 run that way.
+
+- Move CFR's command set (`press`, `stick`, `dpad`, `shot`, `state`/`detect`, `close_game`)
+  into an always-on app-level seam beside the snapshot seam: it owns console B's controller
+  and video for the app's lifetime, not a panel. No panel holds the controller, so nothing
+  ever switches panels to press a button.
+- The daemon exposes each command as a typed tool (`press(console, buttons, hold_ms,
+  release_ms)`, ...) with validated ranges, replacing Slice 5's `cfr_batch`. Every press is one
+  request record and marks the save fact stale (Slice 6).
+- Respect the user lease: a Start or Stop clicked in the app hands B to the user. Raw presses
+  need an `agent-idle` lease and are refused while a program runs or the user holds B. On
+  2026-11-14 hand presses landed during a run; the seam checks program state itself, so a stray
+  request cannot repeat that even when it bypasses the daemon.
+- Delete the CFR panel and the inbox's command lines. The file pair stays only as the daemon's
+  owner-token-gated transport (Rollout); no script writes `Lab/inbox`.
+
+Acceptance: native tests cover the seam's refusals (program running, user lease, no owner
+token) and a press during a panel change; fake-lab tests cover each tool's ranges and request
+records; a console-B session drives a story leg's debugging with the typed tools only, with no
+panel selected for it, while `run_program` on another panel starts without a switch.
+
 ### Slice 8 — optional local-operations worker
 
 - In a separate process and config, wrap the existing heavy gate, disk floor, `-j4`, `nice`
@@ -580,6 +607,7 @@ the file channel: it remains the app/daemon compatibility boundary.
 | 3 | `switch_guard.sh`, `run_watch.sh`, `watch_run.sh`, `stage_watch.sh`, `full_run_watch.sh`, `plza_watch*.sh` |
 | 5 | `stopB.sh`, `run_from_save.sh`, `reload.sh`, `preflight_B.sh`, `stage_run.sh`, `cfB.sh`, `cfrB.sh`; `labctl.sh` and `cfrun.sh` as agent entry points |
 | 7 | `labrun.sh`, `lab_panel.sh`, `start_B.sh`, `stage_launch.sh`, `lablock.sh` |
+| 7b | the CFR panel and script writes to `Lab/inbox`; `lcB.sh`, `cfr.sh`, `sel.sh`; `labctl.sh` and `cfrun.sh` entirely; CFR batches in `keepawake.sh` and the leg scripts (`smash_walk.sh`, `fight_lc.sh`, ...) move to the tools |
 | 8 | `labbuild.sh`, `heavy_gate.sh`, `make_slot_b.sh`, `plza_rebuild.sh` |
 
 `disk_gc.sh` and the launchd jobs stay, as before.
