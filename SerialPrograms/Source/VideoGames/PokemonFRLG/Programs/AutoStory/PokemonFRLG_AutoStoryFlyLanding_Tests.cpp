@@ -121,39 +121,38 @@ private:
     FlyLandingCase m_case;
 };
 
-const ScreenEvents NOTHING = {};
 const ScreenEvents BLACK = {ScreenEvent::FADE_BLACK};
 const ScreenEvents WHITE = {ScreenEvent::FADE_WHITE};
 
 const FlyLandingCase CASES[] = {
     {
         .name = "the black band and a quiet Fuchsia, no fade: not landed",
-        .input = {repeated(NOTHING, 15), Direction::SOUTH},
+        .input = {repeated(QUIET_OVERWORLD, 15), Direction::SOUTH},
         .expectation = {false, false, false},
     },
     {
         .name = "a fade then quiet, still the departure town: not landed",
-        .input = {joined(repeated(BLACK, 5), repeated(NOTHING, 26)), Direction::WEST, false},
+        .input = {joined(repeated(BLACK, 5), repeated(QUIET_OVERWORLD, 26)), Direction::WEST, false},
         .expectation = {false, false, true},
     },
     {
         .name = "a fade then quiet, the player on screen: landed",
-        .input = {joined(repeated(BLACK, 5), repeated(NOTHING, 12)), Direction::SOUTH},
+        .input = {joined(repeated(BLACK, 5), repeated(QUIET_OVERWORLD, 12)), Direction::SOUTH},
         .expectation = {true, true},
     },
     {
         .name = "a white fade then quiet, the player on screen: landed",
-        .input = {joined(repeated(WHITE, 5), repeated(NOTHING, 12)), Direction::SOUTH},
+        .input = {joined(repeated(WHITE, 5), repeated(QUIET_OVERWORLD, 12)), Direction::SOUTH},
         .expectation = {true, true},
     },
     {
         .name = "a fade then quiet, no readable facing: not landed",
-        .input = {joined(repeated(BLACK, 5), repeated(NOTHING, 12)), std::nullopt},
+        .input = {joined(repeated(BLACK, 5), repeated(QUIET_OVERWORLD, 12)), std::nullopt},
         .expectation = {false, true},
     },
     {
         .name = "a fade, quiet for less than AFTER_BATTLE_QUIET: not landed",
-        .input = {joined(repeated(BLACK, 5), repeated(NOTHING, 4)), Direction::SOUTH},
+        .input = {joined(repeated(BLACK, 5), repeated(QUIET_OVERWORLD, 4)), Direction::SOUTH},
         .expectation = {false, false, false},
     },
     {
@@ -195,8 +194,8 @@ protected:
 
         //  Each frame is quiet; only the Pallet frame, after a fade, has a player to read.
         for (size_t c = 0; c < 3; c++){
-            if (events_of(images[c]) != NOTHING){
-                return std::format("frame {} shows {}, not nothing", c, describe(events_of(images[c])));
+            if (events_of(images[c]) != QUIET_OVERWORLD){
+                return std::format("frame {} shows {}, not the quiet overworld", c, describe(events_of(images[c])));
             }
         }
         if (facing_of(images[0])){
@@ -209,14 +208,14 @@ protected:
         //  The run's order: the band and Fuchsia are quiet for over a
         //  second with no fade (the logged "landed in PalletTown (quiet
         //  1.1 s)"): not landed, whatever the facing reads.
-        const std::vector<ScriptedFrame> before_fade = repeated(NOTHING, 12);
+        const std::vector<ScriptedFrame> before_fade = repeated(QUIET_OVERWORLD, 12);
         const ImageFloatBox game = GameSettings::instance().GAME_BOX;
         const auto has_left = [&]{ return left_departure(images[1], images[2], game); };
         if (judge_fly_landing(scripted_look(before_fade), QUIET, has_left, [&]{ return facing_of(images[1]); }).landed()){
             return "Fuchsia before the fade counts as landed";
         }
         //  The fade, then the Pallet frame.
-        const std::vector<ScriptedFrame> arrival = joined(joined(before_fade, repeated(BLACK, 6)), repeated(NOTHING, 12));
+        const std::vector<ScriptedFrame> arrival = joined(joined(before_fade, repeated(BLACK, 6)), repeated(QUIET_OVERWORLD, 12));
         if (!judge_fly_landing(scripted_look(arrival), QUIET, has_left, [&]{ return facing_of(images[2]); }).landed()){
             return "Pallet Town after the fade is not landed";
         }
@@ -280,7 +279,7 @@ protected:
 
         //  The fly map's fade, then Fuchsia quiet for 2.6 s: both runs'
         //  "landed in PalletTown". Not landed.
-        const std::vector<ScriptedFrame> fly_off = joined(repeated(BLACK, 5), repeated(NOTHING, 26));
+        const std::vector<ScriptedFrame> fly_off = joined(repeated(BLACK, 5), repeated(QUIET_OVERWORLD, 26));
         const FlyLanding on_fuchsia = judge_fly_landing(
             scripted_look(fly_off), QUIET,
             [&]{ return left_departure(departure, departure, game); },
@@ -290,7 +289,7 @@ protected:
             return std::format("Fuchsia after the fly map's fade counts as landed: {}", describe(on_fuchsia));
         }
         //  Then the flight's fade and Pallet with the player standing: landed.
-        const std::vector<ScriptedFrame> arrival = joined(joined(fly_off, repeated(BLACK, 6)), repeated(NOTHING, 12));
+        const std::vector<ScriptedFrame> arrival = joined(joined(fly_off, repeated(BLACK, 6)), repeated(QUIET_OVERWORLD, 12));
         const FlyLanding on_pallet = judge_fly_landing(
             scripted_look(arrival), QUIET,
             [&]{ return left_departure(departure, pallet, game); },

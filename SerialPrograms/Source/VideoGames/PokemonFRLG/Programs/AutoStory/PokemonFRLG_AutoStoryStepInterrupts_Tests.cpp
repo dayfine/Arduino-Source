@@ -38,8 +38,8 @@ using Pokemon::StoryStepKind;
 
 const WallClock T0 = WallClock() + std::chrono::hours(1);
 
-//  What FrlgScreenObserver reports of each screen (no PLAYER_CAN_MOVE).
-const ScreenEvents OVERWORLD{};
+//  What FrlgScreenObserver reports of each screen.
+const ScreenEvents OVERWORLD = QUIET_OVERWORLD;
 const ScreenEvents BOX{ScreenEvent::DIALOG_BOX};
 const ScreenEvents WHITE{ScreenEvent::FADE_WHITE};
 const ScreenEvents BLACK{ScreenEvent::FADE_BLACK};

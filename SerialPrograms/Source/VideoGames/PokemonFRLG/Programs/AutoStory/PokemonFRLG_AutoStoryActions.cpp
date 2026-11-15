@@ -621,12 +621,11 @@ std::optional<int> step_until_seen(int max_tiles, const std::function<void()>& s
 void wait_out_battle_exit(ConsoleHandle& console, ProControllerContext& context){
     context.wait_for_all_requests();
     ConsoleScreenLook eyes(console, context);
-    const Pokemon::ScreenSettle settle = wait_for_quiet_overworld(
-        [&eyes](bool fresh){ return eyes.look(fresh); },
-        MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT
+    const Pokemon::SettleEnd settle = wait_for_quiet_overworld(
+        [&eyes](bool fresh){ return eyes.look(fresh); }, "after the battle", BATTLE_EXIT_TIMEOUT
     );
-    const bool quiet = quiet_overworld(settle, MovementMechanics::AFTER_BATTLE_QUIET);
-    console.log("Story: after the battle, " + Pokemon::describe(settle), quiet ? COLOR_BLACK : COLOR_RED);
+    const bool quiet = settle.result == Pokemon::SettleEnd::Result::QUIET;
+    console.log("Story: after the battle, " + describe(settle), quiet ? COLOR_BLACK : COLOR_RED);
 }
 
 std::optional<int> step_into_line(

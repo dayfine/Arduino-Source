@@ -13,10 +13,12 @@
  *  - WILD_BATTLES: wild battles at the game's own odds on every map with
  *    land encounters, over DEFAULT_SWEEP_SEEDS seeds (08.01's Rock Tunnel).
  *  - LATE_FADE: every warp's fade ends LATE_FADE later than the sim's
- *    usual (07.02's warp to Cerulean City).
+ *    usual (07.02's warp to Cerulean City), a Pokemon Center's doors
+ *    among them, walked by the shared visit (Pokemon_CenterVisit.h).
  *  - SLOW_FADE_IN: after every warp's fade the new map fades in for
  *    SLOW_FADE_IN, the game taking no input yet: a fixed wait after a
- *    fade, then a move (BDSP 00.04b heal_sandgem, lab-B 2026-11-10).
+ *    fade, then a move (BDSP 00.04b heal_sandgem, lab-B 2026-11-10); the
+ *    Centers' doors too, and the HEAL step after them reads the room.
  *  - DARK_CAVE: the caves without Flash dark (DARK_MAPS), so each
  *    battle there ends on the dark cave's overworld, with no wild
  *    battles and with them at the game's odds (08.01 hiker_lenny, lab-B

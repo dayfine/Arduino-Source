@@ -163,11 +163,10 @@ void pick_lift_floor(ConsoleHandle& console, ProControllerContext& context, cons
     //  drops taps until it stops (console B, 2026-11-11).
     context.wait_for_all_requests();
     ConsoleScreenLook eyes(console, context);
-    const Pokemon::ScreenSettle settle = wait_for_quiet_overworld(
-        [&eyes](bool fresh){ return eyes.look(fresh); },
-        MovementMechanics::AFTER_BATTLE_QUIET, HIDEOUT_SCENE_TIMEOUT
+    const Pokemon::SettleEnd settle = wait_for_quiet_overworld(
+        [&eyes](bool fresh){ return eyes.look(fresh); }, "the lift's ride", HIDEOUT_SCENE_TIMEOUT
     );
-    console.log(std::format("Story: after the lift's ride, {}", Pokemon::describe(settle)));
+    console.log(std::format("Story: after the lift's ride, {}", describe(settle)));
 }
 
 void ride_lift(ConsoleHandle& console, ProControllerContext& context, const LiftRide& ride, PlayerGender player){
@@ -195,11 +194,6 @@ std::optional<Pokemon::Outcome> run_field_game_step(
     }
     if (std::optional<Pokemon::Outcome> moved = run_field_move_step(console, context, language, player, step, party)){
         return moved;
-    }
-    if (is_center_variant(step.action)){
-        //  Both start facing north: at the door, or at the nurse.
-        walk_room_legs(console, context, center_legs(step.action), Pokemon::Direction::NORTH, player);
-        return done();
     }
     if (step.action == POSTER_SWITCH_VARIANT){
         push_poster_switch(console, context);

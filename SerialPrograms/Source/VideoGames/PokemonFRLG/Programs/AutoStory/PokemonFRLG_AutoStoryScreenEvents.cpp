@@ -28,7 +28,7 @@ ScreenEvents FrlgScreenObserver::observe(const VideoSnapshot& frame, WallClock){
     const ImageViewRGB32& screen = *frame.frame;
     if (OverworldWalkSteps::dark_cave_screen(screen)){
         //  Its black below passes for a battle's text box.
-        return {};
+        return QUIET_OVERWORLD;
     }
     ScreenEvents out = fade_events(fade_of_screen(screen));
     if (fade_in(out) != WarpFade::NONE){
@@ -39,6 +39,9 @@ ScreenEvents FrlgScreenObserver::observe(const VideoSnapshot& frame, WallClock){
     out.set(ScreenEvent::BATTLE_STARTED, battle);
     out.set(ScreenEvent::DIALOG_BOX, !battle && m_dialog.detect(screen));
     out.set(ScreenEvent::CHOICE_BOX, !battle && m_choice.detect(screen));
+    if (out == ScreenEvents{}){
+        out = QUIET_OVERWORLD;
+    }
     return out;
 }
 

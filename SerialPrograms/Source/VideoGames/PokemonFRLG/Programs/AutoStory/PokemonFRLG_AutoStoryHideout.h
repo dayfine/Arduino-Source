@@ -60,11 +60,11 @@ std::vector<Pokemon::StoryActionSpec> field_action_specs();
 //  overworld.
 void push_poster_switch(ConsoleHandle& console, ProControllerContext& context);
 
-//  On the console, a GAME step of this file's, a Pokemon Center's
-//  (is_center_variant()), a field move (is_field_move_step()) or an item
-//  from the bag (is_item_use_step());
-//  nothing for another GAME step. The step ends on its pose_after, if it
-//  has one (an Escape Rope's, a lift ride's, a Center's).
+//  On the console, a GAME step of this file's, a field move
+//  (is_field_move_step()) or an item from the bag (is_item_use_step());
+//  nothing for another GAME step, a Pokemon Center's among them
+//  (center_step()). The step ends on its pose_after, if it has one (an
+//  Escape Rope's, a lift ride's).
 std::optional<Pokemon::Outcome> run_field_game_step(
     ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player,
     const Pokemon::StoryStep& step, PartyCache& party

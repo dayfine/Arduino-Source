@@ -220,7 +220,8 @@ WallClock sim_wall_clock(Milliseconds time);
 //  The screens `state` showed from `from` until its time, as the walker's
 //  screen observer (FrlgScreenObserver) reports them: a message's box, a
 //  battle's text box with or without its HP boxes, and the black of a
-//  battle's wipe or a warp's fade. A battle's flashes are no uniform
+//  battle's wipe or a warp's fade, and the overworld at rest
+//  (PLAYER_CAN_MOVE, PLAYER_STILL) otherwise. A battle's flashes are no uniform
 //  screen, and black below a small room, which the observer's battle text
 //  box detector may take for a box, isn't modelled.
 ScreenEventLog screen_event_log(const SimState& state, Milliseconds from);

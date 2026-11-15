@@ -67,7 +67,9 @@ ScreenEvents observed_events(SimScreen screen){
     case SimScreen::BATTLE_FLASH:
         break;
     }
-    return {};
+    //  The overworld at rest, as the observer reports a screen with
+    //  nothing else on it (QUIET_OVERWORLD).
+    return {ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::PLAYER_STILL};
 }
 
 } // namespace

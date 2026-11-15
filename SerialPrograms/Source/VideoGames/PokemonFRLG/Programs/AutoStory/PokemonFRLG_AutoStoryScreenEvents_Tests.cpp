@@ -99,9 +99,9 @@ const ScreenEventsCase SCREEN_EVENTS_CASES[] = {
     {
         //  Rock Tunnel without Flash (console B, 2026-11-09, 08.01): its
         //  black read as a battle's text box before each step.
-        .name = "a dark cave, black but for a lit middle, shows nothing",
+        .name = "a dark cave, black but for a lit middle, is the quiet overworld",
         .input = {0xff000000, 0xff8c7c64},
-        .expectation = {{}},
+        .expectation = {QUIET_OVERWORLD},
     },
 };
 
