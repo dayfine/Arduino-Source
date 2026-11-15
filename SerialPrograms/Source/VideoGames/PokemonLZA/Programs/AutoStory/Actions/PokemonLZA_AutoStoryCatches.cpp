@@ -609,43 +609,6 @@ private:
     int m_sidesteps = 0;
 };
 
-//  The marker's distance reads, with misreads dropped. A read far from the
-//  last one is a misread: a 0.6 s step covers about 3. Below: 36 as "3" or
-//  29 on the console; above: 110 as "1110", which then rejected
-//  every true read after it. So three agreeing reads in a row far from the
-//  last mean the last read was the wrong one, and they are taken.
-class DistanceReads{
-public:
-    std::optional<int> last() const{
-        return m_last;
-    }
-
-    //  Whether `distance` (a read above 0) is taken as the last read.
-    bool accept(int distance){
-        if (m_last && !near(distance, *m_last)){
-            m_rejected = m_rejected_read && near(distance, *m_rejected_read) ? m_rejected + 1 : 1;
-            m_rejected_read = distance;
-            if (m_rejected < 3){
-                return false;
-            }
-        }
-        m_rejected_read.reset();
-        m_rejected = 0;
-        m_last = distance;
-        return true;
-    }
-
-private:
-    static bool near(int a, int b){
-        return a >= b - 12 && a <= b + 12;
-    }
-
-    std::optional<int> m_last;
-    //  Reads far from `m_last` in a row that agree with each other.
-    std::optional<int> m_rejected_read;
-    int m_rejected = 0;
-};
-
 //  How one step of ObjectiveWalk ended.
 enum class ObjectiveStep{
     WALKING,    //  on toward the marker
@@ -910,7 +873,7 @@ void catch_in_zone(
 //  marker away first and starts its talk 9 to 11 s later
 //  (three runs saw the dialog only at the end of the walk's
 //  camera sweep, the fourth missed it).
-constexpr std::chrono::milliseconds MARKER_SCENE_WAIT = 15000ms;
+constexpr Milliseconds MARKER_SCENE_WAIT = 15000ms;
 
 void walk_to_marker(ConsoleHandle& console, ProControllerContext& context){
     walk_to_objective(console, context, 0, 90s);
