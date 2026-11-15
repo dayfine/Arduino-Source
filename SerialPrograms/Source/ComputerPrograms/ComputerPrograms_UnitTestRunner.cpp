@@ -16,15 +16,9 @@
 #include "Common/Qt/QtThreadPool_Tests.h"
 #include "Kernels/Kernels_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_CheckpointId_Tests.h"
-#include "Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson_Tests.h"
-#include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_StoryEvents_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_StoryFailureClasses_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_StoryLog_Tests.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg_Tests.h"
 #include "CommonFramework/AudioPipeline/AudioInfo_Tests.h"
 #include "CommonFramework/AudioPipeline/Tools/ChannelMixer.h"
 #include "CommonFramework/AudioPipeline/SinkPipeline_Tests.h"
@@ -89,13 +83,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_AutoStorySelect(ret);
     Pokemon::add_tests_AutoStoryStats(ret);
     Pokemon::add_tests_CheckpointId(ret);
-    Pokemon::add_tests_AuthoredCheckpointJson(ret);
-    Pokemon::add_tests_StoryStepJson(ret);
-    Pokemon::add_tests_StoryStepExecutor(ret);
-    Pokemon::add_tests_StoryEvents(ret);
-    Pokemon::add_tests_StoryFailureClasses(ret);
-    Pokemon::add_tests_StoryLog(ret);
-    Pokemon::add_tests_StoryActionArg(ret);
+    Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
