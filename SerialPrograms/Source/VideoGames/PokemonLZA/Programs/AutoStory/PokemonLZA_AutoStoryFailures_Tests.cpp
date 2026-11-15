@@ -37,6 +37,7 @@ const FailureClassCase FAILURE_CLASS_CASES[] = {
     {.name = "no A prompt is a screen unread", .input = {.failure = "no_prompt"}, .expectation = {.tag = "class=screen_unread"}},
     {.name = "a zone start missed is a walk short", .input = {.failure = "zone_start_missed"}, .expectation = {.tag = "class=walk_short"}},
     {.name = "a road stop missed is a walk short", .input = {.failure = "zone_road_missed"}, .expectation = {.tag = "class=walk_short"}},
+    {.name = "a zone exit missed is a walk short", .input = {.failure = "zone_exit_missed"}, .expectation = {.tag = "class=walk_short"}},
     {.name = "not at the start is a wrong start", .input = {.failure = "not_at_start"}, .expectation = {.tag = "class=wrong_start"}},
     {.name = "a shared name keeps the shared class", .input = {.failure = "operation_failed"}, .expectation = {.tag = "class=operation_failed"}},
     {.name = "an unknown name has no class", .input = {.failure = "no_such_failure"}, .expectation = {.tag = std::nullopt}},
@@ -109,6 +110,7 @@ struct ConsoleStepCase{
 const ConsoleStepCase CONSOLE_STEP_CASES[] = {
     {.name = "03.07d's walk to the zone's start", .input = {.action = "walk_to_zone_1_start"}, .expectation = {.failure = "zone_start_missed"}},
     {.name = "03.08's walk back to the road", .input = {.action = "walk_back_to_zone_road"}, .expectation = {.failure = "zone_road_missed"}},
+    {.name = "the check out of the wild zone", .input = {.action = "check_out_of_wild_zone"}, .expectation = {.failure = "zone_exit_missed"}},
     {.name = "03.08's catches keep the shared name", .input = {.action = "catch_in_zone"}, .expectation = {.failure = "operation_failed"}},
 };
 

@@ -33,6 +33,9 @@ const std::vector<PlzaFailure>& plza_failures(){
         //  walk_back_to_zone_road's stops: a catch spot on Wild Zone 1's
         //  road the objective's distance never reached (03.08).
         {"zone_road_missed", C::WALK_SHORT},
+        //  check_out_of_wild_zone's end check: the minimap's arrow still in
+        //  the zone's green after the gate (console B 2026-11-14).
+        {"zone_exit_missed", C::WALK_SHORT},
         //  A walk held until a fade that never showed.
         {"walk_no_end", C::LATE_FADE},
         //  A walk that never got free control: a banner, text or a fade
@@ -77,6 +80,9 @@ std::string_view console_step_failure(std::string_view action){
     }
     if (action == "walk_back_to_zone_road"){
         return "zone_road_missed";
+    }
+    if (action == "check_out_of_wild_zone"){
+        return "zone_exit_missed";
     }
     return "operation_failed";
 }
