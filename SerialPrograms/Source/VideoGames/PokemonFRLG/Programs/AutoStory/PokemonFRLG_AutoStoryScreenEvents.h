@@ -13,6 +13,7 @@
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleTextBoxDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -22,7 +23,8 @@ namespace PokemonFRLG{
 //  The shared events from FRLG's detectors:
 //  - DIALOG_BOX: the overworld's white text box (WhiteDialogDetector);
 //  - CHOICE_BOX: a Yes/No or answer box beside it (SelectionDialogDetector);
-//  - BATTLE_STARTED: the battle menu or a battle's text box;
+//  - BATTLE_STARTED: the battle menu or a battle's text box
+//    (BattleTextBoxDetector);
 //  - FADE_BLACK / FADE_WHITE: fade_of_screen().
 //  Nothing on a dark cave's overworld (dark_cave_screen()), whose black
 //  the battle text box detector reads as a box.
@@ -40,7 +42,11 @@ private:
     WhiteDialogDetector m_dialog;
     SelectionDialogDetector m_choice;
     BattleMenuDetector m_battle_menu;
-    BattleDialogDetector m_battle_dialog;
+    //  The box with its gold and white frame: the black below a small map
+    //  or at a map's edge passes for BattleDialogDetector's box (console B,
+    //  Silph Co., 2026-11-14 and 15: a 15 s look for a battle before
+    //  each step).
+    BattleTextBoxDetector m_battle_box;
 };
 
 

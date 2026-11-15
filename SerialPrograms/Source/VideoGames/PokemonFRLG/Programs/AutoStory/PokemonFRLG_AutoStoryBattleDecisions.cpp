@@ -495,11 +495,12 @@ void EvolutionHold::turn_taken(TurnChoice choice){
 }
 
 bool EvolutionHold::holds(const BattleTextScreen& screen) const{
-    return m_attacked && m_held < EVOLUTION_HOLDS && screen.text_box && !screen.hp_box && !screen.arrow && !screen.yes_no && !screen.dark_cave;
+    return m_attacked && !m_ran_out && m_held < EVOLUTION_HOLDS && screen.text_box && !screen.hp_box && !screen.arrow && !screen.yes_no && !screen.dark_cave;
 }
 
 void EvolutionHold::held(Milliseconds held, bool lead_fainted){
     m_held += held;
+    m_ran_out |= held >= MAX_HOLD;
     //  Only the lead fights, so only it evolves; once a battle.
     if (held < EVOLUTION_SEEN || m_evolved || lead_fainted){
         return;

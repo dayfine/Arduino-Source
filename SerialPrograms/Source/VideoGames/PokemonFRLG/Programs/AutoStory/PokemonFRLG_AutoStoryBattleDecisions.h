@@ -164,7 +164,10 @@ public:
     //  dark cave's overworld, whose black reads as the text box (console B,
     //  2026-11-09, 08.01 hiker_lenny: three holds, then a stop). Nothing
     //  is pressed while it shows, for at most EVOLUTION_HOLDS in all in a
-    //  battle, in case it is something else.
+    //  battle, in case it is something else; and none after a hold that
+    //  ran out, as an evolution's arrow shows well within one, so START
+    //  looks for the overworld (console B, 2026-11-15, 16.05: three holds
+    //  in Silph Co., then a stop).
     bool holds(const BattleTextScreen& screen) const;
     //  Such a screen showed for `held` with nothing pressed: long enough,
     //  and the lead evolved (unless it had fainted).
@@ -174,6 +177,8 @@ private:
     PartyMember& m_lead;
     bool m_attacked = false;
     bool m_evolved = false;
+    //  A hold lasted MAX_HOLD.
+    bool m_ran_out = false;
     Milliseconds m_held = Milliseconds::zero();
 };
 

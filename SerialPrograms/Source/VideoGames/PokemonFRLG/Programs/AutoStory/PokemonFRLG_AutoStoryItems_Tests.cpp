@@ -37,6 +37,7 @@
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
+#include "PokemonFRLG_AutoStoryBattleTurns.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
 #include "PokemonFRLG_AutoStoryNewMembers.h"
@@ -514,6 +515,30 @@ public:
     }
 };
 
+//  Whether the battle loop holds B for an evolution after a turn that
+//  attacked, on console B's captures named <anything>_<True or False>.png.
+class Test_EvolutionHold : public ImageUnitTest{
+public:
+    Test_EvolutionHold(const std::string& image)
+        : ImageUnitTest("PokemonFRLG::AutoStoryBattle - " + image, {image})
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        bool expected = false;
+        const std::vector<std::string> words = parse_words(Filesystem::Path(image_paths()[0]).stem().string());
+        if (words.empty() || !parse_bool(words.back(), expected)){
+            return "Error: filename must be <anything>_<True or False>.";
+        }
+        Supplies supplies;
+        EvolutionHold hold(supplies.lead);
+        hold.turn_taken(TurnChoice::MOVE);
+        return hold.holds(read_text_screen(images[0])) == expected;
+    }
+};
+
 //  repel_wore_off_shows() on console B's captures named
 //  <anything>_<True or False>.png, in English.
 class Test_RepelWoreOff : public ImageUnitTest{
@@ -870,6 +895,9 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
     //  which the loop sent for 10 minutes; and the battle menu a turn before.
     database.add<Test_RunRefused>("PokemonFRLG/AutoStoryBattle/Route21_SpencerNoRunning_True.png");
     database.add<Test_RunRefused>("PokemonFRLG/AutoStoryBattle/Route21_SpencerMenu_False.png");
+    //  16.05, Silph Co. (console B, 2026-11-15): black at the map's edge
+    //  read as the battle's text box after a win; three holds, a stop.
+    database.add<Test_EvolutionHold>("PokemonFRLG/AutoStoryBattle/SilphCo_AfterWin_BlackBelow_False.png");
     //  12.03 on Route 21 (console B, 2026-11-13 10:06 and 11:02): "REPEL's
     //  effect wore off..." still being typed; Spencer's battle text isn't it.
     database.add<Test_RepelWoreOff>("PokemonFRLG/AutoStoryRepel/Route21_RepelWoreOff_True.png");

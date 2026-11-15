@@ -73,7 +73,8 @@ enum class YesNo{
 
 //  A battle screen as the loop reads it, for the evolution check.
 struct BattleTextScreen{
-    //  The battle's text box.
+    //  The battle's text box, its gold and white frame included: the
+    //  black below a small map or at a map's edge passes for its blue alone.
     bool text_box = false;
     //  The battle menu or an HP box.
     bool hp_box = false;
@@ -85,6 +86,10 @@ struct BattleTextScreen{
     //  whose black reads as the text box.
     bool dark_cave = false;
 };
+
+//  `screen` as the battle loop reads it for the evolution check.
+BattleTextScreen read_text_screen(const ImageViewRGB32& screen);
+
 
 //  Answer to an in-battle prompt dialogue.
 struct PromptAnswer{
