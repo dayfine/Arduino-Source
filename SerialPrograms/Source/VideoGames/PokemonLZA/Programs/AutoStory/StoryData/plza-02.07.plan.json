@@ -11,14 +11,14 @@
       {
         "id": "to_room_door",
         "kind": "game_action",
-        "why": "step 33: to the door's \"A Leave\".",
+        "why": "to the door's \"A Leave\".",
         "action": "walk",
         "args": {"legs": [[0, 2000]]}
       },
       {
         "id": "first_evening",
         "kind": "game_action",
-        "why": "steps 33-35: A Leave at the door, Taunie, the rooftop, AZ, the Main Mission 03 banner and its autosave",
+        "why": "A Leave at the door, Taunie, the rooftop, AZ, the Main Mission 03 banner and its autosave",
         "action": "mash_to_move_hints",
         "args": {"press_a_first": true}
       }

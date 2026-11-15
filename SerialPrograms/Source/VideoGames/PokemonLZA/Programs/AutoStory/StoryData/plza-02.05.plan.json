@@ -11,46 +11,46 @@
       {
         "id": "to_lobby_elevator",
         "kind": "game_action",
-        "why": "step 28: to the elevator's \"A Take Elevator\".",
+        "why": "to the elevator's \"A Take Elevator\".",
         "action": "walk",
         "args": {"legs": [[0, 2000]]}
       },
       {
         "id": "take_elevator_up",
         "kind": "talk",
-        "why": "step 28: A Take Elevator, \"Which floor?\""
+        "why": "A Take Elevator, \"Which floor?\""
       },
       {
         "id": "floor_question",
         "kind": "game_action",
-        "why": "step 28: the elevator line, then \"Which floor?\", before the choice shows; B would close the talk",
+        "why": "the elevator line, then \"Which floor?\", before the choice shows; B would close the talk",
         "action": "text_to_choice",
         "args": {"advance_with_a": true}
       },
       {
         "id": "ride_to_2f",
         "kind": "game_action",
-        "why": "step 28: \"2F\", the first floor listed",
+        "why": "\"2F\", the first floor listed",
         "action": "choose_0"
       },
       {
         "id": "arrive_2f",
         "kind": "game_action",
-        "why": "step 28: the ride, until control on 2F; the hall shows no party bar or prompt, so the quiet time is control",
+        "why": "the ride, until control on 2F; the hall shows no party bar or prompt, so the quiet time is control",
         "action": "mash_to_move_hints",
         "args": {"quiet_ms": 3000, "min_length_ms": 5000, "quiet_is_control": true}
       },
       {
         "id": "to_room_202",
         "kind": "game_action",
-        "why": "step 29: to \"Room 202 / A Enter\".",
+        "why": "to \"Room 202 / A Enter\".",
         "action": "walk",
         "args": {"legs": [[-15, 2000]]}
       },
       {
         "id": "enter_room_202",
         "kind": "game_action",
-        "why": "step 30: A Enter, \"Here's room 202.\", the fade, until control in the room; no party bar or prompt there",
+        "why": "A Enter, \"Here's room 202.\", the fade, until control in the room; no party bar or prompt there",
         "action": "mash_to_move_hints",
         "args": {"press_a_first": true, "quiet_ms": 3000, "min_length_ms": 5000, "quiet_is_control": true}
       }

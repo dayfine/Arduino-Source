@@ -11,7 +11,7 @@
       {
         "id": "to_blocked_street",
         "kind": "game_action",
-        "why": "step 21: on until the black fade into the street the trainers block.",
+        "why": "on until the black fade into the street the trainers block.",
         "action": "walk",
         "args": {
           "legs": [[0, 2000], [-75, 3500], [90, 3000]]
@@ -20,13 +20,13 @@
       {
         "id": "street_scene",
         "kind": "scene",
-        "why": "step 21: a Pokemon drives the trainers off (no battle)",
+        "why": "a Pokemon drives the trainers off (no battle)",
         "action": "a"
       },
       {
         "id": "to_battle_zone_gate",
         "kind": "game_action",
-        "why": "step 22: on to the gate's \"A Leave\" until its prompt shows. The street scene can end at the gate or at the near end of the street, facing the gate; walking to the prompt covers both.",
+        "why": "on to the gate's \"A Leave\" until its prompt shows. The street scene can end at the gate or at the near end of the street, facing the gate; walking to the prompt covers both.",
         "action": "walk_to_prompt",
         "args": {
           "timeout_ms": 10000
@@ -35,18 +35,18 @@
       {
         "id": "leave_battle_zone",
         "kind": "talk",
-        "why": "step 22: A at the gate's \"A Leave\" (to_battle_zone_gate walked there); Taunie's first line ~3.5 s later"
+        "why": "A at the gate's \"A Leave\" (to_battle_zone_gate walked there); Taunie's first line ~3.5 s later"
       },
       {
         "id": "out_of_battle_zone",
         "kind": "scene",
-        "why": "step 23: Taunie: out of the Battle Zone, Hotel Z's just through here",
+        "why": "Taunie: out of the Battle Zone, Hotel Z's just through here",
         "action": "a"
       },
       {
         "id": "through_covered_passage",
         "kind": "game_action",
-        "why": "step 23: through the wooden door and the covered passage into the Hotel Z scene.",
+        "why": "through the wooden door and the covered passage into the Hotel Z scene.",
         "action": "walk",
         "args": {
           "legs": [[75, 3000], [40, 1500], [0, 3000]],
@@ -56,7 +56,7 @@
       {
         "id": "hotel_z_arrival",
         "kind": "scene",
-        "why": "step 23: the Hotel Z arrival scene",
+        "why": "the Hotel Z arrival scene",
         "action": "a"
       }
     ],

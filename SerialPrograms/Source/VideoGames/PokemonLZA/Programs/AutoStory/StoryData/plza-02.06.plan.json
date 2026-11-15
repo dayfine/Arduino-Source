@@ -11,32 +11,32 @@
       {
         "id": "to_bed",
         "kind": "game_action",
-        "why": "step 31: to the bed's \"A Rest\" (1 s is enough).",
+        "why": "to the bed's \"A Rest\" (1 s is enough).",
         "action": "walk",
         "args": {"legs": [[45, 1000]], "held": true}
       },
       {
         "id": "rest",
         "kind": "talk",
-        "why": "step 31: A Rest, \"Rest until tomorrow morning?\""
+        "why": "A Rest, \"Rest until tomorrow morning?\""
       },
       {
         "id": "rest_question",
         "kind": "game_action",
-        "why": "step 31: \"Rest until tomorrow morning?\" before the choice shows",
+        "why": "\"Rest until tomorrow morning?\" before the choice shows",
         "action": "text_to_choice",
         "args": {"advance_with_a": true}
       },
       {
         "id": "rest_until_morning",
         "kind": "game_action",
-        "why": "step 31: yes",
+        "why": "yes (the top choice): rest until morning",
         "action": "choose_0"
       },
       {
         "id": "wake_up",
         "kind": "game_action",
-        "why": "step 32: sleep and wake up, until control facing the door; the room shows no party bar or prompt, so the quiet time is control",
+        "why": "sleep and wake up, until control facing the door; the room shows no party bar or prompt, so the quiet time is control",
         "action": "mash_to_move_hints",
         "args": {"quiet_ms": 3000, "min_length_ms": 20000, "quiet_is_control": true}
       }
