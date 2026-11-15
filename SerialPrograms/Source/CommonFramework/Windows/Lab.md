@@ -23,11 +23,12 @@ takes effect at the next launch.
 
 | Path | Direction | Meaning |
 |---|---|---|
-| `Lab/inbox/<name>.txt` | script writes | A request: one command per line, run in order. Requests run one at a time, in name order. |
+| `Lab/inbox/<name>.txt` | script writes | A request: one command per line, run in order. Requests run one at a time, in name order; a request of `snapshot` lines only runs beside them (see [Snapshot](#snapshot)). |
 | `Lab/done/<name>.txt` | app moves | The request, moved here when it starts. |
 | `Lab/outbox/<name>.out` | app writes | The request's journal (below). It appears only once the request has finished; `<name>.tmp` shows the progress so far. |
 | `Lab/outbox/<name>_<label>.png`, `.mp4` | app writes | Files that `shot`, `shots` and `history` save. |
 | `Lab/state` | app writes | The channel's state, rewritten after every request and whenever the program state changes. |
+| `Lab/state.json` | app writes | The same state and more, for the lab server: rewritten at once when the state changes, else about once a second. See [state.json](#statejson). |
 
 Write a request somewhere else and then move it into `inbox`, so the app
 never reads a half-written file. Only `.txt` files are read.
@@ -36,6 +37,10 @@ never reads a half-written file. Only `.txt` files are read.
 
 - One command per line, words separated by spaces. `#` starts a comment.
 - The first line may be `owner <token>`; see [Owner](#owner).
+- The first lines may also hold `request <uuid>`: the lab server's id for the
+  request, a lower-case UUID. `state.json` names it on a start or stop the
+  request makes; without it, the app makes one up. Anything else after
+  `request` is a command, and fails as unknown.
 - Commands run in order. The request stops at its first failing line.
 - Durations are in milliseconds. Arguments in `[brackets]` are optional.
 
@@ -72,6 +77,41 @@ error=
 - `owner` is the owner token, empty when the channel is unclaimed.
 - `error` is the error of the last request, empty once a request succeeds.
 
+### state.json
+
+`Lab/state.json` is the lab server's view of the app, version 1 of the
+contract in `lab/server/` on the fork's `agents` branch (its README lists
+the fields; `python3 -m pa_lab check app_state <file>` checks one). It
+holds the state file's fields (as `program.state` in lower case, `panel`,
+`controller.state` and `channel`), and also:
+
+- `written_at`: the heartbeat. The file is checked at every poll (500 ms)
+  and rewritten at once when anything but `written_at`, `video.frame_seq`
+  and `video.captured_at` changed: a new `instance.id`, a finished request
+  (`channel.last_request`), a start or stop, the video state. When only
+  those three moved, it is rewritten at most once a second, with the newest
+  frame. A long request (a `walk`) still holds the poll, and the heartbeat,
+  until it ends.
+- `instance.id`: a new UUID at every app start; `instance.pid`; on macOS
+  `instance.profile`, the `--profile` name.
+- `program.last_transition`: the last start or stop, and where it came
+  from: `lab` (a request, with its `request_id`), `ui` (the Start/Stop
+  button, or anything else outside the channel), `program` (it finished by
+  itself) or `error` (it ended with an error). `null` until the first one,
+  and again after a panel switch until that panel's program starts or
+  stops. The program records who asked as it starts or stops
+  (`ProgramSession`, `ProgramTransition.h`), and a stop keeps its asker
+  through `stopping` to `stopped`: an error or the run's end after a Stop
+  does not change who stopped it.
+- `video.frame_seq` and `captured_at`: the newest frame from the console's
+  video, counted since the app started. `state` is `live` while that frame
+  is at most 2 s old, `stale` when older, `missing` without video.
+- `video.signal`, `observation.game` and `observation.screen` stay
+  `unknown`: no detector feeds them yet.
+
+Unlike the state file, `panel.id` is `null` when the selected panel is not a
+program.
+
 ## Commands
 
 ### Channel
@@ -83,6 +123,8 @@ error=
 | `start [SECONDS]` | What clicking Start Program does. Refused unless the program is `STOPPED`. First waits up to `SECONDS` (default 30) for `controller=ready`, and refuses with `controller not connected` if it never is, instead of starting a program that would fail with "Incompatible Controller". |
 | `stop` | What clicking Stop Program does. Refused unless the program is `RUNNING`. The request goes on; the program stops in the background. |
 | `state` | Prints the state file's lines into the journal. (In the Command File Runner program, `state [image]` prints the detectors that fire instead; from the channel use `detect` per detector.) |
+| `describe_program` | Prints the selected program's id and the static contract of its options as one line, `describe_program <JSON>`; see [Describe program](#describe-program). Reads only: needs no owner token and no console. Refused when the selected panel is not a program. |
+| `snapshot LABEL [TIMEOUT_MS]` | Saves the first video frame newer than this line as `<request>_<LABEL>.png` and names it; see [Snapshot](#snapshot). Reads only: needs no owner token, no program state and no controller. |
 | `keepawake on\|off [seconds]` | While it is on and no program runs, presses B every `seconds` (default 15) so the console does not sleep. A running program pauses it. Off by default; off again when the app restarts. |
 | `popups [close]` | Lists the app's open message boxes (title and text), such as the "Error" box a failed program leaves. `close` presses each one's default button. |
 | `owner claim TOKEN`, `owner release` | The owner lock, below. |
@@ -92,7 +134,7 @@ error=
 
 These run on the selected program's console. A press runs only while no
 program runs (`STOPPED`); the commands that only read the screen (`shot`,
-`shots`, `history`, `detect`, `wait_for`, `expect`) run any time.
+`shots`, `history`, `detect`, `wait_for`, `expect`, `game_open`) run any time.
 
 #### Controller
 
@@ -112,6 +154,7 @@ program runs (`STOPPED`); the commands that only read the screen (`shot`,
 | `shot label` | Saves the current frame as `<request>_<label>.png` in the outbox. | |
 | `shots label count [interval]` | Saves `count` frames, `<label>_0` to `<label>_<count-1>`, one every `interval`. | interval 500 |
 | `history label` | Saves the console's recent video as `<request>_<label>.mp4` in the outbox, when Stream History is on. Run it right after a program to keep a recording of that run. | |
+| `game_open [image]` | Prints `game_open yes` when a game is in front, or `game_open no REASON` with `REASON` `home` (the Home menu), `user_select` ("Who is using the software?"), `black` (a black screen: loading, or no signal) or `no_video`. It does not tell one game from another. Never fails the line. With `image`, it checks a saved picture, as `detect` does. | |
 | `detect detector [image]` | Runs a detector once and prints `yes` or `no`. With `image`, it runs on a saved picture instead of the live video: an absolute path, or a file name in the outbox. | |
 | `wait_for detector [timeout]` | Checks the video every 100 ms until the detector fires. Prints how long it took, or `timeout`. | timeout 5000 |
 | `expect detector [timeout]` | The same as `wait_for`, but a timeout fails the line. | timeout 5000 |
@@ -136,6 +179,74 @@ These work on any game:
 Games add their own commands and detectors with
 `register_command_file_command()` and `register_command_file_detector()` (see
 `NintendoSwitch_CommandFileRunner.h`); `help` lists them.
+
+### Snapshot
+
+`snapshot LABEL [TIMEOUT_MS]` waits up to `TIMEOUT_MS` (100 to 60000,
+default 5000) for a frame of the selected console's video that arrives
+after the line starts, saves that frame, and prints one line naming it with
+the same `instance.id` and `frame_seq` that `state.json` uses. `LABEL` is 1
+to 64 of `A-Z a-z 0-9 _ -`. Unlike `shot`, it runs on any panel with video,
+whatever the program state and the controller; a panel with no video (the
+settings page, no panel) gives `unavailable`.
+
+A request whose commands are all `snapshot` lines (the lab server's `shot`
+writes `request <uuid>` and `snapshot frame <ms>`) runs on a second worker
+that checks the inbox every 100 ms, so it never waits behind a long request
+on the first (a `start` waiting for the controller, a batch of presses). Its
+journal, `done/` move and `seq` are the same as any request's; requests
+taken by the two workers may finish out of name order. A `snapshot` line in
+any other request runs in order with that request's other lines.
+
+| Line | Meaning |
+|---|---|
+| `snapshot saved instance=<uuid> frame_seq=<n> captured_at=<time> after=<n> path=<path>` | Saved. `frame_seq` and `captured_at` are the saved frame's; `after` is the newest `frame_seq` when the line started (0 before the first frame), so `frame_seq > after`. The path runs to the end of the line. |
+| `snapshot timeout instance=<uuid> after=<n> timeout_ms=<ms>` | No newer frame in time. The line fails: `timeout: no frame newer than frame_seq <n> within <ms> ms`. |
+| `snapshot unavailable instance=<uuid> reason=<reason>` | No frame to save. The line fails with `unavailable: ...`. `reason` is `no_video` (the selected panel has none), `panel_changed` (during the wait), `app_closing` or `save_failed`. |
+
+```
+request 5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10
+snapshot frame 2000
+```
+
+```
+snapshot saved instance=d8ea6a9d-1eab-4a40-b355-d88072b289a1 frame_seq=918275 captured_at=2026-11-14T06:10:12.124Z after=918274 path=.../Profiles/lab-B/Lab/outbox/r7_frame.png
+ok 2 snapshot frame 2000 @0-41ms
+end
+```
+
+### Describe program
+
+`describe_program` tells the lab server what the selected program takes,
+without running it or touching the console. The JSON (version 1, keys
+sorted):
+
+```
+describe_program {"id":"PokemonFRLG:AutoStory","options":[...],"prechecks":"unsupported","schema":1}
+```
+
+- `id`: the program's identifier, as `select` takes it.
+- `options`: one entry per option the settings file saves, in the order the
+  program shows them. Each has `key` (what `set` takes; a group's options
+  are under the group's key, so `set GROUP.KEY`), `type`, and by type:
+
+  | `type` | Fields |
+  |---|---|
+  | `boolean`, `string` | `default` |
+  | `integer`, `number` | `default`, `min`, `max` (`null` when a number has no bound) |
+  | `enum`, `select` | `default` and `entries`, each `{"slug", "enabled"}`; `set` takes the slug |
+  | `group` | `toggleable` (it has its own `Enabled` key) and its own `options` |
+  | `other` | nothing yet: the contract does not describe that type |
+
+  The defaults are the program's defaults, not the values it holds now.
+  Which options show and whether a combination is valid depend on the other
+  options' values; they are not part of the contract.
+- `prechecks`: the checks the program runs before it starts, in that order,
+  each `{"name", "needs", "skippable"}`: a stable name (`black_border`,
+  `free_party_slots`, ...), one line of what the program needs, and whether
+  the user can turn it off. `unsupported` when the program declares no
+  precheck list (`ProgramInstance::precheck_summaries()`); that never means
+  the checks passed. An empty list means the program needs nothing.
 
 ## Owner
 
@@ -284,7 +395,10 @@ channel, in a build that has the story engine.
 ## Tests
 
 `add_tests_LabChannel()` covers the request format, the journal lines, the
-state text, the owner lock, the keep-awake schedule and the controller wait before `start` (`LabChannel - ...`
-unit tests); `add_tests_CommandFileRunner()` covers the console commands'
+state text, the owner lock, the keep-awake schedule, the controller wait before `start` and which
+program states let a console command run (`LabChannel - ...`
+unit tests); `add_tests_LabSnapshot()` covers `snapshot`'s arguments, its wait for a newer frame and its lines; `add_tests_LabStateJson()` checks `state.json` against the
+contract's golden files, which transition it names after a panel switch, and when it is rewritten; `add_tests_ProgramTransition()` covers
+who each start and stop is said to come from; `add_tests_CommandFileRunner()` covers the console commands'
 arguments. Run them with the app's `--command-line-test-mode`. Selecting,
 setting, starting and the presses need a live app and console.

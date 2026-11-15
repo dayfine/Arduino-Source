@@ -17,7 +17,9 @@
 #include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "LabPause.h"
+#include "LabChannel.h"
 #include "LabRequest.h"
+#include "LabTransition.h"
 #include "LabChannel_Tests.h"
 
 namespace PokemonAutomation{
@@ -66,7 +68,7 @@ UnitTestResult test_line_after_words(){
     return true;
 }
 
-UnitTestResult test_next_file(){
+UnitTestResult test_request_files(){
     const Filesystem::Path inbox = Filesystem::unique_temp_path(
         Filesystem::application_scratch_path() / "LabChannelTest"
     );
@@ -75,16 +77,19 @@ UnitTestResult test_next_file(){
         FileIO file(inbox / name, FileMode::WRITE);
     };
     std::string error;
-    if (next_request_file(inbox.string())){
-        error = "An empty inbox has no next file.";
+    if (!request_files(inbox.string()).empty()){
+        error = "An empty inbox has no request files.";
     }
     touch("b.txt");
     touch("a.out");
     touch("c.txt");
     Filesystem::create_directories(inbox / "a.txt");
-    const std::optional<Filesystem::Path> next = next_request_file(inbox.string());
-    if (error.empty() && (!next || next->filename().string() != "b.txt")){
-        error = "Expected b.txt: the first .txt file by name, skipping other files and folders.";
+    std::vector<std::string> names;
+    for (const Filesystem::Path& path : request_files(inbox.string())){
+        names.push_back(path.filename().string());
+    }
+    if (error.empty() && names != std::vector<std::string>{"b.txt", "c.txt"}){
+        error = "Expected b.txt, c.txt: the .txt files by name, skipping other files and folders.";
     }
     Filesystem::remove_all(inbox);
     if (!error.empty()){
@@ -127,6 +132,78 @@ UnitTestResult test_parse_request(){
     const LabRequest claim = parse_lab_request("owner claim lab-B\n");
     if (!claim.owner.empty() || claim.lines.size() != 1){
         return "\"owner claim\" is a command, not the owner line.";
+    }
+    return true;
+}
+
+UnitTestResult test_parse_request_id(){
+    const std::string ID = "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10";
+    struct Input{
+        std::string text;
+    };
+    struct Expectation{
+        std::optional<std::string> id;
+        std::string owner;
+        size_t lines;
+    };
+    struct Case{
+        std::string name;
+        Input input;
+        Expectation expectation;
+    };
+    const Case CASES[] = {
+        {.name = "no id", .input = {"start\n"}, .expectation = {.id = std::nullopt, .owner = "", .lines = 1}},
+        {.name = "id first", .input = {"request " + ID + "\nstart\n"}, .expectation = {.id = ID, .owner = "", .lines = 1}},
+        {
+            .name = "owner and id",
+            .input = {"owner lab-B\nrequest " + ID + "\nstart\n"},
+            .expectation = {.id = ID, .owner = "lab-B", .lines = 1},
+        },
+        {
+            .name = "id and owner",
+            .input = {"request " + ID + "\nowner lab-B\nstart\n"},
+            .expectation = {.id = ID, .owner = "lab-B", .lines = 1},
+        },
+        {.name = "not a UUID is a command", .input = {"request r42\nstart\n"}, .expectation = {.id = std::nullopt, .owner = "", .lines = 2}},
+        {.name = "below a command", .input = {"state\nrequest " + ID + "\n"}, .expectation = {.id = std::nullopt, .owner = "", .lines = 2}},
+    };
+    for (const Case& c : CASES){
+        const LabRequest request = parse_lab_request(c.input.text);
+        if (request.id != c.expectation.id || request.owner != c.expectation.owner || request.lines.size() != c.expectation.lines){
+            return std::format("{}: wrong id, owner or command lines", c.name);
+        }
+    }
+    return true;
+}
+
+UnitTestResult test_uuid(){
+    const std::string a = new_lab_uuid();
+    const std::string b = new_lab_uuid();
+    if (!is_lab_uuid(a) || !is_lab_uuid(b) || a == b || a[14] != '4'){
+        return std::format("Expected two different version 4 UUIDs, got {} and {}", a, b);
+    }
+    struct Input{
+        std::string text;
+    };
+    struct Expectation{
+        bool is_uuid;
+    };
+    struct Case{
+        std::string name;
+        Input input;
+        Expectation expectation;
+    };
+    const Case CASES[] = {
+        {.name = "lower case", .input = {"5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10"}, .expectation = {true}},
+        {.name = "upper case", .input = {"5F0C2A8E-3D41-4B7A-9C55-0E6A1F2B7C10"}, .expectation = {false}},
+        {.name = "no dashes", .input = {"5f0c2a8e3d414b7a9c550e6a1f2b7c10"}, .expectation = {false}},
+        {.name = "a request name", .input = {"fs012327"}, .expectation = {false}},
+        {.name = "empty", .input = {""}, .expectation = {false}},
+    };
+    for (const Case& c : CASES){
+        if (is_lab_uuid(c.input.text) != c.expectation.is_uuid){
+            return std::format("{}: is_lab_uuid() should be {}", c.name, c.expectation.is_uuid);
+        }
     }
     return true;
 }
@@ -284,6 +361,36 @@ UnitTestResult test_controller_wait(){
 }
 
 
+//  A console command runs for the selected program only while that program
+//  is stopped, unless it only reads the screen.
+UnitTestResult test_console_command_refusal(){
+    struct Input{
+        ProgramState state = ProgramState::STOPPED;
+        bool reads_only = false;
+    };
+    struct Case{
+        std::string name;
+        Input input;
+        std::string expectation;    //  the refusal; "" when the command runs
+    };
+    const std::vector<Case> cases{
+        {.name = "press while stopped", .input = {.state = ProgramState::STOPPED, .reads_only = false}, .expectation = ""},
+        {.name = "press while running", .input = {.state = ProgramState::RUNNING, .reads_only = false}, .expectation = "Program is RUNNING; only commands that read the screen run now."},
+        {.name = "press while stopping", .input = {.state = ProgramState::STOPPING, .reads_only = false}, .expectation = "Program is STOPPING; only commands that read the screen run now."},
+        {.name = "press before the panel is ready", .input = {.state = ProgramState::NOT_READY, .reads_only = false}, .expectation = "Program is NOT_READY; only commands that read the screen run now."},
+        {.name = "shot while running", .input = {.state = ProgramState::RUNNING, .reads_only = true}, .expectation = ""},
+        {.name = "shot while stopped", .input = {.state = ProgramState::STOPPED, .reads_only = true}, .expectation = ""},
+    };
+    for (const Case& c : cases){
+        const std::string refusal = console_command_refusal(c.input.state, c.input.reads_only);
+        if (refusal != c.expectation){
+            return std::format("{}: got \"{}\", expected \"{}\"", c.name, refusal, c.expectation);
+        }
+    }
+    return true;
+}
+
+
 class Test_LabChannel : public UnitTest{
 public:
     Test_LabChannel(std::string name, std::function<UnitTestResult()> body)
@@ -376,8 +483,10 @@ UnitTestResult test_pause_ends_on_cancel(){
 void add_tests_LabChannel(UnitTestDatabase& database){
     database.add<Test_LabChannel>("split a line", test_split_line);
     database.add<Test_LabChannel>("line after words", test_line_after_words);
-    database.add<Test_LabChannel>("next inbox file", test_next_file);
+    database.add<Test_LabChannel>("inbox files", test_request_files);
     database.add<Test_LabChannel>("parse a request", test_parse_request);
+    database.add<Test_LabChannel>("request id", test_parse_request_id);
+    database.add<Test_LabChannel>("uuid", test_uuid);
     database.add<Test_LabChannel>("journal lines", test_journal);
     database.add<Test_LabChannel>("state text", test_state_text);
     database.add<Test_LabChannel>("state text with a pause", test_state_paused);
@@ -387,6 +496,7 @@ void add_tests_LabChannel(UnitTestDatabase& database){
     database.add<Test_LabChannel>("owner lock", test_owner);
     database.add<Test_LabChannel>("keep-awake schedule", test_keep_awake);
     database.add<Test_LabChannel>("controller wait", test_controller_wait);
+    database.add<Test_LabChannel>("console command refusal", test_console_command_refusal);
 }
 
 

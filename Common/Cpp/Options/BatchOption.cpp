@@ -95,6 +95,9 @@ FixedLimitVector<ConfigOption*> BatchOption::options() const{
     }
     return ret;
 }
+const std::vector<std::pair<ConfigOption*, std::string>>& keyed_options(const BatchOption& batch){
+    return batch.m_data->m_options;
+}
 
 
 
