@@ -5,6 +5,7 @@
  */
 
 #include "CommonTools/ScreenEvents/ScreenFades.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 
 namespace PokemonAutomation{
@@ -14,6 +15,7 @@ namespace PokemonLZA{
 
 PlzaScreenObserver::PlzaScreenObserver()
     : m_dialog({.white = WhiteDialogPart::BOX_ONLY})
+    , m_choice_arrow(COLOR_YELLOW, nullptr, SelectionArrowType::RIGHT, dialog_choice_box())
 {}
 
 ScreenEvents PlzaScreenObserver::observe(const VideoSnapshot& frame, WallClock){
@@ -29,11 +31,13 @@ ScreenEvents PlzaScreenObserver::read(const ImageViewRGB32& screen){
         return out;
     }
     out.set(ScreenEvent::DIALOG_BOX, m_dialog.detect(screen));
+    out.set(ScreenEvent::CHOICE_BOX, m_choice_arrow.detect(screen));
     return out;
 }
 
 void PlzaScreenObserver::make_overlays(VideoOverlaySet& items) const{
     m_dialog.make_overlays(items);
+    m_choice_arrow.make_overlays(items);
 }
 
 

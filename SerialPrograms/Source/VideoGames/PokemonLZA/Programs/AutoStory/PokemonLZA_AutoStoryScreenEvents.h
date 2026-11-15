@@ -12,6 +12,7 @@
 
 #include "Common/Cpp/Time.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector.h"
 
 namespace PokemonAutomation{
@@ -23,7 +24,9 @@ namespace PokemonLZA{
 //  - FADE_BLACK / FADE_WHITE: fade_of_screen();
 //  - DIALOG_BOX: a white dialogue box's bottom edge (StoryDialogDetector's
 //    BOX_ONLY: the box shows while the text still types), or a blue or
-//    teal box.
+//    teal box;
+//  - CHOICE_BOX: the selection arrow where a dialogue's choices are drawn
+//    (dialog_choice_box()).
 //  A fading screen has no box to read.
 class PlzaScreenObserver : public ScreenEventObserver{
 public:
@@ -38,6 +41,7 @@ public:
 
 private:
     StoryDialogDetector m_dialog;
+    SelectionArrowDetector m_choice_arrow;
 };
 
 

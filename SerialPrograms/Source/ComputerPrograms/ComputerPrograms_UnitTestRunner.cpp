@@ -14,9 +14,7 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Common/Qt/QtThreadPool_Tests.h"
 #include "Kernels/Kernels_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
-#include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "CommonFramework/AudioPipeline/AudioInfo_Tests.h"
 #include "CommonFramework/AudioPipeline/Tools/ChannelMixer.h"
 #include "CommonFramework/AudioPipeline/SinkPipeline_Tests.h"
@@ -41,6 +39,7 @@
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "CommonTools/OCR/OCR_Tests.h"
 #include "CommonTools/ScreenEvents/ScreenEvents_Tests.h"
+#include "CommonTools/ScreenMachine/ScreenMachine_Tests.h"
 
 #include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h"
@@ -118,10 +117,9 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_ProgramTransition(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
-    Pokemon::add_tests_AutoStorySelect(ret);
     Pokemon::add_tests_AutoStory(ret);
     add_tests_ScreenEvents(ret);
-    Pokemon::add_tests_StoryRangeOptions(ret);
+    add_tests_ScreenMachine(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);

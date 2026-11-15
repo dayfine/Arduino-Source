@@ -58,6 +58,13 @@ StoryData<Checkpoint> load_story_data(
 template <typename Checkpoint>
 std::vector<Checkpoint> story_run_rows(std::span<const Checkpoint> rows, size_t first, size_t last);
 
+//  `rows` cut where a run reloads: a new segment starts at each row after
+//  the first that `story` marks reload_when_chained, and the run loads that
+//  row's start save (the autosave the row before ended on) before it. No
+//  segments for no rows.
+template <typename Checkpoint>
+std::vector<std::vector<Checkpoint>> story_run_segments(std::span<const Checkpoint> rows, const StoryRows& story);
+
 
 
 namespace detail{
@@ -108,6 +115,18 @@ std::vector<Checkpoint> story_run_rows(std::span<const Checkpoint> rows, size_t 
         return {};
     }
     return std::vector<Checkpoint>(rows.begin() + first, rows.begin() + last + 1);
+}
+
+template <typename Checkpoint>
+std::vector<std::vector<Checkpoint>> story_run_segments(std::span<const Checkpoint> rows, const StoryRows& story){
+    std::vector<std::vector<Checkpoint>> segments;
+    for (const Checkpoint& row : rows){
+        if (segments.empty() || story.reload_when_chained.contains(row.id)){
+            segments.emplace_back();
+        }
+        segments.back().push_back(row);
+    }
+    return segments;
 }
 
 

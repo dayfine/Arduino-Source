@@ -347,10 +347,6 @@ AutoStory::~AutoStory(){
     ENDPOINT_TUTORIAL.remove_listener(*this);
     STARTPOINT_MAINSTORY.remove_listener(*this);
     ENDPOINT_MAINSTORY.remove_listener(*this);    
-    TUTORIAL_CHECKPOINTS.START_CHECKPOINT.remove_listener(*this);
-    TUTORIAL_CHECKPOINTS.END_CHECKPOINT.remove_listener(*this);
-    MAINSTORY_CHECKPOINTS.START_CHECKPOINT.remove_listener(*this);
-    MAINSTORY_CHECKPOINTS.END_CHECKPOINT.remove_listener(*this);
     ENABLE_TEST_CHECKPOINTS.remove_listener(*this);
     ENABLE_MISC_TEST.remove_listener(*this);
     TEST_PBF_LEFT_JOYSTICK.remove_listener(*this);
@@ -401,11 +397,15 @@ AutoStory::AutoStory()
     )       
     //  The end is read after each checkpoint, so it stays unlocked.
     , TUTORIAL_CHECKPOINTS(
-        "Tutorial Checkpoints", TUTORIAL_CHECKPOINTS_SELECT_DATABASE(), LockMode::UNLOCK_WHILE_RUNNING,
+        "Tutorial Checkpoints",
+        TUTORIAL_CHECKPOINTS_SELECT_DATABASE(),
+        LockMode::UNLOCK_WHILE_RUNNING,
         {.start = "<b>Start Checkpoint:</b>", .end = "<b>End Checkpoint:</b>"}
     )
     , MAINSTORY_CHECKPOINTS(
-        "Main Story Checkpoints", MAINSTORY_CHECKPOINTS_SELECT_DATABASE(), LockMode::UNLOCK_WHILE_RUNNING,
+        "Main Story Checkpoints",
+        MAINSTORY_CHECKPOINTS_SELECT_DATABASE(),
+        LockMode::UNLOCK_WHILE_RUNNING,
         {.start = "<b>Start Checkpoint:</b>", .end = "<b>End Checkpoint:</b>"}
     )
     , SETUP_NOTE{
@@ -1058,17 +1058,17 @@ const Pokemon::StoryRangeOptions& AutoStory::checkpoint_range() const{
 
 size_t AutoStory::get_start_checkpoint_index(){
     return story_index(
-        STORY_SECTION == StorySection::MAIN_STORY,
-        checkpoint_range().start_index(),
-        INDEX_OF_LAST_TUTORIAL_CHECKPOINT + 1
+        /*main_story=*/STORY_SECTION == StorySection::MAIN_STORY,
+        /*index_in_section=*/checkpoint_range().start_index(),
+        /*first_main_story_index=*/INDEX_OF_LAST_TUTORIAL_CHECKPOINT + 1
     );
 }
 
 size_t AutoStory::get_end_checkpoint_index(){
     return story_index(
-        STORY_SECTION == StorySection::MAIN_STORY,
-        checkpoint_range().end_index(),
-        INDEX_OF_LAST_TUTORIAL_CHECKPOINT + 1
+        /*main_story=*/STORY_SECTION == StorySection::MAIN_STORY,
+        /*index_in_section=*/checkpoint_range().end_index(),
+        /*first_main_story_index=*/INDEX_OF_LAST_TUTORIAL_CHECKPOINT + 1
     );
 }
 

@@ -12,6 +12,8 @@
 
 #include <functional>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
@@ -45,6 +47,15 @@ struct StoryAction{
     StoryActionHandler<PoseType> handler = {};
 };
 
+//  The failure of a game's save at a checkpoint's end that the game does
+//  not save at, or not yet known to: no error, the engine logs it as
+//  "not saved (<detail>)".
+inline constexpr std::string_view NOT_SAVED = "not_saved";
+//  NOT_SAVED, `reason` its detail: "save unverified".
+inline Outcome outcome_not_saved(std::string reason){
+    return outcome_failed(std::string(NOT_SAVED), std::move(reason));
+}
+
 //  A game, for the engine.
 template <StoryPose PoseType>
 struct StoryGame{
@@ -53,8 +64,9 @@ struct StoryGame{
     //  The game's actions. A kind's first is its default, the action of a
     //  step that names none.
     std::vector<StoryAction<PoseType>> actions = {};
-    //  The game's save (a wait for an autosave) at the end of `checkpoint`.
-    //  Optional: with none, nothing saves.
+    //  The game's save (a wait for an autosave) at the end of `checkpoint`;
+    //  outcome_not_saved() where it does not save. Optional: with none,
+    //  nothing saves.
     std::function<Outcome(StoryBackend<PoseType>& backend, const StoryCheckpoint& checkpoint)> save = {};
     //  Back to the last save. A succeeded reload that knows where it left
     //  the player returns that pose in its Outcome. Optional: with none, a

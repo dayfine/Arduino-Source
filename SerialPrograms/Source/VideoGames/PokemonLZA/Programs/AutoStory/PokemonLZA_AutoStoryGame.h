@@ -7,21 +7,22 @@
  *  JSON is read against.
  *
  *  The actions that read or press through the game's own screens are
- *  console_only: the engine refuses them elsewhere. The new game's opening
- *  and the walks run on any backend.
+ *  console_only: the engine refuses them elsewhere. The new game's opening,
+ *  the walks and the scene machine run on any backend.
  *
  */
 
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryGame_H
 #define PokemonAutomation_PokemonLZA_AutoStoryGame_H
 
-#include <functional>
 #include <optional>
-#include <set>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 #include "CommonTools/ScreenEvents/ScreenEventTypes.h"
+#include "Pokemon/AutoStory/Data/Pokemon_StoryRowExecution.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
@@ -47,6 +48,14 @@ namespace PokemonLZA{
 //                              (check_can_walk()), until its end event if it
 //                              has one (walk_until()), else until its legs
 //                              have run (finish_walk())
+//      "mash_to_move_hints"    A through scenes until the player has control
+//                              (run_scene_machine()): 01.01's arrival; arg
+//                              "min_length_ms", no quiet failure before it
+//      "text_to_choice"        B through a scene's text until its choice box
+//                              shows (run_scene_machine())
+//      "choose_0", "choose_1"  that row of the choice box on screen (0 the
+//                              top), by the D-pad from the highlighted row,
+//                              then A
 //
 //  Later slices add rows here, each with its handler.
 const std::vector<Pokemon::StoryActionSpec>& plza_story_specs();
@@ -65,17 +74,37 @@ std::optional<ScreenEvent> walk_end_event(std::string_view end);
 StoryMove story_walk_move(const Pokemon::StoryActionArgs& args);
 
 //  PLZA as a StoryGame on the console `env`, which must outlive it. The
-//  save waits out the game's autosave at the end of the checkpoints of
-//  `autosave_rows` (the story's StoryData::autosaves); after the others
-//  nothing saves, and it fails as "no_autosave". The reload resets the game
-//  from HOME onto the latest save.
-Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(
-    StoryEnv& env, std::set<std::string, std::less<>> autosave_rows
-);
+//  save counts the game's autosave at the end of the "autosave" rows of
+//  `rows`; after the others nothing saves (Pokemon::NOT_SAVED, "save
+//  unverified" for the "unverified" ones). The reload resets the game from
+//  HOME onto the latest save.
+Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(StoryEnv& env, const Pokemon::StoryRows& rows);
 
 //  The same with no console, for tests and simulations: the console_only
-//  actions fail as "console_only", and there is no save or reload.
-Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game_without_console();
+//  actions fail as "console_only", and there is no reload.
+Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game_without_console(const Pokemon::StoryRows& rows);
+
+//  Loads the save `row` starts from with `game`'s reload (the latest
+//  save), then, unless `row` starts on the station platform (01.01, whose
+//  first step checks it), looks a few times: the platform on
+//  PLATFORM_LOOKS of them in a row is 01.01's start, a save older than
+//  `row`'s, and fails as "older_save". Fails as "no_reload" for a game with
+//  no reload.
+Pokemon::Outcome load_checkpoint_start(
+    const Pokemon::StoryGame<Pokemon::ZonePose>& game, PlzaBackend& backend, const Pokemon::StoryCheckpoint& row
+);
+
+//  `rows` in order from the save the game is on, as
+//  StoryEngine::run_segment() runs them, `attempts_per_checkpoint` each,
+//  cut at the rows `story` marks reload_when_chained
+//  (Pokemon::story_run_segments()): before each, the event
+//  "reload_when_chained" loads its start with load_checkpoint_start(). A
+//  failed load fails the run there.
+Pokemon::SegmentReport run_plza_segments(
+    const Pokemon::StoryGame<Pokemon::ZonePose>& game, const Pokemon::StoryRows& story,
+    std::span<const Pokemon::StoryCheckpoint> rows, size_t attempts_per_checkpoint,
+    Pokemon::StoryEngine<Pokemon::ZonePose>& engine, PlzaBackend& backend, Pokemon::RunState& state
+);
 
 
 

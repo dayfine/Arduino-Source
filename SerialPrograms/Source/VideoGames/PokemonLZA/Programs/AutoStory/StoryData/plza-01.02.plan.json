@@ -1,0 +1,50 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "01.02",
+    "title": "Main Mission 01: chase Pancham to the battle area",
+    "start": {
+      "place": "LumioseCity"
+    },
+    "events": [
+      {
+        "id": "chase_pancham",
+        "kind": "game_action",
+        "why": "after Pancham, through the archway, around the starters into the scene. A 0 ms leg only turns. The sidestep around the starters (1000 ms) is not measured yet. The first turn is from where the player faces (L first), as from the save; 01.01's scenes leave the player turned to the boy, so a run from 01.01 should reload first (reload_when_chained), once 01.01's autosave is seen in a run log",
+        "action": "walk",
+        "args": {
+          "legs": [[-15, 4000], [-75, 3500], [90, 9000], [-90, 0], [90, 1000], [-90, 4000]]
+        }
+      },
+      {
+        "id": "pancham_cornered",
+        "kind": "game_action",
+        "why": "the scene up to its choice",
+        "action": "text_to_choice"
+      },
+      {
+        "id": "battle_with_pokemon",
+        "kind": "game_action",
+        "why": "choose \"Battle with Pokemon!\" (second choice)",
+        "action": "choose_1"
+      },
+      {
+        "id": "battle_area",
+        "kind": "game_action",
+        "why": "the scene until free control in the battle area (the controls hint); autosave",
+        "action": "mash_to_move_hints",
+        "args": {
+          "min_length_ms": 20000
+        }
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "played step by step from a new game; starts at the MAIN MISSION 01 autosave"
+    }
+  },
+  "execution": {
+    "save": "unverified"
+  }
+}

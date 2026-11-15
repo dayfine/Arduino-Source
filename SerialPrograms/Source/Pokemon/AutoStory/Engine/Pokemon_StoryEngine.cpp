@@ -163,7 +163,13 @@ void StoryEngine<PoseType>::save_if_passed(const StoryCheckpoint& checkpoint, St
     }
     const Outcome saved = m_game.save(m_backend, checkpoint);
     report.saved = saved.succeeded();
-    m_backend.log(std::format("[Save] {}: {}", checkpoint.id, report.saved ? "saved" : std::format("save failed: {}", to_string(saved))));
+    if (report.saved){
+        m_backend.log(std::format("[Save] {}: saved", checkpoint.id));
+    }else if (saved.failure == NOT_SAVED){
+        m_backend.log(std::format("[Save] {}: not saved ({})", checkpoint.id, saved.detail));
+    }else{
+        m_backend.log(std::format("[Save] {}: save failed: {}", checkpoint.id, to_string(saved)));
+    }
 }
 
 

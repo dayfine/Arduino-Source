@@ -5,20 +5,23 @@
  */
 
 #include <cstdint>
+#include <cstdlib>
 #include <format>
 #include <optional>
-#include <set>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
+#include "Pokemon/AutoStory/Data/Pokemon_StoryFiles.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryConfirmChoices.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
 #include "PokemonLZA_AutoStoryReadings.h"
+#include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryGame.h"
 
 namespace PokemonAutomation{
@@ -69,6 +72,12 @@ std::vector<StoryActionSpec> make_specs(){
                 .why = "\"fade_white\", \"fade_black\" or \"dialog\": the last leg is held until it shows, its ms the bound",
             },
         }),
+        game_spec("mash_to_move_hints", {
+            optional_ms("min_length_ms", 0, "the scene's rough length: no quiet failure before it"),
+        }),
+        game_spec("text_to_choice"),
+        game_spec("choose_0"),
+        game_spec("choose_1"),
     };
 }
 
@@ -215,6 +224,98 @@ Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
 }
 
 
+//  "mash_to_move_hints": A through the scenes (a choice takes its top
+//  row, the advance chevron its text) until the player has control: the
+//  controls hint held a second, or a main mission's banner on two looks
+//  (01.01's arrival ends on "MAIN MISSION 01"; the step returns once it has
+//  gone, 10 s at most). 01.01's arrival takes ~240 s on the console, hence
+//  360 s. A text-free cutscene (01.01's city flyover, ~20 s) is not
+//  control: a minute with nothing busy fails the step. After 5 s with
+//  nothing busy and no sign of control, A every 2 s, for text the detectors
+//  miss (01.01's ad).
+//  "min_length_ms" holds the quiet failure off for a long still scene.
+Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
+    SceneMachineConfig config;
+    config.quiet = 60s;
+    config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
+    config.blind_press_after = 5s;
+    return run_scene_machine(backend, "mash_to_move_hints", config, 360s);
+}
+
+//  "text_to_choice": B through the scene's text until its choice box
+//  shows, which the next step answers (B: an A as the text ends could land
+//  on the choice). 01.02's Pancham scene takes ~60 s, hence 120 s.
+Outcome text_to_choice_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    SceneMachineConfig config;
+    config.stop_at_choice = true;
+    config.text_button = BUTTON_B;
+    return run_scene_machine(backend, "text_to_choice", config, 120s);
+}
+
+
+//  How long "choose_N" waits for the choice box.
+constexpr Milliseconds CHOICE_WAIT(3000);
+constexpr Milliseconds CHOICE_POLL(250);
+
+//  The highlighted row of the choice box on `look`, and how many rows it
+//  has; none without a choice box or rows that read.
+std::optional<std::pair<int, int>> choice_rows(const ScreenObservation& look){
+    const auto selected = look.readings.find(CHOICE_SELECTED_READING);
+    const auto rows = look.readings.find(CHOICE_ROWS_READING);
+    if (!look.events.has(ScreenEvent::CHOICE_BOX) || selected == look.readings.end() || rows == look.readings.end()){
+        return std::nullopt;
+    }
+    return std::make_pair(selected->second, rows->second);
+}
+
+//  "choose_<index>": with a choice box on screen (within CHOICE_WAIT),
+//  moves the highlight from where it reads to row `index` (0 the top) with
+//  the D-pad, reads it there, then A. Fails as "no_choice" when no choice
+//  box with rows that read shows, "no_such_choice" when it has no row
+//  `index`, and "choice_not_reached" when the highlight is elsewhere after
+//  the presses.
+Outcome choose_step(Pokemon::StoryBackend<ZonePose>& backend, int index){
+    std::optional<std::pair<int, int>> rows;
+    for (Milliseconds waited(0); ; waited += CHOICE_POLL){
+        backend.scope().throw_if_cancelled();
+        rows = choice_rows(backend.observe());
+        if (rows || waited >= CHOICE_WAIT){
+            break;
+        }
+        backend.wait(CHOICE_POLL);
+    }
+    if (!rows){
+        return Pokemon::outcome_failed("no_choice", std::format("no choice box with rows that read in {} ms", CHOICE_WAIT.count()));
+    }
+    const auto [selected, count] = *rows;
+    if (index >= count){
+        return Pokemon::outcome_failed("no_such_choice", std::format("row {} of a choice of {} rows", index, count));
+    }
+    backend.log(std::format("[PLZA] choose_{}: row {} of {} highlighted", index, selected, count));
+    const int moves = index - selected;
+    for (int moved = 0; moved < std::abs(moves); moved++){
+        backend.press(moves > 0 ? BUTTON_DOWN : BUTTON_UP, 160ms, 240ms);
+    }
+    if (moves != 0){
+        const std::optional<std::pair<int, int>> now = choice_rows(backend.observe());
+        if (!now || now->first != index){
+            return Pokemon::outcome_failed("choice_not_reached", std::format(
+                "the highlight is on row {}, not {}, after {} presses from row {}",
+                now ? std::to_string(now->first) : "none", index, std::abs(moves), selected
+            ));
+        }
+    }
+    backend.press(BUTTON_A, 160ms, 240ms);
+    return Pokemon::outcome_ok();
+}
+
+Handler choose_handler(int index){
+    return [index](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+        return choose_step(backend, index);
+    };
+}
+
+
 //  The handler of each of plza_story_specs(), by name.
 Handler plza_handler(StoryEnv* env, const StoryActionSpec& spec){
     if (spec.name == "confirm_new_game"){
@@ -225,6 +326,18 @@ Handler plza_handler(StoryEnv* env, const StoryActionSpec& spec){
     }
     if (spec.name == "opening_to_platform"){
         return platform_handler(PlatformWait::AFTER_AUTOSAVE);
+    }
+    if (spec.name == "mash_to_move_hints"){
+        return move_hints_step;
+    }
+    if (spec.name == "text_to_choice"){
+        return text_to_choice_step;
+    }
+    if (spec.name == "choose_0"){
+        return choose_handler(0);
+    }
+    if (spec.name == "choose_1"){
+        return choose_handler(1);
     }
     return walk_step;
 }
@@ -293,25 +406,116 @@ StoryMove story_walk_move(const StoryActionArgs& args){
     return move;
 }
 
-Pokemon::StoryGame<ZonePose> make_plza_story_game(
-    StoryEnv& env, std::set<std::string, std::less<>> autosave_rows
-){
-    Pokemon::StoryGame<ZonePose> game = plza_game_actions(&env);
-    game.save = [autosave_rows = std::move(autosave_rows)](Pokemon::StoryBackend<ZonePose>& backend, const Pokemon::StoryCheckpoint& checkpoint){
-        if (autosave_rows.contains(checkpoint.id)){
+namespace{
+
+//  The game's own autosave at the end of the rows `rows` marks "autosave";
+//  the others are not saved, an "unverified" one for that reason.
+Pokemon::StoryGame<ZonePose> with_autosaves(Pokemon::StoryGame<ZonePose> game, const Pokemon::StoryRows& rows){
+    game.save = [rows](Pokemon::StoryBackend<ZonePose>& backend, const Pokemon::StoryCheckpoint& checkpoint){
+        if (rows.autosaves.contains(checkpoint.id)){
             backend.log(std::format("[Save] {}: the game autosaved at its end", checkpoint.id));
             return Pokemon::outcome_ok();
         }
-        return Pokemon::outcome_failed("no_autosave", "the row does not end on an autosave a run log has shown");
+        if (rows.unverified_autosaves.contains(checkpoint.id)){
+            return Pokemon::outcome_not_saved("save unverified");
+        }
+        return Pokemon::outcome_not_saved("no autosave at its end");
     };
+    return game;
+}
+
+//  Whether `row` starts on the station platform: its first step checks it
+//  (01.01).
+bool starts_on_platform(const Pokemon::StoryCheckpoint& row){
+    return !row.steps.empty() && row.steps.front().action == "wait_for_platform";
+}
+
+//  Looks after a load, PLATFORM_POLL apart, to tell 01.01's start from a
+//  later one: right after a load the platform reads on the first two.
+constexpr size_t START_LOOKS = 4;
+
+void add_segment(const Pokemon::SegmentReport& part, Pokemon::SegmentReport& total){
+    total.checkpoints_run += part.checkpoints_run;
+    total.reloads += part.reloads;
+    total.runs.insert(total.runs.end(), part.runs.begin(), part.runs.end());
+    total.failed_checkpoint = part.failed_checkpoint;
+    total.failed_event = part.failed_event;
+    total.failure = part.failure;
+}
+
+} // namespace
+
+Pokemon::StoryGame<ZonePose> make_plza_story_game(StoryEnv& env, const Pokemon::StoryRows& rows){
+    Pokemon::StoryGame<ZonePose> game = with_autosaves(plza_game_actions(&env), rows);
     game.reload = [&env](Pokemon::StoryBackend<ZonePose>&){
         return reload_latest_save(env);
     };
     return game;
 }
 
-Pokemon::StoryGame<ZonePose> make_plza_story_game_without_console(){
-    return plza_game_actions(nullptr);
+Pokemon::StoryGame<ZonePose> make_plza_story_game_without_console(const Pokemon::StoryRows& rows){
+    return with_autosaves(plza_game_actions(nullptr), rows);
+}
+
+Outcome load_checkpoint_start(const Pokemon::StoryGame<ZonePose>& game, PlzaBackend& backend, const Pokemon::StoryCheckpoint& row){
+    if (!game.reload){
+        return Pokemon::outcome_failed("no_reload", "this game has no reload");
+    }
+    backend.log(std::format("[Save] {}: loading the latest save", row.id));
+    const Outcome loaded = game.reload(backend);
+    if (!loaded.succeeded()){
+        return loaded;
+    }
+    if (starts_on_platform(row)){
+        return Pokemon::outcome_ok();
+    }
+    size_t streak = 0;
+    for (size_t looks = 0; looks < START_LOOKS; looks++){
+        backend.scope().throw_if_cancelled();
+        streak = backend.observe().readings.contains(PLATFORM_READING) ? streak + 1 : 0;
+        if (streak >= PLATFORM_LOOKS){
+            backend.log(std::format("[Checkpoint] {}: the save is on the station platform, not at its start", row.id));
+            return Pokemon::outcome_failed("older_save", std::format(
+                "the latest save is on the station platform (01.01's start), older than {}'s start", row.id
+            ));
+        }
+        backend.wait(PLATFORM_POLL);
+    }
+    backend.log(std::format("[Checkpoint] {}: off the station platform, as at its start", row.id));
+    return Pokemon::outcome_ok();
+}
+
+Pokemon::SegmentReport run_plza_segments(
+    const Pokemon::StoryGame<ZonePose>& game, const Pokemon::StoryRows& story,
+    std::span<const Pokemon::StoryCheckpoint> rows, size_t attempts_per_checkpoint,
+    Pokemon::StoryEngine<ZonePose>& engine, PlzaBackend& backend, Pokemon::RunState& state
+){
+    Pokemon::SegmentReport total;
+    const std::vector<std::vector<Pokemon::StoryCheckpoint>> segments = Pokemon::story_run_segments(rows, story);
+    for (size_t index = 0; index < segments.size(); index++){
+        const std::vector<Pokemon::StoryCheckpoint>& segment = segments[index];
+        if (index > 0){
+            const Pokemon::StoryCheckpoint& row = segment.front();
+            backend.log(std::format("[Event] {}/0 reload_when_chained: start", row.id));
+            const Outcome loaded = load_checkpoint_start(game, backend, row);
+            if (!loaded.succeeded()){
+                backend.log(std::format("[Event] {}/0 reload_when_chained: failed: {}", row.id, to_string(loaded)));
+                total.failed_checkpoint = row.id;
+                total.failed_event = "reload_when_chained";
+                total.failure = loaded;
+                return total;
+            }
+            backend.log(std::format("[Event] {}/0 reload_when_chained: done", row.id));
+            state = Pokemon::RunState{};
+        }
+        const Pokemon::SegmentReport part = engine.run_segment("PLZA", segment, attempts_per_checkpoint, state);
+        add_segment(part, total);
+        if (!part.completed){
+            return total;
+        }
+    }
+    total.completed = true;
+    return total;
 }
 
 
