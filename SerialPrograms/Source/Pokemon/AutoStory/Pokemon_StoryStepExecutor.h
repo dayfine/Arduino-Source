@@ -51,7 +51,7 @@ namespace Pokemon{
 
 //  How a game does its story steps: an interface with no data. run() is the
 //  game's: it does the step's kind its own way (FRLG and BDSP bind kinds and
-//  variants to actions in a table), and returns unsupported_step() for a
+//  action names to handlers in a table), and returns unsupported_step() for a
 //  kind it has no way of doing.
 class StoryStepExecutor{
 public:
@@ -62,7 +62,10 @@ public:
     //  who can see us again, the row's own settings). Does nothing by default.
     virtual void begin_attempt(const StoryCheckpoint& data);
 
-    //  Does `step`, from the run so far.
+    //  Does `step`, from the run so far. A SAVE step must save only when
+    //  the run's save mode allows a save part-way (PER_CHECKPOINT): nothing
+    //  here knows the mode. The story engine's own SAVE action does this
+    //  for a game on the engine.
     virtual Outcome run(const StoryStep& step, RunState& state) = 0;
 
     //  Whether the condition named in a step's skip_if holds: by default,

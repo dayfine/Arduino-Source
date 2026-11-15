@@ -22,11 +22,10 @@ ScreenEvents fade_events(WarpFade fade);
 WarpFade fade_in(const ScreenEvents& events);
 
 
-//  A fade is uniform over the middle 80% of the screen, the shared
-//  Black/WhiteScreenWatcher's stddev test (upstream #1717): a dim cave floor
-//  is textured, so it is no fade (BDSP's Oreburgh Gate, mean 46, lab-B
-//  2026-11-08). Check against the Gate's frames on the console before
-//  tightening.
+//  A fade is uniform over the middle 80% of the screen, the same stddev
+//  test as the shared Black/WhiteScreenWatcher: a dim cave floor (mean
+//  about 46 a channel) is textured, so it is no fade. A tighter bound
+//  needs checking against such dim floors first.
 constexpr double FADE_MAX_STDDEV_SUM = 10;
 //  Dark goes to an rgb sum of 225, as a cave mouth's fade is dim, 45 to 64
 //  a channel, not black.
