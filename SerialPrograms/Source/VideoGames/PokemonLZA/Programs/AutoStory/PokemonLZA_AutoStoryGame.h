@@ -101,8 +101,9 @@ StoryMove story_walk_move(const Pokemon::StoryActionArgs& args, std::string_view
 //  `starter` is the one approach_starter walks to; the walks read the
 //  compass with heading_reader(). The save waits out the game's autosave at
 //  the end of the checkpoints of `autosave_rows` (the run's
-//  StoryData::autosaves) and saves through the menu after the others; the
-//  reload resets the game from HOME onto the latest save.
+//  StoryData::autosaves); after the others it saves through the menu only
+//  when MENU_SAVE_AT_CHECKPOINT_END is on (off for now: a user decision).
+//  The reload resets the game from HOME onto the latest save.
 Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(
     StoryEnv& env, StarterChoice starter, std::set<std::string, std::less<>> autosave_rows
 );
@@ -130,8 +131,7 @@ Pokemon::Outcome load_checkpoint_start(StoryEnv& env, Pokemon::StoryBackend<Poke
 //  run's segment stops before it, the event "reload_at_boundary" reloads
 //  the save (`game`'s reload, the autosave the row before ended on) and
 //  checks that the station platform does not show (an older save), and a
-//  new segment starts at it. A failed reload fails the run there. The row
-//  before such a row ends its segment, so it ends at SavePoint::RUN_END.
+//  new segment starts at it. A failed reload fails the run there.
 Pokemon::SegmentReport run_plza_segment(
     const Pokemon::StoryGame<Pokemon::ZonePose>& game, const StoryData& story,
     std::span<const Pokemon::StoryCheckpoint> rows, const Pokemon::StoryRunPolicy& policy,
