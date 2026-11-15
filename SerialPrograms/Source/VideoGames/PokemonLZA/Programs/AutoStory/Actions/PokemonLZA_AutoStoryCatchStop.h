@@ -15,7 +15,6 @@
 #include <optional>
 #include <span>
 #include "Common/Cpp/Time.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_CoveredWatch.h"
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 
 namespace PokemonAutomation{
@@ -41,22 +40,10 @@ SpotVisit spot_visit(int spot, std::span<const int> caught_at);
 //  "Registered!" banner before it fires.
 inline constexpr Milliseconds REGISTERED_BANNER_HOLD(100);
 
-//  How a throw watches for the banner, in frame time (Pokemon_CoveredWatch.h).
-//  The banner shows about 2 s, and the watcher fires on two frames on it a
-//  hold apart, so no gap under (2000 - 100) / 2 ms can hide it; 500 ms
-//  leaves room for a shorter showing and still passes frames 150 ms apart
-//  (ConvertFrame's mean under load). A longer gap reads UNKNOWN, not "not
-//  seen", and the plate decides (ThrowSeen): the banner showed 6.9 s in
-//  while frames came a second apart, and run_until() read "not seen"
-//  (03.08). The tail is the hold: a banner showing in
-//  the window's last hold fires after it. The cap waits 2 s for a frame
-//  captured that late.
-inline constexpr Pokemon::WatchLimits REGISTERED_BANNER_WATCH{
-    .max_gap = Milliseconds(500),
-    .tail = REGISTERED_BANNER_HOLD,
-    .cap = Milliseconds(2000),
-    .period = Milliseconds(50),
-};
+//  How long a throw keeps watching for the banner after its command ends
+//  without it: a banner that shows just as the command ends (it showed
+//  6.9 s into the throw at 03.08) still fires, a hold later.
+inline constexpr Milliseconds REGISTERED_BANNER_EXTRA_WAIT(2000);
 
 //  What a catch stop does after a throw at a locked target.
 enum class AfterThrow{
