@@ -1478,11 +1478,21 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryBuiltinActions.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryBuiltinActions.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryGame.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryPoseConcept.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryPoseConcept.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryStepRunner.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryStepRunner.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ZonePose.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_ZonePose.h
     Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h

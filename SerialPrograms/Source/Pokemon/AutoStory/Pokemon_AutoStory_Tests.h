@@ -17,6 +17,7 @@
 #include "Data/Pokemon_StoryStepJson_Tests.h"
 #include "Engine/Pokemon_CoveredWatch_Tests.h"
 #include "Engine/Pokemon_FrameCoverage_Tests.h"
+#include "Engine/Pokemon_StoryEngine_Tests.h"
 #include "Pokemon_SceneJudges_Tests.h"
 #include "Pokemon_StoryEvents_Tests.h"
 #include "Pokemon_StoryFailureClasses_Tests.h"
@@ -40,6 +41,7 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_AuthoredCheckpointJson(database);
     add_tests_CoveredWatch(database);
     add_tests_FrameCoverage(database);
+    add_tests_StoryEngine(database);
     add_tests_StorySegments(database);
     add_tests_SceneJudges(database);
     add_tests_StoryFiles(database);
