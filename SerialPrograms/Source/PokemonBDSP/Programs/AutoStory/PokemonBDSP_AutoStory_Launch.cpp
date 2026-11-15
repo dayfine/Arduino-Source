@@ -18,6 +18,7 @@
 #include "Pokemon/AutoStory/Pokemon_StorySwitchPrompts.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "Detect/PokemonBDSP_AutoStory_ScreenEvents.h"
+#include "Detect/PokemonBDSP_AutoStory_TitleDetector.h"
 #include "PokemonBDSP_AutoStory_Launch.h"
 
 namespace PokemonAutomation{
@@ -40,23 +41,10 @@ constexpr Language HOME_LANGUAGE = Language::English;
 
 constexpr std::string_view NO_LAUNCH_WALK = "a launch never walks";
 
-//  Nothing BDSP's events show: no fade, box, battle or overworld.
-bool quiet(const ScreenObservation& look){
-    for (ScreenEvent event : {
-        ScreenEvent::FADE_BLACK, ScreenEvent::FADE_WHITE, ScreenEvent::DIALOG_BOX,
-        ScreenEvent::BATTLE_STARTED, ScreenEvent::PLAYER_CAN_MOVE,
-    }){
-        if (look.events.has(event)){
-            return false;
-        }
-    }
-    return true;
-}
-
 
 //  The console, for the launch alone: presses, and looks that read HOME,
-//  the boot's black and BDSP's screen events (the Switch's prompts read
-//  the look's frame themselves).
+//  the boot's black, BDSP's screen events and its title (the Switch's
+//  prompts read the look's frame themselves).
 //  code-health: allow public_methods -- the StoryBackend interface; nothing to split
 class BdspLaunchBackend : public Pokemon::StoryBackend<GridPose>{
 public:
@@ -119,6 +107,9 @@ Pokemon::Observation<GridPose> BdspLaunchBackend::observe(){
         look.events.set(ScreenEvent::SWITCH_HOME_MENU, true);
     }else if (frame){
         static_cast<ScreenObservation&>(look) = Pokemon::screen_observation(m_observer.observe(frame, current_time()));
+        if (title_screen_shown(*frame.frame)){
+            look.readings[std::string(TITLE_READING)] = 1;
+        }
     }else{
         //  No frame: nothing to read, so not a quiet title either.
         look.events.set(ScreenEvent::FADE_BLACK, true);
@@ -141,9 +132,13 @@ StoryLaunchPolicy bdsp_launch_policy(std::vector<StoryLaunchPrompt> switch_promp
     ](const ScreenObservation& look){
         return diamond(look) || pearl(look);
     };
-    //  Read only after the launch: a menu in play is quiet too.
-    policy.title = quiet;
+    policy.title = [](const ScreenObservation& look){
+        return look.readings.contains(TITLE_READING);
+    };
+    //  Before the launch, a title on screen is left with HOME and the game
+    //  closed, as any screen of a game in play.
     policy.title_after_launch = true;
+    policy.overworld_after_load = true;
     policy.title_press = {.button = BUTTON_ZL, .hold = 160ms, .release = 1000ms};
     policy.prompts = std::move(switch_prompts);
     //  The title takes ZL through the boot's logos too, a second apart,

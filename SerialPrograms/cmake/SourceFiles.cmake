@@ -1915,6 +1915,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_ScreenEvents.cpp
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_ScreenEvents.h
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_TitleDetector.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_TitleDetector.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_ConsoleStory.cpp
