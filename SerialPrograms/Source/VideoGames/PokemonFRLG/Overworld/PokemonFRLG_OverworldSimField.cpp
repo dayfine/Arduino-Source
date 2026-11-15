@@ -313,6 +313,12 @@ bool OverworldSim::fly_to_town(size_t town){
         violation(std::format("no Fly to town {} from {}.", town, to_string(m_state.position)));
         return false;
     }
+    if (m_script.dead_warp_maps.contains(map().name)){
+        //  A Fly is a warp: from a map whose warps are dead it doesn't take
+        //  off, no fade and no move (the warp no-op fault class).
+        note(std::format("Fly to town {} from {} does nothing.", town, to_string(m_state.position)));
+        return true;
+    }
     m_state.warped_from.push_back(map().name);
     m_state.warps++;
     regrow_cut_trees();
