@@ -235,6 +235,13 @@ std::string program_state_name(ProgramState state){
     return "UNKNOWN";
 }
 
+std::string console_command_refusal(ProgramState state, bool reads_only){
+    if (reads_only || state == ProgramState::STOPPED){
+        return "";
+    }
+    return "Program is " + program_state_name(state) + "; only commands that read the screen run now.";
+}
+
 
 
 std::unique_ptr<LabChannel> LabChannel::start_if_enabled(
@@ -526,11 +533,9 @@ std::string LabChannel::run_console_command(const std::vector<std::string>& word
         if (program == nullptr){
             throw ParseException("The selected panel is not a program.");
         }
-        const ProgramState state = program->current_state();
-        if (!reads_only && state != ProgramState::STOPPED){
-            throw ParseException(
-                "Program is " + program_state_name(state) + "; only commands that read the screen run now."
-            );
+        const std::string refusal = console_command_refusal(program->current_state(), reads_only);
+        if (!refusal.empty()){
+            throw ParseException(refusal);
         }
         m_console->run(panel, scope, words, output);
     });

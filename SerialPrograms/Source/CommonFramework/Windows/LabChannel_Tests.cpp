@@ -15,6 +15,7 @@
 #include <vector>
 #include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "LabChannel.h"
 #include "LabRequest.h"
 #include "LabTransition.h"
 #include "LabChannel_Tests.h"
@@ -358,6 +359,36 @@ UnitTestResult test_controller_wait(){
 }
 
 
+//  A console command runs for the selected program only while that program
+//  is stopped, unless it only reads the screen.
+UnitTestResult test_console_command_refusal(){
+    struct Input{
+        ProgramState state = ProgramState::STOPPED;
+        bool reads_only = false;
+    };
+    struct Case{
+        std::string name;
+        Input input;
+        std::string expectation;    //  the refusal; "" when the command runs
+    };
+    const std::vector<Case> cases{
+        {.name = "press while stopped", .input = {.state = ProgramState::STOPPED, .reads_only = false}, .expectation = ""},
+        {.name = "press while running", .input = {.state = ProgramState::RUNNING, .reads_only = false}, .expectation = "Program is RUNNING; only commands that read the screen run now."},
+        {.name = "press while stopping", .input = {.state = ProgramState::STOPPING, .reads_only = false}, .expectation = "Program is STOPPING; only commands that read the screen run now."},
+        {.name = "press before the panel is ready", .input = {.state = ProgramState::NOT_READY, .reads_only = false}, .expectation = "Program is NOT_READY; only commands that read the screen run now."},
+        {.name = "shot while running", .input = {.state = ProgramState::RUNNING, .reads_only = true}, .expectation = ""},
+        {.name = "shot while stopped", .input = {.state = ProgramState::STOPPED, .reads_only = true}, .expectation = ""},
+    };
+    for (const Case& c : cases){
+        const std::string refusal = console_command_refusal(c.input.state, c.input.reads_only);
+        if (refusal != c.expectation){
+            return std::format("{}: got \"{}\", expected \"{}\"", c.name, refusal, c.expectation);
+        }
+    }
+    return true;
+}
+
+
 class Test_LabChannel : public UnitTest{
 public:
     Test_LabChannel(std::string name, std::function<UnitTestResult()> body)
@@ -387,6 +418,7 @@ void add_tests_LabChannel(UnitTestDatabase& database){
     database.add<Test_LabChannel>("owner lock", test_owner);
     database.add<Test_LabChannel>("keep-awake schedule", test_keep_awake);
     database.add<Test_LabChannel>("controller wait", test_controller_wait);
+    database.add<Test_LabChannel>("console command refusal", test_console_command_refusal);
 }
 
 

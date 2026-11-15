@@ -379,7 +379,8 @@ two-line `state`) is gone. `start` and `stop` are lines in a request, and
 ## Tests
 
 `add_tests_LabChannel()` covers the request format, the journal lines, the
-state text, the owner lock, the keep-awake schedule and the controller wait before `start` (`LabChannel - ...`
+state text, the owner lock, the keep-awake schedule, the controller wait before `start` and which
+program states let a console command run (`LabChannel - ...`
 unit tests); `add_tests_LabSnapshot()` covers `snapshot`'s arguments, its wait for a newer frame and its lines; `add_tests_LabStateJson()` checks `state.json` against the
 contract's golden files, which transition it names after a panel switch, and when it is rewritten; `add_tests_ProgramTransition()` covers
 who each start and stop is said to come from; `add_tests_CommandFileRunner()` covers the console commands'
