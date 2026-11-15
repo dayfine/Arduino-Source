@@ -21,22 +21,9 @@ namespace Filesystem{
 
 static std::string g_startup_profile;
 
-void set_startup_profile(int& argc, char* argv[]){
-    for (int i = 1; i + 1 < argc; i++){
-        if (strcmp(argv[i], "--profile") == 0){
-            std::string profile = argv[i + 1];
-            for (char c : profile){
-                if (!(std::isalpha(c) || std::isdigit(c)) && c != u'_' && c != u'-') c = u'_';
-            }
-            g_startup_profile = std::move(profile);
-            // Shift everything after --profile <name> down by 2.
-            for (int j = i; j + 2 < argc; j++){
-                argv[j] = argv[j + 2];
-            }
-            argc -= 2;
-            return;
-        }
-    }
+// Store the already-validated identity before any scratch/settings path is cached.
+void set_startup_profile(std::string_view profile){
+    g_startup_profile = profile;
 }
 
 const std::string& STARTUP_PROFILE(){
