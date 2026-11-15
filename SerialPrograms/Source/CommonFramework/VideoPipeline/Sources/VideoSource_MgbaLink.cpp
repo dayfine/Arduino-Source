@@ -13,6 +13,7 @@
 #include <QWidget>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
+#include "Controllers/MgbaLink/MgbaLink_SharedLink.h"
 #include "CommonFramework/ImageTypes/ImageRGB32_Qt.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "CommonFramework/VideoPipeline/Backends/VideoFrameQt.h"
@@ -221,17 +222,21 @@ void VideoSource_MgbaLink::poll_loop(){
 }
 
 void VideoSource_MgbaLink::run_connection(Logger& logger, const std::string& host, uint16_t port){
-    Connection connection(logger, GlobalThreadPools::unlimited_realtime(), host, port);
+    //  Shared: a controller for the same address sends its commands on it.
+    std::shared_ptr<Connection> connection = std::make_shared<Connection>(
+        logger, GlobalThreadPools::unlimited_realtime(), host, port
+    );
     {
         std::lock_guard<Mutex> lg(m_lock);
         if (m_stopping){
             return;
         }
-        m_connection = &connection;
+        m_connection = connection.get();
     }
     try{
-        connection.open();
-        poll_connected(logger, connection);
+        connection->open();
+        LinkRegistry::Publication publication = link_registry().publish(m_address, connection);
+        poll_connected(logger, *connection);
     }catch (...){
         std::lock_guard<Mutex> lg(m_lock);
         m_connection = nullptr;
