@@ -459,6 +459,7 @@ Pokemon::StoryAction OverworldStepSim::step_action(StoryActionId id){
         return m_stubs.stub();
     }
     return played([this, body](const StoryStep& step, RunState& state){
+        m_flags = state.flags;
         m_beaten = beaten_trainers(state.flags);
         const std::string failure = (this->*body)(step);
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
@@ -545,10 +546,12 @@ void sim_wait_out_warp(OverworldSim& sim){
 //  A ROUTE or LEGS by the sim's walker, fighting a trainer who sees the
 //  player on the way.
 std::string OverworldStepSim::walk(const StoryStep& step){
-    //  The story's maps, as the planner and the program have them (the grunt the sim has
-    //  hidden stands on them, and the stairs a switch opens are open); the gates are the sim's,
-    //  which the walker's steps open.
-    const std::vector<MapData>& maps = story_maps();
+    //  The story's maps as the program plans on them with the step's run flags
+    //  (run_story_maps(): a beaten trainer who walked up to the player stands
+    //  where he stopped, the Rockets are gone once Silph Co. is cleared; the
+    //  stairs a switch opens are open); the gates are the sim's, which the
+    //  walker's steps open.
+    const std::vector<MapData>& maps = run_story_maps(m_flags);
     const Pokemon::GateState& gates = m_sim.state().gates;
     const std::optional<std::vector<RouteStep>> route = walked_route(m_at, step, maps, gates, Pokemon::GateRules{.card_key_held = m_sim.card_key_held()});
     if (route && route->empty()){

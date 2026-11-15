@@ -61,9 +61,10 @@
                     ],
                     "facing": "south"
                 },
-                "why": "Grunt1 (SilphCo_5F_EventScript_Grunt1): Arbok Lv33; beaten here every run, so 16.03's start flag holds by construction",
+                "why": "Grunt1 (SilphCo_5F_EventScript_Grunt1): Arbok Lv33; beaten here every run, so 16.03's start flags hold by construction; he walked up two tiles to (11, 21) when he saw the player on (12, 21) and stands there from now on (trainer_at), across row 21 west of the player (console B, 2026-11-14, run 4: 16.03's leg west along row 21 stopped against him)",
                 "flags_after": [
-                    "trainer_beaten:SilphCo_5F/rocket_m@9,21"
+                    "trainer_beaten:SilphCo_5F/rocket_m@9,21",
+                    "trainer_at:SilphCo_5F/rocket_m@9,21=11,21"
                 ]
             },
             {

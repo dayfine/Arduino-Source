@@ -16,7 +16,8 @@
         },
         "start_flags": [
             "card_key_held",
-            "trainer_beaten:SilphCo_5F/rocket_m@9,21"
+            "trainer_beaten:SilphCo_5F/rocket_m@9,21",
+            "trainer_at:SilphCo_5F/rocket_m@9,21=11,21"
         ],
         "events": [
             {
