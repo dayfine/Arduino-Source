@@ -66,65 +66,84 @@ std::vector<ScreenEvents> concat(std::vector<ScreenEvents> a, const std::vector<
 }
 
 UnitTestResult test_talk_over(){
+    //  The judge given `beats`, one look each, from the start.
     struct Row{
-        std::string name;
-        TalkOverRule rule;
-        std::vector<ScreenEvents> beats;
-        SceneMove want;
-        std::optional<size_t> beat;  //  Unset: never says `want`.
+        std::string_view name;
+        struct Input{
+            TalkOverRule rule;
+            std::vector<ScreenEvents> beats;
+        };
+        //  The first beat at which the judge says `move`; none: never.
+        struct Expectation{
+            SceneMove move;
+            std::optional<size_t> beat;
+        };
+        Input input;
+        Expectation expectation;
     };
+    using M = SceneMove;
+    const ScreenEvents black{ScreenEvent::FADE_BLACK};
+    const ScreenEvents banner{ScreenEvent::LOCATION_BANNER, ScreenEvent::PLAYER_CAN_MOVE};
+    const ScreenEvents battle{ScreenEvent::BATTLE_STARTED};
     const std::vector<Row> rows = {
-        {"5 s of quiet ends it", {}, repeat(QUIET, 8), SceneMove::DONE, 5},
-        {"a box restarts the quiet", {}, concat(concat(repeat(QUIET, 3), {BOX}), repeat(QUIET, 8)), SceneMove::DONE, 9},
-        {"a box is answered", {}, {BOX}, SceneMove::NEXT, 0},
-        {"no box is a B press", {}, {QUIET}, SceneMove::B, 0},
-        {"15 s calm but moving ends it", {}, repeat(CALM, 20), SceneMove::DONE, 15},
-        //  PLZA: its party bar never shows mid-scene for long, and its
-        //  city never stands still.
-        {"a shorter calm rule ends it sooner", {.calm = 1000ms}, repeat(CALM, 5), SceneMove::DONE, 1},
-        {"a shorter calm rule still waits out a box", {.calm = 1000ms},
-            concat(concat({CALM}, {BOX}), repeat(CALM, 5)), SceneMove::DONE, 3},
-        {"a warp rule waits for the fade", {.warp = true},
-            concat(concat(repeat(QUIET, 8), {ScreenEvents{ScreenEvent::FADE_BLACK}}), repeat(QUIET, 8)),
-            SceneMove::DONE, 14},
-        {"a banner is the warp too", {.warp = true},
-            concat({ScreenEvents{ScreenEvent::LOCATION_BANNER, ScreenEvent::PLAYER_CAN_MOVE}}, repeat(QUIET, 8)),
-            SceneMove::DONE, 6},
-        {"no quiet ends a talk before a battle", {.end_on_quiet = false}, repeat(QUIET, 30), SceneMove::DONE, std::nullopt},
-        {"a battle", {.end_on_quiet = false}, concat(repeat(QUIET, 6), {ScreenEvents{ScreenEvent::BATTLE_STARTED}}), SceneMove::BATTLE, 6},
+        {.name = "5 s of quiet ends it",
+            .input = {.rule = {}, .beats = repeat(QUIET, 8)}, .expectation = {.move = M::DONE, .beat = 5}},
+        {.name = "a box restarts the quiet",
+            .input = {.rule = {}, .beats = concat(concat(repeat(QUIET, 3), {BOX}), repeat(QUIET, 8))},
+            .expectation = {.move = M::DONE, .beat = 9}},
+        {.name = "a box is answered", .input = {.rule = {}, .beats = {BOX}}, .expectation = {.move = M::NEXT, .beat = 0}},
+        {.name = "no box is a B press", .input = {.rule = {}, .beats = {QUIET}}, .expectation = {.move = M::B, .beat = 0}},
+        {.name = "15 s calm but moving ends it",
+            .input = {.rule = {}, .beats = repeat(CALM, 20)}, .expectation = {.move = M::DONE, .beat = 15}},
+        //  A game whose party bar never shows mid-scene for long, and whose
+        //  overworld never stands still, ends a scene on a shorter calm.
+        {.name = "a shorter calm rule ends it sooner",
+            .input = {.rule = {.calm = 1000ms}, .beats = repeat(CALM, 5)}, .expectation = {.move = M::DONE, .beat = 1}},
+        {.name = "a shorter calm rule still waits out a box",
+            .input = {.rule = {.calm = 1000ms}, .beats = concat(concat({CALM}, {BOX}), repeat(CALM, 5))},
+            .expectation = {.move = M::DONE, .beat = 3}},
+        {.name = "a warp rule waits for the fade",
+            .input = {.rule = {.warp = true}, .beats = concat(concat(repeat(QUIET, 8), {black}), repeat(QUIET, 8))},
+            .expectation = {.move = M::DONE, .beat = 14}},
+        {.name = "a banner is the warp too",
+            .input = {.rule = {.warp = true}, .beats = concat({banner}, repeat(QUIET, 8))},
+            .expectation = {.move = M::DONE, .beat = 6}},
+        {.name = "no quiet ends a talk before a battle",
+            .input = {.rule = {.end_on_quiet = false}, .beats = repeat(QUIET, 30)},
+            .expectation = {.move = M::DONE, .beat = std::nullopt}},
+        {.name = "a battle",
+            .input = {.rule = {.end_on_quiet = false}, .beats = concat(repeat(QUIET, 6), {battle})},
+            .expectation = {.move = M::BATTLE, .beat = 6}},
         //  Quiet, then the scene's closing fade: the scene must not end at
         //  the fade's start, or the next step's input lands in the fade.
-        {"a closing fade starts the quiet over", {},
-            concat(concat(repeat(QUIET, 4), repeat(FADED, 3)), repeat(QUIET, 8)),
-            SceneMove::DONE, 12},
-        {"a fade still down never ends it", {}, concat(repeat(QUIET, 3), repeat(FADED, 20)), SceneMove::DONE, std::nullopt},
-        {"a fade is never calm", {}, concat(repeat(CALM, 10), repeat(CALM_FADED, 10)), SceneMove::DONE, std::nullopt},
+        {.name = "a closing fade starts the quiet over",
+            .input = {.rule = {}, .beats = concat(concat(repeat(QUIET, 4), repeat(FADED, 3)), repeat(QUIET, 8))},
+            .expectation = {.move = M::DONE, .beat = 12}},
+        {.name = "a fade still down never ends it",
+            .input = {.rule = {}, .beats = concat(repeat(QUIET, 3), repeat(FADED, 20))},
+            .expectation = {.move = M::DONE, .beat = std::nullopt}},
+        {.name = "a fade is never calm",
+            .input = {.rule = {}, .beats = concat(repeat(CALM, 10), repeat(CALM_FADED, 10))},
+            .expectation = {.move = M::DONE, .beat = std::nullopt}},
     };
     for (const Row& row : rows){
-        TalkOver judge(row.rule);
-        const std::optional<size_t> got = first_beat(row.beats, row.want, judge);
-        if (got != row.beat){
+        TalkOver judge(row.input.rule);
+        const std::optional<size_t> got = first_beat(row.input.beats, row.expectation.move, judge);
+        if (got != row.expectation.beat){
             const auto show = [](const std::optional<size_t>& beat){
                 return beat ? std::to_string(*beat) : std::string("none");
             };
-            return std::format("{}: expected beat {}, got {} ({})", row.name, show(row.beat), show(got), judge.describe());
+            return std::format("{}: expected beat {}, got {} ({})", row.name, show(row.expectation.beat), show(got), judge.describe());
         }
     }
     return true;
 }
 
 
+//  A named test; it returns its own failure.
 struct SceneJudgesCase{
-    struct Input{
-        UnitTestResult (*body)();
-    };
-
-    struct Expectation{
-    };
-
     std::string name;
-    Input input;
-    Expectation expectation;
+    UnitTestResult (*body)();
 };
 
 class Test_SceneJudges : public UnitTest{
@@ -134,7 +153,7 @@ public:
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_case.input.body();
+        return m_case.body();
     }
 
 private:
@@ -145,16 +164,8 @@ private:
 
 
 const SceneJudgesCase SCENE_JUDGES_CASES[] = {
-    {
-        .name = "a warp is the first fade and the first banner seen",
-        .input = {test_warp_seen},
-        .expectation = {},
-    },
-    {
-        .name = "talk-over from scripted events",
-        .input = {test_talk_over},
-        .expectation = {},
-    },
+    {.name = "a warp is the first fade and the first banner seen", .body = test_warp_seen},
+    {.name = "talk-over from scripted events", .body = test_talk_over},
 };
 
 void add_tests_SceneJudges(UnitTestDatabase& database){
