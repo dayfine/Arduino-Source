@@ -86,6 +86,13 @@ struct RouteStep{
     //  floors, where a hold that ends a tile off slides the player
     //  elsewhere (console B, 2026-11-10, 09.01 r1).
     bool tapped = false;
+    //  WALK onto a warp: the leg starts on an exit mat (walk_<direction>)
+    //  and goes its way, so the first press takes the warp from any facing,
+    //  and the leg has no turn tap (turns_first()). The turn tap east on
+    //  Route 7's gate door (15, 10) took the warp, its fade passed while the
+    //  turn was read, and the hold walked on inside the gate (console B,
+    //  2026-11-14 22:27, 15.01 west_of_tea_guard).
+    bool off_exit_mat = false;
     //  WALK, SURF: a wild Pokemon can appear on the way: the step crosses
     //  tall grass or water. Elsewhere (indoors, streets) no wild battle can
     //  start, so the walker doesn't watch for one.
