@@ -12,7 +12,6 @@
 
 #include <chrono>
 #include <format>
-#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -87,8 +86,8 @@ Outcome take_warp(StoryBackend<GridPose>& backend, const StoryActionCall& call, 
     return outcome_failed(faded ? "warp_wrong_map" : "warp_no_fade");
 }
 
-//  A game with take_warp, a route of its own (one hold north) and a
-//  reader "door_open" that reads `door_open`.
+//  A game with take_warp, a route of its own (one hold north), an action
+//  that logs its step and a reader "door_open" that reads `door_open`.
 StoryGame<GridPose> test_game(std::optional<int> door_open = std::nullopt){
     StoryGame<GridPose> game;
     game.id = "test";
@@ -103,6 +102,14 @@ StoryGame<GridPose> test_game(std::optional<int> door_open = std::nullopt){
         .spec = *find_story_action(builtin_story_actions(), StoryStepKind::ROUTE, "route"),
         .handler = [](StoryBackend<GridPose>& backend, const StoryActionCall&, RunState&){
             backend.hold(Direction::NORTH, 100ms, StoryPace::RUN);
+            return outcome_ok();
+        },
+    });
+    //  Logs "[Test] step <name> / <why>": what an action sees of its step.
+    game.actions.push_back({
+        .spec = {.kind = StoryStepKind::GAME, .name = "echo_step", .args = {}},
+        .handler = [](StoryBackend<GridPose>& backend, const StoryActionCall& call, RunState&){
+            backend.log(std::format("[Test] step {} / {}", call.step.name, call.step.why));
             return outcome_ok();
         },
     });
@@ -126,6 +133,11 @@ StoryStep make_step(StoryStepKind kind, std::string action, StoryActionArgs args
     return step;
 }
 
+StoryStep with_why(StoryStep step, std::string why){
+    step.why = std::move(why);
+    return step;
+}
+
 
 
 struct RegistryCase{
@@ -135,12 +147,13 @@ struct RegistryCase{
         StoryStep step;
     };
 
-    //  The lint errors joined by "; ", then (for a clean step) the failure and
-    //  the inputs sent.
+    //  The lint errors joined by "; ", then (for a clean step) the failure,
+    //  the inputs sent and a line the action logged.
     struct Expectation{
         std::string_view lint = {};
         std::string_view failure = {};
         std::string_view inputs = {};
+        std::string_view line = {};
     };
 
     std::string_view name;
@@ -167,6 +180,8 @@ const RegistryCase REGISTRY_CASES[] = {
      .expectation = {.failure = "unsupported_step"}},
     {.name = "game route replaces the built-in", .input = {.step = make_step(StoryStepKind::ROUTE, "", {{"target", on_map("Route4")}})},
      .expectation = {.inputs = "hold north 100ms run"}},
+    {.name = "handler sees its step", .input = {.step = with_why(make_step(StoryStepKind::GAME, "echo_step", {}), "the long intro")},
+     .expectation = {.line = "[Test] step s / the long intro"}},
     {.name = "save without the game's save", .input = {.step = make_step(StoryStepKind::SAVE, "", {})},
      .expectation = {.failure = "unsupported_step"}},
 };
@@ -189,6 +204,9 @@ std::string check_registry(const RegistryCase& test, CancellableScope& scope){
     }
     if (joined(backend.inputs()) != test.expectation.inputs){
         return std::format("expected inputs \"{}\", got \"{}\"", test.expectation.inputs, joined(backend.inputs()));
+    }
+    if (!test.expectation.line.empty() && !has_line(backend, test.expectation.line)){
+        return std::format("expected the line \"{}\", logged: {}", test.expectation.line, joined(backend.lines()));
     }
     return "";
 }
@@ -348,88 +366,78 @@ private:
 
 
 
-//  The move stick at an angle, and the heading reading; a turn lets
-//  go of the stick for its release.
-std::string stick_and_heading(CancellableScope& scope){
-    Observation<ZonePose> facing_east;
-    facing_east.readings[std::string(STORY_HEADING)] = 90;
-    FakeStoryBackend<ZonePose> backend({.looks = {facing_east, {}}}, scope);
-    backend.stick(45, 150ms, 0ms, StoryPace::WALK);
-    backend.stick(-90, 300ms, 0ms, StoryPace::RUN);
-    backend.stick(90, 150ms, 300ms, StoryPace::WALK);
-    if (story_heading(backend.observe()) != 90){
-        return "expected the heading 90";
-    }
-    if (story_heading(backend.observe())){
-        return "expected no heading where nothing read it";
-    }
-    const std::string expected = "stick 45deg 150ms walk, stick -90deg 300ms run, stick 90deg 150ms walk, release 300ms";
-    const std::string got = joined(backend.inputs());
-    return got == expected ? "" : std::format("expected inputs \"{}\", got \"{}\"", expected, got);
-}
 
-//  The fake logs each press by the button's name.
-std::string buttons_by_name(CancellableScope& scope){
-    FakeStoryBackend<ZonePose> backend({}, scope);
-    for (const NintendoSwitch::Button button : {
-        NintendoSwitch::BUTTON_L, NintendoSwitch::BUTTON_R, NintendoSwitch::BUTTON_PLUS,
-        NintendoSwitch::BUTTON_A, NintendoSwitch::BUTTON_B, NintendoSwitch::BUTTON_ZL,
-    }){
-        backend.press(button, 80ms, 120ms);
-    }
-    const std::string expected = "press L, press R, press +, press A, press B, press ZL";
-    const std::string got = joined(backend.inputs());
-    return got == expected ? "" : std::format("expected inputs \"{}\", got \"{}\"", expected, got);
-}
 
-//  An action sees its step.
-std::string handler_sees_step(CancellableScope& scope){
-    StoryGame<GridPose> game;
-    std::shared_ptr<std::string> seen = std::make_shared<std::string>();
-    game.actions.push_back({
-        .spec = {.kind = StoryStepKind::GAME, .name = "scene", .args = {}},
-        .handler = [seen](StoryBackend<GridPose>&, const StoryActionCall& call, RunState&){
-            *seen = std::format("{} / {}", call.step.name, call.step.why);
-            return outcome_ok();
-        },
-    });
-    const StoryActionRegistry<GridPose> registry(game);
-    FakeStoryBackend<GridPose> backend({}, scope);
-    StoryStep step = make_step(StoryStepKind::GAME, "scene", {});
-    step.name = "opening";
-    step.why = "the long intro";
-    RunState state;
-    const Outcome outcome = registry.dispatch(backend, step, state);
-    if (!outcome.succeeded()){
-        return std::format("expected a pass, got {}", to_string(outcome));
-    }
-    return *seen == "opening / the long intro" ? "" : std::format("expected the step, got \"{}\"", *seen);
-}
+struct BackendCase{
+    //  Inputs sent to a scripted zone backend that shows `looks`, then one
+    //  look per entry of the expected headings.
+    struct Input{
+        std::vector<Observation<ZonePose>> looks;
+        void (*drive)(StoryBackend<ZonePose>& backend);
+    };
 
-//  A named test; it returns its error, empty when it passed.
-struct NamedCheck{
+    //  The inputs the fake recorded, and the heading each look read.
+    struct Expectation{
+        std::string_view inputs;
+        std::vector<std::optional<int>> headings = {};
+    };
+
     std::string_view name;
-    std::string (*check)(CancellableScope& scope);
+    Input input;
+    Expectation expectation;
 };
 
-const NamedCheck NAMED_CHECKS[] = {
-    {.name = "stick and heading", .check = &stick_and_heading},
-    {.name = "buttons by name", .check = &buttons_by_name},
-    {.name = "handler sees its step", .check = &handler_sees_step},
+Observation<ZonePose> heading_look(int degrees){
+    Observation<ZonePose> observation;
+    observation.readings[std::string(STORY_HEADING)] = degrees;
+    return observation;
+}
+
+const BackendCase BACKEND_CASES[] = {
+    //  A turn lets go of the stick for its release; a look that read no
+    //  heading has none.
+    {.name = "stick and heading", .input = {.looks = {heading_look(90), {}}, .drive = [](StoryBackend<ZonePose>& backend){
+        backend.stick(45, 150ms, 0ms, StoryPace::WALK);
+        backend.stick(-90, 300ms, 0ms, StoryPace::RUN);
+        backend.stick(90, 150ms, 300ms, StoryPace::WALK);
+    }}, .expectation = {.inputs = "stick 45deg 150ms walk, stick -90deg 300ms run, stick 90deg 150ms walk, release 300ms", .headings = {90, std::nullopt}}},
+    {.name = "buttons by name", .input = {.looks = {}, .drive = [](StoryBackend<ZonePose>& backend){
+        for (const NintendoSwitch::Button button : {
+            NintendoSwitch::BUTTON_L, NintendoSwitch::BUTTON_R, NintendoSwitch::BUTTON_PLUS,
+            NintendoSwitch::BUTTON_A, NintendoSwitch::BUTTON_B, NintendoSwitch::BUTTON_ZL,
+        }){
+            backend.press(button, 80ms, 120ms);
+        }
+    }}, .expectation = {.inputs = "press L, press R, press +, press A, press B, press ZL"}},
 };
 
-class StoryEngineCheckTest : public UnitTest{
+std::string check_backend(const BackendCase& test, CancellableScope& scope){
+    FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
+    test.input.drive(backend);
+    for (size_t c = 0; c < test.expectation.headings.size(); c++){
+        const std::optional<int> heading = story_heading(backend.observe());
+        if (heading != test.expectation.headings[c]){
+            return std::format("look {}: expected the heading {}, got {}", c,
+                test.expectation.headings[c] ? std::to_string(*test.expectation.headings[c]) : "none",
+                heading ? std::to_string(*heading) : "none");
+        }
+    }
+    const std::string got = joined(backend.inputs());
+    return got == test.expectation.inputs ? "" : std::format("expected inputs \"{}\", got \"{}\"", test.expectation.inputs, got);
+}
+
+class StoryFakeBackendTest : public UnitTest{
 public:
-    explicit StoryEngineCheckTest(NamedCheck test)
-        : UnitTest(std::format("Pokemon::StoryEngine - {}", test.name))
+    explicit StoryFakeBackendTest(BackendCase test)
+        : UnitTest(std::format("Pokemon::StoryEngine fake backend - {}", test.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
-        const std::string error = m_case.check(scope);
+        const std::string error = check_backend(m_case, scope);
         return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
     }
 private:
-    NamedCheck m_case;
+    BackendCase m_case;
 };
 
 
@@ -446,8 +454,8 @@ void add_tests_StoryEngine(UnitTestDatabase& database){
     for (const WarpCase& test : WARP_CASES){
         database.add<StoryTakeWarpTest>(test);
     }
-    for (const NamedCheck& test : NAMED_CHECKS){
-        database.add<StoryEngineCheckTest>(test);
+    for (const BackendCase& test : BACKEND_CASES){
+        database.add<StoryFakeBackendTest>(test);
     }
 }
 
