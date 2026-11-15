@@ -13,6 +13,7 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryCatchPlan_H
 
 #include <optional>
+#include <string_view>
 #include <vector>
 
 namespace PokemonAutomation{
@@ -29,6 +30,9 @@ struct LockTarget{
     double y = 0;
     double width = 0;
     std::optional<bool> caught;
+
+    //  The caught mark, for the log.
+    std::string_view caught_text() const;
 };
 
 //  A plate whose bar sits above this share of the screen's height is a far
@@ -48,6 +52,35 @@ bool same_lock_target(const LockTarget& a, const LockTarget& b);
 //  The nearest target not known caught among `targets`: the one whose
 //  plate is lowest on the screen; nothing when all are caught.
 std::optional<size_t> nearest_uncaught(const std::vector<LockTarget>& targets);
+
+//  Why a throw at a locked target counts as a new species.
+enum class NewSpeciesSign{
+    //  The Pokedex's "Registered!" banner showed.
+    BANNER,
+    //  No banner, but the target's plate read "not caught" before the
+    //  throw, and after it no wild battle is on and no plate locks on: the
+    //  ball caught it. The banner was missed once while the capture lagged
+    //  (03.08 stop 1, console B 2026-11-14), though the next stops read
+    //  that species' plate as caught.
+    PLATE_NOT_CAUGHT,
+};
+
+//  What a throw at a locked target showed.
+struct ThrowSeen{
+    //  The banner showed.
+    bool registered = false;
+    //  The target's caught mark, read before the throw (nothing: unread).
+    std::optional<bool> plate_caught;
+    //  After it, no wild battle is on and no plate locks on.
+    bool target_gone = false;
+
+    //  Whether the throw caught a new species, and by which sign; nothing
+    //  when it did not, or may not have.
+    std::optional<NewSpeciesSign> new_species() const;
+
+    //  What new_species() says, for the log.
+    std::string_view new_species_text() const;
+};
 
 //  The targets seen while flicking the right stick right with ZL held,
 //  one view after each flick. It stops at a view equal to the last (no

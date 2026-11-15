@@ -77,7 +77,10 @@ constexpr std::string_view RELOAD_AT_BOUNDARIES_LABEL =
 constexpr std::string_view START_FROM_BACKUP_SAVE_LABEL =
     "<b>Start from the Backup Save:</b><br>The run starts by loading the backup save "
     "(title screen Up + B + X), the save before the latest. Off: it loads the latest save and, when a checkpoint "
-    "with a start check is not at its start there, the backup save. Later reloads load the latest save either way.";
+    "with a start check is not at its start there, the backup save, then saves there (Report) before it starts. "
+    "Later reloads load the latest save either way.<br>"
+    "<font color=\"red\">Warning: a run from the backup save saves over the latest save (the start's Report, "
+    "the game's autosaves, the checkpoints' saves). The progress in the latest save is lost.</font>";
 
 } // namespace
 

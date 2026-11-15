@@ -115,6 +115,74 @@ private:
 };
 
 
+//  ThrowSeen::new_species(): whether a throw caught a new species, and by which
+//  sign.
+struct NewSpeciesCase{
+    std::string name;
+    struct Input{
+        ThrowSeen seen;
+    };
+    Input input;
+    struct Expectation{
+        std::optional<NewSpeciesSign> sign;
+    };
+    Expectation expectation;
+};
+
+std::string sign_text(std::optional<NewSpeciesSign> sign){
+    if (!sign){
+        return "no new species";
+    }
+    return *sign == NewSpeciesSign::BANNER ? "banner" : "plate was not caught";
+}
+
+const NewSpeciesCase NEW_SPECIES_CASES[] = {
+    {
+        .name = "the banner counts",
+        .input = {.seen = {.registered = true, .plate_caught = false, .target_gone = true}},
+        .expectation = {.sign = NewSpeciesSign::BANNER},
+    },
+    {
+        .name = "no banner, a plate not caught and the target gone counts",
+        .input = {.seen = {.registered = false, .plate_caught = false, .target_gone = true}},
+        .expectation = {.sign = NewSpeciesSign::PLATE_NOT_CAUGHT},
+    },
+    {
+        .name = "no banner, a caught plate and the target gone does not count",
+        .input = {.seen = {.registered = false, .plate_caught = true, .target_gone = true}},
+        .expectation = {.sign = std::nullopt},
+    },
+    {
+        .name = "no banner, an unread plate and the target gone does not count",
+        .input = {.seen = {.registered = false, .plate_caught = std::nullopt, .target_gone = true}},
+        .expectation = {.sign = std::nullopt},
+    },
+    {
+        .name = "no banner, a plate not caught and the target still there does not count",
+        .input = {.seen = {.registered = false, .plate_caught = false, .target_gone = false}},
+        .expectation = {.sign = std::nullopt},
+    },
+};
+
+class Test_NewSpeciesSign : public UnitTest{
+public:
+    explicit Test_NewSpeciesSign(const NewSpeciesCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: new species sign: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const ThrowSeen& seen = m_case.input.seen;
+        if (seen.new_species() != m_case.expectation.sign){
+            return std::format("Expected {}, got {}.", sign_text(m_case.expectation.sign), seen.new_species_text());
+        }
+        return true;
+    }
+
+private:
+    const NewSpeciesCase& m_case;
+};
+
+
 //  lock_target_far(): a plate high on the screen is far.
 struct FarCase{
     std::string name;
@@ -642,6 +710,9 @@ private:
 void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
     for (const NearestCase& item : NEAREST_CASES){
         database.add<Test_NearestUncaught>(item);
+    }
+    for (const NewSpeciesCase& item : NEW_SPECIES_CASES){
+        database.add<Test_NewSpeciesSign>(item);
     }
     for (const FarCase& item : FAR_CASES){
         database.add<Test_LockTargetFar>(item);

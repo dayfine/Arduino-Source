@@ -1,0 +1,51 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.08b",
+    "title": "From Wild Zone 1's gate into the Research Lab",
+    "start": {
+      "place": "LumioseCity"
+    },
+    "events": [
+      {
+        "id": "to_research_lab",
+        "kind": "game_action",
+        "why": "step 63: across to the Pokemon Research Lab's gate, into Taunie's scene, by the objective marker: out of the zone's gate the player faces whichever way it faced before (the timed legs from 2026-11-08 depended on that; console B, 2026-11-10).",
+        "action": "walk_to_marker"
+      },
+      {
+        "id": "research_lab_gate",
+        "kind": "scene",
+        "why": "step 63: Taunie at the lab gate; with five species registered she goes on",
+        "action": "a"
+      },
+      {
+        "id": "five_registered",
+        "kind": "scene",
+        "why": "step 65: Taunie's scene at the lab gate after 5/5",
+        "action": "a"
+      },
+      {
+        "id": "up_the_lab_steps",
+        "kind": "game_action",
+        "why": "step 65: up the steps to the lab's \"A Enter\", by the objective marker.",
+        "action": "walk_to_marker"
+      },
+      {
+        "id": "lab_lobby",
+        "kind": "game_action",
+        "why": "steps 65-66: A Enter, the receptionist: third floor; autosave (A first: the door's prompt shows with the party bar up)",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.08 (user, 2026-11-14). Starts on the street just outside Wild Zone 1's far gate, where 03.08 ends; ends at the lab lobby's autosave, 03.09's start, so it saves no further (user, 2026-11-14)"
+    }
+  },
+  "execution": {
+    "save": "autosave"
+  }
+}

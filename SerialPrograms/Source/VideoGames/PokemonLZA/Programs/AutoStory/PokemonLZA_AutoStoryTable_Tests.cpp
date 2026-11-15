@@ -479,19 +479,48 @@ UnitTestResult test_center_walk_row(Logger&){
     return true;
 }
 
+//  03.08 ends out on the street, just through Wild Zone 1's far gate
+//  (user, 2026-11-14: "the end of 03.08 should be exit wild zone 1"); the
+//  walk on into the Research Lab is 03.08b, whose lobby autosave is 03.09's
+//  start.
+UnitTestResult test_zone_1_exit_row(Logger&){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    size_t index = 0;
+    while (index < rows.size() && rows[index].id != "03.08b"){
+        index++;
+    }
+    if (index == 0 || index + 1 >= rows.size()
+        || rows[index - 1].id != "03.08" || rows[index + 1].id != "03.09"
+    ){
+        return "Expected 03.08b in the story rows, between 03.08 and 03.09.";
+    }
+    const StoryCheckpoint& zone = rows[index - 1];
+    const StoryCheckpoint& lab = rows[index];
+    if (zone.steps.empty() || zone.steps.back().name != "leave_zone_1"){
+        return "Expected 03.08 to end with leave_zone_1.";
+    }
+    if (lab.steps.empty() || lab.steps.front().name != "to_research_lab" || lab.steps.back().name != "lab_lobby"){
+        return "Expected 03.08b to run from to_research_lab to lab_lobby.";
+    }
+    return true;
+}
+
 //  The production story the program's dropdowns list, by index (the start
 //  and end options store the index): ids, the rows ending on the game's
 //  autosave and the rows reloading before them. Console runs name rows by
-//  these indices (03.07d is 18, 03.08 is 19), so a change to how the files
+//  these indices (03.07d is 18, 03.08 is 19, 03.08b is 20), so a change to how the files
 //  are read must leave them as they are.
 UnitTestResult test_production_rows(Logger&){
     const std::vector<std::string> ids{
         "01.00", "01.01", "01.02", "01.03",
         "02.01", "02.02", "02.03", "02.04", "02.05", "02.06", "02.07",
-        "03.01", "03.02", "03.03", "03.04", "03.05", "03.06", "03.07", "03.07d", "03.08", "03.09",
+        "03.01", "03.02", "03.03", "03.04", "03.05", "03.06", "03.07", "03.07d", "03.08", "03.08b", "03.09",
     };
     const std::set<std::string, std::less<>> autosaves{
         "01.00", "01.01", "01.02", "02.01", "02.02", "02.03", "02.04", "02.05", "02.06", "02.07", "03.01", "03.03",
+        //  03.08 ends on the street outside Wild Zone 1, which does not
+        //  autosave; 03.08b ends on the Research Lab lobby's (user, 2026-11-14).
+        "03.08b",
     };
     const std::set<std::string, std::less<>> reload_when_chained{
         "01.02", "02.02", "02.03", "02.04", "02.05", "02.07", "03.01", "03.02", "03.04",
@@ -631,6 +660,11 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     {
         .name = "Center walk: 03.07d is a story row between 03.07 and 03.08",
         .input = {.body = test_center_walk_row},
+        .expectation = {},
+    },
+    {
+        .name = "Zone 1 exit: 03.08 ends through the far gate, 03.08b walks into the lab",
+        .input = {.body = test_zone_1_exit_row},
         .expectation = {},
     },
     {
