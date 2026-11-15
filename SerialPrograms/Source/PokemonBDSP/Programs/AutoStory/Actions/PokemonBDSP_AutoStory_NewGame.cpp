@@ -364,7 +364,7 @@ struct IntroRun{
     //  The language select's item to pick.
     size_t language_target = 0;
     //  Capture mode (capture_intro_screens()): the run ends with the
-    //  recording after the look's A, saved as <capture_tag>_after-look_NN.png;
+    //  recording after the look's A, saved as <capture_tag>_after-look_NNN.png;
     //  the screen is saved before the look's pick, and with
     //  `capture_language_pick` before the language's.
     bool capture = false;
@@ -404,7 +404,7 @@ double frame_change(const VideoSnapshot& before, const VideoSnapshot& after){
 const Milliseconds CAPTURE_POLL = 250ms;
 
 //  Capture mode, from the look's A: records what the game shows next as
-//  <tag>_after-look_NN.png (FrameBurst decides which frames and when to
+//  <tag>_after-look_NNN.png (FrameBurst decides which frames and when to
 //  stop), reading nothing on it. It presses nothing. On lab-B (2026-11-09,
 //  English) the look's A goes straight to the system name keyboard, and on
 //  that keyboard no button is safe: A types the key under the cursor, B
@@ -429,7 +429,7 @@ void record_after_look(IntroRun& run){
         if (frame){
             const BurstStep step = burst.see(at, frame_change(saved, frame), frame_change(previous, frame));
             if (step.save){
-                save_frame(run, frame, std::format("after-look_{:02}", count++));
+                save_frame(run, frame, std::format("after-look_{:03}", count++));
                 saved = frame;
             }
             previous = std::move(frame);
