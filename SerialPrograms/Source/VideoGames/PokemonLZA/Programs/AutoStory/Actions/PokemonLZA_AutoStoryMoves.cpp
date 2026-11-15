@@ -1,0 +1,212 @@
+/*  PokemonLZA AutoStory - Moves
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ */
+
+#include <format>
+#include <optional>
+#include <string>
+#include <string_view>
+#include "Common/Cpp/Color.h"
+#include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonTools/Async/InferenceRoutines.h"
+#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapDetector.h"
+#include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
+#include "VideoGames/PokemonLZA/Programs/PokemonLZA_FastTravelNavigation.h"
+#include "PokemonLZA_AutoStoryMoves.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryFailures.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonLZA{
+
+using namespace std::chrono_literals;
+
+
+namespace{
+
+//  The heading on a fresh look, read by `reader` when there is one.
+std::optional<int> read_heading(PlzaBackend& backend, const PlzaReader& reader){
+    Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+    if (reader){
+        reader(backend, look);
+    }
+    return Pokemon::story_heading(look);
+}
+
+//  Leg `index` of `move` is about to start: a breakpoint, when `pause` is
+//  given (StoryPausePoints::before_leg()).
+void pause_before_leg(PlzaBackend& backend, Pokemon::StoryPausePoints* pause, const StoryMove& move, size_t index){
+    if (pause == nullptr){
+        return;
+    }
+    pause->before_leg(story_walk_leg_label(index, move.legs.size(), move.legs[index]));
+    backend.scope().throw_if_cancelled();
+}
+
+//  Whether the screen on a fresh look has not changed since the look
+//  before (SCREEN_STILL): the input in between did nothing, a dropped turn
+//  or a dropped hold. A walk into a wall that already stops the player
+//  (a walk into the nurse's counter) reads still too, and plays its leg
+//  twice.
+bool screen_still(PlzaBackend& backend){
+    return backend.observe().events.has(PokemonAutomation::ScreenEvent::SCREEN_STILL);
+}
+
+//  A recorded turn: story_turn(), then L to recenter the camera, since the
+//  walk goes where it looks.
+void turn_and_recenter(PlzaBackend& backend, double degrees){
+    story_turn(backend, degrees);
+    backend.press(BUTTON_L, 100ms, 150ms);
+}
+
+//  `input`, played again once when the screen stays still after it.
+template <typename Input>
+void play_checked(PlzaBackend& backend, std::string_view what, Input&& input){
+    input();
+    if (screen_still(backend)){
+        backend.log(std::format("[PLZA] walk: the screen stayed still after {}; once more", what));
+        input();
+    }
+}
+
+} // namespace
+
+
+Pokemon::Outcome face_heading(PlzaBackend& backend, const PlzaReader& reader, double heading, double tolerance){
+    std::optional<int> now = read_heading(backend, reader);
+    for (size_t attempt = 0; attempt < 4 && now && get_angle_between_facing_directions(*now, heading) > tolerance; attempt++){
+        story_turn(backend, heading - *now);
+        now = read_heading(backend, reader);
+    }
+    if (!now){
+        return plza_failed("heading_unread", "no look read the minimap's heading");
+    }
+    if (get_angle_between_facing_directions(*now, heading) > tolerance){
+        return plza_failed(
+            "heading_missed",
+            std::format("facing {} deg, wanted {:.0f} +/- {:.0f}", *now, heading, tolerance)
+        );
+    }
+    //  The turn moves the player, not the camera: L puts the camera behind
+    //  the player, so a walk forward and the screen readers go the new way
+    //.
+    backend.press(BUTTON_L, 100ms, 150ms);
+    return Pokemon::outcome_ok();
+}
+
+std::string story_walk_leg_label(size_t index, size_t count, const StoryWalkLeg& leg){
+    std::string label = std::format("leg {}/{} turn {:g}", index + 1, count, leg.turn);
+    if (leg.walk > Milliseconds(0)){
+        label += std::format(" walk {} ms", leg.walk.count());
+    }
+    return label;
+}
+
+Pokemon::Outcome run_story_move(
+    PlzaBackend& backend, const StoryMove& move, const PlzaReader& heading,
+    Pokemon::StoryPausePoints* pause
+){
+    if (move.heading){
+        const Pokemon::Outcome faced = face_heading(backend, heading, *move.heading, 10.0);
+        if (!faced.succeeded()){
+            return faced;
+        }
+    }
+    if (move.held){
+        for (size_t i = 0; i < move.legs.size(); i++){
+            const StoryWalkLeg& leg = move.legs[i];
+            pause_before_leg(backend, pause, move, i);
+            if (i > 0 && leg.turn != 0){
+                backend.press(BUTTON_L, 100ms, 150ms);
+            }
+            if (leg.walk > Milliseconds(0)){
+                backend.stick(leg.turn, leg.walk, 0ms, Pokemon::StoryPace::WALK);
+            }else if (leg.turn != 0){
+                backend.stick(leg.turn, 150ms, 100ms, Pokemon::StoryPace::WALK);
+            }
+        }
+        return Pokemon::outcome_ok();
+    }
+    //  The look the first input is checked against.
+    backend.observe();
+    for (size_t index = 0; index < move.legs.size(); index++){
+        const StoryWalkLeg& leg = move.legs[index];
+        pause_before_leg(backend, pause, move, index);
+        if (leg.turn != 0){
+            play_checked(backend, std::format("the turn of {}", story_walk_leg_label(index, move.legs.size(), leg)), [&]{
+                turn_and_recenter(backend, leg.turn);
+            });
+        }
+        if (leg.walk > Milliseconds(0)){
+            play_checked(backend, std::format("the walk of {}", story_walk_leg_label(index, move.legs.size(), leg)), [&]{
+                backend.hold(Pokemon::Direction::NORTH, leg.walk, Pokemon::StoryPace::WALK);
+            });
+        }
+    }
+    return Pokemon::outcome_ok();
+}
+
+
+void fly_to(ConsoleHandle& console, ProControllerContext& context, Language language, Location location){
+    const FastTravelState state = open_map_and_fly_to(console, context, language, location);
+    if (state != FastTravelState::SUCCESS){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            std::format(
+                "fly_to(): could not fly to {} (state {}). The fast travel menu is read in {}: "
+                "check that the Game Language option matches the game.",
+                get_location_item_from_enum(location).slug, static_cast<int>(state), language_data(language).name
+            ),
+            console
+        );
+    }
+}
+
+namespace{
+
+//  How long map_shows_travel_spots() waits for the map's Travel Spots icon.
+constexpr Milliseconds TRAVEL_SPOTS_WAIT = 5000ms;
+
+//  Opens the map and closes it again (map_to_overworld()): whether it
+//  showed the Travel Spots icon by Y within TRAVEL_SPOTS_WAIT. Before fast
+//  travel opens in the story, the map's Y line is the main mission instead
+//  (end of 03.07, the Wild Zone 1 panel open):
+//  open_map() needs that icon (MapDetector), pressed + every 5 s, closing
+//  the map it had opened, and gave up after 30 s.
+bool map_shows_travel_spots(ConsoleHandle& console, ProControllerContext& context){
+    pbf_press_button(context, BUTTON_PLUS, 240ms, 40ms);
+    context.wait_for_all_requests();
+    MapWatcher map(COLOR_RED, &console.overlay());
+    const int ret = wait_until(console, context, TRAVEL_SPOTS_WAIT, {map});
+    map_to_overworld(console, context);
+    return ret == 0;
+}
+
+} // namespace
+
+bool fly_to_or_stay(ConsoleHandle& console, ProControllerContext& context, Language language, Location location){
+    const std::string& slug = get_location_item_from_enum(location).slug;
+    if (!map_shows_travel_spots(console, context)){
+        console.log(std::format("fly_to_or_stay(): no Travel Spots on the map (fast travel not open yet): staying, not flying to {}.", slug), COLOR_RED);
+        return false;
+    }
+    try{
+        const FastTravelState state = open_map_and_fly_to(console, context, language, location);
+        if (state == FastTravelState::SUCCESS){
+            return true;
+        }
+        console.log(std::format("fly_to_or_stay(): no fly to {} (state {}): staying.", slug, static_cast<int>(state)), COLOR_RED);
+    }catch (OperationFailedException& e){
+        console.log(std::format("fly_to_or_stay(): no fly to {} ({}): staying.", slug, e.message()), COLOR_RED);
+    }
+    map_to_overworld(console, context);
+    return false;
+}
+
+
+} // namespace PokemonLZA
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

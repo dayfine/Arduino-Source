@@ -27,6 +27,7 @@
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDetectors_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader_Tests.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h"
 
 namespace PokemonAutomation{
