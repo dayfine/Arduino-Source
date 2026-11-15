@@ -15,7 +15,9 @@
 #ifndef PokemonAutomation_NintendoSwitch_MgbaLink_ProController_H
 #define PokemonAutomation_NintendoSwitch_MgbaLink_ProController_H
 
+#include <stdint.h>
 #include <string>
+#include <string_view>
 #include "Controllers/ControllerTypes.h"
 #include "Controllers/MgbaLink/MgbaLink_KeySender.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
@@ -36,6 +38,15 @@ public:
     //  "address" is the "host:port" the mGBA video source uses.
     ProController_MgbaLink(Logger& logger, std::string address);
     ~ProController_MgbaLink();
+
+    //  Loads the mGBA save state "file" (a path on the Mac running mGBA).
+    //  Drops the commands not sent yet and releases the keys, as
+    //  cancel_all_commands() does; the clock re-anchors on the loaded frame.
+    //  Returns that frame. Throws ConnectionException if mGBA refuses it.
+    uint64_t load_state(std::string_view file);
+
+    //  Resets the GBA, like load_state() otherwise.
+    uint64_t reset_console();
 
 
     //  The ProController interface. Callers reach it through ProController

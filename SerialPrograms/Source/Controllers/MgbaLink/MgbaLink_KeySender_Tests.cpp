@@ -15,6 +15,7 @@
 #include <thread>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Concurrency/AsyncTask.h"
 #include "Common/Cpp/Concurrency/ConditionVariable.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -43,8 +44,10 @@ using FakeServerSocket = ServerSocket_POSIX;
 
 using std::chrono::milliseconds;
 
-//  The fake emulator is always about to run this frame.
+//  The fake emulator is about to run this frame until a LOAD or RESET.
 constexpr uint64_t BRIDGE_FRAME = 120;
+//  The frame the fake emulator is on after a RESET.
+constexpr uint64_t RESET_FRAME = 1;
 
 
 std::string join_lines(const std::vector<std::string>& lines){
@@ -135,12 +138,26 @@ private:
         }
     }
 
-    static std::string reply_for(std::string_view line){
+    //  "LOAD <n>" loads a state taken on frame <n>; any other file fails.
+    std::string reply_for(std::string_view line){
+        std::lock_guard<Mutex> lg(m_lock);
         if (line == "HELLO 1"){
             return "OK 1 BPRE bridge-0.1 paced\n";
         }
         if (line.starts_with("GRANT ")){
-            return std::format("OK {}\n", BRIDGE_FRAME);
+            return std::format("OK {}\n", m_frame);
+        }
+        if (line.starts_with("LOAD ")){
+            std::optional<uint64_t> loaded = number_after(line, "LOAD ");
+            if (!loaded){
+                return "ERR load failed\n";
+            }
+            m_frame = *loaded;
+            return std::format("OK {}\n", m_frame);
+        }
+        if (line == "RESET"){
+            m_frame = RESET_FRAME;
+            return "OK\n";
         }
         if (line.starts_with("KEYS ")){
             return "OK\n";
@@ -158,6 +175,7 @@ private:
     ConditionVariable m_cv;
     std::optional<std::string> m_listen_error;
     std::vector<std::string> m_commands;
+    uint64_t m_frame = BRIDGE_FRAME;
 };
 
 //  The registry: which connection a lookup finds after publications start
@@ -569,6 +587,287 @@ void add_sender_cancel_tests(UnitTestDatabase& database){
     }
 }
 
+
+
+//  LOAD and RESET: the emulator jumps to another frame, so the sender
+//  re-anchors its clock there. Every KEYS and GRANT after the jump is on
+//  the new timeline, and nothing queued for the old one plays.
+enum class ReanchorStep{
+    PUSH,
+    WAIT_FOR_ALL,
+    LOAD,
+    //  A LOAD from another thread, 100 ms after the step.
+    LOAD_LATER,
+    RESET,
+};
+struct ReanchorAction{
+    ReanchorStep step = ReanchorStep::PUSH;
+    uint16_t mask = 0;
+    milliseconds duration{};
+    std::string file = {};
+};
+struct ReanchorInput{
+    std::vector<ReanchorAction> actions;
+};
+struct ReanchorExpectation{
+    //  "KEYS <mask>", "GRANT 0", "LOAD <file>", "RESET" and "GRANT run-on",
+    //  in order.
+    std::vector<std::string> commands;
+    //  How many steps threw ConnectionException.
+    size_t failed_steps = 0;
+    milliseconds max_run_time{};
+};
+struct ReanchorCase{
+    std::string name;
+    ReanchorInput input;
+    ReanchorExpectation expectation;
+};
+
+ReanchorAction hold(uint16_t mask, int ms){
+    return ReanchorAction{.step = ReanchorStep::PUSH, .mask = mask, .duration = milliseconds(ms)};
+}
+ReanchorAction finish(){
+    return ReanchorAction{.step = ReanchorStep::WAIT_FOR_ALL};
+}
+ReanchorAction load(std::string file){
+    return ReanchorAction{.step = ReanchorStep::LOAD, .file = std::move(file)};
+}
+ReanchorAction load_later(std::string file){
+    return ReanchorAction{.step = ReanchorStep::LOAD_LATER, .file = std::move(file)};
+}
+ReanchorAction reset(){
+    return ReanchorAction{.step = ReanchorStep::RESET};
+}
+
+void run_reanchor_actions(
+    const std::vector<ReanchorAction>& actions,
+    KeySender& sender, ThreadPool& thread_pool,
+    std::vector<std::string>& results
+){
+    AsyncTask later;
+    for (const ReanchorAction& action : actions){
+        try{
+            switch (action.step){
+            case ReanchorStep::PUSH:
+                sender.push(nullptr, action.mask, action.duration);
+                break;
+            case ReanchorStep::WAIT_FOR_ALL:
+                sender.wait_for_all(nullptr);
+                break;
+            case ReanchorStep::LOAD:
+                sender.jump(JumpCommand::load_state(action.file));
+                break;
+            case ReanchorStep::LOAD_LATER:
+                later = thread_pool.dispatch_now_blocking([&sender, file = action.file]{
+                    std::this_thread::sleep_for(milliseconds(100));
+                    sender.jump(JumpCommand::load_state(file));
+                });
+                break;
+            case ReanchorStep::RESET:
+                sender.jump(JumpCommand::reset());
+                break;
+            }
+        }catch (ConnectionException&){
+            results.emplace_back("error");
+        }
+    }
+    later.wait_and_ignore_exceptions();
+}
+
+//  Checks the frames of every KEYS and pacer GRANT against the timeline
+//  they belong to, and keeps the other commands and the KEYS masks in
+//  order (see ReanchorExpectation).
+class TimelineCheck{
+public:
+    void read(const std::string& line){
+        if (line == "GRANT 0"){
+            m_kept.emplace_back(line);
+            start_timeline();
+        }else if (line == std::format("GRANT {}", KeySender::RUN_ON_GRANT)){
+            m_kept.emplace_back("GRANT run-on");
+        }else if (line.starts_with("LOAD ") || line == "RESET"){
+            m_kept.emplace_back(line);
+            m_jumped = true;
+            m_grants_since_jump = 0;
+            m_next_anchor = line == "RESET" ? std::optional<uint64_t>(RESET_FRAME) : number_after(line, "LOAD ");
+        }else if (std::optional<uint64_t> grant = number_after(line, "GRANT ")){
+            check_on_timeline(line, *grant);
+            m_grants_since_jump++;
+        }else if (std::optional<uint64_t> frame = number_after(line, "KEYS ")){
+            read_keys(line, *frame);
+        }
+    }
+
+    //  Empty if every frame fits.
+    std::string error() const{
+        //  The pacer runs again after every LOAD or RESET, failed or not.
+        if (m_error.empty() && m_jumped && m_grants_since_jump == 0){
+            return "no GRANT after the last LOAD or RESET: mGBA stays stalled";
+        }
+        return m_error;
+    }
+    const std::vector<std::string>& kept() const{
+        return m_kept;
+    }
+
+private:
+    //  Generous: a short case never runs a second past its anchor.
+    static constexpr uint64_t MAX_FRAMES_PAST_ANCHOR = 60;
+
+    void start_timeline(){
+        if (!m_next_anchor){
+            return;
+        }
+        m_anchor = *m_next_anchor;
+        m_next_anchor.reset();
+        m_reanchored = true;
+        m_last_keys_frame.reset();
+    }
+    void check_on_timeline(std::string_view line, uint64_t frame){
+        if (m_error.empty() && (frame < m_anchor || frame > m_anchor + MAX_FRAMES_PAST_ANCHOR)){
+            m_error = std::format("<{}> is off the timeline anchored at frame {}", line, m_anchor);
+        }
+    }
+    void read_keys(const std::string& line, uint64_t frame){
+        check_on_timeline(line, frame);
+        std::string_view mask = std::string_view(line).substr(line.rfind(' ') + 1);
+        //  The release that starts a new timeline is on its first frame.
+        if (m_error.empty() && m_reanchored && !m_last_keys_frame && mask == "0" && frame != m_anchor){
+            m_error = std::format("<{}>: the release after a jump is not on frame {}", line, m_anchor);
+        }
+        if (m_error.empty() && m_last_keys_frame && frame <= *m_last_keys_frame){
+            m_error = std::format("<{}> is not after the KEYS before it", line);
+        }
+        m_last_keys_frame = frame;
+        m_kept.emplace_back(std::format("KEYS {}", mask));
+    }
+
+    std::vector<std::string> m_kept;
+    std::string m_error;
+    uint64_t m_anchor = BRIDGE_FRAME;
+    std::optional<uint64_t> m_next_anchor;
+    bool m_reanchored = false;
+    std::optional<uint64_t> m_last_keys_frame;
+    bool m_jumped = false;
+    size_t m_grants_since_jump = 0;
+};
+
+class Test_Reanchor : public UnitTest{
+public:
+    Test_Reanchor(ReanchorCase test_case)
+        : UnitTest(std::format("Controllers::MgbaLink - key sender re-anchor - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        WallClock start = current_time();
+        std::vector<std::string> results;
+        std::optional<std::vector<std::string>> commands = with_fake_link(
+            logger,
+            [&](ThreadPool& thread_pool, LinkRegistry& registry, const std::string& address, std::shared_ptr<Connection>){
+                KeySender sender(logger, thread_pool, registry, address);
+                run_reanchor_actions(m_case.input.actions, sender, thread_pool, results);
+            }
+        );
+        milliseconds run_time = std::chrono::duration_cast<milliseconds>(current_time() - start);
+        if (!commands){
+            return UnitTestResult(UnitTestResult::SKIPPED, "No free port for the fake bridge.");
+        }
+        TimelineCheck check;
+        for (const std::string& line : *commands){
+            check.read(line);
+        }
+        if (!check.error().empty()){
+            return std::format("{}: {}", check.error(), join_lines(*commands));
+        }
+        const std::vector<std::string>& kept = check.kept();
+        if (results.size() != m_case.expectation.failed_steps){
+            return std::format("{} step(s) threw, expected {}", results.size(), m_case.expectation.failed_steps);
+        }
+        if (kept != m_case.expectation.commands){
+            return std::format("the bridge saw {}, expected {}", join_lines(kept), join_lines(m_case.expectation.commands));
+        }
+        if (run_time > m_case.expectation.max_run_time){
+            return std::format("took {} ms, expected at most {} ms", run_time.count(), m_case.expectation.max_run_time.count());
+        }
+        return true;
+    }
+
+private:
+    ReanchorCase m_case;
+};
+
+
+void add_load_tests(UnitTestDatabase& database){
+    const ReanchorCase LOAD_CASES[] = {
+        {
+            //  The pacer must not grant the old frames past the loaded one.
+            .name = "load moves keys and grants to the loaded frame",
+            .input = {{hold(GBA_KEY_A, 80), load("9000"), hold(GBA_KEY_B, 80), finish()}},
+            .expectation = {
+                .commands = {"GRANT 0", "KEYS 1", "LOAD 9000", "GRANT 0", "KEYS 0", "KEYS 2", "KEYS 0", "GRANT run-on"},
+                .max_run_time = milliseconds(2000),
+            },
+        },
+        {
+            //  Old grants would let mGBA run free for 90 frames.
+            .name = "load of an earlier frame",
+            .input = {{hold(GBA_KEY_A, 80), load("30"), hold(GBA_KEY_B, 80), finish()}},
+            .expectation = {
+                .commands = {"GRANT 0", "KEYS 1", "LOAD 30", "GRANT 0", "KEYS 0", "KEYS 2", "KEYS 0", "GRANT run-on"},
+                .max_run_time = milliseconds(2000),
+            },
+        },
+        {
+            //  Nothing held yet: nothing to release.
+            .name = "load before any key",
+            .input = {{load("9000"), hold(GBA_KEY_A, 80), finish()}},
+            .expectation = {
+                .commands = {"GRANT 0", "LOAD 9000", "GRANT 0", "KEYS 1", "KEYS 0", "GRANT run-on"},
+                .max_run_time = milliseconds(2000),
+            },
+        },
+    };
+    for (const ReanchorCase& test_case : LOAD_CASES){
+        database.add<Test_Reanchor>(test_case);
+    }
+}
+
+void add_reset_and_drop_tests(UnitTestDatabase& database){
+    const ReanchorCase RESET_AND_DROP_CASES[] = {
+        {
+            //  RESET replies without a frame: "GRANT 0" reads it.
+            .name = "reset moves keys and grants to the reset frame",
+            .input = {{hold(GBA_KEY_A, 80), reset(), hold(GBA_KEY_B, 80), finish()}},
+            .expectation = {
+                .commands = {"GRANT 0", "KEYS 1", "RESET", "GRANT 0", "KEYS 0", "KEYS 2", "KEYS 0", "GRANT run-on"},
+                .max_run_time = milliseconds(2000),
+            },
+        },
+        {
+            //  B waits ~3 s for its turn behind A; the LOAD drops it.
+            .name = "load drops a state waiting for its turn",
+            .input = {{hold(GBA_KEY_A, 3000), load_later("9000"), hold(GBA_KEY_B, 80), finish()}},
+            .expectation = {
+                .commands = {"GRANT 0", "KEYS 1", "LOAD 9000", "GRANT 0", "KEYS 0", "GRANT run-on"},
+                .max_run_time = milliseconds(1500),
+            },
+        },
+        {
+            //  mGBA did not jump: the old clock and the pacer carry on.
+            .name = "failed load keeps the old timeline",
+            .input = {{hold(GBA_KEY_A, 80), load("missing"), hold(GBA_KEY_B, 80), finish()}},
+            .expectation = {
+                .commands = {"GRANT 0", "KEYS 1", "LOAD missing", "KEYS 2", "KEYS 0", "GRANT run-on"},
+                .failed_steps = 1,
+                .max_run_time = milliseconds(2000),
+            },
+        },
+    };
+    for (const ReanchorCase& test_case : RESET_AND_DROP_CASES){
+        database.add<Test_Reanchor>(test_case);
+    }
+}
+
 }  // namespace
 
 
@@ -577,6 +876,8 @@ void add_key_sender_tests(UnitTestDatabase& database){
     add_pacer_tests(database);
     add_sender_tests(database);
     add_sender_cancel_tests(database);
+    add_load_tests(database);
+    add_reset_and_drop_tests(database);
 }
 
 

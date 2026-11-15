@@ -23,6 +23,18 @@ ProController_MgbaLink::ProController_MgbaLink(Logger& logger, std::string addre
 ProController_MgbaLink::~ProController_MgbaLink() = default;
 
 
+uint64_t ProController_MgbaLink::load_state(std::string_view file){
+    std::lock_guard<Mutex> lg(m_state_lock);
+    m_scheduler.clear_on_next();
+    return m_sender.jump(MgbaLink::JumpCommand::load_state(file));
+}
+uint64_t ProController_MgbaLink::reset_console(){
+    std::lock_guard<Mutex> lg(m_state_lock);
+    m_scheduler.clear_on_next();
+    return m_sender.jump(MgbaLink::JumpCommand::reset());
+}
+
+
 void ProController_MgbaLink::cancel_all_commands(){
     std::lock_guard<Mutex> lg(m_state_lock);
     m_scheduler.clear_on_next();
