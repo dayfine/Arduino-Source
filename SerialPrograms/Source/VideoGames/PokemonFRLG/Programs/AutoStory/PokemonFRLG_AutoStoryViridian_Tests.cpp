@@ -2,8 +2,10 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Viridian Gym's spinner tiles (rows 17.02 to 17.04b,
- *  StoryData/frlg-17.0N.plan.json) on the overworld sim.
+ *  Viridian Gym's spinner tiles and rows 17.02 and 17.04b
+ *  (StoryData/frlg-17.0N.plan.json) on the overworld sim. 17.03 is the
+ *  fault sweep's (a known-failing clean run: Takashi stands in the way
+ *  after his battle).
  *
  */
 
@@ -15,9 +17,11 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSpin.h"
+#include "PokemonFRLG_AutoStoryPoses.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryRows17_Tests.h"
@@ -98,7 +102,107 @@ UnitTestResult test_gym_north_arrow(){
     return check_gym_slide({0, 20}, {0, 11}, Direction::NORTH, 9);
 }
 
+constexpr std::string_view GYM = "ViridianCity_Gym";
+
+const StoryCheckpoint& table_row(std::string_view id){
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        if (row.id == id){
+            return row;
+        }
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No row {}.", id));
+}
+
+//  Whether the overworld sim plays `step`; after any other step the
+//  player is put on its pose_after.
+bool sim_walks(const StoryStep& step){
+    return step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS
+        || step.kind == StoryStepKind::STEP || step.kind == StoryStepKind::BATTLE;
+}
+
+//  story_maps() after Giovanni's win: every trainer of the gym beaten with
+//  him (set_gym_trainers 8).
+std::vector<MapData> beaten_gym_maps(){
+    std::vector<MapData> maps = story_maps();
+    for (MapData& map : maps){
+        if (map.name != GYM){
+            continue;
+        }
+        for (MapObject& object : map.objects){
+            object.trainer.reset();
+        }
+    }
+    return maps;
+}
+
+//  Row `id`'s steps after `after` (from the row's start if empty) up to
+//  `last`, on the sim over `maps` from where `after` leaves the player. It
+//  must fight only its own battles, break no rule and end on `end`.
+UnitTestResult walk_row(
+    std::string_view id, std::string_view after, std::string_view last,
+    const std::vector<MapData>& maps, const MapPosition& end
+){
+    const StoryCheckpoint& row = table_row(id);
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    size_t first = 0;
+    for (size_t c = 0; !after.empty() && c < row.steps.size(); c++){
+        if (row.steps[c].name == after){
+            at = *story_pose(Pokemon::pose_of(*row.steps[c].pose_after));
+            first = c + 1;
+        }
+    }
+    std::optional<OverworldSim> sim;
+    sim.emplace(maps, MapPosition{at.map, at.tile}, at.facing.value_or(Direction::SOUTH));
+    size_t battles = 0;
+    for (size_t c = first; c < row.steps.size(); c++){
+        const StoryStep& step = row.steps[c];
+        battles += step.kind == StoryStepKind::BATTLE ? 1 : 0;
+        if (sim_walks(step)){
+            if (const std::string failure = row_step_on_sim(*sim, at, step, row.id); !failure.empty()){
+                return failure;
+            }
+        }else if (step.pose_after){
+            at = *story_pose(Pokemon::pose_of(*step.pose_after));
+            sim.emplace(maps, MapPosition{at.map, at.tile}, at.facing.value_or(sim->state().facing));
+        }
+        if (!sim->state().violations.empty()){
+            return std::format("{} {}: broke a rule: {}", id, step.name, sim->state().violations.front());
+        }
+        if (step.name == last){
+            break;
+        }
+    }
+    if (!(sim->state().position == end)){
+        return std::format("{}: ended on {}, not {}.", id, to_string(sim->state().position), to_string(end));
+    }
+    if (sim->state().trainers_beaten.size() != battles){
+        return std::format("{}: fought {} trainer(s), not the row's {}.", id, sim->state().trainers_beaten.size(), battles);
+    }
+    return true;
+}
+
+//  17.02 from the Fly to Viridian City: to the gym's door, in, up to
+//  below Warren's line and into it; his battle leaves the player on (15, 7).
+UnitTestResult test_row_17_02(){
+    return walk_row("17.02", "fly_viridian", "warren", story_maps(), MapPosition{std::string(GYM), {15, 7}});
+}
+
+//  17.04b after Giovanni's win: back through the gym past its beaten
+//  trainers (Takashi's line on row 3 among them), out of the door and to
+//  below the Center's door (26, 27).
+UnitTestResult test_row_17_04b(){
+    return walk_row("17.04b", "", "below_center_door", beaten_gym_maps(), MapPosition{"ViridianCity", {26, 27}});
+}
+
 const AutoStoryViridianCase AUTO_STORY_VIRIDIAN_CASES[] = {
+    {
+        .input = {.name = "17.02: from the Fly to Viridian through the gym into Warren's line", .body = test_row_17_02},
+        .expectation = {.description = "Warren's battle won on (15, 7), no other trainer met"},
+    },
+    {
+        .input = {.name = "17.04b: out of the beaten gym to below Viridian's Center", .body = test_row_17_04b},
+        .expectation = {.description = "on ViridianCity (26, 27), no trainer met"},
+    },
     {
         .input = {.name = "Viridian Gym: the east arrow at (11, 3) slides to its stop", .body = test_gym_east_arrow},
         .expectation = {.description = "6 tiles east to (17, 3)"},
