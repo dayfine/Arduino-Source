@@ -112,8 +112,15 @@ void add_story_row(
     if (execution.reload == StoryReload::ALWAYS){
         rows.reload_always.emplace(id);
     }
-    if (execution.autosave){
+    switch (execution.save){
+    case StoryRowSave::NONE:
+        break;
+    case StoryRowSave::AUTOSAVE:
         rows.autosaves.emplace(id);
+        break;
+    case StoryRowSave::UNVERIFIED:
+        rows.unverified_autosaves.emplace(id);
+        break;
     }
     if (execution.dev_only){
         rows.dev_only.emplace(id);
