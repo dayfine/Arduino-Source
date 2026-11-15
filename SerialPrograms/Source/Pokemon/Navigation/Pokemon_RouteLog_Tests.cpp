@@ -24,12 +24,12 @@ namespace{
 
 struct RouteLogTestCase{
     struct Input{
-        std::string name;
         std::string line;
     };
     struct Expectation{
         std::string expected;
     };
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -37,14 +37,14 @@ struct RouteLogTestCase{
 class Test_RouteLog : public UnitTest{
 public:
     explicit Test_RouteLog(RouteLogTestCase scenario)
-        : UnitTest(std::format("Pokemon::RouteLog - {}", scenario.input.name))
+        : UnitTest(std::format("Pokemon::RouteLog - {}", scenario.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         if (m_scenario.input.line != m_scenario.expectation.expected){
             return std::format(
                 "{}: expected \"{}\", got \"{}\".",
-                m_scenario.input.name, m_scenario.expectation.expected, m_scenario.input.line
+                m_scenario.name, m_scenario.expectation.expected, m_scenario.input.line
             );
         }
         return true;
@@ -79,28 +79,33 @@ const std::vector<PlannedRouteLeg> FRLG_LEGS{{.leg = NORTH_OPEN, .after = FRLG_N
 
 const RouteLogTestCase CASES[] = {
     {
-        .input = {.name = "to a wall", .line = to_string(EAST_TO_WALL)},
+        .name = "to a wall",
+        .input = {.line = to_string(EAST_TO_WALL)},
         .expectation = {.expected = "east 15 (to wall)"},
     },
     {
-        .input = {.name = "open", .line = to_string(NORTH_OPEN)},
+        .name = "open",
+        .input = {.line = to_string(NORTH_OPEN)},
         .expectation = {.expected = "north 8 (open)"},
     },
     {
-        .input = {.name = "onto a warp", .line = to_string(SOUTH_WARP)},
+        .name = "onto a warp",
+        .input = {.line = to_string(SOUTH_WARP)},
         .expectation = {.expected = "south 1 (warp)"},
     },
     {
-        .input = {.name = "surf", .line = to_string(SURF_EAST)},
+        .name = "surf",
+        .input = {.line = to_string(SURF_EAST)},
         .expectation = {.expected = "surf east"},
     },
     {
-        .input = {.name = "face", .line = to_string(FACE_WEST)},
+        .name = "face",
+        .input = {.line = to_string(FACE_WEST)},
         .expectation = {.expected = "face west"},
     },
     {
+        .name = "plan from a set of tiles",
         .input = {
-            .name = "plan from a set of tiles",
             .line = route_plan_line("To the grass", BDSP_FROM, BDSP_LEGS),
         },
         .expectation = {
@@ -110,8 +115,8 @@ const RouteLogTestCase CASES[] = {
         },
     },
     {
+        .name = "plan from one tile",
         .input = {
-            .name = "plan from one tile",
             .line = route_plan_line("00.05/2 below_mart_door", FRLG_TILE, FRLG_LEGS),
         },
         .expectation = {
@@ -119,12 +124,13 @@ const RouteLogTestCase CASES[] = {
         },
     },
     {
-        .input = {.name = "plan from an unknown tile", .line = route_plan_line("x", {}, {})},
+        .name = "plan from an unknown tile",
+        .input = {.line = route_plan_line("x", {}, {})},
         .expectation = {.expected = "x: plan from an unknown tile:"},
     },
     {
+        .name = "leg as it starts",
         .input = {
-            .name = "leg as it starts",
             .line = route_leg_line(1, 5, BDSP_LEGS[0]),
         },
         .expectation = {
@@ -132,8 +138,8 @@ const RouteLogTestCase CASES[] = {
         },
     },
     {
+        .name = "walked",
         .input = {
-            .name = "walked",
             .line = route_leg_end_line("To the grass", EAST_TO_WALL, BDSP_WALL, EndBasis::WALKED, ""),
         },
         .expectation = {
@@ -141,8 +147,8 @@ const RouteLogTestCase CASES[] = {
         },
     },
     {
+        .name = "assumed",
         .input = {
-            .name = "assumed",
             .line = route_leg_end_line("r", NORTH_OPEN, FRLG_TILE, EndBasis::ASSUMED, "after a wild battle"),
         },
         .expectation = {
@@ -150,8 +156,8 @@ const RouteLogTestCase CASES[] = {
         },
     },
     {
+        .name = "unknown",
         .input = {
-            .name = "unknown",
             .line = route_leg_end_line("r", NORTH_OPEN, {}, EndBasis::UNKNOWN, "stopped by a wild battle"),
         },
         .expectation = {
@@ -159,8 +165,8 @@ const RouteLogTestCase CASES[] = {
         },
     },
     {
+        .name = "replan where seen",
         .input = {
-            .name = "replan where seen",
             .line = route_replan_line("To the grass", EAST_TO_WALL, "stopped early after about 3 tiles", BDSP_FROM),
         },
         .expectation = {
@@ -168,12 +174,13 @@ const RouteLogTestCase CASES[] = {
         },
     },
     {
-        .input = {.name = "found again", .line = route_found_line("r", FRLG_TILE, 2)},
+        .name = "found again",
+        .input = {.line = route_found_line("r", FRLG_TILE, 2)},
         .expectation = {.expected = "r: found again at Route1 (12, 21), after 2 hold(s)."},
     },
     {
+        .name = "trainer",
         .input = {
-            .name = "trainer",
             .line = route_trainer_line("To the grass", "Youngster Tristan", TRAINER_SEEN),
         },
         .expectation = {
@@ -181,8 +188,8 @@ const RouteLogTestCase CASES[] = {
         },
     },
     {
+        .name = "arrived",
         .input = {
-            .name = "arrived",
             .line = route_arrived_line("To the grass", ARRIVED),
         },
         .expectation = {
