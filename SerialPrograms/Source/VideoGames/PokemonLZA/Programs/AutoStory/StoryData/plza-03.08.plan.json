@@ -33,6 +33,12 @@
         "why": "step 62: A Leave, out on the street (a plain scene step ends at once on the gate's prompt with the party bar up; console B, 2026-11-10)",
         "action": "mash_to_move_hints",
         "args": {"press_a_first": true}
+      },
+      {
+        "id": "out_of_zone_1",
+        "kind": "game_action",
+        "why": "step 62: the minimap's player arrow out of the wild zone's green on the street. A dropped A Leave leaves the player at the gate inside the zone with the prompt and party bar up, which leave_zone_1 takes for control (the fault sweep's lost tap, 2026-11-14): fails there instead of in 03.08b",
+        "action": "check_out_of_wild_zone"
       }
     ],
     "metadata": {

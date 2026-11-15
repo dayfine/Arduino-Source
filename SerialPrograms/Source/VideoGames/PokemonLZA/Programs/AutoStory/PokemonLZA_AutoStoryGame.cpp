@@ -103,6 +103,7 @@ const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
         {"walk_back_to_zone_road", [](StoryEnv& env){ walk_back_to_zone_road(env.env.console, env.context); }},
         {"fly_to_center_or_stay", [](StoryEnv& env){ fly_to_or_stay(env.env.console, env.context, env.language, Location::VERT_POKEMON_CENTER); }},
         {"walk_to_zone_1_start", [](StoryEnv& env){ walk_to_zone_1_start(env.env.console, env.context); }},
+        {"check_out_of_wild_zone", [](StoryEnv& env){ check_out_of_wild_zone(env.env.console, env.context); }},
         {"claim_mable_research_reward", [](StoryEnv& env){ claim_mable_research_reward(env.env.console, env.context); }},
     };
     return actions;
