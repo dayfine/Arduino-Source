@@ -66,10 +66,13 @@ Goals:
    and an ordered list of steps in one shared vocabulary:
    NEW_GAME, OPTIONS, ROUTE, LEGS, STEP, TALK, ANSWER, MASH, BATTLE, TRAIN, HEAL, SHOP, SAVE,
    READY, plus GAME steps a game defines by name.
-   - Rows are initializer lists, one per story beat, each with a short reason.
-   - A beat that can't be a row, such as the intro or the starter choice, is a small named
-     handler. The table still names it.
-   - FRLG's `PokemonFRLG_AutoStoryTable.cpp` is the reference shape.
+   - On the engine, checkpoints are JSON files (`Pokemon/AutoStory/Engine/MIGRATION.md` step 3):
+     one step per story beat, each with a short `why`; `StoryActionRegistry::lint` checks them
+     and a test pins verified ones by `steps_hash`.
+   - A beat that can't be a step, such as the intro or the starter choice, is a small named C++
+     handler the game registers. The checkpoint still names it.
+   - FRLG's `PokemonFRLG_AutoStoryTable.cpp` is the pre-engine shape (C++ initializer-list rows);
+     MIGRATION.md deletes those rows once the JSON parity test passes.
 3. **Checkpoints are save points.** The game is saved at the start of each checkpoint, so a
    failure reloads that save and retries the checkpoint: 3 attempts by default, or stop at the
    first failure. A checkpoint's start pose must equal the previous checkpoint's end pose; tests
@@ -286,11 +289,12 @@ The event model proposed checkpoints as data before the story tables existed. Th
   (Nav2's recoveries). A route as data in a small fixed vocabulary interpreted by code
   (Honorbuddy quest profiles, pokebot-gen3's modes). Not taken: a general planner (GOAP, HTN)
   or a behaviour-tree runtime. The story is a fixed order; the only search is the tile planner.
-- **Rows are C++, maps are JSON.** Superseded: on the engine every checkpoint is a JSON file
-  (`Pokemon/AutoStory/Engine/MIGRATION.md` step 3). The event model left open whether checkpoints are JSON
-  files or C++ literals. They are initializer-list rows: reviewers read them in the diff, the
-  compiler checks them, and upstream ships no data files for programs. Maps stay JSON because
-  they are generated from the decomp.
+- **Checkpoints are JSON, and so are maps.** The event model left open whether checkpoints are
+  JSON files or C++ literals, and the pre-engine tables chose C++ initializer-list rows (read in
+  the diff, checked by the compiler, no data files shipped). On the engine every checkpoint is a
+  JSON file (`Pokemon/AutoStory/Engine/MIGRATION.md` step 3), linted and pinned by `steps_hash`,
+  and an exceptional beat is a named C++ handler the game registers. Maps stay JSON because they
+  are generated from the decomp.
 - **Anchors fix the position**, whatever happened before them:
 
   | Anchor | Pins | Example |

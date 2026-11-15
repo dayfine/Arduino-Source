@@ -69,10 +69,10 @@ bases on `nav/shared`** (or on a SwSh parent that does) and names that parent in
 | Action registry, built-in actions, `StoryGame` hooks, JSON checkpoints, lint | `Pokemon/AutoStory/Engine/` (contract in `Engine/MIGRATION.md`) | Register SwSh handlers under the engine's kinds and names (section 3) |
 | Checkpoint save modes, retries, logs and postconditions | `Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h` | Reload the last verified save after a failed checkpoint |
 | Free-moving input and facing | `StoryBackend::stick()`, the `"heading"` reading (`STORY_HEADING`) | Turn and walk in bounded slices; report facing if the game shows it |
-| Named-area pose | `Pokemon::ZonePose` | Carry `PostwickHome`, `Postwick`, `HopHouse` and `Wedgehurst` before an exact position reader exists |
+| Named-area pose | `Pokemon::ZonePose`, a step's `declared_after` (`{"place": ...}`) | Declare `PostwickHome`, `Postwick`, `HopHouse` and `Wedgehurst` per step; the runner writes the declared place into the run pose, so no area reader is needed before one exists (section 3) |
 | Scripted backend | `FakeStoryBackend<Pose>` | Run the checkpoint plans offline, including `console_only` code with a CONSOLE script |
 | Shared screen events and scene loops | `CommonTools/ScreenEvents/`, `run_screen_machine_on_observations()` in `CommonTools/ScreenMachine/` | Interpret SwSh detectors as dialog, choice, fade, battle and player-control events |
-| Launch from HOME to the overworld on a save | `Engine/Pokemon_StoryLaunch.*` (fork #477) | Reload and resume; it never starts a new game, so `new_game` runs after it (section 3) |
+| Launch from HOME to the overworld on a save | `Engine/Pokemon_StoryLaunch.*` (fork #477) | Reload and resume. It never starts a new game: today a `policy.new_game` screen ends it as `launch_failed`, so the fresh start needs the typed no-save end of section 3 before `new_game` can run after it |
 | Failure classes | `Pokemon/AutoStory/Pokemon_StoryFailureClasses.*` (fork #479) | Name each S9 fault and the retry it implies |
 | Shared story files and dev-folder override | `Pokemon/AutoStory/Data/Pokemon_StoryFiles.h` (fork #474) | Load `StoryData/` checkpoints and override them from a dev folder |
 | Breakpoints before each step and leg | fork #448 | Pause before a walk leg while measuring |
@@ -116,11 +116,14 @@ behavior on the opening story.
 The new work is bounded to the game adapter and the evidence it needs:
 
 - a SwSh screen observer, console backend, action registry and story table on the shared engine;
+- one shared-engine change: a typed successful no-save end for `launch_story_game()`, so a fresh
+  profile crosses from HOME to `NEW_GAME` without reading `launch_failed` as success (section 3);
 - fresh-save, language, appearance and options detection;
 - an early player-control cue that works before Y-Comm;
 - walk actions in PLZA's shape (recorded turns, timed legs, a heading reading), plus a visual
   endpoint reader only where R0 shows a timed leg cannot end reliably;
-- named opening poses and observed checkpoint postconditions;
+- named opening poses declared per step, and endpoint readers only where the screen identifies a
+  place;
 - Gate B only: a story battle loop and complete catch/party outcomes around the existing primitives.
 
 The work does not invent another checkpoint engine, JSON contract, retry loop, launch, keyboard
@@ -162,7 +165,7 @@ Every action states its start screen, end screen, safe inputs, timeout and failu
 
 | Engine kind / name | Gate | SwSh handler | console_only | Contract |
 |---|---:|---|:---:|---|
-| `NEW_GAME` / `new_game` (hook) | A | no-save title, language, appearance, keyboard name, Rose introduction | yes | Starts where the title shows no save (after #477's launch, which never starts a new game); rejects an existing save without input; ends at observed player control in `PostwickHome` |
+| `NEW_GAME` / `new_game` (hook) | A | no-save title, language, appearance, keyboard name, Rose introduction | yes | Starts where #477's launch ended at its typed no-save state (below); rejects an existing save without input; ends at the observed control cue, with `PostwickHome` declared |
 | `OPTIONS` / `options` (hook) | A | Rotom Phone options menu | yes | Read each supported row/value, change only mismatches, return to control |
 | `MASH` / `mash` (built-in) | A | none: SwSh supplies dialog, choice, fade and control events from `observe()` | no | Ends on the SwSh control cue; replace under the same kind and name only if R0 shows the built-in cannot |
 | `TALK` / `talk` (built-in) | A | none | no | A at what the player faces; fails as `talk_no_text` when no text opens |
@@ -183,13 +186,31 @@ Every action states its start screen, end screen, safe inputs, timeout and failu
 | `begin_attempt` | clear per-attempt state; check the preconditions of section 9 item 11 |
 | `interrupts` | Gate B: wild and trainer battles during a walk |
 
+**Fresh start.** `launch_story_game()` (`Engine/Pokemon_StoryLaunch.cpp`) fails as
+`STORY_LAUNCH_FAILED` ("launch_failed") when `policy.new_game` matches, without a press, and nothing
+in the story answers that failure. So today the launch cannot run before `new_game`, and the plan
+does not reinterpret `launch_failed` as the fresh-profile branch. Gate A needs one shared-engine PR
+on `nav/shared` before S3: a typed successful terminal state for the no-save screen, distinct from
+the overworld success and from `launch_failed`, that a request opts into (a reload never does), still
+with no press on that screen. The program then dispatches `NEW_GAME` from it. Until that PR merges,
+S3 can only be tested from a console already at the no-save screen, which is not the Gate A launch
+target.
+
 Readers (`StoryGameReader`), each saying what it `supplies`:
 
-- `"pose"`: the `ZonePose` area from the control cue and area evidence;
+- no generic `"pose"` reader at first. The early control cue proves that the player can move; it
+  does not tell `PostwickHome`, `HopHouse`, `Postwick` and `Wedgehurst` apart. Each step carries
+  its area in `declared_after`: when an action succeeds without a pose of its own, the runner
+  writes the declared place into the run (`Pokemon_StoryStepRunner.cpp`), and a checkpoint end pose
+  that no reader supplies is `NOT_CHECKED`, not failed. A reader that supplies `"pose"` is an
+  explicit endpoint reader for one place the screen identifies, and sets only that place; a
+  generic area classifier comes only after R0 demonstrates one;
 - `"heading"` (`STORY_HEADING`, read with `story_heading()`): the player's facing, if SwSh shows a
   minimap or compass that R0 confirms;
-- the Gate A station-approach postcondition, opted in with `StoryReaderUse::AFTER_CHECKPOINT` (cheap
-  and safe on any end screen); it replaces the earlier `verify_station_approach` action.
+- the Gate A station-approach reader, opted in with `StoryReaderUse::AFTER_CHECKPOINT` (cheap and
+  safe on any end screen): it supplies `"pose"` as `Wedgehurst` only when the station approach is
+  on screen, so 00.03's end pose is checked and the earlier checkpoints' are declared. It replaces
+  the earlier `verify_station_approach` action.
 
 Checkpoints are JSON in `StoryData/` with `metadata.phase`. A unit test loads every checkpoint, lints
 it with `StoryActionRegistry::lint` and checks `verified.steps_hash` for verification and
@@ -314,8 +335,12 @@ one-axis nudges and lost/give-up bounds. If R0 shows a SwSh leg needs a visual e
 loop's shape, including its failure modes. In r28 (`AutoStory-Lessons.md`) its landmark scores fell
 to 0.41 and 0.60 after the console clock drifted 3.5 h from the reference captures, and pinning the
 Switch clock to avoid that broke runs on its own (r108; `AutoStory-Navigation-Stack.md`, "Drop the
-clock pin"). Galar's towns follow the real-time day/night cycle, so day/night handling is settled
-before S5 (section 9 item 7), not left as a support decision.
+clock pin"). Galar's towns and routes do **not** follow the Switch clock before the player is
+Champion: their time of day is set by story progress, and only the Wild Area runs on the system
+clock ([Bulbapedia, Time](https://bulbapedia.bulbagarden.net/wiki/Time)). Gate A lighting is
+therefore expected to be fixed per story position, which R0 confirms rather than assumes (section 9
+item 7); the real-time lighting matrix belongs to the Wild Area feasibility slice (section 8
+item 7).
 
 Use named poses initially:
 
@@ -328,8 +353,10 @@ Postwick / road_to_wedgehurst
 Wedgehurst / station_approach
 ```
 
-`ZonePose` can carry the area while action-specific readings carry the heading and endpoint.
-Define a new exact pose type only after a position reader has demonstrated coordinates or another stable representation.
+Each step declares its area in `declared_after`, while action-specific readings carry the heading
+and endpoint; only `Wedgehurst / station_approach` has a reader that checks it (section 3). Define a
+new exact pose type only after a position reader has demonstrated coordinates or another stable
+representation.
 
 ## 7. Gate A checkpoints
 
@@ -342,6 +369,10 @@ checkpoint still has one saved start and a separately observed end.
 | 00.01 Bag | saved/control in home | options, walk to bag, interact, clear scene | bag obtained, control restored in home |
 | 00.02 Hop's house | saved/control in home | leave through fade, timed walk, enter Hop's house, clear scene | control at a recorded Hop-house anchor |
 | 00.03 Station approach | saved/control after Hop's scene | leave, timed walk along the road, stop before Leon | `Wedgehurst/station_approach`, no station scene started |
+
+The areas in the End column are declared per step (`declared_after`), not read; the control cue is
+what each checkpoint observes. Only `Wedgehurst/station_approach` has a reader that checks the
+end pose (section 3).
 
 If 00.00 cannot save before its end, it remains one fresh-start checkpoint and later checkpoints
 start only after the first verified save. Do not pretend a scene boundary is reloadable.
@@ -357,8 +388,10 @@ Gate B is a sequence of vertical story slices, not one port of `segment_01` thro
 4. **Route 2.** Required catches or fights, trainer interrupts, Magnolia's house and a saved end.
 5. **Second Hop battle.** Battle policy, Dynamax Band receipt and return route.
 6. **Station and train.** Camping gear, station scene, train transition and verified Wild Area arrival.
-7. **Wild Area feasibility.** Camera model, first free-camera walk and recovery; stop expansion if no
-   bounded localization/arrival method is demonstrated.
+7. **Wild Area feasibility.** Camera model, first free-camera walk and recovery, and the real-time
+   lighting matrix: the Wild Area is the first area on the Switch clock, so its cues are captured
+   and tested across the hours here, not in Gate A. Stop expansion if no bounded
+   localization/arrival method is demonstrated.
 
 Party deposits and a deliberate faint/teleport from #1207's segment 06 are route-policy choices,
 not infrastructure assumptions. Gate B should first prove why they are required and what state they
@@ -380,9 +413,13 @@ consume or change.
    walk arg shape (section 6).
 6. Identify an endpoint event for every walk, and a stable landmark only where no event exists;
    collect wrong-facing, occluded and nearby negative frames.
-7. Settle day/night before S5. Galar's towns follow the Switch clock, and #1717's landmarks failed
-   across hours (r28) while pinning the clock broke runs (r108). Choose cues that hold across the
-   hours, or per-hour references as `match_lighting_pair` did, and record the hours each was tested.
+7. Characterize Gate A lighting before S5. Before the player is Champion, towns and routes use
+   story-determined time of day and only the Wild Area follows the Switch clock (Bulbapedia, Time),
+   so Gate A lighting should be fixed per story position. R0 confirms it: capture the same Gate A
+   screens from the same save at two or three Switch clock hours. If a cue does change with the
+   clock, choose cues that hold across the hours or per-hour references as `match_lighting_pair`
+   did, and record the hours each was tested; #1717's landmarks failed across hours (r28) and
+   pinning the clock broke runs (r108). The real-time matrix itself is item 15.
 
 ### Support decisions
 
@@ -401,7 +438,8 @@ consume or change.
 14. Exercise `basic_catcher()` on the tutorial and ordinary early catches, including party-full and
     nickname paths.
 15. Measure where the camera model changes and whether a useful objective, minimap or landmark cue
-    exists in the Wild Area.
+    exists in the Wild Area, and capture each such cue across the Switch clock's hours and weather:
+    the Wild Area is the first area whose lighting follows the system clock.
 
 ## 10. Implementation and PR sequence
 
@@ -413,7 +451,7 @@ copies shared engine files. Exact line counts wait for the evidence slice.
 | R0 | capture/route ledger, no gameplay claim | every Gate A screen and candidate anchor named; unsupported states listed |
 | S1 | detector fixtures and `SwShScreenObserver` | positives and near-negatives pass; an unknown frame remains unknown |
 | S2 | backend, `StoryGame`, program shell and empty table | scripted dispatch, save/reload, retry/exhaustion and log cases pass |
-| S3 | fresh-save, language, appearance, name and intro actions | three fresh starts reach observed control; a dropped press fails boundedly |
+| S3 | the shared launch no-save end (a `nav/shared` PR first, section 3), then fresh-save, language, appearance, name and intro actions | the launch ends typed at the no-save screen on a fresh profile and still fails a reload there; three fresh starts from HOME reach observed control; a dropped press fails boundedly |
 | S4 | options and first save/reload | save, injected failure, reload and resume return to the expected state |
 | S5 | one walk primitive in PLZA's shape (a shared-engine PR first if section 6 needs one) | repeated prepared-save walks reach one nearby anchor; loss stops safely |
 | S6 | 00.01 home/bag | three consecutive runs from its own start state |
@@ -446,6 +484,13 @@ for a walk failure is a frame replay of the failing reader over the captured fai
 plus a `FakeStoryBackend` script carrying the observed `"heading"` and endpoint readings that
 reproduces the `lost` result. This depends on fork #306 (frame replay) and #308 (failure capture),
 both open on `nav/grid-story-steps`; until they merge into `nav/shared`, S9 cannot start.
+
+Its coverage boundary is stated, not implied: the pair reproduces the failed reader and the
+propagation of `lost` (the walk returns it, the checkpoint attempt fails, the engine reloads or
+stops), not the physical displacement that caused it. No test replays motion. Each such test must
+also assert that nothing is dispatched after `lost`: the fake backend's recorded `inputs()`
+(`FakeStoryBackend`) hold no press or stick from the walk or any later step after the one that
+returned `lost`, and the next input, if any, is the reload's.
 
 The immediate task is R0, followed by running the existing dialog/menu/arrow/fade detectors over the
 captured opening frames. That evidence tells us whether Gate A's first implementation risk is screen
