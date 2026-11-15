@@ -896,7 +896,7 @@ void walk_back_to_zone_road(ConsoleHandle& console, ProControllerContext& contex
         console.log(std::format("walk_back_to_zone_road(): to {} on the road, from {}.", stop, at.value_or(-1)));
         const bool toward = !at || stop <= *at;
         const std::optional<int> reached = walk_to_stop(console, context, at, stop);
-        const bool arrived = reached && (toward ? *reached <= stop : *reached >= stop);
+        const bool arrived = reached && (toward ? *reached <= stop + ROAD_STOP_SLACK : *reached >= stop - ROAD_STOP_SLACK);
         if (!arrived){
             OperationFailedExceptionWithScreenshot::fire(
                 ErrorReportMode::SEND_ERROR_REPORT,

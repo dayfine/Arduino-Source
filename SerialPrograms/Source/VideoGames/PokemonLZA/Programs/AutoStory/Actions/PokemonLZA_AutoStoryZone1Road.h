@@ -37,6 +37,11 @@ inline constexpr int CATCH_SPOTS[] = {100, 60};
 //  from the shots (the road some 5 m wide there), NEEDS CONSOLE.
 inline constexpr std::chrono::milliseconds ROAD_MIDDLE_STEP{1000};
 
+//  How far short of a road stop still counts as back on the road there:
+//  the walk back to 60 from nearer the gate stopped at 58 once (console B,
+//  2026-11-14), and the gate walk from there is steered by the gate.
+inline constexpr int ROAD_STOP_SLACK = 3;
+
 //  `visits` stops going back and forth over `spots`: {100, 60, 100, ...}.
 std::vector<int> alternating_stops(std::span<const int> spots, size_t visits);
 
