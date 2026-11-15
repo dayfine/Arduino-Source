@@ -842,6 +842,7 @@ void walk_overworld_route_with_recovery(
         at = step.end;
     };
     calls.landed_on = [&](const MapPosition&){ return stands_on_foot(console, context, player); };
+    calls.riding = [&](const RouteStep&){ return riding; };
     run_route(route, facing, &planning, calls);
     context.wait_for_all_requests();
 }
