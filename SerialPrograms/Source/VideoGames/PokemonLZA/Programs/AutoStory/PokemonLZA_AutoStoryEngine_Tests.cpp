@@ -519,15 +519,26 @@ UnitTestResult test_walk_looks_after_its_legs(CancellableScope& scope){
     return expect_inputs(backend, {"wait 250ms", "hold north 1000ms walk"});
 }
 
+//  03.11's to_mable looks up to its held last leg, all on free control: two
+//  for free control, then the look before the legs and one after each of
+//  the five turns and walks before the held leg (run_story_move()'s still
+//  checks); then `slices`, one per slice of the held leg.
+std::vector<Observation<ZonePose>> to_mable_looks(std::initializer_list<Observation<ZonePose>> slices){
+    std::vector<Observation<ZonePose>> looks;
+    for (Milliseconds at = 0ms; at < 2000ms; at += 250ms){
+        looks.push_back(look_at(at, {EngineEvent::PLAYER_CAN_MOVE}));
+    }
+    looks.insert(looks.end(), slices);
+    return looks;
+}
+
 //  03.11's to_mable walks into Mable's talk: its last leg is held until her
 //  dialog box shows.
 UnitTestResult test_walk_ends_in_mables_talk(CancellableScope& scope){
-    FakeBackend backend = fake_plza({
-        look_at(0ms, {EngineEvent::PLAYER_CAN_MOVE}),
-        look_at(250ms, {EngineEvent::PLAYER_CAN_MOVE}),
+    FakeBackend backend = fake_plza(to_mable_looks({
         look_at(3000ms, {EngineEvent::PLAYER_CAN_MOVE}),
         look_at(3250ms, {EngineEvent::DIALOG_BOX}),
-    }, scope);
+    }), scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("03.11", "to_mable"));
     if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
         return std::format("Expected the walk to end in Mable's talk: {}", to_string(report.run.failure));
@@ -546,12 +557,10 @@ UnitTestResult test_walk_ends_in_mables_talk(CancellableScope& scope){
 //  the fade (console B, 2026-11-14 r9: Mable's box came over 5 s after the
 //  fade, past a camera pan).
 UnitTestResult test_walk_ends_on_black_fade(CancellableScope& scope){
-    FakeBackend backend = fake_plza({
-        look_at(0ms, {EngineEvent::PLAYER_CAN_MOVE}),
-        look_at(250ms, {EngineEvent::PLAYER_CAN_MOVE}),
+    FakeBackend backend = fake_plza(to_mable_looks({
         look_at(3000ms, {EngineEvent::FADE_BLACK}),
         look_at(3250ms),
-    }, scope);
+    }), scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("03.11", "to_mable"));
     if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
         return std::format("Expected the walk to end on the black fade: {}", to_string(report.run.failure));
