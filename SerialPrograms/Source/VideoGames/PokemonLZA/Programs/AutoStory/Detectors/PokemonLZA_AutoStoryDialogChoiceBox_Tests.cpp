@@ -15,6 +15,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Tests/ImageUnitTest.h"
+#include "VideoGames/PokemonLZA/PokemonLZA_PendingFixtures.h"
 #include "PokemonLZA_AutoStoryDialogChoiceBox.h"
 #include "PokemonLZA_AutoStoryDialogChoiceBox_Tests.h"
 
@@ -220,7 +221,7 @@ void add_tests_AutoStoryDialogChoiceBox(UnitTestDatabase& database){
         database.add<Test_DialogChoiceRowsSynthetic>(test);
     }
     for (const FrameCase& test : FRAME_CASES){
-        database.add<Test_DialogChoiceRowsFrame>(test);
+        add_pending_fixture_test<Test_DialogChoiceRowsFrame>(database, test);
     }
 }
 
