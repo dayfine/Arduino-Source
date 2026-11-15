@@ -26,12 +26,11 @@ const StringSelectDatabase& two_checkpoints(){
     return database;
 }
 
-//  The reload at the start and the save mode a user set, and whether the
-//  options let the run start.
+//  The reload at the start a user set, and whether the options let the run
+//  start.
 struct ReloadAtStartCase{
     struct Input{
         bool reload_at_start;
-        StorySaveMode save_mode;
     };
     struct Expectation{
         //  Empty: the options are valid; else the refusal's message.
@@ -42,21 +41,9 @@ struct ReloadAtStartCase{
     Expectation expectation;
 };
 
-constexpr std::string_view NO_RELOAD_SAVES =
-    "Reload the Save at the Start is off: the run starts from wherever the game is, which nothing checked, "
-    "so it must not save. Set Save to None or turn the reload on.";
-
 const ReloadAtStartCase RELOAD_AT_START_CASES[] = {
-    {.name = "reload at the start by default", .input = {.reload_at_start = true, .save_mode = StorySaveMode::NONE},
-     .expectation = {.error = ""}},
-    {.name = "a reloaded run may save", .input = {.reload_at_start = true, .save_mode = StorySaveMode::PER_CHECKPOINT},
-     .expectation = {.error = ""}},
-    {.name = "no reload without saves", .input = {.reload_at_start = false, .save_mode = StorySaveMode::NONE},
-     .expectation = {.error = ""}},
-    {.name = "no reload refuses saves after verification", .input = {.reload_at_start = false, .save_mode = StorySaveMode::AFTER_VERIFICATION},
-     .expectation = {.error = NO_RELOAD_SAVES}},
-    {.name = "no reload refuses saves per checkpoint", .input = {.reload_at_start = false, .save_mode = StorySaveMode::PER_CHECKPOINT},
-     .expectation = {.error = NO_RELOAD_SAVES}},
+    {.name = "reload at the start", .input = {.reload_at_start = true}, .expectation = {.error = ""}},
+    {.name = "no reload at the start", .input = {.reload_at_start = false}, .expectation = {.error = ""}},
 };
 
 class Test_ReloadAtStart : public UnitTest{
@@ -72,7 +59,6 @@ public:
             return "Expected the reload at the start on by default.";
         }
         run.RELOAD_AT_START = m_case.input.reload_at_start;
-        run.SAVE_MODE.set(m_case.input.save_mode);
         const std::string error = run.check_validity();
         if (error != m_case.expectation.error){
             return std::format("Expected \"{}\", got \"{}\".", m_case.expectation.error, error);
