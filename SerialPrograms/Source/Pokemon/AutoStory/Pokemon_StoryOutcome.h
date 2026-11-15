@@ -2,23 +2,19 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Split out of Pokemon_StoryEvents.h, unchanged; it includes this header.
+ *  How a story action or check ended: success, or a named failure with its
+ *  class, and the pose the action left the player in when it knows it.
  *
  */
 
 #ifndef PokemonAutomation_Pokemon_StoryOutcome_H
 #define PokemonAutomation_Pokemon_StoryOutcome_H
 
-#include <cstddef>
-#include <memory>
 #include <optional>
-#include <set>
 #include <string>
 #include <string_view>
-#include <vector>
 #include "Common/Cpp/MoveOnlyFunction.h"
 #include "Pokemon_StoryFailureClasses.h"
-#include "Pokemon_StoryLog.h"
 #include "Pokemon_StoryPose.h"
 
 namespace PokemonAutomation{
@@ -44,11 +40,11 @@ struct Outcome{
 
     bool succeeded() const;
 };
-// Constructs a successful event outcome, updating the run pose when given one.
+//  Success; with a pose, the runner moves the run's pose to it.
 Outcome outcome_ok(std::optional<Pose> pose = std::nullopt);
 //  outcome_ok() with `changed_nothing`.
 Outcome outcome_unchanged();
-// Constructs a failed event outcome with reason and optional diagnostic detail.
+//  A failure named `failure`, with what was seen in `detail`.
 //  `failure_class` is for a name the shared list does not class (a game's
 //  own); without it the list's class for `failure` holds.
 Outcome outcome_failed(
@@ -66,7 +62,7 @@ inline constexpr std::string_view GAME_NOT_RUNNING = "game_not_running";
 Outcome outcome_game_not_running();
 
 
-// Callable action executed for a story event.
+//  What an event does; it may move the run's pose.
 using Act = MoveOnlyFunction<Outcome(RunState& state)>;
 
 

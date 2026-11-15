@@ -5,11 +5,10 @@
  *  The retry loop every AutoStory runs a checkpoint in: run an attempt, and
  *  when it fails go back to the checkpoint's start save and try again,
  *  until an attempt passes, fails in a way another attempt would repeat,
- *  the last attempt fails, or a reset fails. SV's loop
- *  (Pokemon_CheckpointRetry.h), the story segments and the story engine all
- *  run their checkpoints through it, so each writes the same pass line
- *  (Pokemon_StoryLog.h) and counts attempts the same way. The game supplies
- *  the attempt and the reset.
+ *  the last attempt fails, or a reset fails. The story segments and the
+ *  story engine run their checkpoints through it, so each writes the same
+ *  pass line (Pokemon_StoryLog.h) and counts attempts the same way. The
+ *  game supplies the attempt and the reset.
  *
  */
 
@@ -20,6 +19,7 @@
 #include <functional>
 #include <string>
 #include <string_view>
+#include "Pokemon_StoryLog.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -40,8 +40,9 @@ using CheckpointLogger = std::function<void(const std::string& line)>;
 
 //  What the game does at each step of the retry loop.
 struct CheckpointAttempts{
-    //  Attempts before the loop gives up.
-    size_t max_attempts;
+    //  Attempts before the loop gives up. The first attempt always runs,
+    //  so 0 runs one, as 1 does.
+    size_t max_attempts = 1;
     //  Runs attempt `attempt`, counting from 1.
     std::function<AttemptResult(size_t attempt)> run;
     //  Goes back to the checkpoint's start save before attempt
@@ -49,10 +50,10 @@ struct CheckpointAttempts{
     //  not, which ends the loop.
     std::function<bool(size_t next_attempt)> reset;
     CheckpointLogger log;
-    //  False when `checkpoint` is the game's own text that already says it
-    //  is a checkpoint, so the pass line leaves out "[Checkpoint] "
+    //  AS_GIVEN when `checkpoint` is the game's own text that already says
+    //  it is a checkpoint, so the pass line leaves out "[Checkpoint] "
     //  (checkpoint_start_line()).
-    bool add_checkpoint_prefix = true;
+    CheckpointPrefix prefix_kind = CheckpointPrefix::ADD;
 };
 
 //  What the loop came to.

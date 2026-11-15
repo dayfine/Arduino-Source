@@ -5,7 +5,7 @@
  *  The execution fields of a checkpoint file (its JSON "execution") that
  *  every game reads the same way, and the sets of rows they mark: which
  *  rows end on the game's own autosave, which a run reloads before, and
- *  which are for lab runs only, and a game's story: its checkpoints and
+ *  which developer mode alone lists, and a game's story: its checkpoints and
  *  those rows. The game reads its other execution fields itself
  *  (Pokemon_AuthoredCheckpointJson.h); Pokemon_StoryFiles.h loads a story
  *  from its files.
@@ -43,8 +43,9 @@ struct StoryRowExecution{
     //  save policy lets it.
     bool autosave = false;
     StoryReload reload = StoryReload::NEVER;
-    //  "dev_only": true: a lab walk the story does not need (developer
-    //  mode lists and plays it, a user's run does not).
+    //  "dev_only": true: a walk the story does not need, kept for testing
+    //  a part of it (developer mode lists and plays it, a user's run does
+    //  not).
     bool dev_only = false;
 };
 

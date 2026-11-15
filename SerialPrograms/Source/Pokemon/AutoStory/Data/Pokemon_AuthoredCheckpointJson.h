@@ -8,10 +8,15 @@
  *  its own type through a reader it passes in. Only parsing:
  *  nothing here binds or runs a step, and nothing read keeps JSON.
  *
+ *  The envelope's "format" is "pokesim-authored-checkpoint/1": the
+ *  files are written by PokemonSimulation's story tools, which plan
+ *  and check a checkpoint's steps offline; a file written by hand uses the
+ *  same name.
+ *
  */
 
-#ifndef PokemonAutomation_AuthoredCheckpointJson_H
-#define PokemonAutomation_AuthoredCheckpointJson_H
+#ifndef PokemonAutomation_Pokemon_AuthoredCheckpointJson_H
+#define PokemonAutomation_Pokemon_AuthoredCheckpointJson_H
 
 #include <functional>
 #include <initializer_list>

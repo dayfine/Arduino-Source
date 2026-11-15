@@ -20,7 +20,7 @@
  *
  *  Observation and actuation are callables the game supplies, so this file
  *  knows nothing of any one game or console, and the runner can be tested
- *  against a scripted world. See docs/design/AutoStory-Event-Model.md.
+ *  against a scripted world.
  *
  */
 
