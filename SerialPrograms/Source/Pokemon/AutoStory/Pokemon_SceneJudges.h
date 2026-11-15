@@ -71,10 +71,16 @@ struct TalkOverRule{
     //  lines: PLZA's party bar, held 1 s, is the overworld; its city is
     //  rarely still.
     Milliseconds calm = TALK_OVER_CALM;
+    //  How long the overworld still and with no box ends it.
+    Milliseconds quiet = TALK_OVER_QUIET;
+    //  What still means: the whole screen, or only the box around the
+    //  player (PLAYER_STILL), so people walking about neither hold the
+    //  quiet up nor end it early.
+    ScreenEvent still = ScreenEvent::SCREEN_STILL;
 };
 
 //  When a talk or a scene is over, from looks alone. A look is a frame's
-//  events: DIALOG_BOX, PLAYER_CAN_MOVE, SCREEN_STILL, a fade,
+//  events: DIALOG_BOX, PLAYER_CAN_MOVE, SCREEN_STILL (or the rule's `still`), a fade,
 //  LOCATION_BANNER (the expected map's) and BATTLE_STARTED are read.
 //  It is over only once every fade has come back up, no box shows, and
 //  the overworld has been quiet (or calm) since: a look that shows a fade
