@@ -22,8 +22,8 @@ namespace{
 // Counts recorded into the AutoStory stats and the totals they must reach.
 struct StoryCountsTestCase{
     //  Counts added to fresh stats, in order.
+    std::string name;
     struct Input{
-        std::string name;
         std::vector<StoryRunCounts> added;
     };
 
@@ -41,7 +41,7 @@ struct StoryCountsTestCase{
 class Test_StoryCounts : public UnitTest{
 public:
     Test_StoryCounts(StoryCountsTestCase test_case)
-        : UnitTest(std::format("Pokemon::StoryRunCounts - {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::StoryRunCounts - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
 
@@ -67,12 +67,12 @@ private:
 
 const StoryCountsTestCase STORY_COUNTS_CASES[] = {
     {
-        .input = {.name = "a segment's counts in the stats", .added = {{.segments = 1, .checkpoints = 2, .resets = 3}}},
+        .name = "a segment's counts in the stats", .input = {.added = {{.segments = 1, .checkpoints = 2, .resets = 3}}},
         .expectation = {.segments = 1, .checkpoints = 2, .resets = 3},
     },
     {
+        .name = "a checkpoint loop's counts add up",
         .input = {
-            .name = "a checkpoint loop's counts add up",
             .added = {{.segments = 0, .checkpoints = 1, .resets = 0}, {.segments = 0, .checkpoints = 0, .resets = 1}, {.segments = 0, .checkpoints = 1, .resets = 0}},
         },
         .expectation = {.segments = 0, .checkpoints = 2, .resets = 1},

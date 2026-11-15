@@ -35,7 +35,7 @@ struct StoryCheckpoint{
     std::string steps_json = {};
     //  What must hold when it is done; checked on its own after a run.
     //  JSON: "metadata": {"postconditions": ...}.
-    StoryPostconditions postconditions;
+    StoryPostconditions postconditions = {};
     //  Its phase and verification (JSON "metadata"), which decide when a
     //  run of it may save.
     StoryCheckpointMetadata metadata = {};
