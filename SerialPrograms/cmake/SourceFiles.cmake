@@ -1445,6 +1445,10 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_TypewriterTextMapping.h
     Source/PanelLists.cpp
     Source/PanelLists.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.h
     Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.cpp
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h
@@ -1467,6 +1471,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryOutcomeClass.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryOutcomeClass.h
     Source/Pokemon/AutoStory/Pokemon_StoryPose.h
+    Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.h
+    Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.h
     Source/Pokemon/AutoStory/Pokemon_TilePose.cpp
     Source/Pokemon/AutoStory/Pokemon_TilePose.h
     Source/Pokemon/AutoStory/Types/Pokemon_DeclaredPose.h

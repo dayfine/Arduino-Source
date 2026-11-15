@@ -12,9 +12,11 @@
 #define PokemonAutomation_Pokemon_AutoStory_Tests_H
 
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Data/Pokemon_StoryStepJson_Tests.h"
 #include "Pokemon_StoryEvents_Tests.h"
 #include "Pokemon_StoryFailureClasses_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
+#include "Pokemon_StoryStepExecutor_Tests.h"
 #include "Types/Pokemon_StoryActionArg_Tests.h"
 
 namespace PokemonAutomation{
@@ -27,6 +29,8 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryLog(database);
     add_tests_StoryFailureClasses(database);
     add_tests_StoryEvents(database);
+    add_tests_StoryStepExecutor(database);
+    add_tests_StoryStepJson(database);
 }
 
 
