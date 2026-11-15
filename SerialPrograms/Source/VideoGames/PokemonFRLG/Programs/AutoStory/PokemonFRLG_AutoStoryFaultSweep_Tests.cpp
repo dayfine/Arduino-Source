@@ -138,21 +138,37 @@ constexpr Milliseconds LATE_FADE = 1500ms;
 //  model, longer than the GBA's fade-in, to find moves made in it.
 constexpr Milliseconds SLOW_FADE_IN = 1000ms;
 
-//  The maps as the story after the Hall of Fame and a new game flag them:
-//  the same set for every row, as each stage's tests use, with the two
-//  lifts' coded rooms (09.02, 10.01).
+//  The maps as the story after the Hall of Fame and a new game flag them,
+//  with the two lifts' coded rooms (09.02, 10.01). If `silph_cleared`,
+//  without Giovanni's Rockets, as story_maps() with SILPH_CLEARED_FLAG.
+std::vector<MapData> make_sweep_maps(bool silph_cleared){
+    const std::vector<MapData> all = overworld_maps();
+    std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
+    flags.merge(map_flag_set(all, "new_game"));
+    //  As story_maps(): Route 16's Snorlax gone (11.01's flute).
+    flags.insert("FLAG_HIDE_ROUTE_16_SNORLAX");
+    if (silph_cleared){
+        flags.insert("FLAG_HIDE_SILPH_ROCKETS");
+        flags.insert("FLAG_HIDE_SAFFRON_ROCKETS");
+    }
+    std::vector<MapData> flagged = overworld_maps(flags);
+    flagged.push_back(rocket_hideout_lift_room());
+    flagged.push_back(department_store_lift_room());
+    return flagged;
+}
+
+//  The maps every row's sweep shares, as each stage's tests use.
 const std::vector<MapData>& sweep_maps(){
-    static const std::vector<MapData> maps = []{
-        const std::vector<MapData> all = overworld_maps();
-        std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
-        flags.merge(map_flag_set(all, "new_game"));
-        //  As story_maps(): Route 16's Snorlax gone (11.01's flute).
-        flags.insert("FLAG_HIDE_ROUTE_16_SNORLAX");
-        std::vector<MapData> flagged = overworld_maps(flags);
-        flagged.push_back(rocket_hideout_lift_room());
-        flagged.push_back(department_store_lift_room());
-        return flagged;
-    }();
+    static const std::vector<MapData> maps = make_sweep_maps(false);
+    return maps;
+}
+
+//  sweep_maps() once Silph Co. is cleared: a row that starts with
+//  SILPH_CLEARED_FLAG loads its save, and the save's reload leaves the
+//  Rockets off the maps (16.06: 11F's Grunt2 off (2, 19), the column the
+//  walk back to the pad goes up).
+const std::vector<MapData>& cleared_sweep_maps(){
+    static const std::vector<MapData> maps = make_sweep_maps(true);
     return maps;
 }
 
@@ -182,9 +198,12 @@ std::set<std::string> start_flag_set(const StoryCheckpoint& row){
 
 //  sweep_maps() as row `row` starts: the gyms cleared before it with no
 //  trainer left to see the player, nor the trainers its start_flags have
-//  beaten (16.03: the Rocket by 5F's corridor, whom 16.02's walk fights).
+//  beaten (16.03: the Rocket by 5F's corridor, whom 16.02's walk fights),
+//  and no Rocket left once its start_flags have Silph Co. cleared.
 std::vector<MapData> row_maps(const StoryCheckpoint& row){
-    std::vector<MapData> maps = with_trainers_beaten(sweep_maps(), beaten_trainers(start_flag_set(row)));
+    const std::set<std::string> start_flags = start_flag_set(row);
+    const std::vector<MapData>& base = start_flags.contains(std::string(SILPH_CLEARED_FLAG)) ? cleared_sweep_maps() : sweep_maps();
+    std::vector<MapData> maps = with_trainers_beaten(base, beaten_trainers(start_flags));
     const std::set<std::string> cleared = gyms_cleared_before(row);
     for (MapData& map : maps){
         if (!cleared.contains(map.name)){
@@ -700,7 +719,7 @@ UnitTestResult sweep_mount_lost(Logger& logger, const StoryCheckpoint& row){
     std::vector<SweepFailure> failures;
     if (!clean.failure.empty()){
         failures.push_back({"", "riding, no fault", clean.failure});
-        return sweep_result(logger, FaultClass::MOUNT_LOST, row.id, 0, failures);
+        return sweep_result(logger, FaultClass::MOUNT_LOST, row.id, 1, failures);
     }
     for (int leg = 1; leg <= clean.bike_legs; leg++){
         SimScript script = riding;

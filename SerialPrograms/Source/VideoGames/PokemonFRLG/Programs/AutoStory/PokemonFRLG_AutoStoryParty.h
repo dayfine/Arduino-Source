@@ -58,6 +58,12 @@ std::optional<size_t> attack_slot(const PartyMember& member);
 //  moves, attack_slot() itself.
 std::optional<size_t> attack_slot_against(const PartyMember& member, const std::vector<std::string>& foes);
 
+//  A TM, HM or tutor taught it `move` at full PP: in `forgot`'s slot, or
+//  in a free one when it forgot nothing. The game puts it there (console B,
+//  2026-11-15: Blizzard over Dig in slot 4); the battles read the moves by
+//  name, so a lead that missed it attacked with Bite.
+void learn_taught(std::string_view move, std::string_view forgot, PartyMember& member);
+
 //  The PP left in the damaging moves it knows.
 size_t attack_pp(const PartyMember& member);
 

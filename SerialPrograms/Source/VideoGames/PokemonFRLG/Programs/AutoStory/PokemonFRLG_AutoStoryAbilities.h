@@ -22,6 +22,7 @@
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryMember.h"
+#include "PokemonFRLG_AutoStoryPartyMember.h"
 #include "PokemonFRLG_AutoStoryPartyRoster.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
 
@@ -41,6 +42,9 @@ struct StoryAbilities{
     SpeciesFinder species = {};
     //  Where a TEACH of a field move records who learned it; none records nothing.
     PartyCache* party = nullptr;
+    //  The lead as the battles know it: a TEACH to party slot 1 puts the
+    //  move in it (learn_taught()); none changes nothing.
+    PartyMember* lead = nullptr;
 };
 
 //  A MART, TEACH, LEVEL, GRIND or fossil step with `abilities`: nothing for

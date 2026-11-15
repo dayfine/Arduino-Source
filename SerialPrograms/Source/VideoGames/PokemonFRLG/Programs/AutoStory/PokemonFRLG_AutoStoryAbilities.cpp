@@ -7,6 +7,7 @@
 #include <format>
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
+#include "PokemonFRLG_AutoStoryParty.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -30,6 +31,9 @@ Outcome teach(Logger& logger, const TeachPlan& plan, StoryAbilities& abilities){
         const std::string& species = result.species.empty() ? plan.species : result.species;
         logger.log(std::format("Party: {} is used by slot {} ({}).", plan.move, result.member + 1, species.empty() ? "species unread" : species));
         abilities.party->users().record(plan.move, result.member, species);
+    }
+    if (result.end == TeachEnd::LEARNED && result.member == 0 && abilities.lead != nullptr){
+        learn_taught(plan.move, result.forgot, *abilities.lead);
     }
     if (result.end == TeachEnd::LEARNED){
         return Pokemon::outcome_ok();
