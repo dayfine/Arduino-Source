@@ -26,6 +26,10 @@ namespace{
 inline constexpr size_t MAX_TEXT_LOOKS = 80;
 //  Looks for a text box to open after a talk's A.
 inline constexpr size_t MAX_OPEN_LOOKS = 20;
+//  A press through text or an answer: held, then released before the next
+//  look, the same for every text press so they read alike in the log.
+inline constexpr std::chrono::milliseconds TEXT_PRESS_HOLD{80};
+inline constexpr std::chrono::milliseconds TEXT_PRESS_RELEASE{120};
 
 
 //  The action of a built-in that needs the game's own code.
@@ -51,10 +55,10 @@ Outcome mash_to_overworld(StoryBackend<PoseType>& backend){
     using namespace std::chrono_literals;
     for (size_t c = 0; c < MAX_TEXT_LOOKS; c++){
         const Observation<PoseType> now = backend.observe();
-        if (now.events.has(ScreenEvent::CAN_MOVE) && !now.events.has(ScreenEvent::TEXT_BOX)){
+        if (now.events.has(ScreenEvent::PLAYER_CAN_MOVE) && !now.events.has(ScreenEvent::DIALOG_BOX)){
             return outcome_ok();
         }
-        backend.press(NintendoSwitch::BUTTON_A, 80ms, 120ms);
+        backend.press(NintendoSwitch::BUTTON_A, TEXT_PRESS_HOLD, TEXT_PRESS_RELEASE);
     }
     return outcome_failed("mash_no_overworld", std::format("no overworld after {} looks", MAX_TEXT_LOOKS));
 }
@@ -69,9 +73,9 @@ Outcome mash(StoryBackend<PoseType>& backend, const StoryActionCall&, RunState&)
 template <StoryPose PoseType>
 Outcome talk(StoryBackend<PoseType>& backend, const StoryActionCall&, RunState&){
     using namespace std::chrono_literals;
-    backend.press(NintendoSwitch::BUTTON_A, 80ms, 120ms);
+    backend.press(NintendoSwitch::BUTTON_A, TEXT_PRESS_HOLD, TEXT_PRESS_RELEASE);
     for (size_t c = 0; c < MAX_OPEN_LOOKS; c++){
-        if (backend.observe().events.has(ScreenEvent::TEXT_BOX)){
+        if (backend.observe().events.has(ScreenEvent::DIALOG_BOX)){
             return mash_to_overworld(backend);
         }
         backend.wait(100ms);
@@ -97,7 +101,15 @@ inline std::optional<Pose> after_legs(const Pose& start, const std::vector<Story
 template <StoryPose PoseType>
 Outcome walk_legs(StoryBackend<PoseType>& backend, const StoryActionCall& call, RunState& state){
     const std::vector<StoryLeg>& legs = story_arg<std::vector<StoryLeg>>(call.args, "legs");
-    for (const StoryLeg& leg : legs){
+    const std::vector<TilePos> start = tiles_of(state.pose);
+    std::optional<TilePos> tile = start.size() == 1 ? std::optional<TilePos>(start[0]) : std::nullopt;
+    for (size_t index = 0; index < legs.size(); index++){
+        const StoryLeg& leg = legs[index];
+        for (int c = 0; tile && c < leg.tiles; c++){
+            tile = tile->next(leg.direction);
+        }
+        call.pause.before_leg(story_leg_pause_label(index, legs.size(), leg.direction, leg.tiles, tile));
+        backend.scope().throw_if_cancelled();
         for (int c = 0; c < leg.tiles; c++){
             backend.tap(leg.direction);
         }
@@ -114,7 +126,7 @@ Outcome face(StoryBackend<PoseType>& backend, const StoryActionCall& call, RunSt
 template <StoryPose PoseType>
 Outcome answer(StoryBackend<PoseType>& backend, const StoryActionCall& call, RunState&){
     using namespace std::chrono_literals;
-    backend.press(story_arg<bool>(call.args, "yes") ? NintendoSwitch::BUTTON_A : NintendoSwitch::BUTTON_B, 80ms, 120ms);
+    backend.press(story_arg<bool>(call.args, "yes") ? NintendoSwitch::BUTTON_A : NintendoSwitch::BUTTON_B, TEXT_PRESS_HOLD, TEXT_PRESS_RELEASE);
     return outcome_ok();
 }
 

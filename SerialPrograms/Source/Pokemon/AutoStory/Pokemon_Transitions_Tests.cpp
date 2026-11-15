@@ -9,6 +9,8 @@
  */
 
 #include <algorithm>
+#include <cctype>
+#include <charconv>
 #include <format>
 #include <string>
 #include <utility>
@@ -48,6 +50,8 @@ const ImageStats FALLING_DARK = stats(60, 60, 60, 10);
 const ImageStats DARK = stats(5, 5, 5, 1);
 const ImageStats FALLING_WHITE = stats(160, 160, 160, 10);
 const ImageStats WHITE = stats(250, 250, 250, 1);
+//  An empty or dropped frame: no stats at all.
+const ImageStats EMPTY;
 
 SceneChange compare_means(const TransitionSample& before, const TransitionSample& after){
     const FloatPixel& a = before.middle.average;
@@ -78,35 +82,35 @@ std::string run_tracker(const std::vector<Span>& spans, TransitionTracker& track
 }
 
 
-//  A synthetic stream of frames, through one game's profile.
-struct TrackInput{
-    std::string name;
-    std::vector<Span> spans;
-    const FadeProfile* profile = &BDSP_FADE_PROFILE;
-    bool compare = true;
-};
-
-struct TrackExpectation{
-    //  The transitions completed, as run_tracker() puts them.
-    std::string transitions;
-    //  What judge_warp() makes of the tracker's current() at the end; empty
-    //  for none.
-    std::string warp = "";
-};
-
 struct TrackCase{
-    TrackInput input;
-    TrackExpectation expectation;
+    //  A synthetic stream of frames, through one game's profile.
+    struct Input{
+        std::vector<Span> spans;
+        const FadeProfile* profile = &BDSP_FADE_PROFILE;
+        bool compare = true;
+    };
+
+    struct Expectation{
+        //  The transitions completed, as run_tracker() puts them.
+        std::string transitions;
+        //  What judge_warp() makes of the tracker's current() at the end; empty
+        //  for none.
+        std::string warp = "";
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_TransitionTracker : public UnitTest{
 public:
     explicit Test_TransitionTracker(TrackCase test_case)
-        : UnitTest(std::format("Pokemon::Transitions - {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::Transitions - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const TrackInput& input = m_case.input;
+        const TrackCase::Input& input = m_case.input;
         TransitionTracker tracker(*input.profile, input.compare ? compare_means : TransitionTracker::CompareScenes());
         const std::string got = run_tracker(input.spans, tracker);
         if (got != m_case.expectation.transitions){
@@ -161,29 +165,41 @@ UnitTestResult test_sample_of_frame(){
 }
 
 
-//  Captured frames: CommandLineTests/<game>/Transitions/<case>/ holds
-//  frames named by their time in ms ("0.png", "250.png"), and expected.txt
-//  with the transitions run_tracker() should report (no scene comparison).
-struct CapturedInput{
-    std::string game;
-    const FadeProfile* profile;
-};
-
-//  Each case folder's expected.txt holds its expectation.
-struct CapturedExpectation{
-};
-
 struct CapturedCase{
-    CapturedInput input;
-    CapturedExpectation expectation;
+    //  Captured frames: CommandLineTests/<game>/Transitions/<case>/ holds
+    //  frames named by their time in ms ("0.png", "250.png"), and expected.txt
+    //  with the transitions run_tracker() should report (no scene comparison).
+    struct Input{
+        std::string game;
+        const FadeProfile* profile;
+    };
+
+    //  Each case folder's expected.txt holds its expectation.
+    struct Expectation{
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 std::string track_captured_case(const Filesystem::Path& folder, const FadeProfile& profile){
     std::vector<std::pair<int, Filesystem::Path>> frames;
     for (const Filesystem::Path& file : Filesystem::list_directory(folder)){
-        if (file.extension().string() == ".png"){
-            frames.emplace_back(std::stoi(file.stem().string()), file);
+        std::string extension = file.extension().string();
+        std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c){
+            return static_cast<char>(std::tolower(c));
+        });
+        if (extension != ".png"){
+            continue;
         }
+        const std::string stem = file.stem().string();
+        int ms = 0;
+        const auto parsed = std::from_chars(stem.data(), stem.data() + stem.size(), ms);
+        if (parsed.ec != std::errc() || parsed.ptr != stem.data() + stem.size()){
+            return std::format("frame {} is not named by its time in ms", file.filename().string());
+        }
+        frames.emplace_back(ms, file);
     }
     std::sort(frames.begin(), frames.end(), [](const auto& a, const auto& b){
         return a.first < b.first;
@@ -203,7 +219,7 @@ std::string track_captured_case(const Filesystem::Path& folder, const FadeProfil
 class Test_CapturedTransitions : public UnitTest{
 public:
     explicit Test_CapturedTransitions(CapturedCase test_case)
-        : UnitTest(std::format("Pokemon::Transitions - captured frames: {}", test_case.input.game))
+        : UnitTest(std::format("Pokemon::Transitions - captured frames: {}", test_case.name))
         , m_input(std::move(test_case.input))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -226,28 +242,28 @@ public:
     }
 
 private:
-    CapturedInput m_input;
+    CapturedCase::Input m_input;
 };
 
-
-struct TransitionsInput{
-    std::string name;
-    UnitTestResult (*body)();
-};
-
-//  The body checks its own expectations.
-struct TransitionsExpectation{
-};
 
 struct TransitionsCase{
-    TransitionsInput input;
-    TransitionsExpectation expectation;
+    struct Input{
+        UnitTestResult (*body)();
+    };
+
+    //  The body checks its own expectations.
+    struct Expectation{
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_Transitions : public UnitTest{
 public:
     explicit Test_Transitions(TransitionsCase test_case)
-        : UnitTest(std::format("Pokemon::Transitions - {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::Transitions - {}", test_case.name))
         , m_input(std::move(test_case.input))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -255,7 +271,7 @@ public:
     }
 
 private:
-    TransitionsInput m_input;
+    TransitionsCase::Input m_input;
 };
 
 } // namespace
@@ -263,76 +279,110 @@ private:
 
 const TrackCase TRACK_CASES[] = {
     {
-        .input = {"a door: falls, holds, rises onto another scene",
+        .name = "a door: falls, holds, rises onto another scene",
+        .input = {
             {{0, 100, ROUTE}, {200, 200, FALLING_DARK}, {300, 700, DARK}, {800, 800, FALLING_DARK}, {900, 1000, HOUSE}}},
         .expectation = {"black fade +200 ms, peak +300 ms, rise +800 ms, end +900 ms, other scene", "warped"},
     },
     {
-        .input = {"a missed short fade: falling, then another scene",
+        .name = "a missed short fade: falling, then another scene",
+        .input = {
             {{0, 100, ROUTE}, {200, 200, FALLING_DARK}, {300, 400, HOUSE}}},
         .expectation = {"black fade +200 ms, peak unseen, rise unseen, end +300 ms, other scene", "warped"},
     },
     {
-        .input = {"a missed fade is not reported with no scene comparison",
+        .name = "a missed fade is not reported with no scene comparison",
+        .input = {
             {{0, 100, ROUTE}, {200, 200, FALLING_DARK}, {300, 400, HOUSE}}, &BDSP_FADE_PROFILE, false},
         .expectation = {"none"},
     },
     {
-        .input = {"a dip back onto the same scene is no transition",
+        .name = "a dip back onto the same scene is no transition",
+        .input = {
             {{0, 100, ROUTE}, {200, 300, FALLING_DARK}, {400, 500, ROUTE}}},
         .expectation = {"none"},
     },
     {
-        .input = {"a one-frame black onto the same scene is too short",
+        .name = "a one-frame black onto the same scene is too short",
+        .input = {
             {{0, 100, ROUTE}, {200, 200, DARK}, {300, 400, ROUTE}}},
         .expectation = {"black fade +200 ms, peak +200 ms, rise +300 ms, end +300 ms, same scene", "same scene after the fade"},
     },
     {
-        .input = {"a one-frame black, scene unknown, is too short",
+        .name = "a one-frame black, scene unknown, is too short",
+        .input = {
             {{0, 100, ROUTE}, {200, 200, DARK}, {300, 400, ROUTE}}, &BDSP_FADE_PROFILE, false},
         .expectation = {"black fade +200 ms, peak +200 ms, rise +300 ms, end +300 ms, scene unknown", "fade too short"},
     },
     {
-        .input = {"an encounter's flash: a short white, back on the scene",
+        .name = "an encounter's flash: a short white, back on the scene",
+        .input = {
             {{0, 100, ROUTE}, {200, 200, WHITE}, {300, 400, ROUTE}}},
         .expectation = {"flash +200 ms, peak +200 ms, rise +300 ms, end +300 ms, same scene", "an encounter's flash"},
     },
     {
-        .input = {"a cave exit: a long white onto another scene",
+        .name = "a cave exit: a long white onto another scene",
+        .input = {
             {{0, 100, CAVE}, {200, 200, FALLING_WHITE}, {300, 800, WHITE}, {900, 900, FALLING_WHITE}, {1000, 1100, ROUTE}}},
         .expectation = {"white fade +200 ms, peak +300 ms, rise +900 ms, end +1000 ms, other scene", "warped"},
     },
     {
-        .input = {"a white between a flash and a fade, scene unknown, is unsure",
+        .name = "a white between a flash and a fade, scene unknown, is unsure",
+        .input = {
             {{0, 100, ROUTE}, {200, 400, WHITE}, {500, 600, ROUTE}}, &BDSP_FADE_PROFILE, false},
         .expectation = {"white, flash or fade +200 ms, peak +200 ms, rise +500 ms, end +500 ms, scene unknown", "a white, flash or fade"},
     },
     {
-        .input = {"a short white onto another scene may be the battle: unsure",
+        .name = "a short white onto another scene may be the battle: unsure",
+        .input = {
             {{0, 100, ROUTE}, {200, 200, WHITE}, {300, 400, HOUSE}}},
         .expectation = {"white, flash or fade +200 ms, peak +200 ms, rise +300 ms, end +300 ms, other scene", "a white, flash or fade"},
     },
     {
-        .input = {"FRLG has no white fade: a long white is a flash",
+        .name = "FRLG has no white fade: a long white is a flash",
+        .input = {
             {{0, 100, CAVE}, {300, 800, WHITE}, {1000, 1100, ROUTE}}, &FRLG_FADE_PROFILE},
         .expectation = {"flash +300 ms, peak +300 ms, rise +1000 ms, end +1000 ms, other scene", "an encounter's flash"},
     },
     {
-        .input = {"the Oreburgh Gate's dim floor is no fade, a door from it is",
+        .name = "the Oreburgh Gate's dim floor is no fade, a door from it is",
+        .input = {
             {{0, 100, ROUTE}, {200, 3000, DIM_FLOOR}, {3100, 3400, DARK}, {3500, 3600, HOUSE}}},
         .expectation = {"black fade +3100 ms, peak +3100 ms, rise +3500 ms, end +3500 ms, other scene", "warped"},
     },
     {
-        .input = {"a street at night is no fade", {{0, 5000, NIGHT}}},
+        .name = "a street at night is no fade",
+        .input = {{{0, 5000, NIGHT}}},
         .expectation = {"none"},
     },
     {
-        .input = {"a cave mouth's fade rises into a dim cave",
+        .name = "a cave mouth's fade rises into a dim cave",
+        .input = {
             {{0, 100, ROUTE}, {200, 500, DARK}, {600, 2500, DIM_FLOOR}}},
         .expectation = {"black fade +200 ms, peak +200 ms, rise +600 ms, end +1700 ms, other scene", "warped"},
     },
     {
-        .input = {"a fade in progress is still showing",
+        .name = "empty frames in a scene start no fade",
+        .input = {
+            {{0, 100, ROUTE}, {200, 300, EMPTY}, {400, 500, ROUTE}}},
+        .expectation = {"none"},
+    },
+    {
+        .name = "an empty frame in a fall is skipped",
+        .input = {
+            {{0, 100, ROUTE}, {200, 200, EMPTY}, {300, 300, FALLING_DARK}, {400, 600, DARK}}},
+        .expectation = {"none", "fade still showing"},
+    },
+    {
+        .name = "an empty frame in the rise does not move the rise",
+        .input = {
+            {{0, 100, ROUTE}, {200, 200, FALLING_DARK}, {300, 500, DARK}, {600, 600, FALLING_DARK},
+             {700, 700, EMPTY}, {800, 900, HOUSE}}},
+        .expectation = {"black fade +200 ms, peak +300 ms, rise +600 ms, end +800 ms, other scene", "warped"},
+    },
+    {
+        .name = "a fade in progress is still showing",
+        .input = {
             {{0, 100, ROUTE}, {200, 200, FALLING_DARK}, {300, 600, DARK}}},
         .expectation = {"none", "fade still showing"},
     },
@@ -340,22 +390,26 @@ const TrackCase TRACK_CASES[] = {
 
 const TransitionsCase TRANSITIONS_CASES[] = {
     {
-        .input = {"a screen that stays dark times out", test_timeout},
+        .name = "a screen that stays dark times out",
+        .input = {test_timeout},
         .expectation = {},
     },
     {
-        .input = {"a video frame's sample", test_sample_of_frame},
+        .name = "a video frame's sample",
+        .input = {test_sample_of_frame},
         .expectation = {},
     },
 };
 
 const CapturedCase CAPTURED_CASES[] = {
     {
-        .input = {"PokemonBDSP", &BDSP_FADE_PROFILE},
+        .name = "PokemonBDSP",
+        .input = {.game = "PokemonBDSP", .profile = &BDSP_FADE_PROFILE},
         .expectation = {},
     },
     {
-        .input = {"PokemonFRLG", &FRLG_FADE_PROFILE},
+        .name = "PokemonFRLG",
+        .input = {.game = "PokemonFRLG", .profile = &FRLG_FADE_PROFILE},
         .expectation = {},
     },
 };

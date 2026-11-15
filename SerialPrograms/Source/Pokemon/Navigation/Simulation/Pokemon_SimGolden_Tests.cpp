@@ -7,8 +7,10 @@
  *
  */
 
+#include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon_SimGolden.h"
@@ -20,24 +22,24 @@ namespace Pokemon{
 
 namespace{
 
-struct SimGoldenInput{
-    std::string name;
-    UnitTestResult (*body)(Logger& logger);
-};
-
-struct SimGoldenExpectation{
-    std::string_view description;
-};
-
 struct SimGoldenTestCase{
-    SimGoldenInput input;
-    SimGoldenExpectation expectation;
+    struct Input{
+        UnitTestResult (*body)(Logger& logger);
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_SimGolden : public UnitTest{
 public:
     explicit Test_SimGolden(SimGoldenTestCase scenario)
-        : UnitTest("Pokemon::Navigation - Sim golden: " + scenario.input.name)
+        : UnitTest("Pokemon::Navigation - Sim golden: " + scenario.name)
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -53,6 +55,11 @@ UnitTestResult expect_equal(std::string_view what, std::string_view actual, std:
         return true;
     }
     return std::string(what) + ": expected \"" + std::string(expected) + "\", got \"" + std::string(actual) + "\".";
+}
+
+//  The difference as text for expect_equal(): "(none)" when the texts match.
+std::string difference_of(std::string_view golden, std::string_view actual){
+    return first_golden_difference(golden, actual).value_or("(none)");
 }
 
 UnitTestResult test_path_beside_source(Logger&){
@@ -72,28 +79,40 @@ UnitTestResult test_text(Logger&){
 }
 
 UnitTestResult test_same_text_ignoring_crlf(Logger&){
-    return expect_equal("difference", first_golden_difference("# x\r\na\r\nb\r\n", "# x\na\nb\n"), "");
+    return expect_equal("difference", difference_of("# x\r\na\r\nb\r\n", "# x\na\nb\n"), "(none)");
 }
 
 UnitTestResult test_first_differing_line(Logger&){
     return expect_equal(
-        "difference", first_golden_difference("# x\r\na\r\nb\r\n", "# x\na\nc\n"),
+        "difference", difference_of("# x\r\na\r\nb\r\n", "# x\na\nc\n"),
         "line 3:\n--- golden: b\n+++ actual: c"
     );
 }
 
 UnitTestResult test_extra_line(Logger&){
     UnitTestResult result = expect_equal(
-        "longer actual", first_golden_difference("a\n", "a\nb\n"),
+        "longer actual", difference_of("a\n", "a\nb\n"),
         "line 2:\n--- golden: (end of file)\n+++ actual: b"
     );
     if (result.result != UnitTestResult::PASSED){
         return result;
     }
     return expect_equal(
-        "shorter actual", first_golden_difference("a\nb\n", "a\n"),
+        "shorter actual", difference_of("a\nb\n", "a\n"),
         "line 2:\n--- golden: b\n+++ actual: (end of file)"
     );
+}
+
+UnitTestResult test_with_crlf(Logger&){
+    UnitTestResult result = expect_equal("bare LF", with_crlf("a\nb\n"), "a\r\nb\r\n");
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    result = expect_equal("CRLF", with_crlf("a\r\nb\r\n"), "a\r\nb\r\n");
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    return expect_equal("mixed and a stray CR", with_crlf("a\r\nb\rc\n"), "a\r\nbc\r\n");
 }
 
 UnitTestResult test_missing_golden_fails(Logger& logger){
@@ -108,12 +127,13 @@ UnitTestResult test_missing_golden_fails(Logger& logger){
 }
 
 const SimGoldenTestCase SIM_GOLDEN_CASES[] = {
-    {.input = {.name = "the golden's path is beside the test's source", .body = test_path_beside_source}, .expectation = {}},
-    {.input = {.name = "the text is a comment line, then a line each", .body = test_text}, .expectation = {}},
-    {.input = {.name = "CRLF and LF text compare the same", .body = test_same_text_ignoring_crlf}, .expectation = {}},
-    {.input = {.name = "the first differing line is reported", .body = test_first_differing_line}, .expectation = {}},
-    {.input = {.name = "a line more or less is reported", .body = test_extra_line}, .expectation = {}},
-    {.input = {.name = "a missing golden fails", .body = test_missing_golden_fails}, .expectation = {}},
+    {.name = "the golden's path is beside the test's source", .input = {.body = test_path_beside_source}, .expectation = {}},
+    {.name = "the text is a comment line, then a line each", .input = {.body = test_text}, .expectation = {}},
+    {.name = "CRLF and LF text compare the same", .input = {.body = test_same_text_ignoring_crlf}, .expectation = {}},
+    {.name = "the first differing line is reported", .input = {.body = test_first_differing_line}, .expectation = {}},
+    {.name = "a line more or less is reported", .input = {.body = test_extra_line}, .expectation = {}},
+    {.name = "goldens are written with exactly one CRLF a line", .input = {.body = test_with_crlf}, .expectation = {}},
+    {.name = "a missing golden fails", .input = {.body = test_missing_golden_fails}, .expectation = {}},
 };
 
 } // namespace

@@ -4,14 +4,13 @@
  *
  */
 
+#include "CommonTools/ScreenEvents/ScreenFades.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-using Pokemon::ScreenEvent;
-using Pokemon::ScreenEvents;
 
 
 FrlgScreenObserver::FrlgScreenObserver()
@@ -26,8 +25,8 @@ ScreenEvents FrlgScreenObserver::observe(const VideoSnapshot& frame, WallClock){
         return {};
     }
     const ImageViewRGB32& screen = *frame.frame;
-    ScreenEvents out = Pokemon::fade_events(Pokemon::fade_of_screen(screen));
-    if (Pokemon::fade_in(out) != Pokemon::WarpFade::NONE){
+    ScreenEvents out = fade_events(fade_of_screen(screen));
+    if (fade_in(out) != WarpFade::NONE){
         //  A uniform screen has no box or menu to read.
         return out;
     }

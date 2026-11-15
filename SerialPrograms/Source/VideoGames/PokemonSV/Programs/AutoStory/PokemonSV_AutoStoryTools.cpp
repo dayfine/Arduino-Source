@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "Common/Cpp/PrettyPrint.h" 
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Exceptions/UnexpectedBattleException.h"
@@ -14,6 +15,7 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
+#include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "VideoGames/PokemonSV/Inference/Battles/PokemonSV_NormalBattleMenus.h"
 #include "VideoGames/PokemonSV/Inference/Dialogs/PokemonSV_DialogDetector.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldDetector.h"
@@ -29,6 +31,7 @@
 #include "VideoGames/PokemonSV/Inference/PokemonSV_PokemonMovesReader.h"
 #include "VideoGames/PokemonSV/Inference/Map/PokemonSV_DestinationMarkerDetector.h"
 #include "VideoGames/PokemonSV/Inference/Map/PokemonSV_MapPokeCenterIconDetector.h"
+#include "Pokemon/AutoStory/Pokemon_CheckpointRetry.h"
 #include "PokemonSV_AutoStoryTools.h"
 
 //#include <iostream>
@@ -38,7 +41,6 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonSV{
-
 
 
 
@@ -1177,11 +1179,71 @@ void get_on_or_off_ride(const ProgramInfo& info, VideoStream& stream, ProControl
     }
 }
 
+namespace{
+
+//  The loop's historical counts; its messages say 100 attempts and 10 failures.
+const Pokemon::CheckpointRetryPolicy SV_CHECKPOINT_RETRY_POLICY{.max_attempts = 102, .report_at_failure = 11};
+
+void record_sv_checkpoint_saved(
+    SingleSwitchProgramEnvironment& env, EventNotificationOption& notif_status_update, AutoStoryStats& stats
+){
+    Pokemon::record_checkpoint_saved(
+        [&env](){ env.update_stats(); },
+        [&](std::string_view message){ send_program_status_notification(env, notif_status_update, std::string(message)); },
+        stats
+    );
+}
+
+//  `give_up_detail` goes into the final error after its first line: the
+//  overworld loop names the checkpoint there, the tutorial loop does not.
+Pokemon::CheckpointRetryActions sv_checkpoint_retry_actions(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    EventNotificationOption& notif_error_recoverable,
+    const std::string& checkpoint_text,
+    std::function<void(size_t attempt)> run,
+    std::string give_up_detail
+){
+    return Pokemon::CheckpointRetryActions{
+        .run = std::move(run),
+        .report = [&env, &notif_error_recoverable, &checkpoint_text](const OperationFailedException&){
+            auto snapshot = env.console.video().snapshot().frame;
+            send_program_recoverable_error_notification_and_telemetry_report(
+                env, &env.logger(), env.program_info(),
+                notif_error_recoverable,
+                ErrorReportMode::SEND_ERROR_REPORT,
+                std::format("10 failed attempts. {}", checkpoint_text),
+                "OperationFailedExceptionWithScreenshot",
+                *snapshot,
+                &env.console.history()
+            );
+        },
+        .give_up = [&env, give_up_detail = std::move(give_up_detail)](const OperationFailedException& e){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT,
+                std::format(
+                    "Autostory checkpoint failed 100 times.\n{}"
+                    "Make sure you selected the correct Start Point, and your character is in the exactly correct starting position."
+                    "Also, make sure you have set the correct Language.\n{}",
+                    give_up_detail, e.message()
+                ),
+                env.console
+            );
+        },
+        .reset = [&env, &context](){
+            context.wait_for_all_requests();
+            reset_game(env.program_info(), env.console, context);
+        },
+        .update_stats = [&env](){ env.update_stats(); },
+        .log = [&env](const std::string& line){ env.console.log(line); },
+    };
+}
+
+} // namespace
+
 void checkpoint_save(SingleSwitchProgramEnvironment& env, ProControllerContext& context, EventNotificationOption& notif_status_update, AutoStoryStats& stats){
     save_game_from_overworld(env.program_info(), env.console, context);
-    stats.m_checkpoint++;
-    env.update_stats();
-    send_program_status_notification(env, notif_status_update, "Saved at checkpoint.");        
+    record_sv_checkpoint_saved(env, notif_status_update, stats);
 }
 
 
@@ -1433,59 +1495,27 @@ void checkpoint_reattempt_loop(
     std::function<void(size_t attempt_number)>&& action,
     bool day_skip
 ){
-    size_t max_attempts = 100;
-    for (size_t i = 0;;i++){
-    try{
-        if (i==0){
-            checkpoint_save(env, context, notif_status_update, stats);
-        }
-
-        if (day_skip && (i > 0 || ENABLE_TEST)){
-            day_skip_from_overworld(env.console, context);
-            save_game_from_overworld(env.program_info(), env.console, context);
-        }
-
-        env.console.log(checkpoint_text + " Num attempts: " + std::to_string(i));
-
-        context.wait_for_all_requests();
-        action(i);
-
-        enter_menu_from_overworld(env.program_info(), env.console, context, -1);
-       
-        break;
-    }catch (OperationFailedException& e){
-        if (i == 10){  // send an error report for debugging if 10 failed attempts for a given checkpoint.
-            auto snapshot = env.console.video().snapshot().frame;
-            std::string message = "10 failed attempts. " + checkpoint_text;
-            send_program_recoverable_error_notification_and_telemetry_report(
-                env, &env.logger(), env.program_info(), 
-                notif_error_recoverable, 
-                ErrorReportMode::SEND_ERROR_REPORT,
-                message,
-                "OperationFailedExceptionWithScreenshot",
-                *snapshot,
-                &env.console.history()
-            );
-        }
-
-        if (i > max_attempts){
-            OperationFailedExceptionWithScreenshot::fire(
-                ErrorReportMode::SEND_ERROR_REPORT,
-                "Autostory checkpoint failed " + std::to_string(max_attempts) + " times.\n" +
-                checkpoint_text + "\n"
-                "Make sure you selected the correct Start Point, and your character is in the exactly correct starting position."
-                "Also, make sure you have set the correct Language.\n" + e.message(),
-                env.console
-            );
-        }
-        context.wait_for_all_requests();
-        env.console.log("Resetting from checkpoint.");
-        reset_game(env.program_info(), env.console, context);
-        stats.m_reset++;
-        env.update_stats();
-    }         
-    }
-
+    Pokemon::run_checkpoint_with_retries(
+        checkpoint_text, SV_CHECKPOINT_RETRY_POLICY,
+        sv_checkpoint_retry_actions(
+            env, context, notif_error_recoverable, checkpoint_text,
+            [&](size_t attempt){
+                const size_t i = attempt - 1;
+                if (i == 0){
+                    checkpoint_save(env, context, notif_status_update, stats);
+                }
+                if (day_skip && (i > 0 || ENABLE_TEST)){
+                    day_skip_from_overworld(env.console, context);
+                    save_game_from_overworld(env.program_info(), env.console, context);
+                }
+                context.wait_for_all_requests();
+                action(i);
+                enter_menu_from_overworld(env.program_info(), env.console, context, -1);
+            },
+            std::format("{}\n", checkpoint_text)
+        ),
+        stats
+    );
 }
 
 void checkpoint_reattempt_loop_tutorial(
@@ -1497,53 +1527,23 @@ void checkpoint_reattempt_loop_tutorial(
     const std::string& checkpoint_text,
     std::function<void(size_t attempt_number)>&& action
 ){
-    size_t max_attempts = 100;
-    for (size_t i = 0;;i++){
-    try{
-        if(i==0){
-            save_game_tutorial(env.program_info(), env.console, context);
-            stats.m_checkpoint++;
-            env.update_stats();
-            send_program_status_notification(env, notif_status_update, "Saved at checkpoint.");     
-        }
-        
-        env.console.log(checkpoint_text + " Num attempts: " + std::to_string(i));
-
-        context.wait_for_all_requests();
-        action(i);
-
-        break;  
-    }catch (OperationFailedException& e){
-        if (i == 10){  // send an error report for debugging if 10 failed attempts for a given checkpoint.
-            auto snapshot = env.console.video().snapshot().frame;
-            std::string message = "10 failed attempts. " + checkpoint_text;
-            send_program_recoverable_error_notification_and_telemetry_report(
-                env, &env.logger(), env.program_info(), 
-                notif_error_recoverable, 
-                ErrorReportMode::SEND_ERROR_REPORT,
-                message,
-                "OperationFailedExceptionWithScreenshot",
-                *snapshot,
-                &env.console.history()
-            );
-        }
-
-        if (i > max_attempts){
-            OperationFailedExceptionWithScreenshot::fire(
-                ErrorReportMode::SEND_ERROR_REPORT,
-                "Autostory checkpoint failed " + std::to_string(max_attempts) + " times.\n"
-                "Make sure you selected the correct Start Point, and your character is in the exactly correct starting position."
-                "Also, make sure you have set the correct Language.\n" + e.message(),
-                env.console
-            );
-        }        
-        context.wait_for_all_requests();
-        env.console.log("Resetting from checkpoint.");
-        reset_game(env.program_info(), env.console, context);
-        stats.m_reset++;
-        env.update_stats();
-    }
-    }    
+    Pokemon::run_checkpoint_with_retries(
+        checkpoint_text, SV_CHECKPOINT_RETRY_POLICY,
+        sv_checkpoint_retry_actions(
+            env, context, notif_error_recoverable, checkpoint_text,
+            [&](size_t attempt){
+                const size_t i = attempt - 1;
+                if (i == 0){
+                    save_game_tutorial(env.program_info(), env.console, context);
+                    record_sv_checkpoint_saved(env, notif_status_update, stats);
+                }
+                context.wait_for_all_requests();
+                action(i);
+            },
+            ""
+        ),
+        stats
+    );
 }
 
 void move_player_forward(

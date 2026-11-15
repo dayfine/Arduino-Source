@@ -36,33 +36,33 @@ const StoryActionSpec& mart_spec(){
     return spec;
 }
 
-//  Args checked against the Mart's spec, then filled in.
-struct ArgsInput{
-    std::string_view name;
-    StoryActionArgs args;
-};
-
-//  The errors joined by "; ", and the args with their fallbacks.
-struct ArgsExpectation{
-    std::string_view error = {};
-    StoryActionArgs filled = {};
-};
-
 struct ArgsCase{
-    ArgsInput input;
-    ArgsExpectation expectation;
+    //  Args checked against the Mart's spec, then filled in.
+    std::string_view name;
+    struct Input{
+        StoryActionArgs args;
+    };
+
+    //  The errors joined by "; ", and the args with their fallbacks.
+    struct Expectation{
+        std::string_view error = {};
+        StoryActionArgs filled = {};
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const ArgsCase CASES[] = {
-    {.input = {.name = "mart", .args = {{"map", std::string("M")}, {"budget", int64_t(1500)}, {"if_present", true}}},
+    {.name = "mart", .input = {.args = {{"map", std::string("M")}, {"budget", int64_t(1500)}, {"if_present", true}}},
      .expectation = {.filled = {{"map", std::string("M")}, {"budget", int64_t(1500)}, {"floor", int64_t(0)}, {"if_present", true}}}},
-    {.input = {.name = "fallback does not override", .args = {{"map", std::string("M")}, {"budget", int64_t(1)}, {"floor", int64_t(2)}}},
+    {.name = "fallback does not override", .input = {.args = {{"map", std::string("M")}, {"budget", int64_t(1)}, {"floor", int64_t(2)}}},
      .expectation = {.filled = {{"map", std::string("M")}, {"budget", int64_t(1)}, {"floor", int64_t(2)}}}},
-    {.input = {.name = "unknown key", .args = {{"map", std::string("M")}, {"budget", int64_t(1)}, {"budgte", int64_t(1)}}},
+    {.name = "unknown key", .input = {.args = {{"map", std::string("M")}, {"budget", int64_t(1)}, {"budgte", int64_t(1)}}},
      .expectation = {.error = "unknown argument \"budgte\"", .filled = {{"map", std::string("M")}, {"budget", int64_t(1)}, {"budgte", int64_t(1)}, {"floor", int64_t(0)}}}},
-    {.input = {.name = "wrong type", .args = {{"map", std::string("M")}, {"budget", std::string("lots")}}},
+    {.name = "wrong type", .input = {.args = {{"map", std::string("M")}, {"budget", std::string("lots")}}},
      .expectation = {.error = "argument \"budget\" has the wrong type", .filled = {{"map", std::string("M")}, {"budget", std::string("lots")}, {"floor", int64_t(0)}}}},
-    {.input = {.name = "missing required", .args = {{"budget", int64_t(1)}}},
+    {.name = "missing required", .input = {.args = {{"budget", int64_t(1)}}},
      .expectation = {.error = "missing argument \"map\" (the Mart's map)", .filled = {{"budget", int64_t(1)}, {"floor", int64_t(0)}}}},
 };
 
@@ -93,7 +93,7 @@ std::string check_case(const ArgsCase& test){
 class StoryActionArgTest : public UnitTest{
 public:
     explicit StoryActionArgTest(ArgsCase test)
-        : UnitTest(std::format("Pokemon::StoryActionArg - {}", test.input.name))
+        : UnitTest(std::format("Pokemon::StoryActionArg - {}", test.name))
         , m_case(test)
     {}
 
@@ -134,7 +134,7 @@ int main(){
     int failed = 0;
     for (const auto& test : PokemonAutomation::Pokemon::CASES){
         const std::string error = PokemonAutomation::Pokemon::check_case(test);
-        std::cout << test.input.name << ": " << (error.empty() ? "PASS" : error) << '\n';
+        std::cout << test.name << ": " << (error.empty() ? "PASS" : error) << '\n';
         failed += !error.empty();
     }
     return failed != 0;

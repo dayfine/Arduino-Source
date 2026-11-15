@@ -26,6 +26,7 @@
 #include "CommonFramework/Language.h"
 #include "CommonTools/Options/StringSelectOption.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StorySaveMode.h"
@@ -43,9 +44,10 @@ std::string story_checkpoint_label(const StoryCheckpoint& checkpoint);
 
 
 //  Verify mode, off by default (verify_checkpoint()): the start checkpoint
-//  RUNS times from its save, never saving at its end; verified when at
-//  least PASSES pass. For a battle that has lost twice or more, given its
-//  own checkpoint saved right before it.
+//  RUNS times from its save; verified when at least PASSES pass. Only the
+//  last run may save, at its end, when SAVE_MODE is After verification
+//  and every run passed. For a battle that has lost twice or more, given
+//  its own checkpoint saved right before it.
 class StoryVerifyOptions : public GroupOption{
 public:
     StoryVerifyOptions();
@@ -81,6 +83,8 @@ public:
     StoryCheckLevel check_level() const;
     //  The game's language, for the steps that read text.
     Language language() const;
+    //  Where the run pauses (StoryGame::breakpoints).
+    StoryBreakpoints breakpoints() const;
 
 public:
     SimpleIntegerOption<uint8_t> ATTEMPTS_PER_CHECKPOINT;
@@ -95,6 +99,9 @@ public:
     //  On, nothing runs: the game reads where it stands and checks the end
     //  checkpoint's postconditions (Pokemon_StoryPostconditionCheck.h).
     BooleanCheckBoxOption POSTCONDITIONS_ONLY;
+    //  A debugger's breakpoints: pause before each step or leg for the user
+    //  to look at the console. Only a lab build waits (set_story_pause_wait()).
+    EnumDropdownOption<StoryBreakpoints> BREAKPOINTS;
 };
 
 

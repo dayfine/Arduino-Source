@@ -401,24 +401,24 @@ UnitTestResult test_built_in_maps(){
     return true;
 }
 
-struct MapDataTestInput{
-    std::string name;
-    UnitTestResult (*test)();
-};
-
-struct MapDataTestExpectation{
-    std::string_view description;
-};
-
 struct MapDataTestCase{
-    MapDataTestInput input;
-    MapDataTestExpectation expectation;
+    struct Input{
+        UnitTestResult (*test)();
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_MapData : public UnitTest{
 public:
     explicit Test_MapData(MapDataTestCase scenario)
-        : UnitTest(std::format("Pokemon::MapData - {}", scenario.input.name))
+        : UnitTest(std::format("Pokemon::MapData - {}", scenario.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -474,39 +474,48 @@ UnitTestResult test_tiles_to_door(){
 
 const MapDataTestCase MAP_DATA_CASES[] = {
     {
-        .input = {.name = "the valid map", .test = test_valid_map},
+        .name = "the valid map",
+        .input = {.test = test_valid_map},
         .expectation = {.description = "parses full map with all properties and layers"},
     },
     {
-        .input = {.name = "lists may be left out", .test = test_lists_may_be_left_out},
+        .name = "lists may be left out",
+        .input = {.test = test_lists_may_be_left_out},
         .expectation = {.description = "allows optional collection fields to be omitted"},
     },
     {
-        .input = {.name = "glyphs round-trip", .test = test_glyphs_round_trip},
+        .name = "glyphs round-trip",
+        .input = {.test = test_glyphs_round_trip},
         .expectation = {.description = "converts between tile characters and enum kinds"},
     },
     {
-        .input = {.name = "each error class", .test = test_each_error_class},
+        .name = "each error class",
+        .input = {.test = test_each_error_class},
         .expectation = {.description = "rejects invalid JSON syntax and malformed map schemas"},
     },
     {
-        .input = {.name = "a map shaped like BDSP's", .test = test_bdsp_shaped_map},
+        .name = "a map shaped like BDSP's",
+        .input = {.test = test_bdsp_shaped_map},
         .expectation = {.description = "parses BDSP-specific world offsets, trainers, and triggers"},
     },
     {
-        .input = {.name = "a map shaped like FRLG's", .test = test_frlg_shaped_map},
+        .name = "a map shaped like FRLG's",
+        .input = {.test = test_frlg_shaped_map},
         .expectation = {.description = "parses FRLG-specific elevations, flags, and warp directions"},
     },
     {
-        .input = {.name = "each error class of the game fields", .test = test_each_error_class_of_game_fields},
+        .name = "each error class of the game fields",
+        .input = {.test = test_each_error_class_of_game_fields},
         .expectation = {.description = "validates constraints on game-specific map fields"},
     },
     {
-        .input = {.name = "maps built into the program", .test = test_built_in_maps},
+        .name = "maps built into the program",
+        .input = {.test = test_built_in_maps},
         .expectation = {.description = "loads and verifies embedded test map assets"},
     },
     {
-        .input = {.name = "tiles to door raycasting", .test = test_tiles_to_door},
+        .name = "tiles to door raycasting",
+        .input = {.test = test_tiles_to_door},
         .expectation = {.description = "counts tile distance along a corridor to a door or wall"},
     },
 };

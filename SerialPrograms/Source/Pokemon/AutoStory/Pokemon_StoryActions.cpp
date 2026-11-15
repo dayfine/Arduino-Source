@@ -107,12 +107,24 @@ Outcome TableExecutor::run(const StoryStep& step, RunState& state){
         }
         try{
             Outcome outcome = run_action(step, state);
-            if (outcome.succeeded() || !cleared_after_failure(step, state, cleared)){
+            if (outcome.succeeded()){
+                return outcome;
+            }
+            switch (look_after_failure(step, state, cleared)){
+            case AfterFailure::RETRY:
+                continue;
+            case AfterFailure::GAME_NOT_RUNNING:
+                return outcome_game_not_running();
+            case AfterFailure::KEEP:
                 return outcome;
             }
         }catch (OperationFailedException& e){
-            if (cleared_after_failure(step, state, cleared)){
+            const AfterFailure after = look_after_failure(step, state, cleared);
+            if (after == AfterFailure::RETRY){
                 continue;
+            }
+            if (after == AfterFailure::GAME_NOT_RUNNING){
+                return outcome_game_not_running();
             }
             if (m_guard.stops_on_failure(step)){
                 throw;
@@ -153,11 +165,15 @@ std::optional<Outcome> TableExecutor::clear_interrupts(const StoryStep& step, Ru
     return std::nullopt;
 }
 
-//  Whether an interrupt explains the failure of `step`: one showed after
-//  it failed and is cleared, so the step runs again.
-bool TableExecutor::cleared_after_failure(const StoryStep& step, RunState& state, size_t& cleared){
+//  What explains the failure of `step`, if anything: an interrupt that
+//  showed after it failed and is cleared, or the game not running.
+AfterFailure TableExecutor::look_after_failure(const StoryStep& step, RunState& state, size_t& cleared){
     const size_t before = cleared;
-    return !clear_interrupts(step, state, cleared) && cleared > before;
+    const std::optional<Outcome> failed = clear_interrupts(step, state, cleared);
+    if (failed){
+        return failed->failure == GAME_NOT_RUNNING ? AfterFailure::GAME_NOT_RUNNING : AfterFailure::KEEP;
+    }
+    return cleared > before ? AfterFailure::RETRY : AfterFailure::KEEP;
 }
 
 
