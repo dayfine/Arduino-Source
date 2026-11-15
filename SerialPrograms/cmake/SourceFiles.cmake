@@ -1481,8 +1481,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryPostconditions.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryRunTypes_Tests.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryRunTypes_Tests.h
-    Source/Pokemon/AutoStory/Types/Pokemon_StorySaveMode.cpp
-    Source/Pokemon/AutoStory/Types/Pokemon_StorySaveMode.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.h
