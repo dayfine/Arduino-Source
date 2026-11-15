@@ -1,0 +1,155 @@
+{
+    "format": "pokesim-authored-checkpoint/1",
+    "game": "frlg",
+    "checkpoint": {
+        "id": "16.06b",
+        "title": "Saffron City: from the Center to the Gym's door",
+        "start": {
+            "map": "SaffronCity_PokemonCenter_1F",
+            "tiles": [
+                [
+                    7,
+                    4
+                ]
+            ],
+            "facing": "north"
+        },
+        "start_flags": [
+            "silph_cleared"
+        ],
+        "events": [
+            {
+                "id": "below_center_wall",
+                "kind": "route",
+                "action": "run",
+                "args": {
+                    "target": {
+                        "map": "SaffronCity",
+                        "tiles": [
+                            [
+                                24,
+                                41
+                            ]
+                        ],
+                        "facing": "south"
+                    }
+                },
+                "why": "out of Saffron's Center (its ground floor coded) onto the street below its door (24, 38), and down column 24 to the city's south wall, row 41"
+            },
+            {
+                "id": "east_wall_row_41",
+                "kind": "route",
+                "action": "run",
+                "args": {
+                    "target": {
+                        "map": "SaffronCity",
+                        "tiles": [
+                            [
+                                52,
+                                41
+                            ]
+                        ],
+                        "facing": "east"
+                    }
+                },
+                "why": "east along row 41, a row below the Lass's walk (27..37, 39), to the east wall"
+            },
+            {
+                "id": "below_row_14_wall",
+                "kind": "route",
+                "action": "run",
+                "args": {
+                    "target": {
+                        "map": "SaffronCity",
+                        "tiles": [
+                            [
+                                52,
+                                15
+                            ]
+                        ],
+                        "facing": "north"
+                    }
+                },
+                "why": "north up column 52, past the way out to Route 8, to the wall of row 14 (the sign (50, 14) and the houses' walls)"
+            },
+            {
+                "id": "gym_door_east_corner",
+                "kind": "route",
+                "action": "run",
+                "args": {
+                    "target": {
+                        "map": "SaffronCity",
+                        "tiles": [
+                            [
+                                47,
+                                13
+                            ]
+                        ],
+                        "facing": "north"
+                    }
+                },
+                "why": "west along row 15 to column 47, then north through the gap in row 14 (45..47, 14) to the wall beside the Gym's door, (47, 12): the open leg west ends a column short of column 46, where a hold north would go on through the door"
+            },
+            {
+                "id": "below_gym_door",
+                "kind": "route",
+                "action": "run",
+                "args": {
+                    "target": {
+                        "map": "SaffronCity",
+                        "tiles": [
+                            [
+                                46,
+                                13
+                            ]
+                        ],
+                        "facing": "north"
+                    }
+                },
+                "why": "a step west to (46, 13), the only tile the Gym's door (46, 12) is entered from, facing it; the Rocket Grunt who stood here is gone (silph_cleared)"
+            },
+            {
+                "id": "into_gym",
+                "kind": "step",
+                "args": {
+                    "direction": "north"
+                },
+                "declared_after": {
+                    "map": "SaffronCity_Gym",
+                    "tiles": [
+                        [
+                            14,
+                            23
+                        ]
+                    ],
+                    "facing": "north"
+                },
+                "why": "through the Gym's door (46, 12) onto the mat (14, 23) inside (SaffronCity map.json warp 3 to SaffronCity_Gym warp 1)"
+            }
+        ]
+    },
+    "execution": {
+        "menu": "full",
+        "notes": {
+            "checkpoint": [
+                "Starts at Saffron's nurse, facing her, where 16.06 ends healed; ends on the Gym's door mat (14, 23), facing north, where 18.01 starts.",
+                "The Rockets are gone from Saffron City (silph_cleared, 16.05's Giovanni): the Grunt on (46, 13) (SaffronCity_EventScript_RocketGrunt3, hidden by FLAG_HIDE_SAFFRON_ROCKETS), the only tile the Gym's door (46, 12) is entered from, no longer blocks it."
+            ]
+        }
+    },
+    "metadata": {
+        "phase": "testing",
+        "postconditions": {
+            "position": {
+                "map": "SaffronCity_Gym",
+                "tiles": [
+                    [
+                        14,
+                        23
+                    ]
+                ],
+                "facing": "north"
+            }
+        }
+    }
+}

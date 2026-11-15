@@ -459,6 +459,54 @@ UnitTestResult test_return_row(){
     return true;
 }
 
+//  Where the last of `row`'s steps that declares a pose leaves the player.
+std::optional<StoryPose> declared_end(const StoryCheckpoint& row){
+    for (auto step = row.steps.rbegin(); step != row.steps.rend(); ++step){
+        if (step->pose_after){
+            return story_pose(Pokemon::pose_of(*step->pose_after));
+        }
+    }
+    return std::nullopt;
+}
+
+bool same_pose(const StoryPose& a, const StoryPose& b){
+    return a.map == b.map && a.tile == b.tile && a.facing == b.facing;
+}
+
+//  16.06 ends at Saffron's nurse and 18.01 starts on the Gym's door mat
+//  (14, 23) facing north. 16.06b, between them in the story's order, starts
+//  where 16.06 ends and, walked on the sim with the Rockets gone, ends where
+//  18.01 starts (console B, 2026-11-15: 18.01 run from the nurse "moved
+//  nothing twice in a row" against the Center's counter).
+UnitTestResult test_center_to_gym_door_chain(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto position = [&](std::string_view id){
+        return std::find_if(rows.begin(), rows.end(), [&](const StoryCheckpoint& row){ return row.id == id; }) - rows.begin();
+    };
+    if (position("16.06b") != position("16.06") + 1 || position("18.01") != position("16.06b") + 1){
+        return "16.06b is not between 16.06 and 18.01 in the story's order.";
+    }
+    const std::optional<StoryPose> healed = declared_end(checkpoint("16.06"));
+    const StoryPose start = *story_pose(Pokemon::pose_of(*checkpoint("16.06b").start));
+    if (!healed || !same_pose(*healed, start)){
+        return "16.06b does not start where 16.06 ends.";
+    }
+    const std::set<std::string> flags{std::string(SILPH_CLEARED_FLAG)};
+    const RowResult result = walk_row("16.06b", run_story_maps(flags));
+    const StoryPose gym = *story_pose(Pokemon::pose_of(*checkpoint("18.01").start));
+    if (const std::string wrong = wrong_end("16.06b", result, MapPosition{gym.map, gym.tile}); !wrong.empty()){
+        return wrong;
+    }
+    const std::optional<StoryPose> end = declared_end(checkpoint("16.06b"));
+    if (!end || !same_pose(*end, gym)){
+        return "16.06b does not declare the pose 18.01 starts from.";
+    }
+    if (!result.trainers.empty()){
+        return "16.06b: walked into a trainer's line.";
+    }
+    return true;
+}
+
 bool has_object_at(const std::vector<MapData>& maps, std::string_view map_name, int x, int y){
     for (const MapData& map : maps){
         for (const MapObject& object : map.objects){
@@ -705,6 +753,10 @@ const AutoStorySilphCase AUTO_STORY_SILPH_CASES[] = {
     {
         .input = {.name = "16.06 back to Saffron's Center with no Rockets", .body = test_return_row},
         .expectation = {.description = "no trainer met, ends below the Center's door"},
+    },
+    {
+        .input = {.name = "16.06 end pose to 18.01 start pose chain", .body = test_center_to_gym_door_chain},
+        .expectation = {.description = "16.06b between them starts at 16.06's nurse and ends on the Gym's door mat (14, 23) facing north, nobody met"},
     },
     {
         .input = {.name = "the Saffron Rocket is gone after Silph Co.", .body = test_saffron_rocket_removed},

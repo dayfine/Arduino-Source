@@ -20,6 +20,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -201,7 +202,10 @@ UnitTestResult test_cameron_sees_row_21(){
 UnitTestResult test_celadon_x_accuracies(){
     const StoryCheckpoint& row = checkpoint("18.03");
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
-    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    //  The Department Store's lift, as 10.01's: its room and its floors.
+    SimScript script;
+    script.lift_floors[std::string(DEPT_STORE_LIFT_MAP)] = department_store_lift_exits();
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing, script);
     const MapPosition clerk{"CeladonCity_DepartmentStore_5F", {3, 7}};
     bool bought_at_clerk = false;
     for (const StoryStep& step : row.steps){
