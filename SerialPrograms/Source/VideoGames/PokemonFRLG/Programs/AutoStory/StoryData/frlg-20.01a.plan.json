@@ -25,6 +25,17 @@
           "fill_to": 13
         },
         "why": "Full Restores up to 13 in the bag, as in PokeGuy's bag at Lorelei (fullrestore x13, potion x4, superpotion x4, xaccuracy x3, xspecial x15, xspeed x4, guardspec x2, elixir x1; PokemonSimulation docs/battles/pokeguy-conditions.md, lorelei): the C policy's heals in the League's five fights come from the bag. Buys 13 less what the bag holds (3000 each), skipped at 13; a short purse stops the row here, before the League"
+      },
+      {
+        "id": "buy_full_heals",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "IndigoPlateau_PokemonCenter_1F",
+          "items": [{"item": "full-heal", "quantity": 2}],
+          "if_affordable": true
+        },
+        "why": "2 Full Heals (600 each) at the same counter after the Full Restores, only if the money left covers them (user's decision 2026-11-15: keep the Full Restores at 13 and their money check; the Full Heals are extra): not in PokeGuy's bag at Lorelei (PokemonSimulation docs/battles/pokeguy-conditions.md, lorelei: antidote x1 and parlyzheal x2 only, which 19.01a buys): they cure the sleep and freeze those don't without spending a Full Restore. if_affordable: a refused buy, or a quantity box that can't reach 2, is skipped with a log line and the row goes on. The console buys blind (no money reader), so there the skip is the game's refusal dialog passed by the presses, not a read"
       }
     ]
   },

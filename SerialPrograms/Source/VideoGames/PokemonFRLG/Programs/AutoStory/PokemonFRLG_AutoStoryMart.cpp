@@ -175,7 +175,11 @@ Pokemon::StoryActionArgs mart_args(const MartPlan& plan){
     for (const MartLine& line : plan.lines){
         items.push_back({line.item, line.quantity});
     }
-    return {{"map", plan.map}, {"items", std::move(items)}};
+    Pokemon::StoryActionArgs args{{"map", plan.map}, {"items", std::move(items)}};
+    if (plan.if_affordable){
+        args["if_affordable"] = true;
+    }
+    return args;
 }
 
 std::optional<MartPlan> mart_plan_of(const Pokemon::StoryActionArgs& args){
@@ -184,7 +188,8 @@ std::optional<MartPlan> mart_plan_of(const Pokemon::StoryActionArgs& args){
     if (map == nullptr || mart_stock(*map).empty() || items == nullptr || items->empty()){
         return std::nullopt;
     }
-    MartPlan plan{.map = *map};
+    const bool* if_affordable = game_arg<bool>(args, "if_affordable");
+    MartPlan plan{.map = *map, .if_affordable = if_affordable != nullptr && *if_affordable};
     for (const Pokemon::StoryItem& item : *items){
         if (item.quantity < 1 || item.quantity > MAX_QUANTITY || !stock_row(mart_stock(plan.map), item.item)){
             return std::nullopt;
@@ -305,7 +310,13 @@ private:
         if (!reach(buy)){
             return false;
         }
-        switch (m_actions.buy(buy)){
+        const PurchaseEnd end = m_actions.buy(buy);
+        const bool short_of_money = end == PurchaseEnd::NOT_ENOUGH_MONEY || end == PurchaseEnd::WRONG_QUANTITY;
+        if (m_plan.if_affordable && short_of_money){
+            m_logger.log(std::format("Mart: the money doesn't cover {} {}; skipped (if_affordable).", buy.quantity, buy.item), COLOR_ORANGE);
+            return true;
+        }
+        switch (end){
         case PurchaseEnd::BOUGHT:
             m_logger.log(std::format("Mart: bought {} {} for ${}.", buy.quantity, buy.item, buy.cost));
             m_result.bought.push_back(buy);

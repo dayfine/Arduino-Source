@@ -104,6 +104,19 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN_16[] = {
     "16.06   walk south 5 -> SaffronCity (15, 39)",
     "16.06   walk east 9 -> SaffronCity (24, 39)",
     "16.06   face north -> SaffronCity (24, 39)",
+    "16.06b below_center_wall from SaffronCity_PokemonCenter_1F (7, 4) facing north to SaffronCity (24, 41) facing south",
+    "16.06b   walk south 5 (warp) -> SaffronCity (24, 39) [walk only]",
+    "16.06b   walk south 2 (to wall) -> SaffronCity (24, 41)",
+    "16.06b east_wall_row_41 from SaffronCity (24, 41) facing south to SaffronCity (52, 41) facing east",
+    "16.06b   walk east 28 (to wall) -> SaffronCity (52, 41)",
+    "16.06b below_row_14_wall from SaffronCity (52, 41) facing east to SaffronCity (52, 15) facing north",
+    "16.06b   walk north 26 (to wall) -> SaffronCity (52, 15)",
+    "16.06b gym_door_east_corner from SaffronCity (52, 15) facing north to SaffronCity (47, 13) facing north",
+    "16.06b   walk west 5 -> SaffronCity (47, 15)",
+    "16.06b   walk north 2 (to wall) -> SaffronCity (47, 13)",
+    "16.06b below_gym_door from SaffronCity (47, 13) facing north to SaffronCity (46, 13) facing north",
+    "16.06b   walk west 1 -> SaffronCity (46, 13)",
+    "16.06b   face north -> SaffronCity (46, 13)",
 };
 
 } // namespace PokemonFRLG

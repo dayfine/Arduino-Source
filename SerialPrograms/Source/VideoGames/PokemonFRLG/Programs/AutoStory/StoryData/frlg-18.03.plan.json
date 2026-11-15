@@ -1,0 +1,117 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "18.03",
+    "title": "Fly to Celadon for 2 X Accuracies on the Department Store's 5F, Fly back to Saffron's Center",
+    "start": {"map": "SaffronCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "saffron_outside",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "SaffronCity", "tiles": [[24, 39]], "facing": "south"}},
+        "why": "out of Saffron's Center onto the street below its door (24, 38), as 17.02: Fly works outdoors only"
+      },
+      {
+        "id": "fly_celadon",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {"town": "CeladonCity", "species": "pidgey"},
+        "declared_after": {"map": "CeladonCity", "tiles": [[48, 12]], "facing": "south"},
+        "why": "the Pidgey flies to Celadon City, landing below the Pokemon Center's door (48, 11) on its heal spot, as 14.03"
+      },
+      {
+        "id": "below_store_lift",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "CeladonCity_DepartmentStore_1F", "tiles": [[6, 2]], "facing": "north"}},
+        "why": "from Fly's landing west along the city to the Department Store's door (11, 14) and up 1F to below its lift door (6, 1), where 10.01 rode it"
+      },
+      {
+        "id": "lift_to_5f",
+        "kind": "game_action",
+        "action": "lift_floor",
+        "args": {"from": "1F", "to": "5F"},
+        "declared_after": {"map": "CeladonCity_DepartmentStore_5F", "tiles": [[6, 2]], "facing": "south"},
+        "why": "the lift as in 10.01: in through the door, to the panel (cursor on 1F, the floor came from), 5F, out a tile south of 5F's lift door (6, 1)"
+      },
+      {
+        "id": "x_items_clerk",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "CeladonCity_DepartmentStore_5F", "tiles": [[3, 7]], "facing": "west"}},
+        "why": "down and west to face the X items clerk (1, 7) over the counter (2, 7), out of the Sailor's zone (5..7, 7..9), as 10.01"
+      },
+      {
+        "id": "buy_x_accuracies",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "CeladonCity_DepartmentStore_5F",
+          "items": [{"item": "x-accuracy", "quantity": 2}]
+        },
+        "why": "2 X Accuracies (950 each, 1,900) for the Route 22 rival and the League (user's decision 2026-11-15, from the shopping audit): PokeGuy's bag holds xaccuracy x5 at the Silph rival, x4 at Silph's Giovanni, Sabrina and the Route 22 rival, and x3 at Lorelei (PokemonSimulation docs/battles/pokeguy-conditions.md); 10.01 bought 5, and the C policy's X Accuracies in the Silph and Saffron fights may leave fewer. Only Celadon's 5F sells them, so after Sabrina (18.02b) and before 17.02's Fly to Viridian, the last point before the rival where Saffron's Fly reaches it with one detour. Bought blind after Silph's Giovanni and Sabrina's prizes; a short purse fails the step here, early in the row"
+      },
+      {
+        "id": "below_5f_lift",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "CeladonCity_DepartmentStore_5F", "tiles": [[6, 2]], "facing": "north"}},
+        "why": "back up to below the lift door (6, 1)"
+      },
+      {
+        "id": "lift_to_1f",
+        "kind": "game_action",
+        "action": "lift_floor",
+        "args": {"from": "5F", "to": "1F"},
+        "declared_after": {"map": "CeladonCity_DepartmentStore_1F", "tiles": [[6, 2]], "facing": "south"},
+        "why": "the lift down, the cursor on 5F, to 1F, out a tile south of 1F's lift door"
+      },
+      {
+        "id": "out_of_store",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "CeladonCity", "tiles": [[11, 15]], "facing": "south"}},
+        "why": "down 1F and out of the door (2, 14) onto Celadon below the store's door (11, 14), as 10.01"
+      },
+      {
+        "id": "fly_saffron",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {"town": "SaffronCity", "species": "pidgey"},
+        "declared_after": {"map": "SaffronCity", "tiles": [[24, 39]], "facing": "south"},
+        "why": "the Pidgey flies back to Saffron City, landing below the Pokemon Center's door (24, 38) on its heal spot (pokefirered heal_locations.json, HEAL_LOCATION_SAFFRON_CITY)"
+      },
+      {
+        "id": "below_center_door",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "SaffronCity", "tiles": [[24, 39]], "facing": "north"}},
+        "why": "turn to face the Center's door (24, 38) from the landing"
+      },
+      {
+        "id": "saffron_nurse",
+        "kind": "game_action",
+        "action": "center_enter",
+        "declared_after": {"map": "SaffronCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+        "why": "the Center script in: through the door and up to the nurse, where 17.02 starts; no heal needed (18.02b healed, and nothing here fights)"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts at Saffron's nurse, where 18.02b ends healed after Sabrina; ends there again, facing her, where 17.02 starts. A row of its own between them so that a playthrough already past Celadon (console B's save at 16.05, 2026-11-15) still buys the X Accuracies before the Route 22 rival.",
+        "The Department Store's way from 1F's lift to 5F's X items clerk and back is 10.01's."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "SaffronCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+    }
+  }
+}

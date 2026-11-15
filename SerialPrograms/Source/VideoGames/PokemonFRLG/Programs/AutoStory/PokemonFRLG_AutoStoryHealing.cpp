@@ -21,6 +21,7 @@ namespace{
 
 constexpr int POTION_HP = 20;
 constexpr int SUPER_POTION_HP = 50;
+constexpr int HYPER_POTION_HP = 200;
 //  The player's HP bar's width in pixels: its fill is read to one.
 constexpr int HP_BAR_PIXELS = 48;
 //  The most items heal_to_full() uses: more than a full bar takes.
@@ -37,6 +38,9 @@ int healing_hp(const std::string& item){
     }
     if (item == "super-potion"){
         return SUPER_POTION_HP;
+    }
+    if (item == "hyper-potion"){
+        return HYPER_POTION_HP;
     }
     return 0;
 }
@@ -96,8 +100,12 @@ std::optional<int> heal_to_full(
         if (!missing || *missing <= 0){
             return missing;
         }
+        //  A Hyper Potion (counted when the bag read shows some) for more
+        //  than a Super Potion heals; else the smallest that covers it.
         std::string item;
-        if (*missing > POTION_HP && supplies.super_potions > 0){
+        if (*missing > SUPER_POTION_HP && bag_count(supplies, "hyper-potion") > 0){
+            item = "hyper-potion";
+        }else if (*missing > POTION_HP && supplies.super_potions > 0){
             item = "super-potion";
         }else if (supplies.potions > 0){
             item = "potion";
@@ -286,6 +294,36 @@ UnitTestResult test_elixir_after_lance(){
     return true;
 }
 
+//  A Hyper Potion in the bag heals more than a Super Potion's 50 missing
+//  HP (user, 2026-11-15: the between-fight heal uses them if present);
+//  under that, the Super Potions as before, the Hyper Potion kept.
+UnitTestResult test_hyper_potion(){
+    Supplies supplies = bag(0, 2);
+    supplies.pocket.push_back("hyper-potion");
+    supplies.other_counts = {{"hyper-potion", 1}};
+    measured_hp(supplies, 0.30);
+    const std::optional<int> after = heal_to_full(supplies, LEAD_MAX_HP, [&](const std::string& item){
+        return use_from_bag(supplies, item);
+    });
+    if (after != std::optional<int>(-112) || supplies.other_counts.contains("hyper-potion") || supplies.super_potions != 2){
+        return std::format(
+            "{} HP missing, {} Hyper Potions, {} Super Potions; expected -112 (one Hyper Potion for 88), none, 2.",
+            after.value_or(-1), supplies.other_counts.contains("hyper-potion") ? supplies.other_counts["hyper-potion"] : 0, supplies.super_potions
+        );
+    }
+    Supplies small = bag(0, 2);
+    small.pocket.push_back("hyper-potion");
+    small.other_counts = {{"hyper-potion", 1}};
+    measured_hp(small, 0.80);
+    heal_to_full(small, LEAD_MAX_HP, [&](const std::string& item){
+        return use_from_bag(small, item);
+    });
+    if (small.other_counts["hyper-potion"] != 1 || small.super_potions != 1){
+        return std::format("27 HP missing: {} Hyper Potions and {} Super Potions left, expected 1 and 1.", small.other_counts["hyper-potion"], small.super_potions);
+    }
+    return true;
+}
+
 //  The Fuchsia Mart buys Super Potions so the bag covers a full bar.
 UnitTestResult test_cover_shortfall(){
     struct Case{
@@ -317,6 +355,7 @@ void add_tests_AutoStoryHealing(UnitTestDatabase& database){
     database.add<Test_AutoStoryHealing>(HealingCase{"the Mart buys the shortfall for a full bar", test_cover_shortfall});
     database.add<Test_AutoStoryHealing>(HealingCase{"a Full Restore after Agatha, Potions without one", test_full_restore_after_agatha});
     database.add<Test_AutoStoryHealing>(HealingCase{"an Elixir after Lance: 10 PP each, at most full", test_elixir_after_lance});
+    database.add<Test_AutoStoryHealing>(HealingCase{"a Hyper Potion for more than a Super Potion heals", test_hyper_potion});
 }
 
 

@@ -14,6 +14,7 @@
 #include <format>
 #include <functional>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
@@ -301,9 +302,47 @@ std::vector<MartCase> mart_cases_4(){
     };
 }
 
+//  20.01a's Full Heals after the Full Restores, only if the money left
+//  covers them (user, 2026-11-15): a short purse skips the line, the step
+//  done, where without if_affordable it fails.
+std::vector<MartCase> mart_cases_5(){
+    const std::vector<MartLine> two_full_heals{{"full-heal", 2}};
+    const std::vector<MartLine> restore_then_heal{{"full-restore", 1}, {"full-heal", 1}};
+    const MartPlan full_heals{.map = "IndigoPlateau_PokemonCenter_1F", .lines = two_full_heals, .if_affordable = true};
+    const MartPlan restore_first{.map = "IndigoPlateau_PokemonCenter_1F", .lines = restore_then_heal, .if_affordable = true};
+    return {
+        {
+            .name = "if_affordable: both bought when the money covers them",
+            .plan = full_heals,
+            .money = 1500,
+            .bag = {{"full-heal", 2}},
+            .money_after = 300,
+        },
+        {
+            .name = "if_affordable: money for one, the quantity box wraps: skipped, done",
+            .plan = full_heals,
+            .money = 900,
+            .money_after = 900,
+        },
+        {
+            .name = "if_affordable: money for none: skipped, done",
+            .plan = full_heals,
+            .money = 400,
+            .money_after = 400,
+        },
+        {
+            .name = "if_affordable: a line skipped, the cheaper next one still bought",
+            .plan = restore_first,
+            .money = 700,
+            .bag = {{"full-heal", 1}},
+            .money_after = 100,
+        },
+    };
+}
+
 std::vector<MartCase> mart_cases(){
     std::vector<MartCase> cases;
-    for (std::vector<MartCase> part : {mart_cases_1(), mart_cases_2(), mart_cases_3(), mart_cases_4()}){
+    for (std::vector<MartCase> part : {mart_cases_1(), mart_cases_2(), mart_cases_3(), mart_cases_4(), mart_cases_5()}){
         cases.insert(cases.end(), part.begin(), part.end());
     }
     return cases;
@@ -366,6 +405,12 @@ UnitTestResult test_mart_args(){
         || back->lines.size() != 2 || back->lines[1].item != "repel" || back->lines[1].quantity != 3
     ){
         return "The Pewter plan didn't read back from its args.";
+    }
+    MartPlan if_affordable = plan;
+    if_affordable.if_affordable = true;
+    const std::optional<MartPlan> affordable_back = mart_plan_of(mart_args(if_affordable));
+    if (!affordable_back || !affordable_back->if_affordable || back->if_affordable || args.contains("if_affordable")){
+        return "if_affordable didn't read back from its args, or was written when false.";
     }
     const std::vector<std::pair<std::string, Pokemon::StoryArgValue>> bad_args{
         {"items", std::vector<Pokemon::StoryItem>{}},
@@ -502,6 +547,108 @@ UnitTestResult test_mart_steps_early(){
     return true;
 }
 
+//  One Mart step of the shopping the user approved on 2026-11-15, with
+//  the story row it must come before and the money it is run against.
+struct ApprovedShopping{
+    std::string_view checkpoint;
+    std::string_view step;
+    std::string_view before;
+    MartPlan plan;
+    size_t money;
+    std::map<std::string, size_t> bag;
+    size_t money_after;
+};
+
+//  A plan of one line: `quantity` of `item` at `map`'s Mart.
+MartPlan one_line(std::string map, std::string item, size_t quantity){
+    return {.map = std::move(map), .lines = {MartLine{std::move(item), quantity}}};
+}
+
+const std::vector<ApprovedShopping>& approved_shopping(){
+    MartPlan status_heals = one_line("ViridianCity_Mart", "antidote", 1);
+    status_heals.lines.push_back({"parlyz-heal", 2});
+    MartPlan full_heals = one_line("IndigoPlateau_PokemonCenter_1F", "full-heal", 2);
+    full_heals.if_affordable = true;
+    static const std::vector<ApprovedShopping> shopping{
+        {
+            .checkpoint = "12.03", .step = "buy_super_potions_for_silph", .before = "16.01",
+            .plan = one_line("FuchsiaCity_Mart", "super-potion", 4),
+            .money = 2800, .bag = {{"super-potion", 4}}, .money_after = 0,
+        },
+        {
+            .checkpoint = "18.03", .step = "buy_x_accuracies", .before = "19.01",
+            .plan = one_line("CeladonCity_DepartmentStore_5F", "x-accuracy", 2),
+            .money = 1900, .bag = {{"x-accuracy", 2}}, .money_after = 0,
+        },
+        {
+            .checkpoint = "19.01a", .step = "buy_status_heals", .before = "19.01",
+            .plan = status_heals,
+            .money = 500, .bag = {{"antidote", 1}, {"parlyz-heal", 2}}, .money_after = 0,
+        },
+        {
+            //  After 13 Full Restores, money for one Full Heal: skipped.
+            .checkpoint = "20.01a", .step = "buy_full_heals", .before = "20.01",
+            .plan = full_heals,
+            .money = 1100, .bag = {}, .money_after = 1100,
+        },
+    };
+    return shopping;
+}
+
+bool same_plan(const MartPlan& a, const MartPlan& b){
+    if (a.map != b.map || a.if_affordable != b.if_affordable || a.lines.size() != b.lines.size()){
+        return false;
+    }
+    for (size_t c = 0; c < a.lines.size(); c++){
+        if (a.lines[c].item != b.lines[c].item || a.lines[c].quantity != b.lines[c].quantity){
+            return false;
+        }
+    }
+    return true;
+}
+
+//  Each approved Mart step is in its row, before the row it shops for,
+//  with the approved lines; on a fake Mart with the money given it ends
+//  done with that bag.
+UnitTestResult test_approved_shopping(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    for (const ApprovedShopping& shopping : approved_shopping()){
+        std::optional<size_t> row_index;
+        std::optional<size_t> before_index;
+        const StoryStep* found = nullptr;
+        for (size_t c = 0; c < rows.size(); c++){
+            if (rows[c].id == shopping.before){
+                before_index = c;
+            }
+            if (rows[c].id != shopping.checkpoint){
+                continue;
+            }
+            row_index = c;
+            for (const StoryStep& step : rows[c].steps){
+                found = step.name == shopping.step ? &step : found;
+            }
+        }
+        if (found == nullptr || !row_index || !before_index || *row_index >= *before_index){
+            return std::format("{}/{}: missing, or not before {}.", shopping.checkpoint, shopping.step, shopping.before);
+        }
+        const std::optional<MartPlan> plan = mart_plan_of(found->args);
+        if (!plan || !same_plan(*plan, shopping.plan)){
+            return std::format("{}/{}: not the approved lines.", shopping.checkpoint, shopping.step);
+        }
+        const UnitTestResult result = check_mart_case({
+            .name = std::format("{}/{}", shopping.checkpoint, shopping.step),
+            .plan = *plan,
+            .money = shopping.money,
+            .bag = shopping.bag,
+            .money_after = shopping.money_after,
+        });
+        if (result.result != UnitTestResult::PASSED){
+            return result;
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 
@@ -532,6 +679,10 @@ const AutoStoryMartCase AUTO_STORY_MART_CASES[] = {
     },
     {
         .input = {"every Mart step is early in its checkpoint", test_mart_steps_early},
+        .expectation = {},
+    },
+    {
+        .input = {"the shopping approved on 2026-11-15", test_approved_shopping},
         .expectation = {},
     },
 };

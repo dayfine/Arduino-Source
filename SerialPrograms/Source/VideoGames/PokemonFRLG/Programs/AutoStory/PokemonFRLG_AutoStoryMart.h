@@ -27,7 +27,8 @@
  *  its quantity, in the order listed, blind. The only money check is the
  *  "You don't have enough money." dialog, which fails the step; a
  *  quantity typed past the box's most wraps, which the box's read catches
- *  where it can be read. A Mart step belongs early in its checkpoint, so
+ *  where it can be read. A plan with if_affordable skips such a line
+ *  instead, logged. A Mart step belongs early in its checkpoint, so
  *  that a failure costs little.
  *
  *  The decisions take their game steps from a MartActions, so they run in

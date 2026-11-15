@@ -29,6 +29,16 @@
           "fill_to": 4
         },
         "why": "Potions up to 4 in the bag, as in PokeGuy's bag at the Route 22 rival (potion x4, superpotion x4, xaccuracy x4, xspecial x17, xspeed x5, guardspec x2; PokemonSimulation docs/battles/pokeguy-conditions.md); the Super Potions are 12.01's. Early in the row, so a failed purchase stops it before the walk. Buys 4 less what the bag holds, skipped at 4"
+      },
+      {
+        "id": "buy_status_heals",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "ViridianCity_Mart",
+          "items": [{"item": "antidote", "quantity": 1}, {"item": "parlyz-heal", "quantity": 2}]
+        },
+        "why": "an Antidote and 2 Parlyz Heals for the League's poison and paralysis (user's decision 2026-11-15, from the shopping audit): PokeGuy's bag at the Route 22 rival and at Lorelei holds antidote x1 and parlyzheal x2 (PokemonSimulation docs/battles/pokeguy-conditions.md), which the story's bag never bought for the League; recovery_items() cures PSN and PAR with them. Viridian sells both (ANTIDOTE 100, PARLYZ HEAL 200: 500 in all); its own step, as buy_potions's fill_to would skip a whole step when the bag holds 4 Potions. Bought blind after 17.04's Giovanni prize"
       }
     ]
   },
