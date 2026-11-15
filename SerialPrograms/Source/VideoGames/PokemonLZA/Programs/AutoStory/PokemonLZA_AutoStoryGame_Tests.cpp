@@ -45,8 +45,27 @@ std::string joined(const std::vector<std::string>& texts, std::string_view separ
 }
 
 
+struct StoryDataCase{
+    std::string name;
+    struct Input{};
+    Input input;
+    struct Expectation{
+        //  "<id>:<new_game|from_save>[:<autosave|unverified>]" per row, in order.
+        std::string rows;
+    };
+    Expectation expectation;
+};
+
+const StoryDataCase STORY_DATA_CASES[] = {
+    {
+        .name = "the built-in story loads and passes the lint",
+        .input = {},
+        .expectation = {.rows = "01.00:new_game:unverified 01.01:from_save"},
+    },
+};
+
 //  The built-in story: its rows in order, what they start from and save.
-UnitTestResult check_story_data(){
+UnitTestResult check_story_data(const StoryDataCase& test){
     const StoryData& data = builtin_story_data();
     std::vector<std::string> rows;
     for (const StoryCheckpoint& row : data.checkpoints){
@@ -60,9 +79,8 @@ UnitTestResult check_story_data(){
         ));
     }
     const std::string got = joined(rows, " ");
-    const std::string expected = "01.00:new_game:unverified 01.01:from_save";
-    if (got != expected){
-        return std::format("expected \"{}\", got \"{}\"", expected, got);
+    if (got != test.expectation.rows){
+        return std::format("expected \"{}\", got \"{}\"", test.expectation.rows, got);
     }
     return true;
 }
@@ -152,7 +170,9 @@ StoryCheckpoint builtin_row(std::string_view id, size_t first_step){
 struct RunCase{
     std::string name;
     struct Input{
-        StoryCheckpoint checkpoint;
+        //  The built-in checkpoint, from its step `first_step` (from 0) on.
+        std::string checkpoint;
+        size_t first_step = 0;
         std::vector<Observation<ZonePose>> looks;
     };
     Input input;
@@ -167,79 +187,77 @@ struct RunCase{
     Expectation expectation;
 };
 
-std::vector<RunCase> run_cases(){
-    return {
-        {
-            .name = "01.00 stops at Confirm Choices off a console",
-            .input = {.checkpoint = builtin_row("01.00", 0), .looks = {CUTSCENE}},
-            .expectation = {.verdict = "failed at confirm: console_only", .inputs = ""},
+const RunCase RUN_CASES[] = {
+    {
+        .name = "01.00 stops at Confirm Choices off a console",
+        .input = {.checkpoint = "01.00", .first_step = 0, .looks = {CUTSCENE}},
+        .expectation = {.verdict = "failed at confirm: console_only", .inputs = ""},
+    },
+    {
+        .name = "01.00's opening ends on the platform after the autosave",
+        .input = {.checkpoint = "01.00", .first_step = 1, .looks = {CUTSCENE, PLATFORM, AUTOSAVE, AUTOSAVE, PLATFORM, PLATFORM}},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "wait 300ms, wait 300ms, wait 300ms, wait 300ms, wait 300ms",
+            .line = "[PLZA] platform wait: on the platform after 6 looks",
         },
-        {
-            .name = "01.00's opening ends on the platform after the autosave",
-            .input = {.checkpoint = builtin_row("01.00", 1), .looks = {CUTSCENE, PLATFORM, AUTOSAVE, AUTOSAVE, PLATFORM, PLATFORM}},
-            .expectation = {
-                .verdict = "done",
-                .inputs = "wait 300ms, wait 300ms, wait 300ms, wait 300ms, wait 300ms",
-                .line = "[PLZA] platform wait: on the platform after 6 looks",
-            },
+    },
+    {
+        .name = "01.00's opening presses A once for the text waiting for it",
+        .input = {.checkpoint = "01.00", .first_step = 1, .looks = {TEXT_FOR_A, TEXT_FOR_A, AUTOSAVE, PLATFORM, PLATFORM}},
+        .expectation = {.verdict = "done", .inputs = "press A, wait 300ms, wait 300ms, wait 300ms, wait 300ms"},
+    },
+    {
+        .name = "01.00's opening fails with no autosave",
+        .input = {.checkpoint = "01.00", .first_step = 1, .looks = {PLATFORM}},
+        .expectation = {.verdict = "failed at opening: platform_not_seen"},
+    },
+    {
+        .name = "01.01 walks off the platform into the white fade",
+        .input = {.checkpoint = "01.01", .first_step = 0, .looks = {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, WHITE_FADE}},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "wait 300ms, wait 250ms, hold north 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
+            .line = "[PLZA] platform_to_plaza: the end event after 250 ms of the last leg.",
         },
-        {
-            .name = "01.00's opening presses A once for the text waiting for it",
-            .input = {.checkpoint = builtin_row("01.00", 1), .looks = {TEXT_FOR_A, TEXT_FOR_A, AUTOSAVE, PLATFORM, PLATFORM}},
-            .expectation = {.verdict = "done", .inputs = "press A, wait 300ms, wait 300ms, wait 300ms, wait 300ms"},
+    },
+    {
+        .name = "01.01's walk plays a dropped leg again",
+        .input = {.checkpoint = "01.01", .first_step = 0, .looks = {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, STILL, PLATFORM, WHITE_FADE}},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "wait 300ms, wait 250ms, hold north 4500ms walk, hold north 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
+            .line = "[PLZA] walk: the screen stayed still after the walk of leg 1/2 turn 0 walk 4500 ms; once more",
         },
-        {
-            .name = "01.00's opening fails with no autosave",
-            .input = {.checkpoint = builtin_row("01.00", 1), .looks = {PLATFORM}},
-            .expectation = {.verdict = "failed at opening: platform_not_seen"},
-        },
-        {
-            .name = "01.01 walks off the platform into the white fade",
-            .input = {.checkpoint = builtin_row("01.01", 0), .looks = {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, WHITE_FADE}},
-            .expectation = {
-                .verdict = "done",
-                .inputs = "wait 300ms, wait 250ms, hold north 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
-                .line = "[PLZA] platform_to_plaza: the end event after 250 ms of the last leg.",
-            },
-        },
-        {
-            .name = "01.01's walk plays a dropped leg again",
-            .input = {.checkpoint = builtin_row("01.01", 0), .looks = {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, STILL, PLATFORM, WHITE_FADE}},
-            .expectation = {
-                .verdict = "done",
-                .inputs = "wait 300ms, wait 250ms, hold north 4500ms walk, hold north 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
-                .line = "[PLZA] walk: the screen stayed still after the walk of leg 1/2 turn 0 walk 4500 ms; once more",
-            },
-        },
-        {
-            .name = "01.01's walk ends on a black fade",
-            .input = {.checkpoint = builtin_row("01.01", 1), .looks = {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, BLACK_FADE}},
-            .expectation = {.verdict = "done", .line = "[PLZA] platform_to_plaza: a black fade after 250 ms of the last leg: the scene takes over."},
-        },
-        {
-            .name = "01.01's walk fails when the fade never shows",
-            .input = {.checkpoint = builtin_row("01.01", 1), .looks = {PLATFORM}},
-            .expectation = {.verdict = "failed at platform_to_plaza: walk_no_end"},
-        },
-        {
-            .name = "01.01's walk does not start in a text box",
-            .input = {.checkpoint = builtin_row("01.01", 1), .looks = {DIALOG}},
-            .expectation = {.verdict = "failed at platform_to_plaza: walk_not_free"},
-        },
-        {
-            .name = "01.01's start check fails off the platform",
-            .input = {.checkpoint = builtin_row("01.01", 0), .looks = {CUTSCENE}},
-            .expectation = {.verdict = "failed at on_platform: platform_not_seen"},
-        },
-    };
-}
+    },
+    {
+        .name = "01.01's walk ends on a black fade",
+        .input = {.checkpoint = "01.01", .first_step = 1, .looks = {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, BLACK_FADE}},
+        .expectation = {.verdict = "done", .line = "[PLZA] platform_to_plaza: a black fade after 250 ms of the last leg: the scene takes over."},
+    },
+    {
+        .name = "01.01's walk fails when the fade never shows",
+        .input = {.checkpoint = "01.01", .first_step = 1, .looks = {PLATFORM}},
+        .expectation = {.verdict = "failed at platform_to_plaza: walk_no_end"},
+    },
+    {
+        .name = "01.01's walk does not start in a text box",
+        .input = {.checkpoint = "01.01", .first_step = 1, .looks = {DIALOG}},
+        .expectation = {.verdict = "failed at platform_to_plaza: walk_not_free"},
+    },
+    {
+        .name = "01.01's start check fails off the platform",
+        .input = {.checkpoint = "01.01", .first_step = 0, .looks = {CUTSCENE}},
+        .expectation = {.verdict = "failed at on_platform: platform_not_seen"},
+    },
+};
 
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
-    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game();
+    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console();
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
-    const std::vector<StoryCheckpoint> rows{test.input.checkpoint};
+    const std::vector<StoryCheckpoint> rows{builtin_row(test.input.checkpoint, test.input.first_step)};
     const Pokemon::SegmentReport report = engine.run_segment("test", rows, 1, state);
     const std::string verdict = report.completed
         ? "done"
@@ -265,12 +283,15 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
 
 class StoryDataTest : public UnitTest{
 public:
-    StoryDataTest()
-        : UnitTest("PokemonLZA::AutoStoryGame - the built-in story loads and passes the lint")
+    explicit StoryDataTest(StoryDataCase test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStoryGame - {}", test_case.name))
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_story_data();
+        return check_story_data(m_case);
     }
+private:
+    StoryDataCase m_case;
 };
 
 class LintTest : public UnitTest{
@@ -303,12 +324,14 @@ private:
 
 
 void add_tests_AutoStoryGame(UnitTestDatabase& database){
-    database.add<StoryDataTest>();
+    for (const StoryDataCase& test : STORY_DATA_CASES){
+        database.add<StoryDataTest>(test);
+    }
     for (const LintCase& test : LINT_CASES){
         database.add<LintTest>(test);
     }
-    for (RunCase& test : run_cases()){
-        database.add<RunTest>(std::move(test));
+    for (const RunCase& test : RUN_CASES){
+        database.add<RunTest>(test);
     }
 }
 

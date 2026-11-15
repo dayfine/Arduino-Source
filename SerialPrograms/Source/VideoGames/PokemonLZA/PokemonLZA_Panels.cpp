@@ -69,6 +69,7 @@ PanelListFactory::PanelListFactory()
     )
 {}
 
+// code-health: allow function_lines -- the list reads top to bottom as the program menu does; splitting it by section hides that order
 std::vector<PanelEntry> PanelListFactory::make_panels() const{
     std::vector<PanelEntry> ret;
 

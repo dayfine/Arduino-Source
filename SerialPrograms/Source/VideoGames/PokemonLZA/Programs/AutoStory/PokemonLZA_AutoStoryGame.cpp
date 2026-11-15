@@ -310,7 +310,7 @@ Pokemon::StoryGame<ZonePose> make_plza_story_game(
     return game;
 }
 
-Pokemon::StoryGame<ZonePose> make_plza_story_game(){
+Pokemon::StoryGame<ZonePose> make_plza_story_game_without_console(){
     return plza_game_actions(nullptr);
 }
 
