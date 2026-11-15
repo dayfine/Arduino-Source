@@ -64,6 +64,17 @@ std::vector<MapPosition> leg_tiles(
     const MapPosition& start, const RouteStep& step
 );
 
+//  The tiles `route` from `start` steps on again, in the order it does: a
+//  route that crosses a tile twice walks back over its own way. Counts the
+//  tiles leg_tiles() walks, each warp's and spinner's end, and each Surf's
+//  landing. The gates start as `gates`, and the route's OPEN_GATE and
+//  PRESS_SWITCH steps change them, as in follow_overworld_route().
+std::vector<MapPosition> revisited_tiles(
+    const std::vector<MapData>& maps,
+    const MapPosition& start, const std::vector<RouteStep>& route,
+    const Pokemon::GateState& gates
+);
+
 //  Replays `route` from `start` with the game's step rules and returns where
 //  it ends. Throws InternalProgramError if a step can't be taken as planned.
 //  A route with gates (plan_overworld_route_gated()) starts with `gates`; its

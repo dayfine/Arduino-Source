@@ -272,6 +272,29 @@ UnitTestResult check_held_legs(const std::string& name, const std::vector<RouteS
     return true;
 }
 
+//  A story step whose planned route steps on tiles it has crossed already.
+struct RouteRevisit{
+    std::string checkpoint;
+    std::string step;
+    std::vector<MapPosition> tiles;
+};
+
+//  What following the story's routes collects: the golden's lines, and the
+//  routes that cross a tile twice.
+struct StoryPlans{
+    std::vector<std::string> golden;
+    std::vector<RouteRevisit> revisits;
+};
+
+//  Adds `route`, `step`'s plan from `start`, to `plans` if it crosses a
+//  tile twice.
+void note_revisits(const StoryStep& step, const MapPosition& start, const std::vector<RouteStep>& route, StoryPlans& plans){
+    std::vector<MapPosition> tiles = revisited_tiles(walk_story_maps(), start, route, walk_state().gates);
+    if (!tiles.empty()){
+        plans.revisits.push_back(RouteRevisit{.checkpoint = {}, .step = step.name, .tiles = std::move(tiles)});
+    }
+}
+
 //  Walks `step`'s fixed legs from `pose` and moves `pose` to their end.
 UnitTestResult check_legs(StoryPose& pose, const StoryStep& step){
     const std::optional<std::vector<RouteStep>> route = fixed_route(walk_maps(), MapPosition{pose.map, pose.tile}, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
@@ -311,8 +334,8 @@ std::string golden_line(const RouteStep& step){
 }
 
 //  Plans `step` from `pose` and moves `pose` to its end; adds the plan to
-//  `golden`.
-UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<std::string>& golden){
+//  `plans`.
+UnitTestResult check_route(StoryPose& pose, const StoryStep& step, StoryPlans& plans){
     const MapPosition start{pose.map, pose.tile};
     std::optional<Direction> facing = pose.facing;
     if (!facing){
@@ -329,11 +352,12 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<s
     if (!route){
         return step.name + ": no route from " + to_string(start) + " to " + to_string(goal.position) + ".";
     }
-    golden.push_back(std::format("{} from {} facing {} to {}{}", step.name, to_string(start), direction_name(*facing),
+    plans.golden.push_back(std::format("{} from {} facing {} to {}{}", step.name, to_string(start), direction_name(*facing),
         to_string(goal.position), goal.facing ? std::format(" facing {}", direction_name(*goal.facing)) : ""));
     for (const RouteStep& planned : *route){
-        golden.push_back(golden_line(planned));
+        plans.golden.push_back(golden_line(planned));
     }
+    note_revisits(step, start, *route, plans);
     const MapPosition end = follow_overworld_route(walk_story_maps(), start, *route, walk_state().gates);
     if (!(end == goal.position)){
         return step.name + ": the route ends at " + to_string(end) + ":" + describe(*route);
@@ -356,10 +380,10 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<s
 }
 
 //  check_checkpoint()'s walk through the steps.
-UnitTestResult check_checkpoint_steps(const StoryCheckpoint& checkpoint, StoryPose& pose, std::vector<std::string>& golden){
+UnitTestResult check_checkpoint_steps(const StoryCheckpoint& checkpoint, StoryPose& pose, StoryPlans& plans){
     for (const StoryStep& step : checkpoint.steps){
         if (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
-            UnitTestResult result = step.kind == StoryStepKind::ROUTE ? check_route(pose, step, golden) : check_legs(pose, step);
+            UnitTestResult result = step.kind == StoryStepKind::ROUTE ? check_route(pose, step, plans) : check_legs(pose, step);
             if (result.result != UnitTestResult::PASSED){
                 return checkpoint.id + " " + result.message;
             }
@@ -368,7 +392,7 @@ UnitTestResult check_checkpoint_steps(const StoryCheckpoint& checkpoint, StoryPo
             //  goes on from where the player stands.
             StoryPose nurse_pose = pose;
             StoryStep to_nurse = step;
-            UnitTestResult result = check_route(nurse_pose, to_nurse, golden);
+            UnitTestResult result = check_route(nurse_pose, to_nurse, plans);
             if (result.result != UnitTestResult::PASSED){
                 return checkpoint.id + " " + result.message;
             }
@@ -385,20 +409,24 @@ UnitTestResult check_checkpoint_steps(const StoryCheckpoint& checkpoint, StoryPo
 }
 
 //  Follows `checkpoint` from its start; `pose` ends where it leaves the
-//  player. Adds each planned route to `golden`, after the checkpoint's id.
-UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& pose, std::vector<std::string>& golden){
-    const size_t first = golden.size();
-    UnitTestResult result = check_checkpoint_steps(checkpoint, pose, golden);
-    for (size_t c = first; c < golden.size(); c++){
-        golden[c] = std::format("{} {}", checkpoint.id, golden[c]);
+//  player. Adds each planned route to `plans`, after the checkpoint's id.
+UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& pose, StoryPlans& plans){
+    const size_t first = plans.golden.size();
+    const size_t first_revisit = plans.revisits.size();
+    UnitTestResult result = check_checkpoint_steps(checkpoint, pose, plans);
+    for (size_t c = first; c < plans.golden.size(); c++){
+        plans.golden[c] = std::format("{} {}", checkpoint.id, plans.golden[c]);
+    }
+    for (size_t c = first_revisit; c < plans.revisits.size(); c++){
+        plans.revisits[c].checkpoint = checkpoint.id;
     }
     return result;
 }
 
 //  Plans every route of the story, each checkpoint from where the one
 //  before leaves the player (or, past rows not authored yet, from its own
-//  start: starts_after_unauthored_rows()), and adds the plans to `golden`.
-UnitTestResult chain_story_routes(std::vector<std::string>& golden){
+//  start: starts_after_unauthored_rows()), and adds the plans to `plans`.
+UnitTestResult chain_story_routes(StoryPlans& plans){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     if (checkpoints.size() != 96 || checkpoints[0].start){
         return "Expected 96 checkpoints, the first from a new game.";
@@ -418,7 +446,7 @@ UnitTestResult chain_story_routes(std::vector<std::string>& golden){
             }
             pose = start;
         }
-        UnitTestResult result = check_checkpoint(checkpoint, pose, golden);
+        UnitTestResult result = check_checkpoint(checkpoint, pose, plans);
         if (result.result != UnitTestResult::PASSED){
             return result;
         }
@@ -427,8 +455,8 @@ UnitTestResult chain_story_routes(std::vector<std::string>& golden){
 }
 
 UnitTestResult test_routes_and_chain(){
-    std::vector<std::string> golden;
-    return chain_story_routes(golden);
+    StoryPlans plans;
+    return chain_story_routes(plans);
 }
 
 //  Every story route's plan against the stored copy in
@@ -438,11 +466,12 @@ UnitTestResult test_routes_and_chain(){
 //  FRLG_PLAN_GOLDEN_10 (segment 10), FRLG_PLAN_GOLDEN_11 (segment 11) and FRLG_PLAN_GOLDEN_12 (segment 12 on)
 //  with the lines the failure lists after "GOLDEN|".
 UnitTestResult test_golden_plans(){
-    std::vector<std::string> actual;
-    UnitTestResult result = chain_story_routes(actual);
+    StoryPlans plans;
+    UnitTestResult result = chain_story_routes(plans);
     if (result.result != UnitTestResult::PASSED){
         return result;
     }
+    const std::vector<std::string>& actual = plans.golden;
     std::vector<std::string_view> golden(std::begin(FRLG_PLAN_GOLDEN), std::end(FRLG_PLAN_GOLDEN));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_10), std::end(FRLG_PLAN_GOLDEN_10));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_11), std::end(FRLG_PLAN_GOLDEN_11));
@@ -472,6 +501,61 @@ UnitTestResult test_golden_plans(){
         message += std::format("\nGOLDEN|{}", line);
     }
     return message;
+}
+
+//  Story routes that cross a tile twice on purpose, and why. Any other
+//  route that does walks back over its own way: re-plan it.
+struct AllowedRevisit{
+    std::string_view checkpoint;
+    std::string_view step;
+    std::string_view reason;
+};
+const AllowedRevisit ALLOWED_REVISITS[] = {
+    {"12.03", "land_middle_sand_bar", "west to the wall (5, 3) on Route 21's water and back east 1: the wall places the player, which an open leg on the water can't (OPEN_WATER_STOP)"},
+    {"13.01", "mansion_holes", "east to the wall (20, 6), round and back down column 19 rather than end an open leg in the Mansion's wild rooms (OPEN_WILD_STOP): a cost choice to re-weigh"},
+    {"13.03", "to_elixir", "to the switch (24, 30) and back: pressing it opens the way on along row 17"},
+    {"13.04", "to_key", "up column 30 to the switch (27, 6) and back down it: pressing it opens the way west along row 10"},
+    {"16.02", "to_corridor", "off 9F's teleporter (22, 18) and back on, the way to 5F's (10, 20); the step off is held to the wall (18, 18) rather than one open tile (OPEN_STOP): a cost choice to re-weigh"},
+    {"16.03", "to_3f_trainer", "the same teleporter bounce on 9F as 16.02's to_corridor"},
+    {"19.03", "volcano_guard_approach", "north to the wall (17, 61) and back south 1: the wall places the player after 16 tiles of grass (OPEN_WILD_STOP)"},
+    {"19.04b", "below_ladder", "out to Route 23 and straight back in, onto the cave mouth (11, 20), rather than end an open leg there (OPEN_WILD_STOP): a cost choice to re-weigh"},
+    {"19.04c", "ladder_3f", "down 3F's ladder to 2F's (3, 3) and back up it onto (5, 2); the step off is held to the wall (3, 5) rather than one open tile (OPEN_STOP): a cost choice to re-weigh"},
+};
+
+std::string describe(const RouteRevisit& revisit){
+    std::string text = std::format("{} {}:", revisit.checkpoint, revisit.step);
+    for (const MapPosition& tile : revisit.tiles){
+        text += std::format(" {}", to_string(tile));
+    }
+    return text;
+}
+
+//  No story route crosses a tile twice, but those ALLOWED_REVISITS lists;
+//  and each it lists still does.
+UnitTestResult test_routes_cross_no_tile_twice(){
+    StoryPlans plans;
+    UnitTestResult result = chain_story_routes(plans);
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    const auto same = [](const AllowedRevisit& allowed, const RouteRevisit& revisit){
+        return allowed.checkpoint == revisit.checkpoint && allowed.step == revisit.step;
+    };
+    std::string message;
+    for (const RouteRevisit& revisit : plans.revisits){
+        if (std::ranges::none_of(ALLOWED_REVISITS, [&](const AllowedRevisit& allowed){ return same(allowed, revisit); })){
+            message += std::format("\n  crosses a tile again: {}", describe(revisit));
+        }
+    }
+    for (const AllowedRevisit& allowed : ALLOWED_REVISITS){
+        if (std::ranges::none_of(plans.revisits, [&](const RouteRevisit& revisit){ return same(allowed, revisit); })){
+            message += std::format("\n  allowed, but crosses no tile twice: {} {}", allowed.checkpoint, allowed.step);
+        }
+    }
+    if (!message.empty()){
+        return std::format("Story routes that walk back over their own way:{}", message);
+    }
+    return true;
 }
 
 struct ExpectedLeg{
@@ -769,8 +853,8 @@ bool grass_held(const StoryPose& pose, const StoryStep& step){
 //  Moves `pose` past `step`, as check_checkpoint() does.
 UnitTestResult advance(StoryPose& pose, const StoryStep& step){
     if (step.kind == StoryStepKind::ROUTE){
-        std::vector<std::string> golden;
-        return check_route(pose, step, golden);
+        StoryPlans plans;
+        return check_route(pose, step, plans);
     }
     if (step.kind == StoryStepKind::LEGS){
         return check_legs(pose, step);
@@ -1265,8 +1349,9 @@ UnitTestResult test_save_place_error(){
 //  leg to a wall or a warp, or lands and then walks to one, which finds the
 //  player again.
 UnitTestResult test_route21_water_legs(){
-    std::vector<std::string> plan;
-    UnitTestResult result = chain_story_routes(plan);
+    StoryPlans plans;
+    UnitTestResult result = chain_story_routes(plans);
+    const std::vector<std::string>& plan = plans.golden;
     if (result.result != UnitTestResult::PASSED){
         return result;
     }
@@ -1588,6 +1673,10 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
     {
         .input = {.name = "story route plans match the golden", .body = test_golden_plans},
         .expectation = {.description = "keeps every story route's planned steps byte-identical to the stored copy"},
+    },
+    {
+        .input = {.name = "story routes cross no tile twice", .body = test_routes_cross_no_tile_twice},
+        .expectation = {.description = "flags a route that walks back over its own tiles, but the ones allowed with a reason"},
     },
     {
         .input = {.name = "step names are unique per checkpoint", .body = test_unique_names},
