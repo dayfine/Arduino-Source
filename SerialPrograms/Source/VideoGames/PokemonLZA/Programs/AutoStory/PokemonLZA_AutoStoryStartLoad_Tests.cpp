@@ -42,13 +42,13 @@ const StartLoadCase START_LOAD_CASES[] = {
     {.name = "the latest save at the start: start", .input = {.from = StartFrom::LATEST_SAVE, .checks = {true}}, .expectation = {.actions = {LOAD_LATEST, START}}},
     {.name = "no start check: start from the latest save", .input = {.from = StartFrom::LATEST_SAVE, .checks = {std::nullopt}}, .expectation = {.actions = {LOAD_LATEST, START}}},
     //  Console B, 2026-11-14: a catch in 03.08 autosaved in zone 1; the
-    //  backup is 03.07d's start, and the Report makes it the latest again.
+    //  backup was the run's start, and the Report makes it the latest again.
     {.name = "the latest save past the start, the backup at it: save, then start", .input = {.from = StartFrom::LATEST_SAVE, .checks = {false, true}}, .expectation = {.actions = {LOAD_LATEST, LOAD_BACKUP, REPORT_THEN_START}}},
     {.name = "the latest save past the start, the backup with no check: start, no save", .input = {.from = StartFrom::LATEST_SAVE, .checks = {false, std::nullopt}}, .expectation = {.actions = {LOAD_LATEST, LOAD_BACKUP, START}}},
     {.name = "neither save at the start: stop", .input = {.from = StartFrom::LATEST_SAVE, .checks = {false, false}}, .expectation = {.actions = {LOAD_LATEST, LOAD_BACKUP, STOP}}},
     {.name = "backup first, at the start: start", .input = {.from = StartFrom::BACKUP_SAVE, .checks = {true}}, .expectation = {.actions = {LOAD_BACKUP, START}}},
     {.name = "backup first, not at the start: stop", .input = {.from = StartFrom::BACKUP_SAVE, .checks = {false}}, .expectation = {.actions = {LOAD_BACKUP, STOP}}},
-    //  Console B, 2026-11-14: the game already at 03.07d's start, the
+    //  Console B, 2026-11-14: the game already at the run's start, the
     //  Pokemon Center counter; RELOAD_AT_START off keeps it.
     {.name = "running game at the start: start", .input = {.from = StartFrom::RUNNING_GAME, .checks = {true}}, .expectation = {.actions = {RESUME, START}}},
     {.name = "running game, no start check: start", .input = {.from = StartFrom::RUNNING_GAME, .checks = {std::nullopt}}, .expectation = {.actions = {RESUME, START}}},
@@ -156,8 +156,7 @@ private:
 };
 
 //  checkpoint_start_sign(): what each checkpoint's start check looks for.
-//  03.06 and 03.07d start at the Pokemon Center counter (03.07d after
-//  03.06's talk); 03.08 has no check.
+//  03.06 starts at the Pokemon Center counter; 03.08 has no check.
 struct StartSignCase{
     std::string name;
     struct Input{
@@ -172,9 +171,6 @@ struct StartSignCase{
 
 const StartSignCase START_SIGN_CASES[] = {
     {.name = "03.06 starts at the counter", .input = {.row = "03.06"}, .expectation = {.event = ScreenEvent::INTERACT_PROMPT}},
-    //  Console B, 2026-11-14: a catch in 03.08 autosaved in zone 1, and
-    //  the next 03.07d, with no check, walked from there.
-    {.name = "03.07d starts at the counter", .input = {.row = "03.07d"}, .expectation = {.event = ScreenEvent::INTERACT_PROMPT}},
     {.name = "03.08 has no start check", .input = {.row = "03.08"}, .expectation = {.event = std::nullopt}},
 };
 

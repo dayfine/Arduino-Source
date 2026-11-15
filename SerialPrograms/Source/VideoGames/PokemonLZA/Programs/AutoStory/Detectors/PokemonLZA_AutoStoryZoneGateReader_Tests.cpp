@@ -5,7 +5,7 @@
  *  Synthetic 1920x1080 frames with the pillars' lime drawn as bars, and
  *  console frames from CommandLineTests/PokemonLZA/AutoStoryDetectors/
  *  Zone1Gate/: the gate ahead from mid-street (1920x1080, 2026-11-14
- *  13:40) and 03.07d's miss beside the zone's wall (13:35, kept resized
+ *  13:40) and a walk's miss beside the zone's wall (13:35, kept resized
  *  to 640x360).
  *
  */
@@ -138,12 +138,12 @@ const GateFrameCase GATE_FRAME_CASES[] = {
     {
         .name = "console: Wild Zone 1's gate ahead from mid-street",
         .input = {.frame = []{ return console_frame("gate_ahead.png"); }},
-        //  246: the street's heading toward the gate, which 03.06's and
-        //  03.07d's to_zone_1_gate face first.
+        //  246: the street's heading toward the gate, which 03.06's
+        //  to_zone_1_gate faces first.
         .expectation = {.gate = ZoneGateSighting{.x = 0.486, .width = 0.150}, .heading = 246},
     },
     {
-        .name = "console: beside the zone's wall, the gate out of view (03.07d's miss)",
+        .name = "console: beside the zone's wall, the gate out of view (a walk's miss)",
         .input = {.frame = []{ return console_frame("beside_wall_640.png"); }},
         .expectation = {.gate = std::nullopt},
     },

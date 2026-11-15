@@ -18,6 +18,7 @@
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
+#include "PokemonLZA_AutoStoryStepValidator.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
 
 namespace PokemonAutomation{
@@ -421,8 +422,9 @@ UnitTestResult test_to_battle(Logger&){
     });
 }
 
-//  platform_to_plaza is the walk that ends on an event (the white fade),
-//  and every walk that ends on one holds a last leg that walks.
+//  platform_to_plaza (the white fade) and 03.10's to_mable (Mable's
+//  dialog box) are the walks that end on an event, and every walk that
+//  ends on one holds a last leg that walks.
 UnitTestResult test_move_ends(Logger&){
     std::vector<std::string> ending;
     for (const Pokemon::StoryCheckpoint& row : story_checkpoints()){
@@ -436,14 +438,14 @@ UnitTestResult test_move_ends(Logger&){
             if (move.legs.empty() || move.legs.back().walk <= 0ms){
                 return std::format("{}: its last leg has no walk to hold until the event.", step.name);
             }
-            const std::string& fade = std::get<std::string>(end->second);
-            if (fade != "fade_white" && fade != "fade_black"){
-                return std::format("{}: ends on {}, not a fade.", step.name, fade);
+            const std::string& event = std::get<std::string>(end->second);
+            if (!walk_end_event(event)){
+                return std::format("{}: ends on {}, not a fade or a dialog.", step.name, event);
             }
         }
     }
-    if (ending != std::vector<std::string>{"platform_to_plaza"}){
-        return std::format("Expected only platform_to_plaza to end on an event, {} do.", ending.size());
+    if (ending != std::vector<std::string>{"platform_to_plaza", "to_mable"}){
+        return std::format("Expected only platform_to_plaza and to_mable to end on an event, {} do.", ending.size());
     }
     return true;
 }
@@ -564,7 +566,7 @@ const SceneMachineCase SCENE_MACHINE_CASES[] = {
         .expectation = {},
     },
     {
-        .name = "walks that end on a fade",
+        .name = "walks that end on an event",
         .input = {.body = test_move_ends},
         .expectation = {},
     },

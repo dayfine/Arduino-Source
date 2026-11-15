@@ -191,18 +191,13 @@ struct PlanStepCase{
     Expectation expectation;
 };
 
-//  Both face the plan's heading by the minimap first (a turn of 30), then
-//  walk the gate's way until the prompt.
+//  03.06's step faces the plan's heading by the minimap first (a turn of 30, then L
+//  so the camera follows), then walk the gate's way until the prompt.
 const PlanStepCase PLAN_STEP_CASES[] = {
     {
         .name = "03.06 to_zone_1_gate faces the street, then the gate",
         .input = {.checkpoint = "03.06"},
-        .expectation = {.inputs = {"press L", "stick 30deg 150ms walk, release 100ms", slice(0)}},
-    },
-    {
-        .name = "03.07d to_zone_1_gate faces the street, then the gate",
-        .input = {.checkpoint = "03.07d"},
-        .expectation = {.inputs = {"press L", "stick 30deg 150ms walk, release 100ms", slice(0)}},
+        .expectation = {.inputs = {"press L", "stick 30deg 150ms walk, release 100ms", "press L", slice(0)}},
     },
 };
 

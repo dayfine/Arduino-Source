@@ -47,6 +47,10 @@ bool enough_species(SpeciesTally tally, std::optional<int> dex_count, int dex_ne
     return tally != SpeciesTally::SHORT;
 }
 
+bool party_has_species(std::optional<int> filled_slots, int dex_species){
+    return filled_slots.has_value() && *filled_slots > 0 && *filled_slots >= dex_species;
+}
+
 
 
 } // namespace PokemonLZA

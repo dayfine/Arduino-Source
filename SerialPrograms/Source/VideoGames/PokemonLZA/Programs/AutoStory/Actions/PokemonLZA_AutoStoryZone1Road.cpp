@@ -43,12 +43,6 @@ std::vector<int> road_stops_to_gate(std::span<const int> spots, std::optional<in
     return ahead;
 }
 
-bool at_zone_1_start(std::optional<int> distance, bool arrow_in_zone){
-    return arrow_in_zone && distance && std::abs(*distance - ZONE_1_START_DISTANCE) <= ZONE_1_START_TOLERANCE;
-}
-
-
-
 } // namespace PokemonLZA
 } // namespace NintendoSwitch
 } // namespace PokemonAutomation

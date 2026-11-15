@@ -54,25 +54,6 @@ std::vector<int> alternating_stops(std::span<const int> spots, size_t visits);
 //  read, every spot.
 std::vector<int> road_stops_to_gate(std::span<const int> spots, std::optional<int> distance);
 
-//  How far Wild Zone 1's far gate (the objective marker) reads where 03.08
-//  starts, just inside the zone's entrance gate: 127 on 03.08's start
-//  frame (CatchesToZone1Start/0077, console B 2026-11-14), and about 115
-//  to 130 where 03.07's tutorial leaves the player (catch_in_zone() steps
-//  around Taunie's rocks at 115 and up). 03.07d walks to this distance.
-inline constexpr int ZONE_1_START_DISTANCE = 127;
-
-//  How far from ZONE_1_START_DISTANCE still counts as 03.08's start: the
-//  marker reads whole units and a walk stops a step or two late.
-inline constexpr int ZONE_1_START_TOLERANCE = 10;
-
-//  Whether 03.07d's end is 03.08's start: a far-gate distance read
-//  (nothing: none read) within ZONE_1_START_TOLERANCE of
-//  ZONE_1_START_DISTANCE, and the minimap's player arrow in the wild
-//  zone's green (`arrow_in_zone`, MinimapZoneDetector). The distance alone
-//  is not enough: the street outside the entrance gate reads near it too.
-bool at_zone_1_start(std::optional<int> distance, bool arrow_in_zone);
-
-
 } // namespace PokemonLZA
 } // namespace NintendoSwitch
 } // namespace PokemonAutomation

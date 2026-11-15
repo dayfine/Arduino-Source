@@ -51,7 +51,7 @@ StartLoadAction next_start_load_action(StartFrom from, std::span<const StartLoad
 }
 
 std::optional<StartSign> checkpoint_start_sign(std::string_view row){
-    if (row == "03.06" || row == "03.07d"){
+    if (row == "03.06"){
         return StartSign{.event = ScreenEvent::INTERACT_PROMPT, .place = "the Pokemon Center counter"};
     }
     return std::nullopt;

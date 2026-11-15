@@ -17,7 +17,6 @@
 #include "PokemonLZA_AutoStoryBracketWatch.h"
 #include "PokemonLZA_AutoStoryCatches.h"
 #include "PokemonLZA_AutoStoryMarkerWalks.h"
-#include "PokemonLZA_AutoStoryZone1Road.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -73,86 +72,6 @@ std::optional<int> walk_from_objective(ConsoleHandle& console, ProControllerCont
     }
     console.log(std::format("walk_from_objective(): not back to {} in time (last read {}).", stop_at, last.value_or(-1)));
     return last;
-}
-
-namespace{
-
-//  How many units past its stop distance walk_to_objective() ends on the
-//  zone 1 road: 2 on every console B run (asked 137, read 135; asked 127,
-//  read 125; 2026-11-14). 03.07d stops this much early so it ends on 127.
-constexpr int ZONE_1_START_OVERSHOOT = 2;
-
-//  Where 03.07d's last leg keeps the far gate's marker on screen (0 to 1):
-//  right of the middle, so the walk heads about 2.5 degrees left of the
-//  gate (the camera shows about 60 degrees across). Straight at the marker
-//  ended a bit right of 03.08's start and 5 degrees a bit left (user,
-//  console B 2026-11-14 14:33 and 14:41); the user picked the middle.
-constexpr double ZONE_1_START_AIM_X = 0.5 + 2.5 / 60.0;
-
-//  Turns the camera, without walking, until the objective marker sits at
-//  `x` on screen (15 turns at most). Returns the marker last read.
-std::optional<ObjectiveMarker> turn_marker_to(ConsoleHandle& console, ProControllerContext& context, double x){
-    std::optional<ObjectiveMarker> marker;
-    for (int i = 0; i < 15; i++){
-        context.wait_for_all_requests();
-        marker = read_objective_marker(console, console.video().snapshot());
-        if (!marker){
-            return marker;
-        }
-        const double off = marker->x - x;
-        if (std::abs(off) < 0.02){
-            return marker;
-        }
-        pbf_move_right_joystick(context, {off > 0 ? 0.4 : -0.4, 0}, Milliseconds((int)(std::min(1.0, std::abs(off) * 4) * 400)) + 60ms, 150ms);
-    }
-    return marker;
-}
-
-//  Walks with the far gate's marker held at ZONE_1_START_AIM_X until its
-//  distance reads `stop_at` or less, or `limit`. A read more than 12 from
-//  the last is a misread and skipped. Returns the last distance read.
-std::optional<int> walk_left_of_far_gate(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit){
-    const WallClock deadline = current_time() + limit;
-    std::optional<int> last;
-    while (current_time() < deadline){
-        const std::optional<ObjectiveMarker> marker = turn_marker_to(console, context, ZONE_1_START_AIM_X);
-        if (marker && marker->distance > 0 && (!last || std::abs(marker->distance - *last) <= 12)){
-            last = marker->distance;
-            if (*last <= stop_at){
-                console.log(std::format("walk_to_zone_1_start(): {} to the far gate, aimed left of it.", *last));
-                return last;
-            }
-        }
-        pbf_move_left_joystick(context, {0, 1}, 600ms, 0ms);
-    }
-    console.log(std::format("walk_to_zone_1_start(): not within {} in time (last read {}).", stop_at, last.value_or(-1)));
-    return last;
-}
-
-} // namespace
-
-void walk_to_zone_1_start(ConsoleHandle& console, ProControllerContext& context){
-    walk_left_of_far_gate(console, context, ZONE_1_START_DISTANCE + ZONE_1_START_OVERSHOOT, 60s);
-    turn_marker_to(console, context, 0.5);
-    context.wait_for_all_requests();
-    const VideoSnapshot frame = console.video().snapshot();
-    const std::optional<ObjectiveMarker> marker = read_objective_marker(console, frame);
-    const std::optional<int> distance = marker && marker->distance > 0 ? std::optional<int>(marker->distance) : std::nullopt;
-    MinimapZoneDetector zone;
-    const bool in_zone = zone.detect(frame);
-    const std::string readings = std::format(
-        "the far gate reads {}, the minimap's arrow {} the zone's green",
-        distance ? std::to_string(*distance) : "nothing", in_zone ? "in" : "not in"
-    );
-    if (at_zone_1_start(distance, in_zone)){
-        console.log(std::format("walk_to_zone_1_start(): at 03.08's start: {}.", readings));
-        return;
-    }
-    OperationFailedExceptionWithScreenshot::fire(
-        ErrorReportMode::SEND_ERROR_REPORT,
-        std::format("walk_to_zone_1_start(): not at 03.08's start ({} +- {}): {}.", ZONE_1_START_DISTANCE, ZONE_1_START_TOLERANCE, readings),
-        console
-    );
 }
 
 void check_out_of_wild_zone(ConsoleHandle& console, ProControllerContext& context){

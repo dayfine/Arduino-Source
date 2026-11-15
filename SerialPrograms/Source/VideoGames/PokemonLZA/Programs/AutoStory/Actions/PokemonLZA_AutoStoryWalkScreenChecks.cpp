@@ -73,6 +73,11 @@ Pokemon::Outcome check_can_walk(PlzaBackend& backend, std::string_view walk){
     );
 }
 
+void finish_walk(PlzaBackend& backend, std::string_view walk){
+    const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+    backend.log(std::format("[PLZA] {}: legs done, screen now: {}", walk, describe(look.events)));
+}
+
 Pokemon::Outcome walk_until(
     PlzaBackend& backend, std::string_view walk, const StoryMove& move, const PlzaReader& heading, EngineEvent end,
     Pokemon::StoryPausePoints* pause
@@ -91,8 +96,17 @@ Pokemon::Outcome walk_until(
     //  the player barely slows.
     for (Milliseconds held = 0ms; held < hold; held += HOLD_SLICE){
         backend.hold(Pokemon::Direction::NORTH, HOLD_SLICE, Pokemon::StoryPace::WALK);
-        if (backend.observe().events.has(end)){
+        const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+        if (look.events.has(end)){
             backend.log(std::format("{}: the end event after {} ms of the last leg.", walk, (held + HOLD_SLICE).count()));
+            return Pokemon::outcome_ok();
+        }
+        //  A black fade is the scene at the walk's end taking over (03.11's
+        //  Mable, console B 2026-11-14: the fade 1-6 s into the last leg,
+        //  her box more than 5 s after it, past a camera pan): the step after
+        //  the walk waits for what the scene shows.
+        if (look.events.has(EngineEvent::FADE_BLACK)){
+            backend.log(std::format("{}: a black fade after {} ms of the last leg: the scene takes over.", walk, (held + HOLD_SLICE).count()));
             return Pokemon::outcome_ok();
         }
     }

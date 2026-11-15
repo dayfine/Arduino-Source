@@ -292,6 +292,67 @@ private:
 };
 
 
+//  party_has_species(): when the party bar's filled slots end the patrol.
+struct PartyCountCase{
+    std::string name;
+    struct Input{
+        std::optional<int> filled_slots;
+        int dex_species;
+    };
+    Input input;
+    struct Expectation{
+        bool done;
+    };
+    Expectation expectation;
+};
+
+const PartyCountCase PARTY_COUNT_CASES[] = {
+    {
+        .name = "five filled slots of five species end the patrol",
+        .input = {.filled_slots = 5, .dex_species = 5},
+        .expectation = {.done = true},
+    },
+    {
+        .name = "more filled slots than species end it too",
+        .input = {.filled_slots = 6, .dex_species = 5},
+        .expectation = {.done = true},
+    },
+    {
+        .name = "four filled slots of five go on",
+        .input = {.filled_slots = 4, .dex_species = 5},
+        .expectation = {.done = false},
+    },
+    {
+        .name = "a party bar not read goes on",
+        .input = {.filled_slots = std::nullopt, .dex_species = 5},
+        .expectation = {.done = false},
+    },
+    {
+        .name = "no slot read (no bar on screen) goes on",
+        .input = {.filled_slots = 0, .dex_species = 5},
+        .expectation = {.done = false},
+    },
+};
+
+class Test_PartyCount : public UnitTest{
+public:
+    explicit Test_PartyCount(const PartyCountCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: party count: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const bool done = party_has_species(m_case.input.filled_slots, m_case.input.dex_species);
+        if (done != m_case.expectation.done){
+            return std::format("Expected {}, got {}.", m_case.expectation.done ? "done" : "go on", done ? "done" : "go on");
+        }
+        return true;
+    }
+
+private:
+    const PartyCountCase& m_case;
+};
+
+
 //  lock_target_far(): a plate high on the screen is far.
 struct FarCase{
     std::string name;
@@ -751,76 +812,6 @@ private:
 };
 
 
-//  at_zone_1_start(): 03.07d ends where 03.08 starts in Wild Zone 1.
-struct ZoneStartCase{
-    std::string name;
-    struct Input{
-        std::optional<int> distance;
-        bool arrow_in_zone;
-    };
-    Input input;
-    struct Expectation{
-        bool at_start;
-    };
-    Expectation expectation;
-};
-
-const ZoneStartCase ZONE_START_CASES[] = {
-    {
-        .name = "03.08's start frame: the far gate at 127, in the zone",
-        .input = {.distance = 127, .arrow_in_zone = true},
-        .expectation = {.at_start = true},
-    },
-    {
-        .name = "at the near bound",
-        .input = {.distance = ZONE_1_START_DISTANCE - ZONE_1_START_TOLERANCE, .arrow_in_zone = true},
-        .expectation = {.at_start = true},
-    },
-    {
-        .name = "at the far bound",
-        .input = {.distance = ZONE_1_START_DISTANCE + ZONE_1_START_TOLERANCE, .arrow_in_zone = true},
-        .expectation = {.at_start = true},
-    },
-    {
-        .name = "too near: walked on past the start",
-        .input = {.distance = ZONE_1_START_DISTANCE - ZONE_1_START_TOLERANCE - 1, .arrow_in_zone = true},
-        .expectation = {.at_start = false},
-    },
-    {
-        .name = "too far: short of the start",
-        .input = {.distance = ZONE_1_START_DISTANCE + ZONE_1_START_TOLERANCE + 1, .arrow_in_zone = true},
-        .expectation = {.at_start = false},
-    },
-    {
-        .name = "the right distance read from the street outside the zone",
-        .input = {.distance = 127, .arrow_in_zone = false},
-        .expectation = {.at_start = false},
-    },
-    {
-        .name = "no distance read: not taken as at the start",
-        .input = {.distance = std::nullopt, .arrow_in_zone = true},
-        .expectation = {.at_start = false},
-    },
-};
-
-class Test_AtZone1Start : public UnitTest{
-public:
-    explicit Test_AtZone1Start(const ZoneStartCase& test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: 03.07d ends at 03.08's start in Wild Zone 1: {}", test_case.name))
-        , m_case(test_case)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const bool at_start = at_zone_1_start(m_case.input.distance, m_case.input.arrow_in_zone);
-        if (at_start != m_case.expectation.at_start){
-            return std::format("Expected {}, got {}.", m_case.expectation.at_start, at_start);
-        }
-        return true;
-    }
-
-private:
-    const ZoneStartCase& m_case;
-};
-
 } // namespace
 
 
@@ -833,6 +824,9 @@ void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
     }
     for (const SpeciesCheckCase& item : SPECIES_CHECK_CASES){
         database.add<Test_SpeciesCheck>(item);
+    }
+    for (const PartyCountCase& item : PARTY_COUNT_CASES){
+        database.add<Test_PartyCount>(item);
     }
     for (const FarCase& item : FAR_CASES){
         database.add<Test_LockTargetFar>(item);
@@ -854,9 +848,6 @@ void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
     }
     for (const GateCase& item : GATE_CASES){
         database.add<Test_RoadStopsToGate>(item);
-    }
-    for (const ZoneStartCase& item : ZONE_START_CASES){
-        database.add<Test_AtZone1Start>(item);
     }
 }
 

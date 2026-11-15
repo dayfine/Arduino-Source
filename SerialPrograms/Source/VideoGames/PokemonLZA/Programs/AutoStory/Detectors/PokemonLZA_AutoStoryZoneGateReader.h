@@ -36,7 +36,7 @@ struct ZoneGateSighting{
 //  size, standing on about the same line, 1.5 to 8 widths apart with
 //  little lime between them. The zone's wall, the same green, is many
 //  thin stripes and a grid: its blobs are not solid, and those that come
-//  near touch or overlap (03.07d's miss beside the wall, console B
+//  near touch or overlap (a walk's miss beside the wall, console B
 //  2026-11-14). Language-independent: no text is read.
 std::optional<ZoneGateSighting> read_zone_gate(const ImageViewRGB32& screen);
 

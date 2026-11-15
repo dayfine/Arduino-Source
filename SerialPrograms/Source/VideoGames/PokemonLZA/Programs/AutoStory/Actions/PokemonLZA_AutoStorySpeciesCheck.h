@@ -64,6 +64,18 @@ bool read_dex_count(Pokemon::StoryCheckLevel checks, SpeciesTally tally);
 //  `dex_needed`; unread, the tally is not SHORT.
 bool enough_species(SpeciesTally tally, std::optional<int> dex_count, int dex_needed);
 
+//  Whether the patrol is done by the overworld party bar: `filled_slots`
+//  of it filled (PartyBarDetector; none: the bar was not read) and
+//  `dex_species` species wanted. The plate keeps the throws to species
+//  not caught, so every catch fills a slot with a new species and the
+//  filled slots are the registered species (the starter and the catches:
+//  3 in the tutorial's save). The "Registered!" banner is missed at times
+//  (plate "not caught", a throw, no banner over 208 frames, yet Mareep in
+//  the party: console B 2026-11-14 19:36), so the bar decides, not the
+//  banner tally (the user: "we are obviously done when we have 5
+//  different icons in the party").
+bool party_has_species(std::optional<int> filled_slots, int dex_species);
+
 
 
 } // namespace PokemonLZA

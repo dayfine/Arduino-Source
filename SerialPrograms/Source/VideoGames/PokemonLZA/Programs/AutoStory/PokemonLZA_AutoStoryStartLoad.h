@@ -83,9 +83,9 @@ struct StartSign{
     std::string_view place;
 };
 
-//  `row`'s start sign; nothing when `row` has no start check. 03.06 and
-//  03.07d start at the Pokemon Center counter, facing the nurse: her "A"
-//  talk prompt shows.
+//  `row`'s start sign; nothing when `row` has no start check. 03.06
+//  starts at the Pokemon Center counter, facing the nurse: her "A" talk
+//  prompt shows.
 std::optional<StartSign> checkpoint_start_sign(std::string_view row);
 
 

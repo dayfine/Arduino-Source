@@ -15,28 +15,27 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The badge on 1920x1080: the white (+) icon
-//  at x 1564-1586, y 128-150; the text x 1630-1875, y 122-158; the strip
-//  under the text x 1640-1880, y 161-169.
+//  The badge on 1920x1080: the (+) icon, a white disk with a dark plus,
+//  at x 1564-1586, y 128-150 (its box 8 px wider all round); the text
+//  x 1630-1875, y 122-158; the strip under the text x 1640-1880, y 161-169.
 SkipPromptDetector::SkipPromptDetector(Color color)
     : m_color(color)
-    , m_icon(1564.0 / 1920, 128.0 / 1080, 22.0 / 1920, 22.0 / 1080)
+    , m_icon(color, ButtonType::ButtonPlus, ImageFloatBox(1556.0 / 1920, 120.0 / 1080, 38.0 / 1920, 38.0 / 1080))
     , m_text(1630.0 / 1920, 122.0 / 1080, 245.0 / 1920, 36.0 / 1080)
     , m_strip(1640.0 / 1920, 161.0 / 1080, 240.0 / 1920, 8.0 / 1080)
 {}
 
 void SkipPromptDetector::make_overlays(VideoOverlaySet& items) const{
-    items.add(m_color, m_icon);
+    m_icon.make_overlays(items);
     items.add(m_color, m_text);
     items.add(m_color, m_strip);
 }
 
-//  On the badge the icon is 70% white, the text 24%, and the strip is dark
-//  and even (average 44, deviation 2). No other scene of the opening has
-//  the icon over 40% white with a dark strip: the brightest, a white flash,
-//  has the icon at 38% and the strip at 220.
+//  On the badge the text is 24% white and the strip is dark and even
+//  (average 44, deviation 2). The text and strip tests stay beside the
+//  icon's template match: the opening's white flash has the strip at 220.
 bool SkipPromptDetector::detect(const ImageViewRGB32& screen){
-    if (white_share(screen, m_icon) < 0.40){
+    if (!m_icon.detect(screen)){
         return false;
     }
     const double text = white_share(screen, m_text);

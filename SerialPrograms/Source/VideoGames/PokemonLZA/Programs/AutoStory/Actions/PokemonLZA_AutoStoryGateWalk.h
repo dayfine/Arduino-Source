@@ -4,9 +4,9 @@
  *
  *  The walk up the street to a wild zone's entrance gate, steered by the
  *  gate's pillars on screen (read_zone_gate()) until the gate's A prompt
- *  shows: 03.06's and 03.07d's walk into Wild Zone 1. Timed turns from the
- *  Pokemon Center ended pointing along the sidewalk, and a straight walk
- *  from there ran 10 s into the zone's wall (03.07d, console B 2026-11-14).
+ *  shows: 03.06's walk into Wild Zone 1. Timed turns from the Pokemon
+ *  Center ended pointing along the sidewalk, and a straight walk from
+ *  there ran 10 s into the zone's wall (console B 2026-11-14).
  *
  */
 

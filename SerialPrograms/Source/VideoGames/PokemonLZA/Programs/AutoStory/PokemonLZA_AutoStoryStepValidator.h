@@ -30,13 +30,14 @@ inline constexpr StarterChoice STARTER_CHOICES[] = {StarterChoice::CHIKORITA, St
 //  approach_starter's arg for `starter`: the walk to it ("chikorita").
 std::string_view starter_key(StarterChoice starter);
 
-//  A walk's "end" arg as the event it ends on: "fade_white" or
-//  "fade_black"; nothing for any other name.
+//  A walk's "end" arg as the event it ends on: "fade_white", "fade_black"
+//  or "dialog" (the box of a talk the walk runs into); nothing for any
+//  other name.
 std::optional<PokemonAutomation::ScreenEvent> walk_end_event(std::string_view end);
 
 //  What is wrong with the args of a "walk" or "approach_starter" step:
 //  each leg a [turn, ms] pair, turning -180 to 180 degrees and walking 0 ms
-//  or more, some leg walking; an end a fade, after a leg that walks and not
+//  or more, some leg walking; an end a fade or "dialog", after a leg that walks and not
 //  on a held walk; no negative wait; a heading 0 to 359. Nothing for any
 //  other step.
 std::vector<std::string> plza_step_arg_errors(const Pokemon::StoryStep& step);

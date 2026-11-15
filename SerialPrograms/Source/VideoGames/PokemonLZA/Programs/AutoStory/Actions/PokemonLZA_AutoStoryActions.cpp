@@ -181,13 +181,24 @@ void claim_mable_research_reward(ConsoleHandle& console, ProControllerContext& c
     //  TM004 Rock Smash (console B, 2026-11-10): A while a dialog shows,
     //  until none has for 3 s, then B back to the overworld, through her
     //  talk after the menu closes (over 20 s; console B, 2026-11-10).
-    if (press_a_until_quiet(console, context, {.item_receive = true}, 3s, 60s).timed_out){
+    //  No line at all: the page did not open on her reward (03.10 r6,
+    //  console B 2026-11-14: not in her office, the claim passed on X alone).
+    const ScreensPassed passed = press_a_until_quiet(console, context, {.item_receive = true}, 3s, 60s);
+    if (passed.timed_out){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
             "claim_mable_research_reward(): Mable's lines did not end within 60 s.",
             console
         );
     }
+    if (!passed.text){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "claim_mable_research_reward(): no dialog after opening Mable's Research: no reward was claimed.",
+            console
+        );
+    }
+    console.log("claim_mable_research_reward(): Mable's lines on the reward passed.");
     mash_to_overworld(console, context, BUTTON_B, 60s);
 }
 
