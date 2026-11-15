@@ -5,7 +5,8 @@
  *  Rows 18.01, 18.02 and 18.02b (StoryData/frlg-18.02*.plan.json ...) on the
  *  overworld sim: Saffron Gym's teleport pads, from the door to the tile below
  *  Sabrina and back out to Saffron's Center, with no trainer met on the way;
- *  Sabrina's battle is a checkpoint of its own.
+ *  Sabrina's battle is a checkpoint of its own. Then 18.03, the Fly to
+ *  Celadon's X items clerk and back to Saffron's Center.
  *
  */
 
@@ -22,6 +23,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryMartPlan.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows18_Tests.h"
@@ -191,6 +193,42 @@ UnitTestResult test_cameron_sees_row_21(){
     return true;
 }
 
+//  18.03 (user, 2026-11-15: 2 X Accuracies before the Route 22 rival) from
+//  Saffron's nurse: out, the Fly to Celadon, 1F's lift to 5F, its X items
+//  clerk, where the Mart step buys, the lift back, out of the store, the Fly
+//  to Saffron and below the Center's door, where center_enter takes the
+//  player to 17.02's start. Nobody met.
+UnitTestResult test_celadon_x_accuracies(){
+    const StoryCheckpoint& row = checkpoint("18.03");
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    const MapPosition clerk{"CeladonCity_DepartmentStore_5F", {3, 7}};
+    bool bought_at_clerk = false;
+    for (const StoryStep& step : row.steps){
+        if (step.action == CENTER_ENTER_VARIANT){
+            break;
+        }
+        if (step.action == MART_ACTION){
+            bought_at_clerk = sim.state().position == clerk && at.facing == Direction::WEST;
+            continue;
+        }
+        if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
+            return std::format("18.03: ended on {}; {}", to_string(sim.state().position), failure);
+        }
+    }
+    if (!bought_at_clerk){
+        return std::format("18.03: the Mart step was not at the X items clerk {} facing west.", to_string(clerk));
+    }
+    const MapPosition below_center{"SaffronCity", {24, 39}};
+    if (!(sim.state().position == below_center) || at.facing != Direction::NORTH){
+        return std::format("18.03: ended on {}, not below Saffron's Center door {} facing north.", to_string(sim.state().position), to_string(below_center));
+    }
+    if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
+        return "18.03: met a trainer or broke a rule on the way.";
+    }
+    return true;
+}
+
 const AutoStorySaffronGymCase AUTO_STORY_SAFFRON_GYM_CASES[] = {
     {
         .name = "18.01 Saffron Gym's pads from the door to below Sabrina",
@@ -211,6 +249,11 @@ const AutoStorySaffronGymCase AUTO_STORY_SAFFRON_GYM_CASES[] = {
         .name = "Saffron Gym: Cameron sees a walk along row 21",
         .input = {.body = test_cameron_sees_row_21},
         .expectation = {.description = "the sim meets a trainer on row 21, so the rows' row 22 is a real detour"},
+    },
+    {
+        .name = "18.03 Fly to Celadon's X items clerk and back to Saffron's Center",
+        .input = {.body = test_celadon_x_accuracies},
+        .expectation = {.description = "the Mart step at 5F's clerk facing west, then below Saffron's Center door facing north, nobody met"},
     },
 };
 

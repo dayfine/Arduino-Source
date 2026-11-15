@@ -646,9 +646,9 @@ private:
 
 const SuperRepelCase SUPER_REPEL_CASES[] = {
     {
-        .name = "12.03's Super Repel before the Fly to Pallet",
+        .name = "12.03's Super Repel after the Fuchsia Mart, before the Fly to Pallet",
         .input = {.checkpoint = "12.03", .step = "super_repel_fuchsia"},
-        .expectation = {.previous = "", .next = "outside_fuchsia_center", .in_bag = 5},
+        .expectation = {.previous = "cut_mart_tree_back", .next = "fly_pallet", .in_bag = 5},
     },
     {
         .name = "13.01's Super Repel after 3F's statue",

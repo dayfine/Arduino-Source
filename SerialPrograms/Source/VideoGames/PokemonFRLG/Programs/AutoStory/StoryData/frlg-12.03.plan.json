@@ -8,18 +8,79 @@
     "start_flags": ["trainer_beaten:Route21_South/swimmer_m_water@10,29"],
     "events": [
       {
+        "id": "outside_fuchsia_center",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "FuchsiaCity", "tiles": [[27, 32]], "facing": "east"}},
+        "why": "from the nurse straight south 5 to the Center's door warp (7, 9), held until the warp: the door is the position fix, so no walk to a wall corner first (user, 2026-11-13: the old way west to (0, 5) turned east beside the escalator, whose rail hides the player's legs and the facing read failed); out onto Fuchsia City and east along row 32 to the ledge column (28, 30..34), as 12.01's west_of_east_ledge"
+      },
+      {
+        "id": "east_ledge_hop",
+        "kind": "step",
+        "args": {"direction": "east"},
+        "declared_after": {"map": "FuchsiaCity", "tiles": [[29, 32]], "facing": "east"},
+        "why": "over the ledge (28, 32), as 12.01: planned routes never hop a ledge, and without it the way north goes round the city's west edge"
+      },
+      {
+        "id": "below_mart_tree",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "FuchsiaCity", "tiles": [[24, 23]], "facing": "north"}},
+        "why": "up columns 29..30 to row 23 and west to below the Cut tree (24, 22), as 12.01"
+      },
+      {
+        "id": "cut_mart_tree",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {"direction": "north"},
+        "declared_after": {"map": "FuchsiaCity", "tiles": [[24, 22]], "facing": "north"},
+        "why": "the tree (FuchsiaCity map.json object 13, EventScript_CutTree), grown back since 12.01; a step onto its tile"
+      },
+      {
+        "id": "fuchsia_mart_wall",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "FuchsiaCity_Mart", "tiles": [[4, 2]], "facing": "north"}},
+        "why": "up column 24 to row 17, west to the Mart's door (11, 15) and in, up column 4 to the wall (4, 1), as 12.01"
+      },
+      {
+        "id": "fuchsia_mart_clerk",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "FuchsiaCity_Mart", "tiles": [[4, 3]], "facing": "west"}},
+        "why": "a tile back down, facing the clerk (2, 3) over the counter (3, 3)"
+      },
+      {
+        "id": "buy_super_potions_for_silph",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "FuchsiaCity_Mart",
+          "items": [{"item": "super-potion", "quantity": 4}]
+        },
+        "why": "4 Super Potions (700 each, 2,800) for Silph Co.'s fights (user's decision 2026-11-15, from the shopping audit: Fuchsia's Super Potions, not Saffron's Hyper Potions or Full Heals): PokeGuy's bag at the Silph rival, Silph's Giovanni and Sabrina holds superpotion x4 (PokemonSimulation docs/battles/pokeguy-conditions.md), and 12.01's Super Potions go to Kayden's and Kirk's damage before Koga, with no Mart after it before Silph Co. The last Fuchsia visit before Silph Co. (16.01), so no Fly detour. Bought blind after Koga's prize (12.02), which 12.01's 3,762 less its Super Potions doesn't count; a short purse fails the step here, before the Fly"
+      },
+      {
+        "id": "above_mart_tree",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "FuchsiaCity", "tiles": [[24, 21]], "facing": "south"}},
+        "why": "out of the Mart's door (11, 15), east along row 17 and down column 24 to above the Cut tree (24, 22), grown back when the city loaded"
+      },
+      {
+        "id": "cut_mart_tree_back",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {"direction": "south"},
+        "declared_after": {"map": "FuchsiaCity", "tiles": [[24, 22]], "facing": "south"},
+        "why": "the tree again; a step onto its tile, where Fly works"
+      },
+      {
         "id": "super_repel_fuchsia",
         "kind": "game_action",
         "action": "use_item",
         "args": {"item": "super-repel", "if_any": true},
-        "why": "pokeguy's Super Repel before his Fly to Pallet (1:18:40, Super Repels 5 to 4; user's approval 2026-11-13): its 200 steps last over Route 21's water (wild Tentacool and Tentacruel on every tile) and up the Mansion to 3F's statue, where 13.01 uses the next. The first event, at the nurse: this checkpoint's save already stands there. 08.03 bought 7, 10.04 and 11.03 used one each; a Repel renewed in battle may have taken more, so with none left the step is skipped (if_any) and the Repel at Pallet's shore still covers the Surf"
-      },
-      {
-        "id": "outside_fuchsia_center",
-        "kind": "route",
-        "action": "run",
-        "args": {"target": {"map": "FuchsiaCity", "tiles": [[25, 32]], "facing": "south"}},
-        "why": "from the nurse straight south 5 to the Center's door warp (7, 9), held until the warp: the door is the position fix, so no walk to a wall corner first (user, 2026-11-13: the old way west to (0, 5) turned east beside the escalator, whose rail hides the player's legs and the facing read failed); out onto Fuchsia City, where Fly works"
+        "why": "pokeguy's Super Repel before his Fly to Pallet (1:18:40, Super Repels 5 to 4; user's approval 2026-11-13): its 200 steps last over Route 21's water (wild Tentacool and Tentacruel on every tile) and up the Mansion to 3F's statue, where 13.01 uses the next. After the Fuchsia Mart, before the Fly: the walk to the Mart and back (about 70 steps) doesn't spend it. 08.03 bought 7, 10.04 and 11.03 used one each; a Repel renewed in battle may have taken more, so with none left the step is skipped (if_any) and the Repel at Pallet's shore still covers the Surf"
       },
       {
         "id": "fly_pallet",

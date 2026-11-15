@@ -53,10 +53,15 @@ struct MartPlan{
     std::string map = {};
     //  In priority order.
     std::vector<MartLine> lines = {};
+    //  A line the money doesn't cover (the Mart refuses it, or its
+    //  quantity box can't reach the count) is skipped with a log line,
+    //  and the step goes on, instead of failing.
+    bool if_affordable = false;
 };
 
 //  The GAME action of a Mart step: map WORD (required), the Mart's map;
-//  items ITEMS (required), the lines in order.
+//  items ITEMS (required), the lines in order; if_affordable BOOLEAN
+//  (absent: false), MartPlan::if_affordable.
 inline const std::string MART_ACTION = "mart";
 //  `plan` as its action's args.
 Pokemon::StoryActionArgs mart_args(const MartPlan& plan);
