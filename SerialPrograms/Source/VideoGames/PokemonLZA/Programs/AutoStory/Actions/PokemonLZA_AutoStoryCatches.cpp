@@ -906,12 +906,31 @@ void catch_in_zone(
     }
 }
 
+//  How long walk_to_marker() waits, after the walk, for the objective's
+//  prompt or dialog. A scene at the objective (03.08b's lab gate) takes the
+//  marker away first and starts its talk 9 to 11 s later (console B,
+//  2026-11-14: three runs saw the dialog only at the end of the walk's
+//  camera sweep, the fourth missed it).
+constexpr std::chrono::milliseconds MARKER_SCENE_WAIT = 15000ms;
+
 void walk_to_marker(ConsoleHandle& console, ProControllerContext& context){
     walk_to_objective(console, context, 0, 90s);
     PlzaScreenObserver observer;
-    context.wait_for_all_requests();
-    const ScreenEvents events = observer.observe(console.video().snapshot(), current_time());
-    if (!events.any_of({ScreenEvent::INTERACT_PROMPT, ScreenEvent::DIALOG_BOX})){
+    const WallClock deadline = current_time() + MARKER_SCENE_WAIT;
+    bool arrived = false;
+    while (true){
+        context.wait_for_all_requests();
+        const ScreenEvents events = observer.observe(console.video().snapshot(), current_time());
+        if (events.any_of({ScreenEvent::INTERACT_PROMPT, ScreenEvent::DIALOG_BOX})){
+            arrived = true;
+            break;
+        }
+        if (current_time() >= deadline){
+            break;
+        }
+        context.wait_for(250ms);
+    }
+    if (!arrived){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
             "walk_to_marker(): no A prompt or dialog at the objective.",
