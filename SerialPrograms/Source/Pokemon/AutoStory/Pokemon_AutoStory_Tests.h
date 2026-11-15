@@ -21,6 +21,8 @@
 #include "Engine/Pokemon_StoryEnginePolicy_Tests.h"
 #include "Engine/Pokemon_StoryEngineRuns_Tests.h"
 #include "Engine/Pokemon_StoryEngineSaveRetry_Tests.h"
+#include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
+#include "Pokemon/Options/Pokemon_StoryRunOptions_Tests.h"
 #include "Pokemon_SceneJudges_Tests.h"
 #include "Pokemon_StoryEvents_Tests.h"
 #include "Pokemon_StoryFailureClasses_Tests.h"
@@ -53,6 +55,8 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StorySavePolicy(database);
     add_tests_SceneJudges(database);
     add_tests_StoryFiles(database);
+    add_tests_StoryRangeOptions(database);
+    add_tests_StoryRunOptions(database);
 }
 
 
