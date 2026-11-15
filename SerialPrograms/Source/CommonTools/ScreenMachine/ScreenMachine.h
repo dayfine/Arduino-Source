@@ -41,12 +41,13 @@ struct ScreenState{
     //  A state may have either or both; read_screen_state() uses `matches`
     //  and skips a state without it.
     std::function<bool(const ScreenObservation& observation)> matches_observation = nullptr;
-    //  The one step to take on this screen.
+    //  The one step to take on this screen; none for a state that only
+    //  waits.
     std::function<void()> act;
     //  The screens the step may lead to besides staying here. Empty: any.
     std::vector<std::string> next;
     //  Fail once the screen has been seen this many times.
-    size_t max_visits;
+    size_t max_visits = SIZE_MAX;
     //  End the run after this state's step.
     bool terminal = false;
     //  Fail once the screen has been seen this many times in a row.
@@ -60,6 +61,10 @@ struct ScreenState{
     Milliseconds max_still = Milliseconds::zero();
 };
 
+
+//  Whether `a` and `b` both have a frame of the same size within the
+//  still-screen RMSD threshold (2.0).
+bool same_screen(const VideoSnapshot& a, const VideoSnapshot& b);
 
 //  The state on screen, once two frames 150ms apart agree. Waits out a video
 //  gap of up to 10s. Fails through `trace` if no state matches.
@@ -154,7 +159,9 @@ std::string run_screen_machine(
         const ScreenState& state = read_screen_state(stream, context, states, trace, frame);
         trace.screen(state.name);
         checks.check(state, std::move(frame));
-        state.act();
+        if (state.act){
+            state.act();
+        }
         if (state.terminal){
             context.wait_for_all_requests();
             return state.name;

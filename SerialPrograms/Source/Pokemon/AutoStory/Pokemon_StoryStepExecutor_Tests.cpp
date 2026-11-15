@@ -753,18 +753,10 @@ UnitTestResult test_lint(){
 }
 
 
+//  A named test; it returns its own failure.
 struct StoryStepTestCase{
     std::string name;
-    struct Input{
-        UnitTestResult (*test)();
-    };
-
-    struct Expectation{
-        std::string_view description;
-    };
-
-    Input input;
-    Expectation expectation;
+    UnitTestResult (*test)();
 };
 
 class Test_StoryStepExecutor : public UnitTest{
@@ -774,7 +766,7 @@ public:
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_scenario.input.test();
+        return m_scenario.test();
     }
 
 private:
@@ -782,70 +774,22 @@ private:
 };
 
 const StoryStepTestCase STORY_STEP_CASES[] = {
-    {
-        .name = "steps run in table order", .input = {.test = test_events_in_table_order},
-        .expectation = {.description = "executes story steps sequentially as defined in table"},
-    },
-    {
-        .name = "skip_if asks the executor", .input = {.test = test_skip_if},
-        .expectation = {.description = "delegates skip condition check to executor"},
-    },
-    {
-        .name = "each step starts where the last left the player", .input = {.test = test_pose_propagation},
-        .expectation = {.description = "propagates player pose across sequential step executions"},
-    },
-    {
-        .name = "a failure names its step", .input = {.test = test_failure_names_the_step},
-        .expectation = {.description = "records failing step identifier on error"},
-    },
-    {
-        .name = "unsupported kinds and lost battles", .input = {.test = test_unsupported_and_lost_battles},
-        .expectation = {.description = "flags unsupported step types and handles battle defeat"},
-    },
-    {
-        .name = "tables as a segment, with a reload", .input = {.test = test_segment_of_tables},
-        .expectation = {.description = "converts step tables into segment with checkpoint reload support"},
-    },
-    {
-        .name = "pause points pause before each step", .input = {.test = test_pause_points},
-        .expectation = {.description = "calls the game's pause points before each step that runs"},
-    },
-    {
-        .name = "lint", .input = {.test = test_lint},
-        .expectation = {.description = "verifies lint validation rules on story checkpoints"},
-    },
-    {
-        .name = "the run options' defaults", .input = {.test = test_run_options},
-        .expectation = {.description = "validates initial default story run option values"},
-    },
-    {
-        .name = "the run options' verify mode", .input = {.test = test_verify_options},
-        .expectation = {.description = "configures verification mode options and passes count"},
-    },
-    {
-        .name = "start and end checkpoint dropdowns", .input = {.test = test_checkpoint_dropdowns},
-        .expectation = {.description = "populates start and end dropdown selections correctly"},
-    },
-    {
-        .name = "a segment's run in the AutoStory stats", .input = {.test = test_story_stats},
-        .expectation = {.description = "updates story run statistics following segment completion"},
-    },
-    {
-        .name = "policy: attempts per checkpoint, then fail", .input = {.test = test_policy_attempts_then_fail},
-        .expectation = {.description = "enforces max checkpoint attempt policy before terminal failure"},
-    },
-    {
-        .name = "policy: one attempt stops at the first failure", .input = {.test = test_policy_stop_at_first_failure},
-        .expectation = {.description = "halts without a reload when a checkpoint has one attempt"},
-    },
-    {
-        .name = "once per save: a retry skips what changed nothing", .input = {.test = test_once_per_save_retry},
-        .expectation = {.description = "skips steps that changed nothing during once per save retry"},
-    },
-    {
-        .name = "once per save: verify runs prepare once", .input = {.test = test_once_per_save_verify},
-        .expectation = {.description = "executes once per save prepare step only once during verification"},
-    },
+    {.name = "steps run in table order", .test = test_events_in_table_order},
+    {.name = "skip_if asks the executor", .test = test_skip_if},
+    {.name = "each step starts where the last left the player", .test = test_pose_propagation},
+    {.name = "a failure names its step", .test = test_failure_names_the_step},
+    {.name = "unsupported kinds and lost battles", .test = test_unsupported_and_lost_battles},
+    {.name = "tables as a segment, with a reload", .test = test_segment_of_tables},
+    {.name = "pause points pause before each step", .test = test_pause_points},
+    {.name = "lint", .test = test_lint},
+    {.name = "the run options' defaults", .test = test_run_options},
+    {.name = "the run options' verify mode", .test = test_verify_options},
+    {.name = "start and end checkpoint dropdowns", .test = test_checkpoint_dropdowns},
+    {.name = "a segment's run in the AutoStory stats", .test = test_story_stats},
+    {.name = "policy: attempts per checkpoint, then fail", .test = test_policy_attempts_then_fail},
+    {.name = "policy: one attempt stops at the first failure", .test = test_policy_stop_at_first_failure},
+    {.name = "once per save: a retry skips what changed nothing", .test = test_once_per_save_retry},
+    {.name = "once per save: verify runs prepare once", .test = test_once_per_save_verify},
 };
 
 } // namespace

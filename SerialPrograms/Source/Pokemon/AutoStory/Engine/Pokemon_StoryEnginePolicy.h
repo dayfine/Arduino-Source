@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  When an engine run of a checkpoint may save, from the checkpoint's
- *  metadata (autostory/SAVE_POLICY.md on the notes branch): a testing
+ *  metadata: a testing
  *  checkpoint never saves, a verification one saves once after its runs
  *  passed, a reproduction one at its end. A checkpoint whose steps no
  *  longer hash to the ones it was verified with is treated as testing: its
