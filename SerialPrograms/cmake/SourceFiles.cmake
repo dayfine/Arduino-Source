@@ -1571,6 +1571,14 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_CoveredWatch.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_CoveredWatch.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_CoveredWatch_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_CoveredWatch_Tests.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_FrameCoverage_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionNotImplemented.cpp
