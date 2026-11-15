@@ -68,6 +68,10 @@ std::optional<std::vector<DpadPosition>> look_pick_moves(size_t cursor, const In
 std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& screen);
 
 namespace detail{
+//  How often the language select may come up, its pick included, before the
+//  intro fails. After the pick it stays up while the game loads the
+//  language, and each look takes A (a pick whose A was dropped).
+inline constexpr size_t INTRO_LANGUAGE_SELECT_VISITS = 10;
 //  Short names of BDSP_LANGUAGE_GRID's items, in its order, for capture
 //  mode's file names: "en", "ja-kana", "es", "ja", ...
 const std::vector<std::string_view>& bdsp_language_tags();

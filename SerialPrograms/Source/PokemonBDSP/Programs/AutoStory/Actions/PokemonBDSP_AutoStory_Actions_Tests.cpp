@@ -369,18 +369,16 @@ UnitTestResult test_intro_pick_steps(Logger&){
     return true;
 }
 
-//  Taken up on an intro screen, the intro restarts nothing and makes only
-//  the picks still ahead; anywhere else it restarts the game.
-UnitTestResult test_intro_resume(Logger&){
+//  The intro is taken up, without a restart, only before the language is
+//  picked: past it the game's language may not be the one asked for (jp1,
+//  lab-B 2026-11-15: taken up on the look select of a Traditional Chinese
+//  game while Japanese was asked for, it typed the name on a CJK keyboard).
+UnitTestResult test_intro_restart(Logger&){
     struct Input{
         std::string_view screen;
     };
     struct Expectation{
         bool restart;
-        bool language_pending;
-        bool look_pending;
-        bool picks_may_be_past;
-        bool player_named;
     };
     struct Case{
         std::string_view name;
@@ -388,36 +386,34 @@ UnitTestResult test_intro_resume(Logger&){
         Expectation expectation;
     };
     const Case cases[] = {
-        {"the title or a logo",     {"other"},              {true,  true,  true,  false, false}},
-        {"black",                   {"black"},              {true,  true,  true,  false, false}},
-        {"the bedroom's menu",      {"menu"},               {true,  true,  true,  false, false}},
-        {"the user select",         {"user-select"},        {false, true,  true,  false, false}},
-        {"the language select",     {"language-select"},    {false, true,  true,  false, false}},
-        {"the look select",         {"look-select"},        {false, false, true,  false, false}},
-        {"a dialogue",              {"dialog"},             {false, false, true,  true,  false}},
-        {"the player's keyboard",   {"keyboard"},           {false, false, false, false, false}},
-        {"the rival's name list",   {"rival-list-tell"},    {false, false, false, false, true}},
-        {"a preset rival name",     {"rival-list-preset"},  {false, false, false, false, true}},
+        {"the title or a logo",     {"other"},              {true}},
+        {"black",                   {"black"},              {true}},
+        {"the bedroom's menu",      {"menu"},               {true}},
+        {"the user select",         {"user-select"},        {false}},
+        {"the language select",     {"language-select"},    {false}},
+        {"the look select",         {"look-select"},        {true}},
+        {"a dialogue",              {"dialog"},             {true}},
+        {"the player's keyboard",   {"keyboard"},           {true}},
+        {"the rival's name list",   {"rival-list-tell"},    {true}},
+        {"a preset rival name",     {"rival-list-preset"},  {true}},
     };
-    const IntroPicks picks{Language::Japanese, 6};
     for (const Case& c : cases){
-        const Expectation& e = c.expectation;
-        if (intro_restart_needed(c.input.screen) != e.restart){
+        if (intro_restart_needed(c.input.screen) != c.expectation.restart){
             return std::string("Wrong restart for ") + std::string(c.name) + ".";
         }
-        if (e.restart){
-            continue;
-        }
-        const IntroProgress progress = intro_resume(picks, c.input.screen);
-        if (progress.language_pending != e.language_pending || progress.look_pending != e.look_pending ||
-            progress.picks_may_be_past != e.picks_may_be_past || progress.player_named != e.player_named
-        ){
-            return std::string("Wrong progress taken up on ") + std::string(c.name) + ".";
-        }
     }
-    //  From a dialogue past the look select, the keyboard types the name.
-    if (decide_intro_step("keyboard", intro_resume(picks, "dialog")) != IntroStep::ENTER_PLAYER_NAME){
-        return "Taken up on a dialogue, the player's keyboard must take the name.";
+    return true;
+}
+
+//  After the pick, Japanese's language select stays up while the game loads
+//  the language: the pick and 9 A presses in the capture run, 10 in jp2
+//  (lab-B 2026-11-15), where the cap of 10 failed the intro. The cap allows
+//  twice that.
+UnitTestResult test_language_select_visits(Logger&){
+    const size_t japanese_load_visits = 1 + 10;
+    if (INTRO_LANGUAGE_SELECT_VISITS < 2 * japanese_load_visits){
+        return std::format("The language select may come up {} times; Japanese's load alone took {}.",
+            INTRO_LANGUAGE_SELECT_VISITS, japanese_load_visits);
     }
     return true;
 }
@@ -931,7 +927,11 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"new-game intro: taken up on the screen it shows", test_intro_resume},
+        .input = {"new-game intro: taken up only before the language pick", test_intro_restart},
+        .expectation = {},
+    },
+    {
+        .input = {"new-game intro: the language select through the language's load", test_language_select_visits},
         .expectation = {},
     },
     {

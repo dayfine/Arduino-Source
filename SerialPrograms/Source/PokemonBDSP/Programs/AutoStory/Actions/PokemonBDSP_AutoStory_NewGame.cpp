@@ -712,7 +712,7 @@ std::vector<ScreenState> intro_states(IntroRun& run){
             [&run]{ act(run, "keyboard"); }, {"rival-list-tell", "dialog", "black", "other"}, 3},
         {"language-select",
             [=](const ImageViewRGB32& s){ return screen_is(s, "language-select"); }, nullptr,
-            [&run]{ act(run, "language-select"); }, {}, 10},
+            [&run]{ act(run, "language-select"); }, {}, INTRO_LANGUAGE_SELECT_VISITS},
         {"look-select",
             [=](const ImageViewRGB32& s){ return screen_is(s, "look-select"); }, nullptr,
             [&run]{ act(run, "look-select"); }, {}, 10},
