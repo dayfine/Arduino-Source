@@ -131,7 +131,6 @@ struct RegistryCase{
     //  A step checked and, when it lints clean, dispatched on a backend that
     //  shows talk text once, then the overworld.
     struct Input{
-        std::string_view name;
         StoryStep step;
     };
 
@@ -143,30 +142,31 @@ struct RegistryCase{
         std::string_view inputs = {};
     };
 
+    std::string_view name;
     Input input;
     Expectation expectation;
 };
 
 const RegistryCase REGISTRY_CASES[] = {
-    {.input = {.name = "legs tap each tile", .step = make_step(StoryStepKind::LEGS, "", {{"legs", std::vector<StoryLeg>{{Direction::NORTH, 2}, {Direction::EAST, 1}}}})},
+    {.name = "legs tap each tile", .input = {.step = make_step(StoryStepKind::LEGS, "", {{"legs", std::vector<StoryLeg>{{Direction::NORTH, 2}, {Direction::EAST, 1}}}})},
      .expectation = {.inputs = "tap north, tap north, tap east"}},
-    {.input = {.name = "legs empty", .step = make_step(StoryStepKind::LEGS, "", {{"legs", std::vector<StoryLeg>{}}})},
+    {.name = "legs empty", .input = {.step = make_step(StoryStepKind::LEGS, "", {{"legs", std::vector<StoryLeg>{}}})},
      .expectation = {.lint = "no legs"}},
-    {.input = {.name = "face without direction", .step = make_step(StoryStepKind::STEP, "face", {})},
+    {.name = "face without direction", .input = {.step = make_step(StoryStepKind::STEP, "face", {})},
      .expectation = {.lint = "missing argument \"direction\" (the way to step or face)"}},
-    {.input = {.name = "unknown game action", .step = make_step(StoryStepKind::GAME, "take_wrap", {})},
+    {.name = "unknown game action", .input = {.step = make_step(StoryStepKind::GAME, "take_wrap", {})},
      .expectation = {.lint = "unknown action \"take_wrap\" for GAME"}},
-    {.input = {.name = "talk", .step = make_step(StoryStepKind::TALK, "", {})},
+    {.name = "talk", .input = {.step = make_step(StoryStepKind::TALK, "", {})},
      .expectation = {.inputs = "press A, press A"}},
-    {.input = {.name = "answer no", .step = make_step(StoryStepKind::ANSWER, "", {{"yes", false}})},
+    {.name = "answer no", .input = {.step = make_step(StoryStepKind::ANSWER, "", {{"yes", false}})},
      .expectation = {.inputs = "press B"}},
-    {.input = {.name = "battle", .step = make_step(StoryStepKind::BATTLE, "", {})},
+    {.name = "battle", .input = {.step = make_step(StoryStepKind::BATTLE, "", {})},
      .expectation = {.inputs = "battle"}},
-    {.input = {.name = "ready needs the game", .step = make_step(StoryStepKind::READY, "", {{"target", on_map("CeruleanCity")}})},
+    {.name = "ready needs the game", .input = {.step = make_step(StoryStepKind::READY, "", {{"target", on_map("CeruleanCity")}})},
      .expectation = {.failure = "unsupported_step"}},
-    {.input = {.name = "game route replaces the built-in", .step = make_step(StoryStepKind::ROUTE, "", {{"target", on_map("Route4")}})},
+    {.name = "game route replaces the built-in", .input = {.step = make_step(StoryStepKind::ROUTE, "", {{"target", on_map("Route4")}})},
      .expectation = {.inputs = "hold north 100ms run"}},
-    {.input = {.name = "save without the game's save", .step = make_step(StoryStepKind::SAVE, "", {})},
+    {.name = "save without the game's save", .input = {.step = make_step(StoryStepKind::SAVE, "", {})},
      .expectation = {.failure = "unsupported_step"}},
 };
 
@@ -195,7 +195,7 @@ std::string check_registry(const RegistryCase& test, CancellableScope& scope){
 class StoryActionRegistryTest : public UnitTest{
 public:
     explicit StoryActionRegistryTest(RegistryCase test)
-        : UnitTest(std::format("Pokemon::StoryEngine registry - {}", test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine registry - {}", test.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
@@ -213,7 +213,6 @@ struct RunnerCase{
     //  shows the overworld, with `flags` set and the "door_open" reader
     //  reading `door_open`.
     struct Input{
-        std::string_view name;
         std::string_view step;
         std::vector<std::string> flags = {};
         std::optional<int> door_open = std::nullopt;
@@ -226,22 +225,23 @@ struct RunnerCase{
         std::string_view pose_map = {};
     };
 
+    std::string_view name;
     Input input;
     Expectation expectation;
 };
 
 const RunnerCase RUNNER_CASES[] = {
-    {.input = {.name = "skip_if a flag", .step = R"({"id": "s", "kind": "talk", "skip_if": ["got_candy"]})", .flags = {"got_candy"}},
+    {.name = "skip_if a flag", .input = {.step = R"({"id": "s", "kind": "talk", "skip_if": ["got_candy"]})", .flags = {"got_candy"}},
      .expectation = {.line = "[Step] s TALK/default: skipped"}},
-    {.input = {.name = "skip_if a reader", .step = R"({"id": "s", "kind": "talk", "skip_if": ["door_open"]})", .door_open = 1},
+    {.name = "skip_if a reader", .input = {.step = R"({"id": "s", "kind": "talk", "skip_if": ["door_open"]})", .door_open = 1},
      .expectation = {.line = "[Step] s TALK/default: skipped"}},
-    {.input = {.name = "skip_if a reader that says no", .step = R"({"id": "s", "kind": "scene", "skip_if": ["door_open"]})", .door_open = 0},
+    {.name = "skip_if a reader that says no", .input = {.step = R"({"id": "s", "kind": "scene", "skip_if": ["door_open"]})", .door_open = 0},
      .expectation = {.line = "[Step] s MASH/default: ok"}},
-    {.input = {.name = "skip_if nobody answers", .step = R"({"id": "s", "kind": "scene", "skip_if": ["door_open"]})"},
+    {.name = "skip_if nobody answers", .input = {.step = R"({"id": "s", "kind": "scene", "skip_if": ["door_open"]})"},
      .expectation = {.line = "[Step] s MASH/default: ok"}},
-    {.input = {.name = "declared end pose", .step = R"({"id": "s", "kind": "scene", "declared_after": {"map": "Route1", "tiles": [[1, 2]]}})"},
+    {.name = "declared end pose", .input = {.step = R"({"id": "s", "kind": "scene", "declared_after": {"map": "Route1", "tiles": [[1, 2]]}})"},
      .expectation = {.line = "[Step] s MASH/default: ok", .pose_map = "Route1"}},
-    {.input = {.name = "talk to nobody fails", .step = R"({"id": "s", "kind": "talk"})"},
+    {.name = "talk to nobody fails", .input = {.step = R"({"id": "s", "kind": "talk"})"},
      .expectation = {.failure = "talk_no_text", .line = "[Step] s TALK/default: failed: talk_no_text: A opened no text box"}},
 };
 
@@ -252,7 +252,7 @@ std::string check_runner(const RunnerCase& test, CancellableScope& scope){
     StoryStepRunner<GridPose> runner(registry, backend);
     RunState state;
     state.flags.insert(test.input.flags.begin(), test.input.flags.end());
-    const StoryStep step = read_story_step(parse_json(std::string(test.input.step)), test.input.name, registry.specs());
+    const StoryStep step = read_story_step(parse_json(std::string(test.input.step)), test.name, registry.specs());
     const Outcome outcome = runner.run(step, state);
     if (outcome.failure != test.expectation.failure){
         return std::format("expected failure \"{}\", got \"{}\"", test.expectation.failure, to_string(outcome));
@@ -270,7 +270,7 @@ std::string check_runner(const RunnerCase& test, CancellableScope& scope){
 class StoryStepRunnerTest : public UnitTest{
 public:
     explicit StoryStepRunnerTest(RunnerCase test)
-        : UnitTest(std::format("Pokemon::StoryEngine runner - {}", test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine runner - {}", test.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
@@ -286,7 +286,6 @@ private:
 struct WarpCase{
     //  take_warp north to B3F, from B4F, on a scripted game.
     struct Input{
-        std::string_view name;
         std::vector<Observation<GridPose>> looks;
     };
 
@@ -295,19 +294,20 @@ struct WarpCase{
         std::string_view failure = {};
     };
 
+    std::string_view name;
     Input input;
     Expectation expectation;
 };
 
 const WarpCase WARP_CASES[] = {
-    {.input = {.name = "fade then B3F", .looks = {
+    {.name = "fade then B3F", .input = { .looks = {
         look({}, on_map("RocketHideout_B4F")), look({ScreenEvent::FADE_BLACK}), look({ScreenEvent::PLAYER_CAN_MOVE}, on_map("RocketHideout_B3F")),
      }}, .expectation = {}},
     //  The screen darkens at the stairs but no fade starts and the map
     //  stays B4F: the old wait took this for arrived (00.31's false pass).
-    {.input = {.name = "black_without_warp", .looks = {look({ScreenEvent::SCREEN_STILL}, on_map("RocketHideout_B4F"))}},
+    {.name = "black_without_warp", .input = {.looks = {look({ScreenEvent::SCREEN_STILL}, on_map("RocketHideout_B4F"))}},
      .expectation = {.failure = "warp_no_fade"}},
-    {.input = {.name = "fade back to B4F", .looks = {look({ScreenEvent::FADE_BLACK}), look({ScreenEvent::PLAYER_CAN_MOVE}, on_map("RocketHideout_B4F"))}},
+    {.name = "fade back to B4F", .input = {.looks = {look({ScreenEvent::FADE_BLACK}), look({ScreenEvent::PLAYER_CAN_MOVE}, on_map("RocketHideout_B4F"))}},
      .expectation = {.failure = "warp_wrong_map"}},
 };
 
@@ -334,7 +334,7 @@ std::string check_warp(const WarpCase& test, CancellableScope& scope){
 class StoryTakeWarpTest : public UnitTest{
 public:
     explicit StoryTakeWarpTest(WarpCase test)
-        : UnitTest(std::format("Pokemon::StoryEngine take_warp - {}", test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine take_warp - {}", test.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
