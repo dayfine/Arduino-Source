@@ -111,7 +111,7 @@ struct StoryLaunchPolicy{
     std::vector<StoryLaunchPress> backup_save = {};
     //  Where `backup_save` goes: the title proper. A loose `title` passes
     //  the boot's logos too, where those presses do nothing and the title's
-    //  next press loads the latest save (console B, 2026-11-14). Until it
+    //  next press loads the latest save. Until it
     //  shows, a BACKUP launch waits on title looks without a press. Empty:
     //  the first title look takes them.
     std::function<bool(const ScreenObservation& look)> backup_title = {};

@@ -46,7 +46,7 @@ struct LaunchReadable{
     //  No title press's fade holds the title check off, and a title read
     //  only after the launch (title_after_launch) waits for the A on the
     //  game's tile: right after the close, before HOME, a screen passes
-    //  PLZA's loose title check (console B, 2026-11-14).
+    //  a loose title check.
     bool title = true;
 };
 

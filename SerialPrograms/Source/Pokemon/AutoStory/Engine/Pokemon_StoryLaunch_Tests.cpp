@@ -193,8 +193,8 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
      .input = {.screens = then_settled({}), .request = {.running = Running::KEEP}},
      .expectation = {.inputs = "wait wait"}},
     //  RELOAD_AT_START off (Pokemon_StoryRunOptions.h) on PLZA's loose
-    //  title check: a game already on the overworld, as console B's at
-    //  the Pokemon Center counter on 2026-11-14, is started from with no press.
+    //  title check: a game already on the overworld (at a Pokemon Center
+    //  counter, say) is started from with no press.
     {.name = "game on the overworld kept with a loose title check",
      .input = {.screens = then_settled({}), .request = {.running = Running::KEEP}, .game_screens = GameScreens::AFTER_LAUNCH},
      .expectation = {.inputs = "wait wait"}},
@@ -211,16 +211,16 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
                                         Screen::BACKUP_CONFIRM, Screen::BLACK}),
                .request = {.save = Save::BACKUP, .running = Running::KEEP}},
      .expectation = {.inputs = "HOME X A Up B+X A A wait wait wait"}},
-    //  Console B, 2026-11-14: after the close, a screen before HOME passed
-    //  PLZA's loose title check; the backup's buttons went there and the
-    //  real title took only A, so the latest save loaded.
+    //  After the close, a screen before HOME passes a loose title check;
+    //  the backup's buttons must not go there, or the real title takes only
+    //  A and the latest save loads.
     {.name = "backup save waits for the title after the game's launch",
      .input = {.screens = then_settled({Screen::OVERWORLD, Screen::HOME_ON_GAME, Screen::CLOSE_DIALOG, Screen::TITLE,
                                         Screen::HOME_ON_GAME, Screen::BLACK, Screen::TITLE, Screen::BACKUP_CONFIRM, Screen::BLACK}),
                .request = {.save = Save::BACKUP, .running = Running::KEEP}, .game_screens = GameScreens::AFTER_LAUNCH},
      .expectation = {.inputs = "HOME X A wait A wait Up B+X A A wait wait wait"}},
-    //  Console B, 2026-11-14: the backup's buttons went to a boot logo that
-    //  passed the loose title check; the title took only A.
+    //  The backup's buttons must not go to a boot logo that passes a loose
+    //  title check, or the title takes only A.
     {.name = "backup save waits past the boot's logos for the title",
      .input = {.screens = then_settled({Screen::OVERWORLD, Screen::HOME_ON_GAME, Screen::CLOSE_DIALOG, Screen::HOME_ON_GAME,
                                         Screen::LOGO, Screen::LOGO, Screen::TITLE, Screen::BACKUP_CONFIRM, Screen::BLACK}),
@@ -234,8 +234,8 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
      .input = {.screens = then_settled({Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::LICENSE_CHECK, Screen::HOME_ON_GAME,
                                         Screen::BLACK, Screen::TITLE, Screen::LOAD_MENU})},
      .expectation = {.inputs = "X A A wait wait A A wait wait"}},
-    //  Console B, 2026-11-14 02:41 (FRLG): HOME showed for about 1.5 s
-    //  after the A on the tile, and each look there pressed A again.
+    //  HOME can show for about 1.5 s after the A on the tile; a look there
+    //  must not press A again.
     {.name = "HOME after the launch press waits",
      .input = {.screens = then_settled({Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::HOME_ON_GAME, Screen::HOME_ON_GAME,
                                         Screen::HOME_ON_GAME, Screen::BLACK, Screen::TITLE})},
@@ -277,7 +277,7 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
                                         Screen::BLACK, Screen::GAME_DIALOG, Screen::TITLE}),
                .game_screens = GameScreens::AFTER_LAUNCH},
      .expectation = {.inputs = "HOME HOME X A wait B A wait wait"}},
-    //  Console B, PLZA, 2026-11-14 13:09: A twice on a boot logo the loose
+    //  A twice on a boot logo a loose
     //  title check passes, the boot's black, the title (A works), the
     //  load's black, then its tips screen, which the title check passes
     //  too. Each fade after a title press holds the title check off for
