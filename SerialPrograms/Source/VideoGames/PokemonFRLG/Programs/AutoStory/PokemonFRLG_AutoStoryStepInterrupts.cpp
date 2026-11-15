@@ -166,13 +166,15 @@ Pokemon::SettleRule quiet_overworld_rule(Milliseconds cap){
     Pokemon::SettleRule rule = Pokemon::settle_rule(Pokemon::SettleKind::DOOR);
     rule.look_every = BETWEEN_STEPS_LOOK;
     rule.cap = cap;
+    rule.watch_battles = true;
     return rule;
 }
 
 namespace{
 
 //  run_settle()'s looks on FRLG: each watches BETWEEN_STEPS_LOOK, the
-//  first fresh, and ends on what its last frame showed.
+//  first fresh, and ends on what its last frame showed, since the frame
+//  that first showed it.
 class WatchingSettleIO : public Pokemon::SettleIO{
 public:
     explicit WatchingSettleIO(const Pokemon::ScreenLookFunction& look)
@@ -181,11 +183,12 @@ public:
 
     virtual Pokemon::SettleLook look() override{
         const Pokemon::ScreenLook seen = m_look(std::exchange(m_fresh, false));
-        return {.events = seen.log.showing(), .when = seen.window.end};
+        const Pokemon::ScreenSettle settle = Pokemon::judge_settle(seen);
+        return {.events = seen.log.showing(), .when = seen.window.end, .since = seen.window.end - settle.quiet};
     }
     //  No button: the next look's watch is the wait.
     virtual void press(Pokemon::SceneMove, Milliseconds) override{}
-    //  The battle's own loop ended it: what still shows is waited out.
+    //  Never called: the rule watches battles (quiet_overworld_rule()).
     virtual bool flee_battle() override{
         return true;
     }
