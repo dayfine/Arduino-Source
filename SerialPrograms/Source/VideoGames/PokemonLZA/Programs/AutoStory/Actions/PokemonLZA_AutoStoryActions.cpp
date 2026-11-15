@@ -81,6 +81,10 @@ void fight_battle_in_progress(
     while (true){
         context.wait_for_all_requests();
         const VideoSnapshot screen = console.video().snapshot();
+        if (!screen){
+            context.wait_for(100ms);
+            continue;
+        }
         const bool dialog = any_dialog.detect(screen);
         if (dialog && attacked){
             return;

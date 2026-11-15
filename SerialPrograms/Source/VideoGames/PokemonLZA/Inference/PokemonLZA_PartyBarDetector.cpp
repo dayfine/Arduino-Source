@@ -10,6 +10,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "Tests/ImageUnitTest.h"
+#include "VideoGames/PokemonLZA/PokemonLZA_PendingFixtures.h"
 #include "PokemonLZA_PartyBarDetector.h"
 
 namespace PokemonAutomation{
@@ -57,7 +58,7 @@ double brightness(Color color){
 PartyBarDetector::PartyBarDetector(Color color, VideoOverlay* overlay)
     : m_selection(color, overlay)
 {
-    for (size_t i = 0; i < 6; i++){
+    for (size_t i = 0; i < PARTY_SIZE; i++){
         const double x = SLOT_X + SLOT_PITCH * i;
         m_bar_boxes[i] = {x, BAR_Y, BAR_WIDTH, BAR_HEIGHT};
         m_card_boxes[i] = {x, CARD_Y, BAR_WIDTH, CARD_HEIGHT};
@@ -66,7 +67,7 @@ PartyBarDetector::PartyBarDetector(Color color, VideoOverlay* overlay)
 
 void PartyBarDetector::make_overlays(VideoOverlaySet& items) const{
     m_selection.make_overlays(items);
-    for (size_t i = 0; i < 6; i++){
+    for (size_t i = 0; i < PARTY_SIZE; i++){
         items.add(COLOR_GREEN, m_bar_boxes[i]);
     }
 }
@@ -100,7 +101,7 @@ bool PartyBarDetector::detect(const ImageViewRGB32& screen){
         return false;
     }
     const uint8_t sent_out = m_selection.dpad_down_idx();
-    for (size_t i = 0; i < 6; i++){
+    for (size_t i = 0; i < PARTY_SIZE; i++){
         if (i == sent_out || slot_has_hp_bar(screen, i)){
             m_filled_slots++;
         }
@@ -129,6 +130,8 @@ struct PartyBarCase{
     Expectation expectation;
 };
 
+const std::string FOLDER = "PokemonLZA/PartyBarDetector/";
+
 const PartyBarCase PARTY_BAR_CASES[] = {
     {
         .name = "five filled, slot 0 selected (D-pad up), the sixth empty",
@@ -152,13 +155,13 @@ public:
     explicit Test_PartyBarDetector(const PartyBarCase& test_case)
         : ImageUnitTest(
             std::format("PokemonLZA::PartyBarDetector - {}", test_case.name),
-            {"PokemonLZA/PartyBarDetector/" + test_case.input.image}
+            {FOLDER + test_case.input.image}
         )
         , m_case(test_case)
     {}
 
     virtual UnitTestResult run_on_images(
-        Logger& logger, CancellableScope& scope,
+        Logger&, CancellableScope&,
         const std::vector<ImageRGB32>& images
     ) const override{
         const int filled = party_bar_filled_slots(images[0]);
@@ -177,7 +180,7 @@ private:
 
 void add_tests_PartyBarDetector(UnitTestDatabase& database){
     for (const PartyBarCase& item : PARTY_BAR_CASES){
-        database.add<Test_PartyBarDetector>(item);
+        add_pending_fixture_test<Test_PartyBarDetector>(database, item);
     }
 }
 

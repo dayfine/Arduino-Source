@@ -112,8 +112,8 @@ Pokemon::Outcome mash_story_scene(PlzaBackend& backend, Button text_button, Scen
 //  Taunie's talk, the Map & Missions card, the first map and the rest of her
 //  talk: A and B in turn, until the party bar has held (OVERWORLD_HOLD). A pages
 //  the talk and the card; B closes the map, which takes no A. The map is not
-//  waited for: MapDetector needs the Travel Spots icon, and on the console
-// it never fired on this first map in 60 s of A.
+//  waited for: MapDetector needs the Travel Spots icon, which this first
+//  map does not show.
 void talk_through_map_screen(ConsoleHandle& console, ProControllerContext& context){
     press_until_overworld(
         console, context,
