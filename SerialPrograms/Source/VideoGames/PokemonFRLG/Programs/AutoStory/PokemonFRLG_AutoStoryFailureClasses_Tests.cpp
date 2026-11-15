@@ -41,6 +41,7 @@ const std::vector<NameCase> NAME_CASES = {
     {.name = "FRLG's own name", .input = {.failure = "no_pose"}, .expectation = {.failure_class = StoryFailureClass::POSE_LOST}},
     {.name = "a trainer never seen", .input = {.failure = "no_trainer"}, .expectation = {.failure_class = StoryFailureClass::SCREEN_UNREAD}},
     {.name = "a blackout", .input = {.failure = "blackout"}, .expectation = {.failure_class = StoryFailureClass::BATTLE_LOST}},
+    {.name = "the lead fainted", .input = {.failure = "lead_fainted"}, .expectation = {.failure_class = StoryFailureClass::BATTLE_LOST}},
     {.name = "a family by its prefix", .input = {.failure = "mart_no_money"}, .expectation = {.failure_class = StoryFailureClass::MENU_FAILED}},
     {.name = "a Fly failure", .input = {.failure = "fly_no_map"}, .expectation = {.failure_class = StoryFailureClass::MENU_FAILED}},
     {.name = "an exact name over its prefix", .input = {.failure = "mart_cancel"}, .expectation = {.failure_class = StoryFailureClass::SIM_MISMATCH}},

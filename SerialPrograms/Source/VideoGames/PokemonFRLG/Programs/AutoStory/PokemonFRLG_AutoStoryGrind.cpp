@@ -268,7 +268,16 @@ EncounterSeen ConsoleGrindActions::read_encounter(){
 GrindFight ConsoleGrindActions::fight(){
     try{
         const BattleEnd end = fight_battle(m_console, m_context, m_supplies, BattleKind::WILD_FIGHT, m_checks, m_language);
-        return end == BattleEnd::WON ? GrindFight::OVER : GrindFight::LOST;
+        switch (end){
+        case BattleEnd::WON:
+            return GrindFight::OVER;
+        case BattleEnd::LOST:
+            return GrindFight::LOST;
+        case BattleEnd::LEAD_FAINTED:
+            m_console.log("Grind: the lead fainted and the game asks for the next member.", COLOR_RED);
+            return GrindFight::FAILED;
+        }
+        return GrindFight::FAILED;
     }catch (OperationFailedException& e){
         m_console.log("Grind: " + e.message(), COLOR_RED);
         return GrindFight::FAILED;

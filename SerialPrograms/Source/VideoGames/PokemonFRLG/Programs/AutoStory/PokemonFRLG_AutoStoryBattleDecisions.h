@@ -9,10 +9,10 @@
  *
  *  The party is the lead (the starter) and members that don't fight: the
  *  lead is never switched out. If it faints, a wild battle is run from
- *  ("Use next POKEMON?" NO); a trainer's, or a failed run, sends the next
- *  member not in Supplies::protected_slots, which only runs or uses its
- *  first move; with only protected ones left, the program stops instead.
- *  The battle counts as lost either way.
+ *  ("Use next POKEMON?" NO); when the game asks for the next member (a
+ *  trainer's battle, or a failed run), the battle loop sends none and
+ *  stops, for the checkpoint to reload (BattleEnd::LEAD_FAINTED). The
+ *  battle counts as lost either way.
  *
  */
 
@@ -68,9 +68,6 @@ public:
     //  is left as it was.
     PromptAnswer prompt(bool lead_box_gone);
 
-    //  The party list opened with the lead fainted: the slot to send in,
-    //  or none if every member left is protected.
-    std::optional<size_t> next_member_slot();
 
     //  The lead's box gone for good: it fainted.
     void lead_fainted();
@@ -139,8 +136,6 @@ private:
     //  The highest level a move offered can be for, from the lead's level
     //  read before the battle; none if it wasn't read.
     std::optional<uint8_t> m_level_cap;
-    //  The members sent in after the lead fainted.
-    std::set<size_t> m_sent;
 };
 
 

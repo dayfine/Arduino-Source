@@ -120,6 +120,10 @@ Pokemon::Outcome ride(SlopeEnv& env, const StoryStep& step, const std::vector<Sl
         .fight = [&env]{
             env.console.log("Slope: a Biker's battle; fighting it.", COLOR_ORANGE);
             const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks, env.language);
+            if (end == BattleEnd::LEAD_FAINTED){
+                //  Still at the party list: nothing to mash through.
+                return false;
+            }
             mash_until_overworld(env.console, env.context, SLOPE_BATTLE_EXIT);
             return end == BattleEnd::WON;
         },

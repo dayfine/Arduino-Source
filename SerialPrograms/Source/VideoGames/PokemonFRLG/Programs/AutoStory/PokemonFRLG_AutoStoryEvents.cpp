@@ -280,8 +280,8 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     const BattleKind kind = arg<bool>(step, "run") ? BattleKind::WILD_RUN : BattleKind::TRAINER;
     const BattleEnd end = fight_battle(env.console, env.context, env.supplies, kind, env.checks, env.language);
     end_trainer_battle(env.supplies);
-    if (end == BattleEnd::LOST && !arg<bool>(step, "may_lose")){
-        return Pokemon::outcome_failed("blackout");
+    if (end == BattleEnd::LEAD_FAINTED || (end == BattleEnd::LOST && !arg<bool>(step, "may_lose"))){
+        return Pokemon::outcome_failed(end == BattleEnd::LEAD_FAINTED ? "lead_fainted" : "blackout");
     }
     mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
     //  A trainer's script can go on after the battle, its black while the
