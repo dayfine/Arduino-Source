@@ -534,10 +534,34 @@ UnitTestResult test_walk_ends_in_mables_talk(CancellableScope& scope){
     }
     return expect_inputs(backend, {
         "wait 250ms",
-        "press L", "stick 270deg 150ms walk, release 100ms", "press L", "hold north 900ms walk",
+        "press L", "stick -90deg 150ms walk, release 100ms", "press L", "hold north 900ms walk",
         "press L", "stick 90deg 150ms walk, release 100ms", "press L", "hold north 1300ms walk",
         "press L", "stick 90deg 150ms walk, release 100ms", "press L",
         "hold north 250ms walk", "hold north 250ms walk",
+    });
+}
+
+//  03.09b's to_mable when a black fade shows in the held last leg: the scene
+//  at the walk's end takes over, so the walk ends there, with no slice after
+//  the fade (console B, 2026-11-14 r9: Mable's box came over 5 s after the
+//  fade, past a camera pan).
+UnitTestResult test_walk_ends_on_black_fade(CancellableScope& scope){
+    FakeBackend backend = fake_plza({
+        look_at(0ms, {EngineEvent::PLAYER_CAN_MOVE}),
+        look_at(250ms, {EngineEvent::PLAYER_CAN_MOVE}),
+        look_at(3000ms, {EngineEvent::FADE_BLACK}),
+        look_at(3250ms),
+    }, scope);
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("03.09b", "to_mable"));
+    if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
+        return std::format("Expected the walk to end on the black fade: {}", to_string(report.run.failure));
+    }
+    return expect_inputs(backend, {
+        "wait 250ms",
+        "press L", "stick -90deg 150ms walk, release 100ms", "press L", "hold north 900ms walk",
+        "press L", "stick 90deg 150ms walk, release 100ms", "press L", "hold north 1300ms walk",
+        "press L", "stick 90deg 150ms walk, release 100ms", "press L",
+        "hold north 250ms walk",
     });
 }
 
@@ -929,6 +953,7 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.name = "breakpoints: a walk pauses before each leg", .input = {.body = test_walk_pauses_before_each_leg}, .expectation = {}},
     {.name = "03.09 to_lab_elevator: one look once the legs are in", .input = {.body = test_walk_looks_after_its_legs}, .expectation = {}},
     {.name = "03.09b to_mable: the last leg held until Mable's dialog box", .input = {.body = test_walk_ends_in_mables_talk}, .expectation = {}},
+    {.name = "03.09b to_mable: a black fade in the last leg ends the walk", .input = {.body = test_walk_ends_on_black_fade}, .expectation = {}},
     {.name = "03.09b mable_talk: free control before her talk fails at the start window", .input = {.body = test_talk_scene_needs_the_talk}, .expectation = {}},
     {.name = "03.09b mable_talk: B through her lines, A at her question, done on control", .input = {.body = test_talk_scene_ends_after_the_talk}, .expectation = {}},
 };
