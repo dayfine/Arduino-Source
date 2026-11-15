@@ -2,7 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Split out of Pokemon_StoryEvents.h, unchanged; it includes this header.
+ *  One step of a checkpoint as the event runner sees it: what it checks
+ *  before and after its action, when it is already done, and how a failure
+ *  of it is answered.
  *
  */
 
@@ -25,7 +27,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-// Predicate callable evaluating current run state.
+//  A question about the run state.
 using Check = MoveOnlyFunction<bool(RunState& state)>;
 
 //  A question the screen (or the run state) answers, named for the log.
@@ -33,7 +35,7 @@ struct Condition{
     std::string name;
     Check check;
 };
-// Constructs a named Condition from a predicate check.
+//  `check`, named `name` in the log.
 Condition condition(std::string name, Check check);
 
 //  Holds while the pose is on `map` (any map if empty) and at least as
@@ -41,13 +43,13 @@ Condition condition(std::string name, Check check);
 Condition pose_known(std::string map, PoseCertainty need);
 
 
-// Strategy for recovering from a failed event.
+//  How a failed event is answered.
 enum class RecoveryKind{
     WAIT,       //  Something transient (a wanderer, a slow scene): wait, try again.
     REANCHOR,   //  The pose is in doubt: confirm it on a landmark, try again.
     STOP,       //  Nothing to do: stop the checkpoint.
 };
-// Returns the readable name of a recovery strategy.
+//  "wait", "re-anchor", "stop": for log lines.
 std::string recovery_name(RecoveryKind kind);
 
 //  Answers a failure named `on` (any failure if empty): runs `prepare`, if
@@ -61,7 +63,7 @@ struct Recovery{
 };
 
 
-// Single executable story action with preconditions, recovery steps, and postconditions.
+//  One step of a checkpoint: an action with the conditions around it.
 struct Event{
     std::string name;
     std::string why;

@@ -6,9 +6,8 @@
  *  step, or before each leg of a walk too, so the user can look at the
  *  console and then continue. The engine and the walk action call
  *  StoryPausePoints at those points; what a pause does is the game's
- *  StoryGame::pause_point hook. A normal build installs no wait
- *  (set_story_pause_wait()), so a pause point costs a log line and never
- *  blocks; a lab build installs one that waits for the user.
+ *  StoryGame::pause_point hook. A program that passes no wait to
+ *  make_story_pause_hook() gets no hook, so its pause points never block.
  *
  */
 
@@ -62,15 +61,15 @@ public:
 
     //  A step is about to run. Remembers `label` for the legs of the step
     //  and pauses when the mode asks for steps.
-    void before_step(const std::string& label);
+    void before_step(std::string_view label);
     //  A leg is about to be walked: pauses, as "<the step's label> <leg_label>",
     //  only in LEGS mode.
-    void before_leg(const std::string& leg_label);
+    void before_leg(std::string_view leg_label);
     //  The label of the step under way ("12.03/5 pallet_shore"); empty before the first.
     const std::string& step_label() const{ return m_step_label; }
 
 private:
-    void pause(const std::string& label);
+    void pause(std::string_view label);
 
     StoryBreakpoints m_mode = StoryBreakpoints::OFF;
     StoryPauseHook m_hook;
@@ -79,16 +78,13 @@ private:
 };
 
 
-//  The wait a lab build installs, called with the label and the run's scope.
-//  It returns when the user continues or `scope` is cancelled. Set once,
-//  before any program runs. Not installed: pause points do not block.
+//  A wait for the user, called with the label and the run's scope. It
+//  returns when the user continues or `scope` is cancelled.
 using StoryPauseWait = std::function<void(std::string_view label, CancellableScope& scope)>;
-//  Installs it; an empty wait removes it.
-void set_story_pause_wait(StoryPauseWait wait);
 
-//  The hook for StoryGame::pause_point: the installed wait on `scope`, or
-//  nothing when none is installed. `scope` must outlive the hook.
-StoryPauseHook make_story_pause_hook(CancellableScope& scope);
+//  The hook for StoryGame::pause_point: `wait` on `scope`, or no hook when
+//  `wait` is empty. `scope` must outlive the hook.
+StoryPauseHook make_story_pause_hook(StoryPauseWait wait, CancellableScope& scope);
 
 
 
