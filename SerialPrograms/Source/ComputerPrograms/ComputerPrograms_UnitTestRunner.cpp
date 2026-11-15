@@ -17,7 +17,6 @@
 #include "Kernels/Kernels_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_CheckpointId_Tests.h"
 #include "CommonFramework/AudioPipeline/AudioInfo_Tests.h"
 #include "CommonFramework/AudioPipeline/Tools/ChannelMixer.h"
 #include "CommonFramework/AudioPipeline/SinkPipeline_Tests.h"
@@ -79,7 +78,6 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Kernels::add_tests(ret);
     Pokemon::add_tests_AutoStorySelect(ret);
     Pokemon::add_tests_AutoStoryStats(ret);
-    Pokemon::add_tests_CheckpointId(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
