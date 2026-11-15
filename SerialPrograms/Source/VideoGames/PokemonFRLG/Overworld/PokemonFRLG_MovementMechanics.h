@@ -50,6 +50,13 @@ inline constexpr Milliseconds TILE_TIME(267);
 inline constexpr Milliseconds RUN_TILE_TIME(133);
 //  Surfing: a tile per 8 frames.
 inline constexpr Milliseconds SURF_TILE_TIME(133);
+//  Hopping a ledge: 32 frames for the two tiles, walking or running
+//  (pokefirered DoJumpSpriteMovement(), JUMP_DISTANCE_FAR). Running, a hold
+//  timed by its tiles spends two of them on the hop and ends a tile short
+//  (console B, 2026-11-14 20:23 and 20:27, 15.01: "south 8" down Route 7's
+//  column 8 ended on row 9). Two walking tiles' time to the millisecond:
+//  a walking hold over a ledge ends where the game's does (cp0007-r..t).
+inline constexpr Milliseconds LEDGE_HOP_TIME = TILE_TIME * 2;
 //  The longest tap measured to only turn a player facing another way, and
 //  to take exactly one step for one facing its way.
 inline constexpr Milliseconds LONGEST_TAP(133);

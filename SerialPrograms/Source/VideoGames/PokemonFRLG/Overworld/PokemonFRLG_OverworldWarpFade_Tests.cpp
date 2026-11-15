@@ -213,6 +213,38 @@ UnitTestResult test_water_is_not_the_center(){
     return true;
 }
 
+//  A field of grass: a pattern that repeats every 16-pixel tile, another
+//  scene than the store floor's.
+ImageRGB32 grass_field(){
+    ImageRGB32 image(240, 160);
+    for (size_t y = 0; y < 160; y++){
+        for (size_t x = 0; x < 240; x++){
+            image.pixel(x, y) = (x % 16 < 8) ^ (y % 16 < 8) ? 0xff78c850 : 0xff50a040;
+        }
+    }
+    return image;
+}
+
+//  15.01 west_of_tea_guard: "east 9 (warp)" to Route 7's gate, held from a
+//  row above the door into the gate's wall (console B, 2026-11-14 20:23
+//  and 20:27). The scene after the hold is another than before it, and
+//  still, as a wall stop is; it is outdoors, with no black below, so it is
+//  not the gate.
+UnitTestResult test_wall_stop_is_not_the_gate(){
+    const ImageFloatBox game(0, 0, 1, 1);
+    RouteStep step;
+    step.direction = Direction::EAST;
+    step.tiles = 9;
+    step.warps = true;
+    step.end.map = "Route7_EastEntrance";
+    const ImageRGB32 before = store_floor();
+    const ImageRGB32 after = grass_field();
+    if (OverworldWalkSteps::arrived_without_fade(before, after, after, game, step)){
+        return "Expected a still scene with no black below not to be taken as the gate.";
+    }
+    return true;
+}
+
 struct ArrivalScreenInput{
     std::string name;
     std::function<UnitTestResult()> body;
@@ -243,6 +275,7 @@ private:
 const ArrivalScreenCase ARRIVAL_SCREEN_CASES[] = {
     {.input = {"the lift room after a missed fade, by its screen", test_lift_room_arrival}, .expectation = {}},
     {.input = {"water after a missed fade is not the Center", test_water_is_not_the_center}, .expectation = {}},
+    {.input = {"a wall stop outdoors after a missed fade is not the gate", test_wall_stop_is_not_the_gate}, .expectation = {}},
 };
 
 } // namespace

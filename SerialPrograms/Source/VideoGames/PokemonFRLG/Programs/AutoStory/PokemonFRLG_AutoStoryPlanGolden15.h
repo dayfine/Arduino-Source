@@ -19,11 +19,15 @@ namespace PokemonFRLG{
 
 //  The stored plan lines from segment 15 on, after FRLG_PLAN_GOLDEN_14's.
 inline constexpr std::string_view FRLG_PLAN_GOLDEN_15[] = {
-    "15.01 west_of_tea_guard from CeladonCity_PokemonCenter_1F (7, 4) facing north to Route7_EastEntrance (5, 4) facing east",
+    "15.01 to_gate_wall from CeladonCity_PokemonCenter_1F (7, 4) facing north to Route7 (15, 11) facing north",
     "15.01   walk south 5 (warp) -> CeladonCity (48, 12) [walk only]",
     "15.01   walk east 19 -> Route7 (7, 2) [connection 12]",
-    "15.01   walk south 8 -> Route7 (7, 10)",
-    "15.01   walk east 9 (warp) -> Route7_EastEntrance (1, 5)",
+    "15.01   walk south 9 (to wall) -> Route7 (7, 11)",
+    "15.01   walk east 8 (to wall) -> Route7 (15, 11)",
+    "15.01   face north -> Route7 (15, 11)",
+    "15.01 west_of_tea_guard from Route7 (15, 11) facing north to Route7_EastEntrance (5, 4) facing east",
+    "15.01   walk north 1 -> Route7 (15, 10) [tapped]",
+    "15.01   walk east 1 (warp) -> Route7_EastEntrance (1, 5)",
     "15.01   walk east 4 -> Route7_EastEntrance (5, 5)",
     "15.01   walk north 1 (to wall) -> Route7_EastEntrance (5, 4)",
     "15.01   face east -> Route7_EastEntrance (5, 4)",
