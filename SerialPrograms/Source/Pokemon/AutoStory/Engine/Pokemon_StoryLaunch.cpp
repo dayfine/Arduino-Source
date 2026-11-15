@@ -92,6 +92,9 @@ public:
     //  One look and its answer; the launch's end when this look ended it.
     std::optional<Outcome> step(){
         const Observation<PoseType> observation = m_backend.observe();
+        if (m_title_pressed && observation.events.has(ScreenEvent::FADE_BLACK)){
+            m_load_seen = true;
+        }
         const LaunchLook look = read_launch_look(m_policy, observation, m_launched || m_loading);
         if (look.screen != LaunchScreen::OVERWORLD){
             m_settled = 0;
@@ -175,12 +178,20 @@ private:
                 m_backend.press(each.button, each.hold, each.release);
             }
         }
+        m_title_pressed = true;
         return press("title", m_policy.title_press, m_policy.presses_per_screen);
     }
 
     std::optional<Outcome> on_overworld(){
         if (needs_load()){
             return press("overworld", {.button = BUTTON_HOME}, m_policy.presses_per_screen, "HOME, to load the save");
+        }
+        if (m_policy.overworld_after_load && m_loading && !m_load_seen){
+            m_title_pressed = true;
+            return press(
+                "title", m_policy.title_press, m_policy.presses_per_screen,
+                std::format("no load yet, so the title's attract movie: {}", button_to_string(m_policy.title_press.button))
+            );
         }
         if (++m_settled >= m_policy.settled_looks){
             log("overworld", std::format("settled for {} looks", m_settled));
@@ -237,6 +248,11 @@ private:
     bool m_launch_pressed = false;
     Milliseconds m_home_waited = Milliseconds(0);
     bool m_backup_sent = false;
+    //  The title press was sent (on the title, or for
+    //  `overworld_after_load` on its attract movie).
+    bool m_title_pressed = false;
+    //  A black screen showed after the title press: the save loading.
+    bool m_load_seen = false;
 };
 
 
