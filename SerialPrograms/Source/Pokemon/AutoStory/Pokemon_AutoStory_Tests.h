@@ -12,6 +12,8 @@
 #define PokemonAutomation_Pokemon_AutoStory_Tests_H
 
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Data/Pokemon_AuthoredCheckpointJson_Tests.h"
+#include "Data/Pokemon_StoryFiles_Tests.h"
 #include "Data/Pokemon_StoryStepJson_Tests.h"
 #include "Pokemon_StoryEvents_Tests.h"
 #include "Pokemon_StoryFailureClasses_Tests.h"
@@ -32,7 +34,9 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryEvents(database);
     add_tests_StoryStepExecutor(database);
     add_tests_StoryStepJson(database);
+    add_tests_AuthoredCheckpointJson(database);
     add_tests_StorySegments(database);
+    add_tests_StoryFiles(database);
 }
 
 
