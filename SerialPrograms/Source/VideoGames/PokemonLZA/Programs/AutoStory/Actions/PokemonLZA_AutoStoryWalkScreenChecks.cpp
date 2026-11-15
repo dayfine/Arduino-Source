@@ -21,12 +21,6 @@ namespace{
 
 //  How long each slice of the held last leg is, between looks for its end.
 constexpr Milliseconds HOLD_SLICE = 250ms;
-//  How long a held last leg waits, stick released, once a black fade shows:
-//  a talk that starts with a fade shows its box about 2 s after the fade
-//  (03.09b's Mable, console B 2026-11-14 r8: the fade came 6 s into the
-//  walk, the box after the hold had run out).
-constexpr Milliseconds FADE_END_WAIT = 5000ms;
-constexpr Milliseconds FADE_END_LOOK = 250ms;
 //  How long a walk waits for free control, and how often it looks.
 constexpr Milliseconds FREE_CONTROL_WAIT = 15000ms;
 constexpr Milliseconds FREE_CONTROL_LOOK = 250ms;
@@ -83,29 +77,6 @@ void finish_walk(PlzaBackend& backend, std::string_view walk){
     backend.log(std::format("[PLZA] {}: legs done, screen now: {}", walk, describe(look.events)));
 }
 
-namespace{
-
-//  A held last leg met a black fade: the stick stays released while the
-//  scene behind it comes up, for FADE_END_WAIT.
-Pokemon::Outcome wait_after_fade(PlzaBackend& backend, std::string_view walk, EngineEvent end, Milliseconds held){
-    for (Milliseconds waited = 0ms; waited < FADE_END_WAIT; waited += FADE_END_LOOK){
-        backend.wait(FADE_END_LOOK);
-        if (backend.observe().events.has(end)){
-            backend.log(std::format(
-                "{}: the end event {} ms after a black fade at {} ms of the last leg.",
-                walk, (waited + FADE_END_LOOK).count(), held.count()
-            ));
-            return Pokemon::outcome_ok();
-        }
-    }
-    return Pokemon::outcome_failed(
-        "walk_no_end",
-        std::format("{}: a black fade at {} ms of the last leg, then no end event within {} ms", walk, held.count(), FADE_END_WAIT.count())
-    );
-}
-
-} // namespace
-
 Pokemon::Outcome walk_until(
     PlzaBackend& backend, std::string_view walk, const StoryMove& move, const PlzaReader& heading, EngineEvent end,
     Pokemon::StoryPausePoints* pause
@@ -129,8 +100,13 @@ Pokemon::Outcome walk_until(
             backend.log(std::format("{}: the end event after {} ms of the last leg.", walk, (held + HOLD_SLICE).count()));
             return Pokemon::outcome_ok();
         }
+        //  A black fade is the scene at the walk's end taking over (03.09b's
+        //  Mable, console B 2026-11-14: the fade 1-6 s into the last leg,
+        //  her box more than 5 s after it, past a camera pan): the step after
+        //  the walk waits for what the scene shows.
         if (look.events.has(EngineEvent::FADE_BLACK)){
-            return wait_after_fade(backend, walk, end, held + HOLD_SLICE);
+            backend.log(std::format("{}: a black fade after {} ms of the last leg: the scene takes over.", walk, (held + HOLD_SLICE).count()));
+            return Pokemon::outcome_ok();
         }
     }
     return Pokemon::outcome_failed("walk_no_end", std::format("{}: no end event within {} ms of the last leg", walk, hold.count()));
