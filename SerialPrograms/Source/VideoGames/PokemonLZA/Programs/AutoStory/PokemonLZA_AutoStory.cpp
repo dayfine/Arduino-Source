@@ -178,6 +178,17 @@ void connect_controller(ConsoleHandle& console, ProControllerContext& context, c
     require_player(console, context, BUTTON_L);
 }
 
+//  Throws UserSetupError unless rows `first` to `last` are in a table of
+//  `rows` rows, in order.
+void check_checkpoint_range(ConsoleHandle& console, size_t first, size_t last, size_t rows){
+    if (last >= rows){
+        throw UserSetupError(console, "The checkpoint selection is out of range: pick the start and end checkpoints again.");
+    }
+    if (first > last){
+        throw UserSetupError(console, "The start checkpoint must not come after the end checkpoint.");
+    }
+}
+
 //  `run`'s attempts per checkpoint, and the boundary reload `reload_at_boundaries`
 //  picks; logs which.
 StoryRunPolicy run_policy(const Pokemon::StoryRunOptions& run, const BooleanCheckBoxOption& reload_at_boundaries, Logger& logger){
@@ -198,12 +209,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const std::vector<StoryCheckpoint>& rows = story_data.checkpoints;
     const size_t first = RUN.start_index();
     const size_t last = RUN.end_index();
-    if (last >= rows.size()){
-        throw UserSetupError(env.console, "The checkpoint selection is out of range: pick the start and end checkpoints again.");
-    }
-    if (first > last){
-        throw UserSetupError(env.console, "The start checkpoint must not come after the end checkpoint.");
-    }
+    check_checkpoint_range(env.console, first, last, rows.size());
     const StartFrom from = start_from(env.console, RUN, START_FROM_BACKUP_SAVE);
     connect_controller(env.console, context, rows[first]);
 
