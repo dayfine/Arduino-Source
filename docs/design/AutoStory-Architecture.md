@@ -158,7 +158,9 @@ the route log is being made grid-free (planned).
 
 The first 3D target would be a SwSh run from a new game to the Wedgehurst station. Upstream
 has a timed draft of its first segment ([PokemonAutomation#1207](https://github.com/PokemonAutomation/Arduino-Source/pull/1207));
-offer the engine to its author rather than take it over.
+offer the engine to its author rather than take it over. The actions, detectors, routines,
+investigations and reviewable slices for that target are in the
+[SwSh work plan](AutoStory-SwSh-Work-Plan.md).
 
 ## 6. Run modes (planned)
 
