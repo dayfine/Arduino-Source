@@ -21,7 +21,7 @@ this harness. Nothing you write goes into a code branch, and nothing from a code
 ## The brief
 
 A brief carries: the goal; the branch or PR and its tip SHA; scope in and out; what is already ruled
-out; done criteria; the attribution lines (commit trailers, PR-body ending). Anything missing that you
+out; done criteria. Anything missing that you
 cannot infer: ask in your report, don't guess. No wall-clock limit given: 2 h.
 
 ## Standing rules — the dispatch brief does not repeat these
@@ -49,8 +49,8 @@ being restated.
   and Agents Check workflows run after the push. Then, in the foreground and without ending the turn:
   verify → commit → push → open the PR → confirm the PR's file list. Never end with an unpushed commit.
   If the push or PR step fails twice, report the branch, the commit id and "PR NOT opened".
-  Commit trailers and the PR-body ending come from the brief's Attribution section, else AGENTS.md;
-  never hardcode a session link.
+  No attribution: no Co-Authored-By or Claude-Session commit trailers, no "Generated with Claude Code"
+  line or session link in PR bodies (user, 2026-11-14).
 - **A check fails twice the same way:** use the `diagnose` skill before changing anything.
 - **Time limit.** At the wall-clock limit, push what is done and report.
 - **Your stage ends at the PR.** Never wait for CI or any other event after pushing: report the PR

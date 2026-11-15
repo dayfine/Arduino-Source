@@ -23,7 +23,7 @@ code-health gate, and keep descriptions and "Depends on" banners right.
 ## The brief
 
 A brief carries: the goal; the branch or PR and its tip SHA; scope in and out; what is already ruled
-out; done criteria; the attribution lines (commit trailers, PR-body ending). Anything missing that you
+out; done criteria. Anything missing that you
 cannot infer from the PR: ask in your report, don't guess. No wall-clock limit given: 2 h.
 
 ## Standing rules — the dispatch brief does not repeat these
@@ -40,7 +40,9 @@ being restated.
   command does run in the background, keep polling its output in bounded loops until it finishes.
 - **Tests run on CI.** Pushing to the draft PR runs Fork Draft CI (Ubuntu build + unit tests). If no
   run appears, dispatch the same build: `gh workflow run cpp-ci-serial-programs-ubuntu-default.yml
-  -R dayfine/Arduino-Source --ref <branch>`. Never wait behind `heavy_gate.sh` or for console B. A full
+  -R dayfine/Arduino-Source --ref <branch>`. Run every local ninja build or test run through `HEAVY_GATE_NOWAIT=1 sh ~/BDSPLab/heavy_gate.sh <cmd>`
+  (nice 15, paused while a console run is on); exit 5 means a run is on: skip the local build, push and let CI build.
+  Never wait for console B. A full
   local build or test run only when the brief asks; then follow AGENTS.md §Let CI build and test.
 - **Never run the SerialPrograms app.** Not even `--help`: without `--profile <isolated>` it opens
   console A's serial port (agents slipped on this twice on 2026-11-13).
@@ -54,8 +56,8 @@ being restated.
   full build and tests after the push. Then, in the foreground and without ending the turn:
   verify → commit → push → open the PR → confirm the PR's file list. Never end with an unpushed commit.
   If the push or PR step fails twice, report the branch, the commit id and "PR NOT opened".
-  Commit trailers and the PR-body ending come from the brief's Attribution section, else AGENTS.md;
-  never hardcode a session link.
+  No attribution: no Co-Authored-By or Claude-Session commit trailers, no "Generated with Claude Code"
+  line or session link in PR bodies (user, 2026-11-14).
 - **Time limit.** At the wall-clock limit, push what is done and report.
 - **Your stage ends at the PR.** Never wait for CI or any other event after pushing: report the PR
   number and tip SHA and stop; the dispatcher waits for CI (`.agents/rules/long-chain-ownership.md`).

@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "request_id": null,
+  "tool": "shot",
+  "refusal": {
+    "code": "timeout",
+    "message": "No frame newer than seq 918274 within 5000 ms.",
+    "evidence": {
+      "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+      "frame_seq": 918274
+    }
+  }
+}
