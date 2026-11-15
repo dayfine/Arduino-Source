@@ -321,6 +321,19 @@ ImageRGB32 scenery(int shift_x, int shift_y){
     }
     return screen;
 }
+//  A step north as the console's camera shows it: it looks down at the path
+//  at an angle, so rows near the bottom scroll further than rows near the
+//  top, here from 4 pixels at the top to 28 at the bottom.
+ImageRGB32 scenery_after_a_step_north(){
+    ImageRGB32 screen(384, 216);
+    for (int y = 0; y < 216; y++){
+        const int scroll = 4 + 24 * y / 216;
+        for (int x = 0; x < 384; x++){
+            screen.pixel(x, y) = scenery_at(x + 1000, y - scroll + 1000);
+        }
+    }
+    return screen;
+}
 //  Each colour channel of the pixels in [x0, x1) x [y0, y1) times `scale`,
 //  or set to `fill` if given.
 void paint(ImageRGB32& screen, int x0, int y0, int x1, int y1, double scale, uint32_t fill = 0){
@@ -351,6 +364,7 @@ UnitTestResult test_view_shift(Logger&){
         cases.push_back({"the same view", scenery(0, 0), false});
         cases.push_back({"a step east: the view scrolls 16 pixels west", scenery(16, 0), true});
         cases.push_back({"a step south", scenery(0, 12), true});
+        cases.push_back({"a step north, the near rows scrolling further", scenery_after_a_step_north(), true});
         {
             //  r83, r84: a cloud's shadow over the top of the view.
             ImageRGB32 shadow = scenery(0, 0);
@@ -372,14 +386,71 @@ UnitTestResult test_view_shift(Logger&){
         for (const Case& item : cases){
             const ViewShift shift = walk_view_shift(before, item.after);
             if (shift.scrolled() != item.scrolled){
-                return std::format("{}: {} (shift {}, {}; difference {:.1f} unshifted, {:.1f} shifted).",
-                    item.name, item.scrolled ? "did not read as a scroll" : "read as a scroll",
-                    shift.dx, shift.dy, shift.unshifted, shift.shifted);
+                return std::format("{}: {} ({}).",
+                    item.name, item.scrolled ? "did not read as a scroll" : "read as a scroll", describe_view_shift(shift));
             }
         }
         const ViewShift east = walk_view_shift(before, scenery(16, 0));
-        if (east.dx != -8 || east.dy != 0){
-            return std::format("A 16-pixel scroll west read as ({}, {}) on the half-size copy, expected (-8, 0).", east.dx, east.dy);
+        for (const BandShift& band : east.bands){
+            if (band.dx != -8 || band.dy != 0){
+                return std::format("A 16-pixel scroll west read as {} on the half-size copy, expected (-8, 0) in every band.", describe_view_shift(east));
+            }
+        }
+        return true;
+}
+
+//  walk_view_shift() on the console's frames around D-pad taps.
+struct ViewShiftFramesTestCase{
+    std::string name;
+    struct Input{
+        std::string before;
+        std::string after;
+    };
+    Input input;
+    struct Expectation{
+        bool scrolled;
+    };
+    Expectation expectation;
+};
+
+const ViewShiftFramesTestCase VIEW_SHIFT_FRAMES_CASES[] = {
+    //  00.01 below_barrys_warning (2026-11-15): one shift for the whole view
+    //  lined up these steps only 1.94 and 1.69 times better than none, so
+    //  north 18 counted 3 steps.
+    {
+        "a step north up Twinleaf's path",
+        {
+            .before = "PokemonBDSP/AutoStory/TwinleafPathNorth-20261115-chunk4-before.png",
+            .after = "PokemonBDSP/AutoStory/TwinleafPathNorth-20261115-chunk4-after.png",
+        },
+        {.scrolled = true},
+    },
+    {
+        "the next step north, more distant scenery in view",
+        {
+            .before = "PokemonBDSP/AutoStory/TwinleafPathNorth-20261115-chunk5-before.png",
+            .after = "PokemonBDSP/AutoStory/TwinleafPathNorth-20261115-chunk5-after.png",
+        },
+        {.scrolled = true},
+    },
+};
+
+UnitTestResult test_view_shift_frames(Logger& logger){
+        for (const ViewShiftFramesTestCase& item : VIEW_SHIFT_FRAMES_CASES){
+            for (const std::string& file : {item.input.before, item.input.after}){
+                if (!Filesystem::is_regular_file(UNIT_TEST_RESOURCE_PATH() + file)){
+                    return UnitTestResult(UnitTestResult::SKIPPED, std::format("Screenshot not found: {}{}", UNIT_TEST_RESOURCE_PATH(), file));
+                }
+            }
+            const ViewShift shift = walk_view_shift(
+                ImageRGB32(UNIT_TEST_RESOURCE_PATH() + item.input.before),
+                ImageRGB32(UNIT_TEST_RESOURCE_PATH() + item.input.after)
+            );
+            logger.log(std::format("{}: {}", item.name, describe_view_shift(shift)));
+            if (shift.scrolled() != item.expectation.scrolled){
+                return std::format("{}: {} ({}).",
+                    item.name, item.expectation.scrolled ? "did not read as a scroll" : "read as a scroll", describe_view_shift(shift));
+            }
         }
         return true;
 }
@@ -623,6 +694,10 @@ const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
     },
     {
         .input = {"a step scrolls the view; moving scenery does not", test_view_shift},
+        .expectation = {},
+    },
+    {
+        .input = {"the console's steps north scroll the view", test_view_shift_frames},
         .expectation = {},
     },
     {
