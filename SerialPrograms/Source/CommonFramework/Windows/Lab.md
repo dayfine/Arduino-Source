@@ -265,7 +265,7 @@ preflight {"NOTIFICATIONS":{"Enabled":false},"START":"02"}
 
 The JSON holds only the options to change, by the keys of `describe_program`
 (a group's value is an object of its own keys). On the channel's worker the
-program session (`ProgramSession::run_prechecks_only()`):
+program session (`ProgramSession::Prechecks::run_only()`):
 
 1. refuses unless the program is `STOPPED`, and makes Start refuse until it
    is done;

@@ -526,14 +526,14 @@ std::string LabChannel::run_describe_program(const std::vector<std::string>& wor
         return "describe_program: the selected program has no options the lab can read.";
     }
     JsonValue contract = lab_program_contract(
-        m_program->descriptor().identifier(), *options, m_program->precheck_summaries()
+        m_program->descriptor().identifier(), *options, m_program->prechecks().summaries()
     );
     out << "describe_program " << contract.dump(-1) << "\n";
     return "";
 }
 
 //  "preflight JSON": a checks-only run of the selected program with these
-//  options (ProgramSession::run_prechecks_only()) on this worker, holding
+//  options (ProgramSession::Prechecks::run_only()) on this worker, holding
 //  the panel like a console command. Prints one line, "preflight " and
 //  lab_preflight_reply() as JSON. A program that is not STOPPED, a
 //  controller that is not ready or a check that throws fails the line
@@ -548,7 +548,7 @@ std::string LabChannel::run_preflight(const LabRequestLine& line, std::ostream& 
         if (program == nullptr){
             throw ParseException("The selected panel is not a program.");
         }
-        const PrecheckOnlyRun run = program->run_prechecks_only(candidate, scope);
+        const PrecheckOnlyRun run = program->prechecks().run_only(candidate, scope);
         JsonValue reply = lab_preflight_reply(program->descriptor().identifier(), run, read_options_hash(panel));
         out << "preflight " << reply.dump(-1) << "\n";
     });

@@ -111,48 +111,48 @@ void ProgramSession::join_program_thread() noexcept{
 const std::string& ProgramSession::identifier() const{
     return m_descriptor.identifier();
 }
-std::optional<std::vector<PrecheckSummary>> ProgramSession::precheck_summaries() const{
-    if (m_instance == nullptr){
+std::optional<std::vector<PrecheckSummary>> ProgramSession::Prechecks::summaries() const{
+    if (m_session.m_instance == nullptr){
         return std::nullopt;
     }
-    return m_instance->precheck_summaries();
+    return m_session.m_instance->precheck_summaries();
 }
-PrecheckOnlyRun ProgramSession::run_prechecks_only(const JsonValue& candidate, CancellableScope& parent){
-    RunningProgramScope running_scope(*this, parent);
-    const JsonValue prior = m_instance->to_json();
+PrecheckOnlyRun ProgramSession::Prechecks::run_only(const JsonValue& candidate, CancellableScope& parent){
+    RunningProgramScope running_scope(m_session, parent);
+    const JsonValue prior = m_session.m_instance->to_json();
     std::expected<JsonValue, RefusedOption> merged = merge_candidate_options(prior, candidate);
     if (!merged){
         return PrecheckOnlyRun{.refused = std::move(merged.error()), .checks = std::nullopt, .restored = true};
     }
 
-    m_logger.log(std::format("Start checks only, with options: {}", candidate.dump(-1)));
+    m_session.m_logger.log(std::format("Start checks only, with options: {}", candidate.dump(-1)));
     PrecheckOnlyRun run;
     {
         ScopeExit restore([&]{
-            m_instance->load_json(prior);
+            m_session.m_instance->load_json(prior);
         });
-        m_instance->load_json(*merged);
-        run.refused = find_refused_option(candidate, m_instance->to_json());
+        m_session.m_instance->load_json(*merged);
+        run.refused = find_refused_option(candidate, m_session.m_instance->to_json());
         if (!run.refused){
-            std::string error = m_instance->check_validity();
+            std::string error = m_session.m_instance->check_validity();
             if (!error.empty()){
                 run.refused = RefusedOption{"", std::move(error)};
             }
         }
-        if (!run.refused && m_instance->precheck_summaries()){
+        if (!run.refused && m_session.m_instance->precheck_summaries()){
             const ProgramInfo program_info(
-                identifier(),
-                m_descriptor.category(),
-                m_descriptor.display_name(),
+                m_session.identifier(),
+                m_session.m_descriptor.category(),
+                m_session.m_descriptor.display_name(),
                 current_time()
             );
-            std::unique_ptr<ProgramEnvironment> env = make_env(program_info);
-            run.checks = internal_run_prechecks(*env);
+            std::unique_ptr<ProgramEnvironment> env = m_session.make_env(program_info);
+            run.checks = m_session.internal_run_prechecks(*env);
         }
     }
-    run.restored = m_instance->to_json() == prior;
+    run.restored = m_session.m_instance->to_json() == prior;
     if (!run.restored){
-        m_logger.log("Start checks only: the prior options did not load back.", COLOR_RED);
+        m_session.m_logger.log("Start checks only: the prior options did not load back.", COLOR_RED);
     }
     return run;
 }

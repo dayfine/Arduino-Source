@@ -114,7 +114,7 @@ public:
         VideoStream& stream
     );
 
-    //  A checks-only run (ProgramSession::run_prechecks_only()): the
+    //  A checks-only run (ProgramSession::Prechecks::run_only()): the
     //  program's prechecks in the order of precheck_summaries(), up to and
     //  including the first FAILED one, while the program is STOPPED with the
     //  options to check loaded; nothing when it declares no list. A check may

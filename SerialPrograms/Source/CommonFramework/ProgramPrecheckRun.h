@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A checks-only run of a program (ProgramSession::run_prechecks_only()):
+ *  A checks-only run of a program (ProgramSession::Prechecks::run_only()):
  *  candidate options are loaded over the current ones, the program's
  *  prechecks run without starting it, and the prior options are loaded back.
  *  The lab's "preflight" command uses it to find a setup mistake before a run
