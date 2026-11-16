@@ -44,7 +44,11 @@ const std::vector<std::unique_ptr<NamedCheckpoint>>& story_list(){
 
 //  The main story's dropdowns: entries 2..4 of the list, slugged 2..4.
 const StringSelectDatabase& main_story_database(){
-    static const StringSelectDatabase database = make_story_select_database(story_list(), 2, story_list().size());
+    static const StringSelectDatabase database = make_story_select_database(
+        story_list(),
+        /*first=*/2,
+        /*last=*/story_list().size()
+    );
     return database;
 }
 
