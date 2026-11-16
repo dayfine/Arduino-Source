@@ -5,8 +5,8 @@ SerialPrograms lab app on profile `lab-B`, and its log) through MCP, the protoco
 uses for tools. Instead of an agent running shell scripts and grepping logs to work out what
 the console is doing, it asks pa-lab and gets one structured answer.
 
-Today it only reads. Nothing in it presses a button, starts or stops a program, or writes to
-the app. Console A is never part of it.
+Today, as connected to your sessions, it only reads: nothing there presses a button, starts or
+stops a program, or writes to the app. Console A is never part of it.
 
 Developer details (contracts, slices, tests) are in [README.md](README.md); the design is
 `docs/design/Agent-Integration.md` on branch `design/agent-integration`.
@@ -81,6 +81,15 @@ These run only in the HTTP mode of the server, not in the read-only session conn
 game in front, or HOME / user select / black screen), `shot` (a fresh screenshot) and
 `ensure_game`. The control plane is also built: console leases, request records that make a
 retried request safe, and an event log. None of it presses buttons yet.
+
+**Starting and stopping a program (Slice 5a).** `run_program` and `stop_program` exist, but only
+when the server is started with `serve --actions`, which nothing uses yet; your session connection
+stays read-only. An agent holding the console's lease can start the program selected in the app
+(with its current options) and stop it. It is refused whenever you hold the console (you clicked
+Start or Stop), when another program is running, when the app is not running, or when the
+selected program is not the one asked for. If you click Start or Stop while an agent's start or
+stop is under way, yours wins and the agent's request is marked failed. Every start and stop is
+one record, and a retried request never starts the program twice.
 
 ## What comes next
 

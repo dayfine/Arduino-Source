@@ -111,6 +111,15 @@ class FakeApp:
     `describe_program` and `game_open` (#504) are answered at once: `replies[command]` is the
     printed text (default below), `line_errors[command]` fails the line instead, and
     `restart_on` names a command whose answer comes from a new app instance.
+
+    `start [SECONDS]` and `stop` do what LabChannel's start_or_stop does: refused with `Program is
+    STATE.` unless the program is stopped (start) or running (stop), or with `owned by TOKEN`
+    when `owner` is set and the request has no `owner TOKEN` line; otherwise the program state
+    changes and `last_transition` names the request's `request <uuid>` with source `lab`. A stop
+    stays `stopping` for `stop_ticks` ticks. `after[command]` is called with the app right after
+    that command succeeds, before the journal is written: a UI click or the run's end landing
+    before the daemon reads the answer. A command in `hold` is taken from the inbox and never
+    answered.
     """
 
     def __init__(self, lab, clock):
@@ -130,6 +139,11 @@ class FakeApp:
         }
         self.line_errors = {}
         self.restart_on = None
+        self.owner = None
+        self.stop_ticks = 1
+        self.after = {}
+        self._stopping_left = None
+        self.hold = set()
         self.requests = []
         self.pending = []
         clock.on_sleep.append(self.tick)
@@ -141,6 +155,11 @@ class FakeApp:
             changes['video.frame_seq'] = (self.lab.state['video']['frame_seq'] or 0) + 1
             changes['video.state'] = 'live'
             changes['video.captured_at'] = now
+        if self._stopping_left is not None:
+            self._stopping_left -= 1
+            if self._stopping_left <= 0:
+                self._stopping_left = None
+                changes['program.state'] = 'stopped'
         self.lab.update_state(**changes)
         for pending in list(self.pending):
             self.continue_snapshot(pending)
@@ -156,6 +175,11 @@ class FakeApp:
         words = line.split()
         if words[0] in self.replies:
             self.answer(request.stem, line, words[0])
+            return
+        if words[0] in self.hold:  # taken from the inbox, never answered (the app hung or quit)
+            return
+        if words[0] in ('start', 'stop'):
+            self.start_or_stop(request.stem, text, line, words[0])
             return
         pending = {'name': request.stem, 'line': line, 'label': words[1], 'timeout_ms': int(words[2]),
                    'started': self.clock.now(), 'after': self.lab.state['video']['frame_seq'] or 0}
@@ -175,6 +199,33 @@ class FakeApp:
             self.finish(pending, '', self.line_errors[command])
         else:
             self.finish(pending, self.replies[command])
+
+    def start_or_stop(self, name, text, line, command):
+        lines = text.splitlines()
+        request_id = next((l.split()[1] for l in lines if l.startswith('request ')), None)
+        pending = {'name': name, 'line': line}
+        if self.owner is not None and 'owner {}'.format(self.owner) not in lines:
+            self.finish(pending, '', 'owned by {}'.format(self.owner))
+            return
+        state = self.lab.state['program']['state']
+        if state != ('stopped' if command == 'start' else 'running'):
+            self.finish(pending, '', 'Program is {}.'.format(state.upper()))
+            return
+        self.transition(command, 'lab', request_id, 'running' if command == 'start' else 'stopping')
+        if command == 'stop':
+            self._stopping_left = self.stop_ticks
+        if command in self.after:
+            self.after[command](self)
+        self.finish(pending, '')
+
+    def transition(self, action, source, request_id=None, state=None):
+        """A start or stop as the app records it; `state` defaults to where the action leads."""
+        self._stopping_left = None
+        self.lab.update_state(**{
+            'program.state': state or ('running' if action == 'start' else 'stopped'),
+            'program.last_transition': {'action': action, 'source': source, 'request_id': request_id,
+                                        'at': timestamps.format(self.clock.now())},
+            'written_at': timestamps.format(self.clock.now())})
 
     def continue_snapshot(self, pending):
         video = self.lab.state['video']

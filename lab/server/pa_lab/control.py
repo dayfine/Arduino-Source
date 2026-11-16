@@ -27,7 +27,7 @@ import secrets
 import sqlite3
 import threading
 import time
-from typing import Any, Dict, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from pa_lab import contracts, timestamps
 from pa_lab.db import Database
@@ -74,6 +74,20 @@ def _json(value: Any) -> str:
 
 def _clock_time(at: str) -> str:
     return at[11:16]
+
+
+def _transition_key(instance_id: str, transition: Dict[str, Any]) -> str:
+    return _json([instance_id, transition['at'], transition['action'], transition['source'],
+                  transition['request_id']])
+
+
+def inbox_name(tool: str, request_id: str) -> str:
+    """A new `Lab/inbox` request name for one attempt of a run_program / stop_program request.
+
+    The random part keeps a journal (`outbox/<name>.out`) or taken request (`done/<name>.txt`) left
+    by an earlier request with the same id (after compaction dropped its record) from answering this
+    one."""
+    return 'palab_{}_{}_{}'.format(tool, request_id.replace('-', ''), secrets.token_hex(4))
 
 
 def lease_doc(row: sqlite3.Row) -> Dict[str, Any]:
@@ -194,19 +208,11 @@ class ControlPlane:
             if existing is not None:
                 return existing
             self._expire_due(conn, req['console'])
-            stamp = self._stamp()
             try:
                 result, refusal = handler(conn, req, args, token_hash), None
             except Refused as e:
                 result, refusal = None, e.refusal
-            status = 'completed' if refusal is None else 'refused'
-            conn.execute('INSERT INTO requests (client_id, tool, request_id, console, token_hash, status, created_at, '
-                         'completed_at, arguments, result, refusal) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                         (client_id, req['tool'], req['request_id'], req['console'], token_hash, status, stamp,
-                          stamp, _json(args), None if result is None else _json(result),
-                          None if refusal is None else _json(refusal)))
-            self._request_event(conn, req['console'], req['request_id'], req['tool'], result, refusal)
-            return self._record(self._request_row(conn, client_id, req['tool'], req['request_id']))
+            return self._store(conn, req, args, token_hash, result, refusal)
 
     # ---- tickets (long operations; the daemon starts and resolves them) --------------------------
 
@@ -242,6 +248,110 @@ class ControlPlane:
             record = self._record(self._request_row(conn, client_id, tool, request_id))
             self._request_event(conn, row['console'], request_id, tool, result, refusal)
             return record
+
+    # ---- actions (run_program, stop_program: pa_lab.actions talks to the app) --------------------
+
+    def begin_action(self, client_id: str, request: Dict[str, Any], instance_id: str,
+                     check: Callable[[sqlite3.Row, Dict[str, Any]], Optional[Dict[str, Any]]]
+                     ) -> Tuple[Dict[str, Any], bool]:
+        """Decides, in one transaction, whether this call sends a request to the app.
+
+        An exact retry gets its stored record (pending included) and `False`. Otherwise the lease
+        must be held by the request's token and `check(lease_row, arguments)` must pass: it raises
+        Refused (stored as a `refused` record) or returns a result for a request that needs no
+        app action (stored as `completed`). When it returns None the record is stored `pending`
+        with the app instance it was checked against, and the caller must act: `(record, True)`.
+        """
+        req, args, token_hash = self._parse_request(client_id, request)
+        with self._writing() as conn:
+            existing = self._existing(conn, req, args, token_hash)
+            if existing is not None:
+                return existing, False
+            self._expire_due(conn, req['console'])
+            try:
+                lease = self._held(conn, req['console'], token_hash)
+                busy = self._pending_tool(conn, req['console'])
+                if busy is not None:
+                    raise Refused('program_not_stopped', 'An earlier {} on console {} is not settled yet; follow it '
+                                  'with request_status or next_events.'.format(busy, req['console']),
+                                  evidence={'pending_tool': busy})
+                immediate = check(lease, args)
+            except Refused as e:
+                return self._store(conn, req, args, token_hash, None, e.refusal), False
+            if immediate is not None:
+                return self._store(conn, req, args, token_hash, immediate, None), False
+            stamp = self._stamp()
+            conn.execute('INSERT INTO requests (client_id, tool, request_id, console, token_hash, status, created_at, '
+                         "arguments) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)",
+                         (client_id, req['tool'], req['request_id'], req['console'], token_hash, stamp, _json(args)))
+            conn.execute('INSERT INTO actions (client_id, tool, request_id, console, instance_id, inbox_name, '
+                         'written_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                         (client_id, req['tool'], req['request_id'], req['console'], instance_id,
+                          inbox_name(req['tool'], req['request_id']), stamp))
+            return self._record(self._request_row(conn, client_id, req['tool'], req['request_id'])), True
+
+    def action(self, client_id: str, tool: str, request_id: str) -> Optional[Dict[str, Any]]:
+        """What a run_program / stop_program request sent: console, instance_id, inbox_name, written_at."""
+        row = self.db.read().execute('SELECT * FROM actions WHERE client_id = ? AND tool = ? AND request_id = ?',
+                                     (client_id, tool, request_id)).fetchone()
+        return None if row is None else {k: row[k] for k in row.keys()}
+
+    def mark_action(self, client_id: str, tool: str, request_id: str, taken_at: Optional[str] = None,
+                    answered_at: Optional[str] = None) -> Dict[str, Any]:
+        """Stores when the app was first seen taking (`taken_at`) or answering (`answered_at`) the
+        request; a time already stored is kept. Returns the action."""
+        with self._writing() as conn:
+            conn.execute('UPDATE actions SET taken_at = COALESCE(taken_at, ?), answered_at = COALESCE(answered_at, ?) '
+                         'WHERE client_id = ? AND tool = ? AND request_id = ?',
+                         (taken_at, answered_at, client_id, tool, request_id))
+        return self.action(client_id, tool, request_id)
+
+    def record(self, client_id: str, tool: str, request_id: str) -> Optional[Dict[str, Any]]:
+        row = self._request_row(self.db.read(), client_id, tool, request_id)
+        return None if row is None else self._record(row)
+
+    def pending_actions(self, console: str) -> List[Dict[str, Any]]:
+        """Unresolved run_program / stop_program requests on `console`, oldest first."""
+        rows = self.db.read().execute(
+            "SELECT a.* FROM actions a JOIN requests r USING (client_id, tool, request_id) "
+            "WHERE a.console = ? AND r.status = 'pending' ORDER BY a.written_at", (console,)).fetchall()
+        return [{k: row[k] for k in row.keys()} for row in rows]
+
+    def finish_action(self, client_id: str, tool: str, request_id: str, result: Optional[Dict[str, Any]] = None,
+                      refusal: Optional[Dict[str, Any]] = None,
+                      run_started: Optional[Tuple[str, Dict[str, Any]]] = None) -> Dict[str, Any]:
+        """Resolves a pending action once (later calls return the record).
+
+        `run_started` is `(instance_id, transition)`: the app shows this request's start as its
+        last transition. The request's lease, if its token still holds it idle, enters
+        agent_running in the same transaction, unless `observe` has already applied a newer
+        transition (the run ended before this call got here): then it stays idle."""
+        if (result is None) == (refusal is None):
+            raise ValueError('finish_action needs exactly one of result and refusal')
+        with self._writing() as conn:
+            row = self._request_row(conn, client_id, tool, request_id)
+            if row is None:
+                raise Refused('invalid_arguments', 'No request {}.'.format(request_id), field='request_id')
+            if row['status'] != 'pending':
+                return self._record(row)
+            conn.execute('UPDATE requests SET status = ?, completed_at = ?, result = ?, refusal = ? '
+                         'WHERE client_id = ? AND tool = ? AND request_id = ?',
+                         ('completed' if refusal is None else 'failed', self._stamp(),
+                          None if result is None else _json(result), None if refusal is None else _json(refusal),
+                          client_id, tool, request_id))
+            self._request_event(conn, row['console'], request_id, tool, result, refusal)
+            lease = self._lease_row(conn, row['console'])
+            if run_started is not None and lease['state'] == 'agent_idle' and \
+                    lease['token_hash'] == row['token_hash']:
+                instance_id, transition = run_started
+                seen = conn.execute('SELECT transition_key FROM observations WHERE console = ?',
+                                    (row['console'],)).fetchone()
+                if seen is None or seen['transition_key'] == _transition_key(instance_id, transition):
+                    self._set_lease(conn, row['console'], 'run_started', request_id=request_id,
+                                    instance_id=instance_id, state='agent_running', expires_at=None,
+                                    run_request_id=request_id, run_instance_id=instance_id,
+                                    run_started_at=self._stamp())
+            return self._record(self._request_row(conn, client_id, tool, request_id))
 
     # ---- runs and the operator ----------------------------------------------------------------
 
@@ -291,8 +401,7 @@ class ControlPlane:
         self._check_console(console)
         instance = app['instance']['id']
         transition = app['program']['last_transition']
-        key = None if transition is None else _json([instance, transition['at'], transition['action'],
-                                                     transition['source'], transition['request_id']])
+        key = None if transition is None else _transition_key(instance, transition)
         with self._writing() as conn:
             self._expire_due(conn, console)
             seen = conn.execute('SELECT transition_key FROM observations WHERE console = ?', (console,)).fetchone()
@@ -342,6 +451,7 @@ class ControlPlane:
                     conn.execute("SELECT client_id, tool, request_id, completed_at FROM requests WHERE status != 'pending'")
                     if now - timestamps.parse(row['completed_at']) > r.request_ttl_s]
             conn.executemany('DELETE FROM requests WHERE client_id = ? AND tool = ? AND request_id = ?', done)
+            conn.executemany('DELETE FROM actions WHERE client_id = ? AND tool = ? AND request_id = ?', done)
         self._appended = 0
         return {'events': events, 'requests': len(done), 'cursors': len(stale)}
 
@@ -439,6 +549,18 @@ class ControlPlane:
         self._appended += 1
         return cursor.lastrowid
 
+    def _store(self, conn, req, args, token_hash, result, refusal) -> Dict[str, Any]:
+        """Stores a request decided at once: `completed` with its result or `refused`."""
+        stamp = self._stamp()
+        status = 'completed' if refusal is None else 'refused'
+        conn.execute('INSERT INTO requests (client_id, tool, request_id, console, token_hash, status, created_at, '
+                     'completed_at, arguments, result, refusal) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                     (req['client_id'], req['tool'], req['request_id'], req['console'], token_hash, status, stamp,
+                      stamp, _json(args), None if result is None else _json(result),
+                      None if refusal is None else _json(refusal)))
+        self._request_event(conn, req['console'], req['request_id'], req['tool'], result, refusal)
+        return self._record(self._request_row(conn, req['client_id'], req['tool'], req['request_id']))
+
     def _request_event(self, conn, console, request_id, tool, result, refusal) -> None:
         if refusal is None:
             self._append(conn, 'request_completed', console,
@@ -473,9 +595,21 @@ class ControlPlane:
         self._append(conn, 'lease_changed', console, {'old': old, 'new': new, 'reason': reason},
                      instance_id=instance_id, request_id=request_id, at=at)
 
+    @staticmethod
+    def _pending_tool(conn, console: str, tool: Optional[str] = None) -> Optional[str]:
+        """The tool of an unsettled action on `console` (only `tool`, when given), or None."""
+        row = conn.execute(
+            "SELECT a.tool FROM actions a JOIN requests r USING (client_id, tool, request_id) "
+            "WHERE a.console = ? AND r.status = 'pending' AND (? IS NULL OR a.tool = ?) LIMIT 1",
+            (console, tool, tool)).fetchone()
+        return None if row is None else row['tool']
+
     def _expire_due(self, conn, console: str) -> None:
+        """Frees an idle lease past its expiry, unless a run_program is pending: that run may still
+        start, and a run must not start unleased (it is checked again once the request settles)."""
         row = self._lease_row(conn, console)
-        if row['state'] == 'agent_idle' and timestamps.parse(row['expires_at']) <= self.now():
+        if row['state'] == 'agent_idle' and timestamps.parse(row['expires_at']) <= self.now() and \
+                self._pending_tool(conn, console, 'run_program') is None:
             self._set_lease(conn, console, 'expired', at=row['expires_at'],
                             **self._freed('expired', row['token_hash']))
 
@@ -542,6 +676,10 @@ class ControlPlane:
         row = self._held(conn, console, token_hash)
         if row['state'] == 'agent_running':
             raise Refused('program_running', 'A run holds console {}; stop it before releasing.'.format(console))
+        if self._pending_tool(conn, console, 'run_program') is not None:
+            raise Refused('program_running', 'A run_program on console {} is not settled yet and may still start '
+                          'the program; follow it with request_status, then stop or release.'.format(console),
+                          evidence={'pending_tool': 'run_program'})
         self._set_lease(conn, console, 'released', request_id=req['request_id'],
                         **self._freed('released', row['token_hash']))
         return lease_doc(self._lease_row(conn, console))

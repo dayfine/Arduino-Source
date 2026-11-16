@@ -4,7 +4,7 @@
   python3 -m pa_lab describe app_state
   python3 -m pa_lab kinds
   python3 -m pa_lab init-token ~/.config/pa-lab/token
-  python3 -m pa_lab serve --config ~/.config/pa-lab/server.json [--read-only]
+  python3 -m pa_lab serve --config ~/.config/pa-lab/server.json [--read-only | --actions]
   python3 -m pa_lab serve-stdio --profile-dir ~/Library/Application\\ Support/SerialPrograms/Profiles/lab-B
   python3 -m pa_lab lease --config ~/.config/pa-lab/server.json show|claim-user|release-user
 
@@ -35,6 +35,8 @@ def main(argv=None) -> int:
     serve.add_argument('--config', required=True)
     serve.add_argument('--read-only', action='store_true',
                        help='serve only console_status and the resources: no inbox tools, no control plane')
+    serve.add_argument('--actions', action='store_true',
+                       help='also serve run_program and stop_program (Slice 5a): they start and stop the program')
     stdio = sub.add_parser('serve-stdio', help='run the read-only MCP server on stdio (for .mcp.json)')
     stdio.add_argument('--profile-dir', required=True, help="the console's SerialPrograms profile folder")
     stdio.add_argument('--keepawake-log', default='~/BDSPLab/keepawake.log')
@@ -77,7 +79,10 @@ def main(argv=None) -> int:
         print('wrote {}'.format(args.path))
         return 0
     if args.command == 'serve':
-        return _serve(args.config, args.read_only)
+        if args.read_only and args.actions:
+            print('error --read-only and --actions exclude each other')
+            return 2
+        return _serve(args.config, args.read_only, args.actions)
     if args.command == 'serve-stdio':
         from pa_lab import stdio_server
         return stdio_server.main(args.profile_dir, args.keepawake_log)
@@ -87,7 +92,7 @@ def main(argv=None) -> int:
     return 2
 
 
-def _serve(path: str, read_only: bool = False) -> int:
+def _serve(path: str, read_only: bool = False, actions: bool = False) -> int:
     from pa_lab import lab_reader, mcp_server
     try:
         cfg = config.load(path)
@@ -112,7 +117,13 @@ def _serve(path: str, read_only: bool = False) -> int:
     for reader in readers.values():  # restart reconciliation: apply what the app shows now
         reader.console_state()
     plane.compact()
-    server = mcp_server.make_server(cfg.port, token, readers, control_plane=plane)
+    program_actions = None
+    if actions:
+        from pa_lab import actions as actions_module
+        program_actions = actions_module.ProgramActions(plane, readers)
+        for name in readers:  # settle what a stopped daemon left pending (e.g. a request never written)
+            program_actions.settle_pending(name)
+    server = mcp_server.make_server(cfg.port, token, readers, control_plane=plane, actions=program_actions)
     return _serve_forever(server, readers, mcp_server.ENDPOINT)
 
 
