@@ -84,6 +84,50 @@ const FrameCase FRAME_CASES[] = {
     },
 };
 
+struct BattleFrameCase{
+    std::string name;
+    struct Input{
+        std::string_view path;  //  In CommandLineTests/PokemonLZA/.
+    };
+    Input input;
+    struct Expectation{
+        bool battle = false;
+    };
+    Expectation expectation;
+};
+
+const BattleFrameCase BATTLE_FRAME_CASES[] = {
+    {
+        //  console B, 2026-11-16 (03.02b run 4): Taunie's Totodile
+        //  attacking, the player not locked on, so no move list or its
+        //  hints; only Chikorita's panel at the bottom left shows the
+        //  battle. story_battle_start waited 90 s for it.
+        .name = "a battle with the player not locked on: the panel, no move hints",
+        .input = {.path = "AutoStoryScreenEvents/it_0302b_battle_no_lock_on.png"},
+        .expectation = {.battle = true},
+    },
+    {
+        .name = "no battle at the A Talk prompt on the Italian game",
+        .input = {.path = "AutoStoryScreenEvents/it_0102_parla_talk_prompt.png"},
+        .expectation = {.battle = false},
+    },
+    {
+        .name = "no battle at an A prompt while the player is held",
+        .input = {.path = "AutoStoryScreenEvents/za2_m3v_s1.png"},
+        .expectation = {.battle = false},
+    },
+};
+
+UnitTestResult check_battle_frame(const BattleFrameCase& test){
+    const std::string path = std::format("{}PokemonLZA/{}", UNIT_TEST_RESOURCE_PATH(), test.input.path);
+    PlzaScreenObserver observer;
+    const bool battle = observer.read(ImageRGB32(path)).has(ScreenEvent::BATTLE_STARTED);
+    if (battle != test.expectation.battle){
+        return std::format("{}: expected battle {}, got {}", test.input.path, test.expectation.battle ? "yes" : "no", battle ? "yes" : "no");
+    }
+    return true;
+}
+
 struct FolderCase{
     std::string name;
     struct Input{
@@ -158,6 +202,20 @@ private:
     const FrameCase& m_test;
 };
 
+class Test_BattleFrame : public UnitTest{
+public:
+    explicit Test_BattleFrame(const BattleFrameCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStoryScreenEvents - battle frame: {}", test.name))
+        , m_test(test)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return check_battle_frame(m_test);
+    }
+
+private:
+    const BattleFrameCase& m_test;
+};
+
 class Test_Folder : public UnitTest{
 public:
     explicit Test_Folder(const FolderCase& test)
@@ -178,6 +236,9 @@ private:
 void add_tests_AutoStoryScreenEvents(UnitTestDatabase& database){
     for (const FrameCase& test : FRAME_CASES){
         database.add<Test_Frame>(test);
+    }
+    for (const BattleFrameCase& test : BATTLE_FRAME_CASES){
+        database.add<Test_BattleFrame>(test);
     }
     for (const FolderCase& test : FOLDER_CASES){
         database.add<Test_Folder>(test);
