@@ -168,11 +168,16 @@ def _need_panel(app: Dict[str, Any], panel: str) -> None:
 
 
 def save_now(reader: ConsoleReader) -> Dict[str, Any]:
-    """`console://B/save` as a token binds it; an unreadable save.json is its own status."""
+    """`console://B/save` as a token binds it, with the newest cfr_batch's time (`cfr_at`): a batch
+    makes a token stale even when there is no save fact to mark. An unreadable save.json is its own
+    status."""
     try:
-        return reader.save_resource()
+        doc = dict(reader.save_resource())
     except Unavailable as e:
-        return {'status': 'unreadable', 'reason': e.reason, 'since': None}
+        doc = {'status': 'unreadable', 'reason': e.reason, 'since': None}
+    mark = reader.control.save_mark(reader.console) if reader.control is not None else None
+    doc['cfr_at'] = None if mark is None else mark['at']
+    return doc
 
 
 def check_preflight(state: Dict[str, Any], program: Dict[str, Any], lease: Any, args: Dict[str, Any]) -> None:

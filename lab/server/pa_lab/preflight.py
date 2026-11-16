@@ -23,7 +23,7 @@ line, `preflight <JSON>`:
 
 **The token** is the hash of what the preflight was checked against (`binding`): the app instance,
 the program id, the candidate options' hash, the observation versions a run depends on (the last
-start/stop transition and `console://B/save`'s status) and the lease (its token's hash), plus a
+start/stop transition, `console://B/save`'s status and the newest `cfr_batch`) and the lease (its token's hash), plus a
 random salt so it cannot be guessed. The daemon stores the binding under the token's hash;
 `run_program` recomputes it from what it reads now and refuses a token whose binding changed
 (`preflight_stale`, `evidence.changed`) or that is older than `TOKEN_TTL_S`.
@@ -211,7 +211,8 @@ def binding(state: Dict[str, Any], save: Dict[str, Any], panel: str, options: Di
     app = state['app']
     return {'console': state['console'], 'instance_id': app['instance']['id'], 'panel': panel,
             'options_hash': options_hash(options), 'transition': transition_key(app),
-            'save': [save.get('status'), save.get('reason'), save.get('since')], 'lease': lease_token_hash}
+            'save': [save.get('status'), save.get('reason'), save.get('since'), save.get('cfr_at')],
+            'lease': lease_token_hash}
 
 
 def new_token(bound: Dict[str, Any]) -> str:

@@ -170,6 +170,8 @@ class TokenTests(PreflightTest):
             dict(name='the app restarted', input=(app_restart, None), expectation=['instance_id']),
             dict(name='a save was written', input=(save_written, None), expectation=['save']),
             dict(name='a cfr_batch ran', input=(cfr_batch, None), expectation=['save']),
+            dict(name='a cfr_batch ran with no save fact', input=(cfr_batch, None, None, 'no fact'),
+                 expectation=['save']),
             dict(name='other options', input=(None, {'START_SEGMENT': 4}), expectation=['options_hash']),
             dict(name='too old', input=(too_old, None), expectation='expired'),
             dict(name='never issued', input=(None, None, NO_TOKEN), expectation='unknown_token'),
@@ -178,12 +180,14 @@ class TokenTests(PreflightTest):
             with self.subTest(case['name']):
                 self.setUp()
                 self.token = self.acquired()
-                self.lab.write_save(save_known(self))
+                if 'no fact' not in case['input']:
+                    self.lab.write_save(save_known(self))
                 checked = self.passed(self.token, {'START_SEGMENT': 3})
                 setup, options = case['input'][:2]
                 if setup is not None:
                     setup(self)
-                run_token = case['input'][2] if len(case['input']) > 2 else checked['result']['preflight_token']
+                run_token = case['input'][2] if len(case['input']) > 2 and case['input'][2] else \
+                    checked['result']['preflight_token']
                 record = self.run_with(self.token, run_token, options or {'START_SEGMENT': 3})
                 self.assertEqual((record['status'], record['refusal']['code']), ('refused', 'preflight_stale'),
                                  record)
