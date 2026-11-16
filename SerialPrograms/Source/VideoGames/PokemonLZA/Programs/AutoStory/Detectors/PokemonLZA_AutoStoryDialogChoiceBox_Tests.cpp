@@ -47,16 +47,35 @@ void fill_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t c
     }
 }
 
+//  How wide a choice menu's panel is and how far its rows' text runs: the
+//  panel grows to the left to fit its longest row.
+struct MenuWidth{
+    size_t panel_left = 1408;
+    size_t text_end = 1540;
+};
+
+//  The menus whose rows read on the console in Japanese and Chinese.
+constexpr MenuWidth NARROW_MENU{};
+//  The Italian 01.02 menu's panel (x 1343), with every row's text running
+//  to x 1688, near the highlight's right end.
+constexpr MenuWidth WIDE_MENU_LONG_ROWS{.panel_left = 1343, .text_end = 1688};
+//  The same panel with rows as short as "Si": no text past x 1400.
+constexpr MenuWidth WIDE_MENU_SHORT_ROWS{.panel_left = 1343, .text_end = 1400};
+
 //  A choice menu of `rows` rows drawn as the console shows it (1920 x 1080)
-//  on `background`: the panel x 1408 to 1728, from y 808 up, one 80 pitch
-//  per row; row k from the bottom highlighted white at y 732 - 80k to
-//  800 - 80k, x 1418 to 1715. Each row's text starts at x 1443, in strokes
-//  one column in three: dark on the highlighted rows (`highlighted`),
-//  white on the others.
-ImageRGB32 choice_menu_frame(uint32_t background, size_t rows, std::initializer_list<size_t> highlighted){
+//  on `background`: the panel from x `width.panel_left` to 1728, from
+//  y 808 up, one 80 pitch per row; row k from the bottom highlighted white
+//  at y 732 - 80k to 800 - 80k, from 10 right of the panel's left to
+//  x 1715. Each row's text runs from 35 right of the panel's left to
+//  `width.text_end`, in strokes one column in three: dark on the
+//  highlighted rows (`highlighted`), white on the others.
+ImageRGB32 choice_menu_frame(
+    uint32_t background, size_t rows, std::initializer_list<size_t> highlighted,
+    MenuWidth width = NARROW_MENU
+){
     ImageRGB32 image(1920, 1080);
     image.fill(background);
-    fill_box(/*min_x=*/1408, 808 - 80 * rows - 4, /*max_x=*/1728, /*max_y=*/808, PANEL, image);
+    fill_box(width.panel_left, 808 - 80 * rows - 4, /*max_x=*/1728, /*max_y=*/808, PANEL, image);
     for (size_t row = 0; row < rows; row++){
         const size_t from_bottom = rows - 1 - row;
         const size_t top = 732 - 80 * from_bottom;
@@ -65,9 +84,9 @@ ImageRGB32 choice_menu_frame(uint32_t background, size_t rows, std::initializer_
             lit = lit || pick == row;
         }
         if (lit){
-            fill_box(/*min_x=*/1418, top, /*max_x=*/1715, top + 68, WHITE, image);
+            fill_box(width.panel_left + 10, top, /*max_x=*/1715, top + 68, WHITE, image);
         }
-        for (size_t x = 1443; x < 1540; x += 3){
+        for (size_t x = width.panel_left + 35; x < width.text_end; x += 3){
             fill_box(x, top + 16, x + 1, top + 52, lit ? DARK_TEXT : WHITE, image);
         }
     }
@@ -127,6 +146,16 @@ const SyntheticCase SYNTHETIC_CASES[] = {
         .name = "four rows, the bottom highlighted",
         .input = {.frame = []{ return choice_menu_frame(PAVEMENT, /*rows=*/4, /*highlighted=*/{3}); }},
         .expectation = {.rows = DialogChoiceRows{.count = 4, .selected = 3}},
+    },
+    {
+        .name = "two long rows on a wide panel, the top highlighted",
+        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, /*rows=*/2, /*highlighted=*/{0}, WIDE_MENU_LONG_ROWS); }},
+        .expectation = {.rows = DialogChoiceRows{.count = 2, .selected = 0}},
+    },
+    {
+        .name = "three short rows on a wide panel, on a blue wall, the bottom highlighted",
+        .input = {.frame = []{ return choice_menu_frame(BLUE_WALL, /*rows=*/3, /*highlighted=*/{2}, WIDE_MENU_SHORT_ROWS); }},
+        .expectation = {.rows = DialogChoiceRows{.count = 3, .selected = 2}},
     },
     {
         .name = "one highlighted row is no menu",
@@ -190,6 +219,11 @@ const FrameCase FRAME_CASES[] = {
         .name = "the Research Lab elevator's floors (3 rows, Japanese)",
         .input = {.file = "AutoStoryDialogChoices/elevator_3rows_row0.png"},
         .expectation = {.rows = DialogChoiceRows{.count = 3, .selected = 0}},
+    },
+    {
+        .name = "Villy's \"I'll get it back\" or \"battle\" at 01.02 (2 rows, Italian: a wider panel)",
+        .input = {.file = "AutoStoryDialogChoices/it_0102_villy_2rows_row0.png"},
+        .expectation = {.rows = DialogChoiceRows{.count = 2, .selected = 0}, .choice_box = true},
     },
     {
         .name = "light pavement, no menu",
