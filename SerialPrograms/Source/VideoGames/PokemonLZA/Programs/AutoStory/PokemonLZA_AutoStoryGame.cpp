@@ -238,7 +238,8 @@ Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
 //  controls hint held a second, or a main mission's banner on two looks
 //  (the step returns once it has gone, 10 s at most). With
 //  "end_after_black_fades", that many black fades lifted and settled end
-//  it instead of the banner: 01.01's arrival goes ad, loading, a fade from
+//  it, 5 s after the last one (or the controls hint, if it comes first),
+//  instead of the banner: 01.01's arrival goes ad, loading, a fade from
 //  black, the rival's talk, Pancham, the "MAIN MISSION 01" banner, a
 //  second black fade, then control (console B, 2026-11-15; the banner
 //  detector missed the banner on the Italian game, and control came ~7 s

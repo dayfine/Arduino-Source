@@ -320,7 +320,7 @@ const RunCase RUN_CASES[] = {
         //  from black into the rival's talk and Pancham; the mission banner
         //  (which the detector can miss) is followed by a second black
         //  fade, then control.
-        .name = "01.01's arrival ends once its second black fade has lifted and settled, past the banner",
+        .name = "01.01's arrival ends 5 s after its second black fade, past the banner",
         .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
             look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(1000)),
@@ -331,7 +331,7 @@ const RunCase RUN_CASES[] = {
             look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(4000)),
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(5000)),
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(5250)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(7500)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(10500)),
         }},
         .expectation = {
             .verdict = "done",
@@ -340,7 +340,7 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        .name = "01.01's arrival goes on when text follows its second black fade",
+        .name = "01.01's arrival with the banner and the hint missed ends 5 s after the text that follows its second fade",
         .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
             look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(500)),
@@ -350,12 +350,29 @@ const RunCase RUN_CASES[] = {
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(2250)),
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(3000)),
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(3500)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(5500)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(8500)),
         }},
         .expectation = {
             .verdict = "done",
             .inputs = "press A, wait 250ms, wait 250ms, wait 500ms, press A, wait 500ms",
-            .line = "[PLZA mash_to_move_hints] done on fade_settled.",
+            .line = "[PLZA mash_to_move_hints] the mission banner did not show (the detector may have missed it).",
+        },
+    },
+    {
+        .name = "01.01's arrival ends on the controls hint before the 5 s after its second fade",
+        .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(500)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)),
+            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(1500)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)),
+            look(/*events=*/{}, {CONTROLS_HINT_READING}, Milliseconds(2250)),
+            look(/*events=*/{}, {CONTROLS_HINT_READING}, Milliseconds(3250)),
+        }},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A, wait 250ms, wait 250ms, wait 250ms",
+            .line = "[PLZA mash_to_move_hints] done on controls_hint.",
         },
     },
     {

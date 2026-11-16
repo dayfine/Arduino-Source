@@ -44,11 +44,12 @@ struct SceneMachineConfig{
     //  not skip a cutscene.
     std::optional<Milliseconds> blind_press_after = std::nullopt;
     //  Ends once this many black fades have been waited out and the screen
-    //  has then shown no text, fade or banner for 2 s, and takes the
-    //  mission banner for part of the scene, not its end: 01.01's arrival
+    //  has then shown no text, fade or banner for 5 s (or on the controls
+    //  hint, if it comes first), and takes the mission banner for part of
+    //  the scene, not its end; whether it showed is logged. 01.01's arrival
     //  ends on its second black fade after the ad, which follows the
     //  banner (console B, 2026-11-15; the banner detector missed it on the
-    //  Italian game). Text after the last fade waits for the next one.
+    //  Italian game). Text after the last fade starts the 5 s again.
     std::optional<size_t> end_after_black_fades = std::nullopt;
 };
 
