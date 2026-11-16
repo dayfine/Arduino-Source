@@ -478,7 +478,8 @@ event, and each UI Start/Stop shows up once. Run it yourself during a run you ar
 1. Use a lab build with #601, #608 and #616 (the app's `preflight`, the user hold, the cancel fix),
    and a program that lists its start checks. Do it within a day of the run: `disk_gc.sh` prunes
    `Lab/done/` and `Lab/outbox/`.
-2. Note the start: `T0=$(date -u +%Y-%m-%dT%H:%M:%SZ)` and
+2. Note the start, with milliseconds like the stored times (a `T0` without them would leave out
+   the rows of its own second): `T0=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)` and
    `DB=~/.local/state/pa-lab/control.sqlite`.
 3. From `lab/server`, start the daemon with actions:
    `python3 -m pa_lab serve --config ~/.config/pa-lab/server.json --actions`.
@@ -489,15 +490,17 @@ event, and each UI Start/Stop shows up once. Run it yourself during a run you ar
    run (user takeover); restart the daemon while a `run_program` is pending; one short
    `cfr_batch` (`shot`, `press B`).
 5. Check, after the run, with the daemon stopped:
-   - every request has exactly one terminal event (no rows expected):
-     `sqlite3 "$DB" "SELECT r.tool, r.request_id, r.status, COUNT(e.seq) FROM requests r LEFT JOIN events e ON e.request_id = r.request_id AND e.type IN ('request_completed','request_failed') WHERE r.created_at >= '$T0' GROUP BY 1, 2, 3 HAVING COUNT(e.seq) != 1"`
-   - nothing is left pending: `sqlite3 "$DB" "SELECT tool, request_id FROM requests WHERE status = 'pending'"`
-   - every request the app took has one `actions` row, and the reverse: compare
-     `ls ~/Library/Application\ Support/SerialPrograms/Profiles/lab-B/Lab/done | grep '^palab_' | sed 's/\.txt$//' | sort`
-     with `sqlite3 "$DB" "SELECT inbox_name FROM actions WHERE written_at >= '$T0' ORDER BY 1"`.
-     Only an action that settled `timeout` with nothing sent (withdrawn, `never_sent`) may lack a
-     `done/` file; each `done/` name appears once.
-   - each UI Start/Stop you clicked is one event:
+   `python3 -m pa_lab soak-check --config ~/.config/pa-lab/server.json --since "$T0"` (`pa_lab/soak.py`)
+   prints the mismatches as JSON and exits 0 when there are none:
+   - `terminal_events`: requests since `T0` without exactly one terminal event of their own tool
+     (matched on tool and request id, so an id reused across tools is not a mismatch);
+   - `pending`: requests left pending;
+   - `done_without_action`: requests in `Lab/done/` the daemon wrote with no `actions` row. The
+     read-only requests listed in `soak.READ_ONLY_REQUESTS` (such as the `describe_program` that
+     `preflight_program` sends first, and `shot`) have none and are skipped;
+   - `action_without_done`: `actions` rows since `T0` without a `done/` file. Only an action that
+     settled `timeout` with nothing sent (withdrawn, `never_sent`) may be here.
+   Then by hand: each UI Start/Stop you clicked is one event:
      `sqlite3 "$DB" "SELECT seq, type, at, payload FROM events WHERE at >= '$T0' AND type IN ('lease_changed', 'stopped') ORDER BY seq"`.
 6. Pass: no mismatches. Note the counts (requests, actions, `done/` files, events) and any mismatch
    with its request id in the run record; a mismatch is a bug in the daemon, not in the run.
