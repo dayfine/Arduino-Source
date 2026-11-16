@@ -39,9 +39,11 @@ public:
     virtual ~BoulderPresses() = default;
     //  A step tap `direction`, and what it did.
     virtual BoulderPressRead press(Direction direction) = 0;
-    //  After a tap that did not do what the push needs: clears what
-    //  stopped it (a wild battle the step before set off). Whether
-    //  something was cleared, so the tap may be tried again.
+    //  After a tap that did not do what the push needs: waits for the
+    //  overworld to be quiet and in the player's control again, past what
+    //  stopped the tap: a floor switch's script lock, a box (closed), a
+    //  wild battle the step before set off (run from). Whether it is, so
+    //  the tap may be tried again.
     virtual bool clear_interrupt() = 0;
 };
 

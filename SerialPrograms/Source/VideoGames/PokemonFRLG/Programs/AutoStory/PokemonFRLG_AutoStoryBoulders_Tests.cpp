@@ -403,6 +403,27 @@ UnitTestResult test_boulder_flags_follow_the_boulder(){
     return true;
 }
 
+//  19.04b push_onto_switch (console B, 2026-11-16 01:28): the boulder
+//  lands on 1F's switch (20, 16), whose script locks the player until its
+//  sound ends, and the step tap after the push was lost. The step tap is
+//  tried again once the overworld is quiet, and the player ends on (20, 15).
+UnitTestResult test_push_onto_a_switch_waits_out_its_script(){
+    const std::vector<MapData> maps = with_boulders_moved(story_maps(), {BoulderMove{.map = "VictoryRoad_1F", .from = {7, 18}, .at = {20, 15}}});
+    OverworldSim sim(maps, MapPosition{"VictoryRoad_1F", {20, 14}}, Direction::SOUTH);
+    sim.change_gates({});
+    StoryPose at{"VictoryRoad_1F", {20, 14}, Direction::SOUTH};
+    if (const std::string failure = row_step_on_sim(sim, at, push_step(Direction::SOUTH, /*tiles=*/1), "19.04b"); !failure.empty()){
+        return failure;
+    }
+    if (!(sim.state().position == MapPosition{"VictoryRoad_1F", {20, 15}})){
+        return std::format("after the push, the player is on {}, not (20, 15).", to_string(sim.state().position));
+    }
+    if (sim.state().gates.switches_on.empty()){
+        return "no switch on.";
+    }
+    return true;
+}
+
 const BoulderPressRead PUSHED{.scrolled = false, .boulder_moved = true};
 const BoulderPressRead WALKED{.scrolled = true, .boulder_moved = false};
 
@@ -534,6 +555,10 @@ const AutoStoryBouldersCase AUTO_STORY_BOULDERS_CASES[] = {
     {
         .input = {.name = "the run flags of a boulder pushed twice, then left", .body = test_boulder_flags_follow_the_boulder},
         .expectation = {.description = "one flag, (7, 19) to (12, 19); none after leaving"},
+    },
+    {
+        .input = {.name = "19.04b's push onto 1F's switch", .body = test_push_onto_a_switch_waits_out_its_script},
+        .expectation = {.description = "the lost step tap tried again after the switch's script: on (20, 15), the switch on"},
     },
     {
         .input = {.name = "a push of two tiles", .body = test_push_taps_twice_a_tile},
