@@ -28,6 +28,7 @@
 #include "PokemonFRLG_AutoStoryPresses.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
 #include "PokemonFRLG_AutoStoryLaunch.h"
+#include "PokemonFRLG_AutoStoryFailureClasses.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -120,7 +121,7 @@ public:
     }
     virtual Pokemon::Observation<GridPose> observe() override;
     virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs&) override{
-        return Pokemon::outcome_failed("unsupported_step", "a launch fights no battle");
+        return frlg_failed("unsupported_step", "a launch fights no battle");
     }
     virtual void log(std::string_view line) override{
         m_console.log(std::string(line), COLOR_BLUE);
@@ -245,7 +246,7 @@ Pokemon::Outcome launch_frlg_save(ConsoleHandle& console, ProControllerContext& 
     try{
         mash_until_overworld(console, context, RECAP_TIMEOUT);
     }catch (OperationFailedException& e){
-        return Pokemon::outcome_failed(std::string(Pokemon::STORY_LAUNCH_FAILED), std::format("frlg: no START menu after the load: {}", e.message()));
+        return frlg_failed(std::string(Pokemon::STORY_LAUNCH_FAILED), std::format("frlg: no START menu after the load: {}", e.message()));
     }
     return Pokemon::outcome_ok();
 }

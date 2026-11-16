@@ -8,6 +8,7 @@
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
 #include "PokemonFRLG_AutoStoryParty.h"
+#include "PokemonFRLG_AutoStoryFailureClasses.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -22,7 +23,7 @@ Outcome mart(Logger& logger, const MartPlan& plan, StoryAbilities& abilities){
     const MartResult result = run_mart(logger, abilities.mart, abilities.mart_sell, plan);
     const std::string message = mart_message(plan, result);
     logger.log(message, result.end == MartEnd::DONE ? COLOR_BLACK : COLOR_RED);
-    return result.end == MartEnd::DONE ? Pokemon::outcome_ok() : Pokemon::outcome_failed(std::format("mart_{}", mart_end_name(result.end)), message);
+    return result.end == MartEnd::DONE ? Pokemon::outcome_ok() : frlg_failed(std::format("mart_{}", mart_end_name(result.end)), message);
 }
 
 Outcome teach(Logger& logger, const TeachPlan& plan, StoryAbilities& abilities){
@@ -41,7 +42,7 @@ Outcome teach(Logger& logger, const TeachPlan& plan, StoryAbilities& abilities){
     if (result.end == TeachEnd::ALREADY_KNOWN){
         return Pokemon::outcome_unchanged();
     }
-    return Pokemon::outcome_failed(std::format("teach_{}", teach_end_name(result.end)), teach_message(plan, result));
+    return frlg_failed(std::format("teach_{}", teach_end_name(result.end)), teach_message(plan, result));
 }
 
 Outcome level(Logger& logger, const LevelCheck& check, StoryAbilities& abilities){
@@ -50,11 +51,11 @@ Outcome level(Logger& logger, const LevelCheck& check, StoryAbilities& abilities
     case LevelEnd::REACHED:
         return Pokemon::outcome_unchanged();
     case LevelEnd::BELOW:
-        return Pokemon::outcome_failed("level_below", std::to_string(*result.level) + " < " + std::to_string(check.level));
+        return frlg_failed("level_below", std::to_string(*result.level) + " < " + std::to_string(check.level));
     case LevelEnd::UNREAD:
         break;
     }
-    return Pokemon::outcome_failed("level_unread");
+    return frlg_failed("level_unread");
 }
 
 Outcome grind(Logger& logger, VideoStream* stream, const GrindPlan& plan, StoryAbilities& abilities){
@@ -70,7 +71,7 @@ Outcome grind(Logger& logger, VideoStream* stream, const GrindPlan& plan, StoryA
     if (result.end == GrindEnd::REACHED){
         return Pokemon::outcome_ok();
     }
-    return Pokemon::outcome_failed(std::string("grind_") + std::string(grind_end_name(result.end)), message);
+    return frlg_failed(std::string("grind_") + std::string(grind_end_name(result.end)), message);
 }
 
 Outcome fossil(Logger& logger, Fossil fossil, StoryAbilities& abilities){
@@ -79,7 +80,7 @@ Outcome fossil(Logger& logger, Fossil fossil, StoryAbilities& abilities){
         return Pokemon::outcome_ok();
     }
     logger.log("Choice: " + result.detail, COLOR_RED);
-    return Pokemon::outcome_failed(std::string("fossil_") + std::string(choice_end_name(result.end)), result.detail);
+    return frlg_failed(std::string("fossil_") + std::string(choice_end_name(result.end)), result.detail);
 }
 
 } // namespace
@@ -90,26 +91,26 @@ std::optional<Outcome> run_ability_game_step(
 ){
     if (step.action == MART_ACTION){
         const std::optional<MartPlan> plan = mart_plan_of(step.args);
-        return plan ? mart(logger, *plan, abilities) : Pokemon::outcome_failed("bad_args", step.action);
+        return plan ? mart(logger, *plan, abilities) : frlg_failed("bad_args", step.action);
     }
     if (step.action == TEACH_ACTION){
         const std::optional<TeachPlan> plan = teach_plan_of(step.args);
-        return plan ? teach(logger, *plan, abilities) : Pokemon::outcome_failed("bad_args", step.action);
+        return plan ? teach(logger, *plan, abilities) : frlg_failed("bad_args", step.action);
     }
     if (step.action == LEVEL_ACTION){
         const std::optional<LevelCheck> check = level_check_of(step.args);
-        return check ? level(logger, *check, abilities) : Pokemon::outcome_failed("bad_args", step.action);
+        return check ? level(logger, *check, abilities) : frlg_failed("bad_args", step.action);
     }
     if (step.action == GRIND_ACTION){
         const std::optional<GrindPlan> plan = grind_plan_of(step.args);
         if (!plan || !step.args.contains("nurse")){
-            return Pokemon::outcome_failed("bad_args", step.action + (step.args.contains("nurse") ? "" : " (no nurse)"));
+            return frlg_failed("bad_args", step.action + (step.args.contains("nurse") ? "" : " (no nurse)"));
         }
         return grind(logger, stream, *plan, abilities);
     }
     if (step.action == FOSSIL_ACTION){
         const std::optional<Fossil> choice = fossil_of(step.args);
-        return choice ? fossil(logger, *choice, abilities) : Pokemon::outcome_failed("bad_args", step.action);
+        return choice ? fossil(logger, *choice, abilities) : frlg_failed("bad_args", step.action);
     }
     return std::nullopt;
 }

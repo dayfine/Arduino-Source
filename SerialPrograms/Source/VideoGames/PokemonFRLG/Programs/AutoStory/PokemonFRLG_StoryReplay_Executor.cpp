@@ -10,6 +10,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_StoryReplay_Executor.h"
+#include "PokemonFRLG_AutoStoryFailureClasses.h"
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
@@ -365,7 +366,7 @@ Pokemon::Outcome ReplayExecutor::replay_route(const StoryStep& step, Pokemon::Ru
         moves += (size_t)leg.tiles;
     }
     if (moves > (size_t)m_data->binding.to_object_throw().get_integer_throw("max_route_moves")){
-        return Pokemon::outcome_failed("route_move_budget_exceeded");
+        return frlg_failed("route_move_budget_exceeded");
     }
     timed_plan(step, route);
     m_next_leg = 0;
@@ -377,7 +378,7 @@ Pokemon::Outcome ReplayExecutor::replay_route(const StoryStep& step, Pokemon::Ru
     try{
         run_route(route, m_pose.facing, nullptr, calls);
     }catch (const ReplayStopped&){
-        return Pokemon::outcome_failed(m_interrupted ? "encounter_requires_recovery" : "native_route_stopped");
+        return frlg_failed(m_interrupted ? "encounter_requires_recovery" : "native_route_stopped");
     }
     if (signal() && !m_interrupted){
         throw ParseException("story replay: physical encounter injection was not reached");
@@ -389,12 +390,12 @@ Pokemon::Outcome ReplayExecutor::replay_step(const StoryStep& step, const Pokemo
     const auto next = predict_overworld_press(maps_through(state.gates), m_pose, Pokemon::story_arg<Direction>(step.args, "direction"));
     if (!next){
         lose_pose("unknown-after-transition");
-        return Pokemon::outcome_failed("step_unresolved");
+        return frlg_failed("step_unresolved");
     }
     m_actions.push_back(action_json(step, m_pose, *next));
     if (signal()){
         lose_pose("unknown-after-transition");
-        return Pokemon::outcome_failed("transition_unconfirmed");
+        return frlg_failed("transition_unconfirmed");
     }
     m_pose = next->pose;
     m_moves++;
@@ -413,7 +414,7 @@ Pokemon::Outcome ReplayExecutor::replay_scene(const StoryStep& step){
     if (!s || s->get_string_throw("screen") != "overworld" || s->get_value_throw("pose") != pose_json(expected, expected.facing)
         || s->get_value_throw("received") != required){
         lose_pose("unknown-after-scene");
-        return Pokemon::outcome_failed("scene_evidence_missing_or_mismatched");
+        return frlg_failed("scene_evidence_missing_or_mismatched");
     }
     m_pose = read_pose(s->get_value_throw("pose"), m_data->maps);
     m_basis = "scripted-observation";

@@ -20,6 +20,7 @@
 #include "PokemonFRLG_AutoStorySlope.h"
 #include "PokemonFRLG_AutoStorySlopeMessage.h"
 #include "PokemonFRLG_AutoStorySlopeRun.h"
+#include "PokemonFRLG_AutoStoryFailureClasses.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -127,7 +128,7 @@ Pokemon::Outcome ride(SlopeEnv& env, const StoryStep& step, const std::vector<Sl
     };
     const SlopeResult result = ride_slope(moves, calls);
     if (result.end != SlopeEnd::DONE){
-        return Pokemon::outcome_failed("slope_" + slope_end_name(result.end), std::format("move {}", result.move + 1));
+        return frlg_failed("slope_" + slope_end_name(result.end), std::format("move {}", result.move + 1));
     }
     return step.pose_after ? Pokemon::outcome_ok(Pokemon::pose_of(*step.pose_after)) : Pokemon::outcome_ok();
 }
@@ -153,10 +154,10 @@ Pokemon::Outcome count_items(SlopeEnv& env, const StoryStep& step){
         const int count = read_count(rows, item);
         env.console.log(std::format("Bag: {} x{}.", item, count));
         if (count < 0){
-            return Pokemon::outcome_failed("count_unread", item);
+            return frlg_failed("count_unread", item);
         }
         if (found != nullptr && *found && count != env.counted_items[item] + 1){
-            return Pokemon::outcome_failed("item_not_found", std::format("{}: {}, was {}", item, count, env.counted_items[item]));
+            return frlg_failed("item_not_found", std::format("{}: {}, was {}", item, count, env.counted_items[item]));
         }
         env.counted_items[item] = count;
     }

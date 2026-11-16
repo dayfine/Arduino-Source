@@ -10,6 +10,7 @@
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryViridianMart.h"
+#include "PokemonFRLG_AutoStoryFailureClasses.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -49,7 +50,7 @@ const MartItem* viridian_mart_item(const std::string& name){
 Pokemon::Outcome viridian_shop(StoryEnv& env, const StoryStep& step){
     const std::optional<std::vector<MartOrder>> orders = viridian_mart_orders(Pokemon::story_arg<std::vector<Pokemon::StoryItem>>(step.args, "items"));
     if (!orders){
-        return Pokemon::outcome_failed("unknown_item", step.name);
+        return frlg_failed("unknown_item", step.name);
     }
     //  2000 of the 3000 a new game starts with, plus the rival's prize.
     buy_items(env.console, env.context, *orders, env.checks, env.language);

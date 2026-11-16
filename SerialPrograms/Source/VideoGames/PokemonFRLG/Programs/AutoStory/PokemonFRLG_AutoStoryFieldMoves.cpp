@@ -27,6 +27,7 @@
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
+#include "PokemonFRLG_AutoStoryFailureClasses.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -261,10 +262,10 @@ std::optional<Pokemon::Outcome> run_field_move_step(
         });
         if (failure == FIELD_MOVE_NO_MEMBER){
             console.log("Story: no member's menu lists FLY.", COLOR_RED);
-            return Pokemon::outcome_failed("fly_no_member", plan->species);
+            return frlg_failed("fly_no_member", plan->species);
         }
         if (failure == FIELD_MOVE_MENU_UNREAD){
-            return Pokemon::outcome_failed("fly_menu_unread", plan->species);
+            return frlg_failed("fly_menu_unread", plan->species);
         }
     }else{
         console.log(std::format(
@@ -276,7 +277,7 @@ std::optional<Pokemon::Outcome> run_field_move_step(
     if (failure.empty()){
         failure = fly_to_town(console, context, player, town, departure);
     }
-    return failure.empty() ? done() : Pokemon::outcome_failed(failure, town.name);
+    return failure.empty() ? done() : frlg_failed(failure, town.name);
 }
 
 
