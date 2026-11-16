@@ -14,6 +14,11 @@
 namespace PokemonAutomation{
 
 
+namespace{
+
+
+//  The first of `states` whose matches() accepts `observation`; null when
+//  none does.
 const ScreenState* match_screen_state(const std::vector<ScreenState>& states, const ScreenObservation& observation){
     for (const ScreenState& state : states){
         if (state.matches && state.matches(observation)){
@@ -22,9 +27,6 @@ const ScreenState* match_screen_state(const std::vector<ScreenState>& states, co
     }
     return nullptr;
 }
-
-
-namespace{
 
 
 //  The checks between looks: no state may come up too often, and steps must
