@@ -153,9 +153,8 @@ double cells_rmsd(const Cells& reference, const Cells& cells){
     return std::sqrt(sum / (double)cells.size());
 }
 
-} // namespace
 
-
+//  The regions of a frame against the platform reference.
 PlatformDistances platform_distances(const ImageViewRGB32& screen){
     const std::vector<Cells>& reference = platform_reference();
     double distance[std::size(PLATFORM_REGIONS)] = {};
@@ -165,11 +164,17 @@ PlatformDistances platform_distances(const ImageViewRGB32& screen){
     return PlatformDistances{.top = distance[0], .left = distance[1], .right = distance[2]};
 }
 
+//  Whether `distances` are the platform: top and left within their bounds,
+//  and the right side within a looser one (the companion and the NPCs there
+//  move).
 bool platform_matches(const PlatformDistances& distances){
     return distances.top <= PLATFORM_TOP_MAX
         && distances.left <= PLATFORM_LEFT_MAX
         && distances.right <= PLATFORM_RIGHT_MAX;
 }
+
+} // namespace
+
 
 ImageRGB32 platform_reference_image(size_t width, size_t height){
     ImageRGB32 image(width, height);

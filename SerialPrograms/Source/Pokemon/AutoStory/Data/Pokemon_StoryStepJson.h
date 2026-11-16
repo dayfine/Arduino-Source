@@ -23,22 +23,12 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  Read a declared pose (a checkpoint's "start"): a zone one,
-//  {"place": "LumioseCity", "spot": "HotelZ", "heading": 90} (spot and
-//  heading optional). Malformed and unknown fields fail.
-DeclaredPose read_declared_pose(const JsonValue& value, std::string_view source);
-
-
-//  Read a step, its args parsed against its action among `actions` (the
-//  game's) and their fallbacks filled in. Unknown fields, kinds, actions and args, mistyped
-//  values and missing required args fail.
-StoryStep read_story_step(
-    const JsonValue& value, std::string_view source,
-    std::span<const StoryActionSpec> actions
-);
-
-
-//  Read the common checkpoint, its steps read as read_story_step() does.
+//  Read the common checkpoint: its optional declared pose ("start", a zone
+//  one: {"place": "LumioseCity", "spot": "HotelZ", "heading": 90}, spot and
+//  heading optional) and its steps, each step's args parsed against its
+//  action among `actions` (the game's) and their fallbacks filled in.
+//  Unknown fields, kinds, actions and args, mistyped values and missing
+//  required args fail.
 StoryCheckpoint read_story_checkpoint(
     const JsonValue& value, std::string_view source,
     std::span<const StoryActionSpec> actions
