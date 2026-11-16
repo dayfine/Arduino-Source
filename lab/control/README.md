@@ -13,10 +13,17 @@ request is a text file in `inbox/`, its journal appears in `outbox/`, and
 | Script | Does | Parameters |
 |---|---|---|
 | `lablock.sh` | One user of a console at a time: `run [-w] NAME -- CMD...`, `check`, `status`. | `-c CONSOLE` or `LAB_CONSOLE` (default `default`); `LAB_DIR` for the lock folder (default `~/.lab`); `LABLOCK_TOKEN` passed to the command. |
+| `hold.sh` | The user's hold: `on [REASON]`, `off`, `status`, `check` (exit 4 while held). While `Lab/hold` names a holder the app's lab channel, `labctl.sh`, `labrun.sh` and `../scripts/cfr.sh` refuse to press or start (so do the local `~/BDSPLab/labB.sh` and `keepawake.sh`, which are not in this repo); only `off` (or `pa_lab lease release-user`) clears it. Self-test: `hold_test.sh`. | `LAB_PROFILE` (default lab-B's profile); `PA_LAB_CONFIG`, `PA_LAB_PYTHON`, `PA_LAB_SERVER` for the server release. |
 | `labctl.sh` | One channel command per call: `state`, `start`, `stop`, `select ID`, `set KEY JSON`, `owner claim TOKEN`, `owner release`, `keepawake on\|off [S]`, `send NAME` (any request from stdin); `supports PATH` tells whether a build has the channel. | `-p PROFILE` or `LAB_PROFILE`; `LAB_OWNER` for the owner line; `LABCTL_WAIT` seconds per request and for start/stop to settle (default 60). |
 | `cfrun.sh` | Send one batch of console commands (stdin) under the console's lock and print its journal. | `-p PROFILE` or `LAB_PROFILE`; `LAB_OWNER`; `CFRUN_WAIT` seconds per batch (default 600). |
 
 Each script's header comment has the full usage and exit codes.
+
+## The user's hold
+
+When the user drives console B (clicks Start or Stop in the app, or presses through its window), the
+app writes `Lab/hold` and everything here keeps off until `hold.sh off`. The hold does not expire,
+and an app restart keeps it. See the app's `Lab.md`, "User hold".
 
 ## One train on the console
 

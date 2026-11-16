@@ -4,7 +4,12 @@ The local server designed in `docs/design/Agent-Integration.md` (fork #131, bran
 `design/agent-integration`). Slice 0: the version-1 contracts, golden examples and a parser.
 Slice 2: the attach-only read server ([below](#slice-2-the-attach-only-read-server)). Slice 3: the
 durable control plane ([below](#slice-3-the-durable-control-plane)): leases, request records,
-tickets and events in SQLite. Nothing presses a button yet: that is Slice 5.
+tickets and events in SQLite. Slice 5a: leased `run_program` and `stop_program`
+([below](#slice-5a-run_program-and-stop_program)); Slice 5b: `preflight_program`, options bound to
+its token, and `cfr_batch` ([below](#slice-5b-preflight_program-options-on-run_program-cfr_batch)).
+All are served only by `serve --actions`, which nothing is wired to yet.
+
+New here? Start with [GUIDE.md](GUIDE.md): what pa-lab is and what it gives you today.
 
 | Path | What |
 |---|---|
@@ -16,16 +21,24 @@ tickets and events in SQLite. Nothing presses a button yet: that is Slice 5.
 | `contracts/v1/invalid_cases.json` | Documents that must fail: name, kind, input, expected field path and message |
 | `tests/test_contracts.py` | Golden parse, round-trip, invalid-case and legacy-mapping tests |
 | `pa_lab/config.py` | Server config: the one-entry allowlist (B), loopback port, owner-only token file |
-| `pa_lab/lab_reader.py` | Strict reads of `Lab/state.json` and `Lab/save.json`; `console://B/state` and `/save` |
+| `pa_lab/lab_reader.py` | Strict reads of the app's state and save fact (through its channel); `console://B/state` and `/save` |
+| `pa_lab/channel.py` | The app channel the core sees: typed commands (`Start`, `Stop`, `Snapshot`, ...), typed answers (`Journal`, `AppError` kinds), `AppChannel` |
+| `pa_lab/channel_file.py` | The version-1 channel over `Lab/`: the only module that knows its layout, request and journal lines and error text |
+| `contracts/v1/channel.md` | The app channel's files, line formats, ordering (state.json after the journal) and retention |
+| `tests/fake_channel.py`, `tests/test_channel_{core,file}.py` | An in-memory channel for core tests; the file channel's own tests |
 | `pa_lab/tools.py`, `pa_lab/shot.py` | `ensure_game` (verification only) and `shot` (newer than the call) |
 | `pa_lab/mcp_server.py` | MCP over Streamable HTTP on `127.0.0.1`: bearer, Host/Origin, sessions, size caps |
 | `pa_lab/app_query.py` | `describe_program` and `game_open`: one-line reads through the app's channel (#504) |
-| `tests/fake_lab.py` | A fake `Lab/` folder and a fake app answering `snapshot`, `describe_program` and `game_open` requests, in temp dirs |
+| `tests/fake_lab.py` | A fake `Lab/` folder and a fake app answering `snapshot`, `describe_program`, `game_open`, `set` + `start`, `stop`, the proposed `preflight` and console lines, in temp dirs |
 | `tests/test_{lab_reader,ensure_game,shot,config,mcp_server}.py` | Slice 2's fake-lab tests |
 | `tests/test_app_query.py` | `describe_program` and `game_open` against the fake app |
 | `pa_lab/db.py` | The SQLite file: migrations (`PRAGMA user_version`), owner-only file, `BEGIN IMMEDIATE` writes |
 | `pa_lab/control.py` | Leases, idempotent requests, tickets, events, `next_events`, reconciliation, compaction |
 | `tests/test_{db,control,control_concurrency,control_mcp}.py` | Slice 3's tests: restarts, threads and processes racing, kills mid-write |
+| `pa_lab/actions.py` | Slice 5a: `run_program` / `stop_program` through the control plane and the app's `start` / `stop` channel commands |
+| `tests/test_actions.py` | Slice 5a's refusals, retries and races against the fake app |
+| `pa_lab/preflight.py`, `pa_lab/cfr.py` | Slice 5b: options against the static contract, the `preflight` reply, the token's binding; the `cfr_batch` allowlist |
+| `tests/test_{preflight,cfr_batch,cfr}.py` | Slice 5b: option refusals, verdicts, restore, stale tokens; batches, the save mark; the allowlist |
 | `pa_lab/status.py`, `pa_lab/stdio_server.py`, `smoke_readonly.py` | Read-only stdio mode for `.mcp.json`: `console_status` ([below](#read-only-stdio-mode-mcpjson)) |
 | `tests/test_status_readonly.py` | `console_status` and the read-only gate against a fake profile |
 
@@ -170,8 +183,9 @@ shows it with its own `frame_seq`; `shot` refuses a call that spans the restart.
 app shows a UI Start/Stop after `saved_at`, then `stale` / `user_lease`. A `save.json` that
 exists but cannot be read is a JSON-RPC error (`-32001`, the refusal in `data`), not `unknown`.
 
-**Lease, reported only.** With no lease store yet, the lease comes from the app's last
-transition: a UI Start/Stop means `user` (no timeout), otherwise `free`. A user lease is not
+**Lease, reported only.** With no lease store yet, the lease comes from `Lab/hold` and the app's
+last transition: a hold, or a UI Start/Stop, means `user` (no timeout), otherwise `free`.
+`console_status` also names the hold (`hold`: owner, reason, acquired_at, or null). A user lease is not
 remembered across an app restart until Slice 3's store.
 
 **`ensure_game(console, expected, allowed_screens?, max_age_ms=5000)`** reads the app's
@@ -257,7 +271,12 @@ returns an opaque `lease_token` (only its hash is in the lease row) and `expires
 `agent_running` (entered by Slice 5's run start, `ControlPlane.begin_run`) never expires and ends
 when the app reports the run's stop (back to `agent_idle` with a fresh TTL) or a new app instance.
 A UI Start/Stop in `Lab/state.json` (`last_transition.source == 'ui'`) revokes any agent lease and
-installs `user`, with no timeout; only the operator ends it:
+installs `user`, with no timeout, and so does the user's hold file `Lab/hold` (`pa_lab/hold.py`;
+the app writes it when the user drives the console, `hold.sh on` by hand). Only the operator ends it;
+`release-user` also removes `Lab/hold`, `claim-user` writes it (after the store accepts the claim), and
+`hold.sh off` runs `release-user`. The store keeps the release time, so a hold file read just before
+the release cannot install `user` again; a hold file that is there but unreadable counts as held
+(owner `unknown`, reason `unreadable`):
 
 ```sh
 python3 -m pa_lab lease --config ~/.config/pa-lab/server.json show|claim-user|release-user
@@ -291,3 +310,210 @@ every event after an active cursor (one used in the last 7 days), every event of
 and every pending record; finished records go after 7 days. A cursor behind the compacted range
 is refused (`invalid_arguments`, field `after_seq`, `evidence.compacted_through`), never served
 with a silent gap.
+
+## Slice 5a: `run_program` and `stop_program`
+
+`python3 -m pa_lab serve --config ... --actions` adds the two tools to the HTTP server (and
+`ACTION_INSTRUCTIONS` to `initialize`). Without `--actions` they are neither listed nor callable;
+`--read-only` and `serve-stdio` (the `.mcp.json` entry) never have them, and `--read-only --actions`
+is a usage error.
+
+```text
+run_program(console, request_id, lease_token, panel, options={}, preflight_token)   # options must be {} in 5a
+stop_program(console, request_id, lease_token)
+```
+
+Each call is one request record (`ControlPlane.begin_action`, one transaction): an exact retry gets
+the stored record, refusals included, and never sends a second line; the same `request_id` with
+other arguments is `request_id_reused` (not stored). The checks run in this order; a failed one is
+stored as a `refused` record with a `request_failed` event, and nothing reaches `Lab/inbox`.
+
+| Check | Refusal |
+|---|---|
+| the request's token holds the lease (idle or running) | `lease_invalid`, `lease_expired`, `console_held_by_user` (a UI Start/Stop or the operator) |
+| no earlier run/stop on the console is still pending | `program_not_stopped`, `evidence.pending_tool` |
+| `Lab/state.json` is live | `app_unavailable`, `evidence.reason` = the availability reason |
+| run: `options` is `{}` (`preflight_token` is required by the contract, not checked in 5a) | `invalid_arguments` (`options`) |
+| run: `panel` is the selected program | `invalid_arguments`, field `panel`, `evidence.selected`; `panel_not_program` on the settings page |
+| run: `console://B/state`'s `blocked` (program state, controller, video) | `program_running`, `program_not_stopped` (loading), `controller_not_ready`, `video_stale`, `video_bad_signal` |
+| the channel's owner lock is not claimed (`channel.owner_claimed`) | `console_held_by_agent`, `evidence.reason: channel_owned` |
+| stop: a program is running | not a refusal: `completed` with `sent: false` and the program state |
+
+A passing request is stored `pending` with the app instance it was checked against (table
+`actions`, migration 2), and the daemon writes `request <request_id>` / `start 10` (or `stop`)
+into `Lab/inbox`, the commands `labctl.sh start|stop` sends; the client's `request_id` is the
+channel's request id. It then reads the journal and `state.json` (up to 13 s for a start, 10 s for
+a stop) and resolves the record. The app renames the finished journal into place first and
+rewrites `state.json` on its next 500 ms timer (later while another request runs), so a journal is
+judged against `state.json` only once its `written_at` is after the daemon first read the journal.
+The first time the daemon sees the request taken (in `done/` or answered) and its journal finished,
+it stores the time (`actions.taken_at` / `answered_at`, migration 3): `disk_gc.sh` prunes `done/`
+and `outbox/`, and a request once seen taken must not later read as never sent. Each attempt's inbox name has a random part, so a journal left by
+an earlier request with the same id (after compaction dropped its record) never answers it.
+
+While a `run_program` is pending the lease cannot end: `release_console` is refused
+`program_running` and the TTL does not expire it, since the run may still start. Once the request
+settles, an overdue lease expires at the next read. The outcomes:
+
+| The app shows | Record |
+|---|---|
+| `last_transition` = this request's start | `completed`, `correlated_by: request_id`; the lease enters `agent_running` in the same transaction, unless `observe` already applied a newer transition |
+| `last_transition` = this request's stop, `program.state` `stopped` | `completed`, `stopped_by: lab` |
+| after the start's `ok`, a stop by `program` / `error` dated after the request | `completed` with `ended: {source, at}`, `correlated_by: time`; the lease stays idle |
+| after the start's `ok`, a stop by a lab script (`lab`, another request id) dated after the request | the same, `ended.source: lab` |
+| (stop) a stop by `program` / `error` / a lab script dated after the request | `completed`, `stopped_by` that source, `correlated_by: time` (the terminal event completes it) |
+| a UI transition dated after the request | `failed`, `console_held_by_user` (the user lease is already installed). For `run_program`, `evidence.started: true` when the start's `ok` line was read (the run did start and moved the game; `evidence.run_id` is its id), else `false`; the status stays `failed` so a caller stops and waits for the user |
+| another `instance.id` without this request's id | `failed`, `app_unavailable`, `instance_replaced` |
+| the line failed | `failed`: `owned by` → `console_held_by_agent` (the token is not copied); `Program is RUNNING.` → `program_running`; `controller not connected` → `controller_not_ready`; else `app_unavailable` with the journal |
+| the inbox write failed | `failed` at once, `app_unavailable`, `evidence.reason: inbox_write_failed` (nothing was sent) |
+| no answer, request still in the inbox | withdrawn; `failed`, `timeout` (nothing was sent) |
+| no answer, request never seen in `done/` and no journal | `failed`, `timeout`, `evidence.reason: never_sent` (the daemon stopped between the record and the write; settled at the next start too) |
+| a complete journal without an error or the start's `ok`, that nothing above matches, after the wait and once `state.json` was written after the journal | `failed`, `timeout`, `evidence.reason: outcome_unknown` with the journal and transition |
+| (start) the start's `ok` line, but `state.json` shows nothing above | stays `pending` (the program started; the lease cannot end); never failed for want of a match |
+| no answer, request taken | stays `pending`; settled from `state.json` on the next `request_status`, `next_events`, `console://B/state` read or action call, also after a daemon restart; `failed` / `app_unavailable` if the app exits |
+
+**What Slice 1's data does not give.** `last_transition` keeps only the newest start or stop, and
+`run_id` is null until run records exist (#116). So a run that ends before the daemon reads
+`state.json` is matched by time (a `program`/`error` stop dated after the request, on the same
+instance, after the start's `ok` line), not by id, and its `started_at` is unknown. A `run_id` on
+the stop transition, or the app keeping the start beside the stop, would make that match exact.
+
+**Changed by Slice 5b.** `run_program` checks its `preflight_token` (required in the v1 request
+contract; 5a took it unchecked) and takes `options`; the 5a refusal for a non-empty `options` is
+gone. See below.
+
+## Slice 5b: `preflight_program`, options on `run_program`, `cfr_batch`
+
+Served with the 5a tools by `serve --actions`; still not wired to anything, and `.mcp.json` stays
+read-only. Each call is one request record on the same `begin_action` / inbox / settle path as 5a
+(an exact retry gets the stored record; a pending earlier action on the console refuses the next).
+
+```text
+preflight_program(console, request_id, lease_token, panel, options)
+run_program(console, request_id, lease_token, panel, options, preflight_token)
+cfr_batch(console, request_id, lease_token, lines)
+```
+
+**`preflight_program`** (`pa_lab/preflight.py`, `actions.check_preflight`). First, without a lease
+and outside the transaction, `describe_program` (an exact retry skips it). Then, in order:
+
+| Check | Refusal (stored `refused`, nothing sent) |
+|---|---|
+| lease, no pending action, app live, `panel` selected, `blocked`, channel free | as for `run_program` (5a) |
+| the app restarted between `describe_program` and here | `app_unavailable`, `instance_replaced` |
+| the program declares a precheck list | `prechecks_unsupported` (absence never passes) |
+| every option key is one the program saves; value of the entry's type, within `min`/`max`; an enum/select slug that is listed and enabled; a group is an object of its own entries (plus `Enabled` when toggleable); no `type: other` | `invalid_arguments`, `field` = `options.<key path>` |
+
+Then the daemon writes `request <id>` / `preflight <canonical JSON>` and waits up to 30 s (the
+checks may open a menu or go Home and back) for the one reply line, `preflight <JSON>` (format in
+`pa_lab/preflight.py`). The record resolves:
+
+| The reply | Record |
+|---|---|
+| `restored: false` (whatever the verdict) | `failed`, `app_unavailable`, `evidence.reason: options_not_restored` (`evidence.edited_keys`: what a user changed in the panel during the checks, kept by the app); no token |
+| `id` is not `panel` | `failed`, `app_unavailable`, `panel_changed` |
+| `verdict: cancelled` (a panel change or the app closing cancelled the checks; the app put the options back first, #616) | `failed`, `app_unavailable`, `evidence.reason: cancelled`; no token |
+| `verdict: unsupported` | `failed`, `prechecks_unsupported` |
+| `verdict: invalid_options` (the app's `check_validity` or its own key check) | `failed`, `invalid_arguments`, `field: options.<key>` |
+| `verdict: failed` | `failed`, `precheck_failed`, `check` = the check's name, its message and evidence |
+| `verdict: passed` | `completed`: `checks`, `candidate_hash`, `options_hash` (the app's, or null), `preflight_token`, `issued_at`, `expires_at` |
+| the line failed (today's app: no `preflight` command) | `failed`, `app_unavailable` with the journal; `owned by` → `console_held_by_agent` |
+| a UI Start/Stop or another app instance before the reply | `failed`, `console_held_by_user` / `app_unavailable` `instance_replaced` |
+| taken, no reply after 30 s, `state.json` written after that | `failed`, `timeout`, `evidence.reason: outcome_unknown`; the console is free again |
+
+**The token.** A pass stores (table `preflights`, migration 3) the token's hash with its binding:
+console, app instance, panel, the candidate's hash (`candidate_hash`), the app's hash of every
+option the program holds (`options_hash`: the reply's, else `program.options_hash` in `state.json`,
+#601; null from an older app), the last start/stop transition,
+`console://B/save` (status, reason, since) with the newest `cfr_batch`'s time, and the hash of the
+request's lease token. The token is a salted hash of that binding. `run_program` reads the same
+things and, after the 5a checks, refuses with `preflight_stale` when the token is unknown
+(`evidence.reason: unknown_token`), older than 120 s (`expired`), or any bound field differs
+(`changed`, `evidence.changed` lists them, e.g. `["transition"]`). A run's own start changes the
+transition, so a token starts at most one run, and a user editing any option in the panel, one the
+candidate does not name included, changes `options_hash` (`changed: ["options_hash"]`).
+
+**Options on `run_program`.** The request is `request <id>`, one `set KEY JSON` line per option
+(groups as `GROUP.KEY`, in key order), then `start 10`; the app stops at the first failing line, so
+a refused `set` starts nothing (`app_unavailable` with the journal). The app has no undo and the
+daemon cannot read option values, so the `set` lines before the failing one stay applied: the
+refusal names them in `evidence.applied_options` (key to value sent), and `evidence.failed_option`
+names the refused key (absent when `start` failed after every `set` ran); its message says to check
+the panel. What refuses before anything is applied is the token check in the same transaction as the
+write: a line fails only if the app changed in between. The panel keeps the options after the run,
+as when a user sets them and clicks Start.
+
+**`cfr_batch`** (`pa_lab/cfr.py`, the allowlist from #547). 1-200 lines; only `press`, `dpad`,
+`stick`, `wait`, `taps`, `walk`, `shot`, `shots`, `detect`, `wait_for`, `expect`, `game_open`, in
+canonical form, with bounded numbers and a worst case of at most 60 s for the batch; no channel
+command, `close_game`, `history`, `CAPTURE`, image path, comment or blank line
+(`invalid_arguments`, `field: arguments.lines[i]`). The other checks: lease, a program panel
+(`panel_not_program`), `blocked` (program stopped, controller ready, video live), channel free.
+Before the request is written, the console's save mark (table `save_marks`) is set, so
+`console://B/save` is `stale` / `cfr_batch` from then on (a press may have happened even if the
+daemon dies next) and every earlier preflight token is stale. The daemon waits for the worst case
++ 5 s; the record is `completed` with `outcome: done`, or `line_failed` with `failed_line`
+(1-based in the batch) and `error`, and `output` (what the lines printed, e.g. shot paths). An app
+that never took the request: withdrawn, `failed`, `timeout`; the mark stays. An app that took it
+and is still alive (`state.json` written) past the wait with no journal: `failed`, `timeout`,
+`outcome_unknown` (some presses may have run; the mark stays), so a hung batch frees the console.
+
+**The app's side (fork #601).** The `preflight` command runs on the LabChannel worker: it stages
+the candidate on the UI thread (through `run_on_ui`, as `set` does), runs the program's prechecks
+on the worker without starting the program, and restores the prior options on the UI thread. If
+the options no longer equal the staged candidate when it restores (the user edited the panel
+during the checks), it leaves the user's edit in place and replies `restored: false`, which never
+yields a token. The reply's `options_hash` is read after the restore: the options the program
+holds, which `state.json`'s `program.options_hash` must still show at the run. Until #601 is in
+the lab build, a preflight on the real app is `failed` / `app_unavailable` (unknown command), and
+until a program overrides its prechecks every preflight is `prechecks_unsupported`, so
+`run_program` cannot start anything there.
+
+**Known gaps.** `state.json` is rewritten every 500 ms, so an option edit in the last half second
+before a run is not seen by the token. The `set` echoes in the start's
+journal are not compared with what was sent (the preflight already refused clamped or disabled
+values). The channel's owner token is still not claimed (a claimed channel is refused), and the
+console-B soak (every mutation has exactly one record) is still to run; steps below.
+
+### Slice 5 acceptance: the console-B soak
+
+Slice 5 is accepted when, over a real run on console B, every mutation has exactly one audit record:
+each inbox request the daemon wrote has one `actions` row, each `requests` row has one terminal
+event, and each UI Start/Stop shows up once. Run it yourself during a run you are making anyway:
+
+1. Use a lab build with #601, #608 and #616 (the app's `preflight`, the user hold, the cancel fix),
+   and a program that lists its start checks. Do it within a day of the run: `disk_gc.sh` prunes
+   `Lab/done/` and `Lab/outbox/`.
+2. Note the start, with milliseconds like the stored times (a `T0` without them would leave out
+   the rows of its own second): `T0=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)` and
+   `DB=~/.local/state/pa-lab/control.sqlite`.
+3. From `lab/server`, start the daemon with actions:
+   `python3 -m pa_lab serve --config ~/.config/pa-lab/server.json --actions`.
+4. Through the MCP client, drive the run: `acquire_console`, `preflight_program`, `run_program`
+   with its token, `stop_program` (or let the run end), `release_console`. Along the way, once each:
+   resend a call with the same `request_id` (must return the stored record, write nothing); send
+   a `run_program` with a stale token (refused, nothing written); click Stop in the app during a
+   run (user takeover); restart the daemon while a `run_program` is pending; one short
+   `cfr_batch` (`shot`, `press B`).
+5. Check, after the run, with the daemon stopped:
+   `python3 -m pa_lab soak-check --config ~/.config/pa-lab/server.json --since "$T0"` (`pa_lab/soak.py`)
+   prints the mismatches as JSON and exits 0 when there are none:
+   - `terminal_events`: requests since `T0` without exactly one terminal event of their own tool
+     (matched on tool and request id, so an id reused across tools is not a mismatch);
+   - `pending`: requests left pending;
+   - `done_without_action`: requests in `Lab/done/` the daemon wrote with no `actions` row. The
+     read-only requests listed in `soak.READ_ONLY_REQUESTS` (such as the `describe_program` that
+     `preflight_program` sends first, and `shot`) have none and are skipped;
+   - `action_without_done`: `actions` rows since `T0` without a `done/` file. Only an action that
+     settled `timeout` with nothing sent (withdrawn, `never_sent`) may be here.
+   Then by hand: each UI Start/Stop you clicked is one event:
+     `sqlite3 "$DB" "SELECT seq, type, at, payload FROM events WHERE at >= '$T0' AND type IN ('lease_changed', 'stopped') ORDER BY seq"`.
+6. Pass: no mismatches. Note the counts (requests, actions, `done/` files, events) and any mismatch
+   with its request id in the run record; a mismatch is a bug in the daemon, not in the run.
+
+## User pages
+
+`GUIDE.md` is the user-facing overview; `guide/*.md` has one page per feature, marked DRAFT
+until it is built and switched on. A PR that builds or switches on part of a feature updates
+its page in the same PR: the status line at the top, the tool tables, and the DRAFT banner when
+the feature is done.

@@ -52,6 +52,12 @@ being restated.
   name not inside the input; `std::string_view` by value for read-only string params;
   `std::optional`, not sentinels like `""` or `-1`; pixel readers in `Detectors/` read only and
   press nothing, presses go in `Actions/`; new code in its final file and module; line endings kept.
+  Flag vacuous tests (they only restate the code's arithmetic or constants, or pass for any
+  implementation): ask for a test of behavior a caller relies on, or none. Flag a header widened
+  to test internals: test through the public function, or keep the helper in the .cpp's anonymous
+  namespace. Flag literal arguments without a parameter comment in calls of 3+ arguments
+  (`/*hold=*/160ms`). Code health reports the last two as `test_only_api` and `param_comment`
+  advisories; read them, they don't fail CI.
 - **Time limit.** At the wall-clock limit, post the findings so far with verdict `NEEDS_REWORK`,
   say the review is partial, and report.
 - **Review delivery.** Line 1 is `Reviewed SHA: <full sha>`; `## Verdict` sits on its own line,

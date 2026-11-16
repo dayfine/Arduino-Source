@@ -180,6 +180,15 @@ class SharedTests(AppQueryTest):
                 self.assertEqual(refusal['evidence']['reason'], 'instance_replaced')
                 self.assertEqual(refusal['evidence']['new_instance_id'], NEW_INSTANCE)
 
+    def test_a_failed_inbox_write_is_refused(self):
+        for command in ('describe_program', 'game_open'):
+            with self.subTest(command):
+                self.setUp()
+                (self.lab.dir / 'inbox').rmdir()
+                refusal = self.refusal(command)
+                self.assertEqual(refusal['code'], 'app_unavailable')
+                self.assertEqual(refusal['evidence']['reason'], 'inbox_write_failed')
+
     def test_app_down_is_refused_before_any_request(self):
         state = copy.deepcopy(self.lab.state)
         state['written_at'] = '2026-11-14T06:00:00.000Z'

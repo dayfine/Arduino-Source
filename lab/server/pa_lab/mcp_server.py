@@ -7,8 +7,9 @@ here pushes). Every request must carry `Authorization: Bearer <token>`, a loopba
 
 Resources: `console://B/state` (console_state), `console://B/save` (save_resource).
 Tools: `shot`, `ensure_game`, `describe_program`, `game_open`; with a control plane also `acquire_console`,
-`renew_console`, `release_console`, `next_events` and `request_status`. Nothing here presses a
-button or starts or stops a program: that is not served yet.
+`renew_console`, `release_console`, `next_events` and `request_status`; with program actions
+(`serve --actions`, Slices 5a/5b) also `preflight_program`, `run_program`, `stop_program` and
+`cfr_batch`, the only tools that start or stop a program or press a button.
 
 Read-only mode (`read_only=True`, `serve-stdio`): only `console_status` and the resources. Every tool
 that writes into `Lab/inbox` (`shot`, `describe_program`, `game_open`) and every control tool is
@@ -29,6 +30,7 @@ import secrets
 import threading
 from typing import Any, Callable, Dict, Optional, Tuple
 
+from pa_lab import actions as actions_module
 from pa_lab import app_query, contracts, control, shot, status, tools
 from pa_lab.lab_reader import ConsoleReader, Unavailable
 
@@ -49,11 +51,19 @@ INVALID_PARAMS = -32602
 RESOURCE_UNAVAILABLE = -32001
 RESOURCE_NOT_FOUND = -32002
 
-INSTRUCTIONS = (
-    'Read-only view of lab console B. Read console://B/state before acting on the console and '
+READ_INSTRUCTIONS = (
+    'Read console://B/state before acting on the console and '
     'console://B/save for the last known save. shot returns a PNG newer than the call; ensure_game '
     'only verifies, it never navigates. describe_program gives the selected program\'s option contract; '
     'game_open says whether a game is in front. Unknown observations are never success.')
+INSTRUCTIONS = 'Read-only view of lab console B. ' + READ_INSTRUCTIONS
+
+ACTION_INSTRUCTIONS = (
+    'Lab console B. Reads need no lease. To start the selected program: acquire_console, preflight_program with '
+    'the panel and options, then run_program with the same panel, options and the preflight_token; stop_program '
+    'stops it. cfr_batch is for debugging only and marks the save stale. Give every call a new request_id '
+    '(retry with the same one), and follow a pending record with request_status or next_events. A refusal names '
+    'the check that failed; when the user holds the console, stop and wait for them. ' + READ_INSTRUCTIONS)
 
 TOOL_LIST = [
     {
@@ -190,6 +200,54 @@ CONTROL_TOOL_LIST = [
 
 LEASE_TOOLS = ('acquire_console', 'renew_console', 'release_console')
 
+_ACTING = {'readOnlyHint': False, 'destructiveHint': True, 'idempotentHint': True}
+
+ACTION_TOOL_LIST = [
+    {'name': 'preflight_program', 'title': "Run the selected program's start checks",
+     'description': 'Checks candidate options and runs the selected program\'s start checks without starting it, '
+                    'then puts the prior options back; presses no button except what a check needs to look (and '
+                    'returns to where it was). Needs the lease token. options are checked against describe_program '
+                    '(unknown keys, types, bounds, disabled entries) before anything is sent. A program that '
+                    'declares no checks is refused (prechecks_unsupported). Completed: the checks and a '
+                    'preflight_token for run_program, good for 120 s and only while the app instance, panel, '
+                    'options, last start/stop, save status and lease stay the same. Failed: precheck_failed names '
+                    'the check and what it needs.',
+     'inputSchema': _schema({'request_id': _REQUEST_ID, 'lease_token': _LEASE_TOKEN,
+                             'panel': {'type': 'string', 'description': "'<Game>:<Program>', the selected program"},
+                             'options': {'type': 'object', 'description': 'option key -> value as describe_program '
+                                         'lists them; a group is an object; {} checks the current options'}},
+                            ['request_id', 'lease_token', 'panel', 'options']), 'annotations': _ACTING},
+    {'name': 'run_program', 'title': 'Start the selected program',
+     'description': 'Starts the program selected in the app once per request_id, after loading options (the same '
+                    'panel and options as the preflight; the panel keeps them after the run). Needs the lease token '
+                    'and a current preflight_token (preflight_stale says what changed). panel must be the selected '
+                    'program id (this does not change the selection). Refused while the user holds the console, a '
+                    'program runs, the controller or video is not ready, or the app is not running. Returns the '
+                    "request record: completed (the app shows this request's start; the lease is agent_running "
+                    'until the run ends), failed, or pending (follow it with request_status or next_events).',
+     'inputSchema': _schema({'request_id': _REQUEST_ID, 'lease_token': _LEASE_TOKEN,
+                             'panel': {'type': 'string', 'description': "'<Game>:<Program>', the selected program"},
+                             'options': {'type': 'object'},
+                             'preflight_token': {'type': 'string', 'description': 'from preflight_program'}},
+                            ['request_id', 'lease_token', 'panel', 'options', 'preflight_token']),
+     'annotations': _ACTING},
+    {'name': 'stop_program', 'title': 'Stop the running program',
+     'description': 'Stops the running program once per request_id. Needs the lease token. Completed when the app '
+                    "shows this request's stop and the program is stopped, or the run ended by itself first; "
+                    'sent false when nothing was running. Refused while the user holds the console.',
+     'inputSchema': _schema({'request_id': _REQUEST_ID, 'lease_token': _LEASE_TOKEN},
+                            ['request_id', 'lease_token']), 'annotations': _ACTING},
+    {'name': 'cfr_batch', 'title': 'Send a short batch of console lines (debugging)',
+     'description': 'Debugging only. Sends 1-200 console lines (press, dpad, stick, wait, taps, walk, shot, shots, '
+                    'detect, wait_for, expect, game_open; numbers bounded, at most 60 s in all) once per '
+                    'request_id, with the program stopped. Needs the lease token. Marks console://B/save stale '
+                    '(reason cfr_batch) and makes any preflight_token stale. Completed with outcome done, or '
+                    'line_failed with failed_line and the error; output holds what the lines printed.',
+     'inputSchema': _schema({'request_id': _REQUEST_ID, 'lease_token': _LEASE_TOKEN,
+                             'lines': {'type': 'array', 'items': {'type': 'string'}, 'minItems': 1, 'maxItems': 200}},
+                            ['request_id', 'lease_token', 'lines']), 'annotations': _ACTING},
+]
+
 
 class RpcError(Exception):
     def __init__(self, code: int, message: str, data: Any = None):
@@ -218,9 +276,13 @@ class LabMcp:
                  take_shot: Callable[..., Dict[str, Any]] = shot.take_shot,
                  control_plane: Optional[control.ControlPlane] = None,
                  statuses: Optional[Dict[str, status.ProfileStatus]] = None,
-                 read_only: bool = False):
-        if read_only and control_plane is not None:
+                 read_only: bool = False,
+                 actions: Optional[actions_module.ProgramActions] = None):
+        if read_only and (control_plane is not None or actions is not None):
             raise ValueError('a read-only server has no control plane')
+        if actions is not None and actions.plane is not control_plane:
+            raise ValueError('program actions need the server\'s control plane')
+        self.actions = actions
         self.consoles = consoles
         self.take_shot = take_shot
         self.control = control_plane
@@ -231,7 +293,8 @@ class LabMcp:
         status_tools = [CONSOLE_STATUS_TOOL] if self.statuses else []
         if self.read_only:
             return status_tools
-        return TOOL_LIST + status_tools + (CONTROL_TOOL_LIST if self.control is not None else [])
+        return TOOL_LIST + status_tools + (CONTROL_TOOL_LIST if self.control is not None else []) + \
+            (ACTION_TOOL_LIST if self.actions is not None else [])
 
     def call(self, method: str, params: Dict[str, Any], client: str = 'unnamed') -> Dict[str, Any]:
         if method == 'ping':
@@ -249,17 +312,19 @@ class LabMcp:
                 raise RpcError(INVALID_PARAMS, 'Unknown tool: {}'.format(params.get('name')))
             if params.get('name') == 'console_status':
                 return self._call_status(params.get('arguments', {}))
+            if self.actions is not None and params.get('name') in [t['name'] for t in ACTION_TOOL_LIST]:
+                return self._call_action(client, params.get('name'), params.get('arguments', {}))
             if self.control is not None and params.get('name') in [t['name'] for t in CONTROL_TOOL_LIST]:
                 return self._call_control(client, params.get('name'), params.get('arguments', {}))
             return self._call_tool(params.get('name'), params.get('arguments', {}))
         raise RpcError(METHOD_NOT_FOUND, 'method not found: {}'.format(method))
 
-    @staticmethod
-    def initialize_result(params: Dict[str, Any]) -> Dict[str, Any]:
+    def initialize_result(self, params: Dict[str, Any]) -> Dict[str, Any]:
         asked = params.get('protocolVersion')
         version = asked if asked in PROTOCOL_VERSIONS else PROTOCOL_VERSIONS[0]
         return {'protocolVersion': version, 'capabilities': {'resources': {}, 'tools': {}},
-                'serverInfo': SERVER_INFO, 'instructions': INSTRUCTIONS}
+                'serverInfo': SERVER_INFO,
+                'instructions': ACTION_INSTRUCTIONS if self.actions is not None else INSTRUCTIONS}
 
     @staticmethod
     def _resources(console: str):
@@ -287,6 +352,7 @@ class LabMcp:
                 'uri': uri, 'refusal': {'code': 'console_not_allowed',
                                         'message': 'Console {} is not served.'.format(match.group(1))}})
         if match.group(2) == 'state':
+            self._settle(match.group(1))
             doc = reader.console_state()
         else:
             try:
@@ -358,6 +424,7 @@ class LabMcp:
         args = dict(arguments)
         console = args.pop('console', None)
         request_id = args.get('request_id') if isinstance(args.get('request_id'), str) else None
+        self._settle(console)
         try:
             if name == 'next_events':
                 unknown = sorted(set(args) - {'after_seq', 'timeout_s', 'limit'})
@@ -383,6 +450,31 @@ class LabMcp:
         except control.Refused as e:
             return self._refused(name, e.refusal, request_id if name in LEASE_TOOLS else None)
         return {'content': [{'type': 'text', 'text': _json_text(result)}], 'structuredContent': result,
+                'isError': False}
+
+    def _settle(self, console: Any) -> None:
+        """Settles pending run/stop requests before a read, so status and events show their outcome."""
+        if self.actions is not None and isinstance(console, str) and console in self.consoles:
+            self.actions.settle_pending(console)
+
+    def _call_action(self, client: str, name: str, arguments: Any) -> Dict[str, Any]:
+        if not isinstance(arguments, dict):
+            return self._refused(name, {'code': 'invalid_arguments', 'field': 'arguments',
+                                        'message': 'expected an object'})
+        args = dict(arguments)
+        request = {'schema': 1, 'request_id': args.pop('request_id', None), 'tool': name,
+                   'console': args.pop('console', None), 'arguments': args}
+        if 'lease_token' in args:
+            request['lease_token'] = args.pop('lease_token')
+        call = getattr(self.actions, name)
+        try:
+            record = call(client, request)
+        except control.Refused as e:
+            return self._refused(name, e.refusal, request['request_id'] if isinstance(request['request_id'], str)
+                                 else None)
+        if record['refusal'] is not None:
+            return self._refused(name, record['refusal'], record['request_id'])
+        return {'content': [{'type': 'text', 'text': _json_text(record)}], 'structuredContent': record,
                 'isError': False}
 
     @staticmethod
@@ -579,7 +671,7 @@ class _Handler(BaseHTTPRequestHandler):
         client = str(info.get('name') or 'unnamed')[:64]
         session = self.server.sessions.open(client)
         LOG.info('client=%s initialize', client)
-        self._send(200, {'jsonrpc': '2.0', 'id': message['id'], 'result': LabMcp.initialize_result(params)},
+        self._send(200, {'jsonrpc': '2.0', 'id': message['id'], 'result': self.server.mcp.initialize_result(params)},
                    {'Mcp-Session-Id': session})
 
 
