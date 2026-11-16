@@ -89,11 +89,6 @@ std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpo
 //  "dialog". None for any other word.
 std::optional<ScreenEvent> walk_end_event(std::string_view end);
 
-//  The walk of `args`: the legs of its arg "legs", each [turn in degrees
-//  clockwise (negative: left), walk ms], held with "held", after the wait
-//  "wait_ms". The args must have passed the walk's spec.
-StoryMove story_walk_move(const Pokemon::StoryActionArgs& args);
-
 //  PLZA as a StoryGame on the console `env`, which must outlive it. The
 //  save counts the game's autosave at the end of the "autosave" rows of
 //  `rows`; after the others nothing saves (Pokemon::NOT_SAVED, "save

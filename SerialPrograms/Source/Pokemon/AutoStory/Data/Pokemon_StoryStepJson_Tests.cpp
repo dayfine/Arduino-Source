@@ -2,8 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Each case reads a record from JSON: accepted cases check the values
- *  read, rejected cases check that the read fails.
+ *  Each case reads a record from JSON through read_story_checkpoint(): a
+ *  pose or a step goes in a checkpoint of its own. Accepted cases check the
+ *  values read, rejected cases check that the read fails.
  *
  */
 
@@ -27,6 +28,8 @@ namespace Pokemon{
 
 
 namespace{
+
+using namespace std::chrono_literals;
 
 
 //  Which record a case reads.
@@ -86,7 +89,7 @@ const WireCase CASES[] = {
         return expect(step_of(record).args == expected, "three rows, the last empty");
     }}},
     {.name = "timed legs", .input = {.json = R"({"id":"w","kind":"game_action","action":"timed_walk","args":{"legs":[[0,4500],[-90,1200]]}})"}, .expectation = {.check = [](const ReadRecord& record){
-        const StoryActionArgs expected = {{"legs", std::vector<StoryTimedLeg>{{.turn = 0, .ms = 4500}, {.turn = -90, .ms = 1200}}}};
+        const StoryActionArgs expected = {{"legs", std::vector<StoryTimedLeg>{{.turn = 0, .walk = 4500ms}, {.turn = -90, .walk = 1200ms}}}};
         return expect(step_of(record).args == expected, "two timed legs");
     }}},
     {.name = "declared place", .input = {.record = Record::DECLARED, .json = R"({"place":"LumioseCity","spot":"HotelZ","heading":90})"}, .expectation = {.check = [](const ReadRecord& record){
@@ -154,17 +157,21 @@ std::vector<StoryActionSpec> test_actions(){
 }
 
 
-//  `input` read, with `source` naming it in parse errors.
+//  `input` read, with `source` naming it in parse errors. A pose or a step
+//  is read as the start or only event of a checkpoint.
 ReadRecord read_record(const WireCase::Input& input, std::string_view source){
     static const std::vector<StoryActionSpec> actions = test_actions();
-    const JsonValue value = parse_json(std::string(input.json));
     switch (input.record){
-    case Record::DECLARED:
-        return read_declared_pose(value, source);
-    case Record::STEP:
-        return read_story_step(value, source, actions);
+    case Record::DECLARED:{
+        const std::string json = std::format(R"({{"id":"x","title":"X","start":{},"events":[]}})", input.json);
+        return *read_story_checkpoint(parse_json(json), source, actions).start;
+    }
+    case Record::STEP:{
+        const std::string json = std::format(R"({{"id":"x","title":"X","events":[{}]}})", input.json);
+        return read_story_checkpoint(parse_json(json), source, actions).steps.at(0);
+    }
     case Record::CHECKPOINT:
-        return read_story_checkpoint(value, source, actions);
+        return read_story_checkpoint(parse_json(std::string(input.json)), source, actions);
     }
     throw ParseException("Unknown test record.");
 }
