@@ -26,6 +26,17 @@
         "why": "the precondition for Bruno: the lead at least Lv52, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md bruno; Lorelei's fight takes it a level up)"
       },
       {
+        "id": "heal_before_bruno",
+        "kind": "game_action",
+        "action": "heal_to_full",
+        "args": {
+          "max_hp": 165,
+          "full_restore": true,
+          "below_percent": 50
+        },
+        "why": "a Full Restore out of battle when the lead's HP is below half before Bruno: the high-risk fight's in-battle rule (RISK_HEALS, a Full Restore at yellow) would spend the first turn on it. Above half nothing is used, as PokeGuy enters Bruno unhealed (docs/battles/pokeguy-conditions.md); it needs the HP bar from the fight before, so a run loaded at this checkpoint heals nothing"
+      },
+      {
         "id": "below_loreleis_door",
         "kind": "route",
         "action": "run",
@@ -115,7 +126,8 @@
               75,
               37,
               0,
-              0
+              0,
+              1
             ],
             [
               101,
@@ -153,6 +165,33 @@
               0,
               0
             ]
+          ],
+          "foe_stats": [
+            [
+              183,
+              72,
+              112
+            ],
+            [
+              104,
+              137,
+              131
+            ],
+            [
+              77,
+              137,
+              131
+            ],
+            [
+              194,
+              75,
+              118
+            ],
+            [
+              111,
+              117,
+              183
+            ]
           ]
         },
         "declared_after": {
@@ -165,7 +204,7 @@
           ],
           "facing": "north"
         },
-        "why": "Bruno (TRAINER_ELITE_FOUR_BRUNO): Onix Lv51, Hitmonchan Lv53, Hitmonlee Lv53, Onix Lv54, Machamp Lv56, two Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +2 by X Specials, X Speed until faster, Guard Spec first against an accuracy drop; the doc's bruno row, 95.9% at 130/162. The doc's target_torrent (stalling to Torrent in the opening) is the C++ policy's extra X Specials against the first Onix, up to +4 while Torrent is off; its weaker-move stall needs the foe's HP and is not modelled (PokemonFRLG_AutoStoryBattlePolicy.h)); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's bruno entry state (130/162), as 19.01's: Machamp's worst case (crit Cross Chop) is 183, Hitmonlee's 136. Then the door north (6, 2) opens"
+        "why": "Bruno (TRAINER_ELITE_FOUR_BRUNO): Onix Lv51, Hitmonchan Lv53, Hitmonlee Lv53, Onix Lv54, Machamp Lv56, two Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +2 by X Specials, X Speed until faster, Guard Spec first against an accuracy drop; the doc's bruno row, 95.9% at 130/162. The doc's target_torrent (stalling to Torrent in the opening) is the C++ policy's extra X Specials against the first Onix, up to +4 while Torrent is off; its weaker-move stall needs the foe's HP and is not modelled (PokemonFRLG_AutoStoryBattlePolicy.h)); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's bruno entry state (130/162), as 19.01's: Machamp's worst case (crit Cross Chop) is 183, Hitmonlee's 136. The first Onix has Roar (marked as phazing in its row): console B, 2026-11-16, its Roar sent Blastoise out after four X Specials. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table: Surf KOs both Onix at +0, so no X item is spent on them and setup waits for Hitmonchan. Then the door north (6, 2) opens"
       }
     ]
   },
@@ -175,7 +214,7 @@
     "notes": {
       "checkpoint": [
         "Starts in front of Lorelei at (6, 6) facing north, where 20.01 ends. A boss battle is its own checkpoint: the walk on and Bruno's fight. PokeGuy has this fight at 1:49:15 (docs/battles/pokeguy-conditions.md, bruno).",
-        "No heal before Bruno: PokeGuy enters at 130/162 from Lorelei's fight (the doc keeps that entry: a heal changes the Torrent setup, pokeguy-preparation.md).",
+        "heal_before_bruno: a Full Restore only below half HP. PokeGuy enters at 130/162 from Lorelei's fight, unhealed (the doc keeps that entry: a heal changes the Torrent setup, pokeguy-preparation.md); above half nothing is used.",
         "Ends in front of Bruno at (6, 6) facing north, saved there."
       ]
     }

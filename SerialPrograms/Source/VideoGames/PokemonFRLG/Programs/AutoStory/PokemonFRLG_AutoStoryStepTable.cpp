@@ -216,7 +216,7 @@ std::vector<Pokemon::StoryArgSpec> policy_arg_specs(){
     });
     args.push_back(Pokemon::StoryArgSpec{
         .key = "foe_threats", .type = Pokemon::StoryArgType::INTEGER_ROWS, .required = false, .fallback = std::vector<std::vector<int64_t>>(),
-        .why = "one row per foe, [speed, likely, mean, max, normal_max, lowers_accuracy, explodes]: what it does to the lead, from the doc's stats",
+        .why = "one row per foe, [speed, likely, mean, max, normal_max, lowers_accuracy, explodes], and phazes (Roar, Whirlwind) as an eighth column where it has one: what it does to the lead, from the doc's stats",
     });
     return args;
 }
@@ -234,7 +234,7 @@ std::vector<Pokemon::StoryArgSpec> battle_arg_specs(){
     });
     args.push_back(Pokemon::StoryArgSpec{
         .key = "foe_stats", .type = Pokemon::StoryArgType::INTEGER_ROWS, .required = false, .fallback = std::vector<std::vector<int64_t>>(),
-        .why = "one row per foe, [defense, sp_defense], from the trainer's party data: the damage each attack would do",
+        .why = "one row per foe, [defense, sp_defense] or [defense, sp_defense, hp], from the trainer's party data: the damage each attack would do, and with hp whether the best one KOs (no X item then)",
     });
     args.push_back(Pokemon::StoryArgSpec{
         .key = "use_items", .type = Pokemon::StoryArgType::ITEMS, .required = false, .fallback = std::vector<Pokemon::StoryItem>(),

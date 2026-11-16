@@ -430,6 +430,20 @@ std::optional<size_t> attack_slot(const PartyMember& member){
     return TOP_LEFT_MOVE;
 }
 
+double most_damage_against(const PartyMember& member, std::string_view foe, const AttackContext& context){
+    if (species_data(foe) == nullptr){
+        return 0;
+    }
+    double most = 0;
+    for (const KnownMove& known_move : member.moves){
+        const MoveData* data = move_data(known_move.move);
+        if (data != nullptr && known_move.pp > 0){
+            most = std::max(most, damage(member, *data, known_move.move, foe, context));
+        }
+    }
+    return most;
+}
+
 std::optional<size_t> attack_slot_against(
     const PartyMember& member, const std::vector<std::string>& foes, const AttackContext& context
 ){

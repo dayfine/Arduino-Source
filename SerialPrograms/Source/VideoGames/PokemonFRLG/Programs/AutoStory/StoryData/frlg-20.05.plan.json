@@ -68,16 +68,17 @@
           "setup_outspeed": true,
           "setup_guard_accuracy": true,
           "foe_threats": [
-            [130, 41, 27, 87, 43, 1, 0],
+            [130, 41, 27, 87, 43, 1, 0, 1],
             [159, 77, 70, 159, 79, 0, 0],
             [70, 0, 10, 210, 105, 0, 0],
             [118, 51, 46, 110, 55, 0, 0],
-            [139, 50, 51, 104, 52, 0, 0],
+            [139, 50, 51, 104, 52, 0, 0, 1],
             [125, 217, 218, 444, 222, 0, 0]
-          ]
+          ],
+          "foe_stats": [[111, 105, 185], [73, 130, 147], [147, 76, 211], [127, 141, 199], [121, 108, 199], [129, 135, 193]]
         },
         "declared_after": {"map": "PokemonLeague_ChampionsRoom", "tiles": [[6, 9]], "facing": "north"},
-        "why": "the Champion (TRAINER_CHAMPION_FIRST_BULBASAUR for a player who took Squirtle): Pidgeot Lv59, Alakazam Lv57, Rhydon Lv59, Gyarados Lv59, Arcanine Lv61, Venusaur Lv63, four Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +2 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first against Pidgeot's Sand Attack; the doc's champion row, 95.6% at 171/171, its opening a Guard Spec); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's champion entry state (171/171), as 19.01's, Pidgeot's row marked as lowering accuracy: Venusaur's Solar Beam worst case is 444 (a one-hit KO from full), Rhydon's 210"
+        "why": "the Champion (TRAINER_CHAMPION_FIRST_BULBASAUR for a player who took Squirtle): Pidgeot Lv59, Alakazam Lv57, Rhydon Lv59, Gyarados Lv59, Arcanine Lv61, Venusaur Lv63, four Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +2 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first against Pidgeot's Sand Attack; the doc's champion row, 95.6% at 171/171, its opening a Guard Spec); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's champion entry state (171/171), as 19.01's, Pidgeot's row marked as lowering accuracy: Venusaur's Solar Beam worst case is 444 (a one-hit KO from full), Rhydon's 210; Pidgeot (Whirlwind) and Arcanine (Roar) are marked as phazing, so no X item is spent on them (their stages would go with a forced switch). foe_stats are each foe's Defense, Sp. Def and HP from the doc's table: Surf KOs Rhydon, so it is attacked at once"
       },
       {
         "id": "hall_of_fame",

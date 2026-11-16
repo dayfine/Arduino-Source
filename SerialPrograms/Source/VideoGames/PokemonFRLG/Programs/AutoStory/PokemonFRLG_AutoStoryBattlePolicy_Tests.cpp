@@ -724,6 +724,95 @@ UnitTestResult test_rival_route22_sets_up_from_its_own_read(){
 }
 
 
+//  The lead into Bruno (console B, 2026-11-16, 20.02): Blastoise Lv52, HP
+//  165, Sp. Atk 114, Speed 113; the bag and foes as the League's steps.
+Supplies league_supplies(const StoryStep& step){
+    Supplies supplies;
+    set_from_bag(supplies, {
+        {"full-restore", 10}, {"x-special", 10}, {"x-speed", 4}, {"x-accuracy", 3}, {"guard-spec", 2},
+    });
+    supplies.lead = PartyMember{
+        .species = "blastoise",
+        .moves = {{"bite", 25}, {"strength", 15}, {"surf", 14}, {"blizzard", 5}},
+        .moves_through_level = 52,
+        .moves_read = true,
+        .level = 52,
+        .stats = Stats{.hp = 165, .attack = 99, .defense = 129, .sp_attack = 114, .sp_defense = 144, .speed = 113},
+    };
+    supplies.foes = Pokemon::story_arg<std::vector<std::string>>(step.args, "foes");
+    supplies.policy = battle_policy_of(step.args);
+    return supplies;
+}
+
+PolicyView league_view(double hp, size_t foe_index){
+    return PolicyView{.hp = hp, .max_hp = 165, .status = StatusCondition::NONE, .speed = 113, .foe_index = foe_index};
+}
+
+//  A League fight's foe and the lead's Sp. Atk stage (X Specials used).
+struct LeagueTurnInput{
+    std::string_view id;
+    std::string_view battle;
+    size_t foe_index;
+    int spa_stage;
+    double hp;
+};
+
+//  The policy's item ("" for an attack) and, for an attack, the move.
+struct LeagueTurnExpectation{
+    std::string_view item;
+    std::string_view move;
+};
+
+struct LeagueTurnCase{
+    std::string_view name;
+    LeagueTurnInput input;
+    LeagueTurnExpectation expectation;
+};
+
+//  Bruno's first Onix (console B, 2026-11-16, 20.02): four X Specials
+//  towards +4 while Surf (4x) KOs it at +0, then its Roar sent Blastoise
+//  out. Setup only where it pays: not against a foe the best attack KOs,
+//  nor one that phazes; still against Lorelei's Dewgong.
+const LeagueTurnCase LEAGUE_TURN_CASES[] = {
+    {"Bruno's Onix at +0, 71% HP: Surf", {"20.02", "bruno", 0, 0, 117}, {"", "surf"}},
+    {"Bruno's Onix at +2: Surf", {"20.02", "bruno", 0, 2, 165}, {"", "surf"}},
+    {"Bruno's Onix at +4: Surf", {"20.02", "bruno", 0, 4, 165}, {"", "surf"}},
+    {"Bruno's second Onix at +0: Surf", {"20.02", "bruno", 3, 0, 165}, {"", "surf"}},
+    {"Bruno's Hitmonchan at +0: X Special", {"20.02", "bruno", 1, 0, 165}, {"x-special", ""}},
+    {"Lorelei's Dewgong at +0: X Special", {"20.01", "lorelei", 0, 0, 165}, {"x-special", ""}},
+    {"the Champion's Pidgeot (Whirlwind): no X item", {"20.05", "champion", 0, 0, 165}, {"", ""}},
+    {"the Champion's Arcanine (Roar): no X item", {"20.05", "champion", 4, 0, 165}, {"", ""}},
+};
+
+UnitTestResult test_league_turns(){
+    for (const LeagueTurnCase& test : LEAGUE_TURN_CASES){
+        const LeagueTurnInput& input = test.input;
+        const StoryStep& step = battle_step(input.id, input.battle);
+        Supplies supplies = league_supplies(step);
+        PolicyState state(supplies.policy);
+        for (int used = 0; used < input.spa_stage; used++){
+            state.item_used("x-special");
+        }
+        const std::string item = use(state, supplies, league_view(input.hp, input.foe_index));
+        if (item != test.expectation.item){
+            return std::format("{}: expected \"{}\", got \"{}\".", test.name, test.expectation.item, item);
+        }
+        if (test.expectation.move.empty()){
+            continue;
+        }
+        const AttackContext context{
+            .sp_attack_stage = input.spa_stage, .foe = supplies.policy.foe_stats.at(input.foe_index),
+        };
+        const std::optional<size_t> slot = attack_slot_against(supplies.lead, {supplies.foes.at(input.foe_index)}, context);
+        const std::string move = slot ? supplies.lead.moves[*slot].move : "none";
+        if (move != test.expectation.move){
+            return std::format("{}: expected {}, got {}.", test.name, test.expectation.move, move);
+        }
+    }
+    return true;
+}
+
+
 struct AutoStoryBattlePolicyInput{
     std::string name;
     std::function<UnitTestResult()> body;
@@ -880,6 +969,10 @@ const std::vector<AutoStoryBattlePolicyCase> AUTO_STORY_BATTLE_POLICY_CASES = {
     {
         .input = {.name = "19.01 rival at Default checks: sets up from the battle's own read", .body = test_rival_route22_sets_up_from_its_own_read},
         .expectation = {.description = "a bag read, then an X item or Guard Spec at turn 1"},
+    },
+    {
+        .input = {.name = "League: setup only where it pays (Bruno's Onix, Lorelei, the Champion's phazers)", .body = test_league_turns},
+        .expectation = {.description = "Surf on a foe it KOs at any stage, no X item on Roar or Whirlwind, X Specials on the rest"},
     },
 };
 

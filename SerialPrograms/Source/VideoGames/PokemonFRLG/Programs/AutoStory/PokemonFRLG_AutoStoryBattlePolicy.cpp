@@ -13,6 +13,7 @@
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryBattleRisk.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
+#include "PokemonFRLG_AutoStoryParty.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -27,6 +28,8 @@ constexpr double THUNDER_BADGE = 1.1;
 constexpr int MIST_TURNS = 5;
 constexpr int MAX_STAGE = 6;
 constexpr double WHOLE_HP = std::numeric_limits<double>::infinity();
+//  Gen 3's lowest damage roll: 85 of 100.
+constexpr double LOWEST_ROLL = 0.85;
 
 //  The HP medicines, smallest first (the doc's HEALS table).
 struct Medicine{
@@ -135,9 +138,10 @@ std::optional<BattlePolicyKind> battle_policy_kind(std::string_view word){
 
 std::optional<std::vector<FoeThreat>> foe_threats_of(const std::vector<std::vector<int64_t>>& rows){
     constexpr size_t COLUMNS = 7;
+    constexpr size_t WITH_PHAZES = 8;
     std::vector<FoeThreat> foes;
     for (const std::vector<int64_t>& row : rows){
-        if (row.size() != COLUMNS){
+        if (row.size() != COLUMNS && row.size() != WITH_PHAZES){
             return std::nullopt;
         }
         foes.push_back(FoeThreat{
@@ -148,6 +152,7 @@ std::optional<std::vector<FoeThreat>> foe_threats_of(const std::vector<std::vect
             .normal_max = static_cast<int>(row[4]),
             .lowers_accuracy = row[5] != 0,
             .explodes = row[6] != 0,
+            .phazes = row.size() == WITH_PHAZES && row[7] != 0,
         });
     }
     return foes;
@@ -155,18 +160,37 @@ std::optional<std::vector<FoeThreat>> foe_threats_of(const std::vector<std::vect
 
 namespace{
 
-//  A battle step's "foe_stats" rows, [defense, sp_defense] each; empty if
-//  there are none or a row isn't that.
+//  A battle step's "foe_stats" rows, [defense, sp_defense] or [defense,
+//  sp_defense, hp] each; empty if there are none or a row isn't that.
 std::vector<FoeStats> foe_stats_of(const Pokemon::StoryActionArgs& args){
     constexpr size_t COLUMNS = 2;
+    constexpr size_t WITH_HP = 3;
     std::vector<FoeStats> foes;
     for (const std::vector<int64_t>& row : Pokemon::story_arg<std::vector<std::vector<int64_t>>>(args, "foe_stats")){
-        if (row.size() != COLUMNS){
+        if (row.size() != COLUMNS && row.size() != WITH_HP){
             return {};
         }
-        foes.push_back(FoeStats{.defense = static_cast<int>(row[0]), .sp_defense = static_cast<int>(row[1])});
+        FoeStats stats{.defense = static_cast<int>(row[0]), .sp_defense = static_cast<int>(row[1])};
+        if (row.size() == WITH_HP){
+            stats.hp = static_cast<int>(row[2]);
+        }
+        foes.push_back(stats);
     }
     return foes;
+}
+
+//  The lead's best attack, at Sp. Atk `spa_stage` and its lowest roll,
+//  KOs the foe out from full HP: the plan has the foe's HP.
+bool attack_kos(const BattlePolicy& policy, const Supplies& supplies, const PolicyView& view, int spa_stage){
+    if (view.foe_index >= policy.foe_stats.size() || view.foe_index >= supplies.foes.size()){
+        return false;
+    }
+    const FoeStats& stats = policy.foe_stats[view.foe_index];
+    if (!stats.hp){
+        return false;
+    }
+    const AttackContext context{.sp_attack_stage = spa_stage, .foe = stats};
+    return most_damage_against(supplies.lead, supplies.foes[view.foe_index], context) * LOWEST_ROLL >= *stats.hp;
 }
 
 } // namespace
@@ -328,6 +352,14 @@ int PolicyState::setup_turns(const Supplies& supplies, const PolicyView& view, b
 }
 
 std::optional<PolicyItem> PolicyState::setup(const Supplies& supplies, const PolicyView& view) const{
+    //  Setup pays only while its stages last and the foe out needs more
+    //  than one attack. Bruno's first Onix (console B, 2026-11-16, 20.02):
+    //  four X Specials towards the Torrent stall's +4 while Surf KOs it at
+    //  +0, then its Roar sent Blastoise out with them.
+    const FoeThreat* threat = foe(view);
+    if ((threat != nullptr && threat->phazes) || attack_kos(m_policy, supplies, view, m_spa)){
+        return std::nullopt;
+    }
     const bool special = m_spa < spa_goal(view) && bag_count(supplies, "x-special") > 0;
     const bool speed = m_policy.goals.outspeed && bag_count(supplies, "x-speed") > 0
         && m_speed < MAX_STAGE && !outsped(view);
@@ -335,7 +367,6 @@ std::optional<PolicyItem> PolicyState::setup(const Supplies& supplies, const Pol
     if (!special && !speed && !accuracy){
         return std::nullopt;
     }
-    const FoeThreat* threat = foe(view);
     if (m_policy.goals.guard_accuracy && bag_count(supplies, "guard-spec") > 0 && m_mist_turns <= 0
         && threat != nullptr && threat->lowers_accuracy
     ){

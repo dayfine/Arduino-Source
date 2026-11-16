@@ -63,6 +63,11 @@ std::optional<size_t> attack_slot(const PartyMember& member);
 //  attack_slot() itself.
 std::optional<size_t> attack_slot_against(const PartyMember& member, const std::vector<std::string>& foes, const AttackContext& context = {});
 
+//  The most damage one of the member's damaging moves with PP left does to
+//  `foe`, by attack_slot_against()'s estimate (the highest roll, no
+//  critical hit); 0 if none does any or the data doesn't have the foe.
+double most_damage_against(const PartyMember& member, std::string_view foe, const AttackContext& context);
+
 //  A TM, HM or tutor taught it `move` at full PP: in `forgot`'s slot, or
 //  in a free one when it forgot nothing. The game puts it there (console B,
 //  2026-11-15: Blizzard over Dig in slot 4); the battles read the moves by
