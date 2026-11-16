@@ -82,7 +82,7 @@ void connect_controller(ConsoleHandle& console, ProControllerContext& context, c
 
 
 AutoStory::AutoStory()
-    : RANGE("<b>Checkpoints:</b>", checkpoint_database())
+    : RANGE("Checkpoints", checkpoint_database())
     , ATTEMPTS_PER_CHECKPOINT(
         "<b>Attempts per Checkpoint:</b><br>A failed checkpoint that started from a save reloads it and tries again, up to this many times in all.",
         LockMode::LOCK_WHILE_RUNNING,
