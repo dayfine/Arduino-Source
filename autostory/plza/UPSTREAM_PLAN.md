@@ -57,25 +57,28 @@ Fork drafts on dayfine/Arduino-Source, linear, bottom first. The chain now cover
 story, 01.00 to 03.11. Lines added, from the PR file list (test = unit tests and fakes). CI: Fork
 Draft CI only runs on PRs into `main`, so the slice PRs get a dispatched Ubuntu run at their tip.
 
-| PR | Branch | Base | Tip (2026-11-15) | Purpose | Code / test (+lines) | Console |
+| PR | Branch | Base | Tip (2026-11-16) | Purpose | Code / test (+lines) | Console |
 |---|---|---|---|---|---|---|
 | [#572](https://github.com/dayfine/Arduino-Source/pull/572) | `autostory/story-range-options-sv` | `main` | 0758e5c24 | start/end checkpoint range options, shared with SV | +167 / +267 | approved, waits for an upstream slot |
 | [#573](https://github.com/dayfine/Arduino-Source/pull/573) | `plza/slice1/b` | [#572](https://github.com/dayfine/Arduino-Source/pull/572) | 02b01faf6 | story checkpoint data and its JSON reader | +1880 / +1050 | - |
-| [#574](https://github.com/dayfine/Arduino-Source/pull/574) | `plza/slice1/c` | [#573](https://github.com/dayfine/Arduino-Source/pull/573) | 7e45a127a | story engine for a zone game | +1674 / +1164 | - |
-| [#575](https://github.com/dayfine/Arduino-Source/pull/575) | `plza/slice1/d` | [#574](https://github.com/dayfine/Arduino-Source/pull/574) | ead8d7133 | PLZA opening detectors; CI pins [CLT #18](https://github.com/dayfine/CommandLineTests/pull/18) | +1166 / +997 | - |
-| [#577](https://github.com/dayfine/Arduino-Source/pull/577) | `plza/slice1/e` | [#575](https://github.com/dayfine/Arduino-Source/pull/575) | 84c21cfdc | new game to leaving the platform (01.00, 01.01 start) | +1623 / +371 | 01.00 and 01.01 passed |
-| [#580](https://github.com/dayfine/Arduino-Source/pull/580) | `plza/slice2/a` | [#577](https://github.com/dayfine/Arduino-Source/pull/577) | 85eabc107 | 01.01 arrival scenes to Main Mission 01 | +1132 / +881 | - |
-| [#582](https://github.com/dayfine/Arduino-Source/pull/582) | `plza/slice2/b` | [#580](https://github.com/dayfine/Arduino-Source/pull/580) | 5f80b7e59 | 01.02, Pancham's chase to the battle area | +553 / +684 | - |
-| [#591](https://github.com/dayfine/Arduino-Source/pull/591) | `plza/slice2/c` | [#582](https://github.com/dayfine/Arduino-Source/pull/582) | a6863623e | slice 2c: 01.03, the starter and the first battle | +452 / +244 | - |
-| [#595](https://github.com/dayfine/Arduino-Source/pull/595) | `plza/slice3` | [#591](https://github.com/dayfine/Arduino-Source/pull/591) | 43dbc2e6d | slice 3: Main Mission 02 (02.01-02.07) | +644 / +394 | - |
-| [#596](https://github.com/dayfine/Arduino-Source/pull/596) | `plza/slice4` | [#595](https://github.com/dayfine/Arduino-Source/pull/595) | 34c5d1433 | slice 4: 03.01-03.06, Hotel Z to Wild Zone 1's gate | +625 / +52 | - |
-| [#598](https://github.com/dayfine/Arduino-Source/pull/598) | `plza/slice5` | [#596](https://github.com/dayfine/Arduino-Source/pull/596) | cb6d287a6 | slice 5: 03.07, 03.09-03.11, tutorial catches to Mable's reward; merges [#590](https://github.com/dayfine/Arduino-Source/pull/590) | +1233 / +445 | - |
-| [#604](https://github.com/dayfine/Arduino-Source/pull/604) | `plza/slice5b` | [#598](https://github.com/dayfine/Arduino-Source/pull/598) | 3e8d835bc | slice 5b: 03.08 catches + 03.08b far-gate exit (split at the catch autosave) | +923 / +247 | - |
+| [#574](https://github.com/dayfine/Arduino-Source/pull/574) | `plza/slice1/c` | [#573](https://github.com/dayfine/Arduino-Source/pull/573) | e2af0990c | story engine for a zone game | +1674 / +1164 | - |
+| [#575](https://github.com/dayfine/Arduino-Source/pull/575) | `plza/slice1/d` | [#574](https://github.com/dayfine/Arduino-Source/pull/574) | 66f23cf4d | PLZA opening detectors; CI pins [CLT #18](https://github.com/dayfine/CommandLineTests/pull/18) | +1166 / +997 | - |
+| [#577](https://github.com/dayfine/Arduino-Source/pull/577) | `plza/slice1/e` | [#575](https://github.com/dayfine/Arduino-Source/pull/575) | c4ef23e77 | new game to leaving the platform (01.00, 01.01 start) | +1623 / +371 | 01.00 and 01.01 passed |
+| [#580](https://github.com/dayfine/Arduino-Source/pull/580) | `plza/slice2/a` | [#577](https://github.com/dayfine/Arduino-Source/pull/577) | f43d77852 | 01.01 arrival scenes to Main Mission 01 | +1132 / +881 | - |
+| [#582](https://github.com/dayfine/Arduino-Source/pull/582) | `plza/slice2/b` | [#580](https://github.com/dayfine/Arduino-Source/pull/580) | f41581a2a | 01.02, Pancham's chase to the battle area | +553 / +684 | - |
+| [#591](https://github.com/dayfine/Arduino-Source/pull/591) | `plza/slice2/c` | [#582](https://github.com/dayfine/Arduino-Source/pull/582) | 16f5bf395 | slice 2c: 01.03, the starter and the first battle | +452 / +244 | - |
+| [#595](https://github.com/dayfine/Arduino-Source/pull/595) | `plza/slice3` | [#591](https://github.com/dayfine/Arduino-Source/pull/591) | f18139b41 | slice 3: Main Mission 02 (02.01-02.07) | +644 / +394 | - |
+| [#596](https://github.com/dayfine/Arduino-Source/pull/596) | `plza/slice4` | [#595](https://github.com/dayfine/Arduino-Source/pull/595) | a8be3c969 | slice 4: 03.01-03.06, Hotel Z to Wild Zone 1's gate | +625 / +52 | - |
+| [#598](https://github.com/dayfine/Arduino-Source/pull/598) | `plza/slice5` | [#596](https://github.com/dayfine/Arduino-Source/pull/596) | 35bbc35b8 | slice 5: 03.07, 03.09-03.11, tutorial catches to Mable's reward; merges [#590](https://github.com/dayfine/Arduino-Source/pull/590) | +1233 / +445 | - |
+| [#604](https://github.com/dayfine/Arduino-Source/pull/604) | `plza/slice5b` | [#598](https://github.com/dayfine/Arduino-Source/pull/598) | 22d05e0e9 | slice 5b: 03.08 catches + 03.08b far-gate exit (split at the catch autosave) | +923 / +247 | - |
+| [#610](https://github.com/dayfine/Arduino-Source/pull/610) | `plza/newgame` | [#604](https://github.com/dayfine/Arduino-Source/pull/604) | 62be72f2a | 01.00 new game from HOME; one launch by title for every start and reload | - | - |
 | [#590](https://github.com/dayfine/Arduino-Source/pull/590) | `plza/throw-helper` | `upstream-main` | 2394ee31b | shared ball throw helper for InPlaceCatcher, PostKillCatcher and our catch | +145 / - | - |
 | [#576](https://github.com/dayfine/Arduino-Source/pull/576) | `plza/autostory` | `main` | 2f7b152b8 | long-lived full-story reference (+55k) | - | - |
 | [CLT #18](https://github.com/dayfine/CommandLineTests/pull/18) | `plza/all-frames` | `main` | - | every frame the PLZA tests read (84 files) | - | 9 frames missing |
 
 CI status:
+
+- 2026-11-16 consolidation: the log_detail() split went to [#574](https://github.com/dayfine/Arduino-Source/pull/574) (engine) and [#577](https://github.com/dayfine/Arduino-Source/pull/577) (backend); the autosave sightings (a9f619526) to [#582](https://github.com/dayfine/Arduino-Source/pull/582), with the plan flags in [#595](https://github.com/dayfine/Arduino-Source/pull/595) (02.07), [#596](https://github.com/dayfine/Arduino-Source/pull/596) (03.01, 03.02) and [#598](https://github.com/dayfine/Arduino-Source/pull/598) (03.11). [#610](https://github.com/dayfine/Arduino-Source/pull/610)'s tree is unchanged. Scene machine fixes stay in [#604](https://github.com/dayfine/Arduino-Source/pull/604) and the launch fix in [#610](https://github.com/dayfine/Arduino-Source/pull/610) for now; [#576](https://github.com/dayfine/Arduino-Source/pull/576) not yet merged (76 conflicted files). Ubuntu dispatched on #574, #577, #582, #598, #610.
 
 - Ubuntu green on [#598](https://github.com/dayfine/Arduino-Source/pull/598) (12094fd94) and [#604](https://github.com/dayfine/Arduino-Source/pull/604) (3e8d835bc) after the style and test passes.
 - A one-line label fix is being merged up the chain from [#577](https://github.com/dayfine/Arduino-Source/pull/577) (84c21cfdc): the GroupOption
