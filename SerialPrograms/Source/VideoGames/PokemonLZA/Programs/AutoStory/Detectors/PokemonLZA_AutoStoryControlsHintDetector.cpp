@@ -38,12 +38,25 @@ void ControlsHintDetector::make_overlays(VideoOverlaySet& items) const{
 //  With the hint up the card is 88%+ sky blue, the "?" at most 48%, and
 //  nothing around it is. A sky behind the card comes closest (card 76%),
 //  but then the "?" and the area around it are blue too (100%, 54%).
+//  The card sits higher the more rows the hint has: with three rows ("Move",
+//  "Control Camera", "Reset Camera") it is 16-24 px above the two-row one
+//  the boxes were measured on (English and Italian 01.01, console B
+//  2026-11-15), so it is looked for from 60 px above to 20 px below.
 bool ControlsHintDetector::detect(const ImageViewRGB32& screen){
-    if (sky_blue_share(screen, m_card) < 0.80 || sky_blue_share(screen, m_glyph) > 0.70){
+    for (double dy = -60; dy <= 20; dy += 2){
+        if (card_at(screen, dy)){
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ControlsHintDetector::card_at(const ImageViewRGB32& screen, double dy) const{
+    if (sky_blue_share(screen, shifted(m_card, 0, dy)) < 0.80 || sky_blue_share(screen, shifted(m_glyph, 0, dy)) > 0.70){
         return false;
     }
     for (const ImageFloatBox& box : m_around){
-        if (sky_blue_share(screen, box) > 0.10){
+        if (sky_blue_share(screen, shifted(box, 0, dy)) > 0.10){
             return false;
         }
     }

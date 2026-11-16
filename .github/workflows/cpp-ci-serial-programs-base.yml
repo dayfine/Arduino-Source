@@ -245,9 +245,10 @@ jobs:
         uses: actions/checkout@v7
         if: inputs.run-tests
         with:
-          # The fork's fixtures: upstream's plus the PLZA AutoStory frames (Confirm Choices, opening and arrival folders), dayfine/CommandLineTests PR #18.
+          # The fork's fixtures: upstream's plus the PLZA AutoStory frames (Confirm Choices, opening and arrival folders), dayfine/CommandLineTests PR #18,
+          # and the 01.01 banner and controls hint in English and Italian (branch plza/hint-banner-any-language).
           repository: 'dayfine/CommandLineTests'
-          ref: '533242774aac1f1dd4e08eb57352975cc98860bb'
+          ref: '2abde09b6bfdf9ae1b372b04c0e6265dc8559556'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded
