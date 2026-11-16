@@ -227,6 +227,88 @@ UnitTestResult test_row_17_03(){
     return walk_row("17.03", "", "below_giovanni", story_maps(), MapPosition{std::string(GYM), {2, 3}});
 }
 
+const std::string WARREN = "ViridianCity_Gym/cooltrainer_m@13,7";
+const std::string TAKASHI = "ViridianCity_Gym/black_belt@10,2";
+
+//  The directions of the legs the walker's [Leg] records say it walked, in
+//  order; turns in place (0 tiles) left out.
+std::vector<std::string> walked_directions(const std::vector<std::string>& log){
+    std::vector<std::string> directions;
+    for (const std::string& line : log){
+        const size_t dir = line.find("\"dir\":\"");
+        if (line.find("[Leg]") == std::string::npos || dir == std::string::npos || line.find("\"tiles\":0") != std::string::npos){
+            continue;
+        }
+        const size_t from = dir + 7;
+        directions.push_back(line.substr(from, line.find('"', from) - from));
+    }
+    return directions;
+}
+
+bool opposite(std::string_view a, std::string_view b){
+    return (a == "north" && b == "south") || (a == "south" && b == "north")
+        || (a == "east" && b == "west") || (a == "west" && b == "east");
+}
+
+//  17.03's route `event` planned from `from` over the gym with `beaten`
+//  beaten, as the program plans it, and walked on the sim with nothing
+//  injected. A clean walk needs no position check: it never plans again
+//  from an unknown tile, and no leg walks back the way the one before went
+//  (console B, 2026-11-15 21:39, below_giovanni: "west 3 (open)" to (7, 3)
+//  and "north 3 (open)" up to Giovanni each arrived, and each was followed
+//  by holds to walls and back).
+UnitTestResult walk_event_clean(std::string_view event, const StoryPose& from, const std::set<std::string>& beaten){
+    const StoryCheckpoint& row = table_row("17.03");
+    const StoryStep* step = nullptr;
+    for (const StoryStep& candidate : row.steps){
+        if (candidate.name == event){
+            step = &candidate;
+        }
+    }
+    if (step == nullptr){
+        return std::format("17.03 has no step {}.", event);
+    }
+    const std::vector<MapData> maps = with_trainers_beaten(story_maps(), beaten);
+    const std::optional<std::vector<RouteStep>> route = walked_route(from, *step, maps);
+    if (!route || route->empty()){
+        return std::format("17.03 {}: no route from {}.", event, to_string(from.tile));
+    }
+    OverworldSim sim(maps, MapPosition{from.map, from.tile}, from.facing.value_or(Direction::SOUTH));
+    OverworldSimWalker walker(sim);
+    const RoutePlanning planning{
+        .maps = &maps, .costs = story_route_costs(), .start = MapPosition{from.map, from.tile}, .label = std::string(event),
+        .beaten_trainers = beaten
+    };
+    const std::string failure = walker.run(*route, planning);
+    std::string log;
+    for (const std::string& line : walker.log()){
+        log += "\n  " + line;
+    }
+    if (!failure.empty() || !(sim.state().position == route->back().end)){
+        return std::format("17.03 {}: ended on {}, not {}: \"{}\"{}", event, to_string(sim.state().position), to_string(route->back().end), failure, log);
+    }
+    if (log.find("plan from an unknown tile") != std::string::npos){
+        return std::format("17.03 {}: a clean walk planned again from an unknown tile:{}", event, log);
+    }
+    const std::vector<std::string> directions = walked_directions(walker.log());
+    for (size_t c = 1; c < directions.size(); c++){
+        if (opposite(directions[c - 1], directions[c])){
+            return std::format("17.03 {}: leg {} ({}) walks back the way leg {} ({}) went:{}", event, c + 1, directions[c], c, directions[c - 1], log);
+        }
+    }
+    return true;
+}
+
+//  right_of_takashi from Warren's battle tile, Warren beaten (17.02).
+UnitTestResult test_17_03_right_of_takashi_clean(){
+    return walk_event_clean("right_of_takashi", StoryPose{std::string(GYM), {15, 7}, Direction::NORTH}, {WARREN});
+}
+
+//  below_giovanni from beside Takashi, him beaten too.
+UnitTestResult test_17_03_below_giovanni_clean(){
+    return walk_event_clean("below_giovanni", StoryPose{std::string(GYM), {11, 2}, Direction::WEST}, {WARREN, TAKASHI});
+}
+
 //  17.04b after Giovanni's win: back through the gym past its beaten
 //  trainers (Takashi's line on row 3 among them), out of the door and the
 //  Fly to below the Center's door (26, 27).
@@ -246,6 +328,14 @@ const AutoStoryViridianCase AUTO_STORY_VIRIDIAN_CASES[] = {
     {
         .input = {.name = "17.03: Takashi fought from his right, then up column 10 to Giovanni", .body = test_row_17_03},
         .expectation = {.description = "on ViridianCity_Gym (2, 3), Takashi's battle the only one"},
+    },
+    {
+        .input = {.name = "17.03 right_of_takashi walked clean", .body = test_17_03_right_of_takashi_clean},
+        .expectation = {.description = "arrives on (11, 2) with no position check and no leg walked back"},
+    },
+    {
+        .input = {.name = "17.03 below_giovanni walked clean", .body = test_17_03_below_giovanni_clean},
+        .expectation = {.description = "arrives below Giovanni on (2, 3) with no position check and no leg walked back"},
     },
     {
         .input = {.name = "17.04b: out of the beaten gym and by Fly to below Viridian's Center", .body = test_row_17_04b},
