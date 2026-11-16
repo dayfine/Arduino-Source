@@ -31,6 +31,21 @@ def changed_files(root, base_ref):
     return changes
 
 
+def changed_paths(root, base_ref):
+    """[(status letter, current path, base path or None)] for every changed tracked file.
+
+    Deleted files keep their base path as `current`; added files have no base path."""
+    fields = iter(git(root, 'diff', '--name-status', '-z', '--find-renames', base_ref, '--').decode().split('\0'))
+    changes = []
+    for status in fields:
+        if not status:
+            continue
+        original = next(fields)
+        current = next(fields) if status[0] in 'RC' else original
+        changes.append((status[0], current, None if status[0] in 'AC' else original))
+    return changes
+
+
 UPSTREAMS = ('upstream/main', 'origin/main')
 
 
