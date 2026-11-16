@@ -85,7 +85,7 @@ private:
 void AutosaveSightings::restart(){
     m_origin.reset();
     m_last_badge.reset();
-    m_seen = false;
+    m_seen_in.reset();
 }
 
 void AutosaveSightings::note(PlzaBackend& backend, const Pokemon::Observation<ZonePose>& look, std::string_view step){
@@ -97,7 +97,9 @@ void AutosaveSightings::note(PlzaBackend& backend, const Pokemon::Observation<Zo
     }
     const bool new_sighting = !m_last_badge || look.when - *m_last_badge >= AUTOSAVE_DEBOUNCE;
     m_last_badge = look.when;
-    m_seen = true;
+    if (!m_seen_in){
+        m_seen_in = std::string(step);
+    }
     if (new_sighting){
         const double seconds = (double)std::chrono::duration_cast<Milliseconds>(look.when - *m_origin).count() / 1000;
         backend.log(std::format("[PLZA] autosave badge at {:.1f}s in {}", seconds, step));
@@ -105,7 +107,7 @@ void AutosaveSightings::note(PlzaBackend& backend, const Pokemon::Observation<Zo
 }
 
 bool AutosaveSightings::finish(){
-    m_last_end_seen = m_seen;
+    m_last_end_seen = m_seen_in.has_value();
     restart();
     return m_last_end_seen;
 }
@@ -136,6 +138,31 @@ Pokemon::StoryGame<ZonePose> with_autosave_sightings(
         return Pokemon::outcome_not_saved("no autosave seen");
     };
     return game;
+}
+
+Pokemon::StoryGame<ZonePose> reloading_only_to_start(const Pokemon::StoryGame<ZonePose>& game, const AutosaveSightings& sightings){
+    Pokemon::StoryGame<ZonePose> guarded = game;
+    if (!game.reload){
+        return guarded;
+    }
+    guarded.reload = [reload = game.reload, &sightings](Pokemon::StoryBackend<ZonePose>& backend){
+        if (const std::optional<std::string>& step = sightings.seen_in()){
+            return Pokemon::outcome_failed("save_moved", std::format(
+                "the game autosaved in {} during the failed run: a reload would load past the checkpoint's start", *step
+            ));
+        }
+        return reload(backend);
+    };
+    return guarded;
+}
+
+void log_moved_save(PlzaBackend& backend, const AutosaveSightings& sightings, std::string_view checkpoint){
+    if (const std::optional<std::string>& step = sightings.seen_in()){
+        backend.log(std::format(
+            "[Save] {}: the game autosaved in {} before the run failed: the latest save is past {}'s start",
+            checkpoint, *step, checkpoint
+        ));
+    }
 }
 
 

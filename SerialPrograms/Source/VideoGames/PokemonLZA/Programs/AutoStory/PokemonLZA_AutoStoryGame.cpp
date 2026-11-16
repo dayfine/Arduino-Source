@@ -892,7 +892,7 @@ Outcome load_checkpoint_start(const Pokemon::StoryGame<ZonePose>& game, PlzaBack
     case StartCheck::UNCHECKED:
         break;
     }
-    backend.log(std::format("[Checkpoint] {}: off the station platform, as at its start", row.id));
+    backend.log(std::format("[Checkpoint] {}: off the station platform; START UNCHECKED: nothing reads this row's own start", row.id));
     return Pokemon::outcome_ok();
 }
 
@@ -950,7 +950,8 @@ Pokemon::SegmentReport run_plza_segments(
     std::span<const Pokemon::StoryCheckpoint> rows, size_t attempts_per_checkpoint,
     PlzaBackend& backend, Pokemon::RunState& state, AutosaveSightings& sightings
 ){
-    Pokemon::StoryEngine<ZonePose> engine(game, backend);
+    const Pokemon::StoryGame<ZonePose> retry_game = reloading_only_to_start(game, sightings);
+    Pokemon::StoryEngine<ZonePose> engine(retry_game, backend);
     Pokemon::SegmentReport total;
     for (size_t index = 0; index < rows.size(); index++){
         const Pokemon::StoryCheckpoint& row = rows[index];
@@ -985,13 +986,13 @@ Pokemon::SegmentReport run_plza_segments(
         );
         add_segment(part, total);
         if (!part.completed){
+            log_moved_save(backend, sightings, row.id);
             return total;
         }
     }
     total.completed = true;
     return total;
 }
-
 
 
 } // namespace PokemonLZA

@@ -148,6 +148,9 @@ Pokemon::Outcome load_checkpoint_start(
 //      the row's start is loaded if the row before's autosave was seen.
 //  With no autosave seen, a reload would rewind to an older save: the run
 //  fails there as "no_start_save". A failed load fails the run too.
+//  A row that saw an autosave and then failed is not retried: the save
+//  moved past its start, so its reload fails as "save_moved", and the run
+//  logs "[Save] <id>: the game autosaved in <step> before the run failed".
 Pokemon::SegmentReport run_plza_segments(
     const Pokemon::StoryGame<Pokemon::ZonePose>& game, const Pokemon::StoryRows& story,
     std::span<const Pokemon::StoryCheckpoint> rows, size_t attempts_per_checkpoint,

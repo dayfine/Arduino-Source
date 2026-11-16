@@ -1077,7 +1077,7 @@ const LoadCase LOAD_CASES[] = {
         .input = {.checkpoint = "01.02", .looks = {CUTSCENE}},
         .expectation = {
             .verdict = "done", .inputs = "press HOME, wait 300ms, wait 300ms, wait 300ms, wait 300ms",
-            .line = "[Checkpoint] 01.02: off the station platform, as at its start",
+            .line = "[Checkpoint] 01.02: off the station platform; START UNCHECKED: nothing reads this row's own start",
         },
     },
     {
@@ -1130,7 +1130,7 @@ UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
 }
 
 
-//  Two rows: "01.01" waits for the platform, "01.02" runs to a choice.
+//  Two rows: "01.01" waits for the platform, "01.02" runs `second_action`.
 //  01.01's autosave shows when a look has both the platform and the badge;
 //  its platform wait then needs two platform looks without the badge.
 struct ChainCase{
@@ -1138,6 +1138,8 @@ struct ChainCase{
     struct Input{
         std::set<std::string, std::less<>> reload_always;
         std::vector<Observation<ZonePose>> looks;
+        std::string second_action = "text_to_choice";
+        size_t attempts = 1;
     };
     Input input;
     struct Expectation{
@@ -1145,6 +1147,8 @@ struct ChainCase{
         std::string verdict;
         //  How many times the reload pressed HOME.
         size_t reloads = 0;
+        //  A log line the run wrote, if any is checked.
+        std::string line = {};
     };
     Expectation expectation;
 };
@@ -1189,6 +1193,22 @@ const ChainCase CHAIN_CASES[] = {
         .input = {.reload_always = {"01.02"}, .looks = {PLATFORM_SAVING, PLATFORM}},
         .expectation = {.verdict = "failed at 01.02 chain: older_save", .reloads = 1},
     },
+    {
+        //  console B, 2026-11-16: 03.04 autosaved in pokedex_app and failed
+        //  in the step after it; the next run's 03.04 loaded that save,
+        //  outside the Center, and its walk to the Center found no prompt.
+        .name = "a run that autosaved and then failed does not reload: the save moved past its start",
+        .input = {
+            .reload_always = {},
+            .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, AUTOSAVE, CUTSCENE},
+            .second_action = "wait_for_platform",
+            .attempts = 2,
+        },
+        .expectation = {
+            .verdict = "failed at 01.02 : reload_failed", .reloads = 0,
+            .line = "[Save] 01.02: the game autosaved in wait_for_platform before the run failed: the latest save is past 01.02's start",
+        },
+    },
 };
 
 UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
@@ -1198,9 +1218,9 @@ UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
     const Pokemon::StoryGame<ZonePose> game = game_with_reload(story, sightings);
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
     Pokemon::RunState state;
-    const std::vector<StoryCheckpoint> rows{one_step_row("01.01", "wait_for_platform"), one_step_row("01.02", "text_to_choice")};
+    const std::vector<StoryCheckpoint> rows{one_step_row("01.01", "wait_for_platform"), one_step_row("01.02", test.input.second_action)};
     const Pokemon::SegmentReport report = run_plza_segments(
-        game, story, rows, /*attempts_per_checkpoint=*/1, backend, state, sightings
+        game, story, rows, test.input.attempts, backend, state, sightings
     );
     const std::string verdict = report.completed
         ? "done"
@@ -1212,7 +1232,15 @@ UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
     if (reloads != test.expectation.reloads){
         return std::format("expected {} reloads, got {}: {}", test.expectation.reloads, reloads, joined(backend.inputs(), ", "));
     }
-    return true;
+    if (test.expectation.line.empty()){
+        return true;
+    }
+    for (const std::string& line : backend.lines()){
+        if (line == test.expectation.line){
+            return true;
+        }
+    }
+    return std::format("expected the line \"{}\" in:\n{}", test.expectation.line, joined(backend.lines(), "\n"));
 }
 
 

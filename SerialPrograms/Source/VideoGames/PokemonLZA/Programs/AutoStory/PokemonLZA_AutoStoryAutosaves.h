@@ -13,6 +13,7 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryAutosaves_H
 
 #include <optional>
+#include <string>
 #include <string_view>
 #include "Common/Cpp/Time.h"
 #include "Pokemon/AutoStory/Data/Pokemon_StoryRowExecution.h"
@@ -44,11 +45,16 @@ public:
     bool last_end_seen() const{
         return m_last_end_seen;
     }
+    //  The step of the checkpoint under way the badge first showed in, if
+    //  it did: the game's latest save is then past the checkpoint's start.
+    const std::optional<std::string>& seen_in() const{
+        return m_seen_in;
+    }
 
 private:
     std::optional<WallClock> m_origin;
     std::optional<WallClock> m_last_badge;
-    bool m_seen = false;
+    std::optional<std::string> m_seen_in;
     bool m_last_end_seen = false;
 };
 
@@ -59,6 +65,19 @@ private:
 Pokemon::StoryGame<Pokemon::ZonePose> with_autosave_sightings(
     Pokemon::StoryGame<Pokemon::ZonePose> game, const Pokemon::StoryRows& rows, AutosaveSightings& sightings
 );
+
+//  `game` whose reload fails as "save_moved" while `sightings` has seen an
+//  autosave in the checkpoint under way: the game's latest save is then
+//  past that checkpoint's start, and a retry from it would start elsewhere
+//  (console B 2026-11-16: 03.04 autosaved in pokedex_app, failed after it,
+//  and the next 03.04 walked from outside the Center).
+Pokemon::StoryGame<Pokemon::ZonePose> reloading_only_to_start(
+    const Pokemon::StoryGame<Pokemon::ZonePose>& game, const AutosaveSightings& sightings
+);
+
+//  After `checkpoint` failed: logs "[Save] <checkpoint>: the game autosaved
+//  in <step> before the run failed" when `sightings` saw an autosave in it.
+void log_moved_save(PlzaBackend& backend, const AutosaveSightings& sightings, std::string_view checkpoint);
 
 
 
