@@ -197,7 +197,7 @@ std::vector<LeagueFight> league_fights(){
             {94, 36, 15, 78, 39, 0, 0},     //  Lapras
         }},
         {"20.02", "bruno", {
-            {81, 32, 19, 75, 37, 0, 0},     //  Onix
+            {81, 32, 19, 75, 37, 0, 0, 1},  //  Onix (Roar)
             {101, 51, 28, 132, 66, 0, 0},   //  Hitmonchan
             {113, 65, 52, 136, 68, 0, 0},   //  Hitmonlee
             {96, 41, 41, 84, 42, 0, 0},     //  Onix
@@ -218,11 +218,11 @@ std::vector<LeagueFight> league_fights(){
             {107, 64, 24, 144, 114, 0, 0},  //  Dragonite
         }},
         {"20.05", "champion", {
-            {130, 41, 27, 87, 43, 1, 0},    //  Pidgeot (Sand Attack)
+            {130, 41, 27, 87, 43, 1, 0, 1}, //  Pidgeot (Sand Attack, Whirlwind)
             {159, 77, 70, 159, 79, 0, 0},   //  Alakazam
             {70, 0, 10, 210, 105, 0, 0},    //  Rhydon
             {118, 51, 46, 110, 55, 0, 0},   //  Gyarados
-            {139, 50, 51, 104, 52, 0, 0},   //  Arcanine
+            {139, 50, 51, 104, 52, 0, 0, 1},//  Arcanine (Roar)
             {125, 217, 218, 444, 222, 0, 0},//  Venusaur
         }},
     };

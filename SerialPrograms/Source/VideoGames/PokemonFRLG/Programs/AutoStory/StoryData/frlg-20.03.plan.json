@@ -26,6 +26,17 @@
         "why": "the precondition for Agatha: the lead at least Lv53, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md agatha; Bruno's fight takes it a level up)"
       },
       {
+        "id": "heal_before_agatha",
+        "kind": "game_action",
+        "action": "heal_to_full",
+        "args": {
+          "max_hp": 165,
+          "full_restore": true,
+          "below_percent": 50
+        },
+        "why": "a Full Restore out of battle when the lead's HP is below half before Agatha: the high-risk fight's in-battle rule (RISK_HEALS, a Full Restore at yellow) would spend the first turn on it. Above half nothing is used, as PokeGuy enters Agatha unhealed (docs/battles/pokeguy-conditions.md); it needs the HP bar from the fight before, so a run loaded at this checkpoint heals nothing"
+      },
+      {
         "id": "below_brunos_door",
         "kind": "route",
         "action": "run",
@@ -153,6 +164,33 @@
               0,
               0
             ]
+          ],
+          "foe_stats": [
+            [
+              86,
+              102,
+              145
+            ],
+            [
+              96,
+              91,
+              161
+            ],
+            [
+              68,
+              86,
+              126
+            ],
+            [
+              108,
+              110,
+              150
+            ],
+            [
+              92,
+              109,
+              155
+            ]
           ]
         },
         "declared_after": {
@@ -165,7 +203,7 @@
           ],
           "facing": "north"
         },
-        "why": "Agatha (TRAINER_ELITE_FOUR_AGATHA): Gengar Lv54, Golbat Lv54, Haunter Lv53, Arbok Lv56, Gengar Lv58, two Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +1 by X Specials, +3 while Torrent is off (torrent_power), X Speed until faster, Guard Spec first against an accuracy drop; the doc's agatha row, 95.3% at 45/165, its opening a heal); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's agatha entry state (45/165), as 19.01's: Arbok's worst case is 126. Then the door north (6, 2) opens"
+        "why": "Agatha (TRAINER_ELITE_FOUR_AGATHA): Gengar Lv54, Golbat Lv54, Haunter Lv53, Arbok Lv56, Gengar Lv58, two Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +1 by X Specials, +3 while Torrent is off (torrent_power), X Speed until faster, Guard Spec first against an accuracy drop; the doc's agatha row, 95.3% at 45/165, its opening a heal); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's agatha entry state (45/165), as 19.01's: Arbok's worst case is 126. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table, for the damage each attack would do and whether the best one KOs (no X item then). Then the door north (6, 2) opens"
       }
     ]
   },
@@ -174,7 +212,7 @@
     "notes": {
       "checkpoint": [
         "Starts in front of Bruno at (6, 6) facing north, where 20.02 ends. A boss battle is its own checkpoint: the walk on and Agatha's fight. PokeGuy has this fight at 1:51:12 (docs/battles/pokeguy-conditions.md, agatha).",
-        "No heal before Agatha: PokeGuy enters at 45/165 from Bruno's fight and heals in the battle (its first turn); the C policy's recovery does that from the bag's Full Restores (20.01a).",
+        "heal_before_agatha: PokeGuy enters at 45/165 from Bruno's fight and heals in the battle (its first turn); below half HP the Full Restore is used before the fight instead, where it costs no turn.",
         "Ends in front of Agatha at (6, 6) facing north, saved there."
       ]
     }

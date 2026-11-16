@@ -162,6 +162,33 @@
               0,
               0
             ]
+          ],
+          "foe_stats": [
+            [
+              110,
+              119,
+              189
+            ],
+            [
+              91,
+              96,
+              146
+            ],
+            [
+              91,
+              96,
+              146
+            ],
+            [
+              106,
+              109,
+              178
+            ],
+            [
+              137,
+              157,
+              197
+            ]
           ]
         },
         "declared_after": {
@@ -174,7 +201,7 @@
           ],
           "facing": "north"
         },
-        "why": "Lance (TRAINER_ELITE_FOUR_LANCE): Gyarados Lv56, Dragonair Lv54, Dragonair Lv54, Aerodactyl Lv58, Dragonite Lv60, two Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +3 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first against an accuracy drop; the doc's lance row, 99.2% at 168/168); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's lance entry state (168/168), as 19.01's: Dragonite's worst case is 144 and its worst normal hit (Hyper Beam) 114. Then the Champion's door north (6, 5) opens"
+        "why": "Lance (TRAINER_ELITE_FOUR_LANCE): Gyarados Lv56, Dragonair Lv54, Dragonair Lv54, Aerodactyl Lv58, Dragonite Lv60, two Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +3 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first against an accuracy drop; the doc's lance row, 99.2% at 168/168); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's lance entry state (168/168), as 19.01's: Dragonite's worst case is 144 and its worst normal hit (Hyper Beam) 114. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table, for the damage each attack would do and whether the best one KOs (no X item then). Then the Champion's door north (6, 5) opens"
       }
     ]
   },

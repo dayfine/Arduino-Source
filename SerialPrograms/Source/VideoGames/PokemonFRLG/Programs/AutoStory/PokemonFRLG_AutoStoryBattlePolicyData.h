@@ -62,6 +62,8 @@ struct FoeThreat{
     bool lowers_accuracy = false;
     //  Self-Destruct, Explosion.
     bool explodes = false;
+    //  Roar, Whirlwind: the lead forced out loses its stages.
+    bool phazes = false;
 };
 
 //  A step's policy: the kind, its goals and the foes' threat rows.
@@ -70,9 +72,10 @@ struct BattlePolicy{
     SetupGoals goals = {};
     //  In the step's "foes" order.
     std::vector<FoeThreat> foes = {};
-    //  The foes' Defense and Sp. Def in the same order (the step's
+    //  The foes' Defense, Sp. Def and HP in the same order (the step's
     //  "foe_stats"), for the damage the lead's attacks would do, whatever
-    //  the policy kind; empty when the plan doesn't carry them.
+    //  the policy kind, and whether the best one KOs; empty when the plan
+    //  doesn't carry them.
     std::vector<FoeStats> foe_stats = {};
 };
 
@@ -84,7 +87,8 @@ std::optional<BattlePolicyKind> battle_policy_kind(std::string_view word);
 BattlePolicy battle_policy_of(const Pokemon::StoryActionArgs& args);
 
 //  The step's "foe_threats" rows, [speed, likely, mean, max, normal_max,
-//  lowers_accuracy, explodes] each; none if a row isn't that.
+//  lowers_accuracy, explodes] each, with phazes as an eighth column where
+//  the foe has Roar or Whirlwind; none if a row isn't that.
 std::optional<std::vector<FoeThreat>> foe_threats_of(const std::vector<std::vector<int64_t>>& rows);
 
 

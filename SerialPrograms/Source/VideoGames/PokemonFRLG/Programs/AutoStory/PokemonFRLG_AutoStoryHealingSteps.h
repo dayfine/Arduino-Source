@@ -31,8 +31,12 @@ namespace PokemonFRLG{
 //  The GAME step that heals the lead to full with the bag (heal_to_full()):
 //  max_hp INTEGER, the lead's maximum HP when the summary wasn't read;
 //  full_restore BOOLEAN (default false), a Full Restore first if the bag
-//  holds one (heal_to_full()'s first item). HP still missing when the
-//  bag runs out is logged; the check fails on it.
+//  holds one (heal_to_full()'s first item); below_percent INTEGER (default
+//  100), heal only when the HP is below this share of the maximum, as
+//  before an Elite Four fight: high risk, a Full Restore at yellow
+//  (RISK_HEALS in PokemonFRLG_AutoStoryBattlePolicy.cpp), out of battle
+//  where it costs no turn. HP still missing when the bag runs out is
+//  logged; the check fails on it.
 inline const std::string HEAL_TO_FULL_ACTION = "heal_to_full";
 //  The GAME step "restore_pp" uses a PP item on the lead from the bag:
 //  item WORD, "elixir" (FRLG's Elixir restores every move, no move to

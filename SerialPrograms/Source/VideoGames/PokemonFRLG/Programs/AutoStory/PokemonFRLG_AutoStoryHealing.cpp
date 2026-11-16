@@ -87,6 +87,15 @@ std::optional<int> missing_hp(const Supplies& supplies, int fallback_max_hp){
     return missing - supplies.healed_since_measured;
 }
 
+bool hp_at_least_percent(const Supplies& supplies, int fallback_max_hp, int percent){
+    const std::optional<int> missing = missing_hp(supplies, fallback_max_hp);
+    if (!missing){
+        return false;
+    }
+    const int max_hp = supplies.lead.stats && supplies.lead.stats->hp > 0 ? supplies.lead.stats->hp : fallback_max_hp;
+    return (max_hp - *missing) * 100 >= percent * max_hp;
+}
+
 std::optional<int> heal_to_full(
     Supplies& supplies, int fallback_max_hp, const std::function<bool(const std::string& item)>& use,
     std::string_view first_item
@@ -228,6 +237,40 @@ UnitTestResult test_missing_hp_edges(){
     return true;
 }
 
+//  The heal before Bruno and Agatha (heal_to_full's below_percent 50): HP
+//  the bar showed, against the share it must reach to skip the heal.
+struct HpShareCase{
+    std::string_view name;
+    struct Input{
+        std::optional<double> fill;
+        int percent;
+    } input;
+    struct Expectation{
+        bool at_least;
+    } expectation;
+};
+
+const HpShareCase HP_SHARE_CASES[] = {
+    {"Bruno's entry on console B, 117 of 165: no heal", {.fill = 117.0 / 165, .percent = 50}, {.at_least = true}},
+    {"PokeGuy's Agatha entry, 45 of 165: heal", {.fill = 45.0 / 165, .percent = 50}, {.at_least = false}},
+    {"no bar measured since the load: heal", {.fill = std::nullopt, .percent = 50}, {.at_least = false}},
+    {"a full bar at the default 100: no heal", {.fill = 1.0, .percent = 100}, {.at_least = true}},
+};
+
+UnitTestResult test_hp_at_least_percent(){
+    for (const HpShareCase& test : HP_SHARE_CASES){
+        Supplies supplies = bag(0, 0);
+        supplies.lead.stats = Stats{.hp = 165};
+        if (test.input.fill){
+            measured_hp(supplies, *test.input.fill);
+        }
+        if (hp_at_least_percent(supplies, /*fallback_max_hp=*/165, test.input.percent) != test.expectation.at_least){
+            return std::format("{}: expected {}.", test.name, test.expectation.at_least ? "at least" : "below");
+        }
+    }
+    return true;
+}
+
 //  PokeGuy's bag after Agatha (docs/battles/pokeguy-conditions.md lance:
 //  Full Restores 12 to 11), read at the checkpoint's start.
 Supplies league_bag(int full_restores){
@@ -352,6 +395,7 @@ void add_tests_AutoStoryHealing(UnitTestDatabase& database){
     database.add<Test_AutoStoryHealing>(HealingCase{"Kayden hits hard: healed to full before Koga", test_hard_hit_healed});
     database.add<Test_AutoStoryHealing>(HealingCase{"out of Potions: the HP stays missing", test_out_of_potions});
     database.add<Test_AutoStoryHealing>(HealingCase{"missing HP: unknown, full, the summary's maximum", test_missing_hp_edges});
+    database.add<Test_AutoStoryHealing>(HealingCase{"before an Elite Four fight: a heal only below half HP", test_hp_at_least_percent});
     database.add<Test_AutoStoryHealing>(HealingCase{"the Mart buys the shortfall for a full bar", test_cover_shortfall});
     database.add<Test_AutoStoryHealing>(HealingCase{"a Full Restore after Agatha, Potions without one", test_full_restore_after_agatha});
     database.add<Test_AutoStoryHealing>(HealingCase{"an Elixir after Lance: 10 PP each, at most full", test_elixir_after_lance});

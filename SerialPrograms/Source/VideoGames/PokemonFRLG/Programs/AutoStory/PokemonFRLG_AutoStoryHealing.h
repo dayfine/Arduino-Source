@@ -45,6 +45,10 @@ void took_recovery_item(Supplies& supplies, const std::string& item);
 //  Nothing if no bar was measured since the checkpoint loaded.
 std::optional<int> missing_hp(const Supplies& supplies, int fallback_max_hp);
 
+//  The lead's HP, as missing_hp() counts it, is at least `percent` of its
+//  maximum (the summary's, else `fallback_max_hp`); false if unknown.
+bool hp_at_least_percent(const Supplies& supplies, int fallback_max_hp, int percent);
+
 //  Uses healing items with `use` (which returns whether the item was used,
 //  having called took_recovery_item()) until missing_hp() is 0 or less:
 //  a Super Potion while more than a Potion's HP is missing, else a Potion,

@@ -14,9 +14,11 @@
  *
  *  The Torrent stall (target_torrent) is its extra X Specials only: the
  *  doc's other stall, the weakest damaging move that can't KO the setup
- *  foe, needs the foe's HP. Not modelled: the foe's HP (so the doc's safe
- *  finishing hit is never taken early), Oran Berries and PP medicine in
- *  battle. Stage drops and evasion rises of the foe are
+ *  foe, is not modelled. Setup pays only while its stages last and the
+ *  foe out needs more than one attack: none against a foe that phazes
+ *  (Roar, Whirlwind) or that the lead's best attack KOs from full HP at
+ *  its lowest roll (the step's foe_stats with HP). Not modelled: the
+ *  foe's HP as the fight goes, Oran Berries and PP medicine in battle. Stage drops and evasion rises of the foe are
  *  not read off the battle text yet: foe_evasion_raised() and the like
  *  take them once something does.
  *

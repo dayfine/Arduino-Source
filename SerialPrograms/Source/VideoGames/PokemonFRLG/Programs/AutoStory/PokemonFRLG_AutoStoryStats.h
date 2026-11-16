@@ -27,11 +27,12 @@ struct Stats{
     uint16_t speed = 0;
 };
 
-//  A foe's Defense and Sp. Def, from its trainer's party data (a battle
-//  step's "foe_stats").
+//  A foe's Defense and Sp. Def, and its HP where the plan has it, from its
+//  trainer's party data (a battle step's "foe_stats").
 struct FoeStats{
     int defense = 0;
     int sp_defense = 0;
+    std::optional<int> hp = std::nullopt;
 };
 
 //  A stat stage's multiplier: (2 + stage) / 2 up, 2 / (2 - stage) down.
