@@ -36,7 +36,7 @@ struct FakeStoryScript{
 
 //  The backend of the engine's unit tests and of a game's scripted tests,
 //  for any pose type.
-//  code-health: allow public_methods -- the backend calls it fakes plus the two recordings tests read; nothing to split
+//  code-health: allow public_methods -- the backend calls it fakes plus the three recordings tests read; nothing to split
 //  code-health: allow test_only_api -- a test double: the scripted backend the engine and game tests run on
 template <StoryPose PoseType>
 class FakeStoryBackend : public StoryBackend<PoseType>{
@@ -50,9 +50,13 @@ public:
     const std::vector<std::string>& inputs() const{
         return m_inputs;
     }
-    //  Each log line, in order.
+    //  Each log line, in order, log_detail()'s too: the file log.
     const std::vector<std::string>& lines() const{
         return m_lines;
+    }
+    //  The lines log() wrote, in order: the stream's overlay.
+    const std::vector<std::string>& overlay_lines() const{
+        return m_overlay_lines;
     }
 
     virtual StoryBackendKind kind() const override;
@@ -63,6 +67,7 @@ public:
     virtual void wait(Milliseconds duration) override;
     virtual Observation<PoseType> observe() override;
     virtual void log(std::string_view line) override;
+    virtual void log_detail(std::string_view line) override;
     virtual CancellableScope& scope() override;
 
 private:
@@ -71,6 +76,7 @@ private:
     size_t m_next_look = 0;
     std::vector<std::string> m_inputs;
     std::vector<std::string> m_lines;
+    std::vector<std::string> m_overlay_lines;
 };
 
 //  Instantiated for ZonePose (Pokemon_ZonePose.h), in
