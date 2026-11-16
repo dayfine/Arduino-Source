@@ -15,6 +15,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryBackend_H
 #define PokemonAutomation_PokemonLZA_AutoStoryBackend_H
 
+#include <functional>
 #include <string_view>
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -56,11 +57,21 @@ using PlzaBackend = Pokemon::StoryBackend<Pokemon::ZonePose>;
 //  then the stick is tapped that way for 150 ms. The tap also takes a step.
 void story_turn(PlzaBackend& backend, double degrees);
 
-//  Turns the player to `heading` on the minimap (upstream's
-//  get_facing_direction(): 0 up, 90 right) with story_turn(), 4 turns at
-//  most, then L puts the camera behind the player, so a run forward goes
-//  that way (console B, 2026-11-14). Fails as "heading_missed".
-Pokemon::Outcome face_heading(StoryEnv& env, PlzaBackend& backend, double heading);
+//  The player's heading on the minimap as its arrow shows it now
+//  (upstream's get_facing_direction(): 0 up, 90 right).
+using MinimapArrowReader = std::function<double()>;
+
+//  The console's MinimapArrowReader: get_facing_direction() on `env`.
+MinimapArrowReader minimap_arrow(StoryEnv& env);
+
+//  Turns the player to `heading` on the minimap from any start, 4 turns
+//  at most, each story_turn() by the arrow's error the short way round,
+//  then L puts the camera behind the player, so a run forward goes that
+//  way (console B, 2026-11-14). The arrow is read only once the last turn
+//  is done (backend.observe() waits for it): in run 10 of 03.08 (console
+//  B, 2026-11-16) it was read while the turns were still queued, read 132
+//  four times, and failed. Fails as "heading_missed".
+Pokemon::Outcome face_heading(PlzaBackend& backend, const MinimapArrowReader& read_arrow, double heading);
 
 
 //  PLZA on the console: the controller and PlzaScreenObserver.

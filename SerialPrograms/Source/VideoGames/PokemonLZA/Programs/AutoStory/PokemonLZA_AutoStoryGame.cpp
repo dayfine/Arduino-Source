@@ -225,7 +225,7 @@ Handler gate_run_handler(StoryEnv* env){
         const auto heading = call.args.find("heading");
         try{
             if (heading != call.args.end()){
-                const Outcome faced = face_heading(*env, backend, (double)std::get<int64_t>(heading->second));
+                const Outcome faced = face_heading(backend, minimap_arrow(*env), (double)std::get<int64_t>(heading->second));
                 if (!faced.succeeded()){
                     return faced;
                 }

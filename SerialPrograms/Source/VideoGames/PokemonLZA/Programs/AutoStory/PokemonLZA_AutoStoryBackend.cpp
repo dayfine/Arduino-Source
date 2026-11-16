@@ -129,20 +129,44 @@ namespace{
 //  How close to a run's heading the minimap's arrow must read.
 constexpr double HEADING_TOLERANCE = 10;
 
+//  The turns face_heading() takes at most.
+constexpr int HEADING_TURNS = 4;
+
+//  How far clockwise `heading` is of `now`, the short way round: in
+//  (-180, 180].
+double turn_to(double now, double heading){
+    double turn = std::fmod(heading - now, 360.0);
+    if (turn > 180){
+        turn -= 360;
+    }else if (turn <= -180){
+        turn += 360;
+    }
+    return turn;
+}
+
 } // namespace
 
-Pokemon::Outcome face_heading(StoryEnv& env, PlzaBackend& backend, double heading){
-    for (int turns = 0; turns <= 4; turns++){
-        const double now = get_facing_direction(env.env.console, env.context);
-        if (get_angle_between_facing_directions(now, heading) <= HEADING_TOLERANCE){
+MinimapArrowReader minimap_arrow(StoryEnv& env){
+    return [&env](){
+        return get_facing_direction(env.env.console, env.context);
+    };
+}
+
+Pokemon::Outcome face_heading(PlzaBackend& backend, const MinimapArrowReader& read_arrow, double heading){
+    for (int turns = 0; turns <= HEADING_TURNS; turns++){
+        backend.observe();
+        const double now = read_arrow();
+        const double turn = turn_to(now, heading);
+        backend.log_detail(std::format("[PLZA] face_heading: the arrow reads {:.0f} deg, {:.0f} wanted: {:.0f} off", now, heading, turn));
+        if (std::abs(turn) <= HEADING_TOLERANCE){
             backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
             return Pokemon::outcome_ok();
         }
-        if (turns < 4){
-            story_turn(backend, heading - now);
+        if (turns < HEADING_TURNS){
+            story_turn(backend, turn);
         }
     }
-    return Pokemon::outcome_failed("heading_missed", std::format("not facing {:.0f} deg after 4 turns", heading));
+    return Pokemon::outcome_failed("heading_missed", std::format("not facing {:.0f} deg after {} turns", heading, HEADING_TURNS));
 }
 
 void story_turn(PlzaBackend& backend, double degrees){

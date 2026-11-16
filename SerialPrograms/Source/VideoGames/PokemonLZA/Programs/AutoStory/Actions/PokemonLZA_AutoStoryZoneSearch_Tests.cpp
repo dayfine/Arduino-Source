@@ -205,20 +205,16 @@ private:
 };
 
 
-constexpr ZoneStartMove LEAVE_WEST = ZoneStartMove::LEAVE_WEST;
 constexpr ZoneStartMove WALK_TO_SPOT = ZoneStartMove::WALK_TO_SPOT;
 constexpr ZoneStartMove SEARCH = ZoneStartMove::SEARCH;
 constexpr ZoneStartMove ROCKS_NOT_LEFT = ZoneStartMove::ROCKS_NOT_LEFT;
 constexpr ZoneStartMove SPOT_NOT_REACHED = ZoneStartMove::SPOT_NOT_REACHED;
 
-//  Steps west before the start gives up on leaving the rocks.
-constexpr size_t WEST_STEPS = 3;
-
 struct StartCase{
     std::string name;
     struct Input{
-        //  The agreed marker distance after each move, from the read at the
-        //  start on (none: no read taken).
+        //  The agreed marker distance after the leg off the rocks, then
+        //  after the marker walk (none: no read taken).
         std::vector<std::optional<int>> reads;
     };
     Input input;
@@ -230,40 +226,40 @@ struct StartCase{
 
 const StartCase START_CASES[] = {
     {
-        .name = "at the rocks with no read: west until the reads agree, the marker walk to 100, then the search",
-        .input = {.reads = {std::nullopt, std::nullopt, 128, 101}},
-        .expectation = {.moves = {LEAVE_WEST, LEAVE_WEST, WALK_TO_SPOT, SEARCH}},
+        .name = "the hand-measured walk: 127 off the rocks, the marker walk to 102, then the search",
+        .input = {.reads = {127, 102}},
+        .expectation = {.moves = {WALK_TO_SPOT, SEARCH}},
     },
     {
-        .name = "at the rocks with a read: still one step west first",
-        .input = {.reads = {120, 118, 99}},
-        .expectation = {.moves = {LEAVE_WEST, WALK_TO_SPOT, SEARCH}},
+        .name = "no read off the rocks: stop, no search at the rocks",
+        .input = {.reads = {std::nullopt}},
+        .expectation = {.moves = {ROCKS_NOT_LEFT}},
     },
     {
-        .name = "already on the road at 100: the search starts there",
-        .input = {.reads = {104}},
-        .expectation = {.moves = {SEARCH}},
+        .name = "a read off the rocks nearer than the save stands: stop",
+        .input = {.reads = {113}},
+        .expectation = {.moves = {ROCKS_NOT_LEFT}},
     },
     {
-        .name = "the walk to 100 ends with no agreed read: stop, no search at the rocks",
-        .input = {.reads = {std::nullopt, 125, std::nullopt}},
-        .expectation = {.moves = {LEAVE_WEST, WALK_TO_SPOT, SPOT_NOT_REACHED}},
+        .name = "a read off the rocks further than the save stands: stop",
+        .input = {.reads = {140}},
+        .expectation = {.moves = {ROCKS_NOT_LEFT}},
     },
     {
-        .name = "the walk to 100 ends held up short of it: stop",
-        .input = {.reads = {std::nullopt, 125, 122}},
-        .expectation = {.moves = {LEAVE_WEST, WALK_TO_SPOT, SPOT_NOT_REACHED}},
+        .name = "the walk to 100 ends with no agreed read: stop",
+        .input = {.reads = {127, std::nullopt}},
+        .expectation = {.moves = {WALK_TO_SPOT, SPOT_NOT_REACHED}},
     },
     {
-        .name = "no agreed read after every step west: stop",
-        .input = {.reads = {std::nullopt, std::nullopt, std::nullopt, std::nullopt}},
-        .expectation = {.moves = {LEAVE_WEST, LEAVE_WEST, LEAVE_WEST, ROCKS_NOT_LEFT}},
+        .name = "the walk to 100 ends short of it: stop",
+        .input = {.reads = {127, 115}},
+        .expectation = {.moves = {WALK_TO_SPOT, SPOT_NOT_REACHED}},
     },
 };
 
 //  catch_in_zone()'s way to the spot: each read decides the next move.
 UnitTestResult check_start(const StartCase& test){
-    ZoneStart start(WEST_STEPS);
+    ZoneStart start(TAUNIE_ROCKS_ROUTE);
     std::vector<ZoneStartMove> moves;
     for (const std::optional<int>& read : test.input.reads){
         moves.push_back(start.next(read));
