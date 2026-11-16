@@ -620,11 +620,30 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        .name = "02.06 ends on the game's autosave",
+        .name = "02.06 with no autosave badge seen is not saved",
         .input = {.checkpoint = "02.06", .first_step = 4, .looks = {
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(21000)),
         }},
-        .expectation = {.verdict = "done", .line = "[Save] 02.06: the game autosaved at its end"},
+        .expectation = {.verdict = "done", .line = "[Save] 02.06: not saved (the plan's autosave was not seen)"},
+    },
+    {
+        .name = "an autosave badge mid-scene saves the checkpoint",
+        .input = {.checkpoint = "02.06", .first_step = 4, .looks = {
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look(/*events=*/{}, {AUTOSAVE_READING}, Milliseconds(1000)),
+            look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(21000)),
+        }},
+        .expectation = {.verdict = "done", .line = "[Save] 02.06: the game autosaved (seen)"},
+    },
+    {
+        .name = "a badge mid-scene is logged once, at its time in its step",
+        .input = {.checkpoint = "02.06", .first_step = 4, .looks = {
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look(/*events=*/{}, {AUTOSAVE_READING}, Milliseconds(1000)),
+            look(/*events=*/{}, {AUTOSAVE_READING}, Milliseconds(2000)),
+            look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(21000)),
+        }},
+        .expectation = {.verdict = "done", .line = "[PLZA] autosave badge at 1.0s in wake_up"},
     },
 };
 
