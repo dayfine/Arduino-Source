@@ -68,10 +68,12 @@ class ErrorKind:
 class AppError:
     """The first failed command of a request. `detail` is the app's message (it may name an owner
     token: never put it in a record for OWNER_CLAIMED); `program_state` is set for PROGRAM_STATE
-    (upper case, as the app prints it: RUNNING, STOPPING, ...)."""
+    (upper case, as the app prints it: RUNNING, STOPPING, ...); `command_index` is the failed
+    command's 0-based place among the commands sent, when the app names it."""
     kind: str
     detail: str
     program_state: Optional[str] = None
+    command_index: Optional[int] = None
 
 
 @dataclass(frozen=True)

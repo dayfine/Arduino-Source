@@ -54,7 +54,8 @@ error 2 (start 10): Program is RUNNING.
 end
 ```
 
-- `ok <line> <command> @<start>-<end>ms`: that command ran.
+- `ok <line> <command> @<start>-<end>ms`: that command ran. `<line>` counts the request's lines from 1,
+  so the first command is line 2.
 - `error <line> (<command>): <message>`: the first failure; nothing after it ran.
 - `end`: always last. A journal without it is not finished (the app writes `.tmp` and renames).
 - Any other line is a command's printed reply (`describe_program {...}`, `game_open yes`,

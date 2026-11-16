@@ -26,7 +26,9 @@ __all__ = ['FileChannel', 'parse_journal', 'render']
 REQUEST_PREFIX = 'palab_'
 JOURNAL_END = 'end'
 JOURNAL_OK_RE = re.compile(r'^ok \d+ (\S+)')
-JOURNAL_ERROR_RE = re.compile(r'^error \d+ \(([^)]*)\): (.*)$')
+JOURNAL_ERROR_RE = re.compile(r'^error (\d+) \(([^)]*)\): (.*)$')
+# Journal lines count the request's lines from 1, and line 1 is `request <id>`.
+FIRST_COMMAND_LINE = 2
 PROGRAM_IS_RE = re.compile(r'^Program is ([A-Z_]+)\.$')
 VERBS: Dict[str, Type[Command]] = {'start': Start, 'stop': Stop, 'snapshot': Snapshot,
                                    'describe_program': DescribeProgram, 'game_open': GameOpen}
@@ -47,18 +49,19 @@ def render(command: Command) -> str:
     raise TypeError('no request line for {!r}'.format(command))
 
 
-def _error(message: str) -> AppError:
-    """LabChannel's error message as a kind."""
+def _error(message: str, line: int) -> AppError:
+    """LabChannel's error message, on request line `line`, as a kind."""
+    index = line - FIRST_COMMAND_LINE if line >= FIRST_COMMAND_LINE else None
     if message.startswith('owned by'):
-        return AppError(ErrorKind.OWNER_CLAIMED, message)
+        return AppError(ErrorKind.OWNER_CLAIMED, message, command_index=index)
     if 'not a program' in message:
-        return AppError(ErrorKind.PANEL_NOT_PROGRAM, message)
+        return AppError(ErrorKind.PANEL_NOT_PROGRAM, message, command_index=index)
     if 'controller not connected' in message:
-        return AppError(ErrorKind.CONTROLLER_NOT_READY, message)
+        return AppError(ErrorKind.CONTROLLER_NOT_READY, message, command_index=index)
     match = PROGRAM_IS_RE.match(message)
     if match:
-        return AppError(ErrorKind.PROGRAM_STATE, message, program_state=match.group(1))
-    return AppError(ErrorKind.OTHER, message)
+        return AppError(ErrorKind.PROGRAM_STATE, message, program_state=match.group(1), command_index=index)
+    return AppError(ErrorKind.OTHER, message, command_index=index)
 
 
 def parse_journal(lines: Tuple[str, ...]) -> Journal:
@@ -74,7 +77,7 @@ def parse_journal(lines: Tuple[str, ...]) -> Journal:
                 succeeded.add(VERBS[ok.group(1)])
         elif failed:
             if error is None:
-                error = _error(failed.group(2))
+                error = _error(failed.group(3), int(failed.group(1)))
         else:
             printed.append(line)
     return Journal(lines=tuple(lines), succeeded=frozenset(succeeded), error=error, printed=tuple(printed))

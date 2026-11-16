@@ -94,14 +94,19 @@ class FileChannelTest(unittest.TestCase):
 class ParseJournalTest(unittest.TestCase):
     def test_error_lines_become_kinds(self):
         cases = [
-            dict(name='owner lock', input='owned by 7f3e', expectation=AppError(ErrorKind.OWNER_CLAIMED, 'owned by 7f3e')),
+            dict(name='owner lock', input='owned by 7f3e',
+                 expectation=AppError(ErrorKind.OWNER_CLAIMED, 'owned by 7f3e', command_index=0)),
             dict(name='program state', input='Program is RUNNING.',
-                 expectation=AppError(ErrorKind.PROGRAM_STATE, 'Program is RUNNING.', program_state='RUNNING')),
+                 expectation=AppError(ErrorKind.PROGRAM_STATE, 'Program is RUNNING.', program_state='RUNNING',
+                                      command_index=0)),
             dict(name='not a program', input='the selected panel is not a program',
-                 expectation=AppError(ErrorKind.PANEL_NOT_PROGRAM, 'the selected panel is not a program')),
+                 expectation=AppError(ErrorKind.PANEL_NOT_PROGRAM, 'the selected panel is not a program',
+                                      command_index=0)),
             dict(name='controller', input='controller not connected after 10 s',
-                 expectation=AppError(ErrorKind.CONTROLLER_NOT_READY, 'controller not connected after 10 s')),
-            dict(name='anything else', input='unknown command', expectation=AppError(ErrorKind.OTHER, 'unknown command')),
+                 expectation=AppError(ErrorKind.CONTROLLER_NOT_READY, 'controller not connected after 10 s',
+                                      command_index=0)),
+            dict(name='anything else', input='unknown command',
+                 expectation=AppError(ErrorKind.OTHER, 'unknown command', command_index=0)),
         ]
         for case in cases:
             with self.subTest(case['name']):
@@ -118,7 +123,8 @@ class ParseJournalTest(unittest.TestCase):
     def test_only_the_first_error_is_kept(self):
         journal = parse_journal(('ok 2 stop @0-1ms', 'error 3 (start 10): Program is STOPPING.',
                                  'error 4 (stop): owned by x', 'end'))
-        self.assertEqual((journal.error.kind, journal.ok(Stop)), (ErrorKind.PROGRAM_STATE, True))
+        self.assertEqual((journal.error.kind, journal.error.command_index, journal.ok(Stop)),
+                         (ErrorKind.PROGRAM_STATE, 1, True))
 
 
 if __name__ == '__main__':
