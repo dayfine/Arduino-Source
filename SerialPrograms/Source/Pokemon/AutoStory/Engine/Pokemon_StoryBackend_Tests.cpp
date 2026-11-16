@@ -80,6 +80,19 @@ std::string fake_text(CancellableScope& scope){
     return text + looks;
 }
 
+//  The scripted backend's battles: recorded, ending as scripted (ok when
+//  the script names no outcome).
+std::string fake_battle_text(CancellableScope& scope){
+    FakeStoryBackend<ZonePose> won({}, scope);
+    FakeStoryBackend<ZonePose> lost({.battle = outcome_failed("battle_lost", "the party fainted")}, scope);
+    const Outcome first = won.battle();
+    const Outcome second = lost.battle();
+    return std::format(
+        "{} {} / {} {}", won.inputs().front(), first.succeeded() ? "ok" : first.failure,
+        lost.inputs().front(), second.succeeded() ? "ok" : second.failure
+    );
+}
+
 const BackendCase CASES[] = {
     {
         .name = "directions as stick degrees",
@@ -125,6 +138,11 @@ const BackendCase CASES[] = {
         .input = {.read = fake_text},
         .expectation = {.text = "press A, tap east, hold north 400ms run, stick 90deg 150ms walk, release 300ms, wait 100ms, "
             "nothing / white fade / white fade"},
+    },
+    {
+        .name = "the scripted backend records a battle and ends it as scripted",
+        .input = {.read = fake_battle_text},
+        .expectation = {.text = "battle ok / battle battle_lost"},
     },
 };
 

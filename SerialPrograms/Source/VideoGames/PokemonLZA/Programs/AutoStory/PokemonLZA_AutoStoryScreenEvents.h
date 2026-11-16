@@ -12,6 +12,7 @@
 
 #include "Common/Cpp/Time.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_ButtonDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector.h"
 
@@ -26,7 +27,10 @@ namespace PokemonLZA{
 //    BOX_ONLY: the box shows while the text still types), or a blue or
 //    teal box;
 //  - CHOICE_BOX: the selection arrow where a dialogue's choices are drawn
-//    (dialog_choice_box()).
+//    (dialog_choice_box());
+//  - BATTLE_STARTED: the battle HUD's hints at the bottom centre ("X A:
+//    Select Move"), read by their A icon. Story battles show no Run
+//    prompt, so RunFromBattleDetector misses them.
 //  A fading screen has no box to read.
 class PlzaScreenObserver : public ScreenEventObserver{
 public:
@@ -42,6 +46,7 @@ public:
 private:
     StoryDialogDetector m_dialog;
     SelectionArrowDetector m_choice_arrow;
+    ButtonDetector m_battle_hint;
 };
 
 

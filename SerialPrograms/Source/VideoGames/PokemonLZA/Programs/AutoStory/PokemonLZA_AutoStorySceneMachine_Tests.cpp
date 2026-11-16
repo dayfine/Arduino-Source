@@ -59,6 +59,7 @@ const ScreenEvents STILL{ScreenEvent::SCREEN_STILL};
 const ScreenEvents WHITE{ScreenEvent::FADE_WHITE};
 const ScreenEvents BLACK{ScreenEvent::FADE_BLACK};
 const ScreenEvents CHOICE{ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX};
+const ScreenEvents BATTLE{ScreenEvent::BATTLE_STARTED};
 
 //  mash_to_move_hints' config: a minute quiet, blind A after 5 s.
 SceneMachineConfig arrival_config(){
@@ -74,6 +75,22 @@ SceneMachineConfig choice_config(){
     config.stop_at_choice = true;
     config.text_button = BUTTON_B;
     return config;
+}
+
+//  story_battle_start's config: A through the talk, A every 2 s on screens
+//  with no text, ending on the battle HUD.
+SceneMachineConfig battle_config(){
+    SceneMachineConfig config;
+    config.stop_at_battle = true;
+    config.blind_press_after = 0ms;
+    return config;
+}
+
+//  `count` looks with the mission banner, then one without.
+std::vector<Observation<ZonePose>> banner_then_gone(size_t count){
+    std::vector<Observation<ZonePose>> looks(count, look_at(0ms, NOTHING, {MISSION_BANNER_READING}));
+    looks.push_back(look_at(0ms));
+    return looks;
 }
 
 //  A quiet time of 8 s after a scene of at least `min_length`, no blind A.
@@ -218,6 +235,32 @@ const TimelineCase TIMELINE_CASES[] = {
         .expectation = {.states = {SceneScreen::DIALOG}},
     },
     {
+        .name = "the mission complete card is busy: A, and no quiet end while it shows",
+        .input = {.config = arrival_config(), .looks = {
+            look_at(0ms, NOTHING, {MISSION_COMPLETE_READING}),
+            look_at(59000ms, STILL, {MISSION_COMPLETE_READING}),
+            look_at(61000ms),
+        }},
+        .expectation = {.states = {
+            SceneScreen::MISSION_COMPLETE, SceneScreen::MISSION_COMPLETE, SceneScreen::SCENE_MOVING,
+        }},
+    },
+    {
+        .name = "a machine that stops at a battle ends on the battle HUD, with A every 2 s where no text shows",
+        .input = {.config = battle_config(), .looks = {
+            look_at(0ms, DIALOG), look_at(500ms), look_at(1000ms, STILL), look_at(2500ms, STILL), look_at(3000ms, BATTLE),
+        }},
+        .expectation = {.states = {
+            SceneScreen::DIALOG, SceneScreen::BLIND_PRESS, SceneScreen::SCENE_STILL, SceneScreen::BLIND_PRESS,
+            SceneScreen::BATTLE,
+        }},
+    },
+    {
+        .name = "a machine that does not stop at a battle takes the battle HUD as any screen",
+        .input = {.config = quiet_config(0ms), .looks = {look_at(0ms, BATTLE)}},
+        .expectation = {.states = {SceneScreen::SCENE_MOVING}},
+    },
+    {
         .name = "without a quiet time a still screen never ends the scene",
         .input = {.config = {}, .looks = {
             look_at(0ms, STILL), look_at(300000ms, STILL), look_at(300100ms, BLACK),
@@ -270,6 +313,8 @@ const StateCase STATE_CASES[] = {
     {.name = "the hint held ends the scene", .input = {SceneScreen::CONTROLS_HINT}, .expectation = {.terminal = true}},
     {.name = "the banner's second look ends the scene", .input = {SceneScreen::MISSION_BANNER}, .expectation = {.terminal = true}},
     {.name = "the quiet end ends the scene", .input = {SceneScreen::QUIET_END}, .expectation = {.terminal = true}},
+    {.name = "the mission complete card gets A", .input = {SceneScreen::MISSION_COMPLETE}, .expectation = {.presses = true}},
+    {.name = "the battle HUD ends the scene", .input = {SceneScreen::BATTLE}, .expectation = {.terminal = true}},
 };
 
 UnitTestResult check_state(const StateCase& test){
@@ -330,12 +375,43 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] the mission banner has gone after 250 ms."},
     },
     {
-        .name = "a banner that stays is left after 10 s",
+        //  Two looks end the scene, 40 more are the 10 s wait.
+        .name = "a banner still up after 10 s goes after one A (01.03's Main Mission 02)",
+        .input = {.looks = banner_then_gone(42)},
+        .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] the mission banner has gone after A press 1."},
+    },
+    {
+        .name = "a banner that stays gets A 3 times, then is left",
         .input = {.looks = {
             look_at(0ms, NOTHING, {MISSION_BANNER_READING}),
             look_at(250ms, NOTHING, {MISSION_BANNER_READING}),
         }},
-        .expectation = {.verdict = "done", .a_presses = 0, .line = "[PLZA test] the mission banner still shows after 10000 ms; going on."},
+        .expectation = {.verdict = "done", .a_presses = 3, .line = "[PLZA test] the mission banner still shows after 3 A presses; going on."},
+    },
+    {
+        .name = "01.03's end: A at the text and the mission complete card, done on the next banner",
+        .input = {.looks = {
+            look_at(0ms, DIALOG),
+            look_at(500ms, NOTHING, {MISSION_COMPLETE_READING}),
+            look_at(1000ms, NOTHING, {MISSION_COMPLETE_READING}),
+            look_at(1500ms),
+            look_at(2000ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(2250ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(2500ms),
+        }},
+        .expectation = {.verdict = "done", .a_presses = 3, .line = "[PLZA test] done on mission_banner."},
+    },
+    {
+        .name = "a mission complete card that A does not get past fails as scene_stuck",
+        .input = {.looks = {look_at(0ms, NOTHING, {MISSION_COMPLETE_READING})}},
+        .expectation = {.verdict = "failed: scene_stuck", .a_presses = 30},
+    },
+    {
+        .name = "story_battle_start: A through the talk and the tutorial card, done on the battle HUD",
+        .input = {.looks = {
+            look_at(0ms, CHOICE), look_at(500ms, DIALOG), look_at(1000ms), look_at(1500ms, BATTLE),
+        }, .config = battle_config()},
+        .expectation = {.verdict = "done", .a_presses = 3, .line = "[PLZA test] done on battle."},
     },
     {
         .name = "a fade is waited out; the look that ends the wait is not acted on",

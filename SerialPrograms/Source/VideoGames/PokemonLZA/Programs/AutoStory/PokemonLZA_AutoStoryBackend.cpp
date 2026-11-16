@@ -10,9 +10,11 @@
 #include <string>
 #include <utility>
 #include "Common/Cpp/Color.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryBattles.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryBackend.h"
@@ -71,7 +73,9 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
         if (m_advance_arrow.detect(*frame.frame)){
             look.readings[std::string(ADVANCE_ARROW_READING)] = 1;
         }
-        if (m_mission_banner.detect(*frame.frame)){
+        if (m_mission_complete.detect(*frame.frame)){
+            look.readings[std::string(MISSION_COMPLETE_READING)] = 1;
+        }else if (m_mission_banner.detect(*frame.frame)){
             look.readings[std::string(MISSION_BANNER_READING)] = 1;
         }
         if (look.events.has(ScreenEvent::CHOICE_BOX)){
@@ -89,6 +93,15 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
     m_previous = frame;
     look.frame = std::move(frame);
     return look;
+}
+
+Pokemon::Outcome PlzaConsoleBackend::battle(){
+    try{
+        fight_story_battle(m_env.env, m_env.env.console, m_env.context, m_env.battle_ai, 120s);
+    }catch (OperationFailedException& e){
+        return Pokemon::outcome_failed("battle_failed", e.message());
+    }
+    return Pokemon::outcome_ok();
 }
 
 void PlzaConsoleBackend::log(std::string_view line){

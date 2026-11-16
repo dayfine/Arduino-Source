@@ -74,6 +74,12 @@ Observation<PoseType> FakeStoryBackend<PoseType>::observe(){
 }
 
 template <StoryPose PoseType>
+Outcome FakeStoryBackend<PoseType>::battle(){
+    m_inputs.push_back("battle");
+    return m_script.battle;
+}
+
+template <StoryPose PoseType>
 void FakeStoryBackend<PoseType>::log(std::string_view line){
     m_lines.emplace_back(line);
 }

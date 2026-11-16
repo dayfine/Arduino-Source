@@ -78,6 +78,9 @@ std::vector<StoryActionSpec> make_specs(){
         game_spec("text_to_choice"),
         game_spec("choose_0"),
         game_spec("choose_1"),
+        StoryActionSpec{.kind = StoryStepKind::TALK, .name = "talk", .args = {}},
+        game_spec("story_battle_start"),
+        game_spec("story_battle"),
     };
 }
 
@@ -253,6 +256,46 @@ Outcome text_to_choice_step(Pokemon::StoryBackend<ZonePose>& backend, const Stor
 }
 
 
+//  "story_battle_start": A through the talk before a story battle (a
+//  choice takes its top row) and, every 2 s where no text shows, through
+//  the battle tutorial's cards and the VS splash, until the battle HUD
+//  shows, 90 s at most.
+Outcome battle_start_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    SceneMachineConfig config;
+    config.stop_at_battle = true;
+    config.blind_press_after = Milliseconds(0);
+    return run_scene_machine(backend, "story_battle_start", config, 90s);
+}
+
+//  "story_battle": the battle on screen, by the backend's battle code.
+Outcome battle_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    return backend.battle();
+}
+
+
+//  After A at what the player faces, how long "talk" waits for its text
+//  box, and how often it looks.
+constexpr Milliseconds TALK_WAIT(5000);
+constexpr Milliseconds TALK_POLL(250);
+
+//  "talk": A at what the player faces, then a text box within TALK_WAIT;
+//  fails as "talk_no_text" without one.
+Outcome talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    backend.press(BUTTON_A, 160ms, 240ms);
+    for (Milliseconds waited(0); ; waited += TALK_POLL){
+        backend.scope().throw_if_cancelled();
+        if (backend.observe().events.has(ScreenEvent::DIALOG_BOX)){
+            return Pokemon::outcome_ok();
+        }
+        if (waited >= TALK_WAIT){
+            break;
+        }
+        backend.wait(TALK_POLL);
+    }
+    return Pokemon::outcome_failed("talk_no_text", std::format("no text box within {} ms of A", TALK_WAIT.count()));
+}
+
+
 //  How long "choose_N" waits for the choice box.
 constexpr Milliseconds CHOICE_WAIT(3000);
 constexpr Milliseconds CHOICE_POLL(250);
@@ -338,6 +381,15 @@ Handler plza_handler(StoryEnv* env, const StoryActionSpec& spec){
     }
     if (spec.name == "choose_1"){
         return choose_handler(1);
+    }
+    if (spec.name == "talk"){
+        return talk_step;
+    }
+    if (spec.name == "story_battle_start"){
+        return battle_start_step;
+    }
+    if (spec.name == "story_battle"){
+        return battle_step;
     }
     return walk_step;
 }

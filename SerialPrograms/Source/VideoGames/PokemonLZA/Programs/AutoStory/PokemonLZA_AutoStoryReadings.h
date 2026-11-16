@@ -39,6 +39,11 @@ constexpr std::string_view ADVANCE_ARROW_READING = "scene.advance_arrow";
 //  (MainMissionBannerDetector).
 constexpr std::string_view MISSION_BANNER_READING = "scene.mission_banner";
 
+//  The reading set to 1 while the card a main mission ends with ("MAIN
+//  MISSION 01" over "COMPLETE") shows; it waits for A
+//  (MissionCompleteDetector). A look with it has no MISSION_BANNER_READING.
+constexpr std::string_view MISSION_COMPLETE_READING = "scene.mission_complete";
+
 //  With a choice box on screen (ScreenEvent::CHOICE_BOX), how many rows
 //  the menu has (read_dialog_choice_rows()); unset when they do not read.
 constexpr std::string_view CHOICE_ROWS_READING = "choice.rows";

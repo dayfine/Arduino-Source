@@ -34,7 +34,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Every action a PLZA checkpoint may name, all GAME actions:
+//  Every action a PLZA checkpoint may name, GAME actions but for "talk":
 //
 //      "confirm_new_game"      console_only: 01.00's first step, on the new
 //                              game's "Confirm Choices" (confirm_new_game_choices())
@@ -56,6 +56,11 @@ namespace PokemonLZA{
 //      "choose_0", "choose_1"  that row of the choice box on screen (0 the
 //                              top), by the D-pad from the highlighted row,
 //                              then A
+//      "talk" (TALK)           A at what the player faces, then its text box
+//      "story_battle_start"    A through the talk before a story battle and
+//                              the battle tutorial's cards until the battle
+//                              HUD (run_scene_machine())
+//      "story_battle"          the battle, by the backend's battle()
 //
 //  Later slices add rows here, each with its handler.
 const std::vector<Pokemon::StoryActionSpec>& plza_story_specs();

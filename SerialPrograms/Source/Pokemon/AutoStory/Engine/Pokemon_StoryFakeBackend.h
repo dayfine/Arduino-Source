@@ -4,8 +4,8 @@
  *
  *  A scripted game for engine tests, with no console and no model: each
  *  observe() returns the script's next look (the last one repeats), every
- *  input and log line is recorded. A fault is a script: a walk whose fade
- *  never comes.
+ *  input and log line is recorded, and a battle ends as scripted. A fault
+ *  is a script: a walk whose fade never comes.
  *
  */
 
@@ -31,6 +31,8 @@ struct FakeStoryScript{
     //  What it says it plays on: SCRIPT, or CONSOLE to run a console_only
     //  action's code in a test.
     StoryBackendKind kind = StoryBackendKind::SCRIPT;
+    //  How each battle() ends.
+    Outcome battle = outcome_ok();
 };
 
 //  The backend of the engine's unit tests and of a game's scripted tests,
@@ -44,7 +46,7 @@ public:
     //  Each input, in order: "press A", "press +" (by button_to_string()),
     //  "tap north", "hold east 400ms walk", "stick 90deg 150ms walk",
     //  "stick 90deg 150ms walk, release 300ms" (a release only when not
-    //  zero), "wait 100ms".
+    //  zero), "wait 100ms", "battle".
     const std::vector<std::string>& inputs() const{
         return m_inputs;
     }
@@ -60,6 +62,7 @@ public:
     virtual void stick(double degrees, Milliseconds duration, Milliseconds release, StoryPace pace) override;
     virtual void wait(Milliseconds duration) override;
     virtual Observation<PoseType> observe() override;
+    virtual Outcome battle() override;
     virtual void log(std::string_view line) override;
     virtual CancellableScope& scope() override;
 

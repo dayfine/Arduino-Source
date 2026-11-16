@@ -64,7 +64,7 @@ const StoryDataCase STORY_DATA_CASES[] = {
     {
         .name = "the built-in story loads and passes the lint",
         .input = {},
-        .expectation = {.rows = "01.00:new_game:autosave 01.01:from_save:unverified 01.02:from_save:unverified"},
+        .expectation = {.rows = "01.00:new_game:autosave 01.01:from_save:unverified 01.02:from_save:unverified 01.03:from_save:unverified"},
     },
 };
 
@@ -119,6 +119,11 @@ const LintCase LINT_CASES[] = {
         .expectation = {.errors = "01.01 w: \"end\" must be \"fade_white\", \"fade_black\" or \"dialog\""},
     },
     {
+        .name = "a talk with no action passes",
+        .input = {.step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}}},
+        .expectation = {.errors = ""},
+    },
+    {
         .name = "an action PLZA does not have fails",
         .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "m", .why = "", .action = "choose_7", .args = {}}},
         .expectation = {.errors = "01.01 step 1 m: unknown action \"choose_7\" for GAME"},
@@ -158,6 +163,7 @@ const Observation<ZonePose> STILL = look({ScreenEvent::SCREEN_STILL});
 const Observation<ZonePose> WHITE_FADE = look({ScreenEvent::FADE_WHITE});
 const Observation<ZonePose> BLACK_FADE = look({ScreenEvent::FADE_BLACK});
 const Observation<ZonePose> DIALOG = look({ScreenEvent::DIALOG_BOX});
+const Observation<ZonePose> BATTLE_HUD = look({ScreenEvent::BATTLE_STARTED});
 
 //  A choice box of `rows` rows, row `selected` highlighted.
 Observation<ZonePose> choice(int selected, int rows = 2){
@@ -206,6 +212,8 @@ struct RunCase{
         size_t first_step = 0;
         size_t steps = std::numeric_limits<size_t>::max();
         std::vector<Observation<ZonePose>> looks;
+        //  How the backend's battles end.
+        Pokemon::Outcome battle = Pokemon::outcome_ok();
     };
     Input input;
     struct Expectation{
@@ -365,11 +373,68 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {.verdict = "done", .line = "[Save] 01.02: not saved (save unverified)"},
     },
+    {
+        .name = "01.03 walks to Chikorita: a turn left, then 750 ms",
+        .input = {.checkpoint = "01.03", .first_step = 0, .steps = 1, .looks = {CUTSCENE}},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "wait 250ms, press L, stick -70deg 150ms walk, release 100ms, press L, hold north 750ms walk",
+        },
+    },
+    {
+        .name = "01.03's talk to the starter: A, then the text box",
+        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {CUTSCENE, DIALOG}},
+        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms"},
+    },
+    {
+        .name = "01.03's talk fails when no text box shows",
+        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {CUTSCENE}},
+        .expectation = {.verdict = "failed at talk_to_starter: talk_no_text"},
+    },
+    {
+        .name = "01.03's battle start: A through the talk and the tutorial card, done on the battle HUD",
+        .input = {.checkpoint = "01.03", .first_step = 2, .steps = 1, .looks = {
+            look({ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, {}, Milliseconds(0)),
+            look({}, {}, Milliseconds(500)),
+            look({ScreenEvent::BATTLE_STARTED}, {}, Milliseconds(1000)),
+        }},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A, press A",
+            .line = "[PLZA story_battle_start] done on battle.",
+        },
+    },
+    {
+        .name = "01.03's battle is the backend's",
+        .input = {.checkpoint = "01.03", .first_step = 3, .steps = 1, .looks = {BATTLE_HUD}},
+        .expectation = {.verdict = "done", .inputs = "battle"},
+    },
+    {
+        .name = "01.03's battle fails as the backend's battle does",
+        .input = {.checkpoint = "01.03", .first_step = 3, .steps = 1, .looks = {BATTLE_HUD},
+            .battle = Pokemon::outcome_failed("battle_failed", "no dialogue after the battle")},
+        .expectation = {.verdict = "failed at andi_battle: battle_failed"},
+    },
+    {
+        .name = "01.03 ends past the mission complete card on Main Mission 02's banner, not saved",
+        .input = {.checkpoint = "01.03", .first_step = 4, .looks = {
+            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)),
+            look({}, {MISSION_COMPLETE_READING}, Milliseconds(500)),
+            look({}, {MISSION_BANNER_READING}, Milliseconds(1000)),
+            look({}, {MISSION_BANNER_READING}, Milliseconds(1250)),
+            look({}, {}, Milliseconds(1500)),
+        }},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A, press A, wait 250ms",
+            .line = "[Save] 01.03: not saved (save unverified)",
+        },
+    },
 };
 
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     const Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(builtin_story_data());
-    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
+    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks, .battle = test.input.battle}, scope);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
     const std::vector<StoryCheckpoint> rows{builtin_row(test.input.checkpoint, test.input.first_step, test.input.steps)};

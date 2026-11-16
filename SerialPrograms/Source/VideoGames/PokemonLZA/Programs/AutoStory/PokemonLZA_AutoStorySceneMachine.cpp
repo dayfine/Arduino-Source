@@ -40,6 +40,11 @@ constexpr Milliseconds POLL = 250ms;
 //  The longest the machine waits for the mission banner to go once it has
 //  ended the scene ("MAIN MISSION 01" shows ~3 s).
 constexpr Milliseconds BANNER_GONE_WAIT = 10000ms;
+//  A banner still up after BANNER_GONE_WAIT gets A this many times, this
+//  far apart, until it goes: 01.03's "MAIN MISSION 02" stayed past 10 s
+//  (console B, 2026-11-10).
+constexpr size_t BANNER_PRESSES = 3;
+constexpr Milliseconds BANNER_PRESS_EVERY = 1000ms;
 
 //  Text to press on: a box, or the advance chevron without one.
 bool text_shows(const ScreenObservation& look){
@@ -50,13 +55,15 @@ bool fade_shows(const ScreenObservation& look){
     return look.events.has(ScreenEvent::FADE_BLACK) || look.events.has(ScreenEvent::FADE_WHITE);
 }
 
-//  Something holds the player: text or a fade.
+//  Something holds the player: text, a fade, or the mission complete card.
 bool busy(const ScreenObservation& look){
-    return text_shows(look) || fade_shows(look);
+    return text_shows(look) || fade_shows(look) || look.readings.contains(MISSION_COMPLETE_READING);
 }
 
 constexpr SceneScreen ALL_SCREENS[] = {
+    SceneScreen::BATTLE,
     SceneScreen::FADE_BLACK, SceneScreen::FADE_WHITE, SceneScreen::CHOICE, SceneScreen::DIALOG,
+    SceneScreen::MISSION_COMPLETE,
     SceneScreen::MISSION_BANNER, SceneScreen::BANNER_SHOWING,
     SceneScreen::CONTROLS_HINT, SceneScreen::HINT_SHOWING,
     SceneScreen::QUIET_END, SceneScreen::BLIND_PRESS,
@@ -77,6 +84,8 @@ void track_since(bool shows, WallClock when, std::optional<WallClock>& since){
 
 std::string_view scene_screen_name(SceneScreen screen){
     switch (screen){
+    case SceneScreen::BATTLE:
+        return "battle";
     case SceneScreen::FADE_BLACK:
         return "fade_black";
     case SceneScreen::FADE_WHITE:
@@ -85,6 +94,8 @@ std::string_view scene_screen_name(SceneScreen screen){
         return "choice";
     case SceneScreen::DIALOG:
         return "dialog";
+    case SceneScreen::MISSION_COMPLETE:
+        return "mission_complete";
     case SceneScreen::MISSION_BANNER:
         return "mission_banner";
     case SceneScreen::BANNER_SHOWING:
@@ -106,12 +117,12 @@ std::string_view scene_screen_name(SceneScreen screen){
 }
 
 bool scene_screen_terminal(SceneScreen screen){
-    return screen == SceneScreen::CHOICE || screen == SceneScreen::MISSION_BANNER ||
+    return screen == SceneScreen::BATTLE || screen == SceneScreen::CHOICE || screen == SceneScreen::MISSION_BANNER ||
         screen == SceneScreen::CONTROLS_HINT || screen == SceneScreen::QUIET_END;
 }
 
 bool scene_screen_presses(SceneScreen screen){
-    return screen == SceneScreen::DIALOG || screen == SceneScreen::BLIND_PRESS;
+    return screen == SceneScreen::DIALOG || screen == SceneScreen::MISSION_COMPLETE || screen == SceneScreen::BLIND_PRESS;
 }
 
 
@@ -137,6 +148,9 @@ bool SceneTimeline::blind_press_due(WallClock now) const{
 }
 
 SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
+    if (m_config.stop_at_battle && look.events.has(ScreenEvent::BATTLE_STARTED)){
+        return SceneScreen::BATTLE;
+    }
     if (look.events.has(ScreenEvent::FADE_BLACK)){
         return SceneScreen::FADE_BLACK;
     }
@@ -153,6 +167,9 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
 }
 
 SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
+    if (look.readings.contains(MISSION_COMPLETE_READING)){
+        return SceneScreen::MISSION_COMPLETE;
+    }
     if (look.readings.contains(MISSION_BANNER_READING)){
         return m_banner_looks >= 1 ? SceneScreen::MISSION_BANNER : SceneScreen::BANNER_SHOWING;
     }
@@ -195,11 +212,11 @@ std::string describe_look(const ScreenObservation& look){
     const std::pair<ScreenEvent, std::string_view> events[] = {
         {ScreenEvent::FADE_BLACK, "black fade"}, {ScreenEvent::FADE_WHITE, "white fade"},
         {ScreenEvent::DIALOG_BOX, "text box"}, {ScreenEvent::CHOICE_BOX, "choice box"},
-        {ScreenEvent::SCREEN_STILL, "still"},
+        {ScreenEvent::BATTLE_STARTED, "battle"}, {ScreenEvent::SCREEN_STILL, "still"},
     };
     const std::pair<std::string_view, std::string_view> readings[] = {
         {CONTROLS_HINT_READING, "controls hint"}, {ADVANCE_ARROW_READING, "advance arrow"},
-        {MISSION_BANNER_READING, "mission banner"},
+        {MISSION_BANNER_READING, "mission banner"}, {MISSION_COMPLETE_READING, "mission complete"},
     };
     std::string text;
     const auto add = [&text](std::string_view name){
@@ -296,10 +313,17 @@ private:
     std::string m_logged_events;
 };
 
-//  How often a state may come up before the machine fails: a box that A
-//  does not get past.
+//  How often a state may come up before the machine fails: a box or a
+//  card that A does not get past.
 size_t max_visits(SceneScreen screen){
-    return screen == SceneScreen::DIALOG ? 400 : SIZE_MAX;
+    switch (screen){
+    case SceneScreen::DIALOG:
+        return 400;
+    case SceneScreen::MISSION_COMPLETE:
+        return 30;
+    default:
+        return SIZE_MAX;
+    }
 }
 
 //  How long a state may see an unchanged screen: the waits (a fade, a
@@ -322,17 +346,33 @@ Milliseconds max_still(SceneScreen screen){
     }
 }
 
+//  Whether a new look shows the mission banner.
+bool banner_shows(PlzaBackend& backend){
+    return backend.observe().readings.contains(MISSION_BANNER_READING);
+}
+
 //  After the scene ended on the mission banner: looks until it has gone,
-//  so the next step starts with control, for at most BANNER_GONE_WAIT.
+//  so the next step starts with control, for at most BANNER_GONE_WAIT;
+//  then A up to BANNER_PRESSES times, BANNER_PRESS_EVERY apart, until it
+//  goes.
 void wait_banner_gone(PlzaBackend& backend, std::string_view label){
     for (Milliseconds waited = 0ms; waited < BANNER_GONE_WAIT; waited += POLL){
-        if (!backend.observe().readings.contains(MISSION_BANNER_READING)){
+        if (!banner_shows(backend)){
             backend.log(std::format("[PLZA {}] the mission banner has gone after {} ms.", label, waited.count()));
             return;
         }
         backend.wait(POLL);
     }
-    backend.log(std::format("[PLZA {}] the mission banner still shows after {} ms; going on.", label, BANNER_GONE_WAIT.count()));
+    backend.log(std::format("[PLZA {}] the mission banner still shows after {} ms; pressing A.", label, BANNER_GONE_WAIT.count()));
+    for (size_t press = 1; press <= BANNER_PRESSES; press++){
+        backend.press(BUTTON_A, 160ms, 240ms);
+        backend.wait(BANNER_PRESS_EVERY);
+        if (!banner_shows(backend)){
+            backend.log(std::format("[PLZA {}] the mission banner has gone after A press {}.", label, press));
+            return;
+        }
+    }
+    backend.log(std::format("[PLZA {}] the mission banner still shows after {} A presses; going on.", label, BANNER_PRESSES));
 }
 
 //  The step's outcome from where the machine ended.
