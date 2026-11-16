@@ -4,8 +4,8 @@
  *
  *  The new game's choices (language, look, name) and the presses each takes
  *  on its screen, as pure functions. The screens' readers are in
- *  Detectors/PokemonLZA_AutoStoryIntroScreens.h; the name's key presses in
- *  PokemonLZA_AutoStoryNameKeys.h.
+ *  Detectors/PokemonLZA_AutoStoryIntroScreens.h; the name is typed with the
+ *  Switch keyboard typer (NintendoSwitch_SystemKeyboardTyping.h).
  *
  */
 
@@ -48,30 +48,28 @@ struct NewGameLanguageInfo{
     //  Its entry on the language list (the order of NewGameLanguage).
     size_t list_entry = 0;
     //  The name keyboard's character limit: its "0/N" counter (the
-    //  console's frames: 12 for the European languages, 6 for Japanese,
-    //  Korean and Chinese; English's is not in the frames and taken as 12).
+    //  console's frames of 2026-11-15: 12 for English and the other
+    //  European languages, 6 for Japanese, Korean and Chinese).
     size_t name_limit = 0;
     //  The OCR language that reads its name on Confirm Choices.
     Language ocr_language = Language::None;
     //  A part of its name as Confirm Choices shows it ("Deutsch", "Latino").
     std::string_view confirm_text;
-    //  The program can play it (Korean: not yet; its keyboard is Hangul).
+    //  The program can play it (Korean: not yet; its keyboard is Hangul,
+    //  which the Switch keyboard typer does not read).
     bool supported = true;
 };
 
 //  `language`'s row of the table above.
 const NewGameLanguageInfo& new_game_language_info(NewGameLanguage language);
 
-//  One press on an intro screen. SHIFT is the left stick click (the name
-//  keyboard's Shift: the next letter is a capital); PLUS the keyboard's OK.
+//  One press on an intro screen.
 enum class IntroKey{
     UP,
     DOWN,
     LEFT,
     RIGHT,
     A,
-    SHIFT,
-    PLUS,
 };
 
 //  The new game's choices, from the program's options.
@@ -80,8 +78,8 @@ struct NewGameChoices{
     //  1 to 8: the look picker's portraits, left to right along the top
     //  row, then the bottom one.
     size_t look = 1;
-    //  Keys of the name keyboard's QWERTY layer (name_key_presses()), at
-    //  most the language's name_limit.
+    //  Letters, digits and the symbols on the name keyboard's first page
+    //  (- / : ' , . ? !), at most the language's name_limit.
     std::string name = "Kosmos";
 };
 

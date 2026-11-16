@@ -5,8 +5,10 @@
  */
 
 #include <array>
+#include <cctype>
+#include <map>
 #include <format>
-#include "PokemonLZA_AutoStoryNameKeys.h"
+#include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_KeyboardEntryMappings.h"
 #include "PokemonLZA_AutoStoryNewGameChoices.h"
 
 namespace PokemonAutomation{
@@ -23,6 +25,19 @@ constexpr size_t LANGUAGE_LIST_SIZE = 2 * LANGUAGE_LIST_ROWS;
 //  The look picker: 2 rows of LOOK_COLUMNS portraits.
 constexpr size_t LOOK_COLUMNS = 4;
 constexpr size_t LOOK_COUNT = 2 * LOOK_COLUMNS;
+
+//  Whether every character of `name` has a key on the name keyboard's
+//  first page, which the Switch keyboard typer types (letters by their
+//  capital).
+bool on_keyboard(std::string_view name){
+    const std::map<char, KeyboardEntryPosition>& keys = KEYBOARD_POSITIONS(KeyboardLayout::QWERTY);
+    for (const char ch : name){
+        if (!keys.contains((char)std::toupper((unsigned char)ch))){
+            return false;
+        }
+    }
+    return true;
+}
 
 //  The presses from (column, row) `from` to `to` on a grid: across first,
 //  then up or down.
@@ -80,7 +95,7 @@ std::optional<std::string> new_game_problem(const NewGameChoices& choices){
             choices.name, choices.name.size(), info.name_limit, info.tag
         );
     }
-    if (!name_key_presses(choices.name, choices.language)){
+    if (!on_keyboard(choices.name)){
         return std::format(
             "AutoStory: the player name \"{}\" has a character that is not on the name keyboard's first page "
             "(letters, digits and - / : ' , . ? !).",

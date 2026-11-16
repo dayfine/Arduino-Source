@@ -10,7 +10,6 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "PokemonLZA_AutoStoryNameKeys.h"
 #include "PokemonLZA_AutoStoryNewGame.h"
 #include "PokemonLZA_AutoStoryNewGameChoices.h"
 #include "PokemonLZA_AutoStoryNewGame_Tests.h"
@@ -22,7 +21,7 @@ namespace PokemonLZA{
 
 namespace{
 
-//  Presses as letters: U D L R, A, S for Shift, + for OK.
+//  Presses as letters: U D L R, A.
 std::string press_text(const std::optional<std::vector<IntroKey>>& presses){
     if (!presses){
         return "none";
@@ -45,74 +44,10 @@ std::string press_text(const std::optional<std::vector<IntroKey>>& presses){
         case IntroKey::A:
             text += 'A';
             break;
-        case IntroKey::SHIFT:
-            text += 'S';
-            break;
-        case IntroKey::PLUS:
-            text += '+';
-            break;
         }
     }
     return text;
 }
-
-
-//  name_key_presses(): the cursor starts on "1".
-struct NameKeysCase{
-    std::string name;
-    struct Input{
-        std::string text;
-        NewGameLanguage language = NewGameLanguage::English;
-    };
-    Input input;
-    struct Expectation{
-        std::string presses;    //  press_text(); "none" when it cannot be typed.
-    };
-    Expectation expectation;
-};
-
-const NameKeysCase NAME_KEYS_CASES[] = {
-    {
-        .name = "a capital first letter takes Shift; the cursor moves from key to key",
-        .input = {.text = "Kosmos"},
-        .expectation = {.presses = "RRRRRRRDDSA" "RUA" "LLLLLLLDA" "RRRRRDA" "RRUUA" "LLLLLLLDA" "+"},
-    },
-    {.name = "the starting key takes no move", .input = {.text = "1"}, .expectation = {.presses = "A+"}},
-    {.name = "a capital in the middle takes Shift", .input = {.text = "aB"}, .expectation = {.presses = "DDARRRRDSA+"}},
-    {.name = "punctuation on the first page", .input = {.text = "-!"}, .expectation = {.presses = "RRRRRRRRRRADDDA+"}},
-    {
-        .name = "Simplified Chinese switches to letters first",
-        .input = {.text = "ab", .language = NewGameLanguage::ChineseSimplified},
-        .expectation = {.presses = "DDDDRRRA" "ULLLUA" "RRRRDA" "+"},
-    },
-    {
-        .name = "Traditional Chinese opens on letters",
-        .input = {.text = "a", .language = NewGameLanguage::ChineseTraditional},
-        .expectation = {.presses = "DDA+"},
-    },
-    {.name = "a space has no key", .input = {.text = "a b"}, .expectation = {.presses = "none"}},
-    {.name = "an accented letter is not on the first page", .input = {.text = "Jos\xc3\xa9"}, .expectation = {.presses = "none"}},
-    {.name = "a symbol of the second page", .input = {.text = "a#"}, .expectation = {.presses = "none"}},
-    {.name = "an empty name", .input = {.text = ""}, .expectation = {.presses = "none"}},
-};
-
-class Test_NameKeys : public UnitTest{
-public:
-    explicit Test_NameKeys(const NameKeysCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStory - name keys: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::string presses = press_text(name_key_presses(m_test.input.text, m_test.input.language));
-        if (presses != m_test.expectation.presses){
-            return std::format("\"{}\": expected {}, got {}.", m_test.input.text, m_test.expectation.presses, presses);
-        }
-        return true;
-    }
-
-private:
-    const NameKeysCase& m_test;
-};
 
 
 //  new_game_problem(): whether the program refuses the choices before any
@@ -168,6 +103,9 @@ const ProblemCase PROBLEM_CASES[] = {
     },
     {.name = "an empty name", .input = {.choices = {.name = ""}}, .expectation = {.refused = true}},
     {.name = "a space in the name", .input = {.choices = {.name = "Kos mos"}}, .expectation = {.refused = true}},
+    {.name = "digits and the first page's symbols", .input = {.choices = {.name = "a1-/:',.?!"}}, .expectation = {.refused = false}},
+    {.name = "an accented letter", .input = {.choices = {.name = "Jos\xc3\xa9"}}, .expectation = {.refused = true}},
+    {.name = "a symbol of the second page", .input = {.choices = {.name = "a#"}}, .expectation = {.refused = true}},
     {.name = "look 8", .input = {.choices = {.look = 8}}, .expectation = {.refused = false}},
     {.name = "look 0", .input = {.choices = {.look = 0}}, .expectation = {.refused = true}},
     {.name = "look 9", .input = {.choices = {.look = 9}}, .expectation = {.refused = true}},
@@ -353,9 +291,6 @@ private:
 
 
 void add_tests_AutoStoryNewGame(UnitTestDatabase& database){
-    for (const NameKeysCase& test : NAME_KEYS_CASES){
-        database.add<Test_NameKeys>(test);
-    }
     for (const ProblemCase& test : PROBLEM_CASES){
         database.add<Test_NewGameProblem>(test);
     }

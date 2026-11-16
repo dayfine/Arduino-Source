@@ -38,11 +38,13 @@ NewGameStart require_new_game_start(ConsoleHandle& console, ProControllerContext
 //  01.00's first step: from HOME (the selected tile launched, never moving
 //  HOME's cursor) or the language list, plays the language, the look and
 //  the name of `choices` up to "Confirm Choices"; on "Confirm Choices" it
-//  presses nothing. Throws UserSetupError before any press if `choices`
-//  cannot be played (new_game_problem()) or the keyboard's counter takes
-//  fewer characters than the name, OperationFailedException (with a
-//  screenshot) if a screen does not show or its highlight does not reach
-//  the choice.
+//  presses nothing. Each screen's highlight is read before and after each
+//  press; the name is typed with the Switch keyboard typer. Throws
+//  UserSetupError before any press if `choices` cannot be played
+//  (new_game_problem()) or the keyboard's counter takes fewer characters
+//  than the name, OperationFailedException (with a screenshot) if a screen
+//  does not show, its highlight does not reach the choice, or a key press
+//  does not reach the name's field.
 void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices);
 
 //  Capture mode's recording of the screens between the launch and the

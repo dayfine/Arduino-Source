@@ -11,7 +11,9 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
 #include "Tests/ImageUnitTest.h"
+#include "PokemonLZA_AutoStoryConfirmChoicesReader.h"
 #include "PokemonLZA_AutoStoryIntroScreens.h"
 #include "PokemonLZA_AutoStoryIntroScreens_Tests.h"
 
@@ -38,6 +40,7 @@ struct FrameCase{
         bool look_picker = false;
         std::optional<size_t> look = std::nullopt;
         bool keyboard = false;
+        //  The counter's limit; nullopt: not checked (the field holds text).
         std::optional<size_t> name_limit = std::nullopt;
     };
     Expectation expectation;
@@ -68,6 +71,39 @@ const FrameCase FRAME_CASES[] = {
     {.name = "keyboard in Simplified Chinese", .input = {.file = "AutoStoryNameKeyboard/zh-Hans_6.png"}, .expectation = {.keyboard = true, .name_limit = 6}},
     {.name = "keyboard in Traditional Chinese", .input = {.file = "AutoStoryNameKeyboard/zh-Hant_6.png"}, .expectation = {.keyboard = true, .name_limit = 6}},
     {.name = "Confirm Choices is none of them", .input = {.file = "AutoStoryConfirmChoices/German_0.png"}, .expectation = {}},
+    //  The console's frames of 2026-11-15, one launch per language.
+    {.name = "2026-11-15: the language list opens on English", .input = {.file = "AutoStoryNewGame/2026-11-15/en_langlist.png"}, .expectation = {.language_entry = 0}},
+    {.name = "2026-11-15: the language list on Espanol (Espana)", .input = {.file = "AutoStoryNewGame/2026-11-15/esES_langsel.png"}, .expectation = {.language_entry = 1}},
+    {.name = "2026-11-15: the language list on Espanol (Latinoamerica)", .input = {.file = "AutoStoryNewGame/2026-11-15/esLA_langsel.png"}, .expectation = {.language_entry = 2}},
+    {.name = "2026-11-15: the language list on Francais", .input = {.file = "AutoStoryNewGame/2026-11-15/fr_langsel.png"}, .expectation = {.language_entry = 3}},
+    {.name = "2026-11-15: the language list on Deutsch", .input = {.file = "AutoStoryNewGame/2026-11-15/de_langsel.png"}, .expectation = {.language_entry = 4}},
+    {.name = "2026-11-15: the language list on Italiano", .input = {.file = "AutoStoryNewGame/2026-11-15/it_langsel.png"}, .expectation = {.language_entry = 5}},
+    {.name = "2026-11-15: the language list on Japanese", .input = {.file = "AutoStoryNewGame/2026-11-15/ja_langsel.png"}, .expectation = {.language_entry = 6}},
+    {.name = "2026-11-15: the language list on Korean", .input = {.file = "AutoStoryNewGame/2026-11-15/ko_langsel.png"}, .expectation = {.language_entry = 7}},
+    {.name = "2026-11-15: the language list on Simplified Chinese", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHans_langsel.png"}, .expectation = {.language_entry = 8}},
+    {.name = "2026-11-15: the language list on Traditional Chinese", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHant_langsel.png"}, .expectation = {.language_entry = 9}},
+    {.name = "2026-11-15: the look picker before the stick moves", .input = {.file = "AutoStoryNewGame/2026-11-15/en_look.png"}, .expectation = {.look_picker = true}},
+    {.name = "2026-11-15: the look picker after the first tilt in English", .input = {.file = "AutoStoryNewGame/2026-11-15/en_look_hl.png"}, .expectation = {.look_picker = true, .look = 6}},
+    {.name = "2026-11-15: the look picker after the first tilt in Espanol (Espana)", .input = {.file = "AutoStoryNewGame/2026-11-15/esES_look_hl.png"}, .expectation = {.look_picker = true, .look = 5}},
+    {.name = "2026-11-15: the look picker after the first tilt in Espanol (Latinoamerica)", .input = {.file = "AutoStoryNewGame/2026-11-15/esLA_look_hl.png"}, .expectation = {.look_picker = true, .look = 6}},
+    {.name = "2026-11-15: the look picker after the first tilt in Francais", .input = {.file = "AutoStoryNewGame/2026-11-15/fr_look_hl.png"}, .expectation = {.look_picker = true, .look = 1}},
+    {.name = "2026-11-15: the look picker after the first tilt in Deutsch", .input = {.file = "AutoStoryNewGame/2026-11-15/de_look_hl.png"}, .expectation = {.look_picker = true, .look = 5}},
+    {.name = "2026-11-15: the look picker after the first tilt in Italiano", .input = {.file = "AutoStoryNewGame/2026-11-15/it_look_hl.png"}, .expectation = {.look_picker = true, .look = 1}},
+    {.name = "2026-11-15: the look picker after the first tilt in Japanese", .input = {.file = "AutoStoryNewGame/2026-11-15/ja_look_hl.png"}, .expectation = {.look_picker = true, .look = 7}},
+    {.name = "2026-11-15: the look picker after the first tilt in Korean", .input = {.file = "AutoStoryNewGame/2026-11-15/ko_look_hl.png"}, .expectation = {.look_picker = true, .look = 2}},
+    {.name = "2026-11-15: the look picker after the first tilt in Simplified Chinese", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHans_look_hl.png"}, .expectation = {.look_picker = true, .look = 1}},
+    {.name = "2026-11-15: the look picker after the first tilt in Traditional Chinese", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHant_look_hl.png"}, .expectation = {.look_picker = true, .look = 8}},
+    {.name = "2026-11-15: the keyboard in English", .input = {.file = "AutoStoryNewGame/2026-11-15/en_kb.png"}, .expectation = {.keyboard = true, .name_limit = 12}},
+    {.name = "2026-11-15: the keyboard in Espanol (Espana)", .input = {.file = "AutoStoryNewGame/2026-11-15/esES_kb.png"}, .expectation = {.keyboard = true, .name_limit = 12}},
+    {.name = "2026-11-15: the keyboard in Espanol (Latinoamerica)", .input = {.file = "AutoStoryNewGame/2026-11-15/esLA_kb.png"}, .expectation = {.keyboard = true, .name_limit = 12}},
+    {.name = "2026-11-15: the keyboard in Francais", .input = {.file = "AutoStoryNewGame/2026-11-15/fr_kb.png"}, .expectation = {.keyboard = true, .name_limit = 12}},
+    {.name = "2026-11-15: the keyboard in Deutsch", .input = {.file = "AutoStoryNewGame/2026-11-15/de_kb.png"}, .expectation = {.keyboard = true, .name_limit = 12}},
+    {.name = "2026-11-15: the keyboard in Italiano", .input = {.file = "AutoStoryNewGame/2026-11-15/it_kb.png"}, .expectation = {.keyboard = true, .name_limit = 12}},
+    {.name = "2026-11-15: the keyboard in Japanese", .input = {.file = "AutoStoryNewGame/2026-11-15/ja_kb.png"}, .expectation = {.keyboard = true, .name_limit = 6}},
+    {.name = "2026-11-15: the keyboard in Korean", .input = {.file = "AutoStoryNewGame/2026-11-15/ko_kb.png"}, .expectation = {.keyboard = true, .name_limit = 6}},
+    {.name = "2026-11-15: the keyboard in Simplified Chinese", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHans_kb.png"}, .expectation = {.keyboard = true, .name_limit = 6}},
+    {.name = "2026-11-15: the keyboard in Traditional Chinese", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHant_kb.png"}, .expectation = {.keyboard = true, .name_limit = 6}},
+    {.name = "2026-11-15: Simplified Chinese keeps the keyboard after the first +", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHans_plus0.png"}, .expectation = {.keyboard = true, .name_limit = std::nullopt}},
 };
 
 class Test_IntroScreenFrame : public ImageUnitTest{
@@ -96,7 +132,7 @@ public:
         if (is_name_keyboard(frame) != expected.keyboard){
             return std::format("Name keyboard: expected {}, read {}.", expected.keyboard, !expected.keyboard);
         }
-        if (expected.keyboard){
+        if (expected.keyboard && expected.name_limit){
             const std::optional<size_t> limit = read_name_keyboard_limit(frame);
             if (limit != expected.name_limit){
                 return std::format("Name keyboard: expected a limit of {}, read {}.", describe(expected.name_limit), describe(limit));
@@ -133,6 +169,120 @@ public:
     }
 };
 
+
+//  The name keyboard as the Switch's keyboard typer (type_on_system_keyboard())
+//  reads it when it opens: the cursor on "1". Every language the program
+//  types in (Korean is not one).
+struct SystemKeyboardCase{
+    std::string name;
+    struct Input{
+        std::string file;   //  Under the test images' PokemonLZA/.
+    };
+    Input input;
+};
+
+const SystemKeyboardCase SYSTEM_KEYBOARD_CASES[] = {
+    {.name = "English", .input = {.file = "AutoStoryNewGame/2026-11-15/en_kb.png"}},
+    {.name = "Espanol (Espana)", .input = {.file = "AutoStoryNewGame/2026-11-15/esES_kb.png"}},
+    {.name = "Espanol (Latinoamerica)", .input = {.file = "AutoStoryNewGame/2026-11-15/esLA_kb.png"}},
+    {.name = "Francais", .input = {.file = "AutoStoryNewGame/2026-11-15/fr_kb.png"}},
+    {.name = "Deutsch", .input = {.file = "AutoStoryNewGame/2026-11-15/de_kb.png"}},
+    {.name = "Italiano", .input = {.file = "AutoStoryNewGame/2026-11-15/it_kb.png"}},
+    {.name = "Japanese", .input = {.file = "AutoStoryNewGame/2026-11-15/ja_kb.png"}},
+    {.name = "Simplified Chinese", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHans_kb.png"}},
+    {.name = "Traditional Chinese", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHant_kb.png"}},
+};
+
+class Test_SystemKeyboardOnNameKeyboard : public ImageUnitTest{
+public:
+    explicit Test_SystemKeyboardOnNameKeyboard(const SystemKeyboardCase& test)
+        : ImageUnitTest(
+            std::format("PokemonLZA::AutoStory - intro screens: the system keyboard reader in {}", test.name),
+            {std::format("PokemonLZA/{}", test.input.file)}
+        )
+    {}
+    virtual UnitTestResult run_on_images(Logger&, CancellableScope&, const std::vector<ImageRGB32>& images) const override{
+        const ImageRGB32& frame = images[0];
+        if (!SystemKeyboardDetector().detect(frame)){
+            return std::string("The system keyboard was not detected.");
+        }
+        const std::optional<SystemKeyboardKey> cursor = read_system_keyboard_cursor(frame);
+        if (cursor != SystemKeyboardKey{.row = 0, .col = 0}){
+            return std::format(
+                "Expected the cursor on \"1\" (0, 0), read {}.",
+                cursor ? std::format("({}, {})", cursor->row, cursor->col) : std::string("none")
+            );
+        }
+        return true;
+    }
+};
+
+
+//  Confirm Choices after the name "1" was typed and submitted (the console's
+//  frames of 2026-11-15): its highlight, the name, and for the languages
+//  English OCR reads, a part of the language's name.
+struct ConfirmCase{
+    std::string name;
+    struct Input{
+        std::string file;   //  Under the test images' PokemonLZA/.
+    };
+    Input input;
+    struct Expectation{
+        std::string name;
+        std::optional<std::string> language;
+    };
+    Expectation expectation;
+};
+
+const ConfirmCase CONFIRM_CASES[] = {
+    {.name = "English", .input = {.file = "AutoStoryNewGame/2026-11-15/en_confirm.png"}, .expectation = {.name = "1", .language = "English"}},
+    {.name = "Espanol (Espana)", .input = {.file = "AutoStoryNewGame/2026-11-15/esES_confirm.png"}, .expectation = {.name = "1", .language = "Espa"}},
+    {.name = "Espanol (Latinoamerica)", .input = {.file = "AutoStoryNewGame/2026-11-15/esLA_confirm.png"}, .expectation = {.name = "1", .language = "Latino"}},
+    {.name = "Francais", .input = {.file = "AutoStoryNewGame/2026-11-15/fr_confirm.png"}, .expectation = {.name = "1", .language = "Fran"}},
+    {.name = "Deutsch", .input = {.file = "AutoStoryNewGame/2026-11-15/de_confirm.png"}, .expectation = {.name = "1", .language = "Deutsch"}},
+    {.name = "Italiano", .input = {.file = "AutoStoryNewGame/2026-11-15/it_confirm.png"}, .expectation = {.name = "1", .language = "Italiano"}},
+    {.name = "Japanese", .input = {.file = "AutoStoryNewGame/2026-11-15/ja_confirm.png"}, .expectation = {.name = "1", .language = std::nullopt}},
+    {.name = "Korean", .input = {.file = "AutoStoryNewGame/2026-11-15/ko_confirm.png"}, .expectation = {.name = "1", .language = std::nullopt}},
+    {.name = "Simplified Chinese", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHans_confirm.png"}, .expectation = {.name = "1", .language = std::nullopt}},
+    {.name = "Traditional Chinese", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHant_confirm.png"}, .expectation = {.name = "1", .language = std::nullopt}},
+    {.name = "German, one + after the name", .input = {.file = "AutoStoryNewGame/2026-11-15/de_plus0.png"}, .expectation = {.name = "1", .language = "Deutsch"}},
+    {.name = "Traditional Chinese, two + after the name", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHant_plus1.png"}, .expectation = {.name = "1", .language = std::nullopt}},
+};
+
+class Test_ConfirmChoicesFrame : public ImageUnitTest{
+public:
+    explicit Test_ConfirmChoicesFrame(const ConfirmCase& test)
+        : ImageUnitTest(
+            std::format("PokemonLZA::AutoStory - intro screens: Confirm Choices in {}", test.name),
+            {std::format("PokemonLZA/{}", test.input.file)}
+        )
+        , m_test(test)
+    {}
+    virtual UnitTestResult run_on_images(Logger&, CancellableScope&, const std::vector<ImageRGB32>& images) const override{
+        const ImageRGB32& frame = images[0];
+        if (!read_confirm_choices_cursor(frame)){
+            return std::string("Confirm Choices' highlight did not read.");
+        }
+        if (is_name_keyboard(frame)){
+            return std::string("Read as the name keyboard.");
+        }
+        const std::string name = read_confirm_choices_name(frame);
+        if (name != m_test.expectation.name){
+            return std::format("Expected the name \"{}\", read \"{}\".", m_test.expectation.name, name);
+        }
+        if (m_test.expectation.language){
+            const std::string language = read_confirm_choices_language(frame, Language::English);
+            if (language.find(*m_test.expectation.language) == std::string::npos){
+                return std::format("Expected the language to have \"{}\", read \"{}\".", *m_test.expectation.language, language);
+            }
+        }
+        return true;
+    }
+
+private:
+    const ConfirmCase& m_test;
+};
+
 } // namespace
 
 
@@ -141,6 +291,12 @@ void add_tests_AutoStoryIntroScreens(UnitTestDatabase& database){
         database.add<Test_IntroScreenFrame>(test);
     }
     database.add<Test_ConfirmChoicesProfile>();
+    for (const SystemKeyboardCase& test : SYSTEM_KEYBOARD_CASES){
+        database.add<Test_SystemKeyboardOnNameKeyboard>(test);
+    }
+    for (const ConfirmCase& test : CONFIRM_CASES){
+        database.add<Test_ConfirmChoicesFrame>(test);
+    }
 }
 
 
