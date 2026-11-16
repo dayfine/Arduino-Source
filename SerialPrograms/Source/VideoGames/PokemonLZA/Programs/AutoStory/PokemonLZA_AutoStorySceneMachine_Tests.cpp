@@ -88,7 +88,7 @@ SceneMachineConfig battle_config(){
 
 //  `count` looks with the mission banner, then one without.
 std::vector<Observation<ZonePose>> banner_then_gone(size_t count){
-    std::vector<Observation<ZonePose>> looks(count, look_at(0ms, NOTHING, {MISSION_BANNER_READING}));
+    std::vector<Observation<ZonePose>> looks(count, look_at(/*at=*/0ms, NOTHING, {MISSION_BANNER_READING}));
     looks.push_back(look_at(0ms));
     return looks;
 }
@@ -237,8 +237,8 @@ const TimelineCase TIMELINE_CASES[] = {
     {
         .name = "the mission complete card is busy: A, and no quiet end while it shows",
         .input = {.config = arrival_config(), .looks = {
-            look_at(0ms, NOTHING, {MISSION_COMPLETE_READING}),
-            look_at(59000ms, STILL, {MISSION_COMPLETE_READING}),
+            look_at(/*at=*/0ms, NOTHING, {MISSION_COMPLETE_READING}),
+            look_at(/*at=*/59000ms, STILL, {MISSION_COMPLETE_READING}),
             look_at(61000ms),
         }},
         .expectation = {.states = {
@@ -392,18 +392,18 @@ const RunCase RUN_CASES[] = {
         .name = "01.03's end: A at the text and the mission complete card, done on the next banner",
         .input = {.looks = {
             look_at(0ms, DIALOG),
-            look_at(500ms, NOTHING, {MISSION_COMPLETE_READING}),
-            look_at(1000ms, NOTHING, {MISSION_COMPLETE_READING}),
+            look_at(/*at=*/500ms, NOTHING, {MISSION_COMPLETE_READING}),
+            look_at(/*at=*/1000ms, NOTHING, {MISSION_COMPLETE_READING}),
             look_at(1500ms),
-            look_at(2000ms, NOTHING, {MISSION_BANNER_READING}),
-            look_at(2250ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/2000ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/2250ms, NOTHING, {MISSION_BANNER_READING}),
             look_at(2500ms),
         }},
         .expectation = {.verdict = "done", .a_presses = 3, .line = "[PLZA test] done on mission_banner."},
     },
     {
         .name = "a mission complete card that A does not get past fails as scene_stuck",
-        .input = {.looks = {look_at(0ms, NOTHING, {MISSION_COMPLETE_READING})}},
+        .input = {.looks = {look_at(/*at=*/0ms, NOTHING, {MISSION_COMPLETE_READING})}},
         .expectation = {.verdict = "failed: scene_stuck", .a_presses = 30},
     },
     {

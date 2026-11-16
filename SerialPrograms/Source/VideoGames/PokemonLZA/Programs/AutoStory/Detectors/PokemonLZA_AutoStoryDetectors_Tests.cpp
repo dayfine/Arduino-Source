@@ -217,9 +217,9 @@ ImageRGB32 title_card_frame(){
 //  "COMPLETE" as green strokes (three columns in four) above it.
 ImageRGB32 mission_complete_frame(){
     ImageRGB32 image = solid_frame(0xff606060);
-    fill_box(345, 390, 1590, 585, 0xfffad228, image);
+    fill_box(/*min_x=*/345, /*min_y=*/390, /*max_x=*/1590, /*max_y=*/585, /*color=*/0xfffad228, image);
     for (size_t x = 615; x < 1300; x += 4){
-        fill_box(x, 275, x + 3, 345, 0xffa5f07d, image);
+        fill_box(x, /*min_y=*/275, x + 3, /*max_y=*/345, /*color=*/0xffa5f07d, image);
     }
     return image;
 }
@@ -228,7 +228,7 @@ ImageRGB32 mission_complete_frame(){
 //  scene, not the card.
 ImageRGB32 mission_complete_green_above_frame(){
     ImageRGB32 image = mission_complete_frame();
-    fill_box(615, 245, 1300, 270, 0xffa5f07d, image);
+    fill_box(/*min_x=*/615, /*min_y=*/245, /*max_x=*/1300, /*max_y=*/270, /*color=*/0xffa5f07d, image);
     return image;
 }
 

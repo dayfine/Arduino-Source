@@ -42,7 +42,7 @@ void fight_story_battle(
         }
         if (dialog || !battle_state.attempt_one_attack(env, console, context)){
             if (!attacked){
-                pbf_press_button(context, BUTTON_A, 160ms, 400ms);
+                pbf_press_button(context, BUTTON_A, /*hold=*/160ms, /*release=*/400ms);
             }
             continue;
         }

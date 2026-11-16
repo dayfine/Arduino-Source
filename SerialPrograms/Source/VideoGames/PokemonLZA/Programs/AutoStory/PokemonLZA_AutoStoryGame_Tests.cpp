@@ -394,9 +394,9 @@ const RunCase RUN_CASES[] = {
     {
         .name = "01.03's battle start: A through the talk and the tutorial card, done on the battle HUD",
         .input = {.checkpoint = "01.03", .first_step = 2, .steps = 1, .looks = {
-            look({ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, {}, Milliseconds(0)),
-            look({}, {}, Milliseconds(500)),
-            look({ScreenEvent::BATTLE_STARTED}, {}, Milliseconds(1000)),
+            look({ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(500)),
+            look({ScreenEvent::BATTLE_STARTED}, /*readings=*/{}, Milliseconds(1000)),
         }},
         .expectation = {
             .verdict = "done",
@@ -418,11 +418,11 @@ const RunCase RUN_CASES[] = {
     {
         .name = "01.03 ends past the mission complete card on Main Mission 02's banner, not saved",
         .input = {.checkpoint = "01.03", .first_step = 4, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)),
-            look({}, {MISSION_COMPLETE_READING}, Milliseconds(500)),
-            look({}, {MISSION_BANNER_READING}, Milliseconds(1000)),
-            look({}, {MISSION_BANNER_READING}, Milliseconds(1250)),
-            look({}, {}, Milliseconds(1500)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look(/*events=*/{}, {MISSION_COMPLETE_READING}, Milliseconds(500)),
+            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(1000)),
+            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(1250)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(1500)),
         }},
         .expectation = {
             .verdict = "done",

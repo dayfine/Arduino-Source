@@ -365,7 +365,7 @@ void wait_banner_gone(PlzaBackend& backend, std::string_view label){
     }
     backend.log(std::format("[PLZA {}] the mission banner still shows after {} ms; pressing A.", label, BANNER_GONE_WAIT.count()));
     for (size_t press = 1; press <= BANNER_PRESSES; press++){
-        backend.press(BUTTON_A, 160ms, 240ms);
+        backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
         backend.wait(BANNER_PRESS_EVERY);
         if (!banner_shows(backend)){
             backend.log(std::format("[PLZA {}] the mission banner has gone after A press {}.", label, press));

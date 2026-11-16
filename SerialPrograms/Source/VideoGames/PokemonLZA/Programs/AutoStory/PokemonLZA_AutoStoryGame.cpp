@@ -292,7 +292,7 @@ constexpr Milliseconds TALK_POLL(250);
 //  "talk": A at what the player faces, then a text box within TALK_WAIT;
 //  fails as "talk_no_text" without one.
 Outcome talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
-    backend.press(BUTTON_A, 160ms, 240ms);
+    backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
     for (Milliseconds waited(0); ; waited += TALK_POLL){
         backend.scope().throw_if_cancelled();
         if (backend.observe().events.has(ScreenEvent::DIALOG_BOX)){
