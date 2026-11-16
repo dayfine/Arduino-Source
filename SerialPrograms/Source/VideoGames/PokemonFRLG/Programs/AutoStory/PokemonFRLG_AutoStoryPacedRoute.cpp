@@ -9,6 +9,7 @@
 #include <set>
 #include <string>
 #include "Common/Cpp/Concurrency/Mutex.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_AutoStoryMovedTrainers.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
@@ -40,7 +41,12 @@ std::vector<MapData> make_story_maps(bool silph_cleared){
         flags.insert("FLAG_HIDE_SILPH_ROCKETS");
         flags.insert("FLAG_HIDE_SAFFRON_ROCKETS");
     }
-    return overworld_maps(flags);
+    std::vector<MapData> maps = overworld_maps(flags);
+    //  The lifts' rooms, coded rather than mapped: a lift_floor step rides
+    //  them on the sim (SimScript::lift_floors has their floors).
+    maps.push_back(rocket_hideout_lift_room());
+    maps.push_back(department_store_lift_room());
+    return maps;
 }
 
 } // namespace

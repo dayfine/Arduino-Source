@@ -90,7 +90,10 @@ protected:
 
 private:
     Pokemon::StoryAction action(StoryActionId id);
-    const std::vector<MapData>& maps() const;
+    //  The maps a run with `state`'s flags plans on: run_story_maps(), as
+    //  the program (Silph Co.'s Rockets gone once cleared, walked-up
+    //  trainers where they stand), unless the knobs give maps.
+    const std::vector<MapData>& maps(const Pokemon::RunState& state) const;
     //  Plans the route and moves the run's pose and gates to its end.
     Pokemon::Outcome walk_to(Pokemon::RunState& state, const StoryStep& step) const;
     Pokemon::Outcome legs(const Pokemon::RunState& state, const StoryStep& step) const;

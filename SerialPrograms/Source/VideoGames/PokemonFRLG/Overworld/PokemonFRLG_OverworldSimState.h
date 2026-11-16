@@ -18,6 +18,7 @@
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
+#include "PokemonFRLG_HideoutLiftRoom.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldSimScreens.h"
 
@@ -136,9 +137,13 @@ struct SimScript{
     //  A lift's map, and where its door lets the player out for each floor
     //  on its panel's menu, top first (pokefirered setdynamicwarp in
     //  RocketHideout_Elevator's scripts): the door's own warp is the
-    //  game's placeholder. The hideout's: rocket_hideout_lift_room() under
-    //  LIFT_MAP, with rocket_hideout_lift_exits().
-    std::map<std::string, std::vector<MapPosition>> lift_floors = {};
+    //  game's placeholder. The game's two lifts by default: a sim whose maps
+    //  hold a lift's coded room (rocket_hideout_lift_room(),
+    //  department_store_lift_room(); story_maps() has both) rides it.
+    std::map<std::string, std::vector<MapPosition>> lift_floors = {
+        {std::string(LIFT_MAP), rocket_hideout_lift_exits()},
+        {std::string(DEPT_STORE_LIFT_MAP), department_store_lift_exits()},
+    };
     //  The fade out of a lift only dims the screen, never black (console B,
     //  2026-11-10, 00.32 lift_to_b4f): no FADE shows for it.
     bool lift_exit_dims = true;

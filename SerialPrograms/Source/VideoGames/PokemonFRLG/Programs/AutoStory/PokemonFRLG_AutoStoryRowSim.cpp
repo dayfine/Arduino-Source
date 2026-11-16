@@ -178,7 +178,7 @@ Outcome StoryMapsSim::run_action(const StoryStep& step, RunState& state){
         }
         m_dialog_up = false;
     }
-    return trainers_back_on_warp([&]{ return regrow_on_warp(maps(), [&]{ return Pokemon::TableExecutor::run_action(step, state); }, state); }, state);
+    return trainers_back_on_warp([&]{ return regrow_on_warp(maps(state), [&]{ return Pokemon::TableExecutor::run_action(step, state); }, state); }, state);
 }
 
 Pokemon::ScreenLook StoryMapsSim::look(){
@@ -230,11 +230,11 @@ Pokemon::StoryAction StoryMapsSim::action(StoryActionId id){
         return played([this](const StoryStep& step, RunState&){ return shop(step); });
     //  A push leaves the player behind the boulder, a switch on if it lands on one.
     case StoryActionId::PUSH_BOULDER:
-        return played([this](const StoryStep& step, RunState& state){ return boulder_pushed(state, step, maps()); });
+        return played([this](const StoryStep& step, RunState& state){ return boulder_pushed(state, step, maps(state)); });
     //  Pacing leaves the player on either of its tiles, as on the console.
     //  A cut leaves the player on the tree's tile, its gate open.
     case StoryActionId::CUT_TREE:
-        return m_stubs.stub([this](const StoryStep& step, RunState& state){ return tree_cut(state, step, maps()); });
+        return m_stubs.stub([this](const StoryStep& step, RunState& state){ return tree_cut(state, step, maps(state)); });
     case StoryActionId::CLOSE_TRAINER_CARD:
     case StoryActionId::LEAVE_GIFT_SUMMARY:
     case StoryActionId::TRASH_CANS:
@@ -255,11 +255,11 @@ Pokemon::StoryAction StoryMapsSim::action(StoryActionId id){
 }
 
 Outcome StoryMapsSim::legs(const RunState& state, const StoryStep& step) const{
-    const Standing at = standing(state.pose, maps());
+    const Standing at = standing(state.pose, maps(state));
     if (!at.error.empty()){
         return Pokemon::outcome_failed("no_pose", at.error);
     }
-    const std::optional<std::vector<RouteStep>> route = fixed_route(resolve_maps(maps(), state.gates), at.position, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
+    const std::optional<std::vector<RouteStep>> route = fixed_route(resolve_maps(maps(state), state.gates), at.position, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
     if (!route || route->empty()){
         return Pokemon::outcome_failed("bad_legs", to_string(at.position));
     }
@@ -320,8 +320,8 @@ Outcome StoryMapsSim::shop(const StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
-const std::vector<MapData>& StoryMapsSim::maps() const{
-    return m_knobs.maps != nullptr ? *m_knobs.maps : story_maps();
+const std::vector<MapData>& StoryMapsSim::maps(const Pokemon::RunState& state) const{
+    return m_knobs.maps != nullptr ? *m_knobs.maps : run_story_maps(state.flags);
 }
 
 Outcome StoryMapsSim::walk_to(Pokemon::RunState& state, const StoryStep& step) const{
@@ -332,30 +332,30 @@ Outcome StoryMapsSim::walk_to(Pokemon::RunState& state, const StoryStep& step) c
         //  test_routes_after_pacing() walks it on the sim from each.
         const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
         const RouteGoal goal{{target->map, target->tile}, target->facing};
-        const std::optional<std::vector<RouteStep>> route = plan_story_route(maps(), pose, std::nullopt, goal, state.gates, rules);
+        const std::optional<std::vector<RouteStep>> route = plan_story_route(maps(state), pose, std::nullopt, goal, state.gates, rules);
         if (!route || route->empty()){
             return Pokemon::outcome_failed("no_route", Pokemon::to_string(pose) + " to " + to_string(goal.position));
         }
         state.gates = gates_after_route(state.gates, *route);
         return Pokemon::outcome_ok(to_pose(StoryPose{target->map, target->tile, route->back().facing_after}));
     }
-    const Standing at = standing(pose, maps());
+    const Standing at = standing(pose, maps(state));
     if (!at.error.empty()){
         return Pokemon::outcome_failed("no_pose", at.error);
     }
     const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
     const RouteGoal goal{{target->map, target->tile}, target->facing};
     const std::optional<std::vector<RouteStep>> route = plan_overworld_route_gated(
-        maps(), at.position, goal, state.gates, rules, story_route_costs(), at.facing
+        maps(state), at.position, goal, state.gates, rules, story_route_costs(), at.facing
     );
     if (!route){
         return Pokemon::outcome_failed("no_route", to_string(at.position) + " to " + to_string(goal.position));
     }
-    const MapPosition end = follow_overworld_route(maps(), at.position, *route, state.gates);
+    const MapPosition end = follow_overworld_route(maps(state), at.position, *route, state.gates);
     if (!(end == goal.position)){
         return Pokemon::outcome_failed("wrong_end", to_string(end));
     }
-    if (const std::optional<std::string> leg = overrun_wall_leg(*route, maps())){
+    if (const std::optional<std::string> leg = overrun_wall_leg(*route, maps(state))){
         return Pokemon::outcome_failed("wall_overrun", *leg);
     }
     state.gates = gates_after_route(state.gates, *route);

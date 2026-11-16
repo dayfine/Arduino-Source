@@ -19,3 +19,5 @@ jobs:
       compiler: default
       run-clang-query: true
       run-tests: true
+      # The build takes ~5 minutes with ccache; a run past an hour has a test hanging.
+      timeout-minutes: 60

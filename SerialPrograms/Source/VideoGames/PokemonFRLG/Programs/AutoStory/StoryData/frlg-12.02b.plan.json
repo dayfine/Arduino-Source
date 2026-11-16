@@ -45,13 +45,30 @@
         "why": "he takes the GOLD TEETH and gives HM04 STRENGTH (FuchsiaCity_WardensHouse_EventScript_GiveGoldTeeth; no YES/NO with the teeth; pokeguy 1:18:25 to 1:18:39)"
       },
       {
+        "id": "warden_outside",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "FuchsiaCity", "tiles": [[33, 32]], "facing": "south"}
+        },
+        "why": "out of the Warden's door onto the street below it (33, 31): Fly works outdoors only"
+      },
+      {
+        "id": "fly_fuchsia",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {"town": "FuchsiaCity", "species": "pidgey"},
+        "declared_after": {"map": "FuchsiaCity", "tiles": [[25, 32]], "facing": "south"},
+        "why": "the walk from the Warden's door to the Center's is 85 tiles round the city's west side (story route plan golden); Fly to Fuchsia City lands below the Center's door (25, 31) on its heal spot (user, 2026-11-15: \"yeh should fly\")"
+      },
+      {
         "id": "below_center_door",
         "kind": "route",
         "action": "run",
         "args": {
           "target": {"map": "FuchsiaCity", "tiles": [[25, 32]], "facing": "north"}
         },
-        "why": "out of the Warden's door and west along row 32 to below the Center's door (25, 31)"
+        "why": "turn to the Center's door (25, 31) from Fly's landing: no tile to walk"
       },
       {
         "id": "fuchsia_nurse",

@@ -20,6 +20,7 @@
 #include <memory>
 #include <optional>
 #include <random>
+#include <set>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -37,6 +38,7 @@
 #include "PokemonFRLG_AutoStoryPaceSim.h"
 #include "PokemonFRLG_AutoStoryRngLoop.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
+#include "PokemonFRLG_AutoStorySimBudget.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -75,12 +77,16 @@ const StoryCheckpoint& checkpoint_row(std::string_view id){
     return *row;
 }
 
+//  The whole story end to end, a slow test.
+constexpr Seconds WHOLE_STORY_BUDGET{1200};
+
 //  The story on the story maps (StoryMapsSim), with a trace of what ran
 //  and steps told to fail.
 class FakeGame : public StoryMapsSim{
 public:
-    explicit FakeGame(StorySimKnobs knobs = {})
+    FakeGame(StorySimKnobs knobs, TimeBudget budget)
         : StoryMapsSim(std::move(knobs))
+        , m_budget(budget)
     {}
 
     struct Failure{
@@ -100,6 +106,7 @@ public:
     }
     virtual Outcome run(const StoryStep& step, RunState& state) override{
         const std::string key = m_row + "/" + step.name;
+        check_budget(m_budget, key);
         trace.push_back(key);
         auto failure = failures.find(key);
         if (failure != failures.end() && failure->second.times > 0){
@@ -111,6 +118,7 @@ public:
 
 private:
     std::string m_row;
+    TimeBudget m_budget;
 };
 
 
@@ -118,8 +126,8 @@ private:
 //  run takes with every handoff off, each saving at its end (hooks.save
 //  stands for save_game()).
 struct Simulation{
-    explicit Simulation(StorySimKnobs knobs = {})
-        : game(std::move(knobs))
+    explicit Simulation(StorySimKnobs knobs = {}, TimeBudget budget = budget_from_now(STAGE_BUDGET))
+        : game(std::move(knobs), budget)
     {}
 
     std::vector<StoryCheckpoint> rows = plan_story_run(story_checkpoints(), 0, story_checkpoints().size() - 1, StoryHandoffs{}).rows;
@@ -180,10 +188,11 @@ struct Simulation{
 
 
 struct AutoStorySimulationInput{
-    std::string name;
     UnitTestResult (*body)();
     //  A body that logs, run instead of `body` if given.
-    UnitTestResult (*logged)(Logger&) = {};
+    std::function<UnitTestResult(Logger&)> logged = {};
+    //  Run only with the slow tests on (SLOW_TESTS_VARIABLE).
+    bool slow = false;
 };
 
 struct AutoStorySimulationExpectation{
@@ -191,6 +200,7 @@ struct AutoStorySimulationExpectation{
 };
 
 struct AutoStorySimulationTestCase{
+    std::string name;
     AutoStorySimulationInput input;
     AutoStorySimulationExpectation expectation;
 };
@@ -198,14 +208,17 @@ struct AutoStorySimulationTestCase{
 class Test_AutoStorySimulation : public UnitTest{
 public:
     explicit Test_AutoStorySimulation(AutoStorySimulationTestCase scenario)
-        : UnitTest("PokemonFRLG::AutoStory - Simulation: " + scenario.input.name)
+        : UnitTest("PokemonFRLG::AutoStory - Simulation: " + scenario.name)
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        if (m_scenario.input.slow && !slow_tests_enabled()){
+            return UnitTestResult(UnitTestResult::SKIPPED, std::format("a slow test: set {}=1 to run it", SLOW_TESTS_VARIABLE));
+        }
         try{
             return m_scenario.input.logged ? m_scenario.input.logged(logger) : m_scenario.input.body();
         }catch (Exception& e){
-            return std::string(e.name()) + ": " + e.message();
+            return std::format("{}: {}", e.name(), e.message());
         }
     }
 
@@ -214,23 +227,42 @@ private:
 };
 
 
-UnitTestResult test_whole_story(){
-    Simulation sim;
-    const Pokemon::SegmentReport report = sim.run({});
+//  The rows of a run, as Simulation::rows has them, from `first` to
+//  `last`, both inclusive; all of them for an empty range.
+std::vector<StoryCheckpoint> rows_in(const std::vector<StoryCheckpoint>& rows, const Pokemon::SegmentRange& range){
+    std::vector<StoryCheckpoint> out;
+    bool in = !range.from;
+    for (const StoryCheckpoint& data : rows){
+        in = in || data.id == *range.from;
+        if (in){
+            out.push_back(data);
+        }
+        if (range.to && data.id == *range.to){
+            break;
+        }
+    }
+    return out;
+}
+
+//  A run of `range` with nothing told to fail: through, each checkpoint
+//  once in order and one-shot, each saving at its end, each starting where
+//  the save before it stands; and 02.03's shopping, if it ran.
+UnitTestResult check_story_run(const Pokemon::SegmentRange& range, TimeBudget budget){
+    Simulation sim({}, budget);
+    const Pokemon::SegmentReport report = sim.run(range);
     if (!report.completed){
-        return "Expected the whole story through:" + joined(sim.lines);
+        return "Expected the story through:" + joined(sim.lines);
     }
-    std::vector<std::string> ids;
-    for (const StoryCheckpoint& data : sim.rows){
-        ids.push_back(data.id);
-    }
+    const std::vector<StoryCheckpoint> rows = rows_in(sim.rows, range);
+    std::vector<std::string> ids(rows.size());
+    std::ranges::transform(rows, ids.begin(), &StoryCheckpoint::id);
     if (sim.begun() != ids || sim.saves.size() != ids.size()){
         return "Expected each checkpoint once, in order, each saving at its end:" + joined(sim.game.trace);
     }
     //  Each checkpoint starts where the save before it stands, but one
     //  authored before the rows that lead up to it.
-    for (size_t c = 1; c < sim.rows.size(); c++){
-        const StoryCheckpoint& data = sim.rows[c];
+    for (size_t c = 1; c < rows.size(); c++){
+        const StoryCheckpoint& data = rows[c];
         if (starts_after_unauthored_rows(data.id)){
             continue;
         }
@@ -246,6 +278,9 @@ UnitTestResult test_whole_story(){
     if (report.one_shot_passes() != report.checkpoints_run){
         return "Expected every checkpoint one-shot:" + joined(sim.lines);
     }
+    if (std::ranges::find(ids, "02.03") == ids.end()){
+        return true;
+    }
     //  02.03's shopping, with the cursor staying on each row bought.
     const std::map<std::string, int> bought{{"potion", 5}, {"antidote", 3}, {"parlyz_heal", 1}};
     if (sim.game.bag() != bought){
@@ -258,13 +293,17 @@ UnitTestResult test_whole_story(){
     return true;
 }
 
+UnitTestResult test_whole_story(){
+    return check_story_run({}, budget_from_now(WHOLE_STORY_BUDGET));
+}
+
 //  The whole story through the table as the simulation binds it, each
 //  row's stubs logged: a step is stubbed exactly when its action needs the
 //  console, so no step the simulation plays is passed over.
-UnitTestResult test_stubbed_steps_need_the_console(Logger& logger){
+UnitTestResult check_stubbed_steps(Logger& logger, const Pokemon::SegmentRange& range){
     Simulation sim;
-    if (!sim.run({}).completed){
-        return "Expected the whole story through:" + joined(sim.lines);
+    if (!sim.run(range).completed){
+        return "Expected the story through:" + joined(sim.lines);
     }
     logger.log("Steps the simulation does not play, by row:\n" + stub_report(sim.game.stubs().rows()));
     for (const RowStubs& stubs : sim.game.stubs().rows()){
@@ -806,18 +845,23 @@ UnitTestResult test_out_of_bill_cottage(){
     return true;
 }
 
-
 //  Someone talks to the player before every step (StorySimKnobs::
 //  dialog_before): cleared between steps, the whole story still passes;
 //  left up, as before the executor looked, a walk fails on it.
-UnitTestResult test_dialog_before_every_step(){
+UnitTestResult check_dialog_before_every_step(const Pokemon::SegmentRange& range){
+    Simulation cleared({.dialog_before = [](const std::string&, const std::string&){ return true; }});
+    if (!cleared.run(range).completed){
+        return "Expected the story through, a dialog before every step cleared:" + joined(cleared.lines);
+    }
+    return true;
+}
+
+//  The same dialogs left up, as before the executor looked: the story's
+//  first walk fails on one.
+UnitTestResult test_dialog_left_up_stops_a_walk(){
     const auto always = [](const std::string&, const std::string&){
         return true;
     };
-    Simulation cleared({.dialog_before = always});
-    if (!cleared.run({}).completed){
-        return "Expected the story through, a dialog before every step cleared:" + joined(cleared.lines);
-    }
     Simulation left({.dialog_before = always, .clear_interrupts = false});
     const bool completed = left.run({}).completed;
     const auto stopped = [](const std::string& line){
@@ -831,8 +875,9 @@ UnitTestResult test_dialog_before_every_step(){
 
 //  Dialogs pop up at random before one step in five: how many whole runs
 //  pass with them cleared between steps, and with them left up.
-UnitTestResult test_dialogs_at_random(Logger& logger){
+UnitTestResult check_dialogs_at_random(Logger& logger, const Pokemon::SegmentRange& range){
     constexpr uint32_t SEEDS = 5;
+    const TimeBudget budget = budget_from_now(STAGE_BUDGET);
     size_t passes[2] = {0, 0};
     for (uint32_t seed = 1; seed <= SEEDS; seed++){
         for (bool clear : {false, true}){
@@ -842,13 +887,13 @@ UnitTestResult test_dialogs_at_random(Logger& logger){
                     return std::bernoulli_distribution(0.2)(*rng);
                 },
                 .clear_interrupts = clear,
-            });
-            passes[clear] += sim.run({}).completed ? 1 : 0;
+            }, budget);
+            passes[clear] += sim.run(range).completed ? 1 : 0;
         }
     }
     logger.log(std::format(
-        "Dialogs before one step in five, {} seeds: {} passed left up, {} cleared between steps.",
-        SEEDS, passes[0], passes[1]
+        "Dialogs before one step in five, {} to {}, {} seeds: {} passed left up, {} cleared between steps.",
+        range.from.value_or("the start"), range.to.value_or("the end"), SEEDS, passes[0], passes[1]
     ));
     if (passes[1] != SEEDS){
         return std::format("Expected every run through with the dialogs cleared, {} of {}.", passes[1], SEEDS);
@@ -856,61 +901,94 @@ UnitTestResult test_dialogs_at_random(Logger& logger){
     return true;
 }
 
+//  A stage of the story: its first and last checkpoints.
+struct StoryStage{
+    std::string first;
+    std::string last;
+};
 
-//  No ANSWER step follows a ROUTE or LEGS step. A walk closes a message
-//  that shows at its end with B (MessageInterrupt), which answers a YES/NO
-//  NO by itself, and the ANSWER after it then finds none. Console B,
-//  2026-11-14, 14.02b: Bill's scene ran as below_gym_door's warp out of
-//  Cinnabar Gym landed, the walk pressed through his question, and
-//  decline_bill failed with "answer_yes_no(): no YES/NO". A question that
-//  shows on arrival follows a STEP onto the warp, which leaves it up.
-UnitTestResult test_no_answer_after_walk(){
-    for (const StoryCheckpoint& row : story_checkpoints()){
-        for (size_t c = 1; c < row.steps.size(); c++){
-            const StoryStep& walk = row.steps[c - 1];
-            const StoryStep& answer = row.steps[c];
-            if (answer.kind != StoryStepKind::ANSWER){
-                continue;
-            }
-            if (walk.kind == StoryStepKind::ROUTE || walk.kind == StoryStepKind::LEGS){
-                return std::format("{}/{}: follows the walk {}, which answers a YES/NO at its end with B.", row.id, answer.name, walk.name);
-            }
+//  The story's stages, as a run with every handoff off takes its rows:
+//  each run of rows whose ids share a stage number ("05" for 05.01 to
+//  05.10).
+std::vector<StoryStage> story_stages(){
+    const std::vector<StoryCheckpoint> rows = plan_story_run(story_checkpoints(), 0, story_checkpoints().size() - 1, StoryHandoffs{}).rows;
+    std::vector<StoryStage> stages;
+    for (const StoryCheckpoint& data : rows){
+        if (stages.empty() || stages.back().last.substr(0, 2) != data.id.substr(0, 2)){
+            stages.push_back({.first = data.id, .last = data.id});
+        }else{
+            stages.back().last = data.id;
         }
     }
-    return true;
+    return stages;
 }
 
+//  The stage tests: each stage of the story, from its first row's start
+//  (where the save of the row before it stands, as the no-sim chain test
+//  checks: PokemonFRLG_AutoStoryStepLint_Tests.cpp) to its last row's end,
+//  within STAGE_BUDGET. Together they run the whole story on every push.
+struct StageCheck{
+    std::string_view what;
+    std::string_view description;
+    UnitTestResult (*check)(Logger&, const Pokemon::SegmentRange&);
+};
+
+const StageCheck STAGE_CHECKS[] = {
+    {"in order, each start where the last save stood", "runs the stage's checkpoints one-shot, each from where the one before saved", [](Logger&, const Pokemon::SegmentRange& range){ return check_story_run(range, budget_from_now(STAGE_BUDGET)); }},
+    {"the steps it stubs need the console", "stubs each needs-console step of the stage and plays the rest", check_stubbed_steps},
+    {"a dialog before every step, cleared", "the stage passes with each dialog cleared between steps", [](Logger&, const Pokemon::SegmentRange& range){ return check_dialog_before_every_step(range); }},
+    {"dialogs before one step in five, over 5 seeds", "every run of the stage passes with them cleared", check_dialogs_at_random},
+};
+
+//  `check` on `stage`. `check` is one of STAGE_CHECKS, which outlive it.
+AutoStorySimulationTestCase stage_case(const StoryStage& stage, const StageCheck& check){
+    const Pokemon::SegmentRange range{.from = stage.first, .to = stage.last};
+    return {
+        .name = std::format("stage {} ({} to {}), {}", stage.first.substr(0, 2), stage.first, stage.last, check.what),
+        .input = {.body = nullptr, .logged = [&check, range](Logger& logger){ return check.check(logger, range); }},
+        .expectation = {.description = check.description},
+    };
+}
+
+std::vector<AutoStorySimulationTestCase> stage_cases(){
+    std::vector<AutoStorySimulationTestCase> cases;
+    for (const StoryStage& stage : story_stages()){
+        for (const StageCheck& check : STAGE_CHECKS){
+            cases.push_back(stage_case(stage, check));
+        }
+    }
+    return cases;
+}
 
 const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
-    {.input = {.name = "new game to Brock, in order, each start where the last save stood", .body = test_whole_story}, .expectation = {.description = "runs full story progression from new game through Brock gym"}},
-    {.input = {.name = "the steps it stubs need the console", .body = nullptr, .logged = test_stubbed_steps_need_the_console}, .expectation = {.description = "stubs each needs-console step of the whole story and plays the rest"}},
-    {.input = {.name = "start and end checkpoints", .body = test_start_and_end}, .expectation = {.description = "executes segment bounded by start and end checkpoints"}},
-    {.input = {.name = "a failed walk reloads its checkpoint's save", .body = test_retry_from_save}, .expectation = {.description = "reloads checkpoint save state on simulated movement failure"}},
-    {.input = {.name = "a battle lost every time stops after 3 attempts", .body = test_gives_up_after_attempts}, .expectation = {.description = "aborts after three consecutive battle blackouts"}},
-    {.input = {.name = "04.06 into Cerulean, the entry leg a tile short", .body = test_cerulean_entry_short}, .expectation = {.description = "recovers when entering Cerulean City if movement ends one tile short"}},
-    {.input = {.name = "04.06 from Mt. Moon to the Mega Kick tutor, then above the ledge", .body = test_mega_kick_tutor_walks}, .expectation = {.description = "verifies route navigation from Mt. Moon to tutor and past ledge"}},
-    {.input = {.name = "05.05 Nugget Bridge, the walk onto it a tile short", .body = test_nugget_bridge_short}, .expectation = {.description = "completes Nugget Bridge battles even if initial approach stops short"}},
-    {.input = {.name = "05.06 Route 25, its four trainers and Dan", .body = test_route25_trainers}, .expectation = {.description = "simulates Route 25 trainer battles and Dan detour"}},
-    {.input = {.name = "05.07 out of Bill's Sea Cottage, Bill on (7, 6)", .body = test_out_of_bill_cottage}, .expectation = {.description = "simulates exiting Bill sea cottage with Bill relocated"}},
-    {.input = {.name = "05.09 to Route 24's grass and back, past Shane", .body = test_oddish_walks}, .expectation = {.description = "navigates to Route 24 grass avoiding trainer line of sight"}},
-    {.input = {.name = "05.09 back to the Center, the Oddish's battle on the pace's far step", .body = test_oddish_battle_on_far_step}, .expectation = {.description = "handles Oddish capture encounter occurring on far pace step"}},
-    {.input = {.name = "05.09 onto the grass out of Shane's sight, the leg west a tile short", .body = test_oddish_patch_west_short}, .expectation = {.description = "recovers when approaching grass patch with short western leg"}},
-    {.input = {.name = "the routes after pacing, from either of its tiles", .body = test_routes_after_pacing}, .expectation = {.description = "plans valid routes regardless of which pacing tile character ends on"}},
-    {.input = {.name = "a save off the start pose stops before any step", .body = test_save_off_start_pose}, .expectation = {.description = "fails the start check without walking or saving"}},
-    {.input = {.name = "the row after an RNG handoff runs off any start pose", .body = test_rows_after_rng_skip_start_check}, .expectation = {.description = "01.06, 04.03 and 09.04 start where the RNG program left the game"}},
-    {.input = {.name = "a dialog pops up before every step", .body = test_dialog_before_every_step}, .expectation = {.description = "cleared between steps, the story passes; left up, a walk fails on it"}},
-    {.input = {.name = "dialogs pop up before one step in five, over 5 seeds", .body = nullptr, .logged = test_dialogs_at_random}, .expectation = {.description = "every run passes with them cleared"}},
-    {.input = {.name = "an ANSWER never follows a walk", .body = test_no_answer_after_walk}, .expectation = {.description = "a YES/NO after a warp follows a STEP onto it, which leaves the question up"}},
+    {.name = "new game to Brock, in order, each start where the last save stood", .input = {.body = test_whole_story, .slow = true}, .expectation = {.description = "runs the whole story end to end; slow, the stage tests run it on every push"}},
+    {.name = "start and end checkpoints", .input = {.body = test_start_and_end}, .expectation = {.description = "executes segment bounded by start and end checkpoints"}},
+    {.name = "a failed walk reloads its checkpoint's save", .input = {.body = test_retry_from_save}, .expectation = {.description = "reloads checkpoint save state on simulated movement failure"}},
+    {.name = "a battle lost every time stops after 3 attempts", .input = {.body = test_gives_up_after_attempts}, .expectation = {.description = "aborts after three consecutive battle blackouts"}},
+    {.name = "04.06 into Cerulean, the entry leg a tile short", .input = {.body = test_cerulean_entry_short}, .expectation = {.description = "recovers when entering Cerulean City if movement ends one tile short"}},
+    {.name = "04.06 from Mt. Moon to the Mega Kick tutor, then above the ledge", .input = {.body = test_mega_kick_tutor_walks}, .expectation = {.description = "verifies route navigation from Mt. Moon to tutor and past ledge"}},
+    {.name = "05.05 Nugget Bridge, the walk onto it a tile short", .input = {.body = test_nugget_bridge_short}, .expectation = {.description = "completes Nugget Bridge battles even if initial approach stops short"}},
+    {.name = "05.06 Route 25, its four trainers and Dan", .input = {.body = test_route25_trainers}, .expectation = {.description = "simulates Route 25 trainer battles and Dan detour"}},
+    {.name = "05.07 out of Bill's Sea Cottage, Bill on (7, 6)", .input = {.body = test_out_of_bill_cottage}, .expectation = {.description = "simulates exiting Bill sea cottage with Bill relocated"}},
+    {.name = "05.09 to Route 24's grass and back, past Shane", .input = {.body = test_oddish_walks}, .expectation = {.description = "navigates to Route 24 grass avoiding trainer line of sight"}},
+    {.name = "05.09 back to the Center, the Oddish's battle on the pace's far step", .input = {.body = test_oddish_battle_on_far_step}, .expectation = {.description = "handles Oddish capture encounter occurring on far pace step"}},
+    {.name = "05.09 onto the grass out of Shane's sight, the leg west a tile short", .input = {.body = test_oddish_patch_west_short}, .expectation = {.description = "recovers when approaching grass patch with short western leg"}},
+    {.name = "the routes after pacing, from either of its tiles", .input = {.body = test_routes_after_pacing}, .expectation = {.description = "plans valid routes regardless of which pacing tile character ends on"}},
+    {.name = "a save off the start pose stops before any step", .input = {.body = test_save_off_start_pose}, .expectation = {.description = "fails the start check without walking or saving"}},
+    {.name = "the row after an RNG handoff runs off any start pose", .input = {.body = test_rows_after_rng_skip_start_check}, .expectation = {.description = "01.06, 04.03 and 09.04 start where the RNG program left the game"}},
+    {.name = "a dialog left up before every step stops a walk", .input = {.body = test_dialog_left_up_stops_a_walk}, .expectation = {.description = "left up, as before the executor looked, a walk fails on it"}},
 };
 
 } // namespace
-
 
 void add_tests_AutoStorySimulation(UnitTestDatabase& database){
     add_tests_AutoStoryStepTable(database);
     add_tests_AutoStoryStartFrames(database);
     for (const auto& scenario : AUTO_STORY_SIMULATION_CASES){
         database.add<Test_AutoStorySimulation>(scenario);
+    }
+    for (AutoStorySimulationTestCase& scenario : stage_cases()){
+        database.add<Test_AutoStorySimulation>(std::move(scenario));
     }
 }
 

@@ -179,10 +179,8 @@ std::string lift_on_sim(){
         hideout_floor("RocketHideout_B4F", exits[2].point.next(Direction::NORTH)),
         rocket_hideout_lift_room(),
     };
-    SimScript script;
-    script.lift_floors[std::string(LIFT_MAP)] = exits;
     const MapPosition below_door = exits[1];
-    OverworldSim sim(maps, below_door, Direction::NORTH, script);
+    OverworldSim sim(maps, below_door, Direction::NORTH);
     StoryPose at{below_door.map, below_door.point, Direction::NORTH};
     const std::string failure = row_step_on_sim(sim, at, lift_floor_step("lift_to_b4f", "B2F", "B4F"), "09.02");
     if (!failure.empty()){

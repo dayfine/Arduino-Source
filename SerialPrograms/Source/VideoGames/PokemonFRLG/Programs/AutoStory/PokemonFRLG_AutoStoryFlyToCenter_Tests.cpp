@@ -42,8 +42,8 @@ constexpr std::string_view FIRST_FLY_ROW = "10.01";
 //  about 10 s of menus and animation, more than 20 tiles of running, but
 //  the long walks are the ones that re-planned and failed on console B
 //  (2026-11-15: 18.02b's 80 tiles round Saffron's blocks). 20 keeps a walk
-//  down one street (Fuchsia's Warden's house to its Center, 8 tiles) and
-//  flags every walk across a town (Viridian Gym to its Center, 58 tiles).
+//  down one street and flags every walk across a town (Viridian Gym to
+//  its Center, 58 tiles).
 constexpr int MAX_WALK_TO_CENTER = 20;
 
 //  The story's maps from 10.01 on that let an Escape Rope work (pokefirered

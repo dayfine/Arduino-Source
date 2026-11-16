@@ -20,67 +20,7 @@
     ],
     "events": [
       {
-        "id": "below_up_arrow",
-        "kind": "legs",
-        "action": "run",
-        "args": {
-          "legs": [
-            {
-              "direction": "south",
-              "tiles": 1
-            },
-            {
-              "direction": "east",
-              "tiles": 1
-            },
-            {
-              "direction": "south",
-              "tiles": 2
-            },
-            {
-              "direction": "west",
-              "tiles": 3
-            },
-            {
-              "direction": "south",
-              "tiles": 3
-            },
-            {
-              "direction": "east",
-              "tiles": 1
-            },
-            {
-              "direction": "south",
-              "tiles": 2
-            },
-            {
-              "direction": "east",
-              "tiles": 5
-            }
-          ]
-        },
-        "why": "from Warren's (15, 7) the way 17.02 came, backwards: down columns 15 and 16 to row 10, west to column 13, down it to row 13 past Yuji's (12, 10) and Atsushi's (11, 14) lines, round the wall (15, 14) to row 15 and east to (19, 15), below the up arrow (19, 14); no arrow tile on the way"
-      },
-      {
-        "id": "arrows_to_takashi",
-        "kind": "legs",
-        "action": "run",
-        "args": {
-          "legs": [
-            {
-              "direction": "north",
-              "tiles": 1
-            },
-            {
-              "direction": "north",
-              "tiles": 1
-            }
-          ]
-        },
-        "why": "onto the up arrow (19, 14), which slides the player up column 19 to the stop tile (19, 3); onto the left arrow (19, 2), which slides them west along row 2 to the stop tile (11, 2), beside Takashi (10, 2) on his right. He faces south (sight 3, column 10's (10, 3..5)) and sees no tile of the way"
-      },
-      {
-        "id": "face_takashi",
+        "id": "right_of_takashi",
         "kind": "route",
         "action": "run",
         "args": {
@@ -95,7 +35,7 @@
             "facing": "west"
           }
         },
-        "why": "turn to Takashi (10, 2), if the slide left the player facing another way"
+        "why": "planned from Warren's (15, 7) through the gym, the spinners ridden as planner moves (ViridianCity_Gym's arrow glyphs, PokemonFRLG_OverworldSpin.h): below the up arrow (19, 15), up column 19 to (19, 3), the left arrow (19, 2) west along row 2 to the stop tile (11, 2), beside Takashi (10, 2) on his right, out of his line (column 10, (10, 3..5)); the walk ends on a localized tile before the talk"
       },
       {
         "id": "challenge_takashi",
@@ -130,25 +70,7 @@
         ]
       },
       {
-        "id": "arrows_down",
-        "kind": "legs",
-        "action": "run",
-        "args": {
-          "legs": [
-            {
-              "direction": "south",
-              "tiles": 1
-            },
-            {
-              "direction": "east",
-              "tiles": 1
-            }
-          ]
-        },
-        "why": "onto the right arrow (11, 3), which slides the player east along row 3 to the stop tile (17, 3); onto the down arrow (18, 3), which slides them down column 18 to the stop tile (18, 14). The only way off row 2: Takashi stands on (10, 2) west of it"
-      },
-      {
-        "id": "below_takashi_column",
+        "id": "below_giovanni",
         "kind": "route",
         "action": "run",
         "args": {
@@ -156,44 +78,14 @@
             "map": "ViridianCity_Gym",
             "tiles": [
               [
-                10,
-                7
+                2,
+                3
               ]
             ],
             "facing": "north"
           }
         },
-        "why": "back round to row 7 below column 10, as 17.02 came: no arrow tile on the way"
-      },
-      {
-        "id": "below_giovanni",
-        "kind": "legs",
-        "action": "run",
-        "args": {
-          "legs": [
-            {
-              "direction": "north",
-              "tiles": 4
-            },
-            {
-              "direction": "west",
-              "tiles": 3
-            },
-            {
-              "direction": "south",
-              "tiles": 3
-            },
-            {
-              "direction": "west",
-              "tiles": 5
-            },
-            {
-              "direction": "north",
-              "tiles": 3
-            }
-          ]
-        },
-        "why": "the way the run went before: up column 10 past beaten Takashi to (10, 3), west along row 3 to (7, 3), down to the wall (7, 6), west to (2, 6) and up to (2, 3), facing Giovanni (2, 2)"
+        "why": "planned from Takashi's right (11, 2), down the spinners (the right arrow (11, 3) and the down arrow (18, 3), the only way off row 2 with Takashi on (10, 2)) and round to below Giovanni (2, 2), facing him; beaten, Takashi sees no one"
       }
     ]
   },
