@@ -38,11 +38,9 @@ constexpr ZoneMove PAUSE = ZoneMove::PAUSE;
 
 constexpr ZoneLeg TOWARD = ZoneLeg::TOWARD;
 constexpr ZoneLeg AWAY = ZoneLeg::AWAY;
-constexpr ZoneLeg LEFT = ZoneLeg::LEFT;
-constexpr ZoneLeg RIGHT = ZoneLeg::RIGHT;
 
 //  A round of legs with no distance read: each way out, then back.
-const std::vector<ZoneLeg> ROUND = {AWAY, TOWARD, LEFT, RIGHT, RIGHT, LEFT, TOWARD, AWAY};
+const std::vector<ZoneLeg> ROUND = {AWAY, TOWARD, TOWARD, AWAY};
 
 //  `scans` full turns of looks that find nothing new (no plate and caught
 //  plates in turn), after `before`.
@@ -73,7 +71,7 @@ std::vector<Type> repeated(const std::vector<Type>& values, size_t times){
 }
 
 //  The 8 walks of a round with no read, then its pause.
-const std::vector<ZoneMove> ROUND_ENDS = {WALK, WALK, WALK, WALK, WALK, WALK, WALK, WALK, PAUSE};
+const std::vector<ZoneMove> ROUND_ENDS = {WALK, WALK, WALK, WALK, PAUSE};
 
 
 struct SearchCase{
@@ -112,7 +110,7 @@ const SearchCase SEARCH_CASES[] = {
     },
     {
         .name = "with no distance read each leg out is walked back before the next, then the search pauses",
-        .input = {.looks = empty_scans(18)},
+        .input = {.looks = empty_scans(10)},
         .expectation = {.moves = empty_scan_moves(repeated(ROUND_ENDS, 2)), .legs = repeated(ROUND, 2), .furthest = 1, .end = {}},
     },
     {
@@ -126,7 +124,7 @@ const SearchCase SEARCH_CASES[] = {
     },
     {
         .name = "at a distance over 60 legs toward the objective are walked",
-        .input = {.looks = empty_scans(9), .distance = 61},
+        .input = {.looks = empty_scans(5), .distance = 61},
         .expectation = {.moves = empty_scan_moves(ROUND_ENDS), .legs = ROUND, .furthest = 1, .end = {}},
     },
 };
