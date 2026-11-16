@@ -19,6 +19,24 @@ them presses a button, resets, saves or changes an option.
 - **Clear refusals.** The first failing check stops the start with a message saying which
   check failed and what it needs.
 
+## Example
+
+Ask: *"what does FRLG Static RNG need before it starts?"* Claude calls
+`describe_program(console="B", panel="PokemonFRLG:RngStatic")`. The answer lists the options
+and the checks; the check part looks like this (shape sketch, field names may change):
+
+```json
+{"program": "PokemonFRLG:RngStatic",
+ "prechecks": [
+   {"name": "black_border", "needs": "The picture fills the screen: no black border."},
+   {"name": "free_party_slots", "needs": "At least 1 empty party slot."}
+ ]}
+```
+
+A program with no list answers `"prechecks": "unsupported"`. When a check fails at Start, the
+program stops before any reset with a message like
+`Free party slots: needs 1 empty slot, found 0.`
+
 ## Checks you will see
 
 | Check | Needs |
