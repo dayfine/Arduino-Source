@@ -5,10 +5,12 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <format>
 #include <iterator>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -18,8 +20,10 @@
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BallThrow.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryCaughtMarkReader.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader.h"
 #include "PokemonLZA_AutoStoryLines.h"
 #include "PokemonLZA_AutoStoryMarkerWalk.h"
+#include "PokemonLZA_AutoStoryZoneSearch.h"
 #include "PokemonLZA_AutoStoryCatches.h"
 
 namespace PokemonAutomation{
@@ -120,26 +124,36 @@ Pokemon::Outcome battle_then_catch(StoryEnv& env, PlzaBackend& backend, int max_
 
 namespace{
 
-//  Wild Zone 1's two catch spots on its road, as distances from the
-//  objective marker, the user's pick (2026-11-13): 100, the plaza by the
-//  green advertising column (Scatterbug on the road), and 60, just before
-//  the far gate (Mareep in the grass right of the road). The patrol goes
-//  100, 60, 100, 60, ...: walking to 100 and back brings the Pokemon at 60
-//  back when none showed there.
+//  Wild Zone 1's two spots on its road, as distances from the objective
+//  marker, the user's pick (2026-11-13): 100, the plaza by the green
+//  advertising column, and 60, just before the far gate.
+//  walk_back_to_zone_road() walks back onto the road at them.
 constexpr int ROAD_SPOTS[] = {100, 60};
-constexpr size_t PATROL_VISITS = 10;
-constexpr Milliseconds PATROL_LIMIT(600000);
 
 //  How far short of a road stop still counts as there: the walk back to 60
 //  from nearer the gate stopped at 58 once (console B, 2026-11-14).
 constexpr int ROAD_STOP_SLACK = 3;
-//  The patrol never walks toward the objective below this, read or not:
-//  60 is just before the far gate, and past it is the city (console B,
+//  Walks toward the objective never go below this, read or not: 60 is
+//  just before the far gate, and past it is the city (console B,
 //  2026-11-16, a walk to 100 came out at 37).
 constexpr int ROAD_FLOOR = ROAD_SPOTS[std::size(ROAD_SPOTS) - 1] - ROAD_STOP_SLACK;
 constexpr Milliseconds STOP_WALK_LIMIT(30000);
-//  The first walk, from where 03.07 left the player, is the longest.
+//  A walk with no distance read to start from is the longest.
 constexpr Milliseconds FIRST_WALK_LIMIT(90000);
+
+//  catch_in_zone()'s time in the zone: spawns come back, so a search that
+//  finds nothing new keeps going until this runs out.
+constexpr Milliseconds SEARCH_LIMIT(600000);
+//  A scan's camera steps, the right stick full right for SCAN_STEP_TURN
+//  each: meant as a full turn in all; not measured on console in degrees.
+constexpr size_t SCAN_STEPS = 8;
+constexpr Milliseconds SCAN_STEP_TURN(300);
+//  One leg of the search (ZoneLeg), the left stick full one way, with the
+//  camera on the objective marker: a few steps into the grass, short of
+//  the 30 s walks that left the zone (console B, 2026-11-16).
+constexpr Milliseconds LEG_HOLD(2000);
+//  A ZoneMove::PAUSE: standing for spawns to come back.
+constexpr Milliseconds SEARCH_PAUSE(15000);
 
 //  How long ZL is held for the lock to show: over 1.5 s at times (the
 //  user, console B 2026-11-14).
@@ -147,9 +161,6 @@ constexpr Milliseconds LOCK_ON_WAIT(3000);
 //  A full flick of the right stick with ZL held moves the lock to the next
 //  target that way (the user, 2026-11-13).
 constexpr double TARGET_FLICK = 0.8;
-//  The looks of a stop, the camera turned right between two.
-constexpr int STOP_LOOKS = 4;
-
 //  ZL held across reads of the screen: each hold is queued before the last
 //  one ends, so ZL is never let go from the lock to the throw (throw_ball()
 //  queues its own ZL first).
@@ -207,30 +218,19 @@ private:
     WallClock m_end;
 };
 
-//  What ZL locked on to at a stop.
-enum class LockOn{
-    NO_PLATE,
-    ALL_CAUGHT,     //  3 flicks found only plates with the caught mark
-    NOT_CAUGHT,     //  locked on, ZL still held, to one not caught
-};
-
 //  ZL held until a plate shows (LOCK_ON_WAIT at most), then flicks on
-//  while it shows the caught mark (3 at most).
-LockOn lock_on_not_caught(StoryEnv& env, PlzaBackend& backend){
+//  while it shows the caught mark (3 at most): NO_PLATE, ALL_CAUGHT, or
+//  NOT_CAUGHT with ZL still held on the target.
+ZoneLook lock_on_not_caught(StoryEnv& env){
     HeldZl held(env);
     std::optional<bool> caught = held.wait_for_plate(LOCK_ON_WAIT);
     for (int flicks = 0; caught == true && flicks < 3; flicks++){
         caught = held.flick();
     }
     if (!caught){
-        backend.log(std::format("[PLZA] catch_in_zone: ZL held {} ms, no name plate", LOCK_ON_WAIT.count()));
-        return LockOn::NO_PLATE;
+        return ZoneLook::NO_PLATE;
     }
-    if (*caught){
-        backend.log("[PLZA] catch_in_zone: only species already caught lock on");
-        return LockOn::ALL_CAUGHT;
-    }
-    return LockOn::NOT_CAUGHT;
+    return *caught ? ZoneLook::ALL_CAUGHT : ZoneLook::NOT_CAUGHT;
 }
 
 //  A ZL lock-on and throw leave the camera looking steeply down: the
@@ -260,7 +260,7 @@ int weaken_and_throw(StoryEnv& env, PlzaBackend& backend, int max_throws, Traine
     return throws;
 }
 
-//  A wild battle at the stop (a Mareep often turns on the player, the
+//  A wild battle on (a Mareep often turns on the player, the
 //  user's walk on console B, 2026-11-13; Bunnelby, 2026-11-14): one of a
 //  species already caught is fought off with no throws (3 rounds at
 //  most); else weaken_and_throw(). Returns the throws.
@@ -278,30 +278,6 @@ int fight_back(StoryEnv& env, PlzaBackend& backend, int max_throws, TrainerBattl
         press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
     }
     return 0;
-}
-
-//  One stop: a wild battle on is fought (fight_back()); else, look by
-//  look (STOP_LOOKS, the camera turned right between two), a throw at the
-//  first target not caught (lock_on_not_caught()), then weaken_and_throw()
-//  when it broke out into a wild battle. Returns the throws.
-int catch_at_stop(StoryEnv& env, PlzaBackend& backend, int max_throws, TrainerBattleState& battle_state){
-    int throws = 0;
-    for (int look = 0; look < STOP_LOOKS && throws == 0 && max_throws > 0; look++){
-        if (wild_battle_on(env)){
-            throws += fight_back(env, backend, max_throws, battle_state);
-            break;
-        }
-        if (lock_on_not_caught(env, backend) != LockOn::NOT_CAUGHT){
-            pbf_move_right_joystick(env.context, /*position=*/{0.5, 0}, /*hold=*/Milliseconds(400), /*release=*/Milliseconds(300));
-            continue;
-        }
-        throw_ball(env.context, STORY_THROW);
-        throws++;
-        press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
-        throws += weaken_and_throw(env, backend, max_throws - throws, battle_state);
-    }
-    level_camera(env);
-    return throws;
 }
 
 //  The party bar's filled slots, when it shows within 2 s and reads a
@@ -325,6 +301,162 @@ bool party_done(const std::optional<int>& slots, const ZoneCatchGoal& goal){
     return slots && *slots >= goal.party_species;
 }
 
+std::string_view look_name(ZoneLook look){
+    switch (look){
+    case ZoneLook::NO_PLATE:
+        return "no name plate";
+    case ZoneLook::ALL_CAUGHT:
+        return "only species already caught";
+    case ZoneLook::NOT_CAUGHT:
+        return "a species not caught";
+    case ZoneLook::WILD_BATTLE:
+        return "a wild battle";
+    }
+    return "?";
+}
+
+std::string_view leg_name(ZoneLeg leg){
+    switch (leg){
+    case ZoneLeg::TOWARD:
+        return "toward the objective";
+    case ZoneLeg::AWAY:
+        return "away from the objective";
+    case ZoneLeg::LEFT:
+        return "left";
+    case ZoneLeg::RIGHT:
+        return "right";
+    }
+    return "?";
+}
+
+//  A look at the scan's camera step: a wild battle on, else the ZL
+//  lock-on's plates (lock_on_not_caught()).
+ZoneLook look_in_zone(StoryEnv& env){
+    if (wild_battle_on(env)){
+        return ZoneLook::WILD_BATTLE;
+    }
+    return lock_on_not_caught(env);
+}
+
+//  The left stick for `leg`, the camera on the objective marker.
+JoystickPosition leg_stick(ZoneLeg leg){
+    switch (leg){
+    case ZoneLeg::TOWARD:
+        return {0, 1};
+    case ZoneLeg::AWAY:
+        return {0, -1};
+    case ZoneLeg::LEFT:
+        return {-1, 0};
+    case ZoneLeg::RIGHT:
+        return {1, 0};
+    }
+    return {0, 0};
+}
+
+//  Turns the camera until the objective marker is in the middle of the
+//  screen, 12 turns at most. Returns whether it is.
+bool face_marker(StoryEnv& env, PlzaBackend& backend){
+    for (int turns = 0; turns < 12; turns++){
+        backend.scope().throw_if_cancelled();
+        const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+        std::optional<ObjectiveMarker> marker;
+        if (look.frame && *look.frame){
+            marker = read_objective_marker(env.env.console, *look.frame->frame);
+        }
+        if (!marker){
+            pbf_move_right_joystick(env.context, /*position=*/{0.5, 0}, /*hold=*/Milliseconds(500), /*release=*/Milliseconds(200));
+            continue;
+        }
+        const double off = marker->x - 0.5;
+        if (off > -0.06 && off < 0.06){
+            return true;
+        }
+        const Milliseconds turn((int)(std::min(1.0, std::abs(off) * 4) * 400) + 80);
+        pbf_move_right_joystick(env.context, /*position=*/{off > 0 ? 0.4 : -0.4, 0}, turn, /*release=*/Milliseconds(150));
+    }
+    return false;
+}
+
+//  One leg of the search: the camera onto the objective marker, an agreed
+//  distance read (read_marker_distance()) for ZoneSearch::leg()'s floor,
+//  then LEG_HOLD that way. With no marker found the leg is taken by the
+//  camera as it is, logged.
+void walk_leg(StoryEnv& env, PlzaBackend& backend, ZoneSearch& search){
+    level_camera(env);
+    const bool faced = face_marker(env, backend);
+    const std::optional<int> distance = faced ? read_marker_distance(env, backend, std::nullopt) : std::nullopt;
+    const ZoneLeg leg = search.leg(distance);
+    const ZoneOffset at = search.offset();
+    backend.log(std::format(
+        "[PLZA] catch_in_zone: nothing new in a full turn: a leg {} ({}, distance {}), now {} toward and {} right of the start in legs",
+        leg_name(leg), faced ? "facing the marker" : "no marker: by the camera as it is",
+        distance ? std::to_string(*distance) : std::string("not read"), at.toward, at.right
+    ));
+    pbf_move_left_joystick(env.context, leg_stick(leg), LEG_HOLD, /*release=*/Milliseconds(300));
+}
+
+//  A throw at the target ZL is held on, then weaken_and_throw() when it
+//  broke out into a wild battle. Returns the throws.
+int throw_at_lock(StoryEnv& env, PlzaBackend& backend, int max_throws, TrainerBattleState& battle_state){
+    throw_ball(env.context, STORY_THROW);
+    press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
+    return 1 + weaken_and_throw(env, backend, max_throws - 1, battle_state);
+}
+
+//  What the search came to: the party bar's last read, the throws.
+struct SearchResult{
+    std::optional<int> slots;
+    int throws = 0;
+};
+
+//  The search (ZoneSearch), look by look, until the party bar, read after
+//  each catch or fight that threw, shows `goal.party_species`, or
+//  `goal.max_throws` or SEARCH_LIMIT run out. `slots` is the bar's read
+//  before the first look.
+SearchResult search_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal, std::optional<int> slots){
+    SearchResult result{.slots = slots};
+    ZoneSearch search(SCAN_STEPS);
+    TrainerBattleState battle_state(env.battle_ai);
+    const WallClock deadline = current_time() + SEARCH_LIMIT;
+    while (result.throws < goal.max_throws && current_time() < deadline){
+        backend.scope().throw_if_cancelled();
+        const size_t step = search.step();
+        const ZoneLook look = look_in_zone(env);
+        const ZoneMove move = search.look(look);
+        backend.log(std::format("[PLZA] catch_in_zone: scan step {} of {}: {}", step + 1, SCAN_STEPS, look_name(look)));
+        int thrown = 0;
+        switch (move){
+        case ZoneMove::TURN:
+            pbf_move_right_joystick(env.context, /*position=*/{1, 0}, SCAN_STEP_TURN, /*release=*/Milliseconds(300));
+            continue;
+        case ZoneMove::CATCH:
+            thrown = throw_at_lock(env, backend, goal.max_throws - result.throws, battle_state);
+            break;
+        case ZoneMove::FIGHT:
+            thrown = fight_back(env, backend, goal.max_throws - result.throws, battle_state);
+            break;
+        case ZoneMove::WALK:
+            walk_leg(env, backend, search);
+            continue;
+        case ZoneMove::PAUSE:
+            backend.log(std::format("[PLZA] catch_in_zone: every leg walked out and back: standing {} s for spawns", SEARCH_PAUSE.count() / 1000));
+            level_camera(env);
+            backend.wait(SEARCH_PAUSE);
+            continue;
+        }
+        level_camera(env);
+        result.throws += thrown;
+        backend.log(std::format("[PLZA] catch_in_zone: {} throws ({} in all)", thrown, result.throws));
+        if (thrown > 0){
+            result.slots = read_party_slots(env, backend);
+        }
+        if (party_done(result.slots, goal)){
+            break;
+        }
+    }
+    return result;
+}
+
 //  Walks to stop `stop` from `last` (none: from the start, further out
 //  than every stop): back from the objective when the stop is further.
 std::optional<int> walk_to_stop(StoryEnv& env, PlzaBackend& backend, std::optional<int> last, int stop){
@@ -332,38 +464,6 @@ std::optional<int> walk_to_stop(StoryEnv& env, PlzaBackend& backend, std::option
         return walk_back_from_marker(env, backend, stop, STOP_WALK_LIMIT);
     }
     return walk_toward_marker(env, backend, stop, ROAD_FLOOR, last ? STOP_WALK_LIMIT : FIRST_WALK_LIMIT);
-}
-
-//  What the patrol came to: the party bar's last read, the throws.
-struct Patrol{
-    std::optional<int> slots;
-    int throws = 0;
-};
-
-//  catch_at_stop() at ROAD_SPOTS in turn, until the party bar, read after
-//  each stop that threw, shows `goal.party_species`, or PATROL_VISITS,
-//  `goal.max_throws` or PATROL_LIMIT run out. `slots` is the bar's read
-//  before the first stop.
-Patrol patrol_road(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal, std::optional<int> slots){
-    Patrol patrol{.slots = slots};
-    TrainerBattleState battle_state(env.battle_ai);
-    const WallClock deadline = current_time() + PATROL_LIMIT;
-    std::optional<int> last;
-    for (size_t visit = 0; visit < PATROL_VISITS && patrol.throws < goal.max_throws && current_time() < deadline; visit++){
-        const int stop = ROAD_SPOTS[visit % std::size(ROAD_SPOTS)];
-        const std::optional<int> at = walk_to_stop(env, backend, last, stop);
-        last = at ? at : stop;
-        const int thrown = catch_at_stop(env, backend, goal.max_throws - patrol.throws, battle_state);
-        patrol.throws += thrown;
-        backend.log(std::format("[PLZA] catch_in_zone: stop {} at {} (for {}): {} throws", visit + 1, at.value_or(-1), stop, thrown));
-        if (thrown > 0){
-            patrol.slots = read_party_slots(env, backend);
-        }
-        if (party_done(patrol.slots, goal)){
-            break;
-        }
-    }
-    return patrol;
 }
 
 //  The road stops to walk through from `at` from the objective, in order:
@@ -388,25 +488,18 @@ std::vector<int> road_stops_to_gate(std::optional<int> at){
 
 
 Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal){
-    //  Taunie's two rocks stand between 03.07's end and the marker: a step
-    //  right first, around them (a catch's autosave can leave the save
-    //  further on).
-    const std::optional<int> start = read_marker_distance(env, backend, ROAD_FLOOR);
-    if (start && *start >= 115){
-        pbf_move_left_joystick(env.context, /*position=*/{1, 0}, /*hold=*/Milliseconds(1000), /*release=*/Milliseconds(300));
-    }
     const std::optional<int> slots = read_party_slots(env, backend);
     if (party_done(slots, goal)){
         backend.log("[PLZA] catch_in_zone: the party already holds the species: nothing to catch");
         return Pokemon::outcome_ok();
     }
-    const Patrol patrol = patrol_road(env, backend, goal, slots);
-    if (party_done(patrol.slots, goal)){
+    const SearchResult result = search_zone(env, backend, goal, slots);
+    if (party_done(result.slots, goal)){
         return Pokemon::outcome_ok();
     }
     return Pokemon::outcome_failed("short_of_species", std::format(
         "the party bar shows {} of {} species after {} throws",
-        patrol.slots ? std::to_string(*patrol.slots) : std::string("no read"), goal.party_species, patrol.throws
+        result.slots ? std::to_string(*result.slots) : std::string("no read"), goal.party_species, result.throws
     ));
 }
 

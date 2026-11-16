@@ -31,6 +31,7 @@
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryLaunch_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerDistance_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryZoneSearch_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStorySceneMachine_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStorySceneReplay_Tests.h"
@@ -73,6 +74,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStorySceneMachine(database);
     add_tests_AutoStorySceneReplay(database);
     add_tests_AutoStoryScreenEvents(database);
+    add_tests_AutoStoryZoneSearch(database);
 
 }
 
