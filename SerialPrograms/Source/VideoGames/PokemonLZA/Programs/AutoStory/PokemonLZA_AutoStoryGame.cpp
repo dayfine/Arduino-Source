@@ -459,7 +459,10 @@ Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
 
 //  "mash_to_move_hints": A through the scenes (a choice takes its top
 //  row, the advance chevron its text) until the player has control: the
-//  controls hint held a second, or a main mission's banner on two looks
+//  controls hint or the party bar held a second, an A prompt ("A Talk")
+//  held a second past "min_length_ms" (01.02's battle area: only the
+//  prompt to Ryon, and A there restarts his talk), or a main mission's
+//  banner on two looks
 //  (the step returns once it has gone, 10 s at most). With
 //  "end_after_black_fades", that many black fades lifted and settled end
 //  it, 5 s after the last one (or the controls hint, if it comes first),

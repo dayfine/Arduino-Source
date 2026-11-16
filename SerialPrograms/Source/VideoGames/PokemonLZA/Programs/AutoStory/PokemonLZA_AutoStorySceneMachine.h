@@ -10,7 +10,10 @@
  *  choice, whose top row A takes) or the advance chevron
  *  (ADVANCE_ARROW_READING) gets A. The player has control when the party
  *  bar (PLAYER_CAN_MOVE) or, in the tutorial, which has no party bar, the
- *  controls hint (CONTROLS_HINT_READING) holds a second, or when
+ *  controls hint (CONTROLS_HINT_READING) holds a second, or an A prompt
+ *  (INTERACT_PROMPT, "A Talk") holds a second past min_length (01.02's
+ *  battle area shows only the prompt to Ryon; A there restarts his talk,
+ *  so no blind A while it shows), or when
  *  a main mission's banner (MISSION_BANNER_READING) shows on two looks in a
  *  row: it shows as the scene hands over control, and the machine then
  *  waits for it to go, pressing A if it stays (01.03's "MAIN MISSION 02").
@@ -85,7 +88,10 @@ struct SceneMachineConfig{
     std::optional<size_t> end_after_black_fades = std::nullopt;
 };
 
-//  Presses through scenes until the controls hint has held a second, or
+//  Presses through scenes until the controls hint or the party bar has
+//  held a second, or an A prompt has held a second past
+//  `config.min_length` (neither the party bar nor the prompt with
+//  `config.stop_at_choice` or `config.stop_at_battle`), or
 //  the mission banner has shown on two looks (then waits up to 10 s for it
 //  to go and, if it stays, presses A up to 3 times 1 s apart), or with
 //  `config.stop_at_choice` the choice box shows, or with

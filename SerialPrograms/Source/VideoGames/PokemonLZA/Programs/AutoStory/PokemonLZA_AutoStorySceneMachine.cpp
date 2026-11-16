@@ -44,6 +44,8 @@ enum class SceneScreen{
     PARTY_BAR,      //  wait: the party bar, not held a second yet
     CONTROLS_HINT,  //  terminal: the tutorial's controls hint, held a second
     HINT_SHOWING,   //  wait: the controls hint, not held a second yet
+    TALK_PROMPT,    //  terminal: an A prompt ("A Talk") on the overworld, held a second, past min_length
+    PROMPT_SHOWING, //  wait, no press: the A prompt, not held a second or before min_length
     NEVER_STARTED,  //  terminal, failing: no scene within start_window
     QUIET_END,      //  terminal, failing unless quiet_is_control: nothing busy for the quiet time, past the minimum length
     BLIND_PRESS,    //  blind_button: nothing busy and no sign of control for blind_press_after
@@ -94,11 +96,12 @@ private:
     WallClock m_last_busy;
     WallClock m_start;
     //  The last look busy or with a sign of control (party bar, hint,
-    //  banner).
+    //  banner, A prompt).
     WallClock m_last_cue;
     std::optional<WallClock> m_last_blind_press;
     std::optional<WallClock> m_party_bar_since;
     std::optional<WallClock> m_hint_since;
+    std::optional<WallClock> m_prompt_since;
     //  Text, a choice or a battle has shown: the scene has started.
     bool m_scene_seen = false;
     //  The looks in a row with the mission banner.
@@ -121,6 +124,11 @@ constexpr Milliseconds CONTROLS_HINT_HOLD = 1000ms;
 //  The party bar showing this long is free control: it also shows between
 //  the lines of a scene.
 constexpr Milliseconds PARTY_BAR_HOLD = 1000ms;
+//  An A prompt ("A Talk") on the overworld showing this long is free
+//  control. 01.02's battle area hands control back with only the prompt to
+//  Ryon, no party bar and no controls hint; A there restarts his talk
+//  (console B, 2026-11-15, Italian: 3 min of it).
+constexpr Milliseconds PROMPT_HOLD = 1000ms;
 //  How long the screen stays free of text, fades and the banner after the
 //  last of end_after_black_fades' fades before the scene counts as over:
 //  the player can move 5 s after 01.01's third fade at the latest.
@@ -168,10 +176,16 @@ bool scene_shows(const ScreenObservation& look){
     return text_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX) || look.events.has(ScreenEvent::BATTLE_STARTED);
 }
 
-//  Whether the party bar is control for `config`: not in a machine that
-//  stops at a choice or a battle, whose talk shows it between its lines.
+//  Whether the party bar and the A prompt are control for `config`: not in
+//  a machine that stops at a choice or a battle, whose talk shows them
+//  between its lines (and whose blind A may start that talk).
 bool party_bar_is_control(const SceneMachineConfig& config){
     return !config.stop_at_choice && !config.stop_at_battle;
+}
+
+//  An A prompt that is control for `config` shows on `look`.
+bool control_prompt_shows(const SceneMachineConfig& config, const ScreenObservation& look){
+    return party_bar_is_control(config) && look.events.has(ScreenEvent::INTERACT_PROMPT);
 }
 
 constexpr SceneScreen ALL_SCREENS[] = {
@@ -181,6 +195,7 @@ constexpr SceneScreen ALL_SCREENS[] = {
     SceneScreen::MISSION_BANNER, SceneScreen::BANNER_SHOWING, SceneScreen::BANNER_PRESS, SceneScreen::FADE_SETTLED,
     SceneScreen::CAN_MOVE, SceneScreen::PARTY_BAR,
     SceneScreen::CONTROLS_HINT, SceneScreen::HINT_SHOWING,
+    SceneScreen::TALK_PROMPT, SceneScreen::PROMPT_SHOWING,
     SceneScreen::NEVER_STARTED, SceneScreen::QUIET_END, SceneScreen::BLIND_PRESS,
     SceneScreen::SCENE_MOVING, SceneScreen::SCENE_STILL,
 };
@@ -226,6 +241,10 @@ std::string_view scene_screen_name(SceneScreen screen){
         return "controls_hint";
     case SceneScreen::HINT_SHOWING:
         return "hint_showing";
+    case SceneScreen::TALK_PROMPT:
+        return "talk_prompt";
+    case SceneScreen::PROMPT_SHOWING:
+        return "prompt_showing";
     case SceneScreen::NEVER_STARTED:
         return "never_started";
     case SceneScreen::QUIET_END:
@@ -243,7 +262,8 @@ std::string_view scene_screen_name(SceneScreen screen){
 //  Whether the machine ends after this state's step.
 bool scene_screen_terminal(SceneScreen screen){
     return screen == SceneScreen::BATTLE || screen == SceneScreen::CHOICE || screen == SceneScreen::MISSION_BANNER ||
-        screen == SceneScreen::CAN_MOVE || screen == SceneScreen::CONTROLS_HINT || screen == SceneScreen::FADE_SETTLED ||
+        screen == SceneScreen::CAN_MOVE || screen == SceneScreen::CONTROLS_HINT || screen == SceneScreen::TALK_PROMPT ||
+        screen == SceneScreen::FADE_SETTLED ||
         screen == SceneScreen::NEVER_STARTED || screen == SceneScreen::QUIET_END;
 }
 
@@ -348,6 +368,12 @@ SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
         }
         return SceneScreen::HINT_SHOWING;
     }
+    if (control_prompt_shows(m_config, look)){
+        if (m_prompt_since && look.when - *m_prompt_since >= PROMPT_HOLD && look.when >= m_quiet_from){
+            return SceneScreen::TALK_PROMPT;
+        }
+        return SceneScreen::PROMPT_SHOWING;
+    }
     if (m_config.start_window && !m_scene_seen && look.when - m_start >= *m_config.start_window){
         return SceneScreen::NEVER_STARTED;
     }
@@ -378,6 +404,7 @@ void SceneTimeline::record(const ScreenObservation& look){
     const bool party_bar = party_bar_is_control(m_config) && look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
     track_since(party_bar && !box, look.when, m_party_bar_since);
     track_since(look.readings.contains(CONTROLS_HINT_READING) && !box, look.when, m_hint_since);
+    track_since(control_prompt_shows(m_config, look) && !box, look.when, m_prompt_since);
     m_banner_looks = look.readings.contains(MISSION_BANNER_READING) && !box ? m_banner_looks + 1 : 0;
     m_banner_seen = m_banner_seen || m_banner_looks > 0;
     track_since(m_banner_looks > 0, look.when, m_banner_since);
@@ -389,7 +416,7 @@ void SceneTimeline::record(const ScreenObservation& look){
     m_black_fades += look.events.has(ScreenEvent::FADE_BLACK) ? 1 : 0;
     const bool fades_done = m_config.end_after_black_fades && m_black_fades >= *m_config.end_after_black_fades;
     track_since(fades_done && !busy(look) && m_banner_looks == 0, look.when, m_settled_since);
-    if (busy(look) || m_party_bar_since || m_hint_since || m_banner_looks > 0){
+    if (busy(look) || m_party_bar_since || m_hint_since || m_prompt_since || m_banner_looks > 0){
         m_last_cue = look.when;
     }
 }
@@ -628,6 +655,7 @@ private:
             return;
         case SceneScreen::PARTY_BAR:
         case SceneScreen::HINT_SHOWING:
+        case SceneScreen::PROMPT_SHOWING:
         case SceneScreen::BANNER_SHOWING:
             m_backend.wait(POLL);
             return;
@@ -686,6 +714,9 @@ Milliseconds max_still(SceneScreen screen){
     case SceneScreen::BLIND_PRESS:
     case SceneScreen::BANNER_PRESS:
         //  A blind A press need not change the screen.
+        return SCENE_STILL_WAIT;
+    case SceneScreen::PROMPT_SHOWING:
+        //  The overworld at the prompt can stay still until min_length.
         return SCENE_STILL_WAIT;
     case SceneScreen::PARTY_BAR:
     case SceneScreen::HINT_SHOWING:

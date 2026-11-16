@@ -62,6 +62,8 @@ const ScreenEvents BLACK{ScreenEvent::FADE_BLACK};
 const ScreenEvents CHOICE{ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX};
 const ScreenEvents BATTLE{ScreenEvent::BATTLE_STARTED};
 const ScreenEvents PARTY{ScreenEvent::PLAYER_CAN_MOVE};
+const ScreenEvents PROMPT{ScreenEvent::INTERACT_PROMPT};
+const ScreenEvents STILL_PROMPT{ScreenEvent::INTERACT_PROMPT, ScreenEvent::SCREEN_STILL};
 
 //  mash_to_move_hints' config: a minute quiet, blind A after 5 s.
 SceneMachineConfig arrival_config(){
@@ -128,6 +130,24 @@ std::vector<Observation<ZonePose>> minute_of_blind_presses(){
     looks.push_back(look_at(/*at=*/65500ms, NOTHING, {CONTROLS_HINT_READING}));
     looks.push_back(look_at(/*at=*/66600ms, NOTHING, {CONTROLS_HINT_READING}));
     return looks;
+}
+
+//  01.02's battle_area: mash_to_move_hints' config with min_length_ms 20000.
+SceneMachineConfig battle_area_config(){
+    SceneMachineConfig config = arrival_config();
+    config.min_length = 20000ms;
+    return config;
+}
+
+//  01.02's battle area on the Italian game (console B, 2026-11-15): the
+//  text, a cutscene, then the overworld with the "A Parla" (talk) prompt
+//  to Ryon at the gate, still, and no controls hint.
+std::vector<Observation<ZonePose>> battle_area_talk_prompt(){
+    return {
+        look_at(0ms, DIALOG), look_at(500ms), look_at(6000ms),
+        look_at(6500ms, PROMPT), look_at(7000ms, PROMPT), look_at(8000ms, STILL_PROMPT),
+        look_at(15000ms, STILL_PROMPT), look_at(20000ms, STILL_PROMPT), look_at(20500ms, STILL_PROMPT),
+    };
 }
 
 //  A quiet time of 8 s after a scene of at least `min_length`, no blind A.
@@ -578,6 +598,24 @@ const RunCase RUN_CASES[] = {
             look_at(0ms, DIALOG), look_at(500ms, DIALOG), look_at(1000ms, PARTY), look_at(1500ms, PARTY), look_at(2100ms, PARTY),
         }},
         .expectation = {.verdict = "done", .a_presses = 2, .line = "[PLZA test] done on can_move."},
+    },
+    {
+        //  console B, 2026-11-15: blind A at the prompt restarted Ryon's
+        //  talk, again and again for 3 min.
+        .name = "01.02's battle area: the talk prompt held past the minimum length is control, with no A at it",
+        .input = {.looks = battle_area_talk_prompt(), .config = battle_area_config()},
+        .expectation = {
+            .verdict = "done",
+            .a_presses = 2,
+            .line = "[PLZA test] done on talk_prompt.",
+            .states = "dialog, scene_moving, blind_press, prompt_showing, talk_prompt",
+        },
+    },
+    {
+        //  It shows between the lines of a talk, like the party bar.
+        .name = "a machine that stops at a battle does not take the talk prompt for control",
+        .input = {.looks = {look_at(0ms, PROMPT), look_at(2500ms, PROMPT), look_at(3000ms, BATTLE)}, .config = battle_config()},
+        .expectation = {.verdict = "done", .a_presses = 2, .states = "blind_press, battle"},
     },
     {
         .name = "Hotel Z's room: the quiet end is control",
