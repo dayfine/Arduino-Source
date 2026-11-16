@@ -23,7 +23,9 @@
  *      (walked_before_warp()), and the way back goes on through the warp;
  *    - an open leg that ended with nothing seen may still have ended up to
  *      OPEN_LEG_SHORTFALL tiles short. When the next step is a hold to a
- *      wall that doesn't end on its tile from each of those, or a step onto
+ *      wall that doesn't end on its tile from each of those (or, where the
+ *      hold's movement is seen, move nothing at all from them: its hold
+ *      then shows where the player is), or a step onto
  *      a spinner (which a short start misses), the player is
  *      found at walls the same way and walked back to the leg's end first.
  *      When no holds find them, the leg is taken as walked, as before.
