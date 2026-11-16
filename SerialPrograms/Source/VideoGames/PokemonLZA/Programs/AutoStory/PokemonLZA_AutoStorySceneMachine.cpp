@@ -35,7 +35,7 @@ enum class SceneScreen{
     FADE_BLACK,     //  wait until it lifts
     FADE_WHITE,     //  wait until it lifts
     CHOICE,         //  terminal: the choice box, with stop_at_choice
-    DIALOG,         //  the text button: a box (A: its choice's top row too), or the advance chevron
+    DIALOG,         //  a box or the advance chevron: dialog_button()
     MISSION_COMPLETE,   //  A: a main mission's "COMPLETE" card
     TUTORIAL_CARD,  //  A: a tutorial card (only A turns its pages)
     MISSION_BANNER, //  terminal: a main mission's banner, on a second look
@@ -210,6 +210,22 @@ bool control_prompt_shows(const SceneMachineConfig& config, const ScreenObservat
     return party_bar_is_control(config) && look.events.has(ScreenEvent::INTERACT_PROMPT);
 }
 
+//  The button DIALOG presses on `look`: A on a choice (its top row); B on a
+//  text box in a machine that ends in control; else config.text_button. B
+//  turns a line like A, but on a box that is closing it does nothing, where
+//  A lands on the A prompt the talk leaves and starts it again: 03.05's
+//  nurse ("your Pokemon is already in great shape", 110 s of it, console B
+//  2026-11-16).
+Button dialog_button(const SceneMachineConfig& config, const ScreenObservation& look){
+    if (look.events.has(ScreenEvent::CHOICE_BOX)){
+        return BUTTON_A;
+    }
+    if (party_bar_is_control(config) && look.events.has(ScreenEvent::DIALOG_BOX)){
+        return BUTTON_B;
+    }
+    return config.text_button;
+}
+
 constexpr SceneScreen ALL_SCREENS[] = {
     SceneScreen::BATTLE,
     SceneScreen::FADE_BLACK, SceneScreen::FADE_WHITE, SceneScreen::CHOICE, SceneScreen::DIALOG,
@@ -276,7 +292,7 @@ bool scene_screen_terminal(SceneScreen screen){
         screen == SceneScreen::NEVER_STARTED || screen == SceneScreen::QUIET_END || screen == SceneScreen::ENDED_IN_CONTROL;
 }
 
-//  Whether this state's step presses (DIALOG the config's text button,
+//  Whether this state's step presses (DIALOG dialog_button(),
 //  BLIND_PRESS its blind button, MISSION_COMPLETE, TUTORIAL_CARD and
 //  BANNER_PRESS A); the others wait.
 bool scene_screen_presses(SceneScreen screen){
@@ -645,8 +661,7 @@ class SceneRunner{
 public:
     SceneRunner(PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, WallClock start)
         : m_backend(backend)
-        , m_text_button(config.text_button)
-        , m_blind_button(config.blind_button)
+        , m_config(config)
         , m_timeline(config, start)
         , m_log(backend, label, start)
     {}
@@ -672,20 +687,20 @@ public:
             return;
         }
         if (scene_screen_presses(screen)){
-            m_backend.press(button_of(screen), /*hold=*/160ms, /*release=*/240ms);
+            m_backend.press(button_of(screen, look), /*hold=*/160ms, /*release=*/240ms);
             return;
         }
         wait(screen);
     }
 
 private:
-    //  The button `screen`'s step presses.
-    Button button_of(SceneScreen screen) const{
+    //  The button `screen`'s step presses on `look`.
+    Button button_of(SceneScreen screen, const ScreenObservation& look) const{
         switch (screen){
         case SceneScreen::DIALOG:
-            return m_text_button;
+            return dialog_button(m_config, look);
         case SceneScreen::BLIND_PRESS:
-            return m_blind_button;
+            return m_config.blind_button;
         default:
             return BUTTON_A;
         }
@@ -731,8 +746,7 @@ private:
     }
 
     PlzaBackend& m_backend;
-    Button m_text_button;
-    Button m_blind_button;
+    SceneMachineConfig m_config;
     SceneTimeline m_timeline;
     SceneLog m_log;
 };
