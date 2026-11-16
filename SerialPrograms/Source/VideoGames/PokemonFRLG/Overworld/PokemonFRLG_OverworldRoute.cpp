@@ -684,6 +684,11 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     const RouteCosts& costs,
     std::optional<Direction> start_facing
 ){
+    if (const std::optional<std::vector<MapData>> own = same_map_only(maps, start.map, goal.position.map)){
+        if (std::optional<std::vector<RouteStep>> route = plan_overworld_route(*own, start, goal, costs, start_facing)){
+            return route;
+        }
+    }
     const int start_map = find_map(maps, start.map);
     const int goal_map = find_map(maps, goal.position.map);
     if (start_map < 0 || goal_map < 0){
@@ -789,6 +794,11 @@ std::optional<std::vector<RouteStep>> plan_overworld_route_gated(
     const RouteCosts& costs,
     std::optional<Direction> start_facing
 ){
+    if (const std::optional<std::vector<MapData>> own = same_map_only(maps, start.map, goal.position.map)){
+        if (std::optional<std::vector<RouteStep>> route = plan_overworld_route_gated(*own, start, goal, gates, rules, costs, start_facing)){
+            return route;
+        }
+    }
     if (!has_gates(maps)){
         return plan_overworld_route(maps, start, goal, costs, start_facing);
     }
@@ -801,12 +811,9 @@ std::optional<std::vector<RouteStep>> plan_overworld_route_gated(
     const std::vector<MapData>& first_maps = gate_maps.at(gates);
     Pokemon::GatedStart<Located> first;
     first.state.map = start_map;
-    first.state.state.position = start.point;
-    first.state.state.elevation = elevation_at(first_maps[start_map], start.point);
-    first.state.state.surfing = is_water(first_maps[start_map], start.point);
+    first.state.state = PlayerState{start.point, elevation_at(first_maps[start_map], start.point), is_water(first_maps[start_map], start.point)};
     first.gates = gates;
     first.facing = start_facing;
-
     const Pokemon::ConnectedMaps world(maps);
     const GatedStepModel model(gate_maps, costs);
     const auto legs = Pokemon::plan_gated_legs(

@@ -25,12 +25,14 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_BoulderPushReader.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTiles.h"
 #include "PokemonFRLG_AutoStoryBoulders.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryMovedBoulders.h"
+#include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows19_Tests.h"
@@ -403,6 +405,18 @@ UnitTestResult test_boulder_flags_follow_the_boulder(){
     return true;
 }
 
+//  Victory Road 1F's floor switch script copies the boulder's place to its
+//  saved one (copyobjectxytoperm): leaving the floor and coming back finds
+//  it still on the switch (20, 16), and its barrier open.
+UnitTestResult test_boulder_on_a_switch_stays_after_leaving(){
+    std::set<std::string> flags{"boulder_at:VictoryRoad_1F@7,18=20,16"};
+    boulders_back_after_map_change("VictoryRoad_1F", "Route23", flags);
+    if (moved_boulders(flags).size() != 1){
+        return "the boulder on the switch went back to (7, 18).";
+    }
+    return true;
+}
+
 //  19.04b push_onto_switch (console B, 2026-11-16 01:28): the boulder
 //  lands on 1F's switch (20, 16), whose script locks the player until its
 //  sound ends, and the step tap after the push was lost. The step tap is
@@ -420,6 +434,30 @@ UnitTestResult test_push_onto_a_switch_waits_out_its_script(){
     }
     if (sim.state().gates.switches_on.empty()){
         return "no switch on.";
+    }
+    return true;
+}
+
+//  19.04b below_ladder (console B, 2026-11-16 01:40, run 3): from (19, 15),
+//  the boulder on the switch (20, 16) and the switch on, to (4, 7) below the
+//  ladder. The plan went out of the cave mouth onto Route 23 and back in,
+//  which put the boulder back on (7, 18), where a leg then ran into it. The
+//  route stays on Victory Road 1F.
+UnitTestResult test_below_ladder_stays_on_the_floor(){
+    const std::set<std::string> flags{"boulder_at:VictoryRoad_1F@7,18=20,16"};
+    Pokemon::GateState gates;
+    gates.switches_on.insert("VictoryRoad_1F/floor_switch_1");
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route_gated(
+        run_story_maps(flags), MapPosition{"VictoryRoad_1F", {19, 15}},
+        RouteGoal{MapPosition{"VictoryRoad_1F", {4, 7}}, Direction::NORTH}, gates, Pokemon::GateRules{}
+    );
+    if (!route){
+        return "no route from (19, 15) to (4, 7).";
+    }
+    for (const RouteStep& step : *route){
+        if (step.end.map != "VictoryRoad_1F"){
+            return std::format("the route leaves Victory Road 1F for {}.", to_string(step.end));
+        }
     }
     return true;
 }
@@ -559,6 +597,14 @@ const AutoStoryBouldersCase AUTO_STORY_BOULDERS_CASES[] = {
     {
         .input = {.name = "19.04b's push onto 1F's switch", .body = test_push_onto_a_switch_waits_out_its_script},
         .expectation = {.description = "the lost step tap tried again after the switch's script: on (20, 15), the switch on"},
+    },
+    {
+        .input = {.name = "a boulder on a floor switch, then the player leaves", .body = test_boulder_on_a_switch_stays_after_leaving},
+        .expectation = {.description = "the boulder stays on the switch"},
+    },
+    {
+        .input = {.name = "19.04b's below_ladder after the switch", .body = test_below_ladder_stays_on_the_floor},
+        .expectation = {.description = "a route that never leaves Victory Road 1F"},
     },
     {
         .input = {.name = "a push of two tiles", .body = test_push_taps_twice_a_tile},

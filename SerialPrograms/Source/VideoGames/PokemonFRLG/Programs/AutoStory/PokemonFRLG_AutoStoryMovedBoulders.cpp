@@ -9,6 +9,8 @@
 #include <format>
 #include <optional>
 #include "Common/Cpp/Exceptions.h"
+#include "Pokemon/Navigation/Pokemon_GateTiles.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_AutoStoryMovedBoulders.h"
 
 namespace PokemonAutomation{
@@ -103,8 +105,14 @@ void boulders_back_after_map_change(std::string_view map_before, std::string_vie
     if (map_before == map_after){
         return;
     }
-    std::erase_if(run_flags, [](const std::string& flag){
-        return flag.starts_with(BOULDER_AT_FLAG);
+    std::set<std::string> on_switches;
+    for (const BoulderMove& move : moved_boulders(run_flags)){
+        if (Pokemon::switch_with_button(load_map(move.map), move.at) != nullptr){
+            on_switches.insert(boulder_at_flag(move));
+        }
+    }
+    std::erase_if(run_flags, [&](const std::string& flag){
+        return flag.starts_with(BOULDER_AT_FLAG) && !on_switches.contains(flag);
     });
 }
 

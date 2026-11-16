@@ -51,7 +51,9 @@ std::vector<MapData> with_boulders_moved(std::vector<MapData> maps, const std::v
 
 //  After a step from `map_before` that ended on `map_after`: if the player
 //  left the map, the game put its boulders back on their map tiles, and
-//  their flags leave `run_flags`.
+//  their flags leave `run_flags`. Not a boulder on a floor switch's button:
+//  Victory Road's switch scripts keep it there for good
+//  (copyobjectxytoperm in pokefirered's VictoryRoad_*_EventScript_FloorSwitch).
 void boulders_back_after_map_change(std::string_view map_before, std::string_view map_after, std::set<std::string>& run_flags);
 
 
