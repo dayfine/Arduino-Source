@@ -3,7 +3,7 @@
   "game": "frlg",
   "checkpoint": {
     "id": "18.02b",
-    "title": "Out of Saffron Gym by the pads, Fly to Saffron's Center and heal",
+    "title": "Out of Saffron Gym by Escape Rope, Fly to Saffron's Center and heal",
     "start": {
       "map": "SaffronCity_Gym",
       "tiles": [
@@ -19,184 +19,23 @@
     ],
     "events": [
       {
-        "id": "by_pad_out_of_sabrina",
-        "kind": "route",
-        "action": "run",
+        "id": "escape_rope",
+        "kind": "game_action",
+        "action": "use_item",
         "args": {
-          "target": {
-            "map": "SaffronCity_Gym",
-            "tiles": [
-              [
-                17,
-                15
-              ]
-            ],
-            "facing": "east"
-          }
-        },
-        "why": "back to the tile west of the pad (18, 15) the way in landed on"
-      },
-      {
-        "id": "pad_out_of_sabrina",
-        "kind": "step",
-        "args": {
-          "direction": "east"
+          "item": "escape-rope"
         },
         "declared_after": {
-          "map": "SaffronCity_Gym",
+          "map": "SaffronCity",
           "tiles": [
             [
-              0,
-              7
-            ]
-          ],
-          "facing": "east"
-        },
-        "why": "onto the pad (18, 15), which warps to (0, 7) in the top left room"
-      },
-      {
-        "id": "by_pad_from_top_left",
-        "kind": "route",
-        "action": "run",
-        "args": {
-          "target": {
-            "map": "SaffronCity_Gym",
-            "tiles": [
-              [
-                0,
-                5
-              ]
-            ],
-            "facing": "north"
-          }
-        },
-        "why": "up column 0 to a tile below the pad (0, 4)"
-      },
-      {
-        "id": "pad_from_top_left",
-        "kind": "step",
-        "args": {
-          "direction": "north"
-        },
-        "declared_after": {
-          "map": "SaffronCity_Gym",
-          "tiles": [
-            [
-              20,
-              7
-            ]
-          ],
-          "facing": "north"
-        },
-        "why": "onto the pad (0, 4), which warps to (20, 7) in the top right room"
-      },
-      {
-        "id": "along_row_6",
-        "kind": "route",
-        "action": "run",
-        "args": {
-          "target": {
-            "map": "SaffronCity_Gym",
-            "tiles": [
-              [
-                28,
-                6
-              ]
-            ],
-            "facing": "east"
-          }
-        },
-        "why": "east along row 6 (Johan (24, 2) sees (24, 3) to (24, 5), so not row 5) to the room's east wall"
-      },
-      {
-        "id": "below_pad_from_top_right",
-        "kind": "route",
-        "action": "run",
-        "args": {
-          "target": {
-            "map": "SaffronCity_Gym",
-            "tiles": [
-              [
-                28,
-                5
-              ]
-            ],
-            "facing": "north"
-          }
-        },
-        "why": "up to the tile below the pad (28, 4)"
-      },
-      {
-        "id": "pad_from_top_right",
-        "kind": "step",
-        "args": {
-          "direction": "north"
-        },
-        "declared_after": {
-          "map": "SaffronCity_Gym",
-          "tiles": [
-            [
-              20,
-              20
-            ]
-          ],
-          "facing": "north"
-        },
-        "why": "onto the pad (28, 4), which warps to (20, 20) in the bottom right room"
-      },
-      {
-        "id": "by_pad_from_bottom_right",
-        "kind": "route",
-        "action": "run",
-        "args": {
-          "target": {
-            "map": "SaffronCity_Gym",
-            "tiles": [
-              [
-                28,
-                22
-              ]
-            ],
-            "facing": "south"
-          }
-        },
-        "why": "east along row 22, below Cameron's line (24, 19 to 21), to a tile above the pad (28, 23)"
-      },
-      {
-        "id": "pad_from_bottom_right",
-        "kind": "step",
-        "args": {
-          "direction": "south"
-        },
-        "declared_after": {
-          "map": "SaffronCity_Gym",
-          "tiles": [
-            [
-              18,
-              20
+              46,
+              13
             ]
           ],
           "facing": "south"
         },
-        "why": "onto the pad (28, 23), which warps to (18, 20) in the entrance room"
-      },
-      {
-        "id": "out_of_gym",
-        "kind": "route",
-        "action": "run",
-        "args": {
-          "target": {
-            "map": "SaffronCity",
-            "tiles": [
-              [
-                46,
-                13
-              ]
-            ],
-            "facing": "south"
-          }
-        },
-        "why": "down the entrance room and out of the door (14, 23) onto Saffron City below the gym's door (46, 12): Fly works outdoors only"
+        "why": "out of Saffron Gym from Sabrina's room, as 16.06 out of Silph Co.: SaffronCity_Gym allows it (pokefirered map.json: allow_escaping true), and the rope takes the player to the escape warp, set when 16.06b walked north into the gym's door (46, 12) from Saffron (overworld.c UpdateEscapeWarp(): the tile below the door, (46, 13)). The bag has 3 by now: 4 at 16.06, less its rope"
       },
       {
         "id": "fly_saffron",
@@ -264,9 +103,9 @@
     "notes": {
       "checkpoint": [
         "Starts in front of Sabrina, where 18.02 ends after her battle and saves.",
-        "Out by the four pads in reverse, each pair a two-way link: (18, 15) to (0, 7), (0, 4) to (20, 7), (28, 4) to (20, 20), (28, 23) to (18, 20), keeping to the same rows as the way in (18.01). No gym trainer is fought on the way out.",
-        "Ends at Saffron's nurse, facing her: 18.03's start. Out of the gym's door and by Fly to the Center's door, not through the city: the walk round the city's blocks to the Center was about 80 tiles for a straight line of 48 (console B, 2026-11-15).",
-        "Starts with silph_cleared, as 16.06b: Silph Co.'s Giovanni (16.05) sent the Rockets out of Saffron City, so a run started here plans the walk out of the gym's door onto (46, 13), where one of them stood, on maps without them."
+        "Out by Escape Rope and Fly, not back by the four pads and the gym's door: that walk was about 40 tiles over four pads (user, 2026-11-15: every Center trip flies once Fly is learned, and a building that allows an Escape Rope is left by rope). Before that, the walk round the city's blocks to the Center was about 80 tiles for a straight line of 48 (console B, 2026-11-15).",
+        "Ends at Saffron's nurse, facing her: 18.03's start.",
+        "Starts with silph_cleared, as 16.06b: Silph Co.'s Giovanni (16.05) sent the Rockets out of Saffron City, so the rope's landing (46, 13), where one of them stood, is free."
       ]
     }
   },

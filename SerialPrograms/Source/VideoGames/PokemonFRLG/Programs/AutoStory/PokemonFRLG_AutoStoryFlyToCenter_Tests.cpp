@@ -137,15 +137,29 @@ int route_tiles(const std::vector<RouteStep>& route){
     return tiles;
 }
 
+bool is_walk(const StoryStep& step){
+    return step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS;
+}
+
+//  Where a ROUTE ends whether or not it plans here: its target. A row's
+//  own steps may open what its start flags keep shut (a cut tree, a door),
+//  so a route outside a Center trip may not plan on them.
+std::optional<StoryPose> route_target(const StoryStep& step){
+    if (step.kind != StoryStepKind::ROUTE){
+        return std::nullopt;
+    }
+    return story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
+}
+
 //  `step` walked from `walk.from`: its tiles into `walk`. Where it leaves
 //  the player, if known.
 std::optional<StoryPose> walk_step(const RowPlanning& planning, const StoryStep& step, StepWalk& walk){
     std::optional<StoryPose> at = walk.from;
-    if (at && (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS)){
+    if (at && is_walk(step)){
         const std::optional<std::vector<RouteStep>> route = walked_route(*at, step, planning.maps, planning.gates, planning.rules);
         if (!route){
             walk.failure = std::format("{}: no route from {}.", step.name, to_string(MapPosition{at->map, at->tile}));
-            at.reset();
+            at = route_target(step);
         }else if (!route->empty()){
             walk.tiles = route_tiles(*route);
             at = StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after};
@@ -201,6 +215,9 @@ std::string check_trip(const StoryCheckpoint& row, const std::vector<StepWalk>& 
     for (size_t c = start; c < center; c++){
         if (!walks[c].failure.empty()){
             return std::format("{}/{}", row.id, walks[c].failure);
+        }
+        if (!walks[c].from && is_walk(row.steps[c])){
+            return std::format("{}/{}: where it starts is not known.", row.id, row.steps[c].name);
         }
         if (hops(row.steps[c])){
             hopped = true;

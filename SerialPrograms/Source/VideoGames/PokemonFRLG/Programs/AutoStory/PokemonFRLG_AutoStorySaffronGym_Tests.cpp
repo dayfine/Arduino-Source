@@ -4,8 +4,8 @@
  *
  *  Rows 18.01, 18.02 and 18.02b (StoryData/frlg-18.02*.plan.json ...) on the
  *  overworld sim: Saffron Gym's teleport pads, from the door to the tile below
- *  Sabrina and back out to Saffron's Center, with no trainer met on the way;
- *  Sabrina's battle is a checkpoint of its own. Then 18.03, the Fly to
+ *  Sabrina, with no trainer met on the way, and out by Escape Rope and Fly to
+ *  Saffron's Center; Sabrina's battle is a checkpoint of its own. Then 18.03, the Fly to
  *  Celadon's X items clerk and back to Saffron's Center. Last, that the
  *  walks through Saffron and in and out of its buildings (16.06, 16.06b,
  *  18.02b) stay near the straight line and never cross a tile twice.
@@ -29,6 +29,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
@@ -86,12 +87,14 @@ const StoryCheckpoint& checkpoint(std::string_view id){
 
 //  Where each of `row`'s pad steps (the STEP steps, which are only ever
 //  onto a pad here) leaves the player, in order, after running the row's
-//  steps (a Fly among them) on the sim up to (not including) its Center
-//  step, on the maps of its start flags. Fails with the row's message if a
-//  step does not run.
+//  steps (an Escape Rope and a Fly among them) on the sim up to (not
+//  including) its Center step, on the maps of its start flags. Fails with
+//  the row's message if a step does not run.
 struct PadWalk{
     std::string failure;
     std::vector<MapPosition> landings;
+    //  Where an Escape Rope left the player, if the row used one.
+    std::optional<MapPosition> rope_landing;
     MapPosition end;
     bool clean = false;
 };
@@ -100,7 +103,9 @@ PadWalk walk_pads(const StoryCheckpoint& row){
     PadWalk walk;
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     const std::set<std::string> flags(row.start_flags.begin(), row.start_flags.end());
-    OverworldSim sim(run_story_maps(flags), MapPosition{at.map, at.tile}, *at.facing);
+    const std::vector<MapData>& maps = run_story_maps(flags);
+    std::optional<OverworldSim> sim;
+    sim.emplace(maps, MapPosition{at.map, at.tile}, *at.facing);
     for (const StoryStep& step : row.steps){
         if (step.action == CENTER_ENTER_VARIANT){
             break;
@@ -108,16 +113,24 @@ PadWalk walk_pads(const StoryCheckpoint& row){
         if (step.kind == StoryStepKind::TALK || step.kind == StoryStepKind::BATTLE){
             continue;
         }
-        walk.failure = row_step_on_sim(sim, at, step, row.id, flags);
+        //  The Escape Rope's script has no map: the player stands where the
+        //  step says, as in the Silph Co. tests.
+        if (parse_use_item_step(step) == "escape-rope"){
+            at = *story_pose(Pokemon::pose_of(*step.pose_after));
+            sim.emplace(maps, MapPosition{at.map, at.tile}, *at.facing);
+            walk.rope_landing = sim->state().position;
+            continue;
+        }
+        walk.failure = row_step_on_sim(*sim, at, step, row.id, flags);
         if (!walk.failure.empty()){
             break;
         }
         if (step.kind == StoryStepKind::STEP){
-            walk.landings.push_back(sim.state().position);
+            walk.landings.push_back(sim->state().position);
         }
     }
-    walk.end = sim.state().position;
-    walk.clean = sim.state().trainers_beaten.empty() && sim.state().violations.empty();
+    walk.end = sim->state().position;
+    walk.clean = sim->state().trainers_beaten.empty() && sim->state().violations.empty();
     return walk;
 }
 
@@ -160,18 +173,20 @@ UnitTestResult test_sabrina_own_checkpoint(){
     return true;
 }
 
-//  The way out (18.02b): the same pads the other way, each pair linked both
-//  ways, then the door onto Saffron City and the Fly to below the Center's door.
-UnitTestResult test_pads_out_to_center(){
+//  The way out (18.02b): an Escape Rope from Sabrina's room (SaffronCity_Gym
+//  allows it) to below the gym's door on Saffron City, then the Fly to below
+//  the Center's door; no pad is taken.
+UnitTestResult test_rope_out_to_center(){
     const PadWalk walk = walk_pads(checkpoint("18.02b"));
     if (!walk.failure.empty()){
         return walk.failure;
     }
-    const std::vector<MapPosition> expected{
-        {"SaffronCity_Gym", {0, 7}}, {"SaffronCity_Gym", {20, 7}}, {"SaffronCity_Gym", {20, 20}}, {"SaffronCity_Gym", {18, 20}},
-    };
-    if (walk.landings != expected){
-        return "18.02b: the pads did not land on (0, 7), (20, 7), (20, 20) and (18, 20), in that order.";
+    if (!walk.landings.empty()){
+        return std::format("18.02b: took {} pad(s) on the way out.", walk.landings.size());
+    }
+    const MapPosition below_gym_door{"SaffronCity", {46, 13}};
+    if (!(walk.rope_landing == below_gym_door)){
+        return "18.02b: no Escape Rope to below the gym's door (46, 13), where Fly can be used.";
     }
     const MapPosition below_center{"SaffronCity", {24, 39}};
     if (!(walk.end == below_center)){
@@ -345,7 +360,7 @@ const DirectRow DIRECT_16_06{"16.06", {}};
 //  door and back (8 tiles), and row 39 is the Lass's walk (27..37, 39), a
 //  row down and back (2 tiles). The fewest tiles there are 58.
 const DirectRow DIRECT_16_06B{"16.06b", {{"SaffronCity", 10}}};
-//  18.02b's pads, then only the entrance room to the Gym's door and the Fly.
+//  18.02b walks nothing: Escape Rope out of the Gym, Fly to the Center.
 const DirectRow DIRECT_18_02B{"18.02b", {}};
 
 int straight_line(const TilePos& from, const TilePos& to){
@@ -403,9 +418,9 @@ const AutoStorySaffronGymCase AUTO_STORY_SAFFRON_GYM_CASES[] = {
         .expectation = {.description = "18.02 ends with her battle; 18.02b starts in front of her"},
     },
     {
-        .name = "18.02b Saffron Gym's pads back out to the Center's door",
-        .input = {.body = test_pads_out_to_center},
-        .expectation = {.description = "four pads the other way, out of the door, the Fly to below Saffron's Center door, nobody met"},
+        .name = "18.02b Escape Rope out of Saffron Gym and Fly to the Center's door",
+        .input = {.body = test_rope_out_to_center},
+        .expectation = {.description = "no pad, the rope to below the gym's door, the Fly to below Saffron's Center door, nobody met"},
     },
     {
         .name = "Saffron Gym: Cameron sees a walk along row 21",
@@ -428,9 +443,9 @@ const AutoStorySaffronGymCase AUTO_STORY_SAFFRON_GYM_CASES[] = {
         .expectation = {.description = "62 tiles on Saffron City, within 1.2 times 58 (48 straight, 10 forced), no tile twice"},
     },
     {
-        .name = "18.02b walks direct: the pads, the Gym's door, Fly",
+        .name = "18.02b walks direct: Escape Rope and Fly",
         .input = {.body = []{ return test_direct_walks(DIRECT_18_02B); }},
-        .expectation = {.description = "each room's walk its straight line, no tile twice"},
+        .expectation = {.description = "no walk longer than 1.2 times its straight line, no tile twice"},
     },
 };
 

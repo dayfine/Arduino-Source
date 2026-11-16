@@ -3,7 +3,7 @@
   "game": "frlg",
   "checkpoint": {
     "id": "15.01",
-    "title": "Celadon to Saffron: the TEA to Route 7's gate guard, heal at Saffron's Center",
+    "title": "Celadon to Saffron: the TEA to Route 7's gate guard, Fly to Saffron's Center and heal",
     "start": {"map": "CeladonCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
     "events": [
       {
@@ -40,20 +40,40 @@
         "why": "the guard takes the TEA (FLAG_GOT_TEA, Route7_EastEntrance_EventScript_GiveTea), shares it and lets the player through: VAR_MAP_SCENE_ROUTE5_ROUTE6_ROUTE7_ROUTE8_GATES 1 shuts every gate's triggers (pokeguy 1:27:30 to 1:27:43)"
       },
       {
+        "id": "into_saffron",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "SaffronCity", "tiles": [[8, 27]], "facing": "east"}
+        },
+        "why": "east out of the gate into Saffron City (8, 27), which makes Saffron a Fly point (SaffronCity scripts.inc: setworldmapflag FLAG_WORLD_MAP_SAFFRON_CITY on the map's transition)"
+      },
+      {
+        "id": "fly_saffron",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {
+          "town": "SaffronCity",
+          "species": "pidgey"
+        },
+        "declared_after": {"map": "SaffronCity", "tiles": [[24, 39]], "facing": "south"},
+        "why": "the Pidgey flies to Saffron City, landing below the Pokemon Center's door (24, 38) on its heal spot (pokefirered heal_locations.json, HEAL_LOCATION_SAFFRON_CITY), as 18.03: the walk there round the Rocket Grunts, who stand and walk in the city until Silph Co. (FLAG_HIDE_SAFFRON_ROCKETS), was 35 tiles from the guard"
+      },
+      {
         "id": "below_center_door",
         "kind": "route",
         "action": "run",
         "args": {
           "target": {"map": "SaffronCity", "tiles": [[24, 39]], "facing": "north"}
         },
-        "why": "east out of the gate into Saffron City (8, 27), and through the city, round the Rocket Grunts who stand and walk there until Silph Co. (FLAG_HIDE_SAFFRON_ROCKETS), to below the Center's door (24, 38)"
+        "why": "turn to face the Center's door (24, 38) from the landing"
       },
       {
         "id": "saffron_nurse",
         "kind": "game_action",
         "action": "center_enter",
         "declared_after": {"map": "SaffronCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
-        "why": "the Center script in: through the door and up to the nurse; no map of the Center. It also makes Saffron a Fly point"
+        "why": "the Center script in: through the door and up to the nurse; no map of the Center"
       },
       {
         "id": "heal_saffron",

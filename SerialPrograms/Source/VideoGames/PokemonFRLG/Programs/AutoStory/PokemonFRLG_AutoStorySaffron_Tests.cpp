@@ -77,9 +77,9 @@ const StoryCheckpoint& checkpoint(std::string_view id){
 }
 
 //  15.01 on the sim from Celadon's nurse: Route 7, the gate's top trigger
-//  (6, 4), where the TEA scene leaves the player, and Saffron City to below
-//  its Center's door; the way into the Center, which has no map, is the
-//  console's. No trainer is met.
+//  (6, 4), where the TEA scene leaves the player, out of the gate onto
+//  Saffron City and the Fly to below its Center's door; the way into the
+//  Center, which has no map, is the console's. No trainer is met.
 UnitTestResult test_route7_to_saffron(){
     const StoryCheckpoint& row = checkpoint("15.01");
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
@@ -188,7 +188,7 @@ UnitTestResult test_route7_gate_door_turn_tap(){
 const AutoStorySaffronCase AUTO_STORY_SAFFRON_CASES[] = {
     {
         .input = {.name = "15.01 Route 7's gate with the TEA to Saffron's Center", .body = test_route7_to_saffron},
-        .expectation = {.description = "onto the guard's trigger, below Saffron's Center door, nobody met"},
+        .expectation = {.description = "onto the guard's trigger, out of the gate, the Fly to below Saffron's Center door, nobody met"},
     },
     {
         .input = {.name = "15.01 running, the crossing onto Route 7 not held up", .body = test_route7_gate_running_crossing_not_held_up},

@@ -31,12 +31,10 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN_15[] = {
     "15.01   walk east 4 -> Route7_EastEntrance (5, 5)",
     "15.01   walk north 1 (to wall) -> Route7_EastEntrance (5, 4)",
     "15.01   face east -> Route7_EastEntrance (5, 4)",
-    "15.01 below_center_door from Route7_EastEntrance (6, 4) facing north to SaffronCity (24, 39) facing north",
+    "15.01 into_saffron from Route7_EastEntrance (6, 4) facing north to SaffronCity (8, 27) facing east",
     "15.01   walk south 1 -> Route7_EastEntrance (6, 5)",
     "15.01   walk east 6 (warp) -> SaffronCity (8, 27)",
-    "15.01   walk east 9 -> SaffronCity (17, 27)",
-    "15.01   walk south 12 -> SaffronCity (17, 39)",
-    "15.01   walk east 7 -> SaffronCity (24, 39)",
+    "15.01 below_center_door from SaffronCity (24, 39) facing south to SaffronCity (24, 39) facing north",
     "15.01   face north -> SaffronCity (24, 39)",
 };
 
