@@ -14,6 +14,8 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../3rdParty-Core/miniz-3.1.1/miniz.c
     ../3rdParty-Core/miniz-3.1.1/miniz.h
     ../Common/Compiler.h
+    ../Common/ControllerStates/NintendoSwitch2_OemController_State.cpp
+    ../Common/ControllerStates/NintendoSwitch2_OemController_State.h
     ../Common/ControllerStates/NintendoSwitch_OemController_State.cpp
     ../Common/ControllerStates/NintendoSwitch_OemController_State.h
     ../Common/ControllerStates/NintendoSwitch_WiredController_State.h
@@ -94,6 +96,7 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/Cpp/Hardware/Hardware_x86.tpp
     ../Common/Cpp/Hardware/Hardware_x86_Linux.tpp
     ../Common/Cpp/Hardware/Hardware_x86_Windows.tpp
+    ../Common/Cpp/HttpServer/AbstractHttpServer.h
     ../Common/Cpp/ImageResolution.cpp
     ../Common/Cpp/ImageResolution.h
     ../Common/Cpp/Json/JsonArray.cpp
@@ -185,6 +188,7 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/CRC32/pabb_CRC32.h
     ../Common/PABotBase2/Controllers/PABotBase2_Controller_HID_Keyboard.h
     ../Common/PABotBase2/Controllers/PABotBase2_Controller_NS1_OemController.h
+    ../Common/PABotBase2/Controllers/PABotBase2_Controller_NS2_OemController.h
     ../Common/PABotBase2/Controllers/PABotBase2_Controller_NS_WiredController.h
     ../Common/PABotBase2/PABotBase2_MessageProtocol.h
     ../Common/PABotBase2/PABotBase2CC_MessageDumper.cpp
@@ -440,6 +444,7 @@ file(GLOB LIBRARY_SOURCES
     ../Common/Cpp/Sockets/ServerSocket_POSIX.h
     ../Common/Cpp/Sockets/ServerSocket_WinSocket.h
     ../Common/Cpp/Sockets/ServerSocket_Qt.h
+    ../Common/Cpp/Sockets/ServerSocket.h
     ../Common/Cpp/Sockets/Sockets_Tests.cpp
     ../Common/Cpp/Sockets/Sockets_Tests.h
     ../Common/Cpp/StreamConnections/MockDevice.cpp
@@ -528,10 +533,6 @@ file(GLOB LIBRARY_SOURCES
     ../Common/Qt/UiStateQtWidget.h
     ../Common/Qt/WidgetStackFixedAspectRatio.cpp
     ../Common/Qt/WidgetStackFixedAspectRatio.h
-    ../Common/SerialPABotBase/SerialPABotBase_Messages_HID_Keyboard.h
-    ../Common/SerialPABotBase/SerialPABotBase_Messages_NS1_OemControllers.h
-    ../Common/SerialPABotBase/SerialPABotBase_Messages_NS_WiredController.h
-    ../Common/SerialPABotBase/SerialPABotBase_Protocol.h
     Source/CommonFramework/AudioPipeline/AudioConstants.h
     Source/CommonFramework/AudioPipeline/AudioFeed.h
     Source/CommonFramework/AudioPipeline/AudioFormat.cpp
@@ -1802,6 +1803,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TrainerCardDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TrainerCardDetector.h
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BallReader.cpp
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BallReader.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.cpp
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.cpp
@@ -1940,6 +1943,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonHome/Inference/PokemonHome_BallReader.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_BoxGenderDetector.cpp
     Source/VideoGames/PokemonHome/Inference/PokemonHome_BoxGenderDetector.h
+    Source/VideoGames/PokemonHome/Inference/PokemonHome_BoxNumberReader.cpp
+    Source/VideoGames/PokemonHome/Inference/PokemonHome_BoxNumberReader.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_BoxViewDetector.cpp
     Source/VideoGames/PokemonHome/Inference/PokemonHome_BoxViewDetector.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_ButtonDetector.cpp
@@ -1952,6 +1957,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonHome/Inference/PokemonHome_SelectionArrowDetector.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_ShinyDetector.cpp
     Source/VideoGames/PokemonHome/Inference/PokemonHome_ShinyDetector.h
+    Source/VideoGames/PokemonHome/Inference/PokemonHome_StorageView.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_SummaryReader.cpp
     Source/VideoGames/PokemonHome/Inference/PokemonHome_SummaryReader.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_SummaryScreenDetector.cpp
