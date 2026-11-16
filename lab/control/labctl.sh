@@ -33,7 +33,8 @@
 # something must carry the token: set $LAB_OWNER and it is put on the first
 # line of each request. Commands that drive the console (start, stop, select,
 # set, keepawake, send) also refuse (exit 3) when another train holds the
-# console's lock (lablock.sh check, console $LAB_CONSOLE).
+# console's lock (lablock.sh check, console $LAB_CONSOLE), and all but
+# "keepawake off" refuse (exit 4) while the user holds the console (hold.sh).
 # $LABCTL_WAIT (default 60) is also how long a request may take to run.
 
 here=$(dirname "$0")
@@ -92,9 +93,13 @@ state)
 send)
     [ $# = 1 ] && [ -n "$1" ] || { echo "usage: labctl.sh [-p PROFILE] send NAME < request.txt" >&2; exit 2; }
     sh "$here/lablock.sh" check || exit 3
+    LAB_PROFILE="$profile" sh "$here/hold.sh" check || exit 4
     request "$1"; exit $?;;
 start|stop|select|set|owner|keepawake)
     sh "$here/lablock.sh" check || exit 3
+    if [ "$cmd $1" != "keepawake off" ] && [ "$cmd" != owner ]; then
+        LAB_PROFILE="$profile" sh "$here/hold.sh" check || exit 4
+    fi
     if [ ! -d "$D" ]; then
         mkdir -p "$D" || exit 1
         echo "labctl: created $D; the app reads it from its next launch" >&2

@@ -183,8 +183,9 @@ shows it with its own `frame_seq`; `shot` refuses a call that spans the restart.
 app shows a UI Start/Stop after `saved_at`, then `stale` / `user_lease`. A `save.json` that
 exists but cannot be read is a JSON-RPC error (`-32001`, the refusal in `data`), not `unknown`.
 
-**Lease, reported only.** With no lease store yet, the lease comes from the app's last
-transition: a UI Start/Stop means `user` (no timeout), otherwise `free`. A user lease is not
+**Lease, reported only.** With no lease store yet, the lease comes from `Lab/hold` and the app's
+last transition: a hold, or a UI Start/Stop, means `user` (no timeout), otherwise `free`.
+`console_status` also names the hold (`hold`: owner, reason, acquired_at, or null). A user lease is not
 remembered across an app restart until Slice 3's store.
 
 **`ensure_game(console, expected, allowed_screens?, max_age_ms=5000)`** reads the app's
@@ -270,7 +271,12 @@ returns an opaque `lease_token` (only its hash is in the lease row) and `expires
 `agent_running` (entered by Slice 5's run start, `ControlPlane.begin_run`) never expires and ends
 when the app reports the run's stop (back to `agent_idle` with a fresh TTL) or a new app instance.
 A UI Start/Stop in `Lab/state.json` (`last_transition.source == 'ui'`) revokes any agent lease and
-installs `user`, with no timeout; only the operator ends it:
+installs `user`, with no timeout, and so does the user's hold file `Lab/hold` (`pa_lab/hold.py`;
+the app writes it when the user drives the console, `hold.sh on` by hand). Only the operator ends it;
+`release-user` also removes `Lab/hold`, `claim-user` writes it (after the store accepts the claim), and
+`hold.sh off` runs `release-user`. The store keeps the release time, so a hold file read just before
+the release cannot install `user` again; a hold file that is there but unreadable counts as held
+(owner `unknown`, reason `unreadable`):
 
 ```sh
 python3 -m pa_lab lease --config ~/.config/pa-lab/server.json show|claim-user|release-user

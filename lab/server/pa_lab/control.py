@@ -30,6 +30,7 @@ import time
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from pa_lab import contracts, timestamps
+from pa_lab import hold as hold_module
 from pa_lab.db import Database
 
 DEFAULT_TTL_S = 1200
@@ -77,6 +78,11 @@ def _clock_time(at: str) -> str:
     return at[11:16]
 
 
+def _released_key(console: str) -> str:
+    """The `meta` key of the time the operator last released `console` (`release_user`)."""
+    return 'user_released_at:' + console
+
+
 def _transition_key(instance_id: str, transition: Dict[str, Any]) -> str:
     return _json([instance_id, transition['at'], transition['action'], transition['source'],
                   transition['request_id']])
@@ -119,11 +125,13 @@ class ControlPlane:
 
     # ---- reads -------------------------------------------------------------------------------
 
-    def lease(self, console: str) -> Dict[str, Any]:
-        """The current lease, after applying a due expiry (which is a write and an event)."""
+    def lease(self, console: str, hold: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+        """The current lease, after applying a due expiry (which is a write and an event) and the
+        user's hold (`pa_lab/hold.py`), if one is on."""
         self._check_console(console)
         with self._writing() as conn:
             self._expire_due(conn, console)
+            self._apply_hold(conn, console, hold, None)
             return lease_doc(self._lease_row(conn, console))
 
     def request_status(self, client_id: str, console: Any, request_id: str) -> Dict[str, Any]:
@@ -408,22 +416,32 @@ class ControlPlane:
             return lease_doc(self._lease_row(conn, console))
 
     def release_user(self, console: str) -> Dict[str, Any]:
-        """The operator says the user is done (CLI only; an agent token cannot end a user lease)."""
+        """The operator says the user is done (CLI only; an agent token cannot end a user lease).
+
+        Records the release time even when the store holds no user lease: a hold file read before
+        the release (by an `observe` that commits after it) then installs nothing (`_apply_hold`)."""
         self._check_console(console)
         with self._writing() as conn:
+            conn.execute('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)',
+                         (_released_key(console), self._stamp()))
             row = self._lease_row(conn, console)
-            if row['state'] != 'user':
-                raise Refused('invalid_arguments', 'Console {} is {}, not held by the user.'.format(
-                    console, row['state']), field='console')
-            self._set_lease(conn, console, 'operator_release', **self._freed())
-            return lease_doc(self._lease_row(conn, console))
+            held = row['state'] == 'user'
+            if held:
+                self._set_lease(conn, console, 'operator_release', **self._freed())
+            lease = lease_doc(self._lease_row(conn, console))
+        if not held:
+            raise Refused('invalid_arguments', 'Console {} is {}, not held by the user.'.format(
+                console, lease['state']), field='console')
+        return lease
 
     # ---- reconciliation -----------------------------------------------------------------------
 
-    def observe(self, console: str, app: Dict[str, Any]) -> Dict[str, Any]:
-        """Applies what a parsed `Lab/state.json` shows, each transition once; returns the lease.
+    def observe(self, console: str, app: Dict[str, Any], hold: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+        """Applies what a parsed `Lab/state.json` shows, each transition once, and the user's
+        `Lab/hold`; returns the lease.
 
-        - a new UI transition revokes any agent lease and installs the user lease (no timeout);
+        - a new UI transition, or a hold that is on, revokes any agent lease and installs the user
+          lease (no timeout); a hold that is gone ends nothing: only `release_user` does;
         - a new stop transition is a `stopped` event with its source;
         - a running lease ends (back to agent_idle with a fresh TTL) when its run's stop is
           reported or its app instance is gone.
@@ -449,6 +467,7 @@ class ControlPlane:
                                  instance_id=instance, request_id=transition['request_id'], at=transition['at'])
                 if transition['source'] == 'ui':
                     self._take_over(conn, console, transition['at'], 'ui_takeover', instance)
+            self._apply_hold(conn, console, hold, instance)
             conn.execute('INSERT OR REPLACE INTO observations (console, instance_id, transition_key, program_state, '
                          'observed_at) VALUES (?, ?, ?, ?, ?)',
                          (console, instance, key if transition is not None else
@@ -650,6 +669,15 @@ class ControlPlane:
         self._set_lease(conn, console, reason, request_id=row['run_request_id'], instance_id=instance_id,
                         state='agent_idle', expires_at=timestamps.format(self.now() + row['ttl_s']),
                         run_request_id=None, run_instance_id=None, run_started_at=None)
+
+    def _apply_hold(self, conn, console: str, hold: Optional[Dict[str, str]], instance_id: Optional[str]) -> None:
+        """Installs the user lease for `hold`, unless the operator released the console after it was put on."""
+        if hold is None:
+            return
+        released = self._meta(conn, _released_key(console), '')
+        if released and timestamps.parse(hold['acquired_at']) <= timestamps.parse(released):
+            return
+        self._take_over(conn, console, hold['acquired_at'], hold_module.takeover_reason(hold), instance_id)
 
     def _take_over(self, conn, console: str, at: str, reason: str, instance_id: Optional[str]) -> None:
         row = self._lease_row(conn, console)

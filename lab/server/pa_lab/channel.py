@@ -147,6 +147,10 @@ class AppChannel:
         """Where a Snapshot of request `name` saves its PNG."""
         raise NotImplementedError
 
+    def read_hold(self) -> Optional[Dict[str, str]]:
+        """The user's hold on the console (`pa_lab.hold`), or None. A channel without one has none."""
+        return None
+
     state_label = 'app state'
     save_label = 'save fact'
 

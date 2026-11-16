@@ -19,6 +19,7 @@ import secrets
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Type
 
+from pa_lab import hold
 from pa_lab.channel import (AppChannel, AppError, Command, ConsoleLine, DescribeProgram, ErrorKind, GameOpen, Journal,
                             Preflight, SetOption, Snapshot, Start, Stop)
 
@@ -156,6 +157,9 @@ class FileChannel(AppChannel):
                 return f.read(limit + 1)
         except FileNotFoundError:
             return None
+
+    def read_hold(self) -> Optional[Dict[str, str]]:
+        return hold.read_hold(self.lab_dir)
 
     def read_state(self, limit: int) -> Optional[bytes]:
         return self._read(self.lab_dir / 'state.json', limit)
