@@ -44,7 +44,7 @@ ImageRGB32 solid_frame(uint32_t color){
 //  scene, with no advance arrow: the box while its text still types.
 ImageRGB32 box_without_arrow_frame(){
     ImageRGB32 image = solid_frame(DARK_GRAY);
-    fill_box(500, 990, 1410, 1040, WHITE, image);
+    fill_box(/*min_x=*/500, /*min_y=*/990, /*max_x=*/1410, /*max_y=*/1040, WHITE, image);
     return image;
 }
 
@@ -57,7 +57,7 @@ ImageRGB32 console_frame(std::string_view path){
 //  y 935-1030) painted white, as the box shows before its text is done.
 ImageRGB32 console_frame_without_arrow(std::string_view path){
     ImageRGB32 image = console_frame(path);
-    fill_box(1395, 935, 1470, 1030, WHITE, image);
+    fill_box(/*min_x=*/1395, /*min_y=*/935, /*max_x=*/1470, /*max_y=*/1030, WHITE, image);
     return image;
 }
 

@@ -56,7 +56,7 @@ void fill_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t c
 ImageRGB32 choice_menu_frame(uint32_t background, size_t rows, std::initializer_list<size_t> highlighted){
     ImageRGB32 image(1920, 1080);
     image.fill(background);
-    fill_box(1408, 808 - 80 * rows - 4, 1728, 808, PANEL, image);
+    fill_box(/*min_x=*/1408, 808 - 80 * rows - 4, /*max_x=*/1728, /*max_y=*/808, PANEL, image);
     for (size_t row = 0; row < rows; row++){
         const size_t from_bottom = rows - 1 - row;
         const size_t top = 732 - 80 * from_bottom;
@@ -65,7 +65,7 @@ ImageRGB32 choice_menu_frame(uint32_t background, size_t rows, std::initializer_
             lit = lit || pick == row;
         }
         if (lit){
-            fill_box(1418, top, 1715, top + 68, WHITE, image);
+            fill_box(/*min_x=*/1418, top, /*max_x=*/1715, top + 68, WHITE, image);
         }
         for (size_t x = 1443; x < 1540; x += 3){
             fill_box(x, top + 16, x + 1, top + 52, lit ? DARK_TEXT : WHITE, image);
@@ -110,37 +110,37 @@ struct SyntheticCase{
 const SyntheticCase SYNTHETIC_CASES[] = {
     {
         .name = "two rows, the top highlighted",
-        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, 2, {0}); }},
+        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, /*rows=*/2, /*highlighted=*/{0}); }},
         .expectation = {.rows = DialogChoiceRows{.count = 2, .selected = 0}},
     },
     {
         .name = "two rows, the bottom highlighted",
-        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, 2, {1}); }},
+        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, /*rows=*/2, /*highlighted=*/{1}); }},
         .expectation = {.rows = DialogChoiceRows{.count = 2, .selected = 1}},
     },
     {
         .name = "three rows on a blue wall, the middle highlighted",
-        .input = {.frame = []{ return choice_menu_frame(BLUE_WALL, 3, {1}); }},
+        .input = {.frame = []{ return choice_menu_frame(BLUE_WALL, /*rows=*/3, /*highlighted=*/{1}); }},
         .expectation = {.rows = DialogChoiceRows{.count = 3, .selected = 1}},
     },
     {
         .name = "four rows, the bottom highlighted",
-        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, 4, {3}); }},
+        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, /*rows=*/4, /*highlighted=*/{3}); }},
         .expectation = {.rows = DialogChoiceRows{.count = 4, .selected = 3}},
     },
     {
         .name = "one highlighted row is no menu",
-        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, 1, {0}); }},
+        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, /*rows=*/1, /*highlighted=*/{0}); }},
         .expectation = {.rows = std::nullopt},
     },
     {
         .name = "three rows, none highlighted",
-        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, 3, {}); }},
+        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, /*rows=*/3, /*highlighted=*/{}); }},
         .expectation = {.rows = std::nullopt},
     },
     {
         .name = "three rows, two highlighted",
-        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, 3, {0, 2}); }},
+        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, /*rows=*/3, /*highlighted=*/{0, 2}); }},
         .expectation = {.rows = std::nullopt},
     },
     {.name = "flat panel blue", .input = {.frame = []{ return flat_frame(PANEL); }}, .expectation = {.rows = std::nullopt}},

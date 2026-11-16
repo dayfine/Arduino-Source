@@ -245,7 +245,7 @@ public:
             return;
         }
         if (scene_screen_presses(screen)){
-            m_backend.press(screen == SceneScreen::DIALOG ? m_text_button : BUTTON_A, 160ms, 240ms);
+            m_backend.press(screen == SceneScreen::DIALOG ? m_text_button : BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
             return;
         }
         wait(screen);

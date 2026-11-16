@@ -16,7 +16,6 @@
 
 #include <stdint.h>
 #include <functional>
-#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -47,7 +46,8 @@ struct ScreenState{
     //  it: its looks never count as a stall, and it fails only once the
     //  screen has not changed for longer than this. Zero: the state's step
     //  is input that should change the screen, and
-    //  ScreenMachineChecks::MAX_UNCHANGED such steps that do not are a stall.
+    //  ScreenMachineChecks::MAX_UNCHANGED (ScreenMachine.cpp) such steps
+    //  that do not are a stall.
     Milliseconds max_still = Milliseconds::zero();
 };
 
@@ -55,35 +55,6 @@ struct ScreenState{
 //  The first of `states` whose matches() accepts `observation`; null when
 //  none does.
 const ScreenState* match_screen_state(const std::vector<ScreenState>& states, const ScreenObservation& observation);
-
-
-//  The checks between looks: no state may come up too often, and steps must
-//  keep changing the screen (a waiting state's only for its
-//  ScreenState::max_still).
-class ScreenMachineChecks{
-public:
-    //  A step that changes nothing on screen is a dead end (e.g. a menu the
-    //  states do not know): fail after this many instead of running out the
-    //  visit limit.
-    static constexpr size_t MAX_UNCHANGED = 8;
-
-    //  The problem with `state` coming up on `observation`, if any. The
-    //  screen counts as unchanged only when it and the look before both have
-    //  a frame and the frames match (same_screen()); how long, by the looks'
-    //  `when`.
-    std::optional<std::string> problem(const ScreenState& state, const ScreenObservation& observation);
-
-private:
-    //  The stall problem, if any, of `state` on a frame unchanged since
-    //  `m_changed_at`.
-    std::optional<std::string> unchanged_problem(const ScreenState& state, WallClock when);
-
-    std::map<std::string, size_t, std::less<>> m_visits;
-    VideoSnapshot m_last_frame;
-    //  When the screen last changed (or was first looked at).
-    WallClock m_changed_at = WallClock::min();
-    size_t m_unchanged = 0;
-};
 
 
 //  How a run of states ended.
