@@ -33,8 +33,9 @@ public:
 
     //  `checkpoints`: the dropdown database (make_story_select_database()),
     //  kept alive by the caller. The dropdowns start on its first and last
-    //  entries. `end_lock`: UNLOCK_WHILE_RUNNING for a program that reads
-    //  the end after each checkpoint, so the end can be moved during a run.
+    //  entries.
+    //  `end_lock`: UNLOCK_WHILE_RUNNING for a program that reads the end
+    //  after each checkpoint, so the end can be moved during a run.
     StoryRangeOptions(
         std::string_view label,
         const StringSelectDatabase& checkpoints,
