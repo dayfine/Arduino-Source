@@ -72,7 +72,7 @@ private:
 
     AudioInputChoice m_input_choice;
     AudioDeviceInfo m_output_device;
-    AudioDisplayType m_display_type = AudioDisplayType::FREQ_BARS;
+    AudioDisplayType m_display_type;    //  the global default until load_json() sets one
     double m_volume = 1.0;  //  Volume Range: [0, 1.0]
 };
 
