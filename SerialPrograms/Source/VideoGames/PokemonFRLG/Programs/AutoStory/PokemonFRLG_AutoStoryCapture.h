@@ -56,7 +56,10 @@ namespace PokemonFRLG{
 //  throws ProgramFinishedException, so the segment stops without
 //  reloading, with a screenshot from `stream` if given; any other end but
 //  CAUGHT is a failed Outcome, as is a PC step that fails or is refused.
+//  A withdrawal with `protect` adds the party slot it joined to
+//  `protected_slots` (Supplies::protected_slots).
 std::optional<Pokemon::Outcome> run_storage_game_step(
+    std::vector<size_t>& protected_slots,
     Logger& logger, VideoStream* stream, const Pokemon::StoryStep& step,
     CaptureActions& capture, PcStorageActions& pc
 );

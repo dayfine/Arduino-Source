@@ -3,9 +3,30 @@
   "game": "frlg",
   "checkpoint": {
     "id": "20.01a",
-    "title": "Indigo Plateau's Mart: Full Restores before the Elite Four",
+    "title": "Indigo Plateau: the Magikarp from BOX 1, Full Restores before the Elite Four",
     "start": {"map": "IndigoPlateau_PokemonCenter_1F", "tiles": [[13, 12]], "facing": "north"},
     "events": [
+      {
+        "id": "indigo_pc_front",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "IndigoPlateau_PokemonCenter_1F", "tiles": [[17, 10]], "facing": "north"}
+        },
+        "why": "from the nurse to below the PC (17, 9), right of her counter, facing it"
+      },
+      {
+        "id": "magikarp_from_box",
+        "kind": "game_action",
+        "action": "pc",
+        "args": {
+          "do": "withdraw",
+          "species": "magikarp",
+          "box": 1,
+          "protect": true
+        },
+        "why": "the shiny Magikarp (Gift RNG at 00.12b, put in BOX 1 at 04.04) rides into the League with the team for the Hall of Fame (user, 2026-11-16): WITHDRAW, found by reading each cell's species in BOX 1. protect: its party slot is never sent into a battle. A full party refuses the withdrawal and stops the row: which member goes to the box is the user's call"
+      },
       {
         "id": "indigo_mart_clerk",
         "kind": "route",
@@ -13,7 +34,7 @@
         "args": {
           "target": {"map": "IndigoPlateau_PokemonCenter_1F", "tiles": [[2, 7]], "facing": "west"}
         },
-        "why": "from the nurse across the lobby to the Mart's counter, facing the clerk (0, 7) across it (1, 7)"
+        "why": "from the PC across the lobby to the Mart's counter, facing the clerk (0, 7) across it (1, 7)"
       },
       {
         "id": "buy_full_restores",
@@ -44,6 +65,7 @@
     "notes": {
       "checkpoint": [
         "Starts at Indigo Plateau's nurse, where 19.05 ends with the party healed. The Mart is its own row, as 19.01a is for the Route 22 rival: 20.01 starts at the counter with the bag as Lorelei needs it.",
+        "The PC (17, 9) is the Center's PC tile (metatile 0x62, as Route 4's (11, 1); pokefirered IndigoPlateau_PokemonCenter_1F layout), used from (17, 10) below it. The withdrawal puts the Magikarp at the party's end: with the five of the plans (the starter, the Oddish, the Pidgey, the Eevee and the Lapras) slot 6, which 20.01 to 20.05 keep out of the battles (protected_slots).",
         "Ends at the counter (2, 7) facing the clerk, where 20.01 starts."
       ]
     }

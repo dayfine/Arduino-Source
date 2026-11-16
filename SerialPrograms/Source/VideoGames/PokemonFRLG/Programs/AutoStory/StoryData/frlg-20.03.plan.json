@@ -171,6 +171,7 @@
   },
   "execution": {
     "menu": "full",
+    "protected_slots": [6],
     "notes": {
       "checkpoint": [
         "Starts in front of Bruno at (6, 6) facing north, where 20.02 ends. A boss battle is its own checkpoint: the walk on and Agatha's fight. PokeGuy has this fight at 1:51:12 (docs/battles/pokeguy-conditions.md, agatha).",

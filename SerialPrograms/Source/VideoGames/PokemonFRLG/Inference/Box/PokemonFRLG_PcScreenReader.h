@@ -29,6 +29,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <string>
 #include <string_view>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -75,6 +76,9 @@ struct PcView{
     std::optional<size_t> box = std::nullopt;
     //  BOX_GRID: whether the cell under the hand holds a Pokemon, if read.
     std::optional<bool> occupied = std::nullopt;
+    //  BOX_GRID: the species' slug of the Pokemon under the hand, if read
+    //  (BoxCellReader, by the caller: this reader has no language).
+    std::optional<std::string> species = std::nullopt;
 };
 
 //  The PC's screen on `screen`, with its cursor where it can be read.

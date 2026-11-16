@@ -81,14 +81,17 @@
       },
       {
         "id": "hall_of_fame",
-        "kind": "scene",
+        "kind": "game_action",
+        "action": "hall_of_fame",
+        "args": {},
         "declared_after": {"map": "PokemonLeague_HallOfFame", "tiles": [[5, 4]], "facing": "north"},
-        "why": "the rival's last words, Oak's entrance and his talk, and Oak leading the player out north (PokemonLeague_ChampionsRoom_Movement_PlayerExit) to the Hall of Fame (5, 12); its OnFrame script walks the player eight tiles north to (5, 4), Oak's congratulations, then the record (FLDEFF_HALL_OF_FAME_RECORD) and the Hall of Fame (special EnterHallOfFame), which saves the game itself and rolls the credits"
+        "why": "the rival's last words, Oak's entrance and his talk, and Oak leading the player out north (PokemonLeague_ChampionsRoom_Movement_PlayerExit) to the Hall of Fame (5, 12); its OnFrame script walks the player eight tiles north to (5, 4), Oak's congratulations, then the record (FLDEFF_HALL_OF_FAME_RECORD) and the Hall of Fame (special EnterHallOfFame), which saves the game itself. The step presses B until the save message (HallOfFameSavingDetector), then keeps screenshots in Screenshots/AutoStory/hall_of_fame/ by how the screen moves (user, 2026-11-16): each member's 2 s hold, the whole team as the confetti starts, and the LEAGUE CHAMP card, where it stops before the credits"
       }
     ]
   },
   "execution": {
     "menu": "full",
+    "protected_slots": [6],
     "notes": {
       "checkpoint": [
         "Starts in front of Lance at (6, 9) facing north, where 20.04 ends. A boss battle is its own checkpoint: the heal after Lance, the Champion's fight and what the game plays after it, which the player can not stop or save in. PokeGuy has this fight at 1:55:44 (docs/battles/pokeguy-conditions.md, champion).",

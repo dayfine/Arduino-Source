@@ -51,14 +51,23 @@ struct PcTransfer{
     size_t box = 0;
     //  WITHDRAW: the box slot, row by row, six to a row.
     size_t box_slot = 0;
+    //  WITHDRAW: the species to take, found by reading the box's cells
+    //  row by row from the top left instead of going to `box_slot`.
+    std::optional<std::string> species = std::nullopt;
+    //  WITHDRAW: the Pokemon joins the party only to ride along: its party
+    //  slot goes into Supplies::protected_slots, never sent into a battle.
+    bool protect = false;
     PcMissing if_missing = PcMissing::REFUSE;
 };
 
 //  The GAME action of a PC step, slots and boxes counted from 1 as the game
-//  shows them: do WORD (required), "deposit" or "withdraw"; slot INTEGER
-//  (required), the party slot (1-6) of a deposit or the box slot (1-30)
-//  of a withdrawal; box INTEGER (required, 1-14); if_present BOOLEAN
-//  (false): a deposit skipped when the party hasn't got the slot.
+//  shows them: do WORD (required), "deposit" or "withdraw"; slot INTEGER,
+//  the party slot (1-6) of a deposit (required) or the box slot (1-30) of
+//  a withdrawal; species WORD, a withdrawal's species, found in the box
+//  instead of a slot (a withdrawal names one of the two); box INTEGER
+//  (required, 1-14); if_present BOOLEAN (false): a deposit skipped when the
+//  party hasn't got the slot; protect BOOLEAN (false): a withdrawal that
+//  rides along, never sent into a battle.
 inline const std::string PC_ACTION = "pc";
 //  `transfer` as its action's args.
 Pokemon::StoryActionArgs pc_args(const PcTransfer& transfer);

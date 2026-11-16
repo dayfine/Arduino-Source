@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <format>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -21,7 +22,10 @@
 #include "Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
+#include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryHallOfFame.h"
+#include "PokemonFRLG_AutoStoryPcTransfer.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows20_Tests.h"
@@ -265,11 +269,80 @@ UnitTestResult test_pokeguy_items_between_fights(){
     return true;
 }
 
+//  20.01a: the walk ends below the PC (17, 9) facing it, and the Magikarp
+//  is withdrawn there by its species, to ride along, before the Mart.
+UnitTestResult test_magikarp_from_box(){
+    const StoryCheckpoint& row = league_row("20.01a");
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    if (const std::string failure = walk_league_row(row, "magikarp_from_box", sim, at); !failure.empty()){
+        return failure;
+    }
+    const MapPosition below_pc{"IndigoPlateau_PokemonCenter_1F", {17, 10}};
+    if (!(sim.state().position == below_pc) || sim.state().facing != Direction::NORTH){
+        return std::format("20.01a: ended on {}, not below the PC {} facing north.", to_string(sim.state().position), to_string(below_pc));
+    }
+    const size_t withdraw = step_index(row, "magikarp_from_box");
+    if (withdraw >= step_index(row, "buy_full_restores") || row.steps[withdraw].action != PC_ACTION){
+        return "20.01a: expected the pc step magikarp_from_box before the Mart.";
+    }
+    const std::optional<PcTransfer> transfer = pc_transfer_of(row.steps[withdraw].args);
+    if (!transfer || transfer->action != PcAction::WITHDRAW || transfer->box != 0
+        || transfer->species != std::optional<std::string>("magikarp") || !transfer->protect
+    ){
+        return "20.01a magikarp_from_box: expected a protected withdrawal of the magikarp from BOX 1.";
+    }
+    return true;
+}
+
+//  20.01 to 20.05: with the lead down, the party list's sends go through
+//  the team and never reach the Magikarp in slot 6, however many times
+//  the list opens.
+UnitTestResult test_magikarp_never_sent(){
+    for (std::string_view id : {"20.01", "20.02", "20.03", "20.04", "20.05"}){
+        Supplies supplies = league_row(id).supplies;
+        BattleDecisions decisions(supplies, BattleKind::TRAINER);
+        for (size_t c = 0; c < 6; c++){
+            const std::optional<size_t> slot = decisions.next_member_slot();
+            if (slot == size_t(5)){
+                return std::format("{}: the Magikarp's slot 6 was sent in.", id);
+            }
+        }
+    }
+    return true;
+}
+
+//  20.05: the Hall of Fame's screenshots come right after the Champion.
+UnitTestResult test_hall_of_fame_after_champion(){
+    const StoryCheckpoint& row = league_row("20.05");
+    const size_t champion = step_index(row, "champion");
+    const size_t hall = step_index(row, "hall_of_fame");
+    if (hall != champion + 1 || row.steps[hall].action != HALL_OF_FAME_ACTION){
+        return "20.05: expected the hall_of_fame action right after the Champion's battle.";
+    }
+    return true;
+}
+
 const AutoStoryLeagueCase AUTO_STORY_LEAGUE_CASES[] = {
     {
         .name = "20.01a Indigo Plateau's Mart counter",
         .input = {.body = test_indigo_mart_counter},
         .expectation = {.description = "the counter (2, 7), where 20.01 starts"},
+    },
+    {
+        .name = "20.01a the Magikarp from BOX 1 at the PC",
+        .input = {.body = test_magikarp_from_box},
+        .expectation = {.description = "below the PC (17, 10) facing north; a protected withdrawal of the magikarp before the Mart"},
+    },
+    {
+        .name = "20.01 to 20.05 the Magikarp is never sent into a battle",
+        .input = {.body = test_magikarp_never_sent},
+        .expectation = {.description = "no send of party slot 6 with the lead fainted"},
+    },
+    {
+        .name = "20.05 the Hall of Fame's screenshots after the Champion",
+        .input = {.body = test_hall_of_fame_after_champion},
+        .expectation = {.description = "the hall_of_fame action right after the champion battle"},
     },
     {
         .name = "20.01 the League's door, into Lorelei's room",
