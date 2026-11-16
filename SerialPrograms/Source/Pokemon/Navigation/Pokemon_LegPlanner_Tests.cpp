@@ -9,6 +9,7 @@
 
 #include <format>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -23,7 +24,8 @@ namespace{
 
 //  '#' wall, '.' floor, '"' tall grass, 'p' a person (blocks, but may walk
 //  off, so not a wall to stop against), 'v' entered only going south, 'W'
-//  a warp to the tile marked 'X'.
+//  a warp to the tile marked 'X'. If there is a 'Y', 'X' is a teleporter
+//  too: stepping onto it, not arriving on it, takes the player to 'Y'.
 class ToyGame{
 public:
     using State = TilePos;
@@ -36,6 +38,9 @@ public:
             for (int x = 0; x < (int)m_rows[y].size(); x++){
                 if (m_rows[y][x] == 'X'){
                     m_warp_to = {x, y};
+                }
+                if (m_rows[y][x] == 'Y'){
+                    m_teleport_to = TilePos{x, y};
                 }
             }
         }
@@ -53,6 +58,12 @@ public:
         if (tile == '"'){
             step.extra_cost = 5;
             step.wild = true;
+        }
+        if (tile == 'X' && m_teleport_to){
+            step.next = *m_teleport_to;
+            step.warped = true;
+            step.ends_leg = true;
+            step.extra_cost = 10;
         }
         if (tile == 'W'){
             step.next = m_warp_to;
@@ -77,6 +88,7 @@ private:
 
     std::vector<std::string> m_rows;
     TilePos m_warp_to;
+    std::optional<TilePos> m_teleport_to;
 };
 
 
@@ -321,21 +333,41 @@ UnitTestResult test_wild_ends_with_leg(){
 UnitTestResult test_one_tile_open_stop(){
     //  From X, east 1 and south to the bottom wall stops in the open after
     //  one step; east to the wall and round is 2 tiles more and a turn. A
-    //  step off a warp's arrival can't stop part-way, so after the warp on
-    //  the right the short way pays no open stop. From the start on X, not
-    //  put there by a warp, it does.
+    //  step off a warp's arrival can't stop part-way, but where it leaves
+    //  the player only matters to the step straight back: going on from
+    //  there, the short way pays the open stop, after the warp on the right
+    //  as from the start on X.
     const ToyGame game({
         "X...#W",
         "#.#.#.",
         "#...#.",
     });
     const auto warped = plan(game, {5, 2}, {1, 2}, Direction::NORTH);
-    if (!warped || warped->size() != 3 || !(*warped)[0].warps || (*warped)[1].tiles != 1 || (*warped)[1].to_wall){
-        return std::format("After the warp, expected east 1 in the open, then south:{}", warped ? describe(*warped) : " none");
+    if (!warped || warped->size() < 2 || !(*warped)[0].warps || !(*warped)[1].to_wall){
+        return std::format("After the warp, expected east to the wall:{}", warped ? describe(*warped) : " none");
     }
     const auto started = plan(game, {0, 0}, {1, 2}, Direction::NORTH);
     if (!started || started->empty() || !(*started)[0].to_wall){
         return std::format("From the start, expected east to the wall:{}", started ? describe(*started) : " none");
+    }
+    return true;
+}
+
+UnitTestResult test_one_tile_off_warp_and_back(){
+    //  W puts the player on the teleporter X, facing east. Using it means
+    //  stepping off and back on: east 1 into the open and straight back
+    //  west, or east 2 to the wall and back. The step off can't stop
+    //  part-way, so the short way pays no open stop.
+    const ToyGame game({
+        "..W#Y.",
+        "####..",
+        "X..#..",
+    });
+    const auto route = plan(game, {0, 0}, {5, 2}, Direction::EAST);
+    if (!route || route->size() < 3 || !(*route)[0].warps || (*route)[1].tiles != 1 || (*route)[1].to_wall
+        || (*route)[2].direction != Direction::WEST || (*route)[2].tiles != 1 || !(*route)[2].warps
+    ){
+        return std::format("Expected the warp, east 1, then west 1 onto the teleporter:{}", route ? describe(*route) : " none");
     }
     return true;
 }
@@ -425,8 +457,12 @@ const LegPlannerTestCase LEG_PLANNER_CASES[] = {
         .expectation = {.description = "clears wild status on subsequent non-grass legs"},
     },
     {
-        .input = {.name = "a one-tile leg off a warp pays no open stop", .test = test_one_tile_open_stop},
-        .expectation = {.description = "takes one step off a warp's arrival into the open over a longer way round to walls"},
+        .input = {.name = "a one-tile leg off a warp, going on, pays its open stop", .test = test_one_tile_open_stop},
+        .expectation = {.description = "goes round to the wall rather than stop one step off a warp's arrival and turn onward"},
+    },
+    {
+        .input = {.name = "a one-tile leg off a warp and straight back pays no open stop", .test = test_one_tile_off_warp_and_back},
+        .expectation = {.description = "steps off a teleporter's arrival and back on rather than to a wall and back"},
     },
 };
 
