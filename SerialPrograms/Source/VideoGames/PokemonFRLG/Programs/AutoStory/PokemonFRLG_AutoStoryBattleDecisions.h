@@ -80,6 +80,9 @@ public:
 
 private:
     TurnAction lead_turn(const PartyStatus& status);
+    //  The lead was dragged out (LeadOnField::FORCED_OUT): alive, back in,
+    //  its stages gone.
+    TurnAction switch_lead_back();
     TurnAction move_turn();
     //  The next of the plan's battle items whose pocket row is known, for
     //  a trainer's battle with the lead's HP not red; none otherwise.
@@ -101,6 +104,8 @@ private:
     //  The game turned down `choice`: a move (Disable), or RUN in a
     //  trainer's battle, which makes the battle a trainer's.
     void refused(TurnChoice choice);
+    //  `choice` couldn't be made (TurnResult::NOT_DONE).
+    void turn_not_done(TurnChoice choice);
 
     Supplies& m_supplies;
     BattleKind m_kind;
@@ -118,6 +123,10 @@ private:
     AttackContext m_attack;
     size_t m_foe_index = 0;
     bool m_lost = false;
+    //  A switch back to the lead couldn't be made: the rule is off.
+    bool m_switch_off = false;
+    //  The lead's box had gone before the switch back was chosen.
+    bool m_lost_before_switch = false;
     //  NO was answered to "Delete a move?": "Stop learning?" comes next.
     bool m_declined_delete = false;
     //  The move prompts since the last turn.

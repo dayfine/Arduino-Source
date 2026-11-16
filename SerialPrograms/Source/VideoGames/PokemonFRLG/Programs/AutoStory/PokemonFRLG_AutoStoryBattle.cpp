@@ -34,9 +34,11 @@
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBagUse.h"
 #include "PokemonFRLG_AutoStoryBattleBag.h"
+#include "PokemonFRLG_AutoStoryBattleSwitch.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
+#include "PokemonFRLG_AutoStoryLeadOut.h"
 #include "PokemonFRLG_AutoStoryPocketList.h"
 
 namespace PokemonAutomation{
@@ -250,16 +252,6 @@ bool forget_move(ConsoleHandle& console, ProControllerContext& context, size_t s
 
 TurnResult item_result(bool used){
     return used ? TurnResult::DONE : TurnResult::NOT_DONE;
-}
-
-//  The party list in battle opens on the lead: down to `slot`, then A, and
-//  SHIFT, the top of its menu.
-void send_member(ProControllerContext& context, size_t slot){
-    for (size_t c = 0; c < slot; c++){
-        pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
-    }
-    pbf_press_button(context, BUTTON_A, 160ms, 800ms);
-    pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
 }
 
 
@@ -567,14 +559,21 @@ private:
         }
     }
 
-    void take_turn(const ImageViewRGB32& screen){
+    //  The Pokemon out on the battle menu: a wild battle's at its first
+    //  menu, a trainer's and ours at each.
+    void read_battlers(const ImageViewRGB32& screen){
         const bool trainer = m_kind == BattleKind::TRAINER;
         if (!trainer && m_decisions.turns() == 0){
             m_supplies.wild_foes = read_wild_foes(m_console.logger(), m_language, screen);
         }
         if (trainer){
             m_supplies.foe_out = read_trainer_foe(m_console.logger(), m_language, screen, m_supplies.foes);
+            m_supplies.own_out = read_own_battler(m_console.logger(), m_language, screen);
         }
+    }
+
+    void take_turn(const ImageViewRGB32& screen){
+        read_battlers(screen);
         if (m_refusal.refused(current_time())){
             m_console.log("Battle: the move list came back without a turn (Disable?); choosing another move.", COLOR_ORANGE);
             m_decisions.turn_done(TurnChoice::MOVE, TurnResult::REFUSED);
@@ -583,7 +582,10 @@ private:
             read_battle_bag();
             return;
         }
-        const PartyStatus status = read_party_status(screen);
+        PartyStatus status = read_party_status(screen);
+        if (m_kind == BattleKind::TRAINER){
+            status.foe_fill = read_opponent_hp_fill(screen);
+        }
         const TurnAction action = m_decisions.turn(status);
         m_evolution.turn_taken(action.choice);
         m_ran = action.choice == TurnChoice::RUN;
@@ -608,6 +610,9 @@ private:
             return;
         case TurnChoice::BATTLE_ITEM:
             m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, action.item, ItemTarget::POKEMON_OUT, m_checks, m_language)));
+            return;
+        case TurnChoice::SWITCH_LEAD:
+            m_decisions.turn_done(action.choice, switch_lead_in(m_console, m_context, m_language, m_supplies.lead.species) ? TurnResult::DONE : TurnResult::NOT_DONE);
             return;
         case TurnChoice::MOVE:
             m_console.log(std::format("Battle: move {}.", action.slot + 1));

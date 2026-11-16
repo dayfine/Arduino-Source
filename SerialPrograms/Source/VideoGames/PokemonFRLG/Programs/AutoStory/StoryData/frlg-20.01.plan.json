@@ -3,7 +3,7 @@
   "game": "frlg",
   "checkpoint": {
     "id": "20.01",
-    "title": "The Elite Four's first room: Lorelei",
+    "title": "The Elite Four and the Champion, then the Hall of Fame",
     "start": {
       "map": "IndigoPlateau_PokemonCenter_1F",
       "tiles": [
@@ -24,6 +24,13 @@
           "min": 51
         },
         "why": "the precondition for Lorelei: the lead at least Lv51, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md lorelei; the Route 22 rival takes it from 49 to 51)"
+      },
+      {
+        "id": "league_start",
+        "kind": "game_action",
+        "action": "league_start",
+        "args": {},
+        "why": "the Items pocket read once for the whole League: stops before the door if the bag holds less than the League's minimum (the bag of 2026-11-16, LEAGUE_MINIMUM), else plans each fight's item budget from it (plan_league()) and logs the plan"
       },
       {
         "id": "below_league_door",
@@ -101,7 +108,7 @@
             "jynx",
             "lapras"
           ],
-          "policy": "goal-based-setup",
+          "policy": "budgeted-setup",
           "setup_spa": 4,
           "setup_accuracy": 0,
           "setup_outspeed": true,
@@ -191,7 +198,756 @@
           ],
           "facing": "north"
         },
-        "why": "Lorelei (TRAINER_ELITE_FOUR_LORELEI): Dewgong Lv52, Cloyster Lv51, Slowbro Lv52, Jynx Lv54, Lapras Lv54, two Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +4 by X Specials, X Speed until faster, Guard Spec first against an accuracy drop; the doc's lorelei row, 94.3% at 159/159); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's lorelei entry state (159/159), as 19.01's: the 80th percentile of the foe's move choice, its mean, its worst case and its worst normal hit. Lapras's worst case is 78. Dewgong's worst normal hit is 30, not the generator's 22: console B, 2026-11-16, took 30 of 162 in one turn. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table, for the damage each attack would do and whether the best one KOs (no X item then). Then her door north (6, 2) opens"
+        "why": "Lorelei (TRAINER_ELITE_FOUR_LORELEI): Dewgong Lv52, Cloyster Lv51, Slowbro Lv52, Jynx Lv54, Lapras Lv54, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +4 by X Specials, X Speed until faster, Guard Spec first against an accuracy drop; the doc's lorelei row, 94.3% at 159/159); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's lorelei entry state (159/159), as 19.01's: the 80th percentile of the foe's move choice, its mean, its worst case and its worst normal hit. Lapras's worst case is 78. Dewgong's worst normal hit is 30, not the generator's 22: console B, 2026-11-16, took 30 of 162 in one turn. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table, for the damage each attack would do and whether the best one KOs (no X item then). Then her door north (6, 2) opens"
+      },
+      {
+        "id": "lead_lv52_for_bruno",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 52
+        },
+        "why": "the precondition for Bruno: the lead at least Lv52, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md bruno; Lorelei's fight takes it a level up)"
+      },
+      {
+        "id": "items_before_bruno",
+        "kind": "game_action",
+        "action": "league_between_fights",
+        "args": {
+          "next": "TRAINER_ELITE_FOUR_BRUNO",
+          "max_hp": 165
+        },
+        "why": "the League plan's rules between fights (PokemonFRLG_AutoStoryLeaguePlan.h, between_fight_item()): a status cured, Super Potions up to Bruno's entry HP, a Full Restore only when they run out, an Elixir or Max Elixir when Surf or Blizzard is under its PP floor. Replaces the per-checkpoint heal_to_full, whose HP was unknown after a load (Bruno entered at 71%, console B, 2026-11-16)"
+      },
+      {
+        "id": "below_loreleis_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_LoreleisRoom",
+            "tiles": [
+              [
+                6,
+                3
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "from in front of Lorelei (6, 5) around her to below her door (6, 2), open since her defeat"
+      },
+      {
+        "id": "loreleis_door",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "into the door (6, 2), the warp into Bruno's room at its south entrance (6, 12)"
+      },
+      {
+        "id": "enter_brunos_room",
+        "kind": "scene",
+        "declared_after": {
+          "map": "PokemonLeague_BrunosRoom",
+          "tiles": [
+            [
+              6,
+              7
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "the room's OnFrame script (PokemonLeague_EventScript_EnterRoom) walks the player five tiles north from (6, 12) to (6, 7) and closes the entrance behind; no text"
+      },
+      {
+        "id": "before_bruno",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_BrunosRoom",
+            "tiles": [
+              [
+                6,
+                6
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "to (6, 6) facing Bruno (6, 5), planned from where the room's walk left the player: a tile north, or a step round if the walk ended a tile off"
+      },
+      {
+        "id": "challenge_bruno",
+        "kind": "talk",
+        "why": "Bruno (6, 5): the intro, then the battle (trainerbattle_no_intro)"
+      },
+      {
+        "id": "bruno",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_ELITE_FOUR_BRUNO",
+          "foes": [
+            "onix",
+            "hitmonchan",
+            "hitmonlee",
+            "onix",
+            "machamp"
+          ],
+          "policy": "budgeted-setup",
+          "setup_spa": 2,
+          "setup_accuracy": 0,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": true,
+          "setup_target_torrent": true,
+          "foe_threats": [
+            [
+              81,
+              32,
+              19,
+              75,
+              37,
+              0,
+              0,
+              1
+            ],
+            [
+              101,
+              51,
+              28,
+              132,
+              66,
+              0,
+              0
+            ],
+            [
+              113,
+              65,
+              52,
+              136,
+              68,
+              0,
+              0
+            ],
+            [
+              96,
+              41,
+              41,
+              84,
+              42,
+              0,
+              0
+            ],
+            [
+              83,
+              0,
+              5,
+              183,
+              91,
+              0,
+              0
+            ]
+          ],
+          "foe_stats": [
+            [
+              183,
+              72,
+              112
+            ],
+            [
+              104,
+              137,
+              131
+            ],
+            [
+              77,
+              137,
+              131
+            ],
+            [
+              194,
+              75,
+              118
+            ],
+            [
+              111,
+              117,
+              183
+            ]
+          ]
+        },
+        "declared_after": {
+          "map": "PokemonLeague_BrunosRoom",
+          "tiles": [
+            [
+              6,
+              6
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "Bruno (TRAINER_ELITE_FOUR_BRUNO): Onix Lv51, Hitmonchan Lv53, Hitmonlee Lv53, Onix Lv54, Machamp Lv56, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +2 by X Specials, X Speed until faster, Guard Spec first against an accuracy drop; the doc's bruno row, 95.9% at 130/162. The doc's target_torrent (stalling to Torrent in the opening) is the C++ policy's extra X Specials against the first Onix, up to +4 while Torrent is off; its weaker-move stall needs the foe's HP and is not modelled (PokemonFRLG_AutoStoryBattlePolicy.h)); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's bruno entry state (130/162), as 19.01's: Machamp's worst case (crit Cross Chop) is 183, Hitmonlee's 136. The first Onix has Roar (marked as phazing in its row): console B, 2026-11-16, its Roar sent Blastoise out after four X Specials. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table: Surf KOs both Onix at +0, so no X item is spent on them and setup waits for Hitmonchan. Then the door north (6, 2) opens"
+      },
+      {
+        "id": "lead_lv53_for_agatha",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 53
+        },
+        "why": "the precondition for Agatha: the lead at least Lv53, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md agatha; Bruno's fight takes it a level up)"
+      },
+      {
+        "id": "items_before_agatha",
+        "kind": "game_action",
+        "action": "league_between_fights",
+        "args": {
+          "next": "TRAINER_ELITE_FOUR_AGATHA",
+          "max_hp": 165
+        },
+        "why": "the League plan's rules between fights (PokemonFRLG_AutoStoryLeaguePlan.h, between_fight_item()): a status cured, Super Potions up to Agatha's entry HP, a Full Restore only when they run out, an Elixir or Max Elixir when Surf or Blizzard is under its PP floor. Replaces the per-checkpoint heal_to_full, whose HP was unknown after a load (Bruno entered at 71%, console B, 2026-11-16)"
+      },
+      {
+        "id": "below_brunos_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_BrunosRoom",
+            "tiles": [
+              [
+                6,
+                3
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "from in front of Bruno (6, 5) around him to below his door (6, 2), open since his defeat"
+      },
+      {
+        "id": "brunos_door",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "into the door (6, 2), the warp into Agatha's room at its south entrance (6, 12)"
+      },
+      {
+        "id": "enter_agathas_room",
+        "kind": "scene",
+        "declared_after": {
+          "map": "PokemonLeague_AgathasRoom",
+          "tiles": [
+            [
+              6,
+              7
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "the room's OnFrame script (PokemonLeague_EventScript_EnterRoom) walks the player five tiles north from (6, 12) to (6, 7) and closes the entrance behind; no text"
+      },
+      {
+        "id": "before_agatha",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_AgathasRoom",
+            "tiles": [
+              [
+                6,
+                6
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "to (6, 6) facing Agatha (6, 5), planned from where the room's walk left the player: a tile north, or a step round if the walk ended a tile off"
+      },
+      {
+        "id": "challenge_agatha",
+        "kind": "talk",
+        "why": "Agatha (6, 5): the intro, then the battle (trainerbattle_no_intro)"
+      },
+      {
+        "id": "agatha",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_ELITE_FOUR_AGATHA",
+          "foes": [
+            "gengar",
+            "golbat",
+            "haunter",
+            "arbok",
+            "gengar"
+          ],
+          "policy": "budgeted-setup",
+          "setup_spa": 1,
+          "setup_accuracy": 0,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": true,
+          "setup_torrent_power": true,
+          "foe_threats": [
+            [
+              126,
+              32,
+              10,
+              72,
+              36,
+              0,
+              0
+            ],
+            [
+              129,
+              33,
+              31,
+              69,
+              34,
+              0,
+              0
+            ],
+            [
+              108,
+              0,
+              0,
+              0,
+              48,
+              0,
+              0
+            ],
+            [
+              111,
+              61,
+              61,
+              126,
+              63,
+              0,
+              0
+            ],
+            [
+              150,
+              47,
+              40,
+              99,
+              49,
+              0,
+              0
+            ]
+          ],
+          "foe_stats": [
+            [
+              86,
+              102,
+              145
+            ],
+            [
+              96,
+              91,
+              161
+            ],
+            [
+              68,
+              86,
+              126
+            ],
+            [
+              108,
+              110,
+              150
+            ],
+            [
+              92,
+              109,
+              155
+            ]
+          ]
+        },
+        "declared_after": {
+          "map": "PokemonLeague_AgathasRoom",
+          "tiles": [
+            [
+              6,
+              6
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "Agatha (TRAINER_ELITE_FOUR_AGATHA): Gengar Lv54, Golbat Lv54, Haunter Lv53, Arbok Lv56, Gengar Lv58, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +1 by X Specials, +3 while Torrent is off (torrent_power), X Speed until faster, Guard Spec first against an accuracy drop; the doc's agatha row, 95.3% at 45/165, its opening a heal); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's agatha entry state (45/165), as 19.01's: Arbok's worst case is 126. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table, for the damage each attack would do and whether the best one KOs (no X item then). Then the door north (6, 2) opens"
+      },
+      {
+        "id": "items_before_lance",
+        "kind": "game_action",
+        "action": "league_between_fights",
+        "args": {
+          "next": "TRAINER_ELITE_FOUR_LANCE",
+          "max_hp": 168
+        },
+        "why": "the League plan's rules between fights (PokemonFRLG_AutoStoryLeaguePlan.h, between_fight_item()): a status cured, Super Potions up to Lance's entry HP, a Full Restore only when they run out, an Elixir or Max Elixir when Surf or Blizzard is under its PP floor. Replaces the per-checkpoint heal_to_full, whose HP was unknown after a load (Bruno entered at 71%, console B, 2026-11-16)"
+      },
+      {
+        "id": "lead_lv54_for_lance",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 54
+        },
+        "why": "the precondition for Lance: the lead at least Lv54, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md lance)"
+      },
+      {
+        "id": "below_agathas_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_AgathasRoom",
+            "tiles": [
+              [
+                6,
+                3
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "from in front of Agatha (6, 5) around her to below her door (6, 2), open since her defeat"
+      },
+      {
+        "id": "agathas_door",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "into the door (6, 2), the warp into Lance's room at the east end of its corridor (23, 13)"
+      },
+      {
+        "id": "lances_corridor",
+        "kind": "scene",
+        "declared_after": {
+          "map": "PokemonLeague_LancesRoom",
+          "tiles": [
+            [
+              6,
+              10
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "the room's OnFrame script walks the player through the corridor (PokemonLeague_LancesRoom_Movement_WalkThroughCorridor: 2 north, 6 west, 7 south, 11 west, 8 north) from (23, 13) to (6, 10) and closes the entrance behind; no text"
+      },
+      {
+        "id": "before_lance",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_LancesRoom",
+            "tiles": [
+              [
+                6,
+                9
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "to (6, 9) facing Lance (6, 8), planned from where the room's walk left the player: a tile north, or a step round if the walk ended a tile off"
+      },
+      {
+        "id": "challenge_lance",
+        "kind": "talk",
+        "why": "Lance (6, 8): the intro, then the battle (trainerbattle_no_intro)"
+      },
+      {
+        "id": "lance",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_ELITE_FOUR_LANCE",
+          "foes": [
+            "gyarados",
+            "dragonair",
+            "dragonair",
+            "aerodactyl",
+            "dragonite"
+          ],
+          "policy": "budgeted-setup",
+          "setup_spa": 3,
+          "setup_accuracy": 2,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": true,
+          "foe_threats": [
+            [
+              112,
+              40,
+              32,
+              42,
+              93,
+              0,
+              0
+            ],
+            [
+              96,
+              40,
+              17,
+              87,
+              62,
+              0,
+              0
+            ],
+            [
+              96,
+              0,
+              0,
+              0,
+              62,
+              0,
+              0
+            ],
+            [
+              173,
+              47,
+              47,
+              96,
+              78,
+              0,
+              0
+            ],
+            [
+              107,
+              64,
+              24,
+              144,
+              114,
+              0,
+              0
+            ]
+          ],
+          "foe_stats": [
+            [
+              110,
+              119,
+              189
+            ],
+            [
+              91,
+              96,
+              146
+            ],
+            [
+              91,
+              96,
+              146
+            ],
+            [
+              106,
+              109,
+              178
+            ],
+            [
+              137,
+              157,
+              197
+            ]
+          ]
+        },
+        "declared_after": {
+          "map": "PokemonLeague_LancesRoom",
+          "tiles": [
+            [
+              6,
+              9
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "Lance (TRAINER_ELITE_FOUR_LANCE): Gyarados Lv56, Dragonair Lv54, Dragonair Lv54, Aerodactyl Lv58, Dragonite Lv60, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +3 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first against an accuracy drop; the doc's lance row, 99.2% at 168/168); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's lance entry state (168/168), as 19.01's: Dragonite's worst case is 144 and its worst normal hit (Hyper Beam) 114. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table, for the damage each attack would do and whether the best one KOs (no X item then). Then the Champion's door north (6, 5) opens"
+      },
+      {
+        "id": "items_before_champion",
+        "kind": "game_action",
+        "action": "league_between_fights",
+        "args": {
+          "next": "TRAINER_CHAMPION_FIRST_BULBASAUR",
+          "max_hp": 171
+        },
+        "why": "the League plan's rules between fights (PokemonFRLG_AutoStoryLeaguePlan.h, between_fight_item()): a status cured, Super Potions up to the Champion's entry HP, a Full Restore only when they run out, an Elixir or Max Elixir when Surf or Blizzard is under its PP floor. Replaces the per-checkpoint heal_to_full, whose HP was unknown after a load (Bruno entered at 71%, console B, 2026-11-16)"
+      },
+      {
+        "id": "lead_lv55_for_champion",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 55
+        },
+        "why": "the precondition for the Champion: the lead at least Lv55, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md champion)"
+      },
+      {
+        "id": "below_champions_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_LancesRoom",
+            "tiles": [
+              [
+                6,
+                6
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "from in front of Lance (6, 8) around him to below the Champion's door (6, 5), open since his defeat"
+      },
+      {
+        "id": "champions_door",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "into the door (6, 5), the warp into the Champion's room at its south end (6, 19). The room's OnFrame script walks the player ten tiles north to (6, 9), in front of the rival (6, 8), and his intro runs straight into the battle: no talk"
+      },
+      {
+        "id": "champion",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_CHAMPION_FIRST_BULBASAUR",
+          "foes": [
+            "pidgeot",
+            "alakazam",
+            "rhydon",
+            "gyarados",
+            "arcanine",
+            "venusaur"
+          ],
+          "policy": "budgeted-setup",
+          "setup_spa": 2,
+          "setup_accuracy": 2,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": true,
+          "foe_threats": [
+            [
+              130,
+              41,
+              27,
+              87,
+              43,
+              1,
+              0,
+              1
+            ],
+            [
+              159,
+              77,
+              70,
+              159,
+              79,
+              0,
+              0
+            ],
+            [
+              70,
+              0,
+              10,
+              210,
+              105,
+              0,
+              0
+            ],
+            [
+              118,
+              51,
+              46,
+              110,
+              55,
+              0,
+              0
+            ],
+            [
+              139,
+              50,
+              51,
+              104,
+              52,
+              0,
+              0,
+              1
+            ],
+            [
+              125,
+              217,
+              218,
+              444,
+              222,
+              0,
+              0
+            ]
+          ],
+          "foe_stats": [
+            [
+              111,
+              105,
+              185
+            ],
+            [
+              73,
+              130,
+              147
+            ],
+            [
+              147,
+              76,
+              211
+            ],
+            [
+              127,
+              141,
+              199
+            ],
+            [
+              121,
+              108,
+              199
+            ],
+            [
+              129,
+              135,
+              193
+            ]
+          ]
+        },
+        "declared_after": {
+          "map": "PokemonLeague_ChampionsRoom",
+          "tiles": [
+            [
+              6,
+              9
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "the Champion (TRAINER_CHAMPION_FIRST_BULBASAUR for a player who took Squirtle): Pidgeot Lv59, Alakazam Lv57, Rhydon Lv59, Gyarados Lv59, Arcanine Lv61, Venusaur Lv63, four Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +2 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first against Pidgeot's Sand Attack; the doc's champion row, 95.6% at 171/171, its opening a Guard Spec); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's champion entry state (171/171), as 19.01's, Pidgeot's row marked as lowering accuracy: Venusaur's Solar Beam worst case is 444 (a one-hit KO from full), Rhydon's 210; Pidgeot (Whirlwind) and Arcanine (Roar) are marked as phazing, so no X item is spent on them (their stages would go with a forced switch). foe_stats are each foe's Defense, Sp. Def and HP from the doc's table: Surf KOs Rhydon, so it is attacked at once"
+      },
+      {
+        "id": "hall_of_fame",
+        "kind": "scene",
+        "declared_after": {
+          "map": "PokemonLeague_HallOfFame",
+          "tiles": [
+            [
+              5,
+              4
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "the rival's last words, Oak's entrance and his talk, and Oak leading the player out north (PokemonLeague_ChampionsRoom_Movement_PlayerExit) to the Hall of Fame (5, 12); its OnFrame script walks the player eight tiles north to (5, 4), Oak's congratulations, then the record (FLDEFF_HALL_OF_FAME_RECORD) and the Hall of Fame (special EnterHallOfFame), which saves the game itself and rolls the credits"
       }
     ]
   },
@@ -199,9 +955,10 @@
     "menu": "full",
     "notes": {
       "checkpoint": [
-        "Starts at Indigo Plateau's Mart counter, where 20.01a ends. A boss battle is its own checkpoint (user, 2026-11-12): the walk in and Lorelei's fight. PokeGuy has this fight at 1:46:37 (docs/battles/pokeguy-conditions.md, lorelei) at 159/159 HP; 19.05's heal is that entry.",
+        "Starts at Indigo Plateau's Mart counter, where 20.01a ends. The whole League is one checkpoint, with no save between the fights until the Hall of Fame (user, 2026-11-16; overrides a boss battle per checkpoint): league_start reads the bag once and plans every fight's items from it (PokemonFRLG_AutoStoryLeaguePlan.h), and each battle spends its budget plus what the fights before left. A failed fight goes back to this row's start.",
         "The League rooms are one-way: the entrance closes behind the player, and the next room's door opens only when the room's trainer is beaten.",
-        "Ends in front of Lorelei at (6, 6) facing north, saved there (the League lets the player save): 20.02 walks through her door north to Bruno."
+        "PokeGuy's fights: Lorelei 1:46:37, Bruno 1:49:15, Agatha 1:51:12, Lance 1:53:07, the Champion 1:55:44 (docs/battles/pokeguy-conditions.md); his turns: ~/BDSPLab/notes/pokeguy-league-turns.md.",
+        "Ends in the Hall of Fame (5, 4) facing north. The Hall of Fame saves the game itself (respawn at Pallet Town) and the credits follow: the row's own save at its end is not one the game offers there."
       ]
     }
   },
@@ -209,11 +966,11 @@
     "phase": "testing",
     "postconditions": {
       "position": {
-        "map": "PokemonLeague_LoreleisRoom",
+        "map": "PokemonLeague_HallOfFame",
         "tiles": [
           [
-            6,
-            6
+            5,
+            4
           ]
         ],
         "facing": "north"

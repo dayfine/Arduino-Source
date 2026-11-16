@@ -77,6 +77,8 @@ struct PartyStatus{
     //  The HP bar's filled share of its width, 0 to 1, for the log.
     double hp_fill = 0;
     StatusCondition status = StatusCondition::NONE;
+    //  The foe's HP bar's filled share, none if not read.
+    std::optional<double> foe_fill = std::nullopt;
 };
 //  Reads current party health and status from battle screen.
 PartyStatus read_party_status(const ImageViewRGB32& screen);

@@ -13,6 +13,7 @@
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
+#include "PokemonFRLG_AutoStoryLeadOut.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -32,6 +33,8 @@ constexpr int RUN_TRIES = 4;
 constexpr int FAINT_POLLS = 3;
 //  PSN read at this many turns in a row before an Antidote.
 constexpr int PSN_READS = 2;
+//  The PP an Elixir restores to each move (pokefirered items.json).
+constexpr uint8_t ELIXIR_PP = 10;
 //  An evolution screen held this long was an evolution, not a text box
 //  between two others.
 constexpr Milliseconds EVOLUTION_SEEN = std::chrono::milliseconds(5000);
@@ -203,6 +206,12 @@ BattleDecisions::BattleDecisions(Supplies& supplies, BattleKind kind)
     if (kind == BattleKind::TRAINER && supplies.policy.kind != BattlePolicyKind::NONE && supplies.lead.stats){
         m_policy.emplace(supplies.policy);
     }
+    //  A League fight spends its plan's budget and what the fights before
+    //  left (end_trainer_battle() rolls it forward).
+    const LeagueFightPlan* league = supplies.league ? league_fight(supplies.league->plan, supplies.trainer) : nullptr;
+    if (kind == BattleKind::TRAINER && league != nullptr){
+        supplies.budget = add_budgets(league->budget, supplies.league->carried);
+    }
 }
 
 TurnAction BattleDecisions::turn(const PartyStatus& status){
@@ -212,6 +221,20 @@ TurnAction BattleDecisions::turn(const PartyStatus& status){
     m_before_forget.reset();
     count_down_refused();
     m_last_move_slot.reset();
+    const LeadOnField lead = m_kind == BattleKind::TRAINER && !m_switch_off
+        ? lead_on_field({
+            .box_gone = m_lost, .member_sent = !m_sent.empty(),
+            .own_out = m_supplies.own_out, .lead = m_supplies.lead.species,
+        })
+        : LeadOnField::FAINTED;
+    if (lead == LeadOnField::FORCED_OUT){
+        return switch_lead_back();
+    }
+    //  Read out, the lead is alive whatever its box did (the switch back's
+    //  own animation hides it).
+    if (lead == LeadOnField::OUT && m_supplies.own_out == m_supplies.lead.species){
+        m_lost = false;
+    }
     if (!m_lost){
         return lead_turn(status);
     }
@@ -264,6 +287,21 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     return action;
 }
 
+TurnAction BattleDecisions::switch_lead_back(){
+    m_lost_before_switch = m_lost;
+    m_lost = false;
+    m_last_hp.reset();
+    m_healed_hp = 0;
+    m_attack = {};
+    if (m_policy){
+        m_policy.emplace(m_supplies.policy);
+    }
+    return TurnAction{
+        .choice = TurnChoice::SWITCH_LEAD,
+        .heal_reason = std::format("our {} is out, not sent: the lead was dragged out; switching it back", m_supplies.own_out),
+    };
+}
+
 size_t BattleDecisions::track_foe(){
     const std::vector<std::string>& foes = m_supplies.foes;
     for (size_t index = m_foe_index; index < foes.size() && !m_supplies.foe_out.empty(); index++){
@@ -283,17 +321,22 @@ TurnAction BattleDecisions::policy_turn(const PartyStatus& status, std::string h
         .status = status.status,
         .speed = m_supplies.lead.stats->speed,
         .foe_index = track_foe(),
+        .foe_fill = status.foe_fill.value_or(1.0),
     };
+    //  The League's policy logs every turn's state and choice on one line,
+    //  for PokemonSimulation's log check.
+    const bool budgeted = m_supplies.policy.kind == BattlePolicyKind::BUDGETED_SETUP;
     std::optional<PolicyItem> item = m_items_off ? std::nullopt : m_policy->choose(m_supplies, view);
+    const std::string state = budgeted ? m_policy->state_line(m_supplies, view) : std::string();
     if (!item){
         TurnAction action = move_turn();
-        action.heal_reason = std::move(heal_reason);
+        action.heal_reason = budgeted ? std::format("policy: {}; attack", state) : std::move(heal_reason);
         return action;
     }
     m_planned_item = item->item;
     return TurnAction{
         .choice = item->party_member ? TurnChoice::MEDICINE : TurnChoice::BATTLE_ITEM,
-        .heal_reason = "policy: " + item->why,
+        .heal_reason = budgeted ? std::format("policy: {}; {}", state, item->why) : "policy: " + item->why,
         .item = std::move(item->item),
     };
 }
@@ -377,6 +420,14 @@ void BattleDecisions::policy_item_used(){
         return;
     }
     m_policy->item_used(m_planned_item);
+    if (m_supplies.budget){
+        spend_budget(*m_supplies.budget, m_planned_item);
+    }
+    if (m_planned_item == "elixir"){
+        add_pp(m_supplies.lead, ELIXIR_PP);
+    }else if (m_planned_item == "max-elixir"){
+        restore_pp(m_supplies.lead);
+    }
     //  A medicine heals up to the bar's end.
     const double room = static_cast<double>(m_supplies.lead.stats->hp) - m_last_hp.value_or(0);
     m_healed_hp = std::min(medicine_hp(m_planned_item), std::max(0.0, room));
@@ -401,13 +452,8 @@ void BattleDecisions::move_refused(){
     m_last_move_slot.reset();
 }
 
-void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
-    if (result == TurnResult::REFUSED){
-        refused(choice);
-        return;
-    }
-    const bool done = result == TurnResult::DONE;
-    if (!done && choice == TurnChoice::MOVE){
+void BattleDecisions::turn_not_done(TurnChoice choice){
+    if (choice == TurnChoice::MOVE){
         if (m_last_move_slot && !m_no_pp_read.insert(*m_last_move_slot).second){
             no_pp_left(m_supplies.lead, *m_last_move_slot);
         }else{
@@ -415,8 +461,21 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
         }
         return;
     }
-    if (!done){
-        m_items_off = true;
+    if (choice == TurnChoice::SWITCH_LEAD){
+        m_switch_off = true;
+        m_lost = m_lost_before_switch;
+        return;
+    }
+    m_items_off = true;
+}
+
+void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
+    if (result == TurnResult::REFUSED){
+        refused(choice);
+        return;
+    }
+    if (result != TurnResult::DONE){
+        turn_not_done(choice);
         return;
     }
     switch (choice){
@@ -445,6 +504,7 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
         return;
     case TurnChoice::RUN:
     case TurnChoice::MOVE:
+    case TurnChoice::SWITCH_LEAD:
         return;
     }
 }

@@ -18,6 +18,7 @@
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
+#include "PokemonFRLG_AutoStoryLeagueSteps.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
 
 namespace PokemonAutomation{
@@ -169,6 +170,9 @@ std::optional<Outcome> run_healing_step(StoryEnv& env, Pokemon::RunState& state,
     }
     if (step.action == RESTORE_PP_ACTION){
         return restore_pp_step(env, step);
+    }
+    if (std::optional<Outcome> league = run_league_step(env, step)){
+        return league;
     }
     if (step.action != HEAL_TO_FULL_ACTION && step.action != CHECK_FULL_HP_ACTION){
         return std::nullopt;

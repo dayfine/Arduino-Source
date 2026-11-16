@@ -10,6 +10,7 @@
 #include "PokemonFRLG_AutoStoryFossil.h"
 #include "PokemonFRLG_AutoStoryGrindStep.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
+#include "PokemonFRLG_AutoStoryLeagueSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryItemsPocketChange.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
@@ -97,6 +98,8 @@ const std::vector<ItemsPocketChangeRow>& items_pocket_change_rows(){
         {StoryStepKind::GAME,       RESTORE_PP,             ItemsPocketChange::COUNTED},
         {StoryStepKind::GAME,       CHECK_FULL_HP_ACTION,   ItemsPocketChange::NONE},
         {StoryStepKind::GAME,       BAG_CHECK_ACTION,       ItemsPocketChange::NONE},
+        {StoryStepKind::GAME,       LEAGUE_START_ACTION,    ItemsPocketChange::COUNTED},
+        {StoryStepKind::GAME,       LEAGUE_BETWEEN_FIGHTS_ACTION, ItemsPocketChange::COUNTED},
     };
     return ROWS;
 }

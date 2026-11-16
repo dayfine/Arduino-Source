@@ -24,11 +24,13 @@ namespace PokemonFRLG{
 
 
 //  How a battle's items are chosen: not by the policy, PokeGuy's B (cure,
-//  heal) or C2 (B, then setup towards goals).
+//  heal), C2 (B, then setup towards goals) or budgeted C2 (the League's:
+//  heal on KO risk, setup capped by the League plan's budget).
 enum class BattlePolicyKind{
     NONE,
     SOLO_RECOVERY,
     GOAL_BASED_SETUP,
+    BUDGETED_SETUP,
 };
 
 //  The doc's setup goals for one fight.

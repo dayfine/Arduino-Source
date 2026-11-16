@@ -22,6 +22,29 @@
  *  not read off the battle text yet: foe_evasion_raised() and the like
  *  take them once something does.
  *
+ *  "budgeted-setup" (budgeted C2, the League's; design and sim:
+ *  ~/BDSPLab/notes/frlg-e4-replica-policy.md, 54% for the whole League
+ *  with the bag of 2026-11-16). One ordered rule list, from the screen
+ *  state each turn; D is the foe's best ordinary hit (foe_threats'
+ *  normal_max, plus poison):
+ *    1. we move first and our lowest roll KOs the foe at its HP bar:
+ *       attack, at any HP (PokeGuy's Surf at 3/171);
+ *    2. a status with a cure and HP > D: the cure, else a Full Heal;
+ *    3. HP <= D (KO risk): the smallest medicine that lifts HP above D and
+ *       nets HP after the foe's mean hit, else a Full Restore, over the
+ *       fight's budget if need be; none helps (D >= max HP): attack;
+ *    4. asleep: attack;
+ *    5. Surf out of PP: an Elixir, else a Max Elixir;
+ *    6. setup (Guard Spec, X Special, X Speed, X Accuracy towards the
+ *       step's goals; accuracy goal without the foe's evasion), each item
+ *       capped by the fight's budget (Supplies::budget), none when the
+ *       next hit KOs the foe or the foe phazes; HP under C2's reserve
+ *       min(75% max HP, D + (setup turns - 1) x mean hit) first heals
+ *       within the budget, else the setup is dropped;
+ *    7. attack.
+ *  The budget comes from the League plan (PokemonFRLG_AutoStoryLeaguePlan.h);
+ *  every turn's state and choice is logged on one line (state_line()).
+ *
  */
 
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryBattlePolicy_H
@@ -51,6 +74,8 @@ struct PolicyView{
     int speed = 0;
     //  The foe out, in the step's "foes" order; those before it have fainted.
     size_t foe_index = 0;
+    //  The foe's HP bar's filled share, 1 when not read.
+    double foe_fill = 1.0;
 };
 
 //  An item the policy uses this turn.
@@ -77,7 +102,8 @@ struct PolicyStages{
     int mist_turns = 0;
 };
 
-//  A trainer battle's plan is over: its party, items and policy go from `supplies`.
+//  A trainer battle's plan is over: its party, items and policy go from
+//  `supplies`; a League fight's budget left rolls forward to the next.
 void end_trainer_battle(Supplies& supplies);
 
 //  The lead's side of the battle as the policy tracks it: the stages and
@@ -98,6 +124,9 @@ public:
     PolicyStages stages() const{
         return {.spa = m_spa, .speed = m_speed, .accuracy = m_accuracy, .mist_turns = m_mist_turns};
     }
+    //  The turn's state for the log: our HP, the foe and its bar, our
+    //  stages and the budget left; after a choose() that attacks, why.
+    std::string state_line(const Supplies& supplies, const PolicyView& view) const;
 
 private:
     struct Danger{
@@ -120,6 +149,15 @@ private:
         const Supplies& supplies, const PolicyView& view, const Danger& danger, int turns, std::string_view waiting_on
     ) const;
     int setup_turns(const Supplies& supplies, const PolicyView& view, bool guard) const;
+    //  BUDGETED_SETUP's rules (the header).
+    std::optional<PolicyItem> choose_budgeted(const Supplies& supplies, const PolicyView& view);
+    std::optional<PolicyItem> budgeted_setup_turn(const Supplies& supplies, const PolicyView& view, const Danger& danger);
+    bool sure_ko_first(const Supplies& supplies, const PolicyView& view) const;
+    std::optional<PolicyItem> budgeted_setup(const Supplies& supplies, const PolicyView& view) const;
+    std::optional<PolicyItem> ko_risk_heal(const Supplies& supplies, const PolicyView& view, const Danger& danger) const;
+    std::optional<PolicyItem> reserve_heal(
+        const Supplies& supplies, const PolicyView& view, const Danger& danger, double reserve
+    ) const;
 
     const BattlePolicy m_policy;
     int m_spa = 0;
@@ -127,6 +165,7 @@ private:
     int m_accuracy = 0;
     int m_foe_evasion = 0;
     int m_mist_turns = 0;
+    std::string m_attack_reason;
 };
 
 
