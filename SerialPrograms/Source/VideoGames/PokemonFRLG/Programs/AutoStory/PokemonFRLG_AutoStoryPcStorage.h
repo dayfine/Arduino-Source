@@ -49,7 +49,6 @@
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "CommonFramework/Language.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -77,13 +76,12 @@ size_t read_party_size(ConsoleHandle& console, ProControllerContext& context);
 
 //  The console's PC steps. Party members are read by count only: none is
 //  taken as fainted, since the story heals before it uses the PC. Screens
-//  are read with read_pc_screen(), a box cell's species with BoxCellReader
-//  in `language`; the overworld only once a second frame,
+//  are read with read_pc_screen(); the overworld only once a second frame,
 //  a moment later, shows it too, since a frame between two menus can look
 //  like it.
 class ConsolePcStorageActions : public PcStorageActions{
 public:
-    ConsolePcStorageActions(ConsoleHandle& console, ProControllerContext& context, Language language);
+    ConsolePcStorageActions(ConsoleHandle& console, ProControllerContext& context);
 
     virtual std::vector<PcPartyMember> read_party() override;
     virtual PcView read_view() override;
@@ -92,7 +90,6 @@ public:
 private:
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
-    Language m_language;
 };
 
 
