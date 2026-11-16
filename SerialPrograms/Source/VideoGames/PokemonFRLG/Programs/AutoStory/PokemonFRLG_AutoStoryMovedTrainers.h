@@ -9,11 +9,13 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryMovedTrainers_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryMovedTrainers_H
 
+#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
 #include <vector>
 #include "Pokemon/Navigation/Pokemon_MapData.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteSteps.h"
 
 
 namespace PokemonAutomation{
@@ -45,6 +47,22 @@ inline constexpr std::string_view TRAINER_AT_FLAG = "trainer_at:";
 //  The trainers `run_flags` says walked up to the player (TRAINER_AT_FLAG).
 //  A flag that doesn't parse throws ParseException.
 std::vector<TrainerMove> moved_trainers(const std::set<std::string>& run_flags);
+
+//  The TRAINER_AT_FLAG that says `move`.
+std::string trainer_at_flag(const TrainerMove& move);
+
+//  The trainer who walks up to the player seen on `tile` of `maps` (a step
+//  into their line, step_until_seen()), and the tile beside the player they
+//  stop on, toward where they stood (trainers_seeing()). Trainers `beaten`
+//  names (trainer_id()) see no one. Nothing if no trainer may see the
+//  player there, or if where they stop isn't known to one tile: two
+//  trainers may see it, or one who wanders may come from either side.
+//  Takashi, facing south on Viridian Gym's (10, 2), saw the player on
+//  (10, 5) and walked to (10, 4), where 17.03's way north went (console B,
+//  2026-11-15 16:52).
+std::optional<TrainerMove> trainer_walking_up(
+    const std::vector<MapData>& maps, const MapPosition& tile, const std::set<std::string>& beaten
+);
 
 //  `maps` with each trainer of `moved` standing on its new tile, no longer
 //  a trainer: they fought the player when they walked up, and they stop

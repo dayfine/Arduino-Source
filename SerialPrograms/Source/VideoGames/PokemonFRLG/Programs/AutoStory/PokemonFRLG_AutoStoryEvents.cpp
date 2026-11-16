@@ -36,6 +36,7 @@
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
+#include "PokemonFRLG_AutoStoryMovedTrainers.h"
 #include "PokemonFRLG_AutoStoryRoutePose.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
 #include "PokemonFRLG_AutoStorySlopeRun.h"
@@ -223,6 +224,22 @@ Outcome take_warp_step(StoryEnv& env, const RunState& state, const MapPosition& 
     return Pokemon::outcome_ok();
 }
 
+//  The trainer who saw the player on `tile` walked up to them and stands
+//  beside them from now on: a run flag says so (TRAINER_AT_FLAG), and the
+//  routes after the battle plan around them and over the tile they left.
+//  Planned on the map's tiles, below_giovanni went north from (10, 5)
+//  through Takashi, who had walked up to (10, 4) (console B, 2026-11-15
+//  16:52, 17.03).
+void note_trainer_walked_up(StoryEnv& env, RunState& state, const StoryStep& step, const MapPosition& tile){
+    const std::optional<TrainerMove> move = trainer_walking_up(run_story_maps(state.flags), tile, beaten_trainers(state.flags));
+    if (!move){
+        env.console.log(std::format("Story: {}: where the trainer who saw the player on {} stands now isn't known.", step.name, to_string(tile)), COLOR_ORANGE);
+        return;
+    }
+    state.flags.insert(trainer_at_flag(*move));
+    env.console.log(std::format("Story: {}: {} walked up to ({}, {}) and stays there.", step.name, move->trainer, move->x, move->y));
+}
+
 Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
     const Direction direction = arg<Direction>(step, "direction");
     int tiles_stepped = 1;
@@ -253,6 +270,9 @@ Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
     TilePos onto = tiles[0];
     for (int c = 0; c < tiles_stepped; c++){
         onto = onto.next(direction);
+    }
+    if (step.action == TRAINER_LINE_VARIANT || step.action == TRAINER_WAIT_VARIANT){
+        note_trainer_walked_up(env, state, step, MapPosition{state.pose.map, onto});
     }
     return Pokemon::outcome_ok(to_pose(StoryPose{state.pose.map, onto, direction}));
 }

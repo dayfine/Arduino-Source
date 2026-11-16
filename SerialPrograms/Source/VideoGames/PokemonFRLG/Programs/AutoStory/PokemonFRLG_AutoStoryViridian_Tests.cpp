@@ -2,16 +2,15 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Viridian Gym's spinner tiles and rows 17.02 and 17.04b
- *  (StoryData/frlg-17.0N.plan.json) on the overworld sim. 17.03 is the
- *  fault sweep's (a known-failing clean run: Takashi stands in the way
- *  after his battle).
+ *  Viridian Gym's spinner tiles and rows 17.02 to 17.04b
+ *  (StoryData/frlg-17.0N.plan.json) on the overworld sim.
  *
  */
 
 #include <format>
 #include <functional>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -21,6 +20,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSpin.h"
+#include "PokemonFRLG_AutoStoryMovedTrainers.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
@@ -137,7 +137,8 @@ std::vector<MapData> beaten_gym_maps(){
 
 //  Row `id`'s steps after `after` (from the row's start if empty) up to
 //  `last`, on the sim over `maps` from where `after` leaves the player. It
-//  must fight only its own battles, break no rule and end on `end`.
+//  must fight only its own battles, break no rule and end on `end`. The run
+//  flags go from step to step, as in the program's run state.
 UnitTestResult walk_row(
     std::string_view id, std::string_view after, std::string_view last,
     const std::vector<MapData>& maps, const MapPosition& end
@@ -153,12 +154,13 @@ UnitTestResult walk_row(
     }
     std::optional<OverworldSim> sim;
     sim.emplace(maps, MapPosition{at.map, at.tile}, at.facing.value_or(Direction::SOUTH));
+    std::set<std::string> flags(row.start_flags.begin(), row.start_flags.end());
     size_t battles = 0;
     for (size_t c = first; c < row.steps.size(); c++){
         const StoryStep& step = row.steps[c];
         battles += step.kind == StoryStepKind::BATTLE ? 1 : 0;
         if (sim_walks(step)){
-            if (const std::string failure = row_step_on_sim(*sim, at, step, row.id); !failure.empty()){
+            if (const std::string failure = row_step_carrying_flags(*sim, at, step, row.id, flags); !failure.empty()){
                 return failure;
             }
         }else if (step.pose_after){
@@ -187,6 +189,21 @@ UnitTestResult test_row_17_02(){
     return walk_row("17.02", "fly_viridian", "warren", story_maps(), MapPosition{std::string(GYM), {15, 7}});
 }
 
+//  17.03: Takashi, facing south on (10, 2) with a sight of 3, sees the
+//  player step onto (10, 5) and walks up to (10, 4), where he stays after
+//  the battle. below_giovanni plans around him: on the map's tiles it went
+//  north through him, and moved nothing (console B, 2026-11-15 16:52).
+UnitTestResult test_row_17_03(){
+    const std::optional<TrainerMove> takashi = trainer_walking_up(story_maps(), MapPosition{std::string(GYM), {10, 5}}, {});
+    if (!takashi || takashi->trainer != "ViridianCity_Gym/black_belt@10,2" || takashi->x != 10 || takashi->y != 4){
+        return "Expected Takashi (ViridianCity_Gym/black_belt@10,2) to walk up to (10, 4).";
+    }
+    if (trainer_walking_up(story_maps(), MapPosition{std::string(GYM), {10, 5}}, {takashi->trainer})){
+        return "Expected no trainer to walk up once Takashi is beaten.";
+    }
+    return walk_row("17.03", "", "below_giovanni", story_maps(), MapPosition{std::string(GYM), {2, 3}});
+}
+
 //  17.04b after Giovanni's win: back through the gym past its beaten
 //  trainers (Takashi's line on row 3 among them), out of the door and the
 //  Fly to below the Center's door (26, 27).
@@ -198,6 +215,10 @@ const AutoStoryViridianCase AUTO_STORY_VIRIDIAN_CASES[] = {
     {
         .input = {.name = "17.02: from the Fly to Viridian through the gym into Warren's line", .body = test_row_17_02},
         .expectation = {.description = "Warren's battle won on (15, 7), no other trainer met"},
+    },
+    {
+        .input = {.name = "17.03: Takashi walks up and stays; the way to Giovanni goes around him", .body = test_row_17_03},
+        .expectation = {.description = "Takashi on (10, 4) after his battle; on ViridianCity_Gym (2, 3), his battle the only one"},
     },
     {
         .input = {.name = "17.04b: out of the beaten gym and by Fly to below Viridian's Center", .body = test_row_17_04b},

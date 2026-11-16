@@ -50,6 +50,8 @@
 #include "PokemonFRLG_AutoStoryPlanGolden20.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
+#include "PokemonFRLG_AutoStoryMovedTrainers.h"
+#include "PokemonFRLG_AutoStoryTrainerLine.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryUnauthoredStarts_Tests.h"
@@ -355,6 +357,23 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<s
     return true;
 }
 
+//  A STEP into a trainer's line from `pose`, as step_until_seen() goes on
+//  the maps: a tile at a time until a trainer may see the player. That
+//  trainer walks up and stands beside the player for the routes after the
+//  battle (TRAINER_AT_FLAG), as take_step() records it.
+void step_into_line(StoryPose& pose, const StoryStep& step){
+    const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+    const int tiles = step.action == TRAINER_LINE_VARIANT ? TRAINER_LINE_TILES : 1;
+    const std::set<std::string> beaten = beaten_trainers(walk_state().run_flags);
+    for (int c = 0; c < tiles; c++){
+        pose = StoryPose{pose.map, pose.tile.next(direction), direction};
+        if (const std::optional<TrainerMove> move = trainer_walking_up(walk_story_maps(), MapPosition{pose.map, pose.tile}, beaten)){
+            walk_state().run_flags.insert(trainer_at_flag(*move));
+            return;
+        }
+    }
+}
+
 //  check_checkpoint()'s walk through the steps.
 UnitTestResult check_checkpoint_steps(const StoryCheckpoint& checkpoint, StoryPose& pose, std::vector<std::string>& golden){
     for (const StoryStep& step : checkpoint.steps){
@@ -372,6 +391,8 @@ UnitTestResult check_checkpoint_steps(const StoryCheckpoint& checkpoint, StoryPo
             if (result.result != UnitTestResult::PASSED){
                 return checkpoint.id + " " + result.message;
             }
+        }else if (step.kind == StoryStepKind::STEP && (step.action == TRAINER_LINE_VARIANT || step.action == TRAINER_WAIT_VARIANT)){
+            step_into_line(pose, step);
         }else if (step.kind == StoryStepKind::STEP){
             const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
             pose = StoryPose{pose.map, pose.tile.next(direction), direction};

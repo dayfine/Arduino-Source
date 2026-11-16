@@ -10,6 +10,7 @@
 #include <utility>
 #include "Common/Cpp/Exceptions.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_AutoStoryMovedTrainers.h"
 
 namespace PokemonAutomation{
@@ -55,6 +56,34 @@ std::vector<TrainerMove> moved_trainers(const std::set<std::string>& run_flags){
         moved.emplace_back(TrainerMove{.trainer = std::string(rest.substr(0, equals)), .x = tile->first, .y = tile->second});
     }
     return moved;
+}
+
+std::string trainer_at_flag(const TrainerMove& move){
+    return std::format("{}{}={},{}", TRAINER_AT_FLAG, move.trainer, move.x, move.y);
+}
+
+std::optional<TrainerMove> trainer_walking_up(
+    const std::vector<MapData>& maps, const MapPosition& tile, const std::set<std::string>& beaten
+){
+    const MapData* map = nullptr;
+    for (const MapData& candidate : maps){
+        map = candidate.name == tile.map ? &candidate : map;
+    }
+    if (map == nullptr){
+        return std::nullopt;
+    }
+    std::optional<TrainerMove> move;
+    for (const TrainerStop& stop : trainers_seeing(maps, tile)){
+        const std::string trainer = trainer_id(*map, map->objects[stop.object]);
+        if (beaten.contains(trainer)){
+            continue;
+        }
+        if (move){
+            return std::nullopt;
+        }
+        move = TrainerMove{.trainer = trainer, .x = stop.at.point.x, .y = stop.at.point.y};
+    }
+    return move;
 }
 
 std::vector<MapData> with_trainers_moved(std::vector<MapData> maps, const std::vector<TrainerMove>& moved){

@@ -43,6 +43,11 @@ struct TrainerStop{
     bool operator==(const TrainerStop& other) const = default;
 };
 
+//  The trainers who may see the player on `tile`, and where each stands
+//  once walked up: one stop for a trainer who stands still, one for each
+//  side a wanderer may come from.
+std::vector<TrainerStop> trainers_seeing(const std::vector<MapData>& maps, const MapPosition& tile);
+
 //  One way things may stand after a stop: the player's tile, and the
 //  trainer who stopped them there, if one did.
 struct StopCandidate{

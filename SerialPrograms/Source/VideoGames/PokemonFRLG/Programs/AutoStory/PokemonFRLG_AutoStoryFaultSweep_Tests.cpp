@@ -263,6 +263,9 @@ struct RowRun{
     Milliseconds in_wild_battles{0};
     int moved_step_taps = 0;
     int bike_legs = 0;
+    //  The run flags as the steps so far left them: the row's start_flags,
+    //  and a trainer who walked up to the player (TRAINER_AT_FLAG).
+    std::set<std::string> flags;
 };
 
 //  Where a stubbed step leaves the player instead of its pose_after: by step index.
@@ -318,7 +321,7 @@ bool run_row_step(
     out.facing_before.emplace(c, sim.state().facing);
     out.gates_before.emplace(c, sim.state().gates);
     const size_t warps_before = sim.state().warped_from.size();
-    out.failure = row_step_on_sim(sim, at, row.steps[c], row.id, start_flag_set(row));
+    out.failure = row_step_carrying_flags(sim, at, row.steps[c], row.id, out.flags);
     const std::vector<std::string>& warped = sim.state().warped_from;
     out.warped_from[c].assign(warped.begin() + warps_before, warped.end());
     const bool let_pass = unscripted(out.failure) && (!scripted || scripted->contains(c));
@@ -370,6 +373,7 @@ RowRun run_row(
 ){
     const SimScript script = with_lifts(with_row_start(row_script, row));
     RowRun out;
+    out.flags = start_flag_set(row);
     std::optional<MapPosition> off_maps;
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     std::vector<MapData> maps = row_maps(row);
