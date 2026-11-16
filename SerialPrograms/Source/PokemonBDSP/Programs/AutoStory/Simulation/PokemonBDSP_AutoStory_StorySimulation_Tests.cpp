@@ -525,7 +525,8 @@ UnitTestResult test_start_and_end(Logger&){
 }
 
 //  With Run Starter RNG in AutoStory on, 00.02 saves at the Verity
-//  Lakefront, runs 00.02/starter_rng, and chains into 00.03.
+//  Lakefront, runs 00.02/starter_rng, and chains into 00.03. Console B,
+//  2026-11-15: 00.03's start save must still name Verity Lakefront.
 UnitTestResult test_run_starter_rng_in_story(Logger&){
     Pokemon::SegmentHooks hooks;
     hooks.reload = [&](RunState&){ return Pokemon::outcome_ok(); };
@@ -543,10 +544,12 @@ UnitTestResult test_run_starter_rng_in_story(Logger&){
         in_program_sim.count("save in 00.02") != 1 ||
         in_program_sim.count("card for 00.02: Verity Lakefront") != 1 ||
         in_program_sim.count("00.02/starter_rng") != 1 ||
-        in_program_sim.count("00.02/choose_starter") != 0
+        in_program_sim.count("00.02/choose_starter") != 0 ||
+        in_program_sim.count("save in 00.03") != 1 ||
+        in_program_sim.count("card for 00.03: Verity Lakefront") != 1
     ){
         return std::format(
-            "Expected 00.02 with Run Starter RNG in AutoStory to save at Verity Lakefront, run 00.02/starter_rng, and continue to 00.03:{}",
+            "Expected 00.02 with Run Starter RNG in AutoStory to save at Verity Lakefront, run 00.02/starter_rng, and start 00.03 with another Verity Lakefront save:{}",
             joined(in_program_sim.trace)
         );
     }
