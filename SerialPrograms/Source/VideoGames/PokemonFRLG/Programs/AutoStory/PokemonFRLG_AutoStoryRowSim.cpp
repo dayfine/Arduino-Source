@@ -16,6 +16,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonFRLG_AutoStoryBoulders.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
+#include "PokemonFRLG_AutoStoryMovedBoulders.h"
 #include "PokemonFRLG_AutoStoryLineTrainer.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
@@ -709,6 +710,7 @@ std::string OverworldStepSim::push_boulder(const StoryStep& step){
     const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
     const int64_t tiles = Pokemon::story_arg<int64_t>(step.args, "tiles");
     SimBoulderPresses presses(m_sim);
+    const MapPosition start{m_at.map, m_at.tile};
     const BoulderPush push = push_boulder_tiles(direction, tiles, presses);
     m_at.facing = direction;
     for (int64_t c = 0; c < push.walked; c++){
@@ -720,6 +722,7 @@ std::string OverworldStepSim::push_boulder(const StoryStep& step){
     if (!(m_sim.state().position == MapPosition{m_at.map, m_at.tile})){
         return std::format("expected to stand behind the boulder on {}.", to_string(MapPosition{m_at.map, m_at.tile}));
     }
+    note_boulder_pushed(start, direction, tiles, m_flags);
     return "";
 }
 
@@ -905,6 +908,7 @@ std::string row_step_carrying_flags(
     at = executor.at();
     run_flags = std::move(state.flags);
     trainers_back_after_map_change(map_before, at.map, run_flags);
+    boulders_back_after_map_change(map_before, at.map, run_flags);
     if (outcome.succeeded()){
         //  The step that picks the Card Key up (flags_after) opens the doors the
         //  next ones walk to.

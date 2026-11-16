@@ -30,6 +30,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTiles.h"
 #include "PokemonFRLG_AutoStoryBoulders.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryMovedBoulders.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows19_Tests.h"
@@ -348,6 +349,60 @@ private:
     size_t m_cleared = 0;
 };
 
+//  19.04b (console B, 2026-11-16, attempts 1 and 2 after the two-tap fix):
+//  push_south from (7, 17) leaves the boulder on (7, 19) and the player on
+//  (7, 18); by_boulder_2_corner's walk to (6, 18) must go round the boulder
+//  where it stands now. Planned on the boulder's map tile, its first leg
+//  went south onto (7, 19), bumped the boulder, and the walk ended a row off.
+UnitTestResult test_walk_after_a_push_goes_round_the_boulder(){
+    OverworldSim sim(story_maps(), MapPosition{"VictoryRoad_1F", {7, 17}}, Direction::SOUTH);
+    StoryPose at{"VictoryRoad_1F", {7, 17}, Direction::SOUTH};
+    std::set<std::string> flags;
+    if (const std::string failure = row_step_carrying_flags(sim, at, push_step(Direction::SOUTH, /*tiles=*/1), "19.04b", flags); !failure.empty()){
+        return failure;
+    }
+    StoryStep corner;
+    corner.kind = Pokemon::StoryStepKind::ROUTE;
+    corner.name = "by_boulder_2_corner";
+    const Pokemon::GridPose target{"VictoryRoad_1F", {{6, 18}}, std::nullopt};
+    corner.args = {{"target", target}, {"fight_wild", false}};
+    const std::string failure = row_step_carrying_flags(sim, at, corner, "19.04b", flags);
+    if (!failure.empty() || !(sim.state().position == MapPosition{"VictoryRoad_1F", {6, 18}})){
+        return std::format("the walk to (6, 18) ended on {}: {}", to_string(sim.state().position), failure);
+    }
+    return true;
+}
+
+//  A boulder pushed twice keeps its map tile in its one flag, and the maps
+//  planned on show it where it stands; leaving the map puts it back.
+UnitTestResult test_boulder_flags_follow_the_boulder(){
+    std::set<std::string> flags;
+    note_boulder_pushed(MapPosition{"VictoryRoad_1F", {6, 19}}, Direction::EAST, /*tiles=*/2, flags);
+    note_boulder_pushed(MapPosition{"VictoryRoad_1F", {8, 19}}, Direction::EAST, /*tiles=*/3, flags);
+    const std::set<std::string> expected{"boulder_at:VictoryRoad_1F@7,19=12,19"};
+    if (flags != expected){
+        return std::format("{} flag(s), not the one for (7, 19) to (12, 19).", flags.size());
+    }
+    const std::vector<BoulderMove> moved = moved_boulders(flags);
+    const std::vector<MapData> maps = with_boulders_moved(story_maps(), moved);
+    for (const MapData& map : maps){
+        if (map.name != "VictoryRoad_1F"){
+            continue;
+        }
+        const bool there = std::any_of(map.objects.begin(), map.objects.end(), [](const MapObject& object){
+            return object.name == "pushable_boulder" && object.x == 12 && object.y == 19;
+        });
+        if (!there){
+            return "no boulder on (12, 19) in the maps.";
+        }
+    }
+    boulders_back_after_map_change("VictoryRoad_1F", "VictoryRoad_2F", flags);
+    if (!flags.empty()){
+        return "a boulder flag stayed after leaving the map.";
+    }
+    return true;
+}
+
 const BoulderPressRead PUSHED{.scrolled = false, .boulder_moved = true};
 const BoulderPressRead WALKED{.scrolled = true, .boulder_moved = false};
 
@@ -471,6 +526,14 @@ const AutoStoryBouldersCase AUTO_STORY_BOULDERS_CASES[] = {
     {
         .input = {.name = "a push step of a boulder against a wall on the sim", .body = test_stuck_boulder_on_sim},
         .expectation = {.description = "failed, the player in place"},
+    },
+    {
+        .input = {.name = "19.04b's walk to (6, 18) after the push south", .body = test_walk_after_a_push_goes_round_the_boulder},
+        .expectation = {.description = "round the boulder on (7, 19), on (6, 18)"},
+    },
+    {
+        .input = {.name = "the run flags of a boulder pushed twice, then left", .body = test_boulder_flags_follow_the_boulder},
+        .expectation = {.description = "one flag, (7, 19) to (12, 19); none after leaving"},
     },
     {
         .input = {.name = "a push of two tiles", .body = test_push_taps_twice_a_tile},
