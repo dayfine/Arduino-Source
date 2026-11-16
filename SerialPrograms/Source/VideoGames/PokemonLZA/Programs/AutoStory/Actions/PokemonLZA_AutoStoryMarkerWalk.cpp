@@ -37,8 +37,8 @@ constexpr Milliseconds MARKER_POLL(250);
 //  it to the edge below 0.10 and above 0.90). Not measured on console in
 //  degrees; about 8 if the view spans 70.
 constexpr double NUDGE_OFFSET = 0.12;
-//  One sidestep (MarkerMove::SIDESTEP_*), the stick full left or right.
-//  Not measured on console: shorter than a 600 ms step on.
+//  One lane of a sidestep (MarkerMove::SIDESTEP_*), the stick full left
+//  or right. Not measured on console: shorter than a 600 ms step on.
 constexpr Milliseconds SIDESTEP_HOLD(500);
 
 //  How one step of the walk ended.
@@ -73,6 +73,11 @@ public:
     //  The last distance read taken, if any.
     std::optional<int> position() const{
         return m_distance.position();
+    }
+
+    //  Back onto the marker's line, so the next walk starts on it.
+    void to_line(){
+        to_lane(0);
     }
 
     MarkerStep step(){
@@ -121,12 +126,14 @@ private:
         switch (move){
         case MarkerMove::ARRIVED:
             m_backend.log(std::format("[PLZA] marker walk: {} from the objective", *m_distance.position()));
+            to_line();
             return MarkerStep::ARRIVED;
         case MarkerMove::BLOCKED:
             m_backend.log(std::format(
                 "[PLZA] marker walk: blocked, no distance taken after 2 camera nudges and 4 sidesteps (read {}, at {})",
                 read.value_or(-1), m_distance.position().value_or(-1)
             ));
+            to_line();
             return MarkerStep::BLOCKED;
         case MarkerMove::STEP:
             break;
@@ -135,10 +142,13 @@ private:
             return MarkerStep::WALKING;
         }
         m_unread = 0;
-        m_side = 0;
         m_aim = 0.5;
-        on_distance(marker.distance);
+        if (m_distance.position() != m_logged){
+            m_logged = m_distance.position();
+            m_backend.log(std::format("[PLZA] marker walk: {} to go", *m_logged));
+        }
         steer(marker.x, m_aim);
+        to_lane(m_distance.lane());
         step_on();
         return MarkerStep::WALKING;
     }
@@ -171,7 +181,7 @@ private:
         case MarkerMove::SIDESTEP_RIGHT:
             m_aim = 0.5;
             steer(marker.x, m_aim);
-            sidestep(move == MarkerMove::SIDESTEP_LEFT);
+            to_lane(m_distance.lane());
             m_backend.wait(MARKER_POLL);
             return;
         default:
@@ -181,18 +191,20 @@ private:
         m_backend.wait(MARKER_POLL);
     }
 
-    //  A step across the line to the marker (the camera on it), to the
-    //  next spot out on that side of where the reads stopped: 1 left, 1
-    //  right, 2 left, 2 right.
-    void sidestep(bool left){
-        const int target = left ? std::min(m_side, 0) - 1 : std::max(m_side, 0) + 1;
-        const int steps = std::abs(target - m_side);
+    //  Steps across the marker's line (the camera on the marker) to
+    //  `lane` (MarkerDistance::lane()), from the lane the walk stands in.
+    void to_lane(int lane){
+        if (lane == m_lane){
+            return;
+        }
+        const bool left = lane < m_lane;
+        const int steps = std::abs(lane - m_lane);
         m_backend.log(std::format(
-            "[PLZA] marker walk: sidestepping {} {} step(s), to {} {} of where the reads stopped",
-            left ? "left" : "right", steps, std::abs(target), target < 0 ? "left" : "right"
+            "[PLZA] marker walk: sidestepping {} {} step(s), to lane {} (at {})",
+            left ? "left" : "right", steps, lane, m_distance.position().value_or(-1)
         ));
         pbf_move_left_joystick(m_env.context, /*position=*/{left ? -1.0 : 1.0, 0}, SIDESTEP_HOLD * steps, /*release=*/200ms);
-        m_side = target;
+        m_lane = lane;
     }
 
     //  The marker is behind: turn the camera toward where it was last.
@@ -204,14 +216,12 @@ private:
         return MarkerStep::WALKING;
     }
 
-    //  A taken read toward the marker: logged when it changes; 4 reads with
-    //  no new best is a walk held up (the Research Lab's front fence,
-    //  console B 2026-11-10), which steps sideways: right, then left twice
-    //  as far, 4 at most.
+    //  A taken read on a walk to the objective's prompt (no stop_at; a
+    //  walk to a stop is held up by MarkerDistance): logged when it
+    //  changes; 4 reads with no new best is a walk held up (the Research
+    //  Lab's front fence, console B 2026-11-10), which steps sideways:
+    //  right, then left twice as far, 4 at most.
     void on_distance(int distance){
-        if (m_goal.direction == MarkerDirection::BACK){
-            return;
-        }
         if (distance < m_best){
             m_backend.log(std::format("[PLZA] walk_to_marker: {} to go", distance));
             m_best = distance;
@@ -257,7 +267,8 @@ private:
     int m_sidesteps = 0;
     int m_unseen = 0;
     int m_unread = 0;
-    int m_side = 0;         //  sidesteps right (left: below 0) of where the reads stopped
+    int m_lane = 0;         //  the lane the walk stands in (MarkerDistance::lane())
+    std::optional<int> m_logged;    //  the last read taken that was logged
     double m_aim = 0.5;     //  where on screen the camera keeps the marker
     double m_last_x = 0.5;
 };
@@ -305,12 +316,14 @@ bool run_marker_walk(Milliseconds limit, MarkerWalk& walk, PlzaBackend& backend)
 std::optional<int> walk_toward_marker(StoryEnv& env, PlzaBackend& backend, int stop_at, int floor, Milliseconds limit){
     MarkerWalk walk(env, backend, MarkerGoal{.stop_at = stop_at, .direction = MarkerDirection::TOWARD, .floor = floor});
     run_marker_walk(limit, walk, backend);
+    walk.to_line();
     return walk.position();
 }
 
 std::optional<int> walk_back_from_marker(StoryEnv& env, PlzaBackend& backend, int stop_at, Milliseconds limit){
     MarkerWalk walk(env, backend, MarkerGoal{.stop_at = stop_at, .direction = MarkerDirection::BACK, .floor = std::nullopt});
     run_marker_walk(limit, walk, backend);
+    walk.to_line();
     return walk.position();
 }
 

@@ -32,8 +32,8 @@ enum class MarkerDirection{
 //  What a walk by the marker does after a look. With no read taken, it
 //  stands and reads again, and every third look in a row with none it
 //  tries a new view: the camera nudged a little left, then right, then a
-//  short step to the side of the marker's line, left then right, each
-//  further out, 4 at most; then it ends. Never a step toward or away
+//  short step to a lane beside the marker's line (lane()): 1 left, 1
+//  right, 2 left, 2 right; then it ends. Never a step toward or away
 //  without a read taken: in run 4 of 03.08 (console B, 2026-11-16) an
 //  NPC's speech bubble sat over the marker's digits, and re-centering put
 //  the marker right back under it.
@@ -43,7 +43,7 @@ enum class MarkerMove{
     REREAD,             //  no read taken after a nudge: stand, the camera kept where it is, read again
     NUDGE_CAMERA_LEFT,  //  the third look with none: the camera a little left, read again
     NUDGE_CAMERA_RIGHT,
-    SIDESTEP_LEFT,      //  still none after both nudges: re-center, a short step left, read again
+    SIDESTEP_LEFT,      //  still none after both nudges, or held up: re-center, step left to lane(), read again
     SIDESTEP_RIGHT,
     BLOCKED,            //  still none after every sidestep: the walk ends
     ARRIVED,            //  a read taken at the stop (or, toward, at the floor)
@@ -73,6 +73,10 @@ public:
     //  only when the read is taken, ARRIVED at `stop_at` or past it in the
     //  walk's direction (toward: at the floor too); else what the walk
     //  does for a new view (MarkerMove), by the looks in a row with none.
+    //  4 reads taken in a row with none further on in the walk's direction
+    //  is a walk held up: a sidestep to the next lane, kept until the walk
+    //  is 6 further on. In run 5 of 03.08 (console B, 2026-11-16) the walk
+    //  back from 60 read 65 for 15 steps back, twice, and ran out of time.
     MarkerMove next(std::optional<int> distance, int stop_at);
 
     //  The last read taken, if any.
@@ -80,15 +84,33 @@ public:
         return m_last;
     }
 
+    //  Where the walk should stand across the marker's line, in sidesteps
+    //  (right above 0, left below), at most 2 out. A read taken brings it
+    //  back to 0 (but for a held-up walk's lane), and so do ARRIVED and
+    //  BLOCKED. In run 5 of 03.08 every sidestep was kept and each new
+    //  stretch started left, so the walk ended 7 steps left, against a
+    //  wall off Wild Zone 1's road (console B, 2026-11-16).
+    int lane() const{
+        return m_lane;
+    }
+
 private:
     bool reached(int stop_at) const;
+    //  How much further on `to` is than `from` in the walk's direction.
+    int progress(int from, int to) const;
     MarkerMove unread_move();
+    MarkerMove sidestep_to(int lane);
 
     const MarkerDirection m_direction;
     const std::optional<int> m_floor;
     std::optional<int> m_last;
     std::vector<int> m_untaken;     //  the last three reads not taken, oldest first
     size_t m_unread_looks = 0;      //  looks in a row with no read taken
+    std::optional<int> m_best;      //  the furthest-on read taken
+    size_t m_unmoved_reads = 0;     //  reads taken in a row with none further on than m_best
+    size_t m_held_ups = 0;          //  held-up sidesteps so far
+    std::optional<int> m_held_at;   //  m_best when the walk was last held up, while it keeps that lane
+    int m_lane = 0;
 };
 
 

@@ -36,13 +36,16 @@ Pokemon::Outcome walk_to_marker(StoryEnv& env, PlzaBackend& backend);
 //  with none, it stands, turns the camera back onto the marker and reads
 //  again; still none, it nudges the camera a little, then sidesteps, and
 //  past those (MarkerMove::BLOCKED) it ends, logged, without a step on.
-//  Reads below `floor` are never taken. Returns the last read taken; none
-//  when none was.
+//  Held up, it sidesteps too. It walks the lane MarkerDistance::lane()
+//  gives, back on the marker's line after each read taken, and ends on
+//  the line. Reads below `floor` are never taken. Returns the last read
+//  taken; none when none was.
 std::optional<int> walk_toward_marker(StoryEnv& env, PlzaBackend& backend, int stop_at, int floor, Milliseconds limit);
 
 //  Back away from the objective marker (the stick down, toward the
-//  camera, the camera turned back onto the marker before each step) until
-//  a read taken is `stop_at` or more, stepping only on reads taken as
+//  camera, the camera turned back onto the marker before each step, so its
+//  digits keep reading) until a read taken is `stop_at` or more, stepping
+//  only on reads taken, sidestepping and ending on the line as
 //  walk_toward_marker() does.
 std::optional<int> walk_back_from_marker(StoryEnv& env, PlzaBackend& backend, int stop_at, Milliseconds limit);
 
