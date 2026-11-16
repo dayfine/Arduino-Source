@@ -28,6 +28,7 @@
 #include "PokemonLZA_AutoStoryMainMissionBannerDetector.h"
 #include "PokemonLZA_AutoStoryMissionCompleteDetector.h"
 #include "PokemonLZA_AutoStoryPlatformArrivalDetector.h"
+#include "PokemonLZA_AutoStoryTutorialCardDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -603,6 +604,48 @@ UnitTestResult check_frame_folder(const FrameFolderCase& test, Logger& logger){
 }
 
 
+struct TutorialCardFrameCase{
+    std::string name;
+    struct Input{
+        std::string_view path;  //  In CommandLineTests/PokemonLZA/.
+    };
+    Input input;
+    struct Expectation{
+        bool card = false;
+    };
+    Expectation expectation;
+};
+
+const TutorialCardFrameCase TUTORIAL_CARD_FRAME_CASES[] = {
+    {
+        //  console B, 2026-11-16 (03.02b run 5): the "Map & Missions" card,
+        //  page 1 of 2, over the map app's blue screen, not a dark one.
+        .name = "the Map & Missions card over the map app (Italian)",
+        .input = {.path = "AutoStoryScreenEvents/it_0302b_map_missions_card.png"},
+        .expectation = {.card = true},
+    },
+    {
+        .name = "no card in a battle",
+        .input = {.path = "AutoStoryScreenEvents/it_0302b_battle_no_lock_on.png"},
+        .expectation = {.card = false},
+    },
+    {
+        .name = "no card at the A Talk prompt",
+        .input = {.path = "AutoStoryScreenEvents/it_0102_parla_talk_prompt.png"},
+        .expectation = {.card = false},
+    },
+};
+
+UnitTestResult check_tutorial_card_frame(const TutorialCardFrameCase& test){
+    const std::string path = std::format("{}PokemonLZA/{}", UNIT_TEST_RESOURCE_PATH(), test.input.path);
+    const bool card = tutorial_card_shows(ImageRGB32(path));
+    if (card != test.expectation.card){
+        return std::format("{}: expected card {}, got {}", test.input.path, test.expectation.card ? "yes" : "no", card ? "yes" : "no");
+    }
+    return true;
+}
+
+
 class Test_SyntheticFrame : public UnitTest{
 public:
     explicit Test_SyntheticFrame(const SyntheticFrameCase& test)
@@ -615,6 +658,20 @@ public:
 
 private:
     const SyntheticFrameCase& m_test;
+};
+
+class Test_TutorialCardFrame : public UnitTest{
+public:
+    explicit Test_TutorialCardFrame(const TutorialCardFrameCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStoryDetectors - tutorial card frame: {}", test.name))
+        , m_test(test)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return check_tutorial_card_frame(m_test);
+    }
+
+private:
+    const TutorialCardFrameCase& m_test;
 };
 
 class Test_FrameFolder : public UnitTest{
@@ -640,6 +697,9 @@ void add_tests_AutoStoryDetectors(UnitTestDatabase& database){
     }
     for (const FrameFolderCase& test : FRAME_FOLDER_CASES){
         database.add<Test_FrameFolder>(test);
+    }
+    for (const TutorialCardFrameCase& test : TUTORIAL_CARD_FRAME_CASES){
+        database.add<Test_TutorialCardFrame>(test);
     }
 }
 

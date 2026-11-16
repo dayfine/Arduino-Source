@@ -20,12 +20,16 @@ namespace PokemonLZA{
 
 
 //  Taunie's talk after her battle (03.02b), the "Map & Missions" card, the
-//  first map and the rest of her talk: A then B, a second each, until the
-//  party bar shows with no text box on looks a second apart. A pages the
-//  talk and the card; B closes the map, where A would place a pin. The map
-//  is not looked for: MapDetector needs the Travel Spots icon, which the
-//  first map lacks (console B, 2026-11-13). No presses once the party bar
-//  shows. Fails as "map_talk_timeout" after 120 s (by the looks' time).
+//  first map and the rest of her talk, one press a second by what shows,
+//  until the party bar shows with no text box on looks a second apart: a
+//  tutorial card (TUTORIAL_CARD_READING) and text (a box or the advance
+//  chevron) before the card get A, anything else B. A pages the card and
+//  closes it on its last page, where B would turn back (console B
+//  2026-11-16: A and B in turn held it on page 1 for 120 s); B closes the
+//  map, where A would place a pin. The map is not looked for: MapDetector
+//  needs the Travel Spots icon, which the first map lacks (console B,
+//  2026-11-13). No presses once the party bar shows. Fails as
+//  "map_talk_timeout" after 120 s (by the looks' time).
 Pokemon::Outcome talk_through_map_screen(PlzaBackend& backend);
 
 //  Facing the side street's wall (03.03): sidestep right to the ladder

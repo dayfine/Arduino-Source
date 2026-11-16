@@ -868,13 +868,13 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .line = "[PLZA story_battle_start] done on battle."},
     },
     {
-        .name = "03.02b's map talk: A and B in turn, done on the party bar held a second",
+        .name = "03.02b's map talk: A on the text, B on the map, done on the party bar held a second",
         .input = {.checkpoint = "03.02b", .first_step = 8, .steps = 1, .looks = {
             DIALOG, look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)), party_bar(Milliseconds(4000)), party_bar(Milliseconds(5100)),
         }},
         .expectation = {
             .verdict = "done",
-            .inputs = "press A, press B, press A, press B, wait 250ms",
+            .inputs = "press A, press B, wait 250ms",
             .line = "[PLZA] talk_through_map_screen: the party bar held: back in the overworld",
         },
     },
@@ -885,14 +885,29 @@ const RunCase RUN_CASES[] = {
             look({ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(2000)),
             party_bar(Milliseconds(4000)), party_bar(Milliseconds(5100)),
         }},
-        .expectation = {.verdict = "done", .inputs = "press A, press B, press A, press B, wait 250ms"},
+        .expectation = {.verdict = "done", .inputs = "press A, press A, wait 250ms"},
+    },
+    {
+        //  console B, 2026-11-16 (03.02b run 5): the "Map & Missions" card
+        //  (2 pages) over the map app. A turns its pages and closes it on
+        //  the last; B turns back, so A and B in turn held it on page 1
+        //  for 120 s. Then B closes the map and goes through her talk.
+        .name = "03.02b's map talk pages the Map & Missions card with A only, then B on the map and her talk",
+        .input = {.checkpoint = "03.02b", .first_step = 8, .steps = 1, .looks = {
+            look(/*events=*/{}, {TUTORIAL_CARD_READING}, Milliseconds(0)),
+            look(/*events=*/{}, {TUTORIAL_CARD_READING}, Milliseconds(1000)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(3000)),
+            party_bar(Milliseconds(4000)), party_bar(Milliseconds(5100)),
+        }},
+        .expectation = {.verdict = "done", .inputs = "press A, press A, press B, press B, wait 250ms"},
     },
     {
         .name = "03.02b's map talk fails with no party bar in 120 s",
         .input = {.checkpoint = "03.02b", .first_step = 8, .steps = 1, .looks = {
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(121000)),
         }},
-        .expectation = {.verdict = "failed at after_taunie_battle: map_talk_timeout", .inputs = "press A, press B"},
+        .expectation = {.verdict = "failed at after_taunie_battle: map_talk_timeout", .inputs = "press B"},
     },
     {
         .name = "03.03 climbs the ladder: sidestep right, face it, A, then up to the top",

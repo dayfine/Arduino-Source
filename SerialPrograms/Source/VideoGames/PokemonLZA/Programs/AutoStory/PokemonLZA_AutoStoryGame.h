@@ -80,8 +80,8 @@ namespace PokemonLZA{
 //                              the battle HUD within 10 s, else
 //                              "battle_never_started"; right after
 //                              "story_battle_start" (the lint)
-//      "talk_through_map_screen"   A and B in turn through Taunie's talk
-//                              and the first map (03.02b)
+//      "talk_through_map_screen"   A on Taunie's talk and the Map &
+//                              Missions card, B on the first map (03.02b)
 //      "climb_ladder"          the side street's ladder (03.03)
 //      "talk_to_pokedex_screen"    B through the nurse's talk and the
 //                              Pokedex app (03.04)
