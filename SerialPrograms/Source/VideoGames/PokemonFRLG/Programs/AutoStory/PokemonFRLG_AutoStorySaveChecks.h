@@ -20,6 +20,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SaveCardReader.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
@@ -35,13 +36,9 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  The place the save card names for a save on `map` (see
-//  read_save_card_location()), or empty for a map whose place isn't known.
-std::string save_card_place(const std::string& map);
-
 //  Why a save whose card names `place` can't start a checkpoint that starts
 //  on `start_map`, or empty if it can: the places match, the card couldn't
-//  be read (empty `place`), or the map has no known place.
+//  be read (empty `place`), or the map has no place (save_card_place()).
 std::string save_place_error(const std::string& start_map, const std::string& place);
 
 //  The map checkpoint `id` ends on: where the table's next row starts.
