@@ -31,7 +31,6 @@
 #include <optional>
 #include <string_view>
 #include "Common/Cpp/Time.h"
-#include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "PokemonLZA_AutoStoryBackend.h"
@@ -75,80 +74,7 @@ struct SceneMachineConfig{
     std::optional<Milliseconds> start_window = std::nullopt;
 };
 
-//  The states a scene machine tells apart, in the order it tries them.
-enum class SceneScreen{
-    BATTLE,         //  terminal: the battle HUD, with stop_at_battle
-    FADE_BLACK,     //  wait until it lifts
-    FADE_WHITE,     //  wait until it lifts
-    CHOICE,         //  terminal: the choice box, with stop_at_choice
-    DIALOG,         //  the text button: a box (A: its choice's top row too), or the advance chevron
-    MISSION_COMPLETE,   //  A: a main mission's "COMPLETE" card
-    MISSION_BANNER, //  terminal: a main mission's banner, on a second look
-    BANNER_SHOWING, //  wait: the banner, on its first look
-    CAN_MOVE,       //  terminal: the party bar, held a second
-    PARTY_BAR,      //  wait: the party bar, not held a second yet
-    CONTROLS_HINT,  //  terminal: the tutorial's controls hint, held a second
-    HINT_SHOWING,   //  wait: the controls hint, not held a second yet
-    NEVER_STARTED,  //  terminal, failing: no scene within start_window
-    QUIET_END,      //  terminal, failing unless quiet_is_control: nothing busy for the quiet time, past the minimum length
-    BLIND_PRESS,    //  blind_button: nothing busy and no sign of control for blind_press_after
-    SCENE_MOVING,   //  wait: no text, the screen changing
-    SCENE_STILL,    //  wait: no text, the screen still since the look before
-};
-
-//  "fade_black", the state's name in the StepTrace log.
-std::string_view scene_screen_name(SceneScreen screen);
-
-//  Whether the machine ends after this state's step.
-bool scene_screen_terminal(SceneScreen screen);
-
-//  Whether this state's step presses (DIALOG the config's text button,
-//  BLIND_PRESS its blind button, MISSION_COMPLETE A); the others wait.
-bool scene_screen_presses(SceneScreen screen);
-
-//  The time-dependent part of the machine, apart from the backend so tests
-//  can feed it looks: when the screen was last busy, since when the hint
-//  shows. A look's time is its `when`.
-class SceneTimeline{
-public:
-    SceneTimeline(SceneMachineConfig config, WallClock start);
-
-    //  The state for `look`. Does not change the timeline.
-    SceneScreen classify(const ScreenObservation& look) const;
-
-    //  Takes in the look the machine acted on.
-    void record(const ScreenObservation& look);
-
-    //  When the quiet end is due if nothing busy shows before; none
-    //  without a quiet time.
-    std::optional<WallClock> quiet_end_due() const;
-
-    //  Whether a blind press is due at `now` (blind_press_after).
-    bool blind_press_due(WallClock now) const;
-
-private:
-    //  classify() past the fades and the text.
-    SceneScreen classify_open(const ScreenObservation& look) const;
-
-    SceneMachineConfig m_config;
-    WallClock m_quiet_from;
-    WallClock m_last_busy;
-    WallClock m_start;
-    //  The last look busy or with a sign of control (party bar, hint,
-    //  banner).
-    WallClock m_last_cue;
-    std::optional<WallClock> m_last_blind_press;
-    std::optional<WallClock> m_party_bar_since;
-    std::optional<WallClock> m_hint_since;
-    //  Text, a choice or a battle has shown: the scene has started.
-    bool m_scene_seen = false;
-    //  The looks in a row with the mission banner.
-    size_t m_banner_looks = 0;
-};
-
-
-//  Presses through scenes until the party bar or the controls hint has
-//  held a second, or
+//  Presses through scenes until the controls hint has held a second, or
 //  the mission banner has shown on two looks (then waits up to 10 s for it
 //  to go and, if it stays, presses A up to 3 times 1 s apart), or with
 //  `config.stop_at_choice` the choice box shows, or with
