@@ -46,7 +46,10 @@ std::vector<BoulderMove> moved_boulders(const std::set<std::string>& run_flags);
 //  the flag.
 void note_boulder_pushed(const MapPosition& start, Direction direction, int64_t tiles, std::set<std::string>& run_flags);
 
-//  `maps` with each boulder of `moved` on the tile it was pushed to.
+//  `maps` with each boulder of `moved` on the tile it was pushed to, or
+//  gone if that tile is a hole it fell through: with it standing on 3F's
+//  hole (34, 18), 19.04d's drop_to_2f went round by 3F's west room into
+//  Cooltrainer Colby's line (console B, 2026-11-16).
 std::vector<MapData> with_boulders_moved(std::vector<MapData> maps, const std::vector<BoulderMove>& moved);
 
 //  After a step from `map_before` that ended on `map_after`: if the player

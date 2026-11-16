@@ -11,6 +11,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/Navigation/Pokemon_GateTiles.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTiles.h"
 #include "PokemonFRLG_AutoStoryMovedBoulders.h"
 
 namespace PokemonAutomation{
@@ -89,12 +90,20 @@ std::vector<MapData> with_boulders_moved(std::vector<MapData> maps, const std::v
             if (map.name != move.map){
                 continue;
             }
-            for (Pokemon::MapObject& object : map.objects){
-                if (object.name == "pushable_boulder" && object.x == move.from.x && object.y == move.from.y){
-                    object.x = move.at.x;
-                    object.y = move.at.y;
-                    break;
+            //  A boulder pushed onto a hole fell through it: it is gone from
+            //  this floor, and the hole is open (OverworldSim::push_boulder()).
+            const bool fell = map.tiles.contains(move.at) && map.tiles.at(move.at) == TileKind::FALL_HOLE;
+            for (auto object = map.objects.begin(); object != map.objects.end(); ++object){
+                if (object->name != "pushable_boulder" || object->x != move.from.x || object->y != move.from.y){
+                    continue;
                 }
+                if (fell){
+                    map.objects.erase(object);
+                }else{
+                    object->x = move.at.x;
+                    object->y = move.at.y;
+                }
+                break;
             }
         }
     }

@@ -462,6 +462,29 @@ UnitTestResult test_below_ladder_stays_on_the_floor(){
     return true;
 }
 
+//  19.04d drop_to_2f (console B, 2026-11-16 03:33): push_into_hole pushed
+//  3F's boulder (33, 18) east into the hole (34, 18), where it fell to 2F.
+//  The maps planned on kept it standing on the hole, so the walk from
+//  (33, 18) to 2F's (34, 19) went round by 3F's west room and the ladder
+//  (34, 9), into Cooltrainer Colby's line (10, 17), and lost his battle.
+//  The boulder is gone from 3F: the walk is one step east, down the hole.
+UnitTestResult test_boulder_down_a_hole_leaves_it_open(){
+    const std::set<std::string> flags{"boulder_at:VictoryRoad_3F@33,18=34,18"};
+    Pokemon::GateState gates;
+    gates.switches_on.insert("VictoryRoad_3F/floor_switch_1");
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route_gated(
+        run_story_maps(flags), MapPosition{"VictoryRoad_3F", {33, 18}},
+        RouteGoal{MapPosition{"VictoryRoad_2F", {34, 19}}, std::nullopt}, gates, Pokemon::GateRules{}
+    );
+    if (!route || route->empty()){
+        return "no route from 3F (33, 18) to 2F (34, 19).";
+    }
+    if (route->size() != 1 || route->front().direction != Direction::EAST){
+        return std::format("{} leg(s), the first ending on {}, not one leg east down the hole.", route->size(), to_string(route->front().end));
+    }
+    return true;
+}
+
 const BoulderPressRead PUSHED{.scrolled = false, .boulder_moved = true};
 const BoulderPressRead WALKED{.scrolled = true, .boulder_moved = false};
 
@@ -605,6 +628,10 @@ const AutoStoryBouldersCase AUTO_STORY_BOULDERS_CASES[] = {
     {
         .input = {.name = "19.04b's below_ladder after the switch", .body = test_below_ladder_stays_on_the_floor},
         .expectation = {.description = "a route that never leaves Victory Road 1F"},
+    },
+    {
+        .input = {.name = "19.04d's drop_to_2f after the boulder fell down the hole", .body = test_boulder_down_a_hole_leaves_it_open},
+        .expectation = {.description = "one leg east, onto the hole (34, 18)"},
     },
     {
         .input = {.name = "a push of two tiles", .body = test_push_taps_twice_a_tile},
