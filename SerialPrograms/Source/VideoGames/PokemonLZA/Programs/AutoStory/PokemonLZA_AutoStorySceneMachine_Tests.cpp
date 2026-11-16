@@ -162,6 +162,48 @@ std::vector<Observation<ZonePose>> arrival_with_three_fades(){
     };
 }
 
+//  01.01's arrival up to its second black fade: text, a black fade, text,
+//  a second black fade.
+std::vector<Observation<ZonePose>> arrival_to_second_fade(){
+    return {
+        look_at(0ms, DIALOG),
+        look_at(1000ms, BLACK), look_at(1500ms),
+        look_at(2000ms, DIALOG),
+        look_at(4500ms, BLACK), look_at(5000ms),
+    };
+}
+
+//  `count` looks with the mission banner, `every` apart from `from`.
+std::vector<Observation<ZonePose>> banner_looks(Milliseconds from, Milliseconds every, size_t count){
+    std::vector<Observation<ZonePose>> looks;
+    for (size_t look = 0; look < count; look++){
+        looks.push_back(look_at(/*at=*/from + every * (int64_t)look, NOTHING, {MISSION_BANNER_READING}));
+    }
+    return looks;
+}
+
+//  01.01's arrival on the Italian game (console B, 2026-11-15): the banner
+//  stays until A, then the third black fade, then 5 s of nothing.
+std::vector<Observation<ZonePose>> arrival_banner_until_a(){
+    std::vector<Observation<ZonePose>> looks = arrival_to_second_fade();
+    for (const Observation<ZonePose>& look : banner_looks(/*from=*/5500ms, /*every=*/500ms, /*count=*/5)){
+        looks.push_back(look);
+    }
+    for (const Observation<ZonePose>& look : {look_at(8000ms), look_at(8500ms, BLACK), look_at(9000ms), look_at(9500ms), look_at(14500ms)}){
+        looks.push_back(look);
+    }
+    return looks;
+}
+
+//  01.01's arrival with a banner that A does not clear.
+std::vector<Observation<ZonePose>> arrival_banner_stays(){
+    std::vector<Observation<ZonePose>> looks = arrival_to_second_fade();
+    for (const Observation<ZonePose>& look : banner_looks(/*from=*/5500ms, /*every=*/500ms, /*count=*/20)){
+        looks.push_back(look);
+    }
+    return looks;
+}
+
 
 struct RunCase{
     std::string name;
@@ -598,6 +640,24 @@ const RunCase RUN_CASES[] = {
                 "[PLZA test] done on fade_settled.",
             },
         },
+    },
+    {
+        //  The Italian banner waited 110 s with no press (console B,
+        //  2026-11-15); one A cleared it.
+        .name = "with end_after_black_fades, a banner up 2 s gets A, and the run goes on to the third fade",
+        .input = {.looks = arrival_banner_until_a(), .config = three_fades_config()},
+        .expectation = {
+            .verdict = "done",
+            .a_presses = 3,
+            .line = "[PLZA test] done on fade_settled.",
+            .states = "dialog, fade_black, dialog, fade_black, banner_showing, banner_press, scene_moving, fade_black, "
+                "scene_moving, fade_settled",
+        },
+    },
+    {
+        .name = "with end_after_black_fades, a banner that 3 A presses 1 s apart do not clear fails as scene_stuck",
+        .input = {.looks = arrival_banner_stays(), .config = three_fades_config()},
+        .expectation = {.verdict = "failed: scene_stuck", .a_presses = 5},
     },
     {
         .name = "the trace logs each new state",

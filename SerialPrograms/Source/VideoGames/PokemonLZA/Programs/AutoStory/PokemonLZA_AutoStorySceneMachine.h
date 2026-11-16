@@ -75,7 +75,9 @@ struct SceneMachineConfig{
     //  Ends once this many black fades have been waited out and the screen
     //  has then shown no text, fade or banner for 5 s (or on the controls
     //  hint, if it comes first), and takes the mission banner for part of
-    //  the scene, not its end; whether it showed is logged. 01.01's arrival
+    //  the scene, not its end; whether it showed is logged. A banner up 2 s
+    //  gets A, up to 3 times 1 s apart (the Italian one stays until A,
+    //  console B 2026-11-15), and one that stays fails. 01.01's arrival
     //  ends on its third black fade after the ad, which follows the banner
     //  (console B, 2026-11-15, English and Italian; the banner detector
     //  missed it on the Italian game). Text after the last fade starts the
