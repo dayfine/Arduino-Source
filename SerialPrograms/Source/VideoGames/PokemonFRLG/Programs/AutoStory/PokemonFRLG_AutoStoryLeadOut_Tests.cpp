@@ -27,37 +27,44 @@ namespace{
 //  The lead at a trainer's battle menu, by the one rule (lead_on_field()).
 struct LeadOnFieldCase{
     std::string_view name;
-    LeadOnFieldInput input;
+    //  The lead is Blastoise.
+    struct Input{
+        bool box_gone;
+        bool member_sent;
+        std::string_view own_out;
+    };
+    Input input;
     struct Expectation{
         LeadOnField lead;
-    } expectation;
+    };
+    Expectation expectation;
 };
 
 const LeadOnFieldCase LEAD_ON_FIELD_CASES[] = {
     {
-        "Bruno's Onix's Roar (console B, 2026-11-16): Lapras out, box gone, none sent",
-        {.box_gone = true, .member_sent = false, .own_out = "lapras", .lead = "blastoise"},
-        {LeadOnField::FORCED_OUT},
+        .name = "Bruno's Onix's Roar (console B, 2026-11-16): Lapras out, box gone, none sent",
+        .input = {.box_gone = true, .member_sent = false, .own_out = "lapras"},
+        .expectation = {.lead = LeadOnField::FORCED_OUT},
     },
     {
-        "a Roar the box watch missed",
-        {.box_gone = false, .member_sent = false, .own_out = "lapras", .lead = "blastoise"},
-        {LeadOnField::FORCED_OUT},
+        .name = "a Roar the box watch missed",
+        .input = {.box_gone = false, .member_sent = false, .own_out = "lapras"},
+        .expectation = {.lead = LeadOnField::FORCED_OUT},
     },
     {
-        "a real faint: a member sent from the party list",
-        {.box_gone = true, .member_sent = true, .own_out = "lapras", .lead = "blastoise"},
-        {LeadOnField::FAINTED},
+        .name = "a real faint: a member sent from the party list",
+        .input = {.box_gone = true, .member_sent = true, .own_out = "lapras"},
+        .expectation = {.lead = LeadOnField::FAINTED},
     },
     {
-        "the lead read out: its box only hid in an animation",
-        {.box_gone = true, .member_sent = false, .own_out = "blastoise", .lead = "blastoise"},
-        {LeadOnField::OUT},
+        .name = "the lead read out: its box only hid in an animation",
+        .input = {.box_gone = true, .member_sent = false, .own_out = "blastoise"},
+        .expectation = {.lead = LeadOnField::OUT},
     },
     {
-        "nothing read, box gone: fainted",
-        {.box_gone = true, .member_sent = false, .own_out = "", .lead = "blastoise"},
-        {LeadOnField::FAINTED},
+        .name = "nothing read, box gone: fainted",
+        .input = {.box_gone = true, .member_sent = false, .own_out = ""},
+        .expectation = {.lead = LeadOnField::FAINTED},
     },
 };
 
@@ -68,7 +75,12 @@ public:
         , m_test(test)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        if (lead_on_field(m_test.input) != m_test.expectation.lead){
+        const LeadOnFieldCase::Input& input = m_test.input;
+        const LeadOnField lead = lead_on_field({
+            .box_gone = input.box_gone, .member_sent = input.member_sent,
+            .own_out = input.own_out, .lead = "blastoise",
+        });
+        if (lead != m_test.expectation.lead){
             return "Unexpected verdict.";
         }
         return true;
