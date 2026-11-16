@@ -13,6 +13,7 @@
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
+#include "PokemonFRLG_AutoStoryLeadOut.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -213,7 +214,10 @@ TurnAction BattleDecisions::turn(const PartyStatus& status){
     count_down_refused();
     m_last_move_slot.reset();
     const LeadOnField lead = m_kind == BattleKind::TRAINER && !m_switch_off
-        ? lead_on_field(m_lost, !m_sent.empty(), m_supplies.own_out, m_supplies.lead.species)
+        ? lead_on_field({
+            .box_gone = m_lost, .member_sent = !m_sent.empty(),
+            .own_out = m_supplies.own_out, .lead = m_supplies.lead.species,
+        })
         : LeadOnField::FAINTED;
     if (lead == LeadOnField::FORCED_OUT){
         return switch_lead_back();
@@ -427,13 +431,8 @@ void BattleDecisions::move_refused(){
     m_last_move_slot.reset();
 }
 
-void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
-    if (result == TurnResult::REFUSED){
-        refused(choice);
-        return;
-    }
-    const bool done = result == TurnResult::DONE;
-    if (!done && choice == TurnChoice::MOVE){
+void BattleDecisions::turn_not_done(TurnChoice choice){
+    if (choice == TurnChoice::MOVE){
         if (m_last_move_slot && !m_no_pp_read.insert(*m_last_move_slot).second){
             no_pp_left(m_supplies.lead, *m_last_move_slot);
         }else{
@@ -441,13 +440,21 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
         }
         return;
     }
-    if (!done && choice == TurnChoice::SWITCH_LEAD){
+    if (choice == TurnChoice::SWITCH_LEAD){
         m_switch_off = true;
         m_lost = m_lost_before_switch;
         return;
     }
-    if (!done){
-        m_items_off = true;
+    m_items_off = true;
+}
+
+void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
+    if (result == TurnResult::REFUSED){
+        refused(choice);
+        return;
+    }
+    if (result != TurnResult::DONE){
+        turn_not_done(choice);
         return;
     }
     switch (choice){
@@ -532,16 +539,6 @@ std::optional<size_t> BattleDecisions::next_member_slot(){
         }
     }
     return std::nullopt;
-}
-
-LeadOnField lead_on_field(bool box_gone, bool member_sent, std::string_view own_out, std::string_view lead){
-    if (!own_out.empty() && own_out == lead){
-        return LeadOnField::OUT;
-    }
-    if (!own_out.empty() && !member_sent){
-        return LeadOnField::FORCED_OUT;
-    }
-    return box_gone ? LeadOnField::FAINTED : LeadOnField::OUT;
 }
 
 void BattleDecisions::lead_fainted(){

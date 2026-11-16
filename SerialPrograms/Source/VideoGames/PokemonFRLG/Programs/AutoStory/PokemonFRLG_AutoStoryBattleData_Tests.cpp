@@ -20,6 +20,7 @@
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "PokemonFRLG_AutoStoryLeadOut.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 
 namespace PokemonAutomation{
@@ -398,37 +399,6 @@ UnitTestResult test_parlyz_heal_used(){
     return true;
 }
 
-//  The lead at a trainer's battle menu, by the one rule (lead_on_field()).
-struct LeadOnFieldCase{
-    std::string_view name;
-    struct Input{
-        bool box_gone;
-        bool member_sent;
-        std::string_view own_out;
-    } input;
-    struct Expectation{
-        LeadOnField lead;
-    } expectation;
-};
-
-const LeadOnFieldCase LEAD_ON_FIELD_CASES[] = {
-    {"Bruno's Onix's Roar (console B, 2026-11-16): Lapras out, box gone, none sent", {true, false, "lapras"}, {LeadOnField::FORCED_OUT}},
-    {"a Roar the box watch missed", {false, false, "lapras"}, {LeadOnField::FORCED_OUT}},
-    {"a real faint: a member sent from the party list", {true, true, "lapras"}, {LeadOnField::FAINTED}},
-    {"the lead read out: its box only hid in an animation", {true, false, "blastoise"}, {LeadOnField::OUT}},
-    {"nothing read, box gone: fainted", {true, false, ""}, {LeadOnField::FAINTED}},
-};
-
-UnitTestResult test_lead_on_field(){
-    for (const LeadOnFieldCase& test : LEAD_ON_FIELD_CASES){
-        const LeadOnFieldCase::Input& input = test.input;
-        if (lead_on_field(input.box_gone, input.member_sent, input.own_out, "blastoise") != test.expectation.lead){
-            return std::format("{}: unexpected verdict.", test.name);
-        }
-    }
-    return true;
-}
-
 //  Bruno's fight after the Roar: the lead's box went (the faint watch), our
 //  Lapras is out and nothing was sent. The turn switches Blastoise back in,
 //  the next is its own again; a real faint later still sends the next
@@ -482,10 +452,6 @@ UnitTestResult test_switch_back_failed(){
 }
 
 const AutoStoryBattleDataTestCase AUTO_STORY_BATTLE_DATA_CASES[] = {
-    {
-        .input = {.name = "the lead at the battle menu: out, fainted or dragged out", .body = test_lead_on_field},
-        .expectation = {.description = "dragged out only when another member is read out and none was sent"},
-    },
     {
         .input = {.name = "Bruno's Roar: the lead switched back in", .body = test_dragged_out_lead_switched_back},
         .expectation = {.description = "SWITCH_LEAD, then the lead's own turn; a real faint later sends past the protected member"},
@@ -563,6 +529,7 @@ void add_tests_AutoStoryBattleData(UnitTestDatabase& database){
     for (const auto& scenario : AUTO_STORY_BATTLE_DATA_CASES){
         database.add<Test_AutoStoryBattleData>(scenario);
     }
+    add_tests_AutoStoryLeadOut(database);
 }
 
 

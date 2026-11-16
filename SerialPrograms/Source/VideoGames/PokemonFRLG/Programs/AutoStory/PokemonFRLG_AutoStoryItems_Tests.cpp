@@ -563,55 +563,6 @@ public:
 };
 
 //  read_opponent_hp_fill() on console B's captures named
-//  read_own_battler() on console B's battle menus named
-//  <anything>_<species>.png, in English.
-class Test_OwnBattler : public ImageUnitTest{
-public:
-    Test_OwnBattler(const std::string& image)
-        : ImageUnitTest("PokemonFRLG::AutoStoryBattle own battler - " + image, {image})
-    {
-        m_memory += PADDLE_OCR_SINGLE_LINE_MEMORY_ESTIMATE;
-    }
-
-    virtual UnitTestResult run_on_images(
-        Logger& logger, CancellableScope& scope,
-        const std::vector<ImageRGB32>& images
-    ) const override{
-        const std::vector<std::string> words = parse_words(Filesystem::Path(image_paths()[0]).stem().string());
-        if (words.empty()){
-            return "Error: filename must be <anything>_<species>.";
-        }
-        const std::string read = read_own_battler(logger, Language::English, images[0]);
-        return read == words.back() ? UnitTestResult(true) : UnitTestResult(std::format("Read \"{}\", expected {}.", read, words.back()));
-    }
-};
-
-//  party_slot_of() on a party list: `species` at `slot` (from 0).
-class Test_PartySlotOf : public ImageUnitTest{
-public:
-    Test_PartySlotOf(const std::string& image, std::string species, size_t slot)
-        : ImageUnitTest(std::format("PokemonFRLG::AutoStoryBattle party slot of {} - {}", species, image), {image})
-        , m_species(std::move(species))
-        , m_slot(slot)
-    {
-        m_memory += PADDLE_OCR_SINGLE_LINE_MEMORY_ESTIMATE;
-    }
-
-    virtual UnitTestResult run_on_images(
-        Logger& logger, CancellableScope& scope,
-        const std::vector<ImageRGB32>& images
-    ) const override{
-        const std::optional<size_t> slot = party_slot_of(logger, Language::English, images[0], m_species);
-        return slot == std::optional<size_t>(m_slot)
-            ? UnitTestResult(true)
-            : UnitTestResult(std::format("{}: slot {}, expected {}.", m_species, slot ? std::to_string(*slot) : "none", m_slot));
-    }
-
-private:
-    std::string m_species;
-    size_t m_slot;
-};
-
 //  <anything>_FoeHp_<pixels>of48.png: the bar's filled share within a pixel.
 class Test_FoeHp : public ImageUnitTest{
 public:
@@ -958,11 +909,6 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
     //  The S.S. Anne rival's Pidgeotto at full HP, its Raticate low.
     database.add<Test_FoeHp>("PokemonFRLG/AutoStoryBattle/SSAnneRival_Pidgeotto_FoeHp_48of48.png");
     database.add<Test_FoeHp>("PokemonFRLG/AutoStoryBattle/SSAnneRival_Raticate_FoeHp_7of48.png");
-    //  Bruno's Onix's Roar (console B, 2026-11-16, 20.02): Lapras out; the turn before, Blastoise.
-    database.add<Test_OwnBattler>("PokemonFRLG/AutoStoryBattle/BrunoOnixRoar_OwnBattler_lapras.png");
-    database.add<Test_OwnBattler>("PokemonFRLG/AutoStoryBattle/BrunoOnix_OwnBattler_blastoise.png");
-    database.add<Test_PartySlotOf>("PokemonFRLG/Party/Party_6.png", "blastoise", /*slot=*/4);
-    database.add<Test_PartySlotOf>("PokemonFRLG/Party/Party_6.png", "raichu", /*slot=*/0);
     //  The battle's choices, registered here to keep add_tests() within its size.
     add_tests_AutoStoryParty(database);
     add_tests_AutoStoryEvolutionWait(database);

@@ -104,6 +104,8 @@ private:
     //  The game turned down `choice`: a move (Disable), or RUN in a
     //  trainer's battle, which makes the battle a trainer's.
     void refused(TurnChoice choice);
+    //  `choice` couldn't be made (TurnResult::NOT_DONE).
+    void turn_not_done(TurnChoice choice);
 
     Supplies& m_supplies;
     BattleKind m_kind;

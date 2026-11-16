@@ -14,7 +14,6 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryBattleData_H
 
 #include <cstddef>
-#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
@@ -51,16 +50,6 @@ std::vector<std::string> read_wild_foes(Logger& logger, Language language, const
 //  or among all of battle_species() for a trainer whose party the plan
 //  doesn't list (one fought on a leg). Empty if not read. Logs what it read.
 std::string read_trainer_foe(Logger& logger, Language language, const ImageViewRGB32& screen, const std::vector<std::string>& party);
-
-//  The player's Pokemon out on `screen`, a battle menu: the name its HP
-//  box shows, among battle_species(); empty if not read. After a Roar or
-//  Whirlwind it is another member than the lead (console B, 2026-11-16,
-//  Bruno's Onix dragged Lapras in).
-std::string read_own_battler(Logger& logger, Language language, const ImageViewRGB32& screen);
-
-//  The slot of the party list on `screen` (from 0, the big top-left one)
-//  whose name reads `species`; none if no slot does.
-std::optional<size_t> party_slot_of(Logger& logger, Language language, const ImageViewRGB32& screen, std::string_view species);
 
 //  Whether the battle's text box reads the game's answer to RUN in a
 //  trainer's battle, "No! There's no running from a trainer battle!", by

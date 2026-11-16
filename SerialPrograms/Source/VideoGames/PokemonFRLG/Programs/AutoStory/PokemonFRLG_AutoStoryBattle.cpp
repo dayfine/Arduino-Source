@@ -34,9 +34,11 @@
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBagUse.h"
 #include "PokemonFRLG_AutoStoryBattleBag.h"
+#include "PokemonFRLG_AutoStoryBattleSwitch.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
+#include "PokemonFRLG_AutoStoryLeadOut.h"
 #include "PokemonFRLG_AutoStoryPocketList.h"
 
 namespace PokemonAutomation{
@@ -252,25 +254,6 @@ TurnResult item_result(bool used){
     return used ? TurnResult::DONE : TurnResult::NOT_DONE;
 }
 
-//  POKEMON, bottom left of the battle menu, and time for the party list to show.
-void open_party_list(ProControllerContext& context){
-    tap(context, DPAD_RIGHT);
-    tap(context, DPAD_UP);
-    tap(context, DPAD_LEFT);
-    tap(context, DPAD_DOWN);
-    pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
-}
-
-//  The party list in battle opens on the lead: down to `slot`, then A, and
-//  SHIFT, the top of its menu.
-void send_member(ProControllerContext& context, size_t slot){
-    for (size_t c = 0; c < slot; c++){
-        pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
-    }
-    pbf_press_button(context, BUTTON_A, 160ms, 800ms);
-    pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
-}
-
 
 class BattleLoop{
 public:
@@ -401,26 +384,6 @@ private:
         m_console.log(std::format("Battle: the lead fainted; sending party slot {}.", *slot + 1), COLOR_ORANGE);
         send_member(m_context, *slot);
         m_last_press = now;
-    }
-
-    //  From the battle menu: POKEMON, the party list's slot that reads the
-    //  lead's species, SHIFT. Not the slot out (the top-left one), so never
-    //  a member the loop didn't mean to send. False, and back at the menu,
-    //  if the list doesn't show or no other slot reads the lead.
-    bool switch_lead_in(){
-        open_party_list(m_context);
-        VideoSnapshot screen = m_console.video().snapshot();
-        const std::optional<size_t> slot = screen && PartyMenuDetector(COLOR_RED).detect(screen)
-            ? party_slot_of(m_console.logger(), m_language, screen, m_supplies.lead.species)
-            : std::nullopt;
-        if (!slot || *slot == 0){
-            m_console.log("Battle: the lead isn't in the party list off the field; fighting on.", COLOR_RED);
-            pbf_press_button(m_context, BUTTON_B, 160ms, 1000ms);
-            return false;
-        }
-        m_console.log(std::format("Battle: the lead back in from party list slot {}.", *slot + 1), COLOR_ORANGE);
-        send_member(m_context, *slot);
-        return true;
     }
 
     //  Nothing pressed while the screen may be an evolution, up to MAX_HOLD.
@@ -596,7 +559,9 @@ private:
         }
     }
 
-    void take_turn(const ImageViewRGB32& screen){
+    //  The Pokemon out on the battle menu: a wild battle's at its first
+    //  menu, a trainer's and ours at each.
+    void read_battlers(const ImageViewRGB32& screen){
         const bool trainer = m_kind == BattleKind::TRAINER;
         if (!trainer && m_decisions.turns() == 0){
             m_supplies.wild_foes = read_wild_foes(m_console.logger(), m_language, screen);
@@ -605,6 +570,10 @@ private:
             m_supplies.foe_out = read_trainer_foe(m_console.logger(), m_language, screen, m_supplies.foes);
             m_supplies.own_out = read_own_battler(m_console.logger(), m_language, screen);
         }
+    }
+
+    void take_turn(const ImageViewRGB32& screen){
+        read_battlers(screen);
         if (m_refusal.refused(current_time())){
             m_console.log("Battle: the move list came back without a turn (Disable?); choosing another move.", COLOR_ORANGE);
             m_decisions.turn_done(TurnChoice::MOVE, TurnResult::REFUSED);
@@ -640,7 +609,7 @@ private:
             m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, action.item, ItemTarget::POKEMON_OUT, m_checks, m_language)));
             return;
         case TurnChoice::SWITCH_LEAD:
-            m_decisions.turn_done(action.choice, switch_lead_in() ? TurnResult::DONE : TurnResult::NOT_DONE);
+            m_decisions.turn_done(action.choice, switch_lead_in(m_console, m_context, m_language, m_supplies.lead.species) ? TurnResult::DONE : TurnResult::NOT_DONE);
             return;
         case TurnChoice::MOVE:
             m_console.log(std::format("Battle: move {}.", action.slot + 1));
