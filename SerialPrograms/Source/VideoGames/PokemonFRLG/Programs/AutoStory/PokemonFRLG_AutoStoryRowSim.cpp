@@ -707,11 +707,20 @@ private:
 
 }  // namespace
 
-//  A PUSH_BOULDER_VARIANT step: turned to the boulder, and the taps that
-//  push it `tiles` tiles (push_boulder_tiles()), as on the console.
+//  A PUSH_BOULDER_VARIANT step: turned to the boulder, Strength used if
+//  the step says so, and the taps that push it `tiles` tiles
+//  (push_boulder_tiles()), as on the console.
 std::string OverworldStepSim::push_boulder(const StoryStep& step){
     const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
     const int64_t tiles = Pokemon::story_arg<int64_t>(step.args, "tiles");
+    if (Pokemon::story_arg<bool>(step.args, "activate")){
+        if (m_sim.state().facing != direction){
+            sim_turn_to(m_sim, direction);
+        }
+        if (!m_sim.use_field(SimField::STRENGTH)){
+            return std::format("no boulder {} of {}.", direction_name(direction), to_string(MapPosition{m_at.map, m_at.tile}));
+        }
+    }
     SimBoulderPresses presses(m_sim);
     const MapPosition start{m_at.map, m_at.tile};
     const BoulderPush push = push_boulder_tiles(direction, tiles, presses);

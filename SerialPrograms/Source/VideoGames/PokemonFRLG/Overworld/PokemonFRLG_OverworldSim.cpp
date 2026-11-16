@@ -150,6 +150,7 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
     open_start_gates();
     m_player = PlayerState{start.point, elevation_at(map(), start.point), false};
     m_state.facing = facing;
+    m_state.strength_on = m_script.strength_on;
     m_state.on_bike = m_script.on_bike;
     m_frozen = m_script.message_open;
     show(m_frozen ? SimScreen::MESSAGE : m_script.start_menu_open ? SimScreen::START_MENU : SimScreen::OVERWORLD, m_now);
@@ -471,6 +472,14 @@ bool OverworldSim::rolls_encounter(int rate){
 //  Blocked holding `direction` at `pressed`: a sign walked into moving north
 //  or south shows its message.
 void OverworldSim::bump(Direction direction, Milliseconds pressed){
+    if (m_state.strength_on && boulder_ahead()){
+        //  With Strength on, walking into a boulder pushes it, as A's
+        //  push does: 19.04d's hold east "to wall" at Victory Road 3F's
+        //  (33, 18) pushed it into the hole (34, 18) with Strength on from
+        //  the save (console B, 2026-11-16).
+        push_boulder();
+        return;
+    }
     const TilePos ahead = m_player.position.next(direction);
     const bool sign = tile_at(map(), ahead) == TileKind::SIGN
         && (direction == Direction::NORTH || direction == Direction::SOUTH);
