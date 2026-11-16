@@ -77,13 +77,12 @@ struct StoryInterrupts{
     InterruptKnobs knobs = {};
     InterruptHandlerTable handlers = {};
     //  Looks at a screen that stays UNSETTLED (a fade with no battle yet)
-    //  before it fails the step as "interrupt_unsettled". A step that
+    //  before it fails the step as "interrupt_unsettled": enough for a
+    //  battle's opening to show its battle, or for a door's fade to settle
+    //  as a warp, battle_after_fade (8 s) after it came back up. BDSP's
+    //  300 ms looks cover 12 s, FRLG's 400 ms looks 16 s. A step that
     //  starts on it gets it on the first look.
-    size_t max_looks = 3;
-    //  The same, for a screen that may be a battle's opening: enough looks
-    //  for its battle to show. BDSP's 300 ms looks cover 12 s, past its
-    //  battle_after_fade (8 s), after which a fade with no battle settles.
-    size_t max_opening_looks = 40;
+    size_t max_unsettled_looks = 40;
     //  Interrupts cleared for one step before it fails as
     //  "too_many_interrupts".
     size_t max_per_step = 3;

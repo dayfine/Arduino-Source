@@ -22,12 +22,14 @@
  *  that is its battle's opening, still playing (BDSP's Starly battle right
  *  after the starter is picked), and the step waits for it itself.
  *
- *  Before another step, an unsettled screen that may be a battle's opening
- *  (a white flash, a fade still down, a fade after a dialog box) is looked
- *  at until its battle shows, up to max_opening_looks looks: the walk
- *  before the step ended in grass or in a trainer's sight. The battle is
- *  then cleared as any other. A fade that came back up with no box before
- *  it (a door's) is looked at max_looks times only.
+ *  Before another step, an unsettled screen is looked at until it settles,
+ *  up to max_unsettled_looks looks. A battle's opening (a white flash, a
+ *  fade still down, a fade after a dialog box) settles on its battle: the
+ *  walk before the step ended in grass or in a trainer's sight. The battle
+ *  is then cleared as any other. A door's fade, back up, settles as a warp
+ *  once no battle came for battle_after_fade; whatever the game scripts
+ *  after the door (the Elite Four rooms walk the player in for 2.5 s,
+ *  taking no input) is over by then, and the warp is cleared as any other.
  *
  */
 
