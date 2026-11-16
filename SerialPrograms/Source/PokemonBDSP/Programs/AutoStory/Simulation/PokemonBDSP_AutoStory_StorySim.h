@@ -81,6 +81,7 @@ struct SimMisses{
     bool fading_in = false;
     bool slid = false;
     std::string banner_up = {};
+    std::map<std::string, Milliseconds> dialog_waits = {};
 };
 
 //  How a warp's fade looks on the screen (#268's design note); the

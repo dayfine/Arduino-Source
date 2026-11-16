@@ -212,6 +212,34 @@ UnitTestResult test_stubbed_steps_need_the_console(Logger& logger){
     return true;
 }
 
+//  Console B, 2026-11-15: three 00.01 scenes each waited the full 15 s
+//  after the preceding step had already played them. Audit every authored
+//  scene through the real StoryWalkSteps::mash() seam.
+UnitTestResult test_scene_start_waits(Logger& logger){
+    SimExecutor sim(logger);
+    run_rows_on(sim, logger, {.from = "00.00", .to = "01.11"});
+    if (!sim.result().error.empty()){
+        return "The run failed: " + sim.result().error;
+    }
+    size_t scenes = 0;
+    for (const auto& [row, step] : story_steps()){
+        if (step.kind != StoryStepKind::MASH){
+            continue;
+        }
+        const auto found = sim.misses().dialog_waits.find(step.name);
+        if (found == sim.misses().dialog_waits.end()){
+            return std::format("{} {} did not check for its opening line.", row, step.name);
+        }
+        if (found->second > Milliseconds(3000)){
+            return std::format("{} {} waits {} ms for an optional opening line; expected at most 3000 ms.",
+                row, step.name, found->second.count());
+        }
+        scenes++;
+    }
+    logger.log(std::format("{} scene steps use the bounded optional-line pre-watch.", scenes));
+    return true;
+}
+
 
 
 struct AutoStoryStoryActionsInput{
@@ -259,6 +287,10 @@ const AutoStoryStoryActionsCase AUTO_STORY_STORY_ACTIONS_CASES[] = {
     },
     {
         .input = {"Story actions: the steps the sim stubs from 00.00 to 01.11 all need the console", test_stubbed_steps_need_the_console},
+        .expectation = {},
+    },
+    {
+        .input = {"Story actions: scene starts do not wait 15 seconds for an optional line", test_scene_start_waits},
         .expectation = {},
     },
 };

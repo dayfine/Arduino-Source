@@ -357,6 +357,7 @@ WalkResult SimKnobRouteIO::slide_on(const SimSlide& slide, WalkResult result){
 }
 
 bool SimKnobRouteIO::dialog_within(Milliseconds wait, Color color){
+    m_misses.dialog_waits[m_step] = wait;
     const auto late = m_knobs.first_line.find(m_step);
     if (late != m_knobs.first_line.end() && late->second > wait){
         note(std::format("[Sim] {}: the first line comes after {} ms, past the {} ms wait.", m_step, late->second.count(), wait.count()), RouteNote::LOG);
