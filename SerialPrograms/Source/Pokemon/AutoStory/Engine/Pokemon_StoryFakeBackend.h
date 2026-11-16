@@ -24,7 +24,6 @@ namespace Pokemon{
 
 
 //  What a FakeStoryBackend shows and does.
-//  code-health: allow test_only_api -- the test double's script: only unit tests build a FakeStoryBackend, by design
 template <StoryPose PoseType>
 struct FakeStoryScript{
     //  observe()'s answers in order; the last repeats. None: an empty look.
@@ -37,7 +36,6 @@ struct FakeStoryScript{
 //  The backend of the engine's unit tests and of a game's scripted tests,
 //  for any pose type.
 //  code-health: allow public_methods -- the backend calls it fakes plus the two recordings tests read; nothing to split
-//  code-health: allow test_only_api -- a test double: the engine's and the games' unit tests are its only users by design
 template <StoryPose PoseType>
 class FakeStoryBackend : public StoryBackend<PoseType>{
 public:
