@@ -34,7 +34,7 @@
       {
         "id": "mable_talk",
         "kind": "scene",
-        "why": "step 69: Mable's research requests, until control in her office: A takes her first question's top answer (\"Yes\") and closes her \"Press X...\" line. The walk ends on her dialog box, so the scene has started.",
+        "why": "step 69: Mable's research requests, until control in her office: A takes her first question's top answer (\"Yes\") and closes her \"Press X...\" line. The walk ends on her dialog box, so the scene has started; control before her box or choice does not end it (plza/autostory's talk scene).",
         "action": "a"
       },
       {
@@ -45,9 +45,9 @@
       },
       {
         "id": "leave_mable",
-        "kind": "scene",
-        "why": "step 71: through Mable's talk after the menu, until control in her office",
-        "action": "a"
+        "kind": "game_action",
+        "why": "step 71: out of the menu, through Mable's talk, until control in her office; at once when there is control already. plza/autostory's step (a scene that control ends, passed on console B 2026-11-14 22:17), here as mash_to_move_hints: the lean scene step would wait 45 s for a scene and fail when none follows the menu.",
+        "action": "mash_to_move_hints"
       }
     ],
     "metadata": {

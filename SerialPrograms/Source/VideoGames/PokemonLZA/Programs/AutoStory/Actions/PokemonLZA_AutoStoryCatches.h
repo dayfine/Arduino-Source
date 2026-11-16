@@ -35,33 +35,39 @@ Pokemon::Outcome catch_tutorial(StoryEnv& env, PlzaBackend& backend, int max_thr
 //  "still_a_target" after `max_rounds`.
 Pokemon::Outcome battle_then_catch(StoryEnv& env, PlzaBackend& backend, int max_rounds);
 
-//  What catch_in_zone() is after: the overworld party bar showing
-//  `party_species` filled slots, in `max_throws` throws at most.
+//  What catch_in_zone() is after: `new_species` new species caught, so
+//  the party bar shows `party_species` filled slots, in `max_throws`
+//  throws at most.
 struct ZoneCatchGoal{
+    int new_species = 0;
     int party_species = 0;
     int max_throws = 0;
 };
 
 //  03.08's catches for the "register five species" quest (3/5 after the
-//  tutorial), in Wild Zone 1. From Taunie's rocks, where the start save
-//  stands, first to the road's spot at 100 by ZoneStart: steps west by the
-//  minimap (face_heading()) until a marker read agrees, then the marker
-//  walk; it fails there, before any search, as "rocks_not_left" or
-//  "zone_spot_not_reached" (or face_heading()'s "heading_missed"). Then
-//  ZoneSearch from the spot, walked back to after each catch, fight and
-//  round of legs: the camera turned in 8 steps with a ZL lock-on after each; a target whose
-//  plate shows no caught mark (lock_target_caught()) is thrown at, and a
-//  wild battle on is fought (one of a species already caught is fought
-//  off). A full turn with nothing new takes one short leg, each leg out
-//  walked back, none toward the objective at an agreed distance read of
-//  60 or less (the far gate is at ~55), and a round of legs is followed by
-//  a pause for spawns. The marker's distance never steers it: walks
-//  between distance stops left the zone or stuck (console B, six runs,
-//  2026-11-16). The party bar's filled slots (PartyBarDetector), read
-//  before the first look and after each look that threw, end it at
-//  `goal.party_species`: the throws go only at species not caught, so
-//  each catch is a new species (the Pokedex's "Registered!" banner is
-//  missed at times; console B 2026-11-14). 10 minutes at most; fails as
+//  tutorial), in Wild Zone 1, as plza/autostory's passed on console B
+//  (2026-11-14). From Taunie's rocks, where the start save stands, first
+//  to the road's spot at 100 by ZoneStart's measured route
+//  (TAUNIE_ROCKS_ROUTE): a leg left off the rocks, a marker read in its
+//  range, then the marker walk; it fails there, before any catch, as
+//  "rocks_not_left" or "zone_spot_not_reached". Then it patrols the
+//  user's two catch spots (CATCH_SPOTS): 100 (Scatterbug on the plaza's
+//  road) and 60 (Mareep by the far gate), back and forth, 10 visits and
+//  10 minutes at most, turning back at once at a spot where a new
+//  species was caught (spot_visit()). At each stop, from the middle of
+//  the road, it fights a wild battle that is on (one of a species already
+//  caught is fought off), else sweeps the camera for the lock-on brackets
+//  (LockOnBracketDetector), turns to the nearest, holds ZL, flicks through
+//  the targets' plates and throws at the nearest not caught
+//  (lock_target_caught()), walking toward it first when far. After a
+//  throw it throws again at once at a plate that locks on again (a miss),
+//  or weakens a target that broke out into a battle (after_throw()). The
+//  party bar's filled slots (PartyBarDetector), read before the first
+//  stop and after each stop that threw, end it at `goal.party_species`:
+//  the throws go only at species not caught, so each catch is a new
+//  species. Unread, the tally of "Registered!" banners
+//  (DexRegisteredDetector) and plates read "not caught" before a throw
+//  that left no battle and no plate decides (species_tally()). Fails as
 //  "short_of_species", still in the zone.
 Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal);
 
@@ -71,7 +77,8 @@ Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCa
 //  60 the far gate's pillars are straight down the road; the marker is not
 //  on the gate but past it and to its left, behind the zone's fence, so a
 //  walk at the marker was held up at 36 and wandered off (console B,
-//  2026-11-13 and 2026-11-14). Fails as "road_stop_not_reached".
+//  2026-11-13 and 2026-11-14). Ends with the camera on the marker. Fails
+//  as "road_stop_not_reached".
 Pokemon::Outcome walk_back_to_zone_road(StoryEnv& env, PlzaBackend& backend);
 
 

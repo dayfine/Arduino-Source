@@ -11,6 +11,7 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryCaughtMarkReader_H
 
 #include <optional>
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 
 namespace PokemonAutomation{
@@ -28,6 +29,11 @@ namespace PokemonLZA{
 //  Bunnelby and Scatterbug (2026-11-14), on console B. The plate shows
 //  whether or not the partner is out; the move symbols only when it is.
 std::optional<bool> lock_target_caught(const ImageViewRGB32& screen);
+
+//  While ZL locks on to a wild Pokemon: its name plate's HP bar (as
+//  above) as shares of the screen, nothing when no plate was found. The
+//  plate stands above the target, so a lower bar is a nearer target.
+std::optional<ImageFloatBox> lock_target_plate_bar(const ImageViewRGB32& screen);
 
 
 

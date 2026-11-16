@@ -25,6 +25,7 @@
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatches.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryConfirmChoices.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryGateWalk.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLaunch.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLines.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerWalk.h"
@@ -83,19 +84,22 @@ StoryActionSpec console_only(StoryActionSpec spec){
     return spec;
 }
 
+//  A walk to a gate's args: its bound, `timeout_ms` when left out, and the
+//  heading it faces first.
+std::vector<StoryArgSpec> gate_args(int64_t timeout_ms){
+    return {
+        optional_ms("timeout_ms", timeout_ms, "going this long with no A prompt fails the step"),
+        optional_int("heading", "the minimap heading to face first, degrees clockwise from up"),
+    };
+}
+
 //  The GAME actions that run only on a console.
 std::vector<StoryActionSpec> console_specs(){
     return {
         console_only(game_spec("new_game_intro")),
         console_only(game_spec("confirm_new_game")),
-        console_only(game_spec("run_to_gate", {
-            optional_ms("timeout_ms", 8000, "running this long with no A prompt fails the step"),
-            StoryArgSpec{
-                .key = "heading", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
-                .why = "the minimap heading to face first, degrees clockwise from up",
-            },
-        })),
-        console_only(game_spec("leave_zone_gate")),
+        console_only(game_spec("run_to_gate", gate_args(/*timeout_ms=*/8000))),
+        console_only(game_spec("walk_to_zone_gate_entrance", gate_args(/*timeout_ms=*/15000))),
         console_only(game_spec("catch_tutorial")),
         console_only(game_spec("battle_then_catch")),
         console_only(game_spec("catch_in_zone")),
@@ -211,28 +215,41 @@ Outcome run_to_gate(StoryEnv& env, Milliseconds timeout){
     return Pokemon::outcome_ok();
 }
 
-//  The handler of "run_to_gate" on the console `env`; none: fails as
-//  console_only. Its arg "heading", if given, is faced first
-//  (face_heading()), then run_to_gate().
-Handler gate_run_handler(StoryEnv* env){
+//  A walk to a wild zone's gate on the console, by a GateWalk.
+using GateStep = Outcome (*)(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk);
+
+//  "run_to_gate": the walk's heading faced first (face_heading()), if it
+//  has one, then run_to_gate().
+Outcome run_gate_step(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk){
+    if (walk.heading){
+        const Outcome faced = face_heading(backend, minimap_arrow(env), *walk.heading);
+        if (!faced.succeeded()){
+            return faced;
+        }
+    }
+    return run_to_gate(env, walk.timeout);
+}
+
+//  The handler of the gate walk `name` on the console `env`, its args
+//  "heading" (if given) and "timeout_ms" as a GateWalk; none: fails as
+//  console_only. An OperationFailedException fails as "gate_not_reached".
+Handler gate_handler(StoryEnv* env, std::string name, GateStep step){
     if (env == nullptr){
-        return [](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
-            return Pokemon::outcome_failed(std::string(Pokemon::CONSOLE_ONLY), "run_to_gate runs only on a console");
+        return [name](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
+            return Pokemon::outcome_failed(std::string(Pokemon::CONSOLE_ONLY), name + " runs only on a console");
         };
     }
-    return [env](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
-        const Milliseconds timeout(Pokemon::story_arg<int64_t>(call.args, "timeout_ms"));
+    return [env, name, step](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
+        GateWalk walk;
+        walk.timeout = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "timeout_ms"));
         const auto heading = call.args.find("heading");
+        if (heading != call.args.end()){
+            walk.heading = (double)std::get<int64_t>(heading->second);
+        }
         try{
-            if (heading != call.args.end()){
-                const Outcome faced = face_heading(*env, backend, (double)std::get<int64_t>(heading->second));
-                if (!faced.succeeded()){
-                    return faced;
-                }
-            }
-            return run_to_gate(*env, timeout);
+            return step(*env, backend, walk);
         }catch (OperationFailedException& e){
-            backend.log(std::format("[PLZA] run_to_gate failed: {}", e.message()));
+            backend.log(std::format("[PLZA] {} failed: {}", name, e.message()));
             return Pokemon::outcome_failed("gate_not_reached", e.message());
         }
     };
@@ -265,17 +282,6 @@ Outcome claim_research_reward(StoryEnv& env, PlzaBackend& backend){
     return Pokemon::outcome_ok();
 }
 
-//  At a wild zone's gate on the way out, its "A Leave" prompt up: A
-//  through the gate to the street with upstream's leave_zone_gate().
-//  Fails as "gate_left_unsure" when a day/night change came on the way
-//  (upstream cannot tell then whether the player left).
-Outcome leave_gate(StoryEnv& env, PlzaBackend&){
-    if (!leave_zone_gate(env.env.console, env.context)){
-        return Pokemon::outcome_failed("gate_left_unsure", "a day/night change while leaving the zone's gate");
-    }
-    return Pokemon::outcome_ok();
-}
-
 //  A console action's body.
 using ConsoleStep = Outcome (*)(StoryEnv& env, PlzaBackend& backend);
 
@@ -289,11 +295,10 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
             return battle_then_catch(env, backend, /*max_rounds=*/6);
         }},
         {"catch_in_zone", [](StoryEnv& env, PlzaBackend& backend){
-            //  5 registered species, 3 after the tutorial; 12 throws.
-            return catch_in_zone(env, backend, ZoneCatchGoal{.party_species = 5, .max_throws = 12});
+            //  5 registered species, 3 after the tutorial: 2 new; 12 throws.
+            return catch_in_zone(env, backend, ZoneCatchGoal{.new_species = 2, .party_species = 5, .max_throws = 12});
         }},
         {"walk_back_to_zone_road", walk_back_to_zone_road},
-        {"leave_zone_gate", leave_gate},
         {"walk_to_marker", walk_to_marker},
         {"claim_mable_research_reward", claim_research_reward},
     };
@@ -619,24 +624,37 @@ std::optional<std::pair<int, int>> choice_rows(const ScreenObservation& look){
     return std::make_pair(selected->second, rows->second);
 }
 
-//  "choose_<index>": with a choice box on screen (within CHOICE_WAIT),
-//  moves the highlight from where it reads to row `index` (0 the top) with
-//  the D-pad, reads it there, then A. Fails as "no_choice" when no choice
+//  The choice box's rows within CHOICE_WAIT, if it shows with rows that read.
+std::optional<std::pair<int, int>> wait_for_choice_rows(Pokemon::StoryBackend<ZonePose>& backend){
+    for (Milliseconds waited(0); ; waited += CHOICE_POLL){
+        backend.scope().throw_if_cancelled();
+        const std::optional<std::pair<int, int>> rows = choice_rows(backend.observe());
+        if (rows || waited >= CHOICE_WAIT){
+            return rows;
+        }
+        backend.wait(CHOICE_POLL);
+    }
+}
+
+//  A presses through a question's text until its choices show (the lab
+//  elevator's "Which floor?"), each after CHOICE_WAIT with no choice.
+constexpr int CHOICE_TEXT_PRESSES = 3;
+
+//  "choose_<index>": with a choice box on screen (within CHOICE_WAIT, or
+//  after up to CHOICE_TEXT_PRESSES A presses through the text), moves the
+//  highlight from its row to row `index` (0 the top) with the D-pad, reads it there, then A. Fails as "no_choice" when no choice
 //  box with rows that read shows, "no_such_choice" when it has no row
 //  `index`, and "choice_not_reached" when the highlight is elsewhere after
 //  the presses.
 Outcome choose_step(Pokemon::StoryBackend<ZonePose>& backend, int index){
-    std::optional<std::pair<int, int>> rows;
-    for (Milliseconds waited(0); ; waited += CHOICE_POLL){
-        backend.scope().throw_if_cancelled();
-        rows = choice_rows(backend.observe());
-        if (rows || waited >= CHOICE_WAIT){
-            break;
-        }
-        backend.wait(CHOICE_POLL);
+    std::optional<std::pair<int, int>> rows = wait_for_choice_rows(backend);
+    for (int press = 0; !rows && press < CHOICE_TEXT_PRESSES; press++){
+        backend.log(std::format("[PLZA] choose_{}: no choice yet: A through the text", index));
+        backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
+        rows = wait_for_choice_rows(backend);
     }
     if (!rows){
-        return Pokemon::outcome_failed("no_choice", std::format("no choice box with rows that read in {} ms", CHOICE_WAIT.count()));
+        return Pokemon::outcome_failed("no_choice", std::format("no choice box with rows that read after {} A presses", CHOICE_TEXT_PRESSES));
     }
     const auto [selected, count] = *rows;
     if (index >= count){
@@ -701,7 +719,10 @@ Handler plza_handler(StoryEnv* env, const StoryActionSpec& spec){
         });
     }
     if (spec.name == "run_to_gate"){
-        return gate_run_handler(env);
+        return gate_handler(env, spec.name, run_gate_step);
+    }
+    if (spec.name == "walk_to_zone_gate_entrance"){
+        return gate_handler(env, spec.name, walk_to_zone_gate);
     }
     const auto console_step = console_steps().find(spec.name);
     if (console_step != console_steps().end()){
