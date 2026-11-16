@@ -201,6 +201,7 @@ class ProgramActions:
         self.settle_pending(reader.console)
         state = reader.console_state()
         instance = state['app']['instance']['id'] if state['app'] is not None else ''
+        # Only used once begin_action has validated request_id; until then it may be any value.
         name = reader.channel.request_name(request['tool'], str(request.get('request_id')), unique=True)
         record, act = self.plane.begin_action(client_id, request, instance, functools.partial(check, state), name)
         tool = request['tool']

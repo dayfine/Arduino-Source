@@ -56,7 +56,7 @@ def _ask(console: ConsoleReader, label: str, command: Command, sleep: Callable[[
     request_id = str(new_uuid())
     channel = console.channel
     name = channel.request_name(label, request_id)
-    channel.send(name, request_id, (command,))
+    shot.send_or_refuse(channel, name, request_id, (command,), label)
     deadline = started + (QUERY_TIMEOUT_MS + shot.ANSWER_GRACE_MS) / 1000.0
     journal = await_answer(channel, name, console.now, sleep, deadline, shot.POLL_S)
     if journal is None:
