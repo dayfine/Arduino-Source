@@ -42,7 +42,7 @@ void PlzaConsoleBackend::tap(Direction direction){
 }
 
 void PlzaConsoleBackend::hold(Direction direction, Milliseconds duration, Pokemon::StoryPace pace){
-    stick(Pokemon::direction_degrees(direction), duration, 0ms, pace);
+    stick(Pokemon::direction_degrees(direction), duration, /*release=*/0ms, pace);
 }
 
 void PlzaConsoleBackend::stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace){
@@ -101,7 +101,7 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
 
 Pokemon::Outcome PlzaConsoleBackend::battle(){
     try{
-        fight_story_battle(m_env.env, m_env.env.console, m_env.context, m_env.battle_ai, 120s);
+        fight_story_battle(m_env.env, m_env.env.console, m_env.context, m_env.battle_ai, /*timeout=*/120s);
     }catch (OperationFailedException& e){
         return Pokemon::outcome_failed("battle_failed", e.message());
     }
@@ -121,8 +121,8 @@ CancellableScope& PlzaConsoleBackend::scope(){
 void story_turn(PlzaBackend& backend, double degrees){
     //  150 ms is the tap the story was recorded with.
     //  Short releases: the legs run back to back, as when played by hand.
-    backend.press(BUTTON_L, 100ms, 150ms);
-    backend.stick(degrees, 150ms, 100ms, Pokemon::StoryPace::WALK);
+    backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
+    backend.stick(degrees, /*duration=*/150ms, /*release=*/100ms, Pokemon::StoryPace::WALK);
 }
 
 

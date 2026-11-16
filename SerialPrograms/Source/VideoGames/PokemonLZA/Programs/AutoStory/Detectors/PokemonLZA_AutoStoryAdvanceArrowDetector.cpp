@@ -125,7 +125,7 @@ bool AdvanceArrowDetector::detect(const ImageViewRGB32& screen){
     const ImageViewRGB32 area = extract_box_reference(screen, m_area);
     //  White: red and green 235 or more, blue 220 or more; dark: every
     //  channel 110 or under.
-    return chevron_in(area, scale, 0x00ebebdc, 0xffffffff) || chevron_in(area, scale, 0x00000000, 0xff6e6e6e);
+    return chevron_in(area, scale, /*mins=*/0x00ebebdc, /*maxs=*/0xffffffff) || chevron_in(area, scale, /*mins=*/0x00000000, /*maxs=*/0xff6e6e6e);
 }
 
 

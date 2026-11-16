@@ -114,14 +114,14 @@ const LintCase LINT_CASES[] = {
     {
         .name = "a walk to a white fade passes",
         .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-            {"legs", std::vector<Pokemon::StoryTimedLeg>{{0, 4500}}}, {"end", std::string("fade_white")},
+            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}}, {"end", std::string("fade_white")},
         }}},
         .expectation = {.errors = ""},
     },
     {
         .name = "a walk to an unknown end fails",
         .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-            {"legs", std::vector<Pokemon::StoryTimedLeg>{{0, 4500}}}, {"end", std::string("sideways")},
+            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}}, {"end", std::string("sideways")},
         }}},
         .expectation = {.errors = "01.01 w: \"end\" must be \"fade_white\", \"fade_black\" or \"dialog\""},
     },
@@ -175,7 +175,7 @@ const Observation<ZonePose> A_PROMPT = look({ScreenEvent::INTERACT_PROMPT, Scree
 
 //  The party bar (free control), `at` after the scripts' common start.
 Observation<ZonePose> party_bar(Milliseconds at){
-    return look({ScreenEvent::PLAYER_CAN_MOVE}, {}, at);
+    return look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, at);
 }
 
 //  A choice box of `rows` rows, row `selected` highlighted.
@@ -307,21 +307,21 @@ const RunCase RUN_CASES[] = {
         .name = "01.01 runs from the platform through the arrival to the mission banner",
         .input = {.checkpoint = "01.01", .first_step = 0, .looks = concat(walk_into_white_fade(), {
             WHITE_FADE,
-            look({}, {}, Milliseconds(1000)),
-            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(1500)),
-            look({}, {MISSION_BANNER_READING}, Milliseconds(2000)),
-            look({}, {MISSION_BANNER_READING}, Milliseconds(2250)),
-            look({}, {}, Milliseconds(2500)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(1500)),
+            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(2000)),
+            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(2250)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(2500)),
         })},
         .expectation = {.verdict = "done", .line = "[PLZA mash_to_move_hints] done on mission_banner."},
     },
     {
         .name = "01.01's arrival ends on the controls hint held a second",
         .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)),
-            look({}, {CONTROLS_HINT_READING}, Milliseconds(1000)),
-            look({}, {CONTROLS_HINT_READING}, Milliseconds(1500)),
-            look({}, {CONTROLS_HINT_READING}, Milliseconds(2000)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look(/*events=*/{}, {CONTROLS_HINT_READING}, Milliseconds(1000)),
+            look(/*events=*/{}, {CONTROLS_HINT_READING}, Milliseconds(1500)),
+            look(/*events=*/{}, {CONTROLS_HINT_READING}, Milliseconds(2000)),
         }},
         .expectation = {
             .verdict = "done",
@@ -332,8 +332,8 @@ const RunCase RUN_CASES[] = {
     {
         .name = "01.01's arrival fails after a minute with nothing going on",
         .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
-            look({}, {}, Milliseconds(0)),
-            look({}, {}, Milliseconds(60000)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(60000)),
         }},
         .expectation = {.verdict = "failed at arrival_scenes: scene_quiet"},
     },
@@ -380,9 +380,9 @@ const RunCase RUN_CASES[] = {
     {
         .name = "01.02's battle area ends on the controls hint, not saved",
         .input = {.checkpoint = "01.02", .first_step = 3, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)),
-            look({}, {CONTROLS_HINT_READING}, Milliseconds(1000)),
-            look({}, {CONTROLS_HINT_READING}, Milliseconds(2000)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look(/*events=*/{}, {CONTROLS_HINT_READING}, Milliseconds(1000)),
+            look(/*events=*/{}, {CONTROLS_HINT_READING}, Milliseconds(2000)),
         }},
         .expectation = {.verdict = "done", .line = "[Save] 01.02: not saved (save unverified)"},
     },
@@ -407,9 +407,9 @@ const RunCase RUN_CASES[] = {
     {
         .name = "01.03's battle start: A through the talk and the tutorial card, done on the battle HUD",
         .input = {.checkpoint = "01.03", .first_step = 2, .steps = 1, .looks = {
-            look({ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, {}, Milliseconds(0)),
-            look({}, {}, Milliseconds(500)),
-            look({ScreenEvent::BATTLE_STARTED}, {}, Milliseconds(1000)),
+            look({ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(500)),
+            look({ScreenEvent::BATTLE_STARTED}, /*readings=*/{}, Milliseconds(1000)),
         }},
         .expectation = {
             .verdict = "done",
@@ -431,11 +431,11 @@ const RunCase RUN_CASES[] = {
     {
         .name = "01.03 ends past the mission complete card on Main Mission 02's banner, not saved",
         .input = {.checkpoint = "01.03", .first_step = 4, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)),
-            look({}, {MISSION_COMPLETE_READING}, Milliseconds(500)),
-            look({}, {MISSION_BANNER_READING}, Milliseconds(1000)),
-            look({}, {MISSION_BANNER_READING}, Milliseconds(1250)),
-            look({}, {}, Milliseconds(1500)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look(/*events=*/{}, {MISSION_COMPLETE_READING}, Milliseconds(500)),
+            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(1000)),
+            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(1250)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(1500)),
         }},
         .expectation = {
             .verdict = "done",
@@ -454,7 +454,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "02.01's scene after Brigitte: A at the text, done on the party bar held a second, not saved",
         .input = {.checkpoint = "02.01", .first_step = 3, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)), party_bar(Milliseconds(500)), party_bar(Milliseconds(1600)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), party_bar(Milliseconds(500)), party_bar(Milliseconds(1600)),
         }},
         .expectation = {.verdict = "done", .inputs = "press A, wait 250ms", .line = "[Save] 02.01: not saved (save unverified)"},
     },
@@ -463,7 +463,7 @@ const RunCase RUN_CASES[] = {
         //  past the street scene's trigger and A-mashed for two minutes.
         .name = "02.02's street scene fails when it never starts",
         .input = {.checkpoint = "02.02", .first_step = 1, .steps = 1, .looks = {
-            look({}, {}, Milliseconds(0)), look({}, {}, Milliseconds(46000)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(46000)),
         }},
         .expectation = {.verdict = "failed at street_scene: scene_never_started", .inputs = "wait 500ms"},
     },
@@ -485,7 +485,7 @@ const RunCase RUN_CASES[] = {
         .name = "02.03's lobby: A at the door's prompt until the fade, then the scene to the party bar",
         .input = {.checkpoint = "02.03", .first_step = 1, .looks = {
             A_PROMPT, BLACK_FADE,
-            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(1000)), party_bar(Milliseconds(1500)), party_bar(Milliseconds(2600)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(1000)), party_bar(Milliseconds(1500)), party_bar(Milliseconds(2600)),
         }},
         .expectation = {.verdict = "done", .inputs = "press A, wait 250ms, press A, wait 250ms"},
     },
@@ -497,8 +497,8 @@ const RunCase RUN_CASES[] = {
     {
         .name = "02.05's ride to 2F: the hall's quiet is control",
         .input = {.checkpoint = "02.05", .first_step = 4, .steps = 1, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)), look({}, {}, Milliseconds(1000)),
-            look({ScreenEvent::SCREEN_STILL}, {}, Milliseconds(6000)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)),
+            look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(6000)),
         }},
         .expectation = {
             .verdict = "done",
@@ -509,14 +509,14 @@ const RunCase RUN_CASES[] = {
     {
         .name = "02.06 ends on the game's autosave",
         .input = {.checkpoint = "02.06", .first_step = 4, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)), look({ScreenEvent::SCREEN_STILL}, {}, Milliseconds(21000)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(21000)),
         }},
         .expectation = {.verdict = "done", .line = "[Save] 02.06: the game autosaved at its end"},
     },
     {
         .name = "03.02's map talk: A and B in turn, done on the party bar held a second",
         .input = {.checkpoint = "03.02", .first_step = 6, .steps = 1, .looks = {
-            DIALOG, look({}, {}, Milliseconds(2000)), party_bar(Milliseconds(4000)), party_bar(Milliseconds(5100)),
+            DIALOG, look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)), party_bar(Milliseconds(4000)), party_bar(Milliseconds(5100)),
         }},
         .expectation = {
             .verdict = "done",
@@ -527,8 +527,8 @@ const RunCase RUN_CASES[] = {
     {
         .name = "03.02's map talk goes on through the party bar under a text box",
         .input = {.checkpoint = "03.02", .first_step = 6, .steps = 1, .looks = {
-            look({ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)),
-            look({ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, {}, Milliseconds(2000)),
+            look({ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look({ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(2000)),
             party_bar(Milliseconds(4000)), party_bar(Milliseconds(5100)),
         }},
         .expectation = {.verdict = "done", .inputs = "press A, press B, press A, press B, wait 250ms"},
@@ -536,7 +536,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "03.02's map talk fails with no party bar in 120 s",
         .input = {.checkpoint = "03.02", .first_step = 6, .steps = 1, .looks = {
-            look({}, {}, Milliseconds(0)), look({}, {}, Milliseconds(121000)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(121000)),
         }},
         .expectation = {.verdict = "failed at after_taunie_battle: map_talk_timeout", .inputs = "press A, press B"},
     },
@@ -552,7 +552,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "03.04's Pokedex: B at the app and at its text, done on the party bar held a second",
         .input = {.checkpoint = "03.04", .first_step = 2, .steps = 1, .looks = {
-            look({}, {}, Milliseconds(0)), look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(500)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)), look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(500)),
             party_bar(Milliseconds(1000)), party_bar(Milliseconds(2100)),
         }},
         .expectation = {.verdict = "done", .inputs = "press B, press B, wait 250ms"},
@@ -684,7 +684,7 @@ UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
         ? game_with_reload(story)
         : make_plza_story_game_without_console(story);
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
-    const Pokemon::Outcome loaded = load_checkpoint_start(game, backend, builtin_row(test.input.checkpoint, 0, 99));
+    const Pokemon::Outcome loaded = load_checkpoint_start(game, backend, builtin_row(test.input.checkpoint, /*first_step=*/0, /*steps=*/99));
     const std::string verdict = loaded.succeeded() ? "done" : loaded.failure;
     if (verdict != test.expectation.verdict){
         return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.verdict, verdict, joined(backend.lines(), "\n"));
@@ -748,7 +748,7 @@ UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
     const std::vector<StoryCheckpoint> rows{one_step_row("01.01", "wait_for_platform"), one_step_row("01.02", "text_to_choice")};
-    const Pokemon::SegmentReport report = run_plza_segments(game, story, rows, 1, engine, backend, state);
+    const Pokemon::SegmentReport report = run_plza_segments(game, story, rows, /*attempts_per_checkpoint=*/1, engine, backend, state);
     const std::string verdict = report.completed
         ? "done"
         : std::format("failed at {} {}: {}", report.failed_checkpoint, report.failed_event, report.failure.failure);

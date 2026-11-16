@@ -89,7 +89,7 @@ SceneMachineConfig battle_config(){
 
 //  `count` looks with the mission banner, then one without.
 std::vector<Observation<ZonePose>> banner_then_gone(size_t count){
-    std::vector<Observation<ZonePose>> looks(count, look_at(0ms, NOTHING, {MISSION_BANNER_READING}));
+    std::vector<Observation<ZonePose>> looks(count, look_at(/*at=*/0ms, NOTHING, {MISSION_BANNER_READING}));
     looks.push_back(look_at(0ms));
     return looks;
 }
@@ -168,11 +168,11 @@ const TimelineCase TIMELINE_CASES[] = {
     {
         .name = "the controls hint held a second ends the scene; a box over it starts the second again",
         .input = {.config = quiet_config(0ms), .looks = {
-            look_at(0ms, NOTHING, {CONTROLS_HINT_READING}),
-            look_at(600ms, DIALOG, {CONTROLS_HINT_READING}),
-            look_at(900ms, NOTHING, {CONTROLS_HINT_READING}),
-            look_at(1800ms, STILL, {CONTROLS_HINT_READING}),
-            look_at(9000ms, STILL, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/0ms, NOTHING, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/600ms, DIALOG, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/900ms, NOTHING, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/1800ms, STILL, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/9000ms, STILL, {CONTROLS_HINT_READING}),
         }},
         .expectation = {.states = {
             SceneScreen::HINT_SHOWING, SceneScreen::DIALOG, SceneScreen::HINT_SHOWING, SceneScreen::HINT_SHOWING,
@@ -182,10 +182,10 @@ const TimelineCase TIMELINE_CASES[] = {
     {
         .name = "the controls hint is not held across a look without it",
         .input = {.config = quiet_config(0ms), .looks = {
-            look_at(0ms, NOTHING, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/0ms, NOTHING, {CONTROLS_HINT_READING}),
             look_at(500ms),
-            look_at(1200ms, NOTHING, {CONTROLS_HINT_READING}),
-            look_at(2200ms, NOTHING, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/1200ms, NOTHING, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/2200ms, NOTHING, {CONTROLS_HINT_READING}),
         }},
         .expectation = {.states = {
             SceneScreen::HINT_SHOWING, SceneScreen::SCENE_MOVING, SceneScreen::HINT_SHOWING, SceneScreen::CONTROLS_HINT,
@@ -195,16 +195,16 @@ const TimelineCase TIMELINE_CASES[] = {
         .name = "01.01's ad: A at the chevron, blind A after 5 s, none once the hint shows",
         .input = {.config = arrival_config(), .looks = {
             look_at(0ms),
-            look_at(1000ms, NOTHING, {ADVANCE_ARROW_READING}),
+            look_at(/*at=*/1000ms, NOTHING, {ADVANCE_ARROW_READING}),
             look_at(1500ms, STILL),
-            look_at(3000ms, STILL, {ADVANCE_ARROW_READING}),
+            look_at(/*at=*/3000ms, STILL, {ADVANCE_ARROW_READING}),
             look_at(7900ms, STILL),
             look_at(8000ms, STILL),
             look_at(9000ms, STILL),
             look_at(10000ms),
-            look_at(14200ms, NOTHING, {CONTROLS_HINT_READING}),
-            look_at(15000ms, STILL, {CONTROLS_HINT_READING}),
-            look_at(15300ms, STILL, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/14200ms, NOTHING, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/15000ms, STILL, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/15300ms, STILL, {CONTROLS_HINT_READING}),
         }},
         .expectation = {.states = {
             SceneScreen::SCENE_MOVING, SceneScreen::DIALOG, SceneScreen::SCENE_STILL, SceneScreen::DIALOG,
@@ -217,10 +217,10 @@ const TimelineCase TIMELINE_CASES[] = {
         .input = {.config = arrival_config(), .looks = {
             look_at(0ms, DIALOG),
             look_at(500ms),
-            look_at(6000ms, NOTHING, {MISSION_BANNER_READING}),
-            look_at(6250ms, DIALOG, {MISSION_BANNER_READING}),
-            look_at(6500ms, NOTHING, {MISSION_BANNER_READING}),
-            look_at(12000ms, STILL, {MISSION_BANNER_READING}),
+            look_at(/*at=*/6000ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/6250ms, DIALOG, {MISSION_BANNER_READING}),
+            look_at(/*at=*/6500ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/12000ms, STILL, {MISSION_BANNER_READING}),
         }},
         .expectation = {.states = {
             SceneScreen::DIALOG, SceneScreen::SCENE_MOVING, SceneScreen::BANNER_SHOWING, SceneScreen::DIALOG,
@@ -230,7 +230,7 @@ const TimelineCase TIMELINE_CASES[] = {
     {
         .name = "blind presses are not busy: a minute of them still ends quiet",
         .input = {.config = arrival_config(), .looks = {
-            look_at(0ms, NOTHING, {ADVANCE_ARROW_READING}),
+            look_at(/*at=*/0ms, NOTHING, {ADVANCE_ARROW_READING}),
             look_at(5000ms, STILL),
             look_at(6000ms, STILL),
             look_at(59000ms, STILL),
@@ -254,8 +254,8 @@ const TimelineCase TIMELINE_CASES[] = {
     {
         .name = "the mission complete card is busy: A, and no quiet end while it shows",
         .input = {.config = arrival_config(), .looks = {
-            look_at(0ms, NOTHING, {MISSION_COMPLETE_READING}),
-            look_at(59000ms, STILL, {MISSION_COMPLETE_READING}),
+            look_at(/*at=*/0ms, NOTHING, {MISSION_COMPLETE_READING}),
+            look_at(/*at=*/59000ms, STILL, {MISSION_COMPLETE_READING}),
             look_at(61000ms),
         }},
         .expectation = {.states = {
@@ -415,9 +415,9 @@ const RunCase RUN_CASES[] = {
             look_at(21000ms),
             look_at(22000ms, DIALOG),
             look_at(23000ms),
-            look_at(24000ms, NOTHING, {CONTROLS_HINT_READING}),
-            look_at(24500ms, NOTHING, {CONTROLS_HINT_READING}),
-            look_at(25100ms, NOTHING, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/24000ms, NOTHING, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/24500ms, NOTHING, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/25100ms, NOTHING, {CONTROLS_HINT_READING}),
         }},
         .expectation = {.verdict = "done", .a_presses = 3, .line = "[PLZA test] done on controls_hint."},
     },
@@ -425,9 +425,9 @@ const RunCase RUN_CASES[] = {
         .name = "the mission banner ends the scene, which then waits for it to go",
         .input = {.looks = {
             look_at(0ms, DIALOG),
-            look_at(500ms, NOTHING, {MISSION_BANNER_READING}),
-            look_at(750ms, NOTHING, {MISSION_BANNER_READING}),
-            look_at(1000ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/500ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/750ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/1000ms, NOTHING, {MISSION_BANNER_READING}),
             look_at(1250ms),
         }},
         .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] the mission banner has gone after 250 ms."},
@@ -441,8 +441,8 @@ const RunCase RUN_CASES[] = {
     {
         .name = "a banner that stays gets A 3 times, then is left",
         .input = {.looks = {
-            look_at(0ms, NOTHING, {MISSION_BANNER_READING}),
-            look_at(250ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/0ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/250ms, NOTHING, {MISSION_BANNER_READING}),
         }},
         .expectation = {.verdict = "done", .a_presses = 3, .line = "[PLZA test] the mission banner still shows after 3 A presses; going on."},
     },
@@ -450,18 +450,18 @@ const RunCase RUN_CASES[] = {
         .name = "01.03's end: A at the text and the mission complete card, done on the next banner",
         .input = {.looks = {
             look_at(0ms, DIALOG),
-            look_at(500ms, NOTHING, {MISSION_COMPLETE_READING}),
-            look_at(1000ms, NOTHING, {MISSION_COMPLETE_READING}),
+            look_at(/*at=*/500ms, NOTHING, {MISSION_COMPLETE_READING}),
+            look_at(/*at=*/1000ms, NOTHING, {MISSION_COMPLETE_READING}),
             look_at(1500ms),
-            look_at(2000ms, NOTHING, {MISSION_BANNER_READING}),
-            look_at(2250ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/2000ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/2250ms, NOTHING, {MISSION_BANNER_READING}),
             look_at(2500ms),
         }},
         .expectation = {.verdict = "done", .a_presses = 3, .line = "[PLZA test] done on mission_banner."},
     },
     {
         .name = "a mission complete card that A does not get past fails as scene_stuck",
-        .input = {.looks = {look_at(0ms, NOTHING, {MISSION_COMPLETE_READING})}},
+        .input = {.looks = {look_at(/*at=*/0ms, NOTHING, {MISSION_COMPLETE_READING})}},
         .expectation = {.verdict = "failed: scene_stuck", .a_presses = 30},
     },
     {
@@ -478,8 +478,8 @@ const RunCase RUN_CASES[] = {
             look_at(15000ms, WHITE),
             look_at(16000ms),
             look_at(16500ms, DIALOG),
-            look_at(17000ms, NOTHING, {MISSION_BANNER_READING}),
-            look_at(17250ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/17000ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/17250ms, NOTHING, {MISSION_BANNER_READING}),
             look_at(17500ms),
         }},
         .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] fade_white: white fade"},
@@ -532,8 +532,8 @@ const RunCase RUN_CASES[] = {
         .name = "the trace logs each new state",
         .input = {.looks = {
             look_at(0ms, DIALOG),
-            look_at(500ms, NOTHING, {MISSION_BANNER_READING}),
-            look_at(800ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/500ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/800ms, NOTHING, {MISSION_BANNER_READING}),
             look_at(1000ms),
         }},
         .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] screen 3: mission_banner at 0.8s"},
