@@ -102,7 +102,10 @@ struct SceneMachineConfig{
 //  the file log (log_detail()) except the black fades, the banner, the
 //  hint and the end, which go on the overlay too (log()). Fails as "scene_quiet" on the
 //  quiet end (unless `config.quiet_is_control`), "scene_never_started"
-//  past `config.start_window`, "scene_timeout" when `timeout` passes (by
+//  past `config.start_window`, "scene_loop" when blind presses after
+//  `config.blind_press_after` (above zero) bring back text 4 times in a
+//  row with nothing else between (they restart a talk), "scene_timeout"
+//  when `timeout` passes (by
 //  the looks' time), and "scene_stuck" on a state that comes up too often
 //  or a screen that stops changing.
 Pokemon::Outcome run_scene_machine(
