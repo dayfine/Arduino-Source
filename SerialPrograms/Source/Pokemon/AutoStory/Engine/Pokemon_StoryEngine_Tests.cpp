@@ -44,7 +44,7 @@ StoryAction<ZonePose> game_action(std::string name, StoryActionHandler<ZonePose>
 
 //  The test game. Its save saves the checkpoints of `autosaves`; its
 //  reload works unless `reload_fails`.
-StoryGame<ZonePose> test_game(TestWorld& world, std::set<std::string> autosaves, bool reload_fails){
+StoryGame<ZonePose> test_game(std::set<std::string> autosaves, bool reload_fails, TestWorld& world){
     StoryGame<ZonePose> game;
     game.id = "test";
     game.actions.push_back(game_action("ok", [](StoryBackend<ZonePose>&, const StoryActionCall&, RunState&){
@@ -60,7 +60,7 @@ StoryGame<ZonePose> test_game(TestWorld& world, std::set<std::string> autosaves,
         return outcome_game_not_running();
     }));
     game.actions.push_back(game_action("press_a", [](StoryBackend<ZonePose>& backend, const StoryActionCall&, RunState&){
-        backend.press(NintendoSwitch::BUTTON_A, 80ms, 80ms);
+        backend.press(NintendoSwitch::BUTTON_A, /*hold=*/80ms, /*release=*/80ms);
         return outcome_ok();
     }));
     StoryAction<ZonePose> console = game_action("console", [](StoryBackend<ZonePose>&, const StoryActionCall&, RunState&){
@@ -71,7 +71,7 @@ StoryGame<ZonePose> test_game(TestWorld& world, std::set<std::string> autosaves,
     //  Walks north until a look shows a white fade, at most 3 slices.
     game.actions.push_back(game_action("walk_to_fade", [](StoryBackend<ZonePose>& backend, const StoryActionCall&, RunState&){
         for (size_t slice = 0; slice < 3; slice++){
-            backend.hold(Direction::NORTH, 500ms, StoryPace::WALK);
+            backend.hold(Direction::NORTH, /*duration=*/500ms, StoryPace::WALK);
             if (backend.observe().events.has(ScreenEvent::FADE_WHITE)){
                 return outcome_ok();
             }
@@ -82,7 +82,7 @@ StoryGame<ZonePose> test_game(TestWorld& world, std::set<std::string> autosaves,
         return autosaves.contains(checkpoint.id) ? outcome_ok() : outcome_failed("no_autosave");
     };
     game.reload = [reload_fails](StoryBackend<ZonePose>& backend){
-        backend.press(NintendoSwitch::BUTTON_HOME, 80ms, 80ms);
+        backend.press(NintendoSwitch::BUTTON_HOME, /*hold=*/80ms, /*release=*/80ms);
         return reload_fails ? outcome_failed("no_game") : outcome_ok();
     };
     return game;
@@ -220,7 +220,7 @@ const SegmentCase SEGMENT_CASES[] = {
 
 UnitTestResult check_segment(const SegmentCase& test, CancellableScope& scope){
     TestWorld world;
-    const StoryGame<ZonePose> game = test_game(world, test.input.autosaves, test.input.reload_fails);
+    const StoryGame<ZonePose> game = test_game(test.input.autosaves, test.input.reload_fails, world);
     FakeStoryBackend<ZonePose> backend({.looks = test.input.looks, .kind = test.input.kind}, scope);
     StoryEngine<ZonePose> engine(game, backend);
     RunState state;
