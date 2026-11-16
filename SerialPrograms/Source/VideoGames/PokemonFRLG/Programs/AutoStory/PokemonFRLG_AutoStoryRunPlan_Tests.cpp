@@ -478,7 +478,7 @@ UnitTestResult test_cerulean_rival_row(){
     const StoryCheckpoint& rival = checkpoints[index];
     const std::optional<StoryPose> start = rival.start ? story_pose(Pokemon::pose_of(*rival.start)) : std::nullopt;
     if (!start || rival.live_start || start->map != "CeruleanCity" || !(start->tile == TilePos{23, 7})
-        || save_card_place(start->map).empty()
+        || !save_card_place(start->map)
     ){
         return "05.04: expected it to start from a save on (23, 7) in Cerulean City.";
     }
@@ -542,7 +542,7 @@ UnitTestResult test_misty_rows(){
     }
     const std::optional<StoryPose> start = misty.start ? story_pose(Pokemon::pose_of(*misty.start)) : std::nullopt;
     if (!start || misty.live_start || start->map != "CeruleanCity_Gym" || !(start->tile == TilePos{9, 7})
-        || save_card_place(start->map).empty()
+        || !save_card_place(start->map)
     ){
         return "05.02: expected it to start from a save on (9, 7) in Cerulean Gym.";
     }
