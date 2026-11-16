@@ -89,6 +89,33 @@ Milliseconds OverworldSim::after_slide(const Step& step){
     return MovementMechanics::SPIN_TILE_TIME * step.spin->tiles;
 }
 
+//  A press that starts while a slide goes on (SimState::slide_end): the
+//  game reads none of it until the slide's end, and a press held past it
+//  walks on from there.
+void OverworldSim::lose_press_in_slide(Direction direction, Milliseconds end){
+    if (end <= m_state.slide_end){
+        m_state.presses_in_slide++;
+        note(std::format("the D-pad pressed {} during the slide is lost.", direction_name(direction)));
+        return;
+    }
+    advance_to(m_state.slide_end);
+    walk_hold(direction, end - m_state.slide_end, /*short_by=*/0);
+}
+
+//  The console's wait_out_slide(): shots SLIDE_STILL_POLL apart until two
+//  match, which is a poll after the slide's end.
+bool OverworldSimWalker::wait_out_slide(const RouteStep& step){
+    const Milliseconds limit = MovementMechanics::slide_wait_limit(step.spin_tiles.value_or(0));
+    const Milliseconds left = std::max(m_sim.state().slide_end - m_sim.state().time, Milliseconds(0));
+    const int polls = (int)(left / MovementMechanics::SLIDE_STILL_POLL) + 1;
+    if (MovementMechanics::SLIDE_STILL_POLL * polls > limit){
+        m_sim.watch({}, limit);
+        return false;
+    }
+    m_sim.watch({}, MovementMechanics::SLIDE_STILL_POLL * polls);
+    return true;
+}
+
 std::optional<OverworldSim::Step> OverworldSim::lift_warp(int map_index) const{
     const auto lift = m_script.lift_floors.find(m_maps[map_index].name);
     if (lift == m_script.lift_floors.end() || !m_lift_floor){

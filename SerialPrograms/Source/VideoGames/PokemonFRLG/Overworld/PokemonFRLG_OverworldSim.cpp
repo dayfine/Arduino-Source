@@ -505,19 +505,6 @@ void OverworldSim::stuck_hold(Direction direction){
     }
 }
 
-//  A press that starts while a slide goes on (SimState::slide_end): the
-//  game reads none of it until the slide's end, and a press held past it
-//  walks on from there.
-void OverworldSim::lose_press_in_slide(Direction direction, Milliseconds end){
-    if (end <= m_state.slide_end){
-        m_state.presses_in_slide++;
-        note(std::format("the D-pad pressed {} during the slide is lost.", direction_name(direction)));
-        return;
-    }
-    advance_to(m_state.slide_end);
-    walk_hold(direction, end - m_state.slide_end, 0);
-}
-
 std::optional<SimSeen> OverworldSim::hold(
     Direction direction, Milliseconds duration, Milliseconds release, Milliseconds watch,
     const std::vector<SimWatcher>& watchers
@@ -766,20 +753,6 @@ size_t OverworldSimWalker::clear_late(const std::vector<Interrupt>& interrupts, 
     }
 }
 
-//  The console's wait_out_slide(): shots SLIDE_STILL_POLL apart until two
-//  match, which is a poll after the slide's end.
-bool OverworldSimWalker::wait_out_slide(const RouteStep& step){
-    const Milliseconds limit = slide_wait_limit(step.spin_tiles.value_or(0));
-    const Milliseconds left = std::max(m_sim.state().slide_end - m_sim.state().time, Milliseconds(0));
-    const int polls = (int)(left / SLIDE_STILL_POLL) + 1;
-    if (SLIDE_STILL_POLL * polls > limit){
-        m_sim.watch({}, limit);
-        return false;
-    }
-    m_sim.watch({}, SLIDE_STILL_POLL * polls);
-    return true;
-}
-
 void OverworldSimWalker::check_overworld(const RouteStep& step){
     const SimScreen screen = m_sim.state().screen;
     if (m_rules.check_overworld && (screen == SimScreen::START_MENU || screen == SimScreen::MESSAGE)){
@@ -893,8 +866,7 @@ StepOutcome OverworldSimWalker::walk_ridden(const RouteStep& step, std::optional
     }
     check_overworld(step);
     const MapPosition before = m_sim.state().position;
-    //  A slide still going on scrolls the screen through the hold.
-    const bool sliding = m_sim.state().time < m_sim.state().slide_end;
+    const bool sliding = m_sim.state().time < m_sim.state().slide_end;   //  scrolls the screen through the hold
     const bool tapped = counts_step_taps(step) || (m_rules.count_bike_taps && counts_bike_taps(step, m_speed));
     if (tapped){
         if (counts_step_taps(step) && turns_first(step, m_speed, facing)){  //  as walk_and_watch() turns first

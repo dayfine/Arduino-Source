@@ -8,7 +8,6 @@
 #include <format>
 #include <utility>
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
-#include "PokemonFRLG_BikeSpinPresses.h"
 #include "PokemonFRLG_OverworldBikeTaps.h"
 #include "PokemonFRLG_OverworldHeldInPlace.h"
 #include "PokemonFRLG_OverworldLegTrace.h"
@@ -335,21 +334,13 @@ public:
     }
 
 private:
-    //  After `step` ended as planned: false, the route failed, if its slide
-    //  didn't end in time, or if it lands the player and they are still on
-    //  the water.
+    //  After `step` ended as planned: false (failed) if its slide went on too long, or it left them surfing.
     bool after_done(const RouteStep& step, HoldMovement movement){
-        if (step.spin_tiles && m_calls.wait_out_slide && !m_calls.wait_out_slide(step)){
+        const bool sliding = step.spin_tiles && m_calls.wait_out_slide && !m_calls.wait_out_slide(step);
+        if (sliding || (step.lands_after > 0 && m_calls.landed_on && !m_calls.landed_on(step.end))){
             m_calls.fail(std::format(
-                "walk_overworld_route(): after {}, the slide was still going on {} ms later: the player isn't on the stop {} it was planned to end on.",
-                to_string(step), MovementMechanics::slide_wait_limit(*step.spin_tiles).count(), to_string(step.end)
-            ));
-            return false;
-        }
-        if (step.lands_after > 0 && m_calls.landed_on && !m_calls.landed_on(step.end)){
-            m_calls.fail(std::format(
-                "walk_overworld_route(): still surfing after {}: the player didn't land on {}.",
-                to_string(step), to_string(step.end)
+                "walk_overworld_route(): {} after {}: the player isn't on {}.",
+                sliding ? "the slide still went on" : "still surfing", to_string(step), to_string(step.end)
             ));
             return false;
         }
