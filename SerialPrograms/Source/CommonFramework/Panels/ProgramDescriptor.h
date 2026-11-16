@@ -42,6 +42,21 @@ struct PrecheckSummary{
     bool skippable = false;
 };
 
+//  How one precheck ended in a checks-only run.
+enum class PrecheckReportStatus{
+    PASSED,
+    FAILED,
+    SKIPPED,
+};
+
+//  What one precheck found in a checks-only run. On FAILED, the message
+//  tells the user what to fix.
+struct PrecheckReport{
+    std::string name = {};
+    PrecheckReportStatus status = PrecheckReportStatus::PASSED;
+    std::string message = {};
+};
+
 
 
 class ProgramDescriptor : public PanelDescriptor{

@@ -103,6 +103,11 @@ holds the state file's fields (as `program.state` in lower case, `panel`,
   (`ProgramSession`, `ProgramTransition.h`), and a stop keeps its asker
   through `stopping` to `stopped`: an error or the run's end after a Stop
   does not change who stopped it.
+- `program.options_hash`: the hash of the selected program's options (the
+  JSON the settings file saves for it, without `ConsoleSetup`): SHA-256 in
+  hex of its compact text with sorted keys, so any option change, from the
+  UI or from `set`, changes it. Absent without a program. A logical change:
+  written at once.
 - `video.frame_seq` and `captured_at`: the newest frame from the console's
   video, counted since the app started. `state` is `live` while that frame
   is at most 2 s old, `stale` when older, `missing` without video.
@@ -124,6 +129,7 @@ program.
 | `stop` | What clicking Stop Program does. Refused unless the program is `RUNNING`. The request goes on; the program stops in the background. |
 | `state` | Prints the state file's lines into the journal. (In the Command File Runner program, `state [image]` prints the detectors that fire instead; from the channel use `detect` per detector.) |
 | `describe_program` | Prints the selected program's id and the static contract of its options as one line, `describe_program <JSON>`; see [Describe program](#describe-program). Reads only: needs no owner token and no console. Refused when the selected panel is not a program. |
+| `preflight JSON` | Runs the selected program's start checks with these options, without starting it, and puts the prior options back; prints one line, `preflight <JSON>`; see [Preflight](#preflight). Needs the owner token, like a press. Refused unless the program is `STOPPED`. |
 | `snapshot LABEL [TIMEOUT_MS]` | Saves the first video frame newer than this line as `<request>_<LABEL>.png` and names it; see [Snapshot](#snapshot). Reads only: needs no owner token, no program state and no controller. |
 | `keepawake on\|off [seconds]` | While it is on and no program runs, presses B every `seconds` (default 15) so the console does not sleep. A running program pauses it. Off by default; off again when the app restarts. |
 | `popups [close]` | Lists the app's open message boxes (title and text), such as the "Error" box a failed program leaves. `close` presses each one's default button. |
@@ -247,6 +253,60 @@ describe_program {"id":"PokemonFRLG:AutoStory","options":[...],"prechecks":"unsu
   the user can turn it off. `unsupported` when the program declares no
   precheck list (`ProgramInstance::precheck_summaries()`); that never means
   the checks passed. An empty list means the program needs nothing.
+
+### Preflight
+
+`preflight JSON` asks whether a run with these options would pass its start
+checks, without starting it:
+
+```
+preflight {"NOTIFICATIONS":{"Enabled":false},"START":"02"}
+```
+
+The JSON holds only the options to change, by the keys of `describe_program`
+(a group's value is an object of its own keys). The program session
+(`ProgramSession::Prechecks::run_only()`, `run_prechecks_only()`) loads and
+reads back options on the UI thread, as `set` does, and runs the checks on
+the channel's worker, which holds the panel throughout:
+
+1. refuses unless the program is `STOPPED`, and makes Start refuse until it
+   is done;
+2. loads the options over the current ones (not saved to the settings
+   file), refuses a key the program does not have, and checks that the
+   program holds every value (a clamped number or a disabled choice is
+   refused) and that `check_validity()` passes;
+3. runs the program's prechecks in order (`ConsoleProgramInstance::run_prechecks()`;
+   a Switch program overrides `run_switch_prechecks()` with
+   `precheck_summaries()`), up to the first failed one; a check may open a
+   menu or go Home, and comes back;
+4. loads the prior options back, also when a check throws, and compares;
+   but if the options differ from what step 2 loaded, a user edited them in
+   the panel during the checks: it keeps them and names the edited keys.
+
+It prints one line (version 1, keys sorted):
+
+```
+preflight {"checks":[{"message":"","name":"black_border","status":"passed"}],"edited_keys":[],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"9f2c...","restored":true,"schema":1,"verdict":"passed"}
+```
+
+- `verdict`: `passed`; `failed` with `failure` `{"check", "message"}`, the
+  first failed check; `invalid_options` with `invalid` `{"key", "message"}`
+  (`key` is the dotted key path, or `""` when `check_validity()` refused the
+  combination); `unsupported` when the program declares no precheck list.
+- `checks`: `{"name", "status", "message"}` in the order they ran,
+  `status` `passed`, `failed` or `skipped`; empty unless checks ran.
+- `restored`: whether the program holds the prior options again.
+- `edited_keys`: the top-level option keys a user changed during the checks,
+  which the run kept; `restored` is then `false`. Empty otherwise.
+- `options_hash`: the hash of the options the program holds once the run is
+  over, read after the restore, as `program.options_hash` in `state.json`:
+  the prior options when `restored`, the user's edit when `edited_keys` is
+  not empty; never the candidate's.
+
+A program that is not `STOPPED`, a controller that is not ready, a panel
+change or a check that throws fails the line (no `preflight` line); the
+options are put back all the same, unless the panel changed before the UI
+thread could load them back.
 
 ## Owner
 

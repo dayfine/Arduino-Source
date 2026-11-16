@@ -25,6 +25,7 @@
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Options/BatchOption.h"
 #include "CommonFramework/Panels/ProgramDescriptor.h"
+#include "CommonFramework/ProgramPrecheckRun.h"
 
 namespace PokemonAutomation{
 
@@ -47,6 +48,32 @@ JsonObject lab_program_contract(
     std::string_view id,
     const BatchOption& options,
     const std::optional<std::vector<PrecheckSummary>>& prechecks
+);
+
+
+//  The hash of a program's option JSON (its BatchOption::to_json()): the
+//  SHA-256, in hex, of its compact text with the keys sorted. Any change of
+//  any option changes it; the same options give the same hash in every app
+//  instance. Lab/state.json and the "preflight" reply carry it.
+std::string lab_options_hash(const JsonValue& options);
+
+//  The reply of "preflight", version 1 like the contract above:
+//  {"schema", "id", "verdict", "checks", "failure", "invalid", "restored",
+//  "edited_keys", "options_hash"}. "verdict" is "invalid_options" when the program refused
+//  the candidate ("invalid": {"key", "message"}, the key "" for a refused
+//  combination), "unsupported" when it declares no precheck list, "failed"
+//  at the first FAILED check ("failure": {"check", "message"}), else
+//  "passed". "checks" lists {"name", "status", "message"} in the order they
+//  ran, "status" one of "passed", "failed", "skipped". "restored" is
+//  whether the program holds the prior options again; "edited_keys" lists
+//  the top-level keys a user changed during the checks, which the run kept
+//  (then "restored" is false). "options_hash" is lab_options_hash() of the
+//  options the program holds once the run is over, read after the restore:
+//  the prior options when "restored", not the candidate (null if unknown).
+JsonObject lab_preflight_reply(
+    std::string_view id,
+    const PrecheckOnlyRun& run,
+    const std::optional<std::string>& options_hash
 );
 
 

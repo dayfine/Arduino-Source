@@ -6,6 +6,8 @@
  *  program's options built here: keys, types, defaults (not the current
  *  values), bounds and enum entries, nested groups, and static options left
  *  out; and the program's precheck list, or "unsupported" without one.
+ *  The "preflight" reply for each verdict, and the options hash the lab
+ *  server can recompute from the same JSON.
  *
  */
 
@@ -253,6 +255,143 @@ const ProgramCase PROGRAM_CASES[] = {
 };
 
 
+
+struct ReplyInput{
+    PrecheckOnlyRun run = {};
+};
+struct ReplyExpectation{
+    std::string json = {};   //  The reply, as compact JSON with sorted keys.
+};
+struct ReplyCase{
+    std::string name;
+    ReplyInput input;
+    ReplyExpectation expectation;
+};
+
+UnitTestResult check(const ReplyCase& c){
+    const std::string text = JsonValue(lab_preflight_reply("PokemonFRLG:GiftRng", c.input.run, "ab12")).dump(-1);
+    if (text != c.expectation.json){
+        return std::format("expected\n{}\ngot\n{}", c.expectation.json, text);
+    }
+    return true;
+}
+
+class Test_LabPreflightReply : public UnitTest{
+public:
+    explicit Test_LabPreflightReply(ReplyCase test_case)
+        : UnitTest(std::format("CommonFramework::LabProgramContract - preflight - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return check(m_case);
+    }
+
+private:
+    ReplyCase m_case;
+};
+
+const ReplyCase REPLY_CASES[] = {
+    {
+        .name = "passed, a skipped check listed",
+        .input = {.run = {
+            .refused = std::nullopt,
+            .checks = std::vector<PrecheckReport>{
+                {.name = "black_border", .status = PrecheckReportStatus::PASSED, .message = ""},
+                {.name = "free_party_slots", .status = PrecheckReportStatus::SKIPPED, .message = "Skippable prechecks are off."},
+            },
+            .restored = true,
+        }},
+        .expectation = {.json = R"({"checks":[{"message":"","name":"black_border","status":"passed"},{"message":"Skippable prechecks are off.","name":"free_party_slots","status":"skipped"}],"edited_keys":[],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"ab12","restored":true,"schema":1,"verdict":"passed"})"},
+    },
+    {
+        .name = "failed names the failed check",
+        .input = {.run = {
+            .refused = std::nullopt,
+            .checks = std::vector<PrecheckReport>{
+                {.name = "black_border", .status = PrecheckReportStatus::PASSED, .message = ""},
+                {.name = "free_party_slots", .status = PrecheckReportStatus::FAILED, .message = "Free a party slot."},
+            },
+            .restored = true,
+        }},
+        .expectation = {.json = R"({"checks":[{"message":"","name":"black_border","status":"passed"},{"message":"Free a party slot.","name":"free_party_slots","status":"failed"}],"edited_keys":[],"failure":{"check":"free_party_slots","message":"Free a party slot."},"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"ab12","restored":true,"schema":1,"verdict":"failed"})"},
+    },
+    {
+        .name = "unsupported without a precheck list",
+        .input = {.run = {.refused = std::nullopt, .checks = std::nullopt, .restored = true}},
+        .expectation = {.json = R"({"checks":[],"edited_keys":[],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"ab12","restored":true,"schema":1,"verdict":"unsupported"})"},
+    },
+    {
+        .name = "invalid_options names the refused key",
+        .input = {.run = {
+            .refused = RefusedOption{.key = "COUNT", .message = "The program holds 10 for COUNT, not 70."},
+            .checks = std::nullopt,
+            .restored = true,
+        }},
+        .expectation = {.json = R"({"checks":[],"edited_keys":[],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":{"key":"COUNT","message":"The program holds 10 for COUNT, not 70."},"options_hash":"ab12","restored":true,"schema":1,"verdict":"invalid_options"})"},
+    },
+    {
+        .name = "options not restored are reported with the verdict",
+        .input = {.run = {.refused = std::nullopt, .checks = std::vector<PrecheckReport>{}, .restored = false}},
+        .expectation = {.json = R"({"checks":[],"edited_keys":[],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"ab12","restored":false,"schema":1,"verdict":"passed"})"},
+    },
+    {
+        .name = "options a user edited during the checks are named",
+        .input = {.run = {
+            .refused = std::nullopt,
+            .checks = std::vector<PrecheckReport>{},
+            .restored = false,
+            .edited_keys = {"COUNT", "NOTIFICATIONS"},
+        }},
+        .expectation = {.json = R"({"checks":[],"edited_keys":["COUNT","NOTIFICATIONS"],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"ab12","restored":false,"schema":1,"verdict":"passed"})"},
+    },
+};
+
+
+struct HashInput{
+    std::string options = {};   //  A program's option JSON.
+};
+struct HashExpectation{
+    std::string hash = {};
+};
+struct HashCase{
+    std::string name;
+    HashInput input;
+    HashExpectation expectation;
+};
+
+UnitTestResult check(const HashCase& c){
+    const std::string hash = lab_options_hash(parse_json(c.input.options));
+    if (hash != c.expectation.hash){
+        return std::format("expected {}, got {}", c.expectation.hash, hash);
+    }
+    return true;
+}
+
+class Test_LabOptionsHash : public UnitTest{
+public:
+    explicit Test_LabOptionsHash(HashCase test_case)
+        : UnitTest(std::format("CommonFramework::LabProgramContract - options hash - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return check(m_case);
+    }
+
+private:
+    HashCase m_case;
+};
+
+const HashCase HASH_CASES[] = {
+    {
+        //  The lab server's hash of the same options:
+        //  sha256(json.dumps(options, sort_keys=True, separators=(',', ':'))).
+        .name = "SHA-256 of the compact JSON with sorted keys",
+        .input = {.options = R"({"START":"01","SPEED":0.5,"NOTIFICATIONS":{"Screenshot":false,"Enabled":true},"COUNT":5})"},
+        .expectation = {.hash = "e13c20821df43e97df527c09253f827554ced87d2c4de661f4f93d1b1381f1c4"},
+    },
+};
+
+
 }  // namespace
 
 
@@ -263,6 +402,12 @@ void add_tests_LabProgramContract(UnitTestDatabase& database){
     }
     for (const ProgramCase& c : PROGRAM_CASES){
         database.add<Test_LabProgramContract>(c);
+    }
+    for (const ReplyCase& c : REPLY_CASES){
+        database.add<Test_LabPreflightReply>(c);
+    }
+    for (const HashCase& c : HASH_CASES){
+        database.add<Test_LabOptionsHash>(c);
     }
 }
 

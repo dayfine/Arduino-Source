@@ -17,6 +17,8 @@
 #define PokemonAutomation_GameConsole_ConsoleProgram_H
 
 #include <memory>
+#include <optional>
+#include <vector>
 #include "CommonFramework/Globals.h"
 #include "CommonFramework/Panels/ProgramDescriptor.h"
 #include "CommonFramework/Tools/ProgramEnvironment.h"
@@ -110,6 +112,17 @@ public:
     virtual void start_program_feedback_check(
         const ConsoleProgramDescriptor& descriptor,
         VideoStream& stream
+    );
+
+    //  A checks-only run (ProgramSession::Prechecks::run_only()): the
+    //  program's prechecks in the order of precheck_summaries(), up to and
+    //  including the first FAILED one, while the program is STOPPED with the
+    //  options to check loaded; nothing when it declares no list. A check may
+    //  navigate (open a menu, go Home) but returns to the screen it started
+    //  on, and never resets, saves or changes options. `env` carries the last
+    //  run's stats, or none.
+    virtual std::optional<std::vector<PrecheckReport>> run_prechecks(
+        ConsoleProgramEnvironment& env, CancellableScope& scope
     );
 };
 

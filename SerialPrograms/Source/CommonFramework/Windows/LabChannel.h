@@ -36,6 +36,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -167,7 +168,10 @@ private:
     std::string run_popups(const std::vector<std::string>& words, std::ostream& out);
     std::string run_snapshot(const std::vector<std::string>& words, LabCommandOutput& output);
     std::string run_describe_program(const std::vector<std::string>& words, std::ostream& out);
-    std::string run_on_ui(const std::function<std::string()>& body);
+    std::string run_preflight(const LabRequestLine& line, std::ostream& out);
+    //  Runs `body` on the UI thread and returns what it returns. Gives up
+    //  with an error when the app is closing or `scope` is cancelled.
+    std::string run_on_ui(const std::function<std::string()>& body, const CancellableScope* scope = nullptr);
     void keep_awake();
     void write_state();
     void write_state_json(WallClock now);
@@ -189,6 +193,9 @@ private:
     void read_program_state(std::string& state, std::string& program, bool& running) const;
     //  The selected panel's LabConsoleCommands::controller_status(). Call under m_panel_lock.
     std::string read_controller_status();
+    //  lab_options_hash() of `panel`'s program options, if it has options the
+    //  lab can read. Call under m_panel_lock.
+    std::optional<std::string> read_options_hash(PanelSession& panel);
 
 
 private:

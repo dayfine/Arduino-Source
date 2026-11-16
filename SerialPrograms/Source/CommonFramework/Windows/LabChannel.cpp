@@ -85,6 +85,8 @@ void print_channel_help(std::ostream& out){
         "  state\n"
         "  snapshot LABEL [TIMEOUT_MS]   (saves the first video frame newer than the call; default 5000 ms)\n"
         "  describe_program   (the selected program's id and option contract, as one line of JSON)\n"
+        "  preflight JSON   (runs the program's start checks with these options, without starting it;\n"
+        "                    puts the options back; one line \"preflight JSON\")\n"
         "  keepawake on|off [seconds]\n"
         "  popups [close]   (the app's message boxes; close presses their default button)\n  help\n";
 }
@@ -495,7 +497,9 @@ std::string LabChannel::run_line(const LabRequest& request, const LabRequestLine
             return error;
         }
     }
-    if (command == "select" || command == "set" || command == "start" || command == "stop" || command == "popups"){
+    if (command == "select" || command == "set" || command == "start" || command == "stop" || command == "popups"
+        || command == "preflight"
+    ){
         return run_ui_command(request, line, output.out);
     }
     if (command == "keepawake"){
@@ -522,10 +526,53 @@ std::string LabChannel::run_describe_program(const std::vector<std::string>& wor
         return "describe_program: the selected program has no options the lab can read.";
     }
     JsonValue contract = lab_program_contract(
-        m_program->descriptor().identifier(), *options, m_program->precheck_summaries()
+        m_program->descriptor().identifier(), *options, m_program->prechecks().summaries()
     );
     out << "describe_program " << contract.dump(-1) << "\n";
     return "";
+}
+
+//  "preflight JSON": a checks-only run of the selected program with these
+//  options (ProgramSession::Prechecks::run_only()), holding the panel like a
+//  console command. The options are loaded and put back on the UI thread,
+//  like "set"; the checks run on this worker. Prints one line, "preflight "
+//  and lab_preflight_reply() as JSON. A program that is not STOPPED, a
+//  controller that is not ready, a panel change or a check that throws
+//  fails the line instead; the options are put back all the same, unless the
+//  panel changed before they could be.
+std::string LabChannel::run_preflight(const LabRequestLine& line, std::ostream& out){
+    const JsonValue candidate = parse_json(line_after_words(line.text, 1));
+    if (candidate.to_object() == nullptr){
+        return "preflight: expected preflight JSON, an object of option keys";
+    }
+    return run_on_console([&](PanelSession& panel, CancellableScope& scope){
+        ProgramSession* program = dynamic_cast<ProgramSession*>(&panel);
+        if (program == nullptr){
+            throw ParseException("The selected panel is not a program.");
+        }
+        //  This worker holds m_panel_lock, which set_panel() on the UI thread
+        //  waits for after cancelling `scope`: give up on the UI call then.
+        const OptionsThreadCall on_ui = [this, &scope](const std::function<void()>& body){
+            const std::string error = run_on_ui([&]{
+                body();
+                return std::string();
+            }, &scope);
+            if (!error.empty()){
+                throw ParseException(error);
+            }
+        };
+        const PrecheckOnlyRun run = program->prechecks().run_only(candidate, scope, on_ui);
+        JsonValue reply = lab_preflight_reply(program->descriptor().identifier(), run, read_options_hash(panel));
+        out << "preflight " << reply.dump(-1) << "\n";
+    });
+}
+
+std::optional<std::string> LabChannel::read_options_hash(PanelSession& panel){
+    const BatchOption* options = m_console->options(panel);
+    if (options == nullptr){
+        return std::nullopt;
+    }
+    return lab_options_hash(options->to_json());
 }
 
 std::string LabChannel::run_console_command(const std::vector<std::string>& words, LabCommandOutput& output){
@@ -581,6 +628,10 @@ std::string LabChannel::run_ui_command(const LabRequest& request, const LabReque
     const std::string& command = words[0];
     if (command == "popups"){
         return run_popups(words, out);
+    }
+    if (command == "preflight"){
+        //  Stages options on the UI thread like "set"; the checks run on this worker.
+        return run_preflight(line, out);
     }
     if (command == "select"){
         if (words.size() < 2){
@@ -740,7 +791,7 @@ std::string LabChannel::run_snapshot(const std::vector<std::string>& words, LabC
     return reply(lab_snapshot_saved(m_instance_id, wait.frame->token, wait.after, path));
 }
 
-std::string LabChannel::run_on_ui(const std::function<std::string()>& body){
+std::string LabChannel::run_on_ui(const std::function<std::string()>& body, const CancellableScope* scope){
     struct Call{
         Mutex lock;
         ConditionVariable cv;
@@ -772,6 +823,10 @@ std::string LabChannel::run_on_ui(const std::function<std::string()>& body){
         if (m_stopping.load(std::memory_order_acquire)){
             call->abandoned = true;
             return "The app is closing.";
+        }
+        if (scope != nullptr && scope->cancelled()){
+            call->abandoned = true;
+            return "cancelled: the panel changed.";
         }
         call->cv.wait_for(lg, UI_WAIT_SLICE);
     }
@@ -845,6 +900,7 @@ void LabChannel::write_state_json(WallClock now){
         has_video = m_video != nullptr;
         if (m_program != nullptr){
             state.last_transition = lab_transition_since(m_program->last_transition(), m_selected_at);
+            state.options_hash = read_options_hash(*m_panel);
         }
     }
     state.legacy = m_state;

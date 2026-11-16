@@ -43,6 +43,20 @@ ProgramSession::RunningProgramScope::RunningProgramScope(ProgramSession& session
     }
     session.m_scope = &m_scope;
 }
+ProgramSession::RunningProgramScope::RunningProgramScope(ProgramSession& session, CancellableScope& parent)
+    : m_session(session)
+    , m_scope(parent)
+{
+    std::lock_guard<Mutex> lg(session.m_lock);
+    const ProgramState state = session.current_state();
+    if (state != ProgramState::STOPPED){
+        throw UserSetupError(session.m_logger, "Stop the program before checking it.");
+    }
+    if (session.m_scope != nullptr){
+        throw UserSetupError(session.m_logger, "The program is already running its start checks.");
+    }
+    session.m_scope = &m_scope;
+}
 ProgramSession::RunningProgramScope::~RunningProgramScope(){
     {
         std::lock_guard<Mutex> lg(m_session.m_lock);
@@ -95,11 +109,55 @@ void ProgramSession::join_program_thread() noexcept{
 const std::string& ProgramSession::identifier() const{
     return m_descriptor.identifier();
 }
-std::optional<std::vector<PrecheckSummary>> ProgramSession::precheck_summaries() const{
-    if (m_instance == nullptr){
+std::optional<std::vector<PrecheckSummary>> ProgramSession::Prechecks::summaries() const{
+    if (m_session.m_instance == nullptr){
         return std::nullopt;
     }
-    return m_instance->precheck_summaries();
+    return m_session.m_instance->precheck_summaries();
+}
+PrecheckOnlyRun ProgramSession::Prechecks::run_only(
+    const JsonValue& candidate, CancellableScope& parent, const OptionsThreadCall& on_options_thread
+){
+    if (m_session.m_instance == nullptr){
+        throw InternalProgramError(&m_session.m_logger, PA_CURRENT_FUNCTION, "The program has no instance.");
+    }
+    RunningProgramScope running_scope(m_session, parent);
+
+    //  A local class has the access of this function: make_env() and
+    //  internal_run_prechecks().
+    class SessionTarget : public PrecheckOnlyTarget{
+    public:
+        explicit SessionTarget(ProgramSession& session) : m_session(session) {}
+        virtual JsonValue options() const override{
+            return m_session.m_instance->to_json();
+        }
+        virtual void load_options(const JsonValue& options) override{
+            m_session.m_instance->load_json(options);
+        }
+        virtual std::string check_validity() const override{
+            return m_session.m_instance->check_validity();
+        }
+        virtual std::optional<std::vector<PrecheckReport>> run_checks() override{
+            if (!m_session.m_instance->precheck_summaries()){
+                return std::nullopt;
+            }
+            const ProgramInfo program_info(
+                m_session.identifier(),
+                m_session.m_descriptor.category(),
+                m_session.m_descriptor.display_name(),
+                current_time()
+            );
+            std::unique_ptr<ProgramEnvironment> env = m_session.make_env(program_info);
+            return m_session.internal_run_prechecks(*env);
+        }
+    private:
+        ProgramSession& m_session;
+    };
+    SessionTarget target(m_session);
+    return run_prechecks_only(candidate, on_options_thread, target, m_session.m_logger);
+}
+std::optional<std::vector<PrecheckReport>> ProgramSession::internal_run_prechecks(ProgramEnvironment&){
+    return std::nullopt;
 }
 std::string ProgramSession::current_stats() const{
     std::lock_guard<Mutex> lg(m_lock);
@@ -254,7 +312,7 @@ std::string ProgramSession::start_program(ActionSource source, std::optional<std
         return "Program is not ready.";
 
     case ProgramState::STOPPED:{
-        std::string error = check_validity();
+        std::string error = m_scope != nullptr ? "Program is running its start checks." : check_validity();
         if (!error.empty()){
             m_logger.log(error, COLOR_RED);
             return error;

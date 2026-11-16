@@ -211,6 +211,9 @@ void write_program(const LabAppState& state, OrderedJsonWriter& json){
     if (state.paused){
         json.value("paused", json_string(*state.paused));
     }
+    if (state.options_hash){
+        json.value("options_hash", json_string(*state.options_hash));
+    }
     json.close();
 }
 
