@@ -17,6 +17,7 @@
 #include <vector>
 #include "Pokemon/AutoStory/Data/Pokemon_StoryFiles.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
+#include "PokemonLZA_AutoStoryBackups.h"
 #include "PokemonLZA_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -34,6 +35,11 @@ const std::vector<std::pair<std::string, std::string>>& autostory_checkpoint_jso
 //  from the new game's "Confirm Choices", its choices made by hand; 01.01
 //  walks off the platform into the white fade.
 const StoryData& builtin_story_data();
+
+//  The built-in checkpoints whose plan names the backup card a backup
+//  save at their start shows (execution "backup_card"), read once, in
+//  story order. Throws ParseException when two name the same card.
+const std::vector<BackupStart>& builtin_backup_starts();
 
 
 

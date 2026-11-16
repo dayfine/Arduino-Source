@@ -8,6 +8,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
@@ -15,7 +16,9 @@
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "Pokemon/Pokemon_Strings.h"
+#include "Actions/PokemonLZA_AutoStoryBackupSave.h"
 #include "Actions/PokemonLZA_AutoStoryNewGame.h"
+#include "PokemonLZA_AutoStoryBackups.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
 #include "PokemonLZA_AutoStory.h"
@@ -108,6 +111,28 @@ void connect_controller(ConsoleHandle& console, ProControllerContext& context, c
     require_player(console, context, BUTTON_L);
 }
 
+constexpr std::string_view ATTEMPTS_PER_CHECKPOINT_LABEL =
+    "<b>Attempts per Checkpoint:</b><br>A failed checkpoint that started from a save reloads it and tries again, up to this many times in all.";
+constexpr std::string_view REWINDS_TO_BACKUP_LABEL =
+    "<b>Rewinds to the Backup Save:</b><br>A checkpoint that fails after the game autosaved in it cannot reload its start. "
+    "The run then closes the game, opens the backup save's card at the title (Up + B + X), and when the card matches a checkpoint's start "
+    "(\"backup_card\" in its plan), loads it and plays on from that checkpoint, up to this many times. An unknown backup is never loaded.";
+
+//  Loads the latest save for `row` with `game`: a run that starts after
+//  the new game starts from it (01.01: the platform autosave), not from
+//  wherever the game is. Throws OperationFailedException if that save is
+//  older than its start.
+void load_first_save(ConsoleHandle& console, const StoryGame<ZonePose>& game, PlzaBackend& backend, const StoryCheckpoint& row){
+    const Outcome loaded = load_checkpoint_start(game, backend, row);
+    if (!loaded.succeeded()){
+        throw OperationFailedException(
+            ErrorReportMode::NO_ERROR_REPORT,
+            std::format("AutoStory: could not load the save for {}: {}", row.id, to_string(loaded))
+        );
+    }
+    console.log(std::format("AutoStory: loaded the latest save for {}.", row.id));
+}
+
 } // namespace
 
 
@@ -132,11 +157,8 @@ AutoStory::AutoStory()
         "<b>Developer: capture intro screens:</b><br>A separate collection mode, not a capture during a run: it ignores Game Language and, for each of the ten languages in turn (English first), closes the game, launches it from HOME and saves its screens up to the name keyboard to the Screenshots folder. Nothing is typed, so no save is made.",
         LockMode::LOCK_WHILE_RUNNING, /*default_value=*/false
     )
-    , ATTEMPTS_PER_CHECKPOINT(
-        "<b>Attempts per Checkpoint:</b><br>A failed checkpoint that started from a save reloads it and tries again, up to this many times in all.",
-        LockMode::LOCK_WHILE_RUNNING,
-        1, 1, 5
-    )
+    , ATTEMPTS_PER_CHECKPOINT(std::string(ATTEMPTS_PER_CHECKPOINT_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/1, /*min_value=*/1, /*max_value=*/5)
+    , REWINDS_TO_BACKUP(std::string(REWINDS_TO_BACKUP_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/2, /*min_value=*/0, /*max_value=*/5)
     , LOAD_SAVE_FIRST(
         "Load the save first: a run from a checkpoint after 01.00 loads the latest save before it starts. "
         "Off: it starts from wherever the game is, which must be that checkpoint's start.",
@@ -156,6 +178,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(CAPTURE_INTRO_SCREENS);
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
+    PA_ADD_OPTION(REWINDS_TO_BACKUP);
     PA_ADD_OPTION(LOAD_SAVE_FIRST);
     PA_ADD_OPTION(BATTLE_AI);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
@@ -183,23 +206,15 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const StoryGame<ZonePose> game = make_plza_story_game(story, story_data, sightings);
     RunState state;
 
-    //  A run that starts after the new game starts from the latest save
-    //  (01.01: the platform autosave), not from wherever the game is, and
-    //  stops if that save is older than its start; unless LOAD_SAVE_FIRST
-    //  is off.
     if (!story_row_starts_without_save(rows[first]) && LOAD_SAVE_FIRST){
-        const Outcome loaded = load_checkpoint_start(game, backend, rows[first]);
-        if (!loaded.succeeded()){
-            throw OperationFailedException(
-                ErrorReportMode::NO_ERROR_REPORT,
-                std::format("AutoStory: could not load the save for {}: {}", rows[first].id, to_string(loaded))
-            );
-        }
-        env.console.log(std::format("AutoStory: loaded the latest save for {}.", rows[first].id));
+        load_first_save(env.console, game, backend, rows[first]);
     }
 
-    const std::vector<StoryCheckpoint> checkpoints = story_run_rows(std::span<const StoryCheckpoint>(rows), first, last);
-    const SegmentReport report = run_plza_segments(game, story_data, checkpoints, ATTEMPTS_PER_CHECKPOINT, backend, state, sightings);
+    const RewindPlan plan{
+        .rows = rows, .first = first, .last = last, .attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT,
+        .starts = builtin_backup_starts(), .max_rewinds = REWINDS_TO_BACKUP,
+    };
+    const SegmentReport report = run_plza_with_rewinds(game, story_data, plan, console_backup_save(story), backend, sightings, state);
     if (!report.completed){
         throw OperationFailedException(
             ErrorReportMode::NO_ERROR_REPORT,
