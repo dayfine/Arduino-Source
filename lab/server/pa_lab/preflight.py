@@ -37,6 +37,7 @@ import re
 import secrets
 from typing import Any, Dict, List, Optional
 
+from pa_lab.channel import SetOption
 from pa_lab.control import Refused
 
 TOKEN_TTL_S = 120
@@ -45,17 +46,12 @@ VERDICTS = ('passed', 'failed', 'invalid_options', 'unsupported')
 CHECK_STATUSES = ('passed', 'failed', 'skipped')
 BINDING_FIELDS = ('console', 'instance_id', 'panel', 'options_hash', 'transition', 'save', 'lease')
 
-__all__ = ['check_options', 'options_hash', 'set_lines', 'parse_reply', 'binding', 'new_token', 'changed',
+__all__ = ['check_options', 'options_hash', 'set_commands', 'parse_reply', 'binding', 'new_token', 'changed',
            'TOKEN_TTL_S']
 
 
 def _json(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
-
-
-def dumps(value: Any) -> str:
-    """Canonical one-line JSON: what the daemon writes into a request and hashes."""
-    return _json(value)
 
 
 def options_hash(options: Dict[str, Any]) -> str:
@@ -121,16 +117,16 @@ def check_options(program: Dict[str, Any], options: Dict[str, Any]) -> None:
     _check_object(program['options'], options, 'options')
 
 
-def set_lines(options: Dict[str, Any], prefix: str = '') -> List[str]:
-    """The app's `set KEY JSON` lines that load `options`, in key order (a record keeps them as
-    canonical JSON); an object value is a group (`set GROUP.KEY`). Only for options `check_options`
-    passed (no `type: other`)."""
-    out: List[str] = []
+def set_commands(options: Dict[str, Any], prefix: str = '') -> List[SetOption]:
+    """The app commands that load `options`, in key order (a record keeps them as canonical JSON);
+    an object value is a group (key `GROUP.KEY`). Only for options `check_options` passed (no
+    `type: other`)."""
+    out: List[SetOption] = []
     for key, value in options.items():
         if isinstance(value, dict):
-            out.extend(set_lines(value, prefix + key + '.'))
+            out.extend(set_commands(value, prefix + key + '.'))
         else:
-            out.append('set {}{} {}'.format(prefix, key, _json(value)))
+            out.append(SetOption(key=prefix + key, value=value))
     return out
 
 
@@ -141,9 +137,10 @@ def _reply_error(message: str, lines: List[str]) -> Refused:
                    evidence={'journal': lines})
 
 
-def parse_reply(lines: List[str]) -> Dict[str, Any]:
-    """The one `preflight <JSON>` line of a journal, checked; Refused(app_unavailable) otherwise."""
-    matches = [PREFLIGHT_RE.match(line) for line in lines]
+def parse_reply(printed: List[str], lines: List[str]) -> Dict[str, Any]:
+    """The one `preflight <JSON>` line among a journal's printed lines, checked; Refused(app_unavailable)
+    otherwise. `lines` is the whole journal, the evidence."""
+    matches = [PREFLIGHT_RE.match(line) for line in printed]
     matches = [m for m in matches if m]
     if len(matches) != 1:
         raise _reply_error('expected one preflight line, found {}'.format(len(matches)), lines)

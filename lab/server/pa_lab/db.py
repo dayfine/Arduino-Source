@@ -101,7 +101,15 @@ MIGRATIONS: List[List[str]] = [
             PRIMARY KEY (client_id, tool, request_id)
         )""",
     ],
-    # 3 (Slice 5b): passed preflights, keyed by their token's hash, with what they were checked
+    # 3: when the daemon first saw the app take the request (Lab/done or a journal) and first read
+    # its finished journal. Lab/done and Lab/outbox are pruned by the lab's disk cleanup, so
+    # "taken" must not rest on those files later; and a journal is judged against state.json
+    # only once the app wrote state.json after it.
+    [
+        'ALTER TABLE actions ADD COLUMN taken_at TEXT',
+        'ALTER TABLE actions ADD COLUMN answered_at TEXT',
+    ],
+    # 4 (Slice 5b): passed preflights, keyed by their token's hash, with what they were checked
     # against; and the newest cfr_batch per console, which makes the save fact stale.
     [
         """CREATE TABLE preflights (

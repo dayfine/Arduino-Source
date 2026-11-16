@@ -21,7 +21,11 @@ New here? Start with [GUIDE.md](GUIDE.md): what pa-lab is and what it gives you 
 | `contracts/v1/invalid_cases.json` | Documents that must fail: name, kind, input, expected field path and message |
 | `tests/test_contracts.py` | Golden parse, round-trip, invalid-case and legacy-mapping tests |
 | `pa_lab/config.py` | Server config: the one-entry allowlist (B), loopback port, owner-only token file |
-| `pa_lab/lab_reader.py` | Strict reads of `Lab/state.json` and `Lab/save.json`; `console://B/state` and `/save` |
+| `pa_lab/lab_reader.py` | Strict reads of the app's state and save fact (through its channel); `console://B/state` and `/save` |
+| `pa_lab/channel.py` | The app channel the core sees: typed commands (`Start`, `Stop`, `Snapshot`, ...), typed answers (`Journal`, `AppError` kinds), `AppChannel` |
+| `pa_lab/channel_file.py` | The version-1 channel over `Lab/`: the only module that knows its layout, request and journal lines and error text |
+| `contracts/v1/channel.md` | The app channel's files, line formats, ordering (state.json after the journal) and retention |
+| `tests/fake_channel.py`, `tests/test_channel_{core,file}.py` | An in-memory channel for core tests; the file channel's own tests |
 | `pa_lab/tools.py`, `pa_lab/shot.py` | `ensure_game` (verification only) and `shot` (newer than the call) |
 | `pa_lab/mcp_server.py` | MCP over Streamable HTTP on `127.0.0.1`: bearer, Host/Origin, sessions, size caps |
 | `pa_lab/app_query.py` | `describe_program` and `game_open`: one-line reads through the app's channel (#504) |
@@ -333,7 +337,12 @@ A passing request is stored `pending` with the app instance it was checked again
 `actions`, migration 2), and the daemon writes `request <request_id>` / `start 10` (or `stop`)
 into `Lab/inbox`, the commands `labctl.sh start|stop` sends; the client's `request_id` is the
 channel's request id. It then reads the journal and `state.json` (up to 13 s for a start, 10 s for
-a stop) and resolves the record. Each attempt's inbox name has a random part, so a journal left by
+a stop) and resolves the record. The app renames the finished journal into place first and
+rewrites `state.json` on its next 500 ms timer (later while another request runs), so a journal is
+judged against `state.json` only once its `written_at` is after the daemon first read the journal.
+The first time the daemon sees the request taken (in `done/` or answered) and its journal finished,
+it stores the time (`actions.taken_at` / `answered_at`, migration 3): `disk_gc.sh` prunes `done/`
+and `outbox/`, and a request once seen taken must not later read as never sent. Each attempt's inbox name has a random part, so a journal left by
 an earlier request with the same id (after compaction dropped its record) never answers it.
 
 While a `run_program` is pending the lease cannot end: `release_console` is refused
@@ -347,13 +356,14 @@ settles, an overdue lease expires at the next read. The outcomes:
 | after the start's `ok`, a stop by `program` / `error` dated after the request | `completed` with `ended: {source, at}`, `correlated_by: time`; the lease stays idle |
 | after the start's `ok`, a stop by a lab script (`lab`, another request id) dated after the request | the same, `ended.source: lab` |
 | (stop) a stop by `program` / `error` / a lab script dated after the request | `completed`, `stopped_by` that source, `correlated_by: time` (the terminal event completes it) |
-| a UI transition dated after the request | `failed`, `console_held_by_user` (the user lease is already installed) |
+| a UI transition dated after the request | `failed`, `console_held_by_user` (the user lease is already installed). For `run_program`, `evidence.started: true` when the start's `ok` line was read (the run did start and moved the game; `evidence.run_id` is its id), else `false`; the status stays `failed` so a caller stops and waits for the user |
 | another `instance.id` without this request's id | `failed`, `app_unavailable`, `instance_replaced` |
 | the line failed | `failed`: `owned by` → `console_held_by_agent` (the token is not copied); `Program is RUNNING.` → `program_running`; `controller not connected` → `controller_not_ready`; else `app_unavailable` with the journal |
 | the inbox write failed | `failed` at once, `app_unavailable`, `evidence.reason: inbox_write_failed` (nothing was sent) |
 | no answer, request still in the inbox | withdrawn; `failed`, `timeout` (nothing was sent) |
-| no answer, request in neither the inbox nor `done/`, no journal | `failed`, `timeout`, `evidence.reason: never_sent` (the daemon stopped between the record and the write; settled at the next start too) |
-| a complete journal without an error that nothing above matches, after the wait | `failed`, `timeout`, `evidence.reason: outcome_unknown` with the journal and transition |
+| no answer, request never seen in `done/` and no journal | `failed`, `timeout`, `evidence.reason: never_sent` (the daemon stopped between the record and the write; settled at the next start too) |
+| a complete journal without an error or the start's `ok`, that nothing above matches, after the wait and once `state.json` was written after the journal | `failed`, `timeout`, `evidence.reason: outcome_unknown` with the journal and transition |
+| (start) the start's `ok` line, but `state.json` shows nothing above | stays `pending` (the program started; the lease cannot end); never failed for want of a match |
 | no answer, request taken | stays `pending`; settled from `state.json` on the next `request_status`, `next_events`, `console://B/state` read or action call, also after a daemon restart; `failed` / `app_unavailable` if the app exits |
 
 **What Slice 1's data does not give.** `last_transition` keeps only the newest start or stop, and
