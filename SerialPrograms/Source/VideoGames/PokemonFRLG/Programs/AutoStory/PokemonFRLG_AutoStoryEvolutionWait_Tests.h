@@ -14,7 +14,8 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  The battle loop's evolution holds after the last turn, on scripted readings.
+//  The battle loop's evolution holds and its stop for a fainted lead after
+//  the last turn, on scripted readings; and its read of that party list.
 void add_tests_AutoStoryEvolutionWait(UnitTestDatabase& database);
 
 

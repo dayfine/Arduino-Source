@@ -207,32 +207,17 @@ UnitTestResult test_prompt_answers(Logger&){
     return true;
 }
 
-//  The lead fainted: a wild battle is run from, and a member sent only
-//  runs; in a trainer's, the next member is sent and uses its first move.
-//  Protected members are never sent: with only those left there is no
-//  slot, and the loop stops. Either way the
-//  battle is lost, and no item goes to the fainted lead.
+//  The lead fainted: a wild battle is run from ("Use next POKEMON?" NO),
+//  and whoever is out after it only runs; in a trainer's, only uses its
+//  first move. Either way the battle is lost, and no item goes to the
+//  fainted lead.
 UnitTestResult test_fainted_lead(Logger&){
-    Supplies protected_party;
-    protected_party.protected_slots = {1, 2, 3, 4, 5};
-    BattleDecisions only_protected(protected_party, BattleKind::WILD_FIGHT);
-    only_protected.turn(GREEN);
-    if (only_protected.prompt(true).answer != YesNo::NO || !only_protected.lost()){
-        return "Expected NO to \"Use next POKEMON?\" in a wild battle, and the battle lost.";
-    }
-    if (only_protected.next_member_slot()){
-        return "Expected no member sent with every member after the lead protected.";
-    }
-
-    //  Slot 1 protected, the rest not.
     Supplies wild_supplies;
     wild_supplies.potions = 3;
-    wild_supplies.protected_slots = {1};
     BattleDecisions wild(wild_supplies, BattleKind::WILD_FIGHT);
     wild.turn(GREEN);
-    wild.prompt(true);
-    if (wild.next_member_slot() != std::optional<size_t>(2) || wild.next_member_slot() != std::optional<size_t>(3)){
-        return "Expected slot 2 past the protected slot 1, then slot 3 if 2 couldn't go.";
+    if (wild.prompt(true).answer != YesNo::NO || !wild.lost()){
+        return "Expected NO to \"Use next POKEMON?\" in a wild battle, and the battle lost.";
     }
     const PartyStatus red{.hp_seen = true, .hp_yellow = false, .hp_red = true, .status = StatusCondition::NONE};
     for (int c = 0; c < 10; c++){
@@ -244,8 +229,9 @@ UnitTestResult test_fainted_lead(Logger&){
     Supplies trainer_supplies;
     BattleDecisions trainer(trainer_supplies, BattleKind::TRAINER);
     trainer.turn(GREEN);
-    if (trainer.next_member_slot() != std::optional<size_t>(1) || !trainer.lost()){
-        return "Expected the member after the lead sent in a trainer's battle, and the battle lost.";
+    trainer.lead_fainted();
+    if (!trainer.lost()){
+        return "Expected the battle lost once the lead fainted in a trainer's battle.";
     }
     const TurnAction action = trainer.turn(GREEN);
     if (action.choice != TurnChoice::MOVE || action.slot != TOP_LEFT_MOVE){

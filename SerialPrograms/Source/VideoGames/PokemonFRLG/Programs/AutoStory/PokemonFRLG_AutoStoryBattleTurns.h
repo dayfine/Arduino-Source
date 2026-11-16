@@ -71,7 +71,8 @@ enum class YesNo{
     NO,
 };
 
-//  A battle screen as the loop reads it, for the evolution check.
+//  A battle screen as the loop reads it, for the evolution check and a
+//  fainted lead.
 struct BattleTextScreen{
     //  The battle's text box, its gold and white frame included: the
     //  black below a small map or at a map's edge passes for its blue alone.
@@ -85,9 +86,13 @@ struct BattleTextScreen{
     //  The overworld of a cave dark without Flash (dark_cave_screen()),
     //  whose black reads as the text box.
     bool dark_cave = false;
+    //  The party list with the lead's HP bar empty: the game asks for the
+    //  next member after the lead fainted.
+    bool lead_fainted = false;
 };
 
-//  `screen` as the battle loop reads it for the evolution check.
+//  `screen` as the battle loop reads it for the evolution check and a
+//  fainted lead.
 BattleTextScreen read_text_screen(const ImageViewRGB32& screen);
 
 
