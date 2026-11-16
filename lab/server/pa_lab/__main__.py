@@ -4,9 +4,10 @@
   python3 -m pa_lab describe app_state
   python3 -m pa_lab kinds
   python3 -m pa_lab init-token ~/.config/pa-lab/token
-  python3 -m pa_lab serve --config ~/.config/pa-lab/server.json [--read-only]
+  python3 -m pa_lab serve --config ~/.config/pa-lab/server.json [--read-only | --actions]
   python3 -m pa_lab serve-stdio --profile-dir ~/Library/Application\\ Support/SerialPrograms/Profiles/lab-B
   python3 -m pa_lab lease --config ~/.config/pa-lab/server.json show|claim-user|release-user
+  python3 -m pa_lab soak-check --config ~/.config/pa-lab/server.json --since 2026-11-16T10:00:00.000Z
 
 Run from lab/server (or with lab/server on PYTHONPATH). Exit 0 valid, 1 invalid, 2 usage.
 """
@@ -35,6 +36,8 @@ def main(argv=None) -> int:
     serve.add_argument('--config', required=True)
     serve.add_argument('--read-only', action='store_true',
                        help='serve only console_status and the resources: no inbox tools, no control plane')
+    serve.add_argument('--actions', action='store_true',
+                       help='also serve preflight_program, run_program, stop_program and cfr_batch (Slice 5): they start and stop the program and press buttons')
     stdio = sub.add_parser('serve-stdio', help='run the read-only MCP server on stdio (for .mcp.json)')
     stdio.add_argument('--profile-dir', required=True, help="the console's SerialPrograms profile folder")
     stdio.add_argument('--keepawake-log', default='~/BDSPLab/keepawake.log')
@@ -42,6 +45,10 @@ def main(argv=None) -> int:
     lease.add_argument('--config', required=True)
     lease.add_argument('action', choices=('show', 'claim-user', 'release-user'))
     lease.add_argument('--console', default='B')
+    soak = sub.add_parser('soak-check', help='after a Slice 5 soak run, list every mutation without exactly one record')
+    soak.add_argument('--config', required=True)
+    soak.add_argument('--since', required=True, help='T0, a contract timestamp with milliseconds')
+    soak.add_argument('--console', default='B')
     args = parser.parse_args(argv)
 
     if args.command == 'check':
@@ -77,17 +84,22 @@ def main(argv=None) -> int:
         print('wrote {}'.format(args.path))
         return 0
     if args.command == 'serve':
-        return _serve(args.config, args.read_only)
+        if args.read_only and args.actions:
+            print('error --read-only and --actions exclude each other')
+            return 2
+        return _serve(args.config, args.read_only, args.actions)
     if args.command == 'serve-stdio':
         from pa_lab import stdio_server
         return stdio_server.main(args.profile_dir, args.keepawake_log)
     if args.command == 'lease':
         return _lease(args.config, args.action, args.console)
+    if args.command == 'soak-check':
+        return _soak_check(args.config, args.since, args.console)
     parser.print_help()
     return 2
 
 
-def _serve(path: str, read_only: bool = False) -> int:
+def _serve(path: str, read_only: bool = False, actions: bool = False) -> int:
     from pa_lab import lab_reader, mcp_server
     try:
         cfg = config.load(path)
@@ -112,7 +124,13 @@ def _serve(path: str, read_only: bool = False) -> int:
     for reader in readers.values():  # restart reconciliation: apply what the app shows now
         reader.console_state()
     plane.compact()
-    server = mcp_server.make_server(cfg.port, token, readers, control_plane=plane)
+    program_actions = None
+    if actions:
+        from pa_lab import actions as actions_module
+        program_actions = actions_module.ProgramActions(plane, readers)
+        for name in readers:  # settle what a stopped daemon left pending (e.g. a request never written)
+            program_actions.settle_pending(name)
+    server = mcp_server.make_server(cfg.port, token, readers, control_plane=plane, actions=program_actions)
     return _serve_forever(server, readers, mcp_server.ENDPOINT)
 
 
@@ -131,25 +149,60 @@ def _serve_forever(server, readers, endpoint: str) -> int:
 
 def _lease(path: str, action: str, console: str) -> int:
     import json
-    from pa_lab import control, db
+    from pa_lab import control, db, hold
     try:
         cfg = config.load(path)
     except config.ConfigError as e:
         print('error {}'.format(e))
         return 1
     plane = control.ControlPlane(db.Database(cfg.db_file), sorted(cfg.consoles))
+    lab_dir = cfg.consoles[console].lab_dir if console in cfg.consoles else None
+    released = False
     try:
         if action == 'claim-user':
+            # The store first: a refused claim leaves no hold file behind.
             lease = plane.claim_user(console)
+            if lab_dir is not None:
+                hold.write_hold(lab_dir, 'operator_claim')
         elif action == 'release-user':
+            # The file first: the app and the lab scripts read it, not the store.
+            released = lab_dir is not None and hold.clear_hold(lab_dir)
             lease = plane.release_user(console)
         else:
-            lease = plane.lease(console)
+            lease = plane.lease(console, hold.read_hold(lab_dir) if lab_dir is not None else None)
     except control.Refused as e:
+        if released:
+            print('released the hold file; the store said: {}'.format(e.refusal['message']))
+            return 0
         print('error {}'.format(e.refusal['message']))
         return 1
     print(json.dumps(lease, indent=2))
     return 0
+
+
+def _soak_check(path: str, since: str, console: str) -> int:
+    import json
+    from pa_lab import db, soak
+    try:
+        cfg = config.load(path)
+    except config.ConfigError as e:
+        print('error {}'.format(e))
+        return 2
+    if console not in cfg.consoles:
+        print('error no console {} in {}'.format(console, path))
+        return 2
+    done = cfg.consoles[console].lab_dir / 'done'
+    names = [p.name[:-len('.txt')] for p in done.glob('*.txt')] if done.is_dir() else []
+    database = db.Database(cfg.db_file)
+    try:
+        found = soak.check(database.read(), names, since)
+    except ValueError:
+        print('error --since {} is not a contract timestamp (2026-11-16T10:00:00.000Z)'.format(since))
+        return 2
+    finally:
+        database.close()
+    print(json.dumps(found, indent=2))
+    return 0 if found == soak.CLEAN else 1
 
 
 if __name__ == '__main__':

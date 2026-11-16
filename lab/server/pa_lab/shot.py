@@ -2,12 +2,12 @@
 
 The app's channel command `snapshot LABEL TIMEOUT_MS` (#481, Lab.md "Snapshot") waits for the
 first video frame that arrives after the line starts, saves it and names it with the same
-`instance.id` and `frame_seq` that `Lab/state.json` uses. It needs no owner token, program state
+`instance.id` and `frame_seq` that the app's state uses. It needs no owner token, program state
 or controller. So:
 
-1. Read `Lab/state.json` at call start: the app must be up (fresh heartbeat), and its
+1. Read the app's state at call start: the app must be up (fresh heartbeat), and its
    `instance.id` is the one the reply must name.
-2. Write the request `request <uuid>` / `snapshot frame <timeout_ms>` into `Lab/inbox` at once.
+2. Send the request `snapshot frame <timeout_ms>` through the app's channel (`pa_lab.channel`) at once.
 3. Read the journal: `snapshot saved ...` gives the exact `frame_seq` and `captured_at`;
    `snapshot timeout` and `snapshot unavailable` map to refusals.
 4. Open only the PNG this call asked for, never a path read from the journal, check it is
@@ -18,14 +18,14 @@ The request is fixed text; no caller input but the checked `timeout_ms` reaches 
 
 from __future__ import annotations
 
-import os
 import re
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from pa_lab import timestamps
+from pa_lab.channel import AppChannel, Command, Journal, Snapshot, await_answer
 from pa_lab.lab_reader import BAD_SIGNALS, ConsoleReader, Unavailable
 from pa_lab.tools import InvalidArguments, check_arguments
 
@@ -39,8 +39,6 @@ MAX_PNG_BYTES = 32 << 20
 LABEL = 'frame'
 PNG_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 PNG_END = b'\x00\x00\x00\x00IEND\xaeB`\x82'
-JOURNAL_ERROR_RE = re.compile(r'^error \d+ \([^)]*\): (.*)$')
-JOURNAL_OK_RE = re.compile(r'^ok \d+ snapshot ' + LABEL + r'\b')
 SAVED_RE = re.compile(r'^snapshot saved instance=(\S+) frame_seq=(\d+) captured_at=(\S+) after=(\d+) path=(.+)$')
 TIMEOUT_RE = re.compile(r'^snapshot timeout instance=(\S+) after=(\d+) timeout_ms=(\d+)$')
 UNAVAILABLE_RE = re.compile(r'^snapshot unavailable instance=(\S+) reason=(\S+)$')
@@ -64,40 +62,19 @@ def _check_start(app: Dict[str, Any]) -> None:
         raise Refused('video_bad_signal', 'The video shows {}.'.format(signal.replace('_', ' ')))
 
 
-# Transport: a file in Lab/inbox (atomic rename), answered by a journal in Lab/outbox that the
-# app writes after its next 500 ms poll. A local socket is the likely replacement if poll latency
-# or missed events become a measured problem; the alternatives are in lab/tooling's
-# docs/design/Agent-Integration.md, "Transport: now and later".
-def write_request(lab_dir: Path, name: str, request_id: str, line: str) -> Path:
-    """`line` is fixed text built by the daemon; no caller string reaches the inbox."""
-    part = lab_dir / 'outbox' / (name + '.part')
-    inbox = lab_dir / 'inbox' / (name + '.txt')
-    part.write_text('request {}\n{}\n'.format(request_id, line), encoding='utf-8')
-    os.replace(part, inbox)
-    return inbox
+def refuse_timeout(command: str, name: str) -> Refused:
+    return Refused('timeout', 'The app did not answer the {} request in time (busy with another '
+                   'request?).'.format(command), {'request': name})
 
 
-def _withdraw(inbox: Path) -> None:
+def send_or_refuse(channel: AppChannel, name: str, request_id: str, commands: Tuple[Command, ...],
+                   command: str) -> None:
+    """Writes the request into the app's inbox; a failed write is a refusal, and nothing was sent."""
     try:
-        os.remove(inbox)
-    except FileNotFoundError:
-        pass
-
-
-def wait_for_journal(console: ConsoleReader, sleep: Callable[[float], None], deadline: float,
-                     lab_dir: Path, name: str, inbox: Path, command: str = 'snapshot') -> List[str]:
-    journal = lab_dir / 'outbox' / (name + '.out')
-    while True:
-        if journal.exists():
-            lines = journal.read_text(encoding='utf-8', errors='replace').splitlines()
-            if lines and lines[-1] == 'end':  # the app may still be writing it
-                return lines
-        if console.now() >= deadline:
-            break
-        sleep(POLL_S)
-    _withdraw(inbox)
-    raise Refused('timeout', 'The app did not answer the {} request in time (busy with another '
-                  'request?).'.format(command), {'request': name})
+        channel.send(name, request_id, commands)
+    except OSError as e:
+        raise Refused('app_unavailable', 'Could not write the {} request into the app\'s inbox ({}); '
+                      'nothing was sent.'.format(command, e.strerror or e), {'reason': 'inbox_write_failed'})
 
 
 def _check_instance(reply_instance: str, instance_id: str) -> None:
@@ -108,9 +85,9 @@ def _check_instance(reply_instance: str, instance_id: str) -> None:
                           'new_instance_id': reply_instance})
 
 
-def _refuse_failed_reply(lines: List[str], instance_id: str) -> None:
+def _refuse_failed_reply(printed: List[str], instance_id: str, lines: List[str]) -> None:
     """Raises the refusal for a `snapshot timeout` or `snapshot unavailable` line, if any."""
-    for line in lines:
+    for line in printed:
         match = TIMEOUT_RE.match(line)
         if match:
             _check_instance(match.group(1), instance_id)
@@ -131,15 +108,14 @@ def _refuse_failed_reply(lines: List[str], instance_id: str) -> None:
                           {'instance_id': instance_id, 'reason': 'unknown', 'journal': lines})
 
 
-def _parse_saved(lines: List[str], instance_id: str, expected: Path) -> Dict[str, Any]:
-    _refuse_failed_reply(lines, instance_id)
-    for line in lines:
-        match = JOURNAL_ERROR_RE.match(line)
-        if match:
-            raise Refused('app_unavailable', "The app's snapshot line failed: {}".format(match.group(1)),
-                          {'journal': lines})
-    saved = [m for m in (SAVED_RE.match(line) for line in lines) if m]
-    if len(saved) != 1 or not any(JOURNAL_OK_RE.match(line) for line in lines):
+def _parse_saved(journal: Journal, instance_id: str, expected: Path) -> Dict[str, Any]:
+    lines = list(journal.lines)
+    _refuse_failed_reply(list(journal.printed), instance_id, lines)
+    if journal.error is not None:
+        raise Refused('app_unavailable', "The app's snapshot line failed: {}".format(journal.error.detail),
+                      {'journal': lines})
+    saved = [m for m in (SAVED_RE.match(line) for line in journal.printed) if m]
+    if len(saved) != 1 or not journal.ok(Snapshot):
         raise Refused('app_unavailable', 'The snapshot journal has no single saved line and ok line.',
                       {'journal': lines})
     match = saved[0]
@@ -182,12 +158,15 @@ def take_shot(console: ConsoleReader, arguments: Dict[str, Any],
     instance_id = app['instance']['id']
 
     request_id = str(new_uuid())
-    name = 'palab_shot_' + request_id.replace('-', '')
-    inbox = write_request(console.lab_dir, name, request_id, 'snapshot {} {}'.format(LABEL, timeout_ms))
+    channel = console.channel
+    name = channel.request_name('shot', request_id)
+    send_or_refuse(channel, name, request_id, (Snapshot(LABEL, timeout_ms),), 'snapshot')
     deadline = started + (timeout_ms + ANSWER_GRACE_MS) / 1000.0
-    lines = wait_for_journal(console, sleep, deadline, console.lab_dir, name, inbox)
-    png_path = console.lab_dir / 'outbox' / '{}_{}.png'.format(name, LABEL)
-    frame = _parse_saved(lines, instance_id, png_path)
+    journal = await_answer(channel, name, console.now, sleep, deadline, POLL_S)
+    if journal is None:
+        raise refuse_timeout('snapshot', name)
+    png_path = Path(channel.snapshot_path(name, LABEL))
+    frame = _parse_saved(journal, instance_id, png_path)
     age_ms = int(round((console.now() - timestamps.parse(frame['captured_at'])) * 1000))
     if age_ms > max_age_ms:
         raise Refused('video_stale', 'The saved frame is {} ms old (max_age_ms {}).'.format(age_ms, max_age_ms),

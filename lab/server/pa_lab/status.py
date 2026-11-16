@@ -23,6 +23,7 @@ import subprocess
 from typing import Any, Callable, Dict, List, Optional
 
 from pa_lab import legacy, timestamps
+from pa_lab.hold import read_hold
 from pa_lab.lab_reader import ConsoleReader
 
 LOG_TAIL_BYTES = 2_000_000
@@ -165,6 +166,7 @@ class ProfileStatus:
             'app': self.find_app(self.profile_dir.name),
             'lab_state': self._lab_state(),
             'console_state': self.reader.console_state(),
+            'hold': read_hold(self.profile_dir / 'Lab'),
             'program_state': _clip(program_state[-1]) if program_state else None,
             'last_run': [_clip(l) for l in runs[-2:]],
             'last_press': _log_time(presses[-1]) if presses else None,

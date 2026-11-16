@@ -5,7 +5,9 @@ here=$(cd "$(dirname "$0")" && pwd); T=$(mktemp -d /tmp/labrun-test.XXXXXX); fai
 LOCKSRC=$here/../control/lablock.sh
 [ -f "$LOCKSRC" ] || LOCKSRC=$HOME/BDSPLab/lablock.sh
 trap 'rm -rf "$T"' EXIT
-export DEPLOYS=$T/dep PROFILES=$T/prof LABLOCK=$LOCKSRC LAB_DIR=$T/lab LOGDIR=$T LABRUN_PROFILE=lab-T
+HOLDSRC=$here/../control/hold.sh
+[ -f "$HOLDSRC" ] || HOLDSRC=$HOME/BDSPLab/hold.sh
+export DEPLOYS=$T/dep PROFILES=$T/prof LABLOCK=$LOCKSRC HOLD=$HOLDSRC LAB_DIR=$T/lab LOGDIR=$T LABRUN_PROFILE=lab-T
 ok(){ if eval "$2"; then echo "ok   $1"; else echo "FAIL $1"; fail=1; fi; }
 mk(){ # mk SLOT NAME REV AGE
   d=$DEPLOYS/$1/$2; mkdir -p "$d/SerialPrograms.app/Contents/MacOS"
@@ -23,5 +25,8 @@ ok "plan names newest" 'sh $here/labrun.sh frlg --plan | grep -q "new-2 commit b
 ok "plan N=2 names older" 'sh $here/labrun.sh frlg 2 --plan | grep -q "old-1 commit aaaa"'
 ok "plan N=3 refused" '! sh $here/labrun.sh frlg 3 --plan 2>/dev/null'
 ok "bdsp picks slot-B" 'sh $here/labrun.sh bdsp --plan | grep -q "d-1 commit cccc"'
+printf 'owner=user\nreason=ui_start\nacquired_at=2026-11-15T21:04:05.000Z\n' > "$PROFILES/lab-T/Lab/hold"
+ok "held: refused" 'sh $here/labrun.sh frlg --plan 2>&1 | grep -q "REFUSED: console held by user"; [ $? = 0 ] && ! sh $here/labrun.sh frlg --plan >/dev/null 2>&1'
+rm -f "$PROFILES/lab-T/Lab/hold"
 
 exit $fail
