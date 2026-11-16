@@ -17,7 +17,7 @@ restores the prior options on the UI thread again. When the options no longer eq
 candidate at restore time (the user edited the panel during the checks), it leaves them alone and
 replies `restored: false`. It prints one line, `preflight <JSON>`:
 
-    {"schema": 1, "id": "<Game>:<Program>", "verdict": "passed" | "failed" | "invalid_options" | "unsupported",
+    {"schema": 1, "id": "<Game>:<Program>", "verdict": "passed" | "failed" | "invalid_options" | "unsupported" | "cancelled",
      "checks": [{"name", "status": "passed" | "failed" | "skipped", "message"}],
      "failure": {"check", "message", "evidence"?} | null,      # verdict failed
      "invalid": {"key", "message"} | null,                     # verdict invalid_options
@@ -48,7 +48,7 @@ from pa_lab.control import Refused
 
 TOKEN_TTL_S = 120
 PREFLIGHT_RE = re.compile(r'^preflight (\{.*\})$')
-VERDICTS = ('passed', 'failed', 'invalid_options', 'unsupported')
+VERDICTS = ('passed', 'failed', 'invalid_options', 'unsupported', 'cancelled')
 CHECK_STATUSES = ('passed', 'failed', 'skipped')
 BINDING_FIELDS = ('console', 'instance_id', 'panel', 'candidate_hash', 'options_hash', 'transition', 'save', 'lease')
 
@@ -193,6 +193,11 @@ def outcome(doc: Dict[str, Any], panel: str, lines: List[str]) -> Optional[Dict[
             evidence['edited_keys'] = doc['edited_keys']
         return {'code': 'app_unavailable', 'message': 'The app did not restore the prior options after the preflight; '
                 'check the panel before any run.', 'evidence': evidence}
+    if doc['verdict'] == 'cancelled':
+        # #616: a panel change (or the app closing) cancelled the checks; the options were put back.
+        return {'code': 'app_unavailable', 'message': 'The app cancelled the checks of {} before they finished (the '
+                'panel changed or the app is closing); run preflight_program again.'.format(doc['id']),
+                'evidence': {'reason': 'cancelled', 'reply': doc}}
     if doc['id'] != panel:
         return {'code': 'app_unavailable', 'message': 'The app preflighted {}, not {}.'.format(doc['id'], panel),
                 'evidence': {'reason': 'panel_changed', 'reply': doc}}

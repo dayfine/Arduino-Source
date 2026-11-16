@@ -162,10 +162,12 @@ class FakeApp:
         self.invalid = None         # (key, message): the app's check_validity refuses the candidate
         self.restore = True         # False: the app forgets to restore the prior options
         self.preflight_id = None    # the program id the reply names (default: the selected panel)
+        self.cancel = False         # True: a panel change cancels the checks (#616's `cancelled` verdict)
         self.staged_seen = []       # the options the prechecks ran against, per preflight
         self.user_edit = None       # options a user sets in the panel during the checks (#601 keeps them)
         self.hash_options = True    # False: an app before #601, no program.options_hash anywhere
         self.line_fail = None       # (batch line index, error): that console line fails
+        self.set_fail = None        # (key, error): that `set` line fails; the earlier ones stay applied
         self.lines_run = []
         self.requests = []
         self.pending = []
@@ -245,8 +247,13 @@ class FakeApp:
             self.finish(pending, '', 'Program is {}.'.format(state.upper()))
             return
         printed = ''
-        for set_line in (l for l in lines if l.startswith('set ')):
+        for number, set_line in enumerate(lines, start=1):
+            if not set_line.startswith('set '):
+                continue
             key, value = set_line.split(' ', 2)[1:]
+            if self.set_fail is not None and self.set_fail[0] == key:
+                self.finish(pending, printed, self.set_fail[1], line=number)
+                return
             target = self.options
             parts = key.split('.')
             for part in parts[:-1]:
@@ -283,6 +290,8 @@ class FakeApp:
             reply.update(verdict='invalid_options', invalid={'key': self.invalid[0], 'message': self.invalid[1]})
         elif contract['prechecks'] == 'unsupported':
             reply['verdict'] = 'unsupported'
+        elif self.cancel:
+            reply['verdict'] = 'cancelled'
         else:
             self.staged_seen.append(copy.deepcopy(staged))
             for check in contract['prechecks']:
@@ -355,11 +364,12 @@ class FakeApp:
     def instance(self):
         return self.reply_instance or self.lab.state['instance']['id']
 
-    def finish(self, pending, printed, error=None):
+    def finish(self, pending, printed, error=None, line=2):
+        """Writes the journal; an error names request line `line` (1 is `request <id>`)."""
         if pending in self.pending:
             self.pending.remove(pending)
         if error is None:
             journal = printed + 'ok 2 {} @0-41ms\nend\n'.format(pending['line'])
         else:
-            journal = printed + 'error 2 ({}): {}\nend\n'.format(pending['line'], error)
+            journal = printed + 'error {} ({}): {}\nend\n'.format(line, pending['line'], error)
         (self.lab.dir / 'outbox' / (pending['name'] + '.out')).write_text(journal, encoding='utf-8')

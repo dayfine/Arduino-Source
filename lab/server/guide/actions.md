@@ -66,7 +66,9 @@ tests against a fake app; real console output comes later):
  "issued_at": "2026-11-14T06:00:00.150Z", "expires_at": "2026-11-14T06:02:00.150Z"}
 ```
 
-When a check fails, the record is failed and names it; your options are back as they were:
+When a check fails, the record is failed and names it; your options are back as they were (also
+when the checks are cut short because someone changed the app's panel: `app_unavailable` with
+`evidence.reason: cancelled`):
 
 ```json
 {"status": "failed",
@@ -97,6 +99,11 @@ any of the program's options in the panel), the answer says what:
 {"code": "preflight_stale", "message": "Since the preflight, save changed; run preflight_program again.",
  "evidence": {"reason": "changed", "changed": ["save"]}}
 ```
+
+If the app refuses one of the `set` lines (it changed since the check), it stops there and has no
+undo: the options set before that line stay in the panel. The record is `failed`,
+`app_unavailable`, and says which ones (`evidence.applied_options`, `evidence.failed_option`);
+check the panel, or run `preflight_program` and `run_program` again, which set them all.
 
 Refusal codes you can get: `console_held_by_user`, `console_held_by_agent`, `program_running`,
 `app_unavailable`, `panel_not_program`, `invalid_arguments`, `preflight_stale`; from the check

@@ -7,6 +7,7 @@
   python3 -m pa_lab serve --config ~/.config/pa-lab/server.json [--read-only | --actions]
   python3 -m pa_lab serve-stdio --profile-dir ~/Library/Application\\ Support/SerialPrograms/Profiles/lab-B
   python3 -m pa_lab lease --config ~/.config/pa-lab/server.json show|claim-user|release-user
+  python3 -m pa_lab soak-check --config ~/.config/pa-lab/server.json --since 2026-11-16T10:00:00.000Z
 
 Run from lab/server (or with lab/server on PYTHONPATH). Exit 0 valid, 1 invalid, 2 usage.
 """
@@ -44,6 +45,10 @@ def main(argv=None) -> int:
     lease.add_argument('--config', required=True)
     lease.add_argument('action', choices=('show', 'claim-user', 'release-user'))
     lease.add_argument('--console', default='B')
+    soak = sub.add_parser('soak-check', help='after a Slice 5 soak run, list every mutation without exactly one record')
+    soak.add_argument('--config', required=True)
+    soak.add_argument('--since', required=True, help='T0, a contract timestamp with milliseconds')
+    soak.add_argument('--console', default='B')
     args = parser.parse_args(argv)
 
     if args.command == 'check':
@@ -88,6 +93,8 @@ def main(argv=None) -> int:
         return stdio_server.main(args.profile_dir, args.keepawake_log)
     if args.command == 'lease':
         return _lease(args.config, args.action, args.console)
+    if args.command == 'soak-check':
+        return _soak_check(args.config, args.since, args.console)
     parser.print_help()
     return 2
 
@@ -171,6 +178,31 @@ def _lease(path: str, action: str, console: str) -> int:
         return 1
     print(json.dumps(lease, indent=2))
     return 0
+
+
+def _soak_check(path: str, since: str, console: str) -> int:
+    import json
+    from pa_lab import db, soak
+    try:
+        cfg = config.load(path)
+    except config.ConfigError as e:
+        print('error {}'.format(e))
+        return 2
+    if console not in cfg.consoles:
+        print('error no console {} in {}'.format(console, path))
+        return 2
+    done = cfg.consoles[console].lab_dir / 'done'
+    names = [p.name[:-len('.txt')] for p in done.glob('*.txt')] if done.is_dir() else []
+    database = db.Database(cfg.db_file)
+    try:
+        found = soak.check(database.read(), names, since)
+    except ValueError:
+        print('error --since {} is not a contract timestamp (2026-11-16T10:00:00.000Z)'.format(since))
+        return 2
+    finally:
+        database.close()
+    print(json.dumps(found, indent=2))
+    return 0 if found == soak.CLEAN else 1
 
 
 if __name__ == '__main__':
