@@ -8,6 +8,7 @@
 #include <functional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/CancellableScope.h"
@@ -212,31 +213,61 @@ UnitTestResult test_stubbed_steps_need_the_console(Logger& logger){
     return true;
 }
 
-//  Console B, 2026-11-15: three 00.01 scenes each waited the full 15 s
-//  after the preceding step had already played them. Audit every authored
-//  scene through the real StoryWalkSteps::mash() seam.
+//  Every authored scene keeps the full opening-line guard unless the
+//  preceding settle actually observed dialogue.
 UnitTestResult test_scene_start_waits(Logger& logger){
+    constexpr std::string_view LAST_ROW = "01.11";
+    constexpr size_t EXPECTED_SCENES = 23;
     SimExecutor sim(logger);
-    run_rows_on(sim, logger, {.from = "00.00", .to = "01.11"});
+    run_rows_on(sim, logger, {.from = "00.00", .to = std::string(LAST_ROW)});
     if (!sim.result().error.empty()){
         return std::format("The run failed: {}", sim.result().error);
     }
     size_t scenes = 0;
+    size_t guarded = 0;
     for (const auto& [row, step] : story_steps()){
-        if (step.kind != StoryStepKind::MASH){
+        if (row > LAST_ROW || step.kind != StoryStepKind::MASH){
             continue;
         }
         const auto found = sim.misses().dialog_waits.find(step.name);
-        if (found == sim.misses().dialog_waits.end()){
-            return std::format("{} {} did not check for its opening line.", row, step.name);
-        }
-        if (found->second > Milliseconds(3000)){
-            return std::format("{} {} waits {} ms for an optional opening line; expected at most 3000 ms.",
-                row, step.name, found->second.count());
+        if (found != sim.misses().dialog_waits.end()){
+            if (found->second != Milliseconds(15000)){
+                return std::format("{} {} waits {} ms for its opening line; expected the full 15000 ms guard.",
+                    row, step.name, found->second.count());
+            }
+            guarded++;
         }
         scenes++;
     }
-    logger.log(std::format("{} scene steps use the bounded optional-line pre-watch.", scenes));
+    if (scenes != EXPECTED_SCENES){
+        return std::format("Audited {} scene steps through {}; expected {}.", scenes, LAST_ROW, EXPECTED_SCENES);
+    }
+    logger.log(std::format("{} scene steps audited through {}; {} used the full opening-line guard.", scenes, LAST_ROW, guarded));
+    return true;
+}
+
+//  Console B, 2026-11-15: these arrival scenes had already been played by
+//  the preceding settle, so their separate 15 s waits did no work.
+UnitTestResult test_seen_scene_skips_start_wait(Logger& logger){
+    SimWorldKnobs knobs;
+    knobs.scenes["down_the_stairs"] = {sim_line("Mom calls the player")};
+    knobs.scenes["barry_bursts_out"] = {sim_line("Barry goes home")};
+    knobs.scenes["up_barrys_stairs"] = {sim_line("Barry runs to the lake")};
+    SimExecutor sim(logger, {}, knobs);
+    run_rows_on(sim, logger, {.from = "00.01", .to = "00.01"});
+    if (!sim.result().error.empty()){
+        return std::format("The run failed: {}", sim.result().error);
+    }
+    const std::pair<std::string_view, std::string_view> expected_skips[] = {
+        {"down_the_stairs", "mom_calls"},
+        {"barry_bursts_out", "barry_goes_home"},
+        {"up_barrys_stairs", "barry_runs_to_the_lake"},
+    };
+    for (const auto& [previous, scene] : expected_skips){
+        if (sim.misses().dialog_waits.contains(std::string(scene))){
+            return std::format("{} repeated an opening-line wait after {} already observed dialogue.", scene, previous);
+        }
+    }
     return true;
 }
 
@@ -290,7 +321,11 @@ const AutoStoryStoryActionsCase AUTO_STORY_STORY_ACTIONS_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"Story actions: scene starts do not wait 15 seconds for an optional line", test_scene_start_waits},
+        .input = {"Story actions: scene starts retain the full guard until dialogue is observed", test_scene_start_waits},
+        .expectation = {},
+    },
+    {
+        .input = {"Story actions: a scene played by the preceding settle skips its start wait", test_seen_scene_skips_start_wait},
         .expectation = {},
     },
 };

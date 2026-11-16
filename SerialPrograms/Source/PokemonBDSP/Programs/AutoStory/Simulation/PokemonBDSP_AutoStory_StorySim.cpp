@@ -137,18 +137,20 @@ std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
 //  Plays the step's scene knob through TalkOver if it has one. Without, a
 //  scene may take us to another map (Mom walks us out, 00.04): with a
 //  dialogue open the stub scene plays it. Otherwise only a door fades.
-void SimStoryStepIO::settle(Button, const std::string& label, SettleKind kind, const std::string&){
+bool SimStoryStepIO::settle(Button, const std::string& label, SettleKind kind, const std::string&){
     const bool fade = kind == SettleKind::AFTER_WARP;
     m_misses.fading_in = false;
+    bool saw_dialogue = m_sim.player().dialog;
     const auto scene = m_knobs.scenes.find(m_step);
     if (scene != m_knobs.scenes.end()){
         m_misses.fade_unseen = false;
         m_sim.end_dialogue();
+        saw_dialogue |= std::ranges::any_of(scene->second, [](const SimBeat& beat){ return beat.line; });
         const std::string early = play_scene(scene->second, {.warp = fade, .door = kind == SettleKind::DOOR});
         if (!early.empty()){
             m_route.note(label + ": talk-over " + early + ".", RouteNote::FAILURE);
         }
-        return;
+        return saw_dialogue;
     }
     const bool scene_fades = m_sim.player().dialog && m_far_side();
     if (fade && ((!m_sim.player().warped && !scene_fades) || m_misses.fade_unseen)){
@@ -156,6 +158,7 @@ void SimStoryStepIO::settle(Button, const std::string& label, SettleKind kind, c
     }
     m_misses.fade_unseen = false;
     m_sim.end_dialogue();
+    return saw_dialogue;
 }
 
 SimStoryStepIO::FadeShown SimStoryStepIO::next_fade(){
@@ -357,11 +360,15 @@ WalkResult SimKnobRouteIO::slide_on(const SimSlide& slide, WalkResult result){
 }
 
 bool SimKnobRouteIO::dialog_within(Milliseconds wait, Color color){
-    m_misses.dialog_waits[m_step] = wait;
+    Milliseconds& longest = m_misses.dialog_waits[m_step];
+    longest = std::max(longest, wait);
     const auto late = m_knobs.first_line.find(m_step);
     if (late != m_knobs.first_line.end() && late->second > wait){
         note(std::format("[Sim] {}: the first line comes after {} ms, past the {} ms wait.", m_step, late->second.count(), wait.count()), RouteNote::LOG);
         return false;
+    }
+    if (late != m_knobs.first_line.end()){
+        return true;
     }
     return GridSimRouteIO::dialog_within(wait, color);
 }

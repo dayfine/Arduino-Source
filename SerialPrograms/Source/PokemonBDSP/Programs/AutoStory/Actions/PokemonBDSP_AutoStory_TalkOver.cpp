@@ -17,26 +17,28 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
-TalkOverEnd talk_over(VideoStream& stream, ProControllerContext& context, const std::string& label, const TalkOverSpec& spec){
+TalkOverResult talk_over(VideoStream& stream, ProControllerContext& context, const std::string& label, const TalkOverSpec& spec){
     const WallClock deadline = current_time() + TALK_OVER_LIMIT;
     TalkOver judge(spec.rule);
     BdspScreenObserver eyes(spec.watch == TalkOverWatch::TRAINER ? BattleCue::TRAINER : BattleCue::WILD_MENU, spec.banner);
+    bool saw_dialogue = false;
     while (current_time() < deadline){
         context.wait_for_all_requests();
         const WallClock now = current_time();
         switch (judge.look(eyes.observe(stream.video().snapshot(), now), now)){
         case SceneMove::DONE:
             stream.log(std::format("[Talk-over] {}: over; {}.", label, judge.describe()));
-            return TalkOverEnd::QUIET;
+            return {TalkOverEnd::QUIET, saw_dialogue};
         case SceneMove::BATTLE:
             if (spec.watch == TalkOverWatch::TRAINER){
                 stream.log("[Talk-over] " + label + ": a battle started.");
-                return TalkOverEnd::BATTLE;
+                return {TalkOverEnd::BATTLE, saw_dialogue};
             }
             stream.log("[Talk-over] " + label + ": in a wild battle; fleeing.");
             run_from_wild_battle(stream, context);
             continue;
         case SceneMove::NEXT:
+            saw_dialogue = true;
             pbf_press_button(context, spec.next, TALK_OVER_HOLD, talk_over_release(spec.rule));
             continue;
         case SceneMove::B:

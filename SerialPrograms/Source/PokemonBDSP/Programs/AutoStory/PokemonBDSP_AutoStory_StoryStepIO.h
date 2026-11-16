@@ -88,7 +88,8 @@ public:
     //  Presses through any text until the overworld ends as `kind` says;
     //  for SettleKind::AFTER_WARP, the warp is a fade or the banner `banner`
     //  ("" for a fade only). Fails otherwise.
-    virtual void settle(Button button, const std::string& label, SettleKind kind, const std::string& banner) = 0;
+    //  Returns whether the settle observed and pressed through dialogue.
+    virtual bool settle(Button button, const std::string& label, SettleKind kind, const std::string& banner) = 0;
 };
 
 
@@ -106,7 +107,7 @@ public:
     virtual WarpSeen run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000),
         Milliseconds dark_from = Milliseconds(0), const std::string& banner = "") override;
     virtual std::optional<size_t> tap_to_banner(Pokemon::Direction direction, const std::string& map, size_t max_taps) override;
-    virtual void settle(Button button, const std::string& label, SettleKind kind, const std::string& banner) override;
+    virtual bool settle(Button button, const std::string& label, SettleKind kind, const std::string& banner) override;
 
 
 private:

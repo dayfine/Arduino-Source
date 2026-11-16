@@ -141,6 +141,9 @@ private:
     //  The last route ended in the scene of the step after it, or after the
     //  plain step onto its trigger (RouteEnd::scene); that step is not taken.
     bool m_scene_open = false;
+    //  The step before observed dialogue while settling. A following scene
+    //  need not wait for an opening line that talk_over() already played.
+    bool m_previous_settle_saw_dialogue = false;
 };
 
 

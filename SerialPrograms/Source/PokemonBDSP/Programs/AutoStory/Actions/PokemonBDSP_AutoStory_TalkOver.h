@@ -77,9 +77,14 @@ enum class TalkOverEnd{
     BATTLE,     //  Only with TalkOverWatch::TRAINER.
 };
 
+struct TalkOverResult{
+    TalkOverEnd end;
+    bool saw_dialogue;
+};
+
 //  Presses through any text and scene on the console until TalkOver says it
 //  is over. Fails with a screenshot after TALK_OVER_LIMIT.
-TalkOverEnd talk_over(VideoStream& stream, ProControllerContext& context, const std::string& label, const TalkOverSpec& spec = {});
+TalkOverResult talk_over(VideoStream& stream, ProControllerContext& context, const std::string& label, const TalkOverSpec& spec = {});
 
 
 
