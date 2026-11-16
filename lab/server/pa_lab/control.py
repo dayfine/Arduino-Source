@@ -296,6 +296,16 @@ class ControlPlane:
                                      (client_id, tool, request_id)).fetchone()
         return None if row is None else {k: row[k] for k in row.keys()}
 
+    def mark_action(self, client_id: str, tool: str, request_id: str, taken_at: Optional[str] = None,
+                    answered_at: Optional[str] = None) -> Dict[str, Any]:
+        """Stores when the app was first seen taking (`taken_at`) or answering (`answered_at`) the
+        request; a time already stored is kept. Returns the action."""
+        with self._writing() as conn:
+            conn.execute('UPDATE actions SET taken_at = COALESCE(taken_at, ?), answered_at = COALESCE(answered_at, ?) '
+                         'WHERE client_id = ? AND tool = ? AND request_id = ?',
+                         (taken_at, answered_at, client_id, tool, request_id))
+        return self.action(client_id, tool, request_id)
+
     def record(self, client_id: str, tool: str, request_id: str) -> Optional[Dict[str, Any]]:
         row = self._request_row(self.db.read(), client_id, tool, request_id)
         return None if row is None else self._record(row)

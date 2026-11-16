@@ -101,6 +101,14 @@ MIGRATIONS: List[List[str]] = [
             PRIMARY KEY (client_id, tool, request_id)
         )""",
     ],
+    # 3: when the daemon first saw the app take the request (Lab/done or a journal) and first read
+    # its finished journal. Lab/done and Lab/outbox are pruned by the lab's disk cleanup, so
+    # "taken" must not rest on those files later; and a journal is judged against state.json
+    # only once the app wrote state.json after it.
+    [
+        'ALTER TABLE actions ADD COLUMN taken_at TEXT',
+        'ALTER TABLE actions ADD COLUMN answered_at TEXT',
+    ],
 ]
 
 SCHEMA_VERSION = len(MIGRATIONS)

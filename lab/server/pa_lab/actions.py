@@ -25,19 +25,30 @@ start or stop):
 - A stop by a lab script (source `lab`, another request id) dated after our request counts the same
   way: the run started and was stopped before we read the answer.
 - A UI transition dated after our request is the user taking over: `failed`,
-  `console_held_by_user` (the control plane has already installed the user lease).
+  `console_held_by_user` (the control plane has already installed the user lease), with
+  `evidence.started` (the start's `ok` line was read: the run did start, and `evidence.run_id` is
+  its id) so a caller resuming later knows the game state moved.
 - A new `instance.id` is an app restart: `failed`, `app_unavailable` / `instance_replaced`,
   unless the new instance shows our request id.
 
 A request the app has not answered in time stays `pending` (a ticket) if the app took it from the
 inbox (`done/<name>.txt`), since it may still act; it is settled on the next `request_status`,
-`next_events`, `console://B/state` read or action call. Past the answer wait it is `failed` with
-`timeout` when:
+`next_events`, `console://B/state` read or action call. The first time the daemon sees the request
+taken, and its journal finished, it stores the time (`actions.taken_at`, `answered_at`): the lab's
+disk cleanup prunes `done/` and `outbox/`, so a request once seen taken stays taken.
+
+The app writes the finished journal first and `state.json` only on its next 500 ms timer (later
+while another request runs), so a journal is judged against `state.json` only once `written_at` is
+after the daemon first read the journal. A journal with the start's `ok` line means the program
+started: it is never failed for want of a match, and stays pending until `state.json` shows the
+start, a later stop, a UI takeover or another app instance. Past the answer wait it is `failed`
+with `timeout` when:
 
 - it is still in the inbox (the app never took it): it is withdrawn and nothing was sent;
-- it is in neither the inbox nor `done/` and has no journal: it never reached the app (the inbox
-  write failed, or the daemon died between storing the record and writing it), `never_sent`;
-- its journal is complete without an error and nothing above matches it, `outcome_unknown`.
+- it was never seen in `done/` and has no journal: it never reached the app (the inbox write
+  failed, or the daemon died between storing the record and writing it), `never_sent`;
+- its journal is complete without an error and without the start's `ok`, `state.json` was written
+  after it, and nothing above matches it, `outcome_unknown`.
 
 A failed inbox write is answered at once: `failed`, `app_unavailable` / `inbox_write_failed`.
 Each attempt has its own inbox name, so an old journal of a reused request id never answers it.
@@ -101,8 +112,15 @@ def _line_ok(lines: Optional[List[str]], command: str) -> bool:
 
 
 def _taken(lab_dir: Path, name: str) -> bool:
-    """True once the app took the request from the inbox (LabChannel moves it to done/ first)."""
+    """True while the files show the app took the request (LabChannel moves it to done/ first).
+    Both folders are pruned later: the first sighting is stored as `actions.taken_at`."""
     return (lab_dir / 'done' / (name + '.txt')).exists() or (lab_dir / 'outbox' / (name + '.out')).exists()
+
+
+def _written_after(app: Dict[str, Any], answered_at: Optional[str]) -> bool:
+    """True once state.json was written after the daemon first read the journal: the app renames
+    the journal into place first and rewrites state.json on its next timer."""
+    return answered_at is not None and timestamps.parse(app['written_at']) > timestamps.parse(answered_at)
 
 
 def _withdraw(inbox: Path) -> bool:
@@ -245,6 +263,7 @@ class ProgramActions:
         deadline = reader.now() + wait_s
         wait = ANSWER_WAIT_S[action['tool']]
         while True:
+            action = self._observe(reader, action)
             late = reader.now() - timestamps.parse(action['written_at']) >= wait
             outcome = self._judge(reader, action, late)
             if outcome is not None:
@@ -258,7 +277,7 @@ class ProgramActions:
                     'timeout', 'The app did not take the {} request within {:g} s (busy with another '
                     'request?); it was withdrawn and nothing was sent.'.format(action['tool'], wait),
                     evidence={'request': action['inbox_name']}))
-            if not _taken(reader.lab_dir, action['inbox_name']):
+            if action['taken_at'] is None:
                 return self.plane.finish_action(*key, refusal=_refusal(
                     'timeout', 'The {} request never reached the app (its inbox write failed or the daemon '
                     'stopped first); nothing was sent.'.format(action['tool']),
@@ -269,6 +288,17 @@ class ProgramActions:
                     'app_unavailable', 'The app exited before the {} settled.'.format(action['tool']),
                     evidence={'reason': 'app_not_running'}))
         return self.plane.record(*key)
+
+    def _observe(self, reader: ConsoleReader, action: Dict[str, Any]) -> Dict[str, Any]:
+        """Stores the first sighting of the app taking and answering the request; returns the action."""
+        name = action['inbox_name']
+        answered = action['answered_at'] is None and _journal(reader.lab_dir, name) is not None
+        taken = action['taken_at'] is None and (answered or _taken(reader.lab_dir, name))
+        if not taken and not answered:
+            return action
+        stamp = timestamps.format(reader.now())
+        return self.plane.mark_action(action['client_id'], action['tool'], action['request_id'],
+                                      taken_at=stamp if taken else None, answered_at=stamp if answered else None)
 
     def _judge(self, reader: ConsoleReader, action: Dict[str, Any], late: bool) -> Optional[Dict[str, Any]]:
         """The outcome the app shows now, as finish_action keyword arguments, or None to wait.
@@ -298,17 +328,22 @@ class ProgramActions:
             return {'refusal': _refusal('app_unavailable', 'The app restarted before the {} settled.'.format(tool),
                                         evidence={'reason': 'instance_replaced', 'instance_id': action['instance_id'],
                                                   'new_instance_id': instance})}
+        started = tool == 'run_program' and _line_ok(lines, 'start')
         if after and transition['source'] == 'ui':
+            evidence = {'transition': transition}
+            if tool == 'run_program':
+                evidence['started'] = started
+                if started:
+                    evidence['run_id'] = program['run_id']
             return {'refusal': _refusal('console_held_by_user', 'The user clicked {} in the app during the {}; '
                                         'console {} is theirs.'.format(transition['action'].capitalize(), tool,
                                                                        reader.console),
-                                        evidence={'transition': transition, 'journal_ok': lines is not None and
-                                                  _line_ok(lines, 'start' if tool == 'run_program' else 'stop')})}
+                                        evidence=evidence)}
         foreign_lab = transition is not None and transition['source'] == 'lab' and not ours
         ended = after and transition['action'] == 'stop' and (transition['source'] in ENDED_SOURCES or foreign_lab) \
             and program['state'] == 'stopped'
         if tool == 'run_program':
-            if ended and _line_ok(lines, 'start'):
+            if ended and started:
                 return {'result': dict(base, started_at=None, run_id=program['run_id'],
                                        ended={'source': transition['source'], 'at': transition['at']},
                                        correlated_by='time')}
@@ -317,7 +352,7 @@ class ProgramActions:
                                    correlated_by='time')}
         error = _line_error(lines)
         if error is None:
-            if late and lines is not None and not ours:
+            if late and lines is not None and not ours and not started and _written_after(app, action['answered_at']):
                 return {'refusal': _refusal(
                     'timeout', 'The app answered the {} but shows nothing this request can be matched to; '
                     'read console://B/state for what runs.'.format(tool),

@@ -265,7 +265,8 @@ class RaceTests(ActionTest):
         self.app.after['start'] = lambda app: app.transition('stop', 'ui')
         record = self.run_program(run_request(token))
         self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'console_held_by_user'))
-        self.assertTrue(record['refusal']['evidence']['journal_ok'])
+        evidence = record['refusal']['evidence']
+        self.assertEqual((evidence['started'], evidence['run_id']), (True, None))
         self.assertEqual(self.lease(), 'user')
         retry = self.run_program(run_request(token))
         self.assertEqual(retry['refusal']['code'], 'console_held_by_user')
@@ -445,14 +446,31 @@ class LostRequestTests(ActionTest):
         self.assertEqual((record['result']['ended']['source'], record['result']['correlated_by']), ('lab', 'time'))
         self.assertEqual(self.lease(), 'agent_idle')
 
-    def test_an_answered_request_that_nothing_matches_fails_after_the_wait(self):
+    def test_an_answered_stop_that_nothing_matches_fails_after_the_wait(self):
         token = self.acquired()
+        self.started(token)
         # The app answers ok but shows no transition for it (nothing this request can be matched to).
-        self.app.after['start'] = lambda app: app.lab.update_state(**{'program.state': 'stopped',
-                                                                       'program.last_transition': None})
-        record = self.run_program(run_request(token))
+        self.app.after['stop'] = lambda app: app.lab.update_state(**{'program.state': 'stopped',
+                                                                      'program.last_transition': None})
+        record = self.stop_program(stop_request(token))
         self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'timeout'), record)
         self.assertEqual(record['refusal']['evidence']['reason'], 'outcome_unknown')
+
+    def test_a_taken_request_whose_done_file_was_pruned_is_still_taken(self):
+        """disk_gc.sh prunes Lab/done and Lab/outbox; a request seen taken stays taken."""
+        token = self.acquired()
+        self.app.hold.add('start')
+        request = run_request(token)
+        self.assertEqual(self.run_program(request)['status'], 'pending')
+        name = self.plane.action(CLIENT, 'run_program', request['request_id'])['inbox_name']
+        (self.lab.dir / 'done' / (name + '.txt')).unlink()
+        self.open_daemon()
+        self.actions.settle_pending('B')
+        self.assertEqual(self.plane.record(CLIENT, 'run_program', request['request_id'])['status'], 'pending')
+        self.app.transition('start', 'lab', request['request_id'])
+        self.actions.settle_pending('B')
+        self.assertEqual(self.plane.record(CLIENT, 'run_program', request['request_id'])['status'], 'completed')
+        self.assertEqual(self.lease(), 'agent_running')
 
     def test_a_reused_request_id_is_not_answered_by_an_old_journal(self):
         """A request_id used again after compaction dropped its record gets its own inbox name."""
@@ -483,6 +501,53 @@ class LeaseWhilePendingTests(ActionTest):
         self.app.transition('start', 'lab', request['request_id'])
         self.actions.settle_pending('B')
         return self.plane.record(CLIENT, 'run_program', request['request_id'])
+
+    def answer_held(self, tool, request, journal):
+        """The app answers a held request now, before its next state.json write."""
+        name = self.plane.action(CLIENT, tool, request['request_id'])['inbox_name']
+        (self.lab.dir / 'outbox' / (name + '.out')).write_text(journal, encoding='utf-8')
+
+    def status(self, tool, request):
+        return self.plane.record(CLIENT, tool, request['request_id'])['status']
+
+    def test_a_start_journal_read_before_state_json_shows_the_start_keeps_the_run_leased(self):
+        """The app writes the journal first and state.json up to 500 ms later."""
+        token = self.acquired()
+        request = self.pending_run(token)
+        self.answer_held('run_program', request, 'ok 2 start 10 @0-41ms\nend\n')
+        self.actions.settle_pending('B')
+        self.assertEqual(self.status('run_program', request), 'pending')
+        released = self.plane.execute(CLIENT, release(token))
+        self.assertEqual((released['status'], released['refusal']['code']), ('refused', 'program_running'))
+        self.assertEqual(self.let_start_through(request)['status'], 'completed')
+        self.assertEqual(self.lease(), 'agent_running')
+        other = self.plane.execute('claude:other-lane', acquire(owner='agent:other'))
+        self.assertEqual((other['status'], other['refusal']['code']), ('refused', 'console_held_by_agent'))
+
+    def test_an_ok_start_is_never_failed_even_when_state_json_shows_nothing_for_it(self):
+        token = self.acquired()
+        request = self.pending_run(token)
+        self.answer_held('run_program', request, 'ok 2 start 10 @0-41ms\nend\n')
+        self.actions.settle_pending('B')
+        self.clock.sleep(1)
+        self.actions.settle_pending('B')
+        self.assertEqual(self.status('run_program', request), 'pending')
+        released = self.plane.execute(CLIENT, release(token))
+        self.assertEqual((released['status'], released['refusal']['code']), ('refused', 'program_running'))
+
+    def test_a_stop_journal_is_judged_only_once_state_json_was_written_after_it(self):
+        token = self.acquired()
+        self.started(token)
+        request = stop_request(token)
+        self.app.hold.add('stop')
+        self.assertEqual(self.stop_program(request)['status'], 'pending')
+        self.answer_held('stop_program', request, 'ok 2 stop @0-41ms\nend\n')
+        self.actions.settle_pending('B')
+        self.assertEqual(self.status('stop_program', request), 'pending')
+        self.clock.sleep(0.5)
+        self.actions.settle_pending('B')
+        record = self.plane.record(CLIENT, 'stop_program', request['request_id'])
+        self.assertEqual((record['status'], record['refusal']['evidence']['reason']), ('failed', 'outcome_unknown'))
 
     def test_release_is_refused_while_a_run_is_pending(self):
         token = self.acquired()
