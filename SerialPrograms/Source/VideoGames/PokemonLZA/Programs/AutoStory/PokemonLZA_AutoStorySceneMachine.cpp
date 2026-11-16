@@ -37,7 +37,8 @@ enum class SceneScreen{
     DIALOG,         //  the text button: a box (A: its choice's top row too), or the advance chevron
     MISSION_COMPLETE,   //  A: a main mission's "COMPLETE" card
     MISSION_BANNER, //  terminal: a main mission's banner, on a second look
-    BANNER_SHOWING, //  wait: the banner, on its first look
+    BANNER_SHOWING, //  wait: the banner, on its first look (every look, with end_after_black_fades)
+    FADE_SETTLED,   //  terminal: end_after_black_fades' last fade lifted, nothing busy since for FADE_SETTLE
     CONTROLS_HINT,  //  terminal: the tutorial's controls hint, held a second
     HINT_SHOWING,   //  wait: the controls hint, not held a second yet
     QUIET_END,      //  terminal, failing: nothing busy for the quiet time, past the minimum length
@@ -65,6 +66,14 @@ public:
     //  Whether a blind A press is due at `now` (blind_press_after).
     bool blind_press_due(WallClock now) const;
 
+    //  Whether end_after_black_fades' last fade has settled by `now`.
+    bool fades_settled(WallClock now) const;
+
+    //  Whether the mission banner has shown on any look.
+    bool banner_seen() const{
+        return m_banner_seen;
+    }
+
 private:
     //  classify() past the fades and the text.
     SceneScreen classify_open(const ScreenObservation& look) const;
@@ -78,11 +87,21 @@ private:
     std::optional<WallClock> m_hint_since;
     //  The looks in a row with the mission banner.
     size_t m_banner_looks = 0;
+    //  The black fades the machine has waited out.
+    size_t m_black_fades = 0;
+    //  Since when nothing busy and no banner has shown, once
+    //  end_after_black_fades' fades have all lifted.
+    std::optional<WallClock> m_settled_since;
+    bool m_banner_seen = false;
 };
 
 
 //  The controls hint showing this long is free control: two looks or more.
 constexpr Milliseconds CONTROLS_HINT_HOLD = 1000ms;
+//  How long the screen stays free of text, fades and the banner after the
+//  last of end_after_black_fades' fades before the scene counts as over:
+//  the player can move 5 s after 01.01's second fade at the latest.
+constexpr Milliseconds FADE_SETTLE = 5000ms;
 //  The longest a fade is waited out in one step.
 constexpr Milliseconds FADE_WAIT = 30000ms;
 //  The longest a still screen is waited on in one step.
@@ -120,7 +139,7 @@ constexpr SceneScreen ALL_SCREENS[] = {
     SceneScreen::BATTLE,
     SceneScreen::FADE_BLACK, SceneScreen::FADE_WHITE, SceneScreen::CHOICE, SceneScreen::DIALOG,
     SceneScreen::MISSION_COMPLETE,
-    SceneScreen::MISSION_BANNER, SceneScreen::BANNER_SHOWING,
+    SceneScreen::MISSION_BANNER, SceneScreen::BANNER_SHOWING, SceneScreen::FADE_SETTLED,
     SceneScreen::CONTROLS_HINT, SceneScreen::HINT_SHOWING,
     SceneScreen::QUIET_END, SceneScreen::BLIND_PRESS,
     SceneScreen::SCENE_MOVING, SceneScreen::SCENE_STILL,
@@ -155,6 +174,8 @@ std::string_view scene_screen_name(SceneScreen screen){
         return "mission_banner";
     case SceneScreen::BANNER_SHOWING:
         return "banner_showing";
+    case SceneScreen::FADE_SETTLED:
+        return "fade_settled";
     case SceneScreen::CONTROLS_HINT:
         return "controls_hint";
     case SceneScreen::HINT_SHOWING:
@@ -174,7 +195,7 @@ std::string_view scene_screen_name(SceneScreen screen){
 //  Whether the machine ends after this state's step.
 bool scene_screen_terminal(SceneScreen screen){
     return screen == SceneScreen::BATTLE || screen == SceneScreen::CHOICE || screen == SceneScreen::MISSION_BANNER ||
-        screen == SceneScreen::CONTROLS_HINT || screen == SceneScreen::QUIET_END;
+        screen == SceneScreen::CONTROLS_HINT || screen == SceneScreen::FADE_SETTLED || screen == SceneScreen::QUIET_END;
 }
 
 //  Whether this state's step presses (DIALOG the config's text button,
@@ -205,6 +226,10 @@ bool SceneTimeline::blind_press_due(WallClock now) const{
     return !m_last_blind_press || now - *m_last_blind_press >= BLIND_PRESS_EVERY;
 }
 
+bool SceneTimeline::fades_settled(WallClock now) const{
+    return m_settled_since && now - *m_settled_since >= FADE_SETTLE;
+}
+
 SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
     if (m_config.stop_at_battle && look.events.has(ScreenEvent::BATTLE_STARTED)){
         return SceneScreen::BATTLE;
@@ -229,7 +254,11 @@ SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
         return SceneScreen::MISSION_COMPLETE;
     }
     if (look.readings.contains(MISSION_BANNER_READING)){
-        return m_banner_looks >= 1 ? SceneScreen::MISSION_BANNER : SceneScreen::BANNER_SHOWING;
+        const bool banner_ends = !m_config.end_after_black_fades && m_banner_looks >= 1;
+        return banner_ends ? SceneScreen::MISSION_BANNER : SceneScreen::BANNER_SHOWING;
+    }
+    if (fades_settled(look.when)){
+        return SceneScreen::FADE_SETTLED;
     }
     if (look.readings.contains(CONTROLS_HINT_READING)){
         if (m_hint_since && look.when - *m_hint_since >= CONTROLS_HINT_HOLD){
@@ -257,6 +286,11 @@ void SceneTimeline::record(const ScreenObservation& look){
     const bool box = look.events.has(ScreenEvent::DIALOG_BOX);
     track_since(look.readings.contains(CONTROLS_HINT_READING) && !box, look.when, m_hint_since);
     m_banner_looks = look.readings.contains(MISSION_BANNER_READING) && !box ? m_banner_looks + 1 : 0;
+    m_banner_seen = m_banner_seen || m_banner_looks > 0;
+    //  Each FADE_BLACK look is a new fade: its state waits until it lifts.
+    m_black_fades += look.events.has(ScreenEvent::FADE_BLACK) ? 1 : 0;
+    const bool fades_done = m_config.end_after_black_fades && m_black_fades >= *m_config.end_after_black_fades;
+    track_since(fades_done && !busy(look) && m_banner_looks == 0, look.when, m_settled_since);
     if (busy(look) || m_hint_since || m_banner_looks > 0){
         m_last_cue = look.when;
     }
@@ -465,7 +499,7 @@ private:
             wait_until(STILL_WAIT, [this](const ScreenObservation& look){
                 const std::optional<WallClock> due = m_timeline.quiet_end_due();
                 return (due && look.when >= *due) || m_timeline.blind_press_due(look.when) ||
-                    !look.events.has(ScreenEvent::SCREEN_STILL);
+                    m_timeline.fades_settled(look.when) || !look.events.has(ScreenEvent::SCREEN_STILL);
             });
             return;
         case SceneScreen::HINT_SHOWING:
@@ -615,6 +649,11 @@ Pokemon::Outcome run_scene_machine(
     StepTrace trace(std::format("PLZA {}", label), /*log=*/nullptr);
     const ScreenMachineResult result = run_screen_machine(observe, backend.scope(), states, timeout, trace);
     runner.flush_log();
+    if (config.end_after_black_fades){
+        backend.log(std::format(
+            "[PLZA {}] the mission banner {}.", label, runner.timeline().banner_seen() ? "showed" : "did not show (the detector may have missed it)"
+        ));
+    }
     return scene_outcome(backend, label, config, result);
 }
 
