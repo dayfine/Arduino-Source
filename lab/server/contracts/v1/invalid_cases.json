@@ -1911,7 +1911,7 @@
     }
   },
   {
-    "name": "run without preflight token",
+    "name": "run with a preflight token that is not a string",
     "kind": "request",
     "input": {
       "json": {
@@ -1927,13 +1927,14 @@
             "START_CHECKPOINT": "13.01",
             "END_CHECKPOINT": "13.02",
             "SAVE_MODE": "none"
-          }
+          },
+          "preflight_token": 5
         }
       }
     },
     "expectation": {
       "path": "arguments.preflight_token",
-      "contains": "required field is missing"
+      "contains": "expected a string"
     }
   },
   {

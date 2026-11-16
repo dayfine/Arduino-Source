@@ -86,6 +86,21 @@ MIGRATIONS: List[List[str]] = [
         )""",
         "CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
     ],
+    # 2: what a run_program / stop_program request sent to the app, so a pending one can be
+    # settled after a daemon restart: the app instance it was checked against, the inbox
+    # request's name and when it was written.
+    [
+        """CREATE TABLE actions (
+            client_id TEXT NOT NULL,
+            tool TEXT NOT NULL,
+            request_id TEXT NOT NULL,
+            console TEXT NOT NULL,
+            instance_id TEXT NOT NULL,
+            inbox_name TEXT NOT NULL,
+            written_at TEXT NOT NULL,
+            PRIMARY KEY (client_id, tool, request_id)
+        )""",
+    ],
 ]
 
 SCHEMA_VERSION = len(MIGRATIONS)

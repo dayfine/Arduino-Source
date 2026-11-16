@@ -4,7 +4,9 @@ The local server designed in `docs/design/Agent-Integration.md` (fork #131, bran
 `design/agent-integration`). Slice 0: the version-1 contracts, golden examples and a parser.
 Slice 2: the attach-only read server ([below](#slice-2-the-attach-only-read-server)). Slice 3: the
 durable control plane ([below](#slice-3-the-durable-control-plane)): leases, request records,
-tickets and events in SQLite. Nothing presses a button yet: that is Slice 5.
+tickets and events in SQLite. Slice 5a: leased `run_program` and `stop_program`
+([below](#slice-5a-run_program-and-stop_program)), served only by `serve --actions`, which nothing is
+wired to yet. Nothing presses a button: that is Slice 5b's `cfr_batch`.
 
 New here? Start with [GUIDE.md](GUIDE.md): what pa-lab is and what it gives you today.
 
@@ -22,12 +24,14 @@ New here? Start with [GUIDE.md](GUIDE.md): what pa-lab is and what it gives you 
 | `pa_lab/tools.py`, `pa_lab/shot.py` | `ensure_game` (verification only) and `shot` (newer than the call) |
 | `pa_lab/mcp_server.py` | MCP over Streamable HTTP on `127.0.0.1`: bearer, Host/Origin, sessions, size caps |
 | `pa_lab/app_query.py` | `describe_program` and `game_open`: one-line reads through the app's channel (#504) |
-| `tests/fake_lab.py` | A fake `Lab/` folder and a fake app answering `snapshot`, `describe_program` and `game_open` requests, in temp dirs |
+| `tests/fake_lab.py` | A fake `Lab/` folder and a fake app answering `snapshot`, `describe_program`, `game_open`, `start` and `stop` requests, in temp dirs |
 | `tests/test_{lab_reader,ensure_game,shot,config,mcp_server}.py` | Slice 2's fake-lab tests |
 | `tests/test_app_query.py` | `describe_program` and `game_open` against the fake app |
 | `pa_lab/db.py` | The SQLite file: migrations (`PRAGMA user_version`), owner-only file, `BEGIN IMMEDIATE` writes |
 | `pa_lab/control.py` | Leases, idempotent requests, tickets, events, `next_events`, reconciliation, compaction |
 | `tests/test_{db,control,control_concurrency,control_mcp}.py` | Slice 3's tests: restarts, threads and processes racing, kills mid-write |
+| `pa_lab/actions.py` | Slice 5a: `run_program` / `stop_program` through the control plane and the app's `start` / `stop` channel commands |
+| `tests/test_actions.py` | Slice 5a's refusals, retries and races against the fake app |
 | `pa_lab/status.py`, `pa_lab/stdio_server.py`, `smoke_readonly.py` | Read-only stdio mode for `.mcp.json`: `console_status` ([below](#read-only-stdio-mode-mcpjson)) |
 | `tests/test_status_readonly.py` | `console_status` and the read-only gate against a fake profile |
 
@@ -293,3 +297,63 @@ every event after an active cursor (one used in the last 7 days), every event of
 and every pending record; finished records go after 7 days. A cursor behind the compacted range
 is refused (`invalid_arguments`, field `after_seq`, `evidence.compacted_through`), never served
 with a silent gap.
+
+## Slice 5a: `run_program` and `stop_program`
+
+`python3 -m pa_lab serve --config ... --actions` adds the two tools to the HTTP server (and
+`ACTION_INSTRUCTIONS` to `initialize`). Without `--actions` they are neither listed nor callable;
+`--read-only` and `serve-stdio` (the `.mcp.json` entry) never have them, and `--read-only --actions`
+is a usage error.
+
+```text
+run_program(console, request_id, lease_token, panel, options={})   # options must be {} in 5a
+stop_program(console, request_id, lease_token)
+```
+
+Each call is one request record (`ControlPlane.begin_action`, one transaction): an exact retry gets
+the stored record, refusals included, and never sends a second line; the same `request_id` with
+other arguments is `request_id_reused` (not stored). The checks run in this order; a failed one is
+stored as a `refused` record with a `request_failed` event, and nothing reaches `Lab/inbox`.
+
+| Check | Refusal |
+|---|---|
+| the request's token holds the lease (idle or running) | `lease_invalid`, `lease_expired`, `console_held_by_user` (a UI Start/Stop or the operator) |
+| no earlier run/stop on the console is still pending | `program_not_stopped`, `evidence.pending_tool` |
+| `Lab/state.json` is live | `app_unavailable`, `evidence.reason` = the availability reason |
+| run: `options` is `{}`, no `preflight_token` | `invalid_arguments` (`options`, `preflight_token`) |
+| run: `panel` is the selected program | `invalid_arguments`, field `panel`, `evidence.selected`; `panel_not_program` on the settings page |
+| run: `console://B/state`'s `blocked` (program state, controller, video) | `program_running`, `program_not_stopped` (loading), `controller_not_ready`, `video_stale`, `video_bad_signal` |
+| the channel's owner lock is not claimed (`channel.owner_claimed`) | `console_held_by_agent`, `evidence.reason: channel_owned` |
+| stop: a program is running | not a refusal: `completed` with `sent: false` and the program state |
+
+A passing request is stored `pending` with the app instance it was checked against (table
+`actions`, migration 2), and the daemon writes `request <request_id>` / `start 10` (or `stop`)
+into `Lab/inbox`, the commands `labctl.sh start|stop` sends; the client's `request_id` is the
+channel's request id. It then reads the journal and `state.json` (up to 13 s for a start, 10 s for
+a stop) and resolves the record:
+
+| The app shows | Record |
+|---|---|
+| `last_transition` = this request's start | `completed`, `correlated_by: request_id`; the lease enters `agent_running` in the same transaction, unless `observe` already applied a newer transition |
+| `last_transition` = this request's stop, `program.state` `stopped` | `completed`, `stopped_by: lab` |
+| after the start's `ok`, a stop by `program` / `error` dated after the request | `completed` with `ended: {source, at}`, `correlated_by: time`; the lease stays idle |
+| (stop) a stop by `program` / `error` dated after the request | `completed`, `stopped_by` that source, `correlated_by: time` (the terminal event completes it) |
+| a UI transition dated after the request | `failed`, `console_held_by_user` (the user lease is already installed) |
+| another `instance.id` without this request's id | `failed`, `app_unavailable`, `instance_replaced` |
+| the line failed | `failed`: `owned by` → `console_held_by_agent` (the token is not copied); `Program is RUNNING.` → `program_running`; `controller not connected` → `controller_not_ready`; else `app_unavailable` with the journal |
+| no answer, request still in the inbox | withdrawn; `failed`, `timeout` (nothing was sent) |
+| no answer, request taken | stays `pending`; settled from `state.json` on the next `request_status`, `next_events`, `console://B/state` read or action call, also after a daemon restart; `failed` / `app_unavailable` if the app exits |
+
+**What Slice 1's data does not give.** `last_transition` keeps only the newest start or stop, and
+`run_id` is null until run records exist (#116). So a run that ends before the daemon reads
+`state.json` is matched by time (a `program`/`error` stop dated after the request, on the same
+instance, after the start's `ok` line), not by id, and its `started_at` is unknown. A `run_id` on
+the stop transition, or the app keeping the start beside the stop, would make that match exact.
+
+**Left for Slice 5b.** `preflight_program`: the app has no channel command that runs a program's
+prechecks (or stages candidate options) without starting it, so 5a sends no preflight, runs the
+panel's current options, and the program's own `run_prechecks()` at Start are the only checks;
+`run_program`'s `preflight_token` became optional in the v1 request contract for this and 5b makes
+it required again. Also 5b: staging `options`, claiming the channel's owner token (a claimed
+channel is refused today), `cfr_batch`, and the console-B soak (every mutation has exactly one
+record).

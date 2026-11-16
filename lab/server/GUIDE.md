@@ -5,8 +5,8 @@ SerialPrograms lab app on profile `lab-B`, and its log) through MCP, the protoco
 uses for tools. Instead of an agent running shell scripts and grepping logs to work out what
 the console is doing, it asks pa-lab and gets one structured answer.
 
-Today it only reads. Nothing in it presses a button, starts or stops a program, or writes to
-the app. Console A is never part of it.
+Today, as connected to your sessions, it only reads: nothing there presses a button, starts or
+stops a program, or writes to the app. Console A is never part of it.
 
 Developer details (contracts, slices, tests) are in [README.md](README.md); the design is
 `docs/design/Agent-Integration.md` on branch `design/agent-integration`.
@@ -53,12 +53,21 @@ game in front, or HOME / user select / black screen), `shot` (a fresh screenshot
 `ensure_game`. The control plane is also built: console leases, request records that make a
 retried request safe, and an event log. None of it presses buttons yet.
 
+**Starting and stopping a program (Slice 5a).** `run_program` and `stop_program` exist, but only
+when the server is started with `serve --actions`, which nothing uses yet; your session connection
+stays read-only. An agent holding the console's lease can start the program selected in the app
+(with its current options) and stop it. It is refused whenever you hold the console (you clicked
+Start or Stop), when another program is running, when the app is not running, or when the
+selected program is not the one asked for. If you click Start or Stop while an agent's start or
+stop is under way, yours wins and the agent's request is marked failed. Every start and stop is
+one record, and a retried request never starts the program twice.
+
 ## What comes next
 
 | Slice | What you would get |
 |---|---|
 | 4 (rest) | FRLG AutoStory's start checks listed and run before any press (fork #488) |
-| 5 | Leased actions: an agent asks to run or stop a program; the server checks the program's start checks first and refuses on a failed one, and refuses whenever you hold the console. Every action gets exactly one record. |
+| 5 (rest) | The server runs the program's start checks before a start and refuses on a failed one (`preflight_program`), passes options, and runs debug button batches (`cfr_batch`); then a soak on console B |
 | 6 | Save facts: the server knows which save is on the console and refuses a run that would start from the wrong one; run records become readable |
 | 7 | The server launches and supervises the lab app itself, so a build always starts with the right profile |
 | 8 | Optional: a local worker for routine operations |

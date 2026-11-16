@@ -599,7 +599,10 @@ TOOL_ARGUMENTS: Dict[str, Spec] = {
     'renew_console': Obj([TTL], open=False),
     'release_console': Obj([], open=False),
     'preflight_program': Obj([PANEL_ARG, F('options', AnyObject())], open=False),
-    'run_program': Obj([PANEL_ARG, F('options', AnyObject()), F('preflight_token', Str())], open=False),
+    'run_program': Obj([PANEL_ARG, F('options', AnyObject()),
+                        F('preflight_token', Str(), required=False,
+                          doc='from preflight_program (Slice 5b); Slice 5a has no preflight and refuses one')],
+                       open=False),
     'stop_program': Obj([], open=False),
     'cfr_batch': Obj([F('lines', ListOf(Str(), min_items=1, max_items=200))], open=False),
 }
