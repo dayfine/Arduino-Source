@@ -11,6 +11,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_AutoStoryBoulders.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
+#include "PokemonFRLG_AutoStoryFailureClasses.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -20,7 +21,7 @@ namespace PokemonFRLG{
 Pokemon::Outcome boulder_pushed(Pokemon::RunState& state, const StoryStep& step, const std::vector<MapData>& maps){
     const std::optional<StoryPose> here = story_pose(state.pose);
     if (!here){
-        return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
+        return frlg_failed("no_pose", Pokemon::to_string(state.pose));
     }
     const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
     const int64_t tiles = Pokemon::story_arg<int64_t>(step.args, "tiles");
@@ -43,7 +44,7 @@ Pokemon::Outcome boulder_pushed(Pokemon::RunState& state, const StoryStep& step,
 Pokemon::Outcome tree_cut(Pokemon::RunState& state, const StoryStep& step, const std::vector<MapData>& maps){
     const std::optional<StoryPose> here = story_pose(state.pose);
     if (!here){
-        return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
+        return frlg_failed("no_pose", Pokemon::to_string(state.pose));
     }
     const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
     const StoryPose on_tree{here->map, here->tile.next(direction), direction};

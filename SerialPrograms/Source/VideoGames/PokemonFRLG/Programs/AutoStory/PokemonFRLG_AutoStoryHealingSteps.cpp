@@ -19,6 +19,7 @@
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
+#include "PokemonFRLG_AutoStoryFailureClasses.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -71,11 +72,11 @@ Outcome heal(StoryEnv& env, const StoryStep& step, int max_hp){
 Outcome restore_pp_step(StoryEnv& env, const StoryStep& step){
     const std::string* item = game_arg<std::string>(step.args, "item");
     if (item == nullptr || *item != "elixir"){
-        return Pokemon::outcome_failed("bad_args", step.action);
+        return frlg_failed("bad_args", step.action);
     }
     const ItemUseEnd end = use_lead_item_from_bag(env, step, *item);
     if (end != ItemUseEnd::USED){
-        return Pokemon::outcome_failed(std::format("use_item_{}", item_use_end_name(end)), std::format("{}: {}", step.name, *item));
+        return frlg_failed(std::format("use_item_{}", item_use_end_name(end)), std::format("{}: {}", step.name, *item));
     }
     env.console.log(std::format("Story: {}: the {} on the lead.", step.name, *item));
     return Pokemon::outcome_ok();
@@ -84,10 +85,10 @@ Outcome restore_pp_step(StoryEnv& env, const StoryStep& step){
 Outcome check(StoryEnv& env, const StoryStep& step, int max_hp){
     const std::optional<int> missing = missing_hp(env.supplies, max_hp);
     if (!missing){
-        return Pokemon::outcome_failed("hp_unknown", step.name);
+        return frlg_failed("hp_unknown", step.name);
     }
     if (*missing > 0){
-        return Pokemon::outcome_failed("hp_not_full", std::format("{}: {} HP missing", step.name, *missing));
+        return frlg_failed("hp_not_full", std::format("{}: {} HP missing", step.name, *missing));
     }
     env.console.log(std::format("Story: {}: the lead's HP is full.", step.name));
     return Pokemon::outcome_ok();
@@ -97,7 +98,7 @@ Outcome bag_check(StoryEnv& env, Pokemon::RunState& state, const StoryStep& step
     const std::vector<Pokemon::StoryItem>* items = game_arg<std::vector<Pokemon::StoryItem>>(step.args, "items");
     const bool* any = game_arg<bool>(step.args, "any");
     if (items == nullptr){
-        return Pokemon::outcome_failed("bad_args", step.action);
+        return frlg_failed("bad_args", step.action);
     }
     const bool holds = bag_holds(env.supplies, *items, any != nullptr && *any);
     env.console.log(std::format("Story: {}: the bag {} what the step lists.", step.name, holds ? "holds" : "lacks"));
@@ -169,7 +170,7 @@ std::optional<Outcome> run_healing_step(StoryEnv& env, Pokemon::RunState& state,
     }
     const int64_t* max_hp = game_arg<int64_t>(step.args, "max_hp");
     if (max_hp == nullptr){
-        return Pokemon::outcome_failed("bad_args", step.action);
+        return frlg_failed("bad_args", step.action);
     }
     return step.action == HEAL_TO_FULL_ACTION ? heal(env, step, (int)*max_hp) : check(env, step, (int)*max_hp);
 }

@@ -24,6 +24,7 @@
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryPacing.h"
+#include "PokemonFRLG_AutoStoryFailureClasses.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -345,7 +346,7 @@ std::optional<Pokemon::Outcome> run_storage_game_step(
     if (step.action == CAPTURE_ACTION){
         const std::optional<CapturePlan> plan = capture_plan_of(step.args);
         if (!plan){
-            return Pokemon::outcome_failed("bad_args", step.action);
+            return frlg_failed("bad_args", step.action);
         }
         const CaptureResult result = run_capture(logger, capture, *plan, pc.read_party().size());
         const std::string message = capture_message(*plan, result);
@@ -360,12 +361,12 @@ std::optional<Pokemon::Outcome> run_storage_game_step(
         if (result.end == CaptureEnd::CAUGHT){
             return Pokemon::outcome_ok();
         }
-        return Pokemon::outcome_failed(std::string("capture_") + std::string(capture_end_name(result.end)), message);
+        return frlg_failed(std::string("capture_") + std::string(capture_end_name(result.end)), message);
     }
     if (step.action == PC_ACTION){
         const std::optional<PcTransfer> transfer = pc_transfer_of(step.args);
         if (!transfer){
-            return Pokemon::outcome_failed("bad_args", step.action);
+            return frlg_failed("bad_args", step.action);
         }
         const PcResult result = run_pc_transfer(logger, pc, *transfer);
         switch (result.end){
@@ -373,9 +374,9 @@ std::optional<Pokemon::Outcome> run_storage_game_step(
         case PcEnd::SKIPPED:
             return Pokemon::outcome_ok();
         case PcEnd::REFUSED:
-            return Pokemon::outcome_failed("pc_refused", result.detail);
+            return frlg_failed("pc_refused", result.detail);
         case PcEnd::FAILED:
-            return Pokemon::outcome_failed("pc_failed", result.detail);
+            return frlg_failed("pc_failed", result.detail);
         }
     }
     return std::nullopt;

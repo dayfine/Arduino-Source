@@ -156,6 +156,11 @@ std::optional<StoryFailureClass> frlg_failure_class(std::string_view failure){
     return Pokemon::story_failure_class_of_outcome(failure);
 }
 
+Pokemon::Outcome frlg_failed(std::string failure, std::string detail){
+    const std::optional<StoryFailureClass> failure_class = frlg_failure_class(failure);
+    return Pokemon::outcome_failed(std::move(failure), std::move(detail), failure_class);
+}
+
 std::string tag_failure_line(std::string_view line){
     if (Pokemon::read_story_failure_class_tag(line)){
         return std::string(line);

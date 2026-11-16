@@ -17,6 +17,7 @@
 #include <string>
 #include <string_view>
 #include "Pokemon/AutoStory/Pokemon_StoryFailureClasses.h"
+#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -29,6 +30,12 @@ namespace PokemonFRLG{
 //  (Pokemon::story_failure_class_of_outcome()). Nothing for a name no
 //  class lists.
 std::optional<Pokemon::StoryFailureClass> frlg_failure_class(std::string_view failure);
+
+//  A failed Outcome named `failure`, with its class (frlg_failure_class()):
+//  how every FRLG step fails, so the engine's failure line ends
+//  "(class=<id>)". A name no class lists fails with no class, and the row
+//  sim names it unclassified.
+Pokemon::Outcome frlg_failed(std::string failure, std::string detail = "");
 
 //  `line` with " class=<id>" (Pokemon::story_failure_class_tag()) at its
 //  end when it is a failure line whose failure name has a class:

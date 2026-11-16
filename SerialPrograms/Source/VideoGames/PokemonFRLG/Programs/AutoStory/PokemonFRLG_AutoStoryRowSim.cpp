@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
+#include "Pokemon/AutoStory/Pokemon_StoryOutcomeClass.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPose.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonFRLG_AutoStoryBoulders.h"
@@ -32,6 +33,7 @@
 #include "PokemonFRLG_AutoStoryViridianMart.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimField.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_FlyMap.h"
+#include "PokemonFRLG_AutoStoryFailureClasses.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -174,7 +176,7 @@ Outcome StoryMapsSim::run(const StoryStep& step, RunState& state){
 Outcome StoryMapsSim::run_action(const StoryStep& step, RunState& state){
     if (m_dialog_up){
         if (!presses_through_text(step.kind)){
-            return Pokemon::outcome_failed("dialog", step.name + ": a dialog that popped up before it is still up");
+            return frlg_failed("dialog", step.name + ": a dialog that popped up before it is still up");
         }
         m_dialog_up = false;
     }
@@ -257,11 +259,11 @@ Pokemon::StoryAction StoryMapsSim::action(StoryActionId id){
 Outcome StoryMapsSim::legs(const RunState& state, const StoryStep& step) const{
     const Standing at = standing(state.pose, maps(state));
     if (!at.error.empty()){
-        return Pokemon::outcome_failed("no_pose", at.error);
+        return frlg_failed("no_pose", at.error);
     }
     const std::optional<std::vector<RouteStep>> route = fixed_route(resolve_maps(maps(state), state.gates), at.position, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
     if (!route || route->empty()){
-        return Pokemon::outcome_failed("bad_legs", to_string(at.position));
+        return frlg_failed("bad_legs", to_string(at.position));
     }
     return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
 }
@@ -271,7 +273,7 @@ Outcome StoryMapsSim::legs(const RunState& state, const StoryStep& step) const{
 Outcome StoryMapsSim::step_ahead(const Pokemon::Pose& pose, const StoryStep& step) const{
     const std::optional<StoryPose> at = story_pose(pose);
     if (!at){
-        return Pokemon::outcome_failed("no_pose", Pokemon::to_string(pose));
+        return frlg_failed("no_pose", Pokemon::to_string(pose));
     }
     const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
     const MapData* map = map_named(at->map);
@@ -289,7 +291,7 @@ Outcome StoryMapsSim::step_ahead(const Pokemon::Pose& pose, const StoryStep& ste
         }
     );
     if (!stepped){
-        return Pokemon::outcome_failed("no_trainer", to_string(MapPosition{at->map, onto}));
+        return frlg_failed("no_trainer", to_string(MapPosition{at->map, onto}));
     }
     return Pokemon::outcome_ok(to_pose(StoryPose{at->map, onto, direction}));
 }
@@ -302,7 +304,7 @@ Outcome StoryMapsSim::shop(const StoryStep& step){
     static const std::vector<std::string> LIST{"poke_ball", "potion", "antidote", "parlyz_heal", "cancel"};
     const std::optional<std::vector<MartOrder>> orders = viridian_mart_orders(items);
     if (!orders){
-        return Pokemon::outcome_failed("unknown_item", step.name);
+        return frlg_failed("unknown_item", step.name);
     }
     int cursor = 0;
     for (size_t c = 0; c < orders->size(); c++){
@@ -310,10 +312,10 @@ Outcome StoryMapsSim::shop(const StoryStep& step){
         //  The presses: down or up from where the cursor is.
         cursor += order.row - cursor;
         if (cursor < 0 || cursor >= (int)LIST.size() || LIST[cursor] == "cancel"){
-            return Pokemon::outcome_failed("mart_cancel", std::format("order {} ends on row {}", c + 1, cursor + 1));
+            return frlg_failed("mart_cancel", std::format("order {} ends on row {}", c + 1, cursor + 1));
         }
         if (LIST[cursor] != items[c].item){
-            return Pokemon::outcome_failed("wrong_item", std::format("{} instead of {}", LIST[cursor], items[c].item));
+            return frlg_failed("wrong_item", std::format("{} instead of {}", LIST[cursor], items[c].item));
         }
         m_bag[LIST[cursor]] += order.quantity;
     }
@@ -334,14 +336,14 @@ Outcome StoryMapsSim::walk_to(Pokemon::RunState& state, const StoryStep& step) c
         const RouteGoal goal{{target->map, target->tile}, target->facing};
         const std::optional<std::vector<RouteStep>> route = plan_story_route(maps(state), pose, std::nullopt, goal, state.gates, rules);
         if (!route || route->empty()){
-            return Pokemon::outcome_failed("no_route", Pokemon::to_string(pose) + " to " + to_string(goal.position));
+            return frlg_failed("no_route", Pokemon::to_string(pose) + " to " + to_string(goal.position));
         }
         state.gates = gates_after_route(state.gates, *route);
         return Pokemon::outcome_ok(to_pose(StoryPose{target->map, target->tile, route->back().facing_after}));
     }
     const Standing at = standing(pose, maps(state));
     if (!at.error.empty()){
-        return Pokemon::outcome_failed("no_pose", at.error);
+        return frlg_failed("no_pose", at.error);
     }
     const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
     const RouteGoal goal{{target->map, target->tile}, target->facing};
@@ -349,14 +351,14 @@ Outcome StoryMapsSim::walk_to(Pokemon::RunState& state, const StoryStep& step) c
         maps(state), at.position, goal, state.gates, rules, story_route_costs(), at.facing
     );
     if (!route){
-        return Pokemon::outcome_failed("no_route", to_string(at.position) + " to " + to_string(goal.position));
+        return frlg_failed("no_route", to_string(at.position) + " to " + to_string(goal.position));
     }
     const MapPosition end = follow_overworld_route(maps(state), at.position, *route, state.gates);
     if (!(end == goal.position)){
-        return Pokemon::outcome_failed("wrong_end", to_string(end));
+        return frlg_failed("wrong_end", to_string(end));
     }
     if (const std::optional<std::string> leg = overrun_wall_leg(*route, maps(state))){
-        return Pokemon::outcome_failed("wall_overrun", *leg);
+        return frlg_failed("wall_overrun", *leg);
     }
     state.gates = gates_after_route(state.gates, *route);
     const Direction facing = route->empty() ? at.facing : route->back().facing_after;
@@ -464,7 +466,7 @@ Pokemon::StoryAction OverworldStepSim::step_action(StoryActionId id){
         m_beaten = beaten_trainers(state.flags);
         const std::string failure = (this->*body)(step);
         state.flags = m_flags;
-        return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
+        return failure.empty() ? Pokemon::outcome_ok() : frlg_failed("sim_failure", failure);
     });
 }
 
@@ -775,7 +777,7 @@ Pokemon::StoryAction OverworldStepSim::hideout_or_stub(){
     Pokemon::StoryAction stub = m_stubs.stub();
     Pokemon::StoryAction sim = played([this](const StoryStep& step, RunState&){
         const std::string failure = hideout(step);
-        return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
+        return failure.empty() ? Pokemon::outcome_ok() : frlg_failed("sim_failure", failure);
     });
     sim.act = [stub, played_act = sim.act](const StoryStep& step, RunState& state){
         return is_hideout_step(step) || center_walkable(step) || field_move_simulated(step)
@@ -881,7 +883,11 @@ std::string row_step_carrying_flags(
         }
         return "";
     }
-    return id + "/" + step.name + ": " + outcome.detail + " On " + to_string(sim.state().position) + ".";
+    const std::string failure = id + "/" + step.name + ": " + outcome.detail + " On " + to_string(sim.state().position) + ".";
+    if (!Pokemon::failure_class_of(outcome)){
+        return std::format("{} {}: {}", UNCLASSIFIED_FAILURE, outcome.failure, failure);
+    }
+    return failure;
 }
 
 

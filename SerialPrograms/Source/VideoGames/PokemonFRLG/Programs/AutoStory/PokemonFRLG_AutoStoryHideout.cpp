@@ -23,6 +23,7 @@
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryQuietOverworld.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
+#include "PokemonFRLG_AutoStoryFailureClasses.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -224,7 +225,7 @@ std::optional<Pokemon::Outcome> run_field_game_step(
     //  A Repel that lingered from before leaves one on: the step's purpose.
     const bool* if_any = game_arg<bool>(step.args, "if_any");
     if (!item_use_step_done(end, if_any != nullptr && *if_any)){
-        return Pokemon::outcome_failed(std::string("use_item_") + item_use_end_name(end), step.action);
+        return frlg_failed(std::string("use_item_") + item_use_end_name(end), step.action);
     }
     if (end == ItemUseEnd::NONE_LEFT){
         console.log(std::format("{}: none left in the bag; skipped (if_any).", step.name), COLOR_ORANGE);

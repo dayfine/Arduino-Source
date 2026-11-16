@@ -781,6 +781,11 @@ public:
         }catch (Exception& e){
             result = std::string(e.name()) + ": " + e.message();
         }
+        //  A failure the shared list has no class for fails the sweep,
+        //  known failing or not: every FRLG failure maps to a class.
+        if (result.message.find(UNCLASSIFIED_FAILURE) != std::string::npos){
+            return result;
+        }
         const auto known = KNOWN_FAILING.find(name());
         if (known == KNOWN_FAILING.end()){
             return result;

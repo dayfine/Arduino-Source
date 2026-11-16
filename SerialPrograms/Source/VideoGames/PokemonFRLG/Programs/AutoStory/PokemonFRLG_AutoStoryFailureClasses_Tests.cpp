@@ -10,6 +10,7 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/AutoStory/Pokemon_StoryOutcomeClass.h"
 #include "PokemonFRLG_AutoStoryFailureClasses.h"
 #include "PokemonFRLG_AutoStoryFailureClasses_Tests.h"
 
@@ -59,6 +60,44 @@ UnitTestResult check_name(const NameCase& test){
     const std::optional<StoryFailureClass> got = frlg_failure_class(test.input.failure);
     if (got != test.expectation.failure_class){
         return std::format("{}: expected {}, got {}", test.input.failure, class_text(test.expectation.failure_class), class_text(got));
+    }
+    return true;
+}
+
+
+//  One step failure, as the engine's failure line writes it.
+struct OutcomeCase{
+    struct Input{
+        std::string_view failure;
+        std::string_view detail;
+    };
+    struct Expectation{
+        std::string_view line;
+    };
+    std::string_view name;
+    Input input;
+    Expectation expectation;
+};
+
+const std::vector<OutcomeCase> OUTCOME_CASES = {
+    {.name = "FRLG's own name carries its class",
+     .input = {.failure = "no_trainer", .detail = "3 s on the tile"},
+     .expectation = {.line = "no_trainer: 3 s on the tile (class=screen_unread)"}},
+    {.name = "a family's name carries the family's class",
+     .input = {.failure = "fly_no_landing", .detail = "Celadon City"},
+     .expectation = {.line = "fly_no_landing: Celadon City (class=menu_failed)"}},
+    {.name = "an engine name carries the shared list's class",
+     .input = {.failure = "reload_failed", .detail = "no save"},
+     .expectation = {.line = "reload_failed: no save (class=reload_failed)"}},
+    {.name = "a name no class lists carries none",
+     .input = {.failure = "something_new", .detail = "x"},
+     .expectation = {.line = "something_new: x"}},
+};
+
+UnitTestResult check_outcome(const OutcomeCase& test){
+    const std::string got = Pokemon::to_string_with_class(frlg_failed(std::string(test.input.failure), std::string(test.input.detail)));
+    if (got != test.expectation.line){
+        return std::format("expected \"{}\", got \"{}\"", test.expectation.line, got);
     }
     return true;
 }
@@ -130,6 +169,20 @@ private:
     NameCase m_test;
 };
 
+class FailureOutcomeTest : public UnitTest{
+public:
+    explicit FailureOutcomeTest(OutcomeCase test)
+        : UnitTest(std::format("PokemonFRLG::AutoStory - Failure outcome: {}", test.name))
+        , m_test(test)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return check_outcome(m_test);
+    }
+
+private:
+    OutcomeCase m_test;
+};
+
 class FailureLineTest : public UnitTest{
 public:
     explicit FailureLineTest(LineCase test)
@@ -154,6 +207,9 @@ void add_tests_AutoStoryFailureClasses(UnitTestDatabase& database){
     }
     for (const LineCase& test : LINE_CASES){
         database.add<FailureLineTest>(test);
+    }
+    for (const OutcomeCase& test : OUTCOME_CASES){
+        database.add<FailureOutcomeTest>(test);
     }
 }
 

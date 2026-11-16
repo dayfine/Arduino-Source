@@ -265,7 +265,7 @@ Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, StoryEnv
     };
     game.load_save = [&story](Pokemon::RunState&){
         if (!story.has_save){
-            return Pokemon::outcome_failed("no_save", "nothing saved yet");
+            return frlg_failed("no_save", "nothing saved yet");
         }
         return launch_frlg_save(story.console, story.context);
     };
@@ -289,7 +289,7 @@ Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, StoryEnv
                 read_bag_supplies(story, story.start_menu);
             }
         }catch (OperationFailedException& e){
-            return Pokemon::outcome_failed("reload_failed", e.message());
+            return frlg_failed("reload_failed", e.message());
         }
         return Pokemon::outcome_ok();
     };
