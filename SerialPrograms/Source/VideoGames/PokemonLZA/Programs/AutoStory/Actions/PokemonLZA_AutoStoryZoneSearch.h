@@ -2,15 +2,16 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  How 03.08 looks for new species in Wild Zone 1 without walking by the
- *  objective marker's digits: stand, turn the camera in steps through a
- *  full turn with a ZL lock-on after each, catch a species not caught yet,
- *  and only when a full turn finds none take one short leg along the road,
- *  each leg out followed by one back. Six runs walking between distance
- *  stops (console B, 2026-11-16) left the zone or stood stuck: the digits
- *  read nothing for long stretches (speech bubbles, the marker at the
- *  screen's edge), and run 6 ended 4 of 5 with only species already
- *  caught locking on at its last stops.
+ *  How 03.08 looks for new species in Wild Zone 1, from the road's spot
+ *  at 100 (ZoneStart gets there), without walking by the objective
+ *  marker's digits: stand, turn the camera in steps through a full turn
+ *  with a ZL lock-on after each, catch a species not caught yet, and only
+ *  when a full turn finds none take one short leg along the road, each
+ *  leg out followed by one back. Six runs walking
+ *  between distance stops (console B, 2026-11-16) left the zone or stood
+ *  stuck: the digits read nothing for long stretches (speech bubbles, the
+ *  marker at the screen's edge), and run 6 ended 4 of 5 with only species
+ *  already caught locking on at its last stops.
  *
  */
 
@@ -63,9 +64,9 @@ struct ZoneOffset{
 //  The search, one look and one leg at a time. A scan is `steps_per_turn`
 //  looks, the camera turned one step between two. A catch or a fight
 //  starts the scan over. A scan with nothing new is a WALK; legs go out
-//  from the start spot and back in turn (away, left, right, toward), and
-//  once every way has been out and back, the next empty scan is a PAUSE
-//  and the round starts over.
+//  from the search spot and back in turn (away, then toward), and once
+//  every way has been out and back, the next empty scan is a PAUSE and the
+//  round starts over.
 class ZoneSearch{
 public:
     explicit ZoneSearch(size_t steps_per_turn)
@@ -82,6 +83,12 @@ public:
     //  gate is at ~55 and the city past it), and an away leg takes its
     //  place.
     ZoneLeg leg(std::optional<int> distance);
+
+    //  A walk back reached the search spot (at_zone_spot()): the legs go
+    //  out from it again.
+    void at_spot(){
+        m_offset = ZoneOffset{};
+    }
 
     //  The camera step of the scan, from 0.
     size_t step() const{

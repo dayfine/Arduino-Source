@@ -14,10 +14,9 @@ namespace PokemonLZA{
 
 namespace{
 
-//  The ways out of a round, in turn: away first, as the start spot
-//  (Taunie's rocks, ~120 to 146 from the objective) has the far gate
-//  ahead and grass behind and beside it. Both ways are along the road:
-//  the search stays on it (the user, 2026-11-16).
+//  The ways out of a round, in turn, from the search spot (100 from the
+//  objective): away first, as toward is the far gate (~55). Both ways are
+//  along the road: the search stays on it (the user, 2026-11-16).
 constexpr ZoneLeg OUT_LEGS[] = {ZoneLeg::AWAY, ZoneLeg::TOWARD};
 
 void apply(ZoneOffset& offset, ZoneLeg leg){
