@@ -6,6 +6,8 @@ Slice 2: the attach-only read server ([below](#slice-2-the-attach-only-read-serv
 durable control plane ([below](#slice-3-the-durable-control-plane)): leases, request records,
 tickets and events in SQLite. Nothing presses a button yet: that is Slice 5.
 
+New here? Start with [GUIDE.md](GUIDE.md): what pa-lab is and what it gives you today.
+
 | Path | What |
 |---|---|
 | `pa_lab/contracts.py` | Version-1 specs for every document kind, `parse` / `validate` / `dump` / `describe` |
