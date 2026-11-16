@@ -87,7 +87,8 @@ std::vector<Pokemon::RouteTile> traced_tiles(const std::string& map, const std::
 
 namespace{
 
-//  A scene not observed by the previous step keeps the original full guard.
+//  How long a scene waits for its first line when the preceding step did not
+//  press through its dialogue.
 constexpr Milliseconds SCENE_START_WAIT = 15000ms;
 
 //  "to_catch_grass" as "to catch grass", for the logs.
@@ -184,6 +185,7 @@ void StoryWalkSteps::begin_attempt(const std::string& row, const std::vector<Sto
     m_scene_next.clear();
     m_scene_open = false;
     m_previous_settle_saw_dialogue = false;
+    m_scene_start_already_played = false;
     //  A route right before a scene, or before a plain step onto the scene's
     //  trigger (the decomp's tile, which the console may have elsewhere).
     const auto onto_trigger = [](const StoryStep& step){
@@ -203,6 +205,11 @@ void StoryWalkSteps::begin_attempt(const std::string& row, const std::vector<Sto
             m_scene_next.insert(steps[c - 2].name);
         }
     }
+}
+
+void StoryWalkSteps::begin_step(const StoryStep& step){
+    m_scene_start_already_played = step.kind == Pokemon::StoryStepKind::MASH
+        && std::exchange(m_previous_settle_saw_dialogue, false);
 }
 
 void StoryWalkSteps::turn(Direction direction){
@@ -260,7 +267,6 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
 Outcome StoryWalkSteps::route(RunState& state, const StoryStep& step){
     const EventTrace trace(m_legs, m_row, step.name);
     m_warp = {};
-    m_previous_settle_saw_dialogue = false;
     if (Pokemon::tiles_of(state.pose).empty()){
         return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
     }
@@ -622,7 +628,6 @@ Outcome StoryWalkSteps::legs(RunState& state, const StoryStep& step){
     const EventTrace trace(m_legs, m_row, step.name);
     m_warp = {};
     m_scene_open = false;
-    m_previous_settle_saw_dialogue = false;
     if (step.action == "counted_wall"){
         return counted_wall(state.pose, step);
     }
@@ -654,7 +659,6 @@ Outcome StoryWalkSteps::legs(RunState& state, const StoryStep& step){
 Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     const EventTrace trace(m_legs, m_row, step.name);
     const Direction direction = story_arg<Direction>(step.args, "direction");
-    m_previous_settle_saw_dialogue = false;
     if (step.action == "to_banner"){
         turn(direction);
         return tap_to_banner(state.pose, step);
@@ -721,7 +725,6 @@ Outcome StoryWalkSteps::one_step(const RunState& state, const StoryStep& step){
 Outcome StoryWalkSteps::talk(RunState& state, const StoryStep& step){
     m_warp = {};
     m_scene_open = false;
-    m_previous_settle_saw_dialogue = false;
     //  Face whom we talk to: a route ends facing its last leg, not its goal
     //  (r40 reached Mom facing north). They block the tile, so the tap only turns.
     if (const std::optional<Direction> facing = Pokemon::facing_of(state.pose)){
@@ -740,9 +743,11 @@ Outcome StoryWalkSteps::talk(RunState& state, const StoryStep& step){
 Outcome StoryWalkSteps::mash(RunState& state, const StoryStep& step){
     m_warp = {};
     m_scene_open = false;
-    const bool already_played = std::exchange(m_previous_settle_saw_dialogue, false);
+    const bool already_played = std::exchange(m_scene_start_already_played, false);
     if (already_played){
-        m_route.note(label_of(step) + ": dialogue was played by the previous step; skipping the opening-line wait.", RouteNote::STATUS);
+        m_route.note(std::format(
+            "{}: dialogue was played by the previous step; skipping the opening-line wait.", label_of(step)
+        ), RouteNote::STATUS);
     }else if (!m_route.dialog_within(SCENE_START_WAIT, COLOR_CYAN)){
         m_route.note(std::format(
             "{}: no line within {} ms; the step before may already have played it.",

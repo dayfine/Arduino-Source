@@ -168,7 +168,8 @@ struct SimWorldKnobs{
     std::map<std::string, double> fade_into = {};
     //  People with a wander box on their map walk it, a step tried every 2 s.
     std::optional<uint64_t> wander_seed = std::nullopt;
-    //  How long after the A press a talk's first line shows, by step name.
+    //  How long after a step begins watching for dialogue its first line
+    //  shows, by step name.
     std::map<std::string, Milliseconds> first_line = {};
     //  The scene a step's talk-over plays, by step name: a scene's or a
     //  door's settle(), or the speeches after a battle step's battle.
@@ -227,6 +228,9 @@ public:
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override;
     virtual WalkResult walk_taps(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual bool dialog_within(Milliseconds wait, Color color) override;
+    Milliseconds take_uncovered_first_line(){
+        return std::exchange(m_uncovered_first_line, Milliseconds(0));
+    }
     //  With SimWorldKnobs::slow_fade_in, fails the move `label` if the last
     //  warp is still fading in (SimMisses::fading_in).
     void check_fade_in(const std::string& label);
@@ -242,6 +246,7 @@ private:
     const std::string& m_step;
     std::function<void(const Pokemon::Pose&)> m_cross;
     std::set<std::string> m_slid_steps;
+    Milliseconds m_uncovered_first_line{0};
 };
 } // namespace detail
 
