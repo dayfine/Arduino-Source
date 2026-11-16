@@ -278,10 +278,10 @@ Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
 //  "end_after_black_fades", that many black fades lifted and settled end
 //  it, 5 s after the last one (or the controls hint, if it comes first),
 //  instead of the banner: 01.01's arrival goes ad, loading, a fade from
-//  black, the rival's talk, Pancham, the "MAIN MISSION 01" banner, a
-//  second black fade, then control (console B, 2026-11-15; the banner
-//  detector missed the banner on the Italian game, and control came ~7 s
-//  after it). The next step's walk waits for control (check_can_walk()).
+//  black, the rival's talk, a second black fade, Pancham, the "MAIN
+//  MISSION 01" banner, a third black fade, then control (console B,
+//  2026-11-15, English and Italian; the banner detector missed the banner
+//  on the Italian game). The next step's walk waits for control (check_can_walk()).
 //  01.01's arrival takes ~240 s on the console, hence
 //  360 s. A text-free cutscene (01.01's city flyover, ~20 s) is not
 //  control: a minute with nothing busy fails the step. After 5 s with
