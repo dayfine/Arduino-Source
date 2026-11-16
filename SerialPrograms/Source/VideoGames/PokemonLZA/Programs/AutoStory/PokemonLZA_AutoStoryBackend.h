@@ -76,6 +76,8 @@ public:
     //  To the console's log and the stream's overlay log: the checkpoint and
     //  the step under way, for whoever watches.
     virtual void log(std::string_view line) override;
+    //  To the console's log only.
+    virtual void log_detail(std::string_view line) override;
     virtual CancellableScope& scope() override;
 
 private:
