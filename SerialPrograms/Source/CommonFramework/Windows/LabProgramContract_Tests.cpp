@@ -344,6 +344,11 @@ const ReplyCase REPLY_CASES[] = {
         }},
         .expectation = {.json = R"({"checks":[],"edited_keys":["COUNT","NOTIFICATIONS"],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"ab12","restored":false,"schema":1,"verdict":"passed"})"},
     },
+    {
+        .name = "cancelled checks are cancelled, with the restore",
+        .input = {.run = {.refused = std::nullopt, .checks = std::nullopt, .restored = false, .cancelled = true}},
+        .expectation = {.json = R"({"checks":[],"edited_keys":[],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"ab12","restored":false,"schema":1,"verdict":"cancelled"})"},
+    },
 };
 
 

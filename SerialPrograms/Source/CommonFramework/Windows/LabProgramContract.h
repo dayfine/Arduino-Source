@@ -61,7 +61,8 @@ std::string lab_options_hash(const JsonValue& options);
 //  {"schema", "id", "verdict", "checks", "failure", "invalid", "restored",
 //  "edited_keys", "options_hash"}. "verdict" is "invalid_options" when the program refused
 //  the candidate ("invalid": {"key", "message"}, the key "" for a refused
-//  combination), "unsupported" when it declares no precheck list, "failed"
+//  combination), "cancelled" when the checks were cancelled before they
+//  finished ("checks" empty), "unsupported" when it declares no precheck list, "failed"
 //  at the first FAILED check ("failure": {"check", "message"}), else
 //  "passed". "checks" lists {"name", "status", "message"} in the order they
 //  ran, "status" one of "passed", "failed", "skipped". "restored" is

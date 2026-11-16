@@ -233,6 +233,10 @@ PrecheckOnlyRun run_prechecks_only(
         if (!run.refused){
             run.checks = target.run_checks();
         }
+    }catch (OperationCancelledException&){
+        logger.log("Start checks only: cancelled.", COLOR_RED);
+        run.checks.reset();
+        run.cancelled = true;
     }catch (...){
         restore_options(options, on_options_thread, target, logger, run);
         throw;

@@ -48,6 +48,9 @@ struct PrecheckOnlyRun{
     //  run then leaves the options as the user left them, and `restored` is
     //  false.
     std::vector<std::string> edited_keys = {};
+    //  Set when the checks were cancelled (OperationCancelledException)
+    //  before they finished; `checks` is then nothing.
+    bool cancelled = false;
 };
 
 
@@ -71,6 +74,8 @@ public:
 
 //  Runs `body` on the thread that owns the program's options and returns
 //  once it has run. Throws what `body` throws, or when it cannot run it.
+//  It must still run `body` once the checks are cancelled: that is how the
+//  prior options get back after a cancel.
 using OptionsThreadCall = std::function<void(const std::function<void()>& body)>;
 
 //  A checks-only run of `target` with `candidate`, an object of option keys
@@ -87,6 +92,9 @@ using OptionsThreadCall = std::function<void(const std::function<void()>& body)>
 //        check throws, unless the options differ from what step 1 loaded (a
 //        user edited them): those are kept and named in `edited_keys`.
 //  A failed restore is logged and leaves `restored` false; it never throws.
+//  Cancelled checks return the run with `cancelled` set, after the restore,
+//  so the caller can still say whether the prior options are back; any
+//  other exception from a check is thrown after the restore.
 PrecheckOnlyRun run_prechecks_only(
     const JsonValue& candidate,
     const OptionsThreadCall& on_options_thread,
