@@ -125,9 +125,9 @@ void open_battle_bag(ProControllerContext& context, size_t rows){
 
 std::vector<BagRow> read_battle_pocket(ConsoleHandle& console, ProControllerContext& context, Language language, size_t rows){
     open_battle_bag(context, rows);
-    std::vector<BagRow> rows = read_open_pocket(console, context, language).rows;
+    std::vector<BagRow> read = read_open_pocket(console, context, language).rows;
     pbf_press_button(context, BUTTON_B, /*hold=*/160ms, /*release=*/1500ms);
-    return rows;
+    return read;
 }
 
 
