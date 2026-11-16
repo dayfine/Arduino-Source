@@ -18,3 +18,22 @@ the wrong save, or a hand session moving the player after the last save.
 - **Run records you can read.** Each run ends as one record (passed, failed, or stopped and by
   whom), with checkpoint results, RNG hits and links to failure screenshots, shown through the
   server's resources and events.
+
+## Example (sketch, not built)
+
+Read `console://B/save` after an AutoStory checkpoint saved:
+
+```json
+{"state": "known", "fact": {"program": "PokemonFRLG:AutoStory", "checkpoint": "18.02",
+ "saved_at": "2026-11-15T23:44:13.115Z"}}
+```
+
+After you play by hand or a controller batch runs:
+
+```json
+{"state": "stale", "reason": "user input after the last recorded save (2026-11-15T23:50:02Z)",
+ "fact": {"checkpoint": "18.02", "saved_at": "2026-11-15T23:44:13.115Z"}}
+```
+
+A run whose start does not match then gets
+`{"refusal": {"code": "precheck_failed", "check": "save_at", "message": "The save on console B is stale ..."}}`.

@@ -12,3 +12,9 @@ existing guards: the heavy-work gate, the disk floor, `-j4` and `nice`.
   run in progress).
 - A console run is never slowed down or stopped by a build.
 - It does not touch GitHub, PRs or worktrees, and the existing daily cleanup jobs stay.
+
+## Example (sketch, not built)
+
+*"Build the PLZA lab tree."* → `{"ticket": 41, "state": "queued", "ahead": 1}`; later
+`{"ticket": 41, "state": "done", "exit": 0, "log": "~/BDSPLab/build-plza.log"}`, or
+`{"ticket": 41, "state": "refused", "reason": "console run in progress"}`.

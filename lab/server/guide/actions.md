@@ -30,6 +30,60 @@ and the server decides whether it may.
 
 There is deliberately no "switch game" tool: the app cannot yet pick a game on HOME by name.
 
+## Examples
+
+These are the request and answer shapes from the server's contract files
+(`contracts/v1/`), with example ids. They are what an agent sends and gets back; you would
+ask Claude in plain words ("take console B and run FRLG 13.01 to 13.02").
+
+**Take the console.** `acquire_console(console="B", owner="agent:frlg-lane", ttl_s=1200)`:
+
+```json
+{"lease_token": "<opaque>", "expires_at": "2026-11-14T06:40:00.000Z"}
+```
+
+If you hold it, the answer is a refusal instead:
+
+```json
+{"request_id": "5f0c2a8e-...", "tool": "acquire_console",
+ "refusal": {"code": "console_held_by_user",
+             "message": "The user holds console B (Stop clicked in the app at 06:10); ask them to release it."}}
+```
+
+**Start the selected program** (5a: the panel's current options):
+`run_program(console="B", request_id="9b1d7e44-...", lease_token=..., panel="PokemonFRLG:AutoStory")`.
+The stored record once the app has started it:
+
+```json
+{"request_id": "9b1d7e44-...", "tool": "run_program", "status": "completed",
+ "created_at": "2026-11-14T06:20:00.000Z", "completed_at": "2026-11-14T06:20:02.150Z",
+ "result": {"run_id": null, "started_at": "2026-11-14T06:20:02.100Z",
+            "instance_id": "d8ea6a9d-..."},
+ "refusal": null}
+```
+
+Sending the same `request_id` again returns this same record and starts nothing. Refusal codes
+you can get: `console_held_by_user`, `console_held_by_agent`, `program_running`,
+`app_not_running`, `panel_not_program`, `channel_owned`, `invalid_arguments`.
+
+**Stop it.** `stop_program(console="B", request_id=..., lease_token=...)` answers with who
+stopped it and when, e.g. `{"sent": true, "stopped_at": "...", "stopped_by": "lab"}`. If nothing
+was running: `{"sent": false, "state": "stopped", ...}`, which is not an error.
+
+**Preflight (planned, 5b).** `preflight_program(console="B", panel="PokemonFRLG:RngStatic", options={...})`
+returns a token for `run_program`, or the first failed start check:
+
+```json
+{"tool": "preflight_program",
+ "refusal": {"code": "precheck_failed", "check": "free_party_slots",
+             "message": "Free party slots: needs 1 empty slot, found 0.",
+             "evidence": {"needed": 1, "found": 0}}}
+```
+
+**Controller batch (planned, 5b, debugging only).**
+`cfr_batch(console="B", lines=["shot before", "press B 160 640", "shot after"])` runs the lines
+with the program stopped and marks the save `stale`.
+
 ## Switching it on
 
 The session connection (`.mcp.json`) stays read-only until you decide otherwise. The plan:

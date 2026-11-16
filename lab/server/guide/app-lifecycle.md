@@ -14,3 +14,14 @@
   that and stands back.
 - **Agents stop launching apps directly.** After a soak, agents ask the server instead of
   running `labrun.sh` or writing to the app's inbox.
+
+## Example (sketch, not built)
+
+*"Start the lab app on the newest FRLG build."* The server answers with what it launched:
+
+```json
+{"pid": 13122, "game": "frlg", "commit": "72f365065", "profile": "lab-B",
+ "deployment": "slot-B-frlg/72f3650657d2-8bf901e7"}
+```
+
+or refuses, e.g. `{"refusal": {"code": "app_running_program", "message": "PokemonFRLG:AutoStory is running; stop it first."}}`.
