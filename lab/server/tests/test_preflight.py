@@ -7,6 +7,7 @@ Run from the repo root: python3 -m unittest discover -s lab/server/tests -t lab/
 
 import json
 import unittest
+from unittest import mock
 
 from pa_lab import contracts, preflight
 from tests.fake_lab import CURRENT_OPTIONS, describe_reply, golden
@@ -57,7 +58,9 @@ class OptionTests(PreflightTest):
                                                  'NOTIFICATIONS': {'Enabled': False}}])
         self.assertEqual(self.app.options, CURRENT_OPTIONS)  # put back after the checks
         self.assertEqual([c['name'] for c in record['result']['checks']], ['game_open', 'free_party_slots'])
-        self.assertEqual(record['result']['options_hash'], preflight.options_hash(options))
+        self.assertEqual(record['result']['candidate_hash'], preflight.candidate_hash(options))
+        # The app's hash of every option the program holds, as the checks left them (restored).
+        self.assertEqual(record['result']['options_hash'], self.app.options_hash())
         contracts.validate('request_record', record)
 
 
@@ -162,6 +165,11 @@ class TokenTests(PreflightTest):
                                                      'arguments': {'lines': ['press B']}})
             test.assertEqual(record['status'], 'completed', record)
 
+        def user_edits_another_option(test):
+            # In the panel, an option the candidate does not name: no transition, no save, same instance.
+            test.app.options['LANGUAGE'] = 'de'
+            test.clock.sleep(1)  # the app's next state.json write
+
         def too_old(test):
             test.clock.sleep(preflight.TOKEN_TTL_S + 1)
 
@@ -172,7 +180,9 @@ class TokenTests(PreflightTest):
             dict(name='a cfr_batch ran', input=(cfr_batch, None), expectation=['save']),
             dict(name='a cfr_batch ran with no save fact', input=(cfr_batch, None, None, 'no fact'),
                  expectation=['save']),
-            dict(name='other options', input=(None, {'START_SEGMENT': 4}), expectation=['options_hash']),
+            dict(name='other options', input=(None, {'START_SEGMENT': 4}), expectation=['candidate_hash']),
+            dict(name='an option the candidate did not name was edited', input=(user_edits_another_option, None),
+                 expectation=['options_hash']),
             dict(name='too old', input=(too_old, None), expectation='expired'),
             dict(name='never issued', input=(None, None, NO_TOKEN), expectation='unknown_token'),
         ]
@@ -198,6 +208,15 @@ class TokenTests(PreflightTest):
                     self.assertEqual(evidence['reason'], case['expectation'])
                 self.assertEqual(self.sent('start'), [])
 
+    def test_an_app_that_reports_no_options_hash_still_runs(self):
+        """Before the app writes program.options_hash (#601), the token binds the candidate only."""
+        self.app.hash_options = False
+        token = self.acquired()
+        checked = self.passed(token, {'START_SEGMENT': 3})
+        self.assertIsNone(checked['result']['options_hash'])
+        record = self.run_with(token, checked['result']['preflight_token'], {'START_SEGMENT': 3})
+        self.assertEqual(record['status'], 'completed', record)
+
     def test_a_token_is_bound_to_its_lease(self):
         token = self.acquired()
         checked = self.passed(token)
@@ -218,6 +237,49 @@ class TokenTests(PreflightTest):
         self.assertEqual((again['refusal']['code'], again['refusal']['evidence']['changed']),
                          ('preflight_stale', ['transition']))
         self.assertEqual(len(self.sent('start')), 1)
+
+
+class PendingPreflightTests(PreflightTest):
+    """A preflight the app took and has not answered: what ends it, and that it never wedges the console."""
+
+    def held(self, during=None):
+        """A preflight the app takes and never answers; `during` runs at the settle loop's first sleep."""
+        self.app.hold.add('preflight')
+        if during is not None:
+            self.app.after['preflight'] = during
+        self.token = self.acquired()
+        return self.preflight(preflight_request(self.token, options={'START_SEGMENT': 3}))
+
+    def test_a_ui_start_during_a_preflight_hands_the_console_to_the_user(self):
+        record = self.held(lambda app: app.transition('start', 'ui'))
+        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'console_held_by_user'))
+        self.assertIsNone(record['result'])
+
+    def test_an_app_restart_during_a_preflight_ends_it(self):
+        record = self.held(lambda app: app.lab.update_state(**{'instance.id': NEW_INSTANCE}))
+        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'))
+        self.assertEqual(record['refusal']['evidence']['reason'], 'instance_replaced')
+
+    def test_a_reply_already_there_at_the_first_poll_is_read(self):
+        """The app answers before the daemon's first look: no sleep, the token is issued at once."""
+        token = self.acquired()
+        send = self.reader.channel.send
+
+        def send_and_answer(*args):
+            send(*args)
+            self.app.tick()
+        with mock.patch.object(self.reader.channel, 'send', side_effect=send_and_answer):
+            before = self.clock.now()
+            record = self.preflight(preflight_request(token, options={'START_SEGMENT': 3}))
+        self.assertEqual(record['status'], 'completed', record)
+        self.assertEqual(self.clock.now(), before)
+
+    def test_a_preflight_never_answered_fails_after_its_wait_and_frees_the_console(self):
+        record = self.held()
+        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'timeout'))
+        self.assertEqual(record['refusal']['evidence']['reason'], 'outcome_unknown')
+        self.app.hold.clear()
+        self.passed(self.token)
 
 
 def save_known(test):

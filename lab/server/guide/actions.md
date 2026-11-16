@@ -27,7 +27,7 @@ and the server decides whether it may.
 | Tool | What it does | Status |
 |---|---|---|
 | `acquire_console` / `renew_console` / `release_console` | take, extend and give back the lease | built (control plane) |
-| `preflight_program(panel, options)` | check the options, run the program's [start checks](start-checks.md) without starting it, put your options back; returns a token for `run_program` | server built (5b), needs an app command that does not exist yet |
+| `preflight_program(panel, options)` | check the options, run the program's [start checks](start-checks.md) without starting it, put your options back; returns a token for `run_program` | server built (5b); the app command is fork #601, not yet in the lab build |
 | `run_program(panel, options, preflight_token)` | load the options and start the selected program once; only with a current token for the same options | built (5a + 5b), not switched on |
 | `stop_program()` | stop it once; stopping when nothing runs is a no-op, not an error | built in #592, not switched on |
 | `cfr_batch(lines)` | a short allowlisted controller batch, for debugging only; marks the save as stale | built (5b), not switched on |
@@ -62,7 +62,7 @@ tests against a fake app; real console output comes later):
 {"panel": "PokemonFRLG:AutoStory", "instance_id": "d8ea6a9d-...",
  "checks": [{"name": "game_open", "status": "passed", "message": ""},
             {"name": "free_party_slots", "status": "passed", "message": ""}],
- "options_hash": "22386fd0...", "preflight_token": "pf1.be3fc628...",
+ "candidate_hash": "22386fd0...", "options_hash": "9f2c41aa...", "preflight_token": "pf1.be3fc628...",
  "issued_at": "2026-11-14T06:00:00.150Z", "expires_at": "2026-11-14T06:02:00.150Z"}
 ```
 
@@ -90,7 +90,8 @@ app has started it:
 ```
 
 Sending the same `request_id` again returns this same record and starts nothing. If something
-changed since the check, the answer says what:
+changed since the check (a start or stop, a save, a batch, the app restarting, or anyone editing
+any of the program's options in the panel), the answer says what:
 
 ```json
 {"code": "preflight_stale", "message": "Since the preflight, save changed; run preflight_program again.",

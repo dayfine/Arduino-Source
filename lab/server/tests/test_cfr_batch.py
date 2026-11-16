@@ -9,7 +9,7 @@ import unittest
 
 from pa_lab import contracts
 from tests.control_fixtures import new_id
-from tests.test_actions import CLIENT, ActionTest
+from tests.test_actions import CLIENT, NEW_INSTANCE, ActionTest
 from tests.test_preflight import save_known
 
 
@@ -102,6 +102,35 @@ class CfrBatchTest(ActionTest):
         self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'timeout'))
         self.assertEqual(self.inbox(), [])
         self.assertEqual(self.reader.save_resource()['reason'], 'cfr_batch')
+
+
+class PendingBatchTests(CfrBatchTest):
+    """A batch the app took and has not answered: what ends it, and that it never wedges the console."""
+
+    def held(self, during=None):
+        self.app.hold.add('press')
+        if during is not None:
+            self.app.after['press'] = during
+        self.token = self.acquired()
+        return self.cfr(batch_request(self.token, ['press A']))
+
+    def test_a_ui_start_during_a_batch_hands_the_console_to_the_user(self):
+        record = self.held(lambda app: app.transition('start', 'ui'))
+        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'console_held_by_user'))
+
+    def test_an_app_restart_during_a_batch_ends_it(self):
+        record = self.held(lambda app: app.lab.update_state(**{'instance.id': NEW_INSTANCE}))
+        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'))
+        self.assertEqual(record['refusal']['evidence']['reason'], 'instance_replaced')
+
+    def test_a_batch_never_answered_fails_after_its_worst_case_and_frees_the_console(self):
+        self.lab.write_save(save_known(self))
+        record = self.held()
+        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'timeout'))
+        self.assertEqual(record['refusal']['evidence']['reason'], 'outcome_unknown')
+        self.assertEqual(self.reader.save_resource()['reason'], 'cfr_batch')  # presses may have run
+        self.app.hold.clear()
+        self.assertEqual(self.cfr(batch_request(self.token, ['press B']))['status'], 'completed')
 
 
 if __name__ == '__main__':

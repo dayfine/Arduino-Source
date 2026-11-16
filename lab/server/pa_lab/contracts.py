@@ -501,6 +501,8 @@ APP_STATE = Obj([
             F('at', Timestamp()),
         ], rules=[_transition_request_id])), doc='null until the first start/stop of this instance'),
         F('paused', Nullable(Str()), required=False, doc='legacy paused=: breakpoint label while waiting'),
+        F('options_hash', Nullable(Str()), required=False,
+          doc="SHA-256 of the selected program's full option JSON (#601); absent from older apps"),
     ])),
     F('controller', Obj([
         F('state', Enum('ready', 'not_connected', 'no_console'),

@@ -59,17 +59,22 @@ Slice 5b adds three tools on the same record, inbox and settle path:
 - `preflight_program(panel, options)`: reads `describe_program` (no lease needed), then in one
   transaction checks the lease, the panel, `blocked`, the channel, that the program declares
   prechecks, and the candidate options against its static contract (`pa_lab.preflight`); then
-  sends `preflight <JSON>` (the app stages the options, runs `check_validity` and the prechecks
-  in order, and restores the prior options). A pass stores a token bound to the app instance,
-  panel, options hash, last transition, save status and lease, good for `TOKEN_TTL_S`.
+  sends `preflight <JSON>` (the app stages the options on its UI thread, runs `check_validity`
+  and the prechecks in order on its channel worker, and restores the prior options on the UI
+  thread). A pass stores a token bound to the app instance, panel, candidate hash, the app's hash
+  of the program's full options, last transition, save status and lease, good for `TOKEN_TTL_S`.
 - `run_program` needs a current token for exactly its panel and options and sends `set KEY JSON`
   lines for the options, then `start 10`, in one request (the app stops at a failing line).
 - `cfr_batch(lines)`: allowlisted console lines (`pa_lab.cfr`) with the program stopped. The save
   fact is marked stale (`cfr_batch`) before the request is written, since any press may change
   the game.
 
-Not yet: the app's `preflight` command (none exists, so a preflight sent to today's app fails its
-line and is `app_unavailable`), claiming the channel's owner token (a claimed channel is
+A taken `preflight_program` or `cfr_batch` with no answer past its wait (30 s; a batch's worst case
++ 5 s), while state.json shows the app alive past that time, is `failed` / `timeout` with
+`outcome_unknown`: neither changes program state, so nothing justifies keeping the console wedged.
+
+Not yet: the app's `preflight` command is fork #601 (an app without it fails the line, which is
+`app_unavailable`), claiming the channel's owner token (a claimed channel is
 refused), and `select`.
 """
 
@@ -98,6 +103,10 @@ CFR_SLACK_S = 5.0
 POLL_S = 0.1
 
 ENDED_SOURCES = ('program', 'error')
+# Tools that change no program state: a taken request with no answer past its wait is ended
+# (`outcome_unknown`) rather than kept pending, so a hung check never wedges the console.
+LINE_TOOLS = ('preflight_program', 'cfr_batch')
+CFR_UNKNOWN = ' (some of its presses may have run; the save is marked stale)'
 
 __all__ = ['ProgramActions', 'TOOLS']
 
@@ -106,6 +115,12 @@ def _written_after(app: Dict[str, Any], answered_at: Optional[str]) -> bool:
     """True once state.json was written after the daemon first read the journal: the app renames
     the journal into place first and rewrites state.json on its next timer."""
     return answered_at is not None and timestamps.parse(app['written_at']) > timestamps.parse(answered_at)
+
+
+def _alive_past(app: Dict[str, Any], written_at: str, wait_s: float) -> bool:
+    """True when state.json was written at or after `written_at` + `wait_s`: the app is alive past
+    the request's whole wait, not just slow to write its heartbeat."""
+    return timestamps.parse(app['written_at']) >= timestamps.parse(written_at) + wait_s
 
 
 def _refusal(code: str, message: str, **extra: Any) -> Dict[str, Any]:
@@ -202,8 +217,9 @@ def check_run(state: Dict[str, Any], save: Dict[str, Any], plane: control.Contro
         raise Refused('preflight_stale', 'The preflight is {:.0f} s old (limit {} s); run preflight_program '
                       'again.'.format(age, preflight.TOKEN_TTL_S),
                       evidence={'reason': 'expired', 'issued_at': issued['issued_at']})
-    changed = preflight.changed(issued['binding'], preflight.binding(state, save, args['panel'], args['options'],
-                                                                     lease['token_hash']))
+    now_bound = preflight.binding(state, save, args['panel'], args['options'], lease['token_hash'],
+                                  preflight.held_options_hash(app))
+    changed = preflight.changed(issued['binding'], now_bound)
     if changed:
         raise Refused('preflight_stale', 'Since the preflight, {} changed; run preflight_program again.'.format(
             ', '.join(changed)), evidence={'reason': 'changed', 'changed': changed,
@@ -369,6 +385,13 @@ class ProgramActions:
                 return self.plane.finish_action(*key, refusal=_refusal(
                     'app_unavailable', 'The app exited before the {} settled.'.format(action['tool']),
                     evidence={'reason': 'app_not_running'}))
+            if action['tool'] in LINE_TOOLS and state['app'] is not None and \
+                    _alive_past(state['app'], action['written_at'], wait):
+                return self.plane.finish_action(*key, refusal=_refusal(
+                    'timeout', 'The app took the {} but did not answer within {:g} s while alive; its outcome '
+                    'is unknown{}.'.format(action['tool'], wait, CFR_UNKNOWN if action['tool'] == 'cfr_batch'
+                                           else ''),
+                    evidence={'reason': 'outcome_unknown', 'request': action['inbox_name']}))
         return self.plane.record(*key)
 
     def _observe(self, reader: ConsoleReader, action: Dict[str, Any]) -> Dict[str, Any]:
@@ -390,7 +413,7 @@ class ProgramActions:
         app = state['app']
         if app is None:
             return None
-        if action['tool'] in ('preflight_program', 'cfr_batch'):
+        if action['tool'] in LINE_TOOLS:
             return self._judge_line(reader, state, action, journal)
         tool, request_id = action['tool'], action['request_id']
         program = app['program']
@@ -489,10 +512,14 @@ class ProgramActions:
         if refusal is not None:
             return {'refusal': refusal}
         token_hash = self.plane.request_token_hash(action['client_id'], tool, action['request_id'])
-        bound = preflight.binding(state, save_now(reader), args['panel'], args['options'], token_hash)
+        # The reply's hash is read after the restore: the options the program holds, which the run's
+        # state.json must still show. An app without it in the reply may still write it in state.json.
+        held = reply.get('options_hash') or preflight.held_options_hash(app)
+        bound = preflight.binding(state, save_now(reader), args['panel'], args['options'], token_hash, held)
         token = preflight.new_token(bound)
         issued = self.plane.issue_preflight(reader.console, action['request_id'], token, bound)
-        return {'result': dict(base, panel=args['panel'], checks=reply['checks'], options_hash=bound['options_hash'],
+        return {'result': dict(base, panel=args['panel'], checks=reply['checks'],
+                               candidate_hash=bound['candidate_hash'], options_hash=held,
                                preflight_token=token, issued_at=issued,
                                expires_at=timestamps.format(timestamps.parse(issued) + preflight.TOKEN_TTL_S))}
 

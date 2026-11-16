@@ -9,20 +9,25 @@ must be an enabled slug, a group's value is an object checked against the group'
 visibility and `check_validity` depend on the other options' values; only the app can evaluate
 them, on the staged candidate.
 
-**The app command** (proposed for the app's channel; not built yet, see README "Slice 5b"):
-`preflight <JSON>` stages the candidate options of the selected program on the UI thread, rejects
-unknown keys and disabled values, evaluates `check_validity`, runs the program's prechecks in
-order without starting it, and restores the prior options through a scope guard. It prints one
-line, `preflight <JSON>`:
+**The app command** (the app side is fork #601, Lab.md "Preflight"): `preflight <JSON>` runs on
+the app's LabChannel worker. It stages the candidate options of the selected program on the UI
+thread (through `run_on_ui`, as `set` does), rejects unknown keys and disabled values, evaluates
+`check_validity`, runs the program's prechecks in order on the worker without starting it, and
+restores the prior options on the UI thread again. When the options no longer equal the staged
+candidate at restore time (the user edited the panel during the checks), it leaves them alone and
+replies `restored: false`. It prints one line, `preflight <JSON>`:
 
     {"schema": 1, "id": "<Game>:<Program>", "verdict": "passed" | "failed" | "invalid_options" | "unsupported",
      "checks": [{"name", "status": "passed" | "failed" | "skipped", "message"}],
      "failure": {"check", "message", "evidence"?} | null,      # verdict failed
      "invalid": {"key", "message"} | null,                     # verdict invalid_options
-     "restored": true | false}
+     "restored": true | false,
+     "options_hash": "<sha256>" | null}                         # optional: the program's full options after the restore
 
 **The token** is the hash of what the preflight was checked against (`binding`): the app instance,
-the program id, the candidate options' hash, the observation versions a run depends on (the last
+the program id, the candidate's hash (`candidate_hash`), the app's hash of every option the program
+holds (`options_hash`: the reply's, else `program.options_hash` in state.json; None from an app
+before #601), the observation versions a run depends on (the last
 start/stop transition, `console://B/save`'s status and the newest `cfr_batch`) and the lease (its token's hash), plus a
 random salt so it cannot be guessed. The daemon stores the binding under the token's hash;
 `run_program` recomputes it from what it reads now and refuses a token whose binding changed
@@ -44,9 +49,9 @@ TOKEN_TTL_S = 120
 PREFLIGHT_RE = re.compile(r'^preflight (\{.*\})$')
 VERDICTS = ('passed', 'failed', 'invalid_options', 'unsupported')
 CHECK_STATUSES = ('passed', 'failed', 'skipped')
-BINDING_FIELDS = ('console', 'instance_id', 'panel', 'options_hash', 'transition', 'save', 'lease')
+BINDING_FIELDS = ('console', 'instance_id', 'panel', 'candidate_hash', 'options_hash', 'transition', 'save', 'lease')
 
-__all__ = ['check_options', 'options_hash', 'set_commands', 'parse_reply', 'binding', 'new_token', 'changed',
+__all__ = ['check_options', 'candidate_hash', 'held_options_hash', 'set_commands', 'parse_reply', 'binding', 'new_token', 'changed',
            'TOKEN_TTL_S']
 
 
@@ -54,8 +59,16 @@ def _json(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
 
 
-def options_hash(options: Dict[str, Any]) -> str:
+def candidate_hash(options: Dict[str, Any]) -> str:
+    """The hash of the caller's candidate (only the options it names)."""
     return hashlib.sha256(_json(options).encode('utf-8')).hexdigest()
+
+
+def held_options_hash(app: Dict[str, Any]) -> Optional[str]:
+    """`program.options_hash` in state.json: the app's hash of every option the selected program holds
+    (#601); None from an app that does not report it."""
+    value = app['program'].get('options_hash')
+    return value if isinstance(value, str) else None
 
 
 # ---- candidate options against the static contract
@@ -165,6 +178,8 @@ def parse_reply(printed: List[str], lines: List[str]) -> Dict[str, Any]:
     if doc['verdict'] == 'invalid_options' and not (isinstance(invalid, dict) and isinstance(invalid.get('key'), str)
                                                     and isinstance(invalid.get('message'), str)):
         raise _reply_error('an invalid_options verdict needs invalid.key and invalid.message', lines)
+    if doc.get('options_hash') is not None and not isinstance(doc['options_hash'], str):
+        raise _reply_error('options_hash must be a string or null', lines)
     return doc
 
 
@@ -203,11 +218,13 @@ def transition_key(app: Dict[str, Any]) -> Optional[str]:
 
 
 def binding(state: Dict[str, Any], save: Dict[str, Any], panel: str, options: Dict[str, Any],
-            lease_token_hash: Optional[str]) -> Dict[str, Any]:
-    """What a preflight was checked against and a run must still find (field names: BINDING_FIELDS)."""
+            lease_token_hash: Optional[str], held_hash: Optional[str]) -> Dict[str, Any]:
+    """What a preflight was checked against and a run must still find (field names: BINDING_FIELDS).
+    `held_hash` is the app's hash of the program's full options (None from an app before #601): an
+    option the candidate does not name, edited in the panel, changes it without any transition."""
     app = state['app']
     return {'console': state['console'], 'instance_id': app['instance']['id'], 'panel': panel,
-            'options_hash': options_hash(options), 'transition': transition_key(app),
+            'candidate_hash': candidate_hash(options), 'options_hash': held_hash, 'transition': transition_key(app),
             'save': [save.get('status'), save.get('reason'), save.get('since'), save.get('cfr_at')],
             'lease': lease_token_hash}
 

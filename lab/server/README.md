@@ -409,18 +409,22 @@ checks may open a menu or go Home and back) for the one reply line, `preflight <
 | `verdict: unsupported` | `failed`, `prechecks_unsupported` |
 | `verdict: invalid_options` (the app's `check_validity` or its own key check) | `failed`, `invalid_arguments`, `field: options.<key>` |
 | `verdict: failed` | `failed`, `precheck_failed`, `check` = the check's name, its message and evidence |
-| `verdict: passed` | `completed`: `checks`, `options_hash`, `preflight_token`, `issued_at`, `expires_at` |
+| `verdict: passed` | `completed`: `checks`, `candidate_hash`, `options_hash` (the app's, or null), `preflight_token`, `issued_at`, `expires_at` |
 | the line failed (today's app: no `preflight` command) | `failed`, `app_unavailable` with the journal; `owned by` → `console_held_by_agent` |
 | a UI Start/Stop or another app instance before the reply | `failed`, `console_held_by_user` / `app_unavailable` `instance_replaced` |
+| taken, no reply after 30 s, `state.json` written after that | `failed`, `timeout`, `evidence.reason: outcome_unknown`; the console is free again |
 
 **The token.** A pass stores (table `preflights`, migration 3) the token's hash with its binding:
-console, app instance, panel, the candidate options' hash, the last start/stop transition,
+console, app instance, panel, the candidate's hash (`candidate_hash`), the app's hash of every
+option the program holds (`options_hash`: the reply's, else `program.options_hash` in `state.json`,
+#601; null from an older app), the last start/stop transition,
 `console://B/save` (status, reason, since) with the newest `cfr_batch`'s time, and the hash of the
 request's lease token. The token is a salted hash of that binding. `run_program` reads the same
 things and, after the 5a checks, refuses with `preflight_stale` when the token is unknown
 (`evidence.reason: unknown_token`), older than 120 s (`expired`), or any bound field differs
 (`changed`, `evidence.changed` lists them, e.g. `["transition"]`). A run's own start changes the
-transition, so a token starts at most one run.
+transition, so a token starts at most one run, and a user editing any option in the panel, one the
+candidate does not name included, changes `options_hash` (`changed: ["options_hash"]`).
 
 **Options on `run_program`.** The request is `request <id>`, one `set KEY JSON` line per option
 (groups as `GROUP.KEY`, in key order), then `start 10`; the app stops at the first failing line, so
@@ -438,21 +442,23 @@ Before the request is written, the console's save mark (table `save_marks`) is s
 daemon dies next) and every earlier preflight token is stale. The daemon waits for the worst case
 + 5 s; the record is `completed` with `outcome: done`, or `line_failed` with `failed_line`
 (1-based in the batch) and `error`, and `output` (what the lines printed, e.g. shot paths). An app
-that never took the request: withdrawn, `failed`, `timeout`; the mark stays.
+that never took the request: withdrawn, `failed`, `timeout`; the mark stays. An app that took it
+and is still alive (`state.json` written) past the wait with no journal: `failed`, `timeout`,
+`outcome_unknown` (some presses may have run; the mark stays), so a hung batch frees the console.
 
-**The app's side (not built).** The app has no command that stages options and runs a program's
-prechecks without starting it, and `lab/tooling` has only the precheck *summaries* (#511): the
-runnable list (`Precheck::run(env, context)`, #485) is on the upstream-bound FRLG branch, and a
-check needs a `SingleSwitchProgramEnvironment` and controller context that exist only inside a
-running program. A `preflight` command therefore needs a precheck-only run of the program session
-(stage on the UI thread, a scope guard restoring the options, the checks on the program thread),
-not just a channel command, so 5b stops at the server and the fake. Until the app has it, every
-preflight on the real app is `failed` / `app_unavailable` (unknown command), so `run_program`
-cannot start anything there.
+**The app's side (fork #601).** The `preflight` command runs on the LabChannel worker: it stages
+the candidate on the UI thread (through `run_on_ui`, as `set` does), runs the program's prechecks
+on the worker without starting the program, and restores the prior options on the UI thread. If
+the options no longer equal the staged candidate when it restores (the user edited the panel
+during the checks), it leaves the user's edit in place and replies `restored: false`, which never
+yields a token. The reply's `options_hash` is read after the restore: the options the program
+holds, which `state.json`'s `program.options_hash` must still show at the run. Until #601 is in
+the lab build, a preflight on the real app is `failed` / `app_unavailable` (unknown command), and
+until a program overrides its prechecks every preflight is `prechecks_unsupported`, so
+`run_program` cannot start anything there.
 
-**Known gaps.** The panel's options are not versioned in `state.json`, so a token cannot see an
-option the user changes in the UI between the preflight and the run (only a Start/Stop); the app
-could print an options hash in the reply and in `state.json`. The `set` echoes in the start's
+**Known gaps.** `state.json` is rewritten every 500 ms, so an option edit in the last half second
+before a run is not seen by the token. The `set` echoes in the start's
 journal are not compared with what was sent (the preflight already refused clamped or disabled
 values). The channel's owner token is still not claimed (a claimed channel is refused), and the
 console-B soak (every mutation has exactly one record) is still to run.
