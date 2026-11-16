@@ -15,6 +15,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
@@ -37,7 +38,25 @@ enum class TurnChoice{
     //  on the lead through the party list.
     MEDICINE,
     MOVE,
+    //  The lead back in through POKEMON and SHIFT: a Roar or Whirlwind
+    //  dragged it out (lead_on_field()).
+    SWITCH_LEAD,
 };
+
+//  Where the lead is at a trainer battle's menu.
+enum class LeadOnField{
+    OUT,
+    FAINTED,
+    //  Another member is out that the battle loop didn't send: the lead is
+    //  alive in the party.
+    FORCED_OUT,
+};
+
+//  The one rule: the member out read as the lead's species, the lead is
+//  out; another member read out while none was sent from the party list,
+//  it was dragged out (console B, 2026-11-16, Bruno's Onix's Roar, read as
+//  a faint: the lead's box gone); else the box gone means it fainted.
+LeadOnField lead_on_field(bool box_gone, bool member_sent, std::string_view own_out, std::string_view lead);
 
 //  Before a battle of `kind`'s first turn: whether it reads the Items pocket
 //  itself, its counts a row's guess (Supplies::counts_read), unless it only

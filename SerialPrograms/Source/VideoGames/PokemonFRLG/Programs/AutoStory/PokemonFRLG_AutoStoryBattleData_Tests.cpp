@@ -398,7 +398,102 @@ UnitTestResult test_parlyz_heal_used(){
     return true;
 }
 
+//  The lead at a trainer's battle menu, by the one rule (lead_on_field()).
+struct LeadOnFieldCase{
+    std::string_view name;
+    struct Input{
+        bool box_gone;
+        bool member_sent;
+        std::string_view own_out;
+    } input;
+    struct Expectation{
+        LeadOnField lead;
+    } expectation;
+};
+
+const LeadOnFieldCase LEAD_ON_FIELD_CASES[] = {
+    {"Bruno's Onix's Roar (console B, 2026-11-16): Lapras out, box gone, none sent", {true, false, "lapras"}, {LeadOnField::FORCED_OUT}},
+    {"a Roar the box watch missed", {false, false, "lapras"}, {LeadOnField::FORCED_OUT}},
+    {"a real faint: a member sent from the party list", {true, true, "lapras"}, {LeadOnField::FAINTED}},
+    {"the lead read out: its box only hid in an animation", {true, false, "blastoise"}, {LeadOnField::OUT}},
+    {"nothing read, box gone: fainted", {true, false, ""}, {LeadOnField::FAINTED}},
+};
+
+UnitTestResult test_lead_on_field(){
+    for (const LeadOnFieldCase& test : LEAD_ON_FIELD_CASES){
+        const LeadOnFieldCase::Input& input = test.input;
+        if (lead_on_field(input.box_gone, input.member_sent, input.own_out, "blastoise") != test.expectation.lead){
+            return std::format("{}: unexpected verdict.", test.name);
+        }
+    }
+    return true;
+}
+
+//  Bruno's fight after the Roar: the lead's box went (the faint watch), our
+//  Lapras is out and nothing was sent. The turn switches Blastoise back in,
+//  the next is its own again; a real faint later still sends the next
+//  member that isn't protected (Magikarp, slot 2), never the lead's
+//  switch-in.
+UnitTestResult test_dragged_out_lead_switched_back(){
+    Supplies supplies;
+    supplies.lead = lorelei_blastoise();
+    supplies.protected_slots = {1};
+    const PartyStatus green{.hp_seen = true, .hp_fill = 1.0};
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    supplies.own_out = "blastoise";
+    decisions.turn(green);
+    decisions.lead_fainted();
+    supplies.own_out = "lapras";
+    const TurnAction action = decisions.turn(green);
+    if (action.choice != TurnChoice::SWITCH_LEAD || decisions.lost()){
+        return "Expected the lead switched back in, and the battle not lost.";
+    }
+    decisions.turn_done(TurnChoice::SWITCH_LEAD, TurnResult::DONE);
+    supplies.own_out = "blastoise";
+    if (decisions.turn(green).choice == TurnChoice::SWITCH_LEAD || decisions.lost()){
+        return "Expected the lead's own turn after the switch back.";
+    }
+    if (decisions.next_member_slot() != std::optional<size_t>(2)){
+        return "Expected slot 3 sent after a real faint, past the protected slot 2.";
+    }
+    supplies.own_out = "lapras";
+    if (decisions.turn(green).choice == TurnChoice::SWITCH_LEAD){
+        return "Expected no switch back after a real faint.";
+    }
+    return true;
+}
+
+//  The switch back couldn't be made (the list didn't read the lead): the
+//  rule is off for the battle, and a lead that had lost its box is lost.
+UnitTestResult test_switch_back_failed(){
+    Supplies supplies;
+    supplies.lead = lorelei_blastoise();
+    const PartyStatus green{.hp_seen = true, .hp_fill = 1.0};
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    decisions.turn(green);
+    decisions.lead_fainted();
+    supplies.own_out = "lapras";
+    decisions.turn(green);
+    decisions.turn_done(TurnChoice::SWITCH_LEAD, TurnResult::NOT_DONE);
+    if (!decisions.lost() || decisions.turn(green).choice == TurnChoice::SWITCH_LEAD){
+        return "Expected the battle lost and no second switch back.";
+    }
+    return true;
+}
+
 const AutoStoryBattleDataTestCase AUTO_STORY_BATTLE_DATA_CASES[] = {
+    {
+        .input = {.name = "the lead at the battle menu: out, fainted or dragged out", .body = test_lead_on_field},
+        .expectation = {.description = "dragged out only when another member is read out and none was sent"},
+    },
+    {
+        .input = {.name = "Bruno's Roar: the lead switched back in", .body = test_dragged_out_lead_switched_back},
+        .expectation = {.description = "SWITCH_LEAD, then the lead's own turn; a real faint later sends past the protected member"},
+    },
+    {
+        .input = {.name = "a switch back that couldn't be made", .body = test_switch_back_failed},
+        .expectation = {.description = "the battle lost, the rule off"},
+    },
     {
         .input = {.name = "Victory Road's Blastoise: the best matchup, then the strongest move", .body = test_matchup_then_power},
         .expectation = {.description = "Strength on Kingler, Tentacruel and Blastoise; Surf on Onix, Rhydon and Raticate; Blizzard on Dragonair and Pidgeot"},

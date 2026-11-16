@@ -212,6 +212,17 @@ TurnAction BattleDecisions::turn(const PartyStatus& status){
     m_before_forget.reset();
     count_down_refused();
     m_last_move_slot.reset();
+    const LeadOnField lead = m_kind == BattleKind::TRAINER && !m_switch_off
+        ? lead_on_field(m_lost, !m_sent.empty(), m_supplies.own_out, m_supplies.lead.species)
+        : LeadOnField::FAINTED;
+    if (lead == LeadOnField::FORCED_OUT){
+        return switch_lead_back();
+    }
+    //  Read out, the lead is alive whatever its box did (the switch back's
+    //  own animation hides it).
+    if (lead == LeadOnField::OUT && m_supplies.own_out == m_supplies.lead.species){
+        m_lost = false;
+    }
     if (!m_lost){
         return lead_turn(status);
     }
@@ -262,6 +273,21 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     TurnAction action = move_turn();
     action.heal_reason = items.reason;
     return action;
+}
+
+TurnAction BattleDecisions::switch_lead_back(){
+    m_lost_before_switch = m_lost;
+    m_lost = false;
+    m_last_hp.reset();
+    m_healed_hp = 0;
+    m_attack = {};
+    if (m_policy){
+        m_policy.emplace(m_supplies.policy);
+    }
+    return TurnAction{
+        .choice = TurnChoice::SWITCH_LEAD,
+        .heal_reason = std::format("our {} is out, not sent: the lead was dragged out; switching it back", m_supplies.own_out),
+    };
 }
 
 size_t BattleDecisions::track_foe(){
@@ -415,6 +441,11 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
         }
         return;
     }
+    if (!done && choice == TurnChoice::SWITCH_LEAD){
+        m_switch_off = true;
+        m_lost = m_lost_before_switch;
+        return;
+    }
     if (!done){
         m_items_off = true;
         return;
@@ -445,6 +476,7 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
         return;
     case TurnChoice::RUN:
     case TurnChoice::MOVE:
+    case TurnChoice::SWITCH_LEAD:
         return;
     }
 }
@@ -500,6 +532,16 @@ std::optional<size_t> BattleDecisions::next_member_slot(){
         }
     }
     return std::nullopt;
+}
+
+LeadOnField lead_on_field(bool box_gone, bool member_sent, std::string_view own_out, std::string_view lead){
+    if (!own_out.empty() && own_out == lead){
+        return LeadOnField::OUT;
+    }
+    if (!own_out.empty() && !member_sent){
+        return LeadOnField::FORCED_OUT;
+    }
+    return box_gone ? LeadOnField::FAINTED : LeadOnField::OUT;
 }
 
 void BattleDecisions::lead_fainted(){
