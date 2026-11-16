@@ -137,10 +137,12 @@ UnitTestResult test_loaded_bag(Logger&){
     Supplies kept;
     kept.potions = 4;
     kept.antidotes = 2;
-    if (!bag_matches(kept, {{"potion", 4}, {"antidote", 2}})){
+    const std::vector<BagRow> same = {{"potion", 4}, {"antidote", 2}};
+    const std::vector<BagRow> fewer = {{"potion", 1}, {"antidote", 2}};
+    if (!bag_matches(kept, same)){
         return "Expected 4 Potions and 2 Antidotes read to match the counts kept.";
     }
-    if (bag_matches(kept, {{"potion", 1}, {"antidote", 2}}) || kept.potions != 4){
+    if (bag_matches(kept, fewer) || kept.potions != 4){
         return "Expected 1 Potion read to differ, and the 4 kept unchanged.";
     }
     return true;
