@@ -24,9 +24,12 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Fails as "walk_not_free" unless, within 15 s, two looks in a row 250 ms
-//  apart show no advance arrow, dialog box or fade: a walk started anywhere
-//  else walks blind.
+//  Waits for free control: two looks in a row 250 ms apart with a sign of
+//  control (the party bar, the station platform) and no advance arrow,
+//  dialog box or fade. The end of a scene is not control: 01.01's scenes
+//  end ~7 s before it. Where no sign shows (Hotel Z), 10 s with none of
+//  those is taken as control. Fails as "walk_not_free" when neither comes
+//  within 30 s: a walk started anywhere else walks blind.
 Pokemon::Outcome check_can_walk(PlzaBackend& backend, std::string_view walk);
 
 //  After a walk's legs with no end event: one look, which on a console
