@@ -19,7 +19,7 @@
         ],
         "events": [
             {
-                "id": "below_center_wall",
+                "id": "below_center_row_40",
                 "kind": "route",
                 "action": "run",
                 "args": {
@@ -28,16 +28,16 @@
                         "tiles": [
                             [
                                 24,
-                                41
+                                40
                             ]
                         ],
                         "facing": "south"
                     }
                 },
-                "why": "out of Saffron's Center (its ground floor coded) onto the street below its door (24, 38), and down column 24 to the city's south wall, row 41"
+                "why": "out of Saffron's Center (its ground floor coded) onto the street below its door (24, 38), and a tile on to row 40, below the Lass's walk (27..37, 39)"
             },
             {
-                "id": "east_wall_row_41",
+                "id": "east_wall_row_40",
                 "kind": "route",
                 "action": "run",
                 "args": {
@@ -46,13 +46,13 @@
                         "tiles": [
                             [
                                 52,
-                                41
+                                40
                             ]
                         ],
                         "facing": "east"
                     }
                 },
-                "why": "east along row 41, a row below the Lass's walk (27..37, 39), to the east wall"
+                "why": "east along row 40 to the east wall: the only way north past row 19 is columns 50..52"
             },
             {
                 "id": "below_row_14_wall",
@@ -70,25 +70,7 @@
                         "facing": "north"
                     }
                 },
-                "why": "north up column 52, past the way out to Route 8, to the wall of row 14 (the sign (50, 14) and the houses' walls)"
-            },
-            {
-                "id": "gym_door_east_corner",
-                "kind": "route",
-                "action": "run",
-                "args": {
-                    "target": {
-                        "map": "SaffronCity",
-                        "tiles": [
-                            [
-                                47,
-                                13
-                            ]
-                        ],
-                        "facing": "north"
-                    }
-                },
-                "why": "west along row 15 to column 47, then north through the gap in row 14 (45..47, 14) to the wall beside the Gym's door, (47, 12): the open leg west ends a column short of column 46, where a hold north would go on through the door"
+                "why": "north up column 52 to the wall of row 14 (column 50 ends at the sign (50, 14), which a hold into it reads)"
             },
             {
                 "id": "below_gym_door",
@@ -100,31 +82,31 @@
                         "tiles": [
                             [
                                 46,
-                                13
+                                15
+                            ]
+                        ],
+                        "facing": "west"
+                    }
+                },
+                "why": "west along row 15 to column 46, below the gap in row 14 (45..47, 14) that leads to the Gym's door (46, 12)"
+            },
+            {
+                "id": "into_gym",
+                "kind": "route",
+                "action": "run",
+                "args": {
+                    "target": {
+                        "map": "SaffronCity_Gym",
+                        "tiles": [
+                            [
+                                14,
+                                23
                             ]
                         ],
                         "facing": "north"
                     }
                 },
-                "why": "a step west to (46, 13), the only tile the Gym's door (46, 12) is entered from, facing it; the Rocket Grunt who stood here is gone (silph_cleared)"
-            },
-            {
-                "id": "into_gym",
-                "kind": "step",
-                "args": {
-                    "direction": "north"
-                },
-                "declared_after": {
-                    "map": "SaffronCity_Gym",
-                    "tiles": [
-                        [
-                            14,
-                            23
-                        ]
-                    ],
-                    "facing": "north"
-                },
-                "why": "through the Gym's door (46, 12) onto the mat (14, 23) inside (SaffronCity map.json warp 3 to SaffronCity_Gym warp 1)"
+                "why": "north through the gap and the Gym's door (46, 12) onto the mat (14, 23) inside (SaffronCity map.json warp 3 to SaffronCity_Gym warp 1): a column off, the hold stops at the Gym's front wall (45 or 47, 13) instead; the Rocket Grunt who stood on (46, 13) is gone (silph_cleared)"
             }
         ]
     },
@@ -133,7 +115,8 @@
         "notes": {
             "checkpoint": [
                 "Starts at Saffron's nurse, facing her, where 16.06 ends healed; ends on the Gym's door mat (14, 23), facing north, where 18.01 starts.",
-                "The Rockets are gone from Saffron City (silph_cleared, 16.05's Giovanni): the Grunt on (46, 13) (SaffronCity_EventScript_RocketGrunt3, hidden by FLAG_HIDE_SAFFRON_ROCKETS), the only tile the Gym's door (46, 12) is entered from, no longer blocks it."
+                "The Rockets are gone from Saffron City (silph_cleared, 16.05's Giovanni): the Grunt on (46, 13) (SaffronCity_EventScript_RocketGrunt3, hidden by FLAG_HIDE_SAFFRON_ROCKETS), the only tile the Gym's door (46, 12) is entered from, no longer blocks it.",
+                "Four legs after the Center's door, 62 tiles for a straight line of 48: the fewest a walk can take is 58, as the only way north past row 19 is columns 50..52 and row 39 is the Lass's; the east wall and row 14's wall stop the two long legs. The old walk boxed round by row 41 and back from column 52 (about 79 tiles, console B, 2026-11-15)."
             ]
         }
     },

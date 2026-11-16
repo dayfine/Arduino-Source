@@ -3,7 +3,7 @@
   "game": "frlg",
   "checkpoint": {
     "id": "18.02b",
-    "title": "Out of Saffron Gym by the pads, heal at Saffron's Center",
+    "title": "Out of Saffron Gym by the pads, Fly to Saffron's Center and heal",
     "start": {
       "map": "SaffronCity_Gym",
       "tiles": [
@@ -14,6 +14,9 @@
       ],
       "facing": "north"
     },
+    "start_flags": [
+      "silph_cleared"
+    ],
     "events": [
       {
         "id": "by_pad_out_of_sabrina",
@@ -178,6 +181,44 @@
         "why": "onto the pad (28, 23), which warps to (18, 20) in the entrance room"
       },
       {
+        "id": "out_of_gym",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "SaffronCity",
+            "tiles": [
+              [
+                46,
+                13
+              ]
+            ],
+            "facing": "south"
+          }
+        },
+        "why": "down the entrance room and out of the door (14, 23) onto Saffron City below the gym's door (46, 12): Fly works outdoors only"
+      },
+      {
+        "id": "fly_saffron",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {
+          "town": "SaffronCity",
+          "species": "pidgey"
+        },
+        "declared_after": {
+          "map": "SaffronCity",
+          "tiles": [
+            [
+              24,
+              39
+            ]
+          ],
+          "facing": "south"
+        },
+        "why": "the Pidgey flies to Saffron City, landing below the Pokemon Center's door (24, 38) on its heal spot (pokefirered heal_locations.json, HEAL_LOCATION_SAFFRON_CITY), as 18.03"
+      },
+      {
         "id": "below_center_door",
         "kind": "route",
         "action": "run",
@@ -193,7 +234,7 @@
             "facing": "north"
           }
         },
-        "why": "down the entrance room and out of the door (14, 23) onto Saffron City below the gym (46, 13), then through the city to below the Center's door (24, 38)"
+        "why": "turn to face the Center's door (24, 38) from the landing"
       },
       {
         "id": "saffron_nurse",
@@ -224,7 +265,8 @@
       "checkpoint": [
         "Starts in front of Sabrina, where 18.02 ends after her battle and saves.",
         "Out by the four pads in reverse, each pair a two-way link: (18, 15) to (0, 7), (0, 4) to (20, 7), (28, 4) to (20, 20), (28, 23) to (18, 20), keeping to the same rows as the way in (18.01). No gym trainer is fought on the way out.",
-        "Ends at Saffron's nurse, facing her: 17.01's start. Silph Co.'s Rocket Grunts are gone by now (FLAG_HIDE_SAFFRON_ROCKETS), but story_maps() still has them, so the city route here goes round their lines as 15.01's does; the walk out of the gym lands the player on (46, 13), where one of them stands on that map."
+        "Ends at Saffron's nurse, facing her: 18.03's start. Out of the gym's door and by Fly to the Center's door, not through the city: the walk round the city's blocks to the Center was about 80 tiles for a straight line of 48 (console B, 2026-11-15).",
+        "Starts with silph_cleared, as 16.06b: Silph Co.'s Giovanni (16.05) sent the Rockets out of Saffron City, so a run started here plans the walk out of the gym's door onto (46, 13), where one of them stood, on maps without them."
       ]
     }
   },
