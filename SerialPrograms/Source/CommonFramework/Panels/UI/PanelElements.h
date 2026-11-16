@@ -59,6 +59,10 @@ public:
 
 
 
+//  What clicking Start/Stop Program does: start the program if it is stopped,
+//  stop it if it is running, and report any error to the program's listeners.
+void start_or_stop_program(ProgramSession& program_session);
+
 class RunnablePanelActionBar : public QGroupBox{
 public:
     RunnablePanelActionBar(

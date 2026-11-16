@@ -473,8 +473,8 @@ Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
 }
 
 
-//  "mash_to_move_hints": A through the scenes (a choice takes its top
-//  row, the advance chevron its text) until the player has control: the
+//  "mash_to_move_hints": through the scenes (B at a text box, A at a
+//  choice's top row and the advance chevron) until the player has control: the
 //  controls hint or the party bar held a second, an A prompt ("A Talk")
 //  held a second past "min_length_ms" (01.02's battle area: only the
 //  prompt to Ryon, and A there restarts his talk), or a main mission's
@@ -526,7 +526,8 @@ Outcome text_to_choice_step(Pokemon::StoryBackend<ZonePose>& backend, const Stor
 }
 
 
-//  A step's scene ("scene" "a"): A through its text until the party bar
+//  A step's scene ("scene" "a"): B through its text (A at a choice; B
+//  cannot talk again once the text ends) until the party bar
 //  holds a second, 120 s at most; a cutscene with no text and no HUD is
 //  waited out. Fails as "scene_never_started" when the HUD shows 45 s with
 //  no text, choice, battle or cutscene: the player is not at the scene's

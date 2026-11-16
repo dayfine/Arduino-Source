@@ -6,10 +6,13 @@
  *  states (CommonTools/ScreenMachine) that match on what the backend
  *  observed, so they run on the console and on a scripted backend alike:
  *  every look picks one state, the state takes one step, and each change of
- *  state or of the look's events is logged (repeats are summed up). A text box (with or without a
- *  choice, whose top row A takes) or the advance chevron
- *  (ADVANCE_ARROW_READING) gets A. The player has control when the party
- *  bar (PLAYER_CAN_MOVE) or, in the tutorial, which has no party bar, the
+ *  state or of the look's events is logged (repeats are summed up). A
+ *  choice gets A (its top row); a text box gets B in a machine that ends
+ *  in control (B turns a line like A, but cannot talk again once the box
+ *  closes: A at the closing box restarted 03.05's nurse's talk), else the
+ *  text button, as does the advance chevron (ADVANCE_ARROW_READING). The
+ *  player has control when the party bar (PLAYER_CAN_MOVE) or, in the
+ *  tutorial, which has no party bar, the
  *  controls hint (CONTROLS_HINT_READING) holds a second, or an A prompt
  *  (INTERACT_PROMPT, "A Talk") holds a second past min_length (01.02's
  *  battle area shows only the prompt to Ryon; A there restarts his talk,
@@ -68,8 +71,10 @@ struct SceneMachineConfig{
     bool stop_at_choice = false;
     //  Ends at the battle HUD (BATTLE_STARTED), before anything else.
     bool stop_at_battle = false;
-    //  The button that advances text: B where an A could land on a choice
-    //  that shows the moment the text ends.
+    //  The button that advances text in a machine that stops at a choice
+    //  or a battle, and the advance chevron with no box: B where an A could
+    //  land on a choice that shows the moment the text ends. A text box in
+    //  any other machine gets B, a choice A.
     Button text_button = BUTTON_A;
     //  The quiet end is control, not a failure: Hotel Z's lobby, halls and
     //  rooms show no party bar or prompt (02.04-02.06, console B

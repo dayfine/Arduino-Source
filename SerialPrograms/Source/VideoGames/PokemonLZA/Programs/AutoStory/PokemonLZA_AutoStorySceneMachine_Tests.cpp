@@ -270,7 +270,8 @@ const RunCase RUN_CASES[] = {
         },
         .expectation = {
             .verdict = "failed: scene_quiet",
-            .a_presses = 1,
+            .a_presses = 0,
+            .b_presses = 1,
             .line = "[PLZA test] screen 4: quiet_end at 60.0s: still",
             .states = "scene_moving, dialog, scene_still, quiet_end",
         },
@@ -286,7 +287,8 @@ const RunCase RUN_CASES[] = {
         },
         .expectation = {
             .verdict = "failed: scene_quiet",
-            .a_presses = 1,
+            .a_presses = 0,
+            .b_presses = 1,
             .line = "[PLZA test] screen 5: quiet_end at 23.0s: still",
             .states = "dialog, scene_still, fade_white, scene_still, quiet_end",
         },
@@ -317,7 +319,8 @@ const RunCase RUN_CASES[] = {
         },
         .expectation = {
             .verdict = "done",
-            .a_presses = 1,
+            .a_presses = 0,
+            .b_presses = 1,
             .line = "[PLZA test] screen 4: controls_hint at 9.0s: still, controls hint",
             .states = "hint_showing, dialog, hint_showing, controls_hint",
         },
@@ -374,7 +377,8 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .a_presses = 2,
+            .a_presses = 0,
+            .b_presses = 2,
             .line = "[PLZA test] screen 6: mission_banner at 12.0s: still, mission banner",
             .states = "dialog, scene_moving, banner_showing, dialog, banner_showing, mission_banner",
         },
@@ -408,7 +412,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 0, .states = "scene_still, hint_showing, controls_hint"},
     },
     {
-        .name = "01.01's arrival: A at the text and at the choice, none in the flyover, done on the controls hint",
+        .name = "01.01's arrival: B at the text, none in the flyover, done on the controls hint",
         .input = {.looks = {
             look_at(0ms, DIALOG),
             look_at(1000ms),
@@ -419,7 +423,7 @@ const RunCase RUN_CASES[] = {
             look_at(/*at=*/24500ms, NOTHING, {CONTROLS_HINT_READING}),
             look_at(/*at=*/25100ms, NOTHING, {CONTROLS_HINT_READING}),
         }},
-        .expectation = {.verdict = "done", .a_presses = 2, .line = "[PLZA test] done on controls_hint."},
+        .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 2, .line = "[PLZA test] done on controls_hint."},
     },
     {
         .name = "the mission banner ends the scene, which then waits for it to go",
@@ -430,7 +434,7 @@ const RunCase RUN_CASES[] = {
             look_at(/*at=*/1000ms, NOTHING, {MISSION_BANNER_READING}),
             look_at(1250ms),
         }},
-        .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] the mission banner has gone after 250 ms."},
+        .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 1, .line = "[PLZA test] the mission banner has gone after 250 ms."},
     },
     {
         //  Two looks end the scene, 40 more are the 10 s wait.
@@ -447,7 +451,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 3, .line = "[PLZA test] the mission banner still shows after 3 A presses; going on."},
     },
     {
-        .name = "01.03's end: A at the text and the mission complete card, done on the next banner",
+        .name = "01.03's end: B at the text, A at the mission complete card, done on the next banner",
         .input = {.looks = {
             look_at(0ms, DIALOG),
             look_at(/*at=*/500ms, NOTHING, {MISSION_COMPLETE_READING}),
@@ -457,7 +461,7 @@ const RunCase RUN_CASES[] = {
             look_at(/*at=*/2250ms, NOTHING, {MISSION_BANNER_READING}),
             look_at(2500ms),
         }},
-        .expectation = {.verdict = "done", .a_presses = 3, .line = "[PLZA test] done on mission_banner."},
+        .expectation = {.verdict = "done", .a_presses = 2, .b_presses = 1, .line = "[PLZA test] done on mission_banner."},
     },
     {
         .name = "a mission complete card that A does not get past fails as scene_stuck",
@@ -482,7 +486,7 @@ const RunCase RUN_CASES[] = {
             look_at(/*at=*/17250ms, NOTHING, {MISSION_BANNER_READING}),
             look_at(17500ms),
         }},
-        .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] screen 1: fade_white at 0.0s: white fade"},
+        .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 1, .line = "[PLZA test] screen 1: fade_white at 0.0s: white fade"},
     },
     {
         .name = "a machine that stops at choices ends on the choice box, after the text before it",
@@ -549,7 +553,8 @@ const RunCase RUN_CASES[] = {
         },
         .expectation = {
             .verdict = "done",
-            .a_presses = 1,
+            .a_presses = 0,
+            .b_presses = 1,
             .line = "[PLZA test] screen 4: can_move at 1.9s: party bar",
             .states = "party_bar, dialog, party_bar, can_move",
         },
@@ -594,16 +599,17 @@ const RunCase RUN_CASES[] = {
         },
         .expectation = {
             .verdict = "done",
-            .a_presses = 1,
+            .a_presses = 0,
+            .b_presses = 1,
             .states = "scene_moving, dialog, scene_still, party_bar, can_move",
         },
     },
     {
-        .name = "after Brigitte: A at the text, done on the party bar held a second",
+        .name = "after Brigitte: B at the text, done on the party bar held a second",
         .input = {.looks = {
             look_at(0ms, DIALOG), look_at(500ms, DIALOG), look_at(1000ms, PARTY), look_at(1500ms, PARTY), look_at(2100ms, PARTY),
         }},
-        .expectation = {.verdict = "done", .a_presses = 2, .line = "[PLZA test] done on can_move."},
+        .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 2, .line = "[PLZA test] done on can_move."},
     },
     {
         //  console B, 2026-11-15: blind A at the prompt restarted Ryon's
@@ -612,7 +618,8 @@ const RunCase RUN_CASES[] = {
         .input = {.looks = battle_area_talk_prompt(), .config = battle_area_config()},
         .expectation = {
             .verdict = "done",
-            .a_presses = 1,
+            .a_presses = 0,
+            .b_presses = 1,
             .line = "[PLZA test] done on talk_prompt.",
             .states = "dialog, scene_moving, prompt_showing, talk_prompt",
         },
@@ -626,7 +633,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "Hotel Z's room: the quiet end is control",
         .input = {.looks = {look_at(0ms, DIALOG), look_at(1000ms), look_at(4100ms, STILL)}, .config = quiet_room_config()},
-        .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] done: quiet, taken as control."},
+        .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 1, .line = "[PLZA test] done: quiet, taken as control."},
     },
     {
         //  console B, 2026-11-15: 02.02's street scene moved 41 s with no
@@ -660,14 +667,14 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed: scene_quiet", .a_presses = 0},
     },
     {
-        .name = "a box that A does not get past fails as scene_stuck",
+        .name = "a box that B does not get past fails as scene_stuck",
         .input = {.looks = {look_at(0ms, DIALOG)}},
-        .expectation = {.verdict = "failed: scene_stuck", .a_presses = 400},
+        .expectation = {.verdict = "failed: scene_stuck", .a_presses = 0, .b_presses = 400},
     },
     {
         .name = "past 360 s it fails as scene_timeout",
         .input = {.looks = {look_at(0ms, DIALOG), look_at(361000ms, DIALOG)}},
-        .expectation = {.verdict = "failed: scene_timeout", .a_presses = 1},
+        .expectation = {.verdict = "failed: scene_timeout", .a_presses = 0, .b_presses = 1},
     },
     {
         .name = "a minute of blind A in a still cutscene is summed up every 30 s",
@@ -686,7 +693,8 @@ const RunCase RUN_CASES[] = {
         .input = {.looks = arrival_with_three_fades(), .config = three_fades_config()},
         .expectation = {
             .verdict = "done",
-            .a_presses = 4,
+            .a_presses = 0,
+            .b_presses = 4,
             .states = "dialog, scene_moving, fade_black, dialog, fade_white, dialog, fade_black, banner_showing, "
                 "fade_black, scene_moving, fade_settled",
             .overlay = std::vector<std::string>{
@@ -707,7 +715,8 @@ const RunCase RUN_CASES[] = {
         .input = {.looks = arrival_banner_until_a(), .config = three_fades_config()},
         .expectation = {
             .verdict = "done",
-            .a_presses = 3,
+            .a_presses = 1,
+            .b_presses = 2,
             .line = "[PLZA test] done on fade_settled.",
             .states = "dialog, fade_black, dialog, fade_black, banner_showing, banner_press, scene_moving, fade_black, "
                 "scene_moving, fade_settled",
@@ -716,7 +725,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "with end_after_black_fades, a banner that 3 A presses 1 s apart do not clear fails as scene_stuck",
         .input = {.looks = arrival_banner_stays(), .config = three_fades_config()},
-        .expectation = {.verdict = "failed: scene_stuck", .a_presses = 5},
+        .expectation = {.verdict = "failed: scene_stuck", .a_presses = 3, .b_presses = 2},
     },
     {
         .name = "the trace logs each new state",
@@ -726,7 +735,7 @@ const RunCase RUN_CASES[] = {
             look_at(/*at=*/800ms, NOTHING, {MISSION_BANNER_READING}),
             look_at(1000ms),
         }},
-        .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] screen 3: mission_banner at 0.8s: mission banner"},
+        .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 1, .line = "[PLZA test] screen 3: mission_banner at 0.8s: mission banner"},
     },
 };
 
@@ -802,12 +811,167 @@ private:
 };
 
 
+//  03.05's nurse as a closed loop, on the screens of the console run's log
+//  (console B 2026-11-16): her greeting, a black fade (the heal), her last
+//  lines, then her box closing over one look and the A prompt to her at
+//  the counter. A at the closing box or at the prompt talks to her again
+//  ("Your Pokemon is already in great shape!", one line); B there does
+//  nothing.
+class NurseCounter : public Pokemon::FakeStoryBackend<ZonePose>{
+public:
+    explicit NurseCounter(CancellableScope& scope)
+        : FakeStoryBackend({}, scope)
+    {}
+
+    //  The talks started after the heal's.
+    size_t talks_again() const{
+        return m_talks_again;
+    }
+
+    virtual void press(Button button, Milliseconds hold, Milliseconds release) override{
+        FakeStoryBackend::press(button, hold, release);
+        m_now += hold + release;
+        switch (m_phase){
+        case Phase::GREETING:
+        case Phase::LAST_LINES:
+        case Phase::AGAIN:
+            m_lines--;
+            if (m_lines == 0 && m_phase == Phase::GREETING){
+                m_phase = Phase::HEAL_FADE;
+                m_fade_until = m_now + 3000ms;
+            }else if (m_lines == 0){
+                m_phase = Phase::CLOSING;
+            }
+            return;
+        case Phase::CLOSING:
+        case Phase::AT_PROMPT:
+            if (button == BUTTON_A){
+                m_phase = Phase::AGAIN;
+                m_lines = 1;
+                m_talks_again++;
+            }
+            return;
+        case Phase::HEAL_FADE:
+            return;
+        }
+    }
+    virtual void wait(Milliseconds duration) override{
+        FakeStoryBackend::wait(duration);
+        m_now += duration;
+    }
+    virtual Pokemon::Observation<ZonePose> observe() override{
+        Pokemon::Observation<ZonePose> look;
+        look.when = WallClock::min() + m_now;
+        if (m_phase == Phase::HEAL_FADE && m_now >= m_fade_until){
+            m_phase = Phase::LAST_LINES;
+            m_lines = 2;
+        }
+        switch (m_phase){
+        case Phase::HEAL_FADE:
+            look.events.set(ScreenEvent::FADE_BLACK, true);
+            return look;
+        case Phase::GREETING:
+        case Phase::LAST_LINES:
+        case Phase::AGAIN:
+            look.events.set(ScreenEvent::DIALOG_BOX, true);
+            look.readings[std::string(ADVANCE_ARROW_READING)] = 1;
+            return look;
+        case Phase::CLOSING:
+            look.events.set(ScreenEvent::DIALOG_BOX, true);
+            m_phase = Phase::AT_PROMPT;
+            return look;
+        case Phase::AT_PROMPT:
+            look.events.set(ScreenEvent::INTERACT_PROMPT, true);
+            return look;
+        }
+        return look;
+    }
+
+private:
+    enum class Phase{GREETING, HEAL_FADE, LAST_LINES, CLOSING, AT_PROMPT, AGAIN};
+
+    Milliseconds m_now = 0ms;
+    Phase m_phase = Phase::GREETING;
+    size_t m_lines = 5;
+    Milliseconds m_fade_until = 0ms;
+    size_t m_talks_again = 0;
+};
+
+//  Scene machines at 03.05's nurse (NurseCounter), on the screens as they
+//  follow from its presses.
+struct NurseCase{
+    std::string name;
+    struct Input{
+        SceneMachineConfig config;
+    };
+    Input input;
+    struct Expectation{
+        //  "done", or "failed: <failure>".
+        std::string verdict;
+        //  The run's last line.
+        std::string end;
+        //  The talks started after the heal's.
+        size_t talks_again = 0;
+    };
+    Expectation expectation;
+};
+
+const NurseCase NURSE_CASES[] = {
+    {
+        //  console B 2026-11-16: A at the closing box talked to her again
+        //  for 110 s, until the 120 s timeout.
+        .name = "03.05's heal_party (scene): done on her A prompt, no talk again",
+        .input = {.config = scene_step_config()},
+        .expectation = {.verdict = "done", .end = "[PLZA test] done on talk_prompt.", .talks_again = 0},
+    },
+    {
+        .name = "mash_to_move_hints at a talk's end: done on the A prompt, no talk again",
+        .input = {.config = arrival_config()},
+        .expectation = {.verdict = "done", .end = "[PLZA test] done on talk_prompt.", .talks_again = 0},
+    },
+};
+
+UnitTestResult check_nurse(const NurseCase& test, CancellableScope& scope){
+    NurseCounter backend(scope);
+    const Pokemon::Outcome outcome = run_scene_machine(backend, "test", test.input.config, 120s);
+    const std::string verdict = outcome.succeeded() ? "done" : std::format("failed: {}", outcome.failure);
+    if (verdict != test.expectation.verdict){
+        return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.verdict, verdict, joined(backend.lines(), "\n"));
+    }
+    if (backend.talks_again() != test.expectation.talks_again){
+        return std::format(
+            "expected {} talks after the heal's, got {}: {}", test.expectation.talks_again, backend.talks_again(), joined(backend.inputs(), ", ")
+        );
+    }
+    if (backend.lines().empty() || backend.lines().back() != test.expectation.end){
+        return std::format("expected the run to end with \"{}\"; log:\n{}", test.expectation.end, joined(backend.lines(), "\n"));
+    }
+    return true;
+}
+
+class NurseTest : public UnitTest{
+public:
+    explicit NurseTest(const NurseCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStorySceneMachine closed loop - {}", test.name))
+        , m_test(test)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
+        return check_nurse(m_test, scope);
+    }
+private:
+    const NurseCase& m_test;
+};
+
+
 } // namespace
 
 
 void add_tests_AutoStorySceneMachine(UnitTestDatabase& database){
     for (const RunCase& test : RUN_CASES){
         database.add<RunTest>(test);
+    }
+    for (const NurseCase& test : NURSE_CASES){
+        database.add<NurseTest>(test);
     }
 }
 

@@ -71,7 +71,7 @@ const StoryDataCase STORY_DATA_CASES[] = {
             "02.01:from_save:unverified 02.02:from_save:unverified 02.03:from_save:unverified 02.04:from_save:unverified "
             "02.05:from_save:unverified 02.06:from_save:autosave 02.07:from_save:unverified "
             "03.01:from_save:unverified 03.02:from_save:autosave 03.02b:from_save 03.03:from_save:autosave 03.04:from_save:autosave "
-            "03.05:from_save:autosave 03.06:from_save 03.07:from_save:autosave 03.08:from_save:autosave 03.08b:from_save "
+            "03.05:from_save:autosave 03.06:from_save:autosave 03.07:from_save:autosave 03.08:from_save:autosave 03.08b:from_save "
             "03.09:from_save:unverified "
             "03.10:from_save:autosave 03.11:from_save:unverified"
         },
@@ -475,7 +475,7 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .inputs = "press A, wait 250ms, wait 250ms, press A, wait 250ms, wait 250ms, wait 500ms, wait 500ms, wait 250ms, wait 500ms",
+            .inputs = "press B, wait 250ms, wait 250ms, press B, wait 250ms, wait 250ms, wait 500ms, wait 500ms, wait 250ms, wait 500ms",
             .line = "[PLZA mash_to_move_hints] done on fade_settled.",
         },
     },
@@ -496,7 +496,7 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .inputs = "press A, wait 250ms, wait 250ms, wait 500ms, wait 250ms, press A, wait 500ms",
+            .inputs = "press B, wait 250ms, wait 250ms, wait 500ms, wait 250ms, press B, wait 500ms",
             .line = "[PLZA mash_to_move_hints] the mission banner did not show (the detector may have missed it).",
         },
     },
@@ -515,7 +515,7 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .inputs = "press A, wait 250ms, wait 250ms, wait 250ms, wait 250ms",
+            .inputs = "press B, wait 250ms, wait 250ms, wait 250ms, wait 250ms",
             .line = "[PLZA mash_to_move_hints] done on controls_hint.",
         },
     },
@@ -529,7 +529,7 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .inputs = "press A, wait 250ms, wait 250ms",
+            .inputs = "press B, wait 250ms, wait 250ms",
             .line = "[PLZA mash_to_move_hints] done on controls_hint.",
         },
     },
@@ -675,7 +675,7 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .inputs = "press A, press A, wait 250ms",
+            .inputs = "press B, press A, wait 250ms",
             .line = "[Save] 01.03: not saved (save unverified)",
         },
     },
@@ -688,11 +688,11 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        .name = "02.01's scene after Brigitte: A at the text, done on the party bar held a second, not saved",
+        .name = "02.01's scene after Brigitte: B at the text, done on the party bar held a second, not saved",
         .input = {.checkpoint = "02.01", .first_step = 3, .looks = {
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), party_bar(Milliseconds(500)), party_bar(Milliseconds(1600)),
         }},
-        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms", .line = "[Save] 02.01: not saved (save unverified)"},
+        .expectation = {.verdict = "done", .inputs = "press B, wait 250ms", .line = "[Save] 02.01: not saved (save unverified)"},
     },
     {
         //  console B, 2026-11-13: 02.02 after the Brigitte battle walked
@@ -721,7 +721,7 @@ const RunCase RUN_CASES[] = {
             A_PROMPT, BLACK_FADE,
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(1000)), party_bar(Milliseconds(1500)), party_bar(Milliseconds(2600)),
         }},
-        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms, press A, wait 250ms"},
+        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms, press B, wait 250ms"},
     },
     {
         .name = "02.04's walk to the clerk: along the counter, then the turn to her A prompt",
@@ -762,7 +762,7 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .inputs = "press A, wait 500ms",
+            .inputs = "press B, wait 500ms",
             .line = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
         },
     },
@@ -961,13 +961,13 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .inputs = "press B, press B, wait 250ms"},
     },
     {
-        .name = "03.06's run to the gate needs a console",
-        .input = {.checkpoint = "03.06", .first_step = 4, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .name = "03.07's run to the gate needs a console",
+        .input = {.checkpoint = "03.07", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at to_zone_1_gate: console_only", .inputs = ""},
     },
     {
         .name = "03.07's tutorial catch needs a console",
-        .input = {.checkpoint = "03.07", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .input = {.checkpoint = "03.07", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at catch_fletchling: console_only", .inputs = ""},
     },
     {
