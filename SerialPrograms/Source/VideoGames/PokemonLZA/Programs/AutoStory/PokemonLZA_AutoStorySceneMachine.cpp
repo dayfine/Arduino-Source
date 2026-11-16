@@ -72,6 +72,10 @@ public:
     //  Whether end_after_black_fades' last fade has settled by `now`.
     bool fades_settled(WallClock now) const;
 
+    //  "fade 2/3": the black fades waited out so far, of
+    //  end_after_black_fades' ("fade 2" without it).
+    std::string black_fade_count() const;
+
     //  Whether the mission banner has shown on any look.
     bool banner_seen() const{
         return m_banner_seen;
@@ -234,6 +238,14 @@ bool scene_screen_presses(SceneScreen screen){
     return screen == SceneScreen::DIALOG || screen == SceneScreen::MISSION_COMPLETE || screen == SceneScreen::BLIND_PRESS;
 }
 
+//  Whether this state's lines go on the stream's overlay too, for whoever
+//  watches: a black fade (with its count), the mission banner and the
+//  controls hint showing. The text, cutscenes, white fades, presses and
+//  ends go to the file log only; the step's own lines say how it ended.
+bool scene_screen_for_watcher(SceneScreen screen){
+    return screen == SceneScreen::FADE_BLACK || screen == SceneScreen::BANNER_SHOWING || screen == SceneScreen::HINT_SHOWING;
+}
+
 
 SceneTimeline::SceneTimeline(SceneMachineConfig config, WallClock start)
     : m_config(std::move(config))
@@ -259,6 +271,13 @@ bool SceneTimeline::blind_press_due(WallClock now) const{
 
 bool SceneTimeline::fades_settled(WallClock now) const{
     return m_settled_since && now - *m_settled_since >= FADE_SETTLE;
+}
+
+std::string SceneTimeline::black_fade_count() const{
+    if (!m_config.end_after_black_fades){
+        return std::format("fade {}", m_black_fades);
+    }
+    return std::format("fade {}/{}", m_black_fades, *m_config.end_after_black_fades);
 }
 
 SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
@@ -384,7 +403,10 @@ constexpr std::ptrdiff_t TURN_PERIODS[] = {2, 3};
 //  that change nothing, are counted and summed up every SUMMARY_EVERY,
 //  and before the next line and at the end when they took turns or
 //  pressed ("[PLZA label] scene_moving x46, blind_press x15 over 30.0s, 15
-//  presses"): a wait on one state shows in the next line's time.
+//  presses"): a wait on one state shows in the next line's time. All of
+//  it goes to the file log; only the lines of scene_screen_for_watcher()'s
+//  states go on the overlay too (01.01's arrival put 12 lines of text and
+//  cutscenes there in 25 s, console B 2026-11-15).
 class SceneLog{
 public:
     SceneLog(PlzaBackend& backend, std::string_view label, WallClock start)
@@ -403,10 +425,15 @@ public:
         if (gets_line(std::format("{}: {}", scene_screen_name(screen), readings))){
             flush();
             const double seconds = std::chrono::duration<double>(when - m_start).count();
-            m_backend.log(std::format(
+            const std::string line = std::format(
                 "[PLZA {}] screen {}: {} at {}s: {}",
                 m_label, m_screen_number, scene_screen_name(screen), tostr_fixed(seconds, 1), readings
-            ));
+            );
+            if (scene_screen_for_watcher(screen)){
+                m_backend.log(line);
+            }else{
+                m_backend.log_detail(line);
+            }
             return;
         }
         count(screen, when, pressed);
@@ -433,7 +460,7 @@ private:
             text += std::format("{}{} x{}", text.empty() ? "" : ", ", scene_screen_name(screen), looks);
         }
         const double seconds = std::chrono::duration<double>(m_counted_to - *m_counted_from).count();
-        m_backend.log(std::format("[PLZA {}] {} over {}s, {} presses", m_label, text, tostr_fixed(seconds, 1), m_presses));
+        m_backend.log_detail(std::format("[PLZA {}] {} over {}s, {} presses", m_label, text, tostr_fixed(seconds, 1), m_presses));
         m_counted.clear();
         m_counted_from.reset();
         m_presses = 0;
@@ -520,7 +547,11 @@ public:
     //  The step of `screen`, the state of `look`.
     void act(SceneScreen screen, const ScreenObservation& look){
         m_timeline.record(look);
-        m_log.look(screen, describe_look(look), look.when, scene_screen_presses(screen));
+        std::string readings = describe_look(look);
+        if (screen == SceneScreen::FADE_BLACK){
+            readings = std::format("{}, {}", readings, m_timeline.black_fade_count());
+        }
+        m_log.look(screen, readings, look.when, scene_screen_presses(screen));
         if (scene_screen_terminal(screen)){
             return;
         }

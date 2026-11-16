@@ -90,7 +90,9 @@ struct SceneMachineConfig{
 //  `config.stop_at_battle` the battle HUD, or with
 //  `config.end_after_black_fades` its last fade has lifted and settled, on
 //  run_screen_machine(). `label` names its log lines ("[PLZA
-//  mash_to_move_hints] screen 2: dialog at 1.5s: text box"). Fails as "scene_quiet" on the
+//  mash_to_move_hints] screen 2: dialog at 1.5s: text box"), which go to
+//  the file log (log_detail()) except the black fades, the banner, the
+//  hint and the end, which go on the overlay too (log()). Fails as "scene_quiet" on the
 //  quiet end (unless `config.quiet_is_control`), "scene_never_started"
 //  past `config.start_window`, "scene_timeout" when `timeout` passes (by
 //  the looks' time), and "scene_stuck" on a state that comes up too often
