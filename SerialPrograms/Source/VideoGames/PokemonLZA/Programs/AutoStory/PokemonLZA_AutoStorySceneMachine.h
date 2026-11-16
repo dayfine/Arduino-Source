@@ -69,13 +69,22 @@ struct SceneMachineConfig{
     //  player is not at the scene's trigger (02.02 run after the Brigitte
     //  battle walked past the street scene's, console B 2026-11-13).
     std::optional<Milliseconds> start_window = std::nullopt;
+    //  Ends once this many black fades have been waited out and the screen
+    //  has then shown no text, fade or banner for 5 s (or on the controls
+    //  hint, if it comes first), and takes the mission banner for part of
+    //  the scene, not its end; whether it showed is logged. 01.01's arrival
+    //  ends on its second black fade after the ad, which follows the
+    //  banner (console B, 2026-11-15; the banner detector missed it on the
+    //  Italian game). Text after the last fade starts the 5 s again.
+    std::optional<size_t> end_after_black_fades = std::nullopt;
 };
 
 //  Presses through scenes until the controls hint has held a second, or
 //  the mission banner has shown on two looks (then waits up to 10 s for it
 //  to go and, if it stays, presses A up to 3 times 1 s apart), or with
 //  `config.stop_at_choice` the choice box shows, or with
-//  `config.stop_at_battle` the battle HUD, on
+//  `config.stop_at_battle` the battle HUD, or with
+//  `config.end_after_black_fades` its last fade has lifted and settled, on
 //  run_screen_machine(). `label` names its log lines ("[PLZA
 //  mash_to_move_hints] screen 2: dialog at 1.5s: text box"). Fails as "scene_quiet" on the
 //  quiet end (unless `config.quiet_is_control`), "scene_never_started"
