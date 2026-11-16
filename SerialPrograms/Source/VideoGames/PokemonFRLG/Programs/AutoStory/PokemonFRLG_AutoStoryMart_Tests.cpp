@@ -381,10 +381,10 @@ std::vector<MartCase> mart_cases_5(){
     };
 }
 
-//  19.01a sells the Nugget ($5,000, half its 10,000) and buys Super
-//  Potions with it at Lavender's Mart: the money box, read on the BUY
-//  list, checks the sale and cuts the if_affordable line to what it
-//  covers; unread, the line is bought blind.
+//  A Nugget ($5,000, half its 10,000) sold for Super Potions at
+//  Lavender's Mart: the money box, read on the BUY list, checks the sale
+//  and cuts the if_affordable line to what it covers; unread, the line is
+//  bought blind.
 std::vector<MartCase> mart_cases_6(){
     const auto nugget = [](FakeMart& mart){ mart.bag["nugget"] = 1; };
     const auto nugget_read = [](FakeMart& mart){ mart.bag["nugget"] = 1; mart.money_readable = true; };
@@ -658,13 +658,12 @@ MartPlan one_line(std::string map, std::string item, size_t quantity){
 }
 
 const std::vector<ApprovedShopping>& approved_shopping(){
-    MartPlan status_heals = one_line("ViridianCity_Mart", "antidote", 1);
-    status_heals.lines.push_back({"parlyz-heal", 2});
+    MartPlan rival_restock = one_line("LavenderTown_Mart", "super-potion", 15);
+    rival_restock.lines.push_back({"antidote", 1});
+    rival_restock.lines.push_back({"parlyz-heal", 2});
+    rival_restock.if_affordable = true;
     MartPlan full_heals = one_line("IndigoPlateau_PokemonCenter_1F", "full-heal", 2);
     full_heals.if_affordable = true;
-    MartPlan nugget_for_potions = one_line("LavenderTown_Mart", "super-potion", 6);
-    nugget_for_potions.if_affordable = true;
-    nugget_for_potions.sells = {{"nugget", 1}};
     static const std::vector<ApprovedShopping> shopping{
         {
             .checkpoint = "12.03", .step = "buy_super_potions_for_silph", .before = "16.01",
@@ -677,15 +676,10 @@ const std::vector<ApprovedShopping>& approved_shopping(){
             .money = 1900, .bag = {{"x-accuracy", 2}}, .money_after = 0,
         },
         {
-            //  The Nugget pays for all 6 with no money before.
-            .checkpoint = "19.01a", .step = "sell_nugget_buy_super_potions", .before = "19.01",
-            .plan = nugget_for_potions,
-            .money = 0, .bag = {{"super-potion", 6}}, .money_after = 800, .held = {{"nugget", 1}},
-        },
-        {
-            .checkpoint = "19.01a", .step = "buy_status_heals", .before = "19.01",
-            .plan = status_heals,
-            .money = 500, .bag = {{"antidote", 1}, {"parlyz-heal", 2}}, .money_after = 0,
+            //  One Mart for the whole list: Lavender stocks all three.
+            .checkpoint = "19.01a", .step = "buy_potions_and_status_heals", .before = "19.01b",
+            .plan = rival_restock,
+            .money = 11000, .bag = {{"super-potion", 15}, {"antidote", 1}, {"parlyz-heal", 2}}, .money_after = 0,
         },
         {
             //  After 13 Full Restores, money for one Full Heal: skipped.

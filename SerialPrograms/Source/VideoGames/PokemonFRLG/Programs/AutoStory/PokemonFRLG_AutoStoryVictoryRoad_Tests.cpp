@@ -106,11 +106,11 @@ std::string walk_row(
 }
 
 //  19.01a: out to the street, the Fly to Lavender and its Mart's counter,
-//  back out, the Fly to Viridian and its Mart's counter, where 19.01
-//  starts. 19.01: out
-//  of the Mart, along the street to Route 22 and along it to the rival's
-//  trigger column, then the step onto it. The rival is the battle step's, so
-//  the walk ends on the trigger tile (33, 5), facing west, with no trainer met.
+//  back out and the Fly back to Viridian, where 19.01 starts. 19.01: along
+//  the street to Route 22 and along it to (34, 5), a tile short of the
+//  rival's trigger column, where 19.01b starts, saved before his battle.
+//  19.01b's step lands on the trigger tile (33, 5), facing west, with no
+//  trainer met on the way.
 UnitTestResult test_route22_rival_trigger(){
     const StoryCheckpoint& shop = checkpoint("19.01a");
     StoryPose at = *story_pose(Pokemon::pose_of(*shop.start));
@@ -120,31 +120,44 @@ UnitTestResult test_route22_rival_trigger(){
     }
     StoryPose lavender = *story_pose(Pokemon::pose_of(*shop.start));
     OverworldSim to_lavender(story_maps(), MapPosition{lavender.map, lavender.tile}, *lavender.facing);
-    if (const std::string failure = walk_row(to_lavender, lavender, shop, "sell_nugget_buy_super_potions"); !failure.empty()){
+    if (const std::string failure = walk_row(to_lavender, lavender, shop, "buy_potions_and_status_heals"); !failure.empty()){
         return failure;
     }
     const MapPosition lavender_counter{"LavenderTown_Mart", {4, 3}};
     if (!(to_lavender.state().position == lavender_counter) || lavender.facing != Direction::WEST){
-        return std::format("19.01a: sold and bought on {}, not facing Lavender's clerk from {}.", to_string(to_lavender.state().position), to_string(lavender_counter));
+        return std::format("19.01a: bought on {}, not facing Lavender's clerk from {}.", to_string(to_lavender.state().position), to_string(lavender_counter));
     }
-    const MapPosition counter{"ViridianCity_Mart", {4, 3}};
-    if (!(sim.state().position == counter)){
-        return std::format("19.01a: ended on {}, not the Mart's counter {}.", to_string(sim.state().position), to_string(counter));
+    const MapPosition landing{"ViridianCity", {26, 27}};
+    if (!(sim.state().position == landing)){
+        return std::format("19.01a: ended on {}, not the Fly's landing {}.", to_string(sim.state().position), to_string(landing));
     }
-    const StoryCheckpoint& row = checkpoint("19.01");
-    const StoryPose next = *story_pose(Pokemon::pose_of(*row.start));
-    if (next.map != counter.map || !(next.tile == counter.point)){
-        return "19.01 doesn't start where 19.01a ends.";
-    }
-    if (const std::string failure = walk_row(sim, at, row, "rival_route22"); !failure.empty()){
-        return failure;
-    }
+    const MapPosition east_of_trigger{"Route22", {34, 5}};
     const MapPosition trigger{"Route22", {33, 5}};
-    if (!(sim.state().position == trigger)){
-        return std::format("19.01: ended on {}, not the rival's trigger {}.", to_string(sim.state().position), to_string(trigger));
+    const struct{
+        std::string_view id;
+        MapPosition start;
+        MapPosition end;
+        //  The console's battle step the walk stops at, if any.
+        std::string_view until;
+    } legs[] = {
+        {.id = "19.01", .start = landing, .end = east_of_trigger, .until = {}},
+        {.id = "19.01b", .start = east_of_trigger, .end = trigger, .until = "rival_route22"},
+    };
+    for (const auto& leg : legs){
+        const StoryCheckpoint& row = checkpoint(leg.id);
+        const StoryPose start = *story_pose(Pokemon::pose_of(*row.start));
+        if (start.map != leg.start.map || !(start.tile == leg.start.point)){
+            return std::format("{} doesn't start on {}, where the row before it ends.", leg.id, to_string(leg.start));
+        }
+        if (const std::string failure = walk_row(sim, at, row, leg.until); !failure.empty()){
+            return failure;
+        }
+        if (!(sim.state().position == leg.end)){
+            return std::format("{}: ended on {}, not {}.", leg.id, to_string(sim.state().position), to_string(leg.end));
+        }
     }
     if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
-        return "19.01: met a trainer or broke a rule on the way.";
+        return "19.01 to 19.01b: met a trainer or broke a rule on the way.";
     }
     return true;
 }
@@ -184,12 +197,12 @@ const StoryStep& step_of(std::string_view id, std::string_view name){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No step {} in {}.", name, id));
 }
 
-//  19.01's rival rows are PokemonSimulation's planning_risk() for each foe
+//  19.01b's rival rows are PokemonSimulation's planning_risk() for each foe
 //  leading against the entry state of its route22-rival case
 //  (src/pokesim/games/frlg/battle/player_strategy/planning.py): speed, the
 //  80th percentile loss, the mean, the worst case, and the worst normal hit.
 UnitTestResult test_rival_foe_threats_are_the_generators(){
-    const StoryStep& rival = step_of("19.01", "rival_route22");
+    const StoryStep& rival = step_of("19.01b", "rival_route22");
     const auto found = rival.args.find("foe_threats");
     const auto* rows = found == rival.args.end() ? nullptr : std::get_if<std::vector<std::vector<int64_t>>>(&found->second);
     const std::vector<std::vector<int64_t>> expected = {
@@ -201,7 +214,7 @@ UnitTestResult test_rival_foe_threats_are_the_generators(){
         {105, 69, 20, 156, 78, 0, 0},   //  Venusaur
     };
     if (rows == nullptr || *rows != expected){
-        return "19.01 rival_route22: foe_threats are not the generator's rows for the route22-rival case.";
+        return "19.01b rival_route22: foe_threats are not the generator's rows for the route22-rival case.";
     }
     return true;
 }
@@ -361,7 +374,7 @@ UnitTestResult test_indigo_center_walk(){
 
 const AutoStoryVictoryRoadCase AUTO_STORY_VICTORY_ROAD_CASES[] = {
     {
-        .input = {.name = "19.01a Lavender's and Viridian's Marts and 19.01 to the Route 22 rival's trigger", .body = test_route22_rival_trigger},
+        .input = {.name = "19.01a Lavender's Mart, 19.01 to Route 22 and 19.01b onto the rival's trigger", .body = test_route22_rival_trigger},
         .expectation = {.description = "Route 22 (33, 5), no trainer met"},
     },
     {
@@ -369,7 +382,7 @@ const AutoStoryVictoryRoadCase AUTO_STORY_VICTORY_ROAD_CASES[] = {
         .expectation = {.description = "the trigger (7, 2) stepped onto, Route 23 (8, 153), no trainer met"},
     },
     {
-        .input = {.name = "19.01 the rival's foe rows are the generator's", .body = test_rival_foe_threats_are_the_generators},
+        .input = {.name = "19.01b the rival's foe rows are the generator's", .body = test_rival_foe_threats_are_the_generators},
         .expectation = {.description = "PokemonSimulation planning_risk() rows"},
     },
     {
