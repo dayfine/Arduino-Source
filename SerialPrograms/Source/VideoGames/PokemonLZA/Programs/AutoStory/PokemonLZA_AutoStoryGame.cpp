@@ -316,7 +316,7 @@ Outcome choose_step(Pokemon::StoryBackend<ZonePose>& backend, int index){
             ));
         }
     }
-    backend.press(BUTTON_A, 160ms, 240ms);
+    backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
     return Pokemon::outcome_ok();
 }
 
