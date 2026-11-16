@@ -16,8 +16,9 @@ namespace{
 
 //  The ways out of a round, in turn: away first, as the start spot
 //  (Taunie's rocks, ~120 to 146 from the objective) has the far gate
-//  ahead and grass behind and beside it.
-constexpr ZoneLeg OUT_LEGS[] = {ZoneLeg::AWAY, ZoneLeg::LEFT, ZoneLeg::RIGHT, ZoneLeg::TOWARD};
+//  ahead and grass behind and beside it. Both ways are along the road:
+//  the search stays on it (the user, 2026-11-16).
+constexpr ZoneLeg OUT_LEGS[] = {ZoneLeg::AWAY, ZoneLeg::TOWARD};
 
 void apply(ZoneOffset& offset, ZoneLeg leg){
     switch (leg){

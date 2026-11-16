@@ -5,7 +5,7 @@
  *  How 03.08 looks for new species in Wild Zone 1 without walking by the
  *  objective marker's digits: stand, turn the camera in steps through a
  *  full turn with a ZL lock-on after each, catch a species not caught yet,
- *  and only when a full turn finds none take one short leg into the grass,
+ *  and only when a full turn finds none take one short leg along the road,
  *  each leg out followed by one back. Six runs walking between distance
  *  stops (console B, 2026-11-16) left the zone or stood stuck: the digits
  *  read nothing for long stretches (speech bubbles, the marker at the
