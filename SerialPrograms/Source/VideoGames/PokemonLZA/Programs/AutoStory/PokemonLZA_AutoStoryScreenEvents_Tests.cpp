@@ -74,6 +74,14 @@ const FrameCase FRAME_CASES[] = {
         .input = {.path = "AutoStoryScreenEvents/za2_m3v_s1.png"},
         .expectation = {.events = {.interact_prompt = true, .can_move = false}},
     },
+    {
+        //  console B, 2026-11-15: 01.02's battle area, the scene over;
+        //  "Parla" is Italian for "Talk", Ryon the man at the gate. No
+        //  Pokemon yet, so no party bar.
+        .name = "the A Talk prompt on the Italian game",
+        .input = {.path = "AutoStoryScreenEvents/it_0102_parla_talk_prompt.png"},
+        .expectation = {.events = {.interact_prompt = true, .can_move = false}},
+    },
 };
 
 struct FolderCase{

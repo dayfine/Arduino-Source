@@ -32,7 +32,7 @@
       {
         "id": "battle_area",
         "kind": "game_action",
-        "why": "the scene until free control in the battle area (the controls hint); autosave",
+        "why": "the scene until free control in the battle area: no controls hint shows here, and no party bar (no Pokemon yet); control is the A Talk prompt to Ryon at the gate, held a second past 20 s (min_length_ms, past the cutscene). No A at that prompt: it restarts his talk (console B 2026-11-15, Italian). Autosave",
         "action": "mash_to_move_hints",
         "args": {
           "min_length_ms": 20000

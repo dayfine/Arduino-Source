@@ -62,6 +62,8 @@ const ScreenEvents BLACK{ScreenEvent::FADE_BLACK};
 const ScreenEvents CHOICE{ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX};
 const ScreenEvents BATTLE{ScreenEvent::BATTLE_STARTED};
 const ScreenEvents PARTY{ScreenEvent::PLAYER_CAN_MOVE};
+const ScreenEvents PROMPT{ScreenEvent::INTERACT_PROMPT};
+const ScreenEvents STILL_PROMPT{ScreenEvent::INTERACT_PROMPT, ScreenEvent::SCREEN_STILL};
 
 //  mash_to_move_hints' config: a minute quiet, blind A after 5 s.
 SceneMachineConfig arrival_config(){
@@ -127,6 +129,70 @@ std::vector<Observation<ZonePose>> minute_of_blind_presses(){
     }
     looks.push_back(look_at(/*at=*/65500ms, NOTHING, {CONTROLS_HINT_READING}));
     looks.push_back(look_at(/*at=*/66600ms, NOTHING, {CONTROLS_HINT_READING}));
+    return looks;
+}
+
+//  01.02's battle_area: mash_to_move_hints' config with min_length_ms 20000.
+SceneMachineConfig battle_area_config(){
+    SceneMachineConfig config = arrival_config();
+    config.min_length = 20000ms;
+    return config;
+}
+
+//  01.02's battle area on the Italian game (console B, 2026-11-15): the
+//  text, a cutscene, then the overworld with the "A Parla" (talk) prompt
+//  to Ryon at the gate, still, and no controls hint.
+std::vector<Observation<ZonePose>> battle_area_talk_prompt(){
+    return {
+        look_at(0ms, DIALOG), look_at(500ms), look_at(6000ms),
+        look_at(6500ms, PROMPT), look_at(7000ms, PROMPT), look_at(8000ms, STILL_PROMPT),
+        look_at(15000ms, STILL_PROMPT), look_at(20000ms, STILL_PROMPT), look_at(20500ms, STILL_PROMPT),
+    };
+}
+
+//  `cycles` times from `from`, 7 s apart: a text box, a screen with no
+//  text, and 6 s after the text another (a blind A).
+std::vector<Observation<ZonePose>> blind_press_then_text(Milliseconds from, size_t cycles){
+    std::vector<Observation<ZonePose>> looks;
+    for (size_t cycle = 0; cycle < cycles; cycle++){
+        const Milliseconds base = from + 7000ms * (int64_t)cycle;
+        looks.push_back(look_at(base, DIALOG));
+        looks.push_back(look_at(base + 500ms));
+        looks.push_back(look_at(base + 6000ms));
+    }
+    return looks;
+}
+
+//  01.02's battle area with the talk prompt missed (console B, 2026-11-15):
+//  each blind A restarted the talk, the same text came back, for 3 min.
+std::vector<Observation<ZonePose>> talk_restarting(){
+    return blind_press_then_text(/*from=*/0ms, /*cycles=*/8);
+}
+
+//  Three blind A presses each followed by text, a black fade, three more,
+//  then the controls hint.
+std::vector<Observation<ZonePose>> blind_presses_split_by_a_fade(){
+    std::vector<Observation<ZonePose>> looks = blind_press_then_text(/*from=*/0ms, /*cycles=*/3);
+    looks.push_back(look_at(21000ms, BLACK));
+    looks.push_back(look_at(21500ms));
+    for (const Observation<ZonePose>& look : blind_press_then_text(/*from=*/22000ms, /*cycles=*/3)){
+        looks.push_back(look);
+    }
+    looks.push_back(look_at(/*at=*/43000ms, NOTHING, {CONTROLS_HINT_READING}));
+    looks.push_back(look_at(/*at=*/44100ms, NOTHING, {CONTROLS_HINT_READING}));
+    return looks;
+}
+
+//  story_battle_start's talk: `lines` text boxes 2.5 s apart with a look
+//  with no text after each (a blind A), then the battle HUD.
+std::vector<Observation<ZonePose>> talk_with_gaps(size_t lines){
+    std::vector<Observation<ZonePose>> looks;
+    for (size_t line = 0; line < lines; line++){
+        const Milliseconds base = 2500ms * (int64_t)line;
+        looks.push_back(look_at(base, DIALOG));
+        looks.push_back(look_at(base + 500ms));
+    }
+    looks.push_back(look_at(2500ms * (int64_t)lines, BATTLE));
     return looks;
 }
 
@@ -578,6 +644,43 @@ const RunCase RUN_CASES[] = {
             look_at(0ms, DIALOG), look_at(500ms, DIALOG), look_at(1000ms, PARTY), look_at(1500ms, PARTY), look_at(2100ms, PARTY),
         }},
         .expectation = {.verdict = "done", .a_presses = 2, .line = "[PLZA test] done on can_move."},
+    },
+    {
+        //  console B, 2026-11-15: blind A at the prompt restarted Ryon's
+        //  talk, again and again for 3 min.
+        .name = "01.02's battle area: the talk prompt held past the minimum length is control, with no A at it",
+        .input = {.looks = battle_area_talk_prompt(), .config = battle_area_config()},
+        .expectation = {
+            .verdict = "done",
+            .a_presses = 2,
+            .line = "[PLZA test] done on talk_prompt.",
+            .states = "dialog, scene_moving, blind_press, prompt_showing, talk_prompt",
+        },
+    },
+    {
+        //  It shows between the lines of a talk, like the party bar.
+        .name = "a machine that stops at a battle does not take the talk prompt for control",
+        .input = {.looks = {look_at(0ms, PROMPT), look_at(2500ms, PROMPT), look_at(3000ms, BATTLE)}, .config = battle_config()},
+        .expectation = {.verdict = "done", .a_presses = 2, .states = "blind_press, battle"},
+    },
+    {
+        //  console B, 2026-11-15: with the prompt missed, each blind A
+        //  restarted Ryon's talk, the same text came back, for 3 min.
+        .name = "blind A followed by text 4 times with nothing else between fails fast as scene_loop",
+        .input = {.looks = talk_restarting()},
+        .expectation = {.verdict = "failed: scene_loop", .a_presses = 9},
+    },
+    {
+        .name = "a black fade between blind presses followed by text is progress, not a loop",
+        .input = {.looks = blind_presses_split_by_a_fade()},
+        .expectation = {.verdict = "done", .a_presses = 12, .line = "[PLZA test] done on controls_hint."},
+    },
+    {
+        //  Its blind A every 2 s is its pace through the talk, not a
+        //  recovery.
+        .name = "story_battle_start: blind A between the lines of a long talk is not a loop",
+        .input = {.looks = talk_with_gaps(/*lines=*/6), .config = battle_config()},
+        .expectation = {.verdict = "done", .a_presses = 12, .line = "[PLZA test] done on battle."},
     },
     {
         .name = "Hotel Z's room: the quiet end is control",
