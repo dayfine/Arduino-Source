@@ -35,6 +35,7 @@ namespace PokemonFRLG{
 struct StoryAbilities{
     MemberReader members;
     MartActions& mart;
+    MartSellActions& mart_sell;
     TeachActions& teach;
     GrindActions& grind;
     ChoiceActions& choice;

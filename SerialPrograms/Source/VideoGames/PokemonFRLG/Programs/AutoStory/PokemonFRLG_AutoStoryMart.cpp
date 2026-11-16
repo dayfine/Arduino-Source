@@ -12,6 +12,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_MoneyBoxReader.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryMart.h"
@@ -256,9 +257,10 @@ namespace{
 //  One Mart step under way.
 class MartRun{
 public:
-    MartRun(Logger& logger, MartActions& actions, const MartPlan& plan)
+    MartRun(Logger& logger, MartActions& actions, MartSellActions& sell, const MartPlan& plan)
         : m_logger(logger)
         , m_actions(actions)
+        , m_sell(sell)
         , m_plan(plan)
         , m_stock(mart_stock(plan.map))
         , m_window(m_stock.size() + 1)
@@ -309,7 +311,7 @@ private:
     //  Sells `sale`, facing the clerk before and after. None in the bag is
     //  logged and passed.
     bool sell_one(const MartLine& sale){
-        switch (m_actions.sell(sale)){
+        switch (m_sell.sell(sale)){
         case SaleEnd::SOLD:{
             const size_t earned = sale.quantity * sale_price(sale.item).value_or(0);
             m_logger.log(std::format("Mart: sold {} {} for ${}.", sale.quantity, sale.item, earned));
@@ -413,6 +415,7 @@ private:
 
     Logger& m_logger;
     MartActions& m_actions;
+    MartSellActions& m_sell;
     const MartPlan& m_plan;
     const std::vector<MartStockItem>& m_stock;
     //  Where the cursor is, from the list's top row as open_buy_list()
@@ -423,8 +426,8 @@ private:
 
 } // namespace
 
-MartResult run_mart(Logger& logger, MartActions& actions, const MartPlan& plan){
-    return MartRun(logger, actions, plan).run();
+MartResult run_mart(Logger& logger, MartActions& actions, MartSellActions& sell, const MartPlan& plan){
+    return MartRun(logger, actions, sell, plan).run();
 }
 
 std::string mart_message(const MartPlan& plan, const MartResult& result){
@@ -522,6 +525,15 @@ bool ConsoleMartActions::leave(){
         m_console.log("Mart: " + e.message(), COLOR_RED);
         return false;
     }
+}
+
+std::optional<size_t> ConsoleMartActions::read_money(){
+    m_context.wait_for_all_requests();
+    const VideoSnapshot screen = m_console.video().snapshot();
+    if (!screen){
+        return std::nullopt;
+    }
+    return read_money_box(m_console.logger(), screen);
 }
 
 

@@ -19,8 +19,19 @@ namespace PokemonFRLG{
 
 //  The stored plan lines of 19.01a and after.
 inline constexpr std::string_view FRLG_PLAN_GOLDEN_19[] = {
-    "19.01a viridian_mart_clerk from ViridianCity_PokemonCenter_1F (7, 4) facing north to ViridianCity_Mart (4, 3) facing west",
+    "19.01a viridian_outside from ViridianCity_PokemonCenter_1F (7, 4) facing north to ViridianCity (26, 27) facing south",
     "19.01a   walk south 5 (warp) -> ViridianCity (26, 27) [walk only]",
+    "19.01a lavender_mart_clerk from LavenderTown (6, 6) facing south to LavenderTown_Mart (4, 3) facing west",
+    "19.01a   walk south 7 (to wall) -> LavenderTown (6, 13)",
+    "19.01a   walk east 11 (to wall) -> LavenderTown (17, 13)",
+    "19.01a   walk south 5 (to wall) -> LavenderTown (17, 18)",
+    "19.01a   walk east 3 -> LavenderTown (20, 18)",
+    "19.01a   walk north 3 (warp) -> LavenderTown_Mart (4, 7)",
+    "19.01a   walk north 4 -> LavenderTown_Mart (4, 3) [walk only]",
+    "19.01a   face west -> LavenderTown_Mart (4, 3) [walk only]",
+    "19.01a out_of_lavender_mart from LavenderTown_Mart (4, 3) facing west to LavenderTown (20, 16) facing south",
+    "19.01a   walk south 5 (warp) -> LavenderTown (20, 16) [walk only]",
+    "19.01a viridian_mart_clerk from ViridianCity (26, 27) facing south to ViridianCity_Mart (4, 3) facing west",
     "19.01a   walk south 2 -> ViridianCity (26, 29)",
     "19.01a   walk east 10 -> ViridianCity (36, 29)",
     "19.01a   walk north 10 (warp) -> ViridianCity_Mart (4, 7)",

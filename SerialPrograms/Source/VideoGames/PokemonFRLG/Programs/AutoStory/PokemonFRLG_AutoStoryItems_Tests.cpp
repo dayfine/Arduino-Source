@@ -40,6 +40,7 @@
 #include "PokemonFRLG_AutoStoryBattleTurns.h"
 #include "PokemonFRLG_AutoStoryEvolutionWait_Tests.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryRepelStep.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
 #include "PokemonFRLG_AutoStoryNewMembers.h"
 #include "PokemonFRLG_AutoStorySlopeRun.h"

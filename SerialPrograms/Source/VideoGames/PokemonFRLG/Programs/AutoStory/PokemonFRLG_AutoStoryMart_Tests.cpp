@@ -118,25 +118,6 @@ public:
         }
         return money_readable ? std::optional<size_t>(money) : std::nullopt;
     }
-    //  The clerk buys from `bag` at sale_price(), from facing the clerk.
-    virtual SaleEnd sell(const MartLine& sale) override{
-        const auto held = bag.find(sale.item);
-        const std::optional<size_t> price = sale_price(sale.item);
-        if (in_list || !price){
-            error = in_list ? "SELL from the BUY list" : "sold an item the clerk won't buy";
-            return SaleEnd::FAILED;
-        }
-        if (held == bag.end()){
-            return SaleEnd::NONE_IN_BAG;
-        }
-        const size_t quantity = std::min(sale.quantity, held->second);
-        held->second -= quantity;
-        if (held->second == 0){
-            bag.erase(held);
-        }
-        money += sales_unpaid ? 0 : quantity * *price;
-        return SaleEnd::SOLD;
-    }
 
 private:
     //  One UP or DOWN on the list (the stock, then CANCEL), as pokefirered's
@@ -186,6 +167,37 @@ private:
     //  The window: the list's row on its top, and the cursor's row in it.
     size_t m_scroll = 0;
     size_t m_row = 0;
+};
+
+//  The same Mart's SELL: the clerk buys from its `bag` at sale_price(),
+//  from facing the clerk.
+class FakeMartSell : public MartSellActions{
+public:
+    explicit FakeMartSell(FakeMart& mart)
+        : m_mart(mart)
+    {}
+
+    virtual SaleEnd sell(const MartLine& sale) override{
+        const auto held = m_mart.bag.find(sale.item);
+        const std::optional<size_t> price = sale_price(sale.item);
+        if (m_mart.in_list || !price){
+            m_mart.error = m_mart.in_list ? "SELL from the BUY list" : "sold an item the clerk won't buy";
+            return SaleEnd::FAILED;
+        }
+        if (held == m_mart.bag.end()){
+            return SaleEnd::NONE_IN_BAG;
+        }
+        const size_t quantity = std::min(sale.quantity, held->second);
+        held->second -= quantity;
+        if (held->second == 0){
+            m_mart.bag.erase(held);
+        }
+        m_mart.money += m_mart.sales_unpaid ? 0 : quantity * *price;
+        return SaleEnd::SOLD;
+    }
+
+private:
+    FakeMart& m_mart;
 };
 
 
@@ -424,7 +436,8 @@ UnitTestResult check_mart_case(const MartCase& item){
     if (item.setup){
         item.setup(mart);
     }
-    const MartResult result = run_mart(logger, mart, item.plan);
+    FakeMartSell sell(mart);
+    const MartResult result = run_mart(logger, mart, sell, item.plan);
     if (!mart.error.empty()){
         return item.name + ": " + mart.error;
     }

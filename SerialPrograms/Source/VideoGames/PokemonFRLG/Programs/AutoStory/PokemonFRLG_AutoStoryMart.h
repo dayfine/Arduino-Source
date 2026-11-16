@@ -64,6 +64,7 @@
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryMartBuys.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
+#include "PokemonFRLG_AutoStoryMartSell.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -96,7 +97,8 @@ struct MartResult{
 //  overworld. The money box, read once on the BUY list, checks the sales
 //  (it holds at least what they earned) and cuts an if_affordable line to
 //  what it covers; unread, the buys go on blind.
-MartResult run_mart(Logger& logger, MartActions& actions, const MartPlan& plan);
+//  The sales take their game steps from `sell`, the buys from `actions`.
+MartResult run_mart(Logger& logger, MartActions& actions, MartSellActions& sell, const MartPlan& plan);
 
 //  Formats a log message summarizing the Mart shopping result.
 std::string mart_message(const MartPlan& plan, const MartResult& result);
@@ -108,8 +110,8 @@ std::string mart_message(const MartPlan& plan, const MartResult& result);
 void count_supplies(Supplies& supplies, std::string_view item, size_t quantity);
 
 
-//  The console's Mart. The money box and the quantity box have no reader
-//  yet, so the quantity is typed by presses. Potions, Antidotes, Parlyz Heals and Awakenings bought are
+//  The console's Mart's BUY list. The money box is read with
+//  read_money_box(); the quantity is typed by presses. Potions, Antidotes, Parlyz Heals and Awakenings bought are
 //  counted into `supplies`.
 class ConsoleMartActions : public MartActions{
 public:
@@ -122,13 +124,8 @@ public:
     virtual PurchaseEnd buy(const MartBuy& buy) override;
     virtual bool leave() override;
     virtual std::optional<size_t> read_money() override;
-    virtual SaleEnd sell(const MartLine& sale) override;
 
 private:
-    //  From the bag: out to the overworld facing the clerk; `end`, or
-    //  FAILED if the overworld didn't come back.
-    SaleEnd back_to_clerk(SaleEnd end);
-
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     Language m_language;
