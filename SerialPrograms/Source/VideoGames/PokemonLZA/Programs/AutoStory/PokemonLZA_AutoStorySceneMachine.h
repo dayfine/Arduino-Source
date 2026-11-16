@@ -53,8 +53,11 @@ struct SceneMachineConfig{
     //  still frame longer than `quiet`.
     Milliseconds min_length = Milliseconds(0);
     //  Presses `blind_button` every 2 s once nothing busy and no sign of
-    //  control has shown for this long, for text the detectors miss (01.01's
-    //  ad). A does not skip a cutscene.
+    //  control has shown for this long, for a screen no detector reads
+    //  (03.04's Pokedex screens). Every screen a detector reads gets its
+    //  own state and press instead; nothing else is pressed blind: a blind
+    //  A at the end of a talk restarts it (01.02's battle area, console B
+    //  2026-11-15). A does not skip a cutscene.
     std::optional<Milliseconds> blind_press_after = std::nullopt;
     //  The button of those blind presses: B on a screen that A does not
     //  close (03.04's Pokedex entry, where A only plays its motions).
@@ -88,7 +91,9 @@ struct SceneMachineConfig{
     std::optional<size_t> end_after_black_fades = std::nullopt;
 };
 
-//  Presses through scenes until the controls hint or the party bar has
+//  Logs where the step should end ("[PLZA label] start, expecting the
+//  controls hint, ..."), then presses through scenes (a tutorial card,
+//  TUTORIAL_CARD_READING, gets A) until the controls hint or the party bar has
 //  held a second, or an A prompt has held a second past
 //  `config.min_length` (neither the party bar nor the prompt with
 //  `config.stop_at_choice` or `config.stop_at_battle`), or
