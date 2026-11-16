@@ -89,10 +89,14 @@ def attach(path, source, allowances, metrics):
     return allowed, errors
 
 
-def waive(path, source, allowances, findings):
+def waive(path, source, allowances, findings, whole_file=list):
     """(findings left, bypass notices, errors for style tags that attach to nothing).
 
-    A STYLE_CHECKS tag goes on the finding's line or in the comment block directly above it."""
+    A STYLE_CHECKS tag goes on the finding's line or in the comment block directly above it.
+    Style checks report only lines changed since the base, so a tag that a later PR in a stack
+    leaves untouched waives nothing there; `whole_file()` returns the style findings of the
+    whole file, and a tag that covers one of them still attaches. It runs only when a tag is
+    unused."""
     lines = normalized_lines(source)
     kept, notices, used = [], [], set()
     for finding in findings:
@@ -104,10 +108,14 @@ def waive(path, source, allowances, findings):
         used.add((tag.line, finding.check))
         notices.append(Finding(path, finding.line, f'{finding.check} bypassed by the tag at line '
                                f'{tag.line}: "{tag.justification}"'))
-    errors = [Finding(path, a.line, f'code-health tag: {check} attaches to nothing; put the tag '
-                      'on or directly above the flagged line')
-              for a in allowances for check in a.checks
+    unused = [(a, check) for a in allowances for check in a.checks
               if check in STYLE_CHECKS and (a.line, check) not in used]
+    if unused:
+        everything = whole_file()
+        unused = [(a, check) for a, check in unused
+                  if not any(f.check == check and covers(a, f, lines) for f in everything)]
+    errors = [Finding(path, a.line, f'code-health tag: {check} attaches to nothing; put the tag '
+                      'on or directly above the flagged line') for a, check in unused]
     return kept, notices, errors
 
 
