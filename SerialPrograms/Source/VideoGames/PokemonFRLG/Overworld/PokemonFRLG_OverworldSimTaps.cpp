@@ -63,6 +63,9 @@ void OverworldSim::take_steps(Direction direction, Milliseconds pressed, Millise
             m_state.facing = *step->facing;
         }
         pressed += after_slide(*step);
+        if (step->spin){
+            m_state.slide_end = pressed;
+        }
         if (after_step(*step, pressed)){
             return;
         }

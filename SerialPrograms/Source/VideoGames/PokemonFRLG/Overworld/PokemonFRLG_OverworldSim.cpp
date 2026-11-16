@@ -505,6 +505,19 @@ void OverworldSim::stuck_hold(Direction direction){
     }
 }
 
+//  A press that starts while a slide goes on (SimState::slide_end): the
+//  game reads none of it until the slide's end, and a press held past it
+//  walks on from there.
+void OverworldSim::lose_press_in_slide(Direction direction, Milliseconds end){
+    if (end <= m_state.slide_end){
+        m_state.presses_in_slide++;
+        note(std::format("the D-pad pressed {} during the slide is lost.", direction_name(direction)));
+        return;
+    }
+    advance_to(m_state.slide_end);
+    walk_hold(direction, end - m_state.slide_end, 0);
+}
+
 std::optional<SimSeen> OverworldSim::hold(
     Direction direction, Milliseconds duration, Milliseconds release, Milliseconds watch,
     const std::vector<SimWatcher>& watchers
@@ -518,6 +531,8 @@ std::optional<SimSeen> OverworldSim::hold(
     count_bike_leg(direction, duration);
     if (m_state.screen != SimScreen::OVERWORLD || m_frozen){
         stuck_hold(direction);
+    }else if (start < m_state.slide_end){
+        lose_press_in_slide(direction, start + duration);
     }else if (m_state.on_bike && duration <= MovementMechanics::LONGEST_TAP && drops_bike_tap(start)){
         //  Dropped: no step.
     }else if (duration <= MovementMechanics::LONGEST_TAP && m_state.facing == direction){
@@ -538,6 +553,9 @@ void OverworldSim::tap(Direction direction, Milliseconds duration, Milliseconds 
     m_bike_leg_direction.reset();
     if (m_state.screen != SimScreen::OVERWORLD || m_frozen || start < m_battle_lockout_end){
         stuck_hold(direction);
+        m_last_tap.reset();
+    }else if (start < m_state.slide_end){
+        lose_press_in_slide(direction, start + duration);
         m_last_tap.reset();
     }else if (m_last_tap && m_last_tap->direction == direction && m_last_tap->end == start){
         hold_on(direction, start + duration);
@@ -842,7 +860,6 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     if (result.stopped){
         return dark_stop(step, walked_near(step, result.tiles, TILE_TIME));
     }
-    wait_out_slide(step);
     const Milliseconds fade_watched_from = m_rules.watch_fade_along_hold ? m_leg_start : m_sim.state().time;
     if (step.warps && !after_warp(step, warps_before, fade_watched_from)){
         if (!m_rules.find_player_after_warp_battle){

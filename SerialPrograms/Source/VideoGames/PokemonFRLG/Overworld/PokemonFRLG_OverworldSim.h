@@ -176,6 +176,7 @@ private:
     void step_tap(Direction direction, Milliseconds duration);
     void hold_on(Direction direction, Milliseconds end);
     void stuck_hold(Direction direction);
+    void lose_press_in_slide(Direction direction, Milliseconds end);
     void bump(Direction direction, Milliseconds pressed);
     std::optional<Step> press(Direction direction) const;
     std::optional<Step> take_warp(int map_index, const TilePos& tile) const;

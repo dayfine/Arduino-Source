@@ -204,6 +204,14 @@ const ReplayCase CONSOLE_FAILURE_CASES[] = {
             .arrives = true,
         },
     },
+    {
+        .name = "17.03-21-12-takashi-press-lost-in-slide",
+        .input = {},
+        .expectation = {
+            .description = "the leg after a hold onto a spinner waits for the slide to end, so its press isn't lost",
+            .arrives = true,
+        },
+    },
 };
 
 } // namespace

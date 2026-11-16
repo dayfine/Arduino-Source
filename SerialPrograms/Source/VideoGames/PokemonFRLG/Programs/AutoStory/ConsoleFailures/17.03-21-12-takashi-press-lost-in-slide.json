@@ -1,0 +1,18 @@
+{
+  "about": "lab-B 2026-11-15 21:12, FRLG 17.03 right_of_takashi (lab build b3c27976f, 3 of 3 attempts the same): from Warren's (15, 7) the legs east 1 to the wall, south 6 down the arrow (16, 13) to the stop (16, 15) and east 3 to the wall ended as planned. \"north 1\" stepped onto the up arrow (19, 14), which slides the player 11 tiles up column 19 to the stop (19, 3); the walker let go of its 133ms hold and, with no wait for the slide (walk_hold_step() has none), held the next \"north 1\" 1.1 s later, while the slide still went on (its shot shows the player half-way up the column). The game lost that press: the player stayed on the stop (19, 3) under the left arrow (19, 2) (the leg's shot), the walk logged \"arrived at (11, 2)\" and A beside Takashi met nothing. No fault is injected: the overworld simulation loses a press made during a slide, as the game does, and the walk must arrive on (11, 2).",
+  "checkpoint": "17.03",
+  "start": {"map": "ViridianCity_Gym", "tile": [15, 7], "facing": "north"},
+  "walk": {
+    "event": "right_of_takashi",
+    "legs": [["east", 1], ["south", 6], ["east", 3], ["north", 1], ["north", 1]]
+  },
+  "faults": [],
+  "failed": {"step": "challenge_takashi", "error": "no_message: talk: A opened no message; nothing to talk to or pick up here. class=screen_unread"},
+  "frame": "20261115-211214915419-17.03-1_right_of_takashi-north_1_open_.png",
+  "evidence": [
+    "[Route] right_of_takashi: north 1 (open): ended at ViridianCity_Gym (19, 3) (walked).",
+    "[Route] right_of_takashi: north 1 (open): ended at ViridianCity_Gym (11, 2) (walked).",
+    "[Route] right_of_takashi: arrived at ViridianCity_Gym (11, 2).",
+    "[Event] 17.03/3 challenge_takashi: failed: no_message: talk: A opened no message; nothing to talk to or pick up here. class=screen_unread"
+  ]
+}
