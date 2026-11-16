@@ -55,13 +55,16 @@ retried request safe, and an event log. None of it presses buttons yet.
 
 ## What comes next
 
-| Slice | What you would get |
-|---|---|
-| 4 (rest) | FRLG AutoStory's start checks listed and run before any press (fork #488) |
-| 5 | Leased actions: an agent asks to run or stop a program; the server checks the program's start checks first and refuses on a failed one, and refuses whenever you hold the console. Every action gets exactly one record. |
-| 6 | Save facts: the server knows which save is on the console and refuses a run that would start from the wrong one; run records become readable |
-| 7 | The server launches and supervises the lab app itself, so a build always starts with the right profile |
-| 8 | Optional: a local worker for routine operations |
+Each feature has a user page, marked **DRAFT** until it is built and switched on. The drafts
+are updated as each piece lands.
+
+| Slice | What you would get | Page |
+|---|---|---|
+| 4 (rest) | Every program lists what it needs before it starts; FRLG AutoStory's list is next (fork #488) | [start-checks.md](guide/start-checks.md) |
+| 5 | Leased actions: an agent asks to run or stop a program; the server refuses whenever you hold the console, and (5b) when a start check fails. Every action gets exactly one record. 5a is built in #592, not switched on. | [actions.md](guide/actions.md) |
+| 6 | Save facts: the server knows which save is on the console and refuses a run that would start from the wrong one; run records become readable | [saves.md](guide/saves.md) |
+| 7 | The server launches and supervises the lab app itself, so a build always starts with the right profile | [app-lifecycle.md](guide/app-lifecycle.md) |
+| 8 | Optional: a local worker for builds and test runs | [worker.md](guide/worker.md) |
 
 ## Limits
 
