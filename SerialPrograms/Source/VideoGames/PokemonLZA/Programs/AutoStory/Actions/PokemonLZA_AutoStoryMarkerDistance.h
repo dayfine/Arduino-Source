@@ -15,6 +15,7 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryMarkerDistance_H
 
 #include <optional>
+#include <vector>
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -36,11 +37,14 @@ public:
         : m_direction(direction)
     {}
 
-    //  A distance read (above 0) on a look. A read more than 12 from the
-    //  last one taken is a misread (a step covers about 3; 36 read as "3",
-    //  110 as "1110" on console B, 2026-11-13), unless three in a row
-    //  agree: then the last one taken was the wrong one. Returns whether
-    //  the read is taken.
+    //  A distance read (above 0) on a look. It is taken when it is within
+    //  12 of position(), or when two of the last three reads not taken
+    //  agree with it (each within 12, moved on by the steps since it).
+    //  Else it is a misread (a step covers about 3; 36 read as "3", 110 as
+    //  "1110" on console B, 2026-11-13): so the first read is taken only
+    //  once three agree (03.08 run 2, console B 2026-11-16: a lone "1" at
+    //  about 135 ended the walk to 100 at once), and three that agree
+    //  replace a wrong last one. Returns whether the read is taken.
     bool read(int distance);
 
     //  A step on, in the walk's direction: counted until the next read is
@@ -66,10 +70,19 @@ public:
     bool reached(int stop_at) const;
 
 private:
+    //  A read not taken, and the walk's step count when it came.
+    struct Untaken{
+        int distance;
+        int step;
+    };
+
+    //  `read` moved on by the steps since it.
+    int moved_on(const Untaken& read) const;
+
     const MarkerDirection m_direction;
     std::optional<int> m_last;
-    std::optional<int> m_rejected_read;
-    int m_rejected = 0;
+    std::vector<Untaken> m_untaken;     //  the last three, oldest first
+    int m_steps = 0;
     int m_steps_unread = 0;
 };
 

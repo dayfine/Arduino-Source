@@ -60,6 +60,22 @@ const StopWalkCase STOP_WALK_CASES[] = {
         .expectation = {.stopped_on = 14, .position = 100},
     },
     {
+        .name = "03.08's walk to 100 takes no lone 1 at its start",
+        .input = {
+            .direction = MarkerDirection::TOWARD,
+            .stop_at = 100,
+            //  console B, 2026-11-16 07:33:56: the first look read "1" with
+            //  the marker at about 135, and the walk stopped there at once.
+            .reads = {1, 135, 132, 129, 126, 123, 120, 117, 114, 111, 108, 105, 102, 99},
+        },
+        .expectation = {.stopped_on = 14, .position = 99},
+    },
+    {
+        .name = "a lone misread among a walk's first reads does not hold back the start",
+        .input = {.direction = MarkerDirection::TOWARD, .stop_at = 100, .reads = {130, 7, 124, 121, 118, 115, 112, 109, 106, 103, 100}},
+        .expectation = {.stopped_on = 11, .position = 100},
+    },
+    {
         .name = "a walk back stops on the read at its stop",
         .input = {.direction = MarkerDirection::BACK, .stop_at = 100, .reads = {60, 66, 75, 84, 93, 101, 108}},
         .expectation = {.stopped_on = 6, .position = 101},
