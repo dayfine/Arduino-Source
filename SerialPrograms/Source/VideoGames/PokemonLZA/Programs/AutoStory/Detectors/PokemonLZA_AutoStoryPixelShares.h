@@ -24,11 +24,14 @@ template <typename Matches>
 double share_of(const ImageViewRGB32& screen, const ImageFloatBox& box, Matches&& matches);
 
 //  The share of `box`'s pixels that glow cyan: blue over red by 50, green
-//  over red by 30, blue over 120.
+//  over red by 30, blue over 120, and blue at least green less 20. The last
+//  keeps out mint and sign green (about 96, 203, 147 on a building banner),
+//  which have green far over blue.
 double cyan_share(const ImageViewRGB32& screen, const ImageFloatBox& box);
 
 //  The share of `box`'s pixels that glow cyan, dim too: blue over red by
-//  40, green over red by 25, blue over 70. The autosave badge's glow over a
+//  40, green over red by 25, blue over 70, blue at least green less 20.
+//  The autosave badge's glow over a
 //  dark or warm scene (a lamp-lit wall: about 28, 70, 85) is too dim for
 //  cyan_share().
 double dim_cyan_share(const ImageViewRGB32& screen, const ImageFloatBox& box);

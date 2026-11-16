@@ -13,13 +13,15 @@ namespace PokemonLZA{
 
 double cyan_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
     return share_of(screen, box, [](Color pixel){
-        return pixel.blue() > pixel.red() + 50 && pixel.green() > pixel.red() + 30 && pixel.blue() > 120;
+        return pixel.blue() > pixel.red() + 50 && pixel.green() > pixel.red() + 30 && pixel.blue() > 120 &&
+            pixel.blue() + 20 >= pixel.green();
     });
 }
 
 double dim_cyan_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
     return share_of(screen, box, [](Color pixel){
-        return pixel.blue() > pixel.red() + 40 && pixel.green() > pixel.red() + 25 && pixel.blue() > 70;
+        return pixel.blue() > pixel.red() + 40 && pixel.green() > pixel.red() + 25 && pixel.blue() > 70 &&
+            pixel.blue() + 20 >= pixel.green();
     });
 }
 
