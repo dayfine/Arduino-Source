@@ -109,6 +109,8 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/Cpp/Json/JsonObject.h
     ../Common/Cpp/Json/JsonTools.cpp
     ../Common/Cpp/Json/JsonTools.h
+    ../Common/Cpp/Json/JsonTools_Tests.cpp
+    ../Common/Cpp/Json/JsonTools_Tests.h
     ../Common/Cpp/Json/JsonValue.cpp
     ../Common/Cpp/Json/JsonValue.h
     ../Common/Cpp/LifetimeSanitizer.cpp
