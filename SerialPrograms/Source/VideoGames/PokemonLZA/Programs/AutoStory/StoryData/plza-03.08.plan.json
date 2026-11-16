@@ -17,7 +17,7 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends at the last catch: each catch autosaves, and the 2026-11-14 run logs showed that autosave after the catches, logged at the far-gate walk (zone_1_to_far_gate) on plza/autostory, so 03.08 is split there (03.08b walks out). Short on species, it fails inside the zone. The catches' autosave stays the save (03.07's catch autosaves at after_catches, four run logs); the badge 20 s into catch_more_species on console B, 2026-11-16, was the game's autosave on leaving the zone: the walk to the 100 stop lost the marker's digits after 109, walked on blind out into the city and read 37 there, by a market stall, with no catch before it. No split: a run that stays in the zone sees no badge before its catches."
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends at the last catch: each catch autosaves, and the 2026-11-14 run logs showed that autosave after the catches, logged at the far-gate walk (zone_1_to_far_gate) on plza/autostory, so 03.08 is split there (03.08b walks out). Short on species, it fails inside the zone. Its start save is 03.07's after_catches autosave: runs 2 and 3 on console B, 2026-11-16, reloaded the latest save at Taunie's rocks inside the zone."
     }
   },
   "execution": {
