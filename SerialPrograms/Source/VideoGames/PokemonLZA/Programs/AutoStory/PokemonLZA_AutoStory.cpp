@@ -33,7 +33,7 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
         "Play the main story of Pokemon Legends: Z-A. Prototype: from a new game to the end of Main Mission 01, picking Chikorita. "
-        "Checkpoint 01.00 starts a new game (delete the save first) from the HOME screen with the game closed, its tile among the first 8, "
+        "Checkpoint 01.00 starts a new game (delete the save first) from the HOME screen (its tile among the first 8; a running game is closed), "
         "from the language list, or from Confirm Choices, with the language, look and name below. "
         "Later checkpoints load the latest save first, unless that is turned off.",
         PanelQualityStanding::DEVELOPER,

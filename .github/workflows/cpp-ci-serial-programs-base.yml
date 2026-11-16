@@ -247,9 +247,9 @@ jobs:
         with:
           # The fork's fixtures: upstream's plus the PLZA AutoStory frames (Confirm Choices, opening and arrival folders), dayfine/CommandLineTests PR #18,
           # and the 01.01 banner and controls hint in English and Italian (branch plza/hint-banner-any-language),
-          # and the 01.00 new game frames, HOME tiles and the 01.02 Italian choice menu and talk prompt (branch plza/new-game-intro). Fork-only pin: dropped at upstream handoff.
+          # and the 01.00 new game frames, HOME tiles (FireRed first, Z-A second too) and the 01.02 Italian choice menu and talk prompt (branch plza/new-game-intro). Fork-only pin: dropped at upstream handoff.
           repository: 'dayfine/CommandLineTests'
-          ref: '848e0b03a03d9cdca580f21f3389486478d52f4d'
+          ref: 'd0deaebe6fa2f623770b1233cc76cd056cc97ecc'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded

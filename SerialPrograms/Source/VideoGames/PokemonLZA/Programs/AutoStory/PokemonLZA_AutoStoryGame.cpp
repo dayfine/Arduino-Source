@@ -19,11 +19,13 @@
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Data/Pokemon_StoryFiles.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h"
+#include "VideoGames/PokemonLZA/PokemonLZA_Settings.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatches.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryConfirmChoices.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLaunch.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLines.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerWalk.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame.h"
@@ -50,6 +52,10 @@ using Handler = Pokemon::StoryActionHandler<ZonePose>;
 
 
 namespace{
+
+//  After a reload reaches the overworld, before the first look: the wait
+//  reset_game_from_home() takes by default.
+constexpr Milliseconds RELOAD_SETTLE = 1000ms;
 
 
 StoryActionSpec game_spec(std::string name, std::vector<StoryArgSpec> args = {}){
@@ -148,13 +154,19 @@ std::vector<StoryActionSpec> make_specs(){
 }
 
 
-//  The game onto its latest save by reset_game_from_home(). Fails as
-//  "launch_failed".
+//  The game onto its latest save: PLZA launched by launch_plza_from_home()
+//  (its own tile, whichever game ran), then reset_game_from_home()'s title
+//  and load. Fails as "launch_failed".
 Outcome reload_latest_save(StoryEnv& env){
-    go_home(env.env.console, env.context);
-    if (!reset_game_from_home(env.env, env.env.console, env.context, /*backup_save=*/false)){
+    ConsoleHandle& console = env.env.console;
+    launch_plza_from_home(console, env.context);
+    const bool loaded =
+        openedgame_to_gamemenu(console, env.context, GameSettings::instance().START_GAME_WAIT) &&
+        gamemenu_to_ingame(console, env.context, GameSettings::instance().ENTER_GAME_WAIT0);
+    if (!loaded){
         return Pokemon::outcome_failed("launch_failed", "the game did not reach the overworld after the reload");
     }
+    env.context.wait_for(RELOAD_SETTLE);
     return Pokemon::outcome_ok();
 }
 
@@ -514,9 +526,10 @@ Outcome text_to_choice_step(Pokemon::StoryBackend<ZonePose>& backend, const Stor
 
 
 //  A step's scene ("scene" "a"): A through its text until the party bar
-//  holds a second, 120 s at most. Fails as "scene_never_started" when
-//  neither text, a choice, a battle nor control shows within 45 s: the
-//  player is not at the scene's trigger.
+//  holds a second, 120 s at most; a cutscene with no text and no HUD is
+//  waited out. Fails as "scene_never_started" when the HUD shows 45 s with
+//  no text, choice, battle or cutscene: the player is not at the scene's
+//  trigger.
 Outcome scene_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
     SceneMachineConfig config;
     config.start_window = 45s;
