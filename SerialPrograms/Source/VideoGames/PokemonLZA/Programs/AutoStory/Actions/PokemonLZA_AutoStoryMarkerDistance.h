@@ -29,11 +29,24 @@ enum class MarkerDirection{
     BACK,
 };
 
-//  What a walk by the marker does after a look.
+//  What a walk by the marker does after a look. With no read taken, it
+//  stands and reads again, and every third look in a row with none it
+//  tries a new view: the camera nudged a little left, then right, then a
+//  short step to the side of the marker's line, left then right, each
+//  further out, 4 at most; then it ends. Never a step toward or away
+//  without a read taken: in run 4 of 03.08 (console B, 2026-11-16) an
+//  NPC's speech bubble sat over the marker's digits, and re-centering put
+//  the marker right back under it.
 enum class MarkerMove{
-    STEP,       //  a read taken, the stop not reached: a step on
-    RECENTER,   //  no read taken on this look: stand, re-center, read again
-    ARRIVED,    //  a read taken at the stop (or, toward, at the floor)
+    STEP,               //  a read taken, the stop not reached: a step on
+    RECENTER,           //  no read taken: stand, the camera back onto the marker, read again
+    REREAD,             //  no read taken after a nudge: stand, the camera kept where it is, read again
+    NUDGE_CAMERA_LEFT,  //  the third look with none: the camera a little left, read again
+    NUDGE_CAMERA_RIGHT,
+    SIDESTEP_LEFT,      //  still none after both nudges: re-center, a short step left, read again
+    SIDESTEP_RIGHT,
+    BLOCKED,            //  still none after every sidestep: the walk ends
+    ARRIVED,            //  a read taken at the stop (or, toward, at the floor)
 };
 
 //  Where a walk by the marker is: its last distance read taken.
@@ -58,7 +71,8 @@ public:
 
     //  A look with `distance` read (none: no digits): STEP or ARRIVED
     //  only when the read is taken, ARRIVED at `stop_at` or past it in the
-    //  walk's direction (toward: at the floor too); else RECENTER.
+    //  walk's direction (toward: at the floor too); else what the walk
+    //  does for a new view (MarkerMove), by the looks in a row with none.
     MarkerMove next(std::optional<int> distance, int stop_at);
 
     //  The last read taken, if any.
@@ -68,11 +82,13 @@ public:
 
 private:
     bool reached(int stop_at) const;
+    MarkerMove unread_move();
 
     const MarkerDirection m_direction;
     const std::optional<int> m_floor;
     std::optional<int> m_last;
     std::vector<int> m_untaken;     //  the last three reads not taken, oldest first
+    size_t m_unread_looks = 0;      //  looks in a row with no read taken
 };
 
 

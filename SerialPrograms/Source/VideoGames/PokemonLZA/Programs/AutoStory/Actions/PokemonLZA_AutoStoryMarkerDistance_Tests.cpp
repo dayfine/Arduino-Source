@@ -38,9 +38,12 @@ struct StopWalkCase{
         //  The look the walk arrives on (1-based); none: it never does.
         std::optional<size_t> arrived_on;
         std::optional<int> position;
-        //  The steps on, toward or back, before it arrived or ran out of
-        //  looks.
+        //  The steps on, toward or back, before it arrived, was blocked or
+        //  ran out of looks.
         int steps = 0;
+        //  The new views tried with no read taken (nudges, sidesteps), and
+        //  BLOCKED last when the walk ends on it.
+        std::vector<MarkerMove> views;
     };
     Expectation expectation;
 };
@@ -48,9 +51,15 @@ struct StopWalkCase{
 //  Wild Zone 1's floor: 3 short of the stop at 60, just before the far gate.
 constexpr int ZONE_FLOOR = 57;
 
+constexpr MarkerMove NUDGE_LEFT = MarkerMove::NUDGE_CAMERA_LEFT;
+constexpr MarkerMove NUDGE_RIGHT = MarkerMove::NUDGE_CAMERA_RIGHT;
+constexpr MarkerMove SIDESTEP_LEFT = MarkerMove::SIDESTEP_LEFT;
+constexpr MarkerMove SIDESTEP_RIGHT = MarkerMove::SIDESTEP_RIGHT;
+constexpr MarkerMove BLOCKED = MarkerMove::BLOCKED;
+
 const StopWalkCase STOP_WALK_CASES[] = {
     {
-        .name = "03.08's walk to 100 stands and re-reads when the digits stop reading after 109",
+        .name = "03.08's walk to 100 stands, tries new views and ends blocked when the digits stop reading after 109",
         .input = {
             .direction = MarkerDirection::TOWARD,
             .stop_at = 100,
@@ -65,7 +74,10 @@ const StopWalkCase STOP_WALK_CASES[] = {
                 NO_DIGITS, NO_DIGITS, NO_DIGITS, NO_DIGITS, NO_DIGITS, 42, 39, 37,
             },
         },
-        .expectation = {.arrived_on = std::nullopt, .position = 109, .steps = 4},
+        .expectation = {
+            .arrived_on = std::nullopt, .position = 109, .steps = 4,
+            .views = {NUDGE_LEFT, NUDGE_LEFT, NUDGE_RIGHT, SIDESTEP_LEFT, SIDESTEP_RIGHT, SIDESTEP_LEFT, SIDESTEP_RIGHT, BLOCKED},
+        },
     },
     {
         .name = "03.08's walk to 100 goes on to 100 once the digits read again after the garbage",
@@ -75,7 +87,7 @@ const StopWalkCase STOP_WALK_CASES[] = {
             .floor = ZONE_FLOOR,
             .reads = {120, 120, 120, 109, NO_DIGITS, 1, 181, 21, NO_DIGITS, 109, 106, 103, 100},
         },
-        .expectation = {.arrived_on = 13, .position = 100, .steps = 5},
+        .expectation = {.arrived_on = 13, .position = 100, .steps = 5, .views = {NUDGE_LEFT}},
     },
     {
         .name = "03.08's walk to 100 takes no lone 1 at its start",
@@ -87,7 +99,7 @@ const StopWalkCase STOP_WALK_CASES[] = {
             //  the marker at about 135, and the walk stopped there at once.
             .reads = {1, 135, 135, 135, 132, 129, 126, 123, 120, 117, 114, 111, 108, 105, 102, 99},
         },
-        .expectation = {.arrived_on = 16, .position = 99, .steps = 12},
+        .expectation = {.arrived_on = 16, .position = 99, .steps = 12, .views = {NUDGE_LEFT}},
     },
     {
         .name = "03.08's walk to 100 takes no 1, 1, 4 at the rocks as a start",
@@ -100,12 +112,12 @@ const StopWalkCase STOP_WALK_CASES[] = {
             //  1 and 4, and the walk ended at once.
             .reads = {1, 1, 4, 120, 120, 120, 117, 114, 111, 108, 105, 102, 99},
         },
-        .expectation = {.arrived_on = 13, .position = 99, .steps = 7},
+        .expectation = {.arrived_on = 13, .position = 99, .steps = 7, .views = {NUDGE_LEFT}},
     },
     {
         .name = "03.08's start reads of 1, 1 and 4 at the rocks give no position",
         .input = {.direction = MarkerDirection::TOWARD, .stop_at = 100, .floor = ZONE_FLOOR, .reads = {1, 1, 4, 1, 4}},
-        .expectation = {.arrived_on = std::nullopt, .position = std::nullopt, .steps = 0},
+        .expectation = {.arrived_on = std::nullopt, .position = std::nullopt, .steps = 0, .views = {NUDGE_LEFT}},
     },
     {
         .name = "a walk toward stops at its floor on reads that agree below the stop",
@@ -115,7 +127,7 @@ const StopWalkCase STOP_WALK_CASES[] = {
     {
         .name = "a lone misread among a walk's first reads does not hold back the start",
         .input = {.direction = MarkerDirection::TOWARD, .stop_at = 100, .floor = ZONE_FLOOR, .reads = {130, 7, 130, 130, 127, 124, 121, 118, 115, 112, 109, 106, 103, 100}},
-        .expectation = {.arrived_on = 14, .position = 100, .steps = 10},
+        .expectation = {.arrived_on = 14, .position = 100, .steps = 10, .views = {NUDGE_LEFT}},
     },
     {
         .name = "a walk back stops on the read at its stop",
@@ -123,9 +135,43 @@ const StopWalkCase STOP_WALK_CASES[] = {
         .expectation = {.arrived_on = 10, .position = 101, .steps = 7},
     },
     {
+        .name = "03.08's walk to 100 nudges the camera, then sidesteps, when a speech bubble hides the digits",
+        .input = {
+            .direction = MarkerDirection::TOWARD,
+            .stop_at = 100,
+            .floor = ZONE_FLOOR,
+            //  run 4, console B, 2026-11-16 12:44 to 12:46: taken at 120 and
+            //  114, then an NPC's bubble over the marker read nothing, 1, 4,
+            //  5, 7, 14 and 22; a step to the side clears it.
+            .reads = {
+                120, 120, 120, 117, 114,
+                NO_DIGITS, 1, 4, 5, 7, 14, 22, NO_DIGITS, 4,
+                111, 108, 105, 102, 99,
+            },
+        },
+        .expectation = {.arrived_on = 19, .position = 99, .steps = 7, .views = {NUDGE_LEFT, NUDGE_RIGHT, SIDESTEP_LEFT}},
+    },
+    {
+        .name = "a walk whose digits stay hidden ends after two nudges and four sidesteps",
+        .input = {
+            .direction = MarkerDirection::TOWARD,
+            .stop_at = 100,
+            .floor = ZONE_FLOOR,
+            .reads = {
+                120, 120, 120, 114,
+                22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22,
+                111, 108,
+            },
+        },
+        .expectation = {
+            .arrived_on = std::nullopt, .position = 114, .steps = 2,
+            .views = {NUDGE_LEFT, NUDGE_RIGHT, SIDESTEP_LEFT, SIDESTEP_RIGHT, SIDESTEP_LEFT, SIDESTEP_RIGHT, BLOCKED},
+        },
+    },
+    {
         .name = "a walk with no distance read never steps",
         .input = {.direction = MarkerDirection::TOWARD, .stop_at = 100, .floor = ZONE_FLOOR, .reads = {NO_DIGITS, NO_DIGITS, NO_DIGITS, NO_DIGITS}},
-        .expectation = {.arrived_on = std::nullopt, .position = std::nullopt, .steps = 0},
+        .expectation = {.arrived_on = std::nullopt, .position = std::nullopt, .steps = 0, .views = {NUDGE_LEFT}},
     },
 };
 
@@ -134,11 +180,21 @@ std::string text(const std::optional<Type>& value){
     return value ? std::to_string(*value) : "none";
 }
 
-//  The walk's loop: each look's read decides a step, a re-read or the end.
+std::string text(const std::vector<MarkerMove>& views){
+    std::string out;
+    for (MarkerMove view : views){
+        out += std::format("{}{}", out.empty() ? "" : ",", (int)view);
+    }
+    return std::format("{{{}}}", out);
+}
+
+//  The walk's loop: each look's read decides a step, a re-read, a new view
+//  or the end.
 UnitTestResult check_stop_walk(const StopWalkCase& test){
     MarkerDistance distance(test.input.direction, test.input.floor);
     std::optional<size_t> arrived_on;
     int steps = 0;
+    std::vector<MarkerMove> views;
     for (size_t look = 0; look < test.input.reads.size(); look++){
         const MarkerMove move = distance.next(test.input.reads[look], test.input.stop_at);
         if (move == MarkerMove::ARRIVED){
@@ -147,14 +203,19 @@ UnitTestResult check_stop_walk(const StopWalkCase& test){
         }
         if (move == MarkerMove::STEP){
             steps++;
+        }else if (move != MarkerMove::RECENTER && move != MarkerMove::REREAD){
+            views.push_back(move);
+        }
+        if (move == MarkerMove::BLOCKED){
+            break;
         }
     }
     const StopWalkCase::Expectation& expected = test.expectation;
-    if (arrived_on != expected.arrived_on || distance.position() != expected.position || steps != expected.steps){
+    if (arrived_on != expected.arrived_on || distance.position() != expected.position || steps != expected.steps || views != expected.views){
         return std::format(
-            "expected arrived on look {} at {} after {} steps, got look {} at {} after {} steps",
-            text(expected.arrived_on), text(expected.position), expected.steps,
-            text(arrived_on), text(distance.position()), steps
+            "expected arrived on look {} at {} after {} steps and views {}, got look {} at {} after {} steps and views {}",
+            text(expected.arrived_on), text(expected.position), expected.steps, text(expected.views),
+            text(arrived_on), text(distance.position()), steps, text(views)
         );
     }
     return true;
