@@ -25,7 +25,7 @@ namespace PokemonLZA{
 
 
 //  Waits for free control: two looks in a row 250 ms apart with a sign of
-//  control (the party bar, the station platform) and no advance arrow,
+//  control (the party bar, the station platform, the controls hint) and no advance arrow,
 //  dialog box or fade. The end of a scene is not control: 01.01's scenes
 //  end ~7 s before it. Where no sign shows (Hotel Z), 10 s with none of
 //  those is taken as control. Fails as "walk_not_free" when neither comes

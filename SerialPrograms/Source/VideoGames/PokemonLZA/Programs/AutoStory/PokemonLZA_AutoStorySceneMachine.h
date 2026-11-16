@@ -43,11 +43,19 @@ struct SceneMachineConfig{
     //  shown for this long, for text the detectors miss (01.01's ad). A does
     //  not skip a cutscene.
     std::optional<Milliseconds> blind_press_after = std::nullopt;
+    //  Ends once this many black fades have been waited out and the screen
+    //  has then shown no text, fade or banner for 2 s, and takes the
+    //  mission banner for part of the scene, not its end: 01.01's arrival
+    //  ends on its second black fade after the ad, which follows the
+    //  banner (console B, 2026-11-15; the banner detector missed it on the
+    //  Italian game). Text after the last fade waits for the next one.
+    std::optional<size_t> end_after_black_fades = std::nullopt;
 };
 
 //  Presses through scenes until the controls hint has held a second, or
 //  the mission banner has shown on two looks (then waits up to 10 s for it
-//  to go), on run_screen_machine(). `label` names its log lines ("[PLZA
+//  to go), or with `config.end_after_black_fades` its last fade has lifted
+//  and settled, on run_screen_machine(). `label` names its log lines ("[PLZA
 //  mash_to_move_hints] screen 2: dialog at 1.5s: text box"). Fails as "scene_quiet" on the
 //  quiet end, "scene_timeout" when `timeout` passes (by the looks' time),
 //  and "scene_stuck" on a state that comes up too often or a screen that

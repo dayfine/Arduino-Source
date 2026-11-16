@@ -70,7 +70,12 @@ std::vector<StoryActionSpec> make_specs(){
                 .why = "\"fade_white\", \"fade_black\" or \"dialog\": the last leg is held until it shows, its ms the bound",
             },
         }),
-        game_spec("mash_to_move_hints"),
+        game_spec("mash_to_move_hints", {
+            StoryArgSpec{
+                .key = "end_after_black_fades", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
+                .why = "end once this many black fades have lifted and settled; the mission banner does not end it",
+            },
+        }),
     };
 }
 
@@ -231,16 +236,26 @@ Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
 //  "mash_to_move_hints": A through the scenes (a choice takes its top
 //  row, the advance chevron its text) until the player has control: the
 //  controls hint held a second, or a main mission's banner on two looks
-//  (01.01's arrival ends on "MAIN MISSION 01"; the step returns once it has
-//  gone, 10 s at most). 01.01's arrival takes ~240 s on the console, hence
+//  (the step returns once it has gone, 10 s at most). With
+//  "end_after_black_fades", that many black fades lifted and settled end
+//  it instead of the banner: 01.01's arrival goes ad, loading, a fade from
+//  black, the rival's talk, Pancham, the "MAIN MISSION 01" banner, a
+//  second black fade, then control (console B, 2026-11-15; the banner
+//  detector missed the banner on the Italian game, and control came ~7 s
+//  after it). The next step's walk waits for control (check_can_walk()).
+//  01.01's arrival takes ~240 s on the console, hence
 //  360 s. A text-free cutscene (01.01's city flyover, ~20 s) is not
 //  control: a minute with nothing busy fails the step. After 5 s with
 //  nothing busy and no sign of control, A every 2 s, for text the detectors
 //  miss (01.01's ad).
-Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
     SceneMachineConfig config;
     config.quiet = 60s;
     config.blind_press_after = 5s;
+    const auto fades = call.args.find("end_after_black_fades");
+    if (fades != call.args.end()){
+        config.end_after_black_fades = (size_t)std::get<int64_t>(fades->second);
+    }
     return run_scene_machine(backend, "mash_to_move_hints", config, 360s);
 }
 

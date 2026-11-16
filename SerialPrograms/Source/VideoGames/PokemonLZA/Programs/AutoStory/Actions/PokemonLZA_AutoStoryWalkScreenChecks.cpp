@@ -47,10 +47,12 @@ std::string_view not_free_control(const ScreenObservation& look){
     return "";
 }
 
-//  A sign that the player has control: the party bar, or the station
-//  platform after the opening (PlatformArrivalDetector).
+//  A sign that the player has control: the party bar, the station
+//  platform after the opening (PlatformArrivalDetector), or the
+//  tutorial's controls hint.
 bool control_shows(const ScreenObservation& look){
-    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.readings.contains(PLATFORM_READING);
+    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.readings.contains(PLATFORM_READING) ||
+        look.readings.contains(CONTROLS_HINT_READING);
 }
 
 } // namespace
