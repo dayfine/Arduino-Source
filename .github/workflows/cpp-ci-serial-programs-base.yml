@@ -22,9 +22,16 @@ on:
         type: boolean
         default: false
 
+      # The build job's limit; GitHub's default is 360. The fork's draft CI
+      # passes 60, so a test that hangs fails the run instead of holding a runner.
+      timeout-minutes:
+        type: number
+        default: 360
+
 jobs:
   build:
     runs-on: ${{inputs.os}}
+    timeout-minutes: ${{inputs.timeout-minutes}}
 
     steps:
       - name: Set variables
