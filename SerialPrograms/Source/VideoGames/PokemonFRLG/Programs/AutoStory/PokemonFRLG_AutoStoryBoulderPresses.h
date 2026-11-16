@@ -23,8 +23,6 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  A boulder push's taps on the console: step taps, each read from shots of
-//  the screen before it and once still after it.
 //  Strength on, at the boulder `direction` of the player on `here`: A,
 //  YES to "Would you like to use STRENGTH?", its message closed. If A
 //  shows nothing (the overworld stays quiet), no boulder is there: returns
@@ -33,6 +31,8 @@ namespace PokemonFRLG{
 //  into and waited 60 s for a YES/NO (console B, 2026-11-16).
 std::optional<std::string> use_strength(ConsoleHandle& console, ProControllerContext& context, const MapPosition& here, Direction direction);
 
+//  A boulder push's taps on the console: step taps, each read from shots of
+//  the screen before it and once still after it.
 class ConsoleBoulderPresses : public BoulderPresses{
 public:
     ConsoleBoulderPresses(ConsoleHandle& console, ProControllerContext& context, PlayerGender player);
