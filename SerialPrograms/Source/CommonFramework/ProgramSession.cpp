@@ -4,9 +4,11 @@
  *
  */
 
+#include <format>
 #include <future>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/PanicDump.h"
+#include "Common/Cpp/ScopeExit.h"
 #include "Common/Cpp/Logging/GlobalLogger.h"
 #include "CommonFramework/GlobalSettingsPanel.h"
 #include "CommonFramework/Logging/Logger.h"
@@ -40,6 +42,20 @@ ProgramSession::RunningProgramScope::RunningProgramScope(ProgramSession& session
             PA_CURRENT_FUNCTION,
             "Program is already running."
         );
+    }
+    session.m_scope = &m_scope;
+}
+ProgramSession::RunningProgramScope::RunningProgramScope(ProgramSession& session, CancellableScope& parent)
+    : m_session(session)
+    , m_scope(parent)
+{
+    std::lock_guard<Mutex> lg(session.m_lock);
+    const ProgramState state = session.current_state();
+    if (state != ProgramState::STOPPED){
+        throw UserSetupError(session.m_logger, "Stop the program before checking it.");
+    }
+    if (session.m_scope != nullptr){
+        throw UserSetupError(session.m_logger, "The program is already running its start checks.");
     }
     session.m_scope = &m_scope;
 }
@@ -100,6 +116,48 @@ std::optional<std::vector<PrecheckSummary>> ProgramSession::precheck_summaries()
         return std::nullopt;
     }
     return m_instance->precheck_summaries();
+}
+PrecheckOnlyRun ProgramSession::run_prechecks_only(const JsonValue& candidate, CancellableScope& parent){
+    RunningProgramScope running_scope(*this, parent);
+    const JsonValue prior = m_instance->to_json();
+    std::expected<JsonValue, RefusedOption> merged = merge_candidate_options(prior, candidate);
+    if (!merged){
+        return PrecheckOnlyRun{.refused = std::move(merged.error()), .checks = std::nullopt, .restored = true};
+    }
+
+    m_logger.log(std::format("Start checks only, with options: {}", candidate.dump(-1)));
+    PrecheckOnlyRun run;
+    {
+        ScopeExit restore([&]{
+            m_instance->load_json(prior);
+        });
+        m_instance->load_json(*merged);
+        run.refused = find_refused_option(candidate, m_instance->to_json());
+        if (!run.refused){
+            std::string error = m_instance->check_validity();
+            if (!error.empty()){
+                run.refused = RefusedOption{"", std::move(error)};
+            }
+        }
+        if (!run.refused && m_instance->precheck_summaries()){
+            const ProgramInfo program_info(
+                identifier(),
+                m_descriptor.category(),
+                m_descriptor.display_name(),
+                current_time()
+            );
+            std::unique_ptr<ProgramEnvironment> env = make_env(program_info);
+            run.checks = internal_run_prechecks(*env);
+        }
+    }
+    run.restored = m_instance->to_json() == prior;
+    if (!run.restored){
+        m_logger.log("Start checks only: the prior options did not load back.", COLOR_RED);
+    }
+    return run;
+}
+std::optional<std::vector<PrecheckReport>> ProgramSession::internal_run_prechecks(ProgramEnvironment&){
+    return std::nullopt;
 }
 std::string ProgramSession::current_stats() const{
     std::lock_guard<Mutex> lg(m_lock);
@@ -254,7 +312,7 @@ std::string ProgramSession::start_program(ActionSource source, std::optional<std
         return "Program is not ready.";
 
     case ProgramState::STOPPED:{
-        std::string error = check_validity();
+        std::string error = m_scope != nullptr ? "Program is running its start checks." : check_validity();
         if (!error.empty()){
             m_logger.log(error, COLOR_RED);
             return error;

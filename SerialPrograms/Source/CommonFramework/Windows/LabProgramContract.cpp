@@ -4,9 +4,12 @@
  *
  */
 
+#include <algorithm>
 #include <limits>
 #include <optional>
 #include <string>
+#include <string_view>
+#include "Common/Cpp/Cryptography/SHA256.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
@@ -130,6 +133,31 @@ JsonArray precheck_list(const std::vector<PrecheckSummary>& prechecks){
     return list;
 }
 
+std::string_view precheck_status_name(PrecheckReportStatus status){
+    switch (status){
+    case PrecheckReportStatus::PASSED:
+        return "passed";
+    case PrecheckReportStatus::FAILED:
+        return "failed";
+    case PrecheckReportStatus::SKIPPED:
+        return "skipped";
+    }
+    return "failed";
+}
+
+//  The "checks" of a preflight reply.
+JsonArray precheck_reports(const std::vector<PrecheckReport>& checks){
+    JsonArray list;
+    for (const PrecheckReport& check : checks){
+        JsonObject item;
+        item["name"] = check.name;
+        item["status"] = std::string(precheck_status_name(check.status));
+        item["message"] = check.message;
+        list.push_back(std::move(item));
+    }
+    return list;
+}
+
 //  The fields of `option` for its entry: "type" and those of that type.
 JsonObject describe_option(const ConfigOption& option){
     std::optional<JsonObject> described = describe_group(option);
@@ -179,6 +207,56 @@ JsonObject lab_program_contract(
         contract["prechecks"] = "unsupported";
     }
     return contract;
+}
+
+
+std::string lab_options_hash(const JsonValue& options){
+    const std::string text = options.dump(-1);
+    SHA256 sha;
+    sha.push(text.data(), text.size());
+    sha.finish();
+    return sha.get_hash_hex();
+}
+
+JsonObject lab_preflight_reply(
+    std::string_view id,
+    const PrecheckOnlyRun& run,
+    const std::optional<std::string>& options_hash
+){
+    JsonObject reply;
+    reply["schema"] = LAB_PROGRAM_CONTRACT_SCHEMA;
+    reply["id"] = std::string(id);
+    reply["checks"] = JsonArray();
+    reply["failure"] = JsonValue();
+    reply["invalid"] = JsonValue();
+    reply["restored"] = run.restored;
+    reply["options_hash"] = options_hash ? JsonValue(*options_hash) : JsonValue();
+    if (run.refused){
+        JsonObject invalid;
+        invalid["key"] = run.refused->key;
+        invalid["message"] = run.refused->message;
+        reply["invalid"] = std::move(invalid);
+        reply["verdict"] = "invalid_options";
+        return reply;
+    }
+    if (!run.checks){
+        reply["verdict"] = "unsupported";
+        return reply;
+    }
+    reply["checks"] = precheck_reports(*run.checks);
+    const auto failed = std::find_if(run.checks->begin(), run.checks->end(), [](const PrecheckReport& check){
+        return check.status == PrecheckReportStatus::FAILED;
+    });
+    if (failed == run.checks->end()){
+        reply["verdict"] = "passed";
+        return reply;
+    }
+    JsonObject failure;
+    failure["check"] = failed->name;
+    failure["message"] = failed->message;
+    reply["failure"] = std::move(failure);
+    reply["verdict"] = "failed";
+    return reply;
 }
 
 

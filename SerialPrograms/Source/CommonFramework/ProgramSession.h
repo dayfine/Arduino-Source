@@ -30,6 +30,7 @@
 #include "CommonFramework/Globals.h"
 //#include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/Panels/ProgramDescriptor.h"
+#include "CommonFramework/ProgramPrecheckRun.h"
 #include "CommonFramework/ProgramTransition.h"
 #include "CommonFramework/Tools/ProgramEnvironment.h"
 // #include "CommonFramework/ResourceDownload/ProgramMissingResourceTracker.h"
@@ -83,6 +84,14 @@ public:
     //  read without running it. Nothing when it declares none.
     std::optional<std::vector<PrecheckSummary>> precheck_summaries() const;
 
+    //  A checks-only run on the calling thread, under `parent`: loads
+    //  `candidate` (option keys to change, merge_candidate_options()) over
+    //  the current options, runs the program's prechecks without starting it
+    //  (internal_run_prechecks()), and loads the prior options back,
+    //  also when a check throws. Start refuses while it runs, and nothing is
+    //  saved to the settings file. Throws if the program is not STOPPED.
+    PrecheckOnlyRun run_prechecks_only(const JsonValue& candidate, CancellableScope& parent);
+
 
     // - return struct that contains the list of missing resources and boolean upgrade_warning.
     // - upgrade_warning: is true if we need to warn the user to upgrade CC. 
@@ -134,6 +143,9 @@ public:
 protected:
     virtual std::unique_ptr<ProgramEnvironment> make_env(const ProgramInfo& program_info) = 0;
     virtual void internal_run_program(ProgramEnvironment& env) = 0;
+    //  The program's prechecks for run_prechecks_only(), under m_scope, up to
+    //  and including the first FAILED one; nothing when it declares none.
+    virtual std::optional<std::vector<PrecheckReport>> internal_run_prechecks(ProgramEnvironment& env);
     virtual void internal_stop_program();
 
 //    virtual void restore_defaults(){ return; }
@@ -204,6 +216,9 @@ protected:
     class RunningProgramScope{
     public:
         RunningProgramScope(ProgramSession& session);
+        //  For a checks-only run: attached to `parent`, and only while the
+        //  program is STOPPED.
+        RunningProgramScope(ProgramSession& session, CancellableScope& parent);
         ~RunningProgramScope();
 
     private:

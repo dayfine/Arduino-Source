@@ -704,6 +704,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/PersistentSettings.h
     Source/CommonFramework/ProgramSession.cpp
     Source/CommonFramework/ProgramSession.h
+    Source/CommonFramework/ProgramPrecheckRun.cpp
+    Source/CommonFramework/ProgramPrecheckRun.h
+    Source/CommonFramework/ProgramPrecheckRun_Tests.cpp
+    Source/CommonFramework/ProgramPrecheckRun_Tests.h
     Source/CommonFramework/ProgramTransition.cpp
     Source/CommonFramework/ProgramTransition.h
     Source/CommonFramework/ProgramTransition_Tests.cpp

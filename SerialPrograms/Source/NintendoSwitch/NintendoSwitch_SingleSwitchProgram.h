@@ -7,6 +7,8 @@
 #ifndef PokemonAutomation_NintendoSwitch_SingleSwitchProgram_H
 #define PokemonAutomation_NintendoSwitch_SingleSwitchProgram_H
 
+#include <optional>
+#include <vector>
 #include "CommonFramework/Globals.h"
 #include "CommonFramework/Panels/ProgramDescriptor.h"
 #include "CommonFramework/Tools/ProgramEnvironment.h"
@@ -86,8 +88,19 @@ public:
         FeedbackType feedback_type
     );
 
+    //  The program's prechecks (ConsoleProgramInstance::run_prechecks()) with
+    //  the Pro Controller. Override with precheck_summaries() to support the
+    //  lab's "preflight".
+    virtual std::optional<std::vector<PrecheckReport>> run_switch_prechecks(
+        SingleSwitchProgramEnvironment& env, ProControllerContext& context
+    );
+
 private:
     virtual void program(GameConsole::ConsoleProgramEnvironment& env, CancellableScope& scope) override;
+    //  Attaches the Pro Controller to `scope` and calls run_switch_prechecks().
+    virtual std::optional<std::vector<PrecheckReport>> run_prechecks(
+        GameConsole::ConsoleProgramEnvironment& env, CancellableScope& scope
+    ) override;
 };
 
 
