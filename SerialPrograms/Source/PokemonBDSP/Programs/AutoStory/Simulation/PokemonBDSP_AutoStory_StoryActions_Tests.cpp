@@ -218,6 +218,9 @@ UnitTestResult test_stubbed_steps_need_the_console(Logger& logger){
 UnitTestResult test_scene_start_waits(Logger& logger){
     constexpr std::string_view LAST_ROW = "01.11";
     constexpr size_t EXPECTED_SCENES = 23;
+    //  The default grid naturally plays Barry's doorway scene. The two
+    //  other measured doorway scenes are supplied by the test below.
+    constexpr std::string_view DEFAULT_SKIP = "barry_goes_home";
     SimExecutor sim(logger);
     run_rows_on(sim, logger, {.from = "00.00", .to = std::string(LAST_ROW)});
     if (!sim.result().error.empty()){
@@ -230,22 +233,29 @@ UnitTestResult test_scene_start_waits(Logger& logger){
             continue;
         }
         const auto found = sim.misses().dialog_waits.find(step.name);
+        const bool should_skip = step.name == DEFAULT_SKIP;
         if (found == sim.misses().dialog_waits.end()){
-            return std::format("{} {} skipped its opening-line guard without preceding dialogue.", row, step.name);
+            if (!should_skip){
+                return std::format("{} {} skipped its opening-line guard without preceding dialogue.", row, step.name);
+            }
+        }else{
+            if (should_skip){
+                return std::format("{} {} repeated its opening-line guard after preceding dialogue.", row, step.name);
+            }
+            //  Mirrors SCENE_START_WAIT in StoryWalkSteps.cpp.
+            if (found->second != Milliseconds(15000)){
+                return std::format("{} {} waits {} ms for its opening line; expected the full 15000 ms guard.",
+                    row, step.name, found->second.count());
+            }
+            guarded++;
         }
-        //  Mirrors SCENE_START_WAIT in StoryWalkSteps.cpp.
-        if (found->second != Milliseconds(15000)){
-            return std::format("{} {} waits {} ms for its opening line; expected the full 15000 ms guard.",
-                row, step.name, found->second.count());
-        }
-        guarded++;
         scenes++;
     }
     if (scenes != EXPECTED_SCENES){
         return std::format("Audited {} scene steps through {}; expected {}.", scenes, LAST_ROW, EXPECTED_SCENES);
     }
-    if (guarded != scenes){
-        return std::format("{} of {} scenes kept the guard.", guarded, scenes);
+    if (guarded + 1 != scenes){
+        return std::format("{} of {} scenes kept the guard; expected one exact skip.", guarded, scenes);
     }
     logger.log(std::format("{} scene steps audited through {}; {} used the full opening-line guard.", scenes, LAST_ROW, guarded));
     return true;
