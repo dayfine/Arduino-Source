@@ -200,9 +200,9 @@ std::string to_erika(StoryPose& at, OverworldSim& sim){
 //  14.03 on the sim (to_erika()), then 14.04, Erika's battle, which ends
 //  where it starts, then 14.04b on the same sim, the gym as 14.03 leaves it (Tamia on (2, 9), the inner tree cut): out along row
 //  5, a step onto the cut tree's tile, down column 1 past Tamia and
-//  column 2 to the wall, out of the gym, the tree again and back below
-//  the Center's door (the Center's way in and the nurse need the
-//  console), meeting no one else.
+//  column 2 to the wall, out of the gym's door and the Fly to below the
+//  Center's door (the Center's way in and the nurse need the console),
+//  meeting no one else.
 UnitTestResult test_gym_rows(){
     StoryPose at = *story_pose(Pokemon::pose_of(*checkpoint("14.03").start));
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
@@ -414,7 +414,7 @@ const AutoStoryCeladonGymCase AUTO_STORY_CELADON_GYM_CASES[] = {
         .expectation = {.description = "lands on Celadon's heal spot facing south, where the walk to the gym starts"},
     },
     {
-        .input = {.name = "14.03 to below Erika, 14.04 on the spot and 14.04b back to the nurse", .body = test_gym_rows},
+        .input = {.name = "14.03 to below Erika, 14.04 on the spot and 14.04b out and by Fly to the nurse", .body = test_gym_rows},
         .expectation = {.description = "Tamia and Lori fought where the table steps into their lines, no one else"},
     },
     {

@@ -27,6 +27,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryBattlePolicyData.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryMovedTrainers.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryParty.h"
@@ -114,15 +115,18 @@ UnitTestResult test_pad_to_5f(){
 }
 
 //  The steps of row `id` walked on the sim over `maps`, from the row's start with
-//  the Card Key and doors its start_flags and start_gates say.
+//  the Card Key and doors its start_flags and start_gates say. `maps` must
+//  outlive the walk.
 class RowWalk{
 public:
     RowWalk(std::string_view id, const std::vector<MapData>& maps)
         : m_row(checkpoint(id))
+        , m_maps(maps)
         , m_at(*story_pose(Pokemon::pose_of(*m_row.start)))
-        , m_sim(maps, MapPosition{m_at.map, m_at.tile}, *m_at.facing, script_of(m_row))
         , m_flags(m_row.start_flags.begin(), m_row.start_flags.end())
-    {}
+    {
+        m_sim.emplace(m_maps, MapPosition{m_at.map, m_at.tile}, *m_at.facing, script_of(m_row));
+    }
 
     //  Each step in turn; the failure of the first that fails, or empty.
     std::string run(){
@@ -130,23 +134,29 @@ public:
             //  The sim has no trigger scenes: a scripted battle (the rival's, Giovanni's)
             //  is taken as won where it leaves the player. A trainer's battle, his
             //  message up after the step into his line, is fought.
-            if (step.kind == StoryStepKind::BATTLE && m_sim.state().screen != SimScreen::MESSAGE){
+            if (step.kind == StoryStepKind::BATTLE && m_sim->state().screen != SimScreen::MESSAGE){
                 m_at = *story_pose(Pokemon::pose_of(*step.pose_after));
-                m_floors.push_back(m_sim.state().position.map);
+                m_floors.push_back(m_sim->state().position.map);
+                continue;
+            }
+            //  The Escape Rope's script has no map: the player stands where
+            //  the step says, the doors and the Card Key as they were.
+            if (parse_use_item_step(step) == "escape-rope"){
+                escape_to(*story_pose(Pokemon::pose_of(*step.pose_after)));
                 continue;
             }
             //  The run's flags as the program's state has them at the step: the
             //  row's start flags and what the steps before set (flags_after).
-            if (const std::string failure = row_step_on_sim(m_sim, m_at, step, m_row.id, m_flags); !failure.empty()){
+            if (const std::string failure = row_step_on_sim(*m_sim, m_at, step, m_row.id, m_flags); !failure.empty()){
                 return failure;
             }
             m_flags.insert(step.flags_after.begin(), step.flags_after.end());
-            m_floors.push_back(m_sim.state().position.map);
+            m_floors.push_back(m_sim->state().position.map);
         }
         return "";
     }
     const StoryCheckpoint& row() const{ return m_row; }
-    const OverworldSim& sim() const{ return m_sim; }
+    const OverworldSim& sim() const{ return *m_sim; }
     const std::vector<std::string>& floors() const{ return m_floors; }
 
     //  What the row left out as a line, or empty: the sim's rule breaks and the
@@ -154,12 +164,12 @@ public:
     //  steps declare (gates_after).
     std::string problems() const{
         std::string text;
-        if (!m_sim.state().violations.empty()){
-            text += std::format(" broke a rule: {};", m_sim.state().violations.front());
+        if (!m_sim->state().violations.empty()){
+            text += std::format(" broke a rule: {};", m_sim->state().violations.front());
         }
         const Pokemon::GateState declared = Pokemon::checkpoint_gates(m_row, m_row.steps.size());
-        if (!(declared == m_sim.state().gates)){
-            text += std::format(" the sim has {} gates open, the row's gates_after {};", m_sim.state().gates.opened.size(), declared.opened.size());
+        if (!(declared == m_sim->state().gates)){
+            text += std::format(" the sim has {} gates open, the row's gates_after {};", m_sim->state().gates.opened.size(), declared.opened.size());
         }
         return text;
     }
@@ -172,9 +182,21 @@ private:
         return script;
     }
 
+    //  Starts the sim again on `to`, carrying the gates and the Card Key
+    //  over: the Escape Rope's warp.
+    void escape_to(const StoryPose& to){
+        SimScript script = script_of(m_row);
+        script.card_key_held = m_sim->card_key_held();
+        script.gates = m_sim->state().gates;
+        m_at = to;
+        m_sim.emplace(m_maps, MapPosition{to.map, to.tile}, *to.facing, script);
+        m_floors.push_back(to.map);
+    }
+
     const StoryCheckpoint& m_row;
+    const std::vector<MapData>& m_maps;
     StoryPose m_at;
-    OverworldSim m_sim;
+    std::optional<OverworldSim> m_sim;
     std::set<std::string> m_flags;
     std::vector<std::string> m_floors;
 };
@@ -445,13 +467,17 @@ UnitTestResult test_president_walk_after_giovanni(){
     return true;
 }
 
-//  16.06: the walk back down to Saffron's Center on the maps with no Rocket in
-//  Silph Co. or Saffron City.
+//  16.06: out of Silph Co. by Escape Rope, to below its door on Saffron City,
+//  where the Fly to the Center's door is taken outdoors, on the maps with no
+//  Rocket in Silph Co. or Saffron City.
 UnitTestResult test_return_row(){
     const std::set<std::string> flags{std::string(SILPH_CLEARED_FLAG)};
     const RowResult result = walk_row("16.06", with_beaten(run_story_maps(flags), "SilphCo_5F", 9, 21));
     if (const std::string wrong = wrong_end("16.06", result, MapPosition{"SaffronCity", {24, 39}}); !wrong.empty()){
         return wrong;
+    }
+    if (result.floors.empty() || result.floors.front() != "SaffronCity"){
+        return "16.06: its first step does not leave Silph Co. for Saffron City, where Fly can be used.";
     }
     if (!result.trainers.empty()){
         return "16.06: walked into a trainer's line.";
@@ -459,11 +485,15 @@ UnitTestResult test_return_row(){
     return true;
 }
 
-//  Where the last of `row`'s steps that declares a pose leaves the player.
+//  Where the last of `row`'s steps that says where it ends leaves the
+//  player: its declared pose, or a route's target.
 std::optional<StoryPose> declared_end(const StoryCheckpoint& row){
     for (auto step = row.steps.rbegin(); step != row.steps.rend(); ++step){
         if (step->pose_after){
             return story_pose(Pokemon::pose_of(*step->pose_after));
+        }
+        if (step->kind == StoryStepKind::ROUTE){
+            return story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step->args, "target")));
         }
     }
     return std::nullopt;
@@ -751,8 +781,8 @@ const AutoStorySilphCase AUTO_STORY_SILPH_CASES[] = {
         .expectation = {.description = "from (5, 15) facing east, ends on (9, 10) facing north"},
     },
     {
-        .input = {.name = "16.06 back to Saffron's Center with no Rockets", .body = test_return_row},
-        .expectation = {.description = "no trainer met, ends below the Center's door"},
+        .input = {.name = "16.06 Escape Rope out of Silph Co. and Fly to Saffron's Center", .body = test_return_row},
+        .expectation = {.description = "the rope leaves the player on Saffron City, the Fly ends below the Center's door, no trainer met"},
     },
     {
         .input = {.name = "16.06 end pose to 18.01 start pose chain", .body = test_center_to_gym_door_chain},

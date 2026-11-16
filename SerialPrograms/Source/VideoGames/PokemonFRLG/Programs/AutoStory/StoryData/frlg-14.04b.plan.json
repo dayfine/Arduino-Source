@@ -3,7 +3,7 @@
   "game": "frlg",
   "checkpoint": {
     "id": "14.04b",
-    "title": "Out of the gym past the tree, heal at Celadon's Center",
+    "title": "Out of the gym, Fly to Celadon's Center and heal",
     "start": {"map": "CeladonCity_Gym", "tiles": [[6, 5]], "facing": "north"},
     "start_gates": {"opened": ["CeladonCity_Gym/cut_tree_3_5"]},
     "events": [
@@ -53,23 +53,24 @@
         "why": "run down the west aisle from (2, 10) to the wall at (2, 18): behind Lass Kay (3, 11), who looks east, and clear of Beauty Bridget's line (6..8, 10) that a planned way out through the middle crosses; all are beaten since Erika's win, and the wall stops any overshoot"
       },
       {
-        "id": "below_gym_tree_out",
+        "id": "out_of_gym",
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CeladonCity", "tiles": [[40, 36]], "facing": "north"}
+          "target": {"map": "CeladonCity", "tiles": [[11, 31]], "facing": "south"}
         },
-        "why": "east along row 18 and out of the gym's door (6, 18), down through the gap in the ledges to row 36 and east along it to below the tree (40, 35), grown back"
+        "why": "east along row 18 and out of the gym's door onto Celadon City below it (11, 31): Fly works outdoors only"
       },
       {
-        "id": "cut_tree_out",
+        "id": "fly_celadon",
         "kind": "game_action",
-        "action": "cut_tree",
+        "action": "fly",
         "args": {
-          "direction": "north"
+          "town": "CeladonCity",
+          "species": "pidgey"
         },
-        "declared_after": {"map": "CeladonCity", "tiles": [[40, 35]], "facing": "north"},
-        "why": "the tree again; a step onto its tile"
+        "declared_after": {"map": "CeladonCity", "tiles": [[48, 12]], "facing": "south"},
+        "why": "the Pidgey flies to Celadon City, landing below the Pokemon Center's door (48, 11) on its heal spot (pokefirered heal_locations.json, HEAL_LOCATION_CELADON_CITY), as 14.03; the yard's tree (40, 35), grown back, is left standing"
       },
       {
         "id": "celadon_below_center",
@@ -78,7 +79,7 @@
         "args": {
           "target": {"map": "CeladonCity", "tiles": [[48, 12]], "facing": "north"}
         },
-        "why": "north through the city to below the Center's door (48, 11)"
+        "why": "turn to face the Center's door (48, 11) from the landing"
       },
       {
         "id": "celadon_nurse",
@@ -99,8 +100,8 @@
     "notes": {
       "checkpoint": [
         "Starts in front of Erika, where 14.04 ends after her battle and saves.",
-        "Out the way in: row 5 over the inner tree's tile and column 1 to their walls, Tamia standing on (2, 9) where her battle left her, the inner tree (3, 5) still cut (a save keeps the map's objects and temp flags; only a warp clears them). Leaving the gym grows the yard's tree (40, 35) back, so it is cut again from below.",
-        "PokeGuy flies to Celadon from the gym instead (1:27:07, same-city Fly); the walk back stands in until a Fly step is in. Either way the row ends at the nurse, where 15.01 starts."
+        "Out the way in: row 5 over the inner tree's tile and column 1 to their walls, Tamia standing on (2, 9) where her battle left her, the inner tree (3, 5) still cut (a save keeps the map's objects and temp flags; only a warp clears them).",
+        "Out of the gym's door and by Fly to the Center's door, as PokeGuy (1:27:07, same-city Fly): the walk round the yard, through the regrown tree (40, 35) and up through the city was 79 tiles (user, 2026-11-15: every Center trip flies once Fly is learned, unless the Center is really close). The row ends at the nurse, where 15.01 starts."
       ]
     }
   },

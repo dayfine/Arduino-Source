@@ -60,14 +60,7 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN_17_GYM[] = {
     "17.04b   walk south 8 (to wall) -> ViridianCity_Gym (18, 22) [walk only]",
     "17.04b   walk west 1 -> ViridianCity_Gym (17, 22) [walk only] [tapped]",
     "17.04b   walk south 1 (warp) -> ViridianCity (36, 11) [walk only]",
-    "17.04b below_center_door from ViridianCity (36, 11) facing south to ViridianCity (26, 27) facing north",
-    "17.04b   walk east 5 (to wall) -> ViridianCity (41, 11)",
-    "17.04b   walk north 7 (to wall) -> ViridianCity (41, 4)",
-    "17.04b   walk west 13 (to wall) -> ViridianCity (28, 4)",
-    "17.04b   walk south 4 (to wall) -> ViridianCity (28, 8)",
-    "17.04b   walk west 6 -> ViridianCity (22, 8)",
-    "17.04b   walk south 19 -> ViridianCity (22, 27)",
-    "17.04b   walk east 4 -> ViridianCity (26, 27)",
+    "17.04b below_center_door from ViridianCity (26, 27) facing south to ViridianCity (26, 27) facing north",
     "17.04b   face north -> ViridianCity (26, 27)",
 };
 

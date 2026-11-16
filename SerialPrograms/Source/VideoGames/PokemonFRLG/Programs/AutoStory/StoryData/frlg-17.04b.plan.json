@@ -3,7 +3,7 @@
   "game": "frlg",
   "checkpoint": {
     "id": "17.04b",
-    "title": "Out of the gym, heal at Viridian's Center",
+    "title": "Out of the gym, Fly to Viridian's Center and heal",
     "start": {
       "map": "ViridianCity_Gym",
       "tiles": [
@@ -34,6 +34,26 @@
         "why": "back through the gym to the door and out onto Viridian City below it"
       },
       {
+        "id": "fly_viridian",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {
+          "town": "ViridianCity",
+          "species": "pidgey"
+        },
+        "declared_after": {
+          "map": "ViridianCity",
+          "tiles": [
+            [
+              26,
+              27
+            ]
+          ],
+          "facing": "south"
+        },
+        "why": "the Pidgey flies to Viridian City, landing below the Pokemon Center's door (26, 26) on its heal spot (pokefirered heal_locations.json, HEAL_LOCATION_VIRIDIAN_CITY), as 17.02: the walk there from the gym's door went north round the city's fences, 58 tiles for a straight line of 26"
+      },
+      {
         "id": "below_center_door",
         "kind": "route",
         "action": "run",
@@ -49,7 +69,7 @@
             "facing": "north"
           }
         },
-        "why": "west and down to below the Center's door (26, 26)"
+        "why": "turn to face the Center's door (26, 26) from the landing"
       },
       {
         "id": "viridian_nurse",
@@ -79,7 +99,8 @@
     "notes": {
       "checkpoint": [
         "Starts in front of Giovanni, where 17.04 ends after his battle and saves.",
-        "Ends at Viridian's nurse (declared: the gym exit is a street tile; the Center is where the next row starts)."
+        "Ends at Viridian's nurse (declared: the gym exit is a street tile; the Center is where the next row starts).",
+        "Out of the gym's door and by Fly to the Center's door (user, 2026-11-15: every Center trip flies once Fly is learned, unless the Center is really close)."
       ]
     }
   },

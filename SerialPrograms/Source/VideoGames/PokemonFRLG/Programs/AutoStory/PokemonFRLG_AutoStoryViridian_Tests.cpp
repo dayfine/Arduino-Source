@@ -188,8 +188,8 @@ UnitTestResult test_row_17_02(){
 }
 
 //  17.04b after Giovanni's win: back through the gym past its beaten
-//  trainers (Takashi's line on row 3 among them), out of the door and to
-//  below the Center's door (26, 27).
+//  trainers (Takashi's line on row 3 among them), out of the door and the
+//  Fly to below the Center's door (26, 27).
 UnitTestResult test_row_17_04b(){
     return walk_row("17.04b", "", "below_center_door", beaten_gym_maps(), MapPosition{"ViridianCity", {26, 27}});
 }
@@ -200,7 +200,7 @@ const AutoStoryViridianCase AUTO_STORY_VIRIDIAN_CASES[] = {
         .expectation = {.description = "Warren's battle won on (15, 7), no other trainer met"},
     },
     {
-        .input = {.name = "17.04b: out of the beaten gym to below Viridian's Center", .body = test_row_17_04b},
+        .input = {.name = "17.04b: out of the beaten gym and by Fly to below Viridian's Center", .body = test_row_17_04b},
         .expectation = {.description = "on ViridianCity (26, 27), no trainer met"},
     },
     {

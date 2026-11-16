@@ -56,6 +56,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryAbilities.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPartyRoster.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryFlyToCenter_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStorySurf_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryHealing.h"
@@ -142,6 +143,7 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryLaunch(database);
     add_tests_OverworldGateMaps(database);
     add_tests_AutoStorySaffronGym(database);
+    add_tests_AutoStoryFlyToCenter(database);
 }
 
 //  The detectors and readers of battle, box, party and dialog screens.
