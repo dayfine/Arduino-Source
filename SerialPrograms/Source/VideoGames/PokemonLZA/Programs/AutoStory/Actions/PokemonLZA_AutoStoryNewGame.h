@@ -26,7 +26,7 @@ namespace PokemonLZA{
 
 //  The screens a new game (no save) may start on.
 enum class NewGameStart{
-    HOME,               //  The Switch's HOME, PLZA's tile selected, the game closed.
+    HOME,               //  The Switch's HOME, the game closed (PLZA's tile is searched for).
     LANGUAGE_LIST,
     CONFIRM_CHOICES,    //  The language, look and name chosen already.
 };
@@ -35,8 +35,8 @@ enum class NewGameStart{
 //  having pressed nothing, if it is none of NewGameStart's.
 NewGameStart require_new_game_start(ConsoleHandle& console, ProControllerContext& context);
 
-//  01.00's first step: from HOME (the selected tile launched, never moving
-//  HOME's cursor) or the language list, plays the language, the look and
+//  01.00's first step: from HOME (PLZA's tile found by its title, then
+//  launched) or the language list, plays the language, the look and
 //  the name of `choices` up to "Confirm Choices"; on "Confirm Choices" it
 //  presses nothing. Each screen's highlight is read before and after each
 //  press; the name is typed with the Switch keyboard typer. Throws

@@ -71,6 +71,11 @@ void AutosaveDetector::make_overlays(VideoOverlaySet& items) const{
 //  run in Japanese, icon at dx 36), so the icon's glow is dim_cyan_share():
 //  of the 3569 PLZA captures on the console it finds 11 more
 //  badges, every one a real badge, and no new false one.
+//  Both cyan tests take only blue-leaning pixels: a building banner's mint
+//  (about 96, 203, 147) in the strips hid the badge on 01.01 in English,
+//  and a green sign's white text with its glow matched the icon. Of 6096
+//  console captures and 1173 PokemonLZA test frames this finds the English
+//  badge, drops 3 green-sign matches, and changes nothing else.
 bool AutosaveDetector::detect(const ImageViewRGB32& screen){
     for (double dx = 0; dx <= 240; dx += 4){
         if (autosave_icon_at(screen, m_icon, {m_left, m_above, m_below}, dx)){

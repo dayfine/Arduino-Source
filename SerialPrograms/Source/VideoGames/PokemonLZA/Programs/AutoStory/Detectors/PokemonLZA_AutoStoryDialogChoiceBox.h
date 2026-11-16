@@ -33,13 +33,15 @@ struct DialogChoiceRows{
     size_t selected = 0;
 };
 
-//  Reads the choice menu on `frame`. The menu's panel is bottom-anchored:
-//  its last row sits at the same place whatever the row count, and each
-//  further row adds one row pitch on top. So the rows are counted from the
-//  bottom up, each either highlighted (white) or plain (dark blue, its
-//  text's start bright on it), until a slot is neither; the selected row is
-//  then counted from the top. None for fewer than two rows, or if no row,
-//  or not exactly one, is highlighted.
+//  Reads the choice menu on `frame`. The menu's panel is anchored at its
+//  bottom right: its last row sits at the same place whatever the row
+//  count, each further row adds one row pitch on top, and the panel grows
+//  left to fit its longest row, which differs by language. So the rows are
+//  counted from the bottom up, each either highlighted (white right of any
+//  text) or plain (dark blue there, with bright text somewhere between the
+//  highlight's left end and the text's right limit), until a slot is
+//  neither; the selected row is then counted from the top. None for fewer
+//  than two rows, or if no row, or not exactly one, is highlighted.
 std::optional<DialogChoiceRows> read_dialog_choice_rows(const ImageViewRGB32& frame);
 
 

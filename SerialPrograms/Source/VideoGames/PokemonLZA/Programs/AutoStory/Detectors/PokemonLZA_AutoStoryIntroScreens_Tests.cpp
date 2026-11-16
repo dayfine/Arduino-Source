@@ -42,6 +42,7 @@ struct FrameCase{
         bool keyboard = false;
         //  The counter's limit; nullopt: not checked (the field holds text).
         std::optional<size_t> name_limit = std::nullopt;
+        bool home_plza = false;
     };
     Expectation expectation;
 };
@@ -104,6 +105,9 @@ const FrameCase FRAME_CASES[] = {
     {.name = "2026-11-15: the keyboard in Simplified Chinese", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHans_kb.png"}, .expectation = {.keyboard = true, .name_limit = 6}},
     {.name = "2026-11-15: the keyboard in Traditional Chinese", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHant_kb.png"}, .expectation = {.keyboard = true, .name_limit = 6}},
     {.name = "2026-11-15: Simplified Chinese keeps the keyboard after the first +", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHans_plus0.png"}, .expectation = {.keyboard = true, .name_limit = std::nullopt}},
+    //  HOME's tiles in last-played order: FireRed first, Z-A second.
+    {.name = "2026-11-15: HOME on FireRed's tile", .input = {.file = "AutoStoryNewGame/2026-11-15/home_firered.png"}, .expectation = {}},
+    {.name = "2026-11-15: HOME on Z-A's tile", .input = {.file = "AutoStoryNewGame/2026-11-15/home_plza.png"}, .expectation = {.home_plza = true}},
 };
 
 class Test_IntroScreenFrame : public ImageUnitTest{
@@ -137,6 +141,9 @@ public:
             if (limit != expected.name_limit){
                 return std::format("Name keyboard: expected a limit of {}, read {}.", describe(expected.name_limit), describe(limit));
             }
+        }
+        if (is_home_tile_plza(frame) != expected.home_plza){
+            return std::format("HOME tile: expected PLZA {}, read {}.", expected.home_plza, !expected.home_plza);
         }
         return true;
     }
