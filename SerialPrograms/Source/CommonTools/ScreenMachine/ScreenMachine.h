@@ -52,11 +52,6 @@ struct ScreenState{
 };
 
 
-//  The first of `states` whose matches() accepts `observation`; null when
-//  none does.
-const ScreenState* match_screen_state(const std::vector<ScreenState>& states, const ScreenObservation& observation);
-
-
 //  How a run of states ended.
 struct ScreenMachineResult{
     //  The terminal state that acted; empty when the run failed.
