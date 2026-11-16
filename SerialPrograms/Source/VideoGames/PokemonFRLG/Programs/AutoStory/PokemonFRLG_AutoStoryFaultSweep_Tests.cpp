@@ -223,7 +223,7 @@ bool sim_plays(const StoryStep& step){
     case StoryStepKind::GAME:
         //  A Fly lands on its town's landing tile, as the sim plays it; a
         //  lift's warp lets out on its floor's tile (sweep_maps()' lift
-        //  rooms, game_lift_floors()). A boulder's push leaves the player behind
+        //  rooms, SimScript::lift_floors). A boulder's push leaves the player behind
         //  it, as the sim plays it.
         return step.action == CUT_TREE_VARIANT || step.action == PUSH_BOULDER_VARIANT || is_field_move_step(step) || parse_lift_floor_step(step).has_value();
     default:

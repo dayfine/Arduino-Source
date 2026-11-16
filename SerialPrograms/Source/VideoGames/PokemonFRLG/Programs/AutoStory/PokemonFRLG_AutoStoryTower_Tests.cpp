@@ -141,7 +141,7 @@ RowRun run_row(std::string_view id, std::vector<MapData> maps){
     const StoryCheckpoint& row = checkpoint(id);
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     //  The Department Store's lift (10.01): its room in `maps`, its floors
-    //  the sim's own (game_lift_floors()).
+    //  the sim's own (SimScript::lift_floors).
     const SimScript script{};
     auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing, script);
     RowRun run;

@@ -226,7 +226,7 @@ UnitTestResult test_celadon_x_accuracies(){
     const StoryCheckpoint& row = checkpoint("18.03");
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     //  The Department Store's lift, as 10.01's: story_maps() has its room,
-    //  the sim its floors (game_lift_floors()).
+    //  the sim its floors (SimScript::lift_floors).
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     const MapPosition clerk{"CeladonCity_DepartmentStore_5F", {3, 7}};
     bool bought_at_clerk = false;
