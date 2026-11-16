@@ -10,7 +10,7 @@ import copy
 import unittest
 from unittest import mock
 
-from pa_lab import actions, contracts, control, lab_reader, mcp_server
+from pa_lab import actions, channel_file, contracts, control, lab_reader, mcp_server
 from tests.control_fixtures import START, acquire, new_id, open_plane, release, temp_db_path
 from tests.fake_lab import FakeApp, FakeClock, FakeLab, golden
 
@@ -418,7 +418,7 @@ class LostRequestTests(ActionTest):
 
     def test_a_failed_inbox_write_is_a_refusal_and_blocks_nothing(self):
         token = self.acquired()
-        with mock.patch.object(actions.shot, 'write_request', side_effect=OSError(28, 'No space left on device')):
+        with mock.patch.object(channel_file.FileChannel, 'send', side_effect=OSError(28, 'No space left on device')):
             record = self.run_program(run_request(token))
         self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'))
         self.assertEqual(record['refusal']['evidence']['reason'], 'inbox_write_failed')
@@ -429,7 +429,7 @@ class LostRequestTests(ActionTest):
         """The daemon died between storing the record and writing the request."""
         token = self.acquired()
         request = run_request(token)
-        with mock.patch.object(actions.shot, 'write_request'):
+        with mock.patch.object(channel_file.FileChannel, 'send'):
             first = self.run_program(request)
         self.open_daemon()
         self.actions.settle_pending('B')
