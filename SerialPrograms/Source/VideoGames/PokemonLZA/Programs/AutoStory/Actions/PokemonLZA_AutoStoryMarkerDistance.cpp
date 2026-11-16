@@ -21,25 +21,44 @@ bool near(int a, int b){
     return a >= b - 12 && a <= b + 12;
 }
 
+//  How many reads not taken a read must agree with to be taken anyway,
+//  and how many are kept.
+constexpr size_t AGREEING_UNTAKEN = 2;
+constexpr size_t UNTAKEN_KEPT = 3;
+
 } // namespace
 
 
+int MarkerDistance::moved_on(const Untaken& read) const{
+    const int moved = STEP_COVERS * (m_steps - read.step);
+    return m_direction == MarkerDirection::BACK ? read.distance + moved : read.distance - moved;
+}
+
 bool MarkerDistance::read(int distance){
-    if (m_last && !near(distance, *m_last)){
-        m_rejected = m_rejected_read && near(distance, *m_rejected_read) ? m_rejected + 1 : 1;
-        m_rejected_read = distance;
-        if (m_rejected < 3){
+    const std::optional<int> at = position();
+    if (!at || !near(distance, *at)){
+        size_t agreeing = 0;
+        for (const Untaken& untaken : m_untaken){
+            if (near(distance, moved_on(untaken))){
+                agreeing++;
+            }
+        }
+        if (agreeing < AGREEING_UNTAKEN){
+            if (m_untaken.size() == UNTAKEN_KEPT){
+                m_untaken.erase(m_untaken.begin());
+            }
+            m_untaken.push_back(Untaken{.distance = distance, .step = m_steps});
             return false;
         }
     }
-    m_rejected_read.reset();
-    m_rejected = 0;
+    m_untaken.clear();
     m_last = distance;
     m_steps_unread = 0;
     return true;
 }
 
 void MarkerDistance::stepped(){
+    m_steps++;
     m_steps_unread++;
 }
 
