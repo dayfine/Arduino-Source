@@ -87,6 +87,11 @@ std::vector<Pokemon::RouteTile> traced_tiles(const std::string& map, const std::
 
 namespace{
 
+//  This only watches for an optional first line. settle() then uses
+//  talk_over(), whose 5 s quiet threshold still gives a delayed scene 8 s
+//  from the start of this watch to appear before it can be judged over.
+constexpr Milliseconds SCENE_START_WAIT = 3000ms;
+
 //  "to_catch_grass" as "to catch grass", for the logs.
 std::string label_of(const StoryStep& step){
     std::string label = step.name;
@@ -732,8 +737,11 @@ Outcome StoryWalkSteps::mash(RunState& state, const StoryStep& step){
     m_scene_open = false;
     //  The step before may have played the scene already (a door step settles
     //  its arrival scene), so its first line is not required.
-    if (!m_route.dialog_within(15000ms, COLOR_CYAN)){
-        m_route.note(label_of(step) + ": no line within 15 s; the step before played it.", RouteNote::WARNING);
+    if (!m_route.dialog_within(SCENE_START_WAIT, COLOR_CYAN)){
+        m_route.note(std::format(
+            "{}: no line within {} ms; the step before may already have played it.",
+            label_of(step), SCENE_START_WAIT.count()
+        ), RouteNote::WARNING);
     }
     m_io.settle(step.action == "a" ? BUTTON_A : BUTTON_B, label_of(step),
         step.pose_after && Pokemon::grid_pose_of(*step.pose_after).map != state.pose.map &&

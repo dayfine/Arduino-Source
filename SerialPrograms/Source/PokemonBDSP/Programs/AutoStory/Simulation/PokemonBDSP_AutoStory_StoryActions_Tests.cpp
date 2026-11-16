@@ -219,7 +219,7 @@ UnitTestResult test_scene_start_waits(Logger& logger){
     SimExecutor sim(logger);
     run_rows_on(sim, logger, {.from = "00.00", .to = "01.11"});
     if (!sim.result().error.empty()){
-        return "The run failed: " + sim.result().error;
+        return std::format("The run failed: {}", sim.result().error);
     }
     size_t scenes = 0;
     for (const auto& [row, step] : story_steps()){
