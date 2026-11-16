@@ -13,10 +13,10 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 #include <vector>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
-#include "Pokemon/AutoStory/Data/Pokemon_StoryFiles.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
@@ -611,22 +611,6 @@ std::optional<ScreenEvent> walk_end_event(std::string_view end){
 
 namespace{
 
-//  The game's own autosave at the end of the rows `rows` marks "autosave";
-//  the others are not saved, an "unverified" one for that reason.
-Pokemon::StoryGame<ZonePose> with_autosaves(Pokemon::StoryGame<ZonePose> game, const Pokemon::StoryRows& rows){
-    game.save = [rows](Pokemon::StoryBackend<ZonePose>& backend, const Pokemon::StoryCheckpoint& checkpoint){
-        if (rows.autosaves.contains(checkpoint.id)){
-            backend.log(std::format("[Save] {}: the game autosaved at its end", checkpoint.id));
-            return Pokemon::outcome_ok();
-        }
-        if (rows.unverified_autosaves.contains(checkpoint.id)){
-            return Pokemon::outcome_not_saved("save unverified");
-        }
-        return Pokemon::outcome_not_saved("no autosave at its end");
-    };
-    return game;
-}
-
 //  Whether `row` starts on the station platform: its first step checks it
 //  (01.01).
 bool starts_on_platform(const Pokemon::StoryCheckpoint& row){
@@ -636,6 +620,31 @@ bool starts_on_platform(const Pokemon::StoryCheckpoint& row){
 //  Looks after a load, PLATFORM_POLL apart, to tell 01.01's start from a
 //  later one: right after a load the platform reads on the first two.
 constexpr size_t START_LOOKS = 4;
+
+//  What the screen says about a row's start.
+enum class StartCheck{
+    PASSED,     //  01.01: its first step checks the platform
+    FAILED,     //  the station platform holds: 01.01's start, not this row's
+    UNCHECKED,  //  off the platform; nothing checks the row's own start yet
+};
+
+//  START_LOOKS looks at the screen for `row`'s start. Only the station
+//  platform is read so far: a later row's place is not checked.
+StartCheck check_start(PlzaBackend& backend, const Pokemon::StoryCheckpoint& row){
+    if (starts_on_platform(row)){
+        return StartCheck::PASSED;
+    }
+    size_t streak = 0;
+    for (size_t looks = 0; looks < START_LOOKS; looks++){
+        backend.scope().throw_if_cancelled();
+        streak = backend.observe().readings.contains(PLATFORM_READING) ? streak + 1 : 0;
+        if (streak >= PLATFORM_LOOKS){
+            return StartCheck::FAILED;
+        }
+        backend.wait(PLATFORM_POLL);
+    }
+    return StartCheck::UNCHECKED;
+}
 
 void add_segment(const Pokemon::SegmentReport& part, Pokemon::SegmentReport& total){
     total.checkpoints_run += part.checkpoints_run;
@@ -648,16 +657,22 @@ void add_segment(const Pokemon::SegmentReport& part, Pokemon::SegmentReport& tot
 
 } // namespace
 
-Pokemon::StoryGame<ZonePose> make_plza_story_game(StoryEnv& env, const Pokemon::StoryRows& rows){
-    Pokemon::StoryGame<ZonePose> game = with_autosaves(plza_game_actions(&env), rows);
-    game.reload = [&env](Pokemon::StoryBackend<ZonePose>&){
+
+Pokemon::StoryGame<ZonePose> make_plza_story_game(
+    StoryEnv& env, const Pokemon::StoryRows& rows, AutosaveSightings& sightings
+){
+    Pokemon::StoryGame<ZonePose> game = with_autosave_sightings(plza_game_actions(&env), rows, sightings);
+    game.reload = [&env, &sightings](Pokemon::StoryBackend<ZonePose>&){
+        sightings.restart();
         return reload_latest_save(env);
     };
     return game;
 }
 
-Pokemon::StoryGame<ZonePose> make_plza_story_game_without_console(const Pokemon::StoryRows& rows){
-    return with_autosaves(plza_game_actions(nullptr), rows);
+Pokemon::StoryGame<ZonePose> make_plza_story_game_without_console(
+    const Pokemon::StoryRows& rows, AutosaveSightings& sightings
+){
+    return with_autosave_sightings(plza_game_actions(nullptr), rows, sightings);
 }
 
 Outcome load_checkpoint_start(const Pokemon::StoryGame<ZonePose>& game, PlzaBackend& backend, const Pokemon::StoryCheckpoint& row){
@@ -669,49 +684,108 @@ Outcome load_checkpoint_start(const Pokemon::StoryGame<ZonePose>& game, PlzaBack
     if (!loaded.succeeded()){
         return loaded;
     }
-    if (starts_on_platform(row)){
+    switch (check_start(backend, row)){
+    case StartCheck::PASSED:
         return Pokemon::outcome_ok();
-    }
-    size_t streak = 0;
-    for (size_t looks = 0; looks < START_LOOKS; looks++){
-        backend.scope().throw_if_cancelled();
-        streak = backend.observe().readings.contains(PLATFORM_READING) ? streak + 1 : 0;
-        if (streak >= PLATFORM_LOOKS){
-            backend.log(std::format("[Checkpoint] {}: the save is on the station platform, not at its start", row.id));
-            return Pokemon::outcome_failed("older_save", std::format(
-                "the latest save is on the station platform (01.01's start), older than {}'s start", row.id
-            ));
-        }
-        backend.wait(PLATFORM_POLL);
+    case StartCheck::FAILED:
+        backend.log(std::format("[Checkpoint] {}: the save is on the station platform, not at its start", row.id));
+        return Pokemon::outcome_failed("older_save", std::format(
+            "the latest save is on the station platform (01.01's start), older than {}'s start", row.id
+        ));
+    case StartCheck::UNCHECKED:
+        break;
     }
     backend.log(std::format("[Checkpoint] {}: off the station platform, as at its start", row.id));
     return Pokemon::outcome_ok();
 }
 
+namespace{
+
+//  How a run goes on into `row` from the row before.
+enum class Chain{
+    ON,         //  from the live screen
+    RELOAD,     //  from `row`'s start save
+};
+
+//  Chain::ON or RELOAD into `row`, `seen` whether the row before's
+//  autosave showed; a failure when only a reload would do and there is no
+//  save to load. Logs the decision.
+std::variant<Chain, Outcome> decide_chain(
+    PlzaBackend& backend, const Pokemon::StoryRows& story, const Pokemon::StoryCheckpoint& row, bool seen
+){
+    const auto no_save = [&](std::string_view why){
+        backend.log(std::format("[Checkpoint] {}: no save at its start: {}", row.id, why));
+        return Pokemon::outcome_failed("no_start_save", std::format(
+            "no save at {}'s start: {}; a reload would rewind to an older save", row.id, why
+        ));
+    };
+    if (story.reload_always.contains(row.id)){
+        if (!seen){
+            return no_save("it always reloads, and the autosave before it was not seen");
+        }
+        backend.log(std::format("[Checkpoint] {}: reloads its start save (reload_when_chained always)", row.id));
+        return Chain::RELOAD;
+    }
+    switch (check_start(backend, row)){
+    case StartCheck::PASSED:
+        backend.log(std::format("[Checkpoint] {}: start check passed; on from the live screen", row.id));
+        return Chain::ON;
+    case StartCheck::UNCHECKED:
+        backend.log(std::format(
+            "[Checkpoint] {}: START UNCHECKED: nothing reads this row's start; on from the live screen (autosave before it {})",
+            row.id, seen ? "seen" : "not seen"
+        ));
+        return Chain::ON;
+    case StartCheck::FAILED:
+        break;
+    }
+    if (!seen){
+        return no_save("the start check failed and the autosave before it was not seen");
+    }
+    backend.log(std::format("[Checkpoint] {}: start check failed; reloads its start save", row.id));
+    return Chain::RELOAD;
+}
+
+} // namespace
+
 Pokemon::SegmentReport run_plza_segments(
     const Pokemon::StoryGame<ZonePose>& game, const Pokemon::StoryRows& story,
     std::span<const Pokemon::StoryCheckpoint> rows, size_t attempts_per_checkpoint,
-    Pokemon::StoryEngine<ZonePose>& engine, PlzaBackend& backend, Pokemon::RunState& state
+    PlzaBackend& backend, Pokemon::RunState& state, AutosaveSightings& sightings
 ){
+    Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::SegmentReport total;
-    const std::vector<std::vector<Pokemon::StoryCheckpoint>> segments = Pokemon::story_run_segments(rows, story);
-    for (size_t index = 0; index < segments.size(); index++){
-        const std::vector<Pokemon::StoryCheckpoint>& segment = segments[index];
+    for (size_t index = 0; index < rows.size(); index++){
+        const Pokemon::StoryCheckpoint& row = rows[index];
+        bool start_saved = true;
         if (index > 0){
-            const Pokemon::StoryCheckpoint& row = segment.front();
-            backend.log(std::format("[Event] {}/0 reload_when_chained: start", row.id));
-            const Outcome loaded = load_checkpoint_start(game, backend, row);
-            if (!loaded.succeeded()){
-                backend.log(std::format("[Event] {}/0 reload_when_chained: failed: {}", row.id, to_string(loaded)));
+            const auto fail = [&](const Outcome& failure){
+                backend.log(std::format("[Event] {}/0 chain: failed: {}", row.id, to_string(failure)));
                 total.failed_checkpoint = row.id;
-                total.failed_event = "reload_when_chained";
-                total.failure = loaded;
+                total.failed_event = "chain";
+                total.failure = failure;
                 return total;
+            };
+            start_saved = sightings.last_end_seen();
+            const std::variant<Chain, Outcome> chain = decide_chain(backend, story, row, start_saved);
+            if (const Outcome* failure = std::get_if<Outcome>(&chain)){
+                return fail(*failure);
             }
-            backend.log(std::format("[Event] {}/0 reload_when_chained: done", row.id));
-            state = Pokemon::RunState{};
+            if (std::get<Chain>(chain) == Chain::RELOAD){
+                const Outcome loaded = load_checkpoint_start(game, backend, row);
+                if (!loaded.succeeded()){
+                    return fail(loaded);
+                }
+                state = Pokemon::RunState{};
+            }
         }
-        const Pokemon::SegmentReport part = engine.run_segment("PLZA", segment, attempts_per_checkpoint, state);
+        if (!start_saved && attempts_per_checkpoint > 1){
+            backend.log(std::format("[Checkpoint] {}: no autosave seen at its start, so no reload if it fails", row.id));
+        }
+        sightings.restart();
+        const Pokemon::SegmentReport part = engine.run_segment(
+            "PLZA", std::span<const Pokemon::StoryCheckpoint>(&row, 1), start_saved ? attempts_per_checkpoint : 1, state
+        );
         add_segment(part, total);
         if (!part.completed){
             return total;
