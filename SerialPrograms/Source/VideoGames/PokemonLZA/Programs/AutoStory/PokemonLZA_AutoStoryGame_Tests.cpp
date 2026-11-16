@@ -172,7 +172,7 @@ const Observation<ZonePose> A_PROMPT = look({ScreenEvent::INTERACT_PROMPT, Scree
 
 //  The party bar (free control), `at` after the scripts' common start.
 Observation<ZonePose> party_bar(Milliseconds at){
-    return look({ScreenEvent::PLAYER_CAN_MOVE}, {}, at);
+    return look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, at);
 }
 
 //  A choice box of `rows` rows, row `selected` highlighted.
@@ -451,7 +451,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "02.01's scene after Brigitte: A at the text, done on the party bar held a second, not saved",
         .input = {.checkpoint = "02.01", .first_step = 3, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)), party_bar(Milliseconds(500)), party_bar(Milliseconds(1600)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), party_bar(Milliseconds(500)), party_bar(Milliseconds(1600)),
         }},
         .expectation = {.verdict = "done", .inputs = "press A, wait 250ms", .line = "[Save] 02.01: not saved (save unverified)"},
     },
@@ -460,7 +460,7 @@ const RunCase RUN_CASES[] = {
         //  past the street scene's trigger and A-mashed for two minutes.
         .name = "02.02's street scene fails when it never starts",
         .input = {.checkpoint = "02.02", .first_step = 1, .steps = 1, .looks = {
-            look({}, {}, Milliseconds(0)), look({}, {}, Milliseconds(46000)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(46000)),
         }},
         .expectation = {.verdict = "failed at street_scene: scene_never_started", .inputs = "wait 500ms"},
     },
@@ -482,7 +482,7 @@ const RunCase RUN_CASES[] = {
         .name = "02.03's lobby: A at the door's prompt until the fade, then the scene to the party bar",
         .input = {.checkpoint = "02.03", .first_step = 1, .looks = {
             A_PROMPT, BLACK_FADE,
-            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(1000)), party_bar(Milliseconds(1500)), party_bar(Milliseconds(2600)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(1000)), party_bar(Milliseconds(1500)), party_bar(Milliseconds(2600)),
         }},
         .expectation = {.verdict = "done", .inputs = "press A, wait 250ms, press A, wait 250ms"},
     },
@@ -494,8 +494,8 @@ const RunCase RUN_CASES[] = {
     {
         .name = "02.05's ride to 2F: the hall's quiet is control",
         .input = {.checkpoint = "02.05", .first_step = 4, .steps = 1, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)), look({}, {}, Milliseconds(1000)),
-            look({ScreenEvent::SCREEN_STILL}, {}, Milliseconds(6000)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)),
+            look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(6000)),
         }},
         .expectation = {
             .verdict = "done",
@@ -506,7 +506,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "02.06 ends on the game's autosave",
         .input = {.checkpoint = "02.06", .first_step = 4, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)), look({ScreenEvent::SCREEN_STILL}, {}, Milliseconds(21000)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(21000)),
         }},
         .expectation = {.verdict = "done", .line = "[Save] 02.06: the game autosaved at its end"},
     },

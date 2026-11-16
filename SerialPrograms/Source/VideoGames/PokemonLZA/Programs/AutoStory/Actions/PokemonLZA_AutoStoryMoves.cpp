@@ -49,12 +49,12 @@ void run_held_legs(PlzaBackend& backend, const std::vector<StoryWalkLeg>& legs){
     for (size_t index = 0; index < legs.size(); index++){
         const StoryWalkLeg& leg = legs[index];
         if (index > 0 && leg.turn != 0){
-            backend.press(BUTTON_L, 100ms, 150ms);
+            backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
         }
         if (leg.walk > 0ms){
-            backend.stick(leg.turn, leg.walk, 0ms, Pokemon::StoryPace::WALK);
+            backend.stick(leg.turn, leg.walk, /*release=*/0ms, Pokemon::StoryPace::WALK);
         }else if (leg.turn != 0){
-            backend.stick(leg.turn, 150ms, 100ms, Pokemon::StoryPace::WALK);
+            backend.stick(leg.turn, /*duration=*/150ms, /*release=*/100ms, Pokemon::StoryPace::WALK);
         }
     }
 }

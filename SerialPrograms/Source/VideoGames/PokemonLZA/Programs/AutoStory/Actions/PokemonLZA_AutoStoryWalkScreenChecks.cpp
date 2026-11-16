@@ -46,7 +46,7 @@ bool prompt_taken(const ScreenObservation& look){
 //  A at a prompt, then looks until a fade or text shows; returns whether
 //  the prompt still shows on the last look without either.
 bool press_at_prompt(PlzaBackend& backend){
-    backend.press(BUTTON_A, 160ms, 400ms);
+    backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/400ms);
     bool prompt = true;
     for (Milliseconds waited = 0ms; waited < PROMPT_TAKEN_WAIT; waited += PROMPT_POLL){
         backend.scope().throw_if_cancelled();
