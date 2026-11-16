@@ -334,13 +334,13 @@ public:
     }
 
 private:
-    //  After `step` ended as planned: false, the route failed, if it lands
-    //  the player and they are still on the water.
+    //  After `step` ended as planned: false (failed) if its slide went on too long, or it left them surfing.
     bool after_done(const RouteStep& step, HoldMovement movement){
-        if (step.lands_after > 0 && m_calls.landed_on && !m_calls.landed_on(step.end)){
+        const bool sliding = step.spin_tiles && m_calls.wait_out_slide && !m_calls.wait_out_slide(step);
+        if (sliding || (step.lands_after > 0 && m_calls.landed_on && !m_calls.landed_on(step.end))){
             m_calls.fail(std::format(
-                "walk_overworld_route(): still surfing after {}: the player didn't land on {}.",
-                to_string(step), to_string(step.end)
+                "walk_overworld_route(): {} after {}: the player isn't on {}.",
+                sliding ? "the slide still went on" : "still surfing", to_string(step), to_string(step.end)
             ));
             return false;
         }

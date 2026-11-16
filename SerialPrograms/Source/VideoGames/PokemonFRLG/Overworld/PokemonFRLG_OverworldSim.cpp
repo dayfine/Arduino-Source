@@ -518,6 +518,8 @@ std::optional<SimSeen> OverworldSim::hold(
     count_bike_leg(direction, duration);
     if (m_state.screen != SimScreen::OVERWORLD || m_frozen){
         stuck_hold(direction);
+    }else if (start < m_state.slide_end){
+        lose_press_in_slide(direction, start + duration);
     }else if (m_state.on_bike && duration <= MovementMechanics::LONGEST_TAP && drops_bike_tap(start)){
         //  Dropped: no step.
     }else if (duration <= MovementMechanics::LONGEST_TAP && m_state.facing == direction){
@@ -538,6 +540,9 @@ void OverworldSim::tap(Direction direction, Milliseconds duration, Milliseconds 
     m_bike_leg_direction.reset();
     if (m_state.screen != SimScreen::OVERWORLD || m_frozen || start < m_battle_lockout_end){
         stuck_hold(direction);
+        m_last_tap.reset();
+    }else if (start < m_state.slide_end){
+        lose_press_in_slide(direction, start + duration);
         m_last_tap.reset();
     }else if (m_last_tap && m_last_tap->direction == direction && m_last_tap->end == start){
         hold_on(direction, start + duration);
@@ -748,12 +753,6 @@ size_t OverworldSimWalker::clear_late(const std::vector<Interrupt>& interrupts, 
     }
 }
 
-void OverworldSimWalker::wait_out_slide(const RouteStep& step){
-    if (step.spin_tiles){
-        m_sim.watch({}, SPIN_TILE_TIME * *step.spin_tiles + SPIN_STOP_SETTLE);
-    }
-}
-
 void OverworldSimWalker::check_overworld(const RouteStep& step){
     const SimScreen screen = m_sim.state().screen;
     if (m_rules.check_overworld && (screen == SimScreen::START_MENU || screen == SimScreen::MESSAGE)){
@@ -842,7 +841,6 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     if (result.stopped){
         return dark_stop(step, walked_near(step, result.tiles, TILE_TIME));
     }
-    wait_out_slide(step);
     const Milliseconds fade_watched_from = m_rules.watch_fade_along_hold ? m_leg_start : m_sim.state().time;
     if (step.warps && !after_warp(step, warps_before, fade_watched_from)){
         if (!m_rules.find_player_after_warp_battle){
@@ -868,6 +866,7 @@ StepOutcome OverworldSimWalker::walk_ridden(const RouteStep& step, std::optional
     }
     check_overworld(step);
     const MapPosition before = m_sim.state().position;
+    const bool sliding = m_sim.state().time < m_sim.state().slide_end;   //  scrolls the screen through the hold
     const bool tapped = counts_step_taps(step) || (m_rules.count_bike_taps && counts_bike_taps(step, m_speed));
     if (tapped){
         if (counts_step_taps(step) && turns_first(step, m_speed, facing)){  //  as walk_and_watch() turns first
@@ -887,7 +886,7 @@ StepOutcome OverworldSimWalker::walk_ridden(const RouteStep& step, std::optional
     //  Counted taps saw each tap move, and measure nothing more.
     HoldMovement movement = HoldMovement::UNMEASURED;
     if (step.action == RouteAction::WALK && !step.warps && !tapped){
-        movement = m_sim.state().position == before ? HoldMovement::NONE : HoldMovement::MOVED;
+        movement = m_sim.state().position == before && !sliding ? HoldMovement::NONE : HoldMovement::MOVED;
     }
     size_t late = clear_late(interrupts(step), step.wild ? m_rules.after_wild_leg_watch : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG);
     if (late == 0){
@@ -991,6 +990,7 @@ RouteCalls OverworldSimWalker::calls(){
     //  As the console: the walking sprite shows, not where.
     calls.landed_on = [this](const MapPosition&){ return !m_sim.state().surfing; };
     calls.riding = [this](const RouteStep&){ return m_sim.state().on_bike; };
+    calls.wait_out_slide = [this](const RouteStep& step){ return wait_out_slide(step); };
     return calls;
 }
 

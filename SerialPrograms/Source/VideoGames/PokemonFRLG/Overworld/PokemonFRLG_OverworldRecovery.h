@@ -122,6 +122,14 @@ struct RouteCalls{
     //  if not. The console reads only whether they surf. Not set: not
     //  checked.
     std::function<bool(const MapPosition& tile)> landed_on;
+    //  After a leg onto a spinner (RouteStep::spin_tiles) that ended as
+    //  planned: waits until the slide is over, and says whether it ended
+    //  within slide_wait_limit(); false fails the route. The game loses a
+    //  press made during the slide: 17.03's second "north 1", held while the
+    //  slide up Viridian Gym's column 19 went on, left the player on the stop
+    //  (19, 3), and the walk ended as arrived at (11, 2) (console B,
+    //  2026-11-15 21:12). Not set: not waited.
+    std::function<bool(const RouteStep& step)> wait_out_slide;
     //  Whether the player rides the Bicycle after `step`, the route's last
     //  leg. A way back to its end after a re-anchor then ends with no turn
     //  to its facing: there a tap steps a tile

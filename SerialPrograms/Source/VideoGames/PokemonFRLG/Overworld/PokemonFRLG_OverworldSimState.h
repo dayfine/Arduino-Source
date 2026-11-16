@@ -200,6 +200,15 @@ struct SimState{
     int step_taps_ignored = 0;
     //  Walker step taps that moved the player (SimScript::unseen_step_taps).
     int moved_step_taps = 0;
+    //  When the last spinner slide ends, on the sim's clock. Until then the
+    //  game keeps the player in its forced movement and the D-pad does
+    //  nothing (pokefirered TryUpdatePlayerSpinDirection()): 17.03's second
+    //  "north 1", pressed during the slide up Viridian Gym's column 19, was
+    //  lost and left the player on the stop (19, 3) (console B, 2026-11-15
+    //  21:12).
+    Milliseconds slide_end{0};
+    //  D-pad presses lost in a slide.
+    int presses_in_slide = 0;
     //  Legs on the Bicycle counted out a tap at a time: taps on it, each
     //  a way other than the last's, or after another press
     //  (SimScript::off_bike_at_legs).

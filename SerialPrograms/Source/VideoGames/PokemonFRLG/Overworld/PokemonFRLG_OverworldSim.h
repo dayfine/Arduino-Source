@@ -176,6 +176,7 @@ private:
     void step_tap(Direction direction, Milliseconds duration);
     void hold_on(Direction direction, Milliseconds end);
     void stuck_hold(Direction direction);
+    void lose_press_in_slide(Direction direction, Milliseconds end);
     void bump(Direction direction, Milliseconds pressed);
     std::optional<Step> press(Direction direction) const;
     std::optional<Step> take_warp(int map_index, const TilePos& tile) const;
@@ -506,8 +507,8 @@ private:
     StepEnd watch_for_trainer(const RouteStep& step, const TrainerCrossing& crossing);
     bool moved_past_wall(const RouteStep& step);
     void check_overworld(const RouteStep& step);
-    //  After a leg onto a spinner: the slide's time.
-    void wait_out_slide(const RouteStep& step);
+    //  RouteCalls::wait_out_slide().
+    bool wait_out_slide(const RouteStep& step);
     const std::vector<Interrupt>& interrupts(const RouteStep& step) const;
     std::vector<SimWatcher> watchers(const std::vector<Interrupt>& interrupts) const;
     [[noreturn]] void fail(const std::string& message);

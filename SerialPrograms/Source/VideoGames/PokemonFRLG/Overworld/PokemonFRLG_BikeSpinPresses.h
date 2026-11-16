@@ -43,6 +43,20 @@ inline constexpr Milliseconds BIKE_SELECT_SETTLE(1200);
 //  last frames and the facing it leaves. Not measured.
 inline constexpr Milliseconds SPIN_STOP_SETTLE(300);
 
+//  After a leg onto a spinner, the walker compares shots of the screen this
+//  far apart until two show the same: the slide is over. Longer than a
+//  tile of the slide (SPIN_TILE_TIME), so two shots taken while it goes on
+//  never match.
+inline constexpr Milliseconds SLIDE_STILL_POLL(200);
+
+//  How long the walker waits for a slide of `tiles` to end before it fails:
+//  twice the slide's time and its settle, as SPIN_TILE_TIME is the
+//  decompilation's, not measured on the console.
+constexpr Milliseconds slide_wait_limit(int tiles){
+    return 2 * SPIN_TILE_TIME * tiles + SPIN_STOP_SETTLE;
+}
+static_assert(SLIDE_STILL_POLL > SPIN_TILE_TIME);
+
 static_assert(BIKE_TAP_PERIOD > BIKE_TAP_PERIOD_WORKED && BIKE_TAP_PERIOD_WORKED > BIKE_TAP_DROP_PERIOD);
 static_assert(BIKE_TAP < BIKE_TILE_TIME && BIKE_TAP <= LONGEST_TAP);
 static_assert(BIKE_SELECT_SETTLE > BIKE_SELECT_TIME);
