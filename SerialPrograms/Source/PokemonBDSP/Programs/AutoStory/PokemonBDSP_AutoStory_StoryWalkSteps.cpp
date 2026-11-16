@@ -87,6 +87,10 @@ std::vector<Pokemon::RouteTile> traced_tiles(const std::string& map, const std::
 
 namespace{
 
+//  How long a scene waits for its first line when the preceding step did not
+//  press through its dialogue.
+constexpr Milliseconds SCENE_START_WAIT = 15000ms;
+
 //  "to_catch_grass" as "to catch grass", for the logs.
 std::string label_of(const StoryStep& step){
     std::string label = step.name;
@@ -180,6 +184,8 @@ void StoryWalkSteps::begin_attempt(const std::string& row, const std::vector<Sto
     m_warp = {};
     m_scene_next.clear();
     m_scene_open = false;
+    m_previous_settle_saw_dialogue = false;
+    m_scene_start_already_played = false;
     //  A route right before a scene, or before a plain step onto the scene's
     //  trigger (the decomp's tile, which the console may have elsewhere).
     const auto onto_trigger = [](const StoryStep& step){
@@ -199,6 +205,11 @@ void StoryWalkSteps::begin_attempt(const std::string& row, const std::vector<Sto
             m_scene_next.insert(steps[c - 2].name);
         }
     }
+}
+
+void StoryWalkSteps::begin_step(const StoryStep& step){
+    const bool previous_settle_saw_dialogue = std::exchange(m_previous_settle_saw_dialogue, false);
+    m_scene_start_already_played = step.kind == Pokemon::StoryStepKind::MASH && previous_settle_saw_dialogue;
 }
 
 void StoryWalkSteps::turn(Direction direction){
@@ -353,7 +364,7 @@ Outcome StoryWalkSteps::tap_to_banner(const Pose& from, const StoryStep& step){
     //  then goes nowhere (lab-B 2026-11-10, 00.04b's Center): settle, as
     //  after a door.
     if (through_already(step)){
-        m_io.settle(BUTTON_B, label_of(step), SettleKind::DOOR, "");
+        m_previous_settle_saw_dialogue = m_io.settle(BUTTON_B, label_of(step), SettleKind::DOOR, "");
         return Pokemon::outcome_ok();
     }
     const size_t limit = taps_to_banner(from, direction);
@@ -367,7 +378,7 @@ Outcome StoryWalkSteps::tap_to_banner(const Pose& from, const StoryStep& step){
     }else{
         log(std::format("[{}] {}: through to {} after {} taps {}.", m_row, step.name, map, *taps, direction_name(direction)));
     }
-    m_io.settle(BUTTON_B, label_of(step), SettleKind::DOOR, "");
+    m_previous_settle_saw_dialogue = m_io.settle(BUTTON_B, label_of(step), SettleKind::DOOR, "");
     return Pokemon::outcome_ok();
 }
 
@@ -659,7 +670,7 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
         if (walk.wild_battles > 0){
             return Pokemon::outcome_failed("interrupted_step", step.name);
         }
-        m_io.settle(BUTTON_B, label_of(step), SettleKind::TALK, "");
+        m_previous_settle_saw_dialogue = m_io.settle(BUTTON_B, label_of(step), SettleKind::TALK, "");
         return Pokemon::outcome_ok();
     }
     //  A step through a door: walk (or run) on until the screen goes dark,
@@ -672,7 +683,7 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     //  slice 1); with neither yet, settle() waits for one.
     if (step.pose_after && Pokemon::grid_pose_of(*step.pose_after).map != state.pose.map){
         if (through_already(step)){
-            m_io.settle(BUTTON_B, label_of(step), SettleKind::TALK, "");
+            m_previous_settle_saw_dialogue = m_io.settle(BUTTON_B, label_of(step), SettleKind::TALK, "");
             return Pokemon::outcome_ok();
         }
         const std::string banner = story_arrival_banner(state.pose.map, Pokemon::grid_pose_of(*step.pose_after).map);
@@ -681,7 +692,9 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
         log(std::format("[{}] {}: {} through the door (timeout {} ms, dark from {} ms): {}.", m_row, step.name,
             direction_name(direction), door.timeout.count(), door.dark_from.count(), seen.any() ? describe(seen) : "nothing yet"));
         seen = door_from_beside(step, seen, door.timeout, banner);
-        m_io.settle(BUTTON_B, label_of(step), seen.any() ? SettleKind::TALK : SettleKind::AFTER_WARP, banner);
+        m_previous_settle_saw_dialogue = m_io.settle(
+            BUTTON_B, label_of(step), seen.any() ? SettleKind::TALK : SettleKind::AFTER_WARP, banner
+        );
         return Pokemon::outcome_ok();
     }
     return one_step(state, step);
@@ -730,12 +743,18 @@ Outcome StoryWalkSteps::talk(RunState& state, const StoryStep& step){
 Outcome StoryWalkSteps::mash(RunState& state, const StoryStep& step){
     m_warp = {};
     m_scene_open = false;
-    //  The step before may have played the scene already (a door step settles
-    //  its arrival scene), so its first line is not required.
-    if (!m_route.dialog_within(15000ms, COLOR_CYAN)){
-        m_route.note(label_of(step) + ": no line within 15 s; the step before played it.", RouteNote::WARNING);
+    const bool already_played = std::exchange(m_scene_start_already_played, false);
+    if (already_played){
+        m_route.note(std::format(
+            "{}: dialogue was played by the previous step; skipping the opening-line wait.", label_of(step)
+        ), RouteNote::STATUS);
+    }else if (!m_route.dialog_within(SCENE_START_WAIT, COLOR_CYAN)){
+        m_route.note(std::format(
+            "{}: no line within {} ms; the step before may already have played it.",
+            label_of(step), SCENE_START_WAIT.count()
+        ), RouteNote::WARNING);
     }
-    m_io.settle(step.action == "a" ? BUTTON_A : BUTTON_B, label_of(step),
+    m_previous_settle_saw_dialogue = m_io.settle(step.action == "a" ? BUTTON_A : BUTTON_B, label_of(step),
         step.pose_after && Pokemon::grid_pose_of(*step.pose_after).map != state.pose.map &&
         story_plan_world(state.pose.map, Pokemon::grid_pose_of(*step.pose_after).map) == nullptr ? SettleKind::AFTER_WARP : SettleKind::TALK, "");
     if (m_row == RUNNING_SHOES_ROW && step.name == RUNNING_SHOES_STEP){

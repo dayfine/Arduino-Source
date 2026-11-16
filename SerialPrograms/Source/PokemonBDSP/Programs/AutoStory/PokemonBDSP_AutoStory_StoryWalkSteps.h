@@ -103,6 +103,10 @@ public:
     Pokemon::Outcome mash(Pokemon::RunState& state, const Pokemon::StoryStep& step);
 
 private:
+    friend class StoryEngineSteps;
+    //  Starts one engine-dispatched step. Only an immediately following
+    //  MASH may reuse dialogue observed by the preceding step's settle().
+    void begin_step(const Pokemon::StoryStep& step);
     Pokemon::Pose walk_to(const Pokemon::Pose& from, const Pokemon::Pose& goal, const Pokemon::StoryStep& step);
     //  After a wild battle on `leg`'s taps from `starts`: walks to one of
     //  `goals` from wherever the leg could have left us, then faces `facing`.
@@ -141,6 +145,10 @@ private:
     //  The last route ended in the scene of the step after it, or after the
     //  plain step onto its trigger (RouteEnd::scene); that step is not taken.
     bool m_scene_open = false;
+    //  The step just completed observed dialogue while settling.
+    bool m_previous_settle_saw_dialogue = false;
+    //  The MASH now running immediately follows that settle.
+    bool m_scene_start_already_played = false;
 };
 
 

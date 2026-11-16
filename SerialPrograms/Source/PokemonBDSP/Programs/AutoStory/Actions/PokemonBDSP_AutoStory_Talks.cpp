@@ -60,7 +60,7 @@ bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std
         .rule = {.end_on_quiet = expect != TalkExpect::BATTLE},
         .watch = TalkOverWatch::TRAINER,
     });
-    if (end == TalkOverEnd::QUIET){
+    if (end != TalkOverEnd::BATTLE){
         route_status(stream, label + " only talked.");
         return false;
     }

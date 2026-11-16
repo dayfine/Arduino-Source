@@ -73,7 +73,8 @@ struct TalkOverSpec{
 
 //  How talk_over() ended.
 enum class TalkOverEnd{
-    QUIET,
+    QUIET,      //  Quiet without observing dialogue.
+    DIALOGUE,   //  Quiet after pressing through dialogue.
     BATTLE,     //  Only with TalkOverWatch::TRAINER.
 };
 

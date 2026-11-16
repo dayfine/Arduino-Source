@@ -189,12 +189,14 @@ void StoryLogBackend::log(std::string_view line){
 
 //  The game first: the registry and the runner keep references to it.
 struct StoryEngineSteps::Engine{
-    Engine(StoryWalkSteps& walks, const StoryBoundActions& bound, Pokemon::StoryBackend<GridPose>& backend)
-        : game(story_game(walks, bound))
+    Engine(StoryWalkSteps& walk_steps, const StoryBoundActions& bound, Pokemon::StoryBackend<GridPose>& backend)
+        : walks(walk_steps)
+        , game(story_game(walk_steps, bound))
         , registry(game)
         , runner(registry, backend)
     {}
 
+    StoryWalkSteps& walks;
     Pokemon::StoryGame<GridPose> game;
     Pokemon::StoryActionRegistry<GridPose> registry;
     Pokemon::StoryStepRunner<GridPose> runner;
@@ -207,6 +209,7 @@ StoryEngineSteps::StoryEngineSteps(StoryWalkSteps& walks, const StoryBoundAction
 StoryEngineSteps::~StoryEngineSteps() = default;
 
 Outcome StoryEngineSteps::act(const StoryStep& step, RunState& state){
+    m_engine->walks.begin_step(step);
     return m_engine->runner.act(step, state);
 }
 

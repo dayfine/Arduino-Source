@@ -177,8 +177,9 @@ public:
         unsupported("taps to " + map + "'s banner");
         return std::nullopt;
     }
-    virtual void settle(Button, const std::string& label, SettleKind, const std::string&) override{
+    virtual bool settle(Button, const std::string& label, SettleKind, const std::string&) override{
         unsupported(label + "'s settle");
+        return false;
     }
 
 private:

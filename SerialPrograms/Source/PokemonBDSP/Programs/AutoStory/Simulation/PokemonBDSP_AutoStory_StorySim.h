@@ -81,6 +81,7 @@ struct SimMisses{
     bool fading_in = false;
     bool slid = false;
     std::string banner_up = {};
+    std::map<std::string, Milliseconds> dialog_waits = {};
 };
 
 //  How a warp's fade looks on the screen (#268's design note); the
@@ -167,7 +168,8 @@ struct SimWorldKnobs{
     std::map<std::string, double> fade_into = {};
     //  People with a wander box on their map walk it, a step tried every 2 s.
     std::optional<uint64_t> wander_seed = std::nullopt;
-    //  How long after the A press a talk's first line shows, by step name.
+    //  How long after a step begins watching for dialogue its first line
+    //  shows, by step name.
     std::map<std::string, Milliseconds> first_line = {};
     //  The scene a step's talk-over plays, by step name: a scene's or a
     //  door's settle(), or the speeches after a battle step's battle.
@@ -226,6 +228,9 @@ public:
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override;
     virtual WalkResult walk_taps(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual bool dialog_within(Milliseconds wait, Color color) override;
+    Milliseconds take_uncovered_first_line(){
+        return std::exchange(m_uncovered_first_line, Milliseconds(0));
+    }
     //  With SimWorldKnobs::slow_fade_in, fails the move `label` if the last
     //  warp is still fading in (SimMisses::fading_in).
     void check_fade_in(const std::string& label);
@@ -241,6 +246,7 @@ private:
     const std::string& m_step;
     std::function<void(const Pokemon::Pose&)> m_cross;
     std::set<std::string> m_slid_steps;
+    Milliseconds m_uncovered_first_line{0};
 };
 } // namespace detail
 
@@ -359,7 +365,7 @@ public:
     //  run before looked for the banner (run_into_door()), so settle() sees
     //  none here. With a scene in SimWorldKnobs::scenes, the program's
     //  TalkOver plays it instead.
-    virtual void settle(Button, const std::string& label, SettleKind kind, const std::string&) override;
+    virtual bool settle(Button, const std::string& label, SettleKind kind, const std::string&) override;
     virtual std::optional<size_t> tap_to_banner(Pokemon::Direction direction, const std::string& map, size_t max_taps) override;
 
 private:
