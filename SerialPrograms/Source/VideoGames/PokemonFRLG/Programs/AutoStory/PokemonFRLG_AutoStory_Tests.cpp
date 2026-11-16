@@ -1236,7 +1236,7 @@ UnitTestResult test_nugget_bridge_order(){
 //  places of the starts that matter differ.
 UnitTestResult test_save_places(){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        if (checkpoint.start && save_card_place(Pokemon::grid_pose_of(*checkpoint.start).map).empty()){
+        if (checkpoint.start && !save_card_place(Pokemon::grid_pose_of(*checkpoint.start).map)){
             return checkpoint.id + " starts on " + Pokemon::grid_pose_of(*checkpoint.start).map + ", which has no save card place.";
         }
     }
@@ -1255,7 +1255,7 @@ UnitTestResult test_save_places(){
     if (save_card_place("Route24") != "route-24" || save_card_place("Route25_SeaCottage") != "route-25"){
         return "Wrong save card places on Route 24 and 25.";
     }
-    if (!save_card_place("Route9").empty() || !save_card_place("Route2").empty()){
+    if (save_card_place("Route9") || save_card_place("Route2")){
         return "A place for a map the table doesn't use.";
     }
     return true;
