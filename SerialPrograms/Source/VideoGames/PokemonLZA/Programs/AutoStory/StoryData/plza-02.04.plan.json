@@ -11,9 +11,9 @@
       {
         "id": "to_front_counter",
         "kind": "game_action",
-        "why": "step 26: along the counter to the clerk's \"A Talk\". 2.25 s was one step short. Measured 2026-11-08 on console B, walk not run.",
+        "why": "step 26: along the counter to the clerk's \"A Talk\". 2.25 s was one step short. Measured 2026-11-08 on console B, walk not run. Ends on the A prompt after the turn, or fails. not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
         "action": "walk",
-        "args": {"legs": [[-5, 2500], [-85, 0]]}
+        "args": {"legs": [[-5, 2500], [-85, 0]], "end": "prompt"}
       },
       {
         "id": "talk_to_clerk",

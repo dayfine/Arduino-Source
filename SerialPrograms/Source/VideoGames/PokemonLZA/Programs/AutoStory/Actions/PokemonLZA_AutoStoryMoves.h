@@ -63,6 +63,17 @@ struct StoryMove{
 //  that needs a prompt after the walk fails there instead.
 Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move);
 
+//  `move` as run_story_move() plays it, but for its last leg's walk, which
+//  the caller holds a slice at a time (hold_last_leg()) until what it walks
+//  to shows: TURN_THEN_WALK plays the last leg's turn; HELD presses L
+//  before the last leg when it turns after an earlier one. A HELD last leg
+//  with no walk is played whole, its turn a tap.
+Pokemon::Outcome run_story_move_but_last_walk(PlzaBackend& backend, const StoryMove& move);
+
+//  `slice` of `move`'s last leg's walk: the stick forward after the leg's
+//  turn (TURN_THEN_WALK), or at the leg's angle (HELD).
+void hold_last_leg(PlzaBackend& backend, const StoryMove& move, Milliseconds slice);
+
 
 
 } // namespace PokemonLZA

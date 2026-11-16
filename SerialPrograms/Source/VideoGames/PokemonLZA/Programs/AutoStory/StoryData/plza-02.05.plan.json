@@ -11,9 +11,9 @@
       {
         "id": "to_lobby_elevator",
         "kind": "game_action",
-        "why": "step 28: to the elevator's \"A Take Elevator\". Measured 2026-11-08 on console B, walk not run.",
+        "why": "step 28: to the elevator's \"A Take Elevator\". Measured 2026-11-08 on console B, walk not run: 2 s; on until the prompt, 3 s at most. not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
         "action": "walk",
-        "args": {"legs": [[0, 2000]]}
+        "args": {"legs": [[0, 3000]], "end": "prompt"}
       },
       {
         "id": "take_elevator_up",

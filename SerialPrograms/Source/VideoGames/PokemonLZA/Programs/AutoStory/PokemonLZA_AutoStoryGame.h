@@ -48,7 +48,8 @@ namespace PokemonLZA{
 //      "walk"                  args "legs", [[turn, ms], ...] as
 //                              story_walk_move() reads them, "held",
 //                              "wait_ms", and "end",
-//                              "fade_white", "fade_black" or "dialog";
+//                              "fade_white", "fade_black", "dialog" or
+//                              "prompt" (an A prompt);
 //                              walked once the screen shows free control
 //                              (check_can_walk()), until its end event if it
 //                              has one (walk_until()), else until its legs
@@ -65,7 +66,9 @@ namespace PokemonLZA{
 //      "choose_0", "choose_1"  that row of the choice box on screen (0 the
 //                              top), by the D-pad from the highlighted row,
 //                              then A
-//      "talk" (TALK)           A at what the player faces, then its text box
+//      "talk" (TALK)           on the A prompt of what the player faces
+//                              (none: nothing pressed, "talk_no_prompt"),
+//                              A, then its text box
 //      "a" (MASH, "scene")     A through a scene until control; it must
 //                              start within 45 s
 //      "story_battle_start"    A through the talk before a story battle and
@@ -73,7 +76,7 @@ namespace PokemonLZA{
 //                              HUD (run_scene_machine())
 //      "story_battle"          the battle, by the backend's battle()
 //      "talk_through_map_screen"   A and B in turn through Taunie's talk
-//                              and the first map (03.02)
+//                              and the first map (03.02b)
 //      "climb_ladder"          the side street's ladder (03.03)
 //      "talk_to_pokedex_screen"    B through the nurse's talk and the
 //                              Pokedex app (03.04)
@@ -93,11 +96,13 @@ namespace PokemonLZA{
 const std::vector<Pokemon::StoryActionSpec>& plza_story_specs();
 
 //  What is wrong with `checkpoint` for PLZA's engine
-//  (StoryActionRegistry::lint), then with a walk's "end".
+//  (StoryActionRegistry::lint), then with a walk's "end", then a talk not
+//  right after a step that ends on its A prompt (a walk to "prompt", or
+//  "walk_to_prompt"): a talk never presses A blind.
 std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpoint);
 
-//  The event a walk's "end" arg names: "fade_white", "fade_black" or
-//  "dialog". None for any other word.
+//  The event a walk's "end" arg names: "fade_white", "fade_black",
+//  "dialog" or "prompt" (INTERACT_PROMPT). None for any other word.
 std::optional<ScreenEvent> walk_end_event(std::string_view end);
 
 //  PLZA as a StoryGame on the console `env`, which must outlive it, as must

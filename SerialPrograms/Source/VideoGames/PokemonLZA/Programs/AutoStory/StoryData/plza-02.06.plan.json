@@ -11,9 +11,9 @@
       {
         "id": "to_bed",
         "kind": "game_action",
-        "why": "step 31: to the bed's \"A Rest\". 1.5 s explored, 1 s enough. Measured 2026-11-08 on console B, walk not run.",
+        "why": "step 31: to the bed's \"A Rest\". 1.5 s explored, 1 s enough. Measured 2026-11-08 on console B, walk not run. On until the prompt, 1.5 s at most. not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
         "action": "walk",
-        "args": {"legs": [[45, 1000]], "held": true}
+        "args": {"legs": [[45, 1500]], "held": true, "end": "prompt"}
       },
       {
         "id": "rest",

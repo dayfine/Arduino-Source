@@ -27,10 +27,11 @@
       {
         "id": "to_2f_elevator",
         "kind": "game_action",
-        "why": "step 37: down the 2F hallway to \"A Take Elevator\". Measured 2026-11-08 on console B, walk not run.",
+        "why": "step 37: down the 2F hallway to \"A Take Elevator\". Measured 2026-11-08 on console B, walk not run: 2 s; on until the prompt, 3 s at most. not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
         "action": "walk",
         "args": {
-          "legs": [[-15, 2000]]
+          "legs": [[-15, 3000]],
+          "end": "prompt"
         }
       },
       {

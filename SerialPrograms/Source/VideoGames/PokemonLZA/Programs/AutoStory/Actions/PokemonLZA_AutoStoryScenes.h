@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Story steps that press through one particular screen of the story, on
- *  the engine's backend: Taunie's first map (03.02) and the side street's
+ *  the engine's backend: Taunie's first map (03.02b) and the side street's
  *  ladder (03.03).
  *
  */
@@ -19,7 +19,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Taunie's talk after her battle (03.02), the "Map & Missions" card, the
+//  Taunie's talk after her battle (03.02b), the "Map & Missions" card, the
 //  first map and the rest of her talk: A then B, a second each, until the
 //  party bar shows with no text box on looks a second apart. A pages the
 //  talk and the card; B closes the map, where A would place a pin. The map

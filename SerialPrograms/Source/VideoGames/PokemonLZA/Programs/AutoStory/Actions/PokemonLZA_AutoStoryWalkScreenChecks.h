@@ -38,11 +38,12 @@ Pokemon::Outcome check_can_walk(PlzaBackend& backend, std::string_view walk);
 //  shows there.
 void finish_walk(PlzaBackend& backend, std::string_view walk);
 
-//  Walks `move`, holding its last leg in slices of 250 ms until a look
-//  shows `end` (a fade, or the box of a talk the walk runs into), the
-//  leg's time as the upper bound. A black fade ends it too: the scene at
-//  the walk's end takes over. Fails as "walk_no_end" if neither shows
-//  within it.
+//  Walks `move`, holding its last leg in slices of 250 ms
+//  (hold_last_leg()) until a look shows `end` (a fade, the box of a talk
+//  the walk runs into, or the A prompt of what it walks to), the leg's
+//  time as the upper bound. A black fade ends it too: the scene at the
+//  walk's end takes over. A last leg that only turns is looked at once,
+//  after the turn. Fails as "walk_no_end" if neither shows within it.
 Pokemon::Outcome walk_until(PlzaBackend& backend, std::string_view walk, const StoryMove& move, ScreenEvent end);
 
 //  Walks straight on, 250 ms at a time, until an A prompt shows
@@ -50,6 +51,10 @@ Pokemon::Outcome walk_until(PlzaBackend& backend, std::string_view walk, const S
 //  shows already. Fails as "no_prompt" after `timeout` of walking without
 //  one.
 Pokemon::Outcome walk_to_prompt(PlzaBackend& backend, Milliseconds timeout);
+
+//  Whether an A prompt shows within `within`, looking every 250 ms:
+//  "talk" presses A only on one.
+bool prompt_shows_within(PlzaBackend& backend, Milliseconds within);
 
 //  A at the A prompt the player stands at (a door's "A Enter"), then looks
 //  for up to 3 s for a fade or text; while the prompt stays with neither,
