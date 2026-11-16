@@ -24,6 +24,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/Navigation/Pokemon_GateTiles.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryLevelCheck.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -562,8 +563,9 @@ public:
 
 //  Battle checkpoint `id`'s precondition: a LEVEL step on the lead before
 //  its battle `battle`, at least `pokeguy`, pokeguy's level there (whose
-//  sims stand for the fight at that level or above). A lead at that level
-//  passes it; one a level below stops the checkpoint before the fight.
+//  sims stand for the fight at that level or above). A lead up to
+//  LEVEL_CHECK_TOLERANCE below it passes; one more below stops the
+//  checkpoint before the fight.
 UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id, std::string_view battle, unsigned pokeguy){
     std::optional<LevelCheck> check;
     for (const StoryStep& step : checkpoint(id).steps){
@@ -577,7 +579,8 @@ UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id
     if (!check || check->slot != 0 || check->level != pokeguy){
         return std::format("{}: expected a LEVEL step on the lead, at least Lv{}, before {}.", id, pokeguy, battle);
     }
-    for (const unsigned level : {pokeguy, pokeguy - 1}){
+    const unsigned lowest_passing = pokeguy - Pokemon::LEVEL_CHECK_TOLERANCE;
+    for (const unsigned level : {pokeguy, lowest_passing, lowest_passing - 1}){
         const MemberReader lead = [level](size_t slot) -> std::optional<MemberInfo>{
             if (slot != 0){
                 return std::nullopt;
@@ -585,9 +588,9 @@ UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id
             return MemberInfo{.species = "blastoise", .level = level};
         };
         const LevelResult result = run_level_check(logger, lead, *check);
-        const LevelEnd expected = level >= pokeguy ? LevelEnd::REACHED : LevelEnd::BELOW;
+        const LevelEnd expected = level >= lowest_passing ? LevelEnd::REACHED : LevelEnd::BELOW;
         if (result.end != expected || result.level != level){
-            return std::format("{}: a Lv{} lead {} the Lv{} check.", id, level, level >= pokeguy ? "fails" : "passes", pokeguy);
+            return std::format("{}: a Lv{} lead {} the Lv{} check.", id, level, level >= lowest_passing ? "fails" : "passes", pokeguy);
         }
     }
     return true;

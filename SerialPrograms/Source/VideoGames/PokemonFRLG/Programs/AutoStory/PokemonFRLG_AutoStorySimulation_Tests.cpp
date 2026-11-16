@@ -874,10 +874,11 @@ UnitTestResult test_dialog_left_up_stops_a_walk(){
 }
 
 //  Dialogs pop up at random before one step in five: how many whole runs
-//  pass with them cleared between steps, and with them left up.
+//  pass with them cleared between steps, and with them left up. Each run
+//  has its own STAGE_BUDGET: one budget for all ten ran out on CI, where
+//  a stage's run takes 40 to 80 s (Fork Draft CI, 2026-11-16).
 UnitTestResult check_dialogs_at_random(Logger& logger, const Pokemon::SegmentRange& range){
     constexpr uint32_t SEEDS = 5;
-    const TimeBudget budget = budget_from_now(STAGE_BUDGET);
     size_t passes[2] = {0, 0};
     for (uint32_t seed = 1; seed <= SEEDS; seed++){
         for (bool clear : {false, true}){
@@ -887,7 +888,7 @@ UnitTestResult check_dialogs_at_random(Logger& logger, const Pokemon::SegmentRan
                     return std::bernoulli_distribution(0.2)(*rng);
                 },
                 .clear_interrupts = clear,
-            }, budget);
+            });
             passes[clear] += sim.run(range).completed ? 1 : 0;
         }
     }
