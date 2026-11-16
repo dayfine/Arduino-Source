@@ -73,18 +73,14 @@ struct TalkOverSpec{
 
 //  How talk_over() ended.
 enum class TalkOverEnd{
-    QUIET,
+    QUIET,      //  Quiet without observing dialogue.
+    DIALOGUE,   //  Quiet after pressing through dialogue.
     BATTLE,     //  Only with TalkOverWatch::TRAINER.
-};
-
-struct TalkOverResult{
-    TalkOverEnd end;
-    bool saw_dialogue;
 };
 
 //  Presses through any text and scene on the console until TalkOver says it
 //  is over. Fails with a screenshot after TALK_OVER_LIMIT.
-TalkOverResult talk_over(VideoStream& stream, ProControllerContext& context, const std::string& label, const TalkOverSpec& spec = {});
+TalkOverEnd talk_over(VideoStream& stream, ProControllerContext& context, const std::string& label, const TalkOverSpec& spec = {});
 
 
 

@@ -311,7 +311,7 @@ std::optional<size_t> ConsoleStoryStepIO::tap_to_banner(Direction direction, con
 //  missed is over, but its banner comes after it (#268 slice 1).
 bool ConsoleStoryStepIO::settle(Button button, const std::string& label, SettleKind kind, const std::string& banner){
     const TalkOverRule rule{.warp = kind == SettleKind::AFTER_WARP, .door = kind == SettleKind::DOOR};
-    return talk_over(m_stream, m_context, label, {.next = button, .rule = rule, .banner = banner}).saw_dialogue;
+    return talk_over(m_stream, m_context, label, {.next = button, .rule = rule, .banner = banner}) == TalkOverEnd::DIALOGUE;
 }
 
 

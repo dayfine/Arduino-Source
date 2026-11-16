@@ -56,11 +56,11 @@ bool dialogue_opens(VideoStream& stream, ProControllerContext& context, Millisec
 }
 
 bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std::string& label, TalkExpect expect, BattleFormat format){
-    const TalkOverResult result = talk_over(stream, context, label, {
+    const TalkOverEnd end = talk_over(stream, context, label, {
         .rule = {.end_on_quiet = expect != TalkExpect::BATTLE},
         .watch = TalkOverWatch::TRAINER,
     });
-    if (result.end == TalkOverEnd::QUIET){
+    if (end != TalkOverEnd::BATTLE){
         route_status(stream, label + " only talked.");
         return false;
     }
