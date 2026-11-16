@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <format>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -137,6 +138,72 @@ SceneMachineConfig quiet_config(Milliseconds min_length){
     return config;
 }
 
+//  01.01's arrival config: mash_to_move_hints' with end_after_black_fades 3.
+SceneMachineConfig three_fades_config(){
+    SceneMachineConfig config = arrival_config();
+    config.end_after_black_fades = 3;
+    return config;
+}
+
+//  01.01's arrival in short: text, a black fade, text, a white fade, text,
+//  a second black fade, the banner, a third black fade, then 5 s of
+//  nothing. Each fade's wait ends on the look after it.
+std::vector<Observation<ZonePose>> arrival_with_three_fades(){
+    return {
+        look_at(0ms, DIALOG), look_at(500ms),
+        look_at(1000ms, BLACK), look_at(1500ms),
+        look_at(2000ms, DIALOG), look_at(2500ms, DIALOG),
+        look_at(3000ms, WHITE), look_at(3500ms),
+        look_at(4000ms, DIALOG),
+        look_at(4500ms, BLACK), look_at(5000ms),
+        look_at(/*at=*/5500ms, NOTHING, {MISSION_BANNER_READING}), look_at(/*at=*/6000ms, NOTHING, {MISSION_BANNER_READING}),
+        look_at(6500ms, BLACK), look_at(7000ms),
+        look_at(7500ms), look_at(12500ms),
+    };
+}
+
+//  01.01's arrival up to its second black fade: text, a black fade, text,
+//  a second black fade.
+std::vector<Observation<ZonePose>> arrival_to_second_fade(){
+    return {
+        look_at(0ms, DIALOG),
+        look_at(1000ms, BLACK), look_at(1500ms),
+        look_at(2000ms, DIALOG),
+        look_at(4500ms, BLACK), look_at(5000ms),
+    };
+}
+
+//  `count` looks with the mission banner, `every` apart from `from`.
+std::vector<Observation<ZonePose>> banner_looks(Milliseconds from, Milliseconds every, size_t count){
+    std::vector<Observation<ZonePose>> looks;
+    for (size_t look = 0; look < count; look++){
+        looks.push_back(look_at(/*at=*/from + every * (int64_t)look, NOTHING, {MISSION_BANNER_READING}));
+    }
+    return looks;
+}
+
+//  01.01's arrival on the Italian game (console B, 2026-11-15): the banner
+//  stays until A, then the third black fade, then 5 s of nothing.
+std::vector<Observation<ZonePose>> arrival_banner_until_a(){
+    std::vector<Observation<ZonePose>> looks = arrival_to_second_fade();
+    for (const Observation<ZonePose>& look : banner_looks(/*from=*/5500ms, /*every=*/500ms, /*count=*/5)){
+        looks.push_back(look);
+    }
+    for (const Observation<ZonePose>& look : {look_at(8000ms), look_at(8500ms, BLACK), look_at(9000ms), look_at(9500ms), look_at(14500ms)}){
+        looks.push_back(look);
+    }
+    return looks;
+}
+
+//  01.01's arrival with a banner that A does not clear.
+std::vector<Observation<ZonePose>> arrival_banner_stays(){
+    std::vector<Observation<ZonePose>> looks = arrival_to_second_fade();
+    for (const Observation<ZonePose>& look : banner_looks(/*from=*/5500ms, /*every=*/500ms, /*count=*/20)){
+        looks.push_back(look);
+    }
+    return looks;
+}
+
 
 struct RunCase{
     std::string name;
@@ -158,6 +225,9 @@ struct RunCase{
         //  The states the log's lines went through, joined by ", "; empty:
         //  not checked.
         std::string states = {};
+        //  The lines the stream's overlay shows (log(), not
+        //  log_detail()), in order, if checked.
+        std::optional<std::vector<std::string>> overlay = std::nullopt;
     };
     Expectation expectation;
 };
@@ -552,6 +622,44 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
+        //  01.01's arrival (console B, 2026-11-15): the overlay showed
+        //  every text box, cutscene and white fade.
+        .name = "the overlay shows the black fades, the banner and the end; the file log every screen",
+        .input = {.looks = arrival_with_three_fades(), .config = three_fades_config()},
+        .expectation = {
+            .verdict = "done",
+            .a_presses = 4,
+            .states = "dialog, scene_moving, fade_black, dialog, fade_white, dialog, fade_black, banner_showing, "
+                "fade_black, scene_moving, fade_settled",
+            .overlay = std::vector<std::string>{
+                "[PLZA test] screen 3: fade_black at 1.0s: black fade, fade 1/3",
+                "[PLZA test] screen 7: fade_black at 4.5s: black fade, fade 2/3",
+                "[PLZA test] screen 8: banner_showing at 5.5s: mission banner",
+                "[PLZA test] screen 9: fade_black at 6.5s: black fade, fade 3/3",
+                "[PLZA test] the mission banner showed.",
+                "[PLZA test] done on fade_settled.",
+            },
+        },
+    },
+    {
+        //  The Italian banner waited 110 s with no press (console B,
+        //  2026-11-15); one A cleared it.
+        .name = "with end_after_black_fades, a banner up 2 s gets A, and the run goes on to the third fade",
+        .input = {.looks = arrival_banner_until_a(), .config = three_fades_config()},
+        .expectation = {
+            .verdict = "done",
+            .a_presses = 3,
+            .line = "[PLZA test] done on fade_settled.",
+            .states = "dialog, fade_black, dialog, fade_black, banner_showing, banner_press, scene_moving, fade_black, "
+                "scene_moving, fade_settled",
+        },
+    },
+    {
+        .name = "with end_after_black_fades, a banner that 3 A presses 1 s apart do not clear fails as scene_stuck",
+        .input = {.looks = arrival_banner_stays(), .config = three_fades_config()},
+        .expectation = {.verdict = "failed: scene_stuck", .a_presses = 5},
+    },
+    {
         .name = "the trace logs each new state",
         .input = {.looks = {
             look_at(0ms, DIALOG),
@@ -603,6 +711,11 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     }
     if (!test.expectation.states.empty() && traced_states(backend.lines()) != test.expectation.states){
         return std::format("expected the states \"{}\", got \"{}\"", test.expectation.states, traced_states(backend.lines()));
+    }
+    if (test.expectation.overlay && backend.overlay_lines() != *test.expectation.overlay){
+        return std::format(
+            "expected the overlay lines:\n{}\ngot:\n{}", joined(*test.expectation.overlay, "\n"), joined(backend.overlay_lines(), "\n")
+        );
     }
     if (test.expectation.line.empty()){
         return true;

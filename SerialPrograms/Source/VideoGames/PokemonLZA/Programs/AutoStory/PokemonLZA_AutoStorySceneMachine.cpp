@@ -38,6 +38,7 @@ enum class SceneScreen{
     MISSION_COMPLETE,   //  A: a main mission's "COMPLETE" card
     MISSION_BANNER, //  terminal: a main mission's banner, on a second look
     BANNER_SHOWING, //  wait: the banner, on its first look (every look, with end_after_black_fades)
+    BANNER_PRESS,   //  A: with end_after_black_fades, the banner up BANNER_PRESS_AFTER (BANNER_PRESSES times, BANNER_PRESS_EVERY apart)
     FADE_SETTLED,   //  terminal: end_after_black_fades' last fade lifted, nothing busy since for FADE_SETTLE
     CAN_MOVE,       //  terminal: the party bar, held a second
     PARTY_BAR,      //  wait: the party bar, not held a second yet
@@ -72,6 +73,10 @@ public:
     //  Whether end_after_black_fades' last fade has settled by `now`.
     bool fades_settled(WallClock now) const;
 
+    //  "fade 2/3": the black fades waited out so far, of
+    //  end_after_black_fades' ("fade 2" without it).
+    std::string black_fade_count() const;
+
     //  Whether the mission banner has shown on any look.
     bool banner_seen() const{
         return m_banner_seen;
@@ -80,6 +85,9 @@ public:
 private:
     //  classify() past the fades and the text.
     SceneScreen classify_open(const ScreenObservation& look) const;
+    //  Whether, with end_after_black_fades, the banner showing has an A
+    //  press due at `now`.
+    bool banner_press_due(WallClock now) const;
 
     SceneMachineConfig m_config;
     WallClock m_quiet_from;
@@ -95,6 +103,10 @@ private:
     bool m_scene_seen = false;
     //  The looks in a row with the mission banner.
     size_t m_banner_looks = 0;
+    //  Since when the banner shows, and the A presses on it since.
+    std::optional<WallClock> m_banner_since;
+    size_t m_banner_presses = 0;
+    std::optional<WallClock> m_last_banner_press;
     //  The black fades the machine has waited out.
     size_t m_black_fades = 0;
     //  Since when nothing busy and no banner has shown, once
@@ -131,6 +143,11 @@ constexpr Milliseconds BANNER_GONE_WAIT = 10000ms;
 //  (console B, 2026-11-10).
 constexpr size_t BANNER_PRESSES = 3;
 constexpr Milliseconds BANNER_PRESS_EVERY = 1000ms;
+//  With end_after_black_fades, the banner up this long gets A (the same
+//  BANNER_PRESSES, BANNER_PRESS_EVERY apart): the Italian "MISSIONE
+//  PRINCIPALE 01" stayed 110 s with no press; one A cleared it and the
+//  third black fade came ~4 s later (console B, 2026-11-15).
+constexpr Milliseconds BANNER_PRESS_AFTER = 2000ms;
 
 //  Text to press on: a box, or the advance chevron without one.
 bool text_shows(const ScreenObservation& look){
@@ -161,7 +178,7 @@ constexpr SceneScreen ALL_SCREENS[] = {
     SceneScreen::BATTLE,
     SceneScreen::FADE_BLACK, SceneScreen::FADE_WHITE, SceneScreen::CHOICE, SceneScreen::DIALOG,
     SceneScreen::MISSION_COMPLETE,
-    SceneScreen::MISSION_BANNER, SceneScreen::BANNER_SHOWING, SceneScreen::FADE_SETTLED,
+    SceneScreen::MISSION_BANNER, SceneScreen::BANNER_SHOWING, SceneScreen::BANNER_PRESS, SceneScreen::FADE_SETTLED,
     SceneScreen::CAN_MOVE, SceneScreen::PARTY_BAR,
     SceneScreen::CONTROLS_HINT, SceneScreen::HINT_SHOWING,
     SceneScreen::NEVER_STARTED, SceneScreen::QUIET_END, SceneScreen::BLIND_PRESS,
@@ -197,6 +214,8 @@ std::string_view scene_screen_name(SceneScreen screen){
         return "mission_banner";
     case SceneScreen::BANNER_SHOWING:
         return "banner_showing";
+    case SceneScreen::BANNER_PRESS:
+        return "banner_press";
     case SceneScreen::FADE_SETTLED:
         return "fade_settled";
     case SceneScreen::CAN_MOVE:
@@ -231,7 +250,17 @@ bool scene_screen_terminal(SceneScreen screen){
 //  Whether this state's step presses (DIALOG the config's text button,
 //  BLIND_PRESS its blind button, MISSION_COMPLETE A); the others wait.
 bool scene_screen_presses(SceneScreen screen){
-    return screen == SceneScreen::DIALOG || screen == SceneScreen::MISSION_COMPLETE || screen == SceneScreen::BLIND_PRESS;
+    return screen == SceneScreen::DIALOG || screen == SceneScreen::MISSION_COMPLETE || screen == SceneScreen::BLIND_PRESS ||
+        screen == SceneScreen::BANNER_PRESS;
+}
+
+//  Whether this state's lines go on the stream's overlay too, for whoever
+//  watches: a black fade (with its count), the mission banner and the
+//  controls hint showing. The text, cutscenes, white fades, presses and
+//  ends go to the file log only; the step's own lines say how it ended.
+bool scene_screen_for_watcher(SceneScreen screen){
+    return screen == SceneScreen::FADE_BLACK || screen == SceneScreen::BANNER_SHOWING || screen == SceneScreen::BANNER_PRESS ||
+        screen == SceneScreen::HINT_SHOWING;
 }
 
 
@@ -261,6 +290,20 @@ bool SceneTimeline::fades_settled(WallClock now) const{
     return m_settled_since && now - *m_settled_since >= FADE_SETTLE;
 }
 
+bool SceneTimeline::banner_press_due(WallClock now) const{
+    if (!m_config.end_after_black_fades || !m_banner_since || now - *m_banner_since < BANNER_PRESS_AFTER){
+        return false;
+    }
+    return m_banner_presses < BANNER_PRESSES && (!m_last_banner_press || now - *m_last_banner_press >= BANNER_PRESS_EVERY);
+}
+
+std::string SceneTimeline::black_fade_count() const{
+    if (!m_config.end_after_black_fades){
+        return std::format("fade {}", m_black_fades);
+    }
+    return std::format("fade {}/{}", m_black_fades, *m_config.end_after_black_fades);
+}
+
 SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
     if (m_config.stop_at_battle && look.events.has(ScreenEvent::BATTLE_STARTED)){
         return SceneScreen::BATTLE;
@@ -285,8 +328,10 @@ SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
         return SceneScreen::MISSION_COMPLETE;
     }
     if (look.readings.contains(MISSION_BANNER_READING)){
-        const bool banner_ends = !m_config.end_after_black_fades && m_banner_looks >= 1;
-        return banner_ends ? SceneScreen::MISSION_BANNER : SceneScreen::BANNER_SHOWING;
+        if (!m_config.end_after_black_fades && m_banner_looks >= 1){
+            return SceneScreen::MISSION_BANNER;
+        }
+        return banner_press_due(look.when) ? SceneScreen::BANNER_PRESS : SceneScreen::BANNER_SHOWING;
     }
     if (fades_settled(look.when)){
         return SceneScreen::FADE_SETTLED;
@@ -317,8 +362,13 @@ SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
 }
 
 void SceneTimeline::record(const ScreenObservation& look){
-    if (classify(look) == SceneScreen::BLIND_PRESS){
+    const SceneScreen screen = classify(look);
+    if (screen == SceneScreen::BLIND_PRESS){
         m_last_blind_press = look.when;
+    }
+    if (screen == SceneScreen::BANNER_PRESS){
+        m_banner_presses++;
+        m_last_banner_press = look.when;
     }
     if (busy(look)){
         m_last_busy = look.when;
@@ -330,6 +380,11 @@ void SceneTimeline::record(const ScreenObservation& look){
     track_since(look.readings.contains(CONTROLS_HINT_READING) && !box, look.when, m_hint_since);
     m_banner_looks = look.readings.contains(MISSION_BANNER_READING) && !box ? m_banner_looks + 1 : 0;
     m_banner_seen = m_banner_seen || m_banner_looks > 0;
+    track_since(m_banner_looks > 0, look.when, m_banner_since);
+    if (!m_banner_since){
+        m_banner_presses = 0;
+        m_last_banner_press.reset();
+    }
     //  Each FADE_BLACK look is a new fade: its state waits until it lifts.
     m_black_fades += look.events.has(ScreenEvent::FADE_BLACK) ? 1 : 0;
     const bool fades_done = m_config.end_after_black_fades && m_black_fades >= *m_config.end_after_black_fades;
@@ -384,7 +439,10 @@ constexpr std::ptrdiff_t TURN_PERIODS[] = {2, 3};
 //  that change nothing, are counted and summed up every SUMMARY_EVERY,
 //  and before the next line and at the end when they took turns or
 //  pressed ("[PLZA label] scene_moving x46, blind_press x15 over 30.0s, 15
-//  presses"): a wait on one state shows in the next line's time.
+//  presses"): a wait on one state shows in the next line's time. All of
+//  it goes to the file log; only the lines of scene_screen_for_watcher()'s
+//  states go on the overlay too (01.01's arrival put 12 lines of text and
+//  cutscenes there in 25 s, console B 2026-11-15).
 class SceneLog{
 public:
     SceneLog(PlzaBackend& backend, std::string_view label, WallClock start)
@@ -403,10 +461,15 @@ public:
         if (gets_line(std::format("{}: {}", scene_screen_name(screen), readings))){
             flush();
             const double seconds = std::chrono::duration<double>(when - m_start).count();
-            m_backend.log(std::format(
+            const std::string line = std::format(
                 "[PLZA {}] screen {}: {} at {}s: {}",
                 m_label, m_screen_number, scene_screen_name(screen), tostr_fixed(seconds, 1), readings
-            ));
+            );
+            if (scene_screen_for_watcher(screen)){
+                m_backend.log(line);
+            }else{
+                m_backend.log_detail(line);
+            }
             return;
         }
         count(screen, when, pressed);
@@ -433,7 +496,7 @@ private:
             text += std::format("{}{} x{}", text.empty() ? "" : ", ", scene_screen_name(screen), looks);
         }
         const double seconds = std::chrono::duration<double>(m_counted_to - *m_counted_from).count();
-        m_backend.log(std::format("[PLZA {}] {} over {}s, {} presses", m_label, text, tostr_fixed(seconds, 1), m_presses));
+        m_backend.log_detail(std::format("[PLZA {}] {} over {}s, {} presses", m_label, text, tostr_fixed(seconds, 1), m_presses));
         m_counted.clear();
         m_counted_from.reset();
         m_presses = 0;
@@ -520,7 +583,11 @@ public:
     //  The step of `screen`, the state of `look`.
     void act(SceneScreen screen, const ScreenObservation& look){
         m_timeline.record(look);
-        m_log.look(screen, describe_look(look), look.when, scene_screen_presses(screen));
+        std::string readings = describe_look(look);
+        if (screen == SceneScreen::FADE_BLACK){
+            readings = std::format("{}, {}", readings, m_timeline.black_fade_count());
+        }
+        m_log.look(screen, readings, look.when, scene_screen_presses(screen));
         if (scene_screen_terminal(screen)){
             return;
         }
@@ -596,6 +663,12 @@ size_t max_visits(SceneScreen screen){
         return 400;
     case SceneScreen::MISSION_COMPLETE:
         return 30;
+    case SceneScreen::BANNER_SHOWING:
+        //  ~30 s of looks on the console: with end_after_black_fades a
+        //  banner its A presses do not clear waits on every look, and its
+        //  frames change too much for max_still (console B, 2026-11-15:
+        //  banner_showing x117 over 30.1 s, again and again).
+        return 120;
     default:
         return SIZE_MAX;
     }
@@ -611,6 +684,7 @@ Milliseconds max_still(SceneScreen screen){
         return FADE_WAIT;
     case SceneScreen::SCENE_STILL:
     case SceneScreen::BLIND_PRESS:
+    case SceneScreen::BANNER_PRESS:
         //  A blind A press need not change the screen.
         return SCENE_STILL_WAIT;
     case SceneScreen::PARTY_BAR:

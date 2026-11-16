@@ -75,7 +75,9 @@ struct SceneMachineConfig{
     //  Ends once this many black fades have been waited out and the screen
     //  has then shown no text, fade or banner for 5 s (or on the controls
     //  hint, if it comes first), and takes the mission banner for part of
-    //  the scene, not its end; whether it showed is logged. 01.01's arrival
+    //  the scene, not its end; whether it showed is logged. A banner up 2 s
+    //  gets A, up to 3 times 1 s apart (the Italian one stays until A,
+    //  console B 2026-11-15), and one that stays fails. 01.01's arrival
     //  ends on its third black fade after the ad, which follows the banner
     //  (console B, 2026-11-15, English and Italian; the banner detector
     //  missed it on the Italian game). Text after the last fade starts the
@@ -90,7 +92,9 @@ struct SceneMachineConfig{
 //  `config.stop_at_battle` the battle HUD, or with
 //  `config.end_after_black_fades` its last fade has lifted and settled, on
 //  run_screen_machine(). `label` names its log lines ("[PLZA
-//  mash_to_move_hints] screen 2: dialog at 1.5s: text box"). Fails as "scene_quiet" on the
+//  mash_to_move_hints] screen 2: dialog at 1.5s: text box"), which go to
+//  the file log (log_detail()) except the black fades, the banner, the
+//  hint and the end, which go on the overlay too (log()). Fails as "scene_quiet" on the
 //  quiet end (unless `config.quiet_is_control`), "scene_never_started"
 //  past `config.start_window`, "scene_timeout" when `timeout` passes (by
 //  the looks' time), and "scene_stuck" on a state that comes up too often
