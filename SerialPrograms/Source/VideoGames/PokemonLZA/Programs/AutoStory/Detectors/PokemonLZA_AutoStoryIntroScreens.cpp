@@ -4,6 +4,7 @@
  *
  */
 
+#include <cctype>
 #include <cstdint>
 #include <string_view>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
@@ -240,6 +241,26 @@ std::string read_light_text(const ImageViewRGB32& frame, const ImageFloatBox& bo
 
 } // namespace
 
+
+//  The title line runs y 215-266 at 1920 x 1080, from the highlighted
+//  tile's left edge; the tile row's cyan border starts at y 277. The text
+//  is about (10, 212, 224) on (241, 241, 241).
+bool is_home_tile_plza(const ImageViewRGB32& frame){
+    if (!usable(frame)){
+        return false;
+    }
+    const ImageRGB32 filtered = to_blackwhite_rgb32_range(
+        extract_box_reference(frame, ImageFloatBox(0.02, 205.0 / 1080, 0.96, 67.0 / 1080)),
+        /*in_range_black=*/true, /*mins=*/0xff009696, /*maxs=*/0xff7fffff
+    );
+    std::string letters;
+    for (const char ch : OCR::ocr_read(Language::English, filtered)){
+        if (std::isalnum((unsigned char)ch)){
+            letters += (char)std::tolower((unsigned char)ch);
+        }
+    }
+    return letters.ends_with("za");
+}
 
 std::optional<size_t> read_language_list_cursor(const ImageViewRGB32& frame){
     if (!usable(frame) || !column_gap_dark(frame)){

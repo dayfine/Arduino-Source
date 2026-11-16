@@ -13,6 +13,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "NintendoSwitch/NintendoSwitch_Settings.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
@@ -37,6 +38,11 @@ constexpr std::string_view DUMP_FOLDER = "PokemonLZA/AutoStory/Intro";
 //  From the user select to the language list: about 15 s of logos, with no
 //  press needed (the console, 2026-11-15, all ten languages).
 constexpr Milliseconds LAUNCH_LIMIT = 60000ms;
+
+//  HOME's tiles are in last-played order, so PLZA's is not always the
+//  first: it is searched for among this many.
+constexpr size_t HOME_TILES_SEARCHED = 8;
+constexpr Milliseconds HOME_TILE_RELEASE = 500ms;
 
 //  The language list's D-pad taps: each registered at this pace (the
 //  console, 2026-11-15).
@@ -122,11 +128,31 @@ void tilt(ProControllerContext& context, IntroKey key){
     }
 }
 
-//  From HOME with the game closed: A on the selected tile, through the
-//  user select (start_game_from_home(), slot 0: the cursor does not move),
-//  until the game's black screen.
+//  On HOME: HOME puts the cursor on the first tile (as
+//  start_game_from_home() does for a game slot), then right one tile at a
+//  time until the highlighted tile's title is PLZA's.
+void select_plza_tile(ConsoleHandle& console, ProControllerContext& context){
+    pbf_press_button(context, BUTTON_HOME, /*hold=*/160ms, ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0);
+    for (size_t tile = 0; tile < HOME_TILES_SEARCHED; tile++){
+        const VideoSnapshot frame = snapshot(console, context);
+        if (frame && is_home_tile_plza(frame)){
+            console.log(std::format("AutoStory intro: PLZA is HOME's tile {}.", tile));
+            return;
+        }
+        pbf_press_dpad(context, DPAD_RIGHT, /*hold=*/80ms, HOME_TILE_RELEASE);
+    }
+    throw UserSetupError(
+        console,
+        std::format("AutoStory: Pokemon Legends: Z-A is not on HOME's first {} tiles. Play it once so its tile moves to the front.", HOME_TILES_SEARCHED)
+    );
+}
+
+//  From HOME with the game closed: selects PLZA's tile, then A on it,
+//  through the user select (start_game_from_home(), slot 0: the cursor
+//  does not move), until the game's black screen.
 void launch_from_home(ConsoleHandle& console, ProControllerContext& context){
-    console.log("AutoStory intro: launching the selected HOME tile.");
+    select_plza_tile(console, context);
+    console.log("AutoStory intro: launching PLZA's HOME tile.");
     start_game_from_home(console, context, /*tolerate_update_menu=*/true, /*game_slot=*/0, /*user_slot=*/0);
 }
 
@@ -377,8 +403,8 @@ NewGameStart require_new_game_start(ConsoleHandle& console, ProControllerContext
         if (current_time() >= deadline){
             throw UserSetupError(
                 console,
-                "AutoStory: 01.00 starts a new game (no save) from the Switch HOME with PLZA's tile selected and the game "
-                "closed, from the language list, or from \"Confirm Choices\". None of them is on screen; nothing was pressed."
+                "AutoStory: 01.00 starts a new game (no save) from the Switch HOME (the game closed; PLZA's tile among "
+                "the first 8), from the language list, or from \"Confirm Choices\". None of them is on screen; nothing was pressed."
             );
         }
         context.wait_for(250ms);

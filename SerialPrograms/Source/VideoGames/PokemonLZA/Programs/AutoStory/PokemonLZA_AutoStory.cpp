@@ -33,7 +33,7 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
         "Play the main story of Pokemon Legends: Z-A. Prototype: from a new game to the end of Main Mission 01, picking Chikorita. "
-        "Checkpoint 01.00 starts a new game (delete the save first) from the HOME screen with the game closed and its tile selected, "
+        "Checkpoint 01.00 starts a new game (delete the save first) from the HOME screen with the game closed, its tile among the first 8, "
         "from the language list, or from Confirm Choices, with the language, look and name below. "
         "Later checkpoints load the latest save first, unless that is turned off.",
         PanelQualityStanding::DEVELOPER,
@@ -129,7 +129,7 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"Kosmos", /*placeholder_text=*/"Kosmos"
     )
     , CAPTURE_INTRO_SCREENS(
-        "<b>Developer: capture intro screens:</b><br>Instead of the story: for each language, close the game, launch it from HOME and save its screens up to the name keyboard to the Screenshots folder. Nothing is typed, so no save is made.",
+        "<b>Developer: capture intro screens:</b><br>A separate collection mode, not a capture during a run: it ignores Game Language and, for each of the ten languages in turn (English first), closes the game, launches it from HOME and saves its screens up to the name keyboard to the Screenshots folder. Nothing is typed, so no save is made.",
         LockMode::LOCK_WHILE_RUNNING, /*default_value=*/false
     )
     , ATTEMPTS_PER_CHECKPOINT(

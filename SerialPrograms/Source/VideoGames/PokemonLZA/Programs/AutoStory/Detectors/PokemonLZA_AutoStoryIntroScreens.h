@@ -24,6 +24,12 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+//  On the Switch HOME, whether the highlighted tile is PLZA: the title the
+//  HOME prints above the tile row (cyan) ends in "Z-A", read with OCR
+//  (English; measured on an English system). False for any other tile or
+//  frame.
+bool is_home_tile_plza(const ImageViewRGB32& frame);
+
 //  On "Which language will you play in?", the highlighted entry (numbered
 //  down the left column, then down the right one): the one white box of
 //  the 10, the others slate. Nullopt for any other frame, an empty one
