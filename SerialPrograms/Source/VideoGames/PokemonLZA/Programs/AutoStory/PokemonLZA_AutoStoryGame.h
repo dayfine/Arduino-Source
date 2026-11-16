@@ -76,7 +76,10 @@ namespace PokemonLZA{
 //      "story_battle_start"    A through the talk before a story battle and
 //                              the battle tutorial's cards until the battle
 //                              HUD (run_scene_machine())
-//      "story_battle"          the battle, by the backend's battle()
+//      "story_battle"          the battle, by the backend's battle(), on
+//                              the battle HUD within 10 s, else
+//                              "battle_never_started"; right after
+//                              "story_battle_start" (the lint)
 //      "talk_through_map_screen"   A and B in turn through Taunie's talk
 //                              and the first map (03.02b)
 //      "climb_ladder"          the side street's ladder (03.03)

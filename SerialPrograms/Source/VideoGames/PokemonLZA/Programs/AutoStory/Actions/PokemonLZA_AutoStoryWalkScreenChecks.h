@@ -52,9 +52,11 @@ Pokemon::Outcome walk_until(PlzaBackend& backend, std::string_view walk, const S
 //  one.
 Pokemon::Outcome walk_to_prompt(PlzaBackend& backend, Milliseconds timeout);
 
-//  Whether an A prompt shows within `within`, looking every 250 ms:
-//  "talk" presses A only on one.
-bool prompt_shows_within(PlzaBackend& backend, Milliseconds within);
+//  Whether a look shows `event` within `within`, looking every 250 ms and
+//  pressing nothing: "talk" presses A only on an A prompt
+//  (INTERACT_PROMPT), "story_battle" fights only on the battle HUD
+//  (BATTLE_STARTED).
+bool event_shows_within(PlzaBackend& backend, ScreenEvent event, Milliseconds within);
 
 //  A at the A prompt the player stands at (a door's "A Enter"), then looks
 //  for up to 3 s for a fade or text; while the prompt stays with neither,

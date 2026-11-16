@@ -24,15 +24,27 @@
         "why": "step 42: A at Taunie"
       },
       {
+        "id": "taunie_battle_start",
+        "kind": "game_action",
+        "why": "steps 42-43: A through her talk and challenge (no A hint, subtitles with no text box, the Smart Rotom card) until the battle HUD (console B, 2026-11-16: the talk opened on the card; the battle code run straight after it looked 2 min for a battle on the overworld)",
+        "action": "story_battle_start"
+      },
+      {
         "id": "battle_totodile",
         "kind": "game_action",
-        "why": "steps 42-43: A through her talk and challenge (no A hint, a subtitle with no text box), then beat Totodile, until \"We're not done just yet!\"",
+        "why": "step 43: beat Totodile, until \"We're not done just yet!\"",
         "action": "story_battle"
+      },
+      {
+        "id": "tepig_battle_start",
+        "kind": "game_action",
+        "why": "step 44: A through \"We're not done just yet!\", the Type Matchups tutorial (3 pages) and Tepig's send-out until the battle HUD",
+        "action": "story_battle_start"
       },
       {
         "id": "battle_tepig",
         "kind": "game_action",
-        "why": "step 44: A through the Type Matchups tutorial (3 pages) and Tepig's send-out, then beat Tepig, until Taunie's speech",
+        "why": "step 44: beat Tepig, until Taunie's speech",
         "action": "story_battle"
       },
       {
