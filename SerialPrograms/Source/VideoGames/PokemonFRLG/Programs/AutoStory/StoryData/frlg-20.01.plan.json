@@ -170,6 +170,7 @@
   },
   "execution": {
     "menu": "full",
+    "protected_slots": [6],
     "notes": {
       "checkpoint": [
         "Starts at Indigo Plateau's Mart counter, where 20.01a ends. A boss battle is its own checkpoint (user, 2026-11-12): the walk in and Lorelei's fight. PokeGuy has this fight at 1:46:37 (docs/battles/pokeguy-conditions.md, lorelei) at 159/159 HP; 19.05's heal is that entry.",

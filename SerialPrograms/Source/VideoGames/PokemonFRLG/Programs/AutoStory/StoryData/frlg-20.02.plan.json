@@ -171,6 +171,7 @@
   },
   "execution": {
     "menu": "full",
+    "protected_slots": [6],
     "notes": {
       "checkpoint": [
         "Starts in front of Lorelei at (6, 6) facing north, where 20.01 ends. A boss battle is its own checkpoint: the walk on and Bruno's fight. PokeGuy has this fight at 1:49:15 (docs/battles/pokeguy-conditions.md, bruno).",

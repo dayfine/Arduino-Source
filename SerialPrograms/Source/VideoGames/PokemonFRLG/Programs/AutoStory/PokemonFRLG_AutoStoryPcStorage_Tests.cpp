@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <format>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -64,6 +65,9 @@ public:
         if (m_screen == PcScreen::BOX_GRID){
             view.box = current_box;
             view.occupied = !boxes[current_box][m_cursor].empty();
+            if (*view.occupied){
+                view.species = boxes[current_box][m_cursor];
+            }
         }
         if (m_screen == PcScreen::BOX_CHOOSER){
             view.box = m_chooser_box;
@@ -318,6 +322,8 @@ struct PcCase{
     std::string box2_after = {};
     //  The presses, when the case checks them.
     std::string presses = {};
+    //  The party slot a withdrawal joined, when the case checks it.
+    std::optional<size_t> joined_slot = std::nullopt;
 };
 const std::vector<PcCase> PC_CASES = {
     {
@@ -346,6 +352,37 @@ const std::vector<PcCase> PC_CASES = {
         .end = PcEnd::DONE,
         .party_after = "squirtle magikarp",
         .box1_after = "pidgey spearow ekans",
+    },
+    {
+        //  20.01a: the shiny Magikarp, wherever it is in BOX 1, joins a
+        //  party of five as its sixth.
+        .name = "withdraw the Magikarp by its species, past a Pidgey and an empty cell",
+        .transfer = {.action = PcAction::WITHDRAW, .box = 0, .species = "magikarp", .protect = true},
+        .party = {{.species = "blastoise"}, {.species = "oddish"}, {.species = "pidgey"}, {.species = "vaporeon"}, {.species = "lapras"}},
+        .box1 = {"pidgey", "", "magikarp"},
+        .end = PcEnd::DONE,
+        .party_after = "blastoise oddish pidgey vaporeon lapras magikarp",
+        .box1_after = "pidgey",
+        .joined_slot = 5,
+    },
+    {
+        .name = "withdraw a species the box hasn't got",
+        .transfer = {.action = PcAction::WITHDRAW, .box = 0, .species = "magikarp"},
+        .party = {{.species = "blastoise"}},
+        .box1 = {"pidgey"},
+        .end = PcEnd::FAILED,
+        .party_after = "blastoise",
+        .box1_after = "pidgey",
+    },
+    {
+        .name = "refuse to withdraw a species into a full party",
+        .transfer = {.action = PcAction::WITHDRAW, .box = 0, .species = "magikarp", .protect = true},
+        .party = {{.species = "a"}, {.species = "b"}, {.species = "c"}, {.species = "d"}, {.species = "e"}, {.species = "f"}},
+        .box1 = {"magikarp"},
+        .end = PcEnd::REFUSED,
+        .party_after = "a b c d e f",
+        .box1_after = "magikarp",
+        .presses = "",
     },
     {
         .name = "withdraw an empty slot",
@@ -449,8 +486,9 @@ UnitTestResult test_pc_transfers(){
         const bool presses_ok = item.presses.empty() && item.end != PcEnd::REFUSED
             ? true
             : joined(pc.presses) == item.presses;
+        const bool joined_ok = !item.joined_slot || result.party_slot == item.joined_slot;
         if (result.end != item.end || party_species(pc.party) != item.party_after
-            || joined(box1) != item.box1_after || joined(box2) != item.box2_after || !presses_ok
+            || joined(box1) != item.box1_after || joined(box2) != item.box2_after || !presses_ok || !joined_ok
         ){
             return std::format(
                 "{}: expected end {} with party \"{}\", box 1 \"{}\", box 2 \"{}\"; got end {} ({}) with party \"{}\", "
@@ -522,13 +560,15 @@ UnitTestResult test_pc_args(){
         {.action = PcAction::DEPOSIT, .party_slot = 1, .box = 0},
         {.action = PcAction::WITHDRAW, .box = 13, .box_slot = 29},
         {.action = PcAction::DEPOSIT, .party_slot = 1, .box = 0, .if_missing = PcMissing::SKIP},
+        {.action = PcAction::WITHDRAW, .box = 0, .species = "magikarp", .protect = true},
     };
     for (size_t c = 0; c < transfers.size(); c++){
         const PcTransfer& transfer = transfers[c];
         const std::optional<PcTransfer> back = pc_transfer_of(pc_args(transfer));
         if (!back || back->action != transfer.action || back->box != transfer.box
             || back->party_slot != transfer.party_slot || back->box_slot != transfer.box_slot
-            || back->if_missing != transfer.if_missing
+            || back->if_missing != transfer.if_missing || back->species != transfer.species
+            || back->protect != transfer.protect
         ){
             return std::format("Transfer {} didn't read back from its args.", c + 1);
         }
@@ -543,6 +583,9 @@ UnitTestResult test_pc_args(){
         args("deposit", 2, 15),
         args("withdraw", 31, 1),
         args("release", 1, 1),
+        //  A withdrawal names a slot or a species, not both.
+        Pokemon::StoryActionArgs{{"do", std::string("withdraw")}, {"box", int64_t(1)}},
+        Pokemon::StoryActionArgs{{"do", std::string("withdraw")}, {"box", int64_t(1)}, {"slot", int64_t(1)}, {"species", std::string("magikarp")}},
     };
     for (const Pokemon::StoryActionArgs& bad : bad_args){
         if (pc_transfer_of(bad)){

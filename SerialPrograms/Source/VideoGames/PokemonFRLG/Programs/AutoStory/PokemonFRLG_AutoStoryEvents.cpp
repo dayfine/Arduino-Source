@@ -689,7 +689,7 @@ Outcome open_gym_door(StoryEnv& env, RunState& state, const StoryStep& step){
 Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
     const Pokemon::Pose patch = state.pose;
     ConsoleCaptureActions capture(env.console, env.context, env.language, env.player_gender, [&]{ pace_trainer_battle(env, state, step, patch); });
-    ConsolePcStorageActions pc(env.console, env.context);
+    ConsolePcStorageActions pc(env.console, env.context, env.language);
     std::optional<Outcome> done = run_field_game_step(env.console, env.context, env.language, env.player_gender, step, env.party);
     if (done && done->succeeded()){
         if (const std::optional<std::string> item = parse_use_item_step(step); item && is_repel(*item)){
@@ -698,7 +698,7 @@ Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
         }
     }
     if (!done){
-        done = run_storage_game_step(env.console.logger(), &env.console, step, capture, pc);
+        done = run_storage_game_step(env.supplies.protected_slots, env.console.logger(), &env.console, step, capture, pc);
         if (done){
             env.party.invalidate();
         }

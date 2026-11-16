@@ -180,6 +180,7 @@
   },
   "execution": {
     "menu": "full",
+    "protected_slots": [6],
     "notes": {
       "checkpoint": [
         "Starts in front of Agatha at (6, 6) facing north, where 20.03 ends. A boss battle is its own checkpoint: the heal after Agatha, the corridor and Lance's fight. PokeGuy has this fight at 1:53:07 (docs/battles/pokeguy-conditions.md, lance).",

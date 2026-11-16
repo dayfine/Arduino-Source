@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
@@ -339,6 +340,7 @@ std::string capture_message(const CapturePlan& plan, const CaptureResult& result
 
 
 std::optional<Pokemon::Outcome> run_storage_game_step(
+    std::vector<size_t>& protected_slots,
     Logger& logger, VideoStream* stream, const Pokemon::StoryStep& step,
     CaptureActions& capture, PcStorageActions& pc
 ){
@@ -368,6 +370,12 @@ std::optional<Pokemon::Outcome> run_storage_game_step(
             return Pokemon::outcome_failed("bad_args", step.action);
         }
         const PcResult result = run_pc_transfer(logger, pc, *transfer);
+        if (result.end == PcEnd::DONE && transfer->protect && result.party_slot
+            && std::ranges::find(protected_slots, *result.party_slot) == protected_slots.end()
+        ){
+            protected_slots.push_back(*result.party_slot);
+            logger.log(std::format("PC: party slot {} rides along; it is never sent into a battle.", *result.party_slot + 1));
+        }
         switch (result.end){
         case PcEnd::DONE:
         case PcEnd::SKIPPED:

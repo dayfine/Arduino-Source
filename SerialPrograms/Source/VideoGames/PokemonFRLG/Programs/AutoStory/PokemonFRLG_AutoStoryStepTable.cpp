@@ -12,6 +12,7 @@
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
+#include "PokemonFRLG_AutoStoryHallOfFame.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
@@ -88,9 +89,11 @@ using Pokemon::Direction;
 Pokemon::StoryActionSpec pc_action_spec(){
     return {.kind = StoryStepKind::GAME, .name = PC_ACTION, .args = {
         required_arg("do", StoryArgType::WORD, "\"deposit\" or \"withdraw\""),
-        required_arg("slot", StoryArgType::INTEGER, "the party slot to deposit, or the box slot to withdraw, from 1"),
+        absent_arg("slot", StoryArgType::INTEGER, "the party slot to deposit (required), or the box slot to withdraw, from 1"),
+        absent_arg("species", StoryArgType::WORD, "a withdrawal's species' slug, found by reading the box instead of a slot"),
         required_arg("box", StoryArgType::INTEGER, "the box, from 1; a withdrawal's must be the one the PC shows"),
         optional_arg("if_present", StoryArgType::BOOLEAN, false, "skip a deposit when the party hasn't got the slot"),
+        optional_arg("protect", StoryArgType::BOOLEAN, false, "a withdrawal that rides along: its party slot is never sent into a battle"),
     }};
 }
 
@@ -274,7 +277,7 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
         for (Pokemon::StoryActionSpec spec : {
             pc_action_spec(), capture_action_spec(), fossil_action_spec(), level_action_spec(),
             mart_action_spec(), teach_action_spec(), grind_action_spec(), grind_check_action_spec(),
-            slope_action_spec(), count_items_action_spec(),
+            slope_action_spec(), count_items_action_spec(), hall_of_fame_action_spec(),
         }){
             specs.push_back(std::move(spec));
         }

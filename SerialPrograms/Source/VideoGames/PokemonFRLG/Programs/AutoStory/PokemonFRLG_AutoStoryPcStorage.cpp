@@ -7,6 +7,7 @@
 #include <format>
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxCellReader.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
@@ -39,7 +40,10 @@ std::string pc_transfer_text(const PcTransfer& transfer){
             transfer.if_missing == PcMissing::SKIP ? " if_present" : ""
         );
     }
-    return std::format("withdraw box={} slot={}", transfer.box + 1, transfer.box_slot + 1);
+    const std::string what = transfer.species
+        ? std::format("species={}", *transfer.species)
+        : std::format("slot={}", transfer.box_slot + 1);
+    return std::format("withdraw box={} {}{}", transfer.box + 1, what, transfer.protect ? " protect" : "");
 }
 
 } // namespace
@@ -54,12 +58,18 @@ Pokemon::StoryActionArgs pc_args(const PcTransfer& transfer){
             {"if_present", transfer.if_missing == PcMissing::SKIP},
         };
     }
-    return {
+    Pokemon::StoryActionArgs args = {
         {"do", std::string("withdraw")},
-        {"slot", int64_t(transfer.box_slot + 1)},
         {"box", int64_t(transfer.box + 1)},
         {"if_present", false},
+        {"protect", transfer.protect},
     };
+    if (transfer.species){
+        args["species"] = *transfer.species;
+    }else{
+        args["slot"] = int64_t(transfer.box_slot + 1);
+    }
+    return args;
 }
 
 std::optional<PcTransfer> pc_transfer_of(const Pokemon::StoryActionArgs& args){
@@ -81,11 +91,29 @@ std::optional<PcTransfer> pc_transfer_of(const Pokemon::StoryActionArgs& args){
         }
         return transfer;
     }
-    const std::optional<size_t> slot = counted_arg(args, "slot", BOX_SLOTS);
-    if (*action != "withdraw" || !slot){
+    if (*action != "withdraw"){
         return std::nullopt;
     }
     transfer.action = PcAction::WITHDRAW;
+    const bool* protect = game_arg<bool>(args, "protect");
+    transfer.protect = protect != nullptr && *protect;
+    const std::string* species = game_arg<std::string>(args, "species");
+    const bool has_slot = args.contains("slot");
+    //  A slot or a species, not both.
+    if ((species != nullptr) == has_slot){
+        return std::nullopt;
+    }
+    if (species != nullptr){
+        if (species->empty()){
+            return std::nullopt;
+        }
+        transfer.species = *species;
+        return transfer;
+    }
+    const std::optional<size_t> slot = counted_arg(args, "slot", BOX_SLOTS);
+    if (!slot){
+        return std::nullopt;
+    }
     transfer.box_slot = *slot;
     return transfer;
 }
@@ -236,10 +264,23 @@ PcDecision PcStorageDialog::on_box_grid(const PcView& view){
     if (!view.cursor || *view.cursor >= BOX_SLOTS){
         return {PcPress::FAIL, "the hand wasn't read on the box"};
     }
+    //  A species: each cell the hand reaches is read, its Pokemon taken if
+    //  it is the one, else the hand goes on to the next cell.
+    if (m_transfer.species && *view.cursor == m_search_slot){
+        if (view.occupied != false && !view.species){
+            return {PcPress::FAIL, std::format("box {} slot {}: the species wasn't read", m_transfer.box + 1, m_search_slot + 1)};
+        }
+        if (view.occupied != false && *view.species == *m_transfer.species){
+            return {PcPress::A};
+        }
+        if (++m_search_slot >= BOX_SLOTS){
+            return {PcPress::FAIL, std::format("no {} in box {}", *m_transfer.species, m_transfer.box + 1)};
+        }
+    }
     const size_t row = *view.cursor / BOX_COLUMNS;
     const size_t column = *view.cursor % BOX_COLUMNS;
-    const size_t target_row = m_transfer.box_slot / BOX_COLUMNS;
-    const size_t target_column = m_transfer.box_slot % BOX_COLUMNS;
+    const size_t target_row = target_slot() / BOX_COLUMNS;
+    const size_t target_column = target_slot() % BOX_COLUMNS;
     if (row != target_row){
         return {row < target_row ? PcPress::DOWN : PcPress::UP};
     }
@@ -250,6 +291,10 @@ PcDecision PcStorageDialog::on_box_grid(const PcView& view){
         return {PcPress::FAIL, std::format("box {} slot {} is empty", m_transfer.box + 1, m_transfer.box_slot + 1)};
     }
     return {PcPress::A};
+}
+
+size_t PcStorageDialog::target_slot() const{
+    return m_transfer.species ? m_search_slot : m_transfer.box_slot;
 }
 
 PcDecision PcStorageDialog::on_mon_menu(const PcView& view){
@@ -311,6 +356,10 @@ PcResult run_pc_transfer(Logger& logger, PcStorageActions& actions, const PcTran
         const PcDecision decision = dialog.next(view);
         if (decision.press == PcPress::DONE){
             logger.log("PC: \"" + name + "\" done.");
+            if (transfer.action == PcAction::WITHDRAW){
+                //  A withdrawal joins the party at its end.
+                return {.end = PcEnd::DONE, .detail = "", .party_slot = party.size()};
+            }
             return {PcEnd::DONE, ""};
         }
         if (decision.press == PcPress::FAIL){
@@ -338,9 +387,10 @@ size_t read_party_size(ConsoleHandle& console, ProControllerContext& context){
 }
 
 
-ConsolePcStorageActions::ConsolePcStorageActions(ConsoleHandle& console, ProControllerContext& context)
+ConsolePcStorageActions::ConsolePcStorageActions(ConsoleHandle& console, ProControllerContext& context, Language language)
     : m_console(console)
     , m_context(context)
+    , m_language(language)
 {}
 
 std::vector<PcPartyMember> ConsolePcStorageActions::read_party(){
@@ -353,7 +403,13 @@ PcView ConsolePcStorageActions::read_view(){
     if (!screen){
         return {};
     }
-    const PcView view = read_pc_screen(m_console, screen);
+    PcView view = read_pc_screen(m_console, screen);
+    if (view.screen == PcScreen::BOX_GRID && view.occupied != false){
+        const std::string species = BoxCellReader().read_name(m_console, m_language, screen);
+        if (!species.empty()){
+            view.species = species;
+        }
+    }
     if (view.screen != PcScreen::OVERWORLD){
         return view;
     }
