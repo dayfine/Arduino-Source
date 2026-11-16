@@ -95,9 +95,8 @@ void add_trainer_stops(
     }
 }
 
-} // namespace
-
-
+//  The trainers who may see the player on `tile`, and where each stands
+//  once walked up.
 std::vector<TrainerStop> trainers_seeing(const std::vector<MapData>& maps, const MapPosition& tile){
     std::vector<TrainerStop> stops;
     const MapData* map = map_named(maps, tile.map);
@@ -108,8 +107,6 @@ std::vector<TrainerStop> trainers_seeing(const std::vector<MapData>& maps, const
     }
     return stops;
 }
-
-namespace{
 
 //  `maps` with a trainer who walked up standing on each of `trainers`: they
 //  stay there after the battle, so the player can't walk through.

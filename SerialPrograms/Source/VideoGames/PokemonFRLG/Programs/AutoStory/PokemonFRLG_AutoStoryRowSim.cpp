@@ -16,7 +16,6 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonFRLG_AutoStoryBoulders.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
-#include "PokemonFRLG_AutoStoryMovedTrainers.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
@@ -618,12 +617,10 @@ std::string OverworldStepSim::step_ahead(const StoryStep& step){
     if (!step_until_seen(tiles, tap, seen)){
         return "no trainer saw the player.";
     }
-    //  As take_step(): the trainer who saw the player stands beside them
+    //  As note_line_trainer(): the trainer who saw the player stands beside them
     //  from now on, for the routes after the battle.
     if (step.action == TRAINER_LINE_VARIANT || step.action == TRAINER_WAIT_VARIANT){
-        if (const std::optional<TrainerMove> move = trainer_walking_up(run_story_maps(m_flags), m_sim.state().position, m_beaten)){
-            m_flags.insert(trainer_at_flag(*move));
-        }
+        note_trainer_walked_up(m_sim.state().position, m_flags);
     }
     return "";
 }

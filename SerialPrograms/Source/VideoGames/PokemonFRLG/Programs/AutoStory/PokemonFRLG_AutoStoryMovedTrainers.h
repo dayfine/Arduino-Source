@@ -53,7 +53,7 @@ std::string trainer_at_flag(const TrainerMove& move);
 
 //  The trainer who walks up to the player seen on `tile` of `maps` (a step
 //  into their line, step_until_seen()), and the tile beside the player they
-//  stop on, toward where they stood (trainers_seeing()). Trainers `beaten`
+//  stop on, toward where they stood. Trainers `beaten`
 //  names (trainer_id()) see no one. Nothing if no trainer may see the
 //  player there, or if where they stop isn't known to one tile: two
 //  trainers may see it, or one who wanders may come from either side.

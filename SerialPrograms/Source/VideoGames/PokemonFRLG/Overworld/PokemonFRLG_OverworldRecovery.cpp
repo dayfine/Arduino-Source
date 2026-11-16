@@ -221,11 +221,7 @@ public:
             return outcome;
         }
         if (outcome.end == StepEnd::DONE && crossing && m_calls.watch_for_trainer){
-            //  The hold's movement stays: a hold that moved nothing didn't walk,
-            //  whatever the watch saw (judge_movement()). Dropped, a bump into
-            //  Takashi on (10, 4) was taken as "north 2 (open)" walked, and the
-            //  next leg failed (console B, 2026-11-15 16:52, 17.03).
-            outcome = StepOutcome{.end = m_calls.watch_for_trainer(step, *crossing), .walked = std::nullopt, .movement = outcome.movement};
+            outcome = StepOutcome{.end = m_calls.watch_for_trainer(step, *crossing), .walked = std::nullopt, .movement = outcome.movement};  //  kept: a bump into Takashi passed for walked (17.03, 2026-11-15)
         }
         m_last = leg;
         m_last_late = outcome.end == StepEnd::LATE;

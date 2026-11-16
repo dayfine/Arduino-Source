@@ -10,7 +10,6 @@
 #include <utility>
 #include "Common/Cpp/Exceptions.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
-#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_AutoStoryMovedTrainers.h"
 
 namespace PokemonAutomation{
@@ -36,6 +35,14 @@ std::optional<std::pair<int, int>> parse_tile(std::string_view text){
         return std::nullopt;
     }
     return std::pair{x, y};
+}
+
+//  The way from `from` to `to`, on the same row or column.
+Direction towards(const TilePos& from, const TilePos& to){
+    if (to.x == from.x){
+        return to.y < from.y ? Direction::NORTH : Direction::SOUTH;
+    }
+    return to.x < from.x ? Direction::WEST : Direction::EAST;
 }
 
 } // namespace
@@ -69,19 +76,17 @@ std::optional<TrainerMove> trainer_walking_up(
     for (const MapData& candidate : maps){
         map = candidate.name == tile.map ? &candidate : map;
     }
-    if (map == nullptr){
-        return std::nullopt;
-    }
     std::optional<TrainerMove> move;
-    for (const TrainerStop& stop : trainers_seeing(maps, tile)){
-        const std::string trainer = trainer_id(*map, map->objects[stop.object]);
-        if (beaten.contains(trainer)){
+    for (size_t c = 0; map != nullptr && c < map->objects.size(); c++){
+        const Pokemon::MapObject& object = map->objects[c];
+        if (!trainer_may_see(*map, object, tile.point) || beaten.contains(trainer_id(*map, object))){
             continue;
         }
-        if (move){
+        if (move || object.wander){
             return std::nullopt;
         }
-        move = TrainerMove{.trainer = trainer, .x = stop.at.point.x, .y = stop.at.point.y};
+        const TilePos beside = tile.point.next(towards(tile.point, TilePos{object.x, object.y}));
+        move = TrainerMove{.trainer = trainer_id(*map, object), .x = beside.x, .y = beside.y};
     }
     return move;
 }
