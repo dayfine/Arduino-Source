@@ -32,10 +32,11 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game. No save: no autosave at its end was seen in a run log (2026-11-15 save review); the menu save of plza/autostory is dropped."
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends outside the Pokemon Center, in control, on the game's autosave: console B 2026-11-16 logged the autosave badge after Taunie's scene's last black fade, then the party bar outside the Center."
     }
   },
   "execution": {
-    "reload_when_chained": "always"
+    "reload_when_chained": "always",
+    "save": "autosave"
   }
 }

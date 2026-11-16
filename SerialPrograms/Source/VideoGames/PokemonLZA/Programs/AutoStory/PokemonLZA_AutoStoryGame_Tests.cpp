@@ -70,7 +70,7 @@ const StoryDataCase STORY_DATA_CASES[] = {
             "01.00:new_game:autosave 01.01:from_save:unverified 01.02:from_save:unverified 01.03:from_save:unverified "
             "02.01:from_save:unverified 02.02:from_save:unverified 02.03:from_save:unverified 02.04:from_save:unverified "
             "02.05:from_save:unverified 02.06:from_save:autosave 02.07:from_save:unverified "
-            "03.01:from_save:unverified 03.02:from_save:autosave 03.02b:from_save 03.03:from_save:autosave 03.04:from_save "
+            "03.01:from_save:unverified 03.02:from_save:autosave 03.02b:from_save 03.03:from_save:autosave 03.04:from_save:autosave "
             "03.05:from_save:autosave 03.06:from_save 03.07:from_save:autosave 03.08:from_save:autosave 03.08b:from_save "
             "03.09:from_save:unverified "
             "03.10:from_save:autosave 03.11:from_save:unverified"
