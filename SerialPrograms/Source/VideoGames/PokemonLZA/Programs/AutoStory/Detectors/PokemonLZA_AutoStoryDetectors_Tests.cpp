@@ -182,6 +182,16 @@ ImageRGB32 autosave_badge_frame(uint32_t background, uint32_t glow){
     return image;
 }
 
+//  autosave_badge_frame() with a bright glow over a dark scene, and bands
+//  of a building banner's mint green (about 96, 203, 147) 4 px high across
+//  the strips above and below the icon, as on 01.01 in English.
+ImageRGB32 autosave_badge_by_mint_banner_frame(){
+    ImageRGB32 image = autosave_badge_frame(/*background=*/0xff101418, /*glow=*/0xff28c8e6);
+    fill_box(/*min_x=*/1600, /*min_y=*/60, /*max_x=*/1720, /*max_y=*/64, /*color=*/0xff60cb93, image);
+    fill_box(/*min_x=*/1600, /*min_y=*/112, /*max_x=*/1720, /*max_y=*/116, /*color=*/0xff60cb93, image);
+    return image;
+}
+
 //  How mission_banner_frame() draws the icon.
 enum class BannerIcon{
     NONE,
@@ -306,6 +316,17 @@ const SyntheticFrameCase SYNTHETIC_FRAME_CASES[] = {
     {
         .name = "the autosave badge's white stroke with no glow",
         .input = {.frame = []{ return autosave_badge_frame(0xff252722, 0xff252722); }},
+        .expectation = {.reads = {.autosave = false}},
+    },
+    //  Mint and sign green have green over blue; the badge's glow does not.
+    {
+        .name = "the autosave badge with mint banner bands above and below",
+        .input = {.frame = autosave_badge_by_mint_banner_frame},
+        .expectation = {.reads = {.autosave = true}},
+    },
+    {
+        .name = "a white stroke with a green sign's glow",
+        .input = {.frame = []{ return autosave_badge_frame(0xff252722, 0xff3cf06e); }},
         .expectation = {.reads = {.autosave = false}},
     },
     {
