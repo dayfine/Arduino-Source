@@ -96,7 +96,7 @@ public:
         m_last_x = marker->x;
         //  Off screen, the game pins the marker to the edge with no digits.
         if (marker->x < 0.10 || marker->x > 0.90){
-            pbf_move_right_joystick(m_env.context, {marker->x < 0.5 ? -0.5 : 0.5, 0}, 400ms, 200ms);
+            pbf_move_right_joystick(m_env.context, {marker->x < 0.5 ? -0.5 : 0.5, 0}, /*hold=*/400ms, /*release=*/200ms);
             return MarkerStep::WALKING;
         }
         if (marker->distance > 0 && m_reads.accept(marker->distance)){
@@ -112,7 +112,7 @@ private:
         if (++m_unseen > 12){
             return MarkerStep::LOST;
         }
-        pbf_move_right_joystick(m_env.context, {m_last_x < 0.5 ? -0.5 : 0.5, 0}, 500ms, 200ms);
+        pbf_move_right_joystick(m_env.context, {m_last_x < 0.5 ? -0.5 : 0.5, 0}, /*hold=*/500ms, /*release=*/200ms);
         return MarkerStep::WALKING;
     }
 
@@ -144,7 +144,7 @@ private:
             const Milliseconds turn((int)(std::min(1.0, std::abs(off) * 4) * 400) + 80);
             pbf_move_right_joystick(m_env.context, {off > 0 ? 0.4 : -0.4, 0}, turn, 150ms);
         }
-        pbf_move_left_joystick(m_env.context, {0, 1}, 600ms, 0ms);
+        pbf_move_left_joystick(m_env.context, /*position=*/{0, 1}, /*hold=*/600ms, /*release=*/0ms);
     }
 
     StoryEnv& m_env;

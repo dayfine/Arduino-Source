@@ -39,19 +39,19 @@ Observation<ZonePose> look(ScreenEvents events, std::vector<std::string_view> re
 }
 
 Observation<ZonePose> dialog(Milliseconds at){
-    return look({ScreenEvent::DIALOG_BOX}, {}, at);
+    return look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, at);
 }
 
 Observation<ZonePose> card(Milliseconds at){
-    return look({}, {TUTORIAL_CARD_READING}, at);
+    return look(/*events=*/{}, {TUTORIAL_CARD_READING}, at);
 }
 
 Observation<ZonePose> nothing(Milliseconds at){
-    return look({}, {}, at);
+    return look(/*events=*/{}, /*readings=*/{}, at);
 }
 
 Observation<ZonePose> party_bar(Milliseconds at){
-    return look({ScreenEvent::PLAYER_CAN_MOVE}, {}, at);
+    return look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, at);
 }
 
 std::string joined(const std::vector<std::string>& texts){

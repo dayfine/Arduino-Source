@@ -209,9 +209,9 @@ Handler gate_run_handler(StoryEnv* env){
 Outcome claim_research_reward(StoryEnv& env, PlzaBackend& backend){
     overworld_to_main_menu(env.env.console, env.context);
     for (int i = 0; i < 3; i++){
-        backend.press(BUTTON_DOWN, 160ms, 400ms);
+        backend.press(BUTTON_DOWN, /*hold=*/160ms, /*release=*/400ms);
     }
-    backend.press(BUTTON_A, 160ms, 2840ms);
+    backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/2840ms);
     const LinesPassed passed = press_a_through_lines(backend, /*quiet=*/3s, /*limit=*/60s);
     if (passed.timed_out){
         return Pokemon::outcome_failed("reward_lines_endless", "Mable's lines did not end within 60 s");

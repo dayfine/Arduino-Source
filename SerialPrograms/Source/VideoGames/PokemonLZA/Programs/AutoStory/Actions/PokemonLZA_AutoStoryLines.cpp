@@ -36,7 +36,7 @@ LinesPassed press_a_through_lines(PlzaBackend& backend, Milliseconds quiet, Mill
             passed.card = passed.card || card;
             passed.text = passed.text || text;
             last_busy = look.when;
-            backend.press(BUTTON_A, 160ms, 240ms);
+            backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
         }else if (look.when - *last_busy >= quiet){
             return passed;
         }
@@ -56,7 +56,7 @@ bool press_b_out_of_menu(PlzaBackend& backend, size_t presses){
         if (look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.events.has(ScreenEvent::DIALOG_BOX)){
             return true;
         }
-        backend.press(BUTTON_B, 160ms, 840ms);
+        backend.press(BUTTON_B, /*hold=*/160ms, /*release=*/840ms);
     }
     const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
     return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.events.has(ScreenEvent::DIALOG_BOX);

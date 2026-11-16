@@ -61,7 +61,7 @@ int weaken_target(StoryEnv& env, PlzaBackend& backend, TrainerBattleState& battl
             misses = 0;
         }else if (++misses == 2 && sends < 2){
             backend.log("[PLZA] weaken_target: no lock-on twice: D-pad up to send the partner out");
-            backend.press(BUTTON_UP, 100ms, 2000ms);
+            backend.press(BUTTON_UP, /*hold=*/100ms, /*release=*/2000ms);
             misses = 0;
             sends++;
         }
@@ -90,9 +90,9 @@ Pokemon::Outcome catch_tutorial(StoryEnv& env, PlzaBackend& backend, int max_thr
 }
 
 Pokemon::Outcome battle_then_catch(StoryEnv& env, PlzaBackend& backend, int max_rounds){
-    backend.press(BUTTON_A, 160ms, 840ms);
+    backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/840ms);
     press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
-    backend.press(BUTTON_UP, 100ms, 2000ms);
+    backend.press(BUTTON_UP, /*hold=*/100ms, /*release=*/2000ms);
     TrainerBattleState battle_state(env.battle_ai);
     for (int round = 0; round < max_rounds; round++){
         const int landed = weaken_target(env, backend, battle_state);
