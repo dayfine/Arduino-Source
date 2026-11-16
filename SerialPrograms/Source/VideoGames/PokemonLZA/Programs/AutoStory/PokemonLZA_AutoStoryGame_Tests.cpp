@@ -8,6 +8,7 @@
  *  console.
  *
  */
+//  code-health: allow file_lines -- one table per story game behavior, sharing the scripted looks above them
 
 #include <algorithm>
 #include <format>
@@ -68,7 +69,7 @@ const StoryDataCase STORY_DATA_CASES[] = {
             "01.00:new_game:autosave 01.01:from_save:unverified 01.02:from_save:unverified 01.03:from_save:unverified "
             "02.01:from_save:unverified 02.02:from_save:unverified 02.03:from_save:unverified 02.04:from_save:unverified "
             "02.05:from_save:unverified 02.06:from_save:autosave 02.07:from_save:unverified "
-            "03.01:from_save:autosave 03.02:from_save 03.03:from_save:autosave 03.04:from_save "
+            "03.01:from_save:unverified 03.02:from_save 03.03:from_save:autosave 03.04:from_save "
             "03.05:from_save:autosave 03.06:from_save 03.07:from_save:autosave 03.09:from_save:unverified "
             "03.10:from_save:autosave 03.11:from_save:unverified"
         },
@@ -439,9 +440,14 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at arrival_scenes: scene_quiet"},
     },
     {
+        .name = "01.00's autosave badge is logged in the step it shows in",
+        .input = {.checkpoint = "01.00", .first_step = 1, .looks = {CUTSCENE, AUTOSAVE, AUTOSAVE, PLATFORM, PLATFORM}},
+        .expectation = {.verdict = "done", .line = "[PLZA] autosave badge at 0.0s in opening"},
+    },
+    {
         .name = "01.00 ends on its autosave",
         .input = {.checkpoint = "01.00", .first_step = 1, .looks = {AUTOSAVE, PLATFORM, PLATFORM}},
-        .expectation = {.verdict = "done", .line = "[Save] 01.00: the game autosaved at its end"},
+        .expectation = {.verdict = "done", .line = "[Save] 01.00: the game autosaved (seen)"},
     },
     {
         .name = "01.01 is not saved: its autosave is unverified",
@@ -617,11 +623,30 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        .name = "02.06 ends on the game's autosave",
+        .name = "02.06 with no autosave badge seen is not saved",
         .input = {.checkpoint = "02.06", .first_step = 4, .looks = {
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(21000)),
         }},
-        .expectation = {.verdict = "done", .line = "[Save] 02.06: the game autosaved at its end"},
+        .expectation = {.verdict = "done", .line = "[Save] 02.06: not saved (the plan's autosave was not seen)"},
+    },
+    {
+        .name = "an autosave badge mid-scene saves the checkpoint",
+        .input = {.checkpoint = "02.06", .first_step = 4, .looks = {
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look(/*events=*/{}, {AUTOSAVE_READING}, Milliseconds(1000)),
+            look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(21000)),
+        }},
+        .expectation = {.verdict = "done", .line = "[Save] 02.06: the game autosaved (seen)"},
+    },
+    {
+        .name = "a badge mid-scene is logged once, at its time in its step",
+        .input = {.checkpoint = "02.06", .first_step = 4, .looks = {
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look(/*events=*/{}, {AUTOSAVE_READING}, Milliseconds(1000)),
+            look(/*events=*/{}, {AUTOSAVE_READING}, Milliseconds(2000)),
+            look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(21000)),
+        }},
+        .expectation = {.verdict = "done", .line = "[PLZA] autosave badge at 1.0s in wake_up"},
     },
     {
         .name = "03.02's map talk: A and B in turn, done on the party bar held a second",
@@ -690,7 +715,8 @@ const RunCase RUN_CASES[] = {
 };
 
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
-    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(builtin_story_data());
+    AutosaveSightings sightings;
+    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(builtin_story_data(), sightings);
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks, .battle = test.input.battle}, scope);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
@@ -720,8 +746,8 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
 
 //  The console-less game with a reload that presses HOME, as the console's
 //  does first, and succeeds.
-Pokemon::StoryGame<ZonePose> game_with_reload(const Pokemon::StoryRows& rows){
-    Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(rows);
+Pokemon::StoryGame<ZonePose> game_with_reload(const Pokemon::StoryRows& rows, AutosaveSightings& sightings){
+    Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(rows, sightings);
     game.reload = [](Pokemon::StoryBackend<ZonePose>& backend){
         backend.press(BUTTON_HOME, Milliseconds(80), Milliseconds(80));
         return Pokemon::outcome_ok();
@@ -790,9 +816,10 @@ const LoadCase LOAD_CASES[] = {
 
 UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
     const StoryData& story = builtin_story_data();
+    AutosaveSightings sightings;
     const Pokemon::StoryGame<ZonePose> game = test.input.has_reload
-        ? game_with_reload(story)
-        : make_plza_story_game_without_console(story);
+        ? game_with_reload(story, sightings)
+        : make_plza_story_game_without_console(story, sightings);
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
     const Pokemon::Outcome loaded = load_checkpoint_start(game, backend, builtin_row(test.input.checkpoint, /*first_step=*/0, /*steps=*/99));
     const std::string verdict = loaded.succeeded() ? "done" : loaded.failure;
@@ -816,10 +843,11 @@ UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
 
 
 //  Two rows: "01.01" waits for the platform, "01.02" runs to a choice.
+//  01.01's autosave shows when a look has both the platform and the badge.
 struct ChainCase{
     std::string name;
     struct Input{
-        std::set<std::string, std::less<>> reload_when_chained;
+        std::set<std::string, std::less<>> reload_always;
         std::vector<Observation<ZonePose>> looks;
     };
     Input input;
@@ -832,33 +860,59 @@ struct ChainCase{
     Expectation expectation;
 };
 
+const Observation<ZonePose> PLATFORM_SAVING = look({}, {PLATFORM_READING, AUTOSAVE_READING});
+
 const ChainCase CHAIN_CASES[] = {
     {
-        .name = "straight through without reload_when_chained",
-        .input = {.reload_when_chained = {}, .looks = {PLATFORM, PLATFORM, choice(0)}},
+        .name = "autosave seen and the start check does not fail: on without a reload",
+        .input = {.reload_always = {}, .looks = {PLATFORM_SAVING, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
         .expectation = {.verdict = "done", .reloads = 0},
     },
     {
-        .name = "reload_when_chained loads the second row's start first",
-        .input = {.reload_when_chained = {"01.02"}, .looks = {PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
+        .name = "no autosave seen and the start check does not fail: on without a reload",
+        .input = {.reload_always = {}, .looks = {PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
+        .expectation = {.verdict = "done", .reloads = 0},
+    },
+    {
+        .name = "autosave seen and the start check fails: reloads the start",
+        .input = {.reload_always = {}, .looks = {
+            PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0),
+        }},
         .expectation = {.verdict = "done", .reloads = 1},
     },
     {
-        .name = "reload_when_chained stops on an older save",
-        .input = {.reload_when_chained = {"01.02"}, .looks = {PLATFORM}},
-        .expectation = {.verdict = "failed at 01.02 reload_when_chained: older_save", .reloads = 1},
+        .name = "no autosave seen and the start check fails: no reload, no save to start from",
+        .input = {.reload_always = {}, .looks = {PLATFORM}},
+        .expectation = {.verdict = "failed at 01.02 chain: no_start_save", .reloads = 0},
+    },
+    {
+        .name = "reload always, autosave seen: reloads the start",
+        .input = {.reload_always = {"01.02"}, .looks = {PLATFORM_SAVING, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
+        .expectation = {.verdict = "done", .reloads = 1},
+    },
+    {
+        .name = "reload always, no autosave seen: no reload, no save to start from",
+        .input = {.reload_always = {"01.02"}, .looks = {PLATFORM}},
+        .expectation = {.verdict = "failed at 01.02 chain: no_start_save", .reloads = 0},
+    },
+    {
+        .name = "a reload onto an older save stops",
+        .input = {.reload_always = {"01.02"}, .looks = {PLATFORM_SAVING, PLATFORM}},
+        .expectation = {.verdict = "failed at 01.02 chain: older_save", .reloads = 1},
     },
 };
 
 UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
     Pokemon::StoryRows story;
-    story.reload_when_chained = test.input.reload_when_chained;
-    const Pokemon::StoryGame<ZonePose> game = game_with_reload(story);
+    story.reload_always = test.input.reload_always;
+    AutosaveSightings sightings;
+    const Pokemon::StoryGame<ZonePose> game = game_with_reload(story, sightings);
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
-    Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
     const std::vector<StoryCheckpoint> rows{one_step_row("01.01", "wait_for_platform"), one_step_row("01.02", "text_to_choice")};
-    const Pokemon::SegmentReport report = run_plza_segments(game, story, rows, /*attempts_per_checkpoint=*/1, engine, backend, state);
+    const Pokemon::SegmentReport report = run_plza_segments(
+        game, story, rows, /*attempts_per_checkpoint=*/1, backend, state, sightings
+    );
     const std::string verdict = report.completed
         ? "done"
         : std::format("failed at {} {}: {}", report.failed_checkpoint, report.failed_event, report.failure.failure);

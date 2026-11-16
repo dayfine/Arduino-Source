@@ -29,7 +29,6 @@
     }
   },
   "execution": {
-    "save": "unverified",
-    "reload_when_chained": true
+    "save": "unverified"
   }
 }

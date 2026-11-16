@@ -83,6 +83,11 @@ public:
     //  Outcome.
     virtual Outcome battle() = 0;
     virtual void log(std::string_view line) = 0;
+    //  A line for the file log only, not the stream's overlay: detail a
+    //  watcher does not need (each screen of a scene). log() by default.
+    virtual void log_detail(std::string_view line){
+        log(line);
+    }
     virtual CancellableScope& scope() = 0;
 };
 
