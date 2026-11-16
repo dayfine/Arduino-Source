@@ -66,13 +66,6 @@ concept HasTapStopRisk = requires (const Inner& inner, const typename Inner::Sta
     { inner.tap_stop_risk(state, Direction::NORTH, gates) } -> std::convertible_to<std::optional<int>>;
 };
 
-//  A step model that weighs an open stop the walk can't place by the leg
-//  after it (see the top of this file).
-template <typename Inner>
-concept HasOpenCheckRisk = requires (const Inner& inner, const typename Inner::State& state, const GateState& gates){
-    { inner.open_check_risk(state, Direction::NORTH, 0, std::optional<Direction>(), gates) } -> std::convertible_to<int>;
-};
-
 //  The game's step model, wrapped: see the top of this file.
 template <typename Inner>
 class GatedModel{
@@ -122,7 +115,11 @@ public:
     std::optional<int> tap_stop_risk(const State& state, Direction direction) const requires HasTapStopRisk<Inner>{
         return m_inner.tap_stop_risk(state.inner, direction, state.gates);
     }
-    int open_check_risk(const State& state, Direction direction, int run, std::optional<Direction> next) const requires HasOpenCheckRisk<Inner>{
+    int open_check_risk(const State& state, Direction direction, int run, std::optional<Direction> next) const
+        requires requires (const Inner& inner, const InnerState& at, Direction way, int tiles, std::optional<Direction> then, const GateState& gates){
+            inner.open_check_risk(at, way, tiles, then, gates);
+        }
+    {
         return m_inner.open_check_risk(state.inner, direction, run, next, state.gates);
     }
 

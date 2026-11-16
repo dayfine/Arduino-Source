@@ -210,7 +210,7 @@ int stop_cost(const Model& model, const Node<State>& node, const LegCosts& costs
     if constexpr (requires { model.open_stop_risk(node.state, Direction::NORTH); }){
         cost += model.open_stop_risk(node.state, (Direction)node.facing);
     }
-    if constexpr (requires { model.open_check_risk(node.state, Direction::NORTH, 0, next); }){
+    if constexpr (requires { model.open_check_risk(node.state, Direction::NORTH, /*run=*/0, next); }){
         cost += model.open_check_risk(node.state, (Direction)node.facing, node.run, next);
     }
     return cost;

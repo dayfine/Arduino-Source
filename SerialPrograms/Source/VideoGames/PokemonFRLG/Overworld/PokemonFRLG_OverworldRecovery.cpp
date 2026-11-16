@@ -51,23 +51,6 @@ Pokemon::RouteLogLeg route_log_leg(const RouteStep& step){
     return leg;
 }
 
-//  The farthest sight of the trainers on `maps` but those `beaten` names
-//  who may see `tile`; 0 if none does.
-int sight_onto(const std::vector<MapData>& maps, const MapPosition& tile, const std::set<std::string>& beaten){
-    int sight = 0;
-    for (const MapData& map : maps){
-        if (map.name != tile.map){
-            continue;
-        }
-        for (const MapObject& object : map.objects){
-            if (trainer_may_see(map, object, tile.point) && !beaten.contains(trainer_id(map, object))){
-                sight = std::max(sight, object.trainer->sight);
-            }
-        }
-    }
-    return sight;
-}
-
 //  How far the holds that find the player after an open leg, and the way
 //  back, may walk, per tile of the leg. 2 left Rocket Hideout B3F's "west
 //  7" off the stairs unchecked: the hold to its west wall and back walk up
@@ -113,15 +96,9 @@ bool is_slide(const RouteStep& next){
     return next.action == RouteAction::WALK && next.spin_tiles && !next.warps;
 }
 
-//  Whether `next`, a hold to a wall, finds the player itself from each of
-//  `candidates`: it ends on its planned tile, or, where `told_apart`, it
-//  moves nothing at all, which the walker sees (HoldMovement::NONE). Then
-//  the tiles it moves nothing from (none if it ends on its tile from all);
-//  nothing if it doesn't find them. "south 3 (to wall)" down Viridian Gym's
-//  column 7 after "west 3 (open)" to (7, 3) moves from no tile short of
-//  it: walls stand below (8, 3) and (9, 3); the walk found the player at
-//  walls and walked back to (7, 3), where they stood (console B,
-//  2026-11-15 21:39).
+//  The tiles of `candidates` `next`, a hold to a wall, moves nothing from (seen if `told_apart`), if from
+//  each other one it ends on its tile; else nothing. Viridian Gym's "south 3 (to wall)" from (7, 3) moves
+//  from no tile short of it (console B, 2026-11-15 21:39: walls found, and walked back to (7, 3)).
 std::optional<std::vector<StopCandidate>> hold_finds(
     const std::vector<MapData>& maps, const std::vector<StopCandidate>& candidates, const RouteStep& next, bool told_apart
 ){
@@ -509,8 +486,6 @@ private:
     //  that way (console B, 2026-11-13 19:20, 13.01 mansion_holes: a battle
     //  after "west 13 (to wall)" on Pokemon Mansion 2F, and the hold again
     //  moved nothing at the wall).
-    //  A hold after an open leg that moves from none of the tiles short of
-    //  its end (check_open_leg()) and moved nothing started on one of them.
     StepOutcome judge_movement(const RouteStep& step, StepOutcome outcome){
         const bool held_again = std::exchange(m_held_again, false);
         const std::vector<StopCandidate> short_unmoved = std::exchange(m_short_unmoved, {});
@@ -802,17 +777,10 @@ private:
         if (candidates.size() < 2){
             return;
         }
-        if (!last && is_wall_hold(m_plan[m_next])){
-            if (std::optional<std::vector<StopCandidate>> unmoved = hold_finds(*maps(), candidates, m_plan[m_next], movement == HoldMovement::MOVED)){
-                if (!unmoved->empty()){
-                    m_calls.log(std::format(
-                        "Route: {} may have ended up to {} tiles short; {} moves from none of those tiles, which its hold shows.",
-                        to_string(step), OPEN_LEG_SHORTFALL, to_string(m_plan[m_next])
-                    ));
-                }
-                m_short_unmoved = std::move(*unmoved);
-                return;
-            }
+        std::optional<std::vector<StopCandidate>> unmoved;
+        if (!last && is_wall_hold(m_plan[m_next]) && (unmoved = hold_finds(*maps(), candidates, m_plan[m_next], movement == HoldMovement::MOVED))){
+            m_short_unmoved = std::move(*unmoved);  //  a hold that moves nothing started on one of them
+            return;
         }
         const std::optional<Reanchor> anchor = plan_reanchor(*maps(), candidates, step, m_planning->costs, last && !(m_calls.riding && m_calls.riding(step)) ? std::optional(step.facing_after) : std::nullopt);
         if (water_chain && (!anchor || anchor->holds.empty())){
@@ -963,11 +931,8 @@ private:
     std::vector<std::vector<MapPosition>> m_walk_on_starts;  //  after walking on: where each of the plan's first steps may start
     std::vector<MapPosition> m_hold_from;   //  the tiles the first hold of the plan may start from
     std::string m_unmoved;      //  the leg that moved nothing last, until another walks
-    //  The tiles short of an open leg's end the next hold moves nothing
-    //  from (check_open_leg()), until it walks; and, once it moved
-    //  nothing, the ones it started on.
-    std::vector<StopCandidate> m_short_unmoved;
-    std::vector<StopCandidate> m_unmoved_starts;
+    std::vector<StopCandidate> m_short_unmoved;     //  check_open_leg(): the tiles the next hold moves nothing from
+    std::vector<StopCandidate> m_unmoved_starts;    //  that hold moved nothing: it started on one of these
     bool m_held_again = false;  //  the next walk holds a leg to a wall again after something seen after it
     OpenLegDrift m_drift;       //  the ways the player may be a tile off since the last open legs
 };
@@ -976,67 +941,6 @@ private:
 
 WalkedTiles walked_before_warp(const RouteStep& step){
     return WalkedTiles{.min = 1, .max = step.tiles - 1};
-}
-
-std::optional<TrainerCrossing> trainer_crossing(
-    const std::vector<MapData>& maps, const MapPosition& start, const RouteStep& step,
-    const std::set<std::string>& beaten
-){
-    if (step.action != RouteAction::WALK){
-        return std::nullopt;
-    }
-    TrainerCrossing crossing;
-    const std::vector<MapPosition> tiles = leg_tiles(maps, start, step);
-    for (size_t c = 1; c < tiles.size(); c++){
-        const int sight = sight_onto(maps, tiles[c], beaten);
-        if (sight > 0){
-            crossing.seen.push_back(tiles[c]);
-            crossing.approach_tiles = std::max(crossing.approach_tiles, sight);
-            crossing.tiles_after_seen = (int)(tiles.size() - 1 - c);
-        }
-    }
-    if (crossing.seen.empty()){
-        return std::nullopt;
-    }
-    return crossing;
-}
-
-std::vector<std::string> beaten_trainers_crossed(
-    const std::vector<MapData>& maps, const MapPosition& start, const RouteStep& step,
-    const std::set<std::string>& beaten
-){
-    std::vector<std::string> crossed;
-    if (step.action != RouteAction::WALK || beaten.empty()){
-        return crossed;
-    }
-    const std::vector<MapPosition> tiles = leg_tiles(maps, start, step);
-    for (size_t c = 1; c < tiles.size(); c++){
-        for (const MapData& map : maps){
-            if (map.name != tiles[c].map){
-                continue;
-            }
-            for (const MapObject& object : map.objects){
-                if (!object.trainer){
-                    continue;
-                }
-                const std::string id = trainer_id(map, object);
-                const bool listed = std::find(crossed.begin(), crossed.end(), id) != crossed.end();
-                if (!listed && beaten.contains(id) && trainer_may_see(map, object, tiles[c].point)){
-                    crossed.push_back(id);
-                }
-            }
-        }
-    }
-    return crossed;
-}
-
-Milliseconds trainer_full_watch(int approach_tiles){
-    return TRAINER_NOTICE + MovementMechanics::TILE_TIME * approach_tiles + TRAINER_SPEAKS;
-}
-
-Milliseconds trainer_first_look(const TrainerCrossing& crossing){
-    const Milliseconds held_on = MovementMechanics::RUN_TILE_TIME * crossing.tiles_after_seen;
-    return std::max(TRAINER_FIRST_LOOK, trainer_full_watch(crossing.approach_tiles) - held_on);
 }
 
 void run_route(

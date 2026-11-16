@@ -398,7 +398,7 @@ public:
             return cost;
         }
         const std::string& map = m_maps[stop.map].name;
-        const std::optional<WallHold> hold = hold_to_wall(m_maps, MapPosition{map, stop.state.position}, false, *next);
+        const std::optional<WallHold> hold = hold_to_wall(m_maps, MapPosition{map, stop.state.position}, /*surfing=*/false, *next);
         if (!hold){
             return 0;
         }
@@ -406,7 +406,7 @@ public:
         TilePos back = stop.state.position;
         for (int c = 1; c < run && c <= OPEN_LEG_SHORTFALL; c++){
             back = back.next(behind);
-            const std::optional<WallHold> from = hold_to_wall(m_maps, MapPosition{map, back}, false, *next);
+            const std::optional<WallHold> from = hold_to_wall(m_maps, MapPosition{map, back}, /*surfing=*/false, *next);
             if (!from || !(from->end == hold->end || from->tiles == 0)){
                 return cost;
             }
