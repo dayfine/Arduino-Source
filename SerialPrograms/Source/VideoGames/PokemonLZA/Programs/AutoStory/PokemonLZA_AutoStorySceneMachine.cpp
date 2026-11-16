@@ -25,6 +25,59 @@ using namespace std::chrono_literals;
 
 namespace{
 
+//  The states a scene machine tells apart, in the order it tries them.
+enum class SceneScreen{
+    BATTLE,         //  terminal: the battle HUD, with stop_at_battle
+    FADE_BLACK,     //  wait until it lifts
+    FADE_WHITE,     //  wait until it lifts
+    CHOICE,         //  terminal: the choice box, with stop_at_choice
+    DIALOG,         //  the text button: a box (A: its choice's top row too), or the advance chevron
+    MISSION_COMPLETE,   //  A: a main mission's "COMPLETE" card
+    MISSION_BANNER, //  terminal: a main mission's banner, on a second look
+    BANNER_SHOWING, //  wait: the banner, on its first look
+    CONTROLS_HINT,  //  terminal: the tutorial's controls hint, held a second
+    HINT_SHOWING,   //  wait: the controls hint, not held a second yet
+    QUIET_END,      //  terminal, failing: nothing busy for the quiet time, past the minimum length
+    BLIND_PRESS,    //  A: nothing busy and no sign of control for blind_press_after
+    SCENE_MOVING,   //  wait: no text, the screen changing
+    SCENE_STILL,    //  wait: no text, the screen still since the look before
+};
+
+//  The time-dependent part of the machine: when the screen was last busy,
+//  since when the hint shows. A look's time is its `when`.
+class SceneTimeline{
+public:
+    SceneTimeline(SceneMachineConfig config, WallClock start);
+
+    //  The state for `look`. Does not change the timeline.
+    SceneScreen classify(const ScreenObservation& look) const;
+
+    //  Takes in the look the machine acted on.
+    void record(const ScreenObservation& look);
+
+    //  When the quiet end is due if nothing busy shows before; none
+    //  without a quiet time.
+    std::optional<WallClock> quiet_end_due() const;
+
+    //  Whether a blind A press is due at `now` (blind_press_after).
+    bool blind_press_due(WallClock now) const;
+
+private:
+    //  classify() past the fades and the text.
+    SceneScreen classify_open(const ScreenObservation& look) const;
+
+    SceneMachineConfig m_config;
+    WallClock m_quiet_from;
+    WallClock m_last_busy;
+    //  The last look busy or with a sign of control (hint, banner).
+    WallClock m_last_cue;
+    std::optional<WallClock> m_last_blind_press;
+    std::optional<WallClock> m_hint_since;
+    //  The looks in a row with the mission banner.
+    size_t m_banner_looks = 0;
+};
+
+
 //  The controls hint showing this long is free control: two looks or more.
 constexpr Milliseconds CONTROLS_HINT_HOLD = 1000ms;
 //  The longest a fade is waited out in one step.
@@ -79,9 +132,8 @@ void track_since(bool shows, WallClock when, std::optional<WallClock>& since){
     }
 }
 
-} // namespace
 
-
+//  "fade_black", the state's name in the StepTrace log.
 std::string_view scene_screen_name(SceneScreen screen){
     switch (screen){
     case SceneScreen::BATTLE:
@@ -116,11 +168,14 @@ std::string_view scene_screen_name(SceneScreen screen){
     return "unknown";
 }
 
+//  Whether the machine ends after this state's step.
 bool scene_screen_terminal(SceneScreen screen){
     return screen == SceneScreen::BATTLE || screen == SceneScreen::CHOICE || screen == SceneScreen::MISSION_BANNER ||
         screen == SceneScreen::CONTROLS_HINT || screen == SceneScreen::QUIET_END;
 }
 
+//  Whether this state's step presses (DIALOG the config's text button,
+//  MISSION_COMPLETE and BLIND_PRESS A); the others wait.
 bool scene_screen_presses(SceneScreen screen){
     return screen == SceneScreen::DIALOG || screen == SceneScreen::MISSION_COMPLETE || screen == SceneScreen::BLIND_PRESS;
 }
@@ -204,8 +259,6 @@ void SceneTimeline::record(const ScreenObservation& look){
     }
 }
 
-
-namespace{
 
 //  "text box, advance arrow": a look's events and readings for the log.
 std::string describe_look(const ScreenObservation& look){
