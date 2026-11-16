@@ -56,6 +56,13 @@ PocketRead read_whole_pocket(PocketList& list);
 //  its cursor on the top row to start; it ends where the read left it.
 PocketRead read_open_pocket(ConsoleHandle& console, ProControllerContext& context, Language language);
 
+//  From the battle menu: BAG, its cursor on the Items pocket's top row. The
+//  bag opens on the pocket used last; Items is the first.
+void open_battle_bag(ProControllerContext& context);
+//  From the battle menu: the Items pocket through BAG, read whole, and back
+//  to the battle menu. Empty if nothing could be read.
+std::vector<BagRow> read_battle_pocket(ConsoleHandle& console, ProControllerContext& context, Language language);
+
 
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch

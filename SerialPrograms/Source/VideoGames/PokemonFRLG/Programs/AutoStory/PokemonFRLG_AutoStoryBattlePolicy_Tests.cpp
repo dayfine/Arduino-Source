@@ -18,6 +18,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
@@ -599,6 +600,51 @@ UnitTestResult test_plan_giovanni_gym(){
     });
 }
 
+//  A battle whose item counts are a row's guess reads the Items pocket
+//  before its first turn, unless it only runs; once read, it doesn't.
+UnitTestResult test_unknown_counts_read_before_first_turn(){
+    Supplies guessed;
+    if (!battle_needs_bag_read(guessed, BattleKind::TRAINER) || !battle_needs_bag_read(guessed, BattleKind::WILD_FIGHT)){
+        return "Expected a trainer's or a wild fight's battle to read a guessed bag first.";
+    }
+    if (battle_needs_bag_read(guessed, BattleKind::WILD_RUN)){
+        return "Expected a battle that only runs not to read the bag.";
+    }
+    Supplies read;
+    set_from_bag(read, {{"potion", 3}});
+    if (battle_needs_bag_read(read, BattleKind::TRAINER)){
+        return "Expected no read once the pocket was read.";
+    }
+    return true;
+}
+
+//  19.01's rival at Default checks (console B, 2026-11-15): the load's Bag
+//  check skipped, the row's guess has no X item, so the policy attacked
+//  from turn 1. The battle reads the pocket itself, and the policy sets up
+//  from what it read.
+UnitTestResult test_rival_route22_sets_up_from_its_own_read(){
+    const BattlePolicy policy = battle_policy_of(battle_step("19.01", "rival_route22").args);
+    if (policy.kind != BattlePolicyKind::GOAL_BASED_SETUP){
+        return "19.01 rival_route22: expected goal-based-setup.";
+    }
+    Supplies supplies;
+    supplies.policy = policy;
+    if (!battle_needs_bag_read(supplies, BattleKind::TRAINER)){
+        return "Expected the rival's battle to read the bag, its counts a guess.";
+    }
+    set_from_bag(supplies, {
+        {"potion", 5}, {"super-potion", 6}, {"full-heal", 2},
+        {"x-special", 10}, {"x-speed", 4}, {"x-accuracy", 4}, {"guard-spec", 2},
+    });
+    PolicyState state(policy);
+    const PolicyView view{.hp = 150, .max_hp = 150, .status = StatusCondition::NONE, .speed = 100, .foe_index = 0};
+    const std::string first = use(state, supplies, view);
+    if (first.rfind("x-", 0) != 0 && first != "guard-spec"){
+        return std::format("Expected a setup item at turn 1 from the read bag, got \"{}\".", first);
+    }
+    return true;
+}
+
 
 struct AutoStoryBattlePolicyInput{
     std::string name;
@@ -728,6 +774,14 @@ const std::vector<AutoStoryBattlePolicyCase> AUTO_STORY_BATTLE_POLICY_CASES = {
     {
         .input = {.name = "plan: 17.04 giovanni resolves to the doc's B", .body = test_plan_giovanni_gym},
         .expectation = {.description = "solo-recovery, 5 generator rows"},
+    },
+    {
+        .input = {.name = "guessed item counts: the battle reads the bag first", .body = test_unknown_counts_read_before_first_turn},
+        .expectation = {.description = "a read before a trainer's or a wild fight, none to run or once read"},
+    },
+    {
+        .input = {.name = "19.01 rival at Default checks: sets up from the battle's own read", .body = test_rival_route22_sets_up_from_its_own_read},
+        .expectation = {.description = "a bag read, then an X item or Guard Spec at turn 1"},
     },
 };
 

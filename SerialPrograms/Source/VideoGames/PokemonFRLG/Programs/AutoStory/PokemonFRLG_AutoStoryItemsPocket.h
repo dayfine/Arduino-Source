@@ -52,11 +52,9 @@ int item_shown_row(const Supplies& supplies, int row);
 //  items, for the log.
 std::vector<std::string> set_from_bag(Supplies& supplies, const std::vector<BagRow>& rows);
 
-//  After a save is loaded: the Items pocket as read, taken into `supplies`
-//  and `saved` (what a reload restores) in place of the row's counts, as
-//  set_from_bag() does. With nothing read both keep the row's. Returns the
-//  items whose count couldn't be read.
-std::vector<std::string> set_from_loaded_bag(Supplies& supplies, Supplies& saved, const std::vector<BagRow>& rows);
+//  Whether the Items pocket as read holds the counts `kept` has of the
+//  items the story counts (the Bag's check; it changes no count).
+bool bag_matches(const Supplies& kept, const std::vector<BagRow>& rows);
 
 //  From the overworld: opens the Items pocket, reads it, and closes the
 //  bag again. Empty if nothing could be read.

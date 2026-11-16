@@ -128,23 +128,15 @@ std::vector<std::string> set_from_bag(Supplies& supplies, const std::vector<BagR
         *slot = std::max(item_count(before, row.item), 1);
         unread.push_back(row.item);
     }
+    supplies.counts_read = true;
     return unread;
 }
 
-std::vector<std::string> set_from_loaded_bag(Supplies& supplies, Supplies& saved, const std::vector<BagRow>& rows){
-    if (rows.empty()){
-        return {};
-    }
-    std::vector<std::string> unread = set_from_bag(supplies, rows);
-    saved.potions = supplies.potions;
-    saved.super_potions = supplies.super_potions;
-    saved.antidotes = supplies.antidotes;
-    saved.parlyz_heals = supplies.parlyz_heals;
-    saved.awakenings = supplies.awakenings;
-    saved.full_heals = supplies.full_heals;
-    saved.pocket = supplies.pocket;
-    saved.other_counts = supplies.other_counts;
-    return unread;
+bool bag_matches(const Supplies& kept, const std::vector<BagRow>& rows){
+    Supplies read = kept;
+    set_from_bag(read, rows);
+    return read.potions == kept.potions && read.super_potions == kept.super_potions && read.antidotes == kept.antidotes
+        && read.parlyz_heals == kept.parlyz_heals && read.awakenings == kept.awakenings && read.full_heals == kept.full_heals;
 }
 
 

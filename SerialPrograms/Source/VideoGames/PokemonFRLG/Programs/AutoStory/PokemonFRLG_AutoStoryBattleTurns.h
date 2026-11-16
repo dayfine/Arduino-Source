@@ -39,6 +39,14 @@ enum class TurnChoice{
     MOVE,
 };
 
+//  Before a battle of `kind`'s first turn: whether it reads the Items pocket
+//  itself, its counts a row's guess (Supplies::counts_read), unless it only
+//  runs. Console B, 2026-11-15, 19.01: the rival was fought with 0 Potions
+//  and no X item from the counts a skipped check left.
+inline bool battle_needs_bag_read(const Supplies& supplies, BattleKind kind){
+    return !supplies.counts_read && kind != BattleKind::WILD_RUN;
+}
+
 //  Decided battle action including slot or item index.
 struct TurnAction{
     TurnChoice choice = TurnChoice::MOVE;

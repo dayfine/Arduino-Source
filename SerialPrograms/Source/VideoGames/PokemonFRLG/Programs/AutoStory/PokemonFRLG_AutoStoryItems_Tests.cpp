@@ -131,29 +131,19 @@ UnitTestResult test_pocket_rows(Logger&){
     return true;
 }
 
-//  #211: a row loaded from a save counted no Potions, so its wild battles
-//  were all run from. The counts come from the bag as read, both for the
-//  run and for a reload; with nothing read, the row's are kept.
+//  The Bag's check after a load compares the pocket read with the counts
+//  kept and changes none: a battle with a row's guess reads it itself.
 UnitTestResult test_loaded_bag(Logger&){
-    Supplies row;
-    Supplies saved = row;
-    const std::vector<std::string> unread = set_from_loaded_bag(row, saved, {{"potion", 4}, {"antidote", 2}});
-    if (row.potions != 4 || saved.potions != 4 || row.antidotes != 2 || saved.antidotes != 2 || !unread.empty()){
-        return std::format(
-            "Expected 4 Potions and 2 Antidotes from the bag, now and for a reload; got {} and {}, {} and {}.",
-            row.potions, saved.potions, row.antidotes, saved.antidotes
-        );
+    Supplies kept;
+    kept.potions = 4;
+    kept.antidotes = 2;
+    const std::vector<BagRow> same = {{"potion", 4}, {"antidote", 2}};
+    const std::vector<BagRow> fewer = {{"potion", 1}, {"antidote", 2}};
+    if (!bag_matches(kept, same)){
+        return "Expected 4 Potions and 2 Antidotes read to match the counts kept.";
     }
-    if (item_row(saved, "antidote") != 1){
-        return "Expected the reload's pocket order from the bag.";
-    }
-
-    Supplies known;
-    known.potions = 2;
-    Supplies known_saved = known;
-    set_from_loaded_bag(known, known_saved, {});
-    if (known.potions != 2 || known_saved.potions != 2){
-        return "Expected the row's 2 Potions kept with nothing read.";
+    if (bag_matches(kept, fewer) || kept.potions != 4){
+        return "Expected 1 Potion read to differ, and the 4 kept unchanged.";
     }
     return true;
 }
@@ -205,15 +195,11 @@ UnitTestResult test_loaded_bag_other_items(Logger&){
     Supplies row;
     row.potions = 0;
     row.parlyz_heals = 0;
-    Supplies saved = row;
-    set_from_loaded_bag(row, saved, {{"", 1}, {"parlyz-heal", 1}, {"potion", 15}});
-    if (row.potions != 15 || saved.potions != 15 || row.parlyz_heals != 1){
-        return std::format(
-            "Expected 15 Potions and 1 Parlyz Heal from the bag, now and for a reload; got {}, {} and {}.",
-            row.potions, saved.potions, row.parlyz_heals
-        );
+    set_from_bag(row, {{"", 1}, {"parlyz-heal", 1}, {"potion", 15}});
+    if (row.potions != 15 || row.parlyz_heals != 1){
+        return std::format("Expected 15 Potions and 1 Parlyz Heal from the bag, got {} and {}.", row.potions, row.parlyz_heals);
     }
-    if (item_row(row, "parlyz-heal") != 1 || item_row(row, "potion") != 2 || item_row(saved, "potion") != 2){
+    if (item_row(row, "parlyz-heal") != 1 || item_row(row, "potion") != 2){
         return std::format(
             "Expected the Parlyz Heal in row 1 and the Potions in row 2 below the Moon Stone, got {} and {}.",
             item_row(row, "parlyz-heal"), item_row(row, "potion")
@@ -226,13 +212,9 @@ UnitTestResult test_loaded_bag_other_items(Logger&){
 //  from the bag and found in their row.
 UnitTestResult test_loaded_bag_awakenings(Logger&){
     Supplies row;
-    Supplies saved = row;
-    set_from_loaded_bag(row, saved, {{"", 1}, {"parlyz-heal", 1}, {"potion", 15}, {"awakening", 3}});
-    if (row.awakenings != 3 || saved.awakenings != 3 || item_count(row, "awakening") != 3 || item_row(row, "awakening") != 3){
-        return std::format(
-            "Expected 3 Awakenings in row 3, now and for a reload; got {} and {}, row {}.",
-            row.awakenings, saved.awakenings, item_row(row, "awakening")
-        );
+    set_from_bag(row, {{"", 1}, {"parlyz-heal", 1}, {"potion", 15}, {"awakening", 3}});
+    if (row.awakenings != 3 || item_count(row, "awakening") != 3 || item_row(row, "awakening") != 3){
+        return std::format("Expected 3 Awakenings in row 3, got {}, row {}.", row.awakenings, item_row(row, "awakening"));
     }
     return true;
 }
@@ -832,7 +814,7 @@ const AutoStoryItemsTestCase AUTO_STORY_ITEMS_CASES[] = {
         .expectation = {.description = "parses item pocket rows from visual representation"},
     },
     {
-        .input = {.name = "a loaded save's counts come from the bag", .body = test_loaded_bag},
+        .input = {.name = "the Bag's check compares, changing no count", .body = test_loaded_bag},
         .expectation = {.description = "initializes bag counts when loading saved state"},
     },
     {

@@ -947,11 +947,11 @@ void read_bag_supplies(StoryEnv& env, StartMenu menu){
     }else if (const std::vector<BagRow> rows = read_items_pocket(env.console, env.context, env.language); rows.empty()){
         env.console.log("Couldn't read the Items pocket; going on with the checkpoint's items.", COLOR_ORANGE);
     }else{
-        const std::vector<std::string> unread = set_from_loaded_bag(env.supplies, env.saved_supplies, rows);
-        for (const std::string& item : unread){
-            env.console.log(std::format("Story: couldn't read how many {} the bag holds; counting {}.", item, item_count(env.supplies, item)), COLOR_ORANGE);
-        }
-        env.bag_read = unread.empty();
+        //  A check only: no count changes (Supplies::counts_read).
+        const bool same = bag_matches(env.supplies, rows);
+        const bool read = env.supplies.counts_read;
+        env.console.log(std::format("Story: the Bag after the load {} the story's counts ({}).", same ? "matches" : "differs from", read ? "counted since a read" : "a row's guess"), same || !read ? COLOR_BLACK : COLOR_ORANGE);
+        env.bag_read = true;
     }
     //  A status or HP the checkpoint was saved with: not a check, it acts.
     recover_after_battle(env.console, env.context, env.supplies, env.checks, env.language);

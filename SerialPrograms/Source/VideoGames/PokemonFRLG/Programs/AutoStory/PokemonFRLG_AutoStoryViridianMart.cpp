@@ -60,18 +60,22 @@ Pokemon::Outcome viridian_shop(StoryEnv& env, const StoryStep& step){
     if (!Pokemon::runs_check(env.checks, Pokemon::StoryCheckKind::BAG_CONTENTS)){
         return Pokemon::outcome_ok();
     }
-    //  The counts from the bag, not from the orders: a wrong row once bought
-    //  Parlyz Heals for Antidotes unnoticed (console B, 2026-11-01).
+    //  A check of what was bought: a wrong row once bought Parlyz Heals for
+    //  Antidotes unnoticed (console B, 2026-11-01). It changes no count:
+    //  the next battle that doesn't know them reads the pocket itself.
     const std::vector<BagRow> rows = read_items_pocket(env.console, env.context, env.language);
     if (rows.empty()){
-        env.console.log("Story: couldn't read the Items pocket; keeping the counts ordered.", COLOR_ORANGE);
+        env.console.log("Story: couldn't read the Items pocket to check the order.", COLOR_ORANGE);
         return Pokemon::outcome_ok();
     }
-    for (const std::string& item : set_from_bag(env.supplies, rows)){
-        env.console.log(std::format(
-            "Story: couldn't read how many {} the bag holds; counting {}.",
-            item, item_count(env.supplies, item)
-        ), COLOR_ORANGE);
+    Supplies read = env.supplies;
+    set_from_bag(read, rows);
+    for (const Pokemon::StoryItem& item : Pokemon::story_arg<std::vector<Pokemon::StoryItem>>(step.args, "items")){
+        const int counted = env.supplies.*viridian_mart_item(item.item)->count;
+        const int held = read.*viridian_mart_item(item.item)->count;
+        if (held != counted){
+            env.console.log(std::format("Story: the bag holds {} {}, the story counts {}.", held, item.item, counted), COLOR_ORANGE);
+        }
     }
     return Pokemon::outcome_ok();
 }
