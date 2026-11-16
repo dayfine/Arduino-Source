@@ -8,16 +8,21 @@
  *
  */
 
+#include <algorithm>
 #include <format>
+#include <map>
 #include <optional>
 #include <set>
 #include <string>
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "PokemonFRLG_AutoStoryBattleRisk.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryMartPlan.h"
 #include "PokemonFRLG_AutoStoryStepLint_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryUnauthoredStarts_Tests.h"
@@ -164,6 +169,144 @@ UnitTestResult test_legs_need_a_reason(){
     return true;
 }
 
+//  The boss battles that, on 2026-11-16, still share their checkpoint
+//  with the walk or errands before them, row/step. The user (2026-11-16,
+//  19.01's Route 22 rival: "This fight also isn't its own checkpoint"):
+//  a boss battle is its own checkpoint, saved right before it, so a retry
+//  replays no walk. These are listed, not split yet, and leave the list as
+//  they are split.
+const std::set<std::string, std::less<>>& bosses_sharing_before_2026_11_16(){
+    static const std::set<std::string, std::less<>> BOSSES{
+        "01.06/rival_battle", "03.02/brock", "05.02/misty", "06.01/rival_ss_anne", "09.02/giovanni",
+        "16.03/rival", "16.05/giovanni", "20.01/lorelei", "20.02/bruno", "20.03/agatha", "20.04/lance",
+        "20.05/champion",
+    };
+    return BOSSES;
+}
+
+//  A step that leaves the player where they stand: a GAME action with no
+//  declared pose after it (a level check, a bag count, a teach), not a
+//  Fly, a walk, a scene or another battle.
+bool stays_in_place(const StoryStep& step){
+    return step.kind == StoryStepKind::GAME && !step.pose_after;
+}
+
+//  The first step of `row` before its battle `battle` that is not in
+//  place, the battle's trigger (a STEP or TALK right before it) aside;
+//  nothing if the battle starts its checkpoint.
+std::optional<std::string_view> walk_before_battle(const StoryCheckpoint& row, size_t battle){
+    for (size_t c = 0; c < battle; c++){
+        const StoryStep& step = row.steps[c];
+        const bool trigger = c + 1 == battle && (step.kind == StoryStepKind::STEP || step.kind == StoryStepKind::TALK);
+        if (!trigger && !stays_in_place(step)){
+            return step.name;
+        }
+    }
+    return std::nullopt;
+}
+
+//  A boss battle (the rival, gym leaders, Giovanni, the Elite Four and the
+//  Champion: the HIGH risk trainers, default_battle_risk()) is the first
+//  step of its checkpoint but in-place checks and its trigger, so the
+//  checkpoint's save is right before it; every listed one still shares.
+UnitTestResult test_boss_battle_is_its_own_checkpoint(){
+    std::set<std::string, std::less<>> listed_seen;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (size_t c = 0; c < row.steps.size(); c++){
+            const StoryStep& step = row.steps[c];
+            if (step.kind != StoryStepKind::BATTLE){
+                continue;
+            }
+            if (default_battle_risk(Pokemon::story_arg<std::string>(step.args, "trainer")) != BattleRisk::HIGH){
+                continue;
+            }
+            const std::optional<std::string_view> walk = walk_before_battle(row, c);
+            const std::string key = std::format("{}/{}", row.id, step.name);
+            if (bosses_sharing_before_2026_11_16().contains(key)){
+                if (!walk){
+                    return std::format("{} starts its checkpoint now: take it off bosses_sharing_before_2026_11_16().", key);
+                }
+                listed_seen.insert(key);
+                continue;
+            }
+            if (walk){
+                return std::format("{}: a boss battle after {}; end the checkpoint before it, so its save is right before the battle.", key, *walk);
+            }
+        }
+    }
+    for (const std::string& key : bosses_sharing_before_2026_11_16()){
+        if (!listed_seen.contains(key)){
+            return std::format("{} is no boss battle now: take it off bosses_sharing_before_2026_11_16().", key);
+        }
+    }
+    return true;
+}
+
+//  The Mart steps' plans, each with its row.
+struct RowMart{
+    std::string_view row;
+    MartPlan plan;
+};
+std::vector<RowMart> story_marts(){
+    std::vector<RowMart> marts;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryStep& step : row.steps){
+            if (step.kind != StoryStepKind::GAME || step.action != MART_ACTION){
+                continue;
+            }
+            if (const std::optional<MartPlan> plan = mart_plan_of(step.args)){
+                marts.push_back({row.id, *plan});
+            }
+        }
+    }
+    return marts;
+}
+
+//  Whether the Mart on `map` sells every line of `lines`.
+bool stocks_all(std::string_view map, const std::vector<MartLine>& lines){
+    const std::vector<MartStockItem>& stock = mart_stock(map);
+    for (const MartLine& line : lines){
+        const bool sold = std::any_of(stock.begin(), stock.end(), [&](const MartStockItem& item){ return item.item == line.item; });
+        if (!sold){
+            return false;
+        }
+    }
+    return true;
+}
+
+//  An errand (one checkpoint) never shops at two Marts when one Mart the
+//  story visits stocks its whole list: 19.01a flew from Lavender's Mart
+//  back to Viridian's for an Antidote and 2 Parlyz Heals, which Lavender
+//  sells too (user, 2026-11-16).
+UnitTestResult test_errand_shops_at_one_mart(){
+    const std::vector<RowMart> marts = story_marts();
+    std::set<std::string, std::less<>> maps;
+    for (const RowMart& mart : marts){
+        maps.insert(mart.plan.map);
+    }
+    std::map<std::string_view, std::vector<const MartPlan*>> by_row;
+    for (const RowMart& mart : marts){
+        by_row[mart.row].push_back(&mart.plan);
+    }
+    for (const auto& [row, plans] : by_row){
+        std::set<std::string_view> visited;
+        std::vector<MartLine> lines;
+        for (const MartPlan* plan : plans){
+            visited.insert(plan->map);
+            lines.insert(lines.end(), plan->lines.begin(), plan->lines.end());
+        }
+        if (visited.size() < 2){
+            continue;
+        }
+        for (const std::string& map : maps){
+            if (stocks_all(map, lines)){
+                return std::format("{}: shops at {} Marts, but {} stocks the whole list; buy it there in one step.", row, visited.size(), map);
+            }
+        }
+    }
+    return true;
+}
+
 struct StepLintInput{
     UnitTestResult (*body)();
 };
@@ -207,6 +350,16 @@ const StepLintCase STEP_LINT_CASES[] = {
         .name = "no new legs event without a reason the planner can't walk it",
         .input = {.body = test_legs_need_a_reason},
         .expectation = {.description = "every walk a planned route, but the listed legs and those whose why says \"not planned: \""},
+    },
+    {
+        .name = "a boss battle is its own checkpoint",
+        .input = {.body = test_boss_battle_is_its_own_checkpoint},
+        .expectation = {.description = "only in-place checks and its trigger come before it in its checkpoint, but the listed ones"},
+    },
+    {
+        .name = "an errand shops at one Mart when one stocks its whole list",
+        .input = {.body = test_errand_shops_at_one_mart},
+        .expectation = {.description = "no checkpoint visits two Marts for a list one Mart sells"},
     },
 };
 
