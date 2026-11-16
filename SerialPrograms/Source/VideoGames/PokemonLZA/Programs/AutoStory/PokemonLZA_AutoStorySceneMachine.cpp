@@ -5,6 +5,8 @@
  */
 
 #include <algorithm>
+#include <chrono>
+#include <cstddef>
 #include <format>
 #include <functional>
 #include <stdint.h>
@@ -12,6 +14,7 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include "Common/Cpp/PrettyPrint.h"
 #include "CommonTools/ScreenMachine/ScreenMachine.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
@@ -124,7 +127,7 @@ void track_since(bool shows, WallClock when, std::optional<WallClock>& since){
 }
 
 
-//  "fade_black", the state's name in the StepTrace log.
+//  "fade_black", the state's name in the log.
 std::string_view scene_screen_name(SceneScreen screen){
     switch (screen){
     case SceneScreen::FADE_BLACK:
@@ -269,29 +272,157 @@ std::string describe_look(const ScreenObservation& look){
     return text.empty() ? "nothing" : text;
 }
 
+//  How long looks that repeat what the log already shows are counted
+//  before they are summed up.
+constexpr Milliseconds SUMMARY_EVERY = 30000ms;
+//  How many states may take turns and still count as one run of looks.
+constexpr std::ptrdiff_t TURN_PERIODS[] = {2, 3};
+
+//  The machine's log, short over long runs of the same screens (01.01's
+//  arrival: scene_moving and blind_press took turns for 5 minutes, console
+//  B 2026-11-15). A look whose state or readings differ from the look
+//  before gets a line ("[PLZA label] screen 3: scene_still at 12.5s:
+//  still"; the number counts changes of state), unless the change only
+//  goes on with two or three states taking turns. Those looks, and looks
+//  that change nothing, are counted and summed up every SUMMARY_EVERY,
+//  and before the next line and at the end when they took turns or
+//  pressed ("[PLZA label] scene_moving x46, blind_press x15 over 30.0s, 15
+//  presses"): a wait on one state shows in the next line's time.
+class SceneLog{
+public:
+    SceneLog(PlzaBackend& backend, std::string_view label, WallClock start)
+        : m_backend(backend)
+        , m_label(label)
+        , m_start(start)
+    {}
+
+    //  Logs or counts a look the machine acted on as `screen`, with
+    //  `readings` (describe_look()); `pressed`: its step presses a button.
+    void look(SceneScreen screen, std::string_view readings, WallClock when, bool pressed){
+        if (screen != m_screen){
+            m_screen = screen;
+            m_screen_number++;
+        }
+        if (gets_line(std::format("{}: {}", scene_screen_name(screen), readings))){
+            flush();
+            const double seconds = std::chrono::duration<double>(when - m_start).count();
+            m_backend.log(std::format(
+                "[PLZA {}] screen {}: {} at {}s: {}",
+                m_label, m_screen_number, scene_screen_name(screen), tostr_fixed(seconds, 1), readings
+            ));
+            return;
+        }
+        count(screen, when, pressed);
+        if (when - *m_counted_from >= SUMMARY_EVERY){
+            write_summary();
+        }
+    }
+
+    //  Sums up the looks counted since the last line if they took turns or
+    //  pressed; drops them otherwise.
+    void flush(){
+        if (m_counted.size() > 1 || m_presses > 0){
+            write_summary();
+            return;
+        }
+        m_counted.clear();
+        m_counted_from.reset();
+    }
+
+private:
+    void write_summary(){
+        std::string text;
+        for (const auto& [screen, looks] : m_counted){
+            text += std::format("{}{} x{}", text.empty() ? "" : ", ", scene_screen_name(screen), looks);
+        }
+        const double seconds = std::chrono::duration<double>(m_counted_to - *m_counted_from).count();
+        m_backend.log(std::format("[PLZA {}] {} over {}s, {} presses", m_label, text, tostr_fixed(seconds, 1), m_presses));
+        m_counted.clear();
+        m_counted_from.reset();
+        m_presses = 0;
+    }
+
+    //  Whether a look with `key` ("scene_still: still") gets a line: it
+    //  changes the state or readings, not only to go on taking turns.
+    bool gets_line(std::string key){
+        if (!m_changes.empty() && key == m_changes.back()){
+            return false;
+        }
+        m_changes.push_back(std::move(key));
+        if (m_changes.size() > MAX_CHANGES){
+            m_changes.erase(m_changes.begin());
+        }
+        return !takes_turns();
+    }
+
+    //  Whether the changes end in two or three states taking turns: their
+    //  last 4 or 6 are one run of 2 or 3 repeated.
+    bool takes_turns() const{
+        for (const std::ptrdiff_t period : TURN_PERIODS){
+            if ((std::ptrdiff_t)m_changes.size() >= 2 * period &&
+                std::equal(m_changes.end() - period, m_changes.end(), m_changes.end() - 2 * period)
+            ){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void count(SceneScreen screen, WallClock when, bool pressed){
+        if (!m_counted_from){
+            m_counted_from = when;
+        }
+        m_counted_to = when;
+        m_presses += pressed ? 1 : 0;
+        for (auto& [counted, looks] : m_counted){
+            if (counted == screen){
+                looks++;
+                return;
+            }
+        }
+        m_counted.emplace_back(screen, 1);
+    }
+
+    PlzaBackend& m_backend;
+    std::string m_label;
+    //  The first look's time; the lines' times count from it.
+    WallClock m_start;
+    std::optional<SceneScreen> m_screen;
+    size_t m_screen_number = 0;
+    //  The last changes of state or readings, as many as takes_turns()
+    //  reads: "scene_still: still".
+    static constexpr size_t MAX_CHANGES = 6;
+    std::vector<std::string> m_changes;
+    //  The looks counted since the last line, per state, in order.
+    std::vector<std::pair<SceneScreen, size_t>> m_counted;
+    std::optional<WallClock> m_counted_from;
+    WallClock m_counted_to;
+    size_t m_presses = 0;
+};
+
 //  What the states share: the backend, the timeline and the look they act on.
 class SceneRunner{
 public:
     SceneRunner(PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, WallClock start)
         : m_backend(backend)
-        , m_label(label)
         , m_text_button(config.text_button)
         , m_timeline(config, start)
+        , m_log(backend, label, start)
     {}
 
     const SceneTimeline& timeline() const{
         return m_timeline;
     }
 
+    //  Sums up the looks the log has counted (SceneLog::flush()).
+    void flush_log(){
+        m_log.flush();
+    }
+
     //  The step of `screen`, the state of `look`.
     void act(SceneScreen screen, const ScreenObservation& look){
         m_timeline.record(look);
-        const std::string events = describe_look(look);
-        if (screen != m_logged_screen || events != m_logged_events){
-            m_logged_screen = screen;
-            m_logged_events = events;
-            m_backend.log(std::format("[PLZA {}] {}: {}", m_label, scene_screen_name(screen), events));
-        }
+        m_log.look(screen, describe_look(look), look.when, scene_screen_presses(screen));
         if (scene_screen_terminal(screen)){
             return;
         }
@@ -340,11 +471,9 @@ private:
     }
 
     PlzaBackend& m_backend;
-    std::string m_label;
     Button m_text_button;
     SceneTimeline m_timeline;
-    std::optional<SceneScreen> m_logged_screen;
-    std::string m_logged_events;
+    SceneLog m_log;
 };
 
 //  How often a state may come up before the machine fails: a box that A
@@ -440,10 +569,10 @@ Pokemon::Outcome run_scene_machine(
         first = false;
         return look;
     };
-    StepTrace trace(std::format("PLZA {}", label), [&backend](const std::string& line){
-        backend.log(line);
-    });
+    //  SceneLog logs the states, with the looks' readings.
+    StepTrace trace(std::format("PLZA {}", label), /*log=*/nullptr);
     const ScreenMachineResult result = run_screen_machine(observe, backend.scope(), states, timeout, trace);
+    runner.flush_log();
     return scene_outcome(backend, label, config, result);
 }
 
