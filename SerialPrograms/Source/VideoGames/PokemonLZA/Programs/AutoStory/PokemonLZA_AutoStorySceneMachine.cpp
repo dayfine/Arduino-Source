@@ -188,22 +188,6 @@ bool hud_shows(const ScreenObservation& look){
         look.events.has(ScreenEvent::INTERACT_PROMPT);
 }
 
-//  A scene is under way: text, a choice or a battle, or, with no HUD up, a
-//  fade or a moving screen. A cutscene can play a minute with no text:
-//  02.02's street scene moved 41 s with no HUD after its black fade
-//  (console B, 2026-11-15). A step that plays a scene (start_window) does
-//  not end on the HUD before one is: the HUD up for start_window with no
-//  scene is the player away from its trigger.
-bool scene_under_way(const ScreenObservation& look){
-    if (scene_shows(look)){
-        return true;
-    }
-    if (hud_shows(look)){
-        return false;
-    }
-    return fade_shows(look) || !look.events.has(ScreenEvent::SCREEN_STILL);
-}
-
 //  Whether the party bar and the A prompt are control for `config`: not in
 //  a machine that stops at a choice or a battle, whose talk shows them
 //  between its lines (and whose blind A may start that talk).
@@ -848,6 +832,16 @@ Pokemon::Outcome scene_outcome(
 
 } // namespace
 
+
+bool scene_under_way(const ScreenObservation& look){
+    if (scene_shows(look) || look.readings.contains(TUTORIAL_CARD_READING)){
+        return true;
+    }
+    if (hud_shows(look)){
+        return false;
+    }
+    return fade_shows(look) || !look.events.has(ScreenEvent::SCREEN_STILL);
+}
 
 Pokemon::Outcome run_scene_machine(
     PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout

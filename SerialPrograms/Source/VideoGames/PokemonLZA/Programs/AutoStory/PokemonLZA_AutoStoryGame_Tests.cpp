@@ -562,9 +562,14 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .inputs = "press A"},
     },
     {
-        .name = "01.03's talk fails when no text box shows",
+        .name = "01.03's talk fails when nothing starts after A: the prompt stays",
         .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {A_PROMPT}},
-        .expectation = {.verdict = "failed at talk_to_starter: talk_no_text"},
+        .expectation = {.verdict = "failed at talk_to_starter: talk_no_scene"},
+    },
+    {
+        .name = "a talk fails when the party bar stays after A",
+        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {A_PROMPT, party_bar(Milliseconds(0))}},
+        .expectation = {.verdict = "failed at talk_to_starter: talk_no_scene"},
     },
     {
         .name = "01.03's battle start: A through the talk and the tutorial card, done on the battle HUD",
@@ -750,6 +755,32 @@ const RunCase RUN_CASES[] = {
             .verdict = "failed at talk_to_taunie: talk_no_prompt",
             .inputs = "wait 250ms, wait 250ms, wait 250ms, wait 250ms",
         },
+    },
+    {
+        //  console B, 2026-11-16: A at Taunie dimmed the screen into a
+        //  "Smart Rotom" card, with no text box: her talk had started.
+        .name = "03.02b's talk to Taunie starts on a tutorial card with no text box",
+        .input = {.checkpoint = "03.02b", .first_step = 1, .steps = 1, .looks = {
+            A_PROMPT, look({ScreenEvent::SCREEN_STILL}, {TUTORIAL_CARD_READING}),
+        }},
+        .expectation = {.verdict = "done", .inputs = "press A"},
+    },
+    {
+        .name = "03.02b's talk to Taunie starts on a subtitle: the advance chevron with no text box",
+        .input = {.checkpoint = "03.02b", .first_step = 1, .steps = 1, .looks = {
+            A_PROMPT, look({ScreenEvent::SCREEN_STILL}, {ADVANCE_ARROW_READING}),
+        }},
+        .expectation = {.verdict = "done", .inputs = "press A"},
+    },
+    {
+        .name = "03.02b's talk to Taunie starts on a fade",
+        .input = {.checkpoint = "03.02b", .first_step = 1, .steps = 1, .looks = {A_PROMPT, BLACK_FADE}},
+        .expectation = {.verdict = "done", .inputs = "press A"},
+    },
+    {
+        .name = "03.02b's talk to Taunie starts on a textless cutscene: the screen moving with no HUD",
+        .input = {.checkpoint = "03.02b", .first_step = 1, .steps = 1, .looks = {A_PROMPT, CUTSCENE}},
+        .expectation = {.verdict = "done", .inputs = "press A"},
     },
     {
         .name = "03.02b's map talk: A and B in turn, done on the party bar held a second",

@@ -585,15 +585,17 @@ Outcome pokedex_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAction
 
 
 //  How long "talk" looks for its A prompt before A, how long it waits for
-//  its text box after A, and how often it looks.
+//  its scene to start after A, and how often it looks.
 constexpr Milliseconds TALK_PROMPT_WAIT(1000);
 constexpr Milliseconds TALK_WAIT(5000);
 constexpr Milliseconds TALK_POLL(250);
 
-//  "talk": on the A prompt of what the player faces, A, then a text box
-//  within TALK_WAIT. With no prompt within TALK_PROMPT_WAIT it presses
-//  nothing and fails as "talk_no_prompt": the walk before it stopped short
-//  (03.02, console B 2026-11-16); with no text box, as "talk_no_text".
+//  "talk": on the A prompt of what the player faces, A, then its scene
+//  under way within TALK_WAIT (scene_under_way(): text, a subtitle, a
+//  card, a fade or a textless cutscene; Taunie's opens on a card, 03.02b).
+//  With no prompt within TALK_PROMPT_WAIT it presses nothing and fails as
+//  "talk_no_prompt": the walk before it stopped short (03.02, console B
+//  2026-11-16); with nothing started after A, as "talk_no_scene".
 Outcome talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
     if (!prompt_shows_within(backend, TALK_PROMPT_WAIT)){
         return Pokemon::outcome_failed(
@@ -603,7 +605,7 @@ Outcome talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
     backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
     for (Milliseconds waited(0); ; waited += TALK_POLL){
         backend.scope().throw_if_cancelled();
-        if (backend.observe().events.has(ScreenEvent::DIALOG_BOX)){
+        if (scene_under_way(backend.observe())){
             return Pokemon::outcome_ok();
         }
         if (waited >= TALK_WAIT){
@@ -611,7 +613,7 @@ Outcome talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
         }
         backend.wait(TALK_POLL);
     }
-    return Pokemon::outcome_failed("talk_no_text", std::format("no text box within {} ms of A", TALK_WAIT.count()));
+    return Pokemon::outcome_failed("talk_no_scene", std::format("nothing started within {} ms of A: the HUD stayed", TALK_WAIT.count()));
 }
 
 
