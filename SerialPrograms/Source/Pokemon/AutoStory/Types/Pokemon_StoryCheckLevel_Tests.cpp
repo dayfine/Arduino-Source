@@ -91,7 +91,7 @@ public:
             for (size_t c = 0; c < runs.size(); c++){
                 got += std::format(" {}={}", story_check_level_name(LEVELS[c]), runs[c] ? "runs" : "skips");
             }
-            return "Ran at the wrong levels:" + got;
+            return std::format("Ran at the wrong levels:{}", got);
         }
         if (story_checks_help().find(m_scenario.expectation.help) == std::string::npos){
             return std::format("Expected \"{}\" in the option's help: {}", m_scenario.expectation.help, story_checks_help());

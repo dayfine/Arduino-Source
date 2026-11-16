@@ -48,7 +48,7 @@ const StoryCheckpoint& checkpoint_row(std::string_view id){
     const std::vector<StoryCheckpoint>& rows = story_checkpoints();
     const auto row = std::find_if(rows.begin(), rows.end(), [id](const StoryCheckpoint& data){ return data.id == id; });
     if (row == rows.end()){
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No checkpoint " + std::string(id) + ".");
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No checkpoint {}.", id));
     }
     return *row;
 }
@@ -91,7 +91,7 @@ GiovanniRun run_giovanni_rows(StoryCheckLevel level){
                 const Pokemon::StoryAction* action = sim.actions().find(step);
                 const bool was_stubbed = data->id == stubbed.row && std::ranges::find(stubbed.steps, step.name) != stubbed.steps.end();
                 if (was_stubbed && action != nullptr && action->check && !Pokemon::runs_check(level, *action->check)){
-                    run.skipped_checks_run.push_back(data->id + "/" + step.name);
+                    run.skipped_checks_run.push_back(std::format("{}/{}", data->id, step.name));
                 }
             }
         }
@@ -108,7 +108,7 @@ bool stubbed(const GiovanniRun& run, std::string_view row, std::string_view step
 std::string joined(const std::vector<std::string>& lines){
     std::string text;
     for (const std::string& line : lines){
-        text += "\n    " + line;
+        text += std::format("\n    {}", line);
     }
     return text;
 }
@@ -152,10 +152,10 @@ public:
         try{
             const GiovanniRun run = run_giovanni_rows(m_scenario.input.level);
             if (!run.completed){
-                return "Expected 17.04 and 17.04b through:" + joined(run.lines);
+                return std::format("Expected 17.04 and 17.04b through:{}", joined(run.lines));
             }
             if (!run.skipped_checks_run.empty()){
-                return "Expected no check this level skips to run:" + joined(run.skipped_checks_run);
+                return std::format("Expected no check this level skips to run:{}", joined(run.skipped_checks_run));
             }
             if (stubbed(run, "17.04", "lead_lv50_for_giovanni") != m_scenario.expectation.level_check_runs){
                 return std::format("Expected 17.04's level check {}.", m_scenario.expectation.level_check_runs ? "run" : "skipped");

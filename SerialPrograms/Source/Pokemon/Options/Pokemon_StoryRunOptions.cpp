@@ -23,6 +23,20 @@ const EnumDropdownDatabase<StoryCheckLevel>& StoryCheckLevel_Database(){
 }
 
 
+namespace{
+
+//  The CHECKS option's label, with the check table (story_checks_help()),
+//  so what it says is what runs.
+std::string checks_label(){
+    return std::format(
+        "<b>Checks:</b><br>How much each step reads the screen to confirm what it did, from Testing (the most) to Speedrun (almost none). "
+        "Each kind of check runs at these levels:{}", story_checks_help()
+    );
+}
+
+} // namespace
+
+
 const EnumDropdownDatabase<StorySaveMode>& StorySaveMode_Database(){
     static const EnumDropdownDatabase<StorySaveMode> database({
         {StorySaveMode::NONE,               "none",               "None: never save (testing a checkpoint; the start save stays)"},
@@ -94,10 +108,7 @@ StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints, const 
         3, 1, 20
     )
     , CHECKS(
-        std::format(
-            "<b>Checks:</b><br>How much each step reads the screen to confirm what it did, from Testing (the most) to Speedrun (almost none). "
-            "Each kind of check runs at these levels:{}", story_checks_help()
-        ),
+        checks_label(),
         StoryCheckLevel_Database(),
         LockMode::LOCK_WHILE_RUNNING,
         StoryCheckLevel::DEFAULT
