@@ -110,17 +110,17 @@ const StoryLogTestCase STORY_LOG_CASES[] = {
     },
     {
         .name = "attempt without the checkpoint prefix",
-        .input = {.format = []{ return checkpoint_attempt_line(SV_TEXT, 2, /*attempts=*/100, CheckpointPrefix::AS_GIVEN); }},
+        .input = {.format = []{ return checkpoint_attempt_line(SV_TEXT, /*attempt=*/2, /*attempts=*/100, CheckpointPrefix::AS_GIVEN); }},
         .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: attempt 2/100"},
     },
     {
         .name = "pass without the checkpoint prefix",
-        .input = {.format = []{ return checkpoint_pass_line(SV_TEXT, 2, CheckpointPrefix::AS_GIVEN); }},
+        .input = {.format = []{ return checkpoint_pass_line(SV_TEXT, /*attempt=*/2, CheckpointPrefix::AS_GIVEN); }},
         .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: passed on attempt 2 (1 reset)"},
     },
     {
         .name = "reset without the checkpoint prefix",
-        .input = {.format = []{ return checkpoint_reset_line(SV_TEXT, 2, /*attempts=*/std::nullopt, CheckpointPrefix::AS_GIVEN); }},
+        .input = {.format = []{ return checkpoint_reset_line(SV_TEXT, /*next_attempt=*/2, /*attempts=*/std::nullopt, CheckpointPrefix::AS_GIVEN); }},
         .expectation = {.line = "Checkpoint:: 004 - 02. Start point: X: failed, resetting for attempt 2"},
     },
     {

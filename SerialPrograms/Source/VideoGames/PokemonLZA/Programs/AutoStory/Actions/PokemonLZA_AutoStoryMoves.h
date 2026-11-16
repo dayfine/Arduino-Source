@@ -63,10 +63,6 @@ struct StoryMove{
 //  that needs a prompt after the walk fails there instead.
 Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move);
 
-//  "leg 2/5 turn 90 walk 1200 ms": leg `index` (from 0) of `count`, for the
-//  log. A leg with no walk leaves it out.
-std::string story_walk_leg_label(size_t index, size_t count, const StoryWalkLeg& leg);
-
 
 
 } // namespace PokemonLZA

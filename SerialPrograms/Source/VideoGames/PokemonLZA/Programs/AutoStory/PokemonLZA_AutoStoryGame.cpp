@@ -108,7 +108,7 @@ std::vector<StoryActionSpec> make_specs(){
 //  "launch_failed".
 Outcome reload_latest_save(StoryEnv& env){
     go_home(env.env.console, env.context);
-    if (!reset_game_from_home(env.env, env.env.console, env.context, false)){
+    if (!reset_game_from_home(env.env, env.env.console, env.context, /*backup_save=*/false)){
         return Pokemon::outcome_failed("launch_failed", "the game did not reach the overworld after the reload");
     }
     return Pokemon::outcome_ok();
@@ -202,7 +202,7 @@ Outcome wait_for_platform(Pokemon::StoryBackend<ZonePose>& backend, Milliseconds
         const bool text_now = text_waiting_for_a(look);
         if (text_now && !progress.text_waiting){
             backend.log("[PLZA] platform wait: text waiting for A; A");
-            backend.press(BUTTON_A, 160ms, 400ms);
+            backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/400ms);
         }
         progress.text_waiting = text_now;
         backend.wait(PLATFORM_POLL);
@@ -220,6 +220,25 @@ Handler platform_handler(PlatformWait wait){
     };
 }
 
+
+//  The walk of `args`: the legs of its arg "legs", each [turn in degrees
+//  clockwise (negative: left), walk ms], held with "held", after the wait
+//  "wait_ms". The args must have passed the walk's spec.
+StoryMove story_walk_move(const StoryActionArgs& args){
+    StoryMove move;
+    const auto held = args.find("held");
+    if (held != args.end() && std::get<bool>(held->second)){
+        move.style = StoryWalkStyle::HELD;
+    }
+    const auto wait = args.find("wait_ms");
+    if (wait != args.end()){
+        move.wait_first = Milliseconds(std::get<int64_t>(wait->second));
+    }
+    for (const Pokemon::StoryTimedLeg& row : Pokemon::story_arg<std::vector<Pokemon::StoryTimedLeg>>(args, "legs")){
+        move.legs.push_back({.turn = (double)row.turn, .walk = row.walk});
+    }
+    return move;
+}
 
 //  "walk": its legs, once the screen shows free control; held until the
 //  event of its "end" arg, if it has one, else finished with one look
@@ -329,7 +348,7 @@ constexpr Milliseconds TALK_POLL(250);
 //  "talk": A at what the player faces, then a text box within TALK_WAIT;
 //  fails as "talk_no_text" without one.
 Outcome talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
-    backend.press(BUTTON_A, 160ms, 240ms);
+    backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
     for (Milliseconds waited(0); ; waited += TALK_POLL){
         backend.scope().throw_if_cancelled();
         if (backend.observe().events.has(ScreenEvent::DIALOG_BOX)){
@@ -385,7 +404,7 @@ Outcome choose_step(Pokemon::StoryBackend<ZonePose>& backend, int index){
     backend.log(std::format("[PLZA] choose_{}: row {} of {} highlighted", index, selected, count));
     const int moves = index - selected;
     for (int moved = 0; moved < std::abs(moves); moved++){
-        backend.press(moves > 0 ? BUTTON_DOWN : BUTTON_UP, 160ms, 240ms);
+        backend.press(moves > 0 ? BUTTON_DOWN : BUTTON_UP, /*hold=*/160ms, /*release=*/240ms);
     }
     if (moves != 0){
         const std::optional<std::pair<int, int>> now = choice_rows(backend.observe());
@@ -396,7 +415,7 @@ Outcome choose_step(Pokemon::StoryBackend<ZonePose>& backend, int index){
             ));
         }
     }
-    backend.press(BUTTON_A, 160ms, 240ms);
+    backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
     return Pokemon::outcome_ok();
 }
 
@@ -502,22 +521,6 @@ std::optional<ScreenEvent> walk_end_event(std::string_view end){
         return ScreenEvent::DIALOG_BOX;
     }
     return std::nullopt;
-}
-
-StoryMove story_walk_move(const StoryActionArgs& args){
-    StoryMove move;
-    const auto held = args.find("held");
-    if (held != args.end() && std::get<bool>(held->second)){
-        move.style = StoryWalkStyle::HELD;
-    }
-    const auto wait = args.find("wait_ms");
-    if (wait != args.end()){
-        move.wait_first = Milliseconds(std::get<int64_t>(wait->second));
-    }
-    for (const Pokemon::StoryTimedLeg& row : Pokemon::story_arg<std::vector<Pokemon::StoryTimedLeg>>(args, "legs")){
-        move.legs.push_back({.turn = (double)row.turn, .walk = Milliseconds(row.ms)});
-    }
-    return move;
 }
 
 namespace{

@@ -28,9 +28,6 @@ namespace Pokemon{
 //  does not reload for it.
 inline constexpr std::string_view CONSOLE_ONLY = "console_only";
 
-//  The failure of a step whose action the game does not have.
-inline constexpr std::string_view UNSUPPORTED_STEP = "unsupported_step";
-
 //  `game`'s actions. `game` must outlive the registry.
 template <StoryPose PoseType>
 class StoryActionRegistry{
@@ -53,7 +50,7 @@ public:
     std::vector<std::string> lint(const StoryCheckpoint& checkpoint) const;
 
     //  Runs `step`'s action with its args' fallbacks filled in; a step with
-    //  no registered action fails as UNSUPPORTED_STEP, a console_only
+    //  no registered action fails as "unsupported_step", a console_only
     //  action on another backend as CONSOLE_ONLY, before any input.
     Outcome dispatch(StoryBackend<PoseType>& backend, const StoryStep& step, RunState& state) const;
 
