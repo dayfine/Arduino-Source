@@ -93,6 +93,25 @@ std::vector<Observation<ZonePose>> banner_then_gone(size_t count){
     return looks;
 }
 
+//  Blind A after 5 s and no quiet time.
+SceneMachineConfig blind_press_config(){
+    SceneMachineConfig config;
+    config.blind_press_after = 5000ms;
+    return config;
+}
+
+//  The advance chevron, then a cutscene with nothing on it, looked at every
+//  500 ms from 5 s to 65 s, then the controls hint held a second.
+std::vector<Observation<ZonePose>> minute_of_blind_presses(){
+    std::vector<Observation<ZonePose>> looks{look_at(/*at=*/0ms, NOTHING, {ADVANCE_ARROW_READING})};
+    for (Milliseconds at = 5000ms; at <= 65000ms; at += 500ms){
+        looks.push_back(look_at(at));
+    }
+    looks.push_back(look_at(/*at=*/65500ms, NOTHING, {CONTROLS_HINT_READING}));
+    looks.push_back(look_at(/*at=*/66600ms, NOTHING, {CONTROLS_HINT_READING}));
+    return looks;
+}
+
 //  A quiet time of 8 s after a scene of at least `min_length`, no blind A.
 SceneMachineConfig quiet_config(Milliseconds min_length){
     SceneMachineConfig config;
@@ -119,7 +138,8 @@ struct RunCase{
         size_t b_presses = 0;
         //  A log line the run wrote, if any is checked.
         std::string line = {};
-        //  The states the trace logged, joined by ", "; empty: not checked.
+        //  The states the log's lines went through, joined by ", "; empty:
+        //  not checked.
         std::string states = {};
     };
     Expectation expectation;
@@ -138,7 +158,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {
             .verdict = "failed: scene_quiet",
             .a_presses = 1,
-            .line = "[PLZA test] screen 4: quiet_end at 60.0s",
+            .line = "[PLZA test] screen 4: quiet_end at 60.0s: still",
             .states = "scene_moving, dialog, scene_still, quiet_end",
         },
     },
@@ -154,7 +174,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {
             .verdict = "failed: scene_quiet",
             .a_presses = 1,
-            .line = "[PLZA test] screen 5: quiet_end at 23.0s",
+            .line = "[PLZA test] screen 5: quiet_end at 23.0s: still",
             .states = "dialog, scene_still, fade_white, scene_still, quiet_end",
         },
     },
@@ -185,7 +205,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {
             .verdict = "done",
             .a_presses = 1,
-            .line = "[PLZA test] screen 4: controls_hint at 9.0s",
+            .line = "[PLZA test] screen 4: controls_hint at 9.0s: still, controls hint",
             .states = "hint_showing, dialog, hint_showing, controls_hint",
         },
     },
@@ -203,7 +223,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {
             .verdict = "done",
             .a_presses = 0,
-            .line = "[PLZA test] screen 4: controls_hint at 2.2s",
+            .line = "[PLZA test] screen 4: controls_hint at 2.2s: controls hint",
             .states = "hint_showing, scene_moving, hint_showing, controls_hint",
         },
     },
@@ -242,7 +262,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {
             .verdict = "done",
             .a_presses = 2,
-            .line = "[PLZA test] screen 6: mission_banner at 12.0s",
+            .line = "[PLZA test] screen 6: mission_banner at 12.0s: still, mission banner",
             .states = "dialog, scene_moving, banner_showing, dialog, banner_showing, mission_banner",
         },
     },
@@ -349,7 +369,7 @@ const RunCase RUN_CASES[] = {
             look_at(/*at=*/17250ms, NOTHING, {MISSION_BANNER_READING}),
             look_at(17500ms),
         }},
-        .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] fade_white: white fade"},
+        .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] screen 1: fade_white at 0.0s: white fade"},
     },
     {
         .name = "a machine that stops at choices ends on the choice box, after the text before it",
@@ -421,6 +441,16 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed: scene_timeout", .a_presses = 1},
     },
     {
+        .name = "a minute of blind A in a still cutscene is summed up every 30 s",
+        .input = {.looks = minute_of_blind_presses(), .config = blind_press_config()},
+        .expectation = {
+            .verdict = "done",
+            .a_presses = 32,
+            .line = "[PLZA test] scene_moving x46, blind_press x15 over 30.0s, 15 presses",
+            .states = "dialog, blind_press, scene_moving, blind_press, hint_showing, controls_hint",
+        },
+    },
+    {
         .name = "the trace logs each new state",
         .input = {.looks = {
             look_at(0ms, DIALOG),
@@ -428,20 +458,28 @@ const RunCase RUN_CASES[] = {
             look_at(/*at=*/800ms, NOTHING, {MISSION_BANNER_READING}),
             look_at(1000ms),
         }},
-        .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] screen 3: mission_banner at 0.8s"},
+        .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] screen 3: mission_banner at 0.8s: mission banner"},
     },
 };
 
-//  "dialog, scene_still": the states in the trace's lines ("[PLZA test]
-//  screen 2: scene_still at 1.5s").
+//  "dialog, scene_still": the states in the log's lines ("[PLZA test]
+//  screen 2: scene_still at 1.5s: still"), each once where only the
+//  readings changed.
 std::string traced_states(const std::vector<std::string>& lines){
     std::vector<std::string> states;
     for (const std::string& line : lines){
         const size_t screen = line.find("] screen ");
+        if (screen == std::string::npos){
+            continue;
+        }
         const size_t name = line.find(": ", screen);
-        const size_t at = line.rfind(" at ");
-        if (screen != std::string::npos && name != std::string::npos && at != std::string::npos && at > name){
-            states.push_back(line.substr(name + 2, at - name - 2));
+        const size_t at = name == std::string::npos ? name : line.find(" at ", name);
+        if (at == std::string::npos){
+            continue;
+        }
+        std::string state = line.substr(name + 2, at - name - 2);
+        if (states.empty() || states.back() != state){
+            states.push_back(std::move(state));
         }
     }
     return joined(states, ", ");
