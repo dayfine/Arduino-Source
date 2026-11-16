@@ -84,8 +84,12 @@ def _transition_key(instance_id: str, transition: Dict[str, Any]) -> str:
 
 
 def inbox_name(tool: str, request_id: str) -> str:
-    """The `Lab/inbox` request name of a run_program / stop_program request (fixed by its id)."""
-    return 'palab_{}_{}'.format(tool, request_id.replace('-', ''))
+    """A new `Lab/inbox` request name for one attempt of a run_program / stop_program request.
+
+    The random part keeps a journal (`outbox/<name>.out`) or taken request (`done/<name>.txt`) left
+    by an earlier request with the same id (after compaction dropped its record) from answering this
+    one."""
+    return 'palab_{}_{}_{}'.format(tool, request_id.replace('-', ''), secrets.token_hex(4))
 
 
 def lease_doc(row: sqlite3.Row) -> Dict[str, Any]:
@@ -270,13 +274,11 @@ class ControlPlane:
             self._expire_due(conn, req['console'])
             try:
                 lease = self._held(conn, req['console'], token_hash)
-                busy = conn.execute(
-                    "SELECT a.tool FROM actions a JOIN requests r USING (client_id, tool, request_id) "
-                    "WHERE a.console = ? AND r.status = 'pending' LIMIT 1", (req['console'],)).fetchone()
+                busy = self._pending_tool(conn, req['console'])
                 if busy is not None:
                     raise Refused('program_not_stopped', 'An earlier {} on console {} is not settled yet; follow it '
-                                  'with request_status or next_events.'.format(busy['tool'], req['console']),
-                                  evidence={'pending_tool': busy['tool']})
+                                  'with request_status or next_events.'.format(busy, req['console']),
+                                  evidence={'pending_tool': busy})
                 immediate = check(lease, args)
             except Refused as e:
                 return self._store(conn, req, args, token_hash, None, e.refusal), False
@@ -630,9 +632,21 @@ class ControlPlane:
         self._append(conn, 'lease_changed', console, {'old': old, 'new': new, 'reason': reason},
                      instance_id=instance_id, request_id=request_id, at=at)
 
+    @staticmethod
+    def _pending_tool(conn, console: str, tool: Optional[str] = None) -> Optional[str]:
+        """The tool of an unsettled action on `console` (only `tool`, when given), or None."""
+        row = conn.execute(
+            "SELECT a.tool FROM actions a JOIN requests r USING (client_id, tool, request_id) "
+            "WHERE a.console = ? AND r.status = 'pending' AND (? IS NULL OR a.tool = ?) LIMIT 1",
+            (console, tool, tool)).fetchone()
+        return None if row is None else row['tool']
+
     def _expire_due(self, conn, console: str) -> None:
+        """Frees an idle lease past its expiry, unless a run_program is pending: that run may still
+        start, and a run must not start unleased (it is checked again once the request settles)."""
         row = self._lease_row(conn, console)
-        if row['state'] == 'agent_idle' and timestamps.parse(row['expires_at']) <= self.now():
+        if row['state'] == 'agent_idle' and timestamps.parse(row['expires_at']) <= self.now() and \
+                self._pending_tool(conn, console, 'run_program') is None:
             self._set_lease(conn, console, 'expired', at=row['expires_at'],
                             **self._freed('expired', row['token_hash']))
 
@@ -703,6 +717,10 @@ class ControlPlane:
         row = self._held(conn, console, token_hash)
         if row['state'] == 'agent_running':
             raise Refused('program_running', 'A run holds console {}; stop it before releasing.'.format(console))
+        if self._pending_tool(conn, console, 'run_program') is not None:
+            raise Refused('program_running', 'A run_program on console {} is not settled yet and may still start '
+                          'the program; follow it with request_status, then stop or release.'.format(console),
+                          evidence={'pending_tool': 'run_program'})
         self._set_lease(conn, console, 'released', request_id=req['request_id'],
                         **self._freed('released', row['token_hash']))
         return lease_doc(self._lease_row(conn, console))
