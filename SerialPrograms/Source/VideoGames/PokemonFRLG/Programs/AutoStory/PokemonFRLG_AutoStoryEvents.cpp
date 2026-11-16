@@ -30,6 +30,7 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
+#include "PokemonFRLG_AutoStoryBoulderPresses.h"
 #include "PokemonFRLG_AutoStoryBoulders.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
@@ -567,8 +568,8 @@ Outcome cut_tree(StoryEnv& env, RunState& state, const StoryStep& step){
 }
 
 //  PUSH_BOULDER_VARIANT: the boulder in the step's direction, Strength
-//  used if the step says so, and `tiles` steps pushing it on. Not yet
-//  checked on the console.
+//  used if the step says so, and pushed `tiles` tiles, the player behind
+//  it (push_boulder_tiles()): every tap read off the screen.
 Outcome push_boulder(StoryEnv& env, RunState& state, const StoryStep& step){
     const std::optional<StoryPose> here = story_pose(state.pose);
     if (!here){
@@ -585,10 +586,8 @@ Outcome push_boulder(StoryEnv& env, RunState& state, const StoryStep& step){
         answer_yes_no(env.console, env.context, true, BUTTON_B, YES_NO_TIMEOUT);
         mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
     }
-    for (int64_t c = 0; c < tiles; c++){
-        step_once(env.console, env.context, direction, direction, env.player_gender);
-    }
-    return boulder_pushed(state, step, story_maps());
+    ConsoleBoulderPresses presses(env.console, env.context, env.player_gender);
+    return boulder_push_outcome(step, story_maps(), push_boulder_tiles(direction, tiles, presses), state);
 }
 
 //  Vermilion Gym's trash cans on the console: a walk to each can's stand

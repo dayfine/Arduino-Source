@@ -23,9 +23,12 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_BoulderPushReader.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTiles.h"
+#include "PokemonFRLG_AutoStoryBoulders.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
@@ -172,7 +175,7 @@ UnitTestResult test_sim_pushes_a_boulder(){
     }
     sim_step_once(sim, Direction::NORTH);
     if (!(sim.state().position == MapPosition{"VictoryRoad_1F", {7, 18}})){
-        return "after the push, the player is on " + to_string(sim.state().position) + ", not (7, 18).";
+        return std::format("after the push, the player is on {}, not (7, 18).", to_string(sim.state().position));
     }
     //  The boulder is in the way again one tile further on.
     if (!sim.use_field(SimField::PUSH_BOULDER)){
@@ -259,7 +262,236 @@ UnitTestResult test_push_boulder_step_on_sim(){
     return true;
 }
 
+bool boulder_on(const OverworldSim& sim, TilePos tile){
+    return std::any_of(sim.objects().begin(), sim.objects().end(), [&](const MapObject& object){
+        return object.name == "pushable_boulder" && object.x == tile.x && object.y == tile.y;
+    });
+}
+
+//  A PUSH_BOULDER_VARIANT step of `tiles` tiles `direction`, Strength
+//  already on.
+StoryStep push_step(Direction direction, int64_t tiles){
+    StoryStep step;
+    step.kind = Pokemon::StoryStepKind::GAME;
+    step.name = "push";
+    step.action = PUSH_BOULDER_VARIANT;
+    step.args = {{"direction", direction}, {"tiles", tiles}, {"activate", false}};
+    return step;
+}
+
+//  19.04b push_south (console B, 2026-11-16): from (7, 17) the boulder on
+//  (7, 18) goes to (7, 19), and the player ends on (7, 18), where the
+//  plan's next walk starts.
+UnitTestResult test_one_tile_push_on_sim(){
+    OverworldSim sim(story_maps(), MapPosition{"VictoryRoad_1F", {7, 17}}, Direction::SOUTH);
+    StoryPose at{"VictoryRoad_1F", {7, 17}, Direction::SOUTH};
+    if (const std::string failure = row_step_on_sim(sim, at, push_step(Direction::SOUTH, /*tiles=*/1), "19.04b"); !failure.empty()){
+        return failure;
+    }
+    if (!(sim.state().position == MapPosition{"VictoryRoad_1F", {7, 18}})){
+        return std::format("after the push, the player is on {}, not (7, 18).", to_string(sim.state().position));
+    }
+    if (!boulder_on(sim, {7, 19})){
+        return "no boulder on (7, 19).";
+    }
+    return true;
+}
+
+//  With no boulder ahead the tap to push walks the player: the step fails
+//  where the player walked to.
+UnitTestResult test_push_with_no_boulder_on_sim(){
+    OverworldSim sim(story_maps(), MapPosition{"VictoryRoad_1F", {11, 19}}, Direction::NORTH);
+    StoryPose at{"VictoryRoad_1F", {11, 19}, Direction::NORTH};
+    if (row_step_on_sim(sim, at, push_step(Direction::NORTH, /*tiles=*/1), "19.04b").empty()){
+        return "a push with no boulder ahead succeeded.";
+    }
+    if (!(sim.state().position == MapPosition{"VictoryRoad_1F", {11, 18}})){
+        return std::format("the player is on {}, not (11, 18).", to_string(sim.state().position));
+    }
+    return true;
+}
+
+//  A boulder against a wall doesn't move: the step fails with the player
+//  where they stood.
+UnitTestResult test_stuck_boulder_on_sim(){
+    OverworldSim sim(story_maps(), MapPosition{"VictoryRoad_1F", {6, 18}}, Direction::EAST);
+    StoryPose at{"VictoryRoad_1F", {6, 18}, Direction::EAST};
+    if (row_step_on_sim(sim, at, push_step(Direction::EAST, /*tiles=*/1), "19.04b").empty()){
+        return "a boulder against a wall was pushed.";
+    }
+    if (!(sim.state().position == MapPosition{"VictoryRoad_1F", {6, 18}})){
+        return std::format("the player is on {}, not (6, 18).", to_string(sim.state().position));
+    }
+    return true;
+}
+
+//  Taps that read as `reads` in turn, and `interrupts` cleared in turn.
+class ScriptedPresses : public BoulderPresses{
+public:
+    ScriptedPresses(std::vector<BoulderPressRead> reads, std::vector<bool> interrupts)
+        : m_reads(std::move(reads)), m_interrupts(std::move(interrupts))
+    {}
+    BoulderPressRead press(Direction) override{
+        return m_taps < m_reads.size() ? m_reads[m_taps++] : BoulderPressRead{};
+    }
+    bool clear_interrupt() override{
+        return m_cleared < m_interrupts.size() && m_interrupts[m_cleared++];
+    }
+    size_t taps() const{
+        return m_taps;
+    }
+
+private:
+    std::vector<BoulderPressRead> m_reads;
+    std::vector<bool> m_interrupts;
+    size_t m_taps = 0;
+    size_t m_cleared = 0;
+};
+
+const BoulderPressRead PUSHED{.scrolled = false, .boulder_moved = true};
+const BoulderPressRead WALKED{.scrolled = true, .boulder_moved = false};
+
+//  A tile pushed is two taps: one pushes the boulder, the player in place,
+//  and one walks onto the tile it left. A tap a tile pushed the boulder of
+//  19.04b push_south but left the player a tile short (console B,
+//  2026-11-16).
+UnitTestResult test_push_taps_twice_a_tile(){
+    ScriptedPresses presses({PUSHED, WALKED, PUSHED, WALKED}, {});
+    const BoulderPush push = push_boulder_tiles(Direction::SOUTH, /*tiles=*/2, presses);
+    if (push.failure){
+        return *push.failure;
+    }
+    if (push.walked != 2 || presses.taps() != 4){
+        return std::format("{} tile(s) walked in {} taps, not 2 in 4.", push.walked, presses.taps());
+    }
+    return true;
+}
+
+//  A tap to push that walks the player stops the push, with the tile
+//  walked counted.
+UnitTestResult test_walk_instead_of_push_is_counted(){
+    ScriptedPresses presses({PUSHED, WALKED, WALKED}, {false});
+    const BoulderPush push = push_boulder_tiles(Direction::SOUTH, /*tiles=*/2, presses);
+    if (!push.failure || push.walked != 2){
+        return std::format("failed {}, {} tile(s) walked, not failed with 2.", push.failure.has_value(), push.walked);
+    }
+    return true;
+}
+
+//  A wild battle set off by the step onto the boulder's old tile eats the
+//  next tap to push; once it is cleared, the tap is tried again.
+UnitTestResult test_cleared_interrupt_repeats_the_tap(){
+    ScriptedPresses presses({PUSHED, WALKED, BoulderPressRead{}, PUSHED, WALKED}, {true});
+    const BoulderPush push = push_boulder_tiles(Direction::EAST, /*tiles=*/2, presses);
+    if (push.failure){
+        return *push.failure;
+    }
+    if (push.walked != 2 || presses.taps() != 5){
+        return std::format("{} tile(s) walked in {} taps, not 2 in 5.", push.walked, presses.taps());
+    }
+    return true;
+}
+
+//  A screen of 240x160 cave floor, scrolled `scroll_x` pixels east, the
+//  player on their tile, and a boulder at (`boulder_x`, `boulder_y`).
+ImageRGB32 cave_screen(size_t scroll_x, size_t boulder_x, size_t boulder_y){
+    ImageRGB32 image(240, 160);
+    for (size_t y = 0; y < 160; y++){
+        for (size_t x = 0; x < 240; x++){
+            const size_t tile = (x + scroll_x) / 16 * 7 + (y + 8) / 16 * 13;
+            const uint32_t level = 0x80 + (uint32_t)(tile % 5) * 0x18;
+            uint32_t pixel = 0xff000000 | (level << 16) | (level << 8) | 0x40;
+            if (x >= 112 && x < 128 && y >= 72 && y < 88){
+                pixel = 0xffd02020;
+            }
+            if (x >= boulder_x && x < boulder_x + 16 && y >= boulder_y && y < boulder_y + 16){
+                pixel = 0xff304010;
+            }
+            image.pixel(x, y) = pixel;
+        }
+    }
+    return image;
+}
+
+//  A boulder pushed a tile, each way, with the map still: the two tiles
+//  ahead of the player changed.
+UnitTestResult test_reader_sees_the_boulder_move(){
+    struct Push{
+        Direction direction;
+        size_t from_x;
+        size_t from_y;
+        size_t to_x;
+        size_t to_y;
+    };
+    const Push pushes[] = {
+        {Direction::NORTH, 112, 56, 112, 40},
+        {Direction::SOUTH, 112, 88, 112, 104},
+        {Direction::WEST, 96, 72, 80, 72},
+        {Direction::EAST, 128, 72, 144, 72},
+    };
+    const ImageFloatBox game(0, 0, 1, 1);
+    for (const Push& push : pushes){
+        const BoulderPressRead read = read_boulder_press(
+            cave_screen(/*scroll_x=*/0, push.from_x, push.from_y), cave_screen(/*scroll_x=*/0, push.to_x, push.to_y), game, push.direction
+        );
+        if (read.scrolled || !read.boulder_moved){
+            return std::format("a push {} read as scrolled {}, boulder moved {}.", direction_name(push.direction), read.scrolled, read.boulder_moved);
+        }
+    }
+    return true;
+}
+
+//  A step scrolls the map: read as a walk. A tap that moved nothing reads
+//  as nothing.
+UnitTestResult test_reader_sees_a_walk_and_a_still_screen(){
+    const ImageFloatBox game(0, 0, 1, 1);
+    const ImageRGB32 at_rest = cave_screen(/*scroll_x=*/0, /*boulder_x=*/0, /*boulder_y=*/0);
+    const ImageRGB32 stepped = cave_screen(/*scroll_x=*/16, /*boulder_x=*/0, /*boulder_y=*/0);
+    const BoulderPressRead step = read_boulder_press(at_rest, stepped, game, Direction::EAST);
+    if (!step.scrolled){
+        return "a step east read as no scroll.";
+    }
+    const ImageRGB32 boulder_east = cave_screen(/*scroll_x=*/0, /*boulder_x=*/144, /*boulder_y=*/72);
+    const BoulderPressRead still = read_boulder_press(boulder_east, boulder_east, game, Direction::EAST);
+    if (still.scrolled || still.boulder_moved){
+        return "a screen that didn't change read as a move.";
+    }
+    return true;
+}
+
 const AutoStoryBouldersCase AUTO_STORY_BOULDERS_CASES[] = {
+    {
+        .input = {.name = "19.04b's one-tile push south from (7, 17) on the sim", .body = test_one_tile_push_on_sim},
+        .expectation = {.description = "the boulder on (7, 19), the player on (7, 18)"},
+    },
+    {
+        .input = {.name = "a push step with no boulder ahead on the sim", .body = test_push_with_no_boulder_on_sim},
+        .expectation = {.description = "failed, the player a tile on"},
+    },
+    {
+        .input = {.name = "a push step of a boulder against a wall on the sim", .body = test_stuck_boulder_on_sim},
+        .expectation = {.description = "failed, the player in place"},
+    },
+    {
+        .input = {.name = "a push of two tiles", .body = test_push_taps_twice_a_tile},
+        .expectation = {.description = "four taps: push, walk, push, walk"},
+    },
+    {
+        .input = {.name = "a push whose second tap to push walks", .body = test_walk_instead_of_push_is_counted},
+        .expectation = {.description = "failed, two tiles walked"},
+    },
+    {
+        .input = {.name = "a push whose tap a wild battle took", .body = test_cleared_interrupt_repeats_the_tap},
+        .expectation = {.description = "the battle cleared, the tap repeated, both tiles pushed"},
+    },
+    {
+        .input = {.name = "the reader on a boulder pushed each way", .body = test_reader_sees_the_boulder_move},
+        .expectation = {.description = "the boulder moved, no scroll"},
+    },
+    {
+        .input = {.name = "the reader on a step and on a still screen", .body = test_reader_sees_a_walk_and_a_still_screen},
+        .expectation = {.description = "a scroll, then nothing"},
+    },
     {
         .input = {.name = "a push_boulder step on the sim", .body = test_push_boulder_step_on_sim},
         .expectation = {.description = "two tiles pushed, the player behind the boulder"},
