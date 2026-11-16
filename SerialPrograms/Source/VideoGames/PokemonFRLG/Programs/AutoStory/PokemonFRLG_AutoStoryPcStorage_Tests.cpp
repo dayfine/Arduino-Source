@@ -6,7 +6,8 @@
  *  Pokemon Storage System does (see PokemonFRLG_AutoStoryPcStorage.h):
  *  deposits and withdrawals end with the Pokemon moved and the overworld
  *  back; the refusals; a screen that isn't read fails instead of pressing
- *  on; and RELEASE is never reached.
+ *  on; RELEASE is never reached; and nothing is pressed into the fades
+ *  into and out of the box screens.
  *
  */
 
@@ -17,6 +18,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 
@@ -26,6 +28,8 @@ namespace PokemonFRLG{
 
 
 namespace{
+
+using namespace std::chrono_literals;
 
 class QuietLogger : public Logger{
 public:
@@ -47,6 +51,10 @@ public:
     size_t current_box = 0;
     //  Screens whose cursor the step can't read.
     std::vector<PcScreen> cursor_unread = {};
+    //  Into and out of a box screen: the black fade, then the box screen
+    //  without its hand for this long.
+    Milliseconds box_fade = 0ms;
+    Milliseconds hand_late = 0ms;
     std::vector<std::string> presses;
     //  Set by a press the game would take some other way than the step means.
     std::string error;
@@ -55,6 +63,12 @@ public:
         return party;
     }
     virtual PcView read_view() override{
+        if (m_fade_left > 0ms){
+            return {};
+        }
+        if (m_hand_left > 0ms){
+            return {.screen = m_screen};
+        }
         PcView view{.screen = m_screen};
         if (std::find(cursor_unread.begin(), cursor_unread.end(), m_screen) == cursor_unread.end()
             && m_screen != PcScreen::OVERWORLD && m_screen != PcScreen::TEXT
@@ -72,6 +86,13 @@ public:
     }
     virtual void press(PcPress press) override{
         presses.emplace_back(pc_press_name(press));
+        if (m_fade_left > 0ms || m_hand_left > 0ms){
+            if (press != PcPress::WAIT){
+                error = std::format("pressed {} while the screen changed", pc_press_name(press));
+            }
+            elapse(press);
+            return;
+        }
         switch (m_screen){
         case PcScreen::OVERWORLD:
             if (press == PcPress::A){
@@ -127,6 +148,7 @@ private:
         }
         m_screen = m_cursor == 0 ? PcScreen::BOX_GRID : PcScreen::PARTY_PANEL;
         m_cursor = 0;
+        change_screen();
     }
     //  The party's six slots, then CLOSE BOX.
     void press_party_panel(PcPress press){
@@ -222,7 +244,25 @@ private:
         }else if (press == PcPress::B){
             m_screen = PcScreen::STORAGE_MENU;
             m_cursor = m_option;
+            change_screen();
         }
+    }
+
+    void change_screen(){
+        m_fade_left = box_fade;
+        m_hand_left = m_screen == PcScreen::STORAGE_MENU ? 0ms : hand_late;
+    }
+    //  The time a press takes on the console (ConsolePcStorageActions).
+    void elapse(PcPress press){
+        Milliseconds time = 500ms;
+        if (press == PcPress::A || press == PcPress::B){
+            time = 800ms;
+        }else if (press != PcPress::WAIT){
+            time = 480ms;
+        }
+        const Milliseconds fade = std::min(time, m_fade_left);
+        m_fade_left -= fade;
+        m_hand_left = std::max(0ms, m_hand_left - (time - fade));
     }
 
     void show_text(PcScreen after, size_t pages){
@@ -249,6 +289,8 @@ private:
     PcScreen m_back = PcScreen::OVERWORLD;
     size_t m_held = 0;
     size_t m_grid_cursor = 0;
+    Milliseconds m_fade_left = 0ms;
+    Milliseconds m_hand_left = 0ms;
 };
 
 
@@ -312,6 +354,8 @@ struct PcCase{
     std::vector<std::string> box2 = {};
     size_t current_box = 0;
     std::vector<PcScreen> cursor_unread = {};
+    Milliseconds box_fade = 0ms;
+    Milliseconds hand_late = 0ms;
     PcEnd end = PcEnd::DONE;
     std::string party_after = {};
     std::string box1_after = {};
@@ -346,6 +390,37 @@ const std::vector<PcCase> PC_CASES = {
         .end = PcEnd::DONE,
         .party_after = "squirtle magikarp",
         .box1_after = "pidgey spearow ekans",
+    },
+    {
+        .name = "withdraw with the box up 2.5 s after A: 2 s of fade, 0.5 s before the hand (console B, 2026-11-16)",
+        .transfer = {.action = PcAction::WITHDRAW, .box = 0, .box_slot = 0},
+        .party = {{.species = "squirtle"}},
+        .box1 = {"magikarp", "rattata"},
+        .box_fade = 2000ms,
+        .hand_late = 500ms,
+        .end = PcEnd::DONE,
+        .party_after = "squirtle magikarp",
+        .box1_after = "rattata",
+    },
+    {
+        .name = "deposit through the same fades into and out of the box",
+        .transfer = {.action = PcAction::DEPOSIT, .party_slot = 1, .box = 0},
+        .party = SQUIRTLE_MAGIKARP,
+        .box_fade = 2000ms,
+        .hand_late = 500ms,
+        .end = PcEnd::DONE,
+        .party_after = "squirtle",
+        .box1_after = "magikarp",
+    },
+    {
+        .name = "a fade that doesn't end: fail, nothing pressed into it",
+        .transfer = {.action = PcAction::WITHDRAW, .box = 0, .box_slot = 0},
+        .party = {{.species = "squirtle"}},
+        .box1 = {"magikarp"},
+        .box_fade = 60000ms,
+        .end = PcEnd::FAILED,
+        .party_after = "squirtle",
+        .box1_after = "magikarp",
     },
     {
         .name = "withdraw an empty slot",
@@ -432,6 +507,8 @@ UnitTestResult test_pc_transfers(){
         }
         pc.current_box = item.current_box;
         pc.cursor_unread = item.cursor_unread;
+        pc.box_fade = item.box_fade;
+        pc.hand_late = item.hand_late;
         const PcResult result = run_pc_transfer(logger, pc, item.transfer);
         if (!pc.error.empty()){
             return item.name + ": " + pc.error + " after " + joined(pc.presses);

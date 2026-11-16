@@ -42,6 +42,18 @@ std::string pc_transfer_text(const PcTransfer& transfer){
     return std::format("withdraw box={} slot={}", transfer.box + 1, transfer.box_slot + 1);
 }
 
+//  Whether `view` is a PC screen to act on, not one changing: a fade (a
+//  dark frame reads as OTHER) or, before the transfer, a box screen whose
+//  hand isn't read yet. After the transfer a box screen is only left, by B,
+//  which needs no hand.
+bool settled(const PcView& view, bool transferred){
+    if (view.screen == PcScreen::OTHER){
+        return false;
+    }
+    const bool box_screen = view.screen == PcScreen::BOX_GRID || view.screen == PcScreen::PARTY_PANEL;
+    return transferred || !box_screen || view.cursor.has_value();
+}
+
 } // namespace
 
 
@@ -131,9 +143,18 @@ PcStorageDialog::PcStorageDialog(const PcTransfer& transfer)
 {}
 
 PcDecision PcStorageDialog::next(const PcView& view){
-    if (view.screen != PcScreen::OTHER){
-        m_others_in_a_row = 0;
+    //  A fade, or a box screen still drawing its hand: wait for the screen,
+    //  as long as a PC screen change takes, and press nothing into it.
+    if (!settled(view, m_transferred)){
+        if (++m_others_in_a_row >= PC_MAX_OTHER_IN_A_ROW){
+            return {PcPress::FAIL, view.screen == PcScreen::OTHER
+                ? std::format("no PC screen recognized in {} reads", m_others_in_a_row)
+                : std::format("the hand wasn't read on the {} in {} reads", pc_screen_name(view.screen), m_others_in_a_row)
+            };
+        }
+        return {PcPress::WAIT};
     }
+    m_others_in_a_row = 0;
     switch (view.screen){
     case PcScreen::OVERWORLD:
         return on_overworld();
@@ -163,9 +184,6 @@ PcDecision PcStorageDialog::next(const PcView& view){
         }
         return {PcPress::FAIL, "a YES/NO before the transfer"};
     case PcScreen::OTHER:
-        if (++m_others_in_a_row >= PC_MAX_OTHER_IN_A_ROW){
-            return {PcPress::FAIL, std::format("no PC screen recognized in {} reads", m_others_in_a_row)};
-        }
         return {PcPress::WAIT};
     }
     return {PcPress::FAIL, "unknown screen"};
