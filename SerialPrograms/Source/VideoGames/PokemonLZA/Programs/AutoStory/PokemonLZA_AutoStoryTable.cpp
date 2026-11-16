@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include <string>
 #include <variant>
 #include "PokemonLZA_AutoStoryTable.h"
@@ -39,15 +40,21 @@ bool ends_on_prompt(const Pokemon::StoryStep& step){
 
 } // namespace
 
-std::vector<std::string_view> story_row_talks_without_prompt(const Pokemon::StoryCheckpoint& row){
-    std::vector<std::string_view> talks;
+std::vector<std::string> story_row_lead_in_errors(const Pokemon::StoryCheckpoint& row){
+    std::vector<std::string> errors;
     for (size_t index = 0; index < row.steps.size(); index++){
         const Pokemon::StoryStep& step = row.steps[index];
-        if (step.kind == Pokemon::StoryStepKind::TALK && (index == 0 || !ends_on_prompt(row.steps[index - 1]))){
-            talks.push_back(step.name);
+        const Pokemon::StoryStep* before = index == 0 ? nullptr : &row.steps[index - 1];
+        if (step.kind == Pokemon::StoryStepKind::TALK && (before == nullptr || !ends_on_prompt(*before))){
+            errors.push_back(std::format(
+                "{}: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\", or walk_to_prompt)", step.name
+            ));
+        }
+        if (step.action == "story_battle" && (before == nullptr || before->action != "story_battle_start")){
+            errors.push_back(std::format("{}: a story battle must follow story_battle_start, which ends on the battle HUD", step.name));
         }
     }
-    return talks;
+    return errors;
 }
 
 

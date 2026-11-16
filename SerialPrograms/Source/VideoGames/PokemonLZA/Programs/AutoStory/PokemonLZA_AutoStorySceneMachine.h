@@ -32,6 +32,7 @@
 #define PokemonAutomation_PokemonLZA_AutoStorySceneMachine_H
 
 #include <optional>
+#include <string>
 #include <string_view>
 #include "Common/Cpp/Time.h"
 #include "CommonTools/ScreenMachine/ScreenObservation.h"
@@ -107,6 +108,10 @@ struct SceneMachineConfig{
 //  (03.02b) opens on a dimmed "Smart Rotom" card with no text box (console
 //  B, 2026-11-16).
 bool scene_under_way(const ScreenObservation& look);
+
+//  "text box, advance arrow": `look`'s events and readings, as the scene
+//  machine logs them; "nothing" for none.
+std::string describe_scene_look(const ScreenObservation& look);
 
 //  Logs where the step should end ("[PLZA label] start, expecting the
 //  controls hint, ..."), then presses through scenes (a tutorial card,

@@ -553,8 +553,12 @@ Outcome battle_start_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryA
     return run_scene_machine(backend, "story_battle_start", config, 90s);
 }
 
-//  "story_battle": the battle on screen, by the backend's battle code.
+//  "story_battle": the backend's battle code, on the battle HUD within 10 s;
+//  else "battle_never_started" (03.02b looked 2 min on the overworld, 2026-11-16).
 Outcome battle_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    if (!event_shows_within(backend, ScreenEvent::BATTLE_STARTED, 10s)){
+        return Pokemon::outcome_failed("battle_never_started", "no battle HUD within 10 s");
+    }
     return backend.battle();
 }
 
@@ -591,21 +595,24 @@ constexpr Milliseconds TALK_WAIT(5000);
 constexpr Milliseconds TALK_POLL(250);
 
 //  "talk": on the A prompt of what the player faces, A, then its scene
-//  under way within TALK_WAIT (scene_under_way(): text, a subtitle, a
-//  card, a fade or a textless cutscene; Taunie's opens on a card, 03.02b).
-//  With no prompt within TALK_PROMPT_WAIT it presses nothing and fails as
-//  "talk_no_prompt": the walk before it stopped short (03.02, console B
-//  2026-11-16); with nothing started after A, as "talk_no_scene".
+//  under way (scene_under_way(): Taunie's opens on a card, 03.02b) on two
+//  looks in a row within TALK_WAIT, not one look of the press itself. No
+//  prompt within TALK_PROMPT_WAIT: nothing pressed, "talk_no_prompt" (the
+//  walk stopped short, 03.02, 2026-11-16); nothing after A: "talk_no_scene".
 Outcome talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
-    if (!prompt_shows_within(backend, TALK_PROMPT_WAIT)){
+    if (!event_shows_within(backend, ScreenEvent::INTERACT_PROMPT, TALK_PROMPT_WAIT)){
         return Pokemon::outcome_failed(
             "talk_no_prompt", std::format("no A prompt within {} ms: not at what the talk is for", TALK_PROMPT_WAIT.count())
         );
     }
     backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
+    size_t scene_looks = 0;
     for (Milliseconds waited(0); ; waited += TALK_POLL){
         backend.scope().throw_if_cancelled();
-        if (scene_under_way(backend.observe())){
+        const Pokemon::Observation<ZonePose> look = backend.observe();
+        scene_looks = scene_under_way(look) ? scene_looks + 1 : 0;
+        if (scene_looks >= 2){
+            backend.log_detail(std::format("[PLZA] talk: started {} ms after A: {}", waited.count(), describe_scene_look(look)));
             return Pokemon::outcome_ok();
         }
         if (waited >= TALK_WAIT){
@@ -777,11 +784,8 @@ std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpo
             ));
         }
     }
-    for (std::string_view talk : story_row_talks_without_prompt(checkpoint)){
-        errors.push_back(std::format(
-            "{} {}: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\", or walk_to_prompt)",
-            checkpoint.id, talk
-        ));
+    for (const std::string& error : story_row_lead_in_errors(checkpoint)){
+        errors.push_back(std::format("{} {}", checkpoint.id, error));
     }
     return errors;
 }

@@ -10,6 +10,7 @@
 #include <string>
 #include <string_view>
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryWalkScreenChecks.h"
 
 namespace PokemonAutomation{
@@ -152,6 +153,7 @@ Pokemon::Outcome walk_until(PlzaBackend& backend, std::string_view walk, const S
         const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
         if (look.events.has(end)){
             backend.log(std::format("[PLZA] {}: the end event after {} ms of the last leg.", walk, held.count()));
+            backend.log_detail(std::format("[PLZA] {}: ended on: {}", walk, describe_scene_look(look)));
             return Pokemon::outcome_ok();
         }
         if (look.events.has(ScreenEvent::FADE_BLACK)){
@@ -177,10 +179,10 @@ Pokemon::Outcome walk_to_prompt(PlzaBackend& backend, Milliseconds timeout){
     return Pokemon::outcome_failed("no_prompt", std::format("walk_to_prompt: no A prompt in {} ms of walking", timeout.count()));
 }
 
-bool prompt_shows_within(PlzaBackend& backend, Milliseconds within){
+bool event_shows_within(PlzaBackend& backend, ScreenEvent event, Milliseconds within){
     for (Milliseconds waited = 0ms; ; waited += PROMPT_POLL){
         backend.scope().throw_if_cancelled();
-        if (backend.observe().events.has(ScreenEvent::INTERACT_PROMPT)){
+        if (backend.observe().events.has(event)){
             return true;
         }
         if (waited >= within){

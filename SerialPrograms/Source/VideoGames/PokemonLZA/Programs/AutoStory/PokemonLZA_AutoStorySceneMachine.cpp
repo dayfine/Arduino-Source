@@ -469,6 +469,7 @@ std::string describe_look(const ScreenObservation& look){
     const std::pair<std::string_view, std::string_view> readings[] = {
         {CONTROLS_HINT_READING, "controls hint"}, {ADVANCE_ARROW_READING, "advance arrow"},
         {MISSION_BANNER_READING, "mission banner"}, {MISSION_COMPLETE_READING, "mission complete"},
+        {TUTORIAL_CARD_READING, "tutorial card"},
     };
     std::string text;
     const auto add = [&text](std::string_view name){
@@ -832,6 +833,10 @@ Pokemon::Outcome scene_outcome(
 
 } // namespace
 
+
+std::string describe_scene_look(const ScreenObservation& look){
+    return describe_look(look);
+}
 
 bool scene_under_way(const ScreenObservation& look){
     if (scene_shows(look) || look.readings.contains(TUTORIAL_CARD_READING)){
