@@ -34,6 +34,7 @@
 #include <optional>
 #include <string_view>
 #include "Common/Cpp/Time.h"
+#include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "PokemonLZA_AutoStoryBackend.h"
@@ -94,6 +95,18 @@ struct SceneMachineConfig{
     //  5 s again.
     std::optional<size_t> end_after_black_fades = std::nullopt;
 };
+
+//  A scene is under way on `look`: text (a box, or a subtitle's advance
+//  chevron), a choice, a battle or a tutorial card, or, with no HUD up (the
+//  party bar, the controls hint, an A prompt), a fade or a moving screen.
+//  A cutscene can play a minute with no text: 02.02's street scene moved
+//  41 s with no HUD after its black fade (console B, 2026-11-15). A step
+//  that plays a scene (start_window) does not end on the HUD before one
+//  is: the HUD up for start_window with no scene is the player away from
+//  its trigger. "talk" takes it for its talk having started: Taunie's
+//  (03.02b) opens on a dimmed "Smart Rotom" card with no text box (console
+//  B, 2026-11-16).
+bool scene_under_way(const ScreenObservation& look);
 
 //  Logs where the step should end ("[PLZA label] start, expecting the
 //  controls hint, ..."), then presses through scenes (a tutorial card,

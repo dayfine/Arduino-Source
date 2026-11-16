@@ -68,7 +68,9 @@ namespace PokemonLZA{
 //                              then A
 //      "talk" (TALK)           on the A prompt of what the player faces
 //                              (none: nothing pressed, "talk_no_prompt"),
-//                              A, then its text box
+//                              A, then its scene under way
+//                              (scene_under_way(): text, a subtitle, a
+//                              card, a fade or a textless cutscene)
 //      "a" (MASH, "scene")     A through a scene until control; it must
 //                              start within 45 s
 //      "story_battle_start"    A through the talk before a story battle and
