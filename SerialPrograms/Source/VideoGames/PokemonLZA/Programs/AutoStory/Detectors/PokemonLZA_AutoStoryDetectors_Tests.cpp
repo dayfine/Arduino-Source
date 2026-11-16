@@ -131,8 +131,8 @@ ImageRGB32 solid_frame(uint32_t color){
 //  the top of its "?".
 ImageRGB32 controls_hint_frame(){
     ImageRGB32 image = solid_frame(0xff000000);
-    fill_box(946, 868, 972, 902, 0xff7dd2fa, image);
-    fill_box(956, 879, 962, 886, 0xff1c7db0, image);
+    fill_box(/*min_x=*/946, /*min_y=*/868, /*max_x=*/972, /*max_y=*/902, /*color=*/0xff7dd2fa, image);
+    fill_box(/*min_x=*/956, /*min_y=*/879, /*max_x=*/962, /*max_y=*/886, /*color=*/0xff1c7db0, image);
     return image;
 }
 
@@ -189,10 +189,10 @@ enum class BannerIcon{
 //  stroke, `dx` right of where the detector expects it.
 ImageRGB32 mission_banner_frame(size_t dx, BannerIcon icon){
     ImageRGB32 image = solid_frame(0xff606060);
-    fill_box(345, 410, 1590, 600, 0xfffad228, image);
+    fill_box(/*min_x=*/345, /*min_y=*/410, /*max_x=*/1590, /*max_y=*/600, /*color=*/0xfffad228, image);
     if (icon == BannerIcon::DRAWN){
-        fill_box(700 + dx, 327, 738 + dx, 370, 0xffffffff, image);
-        fill_box(716 + dx, 336, 720 + dx, 357, 0xfff07020, image);
+        fill_box(700 + dx, /*min_y=*/327, 738 + dx, /*max_y=*/370, /*color=*/0xffffffff, image);
+        fill_box(716 + dx, /*min_y=*/336, 720 + dx, /*max_y=*/357, /*color=*/0xfff07020, image);
     }
     return image;
 }

@@ -104,14 +104,14 @@ const LintCase LINT_CASES[] = {
     {
         .name = "a walk to a white fade passes",
         .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-            {"legs", std::vector<Pokemon::StoryTimedLeg>{{0, 4500}}}, {"end", std::string("fade_white")},
+            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}}, {"end", std::string("fade_white")},
         }}},
         .expectation = {.errors = ""},
     },
     {
         .name = "a walk to an unknown end fails",
         .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-            {"legs", std::vector<Pokemon::StoryTimedLeg>{{0, 4500}}}, {"end", std::string("sideways")},
+            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}}, {"end", std::string("sideways")},
         }}},
         .expectation = {.errors = "01.01 w: \"end\" must be \"fade_white\", \"fade_black\" or \"dialog\""},
     },
@@ -275,21 +275,21 @@ const RunCase RUN_CASES[] = {
         .name = "01.01 runs from the platform through the arrival to the mission banner",
         .input = {.checkpoint = "01.01", .first_step = 0, .looks = concat(walk_into_white_fade(), {
             WHITE_FADE,
-            look({}, {}, Milliseconds(1000)),
-            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(1500)),
-            look({}, {MISSION_BANNER_READING}, Milliseconds(2000)),
-            look({}, {MISSION_BANNER_READING}, Milliseconds(2250)),
-            look({}, {}, Milliseconds(2500)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(1500)),
+            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(2000)),
+            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(2250)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(2500)),
         })},
         .expectation = {.verdict = "done", .line = "[PLZA mash_to_move_hints] done on mission_banner."},
     },
     {
         .name = "01.01's arrival ends on the controls hint held a second",
         .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)),
-            look({}, {CONTROLS_HINT_READING}, Milliseconds(1000)),
-            look({}, {CONTROLS_HINT_READING}, Milliseconds(1500)),
-            look({}, {CONTROLS_HINT_READING}, Milliseconds(2000)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look(/*events=*/{}, {CONTROLS_HINT_READING}, Milliseconds(1000)),
+            look(/*events=*/{}, {CONTROLS_HINT_READING}, Milliseconds(1500)),
+            look(/*events=*/{}, {CONTROLS_HINT_READING}, Milliseconds(2000)),
         }},
         .expectation = {
             .verdict = "done",
@@ -300,8 +300,8 @@ const RunCase RUN_CASES[] = {
     {
         .name = "01.01's arrival fails after a minute with nothing going on",
         .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
-            look({}, {}, Milliseconds(0)),
-            look({}, {}, Milliseconds(60000)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(60000)),
         }},
         .expectation = {.verdict = "failed at arrival_scenes: scene_quiet"},
     },

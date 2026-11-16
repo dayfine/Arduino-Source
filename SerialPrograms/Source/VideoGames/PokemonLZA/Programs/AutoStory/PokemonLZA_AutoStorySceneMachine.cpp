@@ -238,7 +238,7 @@ public:
             return;
         }
         if (scene_screen_presses_a(screen)){
-            m_backend.press(BUTTON_A, 160ms, 240ms);
+            m_backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
             return;
         }
         wait(screen);
