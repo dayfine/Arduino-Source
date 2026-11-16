@@ -183,18 +183,25 @@ struct Move{
     Step<State> step;
 };
 
-// Cost incurred when stopping at a node.
-//  A leg of one step off a warp's arrival pays no open stop, nor a wild
-//  one: a step can't stop part-way, and the warp put the player on a known
-//  tile, so stepping off a teleporter or a ladder and back on again is one
-//  tile each way rather than a hold to a wall and back. What the model
-//  weighs past the stop it still pays. Only off a warp: a route's start
+// Cost incurred when stopping at a node, before stepping `next` if the
+// route goes on.
+//  A leg of one step off a warp's arrival, followed by the step straight
+//  back, pays no open stop, nor a wild one: a step can't stop part-way, and
+//  the warp put the player on a known tile, so stepping off a teleporter or
+//  a ladder and back on again is one tile each way rather than a hold to a
+//  wall and back. What the model weighs past the stop it still pays. Only
+//  straight back: going on from the stop starts a leg from wherever an
+//  interruption left the player, and free single steps off doors would turn
+//  every walk out of one into an extra leg. Only off a warp: a route's start
 //  may be where an open leg left the player, a step after another leg
 //  starts wherever that leg ended, and steps from walls on land weave runs
 //  of single tiles round longer holds (see tap_stop_risk() at the top of
 //  this file).
 template <typename Model, typename State>
-int stop_cost(const Model& model, const Node<State>& node, const LegCosts& costs){
+int stop_cost(
+    const Model& model, const Node<State>& node, const LegCosts& costs,
+    std::optional<Direction> next = std::nullopt
+){
     if (!node.moving || model.held_at(node.state, (Direction)node.facing)){
         return 0;
     }
@@ -205,7 +212,10 @@ int stop_cost(const Model& model, const Node<State>& node, const LegCosts& costs
             }
         }
     }
-    int cost = node.one_step && node.from_warp ? 0 : costs.per_open_stop + (node.wild ? costs.per_open_wild_stop : 0);
+    const bool straight_back = next && (int)*next == (node.facing + 2) % 4;
+    int cost = node.one_step && node.from_warp && straight_back
+        ? 0
+        : costs.per_open_stop + (node.wild ? costs.per_open_wild_stop : 0);
     if constexpr (requires { model.open_stop_risk(node.state, Direction::NORTH); }){
         cost += model.open_stop_risk(node.state, (Direction)node.facing);
     }
@@ -301,7 +311,7 @@ void expand(
         };
         int step_cost = costs.per_tile + step->extra_cost;
         if (current.facing != (int)direction){
-            step_cost += costs.per_turn + stop_cost(model, current, costs);
+            step_cost += costs.per_turn + stop_cost(model, current, costs, direction);
         }
         relax(next, cost + step_cost, Move<State>{current, direction, *step}, search);
     }
