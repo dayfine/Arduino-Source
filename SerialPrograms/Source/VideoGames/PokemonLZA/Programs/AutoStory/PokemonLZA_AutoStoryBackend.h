@@ -23,6 +23,7 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGameChoices.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAdvanceArrowDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAutosaveDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryControlsHintDetector.h"
@@ -42,6 +43,8 @@ struct StoryEnv{
     SingleSwitchProgramEnvironment& env;
     ProControllerContext& context;
     BattleAIOption& battle_ai;
+    //  01.00's new game: the language, look and name to pick.
+    NewGameChoices new_game = {};
 };
 
 //  The engine's backend for PLZA's pose.
@@ -86,6 +89,8 @@ public:
     //  To the console's log and the stream's overlay log: the checkpoint and
     //  the step under way, for whoever watches.
     virtual void log(std::string_view line) override;
+    //  To the console's log only.
+    virtual void log_detail(std::string_view line) override;
     virtual CancellableScope& scope() override;
 
 private:

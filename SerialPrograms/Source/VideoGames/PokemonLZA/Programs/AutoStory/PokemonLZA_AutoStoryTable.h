@@ -30,9 +30,9 @@ namespace PokemonLZA{
 //  execution marks (Pokemon_StoryRowExecution.h).
 using StoryData = Pokemon::StoryData<Pokemon::StoryCheckpoint>;
 
-//  Whether `row` starts with no save to load: it starts on the new game's
-//  "Confirm Choices" screen, the language, look and name chosen by hand
-//  (its first step is the GAME action "confirm_new_game"): 01.00.
+//  Whether `row` starts with no save to load: it starts a new game (its
+//  first step is the GAME action "new_game_intro", or "confirm_new_game"
+//  on "Confirm Choices"): 01.00.
 bool story_row_starts_without_save(const Pokemon::StoryCheckpoint& row);
 
 

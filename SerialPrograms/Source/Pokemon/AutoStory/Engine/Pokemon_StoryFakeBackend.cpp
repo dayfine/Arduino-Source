@@ -82,6 +82,12 @@ Outcome FakeStoryBackend<PoseType>::battle(){
 template <StoryPose PoseType>
 void FakeStoryBackend<PoseType>::log(std::string_view line){
     m_lines.emplace_back(line);
+    m_overlay_lines.emplace_back(line);
+}
+
+template <StoryPose PoseType>
+void FakeStoryBackend<PoseType>::log_detail(std::string_view line){
+    m_lines.emplace_back(line);
 }
 
 template <StoryPose PoseType>

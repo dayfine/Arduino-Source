@@ -248,13 +248,18 @@ struct RunCase{
 
 const RunCase RUN_CASES[] = {
     {
-        .name = "01.00 stops at Confirm Choices off a console",
+        .name = "01.00 stops at the new game off a console",
         .input = {.checkpoint = "01.00", .first_step = 0, .looks = {CUTSCENE}},
+        .expectation = {.verdict = "failed at new_game: console_only", .inputs = ""},
+    },
+    {
+        .name = "01.00 stops at Confirm Choices off a console",
+        .input = {.checkpoint = "01.00", .first_step = 1, .looks = {CUTSCENE}},
         .expectation = {.verdict = "failed at confirm: console_only", .inputs = ""},
     },
     {
         .name = "01.00's opening ends on the platform after the autosave",
-        .input = {.checkpoint = "01.00", .first_step = 1, .looks = {CUTSCENE, PLATFORM, AUTOSAVE, AUTOSAVE, PLATFORM, PLATFORM}},
+        .input = {.checkpoint = "01.00", .first_step = 2, .looks = {CUTSCENE, PLATFORM, AUTOSAVE, AUTOSAVE, PLATFORM, PLATFORM}},
         .expectation = {
             .verdict = "done",
             .inputs = "wait 300ms, wait 300ms, wait 300ms, wait 300ms, wait 300ms",
@@ -263,12 +268,12 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "01.00's opening presses A once for the text waiting for it",
-        .input = {.checkpoint = "01.00", .first_step = 1, .looks = {TEXT_FOR_A, TEXT_FOR_A, AUTOSAVE, PLATFORM, PLATFORM}},
+        .input = {.checkpoint = "01.00", .first_step = 2, .looks = {TEXT_FOR_A, TEXT_FOR_A, AUTOSAVE, PLATFORM, PLATFORM}},
         .expectation = {.verdict = "done", .inputs = "press A, wait 300ms, wait 300ms, wait 300ms, wait 300ms"},
     },
     {
         .name = "01.00's opening fails with no autosave",
-        .input = {.checkpoint = "01.00", .first_step = 1, .looks = {PLATFORM}},
+        .input = {.checkpoint = "01.00", .first_step = 2, .looks = {PLATFORM}},
         .expectation = {.verdict = "failed at opening: platform_not_seen"},
     },
     {
@@ -441,7 +446,7 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "01.00 ends on its autosave",
-        .input = {.checkpoint = "01.00", .first_step = 1, .looks = {AUTOSAVE, PLATFORM, PLATFORM}},
+        .input = {.checkpoint = "01.00", .first_step = 2, .looks = {AUTOSAVE, PLATFORM, PLATFORM}},
         .expectation = {.verdict = "done", .line = "[Save] 01.00: the game autosaved at its end"},
     },
     {

@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <format>
+#include <functional>
 #include <map>
 #include <optional>
 #include <span>
@@ -25,6 +26,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryConfirmChoices.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLines.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerWalk.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
 #include "PokemonLZA_AutoStoryReadings.h"
@@ -77,6 +79,7 @@ StoryActionSpec console_only(StoryActionSpec spec){
 //  The GAME actions that run only on a console.
 std::vector<StoryActionSpec> console_specs(){
     return {
+        console_only(game_spec("new_game_intro")),
         console_only(game_spec("confirm_new_game")),
         console_only(game_spec("run_to_gate", {
             optional_ms("timeout_ms", 8000, "running this long with no A prompt fails the step"),
@@ -156,21 +159,21 @@ Outcome reload_latest_save(StoryEnv& env){
 }
 
 
-//  "confirm_new_game" on the console `env`; none: fails as console_only.
-//  An OperationFailedException becomes a failed Outcome, so the run can
-//  report it.
-Handler confirm_handler(StoryEnv* env){
+//  01.00's new game step `name` on the console `env`, running `step`;
+//  none: fails as console_only. An OperationFailedException becomes a
+//  failed Outcome, so the run can report it.
+Handler new_game_handler(StoryEnv* env, std::string name, std::function<void(StoryEnv&)> step){
     if (env == nullptr){
-        return [](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
-            return Pokemon::outcome_failed(std::string(Pokemon::CONSOLE_ONLY), "confirm_new_game runs only on a console");
+        return [name](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
+            return Pokemon::outcome_failed(std::string(Pokemon::CONSOLE_ONLY), name + " runs only on a console");
         };
     }
-    return [env](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    return [env, name, step](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
         try{
-            confirm_new_game_choices(env->env.console, env->context);
+            step(*env);
         }catch (OperationFailedException& e){
-            backend.log(std::format("[PLZA] confirm_new_game failed: {}", e.message()));
-            return Pokemon::outcome_failed("confirm_new_game_failed", e.message());
+            backend.log(std::format("[PLZA] {} failed: {}", name, e.message()));
+            return Pokemon::outcome_failed(name + "_failed", e.message());
         }
         return Pokemon::outcome_ok();
     };
@@ -673,8 +676,15 @@ const std::map<std::string_view, StepFunction>& step_functions(){
 
 //  The handler of each of plza_story_specs(), by name.
 Handler plza_handler(StoryEnv* env, const StoryActionSpec& spec){
+    if (spec.name == "new_game_intro"){
+        return new_game_handler(env, spec.name, [](StoryEnv& story){
+            play_new_game_intro(story.env.console, story.context, story.new_game);
+        });
+    }
     if (spec.name == "confirm_new_game"){
-        return confirm_handler(env);
+        return new_game_handler(env, spec.name, [](StoryEnv& story){
+            confirm_new_game_choices(story.env.console, story.context, story.new_game);
+        });
     }
     if (spec.name == "run_to_gate"){
         return gate_run_handler(env);

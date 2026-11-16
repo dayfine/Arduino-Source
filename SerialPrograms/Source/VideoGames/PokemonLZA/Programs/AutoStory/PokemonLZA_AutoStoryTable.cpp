@@ -16,7 +16,7 @@ bool story_row_starts_without_save(const Pokemon::StoryCheckpoint& row){
         return false;
     }
     const Pokemon::StoryStep& first = row.steps.front();
-    return first.kind == Pokemon::StoryStepKind::GAME && first.action == "confirm_new_game";
+    return first.kind == Pokemon::StoryStepKind::GAME && (first.action == "new_game_intro" || first.action == "confirm_new_game");
 }
 
 
