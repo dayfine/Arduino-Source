@@ -41,7 +41,14 @@
  *  interruption stopping it would leave the player is no guess: e.g. on
  *  open water, a hold to a wall and a tile on starts a leg down a column
  *  with no wall of its own. Once a route: a run of them, wall to wall,
- *  would weave round the open stops it can't avoid.
+ *  would weave round the open stops it can't avoid. And
+ *
+ *      int open_check_risk(const State& state, Direction direction, int run, std::optional<Direction> next) const;
+ *
+ *  the extra cost of such a leg, `run` tiles long (counted up to
+ *  MAX_COUNTED_RUN), followed by a leg `next` (none: the walk ends there),
+ *  when the walk can't tell from that leg where the open one ended and has
+ *  to find the player at walls.
  *
  */
 
@@ -150,6 +157,10 @@ namespace LegPlannerInternal{
 //  wild step, whether it is one step from where a hold to a wall ended, and
 //  whether such a step was stopped after earlier (see tap_stop_risk() at
 //  the top of this file).
+//  How far a node counts the tiles of the leg it is in (Node::run): what
+//  open_check_risk() tells apart.
+constexpr int MAX_COUNTED_RUN = 3;
+
 template <typename State>
 struct Node{
     State state;
@@ -158,6 +169,8 @@ struct Node{
     bool wild = false;
     bool tap_from_wall = false;
     bool tapped = false;
+    //  The tiles of the leg so far, up to MAX_COUNTED_RUN.
+    int run = 0;
 
     bool operator==(const Node& other) const = default;
 };
@@ -166,8 +179,8 @@ struct Node{
 template <typename State, typename StateHash>
 struct NodeHash{
     size_t operator()(const Node<State>& node) const{
-        return StateHash()(node.state) * 80 + node.facing * 16 + (node.moving ? 8 : 0) + (node.wild ? 4 : 0)
-            + (node.tap_from_wall ? 2 : 0) + (node.tapped ? 1 : 0);
+        return (StateHash()(node.state) * 80 + node.facing * 16 + (node.moving ? 8 : 0) + (node.wild ? 4 : 0)
+            + (node.tap_from_wall ? 2 : 0) + (node.tapped ? 1 : 0)) * (MAX_COUNTED_RUN + 1) + node.run;
     }
 };
 
@@ -179,9 +192,10 @@ struct Move{
     Step<State> step;
 };
 
-// Cost incurred when stopping at a node.
+//  Cost incurred when stopping at a node, before a leg `next` (none: the
+//  walk ends there).
 template <typename Model, typename State>
-int stop_cost(const Model& model, const Node<State>& node, const LegCosts& costs){
+int stop_cost(const Model& model, const Node<State>& node, const LegCosts& costs, std::optional<Direction> next){
     if (!node.moving || model.held_at(node.state, (Direction)node.facing)){
         return 0;
     }
@@ -195,6 +209,9 @@ int stop_cost(const Model& model, const Node<State>& node, const LegCosts& costs
     int cost = costs.per_open_stop + (node.wild ? costs.per_open_wild_stop : 0);
     if constexpr (requires { model.open_stop_risk(node.state, Direction::NORTH); }){
         cost += model.open_stop_risk(node.state, (Direction)node.facing);
+    }
+    if constexpr (requires { model.open_check_risk(node.state, Direction::NORTH, /*run=*/0, next); }){
+        cost += model.open_check_risk(node.state, (Direction)node.facing, node.run, next);
     }
     return cost;
 }
@@ -283,11 +300,12 @@ void expand(
         const bool from_wall = current.moving && model.held_at(current.state, (Direction)current.facing);
         const Node<State> next{
             step->next, (int)step->facing, continues, (extends && current.wild) || step->wild,
-            !extends && from_wall, current.tapped || (!extends && current.tap_from_wall)
+            !extends && from_wall, current.tapped || (!extends && current.tap_from_wall),
+            extends ? std::min(current.run + 1, MAX_COUNTED_RUN) : 1
         };
         int step_cost = costs.per_tile + step->extra_cost;
         if (current.facing != (int)direction){
-            step_cost += costs.per_turn + stop_cost(model, current, costs);
+            step_cost += costs.per_turn + stop_cost(model, current, costs, std::optional<Direction>(direction));
         }
         relax(next, cost + step_cost, Move<State>{current, direction, *step}, search);
     }
@@ -300,7 +318,7 @@ int arrival_cost(
     const Model& model, const Node<State>& node,
     std::optional<Direction> goal_facing, const LegCosts& costs
 ){
-    int cost = stop_cost(model, node, costs);
+    int cost = stop_cost(model, node, costs, std::nullopt);
     if (goal_facing && node.facing != (int)*goal_facing){
         cost += costs.per_turn;
     }
@@ -382,7 +400,7 @@ std::optional<std::vector<Leg<typename Model::State>>> plan_legs(
     using State = typename Model::State;
     using Node = LegPlannerInternal::Node<State>;
 
-    const Node first{start, start_facing ? (int)*start_facing : 4, false, false, false, false};
+    const Node first{start, start_facing ? (int)*start_facing : 4, false, false, false, false, 0};
     LegPlannerInternal::Search<Model> search;
     const std::optional<Node> end = LegPlannerInternal::search_goal(model, first, at_goal, goal_facing, costs, search);
     if (!end){
