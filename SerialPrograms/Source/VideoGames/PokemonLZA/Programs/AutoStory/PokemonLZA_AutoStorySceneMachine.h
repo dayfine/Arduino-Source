@@ -73,10 +73,14 @@ struct SceneMachineConfig{
     //  rooms show no party bar or prompt (02.04-02.06, console B
     //  2026-11-10).
     bool quiet_is_control = false;
-    //  Fails ("scene_never_started") when no text, choice or battle has
-    //  shown this long after the start, and no sign of control either: the
-    //  player is not at the scene's trigger (02.02 run after the Brigitte
-    //  battle walked past the street scene's, console B 2026-11-13).
+    //  The step plays a scene: the HUD (the party bar, the controls hint,
+    //  an A prompt) ends it only once a scene is under way: text, a choice,
+    //  a battle, or with no HUD a fade or a moving screen (a textless
+    //  cutscene: 02.02's street scene, console B 2026-11-15). Fails
+    //  ("scene_never_started") when the HUD shows this long after the start
+    //  with no scene: the player is not at the scene's trigger (02.02 run
+    //  after the Brigitte battle walked past the street scene's, console B
+    //  2026-11-13).
     std::optional<Milliseconds> start_window = std::nullopt;
     //  Ends once this many black fades have been waited out and the screen
     //  has then shown no text, fade or banner for 5 s (or on the controls
@@ -107,7 +111,7 @@ struct SceneMachineConfig{
 //  the file log (log_detail()) except the black fades, the banner, the
 //  hint and the end, which go on the overlay too (log()). Fails as "scene_quiet" on the
 //  quiet end (unless `config.quiet_is_control`), "scene_never_started"
-//  past `config.start_window`, "scene_timeout" when `timeout` passes (by
+//  on the HUD past `config.start_window` with no scene, "scene_timeout" when `timeout` passes (by
 //  the looks' time), and "scene_stuck" on a state that comes up too often
 //  or a screen that stops changing.
 Pokemon::Outcome run_scene_machine(

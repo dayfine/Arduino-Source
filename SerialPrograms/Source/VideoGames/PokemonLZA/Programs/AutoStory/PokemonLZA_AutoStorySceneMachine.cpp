@@ -48,7 +48,8 @@ enum class SceneScreen{
     HINT_SHOWING,   //  wait: the controls hint, not held a second yet
     TALK_PROMPT,    //  terminal: an A prompt ("A Talk") on the overworld, held a second, past min_length
     PROMPT_SHOWING, //  wait, no press: the A prompt, not held a second or before min_length
-    NEVER_STARTED,  //  terminal, failing: no scene within start_window
+    AWAITING_SCENE, //  wait, no press: with start_window, the HUD up and no scene yet
+    NEVER_STARTED,  //  terminal, failing: with start_window, the HUD up and no scene for that long
     QUIET_END,      //  terminal, failing unless quiet_is_control: nothing busy for the quiet time, past the minimum length
     BLIND_PRESS,    //  blind_button: nothing busy and no sign of control for blind_press_after (only talk_to_pokedex_screen's Pokedex screens)
     SCENE_MOVING,   //  wait, no press: no text, the screen changing
@@ -104,7 +105,7 @@ private:
     std::optional<WallClock> m_party_bar_since;
     std::optional<WallClock> m_hint_since;
     std::optional<WallClock> m_prompt_since;
-    //  Text, a choice or a battle has shown: the scene has started.
+    //  A scene is under way or has been (scene_under_way()).
     bool m_scene_seen = false;
     //  The looks in a row with the mission banner.
     size_t m_banner_looks = 0;
@@ -180,6 +181,29 @@ bool scene_shows(const ScreenObservation& look){
     return text_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX) || look.events.has(ScreenEvent::BATTLE_STARTED);
 }
 
+//  The HUD the player has in control: the party bar, the controls hint or
+//  an A prompt.
+bool hud_shows(const ScreenObservation& look){
+    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.readings.contains(CONTROLS_HINT_READING) ||
+        look.events.has(ScreenEvent::INTERACT_PROMPT);
+}
+
+//  A scene is under way: text, a choice or a battle, or, with no HUD up, a
+//  fade or a moving screen. A cutscene can play a minute with no text:
+//  02.02's street scene moved 41 s with no HUD after its black fade
+//  (console B, 2026-11-15). A step that plays a scene (start_window) does
+//  not end on the HUD before one is: the HUD up for start_window with no
+//  scene is the player away from its trigger.
+bool scene_under_way(const ScreenObservation& look){
+    if (scene_shows(look)){
+        return true;
+    }
+    if (hud_shows(look)){
+        return false;
+    }
+    return fade_shows(look) || !look.events.has(ScreenEvent::SCREEN_STILL);
+}
+
 //  Whether the party bar and the A prompt are control for `config`: not in
 //  a machine that stops at a choice or a battle, whose talk shows them
 //  between its lines (and whose blind A may start that talk).
@@ -200,7 +224,7 @@ constexpr SceneScreen ALL_SCREENS[] = {
     SceneScreen::CAN_MOVE, SceneScreen::PARTY_BAR,
     SceneScreen::CONTROLS_HINT, SceneScreen::HINT_SHOWING,
     SceneScreen::TALK_PROMPT, SceneScreen::PROMPT_SHOWING,
-    SceneScreen::NEVER_STARTED, SceneScreen::QUIET_END, SceneScreen::BLIND_PRESS,
+    SceneScreen::AWAITING_SCENE, SceneScreen::NEVER_STARTED, SceneScreen::QUIET_END, SceneScreen::BLIND_PRESS,
     SceneScreen::SCENE_MOVING, SceneScreen::SCENE_STILL,
 };
 
@@ -216,51 +240,35 @@ void track_since(bool shows, WallClock when, std::optional<WallClock>& since){
 
 //  "fade_black", the state's name in the log.
 std::string_view scene_screen_name(SceneScreen screen){
-    switch (screen){
-    case SceneScreen::BATTLE:
-        return "battle";
-    case SceneScreen::FADE_BLACK:
-        return "fade_black";
-    case SceneScreen::FADE_WHITE:
-        return "fade_white";
-    case SceneScreen::CHOICE:
-        return "choice";
-    case SceneScreen::DIALOG:
-        return "dialog";
-    case SceneScreen::MISSION_COMPLETE:
-        return "mission_complete";
-    case SceneScreen::TUTORIAL_CARD:
-        return "tutorial_card";
-    case SceneScreen::MISSION_BANNER:
-        return "mission_banner";
-    case SceneScreen::BANNER_SHOWING:
-        return "banner_showing";
-    case SceneScreen::BANNER_PRESS:
-        return "banner_press";
-    case SceneScreen::FADE_SETTLED:
-        return "fade_settled";
-    case SceneScreen::CAN_MOVE:
-        return "can_move";
-    case SceneScreen::PARTY_BAR:
-        return "party_bar";
-    case SceneScreen::CONTROLS_HINT:
-        return "controls_hint";
-    case SceneScreen::HINT_SHOWING:
-        return "hint_showing";
-    case SceneScreen::TALK_PROMPT:
-        return "talk_prompt";
-    case SceneScreen::PROMPT_SHOWING:
-        return "prompt_showing";
-    case SceneScreen::NEVER_STARTED:
-        return "never_started";
-    case SceneScreen::QUIET_END:
-        return "quiet_end";
-    case SceneScreen::BLIND_PRESS:
-        return "blind_press";
-    case SceneScreen::SCENE_MOVING:
-        return "scene_moving";
-    case SceneScreen::SCENE_STILL:
-        return "scene_still";
+    constexpr std::pair<SceneScreen, std::string_view> NAMES[] = {
+        {SceneScreen::BATTLE, "battle"},
+        {SceneScreen::FADE_BLACK, "fade_black"},
+        {SceneScreen::FADE_WHITE, "fade_white"},
+        {SceneScreen::CHOICE, "choice"},
+        {SceneScreen::DIALOG, "dialog"},
+        {SceneScreen::MISSION_COMPLETE, "mission_complete"},
+        {SceneScreen::TUTORIAL_CARD, "tutorial_card"},
+        {SceneScreen::MISSION_BANNER, "mission_banner"},
+        {SceneScreen::BANNER_SHOWING, "banner_showing"},
+        {SceneScreen::BANNER_PRESS, "banner_press"},
+        {SceneScreen::FADE_SETTLED, "fade_settled"},
+        {SceneScreen::CAN_MOVE, "can_move"},
+        {SceneScreen::PARTY_BAR, "party_bar"},
+        {SceneScreen::CONTROLS_HINT, "controls_hint"},
+        {SceneScreen::HINT_SHOWING, "hint_showing"},
+        {SceneScreen::TALK_PROMPT, "talk_prompt"},
+        {SceneScreen::PROMPT_SHOWING, "prompt_showing"},
+        {SceneScreen::AWAITING_SCENE, "awaiting_scene"},
+        {SceneScreen::NEVER_STARTED, "never_started"},
+        {SceneScreen::QUIET_END, "quiet_end"},
+        {SceneScreen::BLIND_PRESS, "blind_press"},
+        {SceneScreen::SCENE_MOVING, "scene_moving"},
+        {SceneScreen::SCENE_STILL, "scene_still"},
+    };
+    for (const auto& [state, name] : NAMES){
+        if (state == screen){
+            return name;
+        }
     }
     return "unknown";
 }
@@ -399,6 +407,10 @@ SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
     if (fades_settled(look.when)){
         return SceneScreen::FADE_SETTLED;
     }
+    if (m_config.start_window && !m_scene_seen && hud_shows(look)){
+        const bool past_window = look.when - m_start >= *m_config.start_window;
+        return past_window ? SceneScreen::NEVER_STARTED : SceneScreen::AWAITING_SCENE;
+    }
     if (party_bar_is_control(m_config) && look.events.has(ScreenEvent::PLAYER_CAN_MOVE)){
         if (m_party_bar_since && look.when - *m_party_bar_since >= PARTY_BAR_HOLD){
             return SceneScreen::CAN_MOVE;
@@ -416,9 +428,6 @@ SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
             return SceneScreen::TALK_PROMPT;
         }
         return SceneScreen::PROMPT_SHOWING;
-    }
-    if (m_config.start_window && !m_scene_seen && look.when - m_start >= *m_config.start_window){
-        return SceneScreen::NEVER_STARTED;
     }
     const std::optional<WallClock> due = quiet_end_due();
     if (due && look.when >= *due){
@@ -442,7 +451,7 @@ void SceneTimeline::record(const ScreenObservation& look){
     if (busy(look)){
         m_last_busy = look.when;
     }
-    m_scene_seen = m_scene_seen || scene_shows(look);
+    m_scene_seen = m_scene_seen || scene_under_way(look);
     const bool box = look.events.has(ScreenEvent::DIALOG_BOX);
     const bool party_bar = party_bar_is_control(m_config) && look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
     track_since(party_bar && !box, look.when, m_party_bar_since);
@@ -699,6 +708,7 @@ private:
         case SceneScreen::PARTY_BAR:
         case SceneScreen::HINT_SHOWING:
         case SceneScreen::PROMPT_SHOWING:
+        case SceneScreen::AWAITING_SCENE:
         case SceneScreen::BANNER_SHOWING:
             m_backend.wait(POLL);
             return;
@@ -761,6 +771,9 @@ Milliseconds max_still(SceneScreen screen){
     case SceneScreen::PROMPT_SHOWING:
         //  The overworld at the prompt can stay still until min_length.
         return SCENE_STILL_WAIT;
+    case SceneScreen::AWAITING_SCENE:
+        //  The HUD can stay unchanged through start_window.
+        return SCENE_STILL_WAIT;
     case SceneScreen::PARTY_BAR:
     case SceneScreen::HINT_SHOWING:
     case SceneScreen::BANNER_SHOWING:
@@ -810,7 +823,7 @@ Pokemon::Outcome scene_outcome(
     }
     if (result.terminal == scene_screen_name(SceneScreen::NEVER_STARTED)){
         return Pokemon::outcome_failed("scene_never_started", std::format(
-            "{}: the scene never started (player not at its trigger?): no text, choice or battle in {} ms (expecting {}).",
+            "{}: the scene never started (player not at its trigger?): the HUD up and no text, choice, battle or cutscene for {} ms (expecting {}).",
             label, config.start_window ? config.start_window->count() : 0, expected
         ));
     }

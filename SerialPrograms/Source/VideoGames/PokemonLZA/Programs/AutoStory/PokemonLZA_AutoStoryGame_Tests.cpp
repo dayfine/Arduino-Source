@@ -569,11 +569,9 @@ const RunCase RUN_CASES[] = {
     {
         //  console B, 2026-11-13: 02.02 after the Brigitte battle walked
         //  past the street scene's trigger and A-mashed for two minutes.
-        .name = "02.02's street scene fails when it never starts",
-        .input = {.checkpoint = "02.02", .first_step = 1, .steps = 1, .looks = {
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(46000)),
-        }},
-        .expectation = {.verdict = "failed at street_scene: scene_never_started", .inputs = "wait 500ms"},
+        .name = "02.02's street scene fails when the party bar shows 45 s and it never starts",
+        .input = {.checkpoint = "02.02", .first_step = 1, .steps = 1, .looks = {party_bar(Milliseconds(0)), party_bar(Milliseconds(46000))}},
+        .expectation = {.verdict = "failed at street_scene: scene_never_started", .inputs = "wait 250ms"},
     },
     {
         .name = "02.02 walks on to the gate's A prompt",
