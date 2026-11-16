@@ -226,8 +226,7 @@ bool useless_against(const MoveData& move, std::string_view foe){
 
 //  `move`'s type multiplier, in tenths, summed over `foes`: 0 against a foe
 //  it may do nothing to (useless_against()), halved for a two-turn move; 0
-//  for a move that does no damage. Each foe must be in species_data(). (The
-//  data has no power, so STAB is left to the plan's order, which breaks ties.)
+//  for a move that does no damage. Each foe must be in species_data().
 size_t matchup(std::string_view move, const std::vector<std::string>& foes){
     const MoveData* data = move_data(move);
     if (data == nullptr || !data->damaging){
@@ -242,6 +241,19 @@ size_t matchup(std::string_view move, const std::vector<std::string>& foes){
         total += takes_two_turns(move) ? tenths / 2 : tenths;
     }
     return total;
+}
+
+//  How hard `move` hits for `member`, to choose between moves of the same
+//  matchup: its power, half again for a move of the member's own type
+//  (STAB), in halves. 0 for a move the data doesn't have.
+size_t strength(const PartyMember& member, std::string_view move){
+    const MoveData* data = move_data(move);
+    if (data == nullptr){
+        return 0;
+    }
+    const SpeciesData* types = species_data(member.species);
+    const bool stab = types != nullptr && (types->first == data->type || types->second == data->type);
+    return static_cast<size_t>(data->power) * (stab ? 3 : 2);
 }
 
 //  The member's slots in the plan's order: its line's attacks first, as
@@ -405,11 +417,15 @@ std::optional<size_t> attack_slot_against(const PartyMember& member, const std::
     }
     std::optional<size_t> best;
     size_t best_matchup = 0;
+    size_t best_strength = 0;
     for (size_t slot : attack_order(member)){
         const size_t tenths = matchup(member.moves[slot].move, known);
-        if (member.moves[slot].pp > 0 && tenths > best_matchup){
+        const size_t hits = strength(member, member.moves[slot].move);
+        const bool stronger = tenths > best_matchup || (tenths == best_matchup && hits > best_strength);
+        if (member.moves[slot].pp > 0 && tenths > 0 && stronger){
             best = slot;
             best_matchup = tenths;
+            best_strength = hits;
         }
     }
     if (best){

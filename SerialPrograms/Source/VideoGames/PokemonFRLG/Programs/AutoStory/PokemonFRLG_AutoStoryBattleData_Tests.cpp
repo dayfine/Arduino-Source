@@ -2,7 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The battle data, and the attacks chosen against trainers' parties and wild Pokemon from it.
+ *  The battle data, and the attacks chosen against trainers' parties and wild Pokemon from it;
+ *  a status cured in a trainer's battle.
  *
  */
 
@@ -256,7 +257,110 @@ UnitTestResult test_wild_fallback(){
     return true;
 }
 
+//  Victory Road's lead as it met Cooltrainer Colby (console B, 2026-11-16,
+//  19.04d): Blastoise Lv51 with Bite, Strength, Surf and Blizzard.
+PartyMember victory_road_blastoise(){
+    return PartyMember{
+        .species = "blastoise",
+        .moves = {{"bite", 25}, {"strength", 15}, {"surf", 15}, {"blizzard", 5}},
+        .moves_through_level = 51,
+        .moves_read = true,
+        .level = 51,
+    };
+}
+
+//  19.04d (console B, 2026-11-16 03:34): against Colby's Water party the
+//  lead used Bite, as 1x as Strength and first in the plan's order, until
+//  its PP ran out. The best type matchup, then the most damage of the
+//  matchups that tie (power, half again for the lead's own type).
+UnitTestResult test_matchup_then_power(){
+    const PartyMember blastoise = victory_road_blastoise();
+    const std::vector<std::pair<std::string, std::string>> cases = {
+        {"kingler", "strength"},
+        {"tentacruel", "strength"},
+        {"blastoise", "strength"},
+        {"onix", "surf"},
+        {"rhydon", "surf"},
+        {"raticate", "surf"},
+        {"dragonair", "blizzard"},
+        {"pidgeot", "blizzard"},
+    };
+    for (const auto& [foe, expected] : cases){
+        const std::optional<size_t> slot = attack_slot_against(blastoise, {foe});
+        const std::string chosen = slot ? blastoise.moves[*slot].move : "none";
+        if (chosen != expected){
+            return std::format("{}: expected {}, got {}.", foe, expected, chosen);
+        }
+    }
+    return true;
+}
+
+//  19.04d (console B, 2026-11-16 03:36): paralysed by Colby's Kingler, the
+//  lead fought his four other Pokemon with PAR and 2 Parlyz Heals in the
+//  bag. A trainer's battle cures PAR with a Parlyz Heal once the HP needs
+//  no Super Potion first; a wild Pokemon is run from instead.
+UnitTestResult test_paralysis_cured(){
+    struct Input{
+        BattleKind kind;
+        bool hp_yellow;
+    };
+    struct Expectation{
+        TurnChoice choice;
+        std::string item;
+    };
+    struct Case{
+        std::string name;
+        Input input;
+        Expectation expectation;
+    };
+    const std::vector<Case> cases = {
+        {.name = "a trainer, HP green", .input = {BattleKind::TRAINER, false}, .expectation = {TurnChoice::MEDICINE, "parlyz-heal"}},
+        {.name = "a trainer, HP yellow", .input = {BattleKind::TRAINER, true}, .expectation = {TurnChoice::MEDICINE, "super-potion"}},
+        {.name = "a wild Pokemon", .input = {BattleKind::WILD_FIGHT, false}, .expectation = {TurnChoice::RUN, ""}},
+    };
+    for (const Case& c : cases){
+        Supplies supplies;
+        supplies.lead = victory_road_blastoise();
+        supplies.foe_out = "poliwhirl";
+        supplies.super_potions = 4;
+        supplies.parlyz_heals = 2;
+        BattleDecisions decisions(supplies, c.input.kind);
+        const PartyStatus paralysed{.hp_seen = true, .hp_yellow = c.input.hp_yellow, .hp_red = false, .hp_fill = 0.5, .status = StatusCondition::PARALYSIS};
+        const TurnAction action = decisions.turn(paralysed);
+        if (action.choice != c.expectation.choice || action.item != c.expectation.item){
+            return std::format("{}: expected \"{}\", got choice {} \"{}\".", c.name, c.expectation.item, static_cast<int>(action.choice), action.item);
+        }
+    }
+    return true;
+}
+
+//  A Parlyz Heal used: one fewer in the bag, and the lead counts as cured.
+UnitTestResult test_parlyz_heal_used(){
+    Supplies supplies;
+    supplies.lead = victory_road_blastoise();
+    supplies.parlyz_heals = 2;
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    decisions.turn(PartyStatus{.hp_seen = true, .hp_yellow = false, .hp_red = false, .hp_fill = 0.7, .status = StatusCondition::PARALYSIS});
+    decisions.turn_done(TurnChoice::MEDICINE, TurnResult::DONE);
+    if (supplies.parlyz_heals != 1 || supplies.status != StatusCondition::NONE){
+        return std::format("{} Parlyz Heal(s) left, status {}; expected 1 left and no status.", supplies.parlyz_heals, status_name(supplies.status));
+    }
+    return true;
+}
+
 const AutoStoryBattleDataTestCase AUTO_STORY_BATTLE_DATA_CASES[] = {
+    {
+        .input = {.name = "Victory Road's Blastoise: the best matchup, then the strongest move", .body = test_matchup_then_power},
+        .expectation = {.description = "Strength on Kingler, Tentacruel and Blastoise; Surf on Onix, Rhydon and Raticate; Blizzard on Dragonair and Pidgeot"},
+    },
+    {
+        .input = {.name = "PAR with Parlyz Heals in the bag", .body = test_paralysis_cured},
+        .expectation = {.description = "a Parlyz Heal against a trainer at green HP, a Super Potion first at yellow, RUN from a wild Pokemon"},
+    },
+    {
+        .input = {.name = "a Parlyz Heal used", .body = test_parlyz_heal_used},
+        .expectation = {.description = "one fewer Parlyz Heal, the status cured"},
+    },
     {
         .input = {.name = "type chart, moves and species from pret", .body = test_data},
         .expectation = {.description = "validates decompiled type charts, moves, and species"},

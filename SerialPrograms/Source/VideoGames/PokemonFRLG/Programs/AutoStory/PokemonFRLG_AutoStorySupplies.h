@@ -44,6 +44,10 @@ enum class StatusCondition{
 };
 //  String representation of a status condition.
 std::string_view status_name(StatusCondition status);
+//  The cure for a status, by PokemonSimulation's pokeguy-conditions.md CURES
+//  table ("parlyz-heal" for PARALYSIS); "" for none. The battle policy and
+//  the story's own battles both cure by it.
+std::string_view cure_of(StatusCondition status);
 
 //  The healing items in the Items pocket, in the order they were bought:
 //  Potions, Antidotes, then Parlyz Heals; Awakenings from Cerulean's Mart.

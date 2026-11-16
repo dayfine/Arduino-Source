@@ -832,6 +832,21 @@ std::string_view status_name(StatusCondition status){
     return "?";
 }
 
+std::string_view cure_of(StatusCondition status){
+    switch (status){
+    case StatusCondition::SLEEP:
+        return "awakening";
+    case StatusCondition::POISON:
+        return "antidote";
+    case StatusCondition::PARALYSIS:
+        return "parlyz-heal";
+    case StatusCondition::NONE:
+    case StatusCondition::OTHER:
+        return "";
+    }
+    return "";
+}
+
 StatusCondition read_status_badge(const ImageViewRGB32& badge){
     const ImageStats stats = image_stats(badge);
     const double r = stats.average.r;

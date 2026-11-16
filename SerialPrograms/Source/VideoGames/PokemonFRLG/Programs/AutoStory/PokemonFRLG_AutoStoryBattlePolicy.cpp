@@ -35,22 +35,6 @@ constexpr Medicine MEDICINES[] = {
     {"potion", 20}, {"super-potion", 50}, {"hyper-potion", 200}, {"max-potion", WHOLE_HP}, {"full-restore", WHOLE_HP},
 };
 
-//  The cure for a status, by the doc's CURES table; "" for none.
-std::string_view cure_of(StatusCondition status){
-    switch (status){
-    case StatusCondition::SLEEP:
-        return "awakening";
-    case StatusCondition::POISON:
-        return "antidote";
-    case StatusCondition::PARALYSIS:
-        return "parlyz-heal";
-    case StatusCondition::NONE:
-    case StatusCondition::OTHER:
-        return "";
-    }
-    return "";
-}
-
 //  A Full Restore (a heal and a cure in one) is used only when it also heals
 //  at least half of max HP; below that a cheap cure or a smaller medicine does.
 bool full_restore_worth_it(const PolicyView& view){
