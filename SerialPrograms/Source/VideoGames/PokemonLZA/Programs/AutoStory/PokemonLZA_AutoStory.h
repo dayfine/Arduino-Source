@@ -12,12 +12,15 @@
 #define PokemonAutomation_PokemonLZA_AutoStory_H
 
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
+#include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
+#include "Common/Cpp/Options/StringOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
 #include "Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGameChoices.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -42,6 +45,10 @@ public:
 
 private:
     Pokemon::StoryRangeOptions RANGE;
+    EnumDropdownOption<NewGameLanguage> GAME_LANGUAGE;
+    SimpleIntegerOption<uint8_t> PLAYER_LOOK;
+    StringOption PLAYER_NAME;
+    BooleanCheckBoxOption CAPTURE_INTRO_SCREENS;
     SimpleIntegerOption<uint8_t> ATTEMPTS_PER_CHECKPOINT;
     BooleanCheckBoxOption LOAD_SAVE_FIRST;
     BattleAIOption BATTLE_AI;

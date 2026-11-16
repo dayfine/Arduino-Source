@@ -36,8 +36,11 @@ namespace PokemonLZA{
 
 //  Every action a PLZA checkpoint may name, GAME actions but for "talk":
 //
-//      "confirm_new_game"      console_only: 01.00's first step, on the new
-//                              game's "Confirm Choices" (confirm_new_game_choices())
+//      "new_game_intro"        console_only: 01.00's first step, from HOME or
+//                              the language list to "Confirm Choices"
+//                              (play_new_game_intro())
+//      "confirm_new_game"      console_only: on the new game's "Confirm
+//                              Choices" (confirm_new_game_choices())
 //      "opening_to_platform"   the opening cutscene until the autosave badge
 //                              has shown and the station platform holds
 //      "wait_for_platform"     the station platform holds: a start check

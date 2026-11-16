@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  01.00's start: the new game's "Confirm Choices" screen, after the
- *  language, look and name were chosen by hand. Its reader is in
+ *  The new game's "Confirm Choices" screen, after the language, look and
+ *  name (PokemonLZA_AutoStoryNewGame.h). Its reader is in
  *  Detectors/PokemonLZA_AutoStoryConfirmChoicesReader.h.
  *
  */
@@ -14,6 +14,7 @@
 #include <cstddef>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "PokemonLZA_AutoStoryNewGameChoices.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -24,14 +25,16 @@ namespace PokemonLZA{
 //  2 s with no press. Throws UserSetupError if the screen does not show.
 size_t require_confirm_choices(ConsoleHandle& console, ProControllerContext& context);
 
-//  01.00's first step: the new game's language, look and name were chosen
-//  by hand and "Confirm Choices" is on screen. Checks that screen first
-//  (require_confirm_choices()): on any other screen throws UserSetupError
-//  and presses nothing. Then moves the highlight to "Ready!" one DOWN at a
-//  time, reading it after each, and presses A there: the save's only
-//  change is this press, on a screen it has read. Throws
+//  01.00's step after the intro: "Confirm Choices" is on screen. Checks
+//  that screen first (require_confirm_choices()): on any other screen
+//  throws UserSetupError and presses nothing. Then reads the name and the
+//  language it shows (OCR) and, if either is not `choices`', throws
+//  OperationFailedException having pressed nothing (the language is not
+//  checked when its OCR is not installed). Then moves the highlight to
+//  "Ready!" one DOWN at a time, reading it after each, and presses A there:
+//  the save's only change is this press, on a screen it has read. Throws
 //  OperationFailedException if the highlight is lost on the way.
-void confirm_new_game_choices(ConsoleHandle& console, ProControllerContext& context);
+void confirm_new_game_choices(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices);
 
 
 
