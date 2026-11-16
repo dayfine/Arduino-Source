@@ -566,20 +566,26 @@ private:
         if (step.to_wall){
             return after_wall_stop(step, outcome, start, crossing);
         }
+        //  A hold on that took no warp left the player anywhere on the leg:
+        //  found again there, as after any stop (console B, 2026-11-16
+        //  02:13, 19.04c: a wild Onix on "north 5 (warp)" to Victory Road 3F).
+        bool held_on = false;
         if (outcome.end == StepEnd::STOPPED && step.warps && (!step.wild || by_wild_battle(step, start, outcome))){
-            m_calls.hold_to_warp(step);
-            m_at = step.end;
-            m_facing = step.facing_after;
-            m_next++;
-            m_lines.end(step, m_at, EndBasis::ASSUMED, "stopped, then held on to the warp");
-            return true;
+            if (m_calls.hold_to_warp(step)){
+                m_at = step.end;
+                m_facing = step.facing_after;
+                m_next++;
+                m_lines.end(step, m_at, EndBasis::ASSUMED, "stopped, then held on to the warp");
+                return true;
+            }
+            held_on = true;
         }
-        m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, "stopped part-way");
+        m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, held_on ? "stopped, then held on with no warp" : "stopped part-way");
         if (maps() == nullptr){
             m_calls.fail("walk_overworld_route(): stopped part-way on " + to_string(step) + ", with no maps to find the player again.");
             return false;
         }
-        const WalkedTiles walked = outcome.walked.value_or(whole_leg(step));
+        const WalkedTiles walked = held_on ? whole_leg(step) : outcome.walked.value_or(whole_leg(step));
         if (!outcome.blocked){
             return rejoin(step, candidates_on(step, start, walked), walked);
         }

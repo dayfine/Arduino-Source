@@ -503,7 +503,7 @@ private:
     size_t clear_unseen_battle(const RouteStep& step);
     bool battle_on_its_way() const;
     void clear(const Interrupt& interrupt);
-    void hold_to_warp(const RouteStep& step);
+    bool hold_to_warp(const RouteStep& step);
     StepEnd watch_for_trainer(const RouteStep& step, const TrainerCrossing& crossing);
     bool moved_past_wall(const RouteStep& step);
     void check_overworld(const RouteStep& step);

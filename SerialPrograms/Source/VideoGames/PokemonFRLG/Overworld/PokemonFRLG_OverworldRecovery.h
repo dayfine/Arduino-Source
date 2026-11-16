@@ -97,11 +97,11 @@ struct RoutePlanning{
 };
 
 //  The console side. `walk` walks one step from `facing` (unknown after a
-//  stop); `hold_to_warp` holds on along a stopped leg until its warp;
-//  `fail` throws.
+//  stop); `hold_to_warp` holds on along a stopped leg until its warp, and
+//  says whether the warp was taken; `fail` throws.
 struct RouteCalls{
     std::function<StepOutcome(const RouteStep& step, std::optional<Direction> facing)> walk;
-    std::function<void(const RouteStep& step)> hold_to_warp;
+    std::function<bool(const RouteStep& step)> hold_to_warp;
     std::function<void(const std::string& message)> log;
     std::function<void(const std::string& message)> fail;
     //  Taps once more toward the wall a leg to a wall ended at, and says
