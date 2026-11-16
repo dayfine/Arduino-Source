@@ -7,6 +7,7 @@
 #include "Common/Cpp/EarlyShutdown.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/Json/JsonObject.h"
+#include "Common/Cpp/Logging/GlobalLogger.h"
 #include "CommonFramework/Logging/Logger.h"
 #include "MultiConsolePanelSession.h"
 
@@ -34,7 +35,7 @@ MultiConsolePanelSession::MultiConsolePanelSession(const MultiConsolePanelDescri
         descriptor.default_consoles(),
         descriptor.option_factory()
     )
-    , m_system(m_system_option, true)
+    , m_system(global_logger_raw(), m_system_option, true)
     , m_instance(descriptor.make_instance(m_system))
 {}
 

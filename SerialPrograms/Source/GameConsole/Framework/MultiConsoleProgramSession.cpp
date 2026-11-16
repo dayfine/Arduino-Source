@@ -47,7 +47,7 @@ MultiConsoleProgramSession::MultiConsoleProgramSession(
                 descriptor.default_consoles()
             )
     )
-    , m_system(*m_system_option, descriptor.allow_commands_while_running(), instance_id())
+    , m_system(run_logger(), *m_system_option, descriptor.allow_commands_while_running(), instance_id())
 {
     auto instance = descriptor.make_instance(m_system);
     instance->update_active_consoles(m_system_option->active_consoles());
@@ -71,6 +71,9 @@ void MultiConsoleProgramSession::restore_defaults(){
     }
     logger().log("Restoring settings to defaults...");
     m_instance->restore_defaults();
+}
+std::string MultiConsoleProgramSession::settings_json() const{
+    return to_json().dump();
 }
 JsonValue MultiConsoleProgramSession::to_json() const{
     JsonObject obj = std::move(*m_instance->to_json().to_object());

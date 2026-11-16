@@ -4,6 +4,7 @@
  *
  */
 
+#include "Common/Cpp/Logging/GlobalLogger.h"
 #include "CommonTools/Audio/SpectrogramMatcher.h"
 #include "CommonTools/Audio/AudioTemplateCache.h"
 #include "Tests/TestUtils.h"
@@ -55,7 +56,7 @@ public:
 
     virtual UnitTestResult run(Logger& logger, CancellableScope& scope) const override{
         GameConsole::ConsoleSystemOption option(1);
-        GameConsole::ConsoleSystemSession session(option, false, 0, {});
+        GameConsole::ConsoleSystemSession session(global_logger_raw(), option, false, 0, {});
         ConsoleHandle console(session);
         ShinySoundDetector detector(console, [&](float error_coefficient) -> bool{
             return true;

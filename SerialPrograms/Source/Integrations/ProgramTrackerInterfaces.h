@@ -36,8 +36,8 @@ public:
     virtual ProgramState current_state() const = 0;
     virtual std::string current_stats() const = 0;
 
-    virtual void async_start() = 0;
-    virtual void async_stop() = 0;
+    virtual std::string async_start() = 0;
+    virtual std::string async_stop() = 0;
 };
 
 

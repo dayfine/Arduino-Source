@@ -46,6 +46,7 @@ public:
 protected:
     virtual std::unique_ptr<ProgramEnvironment> make_env(const ProgramInfo& program_info) override;
     virtual void internal_run_program(ProgramEnvironment& env) override;
+    virtual std::string settings_json() const override;
 
     virtual void on_console_count_lock(bool locked) override{}
     virtual void shutdown() override;

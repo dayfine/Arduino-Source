@@ -173,8 +173,7 @@ std::string ProgramTracker::start_program(uint64_t program_id){
     if (program == nullptr){
         return error;
     }
-    program->async_start();
-    return "";
+    return program->async_start();
 }
 std::string ProgramTracker::stop_program(uint64_t program_id){
     std::string header = make_header("stop_program", program_id);
@@ -184,8 +183,7 @@ std::string ProgramTracker::stop_program(uint64_t program_id){
     if (program == nullptr){
         return error;
     }
-    program->async_stop();
-    return "";
+    return program->async_stop();
 }
 std::string ProgramTracker::run_controller_command(
     uint64_t console_id, uint64_t controller_index,
