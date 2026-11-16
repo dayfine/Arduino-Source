@@ -87,6 +87,15 @@ class VerdictTests(PreflightTest):
         self.assertEqual(record['refusal']['evidence']['reason'], 'options_not_restored')
         self.assertIsNone(record['result'])
 
+    def test_a_user_edit_during_the_checks_is_kept_and_named(self):
+        """#601: the app does not overwrite an edit made in the panel during the checks."""
+        token = self.acquired()
+        self.app.user_edit = {'LANGUAGE': 'de'}
+        record = self.preflight(preflight_request(token, options={'START_SEGMENT': 7}))
+        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'))
+        self.assertEqual(record['refusal']['evidence']['edited_keys'], ['LANGUAGE'])
+        self.assertEqual(self.app.options['LANGUAGE'], 'de')
+
     def test_other_verdicts(self):
         def unsupported(test):
             test.app.replies['describe_program'] = describe_reply(prechecks='unsupported')

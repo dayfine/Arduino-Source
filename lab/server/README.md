@@ -404,7 +404,7 @@ checks may open a menu or go Home and back) for the one reply line, `preflight <
 
 | The reply | Record |
 |---|---|
-| `restored: false` (whatever the verdict) | `failed`, `app_unavailable`, `evidence.reason: options_not_restored`; no token |
+| `restored: false` (whatever the verdict) | `failed`, `app_unavailable`, `evidence.reason: options_not_restored` (`evidence.edited_keys`: what a user changed in the panel during the checks, kept by the app); no token |
 | `id` is not `panel` | `failed`, `app_unavailable`, `panel_changed` |
 | `verdict: unsupported` | `failed`, `prechecks_unsupported` |
 | `verdict: invalid_options` (the app's `check_validity` or its own key check) | `failed`, `invalid_arguments`, `field: options.<key>` |

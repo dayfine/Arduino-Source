@@ -22,6 +22,7 @@ replies `restored: false`. It prints one line, `preflight <JSON>`:
      "failure": {"check", "message", "evidence"?} | null,      # verdict failed
      "invalid": {"key", "message"} | null,                     # verdict invalid_options
      "restored": true | false,
+     "edited_keys": ["<key>", ...],                            # optional: keys a user edited during the checks
      "options_hash": "<sha256>" | null}                         # optional: the program's full options after the restore
 
 **The token** is the hash of what the preflight was checked against (`binding`): the app instance,
@@ -186,8 +187,12 @@ def parse_reply(printed: List[str], lines: List[str]) -> Dict[str, Any]:
 def outcome(doc: Dict[str, Any], panel: str, lines: List[str]) -> Optional[Dict[str, Any]]:
     """The refusal a reply means, or None when every check passed and the options were restored."""
     if not doc['restored']:
+        evidence = {'reason': 'options_not_restored', 'reply': doc}
+        if isinstance(doc.get('edited_keys'), list) and doc['edited_keys']:
+            # #601: someone changed these in the panel during the checks; the app kept their edit.
+            evidence['edited_keys'] = doc['edited_keys']
         return {'code': 'app_unavailable', 'message': 'The app did not restore the prior options after the preflight; '
-                'check the panel before any run.', 'evidence': {'reason': 'options_not_restored', 'reply': doc}}
+                'check the panel before any run.', 'evidence': evidence}
     if doc['id'] != panel:
         return {'code': 'app_unavailable', 'message': 'The app preflighted {}, not {}.'.format(doc['id'], panel),
                 'evidence': {'reason': 'panel_changed', 'reply': doc}}

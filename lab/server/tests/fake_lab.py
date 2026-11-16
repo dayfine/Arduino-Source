@@ -163,6 +163,7 @@ class FakeApp:
         self.restore = True         # False: the app forgets to restore the prior options
         self.preflight_id = None    # the program id the reply names (default: the selected panel)
         self.staged_seen = []       # the options the prechecks ran against, per preflight
+        self.user_edit = None       # options a user sets in the panel during the checks (#601 keeps them)
         self.hash_options = True    # False: an app before #601, no program.options_hash anywhere
         self.line_fail = None       # (batch line index, error): that console line fails
         self.lines_run = []
@@ -291,7 +292,10 @@ class FakeApp:
                     reply.update(verdict='failed', failure=dict({'check': check['name'], 'message': outcome[1]},
                                                                 **({'evidence': outcome[2]} if len(outcome) > 2 else {})))
                     break
-        if self.restore:
+        if self.user_edit is not None:
+            self.options.update(self.user_edit)
+            reply.update(restored=False, edited_keys=sorted(self.user_edit))
+        elif self.restore:
             self.options = prior
         else:
             reply['restored'] = False
