@@ -7,10 +7,10 @@ Each call is one request record in the control plane (`pa_lab.control`), keyed b
 2. `ControlPlane.begin_action`, one transaction: an exact retry gets its stored record; otherwise
    the request's lease token must hold the console and the checks below must pass, or the refusal
    is stored. A passing request is stored `pending` with the app instance it was checked against.
-3. Write the fixed request `request <request_id>` / `start 10` (or `stop`) into `Lab/inbox`, the
-   same channel commands `labctl.sh start|stop` sends (Lab.md "Channel"). The app records the
-   request id in `program.last_transition`.
-4. Settle: read the journal and `Lab/state.json` until the outcome is known, then resolve the
+3. Send `Start` (or `Stop`) through the console's app channel (`pa_lab.channel`; the version-1
+   wire format is `contracts/v1/channel.md`). The app records the request id in
+   `program.last_transition`.
+4. Settle: read the journal and the app's state until the outcome is known, then resolve the
    record (`completed` or `failed`) and emit its `request_completed` / `request_failed` event.
 
 How an outcome is recognised, from what Slice 1 writes (`last_transition` holds only the newest
@@ -32,10 +32,11 @@ start or stop):
   unless the new instance shows our request id.
 
 A request the app has not answered in time stays `pending` (a ticket) if the app took it from the
-inbox (`done/<name>.txt`), since it may still act; it is settled on the next `request_status`,
+inbox (`AppChannel.taken`), since it may still act; it is settled on the next `request_status`,
 `next_events`, `console://B/state` read or action call. The first time the daemon sees the request
-taken, and its journal finished, it stores the time (`actions.taken_at`, `answered_at`): the lab's
-disk cleanup prunes `done/` and `outbox/`, so a request once seen taken stays taken.
+taken, and its journal finished, it stores the time (`actions.taken_at`, `answered_at`): the channel
+may prune taken requests and journals (channel.md, "Retention"), so a request once seen taken stays
+taken.
 
 The app writes the finished journal first and `state.json` only on its next 500 ms timer (later
 while another request runs), so a journal is judged against `state.json` only once `written_at` is
@@ -45,7 +46,7 @@ start, a later stop, a UI takeover or another app instance. Past the answer wait
 with `timeout` when:
 
 - it is still in the inbox (the app never took it): it is withdrawn and nothing was sent;
-- it was never seen in `done/` and has no journal: it never reached the app (the inbox write
+- it was never seen taken and has no journal: it never reached the app (the inbox write
   failed, or the daemon died between storing the record and writing it), `never_sent`;
 - its journal is complete without an error and without the start's `ok`, `state.json` was written
   after it, and nothing above matches it, `outcome_unknown`.
@@ -63,13 +64,11 @@ channel's owner token (a claimed channel is refused).
 from __future__ import annotations
 
 import functools
-import os
-import re
 import time
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Optional
 
-from pa_lab import control, shot, timestamps
+from pa_lab import control, timestamps
+from pa_lab.channel import AppError, Command, ErrorKind, Journal, Start, Stop
 from pa_lab.control import Refused
 from pa_lab.lab_reader import ConsoleReader
 
@@ -82,39 +81,9 @@ START_CONTROLLER_WAIT_S = 10
 ANSWER_WAIT_S = {'run_program': START_CONTROLLER_WAIT_S + 3.0, 'stop_program': 10.0}
 POLL_S = 0.1
 
-JOURNAL_ERROR_RE = re.compile(r'^error \d+ \([^)]*\): (.*)$')
-PROGRAM_IS_RE = re.compile(r'^Program is ([A-Z_]+)\.$')
 ENDED_SOURCES = ('program', 'error')
 
 __all__ = ['ProgramActions', 'TOOLS']
-
-
-def _journal(lab_dir: Path, name: str) -> Optional[List[str]]:
-    """The request's finished journal, or None while there is none."""
-    try:
-        lines = (lab_dir / 'outbox' / (name + '.out')).read_text(encoding='utf-8', errors='replace').splitlines()
-    except FileNotFoundError:
-        return None
-    return lines if lines and lines[-1] == 'end' else None
-
-
-def _line_error(lines: Optional[List[str]]) -> Optional[str]:
-    for line in lines or ():
-        match = JOURNAL_ERROR_RE.match(line)
-        if match:
-            return match.group(1)
-    return None
-
-
-def _line_ok(lines: Optional[List[str]], command: str) -> bool:
-    ok = re.compile(r'^ok \d+ ' + command + r'\b')
-    return any(ok.match(line) for line in lines or ())
-
-
-def _taken(lab_dir: Path, name: str) -> bool:
-    """True while the files show the app took the request (LabChannel moves it to done/ first).
-    Both folders are pruned later: the first sighting is stored as `actions.taken_at`."""
-    return (lab_dir / 'done' / (name + '.txt')).exists() or (lab_dir / 'outbox' / (name + '.out')).exists()
 
 
 def _written_after(app: Dict[str, Any], answered_at: Optional[str]) -> bool:
@@ -123,35 +92,25 @@ def _written_after(app: Dict[str, Any], answered_at: Optional[str]) -> bool:
     return answered_at is not None and timestamps.parse(app['written_at']) > timestamps.parse(answered_at)
 
 
-def _withdraw(inbox: Path) -> bool:
-    """True if the request was still in the inbox (the app never took it) and is now gone."""
-    try:
-        os.remove(inbox)
-    except FileNotFoundError:
-        return False
-    return True
-
-
 def _refusal(code: str, message: str, **extra: Any) -> Dict[str, Any]:
     return dict(code=code, message=message, **extra)
 
 
-def _app_error(tool: str, error: str, lines: List[str]) -> Dict[str, Any]:
-    """The refusal for a failed start or stop line (LabChannel's messages)."""
-    if error.startswith('owned by'):
-        # The journal names the owner token: keep it out of the record.
+def _app_error(tool: str, error: AppError, journal: Journal) -> Dict[str, Any]:
+    """The refusal for a failed start or stop command."""
+    if error.kind == ErrorKind.OWNER_CLAIMED:
+        # The app's message names the owner token: keep it out of the record.
         return _refusal('console_held_by_agent', "A lab script holds the app channel's owner lock; "
                         'the daemon does not claim it in Slice 5a.', evidence={'reason': 'channel_owned'})
-    if 'not a program' in error:
+    if error.kind == ErrorKind.PANEL_NOT_PROGRAM:
         return _refusal('panel_not_program', 'The selected panel is not a program.')
-    if 'controller not connected' in error:
-        return _refusal('controller_not_ready', 'The app refused the start: {}'.format(error))
-    match = PROGRAM_IS_RE.match(error)
-    if match and tool == 'run_program':
-        code = 'program_running' if match.group(1) in ('RUNNING', 'STOPPING') else 'program_not_stopped'
-        return _refusal(code, 'The app refused the start: {}'.format(error))
+    if error.kind == ErrorKind.CONTROLLER_NOT_READY:
+        return _refusal('controller_not_ready', 'The app refused the start: {}'.format(error.detail))
+    if error.kind == ErrorKind.PROGRAM_STATE and tool == 'run_program':
+        code = 'program_running' if error.program_state in ('RUNNING', 'STOPPING') else 'program_not_stopped'
+        return _refusal(code, 'The app refused the start: {}'.format(error.detail))
     return _refusal('app_unavailable', 'The app refused the {}: {}'.format(
-        'start' if tool == 'run_program' else 'stop', error), evidence={'journal': lines})
+        'start' if tool == 'run_program' else 'stop', error.detail), evidence={'journal': list(journal.lines)})
 
 
 def _first_blocked(state: Dict[str, Any]) -> None:
@@ -214,10 +173,10 @@ class ProgramActions:
 
     def run_program(self, client_id: str, request: Dict[str, Any]) -> Dict[str, Any]:
         return self._act(client_id, dict(request, tool='run_program'), check_run,
-                         'start {}'.format(START_CONTROLLER_WAIT_S))
+                         Start(controller_wait_s=START_CONTROLLER_WAIT_S))
 
     def stop_program(self, client_id: str, request: Dict[str, Any]) -> Dict[str, Any]:
-        return self._act(client_id, dict(request, tool='stop_program'), check_stop, 'stop')
+        return self._act(client_id, dict(request, tool='stop_program'), check_stop, Stop())
 
     def settle_pending(self, console: str) -> None:
         """Settles every pending action on `console` from what the app shows now (no waiting)."""
@@ -237,12 +196,13 @@ class ProgramActions:
         return reader
 
     def _act(self, client_id: str, request: Dict[str, Any],
-             check: Callable[..., Optional[Dict[str, Any]]], command: str) -> Dict[str, Any]:
+             check: Callable[..., Optional[Dict[str, Any]]], command: Command) -> Dict[str, Any]:
         reader = self._reader(request.get('console'))
         self.settle_pending(reader.console)
         state = reader.console_state()
         instance = state['app']['instance']['id'] if state['app'] is not None else ''
-        record, act = self.plane.begin_action(client_id, request, instance, functools.partial(check, state))
+        name = reader.channel.request_name(request['tool'], str(request.get('request_id')), unique=True)
+        record, act = self.plane.begin_action(client_id, request, instance, functools.partial(check, state), name)
         tool = request['tool']
         action = self.plane.action(client_id, tool, record['request_id'])
         if not act:
@@ -251,7 +211,7 @@ class ProgramActions:
             return record
         key = (client_id, tool, record['request_id'])
         try:
-            shot.write_request(reader.lab_dir, action['inbox_name'], record['request_id'], command)
+            reader.channel.send(action['inbox_name'], record['request_id'], (command,))
         except OSError as e:
             return self.plane.finish_action(*key, refusal=_refusal(
                 'app_unavailable', 'Could not write the {} request into the app\'s inbox ({}); nothing was '
@@ -272,7 +232,7 @@ class ProgramActions:
                 break
             self.sleep(POLL_S)
         if late:
-            if _withdraw(reader.lab_dir / 'inbox' / (action['inbox_name'] + '.txt')):
+            if reader.channel.withdraw(action['inbox_name']):
                 return self.plane.finish_action(*key, refusal=_refusal(
                     'timeout', 'The app did not take the {} request within {:g} s (busy with another '
                     'request?); it was withdrawn and nothing was sent.'.format(action['tool'], wait),
@@ -292,8 +252,8 @@ class ProgramActions:
     def _observe(self, reader: ConsoleReader, action: Dict[str, Any]) -> Dict[str, Any]:
         """Stores the first sighting of the app taking and answering the request; returns the action."""
         name = action['inbox_name']
-        answered = action['answered_at'] is None and _journal(reader.lab_dir, name) is not None
-        taken = action['taken_at'] is None and (answered or _taken(reader.lab_dir, name))
+        answered = action['answered_at'] is None and reader.channel.answer(name) is not None
+        taken = action['taken_at'] is None and (answered or reader.channel.taken(name))
         if not taken and not answered:
             return action
         stamp = timestamps.format(reader.now())
@@ -303,7 +263,7 @@ class ProgramActions:
     def _judge(self, reader: ConsoleReader, action: Dict[str, Any], late: bool) -> Optional[Dict[str, Any]]:
         """The outcome the app shows now, as finish_action keyword arguments, or None to wait.
         `late`: the answer wait is over, so a complete journal that nothing matches is final."""
-        lines = _journal(reader.lab_dir, action['inbox_name'])
+        journal = reader.channel.answer(action['inbox_name'])
         app = reader.console_state()['app']
         if app is None:
             return None
@@ -328,7 +288,7 @@ class ProgramActions:
             return {'refusal': _refusal('app_unavailable', 'The app restarted before the {} settled.'.format(tool),
                                         evidence={'reason': 'instance_replaced', 'instance_id': action['instance_id'],
                                                   'new_instance_id': instance})}
-        started = tool == 'run_program' and _line_ok(lines, 'start')
+        started = tool == 'run_program' and journal is not None and journal.ok(Start)
         if after and transition['source'] == 'ui':
             evidence = {'transition': transition}
             if tool == 'run_program':
@@ -350,16 +310,17 @@ class ProgramActions:
         elif ended:
             return {'result': dict(base, sent=True, stopped_at=transition['at'], stopped_by=transition['source'],
                                    correlated_by='time')}
-        error = _line_error(lines)
+        error = journal.error if journal is not None else None
         if error is None:
-            if late and lines is not None and not ours and not started and _written_after(app, action['answered_at']):
+            if late and journal is not None and not ours and not started and _written_after(app, action['answered_at']):
                 return {'refusal': _refusal(
                     'timeout', 'The app answered the {} but shows nothing this request can be matched to; '
                     'read console://B/state for what runs.'.format(tool),
-                    evidence={'reason': 'outcome_unknown', 'journal': lines, 'transition': transition})}
+                    evidence={'reason': 'outcome_unknown', 'journal': list(journal.lines),
+                              'transition': transition})}
             return None
-        if tool == 'stop_program' and PROGRAM_IS_RE.match(error) and program['state'] == 'stopped':
+        if tool == 'stop_program' and error.kind == ErrorKind.PROGRAM_STATE and program['state'] == 'stopped':
             # The run ended between the check and the stop line, before anything this request can date.
             stopped_by = transition['source'] if transition is not None and transition['action'] == 'stop' else None
             return {'result': dict(base, sent=True, stopped_at=None, stopped_by=stopped_by, correlated_by='state')}
-        return {'refusal': _app_error(tool, error, lines)}
+        return {'refusal': _app_error(tool, error, journal)}

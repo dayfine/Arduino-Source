@@ -20,7 +20,11 @@ New here? Start with [GUIDE.md](GUIDE.md): what pa-lab is and what it gives you 
 | `contracts/v1/invalid_cases.json` | Documents that must fail: name, kind, input, expected field path and message |
 | `tests/test_contracts.py` | Golden parse, round-trip, invalid-case and legacy-mapping tests |
 | `pa_lab/config.py` | Server config: the one-entry allowlist (B), loopback port, owner-only token file |
-| `pa_lab/lab_reader.py` | Strict reads of `Lab/state.json` and `Lab/save.json`; `console://B/state` and `/save` |
+| `pa_lab/lab_reader.py` | Strict reads of the app's state and save fact (through its channel); `console://B/state` and `/save` |
+| `pa_lab/channel.py` | The app channel the core sees: typed commands (`Start`, `Stop`, `Snapshot`, ...), typed answers (`Journal`, `AppError` kinds), `AppChannel` |
+| `pa_lab/channel_file.py` | The version-1 channel over `Lab/`: the only module that knows its layout, request and journal lines and error text |
+| `contracts/v1/channel.md` | The app channel's files, line formats, ordering (state.json after the journal) and retention |
+| `tests/fake_channel.py`, `tests/test_channel_{core,file}.py` | An in-memory channel for core tests; the file channel's own tests |
 | `pa_lab/tools.py`, `pa_lab/shot.py` | `ensure_game` (verification only) and `shot` (newer than the call) |
 | `pa_lab/mcp_server.py` | MCP over Streamable HTTP on `127.0.0.1`: bearer, Host/Origin, sessions, size caps |
 | `pa_lab/app_query.py` | `describe_program` and `game_open`: one-line reads through the app's channel (#504) |
