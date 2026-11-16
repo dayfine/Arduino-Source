@@ -44,6 +44,11 @@ constexpr std::string_view MISSION_BANNER_READING = "scene.mission_banner";
 //  (MissionCompleteDetector). A look with it has no MISSION_BANNER_READING.
 constexpr std::string_view MISSION_COMPLETE_READING = "scene.mission_complete";
 
+//  The reading set to 1 while a tutorial card shows (a bright panel over a
+//  dark, even screen: tutorial_card_shows()). Only A turns its pages; a
+//  catch in the tutorial ends on "Battling wild Pokemon" cards (03.07).
+constexpr std::string_view TUTORIAL_CARD_READING = "scene.tutorial_card";
+
 //  With a choice box on screen (ScreenEvent::CHOICE_BOX), how many rows
 //  the menu has (read_dialog_choice_rows()); unset when they do not read.
 constexpr std::string_view CHOICE_ROWS_READING = "choice.rows";

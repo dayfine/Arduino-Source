@@ -20,7 +20,11 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
+#include "VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatches.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryConfirmChoices.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLines.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerWalk.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
 #include "PokemonLZA_AutoStoryReadings.h"
@@ -113,6 +117,10 @@ std::vector<StoryActionSpec> make_specs(){
         console_only(game_spec("run_to_gate", {
             optional_ms("timeout_ms", 8000, "running this long with no A prompt fails the step"),
         })),
+        console_only(game_spec("catch_tutorial")),
+        console_only(game_spec("battle_then_catch")),
+        console_only(game_spec("walk_to_marker")),
+        console_only(game_spec("claim_mable_research_reward")),
     };
 }
 
@@ -177,6 +185,70 @@ Handler gate_run_handler(StoryEnv* env){
             return Pokemon::outcome_failed("gate_not_reached", std::format("no gate A prompt in {} ms of running", timeout.count()));
         }
         return Pokemon::outcome_ok();
+    };
+}
+
+
+//  03.11's reward: the main menu (overworld_to_main_menu()), Mable's
+//  Research three rows down, A. The page opens on Rewards under her lines on
+//  the level 2 reward, TM004 Rock Smash (console B, 2026-11-10): A through
+//  them, then B out of the menu to her talk. No line at all: the page did
+//  not open on her reward (03.10 r6, console B 2026-11-14: not in her
+//  office). Fails as "no_reward_lines", "reward_lines_endless" or
+//  "menu_not_closed".
+Outcome claim_research_reward(StoryEnv& env, PlzaBackend& backend){
+    overworld_to_main_menu(env.env.console, env.context);
+    for (int i = 0; i < 3; i++){
+        backend.press(BUTTON_DOWN, 160ms, 400ms);
+    }
+    backend.press(BUTTON_A, 160ms, 2840ms);
+    const LinesPassed passed = press_a_through_lines(backend, /*quiet=*/3s, /*limit=*/60s);
+    if (passed.timed_out){
+        return Pokemon::outcome_failed("reward_lines_endless", "Mable's lines did not end within 60 s");
+    }
+    if (!passed.text){
+        return Pokemon::outcome_failed("no_reward_lines", "no dialog after opening Mable's Research: no reward was claimed");
+    }
+    if (!press_b_out_of_menu(backend, /*presses=*/60)){
+        return Pokemon::outcome_failed("menu_not_closed", "no party bar or talk after 60 B presses out of the menu");
+    }
+    return Pokemon::outcome_ok();
+}
+
+//  A console action's body.
+using ConsoleStep = Outcome (*)(StoryEnv& env, PlzaBackend& backend);
+
+//  The console actions run by a ConsoleStep, by name: console_only.
+const std::map<std::string_view, ConsoleStep>& console_steps(){
+    static const std::map<std::string_view, ConsoleStep> steps{
+        {"catch_tutorial", [](StoryEnv& env, PlzaBackend& backend){
+            return catch_tutorial(env, backend, /*max_throws=*/6);
+        }},
+        {"battle_then_catch", [](StoryEnv& env, PlzaBackend& backend){
+            return battle_then_catch(env, backend, /*max_rounds=*/6);
+        }},
+        {"walk_to_marker", walk_to_marker},
+        {"claim_mable_research_reward", claim_research_reward},
+    };
+    return steps;
+}
+
+//  `step` on the console `env`; none: fails as console_only. An
+//  OperationFailedException becomes a failed Outcome, so the run can report
+//  it.
+Handler console_handler(StoryEnv* env, std::string_view name, ConsoleStep step){
+    if (env == nullptr){
+        return [name = std::string(name)](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
+            return Pokemon::outcome_failed(std::string(Pokemon::CONSOLE_ONLY), name + " runs only on a console");
+        };
+    }
+    return [env, name = std::string(name), step](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+        try{
+            return step(*env, backend);
+        }catch (OperationFailedException& e){
+            backend.log(std::format("[PLZA] {} failed: {}", name, e.message()));
+            return Pokemon::outcome_failed("operation_failed", e.message());
+        }
     };
 }
 
@@ -504,6 +576,10 @@ Handler plza_handler(StoryEnv* env, const StoryActionSpec& spec){
     }
     if (spec.name == "run_to_gate"){
         return gate_run_handler(env);
+    }
+    const auto console_step = console_steps().find(spec.name);
+    if (console_step != console_steps().end()){
+        return console_handler(env, spec.name, console_step->second);
     }
     if (spec.name == "wait_for_platform"){
         return platform_handler(PlatformWait::PLATFORM_ONLY);

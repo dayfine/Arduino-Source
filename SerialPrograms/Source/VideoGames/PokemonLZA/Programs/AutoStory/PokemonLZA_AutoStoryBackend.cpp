@@ -16,6 +16,7 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryBattles.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 
@@ -77,6 +78,9 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
             look.readings[std::string(MISSION_COMPLETE_READING)] = 1;
         }else if (m_mission_banner.detect(*frame.frame)){
             look.readings[std::string(MISSION_BANNER_READING)] = 1;
+        }
+        if (tutorial_card_shows(*frame.frame)){
+            look.readings[std::string(TUTORIAL_CARD_READING)] = 1;
         }
         if (look.events.has(ScreenEvent::CHOICE_BOX)){
             const std::optional<DialogChoiceRows> rows = read_dialog_choice_rows(*frame.frame);

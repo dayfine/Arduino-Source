@@ -69,7 +69,8 @@ const StoryDataCase STORY_DATA_CASES[] = {
             "02.01:from_save:unverified 02.02:from_save:unverified 02.03:from_save:unverified 02.04:from_save:unverified "
             "02.05:from_save:unverified 02.06:from_save:autosave 02.07:from_save:unverified "
             "03.01:from_save:autosave 03.02:from_save 03.03:from_save:autosave 03.04:from_save "
-            "03.05:from_save:autosave 03.06:from_save"
+            "03.05:from_save:autosave 03.06:from_save 03.07:from_save:autosave 03.09:from_save:unverified "
+            "03.10:from_save:autosave 03.11:from_save:unverified"
         },
     },
 };
@@ -560,6 +561,21 @@ const RunCase RUN_CASES[] = {
         .name = "03.06's run to the gate needs a console",
         .input = {.checkpoint = "03.06", .first_step = 4, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at to_zone_1_gate: console_only", .inputs = ""},
+    },
+    {
+        .name = "03.07's tutorial catch needs a console",
+        .input = {.checkpoint = "03.07", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .expectation = {.verdict = "failed at catch_fletchling: console_only", .inputs = ""},
+    },
+    {
+        .name = "03.09's walk to the objective marker needs a console",
+        .input = {.checkpoint = "03.09", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .expectation = {.verdict = "failed at to_research_lab: console_only", .inputs = ""},
+    },
+    {
+        .name = "03.11's reward needs a console",
+        .input = {.checkpoint = "03.11", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .expectation = {.verdict = "failed at rock_smash_tm: console_only", .inputs = ""},
     },
 };
 
