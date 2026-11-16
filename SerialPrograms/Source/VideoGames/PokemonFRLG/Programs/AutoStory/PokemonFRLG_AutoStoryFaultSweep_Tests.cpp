@@ -107,8 +107,6 @@ const std::map<std::string, std::string> KNOWN_FAILING{
         "below_gym_tree walks onto the gym's door warp and sees no fade (VermilionCity_Gym (4, 12)): the door's warp on the sim after trash_cans, which the sim stubs, not yet looked at"},
     {"PokemonFRLG::AutoStory - Fault sweep: 09.02, clean run",
         "b2f_arrows_to_lift_room moves nothing twice from RocketHideout_B2F (1, 4) after moon_stone, a talk the sim stubs: the arrow tiles' spin from that tile on the sim, not yet looked at"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 17.03, clean run",
-        "Takashi (10, 2) walks up to (10, 4) when he sees the player on (10, 5) and stays there after the battle, so below_giovanni's way north up column 10 is blocked (moved nothing twice); on the console too: the route after a line battle planned with the trainer who walked up as a wall (with_trainers()), or a way to Takashi from row 3"},
     {"PokemonFRLG::AutoStory - Fault sweep: 08.03, mount lost",
         "riding with no fault, route7_underground_exit's warp to UndergroundPath_EastEntrance is not confirmed on the sim (the screen after the fade reads as before the hold): the sim's warp off the Bicycle, before this class can sweep 08.03"},
 };
