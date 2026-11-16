@@ -357,3 +357,10 @@ panel's current options, and the program's own `run_prechecks()` at Start are th
 it required again. Also 5b: staging `options`, claiming the channel's owner token (a claimed
 channel is refused today), `cfr_batch`, and the console-B soak (every mutation has exactly one
 record).
+
+## User pages
+
+`GUIDE.md` is the user-facing overview; `guide/*.md` has one page per feature, marked DRAFT
+until it is built and switched on. A PR that builds or switches on part of a feature updates
+its page in the same PR: the status line at the top, the tool tables, and the DRAFT banner when
+the feature is done.

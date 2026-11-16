@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import allow, header_api, layering, style
+from . import allow, exposure, header_api, layering, param_comments, style
 from .classes import measure_classes
 from .findings import annotations
 from .git_files import changed_files, default_base, read_revision
@@ -22,6 +22,7 @@ def run(root, base_ref=None, github=False):
         base_ref, how = default_base(root)
         print(f'Base: {base_ref} ({how}).')
     changes = changed_files(root, base_ref)
+    users = exposure.git_users(root)
     failures, notes, bypassed = [], [], []
     advisory = 0
     for current, original in changes:
@@ -40,6 +41,10 @@ def run(root, base_ref=None, github=False):
         notes.extend(unneeded)
         style_errors, style_notes = style.check(current, source, previous_source)
         style_errors += header_api.prefix_overloads(current, source, previous_source)
+        # Advisory: both report many sites a reviewer may accept (pbf_* timings, API for a
+        # later PR in a stack); see the README's Style table for the measured rates.
+        style_notes += param_comments.check(current, source, previous_source)
+        style_notes += exposure.check(current, source, previous_source, users)
         # Waive errors and advisories in one pass, so a tag on either counts as used.
         kept, waived, unattached = allow.waive(current, source, allowances, style_errors + style_notes)
         failures.extend([f for f in kept if f in style_errors] + unattached)

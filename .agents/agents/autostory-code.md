@@ -66,6 +66,13 @@ being restated.
     expectation, the name not inside the input; `std::string_view` by value for read-only string
     params; `std::optional`, not sentinels like `""` or `-1`; pixel readers in `Detectors/` read only
     and press nothing, presses go in `Actions/`.
+  - No vacuous tests: a test that only restates the code's arithmetic or constants, or passes for
+    any implementation, is not added. Test behavior a caller relies on.
+  - Don't widen a header to test internals: test through the public function, or keep the helper
+    in the .cpp's anonymous namespace (code health `test_only_api`).
+  - A literal argument in a call of 3+ arguments gets a parameter comment:
+    `pbf_press_button(context, BUTTON_A, /*hold=*/160ms, /*release=*/400ms)` (code health
+    `param_comment`).
 - **Commit early, finish in one turn.** Commit and push as soon as the scoped checks pass; CI runs the
   full build and tests after the push. Then, in the foreground and without ending the turn:
   verify → commit → push → open the PR → confirm the PR's file list. Never end with an unpushed commit.

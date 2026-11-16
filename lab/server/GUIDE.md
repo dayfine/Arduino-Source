@@ -31,6 +31,35 @@ check-ins). It returns:
 | `newest_failure_frame`, `newest_screenshot` | Paths to the latest failure frame and screenshot |
 | `log_tail` | The last log lines (how many is a parameter) |
 
+Example. Ask in a session: *"what's console B doing?"* Claude calls
+`console_status(console="B", log_lines=3)` and gets (real output from 2026-11-15, trimmed):
+
+```json
+{
+  "console": "B",
+  "app": {"pid": 87625, "deployment": "slot-B-plza/f0caeb52e879-b440bb4e"},
+  "lab_state": {"state": "STOPPING", "program": "PokemonSV:AutoStory", "controller": "ready", "error": ""},
+  "console_state": {
+    "availability": {"state": "available", "reason": null},
+    "video": {"state": "live", "frame_seq": 7445},
+    "lease": {"state": "user", "owner": "user", "acquired_at": "2026-11-16T00:00:51.929Z"},
+    "blocked": [
+      {"code": "console_held_by_user", "message": "The user clicked Stop in the app at 00:00; console B is theirs until they release it."},
+      {"code": "program_running", "message": "PokemonSV:AutoStory is stopping."}
+    ]
+  },
+  "program_state": "2026-11-15 16:00:51.929720 - [Program]: Program State: STOPPING",
+  "last_run": ["... [Checkpoint] 18.02: passed on attempt 1 (one-shot)"],
+  "last_press": "16:00:21",
+  "keepawake": "15:57:35 idle 189s: pressed B through Lab inbox (NO_PROGRAM)",
+  "newest_failure_frame": ".../Screenshots/AutoStory/failures/20261115-151031611644-by_pad_to_bottom_right.png",
+  "log_tail": ["...", "...", "..."]
+}
+```
+
+With the app closed, `app` is `null` and `blocked` says
+`{"code": "app_unavailable", "message": "The app that wrote Lab/state.json (pid 96761) is not running."}`.
+
 **Two resources**, for clients that read resources instead of calling tools:
 `console://B/state` (the same console state) and `console://B/save` (what is known about the
 save on the console; today usually `unknown`, see Slice 6 below).
@@ -64,13 +93,16 @@ one record, and a retried request never starts the program twice.
 
 ## What comes next
 
-| Slice | What you would get |
-|---|---|
-| 4 (rest) | FRLG AutoStory's start checks listed and run before any press (fork #488) |
-| 5 (rest) | The server runs the program's start checks before a start and refuses on a failed one (`preflight_program`), passes options, and runs debug button batches (`cfr_batch`); then a soak on console B |
-| 6 | Save facts: the server knows which save is on the console and refuses a run that would start from the wrong one; run records become readable |
-| 7 | The server launches and supervises the lab app itself, so a build always starts with the right profile |
-| 8 | Optional: a local worker for routine operations |
+Each feature has a user page, marked **DRAFT** until it is built and switched on. The drafts
+are updated as each piece lands.
+
+| Slice | What you would get | Page |
+|---|---|---|
+| 4 (rest) | Every program lists what it needs before it starts; FRLG AutoStory's list is next (fork #488) | [start-checks.md](guide/start-checks.md) |
+| 5 | Leased actions: an agent asks to run or stop a program; the server refuses whenever you hold the console, and (5b) when a start check fails. Every action gets exactly one record. 5a is built in #592 and 5b's server side in #SLICE5B; neither is switched on, and the app does not yet run start checks on request. | [actions.md](guide/actions.md) |
+| 6 | Save facts: the server knows which save is on the console and refuses a run that would start from the wrong one; run records become readable | [saves.md](guide/saves.md) |
+| 7 | The server launches and supervises the lab app itself, so a build always starts with the right profile | [app-lifecycle.md](guide/app-lifecycle.md) |
+| 8 | Optional: a local worker for builds and test runs | [worker.md](guide/worker.md) |
 
 ## Limits
 

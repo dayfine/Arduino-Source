@@ -95,14 +95,15 @@ void load_move_table(){
 `// code-health: allow <check>[,<check>] -- <justification>` lets the listed metrics of one
 function or class exceed their limit. Checks are the metric names in the table above:
 `file_lines`, `function_lines`, `nesting`, `parameters`, `public_methods`, `public_data`,
-`single_method_interface`, `header_symbols`. Four style findings take a tag too: `char_pointer`,
-`overload_prefix`, `out_param_order` and `string_concat`, for a C API or a fixed interface that needs them. Other style and layering
+`single_method_interface`, `header_symbols`. Six style findings take a tag too: `char_pointer`,
+`overload_prefix`, `out_param_order`, `string_concat`, `param_comment` and `test_only_api`, for a C API
+or a fixed interface that needs them. Other style and layering
 findings have no bypass.
 
 - **Place it** on the function's or class's first line, or in the comment block directly above
   it (only `//` comment and `template` lines between). A `file_lines` tag goes in the first 20
   lines of the file, and so does a `header_symbols` tag. A style tag (`char_pointer`, `overload_prefix`,
-  `out_param_order`, `string_concat`) goes on the flagged line or in the comment block directly above it, and waives the finding whether it is an error or advisory. A tag that attaches to nothing fails.
+  `out_param_order`, `string_concat`, `param_comment`, `test_only_api`) goes on the flagged line or in the comment block directly above it, and waives the finding whether it is an error or advisory. A tag that attaches to nothing fails.
 - **Justify it:** the text after `--`, on the tag line itself, must be at least 40 characters and 6 words,
   and say why splitting would make the code worse. Unknown checks, a missing or short
   justification, or a malformed tag fail.
@@ -157,8 +158,20 @@ lexer, not a parser: rules that need types stay in review.
 | Output parameters last: a non-const `T&` parameter before a by-value, `const&` or `&&` one. Not reported: context handles conventionally first (`*Env`/`*Environment`, `*Context`, `*Actions`, `*Backend`, `*Option`, `*Logger`, `ConsoleHandle`, `VideoStream`, `VideoOverlay`, `VideoFeed`, `AudioFeed`, `CancellableScope`, `UnitTestDatabase`, `AsyncCommandSession`, `std::*stream`); pointers, packs and function types (neither input nor output); constructors, operators, `override`/`final`, `= delete`; out-of-class `A::f` definitions in a `.cpp` (the header declaration is checked); a changed line whose signature keeps its parameter kinds | advisory for now, error before upstream (tag: `out_param_order`) | Google "Function Parameter Ordering" |
 | Building a string with `+`: a string literal, `std::to_string(...)` or `std::string(...)` next to a binary `+` (also `s += "a" + b`). Not reported: `+=` appends, `++`, numeric/pointer `+`, files including Qt headers (QString) | advisory for now, error before upstream (tag: `string_concat`) | fork AGENTS.md "Strings": use `std::format` |
 | A comment whose first sentence describes the neighbouring function, none of its own | advisory | CONTRIBUTING; Google "Function Comments" |
+| A literal argument without a `/*param=*/` comment in a call of 3+ arguments: numbers (`2`, `0ms`, `1.5f`), `true`/`false`, `nullptr`, brace lists of those (`{0, 0}`, `{}`). With the callee declared once per arity in the same file, a comment naming another parameter too. Not reported: string/char literals, macros, `std::` calls, format/log calls (name contains format/print/log, or a string literal first), all-number tuples and `*Box`/`*Color`/`*Point`/`*Rect` constructors, a leading `nullptr` (null logger or Qt parent), a lone trailing duration in a call of at most 4 arguments (`save_button_shows(console, context, 5s)`); calls outside brace bodies (declarations, default arguments) (`param_comments.py`) | advisory (tag: `param_comment`) | Google "Function Arguments"; user review on fork #590 |
+| A public namespace-scope name a header adds (on an added line, new since the base) whose only users outside the header and its own .cpp are test files (`*_Tests.cpp`, `*_Test.cpp`, `Tests/`), or that only its own .cpp uses. Users: one `git grep -o -w` over tracked C++. Not reported: names nothing uses yet, names another kept public declaration of the header mentions (parameter, return or member type), `add_tests*` hooks, test headers (`exposure.py`) | advisory (tag: `test_only_api`) | user review on fork #590: test through the public function, or keep the helper in the .cpp's anonymous namespace |
 
 Advisories print as `Advisory:` lines and `::warning` annotations and never fail.
+
+`param_comment` and `test_only_api` are advisory by their measured rates (2026-11-15). On 18 fork
+PRs (#567-#591) `param_comment` reported 379 calls, 257 of them in test files and 91 controller
+timings (`pbf_press_button(context, BUTTON_A, 160ms, 400ms)`); no lexer misreads in a 42-finding
+sample, and it reports exactly the review's sites on #590 (`{0, 0}`, `0ms`) and #572 (`2`). As a
+failure it would fail nearly every open program PR. `test_only_api` reported 203 names on 10 of
+those PRs and exactly #590's three helpers; on the PLZA slice stack 31 of 64 names gained a
+non-test caller later in the stack (API added one PR before its caller), and upstream's
+`Common/ControllerStates` C-style headers (constants and `*_equals` used only by their own .cpp)
+are reported too.
 
 ## Build and native C++ tests in one command
 
