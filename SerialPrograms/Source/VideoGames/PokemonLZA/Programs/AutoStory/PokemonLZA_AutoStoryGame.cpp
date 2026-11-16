@@ -511,9 +511,10 @@ Outcome text_to_choice_step(Pokemon::StoryBackend<ZonePose>& backend, const Stor
 
 
 //  A step's scene ("scene" "a"): A through its text until the party bar
-//  holds a second, 120 s at most. Fails as "scene_never_started" when
-//  neither text, a choice, a battle nor control shows within 45 s: the
-//  player is not at the scene's trigger.
+//  holds a second, 120 s at most; a cutscene with no text and no HUD is
+//  waited out. Fails as "scene_never_started" when the HUD shows 45 s with
+//  no text, choice, battle or cutscene: the player is not at the scene's
+//  trigger.
 Outcome scene_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
     SceneMachineConfig config;
     config.start_window = 45s;

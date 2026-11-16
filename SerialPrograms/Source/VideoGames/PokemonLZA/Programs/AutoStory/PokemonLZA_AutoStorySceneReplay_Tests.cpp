@@ -69,6 +69,13 @@ SceneMachineConfig battle_area_config(){
     return config;
 }
 
+//  A "scene" step's config (scene_step(): the scene must start within 45 s).
+SceneMachineConfig scene_step_config(){
+    SceneMachineConfig config;
+    config.start_window = 45000ms;
+    return config;
+}
+
 
 //  01.01 arrival_scenes, passed (console B 2026-11-15 21:29, Italian).
 constexpr std::string_view PASS_0101_IT_A = R"(
@@ -456,6 +463,17 @@ screen 9: hint_showing at 12.9s: controls hint
 screen 10: controls_hint at 14.0s: controls hint
 )";
 
+//  02.02 street_scene, failed as scene_never_started (console B 2026-11-15
+//  23:23, English): a Pokemon with a red staff drives the trainers off in
+//  a cutscene with no text and no HUD for 41 s after the black fade.
+constexpr std::string_view FAIL_0202_STREET_CUTSCENE = R"(
+screen 1: fade_black at 0.0s: black fade, still, fade 1
+screen 2: scene_still at 3.8s: still
+screen 3: scene_moving at 4.9s: nothing
+scene_moving x61 over 30.5s, 0 presses
+screen 4: never_started at 45.0s: nothing
+)";
+
 //  The looks of one screen in a scene machine's log: the state's events
 //  and readings by their names in the log ("text box", "advance arrow";
 //  describe_look()). The fade count ("fade 1/3") is the machine's own.
@@ -621,6 +639,19 @@ const ReplayCase REPLAY_CASES[] = {
     {
         .name = "01.02 battle_area, English pass on 2026-11-13: the controls hint ends the step",
         .input = {.looks = replay_log(PASS_0102_EN), .config = battle_area_config()},
+        .expectation = {.verdict = "done", .end = "[PLZA test] done on controls_hint."},
+    },
+    {
+        //  The run stopped at 45.0 s; the controls hint after the cutscene
+        //  is synthetic (the run never got there).
+        .name = "02.02 street_scene, English, a textless cutscene past the start window, then the controls hint",
+        .input = {
+            .looks = replay_then(FAIL_0202_STREET_CUTSCENE, {
+                look_at(/*at=*/46000ms, /*events=*/{}, {CONTROLS_HINT_READING}),
+                look_at(/*at=*/47100ms, /*events=*/{}, {CONTROLS_HINT_READING}),
+            }),
+            .config = scene_step_config(),
+        },
         .expectation = {.verdict = "done", .end = "[PLZA test] done on controls_hint."},
     },
 };

@@ -572,15 +572,15 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 0, .states = "scene_moving, choice"},
     },
     {
-        .name = "no text, choice or battle within the start window: the scene never started",
+        .name = "the party bar up through the start window and no scene: the scene never started",
         .input = {
-            .looks = {look_at(0ms), look_at(10000ms, BLACK), look_at(44900ms, STILL), look_at(45000ms, STILL)},
+            .looks = {look_at(0ms, PARTY), look_at(10000ms, PARTY), look_at(44900ms, PARTY), look_at(45000ms, PARTY)},
             .config = scene_step_config(),
         },
         .expectation = {
             .verdict = "failed: scene_never_started",
             .a_presses = 0,
-            .states = "scene_moving, fade_black, never_started",
+            .states = "awaiting_scene, never_started",
         },
     },
     {
@@ -629,16 +629,30 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] done: quiet, taken as control."},
     },
     {
-        //  console B, 2026-11-13: 02.02 after the Brigitte battle walked
-        //  past the street scene's trigger and A-mashed for two minutes.
-        .name = "a scene step past its trigger fails as scene_never_started",
-        .input = {.looks = {look_at(0ms, BLACK), look_at(2000ms), look_at(46000ms)}, .config = scene_step_config()},
-        .expectation = {.verdict = "failed: scene_never_started", .a_presses = 0},
+        //  console B, 2026-11-15: 02.02's street scene moved 41 s with no
+        //  text and no HUD after its black fade.
+        .name = "a scene step's textless cutscene past the start window: the scene is under way, done on the party bar",
+        .input = {
+            .looks = {
+                look_at(0ms, BLACK), look_at(2000ms), look_at(46000ms), look_at(47000ms, PARTY), look_at(48100ms, PARTY),
+            },
+            .config = scene_step_config(),
+        },
+        .expectation = {.verdict = "done", .a_presses = 0, .line = "[PLZA test] done on can_move."},
     },
     {
-        .name = "a scene step whose scene played out before it ends on the party bar",
-        .input = {.looks = {look_at(0ms, PARTY), look_at(1000ms, PARTY)}, .config = scene_step_config()},
-        .expectation = {.verdict = "done", .a_presses = 0, .line = "[PLZA test] done on can_move."},
+        //  console B, 2026-11-13: 02.02 after the Brigitte battle walked
+        //  past the street scene's trigger and A-mashed for two minutes.
+        .name = "a scene step past its trigger, the controls hint up for the start window, fails as scene_never_started",
+        .input = {
+            .looks = {
+                look_at(/*at=*/0ms, NOTHING, {CONTROLS_HINT_READING}),
+                look_at(/*at=*/1500ms, NOTHING, {CONTROLS_HINT_READING}),
+                look_at(/*at=*/45000ms, NOTHING, {CONTROLS_HINT_READING}),
+            },
+            .config = scene_step_config(),
+        },
+        .expectation = {.verdict = "failed: scene_never_started", .a_presses = 0, .states = "awaiting_scene, never_started"},
     },
     {
         .name = "a minute with nothing going on fails as scene_quiet",
