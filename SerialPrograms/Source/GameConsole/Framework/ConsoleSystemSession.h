@@ -20,6 +20,8 @@
 #ifndef PokemonAutomation_GameConsole_ConsoleSystemSession_H
 #define PokemonAutomation_GameConsole_ConsoleSystemSession_H
 
+#include <optional>
+#include "Common/Cpp/Time.h"
 #include "Common/Cpp/UiWrapper.h"
 #include "Common/Cpp/EarlyShutdown.h"
 #include "Common/Cpp/Logging/TaggedLogger.h"
@@ -78,6 +80,7 @@ public:
     size_t console_number() const{ return m_console_number; }
     bool allow_commands_while_locked() const{ return m_allow_commands_while_locked; }
     std::string status() const;
+    friend std::optional<WallClock> last_user_input(const ConsoleSystemSession& session);
 
     Logger& logger(){ return m_logger; }
 
@@ -148,6 +151,7 @@ private:
     std::string m_lock_controllers_reason;
     bool m_focused = false;
     std::string m_status_text;
+    std::optional<WallClock> m_last_user_input;
 
     std::unique_ptr<MemoryUtilizationStats> m_memory_usage;
     std::unique_ptr<CpuUtilizationStat> m_cpu_utilization;
@@ -155,6 +159,12 @@ private:
 
     ListenerSet<Listener> m_listeners;
 };
+
+
+//  When a press from the window's controller input (keyboard or gamepad)
+//  last reached the console of `session`, or nullopt if none has. The lab
+//  channel's user hold (LabHold.h) reads it.
+std::optional<WallClock> last_user_input(const ConsoleSystemSession& session);
 
 
 

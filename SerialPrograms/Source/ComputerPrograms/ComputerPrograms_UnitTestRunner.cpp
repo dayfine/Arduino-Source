@@ -31,6 +31,7 @@
 #include "PanelCatalog_Tests.h"
 #include "CommonFramework/Startup/LabStartupPolicy_Tests.h"
 #include "CommonFramework/Devices/LabDeviceAccessQt_Tests.h"
+#include "CommonFramework/Windows/LabHold_Tests.h"
 #include "CommonFramework/VideoPipeline/Sources/VideoSource_MgbaLink_Tests.h"
 #include "Controllers/MgbaLink/MgbaLink_Keys_Tests.h"
 #include "Controllers/MgbaLink/MgbaLink_KeySender_Tests.h"
@@ -122,6 +123,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_LabStartupPolicy(ret);
     add_tests_HeadlessHost(ret);
     add_tests_LabDeviceAccess(ret);
+    add_tests_LabHold(ret);
     MgbaLink::add_tests(ret);
     MgbaLink::add_key_tests(ret);
     MgbaLink::add_key_sender_tests(ret);
