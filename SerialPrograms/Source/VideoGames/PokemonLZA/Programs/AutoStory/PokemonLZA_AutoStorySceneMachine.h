@@ -6,7 +6,7 @@
  *  states (CommonTools/ScreenMachine) that match on what the backend
  *  observed, so they run on the console and on a scripted backend alike:
  *  every look picks one state, the state takes one step, and each change of
- *  state is logged with the look's events. A text box (with or without a
+ *  state or of the look's events is logged (repeats are summed up). A text box (with or without a
  *  choice, whose top row A takes) or the advance chevron
  *  (ADVANCE_ARROW_READING) gets A. The player has control when the
  *  tutorial's controls hint (CONTROLS_HINT_READING) holds a second, or when
@@ -48,7 +48,7 @@ struct SceneMachineConfig{
 //  Presses through scenes until the controls hint has held a second, or
 //  the mission banner has shown on two looks (then waits up to 10 s for it
 //  to go), on run_screen_machine(). `label` names its log lines ("[PLZA
-//  mash_to_move_hints] dialog: text box"). Fails as "scene_quiet" on the
+//  mash_to_move_hints] screen 2: dialog at 1.5s: text box"). Fails as "scene_quiet" on the
 //  quiet end, "scene_timeout" when `timeout` passes (by the looks' time),
 //  and "scene_stuck" on a state that comes up too often or a screen that
 //  stops changing.
