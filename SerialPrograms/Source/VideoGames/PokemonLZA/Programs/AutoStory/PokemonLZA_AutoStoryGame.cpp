@@ -193,27 +193,6 @@ Handler new_game_handler(StoryEnv* env, std::string name, std::function<void(Sto
 }
 
 
-//  How close to a run's heading the minimap's arrow must read.
-constexpr double HEADING_TOLERANCE = 10;
-
-//  Turns the player to `heading` on the minimap (upstream's
-//  get_facing_direction(): 0 up, 90 right) with story_turn(), 4 turns at
-//  most, then L puts the camera behind the player, so a run forward goes
-//  that way (console B, 2026-11-14). Fails as "heading_missed".
-Outcome face_heading(StoryEnv& env, PlzaBackend& backend, double heading){
-    for (int turns = 0; turns <= 4; turns++){
-        const double now = get_facing_direction(env.env.console, env.context);
-        if (get_angle_between_facing_directions(now, heading) <= HEADING_TOLERANCE){
-            backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
-            return Pokemon::outcome_ok();
-        }
-        if (turns < 4){
-            story_turn(backend, heading - now);
-        }
-    }
-    return Pokemon::outcome_failed("heading_missed", std::format("not facing {:.0f} deg after 4 turns", heading));
-}
-
 //  "run_to_gate"'s run: straight on with upstream's
 //  run_towards_gate_with_A_button() until the gate's A prompt; once more
 //  after a day/night change, which stops the run. Fails as
