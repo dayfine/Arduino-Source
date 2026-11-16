@@ -7,7 +7,12 @@
  *  otherwise, and START once the battle is gone, as between_turns(),
  *  battle_gone() and no_battle_screen() in PokemonFRLG_AutoStoryBattle.cpp
  *  run them. Regression for 16.05 (console B, 2026-11-15): black at Silph
- *  Co.'s map edge read as the text box, three holds, then a stop.
+ *  Co.'s map edge read as the text box, three holds, then a stop. And the
+ *  party list after the lead fainted, which ends the loop at once, as
+ *  step() stops for it first: on 16.05 (console B, 2026-11-15 13:42)
+ *  Blastoise fainted to Giovanni and the loop pressed B at "Choose a
+ *  POKeMON." for 60 s. read_text_screen() reads that party list on the
+ *  capture.
  *
  */
 
@@ -18,7 +23,9 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Pokemon/AutoStory/Pokemon_ScriptedReadings.h"
+#include "Tests/ImageUnitTest.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattleTurns.h"
 #include "PokemonFRLG_AutoStoryEvolutionWait_Tests.h"
@@ -53,6 +60,12 @@ const BattleTextScreen CONGRATULATIONS{.text_box = true, .arrow = true};
 //  The black at a map's edge as the blue-only check read it before the
 //  frame check: the text box with nothing else.
 const BattleTextScreen EDGE_AS_BOX{.text_box = true};
+//  "BLASTOISE fainted!" with the foe's HP box.
+const BattleTextScreen LEAD_FAINTED_TEXT{.text_box = true, .hp_box = true, .arrow = true};
+//  The party list, "Choose a POKeMON.", the lead's HP bar empty; its white
+//  text box taken for the battle's, so it would hold for an evolution if
+//  the fainted lead didn't come first.
+const BattleTextScreen PARTY_LEAD_FAINTED{.text_box = true, .lead_fainted = true};
 
 //  What the loop did after the last turn.
 struct ExitRun{
@@ -60,6 +73,9 @@ struct ExitRun{
     size_t b_presses = 0;
     //  When START opened the menu, from the start; none if it never did.
     std::optional<Milliseconds> left = std::nullopt;
+    //  When the loop stopped for a fainted lead, from the start; none if
+    //  it didn't.
+    std::optional<Milliseconds> lead_fainted = std::nullopt;
 };
 
 //  The loop from the last turn (one that attacked) on `script`, START
@@ -72,6 +88,10 @@ ExitRun run_exit(std::vector<ScriptedReading<BattleTextScreen>> script, Millisec
     ExitRun run;
     while (source.elapsed() < RUN_LIMIT){
         const std::optional<BattleTextScreen> screen = source.read();
+        if (screen && screen->lead_fainted){
+            run.lead_fainted = source.elapsed();
+            return run;
+        }
         if (screen && hold.holds(*screen)){
             const Milliseconds held = hold.wait_out(POLL, source);
             hold.held(held, false);
@@ -109,6 +129,9 @@ struct EvolutionWaitExpectation{
     Milliseconds left_by = Milliseconds(0);
     //  Whether the loop took the lead for evolved; none: not checked.
     std::optional<bool> evolved = std::nullopt;
+    //  The loop stops for a fainted lead by then, from the start, and
+    //  START never opens the menu; none: it never stops for one.
+    std::optional<Milliseconds> lead_fainted_by = std::nullopt;
 };
 
 struct EvolutionWaitCase{
@@ -128,6 +151,18 @@ UnitTestResult check_run(const ExitRun& run, const EvolutionWaitExpectation& exp
                 c + 1, run.holds[c].count(), expected.holds[c].min.count(), expected.holds[c].max.count()
             );
         }
+    }
+    if (expected.lead_fainted_by){
+        if (!run.lead_fainted){
+            return std::format("expected a stop for the fainted lead by {} ms; none ({} B presses)", expected.lead_fainted_by->count(), run.b_presses);
+        }
+        if (*run.lead_fainted > *expected.lead_fainted_by){
+            return std::format("stopped for the fainted lead at {} ms, expected by {} ms", run.lead_fainted->count(), expected.lead_fainted_by->count());
+        }
+        return true;
+    }
+    if (run.lead_fainted){
+        return std::format("stopped for a fainted lead at {} ms", run.lead_fainted->count());
     }
     if (!run.left){
         return std::format("START never opened the menu in {} s ({} B presses)", RUN_LIMIT.count() / 1000, run.b_presses);
@@ -211,6 +246,35 @@ const EvolutionWaitCase EVOLUTION_WAIT_CASES[] = {
         },
         .expectation = {.holds = {}, .left_by = 5000ms, .evolved = false},
     },
+    {
+        //  16.05: Blastoise fainted to Giovanni at turn 7.
+        .name = "the lead fainted, then the party list: a stop at once, no hold",
+        .input = {
+            .script = {{2500ms, LEAD_FAINTED_TEXT}, {1000ms, BLACK}, {120000ms, PARTY_LEAD_FAINTED}},
+            .overworld_from = RUN_LIMIT,
+        },
+        .expectation = {.holds = {}, .left_by = RUN_LIMIT, .lead_fainted_by = 3500ms + POLL},
+    },
+};
+
+
+//  read_text_screen()'s fainted lead on console B's captures.
+class Test_ReadLeadFainted : public ImageUnitTest{
+public:
+    Test_ReadLeadFainted(const std::string& image, bool expected)
+        : ImageUnitTest(std::format("PokemonFRLG::AutoStoryBattle lead fainted - {}", image), {image})
+        , m_expected(expected)
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        return read_text_screen(images[0]).lead_fainted == m_expected;
+    }
+
+private:
+    bool m_expected;
 };
 
 } // namespace
@@ -220,6 +284,12 @@ void add_tests_AutoStoryEvolutionWait(UnitTestDatabase& database){
     for (const EvolutionWaitCase& test_case : EVOLUTION_WAIT_CASES){
         database.add<Test_EvolutionWait>(test_case);
     }
+    //  16.05, Silph Co. (console B, 2026-11-15 13:42): the party list after
+    //  Blastoise fainted to Giovanni, its HP bar empty; a party list with
+    //  the lead's HP left; and a battle menu.
+    database.add<Test_ReadLeadFainted>("PokemonFRLG/AutoStoryBattle/SilphCo_GiovanniLeadFainted_True.png", true);
+    database.add<Test_ReadLeadFainted>("PokemonFRLG/Party/Party_1.png", false);
+    database.add<Test_ReadLeadFainted>("PokemonFRLG/AutoStoryBattle/Route21_SpencerMenu_False.png", false);
 }
 
 
