@@ -398,6 +398,28 @@ HoldMovement measure_movement(
     return hold_movement(change);
 }
 
+//  RouteCalls::wait_out_slide(): shots of the game screen SLIDE_STILL_POLL
+//  apart until two match, for up to slide_wait_limit(). While the slide goes
+//  on the map scrolls a tile per SPIN_TILE_TIME, so no two match.
+bool wait_out_slide(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+    const int tiles = step.spin_tiles.value_or(0);
+    const Milliseconds limit = slide_wait_limit(tiles);
+    const ImageFloatBox& game = GameSettings::instance().GAME_BOX;
+    context.wait_for_all_requests();
+    VideoSnapshot last = console.video().snapshot();
+    for (Milliseconds waited(0); waited < limit; waited += SLIDE_STILL_POLL){
+        context.wait_for(SLIDE_STILL_POLL);
+        VideoSnapshot now = console.video().snapshot();
+        if (last && now && ImageMatch::pixel_RMSD(extract_box_reference(*last.frame, game), extract_box_reference(*now.frame, game)) <= HOLD_UNMOVED_RMSD){
+            console.log(std::format("[Speed] slide: {} tiles, the screen still {} ms after the leg.", tiles, (waited + SLIDE_STILL_POLL).count()));
+            return true;
+        }
+        last = std::move(now);
+    }
+    console.log(std::format("Route: the slide of {} tiles after {} still moved the screen {} ms after the leg.", tiles, to_string(step), limit.count()), COLOR_RED);
+    return false;
+}
+
 //  One WALK step: turned first when it should, then its hold, and the warp
 //  it ends on; for a hold not onto a warp, whether the screen moved.
 StepWalk walk_hold_step(
@@ -843,6 +865,7 @@ void walk_overworld_route_with_recovery(
     };
     calls.landed_on = [&](const MapPosition&){ return stands_on_foot(console, context, player); };
     calls.riding = [&](const RouteStep&){ return riding; };
+    calls.wait_out_slide = [&](const RouteStep& step){ return wait_out_slide(console, context, step); };
     run_route(route, facing, &planning, calls);
     context.wait_for_all_requests();
 }

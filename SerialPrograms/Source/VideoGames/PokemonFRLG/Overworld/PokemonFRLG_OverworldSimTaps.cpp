@@ -64,7 +64,8 @@ void OverworldSim::take_steps(Direction direction, Milliseconds pressed, Millise
         }
         pressed += after_slide(*step);
         if (step->spin){
-            m_state.slide_end = pressed;
+            //  The step onto the arrow, then the slide.
+            m_state.slide_end = pressed + tile;
         }
         if (after_step(*step, pressed)){
             return;

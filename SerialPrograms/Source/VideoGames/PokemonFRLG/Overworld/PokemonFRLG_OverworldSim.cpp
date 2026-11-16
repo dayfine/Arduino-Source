@@ -766,10 +766,18 @@ size_t OverworldSimWalker::clear_late(const std::vector<Interrupt>& interrupts, 
     }
 }
 
-void OverworldSimWalker::wait_out_slide(const RouteStep& step){
-    if (step.spin_tiles){
-        m_sim.watch({}, SPIN_TILE_TIME * *step.spin_tiles + SPIN_STOP_SETTLE);
+//  The console's wait_out_slide(): shots SLIDE_STILL_POLL apart until two
+//  match, which is a poll after the slide's end.
+bool OverworldSimWalker::wait_out_slide(const RouteStep& step){
+    const Milliseconds limit = slide_wait_limit(step.spin_tiles.value_or(0));
+    const Milliseconds left = std::max(m_sim.state().slide_end - m_sim.state().time, Milliseconds(0));
+    const int polls = (int)(left / SLIDE_STILL_POLL) + 1;
+    if (SLIDE_STILL_POLL * polls > limit){
+        m_sim.watch({}, limit);
+        return false;
     }
+    m_sim.watch({}, SLIDE_STILL_POLL * polls);
+    return true;
 }
 
 void OverworldSimWalker::check_overworld(const RouteStep& step){
@@ -885,6 +893,8 @@ StepOutcome OverworldSimWalker::walk_ridden(const RouteStep& step, std::optional
     }
     check_overworld(step);
     const MapPosition before = m_sim.state().position;
+    //  A slide still going on scrolls the screen through the hold.
+    const bool sliding = m_sim.state().time < m_sim.state().slide_end;
     const bool tapped = counts_step_taps(step) || (m_rules.count_bike_taps && counts_bike_taps(step, m_speed));
     if (tapped){
         if (counts_step_taps(step) && turns_first(step, m_speed, facing)){  //  as walk_and_watch() turns first
@@ -904,7 +914,7 @@ StepOutcome OverworldSimWalker::walk_ridden(const RouteStep& step, std::optional
     //  Counted taps saw each tap move, and measure nothing more.
     HoldMovement movement = HoldMovement::UNMEASURED;
     if (step.action == RouteAction::WALK && !step.warps && !tapped){
-        movement = m_sim.state().position == before ? HoldMovement::NONE : HoldMovement::MOVED;
+        movement = m_sim.state().position == before && !sliding ? HoldMovement::NONE : HoldMovement::MOVED;
     }
     size_t late = clear_late(interrupts(step), step.wild ? m_rules.after_wild_leg_watch : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG);
     if (late == 0){
@@ -1008,6 +1018,7 @@ RouteCalls OverworldSimWalker::calls(){
     //  As the console: the walking sprite shows, not where.
     calls.landed_on = [this](const MapPosition&){ return !m_sim.state().surfing; };
     calls.riding = [this](const RouteStep&){ return m_sim.state().on_bike; };
+    calls.wait_out_slide = [this](const RouteStep& step){ return wait_out_slide(step); };
     return calls;
 }
 

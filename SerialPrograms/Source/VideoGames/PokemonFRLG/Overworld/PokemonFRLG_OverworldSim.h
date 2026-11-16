@@ -507,8 +507,8 @@ private:
     StepEnd watch_for_trainer(const RouteStep& step, const TrainerCrossing& crossing);
     bool moved_past_wall(const RouteStep& step);
     void check_overworld(const RouteStep& step);
-    //  After a leg onto a spinner: the slide's time.
-    void wait_out_slide(const RouteStep& step);
+    //  RouteCalls::wait_out_slide().
+    bool wait_out_slide(const RouteStep& step);
     const std::vector<Interrupt>& interrupts(const RouteStep& step) const;
     std::vector<SimWatcher> watchers(const std::vector<Interrupt>& interrupts) const;
     [[noreturn]] void fail(const std::string& message);
