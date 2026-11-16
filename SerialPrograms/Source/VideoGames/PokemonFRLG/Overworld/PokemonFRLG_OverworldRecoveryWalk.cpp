@@ -68,6 +68,8 @@ struct StepWalk{
     //  Stopped by a Bicycle tap that didn't move (StepOutcome::blocked).
     bool blocked = false;
     HoldMovement movement = HoldMovement::UNMEASURED;
+    //  Through the warp, then a wild battle on the new map (WarpBattle::AFTER).
+    bool warped = false;
 };
 
 //  The four edge quarters of the game screen `game`: top, bottom, left and
@@ -457,9 +459,17 @@ StepWalk walk_hold_step(
     }
     wait_out_warp(console, context, step, fade, before);
     static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
-    if (run_from_battle_after_warp(console, context)){
-        console.log("Route: a wild battle, not the warp to " + step.end.map + "; the player is on " + to_string(step) + " before the warp.", COLOR_ORANGE);
+    switch (run_from_battle_after_warp(console, context)){
+    case WarpBattle::NONE:
+        break;
+    case WarpBattle::INSTEAD:
+        console.log(std::format("Route: a wild battle, not the warp to {}; the player is on {} before the warp.", step.end.map, to_string(step)), COLOR_ORANGE);
         out.stopped = walked_before_warp(step);
+        break;
+    case WarpBattle::AFTER:
+        console.log(std::format("Route: through the warp to {}, then a wild battle there: the player's tile isn't known.", step.end.map), COLOR_ORANGE);
+        out.warped = true;
+        break;
     }
     return out;
 }
@@ -584,6 +594,9 @@ StepOutcome walk_and_watch(
     if (walked.stopped){
         return StepOutcome{.end = StepEnd::STOPPED, .walked = walked.stopped, .blocked = walked.blocked};
     }
+    if (walked.warped){
+        return StepOutcome{.end = StepEnd::WARPED, .walked = std::nullopt};
+    }
     if (step.action == RouteAction::FACE || step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH){
         return StepOutcome{};
     }
@@ -608,16 +621,14 @@ StepOutcome walk_and_watch(
 
 namespace{
 
-//  How long after a hold on toward a warp its black may still come: as long
-//  as a warp leg's end waits for it (WARP_TIMEOUT, OverworldWalk.cpp). The
-//  black onto Victory Road 3F's ladder came a moment after a hold on's
-//  watch ended (console B, 2026-11-16 02:13, 19.04c).
-constexpr Milliseconds BLACK_AFTER_HOLD_ON(8000);
-
+//  Whether a warp's black shows within WARP_TIMEOUT after a hold on toward
+//  it, as after a warp leg's hold. The black onto Victory Road 3F's ladder
+//  came a moment after a hold on's watch ended (console B, 2026-11-16
+//  02:13, 19.04c).
 bool black_after_hold(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
     BlackScreenWatcher black(COLOR_RED);
     context.wait_for_all_requests();
-    if (wait_until(console, context, BLACK_AFTER_HOLD_ON, {black}) < 0){
+    if (wait_until(console, context, WARP_TIMEOUT, {black}) < 0){
         return false;
     }
     console.log(std::format("Route: the black onto the warp to {} showed after the hold.", step.end.map), COLOR_ORANGE);
@@ -633,9 +644,10 @@ bool black_after_hold(ConsoleHandle& console, ProControllerContext& context, con
 //  after a wild battle, so holding on reaches the warp however far they
 //  got (console B, 2026-11-01: Camper Liam stopped "south 9 (warp)" out of
 //  Pewter Gym). After a trainer the player faces them, so this turns first.
-//  False if no warp's black showed by the time a warp leg's end gives up:
-//  the player is somewhere on the leg, to be found again.
-bool hold_to_warp(
+//  The warp's battle check (NONE or AFTER) once through it; nothing if no
+//  warp's black showed by the time a warp leg's end gives up: the player is
+//  somewhere on the leg.
+std::optional<WarpBattle> hold_to_warp(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, const OverworldInterrupts& interrupts, MoveSpeed speed
 ){
@@ -660,8 +672,7 @@ bool hold_to_warp(
         );
         if (ret == 0 || (ret < 0 && black_after_hold(console, context, step))){
             wait_out_warp(console, context, step, before);
-            check_warp_was_no_battle(console, context, step);
-            return true;
+            return check_warp_was_no_battle(console, context, step);
         }
         if (ret < 0){
             break;
@@ -670,7 +681,7 @@ bool hold_to_warp(
         interrupts[ret - 1]->clear(console, context);
     }
     console.log(std::format("Route: no fade holding on toward the warp to {}.", step.end.map), COLOR_ORANGE);
-    return false;
+    return std::nullopt;
 }
 
 //  After `step`, which crosses the sight of a trainer not beaten
@@ -878,12 +889,12 @@ void walk_overworld_route_with_recovery(
         return outcome;
     };
     calls.hold_to_warp = [&](const RouteStep& step){
-        if (!hold_to_warp(console, context, step, step.wild ? interrupts.wild : interrupts.other, riding ? speed : on_foot(speed))){
-            return false;
+        const std::optional<WarpBattle> held = hold_to_warp(console, context, step, step.wild ? interrupts.wild : interrupts.other, riding ? speed : on_foot(speed));
+        if (held){
+            riding = riding && warp_keeps_bike(step.end.map);
         }
-        riding = riding && warp_keeps_bike(step.end.map);
-        at = step.end;
-        return true;
+        at = held == WarpBattle::NONE ? std::optional<MapPosition>(step.end) : std::nullopt;
+        return held;
     };
     calls.landed_on = [&](const MapPosition&){ return stands_on_foot(console, context, player); };
     calls.riding = [&](const RouteStep&){ return riding; };

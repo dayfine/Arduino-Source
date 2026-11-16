@@ -2132,6 +2132,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkOptions.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkTimes.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkWatches.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWarpBattle.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWildTiles.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h

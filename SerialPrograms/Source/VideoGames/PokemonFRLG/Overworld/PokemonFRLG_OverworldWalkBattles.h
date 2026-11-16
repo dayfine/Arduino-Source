@@ -14,6 +14,7 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "PokemonFRLG_OverworldRoute.h"
+#include "PokemonFRLG_OverworldWarpBattle.h"
 #include "PokemonFRLG_OverworldWalkMoves.h"
 
 namespace PokemonAutomation{
@@ -46,9 +47,10 @@ size_t clear_battle_before(
     const OverworldInterrupts& wild, const RouteStep& step
 );
 
-//  After a warp's fade: if it was a wild battle's, runs from the battle and
-//  returns true.
-bool run_from_battle_after_warp(ConsoleHandle& console, ProControllerContext& context);
+//  After a warp's fade: whether a wild battle follows, and if one does,
+//  whether the new map's overworld showed before it (the screen right after
+//  the fade isn't black or a battle's). Runs from the battle.
+WarpBattle run_from_battle_after_warp(ConsoleHandle& console, ProControllerContext& context);
 
 //  Whether `screen` is the overworld of a cave dark without Flash (Rock
 //  Tunnel): black around a lit circle on the player in the middle. The
@@ -61,8 +63,8 @@ bool run_from_battle_after_warp(ConsoleHandle& console, ProControllerContext& co
 bool dark_cave_screen(const ImageViewRGB32& screen);
 
 //  After `step`'s warp: fails, once the battle is fled, if its fade was a
-//  wild battle's.
-void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step);
+//  wild battle's. Returns what the battle check found: NONE or AFTER.
+WarpBattle check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step);
 
 
 

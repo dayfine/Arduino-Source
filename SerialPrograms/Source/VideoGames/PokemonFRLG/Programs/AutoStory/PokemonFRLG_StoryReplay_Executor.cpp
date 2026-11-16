@@ -373,7 +373,7 @@ Pokemon::Outcome ReplayExecutor::replay_route(const StoryStep& step, Pokemon::Ru
     calls.walk = [this](const RouteStep& leg, std::optional<Direction>){ return walk_leg(leg); };
     calls.log = [this](const std::string& line){ m_route_logs.push_back(line); };
     calls.fail = [](const std::string&){ throw ReplayStopped{}; };
-    calls.hold_to_warp = [](const RouteStep&) -> bool{ throw ReplayStopped{}; };
+    calls.hold_to_warp = [](const RouteStep&) -> std::optional<WarpBattle>{ throw ReplayStopped{}; };
     try{
         run_route(route, m_pose.facing, nullptr, calls);
     }catch (const ReplayStopped&){

@@ -34,6 +34,8 @@ namespace OverworldWalkSteps{
 //  on its own, and a leg started before that ends loses tiles (on the console a
 //  600ms wait cost 2 tiles).
 inline constexpr Milliseconds AFTER_WARP(1500);
+//  From the end of a hold onto a warp, through the fade out and in.
+inline constexpr Milliseconds WARP_TIMEOUT(8000);
 
 } // namespace OverworldWalkSteps
 

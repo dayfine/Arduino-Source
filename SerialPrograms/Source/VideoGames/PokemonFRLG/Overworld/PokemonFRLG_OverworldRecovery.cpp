@@ -252,6 +252,10 @@ private:
     size_t m_reholds = 0;
 };
 
+//  How far on from a warp's tile a wild battle on the new map may leave the
+//  player (2 on Victory Road 3F: console B, 2026-11-16 02:18, 19.04c).
+constexpr int WARP_ARRIVAL_DRIFT = 2;
+
 //  run_route()'s walk: the plan, as rejoined or planned again after a
 //  stop, which step is next, where the player is and which way they face.
 class RouteRun{
@@ -318,6 +322,12 @@ public:
                 continue;
             }
             m_walked.reset();
+            if (outcome.end == StepEnd::WARPED){
+                if (!after_warped(step)){
+                    return;
+                }
+                continue;
+            }
             if (!after_stop(step, outcome, start, crossing)){
                 return;
             }
@@ -571,7 +581,11 @@ private:
         //  02:13, 19.04c: a wild Onix on "north 5 (warp)" to Victory Road 3F).
         bool held_on = false;
         if (outcome.end == StepEnd::STOPPED && step.warps && (!step.wild || by_wild_battle(step, start, outcome))){
-            if (m_calls.hold_to_warp(step)){
+            const std::optional<WarpBattle> held = m_calls.hold_to_warp(step);
+            if (held == WarpBattle::AFTER){
+                return after_warped(step);
+            }
+            if (held){
                 m_at = step.end;
                 m_facing = step.facing_after;
                 m_next++;
@@ -594,6 +608,30 @@ private:
         RouteStep longer = step;
         longer.tiles += BLOCKED_TAP_SLACK;
         return rejoin(step, blocked_ahead(step, candidates_on(longer, start, walked)), walked);
+    }
+
+    //  `step`, m_plan[m_next], a warp, was taken, then a wild battle started on
+    //  the new map (WarpBattle::AFTER): the player is up to WARP_ARRIVAL_DRIFT
+    //  tiles on from the warp's tile, found again as on the step after it (its
+    //  end, not the warp's tile, which warps again). False once failed.
+    bool after_warped(const RouteStep& step){
+        m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, "through the warp, then a wild battle on the new map");
+        if (maps() == nullptr){
+            m_calls.fail(std::format("walk_overworld_route(): a wild battle after the warp to {}, with no maps to find the player again.", step.end.map));
+            return false;
+        }
+        RouteStep on;
+        on.direction = step.direction;
+        on.tiles = WARP_ARRIVAL_DRIFT;
+        on.end = step.end;
+        std::vector<StopCandidate> candidates;
+        for (const MapPosition& tile : leg_tiles(*maps(), step.end, on)){
+            candidates.push_back(StopCandidate{.player = tile});
+        }
+        if (m_next + 1 < m_plan.size()){
+            m_next++;
+        }
+        return rejoin(m_plan[m_next], candidates, WalkedTiles{.min = 0, .max = WARP_ARRIVAL_DRIFT});
     }
 
     //  Of `candidates`, where a tap along `step` showed no step, those the maps block the way ahead of or past the

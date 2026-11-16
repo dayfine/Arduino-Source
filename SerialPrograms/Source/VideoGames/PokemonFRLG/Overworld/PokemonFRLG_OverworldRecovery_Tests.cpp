@@ -91,7 +91,10 @@ struct ScriptedRoute{
             auto iter = ends.find(walked.size() - 1);
             return iter == ends.end() ? StepOutcome{} : iter->second;
         };
-        calls.hold_to_warp = [this](const RouteStep& step){ held_to_warp.push_back(step); };
+        calls.hold_to_warp = [this](const RouteStep& step){
+            held_to_warp.push_back(step);
+            return std::optional<WarpBattle>(WarpBattle::NONE);
+        };
         calls.log = [this](const std::string& message){ logs.push_back(message); };
         calls.moved_past_wall = [this](const RouteStep&){
             wall_taps++;
