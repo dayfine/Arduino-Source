@@ -9,19 +9,42 @@
     },
     "events": [
       {
-        "id": "to_taunie_at_gate",
+        "id": "to_plaza_scene_prompt",
         "kind": "game_action",
-        "why": "step 41: on to Taunie at the gate until her \"A Talk Taunie\". Measured 2026-11-08 on console B as 3 s, walk not run; on 2026-11-16 those 3 s stopped short of her, under the Quartiere Verde arch with Taunie a few steps ahead and no prompt. 8 s at most. not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
+        "why": "step 41: on from the reload spot outside Hotel Z to the first A prompt, which starts a scene, not Taunie's talk: it was 3.25 s ahead on all three 03.02b runs (console B, 2026-11-16). The 2026-11-08 recording's 3 s leg from the live exit stopped short of Taunie at the Quartiere Verde arch. 8 s at most. not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
         "action": "walk",
         "args": {
-          "legs": [[0, 8000]],
+          "legs": [
+            [
+              0,
+              8000
+            ]
+          ],
           "end": "prompt"
+        }
+      },
+      {
+        "id": "plaza_scene",
+        "kind": "game_action",
+        "why": "step 41: A at that prompt starts a scene: a black fade, the dimmed Smart Rotom card, a second black fade, then control at the Quartiere Verde arch with Taunie a few steps ahead inside it (console B, 2026-11-16, run 3: control 12 s after A)",
+        "action": "mash_to_move_hints",
+        "args": {
+          "press_a_first": true
+        }
+      },
+      {
+        "id": "to_taunie",
+        "kind": "game_action",
+        "why": "step 42: straight on through the arch to Taunie's \"A Talk\" (run 3's frame: she stands a few steps ahead, facing the player), 8 s at most",
+        "action": "walk_to_prompt",
+        "args": {
+          "timeout_ms": 8000
         }
       },
       {
         "id": "talk_to_taunie",
         "kind": "talk",
-        "why": "step 42: A at Taunie"
+        "why": "step 42: A at Taunie's prompt"
       },
       {
         "id": "taunie_battle_start",
