@@ -13,6 +13,7 @@
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonTools/Images/SolidColorTest.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Pokemon_ConsoleReadings.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
@@ -75,6 +76,21 @@ constexpr Milliseconds MOVE_LIST_TIMEOUT = 5000ms;
 //  badge left of the HP numbers. The box bobs by a pixel; this keeps a
 //  pixel inside.
 const ImageFloatBox STATUS_BADGE_BOX(146.0 / 240, 99.0 / 160, 12.0 / 240, 4.0 / 160);
+//  In the party list, the left end of the lead's HP bar: its color with any
+//  HP left, empty grey (121, 121, 121) at none (console B, 2026-11-15, 16.05).
+const ImageFloatBox PARTY_LEAD_HP_BAR_LEFT_BOX(32.2 / 240, 60.2 / 160, 1.6 / 240, 1.6 / 160);
+
+//  The party list with the lead's HP bar empty: in a battle, the lead
+//  fainted and the game asks for the next member ("Choose a POKeMON.").
+bool party_lead_fainted(const ImageViewRGB32& screen){
+    if (!PartyMenuDetector(COLOR_RED).detect(screen)){
+        return false;
+    }
+    const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
+    const ImageStats bar = image_stats(extract_box_reference(game, PARTY_LEAD_HP_BAR_LEFT_BOX));
+    //  Grey: not the bar's colors, nor its white edge or dark frame.
+    return is_solid(bar, {0.3333, 0.3333, 0.3334}, 0.1, 20) && bar.average.sum() > 300 && bar.average.sum() < 450;
+}
 
 
 enum class BattleScreen{
@@ -133,6 +149,7 @@ BattleTextScreen read_text_screen(const ImageViewRGB32& screen){
         .arrow = AdvanceBattleDialogDetector(COLOR_RED).detect(screen),
         .yes_no = battle_yes_no_shows(screen) || yes_no_cursor(screen).has_value(),
         .dark_cave = OverworldWalkSteps::dark_cave_screen(screen),
+        .lead_fainted = party_lead_fainted(screen),
     };
 }
 
@@ -308,16 +325,6 @@ TurnResult item_result(bool used){
     return used ? TurnResult::DONE : TurnResult::NOT_DONE;
 }
 
-//  The party list in battle opens on the lead: down to `slot`, then A, and
-//  SHIFT, the top of its menu.
-void send_member(ProControllerContext& context, size_t slot){
-    for (size_t c = 0; c < slot; c++){
-        pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
-    }
-    pbf_press_button(context, BUTTON_A, 160ms, 800ms);
-    pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
-}
-
 
 class BattleLoop{
 public:
@@ -352,6 +359,9 @@ public:
         m_console.log(std::format(
             "Battle: over after {} turns{}.", m_decisions.turns(), m_decisions.lost() ? ", the starter fainted" : ""
         ));
+        if (m_lead_fainted){
+            return BattleEnd::LEAD_FAINTED;
+        }
         return m_decisions.lost() ? BattleEnd::LOST : BattleEnd::WON;
     }
 
@@ -366,15 +376,15 @@ private:
             pbf_wait(m_context, POLL);
             return false;
         }
-        if (!m_confirmed && BattleScreenDetector(COLOR_RED).detect(screen)){
-            m_console.log("Battle: the battle menu or an HP box shows.");
-            m_confirmed = true;
-        }
-        if (!m_confirmed && now - m_start > NOT_A_BATTLE){
-            m_console.log("Battle: no battle menu or HP box in 15 s: not a battle.", COLOR_ORANGE);
+        const BattleTextScreen text = read_text_screen(screen);
+        if (text.lead_fainted){
+            stop_for_fainted_lead(screen);
             return true;
         }
-        if (between_turns(screen, now)){
+        if (not_a_battle(screen, now)){
+            return true;
+        }
+        if (between_turns(screen, text, now)){
             return false;
         }
         if (battle_gone(screen, now)){
@@ -406,10 +416,22 @@ private:
         return false;
     }
 
-    //  The screens between the turns that need more than B: "no PP left",
-    //  the party list once the lead fainted, and an evolution after the
-    //  battle. True if one was handled.
-    bool between_turns(const ImageViewRGB32& screen, WallClock now){
+    //  No battle menu or HP box in NOT_A_BATTLE: no battle. One confirms it.
+    bool not_a_battle(const ImageViewRGB32& screen, WallClock now){
+        if (!m_confirmed && BattleScreenDetector(COLOR_RED).detect(screen)){
+            m_console.log("Battle: the battle menu or an HP box shows.");
+            m_confirmed = true;
+        }
+        if (!m_confirmed && now - m_start > NOT_A_BATTLE){
+            m_console.log("Battle: no battle menu or HP box in 15 s: not a battle.", COLOR_ORANGE);
+            return true;
+        }
+        return false;
+    }
+
+    //  The screens between the turns that need more than B: "no PP left"
+    //  and an evolution after the battle. True if one was handled.
+    bool between_turns(const ImageViewRGB32& screen, const BattleTextScreen& text, WallClock now){
         if (!m_confirmed){
             return false;
         }
@@ -423,31 +445,23 @@ private:
             m_last_press = now;
             return true;
         }
-        if (m_decisions.lost() && PartyMenuDetector(COLOR_RED).detect(screen)){
-            send_next_member(now);
-            return true;
-        }
-        if (m_evolution.holds(read_text_screen(screen))){
+        if (m_evolution.holds(text)){
             hold_for_evolution();
             return true;
         }
         return false;
     }
 
-    //  The party list after the lead fainted: the next member allowed in, or
-    //  a stop with only protected members left.
-    void send_next_member(WallClock now){
-        const std::optional<size_t> slot = m_decisions.next_member_slot();
-        if (!slot){
-            OperationFailedExceptionWithScreenshot::fire(
-                ErrorReportMode::NO_ERROR_REPORT,
-                "fight_battle(): the starter fainted and only protected members are left; not sending one.",
-                m_console
-            );
-        }
-        m_console.log(std::format("Battle: the lead fainted; sending party slot {}.", *slot + 1), COLOR_ORANGE);
-        send_member(m_context, *slot);
-        m_last_press = now;
+    //  The party list after the lead fainted, looked for first at each poll:
+    //  no member is sent, and the battle stops for the checkpoint to reload
+    //  (the user's rule; console B, 2026-11-15, 16.05: 60 s of B there).
+    void stop_for_fainted_lead(const ImageViewRGB32& screen){
+        m_console.log(std::format(
+            "Battle: the lead fainted (turn {}) and the game asks for the next member; sending none.", m_decisions.turns()
+        ), COLOR_RED);
+        dump_debug_image(m_console, "AutoStory/battle", std::format("turn{}-lead-fainted", m_decisions.turns()), screen);
+        m_decisions.lead_fainted();
+        m_lead_fainted = true;
     }
 
     //  Nothing pressed while the screen may be an evolution, up to MAX_HOLD.
@@ -705,6 +719,8 @@ private:
     bool m_move_chosen = false;
     //  RUN was chosen and no battle menu has shown since.
     bool m_ran = false;
+    //  The party list showed with the lead fainted: the loop stopped there.
+    bool m_lead_fainted = false;
 };
 
 
@@ -754,6 +770,11 @@ void fail_on_blackout(ConsoleHandle& console, BattleEnd end){
     if (end == BattleEnd::LOST){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::NO_ERROR_REPORT, "Story: blackout: the starter fainted in a battle on the way.", console
+        );
+    }
+    if (end == BattleEnd::LEAD_FAINTED){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::NO_ERROR_REPORT, "Story: lead_fainted: the starter fainted in a battle on the way.", console
         );
     }
 }

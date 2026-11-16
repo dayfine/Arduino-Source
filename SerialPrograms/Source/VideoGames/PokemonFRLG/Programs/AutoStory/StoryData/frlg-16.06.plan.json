@@ -3,7 +3,7 @@
     "game": "frlg",
     "checkpoint": {
         "id": "16.06",
-        "title": "Silph Co. to Saffron: back down to the Center",
+        "title": "Silph Co. to Saffron: Escape Rope out, Fly to the Center",
         "start": {
             "map": "SilphCo_11F",
             "tiles": [
@@ -26,6 +26,45 @@
         ],
         "events": [
             {
+                "id": "escape_rope",
+                "kind": "game_action",
+                "action": "use_item",
+                "args": {
+                    "item": "escape-rope"
+                },
+                "declared_after": {
+                    "map": "SaffronCity",
+                    "tiles": [
+                        [
+                            33,
+                            31
+                        ]
+                    ],
+                    "facing": "south"
+                },
+                "why": "out of Silph Co. from 11F, as pokeguy (1:32:56-1:33:00, his ESCAPE ROPE count 2 to 1). SilphCo_11F allows it (pokefirered map.json: allow_escaping true, MAP_TYPE_INDOOR), and the rope takes the player to the escape warp, set when the player walked north into Silph Co.'s door (33, 30) from Saffron (overworld.c UpdateEscapeWarp(): the tile below the door, (33, 31)). The bag has 4 by now: 07.01's 2 and 08.03's 4, less 09.02's and 13.04's"
+            },
+            {
+                "id": "fly_saffron",
+                "kind": "game_action",
+                "action": "fly",
+                "args": {
+                    "town": "SaffronCity",
+                    "species": "pidgey"
+                },
+                "declared_after": {
+                    "map": "SaffronCity",
+                    "tiles": [
+                        [
+                            24,
+                            39
+                        ]
+                    ],
+                    "facing": "south"
+                },
+                "why": "the Pidgey flies to Saffron City, landing below the Pokemon Center's door (24, 38) on its heal spot (pokefirered heal_locations.json, HEAL_LOCATION_SAFFRON_CITY), as 18.03"
+            },
+            {
                 "id": "below_center_door",
                 "kind": "route",
                 "action": "run",
@@ -41,7 +80,7 @@
                         "facing": "north"
                     }
                 },
-                "why": "back by the pads and stairs, with the doors open and no Rocket left in Silph Co. or Saffron City, out of Silph Co.'s door (33, 30) to below the Center's door (24, 38)"
+                "why": "turn to face the Center's door (24, 38) from the landing"
             },
             {
                 "id": "saffron_nurse",
@@ -70,7 +109,8 @@
         "menu": "full",
         "notes": {
             "checkpoint": [
-                "Starts facing the president on 11F, where 16.05b ends. The Rockets are gone from Silph Co. and Saffron City (silph_cleared): the Grunt at Saffron (46, 13) no longer blocks the Gym's door."
+                "Starts facing the president on 11F, where 16.05b ends. The Rockets are gone from Silph Co. and Saffron City (silph_cleared): the Grunt at Saffron (46, 13) no longer blocks the Gym's door.",
+                "Out by Escape Rope and Fly, not back down by the pads and stairs: that walk took about 2 minutes, with 16 tiles walked again after re-plans on 7F, 3F and in Saffron (console B, 2026-11-15). The rope lands below Silph Co.'s door (33, 31); the city's blocks between it and the Center make the walk there 35 tiles, so the Pidgey flies."
             ]
         }
     },

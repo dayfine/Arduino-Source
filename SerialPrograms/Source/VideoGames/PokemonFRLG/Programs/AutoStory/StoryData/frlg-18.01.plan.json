@@ -201,7 +201,7 @@
     "menu": "full",
     "notes": {
       "checkpoint": [
-        "Starts on the gym's door mat (14, 23), facing north, as the door leaves the player. The way there from Saffron's Center is not authored: Silph Co. (16.0x) comes first and clears Saffron's Rocket Grunts, and one of them (SaffronCity_EventScript_RocketGrunt3, hidden by FLAG_HIDE_SAFFRON_ROCKETS) stands on (46, 13), the only tile the gym's door (46, 12) is entered from; story_maps() still has him, and rows 15.01 and 16.01 need the others there. So this start is on the unauthored-start list.",
+        "Starts on the gym's door mat (14, 23), facing north, as the door leaves the player, where 16.06b ends: its walk from Saffron's Center to the door comes after Silph Co. (16.0x), which clears Saffron's Rocket Grunts, one of them on (46, 13) (SaffronCity_EventScript_RocketGrunt3, hidden by FLAG_HIDE_SAFFRON_ROCKETS), the only tile the gym's door (46, 12) is entered from.",
         "Ends at (14, 12), facing Sabrina (14, 11), where 18.02 starts: the save in front of her.",
         "The gym is nine rooms of 9x6 tiles with no door between them: each room's pads (the map's step_on warps) lead to another room's, and the way from the entrance to Sabrina is four of them: (18, 20) to (28, 23), (20, 20) to (28, 4), (20, 7) to (0, 4), (0, 7) to (18, 15). The player lands on a pad and walks off it before the next. The trainers on the way (Cameron (24, 18), Johan (24, 2), Preston (4, 2), sight 3 south) are not fought: each leg keeps out of their lines, and the sim test fails if one is met. The others (Tyron, Amanda, Stacy, Tasha) are in rooms the route does not enter."
       ]

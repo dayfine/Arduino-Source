@@ -57,10 +57,13 @@ enum class BattleKind{
 //  Terminal state of a battle encounter.
 enum class BattleEnd{
     WON,
-    //  The starter fainted: a blackout, or a wild battle run from (or won)
-    //  by the next member, except in the lab's rival battle, which the
-    //  story goes on from.
+    //  The starter fainted: a blackout, or a wild battle run from, except
+    //  in the lab's rival battle, which the story goes on from.
     LOST,
+    //  The starter fainted and the game asks for the next member: none is
+    //  sent, and the loop stops there, in the battle, for the checkpoint to
+    //  fail and reload its save (the user's rule, 2026-11-15).
+    LEAD_FAINTED,
 };
 
 
@@ -90,8 +93,9 @@ bool battle_shows(const ImageViewRGB32& screen);
 //  `kind` says, using `supplies` as needed. Returns once START opens the
 //  menu on the overworld: text after the battle (a gym leader's speech) is
 //  read with B on the way. After 30 s of A and B for a screen nothing reads,
-//  returns anyway, for the walk to find the player. Throws
-//  OperationFailedException if it runs over 10 minutes.
+//  returns anyway, for the walk to find the player. Returns LEAD_FAINTED at
+//  once, at the party list, if the lead faints and the game asks for the
+//  next member. Throws OperationFailedException if it runs over 10 minutes.
 //  THOROUGH: an item's name is read in the bag before it is used, and a
 //  different one isn't used.
 BattleEnd fight_battle(
@@ -104,7 +108,8 @@ BattleEnd fight_battle(
 //  The interrupts for walking story routes. Wild battles are run from, or
 //  fought if `fight_wild`. A message is advanced until the overworld is
 //  back; a battle that starts after it (a trainer who saw the player) is
-//  fought. A battle lost (a blackout) throws OperationFailedException.
+//  fought. A battle lost (a blackout, or the lead fainted) throws
+//  OperationFailedException.
 OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild, Pokemon::StoryCheckLevel checks, Language language);
 
 
