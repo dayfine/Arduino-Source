@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <format>
 #include <string>
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/Navigation/Pokemon_GateTiles.h"
@@ -38,6 +39,66 @@ Pokemon::Outcome boulder_pushed(Pokemon::RunState& state, const StoryStep& step,
         state.gates.switches_on.insert(Pokemon::switch_key(*pressed));
     }
     return Pokemon::outcome_ok(to_pose(at));
+}
+
+namespace{
+
+//  A tap, and once more if it did not do what `wanted` asks and something
+//  that stopped it was cleared.
+BoulderPressRead press_for(Direction direction, bool (*wanted)(const BoulderPressRead&), BoulderPresses& presses){
+    const BoulderPressRead read = presses.press(direction);
+    if (wanted(read) || !presses.clear_interrupt()){
+        return read;
+    }
+    return presses.press(direction);
+}
+
+bool pushed(const BoulderPressRead& read){
+    return !read.scrolled && read.boulder_moved;
+}
+
+bool walked(const BoulderPressRead& read){
+    return read.scrolled;
+}
+
+}  // namespace
+
+BoulderPush push_boulder_tiles(Direction direction, int64_t tiles, BoulderPresses& presses){
+    BoulderPush push;
+    for (int64_t tile = 1; tile <= tiles; tile++){
+        const BoulderPressRead push_read = press_for(direction, pushed, presses);
+        if (push_read.scrolled){
+            push.walked++;
+            push.failure = std::format("tile {} of {}: the tap to push walked the player a tile: no boulder ahead.", tile, tiles);
+            return push;
+        }
+        if (!push_read.boulder_moved){
+            push.failure = std::format("tile {} of {}: the tap to push moved nothing: the boulder is stuck, or Strength is off.", tile, tiles);
+            return push;
+        }
+        if (!walked(press_for(direction, walked, presses))){
+            push.failure = std::format("tile {} of {}: the tap onto the tile the boulder left did not move the player.", tile, tiles);
+            return push;
+        }
+        push.walked++;
+    }
+    return push;
+}
+
+Pokemon::Outcome boulder_push_outcome(const StoryStep& step, const std::vector<MapData>& maps, const BoulderPush& push, Pokemon::RunState& state){
+    if (!push.failure){
+        return boulder_pushed(state, step, maps);
+    }
+    Pokemon::Outcome outcome = Pokemon::outcome_failed("boulder_push", *push.failure);
+    if (const std::optional<StoryPose> here = story_pose(state.pose)){
+        const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+        StoryPose at{here->map, here->tile, direction};
+        for (int64_t c = 0; c < push.walked; c++){
+            at.tile = at.tile.next(direction);
+        }
+        outcome.pose = to_pose(at);
+    }
+    return outcome;
 }
 
 Pokemon::Outcome tree_cut(Pokemon::RunState& state, const StoryStep& step, const std::vector<MapData>& maps){

@@ -2055,6 +2055,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Sounds/PokemonFRLG_ShinySoundDetector.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_BikeSpinMechanics.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_BikeSpinPresses.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_BoulderPushReader.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_BoulderPushReader.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_CodedRooms.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_CodedRooms.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_FlyMap.cpp
@@ -2194,6 +2196,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryGates_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMansion_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryViridian_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBoulderPresses.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBoulderPresses.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBoulders.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBoulders.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBoulders_Tests.cpp
