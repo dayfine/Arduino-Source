@@ -30,7 +30,7 @@ bool screen_still(PlzaBackend& backend){
 //  walk goes where it looks.
 void turn_and_recenter(PlzaBackend& backend, double degrees){
     story_turn(backend, degrees);
-    backend.press(BUTTON_L, 100ms, 150ms);
+    backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
 }
 
 //  `input`, played again once when the screen stays still after it.
@@ -43,9 +43,8 @@ void play_checked(PlzaBackend& backend, std::string_view what, Input&& input){
     }
 }
 
-} // namespace
-
-
+//  "leg 2/5 turn 90 walk 1200 ms": leg `index` (from 0) of `count`, for the
+//  log. A leg with no walk leaves it out.
 std::string story_walk_leg_label(size_t index, size_t count, const StoryWalkLeg& leg){
     std::string label = std::format("leg {}/{} turn {:g}", index + 1, count, leg.turn);
     if (leg.walk > Milliseconds(0)){
@@ -53,6 +52,9 @@ std::string story_walk_leg_label(size_t index, size_t count, const StoryWalkLeg&
     }
     return label;
 }
+
+} // namespace
+
 
 Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move){
     //  The look the first input is checked against.

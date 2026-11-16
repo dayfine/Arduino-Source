@@ -61,11 +61,6 @@ std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpo
 //  "dialog". None for any other word.
 std::optional<ScreenEvent> walk_end_event(std::string_view end);
 
-//  The walk of `args`: the legs of its arg "legs", each [turn in degrees
-//  clockwise (negative: left), walk ms]. The args must have passed the
-//  walk's spec.
-StoryMove story_walk_move(const Pokemon::StoryActionArgs& args);
-
 //  PLZA as a StoryGame on the console `env`, which must outlive it. The
 //  save waits out the game's autosave at the end of the checkpoints of
 //  `autosave_rows` (the story's StoryData::autosaves); after the others
@@ -77,6 +72,7 @@ Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(
 
 //  The same with no console, for tests and simulations: the console_only
 //  actions fail as "console_only", and there is no save or reload.
+//  code-health: allow test_only_api -- the scripted game the PLZA tests and offline simulations play; a console build has none
 Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game_without_console();
 
 
