@@ -254,10 +254,8 @@ UnitTestResult check_story_run(const Pokemon::SegmentRange& range, TimeBudget bu
         return "Expected the story through:" + joined(sim.lines);
     }
     const std::vector<StoryCheckpoint> rows = rows_in(sim.rows, range);
-    std::vector<std::string> ids;
-    for (const StoryCheckpoint& data : rows){
-        ids.push_back(data.id);
-    }
+    std::vector<std::string> ids(rows.size());
+    std::ranges::transform(rows, ids.begin(), &StoryCheckpoint::id);
     if (sim.begun() != ids || sim.saves.size() != ids.size()){
         return "Expected each checkpoint once, in order, each saving at its end:" + joined(sim.game.trace);
     }
@@ -879,7 +877,6 @@ UnitTestResult test_dialog_left_up_stops_a_walk(){
 //  pass with them cleared between steps, and with them left up.
 UnitTestResult check_dialogs_at_random(Logger& logger, const Pokemon::SegmentRange& range){
     constexpr uint32_t SEEDS = 5;
-    //  One budget for every run of the test.
     const TimeBudget budget = budget_from_now(STAGE_BUDGET);
     size_t passes[2] = {0, 0};
     for (uint32_t seed = 1; seed <= SEEDS; seed++){
@@ -937,24 +934,27 @@ struct StageCheck{
 };
 
 const StageCheck STAGE_CHECKS[] = {
-    {"in order, each start where the last save stood", "runs the stage's checkpoints one-shot, each from where the one before saved",
-        [](Logger&, const Pokemon::SegmentRange& range){ return check_story_run(range, budget_from_now(STAGE_BUDGET)); }},
+    {"in order, each start where the last save stood", "runs the stage's checkpoints one-shot, each from where the one before saved", [](Logger&, const Pokemon::SegmentRange& range){ return check_story_run(range, budget_from_now(STAGE_BUDGET)); }},
     {"the steps it stubs need the console", "stubs each needs-console step of the stage and plays the rest", check_stubbed_steps},
-    {"a dialog before every step, cleared", "the stage passes with each dialog cleared between steps",
-        [](Logger&, const Pokemon::SegmentRange& range){ return check_dialog_before_every_step(range); }},
+    {"a dialog before every step, cleared", "the stage passes with each dialog cleared between steps", [](Logger&, const Pokemon::SegmentRange& range){ return check_dialog_before_every_step(range); }},
     {"dialogs before one step in five, over 5 seeds", "every run of the stage passes with them cleared", check_dialogs_at_random},
 };
+
+//  `check` on `stage`. `check` is one of STAGE_CHECKS, which outlive it.
+AutoStorySimulationTestCase stage_case(const StoryStage& stage, const StageCheck& check){
+    const Pokemon::SegmentRange range{.from = stage.first, .to = stage.last};
+    return {
+        .name = std::format("stage {} ({} to {}), {}", stage.first.substr(0, 2), stage.first, stage.last, check.what),
+        .input = {.body = nullptr, .logged = [&check, range](Logger& logger){ return check.check(logger, range); }},
+        .expectation = {.description = check.description},
+    };
+}
 
 std::vector<AutoStorySimulationTestCase> stage_cases(){
     std::vector<AutoStorySimulationTestCase> cases;
     for (const StoryStage& stage : story_stages()){
-        const Pokemon::SegmentRange range{.from = stage.first, .to = stage.last};
         for (const StageCheck& check : STAGE_CHECKS){
-            cases.push_back({
-                .name = std::format("stage {} ({} to {}), {}", stage.first.substr(0, 2), stage.first, stage.last, check.what),
-                .input = {.body = nullptr, .logged = [&check, range](Logger& logger){ return check.check(logger, range); }},
-                .expectation = {.description = check.description},
-            });
+            cases.push_back(stage_case(stage, check));
         }
     }
     return cases;

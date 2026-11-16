@@ -34,6 +34,7 @@ struct TimeBudget{
     std::chrono::steady_clock::time_point deadline;
 };
 
+//  A budget of `seconds` that starts now.
 inline TimeBudget budget_from_now(Seconds seconds){
     return TimeBudget{seconds, std::chrono::steady_clock::now() + seconds};
 }
@@ -53,6 +54,7 @@ inline void check_budget(const TimeBudget& budget, std::string_view where){
 //  SKIPPED.
 inline constexpr std::string_view SLOW_TESTS_VARIABLE = "PA_SLOW_TESTS";
 
+//  Whether SLOW_TESTS_VARIABLE is set, and not to "0".
 inline bool slow_tests_enabled(){
     // code-health: allow char_pointer -- std::getenv returns a const char pointer
     const char* value = std::getenv(std::string(SLOW_TESTS_VARIABLE).c_str());

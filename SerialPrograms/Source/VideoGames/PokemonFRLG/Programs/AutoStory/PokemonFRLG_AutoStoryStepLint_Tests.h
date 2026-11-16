@@ -17,6 +17,8 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  The story table's lints: declared ends chain, no ANSWER after a walk,
+//  no new legs event without a reason.
 void add_tests_AutoStoryStepLint(UnitTestDatabase& database);
 
 
