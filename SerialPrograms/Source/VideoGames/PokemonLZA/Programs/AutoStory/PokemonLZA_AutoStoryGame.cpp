@@ -69,9 +69,22 @@ StoryActionSpec console_only(StoryActionSpec spec){
     return spec;
 }
 
-std::vector<StoryActionSpec> make_specs(){
+//  The GAME actions that run only on a console.
+std::vector<StoryActionSpec> console_specs(){
     return {
         console_only(game_spec("confirm_new_game")),
+        console_only(game_spec("run_to_gate", {
+            optional_ms("timeout_ms", 8000, "running this long with no A prompt fails the step"),
+        })),
+        console_only(game_spec("catch_tutorial")),
+        console_only(game_spec("battle_then_catch")),
+        console_only(game_spec("walk_to_marker")),
+        console_only(game_spec("claim_mable_research_reward")),
+    };
+}
+
+std::vector<StoryActionSpec> make_specs(){
+    std::vector<StoryActionSpec> specs{
         game_spec("wait_for_platform", {
             optional_ms("timeout_ms", 180000, "no platform this long fails the step"),
         }),
@@ -114,14 +127,11 @@ std::vector<StoryActionSpec> make_specs(){
         game_spec("talk_through_map_screen"),
         game_spec("climb_ladder"),
         game_spec("talk_to_pokedex_screen"),
-        console_only(game_spec("run_to_gate", {
-            optional_ms("timeout_ms", 8000, "running this long with no A prompt fails the step"),
-        })),
-        console_only(game_spec("catch_tutorial")),
-        console_only(game_spec("battle_then_catch")),
-        console_only(game_spec("walk_to_marker")),
-        console_only(game_spec("claim_mable_research_reward")),
     };
+    for (StoryActionSpec& spec : console_specs()){
+        specs.push_back(std::move(spec));
+    }
+    return specs;
 }
 
 
@@ -239,7 +249,7 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
 Handler console_handler(StoryEnv* env, std::string_view name, ConsoleStep step){
     if (env == nullptr){
         return [name = std::string(name)](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
-            return Pokemon::outcome_failed(std::string(Pokemon::CONSOLE_ONLY), name + " runs only on a console");
+            return Pokemon::outcome_failed(std::string(Pokemon::CONSOLE_ONLY), std::format("{} runs only on a console", name));
         };
     }
     return [env, name = std::string(name), step](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){

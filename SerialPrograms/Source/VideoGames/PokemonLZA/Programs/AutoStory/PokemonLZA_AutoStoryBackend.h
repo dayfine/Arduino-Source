@@ -75,7 +75,8 @@ public:
     //  and the readings PLATFORM_READING, AUTOSAVE_READING,
     //  CONTROLS_HINT_READING, ADVANCE_ARROW_READING, and
     //  MISSION_COMPLETE_READING or else MISSION_BANNER_READING (the card
-    //  has the banner's bar), TUTORIAL_CARD_READING; with CHOICE_BOX, CHOICE_ROWS_READING and
+    //  has the banner's bar), TUTORIAL_CARD_READING (TutorialCardDetector's);
+    //  with CHOICE_BOX, CHOICE_ROWS_READING and
     //  CHOICE_SELECTED_READING.
     virtual Pokemon::Observation<Pokemon::ZonePose> observe() override;
     //  fight_story_battle() with the run's battle AI, two minutes at most;

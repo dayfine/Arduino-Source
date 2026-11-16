@@ -5,6 +5,7 @@
  */
 
 #include <optional>
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryLines.h"
 
