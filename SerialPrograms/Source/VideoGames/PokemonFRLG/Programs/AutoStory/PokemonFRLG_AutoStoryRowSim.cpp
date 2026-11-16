@@ -666,23 +666,59 @@ std::string OverworldStepSim::cut(const StoryStep& step){
     return "";
 }
 
-//  A PUSH_BOULDER_VARIANT step: turned to the boulder, and `tiles` pushes,
-//  each followed by the step onto the tile the boulder left.
+namespace{
+
+//  A boulder push's taps on `sim`, as the game answers them: a tap into a
+//  boulder pushes it (SimField::PUSH_BOULDER) and the player stays; any
+//  other tap is a step (sim_step_once()). Nothing interrupts a push.
+class SimBoulderPresses : public BoulderPresses{
+public:
+    explicit SimBoulderPresses(OverworldSim& sim)
+        : m_sim(sim)
+    {}
+
+    BoulderPressRead press(Direction direction) override{
+        if (m_sim.state().facing != direction){
+            sim_turn_to(m_sim, direction);
+        }
+        const MapPosition from = m_sim.state().position;
+        const TilePos ahead = from.point.next(direction);
+        const bool boulder_ahead = std::any_of(m_sim.objects().begin(), m_sim.objects().end(), [&](const MapObject& object){
+            return object.name == "pushable_boulder" && object.x == ahead.x && object.y == ahead.y;
+        });
+        if (boulder_ahead){
+            return {.scrolled = false, .boulder_moved = m_sim.use_field(SimField::PUSH_BOULDER)};
+        }
+        sim_step_once(m_sim, direction);
+        return {.scrolled = !(m_sim.state().position == from), .boulder_moved = false};
+    }
+
+    bool clear_interrupt() override{
+        return false;
+    }
+
+private:
+    OverworldSim& m_sim;
+};
+
+}  // namespace
+
+//  A PUSH_BOULDER_VARIANT step: turned to the boulder, and the taps that
+//  push it `tiles` tiles (push_boulder_tiles()), as on the console.
 std::string OverworldStepSim::push_boulder(const StoryStep& step){
     const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
     const int64_t tiles = Pokemon::story_arg<int64_t>(step.args, "tiles");
-    if (m_sim.state().facing != direction){
-        sim_turn_to(m_sim, direction);
+    SimBoulderPresses presses(m_sim);
+    const BoulderPush push = push_boulder_tiles(direction, tiles, presses);
+    m_at.facing = direction;
+    for (int64_t c = 0; c < push.walked; c++){
+        m_at.tile = m_at.tile.next(direction);
     }
-    for (int64_t c = 0; c < tiles; c++){
-        if (!m_sim.use_field(SimField::PUSH_BOULDER)){
-            return "no boulder to push.";
-        }
-        sim_step_once(m_sim, direction);
-        m_at = StoryPose{m_at.map, m_at.tile.next(direction), direction};
-        if (!(m_sim.state().position == MapPosition{m_at.map, m_at.tile})){
-            return "expected to step onto the boulder's tile " + to_string(MapPosition{m_at.map, m_at.tile}) + ".";
-        }
+    if (push.failure){
+        return *push.failure;
+    }
+    if (!(m_sim.state().position == MapPosition{m_at.map, m_at.tile})){
+        return std::format("expected to stand behind the boulder on {}.", to_string(MapPosition{m_at.map, m_at.tile}));
     }
     return "";
 }
