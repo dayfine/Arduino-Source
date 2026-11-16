@@ -515,7 +515,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "03.02's map talk: A and B in turn, done on the party bar held a second",
         .input = {.checkpoint = "03.02", .first_step = 6, .steps = 1, .looks = {
-            DIALOG, look({}, {}, Milliseconds(2000)), party_bar(Milliseconds(4000)), party_bar(Milliseconds(5100)),
+            DIALOG, look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)), party_bar(Milliseconds(4000)), party_bar(Milliseconds(5100)),
         }},
         .expectation = {
             .verdict = "done",
@@ -526,8 +526,8 @@ const RunCase RUN_CASES[] = {
     {
         .name = "03.02's map talk goes on through the party bar under a text box",
         .input = {.checkpoint = "03.02", .first_step = 6, .steps = 1, .looks = {
-            look({ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)),
-            look({ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, {}, Milliseconds(2000)),
+            look({ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look({ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(2000)),
             party_bar(Milliseconds(4000)), party_bar(Milliseconds(5100)),
         }},
         .expectation = {.verdict = "done", .inputs = "press A, press B, press A, press B, wait 250ms"},
@@ -535,7 +535,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "03.02's map talk fails with no party bar in 120 s",
         .input = {.checkpoint = "03.02", .first_step = 6, .steps = 1, .looks = {
-            look({}, {}, Milliseconds(0)), look({}, {}, Milliseconds(121000)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(121000)),
         }},
         .expectation = {.verdict = "failed at after_taunie_battle: map_talk_timeout", .inputs = "press A, press B"},
     },
@@ -551,7 +551,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "03.04's Pokedex: B at the app and at its text, done on the party bar held a second",
         .input = {.checkpoint = "03.04", .first_step = 2, .steps = 1, .looks = {
-            look({}, {}, Milliseconds(0)), look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(500)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)), look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(500)),
             party_bar(Milliseconds(1000)), party_bar(Milliseconds(2100)),
         }},
         .expectation = {.verdict = "done", .inputs = "press B, press B, wait 250ms"},
