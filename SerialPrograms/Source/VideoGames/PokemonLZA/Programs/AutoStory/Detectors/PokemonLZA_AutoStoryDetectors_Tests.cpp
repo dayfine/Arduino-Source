@@ -470,7 +470,8 @@ std::optional<DetectorReads> arrival_to_mission_banner(std::string_view name){
     };
 }
 
-//  Every detector as named: the banner on 0181-0189. The autosave badge on 0197 too: it is named
+//  Every detector as named: the banner on 0181-0189, the three-row
+//  controls hint from 0198. The autosave badge on 0197 too: it is named
 //  "nothing" but shows the badge
 //  (Traditional Chinese, top right), right after the black fade.
 std::optional<DetectorReads> arrival_past_mission_banner(std::string_view name){
@@ -535,6 +536,14 @@ const FrameFolderCase FRAME_FOLDER_CASES[] = {
         .name = "the mission complete card to the next mission's banner",
         .input = {.folder = "MissionCompleteToNextBanner"},
         .expectation = {.frames = 139, .reads = mission_complete_to_next_banner},
+    },
+    {
+        //  console B, 2026-11-15, 1280x720: Italian's longer header moves
+        //  the banner's icon 96 px left; the three-row controls hint puts
+        //  its card ~20 px higher.
+        .name = "01.01's banner and controls hint in English and Italian",
+        .input = {.folder = "Arrival0101Languages"},
+        .expectation = {.frames = 7, .reads = as_named},
     },
 };
 

@@ -22,9 +22,9 @@ namespace PokemonLZA{
 //  The banner a main mission starts with: a see-through yellow bar at
 //  x 345-1590, y 410-600 on 1920x1080 with the mission's name in the
 //  middle, and above it, left of "MAIN MISSION 01", a white hexagon with
-//  an orange "!" at about x 700-738, y 327-370. The bar is read left and
-//  right of the name, with no yellow just above or below it, and the icon
-//  is looked for along the header (the header's text is centred). Text is
+//  an orange "!" at about x 700-738, y 327-370. The bar is read at its
+//  ends, with no yellow just above or below it, and the icon is looked for
+//  across the header's left half (the header's text is centred). Text is
 //  not read, so any language matches.
 class MainMissionBannerDetector : public StaticScreenDetector{
 public:

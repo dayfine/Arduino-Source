@@ -22,7 +22,8 @@ namespace PokemonLZA{
 
 //  The controls hint the tutorial shows under the player when they get
 //  control: its "?" card, sky blue with a dark "?", at x 947-971, y 872-900
-//  on 1920x1080, centred, with no sky blue around it. Only the card is
+//  on 1920x1080 under a two-row hint (higher under more rows), centred,
+//  with no sky blue around it. Only the card is
 //  read: the rows under it ("(L) Move", "(R) Control Camera") are centred
 //  too, so their icons move with the text's length.
 class ControlsHintDetector : public StaticScreenDetector{
@@ -33,6 +34,10 @@ public:
     virtual bool detect(const ImageViewRGB32& screen) override;
 
 private:
+    //  Whether the card shows `dy` pixels (of 1080) below where the boxes
+    //  are.
+    bool card_at(const ImageViewRGB32& screen, double dy) const;
+
     Color m_color;
     ImageFloatBox m_card;
     ImageFloatBox m_glyph;
