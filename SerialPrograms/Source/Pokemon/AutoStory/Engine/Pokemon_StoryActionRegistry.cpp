@@ -12,6 +12,14 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+namespace{
+
+//  The failure of a step whose action the game does not have.
+constexpr std::string_view UNSUPPORTED_STEP = "unsupported_step";
+
+} // namespace
+
+
 template <StoryPose PoseType>
 StoryActionRegistry<PoseType>::StoryActionRegistry(const StoryGame<PoseType>& game)
     : m_game(game)
