@@ -122,7 +122,7 @@ ImageRGB32 solid_frame(uint32_t color){
 //  which is in no region, painted white.
 ImageRGB32 platform_with_player_frame(){
     ImageRGB32 image = platform_reference_image(WIDTH, HEIGHT);
-    fill_box(780, 330, 1200, HEIGHT, 0xffffffff, image);
+    fill_box(/*min_x=*/780, /*min_y=*/330, /*max_x=*/1200, HEIGHT, /*color=*/0xffffffff, image);
     return image;
 }
 
@@ -145,7 +145,7 @@ ImageRGB32 chevron_frame(uint32_t background, uint32_t ink){
 //  A solid white block the chevron's size on the ad's light blue.
 ImageRGB32 chevron_sized_block_frame(){
     ImageRGB32 image = solid_frame(0xffc1ecf0);
-    fill_box(1400, 1004, 1432, 1023, 0xffffffff, image);
+    fill_box(/*min_x=*/1400, /*min_y=*/1004, /*max_x=*/1432, /*max_y=*/1023, /*color=*/0xffffffff, image);
     return image;
 }
 
@@ -155,8 +155,8 @@ ImageRGB32 chevron_sized_block_frame(){
 ImageRGB32 autosave_badge_frame(uint32_t background, uint32_t glow){
     ImageRGB32 image(WIDTH, HEIGHT);
     image.fill(background);
-    fill_box(1655, 73, 1667, 104, glow, image);
-    fill_box(1659, 73, 1663, 104, 0xffffffff, image);
+    fill_box(/*min_x=*/1655, /*min_y=*/73, /*max_x=*/1667, /*max_y=*/104, glow, image);
+    fill_box(/*min_x=*/1659, /*min_y=*/73, /*max_x=*/1663, /*max_y=*/104, /*color=*/0xffffffff, image);
     return image;
 }
 
@@ -297,7 +297,7 @@ std::optional<DetectorReads> opening(std::string_view){
 //  ad: no autosave badge, the advance chevron only on the one box with its
 //  text done (0040).
 std::optional<DetectorReads> arrival_to_ad(std::string_view name){
-    const std::optional<int> index = frame_number(name, 0, 4);
+    const std::optional<int> index = frame_number(name, /*offset=*/0, /*digits=*/4);
     if (!index){
         return std::nullopt;
     }
@@ -311,7 +311,7 @@ std::optional<DetectorReads> arrival_to_ad(std::string_view name){
 //  chevron on the boxes with their text done (0044, 0049, 0053, 0078) and
 //  on the subtitles once typed (0093-0115).
 std::optional<DetectorReads> arrival_to_ad_subtitles(std::string_view name){
-    const std::optional<int> index = frame_number(name, 0, 4);
+    const std::optional<int> index = frame_number(name, /*offset=*/0, /*digits=*/4);
     if (!index){
         return std::nullopt;
     }
@@ -325,7 +325,7 @@ std::optional<DetectorReads> arrival_to_ad_subtitles(std::string_view name){
 //  As arrival_to_ad_subtitles(), on through the ad and the bag scene. The
 //  platform and the advance chevron as named.
 std::optional<DetectorReads> arrival_to_mission_banner(std::string_view name){
-    const std::optional<int> index = frame_number(name, 0, 4);
+    const std::optional<int> index = frame_number(name, /*offset=*/0, /*digits=*/4);
     if (!index){
         return std::nullopt;
     }
