@@ -28,7 +28,7 @@ namespace{
 StoryFileRow<StoryCheckpoint> read_checkpoint_file(std::string_view text, std::string_view source){
     StoryRowExecution read;
     const Pokemon::ExecutionReader read_execution = [&read](const JsonObject& execution, std::string_view where){
-        read = Pokemon::read_story_row_execution(execution, where, {});
+        read = Pokemon::read_story_row_execution(execution, where, /*game_fields=*/{});
     };
     StoryCheckpoint checkpoint = Pokemon::read_authored_checkpoint(
         parse_json(std::string(text)), "plza", source, read_execution, plza_story_specs()
@@ -36,9 +36,10 @@ StoryFileRow<StoryCheckpoint> read_checkpoint_file(std::string_view text, std::s
     return {.checkpoint = std::move(checkpoint), .execution = read};
 }
 
-} // namespace
-
-
+//  How the shared loader reads a PLZA checkpoint file: against
+//  plza_story_specs(), its execution with only the shared "save" and
+//  "reload_when_chained". 01.00 (story_row_starts_without_save()) has no
+//  save to reload.
 const Pokemon::StoryFileReader<StoryCheckpoint>& plza_story_file_reader(){
     static const Pokemon::StoryFileReader<StoryCheckpoint> reader{
         .read = read_checkpoint_file,
@@ -46,6 +47,9 @@ const Pokemon::StoryFileReader<StoryCheckpoint>& plza_story_file_reader(){
     };
     return reader;
 }
+
+} // namespace
+
 
 const StoryData& builtin_story_data(){
     static const StoryData data = Pokemon::load_story_data(
