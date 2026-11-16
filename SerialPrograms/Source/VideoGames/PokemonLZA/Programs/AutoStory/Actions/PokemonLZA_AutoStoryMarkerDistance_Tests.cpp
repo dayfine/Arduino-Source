@@ -71,6 +71,29 @@ const StopWalkCase STOP_WALK_CASES[] = {
         .expectation = {.stopped_on = 14, .position = 99},
     },
     {
+        .name = "03.08's walk to 100 takes no 1, 1, 4 at the rocks as a start",
+        .input = {
+            .direction = MarkerDirection::TOWARD,
+            .stop_at = 100,
+            //  console B, 2026-11-16 07:41:06 to 07:41:08: the marker showed
+            //  120 between Taunie's two rocks; "1", "f1F" and "{#4*" read 1,
+            //  1 and 4, which agreed within 12 and ended the walk at once.
+            .reads = {1, 1, 4, 120, 120, 117, 114, 111, 108, 105, 102, 99},
+        },
+        .expectation = {.stopped_on = 12, .position = 99},
+    },
+    {
+        .name = "03.08's walk to 100 takes no run of 1s at its start",
+        .input = {
+            .direction = MarkerDirection::TOWARD,
+            .stop_at = 100,
+            //  console B, 2026-11-16 07:33:56: "1^" read 1 on the first
+            //  looks with the marker at about 146.
+            .reads = {1, 1, 1, 146, 143, 140, 137, 134, 131, 128, 125, 122, 119, 116, 113, 110, 107, 104, 101, 98},
+        },
+        .expectation = {.stopped_on = 20, .position = 98},
+    },
+    {
         .name = "a lone misread among a walk's first reads does not hold back the start",
         .input = {.direction = MarkerDirection::TOWARD, .stop_at = 100, .reads = {130, 7, 124, 121, 118, 115, 112, 109, 106, 103, 100}},
         .expectation = {.stopped_on = 11, .position = 100},

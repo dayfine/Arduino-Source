@@ -41,6 +41,12 @@ std::optional<int> walk_toward_marker(StoryEnv& env, PlzaBackend& backend, int s
 //  it is `stop_at` or more away, counted as walk_toward_marker() counts it.
 std::optional<int> walk_back_from_marker(StoryEnv& env, PlzaBackend& backend, int stop_at, Milliseconds limit);
 
+//  The objective marker's distance where the player stands: up to 8 looks,
+//  250 ms apart, until MarkerDistance takes a read (two of three agree).
+//  None when it takes none: a lone read at the start of 03.08 read 1 with
+//  the marker at 120, half behind a rock (console B, 2026-11-16).
+std::optional<int> read_marker_distance(StoryEnv& env, PlzaBackend& backend);
+
 
 
 } // namespace PokemonLZA

@@ -44,7 +44,10 @@ public:
     //  "1110" on console B, 2026-11-13): so the first read is taken only
     //  once three agree (03.08 run 2, console B 2026-11-16: a lone "1" at
     //  about 135 ended the walk to 100 at once), and three that agree
-    //  replace a wrong last one. Returns whether the read is taken.
+    //  replace a wrong last one. A read not taken that, moved on, is at 0
+    //  or less agrees with none: the marker half behind a rock read 1, 1
+    //  and 4 while it showed 120, which agree within 12 (03.08 run 3,
+    //  console B 2026-11-16). Returns whether the read is taken.
     bool read(int distance);
 
     //  A step on, in the walk's direction: counted until the next read is

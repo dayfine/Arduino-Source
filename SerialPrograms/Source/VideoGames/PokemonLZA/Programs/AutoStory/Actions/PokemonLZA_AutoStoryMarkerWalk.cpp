@@ -228,6 +228,24 @@ std::optional<int> walk_back_from_marker(StoryEnv& env, PlzaBackend& backend, in
     return walk.position();
 }
 
+std::optional<int> read_marker_distance(StoryEnv& env, PlzaBackend& backend){
+    MarkerDistance distance(MarkerDirection::TOWARD);
+    for (int looks = 0; looks < 8; looks++){
+        backend.scope().throw_if_cancelled();
+        const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+        if (look.frame && *look.frame){
+            const std::optional<ObjectiveMarker> marker = read_objective_marker(env.env.console, *look.frame->frame);
+            if (marker && marker->distance > 0 && distance.read(marker->distance)){
+                backend.log(std::format("[PLZA] marker distance: {}", marker->distance));
+                return marker->distance;
+            }
+        }
+        backend.wait(MARKER_POLL);
+    }
+    backend.log("[PLZA] marker distance: no read taken in 8 looks");
+    return std::nullopt;
+}
+
 Pokemon::Outcome walk_to_marker(StoryEnv& env, PlzaBackend& backend){
     MarkerWalk walk(env, backend, MarkerGoal{});
     run_marker_walk(MARKER_WALK_LIMIT, walk, backend);

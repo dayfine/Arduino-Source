@@ -39,7 +39,10 @@ bool MarkerDistance::read(int distance){
     if (!at || !near(distance, *at)){
         size_t agreeing = 0;
         for (const Untaken& untaken : m_untaken){
-            if (near(distance, moved_on(untaken))){
+            //  A read that, moved on, puts the walk at or past the
+            //  objective agrees with nothing.
+            const int predicted = moved_on(untaken);
+            if (predicted > 0 && near(distance, predicted)){
                 agreeing++;
             }
         }

@@ -39,6 +39,11 @@ LinesPassed press_a_through_lines(PlzaBackend& backend, Milliseconds quiet, Mill
             backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
         }else if (look.when - *last_busy >= quiet){
             return passed;
+        }else if (look.events.has(ScreenEvent::INTERACT_PROMPT)){
+            //  An A prompt over the scene: A acts on it, and a zone gate's
+            //  "A Leave" takes the catches out of the zone (03.08, console
+            //  B 2026-11-16). B leaves it.
+            backend.press(BUTTON_B, /*hold=*/160ms, /*release=*/240ms);
         }
         if (look.when - *start >= limit){
             break;

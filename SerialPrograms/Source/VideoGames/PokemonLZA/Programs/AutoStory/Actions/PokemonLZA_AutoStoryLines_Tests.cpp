@@ -50,6 +50,11 @@ Observation<ZonePose> nothing(Milliseconds at){
     return look(/*events=*/{}, /*readings=*/{}, at);
 }
 
+//  An A prompt over the scene: a zone gate's "A Leave".
+Observation<ZonePose> prompt(Milliseconds at){
+    return look({ScreenEvent::INTERACT_PROMPT}, /*readings=*/{}, at);
+}
+
 Observation<ZonePose> party_bar(Milliseconds at){
     return look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, at);
 }
@@ -95,6 +100,11 @@ const LinesCase LINES_CASES[] = {
         .name = "nothing for 3 s presses nothing",
         .input = {.looks = {nothing(Milliseconds(0)), nothing(Milliseconds(3000))}},
         .expectation = {.text = false, .card = false, .timed_out = false, .inputs = "wait 250ms"},
+    },
+    {
+        .name = "a zone gate's Leave prompt after the text gets B, not A",
+        .input = {.looks = {dialog(Milliseconds(0)), prompt(Milliseconds(500)), nothing(Milliseconds(3000))}},
+        .expectation = {.text = true, .card = false, .timed_out = false, .inputs = "press A, wait 250ms, press B, wait 250ms"},
     },
     {
         .name = "text past the limit times out",

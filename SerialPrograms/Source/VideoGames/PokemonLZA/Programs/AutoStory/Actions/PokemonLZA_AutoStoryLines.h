@@ -30,7 +30,8 @@ struct LinesPassed{
 
 //  A at each look, LINES_POLL apart, with a text box, the advance chevron
 //  or a tutorial card, until none has shown for `quiet`, by the looks'
-//  times; `limit` at most.
+//  times; `limit` at most. B instead at a look with an A prompt over the
+//  scene (a zone gate's "A Leave"), where A would act on it.
 LinesPassed press_a_through_lines(PlzaBackend& backend, Milliseconds quiet, Milliseconds limit);
 
 //  B, a second apart, until the party bar or a text box shows: out of a
