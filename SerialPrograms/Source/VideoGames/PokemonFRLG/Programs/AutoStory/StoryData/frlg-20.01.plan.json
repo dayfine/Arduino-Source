@@ -112,7 +112,7 @@
               21,
               13,
               45,
-              22,
+              30,
               0,
               0
             ],
@@ -152,6 +152,28 @@
               0,
               0
             ]
+          ],
+          "foe_stats": [
+            [
+              103,
+              119
+            ],
+            [
+              203,
+              72
+            ],
+            [
+              135,
+              103
+            ],
+            [
+              59,
+              135
+            ],
+            [
+              107,
+              123
+            ]
           ]
         },
         "declared_after": {
@@ -164,7 +186,7 @@
           ],
           "facing": "north"
         },
-        "why": "Lorelei (TRAINER_ELITE_FOUR_LORELEI): Dewgong Lv52, Cloyster Lv51, Slowbro Lv52, Jynx Lv54, Lapras Lv54, two Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +4 by X Specials, X Speed until faster, Guard Spec first against an accuracy drop; the doc's lorelei row, 94.3% at 159/159); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's lorelei entry state (159/159), as 19.01's: the 80th percentile of the foe's move choice, its mean, its worst case and its worst normal hit. Lapras's worst case is 78. Then her door north (6, 2) opens"
+        "why": "Lorelei (TRAINER_ELITE_FOUR_LORELEI): Dewgong Lv52, Cloyster Lv51, Slowbro Lv52, Jynx Lv54, Lapras Lv54, two Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +4 by X Specials, X Speed until faster, Guard Spec first against an accuracy drop; the doc's lorelei row, 94.3% at 159/159); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's lorelei entry state (159/159), as 19.01's: the 80th percentile of the foe's move choice, its mean, its worst case and its worst normal hit. Lapras's worst case is 78. Dewgong's worst normal hit is 30, not the generator's 22: console B, 2026-11-16, took 30 of 162 in one turn. foe_stats are each foe's Defense and Sp. Def from the doc's table, for the damage each attack would do. Then her door north (6, 2) opens"
       }
     ]
   },

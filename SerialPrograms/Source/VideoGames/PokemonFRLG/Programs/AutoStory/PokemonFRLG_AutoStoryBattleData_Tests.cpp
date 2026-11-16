@@ -295,6 +295,56 @@ UnitTestResult test_matchup_then_power(){
     return true;
 }
 
+//  Lorelei (console B, 2026-11-16, 20.01): after four X Specials the lead
+//  used Strength on Dewgong for 11 turns. PokeGuy's Blastoise Lv51
+//  (PokemonSimulation docs/battles/pokeguy-conditions.md, lorelei) and her
+//  foes' Defense and Sp. Def from the same table.
+PartyMember lorelei_blastoise(){
+    PartyMember blastoise = victory_road_blastoise();
+    blastoise.stats = Stats{.hp = 159, .attack = 107, .defense = 108, .sp_attack = 123, .sp_defense = 124, .speed = 107};
+    return blastoise;
+}
+
+std::string pick(const PartyMember& member, std::string_view foe, const AttackContext& context){
+    const std::optional<size_t> slot = attack_slot_against(member, {std::string(foe)}, context);
+    return slot ? member.moves[*slot].move : "none";
+}
+
+constexpr FoeStats DEWGONG = {.defense = 103, .sp_defense = 119};
+
+//  Bite (Dark: special in Gen 3) at x3 hits ~83, Strength ~38. Surf would
+//  hit harder still, but Water on a Water foe is never chosen.
+UnitTestResult test_dewgong_after_setup(){
+    const std::string chosen = pick(lorelei_blastoise(), "dewgong", {.sp_attack_stage = 4, .foe = DEWGONG});
+    return chosen == "bite" ? UnitTestResult(true) : UnitTestResult(std::format("Expected Bite at +4, got {}.", chosen));
+}
+
+//  Strength ~38 against Bite ~29 and Blizzard ~7 (resisted twice, and
+//  Thick Fat halves its power).
+UnitTestResult test_dewgong_without_setup(){
+    const std::string chosen = pick(lorelei_blastoise(), "dewgong", {.foe = DEWGONG});
+    return chosen == "strength" ? UnitTestResult(true) : UnitTestResult(std::format("Expected Strength at +0, got {}.", chosen));
+}
+
+//  Jynx (Ice/Psychic): Defense 59, Sp. Def 135. Strength ~65, Surf ~57,
+//  Bite (2x) ~52: the matchup alone took Bite.
+UnitTestResult test_jynx_physical(){
+    const std::string chosen = pick(lorelei_blastoise(), "jynx", {.foe = FoeStats{.defense = 59, .sp_defense = 135}});
+    return chosen == "strength" ? UnitTestResult(true) : UnitTestResult(std::format("Expected Strength on Jynx, got {}.", chosen));
+}
+
+//  A Raticate with Defense and Sp. Def 80 (made up for the case): Surf
+//  ~99 at +0 beats Strength ~49; at Attack +3 (x2.5) Strength hits ~119.
+UnitTestResult test_x_attack_physical(){
+    const FoeStats even{.defense = 80, .sp_defense = 80};
+    const std::string plain = pick(lorelei_blastoise(), "raticate", {.foe = even});
+    const std::string boosted = pick(lorelei_blastoise(), "raticate", {.attack_stage = 3, .foe = even});
+    if (plain != "surf" || boosted != "strength"){
+        return std::format("Expected Surf at Attack +0 and Strength at +3, got {} and {}.", plain, boosted);
+    }
+    return true;
+}
+
 //  19.04d (console B, 2026-11-16 03:36): paralysed by Colby's Kingler, the
 //  lead fought his four other Pokemon with PAR and 2 Parlyz Heals in the
 //  bag. A trainer's battle cures PAR with a Parlyz Heal once the HP needs
@@ -352,6 +402,22 @@ const AutoStoryBattleDataTestCase AUTO_STORY_BATTLE_DATA_CASES[] = {
     {
         .input = {.name = "Victory Road's Blastoise: the best matchup, then the strongest move", .body = test_matchup_then_power},
         .expectation = {.description = "Strength on Kingler, Tentacruel and Blastoise; Surf on Onix, Rhydon and Raticate; Blizzard on Dragonair and Pidgeot"},
+    },
+    {
+        .input = {.name = "Lorelei's Dewgong at Sp. Atk +4", .body = test_dewgong_after_setup},
+        .expectation = {.description = "Bite, the special move Water-on-Water leaves, over Strength"},
+    },
+    {
+        .input = {.name = "Lorelei's Dewgong at Sp. Atk +0", .body = test_dewgong_without_setup},
+        .expectation = {.description = "Strength"},
+    },
+    {
+        .input = {.name = "Lorelei's Jynx, Defense 59", .body = test_jynx_physical},
+        .expectation = {.description = "Strength over Surf and the super effective Bite"},
+    },
+    {
+        .input = {.name = "X Attack counted for a physical move", .body = test_x_attack_physical},
+        .expectation = {.description = "Surf at Attack +0, Strength at +3"},
     },
     {
         .input = {.name = "PAR with Parlyz Heals in the bag", .body = test_paralysis_cured},

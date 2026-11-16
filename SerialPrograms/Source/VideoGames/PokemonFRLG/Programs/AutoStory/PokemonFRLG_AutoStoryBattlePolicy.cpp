@@ -81,10 +81,6 @@ constexpr RiskHeal RISK_HEALS[] = {
     {BattleRisk::HIGH, HpBand::RED, {"full-restore", "max-potion", "hyper-potion"}},
 };
 
-double stage_multiplier(int stage){
-    return stage >= 0 ? (2.0 + stage) / 2.0 : 2.0 / (2.0 - stage);
-}
-
 PolicyItem medicine_item(const std::string& item, std::string why){
     return PolicyItem{.item = item, .party_member = true, .why = std::move(why)};
 }
@@ -157,12 +153,31 @@ std::optional<std::vector<FoeThreat>> foe_threats_of(const std::vector<std::vect
     return foes;
 }
 
+namespace{
+
+//  A battle step's "foe_stats" rows, [defense, sp_defense] each; empty if
+//  there are none or a row isn't that.
+std::vector<FoeStats> foe_stats_of(const Pokemon::StoryActionArgs& args){
+    constexpr size_t COLUMNS = 2;
+    std::vector<FoeStats> foes;
+    for (const std::vector<int64_t>& row : Pokemon::story_arg<std::vector<std::vector<int64_t>>>(args, "foe_stats")){
+        if (row.size() != COLUMNS){
+            return {};
+        }
+        foes.push_back(FoeStats{.defense = static_cast<int>(row[0]), .sp_defense = static_cast<int>(row[1])});
+    }
+    return foes;
+}
+
+} // namespace
+
 BattlePolicy battle_policy_of(const Pokemon::StoryActionArgs& args){
     const std::optional<BattlePolicyKind> kind = battle_policy_kind(Pokemon::story_arg<std::string>(args, "policy"));
-    if (!kind){
-        return {};
-    }
     BattlePolicy policy;
+    policy.foe_stats = foe_stats_of(args);
+    if (!kind){
+        return policy;
+    }
     policy.kind = *kind;
     policy.goals = SetupGoals{
         .spa = static_cast<int>(Pokemon::story_arg<int64_t>(args, "setup_spa")),

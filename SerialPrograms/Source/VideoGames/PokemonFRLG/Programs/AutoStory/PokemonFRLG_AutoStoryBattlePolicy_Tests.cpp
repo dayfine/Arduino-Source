@@ -212,7 +212,7 @@ BattlePolicy lorelei_policy(){
     return BattlePolicy{
         .kind = BattlePolicyKind::GOAL_BASED_SETUP,
         .goals = {.spa = 4, .accuracy = 0, .outspeed = true, .guard_accuracy = true},
-        .foes = {{.speed = 93, .likely = 21, .mean = 13, .max = 45, .normal_max = 22}},
+        .foes = {{.speed = 93, .likely = 21, .mean = 13, .max = 45, .normal_max = 30}},
     };
 }
 

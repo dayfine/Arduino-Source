@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryParty.h"
@@ -224,36 +225,59 @@ bool useless_against(const MoveData& move, std::string_view foe){
     return ability_immunity(foe) == move.type || water_on_water || wonder_guard;
 }
 
-//  `move`'s type multiplier, in tenths, summed over `foes`: 0 against a foe
-//  it may do nothing to (useless_against()), halved for a two-turn move; 0
-//  for a move that does no damage. Each foe must be in species_data().
-size_t matchup(std::string_view move, const std::vector<std::string>& foes){
-    const MoveData* data = move_data(move);
-    if (data == nullptr || !data->damaging){
-        return 0;
+//  In Gen 3 a move's type makes it physical or special.
+bool physical(PokemonType type){
+    switch (type){
+    case PokemonType::NORMAL:
+    case PokemonType::FIGHTING:
+    case PokemonType::FLYING:
+    case PokemonType::POISON:
+    case PokemonType::GROUND:
+    case PokemonType::ROCK:
+    case PokemonType::BUG:
+    case PokemonType::GHOST:
+    case PokemonType::STEEL:
+        return true;
+    default:
+        return false;
     }
-    size_t total = 0;
-    for (const std::string& foe : foes){
-        if (useless_against(*data, foe)){
-            continue;
-        }
-        size_t tenths = effectiveness(*data, *species_data(foe));
-        total += takes_two_turns(move) ? tenths / 2 : tenths;
-    }
-    return total;
 }
 
-//  How hard `move` hits for `member`, to choose between moves of the same
-//  matchup: its power, half again for a move of the member's own type
-//  (STAB), in halves. 0 for a move the data doesn't have.
-size_t strength(const PartyMember& member, std::string_view move){
-    const MoveData* data = move_data(move);
-    if (data == nullptr){
+//  A side's attacking or defending stat where the stats aren't known: the
+//  same for both, so only power and the multipliers tell moves apart.
+constexpr double EVEN_STAT = 100;
+//  The level taken while the member's isn't known.
+constexpr int DEFAULT_LEVEL = 50;
+
+//  `move`'s Gen 3 damage on `foe` (pret src/battle_util.c
+//  CalculateBaseDamage, without the random roll and critical hits), 0 when
+//  it may do nothing; halved for a two-turn move. `foe` must be in species_data().
+double damage(const PartyMember& member, const MoveData& move, std::string_view move_name, std::string_view foe, const AttackContext& context){
+    if (!move.damaging || useless_against(move, foe)){
         return 0;
     }
+    const bool is_physical = physical(move.type);
+    double attack = EVEN_STAT;
+    if (member.stats){
+        attack = is_physical ? member.stats->attack : member.stats->sp_attack;
+    }
+    attack = std::floor(attack * stage_multiplier(is_physical ? context.attack_stage : context.sp_attack_stage));
+    double defense = EVEN_STAT;
+    if (context.foe){
+        defense = std::max(1, is_physical ? context.foe->defense : context.foe->sp_defense);
+    }
+    double power = move.power;
+    if (may_have_thick_fat(foe) && (move.type == PokemonType::FIRE || move.type == PokemonType::ICE)){
+        power = std::floor(power / 2);
+    }
+    const int level = battle_level(member) > 0 ? battle_level(member) : DEFAULT_LEVEL;
+    double hit = std::floor(std::floor(std::floor(2.0 * level / 5 + 2) * power * attack / defense) / 50) + 2;
     const SpeciesData* types = species_data(member.species);
-    const bool stab = types != nullptr && (types->first == data->type || types->second == data->type);
-    return static_cast<size_t>(data->power) * (stab ? 3 : 2);
+    if (types != nullptr && (types->first == move.type || types->second == move.type)){
+        hit = std::floor(hit * 1.5);
+    }
+    hit = std::floor(hit * static_cast<double>(effectiveness(move, *species_data(foe))) / 10);
+    return takes_two_turns(move_name) ? hit / 2 : hit;
 }
 
 //  The member's slots in the plan's order: its line's attacks first, as
@@ -406,7 +430,9 @@ std::optional<size_t> attack_slot(const PartyMember& member){
     return TOP_LEFT_MOVE;
 }
 
-std::optional<size_t> attack_slot_against(const PartyMember& member, const std::vector<std::string>& foes){
+std::optional<size_t> attack_slot_against(
+    const PartyMember& member, const std::vector<std::string>& foes, const AttackContext& context
+){
     const std::optional<size_t> plan = attack_slot(member);
     std::vector<std::string> known;
     std::ranges::copy_if(foes, std::back_inserter(known), [](const std::string& foe){
@@ -416,16 +442,21 @@ std::optional<size_t> attack_slot_against(const PartyMember& member, const std::
         return plan;
     }
     std::optional<size_t> best;
-    size_t best_matchup = 0;
-    size_t best_strength = 0;
+    double best_damage = 0;
     for (size_t slot : attack_order(member)){
-        const size_t tenths = matchup(member.moves[slot].move, known);
-        const size_t hits = strength(member, member.moves[slot].move);
-        const bool stronger = tenths > best_matchup || (tenths == best_matchup && hits > best_strength);
-        if (member.moves[slot].pp > 0 && tenths > 0 && stronger){
+        const KnownMove& known_move = member.moves[slot];
+        const MoveData* data = move_data(known_move.move);
+        if (data == nullptr || known_move.pp <= 0){
+            continue;
+        }
+        double total = 0;
+        for (const std::string& foe : known){
+            total += damage(member, *data, known_move.move, foe, context);
+        }
+        const bool more_pp = best && total == best_damage && known_move.pp > member.moves[*best].pp;
+        if (total > 0 && (total > best_damage || more_pp)){
             best = slot;
-            best_matchup = tenths;
-            best_strength = hits;
+            best_damage = total;
         }
     }
     if (best){

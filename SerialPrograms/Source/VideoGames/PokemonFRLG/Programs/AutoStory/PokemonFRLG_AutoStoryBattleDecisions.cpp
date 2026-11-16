@@ -66,14 +66,30 @@ constexpr uint8_t MAX_LEVELS_IN_BATTLE = 3;
 //  The HP a Potion heals (pret src/data/items.h).
 constexpr double POTION_HP = 20;
 
-//  A trainer's battle: the plan's attack, else the best type matchup
-//  (attack_slot_against()) against the foe out as read at the battle
-//  menu, else against the whole party its plan lists.
-std::optional<size_t> trainer_attack_slot(const PartyMember& usable, const Supplies& supplies){
-    if (!supplies.foe_out.empty()){
-        return attack_slot_against(usable, std::vector<std::string>{supplies.foe_out});
+//  A trainer's battle: the most damage (attack_slot_against()) against the
+//  foe out as read at the battle menu, with its stats when the plan has
+//  them (`foe_index` into its foes), else against the whole party its plan lists.
+std::optional<size_t> trainer_attack_slot(
+    const PartyMember& usable, const Supplies& supplies, AttackContext context, size_t foe_index
+){
+    if (supplies.foe_out.empty()){
+        return attack_slot_against(usable, supplies.foes, context);
     }
-    return attack_slot_against(usable, supplies.foes);
+    const std::vector<FoeStats>& stats = supplies.policy.foe_stats;
+    if (foe_index < supplies.foes.size() && foe_index < stats.size() && supplies.foes[foe_index] == supplies.foe_out){
+        context.foe = stats[foe_index];
+    }
+    return attack_slot_against(usable, std::vector<std::string>{supplies.foe_out}, context);
+}
+
+//  The X Attack or X Special `item` raised the lead's stage.
+void count_stage(AttackContext& context, std::string_view item){
+    constexpr int MAX_STAGE = 6;
+    if (item == "x-attack"){
+        context.attack_stage = std::min(MAX_STAGE, context.attack_stage + 1);
+    }else if (item == "x-special"){
+        context.sp_attack_stage = std::min(MAX_STAGE, context.sp_attack_stage + 1);
+    }
 }
 
 //  The item a turn uses, if any, and why one was or wasn't, for the log.
@@ -311,7 +327,7 @@ TurnAction BattleDecisions::move_turn(){
         }
     }
     const std::optional<size_t> slot = m_kind == BattleKind::TRAINER
-        ? trainer_attack_slot(usable, m_supplies)
+        ? trainer_attack_slot(usable, m_supplies, m_attack, track_foe())
         : attack_slot_against(usable, m_supplies.wild_foes);
     if (!slot){
         return TurnAction{.choice = TurnChoice::MOVE, .slot = BOTTOM_LEFT_MOVE};
@@ -334,6 +350,7 @@ std::optional<std::string> BattleDecisions::planned_item(const PartyStatus& stat
 }
 
 void BattleDecisions::planned_item_used(){
+    count_stage(m_attack, m_planned_item);
     for (Pokemon::StoryItem& use : m_supplies.battle_items){
         if (use.item == m_planned_item && use.quantity > 0){
             use.quantity--;
@@ -344,6 +361,7 @@ void BattleDecisions::planned_item_used(){
 }
 
 void BattleDecisions::policy_item_used(){
+    count_stage(m_attack, m_planned_item);
     spend_item(m_supplies, m_planned_item);
     //  The story's own Super Potion or Parlyz Heal (item_turn()), with no
     //  policy to tell.

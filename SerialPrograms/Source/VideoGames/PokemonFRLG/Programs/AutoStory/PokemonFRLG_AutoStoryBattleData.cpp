@@ -211,6 +211,14 @@ PokemonType ability_immunity(std::string_view species){
     return PokemonType::NONE;
 }
 
+bool may_have_thick_fat(std::string_view species){
+    static constexpr std::string_view THICK_FAT[] = {
+        "seel", "dewgong", "snorlax", "marill", "azumarill", "miltank",
+        "makuhita", "hariyama", "spoink", "grumpig", "spheal", "sealeo", "walrein",
+    };
+    return std::ranges::find(THICK_FAT, species) != std::end(THICK_FAT);
+}
+
 bool takes_two_turns(std::string_view move){
     static constexpr std::string_view TWO_TURN_MOVES[] = {"dig", "fly", "solar-beam", "skull-bash", "razor-wind", "sky-attack"};
     return std::ranges::find(TWO_TURN_MOVES, move) != std::end(TWO_TURN_MOVES);

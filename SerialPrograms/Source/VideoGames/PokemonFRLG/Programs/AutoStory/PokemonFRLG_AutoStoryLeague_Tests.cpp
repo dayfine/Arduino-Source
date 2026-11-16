@@ -190,7 +190,7 @@ struct LeagueFight{
 std::vector<LeagueFight> league_fights(){
     return {
         {"20.01", "lorelei", {
-            {93, 21, 13, 45, 22, 0, 0},     //  Dewgong
+            {93, 21, 13, 45, 30, 0, 0},     //  Dewgong: worst normal hit 30 as seen on console B, not 22
             {91, 0, 0, 0, 15, 0, 0},        //  Cloyster
             {45, 27, 9, 60, 30, 0, 0},      //  Slowbro
             {110, 25, 9, 57, 28, 0, 0},     //  Jynx
