@@ -402,8 +402,7 @@ SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
     if (fades_settled(look.when)){
         return SceneScreen::FADE_SETTLED;
     }
-    const bool control_held = m_control_since && look.when - *m_control_since >= CONTROL_INSTEAD_HOLD;
-    if (control_held && look.events.has(ScreenEvent::PLAYER_CAN_MOVE)){
+    if (m_control_since && look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && look.when - *m_control_since >= CONTROL_INSTEAD_HOLD){
         return SceneScreen::ENDED_IN_CONTROL;
     }
     if (m_config.start_window && !m_scene_seen && hud_shows(look)){
