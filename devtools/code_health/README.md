@@ -95,14 +95,16 @@ void load_move_table(){
 `// code-health: allow <check>[,<check>] -- <justification>` lets the listed metrics of one
 function or class exceed their limit. Checks are the metric names in the table above:
 `file_lines`, `function_lines`, `nesting`, `parameters`, `public_methods`, `public_data`,
-`single_method_interface`, `header_symbols`. Four style findings take a tag too: `char_pointer`,
-`overload_prefix`, `out_param_order` and `string_concat`, for a C API or a fixed interface that needs them. Other style and layering
+`single_method_interface`, `header_symbols`. Six style findings take a tag too: `char_pointer`,
+`overload_prefix`, `out_param_order`, `string_concat`, `param_comment` and `test_only_api`, for a C API
+or a fixed interface that needs them; so do `learned_rule_test` and `special_case` (see
+[Systematic fixes](#systematic-fixes)). Other style and layering
 findings have no bypass.
 
 - **Place it** on the function's or class's first line, or in the comment block directly above
   it (only `//` comment and `template` lines between). A `file_lines` tag goes in the first 20
   lines of the file, and so does a `header_symbols` tag. A style tag (`char_pointer`, `overload_prefix`,
-  `out_param_order`, `string_concat`) goes on the flagged line or in the comment block directly above it, and waives the finding whether it is an error or advisory. A tag that attaches to nothing fails.
+  `out_param_order`, `string_concat`, `param_comment`, `test_only_api`, `learned_rule_test`, `special_case`) goes on the flagged line or in the comment block directly above it, and waives the finding whether it is an error or advisory. A tag that attaches to nothing fails. Style checks report only changed lines, so a style tag on a line the change left alone (a later PR in a stack) attaches if it covers a finding of the whole file.
 - **Justify it:** the text after `--`, on the tag line itself, must be at least 40 characters and 6 words,
   and say why splitting would make the code worse. Unknown checks, a missing or short
   justification, or a malformed tag fail.
@@ -157,8 +159,43 @@ lexer, not a parser: rules that need types stay in review.
 | Output parameters last: a non-const `T&` parameter before a by-value, `const&` or `&&` one. Not reported: context handles conventionally first (`*Env`/`*Environment`, `*Context`, `*Actions`, `*Backend`, `*Option`, `*Logger`, `ConsoleHandle`, `VideoStream`, `VideoOverlay`, `VideoFeed`, `AudioFeed`, `CancellableScope`, `UnitTestDatabase`, `AsyncCommandSession`, `std::*stream`); pointers, packs and function types (neither input nor output); constructors, operators, `override`/`final`, `= delete`; out-of-class `A::f` definitions in a `.cpp` (the header declaration is checked); a changed line whose signature keeps its parameter kinds | advisory for now, error before upstream (tag: `out_param_order`) | Google "Function Parameter Ordering" |
 | Building a string with `+`: a string literal, `std::to_string(...)` or `std::string(...)` next to a binary `+` (also `s += "a" + b`). Not reported: `+=` appends, `++`, numeric/pointer `+`, files including Qt headers (QString) | advisory for now, error before upstream (tag: `string_concat`) | fork AGENTS.md "Strings": use `std::format` |
 | A comment whose first sentence describes the neighbouring function, none of its own | advisory | CONTRIBUTING; Google "Function Comments" |
+| A literal argument without a `/*param=*/` comment in a call of 3+ arguments: numbers (`2`, `0ms`, `1.5f`), `true`/`false`, `nullptr`, brace lists of those (`{0, 0}`, `{}`). With the callee declared once per arity in the same file, a comment naming another parameter too. Not reported: string/char literals, macros, `std::` calls, format/log calls (name contains format/print/log, or a string literal first), all-number tuples and `*Box`/`*Color`/`*Point`/`*Rect` constructors, a leading `nullptr` (null logger or Qt parent), a lone trailing duration in a call of at most 4 arguments (`save_button_shows(console, context, 5s)`); calls outside brace bodies (declarations, default arguments) (`param_comments.py`) | advisory (tag: `param_comment`) | Google "Function Arguments"; user review on fork #590 |
+| A public namespace-scope name a header adds (on an added line, new since the base) whose only users outside the header and its own .cpp are test files (`*_Tests.cpp`, `*_Test.cpp`, `Tests/`), or that only its own .cpp uses. Users: one `git grep -o -w` over tracked C++. Not reported: names nothing uses yet, names another kept public declaration of the header mentions (parameter, return or member type), `add_tests*` hooks, test headers (`exposure.py`) | advisory (tag: `test_only_api`) | user review on fork #590: test through the public function, or keep the helper in the .cpp's anonymous namespace |
 
 Advisories print as `Advisory:` lines and `::warning` annotations and never fail.
+
+`param_comment` and `test_only_api` are advisory by their measured rates (2026-11-15). On 18 fork
+PRs (#567-#591) `param_comment` reported 379 calls, 257 of them in test files and 91 controller
+timings (`pbf_press_button(context, BUTTON_A, 160ms, 400ms)`); no lexer misreads in a 42-finding
+sample, and it reports exactly the review's sites on #590 (`{0, 0}`, `0ms`) and #572 (`2`). As a
+failure it would fail nearly every open program PR. `test_only_api` reported 203 names on 10 of
+those PRs and exactly #590's three helpers; on the PLZA slice stack 31 of 64 names gained a
+non-test caller later in the stack (API added one PR before its caller), and upstream's
+`Common/ControllerStates` C-style headers (constants and `*_equals` used only by their own .cpp)
+are reported too.
+
+## Systematic fixes
+
+Three blocking rules keep a console fix a rule with a test, not a patch at one story point (the
+user, 2026-11-15: "make sure our solutions are systematic and avoid patching here and there").
+Like the style checks they look only at what a change adds.
+
+| Check | Level | Rule |
+| --- | --- | --- |
+| `learned_rule_test` (`learned_rules.py`) | error (tag) | A comment in non-test C++ that cites a console finding, `(console B, 2026-11-10)` or `(17.03, console B 2026-11-15)` ("console B" or "lab-B", then a date in the same clause), needs a test that cites the same date, and the checkpoint when the citation names one: a `*_Tests.cpp`/`.h` or a `ConsoleFailures/*.json` replay, in the same game's directory or in shared code. Reported on added lines as `learned rule without a test: <file:line> (console B, <date>)`, unless the base file cited that date already (a reworded comment). Also reported: a change to test files after which a citation anywhere in the tree has no covering test while it had one at the base (`learned rule lost its last test`). |
+| `special_case` (`special_cases.py`) | error (tag) | In non-test C++ under `SerialPrograms/Source/**/AutoStory/`: a string literal that is a checkpoint id (`NN.NN[a-z]`) or the id of an event a `StoryData/*.plan.json` declares, used as a key: `==`, `!=`, `<=>`, `.find/count/contains/at/starts_with/ends_with/compare(...)`, `[...]`, or the first element of `{"id", ...}`. Not reported: plain id lists, ids passed to other functions, one-word event ids (`"bicycle"` is also an item) and ids that are also a `kind`/`action` name. Message: `special case by name: "<literal>" at <file:line>; move it into the plan or a general rule`. |
+| Plan lint (`plan_lint.py`) | error | Every `StoryData/*.plan.json` (any game): a new or edited event whose `kind`/`action` is `legs` or whose `args` hold a `legs` list (FRLG `kind: legs`, PLZA `action: walk`) needs `not planned: <reason>` in its `why`. Events unchanged since the base are grandfathered; each run prints the changed plans' legs counts per game. The reason in the `why` is the bypass; there is no tag in JSON. |
+
+Measured on 2026-11-15 (whole trees, every line counted as new): `learned_rule_test` 1 of 250
+citations uncovered on `frlg/moved-trainers` (`ScreenFades.h`, 2026-11-08) and 12 of 41 on
+`plza/newgame` (PLZA 2026-11-10 notes: no PLZA test cites that day); `special_case` 1
+(`PokemonFRLG_AutoStoryRngLoop.cpp`, `step.name == "rival_takes_bulbasaur"`); plan lint 134 FRLG
+legs events (FRLG's `legs_before_2026_11_15()` list) and 26 PLZA walks, none with a reason. On the
+diffs of fork #599, #604 and #610 against their bases all three report nothing. The date match is
+coarse: any test of the same game that names the same day covers a citation, so the rule catches
+a learned rule from a day no test cites, not a rule whose own test is missing on a busy day.
+Detector and reader measurements whose image tests live in `CommandLineTests` take a
+`learned_rule_test` tag saying so.
 
 ## Build and native C++ tests in one command
 
