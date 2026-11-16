@@ -62,13 +62,23 @@ enum class RouteCost{
     //  is held to its bank finds the player, so Route 21 is crossed sand
     //  bar to sand bar (the user's design, 2026-11-13).
     OPEN_WATER_STOP,
+    //  Extra for an open leg of 2 tiles or more the walk can't place by the
+    //  leg after it, and so finds the player at walls and walks back
+    //  (run_route()'s open-leg check): one that ends the walk, or before a
+    //  hold to a wall that ends elsewhere from a tile up to
+    //  OPEN_LEG_SHORTFALL short of it (and moves at all from there), or
+    //  before a step onto a spinner. About what those holds and the way
+    //  back cost: below_giovanni's "west 3 (open)" to (7, 3) before "south
+    //  3 (to wall)" was followed by "west 4 (to wall)" and "east 2" back
+    //  (console B, 2026-11-15 21:39).
+    OPEN_CHECK,
 };
 //  Cost mapping table for path planning.
 using RouteCosts = std::map<RouteCost, int>;
 
 //  TILE 1, TURN 2, WARP 30, SURF 40, GRASS_TILE 20, OPEN_STOP 8,
 //  OPEN_WILD_STOP 300, SIGHT_TILE 0, SIGHT_OVERSHOOT 0, SIGN_OVERSHOOT 3,
-//  OPEN_WATER_STOP 1000.
+//  OPEN_WATER_STOP 1000, OPEN_CHECK 10.
 //  The sight costs are
 //  off by default until beaten trainers and battles a story step wants are
 //  told apart: at 100 and 10 they moved Pewter City's and Pewter Gym's

@@ -2199,6 +2199,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldStepChecks.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTileRules.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTiles.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTrainerCrossing.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTrainerCrossing.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h

@@ -51,23 +51,6 @@ Pokemon::RouteLogLeg route_log_leg(const RouteStep& step){
     return leg;
 }
 
-//  The farthest sight of the trainers on `maps` but those `beaten` names
-//  who may see `tile`; 0 if none does.
-int sight_onto(const std::vector<MapData>& maps, const MapPosition& tile, const std::set<std::string>& beaten){
-    int sight = 0;
-    for (const MapData& map : maps){
-        if (map.name != tile.map){
-            continue;
-        }
-        for (const MapObject& object : map.objects){
-            if (trainer_may_see(map, object, tile.point) && !beaten.contains(trainer_id(map, object))){
-                sight = std::max(sight, object.trainer->sight);
-            }
-        }
-    }
-    return sight;
-}
-
 //  How far the holds that find the player after an open leg, and the way
 //  back, may walk, per tile of the leg. 2 left Rocket Hideout B3F's "west
 //  7" off the stairs unchecked: the hold to its west wall and back walk up
@@ -113,16 +96,24 @@ bool is_slide(const RouteStep& next){
     return next.action == RouteAction::WALK && next.spin_tiles && !next.warps;
 }
 
-//  Whether `next`, a hold to a wall, ends on its planned tile from each of
-//  `candidates`: then it finds the player itself.
-bool hold_finds(const std::vector<MapData>& maps, const std::vector<StopCandidate>& candidates, const RouteStep& next){
+//  The tiles of `candidates` `next`, a hold to a wall, moves nothing from (seen if `told_apart`), if from
+//  each other one it ends on its tile; else nothing. Viridian Gym's "south 3 (to wall)" from (7, 3) moves
+//  from no tile short of it (console B, 2026-11-15 21:39: walls found, and walked back to (7, 3)).
+std::optional<std::vector<StopCandidate>> hold_finds(
+    const std::vector<MapData>& maps, const std::vector<StopCandidate>& candidates, const RouteStep& next, bool told_apart
+){
+    std::vector<StopCandidate> unmoved;
     for (const StopCandidate& candidate : candidates){
         const std::optional<WallHold> hold = hold_to_wall(maps, candidate.player, false, next.direction);
-        if (!hold || !(hold->end == next.end)){
-            return false;
+        if (hold && hold->end == next.end){
+            continue;
         }
+        if (!told_apart || !hold || hold->tiles != 0){
+            return std::nullopt;
+        }
+        unmoved.push_back(candidate);
     }
-    return true;
+    return unmoved;
 }
 
 //  The route's lines in the route log the games share, as BDSP's walker
@@ -497,12 +488,18 @@ private:
     //  moved nothing at the wall).
     StepOutcome judge_movement(const RouteStep& step, StepOutcome outcome){
         const bool held_again = std::exchange(m_held_again, false);
+        const std::vector<StopCandidate> short_unmoved = std::exchange(m_short_unmoved, {});
         if (outcome.end != StepEnd::DONE || step.action != RouteAction::WALK || step.warps){
             return outcome;
         }
         if (outcome.movement != HoldMovement::NONE){
             m_unmoved.clear();
             return outcome;
+        }
+        if (!short_unmoved.empty()){
+            m_calls.log(std::format("Route: {} moved the screen not at all: the open leg before it ended short.", to_string(step)));
+            m_unmoved_starts = short_unmoved;
+            return StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{.min = 0, .max = 0}, .movement = HoldMovement::NONE};
         }
         const int expected = held_again && step.to_wall ? 0 : expected_tiles(step);
         if (expected < 1){
@@ -526,6 +523,9 @@ private:
         if (again){
             m_calls.fail("walk_overworld_route(): " + leg + " moved nothing twice in a row: the player is not walking.");
             return false;
+        }
+        if (!m_unmoved_starts.empty() && maps() != nullptr){
+            return rejoin(step, std::exchange(m_unmoved_starts, {}), WalkedTiles{.min = 0, .max = 0});
         }
         if (!start || maps() == nullptr){
             return after_unmoved_hold(step);
@@ -774,7 +774,12 @@ private:
             return;
         }
         const std::vector<StopCandidate> candidates = short_candidates(*maps(), *start, step, movement);
-        if (candidates.size() < 2 || (!last && is_wall_hold(m_plan[m_next]) && hold_finds(*maps(), candidates, m_plan[m_next]))){
+        if (candidates.size() < 2){
+            return;
+        }
+        std::optional<std::vector<StopCandidate>> unmoved;
+        if (!last && is_wall_hold(m_plan[m_next]) && (unmoved = hold_finds(*maps(), candidates, m_plan[m_next], movement == HoldMovement::MOVED))){
+            m_short_unmoved = std::move(*unmoved);  //  a hold that moves nothing started on one of them
             return;
         }
         const std::optional<Reanchor> anchor = plan_reanchor(*maps(), candidates, step, m_planning->costs, last && !(m_calls.riding && m_calls.riding(step)) ? std::optional(step.facing_after) : std::nullopt);
@@ -926,6 +931,8 @@ private:
     std::vector<std::vector<MapPosition>> m_walk_on_starts;  //  after walking on: where each of the plan's first steps may start
     std::vector<MapPosition> m_hold_from;   //  the tiles the first hold of the plan may start from
     std::string m_unmoved;      //  the leg that moved nothing last, until another walks
+    std::vector<StopCandidate> m_short_unmoved;     //  check_open_leg(): the tiles the next hold moves nothing from
+    std::vector<StopCandidate> m_unmoved_starts;    //  that hold moved nothing: it started on one of these
     bool m_held_again = false;  //  the next walk holds a leg to a wall again after something seen after it
     OpenLegDrift m_drift;       //  the ways the player may be a tile off since the last open legs
 };
@@ -934,67 +941,6 @@ private:
 
 WalkedTiles walked_before_warp(const RouteStep& step){
     return WalkedTiles{.min = 1, .max = step.tiles - 1};
-}
-
-std::optional<TrainerCrossing> trainer_crossing(
-    const std::vector<MapData>& maps, const MapPosition& start, const RouteStep& step,
-    const std::set<std::string>& beaten
-){
-    if (step.action != RouteAction::WALK){
-        return std::nullopt;
-    }
-    TrainerCrossing crossing;
-    const std::vector<MapPosition> tiles = leg_tiles(maps, start, step);
-    for (size_t c = 1; c < tiles.size(); c++){
-        const int sight = sight_onto(maps, tiles[c], beaten);
-        if (sight > 0){
-            crossing.seen.push_back(tiles[c]);
-            crossing.approach_tiles = std::max(crossing.approach_tiles, sight);
-            crossing.tiles_after_seen = (int)(tiles.size() - 1 - c);
-        }
-    }
-    if (crossing.seen.empty()){
-        return std::nullopt;
-    }
-    return crossing;
-}
-
-std::vector<std::string> beaten_trainers_crossed(
-    const std::vector<MapData>& maps, const MapPosition& start, const RouteStep& step,
-    const std::set<std::string>& beaten
-){
-    std::vector<std::string> crossed;
-    if (step.action != RouteAction::WALK || beaten.empty()){
-        return crossed;
-    }
-    const std::vector<MapPosition> tiles = leg_tiles(maps, start, step);
-    for (size_t c = 1; c < tiles.size(); c++){
-        for (const MapData& map : maps){
-            if (map.name != tiles[c].map){
-                continue;
-            }
-            for (const MapObject& object : map.objects){
-                if (!object.trainer){
-                    continue;
-                }
-                const std::string id = trainer_id(map, object);
-                const bool listed = std::find(crossed.begin(), crossed.end(), id) != crossed.end();
-                if (!listed && beaten.contains(id) && trainer_may_see(map, object, tiles[c].point)){
-                    crossed.push_back(id);
-                }
-            }
-        }
-    }
-    return crossed;
-}
-
-Milliseconds trainer_full_watch(int approach_tiles){
-    return TRAINER_NOTICE + MovementMechanics::TILE_TIME * approach_tiles + TRAINER_SPEAKS;
-}
-
-Milliseconds trainer_first_look(const TrainerCrossing& crossing){
-    const Milliseconds held_on = MovementMechanics::RUN_TILE_TIME * crossing.tiles_after_seen;
-    return std::max(TRAINER_FIRST_LOOK, trainer_full_watch(crossing.approach_tiles) - held_on);
 }
 
 void run_route(
