@@ -848,9 +848,11 @@ const RunCase RUN_CASES[] = {
         //  console B, 2026-11-16 (run 3): the scene before Taunie handed
         //  control back with no battle, and the battle start waited 90 s.
         .name = "a battle start that ends in control, the party bar held 5 s, fails at once",
+        //  The fade's wait takes the first look after it: the party bar's
+        //  5 s run from the look after that.
         .input = {.checkpoint = "03.02b", .first_step = 4, .steps = 1, .looks = {
             look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(0)),
-            party_bar(Milliseconds(1000)), party_bar(Milliseconds(3000)), party_bar(Milliseconds(6100)),
+            party_bar(Milliseconds(1000)), party_bar(Milliseconds(1000)), party_bar(Milliseconds(3000)), party_bar(Milliseconds(6100)),
         }},
         .expectation = {.verdict = "failed at taunie_battle_start: scene_ended_in_control"},
     },
@@ -1080,7 +1082,8 @@ UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
 
 
 //  Two rows: "01.01" waits for the platform, "01.02" runs to a choice.
-//  01.01's autosave shows when a look has both the platform and the badge.
+//  01.01's autosave shows when a look has both the platform and the badge;
+//  its platform wait then needs two platform looks without the badge.
 struct ChainCase{
     std::string name;
     struct Input{
@@ -1102,7 +1105,7 @@ const Observation<ZonePose> PLATFORM_SAVING = look({}, {PLATFORM_READING, AUTOSA
 const ChainCase CHAIN_CASES[] = {
     {
         .name = "autosave seen and the start check does not fail: on without a reload",
-        .input = {.reload_always = {}, .looks = {PLATFORM_SAVING, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
+        .input = {.reload_always = {}, .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
         .expectation = {.verdict = "done", .reloads = 0},
     },
     {
@@ -1113,7 +1116,7 @@ const ChainCase CHAIN_CASES[] = {
     {
         .name = "autosave seen and the start check fails: reloads the start",
         .input = {.reload_always = {}, .looks = {
-            PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0),
+            PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0),
         }},
         .expectation = {.verdict = "done", .reloads = 1},
     },
@@ -1124,7 +1127,7 @@ const ChainCase CHAIN_CASES[] = {
     },
     {
         .name = "reload always, autosave seen: reloads the start",
-        .input = {.reload_always = {"01.02"}, .looks = {PLATFORM_SAVING, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
+        .input = {.reload_always = {"01.02"}, .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
         .expectation = {.verdict = "done", .reloads = 1},
     },
     {
