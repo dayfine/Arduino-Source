@@ -122,8 +122,9 @@ def check_options(program: Dict[str, Any], options: Dict[str, Any]) -> None:
 
 
 def set_lines(options: Dict[str, Any], prefix: str = '') -> List[str]:
-    """The app's `set KEY JSON` lines that load `options`, in the caller's order; an object value is
-    a group (`set GROUP.KEY`). Only for options `check_options` passed (no `type: other`)."""
+    """The app's `set KEY JSON` lines that load `options`, in key order (a record keeps them as
+    canonical JSON); an object value is a group (`set GROUP.KEY`). Only for options `check_options`
+    passed (no `type: other`)."""
     out: List[str] = []
     for key, value in options.items():
         if isinstance(value, dict):
