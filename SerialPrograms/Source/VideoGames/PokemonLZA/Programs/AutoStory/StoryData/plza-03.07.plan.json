@@ -3,11 +3,28 @@
   "game": "plza",
   "checkpoint": {
     "id": "03.07",
-    "title": "Wild Zone 1: first catches",
+    "title": "Into Wild Zone 1: first catches",
     "start": {
-      "place": "WildZone1"
+      "place": "LumioseCity",
+      "spot": "WildZone1Gate"
     },
     "events": [
+      {
+        "id": "to_zone_1_gate",
+        "kind": "game_action",
+        "why": "step 58, after Taunie's scene: runs straight on to Wild Zone 1's gate until its A prompt, by upstream's run_towards_gate_with_A_button (user, 2026-11-15: try it before plza/autostory's gate-pillar steering). Replaces the timed 4.3 s walk (22 units at ~5.1 units/s, measured 2026-11-08 on console B), so 8 s of running is ample.",
+        "action": "run_to_gate",
+        "args": {
+          "timeout_ms": 8000
+        }
+      },
+      {
+        "id": "enter_zone_1",
+        "kind": "game_action",
+        "why": "step 58: A Enter at the gate (a scene step ends at once on its prompt), Taunie, the Throwing Poke Balls card",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
+      },
       {
         "id": "catch_fletchling",
         "kind": "game_action",
@@ -29,10 +46,11 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Autosave: the game's autosave at after_catches, its last step, was seen in four run logs (console B, 2026-11-13); the menu save of plza/autostory is dropped."
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Starts outside Wild Zone 1's gate, where 03.06's autosave in wild_zones_tutorial reloads (console B, 2026-11-16: 03.07 reloaded there and threw outside the zone when it began at catch_fletchling). Autosave: the game's autosave at after_catches, its last step, was seen in four run logs (console B, 2026-11-13); the menu save of plza/autostory is dropped."
     }
   },
   "execution": {
-    "save": "autosave"
+    "save": "autosave",
+    "autosave_step": "after_catches"
   }
 }

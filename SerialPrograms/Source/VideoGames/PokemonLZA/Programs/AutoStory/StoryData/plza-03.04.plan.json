@@ -37,6 +37,7 @@
   },
   "execution": {
     "reload_when_chained": "always",
-    "save": "autosave"
+    "save": "autosave",
+    "autosave_step": "pokedex_app"
   }
 }

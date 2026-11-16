@@ -66,6 +66,7 @@
     }
   },
   "execution": {
-    "save": "autosave"
+    "save": "autosave",
+    "autosave_step": "south_boulevard"
   }
 }

@@ -21,6 +21,7 @@
     }
   },
   "execution": {
-    "save": "autosave"
+    "save": "autosave",
+    "autosave_step": "catch_more_species"
   }
 }

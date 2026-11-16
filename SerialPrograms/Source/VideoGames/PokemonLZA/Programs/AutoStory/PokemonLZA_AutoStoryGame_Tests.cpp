@@ -71,7 +71,7 @@ const StoryDataCase STORY_DATA_CASES[] = {
             "02.01:from_save:unverified 02.02:from_save:unverified 02.03:from_save:unverified 02.04:from_save:unverified "
             "02.05:from_save:unverified 02.06:from_save:autosave 02.07:from_save:unverified "
             "03.01:from_save:unverified 03.02:from_save:autosave 03.02b:from_save 03.03:from_save:autosave 03.04:from_save:autosave "
-            "03.05:from_save:autosave 03.06:from_save 03.07:from_save:autosave 03.08:from_save:autosave 03.08b:from_save "
+            "03.05:from_save:autosave 03.06:from_save:autosave 03.07:from_save:autosave 03.08:from_save:autosave 03.08b:from_save "
             "03.09:from_save:unverified "
             "03.10:from_save:autosave 03.11:from_save:unverified"
         },
@@ -246,6 +246,75 @@ UnitTestResult check_lint(const LintCase& test){
     }
     return true;
 }
+
+//  A checkpoint "03.06" of `steps`, the plan's "save" `save` and its
+//  "autosave_step" `autosave_step`.
+struct AutosaveStepCase{
+    std::string name;
+    struct Input{
+        std::vector<std::string> steps;
+        Pokemon::StoryRowSave save = Pokemon::StoryRowSave::NONE;
+        std::optional<std::string> autosave_step = std::nullopt;
+    };
+    Input input;
+    struct Expectation{
+        //  The error, empty for none.
+        std::string error;
+    };
+    Expectation expectation;
+};
+
+const AutosaveStepCase AUTOSAVE_STEP_CASES[] = {
+    {
+        //  console B, 2026-11-16: 03.06 autosaved in wild_zones_tutorial and
+        //  went on to the gate; 03.07 reloaded that save and threw outside
+        //  Wild Zone 1.
+        .name = "an autosave before steps that move the player fails",
+        .input = {
+            .steps = {"wild_zones_tutorial", "to_zone_1_gate", "enter_zone_1"},
+            .autosave_step = "wild_zones_tutorial",
+        },
+        .expectation = {.error =
+            "03.06: the game autosaves in wild_zones_tutorial, before to_zone_1_gate: the next checkpoint reloads "
+            "that save, so end 03.06 at wild_zones_tutorial and start the next one with to_zone_1_gate"
+        },
+    },
+    {
+        .name = "an autosave in the last step passes",
+        .input = {
+            .steps = {"toward_zone_1_gate", "wild_zones_tutorial"},
+            .save = Pokemon::StoryRowSave::AUTOSAVE,
+            .autosave_step = "wild_zones_tutorial",
+        },
+        .expectation = {.error = ""},
+    },
+    {
+        .name = "a plan autosave without its step fails",
+        .input = {.steps = {"wild_zones_tutorial"}, .save = Pokemon::StoryRowSave::AUTOSAVE},
+        .expectation = {.error = "03.06: \"save\": \"autosave\" needs \"autosave_step\", the step a run log showed the badge in"},
+    },
+    {
+        .name = "an autosave step that is not a step fails",
+        .input = {.steps = {"wild_zones_tutorial"}, .autosave_step = "enter_zone_1"},
+        .expectation = {.error = "03.06: autosave_step enter_zone_1 is not one of its steps"},
+    },
+};
+
+UnitTestResult check_autosave_step(const AutosaveStepCase& test){
+    StoryCheckpoint checkpoint;
+    checkpoint.id = "03.06";
+    checkpoint.title = "Test";
+    for (const std::string& name : test.input.steps){
+        checkpoint.steps.push_back(StoryStep{.kind = Pokemon::StoryStepKind::GAME, .name = name, .why = "", .action = "walk", .args = {}});
+    }
+    const std::optional<std::string> error = autosave_step_error(checkpoint, test.input.save, test.input.autosave_step);
+    const std::string got = error.value_or("");
+    if (got != test.expectation.error){
+        return std::format("expected \"{}\", got \"{}\"", test.expectation.error, got);
+    }
+    return true;
+}
+
 
 
 //  A look with `events` and the readings named in `readings`, `at` after
@@ -961,13 +1030,13 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .inputs = "press B, press B, wait 250ms"},
     },
     {
-        .name = "03.06's run to the gate needs a console",
-        .input = {.checkpoint = "03.06", .first_step = 4, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .name = "03.07's run to the gate needs a console",
+        .input = {.checkpoint = "03.07", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at to_zone_1_gate: console_only", .inputs = ""},
     },
     {
         .name = "03.07's tutorial catch needs a console",
-        .input = {.checkpoint = "03.07", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .input = {.checkpoint = "03.07", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at catch_fletchling: console_only", .inputs = ""},
     },
     {
@@ -1077,7 +1146,7 @@ const LoadCase LOAD_CASES[] = {
         .input = {.checkpoint = "01.02", .looks = {CUTSCENE}},
         .expectation = {
             .verdict = "done", .inputs = "press HOME, wait 300ms, wait 300ms, wait 300ms, wait 300ms",
-            .line = "[Checkpoint] 01.02: off the station platform, as at its start",
+            .line = "[Checkpoint] 01.02: off the station platform; START UNCHECKED: nothing reads this row's own start",
         },
     },
     {
@@ -1130,7 +1199,7 @@ UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
 }
 
 
-//  Two rows: "01.01" waits for the platform, "01.02" runs to a choice.
+//  Two rows: "01.01" waits for the platform, "01.02" runs `second_action`.
 //  01.01's autosave shows when a look has both the platform and the badge;
 //  its platform wait then needs two platform looks without the badge.
 struct ChainCase{
@@ -1138,6 +1207,11 @@ struct ChainCase{
     struct Input{
         std::set<std::string, std::less<>> reload_always;
         std::vector<Observation<ZonePose>> looks;
+        //  The actions of 01.01's steps; a repeated one's step is named
+        //  "<action>_again".
+        std::vector<std::string> first_actions = {"wait_for_platform"};
+        std::string second_action = "text_to_choice";
+        size_t attempts = 1;
     };
     Input input;
     struct Expectation{
@@ -1145,6 +1219,8 @@ struct ChainCase{
         std::string verdict;
         //  How many times the reload pressed HOME.
         size_t reloads = 0;
+        //  A log line the run wrote, if any is checked.
+        std::string line = {};
     };
     Expectation expectation;
 };
@@ -1189,6 +1265,37 @@ const ChainCase CHAIN_CASES[] = {
         .input = {.reload_always = {"01.02"}, .looks = {PLATFORM_SAVING, PLATFORM}},
         .expectation = {.verdict = "failed at 01.02 chain: older_save", .reloads = 1},
     },
+    {
+        //  console B, 2026-11-16: 03.06 autosaved in wild_zones_tutorial and
+        //  walked on to Wild Zone 1's gate; 03.07 reloaded that save, outside
+        //  the gate, and threw Poke Balls there.
+        .name = "an autosave before the last step does not save the row: no save to reload the next from",
+        .input = {
+            .reload_always = {"01.02"},
+            .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM},
+            .first_actions = {"wait_for_platform", "wait_for_platform"},
+        },
+        .expectation = {
+            .verdict = "failed at 01.02 chain: no_start_save", .reloads = 0,
+            .line = "[Save] 01.01: the game autosaved in wait_for_platform, before wait_for_platform_again: not saved, a reload would skip wait_for_platform_again",
+        },
+    },
+    {
+        //  console B, 2026-11-16: 03.04 autosaved in pokedex_app and failed
+        //  in the step after it; the next run's 03.04 loaded that save,
+        //  outside the Center, and its walk to the Center found no prompt.
+        .name = "a run that autosaved and then failed does not reload: the save moved past its start",
+        .input = {
+            .reload_always = {},
+            .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, AUTOSAVE, CUTSCENE},
+            .second_action = "wait_for_platform",
+            .attempts = 2,
+        },
+        .expectation = {
+            .verdict = "failed at 01.02 : reload_failed", .reloads = 0,
+            .line = "[Save] 01.02: the game autosaved in wait_for_platform before the run failed: the latest save is past 01.02's start",
+        },
+    },
 };
 
 UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
@@ -1198,9 +1305,14 @@ UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
     const Pokemon::StoryGame<ZonePose> game = game_with_reload(story, sightings);
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
     Pokemon::RunState state;
-    const std::vector<StoryCheckpoint> rows{one_step_row("01.01", "wait_for_platform"), one_step_row("01.02", "text_to_choice")};
+    StoryCheckpoint first = one_step_row("01.01", test.input.first_actions[0]);
+    for (size_t index = 1; index < test.input.first_actions.size(); index++){
+        const std::string& action = test.input.first_actions[index];
+        first.steps.push_back(StoryStep{.kind = Pokemon::StoryStepKind::GAME, .name = std::format("{}_again", action), .why = "", .action = action, .args = {}});
+    }
+    const std::vector<StoryCheckpoint> rows{first, one_step_row("01.02", test.input.second_action)};
     const Pokemon::SegmentReport report = run_plza_segments(
-        game, story, rows, /*attempts_per_checkpoint=*/1, backend, state, sightings
+        game, story, rows, test.input.attempts, backend, state, sightings
     );
     const std::string verdict = report.completed
         ? "done"
@@ -1212,7 +1324,15 @@ UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
     if (reloads != test.expectation.reloads){
         return std::format("expected {} reloads, got {}: {}", test.expectation.reloads, reloads, joined(backend.inputs(), ", "));
     }
-    return true;
+    if (test.expectation.line.empty()){
+        return true;
+    }
+    for (const std::string& line : backend.lines()){
+        if (line == test.expectation.line){
+            return true;
+        }
+    }
+    return std::format("expected the line \"{}\" in:\n{}", test.expectation.line, joined(backend.lines(), "\n"));
 }
 
 
@@ -1255,6 +1375,19 @@ private:
     RunCase m_case;
 };
 
+class AutosaveStepTest : public UnitTest{
+public:
+    explicit AutosaveStepTest(AutosaveStepCase test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStoryGame autosave step - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return check_autosave_step(m_case);
+    }
+private:
+    AutosaveStepCase m_case;
+};
+
 class LoadTest : public UnitTest{
 public:
     explicit LoadTest(LoadCase test_case)
@@ -1290,6 +1423,9 @@ void add_tests_AutoStoryGame(UnitTestDatabase& database){
     }
     for (const LintCase& test : LINT_CASES){
         database.add<LintTest>(test);
+    }
+    for (const AutosaveStepCase& test : AUTOSAVE_STEP_CASES){
+        database.add<AutosaveStepTest>(test);
     }
     for (const RunCase& test : RUN_CASES){
         database.add<RunTest>(test);
