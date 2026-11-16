@@ -10,6 +10,8 @@
 #ifndef PokemonAutomation_PokemonFRLG_HideoutLiftRoom_H
 #define PokemonAutomation_PokemonFRLG_HideoutLiftRoom_H
 
+#include <map>
+#include <string>
 #include <vector>
 #include "PokemonFRLG_OverworldMap.h"
 #include "PokemonFRLG_OverworldRoute.h"
@@ -51,6 +53,11 @@ MapData department_store_lift_room();
 //  lift door is (6, 1) (setdynamicwarp ..., 255, 6, 1 in its scripts), and
 //  the player is walked a tile south off it, onto (6, 2).
 const std::vector<MapPosition>& department_store_lift_exits();
+
+//  The game's lifts, each room's map name to its floors' exits: LIFT_MAP's
+//  and DEPT_STORE_LIFT_MAP's. SimScript::lift_floors starts with them, so
+//  any sim whose maps hold a lift's room rides it.
+const std::map<std::string, std::vector<MapPosition>>& game_lift_floors();
 
 
 } // namespace PokemonFRLG

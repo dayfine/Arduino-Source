@@ -233,6 +233,14 @@ const std::vector<MapPosition>& department_store_lift_exits(){
     return EXITS;
 }
 
+const std::map<std::string, std::vector<MapPosition>>& game_lift_floors(){
+    static const std::map<std::string, std::vector<MapPosition>> FLOORS{
+        {std::string(LIFT_MAP), rocket_hideout_lift_exits()},
+        {std::string(DEPT_STORE_LIFT_MAP), department_store_lift_exits()},
+    };
+    return FLOORS;
+}
+
 
 
 } // namespace PokemonFRLG

@@ -212,13 +212,6 @@ std::vector<MapData> row_maps(const StoryCheckpoint& row){
     return maps;
 }
 
-//  `script` with the lifts' floors, for sweep_maps()' lift rooms.
-SimScript with_lifts(SimScript script){
-    script.lift_floors[std::string(LIFT_MAP)] = rocket_hideout_lift_exits();
-    script.lift_floors[std::string(DEPT_STORE_LIFT_MAP)] = department_store_lift_exits();
-    return script;
-}
-
 //  Whether the overworld sim plays `step` (OverworldStepSim): the rest is stubbed.
 bool sim_plays(const StoryStep& step){
     switch (step.kind){
@@ -230,7 +223,7 @@ bool sim_plays(const StoryStep& step){
     case StoryStepKind::GAME:
         //  A Fly lands on its town's landing tile, as the sim plays it; a
         //  lift's warp lets out on its floor's tile (sweep_maps()' lift
-        //  rooms, with_lifts()). A boulder's push leaves the player behind
+        //  rooms, game_lift_floors()). A boulder's push leaves the player behind
         //  it, as the sim plays it.
         return step.action == CUT_TREE_VARIANT || step.action == PUSH_BOULDER_VARIANT || is_field_move_step(step) || parse_lift_floor_step(step).has_value();
     default:
@@ -381,7 +374,7 @@ RowRun run_row(
     const StoryCheckpoint& row, const SimScript& row_script, const Landings& landings = {},
     const std::optional<std::set<size_t>>& scripted = std::nullopt
 ){
-    const SimScript script = with_lifts(with_row_start(row_script, row));
+    const SimScript script = with_row_start(row_script, row);
     RowRun out;
     out.flags = start_flag_set(row);
     std::optional<MapPosition> off_maps;

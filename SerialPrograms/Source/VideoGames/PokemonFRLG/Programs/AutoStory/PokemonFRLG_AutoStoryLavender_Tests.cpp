@@ -777,8 +777,7 @@ UnitTestResult test_hideout_giovanni_row(Logger&){
     if (std::none_of(maps.begin(), maps.end(), [](const MapData& map){ return map.name == LIFT_MAP; })){
         maps.push_back(rocket_hideout_lift_room());
     }
-    SimScript script;
-    script.lift_floors[std::string(LIFT_MAP)] = rocket_hideout_lift_exits();
+    const SimScript script{};
     auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing, script);
     for (const StoryStep& step : row.steps){
         if (step.kind == StoryStepKind::BATTLE){
@@ -1003,8 +1002,7 @@ UnitTestResult test_hideout_giovanni_row_no_tile_twice(Logger&){
     if (std::none_of(maps.begin(), maps.end(), [](const MapData& map){ return map.name == LIFT_MAP; })){
         maps.push_back(rocket_hideout_lift_room());
     }
-    SimScript script;
-    script.lift_floors[std::string(LIFT_MAP)] = rocket_hideout_lift_exits();
+    const SimScript script{};
     auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing, script);
     std::vector<MapPosition> walked{{at.map, at.tile}};
     for (const StoryStep& step : row.steps){
