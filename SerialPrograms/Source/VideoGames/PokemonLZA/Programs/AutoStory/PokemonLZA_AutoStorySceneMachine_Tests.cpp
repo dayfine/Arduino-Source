@@ -17,6 +17,7 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
+#include "Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStorySceneMachine_Tests.h"
@@ -65,11 +66,10 @@ const ScreenEvents PARTY{ScreenEvent::PLAYER_CAN_MOVE};
 const ScreenEvents PROMPT{ScreenEvent::INTERACT_PROMPT};
 const ScreenEvents STILL_PROMPT{ScreenEvent::INTERACT_PROMPT, ScreenEvent::SCREEN_STILL};
 
-//  mash_to_move_hints' config: a minute quiet, blind A after 5 s.
+//  mash_to_move_hints' config: a minute quiet, no blind A.
 SceneMachineConfig arrival_config(){
     SceneMachineConfig config;
     config.quiet = 60000ms;
-    config.blind_press_after = 5000ms;
     return config;
 }
 
@@ -81,12 +81,11 @@ SceneMachineConfig choice_config(){
     return config;
 }
 
-//  story_battle_start's config: A through the talk, A every 2 s on screens
-//  with no text, ending on the battle HUD.
+//  story_battle_start's config: A through the talk and the tutorial cards,
+//  ending on the battle HUD.
 SceneMachineConfig battle_config(){
     SceneMachineConfig config;
     config.stop_at_battle = true;
-    config.blind_press_after = 0ms;
     return config;
 }
 
@@ -120,6 +119,13 @@ SceneMachineConfig blind_press_config(){
     return config;
 }
 
+//  Blind A after 5 s and a minute quiet.
+SceneMachineConfig quiet_blind_press_config(){
+    SceneMachineConfig config = blind_press_config();
+    config.quiet = 60000ms;
+    return config;
+}
+
 //  The advance chevron, then a cutscene with nothing on it, looked at every
 //  500 ms from 5 s to 65 s, then the controls hint held a second.
 std::vector<Observation<ZonePose>> minute_of_blind_presses(){
@@ -148,52 +154,6 @@ std::vector<Observation<ZonePose>> battle_area_talk_prompt(){
         look_at(6500ms, PROMPT), look_at(7000ms, PROMPT), look_at(8000ms, STILL_PROMPT),
         look_at(15000ms, STILL_PROMPT), look_at(20000ms, STILL_PROMPT), look_at(20500ms, STILL_PROMPT),
     };
-}
-
-//  `cycles` times from `from`, 7 s apart: a text box, a screen with no
-//  text, and 6 s after the text another (a blind A).
-std::vector<Observation<ZonePose>> blind_press_then_text(Milliseconds from, size_t cycles){
-    std::vector<Observation<ZonePose>> looks;
-    for (size_t cycle = 0; cycle < cycles; cycle++){
-        const Milliseconds base = from + 7000ms * (int64_t)cycle;
-        looks.push_back(look_at(base, DIALOG));
-        looks.push_back(look_at(base + 500ms));
-        looks.push_back(look_at(base + 6000ms));
-    }
-    return looks;
-}
-
-//  01.02's battle area with the talk prompt missed (console B, 2026-11-15):
-//  each blind A restarted the talk, the same text came back, for 3 min.
-std::vector<Observation<ZonePose>> talk_restarting(){
-    return blind_press_then_text(/*from=*/0ms, /*cycles=*/8);
-}
-
-//  Three blind A presses each followed by text, a black fade, three more,
-//  then the controls hint.
-std::vector<Observation<ZonePose>> blind_presses_split_by_a_fade(){
-    std::vector<Observation<ZonePose>> looks = blind_press_then_text(/*from=*/0ms, /*cycles=*/3);
-    looks.push_back(look_at(21000ms, BLACK));
-    looks.push_back(look_at(21500ms));
-    for (const Observation<ZonePose>& look : blind_press_then_text(/*from=*/22000ms, /*cycles=*/3)){
-        looks.push_back(look);
-    }
-    looks.push_back(look_at(/*at=*/43000ms, NOTHING, {CONTROLS_HINT_READING}));
-    looks.push_back(look_at(/*at=*/44100ms, NOTHING, {CONTROLS_HINT_READING}));
-    return looks;
-}
-
-//  story_battle_start's talk: `lines` text boxes 2.5 s apart with a look
-//  with no text after each (a blind A), then the battle HUD.
-std::vector<Observation<ZonePose>> talk_with_gaps(size_t lines){
-    std::vector<Observation<ZonePose>> looks;
-    for (size_t line = 0; line < lines; line++){
-        const Milliseconds base = 2500ms * (int64_t)line;
-        looks.push_back(look_at(base, DIALOG));
-        looks.push_back(look_at(base + 500ms));
-    }
-    looks.push_back(look_at(2500ms * (int64_t)lines, BATTLE));
-    return looks;
 }
 
 //  A quiet time of 8 s after a scene of at least `min_length`, no blind A.
@@ -381,7 +341,7 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        .name = "01.01's ad: A at the chevron, blind A after 5 s, none once the hint shows",
+        .name = "01.01's ad: A at the chevron, none on the still screen after it or once the hint shows",
         .input = {.looks = {
             look_at(0ms),
             look_at(/*at=*/1000ms, NOTHING, {ADVANCE_ARROW_READING}),
@@ -397,8 +357,8 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .a_presses = 2,
-            .states = "scene_moving, dialog, scene_still, blind_press, scene_still, hint_showing, controls_hint",
+            .a_presses = 1,
+            .states = "scene_moving, dialog, scene_still, hint_showing, controls_hint",
         },
     },
     {
@@ -427,7 +387,7 @@ const RunCase RUN_CASES[] = {
             look_at(6000ms, STILL),
             look_at(59000ms, STILL),
             look_at(60000ms, STILL),
-        }},
+        }, .config = quiet_blind_press_config()},
         .expectation = {
             .verdict = "failed: scene_quiet",
             .a_presses = 2,
@@ -448,7 +408,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 0, .states = "scene_still, hint_showing, controls_hint"},
     },
     {
-        .name = "01.01's arrival: A at the text, in the flyover and at the choice, done on the controls hint",
+        .name = "01.01's arrival: A at the text and at the choice, none in the flyover, done on the controls hint",
         .input = {.looks = {
             look_at(0ms, DIALOG),
             look_at(1000ms),
@@ -459,7 +419,7 @@ const RunCase RUN_CASES[] = {
             look_at(/*at=*/24500ms, NOTHING, {CONTROLS_HINT_READING}),
             look_at(/*at=*/25100ms, NOTHING, {CONTROLS_HINT_READING}),
         }},
-        .expectation = {.verdict = "done", .a_presses = 3, .line = "[PLZA test] done on controls_hint."},
+        .expectation = {.verdict = "done", .a_presses = 2, .line = "[PLZA test] done on controls_hint."},
     },
     {
         .name = "the mission banner ends the scene, which then waits for it to go",
@@ -507,7 +467,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "story_battle_start: A through the talk and the tutorial card, done on the battle HUD",
         .input = {.looks = {
-            look_at(0ms, CHOICE), look_at(500ms, DIALOG), look_at(1000ms), look_at(1500ms, BATTLE),
+            look_at(0ms, CHOICE), look_at(500ms, DIALOG), look_at(/*at=*/1000ms, NOTHING, {TUTORIAL_CARD_READING}), look_at(1500ms, BATTLE),
         }, .config = battle_config()},
         .expectation = {.verdict = "done", .a_presses = 3, .line = "[PLZA test] done on battle."},
     },
@@ -554,7 +514,7 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        .name = "a machine that stops at a battle ends on the battle HUD, with A every 2 s where no text shows",
+        .name = "a machine that stops at a battle ends on the battle HUD, with no A where no text shows",
         .input = {
             .looks = {
                 look_at(0ms, DIALOG), look_at(500ms), look_at(1000ms, STILL), look_at(2500ms, STILL),
@@ -564,8 +524,8 @@ const RunCase RUN_CASES[] = {
         },
         .expectation = {
             .verdict = "done",
-            .a_presses = 3,
-            .states = "dialog, blind_press, scene_still, blind_press, battle",
+            .a_presses = 1,
+            .states = "dialog, scene_moving, scene_still, battle",
         },
     },
     {
@@ -601,7 +561,7 @@ const RunCase RUN_CASES[] = {
             .looks = {look_at(0ms, STILL), look_at(1000ms, PARTY), look_at(2500ms, PARTY), look_at(3000ms, BATTLE)},
             .config = battle_config(),
         },
-        .expectation = {.verdict = "done", .a_presses = 2, .states = "blind_press, scene_moving, blind_press, battle"},
+        .expectation = {.verdict = "done", .a_presses = 0, .states = "scene_still, scene_moving, battle"},
     },
     {
         .name = "a machine that stops at a choice does not take the party bar for control",
@@ -652,35 +612,16 @@ const RunCase RUN_CASES[] = {
         .input = {.looks = battle_area_talk_prompt(), .config = battle_area_config()},
         .expectation = {
             .verdict = "done",
-            .a_presses = 2,
+            .a_presses = 1,
             .line = "[PLZA test] done on talk_prompt.",
-            .states = "dialog, scene_moving, blind_press, prompt_showing, talk_prompt",
+            .states = "dialog, scene_moving, prompt_showing, talk_prompt",
         },
     },
     {
         //  It shows between the lines of a talk, like the party bar.
         .name = "a machine that stops at a battle does not take the talk prompt for control",
         .input = {.looks = {look_at(0ms, PROMPT), look_at(2500ms, PROMPT), look_at(3000ms, BATTLE)}, .config = battle_config()},
-        .expectation = {.verdict = "done", .a_presses = 2, .states = "blind_press, battle"},
-    },
-    {
-        //  console B, 2026-11-15: with the prompt missed, each blind A
-        //  restarted Ryon's talk, the same text came back, for 3 min.
-        .name = "blind A followed by text 4 times with nothing else between fails fast as scene_loop",
-        .input = {.looks = talk_restarting()},
-        .expectation = {.verdict = "failed: scene_loop", .a_presses = 9},
-    },
-    {
-        .name = "a black fade between blind presses followed by text is progress, not a loop",
-        .input = {.looks = blind_presses_split_by_a_fade()},
-        .expectation = {.verdict = "done", .a_presses = 12, .line = "[PLZA test] done on controls_hint."},
-    },
-    {
-        //  Its blind A every 2 s is its pace through the talk, not a
-        //  recovery.
-        .name = "story_battle_start: blind A between the lines of a long talk is not a loop",
-        .input = {.looks = talk_with_gaps(/*lines=*/6), .config = battle_config()},
-        .expectation = {.verdict = "done", .a_presses = 12, .line = "[PLZA test] done on battle."},
+        .expectation = {.verdict = "done", .a_presses = 0, .states = "scene_moving, battle"},
     },
     {
         .name = "Hotel Z's room: the quiet end is control",
@@ -735,6 +676,7 @@ const RunCase RUN_CASES[] = {
             .states = "dialog, scene_moving, fade_black, dialog, fade_white, dialog, fade_black, banner_showing, "
                 "fade_black, scene_moving, fade_settled",
             .overlay = std::vector<std::string>{
+                "[PLZA test] start, expecting black fade 3 settled, the controls hint, the party bar or the A prompt.",
                 "[PLZA test] screen 3: fade_black at 1.0s: black fade, fade 1/3",
                 "[PLZA test] screen 7: fade_black at 4.5s: black fade, fade 2/3",
                 "[PLZA test] screen 8: banner_showing at 5.5s: mission banner",
@@ -844,6 +786,7 @@ public:
 private:
     const RunCase& m_test;
 };
+
 
 } // namespace
 

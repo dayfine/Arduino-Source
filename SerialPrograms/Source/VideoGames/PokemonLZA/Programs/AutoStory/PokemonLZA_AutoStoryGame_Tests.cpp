@@ -23,6 +23,7 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
 #include "PokemonLZA_AutoStoryGame.h"
+#include "Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
 #include "PokemonLZA_AutoStoryGame_Tests.h"
@@ -378,7 +379,7 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .inputs = "press A, wait 250ms, wait 250ms, press A, wait 250ms, wait 250ms, wait 500ms, press A, wait 250ms, wait 500ms",
+            .inputs = "press A, wait 250ms, wait 250ms, press A, wait 250ms, wait 250ms, wait 500ms, wait 500ms, wait 250ms, wait 500ms",
             .line = "[PLZA mash_to_move_hints] done on fade_settled.",
         },
     },
@@ -515,7 +516,7 @@ const RunCase RUN_CASES[] = {
         .name = "01.03's battle start: A through the talk and the tutorial card, done on the battle HUD",
         .input = {.checkpoint = "01.03", .first_step = 2, .steps = 1, .looks = {
             look({ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, /*readings=*/{}, Milliseconds(0)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(500)),
+            look(/*events=*/{}, {TUTORIAL_CARD_READING}, Milliseconds(500)),
             look({ScreenEvent::BATTLE_STARTED}, /*readings=*/{}, Milliseconds(1000)),
         }},
         .expectation = {

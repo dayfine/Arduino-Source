@@ -476,9 +476,10 @@ Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
 //  on the Italian game). The next step's walk waits for control (check_can_walk()).
 //  01.01's arrival takes ~240 s on the console, hence
 //  360 s. A text-free cutscene (01.01's city flyover, ~20 s) is not
-//  control: a minute with nothing busy fails the step. After 5 s with
-//  nothing busy and no sign of control, A every 2 s, for text the detectors
-//  miss (01.01's ad).
+//  control: a minute with nothing busy fails the step. No blind A: the
+//  ad's subtitles show the advance chevron, which gets A like a text box,
+//  and a blind A at the end of a talk restarts it (01.02's battle area,
+//  console B 2026-11-15).
 //  "min_length_ms" holds the quiet failure off for a long still scene;
 //  "quiet_ms" is the quiet time, which with "quiet_is_control" ends the
 //  step with control (Hotel Z shows no party bar). "press_a_first" presses
@@ -492,7 +493,6 @@ Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAct
     config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));
     config.quiet_is_control = Pokemon::story_arg<bool>(call.args, "quiet_is_control");
     config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
-    config.blind_press_after = 5s;
     const auto fades = call.args.find("end_after_black_fades");
     if (fades != call.args.end()){
         config.end_after_black_fades = (size_t)std::get<int64_t>(fades->second);
@@ -530,13 +530,12 @@ Outcome walk_to_prompt_step(Pokemon::StoryBackend<ZonePose>& backend, const Stor
 
 
 //  "story_battle_start": A through the talk before a story battle (a
-//  choice takes its top row) and, every 2 s where no text shows, through
-//  the battle tutorial's cards and the VS splash, until the battle HUD
-//  shows, 90 s at most.
+//  choice takes its top row) and the battle tutorial's cards
+//  (TUTORIAL_CARD_READING), waiting out the VS splash, until the battle
+//  HUD shows, 90 s at most.
 Outcome battle_start_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
     SceneMachineConfig config;
     config.stop_at_battle = true;
-    config.blind_press_after = Milliseconds(0);
     return run_scene_machine(backend, "story_battle_start", config, 90s);
 }
 
@@ -560,7 +559,8 @@ Outcome ladder_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionC
 //  "talk_to_pokedex_screen": the nurse's talk and the Pokedex app (03.04)
 //  until the party bar holds a second, 90 s at most: B at its text and,
 //  every 2 s while neither text nor control shows, at the Pokedex screens,
-//  which only B closes (A plays the entry's motions).
+//  which only B closes (A plays the entry's motions). The one blind press
+//  left: no detector reads the Pokedex screens yet.
 Outcome pokedex_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
     SceneMachineConfig config;
     config.text_button = BUTTON_B;
