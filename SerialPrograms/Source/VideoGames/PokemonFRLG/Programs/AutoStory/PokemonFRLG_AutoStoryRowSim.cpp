@@ -885,7 +885,7 @@ std::string row_step_carrying_flags(
     }
     const std::string failure = id + "/" + step.name + ": " + outcome.detail + " On " + to_string(sim.state().position) + ".";
     if (!Pokemon::failure_class_of(outcome)){
-        return std::format("{} {}: {}", UNCLASSIFIED_FAILURE, outcome.failure, failure);
+        return std::format("unclassified failure {}: {}", outcome.failure, failure);
     }
     return failure;
 }
