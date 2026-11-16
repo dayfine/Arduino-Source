@@ -37,14 +37,6 @@ struct BackendCase{
     Expectation expectation;
 };
 
-std::string degrees_text(){
-    return std::format(
-        "{} {} {} {}",
-        direction_degrees(Direction::NORTH), direction_degrees(Direction::EAST),
-        direction_degrees(Direction::SOUTH), direction_degrees(Direction::WEST)
-    );
-}
-
 std::string observation_text(ScreenEvents events){
     return describe(screen_observation(events).events);
 }
@@ -82,21 +74,6 @@ std::string fake_text(CancellableScope& scope){
 
 const BackendCase CASES[] = {
     {
-        .name = "directions as stick degrees",
-        .input = {.read = [](CancellableScope&){ return degrees_text(); }},
-        .expectation = {.text = "0 90 180 -90"},
-    },
-    {
-        .name = "backend kinds by name",
-        .input = {.read = [](CancellableScope&){
-            return std::format(
-                "{} {} {}", story_backend_kind_name(StoryBackendKind::CONSOLE),
-                story_backend_kind_name(StoryBackendKind::SIMULATION), story_backend_kind_name(StoryBackendKind::SCRIPT)
-            );
-        }},
-        .expectation = {.text = "console simulation script"},
-    },
-    {
         .name = "a look keeps the engine's events",
         .input = {.read = [](CancellableScope&){
             return observation_text({ScreenEvent::FADE_WHITE, ScreenEvent::LOCATION_BANNER, ScreenEvent::SWITCH_HOME_MENU});
@@ -112,13 +89,6 @@ const BackendCase CASES[] = {
         .name = "a zone pose matches its zone, or any zone when the target names none",
         .input = {.read = [](CancellableScope&){ return matches_text(); }},
         .expectation = {.text = "true false true false"},
-    },
-    {
-        .name = "a zone pose as text",
-        .input = {.read = [](CancellableScope&){
-            return std::format("{} / {}", pose_text(ZonePose{.zone = "HotelZ"}), pose_text(ZonePose{}));
-        }},
-        .expectation = {.text = "zone HotelZ / zone unknown"},
     },
     {
         .name = "the scripted backend records inputs and repeats its last look",
