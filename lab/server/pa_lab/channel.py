@@ -118,7 +118,8 @@ class AppChannel:
         raise NotImplementedError
 
     def send(self, name: str, request_id: str, commands: Tuple[Command, ...]) -> None:
-        """Hands the request to the app at once (atomically). Raises OSError when it cannot."""
+        """Hands the request to the app at once (atomically). Raises OSError when it cannot, and then
+        leaves nothing behind; every tool turns that into `app_unavailable` / `inbox_write_failed`."""
         raise NotImplementedError
 
     def answer(self, name: str) -> Optional[Journal]:

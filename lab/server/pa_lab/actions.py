@@ -314,6 +314,7 @@ class ProgramActions:
         check = make_check(state)
         if expect_instance is not None and state['app'] is not None and expect_instance != instance:
             check = functools.partial(_replaced, expect_instance, instance)
+        # Only used once begin_action has validated request_id; until then it may be any value.
         name = reader.channel.request_name(request['tool'], str(request.get('request_id')), unique=True)
         record, act = self.plane.begin_action(client_id, request, instance, check, name)
         tool = request['tool']

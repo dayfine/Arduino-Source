@@ -22,10 +22,10 @@ import re
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from pa_lab import timestamps
-from pa_lab.channel import Journal, Snapshot, await_answer
+from pa_lab.channel import AppChannel, Command, Journal, Snapshot, await_answer
 from pa_lab.lab_reader import BAD_SIGNALS, ConsoleReader, Unavailable
 from pa_lab.tools import InvalidArguments, check_arguments
 
@@ -65,6 +65,16 @@ def _check_start(app: Dict[str, Any]) -> None:
 def refuse_timeout(command: str, name: str) -> Refused:
     return Refused('timeout', 'The app did not answer the {} request in time (busy with another '
                    'request?).'.format(command), {'request': name})
+
+
+def send_or_refuse(channel: AppChannel, name: str, request_id: str, commands: Tuple[Command, ...],
+                   command: str) -> None:
+    """Writes the request into the app's inbox; a failed write is a refusal, and nothing was sent."""
+    try:
+        channel.send(name, request_id, commands)
+    except OSError as e:
+        raise Refused('app_unavailable', 'Could not write the {} request into the app\'s inbox ({}); '
+                      'nothing was sent.'.format(command, e.strerror or e), {'reason': 'inbox_write_failed'})
 
 
 def _check_instance(reply_instance: str, instance_id: str) -> None:
@@ -150,7 +160,7 @@ def take_shot(console: ConsoleReader, arguments: Dict[str, Any],
     request_id = str(new_uuid())
     channel = console.channel
     name = channel.request_name('shot', request_id)
-    channel.send(name, request_id, (Snapshot(LABEL, timeout_ms),))
+    send_or_refuse(channel, name, request_id, (Snapshot(LABEL, timeout_ms),), 'snapshot')
     deadline = started + (timeout_ms + ANSWER_GRACE_MS) / 1000.0
     journal = await_answer(channel, name, console.now, sleep, deadline, POLL_S)
     if journal is None:

@@ -54,6 +54,13 @@ class FileChannelTest(unittest.TestCase):
                 self.assertEqual(list((self.lab.dir / 'outbox').iterdir()), [])  # no .part left behind
                 self.assertTrue(self.channel.withdraw(name))
 
+    def test_a_failed_send_raises_and_leaves_no_part_file(self):
+        (self.lab.dir / 'inbox').rmdir()  # the rename into the inbox fails
+        name = self.channel.request_name('stop', REQUEST_ID)
+        with self.assertRaises(OSError):
+            self.channel.send(name, REQUEST_ID, (Stop(),))
+        self.assertEqual(list((self.lab.dir / 'outbox').iterdir()), [])
+
     def test_a_unique_name_differs_per_attempt_of_one_request_id(self):
         names = {self.channel.request_name('run_program', REQUEST_ID, unique=True) for _ in range(3)}
         self.assertEqual(len(names), 3)

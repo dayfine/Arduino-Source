@@ -122,8 +122,12 @@ class FileChannel(AppChannel):
         # Written beside the inbox and renamed in: the app never reads half a request.
         part = self.lab_dir / 'outbox' / (name + '.part')
         lines = ['request {}'.format(request_id)] + [render(c) for c in commands]
-        part.write_text('\n'.join(lines) + '\n', encoding='utf-8')
-        os.replace(part, self._inbox(name))
+        try:
+            part.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+            os.replace(part, self._inbox(name))
+        except OSError:
+            part.unlink(missing_ok=True)
+            raise
 
     def answer(self, name: str) -> Optional[Journal]:
         try:
