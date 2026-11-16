@@ -52,6 +52,8 @@ bool OverworldSim::use_field(SimField field, size_t floor){
         return push_poster_switch();
     case SimField::PUSH_BOULDER:
         return push_boulder();
+    case SimField::STRENGTH:
+        return use_strength();
     case SimField::LIFT_FLOOR:
         return choose_lift_floor(floor);
     case SimField::BIKE_SELECT:
@@ -192,6 +194,30 @@ void OverworldSim::land_fallen_boulder(const MapPosition& hole){
             note("the boulder lands on " + to_string(MapPosition{shown->name, TilePos{object.x, object.y}}) + ".");
         }
     }
+}
+
+bool OverworldSim::boulder_ahead() const{
+    const TilePos ahead = m_player.position.next(m_state.facing);
+    const std::vector<MapObject>& objects = map().objects;
+    return std::any_of(objects.begin(), objects.end(), [&](const MapObject& object){
+        return object.name == "pushable_boulder" && object.x == ahead.x && object.y == ahead.y;
+    });
+}
+
+bool OverworldSim::use_strength(){
+    if (!boulder_ahead() || m_state.screen != SimScreen::OVERWORLD || m_frozen){
+        violation(std::format("no boulder {} of {}: A for Strength shows nothing.", direction_name(m_state.facing), to_string(m_state.position)));
+        return false;
+    }
+    if (m_state.strength_on){
+        //  EventScript_AlreadyUsedStrength: a message, no YES/NO for the
+        //  console's answer to wait for.
+        violation(std::format("Strength is on already on {}: A shows a message, no YES/NO.", to_string(m_state.position)));
+        return false;
+    }
+    note("Strength is on.");
+    m_state.strength_on = true;
+    return true;
 }
 
 bool OverworldSim::push_boulder(){
@@ -424,6 +450,7 @@ void OverworldSim::open_start_gates(){
 }
 
 void OverworldSim::regrow_cut_trees(){
+    m_state.strength_on = false;
     for (auto& [index, tree] : m_cut_trees){
         m_maps[index].objects.push_back(tree);
     }

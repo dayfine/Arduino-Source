@@ -296,22 +296,11 @@ UnitTestResult test_strength_teach_and_cave_mouth(){
     return true;
 }
 
-//  A Victory Road floor's row on the sim from its start_gates, its boulder
-//  pushes included: it starts where `previous` ends, turns on the switch
-//  `switch_key`, meets no trainer, breaks no rule and ends on `end`.
-UnitTestResult cave_floor(std::string_view previous, std::string_view id, std::string_view switch_key, const MapPosition& end){
-    const StoryCheckpoint& before = checkpoint(previous);
-    const StoryCheckpoint& row = checkpoint(id);
-    const StoryPose at_start = *story_pose(Pokemon::pose_of(*row.start));
-    const std::optional<Pokemon::GridPose> before_pose = Pokemon::checkpoint_end_pose(before);
-    const std::optional<StoryPose> before_end = before_pose ? story_pose(Pokemon::pose_of(*before_pose)) : std::nullopt;
-    if (!before_end || before_end->map != at_start.map || !(before_end->tile == at_start.tile)){
-        return std::format("{} doesn't start where {} ends.", id, previous);
-    }
-    StoryPose at = at_start;
-    SimScript script;
-    script.gates = row.start_gates.value_or(Pokemon::GateState());
-    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, at.facing.value_or(Direction::NORTH), script);
+//  `row`'s walks and boulder pushes on `sim`, which starts at its start: the first
+//  failure, a rule broken or a trainer met, or empty.
+std::string floor_steps_on_sim(const StoryCheckpoint& row, OverworldSim& sim){
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    const std::string& id = row.id;
     for (const StoryStep& step : row.steps){
         const bool push = step.kind == StoryStepKind::GAME && step.action == PUSH_BOULDER_VARIANT;
         if (!push && step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS && step.kind != StoryStepKind::STEP){
@@ -326,6 +315,42 @@ UnitTestResult cave_floor(std::string_view previous, std::string_view id, std::s
         if (!sim.state().trainers_beaten.empty()){
             return std::format("{} {}: met a trainer: {}", id, step.name, sim.state().trainers_beaten.front());
         }
+    }
+    return "";
+}
+
+//  A row's sim from its start pose and start_gates, Strength on as given.
+OverworldSim floor_sim(const StoryCheckpoint& row, bool strength_on){
+    const StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    SimScript script;
+    script.gates = row.start_gates.value_or(Pokemon::GateState());
+    script.strength_on = strength_on;
+    return OverworldSim(story_maps(), MapPosition{at.map, at.tile}, at.facing.value_or(Direction::NORTH), script);
+}
+
+//  A Victory Road floor's row on the sim from its start_gates, its boulder
+//  pushes included: it starts where `previous` ends, with Strength on if
+//  `previous` (on the sim, Strength off at its start) left it on, as the
+//  save between them keeps it (SimScript::strength_on); it turns on the
+//  switch `switch_key`, meets no trainer, breaks no rule and ends on `end`.
+//  19.04c used Strength on 3F and saved there; 19.04d's hold east to the
+//  boulder (33, 18) pushed it into the hole (console B, 2026-11-16).
+UnitTestResult cave_floor(std::string_view previous, std::string_view id, std::string_view switch_key, const MapPosition& end){
+    const StoryCheckpoint& before = checkpoint(previous);
+    const StoryCheckpoint& row = checkpoint(id);
+    const StoryPose at_start = *story_pose(Pokemon::pose_of(*row.start));
+    const std::optional<Pokemon::GridPose> before_pose = Pokemon::checkpoint_end_pose(before);
+    const std::optional<StoryPose> before_end = before_pose ? story_pose(Pokemon::pose_of(*before_pose)) : std::nullopt;
+    if (!before_end || before_end->map != at_start.map || !(before_end->tile == at_start.tile)){
+        return std::format("{} doesn't start where {} ends.", id, previous);
+    }
+    OverworldSim before_sim = floor_sim(before, /*strength_on=*/false);
+    if (const std::string failure = floor_steps_on_sim(before, before_sim); !failure.empty()){
+        return failure;
+    }
+    OverworldSim sim = floor_sim(row, before_sim.state().strength_on);
+    if (const std::string failure = floor_steps_on_sim(row, sim); !failure.empty()){
+        return failure;
     }
     if (!sim.state().gates.switch_on(std::string(switch_key))){
         return std::format("{}: the switch {} is not on.", id, switch_key);

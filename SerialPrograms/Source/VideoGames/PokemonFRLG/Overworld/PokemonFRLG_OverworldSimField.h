@@ -46,6 +46,11 @@ enum class SimField{
     //  and the player's next step takes the tile it left. Strength is the
     //  console's: the sim does not ask for it.
     PUSH_BOULDER,
+    //  A on the boulder the player faces, and YES: Strength is on until the
+    //  next warp (SimState::strength_on). A violation if it is on already
+    //  (the game shows a message, no YES/NO) or no boulder is there (A
+    //  shows nothing).
+    STRENGTH,
     //  Not A: Fly from the party menu to the town numbered `floor` in
     //  kanto_fly_towns(), outdoors: the fade, then the player on its landing
     //  tile facing south, still for SimTiming::fly.

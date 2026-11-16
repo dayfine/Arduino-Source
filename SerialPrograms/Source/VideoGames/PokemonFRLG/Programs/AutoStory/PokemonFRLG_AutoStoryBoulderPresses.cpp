@@ -7,6 +7,7 @@
 #include <format>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
+#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_BoulderPushReader.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
@@ -34,6 +35,14 @@ constexpr int BOULDER_STILL_POLLS = 5;
 constexpr double BOULDER_STILL_RMSD = 6.0;
 //  How long a box that stopped a push may take to close.
 constexpr Milliseconds BOX_TIMEOUT(20000);
+//  After A, the overworld this long quiet with nothing showing means A
+//  found nothing to use: Strength's question shows well within it. Looked
+//  for at most NOTHING_LOOK_TIMEOUT.
+constexpr Milliseconds NOTHING_QUIET(1000);
+constexpr Milliseconds NOTHING_LOOK_TIMEOUT(3000);
+//  How long Strength's YES/NO, and then its message, may take.
+constexpr Milliseconds YES_NO_TIMEOUT(60000);
+constexpr Milliseconds MESSAGE_TIMEOUT(300000);
 
 std::string_view describe(const BoulderPressRead& read){
     if (read.scrolled){
@@ -44,6 +53,21 @@ std::string_view describe(const BoulderPressRead& read){
 
 }  // namespace
 
+
+std::optional<std::string> use_strength(ConsoleHandle& console, ProControllerContext& context, const MapPosition& here, Direction direction){
+    pbf_press_button(context, BUTTON_A, /*hold=*/160ms, /*release=*/800ms);
+    context.wait_for_all_requests();
+    ConsoleScreenLook eyes(console, context);
+    const Pokemon::ScreenLookFunction look = [&eyes](bool fresh){ return eyes.look(fresh); };
+    const Pokemon::ScreenSettle settle = wait_for_quiet_overworld(look, NOTHING_QUIET, NOTHING_LOOK_TIMEOUT);
+    console.log(std::format("Boulder: after A for Strength, {}.", Pokemon::describe(settle)));
+    if (quiet_overworld(settle, NOTHING_QUIET)){
+        return std::format("no boulder {} of {}: A for Strength showed nothing.", direction_name(direction), to_string(here));
+    }
+    answer_yes_no(console, context, /*yes=*/true, BUTTON_B, YES_NO_TIMEOUT);
+    mash_until_overworld(console, context, MESSAGE_TIMEOUT);
+    return std::nullopt;
+}
 
 ConsoleBoulderPresses::ConsoleBoulderPresses(ConsoleHandle& console, ProControllerContext& context, PlayerGender player)
     : m_console(console)

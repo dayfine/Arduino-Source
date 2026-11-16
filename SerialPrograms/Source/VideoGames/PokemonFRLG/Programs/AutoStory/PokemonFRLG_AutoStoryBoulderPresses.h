@@ -11,6 +11,8 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryBoulderPresses_H
 
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include <optional>
+#include <string>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h"
@@ -20,6 +22,14 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
+
+//  Strength on, at the boulder `direction` of the player on `here`: A,
+//  YES to "Would you like to use STRENGTH?", its message closed. If A
+//  shows nothing (the overworld stays quiet), no boulder is there: returns
+//  that failure at once, not after the YES/NO's timeout. 19.04d's
+//  push_into_hole pressed A at the hole the boulder had already fallen
+//  into and waited 60 s for a YES/NO (console B, 2026-11-16).
+std::optional<std::string> use_strength(ConsoleHandle& console, ProControllerContext& context, const MapPosition& here, Direction direction);
 
 //  A boulder push's taps on the console: step taps, each read from shots of
 //  the screen before it and once still after it.

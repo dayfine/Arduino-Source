@@ -59,6 +59,10 @@ struct SimScript{
     //  there and set one off (2026-11-16 02:18, 19.04c). The sim leaves the
     //  player on the warp's tile.
     std::optional<Milliseconds> battle_after_warp;
+    //  Strength is on at the start: a save keeps it, as Continue
+    //  (pokefirered CB2_ContinueSavedGame) doesn't clear
+    //  FLAG_SYS_USE_STRENGTH; only a warp does.
+    bool strength_on = false;
     //  Whether the game holds the player up a tile on a step onto a
     //  connected map. It did north onto Nugget Bridge (console B,
     //  2026-11-03, rows 05.05 and 05.09), not south from Route 6 into
@@ -198,6 +202,9 @@ struct SimState{
     bool on_bike = false;
     //  On the water (SimField::SURF).
     bool surfing = false;
+    //  Strength in use (SimField::STRENGTH, SimScript::strength_on): a
+    //  step into a boulder pushes it. A warp turns it off.
+    bool strength_on = false;
     //  Bicycle taps the game dropped, too soon after the last one.
     int bike_taps_dropped = 0;
     //  Step taps the game ignored, inside the lockout after the last one

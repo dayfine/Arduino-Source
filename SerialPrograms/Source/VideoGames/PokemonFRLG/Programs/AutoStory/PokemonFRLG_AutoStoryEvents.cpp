@@ -582,9 +582,9 @@ Outcome push_boulder(StoryEnv& env, RunState& state, const StoryStep& step){
         face_wall(env.console, env.context, direction, env.player_gender);
     }
     if (arg<bool>(step, "activate")){
-        pbf_press_button(env.context, BUTTON_A, 160ms, 800ms);
-        answer_yes_no(env.console, env.context, true, BUTTON_B, YES_NO_TIMEOUT);
-        mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
+        if (const std::optional<std::string> failure = use_strength(env.console, env.context, MapPosition{here->map, here->tile}, direction)){
+            return Pokemon::outcome_failed("boulder_push", *failure);
+        }
     }
     ConsoleBoulderPresses presses(env.console, env.context, env.player_gender);
     return boulder_push_outcome(step, story_maps(), push_boulder_tiles(direction, tiles, presses), state);

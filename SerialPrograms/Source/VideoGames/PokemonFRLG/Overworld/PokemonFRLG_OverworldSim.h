@@ -196,6 +196,10 @@ private:
     bool push_poster_switch();
     //  SimField::PUSH_BOULDER. (PokemonFRLG_OverworldSimField.cpp)
     bool push_boulder();
+    //  Whether a pushable_boulder stands on the tile the player faces.
+    bool boulder_ahead() const;
+    //  SimField::STRENGTH.
+    bool use_strength();
     //  A boulder fell through `hole`: the boulder the game hid on the floor
     //  below (a pushable_boulder with a hide_flag) is shown.
     void land_fallen_boulder(const MapPosition& hole);
@@ -211,6 +215,8 @@ private:
     //  its tree cut, to come back after a warp as one cut_tree() cuts.
     void open_start_gates();
     //  The trees cut come back, as after a warp.
+    //  A warp's ClearTempFieldEventData (pokefirered): the trees cut grow
+    //  back and Strength wears off.
     void regrow_cut_trees();
     bool after_step(const Step& step, Milliseconds pressed);
     bool wild_battle(Milliseconds pressed);

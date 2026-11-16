@@ -70,19 +70,26 @@
         "why": "down x 17, east of Caroline's line, to the south room's bottom row"
       },
       {
+        "id": "below_hole",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[34, 19]]}},
+        "why": "east along row 19 to its wall, below the hole (34, 18). Strength is on from 19.04c (Continue keeps FLAG_SYS_USE_STRENGTH; only a warp clears it), so a walk east along row 18 into the boulder (33, 18) pushes it into the hole: the hold 'to wall' did, and push_into_hole found no boulder (console B, 2026-11-16)"
+      },
+      {
         "id": "behind_hole_boulder",
         "kind": "route",
         "action": "run",
         "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[32, 18]]}},
-        "why": "east along row 19 to below, then west of, the boulder (33, 18) beside the hole"
+        "why": "west of the boulder (33, 18), reached from below: no step toward the boulder until the push"
       },
       {
         "id": "push_into_hole",
         "kind": "game_action",
         "action": "push_boulder",
-        "args": {"direction": "east", "tiles": 1, "activate": true},
+        "args": {"direction": "east", "tiles": 1},
         "declared_after": {"map": "VictoryRoad_3F", "tiles": [[33, 18]], "facing": "east"},
-        "why": "Strength on (the map was left for the save), the boulder into the hole (34, 18); it falls to 2F (33, 19), where the game now shows it (FLAG_HIDE_VICTORY_ROAD_2F_BOULDER cleared)"
+        "why": "Strength still on from 19.04c's save (A would show only a message, no YES/NO), the boulder into the hole (34, 18); it falls to 2F (33, 19), where the game now shows it (FLAG_HIDE_VICTORY_ROAD_2F_BOULDER cleared)"
       },
       {
         "id": "drop_to_2f",
