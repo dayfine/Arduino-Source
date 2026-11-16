@@ -103,7 +103,7 @@ findings have no bypass.
 - **Place it** on the function's or class's first line, or in the comment block directly above
   it (only `//` comment and `template` lines between). A `file_lines` tag goes in the first 20
   lines of the file, and so does a `header_symbols` tag. A style tag (`char_pointer`, `overload_prefix`,
-  `out_param_order`, `string_concat`, `param_comment`, `test_only_api`) goes on the flagged line or in the comment block directly above it, and waives the finding whether it is an error or advisory. A tag that attaches to nothing fails.
+  `out_param_order`, `string_concat`, `param_comment`, `test_only_api`) goes on the flagged line or in the comment block directly above it, and waives the finding whether it is an error or advisory. A tag that attaches to nothing fails. Style checks report only changed lines, so a style tag on a line the change left alone (a later PR in a stack) attaches if it covers a finding of the whole file.
 - **Justify it:** the text after `--`, on the tag line itself, must be at least 40 characters and 6 words,
   and say why splitting would make the code worse. Unknown checks, a missing or short
   justification, or a malformed tag fail.

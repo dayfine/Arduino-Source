@@ -17,6 +17,17 @@ def analyze(path, source):
     return measure(path, source) + measure_classes(path, source) + header_api.measure_header(path, source)
 
 
+def style_findings(path, source, previous_source, users):
+    """(style errors, style advisories) on lines new since `previous_source` (None: all lines)."""
+    errors, notes = style.check(path, source, previous_source)
+    errors += header_api.prefix_overloads(path, source, previous_source)
+    # Advisory: both report many sites a reviewer may accept (pbf_* timings, API for a
+    # later PR in a stack); see the README's Style table for the measured rates.
+    notes += param_comments.check(path, source, previous_source)
+    notes += exposure.check(path, source, previous_source, users)
+    return errors, notes
+
+
 def run(root, base_ref=None, github=False):
     if base_ref is None:
         base_ref, how = default_base(root)
@@ -39,14 +50,12 @@ def run(root, base_ref=None, github=False):
         notices, unneeded = bypasses(metrics, allowed)
         bypassed.extend(notices)
         notes.extend(unneeded)
-        style_errors, style_notes = style.check(current, source, previous_source)
-        style_errors += header_api.prefix_overloads(current, source, previous_source)
-        # Advisory: both report many sites a reviewer may accept (pbf_* timings, API for a
-        # later PR in a stack); see the README's Style table for the measured rates.
-        style_notes += param_comments.check(current, source, previous_source)
-        style_notes += exposure.check(current, source, previous_source, users)
-        # Waive errors and advisories in one pass, so a tag on either counts as used.
-        kept, waived, unattached = allow.waive(current, source, allowances, style_errors + style_notes)
+        style_errors, style_notes = style_findings(current, source, previous_source, users)
+        # Waive errors and advisories in one pass, so a tag on either counts as used. A tag on
+        # a line this change left alone attaches to the whole file's findings.
+        kept, waived, unattached = allow.waive(
+            current, source, allowances, style_errors + style_notes,
+            whole_file=lambda: sum(style_findings(current, source, None, users), []))
         failures.extend([f for f in kept if f in style_errors] + unattached)
         bypassed.extend(waived)
         notes.extend(f for f in kept if f not in style_errors)
