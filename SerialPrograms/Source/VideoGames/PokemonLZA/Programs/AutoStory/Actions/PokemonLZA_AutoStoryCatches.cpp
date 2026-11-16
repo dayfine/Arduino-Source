@@ -18,7 +18,6 @@
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BallThrow.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryCaughtMarkReader.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader.h"
 #include "PokemonLZA_AutoStoryLines.h"
 #include "PokemonLZA_AutoStoryMarkerWalk.h"
 #include "PokemonLZA_AutoStoryCatches.h"
@@ -134,6 +133,10 @@ constexpr Milliseconds PATROL_LIMIT(600000);
 //  How far short of a road stop still counts as there: the walk back to 60
 //  from nearer the gate stopped at 58 once (console B, 2026-11-14).
 constexpr int ROAD_STOP_SLACK = 3;
+//  The patrol never walks toward the objective below this, read or not:
+//  60 is just before the far gate, and past it is the city (console B,
+//  2026-11-16, a walk to 100 came out at 37).
+constexpr int ROAD_FLOOR = ROAD_SPOTS[std::size(ROAD_SPOTS) - 1] - ROAD_STOP_SLACK;
 constexpr Milliseconds STOP_WALK_LIMIT(30000);
 //  The first walk, from where 03.07 left the player, is the longest.
 constexpr Milliseconds FIRST_WALK_LIMIT(90000);
@@ -328,21 +331,7 @@ std::optional<int> walk_to_stop(StoryEnv& env, PlzaBackend& backend, std::option
     if (last && stop > *last){
         return walk_back_from_marker(env, backend, stop, STOP_WALK_LIMIT);
     }
-    return walk_toward_marker(env, backend, stop, last ? STOP_WALK_LIMIT : FIRST_WALK_LIMIT);
-}
-
-//  The objective's distance on the screen now, if it reads.
-std::optional<int> objective_distance_now(StoryEnv& env){
-    env.context.wait_for_all_requests();
-    const VideoSnapshot frame = env.env.console.video().snapshot();
-    if (!frame){
-        return std::nullopt;
-    }
-    const std::optional<ObjectiveMarker> marker = read_objective_marker(env.env.console, frame);
-    if (!marker || marker->distance <= 0){
-        return std::nullopt;
-    }
-    return marker->distance;
+    return walk_toward_marker(env, backend, stop, ROAD_FLOOR, last ? STOP_WALK_LIMIT : FIRST_WALK_LIMIT);
 }
 
 //  What the patrol came to: the party bar's last read, the throws.
@@ -402,7 +391,7 @@ Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCa
     //  Taunie's two rocks stand between 03.07's end and the marker: a step
     //  right first, around them (a catch's autosave can leave the save
     //  further on).
-    const std::optional<int> start = objective_distance_now(env);
+    const std::optional<int> start = read_marker_distance(env, backend, ROAD_FLOOR);
     if (start && *start >= 115){
         pbf_move_left_joystick(env.context, /*position=*/{1, 0}, /*hold=*/Milliseconds(1000), /*release=*/Milliseconds(300));
     }
@@ -422,7 +411,7 @@ Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCa
 }
 
 Pokemon::Outcome walk_back_to_zone_road(StoryEnv& env, PlzaBackend& backend){
-    std::optional<int> at = objective_distance_now(env);
+    std::optional<int> at = read_marker_distance(env, backend, std::nullopt);
     for (int stop : road_stops_to_gate(at)){
         backend.log(std::format("[PLZA] walk_back_to_zone_road: to {} on the road, from {}", stop, at.value_or(-1)));
         const bool toward = !at || stop <= *at;

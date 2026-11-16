@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include "PokemonLZA_AutoStoryMarkerDistance.h"
 
 namespace PokemonAutomation{
@@ -12,10 +13,6 @@ namespace PokemonLZA{
 
 
 namespace{
-
-//  A 0.6 s step covers about 3 of the marker's distance (console B,
-//  2026-11-16: 109 to 42 in about 20 steps).
-constexpr int STEP_COVERS = 3;
 
 bool near(int a, int b){
     return a >= b - 12 && a <= b + 12;
@@ -29,17 +26,14 @@ constexpr size_t UNTAKEN_KEPT = 3;
 } // namespace
 
 
-int MarkerDistance::moved_on(const Untaken& read) const{
-    const int moved = STEP_COVERS * (m_steps - read.step);
-    return m_direction == MarkerDirection::BACK ? read.distance + moved : read.distance - moved;
-}
-
 bool MarkerDistance::read(int distance){
-    const std::optional<int> at = position();
-    if (!at || !near(distance, *at)){
+    if (m_floor && distance < *m_floor){
+        return false;
+    }
+    if (!m_last || !near(distance, *m_last)){
         size_t agreeing = 0;
-        for (const Untaken& untaken : m_untaken){
-            if (near(distance, moved_on(untaken))){
+        for (int untaken : m_untaken){
+            if (near(distance, untaken)){
                 agreeing++;
             }
         }
@@ -47,35 +41,27 @@ bool MarkerDistance::read(int distance){
             if (m_untaken.size() == UNTAKEN_KEPT){
                 m_untaken.erase(m_untaken.begin());
             }
-            m_untaken.push_back(Untaken{.distance = distance, .step = m_steps});
+            m_untaken.push_back(distance);
             return false;
         }
     }
     m_untaken.clear();
     m_last = distance;
-    m_steps_unread = 0;
     return true;
 }
 
-void MarkerDistance::stepped(){
-    m_steps++;
-    m_steps_unread++;
-}
-
-std::optional<int> MarkerDistance::position() const{
-    if (!m_last){
-        return std::nullopt;
+MarkerMove MarkerDistance::next(std::optional<int> distance, int stop_at){
+    if (!distance || !read(*distance)){
+        return MarkerMove::RECENTER;
     }
-    const int moved = STEP_COVERS * m_steps_unread;
-    return m_direction == MarkerDirection::BACK ? *m_last + moved : *m_last - moved;
+    return reached(stop_at) ? MarkerMove::ARRIVED : MarkerMove::STEP;
 }
 
 bool MarkerDistance::reached(int stop_at) const{
-    const std::optional<int> at = position();
-    if (!at){
-        return false;
+    if (m_direction == MarkerDirection::BACK){
+        return *m_last >= stop_at;
     }
-    return m_direction == MarkerDirection::BACK ? *at >= stop_at : *at <= stop_at;
+    return *m_last <= std::max(stop_at, m_floor.value_or(stop_at));
 }
 
 
