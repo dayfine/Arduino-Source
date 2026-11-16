@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from pa_lab import contracts, timestamps
+from pa_lab.hold import hold_lease, read_hold
 
 MAX_FILE_BYTES = 1 << 20
 
@@ -151,15 +152,19 @@ class ConsoleReader:
 
     def console_state(self) -> Dict[str, Any]:
         observed_at = timestamps.format(self.now())
+        hold = read_hold(self.lab_dir)
         try:
             app = self.app_state()
         except Unavailable as e:
-            lease = self.control.lease(self.console) if self.control is not None else free_lease()
+            if self.control is not None:
+                lease = self.control.lease(self.console, hold)
+            else:
+                lease = hold_lease(hold) if hold is not None else free_lease()
             doc = {'schema': 1, 'console': self.console, 'observed_at': observed_at,
                    'availability': {'state': 'unavailable', 'reason': e.reason},
                    'app': None, 'lease': lease, 'blocked': [_app_unavailable(e)]}
             return contracts.validate('console_state', doc).data
-        lease = self.control.observe(self.console, app) if self.control is not None else reported_lease(app)
+        lease = self.control.observe(self.console, app, hold) if self.control is not None else reported_lease(app, hold)
         doc = {'schema': 1, 'console': self.console, 'observed_at': observed_at,
                'availability': {'state': 'available', 'reason': None},
                'app': app, 'lease': lease, 'blocked': blocked(self.console, app, lease)}
@@ -205,10 +210,11 @@ def free_lease() -> Dict[str, Any]:
     return {'state': 'free', 'owner': None, 'acquired_at': None, 'expires_at': None}
 
 
-def reported_lease(app: Dict[str, Any]) -> Dict[str, Any]:
-    """The lease as far as this instance's state shows it: a UI Start/Stop hands the console to
-    the user, with no timeout. Without the Slice 3 store a user lease from before an app restart
-    is not remembered."""
+def reported_lease(app: Dict[str, Any], hold: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    """The lease as far as this instance's state and `Lab/hold` show it: the hold, or a UI
+    Start/Stop, hands the console to the user, with no timeout."""
+    if hold is not None:
+        return hold_lease(hold)
     transition = app['program']['last_transition']
     if transition is not None and transition['source'] == 'ui':
         return {'state': 'user', 'owner': 'user', 'acquired_at': transition['at'], 'expires_at': None}

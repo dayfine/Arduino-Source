@@ -10,6 +10,7 @@
 #   Launches by direct exec (nohup), never `open` (open loses the camera permission), under the
 #   console lock (lablock.sh, same lock start_dev.py takes); refuses if another train holds it.
 #   --plan reports everything and changes nothing.
+#   Refuses (exit 4) while the user holds the console (hold.sh check; $HOLD, default ~/BDSPLab/hold.sh).
 usage(){ echo "usage: labrun.sh bdsp|frlg|plza [N] [--plan] [--panel \"Category\" \"Panel\"]" >&2; exit 2; }
 game=$1; [ -n "$game" ] || usage; shift
 n=1; plan=; cat=; pan=
@@ -25,6 +26,7 @@ case $game in bdsp) slot=slot-B ;; frlg) slot=slot-B-frlg ;; plza) slot=slot-B-p
 DEPLOYS=${DEPLOYS:-$HOME/Projects/dev-deployments}
 PROFILES=${PROFILES:-$HOME/Library/Application Support/SerialPrograms/Profiles}
 LABLOCK=${LABLOCK:-$HOME/BDSPLab/lablock.sh}
+HOLD=${HOLD:-$HOME/BDSPLab/hold.sh}
 NAME=${LABRUN_PROFILE:-lab-B}; con=${NAME#lab-}   # LABRUN_PROFILE is for the self-test only
 prof=$PROFILES/$NAME
 # The app process itself: its command is [interpreter] .../SerialPrograms --profile NAME. A lablock or
@@ -39,6 +41,7 @@ bin=$dep/SerialPrograms.app/Contents/MacOS/SerialPrograms
 rev=$(sed -n 's/.*"source_revision": *"\([0-9a-f]*\)".*/\1/p' "$dep/lab-deployment.json")
 echo "labrun: $game #$n -> $(basename "$dep") commit ${rev:-?}"
 
+LAB_PROFILE="$prof" sh "$HOLD" check || exit 4
 pid=$(app_pid)
 if [ -n "$pid" ]; then
   st=$(sed -n 's/^state=//p' "$prof/Lab/state" 2>/dev/null | head -1)

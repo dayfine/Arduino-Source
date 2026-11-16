@@ -140,21 +140,30 @@ def _serve_forever(server, readers, endpoint: str) -> int:
 
 def _lease(path: str, action: str, console: str) -> int:
     import json
-    from pa_lab import control, db
+    from pa_lab import control, db, hold
     try:
         cfg = config.load(path)
     except config.ConfigError as e:
         print('error {}'.format(e))
         return 1
     plane = control.ControlPlane(db.Database(cfg.db_file), sorted(cfg.consoles))
+    lab_dir = cfg.consoles[console].lab_dir if console in cfg.consoles else None
+    released = False
     try:
         if action == 'claim-user':
+            if lab_dir is not None:
+                hold.write_hold(lab_dir, 'operator_claim')
             lease = plane.claim_user(console)
         elif action == 'release-user':
+            # The file first: the app and the lab scripts read it, not the store.
+            released = lab_dir is not None and hold.clear_hold(lab_dir)
             lease = plane.release_user(console)
         else:
-            lease = plane.lease(console)
+            lease = plane.lease(console, hold.read_hold(lab_dir) if lab_dir is not None else None)
     except control.Refused as e:
+        if released:
+            print('released the hold file; the store said: {}'.format(e.refusal['message']))
+            return 0
         print('error {}'.format(e.refusal['message']))
         return 1
     print(json.dumps(lease, indent=2))
