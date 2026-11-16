@@ -212,6 +212,10 @@ void InterruptLogGuard::on_screen(const Pokemon::StoryStep& step, const Pokemon:
     m_logger.log(std::format("[Screen] before {}: {}", step.name, Pokemon::describe(screen)));
 }
 
+void InterruptLogGuard::on_check_skipped(const Pokemon::StoryStep&, const std::string& line){
+    m_logger.log(std::format("Story: {}", line));
+}
+
 
 
 } // namespace PokemonFRLG

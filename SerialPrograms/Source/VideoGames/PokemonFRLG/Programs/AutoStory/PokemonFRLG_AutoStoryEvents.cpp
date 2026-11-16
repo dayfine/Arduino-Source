@@ -115,10 +115,10 @@ void log_arrival(StoryEnv& env, const std::string& label, const std::string& map
     env.console.log(std::string(Pokemon::ROUTE_LOG_TAG) + Pokemon::route_arrived_line(label, {{map, tile}}));
 }
 
-//  The walker's check that each leg to a wall ended at it (a diagnostic):
-//  with Thorough checks only, as Fast trusts the walk.
+//  The walker's check that each leg to a wall ended at it (a diagnostic),
+//  at the levels that run LEG_END_TAP checks.
 WallCheck wall_check(const StoryEnv& env){
-    return checks_screen(env.checks) ? WallCheck::TAP : WallCheck::SKIP;
+    return Pokemon::runs_check(env.checks, Pokemon::StoryCheckKind::LEG_END_TAP) ? WallCheck::TAP : WallCheck::SKIP;
 }
 
 //  The story's interrupts for `step`'s walk, with FRLG's screen observer,
@@ -809,7 +809,7 @@ StoryExecutor::StoryExecutor(StoryEnv& env)
     : m_env(env)
     , m_guard(env.console.logger())
     , m_table(make_story_action_table([this](StoryActionId id){ return console_action(id); }))
-    , m_executor(m_table, m_guard)
+    , m_executor(m_table, m_guard, env.checks)
     , m_look(env.console, env.context)
     , m_interrupts(step_interrupts(
         [this](bool fresh){ return m_look.look(fresh); },
@@ -908,7 +908,7 @@ StoryRunPlan plan_story_run(
 
 
 std::string check_save_place(StoryEnv& env, const std::string& start_map){
-    if (save_card_place(start_map).empty()){
+    if (save_card_place(start_map).empty() || !Pokemon::runs_check(env.checks, Pokemon::StoryCheckKind::SAVE_PLACE)){
         return "";
     }
     const std::string place = read_save_place(env.console, env.context, env.language);
@@ -942,19 +942,18 @@ void read_bag_supplies(StoryEnv& env, StartMenu menu){
     if (menu != StartMenu::FULL){
         return;
     }
-    const std::vector<BagRow> rows = read_items_pocket(env.console, env.context, env.language);
-    if (rows.empty()){
+    if (!Pokemon::runs_check(env.checks, Pokemon::StoryCheckKind::BAG_CONTENTS)){
+        env.console.log(std::format("Story: {}; keeping the save's counts.", Pokemon::skipped_check_line("the Bag after the load", env.checks)));
+    }else if (const std::vector<BagRow> rows = read_items_pocket(env.console, env.context, env.language); rows.empty()){
         env.console.log("Couldn't read the Items pocket; going on with the checkpoint's items.", COLOR_ORANGE);
-        return;
+    }else{
+        const std::vector<std::string> unread = set_from_loaded_bag(env.supplies, env.saved_supplies, rows);
+        for (const std::string& item : unread){
+            env.console.log(std::format("Story: couldn't read how many {} the bag holds; counting {}.", item, item_count(env.supplies, item)), COLOR_ORANGE);
+        }
+        env.bag_read = unread.empty();
     }
-    const std::vector<std::string> unread = set_from_loaded_bag(env.supplies, env.saved_supplies, rows);
-    for (const std::string& item : unread){
-        env.console.log(std::format(
-            "Story: couldn't read how many {} the bag holds; counting {}.", item, item_count(env.supplies, item)
-        ), COLOR_ORANGE);
-    }
-    env.bag_read = unread.empty();
-    //  A status or HP the checkpoint was saved with.
+    //  A status or HP the checkpoint was saved with: not a check, it acts.
     recover_after_battle(env.console, env.context, env.supplies, env.checks, env.language);
 }
 
@@ -997,7 +996,7 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     //  program last saved there. With none kept, it passes.
     Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, executor, &env.prepared);
     add_start_check(
-        checkpoint, checked_start_pose(data),
+        checkpoint, Pokemon::runs_check(env.checks, Pokemon::StoryCheckKind::START_SCREEN) ? checked_start_pose(data) : std::nullopt,
         [&env, id = data.id]{ return read_console_start(env, id); },
         [&env](const std::string& line){ env.console.log(line, COLOR_ORANGE); }
     );

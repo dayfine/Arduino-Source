@@ -117,8 +117,8 @@ struct StoryEnv{
 };
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the
-//  save card's place, read from the START menu, against it, at every checks
-//  level. Empty if the save is there (or the card can't be read), else why
+//  save card's place, read from the START menu, against it (a SAVE_PLACE
+//  check). Empty if the save is there (or the card can't be read), else why
 //  not.
 std::string check_save_place(StoryEnv& env, const std::string& start_map);
 
@@ -130,9 +130,10 @@ void read_lead_moves(StoryEnv& env, StartMenu menu);
 
 //  After a save is loaded, with START's menu `menu`: the Items pocket's
 //  counts as read (set_from_loaded_bag()), in place of the row's, which
-//  are kept if nothing can be read. Only with the full menu: the rows
-//  before it carry the items they have. Sets `bag_read` when every count
-//  was read.
+//  are kept if nothing can be read, then a status or HP the save carried
+//  recovered. Only with the full menu: the rows before it carry the items
+//  they have. The read is a BAG_CONTENTS check: a level that doesn't run
+//  those keeps the row's counts. Sets `bag_read` when every count was read.
 void read_bag_supplies(StoryEnv& env, StartMenu menu);
 
 //  Does FRLG's kinds of story step on the console, each with its row of

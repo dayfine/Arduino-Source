@@ -31,6 +31,7 @@
 #include "Pokemon_StoryInterrupts.h"
 #include "Pokemon_StoryStepExecutor.h"
 #include "Types/Pokemon_StoryActionSpec.h"
+#include "Types/Pokemon_StoryCheckLevel.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -51,6 +52,9 @@ struct StoryAction{
     //  The args its steps may carry (StoryStep::args); a step with any
     //  other, or without a required one, fails lint_story_checkpoint().
     std::vector<StoryArgSpec> args = {};
+    //  A pure check, the kind it is (StoryActionSpec::check): a
+    //  TableExecutor skips it at a level that does not run that kind.
+    std::optional<StoryCheckKind> check = {};
 };
 
 
@@ -105,6 +109,9 @@ public:
     //  failed) ended, interrupt or not: e.g. log it, so a run log shows
     //  whether the scene before had ended before the step's first input.
     virtual void on_screen(const StoryStep& step, const ScreenSettle& screen);
+    //  The step is a check the run's level skips (skipped_check_line()):
+    //  e.g. log `line`.
+    virtual void on_check_skipped(const StoryStep& step, const std::string& line);
 };
 
 
@@ -122,8 +129,9 @@ enum class AfterFailure{
 //  Runs each step with the table's action for it, inside `guard`.
 class TableExecutor : public StoryStepExecutor{
 public:
-    //  `table` and `guard` must outlive the executor.
-    TableExecutor(const StoryActionTable& table, StepGuard& guard);
+    //  `table` and `guard` must outlive the executor. `check_level` is the
+    //  run's (StoryRunOptions): TESTING, every check, by default.
+    TableExecutor(const StoryActionTable& table, StepGuard& guard, StoryCheckLevel check_level = StoryCheckLevel::TESTING);
 
     //  The table's action for the step (run_action()); with none, the
     //  step is unsupported (unsupported_step()). An OperationFailedException
@@ -132,6 +140,8 @@ public:
     //  With interrupts set, each step first clears what stopped the player
     //  since the step before, and a failed step that an interrupt explains
     //  runs again once it is cleared.
+    //  A step whose action is a check of a kind the check level doesn't run
+    //  (runs_check()) changes nothing and runs nothing.
     virtual Outcome run(const StoryStep& step, RunState& state) override;
 
     //  The game's interrupts between steps, which must outlive the
@@ -153,6 +163,7 @@ private:
     const StoryActionTable& m_table;
     StepGuard& m_guard;
     const StoryInterrupts* m_interrupts = nullptr;
+    const StoryCheckLevel m_check_level;
 };
 
 

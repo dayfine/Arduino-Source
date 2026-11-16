@@ -39,6 +39,7 @@
 #include "Pokemon_StoryStepExecutor_Tests.h"
 #include "Pokemon_Transitions_Tests.h"
 #include "Types/Pokemon_StoryActionArg_Tests.h"
+#include "Types/Pokemon_StoryCheckLevel_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -59,6 +60,7 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryStepExecutor(database);
     add_tests_StoryStepJson(database);
     add_tests_StoryActionArg(database);
+    add_tests_StoryCheckLevel(database);
     add_tests_AuthoredCheckpointJson(database);
     add_tests_StoryFiles(database);
     add_tests_StorySavePolicy(database);

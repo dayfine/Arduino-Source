@@ -180,6 +180,9 @@ public:
     virtual void on_failure(const StoryStep& step, const OperationFailedException& error) override{
         trace.push_back(std::format("failed {}: {}", step.name, error.message()));
     }
+    virtual void on_check_skipped(const StoryStep&, const std::string& line) override{
+        trace.push_back(line);
+    }
 };
 
 StoryAction throwing(){
@@ -252,6 +255,50 @@ UnitTestResult test_guard_stop_rethrows(){
     return true;
 }
 
+//  A check step (a LEVEL step's PARTY_STATS) at each check level: run where
+//  the level runs its kind, else skipped as unchanged and logged. A step
+//  that is not a check runs at every level.
+UnitTestResult test_check_steps_follow_the_level(){
+    struct Input{
+        StoryCheckLevel level;
+        StoryStep step;
+    };
+    struct Expectation{
+        std::string failure;
+        std::vector<std::string> trace;
+    };
+    struct Case{
+        std::string name;
+        Input input;
+        Expectation expectation;
+    };
+    const StoryStep check = make(StoryStepKind::GAME, "lead_lv50", "level");
+    const StoryStep talk = make(StoryStepKind::TALK, "giovanni");
+    const Case cases[] = {
+        {"a check at thorough", {StoryCheckLevel::THOROUGH, check}, {"level ran", {"before lead_lv50"}}},
+        {"a check at default", {StoryCheckLevel::DEFAULT, check}, {"", {"before lead_lv50", "lead_lv50: skipped (checks: default)"}}},
+        {"not a check at speedrun", {StoryCheckLevel::SPEEDRUN, talk}, {"talk ran", {"before giovanni"}}},
+    };
+    StoryActionTable table;
+    StoryAction level = named("level ran");
+    level.check = StoryCheckKind::PARTY_STATS;
+    table.add(StoryStepKind::GAME, "level", std::move(level));
+    table.add(StoryStepKind::TALK, "", named("talk ran"));
+    for (const Case& item : cases){
+        FakeGuard guard;
+        TableExecutor executor(table, guard, item.input.level);
+        RunState state;
+        const Outcome outcome = executor.run(item.input.step, state);
+        if (outcome.failure != item.expectation.failure || guard.trace != item.expectation.trace){
+            return std::format("{}: got \"{}\" after {} guard lines.", item.name, outcome.failure, guard.trace.size());
+        }
+        if (item.expectation.failure.empty() && !outcome.changed_nothing){
+            return std::format("{}: expected the skipped check to change nothing.", item.name);
+        }
+    }
+    return true;
+}
+
 
 struct StoryActionsCase{
     struct Input{
@@ -305,6 +352,10 @@ const StoryActionsCase STORY_ACTIONS_CASES[] = {
     {
         .input = {.name = "executor: a stop row rethrows", .test = test_guard_stop_rethrows},
         .expectation = {.description = "rethrows on a stop row and passes other exceptions through"},
+    },
+    {
+        .input = {.name = "executor: a check step at each check level", .test = test_check_steps_follow_the_level},
+        .expectation = {.description = "runs where its kind runs, else skipped, unchanged and logged"},
     },
 };
 

@@ -7,6 +7,7 @@
 #include <format>
 #include <string_view>
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryViridianMart.h"
@@ -56,7 +57,7 @@ Pokemon::Outcome viridian_shop(StoryEnv& env, const StoryStep& step){
     for (const Pokemon::StoryItem& item : Pokemon::story_arg<std::vector<Pokemon::StoryItem>>(step.args, "items")){
         env.supplies.*viridian_mart_item(item.item)->count += (int)item.quantity;
     }
-    if (!checks_screen(env.checks)){
+    if (!Pokemon::runs_check(env.checks, Pokemon::StoryCheckKind::BAG_CONTENTS)){
         return Pokemon::outcome_ok();
     }
     //  The counts from the bag, not from the orders: a wrong row once bought

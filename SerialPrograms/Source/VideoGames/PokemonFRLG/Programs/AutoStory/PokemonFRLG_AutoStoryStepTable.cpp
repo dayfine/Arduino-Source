@@ -115,8 +115,8 @@ Pokemon::StoryActionSpec fossil_action_spec(){
 Pokemon::StoryActionSpec level_action_spec(){
     return {.kind = StoryStepKind::GAME, .name = LEVEL_ACTION, .args = {
         required_arg("slot", StoryArgType::INTEGER, "the party slot, from 1"),
-        required_arg("min", StoryArgType::INTEGER, "the level it must have"),
-    }};
+        required_arg("min", StoryArgType::INTEGER, "the level it should have; up to Pokemon::LEVEL_CHECK_TOLERANCE below still passes"),
+    }, .check = Pokemon::StoryCheckKind::PARTY_STATS};
 }
 
 Pokemon::StoryActionSpec mart_action_spec(){
@@ -292,6 +292,7 @@ Pokemon::StoryActionTable make_story_action_table(const StoryActionBinding& bind
         Pokemon::StoryAction action = bind(row.id);
         if (const Pokemon::StoryActionSpec* spec = Pokemon::find_story_action(story_action_specs(), row.kind, row.variant)){
             action.args = spec->args;
+            action.check = spec->check;
         }
         table.add(row.kind, row.variant, std::move(action));
     }
@@ -306,6 +307,7 @@ Pokemon::StoryActionTable make_story_action_table(const StoryActionBinding& bind
         }
         Pokemon::StoryAction action = bind(StoryActionId::GAME);
         action.args = spec.args;
+        action.check = spec.check;
         table.add(StoryStepKind::GAME, spec.name, std::move(action));
     }
     return table;

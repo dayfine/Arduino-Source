@@ -14,10 +14,10 @@ namespace Pokemon{
 const EnumDropdownDatabase<StoryCheckLevel>& StoryCheckLevel_Database(){
     static const EnumDropdownDatabase<StoryCheckLevel> database({
         {StoryCheckLevel::TESTING,  "testing",  "Testing: run each checkpoint 3 times to be sure it really passes"},
-        {StoryCheckLevel::THOROUGH, "thorough", "Thorough: check everything for the user (Bag items, Pok\u00e9mon stats, preconditions)"},
-        {StoryCheckLevel::DEFAULT,  "default",  "Default: check the most important things, assume the rest is fine"},
-        {StoryCheckLevel::FAST,     "fast",     "Fast: minimal checks"},
-        {StoryCheckLevel::SPEEDRUN, "speedrun", "Speedrun: almost no checks, as fast as possible"},
+        {StoryCheckLevel::THOROUGH, "thorough", "Thorough: check everything for the user (Bag items, Pok\u00e9mon levels and stats before a fight)"},
+        {StoryCheckLevel::DEFAULT,  "default",  "Default: check menu rows before pressing them; trust the Bag counts and levels the story keeps"},
+        {StoryCheckLevel::FAST,     "fast",     "Fast: only the save and the start of each checkpoint"},
+        {StoryCheckLevel::SPEEDRUN, "speedrun", "Speedrun: only the save and the start of each checkpoint, skipping optional errands"},
     });
     return database;
 }
@@ -94,7 +94,10 @@ StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints, const 
         3, 1, 20
     )
     , CHECKS(
-        "<b>Checks:</b><br>How much each step reads the screen to confirm what it did, from Testing (the most) to Speedrun (almost none).",
+        std::format(
+            "<b>Checks:</b><br>How much each step reads the screen to confirm what it did, from Testing (the most) to Speedrun (almost none). "
+            "Each kind of check runs at these levels:{}", story_checks_help()
+        ),
         StoryCheckLevel_Database(),
         LockMode::LOCK_WHILE_RUNNING,
         StoryCheckLevel::DEFAULT

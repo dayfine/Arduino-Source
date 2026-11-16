@@ -116,6 +116,7 @@ public:
     virtual void on_failure(const Pokemon::StoryStep& step, const OperationFailedException& error) override;
     virtual void on_interrupt(const Pokemon::StoryStep& step, const Pokemon::InterruptCheck& check) override;
     virtual void on_screen(const Pokemon::StoryStep& step, const Pokemon::ScreenSettle& screen) override;
+    virtual void on_check_skipped(const Pokemon::StoryStep& step, const std::string& line) override;
 
 private:
     Logger& m_logger;
