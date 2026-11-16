@@ -125,7 +125,7 @@
   },
   "execution": {
     "on_failure": "reload_and_retry",
-    "saves_in": "Twinleaf Town"
+    "saves_in": "Verity Lakefront"
   },
   "format": "pokesim-authored-checkpoint/1",
   "game": "bdsp",
