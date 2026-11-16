@@ -6,6 +6,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <format>
 #include <memory>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -49,6 +50,39 @@ const uint64_t HIT_SEARCH_RADIUS = 20;
 const size_t MAX_SCHEDULES = 8;
 
 const uint64_t SKIP_ARRIVAL_OVERSHOOT_ALLOWANCE = 200000;
+
+
+//  Logs the lake observation phase before frame collection begins.
+void log_calibration_start(size_t rolls, SingleSwitchProgramEnvironment& env){
+    env.log(std::format(
+        "Calibrating blink detection; collecting {} rolls before the first solve.", rolls
+    ), COLOR_BLUE);
+}
+
+//  Logs why the program remains at the blink position and how it guards the clock.
+void log_target_wait(uint64_t press_advance, double wait_seconds, SingleSwitchProgramEnvironment& env){
+    env.log(std::format(
+        "Waiting at the blink position for press advance {} (about {}s); re-anchoring every 30s.",
+        press_advance, tostr_default(wait_seconds)
+    ), COLOR_BLUE);
+}
+
+//  Logs every scheduled input before the blind timeline begins.
+void log_blind_timeline(
+    uint64_t press_advance,
+    double starly_seconds,
+    double select_seconds,
+    double confirm_seconds,
+    uint64_t accept_advance,
+    SingleSwitchProgramEnvironment& env
+){
+    env.log(std::format(
+        "Blind timeline starts at advance {}. Starly press at {}s, selecting at {}s, "
+        "confirming at {}s, on advance {}.",
+        press_advance, tostr_default(starly_seconds), tostr_default(select_seconds),
+        tostr_default(confirm_seconds), accept_advance
+    ), COLOR_BLUE);
+}
 
 
 std::function<bool(const BdspPokemonResult&)> resolve_wanted_predicate(
@@ -433,7 +467,7 @@ BdspStarterAttemptResult run_starter_rng_attempt(
 
     BlinkRecoveryConfig blink_config;
     blink_config.npcs = target_info.observation_npcs;
-
+    log_calibration_start(blink_config.min_rolls_to_try, env);
     BlinkRecovery recovery = recover_state_from_blinks(
         env, context, watchers, callbacks, collection_display, blink_config
     );
@@ -513,8 +547,7 @@ BdspStarterAttemptResult run_starter_rng_attempt(
     ).count();
     env.log("Target advance " + std::to_string(target_advance) + ": " + target.to_string(),
         COLOR_BLUE);
-    env.log("Pressing at advance " + std::to_string(press_advance) + ", in "
-        + tostr_default(wait_seconds) + "s.", COLOR_BLUE);
+    log_target_wait(press_advance, wait_seconds, env);
     env.log("Schedule spans " + std::to_string(schedule.span) + " advances, confirming after "
         + std::to_string(schedule.blinks_before_confirm) + " Starly blink(s), "
         + tostr_default(schedule.confirm_seconds) + "s in"
@@ -539,12 +572,10 @@ BdspStarterAttemptResult run_starter_rng_attempt(
 
     state_display.set_advances(press_advance);
 
-    env.log("Timeline starts at advance " + std::to_string(press_advance)
-        + ". Blind from here: Starly press at " + tostr_default(schedule.starly_seconds)
-        + "s, selecting at " + tostr_default(schedule.select_seconds)
-        + "s, confirming at " + tostr_default(schedule.confirm_seconds)
-        + "s, on advance " + std::to_string(target_advance - timeline.advances_after_accept)
-        + ".", COLOR_BLUE);
+    log_blind_timeline(
+        press_advance, schedule.starly_seconds, schedule.select_seconds, schedule.confirm_seconds,
+        target_advance - timeline.advances_after_accept, env
+    );
 
     std::string sequence_failure;
     if (!wait_until_moment(context, env.logger(), briefcase_time)){
@@ -557,11 +588,11 @@ BdspStarterAttemptResult run_starter_rng_attempt(
     )){
         return abandon(sequence_failure);
     }
-    env.log("Timeline finished; the starter should be in hand.", COLOR_BLUE);
+    env.log("Blind timeline finished; verifying the obtained starter.", COLOR_BLUE);
 
     state_display.set_advances(target_advance);
 
-    //  Check what was actually obtained.
+    env.log("Checking the battle animation, then reporting the target hit or signed advance miss.", COLOR_BLUE);
     DoublesShinyDetection wild;
     ShinyDetectionResult own;
     detect_shiny_battle(
