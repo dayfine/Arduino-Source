@@ -145,6 +145,8 @@ struct ItemUseInput{
     bool opens = true;
     //  renew_repel() instead of use_item_from_bag().
     bool renew = false;
+    //  use_strongest_repel() (a use_repel step) instead.
+    bool strongest = false;
     //  The step's count (use_items_from_bag()).
     size_t count = 1;
     bool no_level_up = false;
@@ -179,8 +181,8 @@ public:
         bag.repel_says = m_case.input.repel_says;
         const std::string variant = m_case.input.variant;
         const std::string item = variant == RIDE_BIKE_VARIANT ? "bicycle" : parse_use_item_step(game_step_of(variant, ITEM)).value_or(variant);
-        const ItemUseEnd end = m_case.input.renew
-            ? renew_repel(logger, bag, item)
+        const ItemUseEnd end = m_case.input.strongest ? use_strongest_repel(logger, bag)
+            : m_case.input.renew ? renew_repel(logger, bag, item)
             : use_items_from_bag(logger, bag, item, m_case.input.count).end;
         const bool lead_ok = is_party_item(item) || is_lead_recovery_item(item) ? bag.used_on_lead == bag.used : bag.used_on_lead.empty();
         const std::optional<size_t> downs = m_case.expectation.downs;
@@ -200,6 +202,43 @@ private:
 };
 
 const ItemUseCase ITEM_USE_CASES[] = {
+    //  The bag at 17.04b (console B, 2026-11-15): Repel x2, Super Repel x4.
+    {
+        .name = "use_repel: the Super Repel over the Repels",
+        .input = {
+            .variant = "use_repel",
+            .items = {{"potion", 3}, {"repel", 2}, {"super-repel", 4}, {"escape-rope", 4}},
+            .strongest = true,
+        },
+        .expectation = {.end = ItemUseEnd::USED, .used = {"super-repel"}},
+    },
+    {
+        .name = "use_repel: the Max Repel over the Super Repels",
+        .input = {
+            .variant = "use_repel",
+            .items = {{"super-repel", 4}, {"max-repel", 1}},
+            .strongest = true,
+        },
+        .expectation = {.end = ItemUseEnd::USED, .used = {"max-repel"}},
+    },
+    {
+        .name = "use_repel: no Repel left",
+        .input = {
+            .variant = "use_repel",
+            .items = {{"potion", 3}, {"repel", 0}},
+            .strongest = true,
+        },
+        .expectation = {.end = ItemUseEnd::NONE_LEFT, .used = {}},
+    },
+    {
+        .name = "a use_repel's Repel wore off: the strongest left renews it",
+        .input = {
+            .variant = "use_item max-repel",
+            .items = {{"repel", 2}, {"super-repel", 1}},
+            .renew = true,
+        },
+        .expectation = {.end = ItemUseEnd::USED, .used = {"super-repel"}},
+    },
     {
         .name = "a Repel below the Potions",
         .input = {

@@ -849,7 +849,7 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<std::stri
     for (size_t c = 0; c < checkpoint.steps.size(); c++){
         const StoryStep& step = checkpoint.steps[c];
         const std::string where = checkpoint.id + "/" + step.name + ": ";
-        if (step.action == USE_ITEM_VARIANT && is_repel(Pokemon::story_arg<std::string>(step.args, "item"))){
+        if (step.action == USE_REPEL_VARIANT || (step.action == USE_ITEM_VARIANT && is_repel(Pokemon::story_arg<std::string>(step.args, "item")))){
             repelled = true;
         }
         const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS;

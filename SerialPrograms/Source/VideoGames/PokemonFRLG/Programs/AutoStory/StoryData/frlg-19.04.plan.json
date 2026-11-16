@@ -19,6 +19,13 @@
         "why": "HM04 Strength in place of Water Pulse, as pokeguy at Victory Road (PokemonSimulation docs/progression/pokeguy-moves.md: Strength, Surf, Bite, Blizzard; docs/battles/pokeguy-conditions.md, the move-learning table: STRENGTH replaces WATER_PULSE); an HM, so not a one-shot TM; keep list: Surf, Bite and Blizzard stay and the one other move (Water Pulse) goes; fails if none or several are outside the list. The Rainbow Badge it needs is 14.04's"
       },
       {
+        "id": "repel_victory_road",
+        "kind": "game_action",
+        "action": "use_repel",
+        "args": {"if_any": true},
+        "why": "the strongest Repel left before the cave: Victory Road's wild Pokemon (Lv40s at most, pokefirered wild_encounters.json) are below the lead, so none shows while it lasts, and one that wears off on a floor is renewed, strongest first. One still on from Route 23 (19.03) lingers, which is done. With none left the step is skipped (if_any) and the walker fights what comes"
+      },
+      {
         "id": "cave_mouth",
         "kind": "step",
         "args": {"direction": "north"},

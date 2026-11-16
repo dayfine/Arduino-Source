@@ -1980,6 +1980,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_BagDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h
+    Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_MoneyBoxReader.cpp
+    Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_MoneyBoxReader.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_LoadMenuDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_LoadMenuDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_NamingScreenDetector.cpp
@@ -2272,6 +2274,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMart.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMartBuys.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMartPlan.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMartSell.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMart_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMember.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMember.h

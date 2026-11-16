@@ -80,8 +80,8 @@ const StoryCheckpoint& checkpoint(std::string_view id){
 
 //  Runs the walking steps of `row` on the sim from its start, up to (not
 //  including) the step named `until`, or all of them if `until` is empty;
-//  the steps that are not walks (the Mart, the level check, a scene, the
-//  battle) are the console's. `marked` is where the sim stood after the
+//  a Fly moves the sim to its landing; the steps that are not walks (the
+//  Mart, the level check, a scene, the battle) are the console's. `marked` is where the sim stood after the
 //  step named `mark`.
 std::string walk_row(
     OverworldSim& sim, StoryPose& at, const StoryCheckpoint& row,
@@ -91,7 +91,8 @@ std::string walk_row(
         if (step.name == until){
             return "";
         }
-        if (step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS && step.kind != StoryStepKind::STEP){
+        const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::STEP;
+        if (!walks && !parse_fly_step(step)){
             continue;
         }
         if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
@@ -104,7 +105,9 @@ std::string walk_row(
     return until.empty() ? "" : std::format("{}: no step {}.", row.id, until);
 }
 
-//  19.01a: the street to the Mart's counter, where 19.01 starts. 19.01: out
+//  19.01a: out to the street, the Fly to Lavender and its Mart's counter,
+//  back out, the Fly to Viridian and its Mart's counter, where 19.01
+//  starts. 19.01: out
 //  of the Mart, along the street to Route 22 and along it to the rival's
 //  trigger column, then the step onto it. The rival is the battle step's, so
 //  the walk ends on the trigger tile (33, 5), facing west, with no trainer met.
@@ -114,6 +117,15 @@ UnitTestResult test_route22_rival_trigger(){
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     if (const std::string failure = walk_row(sim, at, shop, ""); !failure.empty()){
         return failure;
+    }
+    StoryPose lavender = *story_pose(Pokemon::pose_of(*shop.start));
+    OverworldSim to_lavender(story_maps(), MapPosition{lavender.map, lavender.tile}, *lavender.facing);
+    if (const std::string failure = walk_row(to_lavender, lavender, shop, "sell_nugget_buy_super_potions"); !failure.empty()){
+        return failure;
+    }
+    const MapPosition lavender_counter{"LavenderTown_Mart", {4, 3}};
+    if (!(to_lavender.state().position == lavender_counter) || lavender.facing != Direction::WEST){
+        return std::format("19.01a: sold and bought on {}, not facing Lavender's clerk from {}.", to_string(to_lavender.state().position), to_string(lavender_counter));
     }
     const MapPosition counter{"ViridianCity_Mart", {4, 3}};
     if (!(sim.state().position == counter)){
@@ -349,7 +361,7 @@ UnitTestResult test_indigo_center_walk(){
 
 const AutoStoryVictoryRoadCase AUTO_STORY_VICTORY_ROAD_CASES[] = {
     {
-        .input = {.name = "19.01a Viridian's Mart and 19.01 to the Route 22 rival's trigger", .body = test_route22_rival_trigger},
+        .input = {.name = "19.01a Lavender's and Viridian's Marts and 19.01 to the Route 22 rival's trigger", .body = test_route22_rival_trigger},
         .expectation = {.description = "Route 22 (33, 5), no trainer met"},
     },
     {

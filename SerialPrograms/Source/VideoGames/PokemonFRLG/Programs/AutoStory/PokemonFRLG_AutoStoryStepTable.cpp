@@ -124,7 +124,8 @@ Pokemon::StoryActionSpec mart_action_spec(){
         required_arg("map", StoryArgType::WORD, "the Mart's map, for its stock"),
         required_arg("items", StoryArgType::ITEMS, "what to buy, in priority order"),
         absent_arg("fill_to", StoryArgType::INTEGER, "buy only what the bag lacks of the first line's item to hold this many"),
-        absent_arg("if_affordable", StoryArgType::BOOLEAN, "skip a line the money doesn't cover, logged, instead of failing"),
+        absent_arg("if_affordable", StoryArgType::BOOLEAN, "skip a line the money doesn't cover, logged, instead of failing; with the money read, cut it to what the money covers"),
+        absent_arg("sell", StoryArgType::ITEMS, "what to sell at the same counter before buying (sale_price())"),
     }};
 }
 

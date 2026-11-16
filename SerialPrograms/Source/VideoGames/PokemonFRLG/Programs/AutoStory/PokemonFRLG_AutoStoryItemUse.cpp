@@ -105,7 +105,7 @@ size_t use_item_count(const Pokemon::StoryStep& step){
 }
 bool is_item_use_step(const Pokemon::StoryStep& step){
     const bool bike = step.action == RIDE_BIKE_VARIANT || step.action == REGISTER_BIKE_VARIANT;
-    return (bike && step.args.empty()) || parse_use_item_step(step).has_value();
+    return (bike && step.args.empty()) || step.action == USE_REPEL_VARIANT || parse_use_item_step(step).has_value();
 }
 
 std::optional<size_t> bag_row_of(const std::vector<BagRow>& rows, std::string_view item){
@@ -231,6 +231,9 @@ ItemUses use_items_from_bag(Logger& logger, ItemUseActions& actions, std::string
         }
     }
     return {ItemUseEnd::USED, used};
+}
+ItemUseEnd use_strongest_repel(Logger& logger, ItemUseActions& actions){
+    return with_bag_row(logger, actions, repel_renew_order(STRONGEST_REPEL, std::nullopt), /*registers=*/false);
 }
 ItemUseEnd register_item_in_bag(Logger& logger, ItemUseActions& actions, std::string_view item){
     return with_bag_row(logger, actions, {std::string(item)}, true);
