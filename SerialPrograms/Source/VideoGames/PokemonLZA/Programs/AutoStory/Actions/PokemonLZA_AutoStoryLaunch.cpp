@@ -5,7 +5,7 @@
  */
 
 #include <format>
-#include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/NintendoSwitch_Settings.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"

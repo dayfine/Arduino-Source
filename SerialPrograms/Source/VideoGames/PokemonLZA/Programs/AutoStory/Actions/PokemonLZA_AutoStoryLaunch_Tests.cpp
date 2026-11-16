@@ -36,7 +36,7 @@ struct TileSearchCase{
     };
     Input input;
     struct Expectation{
-        std::optional<size_t> tile;
+        std::optional<size_t> tile = std::nullopt;
     };
     Expectation expectation;
 };
