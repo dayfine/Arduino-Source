@@ -97,13 +97,14 @@ function or class exceed their limit. Checks are the metric names in the table a
 `file_lines`, `function_lines`, `nesting`, `parameters`, `public_methods`, `public_data`,
 `single_method_interface`, `header_symbols`. Six style findings take a tag too: `char_pointer`,
 `overload_prefix`, `out_param_order`, `string_concat`, `param_comment` and `test_only_api`, for a C API
-or a fixed interface that needs them. Other style and layering
+or a fixed interface that needs them; so do `learned_rule_test` and `special_case` (see
+[Systematic fixes](#systematic-fixes)). Other style and layering
 findings have no bypass.
 
 - **Place it** on the function's or class's first line, or in the comment block directly above
   it (only `//` comment and `template` lines between). A `file_lines` tag goes in the first 20
   lines of the file, and so does a `header_symbols` tag. A style tag (`char_pointer`, `overload_prefix`,
-  `out_param_order`, `string_concat`, `param_comment`, `test_only_api`) goes on the flagged line or in the comment block directly above it, and waives the finding whether it is an error or advisory. A tag that attaches to nothing fails. Style checks report only changed lines, so a style tag on a line the change left alone (a later PR in a stack) attaches if it covers a finding of the whole file.
+  `out_param_order`, `string_concat`, `param_comment`, `test_only_api`, `learned_rule_test`, `special_case`) goes on the flagged line or in the comment block directly above it, and waives the finding whether it is an error or advisory. A tag that attaches to nothing fails. Style checks report only changed lines, so a style tag on a line the change left alone (a later PR in a stack) attaches if it covers a finding of the whole file.
 - **Justify it:** the text after `--`, on the tag line itself, must be at least 40 characters and 6 words,
   and say why splitting would make the code worse. Unknown checks, a missing or short
   justification, or a malformed tag fail.
@@ -172,6 +173,29 @@ those PRs and exactly #590's three helpers; on the PLZA slice stack 31 of 64 nam
 non-test caller later in the stack (API added one PR before its caller), and upstream's
 `Common/ControllerStates` C-style headers (constants and `*_equals` used only by their own .cpp)
 are reported too.
+
+## Systematic fixes
+
+Three blocking rules keep a console fix a rule with a test, not a patch at one story point (the
+user, 2026-11-15: "make sure our solutions are systematic and avoid patching here and there").
+Like the style checks they look only at what a change adds.
+
+| Check | Level | Rule |
+| --- | --- | --- |
+| `learned_rule_test` (`learned_rules.py`) | error (tag) | A comment in non-test C++ that cites a console finding, `(console B, 2026-11-10)` or `(17.03, console B 2026-11-15)` ("console B" or "lab-B", then a date in the same clause), needs a test that cites the same date, and the checkpoint when the citation names one: a `*_Tests.cpp`/`.h` or a `ConsoleFailures/*.json` replay, in the same game's directory or in shared code. Reported on added lines as `learned rule without a test: <file:line> (console B, <date>)`, unless the base file cited that date already (a reworded comment). Also reported: a change to test files after which a citation anywhere in the tree has no covering test while it had one at the base (`learned rule lost its last test`). |
+| `special_case` (`special_cases.py`) | error (tag) | In non-test C++ under `SerialPrograms/Source/**/AutoStory/`: a string literal that is a checkpoint id (`NN.NN[a-z]`) or the id of an event a `StoryData/*.plan.json` declares, used as a key: `==`, `!=`, `<=>`, `.find/count/contains/at/starts_with/ends_with/compare(...)`, `[...]`, or the first element of `{"id", ...}`. Not reported: plain id lists, ids passed to other functions, one-word event ids (`"bicycle"` is also an item) and ids that are also a `kind`/`action` name. Message: `special case by name: "<literal>" at <file:line>; move it into the plan or a general rule`. |
+| Plan lint (`plan_lint.py`) | error | Every `StoryData/*.plan.json` (any game): a new or edited event whose `kind`/`action` is `legs` or whose `args` hold a `legs` list (FRLG `kind: legs`, PLZA `action: walk`) needs `not planned: <reason>` in its `why`. Events unchanged since the base are grandfathered; each run prints the changed plans' legs counts per game. The reason in the `why` is the bypass; there is no tag in JSON. |
+
+Measured on 2026-11-15 (whole trees, every line counted as new): `learned_rule_test` 1 of 250
+citations uncovered on `frlg/moved-trainers` (`ScreenFades.h`, 2026-11-08) and 12 of 41 on
+`plza/newgame` (PLZA 2026-11-10 notes: no PLZA test cites that day); `special_case` 1
+(`PokemonFRLG_AutoStoryRngLoop.cpp`, `step.name == "rival_takes_bulbasaur"`); plan lint 134 FRLG
+legs events (FRLG's `legs_before_2026_11_15()` list) and 26 PLZA walks, none with a reason. On the
+diffs of fork #599, #604 and #610 against their bases all three report nothing. The date match is
+coarse: any test of the same game that names the same day covers a citation, so the rule catches
+a learned rule from a day no test cites, not a rule whose own test is missing on a busy day.
+Detector and reader measurements whose image tests live in `CommandLineTests` take a
+`learned_rule_test` tag saying so.
 
 ## Build and native C++ tests in one command
 
