@@ -11,6 +11,8 @@
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
 #include "Common/Cpp/Options/FloatingPointOption.h"
+#include "Common/Cpp/Options/EnumDropdownOption.h"
+#include "CommonFramework/AudioPipeline/AudioOption.h"
 #include "CommonFramework/StaticGlobals.h"
 
 namespace PokemonAutomation{
@@ -25,6 +27,17 @@ public:
             GroupOption::EnableMode::ALWAYS_ENABLED,
             true,
             false
+        )
+        , DEFAULT_DISPLAY(
+            "<b>Default Audio Display:</b><br>"
+            "What a program's console shows for its audio until you pick a display in that console's settings.",
+            {
+                {AudioOption::AudioDisplayType::NO_DISPLAY,  "none",        "No Display"},
+                {AudioOption::AudioDisplayType::FREQ_BARS,   "freq-bars",   "Frequency Bars"},
+                {AudioOption::AudioDisplayType::SPECTROGRAM, "spectrogram", "Spectrogram"},
+            },
+            LockMode::UNLOCK_WHILE_RUNNING,
+            AudioOption::AudioDisplayType::FREQ_BARS
         )
         , FILE_VOLUME_SCALE(
             "<b>Audio File Input Volume Scale:</b><br>"
@@ -58,6 +71,7 @@ public:
             5
         )
     {
+        PA_ADD_OPTION(DEFAULT_DISPLAY);
         PA_ADD_OPTION(FILE_VOLUME_SCALE);
         PA_ADD_OPTION(DEVICE_VOLUME_SCALE);
         PA_ADD_OPTION(USE_KAISER_WINDOW);
@@ -68,6 +82,7 @@ public:
     }
 
 public:
+    EnumDropdownOption<AudioOption::AudioDisplayType> DEFAULT_DISPLAY;
     FloatingPointOption FILE_VOLUME_SCALE;
     FloatingPointOption DEVICE_VOLUME_SCALE;
     BooleanCheckBoxOption USE_KAISER_WINDOW;

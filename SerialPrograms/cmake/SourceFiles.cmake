@@ -109,6 +109,8 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/Cpp/Json/JsonObject.h
     ../Common/Cpp/Json/JsonTools.cpp
     ../Common/Cpp/Json/JsonTools.h
+    ../Common/Cpp/Json/JsonTools_Tests.cpp
+    ../Common/Cpp/Json/JsonTools_Tests.h
     ../Common/Cpp/Json/JsonValue.cpp
     ../Common/Cpp/Json/JsonValue.h
     ../Common/Cpp/LifetimeSanitizer.cpp
@@ -800,6 +802,8 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Windows/ButtonDiagram.h
     Source/CommonFramework/Windows/DpiScaler.cpp
     Source/CommonFramework/Windows/DpiScaler.h
+    Source/CommonFramework/Windows/LabControl.cpp
+    Source/CommonFramework/Windows/LabControl.h
     Source/CommonFramework/Windows/MainWindow.cpp
     Source/CommonFramework/Windows/MainWindow.h
     Source/CommonFramework/Windows/WindowTracker.cpp
