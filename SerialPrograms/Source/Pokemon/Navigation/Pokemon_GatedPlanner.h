@@ -24,8 +24,10 @@
  *      MapPlace place_of(const State&) const;
  *
  *  and may have open_stop_risk(const State&, Direction, const GateState&)
- *  const and tap_stop_risk() with the same parameters, as plan_legs()'s
- *  model may have them without the gates.
+ *  const and tap_stop_risk() with the same parameters, and
+ *  open_check_risk(const State&, Direction, int, std::optional<Direction>,
+ *  const GateState&) const, as plan_legs()'s model may have them without
+ *  the gates.
  *
  *  press() reads each tile with resolved_tile(), which makes a closed gate a
  *  wall. One-way warps (MapWarp::one_way) are the game's to take as any warp:
@@ -62,6 +64,13 @@ concept HasOpenStopRisk = requires (const Inner& inner, const typename Inner::St
 template <typename Inner>
 concept HasTapStopRisk = requires (const Inner& inner, const typename Inner::State& state, const GateState& gates){
     { inner.tap_stop_risk(state, Direction::NORTH, gates) } -> std::convertible_to<std::optional<int>>;
+};
+
+//  A step model that weighs an open stop the walk can't place by the leg
+//  after it (see the top of this file).
+template <typename Inner>
+concept HasOpenCheckRisk = requires (const Inner& inner, const typename Inner::State& state, const GateState& gates){
+    { inner.open_check_risk(state, Direction::NORTH, 0, std::optional<Direction>(), gates) } -> std::convertible_to<int>;
 };
 
 //  The game's step model, wrapped: see the top of this file.
@@ -112,6 +121,9 @@ public:
     }
     std::optional<int> tap_stop_risk(const State& state, Direction direction) const requires HasTapStopRisk<Inner>{
         return m_inner.tap_stop_risk(state.inner, direction, state.gates);
+    }
+    int open_check_risk(const State& state, Direction direction, int run, std::optional<Direction> next) const requires HasOpenCheckRisk<Inner>{
+        return m_inner.open_check_risk(state.inner, direction, run, next, state.gates);
     }
 
 private:

@@ -113,16 +113,30 @@ bool is_slide(const RouteStep& next){
     return next.action == RouteAction::WALK && next.spin_tiles && !next.warps;
 }
 
-//  Whether `next`, a hold to a wall, ends on its planned tile from each of
-//  `candidates`: then it finds the player itself.
-bool hold_finds(const std::vector<MapData>& maps, const std::vector<StopCandidate>& candidates, const RouteStep& next){
+//  Whether `next`, a hold to a wall, finds the player itself from each of
+//  `candidates`: it ends on its planned tile, or, where `told_apart`, it
+//  moves nothing at all, which the walker sees (HoldMovement::NONE). Then
+//  the tiles it moves nothing from (none if it ends on its tile from all);
+//  nothing if it doesn't find them. "south 3 (to wall)" down Viridian Gym's
+//  column 7 after "west 3 (open)" to (7, 3) moves from no tile short of
+//  it: walls stand below (8, 3) and (9, 3); the walk found the player at
+//  walls and walked back to (7, 3), where they stood (console B,
+//  2026-11-15 21:39).
+std::optional<std::vector<StopCandidate>> hold_finds(
+    const std::vector<MapData>& maps, const std::vector<StopCandidate>& candidates, const RouteStep& next, bool told_apart
+){
+    std::vector<StopCandidate> unmoved;
     for (const StopCandidate& candidate : candidates){
         const std::optional<WallHold> hold = hold_to_wall(maps, candidate.player, false, next.direction);
-        if (!hold || !(hold->end == next.end)){
-            return false;
+        if (hold && hold->end == next.end){
+            continue;
         }
+        if (!told_apart || !hold || hold->tiles != 0){
+            return std::nullopt;
+        }
+        unmoved.push_back(candidate);
     }
-    return true;
+    return unmoved;
 }
 
 //  The route's lines in the route log the games share, as BDSP's walker
@@ -495,14 +509,22 @@ private:
     //  that way (console B, 2026-11-13 19:20, 13.01 mansion_holes: a battle
     //  after "west 13 (to wall)" on Pokemon Mansion 2F, and the hold again
     //  moved nothing at the wall).
+    //  A hold after an open leg that moves from none of the tiles short of
+    //  its end (check_open_leg()) and moved nothing started on one of them.
     StepOutcome judge_movement(const RouteStep& step, StepOutcome outcome){
         const bool held_again = std::exchange(m_held_again, false);
+        const std::vector<StopCandidate> short_unmoved = std::exchange(m_short_unmoved, {});
         if (outcome.end != StepEnd::DONE || step.action != RouteAction::WALK || step.warps){
             return outcome;
         }
         if (outcome.movement != HoldMovement::NONE){
             m_unmoved.clear();
             return outcome;
+        }
+        if (!short_unmoved.empty()){
+            m_calls.log(std::format("Route: {} moved the screen not at all: the open leg before it ended short.", to_string(step)));
+            m_unmoved_starts = short_unmoved;
+            return StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{.min = 0, .max = 0}, .movement = HoldMovement::NONE};
         }
         const int expected = held_again && step.to_wall ? 0 : expected_tiles(step);
         if (expected < 1){
@@ -526,6 +548,9 @@ private:
         if (again){
             m_calls.fail("walk_overworld_route(): " + leg + " moved nothing twice in a row: the player is not walking.");
             return false;
+        }
+        if (!m_unmoved_starts.empty() && maps() != nullptr){
+            return rejoin(step, std::exchange(m_unmoved_starts, {}), WalkedTiles{.min = 0, .max = 0});
         }
         if (!start || maps() == nullptr){
             return after_unmoved_hold(step);
@@ -774,8 +799,20 @@ private:
             return;
         }
         const std::vector<StopCandidate> candidates = short_candidates(*maps(), *start, step, movement);
-        if (candidates.size() < 2 || (!last && is_wall_hold(m_plan[m_next]) && hold_finds(*maps(), candidates, m_plan[m_next]))){
+        if (candidates.size() < 2){
             return;
+        }
+        if (!last && is_wall_hold(m_plan[m_next])){
+            if (std::optional<std::vector<StopCandidate>> unmoved = hold_finds(*maps(), candidates, m_plan[m_next], movement == HoldMovement::MOVED)){
+                if (!unmoved->empty()){
+                    m_calls.log(std::format(
+                        "Route: {} may have ended up to {} tiles short; {} moves from none of those tiles, which its hold shows.",
+                        to_string(step), OPEN_LEG_SHORTFALL, to_string(m_plan[m_next])
+                    ));
+                }
+                m_short_unmoved = std::move(*unmoved);
+                return;
+            }
         }
         const std::optional<Reanchor> anchor = plan_reanchor(*maps(), candidates, step, m_planning->costs, last && !(m_calls.riding && m_calls.riding(step)) ? std::optional(step.facing_after) : std::nullopt);
         if (water_chain && (!anchor || anchor->holds.empty())){
@@ -926,6 +963,11 @@ private:
     std::vector<std::vector<MapPosition>> m_walk_on_starts;  //  after walking on: where each of the plan's first steps may start
     std::vector<MapPosition> m_hold_from;   //  the tiles the first hold of the plan may start from
     std::string m_unmoved;      //  the leg that moved nothing last, until another walks
+    //  The tiles short of an open leg's end the next hold moves nothing
+    //  from (check_open_leg()), until it walks; and, once it moved
+    //  nothing, the ones it started on.
+    std::vector<StopCandidate> m_short_unmoved;
+    std::vector<StopCandidate> m_unmoved_starts;
     bool m_held_again = false;  //  the next walk holds a leg to a wall again after something seen after it
     OpenLegDrift m_drift;       //  the ways the player may be a tile off since the last open legs
 };

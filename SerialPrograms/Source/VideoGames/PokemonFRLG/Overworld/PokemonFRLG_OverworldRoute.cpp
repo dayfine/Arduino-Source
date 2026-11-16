@@ -20,6 +20,7 @@
 #include "PokemonFRLG_OverworldObjects.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldSpin.h"
+#include "PokemonFRLG_OverworldStepChecks.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -39,6 +40,7 @@ const RouteCosts& default_route_costs(){
         {RouteCost::SIGHT_OVERSHOOT, 0},
         {RouteCost::SIGN_OVERSHOOT, 3},
         {RouteCost::OPEN_WATER_STOP, 1000},
+        {RouteCost::OPEN_CHECK, 10},
     };
     return COSTS;
 }
@@ -235,7 +237,10 @@ bool reads_sign_ahead(const MapData& map, TilePos here, Direction direction){
 //  Whether holding `direction` stops the player where they are: a wall, or
 //  water they'd need to Surf onto. A leg that ends there can be
 //  held for longer than it takes, and walked again after an interruption. A
-//  person in the way doesn't count, since they may have wandered off, and
+//  person who stands on their tile (no wander box) counts: Giovanni on
+//  (2, 2) stops a hold up Viridian Gym's column 2 on (2, 3), and the walk
+//  checked "north 3" to him as an open leg that might have ended short
+//  (console B, 2026-11-15 21:39). One who may wander off doesn't, and
 //  neither does an edge to a map that isn't loaded.
 bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction direction){
     const std::optional<Transition> transition = press(maps, player, direction);
@@ -264,7 +269,8 @@ bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction
         return false;
     }
     if (in_bounds(map, ahead)){
-        return object_at(map, ahead) == nullptr;
+        const MapObject* object = object_at(map, ahead);
+        return object == nullptr || !object->wander;
     }
     for (const MapConnection& connection : map.connections){
         if (connection.side == direction){
@@ -372,6 +378,40 @@ public:
         return past && seen_by_trainer(past->next) ? route_cost(m_costs, RouteCost::SIGHT_OVERSHOOT) : 0;
     }
 
+    //  RouteCost::OPEN_CHECK for an open leg of `run` tiles to `stop`, walked
+    //  `facing`, before a leg `next` (none: the walk ends): the walk finds
+    //  the player at walls after it unless the leg after it places them
+    //  from each tile it may have ended on, up to OPEN_LEG_SHORTFALL short.
+    //  Not on the water, which OPEN_WATER_STOP weighs.
+    int open_check_risk(const State& stop, Direction facing, int run, std::optional<Direction> next) const{
+        if (run < 2 || stop.state.surfing){
+            return 0;
+        }
+        const int cost = route_cost(m_costs, RouteCost::OPEN_CHECK);
+        if (!next){
+            return cost;
+        }
+        const std::optional<Transition> ahead = PokemonFRLG::press(m_maps, stop, *next);
+        if (ahead && ahead->spin){
+            return cost;
+        }
+        const std::string& map = m_maps[stop.map].name;
+        const std::optional<WallHold> hold = hold_to_wall(m_maps, MapPosition{map, stop.state.position}, false, *next);
+        if (!hold){
+            return 0;
+        }
+        const Direction behind = (Direction)(((int)facing + 2) % 4);
+        TilePos back = stop.state.position;
+        for (int c = 1; c < run && c <= OPEN_LEG_SHORTFALL; c++){
+            back = back.next(behind);
+            const std::optional<WallHold> from = hold_to_wall(m_maps, MapPosition{map, back}, false, *next);
+            if (!from || !(from->end == hold->end || from->tiles == 0)){
+                return cost;
+            }
+        }
+        return 0;
+    }
+
     static constexpr int ACTION_SURF = 1;
 
 private:
@@ -436,6 +476,9 @@ public:
     }
     std::optional<int> tap_stop_risk(const State& state, Direction direction, const Pokemon::GateState& gates) const{
         return StepModel(m_maps.at(gates), m_costs).tap_stop_risk(state, direction);
+    }
+    int open_check_risk(const State& stop, Direction facing, int run, std::optional<Direction> next, const Pokemon::GateState& gates) const{
+        return StepModel(m_maps.at(gates), m_costs).open_check_risk(stop, facing, run, next);
     }
     Pokemon::MapPlace place_of(const State& state) const{
         return Pokemon::MapPlace{(size_t)state.map, state.state.position};
