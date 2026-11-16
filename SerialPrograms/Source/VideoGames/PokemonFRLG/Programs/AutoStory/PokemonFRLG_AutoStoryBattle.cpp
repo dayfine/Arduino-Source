@@ -35,6 +35,7 @@
 #include "PokemonFRLG_AutoStoryBagUse.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
+#include "PokemonFRLG_AutoStoryItemsPocket.h"
 #include "PokemonFRLG_AutoStoryPocketList.h"
 
 namespace PokemonAutomation{
@@ -190,16 +191,7 @@ bool use_item(
 ){
     const int row = item_row(supplies, item);
     console.log(std::format("Battle: using the {} in row {} of the Items pocket.", item, row + 1));
-    tap(context, DPAD_LEFT);
-    tap(context, DPAD_UP);
-    tap(context, DPAD_RIGHT);
-    pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
-    for (int c = 0; c < 2; c++){
-        pbf_press_dpad(context, DPAD_LEFT, 160ms, 500ms);
-    }
-    for (int c = 0; c < 12; c++){
-        pbf_press_dpad(context, DPAD_UP, 100ms, 150ms);
-    }
+    open_battle_bag(context);
     for (int c = 0; c < row; c++){
         tap(context, DPAD_DOWN);
     }
@@ -595,6 +587,23 @@ private:
         m_last_press = now;
     }
 
+    //  From the battle menu, before the first turn (battle_needs_bag_read()): the
+    //  Items pocket through BAG, read whole and closed again, its counts
+    //  taken as the battle's. With nothing read the battle stops rather
+    //  than fight on counts it doesn't know.
+    void read_battle_bag(){
+        m_console.log("Battle: the Items pocket's counts are not known; reading it before the first turn.");
+        const std::vector<BagRow> rows = read_battle_pocket(m_console, m_context, m_language);
+        if (rows.empty()){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT,
+                "Battle: couldn't read the Items pocket; not fighting on unknown item counts.",
+                m_console
+            );
+        }
+        set_from_bag(m_supplies, rows);
+    }
+
     void log_turn(const PartyStatus& status, const TurnAction& action){
         m_console.log(std::format(
             "Battle: turn {}, HP {} ({:.0f}% of the bar), {}, {} Potions, {} Antidotes, {} Parlyz Heals, {} Awakenings.",
@@ -617,6 +626,10 @@ private:
         if (m_refusal.refused(current_time())){
             m_console.log("Battle: the move list came back without a turn (Disable?); choosing another move.", COLOR_ORANGE);
             m_decisions.turn_done(TurnChoice::MOVE, TurnResult::REFUSED);
+        }
+        if (m_decisions.turns() == 0 && battle_needs_bag_read(m_supplies, m_kind)){
+            read_battle_bag();
+            return;
         }
         const PartyStatus status = read_party_status(screen);
         const TurnAction action = m_decisions.turn(status);
@@ -936,6 +949,13 @@ void recover_after_battle(
     ConsoleHandle& console, ProControllerContext& context,
     Supplies& supplies, Pokemon::StoryCheckLevel checks, Language language
 ){
+    //  Counts a row guessed: the recovery reads the pocket itself first.
+    if (!supplies.counts_read && (supplies.hurt || supplies.status != StatusCondition::NONE)){
+        const std::vector<BagRow> rows = read_items_pocket(console, context, language);
+        if (!rows.empty()){
+            set_from_bag(supplies, rows);
+        }
+    }
     for (const std::string& item : recovery_items(supplies)){
         use_recovery_item(console, context, item, checks, language, supplies);
     }

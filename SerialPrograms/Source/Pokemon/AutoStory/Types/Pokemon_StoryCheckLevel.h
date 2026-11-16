@@ -41,9 +41,12 @@ std::string story_check_level_name(StoryCheckLevel level);
 
 
 //  What a check reads, which decides the lowest level it runs at
-//  (runs_check()). A read whose answer a later step needs to act
-//  (the lead's moves for a battle, a member's level for a GRIND) is not a
-//  check: it runs at every level and has no kind.
+//  (runs_check()). A check only verifies: its answer is logged or passes
+//  or fails its step, and no later step reads it. A step that acts on what
+//  the screen shows (a battle's items, a member's level for a GRIND) reads
+//  it itself, at every level, and has no kind here: a precheck skipped at
+//  DEFAULT left 19.01's rival fought with 0 Potions and no X item (console
+//  B, 2026-11-15).
 enum class StoryCheckKind{
     //  After a reload, the save card's place against where the checkpoint
     //  starts: a save that didn't happen leaves an older one.
@@ -55,8 +58,8 @@ enum class StoryCheckKind{
     MENU_ROW,
     //  A tap into the wall a leg walked to, to confirm it ended there.
     LEG_END_TAP,
-    //  The Bag's pockets read to recount what it holds: after a reload,
-    //  after shopping. Below its level the story keeps the counts itself.
+    //  The Bag's pockets read against the counts the story keeps: after a
+    //  reload, after shopping. It changes no count.
     BAG_CONTENTS,
     //  A party member's summary read to check its level or stats before a
     //  fight: a plan's LEVEL step, a precondition.

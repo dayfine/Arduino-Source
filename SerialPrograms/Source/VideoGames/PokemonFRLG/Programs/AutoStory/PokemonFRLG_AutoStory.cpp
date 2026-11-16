@@ -280,10 +280,10 @@ Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, StoryEnv
         //  The save's party, which a catch or a gift since then changed.
         story.party.invalidate_species();
         story.party.users() = story.saved_field_moves.users();
-        //  Until read in full, so each verify run starts from the bag as
-        //  the save holds it, not from a count once read wrong or not at
-        //  all (console B, 2026-11-03: 0 Potions in all 3 runs). Once
-        //  read, a reload of the same save restores it.
+        //  The Bag's check, once per save. It changes no count: a battle
+        //  or recovery whose counts are a row's guess reads the pocket
+        //  itself (console B, 2026-11-15: 19.01's rival fought with 0
+        //  Potions and no X item when Default skipped this read).
         try{
             if (!story.bag_read){
                 read_bag_supplies(story, story.start_menu);

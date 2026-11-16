@@ -83,8 +83,8 @@ struct StoryEnv{
     //  The once_per_save steps done from the last save that changed
     //  nothing: a retry after a reload skips them. Emptied by a save.
     Pokemon::PreparedSteps prepared = {};
-    //  The last save's Items pocket was read in full (read_bag_supplies()):
-    //  a reload restores `saved_supplies` without reading it again.
+    //  The last save's Items pocket was checked (read_bag_supplies()): a
+    //  reload of the same save doesn't check it again.
     bool bag_read = false;
     //  The frames of where each checkpoint starts, for the start check: a
     //  save at a checkpoint's end keeps one for the next checkpoint.
@@ -128,12 +128,12 @@ std::string check_save_place(StoryEnv& env, const std::string& start_map);
 //  kept if no move can be read.
 void read_lead_moves(StoryEnv& env, StartMenu menu);
 
-//  After a save is loaded, with START's menu `menu`: the Items pocket's
-//  counts as read (set_from_loaded_bag()), in place of the row's, which
-//  are kept if nothing can be read, then a status or HP the save carried
-//  recovered. Only with the full menu: the rows before it carry the items
-//  they have. The read is a BAG_CONTENTS check: a level that doesn't run
-//  those keeps the row's counts. Sets `bag_read` when every count was read.
+//  After a save is loaded, with START's menu `menu`: the Items pocket read
+//  and logged against the counts the story keeps (a BAG_CONTENTS check,
+//  skipped below its level), then a status or HP the save carried
+//  recovered. Only with the full menu. The check changes no count: a step
+//  that uses items reads the pocket itself (Supplies::counts_read). Sets
+//  `bag_read` once the pocket was read.
 void read_bag_supplies(StoryEnv& env, StartMenu menu);
 
 //  Does FRLG's kinds of story step on the console, each with its row of
