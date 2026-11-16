@@ -8,9 +8,10 @@ Run from the repo root: python3 -m unittest discover -s lab/server/tests -t lab/
 
 import copy
 import unittest
+from unittest import mock
 
 from pa_lab import actions, contracts, control, lab_reader, mcp_server
-from tests.control_fixtures import START, acquire, new_id, open_plane, temp_db_path
+from tests.control_fixtures import START, acquire, new_id, open_plane, release, temp_db_path
 from tests.fake_lab import PRECHECKS, FakeApp, FakeClock, FakeLab, describe_reply, golden
 
 PANEL = 'PokemonFRLG:AutoStory'
@@ -430,7 +431,115 @@ class TicketTests(ActionTest):
         self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'))
 
 
+class LostRequestTests(ActionTest):
+    """A request that never reached the app, or whose outcome nothing names, must not stay pending:
+    a pending action refuses every later run and stop on the console."""
+
+    def test_a_failed_inbox_write_is_a_refusal_and_blocks_nothing(self):
+        token = self.acquired()
+        request = self.run_req(token)
+        with mock.patch.object(actions.shot, 'write_request', side_effect=OSError(28, 'No space left on device')):
+            record = self.run_program(request)
+        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'))
+        self.assertEqual(record['refusal']['evidence']['reason'], 'inbox_write_failed')
+        self.assertEqual(self.sent(), [])
+        self.started(token)
+
+    def test_a_request_never_written_is_settled_as_not_sent(self):
+        """The daemon died between storing the record and writing the request."""
+        token = self.acquired()
+        request = self.run_req(token)
+        with mock.patch.object(actions.shot, 'write_request'):
+            first = self.run_program(request)
+        self.open_daemon()
+        self.actions.settle_pending('B')
+        record = self.plane.record(CLIENT, 'run_program', request['request_id'])
+        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'timeout'), first)
+        self.assertEqual(record['refusal']['evidence']['reason'], 'never_sent')
+        self.started(token)
+
+    def test_a_lab_script_stop_after_the_start_settles_the_run(self):
+        token = self.acquired()
+        self.app.after['start'] = lambda app: app.transition('stop', 'lab', new_id())
+        record = self.run_program(self.run_req(token))
+        self.assertEqual(record['status'], 'completed', record)
+        self.assertEqual((record['result']['ended']['source'], record['result']['correlated_by']), ('lab', 'time'))
+        self.assertEqual(self.lease(), 'agent_idle')
+
+    def test_an_answered_request_that_nothing_matches_fails_after_the_wait(self):
+        token = self.acquired()
+        # The app answers ok but shows no transition for it (nothing this request can be matched to).
+        self.app.after['start'] = lambda app: app.lab.update_state(**{'program.state': 'stopped',
+                                                                       'program.last_transition': None})
+        record = self.run_program(self.run_req(token))
+        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'timeout'), record)
+        self.assertEqual(record['refusal']['evidence']['reason'], 'outcome_unknown')
+
+    def test_a_reused_request_id_is_not_answered_by_an_old_journal(self):
+        """A request_id used again after compaction dropped its record gets its own inbox name."""
+        token = self.acquired()
+        request = self.run_req(token)
+        self.app.owner = 'lab-script'
+        first = self.run_program(request)
+        self.assertEqual((first['status'], first['refusal']['code']), ('failed', 'console_held_by_agent'))
+        self.app.owner = None
+        with self.plane.db.write() as conn:  # what compaction does to an old finished record
+            conn.execute('DELETE FROM requests WHERE request_id = ?', (request['request_id'],))
+            conn.execute('DELETE FROM actions WHERE request_id = ?', (request['request_id'],))
+        record = self.run_program(request)
+        self.assertEqual(record['status'], 'completed', record)
+        self.assertEqual(self.lab.state['program']['state'], 'running')
+
+
+class LeaseWhilePendingTests(ActionTest):
+    """The lease cannot end while a run_program is pending: the run would start unleased."""
+
+    def pending_run(self, token):
+        request = self.run_req(token)
+        self.app.hold.add('start')
+        self.assertEqual(self.run_program(request)['status'], 'pending')
+        return request
+
+    def let_start_through(self, request):
+        self.app.transition('start', 'lab', request['request_id'])
+        self.actions.settle_pending('B')
+        return self.plane.record(CLIENT, 'run_program', request['request_id'])
+
+    def test_release_is_refused_while_a_run_is_pending(self):
+        token = self.acquired()
+        request = self.pending_run(token)
+        released = self.plane.execute(CLIENT, release(token))
+        self.assertEqual((released['status'], released['refusal']['code']), ('refused', 'program_running'))
+        self.assertEqual(self.let_start_through(request)['status'], 'completed')
+        self.assertEqual(self.lease(), 'agent_running')
+
+    def test_the_lease_does_not_expire_while_a_run_is_pending(self):
+        token = self.acquired()
+        request = self.pending_run(token)
+        self.clock.sleep(1300)
+        other = self.plane.execute('claude:other-lane', acquire(owner='agent:other'))
+        self.assertEqual((other['status'], other['refusal']['code']), ('refused', 'console_held_by_agent'))
+        self.assertEqual(self.let_start_through(request)['status'], 'completed')
+        self.assertEqual(self.lease(), 'agent_running')
+
+    def test_the_lease_expires_once_the_pending_run_fails(self):
+        token = self.acquired()
+        request = self.pending_run(token)
+        self.clock.sleep(1300)
+        self.alive = False  # the app exits: the run fails
+        self.actions.settle_pending('B')
+        self.assertEqual(self.plane.record(CLIENT, 'run_program', request['request_id'])['status'], 'failed')
+        self.reader.console_state()
+        self.assertEqual(self.lease(), 'free')
+
+
 class McpTests(ActionTest):
+    def test_action_mode_keeps_the_read_instructions(self):
+        server = mcp_server.LabMcp({'B': self.reader}, control_plane=self.plane, actions=self.actions)
+        text = server.initialize_result({})['instructions']
+        self.assertIn('Unknown observations are never success', text)
+        self.assertIn('run_program', text)
+
     def test_the_tools_are_listed_only_with_actions(self):
         cases = [
             dict(name='actions', input=dict(control_plane=True, actions=True), expectation=True),

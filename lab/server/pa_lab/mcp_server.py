@@ -30,6 +30,7 @@ import secrets
 import threading
 from typing import Any, Callable, Dict, Optional, Tuple
 
+from pa_lab import actions as actions_module
 from pa_lab import app_query, contracts, control, shot, status, tools
 from pa_lab.lab_reader import ConsoleReader, Unavailable
 
@@ -50,18 +51,19 @@ INVALID_PARAMS = -32602
 RESOURCE_UNAVAILABLE = -32001
 RESOURCE_NOT_FOUND = -32002
 
-INSTRUCTIONS = (
-    'Read-only view of lab console B. Read console://B/state before acting on the console and '
+READ_INSTRUCTIONS = (
+    'Read console://B/state before acting on the console and '
     'console://B/save for the last known save. shot returns a PNG newer than the call; ensure_game '
     'only verifies, it never navigates. describe_program gives the selected program\'s option contract; '
     'game_open says whether a game is in front. Unknown observations are never success.')
+INSTRUCTIONS = 'Read-only view of lab console B. ' + READ_INSTRUCTIONS
 
 ACTION_INSTRUCTIONS = (
     'Lab console B. Reads need no lease. To start the selected program: acquire_console, preflight_program with '
     'the panel and options, then run_program with the same panel, options and the preflight_token; stop_program '
     'stops it. cfr_batch is for debugging only and marks the save stale. Give every call a new request_id '
     '(retry with the same one), and follow a pending record with request_status or next_events. A refusal names '
-    'the check that failed; when the user holds the console, stop and wait for them.')
+    'the check that failed; when the user holds the console, stop and wait for them. ' + READ_INSTRUCTIONS)
 
 TOOL_LIST = [
     {
@@ -275,7 +277,7 @@ class LabMcp:
                  control_plane: Optional[control.ControlPlane] = None,
                  statuses: Optional[Dict[str, status.ProfileStatus]] = None,
                  read_only: bool = False,
-                 actions: Optional[Any] = None):
+                 actions: Optional[actions_module.ProgramActions] = None):
         if read_only and (control_plane is not None or actions is not None):
             raise ValueError('a read-only server has no control plane')
         if actions is not None and actions.plane is not control_plane:

@@ -121,6 +121,8 @@ def _serve(path: str, read_only: bool = False, actions: bool = False) -> int:
     if actions:
         from pa_lab import actions as actions_module
         program_actions = actions_module.ProgramActions(plane, readers)
+        for name in readers:  # settle what a stopped daemon left pending (e.g. a request never written)
+            program_actions.settle_pending(name)
     server = mcp_server.make_server(cfg.port, token, readers, control_plane=plane, actions=program_actions)
     return _serve_forever(server, readers, mcp_server.ENDPOINT)
 
