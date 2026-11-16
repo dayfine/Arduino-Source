@@ -45,6 +45,10 @@ double sky_blue_share(const ImageViewRGB32& screen, const ImageFloatBox& box);
 //  red over blue by 110.
 double banner_yellow_share(const ImageViewRGB32& screen, const ImageFloatBox& box);
 
+//  The share of `box`'s pixels in the mission complete card's green (about
+//  165, 240, 125): green over 180, over red by 40 and over blue by 70.
+double complete_green_share(const ImageViewRGB32& screen, const ImageFloatBox& box);
+
 //  `box` moved `dx` pixels (of 1920) right.
 ImageFloatBox shifted(ImageFloatBox box, double dx);
 

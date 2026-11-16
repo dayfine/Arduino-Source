@@ -1,0 +1,37 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.08b",
+    "title": "Out of Wild Zone 1's far gate",
+    "start": {
+      "place": "WildZone1"
+    },
+    "events": [
+      {
+        "id": "zone_1_back_to_road",
+        "kind": "game_action",
+        "why": "step 62: back onto the road at the catch spots (60, and 100 first when further), by the objective marker. The marker is not on the far gate but past it to its left, behind the zone's fence: a walk at it from 60 was held up at 36 and wandered to 49 inside the zone (console B, 2026-11-13 and 2026-11-14).",
+        "action": "walk_back_to_zone_road"
+      },
+      {
+        "id": "zone_1_to_far_gate",
+        "kind": "game_action",
+        "why": "step 62: from 60 the far gate is straight down the road; walked by hand to its \"A Leave\" prompt in about 4.7 s, the minimap heading 259 at the prompt with the gate right of centre (console B, 2026-11-14). Faces 265, then runs on to the prompt.",
+        "action": "run_to_gate",
+        "args": {"heading": 265, "timeout_ms": 15000}
+      },
+      {
+        "id": "leave_zone_1",
+        "kind": "game_action",
+        "why": "step 62: A Leave, out on the street (a plain scene step ends at once on the gate's prompt with the party bar up; console B, 2026-11-10)",
+        "action": "leave_zone_gate"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.08 at the last catch's autosave, so a checkpoint starts where a save reloads. Starts where that autosave reloads, in Wild Zone 1 at the last catch spot; ends out on the street just through the far gate (user, 2026-11-14), 03.09's start. No save: no autosave at its end was seen in a run log."
+    }
+  },
+  "execution": {}
+}

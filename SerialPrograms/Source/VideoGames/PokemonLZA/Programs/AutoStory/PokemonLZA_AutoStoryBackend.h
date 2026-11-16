@@ -22,10 +22,12 @@
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
+#include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAdvanceArrowDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAutosaveDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryControlsHintDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMainMissionBannerDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMissionCompleteDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryPlatformArrivalDetector.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 
@@ -34,10 +36,12 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The console a run plays on, for the actions only a console can do.
+//  The console a run plays on, for the actions only a console can do, and
+//  the battle AI its battles fight with.
 struct StoryEnv{
     SingleSwitchProgramEnvironment& env;
     ProControllerContext& context;
+    BattleAIOption& battle_ai;
 };
 
 //  The engine's backend for PLZA's pose.
@@ -69,10 +73,15 @@ public:
     //  PlzaScreenObserver's events on a frame (Pokemon::screen_observation()),
     //  SCREEN_STILL when it barely differs from the frame of the look before,
     //  and the readings PLATFORM_READING, AUTOSAVE_READING,
-    //  CONTROLS_HINT_READING, ADVANCE_ARROW_READING and
-    //  MISSION_BANNER_READING; with CHOICE_BOX, CHOICE_ROWS_READING and
+    //  CONTROLS_HINT_READING, ADVANCE_ARROW_READING, and
+    //  MISSION_COMPLETE_READING or else MISSION_BANNER_READING (the card
+    //  has the banner's bar), TUTORIAL_CARD_READING (TutorialCardDetector's);
+    //  with CHOICE_BOX, CHOICE_ROWS_READING and
     //  CHOICE_SELECTED_READING.
     virtual Pokemon::Observation<Pokemon::ZonePose> observe() override;
+    //  fight_story_battle() with the run's battle AI, two minutes at most;
+    //  its failure as "battle_failed".
+    virtual Pokemon::Outcome battle() override;
 
     //  To the console's log and the stream's overlay log: the checkpoint and
     //  the step under way, for whoever watches.
@@ -88,6 +97,7 @@ private:
     ControlsHintDetector m_controls_hint;
     AdvanceArrowDetector m_advance_arrow;
     MainMissionBannerDetector m_mission_banner;
+    MissionCompleteDetector m_mission_complete;
     VideoSnapshot m_previous;
 };
 

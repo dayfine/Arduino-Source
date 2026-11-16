@@ -10,10 +10,13 @@
 #include <string>
 #include <utility>
 #include "Common/Cpp/Color.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryBattles.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 
@@ -39,7 +42,7 @@ void PlzaConsoleBackend::tap(Direction direction){
 }
 
 void PlzaConsoleBackend::hold(Direction direction, Milliseconds duration, Pokemon::StoryPace pace){
-    stick(Pokemon::direction_degrees(direction), duration, 0ms, pace);
+    stick(Pokemon::direction_degrees(direction), duration, /*release=*/0ms, pace);
 }
 
 void PlzaConsoleBackend::stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace){
@@ -71,8 +74,13 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
         if (m_advance_arrow.detect(*frame.frame)){
             look.readings[std::string(ADVANCE_ARROW_READING)] = 1;
         }
-        if (m_mission_banner.detect(*frame.frame)){
+        if (m_mission_complete.detect(*frame.frame)){
+            look.readings[std::string(MISSION_COMPLETE_READING)] = 1;
+        }else if (m_mission_banner.detect(*frame.frame)){
             look.readings[std::string(MISSION_BANNER_READING)] = 1;
+        }
+        if (tutorial_card_shows(*frame.frame)){
+            look.readings[std::string(TUTORIAL_CARD_READING)] = 1;
         }
         if (look.events.has(ScreenEvent::CHOICE_BOX)){
             const std::optional<DialogChoiceRows> rows = read_dialog_choice_rows(*frame.frame);
@@ -91,6 +99,15 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
     return look;
 }
 
+Pokemon::Outcome PlzaConsoleBackend::battle(){
+    try{
+        fight_story_battle(m_env.env, m_env.env.console, m_env.context, m_env.battle_ai, /*timeout=*/120s);
+    }catch (OperationFailedException& e){
+        return Pokemon::outcome_failed("battle_failed", e.message());
+    }
+    return Pokemon::outcome_ok();
+}
+
 void PlzaConsoleBackend::log(std::string_view line){
     m_env.env.console.log(std::string(line), COLOR_BLUE);
     m_env.env.console.overlay().add_log(std::string(line));
@@ -104,8 +121,8 @@ CancellableScope& PlzaConsoleBackend::scope(){
 void story_turn(PlzaBackend& backend, double degrees){
     //  150 ms is the tap the story was recorded with.
     //  Short releases: the legs run back to back, as when played by hand.
-    backend.press(BUTTON_L, 100ms, 150ms);
-    backend.stick(degrees, 150ms, 100ms, Pokemon::StoryPace::WALK);
+    backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
+    backend.stick(degrees, /*duration=*/150ms, /*release=*/100ms, Pokemon::StoryPace::WALK);
 }
 
 

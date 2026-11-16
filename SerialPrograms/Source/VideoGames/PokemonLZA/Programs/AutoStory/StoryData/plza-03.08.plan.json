@@ -1,0 +1,26 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.08",
+    "title": "Wild Zone 1: five species",
+    "start": {
+      "place": "WildZone1"
+    },
+    "events": [
+      {
+        "id": "catch_more_species",
+        "kind": "game_action",
+        "why": "step 64: the lab gate asks for five registered species, 3/5 after the tutorial: two new ones here in Wild Zone 1 before leaving, Scatterbug (on the road at 100 from the objective marker) and Mareep (in the grass right of the road at 60), so the gate's scene finds 5/5 (user, 2026-11-13). Patrol 100, 60, 100, 60, ...: walking to 100 and back brings Pokemon back at 60; 10 visits, 10 minutes, 12 throws at most. The party bar's filled slots decide, read before the first stop and after each stop that threw: 5 means done, since the throws go only at targets whose plate shows no caught mark, and the \"Registered!\" banner is missed at times (console B 2026-11-14 19:36: Mareep in the party, no banner seen).",
+        "action": "catch_in_zone"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends at the last catch: each catch autosaves, and the 2026-11-14 run logs showed that autosave after the catches, logged at the far-gate walk (zone_1_to_far_gate) on plza/autostory, so 03.08 is split there (03.08b walks out). Short on species, it fails inside the zone."
+    }
+  },
+  "execution": {
+    "save": "autosave"
+  }
+}

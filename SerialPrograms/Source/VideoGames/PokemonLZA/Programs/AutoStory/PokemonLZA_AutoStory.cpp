@@ -31,7 +31,7 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "PokemonLZA:AutoStory",
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Play the main story of Pokemon Legends: Z-A. Prototype: from a new game to the battle area of Main Mission 01. "
+        "Play the main story of Pokemon Legends: Z-A. Prototype: from a new game to the end of Main Mission 01, picking Chikorita. "
         "Start a new game and pick its language, look and name by hand: checkpoint 01.00 starts on the Confirm Choices screen that follows. "
         "It checks that screen, presses nothing anywhere else, and picks Ready!. Later checkpoints load the latest save first.",
         PanelQualityStanding::DEVELOPER,
@@ -97,6 +97,7 @@ AutoStory::AutoStory()
 {
     PA_ADD_OPTION(RANGE);
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
+    PA_ADD_OPTION(BATTLE_AI);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
@@ -109,7 +110,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     check_checkpoint_range(env.console, first, last, rows.size());
     connect_controller(env.console, context, rows[first]);
 
-    StoryEnv story{.env = env, .context = context};
+    StoryEnv story{.env = env, .context = context, .battle_ai = BATTLE_AI};
     PlzaConsoleBackend backend(story);
     const StoryGame<ZonePose> game = make_plza_story_game(story, story_data);
     StoryEngine<ZonePose> engine(game, backend);

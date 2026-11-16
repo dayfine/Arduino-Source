@@ -36,7 +36,7 @@ enum class StoryPace{
 
 //  What a backend plays on. An action declared console_only
 //  (StoryActionSpec) runs only on CONSOLE: it reads or presses through
-//  screens nothing else models (menus, a keyboard, a battle AI).
+//  screens nothing else models (menus, a keyboard).
 enum class StoryBackendKind{
     CONSOLE,
     SIMULATION,
@@ -78,6 +78,10 @@ public:
     virtual void wait(Milliseconds duration) = 0;
     //  The game now, once every input sent so far has been done.
     virtual Observation<PoseType> observe() = 0;
+    //  Fights the battle on screen with the game's battle code, until it
+    //  ends; a battle that cannot be won or does not end is a failed
+    //  Outcome.
+    virtual Outcome battle() = 0;
     virtual void log(std::string_view line) = 0;
     virtual CancellableScope& scope() = 0;
 };

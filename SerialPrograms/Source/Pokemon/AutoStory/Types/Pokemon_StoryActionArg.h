@@ -24,6 +24,7 @@
 #include <variant>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Time.h"
 #include "Pokemon/AutoStory/Pokemon_MapUtil.h"
 
 namespace PokemonAutomation{
@@ -31,10 +32,10 @@ namespace Pokemon{
 
 
 //  A leg of a timed walk in a game with no tiles: turn `turn` degrees
-//  (clockwise, from the way the player faces), then walk for `ms`.
+//  (clockwise, from the way the player faces), then walk for `walk`.
 struct StoryTimedLeg{
     int turn = 0;
-    int ms = 0;
+    Milliseconds walk = Milliseconds(0);
 
     bool operator==(const StoryTimedLeg& other) const = default;
 };

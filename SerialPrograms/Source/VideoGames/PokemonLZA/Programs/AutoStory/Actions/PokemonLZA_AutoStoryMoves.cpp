@@ -30,7 +30,7 @@ bool screen_still(PlzaBackend& backend){
 //  walk goes where it looks.
 void turn_and_recenter(PlzaBackend& backend, double degrees){
     story_turn(backend, degrees);
-    backend.press(BUTTON_L, 100ms, 150ms);
+    backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
 }
 
 //  `input`, played again once when the screen stays still after it.
@@ -43,9 +43,24 @@ void play_checked(PlzaBackend& backend, std::string_view what, Input&& input){
     }
 }
 
-} // namespace
+//  StoryWalkStyle::HELD: each leg's stick held at its angle for its time
+//  (a turn-only leg a 150 ms tap); L before each later leg that turns.
+void run_held_legs(PlzaBackend& backend, const std::vector<StoryWalkLeg>& legs){
+    for (size_t index = 0; index < legs.size(); index++){
+        const StoryWalkLeg& leg = legs[index];
+        if (index > 0 && leg.turn != 0){
+            backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
+        }
+        if (leg.walk > 0ms){
+            backend.stick(leg.turn, leg.walk, /*release=*/0ms, Pokemon::StoryPace::WALK);
+        }else if (leg.turn != 0){
+            backend.stick(leg.turn, /*duration=*/150ms, /*release=*/100ms, Pokemon::StoryPace::WALK);
+        }
+    }
+}
 
-
+//  "leg 2/5 turn 90 walk 1200 ms": leg `index` (from 0) of `count`, for the
+//  log. A leg with no walk leaves it out.
 std::string story_walk_leg_label(size_t index, size_t count, const StoryWalkLeg& leg){
     std::string label = std::format("leg {}/{} turn {:g}", index + 1, count, leg.turn);
     if (leg.walk > Milliseconds(0)){
@@ -54,7 +69,14 @@ std::string story_walk_leg_label(size_t index, size_t count, const StoryWalkLeg&
     return label;
 }
 
+} // namespace
+
+
 Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move){
+    if (move.style == StoryWalkStyle::HELD){
+        run_held_legs(backend, move.legs);
+        return Pokemon::outcome_ok();
+    }
     //  The look the first input is checked against.
     backend.observe();
     for (size_t index = 0; index < move.legs.size(); index++){

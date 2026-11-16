@@ -16,6 +16,7 @@
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
 #include "Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions.h"
+#include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -41,6 +42,7 @@ public:
 private:
     Pokemon::StoryRangeOptions RANGE;
     SimpleIntegerOption<uint8_t> ATTEMPTS_PER_CHECKPOINT;
+    BattleAIOption BATTLE_AI;
     GoHomeWhenDoneOption GO_HOME_WHEN_DONE;
     EventNotificationsOption NOTIFICATIONS;
 };

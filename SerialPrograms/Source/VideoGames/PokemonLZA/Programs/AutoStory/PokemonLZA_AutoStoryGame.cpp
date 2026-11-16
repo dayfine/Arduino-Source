@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <format>
+#include <map>
 #include <optional>
 #include <span>
 #include <string>
@@ -17,8 +18,14 @@
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Data/Pokemon_StoryFiles.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h"
+#include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
+#include "VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatches.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryConfirmChoices.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLines.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerWalk.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
@@ -51,11 +58,40 @@ StoryArgSpec optional_ms(std::string key, int64_t fallback, std::string why){
     return StoryArgSpec{.key = std::move(key), .type = StoryArgType::INTEGER, .required = false, .fallback = fallback, .why = std::move(why)};
 }
 
-std::vector<StoryActionSpec> make_specs(){
-    StoryActionSpec confirm = game_spec("confirm_new_game");
-    confirm.console_only = true;
+//  A flag that is off when left out.
+StoryArgSpec flag(std::string key, std::string why){
+    return StoryArgSpec{.key = std::move(key), .type = StoryArgType::BOOLEAN, .required = false, .fallback = false, .why = std::move(why)};
+}
+
+//  `spec`, run only on a console.
+StoryActionSpec console_only(StoryActionSpec spec){
+    spec.console_only = true;
+    return spec;
+}
+
+//  The GAME actions that run only on a console.
+std::vector<StoryActionSpec> console_specs(){
     return {
-        std::move(confirm),
+        console_only(game_spec("confirm_new_game")),
+        console_only(game_spec("run_to_gate", {
+            optional_ms("timeout_ms", 8000, "running this long with no A prompt fails the step"),
+            StoryArgSpec{
+                .key = "heading", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
+                .why = "the minimap heading to face first, degrees clockwise from up",
+            },
+        })),
+        console_only(game_spec("leave_zone_gate")),
+        console_only(game_spec("catch_tutorial")),
+        console_only(game_spec("battle_then_catch")),
+        console_only(game_spec("catch_in_zone")),
+        console_only(game_spec("walk_back_to_zone_road")),
+        console_only(game_spec("walk_to_marker")),
+        console_only(game_spec("claim_mable_research_reward")),
+    };
+}
+
+std::vector<StoryActionSpec> make_specs(){
+    std::vector<StoryActionSpec> specs{
         game_spec("wait_for_platform", {
             optional_ms("timeout_ms", 180000, "no platform this long fails the step"),
         }),
@@ -71,14 +107,38 @@ std::vector<StoryActionSpec> make_specs(){
                 .key = "end", .type = StoryArgType::WORD, .required = false, .fallback = std::nullopt,
                 .why = "\"fade_white\", \"fade_black\" or \"dialog\": the last leg is held until it shows, its ms the bound",
             },
+            flag("held", "hold the stick at each leg's angle (L only before a later turning leg), not tap-and-forward"),
+            StoryArgSpec{
+                .key = "wait_ms", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
+                .why = "wait this long before looking for free control: NPCs moving off",
+            },
+        }),
+        game_spec("walk_to_prompt", {
+            optional_ms("timeout_ms", 10000, "walking this long with no A prompt fails the step"),
         }),
         game_spec("mash_to_move_hints", {
             optional_ms("min_length_ms", 0, "the scene's rough length: no quiet failure before it"),
+            optional_ms("quiet_ms", 60000, "nothing busy and no control this long fails the step"),
+            flag("press_a_first", "press A first, at the prompt that starts the scene (a door's \"A Enter\")"),
+            flag("quiet_is_control", "the quiet time ends the step with control, where no party bar or prompt shows (Hotel Z)"),
         }),
-        game_spec("text_to_choice"),
+        game_spec("text_to_choice", {
+            flag("advance_with_a", "advance the text with A, for a talk that B cancels (Hotel Z's elevator)"),
+        }),
         game_spec("choose_0"),
         game_spec("choose_1"),
+        StoryActionSpec{.kind = StoryStepKind::TALK, .name = "talk", .args = {}},
+        StoryActionSpec{.kind = StoryStepKind::MASH, .name = "a", .args = {}},
+        game_spec("story_battle_start"),
+        game_spec("story_battle"),
+        game_spec("talk_through_map_screen"),
+        game_spec("climb_ladder"),
+        game_spec("talk_to_pokedex_screen"),
     };
+    for (StoryActionSpec& spec : console_specs()){
+        specs.push_back(std::move(spec));
+    }
+    return specs;
 }
 
 
@@ -86,7 +146,7 @@ std::vector<StoryActionSpec> make_specs(){
 //  "launch_failed".
 Outcome reload_latest_save(StoryEnv& env){
     go_home(env.env.console, env.context);
-    if (!reset_game_from_home(env.env, env.env.console, env.context, false)){
+    if (!reset_game_from_home(env.env, env.env.console, env.context, /*backup_save=*/false)){
         return Pokemon::outcome_failed("launch_failed", "the game did not reach the overworld after the reload");
     }
     return Pokemon::outcome_ok();
@@ -110,6 +170,154 @@ Handler confirm_handler(StoryEnv* env){
             return Pokemon::outcome_failed("confirm_new_game_failed", e.message());
         }
         return Pokemon::outcome_ok();
+    };
+}
+
+
+//  How close to a run's heading the minimap's arrow must read.
+constexpr double HEADING_TOLERANCE = 10;
+
+//  Turns the player to `heading` on the minimap (upstream's
+//  get_facing_direction(): 0 up, 90 right) with story_turn(), 4 turns at
+//  most, then L puts the camera behind the player, so a run forward goes
+//  that way (console B, 2026-11-14). Fails as "heading_missed".
+Outcome face_heading(StoryEnv& env, PlzaBackend& backend, double heading){
+    for (int turns = 0; turns <= 4; turns++){
+        const double now = get_facing_direction(env.env.console, env.context);
+        if (get_angle_between_facing_directions(now, heading) <= HEADING_TOLERANCE){
+            backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
+            return Pokemon::outcome_ok();
+        }
+        if (turns < 4){
+            story_turn(backend, heading - now);
+        }
+    }
+    return Pokemon::outcome_failed("heading_missed", std::format("not facing {:.0f} deg after 4 turns", heading));
+}
+
+//  "run_to_gate"'s run: straight on with upstream's
+//  run_towards_gate_with_A_button() until the gate's A prompt; once more
+//  after a day/night change, which stops the run. Fails as
+//  "gate_not_reached" when the run ends with no prompt.
+Outcome run_to_gate(StoryEnv& env, Milliseconds timeout){
+    //  0: the A prompt, 1: a day/night change, else no prompt.
+    int result = 1;
+    for (size_t runs = 0; runs < 2 && result == 1; runs++){
+        result = run_towards_gate_with_A_button(
+            env.env.console, env.context, /*run_direction_x=*/0, /*run_direction_y=*/1, timeout
+        );
+    }
+    if (result != 0){
+        return Pokemon::outcome_failed("gate_not_reached", std::format("no gate A prompt in {} ms of running", timeout.count()));
+    }
+    return Pokemon::outcome_ok();
+}
+
+//  The handler of "run_to_gate" on the console `env`; none: fails as
+//  console_only. Its arg "heading", if given, is faced first
+//  (face_heading()), then run_to_gate().
+Handler gate_run_handler(StoryEnv* env){
+    if (env == nullptr){
+        return [](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
+            return Pokemon::outcome_failed(std::string(Pokemon::CONSOLE_ONLY), "run_to_gate runs only on a console");
+        };
+    }
+    return [env](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
+        const Milliseconds timeout(Pokemon::story_arg<int64_t>(call.args, "timeout_ms"));
+        const auto heading = call.args.find("heading");
+        try{
+            if (heading != call.args.end()){
+                const Outcome faced = face_heading(*env, backend, (double)std::get<int64_t>(heading->second));
+                if (!faced.succeeded()){
+                    return faced;
+                }
+            }
+            return run_to_gate(*env, timeout);
+        }catch (OperationFailedException& e){
+            backend.log(std::format("[PLZA] run_to_gate failed: {}", e.message()));
+            return Pokemon::outcome_failed("gate_not_reached", e.message());
+        }
+    };
+}
+
+
+//  03.11's reward: the main menu (overworld_to_main_menu()), Mable's
+//  Research three rows down, A. The page opens on Rewards under her lines on
+//  the level 2 reward, TM004 Rock Smash (console B, 2026-11-10): A through
+//  them, then B out of the menu to her talk. No line at all: the page did
+//  not open on her reward (03.10 r6, console B 2026-11-14: not in her
+//  office). Fails as "no_reward_lines", "reward_lines_endless" or
+//  "menu_not_closed".
+Outcome claim_research_reward(StoryEnv& env, PlzaBackend& backend){
+    overworld_to_main_menu(env.env.console, env.context);
+    for (int i = 0; i < 3; i++){
+        backend.press(BUTTON_DOWN, /*hold=*/160ms, /*release=*/400ms);
+    }
+    backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/2840ms);
+    const LinesPassed passed = press_a_through_lines(backend, /*quiet=*/3s, /*limit=*/60s);
+    if (passed.timed_out){
+        return Pokemon::outcome_failed("reward_lines_endless", "Mable's lines did not end within 60 s");
+    }
+    if (!passed.text){
+        return Pokemon::outcome_failed("no_reward_lines", "no dialog after opening Mable's Research: no reward was claimed");
+    }
+    if (!press_b_out_of_menu(backend, /*presses=*/60)){
+        return Pokemon::outcome_failed("menu_not_closed", "no party bar or talk after 60 B presses out of the menu");
+    }
+    return Pokemon::outcome_ok();
+}
+
+//  At a wild zone's gate on the way out, its "A Leave" prompt up: A
+//  through the gate to the street with upstream's leave_zone_gate().
+//  Fails as "gate_left_unsure" when a day/night change came on the way
+//  (upstream cannot tell then whether the player left).
+Outcome leave_gate(StoryEnv& env, PlzaBackend&){
+    if (!leave_zone_gate(env.env.console, env.context)){
+        return Pokemon::outcome_failed("gate_left_unsure", "a day/night change while leaving the zone's gate");
+    }
+    return Pokemon::outcome_ok();
+}
+
+//  A console action's body.
+using ConsoleStep = Outcome (*)(StoryEnv& env, PlzaBackend& backend);
+
+//  The console actions run by a ConsoleStep, by name: console_only.
+const std::map<std::string_view, ConsoleStep>& console_steps(){
+    static const std::map<std::string_view, ConsoleStep> steps{
+        {"catch_tutorial", [](StoryEnv& env, PlzaBackend& backend){
+            return catch_tutorial(env, backend, /*max_throws=*/6);
+        }},
+        {"battle_then_catch", [](StoryEnv& env, PlzaBackend& backend){
+            return battle_then_catch(env, backend, /*max_rounds=*/6);
+        }},
+        {"catch_in_zone", [](StoryEnv& env, PlzaBackend& backend){
+            //  5 registered species, 3 after the tutorial; 12 throws.
+            return catch_in_zone(env, backend, ZoneCatchGoal{.party_species = 5, .max_throws = 12});
+        }},
+        {"walk_back_to_zone_road", walk_back_to_zone_road},
+        {"leave_zone_gate", leave_gate},
+        {"walk_to_marker", walk_to_marker},
+        {"claim_mable_research_reward", claim_research_reward},
+    };
+    return steps;
+}
+
+//  `step` on the console `env`; none: fails as console_only. An
+//  OperationFailedException becomes a failed Outcome, so the run can report
+//  it.
+Handler console_handler(StoryEnv* env, std::string_view name, ConsoleStep step){
+    if (env == nullptr){
+        return [name = std::string(name)](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
+            return Pokemon::outcome_failed(std::string(Pokemon::CONSOLE_ONLY), std::format("{} runs only on a console", name));
+        };
+    }
+    return [env, name = std::string(name), step](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+        try{
+            return step(*env, backend);
+        }catch (OperationFailedException& e){
+            backend.log(std::format("[PLZA] {} failed: {}", name, e.message()));
+            return Pokemon::outcome_failed("operation_failed", e.message());
+        }
     };
 }
 
@@ -180,7 +388,7 @@ Outcome wait_for_platform(Pokemon::StoryBackend<ZonePose>& backend, Milliseconds
         const bool text_now = text_waiting_for_a(look);
         if (text_now && !progress.text_waiting){
             backend.log("[PLZA] platform wait: text waiting for A; A");
-            backend.press(BUTTON_A, 160ms, 400ms);
+            backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/400ms);
         }
         progress.text_waiting = text_now;
         backend.wait(PLATFORM_POLL);
@@ -199,16 +407,38 @@ Handler platform_handler(PlatformWait wait){
 }
 
 
+//  The walk of `args`: the legs of its arg "legs", each [turn in degrees
+//  clockwise (negative: left), walk ms], held with "held", after the wait
+//  "wait_ms". The args must have passed the walk's spec.
+StoryMove story_walk_move(const StoryActionArgs& args){
+    StoryMove move;
+    const auto held = args.find("held");
+    if (held != args.end() && std::get<bool>(held->second)){
+        move.style = StoryWalkStyle::HELD;
+    }
+    const auto wait = args.find("wait_ms");
+    if (wait != args.end()){
+        move.wait_first = Milliseconds(std::get<int64_t>(wait->second));
+    }
+    for (const Pokemon::StoryTimedLeg& row : Pokemon::story_arg<std::vector<Pokemon::StoryTimedLeg>>(args, "legs")){
+        move.legs.push_back({.turn = (double)row.turn, .walk = row.walk});
+    }
+    return move;
+}
+
 //  "walk": its legs, once the screen shows free control; held until the
 //  event of its "end" arg, if it has one, else finished with one look
 //  (finish_walk()).
 Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
     const std::string_view name = call.step.name;
+    const StoryMove move = story_walk_move(call.args);
+    if (move.wait_first > Milliseconds(0)){
+        backend.wait(move.wait_first);
+    }
     const Outcome free = check_can_walk(backend, name);
     if (!free.succeeded()){
         return free;
     }
-    const StoryMove move = story_walk_move(call.args);
     const auto end = call.args.find("end");
     if (end != call.args.end()){
         const std::optional<ScreenEvent> event = walk_end_event(std::get<std::string>(end->second));
@@ -233,10 +463,18 @@ Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
 //  control: a minute with nothing busy fails the step. After 5 s with
 //  nothing busy and no sign of control, A every 2 s, for text the detectors
 //  miss (01.01's ad).
-//  "min_length_ms" holds the quiet failure off for a long still scene.
+//  "min_length_ms" holds the quiet failure off for a long still scene;
+//  "quiet_ms" is the quiet time, which with "quiet_is_control" ends the
+//  step with control (Hotel Z shows no party bar). "press_a_first" presses
+//  A at the prompt the scene starts from (press_through_prompt()), which
+//  would otherwise read as control at once.
 Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
+    if (Pokemon::story_arg<bool>(call.args, "press_a_first")){
+        press_through_prompt(backend);
+    }
     SceneMachineConfig config;
-    config.quiet = 60s;
+    config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));
+    config.quiet_is_control = Pokemon::story_arg<bool>(call.args, "quiet_is_control");
     config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
     config.blind_press_after = 5s;
     return run_scene_machine(backend, "mash_to_move_hints", config, 360s);
@@ -245,11 +483,93 @@ Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAct
 //  "text_to_choice": B through the scene's text until its choice box
 //  shows, which the next step answers (B: an A as the text ends could land
 //  on the choice). 01.02's Pancham scene takes ~60 s, hence 120 s.
-Outcome text_to_choice_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+//  "advance_with_a" is for a talk that B closes: Hotel Z's elevator before
+//  "Which floor?" (02.05, console B 2026-11-10).
+Outcome text_to_choice_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
     SceneMachineConfig config;
     config.stop_at_choice = true;
-    config.text_button = BUTTON_B;
+    config.text_button = Pokemon::story_arg<bool>(call.args, "advance_with_a") ? BUTTON_A : BUTTON_B;
     return run_scene_machine(backend, "text_to_choice", config, 120s);
+}
+
+
+//  A step's scene ("scene" "a"): A through its text until the party bar
+//  holds a second, 120 s at most. Fails as "scene_never_started" when
+//  neither text, a choice, a battle nor control shows within 45 s: the
+//  player is not at the scene's trigger.
+Outcome scene_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    SceneMachineConfig config;
+    config.start_window = 45s;
+    return run_scene_machine(backend, "scene", config, 120s);
+}
+
+//  "walk_to_prompt": straight on until an A prompt shows (walk_to_prompt()).
+Outcome walk_to_prompt_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
+    return walk_to_prompt(backend, Milliseconds(Pokemon::story_arg<int64_t>(call.args, "timeout_ms")));
+}
+
+
+//  "story_battle_start": A through the talk before a story battle (a
+//  choice takes its top row) and, every 2 s where no text shows, through
+//  the battle tutorial's cards and the VS splash, until the battle HUD
+//  shows, 90 s at most.
+Outcome battle_start_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    SceneMachineConfig config;
+    config.stop_at_battle = true;
+    config.blind_press_after = Milliseconds(0);
+    return run_scene_machine(backend, "story_battle_start", config, 90s);
+}
+
+//  "story_battle": the battle on screen, by the backend's battle code.
+Outcome battle_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    return backend.battle();
+}
+
+
+//  "talk_through_map_screen": talk_through_map_screen().
+Outcome map_talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    return talk_through_map_screen(backend);
+}
+
+//  "climb_ladder": climb_ladder().
+Outcome ladder_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    climb_ladder(backend);
+    return Pokemon::outcome_ok();
+}
+
+//  "talk_to_pokedex_screen": the nurse's talk and the Pokedex app (03.04)
+//  until the party bar holds a second, 90 s at most: B at its text and,
+//  every 2 s while neither text nor control shows, at the Pokedex screens,
+//  which only B closes (A plays the entry's motions).
+Outcome pokedex_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    SceneMachineConfig config;
+    config.text_button = BUTTON_B;
+    config.blind_press_after = Milliseconds(0);
+    config.blind_button = BUTTON_B;
+    return run_scene_machine(backend, "talk_to_pokedex_screen", config, 90s);
+}
+
+
+//  After A at what the player faces, how long "talk" waits for its text
+//  box, and how often it looks.
+constexpr Milliseconds TALK_WAIT(5000);
+constexpr Milliseconds TALK_POLL(250);
+
+//  "talk": A at what the player faces, then a text box within TALK_WAIT;
+//  fails as "talk_no_text" without one.
+Outcome talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
+    for (Milliseconds waited(0); ; waited += TALK_POLL){
+        backend.scope().throw_if_cancelled();
+        if (backend.observe().events.has(ScreenEvent::DIALOG_BOX)){
+            return Pokemon::outcome_ok();
+        }
+        if (waited >= TALK_WAIT){
+            break;
+        }
+        backend.wait(TALK_POLL);
+    }
+    return Pokemon::outcome_failed("talk_no_text", std::format("no text box within {} ms of A", TALK_WAIT.count()));
 }
 
 
@@ -294,7 +614,7 @@ Outcome choose_step(Pokemon::StoryBackend<ZonePose>& backend, int index){
     backend.log(std::format("[PLZA] choose_{}: row {} of {} highlighted", index, selected, count));
     const int moves = index - selected;
     for (int moved = 0; moved < std::abs(moves); moved++){
-        backend.press(moves > 0 ? BUTTON_DOWN : BUTTON_UP, 160ms, 240ms);
+        backend.press(moves > 0 ? BUTTON_DOWN : BUTTON_UP, /*hold=*/160ms, /*release=*/240ms);
     }
     if (moves != 0){
         const std::optional<std::pair<int, int>> now = choice_rows(backend.observe());
@@ -305,7 +625,7 @@ Outcome choose_step(Pokemon::StoryBackend<ZonePose>& backend, int index){
             ));
         }
     }
-    backend.press(BUTTON_A, 160ms, 240ms);
+    backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
     return Pokemon::outcome_ok();
 }
 
@@ -316,10 +636,38 @@ Handler choose_handler(int index){
 }
 
 
+//  A handler that needs nothing but its step.
+using StepFunction = Outcome (*)(Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&);
+
+//  The actions run by a StepFunction, by name.
+const std::map<std::string_view, StepFunction>& step_functions(){
+    static const std::map<std::string_view, StepFunction> functions{
+        {"mash_to_move_hints", move_hints_step},
+        {"text_to_choice", text_to_choice_step},
+        {"talk", talk_step},
+        {"a", scene_step},
+        {"walk_to_prompt", walk_to_prompt_step},
+        {"story_battle_start", battle_start_step},
+        {"story_battle", battle_step},
+        {"talk_through_map_screen", map_talk_step},
+        {"climb_ladder", ladder_step},
+        {"talk_to_pokedex_screen", pokedex_step},
+        {"walk", walk_step},
+    };
+    return functions;
+}
+
 //  The handler of each of plza_story_specs(), by name.
 Handler plza_handler(StoryEnv* env, const StoryActionSpec& spec){
     if (spec.name == "confirm_new_game"){
         return confirm_handler(env);
+    }
+    if (spec.name == "run_to_gate"){
+        return gate_run_handler(env);
+    }
+    const auto console_step = console_steps().find(spec.name);
+    if (console_step != console_steps().end()){
+        return console_handler(env, spec.name, console_step->second);
     }
     if (spec.name == "wait_for_platform"){
         return platform_handler(PlatformWait::PLATFORM_ONLY);
@@ -327,19 +675,13 @@ Handler plza_handler(StoryEnv* env, const StoryActionSpec& spec){
     if (spec.name == "opening_to_platform"){
         return platform_handler(PlatformWait::AFTER_AUTOSAVE);
     }
-    if (spec.name == "mash_to_move_hints"){
-        return move_hints_step;
-    }
-    if (spec.name == "text_to_choice"){
-        return text_to_choice_step;
-    }
     if (spec.name == "choose_0"){
         return choose_handler(0);
     }
     if (spec.name == "choose_1"){
         return choose_handler(1);
     }
-    return walk_step;
+    return step_functions().at(spec.name);
 }
 
 //  PLZA's actions over `env` (none: no console), with no save or reload.
@@ -396,14 +738,6 @@ std::optional<ScreenEvent> walk_end_event(std::string_view end){
         return ScreenEvent::DIALOG_BOX;
     }
     return std::nullopt;
-}
-
-StoryMove story_walk_move(const StoryActionArgs& args){
-    StoryMove move;
-    for (const Pokemon::StoryTimedLeg& row : Pokemon::story_arg<std::vector<Pokemon::StoryTimedLeg>>(args, "legs")){
-        move.legs.push_back({.turn = (double)row.turn, .walk = Milliseconds(row.ms)});
-    }
-    return move;
 }
 
 namespace{

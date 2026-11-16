@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The screen machine on scripted observations: which state a look matches,
- *  a run that ends on its terminal state, the ways one fails (no state
+ *  The screen machine on scripted observations: a run that ends on its
+ *  terminal state, the first matching state winning, the ways one fails (no state
  *  matches, a state comes up too often, the time or the looks run out, a
  *  waiting state stays still too long, steps that change nothing), and the
  *  trace's lines.
@@ -110,56 +110,6 @@ std::vector<ScreenState> test_states(std::vector<std::string>& acted){
 }
 
 
-struct MatchCase{
-    std::string name;
-    struct Input{
-        ScreenEvents events;
-    };
-    Input input;
-    struct Expectation{
-        //  The state matched; none when no state did.
-        std::optional<std::string_view> state = std::nullopt;
-    };
-    Expectation expectation;
-};
-
-const MatchCase MATCH_CASES[] = {
-    {
-        .name = "the first state that matches wins",
-        .input = {.events = {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}},
-        .expectation = {.state = "choice"},
-    },
-    {
-        .name = "one event",
-        .input = {.events = {ScreenEvent::DIALOG_BOX}},
-        .expectation = {.state = "text"},
-    },
-    {
-        .name = "no state matches",
-        .input = {.events = {ScreenEvent::BATTLE_STARTED}},
-        .expectation = {},
-    },
-    {
-        .name = "an empty look",
-        .input = {.events = {}},
-        .expectation = {},
-    },
-};
-
-UnitTestResult check_match(const MatchCase& test){
-    std::vector<std::string> acted;
-    const std::vector<ScreenState> states = test_states(acted);
-    ScreenObservation observation;
-    observation.events = test.input.events;
-    const ScreenState* state = match_screen_state(states, observation);
-    const std::string got = state ? state->name : "none";
-    if (got != test.expectation.state.value_or("none")){
-        return std::format("matched {}", got);
-    }
-    return true;
-}
-
-
 struct RunCase{
     std::string name;
     struct Input{
@@ -190,6 +140,11 @@ const RunCase RUN_CASES[] = {
         .expectation = {.end = "choice", .acted = "prompt, text, choice"},
     },
     {
+        .name = "the first state that matches a look wins",
+        .input = {.looks = {{.at = 0s, .events = {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}}}},
+        .expectation = {.end = "choice", .acted = "choice"},
+    },
+    {
         .name = "the trace logs each change of screen once, timed from the first look",
         .input = {.looks = {
             {.at = 0s, .events = {ScreenEvent::INTERACT_PROMPT}},
@@ -208,8 +163,13 @@ const RunCase RUN_CASES[] = {
         .expectation = {.end = "failed: The screen matches none of the known states.", .acted = ""},
     },
     {
+        .name = "a look with nothing on it matches no state",
+        .input = {.looks = {{.at = 0s, .events = {}}}},
+        .expectation = {.end = "failed: The screen matches none of the known states.", .acted = ""},
+    },
+    {
         .name = "a state comes up more often than its limit",
-        .input = {.looks = looks_every_second(0, 1, {ScreenEvent::DIALOG_BOX}, std::nullopt)},
+        .input = {.looks = looks_every_second(/*from=*/0, /*count=*/1, {ScreenEvent::DIALOG_BOX}, std::nullopt)},
         .expectation = {.end = "failed: Screen \"text\" came up more than 10 times: the step for it is not working."},
     },
     {
@@ -232,19 +192,19 @@ const RunCase RUN_CASES[] = {
     {
         .name = "a waiting state may stay still up to its limit",
         .input = {.looks = concat(
-            looks_every_second(0, 12, {ScreenEvent::FADE_BLACK}, BLACK),
+            looks_every_second(/*from=*/0, /*count=*/12, {ScreenEvent::FADE_BLACK}, BLACK),
             {{.at = 12s, .events = {ScreenEvent::CHOICE_BOX}, .shade = WHITE}}
         )},
         .expectation = {.end = "choice", .acted = "choice"},
     },
     {
         .name = "a waiting state still past its limit fails",
-        .input = {.looks = looks_every_second(0, 40, {ScreenEvent::FADE_BLACK}, BLACK)},
+        .input = {.looks = looks_every_second(/*from=*/0, /*count=*/40, {ScreenEvent::FADE_BLACK}, BLACK)},
         .expectation = {.end = "failed: The screen stayed still on \"fade\" for more than 30s."},
     },
     {
         .name = "steps that change nothing on screen stall",
-        .input = {.looks = looks_every_second(0, 12, {ScreenEvent::DIALOG_BOX}, WHITE)},
+        .input = {.looks = looks_every_second(/*from=*/0, /*count=*/12, {ScreenEvent::DIALOG_BOX}, WHITE)},
         .expectation = {
             .end = "failed: The screen stopped changing: 8 steps on \"text\" did nothing.",
             .acted = "text, text, text, text, text, text, text, text",
@@ -254,8 +214,8 @@ const RunCase RUN_CASES[] = {
         .name = "a changed frame starts the stall count again",
         .input = {.looks = concat(
             concat(
-                looks_every_second(0, 5, {ScreenEvent::DIALOG_BOX}, WHITE),
-                looks_every_second(5, 5, {ScreenEvent::DIALOG_BOX}, BLACK)
+                looks_every_second(/*from=*/0, /*count=*/5, {ScreenEvent::DIALOG_BOX}, WHITE),
+                looks_every_second(/*from=*/5, /*count=*/5, {ScreenEvent::DIALOG_BOX}, BLACK)
             ),
             {{.at = 10s, .events = {ScreenEvent::CHOICE_BOX}, .shade = WHITE}}
         )},
@@ -264,7 +224,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "looks with no frame never stall",
         .input = {.looks = concat(
-            looks_every_second(0, 9, {ScreenEvent::DIALOG_BOX}, std::nullopt),
+            looks_every_second(/*from=*/0, /*count=*/9, {ScreenEvent::DIALOG_BOX}, std::nullopt),
             {{.at = 9s, .events = {ScreenEvent::CHOICE_BOX}}}
         )},
         .expectation = {.end = "choice"},
@@ -300,20 +260,6 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
 }
 
 
-class Test_MatchScreenState : public UnitTest{
-public:
-    explicit Test_MatchScreenState(const MatchCase& test)
-        : UnitTest(std::format("CommonTools::ScreenMachine - match: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_match(m_test);
-    }
-
-private:
-    const MatchCase& m_test;
-};
-
 class Test_RunScreenMachine : public UnitTest{
 public:
     explicit Test_RunScreenMachine(const RunCase& test)
@@ -333,9 +279,6 @@ private:
 
 
 void add_tests_ScreenMachine(UnitTestDatabase& database){
-    for (const MatchCase& test : MATCH_CASES){
-        database.add<Test_MatchScreenState>(test);
-    }
     for (const RunCase& test : RUN_CASES){
         database.add<Test_RunScreenMachine>(test);
     }

@@ -47,7 +47,7 @@ std::optional<size_t> read_confirm_choices_now(
 
 
 size_t require_confirm_choices(ConsoleHandle& console, ProControllerContext& context){
-    const std::optional<size_t> cursor = read_confirm_choices_now(console, context, 2000ms, "confirm-choices");
+    const std::optional<size_t> cursor = read_confirm_choices_now(console, context, /*window=*/2000ms, "confirm-choices");
     if (!cursor){
         throw UserSetupError(
             console,
@@ -64,13 +64,13 @@ void confirm_new_game_choices(ConsoleHandle& console, ProControllerContext& cont
     for (size_t press = 0; press < 6 && cursor; press++){
         if (*cursor == CONFIRM_CHOICES_READY_ROW){
             console.log("AutoStory intro: Confirm Choices: A on \"Ready!\".");
-            pbf_press_button(context, BUTTON_A, 160ms, 2000ms);
+            pbf_press_button(context, BUTTON_A, /*hold=*/160ms, /*release=*/2000ms);
             context.wait_for_all_requests();
             return;
         }
         console.log("AutoStory intro: Confirm Choices: DOWN.");
-        pbf_press_dpad(context, DPAD_DOWN, 160ms, 500ms);
-        cursor = read_confirm_choices_now(console, context, 1000ms, "confirm-choices-moved");
+        pbf_press_dpad(context, DPAD_DOWN, /*hold=*/160ms, /*release=*/500ms);
+        cursor = read_confirm_choices_now(console, context, /*window=*/1000ms, "confirm-choices-moved");
         if (cursor){
             console.log(std::format("AutoStory intro: Confirm Choices: the highlight is on row {}.", *cursor));
         }

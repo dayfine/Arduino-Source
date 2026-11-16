@@ -34,7 +34,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Every action a PLZA checkpoint may name, all GAME actions:
+//  Every action a PLZA checkpoint may name, GAME actions but for "talk":
 //
 //      "confirm_new_game"      console_only: 01.00's first step, on the new
 //                              game's "Confirm Choices" (confirm_new_game_choices())
@@ -42,20 +42,48 @@ namespace PokemonLZA{
 //                              has shown and the station platform holds
 //      "wait_for_platform"     the station platform holds: a start check
 //      "walk"                  args "legs", [[turn, ms], ...] as
-//                              story_walk_move() reads them, and "end",
+//                              story_walk_move() reads them, "held",
+//                              "wait_ms", and "end",
 //                              "fade_white", "fade_black" or "dialog";
 //                              walked once the screen shows free control
 //                              (check_can_walk()), until its end event if it
 //                              has one (walk_until()), else until its legs
 //                              have run (finish_walk())
 //      "mash_to_move_hints"    A through scenes until the player has control
-//                              (run_scene_machine()): 01.01's arrival; arg
-//                              "min_length_ms", no quiet failure before it
+//                              (run_scene_machine()): 01.01's arrival; args
+//                              "min_length_ms", no quiet failure before it,
+//                              "quiet_ms", "quiet_is_control" and
+//                              "press_a_first" (press_through_prompt())
+//      "walk_to_prompt"        straight on until an A prompt shows
 //      "text_to_choice"        B through a scene's text until its choice box
-//                              shows (run_scene_machine())
+//                              shows (run_scene_machine()); A with
+//                              "advance_with_a"
 //      "choose_0", "choose_1"  that row of the choice box on screen (0 the
 //                              top), by the D-pad from the highlighted row,
 //                              then A
+//      "talk" (TALK)           A at what the player faces, then its text box
+//      "a" (MASH, "scene")     A through a scene until control; it must
+//                              start within 45 s
+//      "story_battle_start"    A through the talk before a story battle and
+//                              the battle tutorial's cards until the battle
+//                              HUD (run_scene_machine())
+//      "story_battle"          the battle, by the backend's battle()
+//      "talk_through_map_screen"   A and B in turn through Taunie's talk
+//                              and the first map (03.02)
+//      "climb_ladder"          the side street's ladder (03.03)
+//      "talk_to_pokedex_screen"    B through the nurse's talk and the
+//                              Pokedex app (03.04)
+//      "run_to_gate"           console_only: straight on to a zone gate's A
+//                              prompt (upstream's
+//                              run_towards_gate_with_A_button()), args
+//                              "timeout_ms" and "heading", the minimap
+//                              heading faced first
+//      "leave_zone_gate"       console_only: A through a zone's gate on the
+//                              way out (upstream's leave_zone_gate())
+//      "catch_in_zone"         console_only: 03.08's patrol of Wild Zone 1's
+//                              road until the party bar shows 5 species
+//      "walk_back_to_zone_road"    console_only: back onto Wild Zone 1's
+//                              road at the catch spot by the far gate
 //
 //  Later slices add rows here, each with its handler.
 const std::vector<Pokemon::StoryActionSpec>& plza_story_specs();
@@ -68,11 +96,6 @@ std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpo
 //  "dialog". None for any other word.
 std::optional<ScreenEvent> walk_end_event(std::string_view end);
 
-//  The walk of `args`: the legs of its arg "legs", each [turn in degrees
-//  clockwise (negative: left), walk ms]. The args must have passed the
-//  walk's spec.
-StoryMove story_walk_move(const Pokemon::StoryActionArgs& args);
-
 //  PLZA as a StoryGame on the console `env`, which must outlive it. The
 //  save counts the game's autosave at the end of the "autosave" rows of
 //  `rows`; after the others nothing saves (Pokemon::NOT_SAVED, "save
@@ -82,6 +105,7 @@ Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(StoryEnv& env, const 
 
 //  The same with no console, for tests and simulations: the console_only
 //  actions fail as "console_only", and there is no reload.
+//  code-health: allow test_only_api -- a test double: the game the scripted tests and simulations run
 Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game_without_console(const Pokemon::StoryRows& rows);
 
 //  Loads the save `row` starts from with `game`'s reload (the latest

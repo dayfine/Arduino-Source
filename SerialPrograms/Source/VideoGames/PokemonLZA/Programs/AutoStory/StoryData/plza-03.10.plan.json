@@ -1,0 +1,60 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.10",
+    "title": "Up the Research Lab's elevator to the Director's Office",
+    "start": {
+      "place": "PokemonResearchLab"
+    },
+    "events": [
+      {
+        "id": "to_lab_elevator",
+        "kind": "game_action",
+        "why": "step 66: to the elevator's \"A Take Elevator\". Measured 2026-11-09 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [
+            [
+              0,
+              1000
+            ]
+          ]
+        }
+      },
+      {
+        "id": "take_lab_elevator",
+        "kind": "talk",
+        "why": "step 66: A Take Elevator, \"Which floor would you like to go to?\""
+      },
+      {
+        "id": "floor_question",
+        "kind": "game_action",
+        "why": "step 66: A through the attendant's text until \"Which floor?\"'s choice box (A: B could cancel the talk, as at Hotel Z's elevator); ends at once when the choice is already up",
+        "action": "text_to_choice",
+        "args": {
+          "advance_with_a": true
+        }
+      },
+      {
+        "id": "ride_to_3f",
+        "kind": "game_action",
+        "why": "step 67: \"3F: Director's Office\", the second floor listed",
+        "action": "choose_1"
+      },
+      {
+        "id": "arrive_3f",
+        "kind": "scene",
+        "why": "step 67: the ride, until control on 3F",
+        "action": "a"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Starts at the lab lobby's autosave (03.09's end); ends on the game's autosave on 3F after the ride (log: \"[Autosave] 03.10/5 arrive_3f\"), 03.11's start, so it saves no further (user, 2026-11-14) Autosave: seen at arrive_3f in a run log (console B, 2026-11-14 21:39, then numbered 03.09/5)."
+    }
+  },
+  "execution": {
+    "save": "autosave"
+  }
+}

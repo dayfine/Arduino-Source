@@ -37,12 +37,6 @@ namespace Pokemon{
 //  malformed.
 using ExecutionReader = std::function<void(const JsonObject& execution, std::string_view source)>;
 
-//  Require exactly these fields, including fields whose value is null/zero/false.
-//  Missing/unknown fields throw ParseException with the document source.
-void validate_json_fields(
-    const JsonObject& object, std::initializer_list<std::string_view> fields, std::string_view source
-);
-
 //  The checkpoint of `game`'s strict authored envelope, its steps read
 //  against `actions` (read_story_checkpoint()); its execution object goes
 //  to `read_execution`.

@@ -26,6 +26,7 @@
 #include "PokemonLZA_AutoStoryControlsHintDetector.h"
 #include "PokemonLZA_AutoStoryDetectors_Tests.h"
 #include "PokemonLZA_AutoStoryMainMissionBannerDetector.h"
+#include "PokemonLZA_AutoStoryMissionCompleteDetector.h"
 #include "PokemonLZA_AutoStoryPlatformArrivalDetector.h"
 
 namespace PokemonAutomation{
@@ -47,6 +48,7 @@ struct DetectorReads{
     std::optional<bool> controls_hint = {};
     std::optional<bool> advance_arrow = {};
     std::optional<bool> mission_banner = {};
+    std::optional<bool> mission_complete = {};
 };
 
 struct DetectorField{
@@ -59,6 +61,7 @@ const DetectorField DETECTOR_FIELDS[] = {
     {"controls hint", &DetectorReads::controls_hint},
     {"advance arrow", &DetectorReads::advance_arrow},
     {"mission banner", &DetectorReads::mission_banner},
+    {"mission complete", &DetectorReads::mission_complete},
 };
 
 //  `reads` with every detector checked: one it leaves unset must not fire.
@@ -100,12 +103,13 @@ struct StoryDetectors{
     ControlsHintDetector hint;
     AdvanceArrowDetector arrow;
     MainMissionBannerDetector banner;
+    MissionCompleteDetector complete;
 
     DetectorReads read(const ImageViewRGB32& frame){
         return DetectorReads{
             .platform = platform.detect(frame), .autosave = autosave.detect(frame),
             .controls_hint = hint.detect(frame), .advance_arrow = arrow.detect(frame),
-            .mission_banner = banner.detect(frame),
+            .mission_banner = banner.detect(frame), .mission_complete = complete.detect(frame),
         };
     }
 };
@@ -131,8 +135,8 @@ ImageRGB32 solid_frame(uint32_t color){
 //  the top of its "?".
 ImageRGB32 controls_hint_frame(){
     ImageRGB32 image = solid_frame(0xff000000);
-    fill_box(946, 868, 972, 902, 0xff7dd2fa, image);
-    fill_box(956, 879, 962, 886, 0xff1c7db0, image);
+    fill_box(/*min_x=*/946, /*min_y=*/868, /*max_x=*/972, /*max_y=*/902, /*color=*/0xff7dd2fa, image);
+    fill_box(/*min_x=*/956, /*min_y=*/879, /*max_x=*/962, /*max_y=*/886, /*color=*/0xff1c7db0, image);
     return image;
 }
 
@@ -140,7 +144,7 @@ ImageRGB32 controls_hint_frame(){
 //  which is in no region, painted white.
 ImageRGB32 platform_with_player_frame(){
     ImageRGB32 image = platform_reference_image(WIDTH, HEIGHT);
-    fill_box(780, 330, 1200, HEIGHT, 0xffffffff, image);
+    fill_box(/*min_x=*/780, /*min_y=*/330, /*max_x=*/1200, HEIGHT, /*color=*/0xffffffff, image);
     return image;
 }
 
@@ -163,7 +167,7 @@ ImageRGB32 chevron_frame(uint32_t background, uint32_t ink){
 //  A solid white block the chevron's size on the ad's light blue.
 ImageRGB32 chevron_sized_block_frame(){
     ImageRGB32 image = solid_frame(0xffc1ecf0);
-    fill_box(1400, 1004, 1432, 1023, 0xffffffff, image);
+    fill_box(/*min_x=*/1400, /*min_y=*/1004, /*max_x=*/1432, /*max_y=*/1023, /*color=*/0xffffffff, image);
     return image;
 }
 
@@ -173,8 +177,8 @@ ImageRGB32 chevron_sized_block_frame(){
 ImageRGB32 autosave_badge_frame(uint32_t background, uint32_t glow){
     ImageRGB32 image(WIDTH, HEIGHT);
     image.fill(background);
-    fill_box(1655, 73, 1667, 104, glow, image);
-    fill_box(1659, 73, 1663, 104, 0xffffffff, image);
+    fill_box(/*min_x=*/1655, /*min_y=*/73, /*max_x=*/1667, /*max_y=*/104, glow, image);
+    fill_box(/*min_x=*/1659, /*min_y=*/73, /*max_x=*/1663, /*max_y=*/104, /*color=*/0xffffffff, image);
     return image;
 }
 
@@ -189,10 +193,10 @@ enum class BannerIcon{
 //  stroke, `dx` right of where the detector expects it.
 ImageRGB32 mission_banner_frame(size_t dx, BannerIcon icon){
     ImageRGB32 image = solid_frame(0xff606060);
-    fill_box(345, 410, 1590, 600, 0xfffad228, image);
+    fill_box(/*min_x=*/345, /*min_y=*/410, /*max_x=*/1590, /*max_y=*/600, /*color=*/0xfffad228, image);
     if (icon == BannerIcon::DRAWN){
-        fill_box(700 + dx, 327, 738 + dx, 370, 0xffffffff, image);
-        fill_box(716 + dx, 336, 720 + dx, 357, 0xfff07020, image);
+        fill_box(700 + dx, /*min_y=*/327, 738 + dx, /*max_y=*/370, /*color=*/0xffffffff, image);
+        fill_box(716 + dx, /*min_y=*/336, 720 + dx, /*max_y=*/357, /*color=*/0xfff07020, image);
     }
     return image;
 }
@@ -204,8 +208,27 @@ ImageRGB32 mission_banner_frame(size_t dx, BannerIcon icon){
 ImageRGB32 title_card_frame(){
     ImageRGB32 image = solid_frame(0xffffffff);
     for (size_t x = 450; x + 30 <= 1450; x += 50){
-        fill_box(x, 520, x + 30, 560, 0xff000000, image);
+        fill_box(x, /*min_y=*/520, x + 30, /*max_y=*/560, /*color=*/0xff000000, image);
     }
+    return image;
+}
+
+//  The mission complete card drawn on a grey scene: the yellow bar, and
+//  "COMPLETE" as green strokes (three columns in four) above it.
+ImageRGB32 mission_complete_frame(){
+    ImageRGB32 image = solid_frame(0xff606060);
+    fill_box(/*min_x=*/345, /*min_y=*/390, /*max_x=*/1590, /*max_y=*/585, /*color=*/0xfffad228, image);
+    for (size_t x = 615; x < 1300; x += 4){
+        fill_box(x, /*min_y=*/275, x + 3, /*max_y=*/345, /*color=*/0xffa5f07d, image);
+    }
+    return image;
+}
+
+//  mission_complete_frame() with green right above the word: a green
+//  scene, not the card.
+ImageRGB32 mission_complete_green_above_frame(){
+    ImageRGB32 image = mission_complete_frame();
+    fill_box(/*min_x=*/615, /*min_y=*/245, /*max_x=*/1300, /*max_y=*/270, /*color=*/0xffa5f07d, image);
     return image;
 }
 
@@ -217,6 +240,7 @@ constexpr uint32_t BOX_WHITE = 0xfffcfcf7;
 constexpr uint32_t BOX_TEXT_DARK = 0xff323648;
 constexpr uint32_t HINT_SKY_BLUE = 0xff7dd2fa;
 constexpr uint32_t BANNER_YELLOW = 0xfffad228;
+constexpr uint32_t COMPLETE_GREEN = 0xffa5f07d;
 
 struct SyntheticFrameCase{
     std::string name;
@@ -327,7 +351,27 @@ const SyntheticFrameCase SYNTHETIC_FRAME_CASES[] = {
     {
         .name = "a frame all in the bar's yellow",
         .input = {.frame = []{ return solid_frame(BANNER_YELLOW); }},
-        .expectation = {.reads = {.mission_banner = false}},
+        .expectation = {.reads = {.mission_banner = false, .mission_complete = false}},
+    },
+    {
+        .name = "the mission complete card",
+        .input = {.frame = mission_complete_frame},
+        .expectation = {.reads = {.mission_banner = false, .mission_complete = true}},
+    },
+    {
+        .name = "a frame all in the card's green",
+        .input = {.frame = []{ return solid_frame(COMPLETE_GREEN); }},
+        .expectation = {.reads = {.mission_complete = false}},
+    },
+    {
+        .name = "the card's word with green right above it",
+        .input = {.frame = mission_complete_green_above_frame},
+        .expectation = {.reads = {.mission_complete = false}},
+    },
+    {
+        .name = "the mission banner is not the complete card",
+        .input = {.frame = []{ return mission_banner_frame(0, BannerIcon::DRAWN); }},
+        .expectation = {.reads = {.mission_complete = false}},
     },
 };
 
@@ -370,7 +414,7 @@ DetectorReads as_named(std::string_view name){
     return DetectorReads{
         .platform = has("+platform"), .autosave = has("+autosave"),
         .controls_hint = has("+controls_hint"), .advance_arrow = has("+advance_arrow"),
-        .mission_banner = has("+mission_banner"),
+        .mission_banner = has("+mission_banner"), .mission_complete = has("+mission_complete"),
     };
 }
 
@@ -384,7 +428,7 @@ std::optional<DetectorReads> opening(std::string_view){
 //  ad: no autosave badge, the advance chevron only on the one box with its
 //  text done (0040).
 std::optional<DetectorReads> arrival_to_ad(std::string_view name){
-    const std::optional<int> index = frame_number(name, 0, 4);
+    const std::optional<int> index = frame_number(name, /*offset=*/0, /*digits=*/4);
     if (!index){
         return std::nullopt;
     }
@@ -398,7 +442,7 @@ std::optional<DetectorReads> arrival_to_ad(std::string_view name){
 //  chevron on the boxes with their text done (0044, 0049, 0053, 0078) and
 //  on the subtitles once typed (0093-0115).
 std::optional<DetectorReads> arrival_to_ad_subtitles(std::string_view name){
-    const std::optional<int> index = frame_number(name, 0, 4);
+    const std::optional<int> index = frame_number(name, /*offset=*/0, /*digits=*/4);
     if (!index){
         return std::nullopt;
     }
@@ -414,7 +458,7 @@ std::optional<DetectorReads> arrival_to_ad_subtitles(std::string_view name){
 //  platform, the controls hint and the advance chevron as named; the
 //  mission banner on 0181 only, the last frame.
 std::optional<DetectorReads> arrival_to_mission_banner(std::string_view name){
-    const std::optional<int> index = frame_number(name, 0, 4);
+    const std::optional<int> index = frame_number(name, /*offset=*/0, /*digits=*/4);
     if (!index){
         return std::nullopt;
     }
@@ -434,6 +478,15 @@ std::optional<DetectorReads> arrival_past_mission_banner(std::string_view name){
     if (name.starts_with("0197-")){
         want.autosave = true;
     }
+    return want;
+}
+
+//  The end of Main Mission 01 to Main Mission 02 (01.03's end): as named,
+//  and the complete card on 0045 and 0046 (named "nothing"); the next
+//  mission's banner (0133-0139) is not the card.
+std::optional<DetectorReads> mission_complete_to_next_banner(std::string_view name){
+    DetectorReads want = as_named(name);
+    want.mission_complete = name.starts_with("0045-") || name.starts_with("0046-");
     return want;
 }
 
@@ -477,6 +530,11 @@ const FrameFolderCase FRAME_FOLDER_CASES[] = {
         .name = "the arrival past the mission banner",
         .input = {.folder = "ArrivalPastMissionBanner"},
         .expectation = {.frames = 221, .reads = arrival_past_mission_banner},
+    },
+    {
+        .name = "the mission complete card to the next mission's banner",
+        .input = {.folder = "MissionCompleteToNextBanner"},
+        .expectation = {.frames = 139, .reads = mission_complete_to_next_banner},
     },
 };
 
