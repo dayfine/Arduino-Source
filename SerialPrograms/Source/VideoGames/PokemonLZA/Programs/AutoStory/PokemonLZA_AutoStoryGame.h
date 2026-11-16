@@ -72,7 +72,6 @@ Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(
 
 //  The same with no console, for tests and simulations: the console_only
 //  actions fail as "console_only", and there is no save or reload.
-//  code-health: allow test_only_api -- the scripted game the PLZA tests and offline simulations play; a console build has none
 Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game_without_console();
 
 
