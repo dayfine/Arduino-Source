@@ -14,14 +14,15 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  On 1920x1080: the bar's yellow fills x 430-820 and x 1100-1500 at
-//  y 425-585 (left and right of the name), none of it 15 px above or
-//  below the bar; the icon's hexagon is white at x 700-710 and 724-734,
-//  y 337-358, with the "!"'s orange stroke at x 716-719 between them.
+//  On 1920x1080: the bar's yellow fills its ends, x 430-600 and
+//  x 1320-1500 at y 425-585, which no mission name reaches; none of it 15
+//  px above or below the bar. With "MAIN MISSION 01" the icon's hexagon is
+//  white at x 700-710 and 724-734, y 337-358, with the "!"'s orange stroke
+//  at x 716-719 between them.
 MainMissionBannerDetector::MainMissionBannerDetector(Color color)
     : m_color(color)
-    , m_bar_left(430.0 / 1920, 425.0 / 1080, 390.0 / 1920, 160.0 / 1080)
-    , m_bar_right(1100.0 / 1920, 425.0 / 1080, 400.0 / 1920, 160.0 / 1080)
+    , m_bar_left(430.0 / 1920, 425.0 / 1080, 170.0 / 1920, 160.0 / 1080)
+    , m_bar_right(1320.0 / 1920, 425.0 / 1080, 180.0 / 1920, 160.0 / 1080)
     , m_above(430.0 / 1920, 375.0 / 1080, 1070.0 / 1920, 25.0 / 1080)
     , m_below(430.0 / 1920, 615.0 / 1080, 1070.0 / 1920, 25.0 / 1080)
     , m_icon_left(700.0 / 1920, 337.0 / 1080, 10.0 / 1920, 21.0 / 1080)
@@ -42,8 +43,10 @@ void MainMissionBannerDetector::make_overlays(VideoOverlaySet& items) const{
 //  On the banner both bar boxes are 100% yellow, the strips around the bar
 //  0-1%, and the icon's three boxes 100% at dx 0. Other screens have the
 //  bar boxes 8% yellow at most and the icon's weakest box 27% at most (a
-//  city flyover). The icon is looked for 60 px either side, as a longer or
-//  shorter header moves it.
+//  city flyover). The header is centred with the icon left of its text, so
+//  the header's length moves the icon: Italian's "MISSIONE PRINCIPALE 01"
+//  has it at dx -96 (console B, 2026-11-15). It is looked for across the
+//  header's left half, x 400-960, so any language fits.
 bool MainMissionBannerDetector::detect(const ImageViewRGB32& screen){
     if (banner_yellow_share(screen, m_bar_left) < 0.6 || banner_yellow_share(screen, m_bar_right) < 0.6){
         return false;
@@ -57,7 +60,7 @@ bool MainMissionBannerDetector::detect(const ImageViewRGB32& screen){
     const auto orange = [](Color pixel){
         return pixel.red() > 200 && pixel.blue() < 150;
     };
-    for (double dx = -60; dx <= 60; dx += 2){
+    for (double dx = -300; dx <= 226; dx += 2){
         if (share_of(screen, shifted(m_icon_left, dx), bright) >= 0.7 &&
             share_of(screen, shifted(m_icon_right, dx), bright) >= 0.7 &&
             share_of(screen, shifted(m_icon_stroke, dx), orange) >= 0.7

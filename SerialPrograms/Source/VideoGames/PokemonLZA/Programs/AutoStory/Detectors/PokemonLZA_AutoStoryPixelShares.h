@@ -45,8 +45,8 @@ double sky_blue_share(const ImageViewRGB32& screen, const ImageFloatBox& box);
 //  red over blue by 110.
 double banner_yellow_share(const ImageViewRGB32& screen, const ImageFloatBox& box);
 
-//  `box` moved `dx` pixels (of 1920) right.
-ImageFloatBox shifted(ImageFloatBox box, double dx);
+//  `box` moved `dx` pixels (of 1920) right and `dy` pixels (of 1080) down.
+ImageFloatBox shifted(ImageFloatBox box, double dx, double dy = 0);
 
 
 template <typename Matches>

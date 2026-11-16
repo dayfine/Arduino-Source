@@ -67,6 +67,11 @@ public:
     //  Whether end_after_black_fades' last fade has settled by `now`.
     bool fades_settled(WallClock now) const;
 
+    //  Whether the mission banner has shown on any look.
+    bool banner_seen() const{
+        return m_banner_seen;
+    }
+
 private:
     //  classify() past the fades and the text.
     SceneScreen classify_open(const ScreenObservation& look) const;
@@ -85,14 +90,16 @@ private:
     //  Since when nothing busy and no banner has shown, once
     //  end_after_black_fades' fades have all lifted.
     std::optional<WallClock> m_settled_since;
+    bool m_banner_seen = false;
 };
 
 
 //  The controls hint showing this long is free control: two looks or more.
 constexpr Milliseconds CONTROLS_HINT_HOLD = 1000ms;
 //  How long the screen stays free of text, fades and the banner after the
-//  last of end_after_black_fades' fades before the scene counts as over.
-constexpr Milliseconds FADE_SETTLE = 2000ms;
+//  last of end_after_black_fades' fades before the scene counts as over:
+//  the player can move 5 s after 01.01's second fade at the latest.
+constexpr Milliseconds FADE_SETTLE = 5000ms;
 //  The longest a fade is waited out in one step.
 constexpr Milliseconds FADE_WAIT = 30000ms;
 //  The longest a still screen is waited on in one step.
@@ -260,6 +267,7 @@ void SceneTimeline::record(const ScreenObservation& look){
     const bool box = look.events.has(ScreenEvent::DIALOG_BOX);
     track_since(look.readings.contains(CONTROLS_HINT_READING) && !box, look.when, m_hint_since);
     m_banner_looks = look.readings.contains(MISSION_BANNER_READING) && !box ? m_banner_looks + 1 : 0;
+    m_banner_seen = m_banner_seen || m_banner_looks > 0;
     //  Each FADE_BLACK look is a new fade: its state waits until it lifts.
     m_black_fades += look.events.has(ScreenEvent::FADE_BLACK) ? 1 : 0;
     const bool fades_done = m_config.end_after_black_fades && m_black_fades >= *m_config.end_after_black_fades;
@@ -599,6 +607,11 @@ Pokemon::Outcome run_scene_machine(
     StepTrace trace(std::format("PLZA {}", label), /*log=*/nullptr);
     const ScreenMachineResult result = run_screen_machine(observe, backend.scope(), states, timeout, trace);
     runner.flush_log();
+    if (config.end_after_black_fades){
+        backend.log(std::format(
+            "[PLZA {}] the mission banner {}.", label, runner.timeline().banner_seen() ? "showed" : "did not show (the detector may have missed it)"
+        ));
+    }
     return scene_outcome(backend, label, config, result);
 }
 
