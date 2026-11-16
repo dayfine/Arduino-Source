@@ -37,8 +37,6 @@ void add_tests_AutoStorySlope(UnitTestDatabase& database);
 void add_tests_AutoStorySafari(UnitTestDatabase& database);
 //  Rows 14.03, 14.04 and 14.04b, Celadon Gym, on the overworld sim (PokemonFRLG_AutoStoryCeladonGym_Tests.cpp).
 void add_tests_AutoStoryCeladonGym(UnitTestDatabase& database);
-//  Every Center trip from 10.01 on flies, or ropes out of a building (PokemonFRLG_AutoStoryFlyToCenter_Tests.cpp).
-void add_tests_AutoStoryFlyToCenter(UnitTestDatabase& database);
 
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch

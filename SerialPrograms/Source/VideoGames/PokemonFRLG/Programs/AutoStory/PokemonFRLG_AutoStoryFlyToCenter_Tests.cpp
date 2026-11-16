@@ -21,11 +21,11 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryFlyToCenter_Tests.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
-#include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -316,7 +316,7 @@ public:
         }
         std::string message = std::format("{} offender(s), expected {}:", offenders.size(), m_case.expectation.offenders.size());
         for (const std::string& offender : offenders){
-            message += " " + offender;
+            message += std::format(" {}", offender);
         }
         return message;
     }

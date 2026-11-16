@@ -56,6 +56,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryAbilities.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPartyRoster.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryFlyToCenter_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStorySurf_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryHealing.h"
