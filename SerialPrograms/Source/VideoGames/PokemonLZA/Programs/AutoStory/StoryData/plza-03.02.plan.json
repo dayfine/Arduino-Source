@@ -68,7 +68,5 @@
       "source": "console B recording, 2026-11-08/09: played step by step from a new game. No save: the game does not autosave at its end (2026-11-15 save review); the menu save of plza/autostory is dropped."
     }
   },
-  "execution": {
-    "reload_when_chained": true
-  }
+  "execution": {}
 }

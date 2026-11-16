@@ -52,11 +52,11 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.10 at its 3F autosave (user, 2026-11-14). Starts on 3F at the elevator in the Director's Office, as the reloaded autosave leaves the player: facing the desk, the objective marker beyond it, the elevator panel on the right. to_mable's legs were measured from there; after the ride the facing differs, so a run from 03.10 reloads the save first (reload_when_chained). Save unverified: the one run log (console B, 2026-11-14 22:17) shows the game's autosave at mable_talk, before the reward is claimed, not at its end; the menu save of plza/autostory is dropped."
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.10 at its 3F autosave (user, 2026-11-14). Starts on 3F at the elevator in the Director's Office, as the reloaded autosave leaves the player: facing the desk, the objective marker beyond it, the elevator panel on the right. to_mable's legs were measured from there; after the ride the facing differs, so a run from 03.10 reloads the save first (reload_when_chained \"always\": no start check reads the facing). Save unverified: the one run log (console B, 2026-11-14 22:17) shows the game's autosave at mable_talk, before the reward is claimed, not at its end; the menu save of plza/autostory is dropped."
     }
   },
   "execution": {
     "save": "unverified",
-    "reload_when_chained": true
+    "reload_when_chained": "always"
   }
 }

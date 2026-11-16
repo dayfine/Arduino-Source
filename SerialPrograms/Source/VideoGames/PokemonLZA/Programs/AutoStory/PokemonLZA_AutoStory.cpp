@@ -179,8 +179,8 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
 
     StoryEnv story{.env = env, .context = context, .battle_ai = BATTLE_AI, .new_game = new_game};
     PlzaConsoleBackend backend(story);
-    const StoryGame<ZonePose> game = make_plza_story_game(story, story_data);
-    StoryEngine<ZonePose> engine(game, backend);
+    AutosaveSightings sightings;
+    const StoryGame<ZonePose> game = make_plza_story_game(story, story_data, sightings);
     RunState state;
 
     //  A run that starts after the new game starts from the latest save
@@ -199,7 +199,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     }
 
     const std::vector<StoryCheckpoint> checkpoints = story_run_rows(std::span<const StoryCheckpoint>(rows), first, last);
-    const SegmentReport report = run_plza_segments(game, story_data, checkpoints, ATTEMPTS_PER_CHECKPOINT, engine, backend, state);
+    const SegmentReport report = run_plza_segments(game, story_data, checkpoints, ATTEMPTS_PER_CHECKPOINT, backend, state, sightings);
     if (!report.completed){
         throw OperationFailedException(
             ErrorReportMode::NO_ERROR_REPORT,
