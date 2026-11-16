@@ -25,6 +25,7 @@ namespace PokemonLZA{
 
 
 
+//  The presses and timings of one throw (throw_ball()).
 struct BallThrowOptions{
     //  ZL alone before ZR joins it, to lock on first. 0 presses both at once.
     Milliseconds lock_on = Milliseconds(0);
@@ -48,6 +49,9 @@ struct BallScrolls{
     DpadPosition direction;
     size_t count;
 };
+
+//  The D-pad presses for `right_scrolls`: right when positive, left when
+//  negative.
 BallScrolls ball_scrolls(int8_t right_scrolls);
 
 //  How long ZL + ZR stay held: the aim plus every scroll.
@@ -60,11 +64,12 @@ void throw_ball(ProControllerContext& context, const BallThrowOptions& options);
 
 
 
+//  Unit tests for ball_scrolls() and throw_buttons_hold().
 void add_tests_BallThrow(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+}  // namespace PokemonLZA
+}  // namespace NintendoSwitch
+}  // namespace PokemonAutomation
 #endif

@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -71,7 +72,7 @@ struct BallScrollsCase{
 class Test_BallScrolls : public UnitTest{
 public:
     Test_BallScrolls(BallScrollsCase test_case)
-        : UnitTest("PokemonLZA::BallThrow::ball_scrolls - " + test_case.name)
+        : UnitTest(std::format("PokemonLZA::BallThrow::ball_scrolls - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
 
@@ -81,10 +82,10 @@ public:
             return UnitTestResult("Wrong scroll direction.");
         }
         if (actual.count != m_case.expected.count){
-            return UnitTestResult(
-                "Expected " + std::to_string(m_case.expected.count) +
-                " scrolls, got " + std::to_string(actual.count) + "."
-            );
+            return UnitTestResult(std::format(
+                "Expected {} scrolls, got {}.",
+                m_case.expected.count, actual.count
+            ));
         }
         return UnitTestResult(true);
     }
@@ -107,17 +108,17 @@ struct ThrowButtonsHoldCase{
 class Test_ThrowButtonsHold : public UnitTest{
 public:
     Test_ThrowButtonsHold(ThrowButtonsHoldCase test_case)
-        : UnitTest("PokemonLZA::BallThrow::throw_buttons_hold - " + test_case.name)
+        : UnitTest(std::format("PokemonLZA::BallThrow::throw_buttons_hold - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const Milliseconds actual = throw_buttons_hold(m_case.input.options);
         if (actual != m_case.expected.hold){
-            return UnitTestResult(
-                "Expected ZL + ZR held " + std::to_string(m_case.expected.hold.count()) +
-                " ms, got " + std::to_string(actual.count()) + " ms."
-            );
+            return UnitTestResult(std::format(
+                "Expected ZL + ZR held {} ms, got {} ms.",
+                m_case.expected.hold.count(), actual.count()
+            ));
         }
         return UnitTestResult(true);
     }
@@ -133,7 +134,7 @@ BallThrowOptions scrolling(int8_t right_scrolls){
     return options;
 }
 
-}
+}  // namespace
 
 
 
@@ -160,6 +161,6 @@ void add_tests_BallThrow(UnitTestDatabase& database){
 
 
 
-}
-}
-}
+}  // namespace PokemonLZA
+}  // namespace NintendoSwitch
+}  // namespace PokemonAutomation
