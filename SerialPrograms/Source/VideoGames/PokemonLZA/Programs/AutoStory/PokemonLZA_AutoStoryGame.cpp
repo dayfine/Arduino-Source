@@ -51,6 +51,11 @@ StoryArgSpec optional_ms(std::string key, int64_t fallback, std::string why){
     return StoryArgSpec{.key = std::move(key), .type = StoryArgType::INTEGER, .required = false, .fallback = fallback, .why = std::move(why)};
 }
 
+//  An integer that has no value when left out.
+StoryArgSpec optional_int(std::string key, std::string why){
+    return StoryArgSpec{.key = std::move(key), .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt, .why = std::move(why)};
+}
+
 std::vector<StoryActionSpec> make_specs(){
     StoryActionSpec confirm = game_spec("confirm_new_game");
     confirm.console_only = true;
@@ -74,10 +79,7 @@ std::vector<StoryActionSpec> make_specs(){
         }),
         game_spec("mash_to_move_hints", {
             optional_ms("min_length_ms", 0, "the scene's rough length: no quiet failure before it"),
-            StoryArgSpec{
-                .key = "end_after_black_fades", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
-                .why = "end once this many black fades have lifted and settled; the mission banner does not end it",
-            },
+            optional_int("end_after_black_fades", "end 5 s after this many black fades, or on the controls hint; the banner does not end it"),
         }),
         game_spec("text_to_choice"),
         game_spec("choose_0"),
