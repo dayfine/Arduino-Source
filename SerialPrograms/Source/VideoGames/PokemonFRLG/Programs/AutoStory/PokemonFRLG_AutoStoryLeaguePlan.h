@@ -25,7 +25,7 @@
  *    - Every split is largest-remainder, ties to the later fight.
  *    - What a fight leaves of its budget rolls forward to the next.
  *
- *  Between the fights: between_fight_item() (PokemonFRLG_AutoStoryLeagueSteps.h)
+ *  Between the fights: between_fight_action() (PokemonFRLG_AutoStoryLeagueSteps.h)
  *  from each fight's entry HP and PP floors.
  *
  *  The in-battle rules that spend the budget are in

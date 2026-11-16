@@ -214,7 +214,7 @@ struct BetweenFightsInput{
 };
 
 struct BetweenFightsExpectation{
-    std::optional<std::string> item;
+    BetweenFightAction action;
 };
 
 struct BetweenFightsCase{
@@ -222,6 +222,20 @@ struct BetweenFightsCase{
     BetweenFightsInput input;
     BetweenFightsExpectation expectation;
 };
+
+std::string action_text(const BetweenFightAction& action){
+    switch (action.move){
+    case BetweenFightMove::READY:
+        return "ready";
+    case BetweenFightMove::USE_ITEM:
+        return std::format("the {}", action.item.value_or("?"));
+    case BetweenFightMove::READ_HP:
+        return "read the HP";
+    case BetweenFightMove::HP_UNKNOWN:
+        return "HP unknown";
+    }
+    return "?";
+}
 
 class Test_BetweenFights : public UnitTest{
 public:
@@ -240,9 +254,9 @@ public:
         if (next == nullptr){
             return "no fight " + m_case.input.next;
         }
-        const std::optional<std::string> item = between_fight_item(m_case.input.lead, m_case.input.bag, *next);
-        if (item != m_case.expectation.item){
-            return std::format("expected {}, chose {}", m_case.expectation.item.value_or("nothing"), item.value_or("nothing"));
+        const BetweenFightAction action = between_fight_action(m_case.input.lead, m_case.input.bag, *next);
+        if (action != m_case.expectation.action){
+            return std::format("expected {}, chose {}", action_text(m_case.expectation.action), action_text(action));
         }
         return true;
     }
@@ -251,51 +265,68 @@ private:
     BetweenFightsCase m_case;
 };
 
-BetweenFightView lead_at(int hp, int max_hp, int surf_pp = 15, int blizzard_pp = 5){
+BetweenFightView lead_at(std::optional<int> hp, int max_hp, int surf_pp = 15, int blizzard_pp = 5){
     return BetweenFightView{
-        .hp = hp, .max_hp = max_hp, .cure = "",
+        .hp = hp, .max_hp = max_hp, .hp_reread = false, .cure = "",
         .surf_pp = surf_pp, .surf_max_pp = 15, .blizzard_pp = blizzard_pp, .blizzard_max_pp = 5,
     };
 }
+
+//  `lead` after its HP was read again (READ_HP).
+BetweenFightView reread(BetweenFightView lead){
+    lead.hp_reread = true;
+    return lead;
+}
+
+BetweenFightView with_cure(BetweenFightView lead, std::string cure){
+    lead.cure = std::move(cure);
+    return lead;
+}
+
+BetweenFightAction use(std::string item){
+    return BetweenFightAction{.move = BetweenFightMove::USE_ITEM, .item = std::move(item)};
+}
+
+const BetweenFightAction READY{.move = BetweenFightMove::READY};
 
 const BetweenFightsCase BETWEEN_FIGHTS_CASES[] = {
     {
         .name = "into Bruno at 117/165: a Super Potion up to 80%",
         .input = {.lead = lead_at(/*hp=*/117, /*max_hp=*/165), .bag = BAG_NOW, .next = "bruno"},
-        .expectation = {.item = "super-potion"},
+        .expectation = {.action = use("super-potion")},
     },
     {
         .name = "into Bruno at 140/165: nothing",
         .input = {.lead = lead_at(/*hp=*/140, /*max_hp=*/165), .bag = BAG_NOW, .next = "bruno"},
-        .expectation = {.item = std::nullopt},
+        .expectation = {.action = READY},
     },
     {
         .name = "into Agatha at 48/165: nothing, above 27%",
         .input = {.lead = lead_at(/*hp=*/48, /*max_hp=*/165), .bag = BAG_NOW, .next = "agatha"},
-        .expectation = {.item = std::nullopt},
+        .expectation = {.action = READY},
     },
     {
         .name = "into Lance at 48/168: a Super Potion, not a Full Restore",
         .input = {.lead = lead_at(/*hp=*/48, /*max_hp=*/168), .bag = BAG_NOW, .next = "lance"},
-        .expectation = {.item = "super-potion"},
+        .expectation = {.action = use("super-potion")},
     },
     {
         .name = "into Lance at 98/168, no Super Potion left: a Full Restore",
         .input = {.lead = lead_at(/*hp=*/98, /*max_hp=*/168), .bag = {{"full-restore", 5}}, .next = "lance"},
-        .expectation = {.item = "full-restore"},
+        .expectation = {.action = use("full-restore")},
     },
     {
         .name = "paralysed: a Parlyz Heal first",
         .input = {
-            .lead = {.hp = 60, .max_hp = 168, .cure = "parlyz-heal", .surf_pp = 15, .surf_max_pp = 15, .blizzard_pp = 5, .blizzard_max_pp = 5},
+            .lead = with_cure(lead_at(/*hp=*/60, /*max_hp=*/168), "parlyz-heal"),
             .bag = BAG_NOW, .next = "lance",
         },
-        .expectation = {.item = "parlyz-heal"},
+        .expectation = {.action = use("parlyz-heal")},
     },
     {
         .name = "into the Champion with Surf 3, Blizzard 0: the Elixir",
         .input = {.lead = lead_at(/*hp=*/171, /*max_hp=*/171, /*surf_pp=*/3, /*blizzard_pp=*/0), .bag = BAG_NOW, .next = "champion"},
-        .expectation = {.item = "elixir"},
+        .expectation = {.action = use("elixir")},
     },
     {
         .name = "into Lance with Blizzard 0 and no Elixir: the Max Elixir",
@@ -303,7 +334,43 @@ const BetweenFightsCase BETWEEN_FIGHTS_CASES[] = {
             .lead = lead_at(/*hp=*/168, /*max_hp=*/168, /*surf_pp=*/9, /*blizzard_pp=*/0),
             .bag = {{"max-elixir", 1}}, .next = "lance",
         },
-        .expectation = {.item = "max-elixir"},
+        .expectation = {.action = use("max-elixir")},
+    },
+    {
+        .name = "HP unknown: read it again, no Full Restore",
+        .input = {.lead = lead_at(/*hp=*/std::nullopt, /*max_hp=*/165), .bag = BAG_NOW, .next = "bruno"},
+        .expectation = {.action = {.move = BetweenFightMove::READ_HP}},
+    },
+    {
+        .name = "read again at 117/165: a Super Potion up to Bruno's 80%",
+        .input = {.lead = reread(lead_at(/*hp=*/117, /*max_hp=*/165)), .bag = BAG_NOW, .next = "bruno"},
+        .expectation = {.action = use("super-potion")},
+    },
+    {
+        .name = "read again at 140/165: ready for Bruno",
+        .input = {.lead = reread(lead_at(/*hp=*/140, /*max_hp=*/165)), .bag = BAG_NOW, .next = "bruno"},
+        .expectation = {.action = READY},
+    },
+    {
+        .name = "still unknown after reading it again: stop, no Full Restore",
+        .input = {.lead = reread(lead_at(/*hp=*/std::nullopt, /*max_hp=*/165)), .bag = BAG_NOW, .next = "bruno"},
+        .expectation = {.action = {.move = BetweenFightMove::HP_UNKNOWN}},
+    },
+    {
+        .name = "poisoned, no Antidote or Full Heal: a Full Restore",
+        .input = {
+            .lead = with_cure(lead_at(/*hp=*/150, /*max_hp=*/168), "antidote"),
+            .bag = {{"full-restore", 5}, {"super-potion", 6}}, .next = "lance",
+        },
+        .expectation = {.action = use("full-restore")},
+    },
+    {
+        .name = "poisoned with HP unknown: the Antidote before reading the HP",
+        .input = {
+            .lead = with_cure(lead_at(/*hp=*/std::nullopt, /*max_hp=*/168), "antidote"),
+            .bag = {{"antidote", 1}, {"full-restore", 5}}, .next = "lance",
+        },
+        .expectation = {.action = use("antidote")},
     },
 };
 
@@ -323,6 +390,8 @@ struct BudgetedTurnInput{
     std::optional<FightBudget> budget = std::nullopt;
     StatusCondition status = StatusCondition::NONE;
     uint8_t surf_pp = 14;
+    //  The foe's evasion stages (Double Team).
+    int foe_evasion = 0;
 };
 
 struct BudgetedTurnExpectation{
@@ -381,6 +450,7 @@ public:
             return "20.01 bruno: expected budgeted-setup.";
         }
         PolicyState state(supplies.policy);
+        state.foe_evasion_raised(input.foe_evasion);
         const PolicyView view{
             .hp = input.hp, .max_hp = 165, .status = input.status, .speed = 113,
             .foe_index = input.foe_index, .foe_fill = input.foe_fill,
@@ -451,6 +521,15 @@ const BudgetedTurnCase BUDGETED_TURN_CASES[] = {
         .name = "paralysed above the foe's hit: a Parlyz Heal",
         .input = {.foe_index = 1, .hp = 165, .status = StatusCondition::PARALYSIS},
         .expectation = {.item = "parlyz-heal"},
+    },
+    {
+        .name = "no X Accuracy against Double Team: evasion +2, X Accuracy in the budget: attack",
+        .input = {
+            .foe_index = 1, .hp = 165,
+            .budget = FightBudget{.full_restore = 1, .x_accuracy = 3},
+            .foe_evasion = 2,
+        },
+        .expectation = {.item = ""},
     },
 };
 

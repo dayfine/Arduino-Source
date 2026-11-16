@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include <initializer_list>
 #include <utility>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
@@ -109,36 +110,46 @@ std::pair<int, int> move_pp(const PartyMember& lead, std::string_view move){
     return {0, 0};
 }
 
-//  The lead's state between fights, as between_fight_item() reads it, its
-//  item for `next`, and the line that logs both.
-std::optional<std::string> logged_between_item(
-    StoryEnv& env, std::string_view step, const LeagueFightPlan& next, int hp, int max_hp
+//  The lead's state between fights, as between_fight_action() reads it
+//  (`hp_reread`: READ_HP was done this step), its move for `next`, and the
+//  line that logs both.
+BetweenFightAction logged_between_action(
+    StoryEnv& env, std::string_view step, const LeagueFightPlan& next, int max_hp, bool hp_reread
 ){
     const std::pair<int, int> surf = move_pp(env.supplies.lead, "surf");
     const std::pair<int, int> blizzard = move_pp(env.supplies.lead, "blizzard");
     const StatusCondition status = env.supplies.status;
+    const std::optional<int> missing = missing_hp(env.supplies, max_hp);
     const BetweenFightView lead{
-        .hp = hp,
+        .hp = missing ? std::optional<int>(max_hp - std::max(0, *missing)) : std::nullopt,
         .max_hp = max_hp,
+        .hp_reread = hp_reread,
         .cure = status == StatusCondition::NONE ? std::string()
             : !cure_of(status).empty() ? std::string(cure_of(status)) : std::string("full-heal"),
         .surf_pp = surf.first, .surf_max_pp = surf.second,
         .blizzard_pp = blizzard.first, .blizzard_max_pp = blizzard.second,
     };
-    const std::optional<std::string> item = between_fight_item(lead, league_bag(env.supplies), next);
+    const BetweenFightAction action = between_fight_action(lead, league_bag(env.supplies), next);
+    const std::string what = action.move == BetweenFightMove::USE_ITEM ? std::format("the {}", action.item.value_or("?"))
+        : action.move == BetweenFightMove::READ_HP ? std::string("read the HP again")
+        : action.move == BetweenFightMove::HP_UNKNOWN ? std::string("HP still unknown")
+        : std::string("ready");
     env.console.log(std::format(
         "Story: {}: before {}: HP {}/{}, {}, Surf {}/{}, Blizzard {}/{}: {}.",
-        step, next.name, hp, max_hp, status_name(status), surf.first, surf.second,
-        blizzard.first, blizzard.second, item ? std::format("the {}", *item) : std::string("ready")
-    ));
-    return item;
+        step, next.name, lead.hp ? std::to_string(*lead.hp) : std::string("?"), max_hp, status_name(status),
+        surf.first, surf.second, blizzard.first, blizzard.second, what
+    ), action.move == BetweenFightMove::READY || action.move == BetweenFightMove::USE_ITEM ? COLOR_BLACK : COLOR_RED);
+    return action;
 }
 
-//  LEAGUE_BETWEEN_FIGHTS_ACTION: between_fight_item() until it has nothing
-//  more, each used from the bag; a Full Restore, Elixir or Max Elixir
-//  counts against the next fight's budget.
+//  LEAGUE_BETWEEN_FIGHTS_ACTION: between_fight_action()'s moves until it is
+//  READY, each item used from the bag; a Full Restore, Elixir or Max Elixir
+//  counts against the next fight's budget. READ_HP: no overworld reader
+//  has the lead's current HP yet (the summary's POKEMON SKILLS read keeps
+//  only its maximum), so the HP stays unknown and the step fails before
+//  the fight.
 Outcome league_between_fights(StoryEnv& env, const StoryStep& step, int fallback_max_hp){
-    constexpr int MAX_ITEMS = 10;
+    constexpr int MAX_MOVES = 10;
     const std::string* trainer = game_arg<std::string>(step.args, "next");
     if (trainer == nullptr || !env.supplies.league){
         return Pokemon::outcome_failed("bad_args", std::format("{}{}", step.name, env.supplies.league ? "" : ": no League plan (league_start)"));
@@ -148,30 +159,31 @@ Outcome league_between_fights(StoryEnv& env, const StoryStep& step, int fallback
         return Pokemon::outcome_failed("bad_args", std::format("{}: no League fight {}", step.name, *trainer));
     }
     const int max_hp = env.supplies.lead.stats && env.supplies.lead.stats->hp > 0 ? env.supplies.lead.stats->hp : fallback_max_hp;
-    for (int c = 0; c < MAX_ITEMS; c++){
-        const std::optional<int> missing = missing_hp(env.supplies, max_hp);
-        std::optional<std::string> item;
-        if (!missing){
+    bool hp_reread = false;
+    for (int c = 0; c < MAX_MOVES; c++){
+        const BetweenFightAction action = logged_between_action(env, step.name, *next, max_hp, hp_reread);
+        switch (action.move){
+        case BetweenFightMove::READY:
+            return Pokemon::outcome_ok();
+        case BetweenFightMove::READ_HP:
+            hp_reread = true;
+            continue;
+        case BetweenFightMove::HP_UNKNOWN:
             //  Never into a fight on an HP the story doesn't know (Bruno,
             //  console B, 2026-11-16: entered at 71% after "HP unknown").
-            env.console.log(std::format("Story: {}: HP unknown; a Full Restore makes it known.", step.name), COLOR_RED);
-            if (bag_count(env.supplies, "full-restore") > 0){
-                item = "full-restore";
-            }
-        }else{
-            item = logged_between_item(env, step.name, *next, max_hp - std::max(0, *missing), max_hp);
+            return Pokemon::outcome_failed("hp_unknown", std::format("{}: before {}", step.name, next->name));
+        case BetweenFightMove::USE_ITEM:
+            break;
         }
-        if (!item){
-            return Pokemon::outcome_ok();
-        }
-        const bool used = is_lead_recovery_item(*item)
-            ? use_lead_item_from_bag(env, step, *item) == ItemUseEnd::USED
-            : use_recovery_item(env.console, env.context, *item, env.checks, env.language, env.supplies);
+        const std::string item = action.item.value_or("");
+        const bool used = is_lead_recovery_item(item)
+            ? use_lead_item_from_bag(env, step, item) == ItemUseEnd::USED
+            : use_recovery_item(env.console, env.context, item, env.checks, env.language, env.supplies);
         if (!used){
-            env.console.log(std::format("Story: {}: couldn't use the {}; going on.", step.name, *item), COLOR_RED);
+            env.console.log(std::format("Story: {}: couldn't use the {}; going on.", step.name, item), COLOR_RED);
             return Pokemon::outcome_ok();
         }
-        charge_next_fight(env.supplies.league->carried, *item);
+        charge_next_fight(env.supplies.league->carried, item);
     }
     return Pokemon::outcome_ok();
 }
@@ -179,45 +191,45 @@ Outcome league_between_fights(StoryEnv& env, const StoryStep& step, int fallback
 } // namespace
 
 
-std::optional<std::string> between_fight_item(
+BetweenFightAction between_fight_action(
     const BetweenFightView& lead, const BagCounts& bag, const LeagueFightPlan& next
 ){
     //  The PP an Elixir restores to each move (pokefirered items.json).
     constexpr int ELIXIR_PP = 10;
-    if (!lead.cure.empty()){
-        for (const std::string_view item : {std::string_view(lead.cure), std::string_view("full-heal"), std::string_view("full-restore")}){
+    const auto first_held = [&](std::initializer_list<std::string_view> items) -> std::optional<BetweenFightAction>{
+        for (const std::string_view item : items){
             if (held_count(bag, item) > 0){
-                return std::string(item);
+                return BetweenFightAction{.move = BetweenFightMove::USE_ITEM, .item = std::string(item)};
             }
         }
+        return std::nullopt;
+    };
+    if (!lead.cure.empty()){
+        if (std::optional<BetweenFightAction> cure = first_held({lead.cure, "full-heal", "full-restore"})){
+            return *cure;
+        }
+    }
+    if (!lead.hp){
+        return BetweenFightAction{.move = lead.hp_reread ? BetweenFightMove::HP_UNKNOWN : BetweenFightMove::READ_HP};
     }
     const int target = (lead.max_hp * next.entry_hp_percent + 99) / 100;
-    if (lead.hp < target){
-        if (held_count(bag, "super-potion") > 0){
-            return std::string("super-potion");
-        }
-        if (held_count(bag, "full-restore") > 0){
-            return std::string("full-restore");
+    if (*lead.hp < target){
+        if (std::optional<BetweenFightAction> heal = first_held({"super-potion", "full-restore"})){
+            return *heal;
         }
     }
     const bool surf_low = lead.surf_max_pp > 0 && lead.surf_pp < next.surf_pp_floor;
     const bool blizzard_low = lead.blizzard_max_pp > 0 && lead.blizzard_pp < next.blizzard_pp_floor;
     if (!surf_low && !blizzard_low){
-        return std::nullopt;
+        return BetweenFightAction{};
     }
     const bool elixir_reaches =
         std::min(lead.surf_pp + ELIXIR_PP, lead.surf_max_pp) >= std::min(next.surf_pp_floor, lead.surf_max_pp)
         && std::min(lead.blizzard_pp + ELIXIR_PP, lead.blizzard_max_pp) >= std::min(next.blizzard_pp_floor, lead.blizzard_max_pp);
-    if (elixir_reaches && held_count(bag, "elixir") > 0){
-        return std::string("elixir");
-    }
-    if (held_count(bag, "max-elixir") > 0){
-        return std::string("max-elixir");
-    }
-    if (held_count(bag, "elixir") > 0){
-        return std::string("elixir");
-    }
-    return std::nullopt;
+    const std::optional<BetweenFightAction> pp = elixir_reaches
+        ? first_held({"elixir", "max-elixir"})
+        : first_held({"max-elixir", "elixir"});
+    return pp.value_or(BetweenFightAction{});
 }
 
 
