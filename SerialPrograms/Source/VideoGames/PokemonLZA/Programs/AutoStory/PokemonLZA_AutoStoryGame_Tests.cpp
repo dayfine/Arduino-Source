@@ -67,7 +67,9 @@ const StoryDataCase STORY_DATA_CASES[] = {
         .expectation = {.rows =
             "01.00:new_game:autosave 01.01:from_save:unverified 01.02:from_save:unverified 01.03:from_save:unverified "
             "02.01:from_save:unverified 02.02:from_save:unverified 02.03:from_save:unverified 02.04:from_save:unverified "
-            "02.05:from_save:unverified 02.06:from_save:autosave 02.07:from_save:unverified"
+            "02.05:from_save:unverified 02.06:from_save:autosave 02.07:from_save:unverified "
+            "03.01:from_save:autosave 03.02:from_save 03.03:from_save:autosave 03.04:from_save "
+            "03.05:from_save:autosave 03.06:from_save"
         },
     },
 };
@@ -509,6 +511,55 @@ const RunCase RUN_CASES[] = {
             look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)), look({ScreenEvent::SCREEN_STILL}, {}, Milliseconds(21000)),
         }},
         .expectation = {.verdict = "done", .line = "[Save] 02.06: the game autosaved at its end"},
+    },
+    {
+        .name = "03.02's map talk: A and B in turn, done on the party bar held a second",
+        .input = {.checkpoint = "03.02", .first_step = 6, .steps = 1, .looks = {
+            DIALOG, look({}, {}, Milliseconds(2000)), party_bar(Milliseconds(4000)), party_bar(Milliseconds(5100)),
+        }},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A, press B, press A, press B, wait 250ms",
+            .line = "[PLZA] talk_through_map_screen: the party bar held: back in the overworld",
+        },
+    },
+    {
+        .name = "03.02's map talk goes on through the party bar under a text box",
+        .input = {.checkpoint = "03.02", .first_step = 6, .steps = 1, .looks = {
+            look({ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)),
+            look({ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, {}, Milliseconds(2000)),
+            party_bar(Milliseconds(4000)), party_bar(Milliseconds(5100)),
+        }},
+        .expectation = {.verdict = "done", .inputs = "press A, press B, press A, press B, wait 250ms"},
+    },
+    {
+        .name = "03.02's map talk fails with no party bar in 120 s",
+        .input = {.checkpoint = "03.02", .first_step = 6, .steps = 1, .looks = {
+            look({}, {}, Milliseconds(0)), look({}, {}, Milliseconds(121000)),
+        }},
+        .expectation = {.verdict = "failed at after_taunie_battle: map_talk_timeout", .inputs = "press A, press B"},
+    },
+    {
+        .name = "03.03 climbs the ladder: sidestep right, face it, A, then up to the top",
+        .input = {.checkpoint = "03.03", .first_step = 3, .steps = 1, .looks = {CUTSCENE}},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "stick 90deg 600ms walk, release 300ms, stick 0deg 150ms walk, release 300ms, press A, "
+                "stick 0deg 5000ms walk, release 500ms",
+        },
+    },
+    {
+        .name = "03.04's Pokedex: B at the app and at its text, done on the party bar held a second",
+        .input = {.checkpoint = "03.04", .first_step = 2, .steps = 1, .looks = {
+            look({}, {}, Milliseconds(0)), look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(500)),
+            party_bar(Milliseconds(1000)), party_bar(Milliseconds(2100)),
+        }},
+        .expectation = {.verdict = "done", .inputs = "press B, press B, wait 250ms"},
+    },
+    {
+        .name = "03.06's run to the gate needs a console",
+        .input = {.checkpoint = "03.06", .first_step = 4, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .expectation = {.verdict = "failed at to_zone_1_gate: console_only", .inputs = ""},
     },
 };
 

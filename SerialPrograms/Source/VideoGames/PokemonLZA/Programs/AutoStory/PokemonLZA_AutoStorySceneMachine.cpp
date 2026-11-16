@@ -36,7 +36,7 @@ constexpr Milliseconds FADE_WAIT = 30000ms;
 constexpr Milliseconds STILL_WAIT = 10000ms;
 //  The longest a cutscene may hold one still frame.
 constexpr Milliseconds SCENE_STILL_WAIT = 60000ms;
-//  How often blind_press_after presses A.
+//  How often blind_press_after presses.
 constexpr Milliseconds BLIND_PRESS_EVERY = 2000ms;
 //  How often a wait looks again.
 constexpr Milliseconds POLL = 250ms;
@@ -278,6 +278,7 @@ public:
         : m_backend(backend)
         , m_label(label)
         , m_text_button(config.text_button)
+        , m_blind_button(config.blind_button)
         , m_timeline(config, start)
     {}
 
@@ -298,13 +299,25 @@ public:
             return;
         }
         if (scene_screen_presses(screen)){
-            m_backend.press(screen == SceneScreen::DIALOG ? m_text_button : BUTTON_A, 160ms, 240ms);
+            m_backend.press(button_of(screen), 160ms, 240ms);
             return;
         }
         wait(screen);
     }
 
 private:
+    //  The button `screen`'s step presses.
+    Button button_of(SceneScreen screen) const{
+        switch (screen){
+        case SceneScreen::DIALOG:
+            return m_text_button;
+        case SceneScreen::BLIND_PRESS:
+            return m_blind_button;
+        default:
+            return BUTTON_A;
+        }
+    }
+
     void wait(SceneScreen screen){
         switch (screen){
         case SceneScreen::FADE_BLACK:
@@ -345,6 +358,7 @@ private:
     PlzaBackend& m_backend;
     std::string m_label;
     Button m_text_button;
+    Button m_blind_button;
     SceneTimeline m_timeline;
     std::optional<SceneScreen> m_logged_screen;
     std::string m_logged_events;

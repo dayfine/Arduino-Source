@@ -50,10 +50,13 @@ struct SceneMachineConfig{
     //  ...and this long has passed since the start: a cutscene can hold a
     //  still frame longer than `quiet`.
     Milliseconds min_length = Milliseconds(0);
-    //  Presses A every 2 s once nothing busy and no sign of control has
-    //  shown for this long, for text the detectors miss (01.01's ad). A does
-    //  not skip a cutscene.
+    //  Presses `blind_button` every 2 s once nothing busy and no sign of
+    //  control has shown for this long, for text the detectors miss (01.01's
+    //  ad). A does not skip a cutscene.
     std::optional<Milliseconds> blind_press_after = std::nullopt;
+    //  The button of those blind presses: B on a screen that A does not
+    //  close (03.04's Pokedex entry, where A only plays its motions).
+    Button blind_button = BUTTON_A;
     //  Ends at the choice box (CHOICE_BOX) instead of taking its top row.
     bool stop_at_choice = false;
     //  Ends at the battle HUD (BATTLE_STARTED), before anything else.
@@ -88,7 +91,7 @@ enum class SceneScreen{
     HINT_SHOWING,   //  wait: the controls hint, not held a second yet
     NEVER_STARTED,  //  terminal, failing: no scene within start_window
     QUIET_END,      //  terminal, failing unless quiet_is_control: nothing busy for the quiet time, past the minimum length
-    BLIND_PRESS,    //  A: nothing busy and no sign of control for blind_press_after
+    BLIND_PRESS,    //  blind_button: nothing busy and no sign of control for blind_press_after
     SCENE_MOVING,   //  wait: no text, the screen changing
     SCENE_STILL,    //  wait: no text, the screen still since the look before
 };
@@ -100,7 +103,7 @@ std::string_view scene_screen_name(SceneScreen screen);
 bool scene_screen_terminal(SceneScreen screen);
 
 //  Whether this state's step presses (DIALOG the config's text button,
-//  MISSION_COMPLETE and BLIND_PRESS A); the others wait.
+//  BLIND_PRESS its blind button, MISSION_COMPLETE A); the others wait.
 bool scene_screen_presses(SceneScreen screen);
 
 //  The time-dependent part of the machine, apart from the backend so tests
@@ -120,7 +123,7 @@ public:
     //  without a quiet time.
     std::optional<WallClock> quiet_end_due() const;
 
-    //  Whether a blind A press is due at `now` (blind_press_after).
+    //  Whether a blind press is due at `now` (blind_press_after).
     bool blind_press_due(WallClock now) const;
 
 private:

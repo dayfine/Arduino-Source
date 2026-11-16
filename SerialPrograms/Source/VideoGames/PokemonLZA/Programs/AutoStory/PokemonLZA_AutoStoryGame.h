@@ -68,6 +68,15 @@ namespace PokemonLZA{
 //                              the battle tutorial's cards until the battle
 //                              HUD (run_scene_machine())
 //      "story_battle"          the battle, by the backend's battle()
+//      "talk_through_map_screen"   A and B in turn through Taunie's talk
+//                              and the first map (03.02)
+//      "climb_ladder"          the side street's ladder (03.03)
+//      "talk_to_pokedex_screen"    B through the nurse's talk and the
+//                              Pokedex app (03.04)
+//      "run_to_gate"           console_only: straight on to a zone gate's A
+//                              prompt (upstream's
+//                              run_towards_gate_with_A_button()), arg
+//                              "timeout_ms"
 //
 //  Later slices add rows here, each with its handler.
 const std::vector<Pokemon::StoryActionSpec>& plza_story_specs();

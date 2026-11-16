@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <format>
+#include <map>
 #include <optional>
 #include <span>
 #include <string>
@@ -17,8 +18,10 @@
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Data/Pokemon_StoryFiles.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h"
+#include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryConfirmChoices.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
@@ -56,11 +59,15 @@ StoryArgSpec flag(std::string key, std::string why){
     return StoryArgSpec{.key = std::move(key), .type = StoryArgType::BOOLEAN, .required = false, .fallback = false, .why = std::move(why)};
 }
 
+//  `spec`, run only on a console.
+StoryActionSpec console_only(StoryActionSpec spec){
+    spec.console_only = true;
+    return spec;
+}
+
 std::vector<StoryActionSpec> make_specs(){
-    StoryActionSpec confirm = game_spec("confirm_new_game");
-    confirm.console_only = true;
     return {
-        std::move(confirm),
+        console_only(game_spec("confirm_new_game")),
         game_spec("wait_for_platform", {
             optional_ms("timeout_ms", 180000, "no platform this long fails the step"),
         }),
@@ -100,6 +107,12 @@ std::vector<StoryActionSpec> make_specs(){
         StoryActionSpec{.kind = StoryStepKind::MASH, .name = "a", .args = {}},
         game_spec("story_battle_start"),
         game_spec("story_battle"),
+        game_spec("talk_through_map_screen"),
+        game_spec("climb_ladder"),
+        game_spec("talk_to_pokedex_screen"),
+        console_only(game_spec("run_to_gate", {
+            optional_ms("timeout_ms", 8000, "running this long with no A prompt fails the step"),
+        })),
     };
 }
 
@@ -130,6 +143,38 @@ Handler confirm_handler(StoryEnv* env){
         }catch (OperationFailedException& e){
             backend.log(std::format("[PLZA] confirm_new_game failed: {}", e.message()));
             return Pokemon::outcome_failed("confirm_new_game_failed", e.message());
+        }
+        return Pokemon::outcome_ok();
+    };
+}
+
+
+//  "run_to_gate" on the console `env`; none: fails as console_only. Runs
+//  straight on with upstream's run_towards_gate_with_A_button() until the
+//  gate's A prompt; once more after a day/night change, which stops the run.
+//  Fails as "gate_not_reached" when the run ends with no prompt.
+Handler gate_run_handler(StoryEnv* env){
+    if (env == nullptr){
+        return [](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
+            return Pokemon::outcome_failed(std::string(Pokemon::CONSOLE_ONLY), "run_to_gate runs only on a console");
+        };
+    }
+    return [env](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
+        const Milliseconds timeout(Pokemon::story_arg<int64_t>(call.args, "timeout_ms"));
+        //  0: the A prompt, 1: a day/night change, else no prompt.
+        int result = 1;
+        try{
+            for (size_t runs = 0; runs < 2 && result == 1; runs++){
+                result = run_towards_gate_with_A_button(
+                    env->env.console, env->context, /*run_direction_x=*/0, /*run_direction_y=*/1, timeout
+                );
+            }
+        }catch (OperationFailedException& e){
+            backend.log(std::format("[PLZA] run_to_gate failed: {}", e.message()));
+            return Pokemon::outcome_failed("gate_not_reached", e.message());
+        }
+        if (result != 0){
+            return Pokemon::outcome_failed("gate_not_reached", std::format("no gate A prompt in {} ms of running", timeout.count()));
         }
         return Pokemon::outcome_ok();
     };
@@ -321,6 +366,30 @@ Outcome battle_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionC
 }
 
 
+//  "talk_through_map_screen": talk_through_map_screen().
+Outcome map_talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    return talk_through_map_screen(backend);
+}
+
+//  "climb_ladder": climb_ladder().
+Outcome ladder_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    climb_ladder(backend);
+    return Pokemon::outcome_ok();
+}
+
+//  "talk_to_pokedex_screen": the nurse's talk and the Pokedex app (03.04)
+//  until the party bar holds a second, 90 s at most: B at its text and,
+//  every 2 s while neither text nor control shows, at the Pokedex screens,
+//  which only B closes (A plays the entry's motions).
+Outcome pokedex_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    SceneMachineConfig config;
+    config.text_button = BUTTON_B;
+    config.blind_press_after = Milliseconds(0);
+    config.blind_button = BUTTON_B;
+    return run_scene_machine(backend, "talk_to_pokedex_screen", config, 90s);
+}
+
+
 //  After A at what the player faces, how long "talk" waits for its text
 //  box, and how often it looks.
 constexpr Milliseconds TALK_WAIT(5000);
@@ -407,10 +476,34 @@ Handler choose_handler(int index){
 }
 
 
+//  A handler that needs nothing but its step.
+using StepFunction = Outcome (*)(Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&);
+
+//  The actions run by a StepFunction, by name.
+const std::map<std::string_view, StepFunction>& step_functions(){
+    static const std::map<std::string_view, StepFunction> functions{
+        {"mash_to_move_hints", move_hints_step},
+        {"text_to_choice", text_to_choice_step},
+        {"talk", talk_step},
+        {"a", scene_step},
+        {"walk_to_prompt", walk_to_prompt_step},
+        {"story_battle_start", battle_start_step},
+        {"story_battle", battle_step},
+        {"talk_through_map_screen", map_talk_step},
+        {"climb_ladder", ladder_step},
+        {"talk_to_pokedex_screen", pokedex_step},
+        {"walk", walk_step},
+    };
+    return functions;
+}
+
 //  The handler of each of plza_story_specs(), by name.
 Handler plza_handler(StoryEnv* env, const StoryActionSpec& spec){
     if (spec.name == "confirm_new_game"){
         return confirm_handler(env);
+    }
+    if (spec.name == "run_to_gate"){
+        return gate_run_handler(env);
     }
     if (spec.name == "wait_for_platform"){
         return platform_handler(PlatformWait::PLATFORM_ONLY);
@@ -418,34 +511,13 @@ Handler plza_handler(StoryEnv* env, const StoryActionSpec& spec){
     if (spec.name == "opening_to_platform"){
         return platform_handler(PlatformWait::AFTER_AUTOSAVE);
     }
-    if (spec.name == "mash_to_move_hints"){
-        return move_hints_step;
-    }
-    if (spec.name == "text_to_choice"){
-        return text_to_choice_step;
-    }
     if (spec.name == "choose_0"){
         return choose_handler(0);
     }
     if (spec.name == "choose_1"){
         return choose_handler(1);
     }
-    if (spec.name == "talk"){
-        return talk_step;
-    }
-    if (spec.name == "a"){
-        return scene_step;
-    }
-    if (spec.name == "walk_to_prompt"){
-        return walk_to_prompt_step;
-    }
-    if (spec.name == "story_battle_start"){
-        return battle_start_step;
-    }
-    if (spec.name == "story_battle"){
-        return battle_step;
-    }
-    return walk_step;
+    return step_functions().at(spec.name);
 }
 
 //  PLZA's actions over `env` (none: no console), with no save or reload.
