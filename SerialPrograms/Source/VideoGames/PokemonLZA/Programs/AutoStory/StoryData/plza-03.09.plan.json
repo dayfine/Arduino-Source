@@ -17,13 +17,7 @@
       {
         "id": "research_lab_gate",
         "kind": "scene",
-        "why": "step 63: Taunie at the lab gate; with five species registered she goes on",
-        "action": "a"
-      },
-      {
-        "id": "five_registered",
-        "kind": "scene",
-        "why": "step 65: Taunie's scene at the lab gate after 5/5",
+        "why": "steps 63-65: Taunie at the lab gate; with five species registered she goes on to her scene after 5/5, until control. One scene step: nothing starts the 5/5 part, so a scene step for it would wait 45 s on the party bar, as 03.04's after_pokedex did (console B 2026-11-16). UNVERIFIED, NEEDS CONSOLE: no control between the two parts was checked.",
         "action": "a"
       },
       {

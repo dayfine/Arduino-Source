@@ -26,14 +26,8 @@
       {
         "id": "pokedex_app",
         "kind": "game_action",
-        "why": "step 54: the Pokedex app (\"Ready!\"), Chikorita's entry, B on its screen",
+        "why": "steps 54-55: the Pokedex app (\"Ready!\"), Chikorita's entry, B on its screen, then the nurse's wrap-up and Taunie's scene outside, until control outside the Center. Nothing starts step 55's scene, so it plays inside this step: console B 2026-11-16 saw its text, two black fades and the autosave badge, then the party bar outside the Center, and a scene step after it waited 45 s on the party bar.",
         "action": "talk_to_pokedex_screen"
-      },
-      {
-        "id": "after_pokedex",
-        "kind": "scene",
-        "why": "step 55: the nurse's wrap-up, Taunie outside",
-        "action": "a"
       }
     ],
     "metadata": {

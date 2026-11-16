@@ -189,6 +189,40 @@ const LintCase LINT_CASES[] = {
         .expectation = {.errors = "01.01 b: a story battle must follow story_battle_start, which ends on the battle HUD"},
     },
     {
+        .name = "a scene after a talk passes",
+        .input = {
+            .before = {
+                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk_to_prompt", .args = {}},
+                {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
+            },
+            .step = {.kind = Pokemon::StoryStepKind::MASH, .name = "s", .why = "", .action = "a", .args = {}},
+        },
+        .expectation = {.errors = ""},
+    },
+    {
+        //  console B, 2026-11-16: 03.04's talk_to_pokedex_screen played the
+        //  nurse's wrap-up and Taunie's scene to control, and the scene step
+        //  after it waited 45 s on the party bar for a scene already played.
+        .name = "a scene after talk_to_pokedex_screen fails",
+        .input = {
+            .before = {{.kind = Pokemon::StoryStepKind::GAME, .name = "p", .why = "", .action = "talk_to_pokedex_screen", .args = {}}},
+            .step = {.kind = Pokemon::StoryStepKind::MASH, .name = "s", .why = "", .action = "a", .args = {}},
+        },
+        .expectation = {.errors = "01.01 s: a scene must follow what starts it, not talk_to_pokedex_screen, which plays its scenes through to control"},
+    },
+    {
+        .name = "a scene after a scene fails",
+        .input = {
+            .before = {
+                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk_to_prompt", .args = {}},
+                {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
+                {.kind = Pokemon::StoryStepKind::MASH, .name = "s1", .why = "", .action = "a", .args = {}},
+            },
+            .step = {.kind = Pokemon::StoryStepKind::MASH, .name = "s2", .why = "", .action = "a", .args = {}},
+        },
+        .expectation = {.errors = "01.01 s2: a scene must follow what starts it, not a, which plays its scenes through to control"},
+    },
+    {
         .name = "a checkpoint's first step cannot be a talk",
         .input = {.step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}}},
         .expectation = {.errors = "01.01 t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\", or walk_to_prompt)"},
