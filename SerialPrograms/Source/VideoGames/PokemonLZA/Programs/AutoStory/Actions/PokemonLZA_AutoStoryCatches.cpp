@@ -142,13 +142,6 @@ constexpr Milliseconds STOP_WALK_LIMIT(30000);
 //  A walk with no distance read to start from is the longest.
 constexpr Milliseconds FIRST_WALK_LIMIT(90000);
 
-//  The way out of Taunie's rocks (ZoneStart): steps west, LEAVE_STEP
-//  each with the stick straight on after face_heading(), a distance read
-//  after each. Not measured on console: a few steps clear the rocks.
-constexpr double WEST_HEADING = 270;
-constexpr Milliseconds LEAVE_STEP(1000);
-constexpr size_t LEAVE_STEPS = 4;
-
 //  catch_in_zone()'s time in the zone: spawns come back, so a search that
 //  finds nothing new keeps going until this runs out.
 constexpr Milliseconds SEARCH_LIMIT(600000);
@@ -441,26 +434,29 @@ void back_to_zone_spot(StoryEnv& env, PlzaBackend& backend, ZoneSearch& search){
 
 std::string_view start_move_name(ZoneStartMove move){
     switch (move){
-    case ZoneStartMove::LEAVE_WEST:
-        return "a step west out of the rocks";
     case ZoneStartMove::WALK_TO_SPOT:
-        return "the marker walk to the spot";
+        return "off the rocks: the marker walk to the spot";
     case ZoneStartMove::SEARCH:
         return "at the spot: the search";
     case ZoneStartMove::ROCKS_NOT_LEFT:
-        return "still no read after every step west: stop";
+        return "not the read off the rocks the route expects: stop";
     case ZoneStartMove::SPOT_NOT_REACHED:
         return "the marker walk ended off the spot: stop";
     }
     return "?";
 }
 
-//  From the start save at Taunie's rocks to the search spot (ZoneStart):
-//  steps west by the minimap (face_heading()) until a distance read
-//  agrees, then the marker walk to the spot. Fails as "heading_missed",
-//  "rocks_not_left" or "zone_spot_not_reached", before any search.
-Pokemon::Outcome go_to_zone_spot(StoryEnv& env, PlzaBackend& backend){
-    ZoneStart start(LEAVE_STEPS);
+//  From the start save at Taunie's rocks to the search spot by `route`
+//  (ZoneStart): L puts the camera behind the player, who faces the rocks
+//  and the marker; the leg off the rocks, an agreed read in its range,
+//  then the marker walk. Fails as "rocks_not_left" or
+//  "zone_spot_not_reached", before any search.
+Pokemon::Outcome go_to_zone_spot(StoryEnv& env, PlzaBackend& backend, const ZoneStartRoute& route){
+    backend.press(BUTTON_L, /*hold=*/Milliseconds(100), /*release=*/Milliseconds(150));
+    backend.observe();
+    backend.log(std::format("[PLZA] catch_in_zone: at Taunie's rocks, the arrow reads {:.0f} deg", minimap_arrow(env)()));
+    pbf_move_left_joystick(env.context, /*position=*/{route.leg_x, route.leg_y}, route.leg_hold, /*release=*/Milliseconds(300));
+    ZoneStart start(route);
     std::optional<int> distance = read_at_marker(env, backend);
     while (true){
         backend.scope().throw_if_cancelled();
@@ -470,27 +466,19 @@ Pokemon::Outcome go_to_zone_spot(StoryEnv& env, PlzaBackend& backend){
             distance ? std::to_string(*distance) : std::string("not read"), start_move_name(move)
         ));
         switch (move){
-        case ZoneStartMove::LEAVE_WEST:{
-            const Pokemon::Outcome faced = face_heading(env, backend, WEST_HEADING);
-            if (!faced.succeeded()){
-                return faced;
-            }
-            pbf_move_left_joystick(env.context, /*position=*/{0, 1}, LEAVE_STEP, /*release=*/Milliseconds(300));
-            distance = read_at_marker(env, backend);
-            continue;
-        }
         case ZoneStartMove::WALK_TO_SPOT:
-            distance = walk_to_zone_spot(env, backend, *distance, FIRST_WALK_LIMIT);
+            distance = walk_toward_marker(env, backend, route.walk_stop, ROAD_FLOOR, route.walk_limit);
             continue;
         case ZoneStartMove::SEARCH:
             return Pokemon::outcome_ok();
         case ZoneStartMove::ROCKS_NOT_LEFT:
             return Pokemon::outcome_failed("rocks_not_left", std::format(
-                "no agreed marker read after {} steps west of Taunie's rocks", LEAVE_STEPS
+                "the read off Taunie's rocks was {}, not {} to {}",
+                distance ? std::to_string(*distance) : std::string("none"), route.leg_read_min, route.leg_read_max
             ));
         case ZoneStartMove::SPOT_NOT_REACHED:
             return Pokemon::outcome_failed("zone_spot_not_reached", std::format(
-                "the marker walk to {} ended at {}", ZONE_SPOT_DISTANCE,
+                "the marker walk to {} ended at {}", route.walk_stop,
                 distance ? std::to_string(*distance) : std::string("no agreed read")
             ));
         }
@@ -597,7 +585,7 @@ Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCa
         backend.log("[PLZA] catch_in_zone: the party already holds the species: nothing to catch");
         return Pokemon::outcome_ok();
     }
-    const Pokemon::Outcome at_spot = go_to_zone_spot(env, backend);
+    const Pokemon::Outcome at_spot = go_to_zone_spot(env, backend, TAUNIE_ROCKS_ROUTE);
     if (!at_spot.succeeded()){
         return at_spot;
     }

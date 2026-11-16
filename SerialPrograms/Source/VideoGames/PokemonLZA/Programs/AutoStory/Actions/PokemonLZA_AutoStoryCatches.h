@@ -44,10 +44,10 @@ struct ZoneCatchGoal{
 
 //  03.08's catches for the "register five species" quest (3/5 after the
 //  tutorial), in Wild Zone 1. From Taunie's rocks, where the start save
-//  stands, first to the road's spot at 100 by ZoneStart: steps west by the
-//  minimap (face_heading()) until a marker read agrees, then the marker
-//  walk; it fails there, before any search, as "rocks_not_left" or
-//  "zone_spot_not_reached" (or face_heading()'s "heading_missed"). Then
+//  stands, first to the road's spot at 100 by ZoneStart's measured route
+//  (TAUNIE_ROCKS_ROUTE): a leg left off the rocks, a marker read in its
+//  range, then the marker walk; it fails there, before any search, as
+//  "rocks_not_left" or "zone_spot_not_reached". Then
 //  ZoneSearch from the spot, walked back to after each catch, fight and
 //  round of legs: the camera turned in 8 steps with a ZL lock-on after each; a target whose
 //  plate shows no caught mark (lock_target_caught()) is thrown at, and a

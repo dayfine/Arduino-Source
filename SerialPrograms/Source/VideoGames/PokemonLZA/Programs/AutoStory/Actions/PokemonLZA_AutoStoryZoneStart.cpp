@@ -27,18 +27,10 @@ bool at_zone_spot(std::optional<int> distance){
 
 ZoneStartMove ZoneStart::next(std::optional<int> distance){
     if (!m_last){
-        m_last = at_zone_spot(distance) ? ZoneStartMove::SEARCH : ZoneStartMove::LEAVE_WEST;
-    }else if (*m_last == ZoneStartMove::LEAVE_WEST){
-        if (distance){
-            m_last = ZoneStartMove::WALK_TO_SPOT;
-        }else if (m_west_steps >= m_max_west_steps){
-            m_last = ZoneStartMove::ROCKS_NOT_LEFT;
-        }
+        const bool in_range = distance && *distance >= m_route.leg_read_min && *distance <= m_route.leg_read_max;
+        m_last = in_range ? ZoneStartMove::WALK_TO_SPOT : ZoneStartMove::ROCKS_NOT_LEFT;
     }else if (*m_last == ZoneStartMove::WALK_TO_SPOT){
         m_last = at_zone_spot(distance) ? ZoneStartMove::SEARCH : ZoneStartMove::SPOT_NOT_REACHED;
-    }
-    if (*m_last == ZoneStartMove::LEAVE_WEST){
-        m_west_steps++;
     }
     return *m_last;
 }
