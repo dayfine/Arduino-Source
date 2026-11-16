@@ -13,10 +13,10 @@ can drive them with an in-memory channel (`tests/fake_channel.py`).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, FrozenSet, Optional, Tuple, Type
+from typing import Any, Callable, Dict, FrozenSet, Optional, Tuple, Type
 
-__all__ = ['AppChannel', 'AppError', 'Command', 'DescribeProgram', 'ErrorKind', 'GameOpen', 'Journal', 'Snapshot',
-           'Start', 'Stop', 'await_answer']
+__all__ = ['AppChannel', 'AppError', 'Command', 'ConsoleLine', 'DescribeProgram', 'ErrorKind', 'GameOpen', 'Journal',
+           'Preflight', 'SetOption', 'Snapshot', 'Start', 'Stop', 'await_answer']
 
 
 # ---- commands: what the daemon asks for (never caller text)
@@ -51,6 +51,25 @@ class DescribeProgram(Command):
 @dataclass(frozen=True)
 class GameOpen(Command):
     """Print whether a game is in front."""
+
+
+@dataclass(frozen=True)
+class SetOption(Command):
+    """Set one option of the selected program (`key` walks into groups with dots) to a JSON value."""
+    key: str
+    value: Any
+
+
+@dataclass(frozen=True)
+class Preflight(Command):
+    """Stage `options`, run the program's start checks without starting it, restore the options."""
+    options: Dict[str, Any]
+
+
+@dataclass(frozen=True)
+class ConsoleLine(Command):
+    """One console command, already checked by `pa_lab.cfr`'s allowlist (the cfr_batch contract)."""
+    line: str
 
 
 # ---- answers

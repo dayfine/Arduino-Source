@@ -36,7 +36,7 @@ def main(argv=None) -> int:
     serve.add_argument('--read-only', action='store_true',
                        help='serve only console_status and the resources: no inbox tools, no control plane')
     serve.add_argument('--actions', action='store_true',
-                       help='also serve run_program and stop_program (Slice 5a): they start and stop the program')
+                       help='also serve preflight_program, run_program, stop_program and cfr_batch (Slice 5): they start and stop the program and press buttons')
     stdio = sub.add_parser('serve-stdio', help='run the read-only MCP server on stdio (for .mcp.json)')
     stdio.add_argument('--profile-dir', required=True, help="the console's SerialPrograms profile folder")
     stdio.add_argument('--keepawake-log', default='~/BDSPLab/keepawake.log')

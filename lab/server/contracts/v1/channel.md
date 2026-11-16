@@ -40,6 +40,9 @@ the request stops at its first failing line. The commands the daemon sends:
 | Snapshot | `snapshot frame <timeout_ms>` |
 | Describe program | `describe_program` |
 | Game open | `game_open` |
+| Set an option (before a start) | `set START_SEGMENT 3`, `set NOTIFICATIONS.Enabled false` (canonical JSON value) |
+| Preflight (proposed; no app has it yet) | `preflight {"LANGUAGE":"en","START_SEGMENT":3}` |
+| cfr_batch line | the line as given, after `pa_lab.cfr`'s allowlist (`press B 160 640`) |
 
 ## Journal
 
@@ -59,7 +62,7 @@ end
 - `error <line> (<command>): <message>`: the first failure; nothing after it ran.
 - `end`: always last. A journal without it is not finished (the app writes `.tmp` and renames).
 - Any other line is a command's printed reply (`describe_program {...}`, `game_open yes`,
-  `game_open no home`, `snapshot saved instance=... frame_seq=... captured_at=... after=... path=...`).
+  `game_open no home`, `preflight {...}`, `set START_SEGMENT = 3`, `snapshot saved instance=... frame_seq=... captured_at=... after=... path=...`).
 
 Error messages the daemon tells apart:
 

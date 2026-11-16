@@ -501,6 +501,8 @@ APP_STATE = Obj([
             F('at', Timestamp()),
         ], rules=[_transition_request_id])), doc='null until the first start/stop of this instance'),
         F('paused', Nullable(Str()), required=False, doc='legacy paused=: breakpoint label while waiting'),
+        F('options_hash', Nullable(Str()), required=False,
+          doc="SHA-256 of the selected program's full option JSON (#601); absent from older apps"),
     ])),
     F('controller', Obj([
         F('state', Enum('ready', 'not_connected', 'no_console'),
@@ -600,8 +602,7 @@ TOOL_ARGUMENTS: Dict[str, Spec] = {
     'release_console': Obj([], open=False),
     'preflight_program': Obj([PANEL_ARG, F('options', AnyObject())], open=False),
     'run_program': Obj([PANEL_ARG, F('options', AnyObject()),
-                        F('preflight_token', Str(),
-                          doc='from preflight_program (Slice 5b); required in v1, Slice 5a does not check it')],
+                        F('preflight_token', Str(), doc='from a passed preflight_program with the same panel and options')],
                        open=False),
     'stop_program': Obj([], open=False),
     'cfr_batch': Obj([F('lines', ListOf(Str(), min_items=1, max_items=200))], open=False),

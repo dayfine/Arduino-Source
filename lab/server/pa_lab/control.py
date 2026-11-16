@@ -36,6 +36,7 @@ DEFAULT_TTL_S = 1200
 MAX_WAIT_S = 60.0
 DEFAULT_PAGE = 100
 MAX_PAGE = 500
+PREFLIGHT_KEEP_S = 86400  # a passed preflight's row; its token is good for far less (preflight.TOKEN_TTL_S)
 POLL_S = 0.2  # another process's writes are seen by polling; this process's wake the waiters
 
 
@@ -283,7 +284,7 @@ class ControlPlane:
             return self._record(self._request_row(conn, client_id, req['tool'], req['request_id'])), True
 
     def action(self, client_id: str, tool: str, request_id: str) -> Optional[Dict[str, Any]]:
-        """What a run_program / stop_program request sent: console, instance_id, inbox_name, written_at."""
+        """What an action request (run, stop, preflight, cfr_batch) sent: console, instance_id, inbox_name, written_at."""
         row = self.db.read().execute('SELECT * FROM actions WHERE client_id = ? AND tool = ? AND request_id = ?',
                                      (client_id, tool, request_id)).fetchone()
         return None if row is None else {k: row[k] for k in row.keys()}
@@ -303,11 +304,48 @@ class ControlPlane:
         return None if row is None else self._record(row)
 
     def pending_actions(self, console: str) -> List[Dict[str, Any]]:
-        """Unresolved run_program / stop_program requests on `console`, oldest first."""
+        """Unresolved action requests on `console`, oldest first."""
         rows = self.db.read().execute(
             "SELECT a.* FROM actions a JOIN requests r USING (client_id, tool, request_id) "
             "WHERE a.console = ? AND r.status = 'pending' ORDER BY a.written_at", (console,)).fetchall()
         return [{k: row[k] for k in row.keys()} for row in rows]
+
+    def request_token_hash(self, client_id: str, tool: str, request_id: str) -> Optional[str]:
+        """The hash of the lease token a request was made with (never the token)."""
+        row = self._request_row(self.db.read(), client_id, tool, request_id)
+        return None if row is None else row['token_hash']
+
+    # ---- preflights and save marks (Slice 5b) ---------------------------------------------------
+
+    def issue_preflight(self, console: str, request_id: str, token: str, binding: Dict[str, Any]) -> str:
+        """Stores a passed preflight under its token's hash; returns when it was issued."""
+        self._check_console(console)
+        with self._writing() as conn:
+            stamp = self._stamp()
+            conn.execute('INSERT INTO preflights (token_hash, console, request_id, binding, issued_at) '
+                         'VALUES (?, ?, ?, ?, ?)', (_hash(token), console, request_id, _json(binding), stamp))
+            return stamp
+
+    def preflight(self, token: str) -> Optional[Dict[str, Any]]:
+        """The stored preflight a token names: console, request_id, binding, issued_at; None if unknown."""
+        row = self.db.read().execute('SELECT * FROM preflights WHERE token_hash = ?', (_hash(token),)).fetchone()
+        if row is None:
+            return None
+        return {'console': row['console'], 'request_id': row['request_id'], 'binding': json.loads(row['binding']),
+                'issued_at': row['issued_at']}
+
+    def mark_save_stale(self, console: str, reason: str, request_id: str) -> str:
+        """Records that something (a cfr_batch) may have changed the game since the last save fact."""
+        self._check_console(console)
+        with self._writing() as conn:
+            stamp = self._stamp()
+            conn.execute('INSERT OR REPLACE INTO save_marks (console, reason, at, request_id) VALUES (?, ?, ?, ?)',
+                         (console, reason, stamp, request_id))
+            return stamp
+
+    def save_mark(self, console: str) -> Optional[Dict[str, Any]]:
+        row = self.db.read().execute('SELECT * FROM save_marks WHERE console = ?', (console,)).fetchone()
+        return None if row is None else {'reason': row['reason'], 'at': row['at'], 'request_id': row['request_id']}
 
     def finish_action(self, client_id: str, tool: str, request_id: str, result: Optional[Dict[str, Any]] = None,
                       refusal: Optional[Dict[str, Any]] = None,
@@ -444,6 +482,9 @@ class ControlPlane:
                     if now - timestamps.parse(row['completed_at']) > r.request_ttl_s]
             conn.executemany('DELETE FROM requests WHERE client_id = ? AND tool = ? AND request_id = ?', done)
             conn.executemany('DELETE FROM actions WHERE client_id = ? AND tool = ? AND request_id = ?', done)
+            expired = [row['token_hash'] for row in conn.execute('SELECT token_hash, issued_at FROM preflights')
+                       if now - timestamps.parse(row['issued_at']) > PREFLIGHT_KEEP_S]
+            conn.executemany('DELETE FROM preflights WHERE token_hash = ?', [(h,) for h in expired])
         self._appended = 0
         return {'events': events, 'requests': len(done), 'cursors': len(stale)}
 

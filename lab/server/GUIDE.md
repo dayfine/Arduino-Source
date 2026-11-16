@@ -85,11 +85,18 @@ retried request safe, and an event log. None of it presses buttons yet.
 **Starting and stopping a program (Slice 5a).** `run_program` and `stop_program` exist, but only
 when the server is started with `serve --actions`, which nothing uses yet; your session connection
 stays read-only. An agent holding the console's lease can start the program selected in the app
-(with its current options) and stop it. It is refused whenever you hold the console (you clicked
+(5b: only after its start checks pass with the options it will use) and stop it. It is refused whenever you hold the console (you clicked
 Start or Stop), when another program is running, when the app is not running, or when the
 selected program is not the one asked for. If you click Start or Stop while an agent's start or
 stop is under way, yours wins and the agent's request is marked failed. Every start and stop is
 one record, and a retried request never starts the program twice.
+
+**Start checks before a start, options, debug batches (Slice 5b, server side).** Also only with
+`serve --actions`: an agent first runs the program's start checks with the options it wants
+(`preflight_program`), and can start only with the token that returns, within two minutes and
+only if nothing changed. `cfr_batch` sends a short allowlisted button batch for debugging and
+marks the save stale. The app cannot yet run the start checks on request, so on the real console
+nothing can be started this way yet. See [guide/actions.md](guide/actions.md).
 
 ## What comes next
 
@@ -99,7 +106,7 @@ are updated as each piece lands.
 | Slice | What you would get | Page |
 |---|---|---|
 | 4 (rest) | Every program lists what it needs before it starts; FRLG AutoStory's list is next (fork #488) | [start-checks.md](guide/start-checks.md) |
-| 5 | Leased actions: an agent asks to run or stop a program; the server refuses whenever you hold the console, and (5b) when a start check fails. Every action gets exactly one record. 5a is built in #592, not switched on. | [actions.md](guide/actions.md) |
+| 5 | Leased actions: an agent asks to run or stop a program; the server refuses whenever you hold the console, and (5b) when a start check fails. Every action gets exactly one record. 5a is built in #592 and 5b's server side on branch `lab/server-slice-5b`; neither is switched on, and the app does not yet run start checks on request. | [actions.md](guide/actions.md) |
 | 6 | Save facts: the server knows which save is on the console and refuses a run that would start from the wrong one; run records become readable | [saves.md](guide/saves.md) |
 | 7 | The server launches and supervises the lab app itself, so a build always starts with the right profile | [app-lifecycle.md](guide/app-lifecycle.md) |
 | 8 | Optional: a local worker for builds and test runs | [worker.md](guide/worker.md) |

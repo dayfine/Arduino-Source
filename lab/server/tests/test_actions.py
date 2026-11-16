@@ -12,7 +12,7 @@ from unittest import mock
 
 from pa_lab import actions, channel_file, contracts, control, lab_reader, mcp_server
 from tests.control_fixtures import START, acquire, new_id, open_plane, release, temp_db_path
-from tests.fake_lab import FakeApp, FakeClock, FakeLab, golden
+from tests.fake_lab import PRECHECKS, FakeApp, FakeClock, FakeLab, describe_reply, golden
 
 PANEL = 'PokemonFRLG:AutoStory'
 CLIENT = 'claude:frlg-lane'
@@ -27,14 +27,17 @@ def stopped_app():
     return doc
 
 
-# The v1 contract requires a preflight_token; Slice 5a does not check it (5b binds it to a preflight).
-UNCHECKED_TOKEN = 'pf1.unchecked-in-5a'
+NO_TOKEN = 'pf1.never-issued'
 
 
 def run_request(token, request_id=None, panel=PANEL, options=None, **arguments):
     return {'schema': 1, 'request_id': request_id or new_id(), 'console': 'B', 'lease_token': token,
-            'arguments': dict({'panel': panel, 'options': {} if options is None else options,
-                               'preflight_token': UNCHECKED_TOKEN}, **arguments)}
+            'arguments': dict({'panel': panel, 'options': {} if options is None else options}, **arguments)}
+
+
+def preflight_request(token, request_id=None, panel=PANEL, options=None):
+    return {'schema': 1, 'request_id': request_id or new_id(), 'console': 'B', 'lease_token': token,
+            'arguments': {'panel': panel, 'options': {} if options is None else options}}
 
 
 def stop_request(token, request_id=None):
@@ -48,6 +51,7 @@ class ActionTest(unittest.TestCase):
         self.lab = FakeLab(self)
         self.lab.write_state(stopped_app())
         self.app = FakeApp(self.lab, self.clock)
+        self.app.replies['describe_program'] = describe_reply(prechecks=PRECHECKS)
         self.alive = True
         self.path = temp_db_path(self)
         self.open_daemon()
@@ -67,11 +71,26 @@ class ActionTest(unittest.TestCase):
     def run_program(self, request):
         return self.actions.run_program(CLIENT, request)
 
+    def preflight(self, request):
+        return self.actions.preflight_program(CLIENT, request)
+
+    def run_req(self, token, request_id=None, panel=PANEL, options=None, **arguments):
+        """A run request with a token from a preflight of the same panel and options made now; when
+        that preflight does not pass, a token never issued (for refusals checked before the token)."""
+        if 'preflight_token' not in arguments:
+            try:
+                record = self.preflight(preflight_request(token, panel=panel, options=options))
+            except control.Refused:
+                record = {'status': 'refused'}
+            passed = record['status'] == 'completed'
+            arguments['preflight_token'] = record['result']['preflight_token'] if passed else NO_TOKEN
+        return run_request(token, request_id, panel, options, **arguments)
+
     def stop_program(self, request):
         return self.actions.stop_program(CLIENT, request)
 
     def started(self, token):
-        record = self.run_program(run_request(token))
+        record = self.run_program(self.run_req(token))
         self.assertEqual(record['status'], 'completed', record)
         return record
 
@@ -105,10 +124,11 @@ class ActionTest(unittest.TestCase):
 class RunTests(ActionTest):
     def test_a_run_starts_once_and_the_lease_runs(self):
         token = self.acquired()
-        request = run_request(token)
+        request = self.run_req(token)
         record = self.run_program(request)
         self.assertEqual(record['status'], 'completed')
-        self.assertEqual(record['arguments'], {'panel': PANEL, 'options': {}, 'preflight_token': UNCHECKED_TOKEN})
+        self.assertEqual(record['arguments'], {'panel': PANEL, 'options': {},
+                                               'preflight_token': request['arguments']['preflight_token']})
         self.assertEqual(record['result']['correlated_by'], 'request_id')
         self.assertIsNone(record['result']['ended'])
         self.assertEqual(self.sent(), [(request['request_id'], 'start 10')])
@@ -120,7 +140,7 @@ class RunTests(ActionTest):
 
     def test_an_exact_retry_returns_the_stored_record_and_sends_nothing(self):
         token = self.acquired()
-        request = run_request(token)
+        request = self.run_req(token)
         first = self.run_program(request)
         self.clock.sleep(5)
         again = self.run_program(request)
@@ -129,7 +149,7 @@ class RunTests(ActionTest):
 
     def test_a_retry_of_a_refusal_returns_the_same_refusal(self):
         token = self.acquired()
-        request = run_request(token, panel='PokemonBDSP:AutoStory')
+        request = self.run_req(token, panel='PokemonBDSP:AutoStory')
         first = self.run_program(request)
         self.lab.update_state(**{'panel.id': 'PokemonBDSP:AutoStory'})
         again = self.run_program(request)
@@ -139,11 +159,11 @@ class RunTests(ActionTest):
 
     def test_a_duplicate_while_the_first_is_in_flight_gets_the_pending_record(self):
         token = self.acquired()
-        request = run_request(token)
+        request = self.run_req(token)
         seen = {}
         self.on_first_sleep(lambda: seen.update(
             duplicate=self.run_program(request),
-            other=self.run_program(run_request(token))))
+            other=self.run_program(run_request(token, preflight_token=NO_TOKEN))))
         record = self.run_program(request)
         self.assertEqual(seen['duplicate']['status'], 'pending')
         self.assertEqual((seen['other']['status'], seen['other']['refusal']['code']),
@@ -154,9 +174,9 @@ class RunTests(ActionTest):
     def test_the_same_request_id_with_other_arguments_is_refused_unstored(self):
         token = self.acquired()
         request_id = new_id()
-        self.run_program(run_request(token, request_id))
+        self.run_program(self.run_req(token, request_id))
         with self.assertRaises(control.Refused) as raised:
-            self.run_program(run_request(token, request_id, panel='PokemonBDSP:AutoStory'))
+            self.run_program(self.run_req(token, request_id, panel='PokemonBDSP:AutoStory'))
         self.assertEqual(raised.exception.refusal['code'], 'request_id_reused')
 
     def test_refusals_send_nothing_and_are_stored(self):
@@ -192,8 +212,6 @@ class RunTests(ActionTest):
             dict(name='the app is not running', input=(app_gone, {}), expectation='app_unavailable'),
             dict(name='another panel is selected', input=(other_panel, {}), expectation='invalid_arguments'),
             dict(name='the settings page is selected', input=(settings_page, {}), expectation='panel_not_program'),
-            dict(name='options to stage', input=(None, {'options': {'START_SEGMENT': 3}}),
-                 expectation='invalid_arguments'),
             dict(name='the controller is not ready', input=(controller, {}), expectation='controller_not_ready'),
             dict(name='a lab script owns the channel', input=(owner_claimed, {}), expectation='console_held_by_agent'),
         ]
@@ -204,7 +222,7 @@ class RunTests(ActionTest):
                 setup, changes = case['input']
                 if setup is not None:
                     setup(self)
-                request = run_request(changes.pop('lease_token', token), **changes)
+                request = run_request(changes.pop('lease_token', token), preflight_token=NO_TOKEN, **changes)
                 record = self.run_program(request)
                 self.assertEqual((record['status'], record['refusal']['code']), ('refused', case['expectation']))
                 self.assertEqual(self.run_program(request), record)
@@ -263,12 +281,12 @@ class RaceTests(ActionTest):
     def test_ui_takeover_during_start(self):
         token = self.acquired()
         self.app.after['start'] = lambda app: app.transition('stop', 'ui')
-        record = self.run_program(run_request(token))
+        record = self.run_program(self.run_req(token))
         self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'console_held_by_user'))
         evidence = record['refusal']['evidence']
         self.assertEqual((evidence['started'], evidence['run_id']), (True, None))
         self.assertEqual(self.lease(), 'user')
-        retry = self.run_program(run_request(token))
+        retry = self.run_program(self.run_req(token))
         self.assertEqual(retry['refusal']['code'], 'console_held_by_user')
         self.assertEqual(len(self.sent()), 1)
 
@@ -294,13 +312,13 @@ class RaceTests(ActionTest):
         token = self.acquired()
         self.clock.sleep(1199)
         self.clock.sleep(1)
-        record = self.run_program(run_request(token))
+        record = self.run_program(self.run_req(token))
         self.assertEqual(record['refusal']['code'], 'lease_expired')
         self.assertEqual(self.sent(), [])
 
     def test_app_restart_between_requests(self):
         token = self.acquired()
-        request = run_request(token)
+        request = self.run_req(token)
         self.run_program(request)
         self.assertEqual(self.lease(), 'agent_running')
         restarted = stopped_app()
@@ -326,9 +344,10 @@ class RaceTests(ActionTest):
         def restart(app):
             app.lab.update_state(**{'instance.id': NEW_INSTANCE, 'program.state': 'stopped',
                                     'program.last_transition': None})
+        request = self.run_req(token)
         self.app.hold.add('start')
         self.on_first_sleep(lambda: restart(self.app))
-        record = self.run_program(run_request(token))
+        record = self.run_program(request)
         self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'))
         self.assertEqual(record['refusal']['evidence']['reason'], 'instance_replaced')
         self.assertEqual(self.lease(), 'agent_idle')
@@ -339,7 +358,7 @@ class RaceTests(ActionTest):
                 self.setUp()
                 token = self.acquired()
                 self.app.after['start'] = lambda app: app.transition('stop', source)
-                record = self.run_program(run_request(token))
+                record = self.run_program(self.run_req(token))
                 self.assertEqual(record['status'], 'completed')
                 self.assertEqual(record['result']['ended']['source'], source)
                 self.assertEqual(record['result']['correlated_by'], 'time')
@@ -360,7 +379,7 @@ class RaceTests(ActionTest):
     def test_the_run_ends_after_the_status_read_but_before_the_lease_runs(self):
         """observe applies the run's end before finish_action: the lease must not enter agent_running."""
         token = self.acquired()
-        request = run_request(token)
+        request = self.run_req(token)
         self.app.hold.add('start')
         record = self.run_program(request)
         self.assertEqual(record['status'], 'pending')
@@ -378,8 +397,9 @@ class RaceTests(ActionTest):
 class TicketTests(ActionTest):
     def test_a_request_the_app_never_took_is_withdrawn(self):
         token = self.acquired()
+        request = self.run_req(token)
         self.app.serve = False
-        record = self.run_program(run_request(token))
+        record = self.run_program(request)
         self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'timeout'))
         self.assertEqual(self.inbox(), [])
         self.app.serve = True
@@ -389,7 +409,7 @@ class TicketTests(ActionTest):
 
     def test_a_taken_request_stays_pending_and_settles_after_a_daemon_restart(self):
         token = self.acquired()
-        request = run_request(token)
+        request = self.run_req(token)
         self.app.hold.add('start')
         record = self.run_program(request)
         self.assertEqual(record['status'], 'pending')
@@ -404,7 +424,7 @@ class TicketTests(ActionTest):
     def test_a_pending_request_fails_when_the_app_exits(self):
         token = self.acquired()
         self.app.hold.add('start')
-        request = run_request(token)
+        request = self.run_req(token)
         self.assertEqual(self.run_program(request)['status'], 'pending')
         self.alive = False
         self.actions.settle_pending('B')
@@ -418,8 +438,9 @@ class LostRequestTests(ActionTest):
 
     def test_a_failed_inbox_write_is_a_refusal_and_blocks_nothing(self):
         token = self.acquired()
+        request = self.run_req(token)
         with mock.patch.object(channel_file.FileChannel, 'send', side_effect=OSError(28, 'No space left on device')):
-            record = self.run_program(run_request(token))
+            record = self.run_program(request)
         self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'))
         self.assertEqual(record['refusal']['evidence']['reason'], 'inbox_write_failed')
         self.assertEqual(self.sent(), [])
@@ -428,7 +449,7 @@ class LostRequestTests(ActionTest):
     def test_a_request_never_written_is_settled_as_not_sent(self):
         """The daemon died between storing the record and writing the request."""
         token = self.acquired()
-        request = run_request(token)
+        request = self.run_req(token)
         with mock.patch.object(channel_file.FileChannel, 'send'):
             first = self.run_program(request)
         self.open_daemon()
@@ -441,7 +462,7 @@ class LostRequestTests(ActionTest):
     def test_a_lab_script_stop_after_the_start_settles_the_run(self):
         token = self.acquired()
         self.app.after['start'] = lambda app: app.transition('stop', 'lab', new_id())
-        record = self.run_program(run_request(token))
+        record = self.run_program(self.run_req(token))
         self.assertEqual(record['status'], 'completed', record)
         self.assertEqual((record['result']['ended']['source'], record['result']['correlated_by']), ('lab', 'time'))
         self.assertEqual(self.lease(), 'agent_idle')
@@ -460,7 +481,7 @@ class LostRequestTests(ActionTest):
         """disk_gc.sh prunes Lab/done and Lab/outbox; a request seen taken stays taken."""
         token = self.acquired()
         self.app.hold.add('start')
-        request = run_request(token)
+        request = self.run_req(token)
         self.assertEqual(self.run_program(request)['status'], 'pending')
         name = self.plane.action(CLIENT, 'run_program', request['request_id'])['inbox_name']
         (self.lab.dir / 'done' / (name + '.txt')).unlink()
@@ -475,7 +496,7 @@ class LostRequestTests(ActionTest):
     def test_a_reused_request_id_is_not_answered_by_an_old_journal(self):
         """A request_id used again after compaction dropped its record gets its own inbox name."""
         token = self.acquired()
-        request = run_request(token)
+        request = self.run_req(token)
         self.app.owner = 'lab-script'
         first = self.run_program(request)
         self.assertEqual((first['status'], first['refusal']['code']), ('failed', 'console_held_by_agent'))
@@ -492,7 +513,7 @@ class LeaseWhilePendingTests(ActionTest):
     """The lease cannot end while a run_program is pending: the run would start unleased."""
 
     def pending_run(self, token):
-        request = run_request(token)
+        request = self.run_req(token)
         self.app.hold.add('start')
         self.assertEqual(self.run_program(request)['status'], 'pending')
         return request
@@ -594,7 +615,10 @@ class McpTests(ActionTest):
                 server = mcp_server.LabMcp({'B': self.reader}, control_plane=self.plane,
                                            actions=self.actions if case['input']['actions'] else None)
                 names = [t['name'] for t in server.call('tools/list', {})['tools']]
-                self.assertEqual('run_program' in names and 'stop_program' in names, case['expectation'])
+                self.assertEqual({'preflight_program', 'run_program', 'stop_program', 'cfr_batch'} <= set(names),
+                                 case['expectation'])
+                self.assertEqual(bool({'preflight_program', 'run_program', 'stop_program', 'cfr_batch'} & set(names)),
+                                 case['expectation'])
 
     def test_read_only_mode_refuses_actions(self):
         with self.assertRaises(ValueError):
@@ -603,16 +627,19 @@ class McpTests(ActionTest):
     def test_run_and_stop_through_tools_call(self):
         server = mcp_server.LabMcp({'B': self.reader}, control_plane=self.plane, actions=self.actions)
         token = self.acquired()
+        checked = server.call('tools/call', {'name': 'preflight_program', 'arguments': {
+            'console': 'B', 'request_id': new_id(), 'lease_token': token, 'panel': PANEL, 'options': {}}},
+            client=CLIENT)
+        self.assertFalse(checked['isError'], checked)
+        preflight_token = checked['structuredContent']['result']['preflight_token']
         run = server.call('tools/call', {'name': 'run_program', 'arguments': {
             'console': 'B', 'request_id': new_id(), 'lease_token': token, 'panel': PANEL, 'options': {},
-            'preflight_token': UNCHECKED_TOKEN}},
-            client=CLIENT)
+            'preflight_token': preflight_token}}, client=CLIENT)
         self.assertFalse(run['isError'], run)
         self.assertEqual(run['structuredContent']['status'], 'completed')
         refused = server.call('tools/call', {'name': 'run_program', 'arguments': {
             'console': 'B', 'request_id': new_id(), 'lease_token': token, 'panel': PANEL, 'options': {},
-            'preflight_token': UNCHECKED_TOKEN}},
-            client=CLIENT)
+            'preflight_token': preflight_token}}, client=CLIENT)
         self.assertTrue(refused['isError'])
         self.assertEqual(refused['structuredContent']['refusal']['code'], 'program_running')
         contracts.validate('refusal', refused['structuredContent'])

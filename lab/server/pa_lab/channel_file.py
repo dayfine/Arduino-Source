@@ -12,14 +12,15 @@ docs/design/Agent-Integration.md, "Transport: now and later".
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import secrets
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Type
+from typing import Any, Dict, Optional, Tuple, Type
 
-from pa_lab.channel import (AppChannel, AppError, Command, DescribeProgram, ErrorKind, GameOpen, Journal, Snapshot,
-                            Start, Stop)
+from pa_lab.channel import (AppChannel, AppError, Command, ConsoleLine, DescribeProgram, ErrorKind, GameOpen, Journal,
+                            Preflight, SetOption, Snapshot, Start, Stop)
 
 __all__ = ['FileChannel', 'parse_journal', 'render']
 
@@ -31,7 +32,13 @@ JOURNAL_ERROR_RE = re.compile(r'^error (\d+) \(([^)]*)\): (.*)$')
 FIRST_COMMAND_LINE = 2
 PROGRAM_IS_RE = re.compile(r'^Program is ([A-Z_]+)\.$')
 VERBS: Dict[str, Type[Command]] = {'start': Start, 'stop': Stop, 'snapshot': Snapshot,
-                                   'describe_program': DescribeProgram, 'game_open': GameOpen}
+                                   'describe_program': DescribeProgram, 'game_open': GameOpen, 'set': SetOption,
+                                   'preflight': Preflight}
+
+
+def _json(value: Any) -> str:
+    """Canonical one-line JSON."""
+    return json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
 
 
 def render(command: Command) -> str:
@@ -46,6 +53,12 @@ def render(command: Command) -> str:
         return 'describe_program'
     if isinstance(command, GameOpen):
         return 'game_open'
+    if isinstance(command, SetOption):
+        return 'set {} {}'.format(command.key, _json(command.value))
+    if isinstance(command, Preflight):
+        return 'preflight ' + _json(command.options)
+    if isinstance(command, ConsoleLine):
+        return command.line
     raise TypeError('no request line for {!r}'.format(command))
 
 

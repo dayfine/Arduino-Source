@@ -1,5 +1,5 @@
 > **DRAFT.** This page describes a feature that is only partly built. It is updated as each piece lands.
-> Status (2026-11-15): the check list and `describe_program` are built ([#485](https://github.com/dayfine/Arduino-Source/pull/485), [#511](https://github.com/dayfine/Arduino-Source/pull/511), [#512](https://github.com/dayfine/Arduino-Source/pull/512)); FRLG AutoStory's list is a design note ([#488](https://github.com/dayfine/Arduino-Source/pull/488)); the server does not yet run the checks before a start (that is [actions.md](actions.md), Slice 5b).
+> Status (2026-11-15): the check list and `describe_program` are built ([#485](https://github.com/dayfine/Arduino-Source/pull/485), [#511](https://github.com/dayfine/Arduino-Source/pull/511), [#512](https://github.com/dayfine/Arduino-Source/pull/512)); FRLG AutoStory's list is a design note ([#488](https://github.com/dayfine/Arduino-Source/pull/488)); the server side of running them before a start is built on branch `lab/server-slice-5b` ([actions.md](actions.md), Slice 5b), but the app cannot yet run them without starting the program, so today they still run only when the program starts.
 
 # Start checks: what a program needs before it presses anything
 
@@ -18,6 +18,10 @@ them presses a button, resets, saves or changes an option.
   before any reset.
 - **Clear refusals.** The first failing check stops the start with a message saying which
   check failed and what it needs.
+- **Checked before an agent starts anything.** An agent asks the server to run the checks with
+  the options it wants (`preflight_program`); your own option values are put back afterwards,
+  pass or fail. It can start the program only right after the checks pass, with exactly those
+  options. A program without a list cannot be started by an agent at all.
 
 ## Example
 
