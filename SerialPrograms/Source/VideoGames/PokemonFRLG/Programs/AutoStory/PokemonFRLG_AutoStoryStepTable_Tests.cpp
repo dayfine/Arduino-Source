@@ -23,8 +23,15 @@
 #include "PokemonFRLG_AutoStoryFlyLanding.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
+#include "PokemonFRLG_AutoStoryBattleBag.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryItemsPocketChange.h"
+#include "PokemonFRLG_AutoStoryMartPlan.h"
+#include "PokemonFRLG_AutoStoryHealingSteps.h"
+#include "PokemonFRLG_AutoStoryPoses.h"
+#include "PokemonFRLG_AutoStorySlopeRun.h"
 #include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_AutoStoryTeachPlan.h"
 #include "PokemonFRLG_AutoStoryTrashCans.h"
 
 namespace PokemonAutomation{
@@ -202,6 +209,18 @@ UnitTestResult test_every_step_bound(){
 }
 
 
+//  Every action a step can name says what it does to the Items pocket: a
+//  new one without a row would leave a battle on rows it changed.
+UnitTestResult test_every_action_declares_pocket_change(){
+    for (const Pokemon::StoryActionSpec& spec : story_action_specs()){
+        if (!items_pocket_change(spec.kind, spec.name)){
+            return std::format("{} \"{}\" has no Items pocket change.", Pokemon::story_step_kind_name(spec.kind), spec.name);
+        }
+    }
+    return true;
+}
+
+
 struct StepTableInput{
     std::string name;
     UnitTestResult (*body)();
@@ -247,6 +266,56 @@ const StepTableTestCase STEP_TABLE_CASES[] = {
         .input = {.name = "every checkpoint's steps have an action", .body = test_every_step_bound},
         .expectation = {.description = "lint_story_checkpoint finds no unbound step"},
     },
+    {
+        .input = {.name = "every action declares its Items pocket change", .body = test_every_action_declares_pocket_change},
+        .expectation = {.description = "items_pocket_change() has a row for each action spec"},
+    },
+};
+
+struct PocketChangeInput{
+    StoryStepKind kind;
+    std::string action;
+};
+struct PocketChangeExpectation{
+    ItemsPocketChange change;
+};
+struct PocketChangeCase{
+    std::string name;
+    PocketChangeInput input;
+    PocketChangeExpectation expectation;
+};
+
+class Test_ItemsPocketChange : public UnitTest{
+public:
+    explicit Test_ItemsPocketChange(PocketChangeCase test_case)
+        : UnitTest(std::format("PokemonFRLG::AutoStoryStepTable - Items pocket change: {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::optional<ItemsPocketChange> change = items_pocket_change(m_case.input.kind, m_case.input.action);
+        if (change != m_case.expectation.change){
+            return std::format("Got {}; expected {}.", change ? static_cast<int>(*change) : -1, static_cast<int>(m_case.expectation.change));
+        }
+        return true;
+    }
+
+private:
+    PocketChangeCase m_case;
+};
+
+//  The places the story changes the Items pocket, each as it is kept.
+const PocketChangeCase POCKET_CHANGE_CASES[] = {
+    {.name = "a Mart buys and sells", .input = {StoryStepKind::GAME, MART_ACTION}, .expectation = {ItemsPocketChange::STALE}},
+    {.name = "Viridian's shop", .input = {StoryStepKind::SHOP, ""}, .expectation = {ItemsPocketChange::STALE}},
+    {.name = "a use_item step", .input = {StoryStepKind::GAME, USE_ITEM_VARIANT}, .expectation = {ItemsPocketChange::STALE}},
+    {.name = "a talk: a gift or an item ball", .input = {StoryStepKind::TALK, ""}, .expectation = {ItemsPocketChange::STALE}},
+    {.name = "a wanderer's talk", .input = {StoryStepKind::TALK, TALK_WANDERER_VARIANT}, .expectation = {ItemsPocketChange::STALE}},
+    {.name = "a battle counts its items", .input = {StoryStepKind::BATTLE, "fight"}, .expectation = {ItemsPocketChange::COUNTED}},
+    {.name = "a ready step counts its items", .input = {StoryStepKind::READY, ""}, .expectation = {ItemsPocketChange::COUNTED}},
+    {.name = "heal_to_full counts its items", .input = {StoryStepKind::GAME, HEAL_TO_FULL_ACTION}, .expectation = {ItemsPocketChange::COUNTED}},
+    {.name = "count_items reads the pocket", .input = {StoryStepKind::GAME, COUNT_ITEMS_VARIANT}, .expectation = {ItemsPocketChange::COUNTED}},
+    {.name = "a TM taught: the TM Case", .input = {StoryStepKind::GAME, TEACH_ACTION}, .expectation = {ItemsPocketChange::NONE}},
+    {.name = "a walk", .input = {StoryStepKind::ROUTE, RUN_VARIANT}, .expectation = {ItemsPocketChange::NONE}},
 };
 
 } // namespace
@@ -256,6 +325,9 @@ void add_tests_AutoStoryStepTable(UnitTestDatabase& database){
     for (const auto& scenario : STEP_TABLE_CASES){
         database.add<Test_StepTable>(scenario);
     }
+    for (const PocketChangeCase& test_case : POCKET_CHANGE_CASES){
+        database.add<Test_ItemsPocketChange>(test_case);
+    }
     add_tests_AutoStoryStepInterrupts(database);
     //  The GAME variants with logic of their own.
     add_tests_AutoStoryHideout(database);
@@ -263,6 +335,7 @@ void add_tests_AutoStoryStepTable(UnitTestDatabase& database){
     add_tests_AutoStoryFlyLanding(database);
     add_tests_AutoStoryRooms(database);
     add_tests_AutoStoryItemUse(database);
+    add_tests_AutoStoryBattleBag(database);
 }
 
 

@@ -33,6 +33,7 @@
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBagUse.h"
+#include "PokemonFRLG_AutoStoryBattleBag.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
@@ -149,64 +150,14 @@ void tap(ProControllerContext& context, DpadPosition position){
     pbf_press_dpad(context, position, 160ms, 240ms);
 }
 
-//  In the bag, with the cursor on `row`: whether that row is `item`, read
-//  when the check level runs MENU_ROW checks; taken as it otherwise. A row that can't be read (as in a language the reader has
-//  no names for) is taken by its position; only another item's name stops it.
-bool bag_row_is(
-    ConsoleHandle& console, ProControllerContext& context,
-    int row, int shown, const std::string& item, Pokemon::StoryCheckLevel checks, Language language
-){
-    if (!Pokemon::runs_check(checks, Pokemon::StoryCheckKind::MENU_ROW)){
-        return true;
-    }
-    context.wait_for_all_requests();
-    VideoSnapshot screen = console.video().snapshot();
-    const std::string read = screen ? read_item_list_name(console, language, screen, shown) : "";
-    if (read == item){
-        return true;
-    }
-    if (read.empty()){
-        console.log(std::format("Bag: row {} unread, taking it as the {} by its position.", row + 1, item), COLOR_ORANGE);
-        return true;
-    }
-    console.log(std::format("Bag: row {} reads \"{}\", not {}: not using it.", row + 1, read, item), COLOR_RED);
-    dump_debug_image(console, "AutoStory/bag", std::format("row{}-not-{}", row + 1, item), screen);
-    return false;
-}
-
-//  What an item in battle is used on.
-enum class ItemTarget{
-    //  A Potion or a cure: the party list opens, its cursor on the starter.
-    PARTY_MEMBER,
-    //  An X item: the Pokemon out, with no party list.
-    POKEMON_OUT,
-};
-
-//  From the battle menu: `item`, in `row` (from 0) of the Items pocket, on
-//  `target`. The bag opens on the pocket used last; Items is the first.
-//  Returns whether it was used; else (THOROUGH) backs out to the menu.
+//  From the battle menu: `item` from the Items pocket on `target`
+//  (use_battle_item()). Returns whether it was used; else back at the menu.
 bool use_item(
     ConsoleHandle& console, ProControllerContext& context,
-    const Supplies& supplies, const std::string& item, ItemTarget target, Pokemon::StoryCheckLevel checks, Language language
+    Supplies& supplies, const std::string& item, ItemTarget target, Pokemon::StoryCheckLevel checks, Language language
 ){
-    const int row = item_row(supplies, item);
-    console.log(std::format("Battle: using the {} in row {} of the Items pocket.", item, row + 1));
-    open_battle_bag(context);
-    for (int c = 0; c < row; c++){
-        tap(context, DPAD_DOWN);
-    }
-    if (!bag_row_is(console, context, row, item_shown_row(supplies, row), item, checks, language)){
-        pbf_press_button(context, BUTTON_B, 160ms, 1500ms);
-        return false;
-    }
-    //  The item, USE, then the starter in the party list. An X item's USE
-    //  goes straight to the battle's text, which the loop reads.
-    pbf_press_button(context, BUTTON_A, 160ms, 800ms);
-    pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
-    if (target == ItemTarget::PARTY_MEMBER){
-        pbf_press_button(context, BUTTON_A, 160ms, 1000ms);
-    }
-    return true;
+    ConsoleBattleBag bag(console, context, target, checks, language);
+    return use_battle_item(item, console.logger(), bag, supplies);
 }
 
 //  RUN, bottom right of the battle menu.
@@ -593,7 +544,8 @@ private:
     //  than fight on counts it doesn't know.
     void read_battle_bag(){
         m_console.log("Battle: the Items pocket's counts are not known; reading it before the first turn.");
-        const std::vector<BagRow> rows = read_battle_pocket(m_console, m_context, m_language);
+        //  The pocket's rows as counted, and its CANCEL.
+        const std::vector<BagRow> rows = read_battle_pocket(m_console, m_context, m_language, m_supplies.pocket.size() + 1);
         if (rows.empty()){
             OperationFailedExceptionWithScreenshot::fire(
                 ErrorReportMode::SEND_ERROR_REPORT,
@@ -606,9 +558,9 @@ private:
 
     void log_turn(const PartyStatus& status, const TurnAction& action){
         m_console.log(std::format(
-            "Battle: turn {}, HP {} ({:.0f}% of the bar), {}, {} Potions, {} Antidotes, {} Parlyz Heals, {} Awakenings.",
+            "Battle: turn {}, HP {} ({:.0f}% of the bar), {}, {}.",
             m_decisions.turns(), status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green", 100 * status.hp_fill,
-            status_name(status.status), m_supplies.potions, m_supplies.antidotes, m_supplies.parlyz_heals, m_supplies.awakenings
+            status_name(status.status), supply_line(m_supplies)
         ));
         if (!action.heal_reason.empty()){
             m_console.log("Battle: " + action.heal_reason + ".");
@@ -848,6 +800,10 @@ public:
             ConsoleItemUseActions bag(console, context, m_language, m_supplies.repel_menu);
             const ItemUseEnd end = renew_repel(console.logger(), bag, m_supplies.repel);
             console.log("Story: another Repel after the last wore off: " + item_use_end_name(end) + ".");
+            //  Not counted: the last Repel takes its row with it.
+            if (end == ItemUseEnd::USED){
+                m_supplies.counts_read = false;
+            }
         }
     }
 

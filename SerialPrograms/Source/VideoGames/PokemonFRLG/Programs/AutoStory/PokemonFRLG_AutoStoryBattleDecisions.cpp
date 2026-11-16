@@ -80,6 +80,8 @@ std::optional<size_t> trainer_attack_slot(const PartyMember& usable, const Suppl
 struct ItemTurn{
     TurnChoice choice = TurnChoice::MOVE;
     std::string reason = {};
+    //  A MEDICINE's item.
+    std::string item = {};
 };
 
 std::string_view bar_name(const PartyStatus& status){
@@ -88,13 +90,17 @@ std::string_view bar_name(const PartyStatus& status){
 
 //  The item this turn, from the bar and the badge as read (`seen_hit` the
 //  HP the foe's last hit took, 0 if not seen): a Potion whenever the bar
-//  isn't green, unless the last hit took a Potion's worth or more; asleep,
-//  an Awakening unless the bar is red.
+//  isn't green, unless the last hit took a Potion's worth or more; with
+//  no Potion left, a Super Potion the same way; asleep, an Awakening
+//  unless the bar is red.
 ItemTurn item_turn(const Supplies& supplies, const PartyStatus& status, double seen_hit, int awakenings){
     const bool hurt = status.hp_red || status.hp_yellow;
     const bool asleep = status.status == StatusCondition::SLEEP;
     if (hurt && supplies.potions > 0 && seen_hit < POTION_HP){
         return {TurnChoice::POTION, std::format("a Potion: HP {}, its last hit {:.0f} HP", bar_name(status), seen_hit)};
+    }
+    if (hurt && supplies.potions <= 0 && supplies.super_potions > 0 && seen_hit < medicine_hp("super-potion")){
+        return {TurnChoice::MEDICINE, std::format("a Super Potion: HP {}, its last hit {:.0f} HP", bar_name(status), seen_hit), "super-potion"};
     }
     if (asleep && awakenings > 0 && !status.hp_red){
         return {TurnChoice::AWAKENING, std::format("an Awakening: asleep at HP {}", bar_name(status))};
@@ -218,7 +224,8 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     const int awakenings = m_kind == BattleKind::TRAINER ? m_supplies.awakenings : 0;
     const ItemTurn items = m_items_off ? ItemTurn{} : item_turn(m_supplies, status, m_seen_hit, awakenings);
     if (items.choice != TurnChoice::MOVE){
-        return TurnAction{.choice = items.choice, .heal_reason = items.reason};
+        m_planned_item = items.item;
+        return TurnAction{.choice = items.choice, .heal_reason = items.reason, .item = items.item};
     }
     if (!m_items_off && m_psn_reads >= PSN_READS && !m_antidote_used && m_supplies.antidotes > 0){
         m_antidote_used = true;
@@ -330,6 +337,13 @@ void BattleDecisions::planned_item_used(){
 
 void BattleDecisions::policy_item_used(){
     spend_item(m_supplies, m_planned_item);
+    //  The story's own Super Potion (item_turn()), with no policy to tell.
+    if (!m_policy){
+        m_healed_hp = medicine_hp(m_planned_item);
+        m_supplies.hurt = false;
+        m_supplies.hp_red = false;
+        return;
+    }
     m_policy->item_used(m_planned_item);
     //  A medicine heals up to the bar's end.
     const double room = static_cast<double>(m_supplies.lead.stats->hp) - m_last_hp.value_or(0);

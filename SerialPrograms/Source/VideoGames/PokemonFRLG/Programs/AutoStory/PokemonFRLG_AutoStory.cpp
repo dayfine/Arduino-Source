@@ -277,6 +277,9 @@ Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, StoryEnv
     };
     game.after_load = [&story](Pokemon::RunState&){
         story.supplies = story.saved_supplies;
+        //  The save's counts are the story's record, not a read of this
+        //  bag: the next battle reads it first.
+        story.supplies.counts_read = false;
         //  The save's party, which a catch or a gift since then changed.
         story.party.invalidate_species();
         story.party.users() = story.saved_field_moves.users();

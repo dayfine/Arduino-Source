@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonFRLG_AutoStoryPocketList.h"
@@ -50,6 +51,9 @@ PocketRead read_whole_pocket(PocketList& list){
         }
     }
     read.rows = pocket_rows(std::move(reads));
+    for (size_t c = 0; c < read.downs; c++){
+        list.cursor_up();
+    }
     return read;
 }
 
@@ -59,6 +63,11 @@ namespace{
 //  (read_items_pocket()'s, console B 2026-11-12).
 constexpr Milliseconds SCROLL_TAP = 100ms;
 constexpr Milliseconds SCROLL_WAIT = 400ms;
+//  An UP back to the top, with no read after it (the field bag's).
+constexpr Milliseconds CURSOR_UP_WAIT = 150ms;
+//  The UP presses that bring the battle bag's cursor to the top, at
+//  least: what the battle sent before the pocket's rows were counted.
+constexpr size_t MIN_HOME_UPS = 12;
 
 //  The open pocket on the console's screen.
 class ConsolePocketList : public PocketList{
@@ -82,6 +91,10 @@ public:
         pbf_press_dpad(m_context, DPAD_DOWN, SCROLL_TAP, SCROLL_WAIT);
         m_screen = VideoSnapshot();
     }
+    virtual void cursor_up() override{
+        pbf_press_dpad(m_context, DPAD_UP, SCROLL_TAP, CURSOR_UP_WAIT);
+        m_screen = VideoSnapshot();
+    }
 
 private:
     ConsoleHandle& m_console;
@@ -97,7 +110,7 @@ PocketRead read_open_pocket(ConsoleHandle& console, ProControllerContext& contex
     return read_whole_pocket(list);
 }
 
-void open_battle_bag(ProControllerContext& context){
+void open_battle_bag(ProControllerContext& context, size_t rows){
     for (DpadPosition position : {DPAD_LEFT, DPAD_UP, DPAD_RIGHT}){
         pbf_press_dpad(context, position, /*hold=*/160ms, /*release=*/240ms);
     }
@@ -105,13 +118,13 @@ void open_battle_bag(ProControllerContext& context){
     for (int c = 0; c < 2; c++){
         pbf_press_dpad(context, DPAD_LEFT, /*hold=*/160ms, /*release=*/500ms);
     }
-    for (int c = 0; c < 12; c++){
+    for (size_t c = 0; c < std::max(rows, MIN_HOME_UPS); c++){
         pbf_press_dpad(context, DPAD_UP, /*hold=*/100ms, /*release=*/150ms);
     }
 }
 
-std::vector<BagRow> read_battle_pocket(ConsoleHandle& console, ProControllerContext& context, Language language){
-    open_battle_bag(context);
+std::vector<BagRow> read_battle_pocket(ConsoleHandle& console, ProControllerContext& context, Language language, size_t rows){
+    open_battle_bag(context, rows);
     std::vector<BagRow> rows = read_open_pocket(console, context, language).rows;
     pbf_press_button(context, BUTTON_B, /*hold=*/160ms, /*release=*/1500ms);
     return rows;

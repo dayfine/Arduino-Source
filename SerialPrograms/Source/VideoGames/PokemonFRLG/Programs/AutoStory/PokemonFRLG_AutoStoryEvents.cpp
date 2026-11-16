@@ -822,7 +822,9 @@ StoryExecutor::StoryExecutor(StoryEnv& env)
 }
 
 Outcome StoryExecutor::run(const StoryStep& step, RunState& state){
-    return trainers_back_on_warp([&]{ return regrow_on_warp(story_maps(), [&]{ return m_executor.run(step, state); }, state); }, state);
+    Outcome outcome = trainers_back_on_warp([&]{ return regrow_on_warp(story_maps(), [&]{ return m_executor.run(step, state); }, state); }, state);
+    m_env.supplies.counts_read = m_env.supplies.counts_read && items_pocket_change(step.kind, step.action).value_or(ItemsPocketChange::STALE) != ItemsPocketChange::STALE;
+    return outcome;
 }
 
 bool StoryExecutor::master_ball_skipped(bool take_master_ball, Pokemon::StoryCheckLevel checks){
@@ -947,10 +949,8 @@ void read_bag_supplies(StoryEnv& env, StartMenu menu){
     }else if (const std::vector<BagRow> rows = read_items_pocket(env.console, env.context, env.language); rows.empty()){
         env.console.log("Couldn't read the Items pocket; going on with the checkpoint's items.", COLOR_ORANGE);
     }else{
-        //  A check only: no count changes (Supplies::counts_read).
         const bool same = bag_matches(env.supplies, rows);
-        const bool read = env.supplies.counts_read;
-        env.console.log(std::format("Story: the Bag after the load {} the story's counts ({}).", same ? "matches" : "differs from", read ? "counted since a read" : "a row's guess"), same || !read ? COLOR_BLACK : COLOR_ORANGE);
+        env.console.log(std::format("Story: the Bag after the load {} the save's counts; a battle reads it again.", same ? "matches" : "differs from"));
         env.bag_read = true;
     }
     //  A status or HP the checkpoint was saved with: not a check, it acts.

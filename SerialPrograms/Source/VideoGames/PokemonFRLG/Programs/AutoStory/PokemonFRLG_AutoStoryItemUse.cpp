@@ -313,12 +313,8 @@ bool ConsoleItemUseActions::open_pocket(BagPocket pocket){
 }
 
 std::vector<BagRow> ConsoleItemUseActions::read_pocket(){
-    const PocketRead read = read_open_pocket(m_console, m_context, m_language);
-    //  Back to the top, where use_row() counts its DOWN presses from.
-    for (size_t c = 0; c < read.downs; c++){
-        pbf_press_dpad(m_context, DPAD_UP, CURSOR_TAP, CURSOR_WAIT);
-    }
-    return read.rows;
+    //  It ends on the top row, where use_row() counts its DOWN presses from.
+    return read_open_pocket(m_console, m_context, m_language).rows;
 }
 
 void ConsoleItemUseActions::use_row(size_t row){
