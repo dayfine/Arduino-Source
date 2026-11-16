@@ -15,6 +15,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Pokemon_ConsoleReadings.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
@@ -147,14 +148,14 @@ void tap(ProControllerContext& context, DpadPosition position){
     pbf_press_dpad(context, position, 160ms, 240ms);
 }
 
-//  In the bag, with the cursor on `row`: whether that row is `item`. FAST
-//  doesn't look. A row that can't be read (as in a language the reader has
+//  In the bag, with the cursor on `row`: whether that row is `item`, read
+//  when the check level runs MENU_ROW checks; taken as it otherwise. A row that can't be read (as in a language the reader has
 //  no names for) is taken by its position; only another item's name stops it.
 bool bag_row_is(
     ConsoleHandle& console, ProControllerContext& context,
     int row, int shown, const std::string& item, Pokemon::StoryCheckLevel checks, Language language
 ){
-    if (!checks_screen(checks)){
+    if (!Pokemon::runs_check(checks, Pokemon::StoryCheckKind::MENU_ROW)){
         return true;
     }
     context.wait_for_all_requests();

@@ -1804,6 +1804,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel_Tests.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel_Tests.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryLevelCheck.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpointGates.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.cpp
@@ -2281,6 +2284,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryChoice_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleRisk.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleTurns.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCheckLevel_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCheckLevel_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCheckpoints.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.h

@@ -155,7 +155,9 @@ std::vector<StepCase> step_cases(){
     const Pokemon::StoryStep grind = grind_step("grind", "", {.member = 0, .level = 20, .max_encounters = 5, .pace = Pokemon::Direction::EAST, .heal_every = 0}, {});
     return {
         {"level reached", none, level_step("check", "", {.slot = 0, .level = 16}), "unchanged"},
-        {"level below", none, level_step("check", "", {.slot = 0, .level = 17}), "level_below"},
+        {"level 3 below the minimum passes", [](StubGame& game){ game.level = 47; }, level_step("check", "", {.slot = 0, .level = 50}), "unchanged"},
+        {"level 1 below the minimum passes", [](StubGame& game){ game.level = 49; }, level_step("check", "", {.slot = 0, .level = 50}), "unchanged"},
+        {"level 4 below the minimum fails", [](StubGame& game){ game.level = 46; }, level_step("check", "", {.slot = 0, .level = 50}), "level_below"},
         {"level unread", [](StubGame& game){ game.level.reset(); }, level_step("check", "", {.slot = 0, .level = 16}), "level_unread"},
         {"a Mart purchase that fails", none, mart, "mart_failed"},
         {"a move it knows already succeeds", none, teach_step("teach", "", {.item = "hm03", .move = "surf", .member = 0}), "unchanged"},

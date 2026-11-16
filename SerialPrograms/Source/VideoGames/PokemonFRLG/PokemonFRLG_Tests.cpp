@@ -54,6 +54,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPaceSim.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPcStorage.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryAbilities.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryCheckLevel_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPartyRoster.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryFlyToCenter_Tests.h"
@@ -208,6 +209,7 @@ static void add_tests_AutoStoryAll(UnitTestDatabase& database){
     add_tests_AutoStoryCapture(database);
     add_tests_AutoStoryPcStorage(database);
     add_tests_AutoStoryAbilities(database);
+    add_tests_AutoStoryCheckLevel(database);
 }
 
 void add_tests(UnitTestDatabase& database){

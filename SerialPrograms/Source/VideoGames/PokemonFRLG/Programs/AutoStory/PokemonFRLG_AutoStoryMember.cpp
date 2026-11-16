@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include "Pokemon/AutoStory/Types/Pokemon_StoryLevelCheck.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStorySummary.h"
@@ -59,13 +60,26 @@ LevelResult run_level_check(Logger& logger, const MemberReader& reader, const Le
         logger.log(std::format("Level: couldn't read slot {}'s level.", check.slot + 1), COLOR_RED);
         return {};
     }
-    const bool reached = *member->level >= check.level;
-    logger.log(std::format(
-        "Level: slot {} ({}) is level {}, {} {}.",
-        check.slot + 1, member->species.empty() ? "?" : member->species,
-        *member->level, reached ? "at least" : "below", check.level
-    ));
-    return {.end = reached ? LevelEnd::REACHED : LevelEnd::BELOW, .level = member->level};
+    const Pokemon::LevelVerdict verdict = Pokemon::level_verdict(*member->level, check.level);
+    const std::string species = member->species.empty() ? "?" : member->species;
+    switch (verdict){
+    case Pokemon::LevelVerdict::MET:
+        logger.log(std::format("Level: slot {} ({}) is level {}, at least {}.", check.slot + 1, species, *member->level, check.level));
+        break;
+    case Pokemon::LevelVerdict::WITHIN_TOLERANCE:
+        logger.log(std::format(
+            "Level: slot {} ({}) is level {}, below {} but within {} of it: going on.",
+            check.slot + 1, species, *member->level, check.level, Pokemon::LEVEL_CHECK_TOLERANCE
+        ), COLOR_ORANGE);
+        break;
+    case Pokemon::LevelVerdict::BELOW:
+        logger.log(std::format(
+            "Level: slot {} ({}) is level {}, more than {} below {}.",
+            check.slot + 1, species, *member->level, Pokemon::LEVEL_CHECK_TOLERANCE, check.level
+        ), COLOR_RED);
+        break;
+    }
+    return {.end = verdict == Pokemon::LevelVerdict::BELOW ? LevelEnd::BELOW : LevelEnd::REACHED, .level = member->level};
 }
 
 

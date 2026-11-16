@@ -146,7 +146,7 @@ Pokemon::StoryAction played(Pokemon::StoryActionFunction act){
 
 
 StoryMapsSim::StoryMapsSim(StorySimKnobs knobs)
-    : Pokemon::TableExecutor(m_table, m_guard)
+    : Pokemon::TableExecutor(m_table, m_guard, knobs.checks)
     , m_table(make_story_action_table([this](StoryActionId id){ return action(id); }))
     , m_knobs(std::move(knobs))
     , m_interrupts(step_interrupts([this](bool){ return look(); }, sim_interrupt_actions()))

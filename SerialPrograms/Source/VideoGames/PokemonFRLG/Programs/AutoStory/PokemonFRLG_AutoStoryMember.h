@@ -38,7 +38,10 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  What a LEVEL step checks: party slot `slot` (0-5) is at least `level`.
+//  What a LEVEL step checks: party slot `slot` (0-5) is at least `level`,
+//  less the shared tolerance (Pokemon::level_verdict(),
+//  Types/Pokemon_StoryLevelCheck.h). A PARTY_STATS
+//  check: a run below its level skips the step.
 struct LevelCheck{
     size_t slot = 0;
     unsigned level = 1;
@@ -68,7 +71,8 @@ struct LevelResult{
     std::optional<unsigned> level = std::nullopt;
 };
 
-//  Reads the member and compares.
+//  Reads the member and compares (Pokemon::level_verdict()): within the
+//  tolerance it is REACHED, logged as a warning.
 LevelResult run_level_check(Logger& logger, const MemberReader& reader, const LevelCheck& check);
 
 

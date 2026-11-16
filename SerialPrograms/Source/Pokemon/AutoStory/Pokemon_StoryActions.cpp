@@ -91,15 +91,22 @@ void StepGuard::on_failure(const StoryStep&, const OperationFailedException&){}
 void StepGuard::on_interrupt(const StoryStep&, const InterruptCheck&){}
 
 void StepGuard::on_screen(const StoryStep&, const ScreenSettle&){}
+void StepGuard::on_check_skipped(const StoryStep&, const std::string&){}
 
 
-TableExecutor::TableExecutor(const StoryActionTable& table, StepGuard& guard)
+TableExecutor::TableExecutor(const StoryActionTable& table, StepGuard& guard, StoryCheckLevel check_level)
     : m_table(table)
     , m_guard(guard)
+    , m_check_level(check_level)
 {}
 
 Outcome TableExecutor::run(const StoryStep& step, RunState& state){
     m_guard.before_step(step);
+    const StoryAction* action = m_table.find(step);
+    if (action != nullptr && action->check && !runs_check(m_check_level, *action->check)){
+        m_guard.on_check_skipped(step, skipped_check_line(step.name, m_check_level));
+        return outcome_unchanged();
+    }
     size_t cleared = 0;
     while (true){
         if (std::optional<Outcome> failed = clear_interrupts(step, state, cleared)){

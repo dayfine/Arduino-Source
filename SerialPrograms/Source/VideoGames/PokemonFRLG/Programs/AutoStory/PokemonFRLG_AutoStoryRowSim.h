@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/Navigation/Pokemon_GatedTypes.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
@@ -46,6 +47,9 @@ struct StorySimKnobs{
     //  The maps the story is planned and walked on, with the gates of the
     //  run state; the story's (story_maps()) if null.
     const std::vector<MapData>* maps = nullptr;
+    //  The run's check level: a check step it doesn't run is skipped, as on
+    //  the console. TESTING (every check) by default.
+    Pokemon::StoryCheckLevel checks = Pokemon::StoryCheckLevel::TESTING;
 };
 
 //  The whole story on the story maps, without a walker: each ROUTE planned

@@ -16,6 +16,7 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/Images/SolidColorTest.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
@@ -952,7 +953,7 @@ void buy_items(
         }
         cursor = order.row;
         mart_shot(console, context, std::format("row{}-list", order.row + 1));
-        if (checks_screen(checks)){
+        if (Pokemon::runs_check(checks, Pokemon::StoryCheckKind::MENU_ROW)){
             check_mart_row(console, context, order, language);
         }
         //  "How many?" drops presses while its text prints.

@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 #include "Pokemon_StoryActionArg.h"
+#include "Pokemon_StoryCheckLevel.h"
 #include "Pokemon_StoryStepKind.h"
 
 namespace PokemonAutomation{
@@ -40,6 +41,9 @@ struct StoryActionSpec{
     //  keyboard, a battle AI): the engine refuses it on any other backend
     //  (StoryBackendKind) with the failure "console_only".
     bool console_only = false;
+    //  A pure check, which changes nothing in the game: the kind it is. A
+    //  run whose level does not run that kind (runs_check()) skips it.
+    std::optional<StoryCheckKind> check = {};
 };
 
 //  Each way `args` don't fit `spec`: a key it doesn't name, a value of

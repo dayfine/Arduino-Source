@@ -30,16 +30,6 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Whether the shared check level (Types/Pokemon_StoryCheckLevel.h, set by
-//  StoryRunOptions) has the story check the screen before and after it
-//  acts: DEFAULT and above (TESTING, THOROUGH). Then FRLG reads a Mart
-//  row's item before buying it, the bag's Items pocket after shopping (the
-//  counts the story then keeps), and an item's name in the bag before
-//  using it. FAST and SPEEDRUN trust the counts it keeps and the timings.
-inline bool checks_screen(Pokemon::StoryCheckLevel level){
-    return level <= Pokemon::StoryCheckLevel::DEFAULT;
-}
-
 //  The START menu as the story grows it. Before the starter: BAG, the
 //  player, SAVE, OPTION, EXIT; the starter adds POKEMON on top, the Pokedex
 //  POKEDEX above that. In the Safari Zone it is RETIRE, POKEDEX, POKEMON,
