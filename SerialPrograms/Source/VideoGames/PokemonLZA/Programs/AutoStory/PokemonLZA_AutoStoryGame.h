@@ -27,6 +27,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMoves.h"
+#include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 
 namespace PokemonAutomation{
@@ -73,17 +74,22 @@ std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpo
 //  "dialog". None for any other word.
 std::optional<ScreenEvent> walk_end_event(std::string_view end);
 
-//  PLZA as a StoryGame on the console `env`, which must outlive it. The
-//  save counts the game's autosave at the end of the "autosave" rows of
-//  `rows`; after the others nothing saves (Pokemon::NOT_SAVED, "save
-//  unverified" for the "unverified" ones). The reload resets the game from
-//  HOME onto the latest save.
-Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(StoryEnv& env, const Pokemon::StoryRows& rows);
+//  PLZA as a StoryGame on the console `env`, which must outlive it, as must
+//  `sightings`. Every step's looks go to `sightings`; the save at a
+//  checkpoint's end counts the game's autosave when its badge was seen
+//  there ("[Save] <id>: the game autosaved (seen)"), else nothing saved
+//  (Pokemon::NOT_SAVED, "save unverified" for the plan's "unverified"
+//  rows). The reload resets the game from HOME onto the latest save.
+Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(
+    StoryEnv& env, const Pokemon::StoryRows& rows, AutosaveSightings& sightings
+);
 
 //  The same with no console, for tests and simulations: the console_only
 //  actions fail as "console_only", and there is no reload.
 //  code-health: allow test_only_api -- a test double: the game the scripted tests and simulations run
-Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game_without_console(const Pokemon::StoryRows& rows);
+Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game_without_console(
+    const Pokemon::StoryRows& rows, AutosaveSightings& sightings
+);
 
 //  Loads the save `row` starts from with `game`'s reload (the latest
 //  save), then, unless `row` starts on the station platform (01.01, whose
@@ -95,16 +101,21 @@ Pokemon::Outcome load_checkpoint_start(
     const Pokemon::StoryGame<Pokemon::ZonePose>& game, PlzaBackend& backend, const Pokemon::StoryCheckpoint& row
 );
 
-//  `rows` in order from the save the game is on, as
-//  StoryEngine::run_segment() runs them, `attempts_per_checkpoint` each,
-//  cut at the rows `story` marks reload_when_chained
-//  (Pokemon::story_run_segments()): before each, the event
-//  "reload_when_chained" loads its start with load_checkpoint_start(). A
-//  failed load fails the run there.
+//  `rows` in order from the save the game is on, each with the story
+//  engine's run_segment() on `backend`, `attempts_per_checkpoint` each when a reload
+//  returns to its start (the first row, or one after a row whose autosave
+//  `sightings` saw), else once. Between two rows, the event "chain":
+//    - a row `story` marks reload_when_chained "always" loads its start
+//      (load_checkpoint_start()) when the row before's autosave was seen;
+//    - any other row runs on from the live screen when its start check
+//      passes or cannot tell (logged as "start unchecked"); when it fails,
+//      the row's start is loaded if the row before's autosave was seen.
+//  With no autosave seen, a reload would rewind to an older save: the run
+//  fails there as "no_start_save". A failed load fails the run too.
 Pokemon::SegmentReport run_plza_segments(
     const Pokemon::StoryGame<Pokemon::ZonePose>& game, const Pokemon::StoryRows& story,
     std::span<const Pokemon::StoryCheckpoint> rows, size_t attempts_per_checkpoint,
-    Pokemon::StoryEngine<Pokemon::ZonePose>& engine, PlzaBackend& backend, Pokemon::RunState& state
+    PlzaBackend& backend, Pokemon::RunState& state, AutosaveSightings& sightings
 );
 
 

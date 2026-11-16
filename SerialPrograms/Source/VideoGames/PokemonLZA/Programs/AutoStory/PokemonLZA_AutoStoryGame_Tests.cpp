@@ -8,6 +8,7 @@
  *  console.
  *
  */
+//  code-health: allow file_lines -- one table per story game behavior, sharing the scripted looks above them
 
 #include <algorithm>
 #include <format>
@@ -426,9 +427,14 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at arrival_scenes: scene_quiet"},
     },
     {
+        .name = "01.00's autosave badge is logged in the step it shows in",
+        .input = {.checkpoint = "01.00", .first_step = 1, .looks = {CUTSCENE, AUTOSAVE, AUTOSAVE, PLATFORM, PLATFORM}},
+        .expectation = {.verdict = "done", .line = "[PLZA] autosave badge at 0.0s in opening"},
+    },
+    {
         .name = "01.00 ends on its autosave",
         .input = {.checkpoint = "01.00", .first_step = 1, .looks = {AUTOSAVE, PLATFORM, PLATFORM}},
-        .expectation = {.verdict = "done", .line = "[Save] 01.00: the game autosaved at its end"},
+        .expectation = {.verdict = "done", .line = "[Save] 01.00: the game autosaved (seen)"},
     },
     {
         .name = "01.01 is not saved: its autosave is unverified",
@@ -534,7 +540,8 @@ const RunCase RUN_CASES[] = {
 };
 
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
-    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(builtin_story_data());
+    AutosaveSightings sightings;
+    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(builtin_story_data(), sightings);
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks, .battle = test.input.battle}, scope);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
@@ -564,8 +571,8 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
 
 //  The console-less game with a reload that presses HOME, as the console's
 //  does first, and succeeds.
-Pokemon::StoryGame<ZonePose> game_with_reload(const Pokemon::StoryRows& rows){
-    Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(rows);
+Pokemon::StoryGame<ZonePose> game_with_reload(const Pokemon::StoryRows& rows, AutosaveSightings& sightings){
+    Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(rows, sightings);
     game.reload = [](Pokemon::StoryBackend<ZonePose>& backend){
         backend.press(BUTTON_HOME, Milliseconds(80), Milliseconds(80));
         return Pokemon::outcome_ok();
@@ -634,9 +641,10 @@ const LoadCase LOAD_CASES[] = {
 
 UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
     const StoryData& story = builtin_story_data();
+    AutosaveSightings sightings;
     const Pokemon::StoryGame<ZonePose> game = test.input.has_reload
-        ? game_with_reload(story)
-        : make_plza_story_game_without_console(story);
+        ? game_with_reload(story, sightings)
+        : make_plza_story_game_without_console(story, sightings);
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
     const Pokemon::Outcome loaded = load_checkpoint_start(game, backend, builtin_row(test.input.checkpoint, /*first_step=*/0, /*steps=*/99));
     const std::string verdict = loaded.succeeded() ? "done" : loaded.failure;
@@ -660,10 +668,11 @@ UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
 
 
 //  Two rows: "01.01" waits for the platform, "01.02" runs to a choice.
+//  01.01's autosave shows when a look has both the platform and the badge.
 struct ChainCase{
     std::string name;
     struct Input{
-        std::set<std::string, std::less<>> reload_when_chained;
+        std::set<std::string, std::less<>> reload_always;
         std::vector<Observation<ZonePose>> looks;
     };
     Input input;
@@ -676,33 +685,59 @@ struct ChainCase{
     Expectation expectation;
 };
 
+const Observation<ZonePose> PLATFORM_SAVING = look({}, {PLATFORM_READING, AUTOSAVE_READING});
+
 const ChainCase CHAIN_CASES[] = {
     {
-        .name = "straight through without reload_when_chained",
-        .input = {.reload_when_chained = {}, .looks = {PLATFORM, PLATFORM, choice(0)}},
+        .name = "autosave seen and the start check does not fail: on without a reload",
+        .input = {.reload_always = {}, .looks = {PLATFORM_SAVING, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
         .expectation = {.verdict = "done", .reloads = 0},
     },
     {
-        .name = "reload_when_chained loads the second row's start first",
-        .input = {.reload_when_chained = {"01.02"}, .looks = {PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
+        .name = "no autosave seen and the start check does not fail: on without a reload",
+        .input = {.reload_always = {}, .looks = {PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
+        .expectation = {.verdict = "done", .reloads = 0},
+    },
+    {
+        .name = "autosave seen and the start check fails: reloads the start",
+        .input = {.reload_always = {}, .looks = {
+            PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0),
+        }},
         .expectation = {.verdict = "done", .reloads = 1},
     },
     {
-        .name = "reload_when_chained stops on an older save",
-        .input = {.reload_when_chained = {"01.02"}, .looks = {PLATFORM}},
-        .expectation = {.verdict = "failed at 01.02 reload_when_chained: older_save", .reloads = 1},
+        .name = "no autosave seen and the start check fails: no reload, no save to start from",
+        .input = {.reload_always = {}, .looks = {PLATFORM}},
+        .expectation = {.verdict = "failed at 01.02 chain: no_start_save", .reloads = 0},
+    },
+    {
+        .name = "reload always, autosave seen: reloads the start",
+        .input = {.reload_always = {"01.02"}, .looks = {PLATFORM_SAVING, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
+        .expectation = {.verdict = "done", .reloads = 1},
+    },
+    {
+        .name = "reload always, no autosave seen: no reload, no save to start from",
+        .input = {.reload_always = {"01.02"}, .looks = {PLATFORM}},
+        .expectation = {.verdict = "failed at 01.02 chain: no_start_save", .reloads = 0},
+    },
+    {
+        .name = "a reload onto an older save stops",
+        .input = {.reload_always = {"01.02"}, .looks = {PLATFORM_SAVING, PLATFORM}},
+        .expectation = {.verdict = "failed at 01.02 chain: older_save", .reloads = 1},
     },
 };
 
 UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
     Pokemon::StoryRows story;
-    story.reload_when_chained = test.input.reload_when_chained;
-    const Pokemon::StoryGame<ZonePose> game = game_with_reload(story);
+    story.reload_always = test.input.reload_always;
+    AutosaveSightings sightings;
+    const Pokemon::StoryGame<ZonePose> game = game_with_reload(story, sightings);
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
-    Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
     const std::vector<StoryCheckpoint> rows{one_step_row("01.01", "wait_for_platform"), one_step_row("01.02", "text_to_choice")};
-    const Pokemon::SegmentReport report = run_plza_segments(game, story, rows, /*attempts_per_checkpoint=*/1, engine, backend, state);
+    const Pokemon::SegmentReport report = run_plza_segments(
+        game, story, rows, /*attempts_per_checkpoint=*/1, backend, state, sightings
+    );
     const std::string verdict = report.completed
         ? "done"
         : std::format("failed at {} {}: {}", report.failed_checkpoint, report.failed_event, report.failure.failure);

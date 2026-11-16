@@ -109,6 +109,10 @@ void PlzaConsoleBackend::log(std::string_view line){
     m_env.env.console.overlay().add_log(std::string(line));
 }
 
+void PlzaConsoleBackend::log_detail(std::string_view line){
+    m_env.env.console.log(std::string(line), COLOR_BLUE);
+}
+
 CancellableScope& PlzaConsoleBackend::scope(){
     return m_env.context;
 }
