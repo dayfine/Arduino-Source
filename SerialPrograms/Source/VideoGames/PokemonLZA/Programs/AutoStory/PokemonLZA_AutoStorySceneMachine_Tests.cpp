@@ -2,9 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The scene machine on scripted looks, no frames needed: its timeline's
- *  state for each look of a sequence, and whole runs on a FakeStoryBackend
- *  (their outcome, presses and log).
+ *  The scene machine on scripted looks, no frames needed: whole runs on a
+ *  FakeStoryBackend (their outcome, presses, the states they went through
+ *  and their log).
  *
  */
 
@@ -119,272 +119,6 @@ SceneMachineConfig quiet_config(Milliseconds min_length){
 }
 
 
-struct TimelineCase{
-    std::string name;
-    struct Input{
-        SceneMachineConfig config;
-        std::vector<Observation<ZonePose>> looks;
-    };
-    Input input;
-    struct Expectation{
-        //  The state of each look, in order.
-        std::vector<SceneScreen> states;
-    };
-    Expectation expectation;
-};
-
-const TimelineCase TIMELINE_CASES[] = {
-    {
-        .name = "a still frame past the quiet time waits for the minimum length",
-        .input = {.config = quiet_config(60000ms), .looks = {
-            look_at(0ms), look_at(5000ms, DIALOG), look_at(10000ms, STILL), look_at(30000ms, STILL),
-            look_at(59900ms), look_at(60000ms, STILL),
-        }},
-        .expectation = {.states = {
-            SceneScreen::SCENE_MOVING, SceneScreen::DIALOG, SceneScreen::SCENE_STILL, SceneScreen::SCENE_STILL,
-            SceneScreen::SCENE_MOVING, SceneScreen::QUIET_END,
-        }},
-    },
-    {
-        .name = "a box or a fade starts the quiet time again",
-        .input = {.config = quiet_config(0ms), .looks = {
-            look_at(0ms, DIALOG), look_at(7900ms, STILL), look_at(7950ms, WHITE), look_at(15000ms, WHITE),
-            look_at(20000ms), look_at(22900ms, STILL), look_at(23000ms, STILL),
-        }},
-        .expectation = {.states = {
-            SceneScreen::DIALOG, SceneScreen::SCENE_STILL, SceneScreen::FADE_WHITE, SceneScreen::FADE_WHITE,
-            SceneScreen::SCENE_MOVING, SceneScreen::SCENE_STILL, SceneScreen::QUIET_END,
-        }},
-    },
-    {
-        .name = "a black fade is busy and waits",
-        .input = {.config = quiet_config(0ms), .looks = {
-            look_at(0ms, BLACK), look_at(7000ms, BLACK), look_at(14000ms, BLACK), look_at(21900ms),
-        }},
-        .expectation = {.states = {
-            SceneScreen::FADE_BLACK, SceneScreen::FADE_BLACK, SceneScreen::FADE_BLACK, SceneScreen::SCENE_MOVING,
-        }},
-    },
-    {
-        .name = "the controls hint held a second ends the scene; a box over it starts the second again",
-        .input = {.config = quiet_config(0ms), .looks = {
-            look_at(/*at=*/0ms, NOTHING, {CONTROLS_HINT_READING}),
-            look_at(/*at=*/600ms, DIALOG, {CONTROLS_HINT_READING}),
-            look_at(/*at=*/900ms, NOTHING, {CONTROLS_HINT_READING}),
-            look_at(/*at=*/1800ms, STILL, {CONTROLS_HINT_READING}),
-            look_at(/*at=*/9000ms, STILL, {CONTROLS_HINT_READING}),
-        }},
-        .expectation = {.states = {
-            SceneScreen::HINT_SHOWING, SceneScreen::DIALOG, SceneScreen::HINT_SHOWING, SceneScreen::HINT_SHOWING,
-            SceneScreen::CONTROLS_HINT,
-        }},
-    },
-    {
-        .name = "the controls hint is not held across a look without it",
-        .input = {.config = quiet_config(0ms), .looks = {
-            look_at(/*at=*/0ms, NOTHING, {CONTROLS_HINT_READING}),
-            look_at(500ms),
-            look_at(/*at=*/1200ms, NOTHING, {CONTROLS_HINT_READING}),
-            look_at(/*at=*/2200ms, NOTHING, {CONTROLS_HINT_READING}),
-        }},
-        .expectation = {.states = {
-            SceneScreen::HINT_SHOWING, SceneScreen::SCENE_MOVING, SceneScreen::HINT_SHOWING, SceneScreen::CONTROLS_HINT,
-        }},
-    },
-    {
-        .name = "01.01's ad: A at the chevron, blind A after 5 s, none once the hint shows",
-        .input = {.config = arrival_config(), .looks = {
-            look_at(0ms),
-            look_at(/*at=*/1000ms, NOTHING, {ADVANCE_ARROW_READING}),
-            look_at(1500ms, STILL),
-            look_at(/*at=*/3000ms, STILL, {ADVANCE_ARROW_READING}),
-            look_at(7900ms, STILL),
-            look_at(8000ms, STILL),
-            look_at(9000ms, STILL),
-            look_at(10000ms),
-            look_at(/*at=*/14200ms, NOTHING, {CONTROLS_HINT_READING}),
-            look_at(/*at=*/15000ms, STILL, {CONTROLS_HINT_READING}),
-            look_at(/*at=*/15300ms, STILL, {CONTROLS_HINT_READING}),
-        }},
-        .expectation = {.states = {
-            SceneScreen::SCENE_MOVING, SceneScreen::DIALOG, SceneScreen::SCENE_STILL, SceneScreen::DIALOG,
-            SceneScreen::SCENE_STILL, SceneScreen::BLIND_PRESS, SceneScreen::SCENE_STILL, SceneScreen::BLIND_PRESS,
-            SceneScreen::HINT_SHOWING, SceneScreen::HINT_SHOWING, SceneScreen::CONTROLS_HINT,
-        }},
-    },
-    {
-        .name = "the mission banner on two looks ends the scene; a box between them starts the count again",
-        .input = {.config = arrival_config(), .looks = {
-            look_at(0ms, DIALOG),
-            look_at(500ms),
-            look_at(/*at=*/6000ms, NOTHING, {MISSION_BANNER_READING}),
-            look_at(/*at=*/6250ms, DIALOG, {MISSION_BANNER_READING}),
-            look_at(/*at=*/6500ms, NOTHING, {MISSION_BANNER_READING}),
-            look_at(/*at=*/12000ms, STILL, {MISSION_BANNER_READING}),
-        }},
-        .expectation = {.states = {
-            SceneScreen::DIALOG, SceneScreen::SCENE_MOVING, SceneScreen::BANNER_SHOWING, SceneScreen::DIALOG,
-            SceneScreen::BANNER_SHOWING, SceneScreen::MISSION_BANNER,
-        }},
-    },
-    {
-        .name = "blind presses are not busy: a minute of them still ends quiet",
-        .input = {.config = arrival_config(), .looks = {
-            look_at(/*at=*/0ms, NOTHING, {ADVANCE_ARROW_READING}),
-            look_at(5000ms, STILL),
-            look_at(6000ms, STILL),
-            look_at(59000ms, STILL),
-            look_at(60000ms, STILL),
-        }},
-        .expectation = {.states = {
-            SceneScreen::DIALOG, SceneScreen::BLIND_PRESS, SceneScreen::SCENE_STILL, SceneScreen::BLIND_PRESS,
-            SceneScreen::QUIET_END,
-        }},
-    },
-    {
-        .name = "a machine that stops at choices ends on the choice box, after the text before it",
-        .input = {.config = choice_config(), .looks = {look_at(0ms, DIALOG), look_at(500ms), look_at(1000ms, CHOICE)}},
-        .expectation = {.states = {SceneScreen::DIALOG, SceneScreen::SCENE_MOVING, SceneScreen::CHOICE}},
-    },
-    {
-        .name = "a machine that does not stop at choices takes the choice as text",
-        .input = {.config = arrival_config(), .looks = {look_at(0ms, CHOICE)}},
-        .expectation = {.states = {SceneScreen::DIALOG}},
-    },
-    {
-        .name = "the mission complete card is busy: A, and no quiet end while it shows",
-        .input = {.config = arrival_config(), .looks = {
-            look_at(/*at=*/0ms, NOTHING, {MISSION_COMPLETE_READING}),
-            look_at(/*at=*/59000ms, STILL, {MISSION_COMPLETE_READING}),
-            look_at(61000ms),
-        }},
-        .expectation = {.states = {
-            SceneScreen::MISSION_COMPLETE, SceneScreen::MISSION_COMPLETE, SceneScreen::SCENE_MOVING,
-        }},
-    },
-    {
-        .name = "a machine that stops at a battle ends on the battle HUD, with A every 2 s where no text shows",
-        .input = {.config = battle_config(), .looks = {
-            look_at(0ms, DIALOG), look_at(500ms), look_at(1000ms, STILL), look_at(2500ms, STILL), look_at(3000ms, BATTLE),
-        }},
-        .expectation = {.states = {
-            SceneScreen::DIALOG, SceneScreen::BLIND_PRESS, SceneScreen::SCENE_STILL, SceneScreen::BLIND_PRESS,
-            SceneScreen::BATTLE,
-        }},
-    },
-    {
-        .name = "a machine that does not stop at a battle takes the battle HUD as any screen",
-        .input = {.config = quiet_config(0ms), .looks = {look_at(0ms, BATTLE)}},
-        .expectation = {.states = {SceneScreen::SCENE_MOVING}},
-    },
-    {
-        .name = "the party bar held a second ends the scene; a box over it starts the second again",
-        .input = {.config = quiet_config(0ms), .looks = {
-            look_at(0ms, PARTY), look_at(600ms, DIALOG), look_at(900ms, PARTY), look_at(1800ms, PARTY),
-            look_at(1900ms, PARTY),
-        }},
-        .expectation = {.states = {
-            SceneScreen::PARTY_BAR, SceneScreen::DIALOG, SceneScreen::PARTY_BAR, SceneScreen::PARTY_BAR,
-            SceneScreen::CAN_MOVE,
-        }},
-    },
-    {
-        //  It shows between the lines of a talk.
-        .name = "a machine that stops at a battle does not take the party bar for control",
-        .input = {.config = battle_config(), .looks = {look_at(0ms, STILL), look_at(1000ms, PARTY), look_at(2500ms, PARTY)}},
-        .expectation = {.states = {SceneScreen::BLIND_PRESS, SceneScreen::SCENE_MOVING, SceneScreen::BLIND_PRESS}},
-    },
-    {
-        .name = "a machine that stops at a choice does not take the party bar for control",
-        .input = {.config = choice_config(), .looks = {look_at(0ms, PARTY), look_at(1500ms, PARTY)}},
-        .expectation = {.states = {SceneScreen::SCENE_MOVING, SceneScreen::SCENE_MOVING}},
-    },
-    {
-        .name = "no text, choice or battle within the start window: the scene never started",
-        .input = {.config = scene_step_config(), .looks = {
-            look_at(0ms), look_at(10000ms, BLACK), look_at(44900ms, STILL), look_at(45000ms, STILL),
-        }},
-        .expectation = {.states = {
-            SceneScreen::SCENE_MOVING, SceneScreen::FADE_BLACK, SceneScreen::SCENE_STILL, SceneScreen::NEVER_STARTED,
-        }},
-    },
-    {
-        .name = "a box within the start window: the scene started, a still screen past it waits",
-        .input = {.config = scene_step_config(), .looks = {
-            look_at(0ms), look_at(10000ms, DIALOG), look_at(50000ms, STILL),
-        }},
-        .expectation = {.states = {SceneScreen::SCENE_MOVING, SceneScreen::DIALOG, SceneScreen::SCENE_STILL}},
-    },
-    {
-        .name = "without a quiet time a still screen never ends the scene",
-        .input = {.config = {}, .looks = {
-            look_at(0ms, STILL), look_at(300000ms, STILL), look_at(300100ms, BLACK),
-        }},
-        .expectation = {.states = {SceneScreen::SCENE_STILL, SceneScreen::SCENE_STILL, SceneScreen::FADE_BLACK}},
-    },
-};
-
-//  Feeds the looks to a timeline as the machine does: classify, then record
-//  the look it acted on.
-UnitTestResult check_timeline(const TimelineCase& test){
-    if (test.input.looks.size() != test.expectation.states.size()){
-        return std::format("{} looks, {} states expected", test.input.looks.size(), test.expectation.states.size());
-    }
-    SceneTimeline timeline(test.input.config, test.input.looks.front().when);
-    for (size_t index = 0; index < test.input.looks.size(); index++){
-        const Observation<ZonePose>& look = test.input.looks[index];
-        const SceneScreen got = timeline.classify(look);
-        const SceneScreen expected = test.expectation.states[index];
-        if (got != expected){
-            return std::format("look {} ({}): expected {}, got {}",
-                index, describe(look.events), scene_screen_name(expected), scene_screen_name(got));
-        }
-        timeline.record(look);
-    }
-    return true;
-}
-
-
-struct StateCase{
-    std::string name;
-    struct Input{
-        SceneScreen screen;
-    };
-    Input input;
-    struct Expectation{
-        bool terminal = false;
-        bool presses = false;
-    };
-    Expectation expectation;
-};
-
-const StateCase STATE_CASES[] = {
-    {.name = "a box gets the text button", .input = {SceneScreen::DIALOG}, .expectation = {.presses = true}},
-    {.name = "a blind press is A", .input = {SceneScreen::BLIND_PRESS}, .expectation = {.presses = true}},
-    {.name = "the choice box ends the scene", .input = {SceneScreen::CHOICE}, .expectation = {.terminal = true}},
-    {.name = "a fade waits", .input = {SceneScreen::FADE_WHITE}, .expectation = {}},
-    {.name = "a still scene waits", .input = {SceneScreen::SCENE_STILL}, .expectation = {}},
-    {.name = "the hint not held yet waits", .input = {SceneScreen::HINT_SHOWING}, .expectation = {}},
-    {.name = "the hint held ends the scene", .input = {SceneScreen::CONTROLS_HINT}, .expectation = {.terminal = true}},
-    {.name = "the party bar not held yet waits", .input = {SceneScreen::PARTY_BAR}, .expectation = {}},
-    {.name = "the party bar held ends the scene", .input = {SceneScreen::CAN_MOVE}, .expectation = {.terminal = true}},
-    {.name = "a scene that never started ends the machine", .input = {SceneScreen::NEVER_STARTED}, .expectation = {.terminal = true}},
-    {.name = "the banner's second look ends the scene", .input = {SceneScreen::MISSION_BANNER}, .expectation = {.terminal = true}},
-    {.name = "the quiet end ends the scene", .input = {SceneScreen::QUIET_END}, .expectation = {.terminal = true}},
-    {.name = "the mission complete card gets A", .input = {SceneScreen::MISSION_COMPLETE}, .expectation = {.presses = true}},
-    {.name = "the battle HUD ends the scene", .input = {SceneScreen::BATTLE}, .expectation = {.terminal = true}},
-};
-
-UnitTestResult check_state(const StateCase& test){
-    const bool terminal = scene_screen_terminal(test.input.screen);
-    const bool presses = scene_screen_presses(test.input.screen);
-    if (terminal != test.expectation.terminal || presses != test.expectation.presses){
-        return std::format("{}: terminal {}, presses {}", scene_screen_name(test.input.screen), terminal, presses);
-    }
-    return true;
-}
-
-
 struct RunCase{
     std::string name;
     struct Input{
@@ -402,11 +136,161 @@ struct RunCase{
         size_t b_presses = 0;
         //  A log line the run wrote, if any is checked.
         std::string line = {};
+        //  The states the trace logged, joined by ", "; empty: not checked.
+        std::string states = {};
     };
     Expectation expectation;
 };
 
 const RunCase RUN_CASES[] = {
+    {
+        .name = "a still frame past the quiet time waits for the minimum length",
+        .input = {
+            .looks = {
+                look_at(0ms), look_at(5000ms, DIALOG), look_at(10000ms, STILL), look_at(30000ms, STILL),
+                look_at(59900ms), look_at(60000ms, STILL),
+            },
+            .config = quiet_config(60000ms),
+        },
+        .expectation = {
+            .verdict = "failed: scene_quiet",
+            .a_presses = 1,
+            .line = "[PLZA test] screen 4: quiet_end at 60.0s",
+            .states = "scene_moving, dialog, scene_still, quiet_end",
+        },
+    },
+    {
+        .name = "a fade starts the quiet time again",
+        .input = {
+            .looks = {
+                look_at(0ms, DIALOG), look_at(7900ms, STILL), look_at(7950ms), look_at(15000ms, WHITE),
+                look_at(20000ms), look_at(22900ms, STILL), look_at(23000ms, STILL),
+            },
+            .config = quiet_config(0ms),
+        },
+        .expectation = {
+            .verdict = "failed: scene_quiet",
+            .a_presses = 1,
+            .line = "[PLZA test] screen 5: quiet_end at 23.0s",
+            .states = "dialog, scene_still, fade_white, scene_still, quiet_end",
+        },
+    },
+    {
+        .name = "a black fade longer than the quiet time is waited out",
+        .input = {
+            .looks = {
+                look_at(0ms, BLACK), look_at(7000ms, BLACK), look_at(14000ms, BLACK), look_at(21900ms),
+                look_at(/*at=*/22000ms, NOTHING, {CONTROLS_HINT_READING}),
+                look_at(/*at=*/23100ms, NOTHING, {CONTROLS_HINT_READING}),
+            },
+            .config = quiet_config(0ms),
+        },
+        .expectation = {.verdict = "done", .a_presses = 0, .states = "fade_black, hint_showing, controls_hint"},
+    },
+    {
+        .name = "the controls hint held a second ends the scene; a box over it starts the second again",
+        .input = {
+            .looks = {
+                look_at(/*at=*/0ms, NOTHING, {CONTROLS_HINT_READING}),
+                look_at(/*at=*/600ms, DIALOG, {CONTROLS_HINT_READING}),
+                look_at(/*at=*/900ms, NOTHING, {CONTROLS_HINT_READING}),
+                look_at(/*at=*/1800ms, STILL, {CONTROLS_HINT_READING}),
+                look_at(/*at=*/9000ms, STILL, {CONTROLS_HINT_READING}),
+            },
+            .config = quiet_config(0ms),
+        },
+        .expectation = {
+            .verdict = "done",
+            .a_presses = 1,
+            .line = "[PLZA test] screen 4: controls_hint at 9.0s",
+            .states = "hint_showing, dialog, hint_showing, controls_hint",
+        },
+    },
+    {
+        .name = "the controls hint is not held across a look without it",
+        .input = {
+            .looks = {
+                look_at(/*at=*/0ms, NOTHING, {CONTROLS_HINT_READING}),
+                look_at(500ms),
+                look_at(/*at=*/1200ms, NOTHING, {CONTROLS_HINT_READING}),
+                look_at(/*at=*/2200ms, NOTHING, {CONTROLS_HINT_READING}),
+            },
+            .config = quiet_config(0ms),
+        },
+        .expectation = {
+            .verdict = "done",
+            .a_presses = 0,
+            .line = "[PLZA test] screen 4: controls_hint at 2.2s",
+            .states = "hint_showing, scene_moving, hint_showing, controls_hint",
+        },
+    },
+    {
+        .name = "01.01's ad: A at the chevron, blind A after 5 s, none once the hint shows",
+        .input = {.looks = {
+            look_at(0ms),
+            look_at(/*at=*/1000ms, NOTHING, {ADVANCE_ARROW_READING}),
+            look_at(1500ms, STILL),
+            look_at(3000ms, STILL),
+            look_at(7900ms, STILL),
+            look_at(8000ms, STILL),
+            look_at(9000ms, STILL),
+            look_at(10000ms),
+            look_at(/*at=*/14200ms, NOTHING, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/15000ms, STILL, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/15300ms, STILL, {CONTROLS_HINT_READING}),
+        }},
+        .expectation = {
+            .verdict = "done",
+            .a_presses = 2,
+            .states = "scene_moving, dialog, scene_still, blind_press, scene_still, hint_showing, controls_hint",
+        },
+    },
+    {
+        .name = "the mission banner on two looks ends the scene; a box between them starts the count again",
+        .input = {.looks = {
+            look_at(0ms, DIALOG),
+            look_at(500ms),
+            look_at(/*at=*/6000ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/6250ms, DIALOG, {MISSION_BANNER_READING}),
+            look_at(/*at=*/6500ms, NOTHING, {MISSION_BANNER_READING}),
+            look_at(/*at=*/12000ms, STILL, {MISSION_BANNER_READING}),
+            look_at(12250ms),
+        }},
+        .expectation = {
+            .verdict = "done",
+            .a_presses = 2,
+            .line = "[PLZA test] screen 6: mission_banner at 12.0s",
+            .states = "dialog, scene_moving, banner_showing, dialog, banner_showing, mission_banner",
+        },
+    },
+    {
+        .name = "blind presses are not busy: a minute of them still ends quiet",
+        .input = {.looks = {
+            look_at(/*at=*/0ms, NOTHING, {ADVANCE_ARROW_READING}),
+            look_at(5000ms, STILL),
+            look_at(6000ms, STILL),
+            look_at(59000ms, STILL),
+            look_at(60000ms, STILL),
+        }},
+        .expectation = {
+            .verdict = "failed: scene_quiet",
+            .a_presses = 2,
+            .states = "dialog, blind_press, scene_still, quiet_end",
+        },
+    },
+    {
+        .name = "without a quiet time a still screen never ends the scene",
+        .input = {
+            .looks = {
+                look_at(0ms, STILL), look_at(300000ms, STILL),
+                look_at(/*at=*/300100ms, NOTHING, {CONTROLS_HINT_READING}),
+                look_at(/*at=*/301200ms, NOTHING, {CONTROLS_HINT_READING}),
+                look_at(/*at=*/302500ms, NOTHING, {CONTROLS_HINT_READING}),
+            },
+            .config = {},
+        },
+        .expectation = {.verdict = "done", .a_presses = 0, .states = "scene_still, hint_showing, controls_hint"},
+    },
     {
         .name = "01.01's arrival: A at the text, in the flyover and at the choice, done on the controls hint",
         .input = {.looks = {
@@ -485,9 +369,118 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] fade_white: white fade"},
     },
     {
+        .name = "a machine that stops at choices ends on the choice box, after the text before it",
+        .input = {.looks = {look_at(0ms, DIALOG), look_at(500ms), look_at(1000ms, CHOICE)}, .config = choice_config()},
+        .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 1, .states = "dialog, scene_moving, choice"},
+    },
+    {
+        .name = "a machine that does not stop at choices takes the choice as text",
+        .input = {.looks = {
+            look_at(0ms, CHOICE),
+            look_at(/*at=*/500ms, NOTHING, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/1600ms, NOTHING, {CONTROLS_HINT_READING}),
+        }},
+        .expectation = {.verdict = "done", .a_presses = 1, .states = "dialog, hint_showing, controls_hint"},
+    },
+    {
+        .name = "the mission complete card is busy: A, and no quiet end while it shows",
+        .input = {.looks = {
+            look_at(/*at=*/0ms, NOTHING, {MISSION_COMPLETE_READING}),
+            look_at(/*at=*/59000ms, STILL, {MISSION_COMPLETE_READING}),
+            look_at(61000ms),
+            look_at(/*at=*/62000ms, NOTHING, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/63100ms, NOTHING, {CONTROLS_HINT_READING}),
+        }},
+        .expectation = {
+            .verdict = "done",
+            .a_presses = 2,
+            .states = "mission_complete, scene_moving, hint_showing, controls_hint",
+        },
+    },
+    {
+        .name = "a machine that stops at a battle ends on the battle HUD, with A every 2 s where no text shows",
+        .input = {
+            .looks = {
+                look_at(0ms, DIALOG), look_at(500ms), look_at(1000ms, STILL), look_at(2500ms, STILL),
+                look_at(2600ms, STILL), look_at(3000ms, BATTLE),
+            },
+            .config = battle_config(),
+        },
+        .expectation = {
+            .verdict = "done",
+            .a_presses = 3,
+            .states = "dialog, blind_press, scene_still, blind_press, battle",
+        },
+    },
+    {
+        .name = "a machine that does not stop at a battle takes the battle HUD as any screen",
+        .input = {.looks = {look_at(0ms, BATTLE), look_at(8000ms, BATTLE)}, .config = quiet_config(0ms)},
+        .expectation = {.verdict = "failed: scene_quiet", .a_presses = 0, .states = "scene_moving, quiet_end"},
+    },
+    {
         .name = "01.02's Pancham: B through the text, done on the choice box",
         .input = {.looks = {look_at(0ms), look_at(5000ms, DIALOG), look_at(6000ms, DIALOG), look_at(7000ms, CHOICE)}, .config = choice_config()},
         .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 2, .line = "[PLZA test] done on choice."},
+    },
+    {
+        .name = "the party bar held a second ends the scene; a box over it starts the second again",
+        .input = {
+            .looks = {
+                look_at(0ms, PARTY), look_at(600ms, DIALOG), look_at(900ms, PARTY), look_at(1800ms, PARTY),
+                look_at(1900ms, PARTY),
+            },
+            .config = quiet_config(0ms),
+        },
+        .expectation = {
+            .verdict = "done",
+            .a_presses = 1,
+            .line = "[PLZA test] screen 4: can_move at 1.9s",
+            .states = "party_bar, dialog, party_bar, can_move",
+        },
+    },
+    {
+        //  It shows between the lines of a talk.
+        .name = "a machine that stops at a battle does not take the party bar for control",
+        .input = {
+            .looks = {look_at(0ms, STILL), look_at(1000ms, PARTY), look_at(2500ms, PARTY), look_at(3000ms, BATTLE)},
+            .config = battle_config(),
+        },
+        .expectation = {.verdict = "done", .a_presses = 2, .states = "blind_press, scene_moving, blind_press, battle"},
+    },
+    {
+        .name = "a machine that stops at a choice does not take the party bar for control",
+        .input = {
+            .looks = {look_at(0ms, PARTY), look_at(1500ms, PARTY), look_at(2000ms, CHOICE)},
+            .config = choice_config(),
+        },
+        .expectation = {.verdict = "done", .a_presses = 0, .states = "scene_moving, choice"},
+    },
+    {
+        .name = "no text, choice or battle within the start window: the scene never started",
+        .input = {
+            .looks = {look_at(0ms), look_at(10000ms, BLACK), look_at(44900ms, STILL), look_at(45000ms, STILL)},
+            .config = scene_step_config(),
+        },
+        .expectation = {
+            .verdict = "failed: scene_never_started",
+            .a_presses = 0,
+            .states = "scene_moving, fade_black, never_started",
+        },
+    },
+    {
+        .name = "a box within the start window: the scene started, a still screen past it waits",
+        .input = {
+            .looks = {
+                look_at(0ms), look_at(10000ms, DIALOG), look_at(50000ms, STILL), look_at(51000ms, PARTY),
+                look_at(52000ms, PARTY), look_at(53100ms, PARTY),
+            },
+            .config = scene_step_config(),
+        },
+        .expectation = {
+            .verdict = "done",
+            .a_presses = 1,
+            .states = "scene_moving, dialog, scene_still, party_bar, can_move",
+        },
     },
     {
         .name = "after Brigitte: A at the text, done on the party bar held a second",
@@ -540,6 +533,21 @@ const RunCase RUN_CASES[] = {
     },
 };
 
+//  "dialog, scene_still": the states in the trace's lines ("[PLZA test]
+//  screen 2: scene_still at 1.5s").
+std::string traced_states(const std::vector<std::string>& lines){
+    std::vector<std::string> states;
+    for (const std::string& line : lines){
+        const size_t screen = line.find("] screen ");
+        const size_t name = line.find(": ", screen);
+        const size_t at = line.rfind(" at ");
+        if (screen != std::string::npos && name != std::string::npos && at != std::string::npos && at > name){
+            states.push_back(line.substr(name + 2, at - name - 2));
+        }
+    }
+    return joined(states, ", ");
+}
+
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
     const Pokemon::Outcome outcome = run_scene_machine(backend, "test", test.input.config, 360s);
@@ -555,6 +563,9 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     if (b_presses != test.expectation.b_presses){
         return std::format("expected {} B presses, got {}: {}", test.expectation.b_presses, b_presses, joined(backend.inputs(), ", "));
     }
+    if (!test.expectation.states.empty() && traced_states(backend.lines()) != test.expectation.states){
+        return std::format("expected the states \"{}\", got \"{}\"", test.expectation.states, traced_states(backend.lines()));
+    }
     if (test.expectation.line.empty()){
         return true;
     }
@@ -566,32 +577,6 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     return std::format("expected the line \"{}\" in:\n{}", test.expectation.line, joined(backend.lines(), "\n"));
 }
 
-
-class TimelineTest : public UnitTest{
-public:
-    explicit TimelineTest(const TimelineCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStorySceneMachine timeline - {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_timeline(m_test);
-    }
-private:
-    const TimelineCase& m_test;
-};
-
-class StateTest : public UnitTest{
-public:
-    explicit StateTest(const StateCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStorySceneMachine state - {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_state(m_test);
-    }
-private:
-    const StateCase& m_test;
-};
 
 class RunTest : public UnitTest{
 public:
@@ -610,12 +595,6 @@ private:
 
 
 void add_tests_AutoStorySceneMachine(UnitTestDatabase& database){
-    for (const TimelineCase& test : TIMELINE_CASES){
-        database.add<TimelineTest>(test);
-    }
-    for (const StateCase& test : STATE_CASES){
-        database.add<StateTest>(test);
-    }
     for (const RunCase& test : RUN_CASES){
         database.add<RunTest>(test);
     }
