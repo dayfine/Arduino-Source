@@ -62,6 +62,18 @@ public:
         const size_t bottom = m_rows.size() > SHOWN ? m_rows.size() - SHOWN : 0;
         m_top = std::min(m_cursor > STOP ? m_cursor - STOP : 0, bottom);
     }
+    //  The list scrolls back under the cursor on its fourth row shown.
+    virtual void cursor_up() override{
+        if (m_cursor > 0){
+            m_cursor--;
+        }
+        constexpr size_t STOP = ITEM_LIST_ROWS / 2;
+        m_top = std::min(m_top, m_cursor > STOP ? m_cursor - STOP : 0);
+    }
+    //  The row (from 0) the cursor is on.
+    size_t cursor() const{
+        return m_cursor;
+    }
 
 private:
     std::vector<BagRow> m_rows;
@@ -469,6 +481,9 @@ struct PocketReadExpectation{
     size_t rows;
     //  The DOWN presses the read took (as many UP back to the top).
     size_t downs;
+    //  The row (from 0) the read leaves the cursor on: the top, where the
+    //  next visit to the pocket counts its DOWN presses from.
+    size_t cursor_after = 0;
 };
 struct PocketReadCase{
     std::string name;
@@ -496,6 +511,9 @@ public:
                 return std::format("Row {}: read {}, expected {}.", c + 1, read.rows[c].item, m_case.input.rows[c].item);
             }
         }
+        if (list.cursor() != m_case.expectation.cursor_after){
+            return std::format("The read left the cursor on row {}; expected row {}.", list.cursor() + 1, m_case.expectation.cursor_after + 1);
+        }
         return true;
     }
 
@@ -507,6 +525,14 @@ private:
 const std::vector<BagRow> ELEVEN_ROWS = {
     {"moon-stone", 2}, {"potion", 6}, {"nugget", 1}, {"repel", 2}, {"escape-rope", 4}, {"super-repel", 4},
     {"rare-candy", 3}, {"x-special", 18}, {"x-speed", 6}, {"x-accuracy", 5}, {"guard-spec", 2},
+};
+
+//  19.01b's Items pocket at the Route 22 rival (console B, 2026-11-16), 15
+//  rows and the CANCEL.
+const std::vector<BagRow> ROUTE22_RIVAL_ROWS = {
+    {"moon-stone", 2}, {"potion", 3}, {"repel", 2}, {"escape-rope", 4}, {"super-repel", 4},
+    {"rare-candy", 1}, {"x-special", 14}, {"x-speed", 6}, {"x-accuracy", 3}, {"guard-spec", 2},
+    {"max-elixir", 1}, {"elixir", 1}, {"super-potion", 6}, {"antidote", 1}, {"parlyz-heal", 2},
 };
 
 const PocketReadCase POCKET_READ_CASES[] = {
@@ -529,6 +555,11 @@ const PocketReadCase POCKET_READ_CASES[] = {
         .name = "eleven rows, the CANCEL unread: until the list stops",
         .input = {.rows = ELEVEN_ROWS, .cancel_read = false},
         .expectation = {.rows = 11, .downs = 10},
+    },
+    {
+        .name = "fifteen rows: back on the top row after 13 DOWN",
+        .input = {.rows = ROUTE22_RIVAL_ROWS},
+        .expectation = {.rows = 15, .downs = 13},
     },
 };
 

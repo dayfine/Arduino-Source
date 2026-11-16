@@ -64,10 +64,12 @@ struct Supplies{
     //  The counts the bag read for the items the story doesn't count (an
     //  X Special), by slug; an item missing here has an unknown count.
     std::map<std::string, int> other_counts = {};
-    //  The counts above come from a read of the Items pocket by a step that
-    //  acts on them (set_from_bag()), kept since by the story's own counting.
-    //  False for the counts a checkpoint's row guesses: a battle or a
-    //  recovery reads the pocket itself before it uses them. A check's read
+    //  The counts above come from a read of the Items pocket in this run by
+    //  a step that acts on them (set_from_bag()), kept since by the story's
+    //  own counting. False for the counts a checkpoint's row guesses or a
+    //  reloaded save carries, and after any step that changes the pocket
+    //  uncounted (items_pocket_change()): a battle or a recovery reads the
+    //  pocket itself before it uses them. A check's read
     //  (read_bag_supplies()) never sets them.
     bool counts_read = false;
     //  The starter's status at the last battle screen that showed it, and

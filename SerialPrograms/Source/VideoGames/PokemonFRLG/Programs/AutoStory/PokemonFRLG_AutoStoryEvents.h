@@ -41,6 +41,7 @@
 #include "PokemonFRLG_AutoStoryStartFrames.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
+#include "PokemonFRLG_AutoStoryItemsPocketChange.h"
 #include "PokemonFRLG_AutoStoryCheckpoints.h"
 #include "PokemonFRLG_AutoStoryLineTrainer.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
@@ -156,7 +157,9 @@ public:
         m_menu = menu;
     }
 
-    //  The step's action from the table.
+    //  The step's action from the table. Done or failed part way, a step
+    //  items_pocket_change() calls STALE leaves the next battle to read the
+    //  Items pocket first (Supplies::counts_read).
     virtual Pokemon::Outcome run(const StoryStep& step, Pokemon::RunState& state) override;
     //  The step condition master_ball_skipped: the program's option is off, or
     //  the run is a SPEEDRUN, where the Master Ball's few seconds are not spent.
