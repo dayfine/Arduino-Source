@@ -204,10 +204,10 @@ void InPlaceCatcher::run(
 
         if (!attack_tracker.currently_active() || last_attack + 5000ms > current_time()){
             env.log("Detected battle menu. Throwing ball...", COLOR_BLUE);
-            BallThrowOptions ball_throw;
-            ball_throw.aim = 500ms;
-            ball_throw.after_throw = 3500ms;
-            throw_ball(context, ball_throw);
+            throw_ball(context, BallThrowOptions{
+                .aim = 500ms,
+                .after_throw = 3500ms,
+            });
             pbf_press_button(context, BUTTON_L, 160ms, 160ms);
             stats.balls_thrown++;
             env.update_stats();

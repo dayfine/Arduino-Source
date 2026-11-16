@@ -70,13 +70,13 @@ void PostKillCatcher::program(SingleSwitchProgramEnvironment& env, ProController
     require_player(env.console, context, BUTTON_L);
 
     while (true){
-        BallThrowOptions ball_throw;
-        ball_throw.aim = 500ms;
-        ball_throw.right_scrolls = RIGHT_SCROLLS;
-        ball_throw.scroll_hold = SCROLL_HOLD;
-        ball_throw.scroll_release = SCROLL_RELEASE;
-        ball_throw.after_throw = POST_THROW_WAIT;
-        throw_ball(context, ball_throw);
+        throw_ball(context, BallThrowOptions{
+            .aim = 500ms,
+            .right_scrolls = RIGHT_SCROLLS,
+            .scroll_hold = SCROLL_HOLD,
+            .scroll_release = SCROLL_RELEASE,
+            .after_throw = POST_THROW_WAIT,
+        });
 
         go_home(env.console, context);
         reset_game_from_home(env, env.console, context);

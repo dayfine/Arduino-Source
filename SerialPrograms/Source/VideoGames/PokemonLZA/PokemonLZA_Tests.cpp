@@ -19,7 +19,6 @@
 #include "Inference/Map/PokemonLZA_MapIconDetector.h"
 #include "Inference/PokemonLZA_OverworldPartySelectionDetector.h"
 #include "Inference/PokemonLZA_SelectionArrowDetector.h"
-#include "Programs/PokemonLZA_BallThrow.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -29,7 +28,6 @@ namespace PokemonLZA{
 
 void add_tests(UnitTestDatabase& database){
     add_tests_AlertEyeDetector(database);
-    add_tests_BallThrow(database);
     add_tests_BoxCellInfoDetector(database);
     add_tests_ButtonDetector(database);
     add_tests_DirectionArrowDetector(database);

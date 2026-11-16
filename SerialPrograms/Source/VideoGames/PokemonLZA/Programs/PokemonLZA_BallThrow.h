@@ -11,10 +11,8 @@
 #ifndef PokemonAutomation_PokemonLZA_BallThrow_H
 #define PokemonAutomation_PokemonLZA_BallThrow_H
 
-#include <stddef.h>
 #include <stdint.h>
 #include "Common/Cpp/Time.h"
-#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 
@@ -44,28 +42,9 @@ struct BallThrowOptions{
 };
 
 
-//  The D-pad presses that scroll `right_scrolls` balls.
-struct BallScrolls{
-    DpadPosition direction;
-    size_t count;
-};
-
-//  The D-pad presses for `right_scrolls`: right when positive, left when
-//  negative.
-BallScrolls ball_scrolls(int8_t right_scrolls);
-
-//  How long ZL + ZR stay held: the aim plus every scroll.
-Milliseconds throw_buttons_hold(const BallThrowOptions& options);
-
-
 //  Lock on, aim, scroll and throw as `options` says, then wait
 //  `options.after_throw`. Presses only: the caller checks what the throw did.
 void throw_ball(ProControllerContext& context, const BallThrowOptions& options);
-
-
-
-//  Unit tests for ball_scrolls() and throw_buttons_hold().
-void add_tests_BallThrow(UnitTestDatabase& database);
 
 
 
