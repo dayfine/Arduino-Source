@@ -14,9 +14,73 @@
       ],
       "facing": "north"
     },
+    "start_flags": [
+      "trainer_beaten:ViridianCity_Gym/cooltrainer_m@13,7",
+      "trainer_at:ViridianCity_Gym/cooltrainer_m@13,7=14,7"
+    ],
     "events": [
       {
-        "id": "below_takashi_line",
+        "id": "below_up_arrow",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 1
+            },
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "south",
+              "tiles": 2
+            },
+            {
+              "direction": "west",
+              "tiles": 3
+            },
+            {
+              "direction": "south",
+              "tiles": 3
+            },
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "south",
+              "tiles": 2
+            },
+            {
+              "direction": "east",
+              "tiles": 5
+            }
+          ]
+        },
+        "why": "from Warren's (15, 7) the way 17.02 came, backwards: down columns 15 and 16 to row 10, west to column 13, down it to row 13 past Yuji's (12, 10) and Atsushi's (11, 14) lines, round the wall (15, 14) to row 15 and east to (19, 15), below the up arrow (19, 14); no arrow tile on the way"
+      },
+      {
+        "id": "arrows_to_takashi",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 1
+            }
+          ]
+        },
+        "why": "onto the up arrow (19, 14), which slides the player up column 19 to the stop tile (19, 3); onto the left arrow (19, 2), which slides them west along row 2 to the stop tile (11, 2), beside Takashi (10, 2) on his right. He faces south (sight 3, column 10's (10, 3..5)) and sees no tile of the way"
+      },
+      {
+        "id": "face_takashi",
         "kind": "route",
         "action": "run",
         "args": {
@@ -24,23 +88,19 @@
             "map": "ViridianCity_Gym",
             "tiles": [
               [
-                10,
-                6
+                11,
+                2
               ]
             ],
-            "facing": "north"
+            "facing": "west"
           }
         },
-        "why": "back up column 15, west along row 6 to (10, 6), below Takashi's line (10, 3..5)"
+        "why": "turn to Takashi (10, 2), if the slide left the player facing another way"
       },
       {
-        "id": "takashi_line",
-        "kind": "step",
-        "action": "trainer_line",
-        "args": {
-          "direction": "north"
-        },
-        "why": "onto (10, 5), the end of Takashi's line (sight 3, facing south)"
+        "id": "challenge_takashi",
+        "kind": "talk",
+        "why": "Takashi (10, 2), from his right: fought where he stands, so he walks nowhere and stays on (10, 2) after"
       },
       {
         "id": "takashi",
@@ -58,16 +118,37 @@
           "map": "ViridianCity_Gym",
           "tiles": [
             [
-              10,
-              5
+              11,
+              2
             ]
           ],
-          "facing": "north"
+          "facing": "west"
         },
-        "why": "Takashi (TRAINER_BLACK_BELT_TAKASHI): Machoke Lv38, Machop Lv38, Machoke Lv38, Machoke Lv43"
+        "why": "Takashi (TRAINER_BLACK_BELT_TAKASHI): Machoke Lv38, Machop Lv38, Machoke Lv38, Machoke Lv43; beaten, he sees no one on column 10 after",
+        "flags_after": [
+          "trainer_beaten:ViridianCity_Gym/black_belt@10,2"
+        ]
       },
       {
-        "id": "below_giovanni",
+        "id": "arrows_down",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 1
+            },
+            {
+              "direction": "east",
+              "tiles": 1
+            }
+          ]
+        },
+        "why": "onto the right arrow (11, 3), which slides the player east along row 3 to the stop tile (17, 3); onto the down arrow (18, 3), which slides them down column 18 to the stop tile (18, 14). The only way off row 2: Takashi stands on (10, 2) west of it"
+      },
+      {
+        "id": "below_takashi_column",
         "kind": "route",
         "action": "run",
         "args": {
@@ -75,14 +156,44 @@
             "map": "ViridianCity_Gym",
             "tiles": [
               [
-                2,
-                3
+                10,
+                7
               ]
             ],
             "facing": "north"
           }
         },
-        "why": "west along row 3 and down to (2, 3), facing Giovanni (2, 2)"
+        "why": "back round to row 7 below column 10, as 17.02 came: no arrow tile on the way"
+      },
+      {
+        "id": "below_giovanni",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 4
+            },
+            {
+              "direction": "west",
+              "tiles": 3
+            },
+            {
+              "direction": "south",
+              "tiles": 3
+            },
+            {
+              "direction": "west",
+              "tiles": 5
+            },
+            {
+              "direction": "north",
+              "tiles": 3
+            }
+          ]
+        },
+        "why": "the way the run went before: up column 10 past beaten Takashi to (10, 3), west along row 3 to (7, 3), down to the wall (7, 6), west to (2, 6) and up to (2, 3), facing Giovanni (2, 2)"
       }
     ]
   },
@@ -90,6 +201,7 @@
     "menu": "full",
     "notes": {
       "checkpoint": [
+        "Starts on (15, 7) after Warren's battle in 17.02: he stands on (14, 7) since (start_flags, as 17.02's battle sets them). Takashi is fought from his right, (11, 2), which the arrows (19, 14) and (19, 2) slide the player to: from his line (10, 5) he walked up to (10, 4) and stood across the only way north to Giovanni (console B, 2026-11-15 16:52). Fought from the side he stays on (10, 2), and the way north up column 10 is open.",
         "Ends at (2, 3) facing Giovanni (2, 2): the save in front of him, as for the other leaders."
       ]
     }

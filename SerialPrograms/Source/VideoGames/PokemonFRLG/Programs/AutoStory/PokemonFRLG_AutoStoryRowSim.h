@@ -188,6 +188,13 @@ std::string row_step_on_sim(
     OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id,
     const std::set<std::string>& run_flags = std::set<std::string>()
 );
+//  row_step_on_sim() with `run_flags` carried on: they become the flags
+//  the step left, as the program's run state carries them to the next
+//  step (a trainer who walked up to the player, TRAINER_AT_FLAG).
+std::string row_step_carrying_flags(
+    OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id,
+    std::set<std::string>& run_flags
+);
 
 
 

@@ -767,7 +767,7 @@ ConsoleAction console_action_of(StoryActionId id){
     case StoryActionId::LEGS:
         return walk_legs;
     case StoryActionId::STEP:
-        return take_step;
+        return [](StoryEnv& env, RunState& state, const StoryStep& step){ const Outcome outcome = take_step(env, state, step); note_line_trainer(env.console.logger(), step, outcome, state.flags); return outcome; };
     case StoryActionId::TALK:
         return [](StoryEnv& env, RunState&, const StoryStep& step){
             if (!talk_until_message(env.console, env.context, step)){
@@ -822,7 +822,7 @@ StoryExecutor::StoryExecutor(StoryEnv& env)
 }
 
 Outcome StoryExecutor::run(const StoryStep& step, RunState& state){
-    return regrow_on_warp(story_maps(), [&]{ return m_executor.run(step, state); }, state);
+    return trainers_back_on_warp([&]{ return regrow_on_warp(story_maps(), [&]{ return m_executor.run(step, state); }, state); }, state);
 }
 
 bool StoryExecutor::master_ball_skipped(bool take_master_ball, Pokemon::StoryCheckLevel checks){

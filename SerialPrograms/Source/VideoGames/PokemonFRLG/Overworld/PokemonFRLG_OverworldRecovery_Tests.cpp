@@ -834,6 +834,24 @@ UnitTestResult test_trainer_stops_leg(){
     return true;
 }
 
+//  A hold across Robin's sight that moved the screen not at all, with
+//  nothing seen in the watch for her after it: the player never moved, and
+//  the leg is walked again from its start, as any hold that moved nothing.
+//  The watch had dropped the hold's movement, so "north 2 (open)" from
+//  (10, 5), into Takashi on (10, 4), was taken as walked to (10, 3), and
+//  the next leg moved nothing (console B, 2026-11-15 16:52, 17.03
+//  below_giovanni).
+UnitTestResult test_unmoved_leg_in_sight(){
+    const std::vector<MapData> maps{parse_map(TEST_ROBIN_JSON, "Robin")};
+    const RouteStep open = walk(Direction::EAST, 4, robin(4, 1));
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = robin(0, 1), .label = "Route", .wall_check = WallCheck::SKIP, .open_leg_check = OpenLegCheck::TRUST};
+    ScriptedRoute script;
+    script.ends[0] = no_movement();
+    if (script.run({open}, &planning) || script.walked.size() != 2){
+        return std::format("Expected the leg walked again after its hold moved nothing, walked {}: {}", script.walked.size(), script.failure);
+    }
+    return expect_logged(script.logs, {"the player never moved", "stopped 0 to 0 tiles in"});
+}
 
 //  On the grass a stop past Robin's column may be a wild battle's anywhere
 //  on the leg, or hers on (3, 1), after which she stands on (3, 2): the
@@ -922,6 +940,10 @@ const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
     {
         .input = {.name = "a trainer stops a leg", .body = test_trainer_stops_leg},
         .expectation = {.description = "handles forced stop and battle start from trainer challenge"},
+    },
+    {
+        .input = {.name = "a hold in a trainer's sight that moved nothing", .body = test_unmoved_leg_in_sight},
+        .expectation = {.description = "walked again from its start, not taken as walked"},
     },
     {
         .input = {.name = "a stop on the grass in a trainer's sight", .body = test_grass_in_sight},

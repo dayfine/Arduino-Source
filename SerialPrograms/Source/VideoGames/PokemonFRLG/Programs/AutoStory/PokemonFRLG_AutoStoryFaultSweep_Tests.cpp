@@ -103,12 +103,8 @@ const std::map<std::string, std::string> KNOWN_FAILING{
         "Rocket Hideout's arrow maze: an unseen tap leaves the player on the leg's start or its end, and from what the screen shows the two look alike: a test tap toward a tile blocked from one but not the other tells them apart"},
     {"PokemonFRLG::AutoStory - Fault sweep: 04.05, clean run",
         "route4_east plans no legs from Mt. Moon B2F (14, 8), past the helix gap: the planner's way out of B2F over story_maps(), not yet looked at"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 06.02, clean run",
-        "below_gym_tree walks onto the gym's door warp and sees no fade (VermilionCity_Gym (4, 12)): the door's warp on the sim after trash_cans, which the sim stubs, not yet looked at"},
     {"PokemonFRLG::AutoStory - Fault sweep: 09.02, clean run",
         "b2f_arrows_to_lift_room moves nothing twice from RocketHideout_B2F (1, 4) after moon_stone, a talk the sim stubs: the arrow tiles' spin from that tile on the sim, not yet looked at"},
-    {"PokemonFRLG::AutoStory - Fault sweep: 17.03, clean run",
-        "Takashi (10, 2) walks up to (10, 4) when he sees the player on (10, 5) and stays there after the battle, so below_giovanni's way north up column 10 is blocked (moved nothing twice); on the console too: the route after a line battle planned with the trainer who walked up as a wall (with_trainers()), or a way to Takashi from row 3"},
     {"PokemonFRLG::AutoStory - Fault sweep: 08.03, mount lost",
         "riding with no fault, route7_underground_exit's warp to UndergroundPath_EastEntrance is not confirmed on the sim (the screen after the fade reads as before the hold): the sim's warp off the Bicycle, before this class can sweep 08.03"},
 };
@@ -263,6 +259,9 @@ struct RowRun{
     Milliseconds in_wild_battles{0};
     int moved_step_taps = 0;
     int bike_legs = 0;
+    //  The run flags as the steps so far left them: the row's start_flags,
+    //  and a trainer who walked up to the player (TRAINER_AT_FLAG).
+    std::set<std::string> flags;
 };
 
 //  Where a stubbed step leaves the player instead of its pose_after: by step index.
@@ -308,6 +307,20 @@ bool hide_talk_battle_trainer(std::vector<MapData>& maps, const StoryStep& step)
     return true;
 }
 
+//  Beats in `maps` the trainers `step`'s flags_after name (TRAINER_BEATEN_FLAG),
+//  a battle a talk starts, and adds its flags_after to `run_flags`, as the
+//  program's run state takes them after it: Takashi, fought from his right
+//  in 17.03, sees no one on column 10 after. Returns whether it named any.
+bool beat_talk_battle_trainers(const StoryStep& step, std::vector<MapData>& maps, std::set<std::string>& run_flags){
+    const std::set<std::string> beaten = beaten_trainers(std::set<std::string>(step.flags_after.begin(), step.flags_after.end()));
+    if (beaten.empty()){
+        return false;
+    }
+    maps = with_trainers_beaten(std::move(maps), beaten);
+    run_flags.insert(step.flags_after.begin(), step.flags_after.end());
+    return true;
+}
+
 //  Row `row`'s step `c` on `sim` from `at`, recorded in `out`. Returns
 //  whether it failed as unscripted() and was let pass (run_row()).
 bool run_row_step(
@@ -318,7 +331,7 @@ bool run_row_step(
     out.facing_before.emplace(c, sim.state().facing);
     out.gates_before.emplace(c, sim.state().gates);
     const size_t warps_before = sim.state().warped_from.size();
-    out.failure = row_step_on_sim(sim, at, row.steps[c], row.id, start_flag_set(row));
+    out.failure = row_step_carrying_flags(sim, at, row.steps[c], row.id, out.flags);
     const std::vector<std::string>& warped = sim.state().warped_from;
     out.warped_from[c].assign(warped.begin() + warps_before, warped.end());
     const bool let_pass = unscripted(out.failure) && (!scripted || scripted->contains(c));
@@ -370,6 +383,7 @@ RowRun run_row(
 ){
     const SimScript script = with_lifts(with_row_start(row_script, row));
     RowRun out;
+    out.flags = start_flag_set(row);
     std::optional<MapPosition> off_maps;
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     std::vector<MapData> maps = row_maps(row);
@@ -391,6 +405,7 @@ RowRun run_row(
         }
         at = *story_pose(Pokemon::pose_of(*step.pose_after));
         const bool hidden = let_pass && hide_talk_battle_trainer(maps, step);
+        const bool beaten = let_pass && beat_talk_battle_trainers(step, maps, out.flags);
         const auto landing = landings.find(c);
         const MapPosition land{at.map, landing == landings.end() ? at.tile : landing->second};
         if (!map_loaded(land.map)){
@@ -399,7 +414,7 @@ RowRun run_row(
             out.failure = walks_after(row, c) ? std::format("{}/{}: ends on {}, which has no map, with a walk after it.", row.id, step.name, land.map) : "";
             break;
         }
-        if (!(sim->state().position == land) || hidden){
+        if (!(sim->state().position == land) || hidden || beaten){
             add(sim->state());
             sim = std::make_unique<OverworldSim>(maps, land, at.facing.value_or(sim->state().facing), carried_over(script, *sim));
         }

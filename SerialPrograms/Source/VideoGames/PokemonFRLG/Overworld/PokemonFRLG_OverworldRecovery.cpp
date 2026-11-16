@@ -221,7 +221,7 @@ public:
             return outcome;
         }
         if (outcome.end == StepEnd::DONE && crossing && m_calls.watch_for_trainer){
-            outcome = StepOutcome{.end = m_calls.watch_for_trainer(step, *crossing), .walked = std::nullopt};
+            outcome = StepOutcome{.end = m_calls.watch_for_trainer(step, *crossing), .walked = std::nullopt, .movement = outcome.movement};  //  kept: a bump into Takashi passed for walked (17.03, 2026-11-15)
         }
         m_last = leg;
         m_last_late = outcome.end == StepEnd::LATE;

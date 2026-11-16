@@ -11,6 +11,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
 #include "PokemonFRLG_AutoStoryMovedTrainers.h"
+#include "PokemonFRLG_AutoStoryPacedRoute.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -37,6 +38,14 @@ std::optional<std::pair<int, int>> parse_tile(std::string_view text){
     return std::pair{x, y};
 }
 
+//  The way from `from` to `to`, on the same row or column.
+Direction towards(const TilePos& from, const TilePos& to){
+    if (to.x == from.x){
+        return to.y < from.y ? Direction::NORTH : Direction::SOUTH;
+    }
+    return to.x < from.x ? Direction::WEST : Direction::EAST;
+}
+
 } // namespace
 
 
@@ -55,6 +64,42 @@ std::vector<TrainerMove> moved_trainers(const std::set<std::string>& run_flags){
         moved.emplace_back(TrainerMove{.trainer = std::string(rest.substr(0, equals)), .x = tile->first, .y = tile->second});
     }
     return moved;
+}
+
+void trainers_back_after_map_change(std::string_view map_before, std::string_view map_after, std::set<std::string>& run_flags){
+    if (map_before == map_after){
+        return;
+    }
+    for (const TrainerMove& move : moved_trainers(run_flags)){
+        run_flags.erase(trainer_at_flag(move));
+        run_flags.insert(std::format("{}{}", TRAINER_BEATEN_FLAG, move.trainer));
+    }
+}
+
+std::string trainer_at_flag(const TrainerMove& move){
+    return std::format("{}{}={},{}", TRAINER_AT_FLAG, move.trainer, move.x, move.y);
+}
+
+std::optional<TrainerMove> trainer_walking_up(
+    const std::vector<MapData>& maps, const MapPosition& tile, const std::set<std::string>& beaten
+){
+    const MapData* map = nullptr;
+    for (const MapData& candidate : maps){
+        map = candidate.name == tile.map ? &candidate : map;
+    }
+    std::optional<TrainerMove> move;
+    for (size_t c = 0; map != nullptr && c < map->objects.size(); c++){
+        const Pokemon::MapObject& object = map->objects[c];
+        if (!trainer_may_see(*map, object, tile.point) || beaten.contains(trainer_id(*map, object))){
+            continue;
+        }
+        if (move || object.wander){
+            return std::nullopt;
+        }
+        const TilePos beside = tile.point.next(towards(tile.point, TilePos{object.x, object.y}));
+        move = TrainerMove{.trainer = trainer_id(*map, object), .x = beside.x, .y = beside.y};
+    }
+    return move;
 }
 
 std::vector<MapData> with_trainers_moved(std::vector<MapData> maps, const std::vector<TrainerMove>& moved){

@@ -16,6 +16,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonFRLG_AutoStoryBoulders.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
+#include "PokemonFRLG_AutoStoryLineTrainer.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
@@ -177,7 +178,7 @@ Outcome StoryMapsSim::run_action(const StoryStep& step, RunState& state){
         }
         m_dialog_up = false;
     }
-    return regrow_on_warp(maps(), [&]{ return Pokemon::TableExecutor::run_action(step, state); }, state);
+    return trainers_back_on_warp([&]{ return regrow_on_warp(maps(), [&]{ return Pokemon::TableExecutor::run_action(step, state); }, state); }, state);
 }
 
 Pokemon::ScreenLook StoryMapsSim::look(){
@@ -462,6 +463,7 @@ Pokemon::StoryAction OverworldStepSim::step_action(StoryActionId id){
         m_flags = state.flags;
         m_beaten = beaten_trainers(state.flags);
         const std::string failure = (this->*body)(step);
+        state.flags = m_flags;
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
     });
 }
@@ -613,7 +615,15 @@ std::string OverworldStepSim::step_ahead(const StoryStep& step){
         return shown.has_value();
     };
     const int tiles = step.action == TRAINER_LINE_VARIANT ? TRAINER_LINE_TILES : 1;
-    return step_until_seen(tiles, tap, seen) ? "" : "no trainer saw the player.";
+    if (!step_until_seen(tiles, tap, seen)){
+        return "no trainer saw the player.";
+    }
+    //  As note_line_trainer(): the trainer who saw the player stands beside them
+    //  from now on, for the routes after the battle.
+    if (step.action == TRAINER_LINE_VARIANT || step.action == TRAINER_WAIT_VARIANT){
+        note_trainer_walked_up(m_sim.state().position, m_flags);
+    }
+    return "";
 }
 
 //  take_warp_step() on the sim: the step, then its fade, with a step more
@@ -843,11 +853,22 @@ std::string row_step_on_sim(
     OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id,
     const std::set<std::string>& run_flags
 ){
+    std::set<std::string> flags = run_flags;
+    return row_step_carrying_flags(sim, at, step, id, flags);
+}
+
+std::string row_step_carrying_flags(
+    OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id,
+    std::set<std::string>& run_flags
+){
+    const std::string map_before = at.map;
     OverworldStepSim executor(sim, id, at);
     RunState state;
     state.flags = run_flags;
     const Outcome outcome = executor.run(step, state);
     at = executor.at();
+    run_flags = std::move(state.flags);
+    trainers_back_after_map_change(map_before, at.map, run_flags);
     if (outcome.succeeded()){
         //  The step that picks the Card Key up (flags_after) opens the doors the
         //  next ones walk to.

@@ -149,7 +149,11 @@
           ],
           "facing": "north"
         },
-        "why": "Warren (TRAINER_COOLTRAINER_WARREN): Marowak Lv37, Marowak Lv37, Rhyhorn Lv38, Nidorina Lv39, Nidoqueen Lv39"
+        "why": "Warren (TRAINER_COOLTRAINER_WARREN): Marowak Lv37, Marowak Lv37, Rhyhorn Lv38, Nidorina Lv39, Nidoqueen Lv39; he walked up from (13, 7) to (14, 7) when he saw the player on (15, 7), and stands there from now on (trainer_at), across row 7 west of the player",
+        "flags_after": [
+          "trainer_beaten:ViridianCity_Gym/cooltrainer_m@13,7",
+          "trainer_at:ViridianCity_Gym/cooltrainer_m@13,7=14,7"
+        ]
       }
     ]
   },
