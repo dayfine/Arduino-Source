@@ -197,6 +197,11 @@ std::vector<Observation<ZonePose>> concat(std::vector<Observation<ZonePose>> fir
     return first;
 }
 
+//  `text` `times` times, joined by ", ".
+std::string repeated(std::string_view text, size_t times){
+    return joined(std::vector<std::string>(times, std::string(text)), ", ");
+}
+
 
 //  The built-in checkpoint `id`, its `steps` steps from step `first_step`
 //  (from 0) on.
@@ -293,6 +298,31 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at platform_to_plaza: walk_no_end"},
     },
     {
+        //  console B, 2026-11-15: control came ~7 s after 01.01's scenes
+        //  had ended, with nothing on screen to show it was not there yet.
+        .name = "a walk waits for control that comes 7 s after the scene",
+        .input = {.checkpoint = "01.01", .first_step = 1, .steps = 1, .looks = concat(
+            std::vector<Observation<ZonePose>>(28, CUTSCENE),
+            {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, WHITE_FADE}
+        )},
+        .expectation = {
+            .verdict = "done",
+            .inputs = repeated("wait 250ms", 29) +
+                ", hold north 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
+        },
+    },
+    {
+        .name = "a walk takes the controls hint for control",
+        .input = {.checkpoint = "01.01", .first_step = 1, .steps = 1, .looks = {
+            look(/*events=*/{}, {CONTROLS_HINT_READING}), look(/*events=*/{}, {CONTROLS_HINT_READING}),
+            CUTSCENE, CUTSCENE, CUTSCENE, WHITE_FADE,
+        }},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "wait 250ms, hold north 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
+        },
+    },
+    {
         .name = "01.01's walk does not start in a text box",
         .input = {.checkpoint = "01.01", .first_step = 1, .looks = {DIALOG}},
         .expectation = {.verdict = "failed at platform_to_plaza: walk_not_free"},
@@ -303,7 +333,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at on_platform: platform_not_seen"},
     },
     {
-        .name = "01.01 runs from the platform through the arrival to the mission banner",
+        .name = "01.01 runs from the platform through the arrival to the controls hint",
         .input = {.checkpoint = "01.01", .first_step = 0, .looks = concat(walk_into_white_fade(), {
             WHITE_FADE,
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)),
@@ -311,8 +341,70 @@ const RunCase RUN_CASES[] = {
             look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(2000)),
             look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(2250)),
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(2500)),
+            look(/*events=*/{}, {CONTROLS_HINT_READING}, Milliseconds(9500)),
+            look(/*events=*/{}, {CONTROLS_HINT_READING}, Milliseconds(10500)),
         })},
-        .expectation = {.verdict = "done", .line = "[PLZA mash_to_move_hints] done on mission_banner."},
+        .expectation = {.verdict = "done", .line = "[PLZA mash_to_move_hints] done on controls_hint."},
+    },
+    {
+        //  console B, 2026-11-15: after the ad, the loading screen fades
+        //  from black into the rival's talk and Pancham; the mission banner
+        //  (which the detector can miss) is followed by a second black
+        //  fade, then control.
+        .name = "01.01's arrival ends 5 s after its second black fade, past the banner",
+        .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(1000)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(3000)),
+            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(3500)),
+            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(3750)),
+            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(4000)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(5000)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(5250)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(10500)),
+        }},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A, wait 250ms, press A, wait 250ms, wait 250ms, wait 250ms, wait 500ms",
+            .line = "[PLZA mash_to_move_hints] done on fade_settled.",
+        },
+    },
+    {
+        .name = "01.01's arrival with the banner and the hint missed ends 5 s after the text that follows its second fade",
+        .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(500)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)),
+            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(1500)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(2250)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(3000)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(3500)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(8500)),
+        }},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A, wait 250ms, wait 250ms, wait 500ms, press A, wait 500ms",
+            .line = "[PLZA mash_to_move_hints] the mission banner did not show (the detector may have missed it).",
+        },
+    },
+    {
+        .name = "01.01's arrival ends on the controls hint before the 5 s after its second fade",
+        .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
+            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(500)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)),
+            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(1500)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)),
+            look(/*events=*/{}, {CONTROLS_HINT_READING}, Milliseconds(2250)),
+            look(/*events=*/{}, {CONTROLS_HINT_READING}, Milliseconds(3250)),
+        }},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A, wait 250ms, wait 250ms, wait 250ms",
+            .line = "[PLZA mash_to_move_hints] done on controls_hint.",
+        },
     },
     {
         .name = "01.01's arrival ends on the controls hint held a second",
@@ -387,7 +479,7 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "01.03 walks to Chikorita: a turn left, then 750 ms",
-        .input = {.checkpoint = "01.03", .first_step = 0, .steps = 1, .looks = {CUTSCENE}},
+        .input = {.checkpoint = "01.03", .first_step = 0, .steps = 1, .looks = {look(/*events=*/{}, {CONTROLS_HINT_READING})}},
         .expectation = {
             .verdict = "done",
             .inputs = "wait 250ms, press L, stick -70deg 150ms walk, release 100ms, press L, hold north 750ms walk",
@@ -444,7 +536,7 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "02.01 waits 3 s for the NPCs, then holds its legs",
-        .input = {.checkpoint = "02.01", .first_step = 0, .steps = 1, .looks = {CUTSCENE}},
+        .input = {.checkpoint = "02.01", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {
             .verdict = "done",
             .inputs = "wait 3000ms, wait 250ms, stick 10deg 4250ms walk, press L, stick 90deg 6000ms walk, press L, stick 90deg 6500ms walk",
@@ -492,6 +584,15 @@ const RunCase RUN_CASES[] = {
         .name = "02.05's elevator: A through its line to the floor choice",
         .input = {.checkpoint = "02.05", .first_step = 2, .steps = 1, .looks = {DIALOG, choice(0, 3)}},
         .expectation = {.verdict = "done", .inputs = "press A"},
+    },
+    {
+        .name = "02.05's walk to room 202 starts after 10 s with nothing busy: the hall shows no party bar",
+        .input = {.checkpoint = "02.05", .first_step = 5, .steps = 1, .looks = {CUTSCENE}},
+        .expectation = {
+            .verdict = "done",
+            .inputs = repeated("wait 250ms", 40) + ", press L, stick -15deg 150ms walk, release 100ms, press L, hold north 2000ms walk",
+            .line = "[PLZA] to_room_202: nothing busy for 10000 ms and no sign of control; taken as control.",
+        },
     },
     {
         .name = "02.05's ride to 2F: the hall's quiet is control",

@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include <optional>
 #include <string>
 #include <string_view>
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
@@ -24,8 +25,13 @@ namespace{
 constexpr Milliseconds HOLD_SLICE = 250ms;
 
 //  How long a walk waits for free control, and how often it looks.
-constexpr Milliseconds FREE_CONTROL_WAIT = 15000ms;
+constexpr Milliseconds FREE_CONTROL_WAIT = 30000ms;
 constexpr Milliseconds FREE_CONTROL_LOOK = 250ms;
+//  Nothing busy for this long, with no sign of control, is taken as
+//  control, for places that show no sign (Hotel Z's halls show no party
+//  bar). Longer than the ~7 s from the end of 01.01's scenes to control
+//  (console B, 2026-11-15).
+constexpr Milliseconds QUIET_IS_CONTROL = 10000ms;
 
 //  One slice of walk_to_prompt()'s walk between looks.
 constexpr Milliseconds PROMPT_WALK_SLICE = 250ms;
@@ -74,23 +80,45 @@ std::string_view not_free_control(const ScreenObservation& look){
     return "";
 }
 
+//  A sign that the player has control: the party bar, the station
+//  platform after the opening (PlatformArrivalDetector), or the
+//  tutorial's controls hint.
+bool control_shows(const ScreenObservation& look){
+    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.readings.contains(PLATFORM_READING) ||
+        look.readings.contains(CONTROLS_HINT_READING);
+}
+
 } // namespace
 
 
 Pokemon::Outcome check_can_walk(PlzaBackend& backend, std::string_view walk){
-    std::string_view busy;
-    int free_looks = 0;
+    std::string_view last_busy = "nothing";
+    int control_looks = 0;
+    std::optional<Milliseconds> quiet_since;
     for (Milliseconds waited = 0ms; waited <= FREE_CONTROL_WAIT; waited += FREE_CONTROL_LOOK){
-        busy = not_free_control(backend.observe());
-        free_looks = busy.empty() ? free_looks + 1 : 0;
-        if (free_looks >= 2){
+        const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+        const std::string_view busy = not_free_control(look);
+        if (!busy.empty()){
+            last_busy = busy;
+            quiet_since.reset();
+        }else if (!quiet_since){
+            quiet_since = waited;
+        }
+        control_looks = busy.empty() && control_shows(look) ? control_looks + 1 : 0;
+        if (control_looks >= 2){
+            return Pokemon::outcome_ok();
+        }
+        if (quiet_since && waited - *quiet_since >= QUIET_IS_CONTROL){
+            backend.log(std::format(
+                "[PLZA] {}: nothing busy for {} ms and no sign of control; taken as control.", walk, QUIET_IS_CONTROL.count()
+            ));
             return Pokemon::outcome_ok();
         }
         backend.wait(FREE_CONTROL_LOOK);
     }
     return Pokemon::outcome_failed(
         "walk_not_free",
-        std::format("{}: no free control within {} ms, last on {}", walk, FREE_CONTROL_WAIT.count(), busy)
+        std::format("{}: no free control within {} ms, last on {}", walk, FREE_CONTROL_WAIT.count(), last_busy)
     );
 }
 

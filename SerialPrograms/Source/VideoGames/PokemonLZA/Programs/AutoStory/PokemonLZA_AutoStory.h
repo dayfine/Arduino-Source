@@ -11,6 +11,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStory_H
 #define PokemonAutomation_PokemonLZA_AutoStory_H
 
+#include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
@@ -42,6 +43,7 @@ public:
 private:
     Pokemon::StoryRangeOptions RANGE;
     SimpleIntegerOption<uint8_t> ATTEMPTS_PER_CHECKPOINT;
+    BooleanCheckBoxOption LOAD_SAVE_FIRST;
     BattleAIOption BATTLE_AI;
     GoHomeWhenDoneOption GO_HOME_WHEN_DONE;
     EventNotificationsOption NOTIFICATIONS;
