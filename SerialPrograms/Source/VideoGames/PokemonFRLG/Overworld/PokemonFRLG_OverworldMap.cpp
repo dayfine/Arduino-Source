@@ -360,6 +360,20 @@ PlayerState after_step_onto(
 
 
 
+std::optional<std::vector<MapData>> same_map_only(const std::vector<MapData>& maps, std::string_view start_map, std::string_view goal_map){
+    if (start_map != goal_map || maps.size() <= 1){
+        return std::nullopt;
+    }
+    for (const MapData& map : maps){
+        if (map.name == start_map){
+            return std::vector<MapData>{map};
+        }
+    }
+    return std::nullopt;
+}
+
+
+
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch
 } // namespace PokemonAutomation
