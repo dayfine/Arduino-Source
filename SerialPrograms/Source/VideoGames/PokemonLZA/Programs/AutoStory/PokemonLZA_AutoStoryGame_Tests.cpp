@@ -168,6 +168,11 @@ std::vector<Observation<ZonePose>> concat(std::vector<Observation<ZonePose>> fir
     return first;
 }
 
+//  `text` `times` times, joined by ", ".
+std::string repeated(std::string_view text, size_t times){
+    return joined(std::vector<std::string>(times, std::string(text)), ", ");
+}
+
 
 //  The built-in checkpoint `id`, its `steps` steps from step `first_step`
 //  (from 0) on.
@@ -260,6 +265,20 @@ const RunCase RUN_CASES[] = {
         .name = "01.01's walk fails when the fade never shows",
         .input = {.checkpoint = "01.01", .first_step = 1, .looks = {PLATFORM}},
         .expectation = {.verdict = "failed at platform_to_plaza: walk_no_end"},
+    },
+    {
+        //  console B, 2026-11-15: control came ~7 s after 01.01's scenes
+        //  had ended, with nothing on screen to show it was not there yet.
+        .name = "a walk waits for control that comes 7 s after the scene",
+        .input = {.checkpoint = "01.01", .first_step = 1, .looks = concat(
+            std::vector<Observation<ZonePose>>(28, CUTSCENE),
+            {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, WHITE_FADE}
+        )},
+        .expectation = {
+            .verdict = "done",
+            .inputs = repeated("wait 250ms", 29) +
+                ", hold north 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
+        },
     },
     {
         .name = "01.01's walk does not start in a text box",
