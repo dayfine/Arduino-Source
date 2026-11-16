@@ -10,6 +10,7 @@
 #include <optional>
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader.h"
+#include "PokemonLZA_AutoStoryMarkerDistance.h"
 #include "PokemonLZA_AutoStoryMarkerWalk.h"
 
 namespace PokemonAutomation{
@@ -29,46 +30,10 @@ constexpr Milliseconds MARKER_WALK_LIMIT(90000);
 constexpr Milliseconds MARKER_SCENE_WAIT(15000);
 constexpr Milliseconds MARKER_POLL(250);
 
-//  The marker's distance reads, with misreads dropped. A read far from the
-//  last one is a misread: a 0.6 s step covers about 3. Below: 36 as "3" or
-//  29 on console B; above: 110 as "1110" (2026-11-13), which then rejected
-//  every true read after it. So three agreeing reads in a row far from the
-//  last mean the last read was the wrong one, and they are taken.
-class DistanceReads{
-public:
-    std::optional<int> last() const{
-        return m_last;
-    }
-
-    //  Whether `distance` (a read above 0) is taken as the last read.
-    bool accept(int distance){
-        if (m_last && !near(distance, *m_last)){
-            m_rejected = m_rejected_read && near(distance, *m_rejected_read) ? m_rejected + 1 : 1;
-            m_rejected_read = distance;
-            if (m_rejected < 3){
-                return false;
-            }
-        }
-        m_rejected_read.reset();
-        m_rejected = 0;
-        m_last = distance;
-        return true;
-    }
-
-private:
-    static bool near(int a, int b){
-        return a >= b - 12 && a <= b + 12;
-    }
-
-    std::optional<int> m_last;
-    std::optional<int> m_rejected_read;
-    int m_rejected = 0;
-};
-
 //  How one step of the walk ended.
 enum class MarkerStep{
     WALKING,
-    ARRIVED,    //  the goal's distance read, or (no distance) an A prompt or a dialog shows
+    ARRIVED,    //  at the goal's distance (MarkerDistance::reached()), or (no distance) an A prompt or a dialog shows
     LOST,       //  the marker did not show for 12 camera turns
 };
 
@@ -76,9 +41,9 @@ enum class MarkerStep{
 struct MarkerGoal{
     //  The distance that ends it; none: an A prompt or a dialog does.
     std::optional<int> stop_at;
-    //  Walking back away from the marker, until it reads `stop_at` or
-    //  more; else toward it, until `stop_at` or less.
-    bool back = false;
+    //  Back away from the marker, until it is `stop_at` or more; or on
+    //  toward it, until `stop_at` or less.
+    MarkerDirection direction = MarkerDirection::TOWARD;
 };
 
 //  The walk, one look and one move at a time.
@@ -88,11 +53,12 @@ public:
         : m_env(env)
         , m_backend(backend)
         , m_goal(goal)
+        , m_distance(goal.direction)
     {}
 
-    //  The last distance taken, if any.
-    std::optional<int> last() const{
-        return m_reads.last();
+    //  Where the walk is (MarkerDistance::position()), if a distance read.
+    std::optional<int> position() const{
+        return m_distance.position();
     }
 
     MarkerStep step(){
@@ -118,18 +84,35 @@ public:
     }
 
 private:
-    //  A marker on screen with its digits: a distance read is taken (or
-    //  dropped as a misread), then the camera turned to it and a step on.
+    //  A marker on screen: its distance read is taken (or dropped as a
+    //  misread); at the goal's distance, by the last read and the steps
+    //  since, the walk ends; else the camera is turned to it and a step on.
+    //  With the digits not read for a stretch, the steps count on from the
+    //  last read: walking on blind took 03.08's walk to 100 past it and out
+    //  of Wild Zone 1 (console B, 2026-11-16, 109 to 37).
     MarkerStep on_marker(const ObjectiveMarker& marker){
-        if (marker.distance > 0 && m_reads.accept(marker.distance)){
-            if (reached(marker.distance)){
-                m_backend.log(std::format("[PLZA] marker walk: {} from the objective", marker.distance));
-                return MarkerStep::ARRIVED;
-            }
+        const bool taken = marker.distance > 0 && m_distance.read(marker.distance);
+        if (reached()){
+            log_arrival();
+            return MarkerStep::ARRIVED;
+        }
+        if (taken){
             on_distance(marker.distance);
         }
         steer_and_step(marker.x);
         return MarkerStep::WALKING;
+    }
+
+    void log_arrival() const{
+        const int at = *m_distance.position();
+        if (m_distance.steps_unread() == 0){
+            m_backend.log(std::format("[PLZA] marker walk: {} from the objective", at));
+            return;
+        }
+        m_backend.log(std::format(
+            "[PLZA] marker walk: about {} from the objective ({} steps since the last read, {})",
+            at, m_distance.steps_unread(), *m_distance.last_read()
+        ));
     }
 
     //  The marker is behind: turn the camera toward where it was last.
@@ -141,11 +124,8 @@ private:
         return MarkerStep::WALKING;
     }
 
-    bool reached(int distance) const{
-        if (!m_goal.stop_at){
-            return false;
-        }
-        return m_goal.back ? distance >= *m_goal.stop_at : distance <= *m_goal.stop_at;
+    bool reached() const{
+        return m_goal.stop_at && m_distance.reached(*m_goal.stop_at);
     }
 
     //  A taken read toward the marker: logged when it changes; 4 reads with
@@ -153,7 +133,7 @@ private:
     //  console B 2026-11-10), which steps sideways: right, then left twice
     //  as far, 4 at most.
     void on_distance(int distance){
-        if (m_goal.back){
+        if (m_goal.direction == MarkerDirection::BACK){
             return;
         }
         if (distance < m_best){
@@ -183,14 +163,15 @@ private:
             const Milliseconds turn((int)(std::min(1.0, std::abs(off) * 4) * 400) + 80);
             pbf_move_right_joystick(m_env.context, {off > 0 ? 0.4 : -0.4, 0}, turn, /*release=*/150ms);
         }
-        const double forward = m_goal.back ? -1 : 1;
+        const double forward = m_goal.direction == MarkerDirection::BACK ? -1 : 1;
         pbf_move_left_joystick(m_env.context, /*position=*/{0, forward}, /*hold=*/600ms, /*release=*/0ms);
+        m_distance.stepped();
     }
 
     StoryEnv& m_env;
     PlzaBackend& m_backend;
     const MarkerGoal m_goal;
-    DistanceReads m_reads;
+    MarkerDistance m_distance;
     int m_best = 1 << 30;
     int m_still = 0;
     int m_sidesteps = 0;
@@ -228,7 +209,7 @@ bool run_marker_walk(Milliseconds limit, MarkerWalk& walk, PlzaBackend& backend)
             return true;
         }
     }
-    backend.log(std::format("[PLZA] marker walk: out of time, last read {}", walk.last().value_or(-1)));
+    backend.log(std::format("[PLZA] marker walk: out of time, at {}", walk.position().value_or(-1)));
     return false;
 }
 
@@ -236,15 +217,15 @@ bool run_marker_walk(Milliseconds limit, MarkerWalk& walk, PlzaBackend& backend)
 
 
 std::optional<int> walk_toward_marker(StoryEnv& env, PlzaBackend& backend, int stop_at, Milliseconds limit){
-    MarkerWalk walk(env, backend, MarkerGoal{.stop_at = stop_at, .back = false});
+    MarkerWalk walk(env, backend, MarkerGoal{.stop_at = stop_at, .direction = MarkerDirection::TOWARD});
     run_marker_walk(limit, walk, backend);
-    return walk.last();
+    return walk.position();
 }
 
 std::optional<int> walk_back_from_marker(StoryEnv& env, PlzaBackend& backend, int stop_at, Milliseconds limit){
-    MarkerWalk walk(env, backend, MarkerGoal{.stop_at = stop_at, .back = true});
+    MarkerWalk walk(env, backend, MarkerGoal{.stop_at = stop_at, .direction = MarkerDirection::BACK});
     run_marker_walk(limit, walk, backend);
-    return walk.last();
+    return walk.position();
 }
 
 Pokemon::Outcome walk_to_marker(StoryEnv& env, PlzaBackend& backend){
