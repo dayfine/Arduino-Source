@@ -692,7 +692,7 @@ Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
     ConsolePcStorageActions pc(env.console, env.context);
     std::optional<Outcome> done = run_field_game_step(env.console, env.context, env.language, env.player_gender, step, env.party);
     if (done && done->succeeded()){
-        if (const std::optional<std::string> item = parse_use_item_step(step); item && is_repel(*item)){
+        if (const auto item = step.action == USE_REPEL_VARIANT ? std::optional<std::string>(STRONGEST_REPEL) : parse_use_item_step(step); item && is_repel(*item)){
             env.supplies.repel = *item;
             env.supplies.repel_menu = step_start_menu(step.args);
         }

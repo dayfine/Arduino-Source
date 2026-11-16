@@ -340,6 +340,8 @@ std::vector<std::string> items_read_by(const StoryStep& step){
         if (const auto* item = step_arg<std::string>(step, "item")){
             items.push_back(*item);
         }
+    }else if (step.action == USE_REPEL_VARIANT){
+        items.insert(items.end(), {"max-repel", "super-repel", "repel"});
     }else if (step.action == COUNT_ITEMS_VARIANT){
         if (const auto* counted = step_arg<std::vector<std::string>>(step, "items")){
             items.insert(items.end(), counted->begin(), counted->end());

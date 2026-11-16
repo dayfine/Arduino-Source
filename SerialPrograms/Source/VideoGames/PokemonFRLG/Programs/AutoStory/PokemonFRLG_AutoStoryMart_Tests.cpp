@@ -52,6 +52,10 @@ public:
     size_t money;
     bool rows_readable = true;
     bool quantity_readable = true;
+    //  The money box: unread by default, as before it had a reader.
+    bool money_readable = false;
+    //  A sale says SOLD but the clerk pays nothing.
+    bool sales_unpaid = false;
     //  Rows that read as another item.
     std::map<size_t, std::string> misread = {};
     std::map<std::string, size_t> bag = {};
@@ -107,6 +111,31 @@ public:
     virtual bool leave() override{
         in_list = false;
         return true;
+    }
+    virtual std::optional<size_t> read_money() override{
+        if (!in_list){
+            error = "read the money off the list";
+        }
+        return money_readable ? std::optional<size_t>(money) : std::nullopt;
+    }
+    //  The clerk buys from `bag` at sale_price(), from facing the clerk.
+    virtual SaleEnd sell(const MartLine& sale) override{
+        const auto held = bag.find(sale.item);
+        const std::optional<size_t> price = sale_price(sale.item);
+        if (in_list || !price){
+            error = in_list ? "SELL from the BUY list" : "sold an item the clerk won't buy";
+            return SaleEnd::FAILED;
+        }
+        if (held == bag.end()){
+            return SaleEnd::NONE_IN_BAG;
+        }
+        const size_t quantity = std::min(sale.quantity, held->second);
+        held->second -= quantity;
+        if (held->second == 0){
+            bag.erase(held);
+        }
+        money += sales_unpaid ? 0 : quantity * *price;
+        return SaleEnd::SOLD;
     }
 
 private:
@@ -340,9 +369,50 @@ std::vector<MartCase> mart_cases_5(){
     };
 }
 
+//  19.01a sells the Nugget ($5,000, half its 10,000) and buys Super
+//  Potions with it at Lavender's Mart: the money box, read on the BUY
+//  list, checks the sale and cuts the if_affordable line to what it
+//  covers; unread, the line is bought blind.
+std::vector<MartCase> mart_cases_6(){
+    const auto nugget = [](FakeMart& mart){ mart.bag["nugget"] = 1; };
+    const auto nugget_read = [](FakeMart& mart){ mart.bag["nugget"] = 1; mart.money_readable = true; };
+    const auto unpaid = [](FakeMart& mart){ mart.bag["nugget"] = 1; mart.money_readable = true; mart.sales_unpaid = true; };
+    const auto read_only = [](FakeMart& mart){ mart.money_readable = true; };
+    MartPlan six{.map = "LavenderTown_Mart", .lines = {{"super-potion", 6}}, .if_affordable = true, .sells = {{"nugget", 1}}};
+    MartPlan nine = six;
+    nine.lines[0].quantity = 9;
+    return {
+        {
+            .name = "sell the Nugget, then 6 Super Potions from its $5000",
+            .plan = six, .money = 0, .setup = nugget_read,
+            .bag = {{"super-potion", 6}}, .money_after = 800,
+        },
+        {
+            .name = "the money unread: the 6 bought blind",
+            .plan = six, .money = 0, .setup = nugget,
+            .bag = {{"super-potion", 6}}, .money_after = 800,
+        },
+        {
+            .name = "9 wanted, the money read covers 7",
+            .plan = nine, .money = 0, .setup = nugget_read,
+            .bag = {{"super-potion", 7}}, .money_after = 100,
+        },
+        {
+            .name = "no Nugget in the bag: the sale skipped, the money read covers 1",
+            .plan = six, .money = 1000, .setup = read_only,
+            .bag = {{"super-potion", 1}}, .money_after = 300,
+        },
+        {
+            .name = "a sale the money doesn't show fails before buying",
+            .plan = six, .money = 0, .setup = unpaid,
+            .end = MartEnd::FAILED, .bag = {}, .money_after = 0,
+        },
+    };
+}
+
 std::vector<MartCase> mart_cases(){
     std::vector<MartCase> cases;
-    for (std::vector<MartCase> part : {mart_cases_1(), mart_cases_2(), mart_cases_3(), mart_cases_4(), mart_cases_5()}){
+    for (std::vector<MartCase> part : {mart_cases_1(), mart_cases_2(), mart_cases_3(), mart_cases_4(), mart_cases_5(), mart_cases_6()}){
         cases.insert(cases.end(), part.begin(), part.end());
     }
     return cases;
@@ -412,12 +482,20 @@ UnitTestResult test_mart_args(){
     if (!affordable_back || !affordable_back->if_affordable || back->if_affordable || args.contains("if_affordable")){
         return "if_affordable didn't read back from its args, or was written when false.";
     }
+    MartPlan selling = plan;
+    selling.sells = {{"nugget", 1}};
+    const std::optional<MartPlan> selling_back = mart_plan_of(mart_args(selling));
+    if (!selling_back || selling_back->sells.size() != 1 || selling_back->sells[0].item != "nugget" || args.contains("sell")){
+        return "The sales didn't read back from their args, or were written when none.";
+    }
     const std::vector<std::pair<std::string, Pokemon::StoryArgValue>> bad_args{
         {"items", std::vector<Pokemon::StoryItem>{}},
         {"map", std::string("Nowhere_Mart")},
         {"map", std::string("ViridianCity_Mart")},
         {"items", std::vector<Pokemon::StoryItem>{{"potion", 0}}},
         {"items", std::vector<Pokemon::StoryItem>{{"potion", 100}}},
+        {"sell", std::vector<Pokemon::StoryItem>{{"moon-stone", 1}}},
+        {"sell", std::vector<Pokemon::StoryItem>{{"nugget", 0}}},
     };
     for (const auto& [key, value] : bad_args){
         Pokemon::StoryActionArgs bad = args;
@@ -557,6 +635,8 @@ struct ApprovedShopping{
     size_t money;
     std::map<std::string, size_t> bag;
     size_t money_after;
+    //  In the bag before the step, for its sales.
+    std::map<std::string, size_t> held = {};
 };
 
 //  A plan of one line: `quantity` of `item` at `map`'s Mart.
@@ -569,6 +649,9 @@ const std::vector<ApprovedShopping>& approved_shopping(){
     status_heals.lines.push_back({"parlyz-heal", 2});
     MartPlan full_heals = one_line("IndigoPlateau_PokemonCenter_1F", "full-heal", 2);
     full_heals.if_affordable = true;
+    MartPlan nugget_for_potions = one_line("LavenderTown_Mart", "super-potion", 6);
+    nugget_for_potions.if_affordable = true;
+    nugget_for_potions.sells = {{"nugget", 1}};
     static const std::vector<ApprovedShopping> shopping{
         {
             .checkpoint = "12.03", .step = "buy_super_potions_for_silph", .before = "16.01",
@@ -579,6 +662,12 @@ const std::vector<ApprovedShopping>& approved_shopping(){
             .checkpoint = "18.03", .step = "buy_x_accuracies", .before = "19.01",
             .plan = one_line("CeladonCity_DepartmentStore_5F", "x-accuracy", 2),
             .money = 1900, .bag = {{"x-accuracy", 2}}, .money_after = 0,
+        },
+        {
+            //  The Nugget pays for all 6 with no money before.
+            .checkpoint = "19.01a", .step = "sell_nugget_buy_super_potions", .before = "19.01",
+            .plan = nugget_for_potions,
+            .money = 0, .bag = {{"super-potion", 6}}, .money_after = 800, .held = {{"nugget", 1}},
         },
         {
             .checkpoint = "19.01a", .step = "buy_status_heals", .before = "19.01",
@@ -596,8 +685,13 @@ const std::vector<ApprovedShopping>& approved_shopping(){
 }
 
 bool same_plan(const MartPlan& a, const MartPlan& b){
-    if (a.map != b.map || a.if_affordable != b.if_affordable || a.lines.size() != b.lines.size()){
+    if (a.map != b.map || a.if_affordable != b.if_affordable || a.lines.size() != b.lines.size() || a.sells.size() != b.sells.size()){
         return false;
+    }
+    for (size_t c = 0; c < a.sells.size(); c++){
+        if (a.sells[c].item != b.sells[c].item || a.sells[c].quantity != b.sells[c].quantity){
+            return false;
+        }
     }
     for (size_t c = 0; c < a.lines.size(); c++){
         if (a.lines[c].item != b.lines[c].item || a.lines[c].quantity != b.lines[c].quantity){
@@ -639,6 +733,7 @@ UnitTestResult test_approved_shopping(){
             .name = std::format("{}/{}", shopping.checkpoint, shopping.step),
             .plan = *plan,
             .money = shopping.money,
+            .setup = [&](FakeMart& mart){ mart.bag.insert(shopping.held.begin(), shopping.held.end()); },
             .bag = shopping.bag,
             .money_after = shopping.money_after,
         });

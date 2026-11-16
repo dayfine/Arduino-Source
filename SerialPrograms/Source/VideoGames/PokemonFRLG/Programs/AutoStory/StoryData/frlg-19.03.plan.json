@@ -7,6 +7,13 @@
     "start": {"map": "Route23", "tiles": [[8, 153]], "facing": "north"},
     "events": [
       {
+        "id": "repel_route23",
+        "kind": "game_action",
+        "action": "use_repel",
+        "args": {"if_any": true},
+        "why": "the strongest Repel in the bag (a Super Repel from 17.04b's super-repel x4: 200 steps) before Route 23's grass and water: the lead (Lv49 at least, 19.01) is above every Route 23 wild Pokemon (pokefirered wild_encounters.json), so none shows; one that wears off on the way is renewed, strongest first. With none left the step is skipped (if_any) and the walker fights what comes"
+      },
+      {
         "id": "cascade_guard_approach",
         "kind": "route",
         "action": "run",
