@@ -70,6 +70,14 @@ namespace ComputerPrograms{
 
 
 
+static void add_tests_NavigationSimulation(UnitTestDatabase& ret){
+    Pokemon::add_tests_SimFaults(ret);
+    Pokemon::add_tests_SimGolden(ret);
+    Pokemon::add_tests_SimSweep(ret);
+    Pokemon::add_tests_SimSeeds(ret);
+    Pokemon::add_tests_KnownFailing(ret);
+}
+
 UnitTestDatabase make_UNIT_TESTS_ALL(){
     UnitTestDatabase ret;
     add_tests_QtEventThreadPool(ret, GlobalThreadPools::computation_normal());
@@ -100,11 +108,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_RuntimeMap(ret);
     Pokemon::add_tests_RouteLog(ret);
     Pokemon::add_tests_RouteScorer(ret);
-    Pokemon::add_tests_SimFaults(ret);
-    Pokemon::add_tests_SimGolden(ret);
-    Pokemon::add_tests_SimSweep(ret);
-    Pokemon::add_tests_SimSeeds(ret);
-    Pokemon::add_tests_KnownFailing(ret);
+    add_tests_NavigationSimulation(ret);
     Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
