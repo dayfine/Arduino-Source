@@ -230,6 +230,11 @@ JsonObject lab_preflight_reply(
     reply["failure"] = JsonValue();
     reply["invalid"] = JsonValue();
     reply["restored"] = run.restored;
+    JsonArray edited;
+    for (const std::string& key : run.edited_keys){
+        edited.push_back(key);
+    }
+    reply["edited_keys"] = std::move(edited);
     reply["options_hash"] = options_hash ? JsonValue(*options_hash) : JsonValue();
     if (run.refused){
         JsonObject invalid;

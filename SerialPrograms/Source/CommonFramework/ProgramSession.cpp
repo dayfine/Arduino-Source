@@ -4,11 +4,9 @@
  *
  */
 
-#include <format>
 #include <future>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/PanicDump.h"
-#include "Common/Cpp/ScopeExit.h"
 #include "Common/Cpp/Logging/GlobalLogger.h"
 #include "CommonFramework/GlobalSettingsPanel.h"
 #include "CommonFramework/Logging/Logger.h"
@@ -117,29 +115,32 @@ std::optional<std::vector<PrecheckSummary>> ProgramSession::Prechecks::summaries
     }
     return m_session.m_instance->precheck_summaries();
 }
-PrecheckOnlyRun ProgramSession::Prechecks::run_only(const JsonValue& candidate, CancellableScope& parent){
-    RunningProgramScope running_scope(m_session, parent);
-    const JsonValue prior = m_session.m_instance->to_json();
-    std::expected<JsonValue, RefusedOption> merged = merge_candidate_options(prior, candidate);
-    if (!merged){
-        return PrecheckOnlyRun{.refused = std::move(merged.error()), .checks = std::nullopt, .restored = true};
+PrecheckOnlyRun ProgramSession::Prechecks::run_only(
+    const JsonValue& candidate, CancellableScope& parent, const OptionsThreadCall& on_options_thread
+){
+    if (m_session.m_instance == nullptr){
+        throw InternalProgramError(&m_session.m_logger, PA_CURRENT_FUNCTION, "The program has no instance.");
     }
+    RunningProgramScope running_scope(m_session, parent);
 
-    m_session.m_logger.log(std::format("Start checks only, with options: {}", candidate.dump(-1)));
-    PrecheckOnlyRun run;
-    {
-        ScopeExit restore([&]{
-            m_session.m_instance->load_json(prior);
-        });
-        m_session.m_instance->load_json(*merged);
-        run.refused = find_refused_option(candidate, m_session.m_instance->to_json());
-        if (!run.refused){
-            std::string error = m_session.m_instance->check_validity();
-            if (!error.empty()){
-                run.refused = RefusedOption{"", std::move(error)};
-            }
+    //  A local class has the access of this function: make_env() and
+    //  internal_run_prechecks().
+    class SessionTarget : public PrecheckOnlyTarget{
+    public:
+        explicit SessionTarget(ProgramSession& session) : m_session(session) {}
+        virtual JsonValue options() const override{
+            return m_session.m_instance->to_json();
         }
-        if (!run.refused && m_session.m_instance->precheck_summaries()){
+        virtual void load_options(const JsonValue& options) override{
+            m_session.m_instance->load_json(options);
+        }
+        virtual std::string check_validity() const override{
+            return m_session.m_instance->check_validity();
+        }
+        virtual std::optional<std::vector<PrecheckReport>> run_checks() override{
+            if (!m_session.m_instance->precheck_summaries()){
+                return std::nullopt;
+            }
             const ProgramInfo program_info(
                 m_session.identifier(),
                 m_session.m_descriptor.category(),
@@ -147,14 +148,13 @@ PrecheckOnlyRun ProgramSession::Prechecks::run_only(const JsonValue& candidate, 
                 current_time()
             );
             std::unique_ptr<ProgramEnvironment> env = m_session.make_env(program_info);
-            run.checks = m_session.internal_run_prechecks(*env);
+            return m_session.internal_run_prechecks(*env);
         }
-    }
-    run.restored = m_session.m_instance->to_json() == prior;
-    if (!run.restored){
-        m_session.m_logger.log("Start checks only: the prior options did not load back.", COLOR_RED);
-    }
-    return run;
+    private:
+        ProgramSession& m_session;
+    };
+    SessionTarget target(m_session);
+    return run_prechecks_only(candidate, on_options_thread, target, m_session.m_logger);
 }
 std::optional<std::vector<PrecheckReport>> ProgramSession::internal_run_prechecks(ProgramEnvironment&){
     return std::nullopt;

@@ -59,13 +59,17 @@ std::string lab_options_hash(const JsonValue& options);
 
 //  The reply of "preflight", version 1 like the contract above:
 //  {"schema", "id", "verdict", "checks", "failure", "invalid", "restored",
-//  "options_hash"}. "verdict" is "invalid_options" when the program refused
+//  "edited_keys", "options_hash"}. "verdict" is "invalid_options" when the program refused
 //  the candidate ("invalid": {"key", "message"}, the key "" for a refused
 //  combination), "unsupported" when it declares no precheck list, "failed"
 //  at the first FAILED check ("failure": {"check", "message"}), else
 //  "passed". "checks" lists {"name", "status", "message"} in the order they
-//  ran, "status" one of "passed", "failed", "skipped". "options_hash" is
-//  the hash of the program's options after the run (null if unknown).
+//  ran, "status" one of "passed", "failed", "skipped". "restored" is
+//  whether the program holds the prior options again; "edited_keys" lists
+//  the top-level keys a user changed during the checks, which the run kept
+//  (then "restored" is false). "options_hash" is lab_options_hash() of the
+//  options the program holds once the run is over, read after the restore:
+//  the prior options when "restored", not the candidate (null if unknown).
 JsonObject lab_preflight_reply(
     std::string_view id,
     const PrecheckOnlyRun& run,

@@ -264,8 +264,10 @@ preflight {"NOTIFICATIONS":{"Enabled":false},"START":"02"}
 ```
 
 The JSON holds only the options to change, by the keys of `describe_program`
-(a group's value is an object of its own keys). On the channel's worker the
-program session (`ProgramSession::Prechecks::run_only()`):
+(a group's value is an object of its own keys). The program session
+(`ProgramSession::Prechecks::run_only()`, `run_prechecks_only()`) loads and
+reads back options on the UI thread, as `set` does, and runs the checks on
+the channel's worker, which holds the panel throughout:
 
 1. refuses unless the program is `STOPPED`, and makes Start refuse until it
    is done;
@@ -277,12 +279,14 @@ program session (`ProgramSession::Prechecks::run_only()`):
    a Switch program overrides `run_switch_prechecks()` with
    `precheck_summaries()`), up to the first failed one; a check may open a
    menu or go Home, and comes back;
-4. loads the prior options back, also when a check throws, and compares.
+4. loads the prior options back, also when a check throws, and compares;
+   but if the options differ from what step 2 loaded, a user edited them in
+   the panel during the checks: it keeps them and names the edited keys.
 
 It prints one line (version 1, keys sorted):
 
 ```
-preflight {"checks":[{"message":"","name":"black_border","status":"passed"}],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"9f2c...","restored":true,"schema":1,"verdict":"passed"}
+preflight {"checks":[{"message":"","name":"black_border","status":"passed"}],"edited_keys":[],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"9f2c...","restored":true,"schema":1,"verdict":"passed"}
 ```
 
 - `verdict`: `passed`; `failed` with `failure` `{"check", "message"}`, the
@@ -292,11 +296,17 @@ preflight {"checks":[{"message":"","name":"black_border","status":"passed"}],"fa
 - `checks`: `{"name", "status", "message"}` in the order they ran,
   `status` `passed`, `failed` or `skipped`; empty unless checks ran.
 - `restored`: whether the program holds the prior options again.
-- `options_hash`: `program.options_hash` after the run, as in `state.json`.
+- `edited_keys`: the top-level option keys a user changed during the checks,
+  which the run kept; `restored` is then `false`. Empty otherwise.
+- `options_hash`: the hash of the options the program holds once the run is
+  over, read after the restore, as `program.options_hash` in `state.json`:
+  the prior options when `restored`, the user's edit when `edited_keys` is
+  not empty; never the candidate's.
 
 A program that is not `STOPPED`, a controller that is not ready, a panel
 change or a check that throws fails the line (no `preflight` line); the
-options are put back all the same.
+options are put back all the same, unless the panel changed before the UI
+thread could load them back.
 
 ## Owner
 

@@ -89,13 +89,18 @@ public:
         //  without running it. Nothing when it declares none.
         std::optional<std::vector<PrecheckSummary>> summaries() const;
 
-        //  A checks-only run on the calling thread, under `parent`: loads
-        //  `candidate` (option keys to change, merge_candidate_options()) over
-        //  the current options, runs the program's prechecks without starting
-        //  it (internal_run_prechecks()), and loads the prior options back,
-        //  also when a check throws. Start refuses while it runs, and nothing
-        //  is saved to the settings file. Throws if the program is not STOPPED.
-        PrecheckOnlyRun run_only(const JsonValue& candidate, CancellableScope& parent);
+        //  A checks-only run under `parent` (run_prechecks_only()): loads
+        //  `candidate` (option keys to change, run_prechecks_only()) over
+        //  the current options through `on_options_thread`, runs the
+        //  program's prechecks on the calling thread without starting it
+        //  (internal_run_prechecks()), and loads the prior options back
+        //  through `on_options_thread`, also when a check throws, unless a
+        //  user changed them meanwhile. Start refuses while it runs, and
+        //  nothing is saved to the settings file. Throws if the program is
+        //  not STOPPED.
+        PrecheckOnlyRun run_only(
+            const JsonValue& candidate, CancellableScope& parent, const OptionsThreadCall& on_options_thread
+        );
 
     private:
         ProgramSession& m_session;

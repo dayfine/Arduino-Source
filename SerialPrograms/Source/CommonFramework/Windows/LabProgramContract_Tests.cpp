@@ -301,7 +301,7 @@ const ReplyCase REPLY_CASES[] = {
             },
             .restored = true,
         }},
-        .expectation = {.json = R"({"checks":[{"message":"","name":"black_border","status":"passed"},{"message":"Skippable prechecks are off.","name":"free_party_slots","status":"skipped"}],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"ab12","restored":true,"schema":1,"verdict":"passed"})"},
+        .expectation = {.json = R"({"checks":[{"message":"","name":"black_border","status":"passed"},{"message":"Skippable prechecks are off.","name":"free_party_slots","status":"skipped"}],"edited_keys":[],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"ab12","restored":true,"schema":1,"verdict":"passed"})"},
     },
     {
         .name = "failed names the failed check",
@@ -313,12 +313,12 @@ const ReplyCase REPLY_CASES[] = {
             },
             .restored = true,
         }},
-        .expectation = {.json = R"({"checks":[{"message":"","name":"black_border","status":"passed"},{"message":"Free a party slot.","name":"free_party_slots","status":"failed"}],"failure":{"check":"free_party_slots","message":"Free a party slot."},"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"ab12","restored":true,"schema":1,"verdict":"failed"})"},
+        .expectation = {.json = R"({"checks":[{"message":"","name":"black_border","status":"passed"},{"message":"Free a party slot.","name":"free_party_slots","status":"failed"}],"edited_keys":[],"failure":{"check":"free_party_slots","message":"Free a party slot."},"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"ab12","restored":true,"schema":1,"verdict":"failed"})"},
     },
     {
         .name = "unsupported without a precheck list",
         .input = {.run = {.refused = std::nullopt, .checks = std::nullopt, .restored = true}},
-        .expectation = {.json = R"({"checks":[],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"ab12","restored":true,"schema":1,"verdict":"unsupported"})"},
+        .expectation = {.json = R"({"checks":[],"edited_keys":[],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"ab12","restored":true,"schema":1,"verdict":"unsupported"})"},
     },
     {
         .name = "invalid_options names the refused key",
@@ -327,12 +327,22 @@ const ReplyCase REPLY_CASES[] = {
             .checks = std::nullopt,
             .restored = true,
         }},
-        .expectation = {.json = R"({"checks":[],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":{"key":"COUNT","message":"The program holds 10 for COUNT, not 70."},"options_hash":"ab12","restored":true,"schema":1,"verdict":"invalid_options"})"},
+        .expectation = {.json = R"({"checks":[],"edited_keys":[],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":{"key":"COUNT","message":"The program holds 10 for COUNT, not 70."},"options_hash":"ab12","restored":true,"schema":1,"verdict":"invalid_options"})"},
     },
     {
         .name = "options not restored are reported with the verdict",
         .input = {.run = {.refused = std::nullopt, .checks = std::vector<PrecheckReport>{}, .restored = false}},
-        .expectation = {.json = R"({"checks":[],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"ab12","restored":false,"schema":1,"verdict":"passed"})"},
+        .expectation = {.json = R"({"checks":[],"edited_keys":[],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"ab12","restored":false,"schema":1,"verdict":"passed"})"},
+    },
+    {
+        .name = "options a user edited during the checks are named",
+        .input = {.run = {
+            .refused = std::nullopt,
+            .checks = std::vector<PrecheckReport>{},
+            .restored = false,
+            .edited_keys = {"COUNT", "NOTIFICATIONS"},
+        }},
+        .expectation = {.json = R"({"checks":[],"edited_keys":["COUNT","NOTIFICATIONS"],"failure":null,"id":"PokemonFRLG:GiftRng","invalid":null,"options_hash":"ab12","restored":false,"schema":1,"verdict":"passed"})"},
     },
 };
 

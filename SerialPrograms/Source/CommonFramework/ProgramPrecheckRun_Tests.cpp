@@ -2,16 +2,21 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  How a checks-only run stages candidate options: the merge over the current
- *  options (groups keep the keys not given, unknown keys are refused), and
- *  the check that the program then holds every candidate value.
+ *  A checks-only run against a fake program: the candidate merged over the
+ *  current options (groups keep the keys not given, unknown keys are
+ *  refused), a value the program does not hold refused, options loaded only
+ *  on the options thread and put back after the checks, also when one
+ *  throws, and kept when a user edits them during the checks.
  *
  */
 
 #include <format>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
+#include <vector>
+#include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "ProgramPrecheckRun.h"
@@ -24,154 +29,223 @@ namespace{
 
 constexpr std::string_view CURRENT = R"({"COUNT":5,"NOTIFICATIONS":{"Enabled":true,"Screenshot":false},"SPEED":0.5})";
 
-
-struct MergeInput{
-    std::string candidate = {};
-};
-struct MergeExpectation{
-    std::optional<std::string> merged = {};     //  Compact JSON with sorted keys, when merged.
-    std::optional<std::string> refused_key = {};    //  When refused.
-};
-struct MergeCase{
-    std::string name;
-    MergeInput input;
-    MergeExpectation expectation;
+//  What the fake program's precheck does while it runs.
+enum class CheckAction{
+    PASS,
+    USER_SETS_COUNT_TO_9,   //  A user edits COUNT in the panel meanwhile.
+    THROW,
 };
 
-UnitTestResult check(const MergeCase& c){
-    const std::expected<JsonValue, RefusedOption> merged =
-        merge_candidate_options(parse_json(std::string(CURRENT)), parse_json(c.input.candidate));
-    if (!merged){
-        if (c.expectation.refused_key == merged.error().key){
-            return true;
-        }
-        return std::format("refused {} ({}), expected {}", merged.error().key, merged.error().message,
-            c.expectation.merged.value_or("a refusal of another key"));
-    }
-    const std::string text = merged->dump(-1);
-    if (c.expectation.merged == text){
-        return true;
-    }
-    return std::format("merged to\n{}\nexpected {}", text, c.expectation.merged.value_or("a refusal"));
-}
-
-class Test_MergeCandidateOptions : public UnitTest{
+//  A program whose options are CURRENT. Loading clamps COUNT to 10, stores
+//  SPEED as a double, and ignores NOTIFICATIONS.Screenshot (as false) while
+//  NOTIFICATIONS.Enabled is false; check_validity() refuses COUNT 0. Counts
+//  option calls made off the options thread.
+class FakeProgram : public PrecheckOnlyTarget{
 public:
-    explicit Test_MergeCandidateOptions(MergeCase test_case)
-        : UnitTest(std::format("CommonFramework::ProgramPrecheckRun - merge - {}", test_case.name))
-        , m_case(std::move(test_case))
+    explicit FakeProgram(CheckAction action)
+        : m_options(parse_json(std::string(CURRENT)))
+        , m_action(action)
     {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check(m_case);
+
+    bool on_options_thread = false;
+    mutable size_t off_thread_calls = 0;
+    std::optional<std::string> seen_by_checks = {};
+
+    virtual JsonValue options() const override{
+        count_thread();
+        return m_options.clone();
+    }
+    virtual void load_options(const JsonValue& options) override{
+        count_thread();
+        m_options = options.clone();
+        JsonObject& object = *m_options.to_object();
+        JsonValue& count = object["COUNT"];
+        if (count.to_integer_default() > 10){
+            count = JsonValue(int64_t(10));
+        }
+        object["SPEED"] = JsonValue(object["SPEED"].to_double_default());
+        JsonObject& notifications = *object["NOTIFICATIONS"].to_object();
+        if (!notifications["Enabled"].to_boolean_default()){
+            notifications["Screenshot"] = JsonValue(false);
+        }
+    }
+    virtual std::string check_validity() const override{
+        count_thread();
+        return m_options.to_object()->get_value("COUNT")->to_integer_default() == 0 ? "COUNT must be at least 1." : "";
+    }
+    virtual std::optional<std::vector<PrecheckReport>> run_checks() override{
+        seen_by_checks = m_options.dump(-1);
+        switch (m_action){
+        case CheckAction::PASS:
+            break;
+        case CheckAction::USER_SETS_COUNT_TO_9:
+            (*m_options.to_object())["COUNT"] = JsonValue(int64_t(9));
+            break;
+        case CheckAction::THROW:
+            throw std::runtime_error("the console did not answer");
+        }
+        return std::vector<PrecheckReport>{PrecheckReport{.name = "black_border", .status = PrecheckReportStatus::PASSED, .message = ""}};
+    }
+    std::string held() const{
+        return m_options.dump(-1);
     }
 
 private:
-    MergeCase m_case;
+    void count_thread() const{
+        if (!on_options_thread){
+            off_thread_calls++;
+        }
+    }
+
+    JsonValue m_options;
+    CheckAction m_action;
 };
 
-const MergeCase MERGE_CASES[] = {
+struct RunInput{
+    std::string candidate = {};
+    CheckAction action = CheckAction::PASS;
+};
+struct RunExpectation{
+    std::optional<std::string> refused_key = {};
+    std::optional<std::string> seen_by_checks = {};     //  None: no check ran.
+    bool threw = false;
+    bool restored = false;
+    std::vector<std::string> edited_keys = {};
+    std::string held = {};      //  The options the program holds afterwards.
+};
+struct RunCase{
+    std::string name;
+    RunInput input;
+    RunExpectation expectation;
+};
+
+UnitTestResult check(const RunCase& c, Logger& logger){
+    FakeProgram program(c.input.action);
+    const OptionsThreadCall on_options_thread = [&](const std::function<void()>& body){
+        program.on_options_thread = true;
+        try{
+            body();
+        }catch (...){
+            program.on_options_thread = false;
+            throw;
+        }
+        program.on_options_thread = false;
+    };
+    PrecheckOnlyRun run;
+    bool threw = false;
+    try{
+        run = run_prechecks_only(parse_json(c.input.candidate), on_options_thread, program, logger);
+    }catch (std::runtime_error&){
+        threw = true;
+    }
+    const RunExpectation& e = c.expectation;
+    const std::optional<std::string> refused_key = run.refused ? std::optional<std::string>(run.refused->key) : std::nullopt;
+    if (program.off_thread_calls != 0){
+        return std::format("{} option calls off the options thread", program.off_thread_calls);
+    }
+    if (threw != e.threw || refused_key != e.refused_key || program.seen_by_checks != e.seen_by_checks){
+        return std::format("threw {}, refused {}, checks saw {}; expected threw {}, refused {}, checks saw {}",
+            threw, refused_key.value_or("nothing"), program.seen_by_checks.value_or("nothing"),
+            e.threw, e.refused_key.value_or("nothing"), e.seen_by_checks.value_or("nothing"));
+    }
+    if (!threw && (run.restored != e.restored || run.edited_keys != e.edited_keys)){
+        return std::format("restored {}, {} edited keys; expected restored {}, {} edited keys",
+            run.restored, run.edited_keys.size(), e.restored, e.edited_keys.size());
+    }
+    if (program.held() != e.held){
+        return std::format("the program holds\n{}\nexpected\n{}", program.held(), e.held);
+    }
+    return true;
+}
+
+class Test_RunPrechecksOnly : public UnitTest{
+public:
+    explicit Test_RunPrechecksOnly(RunCase test_case)
+        : UnitTest(std::format("CommonFramework::ProgramPrecheckRun - run - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        return check(m_case, logger);
+    }
+
+private:
+    RunCase m_case;
+};
+
+const RunCase RUN_CASES[] = {
     {
         .name = "a value replaces the current one, the rest stay",
-        .input = {.candidate = R"({"COUNT":7})"},
-        .expectation = {.merged = R"({"COUNT":7,"NOTIFICATIONS":{"Enabled":true,"Screenshot":false},"SPEED":0.5})"},
+        .input = {.candidate = R"({"COUNT":7})", .action = CheckAction::PASS},
+        .expectation = {.seen_by_checks = R"({"COUNT":7,"NOTIFICATIONS":{"Enabled":true,"Screenshot":false},"SPEED":0.5})", .restored = true, .held = std::string(CURRENT)},
     },
     {
         .name = "a group keeps the keys not given",
-        .input = {.candidate = R"({"NOTIFICATIONS":{"Screenshot":true}})"},
-        .expectation = {.merged = R"({"COUNT":5,"NOTIFICATIONS":{"Enabled":true,"Screenshot":true},"SPEED":0.5})"},
+        .input = {.candidate = R"({"NOTIFICATIONS":{"Screenshot":true}})", .action = CheckAction::PASS},
+        .expectation = {.seen_by_checks = R"({"COUNT":5,"NOTIFICATIONS":{"Enabled":true,"Screenshot":true},"SPEED":0.5})", .restored = true, .held = std::string(CURRENT)},
     },
     {
         .name = "an empty candidate changes nothing",
-        .input = {.candidate = R"({})"},
-        .expectation = {.merged = std::string(CURRENT)},
-    },
-    {
-        .name = "an unknown key is refused",
-        .input = {.candidate = R"({"COUNT":7,"SPEEED":1.0})"},
-        .expectation = {.refused_key = "SPEEED"},
-    },
-    {
-        .name = "an unknown key in a group is refused with its key path",
-        .input = {.candidate = R"({"NOTIFICATIONS":{"Sound":true}})"},
-        .expectation = {.refused_key = "NOTIFICATIONS.Sound"},
-    },
-    {
-        .name = "a value for a group is refused",
-        .input = {.candidate = R"({"NOTIFICATIONS":false})"},
-        .expectation = {.refused_key = "NOTIFICATIONS"},
-    },
-    {
-        .name = "a candidate that is not an object is refused",
-        .input = {.candidate = R"([1,2])"},
-        .expectation = {.refused_key = ""},
-    },
-};
-
-
-struct LoadedInput{
-    std::string candidate = {};
-    std::string loaded = {};     //  The options read back after loading the merged candidate.
-};
-struct LoadedExpectation{
-    std::optional<std::string> refused_key = {};    //  None: the program holds every value.
-};
-struct LoadedCase{
-    std::string name;
-    LoadedInput input;
-    LoadedExpectation expectation;
-};
-
-UnitTestResult check(const LoadedCase& c){
-    const std::optional<RefusedOption> refused =
-        find_refused_option(parse_json(c.input.candidate), parse_json(c.input.loaded));
-    const std::optional<std::string> key = refused ? std::optional<std::string>(refused->key) : std::nullopt;
-    if (key == c.expectation.refused_key){
-        return true;
-    }
-    const std::string got = refused ? std::format("{} ({})", refused->key, refused->message) : "nothing";
-    return std::format("refused {}, expected {}", got, c.expectation.refused_key.value_or("nothing"));
-}
-
-class Test_FindRefusedOption : public UnitTest{
-public:
-    explicit Test_FindRefusedOption(LoadedCase test_case)
-        : UnitTest(std::format("CommonFramework::ProgramPrecheckRun - loaded - {}", test_case.name))
-        , m_case(std::move(test_case))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check(m_case);
-    }
-
-private:
-    LoadedCase m_case;
-};
-
-const LoadedCase LOADED_CASES[] = {
-    {
-        .name = "every value held",
-        .input = {
-            .candidate = R"({"COUNT":7,"NOTIFICATIONS":{"Screenshot":true}})",
-            .loaded = R"({"COUNT":7,"NOTIFICATIONS":{"Enabled":true,"Screenshot":true},"SPEED":0.5})",
-        },
-        .expectation = {},
+        .input = {.candidate = R"({})", .action = CheckAction::PASS},
+        .expectation = {.seen_by_checks = R"({"COUNT":5,"NOTIFICATIONS":{"Enabled":true,"Screenshot":false},"SPEED":0.5})", .restored = true, .held = std::string(CURRENT)},
     },
     {
         .name = "an integer for a number option is the same value",
-        .input = {.candidate = R"({"SPEED":2})", .loaded = R"({"COUNT":5,"SPEED":2.0})"},
-        .expectation = {},
+        .input = {.candidate = R"({"SPEED":2})", .action = CheckAction::PASS},
+        .expectation = {.seen_by_checks = R"({"COUNT":5,"NOTIFICATIONS":{"Enabled":true,"Screenshot":false},"SPEED":2.0})", .restored = true, .held = std::string(CURRENT)},
     },
     {
-        .name = "a number clamped to its bounds",
-        .input = {.candidate = R"({"COUNT":70})", .loaded = R"({"COUNT":10,"SPEED":0.5})"},
-        .expectation = {.refused_key = "COUNT"},
+        .name = "an unknown key is refused",
+        .input = {.candidate = R"({"COUNT":7,"SPEEED":1.0})", .action = CheckAction::PASS},
+        .expectation = {.refused_key = "SPEEED", .restored = true, .held = std::string(CURRENT)},
     },
     {
-        .name = "a disabled choice in a group, ignored",
-        .input = {
-            .candidate = R"({"NOTIFICATIONS":{"Screenshot":true}})",
-            .loaded = R"({"NOTIFICATIONS":{"Enabled":true,"Screenshot":false}})",
+        .name = "an unknown key in a group is refused with its key path",
+        .input = {.candidate = R"({"NOTIFICATIONS":{"Sound":true}})", .action = CheckAction::PASS},
+        .expectation = {.refused_key = "NOTIFICATIONS.Sound", .restored = true, .held = std::string(CURRENT)},
+    },
+    {
+        .name = "a value for a group is refused",
+        .input = {.candidate = R"({"NOTIFICATIONS":false})", .action = CheckAction::PASS},
+        .expectation = {.refused_key = "NOTIFICATIONS", .restored = true, .held = std::string(CURRENT)},
+    },
+    {
+        .name = "a candidate that is not an object is refused",
+        .input = {.candidate = R"([1,2])", .action = CheckAction::PASS},
+        .expectation = {.refused_key = "", .restored = true, .held = std::string(CURRENT)},
+    },
+    {
+        .name = "a number the program clamps is refused",
+        .input = {.candidate = R"({"COUNT":70})", .action = CheckAction::PASS},
+        .expectation = {.refused_key = "COUNT", .restored = true, .held = std::string(CURRENT)},
+    },
+    {
+        .name = "a choice the program ignores is refused with its key path",
+        .input = {.candidate = R"({"NOTIFICATIONS":{"Enabled":false,"Screenshot":true}})", .action = CheckAction::PASS},
+        .expectation = {.refused_key = "NOTIFICATIONS.Screenshot", .restored = true, .held = std::string(CURRENT)},
+    },
+    {
+        .name = "a combination check_validity refuses is refused",
+        .input = {.candidate = R"({"COUNT":0})", .action = CheckAction::PASS},
+        .expectation = {.refused_key = "", .restored = true, .held = std::string(CURRENT)},
+    },
+    {
+        .name = "an option a user edits during the checks is kept and named",
+        .input = {.candidate = R"({"SPEED":0.75})", .action = CheckAction::USER_SETS_COUNT_TO_9},
+        .expectation = {
+            .seen_by_checks = R"({"COUNT":5,"NOTIFICATIONS":{"Enabled":true,"Screenshot":false},"SPEED":0.75})",
+            .restored = false,
+            .edited_keys = {"COUNT"},
+            .held = R"({"COUNT":9,"NOTIFICATIONS":{"Enabled":true,"Screenshot":false},"SPEED":0.75})",
         },
-        .expectation = {.refused_key = "NOTIFICATIONS.Screenshot"},
+    },
+    {
+        .name = "a check that throws still puts the prior options back",
+        .input = {.candidate = R"({"COUNT":7})", .action = CheckAction::THROW},
+        .expectation = {
+            .seen_by_checks = R"({"COUNT":7,"NOTIFICATIONS":{"Enabled":true,"Screenshot":false},"SPEED":0.5})",
+            .threw = true,
+            .held = std::string(CURRENT),
+        },
     },
 };
 
@@ -181,11 +255,8 @@ const LoadedCase LOADED_CASES[] = {
 
 
 void add_tests_ProgramPrecheckRun(UnitTestDatabase& database){
-    for (const MergeCase& c : MERGE_CASES){
-        database.add<Test_MergeCandidateOptions>(c);
-    }
-    for (const LoadedCase& c : LOADED_CASES){
-        database.add<Test_FindRefusedOption>(c);
+    for (const RunCase& c : RUN_CASES){
+        database.add<Test_RunPrechecksOnly>(c);
     }
 }
 
