@@ -306,7 +306,7 @@ with a silent gap.
 is a usage error.
 
 ```text
-run_program(console, request_id, lease_token, panel, options={})   # options must be {} in 5a
+run_program(console, request_id, lease_token, panel, options={}, preflight_token)   # options must be {} in 5a
 stop_program(console, request_id, lease_token)
 ```
 
@@ -320,7 +320,7 @@ stored as a `refused` record with a `request_failed` event, and nothing reaches 
 | the request's token holds the lease (idle or running) | `lease_invalid`, `lease_expired`, `console_held_by_user` (a UI Start/Stop or the operator) |
 | no earlier run/stop on the console is still pending | `program_not_stopped`, `evidence.pending_tool` |
 | `Lab/state.json` is live | `app_unavailable`, `evidence.reason` = the availability reason |
-| run: `options` is `{}`, no `preflight_token` | `invalid_arguments` (`options`, `preflight_token`) |
+| run: `options` is `{}` (`preflight_token` is required by the contract, not checked in 5a) | `invalid_arguments` (`options`) |
 | run: `panel` is the selected program | `invalid_arguments`, field `panel`, `evidence.selected`; `panel_not_program` on the settings page |
 | run: `console://B/state`'s `blocked` (program state, controller, video) | `program_running`, `program_not_stopped` (loading), `controller_not_ready`, `video_stale`, `video_bad_signal` |
 | the channel's owner lock is not claimed (`channel.owner_claimed`) | `console_held_by_agent`, `evidence.reason: channel_owned` |
@@ -330,18 +330,27 @@ A passing request is stored `pending` with the app instance it was checked again
 `actions`, migration 2), and the daemon writes `request <request_id>` / `start 10` (or `stop`)
 into `Lab/inbox`, the commands `labctl.sh start|stop` sends; the client's `request_id` is the
 channel's request id. It then reads the journal and `state.json` (up to 13 s for a start, 10 s for
-a stop) and resolves the record:
+a stop) and resolves the record. Each attempt's inbox name has a random part, so a journal left by
+an earlier request with the same id (after compaction dropped its record) never answers it.
+
+While a `run_program` is pending the lease cannot end: `release_console` is refused
+`program_running` and the TTL does not expire it, since the run may still start. Once the request
+settles, an overdue lease expires at the next read. The outcomes:
 
 | The app shows | Record |
 |---|---|
 | `last_transition` = this request's start | `completed`, `correlated_by: request_id`; the lease enters `agent_running` in the same transaction, unless `observe` already applied a newer transition |
 | `last_transition` = this request's stop, `program.state` `stopped` | `completed`, `stopped_by: lab` |
 | after the start's `ok`, a stop by `program` / `error` dated after the request | `completed` with `ended: {source, at}`, `correlated_by: time`; the lease stays idle |
-| (stop) a stop by `program` / `error` dated after the request | `completed`, `stopped_by` that source, `correlated_by: time` (the terminal event completes it) |
+| after the start's `ok`, a stop by a lab script (`lab`, another request id) dated after the request | the same, `ended.source: lab` |
+| (stop) a stop by `program` / `error` / a lab script dated after the request | `completed`, `stopped_by` that source, `correlated_by: time` (the terminal event completes it) |
 | a UI transition dated after the request | `failed`, `console_held_by_user` (the user lease is already installed) |
 | another `instance.id` without this request's id | `failed`, `app_unavailable`, `instance_replaced` |
 | the line failed | `failed`: `owned by` → `console_held_by_agent` (the token is not copied); `Program is RUNNING.` → `program_running`; `controller not connected` → `controller_not_ready`; else `app_unavailable` with the journal |
+| the inbox write failed | `failed` at once, `app_unavailable`, `evidence.reason: inbox_write_failed` (nothing was sent) |
 | no answer, request still in the inbox | withdrawn; `failed`, `timeout` (nothing was sent) |
+| no answer, request in neither the inbox nor `done/`, no journal | `failed`, `timeout`, `evidence.reason: never_sent` (the daemon stopped between the record and the write; settled at the next start too) |
+| a complete journal without an error that nothing above matches, after the wait | `failed`, `timeout`, `evidence.reason: outcome_unknown` with the journal and transition |
 | no answer, request taken | stays `pending`; settled from `state.json` on the next `request_status`, `next_events`, `console://B/state` read or action call, also after a daemon restart; `failed` / `app_unavailable` if the app exits |
 
 **What Slice 1's data does not give.** `last_transition` keeps only the newest start or stop, and
@@ -353,7 +362,7 @@ the stop transition, or the app keeping the start beside the stop, would make th
 **Left for Slice 5b.** `preflight_program`: the app has no channel command that runs a program's
 prechecks (or stages candidate options) without starting it, so 5a sends no preflight, runs the
 panel's current options, and the program's own `run_prechecks()` at Start are the only checks;
-`run_program`'s `preflight_token` became optional in the v1 request contract for this and 5b makes
-it required again. Also 5b: staging `options`, claiming the channel's owner token (a claimed
+`run_program`'s `preflight_token` stays required in the v1 request contract (only our own clients
+use v1); 5a takes it unchecked and 5b binds it to a preflight. Also 5b: staging `options`, claiming the channel's owner token (a claimed
 channel is refused today), `cfr_batch`, and the console-B soak (every mutation has exactly one
 record).

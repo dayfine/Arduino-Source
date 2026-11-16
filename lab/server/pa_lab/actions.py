@@ -22,19 +22,30 @@ start or stop):
   null). After our start's `ok` line, a stop by `program` or `error` dated after our request means
   the run started and already ended: `completed` with `ended` set, `correlated_by: time`, and the
   lease stays idle. For `stop_program` the same stop is the terminal event that completes it.
+- A stop by a lab script (source `lab`, another request id) dated after our request counts the same
+  way: the run started and was stopped before we read the answer.
 - A UI transition dated after our request is the user taking over: `failed`,
   `console_held_by_user` (the control plane has already installed the user lease).
 - A new `instance.id` is an app restart: `failed`, `app_unavailable` / `instance_replaced`,
   unless the new instance shows our request id.
 
 A request the app has not answered in time stays `pending` (a ticket) if the app took it from the
-inbox, since it may still act; it is settled on the next `request_status`, `next_events`,
-`console://B/state` read or action call. If the app never took it, it is withdrawn from the inbox
-and `failed` with `timeout`.
+inbox (`done/<name>.txt`), since it may still act; it is settled on the next `request_status`,
+`next_events`, `console://B/state` read or action call. Past the answer wait it is `failed` with
+`timeout` when:
+
+- it is still in the inbox (the app never took it): it is withdrawn and nothing was sent;
+- it is in neither the inbox nor `done/` and has no journal: it never reached the app (the inbox
+  write failed, or the daemon died between storing the record and writing it), `never_sent`;
+- its journal is complete without an error and nothing above matches it, `outcome_unknown`.
+
+A failed inbox write is answered at once: `failed`, `app_unavailable` / `inbox_write_failed`.
+Each attempt has its own inbox name, so an old journal of a reused request id never answers it.
 
 Not in 5a: `preflight_program` (the app has no command that runs a program's prechecks without
 starting it, so the program's own prechecks at Start are the only ones run), staging options
-(`options` must be `{}`: the panel's current options run), `select`, `cfr_batch`, and claiming the
+(`options` must be `{}`: the panel's current options run; `preflight_token` is required by the v1
+contract but not checked until 5b binds it to a preflight), `select`, `cfr_batch`, and claiming the
 channel's owner token (a claimed channel is refused).
 """
 
@@ -89,6 +100,11 @@ def _line_ok(lines: Optional[List[str]], command: str) -> bool:
     return any(ok.match(line) for line in lines or ())
 
 
+def _taken(lab_dir: Path, name: str) -> bool:
+    """True once the app took the request from the inbox (LabChannel moves it to done/ first)."""
+    return (lab_dir / 'done' / (name + '.txt')).exists() or (lab_dir / 'outbox' / (name + '.out')).exists()
+
+
 def _withdraw(inbox: Path) -> bool:
     """True if the request was still in the inbox (the app never took it) and is now gone."""
     try:
@@ -120,10 +136,10 @@ def _app_error(tool: str, error: str, lines: List[str]) -> Dict[str, Any]:
         'start' if tool == 'run_program' else 'stop', error), evidence={'journal': lines})
 
 
-def _first_blocked(state: Dict[str, Any], skip=('console_held_by_user',)) -> None:
+def _first_blocked(state: Dict[str, Any]) -> None:
     """Raises the first refusal console://B/state lists for a run (the lease is checked apart)."""
     for entry in state['blocked']:
-        if entry['code'] not in skip:
+        if entry['code'] != 'console_held_by_user':
             extra = {k: v for k, v in entry.items() if k not in ('code', 'message')}
             raise Refused(entry['code'], entry['message'], **extra)
 
@@ -148,9 +164,6 @@ def check_run(state: Dict[str, Any], lease: Any, args: Dict[str, Any]) -> None:
     if args['options']:
         raise Refused('invalid_arguments', "Slice 5a runs the panel's current options; pass options {}. "
                       'Staging options comes with preflight_program (Slice 5b).', field='options')
-    if 'preflight_token' in args:
-        raise Refused('invalid_arguments', 'There is no preflight_program in Slice 5a; omit preflight_token.',
-                      field='preflight_token')
     if app['panel']['kind'] == 'program' and app['panel']['id'] != args['panel']:
         raise Refused('invalid_arguments', 'The selected panel is {}, not {}; run_program does not change '
                       'the selection.'.format(app['panel']['id'], args['panel']), field='panel',
@@ -218,26 +231,38 @@ class ProgramActions:
             if record['status'] == 'pending' and action is not None:
                 return self._settle(reader, action, wait_s=0)
             return record
-        shot.write_request(reader.lab_dir, action['inbox_name'], record['request_id'], command)
+        key = (client_id, tool, record['request_id'])
+        try:
+            shot.write_request(reader.lab_dir, action['inbox_name'], record['request_id'], command)
+        except OSError as e:
+            return self.plane.finish_action(*key, refusal=_refusal(
+                'app_unavailable', 'Could not write the {} request into the app\'s inbox ({}); nothing was '
+                'sent.'.format(tool, e.strerror or e), evidence={'reason': 'inbox_write_failed'}))
         return self._settle(reader, action, wait_s=ANSWER_WAIT_S[tool])
 
     def _settle(self, reader: ConsoleReader, action: Dict[str, Any], wait_s: float) -> Dict[str, Any]:
         key = (action['client_id'], action['tool'], action['request_id'])
         deadline = reader.now() + wait_s
+        wait = ANSWER_WAIT_S[action['tool']]
         while True:
-            outcome = self._judge(reader, action)
+            late = reader.now() - timestamps.parse(action['written_at']) >= wait
+            outcome = self._judge(reader, action, late)
             if outcome is not None:
                 return self.plane.finish_action(*key, **outcome)
             if reader.now() >= deadline:
                 break
             self.sleep(POLL_S)
-        age = reader.now() - timestamps.parse(action['written_at'])
-        if age >= ANSWER_WAIT_S[action['tool']]:
+        if late:
             if _withdraw(reader.lab_dir / 'inbox' / (action['inbox_name'] + '.txt')):
                 return self.plane.finish_action(*key, refusal=_refusal(
                     'timeout', 'The app did not take the {} request within {:g} s (busy with another '
-                    'request?); it was withdrawn and nothing was sent.'.format(
-                        action['tool'], ANSWER_WAIT_S[action['tool']]), evidence={'request': action['inbox_name']}))
+                    'request?); it was withdrawn and nothing was sent.'.format(action['tool'], wait),
+                    evidence={'request': action['inbox_name']}))
+            if not _taken(reader.lab_dir, action['inbox_name']):
+                return self.plane.finish_action(*key, refusal=_refusal(
+                    'timeout', 'The {} request never reached the app (its inbox write failed or the daemon '
+                    'stopped first); nothing was sent.'.format(action['tool']),
+                    evidence={'reason': 'never_sent', 'request': action['inbox_name']}))
             state = reader.console_state()
             if state['app'] is None and state['availability']['reason'] == 'app_not_running':
                 return self.plane.finish_action(*key, refusal=_refusal(
@@ -245,8 +270,9 @@ class ProgramActions:
                     evidence={'reason': 'app_not_running'}))
         return self.plane.record(*key)
 
-    def _judge(self, reader: ConsoleReader, action: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """The outcome the app shows now, as finish_action keyword arguments, or None to wait."""
+    def _judge(self, reader: ConsoleReader, action: Dict[str, Any], late: bool) -> Optional[Dict[str, Any]]:
+        """The outcome the app shows now, as finish_action keyword arguments, or None to wait.
+        `late`: the answer wait is over, so a complete journal that nothing matches is final."""
         lines = _journal(reader.lab_dir, action['inbox_name'])
         app = reader.console_state()['app']
         if app is None:
@@ -278,8 +304,9 @@ class ProgramActions:
                                                                        reader.console),
                                         evidence={'transition': transition, 'journal_ok': lines is not None and
                                                   _line_ok(lines, 'start' if tool == 'run_program' else 'stop')})}
-        ended = after and transition['action'] == 'stop' and transition['source'] in ENDED_SOURCES and \
-            program['state'] == 'stopped'
+        foreign_lab = transition is not None and transition['source'] == 'lab' and not ours
+        ended = after and transition['action'] == 'stop' and (transition['source'] in ENDED_SOURCES or foreign_lab) \
+            and program['state'] == 'stopped'
         if tool == 'run_program':
             if ended and _line_ok(lines, 'start'):
                 return {'result': dict(base, started_at=None, run_id=program['run_id'],
@@ -290,6 +317,11 @@ class ProgramActions:
                                    correlated_by='time')}
         error = _line_error(lines)
         if error is None:
+            if late and lines is not None and not ours:
+                return {'refusal': _refusal(
+                    'timeout', 'The app answered the {} but shows nothing this request can be matched to; '
+                    'read console://B/state for what runs.'.format(tool),
+                    evidence={'reason': 'outcome_unknown', 'journal': lines, 'transition': transition})}
             return None
         if tool == 'stop_program' and PROGRAM_IS_RE.match(error) and program['state'] == 'stopped':
             # The run ended between the check and the stop line, before anything this request can date.
