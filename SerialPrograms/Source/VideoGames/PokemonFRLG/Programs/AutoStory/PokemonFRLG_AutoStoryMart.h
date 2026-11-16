@@ -23,13 +23,21 @@
  *    until its top shows. A row on the screen is not the list's row once
  *    it has scrolled.
  *
- *  The step never opens SELL. The money can't be read, so each line buys
- *  its quantity, in the order listed, blind. The only money check is the
- *  "You don't have enough money." dialog, which fails the step; a
- *  quantity typed past the box's most wraps, which the box's read catches
- *  where it can be read. A plan with if_affordable skips such a line
- *  instead, logged. A Mart step belongs early in its checkpoint, so
- *  that a failure costs little.
+ *  - SELL opens the bag (item_menu.c, ITEMMENULOCATION_SHOP) on its last
+ *    pocket. A on an item: "How many would you like to sell?" with the
+ *    box on 1 when the bag holds more than one, then "I can pay $X. Would
+ *    that be okay?" YES/NO on YES (half the item's price; one priced 0
+ *    gets "OH, no. I can't buy that."); YES: "Turned over the <item> and
+ *    received $X.", back to the bag. B out of the bag: the clerk's menu.
+ *
+ *  A plan's sales go first, each from facing the clerk back to facing
+ *  the clerk. The money box is read once on the BUY list: a read below
+ *  what the sales earned fails the step (a sale that didn't happen), and
+ *  an if_affordable line is cut to what the money covers. Unread, each
+ *  line buys its quantity, in the order listed, blind: the only money
+ *  check is then the "You don't have enough money." dialog, which fails
+ *  the step, or skips the line with if_affordable, logged. A Mart step
+ *  belongs early in its checkpoint, so that a failure costs little.
  *
  *  The decisions take their game steps from a MartActions, so they run in
  *  tests against a fake Mart; ConsoleMartActions does them on the console
@@ -73,13 +81,21 @@ std::string_view mart_end_name(MartEnd end);
 //  The summary result of a Mart shopping session.
 struct MartResult{
     MartEnd end = MartEnd::FAILED;
+    std::vector<MartLine> sold = {};
+    //  What the clerk paid for `sold` (sale_price()).
+    size_t earned = 0;
+    //  The money box on the BUY list before the first buy, if read.
+    std::optional<size_t> money = std::nullopt;
     std::vector<MartBuy> bought = {};
     size_t spent = 0;
     //  FAILED: what failed.
     std::string detail = {};
 };
 
-//  Facing the clerk: buys as `plan` says, then back to the overworld.
+//  Facing the clerk: sells, then buys, as `plan` says, then back to the
+//  overworld. The money box, read once on the BUY list, checks the sales
+//  (it holds at least what they earned) and cuts an if_affordable line to
+//  what it covers; unread, the buys go on blind.
 MartResult run_mart(Logger& logger, MartActions& actions, const MartPlan& plan);
 
 //  Formats a log message summarizing the Mart shopping result.
@@ -105,8 +121,14 @@ public:
     virtual void dump_screen(std::string_view name) override;
     virtual PurchaseEnd buy(const MartBuy& buy) override;
     virtual bool leave() override;
+    virtual std::optional<size_t> read_money() override;
+    virtual SaleEnd sell(const MartLine& sale) override;
 
 private:
+    //  From the bag: out to the overworld facing the clerk; `end`, or
+    //  FAILED if the overworld didn't come back.
+    SaleEnd back_to_clerk(SaleEnd end);
+
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     Language m_language;

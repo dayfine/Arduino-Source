@@ -179,6 +179,13 @@ Pokemon::StoryActionArgs mart_args(const MartPlan& plan){
     if (plan.if_affordable){
         args["if_affordable"] = true;
     }
+    if (!plan.sells.empty()){
+        std::vector<Pokemon::StoryItem> sells;
+        for (const MartLine& line : plan.sells){
+            sells.push_back({line.item, line.quantity});
+        }
+        args["sell"] = std::move(sells);
+    }
     return args;
 }
 
@@ -195,6 +202,14 @@ std::optional<MartPlan> mart_plan_of(const Pokemon::StoryActionArgs& args){
             return std::nullopt;
         }
         plan.lines.push_back({item.item, item.quantity});
+    }
+    if (const auto* sells = game_arg<std::vector<Pokemon::StoryItem>>(args, "sell")){
+        for (const Pokemon::StoryItem& item : *sells){
+            if (item.quantity < 1 || item.quantity > MAX_QUANTITY || !sale_price(item.item)){
+                return std::nullopt;
+            }
+            plan.sells.push_back({item.item, item.quantity});
+        }
     }
     return plan;
 }
@@ -250,15 +265,27 @@ public:
     {}
 
     MartResult run(){
+        for (const MartLine& sale : m_plan.sells){
+            if (!sell_one(sale)){
+                return end(MartEnd::FAILED, m_result.detail);
+            }
+        }
         if (!m_actions.open_buy_list()){
             return end(MartEnd::FAILED, "the BUY list didn't show");
         }
-        const std::optional<std::vector<MartBuy>> buys = plan_mart_buys(m_stock, m_plan);
+        std::optional<std::vector<MartBuy>> buys = plan_mart_buys(m_stock, m_plan);
         if (!buys){
             return leave(MartEnd::FAILED, "an item the Mart doesn't sell");
         }
+        m_result.money = m_actions.read_money();
+        if (!check_sales()){
+            return leave(MartEnd::FAILED, m_result.detail);
+        }
+        if (m_plan.if_affordable && m_result.money){
+            cut_to_money(*m_result.money, *buys);
+        }
         for (const MartBuy& buy : *buys){
-            if (!buy_one(buy)){
+            if (buy.quantity != 0 && !buy_one(buy)){
                 return leave(MartEnd::FAILED, m_result.detail);
             }
         }
@@ -277,6 +304,55 @@ private:
             return this->end(MartEnd::FAILED, "the overworld didn't come back after the Mart");
         }
         return this->end(end, std::move(detail));
+    }
+
+    //  Sells `sale`, facing the clerk before and after. None in the bag is
+    //  logged and passed.
+    bool sell_one(const MartLine& sale){
+        switch (m_actions.sell(sale)){
+        case SaleEnd::SOLD:{
+            const size_t earned = sale.quantity * sale_price(sale.item).value_or(0);
+            m_logger.log(std::format("Mart: sold {} {} for ${}.", sale.quantity, sale.item, earned));
+            m_result.sold.push_back(sale);
+            m_result.earned += earned;
+            return true;
+        }
+        case SaleEnd::NONE_IN_BAG:
+            m_logger.log(std::format("Mart: no {} in the bag to sell; skipped.", sale.item), COLOR_ORANGE);
+            return true;
+        case SaleEnd::FAILED:
+            break;
+        }
+        m_result.detail = std::format("selling {} {} didn't come back to the clerk", sale.quantity, sale.item);
+        return false;
+    }
+    //  The money read on the BUY list holds at least what the sales
+    //  earned: less, and a sale didn't happen.
+    bool check_sales(){
+        if (!m_result.money){
+            m_logger.log("Mart: the money box wasn't read; buying blind.", COLOR_ORANGE);
+            return true;
+        }
+        m_logger.log(std::format("Mart: ${} on the BUY list, ${} of it from sales.", *m_result.money, m_result.earned));
+        if (*m_result.money < m_result.earned){
+            m_result.detail = std::format("${} after selling for ${}", *m_result.money, m_result.earned);
+            return false;
+        }
+        return true;
+    }
+    //  Each line, in order, cut to what `money` still covers; a line it
+    //  covers none of is skipped, logged.
+    void cut_to_money(size_t money, std::vector<MartBuy>& buys){
+        for (MartBuy& buy : buys){
+            const size_t price = buy.cost / buy.quantity;
+            const size_t affordable = std::min(buy.quantity, money / price);
+            if (affordable < buy.quantity){
+                m_logger.log(std::format("Mart: ${} covers {} of {} {}.", money, affordable, buy.quantity, buy.item), COLOR_ORANGE);
+            }
+            buy.quantity = affordable;
+            buy.cost = affordable * price;
+            money -= buy.cost;
+        }
     }
 
     //  Moves the cursor to `buy`'s row one press at a time, reading the
@@ -359,11 +435,18 @@ std::string mart_message(const MartPlan& plan, const MartResult& result){
     if (bought.empty()){
         bought = "nothing";
     }
+    std::string sold;
+    for (const MartLine& sale : result.sold){
+        sold += std::format("{}{} {}", sold.empty() ? "sold " : ", ", sale.quantity, sale.item);
+    }
+    if (!sold.empty()){
+        sold += std::format(" for ${}, ", result.earned);
+    }
     switch (result.end){
     case MartEnd::DONE:
-        return std::format("Mart ({}): bought {} for ${}.", plan.map, bought, result.spent);
+        return std::format("Mart ({}): {}bought {} for ${}.", plan.map, sold, bought, result.spent);
     case MartEnd::FAILED:
-        return std::format("Mart ({}): {}; bought {} for ${}.", plan.map, result.detail, bought, result.spent);
+        return std::format("Mart ({}): {}; {}bought {} for ${}.", plan.map, result.detail, sold, bought, result.spent);
     }
     return "Mart: ?";
 }

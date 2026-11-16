@@ -40,6 +40,8 @@ public:
     virtual void dump_screen(std::string_view) override{}
     virtual PurchaseEnd buy(const MartBuy&) override{ return PurchaseEnd::FAILED; }
     virtual bool leave() override{ return true; }
+    virtual std::optional<size_t> read_money() override{ return std::nullopt; }
+    virtual SaleEnd sell(const MartLine&) override{ return SaleEnd::FAILED; }
 };
 
 class StubTeach : public TeachActions{

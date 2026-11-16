@@ -49,6 +49,14 @@ inline const std::string BIKE_VARIANT = "bike";
 //  the registration is saved with the game, and a save made before it
 //  doesn't have it.
 inline const std::string REGISTER_BIKE_VARIANT = "register_bike";
+//  The GAME step that uses the strongest Repel the bag holds
+//  (use_strongest_repel()); one that wears off during the walks after it
+//  is renewed strongest first (STRONGEST_REPEL). Args as a use_item
+//  step's "safari" and "if_any".
+inline const std::string USE_REPEL_VARIANT = "use_repel";
+//  The Repel a use_repel step's renewals start from: repel_renew_order()
+//  tries it, then the weaker ones.
+inline const std::string STRONGEST_REPEL = "max-repel";
 
 
 //  The item a use_item step uses (with "safari", from the Safari Zone's

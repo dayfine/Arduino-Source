@@ -3,7 +3,7 @@
   "game": "frlg",
   "checkpoint": {
     "id": "19.01a",
-    "title": "Viridian's Mart: potions before the rival on Route 22",
+    "title": "Restock before the Route 22 rival: the Nugget for Super Potions at Lavender's Mart, status heals at Viridian's",
     "start": {
       "map": "ViridianCity_PokemonCenter_1F",
       "tiles": [[7, 4]],
@@ -11,24 +11,68 @@
     },
     "events": [
       {
+        "id": "viridian_outside",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "ViridianCity", "tiles": [[26, 27]], "facing": "south"}
+        },
+        "why": "out of Viridian's Center onto the street below its door (26, 26), where 17.04b's Fly landed: Fly works outdoors only"
+      },
+      {
+        "id": "fly_lavender",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {"town": "LavenderTown", "species": "pidgey"},
+        "declared_after": {"map": "LavenderTown", "tiles": [[6, 6]], "facing": "south"},
+        "why": "the Pidgey flies to Lavender Town, landing below the Pokemon Center's door (6, 5), as 10.01. Celadon's Department Store sells no Hyper Potion (pokefirered: only Saffron's, Cinnabar's and the Sevii Marts do) and its 2F items clerk, whose best healing is the Super Potion, is on a floor the walker has no map of; Lavender's Mart sells the same Super Potion (700) a short walk from its landing (08.03)"
+      },
+      {
+        "id": "lavender_mart_clerk",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "LavenderTown_Mart", "tiles": [[4, 3]], "facing": "west"}
+        },
+        "why": "along the street to the Mart's door (20, 15), in and up to face the clerk (2, 3) over the counter (3, 3), as 08.03"
+      },
+      {
+        "id": "sell_nugget_buy_super_potions",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "LavenderTown_Mart",
+          "sell": [{"item": "nugget", "quantity": 1}],
+          "items": [{"item": "super-potion", "quantity": 6}],
+          "if_affordable": true
+        },
+        "why": "the Nugget sold ($5,000, half its 10,000) pays for 6 Super Potions (4,200) whatever the money was: the bag at 17.04b holds potion x3 and super-potion x0 (console B, 2026-11-15 22:10) against PokeGuy's potion x4, superpotion x4 at the Route 22 rival (PokemonSimulation docs/battles/pokeguy-conditions.md). The 2 Moon Stones stay: the clerk pays nothing for them (price 0, \"OH, no. I can't buy that.\"). The money box, read on the BUY list, checks the sale and cuts the line to what it covers; unread, the 6 are bought blind, which the Nugget alone covers"
+      },
+      {
+        "id": "out_of_lavender_mart",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "LavenderTown", "tiles": [[20, 16]], "facing": "south"}
+        },
+        "why": "back out of the Mart's door (20, 15) onto the street below it, as 08.03"
+      },
+      {
+        "id": "fly_viridian",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {"town": "ViridianCity", "species": "pidgey"},
+        "declared_after": {"map": "ViridianCity", "tiles": [[26, 27]], "facing": "south"},
+        "why": "the Pidgey flies back to Viridian City, landing below the Pokemon Center's door (26, 26), as 17.04b"
+      },
+      {
         "id": "viridian_mart_clerk",
         "kind": "route",
         "action": "run",
         "args": {
           "target": {"map": "ViridianCity_Mart", "tiles": [[4, 3]], "facing": "west"}
         },
-        "why": "out of the Center and along the street to the Mart's door, in and up to the counter, facing the clerk (as 02.03)"
-      },
-      {
-        "id": "buy_potions",
-        "kind": "game_action",
-        "action": "mart",
-        "args": {
-          "map": "ViridianCity_Mart",
-          "items": [{"item": "potion", "quantity": 4}],
-          "fill_to": 4
-        },
-        "why": "Potions up to 4 in the bag, as in PokeGuy's bag at the Route 22 rival (potion x4, superpotion x4, xaccuracy x4, xspecial x17, xspeed x5, guardspec x2; PokemonSimulation docs/battles/pokeguy-conditions.md); the Super Potions are 12.01's. Early in the row, so a failed purchase stops it before the walk. Buys 4 less what the bag holds, skipped at 4"
+        "why": "along the street to the Mart's door, in and up to the counter, facing the clerk (as 02.03), where 19.01 starts"
       },
       {
         "id": "buy_status_heals",
@@ -38,7 +82,7 @@
           "map": "ViridianCity_Mart",
           "items": [{"item": "antidote", "quantity": 1}, {"item": "parlyz-heal", "quantity": 2}]
         },
-        "why": "an Antidote and 2 Parlyz Heals for the League's poison and paralysis (user's decision 2026-11-15, from the shopping audit): PokeGuy's bag at the Route 22 rival and at Lorelei holds antidote x1 and parlyzheal x2 (PokemonSimulation docs/battles/pokeguy-conditions.md), which the story's bag never bought for the League; recovery_items() cures PSN and PAR with them. Viridian sells both (ANTIDOTE 100, PARLYZ HEAL 200: 500 in all); its own step, as buy_potions's fill_to would skip a whole step when the bag holds 4 Potions. Bought blind after 17.04's Giovanni prize"
+        "why": "an Antidote and 2 Parlyz Heals for the League's poison and paralysis (user's decision 2026-11-15, from the shopping audit): PokeGuy's bag at the Route 22 rival and at Lorelei holds antidote x1 and parlyzheal x2 (PokemonSimulation docs/battles/pokeguy-conditions.md), which the story's bag never bought for the League; recovery_items() cures PSN and PAR with them. Viridian sells both (ANTIDOTE 100, PARLYZ HEAL 200: 500 in all), paid from what the Nugget left (800 at least). The Potions this row used to fill to 4 are left out: the 6 Super Potions replace them"
       }
     ]
   },
@@ -46,7 +90,7 @@
     "menu": "full",
     "notes": {
       "checkpoint": [
-        "Starts at Viridian's nurse, where 17.04b ends. The Mart's clerk is first in the checkpoint: the potions are bought before the rival, and 19.01 starts in the Mart with the bag as it should be.",
+        "Starts at Viridian's nurse, where 17.04b ends. Flies to Lavender for the Super Potions, back to Viridian for the status heals, so that 19.01 starts in the Viridian Mart with the bag as the rival needs it.",
         "Ends in the Viridian Mart at (4, 3) facing the clerk, where 19.01 starts."
       ]
     }
