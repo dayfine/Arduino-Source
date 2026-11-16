@@ -69,7 +69,8 @@ const StoryDataCase STORY_DATA_CASES[] = {
             "02.01:from_save:unverified 02.02:from_save:unverified 02.03:from_save:unverified 02.04:from_save:unverified "
             "02.05:from_save:unverified 02.06:from_save:autosave 02.07:from_save:unverified "
             "03.01:from_save:autosave 03.02:from_save 03.03:from_save:autosave 03.04:from_save "
-            "03.05:from_save:autosave 03.06:from_save 03.07:from_save:autosave 03.09:from_save:unverified "
+            "03.05:from_save:autosave 03.06:from_save 03.07:from_save:autosave 03.08:from_save:autosave 03.08b:from_save "
+            "03.09:from_save:unverified "
             "03.10:from_save:autosave 03.11:from_save:unverified"
         },
     },
@@ -566,6 +567,26 @@ const RunCase RUN_CASES[] = {
         .name = "03.07's tutorial catch needs a console",
         .input = {.checkpoint = "03.07", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at catch_fletchling: console_only", .inputs = ""},
+    },
+    {
+        .name = "03.08's patrol for two more species needs a console",
+        .input = {.checkpoint = "03.08", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .expectation = {.verdict = "failed at catch_more_species: console_only", .inputs = ""},
+    },
+    {
+        .name = "03.08b's walk back to Wild Zone 1's road needs a console",
+        .input = {.checkpoint = "03.08b", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .expectation = {.verdict = "failed at zone_1_back_to_road: console_only", .inputs = ""},
+    },
+    {
+        .name = "03.08b's run to the far gate needs a console",
+        .input = {.checkpoint = "03.08b", .first_step = 1, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .expectation = {.verdict = "failed at zone_1_to_far_gate: console_only", .inputs = ""},
+    },
+    {
+        .name = "03.08b's way out of the gate needs a console",
+        .input = {.checkpoint = "03.08b", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .expectation = {.verdict = "failed at leave_zone_1: console_only", .inputs = ""},
     },
     {
         .name = "03.09's walk to the objective marker needs a console",

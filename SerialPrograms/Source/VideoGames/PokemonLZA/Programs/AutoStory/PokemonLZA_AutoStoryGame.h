@@ -75,8 +75,15 @@ namespace PokemonLZA{
 //                              Pokedex app (03.04)
 //      "run_to_gate"           console_only: straight on to a zone gate's A
 //                              prompt (upstream's
-//                              run_towards_gate_with_A_button()), arg
-//                              "timeout_ms"
+//                              run_towards_gate_with_A_button()), args
+//                              "timeout_ms" and "heading", the minimap
+//                              heading faced first
+//      "leave_zone_gate"       console_only: A through a zone's gate on the
+//                              way out (upstream's leave_zone_gate())
+//      "catch_in_zone"         console_only: 03.08's patrol of Wild Zone 1's
+//                              road until the party bar shows 5 species
+//      "walk_back_to_zone_road"    console_only: back onto Wild Zone 1's
+//                              road at the catch spot by the far gate
 //
 //  Later slices add rows here, each with its handler.
 const std::vector<Pokemon::StoryActionSpec>& plza_story_specs();

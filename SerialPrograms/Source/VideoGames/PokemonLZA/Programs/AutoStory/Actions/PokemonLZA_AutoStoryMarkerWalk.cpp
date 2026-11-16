@@ -68,21 +68,36 @@ private:
 //  How one step of the walk ended.
 enum class MarkerStep{
     WALKING,
-    ARRIVED,    //  an A prompt or a dialog shows
+    ARRIVED,    //  the goal's distance read, or (no distance) an A prompt or a dialog shows
     LOST,       //  the marker did not show for 12 camera turns
+};
+
+//  Where a walk ends.
+struct MarkerGoal{
+    //  The distance that ends it; none: an A prompt or a dialog does.
+    std::optional<int> stop_at;
+    //  Walking back away from the marker, until it reads `stop_at` or
+    //  more; else toward it, until `stop_at` or less.
+    bool back = false;
 };
 
 //  The walk, one look and one move at a time.
 class MarkerWalk{
 public:
-    MarkerWalk(StoryEnv& env, PlzaBackend& backend)
+    MarkerWalk(StoryEnv& env, PlzaBackend& backend, MarkerGoal goal)
         : m_env(env)
         , m_backend(backend)
+        , m_goal(goal)
     {}
+
+    //  The last distance taken, if any.
+    std::optional<int> last() const{
+        return m_reads.last();
+    }
 
     MarkerStep step(){
         const Pokemon::Observation<Pokemon::ZonePose> look = m_backend.observe();
-        if (look.events.has(ScreenEvent::INTERACT_PROMPT) || look.events.has(ScreenEvent::DIALOG_BOX)){
+        if (!m_goal.stop_at && (look.events.has(ScreenEvent::INTERACT_PROMPT) || look.events.has(ScreenEvent::DIALOG_BOX))){
             return MarkerStep::ARRIVED;
         }
         std::optional<ObjectiveMarker> marker;
@@ -100,6 +115,10 @@ public:
             return MarkerStep::WALKING;
         }
         if (marker->distance > 0 && m_reads.accept(marker->distance)){
+            if (reached(marker->distance)){
+                m_backend.log(std::format("[PLZA] marker walk: {} from the objective", marker->distance));
+                return MarkerStep::ARRIVED;
+            }
             on_distance(marker->distance);
         }
         steer_and_step(marker->x);
@@ -116,10 +135,21 @@ private:
         return MarkerStep::WALKING;
     }
 
-    //  A taken read: logged when it changes; 4 reads with no new best is a
-    //  walk held up (the Research Lab's front fence, console B 2026-11-10),
-    //  which steps sideways: right, then left twice as far, 4 at most.
+    bool reached(int distance) const{
+        if (!m_goal.stop_at){
+            return false;
+        }
+        return m_goal.back ? distance >= *m_goal.stop_at : distance <= *m_goal.stop_at;
+    }
+
+    //  A taken read toward the marker: logged when it changes; 4 reads with
+    //  no new best is a walk held up (the Research Lab's front fence,
+    //  console B 2026-11-10), which steps sideways: right, then left twice
+    //  as far, 4 at most.
     void on_distance(int distance){
+        if (m_goal.back){
+            return;
+        }
         if (distance < m_best){
             m_backend.log(std::format("[PLZA] walk_to_marker: {} to go", distance));
             m_best = distance;
@@ -137,18 +167,23 @@ private:
         m_sidesteps++;
     }
 
-    //  Turns the camera toward the marker at `x` (0 to 1) and walks 0.6 s on.
+    //  Turns the camera toward the marker at `x` (0 to 1) and walks 0.6 s
+    //  on, or back toward the camera. Walking back turns the camera, so it
+    //  is turned back onto the marker before each step: unsteered, the walk
+    //  from 60 to 100 bent off Wild Zone 1's road (console B, 2026-11-14).
     void steer_and_step(double x){
         const double off = x - 0.5;
         if (off > 0.06 || off < -0.06){
             const Milliseconds turn((int)(std::min(1.0, std::abs(off) * 4) * 400) + 80);
-            pbf_move_right_joystick(m_env.context, {off > 0 ? 0.4 : -0.4, 0}, turn, 150ms);
+            pbf_move_right_joystick(m_env.context, {off > 0 ? 0.4 : -0.4, 0}, turn, /*release=*/150ms);
         }
-        pbf_move_left_joystick(m_env.context, /*position=*/{0, 1}, /*hold=*/600ms, /*release=*/0ms);
+        const double forward = m_goal.back ? -1 : 1;
+        pbf_move_left_joystick(m_env.context, /*position=*/{0, forward}, /*hold=*/600ms, /*release=*/0ms);
     }
 
     StoryEnv& m_env;
     PlzaBackend& m_backend;
+    const MarkerGoal m_goal;
     DistanceReads m_reads;
     int m_best = 1 << 30;
     int m_still = 0;
@@ -172,23 +207,43 @@ bool objective_reached(PlzaBackend& backend){
     }
 }
 
-} // namespace
-
-
-Pokemon::Outcome walk_to_marker(StoryEnv& env, PlzaBackend& backend){
-    MarkerWalk walk(env, backend);
-    const WallClock deadline = current_time() + MARKER_WALK_LIMIT;
+//  `walk` until it arrives, loses the marker or `limit` passes. Returns
+//  whether it arrived.
+bool run_marker_walk(MarkerWalk& walk, PlzaBackend& backend, Milliseconds limit){
+    const WallClock deadline = current_time() + limit;
     while (current_time() < deadline){
         backend.scope().throw_if_cancelled();
         const MarkerStep step = walk.step();
         if (step == MarkerStep::LOST){
-            backend.log("[PLZA] walk_to_marker: the marker did not show for 12 camera turns");
-            break;
+            backend.log("[PLZA] marker walk: the marker did not show for 12 camera turns");
+            return false;
         }
         if (step == MarkerStep::ARRIVED){
-            break;
+            return true;
         }
     }
+    backend.log(std::format("[PLZA] marker walk: out of time, last read {}", walk.last().value_or(-1)));
+    return false;
+}
+
+} // namespace
+
+
+std::optional<int> walk_toward_marker(StoryEnv& env, PlzaBackend& backend, int stop_at, Milliseconds limit){
+    MarkerWalk walk(env, backend, MarkerGoal{.stop_at = stop_at, .back = false});
+    run_marker_walk(walk, backend, limit);
+    return walk.last();
+}
+
+std::optional<int> walk_back_from_marker(StoryEnv& env, PlzaBackend& backend, int stop_at, Milliseconds limit){
+    MarkerWalk walk(env, backend, MarkerGoal{.stop_at = stop_at, .back = true});
+    run_marker_walk(walk, backend, limit);
+    return walk.last();
+}
+
+Pokemon::Outcome walk_to_marker(StoryEnv& env, PlzaBackend& backend){
+    MarkerWalk walk(env, backend, MarkerGoal{});
+    run_marker_walk(walk, backend, MARKER_WALK_LIMIT);
     if (!objective_reached(backend)){
         return Pokemon::outcome_failed("objective_not_reached", "no A prompt or dialog at the objective marker");
     }

@@ -75,9 +75,16 @@ std::vector<StoryActionSpec> console_specs(){
         console_only(game_spec("confirm_new_game")),
         console_only(game_spec("run_to_gate", {
             optional_ms("timeout_ms", 8000, "running this long with no A prompt fails the step"),
+            StoryArgSpec{
+                .key = "heading", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
+                .why = "the minimap heading to face first, degrees clockwise from up",
+            },
         })),
+        console_only(game_spec("leave_zone_gate")),
         console_only(game_spec("catch_tutorial")),
         console_only(game_spec("battle_then_catch")),
+        console_only(game_spec("catch_in_zone")),
+        console_only(game_spec("walk_back_to_zone_road")),
         console_only(game_spec("walk_to_marker")),
         console_only(game_spec("claim_mable_research_reward")),
     };
@@ -167,10 +174,32 @@ Handler confirm_handler(StoryEnv* env){
 }
 
 
-//  "run_to_gate" on the console `env`; none: fails as console_only. Runs
-//  straight on with upstream's run_towards_gate_with_A_button() until the
-//  gate's A prompt; once more after a day/night change, which stops the run.
-//  Fails as "gate_not_reached" when the run ends with no prompt.
+//  How close to a run's heading the minimap's arrow must read.
+constexpr double HEADING_TOLERANCE = 10;
+
+//  Turns the player to `heading` on the minimap (upstream's
+//  get_facing_direction(): 0 up, 90 right) with story_turn(), 4 turns at
+//  most, then L puts the camera behind the player, so a run forward goes
+//  that way (console B, 2026-11-14). Fails as "heading_missed".
+Outcome face_heading(StoryEnv& env, PlzaBackend& backend, double heading){
+    for (int turns = 0; turns <= 4; turns++){
+        const double now = get_facing_direction(env.env.console, env.context);
+        if (get_angle_between_facing_directions(now, heading) <= HEADING_TOLERANCE){
+            backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
+            return Pokemon::outcome_ok();
+        }
+        if (turns < 4){
+            story_turn(backend, heading - now);
+        }
+    }
+    return Pokemon::outcome_failed("heading_missed", std::format("not facing {:.0f} deg after 4 turns", heading));
+}
+
+//  "run_to_gate" on the console `env`; none: fails as console_only. Faces
+//  the arg "heading" first, if given (face_heading()). Runs straight on
+//  with upstream's run_towards_gate_with_A_button() until the gate's A
+//  prompt; once more after a day/night change, which stops the run. Fails
+//  as "gate_not_reached" when the run ends with no prompt.
 Handler gate_run_handler(StoryEnv* env){
     if (env == nullptr){
         return [](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
@@ -182,6 +211,13 @@ Handler gate_run_handler(StoryEnv* env){
         //  0: the A prompt, 1: a day/night change, else no prompt.
         int result = 1;
         try{
+            const auto heading = call.args.find("heading");
+            if (heading != call.args.end()){
+                const Outcome faced = face_heading(*env, backend, (double)std::get<int64_t>(heading->second));
+                if (!faced.succeeded()){
+                    return faced;
+                }
+            }
             for (size_t runs = 0; runs < 2 && result == 1; runs++){
                 result = run_towards_gate_with_A_button(
                     env->env.console, env->context, /*run_direction_x=*/0, /*run_direction_y=*/1, timeout
@@ -225,6 +261,17 @@ Outcome claim_research_reward(StoryEnv& env, PlzaBackend& backend){
     return Pokemon::outcome_ok();
 }
 
+//  At a wild zone's gate on the way out, its "A Leave" prompt up: A
+//  through the gate to the street with upstream's leave_zone_gate().
+//  Fails as "gate_left_unsure" when a day/night change came on the way
+//  (upstream cannot tell then whether the player left).
+Outcome leave_gate(StoryEnv& env, PlzaBackend&){
+    if (!leave_zone_gate(env.env.console, env.context)){
+        return Pokemon::outcome_failed("gate_left_unsure", "a day/night change while leaving the zone's gate");
+    }
+    return Pokemon::outcome_ok();
+}
+
 //  A console action's body.
 using ConsoleStep = Outcome (*)(StoryEnv& env, PlzaBackend& backend);
 
@@ -237,6 +284,12 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
         {"battle_then_catch", [](StoryEnv& env, PlzaBackend& backend){
             return battle_then_catch(env, backend, /*max_rounds=*/6);
         }},
+        {"catch_in_zone", [](StoryEnv& env, PlzaBackend& backend){
+            //  5 registered species, 3 after the tutorial; 12 throws.
+            return catch_in_zone(env, backend, ZoneCatchGoal{.party_species = 5, .max_throws = 12});
+        }},
+        {"walk_back_to_zone_road", walk_back_to_zone_road},
+        {"leave_zone_gate", leave_gate},
         {"walk_to_marker", walk_to_marker},
         {"claim_mable_research_reward", claim_research_reward},
     };
