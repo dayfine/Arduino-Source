@@ -92,14 +92,17 @@ void SwitchLabCommands::run(
     }
 }
 
-std::string SwitchLabCommands::controller_status(PanelSession& panel){
+LabConsoleCommands::Controller SwitchLabCommands::controller(PanelSession& panel){
     GameConsole::ConsoleProgramSession* program = dynamic_cast<GameConsole::ConsoleProgramSession*>(&panel);
     if (program == nullptr){
-        return "";
+        return Controller{.status = "", .last_user_input = std::nullopt};
     }
     //  Controller 0, the one LabConsole and the program's ConsoleHandle use.
     GameConsole::ConsoleSystemSession& system = program->system();
-    return system.controllers() > 0 && system.controller(0).ready() ? "ready" : "none";
+    return Controller{
+        .status = system.controllers() > 0 && system.controller(0).ready() ? "ready" : "none",
+        .last_user_input = GameConsole::last_user_input(system),
+    };
 }
 
 VideoFeed* SwitchLabCommands::video(PanelSession& panel){

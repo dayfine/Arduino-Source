@@ -51,6 +51,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "LabRequest.h"
 #include "LabFrames.h"
+#include "LabHold.h"
 #include "LabStateJson.h"
 
 namespace PokemonAutomation{
@@ -105,10 +106,18 @@ public:
         const std::vector<std::string>& words, LabCommandOutput& output
     ) = 0;
 
-    //  "ready" when the console's controller can take commands, "none" when
-    //  it can't (not connected yet, or reconnecting after a program switch),
-    //  "" when `panel` has no console. Read for the state file and by "start".
-    virtual std::string controller_status(PanelSession& panel) = 0;
+    struct Controller{
+        //  "ready" when the console's controller can take commands, "none"
+        //  when it can't (not connected yet, or reconnecting after a program
+        //  switch), "" when `panel` has no console. Read for the state file
+        //  and by "start".
+        std::string status;
+        //  When a press from the window's own controller input (keyboard or
+        //  gamepad) last reached the console, if one has. Puts the user hold
+        //  on (LabHold.h).
+        std::optional<WallClock> last_user_input;
+    };
+    virtual Controller controller(PanelSession& panel) = 0;
 
     //  The video of the console of `panel`, or nullptr if it has none.
     //  Called on the UI thread.
@@ -171,6 +180,12 @@ private:
     std::string run_preflight(const LabRequestLine& line, std::ostream& out);
     std::string run_on_ui(const std::function<std::string()>& body);
     void keep_awake();
+    //  Puts the user hold on if the user drove the selected program since
+    //  the last call (LabHoldTrigger), and returns the hold "Lab/hold" names
+    //  now, if any.
+    std::optional<LabHold> update_hold();
+    //  Why `words` may not run now: the owner lock, or the user hold. "" when it may.
+    std::string check_owner_and_hold(const LabRequest& request, const std::vector<std::string>& words, bool reads_stream);
     void write_state();
     void write_state_json(WallClock now);
 
@@ -189,7 +204,7 @@ private:
 
     //  The state of the selected program. Call under m_panel_lock.
     void read_program_state(std::string& state, std::string& program, bool& running) const;
-    //  The selected panel's LabConsoleCommands::controller_status(). Call under m_panel_lock.
+    //  The selected panel's LabConsoleCommands::controller() status. Call under m_panel_lock.
     std::string read_controller_status();
     //  lab_options_hash() of `panel`'s program options, if it has options the
     //  lab can read. Call under m_panel_lock.
@@ -223,6 +238,7 @@ private:
     //  Owned by the worker thread.
     LabOwner m_owner;
     KeepAwakeSchedule m_keep_awake;
+    LabHoldTrigger m_hold_trigger;
     LabState m_state;
     std::string m_written_state;
     LabStateJsonThrottle m_state_json;

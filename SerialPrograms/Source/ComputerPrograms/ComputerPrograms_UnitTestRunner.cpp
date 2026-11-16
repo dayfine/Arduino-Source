@@ -25,6 +25,7 @@
 #include "CommonFramework/ProgramTransition_Tests.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "CommonFramework/Windows/LabChannel_Tests.h"
+#include "CommonFramework/Windows/LabHold_Tests.h"
 #include "CommonFramework/VideoPipeline/Sources/VideoSource_MgbaLink_Tests.h"
 #include "Controllers/MgbaLink/MgbaLink_Keys_Tests.h"
 #include "Controllers/MgbaLink/MgbaLink_KeySender_Tests.h"
@@ -79,6 +80,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_SinkPipeline(ret);
     add_tests_AudioFileLoader(ret);
     add_tests_LabChannel(ret);
+    add_tests_LabHold(ret);
     MgbaLink::add_tests(ret);
     MgbaLink::add_key_tests(ret);
     MgbaLink::add_key_sender_tests(ret);
