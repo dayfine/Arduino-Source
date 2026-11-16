@@ -42,6 +42,20 @@ void finish_walk(PlzaBackend& backend, std::string_view walk);
 //  within it.
 Pokemon::Outcome walk_until(PlzaBackend& backend, std::string_view walk, const StoryMove& move, ScreenEvent end);
 
+//  Walks straight on, 250 ms at a time, until an A prompt shows
+//  (INTERACT_PROMPT: "A Leave" at the Battle Zone's gate); nothing if it
+//  shows already. Fails as "no_prompt" after `timeout` of walking without
+//  one.
+Pokemon::Outcome walk_to_prompt(PlzaBackend& backend, Milliseconds timeout);
+
+//  A at the A prompt the player stands at (a door's "A Enter"), then looks
+//  for up to 3 s for a fade or text; while the prompt stays with neither,
+//  A again, 3 times at most. The party bar shows under the prompt, so a
+//  scene machine run right after would take it for control before a late
+//  fade. A prompt gone with no fade or text, or still up after the last A,
+//  is left to what runs next.
+void press_through_prompt(PlzaBackend& backend);
+
 
 
 } // namespace PokemonLZA

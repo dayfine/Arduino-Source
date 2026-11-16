@@ -64,7 +64,11 @@ const StoryDataCase STORY_DATA_CASES[] = {
     {
         .name = "the built-in story loads and passes the lint",
         .input = {},
-        .expectation = {.rows = "01.00:new_game:autosave 01.01:from_save:unverified 01.02:from_save:unverified 01.03:from_save:unverified"},
+        .expectation = {.rows =
+            "01.00:new_game:autosave 01.01:from_save:unverified 01.02:from_save:unverified 01.03:from_save:unverified "
+            "02.01:from_save:unverified 02.02:from_save:unverified 02.03:from_save:unverified 02.04:from_save:unverified "
+            "02.05:from_save:unverified 02.06:from_save:autosave 02.07:from_save:unverified"
+        },
     },
 };
 
@@ -164,6 +168,12 @@ const Observation<ZonePose> WHITE_FADE = look({ScreenEvent::FADE_WHITE});
 const Observation<ZonePose> BLACK_FADE = look({ScreenEvent::FADE_BLACK});
 const Observation<ZonePose> DIALOG = look({ScreenEvent::DIALOG_BOX});
 const Observation<ZonePose> BATTLE_HUD = look({ScreenEvent::BATTLE_STARTED});
+const Observation<ZonePose> A_PROMPT = look({ScreenEvent::INTERACT_PROMPT, ScreenEvent::PLAYER_CAN_MOVE});
+
+//  The party bar (free control), `at` after the scripts' common start.
+Observation<ZonePose> party_bar(Milliseconds at){
+    return look({ScreenEvent::PLAYER_CAN_MOVE}, {}, at);
+}
 
 //  A choice box of `rows` rows, row `selected` highlighted.
 Observation<ZonePose> choice(int selected, int rows = 2){
@@ -429,6 +439,76 @@ const RunCase RUN_CASES[] = {
             .inputs = "press A, press A, wait 250ms",
             .line = "[Save] 01.03: not saved (save unverified)",
         },
+    },
+    {
+        .name = "02.01 waits 3 s for the NPCs, then holds its legs",
+        .input = {.checkpoint = "02.01", .first_step = 0, .steps = 1, .looks = {CUTSCENE}},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "wait 3000ms, wait 250ms, stick 10deg 4250ms walk, press L, stick 90deg 6000ms walk, press L, stick 90deg 6500ms walk",
+        },
+    },
+    {
+        .name = "02.01's scene after Brigitte: A at the text, done on the party bar held a second, not saved",
+        .input = {.checkpoint = "02.01", .first_step = 3, .looks = {
+            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)), party_bar(Milliseconds(500)), party_bar(Milliseconds(1600)),
+        }},
+        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms", .line = "[Save] 02.01: not saved (save unverified)"},
+    },
+    {
+        //  console B, 2026-11-13: 02.02 after the Brigitte battle walked
+        //  past the street scene's trigger and A-mashed for two minutes.
+        .name = "02.02's street scene fails when it never starts",
+        .input = {.checkpoint = "02.02", .first_step = 1, .steps = 1, .looks = {
+            look({}, {}, Milliseconds(0)), look({}, {}, Milliseconds(46000)),
+        }},
+        .expectation = {.verdict = "failed at street_scene: scene_never_started", .inputs = "wait 500ms"},
+    },
+    {
+        .name = "02.02 walks on to the gate's A prompt",
+        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {CUTSCENE, CUTSCENE, A_PROMPT}},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "hold north 250ms walk, hold north 250ms walk",
+            .line = "[PLZA] walk_to_prompt: the A prompt shows after 500 ms of walking",
+        },
+    },
+    {
+        .name = "02.02's walk to the gate fails with no A prompt",
+        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {CUTSCENE}},
+        .expectation = {.verdict = "failed at to_battle_zone_gate: no_prompt"},
+    },
+    {
+        .name = "02.03's lobby: A at the door's prompt until the fade, then the scene to the party bar",
+        .input = {.checkpoint = "02.03", .first_step = 1, .looks = {
+            A_PROMPT, BLACK_FADE,
+            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(1000)), party_bar(Milliseconds(1500)), party_bar(Milliseconds(2600)),
+        }},
+        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms, press A, wait 250ms"},
+    },
+    {
+        .name = "02.05's elevator: A through its line to the floor choice",
+        .input = {.checkpoint = "02.05", .first_step = 2, .steps = 1, .looks = {DIALOG, choice(0, 3)}},
+        .expectation = {.verdict = "done", .inputs = "press A"},
+    },
+    {
+        .name = "02.05's ride to 2F: the hall's quiet is control",
+        .input = {.checkpoint = "02.05", .first_step = 4, .steps = 1, .looks = {
+            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)), look({}, {}, Milliseconds(1000)),
+            look({ScreenEvent::SCREEN_STILL}, {}, Milliseconds(6000)),
+        }},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A, wait 500ms",
+            .line = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
+        },
+    },
+    {
+        .name = "02.06 ends on the game's autosave",
+        .input = {.checkpoint = "02.06", .first_step = 4, .looks = {
+            look({ScreenEvent::DIALOG_BOX}, {}, Milliseconds(0)), look({ScreenEvent::SCREEN_STILL}, {}, Milliseconds(21000)),
+        }},
+        .expectation = {.verdict = "done", .line = "[Save] 02.06: the game autosaved at its end"},
     },
 };
 

@@ -42,21 +42,28 @@ namespace PokemonLZA{
 //                              has shown and the station platform holds
 //      "wait_for_platform"     the station platform holds: a start check
 //      "walk"                  args "legs", [[turn, ms], ...] as
-//                              story_walk_move() reads them, and "end",
+//                              story_walk_move() reads them, "held",
+//                              "wait_ms", and "end",
 //                              "fade_white", "fade_black" or "dialog";
 //                              walked once the screen shows free control
 //                              (check_can_walk()), until its end event if it
 //                              has one (walk_until()), else until its legs
 //                              have run (finish_walk())
 //      "mash_to_move_hints"    A through scenes until the player has control
-//                              (run_scene_machine()): 01.01's arrival; arg
-//                              "min_length_ms", no quiet failure before it
+//                              (run_scene_machine()): 01.01's arrival; args
+//                              "min_length_ms", no quiet failure before it,
+//                              "quiet_ms", "quiet_is_control" and
+//                              "press_a_first" (press_through_prompt())
+//      "walk_to_prompt"        straight on until an A prompt shows
 //      "text_to_choice"        B through a scene's text until its choice box
-//                              shows (run_scene_machine())
+//                              shows (run_scene_machine()); A with
+//                              "advance_with_a"
 //      "choose_0", "choose_1"  that row of the choice box on screen (0 the
 //                              top), by the D-pad from the highlighted row,
 //                              then A
 //      "talk" (TALK)           A at what the player faces, then its text box
+//      "a" (MASH, "scene")     A through a scene until control; it must
+//                              start within 45 s
 //      "story_battle_start"    A through the talk before a story battle and
 //                              the battle tutorial's cards until the battle
 //                              HUD (run_scene_machine())
@@ -74,8 +81,8 @@ std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpo
 std::optional<ScreenEvent> walk_end_event(std::string_view end);
 
 //  The walk of `args`: the legs of its arg "legs", each [turn in degrees
-//  clockwise (negative: left), walk ms]. The args must have passed the
-//  walk's spec.
+//  clockwise (negative: left), walk ms], held with "held", after the wait
+//  "wait_ms". The args must have passed the walk's spec.
 StoryMove story_walk_move(const Pokemon::StoryActionArgs& args);
 
 //  PLZA as a StoryGame on the console `env`, which must outlive it. The

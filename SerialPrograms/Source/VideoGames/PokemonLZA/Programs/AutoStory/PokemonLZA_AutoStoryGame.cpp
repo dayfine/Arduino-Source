@@ -51,6 +51,11 @@ StoryArgSpec optional_ms(std::string key, int64_t fallback, std::string why){
     return StoryArgSpec{.key = std::move(key), .type = StoryArgType::INTEGER, .required = false, .fallback = fallback, .why = std::move(why)};
 }
 
+//  A flag that is off when left out.
+StoryArgSpec flag(std::string key, std::string why){
+    return StoryArgSpec{.key = std::move(key), .type = StoryArgType::BOOLEAN, .required = false, .fallback = false, .why = std::move(why)};
+}
+
 std::vector<StoryActionSpec> make_specs(){
     StoryActionSpec confirm = game_spec("confirm_new_game");
     confirm.console_only = true;
@@ -71,14 +76,28 @@ std::vector<StoryActionSpec> make_specs(){
                 .key = "end", .type = StoryArgType::WORD, .required = false, .fallback = std::nullopt,
                 .why = "\"fade_white\", \"fade_black\" or \"dialog\": the last leg is held until it shows, its ms the bound",
             },
+            flag("held", "hold the stick at each leg's angle (L only before a later turning leg), not tap-and-forward"),
+            StoryArgSpec{
+                .key = "wait_ms", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
+                .why = "wait this long before looking for free control: NPCs moving off",
+            },
+        }),
+        game_spec("walk_to_prompt", {
+            optional_ms("timeout_ms", 10000, "walking this long with no A prompt fails the step"),
         }),
         game_spec("mash_to_move_hints", {
             optional_ms("min_length_ms", 0, "the scene's rough length: no quiet failure before it"),
+            optional_ms("quiet_ms", 60000, "nothing busy and no control this long fails the step"),
+            flag("press_a_first", "press A first, at the prompt that starts the scene (a door's \"A Enter\")"),
+            flag("quiet_is_control", "the quiet time ends the step with control, where no party bar or prompt shows (Hotel Z)"),
         }),
-        game_spec("text_to_choice"),
+        game_spec("text_to_choice", {
+            flag("advance_with_a", "advance the text with A, for a talk that B cancels (Hotel Z's elevator)"),
+        }),
         game_spec("choose_0"),
         game_spec("choose_1"),
         StoryActionSpec{.kind = StoryStepKind::TALK, .name = "talk", .args = {}},
+        StoryActionSpec{.kind = StoryStepKind::MASH, .name = "a", .args = {}},
         game_spec("story_battle_start"),
         game_spec("story_battle"),
     };
@@ -207,11 +226,14 @@ Handler platform_handler(PlatformWait wait){
 //  (finish_walk()).
 Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
     const std::string_view name = call.step.name;
+    const StoryMove move = story_walk_move(call.args);
+    if (move.wait_first > Milliseconds(0)){
+        backend.wait(move.wait_first);
+    }
     const Outcome free = check_can_walk(backend, name);
     if (!free.succeeded()){
         return free;
     }
-    const StoryMove move = story_walk_move(call.args);
     const auto end = call.args.find("end");
     if (end != call.args.end()){
         const std::optional<ScreenEvent> event = walk_end_event(std::get<std::string>(end->second));
@@ -236,10 +258,18 @@ Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
 //  control: a minute with nothing busy fails the step. After 5 s with
 //  nothing busy and no sign of control, A every 2 s, for text the detectors
 //  miss (01.01's ad).
-//  "min_length_ms" holds the quiet failure off for a long still scene.
+//  "min_length_ms" holds the quiet failure off for a long still scene;
+//  "quiet_ms" is the quiet time, which with "quiet_is_control" ends the
+//  step with control (Hotel Z shows no party bar). "press_a_first" presses
+//  A at the prompt the scene starts from (press_through_prompt()), which
+//  would otherwise read as control at once.
 Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
+    if (Pokemon::story_arg<bool>(call.args, "press_a_first")){
+        press_through_prompt(backend);
+    }
     SceneMachineConfig config;
-    config.quiet = 60s;
+    config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));
+    config.quiet_is_control = Pokemon::story_arg<bool>(call.args, "quiet_is_control");
     config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
     config.blind_press_after = 5s;
     return run_scene_machine(backend, "mash_to_move_hints", config, 360s);
@@ -248,11 +278,29 @@ Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAct
 //  "text_to_choice": B through the scene's text until its choice box
 //  shows, which the next step answers (B: an A as the text ends could land
 //  on the choice). 01.02's Pancham scene takes ~60 s, hence 120 s.
-Outcome text_to_choice_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+//  "advance_with_a" is for a talk that B closes: Hotel Z's elevator before
+//  "Which floor?" (02.05, console B 2026-11-10).
+Outcome text_to_choice_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
     SceneMachineConfig config;
     config.stop_at_choice = true;
-    config.text_button = BUTTON_B;
+    config.text_button = Pokemon::story_arg<bool>(call.args, "advance_with_a") ? BUTTON_A : BUTTON_B;
     return run_scene_machine(backend, "text_to_choice", config, 120s);
+}
+
+
+//  A step's scene ("scene" "a"): A through its text until the party bar
+//  holds a second, 120 s at most. Fails as "scene_never_started" when
+//  neither text, a choice, a battle nor control shows within 45 s: the
+//  player is not at the scene's trigger.
+Outcome scene_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    SceneMachineConfig config;
+    config.start_window = 45s;
+    return run_scene_machine(backend, "scene", config, 120s);
+}
+
+//  "walk_to_prompt": straight on until an A prompt shows (walk_to_prompt()).
+Outcome walk_to_prompt_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
+    return walk_to_prompt(backend, Milliseconds(Pokemon::story_arg<int64_t>(call.args, "timeout_ms")));
 }
 
 
@@ -385,6 +433,12 @@ Handler plza_handler(StoryEnv* env, const StoryActionSpec& spec){
     if (spec.name == "talk"){
         return talk_step;
     }
+    if (spec.name == "a"){
+        return scene_step;
+    }
+    if (spec.name == "walk_to_prompt"){
+        return walk_to_prompt_step;
+    }
     if (spec.name == "story_battle_start"){
         return battle_start_step;
     }
@@ -452,6 +506,14 @@ std::optional<ScreenEvent> walk_end_event(std::string_view end){
 
 StoryMove story_walk_move(const StoryActionArgs& args){
     StoryMove move;
+    const auto held = args.find("held");
+    if (held != args.end() && std::get<bool>(held->second)){
+        move.style = StoryWalkStyle::HELD;
+    }
+    const auto wait = args.find("wait_ms");
+    if (wait != args.end()){
+        move.wait_first = Milliseconds(std::get<int64_t>(wait->second));
+    }
     for (const Pokemon::StoryTimedLeg& row : Pokemon::story_arg<std::vector<Pokemon::StoryTimedLeg>>(args, "legs")){
         move.legs.push_back({.turn = (double)row.turn, .walk = Milliseconds(row.ms)});
     }

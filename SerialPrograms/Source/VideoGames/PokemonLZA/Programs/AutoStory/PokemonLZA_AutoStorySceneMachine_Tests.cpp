@@ -60,6 +60,7 @@ const ScreenEvents WHITE{ScreenEvent::FADE_WHITE};
 const ScreenEvents BLACK{ScreenEvent::FADE_BLACK};
 const ScreenEvents CHOICE{ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX};
 const ScreenEvents BATTLE{ScreenEvent::BATTLE_STARTED};
+const ScreenEvents PARTY{ScreenEvent::PLAYER_CAN_MOVE};
 
 //  mash_to_move_hints' config: a minute quiet, blind A after 5 s.
 SceneMachineConfig arrival_config(){
@@ -91,6 +92,22 @@ std::vector<Observation<ZonePose>> banner_then_gone(size_t count){
     std::vector<Observation<ZonePose>> looks(count, look_at(0ms, NOTHING, {MISSION_BANNER_READING}));
     looks.push_back(look_at(0ms));
     return looks;
+}
+
+//  A "scene" step's config: no quiet time, no blind A, the scene must
+//  start within 45 s.
+SceneMachineConfig scene_step_config(){
+    SceneMachineConfig config;
+    config.start_window = 45000ms;
+    return config;
+}
+
+//  Hotel Z's rooms: 3 s quiet is control.
+SceneMachineConfig quiet_room_config(){
+    SceneMachineConfig config;
+    config.quiet = 3000ms;
+    config.quiet_is_control = true;
+    return config;
 }
 
 //  A quiet time of 8 s after a scene of at least `min_length`, no blind A.
@@ -261,6 +278,44 @@ const TimelineCase TIMELINE_CASES[] = {
         .expectation = {.states = {SceneScreen::SCENE_MOVING}},
     },
     {
+        .name = "the party bar held a second ends the scene; a box over it starts the second again",
+        .input = {.config = quiet_config(0ms), .looks = {
+            look_at(0ms, PARTY), look_at(600ms, DIALOG), look_at(900ms, PARTY), look_at(1800ms, PARTY),
+            look_at(1900ms, PARTY),
+        }},
+        .expectation = {.states = {
+            SceneScreen::PARTY_BAR, SceneScreen::DIALOG, SceneScreen::PARTY_BAR, SceneScreen::PARTY_BAR,
+            SceneScreen::CAN_MOVE,
+        }},
+    },
+    {
+        //  It shows between the lines of a talk.
+        .name = "a machine that stops at a battle does not take the party bar for control",
+        .input = {.config = battle_config(), .looks = {look_at(0ms, STILL), look_at(1000ms, PARTY), look_at(2500ms, PARTY)}},
+        .expectation = {.states = {SceneScreen::BLIND_PRESS, SceneScreen::SCENE_MOVING, SceneScreen::BLIND_PRESS}},
+    },
+    {
+        .name = "a machine that stops at a choice does not take the party bar for control",
+        .input = {.config = choice_config(), .looks = {look_at(0ms, PARTY), look_at(1500ms, PARTY)}},
+        .expectation = {.states = {SceneScreen::SCENE_MOVING, SceneScreen::SCENE_MOVING}},
+    },
+    {
+        .name = "no text, choice or battle within the start window: the scene never started",
+        .input = {.config = scene_step_config(), .looks = {
+            look_at(0ms), look_at(10000ms, BLACK), look_at(44900ms, STILL), look_at(45000ms, STILL),
+        }},
+        .expectation = {.states = {
+            SceneScreen::SCENE_MOVING, SceneScreen::FADE_BLACK, SceneScreen::SCENE_STILL, SceneScreen::NEVER_STARTED,
+        }},
+    },
+    {
+        .name = "a box within the start window: the scene started, a still screen past it waits",
+        .input = {.config = scene_step_config(), .looks = {
+            look_at(0ms), look_at(10000ms, DIALOG), look_at(50000ms, STILL),
+        }},
+        .expectation = {.states = {SceneScreen::SCENE_MOVING, SceneScreen::DIALOG, SceneScreen::SCENE_STILL}},
+    },
+    {
         .name = "without a quiet time a still screen never ends the scene",
         .input = {.config = {}, .looks = {
             look_at(0ms, STILL), look_at(300000ms, STILL), look_at(300100ms, BLACK),
@@ -311,6 +366,9 @@ const StateCase STATE_CASES[] = {
     {.name = "a still scene waits", .input = {SceneScreen::SCENE_STILL}, .expectation = {}},
     {.name = "the hint not held yet waits", .input = {SceneScreen::HINT_SHOWING}, .expectation = {}},
     {.name = "the hint held ends the scene", .input = {SceneScreen::CONTROLS_HINT}, .expectation = {.terminal = true}},
+    {.name = "the party bar not held yet waits", .input = {SceneScreen::PARTY_BAR}, .expectation = {}},
+    {.name = "the party bar held ends the scene", .input = {SceneScreen::CAN_MOVE}, .expectation = {.terminal = true}},
+    {.name = "a scene that never started ends the machine", .input = {SceneScreen::NEVER_STARTED}, .expectation = {.terminal = true}},
     {.name = "the banner's second look ends the scene", .input = {SceneScreen::MISSION_BANNER}, .expectation = {.terminal = true}},
     {.name = "the quiet end ends the scene", .input = {SceneScreen::QUIET_END}, .expectation = {.terminal = true}},
     {.name = "the mission complete card gets A", .input = {SceneScreen::MISSION_COMPLETE}, .expectation = {.presses = true}},
@@ -430,6 +488,30 @@ const RunCase RUN_CASES[] = {
         .name = "01.02's Pancham: B through the text, done on the choice box",
         .input = {.looks = {look_at(0ms), look_at(5000ms, DIALOG), look_at(6000ms, DIALOG), look_at(7000ms, CHOICE)}, .config = choice_config()},
         .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 2, .line = "[PLZA test] done on choice."},
+    },
+    {
+        .name = "after Brigitte: A at the text, done on the party bar held a second",
+        .input = {.looks = {
+            look_at(0ms, DIALOG), look_at(500ms, DIALOG), look_at(1000ms, PARTY), look_at(1500ms, PARTY), look_at(2100ms, PARTY),
+        }},
+        .expectation = {.verdict = "done", .a_presses = 2, .line = "[PLZA test] done on can_move."},
+    },
+    {
+        .name = "Hotel Z's room: the quiet end is control",
+        .input = {.looks = {look_at(0ms, DIALOG), look_at(1000ms), look_at(4100ms, STILL)}, .config = quiet_room_config()},
+        .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] done: quiet, taken as control."},
+    },
+    {
+        //  console B, 2026-11-13: 02.02 after the Brigitte battle walked
+        //  past the street scene's trigger and A-mashed for two minutes.
+        .name = "a scene step past its trigger fails as scene_never_started",
+        .input = {.looks = {look_at(0ms, BLACK), look_at(2000ms), look_at(46000ms)}, .config = scene_step_config()},
+        .expectation = {.verdict = "failed: scene_never_started", .a_presses = 0},
+    },
+    {
+        .name = "a scene step whose scene played out before it ends on the party bar",
+        .input = {.looks = {look_at(0ms, PARTY), look_at(1000ms, PARTY)}, .config = scene_step_config()},
+        .expectation = {.verdict = "done", .a_presses = 0, .line = "[PLZA test] done on can_move."},
     },
     {
         .name = "a minute with nothing going on fails as scene_quiet",

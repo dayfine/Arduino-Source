@@ -8,8 +8,9 @@
  *  every look picks one state, the state takes one step, and each change of
  *  state is logged with the look's events. A text box (with or without a
  *  choice, whose top row A takes) or the advance chevron
- *  (ADVANCE_ARROW_READING) gets A. The player has control when the
- *  tutorial's controls hint (CONTROLS_HINT_READING) holds a second, or when
+ *  (ADVANCE_ARROW_READING) gets A. The player has control when the party
+ *  bar (PLAYER_CAN_MOVE) or, in the tutorial, which has no party bar, the
+ *  controls hint (CONTROLS_HINT_READING) holds a second, or when
  *  a main mission's banner (MISSION_BANNER_READING) shows on two looks in a
  *  row: it shows as the scene hands over control, and the machine then
  *  waits for it to go, pressing A if it stays (01.03's "MAIN MISSION 02").
@@ -19,7 +20,8 @@
  *  (SceneMachineConfig::stop_at_choice) ends when the choice box shows
  *  instead: 01.02's "Battle with Pokemon!"; one that stops at a battle
  *  (stop_at_battle) ends on the battle HUD (BATTLE_STARTED): 01.03's
- *  battle with Andi.
+ *  battle with Andi; neither takes the party bar for control, as it shows
+ *  between the lines of a talk.
  *
  */
 
@@ -59,6 +61,15 @@ struct SceneMachineConfig{
     //  The button that advances text: B where an A could land on a choice
     //  that shows the moment the text ends.
     Button text_button = BUTTON_A;
+    //  The quiet end is control, not a failure: Hotel Z's lobby, halls and
+    //  rooms show no party bar or prompt (02.04-02.06, console B
+    //  2026-11-10).
+    bool quiet_is_control = false;
+    //  Fails ("scene_never_started") when no text, choice or battle has
+    //  shown this long after the start, and no sign of control either: the
+    //  player is not at the scene's trigger (02.02 run after the Brigitte
+    //  battle walked past the street scene's, console B 2026-11-13).
+    std::optional<Milliseconds> start_window = std::nullopt;
 };
 
 //  The states a scene machine tells apart, in the order it tries them.
@@ -71,9 +82,12 @@ enum class SceneScreen{
     MISSION_COMPLETE,   //  A: a main mission's "COMPLETE" card
     MISSION_BANNER, //  terminal: a main mission's banner, on a second look
     BANNER_SHOWING, //  wait: the banner, on its first look
+    CAN_MOVE,       //  terminal: the party bar, held a second
+    PARTY_BAR,      //  wait: the party bar, not held a second yet
     CONTROLS_HINT,  //  terminal: the tutorial's controls hint, held a second
     HINT_SHOWING,   //  wait: the controls hint, not held a second yet
-    QUIET_END,      //  terminal, failing: nothing busy for the quiet time, past the minimum length
+    NEVER_STARTED,  //  terminal, failing: no scene within start_window
+    QUIET_END,      //  terminal, failing unless quiet_is_control: nothing busy for the quiet time, past the minimum length
     BLIND_PRESS,    //  A: nothing busy and no sign of control for blind_press_after
     SCENE_MOVING,   //  wait: no text, the screen changing
     SCENE_STILL,    //  wait: no text, the screen still since the look before
@@ -116,25 +130,32 @@ private:
     SceneMachineConfig m_config;
     WallClock m_quiet_from;
     WallClock m_last_busy;
-    //  The last look busy or with a sign of control (hint, banner).
+    WallClock m_start;
+    //  The last look busy or with a sign of control (party bar, hint,
+    //  banner).
     WallClock m_last_cue;
     std::optional<WallClock> m_last_blind_press;
+    std::optional<WallClock> m_party_bar_since;
     std::optional<WallClock> m_hint_since;
+    //  Text, a choice or a battle has shown: the scene has started.
+    bool m_scene_seen = false;
     //  The looks in a row with the mission banner.
     size_t m_banner_looks = 0;
 };
 
 
-//  Presses through scenes until the controls hint has held a second, or
+//  Presses through scenes until the party bar or the controls hint has
+//  held a second, or
 //  the mission banner has shown on two looks (then waits up to 10 s for it
 //  to go and, if it stays, presses A up to 3 times 1 s apart), or with
 //  `config.stop_at_choice` the choice box shows, or with
 //  `config.stop_at_battle` the battle HUD, on
 //  run_screen_machine(). `label` names its log lines ("[PLZA
 //  mash_to_move_hints] dialog: text box"). Fails as "scene_quiet" on the
-//  quiet end, "scene_timeout" when `timeout` passes (by the looks' time),
-//  and "scene_stuck" on a state that comes up too often or a screen that
-//  stops changing.
+//  quiet end (unless `config.quiet_is_control`), "scene_never_started"
+//  past `config.start_window`, "scene_timeout" when `timeout` passes (by
+//  the looks' time), and "scene_stuck" on a state that comes up too often
+//  or a screen that stops changing.
 Pokemon::Outcome run_scene_machine(
     PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
 );
