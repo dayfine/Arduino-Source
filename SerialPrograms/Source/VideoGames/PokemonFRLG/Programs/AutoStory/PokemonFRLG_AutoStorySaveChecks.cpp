@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "PokemonFRLG_AutoStorySaveChecks.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -24,14 +25,14 @@ std::string checkpoint_end_map(const std::string& id){
 }
 
 std::string save_end_error(const std::string& end_map, const std::string& place){
-    const std::string expected = save_card_place(end_map);
-    if (expected.empty() || place == expected){
+    const std::optional<std::string> expected = save_card_place(end_map);
+    if (!expected || place == *expected){
         return "";
     }
     if (place.empty()){
-        return "The save card's place can't be read, so the end in " + expected + " (" + end_map + ") isn't confirmed.";
+        return std::format("The save card's place can't be read, so the end in {} ({}) isn't confirmed.", *expected, end_map);
     }
-    return "The save card names " + place + ", but the checkpoint ends in " + expected + " (" + end_map + ").";
+    return std::format("The save card names {}, but the checkpoint ends in {} ({}).", place, *expected, end_map);
 }
 
 

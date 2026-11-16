@@ -1231,32 +1231,51 @@ UnitTestResult test_nugget_bridge_order(){
     return true;
 }
 
-//  Every checkpoint that starts from a save has a place the save card
-//  names, so a save left elsewhere is caught before it runs; and the
-//  places of the starts that matter differ.
+//  Every checkpoint's start and end (the map it saves on) has a place the
+//  save card names, so a save left elsewhere is caught; 19.04 ended in
+//  Victory Road, a place the card reader didn't know (console B,
+//  2026-11-15). The reader's own tests match every place's card text.
 UnitTestResult test_save_places(){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        if (checkpoint.start && save_card_place(Pokemon::grid_pose_of(*checkpoint.start).map).empty()){
-            return checkpoint.id + " starts on " + Pokemon::grid_pose_of(*checkpoint.start).map + ", which has no save card place.";
+        if (checkpoint.start){
+            const std::string start = Pokemon::grid_pose_of(*checkpoint.start).map;
+            if (!save_card_place(start)){
+                return std::format("{} starts on {}, which has no save card place.", checkpoint.id, start);
+            }
+        }
+        const std::string end = checkpoint_end_map(checkpoint.id);
+        if (!end.empty() && !save_card_place(end)){
+            return std::format("{} ends on {}, which has no save card place.", checkpoint.id, end);
         }
     }
-    if (save_card_place("ViridianForest") != "viridian-forest" || save_card_place("ViridianCity_Mart") != "viridian-city"
-        || save_card_place("PewterCity_PokemonCenter_1F") != "pewter-city" || save_card_place("PalletTown_ProfessorOaksLab") != "pallet-town"
-    ){
-        return "Wrong save card places.";
-    }
-    if (save_card_place("Route3") != "route-3" || save_card_place("Route4_PokemonCenter_1F") != "route-4"){
-        return "Wrong save card places on Route 3 and 4.";
-    }
-    if (save_card_place("CeruleanCity_PokemonCenter_1F") != "cerulean-city"){
-        return "Wrong save card place in Cerulean City.";
-    }
-    //  Not Route 2's or Route 4's: a map name is a place's or a building's in it.
-    if (save_card_place("Route24") != "route-24" || save_card_place("Route25_SeaCottage") != "route-25"){
-        return "Wrong save card places on Route 24 and 25.";
-    }
-    if (!save_card_place("Route9").empty() || !save_card_place("Route2").empty()){
-        return "A place for a map the table doesn't use.";
+    struct Case{
+        std::string_view name;
+        struct Input{
+            std::string_view map;
+        } input;
+        struct Expectation{
+            std::optional<std::string> place;
+        } expectation;
+    };
+    const Case cases[] = {
+        {.name = "a place's own map", .input = {.map = "ViridianForest"}, .expectation = {.place = "viridian-forest"}},
+        {.name = "a building in a town", .input = {.map = "PewterCity_PokemonCenter_1F"}, .expectation = {.place = "pewter-city"}},
+        {.name = "the Route 4 Center", .input = {.map = "Route4_PokemonCenter_1F"}, .expectation = {.place = "route-4"}},
+        {.name = "a route whose number starts another's", .input = {.map = "Route24"}, .expectation = {.place = "route-24"}},
+        {.name = "a building on a route", .input = {.map = "Route25_SeaCottage"}, .expectation = {.place = "route-25"}},
+        {.name = "a cave floor", .input = {.map = "VictoryRoad_1F"}, .expectation = {.place = "victory-road"}},
+        //  The Elite Four's rooms are the POKeMON LEAGUE, not INDIGO PLATEAU.
+        {.name = "the League's rooms", .input = {.map = "PokemonLeague_LoreleisRoom"}, .expectation = {.place = "pokemon-league"}},
+        {.name = "a Sevii island", .input = {.map = "OneIsland_PokemonCenter_1F"}, .expectation = {.place = std::nullopt}},
+    };
+    for (const Case& c : cases){
+        const std::optional<std::string> place = save_card_place(c.input.map);
+        if (place != c.expectation.place){
+            return std::format(
+                "{}: {} has place {}, expected {}.",
+                c.name, c.input.map, place.value_or("none"), c.expectation.place.value_or("none")
+            );
+        }
     }
     return true;
 }

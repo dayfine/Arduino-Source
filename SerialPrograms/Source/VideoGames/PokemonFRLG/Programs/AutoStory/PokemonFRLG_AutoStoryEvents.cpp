@@ -341,51 +341,12 @@ std::optional<StoryPose> story_pose(const Pokemon::Pose& pose){
     return StoryPose{pose.map, tiles[0], facing_of(pose)};
 }
 
-std::string save_card_place(const std::string& map){
-    //  A map of the place, or a building in it ("Route4_PokemonCenter_1F"
-    //  is on Route 4, "Route24" isn't on Route 2).
-    static const std::pair<std::string, std::string_view> PLACES[] = {
-        {"PalletTown", "pallet-town"},
-        {"ViridianForest", "viridian-forest"},
-        {"ViridianCity", "viridian-city"},
-        {"PewterCity", "pewter-city"},
-        {"Route3", "route-3"},
-        {"Route4", "route-4"},
-        {"CeruleanCity", "cerulean-city"},
-        {"Route24", "route-24"},
-        {"Route25", "route-25"},
-        {"Route21", "route-21"},
-        {"Route22", "route-22"},
-        {"Route23", "route-23"},
-        {"VictoryRoad", "victory-road"},
-        {"IndigoPlateau", "indigo-plateau"}, {"PokemonLeague", "indigo-plateau"},
-        {"VermilionCity", "vermilion-city"},
-        {"Route10", "route-10"},
-        {"LavenderTown", "lavender-town"},
-        {"CeladonCity", "celadon-city"},
-        {"RocketHideout", "rocket-hideout"},
-        {"PokemonTower", "pokemon-tower"},
-        {"Route16", "route-16"},
-        {"FuchsiaCity", "fuchsia-city"},
-        {"SaffronCity", "saffron-city"},
-        {"CinnabarIsland", "cinnabar-island"},
-        {"SilphCo", "silph-co"},
-        {"PokemonMansion", "pokemon-mansion"},
-    };
-    for (const auto& [prefix, place] : PLACES){
-        if (map == prefix || map.rfind(prefix + "_", 0) == 0){
-            return std::string(place);
-        }
-    }
-    return "";
-}
-
 std::string save_place_error(const std::string& start_map, const std::string& place){
-    const std::string expected = save_card_place(start_map);
-    if (expected.empty() || place.empty() || place == expected){
+    const std::optional<std::string> expected = save_card_place(start_map);
+    if (!expected || place.empty() || place == *expected){
         return "";
     }
-    return "The save is in " + place + ", but the checkpoint starts in " + expected + " (" + start_map + ").";
+    return std::format("The save is in {}, but the checkpoint starts in {} ({}).", place, *expected, start_map);
 }
 
 std::string start_pose_mismatch(const Pokemon::Pose& start, const StoryPose& stands){
@@ -908,7 +869,7 @@ StoryRunPlan plan_story_run(
 
 
 std::string check_save_place(StoryEnv& env, const std::string& start_map){
-    if (save_card_place(start_map).empty()){
+    if (!save_card_place(start_map)){
         return "";
     }
     const std::string place = read_save_place(env.console, env.context, env.language);
