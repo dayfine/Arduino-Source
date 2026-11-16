@@ -1,0 +1,223 @@
+"""`preflight_program`'s pure parts (Slice 5b of fork #131): candidate options against the
+program's static contract, the app's `preflight` reply, and the token's binding.
+
+**Options.** `check_options(contract, options)` checks a candidate against `describe_program`'s
+option entries (Lab.md "Describe program") before anything is sent: every key must be one the
+program saves, a value must have the entry's type and lie within its bounds, an enum/select value
+must be an enabled slug, a group's value is an object checked against the group's own entries
+(plus `Enabled` when the group is toggleable). A `type: other` option cannot be staged. Dynamic
+visibility and `check_validity` depend on the other options' values; only the app can evaluate
+them, on the staged candidate.
+
+**The app command** (proposed for the app's channel; not built yet, see README "Slice 5b"):
+`preflight <JSON>` stages the candidate options of the selected program on the UI thread, rejects
+unknown keys and disabled values, evaluates `check_validity`, runs the program's prechecks in
+order without starting it, and restores the prior options through a scope guard. It prints one
+line, `preflight <JSON>`:
+
+    {"schema": 1, "id": "<Game>:<Program>", "verdict": "passed" | "failed" | "invalid_options" | "unsupported",
+     "checks": [{"name", "status": "passed" | "failed" | "skipped", "message"}],
+     "failure": {"check", "message", "evidence"?} | null,      # verdict failed
+     "invalid": {"key", "message"} | null,                     # verdict invalid_options
+     "restored": true | false}
+
+**The token** is the hash of what the preflight was checked against (`binding`): the app instance,
+the program id, the candidate options' hash, the observation versions a run depends on (the last
+start/stop transition and `console://B/save`'s status) and the lease (its token's hash), plus a
+random salt so it cannot be guessed. The daemon stores the binding under the token's hash;
+`run_program` recomputes it from what it reads now and refuses a token whose binding changed
+(`preflight_stale`, `evidence.changed`) or that is older than `TOKEN_TTL_S`.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import secrets
+from typing import Any, Dict, List, Optional
+
+from pa_lab.control import Refused
+
+TOKEN_TTL_S = 120
+PREFLIGHT_RE = re.compile(r'^preflight (\{.*\})$')
+VERDICTS = ('passed', 'failed', 'invalid_options', 'unsupported')
+CHECK_STATUSES = ('passed', 'failed', 'skipped')
+BINDING_FIELDS = ('console', 'instance_id', 'panel', 'options_hash', 'transition', 'save', 'lease')
+
+__all__ = ['check_options', 'options_hash', 'set_lines', 'parse_reply', 'binding', 'new_token', 'changed',
+           'TOKEN_TTL_S']
+
+
+def _json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+
+
+def dumps(value: Any) -> str:
+    """Canonical one-line JSON: what the daemon writes into a request and hashes."""
+    return _json(value)
+
+
+def options_hash(options: Dict[str, Any]) -> str:
+    return hashlib.sha256(_json(options).encode('utf-8')).hexdigest()
+
+
+# ---- candidate options against the static contract
+
+def _bad(path: str, message: str) -> Refused:
+    return Refused('invalid_arguments', '{}: {}.'.format(path, message), field=path)
+
+
+def _number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _check_value(entry: Dict[str, Any], value: Any, path: str) -> None:
+    kind = entry.get('type')
+    if kind == 'boolean':
+        if not isinstance(value, bool):
+            raise _bad(path, 'expected true or false')
+    elif kind == 'string':
+        if not isinstance(value, str):
+            raise _bad(path, 'expected a string')
+    elif kind in ('integer', 'number'):
+        if kind == 'integer' and not (isinstance(value, int) and not isinstance(value, bool)):
+            raise _bad(path, 'expected an integer')
+        if not _number(value):
+            raise _bad(path, 'expected a number')
+        low, high = entry.get('min'), entry.get('max')
+        if (low is not None and value < low) or (high is not None and value > high):
+            raise _bad(path, '{} is outside {}..{}'.format(value, '' if low is None else low,
+                                                          '' if high is None else high))
+    elif kind in ('enum', 'select'):
+        slugs = {e.get('slug'): e.get('enabled') for e in entry.get('entries') or []}
+        if not isinstance(value, str) or value not in slugs:
+            raise _bad(path, 'expected one of {}'.format(', '.join(str(s) for s in slugs)))
+        if slugs[value] is not True:
+            raise _bad(path, "'{}' is disabled in this program".format(value))
+    elif kind == 'group':
+        if not isinstance(value, dict):
+            raise _bad(path, 'expected an object (a group of options)')
+        entries = list(entry.get('options') or [])
+        if entry.get('toggleable') and not any(e.get('key') == 'Enabled' for e in entries):
+            entries.append({'key': 'Enabled', 'type': 'boolean'})
+        _check_object(entries, value, path)
+    else:
+        raise _bad(path, 'the program contract does not describe this option (type {}); it cannot be staged'.format(
+            kind))
+
+
+def _check_object(entries: List[Dict[str, Any]], options: Dict[str, Any], path: str) -> None:
+    by_key = {e.get('key'): e for e in entries}
+    for key, value in options.items():
+        sub = '{}.{}'.format(path, key)
+        if key not in by_key:
+            raise _bad(sub, 'unknown option; the program saves {}'.format(', '.join(str(k) for k in by_key)))
+        _check_value(by_key[key], value, sub)
+
+
+def check_options(program: Dict[str, Any], options: Dict[str, Any]) -> None:
+    """Raises Refused(invalid_arguments, field=options.<key path>) at the first bad option."""
+    _check_object(program['options'], options, 'options')
+
+
+def set_lines(options: Dict[str, Any], prefix: str = '') -> List[str]:
+    """The app's `set KEY JSON` lines that load `options`, in the caller's order; an object value is
+    a group (`set GROUP.KEY`). Only for options `check_options` passed (no `type: other`)."""
+    out: List[str] = []
+    for key, value in options.items():
+        if isinstance(value, dict):
+            out.extend(set_lines(value, prefix + key + '.'))
+        else:
+            out.append('set {}{} {}'.format(prefix, key, _json(value)))
+    return out
+
+
+# ---- the app's reply
+
+def _reply_error(message: str, lines: List[str]) -> Refused:
+    return Refused('app_unavailable', 'The app\'s preflight reply is unusable: {}.'.format(message),
+                   evidence={'journal': lines})
+
+
+def parse_reply(lines: List[str]) -> Dict[str, Any]:
+    """The one `preflight <JSON>` line of a journal, checked; Refused(app_unavailable) otherwise."""
+    matches = [PREFLIGHT_RE.match(line) for line in lines]
+    matches = [m for m in matches if m]
+    if len(matches) != 1:
+        raise _reply_error('expected one preflight line, found {}'.format(len(matches)), lines)
+    try:
+        doc = json.loads(matches[0].group(1))
+    except ValueError:
+        raise _reply_error('invalid JSON', lines) from None
+    if not isinstance(doc, dict) or doc.get('schema') != 1:
+        raise _reply_error('schema must be 1', lines)
+    if not isinstance(doc.get('id'), str) or doc.get('verdict') not in VERDICTS or \
+            not isinstance(doc.get('restored'), bool) or not isinstance(doc.get('checks'), list):
+        raise _reply_error('id, verdict, checks and restored are required', lines)
+    for check in doc['checks']:
+        if not isinstance(check, dict) or not isinstance(check.get('name'), str) or \
+                check.get('status') not in CHECK_STATUSES or not isinstance(check.get('message', ''), str):
+            raise _reply_error('a check needs a name, a status and a message', lines)
+    failure = doc.get('failure')
+    if doc['verdict'] == 'failed' and not (isinstance(failure, dict) and isinstance(failure.get('check'), str)
+                                           and isinstance(failure.get('message'), str)):
+        raise _reply_error('a failed verdict needs failure.check and failure.message', lines)
+    invalid = doc.get('invalid')
+    if doc['verdict'] == 'invalid_options' and not (isinstance(invalid, dict) and isinstance(invalid.get('key'), str)
+                                                    and isinstance(invalid.get('message'), str)):
+        raise _reply_error('an invalid_options verdict needs invalid.key and invalid.message', lines)
+    return doc
+
+
+def outcome(doc: Dict[str, Any], panel: str, lines: List[str]) -> Optional[Dict[str, Any]]:
+    """The refusal a reply means, or None when every check passed and the options were restored."""
+    if not doc['restored']:
+        return {'code': 'app_unavailable', 'message': 'The app did not restore the prior options after the preflight; '
+                'check the panel before any run.', 'evidence': {'reason': 'options_not_restored', 'reply': doc}}
+    if doc['id'] != panel:
+        return {'code': 'app_unavailable', 'message': 'The app preflighted {}, not {}.'.format(doc['id'], panel),
+                'evidence': {'reason': 'panel_changed', 'reply': doc}}
+    if doc['verdict'] == 'unsupported':
+        return {'code': 'prechecks_unsupported', 'message': '{} declares no start checks; the server does not run a '
+                'program whose checks it cannot run.'.format(panel)}
+    if doc['verdict'] == 'invalid_options':
+        key = doc['invalid']['key']
+        return {'code': 'invalid_arguments', 'field': 'options.' + key,
+                'message': 'The app refused option {}: {}'.format(key, doc['invalid']['message'])}
+    if doc['verdict'] == 'failed':
+        failure = doc['failure']
+        refusal = {'code': 'precheck_failed', 'check': failure['check'], 'message': failure['message']}
+        if isinstance(failure.get('evidence'), dict):
+            refusal['evidence'] = failure['evidence']
+        return refusal
+    if any(check['status'] == 'failed' for check in doc['checks']):
+        return {'code': 'app_unavailable', 'message': 'The app said passed but lists a failed check.',
+                'evidence': {'journal': lines}}
+    return None
+
+
+# ---- the token
+
+def transition_key(app: Dict[str, Any]) -> Optional[str]:
+    t = app['program']['last_transition']
+    return None if t is None else '{}|{}|{}|{}'.format(t['action'], t['source'], t['request_id'], t['at'])
+
+
+def binding(state: Dict[str, Any], save: Dict[str, Any], panel: str, options: Dict[str, Any],
+            lease_token_hash: Optional[str]) -> Dict[str, Any]:
+    """What a preflight was checked against and a run must still find (field names: BINDING_FIELDS)."""
+    app = state['app']
+    return {'console': state['console'], 'instance_id': app['instance']['id'], 'panel': panel,
+            'options_hash': options_hash(options), 'transition': transition_key(app),
+            'save': [save.get('status'), save.get('reason'), save.get('since')], 'lease': lease_token_hash}
+
+
+def new_token(bound: Dict[str, Any]) -> str:
+    salt = secrets.token_hex(16)
+    return 'pf1.' + hashlib.sha256((salt + _json(bound)).encode('utf-8')).hexdigest()
+
+
+def changed(issued: Dict[str, Any], now: Dict[str, Any]) -> List[str]:
+    """The binding fields that differ; 'lease' rather than the hashes."""
+    return [field for field in BINDING_FIELDS if issued.get(field) != now.get(field)]

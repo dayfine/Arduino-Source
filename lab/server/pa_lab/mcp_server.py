@@ -8,8 +8,8 @@ here pushes). Every request must carry `Authorization: Bearer <token>`, a loopba
 Resources: `console://B/state` (console_state), `console://B/save` (save_resource).
 Tools: `shot`, `ensure_game`, `describe_program`, `game_open`; with a control plane also `acquire_console`,
 `renew_console`, `release_console`, `next_events` and `request_status`; with program actions
-(`serve --actions`, Slice 5a) also `run_program` and `stop_program`, the only tools that start or
-stop a program. Nothing here presses a button.
+(`serve --actions`, Slices 5a/5b) also `preflight_program`, `run_program`, `stop_program` and
+`cfr_batch`, the only tools that start or stop a program or press a button.
 
 Read-only mode (`read_only=True`, `serve-stdio`): only `console_status` and the resources. Every tool
 that writes into `Lab/inbox` (`shot`, `describe_program`, `game_open`) and every control tool is
@@ -57,10 +57,11 @@ INSTRUCTIONS = (
     'game_open says whether a game is in front. Unknown observations are never success.')
 
 ACTION_INSTRUCTIONS = (
-    'Lab console B. Reads need no lease. run_program and stop_program start and stop the selected program: '
-    'acquire_console first, give every call a new request_id (retry with the same one), and follow a pending '
-    'record with request_status or next_events. A refusal names the check that failed; when the user holds '
-    'the console, stop and wait for them.')
+    'Lab console B. Reads need no lease. To start the selected program: acquire_console, preflight_program with '
+    'the panel and options, then run_program with the same panel, options and the preflight_token; stop_program '
+    'stops it. cfr_batch is for debugging only and marks the save stale. Give every call a new request_id '
+    '(retry with the same one), and follow a pending record with request_status or next_events. A refusal names '
+    'the check that failed; when the user holds the console, stop and wait for them.')
 
 TOOL_LIST = [
     {
@@ -200,24 +201,49 @@ LEASE_TOOLS = ('acquire_console', 'renew_console', 'release_console')
 _ACTING = {'readOnlyHint': False, 'destructiveHint': True, 'idempotentHint': True}
 
 ACTION_TOOL_LIST = [
-    {'name': 'run_program', 'title': 'Start the selected program',
-     'description': "Starts the program selected in the app with its current options, once per request_id. Needs "
-                    'the lease token. panel must be the selected program id (this does not change the selection) '
-                    'and options must be {} (staging options comes with preflight_program, Slice 5b). Refused '
-                    'while the user holds the console, a program runs, the controller or video is not ready, or '
-                    'the app is not running. Returns the request record: completed (the app shows this '
-                    "request's start; the lease is agent_running until the run ends), failed, or pending "
-                    '(follow it with request_status or next_events).',
+    {'name': 'preflight_program', 'title': "Run the selected program's start checks",
+     'description': 'Checks candidate options and runs the selected program\'s start checks without starting it, '
+                    'then puts the prior options back; presses no button except what a check needs to look (and '
+                    'returns to where it was). Needs the lease token. options are checked against describe_program '
+                    '(unknown keys, types, bounds, disabled entries) before anything is sent. A program that '
+                    'declares no checks is refused (prechecks_unsupported). Completed: the checks and a '
+                    'preflight_token for run_program, good for 120 s and only while the app instance, panel, '
+                    'options, last start/stop, save status and lease stay the same. Failed: precheck_failed names '
+                    'the check and what it needs.',
      'inputSchema': _schema({'request_id': _REQUEST_ID, 'lease_token': _LEASE_TOKEN,
                              'panel': {'type': 'string', 'description': "'<Game>:<Program>', the selected program"},
-                             'options': {'type': 'object', 'maxProperties': 0}},
+                             'options': {'type': 'object', 'description': 'option key -> value as describe_program '
+                                         'lists them; a group is an object; {} checks the current options'}},
                             ['request_id', 'lease_token', 'panel', 'options']), 'annotations': _ACTING},
+    {'name': 'run_program', 'title': 'Start the selected program',
+     'description': 'Starts the program selected in the app once per request_id, after loading options (the same '
+                    'panel and options as the preflight; the panel keeps them after the run). Needs the lease token '
+                    'and a current preflight_token (preflight_stale says what changed). panel must be the selected '
+                    'program id (this does not change the selection). Refused while the user holds the console, a '
+                    'program runs, the controller or video is not ready, or the app is not running. Returns the '
+                    "request record: completed (the app shows this request's start; the lease is agent_running "
+                    'until the run ends), failed, or pending (follow it with request_status or next_events).',
+     'inputSchema': _schema({'request_id': _REQUEST_ID, 'lease_token': _LEASE_TOKEN,
+                             'panel': {'type': 'string', 'description': "'<Game>:<Program>', the selected program"},
+                             'options': {'type': 'object'},
+                             'preflight_token': {'type': 'string', 'description': 'from preflight_program'}},
+                            ['request_id', 'lease_token', 'panel', 'options', 'preflight_token']),
+     'annotations': _ACTING},
     {'name': 'stop_program', 'title': 'Stop the running program',
      'description': 'Stops the running program once per request_id. Needs the lease token. Completed when the app '
                     "shows this request's stop and the program is stopped, or the run ended by itself first; "
                     'sent false when nothing was running. Refused while the user holds the console.',
      'inputSchema': _schema({'request_id': _REQUEST_ID, 'lease_token': _LEASE_TOKEN},
                             ['request_id', 'lease_token']), 'annotations': _ACTING},
+    {'name': 'cfr_batch', 'title': 'Send a short batch of console lines (debugging)',
+     'description': 'Debugging only. Sends 1-200 console lines (press, dpad, stick, wait, taps, walk, shot, shots, '
+                    'detect, wait_for, expect, game_open; numbers bounded, at most 60 s in all) once per '
+                    'request_id, with the program stopped. Needs the lease token. Marks console://B/save stale '
+                    '(reason cfr_batch) and makes any preflight_token stale. Completed with outcome done, or '
+                    'line_failed with failed_line and the error; output holds what the lines printed.',
+     'inputSchema': _schema({'request_id': _REQUEST_ID, 'lease_token': _LEASE_TOKEN,
+                             'lines': {'type': 'array', 'items': {'type': 'string'}, 'minItems': 1, 'maxItems': 200}},
+                            ['request_id', 'lease_token', 'lines']), 'annotations': _ACTING},
 ]
 
 
@@ -438,7 +464,7 @@ class LabMcp:
                    'console': args.pop('console', None), 'arguments': args}
         if 'lease_token' in args:
             request['lease_token'] = args.pop('lease_token')
-        call = self.actions.run_program if name == 'run_program' else self.actions.stop_program
+        call = getattr(self.actions, name)
         try:
             record = call(client, request)
         except control.Refused as e:

@@ -101,6 +101,23 @@ MIGRATIONS: List[List[str]] = [
             PRIMARY KEY (client_id, tool, request_id)
         )""",
     ],
+    # 3 (Slice 5b): passed preflights, keyed by their token's hash, with what they were checked
+    # against; and the newest cfr_batch per console, which makes the save fact stale.
+    [
+        """CREATE TABLE preflights (
+            token_hash TEXT PRIMARY KEY,
+            console TEXT NOT NULL,
+            request_id TEXT NOT NULL,
+            binding TEXT NOT NULL,
+            issued_at TEXT NOT NULL
+        )""",
+        """CREATE TABLE save_marks (
+            console TEXT PRIMARY KEY,
+            reason TEXT NOT NULL,
+            at TEXT NOT NULL,
+            request_id TEXT NOT NULL
+        )""",
+    ],
 ]
 
 SCHEMA_VERSION = len(MIGRATIONS)

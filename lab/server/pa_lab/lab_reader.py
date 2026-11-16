@@ -168,7 +168,9 @@ class ConsoleReader:
     def save_resource(self) -> Dict[str, Any]:
         """`console://B/save`: the last program-authored save fact and whether it still holds.
 
-        A save.json that exists but cannot be read raises Unavailable: it is not "no fact".
+        A save.json that exists but cannot be read raises Unavailable: it is not "no fact". The fact
+        is `stale` after a UI Start/Stop (`user_lease`) or a `cfr_batch` (Slice 5b; the control
+        plane's save mark) dated after `saved_at`; the newer of the two names the reason.
         """
         if not self.save_path.exists():
             doc = {'schema': 1, 'console': self.console, 'status': 'unknown', 'reason': 'no_fact',
@@ -185,6 +187,10 @@ class ConsoleReader:
         if transition is not None and transition['source'] == 'ui' and \
                 timestamps.parse(transition['at']) > timestamps.parse(fact['saved_at']):
             doc.update(status='stale', reason='user_lease', since=transition['at'])
+        mark = self.control.save_mark(self.console) if self.control is not None else None
+        if mark is not None and timestamps.parse(mark['at']) > timestamps.parse(fact['saved_at']) and \
+                (doc['status'] == 'known' or timestamps.parse(mark['at']) > timestamps.parse(doc['since'])):
+            doc.update(status='stale', reason=mark['reason'], since=mark['at'])
         return contracts.validate('save_resource', doc).data
 
 
