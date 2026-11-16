@@ -230,6 +230,19 @@ static void report_blink_progress(
     ));
 }
 
+static size_t report_fresh_progress(
+    const BlinkRecoveryConfig& config,
+    size_t events,
+    size_t search_updates,
+    bool have_candidate,
+    size_t candidate_events,
+    SingleSwitchProgramEnvironment& env
+){
+    search_updates += !have_candidate && events >= config.min_rolls_to_try ? 1 : 0;
+    report_blink_progress(config, events, search_updates, have_candidate, candidate_events, env);
+    return search_updates;
+}
+
 BlinkRecovery recover_state_from_blinks(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
@@ -341,10 +354,7 @@ BlinkRecovery recover_state_from_blinks(
         if (!fresh){
             continue;
         }
-        if (!have_candidate && events >= config.min_rolls_to_try){
-            search_updates++;
-        }
-        report_blink_progress(config, events, search_updates, have_candidate, candidate_events, env);
+        search_updates = report_fresh_progress(config, events, search_updates, have_candidate, candidate_events, env);
 
         if (longest->size() < 3){
             continue;
