@@ -105,6 +105,24 @@ class CliTests(unittest.TestCase):
         self.assertEqual(['Common/concat.cpp:7: code-health tag: string_concat attaches to nothing; '
                           'put the tag on or directly above the flagged line'], unattached)
 
+    def test_style_tag_on_an_unchanged_line_still_attaches_in_a_later_pr(self):
+        tag = ('// code-health: allow test_only_api -- the fake backend stands in for the console '
+               'in this test suite\n')
+        header = 'namespace A{\n' + tag + 'int make_fake_backend();\n// Kept.\nint kept();\n} // namespace A\n'
+        (self.root / 'Common/Fake.h').write_text(header)
+        (self.root / 'Common/Fake_Tests.cpp').write_text('int t = A::make_fake_backend();\n')
+        self.commit()
+        (self.root / 'Common/Fake.h').write_text(header.replace('// Kept.', '// Kept, edited later.'))
+        self.git('add', '.')
+        result = self.cli()
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertNotIn('attaches to nothing', result.stderr)
+        (self.root / 'Common/Fake.h').write_text(header.replace('int make_fake_backend();', 'int unrelated = 0;'))
+        self.git('add', '.')
+        result = self.cli()
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn('Common/Fake.h:2: code-health tag: test_only_api attaches to nothing', result.stderr)
+
     def test_unchanged_bad_function_in_changed_file_passes(self):
         self.source(60)
         self.commit()

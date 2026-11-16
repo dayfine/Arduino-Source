@@ -4,6 +4,7 @@ Everything lives in a temp dir; nothing here touches a real profile or console.
 """
 
 import copy
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -131,7 +132,7 @@ class FakeApp:
     stays `stopping` for `stop_ticks` ticks. `after[command]` is called with the app right after
     that command succeeds, before the journal is written: a UI click or the run's end landing
     before the daemon reads the answer. A command in `hold` is taken from the inbox and never
-    answered.
+    answered; `after[command]` then runs as it is taken (a UI click or a restart while the app works).
     """
 
     def __init__(self, lab, clock):
@@ -162,6 +163,7 @@ class FakeApp:
         self.restore = True         # False: the app forgets to restore the prior options
         self.preflight_id = None    # the program id the reply names (default: the selected panel)
         self.staged_seen = []       # the options the prechecks ran against, per preflight
+        self.hash_options = True    # False: an app before #601, no program.options_hash anywhere
         self.line_fail = None       # (batch line index, error): that console line fails
         self.lines_run = []
         self.requests = []
@@ -180,6 +182,8 @@ class FakeApp:
             if self._stopping_left <= 0:
                 self._stopping_left = None
                 changes['program.state'] = 'stopped'
+        if self.hash_options:
+            changes['program.options_hash'] = self.options_hash()
         self.lab.update_state(**changes)
         for pending in list(self.pending):
             self.continue_snapshot(pending)
@@ -197,6 +201,8 @@ class FakeApp:
             self.answer(request.stem, line, words[0])
             return
         if words[0] in self.hold:  # taken from the inbox, never answered (the app hung or quit)
+            if words[0] in self.after:  # what happens while the app works on it
+                self.after[words[0]](self)
             return
         if words[0] in ('start', 'stop'):
             self.start_or_stop(request.stem, text, line, words[0])
@@ -289,7 +295,14 @@ class FakeApp:
             self.options = prior
         else:
             reply['restored'] = False
+        if self.hash_options:
+            reply['options_hash'] = self.options_hash()  # what the program holds after the restore
         self.finish(pending, 'preflight {}\n'.format(json.dumps(reply, sort_keys=True, separators=(',', ':'))))
+
+    def options_hash(self):
+        """#601's program.options_hash: SHA-256 of the program's full option JSON (any stable digest
+        serves the fake: the server only compares it)."""
+        return hashlib.sha256(json.dumps(self.options, sort_keys=True).encode('utf-8')).hexdigest()
 
     def console_lines(self, name, lines):
         """Console lines as the channel runs them: in order, one journal line each, stopping at the first

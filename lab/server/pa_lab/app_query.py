@@ -11,9 +11,9 @@ token, no program state and no lease:
   `user_select`, `black` or `no_video`. It never fails the line and does not tell one game from
   another.
 
-Each call reads `Lab/state.json` (the app is up; its `instance.id`), writes a fixed request into
-`Lab/inbox` the way `shot` does, reads the journal, and reads `state.json` again: a reply that
-spans an app restart is refused. No caller input reaches the inbox.
+Each call reads the app's state (the app is up; its `instance.id`), sends a fixed command through
+the app's channel (`pa_lab.channel`) the way `shot` does, reads the journal, and reads the state
+again: a reply that spans an app restart is refused. No caller input reaches the app.
 """
 
 from __future__ import annotations
@@ -22,9 +22,10 @@ import json
 import re
 import time
 import uuid
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Type
 
 from pa_lab import shot
+from pa_lab.channel import Command, DescribeProgram, ErrorKind, GameOpen, Journal, await_answer
 from pa_lab.lab_reader import ConsoleReader, Unavailable
 from pa_lab.shot import Refused
 from pa_lab.tools import check_arguments
@@ -33,9 +34,7 @@ QUERY_TIMEOUT_MS = 5000
 GAME_OPEN_REASONS = ('home', 'user_select', 'black', 'no_video')
 PROGRAM_SCHEMA = 1
 PRECHECKS_UNSUPPORTED = 'unsupported'
-NOT_A_PROGRAM = 'the selected panel is not a program'
 
-JOURNAL_ERROR_RE = re.compile(r'^error \d+ \([^)]*\): (.*)$')
 DESCRIBE_RE = re.compile(r'^describe_program (\{.*\})$')
 GAME_OPEN_RE = re.compile(r'^game_open (yes|no(?: (\S+))?)$')
 
@@ -49,38 +48,32 @@ def _instance_id(console: ConsoleReader) -> str:
         raise Refused(e.refusal()['code'], e.message, e.evidence)
 
 
-def _ask(console: ConsoleReader, command: str, sleep: Callable[[float], None],
+def _ask(console: ConsoleReader, label: str, command: Command, sleep: Callable[[float], None],
          new_uuid: Callable[[], uuid.UUID]) -> Dict[str, Any]:
-    """Sends `command` (fixed text) and returns the journal's lines, the instance and the request."""
+    """Sends `command` and returns its journal, the instance and the request."""
     started = console.now()
     instance_id = _instance_id(console)
     request_id = str(new_uuid())
-    name = 'palab_{}_{}'.format(command, request_id.replace('-', ''))
-    inbox = shot.write_request(console.lab_dir, name, request_id, command)
+    channel = console.channel
+    name = channel.request_name(label, request_id)
+    shot.send_or_refuse(channel, name, request_id, (command,), label)
     deadline = started + (QUERY_TIMEOUT_MS + shot.ANSWER_GRACE_MS) / 1000.0
-    lines = shot.wait_for_journal(console, sleep, deadline, console.lab_dir, name, inbox, command)
+    journal = await_answer(channel, name, console.now, sleep, deadline, shot.POLL_S)
+    if journal is None:
+        raise shot.refuse_timeout(label, name)
     after = _instance_id(console)
     if after != instance_id:
         raise Refused('app_unavailable', 'The app restarted during the call.', {
             'reason': 'instance_replaced', 'instance_id': instance_id, 'new_instance_id': after})
-    return {'lines': lines, 'instance_id': instance_id, 'request': name}
+    return {'journal': journal, 'instance_id': instance_id, 'request': name}
 
 
-def _line_error(lines: List[str]):
-    for line in lines:
-        match = JOURNAL_ERROR_RE.match(line)
-        if match:
-            return match.group(1)
-    return None
-
-
-def _one_reply(lines: List[str], pattern: 're.Pattern[str]', command: str):
-    """The single printed reply line, after an `ok N <command>` line."""
-    ok_re = re.compile(r'^ok \d+ ' + command + r'\b')
-    replies = [m for m in (pattern.match(line) for line in lines) if m]
-    if len(replies) != 1 or not any(ok_re.match(line) for line in lines):
-        raise Refused('app_unavailable', 'The {} journal has no single reply line and ok line.'.format(command),
-                      {'journal': lines})
+def _one_reply(journal: Journal, pattern: 're.Pattern[str]', label: str, kind: Type[Command]):
+    """The single printed reply line of a command that succeeded."""
+    replies = [m for m in (pattern.match(line) for line in journal.printed) if m]
+    if len(replies) != 1 or not journal.ok(kind):
+        raise Refused('app_unavailable', 'The {} journal has no single reply line and ok line.'.format(label),
+                      {'journal': list(journal.lines)})
     return replies[0]
 
 
@@ -123,15 +116,15 @@ def describe_program(console: ConsoleReader, arguments: Dict[str, Any],
                      new_uuid: Callable[[], uuid.UUID] = uuid.uuid4) -> Dict[str, Any]:
     """The selected program's id and option contract. Raises InvalidArguments or Refused."""
     check_arguments('describe_program', arguments)
-    reply = _ask(console, 'describe_program', sleep, new_uuid)
-    lines = reply['lines']
-    error = _line_error(lines)
-    if error is not None:
-        if NOT_A_PROGRAM in error:
+    reply = _ask(console, 'describe_program', DescribeProgram(), sleep, new_uuid)
+    journal = reply['journal']
+    lines = list(journal.lines)
+    if journal.error is not None:
+        if journal.error.kind == ErrorKind.PANEL_NOT_PROGRAM:
             raise Refused('panel_not_program', 'The selected panel is not a program.', {'journal': lines})
-        raise Refused('app_unavailable', "The app's describe_program line failed: {}".format(error),
+        raise Refused('app_unavailable', "The app's describe_program line failed: {}".format(journal.error.detail),
                       {'journal': lines})
-    match = _one_reply(lines, DESCRIBE_RE, 'describe_program')
+    match = _one_reply(journal, DESCRIBE_RE, 'describe_program', DescribeProgram)
     try:
         doc = json.loads(match.group(1))
     except ValueError:
@@ -151,12 +144,13 @@ def game_open(console: ConsoleReader, arguments: Dict[str, Any],
               new_uuid: Callable[[], uuid.UUID] = uuid.uuid4) -> Dict[str, Any]:
     """Whether a game is in front (`open`), and why not (`reason`). Raises InvalidArguments or Refused."""
     check_arguments('game_open', arguments)
-    reply = _ask(console, 'game_open', sleep, new_uuid)
-    lines = reply['lines']
-    error = _line_error(lines)
-    if error is not None:
-        raise Refused('app_unavailable', "The app's game_open line failed: {}".format(error), {'journal': lines})
-    match = _one_reply(lines, GAME_OPEN_RE, 'game_open')
+    reply = _ask(console, 'game_open', GameOpen(), sleep, new_uuid)
+    journal = reply['journal']
+    lines = list(journal.lines)
+    if journal.error is not None:
+        raise Refused('app_unavailable', "The app's game_open line failed: {}".format(journal.error.detail),
+                      {'journal': lines})
+    match = _one_reply(journal, GAME_OPEN_RE, 'game_open', GameOpen)
     is_open = match.group(1) == 'yes'
     reason = match.group(2)
     if not is_open and reason not in GAME_OPEN_REASONS:

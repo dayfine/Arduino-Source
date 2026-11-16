@@ -150,6 +150,12 @@ class ShotTests(unittest.TestCase):
                 self.assertEqual(self.refusal()['code'], case['expectation'])
                 self.assertEqual(self.app.requests, [])
 
+    def test_a_failed_inbox_write_is_refused(self):
+        (self.lab.dir / 'inbox').rmdir()
+        refusal = self.refusal()
+        self.assertEqual(refusal['code'], 'app_unavailable')
+        self.assertEqual(refusal['evidence']['reason'], 'inbox_write_failed')
+
     def test_saved_frame_older_than_max_age_is_stale(self):
         self.app.frames = False
         self.clock.on_sleep.append(lambda: self.lab.update_state(**{

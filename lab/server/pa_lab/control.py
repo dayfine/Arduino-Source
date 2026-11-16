@@ -83,15 +83,6 @@ def _transition_key(instance_id: str, transition: Dict[str, Any]) -> str:
                   transition['request_id']])
 
 
-def inbox_name(tool: str, request_id: str) -> str:
-    """A new `Lab/inbox` request name for one attempt of a run_program / stop_program request.
-
-    The random part keeps a journal (`outbox/<name>.out`) or taken request (`done/<name>.txt`) left
-    by an earlier request with the same id (after compaction dropped its record) from answering this
-    one."""
-    return 'palab_{}_{}_{}'.format(tool, request_id.replace('-', ''), secrets.token_hex(4))
-
-
 def lease_doc(row: sqlite3.Row) -> Dict[str, Any]:
     return {'state': row['state'], 'owner': row['owner'], 'acquired_at': row['acquired_at'],
             'expires_at': row['expires_at']}
@@ -256,15 +247,16 @@ class ControlPlane:
     # ---- actions (run_program, stop_program: pa_lab.actions talks to the app) --------------------
 
     def begin_action(self, client_id: str, request: Dict[str, Any], instance_id: str,
-                     check: Callable[[sqlite3.Row, Dict[str, Any]], Optional[Dict[str, Any]]]
-                     ) -> Tuple[Dict[str, Any], bool]:
+                     check: Callable[[sqlite3.Row, Dict[str, Any]], Optional[Dict[str, Any]]],
+                     inbox_name: str) -> Tuple[Dict[str, Any], bool]:
         """Decides, in one transaction, whether this call sends a request to the app.
 
         An exact retry gets its stored record (pending included) and `False`. Otherwise the lease
         must be held by the request's token and `check(lease_row, arguments)` must pass: it raises
         Refused (stored as a `refused` record) or returns a result for a request that needs no
         app action (stored as `completed`). When it returns None the record is stored `pending`
-        with the app instance it was checked against, and the caller must act: `(record, True)`.
+        with the app instance it was checked against and `inbox_name`, the channel's name for this
+        attempt (`AppChannel.request_name(..., unique=True)`), and the caller must act: `(record, True)`.
         """
         req, args, token_hash = self._parse_request(client_id, request)
         with self._writing() as conn:
@@ -291,7 +283,7 @@ class ControlPlane:
             conn.execute('INSERT INTO actions (client_id, tool, request_id, console, instance_id, inbox_name, '
                          'written_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
                          (client_id, req['tool'], req['request_id'], req['console'], instance_id,
-                          inbox_name(req['tool'], req['request_id']), stamp))
+                          inbox_name, stamp))
             return self._record(self._request_row(conn, client_id, req['tool'], req['request_id'])), True
 
     def action(self, client_id: str, tool: str, request_id: str) -> Optional[Dict[str, Any]]:
@@ -299,6 +291,16 @@ class ControlPlane:
         row = self.db.read().execute('SELECT * FROM actions WHERE client_id = ? AND tool = ? AND request_id = ?',
                                      (client_id, tool, request_id)).fetchone()
         return None if row is None else {k: row[k] for k in row.keys()}
+
+    def mark_action(self, client_id: str, tool: str, request_id: str, taken_at: Optional[str] = None,
+                    answered_at: Optional[str] = None) -> Dict[str, Any]:
+        """Stores when the app was first seen taking (`taken_at`) or answering (`answered_at`) the
+        request; a time already stored is kept. Returns the action."""
+        with self._writing() as conn:
+            conn.execute('UPDATE actions SET taken_at = COALESCE(taken_at, ?), answered_at = COALESCE(answered_at, ?) '
+                         'WHERE client_id = ? AND tool = ? AND request_id = ?',
+                         (taken_at, answered_at, client_id, tool, request_id))
+        return self.action(client_id, tool, request_id)
 
     def record(self, client_id: str, tool: str, request_id: str) -> Optional[Dict[str, Any]]:
         row = self._request_row(self.db.read(), client_id, tool, request_id)

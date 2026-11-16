@@ -21,7 +21,11 @@ New here? Start with [GUIDE.md](GUIDE.md): what pa-lab is and what it gives you 
 | `contracts/v1/invalid_cases.json` | Documents that must fail: name, kind, input, expected field path and message |
 | `tests/test_contracts.py` | Golden parse, round-trip, invalid-case and legacy-mapping tests |
 | `pa_lab/config.py` | Server config: the one-entry allowlist (B), loopback port, owner-only token file |
-| `pa_lab/lab_reader.py` | Strict reads of `Lab/state.json` and `Lab/save.json`; `console://B/state` and `/save` |
+| `pa_lab/lab_reader.py` | Strict reads of the app's state and save fact (through its channel); `console://B/state` and `/save` |
+| `pa_lab/channel.py` | The app channel the core sees: typed commands (`Start`, `Stop`, `Snapshot`, ...), typed answers (`Journal`, `AppError` kinds), `AppChannel` |
+| `pa_lab/channel_file.py` | The version-1 channel over `Lab/`: the only module that knows its layout, request and journal lines and error text |
+| `contracts/v1/channel.md` | The app channel's files, line formats, ordering (state.json after the journal) and retention |
+| `tests/fake_channel.py`, `tests/test_channel_{core,file}.py` | An in-memory channel for core tests; the file channel's own tests |
 | `pa_lab/tools.py`, `pa_lab/shot.py` | `ensure_game` (verification only) and `shot` (newer than the call) |
 | `pa_lab/mcp_server.py` | MCP over Streamable HTTP on `127.0.0.1`: bearer, Host/Origin, sessions, size caps |
 | `pa_lab/app_query.py` | `describe_program` and `game_open`: one-line reads through the app's channel (#504) |
@@ -336,7 +340,12 @@ A passing request is stored `pending` with the app instance it was checked again
 `actions`, migration 2), and the daemon writes `request <request_id>` / `start 10` (or `stop`)
 into `Lab/inbox`, the commands `labctl.sh start|stop` sends; the client's `request_id` is the
 channel's request id. It then reads the journal and `state.json` (up to 13 s for a start, 10 s for
-a stop) and resolves the record. Each attempt's inbox name has a random part, so a journal left by
+a stop) and resolves the record. The app renames the finished journal into place first and
+rewrites `state.json` on its next 500 ms timer (later while another request runs), so a journal is
+judged against `state.json` only once its `written_at` is after the daemon first read the journal.
+The first time the daemon sees the request taken (in `done/` or answered) and its journal finished,
+it stores the time (`actions.taken_at` / `answered_at`, migration 3): `disk_gc.sh` prunes `done/`
+and `outbox/`, and a request once seen taken must not later read as never sent. Each attempt's inbox name has a random part, so a journal left by
 an earlier request with the same id (after compaction dropped its record) never answers it.
 
 While a `run_program` is pending the lease cannot end: `release_console` is refused
@@ -350,13 +359,14 @@ settles, an overdue lease expires at the next read. The outcomes:
 | after the start's `ok`, a stop by `program` / `error` dated after the request | `completed` with `ended: {source, at}`, `correlated_by: time`; the lease stays idle |
 | after the start's `ok`, a stop by a lab script (`lab`, another request id) dated after the request | the same, `ended.source: lab` |
 | (stop) a stop by `program` / `error` / a lab script dated after the request | `completed`, `stopped_by` that source, `correlated_by: time` (the terminal event completes it) |
-| a UI transition dated after the request | `failed`, `console_held_by_user` (the user lease is already installed) |
+| a UI transition dated after the request | `failed`, `console_held_by_user` (the user lease is already installed). For `run_program`, `evidence.started: true` when the start's `ok` line was read (the run did start and moved the game; `evidence.run_id` is its id), else `false`; the status stays `failed` so a caller stops and waits for the user |
 | another `instance.id` without this request's id | `failed`, `app_unavailable`, `instance_replaced` |
 | the line failed | `failed`: `owned by` → `console_held_by_agent` (the token is not copied); `Program is RUNNING.` → `program_running`; `controller not connected` → `controller_not_ready`; else `app_unavailable` with the journal |
 | the inbox write failed | `failed` at once, `app_unavailable`, `evidence.reason: inbox_write_failed` (nothing was sent) |
 | no answer, request still in the inbox | withdrawn; `failed`, `timeout` (nothing was sent) |
-| no answer, request in neither the inbox nor `done/`, no journal | `failed`, `timeout`, `evidence.reason: never_sent` (the daemon stopped between the record and the write; settled at the next start too) |
-| a complete journal without an error that nothing above matches, after the wait | `failed`, `timeout`, `evidence.reason: outcome_unknown` with the journal and transition |
+| no answer, request never seen in `done/` and no journal | `failed`, `timeout`, `evidence.reason: never_sent` (the daemon stopped between the record and the write; settled at the next start too) |
+| a complete journal without an error or the start's `ok`, that nothing above matches, after the wait and once `state.json` was written after the journal | `failed`, `timeout`, `evidence.reason: outcome_unknown` with the journal and transition |
+| (start) the start's `ok` line, but `state.json` shows nothing above | stays `pending` (the program started; the lease cannot end); never failed for want of a match |
 | no answer, request taken | stays `pending`; settled from `state.json` on the next `request_status`, `next_events`, `console://B/state` read or action call, also after a daemon restart; `failed` / `app_unavailable` if the app exits |
 
 **What Slice 1's data does not give.** `last_transition` keeps only the newest start or stop, and
@@ -402,18 +412,22 @@ checks may open a menu or go Home and back) for the one reply line, `preflight <
 | `verdict: unsupported` | `failed`, `prechecks_unsupported` |
 | `verdict: invalid_options` (the app's `check_validity` or its own key check) | `failed`, `invalid_arguments`, `field: options.<key>` |
 | `verdict: failed` | `failed`, `precheck_failed`, `check` = the check's name, its message and evidence |
-| `verdict: passed` | `completed`: `checks`, `options_hash`, `preflight_token`, `issued_at`, `expires_at` |
+| `verdict: passed` | `completed`: `checks`, `candidate_hash`, `options_hash` (the app's, or null), `preflight_token`, `issued_at`, `expires_at` |
 | the line failed (today's app: no `preflight` command) | `failed`, `app_unavailable` with the journal; `owned by` → `console_held_by_agent` |
 | a UI Start/Stop or another app instance before the reply | `failed`, `console_held_by_user` / `app_unavailable` `instance_replaced` |
+| taken, no reply after 30 s, `state.json` written after that | `failed`, `timeout`, `evidence.reason: outcome_unknown`; the console is free again |
 
 **The token.** A pass stores (table `preflights`, migration 3) the token's hash with its binding:
-console, app instance, panel, the candidate options' hash, the last start/stop transition,
+console, app instance, panel, the candidate's hash (`candidate_hash`), the app's hash of every
+option the program holds (`options_hash`: the reply's, else `program.options_hash` in `state.json`,
+#601; null from an older app), the last start/stop transition,
 `console://B/save` (status, reason, since) with the newest `cfr_batch`'s time, and the hash of the
 request's lease token. The token is a salted hash of that binding. `run_program` reads the same
 things and, after the 5a checks, refuses with `preflight_stale` when the token is unknown
 (`evidence.reason: unknown_token`), older than 120 s (`expired`), or any bound field differs
 (`changed`, `evidence.changed` lists them, e.g. `["transition"]`). A run's own start changes the
-transition, so a token starts at most one run.
+transition, so a token starts at most one run, and a user editing any option in the panel, one the
+candidate does not name included, changes `options_hash` (`changed: ["options_hash"]`).
 
 **Options on `run_program`.** The request is `request <id>`, one `set KEY JSON` line per option
 (groups as `GROUP.KEY`, in key order), then `start 10`; the app stops at the first failing line, so
@@ -431,21 +445,23 @@ Before the request is written, the console's save mark (table `save_marks`) is s
 daemon dies next) and every earlier preflight token is stale. The daemon waits for the worst case
 + 5 s; the record is `completed` with `outcome: done`, or `line_failed` with `failed_line`
 (1-based in the batch) and `error`, and `output` (what the lines printed, e.g. shot paths). An app
-that never took the request: withdrawn, `failed`, `timeout`; the mark stays.
+that never took the request: withdrawn, `failed`, `timeout`; the mark stays. An app that took it
+and is still alive (`state.json` written) past the wait with no journal: `failed`, `timeout`,
+`outcome_unknown` (some presses may have run; the mark stays), so a hung batch frees the console.
 
-**The app's side (not built).** The app has no command that stages options and runs a program's
-prechecks without starting it, and `lab/tooling` has only the precheck *summaries* (#511): the
-runnable list (`Precheck::run(env, context)`, #485) is on the upstream-bound FRLG branch, and a
-check needs a `SingleSwitchProgramEnvironment` and controller context that exist only inside a
-running program. A `preflight` command therefore needs a precheck-only run of the program session
-(stage on the UI thread, a scope guard restoring the options, the checks on the program thread),
-not just a channel command, so 5b stops at the server and the fake. Until the app has it, every
-preflight on the real app is `failed` / `app_unavailable` (unknown command), so `run_program`
-cannot start anything there.
+**The app's side (fork #601).** The `preflight` command runs on the LabChannel worker: it stages
+the candidate on the UI thread (through `run_on_ui`, as `set` does), runs the program's prechecks
+on the worker without starting the program, and restores the prior options on the UI thread. If
+the options no longer equal the staged candidate when it restores (the user edited the panel
+during the checks), it leaves the user's edit in place and replies `restored: false`, which never
+yields a token. The reply's `options_hash` is read after the restore: the options the program
+holds, which `state.json`'s `program.options_hash` must still show at the run. Until #601 is in
+the lab build, a preflight on the real app is `failed` / `app_unavailable` (unknown command), and
+until a program overrides its prechecks every preflight is `prechecks_unsupported`, so
+`run_program` cannot start anything there.
 
-**Known gaps.** The panel's options are not versioned in `state.json`, so a token cannot see an
-option the user changes in the UI between the preflight and the run (only a Start/Stop); the app
-could print an options hash in the reply and in `state.json`. The `set` echoes in the start's
+**Known gaps.** `state.json` is rewritten every 500 ms, so an option edit in the last half second
+before a run is not seen by the token. The `set` echoes in the start's
 journal are not compared with what was sent (the preflight already refused clamped or disabled
 values). The channel's owner token is still not claimed (a claimed channel is refused), and the
 console-B soak (every mutation has exactly one record) is still to run.
