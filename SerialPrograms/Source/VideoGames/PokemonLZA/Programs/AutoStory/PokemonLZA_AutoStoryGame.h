@@ -54,7 +54,8 @@ namespace PokemonLZA{
 //                              (check_can_walk()), until its end event if it
 //                              has one (walk_until()), else until its legs
 //                              have run (finish_walk())
-//      "mash_to_move_hints"    A through scenes until the player has control
+//      "mash_to_move_hints"    B through scenes' text (A at a choice) until
+//                              the player has control
 //                              (run_scene_machine()): 01.01's arrival; args
 //                              "min_length_ms", no quiet failure before it,
 //                              "quiet_ms", "quiet_is_control" and
@@ -71,7 +72,8 @@ namespace PokemonLZA{
 //                              A, then its scene under way
 //                              (scene_under_way(): text, a subtitle, a
 //                              card, a fade or a textless cutscene)
-//      "a" (MASH, "scene")     A through a scene until control; it must
+//      "a" (MASH, "scene")     B through a scene's text (A at a choice)
+//                              until control; it must
 //                              start within 45 s
 //      "story_battle_start"    A through the talk before a story battle and
 //                              the battle tutorial's cards until the battle
