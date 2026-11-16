@@ -525,8 +525,8 @@ UnitTestResult test_start_and_end(Logger&){
 }
 
 //  With Run Starter RNG in AutoStory on, 00.02 saves at the Verity
-//  Lakefront, runs 00.02/starter_rng, and chains into 00.03. Console B,
-//  2026-11-15: 00.03's start save must still name Verity Lakefront.
+//  Lakefront, runs 00.02/starter_rng, and chains into 00.03, whose start
+//  save must still name Verity Lakefront.
 UnitTestResult test_run_starter_rng_in_story(Logger&){
     Pokemon::SegmentHooks hooks;
     hooks.reload = [&](RunState&){ return Pokemon::outcome_ok(); };
