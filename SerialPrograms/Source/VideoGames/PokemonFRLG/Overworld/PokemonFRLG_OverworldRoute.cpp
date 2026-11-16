@@ -27,34 +27,6 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-const RouteCosts& default_route_costs(){
-    static const RouteCosts COSTS{
-        {RouteCost::TILE, 1},
-        {RouteCost::TURN, 2},
-        {RouteCost::WARP, 30},
-        {RouteCost::SURF, 40},
-        {RouteCost::GRASS_TILE, 20},
-        {RouteCost::OPEN_STOP, 8},
-        {RouteCost::OPEN_WILD_STOP, 300},
-        {RouteCost::SIGHT_TILE, 0},
-        {RouteCost::SIGHT_OVERSHOOT, 0},
-        {RouteCost::SIGN_OVERSHOOT, 3},
-        {RouteCost::OPEN_WATER_STOP, 1000},
-        {RouteCost::OPEN_CHECK, 10},
-    };
-    return COSTS;
-}
-
-int route_cost(const RouteCosts& costs, RouteCost kind){
-    auto iter = costs.find(kind);
-    if (iter == costs.end()){
-        iter = default_route_costs().find(kind);
-    }
-    return iter->second;
-}
-
-
-
 namespace{
 
 
@@ -762,50 +734,6 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
 }
 
 
-bool has_gates(const std::vector<MapData>& maps){
-    return std::ranges::any_of(maps, [](const MapData& map){
-        return !map.gates.empty();
-    });
-}
-
-std::vector<MapData> resolve_maps(const std::vector<MapData>& maps, const Pokemon::GateState& gates){
-    std::vector<MapData> resolved = maps;
-    for (MapData& map : resolved){
-        if (map.gates.empty()){
-            continue;
-        }
-        map.tiles = Pokemon::resolve_tiles(map, gates);
-        std::erase_if(map.objects, [&](const MapObject& object){
-            const Pokemon::MapGate* gate = Pokemon::gate_at(map, TilePos{object.x, object.y});
-            return gate != nullptr && Pokemon::gate_is_open(map, *gate, gates);
-        });
-    }
-    return resolved;
-}
-
-std::optional<std::string> cut_gate_key(const std::vector<MapData>& maps, const MapPosition& tree){
-    for (const MapData& map : maps){
-        if (map.name != tree.map || !map.tiles.contains(tree.point)){
-            continue;
-        }
-        const Pokemon::MapGate* gate = Pokemon::gate_at(map, tree.point);
-        if (gate != nullptr && gate->kind == Pokemon::GateKind::CUT){
-            return Pokemon::gate_key(map.name, gate->id);
-        }
-    }
-    return std::nullopt;
-}
-
-void regrow_cut_gates(const std::vector<MapData>& maps, Pokemon::GateState& gates){
-    for (const MapData& map : maps){
-        for (const auto& [id, gate] : map.gates){
-            if (gate.kind == Pokemon::GateKind::CUT){
-                gates.opened.erase(Pokemon::gate_key(map.name, id));
-            }
-        }
-    }
-}
-
 namespace{
 
 //  `legs` as route steps, each read on the maps its gates make.
@@ -900,14 +828,6 @@ std::optional<std::vector<RouteStep>> plan_overworld_route_gated(
         }
     }
     return plan_gated_route_on(maps, {start, gates, start_facing}, goal, rules, costs, std::nullopt);
-}
-
-Pokemon::GateState gates_after_route(const Pokemon::GateState& before, const std::vector<RouteStep>& route){
-    Pokemon::GateState gates = before;
-    for (const RouteStep& step : route){
-        Pokemon::apply_gate_change(gates, step.gate_change);
-    }
-    return gates;
 }
 
 
