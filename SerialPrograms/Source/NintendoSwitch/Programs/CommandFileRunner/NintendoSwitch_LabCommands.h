@@ -24,7 +24,7 @@ public:
         PanelSession& panel, CancellableScope& scope,
         const std::vector<std::string>& words, LabCommandOutput& output
     ) override;
-    virtual std::string controller_status(PanelSession& panel) override;
+    virtual Controller controller(PanelSession& panel) override;
     virtual VideoFeed* video(PanelSession& panel) override;
     virtual const BatchOption* options(PanelSession& panel) override;
     virtual void keep_awake(PanelSession& panel, CancellableScope& scope) override;

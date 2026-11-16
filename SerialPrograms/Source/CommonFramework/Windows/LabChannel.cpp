@@ -366,7 +366,9 @@ void LabChannel::poll(){
             }
         }
     }
-    keep_awake();
+    if (!update_hold()){
+        keep_awake();
+    }
     write_state();
 }
 
@@ -491,11 +493,9 @@ std::string LabChannel::run_line(const LabRequest& request, const LabRequestLine
         return run_describe_program(words, output.out);
     }
     const LabConsoleCommands::Kind kind = m_console->kind(command);
-    if (kind != LabConsoleCommands::Kind::READS_STREAM){
-        std::string error = m_owner.check(request.owner);
-        if (!error.empty()){
-            return error;
-        }
+    const std::string refusal = check_owner_and_hold(request, words, kind == LabConsoleCommands::Kind::READS_STREAM);
+    if (!refusal.empty()){
+        return refusal;
     }
     if (command == "select" || command == "set" || command == "start" || command == "stop" || command == "popups"
         || command == "preflight"
@@ -863,6 +863,46 @@ void LabChannel::keep_awake(){
     }
 }
 
+//  Everything but a read needs the owner's token once claimed, and only
+//  reads run while the user holds the console.
+std::string LabChannel::check_owner_and_hold(const LabRequest& request, const std::vector<std::string>& words, bool reads_stream){
+    if (!reads_stream){
+        std::string error = m_owner.check(request.owner);
+        if (!error.empty()){
+            return error;
+        }
+    }
+    if (lab_runs_while_held(words, reads_stream)){
+        return "";
+    }
+    const std::optional<LabHold> hold = update_hold();
+    return hold ? lab_hold_refusal(*hold) : "";
+}
+
+std::optional<LabHold> LabChannel::update_hold(){
+    const Filesystem::Path path(folder() + "hold");
+    std::string text;
+    std::optional<LabHold> hold;
+    if (file_to_string(path.string(), text)){
+        hold = parse_lab_hold(text);
+    }
+    std::optional<std::string> reason;
+    {
+        std::lock_guard<Mutex> lg(m_panel_lock);
+        if (m_program != nullptr){
+            reason = m_hold_trigger.check(
+                m_program->last_transition(), m_console->controller(*m_panel).last_user_input, m_selected_at
+            );
+        }
+    }
+    if (reason && !hold){
+        hold = LabHold{.owner = "user", .reason = *reason, .acquired_at = lab_timestamp_text(current_time())};
+        write_file_atomically(path, lab_hold_text(*hold));
+        global_logger_tagged().log("Lab: the user drove the console (" + *reason + "); held until hold.sh off.", COLOR_BLUE);
+    }
+    return hold;
+}
+
 void LabChannel::read_program_state(std::string& state, std::string& program, bool& running) const{
     const ProgramSession* session = dynamic_cast<const ProgramSession*>(m_panel);
     program = m_panel == nullptr ? "" : m_panel->descriptor().identifier();
@@ -877,7 +917,7 @@ void LabChannel::read_program_state(std::string& state, std::string& program, bo
 }
 
 std::string LabChannel::read_controller_status(){
-    return m_panel == nullptr ? "" : m_console->controller_status(*m_panel);
+    return m_panel == nullptr ? "" : m_console->controller(*m_panel).status;
 }
 
 void LabChannel::write_state(){

@@ -842,6 +842,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Windows/LabChannel_Tests.h
     Source/CommonFramework/Windows/LabFrames.cpp
     Source/CommonFramework/Windows/LabFrames.h
+    Source/CommonFramework/Windows/LabHold.cpp
+    Source/CommonFramework/Windows/LabHold.h
+    Source/CommonFramework/Windows/LabHold_Tests.cpp
+    Source/CommonFramework/Windows/LabHold_Tests.h
     Source/CommonFramework/Windows/LabProgramContract.cpp
     Source/CommonFramework/Windows/LabProgramContract.h
     Source/CommonFramework/Windows/LabProgramContract_Tests.cpp

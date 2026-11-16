@@ -324,6 +324,36 @@ must start with the line `owner TOKEN`, or it is refused with
 The lock lives in memory: it dies with the app. The holder may claim again
 with the same token (e.g. after a script restart).
 
+## User hold
+
+When the user drives the console, the lab keeps off it. The file `Lab/hold`
+names the holder:
+
+```
+owner=user
+reason=ui_start
+acquired_at=2026-11-15T21:04:05.120Z
+```
+
+While it names an owner, every command that presses, starts, stops or changes
+the program (`press`, `stick`, `dpad`, `close_game`, `start`, `stop`, `set`,
+`select`, `preflight`, `popups`, `keepawake on`, ...) fails with
+`console held by user since ... (REASON): the user is on the console;
+~/BDSPLab/hold.sh off releases it`, and the channel's own keep-awake presses
+stop. `help`, `state`, `owner`, `snapshot`, `describe_program`, `keepawake off`
+and the console commands that only read the screen (`shot`, `detect`, ...)
+still run. Owner tokens do not matter: the hold refuses every client.
+
+The app writes the file itself when the user drives the selected program:
+a Start or Stop clicked in the window (`ui_start`, `ui_stop`; a start a lab
+request did not ask for is a UI start) or a press from the window's
+keyboard or gamepad input that reached the console (`user_input`). Each is
+noticed once, at the next poll or before the next refused command. Nothing
+clears the hold by itself, an app restart included: `~/BDSPLab/hold.sh off`
+or the lab server's `lease release-user` removes the file, and `hold.sh on`
+puts it on by hand. A command already running when the user takes over
+(a long `walk`) finishes; the next one is refused.
+
 ## Running a program from the shell
 
 Nothing is clicked. The app is launched with its own profile, so its
@@ -451,7 +481,8 @@ two-line `state`) is gone. `start` and `stop` are lines in a request, and
 `add_tests_LabChannel()` covers the request format, the journal lines, the
 state text, the owner lock, the keep-awake schedule, the controller wait before `start` and which
 program states let a console command run (`LabChannel - ...`
-unit tests); `add_tests_LabSnapshot()` covers `snapshot`'s arguments, its wait for a newer frame and its lines; `add_tests_LabStateJson()` checks `state.json` against the
+unit tests); `add_tests_LabHold()` covers the `Lab/hold` text, which commands run while held and
+which Start, Stop or press puts the hold on, once each; `add_tests_LabSnapshot()` covers `snapshot`'s arguments, its wait for a newer frame and its lines; `add_tests_LabStateJson()` checks `state.json` against the
 contract's golden files, which transition it names after a panel switch, and when it is rewritten; `add_tests_ProgramTransition()` covers
 who each start and stop is said to come from; `add_tests_CommandFileRunner()` covers the console commands'
 arguments. Run them with the app's `--command-line-test-mode`. Selecting,
