@@ -109,7 +109,7 @@ std::vector<StoryTimedLeg> read_timed_legs(const JsonValue& value, std::string_v
         if (pair.size() != 2){
             throw ParseException(std::format("{}: a timed leg is [turn degrees, ms]", source));
         }
-        result.push_back({.turn = integer(pair[0], source), .ms = integer(pair[1], source)});
+        result.push_back({.turn = integer(pair[0], source), .walk = Milliseconds(integer(pair[1], source))});
     }
     return result;
 }
@@ -192,9 +192,9 @@ void read_metadata(const JsonValue& value, std::string_view source, StoryCheckpo
 }
 
 
-} // namespace
-
-
+//  Read a declared pose (a checkpoint's "start"): a zone one,
+//  {"place": "LumioseCity", "spot": "HotelZ", "heading": 90} (spot and
+//  heading optional). Malformed and unknown fields fail.
 DeclaredPose read_declared_pose(const JsonValue& value, std::string_view source){
     const JsonObject& root = fields(value, {"place", "spot", "heading"}, source);
     ZoneDeclared result;
@@ -208,6 +208,9 @@ DeclaredPose read_declared_pose(const JsonValue& value, std::string_view source)
     return result;
 }
 
+//  Read a step, its args parsed against its action among `actions` (the
+//  game's) and their fallbacks filled in. Unknown fields, kinds, actions and args, mistyped
+//  values and missing required args fail.
 StoryStep read_story_step(const JsonValue& value, std::string_view source, std::span<const StoryActionSpec> actions){
     const JsonObject& root = fields(
         value, {"id", "kind", "why", "action", "args"}, source
@@ -227,6 +230,10 @@ StoryStep read_story_step(const JsonValue& value, std::string_view source, std::
     result.args = read_args(root.get_value("args"), step_action(result, actions, source), result, source);
     return result;
 }
+
+
+} // namespace
+
 
 StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view source, std::span<const StoryActionSpec> actions){
     const JsonObject& root = fields(value, {"id", "title", "start", "events", "metadata"}, source);

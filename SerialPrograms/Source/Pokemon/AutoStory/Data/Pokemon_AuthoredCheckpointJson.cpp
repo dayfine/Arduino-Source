@@ -14,6 +14,11 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+namespace{
+
+
+//  Require exactly these fields, including fields whose value is null/zero/false.
+//  Missing/unknown fields throw ParseException with the document source.
 void validate_json_fields(
     const JsonObject& object, std::initializer_list<std::string_view> fields, std::string_view source
 ){
@@ -24,6 +29,10 @@ void validate_json_fields(
         object.get_value_throw(std::string(field), std::string(source));
     }
 }
+
+
+} // namespace
+
 
 StoryCheckpoint read_authored_checkpoint(
     const JsonValue& value, std::string_view game, std::string_view source,
