@@ -63,6 +63,11 @@ StoryArgSpec flag(std::string key, std::string why){
     return StoryArgSpec{.key = std::move(key), .type = StoryArgType::BOOLEAN, .required = false, .fallback = false, .why = std::move(why)};
 }
 
+//  An integer that has no value when left out.
+StoryArgSpec optional_int(std::string key, std::string why){
+    return StoryArgSpec{.key = std::move(key), .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt, .why = std::move(why)};
+}
+
 //  `spec`, run only on a console.
 StoryActionSpec console_only(StoryActionSpec spec){
     spec.console_only = true;
@@ -108,10 +113,7 @@ std::vector<StoryActionSpec> make_specs(){
                 .why = "\"fade_white\", \"fade_black\" or \"dialog\": the last leg is held until it shows, its ms the bound",
             },
             flag("held", "hold the stick at each leg's angle (L only before a later turning leg), not tap-and-forward"),
-            StoryArgSpec{
-                .key = "wait_ms", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
-                .why = "wait this long before looking for free control: NPCs moving off",
-            },
+            optional_int("wait_ms", "wait this long before looking for free control: NPCs moving off"),
         }),
         game_spec("walk_to_prompt", {
             optional_ms("timeout_ms", 10000, "walking this long with no A prompt fails the step"),
@@ -121,6 +123,7 @@ std::vector<StoryActionSpec> make_specs(){
             optional_ms("quiet_ms", 60000, "nothing busy and no control this long fails the step"),
             flag("press_a_first", "press A first, at the prompt that starts the scene (a door's \"A Enter\")"),
             flag("quiet_is_control", "the quiet time ends the step with control, where no party bar or prompt shows (Hotel Z)"),
+            optional_int("end_after_black_fades", "end 5 s after this many black fades, or on the controls hint; the banner does not end it"),
         }),
         game_spec("text_to_choice", {
             flag("advance_with_a", "advance the text with A, for a talk that B cancels (Hotel Z's elevator)"),
@@ -457,8 +460,15 @@ Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
 //  "mash_to_move_hints": A through the scenes (a choice takes its top
 //  row, the advance chevron its text) until the player has control: the
 //  controls hint held a second, or a main mission's banner on two looks
-//  (01.01's arrival ends on "MAIN MISSION 01"; the step returns once it has
-//  gone, 10 s at most). 01.01's arrival takes ~240 s on the console, hence
+//  (the step returns once it has gone, 10 s at most). With
+//  "end_after_black_fades", that many black fades lifted and settled end
+//  it, 5 s after the last one (or the controls hint, if it comes first),
+//  instead of the banner: 01.01's arrival goes ad, loading, a fade from
+//  black, the rival's talk, a second black fade, Pancham, the "MAIN
+//  MISSION 01" banner, a third black fade, then control (console B,
+//  2026-11-15, English and Italian; the banner detector missed the banner
+//  on the Italian game). The next step's walk waits for control (check_can_walk()).
+//  01.01's arrival takes ~240 s on the console, hence
 //  360 s. A text-free cutscene (01.01's city flyover, ~20 s) is not
 //  control: a minute with nothing busy fails the step. After 5 s with
 //  nothing busy and no sign of control, A every 2 s, for text the detectors
@@ -477,6 +487,10 @@ Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAct
     config.quiet_is_control = Pokemon::story_arg<bool>(call.args, "quiet_is_control");
     config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
     config.blind_press_after = 5s;
+    const auto fades = call.args.find("end_after_black_fades");
+    if (fades != call.args.end()){
+        config.end_after_black_fades = (size_t)std::get<int64_t>(fades->second);
+    }
     return run_scene_machine(backend, "mash_to_move_hints", config, 360s);
 }
 

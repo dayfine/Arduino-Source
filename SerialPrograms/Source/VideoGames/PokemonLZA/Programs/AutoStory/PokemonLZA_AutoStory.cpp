@@ -33,7 +33,7 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "Programs/PokemonLZA/AutoStory.html",
         "Play the main story of Pokemon Legends: Z-A. Prototype: from a new game to the end of Main Mission 01, picking Chikorita. "
         "Start a new game and pick its language, look and name by hand: checkpoint 01.00 starts on the Confirm Choices screen that follows. "
-        "It checks that screen, presses nothing anywhere else, and picks Ready!. Later checkpoints load the latest save first.",
+        "It checks that screen, presses nothing anywhere else, and picks Ready!. Later checkpoints load the latest save first, unless that is turned off.",
         PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
@@ -82,11 +82,17 @@ void connect_controller(ConsoleHandle& console, ProControllerContext& context, c
 
 
 AutoStory::AutoStory()
-    : RANGE("<b>Checkpoints:</b>", checkpoint_database())
+    : RANGE("Checkpoints", checkpoint_database())
     , ATTEMPTS_PER_CHECKPOINT(
         "<b>Attempts per Checkpoint:</b><br>A failed checkpoint that started from a save reloads it and tries again, up to this many times in all.",
         LockMode::LOCK_WHILE_RUNNING,
         1, 1, 5
+    )
+    , LOAD_SAVE_FIRST(
+        "Load the save first: a run from a checkpoint after 01.00 loads the latest save before it starts. "
+        "Off: it starts from wherever the game is, which must be that checkpoint's start.",
+        LockMode::LOCK_WHILE_RUNNING,
+        true
     )
     , GO_HOME_WHEN_DONE(false)
     , NOTIFICATIONS({
@@ -97,6 +103,7 @@ AutoStory::AutoStory()
 {
     PA_ADD_OPTION(RANGE);
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
+    PA_ADD_OPTION(LOAD_SAVE_FIRST);
     PA_ADD_OPTION(BATTLE_AI);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
@@ -118,8 +125,9 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
 
     //  A run that starts after the new game starts from the latest save
     //  (01.01: the platform autosave), not from wherever the game is, and
-    //  stops if that save is older than its start.
-    if (!story_row_starts_without_save(rows[first])){
+    //  stops if that save is older than its start; unless LOAD_SAVE_FIRST
+    //  is off.
+    if (!story_row_starts_without_save(rows[first]) && LOAD_SAVE_FIRST){
         const Outcome loaded = load_checkpoint_start(game, backend, rows[first]);
         if (!loaded.succeeded()){
             throw OperationFailedException(

@@ -49,8 +49,8 @@ double banner_yellow_share(const ImageViewRGB32& screen, const ImageFloatBox& bo
 //  165, 240, 125): green over 180, over red by 40 and over blue by 70.
 double complete_green_share(const ImageViewRGB32& screen, const ImageFloatBox& box);
 
-//  `box` moved `dx` pixels (of 1920) right.
-ImageFloatBox shifted(ImageFloatBox box, double dx);
+//  `box` moved `dx` pixels (of 1920) right and `dy` pixels (of 1080) down.
+ImageFloatBox shifted(ImageFloatBox box, double dx, double dy = 0);
 
 
 template <typename Matches>
