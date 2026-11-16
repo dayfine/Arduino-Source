@@ -24,6 +24,7 @@
 #include "PokemonLZA_AutoStoryLines.h"
 #include "PokemonLZA_AutoStoryMarkerWalk.h"
 #include "PokemonLZA_AutoStoryZoneSearch.h"
+#include "PokemonLZA_AutoStoryZoneStart.h"
 #include "PokemonLZA_AutoStoryCatches.h"
 
 namespace PokemonAutomation{
@@ -126,9 +127,9 @@ namespace{
 
 //  Wild Zone 1's two spots on its road, as distances from the objective
 //  marker, the user's pick (2026-11-13): 100, the plaza by the green
-//  advertising column, and 60, just before the far gate.
-//  walk_back_to_zone_road() walks back onto the road at them.
-constexpr int ROAD_SPOTS[] = {100, 60};
+//  advertising column (the search spot), and 60, just before the far
+//  gate. walk_back_to_zone_road() walks back onto the road at them.
+constexpr int ROAD_SPOTS[] = {ZONE_SPOT_DISTANCE, 60};
 
 //  How far short of a road stop still counts as there: the walk back to 60
 //  from nearer the gate stopped at 58 once (console B, 2026-11-14).
@@ -140,6 +141,13 @@ constexpr int ROAD_FLOOR = ROAD_SPOTS[std::size(ROAD_SPOTS) - 1] - ROAD_STOP_SLA
 constexpr Milliseconds STOP_WALK_LIMIT(30000);
 //  A walk with no distance read to start from is the longest.
 constexpr Milliseconds FIRST_WALK_LIMIT(90000);
+
+//  The way out of Taunie's rocks (ZoneStart): steps west, LEAVE_STEP
+//  each with the stick straight on after face_heading(), a distance read
+//  after each. Not measured on console: a few steps clear the rocks.
+constexpr double WEST_HEADING = 270;
+constexpr Milliseconds LEAVE_STEP(1000);
+constexpr size_t LEAVE_STEPS = 4;
 
 //  catch_in_zone()'s time in the zone: spawns come back, so a search that
 //  finds nothing new keeps going until this runs out.
@@ -377,22 +385,116 @@ bool face_marker(StoryEnv& env, PlzaBackend& backend){
     return false;
 }
 
-//  One leg of the search: the camera onto the objective marker, an agreed
-//  distance read (read_marker_distance()) for ZoneSearch::leg()'s floor,
-//  then LEG_HOLD that way. With no marker found the leg is taken by the
-//  camera as it is, logged.
-void walk_leg(StoryEnv& env, PlzaBackend& backend, ZoneSearch& search){
+//  The camera level and onto the objective marker, then an agreed
+//  distance read (read_marker_distance()). None when the marker was not
+//  found or no read agreed.
+std::optional<int> read_at_marker(StoryEnv& env, PlzaBackend& backend){
     level_camera(env);
-    const bool faced = face_marker(env, backend);
-    const std::optional<int> distance = faced ? read_marker_distance(env, backend, std::nullopt) : std::nullopt;
+    if (!face_marker(env, backend)){
+        backend.log("[PLZA] catch_in_zone: no objective marker found to read");
+        return std::nullopt;
+    }
+    return read_marker_distance(env, backend, std::nullopt);
+}
+
+//  One leg of the search: an agreed distance read (read_at_marker()) for
+//  ZoneSearch::leg()'s floor, then LEG_HOLD that way, the camera on the
+//  marker. With no marker found the leg is taken by the camera as it is,
+//  logged.
+void walk_leg(StoryEnv& env, PlzaBackend& backend, ZoneSearch& search){
+    const std::optional<int> distance = read_at_marker(env, backend);
     const ZoneLeg leg = search.leg(distance);
     const ZoneOffset at = search.offset();
     backend.log(std::format(
-        "[PLZA] catch_in_zone: nothing new in a full turn: a leg {} ({}, distance {}), now {} toward and {} right of the start in legs",
-        leg_name(leg), faced ? "facing the marker" : "no marker: by the camera as it is",
-        distance ? std::to_string(*distance) : std::string("not read"), at.toward, at.right
+        "[PLZA] catch_in_zone: nothing new in a full turn: a leg {} (distance {}), now {} toward and {} right of the spot in legs",
+        leg_name(leg), distance ? std::to_string(*distance) : std::string("not read"), at.toward, at.right
     ));
     pbf_move_left_joystick(env.context, leg_stick(leg), LEG_HOLD, /*release=*/Milliseconds(300));
+}
+
+//  The marker walk from `at` to the search spot (ZONE_SPOT_DISTANCE):
+//  back from the objective when nearer it, else on toward it, never below
+//  ROAD_FLOOR. Returns the last read taken.
+std::optional<int> walk_to_zone_spot(StoryEnv& env, PlzaBackend& backend, int at, Milliseconds limit){
+    backend.log(std::format("[PLZA] catch_in_zone: the marker walk to {} on the road, from {}", ZONE_SPOT_DISTANCE, at));
+    if (at < ZONE_SPOT_DISTANCE){
+        return walk_back_from_marker(env, backend, ZONE_SPOT_DISTANCE, limit);
+    }
+    return walk_toward_marker(env, backend, ZONE_SPOT_DISTANCE, ROAD_FLOOR, limit);
+}
+
+//  After a catch, a fight or a round of legs: the marker walk back to the
+//  search spot, so the legs go out from it again (ZoneSearch::at_spot()).
+//  Short of it, the legs go on from where the player stands, logged.
+void back_to_zone_spot(StoryEnv& env, PlzaBackend& backend, ZoneSearch& search){
+    const std::optional<int> at = read_at_marker(env, backend);
+    const std::optional<int> reached = at ? walk_to_zone_spot(env, backend, *at, STOP_WALK_LIMIT) : std::nullopt;
+    if (at_zone_spot(reached)){
+        search.at_spot();
+        return;
+    }
+    backend.log(std::format(
+        "[PLZA] catch_in_zone: not back at the spot (last read {}): the legs go on from here",
+        reached ? std::to_string(*reached) : std::string("none")
+    ));
+}
+
+std::string_view start_move_name(ZoneStartMove move){
+    switch (move){
+    case ZoneStartMove::LEAVE_WEST:
+        return "a step west out of the rocks";
+    case ZoneStartMove::WALK_TO_SPOT:
+        return "the marker walk to the spot";
+    case ZoneStartMove::SEARCH:
+        return "at the spot: the search";
+    case ZoneStartMove::ROCKS_NOT_LEFT:
+        return "still no read after every step west: stop";
+    case ZoneStartMove::SPOT_NOT_REACHED:
+        return "the marker walk ended off the spot: stop";
+    }
+    return "?";
+}
+
+//  From the start save at Taunie's rocks to the search spot (ZoneStart):
+//  steps west by the minimap (face_heading()) until a distance read
+//  agrees, then the marker walk to the spot. Fails as "heading_missed",
+//  "rocks_not_left" or "zone_spot_not_reached", before any search.
+Pokemon::Outcome go_to_zone_spot(StoryEnv& env, PlzaBackend& backend){
+    ZoneStart start(LEAVE_STEPS);
+    std::optional<int> distance = read_at_marker(env, backend);
+    while (true){
+        backend.scope().throw_if_cancelled();
+        const ZoneStartMove move = start.next(distance);
+        backend.log(std::format(
+            "[PLZA] catch_in_zone: distance {}: {}",
+            distance ? std::to_string(*distance) : std::string("not read"), start_move_name(move)
+        ));
+        switch (move){
+        case ZoneStartMove::LEAVE_WEST:{
+            const Pokemon::Outcome faced = face_heading(env, backend, WEST_HEADING);
+            if (!faced.succeeded()){
+                return faced;
+            }
+            pbf_move_left_joystick(env.context, /*position=*/{0, 1}, LEAVE_STEP, /*release=*/Milliseconds(300));
+            distance = read_at_marker(env, backend);
+            continue;
+        }
+        case ZoneStartMove::WALK_TO_SPOT:
+            distance = walk_to_zone_spot(env, backend, *distance, FIRST_WALK_LIMIT);
+            continue;
+        case ZoneStartMove::SEARCH:
+            return Pokemon::outcome_ok();
+        case ZoneStartMove::ROCKS_NOT_LEFT:
+            return Pokemon::outcome_failed("rocks_not_left", std::format(
+                "no agreed marker read after {} steps west of Taunie's rocks", LEAVE_STEPS
+            ));
+        case ZoneStartMove::SPOT_NOT_REACHED:
+            return Pokemon::outcome_failed("zone_spot_not_reached", std::format(
+                "the marker walk to {} ended at {}", ZONE_SPOT_DISTANCE,
+                distance ? std::to_string(*distance) : std::string("no agreed read")
+            ));
+        }
+    }
 }
 
 //  A throw at the target ZL is held on, then weaken_and_throw() when it
@@ -439,6 +541,7 @@ SearchResult search_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoa
             walk_leg(env, backend, search);
             continue;
         case ZoneMove::PAUSE:
+            back_to_zone_spot(env, backend, search);
             backend.log(std::format("[PLZA] catch_in_zone: every leg walked out and back: standing {} s for spawns", SEARCH_PAUSE.count() / 1000));
             level_camera(env);
             backend.wait(SEARCH_PAUSE);
@@ -453,6 +556,7 @@ SearchResult search_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoa
         if (party_done(result.slots, goal)){
             break;
         }
+        back_to_zone_spot(env, backend, search);
     }
     return result;
 }
@@ -492,6 +596,10 @@ Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCa
     if (party_done(slots, goal)){
         backend.log("[PLZA] catch_in_zone: the party already holds the species: nothing to catch");
         return Pokemon::outcome_ok();
+    }
+    const Pokemon::Outcome at_spot = go_to_zone_spot(env, backend);
+    if (!at_spot.succeeded()){
+        return at_spot;
     }
     const SearchResult result = search_zone(env, backend, goal, slots);
     if (party_done(result.slots, goal)){

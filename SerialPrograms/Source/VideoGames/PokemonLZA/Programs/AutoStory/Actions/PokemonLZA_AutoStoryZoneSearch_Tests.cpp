@@ -13,6 +13,7 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonLZA_AutoStoryZoneSearch.h"
+#include "PokemonLZA_AutoStoryZoneStart.h"
 #include "PokemonLZA_AutoStoryZoneSearch_Tests.h"
 
 namespace PokemonAutomation{
@@ -62,6 +63,12 @@ std::vector<ZoneMove> empty_scan_moves(const std::vector<ZoneMove>& ends, std::v
 }
 
 template <typename Type>
+std::vector<Type> operator+(std::vector<Type> front, const std::vector<Type>& back){
+    front.insert(front.end(), back.begin(), back.end());
+    return front;
+}
+
+template <typename Type>
 std::vector<Type> repeated(const std::vector<Type>& values, size_t times){
     std::vector<Type> out;
     for (size_t i = 0; i < times; i++){
@@ -80,6 +87,9 @@ struct SearchCase{
         std::vector<ZoneLook> looks;
         //  The agreed marker distance read before each leg (none: no read).
         std::optional<int> distance;
+        //  Each catch and fight ends with a walk back that reaches the
+        //  search spot (ZoneSearch::at_spot()).
+        bool back_at_spot_after_catch = false;
     };
     Input input;
     struct Expectation{
@@ -127,6 +137,14 @@ const SearchCase SEARCH_CASES[] = {
         .input = {.looks = empty_scans(5), .distance = 61},
         .expectation = {.moves = empty_scan_moves(ROUND_ENDS), .legs = ROUND, .furthest = 1, .end = {}},
     },
+    {
+        .name = "a catch walked back to the search spot starts the legs from the spot again",
+        .input = {.looks = empty_scans(2, empty_scans(1, {}) + std::vector<ZoneLook>{NEW}), .back_at_spot_after_catch = true},
+        .expectation = {
+            .moves = empty_scan_moves({WALK, WALK}, empty_scan_moves({WALK}, {}) + std::vector<ZoneMove>{CATCH}),
+            .legs = {AWAY, TOWARD, AWAY}, .furthest = 1, .end = {},
+        },
+    },
 };
 
 template <typename Type>
@@ -151,6 +169,9 @@ UnitTestResult check_search(const SearchCase& test){
     for (ZoneLook look : test.input.looks){
         const ZoneMove move = search.look(look);
         moves.push_back(move);
+        if (test.input.back_at_spot_after_catch && (move == ZoneMove::CATCH || move == ZoneMove::FIGHT)){
+            search.at_spot();
+        }
         if (move != ZoneMove::WALK){
             continue;
         }
@@ -183,12 +204,98 @@ private:
     SearchCase m_case;
 };
 
+
+constexpr ZoneStartMove LEAVE_WEST = ZoneStartMove::LEAVE_WEST;
+constexpr ZoneStartMove WALK_TO_SPOT = ZoneStartMove::WALK_TO_SPOT;
+constexpr ZoneStartMove SEARCH = ZoneStartMove::SEARCH;
+constexpr ZoneStartMove ROCKS_NOT_LEFT = ZoneStartMove::ROCKS_NOT_LEFT;
+constexpr ZoneStartMove SPOT_NOT_REACHED = ZoneStartMove::SPOT_NOT_REACHED;
+
+//  Steps west before the start gives up on leaving the rocks.
+constexpr size_t WEST_STEPS = 3;
+
+struct StartCase{
+    std::string name;
+    struct Input{
+        //  The agreed marker distance after each move, from the read at the
+        //  start on (none: no read taken).
+        std::vector<std::optional<int>> reads;
+    };
+    Input input;
+    struct Expectation{
+        std::vector<ZoneStartMove> moves;
+    };
+    Expectation expectation;
+};
+
+const StartCase START_CASES[] = {
+    {
+        .name = "at the rocks with no read: west until the reads agree, the marker walk to 100, then the search",
+        .input = {.reads = {std::nullopt, std::nullopt, 128, 101}},
+        .expectation = {.moves = {LEAVE_WEST, LEAVE_WEST, WALK_TO_SPOT, SEARCH}},
+    },
+    {
+        .name = "at the rocks with a read: still one step west first",
+        .input = {.reads = {120, 118, 99}},
+        .expectation = {.moves = {LEAVE_WEST, WALK_TO_SPOT, SEARCH}},
+    },
+    {
+        .name = "already on the road at 100: the search starts there",
+        .input = {.reads = {104}},
+        .expectation = {.moves = {SEARCH}},
+    },
+    {
+        .name = "the walk to 100 ends with no agreed read: stop, no search at the rocks",
+        .input = {.reads = {std::nullopt, 125, std::nullopt}},
+        .expectation = {.moves = {LEAVE_WEST, WALK_TO_SPOT, SPOT_NOT_REACHED}},
+    },
+    {
+        .name = "the walk to 100 ends held up short of it: stop",
+        .input = {.reads = {std::nullopt, 125, 122}},
+        .expectation = {.moves = {LEAVE_WEST, WALK_TO_SPOT, SPOT_NOT_REACHED}},
+    },
+    {
+        .name = "no agreed read after every step west: stop",
+        .input = {.reads = {std::nullopt, std::nullopt, std::nullopt, std::nullopt}},
+        .expectation = {.moves = {LEAVE_WEST, LEAVE_WEST, LEAVE_WEST, ROCKS_NOT_LEFT}},
+    },
+};
+
+//  catch_in_zone()'s way to the spot: each read decides the next move.
+UnitTestResult check_start(const StartCase& test){
+    ZoneStart start(WEST_STEPS);
+    std::vector<ZoneStartMove> moves;
+    for (const std::optional<int>& read : test.input.reads){
+        moves.push_back(start.next(read));
+    }
+    if (moves != test.expectation.moves){
+        return std::format("expected moves {}; got moves {}", text(test.expectation.moves), text(moves));
+    }
+    return true;
+}
+
+class StartTest : public UnitTest{
+public:
+    explicit StartTest(StartCase test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - ZoneStart: {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return check_start(m_case);
+    }
+private:
+    StartCase m_case;
+};
+
 } // namespace
 
 
 void add_tests_AutoStoryZoneSearch(UnitTestDatabase& database){
     for (const SearchCase& test : SEARCH_CASES){
         database.add<SearchTest>(test);
+    }
+    for (const StartCase& test : START_CASES){
+        database.add<StartTest>(test);
     }
 }
 

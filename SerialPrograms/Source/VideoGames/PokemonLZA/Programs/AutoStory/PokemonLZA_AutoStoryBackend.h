@@ -22,6 +22,7 @@
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
+#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGameChoices.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAdvanceArrowDetector.h"
@@ -54,6 +55,12 @@ using PlzaBackend = Pokemon::StoryBackend<Pokemon::ZonePose>;
 //  as the story was recorded: L recenters the camera behind the player,
 //  then the stick is tapped that way for 150 ms. The tap also takes a step.
 void story_turn(PlzaBackend& backend, double degrees);
+
+//  Turns the player to `heading` on the minimap (upstream's
+//  get_facing_direction(): 0 up, 90 right) with story_turn(), 4 turns at
+//  most, then L puts the camera behind the player, so a run forward goes
+//  that way (console B, 2026-11-14). Fails as "heading_missed".
+Pokemon::Outcome face_heading(StoryEnv& env, PlzaBackend& backend, double heading);
 
 
 //  PLZA on the console: the controller and PlzaScreenObserver.

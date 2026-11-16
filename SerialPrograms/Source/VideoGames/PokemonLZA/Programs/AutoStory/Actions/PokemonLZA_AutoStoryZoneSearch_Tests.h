@@ -14,8 +14,9 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers ZoneSearch's tests: searches replayed look by look, each WALK
-//  taking the leg ZoneSearch picks.
+//  Registers ZoneSearch's tests, searches replayed look by look, each WALK
+//  taking the leg ZoneSearch picks, and ZoneStart's, ways to the search
+//  spot replayed read by read.
 void add_tests_AutoStoryZoneSearch(UnitTestDatabase& database);
 
 

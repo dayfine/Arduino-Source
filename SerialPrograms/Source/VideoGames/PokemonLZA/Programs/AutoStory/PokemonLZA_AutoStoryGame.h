@@ -94,8 +94,9 @@ namespace PokemonLZA{
 //                              heading faced first
 //      "leave_zone_gate"       console_only: A through a zone's gate on the
 //                              way out (upstream's leave_zone_gate())
-//      "catch_in_zone"         console_only: 03.08's patrol of Wild Zone 1's
-//                              road until the party bar shows 5 species
+//      "catch_in_zone"         console_only: 03.08's way from Taunie's rocks
+//                              to the road's spot at 100, then a search
+//                              there until the party bar shows 5 species
 //      "walk_back_to_zone_road"    console_only: back onto Wild Zone 1's
 //                              road at the catch spot by the far gate
 //
