@@ -184,38 +184,45 @@ void keep_awake_if_due(ProControllerContext& context, WallClock& next, Seconds i
 }
 
 
-//  Logs sparse collection milestones while the thresholds are still moving.
-static void log_calibration_progress(
+//  Logs sparse collection milestones until a provisional state is found.
+static void log_search_progress(
     const BlinkRecoveryConfig& config,
     size_t events,
+    size_t search_updates,
     SingleSwitchProgramEnvironment& env
 ){
-    const bool milestone = events == 1
-        || events == config.min_rolls_to_try
-        || (events < config.min_rolls_to_try && events % 5 <= 1);
-    if (!milestone){
+    if (events < config.min_rolls_to_try){
+        if (events != 1 && events % 5 != 0){
+            return;
+        }
+        env.log(std::format(
+            "Calibrating blink detection: {}/{} rolls collected.",
+            events, config.min_rolls_to_try
+        ));
         return;
     }
-    env.log(std::format(
-        "Calibrating blink detection: {}/{} rolls collected.",
-        events, config.min_rolls_to_try
-    ));
+    if (search_updates == 1 || search_updates % 5 == 0){
+        env.log(std::format(
+            "Still searching for the first RNG state: {} rolls available.", events
+        ));
+    }
 }
 
-//  Updates the option display and reports the active calibration or confirmation phase.
+//  Reports the active calibration or confirmation phase.
 static void report_blink_progress(
     const BlinkRecoveryConfig& config,
     size_t events,
+    size_t search_updates,
     bool have_candidate,
     size_t candidate_events,
-    SingleSwitchProgramEnvironment& env,
-    BlinkCollectionDisplay& display
+    SingleSwitchProgramEnvironment& env
 ){
-    display.set_progress(events, config.min_rolls_to_try + config.confirmation_events);
     if (!have_candidate){
-        log_calibration_progress(config, events, env);
+        log_search_progress(config, events, search_updates, env);
         return;
     }
+    //  confirmation_events is deliberately small (six by default), so report
+    //  every fresh roll in this bounded phase.
     size_t confirmed = std::min(events - candidate_events, config.confirmation_events);
     env.log(std::format(
         "Confirming the provisional RNG state: {}/{} additional rolls collected.",
@@ -242,6 +249,7 @@ BlinkRecovery recover_state_from_blinks(
     std::vector<size_t> estimated_from(watchers.size(), 0);
 
     bool have_candidate = false;
+    size_t search_updates = 0;
     Xorshift128State candidate;
     size_t candidate_events = 0;
     std::vector<WallClock> newest_blink(watchers.size(), WallClock::min());
@@ -311,6 +319,7 @@ BlinkRecovery recover_state_from_blinks(
                 longest = &stream;
             }
         }
+        display.set_progress(events, config.min_rolls_to_try + config.confirmation_events);
         //  don't trim if there is a candidate (the solution is pinned to the earliest blink)
         if (!have_candidate){
             trim_to_window(watchers, streams, origin, config.window_events / streams.size());
@@ -332,7 +341,10 @@ BlinkRecovery recover_state_from_blinks(
         if (!fresh){
             continue;
         }
-        report_blink_progress(config, events, have_candidate, candidate_events, env, display);
+        if (!have_candidate && events >= config.min_rolls_to_try){
+            search_updates++;
+        }
+        report_blink_progress(config, events, search_updates, have_candidate, candidate_events, env);
 
         if (longest->size() < 3){
             continue;
@@ -371,7 +383,6 @@ BlinkRecovery recover_state_from_blinks(
         }
         if (!solved.success){
             failed_solves++;
-            env.log(std::to_string(events) + " rolls seen, no solution yet.");
             continue;
         }
         failed_solves = 0;
