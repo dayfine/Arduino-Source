@@ -60,27 +60,30 @@ void log_calibration_start(size_t rolls, SingleSwitchProgramEnvironment& env){
 }
 
 //  Logs why the program remains at the blink position and how it guards the clock.
-void log_target_wait(uint64_t press_advance, double wait_seconds, SingleSwitchProgramEnvironment& env){
+void log_target_wait(
+    uint64_t press_advance,
+    double wait_seconds,
+    Seconds reanchor_interval,
+    SingleSwitchProgramEnvironment& env
+){
     env.log(std::format(
-        "Waiting at the blink position for press advance {} (about {}s); re-anchoring every 30s.",
-        press_advance, tostr_default(wait_seconds)
+        "Waiting at the blink position for press advance {} (about {}s); re-anchoring every {}s.",
+        press_advance, tostr_default(wait_seconds), reanchor_interval.count()
     ), COLOR_BLUE);
 }
 
 //  Logs every scheduled input before the blind timeline begins.
 void log_blind_timeline(
     uint64_t press_advance,
-    double starly_seconds,
-    double select_seconds,
-    double confirm_seconds,
+    const PressSchedule& schedule,
     uint64_t accept_advance,
     SingleSwitchProgramEnvironment& env
 ){
     env.log(std::format(
         "Blind timeline starts at advance {}. Starly press at {}s, selecting at {}s, "
         "confirming at {}s, on advance {}.",
-        press_advance, tostr_default(starly_seconds), tostr_default(select_seconds),
-        tostr_default(confirm_seconds), accept_advance
+        press_advance, tostr_default(schedule.starly_seconds), tostr_default(schedule.select_seconds),
+        tostr_default(schedule.confirm_seconds), accept_advance
     ), COLOR_BLUE);
 }
 
@@ -547,7 +550,7 @@ BdspStarterAttemptResult run_starter_rng_attempt(
     ).count();
     env.log("Target advance " + std::to_string(target_advance) + ": " + target.to_string(),
         COLOR_BLUE);
-    log_target_wait(press_advance, wait_seconds, env);
+    log_target_wait(press_advance, wait_seconds, blink_config.reanchor_interval, env);
     env.log("Schedule spans " + std::to_string(schedule.span) + " advances, confirming after "
         + std::to_string(schedule.blinks_before_confirm) + " Starly blink(s), "
         + tostr_default(schedule.confirm_seconds) + "s in"
@@ -573,8 +576,7 @@ BdspStarterAttemptResult run_starter_rng_attempt(
     state_display.set_advances(press_advance);
 
     log_blind_timeline(
-        press_advance, schedule.starly_seconds, schedule.select_seconds, schedule.confirm_seconds,
-        target_advance - timeline.advances_after_accept, env
+        press_advance, schedule, target_advance - timeline.advances_after_accept, env
     );
 
     std::string sequence_failure;
@@ -592,7 +594,6 @@ BdspStarterAttemptResult run_starter_rng_attempt(
 
     state_display.set_advances(target_advance);
 
-    env.log("Checking the battle animation, then reporting the target hit or signed advance miss.", COLOR_BLUE);
     DoublesShinyDetection wild;
     ShinyDetectionResult own;
     detect_shiny_battle(
