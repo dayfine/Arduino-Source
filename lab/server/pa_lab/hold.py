@@ -26,13 +26,17 @@ DROVE = ('ui_start', 'ui_stop', 'user_input')
 
 def read_hold(lab_dir: Path) -> Optional[Dict[str, str]]:
     """The hold `Lab/hold` names, or None when there is none or it names no owner. An
-    `acquired_at` that is not a contract timestamp becomes the file's modification time."""
+    `acquired_at` that is not a contract timestamp becomes the file's modification time. A file
+    that is there but cannot be read (no permission, a folder, not UTF-8) is a hold: owner
+    `unknown`, reason `unreadable`."""
     path = Path(lab_dir) / HOLD_FILE
     try:
         text = path.read_text(encoding='utf-8')
         mtime = path.stat().st_mtime
     except (FileNotFoundError, NotADirectoryError):
         return None
+    except (OSError, UnicodeDecodeError):
+        return {'owner': 'unknown', 'reason': 'unreadable', 'acquired_at': timestamps.format(_mtime(path))}
     fields = {}
     for line in text.splitlines():
         key, sep, value = line.partition('=')
@@ -48,6 +52,13 @@ def read_hold(lab_dir: Path) -> Optional[Dict[str, str]]:
     return {'owner': fields['owner'], 'reason': fields.get('reason') or 'unknown', 'acquired_at': acquired_at}
 
 
+def _mtime(path: Path) -> float:
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return timestamps.wall_clock()
+
+
 def write_hold(lab_dir: Path, reason: str, now: Callable[[], float] = timestamps.wall_clock) -> Dict[str, str]:
     """Puts the user hold on, unless one is already on; returns the hold in force."""
     held = read_hold(lab_dir)
@@ -55,7 +66,7 @@ def write_hold(lab_dir: Path, reason: str, now: Callable[[], float] = timestamps
         return held
     hold = {'owner': 'user', 'reason': reason, 'acquired_at': timestamps.format(now())}
     path = Path(lab_dir) / HOLD_FILE
-    tmp = path.with_name(HOLD_FILE + '.part')
+    tmp = path.with_name('{}.part.{}'.format(HOLD_FILE, os.getpid()))
     tmp.write_text(''.join('{}={}\n'.format(k, hold[k]) for k in ('owner', 'reason', 'acquired_at')),
                    encoding='utf-8')
     os.replace(tmp, path)

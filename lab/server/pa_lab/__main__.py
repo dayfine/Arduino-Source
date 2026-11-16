@@ -153,9 +153,10 @@ def _lease(path: str, action: str, console: str) -> int:
     released = False
     try:
         if action == 'claim-user':
+            # The store first: a refused claim leaves no hold file behind.
+            lease = plane.claim_user(console)
             if lab_dir is not None:
                 hold.write_hold(lab_dir, 'operator_claim')
-            lease = plane.claim_user(console)
         elif action == 'release-user':
             # The file first: the app and the lab scripts read it, not the store.
             released = lab_dir is not None and hold.clear_hold(lab_dir)

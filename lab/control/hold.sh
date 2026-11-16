@@ -9,8 +9,8 @@
 # The hold is the file Lab/hold in the console's profile ($LAB_PROFILE, else lab-B's):
 # owner=, reason=, acquired_at= lines (app Lab.md "User hold", lab/server/pa_lab/hold.py).
 # The app writes it when the user clicks Start or Stop or presses through its window; while it is on,
-# the app's lab channel refuses presses and starts, and labctl.sh, labrun.sh, labB.sh and keepawake.sh
-# refuse too. Nothing takes it off by itself: only "hold.sh off" or "pa_lab lease release-user".
+# the app's lab channel refuses presses and starts, and labctl.sh, labrun.sh and cfr.sh refuse too
+# (as do the local ~/BDSPLab copies of labB.sh and keepawake.sh, which are not in this repo). Nothing takes it off by itself: only "hold.sh off" or "pa_lab lease release-user".
 # "off" also runs release-user when the lab server is configured ($PA_LAB_CONFIG, default
 # ~/.config/pa-lab/server.json), with $PA_LAB_PYTHON and pa_lab from $PA_LAB_SERVER.
 P=${LAB_PROFILE:-$HOME/Library/Application Support/SerialPrograms/Profiles/lab-B}
@@ -23,8 +23,8 @@ case $1 in
 on)
     if held; then echo "already $(describe)"; exit 0; fi
     mkdir -p "$P/Lab" || exit 1
-    printf 'owner=user\nreason=%s\nacquired_at=%s\n' "${2:-hold_sh}" "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" > "$F.part" \
-        && mv "$F.part" "$F" || exit 1
+    printf 'owner=user\nreason=%s\nacquired_at=%s\n' "${2:-hold_sh}" "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" > "$F.part.$$" \
+        && mv "$F.part.$$" "$F" || exit 1
     describe;;
 off)
     if held; then was=$(describe); else was=; fi

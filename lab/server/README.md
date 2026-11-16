@@ -273,7 +273,10 @@ when the app reports the run's stop (back to `agent_idle` with a fresh TTL) or a
 A UI Start/Stop in `Lab/state.json` (`last_transition.source == 'ui'`) revokes any agent lease and
 installs `user`, with no timeout, and so does the user's hold file `Lab/hold` (`pa_lab/hold.py`;
 the app writes it when the user drives the console, `hold.sh on` by hand). Only the operator ends it;
-`release-user` also removes `Lab/hold`, `claim-user` writes it, and `hold.sh off` runs `release-user`:
+`release-user` also removes `Lab/hold`, `claim-user` writes it (after the store accepts the claim), and
+`hold.sh off` runs `release-user`. The store keeps the release time, so a hold file read just before
+the release cannot install `user` again; a hold file that is there but unreadable counts as held
+(owner `unknown`, reason `unreadable`):
 
 ```sh
 python3 -m pa_lab lease --config ~/.config/pa-lab/server.json show|claim-user|release-user

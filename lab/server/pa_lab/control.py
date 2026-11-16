@@ -78,6 +78,11 @@ def _clock_time(at: str) -> str:
     return at[11:16]
 
 
+def _released_key(console: str) -> str:
+    """The `meta` key of the time the operator last released `console` (`release_user`)."""
+    return 'user_released_at:' + console
+
+
 def _transition_key(instance_id: str, transition: Dict[str, Any]) -> str:
     return _json([instance_id, transition['at'], transition['action'], transition['source'],
                   transition['request_id']])
@@ -411,15 +416,23 @@ class ControlPlane:
             return lease_doc(self._lease_row(conn, console))
 
     def release_user(self, console: str) -> Dict[str, Any]:
-        """The operator says the user is done (CLI only; an agent token cannot end a user lease)."""
+        """The operator says the user is done (CLI only; an agent token cannot end a user lease).
+
+        Records the release time even when the store holds no user lease: a hold file read before
+        the release (by an `observe` that commits after it) then installs nothing (`_apply_hold`)."""
         self._check_console(console)
         with self._writing() as conn:
+            conn.execute('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)',
+                         (_released_key(console), self._stamp()))
             row = self._lease_row(conn, console)
-            if row['state'] != 'user':
-                raise Refused('invalid_arguments', 'Console {} is {}, not held by the user.'.format(
-                    console, row['state']), field='console')
-            self._set_lease(conn, console, 'operator_release', **self._freed())
-            return lease_doc(self._lease_row(conn, console))
+            held = row['state'] == 'user'
+            if held:
+                self._set_lease(conn, console, 'operator_release', **self._freed())
+            lease = lease_doc(self._lease_row(conn, console))
+        if not held:
+            raise Refused('invalid_arguments', 'Console {} is {}, not held by the user.'.format(
+                console, lease['state']), field='console')
+        return lease
 
     # ---- reconciliation -----------------------------------------------------------------------
 
@@ -658,8 +671,13 @@ class ControlPlane:
                         run_request_id=None, run_instance_id=None, run_started_at=None)
 
     def _apply_hold(self, conn, console: str, hold: Optional[Dict[str, str]], instance_id: Optional[str]) -> None:
-        if hold is not None:
-            self._take_over(conn, console, hold['acquired_at'], hold_module.takeover_reason(hold), instance_id)
+        """Installs the user lease for `hold`, unless the operator released the console after it was put on."""
+        if hold is None:
+            return
+        released = self._meta(conn, _released_key(console), '')
+        if released and timestamps.parse(hold['acquired_at']) <= timestamps.parse(released):
+            return
+        self._take_over(conn, console, hold['acquired_at'], hold_module.takeover_reason(hold), instance_id)
 
     def _take_over(self, conn, console: str, at: str, reason: str, instance_id: Optional[str]) -> None:
         row = self._lease_row(conn, console)

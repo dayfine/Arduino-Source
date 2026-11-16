@@ -10,9 +10,10 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 from pa_lab import __main__ as cli
-from pa_lab import config, hold, lab_reader, status
+from pa_lab import config, control, hold, lab_reader, status, timestamps
 from tests.control_fixtures import acquire, app_state, clock, open_plane, renew, temp_db_path
 from tests.fake_lab import FakeClock, FakeLab, golden
 
@@ -50,6 +51,22 @@ class ReadHoldTests(unittest.TestCase):
                     (lab / 'hold').write_bytes(case['input'].encode('utf-8'))
                     os.utime(lab / 'hold', (1000, 1000))
                 self.assertEqual(hold.read_hold(lab), case['expectation'])
+
+    def test_an_unreadable_hold_is_a_hold(self):
+        cases = [
+            dict(name='not UTF-8', input=b'owner=us\xffer\n'),
+            dict(name='a folder', input=None),
+        ]
+        for case in cases:
+            with self.subTest(case['name']):
+                lab = temp_lab(self)
+                if case['input'] is None:
+                    (lab / 'hold').mkdir()
+                else:
+                    (lab / 'hold').write_bytes(case['input'])
+                os.utime(lab / 'hold', (1000, 1000))
+                self.assertEqual(hold.read_hold(lab), {'owner': 'unknown', 'reason': 'unreadable',
+                                                       'acquired_at': '1970-01-01T00:16:40.000Z'})
 
     def test_write_keeps_the_hold_in_force_and_clear_removes_it(self):
         lab = temp_lab(self)
@@ -113,6 +130,26 @@ class StoredLeaseTests(unittest.TestCase):
         self.assertEqual(self.plane.release_user('B')['state'], 'free')
         self.assertEqual(self.plane.observe('B', app_state(None, 'stopped', INSTANCE), None)['state'], 'free')
 
+    def test_a_hold_read_before_the_release_does_not_come_back(self):
+        self.plane.observe('B', app_state(None, 'stopped', INSTANCE), self.HOLD)
+        self.clock.sleep(60)
+        self.assertEqual(self.plane.release_user('B')['state'], 'free')
+        # An observe() that read the file just before release-user removed it commits after the release.
+        self.assertEqual(self.plane.observe('B', app_state(None, 'stopped', INSTANCE), self.HOLD)['state'], 'free')
+
+    def test_a_hold_put_on_after_the_release_holds(self):
+        self.plane.observe('B', app_state(None, 'stopped', INSTANCE), self.HOLD)
+        self.plane.release_user('B')
+        self.clock.sleep(60)
+        later = dict(self.HOLD, acquired_at=timestamps.format(self.clock.now()))
+        self.assertEqual(self.plane.observe('B', app_state(None, 'stopped', INSTANCE), later)['state'], 'user')
+
+    def test_a_refused_release_still_outlasts_a_hold_read_before_it(self):
+        self.clock.sleep(60)
+        with self.assertRaises(control.Refused):
+            self.plane.release_user('B')
+        self.assertEqual(self.plane.observe('B', app_state(None, 'stopped', INSTANCE), self.HOLD)['state'], 'free')
+
 
 class LeaseCommandTests(unittest.TestCase):
     """`python3 -m pa_lab lease claim-user|release-user` writes and removes `Lab/hold` too."""
@@ -144,6 +181,13 @@ class LeaseCommandTests(unittest.TestCase):
         self.assertIsNone(hold.read_hold(self.lab))
         self.assertIn('"state": "free"', self.lease('show')[1])
 
+    def test_a_refused_claim_writes_no_hold(self):
+        refused = control.Refused('invalid_arguments', 'no')
+        with mock.patch.object(control.ControlPlane, 'claim_user', side_effect=refused):
+            code, out = self.lease('claim-user')
+        self.assertEqual(code, 1, out)
+        self.assertIsNone(hold.read_hold(self.lab))
+
     def test_release_of_a_hold_the_store_never_saw(self):
         (self.lab / 'hold').write_text('owner=user\nreason=user_input\n')
         code, out = self.lease('release-user')
@@ -161,6 +205,16 @@ class ConsoleStatusTests(unittest.TestCase):
         doc = status.ProfileStatus('B', profile, find_app=lambda name: None).console_status()
         self.assertEqual(doc['hold'], {'owner': 'user', 'reason': 'ui_start', 'acquired_at': '2026-11-15T21:04:05.120Z'})
         self.assertEqual(doc['console_state']['lease']['owner'], 'user')
+
+    def test_console_status_survives_an_unreadable_hold(self):
+        tmp = tempfile.TemporaryDirectory(prefix='pa-lab-hold-status-')
+        self.addCleanup(tmp.cleanup)
+        profile = Path(tmp.name) / 'lab-B'
+        (profile / 'Lab').mkdir(parents=True)
+        (profile / 'Lab' / 'hold').write_bytes(b'owner=\xff\n')
+        doc = status.ProfileStatus('B', profile, find_app=lambda name: None).console_status()
+        self.assertEqual(doc['hold']['reason'], 'unreadable')
+        self.assertEqual(doc['console_state']['lease']['state'], 'user')
 
 
 if __name__ == '__main__':

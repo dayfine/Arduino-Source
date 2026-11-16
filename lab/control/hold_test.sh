@@ -16,6 +16,9 @@ ok "check says how to release" 'sh $here/hold.sh check 2>&1 | grep -q "hold.sh o
 ok "labctl start refused" 'sh $here/labctl.sh start 2>/dev/null; [ $? = 4 ]'
 ok "labctl send refused" 'echo "press A" | sh $here/labctl.sh send x 2>/dev/null; [ $? = 4 ]'
 ok "labctl keepawake on refused" 'sh $here/labctl.sh keepawake on 2>/dev/null; [ $? = 4 ]'
+mkdir -p "$T/cfr/inbox" "$T/cfr/outbox"
+ok "cfr.sh refused" 'echo "press A" | CFR_DIR=$T/cfr sh $here/../scripts/cfr.sh held 2>/dev/null; [ $? = 4 ]'
+ok "cfr.sh queues nothing while held" '[ -z "$(ls "$T/cfr/inbox")" ]'
 ok "labctl state still reads" 'printf "state=STOPPED\n" > "$LAB_PROFILE/Lab/state"; sh $here/labctl.sh state | grep -q STOPPED'
 printf 'owner=user\r\nreason=user_input\r\nacquired_at=2026-11-15T21:04:05.120Z\r\n' > "$LAB_PROFILE/Lab/hold"
 ok "reads the app's CRLF file" '[ "$(sh $here/hold.sh status)" = "held by user since 2026-11-15T21:04:05.120Z (user_input)" ]'
