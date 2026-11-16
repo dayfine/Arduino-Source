@@ -44,7 +44,13 @@ bool story_row_starts_without_save(const Pokemon::StoryCheckpoint& row);
 //      the talk is for (03.02);
 //    - a "story_battle" after "story_battle_start", which presses through
 //      the talk and cards to the battle HUD: the battle code run on the
-//      overworld looks for a battle for 2 min (03.02b).
+//      overworld looks for a battle for 2 min (03.02b);
+//    - a scene ("a", MASH) after what starts it (a walk, a talk, a choice,
+//      a battle), not after a step that presses through its scenes until
+//      control (a scene, "mash_to_move_hints", "talk_to_pokedex_screen",
+//      "talk_through_map_screen"): a scene that follows with nothing to
+//      start it plays inside that step, and the scene step then waits 45 s
+//      on the party bar for it (03.04's after_pokedex).
 std::vector<std::string> story_row_lead_in_errors(const Pokemon::StoryCheckpoint& row);
 
 

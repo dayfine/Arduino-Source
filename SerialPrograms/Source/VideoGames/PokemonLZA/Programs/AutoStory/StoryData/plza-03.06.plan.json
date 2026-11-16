@@ -12,7 +12,7 @@
       {
         "id": "out_of_pokemon_center",
         "kind": "game_action",
-        "why": "UNVERIFIED, NEEDS CONSOLE: from the nurse's counter after 03.05's heal back to where 03.04's scene left the player, facing as it did, so the legs below (measured from there) still hold. Reverses 03.05's back_to_nurse (right, then into the counter): turn around, walk back 1.5 s (that walk is under 2 s; the time back is a guess), then right to face as the scene left the player.",
+        "why": "UNVERIFIED, NEEDS CONSOLE: from the nurse's counter after 03.05's heal, out of the Center to where 03.04's scene left the player (outside, by the door; console B 2026-11-16), facing as it did, so the legs below (step 56, recorded right after 03.04's scene) still hold. These legs only reverse an in-Center walk to the counter and do not leave the Center; the way out is not measured. not planned: Lumiose has no tile grid to plan a route target on.",
         "action": "walk",
         "args": {
           "legs": [[180, 1500], [90, 0]]

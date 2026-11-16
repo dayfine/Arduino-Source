@@ -70,7 +70,7 @@ const StoryDataCase STORY_DATA_CASES[] = {
             "01.00:new_game:autosave 01.01:from_save:unverified 01.02:from_save:unverified 01.03:from_save:unverified "
             "02.01:from_save:unverified 02.02:from_save:unverified 02.03:from_save:unverified 02.04:from_save:unverified "
             "02.05:from_save:unverified 02.06:from_save:autosave 02.07:from_save:unverified "
-            "03.01:from_save:unverified 03.02:from_save:autosave 03.02b:from_save 03.03:from_save:autosave 03.04:from_save "
+            "03.01:from_save:unverified 03.02:from_save:autosave 03.02b:from_save 03.03:from_save:autosave 03.04:from_save:autosave "
             "03.05:from_save:autosave 03.06:from_save 03.07:from_save:autosave 03.08:from_save:autosave 03.08b:from_save "
             "03.09:from_save:unverified "
             "03.10:from_save:autosave 03.11:from_save:unverified"
@@ -187,6 +187,40 @@ const LintCase LINT_CASES[] = {
             .step = {.kind = Pokemon::StoryStepKind::GAME, .name = "b", .why = "", .action = "story_battle", .args = {}},
         },
         .expectation = {.errors = "01.01 b: a story battle must follow story_battle_start, which ends on the battle HUD"},
+    },
+    {
+        .name = "a scene after a talk passes",
+        .input = {
+            .before = {
+                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk_to_prompt", .args = {}},
+                {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
+            },
+            .step = {.kind = Pokemon::StoryStepKind::MASH, .name = "s", .why = "", .action = "a", .args = {}},
+        },
+        .expectation = {.errors = ""},
+    },
+    {
+        //  console B, 2026-11-16: 03.04's talk_to_pokedex_screen played the
+        //  nurse's wrap-up and Taunie's scene to control, and the scene step
+        //  after it waited 45 s on the party bar for a scene already played.
+        .name = "a scene after talk_to_pokedex_screen fails",
+        .input = {
+            .before = {{.kind = Pokemon::StoryStepKind::GAME, .name = "p", .why = "", .action = "talk_to_pokedex_screen", .args = {}}},
+            .step = {.kind = Pokemon::StoryStepKind::MASH, .name = "s", .why = "", .action = "a", .args = {}},
+        },
+        .expectation = {.errors = "01.01 s: a scene must follow what starts it, not talk_to_pokedex_screen, which plays its scenes through to control"},
+    },
+    {
+        .name = "a scene after a scene fails",
+        .input = {
+            .before = {
+                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk_to_prompt", .args = {}},
+                {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
+                {.kind = Pokemon::StoryStepKind::MASH, .name = "s1", .why = "", .action = "a", .args = {}},
+            },
+            .step = {.kind = Pokemon::StoryStepKind::MASH, .name = "s2", .why = "", .action = "a", .args = {}},
+        },
+        .expectation = {.errors = "01.01 s2: a scene must follow what starts it, not a, which plays its scenes through to control"},
     },
     {
         .name = "a checkpoint's first step cannot be a talk",

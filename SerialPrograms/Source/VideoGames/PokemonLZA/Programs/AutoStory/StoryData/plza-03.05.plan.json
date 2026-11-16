@@ -6,13 +6,13 @@
     "title": "Heal at the Pokemon Center",
     "start": {
       "place": "LumioseCity",
-      "spot": "PokemonCenter"
+      "spot": "PokemonCenterDoor"
     },
     "events": [
       {
         "id": "back_to_nurse",
         "kind": "game_action",
-        "why": "back to the nurse after 03.04's scene: turn right and walk into the counter, which faces her (user, console B, 2026-11-13); the counter stops the walk, so 2 s is safe; on until the prompt, 3 s at most. not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
+        "why": "UNVERIFIED, NEEDS CONSOLE: from 03.04's end outside the Pokemon Center (console B 2026-11-16) back in to the nurse. These legs are from inside the Center (turn right, walk into the counter that faces her; user, console B, 2026-11-13) and do not reach her from outside; the walk in from the door is not measured. not planned: Lumiose has no tile grid to plan a route target on; the walk ends on the A prompt it goes to.",
         "action": "walk",
         "args": {
           "legs": [[90, 3000]],
@@ -33,7 +33,7 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "added 2026-11-13 so Main Mission 03 has a backup save to retry from; no console recording of its steps: every step is unverified and needs console. Autosave: the heal's save was seen in a run log (2026-11-15 save review)."
+      "source": "added 2026-11-13 so Main Mission 03 has a backup save to retry from; no console recording of its steps: every step is unverified and needs console. It is not in the 2026-11-08 recording (03.04 is steps 53-55, 03.06 starts at step 56), and 03.04 now ends on the game's autosave outside the Center (console B 2026-11-16), which may already give Main Mission 03 the save to retry from: whether the heal is still needed is the user's call. Autosave: the heal's save was seen in a run log (2026-11-15 save review)."
     }
   },
   "execution": {
