@@ -45,10 +45,6 @@ struct ItemUses{
 //  Uses `item` up to `count` times from the bag.
 ItemUses use_items_from_bag(Logger& logger, ItemUseActions& actions, std::string_view item, size_t count);
 
-//  Uses the strongest Repel the bag holds: a Max Repel, else a Super
-//  Repel, else a Repel (a use_repel step). NONE_LEFT if it holds none.
-ItemUseEnd use_strongest_repel(Logger& logger, ItemUseActions& actions);
-
 //  Whether a use_item step that ended with `end` has done its job: the
 //  item used, or a Repel used before still on. With `if_any` (the step's
 //  arg), also when the bag has none left: the walk goes on without it

@@ -20,6 +20,7 @@
 #include "PokemonFRLG_AutoStoryBag.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryPocketList.h"
+#include "PokemonFRLG_AutoStoryRepelStep.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 
 namespace PokemonAutomation{
@@ -140,6 +141,10 @@ std::string item_use_end_name(ItemUseEnd end){
 
 namespace{
 
+//  The Repel a use_repel step's renewals start from: repel_renew_order()
+//  tries it, then the weaker ones.
+const std::string STRONGEST_REPEL = "max-repel";
+
 //  After USE on the Repel `item`: what the game said, LINGERED if one
 //  was still on. A message not read is taken as used, as before it was
 //  read.
@@ -234,6 +239,16 @@ ItemUses use_items_from_bag(Logger& logger, ItemUseActions& actions, std::string
 }
 ItemUseEnd use_strongest_repel(Logger& logger, ItemUseActions& actions){
     return with_bag_row(logger, actions, repel_renew_order(STRONGEST_REPEL, std::nullopt), /*registers=*/false);
+}
+std::optional<std::string> repel_put_on_by(const Pokemon::StoryStep& step){
+    if (step.action == USE_REPEL_VARIANT){
+        return STRONGEST_REPEL;
+    }
+    const std::optional<std::string> item = parse_use_item_step(step);
+    if (item && is_repel(*item)){
+        return item;
+    }
+    return std::nullopt;
 }
 ItemUseEnd register_item_in_bag(Logger& logger, ItemUseActions& actions, std::string_view item){
     return with_bag_row(logger, actions, {std::string(item)}, true);

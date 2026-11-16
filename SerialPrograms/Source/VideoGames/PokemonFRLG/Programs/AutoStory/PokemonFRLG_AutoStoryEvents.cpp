@@ -22,9 +22,8 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
-#include "PokemonFRLG_AutoStoryBag.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
-#include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryRepelStep.h"
 #include "PokemonFRLG_AutoStoryStartMenu.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryCenterHeal.h"
@@ -562,6 +561,7 @@ void pace_trainer_battle(StoryEnv& env, RunState& state, const StoryStep& step, 
 std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const StoryStep& step){
     const Pokemon::Pose patch = state.pose;
     ConsoleMartActions mart(env.console, env.context, env.language, env.supplies);
+    ConsoleMartSellActions mart_sell(env.console, env.context, env.language);
     ConsoleTeachScreens teach_screens(env.console, env.context, env.language);
     ScreenTeachActions teach(env.console.logger(), teach_screens);
     ConsoleGrindActions grind(
@@ -572,7 +572,7 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
         [&]{ pace_trainer_battle(env, state, step, patch); }
     );
     ConsoleChoiceActions choice(env.console, env.context);
-    StoryAbilities abilities{console_member_reader(env.console, env.context, env.language, StartMenu::FULL), mart, teach, grind, choice, console_species_finder(env.console, env.context, env.language, env.party), &env.party, &env.supplies.lead};
+    StoryAbilities abilities{console_member_reader(env.console, env.context, env.language, StartMenu::FULL), mart, mart_sell, teach, grind, choice, console_species_finder(env.console, env.context, env.language, env.party), &env.party, &env.supplies.lead};
     if (const std::optional<GrindPlan> plan = step.action == GRIND_CHECK_ACTION ? grind_plan_of(step.args) : std::nullopt){
         if (grind_reached_already(env.console.logger(), grind, abilities.members, *plan)){
             state.flags.insert(step.name);
@@ -692,8 +692,8 @@ Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
     ConsolePcStorageActions pc(env.console, env.context);
     std::optional<Outcome> done = run_field_game_step(env.console, env.context, env.language, env.player_gender, step, env.party);
     if (done && done->succeeded()){
-        if (const auto item = step.action == USE_REPEL_VARIANT ? std::optional<std::string>(STRONGEST_REPEL) : parse_use_item_step(step); item && is_repel(*item)){
-            env.supplies.repel = *item;
+        if (const std::optional<std::string> repel = repel_put_on_by(step)){
+            env.supplies.repel = *repel;
             env.supplies.repel_menu = step_start_menu(step.args);
         }
     }

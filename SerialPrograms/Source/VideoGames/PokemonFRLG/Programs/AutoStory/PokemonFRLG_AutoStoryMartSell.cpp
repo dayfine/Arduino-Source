@@ -2,19 +2,17 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The Mart's SELL and its money box on the console, and what the clerk
- *  pays.
+ *  The Mart's SELL on the console, and what the clerk pays.
  *
  */
 
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_MoneyBoxReader.h"
 #include "PokemonFRLG_AutoStoryPresses.h"
 #include "PokemonFRLG_AutoStoryBag.h"
-#include "PokemonFRLG_AutoStoryMart.h"
+#include "PokemonFRLG_AutoStoryMartBuys.h"
+#include "PokemonFRLG_AutoStoryMartSell.h"
 #include "PokemonFRLG_AutoStoryPocketList.h"
 
 namespace PokemonAutomation{
@@ -58,16 +56,13 @@ std::optional<size_t> sale_price(std::string_view item){
 }
 
 
-std::optional<size_t> ConsoleMartActions::read_money(){
-    m_context.wait_for_all_requests();
-    const VideoSnapshot screen = m_console.video().snapshot();
-    if (!screen){
-        return std::nullopt;
-    }
-    return read_money_box(m_console.logger(), screen);
-}
+ConsoleMartSellActions::ConsoleMartSellActions(ConsoleHandle& console, ProControllerContext& context, Language language)
+    : m_console(console)
+    , m_context(context)
+    , m_language(language)
+{}
 
-SaleEnd ConsoleMartActions::sell(const MartLine& sale){
+SaleEnd ConsoleMartSellActions::sell(const MartLine& sale){
     //  "May I help you?" BUY, SELL, SEE YA!: SELL, and the bag slides in.
     //  Not timed on the console: the BUY waits.
     pbf_press_button(m_context, BUTTON_A, 160ms, 2000ms);
@@ -115,7 +110,7 @@ SaleEnd ConsoleMartActions::sell(const MartLine& sale){
     return back_to_clerk(SaleEnd::SOLD);
 }
 
-SaleEnd ConsoleMartActions::back_to_clerk(SaleEnd end){
+SaleEnd ConsoleMartSellActions::back_to_clerk(SaleEnd end){
     //  B out of the bag to the clerk's menu, B (SEE YA!) and through
     //  "Please come again!".
     pbf_press_button(m_context, BUTTON_B, 160ms, 1500ms);

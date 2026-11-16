@@ -36,6 +36,7 @@
 #include "PokemonFRLG_AutoStoryConsoleFailure_Tests.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryRepelStep.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryPlanGolden.h"
 #include "PokemonFRLG_AutoStoryPlanGolden10.h"

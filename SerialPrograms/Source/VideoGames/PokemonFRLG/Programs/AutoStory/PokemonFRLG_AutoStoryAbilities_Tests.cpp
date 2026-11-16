@@ -41,6 +41,10 @@ public:
     virtual PurchaseEnd buy(const MartBuy&) override{ return PurchaseEnd::FAILED; }
     virtual bool leave() override{ return true; }
     virtual std::optional<size_t> read_money() override{ return std::nullopt; }
+};
+
+class StubMartSell : public MartSellActions{
+public:
     virtual SaleEnd sell(const MartLine&) override{ return SaleEnd::FAILED; }
 };
 
@@ -78,6 +82,7 @@ public:
 struct StubGame{
     std::optional<unsigned> level = 16;
     StubMart mart;
+    StubMartSell mart_sell;
     StubTeach teach;
     StubPatch patch;
     StubFossils fossils;
@@ -136,7 +141,7 @@ std::string run_step(StubGame& game, const Pokemon::StoryStep& step){
         }
         return MemberInfo{.species = "squirtle", .level = game.level, .moves = {"water-gun", "surf"}};
     };
-    StoryAbilities abilities{members, game.mart, game.teach, game.patch, game.fossils};
+    StoryAbilities abilities{members, game.mart, game.mart_sell, game.teach, game.patch, game.fossils};
     const std::optional<Pokemon::Outcome> outcome = run_ability_game_step(logger, nullptr, step, abilities);
     if (!outcome){
         return "none";
@@ -237,7 +242,7 @@ UnitTestResult test_teach_records_fly_user(){
         return MemberInfo{.species = "squirtle", .level = 16, .moves = {"water-gun", "surf"}};
     };
     PartyCache party;
-    StoryAbilities abilities{members, game.mart, game.teach, game.patch, game.fossils, {}, &party};
+    StoryAbilities abilities{members, game.mart, game.mart_sell, game.teach, game.patch, game.fossils, {}, &party};
     run_ability_game_step(logger, nullptr, teach_step("teach_surf", "", {.item = "hm03", .move = "surf", .member = 0}), abilities);
     run_ability_game_step(logger, nullptr, teach_step("teach_tm", "", {.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "water-gun"}), abilities);
     const std::optional<FieldMoveUser> user = party.users().find("surf");
@@ -304,7 +309,7 @@ UnitTestResult test_teach_updates_battle_lead(){
     PartyMember lead = member_from_summary(
         "blastoise", 43, {{"bite", 25, 25}, {"water-pulse", 20, 20}, {"surf", 14, 15}, {"dig", 10, 10}}, std::nullopt
     );
-    StoryAbilities abilities{members, game.mart, teach, game.patch, game.fossils, {}, nullptr, &lead};
+    StoryAbilities abilities{members, game.mart, game.mart_sell, teach, game.patch, game.fossils, {}, nullptr, &lead};
     const Pokemon::StoryStep step = teach_step("teach_blizzard", "", {.item = "tm14", .move = "blizzard", .member = 0, .forget_move = "dig"});
     run_ability_game_step(logger, nullptr, step, abilities);
     if (lead.moves.size() != 4 || lead.moves[3].move != "blizzard" || lead.moves[3].pp != 5 || lead.moves[2].pp != 14){
@@ -315,7 +320,7 @@ UnitTestResult test_teach_updates_battle_lead(){
         return "expected Blizzard against Venusaur after the TEACH.";
     }
     LearningTeach other({"bite", "water-pulse", "surf", "blizzard"});
-    StoryAbilities second{members, game.mart, other, game.patch, game.fossils, {}, nullptr, &lead};
+    StoryAbilities second{members, game.mart, game.mart_sell, other, game.patch, game.fossils, {}, nullptr, &lead};
     run_ability_game_step(logger, nullptr, teach_step("teach_slot2", "", {.item = "tm13", .move = "ice-beam", .member = 1, .forget_move = "surf"}), second);
     if (lead.moves[2].move != "surf"){
         return "a TEACH to party slot 2 changed the lead's moves.";

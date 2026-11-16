@@ -22,6 +22,7 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryBagUse.h"
+#include "PokemonFRLG_AutoStoryRepelStep.h"
 #include "PokemonFRLG_AutoStoryBag.h"
 #include "PokemonFRLG_AutoStoryFieldSteps.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"

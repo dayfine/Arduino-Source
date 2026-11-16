@@ -64,15 +64,6 @@ enum class PurchaseEnd{
     FAILED,
 };
 
-//  How selling one line ended.
-enum class SaleEnd{
-    //  "Turned over the <item> and received $N.": back facing the clerk.
-    SOLD,
-    //  The pocket has none of the item: back facing the clerk.
-    NONE_IN_BAG,
-    FAILED,
-};
-
 //  The game steps a Mart step takes, injected so its decisions run in
 //  tests.
 class MartActions{
@@ -99,9 +90,6 @@ public:
     virtual bool leave() = 0;
     //  On the list: the money box's amount; nothing if it can't be read.
     virtual std::optional<size_t> read_money() = 0;
-    //  Facing the clerk: talk, SELL, `sale.quantity` of `sale.item` from
-    //  its pocket, YES, out of the bag and the menu, facing the clerk again.
-    virtual SaleEnd sell(const MartLine& sale) = 0;
 };
 
 
