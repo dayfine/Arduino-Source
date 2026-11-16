@@ -995,7 +995,6 @@ Pokemon::SegmentReport run_plza_segments(
     return total;
 }
 
-
 } // namespace PokemonLZA
 } // namespace NintendoSwitch
 } // namespace PokemonAutomation

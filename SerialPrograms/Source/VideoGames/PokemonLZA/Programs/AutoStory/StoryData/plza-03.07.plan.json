@@ -50,6 +50,7 @@
     }
   },
   "execution": {
-    "save": "autosave"
+    "save": "autosave",
+    "autosave_step": "after_catches"
   }
 }

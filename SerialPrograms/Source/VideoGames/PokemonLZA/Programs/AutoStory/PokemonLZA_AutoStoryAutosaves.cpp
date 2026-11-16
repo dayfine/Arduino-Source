@@ -27,6 +27,16 @@ namespace{
 //  the same autosave.
 constexpr Milliseconds AUTOSAVE_DEBOUNCE = 5000ms;
 
+//  The step after the step named `step` in `row`, if there is one.
+std::optional<std::string_view> step_after(const Pokemon::StoryCheckpoint& row, std::string_view step){
+    for (size_t index = 0; index + 1 < row.steps.size(); index++){
+        if (row.steps[index].name == step){
+            return row.steps[index + 1].name;
+        }
+    }
+    return std::nullopt;
+}
+
 //  `inner` with every look noted in `sightings` as taken in step `step`.
 //  code-health: allow public_methods -- forwards every call of the engine's backend to the wrapped one unchanged
 class SightingBackend : public PlzaBackend{
@@ -86,6 +96,7 @@ void AutosaveSightings::restart(){
     m_origin.reset();
     m_last_badge.reset();
     m_seen_in.reset();
+    m_last_seen_in.reset();
 }
 
 void AutosaveSightings::note(PlzaBackend& backend, const Pokemon::Observation<ZonePose>& look, std::string_view step){
@@ -100,16 +111,44 @@ void AutosaveSightings::note(PlzaBackend& backend, const Pokemon::Observation<Zo
     if (!m_seen_in){
         m_seen_in = std::string(step);
     }
+    m_last_seen_in = std::string(step);
     if (new_sighting){
         const double seconds = (double)std::chrono::duration_cast<Milliseconds>(look.when - *m_origin).count() / 1000;
         backend.log(std::format("[PLZA] autosave badge at {:.1f}s in {}", seconds, step));
     }
 }
 
-bool AutosaveSightings::finish(){
-    m_last_end_seen = m_seen_in.has_value();
+std::optional<std::string> AutosaveSightings::finish(std::string_view last_step){
+    std::optional<std::string> seen_in = std::move(m_last_seen_in);
+    m_last_end_seen = seen_in == last_step;
     restart();
-    return m_last_end_seen;
+    return seen_in;
+}
+
+
+std::optional<std::string> autosave_step_error(
+    const Pokemon::StoryCheckpoint& row, Pokemon::StoryRowSave save, std::optional<std::string_view> autosave_step
+){
+    if (!autosave_step){
+        if (save == Pokemon::StoryRowSave::AUTOSAVE){
+            return std::format("{}: \"save\": \"autosave\" needs \"autosave_step\", the step a run log showed the badge in", row.id);
+        }
+        return std::nullopt;
+    }
+    bool found = false;
+    for (const Pokemon::StoryStep& step : row.steps){
+        found = found || step.name == *autosave_step;
+    }
+    if (!found){
+        return std::format("{}: autosave_step {} is not one of its steps", row.id, *autosave_step);
+    }
+    if (const std::optional<std::string_view> next = step_after(row, *autosave_step)){
+        return std::format(
+            "{}: the game autosaves in {}, before {}: the next checkpoint reloads that save, so end {} at {} and start the next one with {}",
+            row.id, *autosave_step, *next, row.id, *autosave_step, *next
+        );
+    }
+    return std::nullopt;
 }
 
 
@@ -125,9 +164,19 @@ Pokemon::StoryGame<ZonePose> with_autosave_sightings(
         };
     }
     game.save = [rows, &sightings](Pokemon::StoryBackend<ZonePose>& backend, const Pokemon::StoryCheckpoint& checkpoint){
-        if (sightings.finish()){
+        const std::string_view last_step = checkpoint.steps.empty() ? std::string_view() : std::string_view(checkpoint.steps.back().name);
+        const std::optional<std::string> seen_in = sightings.finish(last_step);
+        if (sightings.last_end_seen()){
             backend.log(std::format("[Save] {}: the game autosaved (seen)", checkpoint.id));
             return Pokemon::outcome_ok();
+        }
+        if (seen_in){
+            const std::string_view next = step_after(checkpoint, *seen_in).value_or(last_step);
+            backend.log(std::format(
+                "[Save] {}: the game autosaved in {}, before {}: not saved, a reload would skip {}",
+                checkpoint.id, *seen_in, next, next
+            ));
+            return Pokemon::outcome_not_saved("autosaved before the last step");
         }
         if (rows.unverified_autosaves.contains(checkpoint.id)){
             return Pokemon::outcome_not_saved("save unverified");
