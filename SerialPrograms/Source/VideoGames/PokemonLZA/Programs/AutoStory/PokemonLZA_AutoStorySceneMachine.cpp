@@ -111,7 +111,7 @@ constexpr Milliseconds CONTROLS_HINT_HOLD = 1000ms;
 constexpr Milliseconds PARTY_BAR_HOLD = 1000ms;
 //  How long the screen stays free of text, fades and the banner after the
 //  last of end_after_black_fades' fades before the scene counts as over:
-//  the player can move 5 s after 01.01's second fade at the latest.
+//  the player can move 5 s after 01.01's third fade at the latest.
 constexpr Milliseconds FADE_SETTLE = 5000ms;
 //  The longest a fade is waited out in one step.
 constexpr Milliseconds FADE_WAIT = 30000ms;
