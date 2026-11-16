@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <format>
+#include <utility>
 #include "Pokemon/Navigation/Pokemon_GateTiles.h"
 #include "PokemonFRLG_CodedRooms.h"
 #include "PokemonFRLG_FlyMap.h"
@@ -431,6 +432,19 @@ void OverworldSim::regrow_cut_trees(){
         regrow_cut_gates(m_state.gate_maps, m_state.gates);
         read_gates();
     }
+}
+
+void OverworldSim::battle_after_warp(Milliseconds fade_end){
+    if (!m_script.battle_after_warp || std::exchange(m_battle_after_warp_done, true)){
+        return;
+    }
+    const Milliseconds pressed = fade_end + *m_script.battle_after_warp;
+    m_state.wild_battles++;
+    m_wild_battle_from = pressed;
+    m_battle_pending = true;
+    schedule(pressed + m_script.timing.flash, SimScreen::BATTLE_FLASH, false);
+    schedule(pressed + m_script.timing.battle_screen, SimScreen::BATTLE, false);
+    note(std::format("a wild battle on {}, after the warp.", to_string(m_state.position)));
 }
 
 bool OverworldSim::push_poster_switch(){

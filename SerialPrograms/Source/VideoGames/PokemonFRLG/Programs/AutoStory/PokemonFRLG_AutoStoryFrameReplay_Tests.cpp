@@ -37,7 +37,7 @@ using namespace std::chrono_literals;
 
 const WallClock T0 = WallClock() + std::chrono::hours(1);
 
-//  As the walk's WARP_TIMEOUT (PokemonFRLG_OverworldWalk.cpp).
+//  As the walk's WARP_TIMEOUT (PokemonFRLG_OverworldWalkWatches.h).
 constexpr Milliseconds WARP_WAIT = 8000ms;
 
 //  A one-tile walk onto a door: a tile's time, then the release.

@@ -214,6 +214,8 @@ private:
     void regrow_cut_trees();
     bool after_step(const Step& step, Milliseconds pressed);
     bool wild_battle(Milliseconds pressed);
+    //  SimScript::battle_after_warp, once, after a warp's fade ending at `fade_end`.
+    void battle_after_warp(Milliseconds fade_end);
     std::optional<SimEncounter> next_encounter();
     bool rolls_encounter(int rate);
     bool drops_turn_tap();
@@ -246,6 +248,7 @@ private:
     bool m_frozen = false;
     //  A battle is on screen or about to show.
     bool m_battle_pending = false;
+    bool m_battle_after_warp_done = false;
     //  The trainer (an object of the player's map) whose message is up or
     //  about to show, and whose battle follows it.
     std::optional<size_t> m_trainer_speaking;
@@ -503,7 +506,7 @@ private:
     size_t clear_unseen_battle(const RouteStep& step);
     bool battle_on_its_way() const;
     void clear(const Interrupt& interrupt);
-    void hold_to_warp(const RouteStep& step);
+    std::optional<WarpBattle> hold_to_warp(const RouteStep& step);
     StepEnd watch_for_trainer(const RouteStep& step, const TrainerCrossing& crossing);
     bool moved_past_wall(const RouteStep& step);
     void check_overworld(const RouteStep& step);
@@ -522,6 +525,8 @@ private:
     //  and whether its map was dark then.
     Milliseconds m_leg_start{0};
     bool m_leg_dark = false;
+    //  The last warp was taken, then a wild battle on the new map (WarpBattle::AFTER).
+    bool m_warped_into_battle = false;
     //  Whether the walker takes the player to ride the Bicycle, and the
     //  speed of the step under way.
     bool m_riding = false;
