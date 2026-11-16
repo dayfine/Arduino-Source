@@ -293,3 +293,10 @@ every event after an active cursor (one used in the last 7 days), every event of
 and every pending record; finished records go after 7 days. A cursor behind the compacted range
 is refused (`invalid_arguments`, field `after_seq`, `evidence.compacted_through`), never served
 with a silent gap.
+
+## User pages
+
+`GUIDE.md` is the user-facing overview; `guide/*.md` has one page per feature, marked DRAFT
+until it is built and switched on. A PR that builds or switches on part of a feature updates
+its page in the same PR: the status line at the top, the tool tables, and the DRAFT banner when
+the feature is done.
