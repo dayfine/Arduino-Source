@@ -48,6 +48,7 @@ enum class SceneScreen{
     HINT_SHOWING,   //  wait: the controls hint, not held a second yet
     TALK_PROMPT,    //  terminal: an A prompt ("A Talk") on the overworld, held a second, past min_length
     PROMPT_SHOWING, //  wait, no press: the A prompt, not held a second or before min_length
+    ENDED_IN_CONTROL,   //  terminal, failing: with stop_at_battle or stop_at_choice, the party bar held CONTROL_INSTEAD_HOLD with nothing busy
     AWAITING_SCENE, //  wait, no press: with start_window, the HUD up and no scene yet
     NEVER_STARTED,  //  terminal, failing: with start_window, the HUD up and no scene for that long
     QUIET_END,      //  terminal, failing unless quiet_is_control: nothing busy for the quiet time, past the minimum length
@@ -105,6 +106,9 @@ private:
     std::optional<WallClock> m_party_bar_since;
     std::optional<WallClock> m_hint_since;
     std::optional<WallClock> m_prompt_since;
+    //  With stop_at_battle or stop_at_choice: since when the party bar
+    //  shows with nothing busy.
+    std::optional<WallClock> m_control_since;
     //  A scene is under way or has been (scene_under_way()).
     bool m_scene_seen = false;
     //  The looks in a row with the mission banner.
@@ -132,6 +136,12 @@ constexpr Milliseconds PARTY_BAR_HOLD = 1000ms;
 //  Ryon, no party bar and no controls hint; A there restarts his talk
 //  (console B, 2026-11-15, Italian: 3 min of it).
 constexpr Milliseconds PROMPT_HOLD = 1000ms;
+//  With stop_at_battle or stop_at_choice, the party bar showing this long
+//  with nothing busy is the scene over with no battle or choice: it shows
+//  for a moment between a talk's lines, but 03.02b's scene before Taunie
+//  handed control back and the battle start waited 90 s for a battle
+//  (console B, 2026-11-16).
+constexpr Milliseconds CONTROL_INSTEAD_HOLD = 5000ms;
 //  How long the screen stays free of text, fades and the banner after the
 //  last of end_after_black_fades' fades before the scene counts as over:
 //  the player can move 5 s after 01.01's third fade at the latest.
@@ -208,8 +218,8 @@ constexpr SceneScreen ALL_SCREENS[] = {
     SceneScreen::CAN_MOVE, SceneScreen::PARTY_BAR,
     SceneScreen::CONTROLS_HINT, SceneScreen::HINT_SHOWING,
     SceneScreen::TALK_PROMPT, SceneScreen::PROMPT_SHOWING,
-    SceneScreen::AWAITING_SCENE, SceneScreen::NEVER_STARTED, SceneScreen::QUIET_END, SceneScreen::BLIND_PRESS,
-    SceneScreen::SCENE_MOVING, SceneScreen::SCENE_STILL,
+    SceneScreen::ENDED_IN_CONTROL, SceneScreen::AWAITING_SCENE, SceneScreen::NEVER_STARTED, SceneScreen::QUIET_END,
+    SceneScreen::BLIND_PRESS, SceneScreen::SCENE_MOVING, SceneScreen::SCENE_STILL,
 };
 
 //  Starts `since` when `shows` starts, clears it when it stops.
@@ -242,6 +252,7 @@ std::string_view scene_screen_name(SceneScreen screen){
         {SceneScreen::HINT_SHOWING, "hint_showing"},
         {SceneScreen::TALK_PROMPT, "talk_prompt"},
         {SceneScreen::PROMPT_SHOWING, "prompt_showing"},
+        {SceneScreen::ENDED_IN_CONTROL, "ended_in_control"},
         {SceneScreen::AWAITING_SCENE, "awaiting_scene"},
         {SceneScreen::NEVER_STARTED, "never_started"},
         {SceneScreen::QUIET_END, "quiet_end"},
@@ -262,7 +273,7 @@ bool scene_screen_terminal(SceneScreen screen){
     return screen == SceneScreen::BATTLE || screen == SceneScreen::CHOICE || screen == SceneScreen::MISSION_BANNER ||
         screen == SceneScreen::CAN_MOVE || screen == SceneScreen::CONTROLS_HINT || screen == SceneScreen::TALK_PROMPT ||
         screen == SceneScreen::FADE_SETTLED ||
-        screen == SceneScreen::NEVER_STARTED || screen == SceneScreen::QUIET_END;
+        screen == SceneScreen::NEVER_STARTED || screen == SceneScreen::QUIET_END || screen == SceneScreen::ENDED_IN_CONTROL;
 }
 
 //  Whether this state's step presses (DIALOG the config's text button,
@@ -391,6 +402,10 @@ SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
     if (fades_settled(look.when)){
         return SceneScreen::FADE_SETTLED;
     }
+    const bool control_held = m_control_since && look.when - *m_control_since >= CONTROL_INSTEAD_HOLD;
+    if (control_held && look.events.has(ScreenEvent::PLAYER_CAN_MOVE)){
+        return SceneScreen::ENDED_IN_CONTROL;
+    }
     if (m_config.start_window && !m_scene_seen && hud_shows(look)){
         const bool past_window = look.when - m_start >= *m_config.start_window;
         return past_window ? SceneScreen::NEVER_STARTED : SceneScreen::AWAITING_SCENE;
@@ -439,6 +454,8 @@ void SceneTimeline::record(const ScreenObservation& look){
     const bool box = look.events.has(ScreenEvent::DIALOG_BOX);
     const bool party_bar = party_bar_is_control(m_config) && look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
     track_since(party_bar && !box, look.when, m_party_bar_since);
+    const bool control_instead = !party_bar_is_control(m_config) && look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && !busy(look);
+    track_since(control_instead, look.when, m_control_since);
     track_since(look.readings.contains(CONTROLS_HINT_READING) && !box, look.when, m_hint_since);
     track_since(control_prompt_shows(m_config, look) && !box, look.when, m_prompt_since);
     m_banner_looks = look.readings.contains(MISSION_BANNER_READING) && !box ? m_banner_looks + 1 : 0;
@@ -810,6 +827,12 @@ Pokemon::Outcome scene_outcome(
         return Pokemon::outcome_failed("scene_never_started", std::format(
             "{}: the scene never started (player not at its trigger?): the HUD up and no text, choice, battle or cutscene for {} ms (expecting {}).",
             label, config.start_window ? config.start_window->count() : 0, expected
+        ));
+    }
+    if (result.terminal == scene_screen_name(SceneScreen::ENDED_IN_CONTROL)){
+        return Pokemon::outcome_failed("scene_ended_in_control", std::format(
+            "{}: the scene ended in control, the party bar up {} ms with nothing busy (expecting {}).",
+            label, CONTROL_INSTEAD_HOLD.count(), expected
         ));
     }
     if (result.terminal == scene_screen_name(SceneScreen::QUIET_END) && config.quiet_is_control){

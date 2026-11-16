@@ -766,26 +766,44 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .line = "[PLZA] autosave badge at 1.0s in wake_up"},
     },
     {
-        .name = "03.02b walks on to Taunie's A prompt",
+        .name = "03.02b walks on to the plaza scene's A prompt",
         .input = {.checkpoint = "03.02b", .first_step = 0, .steps = 1, .looks = concat(
             std::vector<Observation<ZonePose>>(4, party_bar(Milliseconds(0))), {A_PROMPT}
         )},
         .expectation = {
             .verdict = "done",
             .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk",
-            .line = "[PLZA] to_taunie_at_gate: the end event after 500 ms of the last leg.",
+            .line = "[PLZA] to_plaza_scene_prompt: the end event after 500 ms of the last leg.",
         },
     },
     {
-        .name = "03.02b's walk to Taunie fails with no A prompt within its bound",
+        .name = "03.02b's walk to the plaza scene fails with no A prompt within its bound",
         .input = {.checkpoint = "03.02b", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
-        .expectation = {.verdict = "failed at to_taunie_at_gate: walk_no_end"},
+        .expectation = {.verdict = "failed at to_plaza_scene_prompt: walk_no_end"},
+    },
+    {
+        //  console B, 2026-11-16 (run 3): the first prompt from the reload
+        //  spot starts a scene (a fade, the Smart Rotom card, a fade) that
+        //  hands control back at the arch, Taunie a few steps ahead.
+        .name = "03.02b's plaza scene: A at its prompt, through the fades, done on the party bar held a second",
+        .input = {.checkpoint = "03.02b", .first_step = 1, .steps = 1, .looks = {
+            A_PROMPT, BLACK_FADE,
+            look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(1000)),
+            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(11200)),
+            party_bar(Milliseconds(11800)), party_bar(Milliseconds(12900)),
+        }},
+        .expectation = {.verdict = "done", .line = "[PLZA mash_to_move_hints] done on can_move."},
+    },
+    {
+        .name = "03.02b walks on from the arch to Taunie's A prompt",
+        .input = {.checkpoint = "03.02b", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), A_PROMPT}},
+        .expectation = {.verdict = "done", .inputs = "hold north 250ms walk, hold north 250ms walk"},
     },
     {
         //  console B, 2026-11-16: the walk stopped short of Taunie, under
         //  the Quartiere Verde arch, and the talk's A found no one.
         .name = "03.02b's talk presses nothing without Taunie's A prompt",
-        .input = {.checkpoint = "03.02b", .first_step = 1, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .input = {.checkpoint = "03.02b", .first_step = 3, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {
             .verdict = "failed at talk_to_taunie: talk_no_prompt",
             .inputs = "wait 250ms, wait 250ms, wait 250ms, wait 250ms",
@@ -795,31 +813,31 @@ const RunCase RUN_CASES[] = {
         //  console B, 2026-11-16: A at Taunie dimmed the screen into a
         //  "Smart Rotom" card, with no text box: her talk had started.
         .name = "03.02b's talk to Taunie starts on a tutorial card with no text box",
-        .input = {.checkpoint = "03.02b", .first_step = 1, .steps = 1, .looks = {
+        .input = {.checkpoint = "03.02b", .first_step = 3, .steps = 1, .looks = {
             A_PROMPT, look({ScreenEvent::SCREEN_STILL}, {TUTORIAL_CARD_READING}),
         }},
         .expectation = {.verdict = "done", .inputs = "press A, wait 250ms"},
     },
     {
         .name = "03.02b's talk to Taunie starts on a subtitle: the advance chevron with no text box",
-        .input = {.checkpoint = "03.02b", .first_step = 1, .steps = 1, .looks = {
+        .input = {.checkpoint = "03.02b", .first_step = 3, .steps = 1, .looks = {
             A_PROMPT, look({ScreenEvent::SCREEN_STILL}, {ADVANCE_ARROW_READING}),
         }},
         .expectation = {.verdict = "done", .inputs = "press A, wait 250ms"},
     },
     {
         .name = "03.02b's talk to Taunie starts on a fade",
-        .input = {.checkpoint = "03.02b", .first_step = 1, .steps = 1, .looks = {A_PROMPT, BLACK_FADE}},
+        .input = {.checkpoint = "03.02b", .first_step = 3, .steps = 1, .looks = {A_PROMPT, BLACK_FADE}},
         .expectation = {.verdict = "done", .inputs = "press A, wait 250ms"},
     },
     {
         .name = "03.02b's talk to Taunie starts on a textless cutscene: the screen moving with no HUD",
-        .input = {.checkpoint = "03.02b", .first_step = 1, .steps = 1, .looks = {A_PROMPT, CUTSCENE}},
+        .input = {.checkpoint = "03.02b", .first_step = 3, .steps = 1, .looks = {A_PROMPT, CUTSCENE}},
         .expectation = {.verdict = "done", .inputs = "press A, wait 250ms"},
     },
     {
         .name = "03.02b's battle start: A through Taunie's subtitles and the card, done on the battle HUD",
-        .input = {.checkpoint = "03.02b", .first_step = 2, .steps = 1, .looks = {
+        .input = {.checkpoint = "03.02b", .first_step = 4, .steps = 1, .looks = {
             look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(0)),
             look(/*events=*/{}, {TUTORIAL_CARD_READING}, Milliseconds(500)),
             look({ScreenEvent::BATTLE_STARTED}, /*readings=*/{}, Milliseconds(1000)),
@@ -827,8 +845,29 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .line = "[PLZA story_battle_start] done on battle."},
     },
     {
+        //  console B, 2026-11-16 (run 3): the scene before Taunie handed
+        //  control back with no battle, and the battle start waited 90 s.
+        .name = "a battle start that ends in control, the party bar held 5 s, fails at once",
+        .input = {.checkpoint = "03.02b", .first_step = 4, .steps = 1, .looks = {
+            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(0)),
+            party_bar(Milliseconds(1000)), party_bar(Milliseconds(3000)), party_bar(Milliseconds(6100)),
+        }},
+        .expectation = {.verdict = "failed at taunie_battle_start: scene_ended_in_control"},
+    },
+    {
+        .name = "a battle start goes on through the party bar between the talk's lines",
+        .input = {.checkpoint = "03.02b", .first_step = 4, .steps = 1, .looks = {
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
+            party_bar(Milliseconds(1000)), party_bar(Milliseconds(4000)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(5000)),
+            party_bar(Milliseconds(6000)),
+            look({ScreenEvent::BATTLE_STARTED}, /*readings=*/{}, Milliseconds(9000)),
+        }},
+        .expectation = {.verdict = "done", .line = "[PLZA story_battle_start] done on battle."},
+    },
+    {
         .name = "03.02b's map talk: A and B in turn, done on the party bar held a second",
-        .input = {.checkpoint = "03.02b", .first_step = 6, .steps = 1, .looks = {
+        .input = {.checkpoint = "03.02b", .first_step = 8, .steps = 1, .looks = {
             DIALOG, look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)), party_bar(Milliseconds(4000)), party_bar(Milliseconds(5100)),
         }},
         .expectation = {
@@ -839,7 +878,7 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "03.02b's map talk goes on through the party bar under a text box",
-        .input = {.checkpoint = "03.02b", .first_step = 6, .steps = 1, .looks = {
+        .input = {.checkpoint = "03.02b", .first_step = 8, .steps = 1, .looks = {
             look({ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
             look({ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(2000)),
             party_bar(Milliseconds(4000)), party_bar(Milliseconds(5100)),
@@ -848,7 +887,7 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "03.02b's map talk fails with no party bar in 120 s",
-        .input = {.checkpoint = "03.02b", .first_step = 6, .steps = 1, .looks = {
+        .input = {.checkpoint = "03.02b", .first_step = 8, .steps = 1, .looks = {
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(121000)),
         }},
         .expectation = {.verdict = "failed at after_taunie_battle: map_talk_timeout", .inputs = "press A, press B"},
