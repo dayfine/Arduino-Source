@@ -208,8 +208,8 @@ void StoryWalkSteps::begin_attempt(const std::string& row, const std::vector<Sto
 }
 
 void StoryWalkSteps::begin_step(const StoryStep& step){
-    m_scene_start_already_played = step.kind == Pokemon::StoryStepKind::MASH
-        && std::exchange(m_previous_settle_saw_dialogue, false);
+    const bool previous_settle_saw_dialogue = std::exchange(m_previous_settle_saw_dialogue, false);
+    m_scene_start_already_played = step.kind == Pokemon::StoryStepKind::MASH && previous_settle_saw_dialogue;
 }
 
 void StoryWalkSteps::turn(Direction direction){
