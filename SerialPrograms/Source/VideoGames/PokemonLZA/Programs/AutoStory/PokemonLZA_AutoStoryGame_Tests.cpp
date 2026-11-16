@@ -70,7 +70,7 @@ const StoryDataCase STORY_DATA_CASES[] = {
             "01.00:new_game:autosave 01.01:from_save:unverified 01.02:from_save:unverified 01.03:from_save:unverified "
             "02.01:from_save:unverified 02.02:from_save:unverified 02.03:from_save:unverified 02.04:from_save:unverified "
             "02.05:from_save:unverified 02.06:from_save:autosave 02.07:from_save:unverified "
-            "03.01:from_save:unverified 03.02:from_save 03.03:from_save:autosave 03.04:from_save "
+            "03.01:from_save:unverified 03.02:from_save:autosave 03.02b:from_save 03.03:from_save:autosave 03.04:from_save "
             "03.05:from_save:autosave 03.06:from_save 03.07:from_save:autosave 03.08:from_save:autosave 03.08b:from_save "
             "03.09:from_save:unverified "
             "03.10:from_save:autosave 03.11:from_save:unverified"
@@ -103,6 +103,8 @@ UnitTestResult check_story_data(const StoryDataCase& test){
 struct LintCase{
     std::string name;
     struct Input{
+        //  The steps before `step` in its checkpoint.
+        std::vector<StoryStep> before = {};
         StoryStep step;
     };
     Input input;
@@ -126,12 +128,49 @@ const LintCase LINT_CASES[] = {
         .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
             {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}}, {"end", std::string("sideways")},
         }}},
-        .expectation = {.errors = "01.01 w: \"end\" must be \"fade_white\", \"fade_black\" or \"dialog\""},
+        .expectation = {.errors = "01.01 w: \"end\" must be \"fade_white\", \"fade_black\", \"dialog\" or \"prompt\""},
     },
     {
-        .name = "a talk with no action passes",
-        .input = {.step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}}},
+        .name = "a walk to an A prompt passes",
+        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
+        }}},
         .expectation = {.errors = ""},
+    },
+    {
+        .name = "a talk after a walk to its A prompt passes",
+        .input = {
+            .before = {{.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+                {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
+            }}},
+            .step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
+        },
+        .expectation = {.errors = ""},
+    },
+    {
+        .name = "a talk after walk_to_prompt passes",
+        .input = {
+            .before = {{.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk_to_prompt", .args = {}}},
+            .step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
+        },
+        .expectation = {.errors = ""},
+    },
+    {
+        //  console B, 2026-11-16: 03.02's timed walk to Taunie stopped
+        //  short of her, and the talk's A found no one.
+        .name = "a talk after a timed walk fails",
+        .input = {
+            .before = {{.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+                {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}},
+            }}},
+            .step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
+        },
+        .expectation = {.errors = "01.01 t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\", or walk_to_prompt)"},
+    },
+    {
+        .name = "a checkpoint's first step cannot be a talk",
+        .input = {.step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}}},
+        .expectation = {.errors = "01.01 t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\", or walk_to_prompt)"},
     },
     {
         .name = "an action PLZA does not have fails",
@@ -144,6 +183,7 @@ UnitTestResult check_lint(const LintCase& test){
     StoryCheckpoint checkpoint;
     checkpoint.id = "01.01";
     checkpoint.title = "Test";
+    checkpoint.steps = test.input.before;
     checkpoint.steps.push_back(test.input.step);
     const std::string got = joined(plza_story_lint(checkpoint), "; ");
     if (got != test.expectation.errors){
@@ -501,21 +541,29 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .line = "[Save] 01.02: not saved (save unverified)"},
     },
     {
-        .name = "01.03 walks to Chikorita: a turn left, then 750 ms",
-        .input = {.checkpoint = "01.03", .first_step = 0, .steps = 1, .looks = {look(/*events=*/{}, {CONTROLS_HINT_READING})}},
+        .name = "01.03 walks to Chikorita: a turn left, then on to its A prompt",
+        .input = {.checkpoint = "01.03", .first_step = 0, .steps = 1, .looks = concat(
+            std::vector<Observation<ZonePose>>(5, look(/*events=*/{}, {CONTROLS_HINT_READING})), {A_PROMPT}
+        )},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, press L, stick -70deg 150ms walk, release 100ms, press L, hold north 750ms walk",
+            .inputs = "wait 250ms, press L, stick -70deg 150ms walk, release 100ms, press L, hold north 250ms walk, hold north 250ms walk",
+            .line = "[PLZA] approach_starter: the end event after 500 ms of the last leg.",
         },
     },
     {
-        .name = "01.03's talk to the starter: A, then the text box",
-        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {CUTSCENE, DIALOG}},
-        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms"},
+        .name = "01.03's walk to Chikorita fails with no A prompt in its 750 ms",
+        .input = {.checkpoint = "01.03", .first_step = 0, .steps = 1, .looks = {look(/*events=*/{}, {CONTROLS_HINT_READING})}},
+        .expectation = {.verdict = "failed at approach_starter: walk_no_end"},
+    },
+    {
+        .name = "01.03's talk to the starter: A at its prompt, then the text box",
+        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {A_PROMPT, DIALOG}},
+        .expectation = {.verdict = "done", .inputs = "press A"},
     },
     {
         .name = "01.03's talk fails when no text box shows",
-        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {CUTSCENE}},
+        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {A_PROMPT}},
         .expectation = {.verdict = "failed at talk_to_starter: talk_no_text"},
     },
     {
@@ -602,6 +650,23 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .inputs = "press A, wait 250ms, press A, wait 250ms"},
     },
     {
+        .name = "02.04's walk to the clerk: along the counter, then the turn to her A prompt",
+        .input = {.checkpoint = "02.04", .first_step = 0, .steps = 1, .looks = concat(
+            std::vector<Observation<ZonePose>>(6, party_bar(Milliseconds(0))), {A_PROMPT}
+        )},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "wait 250ms, press L, stick -5deg 150ms walk, release 100ms, press L, hold north 2500ms walk, "
+                "press L, stick -85deg 150ms walk, release 100ms, press L",
+            .line = "[PLZA] to_front_counter: the end event after the last turn.",
+        },
+    },
+    {
+        .name = "02.04's walk to the clerk fails with no A prompt after its last turn",
+        .input = {.checkpoint = "02.04", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .expectation = {.verdict = "failed at to_front_counter: walk_no_end"},
+    },
+    {
         .name = "02.05's elevator: A through its line to the floor choice",
         .input = {.checkpoint = "02.05", .first_step = 2, .steps = 1, .looks = {DIALOG, choice(0, 3)}},
         .expectation = {.verdict = "done", .inputs = "press A"},
@@ -626,6 +691,13 @@ const RunCase RUN_CASES[] = {
             .inputs = "press A, wait 500ms",
             .line = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
         },
+    },
+    {
+        .name = "02.06 holds the stick at 45 degrees to the bed's A prompt",
+        .input = {.checkpoint = "02.06", .first_step = 0, .steps = 1, .looks = {
+            party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), A_PROMPT,
+        }},
+        .expectation = {.verdict = "done", .inputs = "wait 250ms, stick 45deg 250ms walk, stick 45deg 250ms walk"},
     },
     {
         .name = "02.06 with no autosave badge seen is not saved",
@@ -654,8 +726,34 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .line = "[PLZA] autosave badge at 1.0s in wake_up"},
     },
     {
-        .name = "03.02's map talk: A and B in turn, done on the party bar held a second",
-        .input = {.checkpoint = "03.02", .first_step = 6, .steps = 1, .looks = {
+        .name = "03.02b walks on to Taunie's A prompt",
+        .input = {.checkpoint = "03.02b", .first_step = 0, .steps = 1, .looks = concat(
+            std::vector<Observation<ZonePose>>(4, party_bar(Milliseconds(0))), {A_PROMPT}
+        )},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk",
+            .line = "[PLZA] to_taunie_at_gate: the end event after 500 ms of the last leg.",
+        },
+    },
+    {
+        .name = "03.02b's walk to Taunie fails with no A prompt within its bound",
+        .input = {.checkpoint = "03.02b", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .expectation = {.verdict = "failed at to_taunie_at_gate: walk_no_end"},
+    },
+    {
+        //  console B, 2026-11-16: the walk stopped short of Taunie, under
+        //  the Quartiere Verde arch, and the talk's A found no one.
+        .name = "03.02b's talk presses nothing without Taunie's A prompt",
+        .input = {.checkpoint = "03.02b", .first_step = 1, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .expectation = {
+            .verdict = "failed at talk_to_taunie: talk_no_prompt",
+            .inputs = "wait 250ms, wait 250ms, wait 250ms, wait 250ms",
+        },
+    },
+    {
+        .name = "03.02b's map talk: A and B in turn, done on the party bar held a second",
+        .input = {.checkpoint = "03.02b", .first_step = 4, .steps = 1, .looks = {
             DIALOG, look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)), party_bar(Milliseconds(4000)), party_bar(Milliseconds(5100)),
         }},
         .expectation = {
@@ -665,8 +763,8 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        .name = "03.02's map talk goes on through the party bar under a text box",
-        .input = {.checkpoint = "03.02", .first_step = 6, .steps = 1, .looks = {
+        .name = "03.02b's map talk goes on through the party bar under a text box",
+        .input = {.checkpoint = "03.02b", .first_step = 4, .steps = 1, .looks = {
             look({ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
             look({ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(2000)),
             party_bar(Milliseconds(4000)), party_bar(Milliseconds(5100)),
@@ -674,8 +772,8 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .inputs = "press A, press B, press A, press B, wait 250ms"},
     },
     {
-        .name = "03.02's map talk fails with no party bar in 120 s",
-        .input = {.checkpoint = "03.02", .first_step = 6, .steps = 1, .looks = {
+        .name = "03.02b's map talk fails with no party bar in 120 s",
+        .input = {.checkpoint = "03.02b", .first_step = 4, .steps = 1, .looks = {
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(121000)),
         }},
         .expectation = {.verdict = "failed at after_taunie_battle: map_talk_timeout", .inputs = "press A, press B"},

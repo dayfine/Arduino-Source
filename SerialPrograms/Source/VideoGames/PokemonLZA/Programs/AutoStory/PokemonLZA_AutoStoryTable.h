@@ -18,6 +18,8 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryTable_H
 #define PokemonAutomation_PokemonLZA_AutoStoryTable_H
 
+#include <string_view>
+#include <vector>
 #include "Pokemon/AutoStory/Data/Pokemon_StoryRowExecution.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 
@@ -34,6 +36,13 @@ using StoryData = Pokemon::StoryData<Pokemon::StoryCheckpoint>;
 //  first step is the GAME action "new_game_intro", or "confirm_new_game"
 //  on "Confirm Choices"): 01.00.
 bool story_row_starts_without_save(const Pokemon::StoryCheckpoint& row);
+
+//  The names of `row`'s TALK steps that do not come right after a step
+//  that ends on an A prompt: a "walk" to "end" "prompt", or
+//  "walk_to_prompt". A talk presses A only at the prompt the walk before
+//  reached: a timed walk can stop short of who the talk is for (03.02,
+//  console B 2026-11-16). The names live as long as `row`.
+std::vector<std::string_view> story_row_talks_without_prompt(const Pokemon::StoryCheckpoint& row);
 
 
 

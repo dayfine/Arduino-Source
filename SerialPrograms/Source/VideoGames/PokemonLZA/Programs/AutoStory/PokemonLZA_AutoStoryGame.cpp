@@ -33,6 +33,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
+#include "PokemonLZA_AutoStoryTable.h"
 #include "PokemonLZA_AutoStoryGame.h"
 
 namespace PokemonAutomation{
@@ -119,7 +120,7 @@ std::vector<StoryActionSpec> make_specs(){
             },
             StoryArgSpec{
                 .key = "end", .type = StoryArgType::WORD, .required = false, .fallback = std::nullopt,
-                .why = "\"fade_white\", \"fade_black\" or \"dialog\": the last leg is held until it shows, its ms the bound",
+                .why = "\"fade_white\", \"fade_black\", \"dialog\" or \"prompt\" (an A prompt): the last leg is held until it shows, its ms the bound",
             },
             flag("held", "hold the stick at each leg's angle (L only before a later turning leg), not tap-and-forward"),
             optional_int("wait_ms", "wait this long before looking for free control: NPCs moving off"),
@@ -583,14 +584,22 @@ Outcome pokedex_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAction
 }
 
 
-//  After A at what the player faces, how long "talk" waits for its text
-//  box, and how often it looks.
+//  How long "talk" looks for its A prompt before A, how long it waits for
+//  its text box after A, and how often it looks.
+constexpr Milliseconds TALK_PROMPT_WAIT(1000);
 constexpr Milliseconds TALK_WAIT(5000);
 constexpr Milliseconds TALK_POLL(250);
 
-//  "talk": A at what the player faces, then a text box within TALK_WAIT;
-//  fails as "talk_no_text" without one.
+//  "talk": on the A prompt of what the player faces, A, then a text box
+//  within TALK_WAIT. With no prompt within TALK_PROMPT_WAIT it presses
+//  nothing and fails as "talk_no_prompt": the walk before it stopped short
+//  (03.02, console B 2026-11-16); with no text box, as "talk_no_text".
 Outcome talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    if (!prompt_shows_within(backend, TALK_PROMPT_WAIT)){
+        return Pokemon::outcome_failed(
+            "talk_no_prompt", std::format("no A prompt within {} ms: not at what the talk is for", TALK_PROMPT_WAIT.count())
+        );
+    }
     backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
     for (Milliseconds waited(0); ; waited += TALK_POLL){
         backend.scope().throw_if_cancelled();
@@ -761,8 +770,16 @@ std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpo
         }
         const std::string* word = std::get_if<std::string>(&end->second);
         if (word == nullptr || !walk_end_event(*word)){
-            errors.push_back(std::format("{} {}: \"end\" must be \"fade_white\", \"fade_black\" or \"dialog\"", checkpoint.id, step.name));
+            errors.push_back(std::format(
+                "{} {}: \"end\" must be \"fade_white\", \"fade_black\", \"dialog\" or \"prompt\"", checkpoint.id, step.name
+            ));
         }
+    }
+    for (std::string_view talk : story_row_talks_without_prompt(checkpoint)){
+        errors.push_back(std::format(
+            "{} {}: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\", or walk_to_prompt)",
+            checkpoint.id, talk
+        ));
     }
     return errors;
 }
@@ -776,6 +793,9 @@ std::optional<ScreenEvent> walk_end_event(std::string_view end){
     }
     if (end == "dialog"){
         return ScreenEvent::DIALOG_BOX;
+    }
+    if (end == "prompt"){
+        return ScreenEvent::INTERACT_PROMPT;
     }
     return std::nullopt;
 }

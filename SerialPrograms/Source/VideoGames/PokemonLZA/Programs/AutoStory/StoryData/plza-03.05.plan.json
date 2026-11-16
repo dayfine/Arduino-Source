@@ -12,10 +12,11 @@
       {
         "id": "back_to_nurse",
         "kind": "game_action",
-        "why": "back to the nurse after 03.04's scene: turn right and walk into the counter, which faces her (user, console B, 2026-11-13); the counter stops the walk, so 2 s is safe.",
+        "why": "back to the nurse after 03.04's scene: turn right and walk into the counter, which faces her (user, console B, 2026-11-13); the counter stops the walk, so 2 s is safe; on until the prompt, 3 s at most. not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
         "action": "walk",
         "args": {
-          "legs": [[90, 2000]]
+          "legs": [[90, 3000]],
+          "end": "prompt"
         }
       },
       {

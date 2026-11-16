@@ -43,14 +43,20 @@ void play_checked(PlzaBackend& backend, std::string_view what, Input&& input){
     }
 }
 
+//  StoryWalkStyle::HELD: L before leg `index` when it turns after an
+//  earlier leg.
+void recenter_before_held_leg(PlzaBackend& backend, size_t index, const StoryWalkLeg& leg){
+    if (index > 0 && leg.turn != 0){
+        backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
+    }
+}
+
 //  StoryWalkStyle::HELD: each leg's stick held at its angle for its time
 //  (a turn-only leg a 150 ms tap); L before each later leg that turns.
 void run_held_legs(PlzaBackend& backend, const std::vector<StoryWalkLeg>& legs){
     for (size_t index = 0; index < legs.size(); index++){
         const StoryWalkLeg& leg = legs[index];
-        if (index > 0 && leg.turn != 0){
-            backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
-        }
+        recenter_before_held_leg(backend, index, leg);
         if (leg.walk > 0ms){
             backend.stick(leg.turn, leg.walk, /*release=*/0ms, Pokemon::StoryPace::WALK);
         }else if (leg.turn != 0){
@@ -94,6 +100,33 @@ Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move){
         }
     }
     return Pokemon::outcome_ok();
+}
+
+Pokemon::Outcome run_story_move_but_last_walk(PlzaBackend& backend, const StoryMove& move){
+    if (move.legs.empty()){
+        return Pokemon::outcome_ok();
+    }
+    StoryMove head = move;
+    if (move.style == StoryWalkStyle::HELD){
+        if (move.legs.back().walk == 0ms){
+            run_held_legs(backend, move.legs);
+            return Pokemon::outcome_ok();
+        }
+        head.legs.pop_back();
+        run_held_legs(backend, head.legs);
+        recenter_before_held_leg(backend, head.legs.size(), move.legs.back());
+        return Pokemon::outcome_ok();
+    }
+    head.legs.back().walk = 0ms;
+    return run_story_move(backend, head);
+}
+
+void hold_last_leg(PlzaBackend& backend, const StoryMove& move, Milliseconds slice){
+    if (move.style == StoryWalkStyle::HELD && !move.legs.empty()){
+        backend.stick(move.legs.back().turn, slice, /*release=*/0ms, Pokemon::StoryPace::WALK);
+    }else{
+        backend.hold(Pokemon::Direction::NORTH, slice, Pokemon::StoryPace::WALK);
+    }
 }
 
 

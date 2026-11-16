@@ -128,22 +128,26 @@ void finish_walk(PlzaBackend& backend, std::string_view walk){
 }
 
 Pokemon::Outcome walk_until(PlzaBackend& backend, std::string_view walk, const StoryMove& move, ScreenEvent end){
-    StoryMove head = move;
-    Milliseconds hold = 0ms;
-    if (!head.legs.empty()){
-        hold = head.legs.back().walk;
-        head.legs.back().walk = 0ms;
-    }
-    const Pokemon::Outcome walked = run_story_move(backend, head);
+    const Milliseconds hold = move.legs.empty() ? 0ms : move.legs.back().walk;
+    const Pokemon::Outcome walked = run_story_move_but_last_walk(backend, move);
     if (!walked.succeeded()){
         return walked;
+    }
+    if (hold == 0ms){
+        //  A last leg that only turns (to face the clerk): what the walk
+        //  goes to shows once the turn is done, or the walk missed it.
+        if (backend.observe().events.has(end)){
+            backend.log(std::format("[PLZA] {}: the end event after the last turn.", walk));
+            return Pokemon::outcome_ok();
+        }
+        return Pokemon::outcome_failed("walk_no_end", std::format("{}: no end event after the last turn", walk));
     }
     //  The slices stop the stick between them for as long as a look takes;
     //  the player barely slows.
     for (Milliseconds held = 0ms; held < hold;){
         //  The last slice holds only what is left, so the leg walks its time.
         const Milliseconds slice = std::min(HOLD_SLICE, hold - held);
-        backend.hold(Pokemon::Direction::NORTH, slice, Pokemon::StoryPace::WALK);
+        hold_last_leg(backend, move, slice);
         held += slice;
         const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
         if (look.events.has(end)){
@@ -171,6 +175,19 @@ Pokemon::Outcome walk_to_prompt(PlzaBackend& backend, Milliseconds timeout){
         backend.hold(Pokemon::Direction::NORTH, PROMPT_WALK_SLICE, Pokemon::StoryPace::WALK);
     }
     return Pokemon::outcome_failed("no_prompt", std::format("walk_to_prompt: no A prompt in {} ms of walking", timeout.count()));
+}
+
+bool prompt_shows_within(PlzaBackend& backend, Milliseconds within){
+    for (Milliseconds waited = 0ms; ; waited += PROMPT_POLL){
+        backend.scope().throw_if_cancelled();
+        if (backend.observe().events.has(ScreenEvent::INTERACT_PROMPT)){
+            return true;
+        }
+        if (waited >= within){
+            return false;
+        }
+        backend.wait(PROMPT_POLL);
+    }
 }
 
 void press_through_prompt(PlzaBackend& backend){
