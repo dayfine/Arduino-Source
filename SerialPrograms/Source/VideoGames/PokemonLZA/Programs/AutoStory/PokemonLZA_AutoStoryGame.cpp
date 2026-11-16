@@ -59,6 +59,11 @@ StoryArgSpec flag(std::string key, std::string why){
     return StoryArgSpec{.key = std::move(key), .type = StoryArgType::BOOLEAN, .required = false, .fallback = false, .why = std::move(why)};
 }
 
+//  An integer that has no value when left out.
+StoryArgSpec optional_int(std::string key, std::string why){
+    return StoryArgSpec{.key = std::move(key), .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt, .why = std::move(why)};
+}
+
 //  `spec`, run only on a console.
 StoryActionSpec console_only(StoryActionSpec spec){
     spec.console_only = true;
@@ -84,10 +89,7 @@ std::vector<StoryActionSpec> make_specs(){
                 .why = "\"fade_white\", \"fade_black\" or \"dialog\": the last leg is held until it shows, its ms the bound",
             },
             flag("held", "hold the stick at each leg's angle (L only before a later turning leg), not tap-and-forward"),
-            StoryArgSpec{
-                .key = "wait_ms", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
-                .why = "wait this long before looking for free control: NPCs moving off",
-            },
+            optional_int("wait_ms", "wait this long before looking for free control: NPCs moving off"),
         }),
         game_spec("walk_to_prompt", {
             optional_ms("timeout_ms", 10000, "walking this long with no A prompt fails the step"),
@@ -97,10 +99,7 @@ std::vector<StoryActionSpec> make_specs(){
             optional_ms("quiet_ms", 60000, "nothing busy and no control this long fails the step"),
             flag("press_a_first", "press A first, at the prompt that starts the scene (a door's \"A Enter\")"),
             flag("quiet_is_control", "the quiet time ends the step with control, where no party bar or prompt shows (Hotel Z)"),
-            StoryArgSpec{
-                .key = "end_after_black_fades", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
-                .why = "end once this many black fades have lifted and settled; the mission banner does not end it",
-            },
+            optional_int("end_after_black_fades", "end 5 s after this many black fades, or on the controls hint; the banner does not end it"),
         }),
         game_spec("text_to_choice", {
             flag("advance_with_a", "advance the text with A, for a talk that B cancels (Hotel Z's elevator)"),
