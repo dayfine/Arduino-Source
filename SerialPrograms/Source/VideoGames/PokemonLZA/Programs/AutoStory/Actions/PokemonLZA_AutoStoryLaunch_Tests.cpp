@@ -64,7 +64,7 @@ const TileSearchCase TILE_SEARCH_CASES[] = {
     },
 };
 
-std::vector<std::string> image_paths(const TileSearchCase& test){
+std::vector<std::string> home_tile_images(const TileSearchCase& test){
     std::vector<std::string> paths;
     for (const std::string& file : test.input.files){
         paths.push_back(std::format("PokemonLZA/{}", file));
@@ -75,7 +75,7 @@ std::vector<std::string> image_paths(const TileSearchCase& test){
 class Test_HomeTileSearch : public ImageUnitTest{
 public:
     explicit Test_HomeTileSearch(const TileSearchCase& test)
-        : ImageUnitTest(std::format("PokemonLZA::AutoStory - launch: HOME tile search, {}", test.name), image_paths(test))
+        : ImageUnitTest(std::format("PokemonLZA::AutoStory - launch: HOME tile search, {}", test.name), home_tile_images(test))
         , m_test(test)
     {}
     virtual UnitTestResult run_on_images(Logger&, CancellableScope&, const std::vector<ImageRGB32>& images) const override{
