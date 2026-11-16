@@ -30,15 +30,15 @@ namespace PokemonLZA{
 //  Fails as "objective_not_reached" when neither shows.
 Pokemon::Outcome walk_to_marker(StoryEnv& env, PlzaBackend& backend);
 
-//  Toward the objective marker, steered as walk_to_marker() is, until its
-//  distance reads `stop_at` or less, the marker is lost, or `limit`.
-//  A read more than 12 from the last is a misread, unless three in a row
-//  agree. Returns the last distance taken; none when none read.
+//  Toward the objective marker, steered as walk_to_marker() is, until it is
+//  `stop_at` or less away (MarkerDistance: the last read taken, less 3 for
+//  each step since it with no read), the marker is lost, or `limit`.
+//  Returns where it ended, by that count; none when no distance read.
 std::optional<int> walk_toward_marker(StoryEnv& env, PlzaBackend& backend, int stop_at, Milliseconds limit);
 
 //  Back away from the objective marker (the stick down, toward the
 //  camera, the camera turned back onto the marker before each step) until
-//  its distance reads `stop_at` or more, as walk_toward_marker() reads it.
+//  it is `stop_at` or more away, counted as walk_toward_marker() counts it.
 std::optional<int> walk_back_from_marker(StoryEnv& env, PlzaBackend& backend, int stop_at, Milliseconds limit);
 
 
