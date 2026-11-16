@@ -395,10 +395,15 @@ public:
     static constexpr int ACTION_SURF = 1;
 
 private:
+    //  Whether a trainer who stands and looks one way sees `state`'s tile.
+    //  A route plans round their lines; one who wanders or looks around is
+    //  met by the walk's watch (run_route()'s trainer_stop()) instead: no
+    //  route can plan round them.
     bool seen_by_trainer(const State& state) const{
         const MapData& map = m_maps[state.map];
         return std::ranges::any_of(map.objects, [&](const MapObject& object){
-            return trainer_may_see(map, object, state.state.position);
+            return object.trainer && !object.wander && object.trainer->looks.size() == 1
+                && trainer_may_see(map, object, state.state.position);
         });
     }
 
