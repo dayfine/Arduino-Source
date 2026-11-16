@@ -671,7 +671,7 @@ namespace{
 
 //  A boulder push's taps on `sim`, as the game answers them: a tap into a
 //  boulder pushes it (SimField::PUSH_BOULDER) and the player stays; any
-//  other tap is a step (sim_step_once()). Nothing interrupts a push.
+//  other tap is a step (sim_step_once()).
 class SimBoulderPresses : public BoulderPresses{
 public:
     explicit SimBoulderPresses(OverworldSim& sim)
@@ -694,8 +694,11 @@ public:
         return {.scrolled = !(m_sim.state().position == from), .boulder_moved = false};
     }
 
+    //  As the console's: waits for the quiet overworld (a switch's script
+    //  lock ends).
     bool clear_interrupt() override{
-        return false;
+        const Pokemon::ScreenSettle settle = wait_for_quiet_overworld(sim_screen_look(m_sim), MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
+        return quiet_overworld(settle, MovementMechanics::AFTER_BATTLE_QUIET);
     }
 
 private:

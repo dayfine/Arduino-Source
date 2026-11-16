@@ -32,6 +32,13 @@ namespace{
 constexpr Milliseconds CUT_TIME(4000);
 //  The boulder's slide, one tile. Not measured on the console.
 constexpr Milliseconds PUSH_TIME(500);
+//  A floor switch's script after the boulder lands on it (pokefirered
+//  VictoryRoad_1F_EventScript_FloorSwitch: lockall, the barrier's
+//  metatiles, SE_ICE_BREAK, waitse, releaseall): no text, but no step
+//  either until the sound ends. The step tap 0.9 s after the push tap was
+//  lost (console B, 2026-11-16, 19.04b push_onto_switch); the length is a
+//  guess on the long side.
+constexpr Milliseconds SWITCH_SCRIPT_TIME(1500);
 
 } // namespace
 
@@ -228,6 +235,8 @@ bool OverworldSim::push_boulder(){
         m_state.gates.switches_on.insert(Pokemon::switch_key(*pressed));
         read_gates();
         note(std::format("switch {} is on.", Pokemon::switch_key(*pressed)));
+        m_frozen = true;
+        schedule(m_now + SWITCH_SCRIPT_TIME, SimScreen::OVERWORLD, /*unfreeze=*/true);
     }
     return true;
 }
