@@ -5,8 +5,9 @@ The local server designed in `docs/design/Agent-Integration.md` (fork #131, bran
 Slice 2: the attach-only read server ([below](#slice-2-the-attach-only-read-server)). Slice 3: the
 durable control plane ([below](#slice-3-the-durable-control-plane)): leases, request records,
 tickets and events in SQLite. Slice 5a: leased `run_program` and `stop_program`
-([below](#slice-5a-run_program-and-stop_program)), served only by `serve --actions`, which nothing is
-wired to yet. Nothing presses a button: that is Slice 5b's `cfr_batch`.
+([below](#slice-5a-run_program-and-stop_program)); Slice 5b: `preflight_program`, options bound to
+its token, and `cfr_batch` ([below](#slice-5b-preflight_program-options-on-run_program-cfr_batch)).
+All are served only by `serve --actions`, which nothing is wired to yet.
 
 New here? Start with [GUIDE.md](GUIDE.md): what pa-lab is and what it gives you today.
 
@@ -24,7 +25,7 @@ New here? Start with [GUIDE.md](GUIDE.md): what pa-lab is and what it gives you 
 | `pa_lab/tools.py`, `pa_lab/shot.py` | `ensure_game` (verification only) and `shot` (newer than the call) |
 | `pa_lab/mcp_server.py` | MCP over Streamable HTTP on `127.0.0.1`: bearer, Host/Origin, sessions, size caps |
 | `pa_lab/app_query.py` | `describe_program` and `game_open`: one-line reads through the app's channel (#504) |
-| `tests/fake_lab.py` | A fake `Lab/` folder and a fake app answering `snapshot`, `describe_program`, `game_open`, `start` and `stop` requests, in temp dirs |
+| `tests/fake_lab.py` | A fake `Lab/` folder and a fake app answering `snapshot`, `describe_program`, `game_open`, `set` + `start`, `stop`, the proposed `preflight` and console lines, in temp dirs |
 | `tests/test_{lab_reader,ensure_game,shot,config,mcp_server}.py` | Slice 2's fake-lab tests |
 | `tests/test_app_query.py` | `describe_program` and `game_open` against the fake app |
 | `pa_lab/db.py` | The SQLite file: migrations (`PRAGMA user_version`), owner-only file, `BEGIN IMMEDIATE` writes |
@@ -32,6 +33,8 @@ New here? Start with [GUIDE.md](GUIDE.md): what pa-lab is and what it gives you 
 | `tests/test_{db,control,control_concurrency,control_mcp}.py` | Slice 3's tests: restarts, threads and processes racing, kills mid-write |
 | `pa_lab/actions.py` | Slice 5a: `run_program` / `stop_program` through the control plane and the app's `start` / `stop` channel commands |
 | `tests/test_actions.py` | Slice 5a's refusals, retries and races against the fake app |
+| `pa_lab/preflight.py`, `pa_lab/cfr.py` | Slice 5b: options against the static contract, the `preflight` reply, the token's binding; the `cfr_batch` allowlist |
+| `tests/test_{preflight,cfr_batch,cfr}.py` | Slice 5b: option refusals, verdicts, restore, stale tokens; batches, the save mark; the allowlist |
 | `pa_lab/status.py`, `pa_lab/stdio_server.py`, `smoke_readonly.py` | Read-only stdio mode for `.mcp.json`: `console_status` ([below](#read-only-stdio-mode-mcpjson)) |
 | `tests/test_status_readonly.py` | `console_status` and the read-only gate against a fake profile |
 
@@ -350,13 +353,90 @@ a stop) and resolves the record:
 instance, after the start's `ok` line), not by id, and its `started_at` is unknown. A `run_id` on
 the stop transition, or the app keeping the start beside the stop, would make that match exact.
 
-**Left for Slice 5b.** `preflight_program`: the app has no channel command that runs a program's
-prechecks (or stages candidate options) without starting it, so 5a sends no preflight, runs the
-panel's current options, and the program's own `run_prechecks()` at Start are the only checks;
-`run_program`'s `preflight_token` became optional in the v1 request contract for this and 5b makes
-it required again. Also 5b: staging `options`, claiming the channel's owner token (a claimed
-channel is refused today), `cfr_batch`, and the console-B soak (every mutation has exactly one
-record).
+**Changed by Slice 5b.** `run_program` needs a `preflight_token` again (required in the v1
+request contract) and takes `options`; the 5a refusals for a non-empty `options` and for a token
+are gone. See below.
+
+## Slice 5b: `preflight_program`, options on `run_program`, `cfr_batch`
+
+Served with the 5a tools by `serve --actions`; still not wired to anything, and `.mcp.json` stays
+read-only. Each call is one request record on the same `begin_action` / inbox / settle path as 5a
+(an exact retry gets the stored record; a pending earlier action on the console refuses the next).
+
+```text
+preflight_program(console, request_id, lease_token, panel, options)
+run_program(console, request_id, lease_token, panel, options, preflight_token)
+cfr_batch(console, request_id, lease_token, lines)
+```
+
+**`preflight_program`** (`pa_lab/preflight.py`, `actions.check_preflight`). First, without a lease
+and outside the transaction, `describe_program` (an exact retry skips it). Then, in order:
+
+| Check | Refusal (stored `refused`, nothing sent) |
+|---|---|
+| lease, no pending action, app live, `panel` selected, `blocked`, channel free | as for `run_program` (5a) |
+| the app restarted between `describe_program` and here | `app_unavailable`, `instance_replaced` |
+| the program declares a precheck list | `prechecks_unsupported` (absence never passes) |
+| every option key is one the program saves; value of the entry's type, within `min`/`max`; an enum/select slug that is listed and enabled; a group is an object of its own entries (plus `Enabled` when toggleable); no `type: other` | `invalid_arguments`, `field` = `options.<key path>` |
+
+Then the daemon writes `request <id>` / `preflight <canonical JSON>` and waits up to 30 s (the
+checks may open a menu or go Home and back) for the one reply line, `preflight <JSON>` (format in
+`pa_lab/preflight.py`). The record resolves:
+
+| The reply | Record |
+|---|---|
+| `restored: false` (whatever the verdict) | `failed`, `app_unavailable`, `evidence.reason: options_not_restored`; no token |
+| `id` is not `panel` | `failed`, `app_unavailable`, `panel_changed` |
+| `verdict: unsupported` | `failed`, `prechecks_unsupported` |
+| `verdict: invalid_options` (the app's `check_validity` or its own key check) | `failed`, `invalid_arguments`, `field: options.<key>` |
+| `verdict: failed` | `failed`, `precheck_failed`, `check` = the check's name, its message and evidence |
+| `verdict: passed` | `completed`: `checks`, `options_hash`, `preflight_token`, `issued_at`, `expires_at` |
+| the line failed (today's app: no `preflight` command) | `failed`, `app_unavailable` with the journal; `owned by` → `console_held_by_agent` |
+| a UI Start/Stop or another app instance before the reply | `failed`, `console_held_by_user` / `app_unavailable` `instance_replaced` |
+
+**The token.** A pass stores (table `preflights`, migration 3) the token's hash with its binding:
+console, app instance, panel, the candidate options' hash, the last start/stop transition,
+`console://B/save` (status, reason, since) with the newest `cfr_batch`'s time, and the hash of the
+request's lease token. The token is a salted hash of that binding. `run_program` reads the same
+things and, after the 5a checks, refuses with `preflight_stale` when the token is unknown
+(`evidence.reason: unknown_token`), older than 120 s (`expired`), or any bound field differs
+(`changed`, `evidence.changed` lists them, e.g. `["transition"]`). A run's own start changes the
+transition, so a token starts at most one run.
+
+**Options on `run_program`.** The request is `request <id>`, one `set KEY JSON` line per option
+(groups as `GROUP.KEY`, in key order), then `start 10`; the app stops at the first failing line, so
+a refused `set` starts nothing (`app_unavailable` with the journal). The panel keeps the options
+after the run, as when a user sets them and clicks Start.
+
+**`cfr_batch`** (`pa_lab/cfr.py`, the allowlist from #547). 1-200 lines; only `press`, `dpad`,
+`stick`, `wait`, `taps`, `walk`, `shot`, `shots`, `detect`, `wait_for`, `expect`, `game_open`, in
+canonical form, with bounded numbers and a worst case of at most 60 s for the batch; no channel
+command, `close_game`, `history`, `CAPTURE`, image path, comment or blank line
+(`invalid_arguments`, `field: arguments.lines[i]`). The other checks: lease, a program panel
+(`panel_not_program`), `blocked` (program stopped, controller ready, video live), channel free.
+Before the request is written, the console's save mark (table `save_marks`) is set, so
+`console://B/save` is `stale` / `cfr_batch` from then on (a press may have happened even if the
+daemon dies next) and every earlier preflight token is stale. The daemon waits for the worst case
++ 5 s; the record is `completed` with `outcome: done`, or `line_failed` with `failed_line`
+(1-based in the batch) and `error`, and `output` (what the lines printed, e.g. shot paths). An app
+that never took the request: withdrawn, `failed`, `timeout`; the mark stays.
+
+**The app's side (not built).** The app has no command that stages options and runs a program's
+prechecks without starting it, and `lab/tooling` has only the precheck *summaries* (#511): the
+runnable list (`Precheck::run(env, context)`, #485) is on the upstream-bound FRLG branch, and a
+check needs a `SingleSwitchProgramEnvironment` and controller context that exist only inside a
+running program. A `preflight` command therefore needs a precheck-only run of the program session
+(stage on the UI thread, a scope guard restoring the options, the checks on the program thread),
+not just a channel command, so 5b stops at the server and the fake. Until the app has it, every
+preflight on the real app is `failed` / `app_unavailable` (unknown command), so `run_program`
+cannot start anything there.
+
+**Known gaps.** The panel's options are not versioned in `state.json`, so a token cannot see an
+option the user changes in the UI between the preflight and the run (only a Start/Stop); the app
+could print an options hash in the reply and in `state.json`. The `set` echoes in the start's
+journal are not compared with what was sent (the preflight already refused clamped or disabled
+values). The channel's owner token is still not claimed (a claimed channel is refused), and the
+console-B soak (every mutation has exactly one record) is still to run.
 
 ## User pages
 
