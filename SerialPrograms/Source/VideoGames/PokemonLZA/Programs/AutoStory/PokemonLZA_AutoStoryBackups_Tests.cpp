@@ -224,7 +224,8 @@ const RewindCase REWIND_CASES[] = {
 
 //  The console-less game with a reload that succeeds, its "catch_in_zone"
 //  failing as "lost" its first `failed_catches` times, counted in
-//  `catches`.
+//  `catches`. The stand-in runs on the script backend: the real one is
+//  console_only, which the registry would refuse before the handler.
 Pokemon::StoryGame<ZonePose> rewind_game(
     const StoryData& story, size_t failed_catches, AutosaveSightings& sightings, size_t& catches
 ){
@@ -234,6 +235,7 @@ Pokemon::StoryGame<ZonePose> rewind_game(
     };
     for (Pokemon::StoryAction<ZonePose>& action : game.actions){
         if (action.spec.name == "catch_in_zone"){
+            action.spec.console_only = false;
             action.handler = [&catches, failed_catches](Pokemon::StoryBackend<ZonePose>&, const Pokemon::StoryActionCall&, Pokemon::RunState&){
                 return catches++ < failed_catches ? Pokemon::outcome_failed("lost") : Pokemon::outcome_ok();
             };

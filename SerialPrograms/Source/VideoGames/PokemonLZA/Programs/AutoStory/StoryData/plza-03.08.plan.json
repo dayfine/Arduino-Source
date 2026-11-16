@@ -11,7 +11,7 @@
       {
         "id": "catch_more_species",
         "kind": "game_action",
-        "why": "step 64: the lab gate asks for five registered species, 3/5 after the tutorial: two new ones here in Wild Zone 1 before leaving, so the gate's scene finds 5/5 (user, 2026-11-13). From Taunie's rocks it first takes the route measured by hand on console B (2026-11-16): L, left 900 ms off the rocks, an agreed marker read of 120 to 135, then the marker walk to 103 or less, 8 s at most, to the plaza at 100 (the rocks hide the marker: run 9 searched there with no plate and no read; run 10 stepped west by the minimap and never read it), where runs 5 and 6 threw, and fails there, before any search, when either does not get there (the user, 2026-11-16). From that spot the search stays in the zone: it turns the camera in 8 steps with a ZL lock-on after each and throws only at targets whose plate shows no caught mark; a full turn with nothing new takes one short leg along the road, each leg out walked back, the marker walk back to 100 after each catch and round, none toward the objective at an agreed marker read of 60 or less (far gate ~55); after a round of legs it stands for spawns. 10 minutes, 12 throws at most. The marker's distance no longer steers it: six runs walking between distance stops on console B (2026-11-16) left the zone or stuck at ~87-89 with the digits unread (user's pick, 2026-11-16). The party bar's filled slots decide, read before the first look and after each throw: 5 means done, since the \"Registered!\" banner is missed at times (console B 2026-11-14 19:36: Mareep in the party, no banner seen).",
+        "why": "step 64: the lab gate asks for five registered species, 3/5 after the tutorial: two new ones here in Wild Zone 1 before leaving, Scatterbug (on the road at 100 from the far gate) and Mareep (in the grass right of the road at 60), so the gate's scene finds 5/5 (user, 2026-11-13). From Taunie's rocks it first takes the route measured by hand on console B (2026-11-16): L, left 900 ms off the rocks, an agreed marker read of 120 to 135, then the marker walk to 103 or less, 8 s at most, to the plaza at 100 (the rocks hide the marker), and fails there, before any catch, when either does not get there. From there it runs plza/autostory's patrol, which passed about 11 times on console B on 2026-11-14 from the road at 127: 100, 60, 100, 60, ... (walking to 100 and back brings Pokemon back at 60); 10 visits, 10 minutes, 12 throws at most. At each stop it sweeps the camera for the lock-on brackets, holds ZL on the nearest, throws at the nearest plate not caught, again at once after a miss that locks on again, and weakens a target that broke out. The party bar's filled slots decide, read before the first stop and after each stop that threw: 5 means done, since every catch is a new species and the \"Registered!\" banner is missed at times (console B 2026-11-14 19:36: Mareep in the party, no banner seen). Unread, the banners' and plates' tally decides.",
         "action": "catch_in_zone"
       }
     ],
@@ -23,6 +23,8 @@
   "execution": {
     "save": "autosave",
     "autosave_step": "catch_more_species",
-    "start_signature": {"wild_zone": true}
+    "start_signature": {
+      "wild_zone": true
+    }
   }
 }

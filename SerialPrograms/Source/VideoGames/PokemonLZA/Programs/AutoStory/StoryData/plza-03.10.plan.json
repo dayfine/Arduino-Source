@@ -29,18 +29,9 @@
         "why": "step 66: A Take Elevator, \"Which floor would you like to go to?\""
       },
       {
-        "id": "floor_question",
-        "kind": "game_action",
-        "why": "step 66: A through the attendant's text until \"Which floor?\"'s choice box (A: B could cancel the talk, as at Hotel Z's elevator); ends at once when the choice is already up",
-        "action": "text_to_choice",
-        "args": {
-          "advance_with_a": true
-        }
-      },
-      {
         "id": "ride_to_3f",
         "kind": "game_action",
-        "why": "step 67: \"3F: Director's Office\", the second floor listed",
+        "why": "step 67: \"3F: Director's Office\", the second floor listed; the choices show only after A closes the attendant's question, so choose_1 presses A through it first (plza/autostory's choose, passed on console B 2026-11-14 21:40).",
         "action": "choose_1"
       },
       {

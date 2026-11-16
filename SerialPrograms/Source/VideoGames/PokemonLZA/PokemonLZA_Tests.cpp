@@ -14,6 +14,7 @@
 #include "Inference/PokemonLZA_DialogDetector.h"
 #include "Inference/PokemonLZA_WeatherDetector.h"
 #include "Inference/PokemonLZA_HyperspaceCalorieDetector.h"
+#include "Inference/PokemonLZA_LockOnBracketDetector.h"
 #include "Inference/PokemonLZA_MainMenuDetector.h"
 #include "Inference/Map/PokemonLZA_MapDetector.h"
 #include "Inference/Map/PokemonLZA_MapIconDetector.h"
@@ -31,7 +32,10 @@
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryLaunch_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerDistance_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame_Tests.h"
-#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryZoneSearch_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchStop_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryGateWalk_Tests.h"
+#include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryZoneGateReader_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryBackend_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryBackups_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBackupCardReader_Tests.h"
@@ -57,6 +61,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_DonutBerriesReader(database);
     add_tests_FlavorPowerScreenDetector(database);
     add_tests_HyperspaceCalorieDetector(database);
+    add_tests_LockOnBracketDetector(database);
     add_tests_MainMenuDetector(database);
     add_tests_MapDetector(database);
     add_tests_MapIconDetector(database);
@@ -82,7 +87,10 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStorySceneReplay(database);
     add_tests_AutoStoryScreenEvents(database);
     add_tests_AutoStoryStarts(database);
-    add_tests_AutoStoryZoneSearch(database);
+    add_tests_AutoStoryCatchPlan(database);
+    add_tests_AutoStoryCatchStop(database);
+    add_tests_AutoStoryGateWalk(database);
+    add_tests_AutoStoryZoneGateReader(database);
 
 }
 

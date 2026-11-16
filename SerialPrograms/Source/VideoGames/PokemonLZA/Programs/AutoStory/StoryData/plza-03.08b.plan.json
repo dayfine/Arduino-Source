@@ -17,15 +17,21 @@
       {
         "id": "zone_1_to_far_gate",
         "kind": "game_action",
-        "why": "step 62: from 60 the far gate is straight down the road; walked by hand to its \"A Leave\" prompt in about 4.7 s, the minimap heading 259 at the prompt with the gate right of centre (console B, 2026-11-14). Faces 265, then runs on to the prompt.",
-        "action": "run_to_gate",
-        "args": {"heading": 265, "timeout_ms": 15000}
+        "why": "step 62: from 60 the far gate's green pillars are straight down the road; walked by hand to its \"A Leave\" prompt in about 4.7 s, the marker reading 41 there (console B, 2026-11-14). Steered by the pillars on screen (walk_to_zone_gate_entrance, ZoneGateReader), after facing 265 by the minimap (face_heading, L after the turn): the camera read 259 at the prompt with the gate right of centre (x 0.68), and after the catches the gate was off screen once in 3 (console B, 2026-11-14). plza/autostory's walk, about 10 passes on console B 2026-11-14 (3 gate_not_seen); ported over run_to_gate, which never ran here.",
+        "action": "walk_to_zone_gate_entrance",
+        "args": {
+          "heading": 265,
+          "timeout_ms": 15000
+        }
       },
       {
         "id": "leave_zone_1",
         "kind": "game_action",
-        "why": "step 62: A Leave, out on the street (a plain scene step ends at once on the gate's prompt with the party bar up; console B, 2026-11-10)",
-        "action": "leave_zone_gate"
+        "why": "step 62: A Leave, out on the street (a plain scene step ends at once on the gate's prompt with the party bar up; console B, 2026-11-10), as plza/autostory passed it (console B, 2026-11-14).",
+        "action": "mash_to_move_hints",
+        "args": {
+          "press_a_first": true
+        }
       }
     ],
     "metadata": {
