@@ -149,7 +149,9 @@ namespace LegPlannerInternal{
 //  they are in the middle of a leg that could go on, whether that leg had a
 //  wild step, whether it is one step from where a hold to a wall ended, and
 //  whether such a step was stopped after earlier (see tap_stop_risk() at
-//  the top of this file).
+//  the top of this file); whether the leg is one step so far, and whether
+//  it started on a warp's arrival (at rest: whether a warp put the player
+//  there).
 template <typename State>
 struct Node{
     State state;
@@ -158,6 +160,8 @@ struct Node{
     bool wild = false;
     bool tap_from_wall = false;
     bool tapped = false;
+    bool one_step = false;
+    bool from_warp = false;
 
     bool operator==(const Node& other) const = default;
 };
@@ -166,8 +170,8 @@ struct Node{
 template <typename State, typename StateHash>
 struct NodeHash{
     size_t operator()(const Node<State>& node) const{
-        return StateHash()(node.state) * 80 + node.facing * 16 + (node.moving ? 8 : 0) + (node.wild ? 4 : 0)
-            + (node.tap_from_wall ? 2 : 0) + (node.tapped ? 1 : 0);
+        return StateHash()(node.state) * 320 + node.facing * 64 + (node.moving ? 32 : 0) + (node.wild ? 16 : 0)
+            + (node.tap_from_wall ? 8 : 0) + (node.tapped ? 4 : 0) + (node.one_step ? 2 : 0) + (node.from_warp ? 1 : 0);
     }
 };
 
@@ -180,6 +184,15 @@ struct Move{
 };
 
 // Cost incurred when stopping at a node.
+//  A leg of one step off a warp's arrival pays no open stop, nor a wild
+//  one: a step can't stop part-way, and the warp put the player on a known
+//  tile, so stepping off a teleporter or a ladder and back on again is one
+//  tile each way rather than a hold to a wall and back. What the model
+//  weighs past the stop it still pays. Only off a warp: a route's start
+//  may be where an open leg left the player, a step after another leg
+//  starts wherever that leg ended, and steps from walls on land weave runs
+//  of single tiles round longer holds (see tap_stop_risk() at the top of
+//  this file).
 template <typename Model, typename State>
 int stop_cost(const Model& model, const Node<State>& node, const LegCosts& costs){
     if (!node.moving || model.held_at(node.state, (Direction)node.facing)){
@@ -192,7 +205,7 @@ int stop_cost(const Model& model, const Node<State>& node, const LegCosts& costs
             }
         }
     }
-    int cost = costs.per_open_stop + (node.wild ? costs.per_open_wild_stop : 0);
+    int cost = node.one_step && node.from_warp ? 0 : costs.per_open_stop + (node.wild ? costs.per_open_wild_stop : 0);
     if constexpr (requires { model.open_stop_risk(node.state, Direction::NORTH); }){
         cost += model.open_stop_risk(node.state, (Direction)node.facing);
     }
@@ -283,7 +296,8 @@ void expand(
         const bool from_wall = current.moving && model.held_at(current.state, (Direction)current.facing);
         const Node<State> next{
             step->next, (int)step->facing, continues, (extends && current.wild) || step->wild,
-            !extends && from_wall, current.tapped || (!extends && current.tap_from_wall)
+            !extends && from_wall, current.tapped || (!extends && current.tap_from_wall),
+            !extends, step->warped || (extends ? current.from_warp : !current.moving && current.from_warp)
         };
         int step_cost = costs.per_tile + step->extra_cost;
         if (current.facing != (int)direction){
@@ -382,7 +396,7 @@ std::optional<std::vector<Leg<typename Model::State>>> plan_legs(
     using State = typename Model::State;
     using Node = LegPlannerInternal::Node<State>;
 
-    const Node first{start, start_facing ? (int)*start_facing : 4, false, false, false, false};
+    const Node first{start, start_facing ? (int)*start_facing : 4, false, false, false, false, false, false};
     LegPlannerInternal::Search<Model> search;
     const std::optional<Node> end = LegPlannerInternal::search_goal(model, first, at_goal, goal_facing, costs, search);
     if (!end){

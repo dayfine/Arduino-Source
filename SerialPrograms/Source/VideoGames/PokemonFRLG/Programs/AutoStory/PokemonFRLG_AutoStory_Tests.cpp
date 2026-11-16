@@ -515,11 +515,8 @@ const AllowedRevisit ALLOWED_REVISITS[] = {
     {"13.01", "mansion_holes", "east to the wall (20, 6), round and back down column 19 rather than end an open leg in the Mansion's wild rooms (OPEN_WILD_STOP): a cost choice to re-weigh"},
     {"13.03", "to_elixir", "to the switch (24, 30) and back: pressing it opens the way on along row 17"},
     {"13.04", "to_key", "up column 30 to the switch (27, 6) and back down it: pressing it opens the way west along row 10"},
-    {"16.02", "to_corridor", "off 9F's teleporter (22, 18) and back on, the way to 5F's (10, 20); the step off is held to the wall (18, 18) rather than one open tile (OPEN_STOP): a cost choice to re-weigh"},
-    {"16.03", "to_3f_trainer", "the same teleporter bounce on 9F as 16.02's to_corridor"},
     {"19.03", "volcano_guard_approach", "north to the wall (17, 61) and back south 1: the wall places the player after 16 tiles of grass (OPEN_WILD_STOP)"},
     {"19.04b", "below_ladder", "out to Route 23 and straight back in, onto the cave mouth (11, 20), rather than end an open leg there (OPEN_WILD_STOP): a cost choice to re-weigh"},
-    {"19.04c", "ladder_3f", "down 3F's ladder to 2F's (3, 3) and back up it onto (5, 2); the step off is held to the wall (3, 5) rather than one open tile (OPEN_STOP): a cost choice to re-weigh"},
 };
 
 std::string describe(const RouteRevisit& revisit){

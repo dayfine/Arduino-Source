@@ -318,6 +318,28 @@ UnitTestResult test_wild_ends_with_leg(){
     return true;
 }
 
+UnitTestResult test_one_tile_open_stop(){
+    //  From X, east 1 and south to the bottom wall stops in the open after
+    //  one step; east to the wall and round is 2 tiles more and a turn. A
+    //  step off a warp's arrival can't stop part-way, so after the warp on
+    //  the right the short way pays no open stop. From the start on X, not
+    //  put there by a warp, it does.
+    const ToyGame game({
+        "X...#W",
+        "#.#.#.",
+        "#...#.",
+    });
+    const auto warped = plan(game, {5, 2}, {1, 2}, Direction::NORTH);
+    if (!warped || warped->size() != 3 || !(*warped)[0].warps || (*warped)[1].tiles != 1 || (*warped)[1].to_wall){
+        return std::format("After the warp, expected east 1 in the open, then south:{}", warped ? describe(*warped) : " none");
+    }
+    const auto started = plan(game, {0, 0}, {1, 2}, Direction::NORTH);
+    if (!started || started->empty() || !(*started)[0].to_wall){
+        return std::format("From the start, expected east to the wall:{}", started ? describe(*started) : " none");
+    }
+    return true;
+}
+
 UnitTestResult test_unreachable(){
     const ToyGame game({
         ".#.",
@@ -401,6 +423,10 @@ const LegPlannerTestCase LEG_PLANNER_CASES[] = {
     {
         .input = {.name = "a new leg is not wild", .test = test_wild_ends_with_leg},
         .expectation = {.description = "clears wild status on subsequent non-grass legs"},
+    },
+    {
+        .input = {.name = "a one-tile leg off a warp pays no open stop", .test = test_one_tile_open_stop},
+        .expectation = {.description = "takes one step off a warp's arrival into the open over a longer way round to walls"},
     },
 };
 
