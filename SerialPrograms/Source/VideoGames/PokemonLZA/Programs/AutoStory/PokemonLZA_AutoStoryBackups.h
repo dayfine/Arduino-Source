@@ -6,9 +6,9 @@
  *  title screen's Up + B + X opens its card (console B, 2026-11-16). A
  *  checkpoint that autosaved and then failed cannot reload its start: the
  *  latest save is past it. The run then rewinds: it opens the backup card,
- *  finds which checkpoint starts where that backup is (the plan's
- *  "backup_card"), loads it and plays on from that checkpoint, the failed
- *  one again included. Nothing is saved by hand: the game's own autosaves
+ *  finds which checkpoint starts where that backup is (the card's count
+ *  in the plans' "start_signature"), loads it and plays on from that
+ *  checkpoint, the failed one again included. Nothing is saved by hand: the game's own autosaves
  *  take over from the backup.
  *
  */
@@ -26,6 +26,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.h"
 #include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryBackend.h"
+#include "PokemonLZA_AutoStoryStarts.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -39,17 +40,6 @@ struct BackupCard{
 
     bool operator==(const BackupCard&) const = default;
 };
-
-//  A checkpoint that starts where a backup with `card` loads: a plan's
-//  execution "backup_card": {"registered": N}.
-struct BackupStart{
-    std::string checkpoint;
-    BackupCard card;
-};
-
-//  The id of the checkpoint `starts` names for `card`, none for a card no
-//  start matches: such a backup is never loaded.
-std::optional<std::string> backup_checkpoint(std::span<const BackupStart> starts, const BackupCard& card);
 
 
 //  The console's backup save, as a run rewinds to it.
@@ -66,21 +56,22 @@ struct BackupSave{
 
 //  A run that may rewind: the rows `first` to `last` of `rows` (all the
 //  story's checkpoints), `attempts_per_checkpoint` each, and up to
-//  `max_rewinds` rewinds to the backup saves `starts` name.
+//  `max_rewinds` rewinds to the backup saves `starts` name (a backup
+//  card's StartSignature::registered).
 struct RewindPlan{
     std::span<const Pokemon::StoryCheckpoint> rows;
     size_t first = 0;
     size_t last = 0;
     size_t attempts_per_checkpoint = 1;
-    std::span<const BackupStart> starts = {};
+    std::span<const CheckpointStart> starts = {};
     size_t max_rewinds = 0;
 };
 
 //  `plan`'s rows with run_plza_segments(). A checkpoint that fails after
 //  the game autosaved in it (seen, or its reload failed as "save_moved")
 //  has no start save left: the run rewinds to `backup`. It opens the
-//  backup card and, when `plan.starts` names a checkpoint for it at or
-//  before the failed one, loads it and runs from that checkpoint to
+//  backup card and, when its count names a checkpoint at or before the
+//  failed one (checkpoint_at()), loads it and runs from that checkpoint to
 //  `plan.last`, up to `plan.max_rewinds` times. A card not read, or one no
 //  start matches, is cancelled and the run stops as "unknown_backup": an
 //  unknown backup is never loaded. A failure with no autosave in it stops

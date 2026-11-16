@@ -4,6 +4,7 @@
  *
  */
 
+#include <chrono>
 #include <format>
 #include <optional>
 #include <span>
@@ -11,7 +12,10 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Time.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
@@ -20,6 +24,7 @@
 #include "Actions/PokemonLZA_AutoStoryNewGame.h"
 #include "PokemonLZA_AutoStoryBackups.h"
 #include "PokemonLZA_AutoStoryGame.h"
+#include "PokemonLZA_AutoStoryStarts.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
 #include "PokemonLZA_AutoStory.h"
 
@@ -28,6 +33,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 using namespace Pokemon;
+using namespace std::chrono_literals;
 
 
 AutoStory_Descriptor::AutoStory_Descriptor()
@@ -116,7 +122,7 @@ constexpr std::string_view ATTEMPTS_PER_CHECKPOINT_LABEL =
 constexpr std::string_view REWINDS_TO_BACKUP_LABEL =
     "<b>Rewinds to the Backup Save:</b><br>A checkpoint that fails after the game autosaved in it cannot reload its start. "
     "The run then closes the game, opens the backup save's card at the title (Up + B + X), and when the card matches a checkpoint's start "
-    "(\"backup_card\" in its plan), loads it and plays on from that checkpoint, up to this many times. An unknown backup is never loaded.";
+    "(\"start_signature\" in its plan), loads it and plays on from that checkpoint, up to this many times. An unknown backup is never loaded.";
 
 //  Loads the latest save for `row` with `game`: a run that starts after
 //  the new game starts from it (01.01: the platform autosave), not from
@@ -131,6 +137,64 @@ void load_first_save(ConsoleHandle& console, const StoryGame<ZonePose>& game, Pl
         );
     }
     console.log(std::format("AutoStory: loaded the latest save for {}.", row.id));
+}
+
+//  How the start signature is read: the same reading on this many frames
+//  in a row, one poll apart, within the frame budget.
+constexpr size_t SIGNATURE_AGREEING_FRAMES = 3;
+constexpr size_t SIGNATURE_FRAME_BUDGET = 20;
+constexpr Milliseconds SIGNATURE_POLL = 500ms;
+
+//  What the screen shows where the player stands (read_start_screen()):
+//  the same reading on SIGNATURE_AGREEING_FRAMES frames in a row. Nothing
+//  read when the frames never agree. Presses nothing.
+StartSignature read_start_signature(ConsoleHandle& console, ProControllerContext& context){
+    std::optional<StartSignature> last;
+    size_t agreeing = 0;
+    for (size_t frame = 0; frame < SIGNATURE_FRAME_BUDGET; frame++){
+        context.wait_for(SIGNATURE_POLL);
+        const VideoSnapshot snapshot = console.video().snapshot();
+        const StartSignature read = snapshot ? read_start_screen(*snapshot.frame) : StartSignature{};
+        agreeing = last == read ? agreeing + 1 : 1;
+        last = read;
+        if (agreeing >= SIGNATURE_AGREEING_FRAMES && read != StartSignature{}){
+            return read;
+        }
+    }
+    return StartSignature{};
+}
+
+//  The checkpoint a run asked to start at `first` plays from: where the
+//  screen says the player is (run_start()), `first` or an earlier
+//  checkpoint. Throws OperationFailedException, with a screenshot, as
+//  "start_position_unknown" when the position matches no start: no
+//  checkpoint's events run from the wrong place.
+size_t checked_first_row(
+    ConsoleHandle& console, ProControllerContext& context,
+    std::span<const StoryCheckpoint> rows, size_t first, std::span<const CheckpointStart> starts
+){
+    const StartSignature read = read_start_signature(console, context);
+    const std::optional<size_t> from = run_start(rows, starts, first, read);
+    if (!from){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::NO_ERROR_REPORT,
+            std::format(
+                "AutoStory: start_position_unknown: the screen ({}) matches no checkpoint start up to {}; nothing was run",
+                to_string(read), rows[first].id
+            ),
+            console
+        );
+    }
+    if (*from != first){
+        console.log(std::format(
+            "AutoStory: the save is at {}'s start ({}), not {}'s: running from {}", rows[*from].id, to_string(read), rows[first].id, rows[*from].id
+        ));
+    }else if (find_start(starts, rows[first].id) == nullptr){
+        console.log(std::format("AutoStory: {} has no start signature to check the screen ({}) against: running it", rows[first].id, to_string(read)));
+    }else{
+        console.log(std::format("AutoStory: the screen ({}) is {}'s start", to_string(read), rows[first].id));
+    }
+    return *from;
 }
 
 } // namespace
@@ -206,13 +270,18 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const StoryGame<ZonePose> game = make_plza_story_game(story, story_data, sightings);
     RunState state;
 
-    if (!story_row_starts_without_save(rows[first]) && LOAD_SAVE_FIRST){
-        load_first_save(env.console, game, backend, rows[first]);
+    const std::vector<CheckpointStart>& starts = builtin_checkpoint_starts();
+    size_t from = first;
+    if (!story_row_starts_without_save(rows[first])){
+        if (LOAD_SAVE_FIRST){
+            load_first_save(env.console, game, backend, rows[first]);
+        }
+        from = checked_first_row(env.console, context, rows, first, starts);
     }
 
     const RewindPlan plan{
-        .rows = rows, .first = first, .last = last, .attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT,
-        .starts = builtin_backup_starts(), .max_rewinds = REWINDS_TO_BACKUP,
+        .rows = rows, .first = from, .last = last, .attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT,
+        .starts = starts, .max_rewinds = REWINDS_TO_BACKUP,
     };
     const SegmentReport report = run_plza_with_rewinds(game, story_data, plan, console_backup_save(story), backend, sightings, state);
     if (!report.completed){

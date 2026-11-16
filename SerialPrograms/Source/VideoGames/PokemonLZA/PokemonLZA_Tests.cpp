@@ -38,6 +38,7 @@
 #include "Programs/AutoStory/PokemonLZA_AutoStorySceneMachine_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStorySceneReplay_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents_Tests.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStoryStarts_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -78,6 +79,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStorySceneMachine(database);
     add_tests_AutoStorySceneReplay(database);
     add_tests_AutoStoryScreenEvents(database);
+    add_tests_AutoStoryStarts(database);
     add_tests_AutoStoryZoneSearch(database);
 
 }

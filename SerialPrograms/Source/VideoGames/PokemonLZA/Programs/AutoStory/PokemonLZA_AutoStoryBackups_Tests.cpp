@@ -39,7 +39,7 @@ std::string joined(const std::vector<std::string>& texts, std::string_view separ
     return out;
 }
 
-//  The built-in plans' backup cards.
+//  The built-in plans' backup cards, read after 03.08 failed.
 struct CardCase{
     std::string name;
     struct Input{
@@ -68,8 +68,28 @@ const CardCase CARD_CASES[] = {
     },
 };
 
+//  The built-in row `id`'s index; none when there is no such row.
+std::optional<size_t> builtin_row(std::string_view id){
+    const std::vector<StoryCheckpoint>& rows = builtin_story_data().checkpoints;
+    for (size_t index = 0; index < rows.size(); index++){
+        if (rows[index].id == id){
+            return index;
+        }
+    }
+    return std::nullopt;
+}
+
+//  The card read after 03.08 failed, as a rewind reads it.
 UnitTestResult check_card(const CardCase& test){
-    const std::optional<std::string> checkpoint = backup_checkpoint(builtin_backup_starts(), test.input.card);
+    const std::vector<StoryCheckpoint>& rows = builtin_story_data().checkpoints;
+    const std::optional<size_t> failed = builtin_row("03.08");
+    if (!failed){
+        return std::string("no 03.08 among the built-in checkpoints");
+    }
+    const std::optional<size_t> index = checkpoint_at(
+        rows, builtin_checkpoint_starts(), *failed, StartSignature{.registered = test.input.card.registered}
+    );
+    const std::optional<std::string> checkpoint = index ? std::optional<std::string>(rows[*index].id) : std::nullopt;
     if (checkpoint != test.expectation.checkpoint){
         return std::format(
             "expected {}, got {}",
@@ -272,7 +292,7 @@ UnitTestResult check_rewind(const RewindCase& test, CancellableScope& scope){
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = looks}, scope);
     Pokemon::RunState state;
     const std::vector<StoryCheckpoint> rows = story_rows();
-    const std::vector<BackupStart> starts{{.checkpoint = "03.06", .card = {.registered = 1}}};
+    const std::vector<CheckpointStart> starts{{.checkpoint = "03.06", .signature = {.registered = 1}}};
     const RewindPlan plan{
         .rows = rows, .first = RUN_FROM, .last = RUN_TO, .attempts_per_checkpoint = 1,
         .starts = starts, .max_rewinds = test.input.max_rewinds,

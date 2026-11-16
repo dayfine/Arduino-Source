@@ -24,16 +24,6 @@ using Pokemon::StoryCheckpoint;
 using Pokemon::ZonePose;
 
 
-std::optional<std::string> backup_checkpoint(std::span<const BackupStart> starts, const BackupCard& card){
-    for (const BackupStart& start : starts){
-        if (start.card == card){
-            return start.checkpoint;
-        }
-    }
-    return std::nullopt;
-}
-
-
 namespace{
 
 //  What a run does after a checkpoint failed.
@@ -76,12 +66,13 @@ void add_part(const SegmentReport& part, SegmentReport& total){
     total.failure = part.failure;
 }
 
-//  Opens the backup card and loads it when `starts` names a checkpoint for
-//  it at or before `failed` (an index of `rows`): that checkpoint's index.
+//  Opens the backup card and loads it when its count names a checkpoint
+//  at or before `failed` (an index of `rows`, checkpoint_at()): that
+//  checkpoint's index.
 //  Otherwise the card is cancelled, nothing loaded, and the failure.
 std::variant<size_t, Outcome> rewind_to_backup(
     PlzaBackend& backend, std::span<const StoryCheckpoint> rows, size_t failed,
-    std::span<const BackupStart> starts, const BackupSave& backup
+    std::span<const CheckpointStart> starts, const BackupSave& backup
 ){
     const std::optional<BackupCard> card = backup.open_card(backend);
     if (!card){
@@ -89,9 +80,8 @@ std::variant<size_t, Outcome> rewind_to_backup(
         backup.cancel(backend);
         return Pokemon::outcome_failed("unknown_backup", "the backup card was not read");
     }
-    const std::optional<std::string> id = backup_checkpoint(starts, *card);
-    const std::optional<size_t> index = id ? row_index(rows, *id) : std::nullopt;
-    if (!index || *index > failed){
+    const std::optional<size_t> index = checkpoint_at(rows, starts, failed, StartSignature{.registered = card->registered});
+    if (!index){
         backend.log(std::format(
             "[Rewind] backup card: {} registered: no checkpoint up to {} starts there; B, nothing loaded",
             card->registered, rows[failed].id
@@ -101,7 +91,7 @@ std::variant<size_t, Outcome> rewind_to_backup(
             "no checkpoint up to {} starts at the backup save ({} registered in the Pokedex)", rows[failed].id, card->registered
         ));
     }
-    backend.log(std::format("[Rewind] backup card: {} registered: {}'s start; loading it", card->registered, *id));
+    backend.log(std::format("[Rewind] backup card: {} registered: {}'s start; loading it", card->registered, rows[*index].id));
     const Outcome loaded = backup.load(backend);
     if (!loaded.succeeded()){
         backend.log(std::format("[Rewind] the backup did not load: {}", to_string(loaded)));
