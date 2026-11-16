@@ -33,6 +33,7 @@
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryGenderMenu.h"
+#include "PokemonFRLG_AutoStoryStartMenuOpening.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryTrainerMessage.h"
 
@@ -158,10 +159,10 @@ bool move_start_cursor_to_save(ConsoleHandle& console, ProControllerContext& con
 }
 
 //  Overlaps open_start_menu() and move_cursor_to_position() in PokemonFRLG_StartMenuNavigation.h.
-//  Ours wraps open_start_menu() and then moves the cursor by row for any START menu variant.
+//  Ours opens it on a quiet overworld (open_start_menu_settled()) and then moves the cursor by row for any START menu variant.
 //  Could be unified with upstream if needed.
 void open_start_menu_row(ConsoleHandle& console, ProControllerContext& context, StartMenu menu, int row){
-    open_start_menu(console, context);
+    open_start_menu_settled(console, context);
     if (!move_start_cursor(console, context, start_menu_rows(menu), row)){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT, "START menu: no cursor.", console
@@ -789,7 +790,7 @@ void save_game(
 }
 
 std::string read_save_place(ConsoleHandle& console, ProControllerContext& context, Language language){
-    open_start_menu(console, context);
+    open_start_menu_settled(console, context);
     if (!move_start_cursor_to_save(console, context)){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT, "START menu: no cursor.", console

@@ -30,6 +30,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTileRules.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryStartMenuOpening.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryGenderMenu.h"
 #include "PokemonFRLG_AutoStoryBag.h"
@@ -1433,6 +1434,70 @@ UnitTestResult test_save_dialog(){
     return true;
 }
 
+std::string_view start_open_action_name(StartOpenAction action){
+    switch (action){
+    case StartOpenAction::WAIT:
+        return "WAIT";
+    case StartOpenAction::CLOSE_BOX:
+        return "CLOSE_BOX";
+    case StartOpenAction::PRESS_START:
+        return "PRESS_START";
+    case StartOpenAction::OPENED:
+        return "OPENED";
+    case StartOpenAction::FAIL_BATTLE:
+        return "FAIL_BATTLE";
+    case StartOpenAction::FAIL_NO_MENU:
+        return "FAIL_NO_MENU";
+    }
+    return "?";
+}
+
+//  Opening the START menu for a save, look by look. 19.04d's save came
+//  right after exit_route23's warp: START, pressed blind 0.5 s after the
+//  fade, was lost in the fade-in; on attempt 1 the screen was no overworld
+//  at all and six blind START and B presses failed the save (console B,
+//  2026-11-16 04:14).
+UnitTestResult test_start_menu_opening(){
+    using S = StartOpenScreen;
+    using A = StartOpenAction;
+    struct Case{
+        std::string name;
+        struct Input{
+            std::vector<StartOpenScreen> screens;
+        } input;
+        struct Expectation{
+            std::vector<StartOpenAction> actions;
+        } expectation;
+    };
+    const std::vector<Case> CASES = {
+        {.name = "right after a warp: the fade-in and the map's popup, then the quiet overworld",
+         .input = {.screens = {S::SETTLING, S::SETTLING, S::QUIET_OVERWORLD, S::START_MENU}},
+         .expectation = {.actions = {A::WAIT, A::WAIT, A::PRESS_START, A::OPENED}}},
+        {.name = "a box left open is closed first",
+         .input = {.screens = {S::BOX, S::SETTLING, S::QUIET_OVERWORLD, S::START_MENU}},
+         .expectation = {.actions = {A::CLOSE_BOX, A::WAIT, A::PRESS_START, A::OPENED}}},
+        {.name = "a battle: no START into it",
+         .input = {.screens = {S::SETTLING, S::BATTLE}},
+         .expectation = {.actions = {A::WAIT, A::FAIL_BATTLE}}},
+        {.name = "a lost START is pressed again",
+         .input = {.screens = {S::QUIET_OVERWORLD, S::QUIET_OVERWORLD, S::START_MENU}},
+         .expectation = {.actions = {A::PRESS_START, A::PRESS_START, A::OPENED}}},
+        {.name = "a quiet overworld that never opens the menu",
+         .input = {.screens = {S::QUIET_OVERWORLD, S::QUIET_OVERWORLD, S::QUIET_OVERWORLD, S::QUIET_OVERWORLD}},
+         .expectation = {.actions = {A::PRESS_START, A::PRESS_START, A::PRESS_START, A::FAIL_NO_MENU}}},
+    };
+    for (const Case& c : CASES){
+        StartMenuOpening opening;
+        for (size_t i = 0; i < c.input.screens.size(); i++){
+            const StartOpenAction action = opening.next(c.input.screens[i]);
+            if (action != c.expectation.actions[i]){
+                return std::format("{}, look {}: expected {}, got {}.", c.name, i + 1, start_open_action_name(c.expectation.actions[i]), start_open_action_name(action));
+            }
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_lint(){
     //  FRLG's own action args (a battle's trainer and foes), with no console.
     const Pokemon::StoryActionTable table = make_story_action_table([](StoryActionId){
@@ -1669,6 +1734,10 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
     {
         .input = {.name = "save dialogs: every YES/NO is YES, a cancel fails", .body = test_save_dialog},
         .expectation = {.description = "verifies save confirmation prompt interactions"},
+    },
+    {
+        .input = {.name = "the START menu opens for a save only on a quiet overworld", .body = test_start_menu_opening},
+        .expectation = {.description = "waits out a warp's fade-in, closes a box, refuses a battle, presses START at most three times"},
     },
     {
         .input = {.name = "every checkpoint lints clean", .body = test_lint},

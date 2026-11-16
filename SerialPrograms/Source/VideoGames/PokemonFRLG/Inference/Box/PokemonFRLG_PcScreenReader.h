@@ -19,7 +19,8 @@
  *    box's name; "Continue BOX operations?" a YES/NO at (188, 85).
  *
  *  A message box with nothing else is TEXT; a frame with none of these, no
- *  START menu and not dark is the OVERWORLD. A screen between two of them
+ *  START menu and not dark is the OVERWORLD. A dark frame, as in the fade
+ *  into and out of a box screen, is OTHER whatever else it matches. A screen between two of them
  *  can read as the overworld: the caller confirms it on a later frame.
  *
  */

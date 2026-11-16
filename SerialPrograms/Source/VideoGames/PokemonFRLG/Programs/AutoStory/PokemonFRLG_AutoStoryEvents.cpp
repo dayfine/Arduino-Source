@@ -63,13 +63,13 @@ constexpr Milliseconds SCENE_TIMEOUT = 300000ms;
 constexpr Milliseconds YES_NO_TIMEOUT = 60000ms;
 constexpr Milliseconds BATTLE_TEXT_TIMEOUT = 90000ms;
 
-//  The engine knows nothing of consoles: a failed console step is a failed
-//  Outcome, which the segment answers by reloading the save.
+//  A failed save as a failed Outcome, which reloads it; its frame is kept.
 template <typename Body>
-Outcome guarded(Body&& body){
+Outcome guarded(StoryEnv& env, Body&& body){
     try{
         return body();
     }catch (OperationFailedException& e){
+        InterruptLogGuard(env.console.logger()).save_frame("save", e);
         return Pokemon::outcome_failed("operation_failed", e.message());
     }
 }
@@ -965,7 +965,7 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     env.start_menu = data.menu;
     const StartMenu menu = data.menu;
     checkpoint.save = [&env, menu, id = data.id](RunState&){
-        return guarded([&]{
+        return guarded(env, [&]{
             save_game(env.console, env.context, menu, env.language, [end_map = checkpoint_end_map(id)](const std::string& place){
                 return save_end_error(end_map, place);
             });

@@ -24,6 +24,7 @@
 
 #include <functional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/Time.h"
@@ -114,6 +115,10 @@ public:
     {}
 
     virtual void on_failure(const Pokemon::StoryStep& step, const OperationFailedException& error) override;
+    //  The frame `error` carries, saved as <timestamp>-<name>.png: also for
+    //  a failure outside a step (a checkpoint's save: 19.04d's left no frame,
+    //  console B, 2026-11-16 04:15).
+    void save_frame(std::string_view name, const OperationFailedException& error);
     virtual void on_interrupt(const Pokemon::StoryStep& step, const Pokemon::InterruptCheck& check) override;
     virtual void on_screen(const Pokemon::StoryStep& step, const Pokemon::ScreenSettle& screen) override;
     virtual void on_check_skipped(const Pokemon::StoryStep& step, const std::string& line) override;

@@ -185,14 +185,18 @@ Pokemon::ScreenSettle wait_for_quiet_overworld(
 
 
 void InterruptLogGuard::on_failure(const Pokemon::StoryStep& step, const OperationFailedException& error){
+    save_frame(step.name, error);
+}
+
+void InterruptLogGuard::save_frame(std::string_view name, const OperationFailedException& error){
     const OperationFailedExceptionWithScreenshot* shot = dynamic_cast<const OperationFailedExceptionWithScreenshot*>(&error);
     const std::shared_ptr<const ImageRGB32> frame = shot == nullptr ? nullptr : shot->screenshot();
     if (!frame || !*frame){
-        m_logger.log(std::format("Story: {} failed with no frame to save.", step.name), COLOR_ORANGE);
+        m_logger.log(std::format("Story: {} failed with no frame to save.", name), COLOR_ORANGE);
         return;
     }
     Filesystem::create_directories(Filesystem::Path(m_failures_folder));
-    const std::string path = std::format("{}{}-{}.png", m_failures_folder, now_to_filestring(), step.name);
+    const std::string path = std::format("{}{}-{}.png", m_failures_folder, now_to_filestring(), name);
     if (frame->save(path)){
         m_logger.log(std::format("Failure screenshot: {}", path), COLOR_RED);
     }else{
