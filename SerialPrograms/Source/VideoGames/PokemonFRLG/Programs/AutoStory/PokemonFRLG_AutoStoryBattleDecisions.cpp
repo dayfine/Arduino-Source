@@ -21,7 +21,6 @@ namespace PokemonFRLG{
 
 namespace{
 
-constexpr size_t PARTY_SLOTS = 6;
 //  A wild Pokemon is fought (WILD_FIGHT) only with green HP and this many
 //  Potions left; otherwise it is run from.
 constexpr int MIN_POTIONS_TO_FIGHT = 2;
@@ -443,18 +442,6 @@ PromptAnswer BattleDecisions::prompt(bool lead_box_gone){
     return PromptAnswer{.answer = YesNo::NO};
 }
 
-std::optional<size_t> BattleDecisions::next_member_slot(){
-    lead_fainted();
-    //  A slot sent before and still offered was empty or fainted: the next.
-    for (size_t slot = 1; slot < PARTY_SLOTS; slot++){
-        const bool kept = std::ranges::find(m_supplies.protected_slots, slot) != m_supplies.protected_slots.end();
-        if (!kept && !m_sent.contains(slot)){
-            m_sent.insert(slot);
-            return slot;
-        }
-    }
-    return std::nullopt;
-}
 
 void BattleDecisions::lead_fainted(){
     m_lost = true;
