@@ -64,7 +64,10 @@ Slice 5b adds three tools on the same record, inbox and settle path:
   thread). A pass stores a token bound to the app instance, panel, candidate hash, the app's hash
   of the program's full options, last transition, save status and lease, good for `TOKEN_TTL_S`.
 - `run_program` needs a current token for exactly its panel and options and sends `set KEY JSON`
-  lines for the options, then `start 10`, in one request (the app stops at a failing line).
+  lines for the options, then `start 10`, in one request (the app stops at a failing line). The
+  app has no undo: a failed line leaves the earlier `set` lines applied, and the refusal names
+  them (`evidence.applied_options`, `failed_option`). The token check right before the write is
+  what refuses before anything is applied; a line fails only if the app changed after it.
 - `cfr_batch(lines)`: allowlisted console lines (`pa_lab.cfr`) with the program stopped. The save
   fact is marked stale (`cfr_batch`) before the request is written, since any press may change
   the game.
@@ -142,6 +145,26 @@ def _app_error(tool: str, error: AppError, journal: Journal) -> Dict[str, Any]:
         return _refusal(code, 'The app refused the start: {}'.format(error.detail))
     return _refusal('app_unavailable', 'The app refused the {}: {}'.format(
         'start' if tool == 'run_program' else 'stop', error.detail), evidence={'journal': list(journal.lines)})
+
+
+def _partial_options(refusal: Dict[str, Any], error: AppError, options: Dict[str, Any]) -> Dict[str, Any]:
+    """A failed run_program request, with what its `set` lines left in the panel. The app stops at the
+    failing line and has no undo, so the lines before it stay applied: `evidence.applied_options` names
+    them (all of them when `start` failed), `evidence.failed_option` the one the app refused. The next
+    run_program sets every option it names again; anything else must be set back in the panel."""
+    sets = preflight.set_commands(options)
+    index = error.command_index
+    if error.kind == ErrorKind.OWNER_CLAIMED or not sets or index is None or index == 0:
+        return refusal  # nothing was applied (or the app did not say where it stopped)
+    evidence = dict(refusal.get('evidence') or {})
+    evidence['applied_options'] = {c.key: c.value for c in sets[:index]}
+    message = refusal['message']
+    if index < len(sets):
+        evidence['failed_option'] = sets[index].key
+        message = 'The app refused set {}: {}'.format(sets[index].key, error.detail)
+    message += ' The panel keeps {} from this request; check it before any run.'.format(
+        ', '.join(evidence['applied_options']))
+    return dict(refusal, message=message, evidence=evidence)
 
 
 def _first_blocked(state: Dict[str, Any]) -> None:
@@ -471,7 +494,11 @@ class ProgramActions:
             # The run ended between the check and the stop line, before anything this request can date.
             stopped_by = transition['source'] if transition is not None and transition['action'] == 'stop' else None
             return {'result': dict(base, sent=True, stopped_at=None, stopped_by=stopped_by, correlated_by='state')}
-        return {'refusal': _app_error(tool, error, journal)}
+        refusal = _app_error(tool, error, journal)
+        if tool == 'run_program':
+            record = self.plane.record(action['client_id'], tool, request_id)
+            refusal = _partial_options(refusal, error, record['arguments'].get('options') or {})
+        return {'refusal': refusal}
 
     def _judge_line(self, reader: ConsoleReader, state: Dict[str, Any], action: Dict[str, Any],
                     journal: Optional[Journal]) -> Optional[Dict[str, Any]]:

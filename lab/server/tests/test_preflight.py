@@ -96,6 +96,16 @@ class VerdictTests(PreflightTest):
         self.assertEqual(record['refusal']['evidence']['edited_keys'], ['LANGUAGE'])
         self.assertEqual(self.app.options['LANGUAGE'], 'de')
 
+    def test_checks_a_panel_change_cancelled_give_no_token(self):
+        """#616: the app puts the options back and replies `cancelled`."""
+        token = self.acquired()
+        self.app.cancel = True
+        record = self.preflight(preflight_request(token, options={'START_SEGMENT': 7}))
+        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'))
+        self.assertEqual(record['refusal']['evidence']['reason'], 'cancelled')
+        self.assertIsNone(record['result'])
+        self.assertEqual(self.app.options, CURRENT_OPTIONS)
+
     def test_other_verdicts(self):
         def unsupported(test):
             test.app.replies['describe_program'] = describe_reply(prechecks='unsupported')
@@ -153,6 +163,32 @@ class TokenTests(PreflightTest):
         # In key order: the record stores the options as canonical JSON.
         self.assertEqual(start[1:], ['set NOTIFICATIONS.Enabled false', 'set START_SEGMENT 3', 'start 10'])
         self.assertEqual(self.app.options['START_SEGMENT'], 3)
+
+    def test_a_failed_set_line_names_the_options_the_panel_keeps(self):
+        """The app has no undo: the set lines before the failing one stay applied, and the refusal says so."""
+        token = self.acquired()
+        options = {'START_SEGMENT': 3, 'NOTIFICATIONS': {'Enabled': False}}
+        checked = self.passed(token, options)
+        self.app.set_fail = ('START_SEGMENT', 'Unknown option: START_SEGMENT')
+        record = self.run_with(token, checked['result']['preflight_token'], options)
+        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'), record)
+        evidence = record['refusal']['evidence']
+        self.assertEqual((evidence['applied_options'], evidence['failed_option']),
+                         ({'NOTIFICATIONS.Enabled': False}, 'START_SEGMENT'))
+        self.assertIn('NOTIFICATIONS.Enabled', record['refusal']['message'])
+        self.assertEqual((self.app.options['NOTIFICATIONS']['Enabled'], self.app.options['START_SEGMENT']),
+                         (False, CURRENT_OPTIONS['START_SEGMENT']))
+        self.assertEqual(self.app.lab.state['program']['state'], 'stopped')
+
+    def test_a_failed_first_set_line_applies_nothing(self):
+        token = self.acquired()
+        options = {'START_SEGMENT': 3, 'NOTIFICATIONS': {'Enabled': False}}
+        checked = self.passed(token, options)
+        self.app.set_fail = ('NOTIFICATIONS.Enabled', 'Unknown option: NOTIFICATIONS.Enabled')
+        record = self.run_with(token, checked['result']['preflight_token'], options)
+        self.assertEqual(record['refusal']['code'], 'app_unavailable', record)
+        self.assertNotIn('applied_options', record['refusal']['evidence'])
+        self.assertEqual(self.app.options, CURRENT_OPTIONS)
 
     def test_stale_tokens_are_refused_and_nothing_is_sent(self):
         def run_and_end(test):

@@ -406,6 +406,7 @@ checks may open a menu or go Home and back) for the one reply line, `preflight <
 |---|---|
 | `restored: false` (whatever the verdict) | `failed`, `app_unavailable`, `evidence.reason: options_not_restored` (`evidence.edited_keys`: what a user changed in the panel during the checks, kept by the app); no token |
 | `id` is not `panel` | `failed`, `app_unavailable`, `panel_changed` |
+| `verdict: cancelled` (a panel change or the app closing cancelled the checks; the app put the options back first, #616) | `failed`, `app_unavailable`, `evidence.reason: cancelled`; no token |
 | `verdict: unsupported` | `failed`, `prechecks_unsupported` |
 | `verdict: invalid_options` (the app's `check_validity` or its own key check) | `failed`, `invalid_arguments`, `field: options.<key>` |
 | `verdict: failed` | `failed`, `precheck_failed`, `check` = the check's name, its message and evidence |
@@ -428,8 +429,13 @@ candidate does not name included, changes `options_hash` (`changed: ["options_ha
 
 **Options on `run_program`.** The request is `request <id>`, one `set KEY JSON` line per option
 (groups as `GROUP.KEY`, in key order), then `start 10`; the app stops at the first failing line, so
-a refused `set` starts nothing (`app_unavailable` with the journal). The panel keeps the options
-after the run, as when a user sets them and clicks Start.
+a refused `set` starts nothing (`app_unavailable` with the journal). The app has no undo and the
+daemon cannot read option values, so the `set` lines before the failing one stay applied: the
+refusal names them in `evidence.applied_options` (key to value sent), and `evidence.failed_option`
+names the refused key (absent when `start` failed after every `set` ran); its message says to check
+the panel. What refuses before anything is applied is the token check in the same transaction as the
+write: a line fails only if the app changed in between. The panel keeps the options after the run,
+as when a user sets them and clicks Start.
 
 **`cfr_batch`** (`pa_lab/cfr.py`, the allowlist from #547). 1-200 lines; only `press`, `dpad`,
 `stick`, `wait`, `taps`, `walk`, `shot`, `shots`, `detect`, `wait_for`, `expect`, `game_open`, in
@@ -461,7 +467,40 @@ until a program overrides its prechecks every preflight is `prechecks_unsupporte
 before a run is not seen by the token. The `set` echoes in the start's
 journal are not compared with what was sent (the preflight already refused clamped or disabled
 values). The channel's owner token is still not claimed (a claimed channel is refused), and the
-console-B soak (every mutation has exactly one record) is still to run.
+console-B soak (every mutation has exactly one record) is still to run; steps below.
+
+### Slice 5 acceptance: the console-B soak
+
+Slice 5 is accepted when, over a real run on console B, every mutation has exactly one audit record:
+each inbox request the daemon wrote has one `actions` row, each `requests` row has one terminal
+event, and each UI Start/Stop shows up once. Run it yourself during a run you are making anyway:
+
+1. Use a lab build with #601, #608 and #616 (the app's `preflight`, the user hold, the cancel fix),
+   and a program that lists its start checks. Do it within a day of the run: `disk_gc.sh` prunes
+   `Lab/done/` and `Lab/outbox/`.
+2. Note the start: `T0=$(date -u +%Y-%m-%dT%H:%M:%SZ)` and
+   `DB=~/.local/state/pa-lab/control.sqlite`.
+3. From `lab/server`, start the daemon with actions:
+   `python3 -m pa_lab serve --config ~/.config/pa-lab/server.json --actions`.
+4. Through the MCP client, drive the run: `acquire_console`, `preflight_program`, `run_program`
+   with its token, `stop_program` (or let the run end), `release_console`. Along the way, once each:
+   resend a call with the same `request_id` (must return the stored record, write nothing); send
+   a `run_program` with a stale token (refused, nothing written); click Stop in the app during a
+   run (user takeover); restart the daemon while a `run_program` is pending; one short
+   `cfr_batch` (`shot`, `press B`).
+5. Check, after the run, with the daemon stopped:
+   - every request has exactly one terminal event (no rows expected):
+     `sqlite3 "$DB" "SELECT r.tool, r.request_id, r.status, COUNT(e.seq) FROM requests r LEFT JOIN events e ON e.request_id = r.request_id AND e.type IN ('request_completed','request_failed') WHERE r.created_at >= '$T0' GROUP BY 1, 2, 3 HAVING COUNT(e.seq) != 1"`
+   - nothing is left pending: `sqlite3 "$DB" "SELECT tool, request_id FROM requests WHERE status = 'pending'"`
+   - every request the app took has one `actions` row, and the reverse: compare
+     `ls ~/Library/Application\ Support/SerialPrograms/Profiles/lab-B/Lab/done | grep '^palab_' | sed 's/\.txt$//' | sort`
+     with `sqlite3 "$DB" "SELECT inbox_name FROM actions WHERE written_at >= '$T0' ORDER BY 1"`.
+     Only an action that settled `timeout` with nothing sent (withdrawn, `never_sent`) may lack a
+     `done/` file; each `done/` name appears once.
+   - each UI Start/Stop you clicked is one event:
+     `sqlite3 "$DB" "SELECT seq, type, at, payload FROM events WHERE at >= '$T0' AND type IN ('lease_changed', 'stopped') ORDER BY seq"`.
+6. Pass: no mismatches. Note the counts (requests, actions, `done/` files, events) and any mismatch
+   with its request id in the run record; a mismatch is a bug in the daemon, not in the run.
 
 ## User pages
 
