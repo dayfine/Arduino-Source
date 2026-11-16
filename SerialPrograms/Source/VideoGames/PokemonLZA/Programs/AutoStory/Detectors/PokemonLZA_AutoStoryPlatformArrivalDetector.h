@@ -27,6 +27,7 @@ namespace PokemonLZA{
 //  The checked-in reference files, ReferenceData/*.json, built into the
 //  program (cmake/EmbedTextFiles.cmake): (name, text), by name.
 //  plza-platform holds the platform reference's cell colors per region.
+//  code-health: allow test_only_api -- the generated embed file (cmake/EmbedTextFiles.cmake) defines it from this declaration
 const std::vector<std::pair<std::string, std::string>>& autostory_reference_json();
 
 
@@ -39,17 +40,10 @@ struct PlatformDistances{
     double right;
 };
 
-//  The regions of a frame against the platform reference.
-PlatformDistances platform_distances(const ImageViewRGB32& screen);
-
-//  Whether `distances` are the platform: top and left within their bounds,
-//  and the right side within a looser one (the companion and the NPCs there
-//  move). The bounds and the measurements behind them are in the .cpp.
-bool platform_matches(const PlatformDistances& distances);
-
 //  The reference as a `width` x `height` frame: each cell painted its
 //  color, the player's area black. A frame the detector sees as the
 //  platform, for tests.
+//  code-health: allow test_only_api -- the tests' platform frame needs the reference cells that only this .cpp reads
 ImageRGB32 platform_reference_image(size_t width, size_t height);
 
 //  "top 12.3, left 4.5, right 30.1", for the log.

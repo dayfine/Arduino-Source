@@ -43,7 +43,7 @@ std::string current_exception_text(){
 //  Runs event `number` of `checkpoint`; if it succeeded knowing where it
 //  left the player, that becomes the run's pose. Logs its start and end,
 //  and a throw as its and the checkpoint's failure before it goes on.
-Outcome run_event(Checkpoint& checkpoint, size_t number, RunState& state, EventLogger& log){
+Outcome run_event(size_t number, Checkpoint& checkpoint, RunState& state, EventLogger& log){
     Event& event = checkpoint.events[number - 1];
     log(event_log_line(checkpoint.id, number, event.name, "start"));
     Outcome outcome;
@@ -76,7 +76,7 @@ CheckpointReport run_checkpoint(RunState& state, Checkpoint& checkpoint, EventLo
     log(checkpoint_start_line(id, checkpoint.events.size()));
     for (size_t c = 0; c < checkpoint.events.size(); c++){
         report.events_run++;
-        Outcome outcome = run_event(checkpoint, c + 1, state, log);
+        Outcome outcome = run_event(c + 1, checkpoint, state, log);
         if (!outcome.succeeded()){
             report.failed_event = c + 1;
             report.failed_name = checkpoint.events[c].name;

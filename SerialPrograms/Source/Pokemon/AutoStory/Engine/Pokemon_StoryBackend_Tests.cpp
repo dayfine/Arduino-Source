@@ -64,10 +64,10 @@ std::string fake_text(CancellableScope& scope){
     Observation<ZonePose> fade;
     fade.events = {ScreenEvent::FADE_WHITE};
     FakeStoryBackend<ZonePose> backend({.looks = {Observation<ZonePose>{}, fade}}, scope);
-    backend.press(NintendoSwitch::BUTTON_A, 80ms, 80ms);
+    backend.press(NintendoSwitch::BUTTON_A, /*hold=*/80ms, /*release=*/80ms);
     backend.tap(Direction::EAST);
-    backend.hold(Direction::NORTH, 400ms, StoryPace::RUN);
-    backend.stick(90, 150ms, 300ms, StoryPace::WALK);
+    backend.hold(Direction::NORTH, /*duration=*/400ms, StoryPace::RUN);
+    backend.stick(/*degrees=*/90, /*duration=*/150ms, /*release=*/300ms, StoryPace::WALK);
     backend.wait(100ms);
     std::string looks;
     for (size_t c = 0; c < 3; c++){
@@ -75,7 +75,7 @@ std::string fake_text(CancellableScope& scope){
     }
     std::string text;
     for (const std::string& input : backend.inputs()){
-        text += input + ", ";
+        text += std::format("{}, ", input);
     }
     return text + looks;
 }
