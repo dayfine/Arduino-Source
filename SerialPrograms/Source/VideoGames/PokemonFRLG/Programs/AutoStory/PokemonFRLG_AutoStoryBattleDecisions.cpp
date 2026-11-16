@@ -33,6 +33,8 @@ constexpr int RUN_TRIES = 4;
 constexpr int FAINT_POLLS = 3;
 //  PSN read at this many turns in a row before an Antidote.
 constexpr int PSN_READS = 2;
+//  The PP an Elixir restores to each move (pokefirered items.json).
+constexpr uint8_t ELIXIR_PP = 10;
 //  An evolution screen held this long was an evolution, not a text box
 //  between two others.
 constexpr Milliseconds EVOLUTION_SEEN = std::chrono::milliseconds(5000);
@@ -204,6 +206,12 @@ BattleDecisions::BattleDecisions(Supplies& supplies, BattleKind kind)
     if (kind == BattleKind::TRAINER && supplies.policy.kind != BattlePolicyKind::NONE && supplies.lead.stats){
         m_policy.emplace(supplies.policy);
     }
+    //  A League fight spends its plan's budget and what the fights before
+    //  left (end_trainer_battle() rolls it forward).
+    const LeagueFightPlan* league = supplies.league ? league_fight(supplies.league->plan, supplies.trainer) : nullptr;
+    if (kind == BattleKind::TRAINER && league != nullptr){
+        supplies.budget = add_budgets(league->budget, supplies.league->carried);
+    }
 }
 
 TurnAction BattleDecisions::turn(const PartyStatus& status){
@@ -313,17 +321,22 @@ TurnAction BattleDecisions::policy_turn(const PartyStatus& status, std::string h
         .status = status.status,
         .speed = m_supplies.lead.stats->speed,
         .foe_index = track_foe(),
+        .foe_fill = status.foe_fill.value_or(1.0),
     };
+    //  The League's policy logs every turn's state and choice on one line,
+    //  for PokemonSimulation's log check.
+    const bool budgeted = m_supplies.policy.kind == BattlePolicyKind::BUDGETED_SETUP;
     std::optional<PolicyItem> item = m_items_off ? std::nullopt : m_policy->choose(m_supplies, view);
+    const std::string state = budgeted ? m_policy->state_line(m_supplies, view) : std::string();
     if (!item){
         TurnAction action = move_turn();
-        action.heal_reason = std::move(heal_reason);
+        action.heal_reason = budgeted ? std::format("policy: {}; attack", state) : std::move(heal_reason);
         return action;
     }
     m_planned_item = item->item;
     return TurnAction{
         .choice = item->party_member ? TurnChoice::MEDICINE : TurnChoice::BATTLE_ITEM,
-        .heal_reason = "policy: " + item->why,
+        .heal_reason = budgeted ? std::format("policy: {}; {}", state, item->why) : "policy: " + item->why,
         .item = std::move(item->item),
     };
 }
@@ -407,6 +420,14 @@ void BattleDecisions::policy_item_used(){
         return;
     }
     m_policy->item_used(m_planned_item);
+    if (m_supplies.budget){
+        spend_budget(*m_supplies.budget, m_planned_item);
+    }
+    if (m_planned_item == "elixir"){
+        add_pp(m_supplies.lead, ELIXIR_PP);
+    }else if (m_planned_item == "max-elixir"){
+        restore_pp(m_supplies.lead);
+    }
     //  A medicine heals up to the bar's end.
     const double room = static_cast<double>(m_supplies.lead.stats->hp) - m_last_hp.value_or(0);
     m_healed_hp = std::min(medicine_hp(m_planned_item), std::max(0.0, room));

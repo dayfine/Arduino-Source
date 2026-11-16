@@ -17,7 +17,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Rows 20.01a to 20.05 on the overworld sim (PokemonFRLG_AutoStoryLeague_Tests.cpp).
+//  Rows 20.01a and 20.01 on the overworld sim (PokemonFRLG_AutoStoryLeague_Tests.cpp).
 void add_tests_AutoStoryLeague(UnitTestDatabase& database);
 
 

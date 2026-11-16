@@ -56,7 +56,7 @@ bool is_party_item(std::string_view item){
     return item == "rare-candy";
 }
 bool is_lead_recovery_item(std::string_view item){
-    return item == "elixir" || item == "full-restore";
+    return item == "elixir" || item == "max-elixir" || item == "full-restore";
 }
 bool is_repel(std::string_view item){
     return item == "repel" || item == "super-repel" || item == "max-repel";

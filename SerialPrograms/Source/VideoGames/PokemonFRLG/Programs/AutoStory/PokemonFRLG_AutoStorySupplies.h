@@ -25,6 +25,7 @@
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattlePolicyData.h"
+#include "PokemonFRLG_AutoStoryLeaguePlan.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryStartMenu.h"
 
@@ -114,6 +115,12 @@ struct Supplies{
     //  How that battle is fought by PokeGuy's policy, if its step names one
     //  (BattlePolicyKind::NONE otherwise: the story's own recovery).
     BattlePolicy policy = {};
+    //  The League's plan and what its fights have left, from the bag read
+    //  at its start (league_start); none outside the League.
+    std::optional<LeagueRun> league = std::nullopt;
+    //  The items the battle going on may spend (its League budget plus
+    //  what the fights before left); none: no cap.
+    std::optional<FightBudget> budget = std::nullopt;
     //  How carefully that battle is fought (default_battle_risk()).
     BattleRisk risk = BattleRisk::LOW;
     //  The species of the trainer's Pokemon out, as read at the last battle

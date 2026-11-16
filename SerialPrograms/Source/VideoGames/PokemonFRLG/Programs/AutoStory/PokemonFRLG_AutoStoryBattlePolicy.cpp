@@ -133,6 +133,9 @@ std::optional<BattlePolicyKind> battle_policy_kind(std::string_view word){
     if (word == "goal-based-setup"){
         return BattlePolicyKind::GOAL_BASED_SETUP;
     }
+    if (word == "budgeted-setup"){
+        return BattlePolicyKind::BUDGETED_SETUP;
+    }
     return std::nullopt;
 }
 
@@ -180,8 +183,8 @@ std::vector<FoeStats> foe_stats_of(const Pokemon::StoryActionArgs& args){
 }
 
 //  The lead's best attack, at Sp. Atk `spa_stage` and its lowest roll,
-//  KOs the foe out from full HP: the plan has the foe's HP.
-bool attack_kos(const BattlePolicy& policy, const Supplies& supplies, const PolicyView& view, int spa_stage){
+//  KOs the foe out from `fill` of its HP (1: full): the plan has the foe's HP.
+bool attack_kos(const BattlePolicy& policy, const Supplies& supplies, const PolicyView& view, int spa_stage, double fill = 1.0){
     if (view.foe_index >= policy.foe_stats.size() || view.foe_index >= supplies.foes.size()){
         return false;
     }
@@ -190,7 +193,42 @@ bool attack_kos(const BattlePolicy& policy, const Supplies& supplies, const Poli
         return false;
     }
     const AttackContext context{.sp_attack_stage = spa_stage, .foe = stats};
-    return most_damage_against(supplies.lead, supplies.foes[view.foe_index], context) * LOWEST_ROLL >= *stats.hp;
+    return most_damage_against(supplies.lead, supplies.foes[view.foe_index], context) * LOWEST_ROLL >= *stats.hp * fill;
+}
+
+//  The bag holds `item` and the battle's budget, if it has one, has some left.
+bool within_budget(const Supplies& supplies, std::string_view item){
+    if (bag_count(supplies, item) <= 0){
+        return false;
+    }
+    if (!supplies.budget){
+        return true;
+    }
+    return budget_left(*supplies.budget, item).value_or(1) > 0;
+}
+
+//  The lead's status's own cure, else a Full Heal, from the bag; none
+//  asleep (it attacks) or without a status.
+std::optional<PolicyItem> status_cure(const Supplies& supplies, const PolicyView& view){
+    if (view.status == StatusCondition::NONE || view.status == StatusCondition::SLEEP){
+        return std::nullopt;
+    }
+    for (const std::string_view item : {cure_of(view.status), std::string_view("full-heal")}){
+        if (!item.empty() && bag_count(supplies, item) > 0){
+            return medicine_item(std::string(item), std::format("{} for {}", item, status_name(view.status)));
+        }
+    }
+    return std::nullopt;
+}
+
+//  The lead knows Surf and has no PP left for it.
+bool surf_empty(const PartyMember& lead){
+    for (const KnownMove& move : lead.moves){
+        if (move.move == "surf"){
+            return move.pp == 0;
+        }
+    }
+    return false;
 }
 
 } // namespace
@@ -218,6 +256,10 @@ BattlePolicy battle_policy_of(const Pokemon::StoryActionArgs& args){
 }
 
 void end_trainer_battle(Supplies& supplies){
+    if (supplies.league && supplies.budget){
+        supplies.league->carried = *supplies.budget;
+    }
+    supplies.budget.reset();
     supplies.foes.clear();
     supplies.trainer.clear();
     supplies.foe_out.clear();
@@ -436,8 +478,12 @@ std::optional<PolicyItem> PolicyState::choose(const Supplies& supplies, const Po
     if (m_mist_turns > 0){
         m_mist_turns--;
     }
+    m_attack_reason.clear();
     if (m_policy.kind == BattlePolicyKind::NONE){
         return std::nullopt;
+    }
+    if (m_policy.kind == BattlePolicyKind::BUDGETED_SETUP){
+        return choose_budgeted(supplies, view);
     }
     //  A whole heal also cures, so it goes before a status's own cure.
     if (std::optional<PolicyItem> item = risk_heal(supplies, view)){
@@ -462,6 +508,147 @@ std::optional<PolicyItem> PolicyState::choose(const Supplies& supplies, const Po
         return std::nullopt;
     }
     return planned;
+}
+
+bool PolicyState::sure_ko_first(const Supplies& supplies, const PolicyView& view) const{
+    const FoeThreat* threat = foe(view);
+    if (threat == nullptr){
+        return false;
+    }
+    //  Paralysis quarters the lead's Speed.
+    const int speed = view.status == StatusCondition::PARALYSIS ? own_speed(view) / 4 : own_speed(view);
+    return speed > threat->speed && attack_kos(m_policy, supplies, view, m_spa, view.foe_fill);
+}
+
+std::optional<PolicyItem> PolicyState::ko_risk_heal(const Supplies& supplies, const PolicyView& view, const Danger& danger) const{
+    for (const Medicine& medicine : MEDICINES){
+        if (medicine.item == "full-restore" || medicine.item == "max-potion" || bag_count(supplies, medicine.item) <= 0){
+            continue;
+        }
+        const double after = view.hp + std::min(view.max_hp - view.hp, medicine.hp);
+        if (after > danger.normal_max && after - danger.mean > view.hp){
+            return medicine_item(std::string(medicine.item), std::format(
+                "{}: KO risk, HP {:.0f} <= the foe's best hit {:.0f}", medicine.item, view.hp, danger.normal_max
+            ));
+        }
+    }
+    for (const std::string_view item : {std::string_view("max-potion"), std::string_view("full-restore")}){
+        if (bag_count(supplies, item) > 0){
+            const bool over = supplies.budget && budget_left(*supplies.budget, item).value_or(1) <= 0;
+            return medicine_item(std::string(item), std::format(
+                "{}: KO risk, HP {:.0f} <= the foe's best hit {:.0f}{}",
+                item, view.hp, danger.normal_max, over ? " (over the fight's budget)" : ""
+            ));
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<PolicyItem> PolicyState::reserve_heal(
+    const Supplies& supplies, const PolicyView& view, const Danger& danger, double reserve
+) const{
+    for (const Medicine& medicine : MEDICINES){
+        if (!within_budget(supplies, medicine.item)){
+            continue;
+        }
+        const double after = view.hp + std::min(view.max_hp - view.hp, medicine.hp);
+        const bool whole = std::isinf(medicine.hp);
+        //  A part heal must hold the reserve after the mean hit; a whole
+        //  heal is the most there is.
+        if ((whole && after - danger.mean > view.hp) || after - danger.mean >= reserve){
+            return medicine_item(std::string(medicine.item), std::format(
+                "{}: HP {:.0f} under the setup reserve {:.0f}", medicine.item, view.hp, reserve
+            ));
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<PolicyItem> PolicyState::budgeted_setup(const Supplies& supplies, const PolicyView& view) const{
+    const FoeThreat* threat = foe(view);
+    if ((threat != nullptr && threat->phazes) || attack_kos(m_policy, supplies, view, m_spa, view.foe_fill)){
+        return std::nullopt;
+    }
+    if (m_policy.goals.guard_accuracy && within_budget(supplies, "guard-spec") && m_mist_turns <= 0
+        && threat != nullptr && threat->lowers_accuracy
+    ){
+        return setup_item_of("guard-spec", "Guard Spec: the foe lowers accuracy");
+    }
+    if (m_spa < spa_goal(view) && within_budget(supplies, "x-special")){
+        return setup_item_of("x-special", std::format("X Special: Sp. Atk +{} of +{}", m_spa, spa_goal(view)));
+    }
+    if (m_policy.goals.outspeed && m_speed < MAX_STAGE && !outsped(view) && within_budget(supplies, "x-speed")){
+        return setup_item_of("x-speed", std::format("X Speed: Speed {} against the foes left", own_speed(view)));
+    }
+    //  The goal alone, not the foe's evasion: chasing Double Team with X
+    //  Accuracy won less in the sim.
+    if (m_accuracy < m_policy.goals.accuracy && within_budget(supplies, "x-accuracy")){
+        return setup_item_of("x-accuracy", std::format("X Accuracy: accuracy {:+} of {:+}", m_accuracy, m_policy.goals.accuracy));
+    }
+    return std::nullopt;
+}
+
+std::optional<PolicyItem> PolicyState::choose_budgeted(const Supplies& supplies, const PolicyView& view){
+    const Danger risk = danger(view);
+    if (sure_ko_first(supplies, view)){
+        m_attack_reason = "attack: we move first and the hit KOs";
+        return std::nullopt;
+    }
+    if (view.hp > risk.normal_max){
+        if (std::optional<PolicyItem> item = status_cure(supplies, view)){
+            return item;
+        }
+    }
+    if (view.hp <= risk.normal_max){
+        if (risk.normal_max >= view.max_hp){
+            m_attack_reason = "attack: the foe's best hit KOs from full HP, no medicine helps";
+            return std::nullopt;
+        }
+        if (std::optional<PolicyItem> item = ko_risk_heal(supplies, view, risk)){
+            return item;
+        }
+        m_attack_reason = "attack: KO risk and no medicine left";
+        return std::nullopt;
+    }
+    if (view.status == StatusCondition::SLEEP){
+        m_attack_reason = "attack: asleep";
+        return std::nullopt;
+    }
+    if (surf_empty(supplies.lead)){
+        for (const std::string_view item : {std::string_view("elixir"), std::string_view("max-elixir")}){
+            if (bag_count(supplies, item) > 0){
+                return medicine_item(std::string(item), std::format("{}: Surf has no PP left", item));
+            }
+        }
+    }
+    return budgeted_setup_turn(supplies, view, risk);
+}
+
+std::optional<PolicyItem> PolicyState::budgeted_setup_turn(const Supplies& supplies, const PolicyView& view, const Danger& danger){
+    const std::optional<PolicyItem> planned = budgeted_setup(supplies, view);
+    if (!planned){
+        m_attack_reason = "attack: no setup left in the goals or the budget, or the hit KOs";
+        return std::nullopt;
+    }
+    const int turns = setup_turns(supplies, view, planned->item == "guard-spec");
+    const double reserve = std::min(view.max_hp * 0.75, danger.normal_max + std::max(0, turns - 1) * danger.mean);
+    if (view.hp >= reserve){
+        return planned;
+    }
+    if (std::optional<PolicyItem> item = reserve_heal(supplies, view, danger, reserve)){
+        return item;
+    }
+    m_attack_reason = std::format("attack: HP {:.0f} under the setup reserve {:.0f} and no heal in the budget", view.hp, reserve);
+    return std::nullopt;
+}
+
+std::string PolicyState::state_line(const Supplies& supplies, const PolicyView& view) const{
+    return std::format(
+        "HP {:.0f}/{:.0f}, foe {} {:.0f}%, Sp. Atk {:+}, Speed {:+}, accuracy {:+}, budget {}{}{}",
+        view.hp, view.max_hp, supplies.foe_out.empty() ? "?" : supplies.foe_out, 100 * view.foe_fill,
+        m_spa, m_speed, m_accuracy, supplies.budget ? budget_text(*supplies.budget) : std::string("none"),
+        m_attack_reason.empty() ? "" : "; ", m_attack_reason
+    );
 }
 
 void PolicyState::item_used(const std::string& item){

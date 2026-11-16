@@ -2,9 +2,11 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows 20.01a to 20.05 (StoryData/frlg-20.0N.plan.json) on the overworld
- *  sim: Indigo Plateau's Mart, the Elite Four's rooms one way north, the
- *  Champion's door; and the battles' foe rows against their generator.
+ *  Rows 20.01a and 20.01 (StoryData/frlg-20.01*.plan.json) on the
+ *  overworld sim: Indigo Plateau's Mart, the Elite Four's rooms one way
+ *  north, the Champion's door, all in 20.01 (one checkpoint, no save
+ *  between the fights); the battles' foe rows against their generator; and
+ *  the League plan's steps around the fights.
  *
  */
 
@@ -22,6 +24,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryLeaguePlan.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows20_Tests.h"
@@ -75,12 +78,30 @@ const StoryCheckpoint& league_row(std::string_view id){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No checkpoint {}.", id));
 }
 
-//  Runs the walking steps of `row` on `sim`, from `at`, up to (not including) the step
-//  named `until`, or all of them if `until` is empty. The other steps (the
-//  Mart, the level checks, the heals, the scenes and the battles) are the
-//  console's.
-std::string walk_league_row(const StoryCheckpoint& row, std::string_view until, OverworldSim& sim, StoryPose& at){
+//  The step `name` of row `id`.
+const StoryStep& league_step(std::string_view id, std::string_view name){
+    for (const StoryStep& step : league_row(id).steps){
+        if (step.name == name){
+            return step;
+        }
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No step {} in {}.", name, id));
+}
+
+//  Runs the walking steps of `row` on `sim`, from `at`, after the step
+//  named `from` (from the row's first if empty) up to (not including) the
+//  step named `until`, or all of them if `until` is empty. The other steps
+//  (the Mart, the level checks, the heals, the scenes and the battles) are
+//  the console's.
+std::string walk_league_row(
+    const StoryCheckpoint& row, std::string_view until, OverworldSim& sim, StoryPose& at, std::string_view from = {}
+){
+    bool started = from.empty();
     for (const StoryStep& step : row.steps){
+        if (!started){
+            started = step.name == from;
+            continue;
+        }
         if (step.name == until){
             return "";
         }
@@ -113,16 +134,22 @@ UnitTestResult walk_to_room(std::string_view id, std::string_view until, std::st
     return true;
 }
 
-//  Walks row `id` from in front of the beaten trainer round them to below
-//  their door, up to the step `door` into it. The map pack draws the door
-//  closed (a wall: the game opens it with setmetatile when the trainer is
-//  beaten, PokemonLeague_EventScript_OpenDoor), so the step through it and
-//  the next room's walk are the console's.
-UnitTestResult walk_to_door(std::string_view id, std::string_view door, const MapPosition& below){
+//  Walks 20.01 from in front of the trainer its battle step `battle` beat
+//  (the step's declared pose) round them to below their door, up to the
+//  step `door` into it. The map pack draws the door closed (a wall: the
+//  game opens it with setmetatile when the trainer is beaten,
+//  PokemonLeague_EventScript_OpenDoor), so the step through it and the
+//  next room's walk are the console's.
+UnitTestResult walk_to_door(std::string_view battle, std::string_view door, const MapPosition& below){
+    const std::string_view id = "20.01";
     const StoryCheckpoint& row = league_row(id);
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    const StoryStep& beaten = league_step(id, battle);
+    if (!beaten.pose_after){
+        return std::format("{} {}: no declared pose after the battle.", id, battle);
+    }
+    StoryPose at = *story_pose(Pokemon::pose_of(*beaten.pose_after));
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
-    if (const std::string failure = walk_league_row(row, door, sim, at); !failure.empty()){
+    if (const std::string failure = walk_league_row(row, door, sim, at, battle); !failure.empty()){
         return failure;
     }
     if (!(sim.state().position == below) || sim.state().facing != Direction::NORTH){
@@ -151,16 +178,6 @@ UnitTestResult test_indigo_mart_counter(){
         return "20.01 doesn't start where 20.01a ends.";
     }
     return true;
-}
-
-//  The step `name` of row `id`.
-const StoryStep& league_step(std::string_view id, std::string_view name){
-    for (const StoryStep& step : league_row(id).steps){
-        if (step.name == name){
-            return step;
-        }
-    }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No step {} in {}.", name, id));
 }
 
 //  The battle's foe_threats are PokemonSimulation's planning_risk() for
@@ -196,28 +213,28 @@ std::vector<LeagueFight> league_fights(){
             {110, 25, 9, 57, 28, 0, 0},     //  Jynx
             {94, 36, 15, 78, 39, 0, 0},     //  Lapras
         }},
-        {"20.02", "bruno", {
+        {"20.01", "bruno", {
             {81, 32, 19, 75, 37, 0, 0, 1},  //  Onix (Roar)
             {101, 51, 28, 132, 66, 0, 0},   //  Hitmonchan
             {113, 65, 52, 136, 68, 0, 0},   //  Hitmonlee
             {96, 41, 41, 84, 42, 0, 0},     //  Onix
             {83, 0, 5, 183, 91, 0, 0},      //  Machamp
         }},
-        {"20.03", "agatha", {
+        {"20.01", "agatha", {
             {126, 32, 10, 72, 36, 0, 0},    //  Gengar
             {129, 33, 31, 69, 34, 0, 0},    //  Golbat
             {108, 0, 0, 0, 48, 0, 0},       //  Haunter
             {111, 61, 61, 126, 63, 0, 0},   //  Arbok
             {150, 47, 40, 99, 49, 0, 0},    //  Gengar
         }},
-        {"20.04", "lance", {
+        {"20.01", "lance", {
             {112, 40, 32, 42, 93, 0, 0},    //  Gyarados
             {96, 40, 17, 87, 62, 0, 0},     //  Dragonair
             {96, 0, 0, 0, 62, 0, 0},        //  Dragonair
             {173, 47, 47, 96, 78, 0, 0},    //  Aerodactyl
             {107, 64, 24, 144, 114, 0, 0},  //  Dragonite
         }},
-        {"20.05", "champion", {
+        {"20.01", "champion", {
             {130, 41, 27, 87, 43, 1, 0, 1}, //  Pidgeot (Sand Attack, Whirlwind)
             {159, 77, 70, 159, 79, 0, 0},   //  Alakazam
             {70, 0, 10, 210, 105, 0, 0},    //  Rhydon
@@ -247,20 +264,38 @@ size_t step_index(const StoryCheckpoint& row, std::string_view name){
     return index;
 }
 
-//  PokeGuy's items between the fights: a Full Restore after Agatha (the
-//  heal into Lance), one Elixir after Lance, before the Champion's door.
-UnitTestResult test_pokeguy_items_between_fights(){
-    const StoryCheckpoint& lance = league_row("20.04");
-    const size_t heal = step_index(lance, "heal_after_agatha");
-    if (heal == lance.steps.size() || !Pokemon::story_arg<bool>(lance.steps[heal].args, "full_restore")){
-        return "20.04 heal_after_agatha: expected a Full Restore first.";
+//  The League plan's steps in 20.01: league_start before the League's
+//  door, and before each fight after Lorelei's a league_between_fights
+//  for that fight's trainer, after the fight before it.
+UnitTestResult test_league_plan_steps(){
+    const StoryCheckpoint& row = league_row("20.01");
+    const size_t start = step_index(row, "league_start");
+    if (start >= step_index(row, "league_door") || row.steps[start].action != "league_start"){
+        return "20.01: expected league_start before the League's door.";
     }
-    const StoryCheckpoint& champion = league_row("20.05");
-    const size_t elixir = step_index(champion, "elixir_after_lance");
-    if (elixir >= step_index(champion, "champions_door") || champion.steps[elixir].action != "restore_pp"
-        || Pokemon::story_arg<std::string>(champion.steps[elixir].args, "item") != "elixir"
-    ){
-        return "20.05: expected restore_pp elixir before the Champion's door.";
+    struct Between{
+        std::string_view after;
+        std::string_view step;
+        std::string_view battle;
+        std::string_view trainer;
+    };
+    const Between betweens[] = {
+        {"lorelei", "items_before_bruno", "bruno", "TRAINER_ELITE_FOUR_BRUNO"},
+        {"bruno", "items_before_agatha", "agatha", "TRAINER_ELITE_FOUR_AGATHA"},
+        {"agatha", "items_before_lance", "lance", "TRAINER_ELITE_FOUR_LANCE"},
+        {"lance", "items_before_champion", "champion", "TRAINER_CHAMPION_FIRST_BULBASAUR"},
+    };
+    for (const Between& between : betweens){
+        const size_t at = step_index(row, between.step);
+        if (at <= step_index(row, between.after) || at >= step_index(row, between.battle)
+            || row.steps[at].action != "league_between_fights"
+            || Pokemon::story_arg<std::string>(row.steps[at].args, "next") != between.trainer
+        ){
+            return std::format("20.01: expected {} (league_between_fights, next {}) between {} and {}.", between.step, between.trainer, between.after, between.battle);
+        }
+        if (Pokemon::story_arg<std::string>(league_step("20.01", between.battle).args, "trainer") != between.trainer){
+            return std::format("20.01 {}: expected trainer {}.", between.battle, between.trainer);
+        }
     }
     return true;
 }
@@ -279,42 +314,42 @@ const AutoStoryLeagueCase AUTO_STORY_LEAGUE_CASES[] = {
         .expectation = {.description = "Lorelei's room, no trainer met"},
     },
     {
-        .name = "20.02 around Lorelei to below her door",
+        .name = "20.01 around Lorelei to below her door",
         .input = {.body = []{
-            return walk_to_door("20.02", "loreleis_door", MapPosition{"PokemonLeague_LoreleisRoom", {6, 3}});
+            return walk_to_door("lorelei", "loreleis_door", MapPosition{"PokemonLeague_LoreleisRoom", {6, 3}});
         }},
         .expectation = {.description = "Lorelei's room (6, 3) facing north"},
     },
     {
-        .name = "20.03 around Bruno to below his door",
+        .name = "20.01 around Bruno to below his door",
         .input = {.body = []{
-            return walk_to_door("20.03", "brunos_door", MapPosition{"PokemonLeague_BrunosRoom", {6, 3}});
+            return walk_to_door("bruno", "brunos_door", MapPosition{"PokemonLeague_BrunosRoom", {6, 3}});
         }},
         .expectation = {.description = "Bruno's room (6, 3) facing north"},
     },
     {
-        .name = "20.04 around Agatha to below her door",
+        .name = "20.01 around Agatha to below her door",
         .input = {.body = []{
-            return walk_to_door("20.04", "agathas_door", MapPosition{"PokemonLeague_AgathasRoom", {6, 3}});
+            return walk_to_door("agatha", "agathas_door", MapPosition{"PokemonLeague_AgathasRoom", {6, 3}});
         }},
         .expectation = {.description = "Agatha's room (6, 3) facing north"},
     },
     {
-        .name = "20.05 around Lance to below the Champion's door",
+        .name = "20.01 around Lance to below the Champion's door",
         .input = {.body = []{
-            return walk_to_door("20.05", "champions_door", MapPosition{"PokemonLeague_LancesRoom", {6, 6}});
+            return walk_to_door("lance", "champions_door", MapPosition{"PokemonLeague_LancesRoom", {6, 6}});
         }},
         .expectation = {.description = "Lance's room (6, 6) facing north"},
     },
     {
-        .name = "20.01 to 20.05 the League's foe rows are the generator's",
+        .name = "20.01 the League's foe rows are the generator's",
         .input = {.body = test_foe_threats_are_the_generators},
         .expectation = {.description = "PokemonSimulation planning_risk() rows"},
     },
     {
-        .name = "20.04 and 20.05 PokeGuy's Full Restore after Agatha and Elixir after Lance",
-        .input = {.body = test_pokeguy_items_between_fights},
-        .expectation = {.description = "heal_after_agatha full_restore; restore_pp elixir before the Champion's door"},
+        .name = "20.01 the League plan's steps: league_start, then the items before each fight",
+        .input = {.body = test_league_plan_steps},
+        .expectation = {.description = "league_start before the door; league_between_fights before Bruno, Agatha, Lance and the Champion"},
     },
 };
 
@@ -325,6 +360,7 @@ void add_tests_AutoStoryLeague(UnitTestDatabase& database){
     for (const auto& item : AUTO_STORY_LEAGUE_CASES){
         database.add<Test_AutoStoryLeague>(item);
     }
+    add_tests_AutoStoryLeaguePlan(database);
 }
 
 

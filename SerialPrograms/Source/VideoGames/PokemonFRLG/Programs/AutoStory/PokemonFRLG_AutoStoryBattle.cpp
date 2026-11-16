@@ -582,7 +582,10 @@ private:
             read_battle_bag();
             return;
         }
-        const PartyStatus status = read_party_status(screen);
+        PartyStatus status = read_party_status(screen);
+        if (m_kind == BattleKind::TRAINER){
+            status.foe_fill = read_opponent_hp_fill(screen);
+        }
         const TurnAction action = m_decisions.turn(status);
         m_evolution.turn_taken(action.choice);
         m_ran = action.choice == TurnChoice::RUN;

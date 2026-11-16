@@ -12,6 +12,7 @@
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
+#include "PokemonFRLG_AutoStoryLeagueSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
@@ -282,7 +283,7 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
         }){
             specs.push_back(std::move(spec));
         }
-        for (const std::vector<Pokemon::StoryActionSpec>& more : {field_action_specs(), healing_action_specs()}){
+        for (const std::vector<Pokemon::StoryActionSpec>& more : {field_action_specs(), healing_action_specs(), league_action_specs()}){
             specs.insert(specs.end(), more.begin(), more.end());
         }
         return specs;
