@@ -270,7 +270,7 @@ const RunCase RUN_CASES[] = {
         //  console B, 2026-11-15: control came ~7 s after 01.01's scenes
         //  had ended, with nothing on screen to show it was not there yet.
         .name = "a walk waits for control that comes 7 s after the scene",
-        .input = {.checkpoint = "01.01", .first_step = 1, .looks = concat(
+        .input = {.checkpoint = "01.01", .first_step = 1, .steps = 1, .looks = concat(
             std::vector<Observation<ZonePose>>(28, CUTSCENE),
             {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, WHITE_FADE}
         )},
@@ -282,7 +282,7 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "a walk takes the controls hint for control",
-        .input = {.checkpoint = "01.01", .first_step = 1, .looks = {
+        .input = {.checkpoint = "01.01", .first_step = 1, .steps = 1, .looks = {
             look(/*events=*/{}, {CONTROLS_HINT_READING}), look(/*events=*/{}, {CONTROLS_HINT_READING}),
             CUTSCENE, CUTSCENE, CUTSCENE, WHITE_FADE,
         }},
