@@ -326,8 +326,7 @@ const RouteCosts& story_route_costs(){
     static const RouteCosts COSTS = []{
         RouteCosts costs = default_route_costs();
         costs[RouteCost::SURF] = -1;
-        costs[RouteCost::SIGHT_TILE] = 100;
-        costs[RouteCost::SIGHT_OVERSHOOT] = 10;
+        costs[RouteCost::LINE_TILE] = 100;
         return costs;
     }();
     return COSTS;

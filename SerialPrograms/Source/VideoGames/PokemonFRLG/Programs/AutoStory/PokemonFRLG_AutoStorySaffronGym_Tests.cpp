@@ -201,15 +201,15 @@ UnitTestResult test_rope_out_to_center(){
 //  The control for the two above: the sim does see Cameron (24, 18). Row 21,
 //  where the planner would walk (20, 21) from (28, 23) if the row did not
 //  stop on row 22 first, is in his line (24, 19 to 21), so a walk along it
-//  is seen and fails.
+//  is seen and fails. Legs, not a route: the story's routes now plan round
+//  his line (RouteCost::LINE_TILE).
 UnitTestResult test_cameron_sees_row_21(){
     OverworldSim sim(story_maps(), MapPosition{"SaffronCity_Gym", {28, 21}}, Direction::WEST);
     StoryPose at{"SaffronCity_Gym", {28, 21}, Direction::WEST};
     StoryStep along;
-    along.kind = StoryStepKind::ROUTE;
+    along.kind = StoryStepKind::LEGS;
     along.name = "along_row_21";
-    const Pokemon::GridPose target{"SaffronCity_Gym", {{20, 21}}, Direction::WEST};
-    along.args = {{"target", target}, {"fight_wild", false}};
+    along.args = {{"legs", std::vector<StoryLeg>{{Direction::WEST, 8}}}};
     const std::string failure = row_step_on_sim(sim, at, along, "18.01");
     if (failure.empty() && sim.state().trainers_beaten.empty() && sim.state().violations.empty()){
         return "A walk along row 21 was not seen by Cameron (24, 18).";

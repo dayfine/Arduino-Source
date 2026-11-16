@@ -325,6 +325,9 @@ public:
         if (seen_by_trainer(step.next)){
             step.extra_cost += route_cost(m_costs, RouteCost::SIGHT_TILE);
         }
+        if (in_trainer_line(step.next)){
+            step.extra_cost += route_cost(m_costs, RouteCost::LINE_TILE);
+        }
         return step;
     }
     bool held_at(const State& state, Direction direction) const{
@@ -395,11 +398,14 @@ public:
     static constexpr int ACTION_SURF = 1;
 
 private:
-    //  Whether a trainer who stands and looks one way sees `state`'s tile.
-    //  A route plans round their lines; one who wanders or looks around is
-    //  met by the walk's watch (run_route()'s trainer_stop()) instead: no
-    //  route can plan round them.
     bool seen_by_trainer(const State& state) const{
+        const MapData& map = m_maps[state.map];
+        return std::ranges::any_of(map.objects, [&](const MapObject& object){
+            return trainer_may_see(map, object, state.state.position);
+        });
+    }
+    //  Whether a trainer who stands and looks one way sees `state`'s tile.
+    bool in_trainer_line(const State& state) const{
         const MapData& map = m_maps[state.map];
         return std::ranges::any_of(map.objects, [&](const MapObject& object){
             return object.trainer && !object.wander && object.trainer->looks.size() == 1

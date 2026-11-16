@@ -21,6 +21,7 @@ const RouteCosts& default_route_costs(){
         {RouteCost::OPEN_STOP, 8},
         {RouteCost::OPEN_WILD_STOP, 300},
         {RouteCost::SIGHT_TILE, 0},
+        {RouteCost::LINE_TILE, 0},
         {RouteCost::SIGHT_OVERSHOOT, 0},
         {RouteCost::SIGN_OVERSHOOT, 3},
         {RouteCost::OPEN_WATER_STOP, 1000},
