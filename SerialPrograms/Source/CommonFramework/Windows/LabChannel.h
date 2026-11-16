@@ -169,7 +169,9 @@ private:
     std::string run_snapshot(const std::vector<std::string>& words, LabCommandOutput& output);
     std::string run_describe_program(const std::vector<std::string>& words, std::ostream& out);
     std::string run_preflight(const LabRequestLine& line, std::ostream& out);
-    std::string run_on_ui(const std::function<std::string()>& body);
+    //  Runs `body` on the UI thread and returns what it returns. Gives up
+    //  with an error when the app is closing or `scope` is cancelled.
+    std::string run_on_ui(const std::function<std::string()>& body, const CancellableScope* scope = nullptr);
     void keep_awake();
     void write_state();
     void write_state_json(WallClock now);

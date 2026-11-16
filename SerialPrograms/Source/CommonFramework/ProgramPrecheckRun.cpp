@@ -4,8 +4,12 @@
  *
  */
 
+#include <expected>
 #include <format>
+#include <exception>
 #include <string_view>
+#include "Common/Cpp/Color.h"
+#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "ProgramPrecheckRun.h"
 
@@ -78,10 +82,7 @@ std::optional<RefusedOption> find_refused_in(const JsonObject& candidate, const 
 }
 
 
-}  // namespace
-
-
-
+//  `current` (a program's option JSON) with the values of `candidate` put in.
 std::expected<JsonValue, RefusedOption> merge_candidate_options(
     const JsonValue& current, const JsonValue& candidate
 ){
@@ -101,6 +102,8 @@ std::expected<JsonValue, RefusedOption> merge_candidate_options(
     return merged;
 }
 
+//  The first option of `candidate` whose value `loaded` (the options read
+//  back after loading the merged candidate) does not hold.
 std::optional<RefusedOption> find_refused_option(
     const JsonValue& candidate, const JsonValue& loaded
 ){
@@ -110,6 +113,137 @@ std::optional<RefusedOption> find_refused_option(
         return RefusedOption{"", "The options to check must be a JSON object."};
     }
     return find_refused_in(*values, *now, "");
+}
+
+
+
+
+
+//  The top-level keys of `x` and `y` (option JSON objects) whose values
+//  differ or that only one has, in key order.
+std::vector<std::string> changed_keys(const JsonValue& x, const JsonValue& y){
+    std::vector<std::string> keys;
+    const JsonObject* a = x.to_object();
+    const JsonObject* b = y.to_object();
+    if (a == nullptr || b == nullptr){
+        return keys;
+    }
+    for (const auto& item : *a){
+        const JsonValue* other = b->get_value(item.first);
+        if (other == nullptr || *other != item.second){
+            keys.push_back(item.first);
+        }
+    }
+    for (const auto& item : *b){
+        if (a->get_value(item.first) == nullptr){
+            keys.push_back(item.first);
+        }
+    }
+    return keys;
+}
+
+std::string key_list(const JsonValue& candidate){
+    std::string keys;
+    const JsonObject* object = candidate.to_object();
+    if (object == nullptr){
+        return keys;
+    }
+    for (const auto& item : *object){
+        keys += keys.empty() ? item.first : std::format(", {}", item.first);
+    }
+    return keys;
+}
+
+//  The options a checks-only run staged and must put back.
+struct StagedOptions{
+    std::optional<JsonValue> prior = {};
+    std::optional<JsonValue> staged = {};
+};
+
+//  Step 1 of run_prechecks_only(), on the options thread.
+void stage_options(const JsonValue& candidate, PrecheckOnlyTarget& target, StagedOptions& options, PrecheckOnlyRun& run){
+    options.prior = target.options();
+    std::expected<JsonValue, RefusedOption> merged = merge_candidate_options(*options.prior, candidate);
+    if (!merged){
+        run.refused = std::move(merged.error());
+        return;
+    }
+    target.load_options(*merged);
+    options.staged = target.options();
+    run.refused = find_refused_option(candidate, *options.staged);
+    if (run.refused){
+        return;
+    }
+    std::string error = target.check_validity();
+    if (!error.empty()){
+        run.refused = RefusedOption{"", std::move(error)};
+    }
+}
+
+//  Step 3 of run_prechecks_only(). Never throws.
+void restore_options(
+    const StagedOptions& options, const OptionsThreadCall& on_options_thread,
+    PrecheckOnlyTarget& target, Logger& logger, PrecheckOnlyRun& run
+){
+    run.restored = false;
+    if (!options.prior){
+        return;
+    }
+    try{
+        on_options_thread([&]{
+            const JsonValue current = target.options();
+            if (options.staged && current != *options.staged){
+                run.edited_keys = changed_keys(*options.staged, current);
+                return;
+            }
+            target.load_options(*options.prior);
+            run.restored = target.options() == *options.prior;
+        });
+    }catch (Exception& e){
+        logger.log(std::format("Start checks only: the prior options did not load back: {}", e.message()), COLOR_RED);
+        return;
+    }catch (std::exception& e){
+        logger.log(std::format("Start checks only: the prior options did not load back: {}", e.what()), COLOR_RED);
+        return;
+    }
+    if (!run.edited_keys.empty()){
+        logger.log("Start checks only: options changed during the checks, kept as they are.", COLOR_RED);
+    }else if (!run.restored){
+        logger.log("Start checks only: the prior options did not load back.", COLOR_RED);
+    }
+}
+
+
+}  // namespace
+
+
+PrecheckOnlyRun run_prechecks_only(
+    const JsonValue& candidate,
+    const OptionsThreadCall& on_options_thread,
+    PrecheckOnlyTarget& target,
+    Logger& logger
+){
+    logger.log(std::format("Start checks only, with options: {}", key_list(candidate)));
+    PrecheckOnlyRun run;
+    StagedOptions options;
+    try{
+        on_options_thread([&]{
+            stage_options(candidate, target, options, run);
+        });
+        if (!run.refused){
+            run.checks = target.run_checks();
+        }
+    }catch (...){
+        restore_options(options, on_options_thread, target, logger, run);
+        throw;
+    }
+    if (!options.staged){
+        //  Refused before anything was loaded.
+        run.restored = true;
+        return run;
+    }
+    restore_options(options, on_options_thread, target, logger, run);
+    return run;
 }
 
 

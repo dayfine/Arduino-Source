@@ -533,11 +533,13 @@ std::string LabChannel::run_describe_program(const std::vector<std::string>& wor
 }
 
 //  "preflight JSON": a checks-only run of the selected program with these
-//  options (ProgramSession::Prechecks::run_only()) on this worker, holding
-//  the panel like a console command. Prints one line, "preflight " and
-//  lab_preflight_reply() as JSON. A program that is not STOPPED, a
-//  controller that is not ready or a check that throws fails the line
-//  instead; the options are put back all the same.
+//  options (ProgramSession::Prechecks::run_only()), holding the panel like a
+//  console command. The options are loaded and put back on the UI thread,
+//  like "set"; the checks run on this worker. Prints one line, "preflight "
+//  and lab_preflight_reply() as JSON. A program that is not STOPPED, a
+//  controller that is not ready, a panel change or a check that throws
+//  fails the line instead; the options are put back all the same, unless the
+//  panel changed before they could be.
 std::string LabChannel::run_preflight(const LabRequestLine& line, std::ostream& out){
     const JsonValue candidate = parse_json(line_after_words(line.text, 1));
     if (candidate.to_object() == nullptr){
@@ -548,7 +550,18 @@ std::string LabChannel::run_preflight(const LabRequestLine& line, std::ostream& 
         if (program == nullptr){
             throw ParseException("The selected panel is not a program.");
         }
-        const PrecheckOnlyRun run = program->prechecks().run_only(candidate, scope);
+        //  This worker holds m_panel_lock, which set_panel() on the UI thread
+        //  waits for after cancelling `scope`: give up on the UI call then.
+        const OptionsThreadCall on_ui = [this, &scope](const std::function<void()>& body){
+            const std::string error = run_on_ui([&]{
+                body();
+                return std::string();
+            }, &scope);
+            if (!error.empty()){
+                throw ParseException(error);
+            }
+        };
+        const PrecheckOnlyRun run = program->prechecks().run_only(candidate, scope, on_ui);
         JsonValue reply = lab_preflight_reply(program->descriptor().identifier(), run, read_options_hash(panel));
         out << "preflight " << reply.dump(-1) << "\n";
     });
@@ -617,7 +630,7 @@ std::string LabChannel::run_ui_command(const LabRequest& request, const LabReque
         return run_popups(words, out);
     }
     if (command == "preflight"){
-        //  Stages options like "set", but on the program session, from this worker.
+        //  Stages options on the UI thread like "set"; the checks run on this worker.
         return run_preflight(line, out);
     }
     if (command == "select"){
@@ -778,7 +791,7 @@ std::string LabChannel::run_snapshot(const std::vector<std::string>& words, LabC
     return reply(lab_snapshot_saved(m_instance_id, wait.frame->token, wait.after, path));
 }
 
-std::string LabChannel::run_on_ui(const std::function<std::string()>& body){
+std::string LabChannel::run_on_ui(const std::function<std::string()>& body, const CancellableScope* scope){
     struct Call{
         Mutex lock;
         ConditionVariable cv;
@@ -810,6 +823,10 @@ std::string LabChannel::run_on_ui(const std::function<std::string()>& body){
         if (m_stopping.load(std::memory_order_acquire)){
             call->abandoned = true;
             return "The app is closing.";
+        }
+        if (scope != nullptr && scope->cancelled()){
+            call->abandoned = true;
+            return "cancelled: the panel changed.";
         }
         call->cv.wait_for(lg, UI_WAIT_SLICE);
     }
