@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <format>
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "CommonFramework/GlobalAutoPaths.h"
@@ -183,6 +184,45 @@ void keep_awake_if_due(ProControllerContext& context, WallClock& next, Seconds i
 }
 
 
+//  Logs sparse collection milestones while the thresholds are still moving.
+static void log_calibration_progress(
+    const BlinkRecoveryConfig& config,
+    size_t events,
+    SingleSwitchProgramEnvironment& env
+){
+    const bool milestone = events == 1
+        || events == config.min_rolls_to_try
+        || (events < config.min_rolls_to_try && events % 5 <= 1);
+    if (!milestone){
+        return;
+    }
+    env.log(std::format(
+        "Calibrating blink detection: {}/{} rolls collected.",
+        events, config.min_rolls_to_try
+    ));
+}
+
+//  Updates the option display and reports the active calibration or confirmation phase.
+static void report_blink_progress(
+    const BlinkRecoveryConfig& config,
+    size_t events,
+    bool have_candidate,
+    size_t candidate_events,
+    SingleSwitchProgramEnvironment& env,
+    BlinkCollectionDisplay& display
+){
+    display.set_progress(events, config.min_rolls_to_try + config.confirmation_events);
+    if (!have_candidate){
+        log_calibration_progress(config, events, env);
+        return;
+    }
+    size_t confirmed = std::min(events - candidate_events, config.confirmation_events);
+    env.log(std::format(
+        "Confirming the provisional RNG state: {}/{} additional rolls collected.",
+        confirmed, config.confirmation_events
+    ));
+}
+
 BlinkRecovery recover_state_from_blinks(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
@@ -271,8 +311,6 @@ BlinkRecovery recover_state_from_blinks(
                 longest = &stream;
             }
         }
-        display.set_progress(events, config.min_rolls_to_try + config.confirmation_events);
-
         //  don't trim if there is a candidate (the solution is pinned to the earliest blink)
         if (!have_candidate){
             trim_to_window(watchers, streams, origin, config.window_events / streams.size());
@@ -294,6 +332,7 @@ BlinkRecovery recover_state_from_blinks(
         if (!fresh){
             continue;
         }
+        report_blink_progress(config, events, have_candidate, candidate_events, env, display);
 
         if (longest->size() < 3){
             continue;
