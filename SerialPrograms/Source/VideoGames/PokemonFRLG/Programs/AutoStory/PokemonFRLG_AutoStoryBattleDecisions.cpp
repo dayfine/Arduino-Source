@@ -91,11 +91,16 @@ std::string_view bar_name(const PartyStatus& status){
 //  The item this turn, from the bar and the badge as read (`seen_hit` the
 //  HP the foe's last hit took, 0 if not seen): a Potion whenever the bar
 //  isn't green, unless the last hit took a Potion's worth or more; with
-//  no Potion left, a Super Potion the same way; asleep, an Awakening
-//  unless the bar is red.
-ItemTurn item_turn(const Supplies& supplies, const PartyStatus& status, double seen_hit, int awakenings){
+//  no Potion left, a Super Potion the same way; in a trainer's battle,
+//  unless the bar is red, an Awakening when asleep and a Parlyz Heal
+//  (cure_of()) when paralysed: a quarter of the turns lost for the rest of
+//  a long battle (console B, 2026-11-16, 19.04d: Colby's five Pokemon with
+//  PAR and 2 Parlyz Heals left in the bag).
+ItemTurn item_turn(const Supplies& supplies, const PartyStatus& status, double seen_hit, bool trainer){
     const bool hurt = status.hp_red || status.hp_yellow;
     const bool asleep = status.status == StatusCondition::SLEEP;
+    const bool paralysed = status.status == StatusCondition::PARALYSIS;
+    const int awakenings = trainer ? supplies.awakenings : 0;
     if (hurt && supplies.potions > 0 && seen_hit < POTION_HP){
         return {TurnChoice::POTION, std::format("a Potion: HP {}, its last hit {:.0f} HP", bar_name(status), seen_hit)};
     }
@@ -104,6 +109,10 @@ ItemTurn item_turn(const Supplies& supplies, const PartyStatus& status, double s
     }
     if (asleep && awakenings > 0 && !status.hp_red){
         return {TurnChoice::AWAKENING, std::format("an Awakening: asleep at HP {}", bar_name(status))};
+    }
+    const std::string_view cure = cure_of(status.status);
+    if (paralysed && trainer && !status.hp_red && bag_count(supplies, cure) > 0){
+        return {TurnChoice::MEDICINE, std::format("a Parlyz Heal: paralysed at HP {}", bar_name(status)), std::string(cure)};
     }
     if (!hurt){
         return {};
@@ -220,9 +229,8 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     if (m_policy){
         return policy_turn(status, {});
     }
-    //  Awakenings are kept for trainers: a wild battle with a status is run from.
-    const int awakenings = m_kind == BattleKind::TRAINER ? m_supplies.awakenings : 0;
-    const ItemTurn items = m_items_off ? ItemTurn{} : item_turn(m_supplies, status, m_seen_hit, awakenings);
+    //  Cures are kept for trainers: a wild battle with a status is run from.
+    const ItemTurn items = m_items_off ? ItemTurn{} : item_turn(m_supplies, status, m_seen_hit, m_kind == BattleKind::TRAINER);
     if (items.choice != TurnChoice::MOVE){
         m_planned_item = items.item;
         return TurnAction{.choice = items.choice, .heal_reason = items.reason, .item = items.item};
@@ -337,11 +345,17 @@ void BattleDecisions::planned_item_used(){
 
 void BattleDecisions::policy_item_used(){
     spend_item(m_supplies, m_planned_item);
-    //  The story's own Super Potion (item_turn()), with no policy to tell.
+    //  The story's own Super Potion or Parlyz Heal (item_turn()), with no
+    //  policy to tell.
     if (!m_policy){
         m_healed_hp = medicine_hp(m_planned_item);
-        m_supplies.hurt = false;
-        m_supplies.hp_red = false;
+        if (m_healed_hp > 0){
+            m_supplies.hurt = false;
+            m_supplies.hp_red = false;
+        }
+        if (m_planned_item == cure_of(m_supplies.status)){
+            m_supplies.status = StatusCondition::NONE;
+        }
         return;
     }
     m_policy->item_used(m_planned_item);

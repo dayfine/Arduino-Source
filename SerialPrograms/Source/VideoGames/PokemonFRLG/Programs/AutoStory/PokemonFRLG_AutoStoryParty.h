@@ -51,7 +51,8 @@ std::optional<size_t> attack_slot(const PartyMember& member);
 //  damaging move with PP left whose expected damage, summed over the foes,
 //  is best (type multiplier; 0 against a foe its ability may make immune,
 //  for a Water move on a Water foe, and on Shedinja unless super
-//  effective; halved for a two-turn move); ties go to the plan's attacks,
+//  effective; halved for a two-turn move); ties go to the stronger move
+//  (power, half again for the member's own type), then the plan's attacks,
 //  then slot order. With no damaging move doing anything, the first move
 //  with PP left that isn't such a move. A foe the data doesn't have is left
 //  out; with none left, or while the story doesn't know all the lead's

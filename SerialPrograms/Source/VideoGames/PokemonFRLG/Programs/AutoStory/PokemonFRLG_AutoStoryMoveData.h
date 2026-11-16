@@ -3,8 +3,8 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  What the story needs of moves, species and the type chart to choose an
- *  attack when the plan has none: each move's type, whether it does damage
- *  and its PP; each species' types (BattleData/moves.json, species.json,
+ *  attack when the plan has none: each move's type, power and PP; each
+ *  species' types (BattleData/moves.json, species.json,
  *  type_chart.json, from pret/pokefirered).
  *
  */
@@ -33,6 +33,9 @@ struct MoveData{
     //  It does damage: any power, including moves whose damage doesn't
     //  come from their power (Flail, Dragon Rage).
     bool damaging = false;
+    //  Base power: 1 for a move whose damage doesn't come from it, 0 for
+    //  one that does no damage (pret src/data/battle_moves.h).
+    uint8_t power = 0;
     //  Full PP.
     uint8_t pp = 0;
 };

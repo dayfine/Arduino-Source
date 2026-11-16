@@ -4,8 +4,7 @@
  *
  *  The game's data the story's attacks are chosen from when the plan has
  *  none, built into the program from BattleData/: the type chart, each
- *  species' types, and each move's type, whether it does damage and its
- *  PP. A battle's foes come from its step in the checkpoint's plan.
+ *  species' types, and each move's type, power (0: no damage) and PP. A battle's foes come from its step in the checkpoint's plan.
  *
  *  Names are the program's slugs ("water-gun", "mr-mime").
  *
