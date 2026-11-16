@@ -152,7 +152,7 @@ public:
     explicit Test_PartyBarDetector(const PartyBarCase& test_case)
         : ImageUnitTest(
             std::format("PokemonLZA::PartyBarDetector - {}", test_case.name),
-            {"PokemonLZA/PartyBarDetector/" + test_case.input.image}
+            {std::format("PokemonLZA/PartyBarDetector/{}", test_case.input.image)}
         )
         , m_case(test_case)
     {}

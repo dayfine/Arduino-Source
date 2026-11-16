@@ -57,18 +57,22 @@ std::optional<ImagePixelBox> find_plate_bar(const ImageViewRGB32& screen){
 } // namespace
 
 
-std::optional<bool> lock_target_caught(const ImageViewRGB32& screen){
-    const std::optional<ImagePixelBox> bar = find_plate_bar(screen);
-    if (!bar){
-        return std::nullopt;
-    }
-    const double w = (double)bar->width();
-    const size_t min_x = (size_t)(bar->min_x + 0.6 * w);
-    const size_t max_x = std::min(screen.width(), (size_t)(bar->min_x + 1.5 * w));
-    const size_t min_y = (size_t)std::max(0.0, bar->min_y - 0.85 * w);
-    const size_t max_y = (size_t)std::max(0.0, bar->min_y - 0.45 * w);
+namespace{
+
+//  The Poke Ball's pixels in the box where the caught mark sits above
+//  `bar`: pinkish red and white.
+struct MarkPixels{
     size_t red = 0;
     size_t white = 0;
+};
+
+MarkPixels count_mark_pixels(const ImageViewRGB32& screen, const ImagePixelBox& bar){
+    const double w = (double)bar.width();
+    const size_t min_x = (size_t)(bar.min_x + 0.6 * w);
+    const size_t max_x = std::min(screen.width(), (size_t)(bar.min_x + 1.5 * w));
+    const size_t min_y = (size_t)std::max(0.0, bar.min_y - 0.85 * w);
+    const size_t max_y = (size_t)std::max(0.0, bar.min_y - 0.45 * w);
+    MarkPixels counts;
     for (size_t y = min_y; y < max_y; y++){
         for (size_t x = min_x; x < max_x; x++){
             const Color pixel(screen.pixel(x, y));
@@ -76,13 +80,25 @@ std::optional<bool> lock_target_caught(const ImageViewRGB32& screen){
             //  The ball's red is pinkish (blue about green); the gender
             //  mark next to it, on every plate, is orange (green well over
             //  blue) and is not counted (Scatterbug, console B 2026-11-14).
-            red += r > 190 && r > pixel.green() + 70 && r > pixel.blue() + 50 && pixel.blue() + 15 >= pixel.green();
-            white += r > 215 && pixel.green() > 215 && pixel.blue() > 215;
+            counts.red += r > 190 && r > pixel.green() + 70 && r > pixel.blue() + 50 && pixel.blue() + 15 >= pixel.green();
+            counts.white += r > 215 && pixel.green() > 215 && pixel.blue() > 215;
         }
     }
+    return counts;
+}
+
+} // namespace
+
+
+std::optional<bool> lock_target_caught(const ImageViewRGB32& screen){
+    const std::optional<ImagePixelBox> bar = find_plate_bar(screen);
+    if (!bar){
+        return std::nullopt;
+    }
+    const MarkPixels counts = count_mark_pixels(screen, *bar);
     //  37 red and 42 white at 1280x720 on the caught Mareep.
     const double area_scale = (screen.height() / 720.0) * (screen.height() / 720.0);
-    return red >= 15 * area_scale && white >= 15 * area_scale;
+    return counts.red >= 15 * area_scale && counts.white >= 15 * area_scale;
 }
 
 

@@ -241,7 +241,7 @@ void level_camera(StoryEnv& env){
 //  Rounds of weaken_target() and a throw, with A through the lines, while
 //  a wild battle is on: until it is over (caught, or the target gone), a
 //  round lands nothing, or `max_throws`. Returns the throws.
-int weaken_and_throw(StoryEnv& env, PlzaBackend& backend, TrainerBattleState& battle_state, int max_throws){
+int weaken_and_throw(StoryEnv& env, PlzaBackend& backend, int max_throws, TrainerBattleState& battle_state){
     int throws = 0;
     while (throws < max_throws && wild_battle_on(env)){
         const int landed = weaken_target(env, backend, battle_state);
@@ -261,11 +261,11 @@ int weaken_and_throw(StoryEnv& env, PlzaBackend& backend, TrainerBattleState& ba
 //  user's walk on console B, 2026-11-13; Bunnelby, 2026-11-14): one of a
 //  species already caught is fought off with no throws (3 rounds at
 //  most); else weaken_and_throw(). Returns the throws.
-int fight_back(StoryEnv& env, PlzaBackend& backend, TrainerBattleState& battle_state, int max_throws){
+int fight_back(StoryEnv& env, PlzaBackend& backend, int max_throws, TrainerBattleState& battle_state){
     const std::optional<bool> caught = HeldZl(env).wait_for_plate(LOCK_ON_WAIT);
     if (caught != true){
         backend.log("[PLZA] catch_in_zone: a wild battle at the stop: weakening and throwing");
-        return weaken_and_throw(env, backend, battle_state, max_throws);
+        return weaken_and_throw(env, backend, max_throws, battle_state);
     }
     backend.log("[PLZA] catch_in_zone: a wild battle with a species already caught: fighting it off");
     for (int round = 0; round < 3 && wild_battle_on(env); round++){
@@ -281,11 +281,11 @@ int fight_back(StoryEnv& env, PlzaBackend& backend, TrainerBattleState& battle_s
 //  look (STOP_LOOKS, the camera turned right between two), a throw at the
 //  first target not caught (lock_on_not_caught()), then weaken_and_throw()
 //  when it broke out into a wild battle. Returns the throws.
-int catch_at_stop(StoryEnv& env, PlzaBackend& backend, TrainerBattleState& battle_state, int max_throws){
+int catch_at_stop(StoryEnv& env, PlzaBackend& backend, int max_throws, TrainerBattleState& battle_state){
     int throws = 0;
     for (int look = 0; look < STOP_LOOKS && throws == 0 && max_throws > 0; look++){
         if (wild_battle_on(env)){
-            throws += fight_back(env, backend, battle_state, max_throws);
+            throws += fight_back(env, backend, max_throws, battle_state);
             break;
         }
         if (lock_on_not_caught(env, backend) != LockOn::NOT_CAUGHT){
@@ -295,7 +295,7 @@ int catch_at_stop(StoryEnv& env, PlzaBackend& backend, TrainerBattleState& battl
         throw_ball(env.context, STORY_THROW);
         throws++;
         press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
-        throws += weaken_and_throw(env, backend, battle_state, max_throws - throws);
+        throws += weaken_and_throw(env, backend, max_throws - throws, battle_state);
     }
     level_camera(env);
     return throws;
@@ -345,6 +345,56 @@ std::optional<int> objective_distance_now(StoryEnv& env){
     return marker->distance;
 }
 
+//  What the patrol came to: the party bar's last read, the throws.
+struct Patrol{
+    std::optional<int> slots;
+    int throws = 0;
+};
+
+//  catch_at_stop() at ROAD_SPOTS in turn, until the party bar, read after
+//  each stop that threw, shows `goal.party_species`, or PATROL_VISITS,
+//  `goal.max_throws` or PATROL_LIMIT run out. `slots` is the bar's read
+//  before the first stop.
+Patrol patrol_road(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal, std::optional<int> slots){
+    Patrol patrol{.slots = slots};
+    TrainerBattleState battle_state(env.battle_ai);
+    const WallClock deadline = current_time() + PATROL_LIMIT;
+    std::optional<int> last;
+    for (size_t visit = 0; visit < PATROL_VISITS && patrol.throws < goal.max_throws && current_time() < deadline; visit++){
+        const int stop = ROAD_SPOTS[visit % std::size(ROAD_SPOTS)];
+        const std::optional<int> at = walk_to_stop(env, backend, last, stop);
+        last = at ? at : stop;
+        const int thrown = catch_at_stop(env, backend, goal.max_throws - patrol.throws, battle_state);
+        patrol.throws += thrown;
+        backend.log(std::format("[PLZA] catch_in_zone: stop {} at {} (for {}): {} throws", visit + 1, at.value_or(-1), stop, thrown));
+        if (thrown > 0){
+            patrol.slots = read_party_slots(env, backend);
+        }
+        if (party_done(patrol.slots, goal)){
+            break;
+        }
+    }
+    return patrol;
+}
+
+//  The road stops to walk through from `at` from the objective, in order:
+//  the spots of ROAD_SPOTS nearer the gate, furthest first; at or past the
+//  one nearest the gate, that one: back onto the road there first, as a
+//  walk at the gate from off the road ran into a building west of the zone
+//  (console B, 2026-11-13, last read 49). With no distance read, every spot.
+std::vector<int> road_stops_to_gate(std::optional<int> at){
+    std::vector<int> stops;
+    for (int spot : ROAD_SPOTS){
+        if (!at || spot < *at){
+            stops.push_back(spot);
+        }
+    }
+    if (stops.empty()){
+        stops.push_back(ROAD_SPOTS[std::size(ROAD_SPOTS) - 1]);
+    }
+    return stops;
+}
+
 } // namespace
 
 
@@ -356,51 +406,24 @@ Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCa
     if (start && *start >= 115){
         pbf_move_left_joystick(env.context, /*position=*/{1, 0}, /*hold=*/Milliseconds(1000), /*release=*/Milliseconds(300));
     }
-    std::optional<int> slots = read_party_slots(env, backend);
+    const std::optional<int> slots = read_party_slots(env, backend);
     if (party_done(slots, goal)){
         backend.log("[PLZA] catch_in_zone: the party already holds the species: nothing to catch");
         return Pokemon::outcome_ok();
     }
-    TrainerBattleState battle_state(env.battle_ai);
-    const WallClock deadline = current_time() + PATROL_LIMIT;
-    int throws = 0;
-    std::optional<int> last;
-    for (size_t visit = 0; visit < PATROL_VISITS && throws < goal.max_throws && current_time() < deadline; visit++){
-        const int stop = ROAD_SPOTS[visit % std::size(ROAD_SPOTS)];
-        const std::optional<int> at = walk_to_stop(env, backend, last, stop);
-        last = at ? at : stop;
-        const int thrown = catch_at_stop(env, backend, battle_state, goal.max_throws - throws);
-        throws += thrown;
-        backend.log(std::format("[PLZA] catch_in_zone: stop {} at {} (for {}): {} throws", visit + 1, at.value_or(-1), stop, thrown));
-        if (thrown == 0){
-            continue;
-        }
-        slots = read_party_slots(env, backend);
-        if (party_done(slots, goal)){
-            return Pokemon::outcome_ok();
-        }
+    const Patrol patrol = patrol_road(env, backend, goal, slots);
+    if (party_done(patrol.slots, goal)){
+        return Pokemon::outcome_ok();
     }
     return Pokemon::outcome_failed("short_of_species", std::format(
         "the party bar shows {} of {} species after {} throws",
-        slots ? std::to_string(*slots) : std::string("no read"), goal.party_species, throws
+        patrol.slots ? std::to_string(*patrol.slots) : std::string("no read"), goal.party_species, patrol.throws
     ));
 }
 
 Pokemon::Outcome walk_back_to_zone_road(StoryEnv& env, PlzaBackend& backend){
     std::optional<int> at = objective_distance_now(env);
-    std::vector<int> stops;
-    for (int spot : ROAD_SPOTS){
-        if (!at || spot < *at){
-            stops.push_back(spot);
-        }
-    }
-    if (stops.empty()){
-        //  At or past 60: back onto the road there first, as a walk at the
-        //  gate from off the road ran into a building west of the zone
-        //  (console B, 2026-11-13, last read 49).
-        stops.push_back(ROAD_SPOTS[std::size(ROAD_SPOTS) - 1]);
-    }
-    for (int stop : stops){
+    for (int stop : road_stops_to_gate(at)){
         backend.log(std::format("[PLZA] walk_back_to_zone_road: to {} on the road, from {}", stop, at.value_or(-1)));
         const bool toward = !at || stop <= *at;
         const std::optional<int> reached = walk_to_stop(env, backend, at, stop);
@@ -414,7 +437,6 @@ Pokemon::Outcome walk_back_to_zone_road(StoryEnv& env, PlzaBackend& backend){
     }
     return Pokemon::outcome_ok();
 }
-
 
 
 } // namespace PokemonLZA

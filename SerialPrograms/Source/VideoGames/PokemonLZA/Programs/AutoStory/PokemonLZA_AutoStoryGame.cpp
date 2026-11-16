@@ -195,11 +195,27 @@ Outcome face_heading(StoryEnv& env, PlzaBackend& backend, double heading){
     return Pokemon::outcome_failed("heading_missed", std::format("not facing {:.0f} deg after 4 turns", heading));
 }
 
-//  "run_to_gate" on the console `env`; none: fails as console_only. Faces
-//  the arg "heading" first, if given (face_heading()). Runs straight on
-//  with upstream's run_towards_gate_with_A_button() until the gate's A
-//  prompt; once more after a day/night change, which stops the run. Fails
-//  as "gate_not_reached" when the run ends with no prompt.
+//  "run_to_gate"'s run: straight on with upstream's
+//  run_towards_gate_with_A_button() until the gate's A prompt; once more
+//  after a day/night change, which stops the run. Fails as
+//  "gate_not_reached" when the run ends with no prompt.
+Outcome run_to_gate(StoryEnv& env, Milliseconds timeout){
+    //  0: the A prompt, 1: a day/night change, else no prompt.
+    int result = 1;
+    for (size_t runs = 0; runs < 2 && result == 1; runs++){
+        result = run_towards_gate_with_A_button(
+            env.env.console, env.context, /*run_direction_x=*/0, /*run_direction_y=*/1, timeout
+        );
+    }
+    if (result != 0){
+        return Pokemon::outcome_failed("gate_not_reached", std::format("no gate A prompt in {} ms of running", timeout.count()));
+    }
+    return Pokemon::outcome_ok();
+}
+
+//  The handler of "run_to_gate" on the console `env`; none: fails as
+//  console_only. Its arg "heading", if given, is faced first
+//  (face_heading()), then run_to_gate().
 Handler gate_run_handler(StoryEnv* env){
     if (env == nullptr){
         return [](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
@@ -208,29 +224,19 @@ Handler gate_run_handler(StoryEnv* env){
     }
     return [env](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
         const Milliseconds timeout(Pokemon::story_arg<int64_t>(call.args, "timeout_ms"));
-        //  0: the A prompt, 1: a day/night change, else no prompt.
-        int result = 1;
+        const auto heading = call.args.find("heading");
         try{
-            const auto heading = call.args.find("heading");
             if (heading != call.args.end()){
                 const Outcome faced = face_heading(*env, backend, (double)std::get<int64_t>(heading->second));
                 if (!faced.succeeded()){
                     return faced;
                 }
             }
-            for (size_t runs = 0; runs < 2 && result == 1; runs++){
-                result = run_towards_gate_with_A_button(
-                    env->env.console, env->context, /*run_direction_x=*/0, /*run_direction_y=*/1, timeout
-                );
-            }
+            return run_to_gate(*env, timeout);
         }catch (OperationFailedException& e){
             backend.log(std::format("[PLZA] run_to_gate failed: {}", e.message()));
             return Pokemon::outcome_failed("gate_not_reached", e.message());
         }
-        if (result != 0){
-            return Pokemon::outcome_failed("gate_not_reached", std::format("no gate A prompt in {} ms of running", timeout.count()));
-        }
-        return Pokemon::outcome_ok();
     };
 }
 

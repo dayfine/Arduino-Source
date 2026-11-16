@@ -114,18 +114,24 @@ public:
             pbf_move_right_joystick(m_env.context, {marker->x < 0.5 ? -0.5 : 0.5, 0}, /*hold=*/400ms, /*release=*/200ms);
             return MarkerStep::WALKING;
         }
-        if (marker->distance > 0 && m_reads.accept(marker->distance)){
-            if (reached(marker->distance)){
-                m_backend.log(std::format("[PLZA] marker walk: {} from the objective", marker->distance));
-                return MarkerStep::ARRIVED;
-            }
-            on_distance(marker->distance);
-        }
-        steer_and_step(marker->x);
-        return MarkerStep::WALKING;
+        return on_marker(*marker);
     }
 
 private:
+    //  A marker on screen with its digits: a distance read is taken (or
+    //  dropped as a misread), then the camera turned to it and a step on.
+    MarkerStep on_marker(const ObjectiveMarker& marker){
+        if (marker.distance > 0 && m_reads.accept(marker.distance)){
+            if (reached(marker.distance)){
+                m_backend.log(std::format("[PLZA] marker walk: {} from the objective", marker.distance));
+                return MarkerStep::ARRIVED;
+            }
+            on_distance(marker.distance);
+        }
+        steer_and_step(marker.x);
+        return MarkerStep::WALKING;
+    }
+
     //  The marker is behind: turn the camera toward where it was last.
     MarkerStep look_behind(){
         if (++m_unseen > 12){
@@ -209,7 +215,7 @@ bool objective_reached(PlzaBackend& backend){
 
 //  `walk` until it arrives, loses the marker or `limit` passes. Returns
 //  whether it arrived.
-bool run_marker_walk(MarkerWalk& walk, PlzaBackend& backend, Milliseconds limit){
+bool run_marker_walk(Milliseconds limit, MarkerWalk& walk, PlzaBackend& backend){
     const WallClock deadline = current_time() + limit;
     while (current_time() < deadline){
         backend.scope().throw_if_cancelled();
@@ -231,19 +237,19 @@ bool run_marker_walk(MarkerWalk& walk, PlzaBackend& backend, Milliseconds limit)
 
 std::optional<int> walk_toward_marker(StoryEnv& env, PlzaBackend& backend, int stop_at, Milliseconds limit){
     MarkerWalk walk(env, backend, MarkerGoal{.stop_at = stop_at, .back = false});
-    run_marker_walk(walk, backend, limit);
+    run_marker_walk(limit, walk, backend);
     return walk.last();
 }
 
 std::optional<int> walk_back_from_marker(StoryEnv& env, PlzaBackend& backend, int stop_at, Milliseconds limit){
     MarkerWalk walk(env, backend, MarkerGoal{.stop_at = stop_at, .back = true});
-    run_marker_walk(walk, backend, limit);
+    run_marker_walk(limit, walk, backend);
     return walk.last();
 }
 
 Pokemon::Outcome walk_to_marker(StoryEnv& env, PlzaBackend& backend){
     MarkerWalk walk(env, backend, MarkerGoal{});
-    run_marker_walk(walk, backend, MARKER_WALK_LIMIT);
+    run_marker_walk(MARKER_WALK_LIMIT, walk, backend);
     if (!objective_reached(backend)){
         return Pokemon::outcome_failed("objective_not_reached", "no A prompt or dialog at the objective marker");
     }
