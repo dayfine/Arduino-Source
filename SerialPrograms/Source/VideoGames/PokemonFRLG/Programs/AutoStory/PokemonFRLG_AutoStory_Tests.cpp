@@ -36,6 +36,7 @@
 #include "PokemonFRLG_AutoStoryConsoleFailure_Tests.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryRepelStep.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryPlanGolden.h"
 #include "PokemonFRLG_AutoStoryPlanGolden10.h"
@@ -423,8 +424,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 //  start: starts_after_unauthored_rows()), and adds the plans to `golden`.
 UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 97 || checkpoints[0].start){
-        return "Expected 97 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 98 || checkpoints[0].start){
+        return "Expected 98 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     walk_state() = WalkGates{};

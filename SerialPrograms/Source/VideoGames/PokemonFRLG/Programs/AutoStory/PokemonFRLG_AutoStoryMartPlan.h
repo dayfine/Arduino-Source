@@ -46,12 +46,6 @@ struct MartLine{
     size_t quantity = 1;
 };
 
-//  What the clerk pays for one `item` (half its pokefirered items.json
-//  price): the items the story sells (the NUGGET); nothing for another,
-//  or for one priced 0, which the clerk won't buy ("OH, no. I can't buy
-//  that.", as the MOON STONE).
-std::optional<size_t> sale_price(std::string_view item);
-
 //  What a Mart step sells, then buys: each line's quantity.
 struct MartPlan{
     //  The Mart's map, for its stock.
@@ -63,8 +57,9 @@ struct MartPlan{
     //  and the step goes on, instead of failing. With the money read on
     //  the BUY list, a line is cut to what the money covers instead.
     bool if_affordable = false;
-    //  Sold at the same counter (SELL) before the buys, each from its
-    //  pocket; a line the bag has none of is skipped, logged.
+    //  Sold at the same counter (SELL, PokemonFRLG_AutoStoryMartSell.h)
+    //  before the buys, each from its pocket; a line the bag has none of
+    //  is skipped, logged.
     std::vector<MartLine> sells = {};
 };
 

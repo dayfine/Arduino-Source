@@ -15,6 +15,7 @@
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryHideoutLift.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryRepelStep.h"
 #include "PokemonFRLG_AutoStoryBagUse.h"
 #include "PokemonFRLG_AutoStoryBag.h"
 #include "PokemonFRLG_AutoStoryRooms.h"

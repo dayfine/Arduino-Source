@@ -19,7 +19,7 @@ using Pokemon::Outcome;
 namespace{
 
 Outcome mart(Logger& logger, const MartPlan& plan, StoryAbilities& abilities){
-    const MartResult result = run_mart(logger, abilities.mart, plan);
+    const MartResult result = run_mart(logger, abilities.mart, abilities.mart_sell, plan);
     const std::string message = mart_message(plan, result);
     logger.log(message, result.end == MartEnd::DONE ? COLOR_BLACK : COLOR_RED);
     return result.end == MartEnd::DONE ? Pokemon::outcome_ok() : Pokemon::outcome_failed(std::format("mart_{}", mart_end_name(result.end)), message);
