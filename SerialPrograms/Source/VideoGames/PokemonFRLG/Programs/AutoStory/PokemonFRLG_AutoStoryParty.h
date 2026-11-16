@@ -48,16 +48,20 @@ namespace PokemonFRLG{
 std::optional<size_t> attack_slot(const PartyMember& member);
 
 //  The slot to attack `foes` with, any of them as likely to be out: the
-//  damaging move with PP left whose expected damage, summed over the foes,
-//  is best (type multiplier; 0 against a foe its ability may make immune,
-//  for a Water move on a Water foe, and on Shedinja unless super
-//  effective; halved for a two-turn move); ties go to the stronger move
-//  (power, half again for the member's own type), then the plan's attacks,
-//  then slot order. With no damaging move doing anything, the first move
-//  with PP left that isn't such a move. A foe the data doesn't have is left
-//  out; with none left, or while the story doesn't know all the lead's
-//  moves, attack_slot() itself.
-std::optional<size_t> attack_slot_against(const PartyMember& member, const std::vector<std::string>& foes);
+//  damaging move with PP left whose Gen 3 damage, summed over the foes, is
+//  highest. The damage takes the member's level, its Attack or Sp. Atk
+//  (by the move's type, as in Gen 3) at its stage, the foe's Defense or
+//  Sp. Def, the move's power (halved for Fire and Ice on a foe that may
+//  have Thick Fat), STAB and the type multiplier; 0 against a foe its
+//  ability may make immune, for a Water move on a Water foe, and on
+//  Shedinja unless super effective; halved for a two-turn move. Without
+//  the member's stats both of its attacking stats count alike. Ties go to
+//  the move with more PP left, then the plan's attacks, then slot order.
+//  With no damaging move doing anything, the first move with PP left that
+//  isn't such a move. A foe the data doesn't have is left out; with none
+//  left, or while the story doesn't know all the lead's moves,
+//  attack_slot() itself.
+std::optional<size_t> attack_slot_against(const PartyMember& member, const std::vector<std::string>& foes, const AttackContext& context = {});
 
 //  A TM, HM or tutor taught it `move` at full PP: in `forgot`'s slot, or
 //  in a free one when it forgot nothing. The game puts it there (console B,

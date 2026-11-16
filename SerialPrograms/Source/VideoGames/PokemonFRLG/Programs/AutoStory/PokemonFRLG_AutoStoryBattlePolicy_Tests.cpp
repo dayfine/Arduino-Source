@@ -8,6 +8,7 @@
  *
  */
 
+#include <cmath>
 #include <format>
 #include <functional>
 #include <optional>
@@ -199,6 +200,83 @@ UnitTestResult test_low_hp_heals(){
     dry.item_used("x-special");
     if (!use(dry, empty, koga_view(34)).empty()){
         return "Expected an attack with no medicine in the bag.";
+    }
+    return true;
+}
+
+//  The 2026-11-16 loss to Lorelei (console B, 20.01): Blastoise Lv51 at
+//  162 HP against her Dewgong (the plan's threat row), Sp. Atk +4 after
+//  four X Specials, the bag as the battle read it. It healed at red with a
+//  Super Potion or the Potion, never one of the 13 Full Restores.
+BattlePolicy lorelei_policy(){
+    return BattlePolicy{
+        .kind = BattlePolicyKind::GOAL_BASED_SETUP,
+        .goals = {.spa = 4, .accuracy = 0, .outspeed = true, .guard_accuracy = true},
+        .foes = {{.speed = 93, .likely = 21, .mean = 13, .max = 45, .normal_max = 30}},
+    };
+}
+
+Supplies lorelei_bag(BattleRisk risk){
+    Supplies supplies;
+    set_from_bag(supplies, {
+        {"potion", 1}, {"super-potion", 6}, {"full-restore", 13}, {"antidote", 1},
+        {"parlyz-heal", 2}, {"full-heal", 2}, {"x-special", 4},
+    });
+    supplies.risk = risk;
+    return supplies;
+}
+
+//  The medicine the policy picks for the lead at `hp` of 162, Sp. Atk +4.
+std::string lorelei_heal(BattleRisk risk, double hp){
+    PolicyState state(lorelei_policy());
+    for (int stage = 0; stage < 4; stage++){
+        state.item_used("x-special");
+    }
+    Supplies supplies = lorelei_bag(risk);
+    return use(state, supplies, PolicyView{.hp = hp, .max_hp = 162, .status = StatusCondition::NONE, .speed = 100, .foe_index = 0});
+}
+
+UnitTestResult test_high_risk_red_full_restore(){
+    const std::string heal = lorelei_heal(BattleRisk::HIGH, /*hp=*/6);
+    if (heal != "full-restore"){
+        return std::format("Expected a Full Restore at 6/162 against an Elite Four, got \"{}\".", heal);
+    }
+    return true;
+}
+
+UnitTestResult test_high_risk_yellow_full_restore(){
+    const std::string heal = lorelei_heal(BattleRisk::HIGH, /*hp=*/66);
+    if (heal != "full-restore"){
+        return std::format("Expected a Full Restore at 66/162 (yellow) against an Elite Four, got \"{}\".", heal);
+    }
+    return true;
+}
+
+UnitTestResult test_high_risk_green_attacks(){
+    const std::string item = lorelei_heal(BattleRisk::HIGH, /*hp=*/84);
+    if (!item.empty()){
+        return std::format("Expected an attack at 84/162 (green) once set up, got \"{}\".", item);
+    }
+    return true;
+}
+
+UnitTestResult test_low_risk_red_super_potion(){
+    const std::string heal = lorelei_heal(BattleRisk::LOW, /*hp=*/6);
+    if (heal != "super-potion"){
+        return std::format("Expected a Super Potion at 6/162 in a low-risk fight, got \"{}\".", heal);
+    }
+    return true;
+}
+
+//  The battle's bag line prints the pocket's key, "full-restore": it is
+//  the key the medicine table and the pocket's rows use.
+UnitTestResult test_full_restore_key_resolves(){
+    const Supplies supplies = lorelei_bag(BattleRisk::HIGH);
+    if (bag_count(supplies, "full-restore") != 13 || item_row(supplies, "full-restore") != 2){
+        return "Expected 13 Full Restores in row 3 of the Items pocket.";
+    }
+    if (!std::isinf(medicine_hp("full-restore"))){
+        return "Expected the Full Restore to heal all HP.";
     }
     return true;
 }
@@ -702,6 +780,26 @@ const std::vector<AutoStoryBattlePolicyCase> AUTO_STORY_BATTLE_POLICY_CASES = {
     {
         .input = {.name = "low HP heals; no medicine attacks", .body = test_low_hp_heals},
         .expectation = {.description = "a heal at low HP, an attack with none"},
+    },
+    {
+        .input = {.name = "Lorelei, high risk, red HP", .body = test_high_risk_red_full_restore},
+        .expectation = {.description = "a Full Restore, not a Super Potion"},
+    },
+    {
+        .input = {.name = "Lorelei, high risk, yellow HP", .body = test_high_risk_yellow_full_restore},
+        .expectation = {.description = "a Full Restore"},
+    },
+    {
+        .input = {.name = "Lorelei, high risk, green HP after setup", .body = test_high_risk_green_attacks},
+        .expectation = {.description = "an attack"},
+    },
+    {
+        .input = {.name = "Lorelei's HP in a low-risk fight, red HP", .body = test_low_risk_red_super_potion},
+        .expectation = {.description = "a Super Potion; Full Restores are kept"},
+    },
+    {
+        .input = {.name = "the bag's full-restore key", .body = test_full_restore_key_resolves},
+        .expectation = {.description = "13 in row 3, a whole-HP medicine"},
     },
     {
         .input = {.name = "a heal that loses ground to poison and the foe's hits is not repeated", .body = test_futile_potions_attack},

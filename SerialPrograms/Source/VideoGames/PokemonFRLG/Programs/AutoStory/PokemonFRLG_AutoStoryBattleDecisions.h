@@ -114,6 +114,8 @@ private:
     std::string m_planned_item;
     //  The step's battle policy, if it has one and the lead's stats are read.
     std::optional<PolicyState> m_policy;
+    //  The lead's Attack and Sp. Atk stages from the X items used, for its attack.
+    AttackContext m_attack;
     size_t m_foe_index = 0;
     bool m_lost = false;
     //  NO was answered to "Delete a move?": "Stop learning?" comes next.

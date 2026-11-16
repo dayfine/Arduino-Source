@@ -61,6 +61,10 @@ size_t type_effectiveness(PokemonType attack, PokemonType defend);
 //  either of two; NONE for any other species.
 PokemonType ability_immunity(std::string_view species);
 
+//  `species` can have Thick Fat in Gen 3, as its only ability or either of
+//  two: Fire and Ice moves hit it at half power.
+bool may_have_thick_fat(std::string_view species);
+
 //  `move` takes a turn to charge or to dig or fly up (Dig, Fly, Solar Beam,
 //  Skull Bash, Razor Wind, Sky Attack), so it hits half as often as another
 //  move of its strength.

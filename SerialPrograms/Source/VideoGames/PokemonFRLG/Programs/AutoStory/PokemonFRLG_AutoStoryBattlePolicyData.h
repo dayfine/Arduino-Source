@@ -16,6 +16,7 @@
 #include <string_view>
 #include <vector>
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
+#include "PokemonFRLG_AutoStoryStats.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -69,13 +70,17 @@ struct BattlePolicy{
     SetupGoals goals = {};
     //  In the step's "foes" order.
     std::vector<FoeThreat> foes = {};
+    //  The foes' Defense and Sp. Def in the same order (the step's
+    //  "foe_stats"), for the damage the lead's attacks would do, whatever
+    //  the policy kind; empty when the plan doesn't carry them.
+    std::vector<FoeStats> foe_stats = {};
 };
 
 //  The policy a step's "policy" word names; none for an empty or unknown one.
 std::optional<BattlePolicyKind> battle_policy_kind(std::string_view word);
 
 //  The battle policy a step's args name, with its setup goals and foe data:
-//  none when they name none.
+//  NONE when they name none, with the foes' stats all the same.
 BattlePolicy battle_policy_of(const Pokemon::StoryActionArgs& args);
 
 //  The step's "foe_threats" rows, [speed, likely, mean, max, normal_max,

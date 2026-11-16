@@ -5,11 +5,13 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <format>
 #include <limits>
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
+#include "PokemonFRLG_AutoStoryBattleRisk.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
 
 namespace PokemonAutomation{
@@ -41,9 +43,43 @@ bool full_restore_worth_it(const PolicyView& view){
     return view.max_hp - view.hp >= view.max_hp / 2;
 }
 
-double stage_multiplier(int stage){
-    return stage >= 0 ? (2.0 + stage) / 2.0 : 2.0 / (2.0 - stage);
+//  The battle HP bar's colour.
+enum class HpBand{
+    GREEN,
+    YELLOW,
+    RED,
+};
+
+HpBand hp_band(const PolicyView& view){
+    if (view.hp * 5 <= view.max_hp){
+        return HpBand::RED;
+    }
+    if (view.hp * 2 <= view.max_hp){
+        return HpBand::YELLOW;
+    }
+    return HpBand::GREEN;
 }
+
+//  The heal by the fight's risk and the lead's HP band: the first of
+//  `items` in the bag. A row with none leaves it to the HP-against-the-hit
+//  rules (heal(), planning_heal()), which take the smallest medicine that
+//  clears the foe's hit: Potions and Super Potions. Against the Elite Four
+//  and the Champion that left Blastoise in the red for many turns and
+//  fainted it with 13 Full Restores in the bag (console B, 2026-11-16,
+//  Lorelei).
+struct RiskHeal{
+    BattleRisk risk;
+    HpBand band;
+    std::array<std::string_view, 3> items;
+};
+constexpr RiskHeal RISK_HEALS[] = {
+    {BattleRisk::LOW, HpBand::GREEN, {}},
+    {BattleRisk::LOW, HpBand::YELLOW, {}},
+    {BattleRisk::LOW, HpBand::RED, {}},
+    {BattleRisk::HIGH, HpBand::GREEN, {}},
+    {BattleRisk::HIGH, HpBand::YELLOW, {"full-restore", "max-potion", "hyper-potion"}},
+    {BattleRisk::HIGH, HpBand::RED, {"full-restore", "max-potion", "hyper-potion"}},
+};
 
 PolicyItem medicine_item(const std::string& item, std::string why){
     return PolicyItem{.item = item, .party_member = true, .why = std::move(why)};
@@ -51,6 +87,37 @@ PolicyItem medicine_item(const std::string& item, std::string why){
 
 PolicyItem setup_item_of(const std::string& item, std::string why){
     return PolicyItem{.item = item, .party_member = false, .why = std::move(why)};
+}
+
+std::string_view band_name(HpBand band){
+    switch (band){
+    case HpBand::GREEN:
+        return "green";
+    case HpBand::YELLOW:
+        return "yellow";
+    case HpBand::RED:
+        return "red";
+    }
+    return "";
+}
+
+//  RISK_HEALS' item for the fight and the lead's HP, if the row names one in the bag.
+std::optional<PolicyItem> risk_heal(const Supplies& supplies, const PolicyView& view){
+    const HpBand band = hp_band(view);
+    for (const RiskHeal& row : RISK_HEALS){
+        if (row.risk != supplies.risk || row.band != band){
+            continue;
+        }
+        for (const std::string_view item : row.items){
+            if (!item.empty() && bag_count(supplies, item) > 0){
+                return medicine_item(std::string(item), std::format(
+                    "{}: HP {:.0f}/{:.0f} ({}) in a {}-risk fight",
+                    item, view.hp, view.max_hp, band_name(band), battle_risk_name(supplies.risk)
+                ));
+            }
+        }
+    }
+    return std::nullopt;
 }
 
 } // namespace
@@ -86,12 +153,31 @@ std::optional<std::vector<FoeThreat>> foe_threats_of(const std::vector<std::vect
     return foes;
 }
 
+namespace{
+
+//  A battle step's "foe_stats" rows, [defense, sp_defense] each; empty if
+//  there are none or a row isn't that.
+std::vector<FoeStats> foe_stats_of(const Pokemon::StoryActionArgs& args){
+    constexpr size_t COLUMNS = 2;
+    std::vector<FoeStats> foes;
+    for (const std::vector<int64_t>& row : Pokemon::story_arg<std::vector<std::vector<int64_t>>>(args, "foe_stats")){
+        if (row.size() != COLUMNS){
+            return {};
+        }
+        foes.push_back(FoeStats{.defense = static_cast<int>(row[0]), .sp_defense = static_cast<int>(row[1])});
+    }
+    return foes;
+}
+
+} // namespace
+
 BattlePolicy battle_policy_of(const Pokemon::StoryActionArgs& args){
     const std::optional<BattlePolicyKind> kind = battle_policy_kind(Pokemon::story_arg<std::string>(args, "policy"));
-    if (!kind){
-        return {};
-    }
     BattlePolicy policy;
+    policy.foe_stats = foe_stats_of(args);
+    if (!kind){
+        return policy;
+    }
     policy.kind = *kind;
     policy.goals = SetupGoals{
         .spa = static_cast<int>(Pokemon::story_arg<int64_t>(args, "setup_spa")),
@@ -321,6 +407,10 @@ std::optional<PolicyItem> PolicyState::choose(const Supplies& supplies, const Po
     }
     if (m_policy.kind == BattlePolicyKind::NONE){
         return std::nullopt;
+    }
+    //  A whole heal also cures, so it goes before a status's own cure.
+    if (std::optional<PolicyItem> item = risk_heal(supplies, view)){
+        return item;
     }
     const Danger risk = danger(view);
     if (std::optional<PolicyItem> item = cure(supplies, view, risk)){

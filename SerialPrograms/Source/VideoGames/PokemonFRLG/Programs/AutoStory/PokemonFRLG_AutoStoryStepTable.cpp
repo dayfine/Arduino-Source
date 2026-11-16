@@ -233,6 +233,10 @@ std::vector<Pokemon::StoryArgSpec> battle_arg_specs(){
         .why = "the trainer's party in order; attacks are chosen against the one out",
     });
     args.push_back(Pokemon::StoryArgSpec{
+        .key = "foe_stats", .type = Pokemon::StoryArgType::INTEGER_ROWS, .required = false, .fallback = std::vector<std::vector<int64_t>>(),
+        .why = "one row per foe, [defense, sp_defense], from the trainer's party data: the damage each attack would do",
+    });
+    args.push_back(Pokemon::StoryArgSpec{
         .key = "use_items", .type = Pokemon::StoryArgType::ITEMS, .required = false, .fallback = std::vector<Pokemon::StoryItem>(),
         .why = "items used on the lead from the first turn, in order, before any attack (X Specials)",
     });
