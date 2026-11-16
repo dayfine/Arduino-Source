@@ -6,7 +6,7 @@
  *  states (CommonTools/ScreenMachine) that match on what the backend
  *  observed, so they run on the console and on a scripted backend alike:
  *  every look picks one state, the state takes one step, and each change of
- *  state is logged with the look's events. A text box (with or without a
+ *  state or of the look's events is logged (repeats are summed up). A text box (with or without a
  *  choice, whose top row A takes) or the advance chevron
  *  (ADVANCE_ARROW_READING) gets A. The player has control when the party
  *  bar (PLAYER_CAN_MOVE) or, in the tutorial, which has no party bar, the
@@ -80,7 +80,7 @@ struct SceneMachineConfig{
 //  `config.stop_at_choice` the choice box shows, or with
 //  `config.stop_at_battle` the battle HUD, on
 //  run_screen_machine(). `label` names its log lines ("[PLZA
-//  mash_to_move_hints] dialog: text box"). Fails as "scene_quiet" on the
+//  mash_to_move_hints] screen 2: dialog at 1.5s: text box"). Fails as "scene_quiet" on the
 //  quiet end (unless `config.quiet_is_control`), "scene_never_started"
 //  past `config.start_window`, "scene_timeout" when `timeout` passes (by
 //  the looks' time), and "scene_stuck" on a state that comes up too often
