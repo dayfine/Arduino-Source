@@ -61,6 +61,7 @@ const std::map<std::string_view, StoryFailureClass, std::less<>>& frlg_failure_n
         {"pc_failed", C::MENU_FAILED},
         //  Battles and what interrupts a step.
         {"blackout", C::BATTLE_LOST},
+        {"lead_fainted", C::BATTLE_LOST},
         {"dialog", C::INTERRUPT_FAILED},
         {"encounter_requires_recovery", C::WILD_BATTLES},
         //  The row sim's own checks (sim runs only).
