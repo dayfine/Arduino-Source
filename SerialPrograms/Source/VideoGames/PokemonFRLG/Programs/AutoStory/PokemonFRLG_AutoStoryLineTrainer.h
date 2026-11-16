@@ -10,11 +10,13 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryLineTrainer_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryLineTrainer_H
 
+#include <functional>
 #include <optional>
 #include <set>
 #include <string>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Pokemon/AutoStory/Pokemon_StoryPose.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteSteps.h"
 #include "PokemonFRLG_AutoStoryMovedTrainers.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
@@ -38,6 +40,11 @@ std::optional<TrainerMove> note_trainer_walked_up(const MapPosition& tile, std::
 //  the map's tiles, 17.03's below_giovanni went north from (10, 5) through
 //  Takashi, who had walked up to (10, 4) (console B, 2026-11-15 16:52).
 void note_line_trainer(Logger& logger, const StoryStep& step, const Pokemon::Outcome& outcome, std::set<std::string>& run_flags);
+
+//  Runs a step (`run`) on `state`; if it left the map it started on, the
+//  trainers who walked up stand on their own tiles again, beaten
+//  (trainers_back_after_map_change() on `state.flags`).
+Pokemon::Outcome trainers_back_on_warp(const std::function<Pokemon::Outcome()>& run, Pokemon::RunState& state);
 
 
 

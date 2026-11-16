@@ -822,7 +822,7 @@ StoryExecutor::StoryExecutor(StoryEnv& env)
 }
 
 Outcome StoryExecutor::run(const StoryStep& step, RunState& state){
-    return regrow_on_warp(story_maps(), [&]{ return m_executor.run(step, state); }, state);
+    return trainers_back_on_warp([&]{ return regrow_on_warp(story_maps(), [&]{ return m_executor.run(step, state); }, state); }, state);
 }
 
 bool StoryExecutor::master_ball_skipped(bool take_master_ball, Pokemon::StoryCheckLevel checks){

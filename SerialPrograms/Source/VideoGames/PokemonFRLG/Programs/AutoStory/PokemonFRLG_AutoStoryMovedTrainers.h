@@ -69,6 +69,16 @@ std::optional<TrainerMove> trainer_walking_up(
 //  no one. A trainer not found is left as is.
 std::vector<MapData> with_trainers_moved(std::vector<MapData> maps, const std::vector<TrainerMove>& moved);
 
+//  After a step from `map_before` that ended on `map_after`: if the player
+//  left the map, every trainer who walked up stands on their own tile
+//  again, beaten: their TRAINER_AT_FLAG in `run_flags` becomes a
+//  TRAINER_BEATEN_FLAG (PokemonFRLG_AutoStoryPacedRoute.h). The game
+//  places a map's people from its object events each time it loads the
+//  map. Jeff walked up to Route 6's (11, 33) in 05.10, and the run went on
+//  to Vermilion City; back in 06.03 he stands on (13, 33) again, and the
+//  leg north onto (11, 33) is open.
+void trainers_back_after_map_change(std::string_view map_before, std::string_view map_after, std::set<std::string>& run_flags);
+
 
 
 } // namespace PokemonFRLG

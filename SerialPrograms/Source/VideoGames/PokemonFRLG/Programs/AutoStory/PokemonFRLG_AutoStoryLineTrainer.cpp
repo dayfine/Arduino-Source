@@ -39,6 +39,13 @@ void note_line_trainer(Logger& logger, const StoryStep& step, const Pokemon::Out
 }
 
 
+Pokemon::Outcome trainers_back_on_warp(const std::function<Pokemon::Outcome()>& run, Pokemon::RunState& state){
+    const std::string map_before = state.pose.map;
+    Pokemon::Outcome outcome = run();
+    trainers_back_after_map_change(map_before, state.pose.map, state.flags);
+    return outcome;
+}
+
 
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch

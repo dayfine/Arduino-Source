@@ -11,6 +11,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
 #include "PokemonFRLG_AutoStoryMovedTrainers.h"
+#include "PokemonFRLG_AutoStoryPacedRoute.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -63,6 +64,16 @@ std::vector<TrainerMove> moved_trainers(const std::set<std::string>& run_flags){
         moved.emplace_back(TrainerMove{.trainer = std::string(rest.substr(0, equals)), .x = tile->first, .y = tile->second});
     }
     return moved;
+}
+
+void trainers_back_after_map_change(std::string_view map_before, std::string_view map_after, std::set<std::string>& run_flags){
+    if (map_before == map_after){
+        return;
+    }
+    for (const TrainerMove& move : moved_trainers(run_flags)){
+        run_flags.erase(trainer_at_flag(move));
+        run_flags.insert(std::format("{}{}", TRAINER_BEATEN_FLAG, move.trainer));
+    }
 }
 
 std::string trainer_at_flag(const TrainerMove& move){

@@ -24,6 +24,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_OptionMenuReader.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTileRules.h"
@@ -50,6 +51,7 @@
 #include "PokemonFRLG_AutoStoryPlanGolden20.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryLineTrainer.h"
+#include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryTrainerLine.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
@@ -375,6 +377,7 @@ void step_into_line(const StoryStep& step, StoryPose& pose){
 //  check_checkpoint()'s walk through the steps.
 UnitTestResult check_checkpoint_steps(const StoryCheckpoint& checkpoint, StoryPose& pose, std::vector<std::string>& golden){
     for (const StoryStep& step : checkpoint.steps){
+        const std::string map_before = pose.map;
         if (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
             UnitTestResult result = step.kind == StoryStepKind::ROUTE ? check_route(pose, step, golden) : check_legs(pose, step);
             if (result.result != UnitTestResult::PASSED){
@@ -398,6 +401,7 @@ UnitTestResult check_checkpoint_steps(const StoryCheckpoint& checkpoint, StoryPo
         if (step.pose_after){
             pose = one_tile(Pokemon::grid_pose_of(*step.pose_after));
         }
+        trainers_back_after_map_change(map_before, pose.map, walk_state().run_flags);
         apply_step_effects(step);
     }
     return true;
@@ -628,9 +632,9 @@ bool looks_around(const MapObject& object){
 //  The trainer on `map` who would see the player on `tile`, other than the
 //  `beaten`. Wanderers and those who look around are left out (no route can plan round one: wanderer_stops(),
 //  held_past_lookers()); with `lookers`, only those who look around, met by a wait (TRAINER_WAIT_VARIANT).
-const MapObject* trainer_seeing(const MapData& map, const TilePos& tile, const std::set<const MapObject*>& beaten, bool lookers){
+const MapObject* trainer_seeing(const MapData& map, const TilePos& tile, const std::set<std::string>& beaten, bool lookers){
     for (const MapObject& object : map.objects){
-        if (object.trainer && !object.wander && looks_around(object) == lookers && !beaten.contains(&object) && trainer_may_see(map, object, tile)){
+        if (object.trainer && !object.wander && looks_around(object) == lookers && !beaten.contains(trainer_id(map, object)) && trainer_may_see(map, object, tile)){
             return &object;
         }
     }
@@ -641,7 +645,7 @@ const MapObject* trainer_seeing(const MapData& map, const TilePos& tile, const s
 //  trainer's line, the first within TRAINER_LINE_TILES that a trainer
 //  other than the `beaten` sees, where step_until_seen() stops, else the
 //  last.
-TilePos step_end(const StoryPose& pose, const StoryStep& step, const std::set<const MapObject*>& beaten){
+TilePos step_end(const StoryPose& pose, const StoryStep& step, const std::set<std::string>& beaten){
     const MapData* map = find_map_named(pose.map);
     const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
     if (step.action != TRAINER_LINE_VARIANT || map == nullptr){
@@ -725,14 +729,14 @@ std::vector<std::optional<MapPosition>> wanderer_stops(const StoryPose& pose, co
 //  on to its wall after the battle. Or the leg is one tile: the trainer
 //  sees the player when the step is done, on its end. Empty if so, else
 //  the leg that doesn't. Trainers in `beaten` see no one.
-std::string held_past_lookers(const StoryPose& pose, const StoryStep& step, const std::set<const MapObject*>& beaten){
+std::string held_past_lookers(const StoryPose& pose, const StoryStep& step, const std::set<std::string>& beaten){
     MapPosition from{pose.map, pose.tile};
     for (const RouteStep& leg : legs_walked(pose, step)){
         const MapData* map = find_map_named(from.map);
         bool crosses = false;
         for (const MapPosition& tile : leg.action == RouteAction::WALK && map ? leg_tiles(walk_maps(), from, leg) : std::vector<MapPosition>{}){
             for (const MapObject& object : map->objects){
-                crosses |= looks_around(object) && !beaten.contains(&object) && trainer_may_see(*map, object, tile.point);
+                crosses |= looks_around(object) && !beaten.contains(trainer_id(*map, object)) && trainer_may_see(*map, object, tile.point);
             }
         }
         if (crosses && !leg.to_wall && leg.tiles != 1){
@@ -760,7 +764,7 @@ std::vector<MapPosition> tiles_walked(const StoryPose& pose, const StoryStep& st
 
 //  Why the player shouldn't walk onto `tile`, or empty: tall grass, a warp
 //  to a map not loaded (Route 4's ways into Mt. Moon), a trainer's line.
-std::string tile_problem(const MapPosition& tile, const std::set<const MapObject*>& beaten){
+std::string tile_problem(const MapPosition& tile, const std::set<std::string>& beaten){
     const MapData* map = find_map_named(tile.map);
     if (map == nullptr){
         return "off the story's maps at " + to_string(tile);
@@ -826,11 +830,20 @@ bool wanders_past_known(const StoryCheckpoint& checkpoint, const StoryStep& step
     return lewis || roland || incidental_fights(checkpoint.id);
 }
 
+//  The trainers `step`'s flags_after say are beaten (TRAINER_BEATEN_FLAG),
+//  added to `beaten`: a battle a talk starts, as 17.03's Takashi fought
+//  from his right.
+void add_beaten_after(const StoryStep& step, std::set<std::string>& beaten){
+    const std::set<std::string> fought = beaten_trainers(std::set<std::string>(step.flags_after.begin(), step.flags_after.end()));
+    beaten.insert(fought.begin(), fought.end());
+}
+
 //  `checkpoint`'s routes and legs keep to tiles with no tile_problem(); a
-//  step into a trainer's line is followed by the battle, which beats them.
+//  step into a trainer's line is followed by the battle, which beats them,
+//  as does a battle whose flags_after say so.
 //  `repelled`: a Repel the table used is on (it lasts past the
 //  checkpoint's save): grass is walked as any floor.
-UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const MapObject*>& beaten, bool& repelled){
+UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<std::string>& beaten, bool& repelled){
     begin_walk(checkpoint);
     StoryPose pose = one_tile(Pokemon::grid_pose_of(*checkpoint.start));
     for (size_t c = 0; c < checkpoint.steps.size(); c++){
@@ -865,8 +878,9 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
             return where + "steps into a trainer's line with no battle after it.";
         }
         if (trainer != nullptr){
-            beaten.insert(trainer);
+            beaten.insert(trainer_id(*map, *trainer));
         }
+        add_beaten_after(step, beaten);
         if (UnitTestResult result = advance(pose, step); result.result != UnitTestResult::PASSED){
             return checkpoint.id + " " + result.message;
         }
@@ -1077,7 +1091,7 @@ UnitTestResult test_facing_after_trainer_battles(){
 }
 
 UnitTestResult test_trainer_lines(){
-    std::set<const MapObject*> beaten;
+    std::set<std::string> beaten;
     bool has_shoes = false;
     bool repelled = false;
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){

@@ -18,9 +18,11 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSpin.h"
 #include "PokemonFRLG_AutoStoryMovedTrainers.h"
+#include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
@@ -113,11 +115,18 @@ const StoryCheckpoint& table_row(std::string_view id){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No row {}.", id));
 }
 
-//  Whether the overworld sim plays `step`; after any other step the
-//  player is put on its pose_after.
-bool sim_walks(const StoryStep& step){
-    return step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS
-        || step.kind == StoryStepKind::STEP || step.kind == StoryStepKind::BATTLE;
+//  Whether row `row`'s step `c` is a battle a talk starts: the sim has no
+//  talk, and no trainer's message up for it.
+bool talk_battle(const StoryCheckpoint& row, size_t c){
+    return row.steps[c].kind == StoryStepKind::BATTLE && c > 0 && row.steps[c - 1].kind == StoryStepKind::TALK;
+}
+
+//  Whether the overworld sim plays row `row`'s step `c`; after any other
+//  step the player is put on its pose_after.
+bool sim_walks(const StoryCheckpoint& row, size_t c){
+    const StoryStep& step = row.steps[c];
+    return !talk_battle(row, c) && (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS
+        || step.kind == StoryStepKind::STEP || step.kind == StoryStepKind::BATTLE);
 }
 
 //  story_maps() after Giovanni's win: every trainer of the gym beaten with
@@ -138,7 +147,8 @@ std::vector<MapData> beaten_gym_maps(){
 //  Row `id`'s steps after `after` (from the row's start if empty) up to
 //  `last`, on the sim over `maps` from where `after` leaves the player. It
 //  must fight only its own battles, break no rule and end on `end`. The run
-//  flags go from step to step, as in the program's run state.
+//  flags go from step to step, as in the program's run state; a battle a
+//  talk starts beats the trainers its flags_after name, on the sim too.
 UnitTestResult walk_row(
     std::string_view id, std::string_view after, std::string_view last,
     const std::vector<MapData>& maps, const MapPosition& end
@@ -152,20 +162,24 @@ UnitTestResult walk_row(
             first = c + 1;
         }
     }
-    std::optional<OverworldSim> sim;
-    sim.emplace(maps, MapPosition{at.map, at.tile}, at.facing.value_or(Direction::SOUTH));
     std::set<std::string> flags(row.start_flags.begin(), row.start_flags.end());
+    std::optional<OverworldSim> sim;
+    sim.emplace(with_trainers_beaten(maps, beaten_trainers(flags)), MapPosition{at.map, at.tile}, at.facing.value_or(Direction::SOUTH));
     size_t battles = 0;
+    //  The trainers fought on the sims before `sim`, and the talks' battles.
+    size_t fought = 0;
     for (size_t c = first; c < row.steps.size(); c++){
         const StoryStep& step = row.steps[c];
         battles += step.kind == StoryStepKind::BATTLE ? 1 : 0;
-        if (sim_walks(step)){
+        if (sim_walks(row, c)){
             if (const std::string failure = row_step_carrying_flags(*sim, at, step, row.id, flags); !failure.empty()){
                 return failure;
             }
         }else if (step.pose_after){
+            fought += sim->state().trainers_beaten.size() + (talk_battle(row, c) ? 1 : 0);
+            flags.insert(step.flags_after.begin(), step.flags_after.end());
             at = *story_pose(Pokemon::pose_of(*step.pose_after));
-            sim.emplace(maps, MapPosition{at.map, at.tile}, at.facing.value_or(sim->state().facing));
+            sim.emplace(with_trainers_beaten(maps, beaten_trainers(flags)), MapPosition{at.map, at.tile}, at.facing.value_or(sim->state().facing));
         }
         if (!sim->state().violations.empty()){
             return std::format("{} {}: broke a rule: {}", id, step.name, sim->state().violations.front());
@@ -177,8 +191,9 @@ UnitTestResult walk_row(
     if (!(sim->state().position == end)){
         return std::format("{}: ended on {}, not {}.", id, to_string(sim->state().position), to_string(end));
     }
-    if (sim->state().trainers_beaten.size() != battles){
-        return std::format("{}: fought {} trainer(s), not the row's {}.", id, sim->state().trainers_beaten.size(), battles);
+    fought += sim->state().trainers_beaten.size();
+    if (fought != battles){
+        return std::format("{}: fought {} trainer(s), not the row's {}.", id, fought, battles);
     }
     return true;
 }
@@ -189,11 +204,10 @@ UnitTestResult test_row_17_02(){
     return walk_row("17.02", "fly_viridian", "warren", story_maps(), MapPosition{std::string(GYM), {15, 7}});
 }
 
-//  17.03: Takashi, facing south on (10, 2) with a sight of 3, sees the
-//  player step onto (10, 5) and walks up to (10, 4), where he stays after
-//  the battle. below_giovanni plans around him: on the map's tiles it went
-//  north through him, and moved nothing (console B, 2026-11-15 16:52).
-UnitTestResult test_row_17_03(){
+//  Takashi, facing south on (10, 2) with a sight of 3, sees the player
+//  step onto (10, 5) and walks up to (10, 4), where he stays after the
+//  battle (console B, 2026-11-15 16:52); once beaten he sees no one.
+UnitTestResult test_takashi_walks_up(){
     const std::optional<TrainerMove> takashi = trainer_walking_up(story_maps(), MapPosition{std::string(GYM), {10, 5}}, {});
     if (!takashi || takashi->trainer != "ViridianCity_Gym/black_belt@10,2" || takashi->x != 10 || takashi->y != 4){
         return "Expected Takashi (ViridianCity_Gym/black_belt@10,2) to walk up to (10, 4).";
@@ -201,6 +215,15 @@ UnitTestResult test_row_17_03(){
     if (trainer_walking_up(story_maps(), MapPosition{std::string(GYM), {10, 5}}, {takashi->trainer})){
         return "Expected no trainer to walk up once Takashi is beaten.";
     }
+    return true;
+}
+
+//  17.03: Takashi, facing south on (10, 2) with a sight of 3, is fought
+//  from his right, (11, 2), where the arrows (19, 14) and (19, 2) slide the
+//  player; he stays on (10, 2), and below_giovanni goes up column 10 past
+//  him. Fought from his line, (10, 5), he walked up to (10, 4) and stood
+//  across that way (console B, 2026-11-15 16:52).
+UnitTestResult test_row_17_03(){
     return walk_row("17.03", "", "below_giovanni", story_maps(), MapPosition{std::string(GYM), {2, 3}});
 }
 
@@ -217,8 +240,12 @@ const AutoStoryViridianCase AUTO_STORY_VIRIDIAN_CASES[] = {
         .expectation = {.description = "Warren's battle won on (15, 7), no other trainer met"},
     },
     {
-        .input = {.name = "17.03: Takashi walks up and stays; the way to Giovanni goes around him", .body = test_row_17_03},
-        .expectation = {.description = "Takashi on (10, 4) after his battle; on ViridianCity_Gym (2, 3), his battle the only one"},
+        .input = {.name = "Takashi seen from his line on (10, 5)", .body = test_takashi_walks_up},
+        .expectation = {.description = "walks up to (10, 4); beaten, sees no one"},
+    },
+    {
+        .input = {.name = "17.03: Takashi fought from his right, then up column 10 to Giovanni", .body = test_row_17_03},
+        .expectation = {.description = "on ViridianCity_Gym (2, 3), Takashi's battle the only one"},
     },
     {
         .input = {.name = "17.04b: out of the beaten gym and by Fly to below Viridian's Center", .body = test_row_17_04b},

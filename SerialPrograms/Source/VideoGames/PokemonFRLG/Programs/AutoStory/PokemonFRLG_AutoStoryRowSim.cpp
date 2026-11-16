@@ -178,7 +178,7 @@ Outcome StoryMapsSim::run_action(const StoryStep& step, RunState& state){
         }
         m_dialog_up = false;
     }
-    return regrow_on_warp(maps(), [&]{ return Pokemon::TableExecutor::run_action(step, state); }, state);
+    return trainers_back_on_warp([&]{ return regrow_on_warp(maps(), [&]{ return Pokemon::TableExecutor::run_action(step, state); }, state); }, state);
 }
 
 Pokemon::ScreenLook StoryMapsSim::look(){
@@ -861,12 +861,14 @@ std::string row_step_carrying_flags(
     OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id,
     std::set<std::string>& run_flags
 ){
+    const std::string map_before = at.map;
     OverworldStepSim executor(sim, id, at);
     RunState state;
     state.flags = run_flags;
     const Outcome outcome = executor.run(step, state);
     at = executor.at();
     run_flags = std::move(state.flags);
+    trainers_back_after_map_change(map_before, at.map, run_flags);
     if (outcome.succeeded()){
         //  The step that picks the Card Key up (flags_after) opens the doors the
         //  next ones walk to.
