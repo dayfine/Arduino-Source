@@ -142,6 +142,7 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryLaunch(database);
     add_tests_OverworldGateMaps(database);
     add_tests_AutoStorySaffronGym(database);
+    add_tests_AutoStoryFlyToCenter(database);
 }
 
 //  The detectors and readers of battle, box, party and dialog screens.
