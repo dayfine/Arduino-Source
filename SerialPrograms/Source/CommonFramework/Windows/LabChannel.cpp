@@ -536,10 +536,10 @@ std::string LabChannel::run_describe_program(const std::vector<std::string>& wor
 //  options (ProgramSession::Prechecks::run_only()), holding the panel like a
 //  console command. The options are loaded and put back on the UI thread,
 //  like "set"; the checks run on this worker. Prints one line, "preflight "
-//  and lab_preflight_reply() as JSON. A program that is not STOPPED, a
-//  controller that is not ready, a panel change or a check that throws
-//  fails the line instead; the options are put back all the same, unless the
-//  panel changed before they could be.
+//  and lab_preflight_reply() as JSON; "cancelled" after a panel change. A
+//  program that is not STOPPED, a controller that is not ready or a check
+//  that throws fails the line instead; the options are put back all the
+//  same.
 std::string LabChannel::run_preflight(const LabRequestLine& line, std::ostream& out){
     const JsonValue candidate = parse_json(line_after_words(line.text, 1));
     if (candidate.to_object() == nullptr){
@@ -551,15 +551,24 @@ std::string LabChannel::run_preflight(const LabRequestLine& line, std::ostream& 
             throw ParseException("The selected panel is not a program.");
         }
         //  This worker holds m_panel_lock, which set_panel() on the UI thread
-        //  waits for after cancelling `scope`: give up on the UI call then.
+        //  waits for after cancelling `scope`. The UI call is given up then,
+        //  and `body` runs here instead: the UI thread is blocked until this
+        //  worker lets the panel go, so nothing else touches the options, and
+        //  the prior options get back before the app saves its settings.
         const OptionsThreadCall on_ui = [this, &scope](const std::function<void()>& body){
-            const std::string error = run_on_ui([&]{
-                body();
-                return std::string();
-            }, &scope);
-            if (!error.empty()){
-                throw ParseException(error);
+            if (!scope.cancelled()){
+                const std::string error = run_on_ui([&]{
+                    body();
+                    return std::string();
+                }, &scope);
+                if (error.empty()){
+                    return;
+                }
+                if (!scope.cancelled()){
+                    throw ParseException(error);
+                }
             }
+            body();
         };
         const PrecheckOnlyRun run = program->prechecks().run_only(candidate, scope, on_ui);
         JsonValue reply = lab_preflight_reply(program->descriptor().identifier(), run, read_options_hash(panel));
@@ -567,6 +576,9 @@ std::string LabChannel::run_preflight(const LabRequestLine& line, std::ostream& 
     });
 }
 
+//  Reads the options on this worker, not the UI thread, as write_state_json()
+//  does every second: to_json() only reads, and a UI call per second would
+//  cost more than a rare read during an edit.
 std::optional<std::string> LabChannel::read_options_hash(PanelSession& panel){
     const BatchOption* options = m_console->options(panel);
     if (options == nullptr){

@@ -292,7 +292,9 @@ preflight {"checks":[{"message":"","name":"black_border","status":"passed"}],"ed
 - `verdict`: `passed`; `failed` with `failure` `{"check", "message"}`, the
   first failed check; `invalid_options` with `invalid` `{"key", "message"}`
   (`key` is the dotted key path, or `""` when `check_validity()` refused the
-  combination); `unsupported` when the program declares no precheck list.
+  combination); `cancelled` when the checks were cancelled before they
+  finished (a panel change, or the app closing); `unsupported` when the
+  program declares no precheck list.
 - `checks`: `{"name", "status", "message"}` in the order they ran,
   `status` `passed`, `failed` or `skipped`; empty unless checks ran.
 - `restored`: whether the program holds the prior options again.
@@ -303,10 +305,13 @@ preflight {"checks":[{"message":"","name":"black_border","status":"passed"}],"ed
   the prior options when `restored`, the user's edit when `edited_keys` is
   not empty; never the candidate's.
 
-A program that is not `STOPPED`, a controller that is not ready, a panel
-change or a check that throws fails the line (no `preflight` line); the
-options are put back all the same, unless the panel changed before the UI
-thread could load them back.
+A program that is not `STOPPED`, a controller that is not ready or a check
+that throws fails the line (no `preflight` line); the options are put back
+all the same. A panel change during the run cancels the checks; the options
+are still put back before the panel goes, and the reply says `cancelled`
+with `restored`. The UI thread is then waiting in `set_panel()` for the
+panel this worker holds, so the worker loads them itself (the settings are
+saved after that, on exit too).
 
 ## Owner
 

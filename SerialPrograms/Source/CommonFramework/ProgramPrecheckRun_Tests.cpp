@@ -6,7 +6,8 @@
  *  current options (groups keep the keys not given, unknown keys are
  *  refused), a value the program does not hold refused, options loaded only
  *  on the options thread and put back after the checks, also when one
- *  throws, and kept when a user edits them during the checks.
+ *  throws or is cancelled, and kept when a user edits them during the
+ *  checks.
  *
  */
 
@@ -16,6 +17,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -34,6 +36,7 @@ enum class CheckAction{
     PASS,
     USER_SETS_COUNT_TO_9,   //  A user edits COUNT in the panel meanwhile.
     THROW,
+    CANCEL,     //  The panel changes: the checks' scope is cancelled.
 };
 
 //  A program whose options are CURRENT. Loading clamps COUNT to 10, stores
@@ -83,6 +86,8 @@ public:
             break;
         case CheckAction::THROW:
             throw std::runtime_error("the console did not answer");
+        case CheckAction::CANCEL:
+            throw OperationCancelledException();
         }
         return std::vector<PrecheckReport>{PrecheckReport{.name = "black_border", .status = PrecheckReportStatus::PASSED, .message = ""}};
     }
@@ -104,11 +109,13 @@ private:
 struct RunInput{
     std::string candidate = {};
     CheckAction action = CheckAction::PASS;
+    bool restore_call_fails = false;    //  The options thread refuses its second call.
 };
 struct RunExpectation{
     std::optional<std::string> refused_key = {};
     std::optional<std::string> seen_by_checks = {};     //  None: no check ran.
     bool threw = false;
+    bool cancelled = false;
     bool restored = false;
     std::vector<std::string> edited_keys = {};
     std::string held = {};      //  The options the program holds afterwards.
@@ -121,7 +128,12 @@ struct RunCase{
 
 UnitTestResult check(const RunCase& c, Logger& logger){
     FakeProgram program(c.input.action);
+    size_t options_thread_calls = 0;
     const OptionsThreadCall on_options_thread = [&](const std::function<void()>& body){
+        options_thread_calls++;
+        if (c.input.restore_call_fails && options_thread_calls == 2){
+            throw std::runtime_error("the options thread is gone");
+        }
         program.on_options_thread = true;
         try{
             body();
@@ -148,9 +160,9 @@ UnitTestResult check(const RunCase& c, Logger& logger){
             threw, refused_key.value_or("nothing"), program.seen_by_checks.value_or("nothing"),
             e.threw, e.refused_key.value_or("nothing"), e.seen_by_checks.value_or("nothing"));
     }
-    if (!threw && (run.restored != e.restored || run.edited_keys != e.edited_keys)){
-        return std::format("restored {}, {} edited keys; expected restored {}, {} edited keys",
-            run.restored, run.edited_keys.size(), e.restored, e.edited_keys.size());
+    if (!threw && (run.cancelled != e.cancelled || run.restored != e.restored || run.edited_keys != e.edited_keys)){
+        return std::format("cancelled {}, restored {}, {} edited keys; expected cancelled {}, restored {}, {} edited keys",
+            run.cancelled, run.restored, run.edited_keys.size(), e.cancelled, e.restored, e.edited_keys.size());
     }
     if (program.held() != e.held){
         return std::format("the program holds\n{}\nexpected\n{}", program.held(), e.held);
@@ -245,6 +257,26 @@ const RunCase RUN_CASES[] = {
             .seen_by_checks = R"({"COUNT":7,"NOTIFICATIONS":{"Enabled":true,"Screenshot":false},"SPEED":0.5})",
             .threw = true,
             .held = std::string(CURRENT),
+        },
+    },
+    {
+        .name = "cancelled checks put the prior options back and report it",
+        .input = {.candidate = R"({"COUNT":7})", .action = CheckAction::CANCEL},
+        .expectation = {
+            .seen_by_checks = R"({"COUNT":7,"NOTIFICATIONS":{"Enabled":true,"Screenshot":false},"SPEED":0.5})",
+            .cancelled = true,
+            .restored = true,
+            .held = std::string(CURRENT),
+        },
+    },
+    {
+        .name = "cancelled checks whose restore fails report the options not restored",
+        .input = {.candidate = R"({"COUNT":7})", .action = CheckAction::CANCEL, .restore_call_fails = true},
+        .expectation = {
+            .seen_by_checks = R"({"COUNT":7,"NOTIFICATIONS":{"Enabled":true,"Screenshot":false},"SPEED":0.5})",
+            .cancelled = true,
+            .restored = false,
+            .held = R"({"COUNT":7,"NOTIFICATIONS":{"Enabled":true,"Screenshot":false},"SPEED":0.5})",
         },
     },
 };

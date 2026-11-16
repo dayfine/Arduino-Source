@@ -236,6 +236,10 @@ JsonObject lab_preflight_reply(
     }
     reply["edited_keys"] = std::move(edited);
     reply["options_hash"] = options_hash ? JsonValue(*options_hash) : JsonValue();
+    if (run.cancelled){
+        reply["verdict"] = "cancelled";
+        return reply;
+    }
     if (run.refused){
         JsonObject invalid;
         invalid["key"] = run.refused->key;
