@@ -49,6 +49,7 @@
 #include "PokemonFRLG_AutoStoryPlanGolden19.h"
 #include "PokemonFRLG_AutoStoryPlanGolden20.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
+#include "PokemonFRLG_AutoStoryLineTrainer.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryTrainerLine.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
