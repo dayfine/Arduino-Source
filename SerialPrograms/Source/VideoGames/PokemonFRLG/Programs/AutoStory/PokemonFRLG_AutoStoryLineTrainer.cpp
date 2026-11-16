@@ -7,6 +7,7 @@
 #include <format>
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "PokemonFRLG_AutoStoryMovedBoulders.h"
 #include "PokemonFRLG_AutoStoryLineTrainer.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryTrainerLine.h"
@@ -43,6 +44,7 @@ Pokemon::Outcome trainers_back_on_warp(const std::function<Pokemon::Outcome()>& 
     const std::string map_before = state.pose.map;
     Pokemon::Outcome outcome = run();
     trainers_back_after_map_change(map_before, state.pose.map, state.flags);
+    boulders_back_after_map_change(map_before, state.pose.map, state.flags);
     return outcome;
 }
 
