@@ -12,6 +12,7 @@
 #include <optional>
 #include <string>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "PokemonLZA_AutoStoryCaughtMarkReader.h"
 #include "PokemonLZA_AutoStoryCaughtMarkReader_Tests.h"
@@ -27,9 +28,17 @@ constexpr size_t WIDTH = 1920;
 constexpr size_t HEIGHT = 1080;
 constexpr uint32_t WHITE = 0xffffffff;
 
-void fill_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t color, ImageRGB32& image){
-    for (size_t y = min_y; y < max_y; y++){
-        for (size_t x = min_x; x < max_x; x++){
+//  Where the drawn frames put the name plate's parts, in 1080p pixels.
+const ImagePixelBox PLATE_BAR_BOX(950, 515, 1058, 533);
+const ImagePixelBox PLAYER_BAR_BOX(990, 560, 1053, 572);
+const ImagePixelBox GENDER_MARK_BOX(1020, 430, 1044, 454);
+const ImagePixelBox GENDER_MARK_HOLE_BOX(1028, 438, 1036, 446);
+const ImagePixelBox BALL_MARK_TOP_BOX(1056, 430, 1080, 442);
+const ImagePixelBox BALL_MARK_BOTTOM_BOX(1056, 442, 1080, 454);
+
+void fill_box(const ImagePixelBox& box, uint32_t color, ImageRGB32& image){
+    for (size_t y = box.min_y; y < box.max_y; y++){
+        for (size_t x = box.min_x; x < box.max_x; x++){
             image.pixel(x, y) = color;
         }
     }
@@ -68,18 +77,18 @@ struct PlateDrawing{
 ImageRGB32 plate_frame(uint32_t ground, PlateDrawing drawing){
     ImageRGB32 image = solid_frame(ground);
     if (drawing.plate_bar){
-        fill_box(950, 515, 1058, 533, PLATE_BAR_GREEN, image);
+        fill_box(PLATE_BAR_BOX, PLATE_BAR_GREEN, image);
     }
     if (drawing.player_bar){
-        fill_box(990, 560, 1053, 572, PLATE_BAR_GREEN, image);
+        fill_box(PLAYER_BAR_BOX, PLATE_BAR_GREEN, image);
     }
     if (drawing.gender_mark){
-        fill_box(1020, 430, 1044, 454, GENDER_ORANGE, image);
-        fill_box(1028, 438, 1036, 446, WHITE, image);
+        fill_box(GENDER_MARK_BOX, GENDER_ORANGE, image);
+        fill_box(GENDER_MARK_HOLE_BOX, WHITE, image);
     }
     if (drawing.ball_mark){
-        fill_box(1056, 430, 1080, 442, BALL_RED, image);
-        fill_box(1056, 442, 1080, 454, WHITE, image);
+        fill_box(BALL_MARK_TOP_BOX, BALL_RED, image);
+        fill_box(BALL_MARK_BOTTOM_BOX, WHITE, image);
     }
     return image;
 }

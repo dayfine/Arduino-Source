@@ -35,7 +35,12 @@ std::optional<ImagePixelBox> find_plate_bar(const ImageViewRGB32& screen){
     }
     const double scale = screen.height() / 1080.0;
     const ImageViewRGB32 upper = extract_box_reference(screen, ImageFloatBox(0, 0, 1, 0.68));
-    PackedBinaryMatrix matrix = compress_rgb32_to_binary_range(upper, 0, 90, 175, 255, 90, 145);
+    PackedBinaryMatrix matrix = compress_rgb32_to_binary_range(
+        upper,
+        /*min_red=*/0, /*max_red=*/90,
+        /*min_green=*/175, /*max_green=*/255,
+        /*min_blue=*/90, /*max_blue=*/145
+    );
     std::unique_ptr<WaterfillSession> session = make_WaterfillSession(matrix);
     std::unique_ptr<WaterfillIterator> iter = session->make_iterator((size_t)(150 * scale * scale));
     std::optional<ImagePixelBox> best;

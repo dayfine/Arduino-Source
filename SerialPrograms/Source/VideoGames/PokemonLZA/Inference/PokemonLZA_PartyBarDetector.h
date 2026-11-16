@@ -57,9 +57,6 @@ private:
     int m_filled_slots = 0;
 };
 
-//  The filled slots of the party bar on `screen`: 0 when no bar is on it.
-int party_bar_filled_slots(const ImageViewRGB32& screen);
-
 
 //  Registers the party bar detector's tests on the PartyBarDetector frames.
 void add_tests_PartyBarDetector(UnitTestDatabase& database);

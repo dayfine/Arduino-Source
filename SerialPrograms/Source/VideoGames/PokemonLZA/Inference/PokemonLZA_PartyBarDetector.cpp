@@ -108,14 +108,14 @@ bool PartyBarDetector::detect(const ImageViewRGB32& screen){
     return true;
 }
 
+namespace{
+
+//  The filled slots of the party bar on `screen`: 0 when no bar is on it.
 int party_bar_filled_slots(const ImageViewRGB32& screen){
     PartyBarDetector detector;
     detector.detect(screen);
     return detector.filled_slots();
 }
-
-
-namespace{
 
 struct PartyBarCase{
     std::string name;
