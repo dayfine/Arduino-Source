@@ -49,8 +49,9 @@ double complete_green_share(const ImageViewRGB32& screen, const ImageFloatBox& b
     });
 }
 
-ImageFloatBox shifted(ImageFloatBox box, double dx){
+ImageFloatBox shifted(ImageFloatBox box, double dx, double dy){
     box.x += dx / 1920;
+    box.y += dy / 1080;
     return box;
 }
 
