@@ -51,8 +51,8 @@ struct WallHold{
 };
 //  Nothing unless every step on the way is a plain walk: a warp, Surf, a
 //  ledge, a person who may wander, a sign that would speak, or the edge of
-//  the loaded maps comes first. A person who stands still ends it as a wall
-//  does.
+//  the loaded maps comes first. A person who stands still, but a trainer
+//  not yet beaten, ends it as a wall does.
 std::optional<WallHold> hold_to_wall(
     const std::vector<MapData>& maps,
     const MapPosition& from, bool surfing, Direction direction

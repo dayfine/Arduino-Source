@@ -83,9 +83,9 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN_13[] = {
     "13.04   walk east 3 -> PokemonMansion_B1F (30, 6) [wild]",
     "13.04   walk south 4 -> PokemonMansion_B1F (30, 10) [wild]",
     "13.04   walk west 29 (to wall) -> PokemonMansion_B1F (1, 10) [wild]",
-    "13.04   walk north 4 -> PokemonMansion_B1F (1, 6) [wild]",
-    "13.04   walk east 4 -> PokemonMansion_B1F (5, 6) [wild]",
-    "13.04   face south -> PokemonMansion_B1F (5, 6)",
+    "13.04   walk north 7 (to wall) -> PokemonMansion_B1F (1, 3) [wild]",
+    "13.04   walk east 4 -> PokemonMansion_B1F (5, 3) [wild]",
+    "13.04   walk south 3 (to wall) -> PokemonMansion_B1F (5, 6) [wild]",
 };
 
 } // namespace PokemonFRLG

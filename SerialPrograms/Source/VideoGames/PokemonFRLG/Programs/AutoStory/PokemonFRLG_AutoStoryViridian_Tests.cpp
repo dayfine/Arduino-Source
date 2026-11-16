@@ -7,6 +7,7 @@
  *
  */
 
+#include <cstdlib>
 #include <format>
 #include <functional>
 #include <optional>
@@ -230,19 +231,29 @@ UnitTestResult test_row_17_03(){
 const std::string WARREN = "ViridianCity_Gym/cooltrainer_m@13,7";
 const std::string TAKASHI = "ViridianCity_Gym/black_belt@10,2";
 
-//  The directions of the legs the walker's [Leg] records say it walked, in
-//  order; turns in place (0 tiles) left out.
-std::vector<std::string> walked_directions(const std::vector<std::string>& log){
-    std::vector<std::string> directions;
+//  A leg the walker's [Leg] records say it walked.
+struct WalkedLeg{
+    std::string direction;
+    int tiles = 0;
+};
+
+//  The legs the walker's [Leg] records say it walked, in order; turns in
+//  place (0 tiles) left out.
+std::vector<WalkedLeg> walked_legs(const std::vector<std::string>& log){
+    std::vector<WalkedLeg> legs;
     for (const std::string& line : log){
         const size_t dir = line.find("\"dir\":\"");
-        if (line.find("[Leg]") == std::string::npos || dir == std::string::npos || line.find("\"tiles\":0") != std::string::npos){
+        const size_t tiles = line.find("\"tiles\":");
+        if (line.find("[Leg]") == std::string::npos || dir == std::string::npos || tiles == std::string::npos){
             continue;
         }
         const size_t from = dir + 7;
-        directions.push_back(line.substr(from, line.find('"', from) - from));
+        WalkedLeg leg{.direction = line.substr(from, line.find('"', from) - from), .tiles = std::atoi(line.c_str() + tiles + 8)};
+        if (leg.tiles > 0){
+            legs.push_back(std::move(leg));
+        }
     }
-    return directions;
+    return legs;
 }
 
 bool opposite(std::string_view a, std::string_view b){
@@ -253,7 +264,7 @@ bool opposite(std::string_view a, std::string_view b){
 //  17.03's route `event` planned from `from` over the gym with `beaten`
 //  beaten, as the program plans it, and walked on the sim with nothing
 //  injected. A clean walk needs no position check: it never plans again
-//  from an unknown tile, and no leg walks back the way the one before went
+//  from an unknown tile, and no leg walks 2 tiles or more back the way the one before went
 //  (console B, 2026-11-15 21:39, below_giovanni: "west 3 (open)" to (7, 3)
 //  and "north 3 (open)" up to Giovanni each arrived, and each was followed
 //  by holds to walls and back).
@@ -290,10 +301,13 @@ UnitTestResult walk_event_clean(std::string_view event, const StoryPose& from, c
     if (log.find("plan from an unknown tile") != std::string::npos){
         return std::format("17.03 {}: a clean walk planned again from an unknown tile:{}", event, log);
     }
-    const std::vector<std::string> directions = walked_directions(walker.log());
-    for (size_t c = 1; c < directions.size(); c++){
-        if (opposite(directions[c - 1], directions[c])){
-            return std::format("17.03 {}: leg {} ({}) walks back the way leg {} ({}) went:{}", event, c + 1, directions[c], c, directions[c - 1], log);
+    //  A step back off a wall the plan holds to, to the tile beside it, is
+    //  how a planned walk lands an open leg in a funnel; walking 2 tiles or
+    //  more back is a detour.
+    const std::vector<WalkedLeg> legs = walked_legs(walker.log());
+    for (size_t c = 1; c < legs.size(); c++){
+        if (opposite(legs[c - 1].direction, legs[c].direction) && legs[c].tiles > 1){
+            return std::format("17.03 {}: leg {} ({} {}) walks back the way leg {} ({}) went:{}", event, c + 1, legs[c].direction, legs[c].tiles, c, legs[c - 1].direction, log);
         }
     }
     return true;

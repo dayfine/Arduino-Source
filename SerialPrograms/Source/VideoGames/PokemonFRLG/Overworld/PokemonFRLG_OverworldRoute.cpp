@@ -240,8 +240,10 @@ bool reads_sign_ahead(const MapData& map, TilePos here, Direction direction){
 //  person who stands on their tile (no wander box) counts: Giovanni on
 //  (2, 2) stops a hold up Viridian Gym's column 2 on (2, 3), and the walk
 //  checked "north 3" to him as an open leg that might have ended short
-//  (console B, 2026-11-15 21:39). One who may wander off doesn't, and
-//  neither does an edge to a map that isn't loaded.
+//  (console B, 2026-11-15 21:39). One who may wander off doesn't, nor a
+//  trainer not yet beaten (with_trainers_beaten()), whose line a hold to
+//  them walks up (17.03's right_of_takashi would go up column 10 into
+//  Takashi's), and neither does an edge to a map that isn't loaded.
 bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction direction){
     const std::optional<Transition> transition = press(maps, player, direction);
     if (transition){
@@ -270,7 +272,7 @@ bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction
     }
     if (in_bounds(map, ahead)){
         const MapObject* object = object_at(map, ahead);
-        return object == nullptr || !object->wander;
+        return object == nullptr || (!object->wander && !object->trainer);
     }
     for (const MapConnection& connection : map.connections){
         if (connection.side == direction){
