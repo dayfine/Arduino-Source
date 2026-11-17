@@ -120,7 +120,12 @@ SegmentReport run_plza_with_rewinds(
         const std::string& failed_id = total.failed_checkpoint;
         const std::optional<std::string>& seen_in = sightings.seen_in();
         const std::optional<size_t> failed = row_index(rows, failed_id);
-        const bool save_moved = failed && (seen_in || total.failure.failure == "save_moved");
+        //  A catch autosaves where it lands, and the badge can go unseen:
+        //  the next try then reloads off 03.08's rocks ("rocks_not_left", read
+        //  96 after a catch at 98, console B 2026-11-16 16:40). Either
+        //  failure says the start save is gone.
+        const std::string& kind = total.failure.failure;
+        const bool save_moved = failed && (seen_in || kind == "save_moved" || kind == "rocks_not_left");
         switch (after_failure(save_moved, rewinds, plan.max_rewinds)){
         case AfterFailure::STOP:
             backend.log(std::format("[Rewind] {} failed with no autosave in it: no rewind", failed_id));
