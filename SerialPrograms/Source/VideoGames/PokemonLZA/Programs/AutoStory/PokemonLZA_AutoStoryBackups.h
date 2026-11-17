@@ -67,17 +67,16 @@ struct RewindPlan{
     size_t max_rewinds = 0;
 };
 
-//  The checkpoint a run asked to start at `first` plays from, by `read`,
-//  the start signature read where the player stands: run_start()'s. When
-//  that matches no start and `max_rewinds` allows one, the run rewinds to
-//  the backup save first, and plays from the checkpoint its card names: a
-//  catch autosaves where it lands, so 03.08's latest save can stand
+
+//  The checkpoint a run asked to start at `plan.first` plays from, by
+//  `read`, the start signature read where the player stands: run_start()'s.
+//  When that matches no start and `plan.max_rewinds` allows one, the run
+//  rewinds to `backup` first, and plays from the checkpoint its card names:
+//  a catch autosaves where it lands, so 03.08's latest save can stand
 //  mid-zone (console B, 2026-11-16 17:24, at the 100 spot). None: neither
 //  names a checkpoint, and nothing may run.
 std::optional<size_t> start_or_rewind(
-    PlzaBackend& backend, std::span<const Pokemon::StoryCheckpoint> rows, size_t first,
-    std::span<const CheckpointStart> starts, const StartSignature& read,
-    const BackupSave& backup, size_t max_rewinds
+    PlzaBackend& backend, const RewindPlan& plan, const StartSignature& read, const BackupSave& backup
 );
 
 //  `plan`'s rows with run_plza_segments(). A checkpoint that fails after

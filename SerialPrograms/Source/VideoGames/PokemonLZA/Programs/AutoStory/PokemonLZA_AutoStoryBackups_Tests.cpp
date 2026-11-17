@@ -389,7 +389,8 @@ UnitTestResult check_start(const StartCase& test, CancellableScope& scope){
         {.checkpoint = "03.06", .signature = {.registered = 1, .talk_prompt = true, .wild_zone = false}},
         {.checkpoint = "03.08", .signature = {.wild_zone = true}},
     };
-    const std::optional<size_t> index = start_or_rewind(backend, rows, RUN_FROM, starts, test.input.read, backup, test.input.max_rewinds);
+    const RewindPlan plan{.rows = rows, .first = RUN_FROM, .last = RUN_TO, .starts = starts, .max_rewinds = test.input.max_rewinds};
+    const std::optional<size_t> index = start_or_rewind(backend, plan, test.input.read, backup);
     const std::optional<std::string> from = index ? std::optional<std::string>(rows[*index].id) : std::nullopt;
     if (from != test.expectation.from){
         return std::format(

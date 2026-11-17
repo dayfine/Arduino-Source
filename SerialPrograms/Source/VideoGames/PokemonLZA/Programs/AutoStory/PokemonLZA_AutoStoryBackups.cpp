@@ -103,18 +103,16 @@ std::variant<size_t, Outcome> rewind_to_backup(
 
 
 std::optional<size_t> start_or_rewind(
-    PlzaBackend& backend, std::span<const StoryCheckpoint> rows, size_t first,
-    std::span<const CheckpointStart> starts, const StartSignature& read,
-    const BackupSave& backup, size_t max_rewinds
+    PlzaBackend& backend, const RewindPlan& plan, const StartSignature& read, const BackupSave& backup
 ){
-    const std::optional<size_t> from = run_start(rows, starts, first, read);
-    if (from || max_rewinds == 0){
+    const std::optional<size_t> from = run_start(plan.rows, plan.starts, plan.first, read);
+    if (from || plan.max_rewinds == 0){
         return from;
     }
     backend.log(std::format(
-        "AutoStory: the screen ({}) matches no checkpoint start up to {}: rewinding to the backup save", to_string(read), rows[first].id
+        "AutoStory: the screen ({}) matches no checkpoint start up to {}: rewinding to the backup save", to_string(read), plan.rows[plan.first].id
     ));
-    const std::variant<size_t, Outcome> back = rewind_to_backup(backend, rows, first, starts, backup);
+    const std::variant<size_t, Outcome> back = rewind_to_backup(backend, plan.rows, plan.first, plan.starts, backup);
     if (const size_t* index = std::get_if<size_t>(&back)){
         return *index;
     }
