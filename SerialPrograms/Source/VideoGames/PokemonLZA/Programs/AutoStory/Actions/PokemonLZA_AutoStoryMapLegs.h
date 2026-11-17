@@ -42,21 +42,30 @@ struct MapLegMove{
 };
 
 //  One leg to `target`, pin read by pin read: a read within 6 map pixels
-//  (~5 marker units) is there; the first read off it walks the leg, each
-//  later one a correction, 2 at most; then a read still off stops it. One
-//  missing read gets a second look.
+//  (~5 marker units) is there; so is one within `stop_radius` that is the
+//  leg's first read or lies past `target` on the last walk's way (no
+//  turning back at a catch spot). The first read off it walks the leg,
+//  each later one a correction, 2 at most; then a read still off stops
+//  it. One missing read gets a second look.
 class MapLeg{
 public:
-    explicit MapLeg(MapPoint target)
+    MapLeg(MapPoint target, double stop_radius)
         : m_target(target)
+        , m_stop_radius(stop_radius)
     {}
 
     MapLegMove next(std::optional<MapPoint> pin);
 
 private:
+    bool in_stop_area(MapPoint pin, double distance) const;
+
+private:
     const MapPoint m_target;
+    const double m_stop_radius;
     size_t m_walks = 0;
     bool m_missed = false;
+    //  Where the last walk started; none: no walk yet.
+    std::optional<MapPoint> m_walked_from;
 };
 
 
