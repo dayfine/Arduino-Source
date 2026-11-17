@@ -33,7 +33,6 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
-#include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryTable.h"
