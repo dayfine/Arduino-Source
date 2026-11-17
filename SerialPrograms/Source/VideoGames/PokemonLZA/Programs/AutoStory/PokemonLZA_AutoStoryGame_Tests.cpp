@@ -354,6 +354,10 @@ Observation<ZonePose> look(ScreenEvents events, std::vector<std::string_view> re
 
 const Observation<ZonePose> PLATFORM = look({}, {PLATFORM_READING});
 const Observation<ZonePose> AUTOSAVE = look({}, {AUTOSAVE_READING});
+//  The autosave badge 2 s after a checkpoint's first look: its own save. A
+//  badge in a checkpoint's first 1.5 s is the save before it
+//  (AutosaveSightings::note()).
+const Observation<ZonePose> OWN_AUTOSAVE = look({}, {AUTOSAVE_READING}, Milliseconds(2000));
 const Observation<ZonePose> CUTSCENE = look({});
 const Observation<ZonePose> TEXT_FOR_A = look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING});
 const Observation<ZonePose> STILL = look({ScreenEvent::SCREEN_STILL});
@@ -634,13 +638,17 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at arrival_scenes: scene_quiet"},
     },
     {
+        //  The badge 2 s in: one in the first 1.5 s would be the save
+        //  before 01.00.
         .name = "01.00's autosave badge is logged in the step it shows in",
-        .input = {.checkpoint = "01.00", .first_step = 2, .looks = {CUTSCENE, AUTOSAVE, AUTOSAVE, PLATFORM, PLATFORM}},
-        .expectation = {.verdict = "done", .line = "[PLZA] autosave badge at 0.0s in opening"},
+        .input = {.checkpoint = "01.00", .first_step = 2, .looks = {CUTSCENE, OWN_AUTOSAVE, OWN_AUTOSAVE, PLATFORM, PLATFORM}},
+        .expectation = {.verdict = "done", .line = "[PLZA] autosave badge at 2.0s in opening"},
     },
     {
+        //  A first look, then the badge 2 s in: one on the first look would
+        //  be the save before 01.00.
         .name = "01.00 ends on its autosave",
-        .input = {.checkpoint = "01.00", .first_step = 2, .looks = {AUTOSAVE, PLATFORM, PLATFORM}},
+        .input = {.checkpoint = "01.00", .first_step = 2, .looks = {CUTSCENE, OWN_AUTOSAVE, PLATFORM, PLATFORM}},
         .expectation = {.verdict = "done", .line = "[Save] 01.00: the game autosaved (seen)"},
     },
     {
@@ -945,23 +953,26 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .line = "[Save] 02.06: not saved (the plan's autosave was not seen)"},
     },
     {
+        //  The badge 2 s in: one in the first 1.5 s would be 02.05's save.
         .name = "an autosave badge mid-scene saves the checkpoint",
         .input = {.checkpoint = "02.06", .first_step = 4, .looks = {
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
-            look(/*events=*/{}, {AUTOSAVE_READING}, Milliseconds(1000)),
+            look(/*events=*/{}, {AUTOSAVE_READING}, Milliseconds(2000)),
             look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(21000)),
         }},
         .expectation = {.verdict = "done", .line = "[Save] 02.06: the game autosaved (seen)"},
     },
     {
+        //  The badge from 2 s in: one in the first 1.5 s would be 02.05's
+        //  save.
         .name = "a badge mid-scene is logged once, at its time in its step",
         .input = {.checkpoint = "02.06", .first_step = 4, .looks = {
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
-            look(/*events=*/{}, {AUTOSAVE_READING}, Milliseconds(1000)),
             look(/*events=*/{}, {AUTOSAVE_READING}, Milliseconds(2000)),
+            look(/*events=*/{}, {AUTOSAVE_READING}, Milliseconds(3000)),
             look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(21000)),
         }},
-        .expectation = {.verdict = "done", .line = "[PLZA] autosave badge at 1.0s in wake_up"},
+        .expectation = {.verdict = "done", .line = "[PLZA] autosave badge at 2.0s in wake_up"},
     },
     {
         .name = "03.02b walks on to the plaza scene's A prompt",
@@ -993,11 +1004,13 @@ const RunCase RUN_CASES[] = {
         //  the walk to the elevator, NPC Alton's "A Ansprechen" showed
         //  beside the path and stood steady; the walk ended there, short of
         //  the door, and the talk opened Alton's line. The elevator's
-        //  prompt shows at the door, about 2 s in.
+        //  prompt shows at the door, about 2 s in. The first three looks
+        //  come before the walk's first slice (as in 03.02b's walk), so
+        //  Alton's prompt is seen 500 and 750 ms in, the door's at 2000 ms.
         .name = "02.05's walk to the elevator walks past a prompt before its measured time to the one at the door",
         .input = {.checkpoint = "02.05", .first_step = 0, .steps = 1, .looks = concat(
             std::vector<Observation<ZonePose>>(4, party_bar(Milliseconds(0))),
-            concat({A_PROMPT, A_PROMPT}, concat(std::vector<Observation<ZonePose>>(3, party_bar(Milliseconds(0))), {A_PROMPT}))
+            concat({A_PROMPT, A_PROMPT}, concat(std::vector<Observation<ZonePose>>(4, party_bar(Milliseconds(0))), {A_PROMPT}))
         )},
         .expectation = {
             .verdict = "done",
@@ -1346,7 +1359,9 @@ UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
 
 //  Two rows: "01.01" waits for the platform, "01.02" runs `second_action`.
 //  01.01's autosave shows when a look has both the platform and the badge;
-//  its platform wait then needs two platform looks without the badge.
+//  its platform wait then needs two platform looks without the badge. The
+//  badge look is 2 s after a first look (PLATFORM_SAVING): a badge in a
+//  checkpoint's first 1.5 s is the save before it.
 struct ChainCase{
     std::string name;
     struct Input{
@@ -1369,12 +1384,12 @@ struct ChainCase{
     Expectation expectation;
 };
 
-const Observation<ZonePose> PLATFORM_SAVING = look({}, {PLATFORM_READING, AUTOSAVE_READING});
+const Observation<ZonePose> PLATFORM_SAVING = look({}, {PLATFORM_READING, AUTOSAVE_READING}, Milliseconds(2000));
 
 const ChainCase CHAIN_CASES[] = {
     {
         .name = "autosave seen and the start check does not fail: on without a reload",
-        .input = {.looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
+        .input = {.looks = {CUTSCENE, PLATFORM_SAVING, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
         .expectation = {.verdict = "done", .reloads = 0},
     },
     {
@@ -1385,7 +1400,7 @@ const ChainCase CHAIN_CASES[] = {
     {
         .name = "autosave seen and the start check fails: reloads the start",
         .input = {.looks = {
-            PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0),
+            CUTSCENE, PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0),
         }},
         .expectation = {.verdict = "done", .reloads = 1},
     },
@@ -1396,7 +1411,7 @@ const ChainCase CHAIN_CASES[] = {
     },
     {
         .name = "a reload onto an older save stops",
-        .input = {.looks = {PLATFORM_SAVING, PLATFORM}},
+        .input = {.looks = {CUTSCENE, PLATFORM_SAVING, PLATFORM}},
         .expectation = {.verdict = "failed at 01.02 chain: older_save", .reloads = 1},
     },
     {
@@ -1405,7 +1420,7 @@ const ChainCase CHAIN_CASES[] = {
         //  the gate, and threw Poke Balls there.
         .name = "an autosave before the last step does not save the row: no save to reload the next from",
         .input = {
-            .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM},
+            .looks = {CUTSCENE, PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM},
             .first_actions = {"wait_for_platform", "wait_for_platform"},
         },
         .expectation = {
@@ -1419,7 +1434,7 @@ const ChainCase CHAIN_CASES[] = {
         //  outside the Center, and its walk to the Center found no prompt.
         .name = "a run that autosaved and then failed does not reload: the save moved past its start",
         .input = {
-            .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, look(/*events=*/{}, {AUTOSAVE_READING}, Milliseconds(10000)), CUTSCENE},
+            .looks = {CUTSCENE, PLATFORM_SAVING, PLATFORM, PLATFORM, CUTSCENE, look(/*events=*/{}, {AUTOSAVE_READING}, Milliseconds(10000)), CUTSCENE},
             .second_action = "wait_for_platform",
             .attempts = 2,
         },
