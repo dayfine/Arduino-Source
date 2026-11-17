@@ -132,7 +132,6 @@ std::vector<StoryActionSpec> console_specs(){
         console_only(game_spec("battle_then_catch")),
         console_only(game_spec("catch_in_zone")),
         console_only(game_spec("walk_back_to_zone_road")),
-        console_only(game_spec("walk_to_marker")),
         console_only(game_spec("walk_to_unread_marker")),
         console_only(game_spec("claim_mable_research_reward")),
     };
@@ -319,7 +318,6 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
             return catch_in_zone(env, backend, ZoneCatchGoal{.new_species = 2, .party_species = 5, .max_throws = 12});
         }},
         {"walk_back_to_zone_road", walk_back_to_zone_road},
-        {"walk_to_marker", walk_to_marker},
         {"walk_to_unread_marker", walk_to_unread_marker},
         {"claim_mable_research_reward", claim_research_reward},
     };

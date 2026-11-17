@@ -1682,7 +1682,7 @@ const MenuSaveCase MENU_SAVE_CASES[] = {
     },
     {
         .name = "another step that succeeds saves nothing",
-        .input = {.action = "walk_to_marker"},
+        .input = {.action = "walk_to_unread_marker"},
         .expectation = {.save = "no autosave seen"},
     },
 };

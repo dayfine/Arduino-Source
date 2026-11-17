@@ -196,7 +196,7 @@ const DialogFrameCase DIALOG_FRAME_CASES[] = {
         //  Research Lab's doors, "Allora, come va? Sei riuscita a
         //  catturare cinque specie di Pokemon?", the lab gate's scene that
         //  03.09 must play before it ends; a dialog, not a prompt, ends
-        //  03.09's walk to the gate (walk_to_marker()).
+        //  03.09's walk to the gate (walk_to_unread_marker()).
         .name = "Ryon's five-species dialog at the lab gate on the Italian game",
         .input = {.path = "AutoStoryScreenEvents/it_0309_lab_gate_ryon_dialog.png"},
         .expectation = {.dialog = true, .interact_prompt = false},

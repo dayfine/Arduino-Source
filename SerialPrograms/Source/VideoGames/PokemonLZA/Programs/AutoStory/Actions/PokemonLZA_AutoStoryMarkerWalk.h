@@ -23,16 +23,13 @@ namespace PokemonLZA{
 //  On to the objective marker (read_objective_marker()), the camera turned
 //  to keep it in the middle (and to find it when it is behind), 90 s at
 //  most, until an A prompt (a gate's "Leave", a door's "Enter") or a
-//  dialog (a scene that starts on arriving) shows near the objective: after
-//  a distance read taken at 20 or less (MarkerProof::NEAR_READ); one
-//  farther off is walked past. When the marker goes first (a scene at the
-//  objective takes it away), up to 15 s more for one, if the walk was
-//  near. A walk held up (the distance not dropping for 4 reads) steps
-//  sideways. Fails as "objective_not_reached" when neither shows near it.
-Pokemon::Outcome walk_to_marker(StoryEnv& env, PlzaBackend& backend);
-
-//  walk_to_marker() where the marker's digits do not read (the lab's door
-//  up its steps): near with no read over 20 (MarkerProof::NO_FAR_READ).
+//  dialog (a scene that starts on arriving) shows near the objective, where
+//  the marker's digits may not read (the lab's door up its steps): near
+//  with no read over 20 (MarkerProof::NO_FAR_READ); one farther off is
+//  walked past. When the marker goes first (a scene at the objective takes
+//  it away), up to 15 s more for one, if the walk was near. A walk held up
+//  (the distance not dropping for 4 reads) steps sideways. Fails as
+//  "objective_not_reached" when neither shows near it.
 Pokemon::Outcome walk_to_unread_marker(StoryEnv& env, PlzaBackend& backend);
 
 //  The objective marker's distance where the player stands: up to 8 looks,

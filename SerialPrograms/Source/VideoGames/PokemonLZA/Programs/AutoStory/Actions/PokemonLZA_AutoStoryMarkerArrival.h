@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Whether a walk to the objective marker's prompt (walk_to_marker()) is
+ *  Whether a walk to the objective marker's prompt (walk_to_unread_marker()) is
  *  there: an A prompt or a dialog counts only near the marker. Any prompt
  *  used to: 03.09's walk from Wild Zone 1's far gate read no distance,
  *  stepped on blind and passed on a prompt on the street 4 s in, so 03.10
