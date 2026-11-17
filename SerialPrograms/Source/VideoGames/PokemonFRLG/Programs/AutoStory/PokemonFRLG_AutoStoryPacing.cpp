@@ -4,8 +4,6 @@
  *
  */
 
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_BikeSpinPresses.h"
 #include "PokemonFRLG_AutoStoryPacing.h"
@@ -32,21 +30,6 @@ bool find_paced_encounter(Logger& logger, const BikeSelectCalls& bike, PatchStep
     }
     return pace_until_battle(logger, steps, PACE_MAX_STEPS);
 }
-
-BikeSelectCalls console_bike_select(ConsoleHandle& console, ProControllerContext& context, PlayerGender player){
-    BikeSelectCalls calls;
-    calls.press_select = [&console, &context]{
-        console.log("Pacing: SELECT (MINUS) off the Bicycle.");
-        pbf_press_button(context, BUTTON_MINUS, MovementMechanics::BIKE_SELECT_PRESS, MovementMechanics::BIKE_SELECT_SETTLE);
-    };
-    calls.riding = [&console, &context, player]{
-        context.wait_for_all_requests();
-        VideoSnapshot screen = console.video().snapshot();
-        return screen && OverworldWalkSteps::screen_shows_riding(*screen.frame, player);
-    };
-    return calls;
-}
-
 
 
 } // namespace PokemonFRLG
