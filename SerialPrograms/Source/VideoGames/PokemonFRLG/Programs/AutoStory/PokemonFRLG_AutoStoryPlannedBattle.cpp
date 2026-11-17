@@ -193,7 +193,9 @@ SpeciesData types_of(std::string_view species){
     return data != nullptr ? *data : SpeciesData{};
 }
 
-PlannedStatus planned_status(StatusCondition status){
+//  `status` off our HP box; its BRN/FRZ icon is a freeze if the texts
+//  froze our lead (`frozen`), else a burn.
+PlannedStatus planned_status(StatusCondition status, bool frozen){
     switch (status){
     case StatusCondition::POISON:
         return PlannedStatus::POISON;
@@ -202,7 +204,7 @@ PlannedStatus planned_status(StatusCondition status){
     case StatusCondition::SLEEP:
         return PlannedStatus::SLEEP;
     case StatusCondition::OTHER:
-        return PlannedStatus::BURN;
+        return frozen ? PlannedStatus::FREEZE : PlannedStatus::BURN;
     case StatusCondition::NONE:
         break;
     }
@@ -305,7 +307,7 @@ PlannedState planned_state(const PlannedInputs& inputs, const LeagueFoesData& da
         .types = types_of(inputs.lead.species),
         .ability = pinch_ability(inputs.lead.species),
         .stages = track.own,
-        .status = planned_status(inputs.status),
+        .status = planned_status(inputs.status, track.own_frozen),
     };
     const LeagueFoeData& foe_data = inputs.foe.foe;
     const Side foe{
@@ -358,11 +360,22 @@ PlannedBattle::Turn PlannedBattle::choose(const Supplies& supplies, const Policy
         .status = view.status,
         .foe = foe_out(supplies, view),
     };
+    //  The foe out last turn fell.
+    const std::optional<size_t> fallen = m_slot && *m_slot < inputs.foe.slot ? m_slot : std::nullopt;
+    m_slot = inputs.foe.slot;
+    const int speed = m_track.state().own.speed;
+    if (fallen && league_early_reset(*m_fight, *fallen, speed, m_used)){
+        return Turn{
+            .log = std::format("{}: the foe at slot {} fell with our Speed at {}: the plan's early reset", m_fight->name, *fallen + 1, speed),
+            .early_reset = true,
+        };
+    }
     inputs.track = m_track.state();
     for (std::string_view item : LEAGUE_ITEMS){
         inputs.bag[std::string(item)] = bag_count(supplies, item);
     }
-    const PlannedState state = planned_state(inputs, league_foes_data());
+    PlannedState state = planned_state(inputs, league_foes_data());
+    state.attacks_on_foe = m_streak.attacks(state.foe.slot);
     const PlannedChoice choice = choose_planned(state, *m_fight, m_streak.streak(state));
     m_streak.chose(state, choice);
     std::string log = turn_log(*m_fight, state, inputs.track, choice);
@@ -372,6 +385,11 @@ PlannedBattle::Turn PlannedBattle::choose(const Supplies& supplies, const Policy
 
 void PlannedBattle::item_used(std::string_view item){
     m_track.item_used(item);
+    m_used[std::string(item)]++;
+}
+
+bool PlannedBattle::resets_on_roar() const{
+    return m_fight->reset_on_roar;
 }
 
 void PlannedBattle::lead_switched_in(){

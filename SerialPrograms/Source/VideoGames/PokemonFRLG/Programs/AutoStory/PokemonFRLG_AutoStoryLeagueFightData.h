@@ -3,7 +3,8 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  One fight of the League plan (PokemonFRLG_AutoStoryLeaguePlanData.h):
- *  finding it and its foes, and what it holds back for later fights.
+ *  finding it and its foes, what it holds back for later fights, and when
+ *  a try of it ends early or passes (frlg_league_final.py's accept rule).
  *
  */
 
@@ -34,6 +35,24 @@ int spendable(const LeagueFightData& fight, const SlugCounts& bag, std::string_v
 
 //  `pp` of `move` above the fight's reserve for it.
 int pp_above_reserve(const LeagueFightData& fight, std::string_view move, int pp);
+
+//  The foe at party slot `fallen` has just fainted with our Speed at
+//  `speed_stage` and `used` spent in the fight so far: the plan's early
+//  reset (Bruno's after Onix #1) ends the try.
+bool league_early_reset(const LeagueFightData& fight, size_t fallen, int speed_stage, const SlugCounts& used);
+
+//  How a try of a fight ended.
+struct LeagueTry{
+    bool won = false;
+    //  A Roar or Whirlwind landed in a fight that resets on one.
+    bool roared = false;
+    bool early_reset = false;
+    //  Every item it spent, the top-up before it included.
+    SlugCounts used = {};
+};
+
+//  The try passes: a win, not reset, spending no item over its cap.
+bool league_try_passes(const LeagueFightData& fight, const LeagueTry& attempt);
 
 
 

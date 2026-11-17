@@ -209,12 +209,6 @@ BattleDecisions::BattleDecisions(Supplies& supplies, BattleKind kind)
     if (!m_planned && kind == BattleKind::TRAINER && supplies.policy.kind != BattlePolicyKind::NONE && supplies.lead.stats){
         m_policy.emplace(supplies.policy);
     }
-    //  A League fight spends its plan's budget and what the fights before
-    //  left (end_trainer_battle() rolls it forward).
-    const LeagueFightPlan* league = supplies.league ? league_fight(supplies.league->plan, supplies.trainer) : nullptr;
-    if (kind == BattleKind::TRAINER && league != nullptr){
-        supplies.budget = add_budgets(league->budget, supplies.league->carried);
-    }
 }
 
 TurnAction BattleDecisions::turn(const PartyStatus& status){
@@ -302,6 +296,13 @@ TurnAction BattleDecisions::switch_lead_back(){
     if (m_policy){
         m_policy.emplace(m_supplies.policy);
     }
+    if (m_planned && m_planned->resets_on_roar()){
+        return TurnAction{
+            .choice = TurnChoice::END_TRY,
+            .heal_reason = std::format("our {} is out, not sent: a Roar or Whirlwind landed; the plan resets the try", m_supplies.own_out),
+            .try_end = BattleEnd::ROARED,
+        };
+    }
     if (m_planned){
         m_planned->lead_switched_in();
     }
@@ -368,6 +369,9 @@ TurnAction BattleDecisions::planned_turn(const PartyStatus& status){
         turn.choice = PlannedChoice{.row = "items_off"};
     }
     const std::string reason = std::format("planned: {}", turn.log);
+    if (turn.early_reset){
+        return TurnAction{.choice = TurnChoice::END_TRY, .heal_reason = reason, .try_end = BattleEnd::EARLY_RESET};
+    }
     if (turn.choice.item){
         m_planned_item = *turn.choice.item;
         return TurnAction{
@@ -560,6 +564,7 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
     case TurnChoice::RUN:
     case TurnChoice::MOVE:
     case TurnChoice::SWITCH_LEAD:
+    case TurnChoice::END_TRY:
         return;
     }
 }

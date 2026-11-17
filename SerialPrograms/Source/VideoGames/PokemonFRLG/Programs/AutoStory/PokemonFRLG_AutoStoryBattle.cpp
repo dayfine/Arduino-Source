@@ -269,13 +269,11 @@ public:
             m_kind == BattleKind::WILD_FIGHT ? "Battle: fighting a wild Pokemon." : "Battle: running from a wild Pokemon."
         );
         bool over = false;
-        while (!over){
+        while (!over && !m_try_end){
             over = step();
         }
-        m_console.log(std::format(
-            "Battle: over after {} turns{}.", m_decisions.turns(), m_decisions.lost() ? ", the starter fainted" : ""
-        ));
-        return m_decisions.lost() ? BattleEnd::LOST : BattleEnd::WON;
+        m_console.log(std::format("Battle: over after {} turns{}.", m_decisions.turns(), m_try_end ? ", the plan ended the try" : m_decisions.lost() ? ", the starter fainted" : ""));
+        return m_try_end.value_or(m_decisions.lost() ? BattleEnd::LOST : BattleEnd::WON);
     }
 
 private:
@@ -610,6 +608,9 @@ private:
         case TurnChoice::SWITCH_LEAD:
             m_decisions.turn_done(action.choice, switch_lead_in(m_console, m_context, m_language, m_supplies.lead.species) ? TurnResult::DONE : TurnResult::NOT_DONE);
             return;
+        case TurnChoice::END_TRY:
+            m_try_end = action.try_end;
+            return;
         case TurnChoice::MOVE:
             m_console.log(std::format("Battle: move {}.", action.slot + 1));
             m_refusal.move_chosen(current_time());
@@ -697,6 +698,7 @@ private:
     bool m_move_chosen = false;
     //  RUN was chosen and no battle menu has shown since.
     bool m_ran = false;
+    std::optional<BattleEnd> m_try_end;
 };
 
 

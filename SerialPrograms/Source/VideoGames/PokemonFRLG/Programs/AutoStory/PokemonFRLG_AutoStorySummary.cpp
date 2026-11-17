@@ -11,7 +11,9 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_PartyDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_DigitReader.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_StatsReader.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStorySummary.h"
 
@@ -77,6 +79,15 @@ bool open_summary(ConsoleHandle& console, ProControllerContext& context){
     return true;
 }
 
+//  POKEMON SKILLS' HP box (StatsReader's) as its digits read; empty if
+//  none were.
+std::string skills_hp_digits(Logger& logger, const ImageViewRGB32& screen){
+    const ImageFloatBox HP_BOX(0.805274, 0.131247, 0.183790, 0.066639);
+    const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
+    const int digits = read_digits_waterfill_template(logger, extract_box_reference(game, HP_BOX), DigitTemplateType::StatBox);
+    return digits < 0 ? std::string() : std::to_string(digits);
+}
+
 //  From the party menu with the cursor on the member: its summary, read.
 std::optional<SummaryRead> read_open_summary(ConsoleHandle& console, ProControllerContext& context, Language language){
     if (!open_summary(console, context)){
@@ -101,6 +112,7 @@ std::optional<SummaryRead> read_open_summary(ConsoleHandle& console, ProControll
     }
     if (VideoSnapshot page = console.video().snapshot()){
         read.stats = skills_stats(console, language, page);
+        read.hp_digits = skills_hp_digits(console, page);
     }
     SummaryPage3Watcher moves(COLOR_RED);
     tap(context, DPAD_RIGHT, 0ms);
@@ -263,6 +275,25 @@ SpeciesFinder console_species_finder(
         const std::unique_ptr<PartyScreens> screens = console_party_screens(console, context, StartMenu::FULL, language);
         return open_member_menu_of(console.logger(), *screens, party, species, false);
     };
+}
+
+std::optional<int> summary_current_hp(std::string_view hp_digits, int max_hp){
+    const std::string max = std::to_string(max_hp);
+    if (max_hp <= 0 || hp_digits.size() <= max.size() || !hp_digits.ends_with(max)){
+        return std::nullopt;
+    }
+    std::string_view current = hp_digits.substr(0, hp_digits.size() - max.size());
+    for (int c = 0; c < 2 && !current.empty(); c++){
+        const int hp = std::stoi(std::string(current));
+        if (hp <= max_hp){
+            return hp;
+        }
+        if (!current.ends_with('2')){
+            return std::nullopt;
+        }
+        current.remove_suffix(1);
+    }
+    return std::nullopt;
 }
 
 std::optional<SummaryRead> read_party_summary(

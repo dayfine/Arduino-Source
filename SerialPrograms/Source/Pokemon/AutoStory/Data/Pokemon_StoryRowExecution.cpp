@@ -15,7 +15,7 @@ namespace Pokemon{
 
 namespace{
 
-constexpr std::string_view SHARED_FIELDS[] = {"save", "reload_when_chained", "dev_only"};
+constexpr std::string_view SHARED_FIELDS[] = {"save", "reload_when_chained", "dev_only", "verify"};
 
 bool is_known_field(std::string_view key, std::initializer_list<std::string_view> game_fields){
     for (std::string_view field : SHARED_FIELDS){
@@ -74,6 +74,37 @@ bool read_dev_only(const JsonObject& execution, std::string_view where){
     return true;
 }
 
+//  One of verify's figures: a whole number of at least `least`.
+size_t read_verify_figure(const JsonObject& verify, std::string_view name, size_t least, std::string_view where){
+    const int64_t value = verify.get_integer_throw(std::string(name), std::string(where));
+    if (value < (int64_t)least){
+        throw ParseException(std::format("{}: verify {} is {}, at least {}", where, name, value, least));
+    }
+    return (size_t)value;
+}
+
+std::optional<StoryVerify> read_verify(const JsonObject& execution, std::string_view where){
+    const JsonValue* value = execution.get_value("verify");
+    if (value == nullptr){
+        return std::nullopt;
+    }
+    const JsonObject& verify = value->to_object_throw(std::string(where));
+    for (const auto& [key, figure] : verify){
+        if (key != "tries" && key != "min_pass" && key != "reset_budget"){
+            throw ParseException(std::format("{}: unknown verify field {}", where, key));
+        }
+    }
+    StoryVerify figures{
+        .tries = read_verify_figure(verify, "tries", /*least=*/1, where),
+        .min_pass = read_verify_figure(verify, "min_pass", /*least=*/0, where),
+        .reset_budget = read_verify_figure(verify, "reset_budget", /*least=*/1, where),
+    };
+    if (figures.min_pass > figures.tries){
+        throw ParseException(std::format("{}: verify min_pass {} is more than its {} tries", where, figures.min_pass, figures.tries));
+    }
+    return figures;
+}
+
 } // namespace
 
 
@@ -89,6 +120,7 @@ StoryRowExecution read_story_row_execution(
         .autosave = read_autosave(execution, where),
         .reload = read_reload(execution, where),
         .dev_only = read_dev_only(execution, where),
+        .verify = read_verify(execution, where),
     };
 }
 

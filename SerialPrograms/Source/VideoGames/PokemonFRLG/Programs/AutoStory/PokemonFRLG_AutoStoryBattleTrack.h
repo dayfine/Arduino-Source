@@ -50,6 +50,10 @@ enum class FieldWeather{
 struct BattleTrackState{
     StatStages own = {};
     int mist_turns = 0;
+    //  Our lead's BRN/FRZ icon (StatusCondition::OTHER) is a freeze: the
+    //  last of our side's "frozen solid" and "was burned" texts was the
+    //  freeze.
+    bool own_frozen = false;
     StatStages foe = {};
     PlannedStatus foe_status = PlannedStatus::NONE;
     //  The fewest turns the foe's sleep has left: 3 after Rest, else 2,

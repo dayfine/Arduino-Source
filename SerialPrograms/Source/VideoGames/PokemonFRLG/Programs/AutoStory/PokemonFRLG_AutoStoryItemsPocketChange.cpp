@@ -100,8 +100,7 @@ const std::vector<ItemsPocketChangeRow>& items_pocket_change_rows(){
         {StoryStepKind::GAME,       CHECK_FULL_HP_ACTION,   ItemsPocketChange::NONE},
         {StoryStepKind::GAME,       BAG_CHECK_ACTION,       ItemsPocketChange::NONE},
         {StoryStepKind::GAME,       HALL_OF_FAME_ACTION,    ItemsPocketChange::NONE},
-        {StoryStepKind::GAME,       LEAGUE_START_ACTION,    ItemsPocketChange::COUNTED},
-        {StoryStepKind::GAME,       LEAGUE_BETWEEN_FIGHTS_ACTION, ItemsPocketChange::COUNTED},
+        {StoryStepKind::GAME,       LEAGUE_TOP_UP_ACTION,   ItemsPocketChange::COUNTED},
     };
     return ROWS;
 }

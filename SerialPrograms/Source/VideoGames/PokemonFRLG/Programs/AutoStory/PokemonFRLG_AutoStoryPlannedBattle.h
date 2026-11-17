@@ -72,11 +72,16 @@ public:
     struct Turn{
         PlannedChoice choice = {};
         std::string log = {};
+        //  The plan's early reset ends the try here (league_early_reset()):
+        //  no choice.
+        bool early_reset = false;
     };
     Turn choose(const Supplies& supplies, const PolicyView& view);
     void item_used(std::string_view item);
     //  Back in after Roar or Whirlwind: its stages are gone.
     void lead_switched_in();
+    //  A Roar or Whirlwind that lands ends the try instead.
+    bool resets_on_roar() const;
 
 private:
     PlannedFoeTrack foe_out(const Supplies& supplies, const PolicyView& view);
@@ -86,6 +91,9 @@ private:
     const LeagueTrainerData* m_trainer;
     BattleTrack m_track;
     PlannedStreak m_streak;
+    //  The items used in the fight, and the foe's party slot last turn.
+    SlugCounts m_used;
+    std::optional<size_t> m_slot;
 };
 
 //  The League fight `trainer` (a battle step's "trainer") is fought by
@@ -96,6 +104,10 @@ std::optional<PlannedBattle> planned_battle(std::string_view trainer);
 
 //  Registers the planned battle tests.
 void add_tests_AutoStoryPlannedBattle(UnitTestDatabase& database);
+
+//  Registers the League fights on the fake battle engine
+//  (PokemonFRLG_AutoStoryPlannedBattleFake_Tests.cpp).
+void add_tests_AutoStoryPlannedBattleFake(UnitTestDatabase& database);
 
 
 

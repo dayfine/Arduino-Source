@@ -8,8 +8,10 @@
  *  sim knows ("hidden": the foe's exact HP, its exact sleep counter, its
  *  moves' PP). The program's policy decides each turn twice: from the
  *  state the program can see, and from that state with the hidden part
- *  put back. With the hidden part back it must choose as the sim did; a
- *  visible-state difference is put down to the hidden part that fixes it.
+ *  put back. With the hidden part back it must choose as the sim did: the
+ *  same row, item and move slot, and the same top-ups between fights. Each
+ *  that differs is printed with its whole decision line. A visible-state
+ *  difference is put down to the hidden part that fixes it.
  *
  */
 
@@ -127,6 +129,8 @@ BattleTrackState track_of(const JsonObject& line){
     BattleTrackState track{
         .own = stages_of(own),
         .mist_turns = integer(own, "mist_turns"),
+        //  The program reads the freeze from our side's "frozen solid" text.
+        .own_frozen = own.get_string_throw("status") == "freeze",
         .foe = stages_of(foe),
         .foe_status = planned_status_of(foe.get_string_throw("status")),
         .foe_sleep_turns = integer(foe, "sleep_min_left"),
@@ -194,7 +198,9 @@ PlannedState visible_state(const JsonObject& line){
         .foe = foe_track_of(line),
         .bag = counts_of(line.get_object_throw("bag")),
     };
-    return planned_state(inputs, league_foes_data());
+    PlannedState state = planned_state(inputs, league_foes_data());
+    state.attacks_on_foe = integer(line, "attacks");
+    return state;
 }
 
 void put_back(const JsonObject& hidden, Hidden part, PlannedState& state){
@@ -241,6 +247,14 @@ bool same_choice(const PlannedChoice& program, const SimChoice& sim){
         return false;
     }
     return sim.row == "plan:struggle" || program.move_slot == sim.move_slot;
+}
+
+std::string joined(const std::vector<std::string>& items){
+    std::string text;
+    for (const std::string& item : items){
+        text += text.empty() ? item : std::format(", {}", item);
+    }
+    return text;
 }
 
 std::string choice_text(const PlannedChoice& choice){
@@ -308,12 +322,10 @@ private:
         if (screens){
             m_screen_lines++;
         }
-        if (m_examples.size() < 12){
-            m_examples.push_back(std::format("chain {} {} turn {} vs {}{}: sim {} {}, program {}",
-                integer(line, "chain"), line.get_string_throw("fight"), integer(line, "turn"), foe.get_string_throw("species"),
-                screens ? " (Reflect/Light Screen up)" : "", sim.row, sim.item ? *sim.item : sim.move_slot ? std::format("move {}", *sim.move_slot) : "-",
-                choice_text(program)));
-        }
+        m_examples.push_back(std::format("chain {} {} turn {} vs {}{}: sim {} {}, program {}\n    {}",
+            integer(line, "chain"), line.get_string_throw("fight"), integer(line, "turn"), foe.get_string_throw("species"),
+            screens ? " (Reflect/Light Screen up)" : "", sim.row, sim.item ? *sim.item : sim.move_slot ? std::format("move {}", *sim.move_slot) : "-",
+            choice_text(program), line.dump(0)));
     }
 
     std::map<std::string, RowTally> m_rows;
@@ -342,12 +354,12 @@ void Parity::between(const JsonObject& line){
     }
     RowTally& tally = m_rows["between"];
     tally.decisions++;
-    if (planned_between(program, *next) != sim){
+    const std::vector<std::string> used = planned_between(program, *next);
+    if (used != sim){
         tally.visible++;
         tally.oracle++;
-        if (m_examples.size() < 12){
-            m_examples.push_back(std::format("chain {} before {}: the between top-ups differ", integer(line, "chain"), line.get_string_throw("fight")));
-        }
+        m_examples.push_back(std::format("chain {} before {}: sim [{}], program [{}]\n    {}", integer(line, "chain"),
+            line.get_string_throw("fight"), joined(sim), joined(used), line.dump(0)));
     }
 }
 

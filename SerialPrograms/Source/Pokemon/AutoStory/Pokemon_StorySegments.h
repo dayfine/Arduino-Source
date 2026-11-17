@@ -17,12 +17,14 @@
 #define PokemonAutomation_Pokemon_StorySegments_H
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/MoveOnlyFunction.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_StoryLog.h"
 #include "Types/Pokemon_StorySegmentTypes.h"
+#include "Types/Pokemon_StoryVerify.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -31,11 +33,14 @@ namespace Pokemon{
 //  One row of a segment. `build` makes the checkpoint anew for each attempt.
 //  `saves` has the segment save the game (SegmentHooks::save) after the
 //  checkpoint's end check, when the checkpoint has no save of its own.
+//  `verify` runs the row as a verification loop (Pokemon_StoryVerify.h)
+//  instead of the policy's attempts.
 struct CheckpointSpec{
     std::string id;
     std::string title;
     bool saves = false;
     MoveOnlyFunction<Checkpoint()> build;
+    std::optional<StoryVerify> verify = std::nullopt;
 };
 
 // Collection of ordered checkpoints that make up a story segment.
@@ -62,11 +67,24 @@ struct SegmentHooks{
     //  before a save in AFTER_VERIFICATION mode: one that failed stops the
     //  save and fails the run. The game logs its lines.
     MoveOnlyFunction<Outcome(const std::string& checkpoint, RunState& state)> check_postconditions;
+    //  Optional: whether a verify row's try that completed passes, by the
+    //  game's own measure (FRLG's League: the items a fight spent within
+    //  its caps). Run after check_postconditions, right before the save;
+    //  either failing blocks the save. A failure named VERIFY_UNREAD (the
+    //  game couldn't read what it checks) stops the loop: never a save,
+    //  nor another try, on a guess.
+    MoveOnlyFunction<Outcome(const std::string& checkpoint, RunState& state)> verify_pass;
 };
 
 //  Runs the checkpoints in `range`, in order, saving as `policy.save_mode`
-//  allows (story_save_allowed()). Logs through `hooks.log`,
-//  around the checkpoint lines:
+//  allows (story_save_allowed()). A row with `verify` runs its loop: phase
+//  1's tries save nothing and reload between them; below min_pass the
+//  segment stops ("verify_below_min_pass"); phase 2 reloads and tries
+//  again until a try passes, which saves, or stops after reset_budget
+//  ("verify_out_of_budget"). A try whose start check fails, or whose step
+//  fails "precondition_failed" (FRLG's League top-up and entry contract),
+//  stops the loop at once: the save does not meet the row's preconditions.
+//  Logs through `hooks.log`, around the checkpoint lines:
 //      [Segment] 00: start, 3 checkpoints
 //      [Checkpoint] 00.02: failed, resetting for attempt 2/3
 //      [Checkpoint] 00.02: passed on attempt 2 (1 reset)

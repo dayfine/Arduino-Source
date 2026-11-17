@@ -342,6 +342,7 @@ void add_tests_AutoStoryStepTable(UnitTestDatabase& database){
     add_tests_AutoStoryBattleBag(database);
     add_tests_AutoStoryPlannedPolicy(database);
     add_tests_AutoStoryPlannedBattle(database);
+    add_tests_AutoStoryPlannedBattleFake(database);
     add_tests_AutoStoryLeagueParity(database);
     add_tests_AutoStoryBattleTrack(database);
 }

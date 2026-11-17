@@ -117,6 +117,18 @@ std::optional<FoeStatusText> foe_status_text(std::string_view letters){
     return std::nullopt;
 }
 
+//  Our side's freeze or burn: its texts have no "Foe" prefix.
+void read_own_freeze(std::string_view letters, BattleTrackState& state){
+    if (letters.starts_with("foe")){
+        return;
+    }
+    if (has(letters, "frozensolid")){
+        state.own_frozen = true;
+    }else if (has(letters, "wasburned") || has(letters, "defrosted")){
+        state.own_frozen = false;
+    }
+}
+
 void apply_status(FoeStatusText text, BattleTrackState& state){
     switch (text){
     case FoeStatusText::ASLEEP:
@@ -226,6 +238,7 @@ void BattleTrack::read_turn(const std::vector<std::string>& texts){
             apply_status(*status, m_state);
         }
         last_status = status;
+        read_own_freeze(letters, m_state);
     }
 }
 

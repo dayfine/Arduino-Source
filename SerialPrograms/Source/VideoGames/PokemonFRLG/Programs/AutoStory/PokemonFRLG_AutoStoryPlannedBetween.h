@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The planned policy's top-ups between two League fights, as planned.py's
- *  between() makes them (PokemonSimulation #111): the next fight's
+ *  between() makes them (PokemonSimulation #115): the next fight's
  *  `between` row of the League plan, its item reserve held.
  *
  */
@@ -31,10 +31,11 @@ struct PlannedCarry{
     SlugCounts bag = {};
 };
 
-//  The top-ups before `next` (its `between` row): a cure, Super Potions
-//  (then a Full Restore) to the HP target, a PP item to the PP floor;
-//  `next`'s item reserve holds. Updates `carry`; returns the items used,
-//  in order.
+//  The top-ups before `next` (its `between` row): a cure, then the one
+//  heal (between.heal "one": a Super Potion for up to 50 missing HP, two
+//  for up to 100, else a Full Restore) or Super Potions (then a Full
+//  Restore) to the HP target, then a PP item to the PP floor; `next`'s
+//  item reserve holds. Updates `carry`; returns the items used, in order.
 std::vector<std::string> planned_between(PlannedCarry& carry, const LeagueFightData& next);
 
 
