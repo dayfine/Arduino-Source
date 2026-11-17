@@ -322,6 +322,7 @@ TurnAction BattleDecisions::policy_turn(const PartyStatus& status, std::string h
         .speed = m_supplies.lead.stats->speed,
         .foe_index = track_foe(),
         .foe_fill = status.foe_fill.value_or(1.0),
+        .battle_texts = status.battle_texts,
     };
     //  The League's policy logs every turn's state and choice on one line,
     //  for PokemonSimulation's log check.

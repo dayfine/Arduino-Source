@@ -497,6 +497,10 @@ UnitTestResult test_foe_rows(){
     if (!rows || rows->size() != 1 || (*rows)[0].speed != 30 || !(*rows)[0].lowers_accuracy || !(*rows)[0].explodes){
         return "Expected the row to read.";
     }
+    const std::optional<std::vector<FoeThreat>> charging = foe_threats_of({{125, 194, 182, 396, 198, 0, 0, 0, 1}});
+    if (!charging || charging->size() != 1 || !(*charging)[0].charges || (*charging)[0].phazes){
+        return "Expected a row of 9 to read as a foe whose hit charges a turn first.";
+    }
     if (battle_policy_kind("goal-based-setup") != BattlePolicyKind::GOAL_BASED_SETUP || battle_policy_kind("x")){
         return "Expected the policy words to read.";
     }

@@ -116,9 +116,9 @@
           "foe_threats": [
             [
               93,
-              21,
-              13,
-              45,
+              17,
+              10,
+              37,
               30,
               0,
               0
@@ -128,34 +128,36 @@
               0,
               0,
               0,
-              15,
+              12,
               0,
-              0
+              0,
+              0,
+              1
             ],
             [
               45,
-              27,
-              9,
-              60,
-              30,
+              21,
+              7,
+              49,
+              24,
               0,
               0
             ],
             [
               110,
-              25,
-              9,
-              57,
-              28,
+              22,
+              10,
+              48,
+              24,
               0,
               0
             ],
             [
               94,
-              36,
-              15,
-              78,
-              39,
+              28,
+              12,
+              62,
+              31,
               0,
               0
             ]
@@ -198,7 +200,7 @@
           ],
           "facing": "north"
         },
-        "why": "Lorelei (TRAINER_ELITE_FOUR_LORELEI): Dewgong Lv52, Cloyster Lv51, Slowbro Lv52, Jynx Lv54, Lapras Lv54, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +4 by X Specials, X Speed until faster, Guard Spec first against an accuracy drop; the doc's lorelei row, 94.3% at 159/159); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's lorelei entry state (159/159), as 19.01's: the 80th percentile of the foe's move choice, its mean, its worst case and its worst normal hit. Lapras's worst case is 78. Dewgong's worst normal hit is 30, not the generator's 22: console B, 2026-11-16, took 30 of 162 in one turn. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table, for the damage each attack would do and whether the best one KOs (no X item then). Then her door north (6, 2) opens"
+        "why": "Lorelei (TRAINER_ELITE_FOUR_LORELEI): Dewgong Lv52, Cloyster Lv51, Slowbro Lv52, Jynx Lv54, Lapras Lv54, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +4 by X Specials, X Speed until faster, Guard Spec first against an accuracy drop; the doc's lorelei row, 94.3% at 159/159); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against console B's Lv54 Blastoise (171 HP, Def 135, Sp. Def 150) at full HP: the 80th percentile of the foe's move choice, its mean, its worst case and its worst normal hit. Lapras's worst case is 62. Cloyster's only hit, Dive, hides a turn first (its row's ninth column): no KO risk until it is underwater. Dewgong's worst normal hit is 30, not the generator's 18: console B, 2026-11-16, took 30 of 162 in one turn. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table, for the damage each attack would do and whether the best one KOs (no X item then). Then her door north (6, 2) opens"
       },
       {
         "id": "lead_lv52_for_bruno",
@@ -305,47 +307,47 @@
           "foe_threats": [
             [
               81,
-              32,
-              19,
-              75,
-              37,
+              26,
+              16,
+              63,
+              31,
               0,
               0,
               1
             ],
             [
               101,
-              51,
-              28,
-              132,
-              66,
+              43,
+              24,
+              108,
+              54,
               0,
               0
             ],
             [
               113,
-              65,
-              52,
-              136,
-              68,
+              54,
+              44,
+              114,
+              57,
               0,
               0
             ],
             [
               96,
-              41,
-              41,
-              84,
-              42,
+              33,
+              33,
+              69,
+              34,
               0,
               0
             ],
             [
               83,
               0,
-              5,
-              183,
-              91,
+              4,
+              150,
+              75,
               0,
               0
             ]
@@ -388,7 +390,7 @@
           ],
           "facing": "north"
         },
-        "why": "Bruno (TRAINER_ELITE_FOUR_BRUNO): Onix Lv51, Hitmonchan Lv53, Hitmonlee Lv53, Onix Lv54, Machamp Lv56, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +2 by X Specials, X Speed until faster, Guard Spec first against an accuracy drop; the doc's bruno row, 95.9% at 130/162. The doc's target_torrent (stalling to Torrent in the opening) is the C++ policy's extra X Specials against the first Onix, up to +4 while Torrent is off; its weaker-move stall needs the foe's HP and is not modelled (PokemonFRLG_AutoStoryBattlePolicy.h)); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's bruno entry state (130/162), as 19.01's: Machamp's worst case (crit Cross Chop) is 183, Hitmonlee's 136. The first Onix has Roar (marked as phazing in its row): console B, 2026-11-16, its Roar sent Blastoise out after four X Specials. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table: Surf KOs both Onix at +0, so no X item is spent on them and setup waits for Hitmonchan. Then the door north (6, 2) opens"
+        "why": "Bruno (TRAINER_ELITE_FOUR_BRUNO): Onix Lv51, Hitmonchan Lv53, Hitmonlee Lv53, Onix Lv54, Machamp Lv56, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +2 by X Specials, X Speed until faster, Guard Spec first against an accuracy drop; the doc's bruno row, 95.9% at 130/162. The doc's target_torrent (stalling to Torrent in the opening) is the C++ policy's extra X Specials against the first Onix, up to +4 while Torrent is off; its weaker-move stall needs the foe's HP and is not modelled (PokemonFRLG_AutoStoryBattlePolicy.h)); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against console B's Lv54 Blastoise (171 HP, Def 135, Sp. Def 150) at full HP: Machamp's worst case (crit Cross Chop) is 150, Hitmonlee's 114. The first Onix has Roar (marked as phazing in its row): console B, 2026-11-16, its Roar sent Blastoise out after four X Specials. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table: Surf KOs both Onix at +0, so no X item is spent on them and setup waits for Hitmonchan. Then the door north (6, 2) opens"
       },
       {
         "id": "lead_lv53_for_agatha",
@@ -495,19 +497,19 @@
           "foe_threats": [
             [
               126,
-              32,
-              10,
-              72,
-              36,
+              0,
+              3,
+              60,
+              30,
               0,
               0
             ],
             [
               129,
-              33,
-              31,
-              69,
-              34,
+              28,
+              17,
+              60,
+              30,
               0,
               0
             ],
@@ -516,25 +518,25 @@
               0,
               0,
               0,
-              48,
+              41,
               0,
               0
             ],
             [
               111,
-              61,
-              61,
-              126,
-              63,
+              51,
+              31,
+              108,
+              54,
               0,
               0
             ],
             [
               150,
-              47,
               40,
-              99,
-              49,
+              24,
+              84,
+              42,
               0,
               0
             ]
@@ -577,7 +579,7 @@
           ],
           "facing": "north"
         },
-        "why": "Agatha (TRAINER_ELITE_FOUR_AGATHA): Gengar Lv54, Golbat Lv54, Haunter Lv53, Arbok Lv56, Gengar Lv58, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +1 by X Specials, +3 while Torrent is off (torrent_power), X Speed until faster, Guard Spec first against an accuracy drop; the doc's agatha row, 95.3% at 45/165, its opening a heal); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's agatha entry state (45/165), as 19.01's: Arbok's worst case is 126. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table, for the damage each attack would do and whether the best one KOs (no X item then). Then the door north (6, 2) opens"
+        "why": "Agatha (TRAINER_ELITE_FOUR_AGATHA): Gengar Lv54, Golbat Lv54, Haunter Lv53, Arbok Lv56, Gengar Lv58, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +1 by X Specials, +3 while Torrent is off (torrent_power), X Speed until faster, Guard Spec first against an accuracy drop; the doc's agatha row, 95.3% at 45/165, its opening a heal); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against console B's Lv54 Blastoise (171 HP, Def 135, Sp. Def 150) at full HP: Arbok's worst case is 108. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table, for the damage each attack would do and whether the best one KOs (no X item then). Then the door north (6, 2) opens"
       },
       {
         "id": "items_before_lance",
@@ -684,18 +686,18 @@
             [
               112,
               40,
-              32,
-              42,
-              93,
+              31,
+              40,
+              80,
               0,
               0
             ],
             [
               96,
               40,
-              17,
-              87,
-              62,
+              16,
+              78,
+              53,
               0,
               0
             ],
@@ -704,25 +706,25 @@
               0,
               0,
               0,
-              62,
+              53,
               0,
               0
             ],
             [
               173,
-              47,
-              47,
-              96,
-              78,
+              41,
+              41,
+              84,
+              67,
               0,
               0
             ],
             [
               107,
-              64,
-              24,
-              144,
-              114,
+              56,
+              19,
+              126,
+              98,
               0,
               0
             ]
@@ -765,7 +767,7 @@
           ],
           "facing": "north"
         },
-        "why": "Lance (TRAINER_ELITE_FOUR_LANCE): Gyarados Lv56, Dragonair Lv54, Dragonair Lv54, Aerodactyl Lv58, Dragonite Lv60, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +3 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first against an accuracy drop; the doc's lance row, 99.2% at 168/168); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's lance entry state (168/168), as 19.01's: Dragonite's worst case is 144 and its worst normal hit (Hyper Beam) 114. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table, for the damage each attack would do and whether the best one KOs (no X item then). Then the Champion's door north (6, 5) opens"
+        "why": "Lance (TRAINER_ELITE_FOUR_LANCE): Gyarados Lv56, Dragonair Lv54, Dragonair Lv54, Aerodactyl Lv58, Dragonite Lv60, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +3 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first against an accuracy drop; the doc's lance row, 99.2% at 168/168); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against console B's Lv54 Blastoise (171 HP, Def 135, Sp. Def 150) at full HP: Dragonite's worst case is 126 and its worst normal hit (Hyper Beam) 98. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table, for the damage each attack would do and whether the best one KOs (no X item then). Then the Champion's door north (6, 5) opens"
       },
       {
         "id": "items_before_champion",
@@ -834,59 +836,61 @@
           "foe_threats": [
             [
               130,
-              41,
-              27,
-              87,
-              43,
+              35,
+              24,
+              75,
+              37,
               1,
               0,
               1
             ],
             [
               159,
-              77,
               70,
-              159,
-              79,
+              64,
+              144,
+              72,
               0,
               0
             ],
             [
               70,
               0,
-              10,
-              210,
-              105,
+              8,
+              183,
+              91,
               0,
               0
             ],
             [
               118,
-              51,
-              46,
-              110,
-              55,
+              44,
+              43,
+              96,
+              48,
               0,
               0
             ],
             [
               139,
-              50,
-              51,
-              104,
-              52,
+              45,
+              45,
+              92,
+              46,
               0,
               0,
               1
             ],
             [
               125,
-              217,
-              218,
-              444,
-              222,
+              194,
+              182,
+              396,
+              198,
               0,
-              0
+              0,
+              0,
+              1
             ]
           ],
           "foe_stats": [
@@ -932,7 +936,7 @@
           ],
           "facing": "north"
         },
-        "why": "the Champion (TRAINER_CHAMPION_FIRST_BULBASAUR for a player who took Squirtle): Pidgeot Lv59, Alakazam Lv57, Rhydon Lv59, Gyarados Lv59, Arcanine Lv61, Venusaur Lv63, four Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +2 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first against Pidgeot's Sand Attack; the doc's champion row, 95.6% at 171/171, its opening a Guard Spec); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's champion entry state (171/171), as 19.01's, Pidgeot's row marked as lowering accuracy: Venusaur's Solar Beam worst case is 444 (a one-hit KO from full), Rhydon's 210; Pidgeot (Whirlwind) and Arcanine (Roar) are marked as phazing, so no X item is spent on them (their stages would go with a forced switch). foe_stats are each foe's Defense, Sp. Def and HP from the doc's table: Surf KOs Rhydon, so it is attacked at once"
+        "why": "the Champion (TRAINER_CHAMPION_FIRST_BULBASAUR for a player who took Squirtle): Pidgeot Lv59, Alakazam Lv57, Rhydon Lv59, Gyarados Lv59, Arcanine Lv61, Venusaur Lv63, four Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +2 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first against Pidgeot's Sand Attack; the doc's champion row, 95.6% at 171/171, its opening a Guard Spec); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against console B's Lv54 Blastoise (171 HP, Def 135, Sp. Def 150) at full HP, Pidgeot's row marked as lowering accuracy: Venusaur's Solar Beam worst normal hit is 198 (a one-hit KO from full), Rhydon's worst case 183; Solar Beam without sun charges a turn first (Venusaur's row's ninth column), so it is a KO risk only while Venusaur is charging or the sun is out (the battle text), else setup goes on; Pidgeot (Whirlwind) and Arcanine (Roar) are marked as phazing, so no X item is spent on them (their stages would go with a forced switch). foe_stats are each foe's Defense, Sp. Def and HP from the doc's table: Surf KOs Rhydon, so it is attacked at once"
       },
       {
         "id": "hall_of_fame",

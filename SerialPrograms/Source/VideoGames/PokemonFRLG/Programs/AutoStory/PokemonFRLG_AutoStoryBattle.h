@@ -79,6 +79,9 @@ struct PartyStatus{
     StatusCondition status = StatusCondition::NONE;
     //  The foe's HP bar's filled share, none if not read.
     std::optional<double> foe_fill = std::nullopt;
+    //  The battle texts read since the last battle menu, in a League fight
+    //  (read_battle_text()), for the policy's KO risk.
+    std::vector<std::string> battle_texts = {};
 };
 //  Reads current party health and status from battle screen.
 PartyStatus read_party_status(const ImageViewRGB32& screen);

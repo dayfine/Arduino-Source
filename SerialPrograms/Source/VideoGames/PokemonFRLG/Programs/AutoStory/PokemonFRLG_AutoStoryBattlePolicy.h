@@ -26,7 +26,9 @@
  *  ~/BDSPLab/notes/frlg-e4-replica-policy.md). One state -> action table
  *  (choose_budgeted()'s rows), first row that applies, from the screen
  *  state each turn; D is the foe's best ordinary hit (foe_threats'
- *  normal_max, plus poison), "medicine" an item on the lead:
+ *  normal_max, plus poison; for a foe whose hit charges a turn first, only
+ *  while its charge text or Sunny Day's sun was read: PolicyView::battle_texts),
+ *  "medicine" an item on the lead:
  *    1. awake, we move first and our lowest roll KOs the foe at its HP
  *       bar: attack, at any HP (PokeGuy's Surf at 3/171), with Strength
  *       when its lowest roll KOs (Bite and Surf keep their PP);
@@ -88,6 +90,11 @@ struct PolicyView{
     size_t foe_index = 0;
     //  The foe's HP bar's filled share, 1 when not read.
     double foe_fill = 1.0;
+    //  The battle texts read since the last choice, letters in lower case
+    //  (read_battle_text()): the foe charging a hit (Solar Beam, Dive)
+    //  makes its row a KO risk for this choice; Sunny Day's sun makes
+    //  Solar Beam one for its turns.
+    std::vector<std::string> battle_texts = {};
 };
 
 //  An item the policy uses this turn.
@@ -156,6 +163,7 @@ private:
     };
     Danger danger(const PolicyView& view) const;
     const FoeThreat* foe(const PolicyView& view) const;
+    void note_battle_text(std::string_view letters);
     int own_speed(const PolicyView& view) const;
     bool outsped(const PolicyView& view) const;
     int spa_goal(const PolicyView& view) const;
@@ -201,6 +209,9 @@ private:
     int m_accuracy = 0;
     int m_foe_evasion = 0;
     int m_mist_turns = 0;
+    //  The foe's charge text was read since the last choice; Sunny Day's turns left.
+    bool m_foe_charging = false;
+    int m_sun_turns = 0;
     std::string m_attack_reason;
     //  The medicine turns in a row against the foe's bar m_streak_fill
     //  (foe m_streak_foe), and the last one's item.

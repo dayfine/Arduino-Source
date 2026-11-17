@@ -26,6 +26,9 @@ namespace{
 constexpr double THUNDER_BADGE = 1.1;
 //  Guard Spec's Mist lasts this many turns, the one it is used on included.
 constexpr int MIST_TURNS = 5;
+//  Sunny Day's sun lasts five turns, the one it is used in included: our
+//  next four choices.
+constexpr int SUN_TURNS = 4;
 constexpr int MAX_STAGE = 6;
 constexpr double WHOLE_HP = std::numeric_limits<double>::infinity();
 //  Gen 3's lowest damage roll: 85 of 100.
@@ -142,9 +145,10 @@ std::optional<BattlePolicyKind> battle_policy_kind(std::string_view word){
 std::optional<std::vector<FoeThreat>> foe_threats_of(const std::vector<std::vector<int64_t>>& rows){
     constexpr size_t COLUMNS = 7;
     constexpr size_t WITH_PHAZES = 8;
+    constexpr size_t WITH_CHARGES = 9;
     std::vector<FoeThreat> foes;
     for (const std::vector<int64_t>& row : rows){
-        if (row.size() != COLUMNS && row.size() != WITH_PHAZES){
+        if (row.size() < COLUMNS || row.size() > WITH_CHARGES){
             return std::nullopt;
         }
         foes.push_back(FoeThreat{
@@ -155,7 +159,8 @@ std::optional<std::vector<FoeThreat>> foe_threats_of(const std::vector<std::vect
             .normal_max = static_cast<int>(row[4]),
             .lowers_accuracy = row[5] != 0,
             .explodes = row[6] != 0,
-            .phazes = row.size() == WITH_PHAZES && row[7] != 0,
+            .phazes = row.size() >= WITH_PHAZES && row[7] != 0,
+            .charges = row.size() == WITH_CHARGES && row[8] != 0,
         });
     }
     return foes;
@@ -295,7 +300,7 @@ PolicyState::Danger PolicyState::danger(const PolicyView& view) const{
     //  A poisoned lead also loses 1/8 of its HP to the poison each turn.
     const double residual = view.status == StatusCondition::POISON ? std::floor(view.max_hp / 8) : 0;
     const FoeThreat* threat = foe(view);
-    if (threat == nullptr){
+    if (threat == nullptr || (threat->charges && !m_foe_charging && m_sun_turns <= 0)){
         return {residual, residual, residual, residual};
     }
     return {
@@ -479,10 +484,18 @@ PolicyState::Turn PolicyState::choose(const Supplies& supplies, const PolicyView
         m_mist_turns--;
     }
     m_attack_reason.clear();
-    if (m_policy.kind == BattlePolicyKind::BUDGETED_SETUP){
-        return choose_budgeted(supplies, view);
+    for (const std::string& letters : view.battle_texts){
+        note_battle_text(letters);
     }
-    return Turn{.item = choose_unbudgeted(supplies, view)};
+    Turn turn = m_policy.kind == BattlePolicyKind::BUDGETED_SETUP
+        ? choose_budgeted(supplies, view)
+        : Turn{.item = choose_unbudgeted(supplies, view)};
+    //  The charged hit goes off this turn; the next charge has its own text.
+    m_foe_charging = false;
+    if (m_sun_turns > 0){
+        m_sun_turns--;
+    }
+    return turn;
 }
 
 std::optional<PolicyItem> PolicyState::choose_unbudgeted(const Supplies& supplies, const PolicyView& view){
@@ -793,6 +806,25 @@ void PolicyState::item_used(const std::string& item){
         m_accuracy = std::min(MAX_STAGE, m_accuracy + 1);
     }else if (item == "guard-spec"){
         m_mist_turns = MIST_TURNS;
+    }
+}
+
+void PolicyState::note_battle_text(std::string_view letters){
+    const auto has = [letters](std::string_view word){
+        return letters.find(word) != std::string_view::npos;
+    };
+    //  pokefirered's battle strings: "{foe} took\nin sunlight!", "{foe} hid\nunderwater!",
+    //  "The sunlight got bright!", "The sunlight faded."
+    if ((has("took") && has("sunlight")) || has("underwater")){
+        m_foe_charging = true;
+        return;
+    }
+    if (has("sunlight") && has("bright")){
+        m_sun_turns = SUN_TURNS;
+        return;
+    }
+    if (has("sunlight") && has("faded")){
+        m_sun_turns = 0;
     }
 }
 
