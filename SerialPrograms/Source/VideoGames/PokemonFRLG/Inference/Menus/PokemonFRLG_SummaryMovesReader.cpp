@@ -286,11 +286,17 @@ std::vector<SummaryMove> read_summary_moves(Logger& logger, Language language, c
         if (!row_has_move(screen, row)){
             break;
         }
-        moves.push_back(SummaryMove{
+        SummaryMove move{
             .move = read_summary_move_name(logger, language, screen, row),
             .pp = read_pp(logger, screen, summary_move_pp_box(row)),
             .max_pp = read_pp(logger, screen, summary_move_max_pp_box(row)),
-        });
+        };
+        //  More PP than the full PP is a misread, not a reading: unread
+        //  (the League after Agatha: SURF's yellow "6/15" read as 46/15).
+        if (move.max_pp >= 0 && move.pp > move.max_pp){
+            move.pp = -1;
+        }
+        moves.push_back(std::move(move));
     }
     return moves;
 }
