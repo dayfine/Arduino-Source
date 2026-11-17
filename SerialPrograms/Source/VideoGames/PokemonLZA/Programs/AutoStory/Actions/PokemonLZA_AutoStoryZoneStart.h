@@ -56,7 +56,7 @@ constexpr ZoneStartRoute TAUNIE_ROCKS_ROUTE{
     .leg_hold = Milliseconds(900),
     .leg_read_min = 120,
     .leg_read_max = 135,
-    .walk_hold = Milliseconds(4800),
+    .walk_hold = Milliseconds(5600),
 };
 
 
