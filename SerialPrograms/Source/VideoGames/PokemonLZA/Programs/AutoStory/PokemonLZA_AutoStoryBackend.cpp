@@ -135,8 +135,10 @@ CancellableScope& PlzaConsoleBackend::scope(){
 
 namespace{
 
-//  How close to a run's heading the minimap's arrow must read.
-constexpr double HEADING_TOLERANCE = 10;
+//  How close to a run's heading the minimap's arrow must read. 4, not 10:
+//  03.09's walk took 272 for 264 and its 6.5 s leg ended right of the lab
+//  gate (console B, 2026-11-17); turns land within 2 (2026-11-14 to 17).
+constexpr double HEADING_TOLERANCE = 4;
 
 //  The turns face_heading() takes at most.
 constexpr int HEADING_TURNS = 4;

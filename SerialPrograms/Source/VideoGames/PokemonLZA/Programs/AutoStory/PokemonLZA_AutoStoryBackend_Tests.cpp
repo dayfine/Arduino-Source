@@ -100,6 +100,11 @@ const FaceHeadingCase FACE_HEADING_CASES[] = {
         .input = {.facing = 135, .heading = 270, .turns_take = false},
         .expectation = {.failure = "heading_missed"},
     },
+    {
+        .name = "8 off is not facing it: 03.09 read 272 for 264 and walked right of the gate",
+        .input = {.facing = 272, .heading = 264, .turns_take = false},
+        .expectation = {.failure = "heading_missed"},
+    },
 };
 
 UnitTestResult check_face_heading(const FaceHeadingCase& test, CancellableScope& scope){
