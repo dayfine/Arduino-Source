@@ -168,13 +168,25 @@ StartSignature read_start_signature(ConsoleHandle& console, ProControllerContext
 //  screen says the player is (run_start()), `first` or an earlier
 //  checkpoint. Throws OperationFailedException, with a screenshot, as
 //  "start_position_unknown" when the position matches no start: no
-//  checkpoint's events run from the wrong place.
+//  checkpoint's events run from the wrong place. When `max_rewinds` allows,
+//  an unknown start first rewinds to the backup save: a catch autosaves
+//  where it lands, so 03.08's latest save can stand mid-zone (console B,
+//  2026-11-16 17:24, at the 100 spot).
 size_t checked_first_row(
-    ConsoleHandle& console, ProControllerContext& context,
-    std::span<const StoryCheckpoint> rows, size_t first, std::span<const CheckpointStart> starts
+    ConsoleHandle& console, ProControllerContext& context, PlzaBackend& backend,
+    std::span<const StoryCheckpoint> rows, size_t first, std::span<const CheckpointStart> starts,
+    const BackupSave& backup, size_t max_rewinds
 ){
     const StartSignature read = read_start_signature(console, context);
-    const std::optional<size_t> from = run_start(rows, starts, first, read);
+    std::optional<size_t> from = run_start(rows, starts, first, read);
+    if (!from && max_rewinds > 0){
+        console.log(std::format("AutoStory: the screen ({}) matches no checkpoint start up to {}: rewinding to the backup save", to_string(read), rows[first].id));
+        const std::variant<size_t, Outcome> back = rewind_to_backup(backend, rows, first, starts, backup);
+        if (const size_t* index = std::get_if<size_t>(&back)){
+            return *index;
+        }
+        console.log(std::format("AutoStory: no rewind: {}", to_string(std::get<Outcome>(back))));
+    }
     if (!from){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::NO_ERROR_REPORT,
@@ -276,7 +288,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         if (LOAD_SAVE_FIRST){
             load_first_save(env.console, game, backend, rows[first]);
         }
-        from = checked_first_row(env.console, context, rows, first, starts);
+        from = checked_first_row(env.console, context, backend, rows, first, starts, console_backup_save(story), REWINDS_TO_BACKUP);
     }
 
     const RewindPlan plan{
