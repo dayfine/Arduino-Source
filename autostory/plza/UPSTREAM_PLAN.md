@@ -1,18 +1,19 @@
 # PLZA AutoStory: upstream plan (lean slices)
 
-Updated by: the main session, 2026-11-15. It updates this file whenever a slice PR is opened,
+Updated by: the main session, 2026-11-16. It updates this file whenever a slice PR is opened,
 merged or passes on console. Detail notes: `~/BDSPLab/notes/plza-slice1-plan.md` (local).
 
 ## Your TODOs
 
 You open every upstream PR and write its description; agents never do.
 
-1. **Send [#572](https://github.com/dayfine/Arduino-Source/pull/572) upstream when a slot frees.** You approved it ("good enough for 572", 2026-11-15;
-   review rounds 1 and 2 done, tip 0758e5c24). We are at 3/3 open upstream:
-   [PokemonAutomation/Arduino-Source#1845](https://github.com/PokemonAutomation/Arduino-Source/pull/1845), [#1881](https://github.com/PokemonAutomation/Arduino-Source/pull/1881), [#1916](https://github.com/PokemonAutomation/Arduino-Source/pull/1916). When one closes, an agent folds [#572](https://github.com/dayfine/Arduino-Source/pull/572) into
-   one commit on upstream `main` and you open the PR and write its description.
+1. **[#572](https://github.com/dayfine/Arduino-Source/pull/572) is upstream** as [PokemonAutomation/Arduino-Source#1921](https://github.com/PokemonAutomation/Arduino-Source/pull/1921) (you opened it 2026-11-16, one commit 530b12c0a on
+   `autostory/story-range-options-upstream`). We are at 3/3 open upstream (checked 2026-11-16):
+   [PokemonAutomation/Arduino-Source#1845](https://github.com/PokemonAutomation/Arduino-Source/pull/1845), [#1881](https://github.com/PokemonAutomation/Arduino-Source/pull/1881), [#1921](https://github.com/PokemonAutomation/Arduino-Source/pull/1921). [#1916](https://github.com/PokemonAutomation/Arduino-Source/pull/1916) merged on 2026-11-16. Next up is [#573](https://github.com/dayfine/Arduino-Source/pull/573)
+   when a slot frees (TODO 3).
 2. **Review the rest of the chain** bottom first: [#573](https://github.com/dayfine/Arduino-Source/pull/573) to [#577](https://github.com/dayfine/Arduino-Source/pull/577) (slice 1), then [#580](https://github.com/dayfine/Arduino-Source/pull/580), [#582](https://github.com/dayfine/Arduino-Source/pull/582),
-   [#591](https://github.com/dayfine/Arduino-Source/pull/591), [#595](https://github.com/dayfine/Arduino-Source/pull/595), [#596](https://github.com/dayfine/Arduino-Source/pull/596), [#598](https://github.com/dayfine/Arduino-Source/pull/598), [#604](https://github.com/dayfine/Arduino-Source/pull/604).
+   [#591](https://github.com/dayfine/Arduino-Source/pull/591), [#595](https://github.com/dayfine/Arduino-Source/pull/595), [#596](https://github.com/dayfine/Arduino-Source/pull/596), [#598](https://github.com/dayfine/Arduino-Source/pull/598), [#604](https://github.com/dayfine/Arduino-Source/pull/604), [#610](https://github.com/dayfine/Arduino-Source/pull/610), [#619](https://github.com/dayfine/Arduino-Source/pull/619), [#620](https://github.com/dayfine/Arduino-Source/pull/620), [#622](https://github.com/dayfine/Arduino-Source/pull/622),
+   [#623](https://github.com/dayfine/Arduino-Source/pull/623).
 3. **Hand upstream, one at a time, under the three-open limit:** [#573](https://github.com/dayfine/Arduino-Source/pull/573) up the chain after [#572](https://github.com/dayfine/Arduino-Source/pull/572).
    Before each one, ask for the pre-flight: an agent merges `main` in, fixes every code-health
    finding (code-health `--base-ref origin/upstream-main`, see below), gets the unit tests green
@@ -57,24 +58,36 @@ Fork drafts on dayfine/Arduino-Source, linear, bottom first. The chain now cover
 story, 01.00 to 03.11. Lines added, from the PR file list (test = unit tests and fakes). CI: Fork
 Draft CI only runs on PRs into `main`, so the slice PRs get a dispatched Ubuntu run at their tip.
 
-| PR | Branch | Base | Tip (2026-11-16) | Purpose | Code / test (+lines) | Console |
+| PR | Branch | Base | Tip (2026-11-16 evening) | Purpose | Code / test (+lines) | Console |
 |---|---|---|---|---|---|---|
-| [#572](https://github.com/dayfine/Arduino-Source/pull/572) | `autostory/story-range-options-sv` | `main` | 0758e5c24 | start/end checkpoint range options, shared with SV | +167 / +267 | approved, waits for an upstream slot |
-| [#573](https://github.com/dayfine/Arduino-Source/pull/573) | `plza/slice1/b` | [#572](https://github.com/dayfine/Arduino-Source/pull/572) | 02b01faf6 | story checkpoint data and its JSON reader | +1880 / +1050 | - |
-| [#574](https://github.com/dayfine/Arduino-Source/pull/574) | `plza/slice1/c` | [#573](https://github.com/dayfine/Arduino-Source/pull/573) | e2af0990c | story engine for a zone game | +1674 / +1164 | - |
-| [#575](https://github.com/dayfine/Arduino-Source/pull/575) | `plza/slice1/d` | [#574](https://github.com/dayfine/Arduino-Source/pull/574) | 66f23cf4d | PLZA opening detectors; CI pins [CLT #18](https://github.com/dayfine/CommandLineTests/pull/18) | +1166 / +997 | - |
-| [#577](https://github.com/dayfine/Arduino-Source/pull/577) | `plza/slice1/e` | [#575](https://github.com/dayfine/Arduino-Source/pull/575) | c4ef23e77 | new game to leaving the platform (01.00, 01.01 start) | +1623 / +371 | 01.00 and 01.01 passed |
-| [#580](https://github.com/dayfine/Arduino-Source/pull/580) | `plza/slice2/a` | [#577](https://github.com/dayfine/Arduino-Source/pull/577) | f43d77852 | 01.01 arrival scenes to Main Mission 01 | +1132 / +881 | - |
-| [#582](https://github.com/dayfine/Arduino-Source/pull/582) | `plza/slice2/b` | [#580](https://github.com/dayfine/Arduino-Source/pull/580) | f41581a2a | 01.02, Pancham's chase to the battle area | +553 / +684 | - |
-| [#591](https://github.com/dayfine/Arduino-Source/pull/591) | `plza/slice2/c` | [#582](https://github.com/dayfine/Arduino-Source/pull/582) | 16f5bf395 | slice 2c: 01.03, the starter and the first battle | +452 / +244 | - |
-| [#595](https://github.com/dayfine/Arduino-Source/pull/595) | `plza/slice3` | [#591](https://github.com/dayfine/Arduino-Source/pull/591) | f18139b41 | slice 3: Main Mission 02 (02.01-02.07) | +644 / +394 | - |
-| [#596](https://github.com/dayfine/Arduino-Source/pull/596) | `plza/slice4` | [#595](https://github.com/dayfine/Arduino-Source/pull/595) | a8be3c969 | slice 4: 03.01-03.06, Hotel Z to Wild Zone 1's gate | +625 / +52 | - |
-| [#598](https://github.com/dayfine/Arduino-Source/pull/598) | `plza/slice5` | [#596](https://github.com/dayfine/Arduino-Source/pull/596) | 35bbc35b8 | slice 5: 03.07, 03.09-03.11, tutorial catches to Mable's reward; merges [#590](https://github.com/dayfine/Arduino-Source/pull/590) | +1233 / +445 | - |
-| [#604](https://github.com/dayfine/Arduino-Source/pull/604) | `plza/slice5b` | [#598](https://github.com/dayfine/Arduino-Source/pull/598) | 22d05e0e9 | slice 5b: 03.08 catches + 03.08b far-gate exit (split at the catch autosave) | +923 / +247 | - |
-| [#610](https://github.com/dayfine/Arduino-Source/pull/610) | `plza/newgame` | [#604](https://github.com/dayfine/Arduino-Source/pull/604) | 62be72f2a | 01.00 new game from HOME; one launch by title for every start and reload | - | - |
+| [#572](https://github.com/dayfine/Arduino-Source/pull/572) | `autostory/story-range-options-sv` | `main` | 953ed98a9 | start/end checkpoint range options, shared with SV | +167 / +267 | upstream as [PokemonAutomation/Arduino-Source#1921](https://github.com/PokemonAutomation/Arduino-Source/pull/1921) |
+| [#573](https://github.com/dayfine/Arduino-Source/pull/573) | `plza/slice1/b` | [#572](https://github.com/dayfine/Arduino-Source/pull/572) | 380656d72 | story checkpoint data and its JSON reader | +1880 / +1050 | - |
+| [#574](https://github.com/dayfine/Arduino-Source/pull/574) | `plza/slice1/c` | [#573](https://github.com/dayfine/Arduino-Source/pull/573) | b4cbb52ee | story engine for a zone game | +1674 / +1164 | - |
+| [#575](https://github.com/dayfine/Arduino-Source/pull/575) | `plza/slice1/d` | [#574](https://github.com/dayfine/Arduino-Source/pull/574) | 23b0d7717 | PLZA opening detectors; CI pins [CLT #18](https://github.com/dayfine/CommandLineTests/pull/18) | +1166 / +997 | - |
+| [#577](https://github.com/dayfine/Arduino-Source/pull/577) | `plza/slice1/e` | [#575](https://github.com/dayfine/Arduino-Source/pull/575) | 546eda1e0 | new game to leaving the platform (01.00, 01.01 start) | +1623 / +371 | 01.00 and 01.01 passed (11-15) |
+| [#580](https://github.com/dayfine/Arduino-Source/pull/580) | `plza/slice2/a` | [#577](https://github.com/dayfine/Arduino-Source/pull/577) | 579cec66c | 01.01 arrival scenes to Main Mission 01 | +1132 / +881 | 01.01 passed (11-15) |
+| [#582](https://github.com/dayfine/Arduino-Source/pull/582) | `plza/slice2/b` | [#580](https://github.com/dayfine/Arduino-Source/pull/580) | efd43d21d | 01.02, Pancham's chase to the battle area | +553 / +684 | 01.02 passed (11-15) |
+| [#591](https://github.com/dayfine/Arduino-Source/pull/591) | `plza/slice2/c` | [#582](https://github.com/dayfine/Arduino-Source/pull/582) | ff225d59f | slice 2c: 01.03, the starter and the first battle | +452 / +244 | 01.03 passed (11-15) |
+| [#595](https://github.com/dayfine/Arduino-Source/pull/595) | `plza/slice3` | [#591](https://github.com/dayfine/Arduino-Source/pull/591) | 21b4cd70f | slice 3: Main Mission 02 (02.01-02.07) | +644 / +394 | 02.01-02.03 passed (11-15) |
+| [#596](https://github.com/dayfine/Arduino-Source/pull/596) | `plza/slice4` | [#595](https://github.com/dayfine/Arduino-Source/pull/595) | e37b81959 | slice 4: 03.01-03.06, Hotel Z to Wild Zone 1's gate | +625 / +52 | 03.01-03.03, 03.05, 03.06 passed (11-16); 03.04 did not |
+| [#598](https://github.com/dayfine/Arduino-Source/pull/598) | `plza/slice5` | [#596](https://github.com/dayfine/Arduino-Source/pull/596) | 858d90cb3 | slice 5: 03.07, 03.09-03.11, tutorial catches to Mable's reward; merges [#590](https://github.com/dayfine/Arduino-Source/pull/590) | +1233 / +445 | 03.07 passed (11-16); 03.09-03.11 passed with [#623](https://github.com/dayfine/Arduino-Source/pull/623)'s port |
+| [#604](https://github.com/dayfine/Arduino-Source/pull/604) | `plza/slice5b` | [#598](https://github.com/dayfine/Arduino-Source/pull/598) | bf0d1429b | slice 5b: 03.08 catches + 03.08b far-gate exit (split at the catch autosave) | +923 / +247 | passed with [#623](https://github.com/dayfine/Arduino-Source/pull/623)'s port (11-16) |
+| [#610](https://github.com/dayfine/Arduino-Source/pull/610) | `plza/newgame` | [#604](https://github.com/dayfine/Arduino-Source/pull/604) | 6162fe260 | 01.00 new game from HOME; one launch by title for every start and reload | +2857 / +1455 | 01.00 passed from HOME (11-15) |
+| [#619](https://github.com/dayfine/Arduino-Source/pull/619) | `plza/0304-save-moved` | [#610](https://github.com/dayfine/Arduino-Source/pull/610) | d9180d994 | no retry from a save that moved past the checkpoint's start | +181 / +141 | used from 03.05 on (11-16) |
+| [#620](https://github.com/dayfine/Arduino-Source/pull/620) | `plza/0308-catch-in-zone` | [#619](https://github.com/dayfine/Arduino-Source/pull/619) | 68e2938f5 | 03.08: search Wild Zone 1 by camera scans and short out-and-back legs | +1148 / +673 | 03.08 never passed; replaced by [#623](https://github.com/dayfine/Arduino-Source/pull/623)'s port |
+| [#622](https://github.com/dayfine/Arduino-Source/pull/622) | `plza/backup-retry` | [#620](https://github.com/dayfine/Arduino-Source/pull/620) | ff3f71086 | rewind to the backup save on failure after an autosave; manual menu saves | +1057 / +1074 | auto rewind to 03.06 worked (11-16) |
+| [#623](https://github.com/dayfine/Arduino-Source/pull/623) | `plza/port-original-0308-0311` | [#622](https://github.com/dayfine/Arduino-Source/pull/622) | 9b4ddc9f9 | the original's steps ported back; merges [#624](https://github.com/dayfine/Arduino-Source/pull/624), [#625](https://github.com/dayfine/Arduino-Source/pull/625), [#626](https://github.com/dayfine/Arduino-Source/pull/626) (see below) | +4735 / +3453 | 03.06-03.11 passed (11-16, runs 9 and 10) |
 | [#590](https://github.com/dayfine/Arduino-Source/pull/590) | `plza/throw-helper` | `upstream-main` | 2394ee31b | shared ball throw helper for InPlaceCatcher, PostKillCatcher and our catch | +145 / - | - |
-| [#576](https://github.com/dayfine/Arduino-Source/pull/576) | `plza/autostory` | `main` | 2f7b152b8 | long-lived full-story reference (+55k) | - | - |
+| [#576](https://github.com/dayfine/Arduino-Source/pull/576) | `plza/autostory` | `main` | 8827debb8 | long-lived full-story reference (+55k) | - | - |
 | [CLT #18](https://github.com/dayfine/CommandLineTests/pull/18) | `plza/all-frames` | `main` | - | every frame the PLZA tests read (84 files) | - | 9 frames missing |
+
+[#623](https://github.com/dayfine/Arduino-Source/pull/623) in detail: the original `plza/autostory` steps for 03.08-03.11 ported onto the lean chain
+(the bare scene is a B mash until control, for `leave_mable`, `five_registered` and `arrive_3f`);
+the 03.06 start signature checks party 1; an unsigned checkpoint that was asked for runs as asked;
+the menu-save test rows. Merged into it: [#624](https://github.com/dayfine/Arduino-Source/pull/624) (`plza/autosave-promote`, a devtool that promotes
+`unverified` autosave rows from run logs), [#625](https://github.com/dayfine/Arduino-Source/pull/625) (`plza/reload-switch`, a developer option to skip
+`reload_when_chained`), [#626](https://github.com/dayfine/Arduino-Source/pull/626) (`plza/marker-read-plausible`, `walk_to_marker` drops near reads
+the walk cannot have reached).
 
 CI status:
 
@@ -106,21 +119,44 @@ Remaining: the `test_only_api` advisories left are names that later slices or [#
 - Bracket check: `BracketWatch`, `LockOnBracketDetector`.
 - `CatchPlan` / `CatchStop` throw-again.
 - `SpeciesCheck`, `DexRegisteredDetector`.
-- `ZoneGateReader` pillar steering: the 03.08b gate run is heading-only and untested on console.
-- `fly_to_center_or_stay`, `check_out_of_wild_zone`, menu saves, `face_objective`.
+- `ZoneGateReader` pillar steering: the 03.08b gate run is heading-only; it passed on console
+  several times on 2026-11-16 (with [#623](https://github.com/dayfine/Arduino-Source/pull/623)).
+- `fly_to_center_or_stay`, `check_out_of_wild_zone`, `face_objective`.
+- No longer cut: menu saves (`save_from_menu`, in [#622](https://github.com/dayfine/Arduino-Source/pull/622) and [#623](https://github.com/dayfine/Arduino-Source/pull/623)).
 
 ## Console
 
+All on lab-B. Source: `~/BDSPLab/notes/2026-11-09-checklist.md` (local).
+
 - 2026-11-15, lab build e36a816a4 (slice 1 E + lab tooling): 01.00 passed on a new game (autosave
   badge seen); 01.01 3/3, runs 2 and 3 reloaded the latest save and walked to the plaza fade.
-- Next: one full-chain run, 01.00 to 03.11, on a fresh game (you asked to delete the save and start
-  fresh).
+- 2026-11-15 evening, lean slices with [#604](https://github.com/dayfine/Arduino-Source/pull/604)/[#610](https://github.com/dayfine/Arduino-Source/pull/610) fixes, Italian, new game:
+  - 21:33 (a6a1f6067) and 22:01 (94b5f7e59): 01.00 passed (full new game by program) and 01.01
+    passed; 01.02 failed (Italian choice rows, then the 'A Parla' prompt; both fixed).
+  - 23:25 (33401063a): 01.01 to 02.01 passed, five checkpoints one-shot.
+  - 23:50 (a3e7f13a1): 02.02 and 02.03 passed one-shot; the run went on into 02.04. The checklist
+    has no pass lines for 02.04-02.07; the next run's save was at 03.01's start.
+- 2026-11-16 overnight, lean chain: 03.01 passed 01:03 (8bab6e0cc). 03.02 failed at Taunie and was
+  split into 03.02/03.02b; 03.02b passed one-shot at 03:49 (3917b1173), 03.03 passed 03:54. 03.04
+  failed (after_pokedex, then its walk); its autosave had moved the save to 03.04's end, fixed in
+  [#619](https://github.com/dayfine/Arduino-Source/pull/619). 03.05 passed one-shot 07:00 and 03.06 07:01 (dcf1e9e5e); 03.07 passed 07:17
+  (b47ca38fb). The lean 03.08 search ([#620](https://github.com/dayfine/Arduino-Source/pull/620)) never passed.
+- 2026-11-16 evening, 03.06 to 03.11 on lab builds of [#623](https://github.com/dayfine/Arduino-Source/pull/623), up to 974e29db9: run 9 passed
+  03.06-03.08b and failed 03.09 on a marker misread (40 m read as 4; fixed in [#626](https://github.com/dayfine/Arduino-Source/pull/626)). Run 10
+  passed 03.08b, 03.09, 03.10 and 03.11: "AutoStory done through 03.11" at 21:41. The
+  `leave_mable` B-mash fix and the office save worked. The auto rewind to the 03.06 backup save
+  ([#622](https://github.com/dayfine/Arduino-Source/pull/622)) worked earlier that day.
+- Next: one full-chain run, 01.00 to 03.11, on a fresh game, on lab build a6c80c35d
+  ([#623](https://github.com/dayfine/Arduino-Source/pull/623) 9b4ddc9f9). First delete console B's PLZA save (needs your OK). Afterwards run the
+  autosave promotion tool ([#624](https://github.com/dayfine/Arduino-Source/pull/624)) on its log. Optionally run with the skip-reload switch
+  ([#625](https://github.com/dayfine/Arduino-Source/pull/625)) to test 03.04.
 
 ## Side PRs
 
 - Fork [#585](https://github.com/dayfine/Arduino-Source/pull/585) (StringSelect dropdown text was black in dark mode; found while testing [#572](https://github.com/dayfine/Arduino-Source/pull/572)'s
   dropdowns) went upstream as [PokemonAutomation/Arduino-Source#1916](https://github.com/PokemonAutomation/Arduino-Source/pull/1916): one commit f8ed1ceae on
-  branch `upstream/string-select-text-color`. You tested it on console B's lab app.
+  branch `upstream/string-select-text-color`. You tested it on console B's lab app. Merged upstream
+  2026-11-16.
 
 ## Later slices
 
