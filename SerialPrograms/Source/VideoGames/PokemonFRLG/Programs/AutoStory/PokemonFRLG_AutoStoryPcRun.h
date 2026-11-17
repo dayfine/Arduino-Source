@@ -45,8 +45,8 @@ public:
 //  How a PC transfer sequence concluded.
 enum class PcEnd{
     DONE,
-    //  A DEPOSIT with PcMissing::SKIP whose slot the party hasn't got: the
-    //  PC wasn't touched.
+    //  A DEPOSIT with PcMissing::SKIP whose slot the party hasn't got, or a
+    //  WITHDRAW of a species the party has: the PC wasn't touched.
     SKIPPED,
     //  pc_transfer_error() refused it before the PC was touched.
     REFUSED,
@@ -57,7 +57,7 @@ struct PcResult{
     PcEnd end = PcEnd::FAILED;
     std::string detail = {};
     //  A WITHDRAW that is DONE: the party slot (from 0) it joined, the
-    //  first one free.
+    //  first one free; SKIPPED: the slot that already holds its species.
     std::optional<size_t> party_slot = std::nullopt;
 };
 

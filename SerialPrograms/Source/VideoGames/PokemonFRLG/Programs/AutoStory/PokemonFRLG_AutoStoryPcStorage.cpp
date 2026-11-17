@@ -363,6 +363,17 @@ PcResult run_pc_transfer(Logger& logger, PcStorageActions& actions, const PcTran
         logger.log(std::format("PC: skipped \"{}\": the party has {} Pokemon.", name, party.size()));
         return {PcEnd::SKIPPED, ""};
     }
+    //  A species the party already has was withdrawn on an earlier try
+    //  (a retry from a save made after it, console B 2026-11-17: 20.01a's
+    //  Magikarp already in slot 6): done, in the slot it holds.
+    if (transfer.action == PcAction::WITHDRAW && transfer.species){
+        for (size_t c = 0; c < party.size(); c++){
+            if (party[c].species == *transfer.species){
+                logger.log(std::format("PC: skipped \"{}\": party slot {} has it.", name, c + 1));
+                return {.end = PcEnd::SKIPPED, .detail = "", .party_slot = c};
+            }
+        }
+    }
     const std::string refused = pc_transfer_error(transfer, party);
     if (!refused.empty()){
         logger.log("PC: refused \"" + name + "\": " + refused + ".", COLOR_RED);

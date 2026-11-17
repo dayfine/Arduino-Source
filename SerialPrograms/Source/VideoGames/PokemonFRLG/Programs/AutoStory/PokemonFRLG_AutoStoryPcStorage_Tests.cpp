@@ -520,6 +520,15 @@ const std::vector<PcCase> PC_CASES = {
         .presses = "",
     },
     {
+        .name = "a species the party already has: skipped as done, its slot kept",
+        .transfer = {.action = PcAction::WITHDRAW, .box = 0, .species = "magikarp", .protect = true},
+        .party = {{.species = "a"}, {.species = "b"}, {.species = "c"}, {.species = "d"}, {.species = "e"}, {.species = "magikarp"}},
+        .end = PcEnd::SKIPPED,
+        .party_after = "a b c d e magikarp",
+        .presses = "",
+        .joined_slot = 5,
+    },
+    {
         .name = "a storage menu whose cursor isn't read: stop there",
         .transfer = {.action = PcAction::DEPOSIT, .party_slot = 1},
         .party = SQUIRTLE_MAGIKARP,
