@@ -127,9 +127,9 @@ struct VerifyRowCase{
         int reloads = 0;
     };
 
-    std::string name = {};
-    Input input = {};
-    Expectation expectation = {};
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryVerifyRow : public UnitTest{
