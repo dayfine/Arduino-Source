@@ -65,10 +65,10 @@ void add_part(const SegmentReport& part, SegmentReport& total){
     total.failed_event = part.failed_event;
     total.failure = part.failure;
 }
-
-
-} // namespace
-
+//  Opens the backup card and loads it when its count names a checkpoint
+//  at or before `failed` (an index of `rows`, checkpoint_at()): that
+//  checkpoint's index. Otherwise the card is cancelled, nothing loaded,
+//  and the failure ("unknown_backup", or the load's).
 std::variant<size_t, Outcome> rewind_to_backup(
     PlzaBackend& backend, std::span<const StoryCheckpoint> rows, size_t failed,
     std::span<const CheckpointStart> starts, const BackupSave& backup
@@ -99,6 +99,26 @@ std::variant<size_t, Outcome> rewind_to_backup(
     return *index;
 }
 
+} // namespace
+
+
+std::optional<size_t> start_or_rewind(
+    PlzaBackend& backend, const RewindPlan& plan, const StartSignature& read, const BackupSave& backup
+){
+    const std::optional<size_t> from = run_start(plan.rows, plan.starts, plan.first, read);
+    if (from || plan.max_rewinds == 0){
+        return from;
+    }
+    backend.log(std::format(
+        "AutoStory: the screen ({}) matches no checkpoint start up to {}: rewinding to the backup save", to_string(read), plan.rows[plan.first].id
+    ));
+    const std::variant<size_t, Outcome> back = rewind_to_backup(backend, plan.rows, plan.first, plan.starts, backup);
+    if (const size_t* index = std::get_if<size_t>(&back)){
+        return *index;
+    }
+    backend.log(std::format("AutoStory: no rewind: {}", to_string(std::get<Outcome>(back))));
+    return std::nullopt;
+}
 
 
 SegmentReport run_plza_with_rewinds(

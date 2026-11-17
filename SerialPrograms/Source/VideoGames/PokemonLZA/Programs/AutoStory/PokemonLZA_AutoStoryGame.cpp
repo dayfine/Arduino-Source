@@ -84,8 +84,7 @@ StoryActionSpec console_only(StoryActionSpec spec){
     return spec;
 }
 
-//  A walk to a gate's args: its bound, `timeout_ms` when left out, and the
-//  heading it faces first.
+//  A gate walk's args: "timeout_ms" (`timeout_ms` when left out) and "heading".
 std::vector<StoryArgSpec> gate_args(int64_t timeout_ms){
     return {
         optional_ms("timeout_ms", timeout_ms, "going this long with no A prompt fails the step"),
@@ -105,6 +104,7 @@ std::vector<StoryActionSpec> console_specs(){
         console_only(game_spec("catch_in_zone")),
         console_only(game_spec("walk_back_to_zone_road")),
         console_only(game_spec("walk_to_marker")),
+        console_only(game_spec("walk_to_unread_marker")),
         console_only(game_spec("claim_mable_research_reward")),
     };
 }
@@ -218,8 +218,7 @@ Outcome run_to_gate(StoryEnv& env, Milliseconds timeout){
 //  A walk to a wild zone's gate on the console, by a GateWalk.
 using GateStep = Outcome (*)(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk);
 
-//  "run_to_gate": the walk's heading faced first (face_heading()), if it
-//  has one, then run_to_gate().
+//  "run_to_gate": the walk's heading faced first, if any, then run_to_gate().
 Outcome run_gate_step(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk){
     if (walk.heading){
         const Outcome faced = face_heading(backend, minimap_arrow(env), *walk.heading);
@@ -300,6 +299,7 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
         }},
         {"walk_back_to_zone_road", walk_back_to_zone_road},
         {"walk_to_marker", walk_to_marker},
+        {"walk_to_unread_marker", walk_to_unread_marker},
         {"claim_mable_research_reward", claim_research_reward},
     };
     return steps;

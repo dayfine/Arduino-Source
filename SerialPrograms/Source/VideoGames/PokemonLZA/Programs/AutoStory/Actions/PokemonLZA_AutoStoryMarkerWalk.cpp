@@ -11,6 +11,7 @@
 #include <optional>
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader.h"
+#include "PokemonLZA_AutoStoryMarkerArrival.h"
 #include "PokemonLZA_AutoStoryMarkerDistance.h"
 #include "PokemonLZA_AutoStoryMarkerWalk.h"
 
@@ -44,7 +45,7 @@ constexpr Milliseconds SIDESTEP_HOLD(500);
 //  How one step of the walk ended.
 enum class MarkerStep{
     WALKING,
-    ARRIVED,    //  at the goal's distance (MarkerMove::ARRIVED), or (no distance) an A prompt or a dialog shows
+    ARRIVED,    //  at the goal's distance (MarkerMove::ARRIVED), or (no distance) MarkerArrival::arrived()
     LOST,       //  the marker did not show for 12 camera turns
     BLOCKED,    //  no distance read taken through every new view (MarkerMove::BLOCKED)
 };
@@ -52,12 +53,15 @@ enum class MarkerStep{
 //  Where a walk ends.
 struct MarkerGoal{
     //  The distance that ends it; none: an A prompt or a dialog does.
-    std::optional<int> stop_at;
+    std::optional<int> stop_at = std::nullopt;
     //  Back away from the marker, until it is `stop_at` or more; or on
     //  toward it, until `stop_at` or less.
     MarkerDirection direction = MarkerDirection::TOWARD;
     //  Reads below it are not taken; a walk toward ends at it.
-    std::optional<int> floor;
+    std::optional<int> floor = std::nullopt;
+    //  With no `stop_at`: what proves the prompt or dialog is the
+    //  objective's (MarkerArrival).
+    MarkerProof proof = MarkerProof::NEAR_READ;
 };
 
 //  The walk, one look and one move at a time.
@@ -68,11 +72,17 @@ public:
         , m_backend(backend)
         , m_goal(goal)
         , m_distance(goal.direction, goal.floor)
+        , m_arrival(goal.proof)
     {}
 
     //  The last distance read taken, if any.
     std::optional<int> position() const{
-        return m_distance.position();
+        return m_goal.stop_at ? m_distance.position() : m_arrival.position();
+    }
+
+    //  On a walk to the objective's prompt: where it is.
+    MarkerArrival& arrival(){
+        return m_arrival;
     }
 
     //  Back onto the marker's line, so the next walk starts on it.
@@ -82,12 +92,12 @@ public:
 
     MarkerStep step(){
         const Pokemon::Observation<Pokemon::ZonePose> look = m_backend.observe();
-        if (!m_goal.stop_at && (look.events.has(ScreenEvent::INTERACT_PROMPT) || look.events.has(ScreenEvent::DIALOG_BOX))){
-            return MarkerStep::ARRIVED;
-        }
         std::optional<ObjectiveMarker> marker;
         if (look.frame && *look.frame){
             marker = read_objective_marker(m_env.env.console, *look.frame->frame);
+        }
+        if (!m_goal.stop_at && at_objective(look, marker)){
+            return MarkerStep::ARRIVED;
         }
         if (!marker){
             return look_behind();
@@ -103,9 +113,34 @@ public:
     }
 
 private:
+    //  A walk to the objective's prompt: `look` and its `marker`'s digits
+    //  to m_arrival, a read taken toward a held-up walk (on_distance()).
+    //  Whether it arrived: a prompt or a dialog near the objective. One
+    //  farther on is walked past, logged once while it shows.
+    bool at_objective(const ScreenObservation& look, const std::optional<ObjectiveMarker>& marker){
+        const bool prompt = look.events.has(ScreenEvent::INTERACT_PROMPT) || look.events.has(ScreenEvent::DIALOG_BOX);
+        const std::optional<int> read = marker && marker->distance > 0 ? std::optional<int>(marker->distance) : std::nullopt;
+        if (m_arrival.look(read, prompt)){
+            on_distance(*read);
+        }
+        if (m_arrival.arrived()){
+            m_backend.log(std::format(
+                "[PLZA] walk_to_marker: a prompt or dialog near the objective (last read taken {})", m_arrival.position().value_or(-1)
+            ));
+            return true;
+        }
+        if (prompt && !m_prompt_passed){
+            m_backend.log(std::format(
+                "[PLZA] walk_to_marker: a prompt or dialog, not near the objective (last read taken {}): walking on", m_arrival.position().value_or(-1)
+            ));
+        }
+        m_prompt_passed = prompt;
+        return false;
+    }
+
     //  A marker on screen. With no distance to stop at (the walk ends at a
-    //  prompt), a read taken counts toward a held-up walk, and the camera
-    //  is turned to it and a step on. Else its read decides
+    //  prompt, at_objective()), the camera is turned to it and a step on.
+    //  Else its read decides
     //  (MarkerDistance): a step on only on a read taken; with none, the
     //  walk stands and reads again, trying new views (new_view()) until
     //  one reads or it is blocked.
@@ -114,9 +149,6 @@ private:
     //  stall).
     MarkerStep on_marker(const ObjectiveMarker& marker){
         if (!m_goal.stop_at){
-            if (marker.distance > 0 && m_distance.read(marker.distance)){
-                on_distance(marker.distance);
-            }
             steer(marker.x, /*aim=*/0.5);
             step_on();
             return MarkerStep::WALKING;
@@ -262,6 +294,8 @@ private:
     PlzaBackend& m_backend;
     const MarkerGoal m_goal;
     MarkerDistance m_distance;
+    MarkerArrival m_arrival;
+    bool m_prompt_passed = false;   //  the last look showed a prompt or dialog not near the objective
     int m_best = 1 << 30;
     int m_still = 0;
     int m_sidesteps = 0;
@@ -273,12 +307,19 @@ private:
     double m_last_x = 0.5;
 };
 
-//  Whether an A prompt or a dialog shows within MARKER_SCENE_WAIT.
-bool objective_reached(PlzaBackend& backend){
+//  After a walk that did not arrive (the marker gone, a scene at the
+//  objective taking it away): whether an A prompt or a dialog shows within
+//  MARKER_SCENE_WAIT while `arrival` is near the objective. Not near:
+//  false at once.
+bool objective_reached(PlzaBackend& backend, MarkerArrival& arrival){
+    if (!arrival.near()){
+        return false;
+    }
     for (Milliseconds waited(0); ; waited += MARKER_POLL){
         backend.scope().throw_if_cancelled();
         const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
-        if (look.events.has(ScreenEvent::INTERACT_PROMPT) || look.events.has(ScreenEvent::DIALOG_BOX)){
+        arrival.look(std::nullopt, look.events.has(ScreenEvent::INTERACT_PROMPT) || look.events.has(ScreenEvent::DIALOG_BOX));
+        if (arrival.arrived()){
             return true;
         }
         if (waited >= MARKER_SCENE_WAIT){
@@ -308,6 +349,25 @@ bool run_marker_walk(Milliseconds limit, MarkerWalk& walk, PlzaBackend& backend)
     }
     backend.log(std::format("[PLZA] marker walk: out of time, last read taken {}", walk.position().value_or(-1)));
     return false;
+}
+
+//  walk_to_marker(), near the objective by `proof`.
+Pokemon::Outcome walk_to_objective(StoryEnv& env, PlzaBackend& backend, MarkerProof proof){
+    backend.log(std::format(
+        "[PLZA] walk_to_marker: to the objective's prompt or dialog, near it by {}",
+        proof == MarkerProof::NEAR_READ ? "a distance read taken" : "no far read"
+    ));
+    MarkerWalk walk(env, backend, MarkerGoal{.proof = proof});
+    if (run_marker_walk(MARKER_WALK_LIMIT, walk, backend)){
+        return Pokemon::outcome_ok();
+    }
+    if (!objective_reached(backend, walk.arrival())){
+        return Pokemon::outcome_failed("objective_not_reached", std::format(
+            "no A prompt or dialog near the objective marker (last read taken {}, near: {})",
+            walk.position().value_or(-1), walk.arrival().near() ? "yes" : "no"
+        ));
+    }
+    return Pokemon::outcome_ok();
 }
 
 } // namespace
@@ -346,12 +406,11 @@ std::optional<int> read_marker_distance(StoryEnv& env, PlzaBackend& backend, std
 }
 
 Pokemon::Outcome walk_to_marker(StoryEnv& env, PlzaBackend& backend){
-    MarkerWalk walk(env, backend, MarkerGoal{});
-    run_marker_walk(MARKER_WALK_LIMIT, walk, backend);
-    if (!objective_reached(backend)){
-        return Pokemon::outcome_failed("objective_not_reached", "no A prompt or dialog at the objective marker");
-    }
-    return Pokemon::outcome_ok();
+    return walk_to_objective(env, backend, MarkerProof::NEAR_READ);
+}
+
+Pokemon::Outcome walk_to_unread_marker(StoryEnv& env, PlzaBackend& backend){
+    return walk_to_objective(env, backend, MarkerProof::NO_FAR_READ);
 }
 
 

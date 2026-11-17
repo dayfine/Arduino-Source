@@ -164,29 +164,21 @@ StartSignature read_start_signature(ConsoleHandle& console, ProControllerContext
     return StartSignature{};
 }
 
-//  The checkpoint a run asked to start at `first` plays from: where the
+//  The checkpoint a run asked to start at `plan.first` plays from: where the
 //  screen says the player is (run_start()), `first` or an earlier
 //  checkpoint. Throws OperationFailedException, with a screenshot, as
 //  "start_position_unknown" when the position matches no start: no
-//  checkpoint's events run from the wrong place. When `max_rewinds` allows,
-//  an unknown start first rewinds to the backup save: a catch autosaves
-//  where it lands, so 03.08's latest save can stand mid-zone (console B,
-//  2026-11-16 17:24, at the 100 spot).
+//  checkpoint's events run from the wrong place. When `plan.max_rewinds`
+//  allows, an unknown start first rewinds to `backup` (start_or_rewind()).
 size_t checked_first_row(
     ConsoleHandle& console, ProControllerContext& context, PlzaBackend& backend,
-    std::span<const StoryCheckpoint> rows, size_t first, std::span<const CheckpointStart> starts,
-    const BackupSave& backup, size_t max_rewinds
+    const RewindPlan& plan, const BackupSave& backup
 ){
+    const std::span<const StoryCheckpoint> rows = plan.rows;
+    const size_t first = plan.first;
+    const std::span<const CheckpointStart> starts = plan.starts;
     const StartSignature read = read_start_signature(console, context);
-    std::optional<size_t> from = run_start(rows, starts, first, read);
-    if (!from && max_rewinds > 0){
-        console.log(std::format("AutoStory: the screen ({}) matches no checkpoint start up to {}: rewinding to the backup save", to_string(read), rows[first].id));
-        const std::variant<size_t, Outcome> back = rewind_to_backup(backend, rows, first, starts, backup);
-        if (const size_t* index = std::get_if<size_t>(&back)){
-            return *index;
-        }
-        console.log(std::format("AutoStory: no rewind: {}", to_string(std::get<Outcome>(back))));
-    }
+    const std::optional<size_t> from = start_or_rewind(backend, plan, read, backup);
     if (!from){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::NO_ERROR_REPORT,
@@ -282,19 +274,17 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const StoryGame<ZonePose> game = make_plza_story_game(story, story_data, sightings);
     RunState state;
 
-    const std::vector<CheckpointStart>& starts = builtin_checkpoint_starts();
-    size_t from = first;
+    RewindPlan plan{
+        .rows = rows, .first = first, .last = last, .attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT,
+        .starts = builtin_checkpoint_starts(), .max_rewinds = REWINDS_TO_BACKUP,
+    };
     if (!story_row_starts_without_save(rows[first])){
         if (LOAD_SAVE_FIRST){
             load_first_save(env.console, game, backend, rows[first]);
         }
-        from = checked_first_row(env.console, context, backend, rows, first, starts, console_backup_save(story), REWINDS_TO_BACKUP);
+        plan.first = checked_first_row(env.console, context, backend, plan, console_backup_save(story));
     }
 
-    const RewindPlan plan{
-        .rows = rows, .first = from, .last = last, .attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT,
-        .starts = starts, .max_rewinds = REWINDS_TO_BACKUP,
-    };
     const SegmentReport report = run_plza_with_rewinds(game, story_data, plan, console_backup_save(story), backend, sightings, state);
     if (!report.completed){
         throw OperationFailedException(
