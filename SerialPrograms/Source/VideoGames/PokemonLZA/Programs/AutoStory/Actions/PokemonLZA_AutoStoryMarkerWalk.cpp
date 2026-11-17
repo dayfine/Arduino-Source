@@ -329,7 +329,7 @@ std::optional<int> walk_back_from_marker(StoryEnv& env, PlzaBackend& backend, in
 
 std::optional<int> read_marker_distance(StoryEnv& env, PlzaBackend& backend, std::optional<int> floor, int looks){
     MarkerDistance distance(MarkerDirection::TOWARD, floor);
-    for (int look = 0; look < looks; look++){
+    for (int tries = 0; tries < looks; tries++){
         backend.scope().throw_if_cancelled();
         const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
         if (look.frame && *look.frame){
