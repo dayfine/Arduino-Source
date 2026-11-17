@@ -5,6 +5,9 @@
  */
 
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Inference/PokemonBDSP_DialogDetector.h"
+#include "Inference/PokemonBDSP_MenuDetector.h"
+#include "Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_Maps_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_PlannedRoute_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_RoutePlanner_Tests.h"
@@ -21,6 +24,9 @@ namespace PokemonBDSP{
 
 
 void add_tests(UnitTestDatabase& database){
+    add_tests_DialogDetector(database);
+    add_tests_MenuDetector(database);
+    add_tests_AutoStory_Actions(database);
     add_tests_AutoStory_Maps(database);
     add_tests_AutoStory_StoryWorld(database);
     add_tests_AutoStory_RoutePlanner(database);
