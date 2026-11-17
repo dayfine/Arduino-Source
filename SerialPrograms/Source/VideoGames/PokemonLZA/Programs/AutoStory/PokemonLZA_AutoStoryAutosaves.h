@@ -49,7 +49,9 @@ public:
     //  started is that earlier save, not counted: the badge of the save
     //  that ended the last checkpoint is often still up on the next one's
     //  first looks (02.04's check-in, 1.2 s into 02.05, console B
-    //  2026-11-16).
+    //  2026-11-16). So is a badge that first shows in the checkpoint's
+    //  first 1.5 s, seen before or not: 02.07's, unseen in 02.07, was up
+    //  on 03.01's first look (console B, 2026-11-16 23:54).
     void note(PlzaBackend& backend, const Pokemon::Observation<Pokemon::ZonePose>& look, std::string_view step);
     //  The run saved the game from the menu in step `step` (MENU_SAVE_ACTION):
     //  counted as an autosave seen there, logged as "[PLZA] saved from the

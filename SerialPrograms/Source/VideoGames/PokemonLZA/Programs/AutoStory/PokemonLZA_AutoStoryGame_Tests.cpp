@@ -1689,10 +1689,27 @@ const SightingsCase SIGHTINGS_CASES[] = {
         .expectation = {.seen_in = "take_elevator_up"},
     },
     {
-        .name = "a badge on a checkpoint's first look with none before it is this checkpoint's",
+        //  console B, 2026-11-16 23:54: 02.07 ended on the mission banner
+        //  with no badge seen; 02.07's autosave on entering Room 202 was
+        //  still up on 03.01's first look, 37 ms in, and 03.01's failure
+        //  then took its start save for gone.
+        .name = "a badge on a checkpoint's first look with none seen before it is the last checkpoint's save",
+        .input = {.looks = {
+            {.step = "first_evening", .badge = false, .at = Milliseconds(0)},
+            {.step = ""},
+            {.step = "out_of_room_202", .badge = true, .at = Milliseconds(1300)},
+            {.step = "out_of_room_202", .badge = true, .at = Milliseconds(1700)},
+            {.step = "out_of_room_202", .badge = false, .at = Milliseconds(3000)},
+            {.step = "leave_room_202", .badge = false, .at = Milliseconds(9000)},
+        }},
+        .expectation = {.seen_in = std::nullopt},
+    },
+    {
+        .name = "a badge first seen past the checkpoint's first moments is this checkpoint's",
         .input = {.looks = {
             {.step = ""},
-            {.step = "opening", .badge = true, .at = Milliseconds(0)},
+            {.step = "opening", .badge = false, .at = Milliseconds(0)},
+            {.step = "opening", .badge = true, .at = Milliseconds(2000)},
         }},
         .expectation = {.seen_in = "opening"},
     },

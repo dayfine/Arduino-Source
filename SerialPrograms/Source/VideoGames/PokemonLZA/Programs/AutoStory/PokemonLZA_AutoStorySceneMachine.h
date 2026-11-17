@@ -7,7 +7,8 @@
  *  observed, so they run on the console and on a scripted backend alike:
  *  every look picks one state, the state takes one step, and each change of
  *  state or of the look's events is logged (repeats are summed up). A
- *  choice gets A (its top row); a text box gets B in a machine that ends
+ *  choice takes its top row: Up while a lower row is highlighted, then A;
+ *  a text box gets B in a machine that ends
  *  in control (B turns a line like A, but cannot talk again once the box
  *  closes: A at the closing box restarted 03.05's nurse's talk), else the
  *  text button, as does the advance chevron (ADVANCE_ARROW_READING). The

@@ -208,16 +208,14 @@ bool control_prompt_shows(const SceneMachineConfig& config, const ScreenObservat
     return party_bar_is_control(config) && look.events.has(ScreenEvent::INTERACT_PROMPT);
 }
 
-//  The button DIALOG presses on `look`: A on a choice (its top row); B on a
+//  The button DIALOG presses on `look` with no choice box (a choice goes
+//  to the top row first: SceneRunner::choice_button()): B on a
 //  text box in a machine that ends in control; else config.text_button. B
 //  turns a line like A, but on a box that is closing it does nothing, where
 //  A lands on the A prompt the talk leaves and starts it again: 03.05's
 //  nurse ("your Pokemon is already in great shape", 110 s of it, console B
 //  2026-11-16).
 Button dialog_button(const SceneMachineConfig& config, const ScreenObservation& look){
-    if (look.events.has(ScreenEvent::CHOICE_BOX)){
-        return BUTTON_A;
-    }
     if (party_bar_is_control(config) && look.events.has(ScreenEvent::DIALOG_BOX)){
         return BUTTON_B;
     }
@@ -549,6 +547,13 @@ public:
         , m_start(start)
     {}
 
+    //  Logs `text` as one of the machine's own lines, on the overlay too:
+    //  "[PLZA label] text".
+    void note(std::string_view text){
+        flush();
+        m_backend.log(std::format("[PLZA {}] {}", m_label, text));
+    }
+
     //  Logs or counts a look the machine acted on as `screen`, with
     //  `readings` (describe_look()); `pressed`: its step presses a button.
     void look(SceneScreen screen, std::string_view readings, WallClock when, bool pressed){
@@ -697,15 +702,36 @@ public:
 
 private:
     //  The button `screen`'s step presses on `look`.
-    Button button_of(SceneScreen screen, const ScreenObservation& look) const{
+    Button button_of(SceneScreen screen, const ScreenObservation& look){
         switch (screen){
         case SceneScreen::DIALOG:
-            return dialog_button(m_config, look);
+            return look.events.has(ScreenEvent::CHOICE_BOX) ? choice_button(look) : dialog_button(m_config, look);
         case SceneScreen::BLIND_PRESS:
             return m_config.blind_button;
         default:
             return BUTTON_A;
         }
+    }
+
+    //  The button for the choice box on `look`: Up while a row below the
+    //  top is highlighted, A on the top row, each look reading the rows
+    //  again. 03.01's lobby on the German game showed Alton's choice with
+    //  its second row highlighted; A took it and he asked again, until the
+    //  step failed on 400 text boxes (console B, 2026-11-17 00:03). A
+    //  choice whose rows do not read gets A.
+    Button choice_button(const ScreenObservation& look){
+        const auto rows = look.readings.find(CHOICE_ROWS_READING);
+        const auto selected = look.readings.find(CHOICE_SELECTED_READING);
+        if (rows == look.readings.end() || selected == look.readings.end()){
+            m_log.note("choice: rows not read: A");
+            return BUTTON_A;
+        }
+        if (selected->second > 0){
+            m_log.note(std::format("choice: {} rows, row {} highlighted: Up to row 0", rows->second, selected->second));
+            return BUTTON_UP;
+        }
+        m_log.note(std::format("choice: {} rows, row 0 highlighted: A", rows->second));
+        return BUTTON_A;
     }
 
     void wait(SceneScreen screen){

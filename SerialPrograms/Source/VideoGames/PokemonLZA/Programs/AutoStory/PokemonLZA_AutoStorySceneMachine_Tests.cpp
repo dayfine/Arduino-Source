@@ -7,6 +7,7 @@
  *  and their log).
  *
  */
+//  code-health: allow file_lines -- one run-case table for the scene machine, sharing the scripted looks above it
 
 #include <algorithm>
 #include <format>
@@ -52,6 +53,14 @@ Observation<ZonePose> look_at(Milliseconds at, ScreenEvents events = {}, std::ve
     for (std::string_view reading : readings){
         look.readings[std::string(reading)] = 1;
     }
+    return look;
+}
+
+//  A look `at` with a choice box of `rows` rows, `selected` highlighted.
+Observation<ZonePose> choice_at(Milliseconds at, int rows, int selected){
+    Observation<ZonePose> look = look_at(at, {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX});
+    look.readings[std::string(CHOICE_ROWS_READING)] = rows;
+    look.readings[std::string(CHOICE_SELECTED_READING)] = selected;
     return look;
 }
 
@@ -519,6 +528,32 @@ const RunCase RUN_CASES[] = {
             look_at(/*at=*/1600ms, NOTHING, {CONTROLS_HINT_READING}),
         }},
         .expectation = {.verdict = "done", .a_presses = 1, .states = "dialog, hint_showing, controls_hint"},
+    },
+    {
+        //  03.01's lobby on the German game (console B, 2026-11-17 00:03):
+        //  Alton's choice came up with its second row highlighted, A took
+        //  it, and he asked again, until the step failed on 400 text boxes.
+        .name = "a choice with its second row highlighted: Up, then A on the top row",
+        .input = {.looks = {
+            choice_at(/*at=*/0ms, /*rows=*/2, /*selected=*/1),
+            choice_at(/*at=*/500ms, /*rows=*/2, /*selected=*/0),
+            look_at(/*at=*/1000ms, NOTHING, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/2100ms, NOTHING, {CONTROLS_HINT_READING}),
+        }},
+        .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] choice: 2 rows, row 1 highlighted: Up to row 0"},
+    },
+    {
+        //  B on a PLZA choice box jumps to its last (cancel) row: a B for
+        //  the text that lands as the box opens leaves it there.
+        .name = "a choice left on its last row by a B: Up to the top row, then A",
+        .input = {.looks = {
+            choice_at(/*at=*/0ms, /*rows=*/3, /*selected=*/2),
+            choice_at(/*at=*/500ms, /*rows=*/3, /*selected=*/1),
+            choice_at(/*at=*/1000ms, /*rows=*/3, /*selected=*/0),
+            look_at(/*at=*/1500ms, NOTHING, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/2600ms, NOTHING, {CONTROLS_HINT_READING}),
+        }},
+        .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] choice: 3 rows, row 0 highlighted: A"},
     },
     {
         .name = "the mission complete card is busy: A, and no quiet end while it shows",
