@@ -2537,6 +2537,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/LegacyJsonFormat.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/Json_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/Json_Tests.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySupplies.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySupplies.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.h
