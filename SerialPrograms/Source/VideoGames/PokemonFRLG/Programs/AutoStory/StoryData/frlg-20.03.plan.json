@@ -208,6 +208,7 @@
   },
   "execution": {
     "menu": "full",
+    "protected_slots": [6],
     "verify": {
       "tries": 10,
       "min_pass": 5,

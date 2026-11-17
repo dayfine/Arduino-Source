@@ -56,6 +56,9 @@ enum class PcEnd{
 struct PcResult{
     PcEnd end = PcEnd::FAILED;
     std::string detail = {};
+    //  A WITHDRAW that is DONE: the party slot (from 0) it joined, the
+    //  first one free.
+    std::optional<size_t> party_slot = std::nullopt;
 };
 
 //  Reads after this many presses without the overworld back: a failure.

@@ -19,8 +19,12 @@ namespace PokemonFRLG{
 
 //  The stored plan lines of 20.01a and after.
 inline constexpr std::string_view FRLG_PLAN_GOLDEN_20[] = {
-    "20.01a indigo_mart_clerk from IndigoPlateau_PokemonCenter_1F (13, 12) facing north to IndigoPlateau_PokemonCenter_1F (2, 7) facing west",
-    "20.01a   walk west 9 -> IndigoPlateau_PokemonCenter_1F (4, 12) [walk only]",
+    "20.01a indigo_pc_front from IndigoPlateau_PokemonCenter_1F (13, 12) facing north to IndigoPlateau_PokemonCenter_1F (17, 10) facing north",
+    "20.01a   walk east 4 -> IndigoPlateau_PokemonCenter_1F (17, 12) [walk only]",
+    "20.01a   walk north 2 (to wall) -> IndigoPlateau_PokemonCenter_1F (17, 10) [walk only]",
+    "20.01a indigo_mart_clerk from IndigoPlateau_PokemonCenter_1F (17, 10) facing north to IndigoPlateau_PokemonCenter_1F (2, 7) facing west",
+    "20.01a   walk south 2 -> IndigoPlateau_PokemonCenter_1F (17, 12) [walk only]",
+    "20.01a   walk west 13 -> IndigoPlateau_PokemonCenter_1F (4, 12) [walk only]",
     "20.01a   walk north 5 -> IndigoPlateau_PokemonCenter_1F (4, 7) [walk only]",
     "20.01a   walk west 2 (to wall) -> IndigoPlateau_PokemonCenter_1F (2, 7) [walk only]",
     "20.01 below_league_door from IndigoPlateau_PokemonCenter_1F (2, 7) facing west to IndigoPlateau_PokemonCenter_1F (4, 2) facing north",

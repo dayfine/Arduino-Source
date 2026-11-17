@@ -86,7 +86,13 @@ private:
     PcDecision on_mon_menu(const PcView& view);
     PcDecision on_box_chooser(const PcView& view);
 
+    //  The box slot the hand goes to next: the transfer's, or for a
+    //  species the next cell to read.
+    size_t target_slot() const;
+
     PcTransfer m_transfer;
+    //  A species withdrawal: the cell read next, row by row.
+    size_t m_search_slot = 0;
     bool m_booted = false;
     //  The overworld read since A at the PC, while the PC boots.
     size_t m_booting_reads = 0;

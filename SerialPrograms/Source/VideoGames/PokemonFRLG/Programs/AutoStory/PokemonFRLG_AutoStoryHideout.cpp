@@ -12,6 +12,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBike.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryFieldMoves.h"
+#include "PokemonFRLG_AutoStoryHallOfFame.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryHideoutLift.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
@@ -209,6 +210,9 @@ std::optional<Pokemon::Outcome> run_field_game_step(
     if (step.action == POSTER_SWITCH_VARIANT){
         push_poster_switch(console, context);
         return Pokemon::outcome_ok();
+    }
+    if (const std::optional<Pokemon::Outcome> hall = run_hall_of_fame_step(console, context, step)){
+        return hall->succeeded() ? done() : *hall;
     }
     if (!is_item_use_step(step)){
         return std::nullopt;

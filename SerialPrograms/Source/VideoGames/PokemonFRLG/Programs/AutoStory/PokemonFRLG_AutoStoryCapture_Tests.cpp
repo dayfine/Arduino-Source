@@ -445,12 +445,13 @@ public:
     LineLogger logger;
     FakeCaptureGame capture;
     IdlePc pc;
+    std::vector<size_t> protected_slots;
 
     virtual Pokemon::Outcome run(const StoryStep& step, Pokemon::RunState&) override{
         if (step.kind != Pokemon::StoryStepKind::GAME){
             return Pokemon::unsupported_step(step);
         }
-        const std::optional<Pokemon::Outcome> outcome = run_storage_game_step(logger, nullptr, step, capture, pc);
+        const std::optional<Pokemon::Outcome> outcome = run_storage_game_step(protected_slots, logger, nullptr, step, capture, pc);
         return outcome ? *outcome : Pokemon::unsupported_step(step);
     }
 };

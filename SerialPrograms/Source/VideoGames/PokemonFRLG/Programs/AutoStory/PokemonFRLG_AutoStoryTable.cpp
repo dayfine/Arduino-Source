@@ -111,6 +111,17 @@ Supplies read_supplies(const JsonObject& execution, std::string_view source){
     }else if (execution.get_value("lead") != nullptr){
         throw ParseException(std::format("{}: lead must be a string", source));
     }
+    //  Party slots, from 1 as the game shows them, never sent into a
+    //  battle: the lead (1) always fights.
+    if (const JsonValue* slots = execution.get_value("protected_slots")){
+        for (const JsonValue& slot : slots->to_array_throw(std::string(source))){
+            const int64_t number = slot.to_integer_throw(std::string(source));
+            if (number < 2 || number > 6){
+                throw ParseException(std::format("{}: protected slot {} out of range (2-6)", source, number));
+            }
+            supplies.protected_slots.push_back((size_t)number - 1);
+        }
+    }
     return supplies;
 }
 
@@ -197,7 +208,7 @@ Pokemon::StoryFileRow<StoryCheckpoint> read_story_file(const JsonValue& value, s
     std::set<std::string> note_keys;
     const Pokemon::ExecutionReader read_execution = [&](const JsonObject& execution, std::string_view where){
         shared = Pokemon::read_story_row_execution(
-            execution, where, {"menu", "supplies", "lead", "handoff", "gift", "live_start", "notes"}
+            execution, where, {"menu", "supplies", "lead", "protected_slots", "handoff", "gift", "live_start", "notes"}
         );
         checkpoint.menu = read_start_menu(execution.get_string_throw("menu", std::string(where)), where);
         checkpoint.supplies = read_supplies(execution, where);
