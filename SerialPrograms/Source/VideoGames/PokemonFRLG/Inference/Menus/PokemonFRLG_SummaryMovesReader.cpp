@@ -31,8 +31,11 @@ namespace PokemonFRLG{
 namespace{
 
 //  Measured on captures of the page (console B, 2026-11-02): names from
-//  x 163, y 24 to 32 (with the shadow); the PP's digits y 34 to 43, the
-//  current PP's to x 216, "/" from 217 to 224, the full PP's from 224.
+//  x 163, y 24 to 32 (with the shadow); the PP's digits y 34 to 43. Across,
+//  the game prints (pret pokefirered src/pokemon_summary_screen.c,
+//  PrintMoveNameAndPP, the pane from x 160) the "PP" label from x 196 to 205,
+//  the current PP right-aligned in two 6-pixel cells from 206 to 217, "/" from
+//  218 and the full PP's two cells from 224. The label takes the PP's colour.
 constexpr double ROW_STEP = 28;
 constexpr double NAME_TOP = 22;
 constexpr double PP_TOP = 33;
@@ -262,7 +265,8 @@ ImageFloatBox summary_move_name_box(size_t row){
     return ImageFloatBox(161.0 / 240, (NAME_TOP + ROW_STEP * double(row)) / 160, 76.0 / 240, 12.0 / 160);
 }
 ImageFloatBox summary_move_pp_box(size_t row){
-    return ImageFloatBox(204.0 / 240, (PP_TOP + ROW_STEP * double(row)) / 160, 13.0 / 240, 11.0 / 160);
+    //  From 206: the label's last column at 204 read as a "4" in yellow ink.
+    return ImageFloatBox(206.0 / 240, (PP_TOP + ROW_STEP * double(row)) / 160, 12.0 / 240, 11.0 / 160);
 }
 ImageFloatBox summary_move_max_pp_box(size_t row){
     return ImageFloatBox(224.0 / 240, (PP_TOP + ROW_STEP * double(row)) / 160, 15.0 / 240, 11.0 / 160);
@@ -286,11 +290,17 @@ std::vector<SummaryMove> read_summary_moves(Logger& logger, Language language, c
         if (!row_has_move(screen, row)){
             break;
         }
-        moves.push_back(SummaryMove{
+        SummaryMove move{
             .move = read_summary_move_name(logger, language, screen, row),
             .pp = read_pp(logger, screen, summary_move_pp_box(row)),
             .max_pp = read_pp(logger, screen, summary_move_max_pp_box(row)),
-        });
+        };
+        //  More PP than the full PP is a misread, not a reading: unread
+        //  (the League after Agatha: SURF's yellow "6/15" read as 46/15).
+        if (move.max_pp >= 0 && move.pp > move.max_pp){
+            move.pp = -1;
+        }
+        moves.push_back(std::move(move));
     }
     return moves;
 }
@@ -400,12 +410,18 @@ void add_tests_SummaryMovesReader(UnitTestDatabase& database){
     //  read as attract, ?, attract and steel-wing before its line's moves
     //  were in MOVE_NAMES.
     database.add<Test_SummaryScreen>("PokemonFRLG/SummaryMovesReader/Pidgey_KnownMoves_eng.png");
-    //  FireRed at the League after Agatha, 2026-11-17: Blastoise
-    //  with BITE 9/25 and SURF 6/15 in yellow, read as -1/-1 while only dark
-    //  ink was read. Added once the image is in the test repo.
-    const std::string low_pp = "PokemonFRLG/SummaryMovesReader/Blastoise_LowPP_eng.png";
-    if (Filesystem::exists(UNIT_TEST_RESOURCE_PATH() + low_pp)){
-        database.add<Test_SummaryScreen>(low_pp);
+    //  FireRed at the League after Agatha, 2026-11-17: Blastoise with BITE
+    //  9/25 and SURF 6/15 in yellow, read as -1/-1 while only dark ink was
+    //  read; then BITE 15/25 and SURF 6/15, its yellow "6" read as 46 while
+    //  the box held the yellow "PP" label's edge. Added once the images are in
+    //  the test repo.
+    for (std::string_view low_pp : {
+        "PokemonFRLG/SummaryMovesReader/Blastoise_LowPP_eng.png",
+        "PokemonFRLG/SummaryMovesReader/Blastoise_Surf6_eng.png",
+    }){
+        if (Filesystem::exists(std::format("{}{}", UNIT_TEST_RESOURCE_PATH(), low_pp))){
+            database.add<Test_SummaryScreen>(std::string(low_pp));
+        }
     }
 }
 
