@@ -122,9 +122,9 @@ private:
     bool at_objective(const ScreenObservation& look, const std::optional<ObjectiveMarker>& marker){
         const bool prompt = look.events.has(ScreenEvent::INTERACT_PROMPT) || look.events.has(ScreenEvent::DIALOG_BOX);
         const std::optional<int> read = marker && marker->distance > 0 ? std::optional<int>(marker->distance) : std::nullopt;
-        if (m_arrival.look(MarkerLook{.distance = read, .marker_shows = marker.has_value(), .prompt_or_dialog = prompt})){
-            on_distance(*read);
-        }
+        on_read(read, m_arrival.look(MarkerLook{
+            .distance = read, .marker_shows = marker.has_value(), .prompt_or_dialog = prompt, .at = current_time(),
+        }));
         if (m_arrival.arrived()){
             m_backend.log(std::format(
                 "[PLZA] walk_to_marker: a prompt or dialog near the objective (last read taken {})", m_arrival.position().value_or(-1)
@@ -253,6 +253,20 @@ private:
         return MarkerStep::WALKING;
     }
 
+    //  What came of `read` on a walk to the objective's prompt: a read
+    //  taken goes on to on_distance(), one too near too soon is logged.
+    void on_read(std::optional<int> read, const MarkerRead& result){
+        if (result.taken){
+            on_distance(*read);
+        }
+        if (result.too_fast_after){
+            m_backend.log(std::format(
+                "[PLZA] walk_to_marker: read {} after {} in {:.1f} s: ignored",
+                *read, m_arrival.position().value_or(-1), result.too_fast_after->count() / 1000.0
+            ));
+        }
+    }
+
     //  A taken read on a walk to the objective's prompt (no stop_at; a
     //  walk to a stop is held up by MarkerDistance): logged when it
     //  changes; 4 reads with no new best is a walk held up (the Research
@@ -328,6 +342,7 @@ bool objective_reached(StoryEnv& env, PlzaBackend& backend, MarkerArrival& arriv
             .distance = std::nullopt,
             .marker_shows = marker,
             .prompt_or_dialog = look.events.has(ScreenEvent::INTERACT_PROMPT) || look.events.has(ScreenEvent::DIALOG_BOX),
+            .at = current_time(),
         });
         if (arrival.arrived()){
             return true;

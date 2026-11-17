@@ -14,6 +14,7 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryMarkerArrival_H
 
 #include <optional>
+#include "Common/Cpp/Time.h"
 #include "PokemonLZA_AutoStoryMarkerDistance.h"
 
 namespace PokemonAutomation{
@@ -41,6 +42,17 @@ struct MarkerLook{
     bool marker_shows = true;
     //  An A prompt or a dialog shows.
     bool prompt_or_dialog = false;
+    //  When the look was taken.
+    WallClock at = {};
+};
+
+//  What came of a look's distance read.
+struct MarkerRead{
+    //  Taken (MarkerDistance::read()).
+    bool taken = false;
+    //  A read of 20 or less not taken because it is nearer than the walk
+    //  can have come since the last read taken: the time since that read.
+    std::optional<Milliseconds> too_fast_after = std::nullopt;
 };
 
 //  Where a walk to the objective's prompt is, one look at a time.
@@ -51,12 +63,16 @@ public:
         , m_distance(MarkerDirection::TOWARD, std::nullopt)
     {}
 
-    //  A look. Returns whether its distance is taken
-    //  (MarkerDistance::read()).
+    //  A look. Returns what came of its distance read (MarkerRead).
     //  A read below 10 is taken only after one of 10 or more: junk OCR
     //  ("E5", "v1", "E6") by a street dialog agreed on 6 at the start of
     //  03.09's walk and passed it there (console B, 2026-11-16 18:47).
-    bool look(const MarkerLook& look);
+    //  A read of 20 or less is taken only if the walk can have come that
+    //  near since the last read taken: at Wild Zone 1's exit "1", "4" and
+    //  "4" agreed on 4 5.4 s after 40 (the marker showed 39), and the exit
+    //  pillar's prompt passed 03.09's walk there (console B, 2026-11-16
+    //  21:33).
+    MarkerRead look(const MarkerLook& look);
 
     //  Whether the last look showed an A prompt or a dialog with the walk
     //  near(), and, with the marker still up, with no read taken or the
@@ -80,6 +96,7 @@ public:
 private:
     const MarkerProof m_proof;
     MarkerDistance m_distance;
+    WallClock m_taken_at = {};      //  when the last read taken was read
     bool m_far_digits = false;  //  digits over 20 read on some look
     bool m_double_digits = false;   //  a read of 10 or more taken
     bool m_arrived = false;
