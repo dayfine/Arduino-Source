@@ -12,10 +12,6 @@
  *  plan says: a Roar or Whirlwind in a fight that resets on one, Bruno's
  *  early reset after Onix #1, a win or a loss.
  *
- *  The League loop (PokemonFRLG_AutoStoryLeagueLoop.h) runs on a fake
- *  runner whose fights are these scripted battles: its phases, its saves,
- *  the entry contract and the top-ups between fights.
- *
  */
 
 #include <algorithm>
@@ -30,9 +26,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_AutoStoryLeagueFightData.h"
 #include "PokemonFRLG_AutoStoryLeagueFoes.h"
-#include "PokemonFRLG_AutoStoryLeagueLoop.h"
 #include "PokemonFRLG_AutoStoryPlannedBattle.h"
-#include "PokemonFRLG_AutoStoryPlannedBetween.h"
 #include "PokemonFRLG_AutoStorySupplies.h"
 
 namespace PokemonAutomation{
@@ -126,9 +120,6 @@ struct FakeResult{
     std::vector<std::string> actions = {};
     FakeEnd end = FakeEnd::OUT_OF_TURNS;
     bool passes = false;
-    //  Every item used, and whether a RESET was a Roar's or Whirlwind's.
-    SlugCounts used = {};
-    bool roared = false;
 };
 
 //  The fight `trainer` from our side (`hp`, X items already used) against
@@ -174,8 +165,6 @@ public:
             .early_reset = m_early_reset,
             .used = m_used,
         });
-        result.used = m_used;
-        result.roared = m_roared;
         return result;
     }
 
@@ -520,368 +509,12 @@ const FakeCase FAKE_CASES[] = {
     },
 };
 
-
-
-//  The League loop on a fake runner.
-
-constexpr int OUR_MAX_HP = 171;
-const SlugCounts FULL_PP = {{"bite", 25}, {"surf", 15}, {"blizzard", 5}, {"strength", 15}};
-
-std::string trainer_of(std::string_view fight){
-    if (fight == "champion"){
-        return "TRAINER_CHAMPION_FIRST_BULBASAUR";
-    }
-    std::string trainer = "TRAINER_ELITE_FOUR_";
-    for (char c : fight){
-        trainer += static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
-    }
-    return trainer;
-}
-
-//  A battle that ends before its first turn: a loss.
-FakeInput no_turns(std::string_view fight){
-    return FakeInput{.trainer = trainer_of(fight), .foes = {{.slot = 0}}, .turns = 0};
-}
-//  The battle of FAKE_CASES's case `name`.
-FakeInput fake_battle(std::string_view name){
-    for (const FakeCase& test_case : FAKE_CASES){
-        if (test_case.name == name){
-            return test_case.input;
-        }
-    }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No fake battle \"{}\".", name));
-}
-//  A pass.
-FakeInput lorelei_win(){
-    return fake_battle("Lorelei's Lapras: Strength, Bite, Bite");
-}
-//  Won on two Full Restores, over Lorelei's cap of one.
-FakeInput lorelei_over_cap(){
-    return fake_battle("Lorelei won on two Full Restores: over the cap of one, no pass");
-}
-//  Bruno's Onix after all three X Speeds: the early reset.
-FakeInput bruno_early_reset(){
-    return fake_battle("Bruno's Onix: two Rock Tombs after all three X Speeds, reset when it falls");
-}
-FakeInput bruno_roar(){
-    return fake_battle("Bruno's Onix Roars: reset");
-}
-
-std::vector<FakeInput> repeated(size_t count, const FakeInput& battle){
-    return std::vector<FakeInput>(count, battle);
-}
-std::vector<FakeInput> joined(std::vector<FakeInput> first, const std::vector<FakeInput>& then){
-    first.insert(first.end(), then.begin(), then.end());
-    return first;
-}
-
-//  The fight's start save: full HP and PP, `bag`.
-LeagueSide full_side(SlugCounts bag){
-    return LeagueSide{.hp = OUR_MAX_HP, .max_hp = OUR_MAX_HP, .pp = FULL_PP, .bag = std::move(bag)};
-}
-
-SlugCounts changed(SlugCounts counts, const SlugCounts& set){
-    for (const auto& [name, count] : set){
-        counts[name] = count;
-    }
-    return counts;
-}
-
-//  The fight's start save, and each try's battle in order (the last one
-//  repeats).
-class FakeLeagueRunner{
-public:
-    FakeLeagueRunner(const LeagueFightData& fight, LeagueSide save, std::vector<FakeInput> battles)
-        : m_fight(fight)
-        , m_save(std::move(save))
-        , m_battles(std::move(battles))
-    {}
-
-    LeagueFightRunner runner(){
-        return LeagueFightRunner{
-            .load_start = [this]{ m_now = m_save; },
-            .top_up = [this]{ return top_up(); },
-            .read_side = [this]{ return m_now; },
-            .fight = [this]{ return fight(); },
-            .save = [this]{ m_saves++; },
-            .log = [](std::string_view){},
-        };
-    }
-    int saves() const{
-        return m_saves;
-    }
-    int fights() const{
-        return m_fights;
-    }
-
-private:
-    std::vector<std::string> top_up(){
-        PlannedCarry carry{.hp = m_now.hp, .max_hp = m_now.max_hp, .pp = m_now.pp, .full_pp = FULL_PP, .bag = m_now.bag};
-        std::vector<std::string> used = planned_between(carry, m_fight);
-        m_now.hp = carry.hp;
-        m_now.pp = carry.pp;
-        m_now.bag = carry.bag;
-        return used;
-    }
-    LeagueBattleEnd fight(){
-        const FakeInput& input = m_battles[std::min<size_t>(m_fights, m_battles.size() - 1)];
-        m_fights++;
-        FakeBattle battle(input.trainer, input.hp, input.foes);
-        battle.used_before(input.used_before);
-        const FakeResult result = battle.run(input.turns);
-        for (const auto& [item, count] : result.used){
-            m_now.bag[item] -= count;
-        }
-        switch (result.end){
-        case FakeEnd::WON:
-            return LeagueBattleEnd::WON;
-        case FakeEnd::RESET:
-            return result.roared ? LeagueBattleEnd::ROARED : LeagueBattleEnd::EARLY_RESET;
-        case FakeEnd::LOST:
-        case FakeEnd::OUT_OF_TURNS:
-            break;
-        }
-        return LeagueBattleEnd::LOST;
-    }
-
-    const LeagueFightData& m_fight;
-    LeagueSide m_save;
-    LeagueSide m_now;
-    std::vector<FakeInput> m_battles;
-    int m_saves = 0;
-    int m_fights = 0;
-};
-
-std::string_view verdict_name(LeagueFightVerdict verdict){
-    switch (verdict){
-    case LeagueFightVerdict::SAVED:
-        return "saved";
-    case LeagueFightVerdict::BELOW_MIN_PASS:
-        return "below min_pass";
-    case LeagueFightVerdict::OUT_OF_BUDGET:
-        return "out of budget";
-    case LeagueFightVerdict::PRECONDITION_FAILED:
-        return "precondition failed";
-    case LeagueFightVerdict::NO_FIGURES:
-        return "no figures";
-    }
-    return "";
-}
-
-struct LoopInput{
-    std::string fight = {};
-    LeagueSide save = {};
-    std::vector<FakeInput> battles = {};
-};
-struct LoopExpectation{
-    LeagueFightVerdict verdict = LeagueFightVerdict::SAVED;
-    int phase1_passes = 0;
-    int fights = 0;
-    int saves = 0;
-    //  Each try's top-ups, when checked.
-    std::optional<std::vector<std::string>> top_up = std::nullopt;
-    //  The last try's end, when checked.
-    std::optional<LeagueBattleEnd> last_end = std::nullopt;
-};
-struct LoopCase{
-    std::string name;
-    LoopInput input;
-    LoopExpectation expectation;
-};
-
-class Test_LeagueLoop : public UnitTest{
-public:
-    explicit Test_LeagueLoop(LoopCase test_case)
-        : UnitTest(std::format("PokemonFRLG::AutoStoryLeagueLoop - fake runner: {}", test_case.name))
-        , m_case(std::move(test_case))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const LeagueFightData* fight = league_fight_data(league_plan_data(), m_case.input.fight);
-        if (fight == nullptr){
-            return std::format("no fight {}.", m_case.input.fight);
-        }
-        FakeLeagueRunner fake(*fight, m_case.input.save, m_case.input.battles);
-        const LeagueFightReport report = run_league_fight(*fight, fake.runner());
-        const LoopExpectation& want = m_case.expectation;
-        if (report.verdict != want.verdict || report.phase1_passes != want.phase1_passes
-            || fake.fights() != want.fights || fake.saves() != want.saves
-        ){
-            return std::format("{}, phase 1 passes {}, fights {}, saves {}; expected {}, {}, {}, {}.",
-                verdict_name(report.verdict), report.phase1_passes, fake.fights(), fake.saves(),
-                verdict_name(want.verdict), want.phase1_passes, want.fights, want.saves);
-        }
-        if (want.top_up && (report.tries.empty() || report.tries.front().top_up != *want.top_up)){
-            return std::format("top-up [{}]; expected [{}].",
-                report.tries.empty() ? std::string() : actions_text(report.tries.front().top_up), actions_text(*want.top_up));
-        }
-        if (want.last_end && (report.tries.empty() || report.tries.back().end != *want.last_end)){
-            return "the last try ended otherwise.";
-        }
-        return true;
-    }
-
-private:
-    LoopCase m_case;
-};
-
-//  Bruno's start save: Lorelei won on her caps (a Full Restore, six X Specials).
-SlugCounts bruno_bag(){
-    return changed(league_bag(), {{"full-restore", 7}, {"x-special", 9}});
-}
-
-const LoopCase LOOP_CASES[] = {
-    {
-        .name = "Lorelei: ten passes, saved on the first phase 2 try",
-        .input = {.fight = "lorelei", .save = full_side(league_bag()), .battles = {lorelei_win()}},
-        .expectation = {.verdict = LeagueFightVerdict::SAVED, .phase1_passes = 10, .fights = 11, .saves = 1},
-    },
-    {
-        .name = "Lorelei: four passes in phase 1, under min_pass 5: stop",
-        .input = {
-            .fight = "lorelei",
-            .save = full_side(league_bag()),
-            .battles = joined(repeated(4, lorelei_win()), {no_turns("lorelei")}),
-        },
-        .expectation = {.verdict = LeagueFightVerdict::BELOW_MIN_PASS, .phase1_passes = 4, .fights = 10, .saves = 0},
-    },
-    {
-        .name = "Lorelei: phase 2 passes on its third try: saved",
-        .input = {
-            .fight = "lorelei",
-            .save = full_side(league_bag()),
-            .battles = joined(joined(repeated(5, lorelei_win()), repeated(7, no_turns("lorelei"))), {lorelei_win()}),
-        },
-        .expectation = {.verdict = LeagueFightVerdict::SAVED, .phase1_passes = 5, .fights = 13, .saves = 1},
-    },
-    {
-        .name = "Lorelei: no pass in the reset budget of 5: stop",
-        .input = {
-            .fight = "lorelei",
-            .save = full_side(league_bag()),
-            .battles = joined(repeated(5, lorelei_win()), {no_turns("lorelei")}),
-        },
-        .expectation = {.verdict = LeagueFightVerdict::OUT_OF_BUDGET, .phase1_passes = 5, .fights = 15, .saves = 0},
-    },
-    {
-        .name = "Lorelei: phase 2 wins over the Full Restore cap: never saved",
-        .input = {
-            .fight = "lorelei",
-            .save = full_side(league_bag()),
-            .battles = joined(repeated(5, lorelei_win()), {lorelei_over_cap()}),
-        },
-        .expectation = {
-            .verdict = LeagueFightVerdict::OUT_OF_BUDGET, .phase1_passes = 5, .fights = 15, .saves = 0,
-            .last_end = LeagueBattleEnd::WON,
-        },
-    },
-    {
-        .name = "Bruno: a Roar, then early resets after Onix: tries that don't pass",
-        .input = {
-            .fight = "bruno",
-            .save = full_side(bruno_bag()),
-            .battles = {bruno_roar(), bruno_early_reset()},
-        },
-        .expectation = {
-            .verdict = LeagueFightVerdict::BELOW_MIN_PASS, .phase1_passes = 0, .fights = 10, .saves = 0,
-            .last_end = LeagueBattleEnd::EARLY_RESET,
-        },
-    },
-    {
-        .name = "Lorelei's save is a Full Restore short of the entry contract: stop before fighting",
-        .input = {
-            .fight = "lorelei",
-            .save = full_side(changed(league_bag(), {{"full-restore", 7}})),
-            .battles = {lorelei_win()},
-        },
-        .expectation = {.verdict = LeagueFightVerdict::PRECONDITION_FAILED, .phase1_passes = 0, .fights = 0, .saves = 0},
-    },
-    {
-        .name = "before Bruno, 40 HP missing: one Super Potion",
-        .input = {
-            .fight = "bruno",
-            .save = LeagueSide{.hp = OUR_MAX_HP - 40, .max_hp = OUR_MAX_HP, .pp = FULL_PP, .bag = bruno_bag()},
-            .battles = {no_turns("bruno")},
-        },
-        .expectation = {
-            .verdict = LeagueFightVerdict::BELOW_MIN_PASS, .phase1_passes = 0, .fights = 10, .saves = 0,
-            .top_up = std::vector<std::string>{"super-potion"},
-        },
-    },
-    {
-        .name = "before Bruno, 90 HP missing and two Super Potions spare: two",
-        .input = {
-            .fight = "bruno",
-            .save = LeagueSide{
-                .hp = OUR_MAX_HP - 90, .max_hp = OUR_MAX_HP, .pp = FULL_PP, .bag = changed(bruno_bag(), {{"super-potion", 7}}),
-            },
-            .battles = {no_turns("bruno")},
-        },
-        .expectation = {
-            .verdict = LeagueFightVerdict::BELOW_MIN_PASS, .phase1_passes = 0, .fights = 10, .saves = 0,
-            .top_up = std::vector<std::string>{"super-potion", "super-potion"},
-        },
-    },
-    {
-        .name = "before Bruno, 120 HP missing: a Full Restore",
-        .input = {
-            .fight = "bruno",
-            .save = LeagueSide{.hp = OUR_MAX_HP - 120, .max_hp = OUR_MAX_HP, .pp = FULL_PP, .bag = bruno_bag()},
-            .battles = {no_turns("bruno")},
-        },
-        .expectation = {
-            .verdict = LeagueFightVerdict::BELOW_MIN_PASS, .phase1_passes = 0, .fights = 10, .saves = 0,
-            .top_up = std::vector<std::string>{"full-restore"},
-        },
-    },
-    {
-        .name = "before the Champion, Surf 5 and Blizzard 2: the Elixir",
-        .input = {
-            .fight = "champion",
-            .save = LeagueSide{
-                .hp = OUR_MAX_HP, .max_hp = OUR_MAX_HP,
-                .pp = changed(FULL_PP, {{"surf", 5}, {"blizzard", 2}}),
-                .bag = {
-                    {"full-restore", 2}, {"x-special", 2}, {"x-speed", 1}, {"x-accuracy", 3}, {"guard-spec", 2},
-                    {"elixir", 1}, {"max-elixir", 1},
-                },
-            },
-            .battles = {no_turns("champion")},
-        },
-        .expectation = {
-            .verdict = LeagueFightVerdict::BELOW_MIN_PASS, .phase1_passes = 0, .fights = 10, .saves = 0,
-            .top_up = std::vector<std::string>{"elixir"},
-        },
-    },
-    {
-        .name = "before Lance, Surf 3: no Elixir",
-        .input = {
-            .fight = "lance",
-            .save = LeagueSide{
-                .hp = OUR_MAX_HP, .max_hp = OUR_MAX_HP,
-                .pp = changed(FULL_PP, {{"surf", 3}}),
-                .bag = {
-                    {"full-restore", 4}, {"x-special", 4}, {"x-speed", 1}, {"x-accuracy", 3}, {"guard-spec", 2},
-                    {"super-potion", 2}, {"elixir", 1}, {"max-elixir", 1},
-                },
-            },
-            .battles = {no_turns("lance")},
-        },
-        .expectation = {
-            .verdict = LeagueFightVerdict::BELOW_MIN_PASS, .phase1_passes = 0, .fights = 10, .saves = 0,
-            .top_up = std::vector<std::string>{},
-        },
-    },
-};
-
 } // namespace
 
 
 void add_tests_AutoStoryPlannedBattleFake(UnitTestDatabase& database){
     for (const FakeCase& test_case : FAKE_CASES){
         database.add<Test_PlannedBattleFake>(test_case);
-    }
-    for (const LoopCase& test_case : LOOP_CASES){
-        database.add<Test_LeagueLoop>(test_case);
     }
 }
 

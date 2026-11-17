@@ -14,7 +14,7 @@
  *  plan's early reset ended is a try that didn't pass.
  *
  *  The loop drives a LeagueFightRunner: the console's, or a fake one that
- *  plays scripted battles (PokemonFRLG_AutoStoryPlannedBattleFake_Tests.cpp).
+ *  plays scripted battles (PokemonFRLG_AutoStoryLeagueLoop_Tests.cpp).
  *
  */
 
