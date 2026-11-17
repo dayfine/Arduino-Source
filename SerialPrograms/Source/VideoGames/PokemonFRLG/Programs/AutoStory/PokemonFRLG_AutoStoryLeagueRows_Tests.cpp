@@ -279,22 +279,29 @@ private:
     LeagueRunCase m_case;
 };
 
-//  Each fight row plays its 10 phase 1 tries and one phase 2 try when
-//  every try passes.
-constexpr int TRIES_ALL_PASS = 11;
+//  When every try passes, each fight row plays phase 1 to its min_pass
+//  (Lorelei 5, Bruno 1, Agatha 5, Lance 2, the Champion 2) and one phase 2
+//  try.
+constexpr int LORELEI_ALL_PASS = 6;
+constexpr int BRUNO_ALL_PASS = 2;
+constexpr int AGATHA_ALL_PASS = 6;
+constexpr int LANCE_ALL_PASS = 3;
+constexpr int CHAMPION_ALL_PASS = 3;
+constexpr int FROM_BRUNO_ALL_PASS = BRUNO_ALL_PASS + AGATHA_ALL_PASS + LANCE_ALL_PASS + CHAMPION_ALL_PASS;
+constexpr int ALL_PASS = LORELEI_ALL_PASS + FROM_BRUNO_ALL_PASS;
 
 const LeagueRunCase LEAGUE_RUN_CASES[] = {
     {
         .name = "every try a win within the caps: 20.01 to 20.05 each saved once",
         .input = {},
-        .expectation = {.completed = true, .fights = 5 * TRIES_ALL_PASS, .saves = 5, .full_restores_saved = 8},
+        .expectation = {.completed = true, .fights = ALL_PASS, .saves = 5, .full_restores_saved = 8},
     },
     {
-        .name = "Bruno's first phase 2 win leaves 3 Full Restores, under Agatha's 5: not saved; the next win is",
+        .name = "Bruno's first win leaves 3 Full Restores, under Agatha's 5: no pass; the next win passes, and phase 2's is saved",
         .input = {.tries = {
-            {"20.02", joined(joined(repeated(10, win()), {win({{"full-restore", 3}})}), {win({{"full-restore", 1}})})},
+            {"20.02", {win({{"full-restore", 3}}), win({{"full-restore", 1}})}},
         }},
-        .expectation = {.completed = true, .fights = 5 * TRIES_ALL_PASS + 1, .saves = 5, .full_restores_saved = 7},
+        .expectation = {.completed = true, .fights = ALL_PASS + 1, .saves = 5, .full_restores_saved = 7},
     },
     {
         .name = "Lorelei passes 4 of phase 1's 10, under min_pass 5: the run stops before Bruno, nothing saved",
@@ -302,9 +309,9 @@ const LeagueRunCase LEAGUE_RUN_CASES[] = {
         .expectation = {.failure = "verify_below_min_pass", .failed_row = "20.01", .fights = 10, .saves = 0, .full_restores_saved = 8},
     },
     {
-        .name = "Lorelei wins leaving 5 Full Restores, under Bruno's 6, every time: phase 1 passes none, the run stops",
+        .name = "Lorelei wins leaving 5 Full Restores, under Bruno's 6, every time: min_pass out of reach after 6 tries, the run stops",
         .input = {.tries = {{"20.01", {win({{"full-restore", 3}})}}}},
-        .expectation = {.failure = "verify_below_min_pass", .failed_row = "20.01", .fights = 10, .saves = 0, .full_restores_saved = 8},
+        .expectation = {.failure = "verify_below_min_pass", .failed_row = "20.01", .fights = 6, .saves = 0, .full_restores_saved = 8},
     },
     {
         .name = "the bag at the Indigo Plateau Center short of a Full Restore: 20.01 stops before the League's door",
@@ -324,17 +331,17 @@ const LeagueRunCase LEAGUE_RUN_CASES[] = {
             },
             .tries = {{"20.04", {win({{"full-restore", 2}}, /*hp_left=*/45)}}},
         },
-        .expectation = {.failure = "verify_below_min_pass", .failed_row = "20.04", .fights = 10, .saves = 0, .full_restores_saved = 4},
+        .expectation = {.failure = "verify_below_min_pass", .failed_row = "20.04", .fights = 9, .saves = 0, .full_restores_saved = 4},
     },
     {
         .name = "Bruno wins at 45 HP, so the top-up before Agatha takes a Full Restore, more than her plan's spend of none: her wins still leave Lance's 4, saved",
         .input = {.first = "20.02", .tries = {{"20.02", {win(/*used=*/{}, /*hp_left=*/45)}}}},
-        .expectation = {.completed = true, .fights = 4 * TRIES_ALL_PASS, .saves = 4, .full_restores_saved = 7},
+        .expectation = {.completed = true, .fights = FROM_BRUNO_ALL_PASS, .saves = 4, .full_restores_saved = 7},
     },
     {
         .name = "Agatha wins leaving Surf at 2, under Lance's 3: never saved",
         .input = {.tries = {{"20.03", {win(/*used=*/{}, MAX_HP, /*surf_spent=*/13)}}}},
-        .expectation = {.failure = "verify_below_min_pass", .failed_row = "20.03", .fights = 2 * TRIES_ALL_PASS + 10, .saves = 2, .full_restores_saved = 8},
+        .expectation = {.failure = "verify_below_min_pass", .failed_row = "20.03", .fights = LORELEI_ALL_PASS + BRUNO_ALL_PASS + 6, .saves = 2, .full_restores_saved = 8},
     },
 };
 

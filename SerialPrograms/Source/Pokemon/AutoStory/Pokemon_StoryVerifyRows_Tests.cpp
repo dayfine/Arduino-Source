@@ -185,9 +185,14 @@ private:
 
 const VerifyRowCase VERIFY_ROW_CASES[] = {
     {
-        .name = "ten passes: saved on the first phase 2 try",
+        .name = "every try passes: phase 1 stops at its fifth pass, saved on the first phase 2 try",
         .input = {.tries = {win()}},
-        .expectation = {.completed = true, .fights = 11, .saves = 1, .reloads = 10},
+        .expectation = {.completed = true, .fights = 6, .saves = 1, .reloads = 5},
+    },
+    {
+        .name = "six losses first: min_pass 5 out of reach, phase 1 stops there, no save",
+        .input = {.tries = {lose()}},
+        .expectation = {.failure = "verify_below_min_pass", .fights = 6, .saves = 0, .reloads = 5},
     },
     {
         .name = "four passes in phase 1, under min_pass 5: stop, no save",
@@ -196,18 +201,18 @@ const VerifyRowCase VERIFY_ROW_CASES[] = {
     },
     {
         .name = "phase 2 passes on its third try: saved once",
-        .input = {.tries = joined(joined(repeated(5, win()), repeated(7, lose())), {win()})},
-        .expectation = {.completed = true, .fights = 13, .saves = 1, .reloads = 12},
+        .input = {.tries = joined(joined(repeated(5, win()), repeated(2, lose())), {win()})},
+        .expectation = {.completed = true, .fights = 8, .saves = 1, .reloads = 7},
     },
     {
         .name = "no pass in the reset budget of 5: stop, no save",
         .input = {.tries = joined(repeated(5, win()), {lose()})},
-        .expectation = {.failure = "verify_out_of_budget", .fights = 15, .saves = 0, .reloads = 14},
+        .expectation = {.failure = "verify_out_of_budget", .fights = 10, .saves = 0, .reloads = 9},
     },
     {
         .name = "wins over the game's cap don't pass: never saved",
         .input = {.tries = joined(repeated(5, win()), {win_over_cap()})},
-        .expectation = {.failure = "verify_out_of_budget", .fights = 15, .saves = 0, .reloads = 14},
+        .expectation = {.failure = "verify_out_of_budget", .fights = 10, .saves = 0, .reloads = 9},
     },
     {
         .name = "the save is short of the start check: stop before fighting",
@@ -217,7 +222,7 @@ const VerifyRowCase VERIFY_ROW_CASES[] = {
     {
         .name = "a won try whose postcondition check fails right before the save: never saved",
         .input = {.verify = {.tries = 2, .min_pass = 0, .reset_budget = 2}, .tries = {win()}, .postconditions_hold = false},
-        .expectation = {.failure = "verify_out_of_budget", .fights = 4, .saves = 0, .reloads = 3},
+        .expectation = {.failure = "verify_out_of_budget", .fights = 2, .saves = 0, .reloads = 1},
     },
     {
         .name = "the pass check can't read the game: no save, the loop stops at once",
@@ -225,9 +230,9 @@ const VerifyRowCase VERIFY_ROW_CASES[] = {
         .expectation = {.failure = "postcondition_unread", .fights = 1, .saves = 0, .reloads = 0},
     },
     {
-        .name = "min_pass 0 of 2: straight to phase 2",
-        .input = {.verify = {.tries = 2, .min_pass = 0, .reset_budget = 1}, .tries = {lose(), lose(), win()}},
-        .expectation = {.completed = true, .fights = 3, .saves = 1, .reloads = 2},
+        .name = "min_pass 0 of 2: no phase 1 try, straight to phase 2",
+        .input = {.verify = {.tries = 2, .min_pass = 0, .reset_budget = 1}, .tries = {win()}},
+        .expectation = {.completed = true, .fights = 1, .saves = 1, .reloads = 0},
     },
 };
 
