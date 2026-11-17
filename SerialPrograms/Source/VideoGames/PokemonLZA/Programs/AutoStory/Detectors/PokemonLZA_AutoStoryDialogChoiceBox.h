@@ -22,8 +22,9 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Where a dialogue's choices are drawn: the restaurant receptionist's
-//  (RestaurantFarmer). Other dialogues' choices are assumed to sit there.
+//  Where a dialogue's selection arrow can be: the restaurant
+//  receptionist's box (RestaurantFarmer), widened left to x 960 for the
+//  panels of long languages (French's 01.02 arrow is at x 1185).
 const ImageFloatBox& dialog_choice_box();
 
 //  A dialogue's choice menu as read: how many rows it has, and the

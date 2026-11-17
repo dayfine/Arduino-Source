@@ -226,6 +226,11 @@ const FrameCase FRAME_CASES[] = {
         .expectation = {.rows = DialogChoiceRows{.count = 2, .selected = 0}, .choice_box = true},
     },
     {
+        .name = "Villy's \"I'll get it back\" or \"battle\" at 01.02 (2 rows, French: the arrow left of x 1256)",
+        .input = {.file = "AutoStoryDialogChoices/fr_0102_villy_2rows_row0.png"},
+        .expectation = {.rows = DialogChoiceRows{.count = 2, .selected = 0}, .choice_box = true},
+    },
+    {
         .name = "light pavement, no menu",
         .input = {.file = "AutoStoryDetectors/ArrivalToAd/0038-nothing+autosave.jpg"},
         .expectation = {.rows = std::nullopt},
