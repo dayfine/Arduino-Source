@@ -19,6 +19,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryBattles.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
+#include "PokemonLZA_AutoStoryMenuReadings.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 
@@ -33,6 +34,8 @@ using Pokemon::Direction;
 PlzaConsoleBackend::PlzaConsoleBackend(StoryEnv& env)
     : m_env(env)
     , m_home(env.env.console, COLOR_RED)
+    //  The box save_game_to_menu() reads the arrow at Save in.
+    , m_save_button(COLOR_GREEN, nullptr, SelectionArrowType::RIGHT, {0.287118, 0.638835, 0.064410, 0.108738})
 {}
 
 void PlzaConsoleBackend::press(Button button, Milliseconds hold, Milliseconds release){
@@ -83,6 +86,12 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
         }
         if (tutorial_card_shows(*frame.frame)){
             look.readings[std::string(TUTORIAL_CARD_READING)] = 1;
+        }
+        if (m_main_menu.detect(*frame.frame)){
+            look.readings[std::string(MAIN_MENU_READING)] = 1;
+        }
+        if (m_save_button.detect(*frame.frame)){
+            look.readings[std::string(MENU_SAVE_BUTTON_READING)] = 1;
         }
         if (look.events.has(ScreenEvent::CHOICE_BOX)){
             const std::optional<DialogChoiceRows> rows = read_dialog_choice_rows(*frame.frame);

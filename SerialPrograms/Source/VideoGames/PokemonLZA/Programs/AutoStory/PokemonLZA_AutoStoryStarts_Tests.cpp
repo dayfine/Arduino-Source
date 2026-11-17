@@ -139,29 +139,26 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "03.08b"},
     },
     {
-        .name = "asked 03.09, the menu save facing the far gate's prompt: from 03.09",
-        .input = {.asked = "03.09", .read = {.talk_prompt = true, .wild_zone = true, .party = 5}},
+        //  console B, 2026-11-16 20:05:25: out of the far gate, the party
+        //  bar and no prompt.
+        .name = "asked 03.09, the menu save out of the far gate: from 03.09",
+        .input = {.asked = "03.09", .read = {.talk_prompt = false, .wild_zone = false, .party = 5}},
         .expectation = {.from = "03.09"},
     },
     {
-        .name = "asked 03.08b, the menu save facing the far gate's prompt: stop",
-        .input = {.asked = "03.08b", .read = {.talk_prompt = true, .wild_zone = true, .party = 5}},
+        .name = "asked 03.09, the menu save out of the far gate with a prompt in view: from 03.09",
+        .input = {.asked = "03.09", .read = {.talk_prompt = true, .wild_zone = false, .party = 5}},
+        .expectation = {.from = "03.09"},
+    },
+    {
+        .name = "asked 03.08b, the menu save out of the far gate: stop",
+        .input = {.asked = "03.08b", .read = {.talk_prompt = false, .wild_zone = false, .party = 5}},
         .expectation = {.from = "stop"},
     },
     {
         .name = "asked 03.10, the menu save in the lab lobby: from 03.10",
         .input = {.asked = "03.10", .read = {.talk_prompt = false, .wild_zone = false, .party = 5}},
         .expectation = {.from = "03.10"},
-    },
-    {
-        .name = "asked 03.10, the menu save facing the far gate's prompt: from 03.09",
-        .input = {.asked = "03.10", .read = {.talk_prompt = true, .wild_zone = true, .party = 5}},
-        .expectation = {.from = "03.09"},
-    },
-    {
-        .name = "asked 03.11, the menu save facing the far gate's prompt: from 03.09",
-        .input = {.asked = "03.11", .read = {.talk_prompt = true, .wild_zone = true, .party = 5}},
-        .expectation = {.from = "03.09"},
     },
     {
         .name = "asked 03.11, the 3F autosave: from 03.11",
