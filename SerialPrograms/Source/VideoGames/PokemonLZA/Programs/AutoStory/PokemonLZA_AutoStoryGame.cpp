@@ -84,8 +84,7 @@ StoryActionSpec console_only(StoryActionSpec spec){
     return spec;
 }
 
-//  A walk to a gate's args: its bound, `timeout_ms` when left out, and the
-//  heading it faces first.
+//  A gate walk's args: "timeout_ms" (`timeout_ms` when left out) and "heading".
 std::vector<StoryArgSpec> gate_args(int64_t timeout_ms){
     return {
         optional_ms("timeout_ms", timeout_ms, "going this long with no A prompt fails the step"),
@@ -219,8 +218,7 @@ Outcome run_to_gate(StoryEnv& env, Milliseconds timeout){
 //  A walk to a wild zone's gate on the console, by a GateWalk.
 using GateStep = Outcome (*)(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk);
 
-//  "run_to_gate": the walk's heading faced first (face_heading()), if it
-//  has one, then run_to_gate().
+//  "run_to_gate": the walk's heading faced first, if any, then run_to_gate().
 Outcome run_gate_step(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk){
     if (walk.heading){
         const Outcome faced = face_heading(backend, minimap_arrow(env), *walk.heading);
@@ -300,16 +298,8 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
             return catch_in_zone(env, backend, ZoneCatchGoal{.new_species = 2, .party_species = 5, .max_throws = 12});
         }},
         {"walk_back_to_zone_road", walk_back_to_zone_road},
-        //  Ends on a prompt or dialog only after a distance read taken at
-        //  20 or less (MarkerProof::NEAR_READ).
-        {"walk_to_marker", [](StoryEnv& env, PlzaBackend& backend){
-            return walk_to_marker(env, backend, MarkerProof::NEAR_READ);
-        }},
-        //  Where the marker's digits do not read (the lab's door): ends on
-        //  a prompt or dialog with no read over 20 (MarkerProof::NO_FAR_READ).
-        {"walk_to_unread_marker", [](StoryEnv& env, PlzaBackend& backend){
-            return walk_to_marker(env, backend, MarkerProof::NO_FAR_READ);
-        }},
+        {"walk_to_marker", walk_to_marker},
+        {"walk_to_unread_marker", walk_to_unread_marker},
         {"claim_mable_research_reward", claim_research_reward},
     };
     return steps;

@@ -351,6 +351,25 @@ bool run_marker_walk(Milliseconds limit, MarkerWalk& walk, PlzaBackend& backend)
     return false;
 }
 
+//  walk_to_marker(), near the objective by `proof`.
+Pokemon::Outcome walk_to_objective(StoryEnv& env, PlzaBackend& backend, MarkerProof proof){
+    backend.log(std::format(
+        "[PLZA] walk_to_marker: to the objective's prompt or dialog, near it by {}",
+        proof == MarkerProof::NEAR_READ ? "a distance read taken" : "no far read"
+    ));
+    MarkerWalk walk(env, backend, MarkerGoal{.proof = proof});
+    if (run_marker_walk(MARKER_WALK_LIMIT, walk, backend)){
+        return Pokemon::outcome_ok();
+    }
+    if (!objective_reached(backend, walk.arrival())){
+        return Pokemon::outcome_failed("objective_not_reached", std::format(
+            "no A prompt or dialog near the objective marker (last read taken {}, near: {})",
+            walk.position().value_or(-1), walk.arrival().near() ? "yes" : "no"
+        ));
+    }
+    return Pokemon::outcome_ok();
+}
+
 } // namespace
 
 
@@ -386,22 +405,12 @@ std::optional<int> read_marker_distance(StoryEnv& env, PlzaBackend& backend, std
     return std::nullopt;
 }
 
-Pokemon::Outcome walk_to_marker(StoryEnv& env, PlzaBackend& backend, MarkerProof proof){
-    backend.log(std::format(
-        "[PLZA] walk_to_marker: to the objective's prompt or dialog, near it by {}",
-        proof == MarkerProof::NEAR_READ ? "a distance read taken" : "no far read"
-    ));
-    MarkerWalk walk(env, backend, MarkerGoal{.proof = proof});
-    if (run_marker_walk(MARKER_WALK_LIMIT, walk, backend)){
-        return Pokemon::outcome_ok();
-    }
-    if (!objective_reached(backend, walk.arrival())){
-        return Pokemon::outcome_failed("objective_not_reached", std::format(
-            "no A prompt or dialog near the objective marker (last read taken {}, near: {})",
-            walk.position().value_or(-1), walk.arrival().near() ? "yes" : "no"
-        ));
-    }
-    return Pokemon::outcome_ok();
+Pokemon::Outcome walk_to_marker(StoryEnv& env, PlzaBackend& backend){
+    return walk_to_objective(env, backend, MarkerProof::NEAR_READ);
+}
+
+Pokemon::Outcome walk_to_unread_marker(StoryEnv& env, PlzaBackend& backend){
+    return walk_to_objective(env, backend, MarkerProof::NO_FAR_READ);
 }
 
 
