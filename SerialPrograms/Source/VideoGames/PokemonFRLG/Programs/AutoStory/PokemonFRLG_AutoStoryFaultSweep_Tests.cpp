@@ -11,7 +11,7 @@
  *    within one of the table's pose, while the program goes on from the
  *    table's (BDSP 01.04, lab-B 2026-11-09).
  *  - WILD_BATTLES: wild battles at the game's own odds on every map with
- *    land encounters, over GAME_ODDS_SEEDS seeds (08.01's Rock Tunnel).
+ *    land encounters, over wild_battle_seeds() seeds (08.01's Rock Tunnel).
  *  - LATE_FADE: every warp's fade ends LATE_FADE later than the sim's
  *    usual (07.02's warp to Cerulean City).
  *  - SLOW_FADE_IN: after every warp's fade the new map fades in for
@@ -78,6 +78,7 @@
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
+#include "PokemonFRLG_AutoStorySimBudget.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryFaultSweep_Tests.h"
 
@@ -121,7 +122,11 @@ const std::map<std::string, int> STORY_ENCOUNTER_RATES{
 //  Caves wild on every floor tile, also where the maps mark no wild tiles
 //  (Mt. Moon B2F, console B, 2026-11-03).
 const std::set<std::string> WILD_FLOOR_MAPS{"MtMoon_1F", "MtMoon_B1F", "MtMoon_B2F"};
-constexpr unsigned GAME_ODDS_SEEDS = 30;
+//  Seeds of wild battles at the game's odds per row: a few in the
+//  per-push CI run, all with the slow tests on (PA_SLOW_TESTS).
+unsigned wild_battle_seeds(){
+    return slow_tests_enabled() ? 30 : 5;
+}
 //  The caves the story walks dark: no Flash before Lavender Town.
 const std::set<std::string> DARK_MAPS{"RockTunnel_1F", "RockTunnel_B1F"};
 //  Seeds of wild battles at the game's odds in the dark, after a run
@@ -514,7 +519,8 @@ UnitTestResult sweep_wild_battles(Logger& logger, const StoryCheckpoint& row, co
     std::vector<SweepFailure> failures;
     std::vector<double> seconds, again, lost;
     int battles = 0;
-    for (unsigned seed = 1; seed <= GAME_ODDS_SEEDS; seed++){
+    const unsigned seeds = wild_battle_seeds();
+    for (unsigned seed = 1; seed <= seeds; seed++){
         SimScript script;
         script.encounter_rates = STORY_ENCOUNTER_RATES;
         script.encounter_seed = seed;
@@ -534,9 +540,9 @@ UnitTestResult sweep_wild_battles(Logger& logger, const StoryCheckpoint& row, co
     }
     logger.log(std::format(
         "Fault sweep {} wild battles: passed {}/{}, {} battles; of those passed: time (s) mean {}, clean {:.1f}; tiles walked again mean {}; s lost per battle mean {}",
-        row.id, GAME_ODDS_SEEDS - failures.size(), GAME_ODDS_SEEDS, battles, mean_of(seconds), clean.time.count() / 1000., mean_of(again), mean_of(lost)
+        row.id, seeds - failures.size(), seeds, battles, mean_of(seconds), clean.time.count() / 1000., mean_of(again), mean_of(lost)
     ));
-    return sweep_result(logger, FaultClass::WILD_BATTLES, row.id, GAME_ODDS_SEEDS, failures);
+    return sweep_result(logger, FaultClass::WILD_BATTLES, row.id, seeds, failures);
 }
 
 //  Row `row` with every warp's fade ending LATE_FADE late.
@@ -784,6 +790,13 @@ public:
         const auto known = KNOWN_FAILING.find(name());
         if (known == KNOWN_FAILING.end()){
             return result;
+        }
+        if (result.result == UnitTestResult::PASSED && m_fault == FaultClass::WILD_BATTLES && !slow_tests_enabled()){
+            //  Its failing seeds may be past the few run without the slow tests.
+            return UnitTestResult(UnitTestResult::SKIPPED, std::format(
+                "on KNOWN_FAILING ({}), passes on the first {} seeds: set {}=1 to run them all",
+                known->second, wild_battle_seeds(), SLOW_TESTS_VARIABLE
+            ));
         }
         if (result.result == UnitTestResult::PASSED){
             return "on KNOWN_FAILING (" + known->second + ") but passes now: take it off the list.";
