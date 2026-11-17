@@ -634,6 +634,19 @@ const TutorialCardFrameCase TUTORIAL_CARD_FRAME_CASES[] = {
         .input = {.path = "AutoStoryScreenEvents/it_0102_parla_talk_prompt.png"},
         .expectation = {.card = false},
     },
+    {
+        //  console B, 2026-11-16: a save file's first X opens the menu under
+        //  the "Salvare il gioco" card (save by R in the main menu); A
+        //  closes it.
+        .name = "the Save card over the main menu (Italian)",
+        .input = {.path = "AutoStoryScreenEvents/it_menu_save_tutorial_card.png"},
+        .expectation = {.card = true},
+    },
+    {
+        .name = "no card on the main menu",
+        .input = {.path = "MainMenuDetector/it_menu_after_save_tutorial_True.png"},
+        .expectation = {.card = false},
+    },
 };
 
 UnitTestResult check_tutorial_card_frame(const TutorialCardFrameCase& test){

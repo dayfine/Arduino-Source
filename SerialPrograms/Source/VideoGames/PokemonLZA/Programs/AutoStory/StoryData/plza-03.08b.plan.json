@@ -34,30 +34,20 @@
         }
       },
       {
-        "id": "face_zone_1_gate",
+        "id": "save_outside_zone_1",
         "kind": "game_action",
-        "why": "UNVERIFIED, NEEDS CONSOLE: out of the gate the player faces away from it (the facing carries through the gate; console B, 2026-11-10): turn back and step to the gate until its \"A Enter\" prompt, so the save below stands at a spot with a prompt, which 03.09's start check reads. A gate is entered by its A prompt (03.07's run_to_gate). The step fails when no prompt shows by the leg's end. not planned: Lumiose has no tile grid to plan a route target on.",
-        "action": "walk",
-        "args": {
-          "legs": [[180, 1500]],
-          "end": "prompt"
-        }
-      },
-      {
-        "id": "save_at_zone_1_gate",
-        "kind": "game_action",
-        "why": "the user, 2026-11-16: \"the save is from where we caught the 5th species, so this might be a reason to manually save? like exit wildzone 1 and manually save\". The latest save was the last catch's autosave, wherever in the zone that catch was; X, Save, B here makes it this spot, 03.09's start, with the gate's prompt up.",
+        "why": "the user, 2026-11-16: \"the save is from where we caught the 5th species, so this might be a reason to manually save? like exit wildzone 1 and manually save\". The latest save was the last catch's autosave, wherever in the zone that catch was; a menu save here makes it this spot, 03.09's start: on the street just out of the far gate, where leave_zone_1 ends (party bar up, no A prompt: console B 2026-11-16 20:05:25). No turn back to the gate first (the user, 2026-11-16: no hand-written legs). The game's first menu save shows a tutorial screen, which the save presses through.",
         "action": "save_from_menu"
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.08 at the last catch's autosave, so a checkpoint starts where a save reloads. Starts where that autosave reloads, in Wild Zone 1 at the last catch spot; ends out on the street just through the far gate (user, 2026-11-14), facing the gate's prompt, with a menu save there: 03.09's start (user, 2026-11-16). Start signature: party 5 after the fifth catch, no A prompt, the lead's panel up (console B 2026-11-16: it shows in the zone)."
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.08 at the last catch's autosave, so a checkpoint starts where a save reloads. Starts where that autosave reloads, in Wild Zone 1 at the last catch spot; ends out on the street just through the far gate (user, 2026-11-14), with a menu save there: 03.09's start (user, 2026-11-16). Start signature: party 5 after the fifth catch, no A prompt, the lead's panel up (console B 2026-11-16: it shows in the zone)."
     }
   },
   "execution": {
     "save": "autosave",
-    "autosave_step": "save_at_zone_1_gate",
+    "autosave_step": "save_outside_zone_1",
     "start_signature": {
       "party": 5,
       "talk_prompt": false,

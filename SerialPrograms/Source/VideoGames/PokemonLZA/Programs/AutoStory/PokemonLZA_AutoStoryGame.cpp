@@ -4,10 +4,12 @@
  *
  */
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <format>
 #include <functional>
+#include <iterator>
 #include <map>
 #include <optional>
 #include <span>
@@ -107,7 +109,6 @@ std::vector<StoryActionSpec> console_specs(){
         console_only(game_spec("walk_to_marker")),
         console_only(game_spec("walk_to_unread_marker")),
         console_only(game_spec("claim_mable_research_reward")),
-        console_only(game_spec(std::string(MENU_SAVE_ACTION))),
     };
 }
 
@@ -155,10 +156,9 @@ std::vector<StoryActionSpec> make_specs(){
         game_spec("talk_through_map_screen"),
         game_spec("climb_ladder"),
         game_spec("talk_to_pokedex_screen"),
+        game_spec(std::string(MENU_SAVE_ACTION)),
     };
-    for (StoryActionSpec& spec : console_specs()){
-        specs.push_back(std::move(spec));
-    }
+    std::ranges::move(console_specs(), std::back_inserter(specs));
     return specs;
 }
 
@@ -305,7 +305,6 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
         {"walk_to_marker", walk_to_marker},
         {"walk_to_unread_marker", walk_to_unread_marker},
         {"claim_mable_research_reward", claim_research_reward},
-        {MENU_SAVE_ACTION, save_from_menu},
     };
     return steps;
 }
@@ -432,6 +431,11 @@ StoryMove story_walk_move(const StoryActionArgs& args){
         move.legs.push_back({.turn = (double)row.turn, .walk = row.walk});
     }
     return move;
+}
+
+//  MENU_SAVE_ACTION: save_from_menu().
+Outcome menu_save_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    return save_from_menu(backend);
 }
 
 //  "walk": its legs, once the screen shows free control; held until the
@@ -650,6 +654,7 @@ const std::map<std::string_view, StepFunction>& step_functions(){
         {"climb_ladder", ladder_step},
         {"talk_to_pokedex_screen", pokedex_step},
         {"walk", walk_step},
+        {MENU_SAVE_ACTION, menu_save_step},
     };
     return functions;
 }

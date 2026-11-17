@@ -22,6 +22,8 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_MainMenuDetector.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
@@ -96,7 +98,8 @@ public:
     //  and the readings PLATFORM_READING, AUTOSAVE_READING,
     //  CONTROLS_HINT_READING, ADVANCE_ARROW_READING, and
     //  MISSION_COMPLETE_READING or else MISSION_BANNER_READING (the card
-    //  has the banner's bar), TUTORIAL_CARD_READING (TutorialCardDetector's);
+    //  has the banner's bar), TUTORIAL_CARD_READING (TutorialCardDetector's),
+    //  MAIN_MENU_READING, MENU_SAVE_BUTTON_READING;
     //  with CHOICE_BOX, CHOICE_ROWS_READING and
     //  CHOICE_SELECTED_READING.
     virtual Pokemon::Observation<Pokemon::ZonePose> observe() override;
@@ -121,6 +124,8 @@ private:
     AdvanceArrowDetector m_advance_arrow;
     MainMissionBannerDetector m_mission_banner;
     MissionCompleteDetector m_mission_complete;
+    MainMenuDetector m_main_menu;
+    SelectionArrowDetector m_save_button;
     VideoSnapshot m_previous;
 };
 
