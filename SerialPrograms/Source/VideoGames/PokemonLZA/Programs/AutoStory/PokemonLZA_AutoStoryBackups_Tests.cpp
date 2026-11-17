@@ -332,6 +332,78 @@ UnitTestResult check_rewind(const RewindCase& test, CancellableScope& scope){
 }
 
 
+//  The start a run asked for, 03.08, read where the save loaded.
+struct StartCase{
+    std::string name;
+    struct Input{
+        StartSignature read = {};
+        //  What the backup card reads; none: no card read.
+        std::optional<BackupCard> card = std::nullopt;
+        size_t max_rewinds = 2;
+    };
+    Input input;
+    struct Expectation{
+        //  The checkpoint the run plays from; none: it must stop.
+        std::optional<std::string> from = std::nullopt;
+        //  What the backup save did, in order: "open", "load", "cancel".
+        std::string backup_calls = {};
+    };
+    Expectation expectation;
+};
+
+//  On the street: no talk prompt, no lead's panel. Neither 03.06's start
+//  (the Center counter) nor 03.08's (in Wild Zone 1).
+const StartSignature ON_THE_STREET{.talk_prompt = false, .wild_zone = false};
+
+const StartCase START_CASES[] = {
+    {
+        .name = "03.08's own start runs it, no backup opened",
+        .input = {.read = {.talk_prompt = false, .wild_zone = true}, .card = BackupCard{.registered = 1}},
+        .expectation = {.from = "03.08", .backup_calls = ""},
+    },
+    {
+        //  console B, 2026-11-16 17:24: 03.08's latest save stood where
+        //  no checkpoint starts, after a catch's autosave.
+        .name = "a start that matches no checkpoint rewinds to the backup and runs from the checkpoint its card names",
+        .input = {.read = ON_THE_STREET, .card = BackupCard{.registered = 1}},
+        .expectation = {.from = "03.06", .backup_calls = "open, load"},
+    },
+    {
+        .name = "a start that matches no checkpoint, rewinds off: the run stops, no backup opened",
+        .input = {.read = ON_THE_STREET, .card = BackupCard{.registered = 1}, .max_rewinds = 0},
+        .expectation = {.from = std::nullopt, .backup_calls = ""},
+    },
+    {
+        .name = "a start that matches no checkpoint and a backup card that names none: the card cancelled, the run stops",
+        .input = {.read = ON_THE_STREET, .card = BackupCard{.registered = 7}},
+        .expectation = {.from = std::nullopt, .backup_calls = "open, cancel"},
+    },
+};
+
+UnitTestResult check_start(const StartCase& test, CancellableScope& scope){
+    std::vector<std::string> calls;
+    const BackupSave backup = recording_backup(test.input.card, calls);
+    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = {}}, scope);
+    const std::vector<StoryCheckpoint> rows = story_rows();
+    const std::vector<CheckpointStart> starts{
+        {.checkpoint = "03.06", .signature = {.registered = 1, .talk_prompt = true, .wild_zone = false}},
+        {.checkpoint = "03.08", .signature = {.wild_zone = true}},
+    };
+    const std::optional<size_t> index = start_or_rewind(backend, rows, RUN_FROM, starts, test.input.read, backup, test.input.max_rewinds);
+    const std::optional<std::string> from = index ? std::optional<std::string>(rows[*index].id) : std::nullopt;
+    if (from != test.expectation.from){
+        return std::format(
+            "expected the run from {}, got {}; log:\n{}",
+            test.expectation.from.value_or("none"), from.value_or("none"), joined(backend.lines(), "\n")
+        );
+    }
+    if (joined(calls, ", ") != test.expectation.backup_calls){
+        return std::format("expected backup calls \"{}\", got \"{}\"", test.expectation.backup_calls, joined(calls, ", "));
+    }
+    return true;
+}
+
+
 class CardTest : public UnitTest{
 public:
     explicit CardTest(CardCase test_case)
@@ -358,6 +430,19 @@ private:
     RewindCase m_case;
 };
 
+class StartTest : public UnitTest{
+public:
+    explicit StartTest(StartCase test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStoryBackups start - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
+        return check_start(m_case, scope);
+    }
+private:
+    StartCase m_case;
+};
+
 } // namespace
 
 
@@ -367,6 +452,9 @@ void add_tests_AutoStoryBackups(UnitTestDatabase& database){
     }
     for (const RewindCase& test : REWIND_CASES){
         database.add<RewindTest>(test);
+    }
+    for (const StartCase& test : START_CASES){
+        database.add<StartTest>(test);
     }
 }
 

@@ -21,7 +21,6 @@
 #include <optional>
 #include <span>
 #include <string>
-#include <variant>
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.h"
@@ -68,13 +67,17 @@ struct RewindPlan{
     size_t max_rewinds = 0;
 };
 
-//  Opens the backup card and loads it when its count names a checkpoint
-//  at or before `failed` (an index of `rows`, checkpoint_at()): that
-//  checkpoint's index. Otherwise the card is cancelled, nothing loaded,
-//  and the failure ("unknown_backup", or the load's).
-std::variant<size_t, Pokemon::Outcome> rewind_to_backup(
-    PlzaBackend& backend, std::span<const Pokemon::StoryCheckpoint> rows, size_t failed,
-    std::span<const CheckpointStart> starts, const BackupSave& backup
+//  The checkpoint a run asked to start at `first` plays from, by `read`,
+//  the start signature read where the player stands: run_start()'s. When
+//  that matches no start and `max_rewinds` allows one, the run rewinds to
+//  the backup save first, and plays from the checkpoint its card names: a
+//  catch autosaves where it lands, so 03.08's latest save can stand
+//  mid-zone (console B, 2026-11-16 17:24, at the 100 spot). None: neither
+//  names a checkpoint, and nothing may run.
+std::optional<size_t> start_or_rewind(
+    PlzaBackend& backend, std::span<const Pokemon::StoryCheckpoint> rows, size_t first,
+    std::span<const CheckpointStart> starts, const StartSignature& read,
+    const BackupSave& backup, size_t max_rewinds
 );
 
 //  `plan`'s rows with run_plza_segments(). A checkpoint that fails after
