@@ -91,6 +91,13 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "stop"},
     },
     {
+        //  lab-B, 2026-11-16 21:05: the latest save was Mable's talk autosave
+        //  in her office (03.11), and its talk prompt read as 03.06's start.
+        .name = "asked 03.08, Mable's office with 5 in the party: stop",
+        .input = {.asked = "03.08", .read = {.talk_prompt = true, .wild_zone = false, .party = 5}},
+        .expectation = {.from = "stop"},
+    },
+    {
         .name = "asked 03.08, nothing read: stop",
         .input = {.asked = "03.08", .read = {}},
         .expectation = {.from = "stop"},
