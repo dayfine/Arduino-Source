@@ -23,7 +23,7 @@ genrule(
 
 genrule(
     name = "overworld_map_json_gen",
-    srcs = ["//Packages/Resources/Pokemon/Maps/frlg:map_jsons"] + ["//:bazel_embed_text.py"],
+    srcs = ["//:frlg_map_jsons", "//:bazel_embed_text.py"],
     outs = ["overworld_map_json.cpp"],
     cmd = "python3 $(location //:bazel_embed_text.py) $@ VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h PokemonAutomation::NintendoSwitch::PokemonFRLG overworld_map_json $(SRCS)",
 )
@@ -83,18 +83,11 @@ cc_library(
         exclude = [
             "*_Tests.cpp",
             "PokemonFRLG_AutoStory.cpp",
-            "PokemonFRLG_AutoStoryBattle.cpp",
-            "PokemonFRLG_AutoStoryLaunch.cpp",
-            "PokemonFRLG_AutoStoryScreenEvents.cpp",
-            "PokemonFRLG_AutoStoryStartFrames.cpp",
-            "PokemonFRLG_AutoStoryStartMenu.cpp",
-            "PokemonFRLG_AutoStoryStartMenuOpening.cpp",
-            "PokemonFRLG_AutoStorySummary.cpp",
-            "PokemonFRLG_AutoStoryTeachScreens.cpp",
         ],
     ),
     deps = [
         "//Common/Cpp:common_cpp",
+        "//SerialPrograms/Source:frlg_inference_deps",
         "//SerialPrograms/Source/Pokemon:pokemon_navigation",
         "//SerialPrograms/Source/Pokemon:pokemon_types",
         "//SerialPrograms/Source/Pokemon/AutoStory:pokemon_autostory",

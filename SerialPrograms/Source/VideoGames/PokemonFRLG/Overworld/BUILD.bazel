@@ -23,3 +23,20 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "frlg_overworld_readers",
+    srcs = glob(["*Reader.cpp"]),
+    hdrs = glob([
+        "**/*.h",
+        "**/*.hpp",
+        "**/*.tpp",
+    ]),
+    deps = [
+        ":frlg_overworld",
+        "//Common/Cpp:common_cpp",
+        "//SerialPrograms/Source:frlg_inference_deps",
+        "//:serial_programs_headers",
+    ],
+    visibility = ["//visibility:public"],
+)

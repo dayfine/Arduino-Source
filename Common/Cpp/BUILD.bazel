@@ -11,12 +11,17 @@ cc_library(
         [
             "*.cpp",
             "Concurrency/*.cpp",
+            "Concurrency/Backends/ThreadPool_Default.cpp",
             "Containers/*.cpp",
+            "CpuId/*.cpp",
+            "CpuUtilization/*.cpp",
+            "Cryptography/*.cpp",
             "Filesystem/*.cpp",
             "Json/*.cpp",
             "Logging/*.cpp",
             "Options/*.cpp",
             "Strings/*.cpp",
+            "TestRunners/*.cpp",
         ],
         exclude = [
             "*Qt*",

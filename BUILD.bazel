@@ -25,13 +25,17 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
-cc_library(
+alias(
     name = "serial_programs_headers",
-    hdrs = glob([
-        "SerialPrograms/Source/**/*.h",
-        "SerialPrograms/Source/**/*.hpp",
-        "SerialPrograms/Source/**/*.tpp",
-    ]),
-    includes = ["SerialPrograms/Source"],
+    actual = "//SerialPrograms/Source:serial_programs_headers",
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "frlg_map_jsons",
+    srcs = glob(
+        ["Packages/Resources/Pokemon/Maps/frlg/*.json"],
+        allow_empty = True,
+    ),
     visibility = ["//visibility:public"],
 )
