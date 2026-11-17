@@ -392,7 +392,8 @@ UnitTestResult test_league_fight_rows(){
     const StoryCheckpoint* before = &league_row("20.01a");
     for (const auto& [id, fight_name] : rows){
         const StoryCheckpoint& row = league_row(id);
-        if (!row.start || !before->postconditions.position || !(Pokemon::grid_pose_of(*row.start) == *before->postconditions.position)){
+        const std::optional<Pokemon::GridPose> before_end = Pokemon::checkpoint_end_pose(*before);
+        if (!row.start || !before_end || !(Pokemon::grid_pose_of(*row.start) == *before_end)){
             return std::format("{}: doesn't start where {} ends.", id, before->id);
         }
         before = &row;
