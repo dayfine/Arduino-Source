@@ -216,6 +216,9 @@ bool control_prompt_shows(const SceneMachineConfig& config, const ScreenObservat
 //  nurse ("your Pokemon is already in great shape", 110 s of it, console B
 //  2026-11-16).
 Button dialog_button(const SceneMachineConfig& config, const ScreenObservation& look){
+    if (config.text_with_a){
+        return BUTTON_A;
+    }
     if (party_bar_is_control(config) && look.events.has(ScreenEvent::DIALOG_BOX)){
         return BUTTON_B;
     }
