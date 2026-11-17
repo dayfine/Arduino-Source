@@ -207,7 +207,7 @@ std::optional<size_t> start_or_rewind(
 
 
 SegmentReport run_plza_with_rewinds(
-    const Pokemon::StoryGame<ZonePose>& game, const Pokemon::StoryRows& story,
+    const Pokemon::StoryGame<ZonePose>& game,
     const RewindPlan& plan, const BackupSave& backup,
     PlzaBackend& backend, AutosaveSightings& sightings, Pokemon::RunState& state
 ){
@@ -216,7 +216,7 @@ SegmentReport run_plza_with_rewinds(
     size_t from = plan.first;
     for (size_t rewinds = 0;; rewinds++){
         const std::vector<StoryCheckpoint> run_rows = Pokemon::story_run_rows(rows, from, plan.last);
-        add_part(run_plza_segments(game, story, run_rows, plan.segments, backend, state, sightings), total);
+        add_part(run_plza_segments(game, run_rows, plan.segments, backend, state, sightings), total);
         if (total.completed){
             return total;
         }

@@ -32,7 +32,6 @@ namespace Pokemon{
 enum class StoryReload{
     NEVER,          //  left out: the row runs on from where the row before left
     WHEN_CHAINED,   //  true: at plan boundaries
-    ALWAYS,         //  "always": even straight through; only its save starts its walk
 };
 
 //  What a row's "save" says about the game's own save at its end. The
@@ -64,11 +63,9 @@ struct StoryRows{
     //  The StoryRowSave::UNVERIFIED rows, for a run to report the autosave
     //  it sees there.
     std::set<std::string, std::less<>> unverified_autosaves;
-    //  WHEN_CHAINED and ALWAYS rows; each comes after an autosave row,
-    //  whose autosave is its start save.
+    //  The WHEN_CHAINED rows; each comes after an autosave row, whose
+    //  autosave is its start save.
     std::set<std::string, std::less<>> reload_when_chained;
-    //  The ALWAYS rows of reload_when_chained.
-    std::set<std::string, std::less<>> reload_always;
 };
 
 //  A game's story: its checkpoints in the order it plays them, and the rows

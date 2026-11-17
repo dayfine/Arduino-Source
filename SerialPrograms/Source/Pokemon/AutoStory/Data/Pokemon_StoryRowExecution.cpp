@@ -59,11 +59,7 @@ StoryReload read_reload(const JsonObject& execution, std::string_view where){
     if (is_true(*reload)){
         return StoryReload::WHEN_CHAINED;
     }
-    const std::string* text = reload->to_string();
-    if (text != nullptr && *text == "always"){
-        return StoryReload::ALWAYS;
-    }
-    throw ParseException(std::format("{}: reload_when_chained is true, \"always\" or left out", where));
+    throw ParseException(std::format("{}: reload_when_chained is true or left out", where));
 }
 
 } // namespace

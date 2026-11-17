@@ -123,9 +123,6 @@ constexpr std::string_view REWINDS_TO_BACKUP_LABEL =
     "<b>Rewinds to the Backup Save:</b><br>A checkpoint that fails after the game autosaved in it cannot reload its start. "
     "The run then closes the game, opens the backup save's card at the title (Up + B + X), and when the card matches a checkpoint's start "
     "(\"start_signature\" in its plan), loads it and plays on from that checkpoint, up to this many times. An unknown backup is never loaded.";
-constexpr std::string_view SKIP_FORCED_RELOADS_LABEL =
-    "<b>Developer: skip forced reloads:</b><br>A chained run does not reload the start save of a checkpoint whose plan says it always reloads "
-    "(reload_when_chained \"always\"): it goes on from the live screen, to test whether that reload is needed. Each skipped reload is logged.";
 
 //  Loads the latest save for `row` with `game`: a run that starts after
 //  the new game starts from it (01.01: the platform autosave), not from
@@ -236,7 +233,6 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         true
     )
-    , SKIP_FORCED_RELOADS(std::string(SKIP_FORCED_RELOADS_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/false)
     , GO_HOME_WHEN_DONE(false)
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
@@ -252,7 +248,6 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
     PA_ADD_OPTION(REWINDS_TO_BACKUP);
     PA_ADD_OPTION(LOAD_SAVE_FIRST);
-    PA_ADD_OPTION(SKIP_FORCED_RELOADS);
     PA_ADD_OPTION(BATTLE_AI);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
@@ -280,10 +275,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     RunState state;
 
     RewindPlan plan{
-        .rows = rows, .first = first, .last = last, .segments = {
-            .attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT,
-            .forced_reloads = SKIP_FORCED_RELOADS ? SegmentRunOptions::ForcedReloads::SKIP : SegmentRunOptions::ForcedReloads::KEEP,
-        },
+        .rows = rows, .first = first, .last = last, .segments = {.attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT},
         .starts = builtin_checkpoint_starts(), .max_rewinds = REWINDS_TO_BACKUP,
     };
     if (!story_row_starts_without_save(rows[first])){
@@ -293,7 +285,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         plan.first = checked_first_row(env.console, context, backend, plan, console_backup_save(story));
     }
 
-    const SegmentReport report = run_plza_with_rewinds(game, story_data, plan, console_backup_save(story), backend, sightings, state);
+    const SegmentReport report = run_plza_with_rewinds(game, plan, console_backup_save(story), backend, sightings, state);
     if (!report.completed){
         throw OperationFailedException(
             ErrorReportMode::NO_ERROR_REPORT,

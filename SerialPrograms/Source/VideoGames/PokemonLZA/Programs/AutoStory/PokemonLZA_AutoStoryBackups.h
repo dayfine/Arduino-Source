@@ -100,7 +100,7 @@ std::optional<size_t> start_or_rewind(
 //  the run, as do the failures past the last rewind. Logs each decision
 //  as "[Rewind] ...".
 Pokemon::SegmentReport run_plza_with_rewinds(
-    const Pokemon::StoryGame<Pokemon::ZonePose>& game, const Pokemon::StoryRows& story,
+    const Pokemon::StoryGame<Pokemon::ZonePose>& game,
     const RewindPlan& plan, const BackupSave& backup,
     PlzaBackend& backend, AutosaveSightings& sightings, Pokemon::RunState& state
 );

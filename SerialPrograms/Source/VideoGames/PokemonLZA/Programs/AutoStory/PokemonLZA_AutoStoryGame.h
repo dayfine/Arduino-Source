@@ -50,7 +50,10 @@ namespace PokemonLZA{
 //                              "wait_ms", "end_after_ms" (no end before
 //                              that much of the last leg), and "end",
 //                              "fade_white", "fade_black", "dialog" or
-//                              "prompt" (an A prompt);
+//                              "prompt" (an A prompt), and
+//                              "first_turn_when_chained", a turn before
+//                              the legs when the checkpoint went on from
+//                              the live screen (RunState::row_start);
 //                              walked once the screen shows free control
 //                              (check_can_walk()), until its end event if it
 //                              has one (walk_until()), else until its legs
@@ -143,36 +146,24 @@ Pokemon::Outcome load_checkpoint_start(
 
 //  How run_plza_segments() runs its rows.
 struct SegmentRunOptions{
-    //  Whether a chained run keeps the reloads `story` forces with
-    //  reload_when_chained "always". SKIP is a developer option: it tests
-    //  whether a row needs its reload by running it from the live screen.
-    enum class ForcedReloads{
-        KEEP,
-        SKIP,
-    };
-
     size_t attempts_per_checkpoint = 1;
-    ForcedReloads forced_reloads = ForcedReloads::KEEP;
 };
 
 //  `rows` in order from the save the game is on, each with the story
 //  engine's run_segment() on `backend`, `options.attempts_per_checkpoint` each when a reload
 //  returns to its start (the first row, or one after a row whose autosave
-//  `sightings` saw), else once. Between two rows, the event "chain":
-//    - a row `story` marks reload_when_chained "always" loads its start
-//      (load_checkpoint_start()) when the row before's autosave was seen;
-//      with `options.forced_reloads` SKIP it runs on from the live screen instead,
-//      unchecked, and logs "[Checkpoint] <id>: reload skipped (developer option)";
-//    - any other row runs on from the live screen when its start check
-//      passes or cannot tell (logged as "start unchecked"); when it fails,
-//      the row's start is loaded if the row before's autosave was seen.
+//  `sightings` saw), else once. Between two rows, the event "chain": a row
+//  runs on from the live screen when its start check passes or cannot
+//  tell (logged as "start unchecked"), `state`'s row_start CHAINED; when it
+//  fails, the row's start is loaded (load_checkpoint_start()) if the row
+//  before's autosave was seen, with a fresh `state` (row_start LOADED).
 //  With no autosave seen, a reload would rewind to an older save: the run
 //  fails there as "no_start_save". A failed load fails the run too.
 //  A row that saw an autosave and then failed is not retried: the save
 //  moved past its start, so its reload fails as "save_moved", and the run
 //  logs "[Save] <id>: the game autosaved in <step> before the run failed".
 Pokemon::SegmentReport run_plza_segments(
-    const Pokemon::StoryGame<Pokemon::ZonePose>& game, const Pokemon::StoryRows& story,
+    const Pokemon::StoryGame<Pokemon::ZonePose>& game,
     std::span<const Pokemon::StoryCheckpoint> rows, const SegmentRunOptions& options,
     PlzaBackend& backend, Pokemon::RunState& state, AutosaveSightings& sightings
 );
