@@ -1,0 +1,56 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.06",
+    "title": "To the Wild Zones card",
+    "start": {
+      "place": "LumioseCity",
+      "spot": "PokemonCenter"
+    },
+    "events": [
+      {
+        "id": "out_of_pokemon_center",
+        "kind": "game_action",
+        "why": "UNVERIFIED, NEEDS CONSOLE: from the nurse's counter after 03.05's heal, out of the Center to where 03.04's scene left the player (outside, by the door; console B 2026-11-16), facing as it did, so the legs below (step 56, recorded right after 03.04's scene) still hold. These legs only reverse an in-Center walk to the counter and do not leave the Center; the way out is not measured. not planned: Lumiose has no tile grid to plan a route target on.",
+        "action": "walk",
+        "args": {
+          "legs": [[180, 1500], [90, 0]]
+        }
+      },
+      {
+        "id": "center_to_zone_1",
+        "kind": "game_action",
+        "why": "step 56: from the Pokemon Center to Wild Zone 1's gate. ~5 units/s; the first 2 s replace a dash test of the same distance. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 2000], [0, 3000], [0, 6000]]
+        }
+      },
+      {
+        "id": "toward_zone_1_gate",
+        "kind": "game_action",
+        "why": "step 57: toward the gate, into Taunie's scene. Left 45, right 15. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[-45, 0], [15, 2500]]
+        }
+      },
+      {
+        "id": "wild_zones_tutorial",
+        "kind": "scene",
+        "why": "step 57: Taunie on wild zones, the Wild Zones card",
+        "action": "a"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends on the autosave in wild_zones_tutorial, its last step (console B, 2026-11-16: badge at 41.4 s), so a checkpoint starts where that save reloads; 03.07 goes on into Wild Zone 1. The menu save of plza/autostory is dropped. Backup card: after 03.08 autosaved, the title's backup (Up + B + X) showed 1 registered and loaded at the Center counter, this checkpoint's start (console B, 2026-11-16). It is the first checkpoint a backup can load at: the start_signature's \"registered\" marks it, and a run never opens the backup card before it (runs 12 and 15 tried at 02.05 and 03.01 and read no card, console B 2026-11-16). Start signature: at the counter the A Talk prompt shows and no lead panel (za_bk5_g, console B 2026-11-16)."
+    }
+  },
+  "execution": {
+    "save": "autosave",
+    "autosave_step": "wild_zones_tutorial",
+    "start_signature": {"registered": 1, "talk_prompt": true, "wild_zone": false, "party": 1}
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.02",
+    "title": "Out of Hotel Z",
+    "start": {
+      "place": "HotelZ"
+    },
+    "events": [
+      {
+        "id": "to_hotel_front_door",
+        "kind": "game_action",
+        "why": "step 40: across the lobby to the front door's \"A Leave\". Stops at the door. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 6000]]
+        }
+      },
+      {
+        "id": "leave_hotel_z",
+        "kind": "game_action",
+        "why": "steps 40-41: A Leave at the door (a scene step ends at once on its prompt), the Main Menu tutorial card",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends outside Hotel Z at the autosave seen in leave_hotel_z, after the Main Menu card (console B, 2026-11-16: badge at 116 s in the step), so a checkpoint starts where that save reloads; 03.02b goes on to Taunie."
+    }
+  },
+  "execution": {
+    "save": "autosave",
+    "autosave_step": "leave_hotel_z"
+  }
+}

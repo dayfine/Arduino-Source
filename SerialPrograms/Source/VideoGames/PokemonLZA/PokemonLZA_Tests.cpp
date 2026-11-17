@@ -14,11 +14,42 @@
 #include "Inference/PokemonLZA_DialogDetector.h"
 #include "Inference/PokemonLZA_WeatherDetector.h"
 #include "Inference/PokemonLZA_HyperspaceCalorieDetector.h"
+#include "Inference/PokemonLZA_LockOnBracketDetector.h"
 #include "Inference/PokemonLZA_MainMenuDetector.h"
 #include "Inference/Map/PokemonLZA_MapDetector.h"
 #include "Inference/Map/PokemonLZA_MapIconDetector.h"
 #include "Inference/PokemonLZA_OverworldPartySelectionDetector.h"
+#include "Inference/PokemonLZA_PartyBarDetector.h"
 #include "Inference/PokemonLZA_SelectionArrowDetector.h"
+#include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryCaughtMarkReader_Tests.h"
+#include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryConfirmChoicesReader_Tests.h"
+#include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDetectors_Tests.h"
+#include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox_Tests.h"
+#include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector_Tests.h"
+#include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryIntroScreens_Tests.h"
+#include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryLines_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryMenuSave_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryLaunch_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerArrival_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerDistance_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchStop_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryGateWalk_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1Road_Tests.h"
+#include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryZoneGateReader_Tests.h"
+#include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMapPinReader_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryMapLegs_Tests.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStoryBackend_Tests.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStoryBackups_Tests.h"
+#include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBackupCardReader_Tests.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStorySceneMachine_Tests.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStorySceneGolden_Tests.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStorySceneReplay_Tests.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents_Tests.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStoryStarts_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -36,11 +67,42 @@ void add_tests(UnitTestDatabase& database){
     add_tests_DonutBerriesReader(database);
     add_tests_FlavorPowerScreenDetector(database);
     add_tests_HyperspaceCalorieDetector(database);
+    add_tests_LockOnBracketDetector(database);
     add_tests_MainMenuDetector(database);
     add_tests_MapDetector(database);
     add_tests_MapIconDetector(database);
     add_tests_OverworldPartySelectionDetector(database);
+    add_tests_PartyBarDetector(database);
     add_tests_SelectionArrowDetector(database);
+    add_tests_AutoStoryDetectors(database);
+    add_tests_AutoStoryDialogChoiceBox(database);
+    add_tests_AutoStoryConfirmChoicesReader(database);
+    add_tests_AutoStoryCaughtMarkReader(database);
+    add_tests_AutoStoryDialogDetector(database);
+    add_tests_AutoStoryIntroScreens(database);
+    add_tests_AutoStoryLaunch(database);
+    add_tests_AutoStoryNewGame(database);
+    add_tests_AutoStoryBackend(database);
+    add_tests_AutoStoryGame(database);
+    add_tests_AutoStoryBackups(database);
+    add_tests_AutoStoryBackupCardReader(database);
+    add_tests_AutoStoryLines(database);
+    add_tests_AutoStoryMenuSave(database);
+    add_tests_AutoStoryMarkerArrival(database);
+    add_tests_AutoStoryMarkerDistance(database);
+    add_tests_AutoStoryObjectiveMarkerReader(database);
+    add_tests_AutoStorySceneMachine(database);
+    add_tests_AutoStorySceneReplay(database);
+    add_tests_AutoStorySceneGolden(database);
+    add_tests_AutoStoryScreenEvents(database);
+    add_tests_AutoStoryStarts(database);
+    add_tests_AutoStoryCatchPlan(database);
+    add_tests_AutoStoryCatchStop(database);
+    add_tests_AutoStoryGateWalk(database);
+    add_tests_AutoStoryZoneGateReader(database);
+    add_tests_AutoStoryZone1Road(database);
+    add_tests_AutoStoryMapPinReader(database);
+    add_tests_AutoStoryMapLegs(database);
 
 }
 

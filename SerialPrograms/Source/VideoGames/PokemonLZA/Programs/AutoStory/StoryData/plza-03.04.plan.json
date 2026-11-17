@@ -1,0 +1,42 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.04",
+    "title": "Pokemon Center, the Pokedex",
+    "start": {
+      "place": "LumioseCity"
+    },
+    "events": [
+      {
+        "id": "into_pokemon_center",
+        "kind": "game_action",
+        "why": "step 53: into the Pokemon Center, to the nurse's \"A Talk\". The last turn (\"right\") had no angle recorded: 90 is a guess. Measured 2026-11-08 on console B, walk not run. not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 3000], [20, 2000], [-90, 2000], [90, 0]],
+          "end": "prompt"
+        }
+      },
+      {
+        "id": "talk_to_nurse",
+        "kind": "talk",
+        "why": "step 53: A at the nurse"
+      },
+      {
+        "id": "pokedex_app",
+        "kind": "game_action",
+        "why": "steps 54-55: the Pokedex app (\"Ready!\"), Chikorita's entry, B on its screen, then the nurse's wrap-up and Taunie's scene outside, until control outside the Center. Nothing starts step 55's scene, so it plays inside this step: console B 2026-11-16 saw its text, two black fades and the autosave badge, then the party bar outside the Center, and a scene step after it waited 45 s on the party bar.",
+        "action": "talk_to_pokedex_screen"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "No forced reload when chained (reload_when_chained \"always\" dropped 2026-11-17, user): assumed unneeded, TO BE VERIFIED by a chained 03.03 -> 03.04 run; put it back if 03.04 fails from the live screen. 03.03's autosave shows in its rooftop_scene, not at its end (console B 2026-11-17, German). console B recording, 2026-11-08/09: played step by step from a new game. Ends outside the Pokemon Center, in control, on the game's autosave: console B 2026-11-16 logged the autosave badge after Taunie's scene's last black fade, then the party bar outside the Center."
+    }
+  },
+  "execution": {
+    "save": "autosave",
+    "autosave_step": "pokedex_app"
+  }
+}

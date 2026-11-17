@@ -1,0 +1,168 @@
+/*  PokemonLZA AutoStory - Scene machine
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  A run of scenes pressed through to free control, as ScreenMachine
+ *  states (CommonTools/ScreenMachine) that match on what the backend
+ *  observed, so they run on the console and on a scripted backend alike:
+ *  every look picks one state, the state takes one step, and each change of
+ *  state or of the look's events is logged (repeats are summed up). A
+ *  choice takes its top row: Up while a lower row is highlighted, then A;
+ *  a text box gets B in a machine that ends
+ *  in control (B turns a line like A, but cannot talk again once the box
+ *  closes: A at the closing box restarted 03.05's nurse's talk), else the
+ *  text button, as does the advance chevron (ADVANCE_ARROW_READING). The
+ *  player has control when the party bar (PLAYER_CAN_MOVE) or, in the
+ *  tutorial, which has no party bar, the
+ *  controls hint (CONTROLS_HINT_READING) holds a second, or an A prompt
+ *  (INTERACT_PROMPT, "A Talk") holds a second past min_length (01.02's
+ *  battle area shows only the prompt to Ryon; A there restarts his talk,
+ *  so no blind A while it shows), or when
+ *  a main mission's banner (MISSION_BANNER_READING) shows on two looks in a
+ *  row: it shows as the scene hands over control, and the machine then
+ *  waits for it to go, pressing A if it stays (01.03's "MAIN MISSION 02").
+ *  01.01's arrival scenes end on one or the other. The card a main mission
+ *  ends with (MISSION_COMPLETE_READING) waits for A: the machine presses A
+ *  at it, and it counts as busy. A machine that stops at a choice
+ *  (SceneMachineConfig::stop_at_choice) ends when the choice box shows
+ *  instead: 01.02's "Battle with Pokemon!"; one that stops at a battle
+ *  (stop_at_battle) ends on the battle HUD (BATTLE_STARTED): 01.03's
+ *  battle with Andi; neither takes the party bar for control, as it shows
+ *  between the lines of a talk.
+ *
+ */
+
+#ifndef PokemonAutomation_PokemonLZA_AutoStorySceneMachine_H
+#define PokemonAutomation_PokemonLZA_AutoStorySceneMachine_H
+
+#include <optional>
+#include <string>
+#include <string_view>
+#include "Common/Cpp/Time.h"
+#include "CommonTools/ScreenMachine/ScreenObservation.h"
+#include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
+#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "PokemonLZA_AutoStoryBackend.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonLZA{
+
+
+//  When a scene machine gives up on a screen with nothing going on, and
+//  when it presses A blind.
+struct SceneMachineConfig{
+    //  Fails ("scene_quiet") once nothing busy (text, a fade) and no sign of
+    //  control has shown for this long...
+    std::optional<Milliseconds> quiet = std::nullopt;
+    //  ...and this long has passed since the start: a cutscene can hold a
+    //  still frame longer than `quiet`.
+    Milliseconds min_length = Milliseconds(0);
+    //  Presses `blind_button` every 2 s once nothing busy and no sign of
+    //  control has shown for this long, for a screen no detector reads
+    //  (03.04's Pokedex screens). Every screen a detector reads gets its
+    //  own state and press instead; nothing else is pressed blind: a blind
+    //  A at the end of a talk restarts it (01.02's battle area, console B
+    //  2026-11-15). A does not skip a cutscene.
+    std::optional<Milliseconds> blind_press_after = std::nullopt;
+    //  How often those blind presses come: zero presses on every look, as
+    //  plza/autostory's "scene" step (SceneMash) pressed B on every
+    //  frame with no box, choice, fade or party bar, which closes the menus
+    //  a talk opens (03.11's Mable's mission and reward screens).
+    Milliseconds blind_press_every = Milliseconds(2000);
+    //  Once a scene is under way, one blind press (blind_button) when
+    //  nothing busy and no sign of control has shown for this long, and
+    //  again only after the next cue: a box no detector reads inside a
+    //  scene, like 03.07's "received 10 Poke Balls", which held
+    //  mash_to_move_hints on scene_moving for 10 s with no press (console
+    //  B, 2026-11-16 18:39).
+    std::optional<Milliseconds> gap_press = std::nullopt;
+    //  The button of those blind presses: B on a screen that A does not
+    //  close (03.04's Pokedex entry, where A only plays its motions).
+    Button blind_button = BUTTON_A;
+    //  Ends at the choice box (CHOICE_BOX) instead of taking its top row.
+    bool stop_at_choice = false;
+    //  Ends at the battle HUD (BATTLE_STARTED), before anything else.
+    bool stop_at_battle = false;
+    //  The button that advances text in a machine that stops at a choice
+    //  or a battle, and the advance chevron with no box: B where an A could
+    //  land on a choice that shows the moment the text ends. A text box in
+    //  any other machine gets B, a choice A.
+    Button text_button = BUTTON_A;
+    //  A, not B, on every text box, also in a machine that ends in
+    //  control: for a scene whose choice a B would answer with its cancel
+    //  row as the box opens, before any look can see it (03.01's lobby,
+    //  console B 2026-11-17). An A on a box that is closing can start the
+    //  talk again, so only scenes that end with no A prompt set it.
+    bool text_with_a = false;
+    //  The quiet end is control, not a failure: Hotel Z's lobby, halls and
+    //  rooms show no party bar or prompt (02.04-02.06, console B
+    //  2026-11-10).
+    bool quiet_is_control = false;
+    //  The step plays a scene: the HUD (the party bar, the controls hint,
+    //  an A prompt) ends it only once a scene is under way: text, a choice,
+    //  a battle, or with no HUD a fade or a moving screen (a textless
+    //  cutscene: 02.02's street scene, console B 2026-11-15). Fails
+    //  ("scene_never_started") when the HUD shows this long after the start
+    //  with no scene: the player is not at the scene's trigger (02.02 run
+    //  after the Brigitte battle walked past the street scene's, console B
+    //  2026-11-13).
+    std::optional<Milliseconds> start_window = std::nullopt;
+    //  Ends once this many black fades have been waited out and the screen
+    //  has then shown no text, fade or banner for 5 s (or on the controls
+    //  hint, if it comes first), and takes the mission banner for part of
+    //  the scene, not its end; whether it showed is logged. A banner up 2 s
+    //  gets A, up to 3 times 1 s apart (the Italian one stays until A,
+    //  console B 2026-11-15), and one that stays fails. 01.01's arrival
+    //  ends on its third black fade after the ad, which follows the banner
+    //  (console B, 2026-11-15, English and Italian; the banner detector
+    //  missed it on the Italian game). Text after the last fade starts the
+    //  5 s again.
+    std::optional<size_t> end_after_black_fades = std::nullopt;
+};
+
+//  A scene is under way on `look`: text (a box, or a subtitle's advance
+//  chevron), a choice, a battle or a tutorial card, or, with no HUD up (the
+//  party bar, the controls hint, an A prompt), a fade or a moving screen.
+//  A cutscene can play a minute with no text: 02.02's street scene moved
+//  41 s with no HUD after its black fade (console B, 2026-11-15). A step
+//  that plays a scene (start_window) does not end on the HUD before one
+//  is: the HUD up for start_window with no scene is the player away from
+//  its trigger. "talk" takes it for its talk having started: Taunie's
+//  (03.02b) opens on a dimmed "Smart Rotom" card with no text box (console
+//  B, 2026-11-16).
+bool scene_under_way(const ScreenObservation& look);
+
+//  "text box, advance arrow": `look`'s events and readings, as the scene
+//  machine logs them; "nothing" for none.
+std::string describe_scene_look(const ScreenObservation& look);
+
+//  Logs where the step should end ("[PLZA label] start, expecting the
+//  controls hint, ..."), then presses through scenes (a tutorial card,
+//  TUTORIAL_CARD_READING, gets A) until the controls hint or the party bar has
+//  held a second, or an A prompt has held a second past
+//  `config.min_length` (neither the party bar nor the prompt with
+//  `config.stop_at_choice` or `config.stop_at_battle`), or
+//  the mission banner has shown on two looks (then waits up to 10 s for it
+//  to go and, if it stays, presses A up to 3 times 1 s apart), or with
+//  `config.stop_at_choice` the choice box shows, or with
+//  `config.stop_at_battle` the battle HUD, or with
+//  `config.end_after_black_fades` its last fade has lifted and settled, on
+//  run_screen_machine(). `label` names its log lines ("[PLZA
+//  mash_to_move_hints] screen 2: dialog at 1.5s: text box"), which go to
+//  the file log (log_detail()) except the black fades, the banner, the
+//  hint and the end, which go on the overlay too (log()). Fails as "scene_quiet" on the
+//  quiet end (unless `config.quiet_is_control`), "scene_never_started"
+//  on the HUD past `config.start_window` with no scene, "scene_timeout" when `timeout` passes (by
+//  the looks' time), and "scene_stuck" on a state that comes up too often
+//  or a screen that stops changing.
+Pokemon::Outcome run_scene_machine(
+    PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
+);
+
+
+
+} // namespace PokemonLZA
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
+#endif

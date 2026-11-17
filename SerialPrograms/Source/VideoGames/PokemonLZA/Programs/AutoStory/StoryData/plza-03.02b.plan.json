@@ -1,0 +1,92 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.02b",
+    "title": "Battle Taunie",
+    "start": {
+      "place": "LumioseCity"
+    },
+    "events": [
+      {
+        "id": "to_plaza_scene_prompt",
+        "kind": "game_action",
+        "why": "step 41: on from the reload spot outside Hotel Z to the first A prompt, which starts a scene, not Taunie's talk: it was 3.25 s ahead on all three 03.02b runs (console B, 2026-11-16). The 2026-11-08 recording's 3 s leg from the live exit stopped short of Taunie at the Quartiere Verde arch. 8 s at most. not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
+        "action": "walk",
+        "args": {
+          "legs": [
+            [
+              0,
+              8000
+            ]
+          ],
+          "end": "prompt"
+        }
+      },
+      {
+        "id": "plaza_scene",
+        "kind": "game_action",
+        "why": "step 41: A at that prompt starts a scene: a black fade, the dimmed Smart Rotom card, a second black fade, then control at the Quartiere Verde arch with Taunie a few steps ahead inside it (console B, 2026-11-16, run 3: control 12 s after A)",
+        "action": "mash_to_move_hints",
+        "args": {
+          "press_a_first": true
+        }
+      },
+      {
+        "id": "to_taunie",
+        "kind": "game_action",
+        "why": "step 42: straight on through the arch to Taunie's \"A Talk\" (run 3's frame: she stands a few steps ahead, facing the player), 8 s at most",
+        "action": "walk_to_prompt",
+        "args": {
+          "timeout_ms": 8000
+        }
+      },
+      {
+        "id": "talk_to_taunie",
+        "kind": "talk",
+        "why": "step 42: A at Taunie's prompt"
+      },
+      {
+        "id": "taunie_battle_start",
+        "kind": "game_action",
+        "why": "steps 42-43: A through her talk and challenge (no A hint, subtitles with no text box, the Smart Rotom card) until the battle HUD (console B, 2026-11-16: the talk opened on the card; the battle code run straight after it looked 2 min for a battle on the overworld)",
+        "action": "story_battle_start"
+      },
+      {
+        "id": "battle_totodile",
+        "kind": "game_action",
+        "why": "step 43: beat Totodile, until \"We're not done just yet!\"",
+        "action": "story_battle"
+      },
+      {
+        "id": "tepig_battle_start",
+        "kind": "game_action",
+        "why": "step 44: A through \"We're not done just yet!\", the Type Matchups tutorial (3 pages) and Tepig's send-out until the battle HUD",
+        "action": "story_battle_start"
+      },
+      {
+        "id": "battle_tepig",
+        "kind": "game_action",
+        "why": "step 44: beat Tepig, until Taunie's speech",
+        "action": "story_battle"
+      },
+      {
+        "id": "after_taunie_battle",
+        "kind": "game_action",
+        "why": "step 45: Taunie's talk and the Map & Missions card with A, the map closed with B, her talk with B",
+        "action": "talk_through_map_screen"
+      },
+      {
+        "id": "taunie_runs_off",
+        "kind": "game_action",
+        "why": "step 45: the Main Missions card (A turns its pages; a scene step only waits on it), Taunie runs off (console B, 2026-11-10)",
+        "action": "mash_to_move_hints"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.02 at the autosave outside Hotel Z (console B, 2026-11-16), so a checkpoint starts where that save reloads. Starts outside Hotel Z after the Main Menu card; nothing reads that spot yet, so its start is unchecked. No save: the game does not autosave at its end (2026-11-15 save review)."
+    }
+  },
+  "execution": {}
+}
