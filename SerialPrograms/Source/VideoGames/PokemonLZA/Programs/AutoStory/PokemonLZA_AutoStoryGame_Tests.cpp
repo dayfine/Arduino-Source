@@ -993,11 +993,13 @@ const RunCase RUN_CASES[] = {
         //  the walk to the elevator, NPC Alton's "A Ansprechen" showed
         //  beside the path and stood steady; the walk ended there, short of
         //  the door, and the talk opened Alton's line. The elevator's
-        //  prompt shows at the door, about 2 s in.
+        //  prompt shows at the door, about 2 s in. The first three looks
+        //  come before the walk's first slice (as in 03.02b's walk), so
+        //  Alton's prompt is seen 500 and 750 ms in, the door's at 2000 ms.
         .name = "02.05's walk to the elevator walks past a prompt before its measured time to the one at the door",
         .input = {.checkpoint = "02.05", .first_step = 0, .steps = 1, .looks = concat(
             std::vector<Observation<ZonePose>>(4, party_bar(Milliseconds(0))),
-            concat({A_PROMPT, A_PROMPT}, concat(std::vector<Observation<ZonePose>>(3, party_bar(Milliseconds(0))), {A_PROMPT}))
+            concat({A_PROMPT, A_PROMPT}, concat(std::vector<Observation<ZonePose>>(4, party_bar(Milliseconds(0))), {A_PROMPT}))
         )},
         .expectation = {
             .verdict = "done",
