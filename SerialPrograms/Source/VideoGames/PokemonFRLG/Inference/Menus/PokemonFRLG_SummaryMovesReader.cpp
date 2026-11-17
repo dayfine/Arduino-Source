@@ -217,8 +217,41 @@ bool row_has_move(const ImageViewRGB32& screen, size_t row){
     return dark * 5 > badge.width() * badge.height();
 }
 
+//  The colours the game writes a move's PP in (pret pokefirered
+//  src/pokemon_summary_screen.c, sPrintMoveTextColors, palette
+//  graphics/summary_screen/text_moves.pal): dark grey (32, 32, 32) on a grey
+//  shadow (222, 222, 222) at full PP or above half; yellow (238, 222, 0) at
+//  half or less, orange (255, 148, 0) at a quarter or less and red (238, 0, 0)
+//  at 0, on the shadows (255, 246, 139), (255, 238, 115) and (246, 222, 156).
+//  The three low-PP colours are the only ones with far more red than blue,
+//  and their ink has no blue while their shadows have 115 or more.
+constexpr uint32_t DARK_PP_INK = 0xff202020;
+constexpr uint32_t DARK_PP_SHADOW = 0xffdedede;
+constexpr int LOW_PP_MIN_RED_OVER_BLUE = 80;
+constexpr int LOW_PP_INK_MAX_BLUE = 64;
+
+//  `pp` with low-PP yellow, orange and red redrawn in the dark grey the digit
+//  templates are cut from: their ink as the dark ink, their shadows as its
+//  shadow. Dark-grey PP comes back as it was.
+ImageRGB32 pp_in_dark_ink(const ImageViewRGB32& pp){
+    ImageRGB32 ink = pp.copy();
+    for (size_t y = 0; y < ink.height(); y++){
+        for (size_t x = 0; x < ink.width(); x++){
+            const uint32_t pixel = ink.pixel(x, y);
+            const int red = (pixel >> 16) & 0xff;
+            const int blue = pixel & 0xff;
+            if (red - blue < LOW_PP_MIN_RED_OVER_BLUE){
+                continue;
+            }
+            ink.pixel(x, y) = blue < LOW_PP_INK_MAX_BLUE ? DARK_PP_INK : DARK_PP_SHADOW;
+        }
+    }
+    return ink;
+}
+
 int read_pp(Logger& logger, const ImageViewRGB32& screen, const ImageFloatBox& box){
-    const int pp = read_digits_waterfill_template(logger, extract_box_reference(game_box(screen), box), DigitTemplateType::StatBox);
+    const ImageRGB32 ink = pp_in_dark_ink(extract_box_reference(game_box(screen), box));
+    const int pp = read_digits_waterfill_template(logger, ink, DigitTemplateType::StatBox);
     //  A move has at most 64 PP (40 with three PP Ups).
     return pp >= 0 && pp <= 64 ? pp : -1;
 }
@@ -367,6 +400,13 @@ void add_tests_SummaryMovesReader(UnitTestDatabase& database){
     //  read as attract, ?, attract and steel-wing before its line's moves
     //  were in MOVE_NAMES.
     database.add<Test_SummaryScreen>("PokemonFRLG/SummaryMovesReader/Pidgey_KnownMoves_eng.png");
+    //  FireRed at the League after Agatha, 2026-11-17: Blastoise
+    //  with BITE 9/25 and SURF 6/15 in yellow, read as -1/-1 while only dark
+    //  ink was read. Added once the image is in the test repo.
+    const std::string low_pp = "PokemonFRLG/SummaryMovesReader/Blastoise_LowPP_eng.png";
+    if (Filesystem::exists(UNIT_TEST_RESOURCE_PATH() + low_pp)){
+        database.add<Test_SummaryScreen>(low_pp);
+    }
 }
 
 
