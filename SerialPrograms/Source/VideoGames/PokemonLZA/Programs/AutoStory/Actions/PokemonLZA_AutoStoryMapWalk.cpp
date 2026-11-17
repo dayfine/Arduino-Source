@@ -90,7 +90,7 @@ LegWalk leg_over(PlzaBackend& backend, const MapWaypoint& waypoint, MapLegStep s
 //  WALK faces its heading (face_heading()), holds the stick straight on,
 //  and reads the pin again.
 LegWalk walk_leg(StoryEnv& env, PlzaBackend& backend, const MapWaypoint& waypoint, std::optional<MapPoint> pin){
-    MapLeg leg(waypoint.pin);
+    MapLeg leg(waypoint.pin, waypoint.stop_radius);
     while (true){
         backend.scope().throw_if_cancelled();
         const MapLegMove move = leg.next(pin);
