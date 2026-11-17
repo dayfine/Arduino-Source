@@ -6,7 +6,11 @@
 
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
-#include "CommonTools/OCR/OCR_NumberReader.h"
+#include <format>
+#include <string>
+#include <string_view>
+#include "CommonFramework/Language.h"
+#include "CommonTools/OCR/OCR_Routines.h"
 #include "PokemonLZA_AutoStoryBackupCardReader.h"
 
 namespace PokemonAutomation{
@@ -16,10 +20,14 @@ namespace PokemonLZA{
 
 namespace{
 
-//  The card's plain white strips at 1920 x 1080: right of the "BACKUP"
-//  title, down its left edge, and under its button.
+//  The card's plain white strips at 1920 x 1080: down its right edge,
+//  down its left edge, and under its button; none next to the title, whose
+//  width could change with the language (white on the Japanese card too,
+//  the user's capture). The right edge replaced a strip right of the
+//  "BACKUP" title after a French title screen read no card in 12 looks
+//  (console B, 2026-11-17 02:42).
 const ImageFloatBox CARD_WHITE_STRIPS[] = {
-    {576.0 / 1920, 173.0 / 1080, 960.0 / 1920, 54.0 / 1080},
+    {1672.0 / 1920, 432.0 / 1080, 23.0 / 1920, 324.0 / 1080},
     {230.0 / 1920, 432.0 / 1080, 23.0 / 1920, 324.0 / 1080},
     {288.0 / 1920, 778.0 / 1080, 1344.0 / 1920, 43.0 / 1080},
 };
@@ -55,11 +63,24 @@ std::optional<size_t> read_backup_card_registered(Logger& logger, const ImageVie
     if (!backup_card_shown(frame)){
         return std::nullopt;
     }
-    const int registered = OCR::read_number(logger, extract_box_reference(frame, REGISTERED_BOX));
-    if (registered < 0){
+    //  Only the leading digits: OCR::read_number() maps letter misreads to
+    //  digits, which read the Japanese "3" and the counter kanji hiki ("3a") as 34.
+    const std::string text = OCR::ocr_read(Language::English, extract_box_reference(frame, REGISTERED_BOX));
+    std::string_view rest(text);
+    while (!rest.empty() && rest.front() == ' '){
+        rest.remove_prefix(1);
+    }
+    size_t registered = 0;
+    size_t digits = 0;
+    while (digits < rest.size() && rest[digits] >= '0' && rest[digits] <= '9'){
+        registered = registered * 10 + (size_t)(rest[digits] - '0');
+        digits++;
+    }
+    logger.log(std::format("[Rewind] backup card count: OCR \"{}\" -> {}", text.substr(0, text.find('\n')), digits == 0 ? std::string("no digits") : std::to_string(registered)));
+    if (digits == 0){
         return std::nullopt;
     }
-    return (size_t)registered;
+    return registered;
 }
 
 

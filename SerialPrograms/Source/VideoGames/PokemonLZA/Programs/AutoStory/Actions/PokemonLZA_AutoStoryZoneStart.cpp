@@ -4,6 +4,7 @@
  *
  */
 
+#include <cmath>
 #include <cstdlib>
 #include "PokemonLZA_AutoStoryZoneStart.h"
 
@@ -23,6 +24,16 @@ constexpr int ZONE_SPOT_SLACK = 10;
 
 bool at_zone_spot(std::optional<int> distance){
     return distance && std::abs(*distance - ZONE_SPOT_DISTANCE) <= ZONE_SPOT_SLACK;
+}
+
+ZoneStartMove ZoneStart::leave(std::optional<MapPoint> start_pin, std::optional<int> distance){
+    if (!start_pin){
+        return next(distance);
+    }
+    const MapPoint start = m_route.start.pin;
+    const bool at_start = std::hypot(start_pin->x - start.x, start_pin->y - start.y) <= m_route.start_radius;
+    m_last = at_start ? ZoneStartMove::WALK_TO_SPOT : ZoneStartMove::ROCKS_NOT_LEFT;
+    return *m_last;
 }
 
 ZoneStartMove ZoneStart::next(std::optional<int> distance){

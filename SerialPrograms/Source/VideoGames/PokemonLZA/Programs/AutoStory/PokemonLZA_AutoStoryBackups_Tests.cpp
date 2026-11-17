@@ -16,6 +16,7 @@
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
+#include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryBackups.h"
 #include "PokemonLZA_AutoStoryBackups_Tests.h"
 
@@ -241,7 +242,9 @@ const RewindCase REWIND_CASES[] = {
 //  The console-less game with a reload that succeeds, its "catch_in_zone"
 //  looking once, then failing as `failure` its first `failed_catches`
 //  times, counted in `catches`. The stand-in runs on the script backend: the real one is
-//  console_only, which the registry would refuse before the handler.
+//  console_only, which the registry would refuse before the handler. Its
+//  look is noted in `sightings` like the real one's
+//  (with_autosave_sightings()): a badge it sees is the catch's autosave.
 Pokemon::StoryGame<ZonePose> rewind_game(
     const StoryData& story, size_t failed_catches, std::string_view failure, AutosaveSightings& sightings, size_t& catches
 ){
@@ -252,10 +255,15 @@ Pokemon::StoryGame<ZonePose> rewind_game(
     for (Pokemon::StoryAction<ZonePose>& action : game.actions){
         if (action.spec.name == "catch_in_zone"){
             action.spec.console_only = false;
-            action.handler = [&catches, failed_catches, failure](Pokemon::StoryBackend<ZonePose>& backend, const Pokemon::StoryActionCall&, Pokemon::RunState&){
-                backend.observe();
-                return catches++ < failed_catches ? Pokemon::outcome_failed(std::string(failure)) : Pokemon::outcome_ok();
-            };
+            Pokemon::StoryGame<ZonePose> stand_in;
+            stand_in.actions.push_back(Pokemon::StoryAction<ZonePose>{
+                .spec = action.spec,
+                .handler = [&catches, failed_catches, failure](Pokemon::StoryBackend<ZonePose>& backend, const Pokemon::StoryActionCall&, Pokemon::RunState&){
+                    backend.observe();
+                    return catches++ < failed_catches ? Pokemon::outcome_failed(std::string(failure)) : Pokemon::outcome_ok();
+                },
+            });
+            action.handler = with_autosave_sightings(std::move(stand_in), story, sightings).actions.front().handler;
         }
     }
     return game;

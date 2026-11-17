@@ -44,9 +44,12 @@ inline constexpr double CATCH_STOP_RADIUS = 12;
 //  south edge (y 261 at x 380, 248 at 440, 228 at 500); its middle is
 //  taken 10 pixels inside it, y = 245 - 0.3 (x - 410). Each waypoint is
 //  the point on that line at its marker distance times 1.2 from the "!".
-//  Taunie's rocks (marker 127): only logged against the pin read there.
+//  Taunie's rocks (marker 127): the pin read there before the leg off them
+//  in all 8 runs that reached the leg on console B, 2026-11-16 17:10 to
+//  2026-11-17 02:41 (the French one too). It decides where 03.08 starts
+//  (ZoneStart::leave()).
 //  The road entry is exact (no stop area): the leg after it starts there.
-inline constexpr MapWaypoint ZONE1_ROCKS{.name = "Taunie's rocks", .pin = {.x = 464, .y = 229}, .provisional = true};
+inline constexpr MapWaypoint ZONE1_ROCKS{.name = "Taunie's rocks", .pin = {.x = 476, .y = 224}, .provisional = false};
 //  The road off the rocks (marker ~120).
 inline constexpr MapWaypoint ZONE1_ROAD_ENTRY{.name = "the road entry", .pin = {.x = 456, .y = 231}, .provisional = true};
 //  The plaza by the green advertising column (marker 100, Scatterbug).

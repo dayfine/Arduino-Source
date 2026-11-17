@@ -86,6 +86,8 @@ std::vector<Type> operator+(std::vector<Type> front, const std::vector<Type>& ba
 struct StartCase{
     std::string name;
     struct Input{
+        //  The pin read at the start, before the leg (none: not read).
+        std::optional<MapPoint> start_pin;
         //  The read after the leg off the rocks, then after the timed walk
         //  (none: no read taken).
         std::vector<std::optional<int>> reads;
@@ -130,6 +132,23 @@ const StartCase START_CASES[] = {
         .input = {.reads = {140}},
         .expectation = {.moves = {ZoneStartMove::ROCKS_NOT_LEFT}},
     },
+    {
+        //  console B, French, 2026-11-17 02:41: the pin read as in every
+        //  passing run, the marker's digits in none of 24 looks.
+        .name = "the pin at the rocks, no read off them: the walk",
+        .input = {.start_pin = MapPoint{.x = 476, .y = 224}, .reads = {NONE}},
+        .expectation = {.moves = {ZoneStartMove::WALK_TO_SPOT}},
+    },
+    {
+        .name = "the pin a step off the rocks, a read out of the leg's range: the walk",
+        .input = {.start_pin = MapPoint{.x = 471, .y = 227}, .reads = {113}},
+        .expectation = {.moves = {ZoneStartMove::WALK_TO_SPOT}},
+    },
+    {
+        .name = "the pin at the 100 spot, a read of 127: stop",
+        .input = {.start_pin = MapPoint{.x = 432, .y = 238}, .reads = {127}},
+        .expectation = {.moves = {ZoneStartMove::ROCKS_NOT_LEFT}},
+    },
 };
 
 class Test_ZoneStart : public UnitTest{
@@ -141,8 +160,9 @@ public:
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         ZoneStart start(TAUNIE_ROCKS_ROUTE);
         std::vector<ZoneStartMove> moves;
-        for (const std::optional<int>& read : m_case.input.reads){
-            moves.push_back(start.next(read));
+        for (size_t i = 0; i < m_case.input.reads.size(); i++){
+            const std::optional<int> read = m_case.input.reads[i];
+            moves.push_back(i == 0 ? start.leave(m_case.input.start_pin, read) : start.next(read));
         }
         if (moves != m_case.expectation.moves){
             return std::format("Expected [{}], got [{}].", text(m_case.expectation.moves), text(moves));
