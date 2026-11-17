@@ -346,62 +346,88 @@ TargetChoice choose_target(PlzaBackend& backend, HeldZl& held){
     return choice;
 }
 
-//  Walks toward a far target with ZL held (the lock keeps the camera on
-//  it): 0.5 s steps, re-reading the plate, 4 at most (2 s).
-void approach_target(LockTarget target, PlzaBackend& backend, HeldZl& held){
+//  Steps toward `target` with ZL held (the lock keeps the camera on it),
+//  0.5 s at a time and re-reading the plate, while step_toward_target()
+//  says so after `misses` throws missed at this lock. Returns the plate
+//  last read: the one to throw at.
+LockTarget approach_target(LockTarget target, int misses, PlzaBackend& backend, HeldZl& held){
     int steps = 0;
-    for (; steps < 4 && lock_target_far(target); steps++){
+    for (; step_toward_target(target, misses, steps); steps++){
         held.hold(Milliseconds(500), /*right_x=*/0, /*left_y=*/1);
         const std::optional<LockTarget> view = held.read();
         if (!view){
             backend.log(std::format("[PLZA] catch_in_zone: the plate went after {} steps toward the target", steps + 1));
-            return;
+            return target;
         }
         target = *view;
     }
     log_target(backend, std::format("after {} steps toward the target", steps), target);
+    return target;
 }
 
 //  ZL held: chooses the nearest target not caught (choose_target()) and
-//  walks toward it when it is far, then leaves ZL held for the throw.
+//  steps toward it when it is far, then leaves ZL held for the throw.
 TargetChoice aim_choose_approach(StoryEnv& env, PlzaBackend& backend){
     HeldZl held(env);
-    const TargetChoice choice = choose_target(backend, held);
+    TargetChoice choice = choose_target(backend, held);
     if (choice.target){
-        approach_target(*choice.target, backend, held);
+        choice.target = approach_target(*choice.target, /*misses=*/0, backend, held);
     }
     return choice;
 }
 
+//  What throw_at_target() did.
+struct TargetThrows{
+    GrassCatches catches;
+    //  THROWS_AT_ONE_TARGET missed at one lock: the stop ends.
+    bool move_on = false;
+};
+
 //  Throws at `target` (`max_throws` at most), then as after_throw() says:
-//  again at once at a plate that locks on again with ZL held after a miss,
-//  or weaken_then_throw() when it broke out into a wild battle.
-GrassCatches throw_at_target(StoryEnv& env, PlzaBackend& backend, const LockTarget& target, int max_throws){
-    GrassCatches out;
+//  after a miss, at a plate that locks on again with ZL held, steps toward
+//  it while it reads far (approach_target()) and throws again; after
+//  THROWS_AT_ONE_TARGET misses, moves on; weaken_then_throw() when it broke
+//  out into a wild battle. Each throw is logged with its plate's height,
+//  the distance signal, to calibrate step_toward_target().
+TargetThrows throw_at_target(StoryEnv& env, PlzaBackend& backend, const LockTarget& target, int max_throws){
+    TargetThrows out;
+    GrassCatches& catches = out.catches;
     LockTarget aimed = target;
-    while (out.throws < max_throws && out.throws < THROWS_AT_ONE_TARGET){
+    while (catches.throws < max_throws){
         const bool registered = throw_ball_watched(env, backend);
-        out.throws++;
+        catches.throws++;
         press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
         const bool battle = !registered && wild_battle_on(env);
-        const std::optional<LockTarget> relocked = registered || battle
-            ? std::nullopt : HeldZl(env).wait_for_plate(LOCK_ON_WAIT);
+        std::optional<HeldZl> held;
+        std::optional<LockTarget> relocked;
+        if (!registered && !battle){
+            held.emplace(env);
+            relocked = held->wait_for_plate(LOCK_ON_WAIT);
+        }
         const ThrowSeen seen{registered, aimed.caught, !registered && !battle && !relocked};
         const std::optional<NewSpeciesSign> sign = seen.new_species();
-        out.found = sign ? 1 : 0;
-        out.found_by_plate = sign == NewSpeciesSign::PLATE_NOT_CAUGHT ? 1 : 0;
-        backend.log(std::format("[PLZA] catch_in_zone: throw {}: {}", out.throws, seen.new_species_text()));
-        const AfterThrow next = after_throw(seen, battle, relocked);
+        catches.found = sign ? 1 : 0;
+        catches.found_by_plate = sign == NewSpeciesSign::PLATE_NOT_CAUGHT ? 1 : 0;
+        backend.log(std::format(
+            "[PLZA] catch_in_zone: throw {} at plate y {:.2f}: {} ({})",
+            catches.throws, aimed.y, sign ? "hit" : "miss", seen.new_species_text()
+        ));
+        const AfterThrow next = after_throw(seen, battle, relocked, catches.throws);
         if (next == AfterThrow::THROW_AGAIN){
-            log_target(backend, "missed, locked on again, throwing at once", *relocked);
-            aimed = *relocked;
+            log_target(backend, "missed, locked on again", *relocked);
+            aimed = approach_target(*relocked, catches.throws, backend, *held);
             continue;
         }
-        if (next == AfterThrow::WEAKEN && out.throws < max_throws){
+        if (next == AfterThrow::MOVE_ON){
+            log_target(backend, std::format("{} misses at one lock: on to the next stop", catches.throws), *relocked);
+            out.move_on = true;
+            return out;
+        }
+        if (next == AfterThrow::WEAKEN && catches.throws < max_throws){
             backend.log("[PLZA] catch_in_zone: the throw broke out: battle, weakening");
-            const WeakenThrows weakened = weaken_then_throw(env, backend, max_throws - out.throws);
-            out.throws += weakened.throws;
-            out.found += weakened.caught ? 1 : 0;
+            const WeakenThrows weakened = weaken_then_throw(env, backend, max_throws - catches.throws);
+            catches.throws += weakened.throws;
+            catches.found += weakened.caught ? 1 : 0;
         }
         return out;
     }
@@ -524,8 +550,8 @@ GrassCatches fight_back(StoryEnv& env, PlzaBackend& backend, int max_throws){
 //  species is caught or `max_throws`: a wild battle on is fought
 //  (fight_back()); otherwise it sweeps for brackets, turns the camera to
 //  the first seen, chooses the nearest target not caught
-//  (aim_choose_approach()) and throws (throw_at_target()). No brackets: on
-//  to the next stop. All species caught: turns the camera right a little
+//  (aim_choose_approach()) and throws (throw_at_target()). No brackets, or
+//  THROWS_AT_ONE_TARGET misses at one lock: on to the next stop. All species caught: turns the camera right a little
 //  and watches again. The pitch is reset only after ZL (CameraPitch).
 GrassCatches catch_at_stop(StoryEnv& env, PlzaBackend& backend, int at, int max_throws){
     GrassCatches out;
@@ -557,7 +583,11 @@ GrassCatches catch_at_stop(StoryEnv& env, PlzaBackend& backend, int at, int max_
             pbf_move_right_joystick(env.context, /*position=*/{0.5, 0}, /*hold=*/Milliseconds(400), /*release=*/Milliseconds(300));
             continue;
         }
-        out += throw_at_target(env, backend, *choice.target, max_throws - out.throws);
+        const TargetThrows thrown = throw_at_target(env, backend, *choice.target, max_throws - out.throws);
+        out += thrown.catches;
+        if (thrown.move_on){
+            break;
+        }
     }
     if (out.found > 0){
         backend.log(std::format("[PLZA] catch_in_zone: caught at {}: the stop ends, on to the next", at));

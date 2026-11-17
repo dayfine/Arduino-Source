@@ -35,15 +35,12 @@ struct LockTarget{
     std::string_view caught_text() const;
 };
 
-//  A plate whose bar sits above this share of the screen's height is a far
-//  target: walk toward it before throwing. Nearer Pokemon stand lower on
-//  the screen (the ground rises toward the horizon), and their plates with
-//  them. A guess from console B's frames (2026-11-13): the Mareep a throw
-//  fell short of stood at about 0.40 of the height, so its plate higher.
-inline constexpr double FAR_PLATE_Y = 0.30;
-
-//  Whether `target` is far enough to walk toward before a throw.
-bool lock_target_far(const LockTarget& target);
+//  Whether to take another 0.5 s step (ZL held) toward `target` before
+//  throwing at it, after `misses` throws missed at this lock and `steps`
+//  steps since the last throw (or the lock): only while its plate reads
+//  far (its bar above 0.45 of the screen's height), 4 steps at most before the first throw and 2 after
+//  each miss (the user, 2026-11-16).
+bool step_toward_target(const LockTarget& target, int misses, int steps);
 
 //  Whether `a` and `b` are the same plate where it stood: within 0.03 of
 //  the screen both ways.

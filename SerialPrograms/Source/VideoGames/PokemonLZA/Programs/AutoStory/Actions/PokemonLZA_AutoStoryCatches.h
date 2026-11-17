@@ -61,9 +61,11 @@ struct ZoneCatchGoal{
 //  else sweeps the camera for the lock-on brackets
 //  (LockOnBracketDetector), turns to the nearest, holds ZL, flicks through
 //  the targets' plates and throws at the nearest not caught
-//  (lock_target_caught()), walking toward it first when far. After a
-//  throw it throws again at once at a plate that locks on again (a miss),
-//  or weakens a target that broke out into a battle (after_throw()). The
+//  (lock_target_caught()), stepping toward it first while its plate reads
+//  far (step_toward_target()). After a miss at a plate that locks on
+//  again it steps toward it the same way and throws again, 3 throws at
+//  one lock at most, then moves on to the next stop; it weakens a target
+//  that broke out into a battle (after_throw()). The
 //  party bar's filled slots (PartyBarDetector), read before the first
 //  stop and after each stop that threw, end it at `goal.party_species`:
 //  the throws go only at species not caught, so each catch is a new
