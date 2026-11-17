@@ -32,6 +32,7 @@
 #include "PokemonLZA_AutoStoryCatchStop.h"
 #include "PokemonLZA_AutoStoryLines.h"
 #include "PokemonLZA_AutoStoryMarkerWalk.h"
+#include "PokemonLZA_AutoStoryRoadWalk.h"
 #include "PokemonLZA_AutoStorySpeciesCheck.h"
 #include "PokemonLZA_AutoStoryZone1Road.h"
 #include "PokemonLZA_AutoStoryZoneStart.h"
@@ -688,11 +689,12 @@ Pokemon::Outcome go_to_zone_spot(StoryEnv& env, PlzaBackend& backend, const Zone
 
 //  Walks to stop `stop` from `last` (none: from the start, further out
 //  than every stop): back from the objective when the stop is further.
+//  plza/autostory's walk (walk_to_road_stop()), not the marker walk's.
 std::optional<int> walk_to_stop(StoryEnv& env, PlzaBackend& backend, std::optional<int> last, int stop){
     if (last && stop > *last){
-        return walk_back_from_marker(env, backend, stop, STOP_WALK_LIMIT);
+        return walk_to_road_stop(env, backend, MarkerDirection::BACK, stop, /*floor=*/std::nullopt, STOP_WALK_LIMIT);
     }
-    return walk_toward_marker(env, backend, stop, ROAD_FLOOR, last ? STOP_WALK_LIMIT : FIRST_WALK_LIMIT);
+    return walk_to_road_stop(env, backend, MarkerDirection::TOWARD, stop, ROAD_FLOOR, last ? STOP_WALK_LIMIT : FIRST_WALK_LIMIT);
 }
 
 //  Steps sideways with the camera on the objective (face_marker()): right
