@@ -621,7 +621,7 @@ std::optional<int> read_at_marker(StoryEnv& env, PlzaBackend& backend){
     }
     //  Standing still: 24 looks, the digits flicker over leaves and sky
     //  (console B, 2026-11-16 16:04: one "105" in 8 looks).
-    return read_marker_distance(env, backend, std::nullopt, /*looks=*/24);
+    return read_marker_distance(env, backend, ROAD_FLOOR, /*looks=*/24);
 }
 
 std::string_view start_move_name(ZoneStartMove move){
