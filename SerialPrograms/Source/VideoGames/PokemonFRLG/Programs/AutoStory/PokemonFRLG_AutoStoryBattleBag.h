@@ -11,6 +11,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryBattleBag_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryBattleBag_H
 
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
@@ -67,11 +68,22 @@ enum class ItemTarget{
     POKEMON_OUT,
 };
 
+//  The Items pocket's cursor row in one battle, once the program has put
+//  it somewhere: the bag keeps it between uses, so the next use moves the
+//  cursor from there rather than back to the top first (the rows plus
+//  CANCEL in UP presses every time, before). Unknown at the battle's start.
+struct BattleBagCursor{
+    std::optional<int> row = std::nullopt;
+};
+
 //  The console's bag in battle, an item used on `target`. It opens on the
 //  pocket used last; Items is the first.
 class ConsoleBattleBag : public BattleBag{
 public:
-    ConsoleBattleBag(ConsoleHandle& console, ProControllerContext& context, ItemTarget target, Pokemon::StoryCheckLevel checks, Language language);
+    ConsoleBattleBag(
+        ConsoleHandle& console, ProControllerContext& context, ItemTarget target,
+        Pokemon::StoryCheckLevel checks, Language language, BattleBagCursor& cursor
+    );
     virtual std::vector<BagRow> read_pocket(const Supplies& supplies) override;
     virtual bool use_row(const Supplies& supplies, int row, int shown, const std::string& item) override;
 
@@ -81,6 +93,7 @@ private:
     ItemTarget m_target;
     Pokemon::StoryCheckLevel m_checks;
     Language m_language;
+    BattleBagCursor& m_cursor;
 };
 
 //  The battle's supply line, for its turn log: the Potions and Super

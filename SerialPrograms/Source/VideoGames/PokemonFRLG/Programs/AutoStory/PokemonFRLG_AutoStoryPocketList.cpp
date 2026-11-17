@@ -110,7 +110,7 @@ PocketRead read_open_pocket(ConsoleHandle& console, ProControllerContext& contex
     return read_whole_pocket(list);
 }
 
-void open_battle_bag(ProControllerContext& context, size_t rows){
+void open_battle_items_pocket(ProControllerContext& context){
     for (DpadPosition position : {DPAD_LEFT, DPAD_UP, DPAD_RIGHT}){
         pbf_press_dpad(context, position, /*hold=*/160ms, /*release=*/240ms);
     }
@@ -118,6 +118,10 @@ void open_battle_bag(ProControllerContext& context, size_t rows){
     for (int c = 0; c < 2; c++){
         pbf_press_dpad(context, DPAD_LEFT, /*hold=*/160ms, /*release=*/500ms);
     }
+}
+
+void open_battle_bag(ProControllerContext& context, size_t rows){
+    open_battle_items_pocket(context);
     for (size_t c = 0; c < std::max(rows, MIN_HOME_UPS); c++){
         pbf_press_dpad(context, DPAD_UP, /*hold=*/100ms, /*release=*/150ms);
     }

@@ -157,9 +157,10 @@ void tap(ProControllerContext& context, DpadPosition position){
 //  (use_battle_item()). Returns whether it was used; else back at the menu.
 bool use_item(
     ConsoleHandle& console, ProControllerContext& context,
-    Supplies& supplies, const std::string& item, ItemTarget target, Pokemon::StoryCheckLevel checks, Language language
+    Supplies& supplies, const std::string& item, ItemTarget target, Pokemon::StoryCheckLevel checks, Language language,
+    BattleBagCursor& cursor
 ){
-    ConsoleBattleBag bag(console, context, target, checks, language);
+    ConsoleBattleBag bag(console, context, target, checks, language, cursor);
     return use_battle_item(item, console.logger(), bag, supplies);
 }
 
@@ -540,6 +541,8 @@ private:
         m_console.log("Battle: the Items pocket's counts are not known; reading it before the first turn.");
         //  The pocket's rows as counted, and its CANCEL.
         const std::vector<BagRow> rows = read_battle_pocket(m_console, m_context, m_language, m_supplies.pocket.size() + 1);
+        //  A read ends with the cursor on the top row.
+        m_bag_cursor.row = 0;
         if (rows.empty()){
             OperationFailedExceptionWithScreenshot::fire(
                 ErrorReportMode::SEND_ERROR_REPORT,
@@ -605,19 +608,19 @@ private:
             run_away(m_context);
             return;
         case TurnChoice::POTION:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "potion", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "potion", ItemTarget::PARTY_MEMBER, m_checks, m_language, m_bag_cursor)));
             return;
         case TurnChoice::ANTIDOTE:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "antidote", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "antidote", ItemTarget::PARTY_MEMBER, m_checks, m_language, m_bag_cursor)));
             return;
         case TurnChoice::AWAKENING:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "awakening", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "awakening", ItemTarget::PARTY_MEMBER, m_checks, m_language, m_bag_cursor)));
             return;
         case TurnChoice::MEDICINE:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, action.item, ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, action.item, ItemTarget::PARTY_MEMBER, m_checks, m_language, m_bag_cursor)));
             return;
         case TurnChoice::BATTLE_ITEM:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, action.item, ItemTarget::POKEMON_OUT, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, action.item, ItemTarget::POKEMON_OUT, m_checks, m_language, m_bag_cursor)));
             return;
         case TurnChoice::SWITCH_LEAD:
             m_decisions.turn_done(action.choice, switch_lead_in(m_console, m_context, m_language, m_supplies.lead.species) ? TurnResult::DONE : TurnResult::NOT_DONE);
@@ -685,6 +688,8 @@ private:
     BattleKind m_kind;
     const Pokemon::StoryCheckLevel m_checks;
     const Language m_language;
+    //  The bag's cursor in this battle.
+    BattleBagCursor m_bag_cursor;
     const WallClock m_start;
     WallClock m_last_battle;
     WallClock m_last_press;
