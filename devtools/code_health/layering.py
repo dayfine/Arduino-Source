@@ -9,7 +9,9 @@ from .findings import Finding
 INCLUDE = re.compile(r'^[ \t]*#[ \t]*include[ \t]*[<"]([^>"]+)[>"]', re.M)
 
 _PURE_SUFFIXES = (
-    'Logic.h', 'Logic.cpp',
+    'Core.h', 'Core.cpp',
+    'Policy.h', 'Policy.cpp',
+    'Plan.h', 'Plan.cpp',
     'Sim.h', 'Sim.cpp',
     'SimField.h', 'SimField.cpp',
     'SimTaps.h', 'SimTaps.cpp',

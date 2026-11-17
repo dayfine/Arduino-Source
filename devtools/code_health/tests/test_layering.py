@@ -46,7 +46,7 @@ class LayeringTests(unittest.TestCase):
         self.assertEqual(set(), set(GAME_MODULES) & set(PLATFORM_MODULES))
 
     def test_added_heavy_includes_fail_in_pure_modules(self):
-        pure = SOURCE_ROOT + 'VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCaptureLogic.cpp'
+        pure = SOURCE_ROOT + 'VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPlannedPolicy.cpp'
         for include in ('NintendoSwitch/NintendoSwitch_ConsoleHandle.h',
                         'CommonFramework/ImageTypes/ImageViewRGB32.h',
                         'VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h',
@@ -58,7 +58,7 @@ class LayeringTests(unittest.TestCase):
                 self.assertIn(f'{pure}:1: layering', str(failures[0]))
 
     def test_heavy_includes_allowed_in_non_pure_and_when_preexisting(self):
-        hw = SOURCE_ROOT + 'VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCapture.cpp'
+        hw = SOURCE_ROOT + 'VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCaptureConsole.cpp'
         self.assertEqual([], check(hw, '#include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"\n', ''))
         pure = SOURCE_ROOT + 'VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySupplies.h'
         existing = '#include "CommonFramework/ImageTypes/ImageViewRGB32.h"\n'
