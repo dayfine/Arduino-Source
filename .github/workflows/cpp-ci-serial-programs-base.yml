@@ -394,7 +394,7 @@ jobs:
         with:
           # The fork's fixtures: upstream's, the SystemKeyboardDetector and HomeTileReader screenshots and pending FRLG image submissions (Fly landing, party menu, Route 21 battle, Pokemon Mansion 1F and B1F hold frames, and the Pidgey known-moves frame, the PC's box-screen fade, Bruno's Onix Roar battle menus).
           repository: 'dayfine/CommandLineTests'
-          ref: '3c9d2c1dfb31af1e2a1ff44e3f71a24f50f5238d'
+          ref: 'ab6b437ceae2f346c60f891c5bd282f6b8dd1fac'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded
