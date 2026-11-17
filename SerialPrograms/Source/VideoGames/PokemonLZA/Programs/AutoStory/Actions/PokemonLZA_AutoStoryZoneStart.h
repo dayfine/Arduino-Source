@@ -35,15 +35,14 @@ bool at_zone_spot(std::optional<int> distance);
 //  A start's way to the search spot: L puts the camera behind the player,
 //  a leg off the start with the left stick, camera-relative, an agreed
 //  marker read that must fall in the leg's range, then the marker walk
-//  toward the objective until a read at or below `walk_stop`.
+//  toward the objective for `walk_hold` (measured by hand, 2026-11-16: 127 to 102 in 4.8 s), then one read.
 struct ZoneStartRoute{
     double leg_x;
     double leg_y;
     Milliseconds leg_hold;
     int leg_read_min;
     int leg_read_max;
-    int walk_stop;
-    Milliseconds walk_limit;
+    Milliseconds walk_hold;
 };
 
 //  From the 03.08 save at Taunie's rocks, measured by hand on console B
@@ -57,14 +56,13 @@ constexpr ZoneStartRoute TAUNIE_ROCKS_ROUTE{
     .leg_hold = Milliseconds(900),
     .leg_read_min = 120,
     .leg_read_max = 135,
-    .walk_stop = 103,
-    .walk_limit = Milliseconds(8000),
+    .walk_hold = Milliseconds(4800),
 };
 
 
 //  What the way to the search spot does next.
 enum class ZoneStartMove{
-    WALK_TO_SPOT,       //  the marker walk to the route's walk_stop
+    WALK_TO_SPOT,       //  the timed walk toward the objective (walk_hold)
     SEARCH,             //  at the spot: the search (ZoneSearch)
     ROCKS_NOT_LEFT,     //  stop: the read after the leg is missing or out of its range
     SPOT_NOT_REACHED,   //  stop: the marker walk did not end at the spot
