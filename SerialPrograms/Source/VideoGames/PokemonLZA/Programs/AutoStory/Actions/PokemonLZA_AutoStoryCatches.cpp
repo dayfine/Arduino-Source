@@ -553,6 +553,9 @@ GrassCatches fight_back(StoryEnv& env, PlzaBackend& backend, int max_throws){
 //  (aim_choose_approach()) and throws (throw_at_target()). No brackets, or
 //  THROWS_AT_ONE_TARGET misses at one lock: on to the next stop. All species caught: turns the camera right a little
 //  and watches again. The pitch is reset only after ZL (CameraPitch).
+//  After a catch, out of battle, the map pin is read and logged
+//  (read_pin_on_map()): where the catch spots really are, for their
+//  waypoints (ZONE1_SPOT_100, ZONE1_SPOT_60).
 GrassCatches catch_at_stop(StoryEnv& env, PlzaBackend& backend, int at, int max_throws){
     GrassCatches out;
     CameraPitch pitch;
@@ -594,6 +597,10 @@ GrassCatches catch_at_stop(StoryEnv& env, PlzaBackend& backend, int at, int max_
     }
     if (pitch.level_now()){
         level_camera(env);
+    }
+    if (out.found > 0 && !wild_battle_on(env)){
+        backend.log(std::format("[PLZA] catch_in_zone: the map pin after the catch at {}", at));
+        read_pin_on_map(env, backend);
     }
     return out;
 }
