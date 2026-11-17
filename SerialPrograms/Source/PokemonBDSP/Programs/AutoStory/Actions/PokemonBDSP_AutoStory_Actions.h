@@ -24,13 +24,14 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
-//  Save the game from the overworld with retries. Returns true if the save was
-//  verified via overworld detection, false if the blind fallback was used.
+//  Save the game from the overworld with retries. A save the screen never
+//  confirmed fails with a screenshot: there is no blind save (console B,
+//  2026-11-11: one pressed X/R/ZL on the HOME menu).
 //  With `expected_location`, the map named on the save screen's card must be
 //  it (compared as a location banner is), or the save is backed out of and
 //  the function fails with a screenshot: r124a saved in Sandgem Town after a
 //  walk that was sure it stood on Route 202.
-bool save_game(
+void save_game(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
     const std::string& expected_location = ""

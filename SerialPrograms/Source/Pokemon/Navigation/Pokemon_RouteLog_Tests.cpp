@@ -13,6 +13,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon_LegTrace_Tests.h"
 #include "Pokemon_RouteLog.h"
 #include "Pokemon_RouteLog_Tests.h"
 
@@ -198,6 +199,8 @@ void add_tests_RouteLog(UnitTestDatabase& database){
     for (const auto& scenario : CASES){
         database.add<Test_RouteLog>(scenario);
     }
+    //  The leg records read the route lines back.
+    add_tests_LegTrace(database);
 }
 
 

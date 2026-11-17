@@ -50,7 +50,7 @@ SceneMove TalkOver::look(const ScreenEvents& look, WallClock now){
     //  ended Mom's scene as it went down (lab-B 2026-11-09 14:33).
     const bool calm = !box && m_fade_showing == WarpFade::NONE &&
         look.has(ScreenEvent::PLAYER_CAN_MOVE) && warped();
-    const bool quiet = calm && look.has(ScreenEvent::SCREEN_STILL);
+    const bool quiet = calm && look.has(m_rule.door ? ScreenEvent::PLAYER_STILL : ScreenEvent::SCREEN_STILL);
     if (!calm){
         m_calm_since = WallClock::max();
     }else if (m_calm_since == WallClock::max()){
@@ -61,9 +61,13 @@ SceneMove TalkOver::look(const ScreenEvents& look, WallClock now){
     }else if (m_quiet_since == WallClock::max()){
         m_quiet_since = now;
     }
+    const Milliseconds quiet_for = m_rule.door ? TalkOverRule::DOOR_QUIET : TALK_OVER_QUIET;
+    const Milliseconds calm_for = m_rule.door ? TalkOverRule::DOOR_CALM : TALK_OVER_CALM;
+
     const bool over =
-        (quiet && now - m_quiet_since >= TALK_OVER_QUIET) ||
-        (calm && now - m_calm_since >= TALK_OVER_CALM);
+        (quiet && now - m_quiet_since >= quiet_for) ||
+        (calm && now - m_calm_since >= calm_for);
+
     if (over && m_rule.end_on_quiet){
         return SceneMove::DONE;
     }

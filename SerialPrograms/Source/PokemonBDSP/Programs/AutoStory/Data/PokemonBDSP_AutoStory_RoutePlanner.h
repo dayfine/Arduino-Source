@@ -35,11 +35,25 @@ struct WallHit{
 WallHit slide_to_wall(const StoryWorld& world, const Pokemon::TilePos& from, Pokemon::Direction direction);
 
 
+//  How many tiles short or long a timed hold of `tiles` tiles may end: one.
+//  On lab-B (2026-11-09, Route 202's lawn, the stick held west, then taps
+//  back to the wall counting the taps), holds of 200 to 1200 ms moved 2,
+//  3, 3, 5, 7, 7, 7, 8 and 9 tiles, each the same on every try (600 ms: 5
+//  of 5, with or without B): the error is the rounding of the time to a
+//  tile, not a drift that grows. Holds of 15 to 30 tiles are not measured
+//  yet. BDSP's one model of a timed hold's error, for the planner and the
+//  route scorer (route_score_paces()).
+size_t open_hold_error(size_t tiles);
+
 //  A straight run in one direction.
 struct TileLeg{
     Pokemon::Direction direction = Pokemon::Direction::NORTH;
     size_t tiles = 0;           //  tiles travelled; a ledge hop counts 2
     bool ends_at_wall = false;  //  the next tile in `direction` stops the player
+    //  An open leg held for its tiles' time instead of tapped a tile at a
+    //  time: much faster, but it may end open_hold_error() tiles
+    //  short or long (RobustPlanCosts::hold_open_legs).
+    bool held = false;
 };
 //  Formats tile movement leg into human-readable string representation.
 std::string to_string(const TileLeg& leg);

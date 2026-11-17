@@ -16,6 +16,7 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteTiming.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -67,7 +68,17 @@ void heal_inside_pokemon_center(
     const std::string& label
 );
 
+//  At most this many tiles from a Center's door mat up to the nurse's
+//  counter, straight north (a bound, not measured: the counter is the wall
+//  that ends the run, so going on is harmless).
+constexpr size_t CENTER_MAT_TO_COUNTER_TILES = 8;
+//  The one held run (B and up) from the door mat to the counter: long
+//  enough at walking pace too, before the running shoes.
+constexpr Milliseconds NURSE_RUN_HOLD =
+    ROUTE_START_DELAY + ROUTE_MS_PER_TILE_UP_DOWN * (int64_t)CENTER_MAT_TO_COUNTER_TILES;
+
 //  From just inside a Pokemon Center's door: walks up to the nurse, talks to
+
 //  her and accepts. Ends at her counter, for a caller that walks out its own
 //  way.
 void talk_to_nurse(

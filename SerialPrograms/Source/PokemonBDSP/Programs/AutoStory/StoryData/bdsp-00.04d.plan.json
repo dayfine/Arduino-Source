@@ -1,0 +1,196 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "map": "Route202",
+            "tiles": [
+              [
+                11,
+                0
+              ],
+              [
+                12,
+                0
+              ],
+              [
+                13,
+                0
+              ],
+              [
+                14,
+                0
+              ],
+              [
+                15,
+                0
+              ],
+              [
+                16,
+                0
+              ],
+              [
+                17,
+                0
+              ],
+              [
+                18,
+                0
+              ],
+              [
+                11,
+                1
+              ],
+              [
+                12,
+                1
+              ],
+              [
+                13,
+                1
+              ],
+              [
+                14,
+                1
+              ],
+              [
+                15,
+                1
+              ],
+              [
+                16,
+                1
+              ],
+              [
+                17,
+                1
+              ],
+              [
+                18,
+                1
+              ],
+              [
+                11,
+                2
+              ],
+              [
+                12,
+                2
+              ],
+              [
+                13,
+                2
+              ],
+              [
+                14,
+                2
+              ],
+              [
+                15,
+                2
+              ],
+              [
+                16,
+                2
+              ],
+              [
+                17,
+                2
+              ],
+              [
+                18,
+                2
+              ],
+              [
+                11,
+                3
+              ],
+              [
+                12,
+                3
+              ],
+              [
+                13,
+                3
+              ],
+              [
+                14,
+                3
+              ],
+              [
+                15,
+                3
+              ],
+              [
+                16,
+                3
+              ],
+              [
+                17,
+                3
+              ],
+              [
+                18,
+                3
+              ]
+            ]
+          }
+        },
+        "id": "north_to_jubilife",
+        "kind": "route",
+        "why": "north past Route 202's trainers, fighting who sees us"
+      },
+      {
+        "action": "jubilife_stairs",
+        "declared_after": {
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              48,
+              62
+            ]
+          ]
+        },
+        "id": "jubilife_stairs",
+        "kind": "game_action",
+        "why": "Jubilife's south edge is a wall with stairs in it, west of where the route may leave us (r78)"
+      },
+      {
+        "declared_after": {
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              48,
+              62
+            ]
+          ]
+        },
+        "id": "dawn_scene",
+        "kind": "scene",
+        "why": "Dawn walks over while we stand still"
+      }
+    ],
+    "id": "00.04d",
+    "start": {
+      "map": "Route202",
+      "tiles": [
+        [
+          30,
+          24
+        ]
+      ]
+    },
+    "title": "Route 202's trainers, Dawn in Jubilife"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Route 202"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "metadata": {
+    "phase": "reproduction"
+  }
+}

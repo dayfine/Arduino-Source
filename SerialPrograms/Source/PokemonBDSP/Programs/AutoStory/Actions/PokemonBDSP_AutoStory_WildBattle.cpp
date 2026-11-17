@@ -208,38 +208,81 @@ bool mine_select_run(VideoStream& stream, ProControllerContext& context, BattleT
     return false;
 }
 
-//  Run on the battle menu, until the battle's exit shows or `timeout`
-//  runs out. Whether the exit was seen.
-bool run_until_escaped(
-    VideoStream& stream, ProControllerContext& context, BattleType battle_type,
-    std::chrono::seconds timeout, EndBattleWatcher& battle_end
-){
-    const auto deadline = std::chrono::steady_clock::now() + timeout;
-    while (std::chrono::steady_clock::now() < deadline){
-        pbf_press_button(context, BUTTON_B, 40ms, 200ms);
-        context.wait_for_all_requests();
-        BattleMenuWatcher menu_ready(battle_type, COLOR_YELLOW);
-        const int ready = wait_until(stream, context, 3s, {{battle_end}, {menu_ready}});
-        if (ready == 0){
-            return true;
+//  The escape policy's game steps on the console. The exit watcher lives
+//  across the attempts: EndBattleWatcher needs black followed by a visible
+//  screen, which one attempt's waits may split.
+class ConsoleWildBattleEscape : public WildBattleEscapeActions{
+public:
+    ConsoleWildBattleEscape(VideoStream& stream, ProControllerContext& context, BattleType battle_type)
+        : m_stream(stream)
+        , m_context(context)
+        , m_battle_type(battle_type)
+    {}
+
+    virtual WildRunOutcome run() override;
+    virtual void fight() override{
+        fight_wild_battle(m_stream, m_context, "Mine escape");
+    }
+    virtual void note(const std::string& text) override{
+        m_stream.log("[Mine escape] " + text);
+    }
+
+    //  After the policy gave up: whether the exit still shows within `wait`.
+    bool exit_within(Milliseconds wait){
+        return wait_until(m_stream, m_context, wait, {{m_battle_end}}) == 0;
+    }
+
+private:
+    //  B, then the exit (0) or the battle menu (1) within three seconds; -1 for neither.
+    int exit_or_menu();
+
+    VideoStream& m_stream;
+    ProControllerContext& m_context;
+    BattleType m_battle_type;
+    EndBattleWatcher m_battle_end;
+};
+
+int ConsoleWildBattleEscape::exit_or_menu(){
+    pbf_press_button(m_context, BUTTON_B, 40ms, 200ms);
+    m_context.wait_for_all_requests();
+    BattleMenuWatcher menu_ready(m_battle_type, COLOR_YELLOW);
+    return wait_until(m_stream, m_context, 3s, {{m_battle_end}, {menu_ready}});
+}
+
+WildRunOutcome ConsoleWildBattleEscape::run(){
+    const int ready = exit_or_menu();
+    if (ready == 0){
+        return WildRunOutcome::ESCAPED;
+    }
+    if (ready != 1 || !mine_select_run(m_stream, m_context, m_battle_type)){
+        return WildRunOutcome::UNCERTAIN;
+    }
+    m_stream.log("[Mine escape] Run input sent; watching for black-screen exit.");
+    const int result = run_until<ProControllerContext>(m_stream,
+        m_context,
+        [](ProControllerContext& controller){
+            pbf_mash_button(controller, BUTTON_ZL, 1000ms);
+            pbf_mash_button(controller, BUTTON_A, 1000ms);
+            pbf_mash_button(controller, BUTTON_B, 3000ms);
+            controller.wait_for_all_requests();
+        },
+        {m_battle_end});
+    if (result == 0){
+        return WildRunOutcome::ESCAPED;
+    }
+    //  No exit after Run: the menu back means the game refused it ("Can't
+    //  escape!": Onix's Bind in Oreburgh Mine, console B 2026-11-07). Its
+    //  text and the foe's turn take a few seconds.
+    for (size_t look = 0; look < 2; look++){
+        const int seen = exit_or_menu();
+        if (seen == 0){
+            return WildRunOutcome::ESCAPED;
         }
-        if (ready != 1 || !mine_select_run(stream, context, battle_type)){
-            continue;
-        }
-        stream.log("[Mine escape] Run input sent; watching for black-screen exit.");
-        const int result = run_until<ProControllerContext>(stream,
-            context,
-            [](ProControllerContext& controller){
-                pbf_press_button(controller, BUTTON_A, 60ms, 0ms);
-                pbf_wait(controller, 4s);
-                controller.wait_for_all_requests();
-            },
-            {battle_end});
-        if (result == 0){
-            return true;
+        if (seen == 1){
+            return WildRunOutcome::TRAPPED;
         }
     }
-    return false;
+    return WildRunOutcome::UNCERTAIN;
 }
 
 //  B until the overworld shows; fails with `failure` after two minutes.
@@ -389,13 +432,17 @@ void catch_1_pokemon(
 void escape_wild_battle(VideoStream& stream,
     ProControllerContext& context,
     BattleType battle_type,
-    std::chrono::seconds timeout){
-    EndBattleWatcher battle_end;
-    bool exit_transition = run_until_escaped(stream, context, battle_type, timeout, battle_end);
-    if (!exit_transition && wait_until(stream, context, 10s, {{battle_end}}) == 0){
-        exit_transition = true;
+    const WildBattleEscapePolicy& policy){
+    ConsoleWildBattleEscape actions(stream, context, battle_type);
+    WildEscapeResult result = escape_wild_battle(actions, policy);
+    if (result == WildEscapeResult::FOUGHT){
+        // fight_wild_battle() ended on the overworld.
+        return;
     }
-    if (exit_transition){
+    if (result == WildEscapeResult::UNCONFIRMED && actions.exit_within(10s)){
+        result = WildEscapeResult::ESCAPED;
+    }
+    if (result == WildEscapeResult::ESCAPED){
         // EndBattleWatcher requires black followed by a visible screen.
         stream.log("[Mine escape] Black-screen exit transition confirmed.", COLOR_GREEN);
         pbf_wait(context, 800ms);

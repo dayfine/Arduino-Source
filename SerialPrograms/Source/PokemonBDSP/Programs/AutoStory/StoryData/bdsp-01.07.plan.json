@@ -1,0 +1,62 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "args": {
+          "direction": "north"
+        },
+        "id": "rowans_trigger",
+        "kind": "step",
+        "why": "the trigger (45..47, 7): the game walks us up to Rowan"
+      },
+      {
+        "action": "doubles",
+        "args": {
+          "may_lose": false
+        },
+        "id": "galactic_grunts",
+        "kind": "battle",
+        "why": "the lines, then the tag battle with Dawn"
+      },
+      {
+        "declared_after": {
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              46,
+              5
+            ],
+            [
+              47,
+              5
+            ]
+          ]
+        },
+        "id": "rowan_and_dawn_leave",
+        "kind": "scene",
+        "why": "Rowan's and Dawn's lines, then Bebe walks over with hers (r80 saved over her lines)"
+      }
+    ],
+    "id": "01.07",
+    "start": {
+      "facing": "north",
+      "map": "JubilifeCity",
+      "tiles": [
+        [
+          47,
+          8
+        ]
+      ]
+    },
+    "title": "Jubilife: Rowan, Dawn and the Galactic grunts"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Jubilife City"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "metadata": {
+    "phase": "testing"
+  }
+}

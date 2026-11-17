@@ -16,6 +16,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
@@ -34,19 +35,19 @@ using namespace std::chrono_literals;
 using namespace Pokemon;
 
 
-namespace{
-
-bool across(Direction direction){
-    return direction == Direction::EAST || direction == Direction::WEST;
+Milliseconds route_ms_per_tile(Direction direction, MoveSpeed speed){
+    const MoveMechanics& game = BDSP_MOVE_MECHANICS;
+    return (speed == MoveSpeed::RUN ? game.run : game.walk).tile.along(direction);
 }
 
+namespace{
+constexpr Milliseconds ROUTE_WALK_MS_PER_TILE_SLOWEST = Milliseconds(270);
+constexpr Milliseconds ROUTE_RUN_MS_PER_TILE_SLOWEST = Milliseconds(170);
 } // namespace
 
-Milliseconds route_ms_per_tile(Direction direction, MoveSpeed speed){
-    if (speed == MoveSpeed::RUN){
-        return across(direction) ? ROUTE_RUN_MS_PER_TILE_ACROSS : ROUTE_RUN_MS_PER_TILE_UP_DOWN;
-    }
-    return across(direction) ? ROUTE_MS_PER_TILE_ACROSS : ROUTE_MS_PER_TILE_UP_DOWN;
+Milliseconds route_limit_for_tiles(MoveSpeed speed, size_t tiles){
+    const Milliseconds per_tile = speed == MoveSpeed::RUN ? ROUTE_RUN_MS_PER_TILE_SLOWEST : ROUTE_WALK_MS_PER_TILE_SLOWEST;
+    return ROUTE_START_DELAY + per_tile * tiles;
 }
 
 JoystickPosition route_stick(Direction direction){

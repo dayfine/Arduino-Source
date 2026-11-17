@@ -38,10 +38,8 @@ std::string to_string(const PlannedLeg& leg);
 
 //  Cost configuration parameters accounting for movement execution tolerances.
 struct RobustPlanCosts : TilePlanCosts{
-    //  An open leg of n tiles may end open_error + n / open_error_per tiles
-    //  short or long: on the console 7 tiles went 9.
-    int open_error = 1;
-    int open_error_per = 5;
+    //  An open leg of n tiles may end open_hold_error(n) tiles
+    //  short or long.
     //  Open legs this many tiles or shorter land exactly: a short hold moves
     //  whole tiles. 0 keeps every open leg uncertain.
     int exact_open_tiles = 0;
@@ -49,6 +47,19 @@ struct RobustPlanCosts : TilePlanCosts{
     //  so a short step after a wall beats a long open leg.
     int per_open_tile = 0;
     int max_open_tiles = 12;    //  longest open leg to consider
+    //  Open legs longer than exact_open_tiles are held for their time
+    //  (TileLeg::held), not tapped: no leg is planned whose possible ends
+    //  past its shortest cross tall grass, a wanderer's zone or a ledge, so
+    //  a long or short hold meets nothing a tap would not have. Off, such
+    //  legs are planned as uncertain but walked in taps.
+    bool hold_open_legs = false;
+    //  Extra per tall-grass tile an open leg enters. A wild battle on a leg
+    //  to a wall costs nothing to recover from: RouteWalker walks to the
+    //  wall again. On an open leg it loses the tile count, and the walk
+    //  plans again from the tiles round it, often back through the same
+    //  grass (00.04b to_catch_grass, 00.04d north_to_jubilife and 01.06
+    //  up_jubilifes_road were scored STRAND for that).
+    int per_open_grass_tile = 0;
     size_t max_spread = 5;      //  most tiles the player may be on after a leg
     //  Most sets of possible tiles to search before giving up. The search is
     //  over sets, not tiles, so it grows far faster than the map: all of
@@ -61,7 +72,7 @@ struct RobustPlanCosts : TilePlanCosts{
 };
 
 //  Cheapest legs that take the player from any of the tiles in `from` to tiles
-//  that are all `goal`, even if every open leg ends up to `open_error` tiles
+//  that are all `goal`, even if every open leg ends up open_hold_error() tiles
 //  off: the walls of later legs must bring the possible positions together.
 //  Legs that would leave the maps or enter a door are not used, nor legs that
 //  run along a zone where someone wanders: two tiles of it in a row, the
@@ -91,7 +102,6 @@ long long robust_route_cost(
     const std::vector<Pokemon::TilePos>& from, const std::vector<PlannedLeg>& legs,
     const RobustPlanCosts& costs
 );
-
 
 } // namespace PokemonBDSP
 } // namespace NintendoSwitch

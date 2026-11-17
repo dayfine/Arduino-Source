@@ -3,18 +3,23 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  StoryWorld on small synthetic maps: what each tile does to a step, maps
- *  joined at offsets, and tiles blocked or taken off the maps.
+ *  joined at offsets, and tiles blocked or taken off the maps. Also the
+ *  story's own worlds: their connected maps step across every map edge
+ *  where the world grid does.
  *
  */
 
 #include <format>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "Data/PokemonBDSP_AutoStory_StoryWorld.h"
 #include "Data/PokemonBDSP_AutoStory_WalkRules.h"
+#include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryWorld_Tests.h"
 
 namespace PokemonAutomation{
@@ -219,9 +224,126 @@ const StoryWorldCase STORY_WORLD_CASES[] = {
     },
 };
 
+namespace{
+
+//  Whether stepping `direction` from `from` lands on the same map and tile
+//  on the world grid as on the connected maps (or nowhere on both).
+bool steps_agree(const StoryWorld& world, const Pokemon::MapPlace& from, Direction direction){
+    const Pokemon::ConnectedMaps connected = connected_maps(world);
+    const std::string& name = connected.map(from.map).name;
+    const std::optional<MapTile> grid = world.to_local(world.to_world(name, from.tile).next(direction));
+    const std::optional<Pokemon::MapPlace> place = connected.neighbour(from, direction);
+    if (grid && place){
+        return grid->map == connected.map(place->map).name && grid->pos == place->tile;
+    }
+    return !grid && !place;
+}
+
+//  The first step off a map's edge, from any of its tiles, that lands
+//  somewhere else on the connected maps than on the world grid, or nothing.
+std::optional<std::string> edge_mismatch(const StoryWorld& world){
+    const Pokemon::ConnectedMaps connected = connected_maps(world);
+    for (size_t index = 0; index < connected.size(); index++){
+        const Pokemon::Grid<Pokemon::TileKind>& tiles = connected.map(index).tiles;
+        for (int cell = 0; cell < tiles.width * tiles.height; cell++){
+            const TilePos from{cell % tiles.width, cell / tiles.width};
+            for (Direction direction : Pokemon::ALL_DIRECTIONS){
+                if (tiles.contains(from.next(direction)) || steps_agree(world, {index, from}, direction)){
+                    continue;
+                }
+                return std::format("{} {} {}: the grid and the connected maps disagree.",
+                    connected.map(index).name, Pokemon::to_string(from), Pokemon::direction_name(direction));
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+struct ConnectedWorldInput{
+    std::string_view name;
+    //  The story's plan world between two places (story_plan_world()), or,
+    //  if `world` is set, that world.
+    std::string_view plan_from = {};
+    std::string_view plan_to = {};
+    const StoryWorld& (*world)() = nullptr;
+};
+struct ConnectedWorldExpectation{
+    //  Connections over all the maps: two for each pair that meets.
+    size_t connections = 0;
+};
+struct ConnectedWorldCase{
+    ConnectedWorldInput input;
+    ConnectedWorldExpectation expectation;
+};
+
+class Test_ConnectedStoryWorld : public UnitTest{
+public:
+    explicit Test_ConnectedStoryWorld(ConnectedWorldCase test_case)
+        : UnitTest(std::format("PokemonBDSP::AutoStory - Story world as connected maps: {}", test_case.input.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const ConnectedWorldInput& input = m_case.input;
+        const StoryWorld* found = input.world != nullptr
+            ? &input.world()
+            : story_plan_world(std::string(input.plan_from), std::string(input.plan_to));
+        if (found == nullptr){
+            return std::format("No story plan world from {} to {}.", input.plan_from, input.plan_to);
+        }
+        const StoryWorld& world = *found;
+        if (std::optional<std::string> error = edge_mismatch(world)){
+            return *error;
+        }
+        const Pokemon::ConnectedMaps connected = connected_maps(world);
+        size_t connections = 0;
+        for (size_t index = 0; index < connected.size(); index++){
+            connections += connected.map(index).connections.size();
+        }
+        if (connections != m_case.expectation.connections){
+            return std::format("{} connections, expected {}.", connections, m_case.expectation.connections);
+        }
+        return true;
+    }
+
+private:
+    ConnectedWorldCase m_case;
+};
+
+const ConnectedWorldCase CONNECTED_WORLD_CASES[] = {
+    {
+        .input = {.name = "Route 201, Sandgem and Route 202", .world = story_maps},
+        .expectation = {.connections = 4},
+    },
+    {
+        .input = {.name = "Twinleaf to Route 202", .plan_from = "TwinleafTown", .plan_to = "Route202"},
+        .expectation = {.connections = 8},
+    },
+    {
+        .input = {.name = "Route 203 into Jubilife", .plan_from = "Route203", .plan_to = "JubilifeCity"},
+        .expectation = {.connections = 2},
+    },
+    {
+        .input = {.name = "Jubilife up Route 204's south half", .plan_from = "JubilifeCity", .plan_to = "Route204South"},
+        .expectation = {.connections = 2},
+    },
+    {
+        .input = {.name = "Route 204's north half into Floaroma", .plan_from = "Route204North", .plan_to = "FloaromaTown"},
+        .expectation = {.connections = 2},
+    },
+    {
+        .input = {.name = "Jubilife alone", .world = jubilife_maps},
+        .expectation = {.connections = 0},
+    },
+};
+
+} // namespace
+
 void add_tests_AutoStory_StoryWorld(UnitTestDatabase& database){
     for (const auto& item : STORY_WORLD_CASES){
         database.add<Test_StoryWorld>(item);
+    }
+    for (const ConnectedWorldCase& item : CONNECTED_WORLD_CASES){
+        database.add<Test_ConnectedStoryWorld>(item);
     }
 }
 

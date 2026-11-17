@@ -42,9 +42,12 @@ enum class ScreenEvent : uint8_t{
     PLAYER_CAN_MOVE,    //  The overworld with the player in control.
     SCREEN_STILL,       //  The screen barely changed since the frame before.
     SWITCH_HOME_MENU,   //  The Switch's HOME menu: the game is not on the screen.
+    PLAYER_STILL,       //  A box around the player barely changed since the
+                        //  frame before: people walking elsewhere do not count.
 };
 //  How many ScreenEvent values there are.
-constexpr size_t SCREEN_EVENT_COUNT = 11;
+constexpr size_t SCREEN_EVENT_COUNT = 12;
+
 //  "dialog box", for the log.
 std::string screen_event_name(ScreenEvent event);
 

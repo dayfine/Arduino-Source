@@ -423,3 +423,10 @@ walk into Floaroma) is the last checkpoint and took eight builds; what they taug
   Platinum's for Route 204 North, and its coord-event binaries give the story triggers'
   rectangles and flag values, which Platinum's JSON confirms. Diamond is the primary source
   now, Platinum the readable cross-check.
+- **Isolate lab profiles from live hardware and name macOS bundles explicitly.**
+  Running raw binaries or reopening from OS permission modals without `--profile lab-B`
+  defaulted to Console A's serial port and sent reset opcodes, dropping Console A's session.
+  Missing `CFBundleDisplayName` in lab plist templates made three bundles appear identically as
+  `SerialPrograms` in macOS Privacy & Security. Full breakdown and operational rules:
+  [`AutoStory-Lesson-Lab-Controller-And-Permissions.md`](AutoStory-Lesson-Lab-Controller-And-Permissions.md).
+

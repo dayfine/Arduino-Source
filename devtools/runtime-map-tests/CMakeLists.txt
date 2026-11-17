@@ -11,6 +11,7 @@ add_library(RuntimeMapDecoder STATIC
     "${NAV}/Pokemon_RuntimeMap.cpp"
     "${NAV}/Pokemon_MapData.cpp"
     "${NAV}/Pokemon_Grid.cpp"
+    "${NAV}/Pokemon_Direction.cpp"
     "${ROOT}/Common/Cpp/Exceptions.cpp"
     "${ROOT}/Common/Cpp/Json/JsonValue.cpp"
     "${ROOT}/Common/Cpp/Json/JsonObject.cpp"
