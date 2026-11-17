@@ -127,11 +127,18 @@ const LintCase LINT_CASES[] = {
         .expectation = {.errors = ""},
     },
     {
+        .name = "a walk until a scene passes",
+        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(8000)}}}, {"end", std::string("scene")},
+        }}},
+        .expectation = {.errors = ""},
+    },
+    {
         .name = "a walk to an unknown end fails",
         .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
             {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}}, {"end", std::string("sideways")},
         }}},
-        .expectation = {.errors = "01.01 w: \"end\" must be \"fade_white\", \"fade_black\", \"dialog\" or \"prompt\""},
+        .expectation = {.errors = "01.01 w: \"end\" must be \"fade_white\", \"fade_black\", \"dialog\", \"prompt\" or \"scene\""},
     },
     {
         .name = "a walk with a time before its end but no end fails",
@@ -1177,6 +1184,34 @@ const RunCase RUN_CASES[] = {
             .inputs = "stick 90deg 600ms walk, release 300ms, stick 0deg 150ms walk, release 300ms, press A, "
                 "stick 0deg 5000ms walk, release 500ms",
         },
+    },
+    //  A 4 s walk off the roof stopped short of the scene below it (03.03,
+    //  console B 2026-11-17): the walk holds on until a scene takes control.
+    {
+        .name = "03.03's walk off the roof stops on two looks of a scene",
+        .input = {.checkpoint = "03.03", .first_step = 5, .steps = 1, .looks = {
+            party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), DIALOG, DIALOG,
+        }},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk",
+            .line = "[PLZA] off_the_roof: a scene (a text box) took control after 500 ms of the last leg: the walk stops.",
+        },
+    },
+    {
+        .name = "03.03's walk off the roof walks on past one look of a scene",
+        .input = {.checkpoint = "03.03", .first_step = 5, .steps = 1, .looks = {
+            party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), DIALOG, party_bar(Milliseconds(0)), BLACK_FADE, BLACK_FADE,
+        }},
+        .expectation = {
+            .verdict = "done",
+            .line = "[PLZA] off_the_roof: a scene (a fade) took control after 1000 ms of the last leg: the walk stops.",
+        },
+    },
+    {
+        .name = "03.03's walk off the roof fails when no scene takes control",
+        .input = {.checkpoint = "03.03", .first_step = 5, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .expectation = {.verdict = "failed at off_the_roof: walk_no_scene"},
     },
     {
         .name = "03.04's Pokedex: B at the app and at its text, done on the party bar held a second",

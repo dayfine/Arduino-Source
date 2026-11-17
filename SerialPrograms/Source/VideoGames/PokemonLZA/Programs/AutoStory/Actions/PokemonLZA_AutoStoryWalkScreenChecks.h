@@ -54,6 +54,15 @@ Pokemon::Outcome walk_until(
     PlzaBackend& backend, std::string_view walk, const StoryMove& move, ScreenEvent end, Milliseconds end_after
 );
 
+//  Walks `move` as walk_until() does, its last leg held in slices of
+//  250 ms, until a scene takes control: something no walk may start on (a
+//  text box, text waiting for A, a fade) on two looks in a row. The stick
+//  is let go after each slice, so it is let go when the walk stops. A
+//  walk that runs off into a scene with no measured end (03.03's drop off
+//  the roof, console B 2026-11-17). Fails as "walk_no_scene" when control
+//  is still free at the end of the last leg.
+Pokemon::Outcome walk_until_scene(PlzaBackend& backend, std::string_view walk, const StoryMove& move);
+
 //  Walks straight on, 250 ms at a time, until an A prompt shows
 //  (INTERACT_PROMPT: "A Leave" at the Battle Zone's gate) and shows again
 //  on a look 300 ms later, the stick let go; nothing if it shows already.

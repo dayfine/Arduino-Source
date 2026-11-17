@@ -62,6 +62,10 @@ namespace{
 //  reset_game_from_home() takes by default.
 constexpr Milliseconds RELOAD_SETTLE = 1000ms;
 
+//  A walk's "end" that holds its last leg until a scene takes control
+//  (walk_until_scene()), not until one screen event.
+constexpr std::string_view WALK_UNTIL_SCENE = "scene";
+
 
 StoryActionSpec game_spec(std::string name, std::vector<StoryArgSpec> args = {}){
     return StoryActionSpec{.kind = StoryStepKind::GAME, .name = std::move(name), .args = std::move(args)};
@@ -104,7 +108,8 @@ std::vector<StoryArgSpec> walk_args(){
         },
         StoryArgSpec{
             .key = "end", .type = StoryArgType::WORD, .required = false, .fallback = std::nullopt,
-            .why = "\"fade_white\", \"fade_black\", \"dialog\" or \"prompt\" (an A prompt): the last leg is held until it shows, its ms the bound",
+            .why = "\"fade_white\", \"fade_black\", \"dialog\" or \"prompt\" (an A prompt): the last leg is held until it shows, its ms the bound; "
+                "\"scene\": held until a scene takes control (walk_until_scene())",
         },
         flag("held", "hold the stick at each leg's angle (L only before a later turning leg), not tap-and-forward"),
         optional_int("wait_ms", "wait this long before looking for free control: NPCs moving off"),
@@ -451,7 +456,8 @@ Outcome menu_save_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActi
 }
 
 //  "walk": its legs, once the screen shows free control; held until the
-//  event of its "end" arg, if it has one, else finished with one look
+//  event of its "end" arg, if it has one ("scene": until a scene takes
+//  control, walk_until_scene()), else finished with one look
 //  (finish_walk()). With "heading", it faces that by `arrow` (face_heading())
 //  first; no `arrow`: "console_only".
 Outcome walk_step(const std::optional<MinimapArrowReader>& arrow, PlzaBackend& backend, const StoryActionCall& call, Pokemon::RunState&){
@@ -474,6 +480,9 @@ Outcome walk_step(const std::optional<MinimapArrowReader>& arrow, PlzaBackend& b
         }
     }
     const auto end = call.args.find("end");
+    if (end != call.args.end() && std::get<std::string>(end->second) == WALK_UNTIL_SCENE){
+        return walk_until_scene(backend, name, move);
+    }
     if (end != call.args.end()){
         const std::optional<ScreenEvent> event = walk_end_event(std::get<std::string>(end->second));
         if (event){
@@ -757,9 +766,9 @@ std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpo
             continue;
         }
         const std::string* word = std::get_if<std::string>(&end->second);
-        if (word == nullptr || !walk_end_event(*word)){
+        if (word == nullptr || (*word != WALK_UNTIL_SCENE && !walk_end_event(*word))){
             errors.push_back(std::format(
-                "{} {}: \"end\" must be \"fade_white\", \"fade_black\", \"dialog\" or \"prompt\"", checkpoint.id, step.name
+                "{} {}: \"end\" must be \"fade_white\", \"fade_black\", \"dialog\", \"prompt\" or \"scene\"", checkpoint.id, step.name
             ));
         }
     }

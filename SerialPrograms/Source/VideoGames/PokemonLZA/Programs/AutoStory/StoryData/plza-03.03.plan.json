@@ -47,10 +47,11 @@
       {
         "id": "off_the_roof",
         "kind": "game_action",
-        "why": "step 51: off the roof's edge, down to South Boulevard. Walks off the edge and drops. Measured 2026-11-08 on console B, walk not run.",
+        "why": "step 51: off the roof's edge, down to South Boulevard. Walks off the edge and drops, until the scene there takes control (4 s of walk measured 2026-11-08 on console B, not run, stopped short of it 2026-11-17). not planned: a drop off the roof's edge, ended by the scene below, not a map target.",
         "action": "walk",
         "args": {
-          "legs": [[0, 4000]]
+          "legs": [[0, 8000]],
+          "end": "scene"
         }
       },
       {
