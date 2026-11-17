@@ -657,8 +657,16 @@ Pokemon::Outcome go_to_zone_spot(StoryEnv& env, PlzaBackend& backend, const Zone
         ));
         switch (move){
         case ZoneStartMove::WALK_TO_SPOT:
-            pbf_move_left_joystick(env.context, /*position=*/{0, 1}, route.walk_hold, /*release=*/Milliseconds(300));
+            //  A touch right of the objective: straight at it ends in the grass
+            //  by the tree, whose leaves hide the distance (console B,
+            //  2026-11-16 16:02: 101 on screen, no read).
+            pbf_move_left_joystick(env.context, /*position=*/{0.25, 1}, route.walk_hold, /*release=*/Milliseconds(300));
             distance = read_at_marker(env, backend);
+            if (!distance){
+                backend.log("[PLZA] catch_in_zone: no read after the walk: a step right onto the road, then read again");
+                pbf_move_left_joystick(env.context, /*position=*/{1, 0}, /*hold=*/Milliseconds(500), /*release=*/Milliseconds(300));
+                distance = read_at_marker(env, backend);
+            }
             continue;
         case ZoneStartMove::SEARCH:
             return Pokemon::outcome_ok();
