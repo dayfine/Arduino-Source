@@ -1,0 +1,34 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "common_cpp",
+    hdrs = glob([
+        "**/*.h",
+        "**/*.hpp",
+        "**/*.tpp",
+    ]),
+    srcs = glob(
+        [
+            "*.cpp",
+            "Concurrency/*.cpp",
+            "Containers/*.cpp",
+            "Filesystem/*.cpp",
+            "Json/*.cpp",
+            "Logging/*.cpp",
+            "Options/*.cpp",
+            "Strings/*.cpp",
+        ],
+        exclude = [
+            "*Qt*",
+            "**/*Qt*",
+            "**/*disabled*",
+            "Concurrency/PeriodicRunner.cpp",
+        ],
+    ),
+    deps = [
+        "//:common_headers",
+        "//:serial_programs_headers",
+        "//:third_party_core_headers",
+    ],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,65 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+genrule(
+    name = "autostory_battle_json_gen",
+    srcs = glob(["BattleData/*.json"]) + ["//:bazel_embed_text.py"],
+    outs = ["autostory_battle_json.cpp"],
+    cmd = "python3 $(location //:bazel_embed_text.py) $@ VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleData.h PokemonAutomation::NintendoSwitch::PokemonFRLG autostory_battle_json $(SRCS)",
+)
+
+genrule(
+    name = "autostory_checkpoint_json_gen",
+    srcs = glob(["StoryData/*.json"]) + ["//:bazel_embed_text.py"],
+    outs = ["autostory_checkpoint_json.cpp"],
+    cmd = "python3 $(location //:bazel_embed_text.py) $@ VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.h PokemonAutomation::NintendoSwitch::PokemonFRLG autostory_checkpoint_json $(SRCS)",
+)
+
+cc_library(
+    name = "planned_battle_lib",
+    hdrs = glob([
+        "*.h",
+        "*.hpp",
+        "*.tpp",
+    ]),
+    srcs = [
+        ":autostory_battle_json_gen",
+        ":autostory_checkpoint_json_gen",
+        "PokemonFRLG_AutoStoryBattleData.cpp",
+        "PokemonFRLG_AutoStoryBattlePolicy.cpp",
+        "PokemonFRLG_AutoStoryBattleTrack.cpp",
+        "PokemonFRLG_AutoStoryGen3Damage.cpp",
+        "PokemonFRLG_AutoStoryItemsPocket.cpp",
+        "PokemonFRLG_AutoStoryLeagueFightData.cpp",
+        "PokemonFRLG_AutoStoryLeagueFoes.cpp",
+        "PokemonFRLG_AutoStoryLeaguePlanData.cpp",
+        "PokemonFRLG_AutoStoryMember.cpp",
+        "PokemonFRLG_AutoStoryParty.cpp",
+        "PokemonFRLG_AutoStoryPlannedBattle.cpp",
+        "PokemonFRLG_AutoStoryPlannedBetween.cpp",
+        "PokemonFRLG_AutoStoryPlannedPolicy.cpp",
+        "PokemonFRLG_AutoStoryPlannedRisk.cpp",
+        "bazel_frlg_stubs.cpp",
+    ],
+    deps = [
+        "//Common/Cpp:common_cpp",
+        "//SerialPrograms/Source/Pokemon:pokemon_types",
+        "//:serial_programs_headers",
+    ],
+)
+
+cc_test(
+    name = "planned_battle_fake_test",
+    srcs = [
+        "PokemonFRLG_AutoStoryPlannedBattleFake_Tests.cpp",
+        "//:bazel_test_main.cpp",
+    ],
+    local_defines = [
+        "PA_BAZEL_TEST_NS=PokemonAutomation::NintendoSwitch::PokemonFRLG",
+        "PA_BAZEL_TEST_FN=add_tests_AutoStoryPlannedBattleFake",
+    ],
+    linkstatic = True,
+    linkopts = ["-Wl,-undefined,error"],
+    deps = [
+        ":planned_battle_lib",
+    ],
+)

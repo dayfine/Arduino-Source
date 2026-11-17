@@ -1,0 +1,16 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "pokemon_types",
+    hdrs = glob([
+        "**/*.h",
+        "**/*.hpp",
+        "**/*.tpp",
+    ]),
+    srcs = ["Pokemon_Types.cpp"],
+    deps = [
+        "//Common/Cpp:common_cpp",
+        "//:serial_programs_headers",
+    ],
+    visibility = ["//visibility:public"],
+)
