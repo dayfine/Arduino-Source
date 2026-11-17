@@ -47,7 +47,12 @@ void finish_walk(PlzaBackend& backend, std::string_view walk);
 //  on a look 300 ms later, the stick let go; else the leg goes on. A black fade ends it too: the scene at the
 //  walk's end takes over. A last leg that only turns is looked at once,
 //  after the turn. Fails as "walk_no_end" if neither shows within it.
-Pokemon::Outcome walk_until(PlzaBackend& backend, std::string_view walk, const StoryMove& move, ScreenEvent end);
+//  `end` seen before `end_after` of the last leg (the plan's measured walk)
+//  does not end it: an NPC's A prompt beside the path is passed on the
+//  way, not the one the walk goes to (02.05's Alton, console B 2026-11-16).
+Pokemon::Outcome walk_until(
+    PlzaBackend& backend, std::string_view walk, const StoryMove& move, ScreenEvent end, Milliseconds end_after
+);
 
 //  Walks straight on, 250 ms at a time, until an A prompt shows
 //  (INTERACT_PROMPT: "A Leave" at the Battle Zone's gate) and shows again
