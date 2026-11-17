@@ -18,6 +18,7 @@
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
+#include "Pokemon/AutoStory/Pokemon_Settle.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteIO.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
@@ -40,18 +41,8 @@ constexpr WarpFadeRule DOOR_FADE_RULE{.partial_dark = true, .dark_for = Millisec
 constexpr WarpFadeRule TAP_FADE_RULE{};
 
 
-//  How a settle (StoryStepIO::settle()) ends.
-enum class SettleKind{
-    //  Text and scenes pressed through, then the overworld quiet.
-    TALK,
-    //  As TALK, but a warp (a map change) must come first: a fade, or the
-    //  far map's banner.
-    AFTER_WARP,
-    //  After a door or a way through with no text to come: the fade back
-    //  up and a short still spell around the player, people walking about
-    //  ignored (TalkOverRule::door).
-    DOOR,
-};
+//  How a settle (StoryStepIO::settle()) ends: the shared table's kinds.
+using Pokemon::SettleKind;
 
 
 //  Abstract interface for story step input/output operations.

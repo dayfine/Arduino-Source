@@ -24,7 +24,6 @@
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
-#include "Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_Walk_Tests.h"
 #include "Utils/PokemonBDSP_AutoStory_WalkResult.h"
 #include "Utils/PokemonBDSP_AutoStory_WalkScreen.h"

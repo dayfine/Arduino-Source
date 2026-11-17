@@ -13,7 +13,8 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-// Registers unit tests for what games need of the engine: any pose type, the stick, observation machines, segment and verify runs, console-only actions.
+//  Registers unit tests for what games need of the engine: any pose type,
+//  the stick, observation machines and breakpoints.
 void add_tests_StoryEngineRuns(UnitTestDatabase& database);
 
 

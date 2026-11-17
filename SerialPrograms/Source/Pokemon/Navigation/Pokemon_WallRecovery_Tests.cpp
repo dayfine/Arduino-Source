@@ -71,7 +71,6 @@ std::string describe_holds(std::span<const TestHold> holds){
 //  Inputs and expectations are separate aggregates; each registered test owns one row.
 struct CorridorTestCase{
     struct Input{
-        std::string name;
         std::vector<int> positions;
         std::optional<int> person;
         size_t budget;
@@ -82,6 +81,7 @@ struct CorridorTestCase{
         std::vector<TestHold> holds;
     };
 
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -89,7 +89,7 @@ struct CorridorTestCase{
 class Test_WallRecovery : public UnitTest{
 public:
     explicit Test_WallRecovery(CorridorTestCase scenario)
-        : UnitTest(std::format("Pokemon::WallRecovery - {}", scenario.input.name)), m_scenario(std::move(scenario))
+        : UnitTest(std::format("Pokemon::WallRecovery - {}", scenario.name)), m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const auto& input = m_scenario.input;
@@ -112,35 +112,43 @@ private:
 
 const CorridorTestCase CORRIDOR_CASES[] = {
     {
-        .input = {.name = "empty", .positions = {}, .person = std::nullopt, .budget = 3},
+        .name = "empty",
+        .input = {.positions = {}, .person = std::nullopt, .budget = 3},
         .expectation = {.first_anchor = std::nullopt, .holds = {}},
     },
     {
-        .input = {.name = "already known", .positions = {4}, .person = std::nullopt, .budget = 0},
+        .name = "already known",
+        .input = {.positions = {4}, .person = std::nullopt, .budget = 0},
         .expectation = {.first_anchor = 4, .holds = {}},
     },
     {
-        .input = {.name = "both tiles", .positions = {2, 3}, .person = std::nullopt, .budget = 3},
+        .name = "both tiles",
+        .input = {.positions = {2, 3}, .person = std::nullopt, .budget = 3},
         .expectation = {.first_anchor = 0, .holds = {{.direction = Direction::WEST, .tiles = 3}}},
     },
     {
-        .input = {.name = "three shortfall endpoints", .positions = {3, 4, 5}, .person = std::nullopt, .budget = 3},
+        .name = "three shortfall endpoints",
+        .input = {.positions = {3, 4, 5}, .person = std::nullopt, .budget = 3},
         .expectation = {.first_anchor = 0, .holds = {{.direction = Direction::WEST, .tiles = 5}}},
     },
     {
-        .input = {.name = "shortest hold first", .positions = {8, 9}, .person = std::nullopt, .budget = 3},
+        .name = "shortest hold first",
+        .input = {.positions = {8, 9}, .person = std::nullopt, .budget = 3},
         .expectation = {.first_anchor = 10, .holds = {{.direction = Direction::EAST, .tiles = 2}}},
     },
     {
-        .input = {.name = "person is not an anchor", .positions = {2, 3}, .person = 1, .budget = 3},
+        .name = "person is not an anchor",
+        .input = {.positions = {2, 3}, .person = 1, .budget = 3},
         .expectation = {.first_anchor = 10, .holds = {{.direction = Direction::EAST, .tiles = 8}}},
     },
     {
-        .input = {.name = "person splits belief", .positions = {2, 8}, .person = 5, .budget = 3},
+        .name = "person splits belief",
+        .input = {.positions = {2, 8}, .person = 5, .budget = 3},
         .expectation = {.first_anchor = std::nullopt, .holds = {}},
     },
     {
-        .input = {.name = "budget exhausted", .positions = {2, 3}, .person = std::nullopt, .budget = 0},
+        .name = "budget exhausted",
+        .input = {.positions = {2, 3}, .person = std::nullopt, .budget = 0},
         .expectation = {.first_anchor = std::nullopt, .holds = {}},
     },
 };
@@ -189,7 +197,6 @@ public:
 
 struct CornerTestCase{
     struct Input{
-        std::string name;
         std::array<TilePos, 2> positions;
         size_t budget;
     };
@@ -199,6 +206,7 @@ struct CornerTestCase{
         std::vector<TestHold> holds;
     };
 
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -206,7 +214,7 @@ struct CornerTestCase{
 class Test_WallRecoveryCorner : public UnitTest{
 public:
     explicit Test_WallRecoveryCorner(CornerTestCase scenario)
-        : UnitTest(std::format("Pokemon::WallRecovery - {}", scenario.input.name)), m_scenario(std::move(scenario))
+        : UnitTest(std::format("Pokemon::WallRecovery - {}", scenario.name)), m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const auto& input = m_scenario.input;
@@ -231,11 +239,13 @@ private:
 
 const CornerTestCase CORNER_CASES[] = {
     {
-        .input = {.name = "one hold cannot localize both axes", .positions = {{{.x = 2, .y = 3}, {.x = 3, .y = 4}}}, .budget = 1},
+        .name = "one hold cannot localize both axes",
+        .input = {.positions = {{{.x = 2, .y = 3}, {.x = 3, .y = 4}}}, .budget = 1},
         .expectation = {.first_anchor = std::nullopt, .holds = {}},
     },
     {
-        .input = {.name = "two holds converge at northwest corner", .positions = {{{.x = 2, .y = 3}, {.x = 3, .y = 4}}}, .budget = 2},
+        .name = "two holds converge at northwest corner",
+        .input = {.positions = {{{.x = 2, .y = 3}, {.x = 3, .y = 4}}}, .budget = 2},
         .expectation = {.first_anchor = TilePos{.x = 0, .y = 0},
             .holds = {{.direction = Direction::NORTH, .tiles = 4}, {.direction = Direction::WEST, .tiles = 3}}},
     },
