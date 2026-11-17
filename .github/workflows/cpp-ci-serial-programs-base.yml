@@ -245,7 +245,11 @@ jobs:
         uses: actions/checkout@v7
         if: inputs.run-tests
         with:
-          repository: 'PokemonAutomation/CommandLineTests'
+          # The fork's fixtures: upstream's plus the PLZA AutoStory frames (Confirm Choices, opening and arrival folders), dayfine/CommandLineTests PR #18,
+          # and the 01.01 banner and controls hint in English and Italian (branch plza/hint-banner-any-language),
+          # and the 01.00 new game frames, HOME tiles (FireRed first, Z-A second too) and the 01.02 Italian choice menu and talk prompt (branch plza/new-game-intro), and the 03.02b battle frame with no lock-on and Map & Missions card (branch plza/battle-panel), and Wild Zone 1's full map frames (branch plza/zone1-map-pin), and 03.09's lab gate dialog and 03.08b's wild battle at the zone pillar (branch plza/0309-gate-frames), and Wild Zone 1's frames with the lead's panel up and no battle (branch plza/0308b-pillar-frame), and the first X's Save card over the menu and the menu after it (branch plza/menu-save-frames), and the 01.02 French choice menu (branch plza/choice-fr), and 02.05's German lobby with a party of one and the elevator's A prompt (branch plza/party-slots). Fork-only pin: dropped at upstream handoff.
+          repository: 'dayfine/CommandLineTests'
+          ref: '60e0ba14b62459f3024eed33ff9ecf97b433bee3'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded
