@@ -117,6 +117,8 @@ struct DamageInput{
     BattleTrackState track = {};
     //  Ours or the foe's.
     bool ours = true;
+    //  Our HP (of 171).
+    int hp = 171;
     std::string move = {};
 };
 struct DamageExpectation{
@@ -138,7 +140,7 @@ public:
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const PlannedInputs inputs{
             .lead = blastoise(),
-            .hp = 171,
+            .hp = m_case.input.hp,
             .track = m_case.input.track,
             .foe = {.foe = foe_of(m_case.input.trainer, m_case.input.slot), .slot = m_case.input.slot},
         };
@@ -163,6 +165,16 @@ const DamageCase DAMAGE_CASES[] = {
     {
         .name = "our Surf at +2 on Lance's Dragonite",
         .input = {.trainer = "TRAINER_ELITE_FOUR_LANCE", .slot = 4, .track = {.own = {.sp_attack = 2}}, .move = "surf"},
+        .expectation = {.rolls = {45, 46, 46, 47, 48, 48, 49, 49, 50, 50, 51, 51, 52, 52, 53, 54}},
+    },
+    {
+        .name = "our Surf at +2 on Lance's Dragonite under a third of our HP: Torrent",
+        .input = {.trainer = "TRAINER_ELITE_FOUR_LANCE", .slot = 4, .track = {.own = {.sp_attack = 2}}, .hp = 57, .move = "surf"},
+        .expectation = {.rolls = {68, 69, 70, 71, 72, 72, 73, 74, 75, 76, 76, 77, 78, 79, 80, 81}},
+    },
+    {
+        .name = "our Surf at +2 on Lance's Dragonite just over a third of our HP: no Torrent",
+        .input = {.trainer = "TRAINER_ELITE_FOUR_LANCE", .slot = 4, .track = {.own = {.sp_attack = 2}}, .hp = 58, .move = "surf"},
         .expectation = {.rolls = {45, 46, 46, 47, 48, 48, 49, 49, 50, 50, 51, 51, 52, 52, 53, 54}},
     },
     {
