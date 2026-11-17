@@ -39,6 +39,8 @@ struct Look{
     bool prompt = false;
     //  A wild battle's HUD (BATTLE_STARTED).
     bool battle = false;
+    //  Whether the lead's panel shows (ZONE_PANEL_READING); none: not read.
+    std::optional<bool> panel = std::nullopt;
 };
 
 std::vector<Observation<ZonePose>> looks_of(const std::vector<Look>& looks){
@@ -56,6 +58,9 @@ std::vector<Observation<ZonePose>> looks_of(const std::vector<Look>& looks){
         }
         if (look.battle){
             observation.events.set(ScreenEvent::BATTLE_STARTED, true);
+        }
+        if (look.panel){
+            observation.readings[std::string(ZONE_PANEL_READING)] = *look.panel ? 1 : 0;
         }
         out.push_back(std::move(observation));
     }
@@ -85,6 +90,23 @@ std::vector<std::string> slices(size_t count, int degrees){
     return std::vector<std::string>(count, slice(degrees));
 }
 
+std::vector<std::string> concat(std::vector<std::string> first, const std::vector<std::string>& second){
+    first.insert(first.end(), second.begin(), second.end());
+    return first;
+}
+
+//  Reads `pins` in turn, the last repeating; none when `pins` is empty.
+PinReader pins_of(const std::vector<MapPoint>& pins){
+    if (pins.empty()){
+        return PinReader();
+    }
+    return [pins, next = size_t(0)]() mutable -> std::optional<MapPoint>{
+        const MapPoint pin = pins[std::min(next, pins.size() - 1)];
+        next++;
+        return pin;
+    };
+}
+
 
 struct GateWalkCase{
     std::string name;
@@ -92,6 +114,8 @@ struct GateWalkCase{
         //  In order; the last repeats.
         std::vector<Look> looks;
         Milliseconds timeout = 1000ms;
+        //  The map pin's reads, in order, the last repeating; none: no reader.
+        std::vector<MapPoint> pins = {};
     };
     Input input;
     struct Expectation{
@@ -148,6 +172,54 @@ const GateWalkCase GATE_WALK_CASES[] = {
         .expectation = {.failure = "wild_battle", .inputs = slices(80, 0), .message = "20000 ms"},
     },
     {
+        //  The user, 2026-11-16: "if we did walk out the zone, that's a
+        //  finish regardless what battle detector says".
+        .name = "out of the zone with no prompt: done",
+        .input = {.looks = {{.gate_x = 600, .panel = true}, {.panel = false}, {.panel = false}}},
+        .expectation = {.failure = std::nullopt, .inputs = {slice(6), slice(6)}},
+    },
+    {
+        .name = "a battle read out of the zone does not hold the walk",
+        .input = {.looks = {{.gate_x = 500, .panel = true}, {.battle = true, .panel = false}}, .timeout = 15000ms},
+        .expectation = {.failure = std::nullopt, .inputs = {slice(0), slice(0)}},
+    },
+    {
+        //  A walk toward a zone from outside it never had the panel.
+        .name = "no panel from the start is not out of the zone",
+        .input = {.looks = {{.gate_x = 500, .panel = false}, {.gate_x = 500, .panel = false}, {.prompt = true}}},
+        .expectation = {.failure = std::nullopt, .inputs = {slice(0), slice(0)}},
+    },
+    {
+        .name = "one look without the panel is not out of the zone",
+        .input = {.looks = {{.gate_x = 500, .panel = true}, {.gate_x = 500, .panel = false}, {.gate_x = 500, .panel = true}, {.prompt = true}}},
+        .expectation = {.failure = std::nullopt, .inputs = {slice(0), slice(0), slice(0)}},
+    },
+    {
+        //  console B, 2026-11-16 19:24 (03.08b run 3): a battle read
+        //  walked on 20 s into the zone's pillar. The pin read after 2 s
+        //  of walking on has not moved: re-aimed, the gate steers again.
+        .name = "walking on with the pin still: steers by the gate again",
+        .input = {
+            .looks = {
+                {.gate_x = 700, .battle = true}, {.gate_x = 700, .battle = true}, {.gate_x = 700, .battle = true},
+                {.gate_x = 700, .battle = true}, {.gate_x = 700, .battle = true}, {.gate_x = 700, .battle = true},
+                {.gate_x = 700, .battle = true}, {.gate_x = 700, .battle = true}, {.gate_x = 700, .battle = true},
+                {.prompt = true},
+            },
+            .timeout = 15000ms,
+            .pins = {{.x = 367, .y = 257}},
+        },
+        .expectation = {.failure = std::nullopt, .inputs = concat(slices(8, 0), {slice(12)})},
+    },
+    {
+        .name = "walking on with the pin moving: walks on",
+        .input = {
+            .looks = battle_then(16, {{.gate_x = 500}, {.prompt = true}}), .timeout = 15000ms,
+            .pins = {{.x = 384, .y = 252}, {.x = 374, .y = 252}, {.x = 364, .y = 252}},
+        },
+        .expectation = {.failure = std::nullopt, .inputs = slices(17, 0)},
+    },
+    {
         .name = "no prompt by the timeout fails with the last gate read",
         .input = {.looks = {{.gate_x = 510}}, .timeout = 1000ms},
         .expectation = {
@@ -162,7 +234,8 @@ UnitTestResult check_gate_walk(const GateWalkCase& test, CancellableScope& scope
         .looks = looks_of(test.input.looks), .kind = Pokemon::StoryBackendKind::SCRIPT, .battle = Pokemon::outcome_ok(),
     }, scope);
     const Pokemon::Outcome outcome = walk_to_zone_gate_entrance(
-        backend, MinimapArrowReader(), LookReader(), GateWalk{.heading = std::nullopt, .timeout = test.input.timeout}
+        backend, MinimapArrowReader(), LookReader(), pins_of(test.input.pins),
+        GateWalk{.heading = std::nullopt, .timeout = test.input.timeout}
     );
     const std::optional<std::string> failure = outcome.succeeded() ? std::nullopt : std::optional<std::string>(outcome.failure);
     if (failure != test.expectation.failure){

@@ -15,6 +15,7 @@
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_ButtonDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattleMarkersDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattlePanelDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector.h"
 
@@ -37,10 +38,12 @@ namespace PokemonLZA{
 //    halls and rooms do not show it;
 //  - BATTLE_STARTED: the battle HUD's hints at the bottom centre ("X A:
 //    Select Move"), read by their A icon, or the player's Pokemon's panel
-//    at the bottom left (BattlePanelDetector): the hints show only while
+//    at the bottom left (BattlePanelDetector) with the battle's markers
+//    right of it (BattleMarkersDetector): the hints show only while
 //    the player is locked on, and Taunie's battle (03.02b) ran 70 s with
-//    none (console B, 2026-11-16). Story battles show no Run prompt, so
-//    RunFromBattleDetector misses them.
+//    none (console B, 2026-11-16), and the panel alone shows all through
+//    a wild zone (03.08b, console B 2026-11-16). Story battles show no
+//    Run prompt, so RunFromBattleDetector misses them.
 //  A fading screen has no box to read.
 class PlzaScreenObserver : public ScreenEventObserver{
 public:
@@ -59,6 +62,7 @@ private:
     ButtonDetector m_interact;
     ButtonDetector m_battle_hint;
     BattlePanelDetector m_battle_panel;
+    BattleMarkersDetector m_battle_markers;
     OverworldPartySelectionDetector m_party;
 };
 
