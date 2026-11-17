@@ -359,6 +359,10 @@ std::optional<WallClock> SceneTimeline::quiet_end_due() const{
 }
 
 bool SceneTimeline::blind_press_due(WallClock now) const{
+    const bool pressed_since_cue = m_last_blind_press && *m_last_blind_press >= m_last_cue;
+    if (m_config.gap_press && m_scene_seen && !pressed_since_cue && now - m_last_cue >= *m_config.gap_press){
+        return true;
+    }
     if (!m_config.blind_press_after || now - m_last_cue < *m_config.blind_press_after){
         return false;
     }

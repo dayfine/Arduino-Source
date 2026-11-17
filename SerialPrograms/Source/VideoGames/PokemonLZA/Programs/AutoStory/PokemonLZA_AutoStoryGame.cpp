@@ -141,6 +141,7 @@ std::vector<StoryActionSpec> make_specs(){
             flag("quiet_is_control", "the quiet time ends the step with control, where no party bar or prompt shows (Hotel Z)"),
             optional_int("end_after_black_fades", "end 5 s after this many black fades, or on the controls hint; the banner does not end it"),
             optional_int("scene_start_ms", "the step plays a scene: control with no scene seen this long fails it"),
+            optional_int("gap_press_ms", "inside the scene, one A when nothing shows this long (a box no detector reads)"),
         }),
         game_spec("text_to_choice", {
             flag("advance_with_a", "advance the text with A, for a talk that B cancels (Hotel Z's elevator)"),
@@ -489,6 +490,7 @@ Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
 //  plays a scene (SceneMachineConfig::start_window), so control with no
 //  scene seen for that long fails it ("scene_never_started") instead of
 //  passing at once: 03.09's lab_lobby, A at the door to its fade.
+//  "gap_press_ms": SceneMachineConfig::gap_press.
 Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
     if (Pokemon::story_arg<bool>(call.args, "press_a_first")){
         press_through_prompt(backend);
@@ -497,6 +499,10 @@ Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAct
     config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));
     config.quiet_is_control = Pokemon::story_arg<bool>(call.args, "quiet_is_control");
     config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
+    const auto gap = call.args.find("gap_press_ms");
+    if (gap != call.args.end()){
+        config.gap_press = Milliseconds(std::get<int64_t>(gap->second));
+    }
     const auto start = call.args.find("scene_start_ms");
     if (start != call.args.end()){
         config.start_window = Milliseconds(std::get<int64_t>(start->second));

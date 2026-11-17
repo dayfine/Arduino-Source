@@ -21,9 +21,9 @@
       {
         "id": "enter_zone_1",
         "kind": "game_action",
-        "why": "step 58: A Enter at the gate (a scene step ends at once on its prompt), Taunie, the Throwing Poke Balls card",
+        "why": "step 58: A Enter at the gate (a scene step ends at once on its prompt), Taunie, the Throwing Poke Balls card. The \"received 10 Poke Balls\" box reads as nothing (no detector, no frame yet): it held the step on scene_moving from 1.5 s to 11.7 s with no press (console B, 2026-11-16 18:39), so 2 s with nothing inside the scene gets one A.",
         "action": "mash_to_move_hints",
-        "args": {"press_a_first": true}
+        "args": {"press_a_first": true, "gap_press_ms": 2000}
       },
       {
         "id": "catch_fletchling",

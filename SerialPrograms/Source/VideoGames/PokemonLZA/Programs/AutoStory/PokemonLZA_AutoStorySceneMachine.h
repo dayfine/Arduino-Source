@@ -64,6 +64,13 @@ struct SceneMachineConfig{
     //  A at the end of a talk restarts it (01.02's battle area, console B
     //  2026-11-15). A does not skip a cutscene.
     std::optional<Milliseconds> blind_press_after = std::nullopt;
+    //  Once a scene is under way, one blind press (blind_button) when
+    //  nothing busy and no sign of control has shown for this long, and
+    //  again only after the next cue: a box no detector reads inside a
+    //  scene, like 03.07's "received 10 Poke Balls", which held
+    //  mash_to_move_hints on scene_moving for 10 s with no press (console
+    //  B, 2026-11-16 18:39).
+    std::optional<Milliseconds> gap_press = std::nullopt;
     //  The button of those blind presses: B on a screen that A does not
     //  close (03.04's Pokedex entry, where A only plays its motions).
     Button blind_button = BUTTON_A;
