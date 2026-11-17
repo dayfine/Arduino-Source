@@ -193,7 +193,9 @@ SpeciesData types_of(std::string_view species){
     return data != nullptr ? *data : SpeciesData{};
 }
 
-PlannedStatus planned_status(StatusCondition status){
+//  `status` off our HP box; its BRN/FRZ icon is a freeze if the texts
+//  froze our lead (`frozen`), else a burn.
+PlannedStatus planned_status(StatusCondition status, bool frozen){
     switch (status){
     case StatusCondition::POISON:
         return PlannedStatus::POISON;
@@ -202,7 +204,7 @@ PlannedStatus planned_status(StatusCondition status){
     case StatusCondition::SLEEP:
         return PlannedStatus::SLEEP;
     case StatusCondition::OTHER:
-        return PlannedStatus::BURN;
+        return frozen ? PlannedStatus::FREEZE : PlannedStatus::BURN;
     case StatusCondition::NONE:
         break;
     }
@@ -305,7 +307,7 @@ PlannedState planned_state(const PlannedInputs& inputs, const LeagueFoesData& da
         .types = types_of(inputs.lead.species),
         .ability = pinch_ability(inputs.lead.species),
         .stages = track.own,
-        .status = planned_status(inputs.status),
+        .status = planned_status(inputs.status, track.own_frozen),
     };
     const LeagueFoeData& foe_data = inputs.foe.foe;
     const Side foe{

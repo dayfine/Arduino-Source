@@ -467,6 +467,10 @@ const FakeCase FAKE_CASES[] = {
         .name = "Lance's Dragonair paralyzes us: a Parlyz Heal",
         .input = {
             .trainer = "TRAINER_ELITE_FOUR_LANCE",
+            //  The plan's +2 from Gyarados: at +0 Blizzard's low rolls leave
+            //  Dragonair in Lance's Full Restore range, and kill_order opens
+            //  with Strength (as the sim does).
+            .used_before = {"x-special", "x-special"},
             .foes = {{
                 .slot = 2,
                 .hits = {{"blizzard", 80}},

@@ -129,6 +129,8 @@ BattleTrackState track_of(const JsonObject& line){
     BattleTrackState track{
         .own = stages_of(own),
         .mist_turns = integer(own, "mist_turns"),
+        //  The program reads the freeze from our side's "frozen solid" text.
+        .own_frozen = own.get_string_throw("status") == "freeze",
         .foe = stages_of(foe),
         .foe_status = planned_status_of(foe.get_string_throw("status")),
         .foe_sleep_turns = integer(foe, "sleep_min_left"),
