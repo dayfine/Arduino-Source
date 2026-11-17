@@ -19,6 +19,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_AutoStoryGen3Damage.h"
+#include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryLeaguePlanData.h"
 #include "PokemonFRLG_AutoStoryPlannedPolicy.h"
 
@@ -373,6 +374,19 @@ UnitTestResult champion_venusaur_takes_blizzard(){
     return true;
 }
 
+//  Console B, 2026-11-16: the PP read after the Max Elixir before the
+//  Champion still said Blizzard 0/5. The item was used (its count went);
+//  took_recovery_item() restored PP for an Elixir only.
+UnitTestResult max_elixir_restores_the_leads_pp(){
+    Supplies supplies;
+    supplies.lead.moves = {{.move = "surf", .pp = 7}, {.move = "blizzard", .pp = 0}};
+    took_recovery_item(supplies, "max-elixir");
+    if (supplies.lead.moves[0].pp != 15 || supplies.lead.moves[1].pp != 5){
+        return std::format("Surf {}, Blizzard {} after the Max Elixir; expected 15 and 5.", int(supplies.lead.moves[0].pp), int(supplies.lead.moves[1].pp));
+    }
+    return true;
+}
+
 UnitTestResult league_plan_is_built_in(){
     const LeaguePlanData& plan = league_plan_data();
     if (plan.fights.size() != 5 || plan.fights.back().name != "champion" || plan.fights.back().foes.size() != 6){
@@ -477,6 +491,7 @@ const BodyCase BODY_CASES[] = {
     {.name = "kill order keeps the foe out of heal range", .body = kill_order_keeps_the_foe_out_of_heal_range},
     {.name = "the Max Elixir is held until the Champion", .body = max_elixir_is_held_until_the_champion},
     {.name = "Champion loss: Venusaur takes Blizzard", .body = champion_venusaur_takes_blizzard},
+    {.name = "Champion loss: the Max Elixir restores the lead's PP", .body = max_elixir_restores_the_leads_pp},
 };
 
 } // namespace
