@@ -118,6 +118,14 @@ void AutosaveSightings::note(PlzaBackend& backend, const Pokemon::Observation<Zo
     }
 }
 
+void AutosaveSightings::saved(PlzaBackend& backend, std::string_view step){
+    if (!m_seen_in){
+        m_seen_in = std::string(step);
+    }
+    m_last_seen_in = std::string(step);
+    backend.log(std::format("[PLZA] saved from the menu in {}", step));
+}
+
 std::optional<std::string> AutosaveSightings::finish(std::string_view last_step){
     std::optional<std::string> seen_in = std::move(m_last_seen_in);
     m_last_end_seen = seen_in == last_step;
@@ -160,7 +168,11 @@ Pokemon::StoryGame<ZonePose> with_autosave_sightings(
             Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState& state
         ){
             SightingBackend noted(backend, sightings, call.step.name);
-            return handler(noted, call, state);
+            Outcome outcome = handler(noted, call, state);
+            if (outcome.succeeded() && call.step.action == MENU_SAVE_ACTION){
+                sightings.saved(backend, call.step.name);
+            }
+            return outcome;
         };
     }
     game.save = [rows, &sightings](Pokemon::StoryBackend<ZonePose>& backend, const Pokemon::StoryCheckpoint& checkpoint){

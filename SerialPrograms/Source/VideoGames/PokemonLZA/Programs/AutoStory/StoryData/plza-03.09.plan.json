@@ -40,14 +40,25 @@
         "args": {
           "press_a_first": true
         }
+      },
+      {
+        "id": "save_in_lab_lobby",
+        "kind": "game_action",
+        "why": "the lobby's autosave was never seen in a run log (2026-11-14 21:02 passed lab_lobby with no badge logged): X, Save, B here, so 03.10 starts from a save at this spot.",
+        "action": "save_from_menu"
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.08 (user, 2026-11-14). Starts on the street just outside Wild Zone 1's far gate, where 03.08 ends; ends at the lab lobby's autosave, 03.10's start, so it saves no further (user, 2026-11-14). Save unverified: no run log shows the lab lobby's autosave (the 2026-11-14 21:02 run passed lab_lobby with no autosave badge logged)."
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.08 (user, 2026-11-14). Starts on the street just outside Wild Zone 1's far gate, where 03.08 ends; ends in the lab lobby with a menu save, 03.10's start: no run log shows the lobby's autosave (the 2026-11-14 21:02 run passed lab_lobby with no autosave badge logged). Start signature: party 5, the far gate's A prompt up (03.08b ends facing it)."
     }
   },
   "execution": {
-    "save": "unverified"
+    "save": "autosave",
+    "autosave_step": "save_in_lab_lobby",
+    "start_signature": {
+      "party": 5,
+      "talk_prompt": true
+    }
   }
 }

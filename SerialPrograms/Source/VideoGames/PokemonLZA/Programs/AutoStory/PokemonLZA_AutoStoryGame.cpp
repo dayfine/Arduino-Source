@@ -29,9 +29,11 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLaunch.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLines.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerWalk.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMenuSave.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
+#include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryTable.h"
@@ -106,6 +108,7 @@ std::vector<StoryActionSpec> console_specs(){
         console_only(game_spec("walk_to_marker")),
         console_only(game_spec("walk_to_unread_marker")),
         console_only(game_spec("claim_mable_research_reward")),
+        console_only(game_spec(std::string(MENU_SAVE_ACTION))),
     };
 }
 
@@ -301,6 +304,7 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
         {"walk_to_marker", walk_to_marker},
         {"walk_to_unread_marker", walk_to_unread_marker},
         {"claim_mable_research_reward", claim_research_reward},
+        {MENU_SAVE_ACTION, save_from_menu},
     };
     return steps;
 }

@@ -39,10 +39,18 @@ void read_signature_field(const std::string& field, const JsonValue& value, std:
         signature.registered = (size_t)count;
         return;
     }
+    if (field == "party"){
+        int64_t slots = 0;
+        if (!value.read_integer(slots) || slots < 1 || slots > 6){
+            throw ParseException(std::format("{}: start_signature's party is the party bar's filled slots, 1 to 6", where));
+        }
+        signature.party = (size_t)slots;
+        return;
+    }
     bool flag = false;
     if (field != "talk_prompt" && field != "wild_zone"){
         throw ParseException(std::format(
-            "{}: start_signature has \"{}\"; its fields are registered, talk_prompt and wild_zone", where, field
+            "{}: start_signature has \"{}\"; its fields are registered, talk_prompt, wild_zone and party", where, field
         ));
     }
     if (!value.read_boolean(flag)){
@@ -61,7 +69,7 @@ std::optional<StartSignature> read_start_signature(const JsonObject& execution, 
     }
     const JsonObject* fields = value->to_object();
     if (fields == nullptr || fields->begin() == fields->end()){
-        throw ParseException(std::format("{}: start_signature is an object of registered, talk_prompt and wild_zone", where));
+        throw ParseException(std::format("{}: start_signature is an object of registered, talk_prompt, wild_zone and party", where));
     }
     StartSignature signature;
     for (const auto& [field, field_value] : *fields){

@@ -17,14 +17,15 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends at the last catch: each catch autosaves, and the 2026-11-14 run logs showed that autosave after the catches, logged at the far-gate walk (zone_1_to_far_gate) on plza/autostory, so 03.08 is split there (03.08b walks out). Short on species, it fails inside the zone. Its start save is 03.07's after_catches autosave: runs 2 and 3 on console B, 2026-11-16, reloaded the latest save at Taunie's rocks inside the zone. Start signature: the lead's panel shows there (it_0308 frames, console B 2026-11-16)."
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends at the last catch: each catch autosaves, and the 2026-11-14 run logs showed that autosave after the catches, logged at the far-gate walk (zone_1_to_far_gate) on plza/autostory, so 03.08 is split there (03.08b walks out). Short on species, it fails inside the zone. Its start save is 03.07's after_catches autosave: runs 2 and 3 on console B, 2026-11-16, reloaded the latest save at Taunie's rocks inside the zone. Start signature: the lead's panel shows there (it_0308 frames, console B 2026-11-16), and the party bar shows 3: the starter and the tutorial's two catches. The lead's panel alone does not tell the zone from the street: a save on the street past 03.09 read \"in a wild zone\" (console B, 2026-11-16 18:34), and 03.08 ran as a no-op there; its party (5) tells it apart. No menu save at its end: 03.08b's first step walks back to the road from wherever the last catch was."
     }
   },
   "execution": {
     "save": "autosave",
     "autosave_step": "catch_more_species",
     "start_signature": {
-      "wild_zone": true
+      "wild_zone": true,
+      "party": 3
     }
   }
 }

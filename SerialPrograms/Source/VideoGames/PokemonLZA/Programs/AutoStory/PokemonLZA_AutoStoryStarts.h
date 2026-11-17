@@ -40,6 +40,10 @@ struct StartSignature{
     //  The lead Pokemon's panel at the bottom left (level badge and HP
     //  bar): the player is in a wild zone.
     std::optional<bool> wild_zone = std::nullopt;
+    //  The overworld party bar's filled slots (PartyBarDetector): every
+    //  catch in Main Mission 03 is a new species, so the party tells 03.08's
+    //  start (3) from a save after a catch (4) or after the fifth (5).
+    std::optional<size_t> party = std::nullopt;
 
     bool operator==(const StartSignature&) const = default;
 };
@@ -79,8 +83,9 @@ std::optional<size_t> run_start(
     size_t asked, const StartSignature& read
 );
 
-//  The overworld fields of the signature on `screen`: talk_prompt and
-//  wild_zone. A fading screen reads nothing.
+//  The overworld fields of the signature on `screen`: talk_prompt,
+//  wild_zone and, when the party bar shows, party. A fading screen reads
+//  nothing.
 StartSignature read_start_screen(const ImageViewRGB32& screen);
 
 
