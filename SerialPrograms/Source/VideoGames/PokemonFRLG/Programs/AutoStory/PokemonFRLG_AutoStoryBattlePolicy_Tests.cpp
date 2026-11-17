@@ -64,7 +64,7 @@ Supplies koga_bag(){
 
 //  What the policy uses, or "" for an attack; the item is used, too.
 std::string use(PolicyState& state, Supplies& supplies, const PolicyView& view){
-    const std::optional<PolicyItem> item = state.choose(supplies, view);
+    const std::optional<PolicyItem> item = state.choose(supplies, view).item;
     if (!item){
         return "";
     }
@@ -347,13 +347,13 @@ UnitTestResult test_heal_log_names_the_setup(){
     PolicyState state(koga_policy());
     Supplies supplies = thin_bag(1);
     //  Setup still pending (X Special): the heal's reason says what it waits on.
-    const std::optional<PolicyItem> heal = state.choose(supplies, lost_view(85, StatusCondition::POISON));
+    const std::optional<PolicyItem> heal = state.choose(supplies, lost_view(85, StatusCondition::POISON)).item;
     if (!heal || heal->why.find("x-special") == std::string::npos){
         return std::format("Expected the heal's reason to name the pending X Special, got \"{}\".", heal ? heal->why : "an attack");
     }
     //  Goals met: no setup is waited on, and the reason says so.
     state.item_used("x-special");
-    const std::optional<PolicyItem> later = state.choose(supplies, lost_view(85, StatusCondition::POISON));
+    const std::optional<PolicyItem> later = state.choose(supplies, lost_view(85, StatusCondition::POISON)).item;
     if (!later || later->why.find("no setup pending") == std::string::npos){
         return std::format("Expected \"no setup pending\" once the goals are met, got \"{}\".", later ? later->why : "an attack");
     }
@@ -496,6 +496,10 @@ UnitTestResult test_foe_rows(){
     const std::optional<std::vector<FoeThreat>> rows = foe_threats_of({{30, 73, 26, 166, 84, 1, 1}});
     if (!rows || rows->size() != 1 || (*rows)[0].speed != 30 || !(*rows)[0].lowers_accuracy || !(*rows)[0].explodes){
         return "Expected the row to read.";
+    }
+    const std::optional<std::vector<FoeThreat>> charging = foe_threats_of({{125, 194, 182, 396, 198, 0, 0, 0, 1}});
+    if (!charging || charging->size() != 1 || !(*charging)[0].charges || (*charging)[0].phazes){
+        return "Expected a row of 9 to read as a foe whose hit charges a turn first.";
     }
     if (battle_policy_kind("goal-based-setup") != BattlePolicyKind::GOAL_BASED_SETUP || battle_policy_kind("x")){
         return "Expected the policy words to read.";

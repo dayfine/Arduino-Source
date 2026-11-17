@@ -320,11 +320,12 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
 
 } // namespace
 
-
 const RouteCosts& story_route_costs(){
     static const RouteCosts COSTS = []{
         RouteCosts costs = default_route_costs();
         costs[RouteCost::SURF] = -1;
+        costs[RouteCost::LINE_TILE] = 100;
+        costs[RouteCost::OPEN_CHECK] = 0;
         return costs;
     }();
     return COSTS;

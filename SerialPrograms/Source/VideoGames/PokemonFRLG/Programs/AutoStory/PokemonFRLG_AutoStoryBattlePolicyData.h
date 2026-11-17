@@ -66,6 +66,10 @@ struct FoeThreat{
     bool explodes = false;
     //  Roar, Whirlwind: the lead forced out loses its stages.
     bool phazes = false;
+    //  Its only hit charges a turn first (Solar Beam without sun, Dive): no
+    //  hit on the turn it charges, so the row is a KO risk only while the
+    //  foe is charging or, for Solar Beam, the sun is out.
+    bool charges = false;
 };
 
 //  A step's policy: the kind, its goals and the foes' threat rows.
@@ -90,7 +94,8 @@ BattlePolicy battle_policy_of(const Pokemon::StoryActionArgs& args);
 
 //  The step's "foe_threats" rows, [speed, likely, mean, max, normal_max,
 //  lowers_accuracy, explodes] each, with phazes as an eighth column where
-//  the foe has Roar or Whirlwind; none if a row isn't that.
+//  the foe has Roar or Whirlwind and charges as a ninth where its hit
+//  charges a turn first; none if a row isn't that.
 std::optional<std::vector<FoeThreat>> foe_threats_of(const std::vector<std::vector<int64_t>>& rows);
 
 

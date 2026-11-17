@@ -12,6 +12,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -297,16 +298,20 @@ UnitTestResult test_strength_teach_and_cave_mouth(){
 }
 
 //  `row`'s walks and boulder pushes on `sim`, which starts at its start: the first
-//  failure, a rule broken or a trainer met, or empty.
+//  failure, a rule broken or a trainer met, or empty. The run flags carry
+//  from step to step from the row's start_flags, as the program's do: the
+//  walks after a push plan round the boulder where it now stands
+//  (moved_boulders()).
 std::string floor_steps_on_sim(const StoryCheckpoint& row, OverworldSim& sim){
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     const std::string& id = row.id;
+    std::set<std::string> flags(row.start_flags.begin(), row.start_flags.end());
     for (const StoryStep& step : row.steps){
         const bool push = step.kind == StoryStepKind::GAME && step.action == PUSH_BOULDER_VARIANT;
         if (!push && step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS && step.kind != StoryStepKind::STEP){
             continue;
         }
-        if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
+        if (const std::string failure = row_step_carrying_flags(sim, at, step, row.id, flags); !failure.empty()){
             return std::format("{} {}: ended on {}; {}", id, step.name, to_string(sim.state().position), failure);
         }
         if (!sim.state().violations.empty()){

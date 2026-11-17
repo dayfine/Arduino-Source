@@ -47,14 +47,13 @@ int held_count(const BagCounts& bag, std::string_view item){
     return found == bag.end() ? 0 : std::max(0, found->second);
 }
 
-//  A Full Restore, Elixir or Max Elixir used between fights comes out of
-//  the next fight's budget (it may go below 0 here: the budget planned
-//  for that fight is added to it).
+//  A budgeted item (a Full Restore, Hyper or Max Potion, Full Heal, Elixir
+//  or Max Elixir) used between fights comes out of the next fight's
+//  budget (it may go below 0 here: the budget planned for that fight is
+//  added to it).
 void charge_next_fight(FightBudget& carried, std::string_view item){
-    if (item == "full-restore"){
-        carried.full_restore--;
-    }else if (item == "elixir" || item == "max-elixir"){
-        carried.elixir--;
+    if (int* count = budget_count(item, carried)){
+        (*count)--;
     }
 }
 
@@ -81,10 +80,10 @@ Outcome league_start(StoryEnv& env, const StoryStep& step){
     env.supplies.counts_read = true;
     const BagCounts bag = league_bag(env.supplies);
     if (const std::optional<std::string> short_items = league_shortfalls(bag)){
-        throw UserSetupError(env.console.logger(), std::format(
-            "{}: not entering the League: the bag is short of {}. Restock to at least these counts and start this checkpoint again.",
+        env.console.log(std::format(
+            "Story: {}: the bag is short of the League's restock list: {}. Planning from the bag as it is.",
             step.name, *short_items
-        ));
+        ), COLOR_ORANGE);
     }
     LeagueRun run{.plan = plan_league(bag), .carried = {}};
     for (const std::string& line : league_plan_lines(run.plan)){
@@ -214,7 +213,7 @@ BetweenFightAction between_fight_action(
     }
     const int target = (lead.max_hp * next.entry_hp_percent + 99) / 100;
     if (*lead.hp < target){
-        if (std::optional<BetweenFightAction> heal = first_held({"super-potion", "full-restore"})){
+        if (std::optional<BetweenFightAction> heal = first_held({"super-potion", "hyper-potion", "max-potion", "full-restore"})){
             return *heal;
         }
     }

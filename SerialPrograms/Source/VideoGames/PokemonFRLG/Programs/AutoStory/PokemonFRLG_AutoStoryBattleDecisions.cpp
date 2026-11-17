@@ -322,14 +322,16 @@ TurnAction BattleDecisions::policy_turn(const PartyStatus& status, std::string h
         .speed = m_supplies.lead.stats->speed,
         .foe_index = track_foe(),
         .foe_fill = status.foe_fill.value_or(1.0),
+        .battle_texts = status.battle_texts,
     };
     //  The League's policy logs every turn's state and choice on one line,
     //  for PokemonSimulation's log check.
     const bool budgeted = m_supplies.policy.kind == BattlePolicyKind::BUDGETED_SETUP;
-    std::optional<PolicyItem> item = m_items_off ? std::nullopt : m_policy->choose(m_supplies, view);
+    PolicyState::Turn turn = m_items_off ? PolicyState::Turn{} : m_policy->choose(m_supplies, view);
+    std::optional<PolicyItem>& item = turn.item;
     const std::string state = budgeted ? m_policy->state_line(m_supplies, view) : std::string();
     if (!item){
-        TurnAction action = move_turn();
+        TurnAction action = move_turn(turn.move);
         action.heal_reason = budgeted ? std::format("policy: {}; attack", state) : std::move(heal_reason);
         return action;
     }
@@ -362,11 +364,18 @@ void BattleDecisions::see_hit(const PartyStatus& status){
 //  all four moves, the bottom left one (Bubble from Lv7), which the cursor
 //  can't reach while that slot is empty, so before Bubble it stays on
 //  Tackle.
-TurnAction BattleDecisions::move_turn(){
+TurnAction BattleDecisions::move_turn(const std::optional<std::string>& named){
     PartyMember usable = m_supplies.lead;
     for (const auto& refused : m_refused){
         if (refused.first < usable.moves.size()){
             usable.moves[refused.first].pp = 0;
+        }
+    }
+    for (size_t index = 0; named && index < usable.moves.size(); index++){
+        if (usable.moves[index].move == *named && usable.moves[index].pp > 0){
+            spend_pp(m_supplies.lead, index);
+            m_last_move_slot = index;
+            return TurnAction{.choice = TurnChoice::MOVE, .slot = index};
         }
     }
     const std::optional<size_t> slot = m_kind == BattleKind::TRAINER

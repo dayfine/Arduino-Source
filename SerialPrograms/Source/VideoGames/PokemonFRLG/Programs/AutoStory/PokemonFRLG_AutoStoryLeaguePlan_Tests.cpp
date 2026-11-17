@@ -88,6 +88,13 @@ FightBudget budget(int full_restore, int x_special, int x_speed, int x_accuracy,
     };
 }
 
+//  `base` with its Hyper (and Max) Potions and Full Heals.
+FightBudget with_heals(FightBudget base, int hyper_potion, int full_heal){
+    base.hyper_potion = hyper_potion;
+    base.full_heal = full_heal;
+    return base;
+}
+
 const LeaguePlanCase LEAGUE_PLAN_CASES[] = {
     {
         .name = "the bag of 2026-11-16",
@@ -99,9 +106,9 @@ const LeaguePlanCase LEAGUE_PLAN_CASES[] = {
             .budgets = {
                 budget(/*full_restore=*/0, /*x_special=*/3, /*x_speed=*/0, /*x_accuracy=*/0, /*guard_spec=*/0, /*elixir=*/0),
                 budget(/*full_restore=*/2, /*x_special=*/3, /*x_speed=*/2, /*x_accuracy=*/0, /*guard_spec=*/0, /*elixir=*/0),
-                budget(/*full_restore=*/0, /*x_special=*/2, /*x_speed=*/0, /*x_accuracy=*/0, /*guard_spec=*/0, /*elixir=*/0),
+                with_heals(budget(/*full_restore=*/0, /*x_special=*/2, /*x_speed=*/0, /*x_accuracy=*/0, /*guard_spec=*/0, /*elixir=*/0), /*hyper_potion=*/0, /*full_heal=*/1),
                 budget(/*full_restore=*/3, /*x_special=*/3, /*x_speed=*/1, /*x_accuracy=*/1, /*guard_spec=*/0, /*elixir=*/1),
-                budget(/*full_restore=*/3, /*x_special=*/4, /*x_speed=*/2, /*x_accuracy=*/2, /*guard_spec=*/1, /*elixir=*/1),
+                with_heals(budget(/*full_restore=*/3, /*x_special=*/4, /*x_speed=*/2, /*x_accuracy=*/2, /*guard_spec=*/1, /*elixir=*/1), /*hyper_potion=*/0, /*full_heal=*/1),
             },
             .spare = budget(/*full_restore=*/0, /*x_special=*/0, /*x_speed=*/0, /*x_accuracy=*/0, /*guard_spec=*/1, /*elixir=*/0),
         },
@@ -140,6 +147,40 @@ const LeaguePlanCase LEAGUE_PLAN_CASES[] = {
                 budget(/*full_restore=*/4, /*x_special=*/4, /*x_speed=*/2, /*x_accuracy=*/2, /*guard_spec=*/1, /*elixir=*/1),
             },
             .spare = budget(/*full_restore=*/0, /*x_special=*/1, /*x_speed=*/0, /*x_accuracy=*/0, /*guard_spec=*/1, /*elixir=*/0),
+        },
+    },
+    {
+        .name = "the bag after the 2026-11-16 15:35 run, no restock",
+        .input = {.bag = {
+            {"full-restore", 7}, {"x-special", 10}, {"x-speed", 5}, {"x-accuracy", 3}, {"guard-spec", 2},
+            {"max-elixir", 1}, {"full-heal", 2},
+        }},
+        //  The Champion's 4 X Specials first; its Full Heal first, the
+        //  other to Agatha (Hypnosis).
+        .expectation = {
+            .budgets = {
+                budget(/*full_restore=*/0, /*x_special=*/2, /*x_speed=*/0, /*x_accuracy=*/0, /*guard_spec=*/0, /*elixir=*/0),
+                budget(/*full_restore=*/1, /*x_special=*/2, /*x_speed=*/2, /*x_accuracy=*/0, /*guard_spec=*/0, /*elixir=*/0),
+                with_heals(budget(/*full_restore=*/0, /*x_special=*/1, /*x_speed=*/0, /*x_accuracy=*/0, /*guard_spec=*/0, /*elixir=*/0), /*hyper_potion=*/0, /*full_heal=*/1),
+                budget(/*full_restore=*/3, /*x_special=*/1, /*x_speed=*/1, /*x_accuracy=*/1, /*guard_spec=*/0, /*elixir=*/0),
+                with_heals(budget(/*full_restore=*/3, /*x_special=*/4, /*x_speed=*/2, /*x_accuracy=*/2, /*guard_spec=*/1, /*elixir=*/1), /*hyper_potion=*/0, /*full_heal=*/1),
+            },
+            .spare = budget(/*full_restore=*/0, /*x_special=*/0, /*x_speed=*/0, /*x_accuracy=*/0, /*guard_spec=*/1, /*elixir=*/0),
+        },
+    },
+    {
+        .name = "Hyper Potions and Full Heals for every fight",
+        .input = {.bag = {{"hyper-potion", 6}, {"max-potion", 2}, {"full-heal", 6}}},
+        //  Two of each against Lorelei's Lapras; a Max Potion counts as a Hyper Potion.
+        .expectation = {
+            .budgets = {
+                with_heals(FightBudget{}, /*hyper_potion=*/2, /*full_heal=*/2),
+                with_heals(FightBudget{}, /*hyper_potion=*/1, /*full_heal=*/0),
+                with_heals(FightBudget{}, /*hyper_potion=*/1, /*full_heal=*/2),
+                with_heals(FightBudget{}, /*hyper_potion=*/2, /*full_heal=*/1),
+                with_heals(FightBudget{}, /*hyper_potion=*/2, /*full_heal=*/1),
+            },
+            .spare = {},
         },
     },
 };
@@ -183,15 +224,15 @@ private:
 
 const LeagueMinimumCase LEAGUE_MINIMUM_CASES[] = {
     {
-        .name = "the bag of 2026-11-16 is enough",
+        .name = "the bag of 2026-11-16 lacks only Full Heals",
         .input = {.bag = BAG_NOW},
-        .expectation = {.shortfalls = std::nullopt},
+        .expectation = {.shortfalls = "full-heal 2 of 6"},
     },
     {
         .name = "one Full Restore and the Max Elixir short",
         .input = {.bag = {
             {"full-restore", 7}, {"x-special", 15}, {"x-speed", 5}, {"x-accuracy", 3}, {"guard-spec", 2},
-            {"elixir", 1}, {"super-potion", 6},
+            {"elixir", 1}, {"super-potion", 6}, {"full-heal", 6},
         }},
         .expectation = {.shortfalls = "full-restore 7 of 8, max-elixir 0 of 1"},
     },
@@ -199,7 +240,7 @@ const LeagueMinimumCase LEAGUE_MINIMUM_CASES[] = {
         .name = "more than the minimum is enough",
         .input = {.bag = {
             {"full-restore", 12}, {"x-special", 18}, {"x-speed", 9}, {"x-accuracy", 3}, {"guard-spec", 2},
-            {"max-elixir", 1}, {"elixir", 1}, {"super-potion", 10},
+            {"max-elixir", 1}, {"elixir", 1}, {"super-potion", 10}, {"full-heal", 8},
         }},
         .expectation = {.shortfalls = std::nullopt},
     },
@@ -316,6 +357,11 @@ const BetweenFightsCase BETWEEN_FIGHTS_CASES[] = {
         .expectation = {.action = use("full-restore")},
     },
     {
+        .name = "into Lance at 48/168, no Super Potion, Hyper Potions held: a Hyper Potion, not a Full Restore",
+        .input = {.lead = lead_at(/*hp=*/48, /*max_hp=*/168), .bag = {{"hyper-potion", 2}, {"full-restore", 5}}, .next = "lance"},
+        .expectation = {.action = use("hyper-potion")},
+    },
+    {
         .name = "paralysed: a Parlyz Heal first",
         .input = {
             .lead = with_cure(lead_at(/*hp=*/60, /*max_hp=*/168), "parlyz-heal"),
@@ -376,14 +422,17 @@ const BetweenFightsCase BETWEEN_FIGHTS_CASES[] = {
 
 
 
-//  The League's budgeted C2 (budgeted-setup) at one of Bruno's turns: the
-//  foe out and its bar, the lead's HP, status and Surf PP, and the fight's
-//  budget. The lead is the one into Bruno (console B, 2026-11-16):
-//  Blastoise Lv52, HP 165, Sp. Atk 114, Speed 113 (124 with the badge).
-//  Onix's best ordinary hit is 37, Hitmonchan's 66 (mean 28); both are
-//  slower; Surf KOs Onix from full, not Hitmonchan (about 48 of 131 at its
-//  lowest roll).
+//  The League's budgeted C2 (budgeted-setup) at one turn of a League
+//  fight (Bruno's unless named): the foe out and its bar, the lead's HP,
+//  status and Surf PP, and the fight's budget. The lead is the one into
+//  Bruno (console B, 2026-11-16): Blastoise Lv52, HP 165, Sp. Atk 114,
+//  Speed 113 (124 with the badge). Onix's best ordinary hit is 37,
+//  Hitmonchan's 66 (mean 28); both are slower; Surf KOs Onix from full,
+//  not Hitmonchan (about 48 of 131 at its lowest roll). Lorelei's Dewgong
+//  hits up to 30 (mean 13), her Lapras up to 39 (mean 15); Agatha's
+//  second Gengar up to 49 and is faster.
 struct BudgetedTurnInput{
+    std::string_view battle = "bruno";
     size_t foe_index;
     double hp;
     double foe_fill = 1.0;
@@ -392,11 +441,17 @@ struct BudgetedTurnInput{
     uint8_t surf_pp = 14;
     //  The foe's evasion stages (Double Team).
     int foe_evasion = 0;
+    //  Items in the bag beyond the lead's usual ones.
+    BagCounts extra_bag = {};
+    //  The turns before this one, at the same state, the policy chose for.
+    int turns_before = 0;
 };
 
 struct BudgetedTurnExpectation{
     //  The item used, "" for an attack.
     std::string_view item;
+    //  For an attack: the move the policy names, "" for none.
+    std::optional<std::string_view> move = std::nullopt;
 };
 
 struct BudgetedTurnCase{
@@ -416,13 +471,17 @@ const Pokemon::StoryStep& league_battle(std::string_view name){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No battle {} in 20.01.", name));
 }
 
-Supplies bruno_supplies(const BudgetedTurnInput& input){
-    const Pokemon::StoryStep& step = league_battle("bruno");
+Supplies league_turn_supplies(const BudgetedTurnInput& input){
+    const Pokemon::StoryStep& step = league_battle(input.battle);
     Supplies supplies;
-    set_from_bag(supplies, {
+    std::vector<BagRow> bag = {
         {"full-restore", 10}, {"x-special", 10}, {"x-speed", 4}, {"x-accuracy", 3}, {"guard-spec", 2},
         {"elixir", 1}, {"parlyz-heal", 2},
-    });
+    };
+    for (const auto& [item, count] : input.extra_bag){
+        bag.push_back({item, count});
+    }
+    set_from_bag(supplies, bag);
     supplies.lead = PartyMember{
         .species = "blastoise",
         .moves = {{"bite", 25}, {"strength", 15}, {"surf", input.surf_pp}, {"blizzard", 5}},
@@ -445,9 +504,9 @@ public:
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const BudgetedTurnInput& input = m_case.input;
-        const Supplies supplies = bruno_supplies(input);
+        const Supplies supplies = league_turn_supplies(input);
         if (supplies.policy.kind != BattlePolicyKind::BUDGETED_SETUP){
-            return "20.01 bruno: expected budgeted-setup.";
+            return std::format("20.01 {}: expected budgeted-setup.", input.battle);
         }
         PolicyState state(supplies.policy);
         state.foe_evasion_raised(input.foe_evasion);
@@ -455,10 +514,17 @@ public:
             .hp = input.hp, .max_hp = 165, .status = input.status, .speed = 113,
             .foe_index = input.foe_index, .foe_fill = input.foe_fill,
         };
-        const std::optional<PolicyItem> item = state.choose(supplies, view);
-        const std::string_view chosen = item ? std::string_view(item->item) : std::string_view();
+        for (int turn = 0; turn < input.turns_before; turn++){
+            state.choose(supplies, view);
+        }
+        const PolicyState::Turn turn = state.choose(supplies, view);
+        const std::string_view chosen = turn.item ? std::string_view(turn.item->item) : std::string_view();
         if (chosen != m_case.expectation.item){
             return std::format("expected \"{}\", chose \"{}\" ({})", m_case.expectation.item, chosen, state.state_line(supplies, view));
+        }
+        const std::string_view move = turn.move ? std::string_view(*turn.move) : std::string_view();
+        if (m_case.expectation.move && move != *m_case.expectation.move){
+            return std::format("expected the move \"{}\", named \"{}\" ({})", *m_case.expectation.move, move, state.state_line(supplies, view));
         }
         return true;
     }
@@ -530,6 +596,72 @@ const BudgetedTurnCase BUDGETED_TURN_CASES[] = {
             .foe_evasion = 2,
         },
         .expectation = {.item = ""},
+    },
+    {
+        .name = "Lapras at 24 HP, Super Potions held: a Full Restore over the budget, not a Super Potion",
+        .input = {
+            .battle = "lorelei", .foe_index = 4, .hp = 24, .budget = FightBudget{},
+            .extra_bag = {{"super-potion", 4}},
+        },
+        .expectation = {.item = "full-restore"},
+    },
+    {
+        .name = "Lapras at 24 HP, Hyper Potions in the budget: a Hyper Potion",
+        .input = {
+            .battle = "lorelei", .foe_index = 4, .hp = 24, .budget = FightBudget{.hyper_potion = 2},
+            .extra_bag = {{"super-potion", 4}, {"hyper-potion", 2}},
+        },
+        .expectation = {.item = "hyper-potion"},
+    },
+    {
+        .name = "Lapras at 24 HP, Hyper Potions held but not budgeted: a Full Restore",
+        .input = {
+            .battle = "lorelei", .foe_index = 4, .hp = 24, .budget = FightBudget{},
+            .extra_bag = {{"hyper-potion", 2}},
+        },
+        .expectation = {.item = "full-restore"},
+    },
+    {
+        .name = "paralysed at 38 HP against Lapras' 39: a Full Restore, not a Super Potion or Parlyz Heal",
+        .input = {
+            .battle = "lorelei", .foe_index = 4, .hp = 38, .budget = FightBudget{},
+            .status = StatusCondition::PARALYSIS, .extra_bag = {{"super-potion", 4}},
+        },
+        .expectation = {.item = "full-restore"},
+    },
+    {
+        .name = "Dewgong's bar unmoved after two Super Potions, 25 HP: a Full Restore, no third",
+        .input = {
+            .battle = "lorelei", .foe_index = 0, .hp = 25, .budget = FightBudget{},
+            .extra_bag = {{"super-potion", 4}}, .turns_before = 2,
+        },
+        .expectation = {.item = "full-restore"},
+    },
+    {
+        .name = "asleep against Agatha's second Gengar at 110 HP: a Full Heal",
+        .input = {
+            .battle = "agatha", .foe_index = 4, .hp = 110, .status = StatusCondition::SLEEP,
+            .extra_bag = {{"full-heal", 2}},
+        },
+        .expectation = {.item = "full-heal"},
+    },
+    {
+        .name = "asleep at 40 HP against Gengar's 49: a Full Restore",
+        .input = {
+            .battle = "agatha", .foe_index = 4, .hp = 40, .status = StatusCondition::SLEEP,
+            .extra_bag = {{"full-heal", 2}},
+        },
+        .expectation = {.item = "full-restore"},
+    },
+    {
+        .name = "Hitmonchan at a 4% bar: Strength, not Surf",
+        .input = {.foe_index = 1, .hp = 165, .foe_fill = 0.04},
+        .expectation = {.item = "", .move = "strength"},
+    },
+    {
+        .name = "Hitmonchan at a 30% bar: Strength doesn't KO, no move named",
+        .input = {.foe_index = 1, .hp = 165, .foe_fill = 0.3},
+        .expectation = {.item = "", .move = ""},
     },
 };
 

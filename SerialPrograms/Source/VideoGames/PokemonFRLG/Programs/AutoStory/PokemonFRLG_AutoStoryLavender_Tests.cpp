@@ -37,7 +37,9 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryFaultSweep_Tests.h"
 #include "PokemonFRLG_AutoStoryResources.h"
+#include "PokemonFRLG_AutoStoryRockTunnel_Tests.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
+#include "PokemonFRLG_AutoStorySimBudget.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
@@ -318,46 +320,64 @@ std::string walk_below_martha(OverworldSim& sim, const std::vector<StoryLeg>& le
 //  end of the walk back east 12 along row 38, placed 0 to 3 tiles in by
 //  the dark screen; "found again" at the rock (20, 35) while against the
 //  wall (25, 35); ended on (21, 35), where martha_line found no trainer.
-//  Here the second battle on each step of that walk back: with the dark
-//  cave's stops placed anywhere on their leg, every one ends on (16, 35);
-//  without, some don't.
-UnitTestResult test_b1f_dark_row38_battle_old_legs(Logger& logger){
-    const std::vector<StoryLeg> old_legs{{Direction::WEST, 16}, {Direction::NORTH, 2}, {Direction::EAST, 6}, {Direction::WEST, 3}};
+//  The legs below_martha_line walked then.
+const std::vector<StoryLeg> ROW38_OLD_LEGS{{Direction::WEST, 16}, {Direction::NORTH, 2}, {Direction::EAST, 6}, {Direction::WEST, 3}};
+//  The steps of that walk the second battle may come on.
+constexpr int ROW38_FIRST_BATTLE = 8;
+constexpr int ROW38_LAST_BATTLE = 60;
+
+//  The dark cave, a battle 6 tiles in, and one seen late on step `second`.
+SimScript row38_battles_script(int second){
+    SimScript script;
+    script.dark_maps = ROCK_TUNNEL_DARK;
+    script.encounters = {SimEncounter{.grass_step = 6}, SimEncounter{.grass_step = second, .seen_late = true}};
+    return script;
+}
+
+//  The second battle on each step `first` to `last` of the walk back along
+//  row 38 with the old legs: with the dark cave's stops placed anywhere on
+//  their leg, every one ends on (16, 35). Steps 8 to 60 in all, split over
+//  cases (with the walks without the rules, 106 took 391 s on Fork Draft
+//  CI, 2026-11-16).
+UnitTestResult test_b1f_dark_row38_battle_old_legs(int first, int last){
     std::string failures;
-    int old_wrong = 0;
-    for (int second = 8; second <= 60; second++){
-        SimScript script;
-        script.dark_maps = ROCK_TUNNEL_DARK;
-        script.encounters = {SimEncounter{.grass_step = 6}, SimEncounter{.grass_step = second, .seen_late = true}};
-        OverworldSim fixed(maps_after_route10(), MapPosition{ROCK_TUNNEL_B1F, {29, 37}}, Direction::NORTH, script);
-        if (const std::string failure = walk_below_martha(fixed, old_legs, SimWalkerRules{}); !failure.empty()){
+    for (int second = first; second <= last; second++){
+        OverworldSim fixed(maps_after_route10(), MapPosition{ROCK_TUNNEL_B1F, {29, 37}}, Direction::NORTH, row38_battles_script(second));
+        if (const std::string failure = walk_below_martha(fixed, ROW38_OLD_LEGS, SimWalkerRules{}); !failure.empty()){
             failures += std::format("{}battle on step {}: {}", failures.empty() ? "" : " | ", second, failure);
-        }
-        SimWalkerRules old_rules;
-        old_rules.whole_leg_in_dark = false;
-        old_rules.dark_cave_not_battle = false;
-        OverworldSim old(maps_after_route10(), MapPosition{ROCK_TUNNEL_B1F, {29, 37}}, Direction::NORTH, script);
-        if (const std::string failure = walk_below_martha(old, old_legs, old_rules); !failure.empty()){
-            old_wrong++;
-            logger.log(std::format("Without the dark cave rules, battle on step {}: {}", second, failure));
         }
     }
     if (!failures.empty()){
         return failures;
     }
-    if (old_wrong == 0){
-        return "Without the dark cave rules every walk still ended on (16, 35): the test doesn't show the failure.";
-    }
     return true;
+}
+
+//  The same walks without the dark cave's rules: one of them doesn't end on
+//  (16, 35), or the cases above don't show the failure. Stops at the first.
+UnitTestResult test_b1f_dark_row38_old_rules_fail(Logger& logger){
+    SimWalkerRules old_rules;
+    old_rules.whole_leg_in_dark = false;
+    old_rules.dark_cave_not_battle = false;
+    for (int second = ROW38_FIRST_BATTLE; second <= ROW38_LAST_BATTLE; second++){
+        OverworldSim old(maps_after_route10(), MapPosition{ROCK_TUNNEL_B1F, {29, 37}}, Direction::NORTH, row38_battles_script(second));
+        if (const std::string failure = walk_below_martha(old, ROW38_OLD_LEGS, old_rules); !failure.empty()){
+            logger.log(std::format("Without the dark cave rules, battle on step {}: {}", second, failure));
+            return true;
+        }
+    }
+    return "Without the dark cave rules every walk still ended on (16, 35): the test doesn't show the failure.";
 }
 
 //  Rock Tunnel dark, from Winston's tile: below_martha_line, martha_line
 //  and Martha's battle with one wild battle on each step the walk takes,
 //  on rows 37 and 38 and on row 35 between the corner (11, 35) and
 //  (16, 35), seen as it starts and seen late: Martha alone is fought.
-UnitTestResult test_b1f_dark_martha_battle_anywhere(Logger&){
+//  Steps `first` to `last` of the walk: steps 1 to 40 in all, split over
+//  cases (80 walks took 248 s on Fork Draft CI, 2026-11-16).
+UnitTestResult test_b1f_dark_martha_battle_on_steps(int first, int last){
     std::string failures;
-    for (int step = 1; step <= 40; step++){
+    for (int step = first; step <= last; step++){
         for (const bool late : {false, true}){
             SimScript script;
             script.dark_maps = ROCK_TUNNEL_DARK;
@@ -373,143 +393,6 @@ UnitTestResult test_b1f_dark_martha_battle_anywhere(Logger&){
     }
     return true;
 }
-
-//  08.01 whole with a wild battle every 7 to 25 steps on the tunnel's floor,
-//  the gaps drawn from each of these seeds: the row ends where it should.
-UnitTestResult test_rock_tunnel_frequent_battles(Logger&){
-    std::string failures;
-    for (unsigned seed = 1; seed <= 12; seed++){
-        std::mt19937 random(seed);
-        std::uniform_int_distribution<int> gap(7, 25);
-        std::vector<int> gaps;
-        for (int c = 0; c < 400; c++){
-            gaps.push_back(gap(random));
-        }
-        const UnitTestResult result = row_on_sim(
-            "08.01", battles_every(gaps), {ROCK_TUNNEL_TRAINERS}, MapPosition{ROUTE10, {8, 58}}
-        );
-        if (result.result != UnitTestResult::PASSED){
-            failures += std::format("{}Seed {}: {}", failures.empty() ? "" : " | ", seed, result.message);
-        }
-    }
-    if (!failures.empty()){
-        return failures;
-    }
-    return true;
-}
-
-//  The sim at row `id`'s start, with `script`.
-OverworldSim row_start_sim(std::string_view id, SimScript script){
-    const StoryPose at = *story_pose(Pokemon::pose_of(*checkpoint(id).start));
-    return OverworldSim(maps_after_route10(), MapPosition{at.map, at.tile}, *at.facing, std::move(script));
-}
-
-//  One run of a row on the sim, against the same row with no wild battle.
-struct RowRunNumbers{
-    bool passed = false;
-    double seconds = 0;
-    int tiles = 0;
-    //  Tiles walked beyond the run with no wild battle: walked again after
-    //  a battle, finding the player and the way back.
-    int tiles_again = 0;
-    int battles = 0;
-    //  Per wild battle, the time beyond the run with no wild battle, less
-    //  the battles' own: from each battle's end until the walk is back
-    //  where it was cut off.
-    double seconds_lost_per_battle = 0;
-};
-
-RowRunNumbers row_numbers(const SimState& run, bool passed, const SimState& clean){
-    RowRunNumbers out;
-    out.passed = passed;
-    out.seconds = run.time.count() / 1000.;
-    out.tiles = run.steps;
-    out.tiles_again = run.steps - clean.steps;
-    out.battles = run.wild_battles;
-    const Milliseconds lost = run.time - clean.time - run.in_wild_battles;
-    out.seconds_lost_per_battle = run.wild_battles > 0 ? lost.count() / 1000. / run.wild_battles : 0;
-    return out;
-}
-
-//  The mean and 90th percentile of `values`.
-std::string mean_p90(std::vector<double> values){
-    if (values.empty()){
-        return "-";
-    }
-    std::sort(values.begin(), values.end());
-    const double mean = std::accumulate(values.begin(), values.end(), 0.) / values.size();
-    const double p90 = values[std::min(values.size() - 1, (size_t)(0.9 * values.size()))];
-    return std::format("mean {:.1f}, p90 {:.1f}", mean, p90);
-}
-
-//  How many of `runs` passed, and over those, the mean and 90th percentile
-//  of each number.
-std::string numbers_summary(const std::vector<RowRunNumbers>& runs){
-    std::vector<double> seconds, tiles, again, battles, lost;
-    size_t passed = 0;
-    for (const RowRunNumbers& run : runs){
-        passed += run.passed ? 1 : 0;
-        if (!run.passed){
-            continue;
-        }
-        seconds.push_back(run.seconds);
-        tiles.push_back(run.tiles);
-        again.push_back(run.tiles_again);
-        battles.push_back(run.battles);
-        if (run.battles > 0){
-            lost.push_back(run.seconds_lost_per_battle);
-        }
-    }
-    return std::format(
-        "passed {}/{}; of those passed: time (s) {}; tiles {}; tiles walked again {}; wild battles {}; s lost per battle {}",
-        passed, runs.size(), mean_p90(seconds), mean_p90(tiles), mean_p90(again), mean_p90(battles), mean_p90(lost)
-    );
-}
-
-//  The land encounter rates of the maps 08.01 and 08.02 walk (pokefirered
-//  src/data/wild_encounters.json, FireRed).
-const std::map<std::string, int> ROCK_TUNNEL_ENCOUNTER_RATES{
-    {ROCK_TUNNEL_1F, 7},
-    {ROCK_TUNNEL_B1F, 7},
-    {ROUTE10, 21},
-};
-
-constexpr unsigned GAME_ODDS_SEEDS = 30;
-
-//  08.01 whole, its wild battles at the game's own odds (OverworldSim::
-//  rolls_encounter()), from each of these seeds: every run ends where it
-//  should. Logs the runs' numbers and the step taps the game ignored.
-UnitTestResult test_rock_tunnel_game_odds(Logger& logger){
-    OverworldSim clean_sim = row_start_sim("08.01", SimScript{});
-    if (const UnitTestResult clean = row_checked(clean_sim, "08.01", {ROCK_TUNNEL_TRAINERS}, MapPosition{ROUTE10, {8, 58}}); clean.result != UnitTestResult::PASSED){
-        return clean;
-    }
-    std::vector<RowRunNumbers> runs;
-    std::string failures;
-    int ignored = 0;
-    for (unsigned seed = 1; seed <= GAME_ODDS_SEEDS; seed++){
-        SimScript script;
-        script.encounter_rates = ROCK_TUNNEL_ENCOUNTER_RATES;
-        script.encounter_seed = seed;
-        script.dark_maps = ROCK_TUNNEL_DARK;
-        OverworldSim sim = row_start_sim("08.01", script);
-        const UnitTestResult result = row_checked(sim, "08.01", {ROCK_TUNNEL_TRAINERS}, MapPosition{ROUTE10, {8, 58}});
-        const bool passed = result.result == UnitTestResult::PASSED;
-        runs.push_back(row_numbers(sim.state(), passed, clean_sim.state()));
-        ignored += sim.state().step_taps_ignored;
-        if (!passed){
-            failures += std::format("{}Seed {}: {}", failures.empty() ? "" : " | ", seed, result.message);
-        }
-    }
-    logger.log(std::format(
-        "08.01 at the game's encounter odds, {} step taps ignored: {}", ignored, numbers_summary(runs)
-    ));
-    if (!failures.empty()){
-        return failures;
-    }
-    return true;
-}
-
 
 //  08.02 on the sim: no trainer met, the ledge hopped, Lavender's nurse.
 UnitTestResult test_lavender_row(Logger&){
@@ -1048,11 +931,8 @@ const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"09.02 B2F's drawn route: the plan sees no more of the Grunt, and is no longer", test_b2f_drawn_route}, .expectation = {}},
     {.input = {"09.02 B2F's tapped legs keep their tile: no holds to walls after them", test_b2f_tapped_legs_keep_their_tile}, .expectation = {}},
     {.input = {"08.01 B1F row 37 with a wild battle every 10 to 14 steps", test_b1f_row37_battles_every_12}, .expectation = {}},
-    {.input = {"08.01 a wild battle every 7 to 25 steps, 12 seeds", test_rock_tunnel_frequent_battles}, .expectation = {}},
-    {.input = {"08.01 wild battles at the game's odds, 30 seeds", test_rock_tunnel_game_odds}, .expectation = {}},
     {.input = {"08.01 B1F a wild battle into row 38, then a step short: Martha still sees the player", test_b1f_martha_after_row38_battle}, .expectation = {}},
-    {.input = {"08.01 B1F dark, the 13:35 legs: a battle at the end of the walk back along row 38", test_b1f_dark_row38_battle_old_legs}, .expectation = {}},
-    {.input = {"08.01 B1F dark, a wild battle on any step to Martha's line", test_b1f_dark_martha_battle_anywhere}, .expectation = {}},
+    {.input = {"08.01 B1F dark, the 13:35 legs without the dark cave's rules: a walk back along row 38 ends elsewhere", test_b1f_dark_row38_old_rules_fail}, .expectation = {}},
     {.input = {"08.01 B1F dark, winston_line: a wild battle on the 2nd tap, the 3rd after it", test_winston_line_battle_on_tap_2}, .expectation = {}},
     {.input = {"08.02 Route 10 south, the ledge, Lavender Town's Pokemon Center", test_lavender_row}, .expectation = {}},
     {.input = {"08.02 a tile off after each open leg", test_lavender_tile_off}, .expectation = {}},
@@ -1066,10 +946,49 @@ const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"09.02 no tile of B3F or B2F walked twice: no way out and back", test_hideout_giovanni_row_no_tile_twice}, .expectation = {}},
 };
 
+namespace{
+
+//  The step ranges the slow B1F tests are split into, one case each.
+struct StepRange{
+    int first;
+    int last;
+};
+const StepRange ROW38_BATTLE_STEPS[] = {{8, 20}, {21, 33}, {34, 46}, {47, 60}};
+const StepRange MARTHA_BATTLE_STEPS[] = {{1, 10}, {11, 20}, {21, 30}, {31, 40}};
+
+//  A case named `name` that runs `test` on `range`, logging its time.
+AutoStoryLavenderCase step_range_case(std::string name, UnitTestResult (*test)(int, int), StepRange range){
+    return {.input = {name, [name, test, range](Logger& logger){
+        return timed_case(logger, name, [&]{ return test(range.first, range.last); });
+    }}, .expectation = {}};
+}
+
+//  The cases split by steps, so each fits STAGE_BUDGET.
+std::vector<AutoStoryLavenderCase> split_cases(){
+    std::vector<AutoStoryLavenderCase> cases;
+    for (const StepRange& range : ROW38_BATTLE_STEPS){
+        cases.push_back(step_range_case(std::format(
+            "08.01 B1F dark, the 13:35 legs: a battle on steps {} to {} of the walk back along row 38", range.first, range.last
+        ), test_b1f_dark_row38_battle_old_legs, range));
+    }
+    for (const StepRange& range : MARTHA_BATTLE_STEPS){
+        cases.push_back(step_range_case(std::format(
+            "08.01 B1F dark, a wild battle on steps {} to {} to Martha's line", range.first, range.last
+        ), test_b1f_dark_martha_battle_on_steps, range));
+    }
+    return cases;
+}
+
+} // namespace
+
 void add_tests_AutoStoryLavender(UnitTestDatabase& database){
     for (const auto& item : AUTO_STORY_LAVENDER_CASES){
         database.add<Test_AutoStoryLavender>(item);
     }
+    for (AutoStoryLavenderCase& item : split_cases()){
+        database.add<Test_AutoStoryLavender>(std::move(item));
+    }
+    add_tests_AutoStoryRockTunnel(database);
     add_tests_AutoStoryResources(database);
     add_tests_AutoStoryFaultSweep(database);
 }

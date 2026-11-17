@@ -716,8 +716,8 @@ UnitTestResult test_mt_moon_battle_on_ladder_leg(){
 //  walked again to its wall, and the route reaches B2F's ladder. Without
 //  the rule the leg is taken as walked, and the run stops on no fade onto
 //  the ladder down to B2F, as it did (the console's walker stopped on the
-//  leg; this one, which holds on toward a warp after a wild battle, stops
-//  holding on).
+//  leg; this one holds on toward the warp, finds the player again when that
+//  sees no black (6fdafbc24), and walks onto it with the battle still on).
 UnitTestResult test_mt_moon_battle_seen_after_wall_leg(){
     SimCase c{.start = at("MtMoon_B1F", 3, 3), .facing = Direction::SOUTH, .goal = at("MtMoon_B2F", 26, 21)};
     c.script.encounters = {{.grass_step = 13, .seen_late = true}};
@@ -738,7 +738,7 @@ UnitTestResult test_mt_moon_battle_seen_after_wall_leg(){
     const bool taken_as_walked = std::any_of(old.log.begin(), old.log.end(), [](const std::string& line){
         return line.find("south 15 (to wall): ended at MtMoon_B1F (3, 18) (walked)") != std::string::npos;
     });
-    if (!taken_as_walked || !stopped_with(old, "no fade holding on toward the warp to MtMoon_B2F.")){
+    if (!taken_as_walked || !stopped_with(old, "no fade in and out after walking onto the warp to MtMoon_B2F.")){
         return "Expected the leg taken as walked and the run stopped on no fade, as on the console, without the rule:" + describe(old);
     }
     return true;

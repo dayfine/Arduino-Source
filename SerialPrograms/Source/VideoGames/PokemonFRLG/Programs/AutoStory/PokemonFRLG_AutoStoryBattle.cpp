@@ -30,6 +30,7 @@
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
+#include "PokemonFRLG_AutoStoryBattleText.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBagUse.h"
@@ -338,6 +339,7 @@ private:
         read_hp(screen);
         watch_for_faint(screen);
         check_run_refused(seen, screen);
+        read_policy_text(seen, screen, now);
         act(seen, screen, now);
         return false;
     }
@@ -572,6 +574,15 @@ private:
         }
     }
 
+    //  The lead's box, the foe's bar and the battle texts since the last turn.
+    PartyStatus turn_status(const ImageViewRGB32& screen){
+        PartyStatus status = read_party_status(screen);
+        if (m_kind == BattleKind::TRAINER){
+            status.foe_fill = read_opponent_hp_fill(screen);
+        }
+        status.battle_texts = std::exchange(m_policy_texts, {});
+        return status;
+    }
     void take_turn(const ImageViewRGB32& screen){
         read_battlers(screen);
         if (m_refusal.refused(current_time())){
@@ -582,10 +593,7 @@ private:
             read_battle_bag();
             return;
         }
-        PartyStatus status = read_party_status(screen);
-        if (m_kind == BattleKind::TRAINER){
-            status.foe_fill = read_opponent_hp_fill(screen);
-        }
+        const PartyStatus status = turn_status(screen);
         const TurnAction action = m_decisions.turn(status);
         m_evolution.turn_taken(action.choice);
         m_ran = action.choice == TurnChoice::RUN;
@@ -651,6 +659,20 @@ private:
         m_decisions.turn_done(TurnChoice::RUN, TurnResult::REFUSED);
     }
 
+    //  A League fight's battle texts, kept for the policy's next turn (PokemonSimulation #110).
+    void read_policy_text(BattleScreen seen, const ImageViewRGB32& screen, WallClock now){
+        const bool text = seen == BattleScreen::ADVANCE || seen == BattleScreen::OTHER;
+        if (!text || m_supplies.policy.kind != BattlePolicyKind::BUDGETED_SETUP || now - m_last_policy_text < POLL){
+            return;
+        }
+        m_last_policy_text = now;
+        std::optional<std::string> letters = read_battle_text(m_language, screen);
+        if (letters && (m_policy_texts.empty() || m_policy_texts.back() != *letters)){
+            m_console.log(std::format("Battle: text \"{}\".", *letters));
+            m_policy_texts.push_back(std::move(*letters));
+        }
+    }
+
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     Supplies& m_supplies;
@@ -668,6 +690,8 @@ private:
     WallClock m_last_press;
     WallClock m_last_menu;
     WallClock m_last_overworld_check;
+    WallClock m_last_policy_text = WallClock{};
+    std::vector<std::string> m_policy_texts;
     BattleScreen m_last_seen = BattleScreen::NONE;
     bool m_seen_battle = false;
     bool m_confirmed = false;

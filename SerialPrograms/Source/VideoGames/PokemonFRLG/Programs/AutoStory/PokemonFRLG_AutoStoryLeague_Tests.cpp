@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <format>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -23,7 +24,9 @@
 #include "Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
+#include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryItemsPocket.h"
 #include "PokemonFRLG_AutoStoryLeaguePlan.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
@@ -203,44 +206,45 @@ struct LeagueFight{
     std::vector<std::vector<int64_t>> rows;
 };
 
-//  The generator's rows for the five League battles, in the doc's foe order.
+//  The generator's rows for the five League battles, in the doc's foe order,
+//  against console B's Lv54 Blastoise (171 HP, Def 135, Sp. Def 150).
 std::vector<LeagueFight> league_fights(){
     return {
         {"20.01", "lorelei", {
-            {93, 21, 13, 45, 30, 0, 0},     //  Dewgong: worst normal hit 30 as seen on console B, not 22
-            {91, 0, 0, 0, 15, 0, 0},        //  Cloyster
-            {45, 27, 9, 60, 30, 0, 0},      //  Slowbro
-            {110, 25, 9, 57, 28, 0, 0},     //  Jynx
-            {94, 36, 15, 78, 39, 0, 0},     //  Lapras
+            {93, 17, 10, 37, 30, 0, 0},     //  Dewgong: worst normal hit 30 as seen on console B, not 18
+            {91, 0, 0, 0, 12, 0, 0, 0, 1},  //  Cloyster (Dive charges a turn)
+            {45, 21, 7, 49, 24, 0, 0},      //  Slowbro
+            {110, 22, 10, 48, 24, 0, 0},    //  Jynx
+            {94, 28, 12, 62, 31, 0, 0},     //  Lapras
         }},
         {"20.01", "bruno", {
-            {81, 32, 19, 75, 37, 0, 0, 1},  //  Onix (Roar)
-            {101, 51, 28, 132, 66, 0, 0},   //  Hitmonchan
-            {113, 65, 52, 136, 68, 0, 0},   //  Hitmonlee
-            {96, 41, 41, 84, 42, 0, 0},     //  Onix
-            {83, 0, 5, 183, 91, 0, 0},      //  Machamp
+            {81, 26, 16, 63, 31, 0, 0, 1},  //  Onix (Roar)
+            {101, 43, 24, 108, 54, 0, 0},   //  Hitmonchan
+            {113, 54, 44, 114, 57, 0, 0},   //  Hitmonlee
+            {96, 33, 33, 69, 34, 0, 0},     //  Onix
+            {83, 0, 4, 150, 75, 0, 0},      //  Machamp
         }},
         {"20.01", "agatha", {
-            {126, 32, 10, 72, 36, 0, 0},    //  Gengar
-            {129, 33, 31, 69, 34, 0, 0},    //  Golbat
-            {108, 0, 0, 0, 48, 0, 0},       //  Haunter
-            {111, 61, 61, 126, 63, 0, 0},   //  Arbok
-            {150, 47, 40, 99, 49, 0, 0},    //  Gengar
+            {126, 0, 3, 60, 30, 0, 0},      //  Gengar
+            {129, 28, 17, 60, 30, 0, 0},    //  Golbat
+            {108, 0, 0, 0, 41, 0, 0},       //  Haunter
+            {111, 51, 31, 108, 54, 0, 0},   //  Arbok
+            {150, 40, 24, 84, 42, 0, 0},    //  Gengar
         }},
         {"20.01", "lance", {
-            {112, 40, 32, 42, 93, 0, 0},    //  Gyarados
-            {96, 40, 17, 87, 62, 0, 0},     //  Dragonair
-            {96, 0, 0, 0, 62, 0, 0},        //  Dragonair
-            {173, 47, 47, 96, 78, 0, 0},    //  Aerodactyl
-            {107, 64, 24, 144, 114, 0, 0},  //  Dragonite
+            {112, 40, 31, 40, 80, 0, 0},    //  Gyarados
+            {96, 40, 16, 78, 53, 0, 0},     //  Dragonair
+            {96, 0, 0, 0, 53, 0, 0},        //  Dragonair
+            {173, 41, 41, 84, 67, 0, 0},    //  Aerodactyl
+            {107, 56, 19, 126, 98, 0, 0},   //  Dragonite
         }},
         {"20.01", "champion", {
-            {130, 41, 27, 87, 43, 1, 0, 1}, //  Pidgeot (Sand Attack, Whirlwind)
-            {159, 77, 70, 159, 79, 0, 0},   //  Alakazam
-            {70, 0, 10, 210, 105, 0, 0},    //  Rhydon
-            {118, 51, 46, 110, 55, 0, 0},   //  Gyarados
-            {139, 50, 51, 104, 52, 0, 0, 1},//  Arcanine (Roar)
-            {125, 217, 218, 444, 222, 0, 0},//  Venusaur
+            {130, 35, 24, 75, 37, 1, 0, 1}, //  Pidgeot (Sand Attack, Whirlwind)
+            {159, 70, 64, 144, 72, 0, 0},   //  Alakazam
+            {70, 0, 8, 183, 91, 0, 0},      //  Rhydon
+            {118, 44, 43, 96, 48, 0, 0},    //  Gyarados
+            {139, 45, 45, 92, 46, 0, 0, 1}, //  Arcanine (Roar)
+            {125, 194, 182, 396, 198, 0, 0, 0, 1},  //  Venusaur (Solar Beam charges a turn)
         }},
     };
 }
@@ -250,6 +254,70 @@ UnitTestResult test_foe_threats_are_the_generators(){
         UnitTestResult result = check_foe_threats(fight.id, fight.battle, fight.rows);
         if (result.result != UnitTestResult::PASSED){
             return result;
+        }
+    }
+    return true;
+}
+
+//  The Champion's Venusaur: the battle texts read before the turn, and
+//  the turns (attacks) taken after them before this one.
+struct VenusaurTurnInput{
+    std::vector<std::string> battle_texts = {};
+    int turns_after_texts = 0;
+};
+
+//  The policy's item, "" for an attack.
+struct VenusaurTurnExpectation{
+    std::string_view item;
+};
+
+struct VenusaurTurnCase{
+    std::string_view name;
+    VenusaurTurnInput input;
+    VenusaurTurnExpectation expectation;
+};
+
+//  Solar Beam without sun charges a turn first: no KO risk until Venusaur
+//  is charging (PokemonSimulation #110: the policy only attacked, and the
+//  Champion was 0%). Charged, its hit KOs from full: attack.
+const VenusaurTurnCase VENUSAUR_TURN_CASES[] = {
+    {"not charging: X Special", {{}, 0}, {"x-special"}},
+    {"charging Solar Beam: attack", {{"foevenusaurtookinsunlight"}, 0}, {""}},
+    {"the turn after its charge: X Special", {{"foevenusaurtookinsunlight"}, 1}, {"x-special"}},
+    {"in Sunny Day's sun: attack", {{"thesunlightgotbright"}, 0}, {""}},
+    {"after the sun faded: X Special", {{"thesunlightgotbright", "thesunlightfaded"}, 0}, {"x-special"}},
+};
+
+//  Console B's Blastoise (Lv54, 2026-11-16) at full HP against Venusaur.
+UnitTestResult test_venusaur_charge(){
+    const StoryStep& step = league_step("20.01", "champion");
+    constexpr size_t VENUSAUR = 5;
+    for (const VenusaurTurnCase& test : VENUSAUR_TURN_CASES){
+        Supplies supplies;
+        set_from_bag(supplies, {{"full-restore", 10}, {"x-special", 10}, {"x-speed", 4}, {"x-accuracy", 3}});
+        supplies.lead = PartyMember{
+            .species = "blastoise",
+            .moves = {{"bite", 25}, {"strength", 15}, {"surf", 15}, {"blizzard", 5}},
+            .moves_through_level = 54,
+            .moves_read = true,
+            .level = 54,
+            .stats = Stats{.hp = 171, .attack = 101, .defense = 135, .sp_attack = 119, .sp_defense = 150, .speed = 117},
+        };
+        supplies.foes = Pokemon::story_arg<std::vector<std::string>>(step.args, "foes");
+        supplies.policy = battle_policy_of(step.args);
+        PolicyState state(supplies.policy);
+        PolicyView view{
+            .hp = 171, .max_hp = 171, .status = StatusCondition::NONE, .speed = 117,
+            .foe_index = VENUSAUR, .foe_fill = 1.0, .battle_texts = test.input.battle_texts,
+        };
+        for (int turn = 0; turn < test.input.turns_after_texts; turn++){
+            state.choose(supplies, view);
+            view.battle_texts.clear();
+        }
+        const std::optional<PolicyItem> item = state.choose(supplies, view).item;
+        const std::string_view chosen = item ? std::string_view(item->item) : std::string_view();
+        if (chosen != test.expectation.item){
+            return std::format("Venusaur {}: expected \"{}\", got \"{}\".", test.name, test.expectation.item, chosen);
         }
     }
     return true;
@@ -301,6 +369,11 @@ UnitTestResult test_league_plan_steps(){
 }
 
 const AutoStoryLeagueCase AUTO_STORY_LEAGUE_CASES[] = {
+    {
+        .name = "20.01 the Champion's Venusaur: Solar Beam is a KO risk only charged or in sun",
+        .input = {.body = test_venusaur_charge},
+        .expectation = {.description = "X Special until it charges or the sun is out, then an attack"},
+    },
     {
         .name = "20.01a Indigo Plateau's Mart counter",
         .input = {.body = test_indigo_mart_counter},
