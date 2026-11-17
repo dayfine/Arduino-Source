@@ -1027,7 +1027,7 @@ Pokemon::Segment make_story_segment(const std::vector<StoryCheckpoint>& checkpoi
     for (const StoryCheckpoint& data : checkpoints){
         segment.checkpoints.push_back(Pokemon::CheckpointSpec{
             data.id, data.title, false,
-            [&data, &executor]{ return build_checkpoint(data, executor); }
+            [&data, &executor]{ return build_checkpoint(data, executor); }, data.verify,
         });
     }
     return segment;

@@ -215,6 +215,7 @@ Pokemon::StoryFileRow<StoryCheckpoint> read_story_file(const JsonValue& value, s
     static_cast<Pokemon::StoryCheckpoint&>(checkpoint) = Pokemon::read_authored_checkpoint(
         without_metadata(value, source), "frlg", source, read_execution, story_action_specs()
     );
+    checkpoint.verify = shared.verify;
     for (const std::string& key : note_keys){
         bool found = key == "checkpoint";
         for (const StoryStep& step : checkpoint.steps){
