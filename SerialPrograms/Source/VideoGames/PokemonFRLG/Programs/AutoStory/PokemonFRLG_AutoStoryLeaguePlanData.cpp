@@ -129,20 +129,23 @@ LeaguePassFigures pass_of(const JsonObject& pass){
     };
 }
 
-void read_contract(const JsonObject& contract, LeagueFightData& fight){
+//  `lead_max_hp`: the HP hp_sim counts out of (the plan's entry_hp); none
+//  leaves the fight without an HP floor.
+void read_contract(const JsonObject& contract, std::optional<int> lead_max_hp, LeagueFightData& fight){
     if (const JsonObject* pass = contract.get_object("pass")){
         fight.pass = pass_of(*pass);
     }
     if (const JsonObject* entry = contract.get_object("entry")){
         fight.entry_items = counts_of(entry->get_object("items"), true);
         fight.entry_pp = counts_of(entry->get_object("pp"), false);
-        if (const JsonObject* hp = entry->get_object("hp_sim")){
-            fight.entry_hp_share = static_cast<double>(hp->get_integer_throw("p10")) / LEAGUE_PLAN_LEAD_MAX_HP;
+        const JsonObject* hp = entry->get_object("hp_sim");
+        if (hp != nullptr && lead_max_hp && *lead_max_hp > 0){
+            fight.entry_hp_share = static_cast<double>(hp->get_integer_throw("p10")) / *lead_max_hp;
         }
     }
 }
 
-LeagueFightData fight_of(const std::string& name, const JsonObject& object){
+LeagueFightData fight_of(const std::string& name, const JsonObject& object, std::optional<int> lead_max_hp){
     LeagueFightData fight{.name = name, .goal = object.get_string_default("goal")};
     for (const JsonValue& foe : object.get_array_throw("foes")){
         fight.foes.push_back(foe_of(foe.to_object_throw()));
@@ -163,7 +166,7 @@ LeagueFightData fight_of(const std::string& name, const JsonObject& object){
         read_reset(*reset, fight);
     }
     if (const JsonObject* contract = object.get_object("contract")){
-        read_contract(*contract, fight);
+        read_contract(*contract, lead_max_hp, fight);
     }
     return fight;
 }
@@ -177,12 +180,16 @@ LeaguePlanData parse_league_plan(std::string_view json){
         throw ParseException(std::format("{}.json: not a {} plan.", PLAN_FILE, PLAN_FORMAT));
     }
     LeaguePlanData plan;
+    std::optional<int> lead_max_hp;
+    if (const JsonObject* entry_hp = root.get_object("entry_hp")){
+        lead_max_hp = static_cast<int>(entry_hp->get_integer_throw("lead_max_hp"));
+    }
     const JsonObject& fights = root.get_object_throw("fights");
     //  In the League's order, whatever the file's.
     for (const TrainerFight& trainer : TRAINER_FIGHTS){
         const std::string name(trainer.fight);
         if (const JsonObject* fight = fights.get_object(name)){
-            plan.fights.push_back(fight_of(name, *fight));
+            plan.fights.push_back(fight_of(name, *fight, lead_max_hp));
         }
     }
     return plan;

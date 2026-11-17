@@ -16,10 +16,15 @@
 #define PokemonAutomation_Pokemon_StoryVerify_H
 
 #include <cstddef>
+#include <string_view>
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
+
+//  A verify pass check that couldn't read the game
+//  (SegmentHooks::verify_pass): the loop stops, with no save.
+inline constexpr std::string_view VERIFY_UNREAD = "postcondition_unread";
 
 //  The verification loop's figures.
 struct StoryVerify{

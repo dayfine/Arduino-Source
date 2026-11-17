@@ -75,18 +75,15 @@ struct LeagueFightData{
     SlugCounts entry_items = {};
     SlugCounts entry_pp = {};
     //  The least HP our side starts the fight with, as a share of its
-    //  maximum (contract.entry.hp_sim.p10 of the plan's lead,
-    //  LEAGUE_PLAN_LEAD_MAX_HP); none: no floor.
+    //  maximum: contract.entry.hp_sim.p10 over the plan's entry_hp
+    //  lead_max_hp. That convention awaits the user's confirmation (see
+    //  entry_hp in frlg-league-plan.json). None: no floor.
     std::optional<double> entry_hp_share = std::nullopt;
     //  PP this fight must not spend, by move, and the items it must leave
     //  in the bag.
     SlugCounts reserve_pp = {};
     SlugCounts reserve_items = {};
 };
-
-//  The plan's lead's maximum HP (Blastoise Lv54), which contract.entry's
-//  hp_sim counts in.
-constexpr int LEAGUE_PLAN_LEAD_MAX_HP = 171;
 
 //  The whole plan: its fights in the League's order.
 struct LeaguePlanData{

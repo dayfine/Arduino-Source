@@ -1,5 +1,9 @@
 {
   "format": "frlg-league-plan/1",
+  "entry_hp": {
+    "lead_max_hp": 171,
+    "why": "Each fight's contract.entry.hp_sim counts HP out of the sim's Lv54 Blastoise (171 max HP). The entry check before a fight (league_entry_check) wants our lead's HP at least hp_sim.p10 / lead_max_hp of its own maximum. This convention is the agents' reading, NOT confirmed: the user must confirm it (2026-11-17)."
+  },
   "fights": {
     "lorelei": {
       "goal": "Win with <= 1 Full Restore: 6 X Special on Dewgong (+6), Bite/Surf through, Lapras Strength -> Bite -> Bite",

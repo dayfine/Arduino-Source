@@ -19,7 +19,6 @@
 #include <cstddef>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <vector>
 #include "Common/Cpp/MoveOnlyFunction.h"
 #include "Pokemon_StoryEvents.h"
@@ -30,9 +29,6 @@
 namespace PokemonAutomation{
 namespace Pokemon{
 
-
-//  A verify pass check that couldn't read the game (SegmentHooks::verify_pass).
-inline constexpr std::string_view VERIFY_UNREAD = "postcondition_unread";
 
 //  One row of a segment. `build` makes the checkpoint anew for each attempt.
 //  `saves` has the segment save the game (SegmentHooks::save) after the
@@ -87,9 +83,8 @@ struct SegmentHooks{
 //  again until a try passes, which saves, or stops after reset_budget
 //  ("verify_out_of_budget"). A try whose start check fails, or whose step
 //  fails "precondition_failed" (FRLG's League top-up and entry contract),
-//  stops the loop at once: the save does not meet the row's preconditions. Logs through
-//  `hooks.log`,
-//  around the checkpoint lines:
+//  stops the loop at once: the save does not meet the row's preconditions.
+//  Logs through `hooks.log`, around the checkpoint lines:
 //      [Segment] 00: start, 3 checkpoints
 //      [Checkpoint] 00.02: failed, resetting for attempt 2/3
 //      [Checkpoint] 00.02: passed on attempt 2 (1 reset)

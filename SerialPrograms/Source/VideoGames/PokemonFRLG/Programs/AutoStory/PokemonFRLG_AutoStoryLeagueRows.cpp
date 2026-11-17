@@ -28,7 +28,7 @@ std::string joined(const std::vector<std::string>& lines){
 }
 
 //  `wanted` of `what` against `had`, logged; short of it noted.
-void compare(LeagueEntryCheck& check, std::string_view what, int had, int wanted){
+void compare(std::string_view what, int had, int wanted, LeagueEntryCheck& check){
     check.compared.push_back(std::format("{} {}/{}", what, had, wanted));
     if (had < wanted){
         check.short_of.push_back(std::format("{} {} of {}", what, had, wanted));
@@ -77,13 +77,13 @@ LeagueEntryCheck league_entry_check(const LeagueFightData& next, LeagueSide side
     PlannedCarry carry{.hp = side.hp, .max_hp = side.max_hp, .pp = side.pp, .full_pp = side.full_pp, .bag = side.bag};
     check.topped_up = planned_between(carry, next);
     for (const auto& [item, least] : next.entry_items){
-        compare(check, item, count_of(carry.bag, item), least);
+        compare(item, count_of(carry.bag, item), least, check);
     }
     if (next.entry_hp_share){
-        compare(check, "HP", carry.hp, static_cast<int>(carry.max_hp * *next.entry_hp_share + 0.999));
+        compare("HP", carry.hp, static_cast<int>(carry.max_hp * *next.entry_hp_share + 0.999), check);
     }
     for (const auto& [move, least] : next.entry_pp){
-        compare(check, std::format("{} PP", move), count_of(carry.pp, move), least);
+        compare(std::format("{} PP", move), count_of(carry.pp, move), least, check);
     }
     return check;
 }

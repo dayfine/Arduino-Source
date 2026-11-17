@@ -239,9 +239,9 @@ struct LeagueRunCase{
         int full_restores_saved = 0;
     };
 
-    std::string name = {};
-    Input input = {};
-    Expectation expectation = {};
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_LeagueRows : public UnitTest{
@@ -328,7 +328,7 @@ const LeagueRunCase LEAGUE_RUN_CASES[] = {
     },
     {
         .name = "Agatha wins leaving Surf at 2, under Lance's 3: never saved",
-        .input = {.tries = {{"20.03", {win({}, MAX_HP, /*surf_spent=*/13)}}}},
+        .input = {.tries = {{"20.03", {win(/*used=*/{}, MAX_HP, /*surf_spent=*/13)}}}},
         .expectation = {.failure = "verify_below_min_pass", .failed_row = "20.03", .fights = 2 * TRIES_ALL_PASS + 10, .saves = 2, .full_restores_saved = 8},
     },
 };
@@ -336,44 +336,83 @@ const LeagueRunCase LEAGUE_RUN_CASES[] = {
 
 //  Random fights within the caps: whatever they leave, no save breaks the
 //  next fight's entry contract.
+struct RandomRunCase{
+    struct Input{
+        //  Runs from Lorelei, seeded 1 to `runs`.
+        uint32_t runs;
+        //  The share of tries lost, in tenths.
+        uint32_t losses_in_ten;
+    };
+    struct Expectation{
+        size_t broken_saves;
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
+};
+
+//  Seeded tries: a loss `losses_in_ten` in ten, else a win spending up to
+//  each of the fight's caps, at a random HP and Surf PP.
+FakeLeague::Script random_tries(uint32_t seed, uint32_t losses_in_ten){
+    auto random = std::make_shared<std::mt19937>(seed);
+    return [random, losses_in_ten](const std::string& row){
+        std::mt19937& next = *random;
+        const LeagueFightData& fight = *league_row_fight(fight_row(row));
+        if (next() % 10 < losses_in_ten){
+            return lose();
+        }
+        SlugCounts used;
+        for (const auto& [item, cap] : fight.caps){
+            if (cap > 0){
+                used[item] = static_cast<int>(next() % (cap + 1));
+            }
+        }
+        return win(std::move(used), /*hp_left=*/1 + static_cast<int>(next() % MAX_HP), /*surf_spent=*/static_cast<int>(next() % 16));
+    };
+}
+
 class Test_LeagueRowsRandom : public UnitTest{
 public:
-    Test_LeagueRowsRandom()
-        : UnitTest("PokemonFRLG::AutoStoryLeagueRows - random wins within the caps: every save meets the next fight's entry contract")
+    explicit Test_LeagueRowsRandom(RandomRunCase test_case)
+        : UnitTest(std::format("PokemonFRLG::AutoStoryLeagueRows - {}", test_case.name))
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        constexpr uint32_t RUNS = 200;
+        size_t broken = 0;
         int saves = 0;
-        for (uint32_t seed = 1; seed <= RUNS; seed++){
-            auto random = std::make_shared<std::mt19937>(seed);
-            FakeLeague game(lorelei_bag(), [random](const std::string& row){
-                std::mt19937& next = *random;
-                const LeagueFightData& fight = *league_row_fight(fight_row(row));
-                if (next() % 10 < 3){
-                    return lose();
-                }
-                SlugCounts used;
-                for (const auto& [item, cap] : fight.caps){
-                    if (cap > 0){
-                        used[item] = static_cast<int>(next() % (cap + 1));
-                    }
-                }
-                return win(std::move(used), /*hp_left=*/1 + static_cast<int>(next() % MAX_HP), /*surf_spent=*/static_cast<int>(next() % 16));
-            });
+        std::string first_broken;
+        for (uint32_t seed = 1; seed <= m_case.input.runs; seed++){
+            FakeLeague game(lorelei_bag(), random_tries(seed, m_case.input.losses_in_ten));
             Pokemon::Segment segment = game.segment();
             Pokemon::SegmentHooks hooks = game.hooks();
             Pokemon::RunState state;
-            Pokemon::run_segment({}, Pokemon::SegmentPolicy{}, segment, hooks, state);
-            if (!game.broken_saves.empty()){
-                return std::format("Seed {}: saved {}.", seed, game.broken_saves.front());
+            Pokemon::run_segment(/*range=*/{}, Pokemon::SegmentPolicy{}, segment, hooks, state);
+            if (!game.broken_saves.empty() && first_broken.empty()){
+                first_broken = std::format("seed {}: saved {}", seed, game.broken_saves.front());
             }
+            broken += game.broken_saves.size();
             saves += game.saves;
         }
         if (saves == 0){
             return "No run saved anything: the check proves nothing.";
         }
+        if (broken != m_case.expectation.broken_saves){
+            return std::format("{} broken saves, expected {}; first: {}.", broken, m_case.expectation.broken_saves, first_broken);
+        }
         return true;
     }
+
+private:
+    RandomRunCase m_case;
+};
+
+const RandomRunCase RANDOM_RUN_CASES[] = {
+    {
+        .name = "random wins within the caps: every save meets the next fight's entry contract",
+        .input = {.runs = 200, .losses_in_ten = 3},
+        .expectation = {.broken_saves = 0},
+    },
 };
 
 
@@ -391,9 +430,9 @@ struct TopUpCase{
         std::vector<std::string> items = {};
     };
 
-    std::string name = {};
-    Input input = {};
-    Expectation expectation = {};
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_LeagueTopUp : public UnitTest{
@@ -476,7 +515,9 @@ void add_tests_AutoStoryLeagueRows(UnitTestDatabase& database){
     for (const LeagueRunCase& test_case : LEAGUE_RUN_CASES){
         database.add<Test_LeagueRows>(test_case);
     }
-    database.add<Test_LeagueRowsRandom>();
+    for (const RandomRunCase& test_case : RANDOM_RUN_CASES){
+        database.add<Test_LeagueRowsRandom>(test_case);
+    }
     for (const TopUpCase& test_case : TOP_UP_CASES){
         database.add<Test_LeagueTopUp>(test_case);
     }

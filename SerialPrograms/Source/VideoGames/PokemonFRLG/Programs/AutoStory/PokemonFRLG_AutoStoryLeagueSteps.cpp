@@ -250,14 +250,9 @@ std::optional<Outcome> read_lead(StoryEnv& env, const StoryCheckpoint& row, cons
     return std::nullopt;
 }
 
-} // namespace
-
-
-Outcome check_league_save(StoryEnv& env, const StoryCheckpoint& row, const Supplies& start){
-    const LeagueFightData* fight = league_row_fight(row);
-    if (fight == nullptr){
-        return Pokemon::outcome_ok();
-    }
+//  The Items pocket off the bag into `now`; the failure (VERIFY_UNREAD) if
+//  it wasn't read or a row is unsure.
+std::optional<Outcome> read_bag(StoryEnv& env, const StoryCheckpoint& row, Supplies& now){
     const std::vector<BagRow> rows = read_items_pocket(env.console, env.context, env.language);
     if (rows.empty()){
         return unread(env, row.id, "the Items pocket wasn't read");
@@ -267,24 +262,44 @@ Outcome check_league_save(StoryEnv& env, const StoryCheckpoint& row, const Suppl
             return unread(env, row.id, std::format("an Items pocket row is unsure ({} x{})", read.item.empty() ? "?" : read.item, read.count));
         }
     }
-    Supplies now = env.supplies;
     set_from_bag(now, rows);
-    LeagueSide side{.bag = league_bag(now)};
-    if (std::optional<Outcome> failed = read_lead(env, row, *fight, side)){
-        return *failed;
-    }
+    return std::nullopt;
+}
+
+//  What was read before the save, and the next fight's entry contract
+//  against it, for the log.
+void log_save_read(StoryEnv& env, const StoryCheckpoint& row, const LeagueFightData& fight, const LeagueSide& side){
     std::string read_pp;
     for (const auto& [move, pp] : side.pp){
         read_pp += std::format(" {} {}/{}", move, pp, count_of(side.full_pp, move));
     }
     env.console.log(std::format("Story: {}: read before the save: HP {}/{}, PP{}.", row.id, side.hp, side.max_hp, read_pp));
-    if (const LeagueFightData* next = next_league_fight(*fight)){
+    if (const LeagueFightData* next = next_league_fight(fight)){
         const LeagueEntryCheck check = league_entry_check(*next, side);
         env.console.log(std::format(
             "Story: {}: {}'s entry contract after the top-up [{}], had/wanted: {}.",
             row.id, next->name, joined_lines(check.topped_up), joined_lines(check.compared)
         ));
     }
+}
+
+} // namespace
+
+
+Outcome check_league_save(StoryEnv& env, const StoryCheckpoint& row, const Supplies& start){
+    const LeagueFightData* fight = league_row_fight(row);
+    if (fight == nullptr){
+        return Pokemon::outcome_ok();
+    }
+    Supplies now = env.supplies;
+    if (std::optional<Outcome> failed = read_bag(env, row, now)){
+        return *failed;
+    }
+    LeagueSide side{.bag = league_bag(now)};
+    if (std::optional<Outcome> failed = read_lead(env, row, *fight, side)){
+        return *failed;
+    }
+    log_save_read(env, row, *fight, side);
     const Outcome passed = league_row_pass(row, supplies_counts(start), side);
     if (passed.succeeded()){
         //  The story's counts are the console's from here.
