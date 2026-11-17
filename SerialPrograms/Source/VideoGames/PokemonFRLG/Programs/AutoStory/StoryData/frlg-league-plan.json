@@ -1,0 +1,100 @@
+{
+  "format": "frlg-league-plan/1",
+  "fights": {
+    "lorelei": {
+      "foes": [
+        {"species": "dewgong", "moves": ["bite", "surf"], "setup": [{"item": "xspecial", "stage": 4, "serves": "bite"}]},
+        {"species": "cloyster", "moves": ["bite", "surf"], "setup": []},
+        {"species": "slowbro", "moves": ["bite", "surf"], "setup": []},
+        {"species": "jynx", "moves": ["bite", "surf", "strength"], "setup": []},
+        {"species": "lapras", "moves": ["bite", "strength"], "setup": []}
+      ],
+      "between": {},
+      "reserve": {
+        "pp": {"blizzard": 5},
+        "items": {"xspecial": 9, "xspeed": 3, "xaccuracy": 2, "guardspec": 1, "fullrestore": 6, "maxelixir": 1}
+      }
+    },
+    "bruno": {
+      "foes": [
+        {
+          "species": "onix",
+          "moves": ["surf"],
+          "setup": [
+            {"item": "xspecial", "stage": 2, "serves": "surf"},
+            {"item": "xspeed", "stage": 1, "serves": "surf"}
+          ]
+        },
+        {"species": "hitmonchan", "moves": ["surf", "blizzard"], "setup": []},
+        {"species": "hitmonlee", "moves": ["surf", "strength"], "setup": []},
+        {"species": "onix", "moves": ["surf"], "setup": []},
+        {"species": "machamp", "moves": ["surf", "strength"], "setup": []}
+      ],
+      "between": {"hp": 0.8, "pp": {"surf": 8}},
+      "reserve": {
+        "pp": {"blizzard": 5},
+        "items": {"xspecial": 7, "xspeed": 2, "xaccuracy": 2, "guardspec": 1, "fullrestore": 5, "maxelixir": 1}
+      }
+    },
+    "agatha": {
+      "foes": [
+        {
+          "species": "gengar",
+          "moves": ["bite", "surf"],
+          "setup": [
+            {"item": "xspecial", "stage": 3, "serves": "bite"},
+            {"item": "xspeed", "stage": 1, "serves": "bite"}
+          ]
+        },
+        {"species": "golbat", "moves": ["surf", "bite"], "setup": []},
+        {"species": "haunter", "moves": ["bite", "surf"], "setup": []},
+        {"species": "arbok", "moves": ["surf", "bite"], "setup": []},
+        {"species": "gengar", "moves": ["bite", "surf"], "setup": []}
+      ],
+      "between": {"hp": 0.8, "pp": {"surf": 6}},
+      "reserve": {
+        "pp": {"blizzard": 5},
+        "items": {"xspecial": 4, "xspeed": 1, "xaccuracy": 2, "guardspec": 1, "fullrestore": 4, "maxelixir": 1}
+      }
+    },
+    "lance": {
+      "foes": [
+        {
+          "species": "gyarados",
+          "moves": ["bite", "surf"],
+          "setup": [{"item": "xspecial", "stage": 2, "serves": "blizzard"}]
+        },
+        {"species": "dragonair", "moves": ["blizzard", "strength"], "setup": []},
+        {"species": "dragonair", "moves": ["blizzard", "strength"], "setup": []},
+        {"species": "aerodactyl", "moves": ["surf"], "setup": []},
+        {"species": "dragonite", "moves": ["blizzard", "bite"], "setup": []}
+      ],
+      "between": {"hp": 1.0, "pp": {"surf": 4, "blizzard": 4}},
+      "reserve": {
+        "pp": {},
+        "items": {"xspecial": 2, "xspeed": 1, "xaccuracy": 2, "guardspec": 1, "fullrestore": 2, "maxelixir": 1}
+      }
+    },
+    "champion": {
+      "foes": [
+        {
+          "species": "pidgeot",
+          "moves": ["surf"],
+          "setup": [
+            {"item": "guardspec", "stage": 1},
+            {"item": "xspecial", "stage": 2, "serves": "blizzard"},
+            {"item": "xaccuracy", "stage": 2, "serves": "blizzard"},
+            {"item": "xspeed", "stage": 1, "serves": "blizzard"}
+          ]
+        },
+        {"species": "alakazam", "moves": ["bite", "surf"], "setup": []},
+        {"species": "rhydon", "moves": ["surf"], "setup": []},
+        {"species": "gyarados", "moves": ["bite", "surf"], "setup": []},
+        {"species": "arcanine", "moves": ["surf"], "setup": []},
+        {"species": "venusaur", "moves": ["blizzard"], "setup": []}
+      ],
+      "between": {"hp": 1.0, "pp": {"surf": 8, "blizzard": 4}},
+      "reserve": {"pp": {}, "items": {}}
+    }
+  }
+}

@@ -24,6 +24,7 @@
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryBattleBag.h"
+#include "PokemonFRLG_AutoStoryPlannedPolicy.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryItemsPocketChange.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
@@ -336,6 +337,7 @@ void add_tests_AutoStoryStepTable(UnitTestDatabase& database){
     add_tests_AutoStoryRooms(database);
     add_tests_AutoStoryItemUse(database);
     add_tests_AutoStoryBattleBag(database);
+    add_tests_AutoStoryPlannedPolicy(database);
 }
 
 
