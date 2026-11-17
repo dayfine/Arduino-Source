@@ -28,6 +28,7 @@
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryCenterHeal.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryHallOfFame.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryBoulderPresses.h"
@@ -964,6 +965,25 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     env.start_map = data.start ? Pokemon::grid_pose_of(*data.start).map : "";
     env.checkpoint = data.id;
     env.start_menu = data.menu;
+    //  The Hall of Fame saves the game itself, so it is the row's save: a
+    //  verify phase 1 try, which never saves, ends at the Champion's win
+    //  before it (console B, 2026-11-17: the win's 60 s wait for a START
+    //  menu called it lost under Oak's "Come with me!").
+    if (!data.steps.empty() && data.steps.back().action == HALL_OF_FAME_ACTION
+        && !checkpoint.events.empty() && checkpoint.events.back().name == data.steps.back().name
+    ){
+        Pokemon::Act hall = std::move(checkpoint.events.back().act);
+        checkpoint.events.pop_back();
+        checkpoint.save = [&env, hall = std::move(hall)](RunState& state) mutable{
+            const Pokemon::Outcome saved = hall(state);
+            if (saved.succeeded()){
+                env.has_save = true;
+                env.saved_supplies = env.supplies;
+            }
+            return saved;
+        };
+        return checkpoint;
+    }
     const StartMenu menu = data.menu;
     checkpoint.save = [&env, menu, id = data.id](RunState&){
         return guarded(env, [&]{

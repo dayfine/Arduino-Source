@@ -57,6 +57,9 @@ constexpr Milliseconds BATTLE_TIMEOUT = 600000ms;
 constexpr Milliseconds BATTLE_START_TIMEOUT = 20000ms;
 //  No battle screen for this long: check for the overworld with START.
 constexpr Milliseconds BATTLE_GONE = 2000ms;
+//  After a won battle, how long without a START menu before the scene after
+//  it is taken as the next step's.
+constexpr Milliseconds WON_SCENE = 10000ms;
 //  A battle screen with neither an arrow nor a menu for this long: B, for
 //  a prompt the detectors miss.
 constexpr Milliseconds STUCK = 8000ms;
@@ -433,6 +436,13 @@ private:
                 return true;
             }
         }
+        //  Won, and no START menu after it: a scene follows the battle (the
+        //  Champion's, Oak into the Hall of Fame: console B, 2026-11-17),
+        //  which is the next step's.
+        if (m_won && now - m_last_battle > WON_SCENE){
+            m_console.log("Battle: won (the prize text read); the scene after it is the next step's.");
+            return true;
+        }
         //  Oak's white text box in the rival's battle reads as no battle screen:
         //  B moves it on, and B does nothing on the overworld once the battle is over.
         if (now - m_last_press > 1500ms){
@@ -665,6 +675,8 @@ private:
         std::optional<std::string> letters = read_battle_text(m_language, screen);
         if (letters && (m_policy_texts.empty() || m_policy_texts.back() != *letters)){
             m_console.log(std::format("Battle: text \"{}\".", *letters));
+            //  pokefirered: "{PLAYER} got ¥{N}\nfor winning!", the battle's last text.
+            m_won = m_won || letters->find("forwinning") != std::string::npos;
             m_policy_texts.push_back(std::move(*letters));
         }
     }
@@ -692,6 +704,8 @@ private:
     std::vector<std::string> m_policy_texts;
     BattleScreen m_last_seen = BattleScreen::NONE;
     bool m_seen_battle = false;
+    //  The prize text "for winning" read (League fights read the battle's texts).
+    bool m_won = false;
     bool m_confirmed = false;
     bool m_press_a = true;
     //  A move was chosen and no battle menu has shown since.
