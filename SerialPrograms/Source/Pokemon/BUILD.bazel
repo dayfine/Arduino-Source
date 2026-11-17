@@ -14,3 +14,40 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "pokemon_navigation",
+    srcs = glob(
+        [
+            "Navigation/*.cpp",
+            "Navigation/Simulation/*.cpp",
+        ],
+        exclude = ["**/*_Tests.cpp"],
+    ),
+    hdrs = glob([
+        "**/*.h",
+        "**/*.hpp",
+        "**/*.tpp",
+    ]),
+    deps = [
+        ":pokemon_types",
+        "//Common/Cpp:common_cpp",
+        "//:serial_programs_headers",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "sim_faults",
+    srcs = ["Navigation/Simulation/Pokemon_SimFaults.cpp"],
+    hdrs = glob([
+        "**/*.h",
+        "**/*.hpp",
+        "**/*.tpp",
+    ]),
+    deps = [
+        "//Common/Cpp:common_cpp",
+        "//:serial_programs_headers",
+    ],
+    visibility = ["//visibility:public"],
+)

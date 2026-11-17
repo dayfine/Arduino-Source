@@ -14,6 +14,20 @@ genrule(
     cmd = "python3 $(location //:bazel_embed_text.py) $@ VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.h PokemonAutomation::NintendoSwitch::PokemonFRLG autostory_checkpoint_json $(SRCS)",
 )
 
+genrule(
+    name = "console_failure_json_gen",
+    srcs = glob(["ConsoleFailures/*.json"]) + ["//:bazel_embed_text.py"],
+    outs = ["console_failure_json.cpp"],
+    cmd = "python3 $(location //:bazel_embed_text.py) $@ VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryConsoleFailureData.h PokemonAutomation::NintendoSwitch::PokemonFRLG console_failure_json $(SRCS)",
+)
+
+genrule(
+    name = "overworld_map_json_gen",
+    srcs = ["//Packages/Resources/Pokemon/Maps/frlg:map_jsons"] + ["//:bazel_embed_text.py"],
+    outs = ["overworld_map_json.cpp"],
+    cmd = "python3 $(location //:bazel_embed_text.py) $@ VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h PokemonAutomation::NintendoSwitch::PokemonFRLG overworld_map_json $(SRCS)",
+)
+
 cc_library(
     name = "planned_battle_lib",
     hdrs = glob([
@@ -38,11 +52,53 @@ cc_library(
         "PokemonFRLG_AutoStoryPlannedBetween.cpp",
         "PokemonFRLG_AutoStoryPlannedPolicy.cpp",
         "PokemonFRLG_AutoStoryPlannedRisk.cpp",
-        "bazel_frlg_stubs.cpp",
+        "PokemonFRLG_AutoStorySupplies.cpp",
     ],
     deps = [
         "//Common/Cpp:common_cpp",
         "//SerialPrograms/Source/Pokemon:pokemon_types",
+        "//SerialPrograms/Source/Pokemon/AutoStory:pokemon_autostory",
+        "//SerialPrograms/Source/VideoGames/PokemonFRLG/Overworld:frlg_overworld",
+        "//:serial_programs_headers",
+    ],
+)
+
+cc_library(
+    name = "autostory_sim_lib",
+    hdrs = glob([
+        "**/*.h",
+        "**/*.hpp",
+        "**/*.tpp",
+    ]),
+    srcs = [
+        ":autostory_battle_json_gen",
+        ":autostory_checkpoint_json_gen",
+        ":console_failure_json_gen",
+        ":overworld_map_json_gen",
+    ] + glob(
+        [
+            "*.cpp",
+            "Data/*.cpp",
+        ],
+        exclude = [
+            "*_Tests.cpp",
+            "PokemonFRLG_AutoStory.cpp",
+            "PokemonFRLG_AutoStoryBattle.cpp",
+            "PokemonFRLG_AutoStoryLaunch.cpp",
+            "PokemonFRLG_AutoStoryScreenEvents.cpp",
+            "PokemonFRLG_AutoStoryStartFrames.cpp",
+            "PokemonFRLG_AutoStoryStartMenu.cpp",
+            "PokemonFRLG_AutoStoryStartMenuOpening.cpp",
+            "PokemonFRLG_AutoStorySummary.cpp",
+            "PokemonFRLG_AutoStoryTeachScreens.cpp",
+        ],
+    ),
+    deps = [
+        "//Common/Cpp:common_cpp",
+        "//SerialPrograms/Source/Pokemon:pokemon_navigation",
+        "//SerialPrograms/Source/Pokemon:pokemon_types",
+        "//SerialPrograms/Source/Pokemon/AutoStory:pokemon_autostory",
+        "//SerialPrograms/Source/VideoGames/PokemonFRLG/Overworld:frlg_overworld",
         "//:serial_programs_headers",
     ],
 )
@@ -59,7 +115,5 @@ cc_test(
     ],
     linkstatic = True,
     linkopts = ["-Wl,-undefined,error"],
-    deps = [
-        ":planned_battle_lib",
-    ],
+    deps = [":planned_battle_lib"],
 )

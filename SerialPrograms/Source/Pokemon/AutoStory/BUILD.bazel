@@ -1,0 +1,60 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+cc_library(
+    name = "story_failure_classes",
+    srcs = ["Pokemon_StoryFailureClasses.cpp"],
+    hdrs = glob([
+        "**/*.h",
+        "**/*.hpp",
+        "**/*.tpp",
+    ]),
+    deps = [
+        "//Common/Cpp:common_cpp",
+        "//SerialPrograms/Source/Pokemon:pokemon_types",
+        "//SerialPrograms/Source/Pokemon:sim_faults",
+        "//:serial_programs_headers",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "pokemon_autostory",
+    srcs = glob(
+        [
+            "*.cpp",
+            "Data/*.cpp",
+            "Engine/*.cpp",
+            "Types/*.cpp",
+        ],
+        exclude = ["**/*_Tests.cpp"],
+    ),
+    hdrs = glob([
+        "**/*.h",
+        "**/*.hpp",
+        "**/*.tpp",
+    ]),
+    deps = [
+        "//Common/Cpp:common_cpp",
+        "//SerialPrograms/Source/Pokemon:pokemon_navigation",
+        "//SerialPrograms/Source/Pokemon:pokemon_types",
+        "//:serial_programs_headers",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_test(
+    name = "story_failure_classes_test",
+    srcs = [
+        "Pokemon_StoryFailureClasses_Tests.cpp",
+        "//:bazel_test_main.cpp",
+    ],
+    local_defines = [
+        "PA_BAZEL_TEST_NS=PokemonAutomation::Pokemon",
+        "PA_BAZEL_TEST_FN=add_tests_StoryFailureClasses",
+    ],
+    linkstatic = True,
+    linkopts = ["-Wl,-undefined,error"],
+    deps = [
+        ":story_failure_classes",
+    ],
+)

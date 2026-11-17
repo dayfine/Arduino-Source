@@ -1,0 +1,25 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "frlg_overworld",
+    srcs = glob(
+        ["*.cpp"],
+        exclude = [
+            "*_Tests.cpp",
+            "*Reader.cpp",
+        ],
+    ),
+    hdrs = glob([
+        "**/*.h",
+        "**/*.hpp",
+        "**/*.tpp",
+    ]),
+    deps = [
+        "//Common/Cpp:common_cpp",
+        "//SerialPrograms/Source/Pokemon:pokemon_navigation",
+        "//SerialPrograms/Source/Pokemon:pokemon_types",
+        "//SerialPrograms/Source/Pokemon/AutoStory:pokemon_autostory",
+        "//:serial_programs_headers",
+    ],
+    visibility = ["//visibility:public"],
+)
