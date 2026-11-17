@@ -157,9 +157,8 @@ LeagueFightData fight_of(const std::string& name, const JsonObject& object){
     return fight;
 }
 
-} // namespace
-
-
+//  The plan in `json`; throws ParseException on another format or an
+//  unknown item.
 LeaguePlanData parse_league_plan(std::string_view json){
     const JsonValue value = parse_json(std::string(json));
     const JsonObject& root = value.to_object_throw();
@@ -177,6 +176,9 @@ LeaguePlanData parse_league_plan(std::string_view json){
     }
     return plan;
 }
+
+} // namespace
+
 
 const LeaguePlanData& league_plan_data(){
     static const LeaguePlanData PLAN = []{
