@@ -12,6 +12,8 @@
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
+#include "PokemonFRLG_AutoStoryStartMenu.h"
+#include "PokemonFRLG_AutoStorySummary.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -423,7 +425,19 @@ ConsolePcStorageActions::ConsolePcStorageActions(ConsoleHandle& console, ProCont
 {}
 
 std::vector<PcPartyMember> ConsolePcStorageActions::read_party(){
-    return std::vector<PcPartyMember>(read_party_size(m_console, m_context));
+    std::vector<PcPartyMember> party(read_party_size(m_console, m_context));
+    //  A full party: its last slot's species, from its summary, so that a
+    //  withdrawal done on an earlier try is seen as done (a withdrawal joins
+    //  at the end). The PC is reached only with the full START menu.
+    if (party.size() == PARTY_SIZE){
+        const std::optional<SummaryRead> last = read_party_summary(
+            m_console, m_context, StartMenu::FULL, m_language, /*slot=*/PARTY_SIZE - 1
+        );
+        if (last){
+            party.back().species = last->species;
+        }
+    }
+    return party;
 }
 
 PcView ConsolePcStorageActions::read_view(){
