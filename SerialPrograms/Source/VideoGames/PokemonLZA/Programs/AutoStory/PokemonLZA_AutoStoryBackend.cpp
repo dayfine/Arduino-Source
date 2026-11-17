@@ -110,7 +110,7 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
     return look;
 }
 
-Pokemon::Outcome PlzaConsoleBackend::battle(){
+Pokemon::Outcome PlzaConsoleBackend::battle(const Pokemon::StoryActionArgs&){
     try{
         fight_story_battle(m_env.env, m_env.env.console, m_env.context, m_env.battle_ai, /*timeout=*/120s);
     }catch (OperationFailedException& e){

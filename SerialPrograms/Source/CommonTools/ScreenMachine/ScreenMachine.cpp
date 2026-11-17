@@ -4,10 +4,12 @@
  *
  */
 
+#include <chrono>
 #include <format>
 #include <map>
 #include <string>
 #include <utility>
+#include "Common/Cpp/PrettyPrint.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "ScreenMachine.h"
 
@@ -90,18 +92,55 @@ std::optional<std::string> ScreenMachineChecks::problem(const ScreenState& state
 }
 
 
+//  Logs each change of the state a look matches, once, timed from the
+//  first look: "screen 2: dialog at 1.5s".
+class ScreenChangeLog{
+public:
+    explicit ScreenChangeLog(const std::function<void(std::string_view line)>& log)
+        : m_log(log)
+    {}
+
+    void screen(const std::string& name, WallClock when);
+
+private:
+    const std::function<void(std::string_view line)>& m_log;
+    std::optional<WallClock> m_start;
+    size_t m_count = 0;
+    std::string m_last;
+};
+
+
+void ScreenChangeLog::screen(const std::string& name, WallClock when){
+    if (!m_start){
+        m_start = when;
+    }
+    if (m_count > 0 && name == m_last){
+        return;
+    }
+    m_last = name;
+    m_count++;
+    if (!m_log){
+        return;
+    }
+    const double seconds = std::chrono::duration<double>(when - *m_start).count();
+    m_log(std::format("screen {}: {} at {}s", m_count, name, tostr_fixed(seconds, 1)));
+}
+
+
 } // namespace
 
 
 
 ScreenMachineResult run_screen_machine(
     const std::function<ScreenObservation()>& observe, CancellableScope& scope,
-    const std::vector<ScreenState>& states, Milliseconds timeout, StepTrace& trace
+    const std::vector<ScreenState>& states, Milliseconds timeout,
+    const std::function<void(std::string_view line)>& log
 ){
     //  Looks before the run stops even when nothing else ends it (looks with
     //  no time, states with no visit limit).
     constexpr size_t MAX_LOOKS = 10000;
     ScreenMachineChecks checks;
+    ScreenChangeLog changes(log);
     std::optional<WallClock> start;
     for (size_t looks = 0; looks < MAX_LOOKS; looks++){
         scope.throw_if_cancelled();
@@ -116,7 +155,7 @@ ScreenMachineResult run_screen_machine(
         if (state == nullptr){
             return {.terminal = "", .failure = "The screen matches none of the known states."};
         }
-        trace.screen(state->name, observation.when);
+        changes.screen(state->name, observation.when);
         std::optional<std::string> found = checks.problem(*state, observation);
         if (found){
             return {.terminal = "", .failure = std::move(*found)};

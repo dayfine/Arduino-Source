@@ -617,11 +617,11 @@ Outcome battle_start_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryA
 
 //  "story_battle": the backend's battle code, on the battle HUD within 10 s;
 //  else "battle_never_started" (03.02b looked 2 min on the overworld, 2026-11-16).
-Outcome battle_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+Outcome battle_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
     if (!event_shows_within(backend, ScreenEvent::BATTLE_STARTED, 10s)){
         return Pokemon::outcome_failed("battle_never_started", "no battle HUD within 10 s");
     }
-    return backend.battle();
+    return backend.battle(call.args);
 }
 
 

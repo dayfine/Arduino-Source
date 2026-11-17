@@ -6,7 +6,7 @@
  *  terminal state, the first matching state winning, the ways one fails (no state
  *  matches, a state comes up too often, the time or the looks run out, a
  *  waiting state stays still too long, steps that change nothing), and the
- *  trace's lines.
+ *  log's lines.
  *
  */
 
@@ -123,8 +123,8 @@ struct RunCase{
         std::string end;
         //  The steps taken, joined by ", "; none: not checked.
         std::optional<std::string> acted = std::nullopt;
-        //  The trace's lines, joined by "; "; none: not checked.
-        std::optional<std::string> trace = std::nullopt;
+        //  The log's lines, joined by "; "; none: not checked.
+        std::optional<std::string> log = std::nullopt;
     };
     Expectation expectation;
 };
@@ -145,7 +145,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.end = "choice", .acted = "choice"},
     },
     {
-        .name = "the trace logs each change of screen once, timed from the first look",
+        .name = "the log has each change of screen once, timed from the first look",
         .input = {.looks = {
             {.at = 0s, .events = {ScreenEvent::INTERACT_PROMPT}},
             {.at = 1s, .events = {ScreenEvent::INTERACT_PROMPT}},
@@ -154,7 +154,7 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .end = "choice",
-            .trace = "[test] screen 1: prompt at 0.0s; [test] screen 2: text at 2.5s; [test] screen 3: choice at 3.0s",
+            .log = "screen 1: prompt at 0.0s; screen 2: text at 2.5s; screen 3: choice at 3.0s",
         },
     },
     {
@@ -235,9 +235,9 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     std::vector<std::string> acted;
     const std::vector<ScreenState> states = test_states(acted);
     std::vector<std::string> lines;
-    StepTrace trace("test", [&lines](const std::string& line){
-        lines.push_back(line);
-    });
+    const std::function<void(std::string_view line)> log = [&lines](std::string_view line){
+        lines.emplace_back(line);
+    };
     const WallClock start = current_time();
     size_t next = 0;
     const std::function<ScreenObservation()> observe = [&]{
@@ -245,7 +245,7 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
         next++;
         return observation_of(look, start);
     };
-    const ScreenMachineResult result = run_screen_machine(observe, scope, states, test.input.timeout, trace);
+    const ScreenMachineResult result = run_screen_machine(observe, scope, states, test.input.timeout, log);
     const std::string end = result.succeeded() ? result.terminal : std::format("failed: {}", result.failure);
     if (end != test.expectation.end){
         return std::format("expected \"{}\", got \"{}\"", test.expectation.end, end);
@@ -253,8 +253,8 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     if (test.expectation.acted && joined(acted, ", ") != *test.expectation.acted){
         return std::format("expected the steps \"{}\", got \"{}\"", *test.expectation.acted, joined(acted, ", "));
     }
-    if (test.expectation.trace && joined(lines, "; ") != *test.expectation.trace){
-        return std::format("expected the trace \"{}\", got \"{}\"", *test.expectation.trace, joined(lines, "; "));
+    if (test.expectation.log && joined(lines, "; ") != *test.expectation.log){
+        return std::format("expected the log \"{}\", got \"{}\"", *test.expectation.log, joined(lines, "; "));
     }
     return true;
 }

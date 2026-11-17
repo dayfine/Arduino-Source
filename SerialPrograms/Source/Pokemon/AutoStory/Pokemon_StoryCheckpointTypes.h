@@ -22,8 +22,8 @@ namespace Pokemon{
 
 //  The stretch of story between two saves, as events.
 struct Checkpoint{
-    std::string id;
-    std::vector<Event> events;
+    std::string id = {};
+    std::vector<Event> events = {};
 };
 
 // Result report from executing a checkpoint.
@@ -31,8 +31,8 @@ struct CheckpointReport{
     bool completed = false;
     //  1-based number of the event that failed; 0 when nothing failed.
     size_t failed_event = 0;
-    std::string failed_name;
-    Outcome failure;
+    std::string failed_name = {};
+    Outcome failure = {};
     size_t events_run = 0;
 };
 

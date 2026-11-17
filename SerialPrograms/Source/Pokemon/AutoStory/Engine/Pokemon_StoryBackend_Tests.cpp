@@ -77,8 +77,8 @@ std::string fake_text(CancellableScope& scope){
 std::string fake_battle_text(CancellableScope& scope){
     FakeStoryBackend<ZonePose> won({}, scope);
     FakeStoryBackend<ZonePose> lost({.battle = outcome_failed("battle_lost", "the party fainted")}, scope);
-    const Outcome first = won.battle();
-    const Outcome second = lost.battle();
+    const Outcome first = won.battle(/*args=*/{});
+    const Outcome second = lost.battle(/*args=*/{});
     return std::format(
         "{} {} / {} {}", won.inputs().front(), first.succeeded() ? "ok" : first.failure,
         lost.inputs().front(), second.succeeded() ? "ok" : second.failure

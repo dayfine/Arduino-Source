@@ -44,12 +44,12 @@ struct CheckpointAttempts{
     //  so 0 runs one, as 1 does.
     size_t max_attempts = 1;
     //  Runs attempt `attempt`, counting from 1.
-    std::function<AttemptResult(size_t attempt)> run;
+    std::function<AttemptResult(size_t attempt)> run = {};
     //  Goes back to the checkpoint's start save before attempt
     //  `next_attempt`, writing its own log line. Returns false when it could
     //  not, which ends the loop.
-    std::function<bool(size_t next_attempt)> reset;
-    CheckpointLogger log;
+    std::function<bool(size_t next_attempt)> reset = {};
+    CheckpointLogger log = {};
     //  AS_GIVEN when `checkpoint` is the game's own text that already says
     //  it is a checkpoint, so the pass line leaves out "[Checkpoint] "
     //  (checkpoint_start_line()).

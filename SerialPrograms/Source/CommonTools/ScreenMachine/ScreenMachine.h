@@ -18,19 +18,19 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/CancellableScope.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "ScreenObservation.h"
-#include "StepTrace.h"
 
 namespace PokemonAutomation{
 
 
 //  One recognizable screen: how to tell it, and the step to take on it.
 struct ScreenState{
-    std::string name;
+    std::string name = {};
     //  Whether a look shows this screen. States are tried in order; the first
     //  match wins.
     std::function<bool(const ScreenObservation& observation)> matches;
@@ -55,10 +55,10 @@ struct ScreenState{
 //  How a run of states ended.
 struct ScreenMachineResult{
     //  The terminal state that acted; empty when the run failed.
-    std::string terminal;
+    std::string terminal = {};
     //  Why it failed: no state matched, a state seen too often, a stall, or
     //  the timeout.
-    std::string failure;
+    std::string failure = {};
 
     bool succeeded() const{
         return failure.empty();
@@ -66,13 +66,16 @@ struct ScreenMachineResult{
 };
 
 //  Runs `states` over looks from `observe` until a terminal one has acted:
-//  each look picks the first state that matches it, `trace` records it, the
-//  checks apply, then the state acts. Time is the looks' own (`when`): the
-//  run fails once `timeout` has passed since the first look, and after
-//  10000 looks in any case. A failure is returned, not thrown.
+//  each look picks the first state that matches it, the checks apply, then
+//  the state acts. Each change of state goes to `log` once, timed from the
+//  first look ("screen 2: dialog at 1.5s"); an empty `log` logs nothing.
+//  Time is the looks' own (`when`): the run fails once `timeout` has passed
+//  since the first look, and after 10000 looks in any case. A failure is
+//  returned, not thrown.
 ScreenMachineResult run_screen_machine(
     const std::function<ScreenObservation()>& observe, CancellableScope& scope,
-    const std::vector<ScreenState>& states, Milliseconds timeout, StepTrace& trace
+    const std::vector<ScreenState>& states, Milliseconds timeout,
+    const std::function<void(std::string_view line)>& log
 );
 
 

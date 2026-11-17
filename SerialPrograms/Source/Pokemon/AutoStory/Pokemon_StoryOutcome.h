@@ -25,9 +25,9 @@ namespace Pokemon{
 //  that knows where it left the player sets `pose`; the runner writes it
 //  into the run before the event's expects are checked.
 struct Outcome{
-    std::string failure;
-    std::string detail;
-    std::optional<Pose> pose;
+    std::string failure = {};
+    std::string detail = {};
+    std::optional<Pose> pose = {};
     //  A succeeded action that left the game as it found it: a read, a
     //  check, a TM the lead already knows. A reload of the same save undoes
     //  nothing it did.

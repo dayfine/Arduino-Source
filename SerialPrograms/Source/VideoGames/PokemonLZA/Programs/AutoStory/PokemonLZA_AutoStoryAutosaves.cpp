@@ -75,8 +75,8 @@ public:
         m_sightings.note(m_inner, look, m_step);
         return look;
     }
-    virtual Outcome battle() override{
-        return m_inner.battle();
+    virtual Outcome battle(const Pokemon::StoryActionArgs& args) override{
+        return m_inner.battle(args);
     }
     virtual void log(std::string_view line) override{
         m_inner.log(line);
@@ -193,29 +193,11 @@ Pokemon::StoryGame<ZonePose> with_autosave_sightings(
             return outcome;
         };
     }
-    game.save = [rows, &sightings](Pokemon::StoryBackend<ZonePose>& backend, const Pokemon::StoryCheckpoint& checkpoint){
+    game.save = Pokemon::autosave_policy<ZonePose>(rows, [&sightings](const Pokemon::StoryCheckpoint& checkpoint){
         const std::string_view last_step = checkpoint.steps.empty() ? std::string_view() : std::string_view(checkpoint.steps.back().name);
-        const std::optional<std::string> seen_in = sightings.finish(last_step);
-        if (sightings.last_end_seen()){
-            backend.log(std::format("[Save] {}: the game autosaved (seen)", checkpoint.id));
-            return Pokemon::outcome_ok();
-        }
-        if (seen_in){
-            const std::string_view next = step_after(checkpoint, *seen_in).value_or(last_step);
-            backend.log(std::format(
-                "[Save] {}: the game autosaved in {}, before {}: not saved, a reload would skip {}",
-                checkpoint.id, *seen_in, next, next
-            ));
-            return Pokemon::outcome_not_saved("autosaved before the last step");
-        }
-        if (rows.unverified_autosaves.contains(checkpoint.id)){
-            return Pokemon::outcome_not_saved("save unverified");
-        }
-        if (rows.autosaves.contains(checkpoint.id)){
-            return Pokemon::outcome_not_saved("the plan's autosave was not seen");
-        }
-        return Pokemon::outcome_not_saved("no autosave seen");
-    };
+        std::optional<std::string> first_step = sightings.finish(last_step);
+        return Pokemon::AutosaveSighting{.first_step = std::move(first_step), .at_end = sightings.last_end_seen()};
+    });
     return game;
 }
 

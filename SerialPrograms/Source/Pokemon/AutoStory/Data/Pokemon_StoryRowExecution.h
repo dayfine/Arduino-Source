@@ -59,20 +59,20 @@ StoryRowExecution read_story_row_execution(
 
 //  The rows of a story the shared execution fields mark, by id.
 struct StoryRows{
-    std::set<std::string, std::less<>> autosaves;
+    std::set<std::string, std::less<>> autosaves = {};
     //  The StoryRowSave::UNVERIFIED rows, for a run to report the autosave
     //  it sees there.
-    std::set<std::string, std::less<>> unverified_autosaves;
+    std::set<std::string, std::less<>> unverified_autosaves = {};
     //  The WHEN_CHAINED rows; each comes after an autosave row, whose
     //  autosave is its start save.
-    std::set<std::string, std::less<>> reload_when_chained;
+    std::set<std::string, std::less<>> reload_when_chained = {};
 };
 
 //  A game's story: its checkpoints in the order it plays them, and the rows
 //  their execution fields mark.
 template <typename Checkpoint>
 struct StoryData : StoryRows{
-    std::vector<Checkpoint> checkpoints;
+    std::vector<Checkpoint> checkpoints = {};
 };
 
 

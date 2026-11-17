@@ -923,8 +923,6 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonTools/ScreenMachine/ScreenMachine_Tests.cpp
     Source/CommonTools/ScreenMachine/ScreenMachine_Tests.h
     Source/CommonTools/ScreenMachine/ScreenObservation.h
-    Source/CommonTools/ScreenMachine/StepTrace.cpp
-    Source/CommonTools/ScreenMachine/StepTrace.h
     Source/CommonTools/StartupChecks/StartProgramChecks.cpp
     Source/CommonTools/StartupChecks/StartProgramChecks.h
     Source/CommonTools/StartupChecks/VideoResolutionCheck.cpp
@@ -1535,6 +1533,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryGame.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryPoseConcept.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryStepRunner.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryStepRunner.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ZonePose.cpp

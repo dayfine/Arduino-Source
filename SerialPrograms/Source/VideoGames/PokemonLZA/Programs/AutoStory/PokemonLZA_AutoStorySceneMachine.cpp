@@ -946,8 +946,7 @@ Pokemon::Outcome run_scene_machine(
         return look;
     };
     //  SceneLog logs the states, with the looks' readings.
-    StepTrace trace(std::format("PLZA {}", label), /*log=*/nullptr);
-    const ScreenMachineResult result = run_screen_machine(observe, backend.scope(), states, timeout, trace);
+    const ScreenMachineResult result = run_screen_machine(observe, backend.scope(), states, timeout, /*log=*/nullptr);
     runner.flush_log();
     if (config.end_after_black_fades){
         backend.log(std::format(

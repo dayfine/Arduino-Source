@@ -105,7 +105,7 @@ public:
     virtual Pokemon::Observation<Pokemon::ZonePose> observe() override;
     //  fight_story_battle() with the run's battle AI, two minutes at most;
     //  its failure as "battle_failed".
-    virtual Pokemon::Outcome battle() override;
+    virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs& args) override;
 
     //  To the console's log and the stream's overlay log: the checkpoint and
     //  the step under way, for whoever watches.

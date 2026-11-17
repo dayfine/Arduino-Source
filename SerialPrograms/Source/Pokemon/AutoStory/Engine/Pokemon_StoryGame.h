@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  What a game hands the story engine: its actions, its save and its
- *  reload, as data plus functions. No subclassing.
+ *  What a game hands the story engine: its actions, its save policy and
+ *  its reload, as data plus functions. No subclassing.
  *
  */
 
@@ -21,6 +21,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "Pokemon_StoryBackend.h"
+#include "Pokemon_StorySavePolicy.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -47,15 +48,6 @@ struct StoryAction{
     StoryActionHandler<PoseType> handler = {};
 };
 
-//  The failure of a game's save at a checkpoint's end that the game does
-//  not save at, or not yet known to: no error, the engine logs it as
-//  "not saved (<detail>)".
-inline constexpr std::string_view NOT_SAVED = "not_saved";
-//  NOT_SAVED, `reason` its detail: "save unverified".
-inline Outcome outcome_not_saved(std::string reason){
-    return outcome_failed(std::string(NOT_SAVED), std::move(reason));
-}
-
 //  A game, for the engine.
 template <StoryPose PoseType>
 struct StoryGame{
@@ -64,10 +56,10 @@ struct StoryGame{
     //  The game's actions. A kind's first is its default, the action of a
     //  step that names none.
     std::vector<StoryAction<PoseType>> actions = {};
-    //  The game's save (a wait for an autosave) at the end of `checkpoint`;
-    //  outcome_not_saved() where it does not save. Optional: with none,
-    //  nothing saves.
-    std::function<Outcome(StoryBackend<PoseType>& backend, const StoryCheckpoint& checkpoint)> save = {};
+    //  Who saves at a checkpoint's end (Pokemon_StorySavePolicy.h): an
+    //  autosave game's autosave_policy(). Optional: with none, nothing
+    //  saves.
+    StorySavePolicy<PoseType> save = {};
     //  Back to the last save. A succeeded reload that knows where it left
     //  the player returns that pose in its Outcome. Optional: with none, a
     //  failed checkpoint is not retried.

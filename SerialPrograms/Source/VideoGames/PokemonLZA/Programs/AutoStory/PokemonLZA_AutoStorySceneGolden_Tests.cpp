@@ -207,7 +207,7 @@ public:
         }
         return golden_look(m_now, m_screens[m_shown].screen);
     }
-    virtual Pokemon::Outcome battle() override{
+    virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs&) override{
         return Pokemon::outcome_ok();
     }
     virtual void log(std::string_view line) override{

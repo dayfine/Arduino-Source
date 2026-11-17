@@ -74,7 +74,7 @@ Observation<PoseType> FakeStoryBackend<PoseType>::observe(){
 }
 
 template <StoryPose PoseType>
-Outcome FakeStoryBackend<PoseType>::battle(){
+Outcome FakeStoryBackend<PoseType>::battle(const StoryActionArgs&){
     m_inputs.push_back("battle");
     return m_script.battle;
 }
