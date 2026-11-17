@@ -60,7 +60,7 @@ class MarkerArrival{
 public:
     explicit MarkerArrival(MarkerProof proof)
         : m_proof(proof)
-        , m_distance(MarkerDirection::TOWARD, std::nullopt)
+        , m_distance(std::nullopt)
     {}
 
     //  A look. Returns what came of its distance read (MarkerRead).
