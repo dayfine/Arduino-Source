@@ -240,10 +240,6 @@ AutoStory::AutoStory()
         /*is_password=*/false, "<b>Player Name:</b><br>Letters, digits and - / : ' , . ? ! (the keyboard's first page); at most 12 characters, 6 in Japanese and Chinese.",
         LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"Kosmos", /*placeholder_text=*/"Kosmos"
     )
-    , CAPTURE_INTRO_SCREENS(
-        "<b>Developer: capture intro screens:</b><br>A separate collection mode, not a capture during a run: it ignores Game Language and, for each of the ten languages in turn (English first), closes the game, launches it from HOME and saves its screens up to the name keyboard to the Screenshots folder. Nothing is typed, so no save is made.",
-        LockMode::LOCK_WHILE_RUNNING, /*default_value=*/false
-    )
     , ATTEMPTS_PER_CHECKPOINT(std::string(ATTEMPTS_PER_CHECKPOINT_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/1, /*min_value=*/1, /*max_value=*/5)
     , REWINDS_TO_BACKUP(std::string(REWINDS_TO_BACKUP_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/2, /*min_value=*/0, /*max_value=*/5)
     , LOAD_SAVE_FIRST(
@@ -263,7 +259,6 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(GAME_LANGUAGE);
     PA_ADD_OPTION(PLAYER_LOOK);
     PA_ADD_OPTION(PLAYER_NAME);
-    PA_ADD_OPTION(CAPTURE_INTRO_SCREENS);
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
     PA_ADD_OPTION(REWINDS_TO_BACKUP);
     PA_ADD_OPTION(LOAD_SAVE_FIRST);
@@ -273,11 +268,6 @@ AutoStory::AutoStory()
 }
 
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    if (CAPTURE_INTRO_SCREENS){
-        require_player(env.console, context, BUTTON_L);
-        capture_intro_screens(env.console, context, PLAYER_LOOK);
-        return;
-    }
     const NewGameChoices new_game{.language = GAME_LANGUAGE, .look = PLAYER_LOOK, .name = PLAYER_NAME};
     const StoryData& story_data = builtin_story_data();
     const std::vector<StoryCheckpoint>& rows = story_data.checkpoints;

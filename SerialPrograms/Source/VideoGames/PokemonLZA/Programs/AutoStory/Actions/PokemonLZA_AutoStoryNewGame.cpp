@@ -10,9 +10,6 @@
 #include <map>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
-#include "CommonFramework/GlobalAutoPaths.h"
-#include "CommonFramework/ImageTools/ImageDiff.h"
-#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -21,7 +18,6 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
 #include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_KeyboardEntryMappings.h"
 #include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h"
-#include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryConfirmChoicesReader.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryIntroScreens.h"
 #include "PokemonLZA_AutoStoryLaunch.h"
@@ -91,11 +87,6 @@ constexpr Milliseconds LOOK_TILT_RELEASE = 500ms;
 constexpr size_t SUBMIT_PRESSES = 3;
 constexpr Milliseconds SUBMIT_WAIT = 5000ms;
 
-//  Capture mode: a frame this far (pixel RMSD) from the last saved one is
-//  a new screen.
-constexpr double CAPTURE_CHANGE = 4;
-constexpr Milliseconds CAPTURE_EVERY = 1000ms;
-
 VideoSnapshot snapshot(ConsoleHandle& console, ProControllerContext& context){
     context.wait_for_all_requests();
     return console.video().snapshot();
@@ -162,32 +153,15 @@ void tilt(ProControllerContext& context, IntroKey key){
 }
 
 //  After the launch, until the language list, pressing nothing (see
-//  LAUNCH_LIMIT). `recorder` and `language`: capture mode, save each new
-//  screen on the way.
-void wait_for_language_list(
-    ConsoleHandle& console, ProControllerContext& context,
-    IntroFrameRecorder* recorder, NewGameLanguage language
-){
+//  LAUNCH_LIMIT).
+void wait_for_language_list(ConsoleHandle& console, ProControllerContext& context){
     const WallClock start = current_time();
-    std::optional<ImageRGB32> last_saved;
     while (current_time() - start < LAUNCH_LIMIT){
         const VideoSnapshot frame = snapshot(console, context);
         if (frame && read_language_list_cursor(frame)){
             console.log("AutoStory intro: the language list shows.");
             dump_debug_image(console, std::string(DUMP_FOLDER), "language-list", frame);
             return;
-        }
-        if (frame && recorder){
-            const Milliseconds at = std::chrono::duration_cast<Milliseconds>(current_time() - start);
-            const std::optional<double> change = last_saved
-                ? std::optional<double>(ImageMatch::pixel_RMSD(*last_saved, frame))
-                : std::nullopt;
-            if (recorder->see(at, change)){
-                const std::string file = intro_capture_file(language, std::format("{:02}", recorder->saved() - 1));
-                frame->save(SCREENSHOTS_PATH() + file);
-                console.log(std::format("AutoStory capture: {} ({} ms after the launch).", file, at.count()));
-                last_saved = frame->copy();
-            }
         }
         context.wait_for(250ms);
     }
@@ -369,16 +343,6 @@ void type_name(ConsoleHandle& console, ProControllerContext& context, const NewG
     submit_name(console, context);
 }
 
-//  Capture mode: the screen now as `language`'s `screen`.
-void save_capture(ConsoleHandle& console, ProControllerContext& context, NewGameLanguage language, std::string_view screen){
-    const VideoSnapshot frame = snapshot(console, context);
-    const std::string file = intro_capture_file(language, screen);
-    if (frame){
-        frame->save(SCREENSHOTS_PATH() + file);
-        console.log(std::format("AutoStory capture: {}.", file));
-    }
-}
-
 std::optional<NewGameStart> read_start(ConsoleHandle& console, const ImageViewRGB32& frame){
     if (read_confirm_choices_cursor(frame)){
         return NewGameStart::CONFIRM_CHOICES;
@@ -440,7 +404,7 @@ void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, 
         return;
     case NewGameStart::HOME:
         launch_plza_from_home(console, context);
-        wait_for_language_list(console, context, /*recorder=*/nullptr, choices.language);
+        wait_for_language_list(console, context);
         break;
     case NewGameStart::LANGUAGE_LIST:
         break;
@@ -448,46 +412,6 @@ void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, 
     pick_language(console, context, choices.language);
     pick_look(console, context, choices.look);
     type_name(console, context, choices);
-}
-
-
-bool IntroFrameRecorder::see(Milliseconds at, std::optional<double> from_saved){
-    if (m_last_saved && at - *m_last_saved < m_every){
-        return false;
-    }
-    if (from_saved && *from_saved <= m_change){
-        return false;
-    }
-    m_last_saved = at;
-    m_saved++;
-    return true;
-}
-
-std::string intro_capture_file(NewGameLanguage language, std::string_view screen){
-    return std::format("{}_{}.png", new_game_language_info(language).tag, screen);
-}
-
-void capture_intro_screens(ConsoleHandle& console, ProControllerContext& context, size_t look){
-    for (size_t index = 0; index < 10; index++){
-        const NewGameLanguage language = (NewGameLanguage)index;
-        const NewGameLanguageInfo& info = new_game_language_info(language);
-        console.log(std::format("AutoStory capture: {}: closing the game and launching it from HOME.", info.tag));
-        launch_plza_from_home(console, context);
-        IntroFrameRecorder recorder(CAPTURE_CHANGE, CAPTURE_EVERY);
-        wait_for_language_list(console, context, &recorder, language);
-        save_capture(console, context, language, "language-list");
-        pick_language(console, context, language);
-        if (!wait_for_frame(console, context, is_look_picker, 20000ms)){
-            fail(console, "the look picker did not show within 20 s of the language's A.");
-        }
-        save_capture(console, context, language, "look-picker");
-        pick_look(console, context, look);
-        wait_for_keyboard(console, context);
-        save_capture(console, context, language, "keyboard");
-        console.log(std::format("AutoStory capture: {}: {} screens before the language list.", info.tag, recorder.saved()));
-    }
-    go_home(console, context);
-    close_game_from_home(console, context);
 }
 
 

@@ -15,8 +15,7 @@ namespace PokemonLZA{
 
 
 //  Registers the new game's tests: the choices' checks, the language list's
-//  and look picker's moves, the name's key presses and capture mode's
-//  recording and file names.
+//  and look picker's moves and the name's key presses.
 void add_tests_AutoStoryNewGame(UnitTestDatabase& database);
 
 

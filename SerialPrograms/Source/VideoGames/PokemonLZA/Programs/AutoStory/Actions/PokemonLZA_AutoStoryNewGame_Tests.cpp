@@ -7,7 +7,6 @@
 #include <format>
 #include <optional>
 #include <string>
-#include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonLZA_AutoStoryNewGame.h"
@@ -260,106 +259,6 @@ private:
     const GridCase& m_test;
 };
 
-
-//  Capture mode's recording: change 4, at most one frame a second. Each
-//  frame is (ms since the launch, RMSD from the last saved; -1: none yet).
-struct RecorderCase{
-    std::string name;
-    struct Input{
-        std::vector<std::pair<int, double>> frames;
-    };
-    Input input;
-    struct Expectation{
-        std::string saved;      //  One letter per frame: s saved, . not.
-    };
-    Expectation expectation;
-};
-
-const RecorderCase RECORDER_CASES[] = {
-    {.name = "the first frame is saved", .input = {.frames = {{0, -1}}}, .expectation = {.saved = "s"}},
-    {
-        .name = "a still screen is saved once",
-        .input = {.frames = {{0, -1}, {1500, 1}, {3000, 2}}},
-        .expectation = {.saved = "s.."},
-    },
-    {
-        .name = "each new screen is saved",
-        .input = {.frames = {{0, -1}, {1500, 30}, {3000, 3}, {4500, 25}}},
-        .expectation = {.saved = "ss.s"},
-    },
-    {
-        .name = "a change within a second of the last save waits",
-        .input = {.frames = {{0, -1}, {500, 30}, {1250, 30}}},
-        .expectation = {.saved = "s.s"},
-    },
-};
-
-class Test_IntroRecorder : public UnitTest{
-public:
-    explicit Test_IntroRecorder(const RecorderCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStory - capture recording: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        IntroFrameRecorder recorder(/*change=*/4, /*every=*/Milliseconds(1000));
-        std::string saved;
-        for (const auto& [at, change] : m_test.input.frames){
-            const std::optional<double> from_saved = change < 0 ? std::nullopt : std::optional<double>(change);
-            saved += recorder.see(Milliseconds(at), from_saved) ? 's' : '.';
-        }
-        if (saved != m_test.expectation.saved){
-            return std::format("Expected {}, got {}.", m_test.expectation.saved, saved);
-        }
-        return true;
-    }
-
-private:
-    const RecorderCase& m_test;
-};
-
-
-//  Capture mode's file names, which sort each language's screens in order.
-struct CaptureFileCase{
-    std::string name;
-    struct Input{
-        NewGameLanguage language = NewGameLanguage::English;
-        std::string screen;
-    };
-    Input input;
-    struct Expectation{
-        std::string file;
-    };
-    Expectation expectation;
-};
-
-const CaptureFileCase CAPTURE_FILE_CASES[] = {
-    {.name = "a screen before the list", .input = {.language = NewGameLanguage::German, .screen = "03"}, .expectation = {.file = "de_03.png"}},
-    {.name = "Korean is captured", .input = {.language = NewGameLanguage::Korean, .screen = "keyboard"}, .expectation = {.file = "ko_keyboard.png"}},
-    {
-        .name = "Latin American Spanish",
-        .input = {.language = NewGameLanguage::SpanishLatinAmerica, .screen = "language-list"},
-        .expectation = {.file = "es-419_language-list.png"},
-    },
-};
-
-class Test_CaptureFile : public UnitTest{
-public:
-    explicit Test_CaptureFile(const CaptureFileCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStory - capture file: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::string file = intro_capture_file(m_test.input.language, m_test.input.screen);
-        if (file != m_test.expectation.file){
-            return std::format("Expected {}, got {}.", m_test.expectation.file, file);
-        }
-        return true;
-    }
-
-private:
-    const CaptureFileCase& m_test;
-};
-
 } // namespace
 
 
@@ -372,12 +271,6 @@ void add_tests_AutoStoryNewGame(UnitTestDatabase& database){
     }
     for (const GridCase& test : GRID_CASES){
         database.add<Test_GridMoves>(test);
-    }
-    for (const RecorderCase& test : RECORDER_CASES){
-        database.add<Test_IntroRecorder>(test);
-    }
-    for (const CaptureFileCase& test : CAPTURE_FILE_CASES){
-        database.add<Test_CaptureFile>(test);
     }
 }
 

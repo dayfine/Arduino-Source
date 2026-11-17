@@ -3,8 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  01.00's steps before "Confirm Choices": launch the game from HOME, pick
- *  the language, the look and type the name (PokemonLZA_AutoStoryNewGameChoices.h),
- *  and a developer mode that saves each language's intro screens.
+ *  the language, the look and type the name (PokemonLZA_AutoStoryNewGameChoices.h).
  *
  */
 
@@ -13,8 +12,6 @@
 
 #include <optional>
 #include <string>
-#include <string_view>
-#include "Common/Cpp/Time.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "PokemonLZA_AutoStoryNewGameChoices.h"
@@ -50,45 +47,6 @@ std::optional<std::string> new_game_start_problem(NewGameStart start, const NewG
 //  does not show, its highlight does not reach the choice, or a key press
 //  does not reach the name's field.
 void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices);
-
-//  Capture mode's recording of the screens between the launch and the
-//  language list: a polled frame is saved when it differs from the last
-//  saved one by more than `change` (pixel RMSD), at most one per `every`.
-class IntroFrameRecorder{
-public:
-    IntroFrameRecorder(double change, Milliseconds every)
-        : m_change(change)
-        , m_every(every)
-    {}
-
-    //  Whether to save the frame polled at `at` (since the recording
-    //  began), `from_saved` from the last saved one (none: nothing saved
-    //  yet). Counts it as saved when so.
-    bool see(Milliseconds at, std::optional<double> from_saved);
-
-    //  How many frames were saved.
-    size_t saved() const{
-        return m_saved;
-    }
-
-private:
-    double m_change;
-    Milliseconds m_every;
-    std::optional<Milliseconds> m_last_saved;
-    size_t m_saved = 0;
-};
-
-//  The file capture mode saves `language`'s screen `screen` to, in the
-//  Screenshots folder: "<tag>_<screen>.png".
-std::string intro_capture_file(NewGameLanguage language, std::string_view screen);
-
-//  Developer: for each of the 10 languages (Korean too: nothing is typed),
-//  closes the game, launches it from HOME and saves each distinct screen
-//  up to the language list as "<tag>_NN.png" (NN from 00, in order), then
-//  "<tag>_language-list.png"; picks the language and look `look`, saves
-//  "<tag>_look-picker.png" and "<tag>_keyboard.png", and goes back to HOME.
-//  Nothing is typed or confirmed, so no save is made.
-void capture_intro_screens(ConsoleHandle& console, ProControllerContext& context, size_t look);
 
 
 

@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The one way AutoStory starts or restarts PLZA from the Switch HOME: for
- *  a new game, for the latest save and for capture mode. HOME's tiles are
+ *  a new game and for the latest save. HOME's tiles are
  *  in last-played order, so the first tile is not always PLZA's (console B,
  *  2026-11-15: FireRed's, played last, launched instead).
  *
