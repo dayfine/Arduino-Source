@@ -86,7 +86,8 @@ struct PolicyView{
     StatusCondition status = StatusCondition::NONE;
     //  Its Speed as POKEMON SKILLS shows it, before badges and stages.
     int speed = 0;
-    //  The foe out, in the step's "foes" order; those before it have fainted.
+    //  The foe out, as its slot in the step's "foes" (FoeParty: the
+    //  trainer may send them in any order).
     size_t foe_index = 0;
     //  The foe's HP bar's filled share, 1 when not read.
     double foe_fill = 1.0;
