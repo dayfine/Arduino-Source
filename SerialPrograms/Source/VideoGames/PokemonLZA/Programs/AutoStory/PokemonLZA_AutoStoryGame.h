@@ -50,10 +50,7 @@ namespace PokemonLZA{
 //                              "wait_ms", "end_after_ms" (no end before
 //                              that much of the last leg), and "end",
 //                              "fade_white", "fade_black", "dialog" or
-//                              "prompt" (an A prompt), and
-//                              "first_turn_when_chained", a turn before
-//                              the legs when the checkpoint went on from
-//                              the live screen (RunState::row_start);
+//                              "prompt" (an A prompt);
 //                              walked once the screen shows free control
 //                              (check_can_walk()), until its end event if it
 //                              has one (walk_until()), else until its legs
@@ -154,9 +151,9 @@ struct SegmentRunOptions{
 //  returns to its start (the first row, or one after a row whose autosave
 //  `sightings` saw), else once. Between two rows, the event "chain": a row
 //  runs on from the live screen when its start check passes or cannot
-//  tell (logged as "start unchecked"), `state`'s row_start CHAINED; when it
-//  fails, the row's start is loaded (load_checkpoint_start()) if the row
-//  before's autosave was seen, with a fresh `state` (row_start LOADED).
+//  tell (logged as "start unchecked"); when it fails, the row's start is
+//  loaded (load_checkpoint_start()) if the row before's autosave was seen,
+//  with a fresh `state`.
 //  With no autosave seen, a reload would rewind to an older save: the run
 //  fails there as "no_start_save". A failed load fails the run too.
 //  A row that saw an autosave and then failed is not retried: the save

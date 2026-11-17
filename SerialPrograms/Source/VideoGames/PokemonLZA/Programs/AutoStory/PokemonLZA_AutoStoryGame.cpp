@@ -95,8 +95,7 @@ std::vector<StoryArgSpec> gate_args(int64_t timeout_ms){
     };
 }
 
-//  A walk's args: "legs", "end", "held", "wait_ms", "end_after_ms" and
-//  "first_turn_when_chained".
+//  A walk's args: "legs", "end", "held", "wait_ms" and "end_after_ms".
 std::vector<StoryArgSpec> walk_args(){
     return {
         StoryArgSpec{
@@ -112,11 +111,6 @@ std::vector<StoryArgSpec> walk_args(){
         optional_int(
             "end_after_ms",
             "with \"end\": the end event counts only after this much of the last leg, about 3/4 of its measured walk; none: from the start"
-        ),
-        optional_int(
-            "first_turn_when_chained",
-            "a turn in degrees (clockwise, negative: left) before the legs when the checkpoint went on from the live screen, "
-            "not from a save: the legs are measured from the save's facing"
         ),
     };
 }
@@ -455,33 +449,12 @@ Outcome menu_save_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActi
     return save_from_menu(backend);
 }
 
-//  `move` with the turn of `args`' "first_turn_when_chained" first, as a
-//  turn-only leg, when `start` is CHAINED; logs which. Unchanged without
-//  that arg.
-StoryMove turn_first_when_chained(
-    Pokemon::StoryBackend<ZonePose>& backend, std::string_view name, const StoryActionArgs& args, Pokemon::RowStart start, StoryMove move
-){
-    const auto turn = args.find("first_turn_when_chained");
-    if (turn == args.end()){
-        return move;
-    }
-    const int64_t degrees = std::get<int64_t>(turn->second);
-    if (start != Pokemon::RowStart::CHAINED){
-        backend.log(std::format("[PLZA] {}: started from a save: no turn", name));
-        return move;
-    }
-    backend.log(std::format("[PLZA] {}: chained: turning {} first", name, degrees));
-    move.legs.insert(move.legs.begin(), StoryWalkLeg{.turn = (double)degrees, .walk = Milliseconds(0)});
-    return move;
-}
-
 //  "walk": its legs, once the screen shows free control; held until the
 //  event of its "end" arg, if it has one, else finished with one look
-//  (finish_walk()). With "first_turn_when_chained", a checkpoint that went
-//  on from the live screen (`state`'s row_start) turns that much first.
-Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState& state){
+//  (finish_walk()).
+Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
     const std::string_view name = call.step.name;
-    const StoryMove move = turn_first_when_chained(backend, name, call.args, state.row_start, story_walk_move(call.args));
+    const StoryMove move = story_walk_move(call.args);
     if (move.wait_first > Milliseconds(0)){
         backend.wait(move.wait_first);
     }
@@ -959,8 +932,6 @@ Pokemon::SegmentReport run_plza_segments(
                     return fail(loaded);
                 }
                 state = Pokemon::RunState{};
-            }else{
-                state.row_start = Pokemon::RowStart::CHAINED;
             }
         }
         if (!start_saved && options.attempts_per_checkpoint > 1){
