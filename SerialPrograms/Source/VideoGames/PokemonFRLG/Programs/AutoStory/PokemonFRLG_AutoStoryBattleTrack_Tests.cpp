@@ -8,6 +8,7 @@
  */
 
 #include <format>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -238,12 +239,110 @@ const TrackCase TRACK_CASES[] = {
     },
 };
 
+
+const std::vector<std::string> CHAMPION_PARTY = {"pidgeot", "alakazam", "rhydon", "gyarados", "arcanine", "venusaur"};
+const std::vector<std::string> AGATHA_PARTY = {"gengar", "golbat", "haunter", "arbok", "gengar"};
+
+struct FoePartyInput{
+    std::vector<std::string> party = {};
+    //  The species read out each turn, in order.
+    std::vector<std::string> outs = {};
+};
+//  What out() gave each turn.
+struct FoeSeen{
+    size_t slot = 0;
+    int alive = 0;
+    std::optional<size_t> fell = std::nullopt;
+
+    bool operator==(const FoeSeen&) const = default;
+};
+struct FoePartyExpectation{
+    std::vector<FoeSeen> seen = {};
+};
+struct FoePartyCase{
+    std::string name;
+    FoePartyInput input;
+    FoePartyExpectation expectation;
+};
+
+std::string describe(const std::vector<FoeSeen>& seen){
+    std::string text;
+    for (const FoeSeen& turn : seen){
+        text += std::format("[slot {}, {} alive, fell {}] ", turn.slot, turn.alive, turn.fell ? std::to_string(*turn.fell) : "-");
+    }
+    return text;
+}
+
+class Test_FoeParty : public UnitTest{
+public:
+    explicit Test_FoeParty(FoePartyCase test_case)
+        : UnitTest(std::format("PokemonFRLG::AutoStoryBattleTrack - foe party: {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        FoeParty party(m_case.input.party);
+        std::vector<FoeSeen> got;
+        for (const std::string& species : m_case.input.outs){
+            const size_t slot = party.out(species);
+            got.push_back(FoeSeen{.slot = slot, .alive = party.alive(), .fell = party.fell()});
+        }
+        if (got != m_case.expectation.seen){
+            return std::format("Got {}; expected {}.", describe(got), describe(m_case.expectation.seen));
+        }
+        return true;
+    }
+
+private:
+    FoePartyCase m_case;
+};
+
+const FoePartyCase FOE_PARTY_CASES[] = {
+    {
+        .name = "console B, 2026-11-17, Champion try 1: sent out of party order",
+        .input = {
+            .party = CHAMPION_PARTY,
+            .outs = {"pidgeot", "venusaur", "alakazam", "rhydon", "gyarados", "arcanine"},
+        },
+        .expectation = {.seen = {
+            {.slot = 0, .alive = 6},
+            {.slot = 5, .alive = 5, .fell = 0},
+            {.slot = 1, .alive = 4, .fell = 5},
+            {.slot = 2, .alive = 3, .fell = 1},
+            {.slot = 3, .alive = 2, .fell = 2},
+            {.slot = 4, .alive = 1, .fell = 3},
+        }},
+    },
+    {
+        .name = "the same foe over turns: none fell",
+        .input = {.party = CHAMPION_PARTY, .outs = {"pidgeot", "pidgeot", "pidgeot"}},
+        .expectation = {.seen = {{.slot = 0, .alive = 6}, {.slot = 0, .alive = 6}, {.slot = 0, .alive = 6}}},
+    },
+    {
+        .name = "a name not read: the one out stays",
+        .input = {.party = CHAMPION_PARTY, .outs = {"pidgeot", "", "missingno"}},
+        .expectation = {.seen = {{.slot = 0, .alive = 6}, {.slot = 0, .alive = 6}, {.slot = 0, .alive = 6}}},
+    },
+    {
+        .name = "Agatha's second Gengar after the first fell",
+        .input = {.party = AGATHA_PARTY, .outs = {"gengar", "golbat", "gengar"}},
+        .expectation = {.seen = {{.slot = 0, .alive = 5}, {.slot = 1, .alive = 4, .fell = 0}, {.slot = 4, .alive = 3, .fell = 1}}},
+    },
+    {
+        .name = "a foe back after a switch: up again",
+        .input = {.party = CHAMPION_PARTY, .outs = {"pidgeot", "rhydon", "pidgeot"}},
+        .expectation = {.seen = {{.slot = 0, .alive = 6}, {.slot = 2, .alive = 5, .fell = 0}, {.slot = 0, .alive = 5, .fell = 2}}},
+    },
+};
+
 } // namespace
 
 
 void add_tests_AutoStoryBattleTrack(UnitTestDatabase& database){
     for (const TrackCase& test_case : TRACK_CASES){
         database.add<Test_BattleTrack>(test_case);
+    }
+    for (const FoePartyCase& test_case : FOE_PARTY_CASES){
+        database.add<Test_FoeParty>(test_case);
     }
 }
 

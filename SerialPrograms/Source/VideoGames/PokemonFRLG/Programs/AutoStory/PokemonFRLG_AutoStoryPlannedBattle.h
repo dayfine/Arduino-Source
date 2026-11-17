@@ -91,9 +91,10 @@ private:
     const LeagueTrainerData* m_trainer;
     BattleTrack m_track;
     PlannedStreak m_streak;
-    //  The items used in the fight, and the foe's party slot last turn.
+    //  The trainer's party as it came out.
+    FoeParty m_foes;
+    //  The items used in the fight.
     SlugCounts m_used;
-    std::optional<size_t> m_slot;
 };
 
 //  The League fight `trainer` (a battle step's "trainer") is fought by

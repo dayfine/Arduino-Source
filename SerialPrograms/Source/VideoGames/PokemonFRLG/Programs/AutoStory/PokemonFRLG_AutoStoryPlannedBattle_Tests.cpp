@@ -8,6 +8,8 @@
  *
  */
 
+#include <cstdio>
+#include <cstdlib>
 #include <format>
 #include <optional>
 #include <string>
@@ -17,6 +19,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_AutoStoryLeagueFoes.h"
 #include "PokemonFRLG_AutoStoryPlannedBattle.h"
+#include "PokemonFRLG_AutoStorySupplies.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -326,10 +329,182 @@ const StateCase STATE_CASES[] = {
     },
 };
 
+
+//  One choice of a League fight: the foe read out, the foe index the
+//  battle loop passed, our HP and the texts since the last choice.
+struct SendTurn{
+    std::string foe_out = {};
+    size_t foe_index = 0;
+    int hp = 171;
+    std::vector<std::string> texts = {};
+    //  X items used after this choice.
+    std::vector<std::string> used = {};
+};
+struct SendsInput{
+    std::string trainer = {};
+    std::vector<SendTurn> turns = {};
+};
+//  A choice's log line: the foe, its party slot, the party alive and our
+//  danger; or the plan's early reset.
+struct SendSeen{
+    std::string species = {};
+    size_t slot = 0;
+    int left = 0;
+    bool danger = false;
+    bool early_reset = false;
+
+    bool operator==(const SendSeen&) const = default;
+};
+struct SendsExpectation{
+    std::vector<SendSeen> seen = {};
+};
+struct SendsCase{
+    std::string name;
+    SendsInput input;
+    SendsExpectation expectation;
+};
+
+//  The turn log's "<species> <hp>/<max> (slot <s>, <n> left), D <d>".
+SendSeen seen_of(const PlannedBattle::Turn& turn){
+    if (turn.early_reset){
+        return SendSeen{.early_reset = true};
+    }
+    SendSeen seen;
+    const std::string& log = turn.log;
+    const size_t at = log.find(" (slot ");
+    const size_t hp = log.rfind(' ', at == std::string::npos ? 0 : at - 1);
+    const size_t name = log.rfind(", ", hp == std::string::npos ? 0 : hp);
+    const size_t danger = log.find(", D ");
+    if (at == std::string::npos || hp == std::string::npos || name == std::string::npos || danger == std::string::npos){
+        return seen;
+    }
+    seen.species = log.substr(name + 2, hp - name - 2);
+    int slot = 0;
+    if (std::sscanf(log.c_str() + at, " (slot %d, %d left)", &slot, &seen.left) != 2){
+        return SendSeen{};
+    }
+    seen.slot = static_cast<size_t>(slot);
+    seen.danger = std::atoi(log.c_str() + danger + 4) > 0;
+    return seen;
+}
+
+std::string describe(const std::vector<SendSeen>& seen){
+    std::string text;
+    for (const SendSeen& turn : seen){
+        text += turn.early_reset ? std::string("[early reset] ")
+            : std::format("[{} slot {}, {} left, danger {}] ", turn.species, turn.slot, turn.left, turn.danger);
+    }
+    return text;
+}
+
+class Test_PlannedSends : public UnitTest{
+public:
+    explicit Test_PlannedSends(SendsCase test_case)
+        : UnitTest(std::format("PokemonFRLG::AutoStoryPlannedBattle - sends: {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        std::optional<PlannedBattle> battle = planned_battle(m_case.input.trainer);
+        if (!battle){
+            return std::format("No League fight {}.", m_case.input.trainer);
+        }
+        Supplies supplies;
+        supplies.lead = blastoise();
+        supplies.other_counts = {{"full-restore", 8}, {"x-special", 15}, {"x-speed", 5}, {"x-accuracy", 3}, {"guard-spec", 2}};
+        std::vector<SendSeen> got;
+        for (const SendTurn& turn : m_case.input.turns){
+            supplies.foe_out = turn.foe_out;
+            const PolicyView view{
+                .hp = static_cast<double>(turn.hp),
+                .max_hp = 171,
+                .speed = 117,
+                .foe_index = turn.foe_index,
+                .battle_texts = turn.texts,
+            };
+            got.push_back(seen_of(battle->choose(supplies, view)));
+            for (const std::string& item : turn.used){
+                battle->item_used(item);
+            }
+        }
+        if (got != m_case.expectation.seen){
+            return std::format("Got {}; expected {}.", describe(got), describe(m_case.expectation.seen));
+        }
+        return true;
+    }
+
+private:
+    SendsCase m_case;
+};
+
+const SendsCase SENDS_CASES[] = {
+    {
+        //  The battle loop's foe index stuck at Venusaur's slot from the
+        //  second foe on; Blastoise met Arcanine at 26 HP and fell to
+        //  Extreme Speed with the policy seeing no danger.
+        .name = "console B, 2026-11-17, Champion try 1: Venusaur second",
+        .input = {
+            .trainer = "TRAINER_CHAMPION_FIRST_BULBASAUR",
+            .turns = {
+                {.foe_out = "pidgeot", .foe_index = 0},
+                {.foe_out = "venusaur", .foe_index = 5},
+                {.foe_out = "alakazam", .foe_index = 5},
+                {.foe_out = "rhydon", .foe_index = 5},
+                {.foe_out = "gyarados", .foe_index = 5},
+                {.foe_out = "arcanine", .foe_index = 5, .hp = 26},
+            },
+        },
+        .expectation = {.seen = {
+            {.species = "pidgeot", .slot = 0, .left = 6, .danger = true},
+            {.species = "venusaur", .slot = 5, .left = 5, .danger = true},
+            {.species = "alakazam", .slot = 1, .left = 4, .danger = true},
+            {.species = "rhydon", .slot = 2, .left = 3, .danger = true},
+            {.species = "gyarados", .slot = 3, .left = 2, .danger = true},
+            {.species = "arcanine", .slot = 4, .left = 1, .danger = true},
+        }},
+    },
+    {
+        .name = "Bruno's Onix falls after three X Speeds with our Speed below +0: the plan's early reset",
+        .input = {
+            .trainer = "TRAINER_ELITE_FOUR_BRUNO",
+            .turns = {
+                {.foe_out = "onix", .used = {"x-speed", "x-speed", "x-speed"}},
+                {
+                    .foe_out = "hitmonlee",
+                    .texts = {"blastoisesspeedfell", "blastoisesspeedfell", "blastoisesspeedfell", "blastoisesspeedfell"},
+                },
+            },
+        },
+        .expectation = {.seen = {{.species = "onix", .slot = 0, .left = 5, .danger = true}, {.early_reset = true}}},
+    },
+    {
+        .name = "Bruno's Hitmonlee falls first: no early reset",
+        .input = {
+            .trainer = "TRAINER_ELITE_FOUR_BRUNO",
+            .turns = {
+                {
+                    .foe_out = "hitmonlee",
+                    .used = {"x-speed", "x-speed", "x-speed"},
+                },
+                {
+                    .foe_out = "onix",
+                    .texts = {"blastoisesspeedfell", "blastoisesspeedfell", "blastoisesspeedfell", "blastoisesspeedfell"},
+                },
+            },
+        },
+        .expectation = {.seen = {
+            {.species = "hitmonlee", .slot = 2, .left = 5, .danger = true},
+            {.species = "onix", .slot = 0, .left = 4, .danger = true},
+        }},
+    },
+};
+
 } // namespace
 
 
 void add_tests_AutoStoryPlannedBattle(UnitTestDatabase& database){
+    for (const SendsCase& test_case : SENDS_CASES){
+        database.add<Test_PlannedSends>(test_case);
+    }
     for (const FoesCase& test_case : FOES_CASES){
         database.add<Test_LeagueFoes>(test_case);
     }

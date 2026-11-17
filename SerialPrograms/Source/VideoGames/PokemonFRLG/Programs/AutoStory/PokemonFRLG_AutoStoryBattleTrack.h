@@ -97,6 +97,36 @@ private:
 };
 
 
+//  A trainer's party as it comes out. Gen 3's trainer AI picks the next
+//  Pokemon by its matchup with ours, not by party slot (console B,
+//  2026-11-17, Champion try 1: Venusaur, the last slot, came out second).
+//  A member that leaves the field is taken to have fallen (no text read
+//  tells a faint from the AI's rare switch); one that comes back is up.
+class FoeParty{
+public:
+    //  The party's species by slot.
+    explicit FoeParty(std::vector<std::string> species);
+
+    //  The foe out is `species`: the first member of it not fallen (else
+    //  the first of it, back after all). The one out before, if another,
+    //  fell. Not read or not in the party: the one out stays. Returns the
+    //  foe's slot.
+    size_t out(std::string_view species);
+    //  The member that fell at the last out(), if one did.
+    std::optional<size_t> fell() const{
+        return m_fell;
+    }
+    //  The members not fallen, the one out included.
+    int alive() const;
+
+private:
+    std::vector<std::string> m_species;
+    std::vector<bool> m_fallen;
+    std::optional<size_t> m_out;
+    std::optional<size_t> m_fell;
+};
+
+
 //  Registers the battle track tests.
 void add_tests_AutoStoryBattleTrack(UnitTestDatabase& database);
 
