@@ -304,8 +304,9 @@ TurnAction BattleDecisions::switch_lead_back(){
     }
     if (m_planned && m_planned->resets_on_roar()){
         return TurnAction{
-            .choice = TurnChoice::RESET_ON_ROAR,
+            .choice = TurnChoice::END_TRY,
             .heal_reason = std::format("our {} is out, not sent: a Roar or Whirlwind landed; the plan resets the try", m_supplies.own_out),
+            .try_end = BattleEnd::ROARED,
         };
     }
     if (m_planned){
@@ -375,7 +376,7 @@ TurnAction BattleDecisions::planned_turn(const PartyStatus& status){
     }
     const std::string reason = std::format("planned: {}", turn.log);
     if (turn.early_reset){
-        return TurnAction{.choice = TurnChoice::EARLY_RESET, .heal_reason = reason};
+        return TurnAction{.choice = TurnChoice::END_TRY, .heal_reason = reason, .try_end = BattleEnd::EARLY_RESET};
     }
     if (turn.choice.item){
         m_planned_item = *turn.choice.item;
@@ -569,8 +570,7 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
     case TurnChoice::RUN:
     case TurnChoice::MOVE:
     case TurnChoice::SWITCH_LEAD:
-    case TurnChoice::RESET_ON_ROAR:
-    case TurnChoice::EARLY_RESET:
+    case TurnChoice::END_TRY:
         return;
     }
 }

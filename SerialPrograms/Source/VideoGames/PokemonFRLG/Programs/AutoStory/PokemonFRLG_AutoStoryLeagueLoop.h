@@ -51,6 +51,9 @@ enum class LeagueBattleEnd{
     EARLY_RESET,
 };
 
+//  Where the loop's lines go.
+using LeagueLog = std::function<void(std::string_view line)>;
+
 //  What the loop drives.
 struct LeagueFightRunner{
     //  Back to the fight's start save.
@@ -63,7 +66,7 @@ struct LeagueFightRunner{
     std::function<LeagueBattleEnd()> fight;
     //  Saves the game where it is.
     std::function<void()> save;
-    std::function<void(std::string_view line)> log;
+    LeagueLog log;
 };
 
 //  How the loop left a fight.
@@ -90,6 +93,7 @@ struct LeagueTryRecord{
     bool passes = false;
 };
 
+//  The tries of a fight and how the loop left it.
 struct LeagueFightReport{
     LeagueFightVerdict verdict = LeagueFightVerdict::NO_FIGURES;
     std::vector<LeagueTryRecord> tries = {};
