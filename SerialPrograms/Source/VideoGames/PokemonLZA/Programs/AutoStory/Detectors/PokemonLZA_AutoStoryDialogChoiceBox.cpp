@@ -24,13 +24,13 @@ constexpr size_t MIN_CHOICE_ROWS = 2;
 
 //  The menu's geometry at 1920 x 1080. Measured on the console on the
 //  tourist's two rows (Traditional Chinese), the Research Lab elevator's
-//  three (Japanese) and Villy's two at 01.02 (Italian). The panel is
-//  anchored at its bottom right: it ends at x 1728, y 808 whatever its
+//  three (Japanese) and Villy's two at 01.02 (Italian, French). The panel
+//  is anchored at its bottom right: it ends at x 1728, y 808 whatever its
 //  rows, and grows left to fit its longest row (x 1408 in Japanese, 1343
-//  in Italian). The highlight runs from 10 right of the panel's left to
-//  x 1715; the bottom row's from y 732 to 800, each row above 80 higher.
-//  The rows' text starts 35 right of the panel's left and ends at x 1690
-//  at most (Italian's longest row: 1688).
+//  in Italian, 1198 in French). The highlight runs from 10 right of the
+//  panel's left to x 1715; the bottom row's from y 732 to 800, each row
+//  above 80 higher. The rows' text starts 35 right of the panel's left
+//  and ends at x 1690 at most (Italian's and French's longest rows: 1688).
 constexpr double ROW_PITCH = 80.0 / 1080;
 constexpr double STRIP_TOP = 748.0 / 1080;
 constexpr double STRIP_HEIGHT = 40.0 / 1080;
@@ -126,8 +126,12 @@ bool row_has_text(const ImageViewRGB32& frame, size_t from_bottom, double highli
 } // namespace
 
 
+//  The selection arrow sits left of the panel: from 13 left of it to 27
+//  right (x 1185 to 1225 on French's panel at 1198). French's 01.02 rows,
+//  35 characters, take 455 of the panel's 530; the box starts at x 960,
+//  room for a panel at x 973, rows of about 54 such characters.
 const ImageFloatBox& dialog_choice_box(){
-    static const ImageFloatBox box{0.654308, 0.481553, 0.295529, 0.312621};
+    static const ImageFloatBox box{960.0 / 1920, 0.481553, 0.949837 - 960.0 / 1920, 0.312621};
     return box;
 }
 
