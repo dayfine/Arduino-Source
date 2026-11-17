@@ -408,8 +408,8 @@ UnitTestResult test_describe(){
 
 
 struct StorySegmentTestCase{
+    std::string name;
     struct Input{
-        std::string name;
         UnitTestResult (*test)();
     };
 
@@ -424,7 +424,7 @@ struct StorySegmentTestCase{
 class Test_StorySegments : public UnitTest{
 public:
     explicit Test_StorySegments(StorySegmentTestCase scenario)
-        : UnitTest(std::format("Pokemon::StorySegments - {}", scenario.input.name))
+        : UnitTest(std::format("Pokemon::StorySegments - {}", scenario.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -437,43 +437,43 @@ private:
 
 const StorySegmentTestCase STORY_SEGMENT_CASES[] = {
     {
-        .input = {.name = "checkpoints run in order", .test = test_runs_checkpoints_in_order},
+        .name = "checkpoints run in order", .input = {.test = test_runs_checkpoints_in_order},
         .expectation = {.description = "executes sequential checkpoints and saves state"},
     },
     {
-        .input = {.name = "a failed checkpoint is reloaded", .test = test_reloads_a_failed_checkpoint},
+        .name = "a failed checkpoint is reloaded", .input = {.test = test_reloads_a_failed_checkpoint},
         .expectation = {.description = "reloads prior saved state upon checkpoint failure"},
     },
     {
-        .input = {.name = "gives up and names the failure", .test = test_gives_up_and_names_the_failure},
+        .name = "gives up and names the failure", .input = {.test = test_gives_up_and_names_the_failure},
         .expectation = {.description = "reports terminal checkpoint failure after exhausting retries"},
     },
     {
-        .input = {.name = "a range of checkpoints", .test = test_range},
+        .name = "a range of checkpoints", .input = {.test = test_range},
         .expectation = {.description = "runs only the specified slice of checkpoints"},
     },
     {
-        .input = {.name = "describe", .test = test_describe},
+        .name = "describe", .input = {.test = test_describe},
         .expectation = {.description = "formats human-readable segment summary without executing"},
     },
     {
-        .input = {.name = "status lines for the overlay", .test = test_status_lines},
+        .name = "status lines for the overlay", .input = {.test = test_status_lines},
         .expectation = {.description = "generates UI overlay status updates during execution"},
     },
     {
-        .input = {.name = "a throwing event is logged, then goes on", .test = test_throwing_event_is_logged},
+        .name = "a throwing event is logged, then goes on", .input = {.test = test_throwing_event_is_logged},
         .expectation = {.description = "handles and logs exception without terminating segment"},
     },
     {
-        .input = {.name = "verify: runs from one save", .test = test_verify_runs_from_one_save},
+        .name = "verify: runs from one save", .input = {.test = test_verify_runs_from_one_save},
         .expectation = {.description = "runs verification passes against the initial save state"},
     },
     {
-        .input = {.name = "verify: no save at the end", .test = test_verify_skips_the_end_save},
+        .name = "verify: no save at the end", .input = {.test = test_verify_skips_the_end_save},
         .expectation = {.description = "skips checkpoint state save during verification mode"},
     },
     {
-        .input = {.name = "verify: too few passes", .test = test_verify_too_few_passes},
+        .name = "verify: too few passes", .input = {.test = test_verify_too_few_passes},
         .expectation = {.description = "fails verification when required pass count is not met"},
     },
 };

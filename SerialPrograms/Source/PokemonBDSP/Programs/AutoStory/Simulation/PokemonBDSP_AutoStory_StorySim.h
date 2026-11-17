@@ -141,8 +141,20 @@ using SimScene = std::vector<SimBeat>;
 //  Plays `scene` against the program's TalkOver with `rule`, a look per
 //  press, as talk_over() takes them: "" if it is judged over after the last
 //  beat, else when it was judged over early, or that it never was.
-std::string play_scene(const SimScene& scene, const TalkOverRule& rule);
+std::string play_scene(const SimScene& scene, const Pokemon::SettleRule& rule);
 } // namespace detail
+
+//  How a Pokemon Center's doors behave on one heal step (SimWorldKnobs::centers).
+struct SimCenterDoors{
+    //  The fades come late: the runs in and out end before they show, so
+    //  neither run sees one.
+    bool late_fade = false;
+    //  How long the inside fades in after the run in, settled with the
+    //  program's door rule; 0: no fade-in to wait out.
+    Milliseconds fade_in = Milliseconds(0);
+    //  The run out stops short of the door, still inside (r143a).
+    bool stays_inside = false;
+};
 
 //  What the console showed that the plain simulation leaves out, each off
 //  unless set. All of it is deterministic: wanderers walk from `wander_seed`.
@@ -190,6 +202,8 @@ struct SimWorldKnobs{
     //  goes nowhere (lab-B 2026-11-10, 00.04b heal_sandgem walked to the
     //  nurse 1500 ms after the Center's fade and stopped on "transition").
     bool slow_fade_in = false;
+    //  The Center's doors, by heal step name.
+    std::map<std::string, SimCenterDoors> centers = {};
 };
 
 namespace detail{

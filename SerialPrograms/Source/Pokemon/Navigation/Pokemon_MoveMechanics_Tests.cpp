@@ -20,7 +20,6 @@ namespace{
 
 struct MoveMechanicsCase{
     struct Input{
-        std::string_view game;
         MoveMechanics mechanics;
     };
     struct Expectation{
@@ -28,6 +27,7 @@ struct MoveMechanicsCase{
         //  timed holds).
         OpenLegPress open_legs_on_foot;
     };
+    std::string_view name;
     Input input;
     Expectation expectation;
 };
@@ -78,7 +78,7 @@ std::optional<std::string> wrong_open_legs(std::string_view gait_name, const Gai
 class Test_MoveMechanics : public UnitTest{
 public:
     explicit Test_MoveMechanics(MoveMechanicsCase scenario)
-        : UnitTest(std::format("Pokemon::MoveMechanics - {}", scenario.input.game)), m_scenario(std::move(scenario))
+        : UnitTest(std::format("Pokemon::MoveMechanics - {}", scenario.name)), m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const MoveMechanics& game = m_scenario.input.mechanics;
@@ -107,11 +107,13 @@ private:
 
 const MoveMechanicsCase MOVE_MECHANICS_CASES[] = {
     {
-        .input = {.game = "BDSP", .mechanics = BDSP_MOVE_MECHANICS},
+        .name = "BDSP",
+        .input = {.mechanics = BDSP_MOVE_MECHANICS},
         .expectation = {.open_legs_on_foot = OpenLegPress::STEP_TAPS},
     },
     {
-        .input = {.game = "FRLG", .mechanics = FRLG_MOVE_MECHANICS},
+        .name = "FRLG",
+        .input = {.mechanics = FRLG_MOVE_MECHANICS},
         .expectation = {.open_legs_on_foot = OpenLegPress::TIMED_HOLD},
     },
 };

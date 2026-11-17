@@ -17,6 +17,7 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/MoveOnlyFunction.h"
+#include "Pokemon_StoryFailureClasses.h"
 #include "Pokemon_StoryLog.h"
 #include "Pokemon_StoryPose.h"
 
@@ -36,6 +37,10 @@ struct Outcome{
     //  check, a TM the lead already knows. A reload of the same save undoes
     //  nothing it did.
     bool changed_nothing = false;
+    //  The failure's class, when the action knows it: a game's own failure
+    //  name ("probe_exhausted") has none in the shared list until the game
+    //  gives it one here. Nothing: the class the list gives `failure`.
+    std::optional<StoryFailureClass> failure_class = std::nullopt;
 
     bool succeeded() const;
 };
@@ -44,7 +49,12 @@ Outcome outcome_ok(std::optional<Pose> pose = std::nullopt);
 //  outcome_ok() with `changed_nothing`.
 Outcome outcome_unchanged();
 // Constructs a failed event outcome with reason and optional diagnostic detail.
-Outcome outcome_failed(std::string failure, std::string detail = "");
+//  `failure_class` is for a name the shared list does not class (a game's
+//  own); without it the list's class for `failure` holds.
+Outcome outcome_failed(
+    std::string failure, std::string detail = "",
+    std::optional<StoryFailureClass> failure_class = std::nullopt
+);
 //  "probe_exhausted: 4 rows": the failure and its detail, if any.
 std::string to_string(const Outcome& outcome);
 

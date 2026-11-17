@@ -23,6 +23,7 @@ const std::vector<FaultClass>& fault_classes(){
         FaultClass::DARK_CAVE,
         FaultClass::LOST_TAP,
         FaultClass::UNSEEN_STEP,
+        FaultClass::MOUNT_LOST,
     };
     return classes;
 }
@@ -49,6 +50,8 @@ std::string_view fault_class_name(FaultClass fault){
         return "lost tap";
     case FaultClass::UNSEEN_STEP:
         return "unseen step";
+    case FaultClass::MOUNT_LOST:
+        return "mount lost";
     }
     return "?";
 }

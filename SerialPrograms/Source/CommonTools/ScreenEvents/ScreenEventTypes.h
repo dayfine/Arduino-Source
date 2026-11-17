@@ -38,7 +38,7 @@ enum class ScreenEvent : uint8_t{
 };
 //  How many ScreenEvent values there are.
 constexpr size_t SCREEN_EVENT_COUNT = 12;
-
+static_assert((size_t)ScreenEvent::PLAYER_STILL + 1 == SCREEN_EVENT_COUNT, "PLAYER_STILL is the last ScreenEvent");
 //  "dialog box", for the log.
 std::string screen_event_name(ScreenEvent event);
 

@@ -32,7 +32,7 @@ enum class StoryStepKind{
     SHOP,       //  `items` from a shop
     SAVE,       //  save the game where the player stands
     READY,      //  before a big battle: items, and the nurse at `target` if they can't
-    GAME,       //  a step only this game has, named by `variant`
+    GAME,       //  a step only this game has, named by `action`
 };
 
 // Returns the readable string representation of a story step kind.
