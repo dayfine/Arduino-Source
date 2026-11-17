@@ -10,6 +10,9 @@
  *  minimap with a marker read after each step and never read the marker:
  *  the camera faced away from it.
  *
+ *  catch_in_zone() now takes only the leg off the rocks and its read from
+ *  here (ROCKS_NOT_LEFT); map legs (MapLeg) replace the timed walk.
+ *
  */
 
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryZoneStart_H

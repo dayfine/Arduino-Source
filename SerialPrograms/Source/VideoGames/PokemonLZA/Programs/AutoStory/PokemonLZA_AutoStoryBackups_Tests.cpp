@@ -144,6 +144,8 @@ struct RewindCase{
         //  What the backup card reads; none: no card read.
         std::optional<BackupCard> card;
         size_t max_rewinds = 2;
+        //  What the failed catches fail as.
+        std::string_view failure = "lost";
     };
     Input input;
     struct Expectation{
@@ -180,6 +182,17 @@ const RewindCase REWIND_CASES[] = {
             .runs = "03.08 failed",
             .backup_calls = "",
             .line = "[Rewind] 03.08 failed with no autosave in it: no rewind",
+        },
+    },
+    {
+        //  console B, 2026-11-16 16:40: a catch at 98 autosaved with the
+        //  badge unseen; the next try reloaded off the rocks (read 96).
+        .name = "03.08 fails as rocks_not_left with no autosave seen: the save moved, rewinds",
+        .input = {.autosave_in_failed_run = false, .failed_catches = 1, .card = BackupCard{.registered = 1}, .failure = "rocks_not_left"},
+        .expectation = {
+            .verdict = "done",
+            .runs = "03.08 failed, 03.06 passed, 03.07 passed, 03.08 passed",
+            .backup_calls = "open, load",
         },
     },
     {
@@ -223,11 +236,11 @@ const RewindCase REWIND_CASES[] = {
 };
 
 //  The console-less game with a reload that succeeds, its "catch_in_zone"
-//  failing as "lost" its first `failed_catches` times, counted in
+//  failing as `failure` its first `failed_catches` times, counted in
 //  `catches`. The stand-in runs on the script backend: the real one is
 //  console_only, which the registry would refuse before the handler.
 Pokemon::StoryGame<ZonePose> rewind_game(
-    const StoryData& story, size_t failed_catches, AutosaveSightings& sightings, size_t& catches
+    const StoryData& story, size_t failed_catches, std::string_view failure, AutosaveSightings& sightings, size_t& catches
 ){
     Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(story, sightings);
     game.reload = [](Pokemon::StoryBackend<ZonePose>&){
@@ -236,8 +249,8 @@ Pokemon::StoryGame<ZonePose> rewind_game(
     for (Pokemon::StoryAction<ZonePose>& action : game.actions){
         if (action.spec.name == "catch_in_zone"){
             action.spec.console_only = false;
-            action.handler = [&catches, failed_catches](Pokemon::StoryBackend<ZonePose>&, const Pokemon::StoryActionCall&, Pokemon::RunState&){
-                return catches++ < failed_catches ? Pokemon::outcome_failed("lost") : Pokemon::outcome_ok();
+            action.handler = [&catches, failed_catches, failure](Pokemon::StoryBackend<ZonePose>&, const Pokemon::StoryActionCall&, Pokemon::RunState&){
+                return catches++ < failed_catches ? Pokemon::outcome_failed(std::string(failure)) : Pokemon::outcome_ok();
             };
         }
     }
@@ -283,7 +296,7 @@ UnitTestResult check_rewind(const RewindCase& test, CancellableScope& scope){
     const StoryData& story = builtin_story_data();
     AutosaveSightings sightings;
     size_t catches = 0;
-    const Pokemon::StoryGame<ZonePose> game = rewind_game(story, test.input.failed_catches, sightings, catches);
+    const Pokemon::StoryGame<ZonePose> game = rewind_game(story, test.input.failed_catches, test.input.failure, sightings, catches);
     std::vector<std::string> calls;
     const BackupSave backup = recording_backup(test.input.card, calls);
     std::vector<Observation<ZonePose>> looks;

@@ -31,9 +31,10 @@
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 #include "PokemonLZA_AutoStoryCatchStop.h"
 #include "PokemonLZA_AutoStoryLines.h"
+#include "PokemonLZA_AutoStoryMapWalk.h"
 #include "PokemonLZA_AutoStoryMarkerWalk.h"
-#include "PokemonLZA_AutoStoryRoadWalk.h"
 #include "PokemonLZA_AutoStorySpeciesCheck.h"
+#include "PokemonLZA_AutoStoryZone1Map.h"
 #include "PokemonLZA_AutoStoryZone1Road.h"
 #include "PokemonLZA_AutoStoryZoneStart.h"
 #include "PokemonLZA_AutoStoryCatches.h"
@@ -140,9 +141,6 @@ namespace{
 //  just before the far gate, and past it is the city (console B,
 //  2026-11-16, a walk to 100 came out at 37).
 constexpr int ROAD_FLOOR = CATCH_SPOTS[std::size(CATCH_SPOTS) - 1] - ROAD_STOP_SLACK;
-constexpr Milliseconds STOP_WALK_LIMIT(30000);
-//  A walk with no distance read to start from is the longest.
-constexpr Milliseconds FIRST_WALK_LIMIT(90000);
 
 //  The patrol's time in the zone and its visits to CATCH_SPOTS (5 rounds).
 constexpr Milliseconds PATROL_LIMIT(600000);
@@ -639,70 +637,48 @@ std::string_view start_move_name(ZoneStartMove move){
     return "?";
 }
 
-//  From the start save at Taunie's rocks to the patrol's first spot by
-//  `route` (ZoneStart): L puts the camera behind the player, who faces the
-//  rocks and the marker; the leg off the rocks, an agreed read in its
-//  range, then the marker walk. Fails as "rocks_not_left" or
-//  "zone_spot_not_reached", before any catch.
+//  The objective marker's distance where a map leg ended, logged only: a
+//  cross-check of the map's waypoints (MapWaypoint), and the stop's name
+//  in the catch logs. The camera ends on the marker.
+std::optional<int> cross_check_marker(StoryEnv& env, PlzaBackend& backend, const MapWaypoint& waypoint){
+    const std::optional<int> distance = read_at_marker(env, backend);
+    backend.log(std::format(
+        "[PLZA] map leg cross-check: at {} the marker reads {}",
+        waypoint.name, distance ? std::to_string(*distance) : std::string("nothing")
+    ));
+    return distance;
+}
+
+//  From the start save at Taunie's rocks to the patrol's first spot: the
+//  pin read at the rocks (logged against ZONE1_ROCKS), L puts the camera
+//  behind the player, who faces the rocks and the marker; the leg off the
+//  rocks by `route` (ZoneStart) and an agreed read in its range, then the
+//  map legs to the 100 spot (ROCKS_TO_SPOT_100). Fails as
+//  "rocks_not_left", or as walk_map_legs() does, before any catch.
 Pokemon::Outcome go_to_zone_spot(StoryEnv& env, PlzaBackend& backend, const ZoneStartRoute& route){
+    backend.log(std::format(
+        "[PLZA] catch_in_zone: at the start, {} is put at ({:.0f}, {:.0f}) on the map{}",
+        ZONE1_ROCKS.name, ZONE1_ROCKS.pin.x, ZONE1_ROCKS.pin.y, ZONE1_ROCKS.provisional ? " [provisional]" : ""
+    ));
+    read_pin_on_map(env, backend);
     backend.press(BUTTON_L, /*hold=*/Milliseconds(100), /*release=*/Milliseconds(150));
     backend.observe();
     backend.log(std::format("[PLZA] catch_in_zone: at Taunie's rocks, the arrow reads {:.0f} deg", minimap_arrow(env)()));
     pbf_move_left_joystick(env.context, /*position=*/{route.leg_x, route.leg_y}, route.leg_hold, /*release=*/Milliseconds(300));
     ZoneStart start(route);
-    std::optional<int> distance = read_at_marker(env, backend);
-    while (true){
-        backend.scope().throw_if_cancelled();
-        const ZoneStartMove move = start.next(distance);
-        backend.log(std::format(
-            "[PLZA] catch_in_zone: distance {}: {}",
-            distance ? std::to_string(*distance) : std::string("not read"), start_move_name(move)
+    const std::optional<int> distance = read_at_marker(env, backend);
+    const ZoneStartMove move = start.next(distance);
+    backend.log(std::format(
+        "[PLZA] catch_in_zone: distance {}: {}",
+        distance ? std::to_string(*distance) : std::string("not read"), start_move_name(move)
+    ));
+    if (move != ZoneStartMove::WALK_TO_SPOT){
+        return Pokemon::outcome_failed("rocks_not_left", std::format(
+            "the read off Taunie's rocks was {}, not {} to {}",
+            distance ? std::to_string(*distance) : std::string("none"), route.leg_read_min, route.leg_read_max
         ));
-        switch (move){
-        case ZoneStartMove::WALK_TO_SPOT:
-            //  A touch right of the objective: straight at it ends in the grass
-            //  by the tree, whose leaves hide the distance (console B,
-            //  2026-11-16 16:02: 101 on screen, no read).
-            pbf_move_left_joystick(env.context, /*position=*/{0.25, 1}, route.walk_hold, /*release=*/Milliseconds(300));
-            distance = read_at_marker(env, backend);
-            if (!distance){
-                backend.log("[PLZA] catch_in_zone: no read after the walk: a step right onto the road, then read again");
-                pbf_move_left_joystick(env.context, /*position=*/{1, 0}, /*hold=*/Milliseconds(500), /*release=*/Milliseconds(300));
-                distance = read_at_marker(env, backend);
-            }
-            continue;
-        case ZoneStartMove::SEARCH:
-            return Pokemon::outcome_ok();
-        case ZoneStartMove::ROCKS_NOT_LEFT:
-            return Pokemon::outcome_failed("rocks_not_left", std::format(
-                "the read off Taunie's rocks was {}, not {} to {}",
-                distance ? std::to_string(*distance) : std::string("none"), route.leg_read_min, route.leg_read_max
-            ));
-        case ZoneStartMove::SPOT_NOT_REACHED:
-            return Pokemon::outcome_failed("zone_spot_not_reached", std::format(
-                "the walk to {} ended at {}", ZONE_SPOT_DISTANCE,
-                distance ? std::to_string(*distance) : std::string("no agreed read")
-            ));
-        }
     }
-}
-
-//  Walks to stop `stop` from `last` (none: from the start, further out
-//  than every stop): back from the objective when the stop is further.
-//  plza/autostory's walk (walk_to_road_stop()), not the marker walk's.
-std::optional<int> walk_to_stop(StoryEnv& env, PlzaBackend& backend, std::optional<int> last, int stop){
-    if (last && stop > *last){
-        return walk_to_road_stop(env, backend, MarkerDirection::BACK, stop, /*floor=*/std::nullopt, STOP_WALK_LIMIT);
-    }
-    return walk_to_road_stop(env, backend, MarkerDirection::TOWARD, stop, ROAD_FLOOR, last ? STOP_WALK_LIMIT : FIRST_WALK_LIMIT);
-}
-
-//  Steps sideways with the camera on the objective (face_marker()): right
-//  onto the middle of the road, or back left (ROAD_MIDDLE_STEP).
-void step_across_road(StoryEnv& env, PlzaBackend& backend, bool right){
-    face_marker(env, backend);
-    pbf_move_left_joystick(env.context, /*position=*/{right ? 1.0 : -1.0, 0}, ROAD_MIDDLE_STEP, /*release=*/Milliseconds(300));
-    env.context.wait_for_all_requests();
+    return walk_map_legs(env, backend, ROCKS_TO_SPOT_100);
 }
 
 //  What the patrol came to.
@@ -710,12 +686,16 @@ struct Patrol{
     GrassCatches catches;
     //  The party bar's filled slots at the last read; none: not read.
     std::optional<int> party_slots;
+    //  A walk between stops that failed (walk_map_legs()): the patrol
+    //  stopped there.
+    std::optional<Pokemon::Outcome> walk_failed;
 };
 
 //  catch_at_stop() at the user's two catch spots (CATCH_SPOTS, 100 and
-//  60), back and forth (PATROL_VISITS visits), PATROL_LIMIT at most: at
-//  each, a step right to the middle of the road first and back left after;
-//  it turns back at once where a new species was caught (spot_visit()). A
+//  60), back and forth (PATROL_VISITS visits), PATROL_LIMIT at most, by
+//  map legs to each spot's waypoint (catch_spot_waypoint()); a leg that
+//  fails stops the patrol (Patrol::walk_failed). It turns back at once
+//  where a new species was caught (spot_visit()). A
 //  wild battle that starts on the way is fought at the next stop. The
 //  party bar's filled slots, read before the first stop (`slots`) and
 //  after each stop that threw, end it at `goal.party_species`.
@@ -726,22 +706,31 @@ Patrol patrol_and_catch(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal
     patrol.party_slots = slots;
     GrassCatches& result = patrol.catches;
     std::vector<int> caught_at;
-    std::optional<int> last;
     for (size_t i = 0; i < stops.size() && result.found < goal.new_species && result.throws < goal.max_throws; i++){
         backend.scope().throw_if_cancelled();
         if (current_time() > deadline){
             backend.log("[PLZA] catch_in_zone: out of time for the patrol");
             break;
         }
-        const std::optional<int> at = walk_to_stop(env, backend, last, stops[i]);
-        last = at ? at : stops[i];
+        const std::optional<MapWaypoint> waypoint = catch_spot_waypoint(stops[i]);
+        if (!waypoint){
+            backend.log(std::format("[PLZA] catch_in_zone: no map waypoint for the stop {}: the patrol ends", stops[i]));
+            break;
+        }
+        //  The first stop is where go_to_zone_spot() ended.
+        if (i > 0){
+            const Pokemon::Outcome walked = walk_map_legs(env, backend, std::span<const MapWaypoint>(&*waypoint, 1));
+            if (!walked.succeeded()){
+                patrol.walk_failed = walked;
+                break;
+            }
+        }
+        const std::optional<int> at = cross_check_marker(env, backend, *waypoint);
         if (spot_visit(stops[i], caught_at) == SpotVisit::TURN_BACK && !wild_battle_on(env)){
             backend.log(std::format("[PLZA] catch_in_zone: stop {} of {} at {} (for {}): a new species was caught here: turning back", i + 1, stops.size(), at.value_or(-1), stops[i]));
             continue;
         }
-        step_across_road(env, backend, /*right=*/true);
-        const GrassCatches stop = catch_at_stop(env, backend, at.value_or(-1), goal.max_throws - result.throws);
-        step_across_road(env, backend, /*right=*/false);
+        const GrassCatches stop = catch_at_stop(env, backend, at.value_or(stops[i]), goal.max_throws - result.throws);
         backend.log(std::format(
             "[PLZA] catch_in_zone: stop {} of {} at {} (for {}): {} throws, {} new species, {} locks on caught species only",
             i + 1, stops.size(), at.value_or(-1), stops[i], stop.throws, stop.found, stop.caught_seen
@@ -775,6 +764,9 @@ Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCa
         return at_spot;
     }
     const Patrol patrol = patrol_and_catch(env, backend, goal, slots);
+    if (patrol.walk_failed){
+        return *patrol.walk_failed;
+    }
     const GrassCatches& result = patrol.catches;
     const SpeciesTally tally = species_tally(result, goal.new_species);
     backend.log(std::format(
@@ -797,19 +789,11 @@ Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCa
 }
 
 Pokemon::Outcome walk_back_to_zone_road(StoryEnv& env, PlzaBackend& backend){
-    std::optional<int> at = read_marker_distance(env, backend, std::nullopt);
-    for (int stop : road_stops_to_gate(CATCH_SPOTS, at)){
-        backend.log(std::format("[PLZA] walk_back_to_zone_road: to {} on the road, from {}", stop, at.value_or(-1)));
-        const bool toward = !at || stop <= *at;
-        const std::optional<int> reached = walk_to_stop(env, backend, at, stop);
-        const bool arrived = reached && (toward ? *reached <= stop + ROAD_STOP_SLACK : *reached >= stop - ROAD_STOP_SLACK);
-        if (!arrived){
-            return Pokemon::outcome_failed("road_stop_not_reached", std::format(
-                "not back on the road at {} (last read {})", stop, reached.value_or(-1)
-            ));
-        }
-        at = reached;
+    const Pokemon::Outcome walked = walk_map_legs(env, backend, std::span<const MapWaypoint>(&ZONE1_SPOT_60, 1));
+    if (!walked.succeeded()){
+        return walked;
     }
+    cross_check_marker(env, backend, ZONE1_SPOT_60);
     face_marker(env, backend);
     return Pokemon::outcome_ok();
 }
