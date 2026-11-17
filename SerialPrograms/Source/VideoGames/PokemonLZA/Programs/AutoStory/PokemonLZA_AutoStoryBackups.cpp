@@ -66,10 +66,9 @@ void add_part(const SegmentReport& part, SegmentReport& total){
     total.failure = part.failure;
 }
 
-//  Opens the backup card and loads it when its count names a checkpoint
-//  at or before `failed` (an index of `rows`, checkpoint_at()): that
-//  checkpoint's index.
-//  Otherwise the card is cancelled, nothing loaded, and the failure.
+
+} // namespace
+
 std::variant<size_t, Outcome> rewind_to_backup(
     PlzaBackend& backend, std::span<const StoryCheckpoint> rows, size_t failed,
     std::span<const CheckpointStart> starts, const BackupSave& backup
@@ -100,7 +99,6 @@ std::variant<size_t, Outcome> rewind_to_backup(
     return *index;
 }
 
-} // namespace
 
 
 SegmentReport run_plza_with_rewinds(
