@@ -15,6 +15,7 @@
 #include "Common/Cpp/Time.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
+#include "PokemonLZA_AutoStoryMarkerArrival.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -24,11 +25,13 @@ namespace PokemonLZA{
 //  On to the objective marker (read_objective_marker()), the camera turned
 //  to keep it in the middle (and to find it when it is behind), 90 s at
 //  most, until an A prompt (a gate's "Leave", a door's "Enter") or a
-//  dialog (a scene that starts on arriving) shows; then up to 15 s more for
-//  one, since a scene at the objective takes the marker away first. A
-//  walk held up (the distance not dropping for 4 reads) steps sideways.
-//  Fails as "objective_not_reached" when neither shows.
-Pokemon::Outcome walk_to_marker(StoryEnv& env, PlzaBackend& backend);
+//  dialog (a scene that starts on arriving) shows near the objective, as
+//  `proof` says (MarkerArrival); one farther off is walked past. When the
+//  marker goes first (a scene at the objective takes it away), up to 15 s
+//  more for one, if the walk was near. A walk held up (the distance not
+//  dropping for 4 reads) steps sideways. Fails as "objective_not_reached"
+//  when neither shows near it.
+Pokemon::Outcome walk_to_marker(StoryEnv& env, PlzaBackend& backend, MarkerProof proof);
 
 //  Toward the objective marker, steered as walk_to_marker() is, until a
 //  distance read taken (MarkerDistance) is `stop_at` or less, or `floor`

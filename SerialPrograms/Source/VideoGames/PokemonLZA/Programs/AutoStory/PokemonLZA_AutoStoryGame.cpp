@@ -105,6 +105,7 @@ std::vector<StoryActionSpec> console_specs(){
         console_only(game_spec("catch_in_zone")),
         console_only(game_spec("walk_back_to_zone_road")),
         console_only(game_spec("walk_to_marker")),
+        console_only(game_spec("walk_to_unread_marker")),
         console_only(game_spec("claim_mable_research_reward")),
     };
 }
@@ -299,7 +300,16 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
             return catch_in_zone(env, backend, ZoneCatchGoal{.new_species = 2, .party_species = 5, .max_throws = 12});
         }},
         {"walk_back_to_zone_road", walk_back_to_zone_road},
-        {"walk_to_marker", walk_to_marker},
+        //  Ends on a prompt or dialog only after a distance read taken at
+        //  20 or less (MarkerProof::NEAR_READ).
+        {"walk_to_marker", [](StoryEnv& env, PlzaBackend& backend){
+            return walk_to_marker(env, backend, MarkerProof::NEAR_READ);
+        }},
+        //  Where the marker's digits do not read (the lab's door): ends on
+        //  a prompt or dialog with no read over 20 (MarkerProof::NO_FAR_READ).
+        {"walk_to_unread_marker", [](StoryEnv& env, PlzaBackend& backend){
+            return walk_to_marker(env, backend, MarkerProof::NO_FAR_READ);
+        }},
         {"claim_mable_research_reward", claim_research_reward},
     };
     return steps;

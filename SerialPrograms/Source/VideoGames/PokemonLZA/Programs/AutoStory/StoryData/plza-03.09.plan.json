@@ -11,7 +11,7 @@
       {
         "id": "to_research_lab",
         "kind": "game_action",
-        "why": "step 63: across to the Pokemon Research Lab's gate, into Taunie's scene, by the objective marker: out of the zone's gate the player faces whichever way it faced before (the timed legs from 2026-11-08 depended on that; console B, 2026-11-10).",
+        "why": "step 63: across to the Pokemon Research Lab's gate, into Taunie's scene, by the objective marker: out of the zone's gate the player faces whichever way it faced before (the timed legs from 2026-11-08 depended on that; console B, 2026-11-10). Taunie's dialog counts only after a distance read taken at 20 or less (the pass read 37 down to 13, console B 2026-11-14): with none, a prompt on the street passed it 4 s in (console B, 2026-11-16 17:34).",
         "action": "walk_to_marker"
       },
       {
@@ -29,8 +29,8 @@
       {
         "id": "up_the_lab_steps",
         "kind": "game_action",
-        "why": "step 65: up the steps to the lab's \"A Enter\", by the objective marker.",
-        "action": "walk_to_marker"
+        "why": "step 65: up the steps to the lab's \"A Enter\", by the objective marker. Its digits do not read on the steps (four looks, none, plza/autostory's pass on console B 2026-11-14), so the door's prompt counts with no read taken, but not after digits over 20 (from the street, 44 and 111, console B 2026-11-16 17:34).",
+        "action": "walk_to_unread_marker"
       },
       {
         "id": "lab_lobby",
