@@ -455,7 +455,8 @@ const SendsCase SENDS_CASES[] = {
         },
         .expectation = {.seen = {
             {.species = "pidgeot", .slot = 0, .left = 6, .danger = true},
-            {.species = "venusaur", .slot = 5, .left = 5, .danger = true},
+            //  Solar Beam is its only attack: no hit without the sun.
+            {.species = "venusaur", .slot = 5, .left = 5, .danger = false},
             {.species = "alakazam", .slot = 1, .left = 4, .danger = true},
             {.species = "rhydon", .slot = 2, .left = 3, .danger = true},
             {.species = "gyarados", .slot = 3, .left = 2, .danger = true},
