@@ -252,13 +252,6 @@ const LintCase LINT_CASES[] = {
         .expectation = {.errors = "01.01 t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\", or walk_to_prompt)"},
     },
     {
-        .name = "a walk with a first turn when chained passes",
-        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}}, {"first_turn_when_chained", int64_t(90)},
-        }}},
-        .expectation = {.errors = ""},
-    },
-    {
         .name = "a walk with a heading passes",
         .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
             {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}}, {"heading", int64_t(264)},
@@ -271,21 +264,6 @@ const LintCase LINT_CASES[] = {
             {"heading", int64_t(264)},
         }}},
         .expectation = {.errors = "01.01 step 1 p: unknown argument \"heading\""},
-    },
-    {
-        .name = "a walk with a heading and a first turn when chained fails",
-        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}},
-            {"heading", int64_t(264)}, {"first_turn_when_chained", int64_t(90)},
-        }}},
-        .expectation = {.errors = "01.01 w: a \"heading\" sets the facing: no \"first_turn_when_chained\""},
-    },
-    {
-        .name = "a first turn when chained on a step that is not a walk fails",
-        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "p", .why = "", .action = "walk_to_prompt", .args = {
-            {"first_turn_when_chained", int64_t(90)},
-        }}},
-        .expectation = {.errors = "01.01 step 1 p: unknown argument \"first_turn_when_chained\""},
     },
     {
         .name = "an action PLZA does not have fails",
@@ -459,8 +437,6 @@ struct RunCase{
         std::vector<Observation<ZonePose>> looks;
         //  How the backend's battles end.
         Pokemon::Outcome battle = Pokemon::outcome_ok();
-        //  How the checkpoint began.
-        Pokemon::RowStart row_start = Pokemon::RowStart::LOADED;
         //  What the minimap arrow reads, in order (the last repeats); none:
         //  the game has no minimap arrow, as off a console.
         std::vector<double> arrow_reads = {};
@@ -1263,7 +1239,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at to_research_lab: heading_missed"},
     },
     {
-        .name = "03.11's walk to Mable from a save: its legs only",
+        .name = "03.11's walk to Mable: its legs",
         .input = {.checkpoint = "03.11", .first_step = 0, .steps = 1, .looks = concat(
             std::vector<Observation<ZonePose>>(8, party_bar(Milliseconds(0))), {DIALOG}
         )},
@@ -1272,25 +1248,6 @@ const RunCase RUN_CASES[] = {
             .inputs = "wait 250ms, press L, stick -90deg 150ms walk, release 100ms, press L, hold north 900ms walk, "
                 "press L, stick 90deg 150ms walk, release 100ms, press L, hold north 1300ms walk, "
                 "press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
-            .line = "[PLZA] to_mable: started from a save: no turn",
-        },
-    },
-    {
-        //  The user, 2026-11-17: out of the elevator after 03.10 the player
-        //  faces 90 degrees left of the reloaded save's facing.
-        .name = "03.11's walk to Mable chained from 03.10: a right turn, then its legs",
-        .input = {
-            .checkpoint = "03.11", .first_step = 0, .steps = 1,
-            .looks = concat(std::vector<Observation<ZonePose>>(9, party_bar(Milliseconds(0))), {DIALOG}),
-            .row_start = Pokemon::RowStart::CHAINED,
-        },
-        .expectation = {
-            .verdict = "done",
-            .inputs = "wait 250ms, press L, stick 90deg 150ms walk, release 100ms, press L, "
-                "press L, stick -90deg 150ms walk, release 100ms, press L, hold north 900ms walk, "
-                "press L, stick 90deg 150ms walk, release 100ms, press L, hold north 1300ms walk, "
-                "press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
-            .line = "[PLZA] to_mable: chained: turning 90 first",
         },
     },
     {
@@ -1322,7 +1279,6 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks, .battle = test.input.battle}, scope);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
-    state.row_start = test.input.row_start;
     const std::vector<StoryCheckpoint> rows{builtin_row(test.input.checkpoint, test.input.first_step, test.input.steps)};
     const Pokemon::SegmentReport report = engine.run_segment("test", rows, 1, state);
     const std::string verdict = report.completed
@@ -1456,7 +1412,6 @@ struct ChainCase{
         //  "<action>_again".
         std::vector<std::string> first_actions = {"wait_for_platform"};
         std::string second_action = "text_to_choice";
-        Pokemon::StoryActionArgs second_args = {};
         size_t attempts = 1;
     };
     Input input;
@@ -1472,12 +1427,6 @@ struct ChainCase{
 };
 
 const Observation<ZonePose> PLATFORM_SAVING = look({}, {PLATFORM_READING, AUTOSAVE_READING});
-
-//  A walk 250 ms straight on that turns right first when chained.
-const Pokemon::StoryActionArgs CHAINED_TURN_WALK = {
-    {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(250)}}},
-    {"first_turn_when_chained", int64_t(90)},
-};
 
 const ChainCase CHAIN_CASES[] = {
     {
@@ -1501,24 +1450,6 @@ const ChainCase CHAIN_CASES[] = {
         .name = "no autosave seen and the start check fails: no reload, no save to start from",
         .input = {.looks = {PLATFORM}},
         .expectation = {.verdict = "failed at 01.02 chain: no_start_save", .reloads = 0},
-    },
-    {
-        .name = "on from the live screen: a walk turns first by its first_turn_when_chained",
-        .input = {
-            .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, party_bar(Milliseconds(0))},
-            .second_action = "walk",
-            .second_args = CHAINED_TURN_WALK,
-        },
-        .expectation = {.verdict = "done", .reloads = 0, .line = "[PLZA] walk: chained: turning 90 first"},
-    },
-    {
-        .name = "reloaded at its start: a walk does not turn first",
-        .input = {
-            .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM, party_bar(Milliseconds(0))},
-            .second_action = "walk",
-            .second_args = CHAINED_TURN_WALK,
-        },
-        .expectation = {.verdict = "done", .reloads = 1, .line = "[PLZA] walk: started from a save: no turn"},
     },
     {
         .name = "a reload onto an older save stops",
@@ -1566,9 +1497,7 @@ UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
         const std::string& action = test.input.first_actions[index];
         first.steps.push_back(StoryStep{.kind = Pokemon::StoryStepKind::GAME, .name = std::format("{}_again", action), .why = "", .action = action, .args = {}});
     }
-    StoryCheckpoint second = one_step_row("01.02", test.input.second_action);
-    second.steps.front().args = test.input.second_args;
-    const std::vector<StoryCheckpoint> rows{first, second};
+    const std::vector<StoryCheckpoint> rows{first, one_step_row("01.02", test.input.second_action)};
     const Pokemon::SegmentReport report = run_plza_segments(
         game, rows, {.attempts_per_checkpoint = test.input.attempts},
         backend, state, sightings

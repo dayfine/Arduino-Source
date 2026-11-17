@@ -42,8 +42,10 @@ std::string waypoint_text(const MapWaypoint& waypoint){
 
 
 std::optional<MapPoint> read_pin_on_map(StoryEnv& env, PlzaBackend& backend){
+    //  No minimap arrow read here: indoors there is none, and the start
+    //  check reads the pin there too (03.11's office threw after 40 s,
+    //  console B 2026-11-17 01:29).
     backend.observe();
-    const double heading = minimap_arrow(env)();
     backend.press(BUTTON_PLUS, /*hold=*/100ms, /*release=*/MAP_OPEN_WAIT);
     std::optional<MapPoint> pin;
     for (int looks = 0; looks < PIN_LOOKS && !pin; looks++){
@@ -57,10 +59,7 @@ std::optional<MapPoint> read_pin_on_map(StoryEnv& env, PlzaBackend& backend){
         }
     }
     backend.press(BUTTON_B, /*hold=*/100ms, /*release=*/MAP_CLOSE_WAIT);
-    backend.log(pin
-        ? std::format("[PLZA] map pin: {} heading {:.0f}", pin_text(*pin), heading)
-        : std::format("[PLZA] map pin: none, heading {:.0f}", heading)
-    );
+    backend.log(pin ? std::format("[PLZA] map pin: {}", pin_text(*pin)) : std::string("[PLZA] map pin: none"));
     return pin;
 }
 
