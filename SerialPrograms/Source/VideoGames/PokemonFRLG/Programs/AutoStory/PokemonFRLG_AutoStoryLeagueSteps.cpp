@@ -222,10 +222,18 @@ int row_max_hp(const StoryCheckpoint& row){
 //  The lead's HP and moves' PP off its summary into `side`; the failure
 //  (VERIFY_UNREAD) if a read failed or is unsure.
 std::optional<Outcome> read_lead(StoryEnv& env, const StoryCheckpoint& row, const LeagueFightData& fight, LeagueSide& side){
-    const int max_hp = env.supplies.lead.stats && env.supplies.lead.stats->hp > 0 ? env.supplies.lead.stats->hp : row_max_hp(row);
     const std::optional<SummaryRead> summary = read_party_summary(env.console, env.context, row.menu, env.language, /*slot=*/0);
     if (!summary){
         return unread(env, row.id, "the lead's summary wasn't read");
+    }
+    //  The maximum from this same summary first: a fight's level-up raises
+    //  it (console B, 2026-11-17: Lv55 after Lorelei, 145/174 read against
+    //  the 171 known before the fight).
+    int max_hp = row_max_hp(row);
+    if (summary->stats && summary->stats->hp > 0){
+        max_hp = summary->stats->hp;
+    }else if (env.supplies.lead.stats && env.supplies.lead.stats->hp > 0){
+        max_hp = env.supplies.lead.stats->hp;
     }
     const std::optional<int> hp = summary_current_hp(summary->hp_digits, max_hp);
     if (!hp){
