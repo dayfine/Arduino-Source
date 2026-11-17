@@ -27,6 +27,7 @@
 #include "PokemonLZA_AutoStoryDetectors_Tests.h"
 #include "PokemonLZA_AutoStoryMainMissionBannerDetector.h"
 #include "PokemonLZA_AutoStoryMissionCompleteDetector.h"
+#include "PokemonLZA_AutoStoryPartySlotsDetector.h"
 #include "PokemonLZA_AutoStoryPlatformArrivalDetector.h"
 #include "PokemonLZA_AutoStoryTutorialCardDetector.h"
 
@@ -50,6 +51,7 @@ struct DetectorReads{
     std::optional<bool> advance_arrow = {};
     std::optional<bool> mission_banner = {};
     std::optional<bool> mission_complete = {};
+    std::optional<bool> party_slots = {};
 };
 
 struct DetectorField{
@@ -63,6 +65,7 @@ const DetectorField DETECTOR_FIELDS[] = {
     {"advance arrow", &DetectorReads::advance_arrow},
     {"mission banner", &DetectorReads::mission_banner},
     {"mission complete", &DetectorReads::mission_complete},
+    {"party slots", &DetectorReads::party_slots},
 };
 
 //  `reads` with every detector checked: one it leaves unset must not fire.
@@ -105,12 +108,14 @@ struct StoryDetectors{
     AdvanceArrowDetector arrow;
     MainMissionBannerDetector banner;
     MissionCompleteDetector complete;
+    PartySlotsDetector party_slots;
 
     DetectorReads read(const ImageViewRGB32& frame){
         return DetectorReads{
             .platform = platform.detect(frame), .autosave = autosave.detect(frame),
             .controls_hint = hint.detect(frame), .advance_arrow = arrow.detect(frame),
             .mission_banner = banner.detect(frame), .mission_complete = complete.detect(frame),
+            .party_slots = party_slots.detect(frame),
         };
     }
 };

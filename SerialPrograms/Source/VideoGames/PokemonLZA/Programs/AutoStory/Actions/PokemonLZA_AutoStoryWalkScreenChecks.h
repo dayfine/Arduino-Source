@@ -28,9 +28,8 @@ namespace PokemonLZA{
 //  control (the party bar, the station platform, the controls hint) and no advance arrow,
 //  dialog box or fade. The end of a scene is not control: 01.01's scenes
 //  end ~7 s before it. An A prompt held a second with none of those is
-//  control too (01.03 has no party, so no party bar). Where no sign shows
-//  (Hotel Z: the party bar reads by its D-pad arrows, which a party of one
-//  does not show), 10 s with none of those is taken as control. Fails as
+//  control too (01.03 has no party, so no party bar). Where no sign shows,
+//  10 s with none of those is taken as control. Fails as
 //  "walk_not_free" when neither comes
 //  within 30 s: a walk started anywhere else walks blind.
 Pokemon::Outcome check_can_walk(PlzaBackend& backend, std::string_view walk);
@@ -44,15 +43,16 @@ void finish_walk(PlzaBackend& backend, std::string_view walk);
 //  Walks `move`, holding its last leg in slices of 250 ms
 //  (hold_last_leg()) until a look shows `end` (a fade, the box of a talk
 //  the walk runs into, or the A prompt of what it walks to), the leg's
-//  time as the upper bound. A black fade ends it too: the scene at the
+//  time as the upper bound. An A prompt ends it only when it shows again
+//  on a look 300 ms later, the stick let go; else the leg goes on. A black fade ends it too: the scene at the
 //  walk's end takes over. A last leg that only turns is looked at once,
 //  after the turn. Fails as "walk_no_end" if neither shows within it.
 Pokemon::Outcome walk_until(PlzaBackend& backend, std::string_view walk, const StoryMove& move, ScreenEvent end);
 
 //  Walks straight on, 250 ms at a time, until an A prompt shows
-//  (INTERACT_PROMPT: "A Leave" at the Battle Zone's gate); nothing if it
-//  shows already. Fails as "no_prompt" after `timeout` of walking without
-//  one.
+//  (INTERACT_PROMPT: "A Leave" at the Battle Zone's gate) and shows again
+//  on a look 300 ms later, the stick let go; nothing if it shows already.
+//  Fails as "no_prompt" after `timeout` of walking without one.
 Pokemon::Outcome walk_to_prompt(PlzaBackend& backend, Milliseconds timeout);
 
 //  Whether a look shows `event` within `within`, looking every 250 ms and
@@ -66,9 +66,11 @@ bool event_shows_within(PlzaBackend& backend, ScreenEvent event, Milliseconds wi
 //  card, 03.02b) on two looks in a row within 5 s, not one look of the
 //  press itself. While the prompt stays up with nothing open, A again
 //  every second, 3 As at most: the game can drop an A (02.05's elevator,
-//  console B 2026-11-16, then read the overworld 120 s). No prompt within
-//  1 s: nothing pressed, "talk_no_prompt" (the walk stopped short, 03.02,
-//  2026-11-16); nothing after the As: "talk_no_scene".
+//  console B 2026-11-16, then read the overworld 120 s). No prompt on two
+//  looks in a row within 3 s (it can come up seconds after the walk to it
+//  ends: 02.05's elevator in German, 2026-11-16): nothing pressed,
+//  "talk_no_prompt" (the walk stopped short, 03.02, 2026-11-16); nothing
+//  after the As: "talk_no_scene".
 Pokemon::Outcome talk_at_prompt(PlzaBackend& backend);
 
 //  A at the A prompt the player stands at (a door's "A Enter"), then looks
