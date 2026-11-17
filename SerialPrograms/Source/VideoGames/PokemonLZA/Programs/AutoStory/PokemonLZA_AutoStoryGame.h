@@ -53,7 +53,9 @@ namespace PokemonLZA{
 //                              "prompt" (an A prompt), and
 //                              "first_turn_when_chained", a turn before
 //                              the legs when the checkpoint went on from
-//                              the live screen (RunState::row_start);
+//                              the live screen (RunState::row_start), or
+//                              "heading", the minimap heading faced
+//                              (face_heading()) before the legs;
 //                              walked once the screen shows free control
 //                              (check_can_walk()), until its end event if it
 //                              has one (walk_until()), else until its legs
@@ -108,7 +110,8 @@ namespace PokemonLZA{
 const std::vector<Pokemon::StoryActionSpec>& plza_story_specs();
 
 //  What is wrong with `checkpoint` for PLZA's engine
-//  (StoryActionRegistry::lint), then with a walk's "end", then a talk not
+//  (StoryActionRegistry::lint), then with a walk's "end" (or a "heading"
+//  beside a "first_turn_when_chained"), then a talk not
 //  right after a step that ends on its A prompt (a walk to "prompt", or
 //  "walk_to_prompt"): a talk never presses A blind.
 std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpoint);
@@ -128,10 +131,13 @@ Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(
 );
 
 //  The same with no console, for tests and simulations: the console_only
-//  actions fail as "console_only", and there is no reload.
+//  actions fail as "console_only", and there is no reload. A walk's
+//  "heading" is faced by `arrow`; with none, such a walk fails as
+//  "console_only".
 //  code-health: allow test_only_api -- a test double: the game the scripted tests and simulations run
 Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game_without_console(
-    const Pokemon::StoryRows& rows, AutosaveSightings& sightings
+    const Pokemon::StoryRows& rows, AutosaveSightings& sightings,
+    std::optional<MinimapArrowReader> arrow = std::nullopt
 );
 
 //  Loads the save `row` starts from with `game`'s reload (the latest

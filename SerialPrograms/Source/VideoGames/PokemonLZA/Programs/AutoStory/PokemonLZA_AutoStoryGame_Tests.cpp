@@ -14,6 +14,7 @@
 #include <format>
 #include <functional>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
@@ -258,6 +259,28 @@ const LintCase LINT_CASES[] = {
         .expectation = {.errors = ""},
     },
     {
+        .name = "a walk with a heading passes",
+        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}}, {"heading", int64_t(264)},
+        }}},
+        .expectation = {.errors = ""},
+    },
+    {
+        .name = "a heading on a step that does not take one fails",
+        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "p", .why = "", .action = "walk_to_prompt", .args = {
+            {"heading", int64_t(264)},
+        }}},
+        .expectation = {.errors = "01.01 step 1 p: unknown argument \"heading\""},
+    },
+    {
+        .name = "a walk with a heading and a first turn when chained fails",
+        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}},
+            {"heading", int64_t(264)}, {"first_turn_when_chained", int64_t(90)},
+        }}},
+        .expectation = {.errors = "01.01 w: a \"heading\" sets the facing: no \"first_turn_when_chained\""},
+    },
+    {
         .name = "a first turn when chained on a step that is not a walk fails",
         .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "p", .why = "", .action = "walk_to_prompt", .args = {
             {"first_turn_when_chained", int64_t(90)},
@@ -438,6 +461,9 @@ struct RunCase{
         Pokemon::Outcome battle = Pokemon::outcome_ok();
         //  How the checkpoint began.
         Pokemon::RowStart row_start = Pokemon::RowStart::LOADED;
+        //  What the minimap arrow reads, in order (the last repeats); none:
+        //  the game has no minimap arrow, as off a console.
+        std::vector<double> arrow_reads = {};
     };
     Input input;
     struct Expectation{
@@ -1209,9 +1235,32 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .line = "[PLZA mash_to_move_hints] done on can_move."},
     },
     {
-        .name = "03.09's walk to the objective marker needs a console",
+        .name = "03.09's walk faces the street by the minimap arrow, which needs a console",
         .input = {.checkpoint = "03.09", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
-        .expectation = {.verdict = "failed at to_research_lab: console_only", .inputs = ""},
+        .expectation = {.verdict = "failed at to_research_lab: console_only", .inputs = "wait 250ms"},
+    },
+    {
+        .name = "03.09's walk faces the street first, then walks its legs into Ryon's dialog",
+        .input = {
+            .checkpoint = "03.09", .first_step = 0, .steps = 1,
+            .looks = concat(std::vector<Observation<ZonePose>>(7, party_bar(Milliseconds(0))), {DIALOG}),
+            .arrow_reads = {180, 264},
+        },
+        .expectation = {
+            .verdict = "done",
+            .inputs = "wait 250ms, press L, stick 84deg 150ms walk, release 100ms, press L, hold north 6500ms walk, "
+                "press L, stick -90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
+            .line = "[PLZA] to_research_lab: the end event after 250 ms of the last leg.",
+        },
+    },
+    {
+        .name = "03.09's walk stops when the player does not turn to the street",
+        .input = {
+            .checkpoint = "03.09", .first_step = 0, .steps = 1,
+            .looks = {party_bar(Milliseconds(0))},
+            .arrow_reads = {180},
+        },
+        .expectation = {.verdict = "failed at to_research_lab: heading_missed"},
     },
     {
         .name = "03.11's walk to Mable from a save: its legs only",
@@ -1251,9 +1300,25 @@ const RunCase RUN_CASES[] = {
     },
 };
 
+//  A minimap arrow that reads `reads` in order, the last again and again;
+//  none for no reads.
+std::optional<MinimapArrowReader> scripted_arrow(const std::vector<double>& reads){
+    if (reads.empty()){
+        return std::nullopt;
+    }
+    auto next = std::make_shared<size_t>(0);
+    return MinimapArrowReader([reads, next](){
+        const double read = reads[std::min(*next, reads.size() - 1)];
+        (*next)++;
+        return read;
+    });
+}
+
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(builtin_story_data(), sightings);
+    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(
+        builtin_story_data(), sightings, scripted_arrow(test.input.arrow_reads)
+    );
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks, .battle = test.input.battle}, scope);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
