@@ -12,6 +12,20 @@ cc_library(
 )
 
 cc_library(
+    name = "serial_programs_exceptions",
+    srcs = [
+        "CommonFramework/Exceptions/OperationFailedException.cpp",
+        "CommonFramework/Exceptions/ProgramFinishedException.cpp",
+    ],
+    deps = [
+        ":serial_programs_headers",
+        "//Common/Cpp:common_cpp",
+        "//:common_headers",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
     name = "frlg_inference_deps",
     srcs = glob(
         [
