@@ -54,7 +54,8 @@ std::optional<int> walk_back_from_marker(StoryEnv& env, PlzaBackend& backend, in
 //  none below `floor`). None when it takes none: the marker half behind a
 //  rock read 1, 1 and 4 at the start of 03.08 with the marker at 120
 //  (console B, 2026-11-16).
-std::optional<int> read_marker_distance(StoryEnv& env, PlzaBackend& backend, std::optional<int> floor);
+//  `looks`: frames to try; a player standing still can afford more.
+std::optional<int> read_marker_distance(StoryEnv& env, PlzaBackend& backend, std::optional<int> floor, int looks = 8);
 
 
 } // namespace PokemonLZA
