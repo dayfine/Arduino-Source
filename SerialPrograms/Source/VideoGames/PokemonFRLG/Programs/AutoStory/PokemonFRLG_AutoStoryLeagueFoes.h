@@ -31,6 +31,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  A move as the League sim's damage reads it.
 struct LeagueMoveData{
     Pokemon::PokemonType type = Pokemon::PokemonType::NONE;
     int power = 0;
@@ -46,6 +47,7 @@ struct LeagueMoveData{
     std::optional<std::pair<int, int>> hits = std::nullopt;
 };
 
+//  One Pokemon of a League trainer's party.
 struct LeagueFoeData{
     std::string species = {};
     int level = 1;
@@ -56,12 +58,14 @@ struct LeagueFoeData{
     std::vector<std::string> moves = {};
 };
 
+//  A League trainer: its items and its party, in slot order.
 struct LeagueTrainerData{
     //  Its items by slug ("full-restore": 2).
     SlugCounts items = {};
     std::vector<LeagueFoeData> party = {};
 };
 
+//  The whole file: the moves' data and every League trainer.
 struct LeagueFoesData{
     std::map<std::string, LeagueMoveData, std::less<>> moves = {};
     //  By trainer ("TRAINER_ELITE_FOUR_LORELEI").

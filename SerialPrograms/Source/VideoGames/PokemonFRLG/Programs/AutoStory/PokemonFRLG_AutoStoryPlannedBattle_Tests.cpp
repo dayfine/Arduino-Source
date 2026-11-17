@@ -53,18 +53,20 @@ std::vector<int> damage_of(const std::vector<PlannedMove>& moves, std::string_vi
 }
 
 
+struct FoesInput{
+    std::string trainer = {};
+    size_t slot = 0;
+};
+struct FoesExpectation{
+    std::string species = {};
+    int level = 0;
+    int hp = 0;
+    int full_restores = 0;
+};
 struct FoesCase{
-    std::string name = {};
-    struct Input{
-        std::string trainer = {};
-        size_t slot = 0;
-    } input = {};
-    struct Expectation{
-        std::string species = {};
-        int level = 0;
-        int hp = 0;
-        int full_restores = 0;
-    } expectation = {};
+    std::string name;
+    FoesInput input;
+    FoesExpectation expectation;
 };
 
 class Test_LeagueFoes : public UnitTest{
@@ -78,7 +80,7 @@ public:
         const auto& items = league_foes_data().trainers.find(m_case.input.trainer)->second.items;
         const auto restores = items.find("full-restore");
         const int carried = restores == items.end() ? 0 : restores->second;
-        const FoesCase::Expectation& want = m_case.expectation;
+        const FoesExpectation& want = m_case.expectation;
         if (foe.species != want.species || foe.level != want.level || foe.stats.hp != want.hp || carried != want.full_restores){
             return std::format("{} Lv{} {} HP, {} Full Restores.", foe.species, foe.level, foe.stats.hp, carried);
         }
@@ -108,17 +110,22 @@ const FoesCase FOES_CASES[] = {
 };
 
 
+struct DamageInput{
+    std::string trainer = {};
+    size_t slot = 0;
+    PlannedStages stages = {};
+    //  Ours or the foe's.
+    bool ours = true;
+    std::string move = {};
+};
+struct DamageExpectation{
+    //  Lowest first; empty for no damage.
+    std::vector<int> rolls = {};
+};
 struct DamageCase{
-    std::string name = {};
-    struct Input{
-        std::string trainer = {};
-        size_t slot = 0;
-        PlannedStages stages = {};
-        //  Ours or the foe's.
-        bool ours = true;
-        std::string move = {};
-    } input = {};
-    std::vector<int> expectation = {};
+    std::string name;
+    DamageInput input;
+    DamageExpectation expectation;
 };
 
 class Test_PlannedDamage : public UnitTest{
@@ -136,7 +143,7 @@ public:
         };
         const PlannedState state = planned_state(inputs, league_foes_data());
         const std::vector<int> got = damage_of(m_case.input.ours ? state.own.moves : state.foe.moves, m_case.input.move);
-        if (got != m_case.expectation){
+        if (got != m_case.expectation.rolls){
             return std::format("Rolls {}..{} ({}).", got.empty() ? 0 : got.front(), got.empty() ? 0 : got.back(), got.size());
         }
         return true;
@@ -150,32 +157,32 @@ const DamageCase DAMAGE_CASES[] = {
     {
         .name = "Lance's Gyarados's Hyper Beam on us",
         .input = {.trainer = "TRAINER_ELITE_FOUR_LANCE", .slot = 0, .ours = false, .move = "hyper-beam"},
-        .expectation = {68, 68, 69, 70, 71, 72, 72, 73, 74, 75, 76, 76, 77, 78, 79, 80},
+        .expectation = {.rolls = {68, 68, 69, 70, 71, 72, 72, 73, 74, 75, 76, 76, 77, 78, 79, 80}},
     },
     {
         .name = "our Surf at +2 on Lance's Dragonite",
         .input = {.trainer = "TRAINER_ELITE_FOUR_LANCE", .slot = 4, .stages = {.spa = 2}, .move = "surf"},
-        .expectation = {45, 46, 46, 47, 48, 48, 49, 49, 50, 50, 51, 51, 52, 52, 53, 54},
+        .expectation = {.rolls = {45, 46, 46, 47, 48, 48, 49, 49, 50, 50, 51, 51, 52, 52, 53, 54}},
     },
     {
         .name = "our Blizzard on Lance's Dragonite",
         .input = {.trainer = "TRAINER_ELITE_FOUR_LANCE", .slot = 4, .move = "blizzard"},
-        .expectation = {159, 161, 163, 165, 167, 169, 171, 172, 174, 176, 178, 180, 182, 184, 186, 188},
+        .expectation = {.rolls = {159, 161, 163, 165, 167, 169, 171, 172, 174, 176, 178, 180, 182, 184, 186, 188}},
     },
     {
         .name = "our Strength at -1 (Intimidate) on Lance's Gyarados",
         .input = {.trainer = "TRAINER_ELITE_FOUR_LANCE", .slot = 0, .stages = {.attack = -1}, .move = "strength"},
-        .expectation = {22, 23, 23, 23, 24, 24, 24, 24, 25, 25, 25, 25, 26, 26, 26, 27},
+        .expectation = {.rolls = {22, 23, 23, 23, 24, 24, 24, 24, 25, 25, 25, 25, 26, 26, 26, 27}},
     },
     {
         .name = "Dragonair's Dragon Rage on us",
         .input = {.trainer = "TRAINER_ELITE_FOUR_LANCE", .slot = 1, .ours = false, .move = "dragon-rage"},
-        .expectation = {40},
+        .expectation = {.rolls = {40}},
     },
     {
         .name = "our Surf on Lorelei's Lapras (Water Absorb)",
         .input = {.trainer = "TRAINER_ELITE_FOUR_LORELEI", .slot = 4, .move = "surf"},
-        .expectation = {},
+        .expectation = {.rolls = {}},
     },
 };
 

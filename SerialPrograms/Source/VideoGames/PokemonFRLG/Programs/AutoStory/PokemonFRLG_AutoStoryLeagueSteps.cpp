@@ -19,7 +19,10 @@
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
 #include "PokemonFRLG_AutoStoryLeaguePlan.h"
 #include "PokemonFRLG_AutoStoryLeagueSteps.h"
+#include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryLeaguePlanData.h"
 #include "PokemonFRLG_AutoStoryParty.h"
+#include "PokemonFRLG_AutoStoryPlannedPolicy.h"
 #include "PokemonFRLG_AutoStoryStartMenu.h"
 
 namespace PokemonAutomation{
@@ -141,6 +144,78 @@ BetweenFightAction logged_between_action(
     return action;
 }
 
+PlannedStatus carry_status(StatusCondition status){
+    switch (status){
+    case StatusCondition::POISON:
+        return PlannedStatus::POISON;
+    case StatusCondition::PARALYSIS:
+        return PlannedStatus::PARALYSIS;
+    case StatusCondition::SLEEP:
+        return PlannedStatus::SLEEP;
+    case StatusCondition::OTHER:
+        return PlannedStatus::BURN;
+    case StatusCondition::NONE:
+        break;
+    }
+    return PlannedStatus::NONE;
+}
+
+//  Our side between fights as planned_between() reads it; none while the
+//  HP is unknown.
+std::optional<PlannedCarry> between_carry(const Supplies& supplies, int max_hp){
+    const std::optional<int> missing = missing_hp(supplies, max_hp);
+    if (!missing){
+        return std::nullopt;
+    }
+    PlannedCarry carry{.hp = max_hp - std::max(0, *missing), .max_hp = max_hp, .status = carry_status(supplies.status)};
+    for (const KnownMove& known : supplies.lead.moves){
+        carry.pp[known.move] = known.pp;
+        carry.full_pp[known.move] = max_pp(known.move);
+    }
+    for (const auto& [item, count] : league_bag(supplies)){
+        carry.bag[item] = count;
+    }
+    return carry;
+}
+
+//  The planned policy's top-ups before `next` (planned_between()), one
+//  item at a time from the lead's state, until none is left; the PP is
+//  read off the lead's summary again after a PP item. False if the HP is
+//  unknown.
+bool planned_between_fights(StoryEnv& env, const StoryStep& step, const LeagueFightData& next, int max_hp){
+    constexpr int MAX_ITEMS = 10;
+    for (int c = 0; c < MAX_ITEMS; c++){
+        std::optional<PlannedCarry> carry = between_carry(env.supplies, max_hp);
+        if (!carry){
+            return false;
+        }
+        const int hp = carry->hp;
+        const std::vector<std::string> items = planned_between(*carry, next);
+        env.console.log(std::format(
+            "Story: {}: before {}: HP {}/{}, {}: {}.", step.name, next.name, hp, max_hp,
+            status_name(env.supplies.status), items.empty() ? std::string("ready") : std::format("the {}", items.front())
+        ));
+        if (items.empty()){
+            return true;
+        }
+        const std::string& item = items.front();
+        const bool used = is_lead_recovery_item(item)
+            ? use_lead_item_from_bag(env, step, item) == ItemUseEnd::USED
+            : use_recovery_item(env.console, env.context, item, env.checks, env.language, env.supplies);
+        if (!used){
+            env.console.log(std::format("Story: {}: couldn't use the {}; going on.", step.name, item), COLOR_RED);
+            return true;
+        }
+        if (env.supplies.league){
+            charge_next_fight(env.supplies.league->carried, item);
+        }
+        if (item == "elixir" || item == "max-elixir"){
+            read_lead_moves(env, step_start_menu(step.args));
+        }
+    }
+    return true;
+}
+
 //  LEAGUE_BETWEEN_FIGHTS_ACTION: between_fight_action()'s moves until it is
 //  READY, each item used from the bag; a Full Restore, Elixir or Max Elixir
 //  counts against the next fight's budget. READ_HP: no overworld reader
@@ -158,6 +233,13 @@ Outcome league_between_fights(StoryEnv& env, const StoryStep& step, int fallback
         return Pokemon::outcome_failed("bad_args", std::format("{}: no League fight {}", step.name, *trainer));
     }
     const int max_hp = env.supplies.lead.stats && env.supplies.lead.stats->hp > 0 ? env.supplies.lead.stats->hp : fallback_max_hp;
+    //  The planned policy's targets (frlg-league-plan.json's between rows).
+    const std::optional<std::string> fight = league_fight_name(*trainer);
+    if (const LeagueFightData* planned = fight ? league_fight_data(league_plan_data(), *fight) : nullptr){
+        return planned_between_fights(env, step, *planned, max_hp)
+            ? Pokemon::outcome_ok()
+            : Pokemon::outcome_failed("hp_unknown", std::format("{}: before {}", step.name, planned->name));
+    }
     bool hp_reread = false;
     for (int c = 0; c < MAX_MOVES; c++){
         const BetweenFightAction action = logged_between_action(env, step.name, *next, max_hp, hp_reread);
