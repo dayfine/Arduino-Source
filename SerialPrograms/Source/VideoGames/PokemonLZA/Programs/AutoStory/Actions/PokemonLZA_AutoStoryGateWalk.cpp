@@ -76,6 +76,31 @@ void log_gate_prompt(PlzaBackend& backend, const MinimapArrowReader& arrow, Mill
     ));
 }
 
+//  A gate walk's time in a wild battle, walked on through at the walk's
+//  angle.
+class BattleWalk{
+public:
+    //  One slice on at `angle` (`walked` the walk's time outside battles,
+    //  for the log); once GATE_BATTLE_LIMIT is spent, none and a
+    //  "wild_battle" failure with the walk's `readings` (gate_readings()).
+    Pokemon::Outcome step(PlzaBackend& backend, double angle, Milliseconds walked, std::string_view readings){
+        if (m_time == Milliseconds(0)){
+            backend.log(std::format("[PLZA] walk_to_zone_gate_entrance: a wild battle after {} ms: walking on at {} deg", walked.count(), angle));
+        }
+        if (m_time >= GATE_BATTLE_LIMIT){
+            return Pokemon::outcome_failed("wild_battle", std::format(
+                "walk_to_zone_gate_entrance: still in a wild battle after {} ms of walking on, {}", m_time.count(), readings
+            ));
+        }
+        backend.stick(angle, GATE_WALK_SLICE, /*release=*/0ms, Pokemon::StoryPace::WALK);
+        m_time += GATE_WALK_SLICE;
+        return Pokemon::outcome_ok();
+    }
+
+private:
+    Milliseconds m_time = Milliseconds(0);
+};
+
 //  Sets a look's ZONE_GATE_X_READING and ZONE_GATE_WIDTH_READING from its
 //  frame (read_zone_gate()); nothing on a look with no frame or no gate.
 LookReader zone_gate_reader(){
@@ -98,40 +123,30 @@ LookReader zone_gate_reader(){
 Pokemon::Outcome walk_to_zone_gate_entrance(
     PlzaBackend& backend, const MinimapArrowReader& arrow, const LookReader& gate, const GateWalk& walk
 ){
-    if (walk.heading && arrow){
-        const Pokemon::Outcome faced = face_heading(backend, arrow, *walk.heading);
-        if (!faced.succeeded()){
-            return faced;
-        }
+    const Pokemon::Outcome faced = walk.heading && arrow ? face_heading(backend, arrow, *walk.heading) : Pokemon::outcome_ok();
+    if (!faced.succeeded()){
+        return faced;
     }
     Milliseconds walked(0);
     double angle = 0;
-    size_t looks = 0;
     size_t seen = 0;
     std::optional<GateRead> last;
-    Milliseconds in_battle(0);
-    while (true){
+    BattleWalk battle;
+    for (size_t looks = 1; ; looks++){
         backend.scope().throw_if_cancelled();
         Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
         if (gate){
             gate(look);
         }
-        looks++;
         if (look.events.has(PokemonAutomation::ScreenEvent::INTERACT_PROMPT)){
             log_gate_prompt(backend, arrow, walked, gate_readings(seen, looks, last));
             return Pokemon::outcome_ok();
         }
         if (look.events.has(PokemonAutomation::ScreenEvent::BATTLE_STARTED)){
-            if (in_battle == Milliseconds(0)){
-                backend.log(std::format("[PLZA] walk_to_zone_gate_entrance: a wild battle after {} ms: walking on at {} deg", walked.count(), angle));
+            const Pokemon::Outcome walked_on = battle.step(backend, angle, walked, gate_readings(seen, looks, last));
+            if (!walked_on.succeeded()){
+                return walked_on;
             }
-            if (in_battle >= GATE_BATTLE_LIMIT){
-                return Pokemon::outcome_failed("wild_battle", std::format(
-                    "walk_to_zone_gate_entrance: still in a wild battle after {} ms of walking on, {}", in_battle.count(), gate_readings(seen, looks, last)
-                ));
-            }
-            backend.stick(angle, GATE_WALK_SLICE, /*release=*/0ms, Pokemon::StoryPace::WALK);
-            in_battle += GATE_WALK_SLICE;
             continue;
         }
         const std::optional<GateRead> read = gate_on(look);
