@@ -32,11 +32,10 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends outside the Pokemon Center, in control, on the game's autosave: console B 2026-11-16 logged the autosave badge after Taunie's scene's last black fade, then the party bar outside the Center."
+      "source": "No forced reload when chained (reload_when_chained \"always\" dropped 2026-11-17, user): assumed unneeded, TO BE VERIFIED by a chained 03.03 -> 03.04 run; put it back if 03.04 fails from the live screen. 03.03's autosave shows in its rooftop_scene, not at its end (console B 2026-11-17, German). console B recording, 2026-11-08/09: played step by step from a new game. Ends outside the Pokemon Center, in control, on the game's autosave: console B 2026-11-16 logged the autosave badge after Taunie's scene's last black fade, then the party bar outside the Center."
     }
   },
   "execution": {
-    "reload_when_chained": "always",
     "save": "autosave",
     "autosave_step": "pokedex_app"
   }
