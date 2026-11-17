@@ -59,14 +59,13 @@ struct LeagueEntryCheck{
 LeagueEntryCheck league_entry_check(const LeagueFightData& next, LeagueSide side);
 
 //  Whether a won try of `row`, its side read as `end`, passes and may be
-//  saved: for a row whose battle is a League fight, the items spent from
-//  `start_bag` (the start save's) within the fight's caps, and `end` able
-//  to start the next fight (league_entry_check()). Any other row passes.
-//  The failure's detail logs every value compared.
-Pokemon::Outcome league_row_pass(const StoryCheckpoint& row, const SlugCounts& start_bag, const LeagueSide& end);
-
-//  The supplies' counts by bag slug.
-SlugCounts supplies_counts(const Supplies& supplies);
+//  saved: for a row whose battle is a League fight, `end` able to start
+//  the next fight (league_entry_check()). The balance left counts, not
+//  what the fight spent: the plan's counts for the next fight hold
+//  whatever the top-up before this one took. The last fight passes on the
+//  win. Any other row passes. The failure's detail logs every value
+//  compared.
+Pokemon::Outcome league_row_pass(const StoryCheckpoint& row, const LeagueSide& end);
 
 
 

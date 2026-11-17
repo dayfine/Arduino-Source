@@ -6,8 +6,8 @@
  *  through the shared engine (run_segment()) against a fake game: each
  *  try's battle is scripted (won or lost, the items spent), the reload
  *  goes back to the bag of the last save, and a try passes by
- *  league_row_pass(): the fight's item caps, and the side it leaves able
- *  to start the next fight after its top-up. And the top-up before a
+ *  league_row_pass(): the side it leaves able to start the next fight
+ *  after its top-up, whatever the fight spent. And the top-up before a
  *  fight (planned_between(), the console's league_top_up): one Super
  *  Potion, two, or a Full Restore, and the Elixir only before the
  *  Champion.
@@ -125,7 +125,7 @@ public:
             return Pokemon::outcome_ok();
         };
         hooks.verify_pass = [this](const std::string& id, Pokemon::RunState&){
-            return league_row_pass(fight_row(id), m_saved.bag, m_side);
+            return league_row_pass(fight_row(id), m_side);
         };
         hooks.log = [this](const std::string& line){
             log += std::format("\n    {}", line);
@@ -290,7 +290,7 @@ const LeagueRunCase LEAGUE_RUN_CASES[] = {
         .expectation = {.completed = true, .fights = 5 * TRIES_ALL_PASS, .saves = 5, .full_restores_saved = 8},
     },
     {
-        .name = "Bruno's first phase 2 win spends 3 Full Restores, over his cap of 2: not saved; the next win is",
+        .name = "Bruno's first phase 2 win leaves 3 Full Restores, under Agatha's 5: not saved; the next win is",
         .input = {.tries = {
             {"20.02", joined(joined(repeated(10, win()), {win({{"full-restore", 3}})}), {win({{"full-restore", 1}})})},
         }},
@@ -302,8 +302,8 @@ const LeagueRunCase LEAGUE_RUN_CASES[] = {
         .expectation = {.failure = "verify_below_min_pass", .failed_row = "20.01", .fights = 10, .saves = 0, .full_restores_saved = 8},
     },
     {
-        .name = "Lorelei wins with 2 Full Restores, over her cap of 1, every time: phase 1 passes none, the run stops",
-        .input = {.tries = {{"20.01", {win({{"full-restore", 2}})}}}},
+        .name = "Lorelei wins leaving 5 Full Restores, under Bruno's 6, every time: phase 1 passes none, the run stops",
+        .input = {.tries = {{"20.01", {win({{"full-restore", 3}})}}}},
         .expectation = {.failure = "verify_below_min_pass", .failed_row = "20.01", .fights = 10, .saves = 0, .full_restores_saved = 8},
     },
     {
@@ -325,6 +325,11 @@ const LeagueRunCase LEAGUE_RUN_CASES[] = {
             .tries = {{"20.04", {win({{"full-restore", 2}}, /*hp_left=*/45)}}},
         },
         .expectation = {.failure = "verify_below_min_pass", .failed_row = "20.04", .fights = 10, .saves = 0, .full_restores_saved = 4},
+    },
+    {
+        .name = "Bruno wins at 45 HP, so the top-up before Agatha takes a Full Restore, more than her plan's spend of none: her wins still leave Lance's 4, saved",
+        .input = {.first = "20.02", .tries = {{"20.02", {win(/*used=*/{}, /*hp_left=*/45)}}}},
+        .expectation = {.completed = true, .fights = 4 * TRIES_ALL_PASS, .saves = 4, .full_restores_saved = 7},
     },
     {
         .name = "Agatha wins leaving Surf at 2, under Lance's 3: never saved",

@@ -183,9 +183,6 @@ Outcome league_top_up(StoryEnv& env, const StoryStep& step){
     if (!top_up(env, step, *fight, max_hp)){
         return Pokemon::outcome_failed("precondition_failed", std::format("{}: the top-up before {} didn't finish", step.name, fight->name));
     }
-    //  The heal between fights isn't the fight's spending (console B,
-    //  2026-11-17: the Full Restore before Agatha failed her cap of 0).
-    env.fight_start = env.supplies;
     std::optional<PlannedCarry> carry = top_up_carry(env.supplies, max_hp);
     const LeagueEntryCheck check = league_entry_check(*fight, LeagueSide{
         .hp = carry->hp, .max_hp = carry->max_hp, .pp = carry->pp, .full_pp = carry->full_pp, .bag = carry->bag,
@@ -297,7 +294,7 @@ void log_save_read(StoryEnv& env, const StoryCheckpoint& row, const LeagueFightD
 } // namespace
 
 
-Outcome check_league_save(StoryEnv& env, const StoryCheckpoint& row, const Supplies& start){
+Outcome check_league_save(StoryEnv& env, const StoryCheckpoint& row){
     const LeagueFightData* fight = league_row_fight(row);
     if (fight == nullptr){
         return Pokemon::outcome_ok();
@@ -311,7 +308,7 @@ Outcome check_league_save(StoryEnv& env, const StoryCheckpoint& row, const Suppl
         return *failed;
     }
     log_save_read(env, row, *fight, side);
-    const Outcome passed = league_row_pass(row, supplies_counts(start), side);
+    const Outcome passed = league_row_pass(row, side);
     if (passed.succeeded()){
         //  The story's counts are the console's from here.
         env.supplies = std::move(now);

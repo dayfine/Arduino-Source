@@ -557,15 +557,14 @@ static void run_story_rows(
     }
     Pokemon::StoryGameHooks game = story_game(env, story);
     Pokemon::SegmentHooks hooks = Pokemon::story_segment_hooks(game);
-    //  A verify row's try passes by the League's item caps, counted from
-    //  the bag after its top-up (the loop reloads the start save before
-    //  each try, and the top-up heals between fights), and by our
-    //  side as read off the console meeting the next fight's entry
-    //  contract: checked right before the save, never on a guess.
+    //  A verify row's try passes by our side as read off the console
+    //  after the fight, the bag's balance and the lead's HP and PP,
+    //  meeting the next fight's entry contract: checked right before the
+    //  save, never on a guess.
     hooks.verify_pass = [&story, &rows](const std::string& id, Pokemon::RunState&){
         for (const StoryCheckpoint& row : rows){
             if (row.id == id){
-                return check_league_save(story, row, story.fight_start ? *story.fight_start : story.saved_supplies);
+                return check_league_save(story, row);
             }
         }
         return Pokemon::outcome_ok();
