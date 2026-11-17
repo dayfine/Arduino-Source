@@ -14,6 +14,9 @@
  *                    not while this foe has a setup goal left, we're safe,
  *                    and its trainer has more Pokemon;
  *    sleep_cure      asleep or frozen: a Full Restore at KO risk, else the cure;
+ *    foe_heal        the foe's heal block: below its HP, the smallest
+ *                    spendable heal restoring at least its amount (before
+ *                    sure_ko with heal_when_can_ko);
  *    status_ko       a status at KO risk: a Full Restore;
  *    ko_heal         HP <= D, the foe's worst ordinary hit now: the smallest
  *                    heal that clears D with a mean hit to spare; after two
@@ -21,11 +24,13 @@
  *    cure            paralysis, poison or a burn with no KO risk: the cure;
  *    kill_order      the trainer can still heal and the planned hit can
  *                    leave the foe at 1-24%: a hit that leaves it at 25% or
- *                    more (one after which the finisher KOs, if any);
+ *                    more (one after which the finisher KOs, if any); not
+ *                    for a foe with a sequence or kill_order off;
  *    pp_restore      every planned move out of PP: an Elixir not reserved;
  *    plan:setup      the first unmet setup goal whose move has PP, with the
  *                    HP for it (else plan:setup_heal);
- *    plan:move       the first planned move with PP above the reserve;
+ *    plan:move       the foe's sequence move for our attack count, else
+ *                    the first planned move with PP above the reserve;
  *    plan:struggle   no move with PP: the caller's best attack.
  *  Pure decisions from the state the caller builds
  *  (PokemonFRLG_AutoStoryPlannedState.h); nothing here reads a screen.
@@ -38,6 +43,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryPlannedPolicy_H
 
 #include <cstddef>
+#include <map>
 #include <optional>
 #include <string>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -61,16 +67,19 @@ struct PlannedChoice{
 //  turns in a row against the foe at this HP (PlannedStreak).
 PlannedChoice choose_planned(const PlannedState& state, const LeagueFightData& fight, int streak);
 
-//  The medicine turns in a row against one foe at one HP.
+//  The medicine turns in a row against one foe at one HP, and our attacks
+//  on each foe's party slot (PlannedState::attacks_on_foe).
 class PlannedStreak{
 public:
     int streak(const PlannedState& state) const;
+    int attacks(size_t foe_slot) const;
     void chose(const PlannedState& state, const PlannedChoice& choice);
 
 private:
     std::string m_species;
     int m_hp = -1;
     int m_streak = 0;
+    std::map<size_t, int> m_attacks;
 };
 
 //  Registers the planned policy tests.

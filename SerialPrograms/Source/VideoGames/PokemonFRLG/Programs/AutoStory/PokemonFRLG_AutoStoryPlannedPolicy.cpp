@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A line-for-line port of planned.py (PokemonSimulation #111, 4a79ccc):
- *  keep the two in step.
+ *  A line-for-line port of planned.py (PokemonSimulation #115, 837d757)
+ *  without its riskier variants (goals["_risk"]): keep the two in step.
  *
  */
 
@@ -168,8 +168,37 @@ const PlannedMove* best_expected(const PlannedOwn& own, const LeagueFightData& f
     return best;
 }
 
+//  The heal block's item: below its HP, the smallest spendable heal that
+//  restores at least its amount (of what is missing).
+std::optional<std::string> foe_heal(const PlannedState& state, const LeagueFightData& fight, const LeagueFoePlan& plan){
+    const PlannedOwn& own = state.own;
+    if (!plan.heal || own.hp >= plan.heal->below){
+        return std::nullopt;
+    }
+    const int missing = own.max_hp - own.hp;
+    for (std::string_view name : {"super-potion", "hyper-potion", "max-potion", "full-restore"}){
+        if (spendable(fight, state.bag, name) > 0 && std::min(missing, heal_hp(name)) >= std::min(missing, plan.heal->heal_at_least)){
+            return std::string(name);
+        }
+    }
+    return std::nullopt;
+}
+
+//  The foe's sequence: our n-th attack on it uses its n-th move, while
+//  that move has PP.
+const PlannedMove* sequence_move(const PlannedState& state, const LeagueFoePlan& plan){
+    const size_t attacks = static_cast<size_t>(std::max(0, state.attacks_on_foe));
+    if (attacks >= plan.sequence.size()){
+        return nullptr;
+    }
+    return own_move(state.own, plan.sequence[attacks]);
+}
+
 const PlannedMove* planned_move(const PlannedState& state, const LeagueFightData& fight, const LeagueFoePlan& plan){
     const PlannedOwn& own = state.own;
+    if (const PlannedMove* move = sequence_move(state, plan)){
+        return move;
+    }
     for (const std::string& name : plan.moves){
         const PlannedMove* move = own_move(own, name);
         if (move != nullptr && pp_above_reserve(fight, move->id, move->pp) > 0){
@@ -377,7 +406,7 @@ PlannedChoice plan_rows(const PlannedState& state, const LeagueFightData& fight,
         return move_choice("plan:struggle", std::nullopt);
     }
     const bool awake = own.status != PlannedStatus::SLEEP && own.status != PlannedStatus::FREEZE;
-    if (awake){
+    if (awake && plan.kill_order && plan.sequence.empty()){
         if (const PlannedMove* opener = kill_order(state, fight, *chosen)){
             return move_choice("kill_order", slot_of(own, opener));
         }
@@ -401,6 +430,11 @@ PlannedChoice choose_planned(const PlannedState& state, const LeagueFightData& f
     //  A sure KO waits while this foe is the plan's setup foe and we are
     //  safe: the setup carries to the next foes.
     const bool goal_first = own.hp > d && setup_goal(state, fight, plan) != nullptr && state.foe_party_alive > 1;
+    if (plan.heal && plan.heal->heal_when_can_ko && streak < 2){
+        if (std::optional<std::string> name = foe_heal(state, fight, plan)){
+            return item_choice("foe_heal", *name);
+        }
+    }
     if (awake && !goal_first){
         if (std::optional<PlannedChoice> choice = sure_ko_row(state, fight, d)){
             return *choice;
@@ -411,8 +445,13 @@ PlannedChoice choose_planned(const PlannedState& state, const LeagueFightData& f
             return *choice;
         }
     }
+    if (plan.heal && streak < 2){
+        if (std::optional<std::string> name = foe_heal(state, fight, plan)){
+            return item_choice("foe_heal", *name);
+        }
+    }
     const bool risk = own.hp <= d;
-    if (risk && d < own.max_hp){
+    if (risk && d < own.max_hp && (!plan.heal || plan.heal->ko_rule)){
         if (std::optional<PlannedChoice> choice = ko_risk_rows(state, fight, danger, streak)){
             return *choice;
         }
@@ -429,7 +468,16 @@ int PlannedStreak::streak(const PlannedState& state) const{
     return state.foe.species == m_species && state.foe.hp == m_hp ? m_streak : 0;
 }
 
+int PlannedStreak::attacks(size_t foe_slot) const{
+    const auto it = m_attacks.find(foe_slot);
+    return it == m_attacks.end() ? 0 : it->second;
+}
+
 void PlannedStreak::chose(const PlannedState& state, const PlannedChoice& choice){
+    //  Every row but an item's is an attack (plan:struggle's too).
+    if (!choice.item){
+        m_attacks[state.foe.slot]++;
+    }
     const int before = streak(state);
     m_species = state.foe.species;
     m_hp = state.foe.hp;

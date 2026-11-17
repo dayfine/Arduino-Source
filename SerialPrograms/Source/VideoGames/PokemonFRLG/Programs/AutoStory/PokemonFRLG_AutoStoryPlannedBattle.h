@@ -97,6 +97,10 @@ std::optional<PlannedBattle> planned_battle(std::string_view trainer);
 //  Registers the planned battle tests.
 void add_tests_AutoStoryPlannedBattle(UnitTestDatabase& database);
 
+//  Registers the League fights on the fake battle engine
+//  (PokemonFRLG_AutoStoryPlannedBattleFake_Tests.cpp).
+void add_tests_AutoStoryPlannedBattleFake(UnitTestDatabase& database);
+
 
 
 } // namespace PokemonFRLG

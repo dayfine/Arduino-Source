@@ -2,20 +2,36 @@
   "format": "frlg-league-plan/1",
   "fights": {
     "lorelei": {
+      "goal": "Win with <= 1 Full Restore: 6 X Special on Dewgong (+6), Bite/Surf through, Lapras Strength -> Bite -> Bite",
       "foes": [
-        {"species": "dewgong", "moves": ["bite", "surf"], "setup": [{"item": "xspecial", "stage": 4, "serves": "bite"}]},
+        {"species": "dewgong", "moves": ["bite", "surf"], "setup": [{"item": "xspecial", "stage": 6, "serves": "bite"}]},
         {"species": "cloyster", "moves": ["bite", "surf"], "setup": []},
         {"species": "slowbro", "moves": ["bite", "surf"], "setup": []},
         {"species": "jynx", "moves": ["bite", "surf", "strength"], "setup": []},
-        {"species": "lapras", "moves": ["bite", "strength"], "setup": []}
+        {
+          "species": "lapras",
+          "moves": ["bite", "strength"],
+          "setup": [],
+          "sequence": ["strength", "bite", "bite"]
+        }
       ],
       "between": {},
+      "contract": {
+        "topup": {},
+        "entry": {"hp_sim": {"median": 171, "p10": 171}, "pp": {"surf": 15, "blizzard": 5},
+                  "items": {"fullrestore": 8, "xspecial": 15, "xspeed": 5, "xaccuracy": 3, "guardspec": 2, "superpotion": 6, "elixir": 1, "maxelixir": 1}},
+        "exit": {"hp": {"median": 107, "p10": 36}, "surf": {"median": 15, "min": 12}, "pp": {"blizzard": 5},
+                 "items": {"fullrestore": 7, "xspecial": 9, "xspeed": 5, "xaccuracy": 3, "guardspec": 2, "superpotion": 6, "elixir": 1, "maxelixir": 1}},
+        "pass": {"expected_pass": 0.733, "min_pass": {"k": 5, "of": 10, "rate": 0.5}, "reset_budget": 5}
+      },
+      "caps": {"fullrestore": 1, "xspecial": 6, "xspeed": 0, "xaccuracy": 0, "guardspec": 0, "superpotion": 0},
       "reserve": {
         "pp": {"blizzard": 5},
-        "items": {"xspecial": 9, "xspeed": 3, "xaccuracy": 2, "guardspec": 1, "fullrestore": 6, "maxelixir": 1}
+        "items": {"fullrestore": 7, "maxelixir": 1, "superpotion": 6, "xspeed": 5, "xaccuracy": 2, "xspecial": 9, "guardspec": 1, "elixir": 1}
       }
     },
     "bruno": {
+      "goal": "Win with <= 2 Full Restores: 2 X Special and up to 3 X Speed on Onix #1, Surf through; reset on Roar or a lost Speed race",
       "foes": [
         {
           "species": "onix",
@@ -28,15 +44,26 @@
         {"species": "hitmonchan", "moves": ["surf", "blizzard"], "setup": []},
         {"species": "hitmonlee", "moves": ["surf", "strength"], "setup": []},
         {"species": "onix", "moves": ["surf"], "setup": []},
-        {"species": "machamp", "moves": ["surf", "strength"], "setup": []}
+        {"species": "machamp", "moves": ["surf", "strength"], "setup": [], "heal": {"below": 80, "heal_at_least": 50}}
       ],
-      "between": {"hp": 0.8, "pp": {"surf": 8}},
+      "between": {"heal": "one"},
+      "reset": {"roar": true, "after_foe": {"index": 0, "speed_below": 0, "items_used": {"xspeed": 3}}},
+      "contract": {
+        "topup": {"superpotion": 1, "fullrestore": 1},
+        "entry": {"hp_sim": {"median": 171, "p10": 171}, "pp": {"surf": 12, "blizzard": 5},
+                  "items": {"fullrestore": 6, "xspecial": 9, "xspeed": 5, "xaccuracy": 3, "guardspec": 2, "superpotion": 5, "elixir": 1, "maxelixir": 1}},
+        "exit": {"hp": {"median": 51, "p10": 32}, "surf": {"median": 10, "min": 5}, "pp": {"blizzard": 5},
+                 "items": {"fullrestore": 5, "xspecial": 7, "xspeed": 2, "xaccuracy": 3, "guardspec": 2, "superpotion": 5, "elixir": 1, "maxelixir": 1}},
+        "pass": {"expected_pass": 0.37, "min_pass": {"k": 1, "of": 10, "rate": 0.1}, "reset_budget": 9}
+      },
+      "caps": {"fullrestore": 2, "xspecial": 2, "xspeed": 3, "xaccuracy": 0, "guardspec": 0, "superpotion": 1},
       "reserve": {
         "pp": {"blizzard": 5},
-        "items": {"xspecial": 7, "xspeed": 2, "xaccuracy": 2, "guardspec": 1, "fullrestore": 5, "maxelixir": 1}
+        "items": {"fullrestore": 5, "maxelixir": 1, "superpotion": 5, "xspeed": 2, "xaccuracy": 2, "xspecial": 7, "guardspec": 1, "elixir": 1}
       }
     },
     "agatha": {
+      "goal": "Win with no Full Restore: 3 X Special and 1 X Speed on Gengar #1 (+3), Bite/Surf through",
       "foes": [
         {
           "species": "gengar",
@@ -51,13 +78,23 @@
         {"species": "arbok", "moves": ["surf", "bite"], "setup": []},
         {"species": "gengar", "moves": ["bite", "surf"], "setup": []}
       ],
-      "between": {"hp": 0.8, "pp": {"surf": 6}},
+      "between": {"heal": "one"},
+      "contract": {
+        "topup": {"superpotion": 1},
+        "entry": {"hp_sim": {"median": 104, "p10": 85}, "pp": {"surf": 5, "blizzard": 5},
+                  "items": {"fullrestore": 5, "xspecial": 7, "xspeed": 2, "xaccuracy": 3, "guardspec": 2, "superpotion": 4, "elixir": 1, "maxelixir": 1}},
+        "exit": {"hp": {"median": 84, "p10": 47}, "surf": {"median": 7, "min": 3}, "pp": {"blizzard": 5},
+                 "items": {"fullrestore": 5, "xspecial": 4, "xspeed": 1, "xaccuracy": 3, "guardspec": 2, "superpotion": 4, "elixir": 1, "maxelixir": 1}},
+        "pass": {"expected_pass": 0.719, "min_pass": {"k": 5, "of": 10, "rate": 0.5}, "reset_budget": 5}
+      },
+      "caps": {"fullrestore": 0, "xspecial": 3, "xspeed": 1, "xaccuracy": 0, "guardspec": 0, "superpotion": 1},
       "reserve": {
         "pp": {"blizzard": 5},
-        "items": {"xspecial": 4, "xspeed": 1, "xaccuracy": 2, "guardspec": 1, "fullrestore": 4, "maxelixir": 1}
+        "items": {"fullrestore": 5, "maxelixir": 1, "superpotion": 4, "xspeed": 1, "xaccuracy": 2, "xspecial": 4, "guardspec": 1, "elixir": 1}
       }
     },
     "lance": {
+      "goal": "Win with <= 2 Full Restores: 2 X Special on Gyarados, Blizzard the dragons, keep the Max Elixir",
       "foes": [
         {
           "species": "gyarados",
@@ -67,15 +104,25 @@
         {"species": "dragonair", "moves": ["blizzard", "strength"], "setup": []},
         {"species": "dragonair", "moves": ["blizzard", "strength"], "setup": []},
         {"species": "aerodactyl", "moves": ["surf"], "setup": []},
-        {"species": "dragonite", "moves": ["blizzard", "bite"], "setup": []}
+        {"species": "dragonite", "moves": ["blizzard", "bite"], "setup": [], "heal": {"below": 80, "heal_at_least": 50}}
       ],
-      "between": {"hp": 1.0, "pp": {"surf": 4, "blizzard": 4}},
+      "between": {"heal": "one"},
+      "contract": {
+        "topup": {"superpotion": 2, "fullrestore": 1},
+        "entry": {"hp_sim": {"median": 171, "p10": 171}, "pp": {"surf": 3, "blizzard": 5},
+                  "items": {"fullrestore": 4, "xspecial": 4, "xspeed": 1, "xaccuracy": 3, "guardspec": 2, "superpotion": 2, "elixir": 1, "maxelixir": 1}},
+        "exit": {"hp": {"median": 86.5, "p10": 62}, "surf": {"median": 5, "min": 1}, "pp": {},
+                 "items": {"fullrestore": 3, "xspecial": 2, "xspeed": 1, "xaccuracy": 3, "guardspec": 2, "superpotion": 2, "elixir": 1, "maxelixir": 1}},
+        "pass": {"expected_pass": 0.442, "min_pass": {"k": 2, "of": 10, "rate": 0.2}, "reset_budget": 7}
+      },
+      "caps": {"fullrestore": 2, "xspecial": 2, "xspeed": 0, "xaccuracy": 0, "guardspec": 0, "superpotion": 2},
       "reserve": {
         "pp": {},
-        "items": {"xspecial": 2, "xspeed": 1, "xaccuracy": 2, "guardspec": 1, "fullrestore": 2, "maxelixir": 1}
+        "items": {"fullrestore": 3, "maxelixir": 1, "superpotion": 2, "xspeed": 1, "xaccuracy": 2, "xspecial": 2, "guardspec": 1, "elixir": 1}
       }
     },
     "champion": {
+      "goal": "Win with the 3 Full Restores left: Guard Spec, +2 X Special, +2 X Accuracy, +1 X Speed on Pidgeot; stay at +2 (Whirlwind at +3); reset on Whirlwind",
       "foes": [
         {
           "species": "pidgeot",
@@ -93,7 +140,17 @@
         {"species": "arcanine", "moves": ["surf"], "setup": []},
         {"species": "venusaur", "moves": ["blizzard"], "setup": []}
       ],
-      "between": {"hp": 1.0, "pp": {"surf": 8, "blizzard": 4}},
+      "between": {"heal": "one", "pp": {"surf": 8, "blizzard": 4}},
+      "reset": {"roar": true},
+      "contract": {
+        "topup": {"superpotion": 2, "fullrestore": 1, "elixir": 1},
+        "entry": {"hp_sim": {"median": 171, "p10": 171}, "pp": {"surf": 8, "blizzard": 4},
+                  "items": {"fullrestore": 2, "xspecial": 2, "xspeed": 1, "xaccuracy": 3, "guardspec": 2, "superpotion": 0, "elixir": 0, "maxelixir": 1}},
+        "exit": {"hp": {"median": 39, "p10": 3}, "surf": {"median": 11, "min": 6}, "pp": {},
+                 "items": {"fullrestore": 0, "xspecial": 0, "xspeed": 0, "xaccuracy": 1, "guardspec": 1, "superpotion": 0, "elixir": 0, "maxelixir": 0}},
+        "pass": {"expected_pass": 0.395, "min_pass": {"k": 2, "of": 10, "rate": 0.2}, "reset_budget": 8}
+      },
+      "caps": {"fullrestore": 3, "xspecial": 2, "xspeed": 1, "xaccuracy": 2, "guardspec": 1, "superpotion": 2, "maxelixir": 1, "elixir": 1},
       "reserve": {"pp": {}, "items": {}}
     }
   }

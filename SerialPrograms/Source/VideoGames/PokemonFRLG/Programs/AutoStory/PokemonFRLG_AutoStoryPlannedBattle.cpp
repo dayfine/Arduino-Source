@@ -362,7 +362,8 @@ PlannedBattle::Turn PlannedBattle::choose(const Supplies& supplies, const Policy
     for (std::string_view item : LEAGUE_ITEMS){
         inputs.bag[std::string(item)] = bag_count(supplies, item);
     }
-    const PlannedState state = planned_state(inputs, league_foes_data());
+    PlannedState state = planned_state(inputs, league_foes_data());
+    state.attacks_on_foe = m_streak.attacks(state.foe.slot);
     const PlannedChoice choice = choose_planned(state, *m_fight, m_streak.streak(state));
     m_streak.chose(state, choice);
     std::string log = turn_log(*m_fight, state, inputs.track, choice);

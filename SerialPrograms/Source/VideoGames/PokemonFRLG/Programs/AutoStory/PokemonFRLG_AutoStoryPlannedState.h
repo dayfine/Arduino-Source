@@ -134,6 +134,9 @@ struct PlannedState{
     //  The trainer has an open item slot (trainer_item_open()).
     bool trainer_item_open = false;
     SlugCounts bag = {};
+    //  Our attacks on the foe's party slot so far this fight: a foe's
+    //  sequence picks by it.
+    int attacks_on_foe = 0;
 };
 
 
