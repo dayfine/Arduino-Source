@@ -37,8 +37,7 @@
       {
         "id": "arrive_3f",
         "kind": "scene",
-        "why": "step 67: the ride, until control on 3F",
-        "action": "a"
+        "why": "step 67: the ride, until control on 3F: a bare scene, as plza/autostory's"
       }
     ],
     "metadata": {

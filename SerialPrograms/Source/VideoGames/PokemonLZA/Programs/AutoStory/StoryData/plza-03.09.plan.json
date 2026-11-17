@@ -22,9 +22,8 @@
       },
       {
         "id": "five_registered",
-        "kind": "game_action",
-        "why": "step 65: Ryon's scene at the lab gate after 5/5, until control; at once when there is control already: plza/autostory's pass had control at once here too (1.2 s, console B 2026-11-14 21:01:47), research_lab_gate having played the whole scene. Here as mash_to_move_hints: the lean scene step waits 45 s for a scene to start, and nothing starts this part.",
-        "action": "mash_to_move_hints"
+        "kind": "scene",
+        "why": "step 65: Ryon's scene at the lab gate after 5/5, until control; at once when there is control already: plza/autostory's pass had control at once here too (1.2 s, console B 2026-11-14 21:01:47), research_lab_gate having played the whole scene. A bare scene, which control ends at once; plza/autostory's was \"a\", which here waits 45 s for a scene to start."
       },
       {
         "id": "up_the_lab_steps",

@@ -225,6 +225,20 @@ const LintCase LINT_CASES[] = {
         .expectation = {.errors = "01.01 s2: a scene must follow what starts it, not a, which plays its scenes through to control"},
     },
     {
+        //  plza/autostory ran 03.09's five_registered this way: control at
+        //  once after research_lab_gate's scene (console B, 2026-11-14 21:01).
+        .name = "a bare scene after a scene passes: control ends it at once",
+        .input = {
+            .before = {
+                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk_to_prompt", .args = {}},
+                {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
+                {.kind = Pokemon::StoryStepKind::MASH, .name = "s1", .why = "", .action = "a", .args = {}},
+            },
+            .step = {.kind = Pokemon::StoryStepKind::MASH, .name = "s2", .why = "", .action = "", .args = {}},
+        },
+        .expectation = {.errors = ""},
+    },
+    {
         .name = "a checkpoint's first step cannot be a talk",
         .input = {.step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}}},
         .expectation = {.errors = "01.01 t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\", or walk_to_prompt)"},
@@ -764,6 +778,30 @@ const RunCase RUN_CASES[] = {
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), party_bar(Milliseconds(500)), party_bar(Milliseconds(1600)),
         }},
         .expectation = {.verdict = "done", .inputs = "press B, wait 250ms", .line = "[Save] 02.01: not saved (save unverified)"},
+    },
+    {
+        //  console B, 2026-11-16 20:42: mash_to_move_hints pressed nothing on
+        //  Mable's mission and reward menus for 60 s; plza/autostory's bare
+        //  scene pressed B on every look and passed (2026-11-14 22:17).
+        .name = "03.11's leave_mable: B on every look through Mable's menus, done on the party bar held a second",
+        .input = {.checkpoint = "03.11", .first_step = 3, .steps = 1, .looks = {
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(500)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)), party_bar(Milliseconds(1500)), party_bar(Milliseconds(2600)),
+        }},
+        .expectation = {.verdict = "done", .inputs = "press B, press B, press B, wait 250ms"},
+    },
+    {
+        .name = "03.11's leave_mable: a choice and a tutorial card still get A between the B presses",
+        .input = {.checkpoint = "03.11", .first_step = 3, .steps = 1, .looks = {
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)), look({ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, /*readings=*/{}, Milliseconds(500)),
+            look(/*events=*/{}, {TUTORIAL_CARD_READING}, Milliseconds(1000)), party_bar(Milliseconds(1500)), party_bar(Milliseconds(2600)),
+        }},
+        .expectation = {.verdict = "done", .inputs = "press B, press A, press A, wait 250ms"},
+    },
+    {
+        .name = "03.09's five_registered: done at once on control after research_lab_gate's scene",
+        .input = {.checkpoint = "03.09", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0)), party_bar(Milliseconds(1100))}},
+        .expectation = {.verdict = "done", .inputs = "wait 250ms"},
     },
     {
         //  console B, 2026-11-13: 02.02 after the Brigitte battle walked

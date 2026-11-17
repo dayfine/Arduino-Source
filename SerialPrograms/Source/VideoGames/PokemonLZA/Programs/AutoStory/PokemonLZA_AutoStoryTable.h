@@ -50,7 +50,8 @@ bool story_row_starts_without_save(const Pokemon::StoryCheckpoint& row);
 //      control (a scene, "mash_to_move_hints", "talk_to_pokedex_screen",
 //      "talk_through_map_screen"): a scene that follows with nothing to
 //      start it plays inside that step, and the scene step then waits 45 s
-//      on the party bar for it (03.04's after_pokedex).
+//      on the party bar for it (03.04's after_pokedex). A bare scene
+//      ("mash") may follow anything: control ends it at once.
 std::vector<std::string> story_row_lead_in_errors(const Pokemon::StoryCheckpoint& row);
 
 
