@@ -14,6 +14,7 @@
 #include "Sources/VideoSource_StillImage.h"
 #include "Sources/VideoSource_Camera.h"
 #include "Sources/VideoSource_MgbaLink.h"
+#include "Controllers/MgbaLink/MgbaLink_SharedLink.h"
 
 #include "VideoSourceOption.h"
 
@@ -148,7 +149,7 @@ void VideoSourceOption::load_json(const JsonValue& json){
 
         load_cached_descriptor<VideoSourceDescriptor_StillImage>(m_descriptor_cache, *obj, VideoSourceType::StillImage);
         load_cached_descriptor<VideoSourceDescriptor_Camera>(m_descriptor_cache, *obj, VideoSourceType::Camera);
-        if (STATIC_GLOBALS.DEVELOPER_MODE){
+        if (STATIC_GLOBALS.DEVELOPER_MODE || MgbaLink::lab_opt_in()){
             load_cached_descriptor<VideoSourceDescriptor_MgbaLink>(m_descriptor_cache, *obj, VideoSourceType::MgbaLink);
         }
 
