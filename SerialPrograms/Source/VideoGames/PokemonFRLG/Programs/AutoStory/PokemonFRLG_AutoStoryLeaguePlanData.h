@@ -16,13 +16,11 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryLeaguePlanData_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryLeaguePlanData_H
 
-#include <cstddef>
 #include <map>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
-#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -49,6 +47,7 @@ struct LeagueFoePlan{
     std::vector<LeagueSetupGoal> setup = {};
 };
 
+//  One fight of the plan: its foes, the top-ups before it and its reserves.
 struct LeagueFightData{
     //  "lorelei", "bruno", "agatha", "lance", "champion".
     std::string name = {};
@@ -63,6 +62,7 @@ struct LeagueFightData{
     SlugCounts reserve_items = {};
 };
 
+//  The whole plan: its fights in the League's order.
 struct LeaguePlanData{
     std::vector<LeagueFightData> fights = {};
 };
@@ -74,27 +74,10 @@ LeaguePlanData parse_league_plan(std::string_view json);
 //  The plan built into the program (StoryData/frlg-league-plan.json).
 const LeaguePlanData& league_plan_data();
 
-//  The fight `name` in `plan`; none if it has none.
-const LeagueFightData* league_fight_data(const LeaguePlanData& plan, std::string_view name);
-
 //  The fight a battle step's trainer ("TRAINER_ELITE_FOUR_LORELEI",
 //  "TRAINER_CHAMPION_FIRST_BULBASAUR") is, as the plan names it; none for
 //  another trainer.
 std::optional<std::string> league_fight_name(std::string_view trainer);
-
-//  The foe at party `slot`, or, when another species is there (a party cut
-//  short), the first of `species`; none if the fight has none.
-const LeagueFoePlan* league_foe_plan(const LeagueFightData& fight, size_t slot, std::string_view species);
-
-//  The bag's count of `item` above the fight's reserve for it.
-int spendable(const LeagueFightData& fight, const SlugCounts& bag, std::string_view item);
-
-//  `pp` of `move` above the fight's reserve for it.
-int pp_above_reserve(const LeagueFightData& fight, std::string_view move, int pp);
-
-
-//  Registers the League plan data tests.
-void add_tests_AutoStoryLeaguePlanData(UnitTestDatabase& database);
 
 
 

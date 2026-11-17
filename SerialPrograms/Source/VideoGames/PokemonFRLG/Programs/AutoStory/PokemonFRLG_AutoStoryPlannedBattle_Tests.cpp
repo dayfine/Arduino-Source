@@ -113,7 +113,8 @@ const FoesCase FOES_CASES[] = {
 struct DamageInput{
     std::string trainer = {};
     size_t slot = 0;
-    PlannedStages stages = {};
+    //  The fight as tracked: stages, the foe's status, the weather.
+    BattleTrackState track = {};
     //  Ours or the foe's.
     bool ours = true;
     std::string move = {};
@@ -138,7 +139,7 @@ public:
         const PlannedInputs inputs{
             .lead = blastoise(),
             .hp = 171,
-            .stages = m_case.input.stages,
+            .track = m_case.input.track,
             .foe = {.foe = foe_of(m_case.input.trainer, m_case.input.slot), .slot = m_case.input.slot},
         };
         const PlannedState state = planned_state(inputs, league_foes_data());
@@ -161,7 +162,7 @@ const DamageCase DAMAGE_CASES[] = {
     },
     {
         .name = "our Surf at +2 on Lance's Dragonite",
-        .input = {.trainer = "TRAINER_ELITE_FOUR_LANCE", .slot = 4, .stages = {.spa = 2}, .move = "surf"},
+        .input = {.trainer = "TRAINER_ELITE_FOUR_LANCE", .slot = 4, .track = {.own = {.sp_attack = 2}}, .move = "surf"},
         .expectation = {.rolls = {45, 46, 46, 47, 48, 48, 49, 49, 50, 50, 51, 51, 52, 52, 53, 54}},
     },
     {
@@ -171,7 +172,7 @@ const DamageCase DAMAGE_CASES[] = {
     },
     {
         .name = "our Strength at -1 (Intimidate) on Lance's Gyarados",
-        .input = {.trainer = "TRAINER_ELITE_FOUR_LANCE", .slot = 0, .stages = {.attack = -1}, .move = "strength"},
+        .input = {.trainer = "TRAINER_ELITE_FOUR_LANCE", .slot = 0, .track = {.own = {.attack = -1}}, .move = "strength"},
         .expectation = {.rolls = {22, 23, 23, 23, 24, 24, 24, 24, 25, 25, 25, 25, 26, 26, 26, 27}},
     },
     {
@@ -184,6 +185,133 @@ const DamageCase DAMAGE_CASES[] = {
         .input = {.trainer = "TRAINER_ELITE_FOUR_LORELEI", .slot = 4, .move = "surf"},
         .expectation = {.rolls = {}},
     },
+    {
+        .name = "our Surf on the Champion's Venusaur",
+        .input = {.trainer = "TRAINER_CHAMPION_FIRST_BULBASAUR", .slot = 5, .move = "surf"},
+        .expectation = {.rolls = {27, 27, 27, 28, 28, 28, 29, 29, 29, 30, 30, 30, 31, 31, 31, 32}},
+    },
+    {
+        .name = "our Surf on Venusaur in Sunny Day's sun: halved",
+        .input = {.trainer = "TRAINER_CHAMPION_FIRST_BULBASAUR", .slot = 5, .track = {.weather = FieldWeather::SUN}, .move = "surf"},
+        .expectation = {.rolls = {13, 13, 13, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 16}},
+    },
+    {
+        .name = "our Surf on Venusaur in rain: x1.5",
+        .input = {.trainer = "TRAINER_CHAMPION_FIRST_BULBASAUR", .slot = 5, .track = {.weather = FieldWeather::RAIN}, .move = "surf"},
+        .expectation = {.rolls = {39, 40, 40, 41, 41, 42, 42, 43, 43, 44, 44, 45, 45, 46, 46, 47}},
+    },
+    {
+        .name = "Arcanine's Flamethrower on us in the sun: x1.5",
+        .input = {.trainer = "TRAINER_CHAMPION_FIRST_BULBASAUR", .slot = 4, .track = {.weather = FieldWeather::SUN}, .ours = false, .move = "flamethrower"},
+        .expectation = {.rolls = {46, 47, 47, 48, 48, 49, 50, 50, 51, 51, 52, 52, 53, 53, 54, 55}},
+    },
+    {
+        .name = "Venusaur's Solar Beam on us after Growth",
+        .input = {.trainer = "TRAINER_CHAMPION_FIRST_BULBASAUR", .slot = 5, .track = {.foe = {.sp_attack = 1}}, .ours = false, .move = "solar-beam"},
+        .expectation = {.rolls = {255, 258, 261, 264, 267, 270, 273, 276, 279, 282, 285, 288, 291, 294, 297, 300}},
+    },
+    {
+        .name = "our Blizzard at +2 on Lorelei's Dewgong (Thick Fat)",
+        .input = {.trainer = "TRAINER_ELITE_FOUR_LORELEI", .slot = 0, .track = {.own = {.sp_attack = 2}}, .move = "blizzard"},
+        .expectation = {.rolls = {12, 12, 13, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 14, 14, 15}},
+    },
+    {
+        .name = "our Blizzard at +3 on Dewgong (Thick Fat)",
+        .input = {.trainer = "TRAINER_ELITE_FOUR_LORELEI", .slot = 0, .track = {.own = {.sp_attack = 3}}, .move = "blizzard"},
+        .expectation = {.rolls = {16, 16, 16, 16, 16, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 19}},
+    },
+    {
+        .name = "our Surf on Slowbro after Amnesia",
+        .input = {.trainer = "TRAINER_ELITE_FOUR_LORELEI", .slot = 2, .track = {.foe = {.sp_defense = 2}}, .move = "surf"},
+        .expectation = {.rolls = {17, 18, 18, 18, 18, 18, 19, 19, 19, 19, 19, 20, 20, 20, 20, 21}},
+    },
+    {
+        .name = "Arbok's Iron Tail on us after Screech",
+        .input = {.trainer = "TRAINER_ELITE_FOUR_AGATHA", .slot = 3, .track = {.own = {.defense = -2}}, .ours = false, .move = "iron-tail"},
+        .expectation = {.rolls = {33, 33, 33, 34, 34, 35, 35, 35, 36, 36, 37, 37, 37, 38, 38, 39}},
+    },
+    {
+        .name = "a burned Machamp's Cross Chop on us: Guts",
+        .input = {.trainer = "TRAINER_ELITE_FOUR_BRUNO", .slot = 4, .track = {.foe_status = PlannedStatus::BURN}, .ours = false, .move = "cross-chop"},
+        .expectation = {.rolls = {95, 96, 97, 98, 99, 100, 101, 103, 104, 105, 106, 107, 108, 109, 110, 112}},
+    },
+};
+
+
+struct StateInput{
+    std::string trainer = {};
+    size_t slot = 0;
+    BattleTrackState track = {};
+};
+struct StateExpectation{
+    int our_speed = 0;
+    int foe_speed = 0;
+    bool foe_sleeping = false;
+    double surf_accuracy = 1.0;
+};
+struct StateCase{
+    std::string name;
+    StateInput input;
+    StateExpectation expectation;
+};
+
+class Test_PlannedTrackState : public UnitTest{
+public:
+    explicit Test_PlannedTrackState(StateCase test_case)
+        : UnitTest(std::format("PokemonFRLG::AutoStoryPlannedBattle - state: {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const PlannedInputs inputs{
+            .lead = blastoise(),
+            .hp = 171,
+            .track = m_case.input.track,
+            .foe = {.foe = foe_of(m_case.input.trainer, m_case.input.slot), .slot = m_case.input.slot},
+        };
+        const PlannedState state = planned_state(inputs, league_foes_data());
+        double surf_accuracy = 0;
+        for (const PlannedMove& move : state.own.moves){
+            surf_accuracy = move.id == "surf" ? move.accuracy : surf_accuracy;
+        }
+        const StateExpectation& want = m_case.expectation;
+        if (state.own.speed != want.our_speed || state.foe.speed != want.foe_speed
+            || state.foe.sleeping != want.foe_sleeping || surf_accuracy != want.surf_accuracy){
+            return std::format("Speed {} vs {}, foe sleeping {}, Surf accuracy {}.", state.own.speed, state.foe.speed, state.foe.sleeping, surf_accuracy);
+        }
+        return true;
+    }
+
+private:
+    StateCase m_case;
+};
+
+//  Our Speed 117 is 128 with Thunder's boost.
+const StateCase STATE_CASES[] = {
+    {
+        .name = "Venusaur paralyzed: a quarter of its Speed",
+        .input = {.trainer = "TRAINER_CHAMPION_FIRST_BULBASAUR", .slot = 5, .track = {.foe_status = PlannedStatus::PARALYSIS}},
+        .expectation = {.our_speed = 128, .foe_speed = 31},
+    },
+    {
+        .name = "after Scary Face: our Speed at -2",
+        .input = {.trainer = "TRAINER_CHAMPION_FIRST_BULBASAUR", .slot = 2, .track = {.own = {.speed = -2}}},
+        .expectation = {.our_speed = 64, .foe_speed = 70},
+    },
+    {
+        .name = "Gengar after Double Team: our Surf can miss",
+        .input = {.trainer = "TRAINER_ELITE_FOUR_AGATHA", .slot = 0, .track = {.foe = {.evasion = 1}}},
+        .expectation = {.our_speed = 128, .foe_speed = 126, .surf_accuracy = 0.75},
+    },
+    {
+        .name = "Lapras rested: asleep for more than this turn",
+        .input = {.trainer = "TRAINER_ELITE_FOUR_LORELEI", .slot = 4, .track = {.foe_status = PlannedStatus::SLEEP, .foe_sleep_turns = 2}},
+        .expectation = {.our_speed = 128, .foe_speed = 94, .foe_sleeping = true},
+    },
+    {
+        .name = "Lapras on its last turn of sleep: may wake and hit",
+        .input = {.trainer = "TRAINER_ELITE_FOUR_LORELEI", .slot = 4, .track = {.foe_status = PlannedStatus::SLEEP, .foe_sleep_turns = 1}},
+        .expectation = {.our_speed = 128, .foe_speed = 94, .foe_sleeping = false},
+    },
 };
 
 } // namespace
@@ -195,6 +323,9 @@ void add_tests_AutoStoryPlannedBattle(UnitTestDatabase& database){
     }
     for (const DamageCase& test_case : DAMAGE_CASES){
         database.add<Test_PlannedDamage>(test_case);
+    }
+    for (const StateCase& test_case : STATE_CASES){
+        database.add<Test_PlannedTrackState>(test_case);
     }
 }
 

@@ -20,8 +20,11 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_AutoStoryGen3Damage.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
+#include "PokemonFRLG_AutoStoryLeagueFightData.h"
 #include "PokemonFRLG_AutoStoryLeaguePlanData.h"
+#include "PokemonFRLG_AutoStoryPlannedBetween.h"
 #include "PokemonFRLG_AutoStoryPlannedPolicy.h"
+#include "PokemonFRLG_AutoStoryPlannedRisk.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

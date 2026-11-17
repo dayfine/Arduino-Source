@@ -41,7 +41,8 @@ std::vector<int> gen3_damage_rolls(const Gen3Hit& hit){
     if (hit.burned_physical){
         base /= 2;
     }
-    base = std::max<int64_t>(base, 1) + 2;
+    base = static_cast<int64_t>(std::floor(static_cast<double>(base) * hit.weather));
+    base = (hit.physical ? std::max<int64_t>(base, 1) : base) + 2;
     if (hit.critical){
         base *= 2;
     }

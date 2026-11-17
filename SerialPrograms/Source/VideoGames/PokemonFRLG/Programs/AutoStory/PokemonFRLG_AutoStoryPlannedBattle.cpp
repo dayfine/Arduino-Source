@@ -9,8 +9,10 @@
 #include <format>
 #include <map>
 #include "PokemonFRLG_AutoStoryGen3Damage.h"
+#include "PokemonFRLG_AutoStoryLeagueFightData.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryPlannedBattle.h"
+#include "PokemonFRLG_AutoStoryPlannedRisk.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -21,9 +23,6 @@ namespace{
 
 using Pokemon::PokemonType;
 
-//  Guard Spec's Mist and Sunny Day's sun last 5 turns (pret).
-constexpr int MIST_TURNS = 5;
-constexpr int SUN_TURNS = 5;
 //  The quantiles a multi-hit move's total is read as (the sim's damage.cjs).
 constexpr int HIT_QUANTILES = 32;
 
@@ -34,13 +33,43 @@ constexpr std::string_view LEAGUE_ITEMS[] = {
     "x-attack", "x-defend", "guard-spec",
 };
 
-//  One side of a hit: its stats as the battle uses them (badges applied).
+//  One side of a hit: its stats as the battle uses them (badges applied),
+//  its stages and its status.
 struct Side{
     int level = 1;
     Stats stats = {};
     SpeciesData types = {};
     std::string ability = {};
+    StatStages stages = {};
+    PlannedStatus status = PlannedStatus::NONE;
 };
+
+//  The weather on a move of `type` (@smogon/calc calculateFinalModsADV).
+double weather_modifier(FieldWeather weather, PokemonType type, bool solar_beam){
+    const bool sun = weather == FieldWeather::SUN;
+    const bool rain = weather == FieldWeather::RAIN;
+    if ((sun && type == PokemonType::FIRE) || (rain && type == PokemonType::WATER)){
+        return 1.5;
+    }
+    if ((sun && type == PokemonType::WATER) || (rain && type == PokemonType::FIRE) || (rain && solar_beam)){
+        return 0.5;
+    }
+    return 1.0;
+}
+
+//  The attacker's Attack or Sp. Atk before its stage (@smogon/calc
+//  calculateAttackADV): halved by the defender's Thick Fat on a Fire or
+//  Ice hit, then x1.5 for Guts with a status on a physical one.
+int attack_stat(const LeagueMoveData& move, const Side& attacker, const Side& defender){
+    int attack = move.physical ? attacker.stats.attack : attacker.stats.sp_attack;
+    if (defender.ability == "thickfat" && (move.type == PokemonType::FIRE || move.type == PokemonType::ICE)){
+        attack /= 2;
+    }
+    if (move.physical && attacker.ability == "guts" && attacker.status != PlannedStatus::NONE){
+        attack = attack * 3 / 2;
+    }
+    return attack;
+}
 
 double effectiveness(PokemonType attack, PokemonType defend){
     return static_cast<double>(type_effectiveness(attack, defend)) / 10.0;
@@ -91,9 +120,10 @@ std::vector<int> multi_hit_rolls(const std::vector<int>& per_hit, std::pair<int,
     return rolls;
 }
 
-//  `move`'s damage rolls from `attacker` on `defender`, with the
-//  attacker's offensive stage; empty for none.
-std::vector<int> damage_rolls(const LeagueMoveData& move, const Side& attacker, const Side& defender, int stage){
+//  `move` (`id`)'s damage rolls from `attacker` on `defender` in
+//  `weather`; empty for none.
+std::vector<int> damage_rolls(std::string_view id, const LeagueMoveData& move, const std::pair<Side, Side>& sides, FieldWeather weather){
+    const auto& [attacker, defender] = sides;
     const double first = effectiveness(move.type, defender.types.first);
     const double second = defender.types.second == defender.types.first ? 1.0 : effectiveness(move.type, defender.types.second);
     if (first * second == 0 || ability_blocks(defender.ability, move.type)){
@@ -102,20 +132,19 @@ std::vector<int> damage_rolls(const LeagueMoveData& move, const Side& attacker, 
     if (move.fixed_damage){
         return {*move.fixed_damage};
     }
-    int attack = move.physical ? attacker.stats.attack : attacker.stats.sp_attack;
-    //  Thick Fat halves the attacker's stat for Fire and Ice.
-    if (defender.ability == "thickfat" && (move.type == PokemonType::FIRE || move.type == PokemonType::ICE)){
-        attack /= 2;
-    }
     const std::vector<int> rolls = gen3_damage_rolls(Gen3Hit{
         .level = attacker.level,
-        .attack = attack,
+        .attack = attack_stat(move, attacker, defender),
         .defense = move.physical ? defender.stats.defense : defender.stats.sp_defense,
         .power = move.power,
-        .attack_stage = stage,
+        .attack_stage = move.physical ? attacker.stages.attack : attacker.stages.sp_attack,
+        .defense_stage = move.physical ? defender.stages.defense : defender.stages.sp_defense,
         .stab = move.type == attacker.types.first || move.type == attacker.types.second,
         .effectiveness_first = first,
         .effectiveness_second = second,
+        .burned_physical = move.physical && attacker.status == PlannedStatus::BURN && attacker.ability != "guts",
+        .physical = move.physical,
+        .weather = weather_modifier(weather, move.type, id == "solar-beam"),
     });
     return move.hits && !rolls.empty() ? multi_hit_rolls(rolls, *move.hits) : rolls;
 }
@@ -152,69 +181,87 @@ PlannedStatus planned_status(StatusCondition status){
     return PlannedStatus::NONE;
 }
 
-//  The attacker's stages a move reads.
-struct Offense{
-    int attack = 0;
-    int spa = 0;
-    int accuracy = 0;
-};
-
-PlannedMove planned_move(std::string_view id, int pp, const LeagueFoesData& data, const std::pair<Side, Side>& sides, const Offense& offense){
+//  `id` as the policy weighs it, from the first of `sides` on the second.
+PlannedMove planned_move(std::string_view id, int pp, const LeagueFoesData& data, const std::pair<Side, Side>& sides, FieldWeather weather){
     PlannedMove planned{.id = std::string(id), .pp = pp};
     const auto found = data.moves.find(id);
     if (found == data.moves.end()){
         return planned;
     }
     const LeagueMoveData& move = found->second;
-    planned.accuracy = move.accuracy ? hit_chance(*move.accuracy, offense.accuracy, 0) : 1.0;
-    planned.damage = damage_rolls(move, sides.first, sides.second, move.physical ? offense.attack : offense.spa);
+    const auto& [attacker, defender] = sides;
+    planned.accuracy = move.accuracy ? hit_chance(*move.accuracy, attacker.stages.accuracy, defender.stages.evasion) : 1.0;
+    planned.damage = damage_rolls(id, move, sides, weather);
     planned.priority = move.priority;
     planned.two_turn = move.two_turn;
     return planned;
 }
 
 PlannedOwn planned_own(const PlannedInputs& inputs, const std::pair<Side, Side>& sides, const LeagueFoesData& data){
-    const PlannedStages& stages = inputs.stages;
-    const PlannedStatus status = planned_status(inputs.status);
+    const BattleTrackState& track = inputs.track;
+    const Side& us = sides.first;
     PlannedOwn own{
         .hp = inputs.hp,
-        .max_hp = sides.first.stats.hp,
-        .status = status,
-        .speed = battle_speed(sides.first.stats.speed, stages.speed, status == PlannedStatus::PARALYSIS),
-        .spa_stage = stages.spa,
-        .speed_stage = stages.speed,
-        .accuracy_stage = stages.accuracy,
-        .attack_stage = stages.attack,
-        .mist = stages.mist_turns > 0,
+        .max_hp = us.stats.hp,
+        .status = us.status,
+        .speed = battle_speed(us.stats.speed, track.own.speed, us.status == PlannedStatus::PARALYSIS),
+        .spa_stage = track.own.sp_attack,
+        .speed_stage = track.own.speed,
+        .accuracy_stage = track.own.accuracy,
+        .attack_stage = track.own.attack,
+        .defense_stage = track.own.defense,
+        .mist = track.mist_turns > 0,
     };
-    const Offense offense{.attack = stages.attack, .spa = stages.spa, .accuracy = stages.accuracy};
     for (const KnownMove& known : inputs.lead.moves){
-        own.moves.push_back(planned_move(known.move, known.pp, data, sides, offense));
+        own.moves.push_back(planned_move(known.move, known.pp, data, sides, track.weather));
     }
     return own;
 }
 
-PlannedFoe planned_foe(const PlannedFoeTrack& track, const std::pair<Side, Side>& sides, const LeagueFoesData& data){
-    const int max_hp = track.foe.stats.hp;
-    const int hp = track.fill <= 0 ? 0 : std::max(1, static_cast<int>(std::lround(track.fill * max_hp)));
+//  The foe's moves at full PP: the program can't see the foe's PP.
+PlannedFoe planned_foe(const PlannedInputs& inputs, const std::pair<Side, Side>& sides, const LeagueFoesData& data){
+    const BattleTrackState& track = inputs.track;
+    const PlannedFoeTrack& foe = inputs.foe;
+    const Side& them = sides.second;
+    const int max_hp = foe.foe.stats.hp;
+    const int hp = foe.fill <= 0 ? 0 : std::max(1, static_cast<int>(std::lround(foe.fill * max_hp)));
     PlannedFoe planned{
-        .species = track.foe.species,
-        .slot = track.slot,
+        .species = foe.foe.species,
+        .slot = foe.slot,
         .hp = hp,
         .max_hp = max_hp,
-        .speed = battle_speed(track.foe.stats.speed, 0, false),
-        .recharging = track.recharging,
-        .charging = track.charging,
-        .sun = track.sun,
+        .speed = battle_speed(them.stats.speed, track.foe.speed, them.status == PlannedStatus::PARALYSIS),
+        .recharging = track.foe_recharging,
+        .sleeping = them.status == PlannedStatus::SLEEP && track.foe_sleep_turns > 1,
+        .frozen = them.status == PlannedStatus::FREEZE,
+        .charging = track.foe_charging,
+        .sun = track.weather == FieldWeather::SUN,
     };
-    for (const std::string& move : track.foe.moves){
-        planned.moves.push_back(planned_move(move, max_pp(move), data, {sides.second, sides.first}, Offense{}));
+    for (const std::string& move : foe.foe.moves){
+        planned.moves.push_back(planned_move(move, max_pp(move), data, {them, sides.first}, track.weather));
     }
     return planned;
 }
 
-bool has(const std::string& letters, std::string_view word){
-    return letters.find(word) != std::string::npos;
+//  A turn's line for the log.
+std::string turn_log(const LeagueFightData& fight, const PlannedState& state, const BattleTrackState& track, const PlannedChoice& choice){
+    const PlannedDanger danger = planned_danger(state);
+    const std::string what = choice.item ? *choice.item
+        : choice.move_slot && *choice.move_slot < state.own.moves.size() ? state.own.moves[*choice.move_slot].id
+        : std::string("best attack");
+    const StatStages& own = track.own;
+    const StatStages& foe = track.foe;
+    return std::format(
+        "{} HP {}/{}, {} {}/{} (slot {}, {} left), D {} mean {:.0f}, our stages atk {} def {} spa {} spd {} spe {} acc {} mist {}, "
+        "foe stages atk {} def {} spa {} spd {} spe {} eva {}, foe status {} sleep {}, weather {} ({}), "
+        "trainer Full Restores used {}: {} ({})",
+        fight.name, state.own.hp, state.own.max_hp, state.foe.species, state.foe.hp, state.foe.max_hp,
+        state.foe.slot, state.foe_party_alive, danger.normal_max, danger.mean,
+        own.attack, own.defense, own.sp_attack, own.sp_defense, own.speed, own.accuracy, track.mist_turns,
+        foe.attack, foe.defense, foe.sp_attack, foe.sp_defense, foe.speed, foe.evasion,
+        static_cast<int>(track.foe_status), track.foe_sleep_turns, static_cast<int>(track.weather), track.weather_turns,
+        track.trainer_full_restores, choice.row, what
+    );
 }
 
 } // namespace
@@ -222,18 +269,25 @@ bool has(const std::string& letters, std::string_view word){
 
 PlannedState planned_state(const PlannedInputs& inputs, const LeagueFoesData& data){
     const Stats raw = inputs.lead.stats.value_or(Stats{});
+    const BattleTrackState& track = inputs.track;
     const Side us{
         .level = static_cast<int>(battle_level(inputs.lead)),
         .stats = boosted_stats(raw),
         .types = types_of(inputs.lead.species),
+        .stages = track.own,
+        .status = planned_status(inputs.status),
     };
-    const PlannedFoeTrack& track = inputs.foe;
-    const Side foe{.level = track.foe.level, .stats = track.foe.stats, .types = types_of(track.foe.species), .ability = track.foe.ability};
+    const LeagueFoeData& foe_data = inputs.foe.foe;
+    const Side foe{
+        .level = foe_data.level, .stats = foe_data.stats, .types = types_of(foe_data.species), .ability = foe_data.ability,
+        .stages = track.foe, .status = track.foe_status,
+    };
+    const PlannedFoeTrack& foe_track = inputs.foe;
     return PlannedState{
         .own = planned_own(inputs, {us, foe}, data),
-        .foe = planned_foe(track, {us, foe}, data),
-        .foe_party_alive = track.party_alive,
-        .trainer_item_open = trainer_item_open(track.full_restores_carried, track.full_restores_used, track.party_alive),
+        .foe = planned_foe(inputs, {us, foe}, data),
+        .foe_party_alive = foe_track.party_alive,
+        .trainer_item_open = trainer_item_open(foe_track.full_restores_carried, track.trainer_full_restores, foe_track.party_alive),
         .bag = inputs.bag,
     };
 }
@@ -243,31 +297,6 @@ PlannedBattle::PlannedBattle(const LeagueFightData& fight, const LeagueTrainerDa
     : m_fight(&fight)
     , m_trainer(&trainer)
 {}
-
-void PlannedBattle::read_texts(const std::vector<std::string>& texts){
-    //  The texts of the turn since the last choice: what the foe did.
-    m_recharging = false;
-    m_charging.reset();
-    bool restored = false;
-    for (const std::string& letters : texts){
-        //  pokefirered: "{trainer} used\nFULL RESTORE!"; the player's own
-        //  medicine shows no such text.
-        restored = restored || has(letters, "usedfullrestore");
-        m_recharging = m_recharging || has(letters, "usedhyperbeam");
-        if (has(letters, "took") && has(letters, "sunlight")){
-            m_charging = "solar-beam";
-        }else if (has(letters, "underwater")){
-            m_charging = "dive";
-        }else if (has(letters, "sunlight") && has(letters, "bright")){
-            m_sun_turns = SUN_TURNS;
-        }else if (has(letters, "sunlight") && has(letters, "faded")){
-            m_sun_turns = 0;
-        }
-    }
-    if (restored){
-        m_full_restores_used++;
-    }
-}
 
 PlannedFoeTrack PlannedBattle::foe_out(const Supplies& supplies, const PolicyView& view){
     const std::vector<LeagueFoeData>& party = m_trainer->party;
@@ -279,11 +308,7 @@ PlannedFoeTrack PlannedBattle::foe_out(const Supplies& supplies, const PolicyVie
         }
     }
     const LeagueFoeData foe = party.empty() ? LeagueFoeData{} : party[slot];
-    //  Intimidate as it comes out, unless Mist is up.
-    if (m_last_slot != slot && foe.ability == "intimidate" && m_stages.mist_turns == 0){
-        m_stages.attack = std::max(-6, m_stages.attack - 1);
-    }
-    m_last_slot = slot;
+    m_track.foe_out(slot, foe.ability);
     const auto carried = m_trainer->items.find("full-restore");
     return PlannedFoeTrack{
         .foe = foe,
@@ -291,67 +316,35 @@ PlannedFoeTrack PlannedBattle::foe_out(const Supplies& supplies, const PolicyVie
         .fill = view.foe_fill,
         .party_alive = static_cast<int>(party.size() - slot),
         .full_restores_carried = carried == m_trainer->items.end() ? 0 : carried->second,
-        .full_restores_used = m_full_restores_used,
-        .recharging = m_recharging,
-        .charging = m_charging,
-        .sun = m_sun_turns > 0,
     };
 }
 
 PlannedBattle::Turn PlannedBattle::choose(const Supplies& supplies, const PolicyView& view){
-    read_texts(view.battle_texts);
+    m_track.read_turn(view.battle_texts);
     PlannedInputs inputs{
         .lead = supplies.lead,
         .hp = static_cast<int>(std::lround(view.hp)),
         .status = view.status,
-        .stages = m_stages,
         .foe = foe_out(supplies, view),
     };
+    inputs.track = m_track.state();
     for (std::string_view item : LEAGUE_ITEMS){
         inputs.bag[std::string(item)] = bag_count(supplies, item);
     }
     const PlannedState state = planned_state(inputs, league_foes_data());
     const PlannedChoice choice = choose_planned(state, *m_fight, m_streak.streak(state));
     m_streak.chose(state, choice);
-    const PlannedDanger danger = planned_danger(state);
-    std::string what = choice.item ? *choice.item
-        : choice.move_slot && *choice.move_slot < state.own.moves.size() ? state.own.moves[*choice.move_slot].id
-        : std::string("best attack");
-    std::string log = std::format(
-        "{} HP {}/{}, {} {}/{} (slot {}, {} left), D {} mean {:.0f}, stages atk {} spa {} spe {} acc {} mist {}, "
-        "trainer Full Restores used {}: {} ({})",
-        m_fight->name, state.own.hp, state.own.max_hp, state.foe.species, state.foe.hp, state.foe.max_hp,
-        state.foe.slot, state.foe_party_alive, danger.normal_max, danger.mean,
-        m_stages.attack, m_stages.spa, m_stages.speed, m_stages.accuracy, m_stages.mist_turns,
-        m_full_restores_used, choice.row, what
-    );
-    if (m_stages.mist_turns > 0){
-        m_stages.mist_turns--;
-    }
-    if (m_sun_turns > 0){
-        m_sun_turns--;
-    }
+    std::string log = turn_log(*m_fight, state, inputs.track, choice);
+    m_track.turn_chosen();
     return Turn{.choice = choice, .log = std::move(log)};
 }
 
 void PlannedBattle::item_used(std::string_view item){
-    if (item == "x-special"){
-        m_stages.spa = std::min(6, m_stages.spa + 1);
-    }else if (item == "x-speed"){
-        m_stages.speed = std::min(6, m_stages.speed + 1);
-    }else if (item == "x-accuracy"){
-        m_stages.accuracy = std::min(6, m_stages.accuracy + 1);
-    }else if (item == "x-attack"){
-        m_stages.attack = std::min(6, m_stages.attack + 1);
-    }else if (item == "guard-spec"){
-        m_stages.mist_turns = MIST_TURNS;
-    }
+    m_track.item_used(item);
 }
 
 void PlannedBattle::lead_switched_in(){
-    //  Mist is the side's and stays.
-    m_stages = PlannedStages{.mist_turns = m_stages.mist_turns};
-    m_last_slot.reset();
+    m_track.lead_switched_in();
 }
 
 std::optional<PlannedBattle> planned_battle(std::string_view trainer){

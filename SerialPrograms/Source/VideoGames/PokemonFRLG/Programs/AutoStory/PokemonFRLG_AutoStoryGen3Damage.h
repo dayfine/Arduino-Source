@@ -47,6 +47,12 @@ struct Gen3Hit{
     bool critical = false;
     //  A burned attacker's physical hit: halved.
     bool burned_physical = false;
+    //  A physical hit does at least 1 before the +2; a special one may do 0.
+    bool physical = true;
+    //  The weather on the move's type (@smogon/calc's final modifiers):
+    //  1.5 for Fire in sun or Water in rain, 0.5 for Water in sun, Fire in
+    //  rain or Solar Beam in rain, else 1.
+    double weather = 1.0;
 };
 
 //  The hit's 16 damage rolls (85% to 100%), lowest first; empty for a

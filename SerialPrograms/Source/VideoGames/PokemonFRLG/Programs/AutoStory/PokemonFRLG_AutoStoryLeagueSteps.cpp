@@ -20,9 +20,10 @@
 #include "PokemonFRLG_AutoStoryLeaguePlan.h"
 #include "PokemonFRLG_AutoStoryLeagueSteps.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryLeagueFightData.h"
 #include "PokemonFRLG_AutoStoryLeaguePlanData.h"
 #include "PokemonFRLG_AutoStoryParty.h"
-#include "PokemonFRLG_AutoStoryPlannedPolicy.h"
+#include "PokemonFRLG_AutoStoryPlannedBetween.h"
 #include "PokemonFRLG_AutoStoryStartMenu.h"
 
 namespace PokemonAutomation{

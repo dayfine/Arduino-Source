@@ -10,7 +10,9 @@
 #include <algorithm>
 #include <limits>
 #include <numeric>
+#include "PokemonFRLG_AutoStoryLeagueFightData.h"
 #include "PokemonFRLG_AutoStoryPlannedPolicy.h"
+#include "PokemonFRLG_AutoStoryPlannedRisk.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -19,12 +21,9 @@ namespace PokemonFRLG{
 
 namespace{
 
-constexpr int MAX_TRAINER_ITEMS = 4;
 constexpr int WHOLE_HEAL = std::numeric_limits<int>::max() / 2;
 constexpr std::string_view FULL_RESTORE = "full-restore";
 constexpr std::string_view GUARD_SPEC = "guard-spec";
-//  What an Elixir restores to each move.
-constexpr int ELIXIR_PP = 10;
 
 int heal_hp(std::string_view item){
     if (item == "super-potion"){
@@ -40,29 +39,6 @@ int heal_hp(std::string_view item){
         return WHOLE_HEAL;
     }
     return 0;
-}
-
-std::optional<std::string_view> cure_of(PlannedStatus status){
-    switch (status){
-    case PlannedStatus::SLEEP:
-        return "awakening";
-    case PlannedStatus::POISON:
-        return "antidote";
-    case PlannedStatus::PARALYSIS:
-        return "parlyz-heal";
-    case PlannedStatus::BURN:
-        return "burn-heal";
-    case PlannedStatus::FREEZE:
-        return "ice-heal";
-    case PlannedStatus::NONE:
-        return std::nullopt;
-    }
-    return std::nullopt;
-}
-
-int bag_has(const SlugCounts& bag, std::string_view item){
-    const auto it = bag.find(item);
-    return it == bag.end() ? 0 : it->second;
 }
 
 //  Cheapest first: what a sure KO spends.
@@ -82,35 +58,12 @@ int pp_value(std::string_view move){
     return 5;
 }
 
-double mean_of(const std::vector<int>& damage){
-    if (damage.empty()){
-        return 0;
-    }
-    return static_cast<double>(std::accumulate(damage.begin(), damage.end(), 0)) / static_cast<double>(damage.size());
-}
-
-int max_of(const std::vector<int>& damage){
-    return damage.empty() ? 0 : damage.back();
-}
-
-int min_of(const std::vector<int>& damage){
-    return damage.empty() ? 0 : damage.front();
-}
-
 int sum_of(const std::vector<int>& damage){
     return std::accumulate(damage.begin(), damage.end(), 0);
 }
 
-bool usable(const PlannedMove& move){
-    return move.pp > 0;
-}
-
 bool sure_ko(const PlannedMove& move, int hp){
-    return move.accuracy >= 1 && !move.two_turn && !move.damage.empty() && min_of(move.damage) >= hp;
-}
-
-bool trainer_uses_item(const PlannedState& state){
-    return state.trainer_item_open && state.foe.hp > 0 && state.foe.hp < state.foe.max_hp / 4;
+    return move.accuracy >= 1 && !move.two_turn && !move.damage.empty() && move.min_damage() >= hp;
 }
 
 int stage_of(const PlannedOwn& own, std::string_view item){
@@ -134,7 +87,7 @@ int stage_of(const PlannedOwn& own, std::string_view item){
 
 const PlannedMove* own_move(const PlannedOwn& own, std::string_view id){
     for (const PlannedMove& move : own.moves){
-        if (usable(move) && move.id == id){
+        if (move.usable() && move.id == id){
             return &move;
         }
     }
@@ -162,11 +115,11 @@ std::optional<std::string> heal(const PlannedState& state, const PlannedDanger& 
         }
     }
     //  Over the reserve if need be: dying here loses the League anyway.
-    if (bag_has(state.bag, FULL_RESTORE) > 0){
+    if (count_of(state.bag, FULL_RESTORE) > 0){
         return std::string(FULL_RESTORE);
     }
     for (std::string_view name : {"max-potion", "hyper-potion", "super-potion"}){
-        if (bag_has(state.bag, name) > 0 && own.hp + std::min(missing, heal_hp(name)) > danger.normal_max){
+        if (count_of(state.bag, name) > 0 && own.hp + std::min(missing, heal_hp(name)) > danger.normal_max){
             return std::string(name);
         }
     }
@@ -199,20 +152,16 @@ const LeagueSetupGoal* setup_goal(const PlannedState& state, const LeagueFightDa
     return nullptr;
 }
 
-double expected_hit(const PlannedMove& move){
-    return mean_of(move.damage) * move.accuracy;
-}
-
 const PlannedMove* best_expected(const PlannedOwn& own, const LeagueFightData& fight, bool above_reserve){
     const PlannedMove* best = nullptr;
     for (const PlannedMove& move : own.moves){
-        if (!usable(move) || move.damage.empty()){
+        if (!move.usable() || move.damage.empty()){
             continue;
         }
-        if (above_reserve && (max_of(move.damage) <= 0 || pp_above_reserve(fight, move.id, move.pp) <= 0)){
+        if (above_reserve && (move.max_damage() <= 0 || pp_above_reserve(fight, move.id, move.pp) <= 0)){
             continue;
         }
-        if (best == nullptr || expected_hit(move) > expected_hit(*best)){
+        if (best == nullptr || move.expected_hit() > best->expected_hit()){
             best = &move;
         }
     }
@@ -240,7 +189,7 @@ const PlannedMove* kill_order(const PlannedState& state, const LeagueFightData& 
     const int quarter = foe.max_hp / 4;
     const int hp = foe.hp;
     const std::vector<int>& rolls = chosen.damage;
-    if (!state.trainer_item_open || rolls.empty() || min_of(rolls) >= hp){
+    if (!state.trainer_item_open || rolls.empty() || chosen.min_damage() >= hp){
         return nullptr;
     }
     const bool into_heal_range = std::any_of(rolls.begin(), rolls.end(), [&](int roll){
@@ -252,18 +201,18 @@ const PlannedMove* kill_order(const PlannedState& state, const LeagueFightData& 
     std::vector<const PlannedMove*> moves;
     int finisher = 0;
     for (const PlannedMove& move : state.own.moves){
-        if (usable(move) && max_of(move.damage) > 0 && pp_above_reserve(fight, move.id, move.pp) > 0){
+        if (move.usable() && move.max_damage() > 0 && pp_above_reserve(fight, move.id, move.pp) > 0){
             moves.push_back(&move);
-            finisher = std::max(finisher, move.accuracy >= 1 ? min_of(move.damage) : 0);
+            finisher = std::max(finisher, move.accuracy >= 1 ? move.min_damage() : 0);
         }
     }
     const auto strongest = [&](bool needs_finisher) -> const PlannedMove*{
         const PlannedMove* best = nullptr;
         for (const PlannedMove* move : moves){
-            if (hp - max_of(move->damage) < quarter){
+            if (hp - move->max_damage() < quarter){
                 continue;
             }
-            if (needs_finisher && hp - min_of(move->damage) > finisher){
+            if (needs_finisher && hp - move->min_damage() > finisher){
                 continue;
             }
             if (best == nullptr || sum_of(move->damage) > sum_of(best->damage)){
@@ -303,7 +252,7 @@ std::optional<PlannedChoice> sure_ko_row(const PlannedState& state, const League
     const int target_hp = foe_hp_at_our_move(state);
     const PlannedMove* cheapest = nullptr;
     for (const PlannedMove& move : own.moves){
-        if (!usable(move) || !sure_ko(move, target_hp) || !we_move_first(state, move)){
+        if (!move.usable() || !sure_ko(move, target_hp) || !we_move_first(state, move)){
             continue;
         }
         if (pp_above_reserve(fight, move.id, move.pp) <= 0 && own.hp > danger){
@@ -321,12 +270,12 @@ std::optional<PlannedChoice> sure_ko_row(const PlannedState& state, const League
 
 std::optional<PlannedChoice> sleep_cure_row(const PlannedState& state, int danger){
     const PlannedOwn& own = state.own;
-    if (own.hp <= danger && danger < own.max_hp && bag_has(state.bag, FULL_RESTORE) > 0){
+    if (own.hp <= danger && danger < own.max_hp && count_of(state.bag, FULL_RESTORE) > 0){
         return item_choice("sleep_cure", FULL_RESTORE);
     }
-    const std::optional<std::string_view> cure = cure_of(own.status);
+    const std::optional<std::string_view> cure = status_cure(own.status);
     for (std::optional<std::string_view> name : {cure, std::optional<std::string_view>("full-heal"), std::optional<std::string_view>(FULL_RESTORE)}){
-        if (name && bag_has(state.bag, *name) > 0){
+        if (name && count_of(state.bag, *name) > 0){
             return item_choice("sleep_cure", *name);
         }
     }
@@ -337,7 +286,7 @@ std::optional<PlannedChoice> ko_risk_rows(
     const PlannedState& state, const LeagueFightData& fight, const PlannedDanger& danger, int streak
 ){
     const PlannedOwn& own = state.own;
-    const bool has_restore = bag_has(state.bag, FULL_RESTORE) > 0;
+    const bool has_restore = count_of(state.bag, FULL_RESTORE) > 0;
     if (own.status != PlannedStatus::NONE && has_restore){
         return item_choice("status_ko", FULL_RESTORE);
     }
@@ -363,7 +312,7 @@ std::optional<PlannedChoice> cure_row(const PlannedState& state, const LeagueFig
     default:
         return std::nullopt;
     }
-    for (std::optional<std::string_view> name : {cure_of(state.own.status), std::optional<std::string_view>("full-heal")}){
+    for (std::optional<std::string_view> name : {status_cure(state.own.status), std::optional<std::string_view>("full-heal")}){
         if (name && spendable(fight, state.bag, *name) > 0){
             return item_choice("cure", *name);
         }
@@ -374,7 +323,7 @@ std::optional<PlannedChoice> cure_row(const PlannedState& state, const LeagueFig
 //  Every planned move is out of PP above its reserve.
 bool plan_out_of_pp(const PlannedState& state, const LeagueFightData& fight, const LeagueFoePlan& plan){
     for (const PlannedMove& move : state.own.moves){
-        if (!usable(move) || std::find(plan.moves.begin(), plan.moves.end(), move.id) == plan.moves.end()){
+        if (!move.usable() || std::find(plan.moves.begin(), plan.moves.end(), move.id) == plan.moves.end()){
             continue;
         }
         if (pp_above_reserve(fight, move.id, move.pp) > 0){
@@ -406,54 +355,38 @@ std::optional<PlannedChoice> setup_row(
     return std::nullopt;
 }
 
+//  The rows after KO risk and cures: pp_restore, the plan's setup and
+//  moves, and kill_order.
+PlannedChoice plan_rows(const PlannedState& state, const LeagueFightData& fight, const LeagueFoePlan& plan, const PlannedDanger& danger){
+    const PlannedOwn& own = state.own;
+    const bool risk = own.hp <= danger.normal_max;
+    const PlannedMove* chosen = planned_move(state, fight, plan);
+    if ((chosen == nullptr || plan_out_of_pp(state, fight, plan)) && !risk && !plan.moves.empty()){
+        for (std::string_view name : {"elixir", "max-elixir"}){
+            if (spendable(fight, state.bag, name) > 0){
+                return item_choice("pp_restore", name);
+            }
+        }
+    }
+    if (!risk){
+        if (std::optional<PlannedChoice> choice = setup_row(state, fight, plan, danger)){
+            return *choice;
+        }
+    }
+    if (chosen == nullptr){
+        return move_choice("plan:struggle", std::nullopt);
+    }
+    const bool awake = own.status != PlannedStatus::SLEEP && own.status != PlannedStatus::FREEZE;
+    if (awake){
+        if (const PlannedMove* opener = kill_order(state, fight, *chosen)){
+            return move_choice("kill_order", slot_of(own, opener));
+        }
+    }
+    return move_choice("plan:move", slot_of(own, chosen));
+}
+
 } // namespace
 
-
-bool trainer_item_open(int carried, int used, int alive){
-    for (int slot = used; slot < carried; slot++){
-        if (slot == 0 || alive <= MAX_TRAINER_ITEMS - slot + 1){
-            return true;
-        }
-    }
-    return false;
-}
-
-int foe_hp_at_our_move(const PlannedState& state){
-    return trainer_uses_item(state) ? state.foe.max_hp : state.foe.hp;
-}
-
-PlannedDanger planned_danger(const PlannedState& state){
-    const PlannedOwn& own = state.own;
-    const PlannedFoe& foe = state.foe;
-    const int residual = own.max_hp / 8 * ((own.status == PlannedStatus::POISON ? 1 : 0) + (own.leech_seed ? 1 : 0));
-    if (foe.recharging || foe.sleeping || foe.frozen || trainer_uses_item(state)){
-        return {.normal_max = residual, .mean = static_cast<double>(residual)};
-    }
-    int worst = 0;
-    double mean = 0;
-    for (const PlannedMove& move : foe.moves){
-        if (!usable(move) || max_of(move.damage) <= 0){
-            continue;
-        }
-        const bool charging = move.two_turn && foe.charging == move.id;
-        if (move.two_turn && !charging && !(foe.sun && move.id == "solar-beam")){
-            continue;
-        }
-        worst = std::max(worst, max_of(move.damage));
-        mean = std::max(mean, expected_hit(move));
-    }
-    return {.normal_max = residual + worst, .mean = residual + mean};
-}
-
-bool we_move_first(const PlannedState& state, const PlannedMove& move){
-    if (move.priority != 0){
-        return move.priority > 0;
-    }
-    if (state.foe.recharging){
-        return true;
-    }
-    return state.own.speed > state.foe.speed;
-}
 
 PlannedChoice choose_planned(const PlannedState& state, const LeagueFightData& fight, int streak){
     const PlannedOwn& own = state.own;
@@ -489,28 +422,7 @@ PlannedChoice choose_planned(const PlannedState& state, const LeagueFightData& f
             return *choice;
         }
     }
-    const PlannedMove* chosen = planned_move(state, fight, plan);
-    if ((chosen == nullptr || plan_out_of_pp(state, fight, plan)) && !risk && !plan.moves.empty()){
-        for (std::string_view name : {"elixir", "max-elixir"}){
-            if (spendable(fight, state.bag, name) > 0){
-                return item_choice("pp_restore", name);
-            }
-        }
-    }
-    if (!risk){
-        if (std::optional<PlannedChoice> choice = setup_row(state, fight, plan, danger)){
-            return *choice;
-        }
-    }
-    if (chosen == nullptr){
-        return move_choice("plan:struggle", std::nullopt);
-    }
-    if (awake){
-        if (const PlannedMove* opener = kill_order(state, fight, *chosen)){
-            return move_choice("kill_order", slot_of(own, opener));
-        }
-    }
-    return move_choice("plan:move", slot_of(own, chosen));
+    return plan_rows(state, fight, plan, danger);
 }
 
 int PlannedStreak::streak(const PlannedState& state) const{
@@ -524,59 +436,6 @@ void PlannedStreak::chose(const PlannedState& state, const PlannedChoice& choice
     m_streak = medicine(choice) ? before + 1 : 0;
 }
 
-std::vector<std::string> planned_between(PlannedCarry& carry, const LeagueFightData& next){
-    std::vector<std::string> used;
-    const auto can = [&](std::string_view name){
-        return spendable(next, carry.bag, name) > 0;
-    };
-    const auto use = [&](std::string_view name){
-        carry.bag[std::string(name)]--;
-        used.emplace_back(name);
-    };
-    if (carry.status != PlannedStatus::NONE){
-        for (std::optional<std::string_view> name : {cure_of(carry.status), std::optional<std::string_view>("full-heal"), std::optional<std::string_view>(FULL_RESTORE)}){
-            if (name && can(*name)){
-                use(*name);
-                carry.status = PlannedStatus::NONE;
-                if (*name == FULL_RESTORE){
-                    carry.hp = carry.max_hp;
-                }
-                break;
-            }
-        }
-    }
-    const double share = next.between_hp.value_or(1.0);
-    const int target = static_cast<int>(carry.max_hp * share + 0.999);
-    for (int c = 0; c < 20 && carry.hp < target; c++){
-        if (can("super-potion") && (target - carry.hp <= 50 * bag_has(carry.bag, "super-potion") || !can(FULL_RESTORE))){
-            use("super-potion");
-            carry.hp = std::min(carry.max_hp, carry.hp + 50);
-        }else if (can(FULL_RESTORE)){
-            use(FULL_RESTORE);
-            carry.hp = carry.max_hp;
-        }else{
-            break;
-        }
-    }
-    const bool under_floor = std::any_of(next.between_pp.begin(), next.between_pp.end(), [&](const auto& floor){
-        return bag_has(carry.pp, floor.first) < floor.second;
-    });
-    if (!under_floor){
-        return used;
-    }
-    for (std::string_view name : {"elixir", "max-elixir"}){
-        if (!can(name)){
-            continue;
-        }
-        use(name);
-        for (auto& [move, pp] : carry.pp){
-            const int full = bag_has(carry.full_pp, move);
-            pp = name == "max-elixir" ? full : std::min(full, pp + ELIXIR_PP);
-        }
-        break;
-    }
-    return used;
-}
 
 
 
