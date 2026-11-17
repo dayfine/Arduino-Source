@@ -297,9 +297,9 @@ const LeagueRunCase LEAGUE_RUN_CASES[] = {
         .expectation = {.completed = true, .fights = ALL_PASS, .saves = 5, .full_restores_saved = 8},
     },
     {
-        .name = "Bruno's first win leaves 3 Full Restores, under Agatha's 5: no pass; the next win passes, and phase 2's is saved",
+        .name = "Bruno's first win spends 4 of 8 Full Restores, leaving 4, under Agatha's 5: no pass; the next win passes, and phase 2's is saved",
         .input = {.tries = {
-            {"20.02", {win({{"full-restore", 3}}), win({{"full-restore", 1}})}},
+            {"20.02", {win({{"full-restore", 4}}), win({{"full-restore", 1}})}},
         }},
         .expectation = {.completed = true, .fights = ALL_PASS + 1, .saves = 5, .full_restores_saved = 7},
     },
