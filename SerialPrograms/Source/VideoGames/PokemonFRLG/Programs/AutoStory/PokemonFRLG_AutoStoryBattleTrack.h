@@ -76,7 +76,8 @@ public:
     //  Mist is up.
     void foe_out(size_t slot, std::string_view ability);
     //  Our lead back in after Roar or Whirlwind: its stages are gone, the
-    //  side's Mist stays.
+    //  side's Mist stays, and the foe out doesn't Intimidate it again
+    //  (pret: Intimidate acts on its holder's entry only).
     void lead_switched_in();
     //  A choice made: Mist and the weather count down.
     void turn_chosen();

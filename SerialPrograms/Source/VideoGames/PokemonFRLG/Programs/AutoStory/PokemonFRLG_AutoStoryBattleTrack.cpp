@@ -262,7 +262,6 @@ void BattleTrack::foe_out(size_t slot, std::string_view ability){
 
 void BattleTrack::lead_switched_in(){
     m_state.own = StatStages{};
-    m_intimidated_by.reset();
 }
 
 void BattleTrack::turn_chosen(){
