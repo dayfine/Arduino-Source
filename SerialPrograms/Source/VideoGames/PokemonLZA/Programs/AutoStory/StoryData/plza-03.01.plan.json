@@ -56,7 +56,7 @@
       {
         "id": "lobby_scene",
         "kind": "game_action",
-        "why": "step 39: the ride, Z-A Royale, the app, the new outfit, AZ, Lida; autosave. The lobby shows no party bar; the ride and the scene start hold 8+ s with no text, and two cards (blind A) close it, so 20 s quiet is control (console B, 2026-11-10)",
+        "why": "step 39: the ride, Z-A Royale, the app, the new outfit, AZ, Lida; autosave. The lobby shows no party bar; the ride and the scene start hold 8+ s with no text, and two cards (blind A) close it, so 20 s quiet is control (console B, 2026-11-10). Alton's choice in the lobby must be answered with the 1st option: the 2nd makes him beg and ask again, so the scene loops (console B 2026-11-17, German, where a B for the text left the highlight on the 2nd row). Most other PLZA choices do not matter; this one does. The scene machine takes the top row of every choice",
         "action": "mash_to_move_hints",
         "args": {"quiet_ms": 20000, "min_length_ms": 30000, "quiet_is_control": true}
       }
