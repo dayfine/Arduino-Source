@@ -69,6 +69,11 @@ struct LeagueFightData{
     bool reset_on_roar = false;
     std::optional<LeagueEarlyReset> early_reset = std::nullopt;
     std::optional<LeaguePassFigures> pass = std::nullopt;
+    //  The entry contract (contract.entry): the least of each item and of
+    //  each move's PP our side starts the fight with, the top-ups before it
+    //  done.
+    SlugCounts entry_items = {};
+    SlugCounts entry_pp = {};
     //  PP this fight must not spend, by move, and the items it must leave
     //  in the bag.
     SlugCounts reserve_pp = {};

@@ -129,6 +129,16 @@ LeaguePassFigures pass_of(const JsonObject& pass){
     };
 }
 
+void read_contract(const JsonObject& contract, LeagueFightData& fight){
+    if (const JsonObject* pass = contract.get_object("pass")){
+        fight.pass = pass_of(*pass);
+    }
+    if (const JsonObject* entry = contract.get_object("entry")){
+        fight.entry_items = counts_of(entry->get_object("items"), true);
+        fight.entry_pp = counts_of(entry->get_object("pp"), false);
+    }
+}
+
 LeagueFightData fight_of(const std::string& name, const JsonObject& object){
     LeagueFightData fight{.name = name, .goal = object.get_string_default("goal")};
     for (const JsonValue& foe : object.get_array_throw("foes")){
@@ -150,9 +160,7 @@ LeagueFightData fight_of(const std::string& name, const JsonObject& object){
         read_reset(*reset, fight);
     }
     if (const JsonObject* contract = object.get_object("contract")){
-        if (const JsonObject* pass = contract->get_object("pass")){
-            fight.pass = pass_of(*pass);
-        }
+        read_contract(*contract, fight);
     }
     return fight;
 }
