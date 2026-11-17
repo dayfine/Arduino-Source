@@ -30,6 +30,7 @@
 #include "Pokemon/AutoStory/Pokemon_ScriptedReadings.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
+#include "PokemonFRLG_AutoStoryBattleTrack.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryPlannedBattle.h"
 #include "PokemonFRLG_AutoStoryBattleTurns.h"
@@ -129,7 +130,8 @@ private:
     std::optional<PlannedBattle> m_planned;
     //  The lead's Attack and Sp. Atk stages from the X items used, for its attack.
     AttackContext m_attack;
-    size_t m_foe_index = 0;
+    //  The step's foes as they came out.
+    FoeParty m_foes;
     bool m_lost = false;
     //  A switch back to the lead couldn't be made: the rule is off.
     bool m_switch_off = false;

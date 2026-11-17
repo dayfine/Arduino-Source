@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <utility>
 #include "PokemonFRLG_AutoStoryBattleTrack.h"
 
 namespace PokemonAutomation{
@@ -284,6 +285,41 @@ void BattleTrack::turn_chosen(){
     if (m_state.weather_turns > 0 && --m_state.weather_turns == 0){
         m_state.weather = FieldWeather::NONE;
     }
+}
+
+
+FoeParty::FoeParty(std::vector<std::string> species)
+    : m_species(std::move(species))
+    , m_fallen(m_species.size(), false)
+{}
+
+size_t FoeParty::out(std::string_view species){
+    m_fell.reset();
+    std::optional<size_t> found;
+    for (size_t slot = 0; slot < m_species.size() && !found; slot++){
+        if (!m_fallen[slot] && m_species[slot] == species){
+            found = slot;
+        }
+    }
+    for (size_t slot = 0; slot < m_species.size() && !found; slot++){
+        if (m_species[slot] == species){
+            found = slot;
+        }
+    }
+    if (!found){
+        return m_out.value_or(0);
+    }
+    if (m_out && *m_out != *found){
+        m_fallen[*m_out] = true;
+        m_fell = m_out;
+    }
+    m_fallen[*found] = false;
+    m_out = found;
+    return *found;
+}
+
+int FoeParty::alive() const{
+    return static_cast<int>(std::count(m_fallen.begin(), m_fallen.end(), false));
 }
 
 

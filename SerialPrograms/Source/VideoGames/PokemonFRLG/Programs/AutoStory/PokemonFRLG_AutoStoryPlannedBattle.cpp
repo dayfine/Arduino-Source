@@ -294,6 +294,14 @@ std::string turn_log(const LeagueFightData& fight, const PlannedState& state, co
     );
 }
 
+std::vector<std::string> party_species(const LeagueTrainerData& trainer){
+    std::vector<std::string> species;
+    for (const LeagueFoeData& foe : trainer.party){
+        species.push_back(foe.species);
+    }
+    return species;
+}
+
 } // namespace
 
 
@@ -329,25 +337,20 @@ PlannedState planned_state(const PlannedInputs& inputs, const LeagueFoesData& da
 PlannedBattle::PlannedBattle(const LeagueFightData& fight, const LeagueTrainerData& trainer)
     : m_fight(&fight)
     , m_trainer(&trainer)
+    , m_foes(party_species(trainer))
 {}
 
 PlannedFoeTrack PlannedBattle::foe_out(const Supplies& supplies, const PolicyView& view){
     const std::vector<LeagueFoeData>& party = m_trainer->party;
-    size_t slot = std::min(view.foe_index, party.empty() ? 0 : party.size() - 1);
-    for (size_t index = slot; index < party.size() && !supplies.foe_out.empty(); index++){
-        if (party[index].species == supplies.foe_out){
-            slot = index;
-            break;
-        }
-    }
-    const LeagueFoeData foe = party.empty() ? LeagueFoeData{} : party[slot];
+    const size_t slot = m_foes.out(supplies.foe_out);
+    const LeagueFoeData foe = slot < party.size() ? party[slot] : LeagueFoeData{};
     m_track.foe_out(slot, foe.ability);
     const auto carried = m_trainer->items.find("full-restore");
     return PlannedFoeTrack{
         .foe = foe,
         .slot = slot,
         .fill = view.foe_fill,
-        .party_alive = static_cast<int>(party.size() - slot),
+        .party_alive = m_foes.alive(),
         .full_restores_carried = carried == m_trainer->items.end() ? 0 : carried->second,
     };
 }
@@ -361,8 +364,7 @@ PlannedBattle::Turn PlannedBattle::choose(const Supplies& supplies, const Policy
         .foe = foe_out(supplies, view),
     };
     //  The foe out last turn fell.
-    const std::optional<size_t> fallen = m_slot && *m_slot < inputs.foe.slot ? m_slot : std::nullopt;
-    m_slot = inputs.foe.slot;
+    const std::optional<size_t> fallen = m_foes.fell();
     const int speed = m_track.state().own.speed;
     if (fallen && league_early_reset(*m_fight, *fallen, speed, m_used)){
         return Turn{

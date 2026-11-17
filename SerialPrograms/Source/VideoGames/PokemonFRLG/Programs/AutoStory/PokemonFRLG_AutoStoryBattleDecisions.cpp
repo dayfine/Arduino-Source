@@ -198,6 +198,7 @@ std::vector<std::string> recovery_items(const Supplies& supplies){
 BattleDecisions::BattleDecisions(Supplies& supplies, BattleKind kind)
     : m_supplies(supplies)
     , m_kind(kind)
+    , m_foes(supplies.foes)
 {
     if (supplies.lead.level > 0){
         m_level_cap = static_cast<uint8_t>(std::min(battle_level(supplies.lead) + MAX_LEVELS_IN_BATTLE, 255));
@@ -313,14 +314,7 @@ TurnAction BattleDecisions::switch_lead_back(){
 }
 
 size_t BattleDecisions::track_foe(){
-    const std::vector<std::string>& foes = m_supplies.foes;
-    for (size_t index = m_foe_index; index < foes.size() && !m_supplies.foe_out.empty(); index++){
-        if (foes[index] == m_supplies.foe_out){
-            m_foe_index = index;
-            break;
-        }
-    }
-    return m_foe_index;
+    return m_foes.out(m_supplies.foe_out);
 }
 
 TurnAction BattleDecisions::policy_turn(const PartyStatus& status, std::string heal_reason){
