@@ -8,6 +8,7 @@
  *
  */
 
+#include <cmath>
 #include <format>
 #include <functional>
 #include <optional>
@@ -63,7 +64,7 @@ Supplies koga_bag(){
 
 //  What the policy uses, or "" for an attack; the item is used, too.
 std::string use(PolicyState& state, Supplies& supplies, const PolicyView& view){
-    const std::optional<PolicyItem> item = state.choose(supplies, view);
+    const std::optional<PolicyItem> item = state.choose(supplies, view).item;
     if (!item){
         return "";
     }
@@ -203,6 +204,83 @@ UnitTestResult test_low_hp_heals(){
     return true;
 }
 
+//  The 2026-11-16 loss to Lorelei (console B, 20.01): Blastoise Lv51 at
+//  162 HP against her Dewgong (the plan's threat row), Sp. Atk +4 after
+//  four X Specials, the bag as the battle read it. It healed at red with a
+//  Super Potion or the Potion, never one of the 13 Full Restores.
+BattlePolicy lorelei_policy(){
+    return BattlePolicy{
+        .kind = BattlePolicyKind::GOAL_BASED_SETUP,
+        .goals = {.spa = 4, .accuracy = 0, .outspeed = true, .guard_accuracy = true},
+        .foes = {{.speed = 93, .likely = 21, .mean = 13, .max = 45, .normal_max = 30}},
+    };
+}
+
+Supplies lorelei_bag(BattleRisk risk){
+    Supplies supplies;
+    set_from_bag(supplies, {
+        {"potion", 1}, {"super-potion", 6}, {"full-restore", 13}, {"antidote", 1},
+        {"parlyz-heal", 2}, {"full-heal", 2}, {"x-special", 4},
+    });
+    supplies.risk = risk;
+    return supplies;
+}
+
+//  The medicine the policy picks for the lead at `hp` of 162, Sp. Atk +4.
+std::string lorelei_heal(BattleRisk risk, double hp){
+    PolicyState state(lorelei_policy());
+    for (int stage = 0; stage < 4; stage++){
+        state.item_used("x-special");
+    }
+    Supplies supplies = lorelei_bag(risk);
+    return use(state, supplies, PolicyView{.hp = hp, .max_hp = 162, .status = StatusCondition::NONE, .speed = 100, .foe_index = 0});
+}
+
+UnitTestResult test_high_risk_red_full_restore(){
+    const std::string heal = lorelei_heal(BattleRisk::HIGH, /*hp=*/6);
+    if (heal != "full-restore"){
+        return std::format("Expected a Full Restore at 6/162 against an Elite Four, got \"{}\".", heal);
+    }
+    return true;
+}
+
+UnitTestResult test_high_risk_yellow_full_restore(){
+    const std::string heal = lorelei_heal(BattleRisk::HIGH, /*hp=*/66);
+    if (heal != "full-restore"){
+        return std::format("Expected a Full Restore at 66/162 (yellow) against an Elite Four, got \"{}\".", heal);
+    }
+    return true;
+}
+
+UnitTestResult test_high_risk_green_attacks(){
+    const std::string item = lorelei_heal(BattleRisk::HIGH, /*hp=*/84);
+    if (!item.empty()){
+        return std::format("Expected an attack at 84/162 (green) once set up, got \"{}\".", item);
+    }
+    return true;
+}
+
+UnitTestResult test_low_risk_red_super_potion(){
+    const std::string heal = lorelei_heal(BattleRisk::LOW, /*hp=*/6);
+    if (heal != "super-potion"){
+        return std::format("Expected a Super Potion at 6/162 in a low-risk fight, got \"{}\".", heal);
+    }
+    return true;
+}
+
+//  The battle's bag line prints the pocket's key, "full-restore": it is
+//  the key the medicine table and the pocket's rows use.
+UnitTestResult test_full_restore_key_resolves(){
+    const Supplies supplies = lorelei_bag(BattleRisk::HIGH);
+    if (bag_count(supplies, "full-restore") != 13 || item_row(supplies, "full-restore") != 2){
+        return "Expected 13 Full Restores in row 3 of the Items pocket.";
+    }
+    if (!std::isinf(medicine_hp("full-restore"))){
+        return "Expected the Full Restore to heal all HP.";
+    }
+    return true;
+}
+
 //  The 2026-11-12 loss to Koga (console B, 12.02 from the save in front of
 //  him): Blastoise at 128 HP, a thin bag (6 Potions, 1 Super Potion, no
 //  Antidote, the Full Restore used on the first poisoning), Sp. Atk +1.
@@ -269,13 +347,13 @@ UnitTestResult test_heal_log_names_the_setup(){
     PolicyState state(koga_policy());
     Supplies supplies = thin_bag(1);
     //  Setup still pending (X Special): the heal's reason says what it waits on.
-    const std::optional<PolicyItem> heal = state.choose(supplies, lost_view(85, StatusCondition::POISON));
+    const std::optional<PolicyItem> heal = state.choose(supplies, lost_view(85, StatusCondition::POISON)).item;
     if (!heal || heal->why.find("x-special") == std::string::npos){
         return std::format("Expected the heal's reason to name the pending X Special, got \"{}\".", heal ? heal->why : "an attack");
     }
     //  Goals met: no setup is waited on, and the reason says so.
     state.item_used("x-special");
-    const std::optional<PolicyItem> later = state.choose(supplies, lost_view(85, StatusCondition::POISON));
+    const std::optional<PolicyItem> later = state.choose(supplies, lost_view(85, StatusCondition::POISON)).item;
     if (!later || later->why.find("no setup pending") == std::string::npos){
         return std::format("Expected \"no setup pending\" once the goals are met, got \"{}\".", later ? later->why : "an attack");
     }
@@ -419,6 +497,10 @@ UnitTestResult test_foe_rows(){
     if (!rows || rows->size() != 1 || (*rows)[0].speed != 30 || !(*rows)[0].lowers_accuracy || !(*rows)[0].explodes){
         return "Expected the row to read.";
     }
+    const std::optional<std::vector<FoeThreat>> charging = foe_threats_of({{125, 194, 182, 396, 198, 0, 0, 0, 1}});
+    if (!charging || charging->size() != 1 || !(*charging)[0].charges || (*charging)[0].phazes){
+        return "Expected a row of 9 to read as a foe whose hit charges a turn first.";
+    }
     if (battle_policy_kind("goal-based-setup") != BattlePolicyKind::GOAL_BASED_SETUP || battle_policy_kind("x")){
         return "Expected the policy words to read.";
     }
@@ -453,15 +535,15 @@ std::optional<Type> arg_of(const StoryStep& step, std::string_view key){
 }
 
 //  The step names the policy, its goals, and one threat row per foe.
-UnitTestResult check_policy_step(std::string_view id, std::string_view name, const SetupGoals& goals){
+UnitTestResult check_policy_step(std::string_view id, std::string_view name, const SetupGoals& goals, std::string_view policy = "goal-based-setup"){
     const int64_t spa = goals.spa;
     const int64_t accuracy = goals.accuracy;
     const bool outspeed = goals.outspeed;
     const bool guard = goals.guard_accuracy;
     const bool torrent = goals.torrent_power;
     const StoryStep& step = battle_step(id, name);
-    if (arg_of<std::string>(step, "policy") != "goal-based-setup"){
-        return std::format("{} {}: expected policy goal-based-setup.", id, name);
+    if (arg_of<std::string>(step, "policy") != policy){
+        return std::format("{} {}: expected policy {}.", id, name, policy);
     }
     if (arg_of<int64_t>(step, "setup_spa") != spa || arg_of<bool>(step, "setup_outspeed").value_or(false) != outspeed
         || arg_of<bool>(step, "setup_guard_accuracy").value_or(false) != guard
@@ -516,12 +598,12 @@ UnitTestResult test_plan_blaine(){
 }
 
 UnitTestResult test_plan_bruno(){
-    const UnitTestResult result = check_policy_step("20.02", "bruno", {.spa = 2, .outspeed = true, .guard_accuracy = true});
+    const UnitTestResult result = check_policy_step("20.01", "bruno", {.spa = 2, .outspeed = true, .guard_accuracy = true}, /*policy=*/"budgeted-setup");
     if (result.result != UnitTestResult::PASSED){
         return result;
     }
-    if (arg_of<bool>(battle_step("20.02", "bruno"), "setup_target_torrent") != true){
-        return "20.02 bruno: expected the doc's target_torrent.";
+    if (arg_of<bool>(battle_step("20.01", "bruno"), "setup_target_torrent") != true){
+        return "20.01 bruno: expected the doc's target_torrent.";
     }
     return true;
 }
@@ -646,6 +728,95 @@ UnitTestResult test_rival_route22_sets_up_from_its_own_read(){
 }
 
 
+//  The lead into Bruno (console B, 2026-11-16, 20.02): Blastoise Lv52, HP
+//  165, Sp. Atk 114, Speed 113; the bag and foes as the League's steps.
+Supplies league_supplies(const StoryStep& step){
+    Supplies supplies;
+    set_from_bag(supplies, {
+        {"full-restore", 10}, {"x-special", 10}, {"x-speed", 4}, {"x-accuracy", 3}, {"guard-spec", 2},
+    });
+    supplies.lead = PartyMember{
+        .species = "blastoise",
+        .moves = {{"bite", 25}, {"strength", 15}, {"surf", 14}, {"blizzard", 5}},
+        .moves_through_level = 52,
+        .moves_read = true,
+        .level = 52,
+        .stats = Stats{.hp = 165, .attack = 99, .defense = 129, .sp_attack = 114, .sp_defense = 144, .speed = 113},
+    };
+    supplies.foes = Pokemon::story_arg<std::vector<std::string>>(step.args, "foes");
+    supplies.policy = battle_policy_of(step.args);
+    return supplies;
+}
+
+PolicyView league_view(double hp, size_t foe_index){
+    return PolicyView{.hp = hp, .max_hp = 165, .status = StatusCondition::NONE, .speed = 113, .foe_index = foe_index};
+}
+
+//  A League fight's foe and the lead's Sp. Atk stage (X Specials used).
+struct LeagueTurnInput{
+    std::string_view id;
+    std::string_view battle;
+    size_t foe_index;
+    int spa_stage;
+    double hp;
+};
+
+//  The policy's item ("" for an attack) and, for an attack, the move.
+struct LeagueTurnExpectation{
+    std::string_view item;
+    std::string_view move;
+};
+
+struct LeagueTurnCase{
+    std::string_view name;
+    LeagueTurnInput input;
+    LeagueTurnExpectation expectation;
+};
+
+//  Bruno's first Onix (console B, 2026-11-16, 20.02): four X Specials
+//  towards +4 while Surf (4x) KOs it at +0, then its Roar sent Blastoise
+//  out. Setup only where it pays: not against a foe the best attack KOs,
+//  nor one that phazes; still against Lorelei's Dewgong.
+const LeagueTurnCase LEAGUE_TURN_CASES[] = {
+    {"Bruno's Onix at +0, 71% HP: Surf", {"20.01", "bruno", 0, 0, 117}, {"", "surf"}},
+    {"Bruno's Onix at +2: Surf", {"20.01", "bruno", 0, 2, 165}, {"", "surf"}},
+    {"Bruno's Onix at +4: Surf", {"20.01", "bruno", 0, 4, 165}, {"", "surf"}},
+    {"Bruno's second Onix at +0: Surf", {"20.01", "bruno", 3, 0, 165}, {"", "surf"}},
+    {"Bruno's Hitmonchan at +0: X Special", {"20.01", "bruno", 1, 0, 165}, {"x-special", ""}},
+    {"Lorelei's Dewgong at +0: X Special", {"20.01", "lorelei", 0, 0, 165}, {"x-special", ""}},
+    {"the Champion's Pidgeot (Whirlwind): no X item", {"20.01", "champion", 0, 0, 165}, {"", ""}},
+    {"the Champion's Arcanine (Roar): no X item", {"20.01", "champion", 4, 0, 165}, {"", ""}},
+};
+
+UnitTestResult test_league_turns(){
+    for (const LeagueTurnCase& test : LEAGUE_TURN_CASES){
+        const LeagueTurnInput& input = test.input;
+        const StoryStep& step = battle_step(input.id, input.battle);
+        Supplies supplies = league_supplies(step);
+        PolicyState state(supplies.policy);
+        for (int used = 0; used < input.spa_stage; used++){
+            state.item_used("x-special");
+        }
+        const std::string item = use(state, supplies, league_view(input.hp, input.foe_index));
+        if (item != test.expectation.item){
+            return std::format("{}: expected \"{}\", got \"{}\".", test.name, test.expectation.item, item);
+        }
+        if (test.expectation.move.empty()){
+            continue;
+        }
+        const AttackContext context{
+            .sp_attack_stage = input.spa_stage, .foe = supplies.policy.foe_stats.at(input.foe_index),
+        };
+        const std::optional<size_t> slot = attack_slot_against(supplies.lead, {supplies.foes.at(input.foe_index)}, context);
+        const std::string move = slot ? supplies.lead.moves[*slot].move : "none";
+        if (move != test.expectation.move){
+            return std::format("{}: expected {}, got {}.", test.name, test.expectation.move, move);
+        }
+    }
+    return true;
+}
+
+
 struct AutoStoryBattlePolicyInput{
     std::string name;
     std::function<UnitTestResult()> body;
@@ -704,6 +875,26 @@ const std::vector<AutoStoryBattlePolicyCase> AUTO_STORY_BATTLE_POLICY_CASES = {
         .expectation = {.description = "a heal at low HP, an attack with none"},
     },
     {
+        .input = {.name = "Lorelei, high risk, red HP", .body = test_high_risk_red_full_restore},
+        .expectation = {.description = "a Full Restore, not a Super Potion"},
+    },
+    {
+        .input = {.name = "Lorelei, high risk, yellow HP", .body = test_high_risk_yellow_full_restore},
+        .expectation = {.description = "a Full Restore"},
+    },
+    {
+        .input = {.name = "Lorelei, high risk, green HP after setup", .body = test_high_risk_green_attacks},
+        .expectation = {.description = "an attack"},
+    },
+    {
+        .input = {.name = "Lorelei's HP in a low-risk fight, red HP", .body = test_low_risk_red_super_potion},
+        .expectation = {.description = "a Super Potion; Full Restores are kept"},
+    },
+    {
+        .input = {.name = "the bag's full-restore key", .body = test_full_restore_key_resolves},
+        .expectation = {.description = "13 in row 3, a whole-HP medicine"},
+    },
+    {
         .input = {.name = "a heal that loses ground to poison and the foe's hits is not repeated", .body = test_futile_potions_attack},
         .expectation = {.description = "Potions against a hit of 100 are skipped for an attack"},
     },
@@ -732,7 +923,7 @@ const std::vector<AutoStoryBattlePolicyCase> AUTO_STORY_BATTLE_POLICY_CASES = {
         .expectation = {.description = "4 in the opening, 2 with Torrent, on a later foe or a lone one"},
     },
     {
-        .input = {.name = "plan: 20.02 bruno names the policy, goals and target_torrent", .body = test_plan_bruno},
+        .input = {.name = "plan: 20.01 bruno names budgeted-setup, its goals and target_torrent", .body = test_plan_bruno},
         .expectation = {.description = "the policy, goals, target_torrent and 5 foe rows"},
     },
     {
@@ -782,6 +973,10 @@ const std::vector<AutoStoryBattlePolicyCase> AUTO_STORY_BATTLE_POLICY_CASES = {
     {
         .input = {.name = "19.01 rival at Default checks: sets up from the battle's own read", .body = test_rival_route22_sets_up_from_its_own_read},
         .expectation = {.description = "a bag read, then an X item or Guard Spec at turn 1"},
+    },
+    {
+        .input = {.name = "League: setup only where it pays (Bruno's Onix, Lorelei, the Champion's phazers)", .body = test_league_turns},
+        .expectation = {.description = "Surf on a foe it KOs at any stage, no X item on Roar or Whirlwind, X Specials on the rest"},
     },
 };
 

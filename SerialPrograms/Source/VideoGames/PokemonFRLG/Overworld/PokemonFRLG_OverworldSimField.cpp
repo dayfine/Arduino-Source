@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <format>
+#include <utility>
 #include "Pokemon/Navigation/Pokemon_GateTiles.h"
 #include "PokemonFRLG_CodedRooms.h"
 #include "PokemonFRLG_FlyMap.h"
@@ -32,6 +33,13 @@ namespace{
 constexpr Milliseconds CUT_TIME(4000);
 //  The boulder's slide, one tile. Not measured on the console.
 constexpr Milliseconds PUSH_TIME(500);
+//  A floor switch's script after the boulder lands on it (pokefirered
+//  VictoryRoad_1F_EventScript_FloorSwitch: lockall, the barrier's
+//  metatiles, SE_ICE_BREAK, waitse, releaseall): no text, but no step
+//  either until the sound ends. The step tap 0.9 s after the push tap was
+//  lost (console B, 2026-11-16, 19.04b push_onto_switch); the length is a
+//  guess on the long side.
+constexpr Milliseconds SWITCH_SCRIPT_TIME(1500);
 
 } // namespace
 
@@ -44,6 +52,8 @@ bool OverworldSim::use_field(SimField field, size_t floor){
         return push_poster_switch();
     case SimField::PUSH_BOULDER:
         return push_boulder();
+    case SimField::STRENGTH:
+        return use_strength();
     case SimField::LIFT_FLOOR:
         return choose_lift_floor(floor);
     case SimField::BIKE_SELECT:
@@ -186,6 +196,30 @@ void OverworldSim::land_fallen_boulder(const MapPosition& hole){
     }
 }
 
+bool OverworldSim::boulder_ahead() const{
+    const TilePos ahead = m_player.position.next(m_state.facing);
+    const std::vector<MapObject>& objects = map().objects;
+    return std::any_of(objects.begin(), objects.end(), [&](const MapObject& object){
+        return object.name == "pushable_boulder" && object.x == ahead.x && object.y == ahead.y;
+    });
+}
+
+bool OverworldSim::use_strength(){
+    if (!boulder_ahead() || m_state.screen != SimScreen::OVERWORLD || m_frozen){
+        violation(std::format("no boulder {} of {}: A for Strength shows nothing.", direction_name(m_state.facing), to_string(m_state.position)));
+        return false;
+    }
+    if (m_state.strength_on){
+        //  EventScript_AlreadyUsedStrength: a message, no YES/NO for the
+        //  console's answer to wait for.
+        violation(std::format("Strength is on already on {}: A shows a message, no YES/NO.", to_string(m_state.position)));
+        return false;
+    }
+    note("Strength is on.");
+    m_state.strength_on = true;
+    return true;
+}
+
 bool OverworldSim::push_boulder(){
     std::vector<MapObject>& objects = m_maps[m_map].objects;
     const TilePos ahead = m_player.position.next(m_state.facing);
@@ -228,6 +262,8 @@ bool OverworldSim::push_boulder(){
         m_state.gates.switches_on.insert(Pokemon::switch_key(*pressed));
         read_gates();
         note(std::format("switch {} is on.", Pokemon::switch_key(*pressed)));
+        m_frozen = true;
+        schedule(m_now + SWITCH_SCRIPT_TIME, SimScreen::OVERWORLD, /*unfreeze=*/true);
     }
     return true;
 }
@@ -414,6 +450,7 @@ void OverworldSim::open_start_gates(){
 }
 
 void OverworldSim::regrow_cut_trees(){
+    m_state.strength_on = false;
     for (auto& [index, tree] : m_cut_trees){
         m_maps[index].objects.push_back(tree);
     }
@@ -422,6 +459,19 @@ void OverworldSim::regrow_cut_trees(){
         regrow_cut_gates(m_state.gate_maps, m_state.gates);
         read_gates();
     }
+}
+
+void OverworldSim::battle_after_warp(Milliseconds fade_end){
+    if (!m_script.battle_after_warp || std::exchange(m_battle_after_warp_done, true)){
+        return;
+    }
+    const Milliseconds pressed = fade_end + *m_script.battle_after_warp;
+    m_state.wild_battles++;
+    m_wild_battle_from = pressed;
+    m_battle_pending = true;
+    schedule(pressed + m_script.timing.flash, SimScreen::BATTLE_FLASH, false);
+    schedule(pressed + m_script.timing.battle_screen, SimScreen::BATTLE, false);
+    note(std::format("a wild battle on {}, after the warp.", to_string(m_state.position)));
 }
 
 bool OverworldSim::push_poster_switch(){

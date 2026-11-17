@@ -67,6 +67,9 @@ PocketRead read_open_pocket(ConsoleHandle& console, ProControllerContext& contex
 //  pocket's rows as far as known, its CANCEL included: the UP presses
 //  that bring the cursor to the top from wherever the last visit left it.
 void open_battle_bag(ProControllerContext& context, size_t rows);
+//  From the battle menu: BAG, on the Items pocket, its cursor where the
+//  last visit left it.
+void open_battle_items_pocket(ProControllerContext& context);
 //  From the battle menu: the Items pocket through BAG (`rows` as
 //  open_battle_bag() takes it), read whole, and back to the battle menu.
 //  Empty if nothing could be read.

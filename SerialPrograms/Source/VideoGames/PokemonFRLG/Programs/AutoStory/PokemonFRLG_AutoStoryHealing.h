@@ -36,7 +36,7 @@ void measured_hp(Supplies& supplies, double fill);
 //  One of `item` was used on the lead: its count spent (spend_item()),
 //  and what it does taken into `supplies`: its HP (healing_hp()); a Full
 //  Restore's whole HP and cure; an Elixir's PP (ELIXIR_PP for every move,
-//  add_pp()); else its cure.
+//  add_pp()) and a Max Elixir's (all of it, restore_pp()); else its cure.
 void took_recovery_item(Supplies& supplies, const std::string& item);
 
 //  The HP the lead misses: the bar's empty share of its maximum HP (the
@@ -44,6 +44,10 @@ void took_recovery_item(Supplies& supplies, const std::string& item);
 //  is 48 pixels) unless the bar was full, less the HP healed since.
 //  Nothing if no bar was measured since the checkpoint loaded.
 std::optional<int> missing_hp(const Supplies& supplies, int fallback_max_hp);
+
+//  The lead's HP, as missing_hp() counts it, is at least `percent` of its
+//  maximum (the summary's, else `fallback_max_hp`); false if unknown.
+bool hp_at_least_percent(const Supplies& supplies, int fallback_max_hp, int percent);
 
 //  Uses healing items with `use` (which returns whether the item was used,
 //  having called took_recovery_item()) until missing_hp() is 0 or less:

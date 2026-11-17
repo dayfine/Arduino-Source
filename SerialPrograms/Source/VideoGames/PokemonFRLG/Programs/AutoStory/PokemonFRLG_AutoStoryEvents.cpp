@@ -64,13 +64,13 @@ constexpr Milliseconds SCENE_TIMEOUT = 300000ms;
 constexpr Milliseconds YES_NO_TIMEOUT = 60000ms;
 constexpr Milliseconds BATTLE_TEXT_TIMEOUT = 90000ms;
 
-//  The engine knows nothing of consoles: a failed console step is a failed
-//  Outcome, which the segment answers by reloading the save.
+//  A failed save as a failed Outcome, which reloads it; its frame is kept.
 template <typename Body>
-Outcome guarded(Body&& body){
+Outcome guarded(StoryEnv& env, Body&& body){
     try{
         return body();
     }catch (OperationFailedException& e){
+        InterruptLogGuard(env.console.logger()).save_frame("save", e);
         return Pokemon::outcome_failed("operation_failed", e.message());
     }
 }
@@ -321,11 +321,12 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
 
 } // namespace
 
-
 const RouteCosts& story_route_costs(){
     static const RouteCosts COSTS = []{
         RouteCosts costs = default_route_costs();
         costs[RouteCost::SURF] = -1;
+        costs[RouteCost::LINE_TILE] = 100;
+        costs[RouteCost::OPEN_CHECK] = 0;
         return costs;
     }();
     return COSTS;
@@ -621,9 +622,9 @@ Outcome push_boulder(StoryEnv& env, RunState& state, const StoryStep& step){
         face_wall(env.console, env.context, direction, env.player_gender);
     }
     if (arg<bool>(step, "activate")){
-        pbf_press_button(env.context, BUTTON_A, 160ms, 800ms);
-        answer_yes_no(env.console, env.context, true, BUTTON_B, YES_NO_TIMEOUT);
-        mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
+        if (const std::optional<std::string> failure = use_strength(env.console, env.context, MapPosition{here->map, here->tile}, direction)){
+            return Pokemon::outcome_failed("boulder_push", *failure);
+        }
     }
     ConsoleBoulderPresses presses(env.console, env.context, env.player_gender);
     return boulder_push_outcome(step, story_maps(), push_boulder_tiles(direction, tiles, presses), state);
@@ -1004,7 +1005,7 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     env.start_menu = data.menu;
     const StartMenu menu = data.menu;
     checkpoint.save = [&env, menu, id = data.id](RunState&){
-        return guarded([&]{
+        return guarded(env, [&]{
             save_game(env.console, env.context, menu, env.language, [end_map = checkpoint_end_map(id)](const std::string& place){
                 return save_end_error(end_map, place);
             });

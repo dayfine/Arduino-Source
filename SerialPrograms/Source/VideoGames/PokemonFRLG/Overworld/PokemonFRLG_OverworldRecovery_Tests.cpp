@@ -91,7 +91,10 @@ struct ScriptedRoute{
             auto iter = ends.find(walked.size() - 1);
             return iter == ends.end() ? StepOutcome{} : iter->second;
         };
-        calls.hold_to_warp = [this](const RouteStep& step){ held_to_warp.push_back(step); };
+        calls.hold_to_warp = [this](const RouteStep& step){
+            held_to_warp.push_back(step);
+            return std::optional<WarpBattle>(WarpBattle::NONE);
+        };
         calls.log = [this](const std::string& message){ logs.push_back(message); };
         calls.moved_past_wall = [this](const RouteStep&){
             wall_taps++;
@@ -183,7 +186,10 @@ UnitTestResult test_stop_recover_resume(){
     const WalkedTiles walked = walked_near(step, step.tiles / 2, std::chrono::milliseconds(267));
     ScriptedRoute script;
     script.ends[stopped] = StepOutcome{.end = StepEnd::STOPPED, .walked = walked};
-    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = std::nullopt, .label = "Route", .wall_check = WallCheck::TAP};
+    //  Open legs are trusted: once the player is found again, the rest of the
+    //  route would also be checked at walls after its open legs (Route 1's
+    //  "west 6" before "south 7 (to wall)"), which the open-leg tests cover.
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = std::nullopt, .label = "Route", .wall_check = WallCheck::TAP, .open_leg_check = OpenLegCheck::TRUST};
     if (script.run(*route, &planning)){
         return "Failed: " + script.failure;
     }
@@ -226,13 +232,17 @@ UnitTestResult test_open_water_legs(){
         return "No route.";
     }
     //  Routes now land on the sand bars and the shore instead of stopping
-    //  on the water (RouteCost::OPEN_WATER_STOP). The leg to the
-    //  first sand bar is made an open stop on the water, as legs were then,
-    //  to keep the check covered.
-    for (RouteStep& step : *route){
-        if (step.surfing && step.action == RouteAction::WALK && !step.warps){
+    //  on the water (RouteCost::OPEN_WATER_STOP), and hold the leg after
+    //  one to a wall (RouteCost::OPEN_CHECK). The leg to the first sand bar
+    //  is made an open stop on the water, and the walk after it an open
+    //  leg, as legs were then, to keep the check covered.
+    for (size_t c = 0; c + 1 < route->size(); c++){
+        RouteStep& step = (*route)[c];
+        RouteStep& next = (*route)[c + 1];
+        if (step.surfing && step.action == RouteAction::WALK && !step.warps && next.action == RouteAction::WALK && !next.warps){
             step.to_wall = false;
             step.lands_after = 0;
+            next.to_wall = false;
             break;
         }
     }
@@ -261,14 +271,15 @@ UnitTestResult test_open_water_legs(){
     return true;
 }
 
-//  A corridor with a person at each end: nothing finds the player again.
+//  A corridor with a person who wanders at each end: neither stops a hold
+//  like a wall (one standing still would), so nothing finds the player again.
 const std::string TEST_CORRIDOR_JSON = R"({
     "name": "Corridor", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
-    "tiles": ["#######", "#.....#", "#######"],
-    "elevation": ["3333333", "3333333", "3333333"],
+    "tiles": ["#########", "#.......#", "#########"],
+    "elevation": ["333333333", "333333333", "333333333"],
     "objects": [
-        {"name": "youngster", "kind": "npc", "x": 1, "y": 1},
-        {"name": "lass", "kind": "npc", "x": 5, "y": 1}
+        {"name": "youngster", "kind": "npc", "x": 1, "y": 1, "wander": {"x0": 1, "y0": 1, "x1": 2, "y1": 1}},
+        {"name": "lass", "kind": "npc", "x": 7, "y": 1, "wander": {"x0": 6, "y0": 1, "x1": 7, "y1": 1}}
     ]
 })";
 
@@ -285,7 +296,7 @@ RouteStep walk(Direction direction, int tiles, MapPosition end){
 //  be on, a stop fails the route instead of guessing.
 UnitTestResult test_no_recovery(){
     const std::vector<MapData> maps{parse_map(TEST_CORRIDOR_JSON, "Corridor")};
-    const std::vector<RouteStep> route{walk(Direction::EAST, 2, {"Corridor", {4, 1}})};
+    const std::vector<RouteStep> route{walk(Direction::EAST, 2, {"Corridor", {5, 1}})};
     ScriptedRoute without_maps;
     without_maps.ends[0] = stop_part_way();
     if (!without_maps.run(route, nullptr) || without_maps.failure.find("no maps") == std::string::npos){

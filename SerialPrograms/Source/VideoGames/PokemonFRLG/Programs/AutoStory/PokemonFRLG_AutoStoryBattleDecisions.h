@@ -31,6 +31,7 @@
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryParty.h"
+#include "PokemonFRLG_AutoStoryPlannedBattle.h"
 #include "PokemonFRLG_AutoStoryBattleTurns.h"
 
 namespace PokemonAutomation{
@@ -80,7 +81,12 @@ public:
 
 private:
     TurnAction lead_turn(const PartyStatus& status);
-    TurnAction move_turn();
+    //  The lead was dragged out (LeadOnField::FORCED_OUT): alive, back in,
+    //  its stages gone.
+    TurnAction switch_lead_back();
+    //  The move to attack with: `named` when the lead knows it with PP left
+    //  and the game hasn't refused it, else the usual choice.
+    TurnAction move_turn(const std::optional<std::string>& named = std::nullopt);
     //  The next of the plan's battle items whose pocket row is known, for
     //  a trainer's battle with the lead's HP not red; none otherwise.
     std::optional<std::string> planned_item(const PartyStatus& status) const;
@@ -92,6 +98,8 @@ private:
     //  The battle policy's turn, with the lead's HP and speed known: its
     //  item, or an attack.
     TurnAction policy_turn(const PartyStatus& status, std::string heal_reason);
+    //  A League fight's turn: the planned policy's item or move.
+    TurnAction planned_turn(const PartyStatus& status);
     //  The foe out, as an index into the step's foes.
     size_t track_foe();
     //  The HP the lead lost since the last turn, from the bar.
@@ -101,6 +109,8 @@ private:
     //  The game turned down `choice`: a move (Disable), or RUN in a
     //  trainer's battle, which makes the battle a trainer's.
     void refused(TurnChoice choice);
+    //  `choice` couldn't be made (TurnResult::NOT_DONE).
+    void turn_not_done(TurnChoice choice);
 
     Supplies& m_supplies;
     BattleKind m_kind;
@@ -114,8 +124,17 @@ private:
     std::string m_planned_item;
     //  The step's battle policy, if it has one and the lead's stats are read.
     std::optional<PolicyState> m_policy;
+    //  A League fight's planned policy (planned_battle()); the step's
+    //  policy is not used then.
+    std::optional<PlannedBattle> m_planned;
+    //  The lead's Attack and Sp. Atk stages from the X items used, for its attack.
+    AttackContext m_attack;
     size_t m_foe_index = 0;
     bool m_lost = false;
+    //  A switch back to the lead couldn't be made: the rule is off.
+    bool m_switch_off = false;
+    //  The lead's box had gone before the switch back was chosen.
+    bool m_lost_before_switch = false;
     //  NO was answered to "Delete a move?": "Stop learning?" comes next.
     bool m_declined_delete = false;
     //  The move prompts since the last turn.

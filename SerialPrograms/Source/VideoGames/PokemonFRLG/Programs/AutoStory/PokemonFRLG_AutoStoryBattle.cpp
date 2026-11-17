@@ -30,13 +30,16 @@
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
+#include "PokemonFRLG_AutoStoryBattleText.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBagUse.h"
 #include "PokemonFRLG_AutoStoryBattleBag.h"
+#include "PokemonFRLG_AutoStoryBattleSwitch.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
+#include "PokemonFRLG_AutoStoryLeadOut.h"
 #include "PokemonFRLG_AutoStoryPocketList.h"
 
 namespace PokemonAutomation{
@@ -150,16 +153,6 @@ void tap(ProControllerContext& context, DpadPosition position){
     pbf_press_dpad(context, position, 160ms, 240ms);
 }
 
-//  From the battle menu: `item` from the Items pocket on `target`
-//  (use_battle_item()). Returns whether it was used; else back at the menu.
-bool use_item(
-    ConsoleHandle& console, ProControllerContext& context,
-    Supplies& supplies, const std::string& item, ItemTarget target, Pokemon::StoryCheckLevel checks, Language language
-){
-    ConsoleBattleBag bag(console, context, target, checks, language);
-    return use_battle_item(item, console.logger(), bag, supplies);
-}
-
 //  RUN, bottom right of the battle menu.
 //  Overlaps flee_battle() in PokemonFRLG_Navigation.h.
 //  Ours is one blind turn that resets the cursor first, since the battle loop reads the result itself;
@@ -248,20 +241,6 @@ bool forget_move(ConsoleHandle& console, ProControllerContext& context, size_t s
     return true;
 }
 
-TurnResult item_result(bool used){
-    return used ? TurnResult::DONE : TurnResult::NOT_DONE;
-}
-
-//  The party list in battle opens on the lead: down to `slot`, then A, and
-//  SHIFT, the top of its menu.
-void send_member(ProControllerContext& context, size_t slot){
-    for (size_t c = 0; c < slot; c++){
-        pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
-    }
-    pbf_press_button(context, BUTTON_A, 160ms, 800ms);
-    pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
-}
-
 
 class BattleLoop{
 public:
@@ -346,6 +325,7 @@ private:
         read_hp(screen);
         watch_for_faint(screen);
         check_run_refused(seen, screen);
+        read_policy_text(seen, screen, now);
         act(seen, screen, now);
         return false;
     }
@@ -546,6 +526,8 @@ private:
         m_console.log("Battle: the Items pocket's counts are not known; reading it before the first turn.");
         //  The pocket's rows as counted, and its CANCEL.
         const std::vector<BagRow> rows = read_battle_pocket(m_console, m_context, m_language, m_supplies.pocket.size() + 1);
+        //  A read ends with the cursor on the top row.
+        m_bag_cursor.row = 0;
         if (rows.empty()){
             OperationFailedExceptionWithScreenshot::fire(
                 ErrorReportMode::SEND_ERROR_REPORT,
@@ -567,14 +549,30 @@ private:
         }
     }
 
-    void take_turn(const ImageViewRGB32& screen){
+    //  The Pokemon out on the battle menu: a wild battle's at its first
+    //  menu, a trainer's and ours at each.
+    void read_battlers(const ImageViewRGB32& screen){
         const bool trainer = m_kind == BattleKind::TRAINER;
         if (!trainer && m_decisions.turns() == 0){
             m_supplies.wild_foes = read_wild_foes(m_console.logger(), m_language, screen);
         }
         if (trainer){
             m_supplies.foe_out = read_trainer_foe(m_console.logger(), m_language, screen, m_supplies.foes);
+            m_supplies.own_out = read_own_battler(m_console.logger(), m_language, screen);
         }
+    }
+
+    //  The lead's box, the foe's bar and the battle texts since the last turn.
+    PartyStatus turn_status(const ImageViewRGB32& screen){
+        PartyStatus status = read_party_status(screen);
+        if (m_kind == BattleKind::TRAINER){
+            status.foe_fill = read_opponent_hp_fill(screen);
+        }
+        status.battle_texts = std::exchange(m_policy_texts, {});
+        return status;
+    }
+    void take_turn(const ImageViewRGB32& screen){
+        read_battlers(screen);
         if (m_refusal.refused(current_time())){
             m_console.log("Battle: the move list came back without a turn (Disable?); choosing another move.", COLOR_ORANGE);
             m_decisions.turn_done(TurnChoice::MOVE, TurnResult::REFUSED);
@@ -583,7 +581,7 @@ private:
             read_battle_bag();
             return;
         }
-        const PartyStatus status = read_party_status(screen);
+        const PartyStatus status = turn_status(screen);
         const TurnAction action = m_decisions.turn(status);
         m_evolution.turn_taken(action.choice);
         m_ran = action.choice == TurnChoice::RUN;
@@ -595,19 +593,22 @@ private:
             run_away(m_context);
             return;
         case TurnChoice::POTION:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "potion", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, use_item("potion", ItemTarget::PARTY_MEMBER));
             return;
         case TurnChoice::ANTIDOTE:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "antidote", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, use_item("antidote", ItemTarget::PARTY_MEMBER));
             return;
         case TurnChoice::AWAKENING:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "awakening", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, use_item("awakening", ItemTarget::PARTY_MEMBER));
             return;
         case TurnChoice::MEDICINE:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, action.item, ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, use_item(action.item, ItemTarget::PARTY_MEMBER));
             return;
         case TurnChoice::BATTLE_ITEM:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, action.item, ItemTarget::POKEMON_OUT, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, use_item(action.item, ItemTarget::POKEMON_OUT));
+            return;
+        case TurnChoice::SWITCH_LEAD:
+            m_decisions.turn_done(action.choice, switch_lead_in(m_console, m_context, m_language, m_supplies.lead.species) ? TurnResult::DONE : TurnResult::NOT_DONE);
             return;
         case TurnChoice::MOVE:
             m_console.log(std::format("Battle: move {}.", action.slot + 1));
@@ -646,6 +647,27 @@ private:
         m_decisions.turn_done(TurnChoice::RUN, TurnResult::REFUSED);
     }
 
+    //  From the battle menu: `item` from the Items pocket on `target`
+    //  (use_battle_item()); back at the menu if it wasn't used.
+    TurnResult use_item(const std::string& item, ItemTarget target){
+        ConsoleBattleBag bag(m_console, m_context, target, m_checks, m_language, m_bag_cursor);
+        return use_battle_item(item, m_console.logger(), bag, m_supplies) ? TurnResult::DONE : TurnResult::NOT_DONE;
+    }
+
+    //  A League fight's battle texts, kept for the policy's next turn (PokemonSimulation #110).
+    void read_policy_text(BattleScreen seen, const ImageViewRGB32& screen, WallClock now){
+        const bool text = seen == BattleScreen::ADVANCE || seen == BattleScreen::OTHER;
+        if (!text || m_supplies.policy.kind != BattlePolicyKind::BUDGETED_SETUP || now - m_last_policy_text < POLL){
+            return;
+        }
+        m_last_policy_text = now;
+        std::optional<std::string> letters = read_battle_text(m_language, screen);
+        if (letters && (m_policy_texts.empty() || m_policy_texts.back() != *letters)){
+            m_console.log(std::format("Battle: text \"{}\".", *letters));
+            m_policy_texts.push_back(std::move(*letters));
+        }
+    }
+
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     Supplies& m_supplies;
@@ -658,11 +680,15 @@ private:
     BattleKind m_kind;
     const Pokemon::StoryCheckLevel m_checks;
     const Language m_language;
+    //  The bag's cursor in this battle.
+    BattleBagCursor m_bag_cursor;
     const WallClock m_start;
     WallClock m_last_battle;
     WallClock m_last_press;
     WallClock m_last_menu;
     WallClock m_last_overworld_check;
+    WallClock m_last_policy_text = WallClock{};
+    std::vector<std::string> m_policy_texts;
     BattleScreen m_last_seen = BattleScreen::NONE;
     bool m_seen_battle = false;
     bool m_confirmed = false;
@@ -830,6 +856,21 @@ std::string_view status_name(StatusCondition status){
         return "a status";
     }
     return "?";
+}
+
+std::string_view cure_of(StatusCondition status){
+    switch (status){
+    case StatusCondition::SLEEP:
+        return "awakening";
+    case StatusCondition::POISON:
+        return "antidote";
+    case StatusCondition::PARALYSIS:
+        return "parlyz-heal";
+    case StatusCondition::NONE:
+    case StatusCondition::OTHER:
+        return "";
+    }
+    return "";
 }
 
 StatusCondition read_status_badge(const ImageViewRGB32& badge){

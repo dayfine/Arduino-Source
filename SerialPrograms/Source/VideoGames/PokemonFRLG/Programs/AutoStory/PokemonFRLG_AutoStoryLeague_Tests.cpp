@@ -2,9 +2,11 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows 20.01a to 20.05 (StoryData/frlg-20.0N.plan.json) on the overworld
- *  sim: Indigo Plateau's Mart, the Elite Four's rooms one way north, the
- *  Champion's door; and the battles' foe rows against their generator.
+ *  Rows 20.01a and 20.01 (StoryData/frlg-20.01*.plan.json) on the
+ *  overworld sim: Indigo Plateau's Mart, the Elite Four's rooms one way
+ *  north, the Champion's door, all in 20.01 (one checkpoint, no save
+ *  between the fights); the battles' foe rows against their generator; and
+ *  the League plan's steps around the fights.
  *
  */
 
@@ -23,8 +25,11 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryHallOfFame.h"
+#include "PokemonFRLG_AutoStoryItemsPocket.h"
+#include "PokemonFRLG_AutoStoryLeaguePlan.h"
 #include "PokemonFRLG_AutoStoryPcTransfer.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
@@ -79,12 +84,30 @@ const StoryCheckpoint& league_row(std::string_view id){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No checkpoint {}.", id));
 }
 
-//  Runs the walking steps of `row` on `sim`, from `at`, up to (not including) the step
-//  named `until`, or all of them if `until` is empty. The other steps (the
-//  Mart, the level checks, the heals, the scenes and the battles) are the
-//  console's.
-std::string walk_league_row(const StoryCheckpoint& row, std::string_view until, OverworldSim& sim, StoryPose& at){
+//  The step `name` of row `id`.
+const StoryStep& league_step(std::string_view id, std::string_view name){
+    for (const StoryStep& step : league_row(id).steps){
+        if (step.name == name){
+            return step;
+        }
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No step {} in {}.", name, id));
+}
+
+//  Runs the walking steps of `row` on `sim`, from `at`, after the step
+//  named `from` (from the row's first if empty) up to (not including) the
+//  step named `until`, or all of them if `until` is empty. The other steps
+//  (the Mart, the level checks, the heals, the scenes and the battles) are
+//  the console's.
+std::string walk_league_row(
+    const StoryCheckpoint& row, std::string_view until, OverworldSim& sim, StoryPose& at, std::string_view from = {}
+){
+    bool started = from.empty();
     for (const StoryStep& step : row.steps){
+        if (!started){
+            started = step.name == from;
+            continue;
+        }
         if (step.name == until){
             return "";
         }
@@ -117,16 +140,22 @@ UnitTestResult walk_to_room(std::string_view id, std::string_view until, std::st
     return true;
 }
 
-//  Walks row `id` from in front of the beaten trainer round them to below
-//  their door, up to the step `door` into it. The map pack draws the door
-//  closed (a wall: the game opens it with setmetatile when the trainer is
-//  beaten, PokemonLeague_EventScript_OpenDoor), so the step through it and
-//  the next room's walk are the console's.
-UnitTestResult walk_to_door(std::string_view id, std::string_view door, const MapPosition& below){
+//  Walks 20.01 from in front of the trainer its battle step `battle` beat
+//  (the step's declared pose) round them to below their door, up to the
+//  step `door` into it. The map pack draws the door closed (a wall: the
+//  game opens it with setmetatile when the trainer is beaten,
+//  PokemonLeague_EventScript_OpenDoor), so the step through it and the
+//  next room's walk are the console's.
+UnitTestResult walk_to_door(std::string_view battle, std::string_view door, const MapPosition& below){
+    const std::string_view id = "20.01";
     const StoryCheckpoint& row = league_row(id);
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    const StoryStep& beaten = league_step(id, battle);
+    if (!beaten.pose_after){
+        return std::format("{} {}: no declared pose after the battle.", id, battle);
+    }
+    StoryPose at = *story_pose(Pokemon::pose_of(*beaten.pose_after));
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
-    if (const std::string failure = walk_league_row(row, door, sim, at); !failure.empty()){
+    if (const std::string failure = walk_league_row(row, door, sim, at, battle); !failure.empty()){
         return failure;
     }
     if (!(sim.state().position == below) || sim.state().facing != Direction::NORTH){
@@ -157,16 +186,6 @@ UnitTestResult test_indigo_mart_counter(){
     return true;
 }
 
-//  The step `name` of row `id`.
-const StoryStep& league_step(std::string_view id, std::string_view name){
-    for (const StoryStep& step : league_row(id).steps){
-        if (step.name == name){
-            return step;
-        }
-    }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No step {} in {}.", name, id));
-}
-
 //  The battle's foe_threats are PokemonSimulation's planning_risk() for
 //  each foe leading against the entry state of its pokeguy case
 //  (src/pokesim/games/frlg/battle/player_strategy/planning.py, as 19.01's
@@ -190,44 +209,45 @@ struct LeagueFight{
     std::vector<std::vector<int64_t>> rows;
 };
 
-//  The generator's rows for the five League battles, in the doc's foe order.
+//  The generator's rows for the five League battles, in the doc's foe order,
+//  against console B's Lv54 Blastoise (171 HP, Def 135, Sp. Def 150).
 std::vector<LeagueFight> league_fights(){
     return {
         {"20.01", "lorelei", {
-            {93, 21, 13, 45, 22, 0, 0},     //  Dewgong
-            {91, 0, 0, 0, 15, 0, 0},        //  Cloyster
-            {45, 27, 9, 60, 30, 0, 0},      //  Slowbro
-            {110, 25, 9, 57, 28, 0, 0},     //  Jynx
-            {94, 36, 15, 78, 39, 0, 0},     //  Lapras
+            {93, 17, 10, 37, 30, 0, 0},     //  Dewgong: worst normal hit 30 as seen on console B, not 18
+            {91, 0, 0, 0, 12, 0, 0, 0, 1},  //  Cloyster (Dive charges a turn)
+            {45, 21, 7, 49, 24, 0, 0},      //  Slowbro
+            {110, 22, 10, 48, 24, 0, 0},    //  Jynx
+            {94, 28, 12, 62, 31, 0, 0},     //  Lapras
         }},
-        {"20.02", "bruno", {
-            {81, 32, 19, 75, 37, 0, 0},     //  Onix
-            {101, 51, 28, 132, 66, 0, 0},   //  Hitmonchan
-            {113, 65, 52, 136, 68, 0, 0},   //  Hitmonlee
-            {96, 41, 41, 84, 42, 0, 0},     //  Onix
-            {83, 0, 5, 183, 91, 0, 0},      //  Machamp
+        {"20.01", "bruno", {
+            {81, 26, 16, 63, 31, 0, 0, 1},  //  Onix (Roar)
+            {101, 43, 24, 108, 54, 0, 0},   //  Hitmonchan
+            {113, 54, 44, 114, 57, 0, 0},   //  Hitmonlee
+            {96, 33, 33, 69, 34, 0, 0},     //  Onix
+            {83, 0, 4, 150, 75, 0, 0},      //  Machamp
         }},
-        {"20.03", "agatha", {
-            {126, 32, 10, 72, 36, 0, 0},    //  Gengar
-            {129, 33, 31, 69, 34, 0, 0},    //  Golbat
-            {108, 0, 0, 0, 48, 0, 0},       //  Haunter
-            {111, 61, 61, 126, 63, 0, 0},   //  Arbok
-            {150, 47, 40, 99, 49, 0, 0},    //  Gengar
+        {"20.01", "agatha", {
+            {126, 0, 3, 60, 30, 0, 0},      //  Gengar
+            {129, 28, 17, 60, 30, 0, 0},    //  Golbat
+            {108, 0, 0, 0, 41, 0, 0},       //  Haunter
+            {111, 51, 31, 108, 54, 0, 0},   //  Arbok
+            {150, 40, 24, 84, 42, 0, 0},    //  Gengar
         }},
-        {"20.04", "lance", {
-            {112, 40, 32, 42, 93, 0, 0},    //  Gyarados
-            {96, 40, 17, 87, 62, 0, 0},     //  Dragonair
-            {96, 0, 0, 0, 62, 0, 0},        //  Dragonair
-            {173, 47, 47, 96, 78, 0, 0},    //  Aerodactyl
-            {107, 64, 24, 144, 114, 0, 0},  //  Dragonite
+        {"20.01", "lance", {
+            {112, 40, 31, 40, 80, 0, 0},    //  Gyarados
+            {96, 40, 16, 78, 53, 0, 0},     //  Dragonair
+            {96, 0, 0, 0, 53, 0, 0},        //  Dragonair
+            {173, 41, 41, 84, 67, 0, 0},    //  Aerodactyl
+            {107, 56, 19, 126, 98, 0, 0},   //  Dragonite
         }},
-        {"20.05", "champion", {
-            {130, 41, 27, 87, 43, 1, 0},    //  Pidgeot (Sand Attack)
-            {159, 77, 70, 159, 79, 0, 0},   //  Alakazam
-            {70, 0, 10, 210, 105, 0, 0},    //  Rhydon
-            {118, 51, 46, 110, 55, 0, 0},   //  Gyarados
-            {139, 50, 51, 104, 52, 0, 0},   //  Arcanine
-            {125, 217, 218, 444, 222, 0, 0},//  Venusaur
+        {"20.01", "champion", {
+            {130, 35, 24, 75, 37, 1, 0, 1}, //  Pidgeot (Sand Attack, Whirlwind)
+            {159, 70, 64, 144, 72, 0, 0},   //  Alakazam
+            {70, 0, 8, 183, 91, 0, 0},      //  Rhydon
+            {118, 44, 43, 96, 48, 0, 0},    //  Gyarados
+            {139, 45, 45, 92, 46, 0, 0, 1}, //  Arcanine (Roar)
+            {125, 194, 182, 396, 198, 0, 0, 0, 1},  //  Venusaur (Solar Beam charges a turn)
         }},
     };
 }
@@ -242,6 +262,70 @@ UnitTestResult test_foe_threats_are_the_generators(){
     return true;
 }
 
+//  The Champion's Venusaur: the battle texts read before the turn, and
+//  the turns (attacks) taken after them before this one.
+struct VenusaurTurnInput{
+    std::vector<std::string> battle_texts = {};
+    int turns_after_texts = 0;
+};
+
+//  The policy's item, "" for an attack.
+struct VenusaurTurnExpectation{
+    std::string_view item;
+};
+
+struct VenusaurTurnCase{
+    std::string_view name;
+    VenusaurTurnInput input;
+    VenusaurTurnExpectation expectation;
+};
+
+//  Solar Beam without sun charges a turn first: no KO risk until Venusaur
+//  is charging (PokemonSimulation #110: the policy only attacked, and the
+//  Champion was 0%). Charged, its hit KOs from full: attack.
+const VenusaurTurnCase VENUSAUR_TURN_CASES[] = {
+    {"not charging: X Special", {{}, 0}, {"x-special"}},
+    {"charging Solar Beam: attack", {{"foevenusaurtookinsunlight"}, 0}, {""}},
+    {"the turn after its charge: X Special", {{"foevenusaurtookinsunlight"}, 1}, {"x-special"}},
+    {"in Sunny Day's sun: attack", {{"thesunlightgotbright"}, 0}, {""}},
+    {"after the sun faded: X Special", {{"thesunlightgotbright", "thesunlightfaded"}, 0}, {"x-special"}},
+};
+
+//  Console B's Blastoise (Lv54, 2026-11-16) at full HP against Venusaur.
+UnitTestResult test_venusaur_charge(){
+    const StoryStep& step = league_step("20.01", "champion");
+    constexpr size_t VENUSAUR = 5;
+    for (const VenusaurTurnCase& test : VENUSAUR_TURN_CASES){
+        Supplies supplies;
+        set_from_bag(supplies, {{"full-restore", 10}, {"x-special", 10}, {"x-speed", 4}, {"x-accuracy", 3}});
+        supplies.lead = PartyMember{
+            .species = "blastoise",
+            .moves = {{"bite", 25}, {"strength", 15}, {"surf", 15}, {"blizzard", 5}},
+            .moves_through_level = 54,
+            .moves_read = true,
+            .level = 54,
+            .stats = Stats{.hp = 171, .attack = 101, .defense = 135, .sp_attack = 119, .sp_defense = 150, .speed = 117},
+        };
+        supplies.foes = Pokemon::story_arg<std::vector<std::string>>(step.args, "foes");
+        supplies.policy = battle_policy_of(step.args);
+        PolicyState state(supplies.policy);
+        PolicyView view{
+            .hp = 171, .max_hp = 171, .status = StatusCondition::NONE, .speed = 117,
+            .foe_index = VENUSAUR, .foe_fill = 1.0, .battle_texts = test.input.battle_texts,
+        };
+        for (int turn = 0; turn < test.input.turns_after_texts; turn++){
+            state.choose(supplies, view);
+            view.battle_texts.clear();
+        }
+        const std::optional<PolicyItem> item = state.choose(supplies, view).item;
+        const std::string_view chosen = item ? std::string_view(item->item) : std::string_view();
+        if (chosen != test.expectation.item){
+            return std::format("Venusaur {}: expected \"{}\", got \"{}\".", test.name, test.expectation.item, chosen);
+        }
+    }
+    return true;
+}
+
 //  The index of the step `name` in `row`, or the step count if none.
 size_t step_index(const StoryCheckpoint& row, std::string_view name){
     size_t index = 0;
@@ -249,24 +333,6 @@ size_t step_index(const StoryCheckpoint& row, std::string_view name){
         index++;
     }
     return index;
-}
-
-//  PokeGuy's items between the fights: a Full Restore after Agatha (the
-//  heal into Lance), one Elixir after Lance, before the Champion's door.
-UnitTestResult test_pokeguy_items_between_fights(){
-    const StoryCheckpoint& lance = league_row("20.04");
-    const size_t heal = step_index(lance, "heal_after_agatha");
-    if (heal == lance.steps.size() || !Pokemon::story_arg<bool>(lance.steps[heal].args, "full_restore")){
-        return "20.04 heal_after_agatha: expected a Full Restore first.";
-    }
-    const StoryCheckpoint& champion = league_row("20.05");
-    const size_t elixir = step_index(champion, "elixir_after_lance");
-    if (elixir >= step_index(champion, "champions_door") || champion.steps[elixir].action != "restore_pp"
-        || Pokemon::story_arg<std::string>(champion.steps[elixir].args, "item") != "elixir"
-    ){
-        return "20.05: expected restore_pp elixir before the Champion's door.";
-    }
-    return true;
 }
 
 //  20.01a: the walk ends below the PC (17, 9) facing it, and the Magikarp
@@ -295,35 +361,74 @@ UnitTestResult test_magikarp_from_box(){
     return true;
 }
 
-//  20.01 to 20.05: with the lead down, the party list's sends go through
+//  20.01: with the lead down, the party list's sends go through
 //  the team and never reach the Magikarp in slot 6, however many times
 //  the list opens.
 UnitTestResult test_magikarp_never_sent(){
-    for (std::string_view id : {"20.01", "20.02", "20.03", "20.04", "20.05"}){
-        Supplies supplies = league_row(id).supplies;
-        BattleDecisions decisions(supplies, BattleKind::TRAINER);
-        for (size_t c = 0; c < 6; c++){
-            const std::optional<size_t> slot = decisions.next_member_slot();
-            if (slot == size_t(5)){
-                return std::format("{}: the Magikarp's slot 6 was sent in.", id);
-            }
+    Supplies supplies = league_row("20.01").supplies;
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    for (size_t c = 0; c < 6; c++){
+        const std::optional<size_t> slot = decisions.next_member_slot();
+        if (slot == size_t(5)){
+            return "20.01: the Magikarp's slot 6 was sent in.";
         }
     }
     return true;
 }
 
-//  20.05: the Hall of Fame's screenshots come right after the Champion.
+//  20.01: the Hall of Fame's screenshots come right after the Champion.
 UnitTestResult test_hall_of_fame_after_champion(){
-    const StoryCheckpoint& row = league_row("20.05");
+    const StoryCheckpoint& row = league_row("20.01");
     const size_t champion = step_index(row, "champion");
     const size_t hall = step_index(row, "hall_of_fame");
     if (hall != champion + 1 || row.steps[hall].action != HALL_OF_FAME_ACTION){
-        return "20.05: expected the hall_of_fame action right after the Champion's battle.";
+        return "20.01: expected the hall_of_fame action right after the Champion's battle.";
+    }
+    return true;
+}
+
+//  The League plan's steps in 20.01: league_start before the League's
+//  door, and before each fight after Lorelei's a league_between_fights
+//  for that fight's trainer, after the fight before it.
+UnitTestResult test_league_plan_steps(){
+    const StoryCheckpoint& row = league_row("20.01");
+    const size_t start = step_index(row, "league_start");
+    if (start >= step_index(row, "league_door") || row.steps[start].action != "league_start"){
+        return "20.01: expected league_start before the League's door.";
+    }
+    struct Between{
+        std::string_view after;
+        std::string_view step;
+        std::string_view battle;
+        std::string_view trainer;
+    };
+    const Between betweens[] = {
+        {"lorelei", "items_before_bruno", "bruno", "TRAINER_ELITE_FOUR_BRUNO"},
+        {"bruno", "items_before_agatha", "agatha", "TRAINER_ELITE_FOUR_AGATHA"},
+        {"agatha", "items_before_lance", "lance", "TRAINER_ELITE_FOUR_LANCE"},
+        {"lance", "items_before_champion", "champion", "TRAINER_CHAMPION_FIRST_BULBASAUR"},
+    };
+    for (const Between& between : betweens){
+        const size_t at = step_index(row, between.step);
+        if (at <= step_index(row, between.after) || at >= step_index(row, between.battle)
+            || row.steps[at].action != "league_between_fights"
+            || Pokemon::story_arg<std::string>(row.steps[at].args, "next") != between.trainer
+        ){
+            return std::format("20.01: expected {} (league_between_fights, next {}) between {} and {}.", between.step, between.trainer, between.after, between.battle);
+        }
+        if (Pokemon::story_arg<std::string>(league_step("20.01", between.battle).args, "trainer") != between.trainer){
+            return std::format("20.01 {}: expected trainer {}.", between.battle, between.trainer);
+        }
     }
     return true;
 }
 
 const AutoStoryLeagueCase AUTO_STORY_LEAGUE_CASES[] = {
+    {
+        .name = "20.01 the Champion's Venusaur: Solar Beam is a KO risk only charged or in sun",
+        .input = {.body = test_venusaur_charge},
+        .expectation = {.description = "X Special until it charges or the sun is out, then an attack"},
+    },
     {
         .name = "20.01a Indigo Plateau's Mart counter",
         .input = {.body = test_indigo_mart_counter},
@@ -335,12 +440,12 @@ const AutoStoryLeagueCase AUTO_STORY_LEAGUE_CASES[] = {
         .expectation = {.description = "below the PC (17, 10) facing north; a protected withdrawal of the magikarp before the Mart"},
     },
     {
-        .name = "20.01 to 20.05 the Magikarp is never sent into a battle",
+        .name = "20.01 the Magikarp is never sent into a battle",
         .input = {.body = test_magikarp_never_sent},
         .expectation = {.description = "no send of party slot 6 with the lead fainted"},
     },
     {
-        .name = "20.05 the Hall of Fame's screenshots after the Champion",
+        .name = "20.01 the Hall of Fame's screenshots after the Champion",
         .input = {.body = test_hall_of_fame_after_champion},
         .expectation = {.description = "the hall_of_fame action right after the champion battle"},
     },
@@ -352,42 +457,42 @@ const AutoStoryLeagueCase AUTO_STORY_LEAGUE_CASES[] = {
         .expectation = {.description = "Lorelei's room, no trainer met"},
     },
     {
-        .name = "20.02 around Lorelei to below her door",
+        .name = "20.01 around Lorelei to below her door",
         .input = {.body = []{
-            return walk_to_door("20.02", "loreleis_door", MapPosition{"PokemonLeague_LoreleisRoom", {6, 3}});
+            return walk_to_door("lorelei", "loreleis_door", MapPosition{"PokemonLeague_LoreleisRoom", {6, 3}});
         }},
         .expectation = {.description = "Lorelei's room (6, 3) facing north"},
     },
     {
-        .name = "20.03 around Bruno to below his door",
+        .name = "20.01 around Bruno to below his door",
         .input = {.body = []{
-            return walk_to_door("20.03", "brunos_door", MapPosition{"PokemonLeague_BrunosRoom", {6, 3}});
+            return walk_to_door("bruno", "brunos_door", MapPosition{"PokemonLeague_BrunosRoom", {6, 3}});
         }},
         .expectation = {.description = "Bruno's room (6, 3) facing north"},
     },
     {
-        .name = "20.04 around Agatha to below her door",
+        .name = "20.01 around Agatha to below her door",
         .input = {.body = []{
-            return walk_to_door("20.04", "agathas_door", MapPosition{"PokemonLeague_AgathasRoom", {6, 3}});
+            return walk_to_door("agatha", "agathas_door", MapPosition{"PokemonLeague_AgathasRoom", {6, 3}});
         }},
         .expectation = {.description = "Agatha's room (6, 3) facing north"},
     },
     {
-        .name = "20.05 around Lance to below the Champion's door",
+        .name = "20.01 around Lance to below the Champion's door",
         .input = {.body = []{
-            return walk_to_door("20.05", "champions_door", MapPosition{"PokemonLeague_LancesRoom", {6, 6}});
+            return walk_to_door("lance", "champions_door", MapPosition{"PokemonLeague_LancesRoom", {6, 6}});
         }},
         .expectation = {.description = "Lance's room (6, 6) facing north"},
     },
     {
-        .name = "20.01 to 20.05 the League's foe rows are the generator's",
+        .name = "20.01 the League's foe rows are the generator's",
         .input = {.body = test_foe_threats_are_the_generators},
         .expectation = {.description = "PokemonSimulation planning_risk() rows"},
     },
     {
-        .name = "20.04 and 20.05 PokeGuy's Full Restore after Agatha and Elixir after Lance",
-        .input = {.body = test_pokeguy_items_between_fights},
-        .expectation = {.description = "heal_after_agatha full_restore; restore_pp elixir before the Champion's door"},
+        .name = "20.01 the League plan's steps: league_start, then the items before each fight",
+        .input = {.body = test_league_plan_steps},
+        .expectation = {.description = "league_start before the door; league_between_fights before Bruno, Agatha, Lance and the Champion"},
     },
 };
 
@@ -398,6 +503,7 @@ void add_tests_AutoStoryLeague(UnitTestDatabase& database){
     for (const auto& item : AUTO_STORY_LEAGUE_CASES){
         database.add<Test_AutoStoryLeague>(item);
     }
+    add_tests_AutoStoryLeaguePlan(database);
 }
 
 

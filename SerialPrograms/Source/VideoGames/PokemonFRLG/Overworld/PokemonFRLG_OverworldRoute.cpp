@@ -27,34 +27,6 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-const RouteCosts& default_route_costs(){
-    static const RouteCosts COSTS{
-        {RouteCost::TILE, 1},
-        {RouteCost::TURN, 2},
-        {RouteCost::WARP, 30},
-        {RouteCost::SURF, 40},
-        {RouteCost::GRASS_TILE, 20},
-        {RouteCost::OPEN_STOP, 8},
-        {RouteCost::OPEN_WILD_STOP, 300},
-        {RouteCost::SIGHT_TILE, 0},
-        {RouteCost::SIGHT_OVERSHOOT, 0},
-        {RouteCost::SIGN_OVERSHOOT, 3},
-        {RouteCost::OPEN_WATER_STOP, 1000},
-        {RouteCost::OPEN_CHECK, 10},
-    };
-    return COSTS;
-}
-
-int route_cost(const RouteCosts& costs, RouteCost kind){
-    auto iter = costs.find(kind);
-    if (iter == costs.end()){
-        iter = default_route_costs().find(kind);
-    }
-    return iter->second;
-}
-
-
-
 namespace{
 
 
@@ -307,14 +279,20 @@ public:
     using State = Located;
     using StateHash = LocatedHash;
 
-    StepModel(const std::vector<MapData>& maps, const RouteCosts& costs)
+    //  With `only_map`, no step leaves that map; the other maps still tell
+    //  where a hold stops (an edge onto a wall, a door's warp).
+    StepModel(const std::vector<MapData>& maps, const RouteCosts& costs, std::optional<int> only_map = std::nullopt)
         : m_maps(maps)
         , m_costs(costs)
+        , m_only_map(only_map)
     {}
 
     std::optional<Pokemon::Step<State>> press(const State& state, Direction direction) const{
         const std::optional<Transition> transition = PokemonFRLG::press(m_maps, state, direction);
         if (!transition || (transition->action == RouteAction::SURF && route_cost(m_costs, RouteCost::SURF) < 0)){
+            return std::nullopt;
+        }
+        if (m_only_map && transition->next.map != *m_only_map){
             return std::nullopt;
         }
         Pokemon::Step<State> step;
@@ -346,6 +324,9 @@ public:
         }
         if (seen_by_trainer(step.next)){
             step.extra_cost += route_cost(m_costs, RouteCost::SIGHT_TILE);
+        }
+        if (in_trainer_line(step.next)){
+            step.extra_cost += route_cost(m_costs, RouteCost::LINE_TILE);
         }
         return step;
     }
@@ -423,9 +404,18 @@ private:
             return trainer_may_see(map, object, state.state.position);
         });
     }
+    //  Whether a trainer who stands and looks one way sees `state`'s tile.
+    bool in_trainer_line(const State& state) const{
+        const MapData& map = m_maps[state.map];
+        return std::ranges::any_of(map.objects, [&](const MapObject& object){
+            return object.trainer && !object.wander && object.trainer->looks.size() == 1
+                && trainer_may_see(map, object, state.state.position);
+        });
+    }
 
     const std::vector<MapData>& m_maps;
     const RouteCosts& m_costs;
+    std::optional<int> m_only_map;
 };
 
 //  The maps through each gate state a search reaches, resolved once.
@@ -462,13 +452,14 @@ public:
     using State = Located;
     using StateHash = LocatedHash;
 
-    GatedStepModel(const GateMaps& maps, const RouteCosts& costs)
+    GatedStepModel(const GateMaps& maps, const RouteCosts& costs, std::optional<int> only_map)
         : m_maps(maps)
         , m_costs(costs)
+        , m_only_map(only_map)
     {}
 
     std::optional<Pokemon::Step<State>> press(const State& state, Direction direction, const Pokemon::GateState& gates) const{
-        return StepModel(m_maps.at(gates), m_costs).press(state, direction);
+        return StepModel(m_maps.at(gates), m_costs, m_only_map).press(state, direction);
     }
     bool held_at(const State& state, Direction direction, const Pokemon::GateState& gates) const{
         return StepModel(m_maps.at(gates), m_costs).held_at(state, direction);
@@ -489,6 +480,7 @@ public:
 private:
     const GateMaps& m_maps;
     const RouteCosts& m_costs;
+    std::optional<int> m_only_map;
 };
 
 Pokemon::LegCosts to_leg_costs(const RouteCosts& costs){
@@ -677,12 +669,16 @@ std::optional<OverworldPress> predict_overworld_press(
     };
 }
 
-std::optional<std::vector<RouteStep>> plan_overworld_route(
+namespace{
+
+//  plan_overworld_route(), with no step off `only_map` if given.
+std::optional<std::vector<RouteStep>> plan_route_on(
     const std::vector<MapData>& maps,
     const MapPosition& start,
     const RouteGoal& goal,
     const RouteCosts& costs,
-    std::optional<Direction> start_facing
+    std::optional<Direction> start_facing,
+    std::optional<int> only_map
 ){
     const int start_map = find_map(maps, start.map);
     const int goal_map = find_map(maps, goal.position.map);
@@ -695,7 +691,7 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     first.state.elevation = elevation_at(maps[start_map], start.point);
     first.state.surfing = is_water(maps[start_map], start.point);
 
-    const StepModel model(maps, costs);
+    const StepModel model(maps, costs, only_map);
     const auto legs = Pokemon::plan_legs(
         model, first, start_facing,
         std::function<bool(const Located&)>([&](const Located& player){
@@ -715,50 +711,39 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     return route;
 }
 
-
-bool has_gates(const std::vector<MapData>& maps){
-    return std::ranges::any_of(maps, [](const MapData& map){
-        return !map.gates.empty();
-    });
-}
-
-std::vector<MapData> resolve_maps(const std::vector<MapData>& maps, const Pokemon::GateState& gates){
-    std::vector<MapData> resolved = maps;
-    for (MapData& map : resolved){
-        if (map.gates.empty()){
-            continue;
-        }
-        map.tiles = Pokemon::resolve_tiles(map, gates);
-        std::erase_if(map.objects, [&](const MapObject& object){
-            const Pokemon::MapGate* gate = Pokemon::gate_at(map, TilePos{object.x, object.y});
-            return gate != nullptr && Pokemon::gate_is_open(map, *gate, gates);
-        });
+//  The map a route from `start` to `goal` stays on if any route does:
+//  theirs, when they share it. The game resets a map's objects when the
+//  player leaves it: 19.04b's below_ladder went out of Victory Road 1F's
+//  cave mouth onto Route 23 and back in, and the boulder pushed onto the
+//  floor switch stood on (7, 18) again, where a leg ran into it (console
+//  B, 2026-11-16, run 3). The other maps stay loaded: planned on the map
+//  alone, an edge onto a wall or a door's warp read as no wall, and 12.03
+//  planned a leg on the water into Cinnabar's north wall as open.
+std::optional<int> shared_map(const std::vector<MapData>& maps, const MapPosition& start, const RouteGoal& goal){
+    if (start.map != goal.position.map){
+        return std::nullopt;
     }
-    return resolved;
+    const int map = find_map(maps, start.map);
+    return map < 0 ? std::nullopt : std::optional<int>(map);
 }
 
-std::optional<std::string> cut_gate_key(const std::vector<MapData>& maps, const MapPosition& tree){
-    for (const MapData& map : maps){
-        if (map.name != tree.map || !map.tiles.contains(tree.point)){
-            continue;
-        }
-        const Pokemon::MapGate* gate = Pokemon::gate_at(map, tree.point);
-        if (gate != nullptr && gate->kind == Pokemon::GateKind::CUT){
-            return Pokemon::gate_key(map.name, gate->id);
+} // namespace
+
+std::optional<std::vector<RouteStep>> plan_overworld_route(
+    const std::vector<MapData>& maps,
+    const MapPosition& start,
+    const RouteGoal& goal,
+    const RouteCosts& costs,
+    std::optional<Direction> start_facing
+){
+    if (const std::optional<int> map = shared_map(maps, start, goal)){
+        if (std::optional<std::vector<RouteStep>> route = plan_route_on(maps, start, goal, costs, start_facing, map)){
+            return route;
         }
     }
-    return std::nullopt;
+    return plan_route_on(maps, start, goal, costs, start_facing, std::nullopt);
 }
 
-void regrow_cut_gates(const std::vector<MapData>& maps, Pokemon::GateState& gates){
-    for (const MapData& map : maps){
-        for (const auto& [id, gate] : map.gates){
-            if (gate.kind == Pokemon::GateKind::CUT){
-                gates.opened.erase(Pokemon::gate_key(map.name, id));
-            }
-        }
-    }
-}
 
 namespace{
 
@@ -780,35 +765,40 @@ std::vector<RouteStep> gated_route_steps(const GateMaps& gate_maps, const std::v
 
 } // namespace
 
-std::optional<std::vector<RouteStep>> plan_overworld_route_gated(
+namespace{
+
+//  Where a gated route starts: the tile, the gates as they stand, and the
+//  way the player faces, if known.
+struct GatedRouteStart{
+    const MapPosition& position;
+    const Pokemon::GateState& gates;
+    std::optional<Direction> facing;
+};
+
+//  plan_overworld_route_gated() on maps with gates, with no step off
+//  `only_map` if given.
+std::optional<std::vector<RouteStep>> plan_gated_route_on(
     const std::vector<MapData>& maps,
-    const MapPosition& start,
+    const GatedRouteStart& from,
     const RouteGoal& goal,
-    const Pokemon::GateState& gates,
     const Pokemon::GateRules& rules,
     const RouteCosts& costs,
-    std::optional<Direction> start_facing
+    std::optional<int> only_map
 ){
-    if (!has_gates(maps)){
-        return plan_overworld_route(maps, start, goal, costs, start_facing);
-    }
-    const int start_map = find_map(maps, start.map);
+    const int start_map = find_map(maps, from.position.map);
     const int goal_map = find_map(maps, goal.position.map);
     if (start_map < 0 || goal_map < 0){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Route between maps that aren't loaded.");
     }
     const GateMaps gate_maps(maps);
-    const std::vector<MapData>& first_maps = gate_maps.at(gates);
+    const std::vector<MapData>& first_maps = gate_maps.at(from.gates);
     Pokemon::GatedStart<Located> first;
     first.state.map = start_map;
-    first.state.state.position = start.point;
-    first.state.state.elevation = elevation_at(first_maps[start_map], start.point);
-    first.state.state.surfing = is_water(first_maps[start_map], start.point);
-    first.gates = gates;
-    first.facing = start_facing;
-
+    first.state.state = PlayerState{from.position.point, elevation_at(first_maps[start_map], from.position.point), is_water(first_maps[start_map], from.position.point)};
+    first.gates = from.gates;
+    first.facing = from.facing;
     const Pokemon::ConnectedMaps world(maps);
-    const GatedStepModel model(gate_maps, costs);
+    const GatedStepModel model(gate_maps, costs, only_map);
     const auto legs = Pokemon::plan_gated_legs(
         model, world, rules, first,
         Pokemon::GatedGoal<Located>{
@@ -829,12 +819,26 @@ std::optional<std::vector<RouteStep>> plan_overworld_route_gated(
     return route;
 }
 
-Pokemon::GateState gates_after_route(const Pokemon::GateState& before, const std::vector<RouteStep>& route){
-    Pokemon::GateState gates = before;
-    for (const RouteStep& step : route){
-        Pokemon::apply_gate_change(gates, step.gate_change);
+} // namespace
+
+std::optional<std::vector<RouteStep>> plan_overworld_route_gated(
+    const std::vector<MapData>& maps,
+    const MapPosition& start,
+    const RouteGoal& goal,
+    const Pokemon::GateState& gates,
+    const Pokemon::GateRules& rules,
+    const RouteCosts& costs,
+    std::optional<Direction> start_facing
+){
+    if (!has_gates(maps)){
+        return plan_overworld_route(maps, start, goal, costs, start_facing);
     }
-    return gates;
+    if (const std::optional<int> map = shared_map(maps, start, goal)){
+        if (std::optional<std::vector<RouteStep>> route = plan_gated_route_on(maps, {start, gates, start_facing}, goal, rules, costs, map)){
+            return route;
+        }
+    }
+    return plan_gated_route_on(maps, {start, gates, start_facing}, goal, rules, costs, std::nullopt);
 }
 
 

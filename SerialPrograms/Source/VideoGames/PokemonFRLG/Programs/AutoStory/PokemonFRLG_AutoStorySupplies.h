@@ -25,6 +25,7 @@
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattlePolicyData.h"
+#include "PokemonFRLG_AutoStoryLeaguePlan.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryStartMenu.h"
 
@@ -44,6 +45,10 @@ enum class StatusCondition{
 };
 //  String representation of a status condition.
 std::string_view status_name(StatusCondition status);
+//  The cure for a status, by PokemonSimulation's pokeguy-conditions.md CURES
+//  table ("parlyz-heal" for PARALYSIS); "" for none. The battle policy and
+//  the story's own battles both cure by it.
+std::string_view cure_of(StatusCondition status);
 
 //  The healing items in the Items pocket, in the order they were bought:
 //  Potions, Antidotes, then Parlyz Heals; Awakenings from Cerulean's Mart.
@@ -110,12 +115,21 @@ struct Supplies{
     //  How that battle is fought by PokeGuy's policy, if its step names one
     //  (BattlePolicyKind::NONE otherwise: the story's own recovery).
     BattlePolicy policy = {};
+    //  The League's plan and what its fights have left, from the bag read
+    //  at its start (league_start); none outside the League.
+    std::optional<LeagueRun> league = std::nullopt;
+    //  The items the battle going on may spend (its League budget plus
+    //  what the fights before left); none: no cap.
+    std::optional<FightBudget> budget = std::nullopt;
     //  How carefully that battle is fought (default_battle_risk()).
     BattleRisk risk = BattleRisk::LOW;
     //  The species of the trainer's Pokemon out, as read at the last battle
     //  menu (read_trainer_foe()), "" if not read: the lead's attacks are
     //  chosen against it.
     std::string foe_out = {};
+    //  The species of the player's Pokemon out at the last battle menu of a
+    //  trainer's battle (read_own_battler()), "" if not read.
+    std::string own_out = {};
     //  The wild Pokemon of the battle going on, as read at its first battle
     //  menu (read_wild_foes()): the lead's attacks are chosen against it.
     //  Empty when it wasn't read; trainer battles never use it.

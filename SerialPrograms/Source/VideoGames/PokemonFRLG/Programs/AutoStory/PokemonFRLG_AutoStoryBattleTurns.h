@@ -37,6 +37,9 @@ enum class TurnChoice{
     //  on the lead through the party list.
     MEDICINE,
     MOVE,
+    //  The lead back in through POKEMON and SHIFT: a Roar or Whirlwind
+    //  dragged it out (lead_on_field()).
+    SWITCH_LEAD,
 };
 
 //  Before a battle of `kind`'s first turn: whether it reads the Items pocket

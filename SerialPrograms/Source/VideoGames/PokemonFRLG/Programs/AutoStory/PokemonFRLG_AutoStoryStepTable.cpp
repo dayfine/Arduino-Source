@@ -13,6 +13,7 @@
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryHallOfFame.h"
+#include "PokemonFRLG_AutoStoryLeagueSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
@@ -215,7 +216,7 @@ std::vector<Pokemon::StoryArgSpec> policy_arg_specs(){
     });
     args.push_back(Pokemon::StoryArgSpec{
         .key = "foe_threats", .type = Pokemon::StoryArgType::INTEGER_ROWS, .required = false, .fallback = std::vector<std::vector<int64_t>>(),
-        .why = "one row per foe, [speed, likely, mean, max, normal_max, lowers_accuracy, explodes]: what it does to the lead, from the doc's stats",
+        .why = "one row per foe, [speed, likely, mean, max, normal_max, lowers_accuracy, explodes], and phazes (Roar, Whirlwind) as an eighth column where it has one: what it does to the lead, from the doc's stats",
     });
     return args;
 }
@@ -230,6 +231,10 @@ std::vector<Pokemon::StoryArgSpec> battle_arg_specs(){
     args.push_back(Pokemon::StoryArgSpec{
         .key = "foes", .type = Pokemon::StoryArgType::WORDS, .required = false, .fallback = std::vector<std::string>(),
         .why = "the trainer's party in order; attacks are chosen against the one out",
+    });
+    args.push_back(Pokemon::StoryArgSpec{
+        .key = "foe_stats", .type = Pokemon::StoryArgType::INTEGER_ROWS, .required = false, .fallback = std::vector<std::vector<int64_t>>(),
+        .why = "one row per foe, [defense, sp_defense] or [defense, sp_defense, hp], from the trainer's party data: the damage each attack would do, and with hp whether the best one KOs (no X item then)",
     });
     args.push_back(Pokemon::StoryArgSpec{
         .key = "use_items", .type = Pokemon::StoryArgType::ITEMS, .required = false, .fallback = std::vector<Pokemon::StoryItem>(),
@@ -281,7 +286,7 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
         }){
             specs.push_back(std::move(spec));
         }
-        for (const std::vector<Pokemon::StoryActionSpec>& more : {field_action_specs(), healing_action_specs()}){
+        for (const std::vector<Pokemon::StoryActionSpec>& more : {field_action_specs(), healing_action_specs(), league_action_specs()}){
             specs.insert(specs.end(), more.begin(), more.end());
         }
         return specs;

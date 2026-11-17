@@ -85,6 +85,10 @@ struct SimTiming{
     //  pokefirered field_specials.c), and its chime. Not measured on the console.
     Milliseconds lift_ride{1500};
     Milliseconds fade{1000};            //  from the step's end to the new map
+    //  From the step onto a warp to its fade's black. 0: none. On console
+    //  B (2026-11-16 02:13, Victory Road 2F's ladder up) the black showed
+    //  after a hold on toward the ladder and its watch had ended.
+    Milliseconds warp_fade_delay{0};
     //  From the fade's end, the new map fades in this long, and the game
     //  takes no input yet (fault-class sweep; BDSP's Center, lab-B
     //  2026-11-10). Not measured on FRLG: 0, none.

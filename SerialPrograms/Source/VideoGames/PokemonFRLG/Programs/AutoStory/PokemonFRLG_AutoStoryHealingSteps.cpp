@@ -18,6 +18,7 @@
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
+#include "PokemonFRLG_AutoStoryLeagueSteps.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
 
 namespace PokemonAutomation{
@@ -49,6 +50,11 @@ ItemUseEnd use_lead_item_from_bag(StoryEnv& env, const StoryStep& step, const st
 
 Outcome heal(StoryEnv& env, const StoryStep& step, int max_hp){
     const std::optional<int> before = missing_hp(env.supplies, max_hp);
+    const int64_t* below = game_arg<int64_t>(step.args, "below_percent");
+    if (below != nullptr && hp_at_least_percent(env.supplies, max_hp, static_cast<int>(*below))){
+        env.console.log(std::format("Story: {}: {}, HP at least {}%: no heal.", step.name, hp_text(before), *below));
+        return Pokemon::outcome_ok();
+    }
     const auto use = [&](const std::string& item){
         if (is_lead_recovery_item(item)){
             return use_lead_item_from_bag(env, step, item) == ItemUseEnd::USED;
@@ -135,6 +141,7 @@ std::vector<Pokemon::StoryActionSpec> healing_action_specs(){
         {.kind = Pokemon::StoryStepKind::GAME, .name = HEAL_TO_FULL_ACTION, .args = {
             max_hp,
             optional_arg("full_restore", Pokemon::StoryArgType::BOOLEAN, false, "a Full Restore first if the bag holds one"),
+            optional_arg("below_percent", Pokemon::StoryArgType::INTEGER, int64_t(100), "heal only when the HP is below this share of the maximum"),
         }},
         {.kind = Pokemon::StoryStepKind::GAME, .name = RESTORE_PP_ACTION, .args = {
             required_arg("item", Pokemon::StoryArgType::WORD, "the PP item used on the lead: elixir"),
@@ -163,6 +170,9 @@ std::optional<Outcome> run_healing_step(StoryEnv& env, Pokemon::RunState& state,
     }
     if (step.action == RESTORE_PP_ACTION){
         return restore_pp_step(env, step);
+    }
+    if (std::optional<Outcome> league = run_league_step(env, step)){
+        return league;
     }
     if (step.action != HEAL_TO_FULL_ACTION && step.action != CHECK_FULL_HP_ACTION){
         return std::nullopt;

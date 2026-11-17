@@ -32,6 +32,9 @@ enum class StepEnd{
     //  started. The step before it may have stopped part-way: its
     //  battle was seen too late (console B, 2026-11-03, Mt. Moon B2F).
     BATTLE_BEFORE,
+    //  Through the warp, then a wild battle on the new map: where on it the
+    //  player stands isn't known (WarpBattle::AFTER).
+    WARPED,
 };
 
 //  Whether the screen moved while a step's hold ran, as the walker saw it.

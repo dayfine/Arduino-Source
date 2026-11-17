@@ -11,6 +11,7 @@
 #include "Pokemon/Navigation/Pokemon_GateTiles.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_AutoStoryBoulders.h"
+#include "PokemonFRLG_AutoStoryMovedBoulders.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
 
 namespace PokemonAutomation{
@@ -29,6 +30,7 @@ Pokemon::Outcome boulder_pushed(Pokemon::RunState& state, const StoryStep& step,
     for (int64_t c = 0; c < tiles; c++){
         at.tile = at.tile.next(direction);
     }
+    note_boulder_pushed(MapPosition{here->map, here->tile}, direction, tiles, state.flags);
     //  The boulder stands a tile ahead; on a floor switch's button, the
     //  switch is on for good and its barrier open.
     const auto map = std::find_if(maps.begin(), maps.end(), [&](const MapData& item){

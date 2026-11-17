@@ -163,6 +163,77 @@ private:
     LateBattleCase m_case;
 };
 
+struct BattleAfterWarpInput{
+    //  From the end of the ladder's fade to the battle's step.
+    Milliseconds delay{0};
+};
+
+struct BattleAfterWarpExpectation{
+    //  The battle run from, and the route walked on 3F to here.
+    MapPosition end;
+};
+
+struct BattleAfterWarpCase{
+    std::string name;
+    BattleAfterWarpInput input;
+    BattleAfterWarpExpectation expectation;
+};
+
+const MapPosition BELOW_LADDER{"VictoryRoad_2F", {34, 14}};
+const MapPosition ON_3F{"VictoryRoad_3F", {34, 5}};
+
+//  Console B, 2026-11-16 02:18, 19.04c ladder_3f: "north 5 (warp)" up
+//  Victory Road 2F's ladder reached 3F, then a wild battle started there.
+//  The walker took the ladder's fade for the battle's wipe, held on north
+//  toward a ladder it had passed, and failed with the player on 3F 2 tiles
+//  past the ladder. The new map's overworld showed between the fade and
+//  the battle: the warp was taken, and the player is found again on 3F.
+class Test_OverworldBattleAfterWarp : public UnitTest{
+public:
+    explicit Test_OverworldBattleAfterWarp(BattleAfterWarpCase test_case)
+        : UnitTest("PokemonFRLG::OverworldBattleAfterWarp - " + test_case.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        try{
+            return run_case();
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    UnitTestResult run_case() const{
+        const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
+            maps(), BELOW_LADDER, RouteGoal{m_case.expectation.end, std::nullopt}, default_route_costs(), Direction::NORTH
+        );
+        if (!route){
+            return std::format("No route from {} to {}.", to_string(BELOW_LADDER), to_string(m_case.expectation.end));
+        }
+        SimScript script;
+        script.battle_after_warp = m_case.input.delay;
+        OverworldSim sim(maps(), BELOW_LADDER, Direction::NORTH, script);
+        OverworldSimWalker walker(sim, {});
+        const RoutePlanning planning{.maps = &maps(), .costs = default_route_costs(), .start = BELOW_LADDER, .label = "Sim"};
+        LateBattleRun run;
+        run.failure = walker.run(*route, planning);
+        run.state = sim.state();
+        run.log = walker.log();
+        const MapPosition& end = m_case.expectation.end;
+        if (!run.failure.empty() || !(run.state.position == end) || run.state.wild_battles != 1 || !run.state.violations.empty()){
+            return std::format("Expected the battle on 3F run from and {} reached:{}", to_string(end), describe(run));
+        }
+        return true;
+    }
+
+    BattleAfterWarpCase m_case;
+};
+
+const BattleAfterWarpCase BATTLE_AFTER_WARP_CASES[] = {
+    {.name = "a battle 1 s after the ladder's fade", .input = {.delay = Milliseconds(1000)}, .expectation = {.end = ON_3F}},
+    {.name = "a battle 3 s after the ladder's fade", .input = {.delay = Milliseconds(3000)}, .expectation = {.end = ON_3F}},
+};
+
 } // namespace
 
 
@@ -184,6 +255,9 @@ const LateBattleCase LATE_BATTLE_CASES[] = {
 void add_tests_OverworldLateBattle(UnitTestDatabase& database){
     for (const LateBattleCase& item : LATE_BATTLE_CASES){
         database.add<Test_OverworldLateBattle>(item);
+    }
+    for (const BattleAfterWarpCase& item : BATTLE_AFTER_WARP_CASES){
+        database.add<Test_OverworldBattleAfterWarp>(item);
     }
 }
 

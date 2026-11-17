@@ -85,14 +85,15 @@ uint8_t byte_of(const JsonValue& value){
 template <typename Data>
 using Table = std::map<std::string, Data, std::less<>>;
 
-//  [type, damaging (0 or 1), pp]
+//  [type, power (0: no damage; 1: damage not from power), pp]
 const Table<MoveData>& moves(){
     static const Table<MoveData> MOVES = []{
         Table<MoveData> moves;
         for (const auto& [name, value] : file_json("moves").to_object_throw()){
             const JsonArray& entry = value.to_array_throw();
+            const uint8_t power = byte_of(entry[1]);
             moves.emplace(name, MoveData{
-                .type = type_of(entry[0]), .damaging = entry[1].to_integer_throw() != 0, .pp = byte_of(entry[2]),
+                .type = type_of(entry[0]), .damaging = power != 0, .power = power, .pp = byte_of(entry[2]),
             });
         }
         return moves;
@@ -208,6 +209,14 @@ PokemonType ability_immunity(std::string_view species){
         }
     }
     return PokemonType::NONE;
+}
+
+bool may_have_thick_fat(std::string_view species){
+    static constexpr std::string_view THICK_FAT[] = {
+        "seel", "dewgong", "snorlax", "marill", "azumarill", "miltank",
+        "makuhita", "hariyama", "spoink", "grumpig", "spheal", "sealeo", "walrein",
+    };
+    return std::ranges::find(THICK_FAT, species) != std::end(THICK_FAT);
 }
 
 bool takes_two_turns(std::string_view move){

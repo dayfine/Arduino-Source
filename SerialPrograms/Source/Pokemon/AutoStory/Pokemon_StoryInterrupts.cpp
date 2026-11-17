@@ -55,41 +55,16 @@ bool InterruptHandlerTable::step_starts_on(StoryStepKind step, InterruptKind kin
 
 namespace{
 
-//  Whether an UNSETTLED verdict on `look` may be a battle's opening: its
-//  fade is white (an encounter's flash), still down (a battle's fade ends
-//  on the battle), or came after a dialog box (a trainer's lines).
-bool may_open_a_battle(const ScreenLook& look, const InterruptVerdict& verdict){
-    const auto fade = std::find_if(verdict.evidence.begin(), verdict.evidence.end(), [](const ScreenEventChange& change){
-        return change.edge == ScreenEventEdge::ROSE &&
-            (change.event == ScreenEvent::FADE_WHITE || change.event == ScreenEvent::FADE_BLACK);
-    });
-    if (fade == verdict.evidence.end()){
-        return false;
-    }
-    const bool still_down = std::none_of(verdict.evidence.begin(), verdict.evidence.end(), [](const ScreenEventChange& change){
-        return change.edge == ScreenEventEdge::FELL;
-    });
-    if (fade->event == ScreenEvent::FADE_WHITE || still_down){
-        return true;
-    }
-    return std::any_of(look.log.changes().begin(), look.log.changes().end(), [&](const ScreenEventChange& change){
-        return change.event == ScreenEvent::DIALOG_BOX && change.edge == ScreenEventEdge::ROSE &&
-            look.window.start <= change.time && change.time < fade->time;
-    });
-}
-
 //  The look's verdict, looked at again while it is unsettled, up to
-//  max_looks looks in all, or max_opening_looks while it may be a battle's
-//  opening; not again before a step that starts on it. `screen` is how the
-//  last look ended.
+//  max_unsettled_looks looks in all; not again before a step that starts
+//  on it. `screen` is how the last look ended.
 InterruptVerdict settled_verdict(const StoryInterrupts& interrupts, StoryStepKind step, ScreenSettle& screen){
     ScreenLook look = interrupts.look(true);
     InterruptVerdict verdict = classify_interrupt(look.log, look.window, interrupts.knobs);
     const bool home = look.log.showing().has(ScreenEvent::SWITCH_HOME_MENU);
     if (!home && !interrupts.handlers.step_starts_on(step, InterruptKind::UNSETTLED)){
         for (size_t looks = 1; verdict.kind == InterruptKind::UNSETTLED; looks++){
-            const size_t limit = may_open_a_battle(look, verdict) ? interrupts.max_opening_looks : interrupts.max_looks;
-            if (looks >= limit){
+            if (looks >= interrupts.max_unsettled_looks){
                 break;
             }
             look = interrupts.look(false);

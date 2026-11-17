@@ -43,8 +43,6 @@ using namespace OverworldWalkSteps;
 
 namespace{
 
-//  From the end of the hold, through the fade out and in.
-constexpr Milliseconds WARP_TIMEOUT = 8000ms;
 constexpr Milliseconds SURF_PROMPT_TIMEOUT = 5000ms;
 constexpr Milliseconds SURF_ANIMATION = 3000ms;
 //  A card-key door's message, and the door opening after it.
@@ -660,19 +658,24 @@ size_t clear_battle_before(
 //  Route 1's grass, and the step meant for Oak's Lab's door set off a
 //  battle; its flashes and wipe passed for the warp's fade, the route went
 //  on as if inside, and the next screen was the battle's FIGHT menu.
-bool run_from_battle_after_warp(ConsoleHandle& console, ProControllerContext& context){
+WarpBattle run_from_battle_after_warp(ConsoleHandle& console, ProControllerContext& context){
+    const bool overworld = battle_on_its_way(console, context).empty();
     BattleScreenWatcher battle(COLOR_RED);
     context.wait_for_all_requests();
     if (wait_until(console, context, AFTER_WARP_BATTLE_WATCH, {battle}) < 0){
-        return false;
+        return WarpBattle::NONE;
     }
     flee_battle(console, context);
-    return true;
+    return overworld ? WarpBattle::AFTER : WarpBattle::INSTEAD;
 }
 
-void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
-    if (!run_from_battle_after_warp(console, context)){
-        return;
+WarpBattle check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+    const WarpBattle battle = run_from_battle_after_warp(console, context);
+    if (battle != WarpBattle::INSTEAD){
+        if (battle == WarpBattle::AFTER){
+            console.log(std::format("Route: through the warp to {}, then a wild battle there: the player's tile isn't known.", step.end.map), COLOR_ORANGE);
+        }
+        return battle;
     }
     OperationFailedExceptionWithScreenshot::fire(
         ErrorReportMode::SEND_ERROR_REPORT,
@@ -883,7 +886,13 @@ void walk_step_leg(
     }
     wait_out_warp(console, context, step, fade, before);
     static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
-    check_warp_was_no_battle(console, context, step);
+    if (check_warp_was_no_battle(console, context, step) == WarpBattle::AFTER){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            std::format("walk_overworld_route(): a wild battle on {} after the warp: the player's tile there isn't known.", step.end.map),
+            console
+        );
+    }
 }
 
 //  A WALK step from `from`: turned first, then its leg.

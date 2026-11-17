@@ -54,7 +54,14 @@ inline constexpr std::string_view TRAINER_BEATEN_FLAG = "trainer_beaten:";
 std::set<std::string> beaten_trainers(const std::set<std::string>& run_flags);
 //  default_route_costs() without Surf, which the story hasn't got yet:
 //  routes stay on land, even where water is the shorter way (Vermilion
-//  City's harbor).
+//  City's harbor). Trainers' lines cost (RouteCost::LINE_TILE 100): a
+//  battle the story wants has its own step into the line, and a route up
+//  Route 25's column 12 met Franklin on (12, 4) before 05.06's
+//  franklin_line. An open leg's check costs nothing (RouteCost::OPEN_CHECK
+//  0): FRLG walks a tile per step on land, so an open leg lands where it
+//  was planned. Weighed, it sent routes to touch walls on the way (12.03
+//  mansion_door: east 3 and north 2 to walls, west 11, north 1, for the
+//  console-passed north 3, west 8).
 const RouteCosts& story_route_costs();
 
 //  A ROUTE's legs from `pose` to `goal`, on story_route_costs(): from

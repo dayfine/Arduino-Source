@@ -16,6 +16,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonFRLG_AutoStoryBoulders.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
+#include "PokemonFRLG_AutoStoryMovedBoulders.h"
 #include "PokemonFRLG_AutoStoryLineTrainer.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
@@ -670,7 +671,7 @@ namespace{
 
 //  A boulder push's taps on `sim`, as the game answers them: a tap into a
 //  boulder pushes it (SimField::PUSH_BOULDER) and the player stays; any
-//  other tap is a step (sim_step_once()). Nothing interrupts a push.
+//  other tap is a step (sim_step_once()).
 class SimBoulderPresses : public BoulderPresses{
 public:
     explicit SimBoulderPresses(OverworldSim& sim)
@@ -693,8 +694,11 @@ public:
         return {.scrolled = !(m_sim.state().position == from), .boulder_moved = false};
     }
 
+    //  As the console's: waits for the quiet overworld (a switch's script
+    //  lock ends).
     bool clear_interrupt() override{
-        return false;
+        const Pokemon::ScreenSettle settle = wait_for_quiet_overworld(sim_screen_look(m_sim), MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
+        return quiet_overworld(settle, MovementMechanics::AFTER_BATTLE_QUIET);
     }
 
 private:
@@ -703,12 +707,22 @@ private:
 
 }  // namespace
 
-//  A PUSH_BOULDER_VARIANT step: turned to the boulder, and the taps that
-//  push it `tiles` tiles (push_boulder_tiles()), as on the console.
+//  A PUSH_BOULDER_VARIANT step: turned to the boulder, Strength used if
+//  the step says so, and the taps that push it `tiles` tiles
+//  (push_boulder_tiles()), as on the console.
 std::string OverworldStepSim::push_boulder(const StoryStep& step){
     const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
     const int64_t tiles = Pokemon::story_arg<int64_t>(step.args, "tiles");
+    if (Pokemon::story_arg<bool>(step.args, "activate")){
+        if (m_sim.state().facing != direction){
+            sim_turn_to(m_sim, direction);
+        }
+        if (!m_sim.use_field(SimField::STRENGTH)){
+            return std::format("no boulder {} of {}.", direction_name(direction), to_string(MapPosition{m_at.map, m_at.tile}));
+        }
+    }
     SimBoulderPresses presses(m_sim);
+    const MapPosition start{m_at.map, m_at.tile};
     const BoulderPush push = push_boulder_tiles(direction, tiles, presses);
     m_at.facing = direction;
     for (int64_t c = 0; c < push.walked; c++){
@@ -720,6 +734,7 @@ std::string OverworldStepSim::push_boulder(const StoryStep& step){
     if (!(m_sim.state().position == MapPosition{m_at.map, m_at.tile})){
         return std::format("expected to stand behind the boulder on {}.", to_string(MapPosition{m_at.map, m_at.tile}));
     }
+    note_boulder_pushed(start, direction, tiles, m_flags);
     return "";
 }
 
@@ -905,6 +920,7 @@ std::string row_step_carrying_flags(
     at = executor.at();
     run_flags = std::move(state.flags);
     trainers_back_after_map_change(map_before, at.map, run_flags);
+    boulders_back_after_map_change(map_before, at.map, run_flags);
     if (outcome.succeeded()){
         //  The step that picks the Card Key up (flags_after) opens the doors the
         //  next ones walk to.

@@ -11,6 +11,7 @@
 #include "Common/Cpp/Concurrency/Mutex.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
+#include "PokemonFRLG_AutoStoryMovedBoulders.h"
 #include "PokemonFRLG_AutoStoryMovedTrainers.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 
@@ -70,7 +71,8 @@ const std::vector<MapData>& run_story_maps(const std::set<std::string>& run_flag
     const bool cleared = run_flags.contains(std::string(SILPH_CLEARED_FLAG));
     const std::vector<MapData>& base = cleared ? cleared_story_maps() : story_maps();
     const std::vector<TrainerMove> moved = moved_trainers(run_flags);
-    if (moved.empty()){
+    const std::vector<BoulderMove> pushed = moved_boulders(run_flags);
+    if (moved.empty() && pushed.empty()){
         return base;
     }
     //  One copy per set of trainers moved, kept while the program runs:
@@ -80,12 +82,15 @@ const std::vector<MapData>& run_story_maps(const std::set<std::string>& run_flag
     for (const TrainerMove& move : moved){
         key += std::format("|{}={},{}", move.trainer, move.x, move.y);
     }
+    for (const BoulderMove& push : pushed){
+        key += std::format("|{}@{},{}={},{}", push.map, push.from.x, push.from.y, push.at.x, push.at.y);
+    }
     static Mutex lock;
     static std::map<std::string, std::vector<MapData>> moved_maps;
     LockGuard<Mutex> guard(lock);
     auto it = moved_maps.find(key);
     if (it == moved_maps.end()){
-        it = moved_maps.emplace(key, with_trainers_moved(base, moved)).first;
+        it = moved_maps.emplace(key, with_boulders_moved(with_trainers_moved(base, moved), pushed)).first;
     }
     return it->second;
 }

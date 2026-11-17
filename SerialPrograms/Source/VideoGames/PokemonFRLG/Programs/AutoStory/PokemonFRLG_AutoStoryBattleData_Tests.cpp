@@ -2,7 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The battle data, and the attacks chosen against trainers' parties and wild Pokemon from it.
+ *  The battle data, and the attacks chosen against trainers' parties and wild Pokemon from it;
+ *  a status cured in a trainer's battle.
  *
  */
 
@@ -19,6 +20,7 @@
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "PokemonFRLG_AutoStoryLeadOut.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 
 namespace PokemonAutomation{
@@ -256,7 +258,236 @@ UnitTestResult test_wild_fallback(){
     return true;
 }
 
+//  Victory Road's lead as it met Cooltrainer Colby (console B, 2026-11-16,
+//  19.04d): Blastoise Lv51 with Bite, Strength, Surf and Blizzard.
+PartyMember victory_road_blastoise(){
+    return PartyMember{
+        .species = "blastoise",
+        .moves = {{"bite", 25}, {"strength", 15}, {"surf", 15}, {"blizzard", 5}},
+        .moves_through_level = 51,
+        .moves_read = true,
+        .level = 51,
+    };
+}
+
+//  19.04d (console B, 2026-11-16 03:34): against Colby's Water party the
+//  lead used Bite, as 1x as Strength and first in the plan's order, until
+//  its PP ran out. The best type matchup, then the most damage of the
+//  matchups that tie (power, half again for the lead's own type).
+UnitTestResult test_matchup_then_power(){
+    const PartyMember blastoise = victory_road_blastoise();
+    const std::vector<std::pair<std::string, std::string>> cases = {
+        {"kingler", "strength"},
+        {"tentacruel", "strength"},
+        {"blastoise", "strength"},
+        {"onix", "surf"},
+        {"rhydon", "surf"},
+        {"raticate", "surf"},
+        {"dragonair", "blizzard"},
+        {"pidgeot", "blizzard"},
+    };
+    for (const auto& [foe, expected] : cases){
+        const std::optional<size_t> slot = attack_slot_against(blastoise, {foe});
+        const std::string chosen = slot ? blastoise.moves[*slot].move : "none";
+        if (chosen != expected){
+            return std::format("{}: expected {}, got {}.", foe, expected, chosen);
+        }
+    }
+    return true;
+}
+
+//  Lorelei (console B, 2026-11-16, 20.01): after four X Specials the lead
+//  used Strength on Dewgong for 11 turns. PokeGuy's Blastoise Lv51
+//  (PokemonSimulation docs/battles/pokeguy-conditions.md, lorelei) and her
+//  foes' Defense and Sp. Def from the same table.
+PartyMember lorelei_blastoise(){
+    PartyMember blastoise = victory_road_blastoise();
+    blastoise.stats = Stats{.hp = 159, .attack = 107, .defense = 108, .sp_attack = 123, .sp_defense = 124, .speed = 107};
+    return blastoise;
+}
+
+std::string pick(const PartyMember& member, std::string_view foe, const AttackContext& context){
+    const std::optional<size_t> slot = attack_slot_against(member, {std::string(foe)}, context);
+    return slot ? member.moves[*slot].move : "none";
+}
+
+constexpr FoeStats DEWGONG = {.defense = 103, .sp_defense = 119};
+
+//  Bite (Dark: special in Gen 3) at x3 hits ~83, Strength ~38. Surf would
+//  hit harder still, but Water on a Water foe is never chosen.
+UnitTestResult test_dewgong_after_setup(){
+    const std::string chosen = pick(lorelei_blastoise(), "dewgong", {.sp_attack_stage = 4, .foe = DEWGONG});
+    return chosen == "bite" ? UnitTestResult(true) : UnitTestResult(std::format("Expected Bite at +4, got {}.", chosen));
+}
+
+//  Strength ~38 against Bite ~29 and Blizzard ~7 (resisted twice, and
+//  Thick Fat halves its power).
+UnitTestResult test_dewgong_without_setup(){
+    const std::string chosen = pick(lorelei_blastoise(), "dewgong", {.foe = DEWGONG});
+    return chosen == "strength" ? UnitTestResult(true) : UnitTestResult(std::format("Expected Strength at +0, got {}.", chosen));
+}
+
+//  Jynx (Ice/Psychic): Defense 59, Sp. Def 135. Strength ~65, Surf ~57,
+//  Bite (2x) ~52: the matchup alone took Bite.
+UnitTestResult test_jynx_physical(){
+    const std::string chosen = pick(lorelei_blastoise(), "jynx", {.foe = FoeStats{.defense = 59, .sp_defense = 135}});
+    return chosen == "strength" ? UnitTestResult(true) : UnitTestResult(std::format("Expected Strength on Jynx, got {}.", chosen));
+}
+
+//  A Raticate with Defense and Sp. Def 80 (made up for the case): Surf
+//  ~99 at +0 beats Strength ~49; at Attack +3 (x2.5) Strength hits ~119.
+UnitTestResult test_x_attack_physical(){
+    const FoeStats even{.defense = 80, .sp_defense = 80};
+    const std::string plain = pick(lorelei_blastoise(), "raticate", {.foe = even});
+    const std::string boosted = pick(lorelei_blastoise(), "raticate", {.attack_stage = 3, .foe = even});
+    if (plain != "surf" || boosted != "strength"){
+        return std::format("Expected Surf at Attack +0 and Strength at +3, got {} and {}.", plain, boosted);
+    }
+    return true;
+}
+
+//  19.04d (console B, 2026-11-16 03:36): paralysed by Colby's Kingler, the
+//  lead fought his four other Pokemon with PAR and 2 Parlyz Heals in the
+//  bag. A trainer's battle cures PAR with a Parlyz Heal once the HP needs
+//  no Super Potion first; a wild Pokemon is run from instead.
+UnitTestResult test_paralysis_cured(){
+    struct Input{
+        BattleKind kind;
+        bool hp_yellow;
+    };
+    struct Expectation{
+        TurnChoice choice;
+        std::string item;
+    };
+    struct Case{
+        std::string name;
+        Input input;
+        Expectation expectation;
+    };
+    const std::vector<Case> cases = {
+        {.name = "a trainer, HP green", .input = {BattleKind::TRAINER, false}, .expectation = {TurnChoice::MEDICINE, "parlyz-heal"}},
+        {.name = "a trainer, HP yellow", .input = {BattleKind::TRAINER, true}, .expectation = {TurnChoice::MEDICINE, "super-potion"}},
+        {.name = "a wild Pokemon", .input = {BattleKind::WILD_FIGHT, false}, .expectation = {TurnChoice::RUN, ""}},
+    };
+    for (const Case& c : cases){
+        Supplies supplies;
+        supplies.lead = victory_road_blastoise();
+        supplies.foe_out = "poliwhirl";
+        supplies.super_potions = 4;
+        supplies.parlyz_heals = 2;
+        BattleDecisions decisions(supplies, c.input.kind);
+        const PartyStatus paralysed{.hp_seen = true, .hp_yellow = c.input.hp_yellow, .hp_red = false, .hp_fill = 0.5, .status = StatusCondition::PARALYSIS};
+        const TurnAction action = decisions.turn(paralysed);
+        if (action.choice != c.expectation.choice || action.item != c.expectation.item){
+            return std::format("{}: expected \"{}\", got choice {} \"{}\".", c.name, c.expectation.item, static_cast<int>(action.choice), action.item);
+        }
+    }
+    return true;
+}
+
+//  A Parlyz Heal used: one fewer in the bag, and the lead counts as cured.
+UnitTestResult test_parlyz_heal_used(){
+    Supplies supplies;
+    supplies.lead = victory_road_blastoise();
+    supplies.parlyz_heals = 2;
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    decisions.turn(PartyStatus{.hp_seen = true, .hp_yellow = false, .hp_red = false, .hp_fill = 0.7, .status = StatusCondition::PARALYSIS});
+    decisions.turn_done(TurnChoice::MEDICINE, TurnResult::DONE);
+    if (supplies.parlyz_heals != 1 || supplies.status != StatusCondition::NONE){
+        return std::format("{} Parlyz Heal(s) left, status {}; expected 1 left and no status.", supplies.parlyz_heals, status_name(supplies.status));
+    }
+    return true;
+}
+
+//  Bruno's fight after the Roar: the lead's box went (the faint watch), our
+//  Lapras is out and nothing was sent. The turn switches Blastoise back in,
+//  the next is its own again; a real faint later still sends the next
+//  member that isn't protected (Magikarp, slot 2), never the lead's
+//  switch-in.
+UnitTestResult test_dragged_out_lead_switched_back(){
+    Supplies supplies;
+    supplies.lead = lorelei_blastoise();
+    supplies.protected_slots = {1};
+    const PartyStatus green{.hp_seen = true, .hp_fill = 1.0};
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    supplies.own_out = "blastoise";
+    decisions.turn(green);
+    decisions.lead_fainted();
+    supplies.own_out = "lapras";
+    const TurnAction action = decisions.turn(green);
+    if (action.choice != TurnChoice::SWITCH_LEAD || decisions.lost()){
+        return "Expected the lead switched back in, and the battle not lost.";
+    }
+    decisions.turn_done(TurnChoice::SWITCH_LEAD, TurnResult::DONE);
+    supplies.own_out = "blastoise";
+    if (decisions.turn(green).choice == TurnChoice::SWITCH_LEAD || decisions.lost()){
+        return "Expected the lead's own turn after the switch back.";
+    }
+    if (decisions.next_member_slot() != std::optional<size_t>(2)){
+        return "Expected slot 3 sent after a real faint, past the protected slot 2.";
+    }
+    supplies.own_out = "lapras";
+    if (decisions.turn(green).choice == TurnChoice::SWITCH_LEAD){
+        return "Expected no switch back after a real faint.";
+    }
+    return true;
+}
+
+//  The switch back couldn't be made (the list didn't read the lead): the
+//  rule is off for the battle, and a lead that had lost its box is lost.
+UnitTestResult test_switch_back_failed(){
+    Supplies supplies;
+    supplies.lead = lorelei_blastoise();
+    const PartyStatus green{.hp_seen = true, .hp_fill = 1.0};
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    decisions.turn(green);
+    decisions.lead_fainted();
+    supplies.own_out = "lapras";
+    decisions.turn(green);
+    decisions.turn_done(TurnChoice::SWITCH_LEAD, TurnResult::NOT_DONE);
+    if (!decisions.lost() || decisions.turn(green).choice == TurnChoice::SWITCH_LEAD){
+        return "Expected the battle lost and no second switch back.";
+    }
+    return true;
+}
+
 const AutoStoryBattleDataTestCase AUTO_STORY_BATTLE_DATA_CASES[] = {
+    {
+        .input = {.name = "Bruno's Roar: the lead switched back in", .body = test_dragged_out_lead_switched_back},
+        .expectation = {.description = "SWITCH_LEAD, then the lead's own turn; a real faint later sends past the protected member"},
+    },
+    {
+        .input = {.name = "a switch back that couldn't be made", .body = test_switch_back_failed},
+        .expectation = {.description = "the battle lost, the rule off"},
+    },
+    {
+        .input = {.name = "Victory Road's Blastoise: the best matchup, then the strongest move", .body = test_matchup_then_power},
+        .expectation = {.description = "Strength on Kingler, Tentacruel and Blastoise; Surf on Onix, Rhydon and Raticate; Blizzard on Dragonair and Pidgeot"},
+    },
+    {
+        .input = {.name = "Lorelei's Dewgong at Sp. Atk +4", .body = test_dewgong_after_setup},
+        .expectation = {.description = "Bite, the special move Water-on-Water leaves, over Strength"},
+    },
+    {
+        .input = {.name = "Lorelei's Dewgong at Sp. Atk +0", .body = test_dewgong_without_setup},
+        .expectation = {.description = "Strength"},
+    },
+    {
+        .input = {.name = "Lorelei's Jynx, Defense 59", .body = test_jynx_physical},
+        .expectation = {.description = "Strength over Surf and the super effective Bite"},
+    },
+    {
+        .input = {.name = "X Attack counted for a physical move", .body = test_x_attack_physical},
+        .expectation = {.description = "Surf at Attack +0, Strength at +3"},
+    },
+    {
+        .input = {.name = "PAR with Parlyz Heals in the bag", .body = test_paralysis_cured},
+        .expectation = {.description = "a Parlyz Heal against a trainer at green HP, a Super Potion first at yellow, RUN from a wild Pokemon"},
+    },
+    {
+        .input = {.name = "a Parlyz Heal used", .body = test_parlyz_heal_used},
+        .expectation = {.description = "one fewer Parlyz Heal, the status cured"},
+    },
     {
         .input = {.name = "type chart, moves and species from pret", .body = test_data},
         .expectation = {.description = "validates decompiled type charts, moves, and species"},
@@ -298,6 +529,7 @@ void add_tests_AutoStoryBattleData(UnitTestDatabase& database){
     for (const auto& scenario : AUTO_STORY_BATTLE_DATA_CASES){
         database.add<Test_AutoStoryBattleData>(scenario);
     }
+    add_tests_AutoStoryLeadOut(database);
 }
 
 

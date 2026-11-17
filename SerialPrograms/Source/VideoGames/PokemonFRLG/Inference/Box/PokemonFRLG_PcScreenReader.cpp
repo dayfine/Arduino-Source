@@ -185,6 +185,12 @@ std::string_view pc_screen_name(PcScreen screen){
 
 PcView read_pc_screen(Logger& logger, const ImageViewRGB32& screen){
     const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
+    //  The fade into or out of a box screen: black with a white line across
+    //  the middle for over a second (console B, 2026-11-16). Its black has
+    //  the PKMN DATA panel's hue, so it is told apart first.
+    if (image_stats(game).average.sum() < DARK_SCREEN){
+        return {};
+    }
     if (is_solid(extract_box_reference(game, DATA_PANEL_PATCH), {0.311, 0.319, 0.370}, 0.06, 80)){
         return box_screen(logger, screen, game);
     }
@@ -198,7 +204,7 @@ PcView read_pc_screen(Logger& logger, const ImageViewRGB32& screen){
     if (is_white(extract_box_reference(game, MESSAGE_PATCH), 500, 40)){
         return {.screen = PcScreen::TEXT};
     }
-    if (StartMenuDetector(COLOR_RED).detect(screen) || image_stats(game).average.sum() < DARK_SCREEN){
+    if (StartMenuDetector(COLOR_RED).detect(screen)){
         return {};
     }
     return {.screen = PcScreen::OVERWORLD};
@@ -278,6 +284,11 @@ void add_tests_PcScreenReader(UnitTestDatabase& database){
         //  Pokemon it points at.
         "WithdrawBox_box-grid_0_none.png",
         "ContinueWithdraw_yes-no_1_none.png",
+        //  20.01a at the Indigo Plateau, 2026-11-16: 0.8 s after A on
+        //  WITHDRAW the fade is still black and must not read as the box;
+        //  by 3 s the box is up, the hand on the Magikarp.
+        "WithdrawOpening_other_none_none.png",
+        "IndigoWithdrawBox_box-grid_0_none.png",
         "Overworld_overworld_none_none.png",
         "StartMenu_other_none_none.png",
     }){

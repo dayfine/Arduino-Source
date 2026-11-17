@@ -30,8 +30,10 @@ namespace PokemonFRLG{
 
 //  The cheapest route from `start`, surfing if it is on water, to
 //  `goal`, or nothing if there is none. `maps` must hold every map the route
-//  may pass through; warps to other maps are not taken. Planned with
-//  Pokemon::plan_legs() on the game's step rules.
+//  may pass through; warps to other maps are not taken. A route between two
+//  tiles of one map stays on that map if any route does: leaving it resets
+//  its objects (pushed boulders). Planned with Pokemon::plan_legs() on the
+//  game's step rules.
 std::optional<std::vector<RouteStep>> plan_overworld_route(
     const std::vector<MapData>& maps,
     const MapPosition& start,

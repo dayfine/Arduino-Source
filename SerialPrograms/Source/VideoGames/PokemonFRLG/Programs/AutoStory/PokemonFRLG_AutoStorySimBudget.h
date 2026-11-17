@@ -19,6 +19,7 @@
 #include <string_view>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Time.h"
+#include "Common/Cpp/TestRunners/UnitTest.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -59,6 +60,20 @@ inline bool slow_tests_enabled(){
     // code-health: allow char_pointer -- std::getenv returns a const char pointer
     const char* value = std::getenv(std::string(SLOW_TESTS_VARIABLE).c_str());
     return value != nullptr && value[0] != '\0' && std::string_view(value) != "0";
+}
+
+//  `body`'s result, after logging how long it took against STAGE_BUDGET
+//  under `name`: the test logs show which cases are slow.
+template <typename Body>
+UnitTestResult timed_case(Logger& logger, std::string_view name, Body&& body);
+
+template <typename Body>
+UnitTestResult timed_case(Logger& logger, std::string_view name, Body&& body){
+    const auto start = std::chrono::steady_clock::now();
+    UnitTestResult result = body();
+    const std::chrono::duration<double> took = std::chrono::steady_clock::now() - start;
+    logger.log(std::format("{}: {:.1f} s (budget {} s).", name, took.count(), STAGE_BUDGET.count()));
+    return result;
 }
 
 

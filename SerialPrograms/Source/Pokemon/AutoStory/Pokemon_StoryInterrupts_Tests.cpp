@@ -319,11 +319,55 @@ UnitTestResult test_unsettled_looks_again(){
     return expect_trace(game, {"look", "look again", "clear warp", "told warp ", "run walk"});
 }
 
-//  A door's fade is no battle's opening: three looks, as before.
+//  The looks before the scene after an Elite Four door, 400 ms each: the
+//  step into the door ended before its black (100 to 500 ms), then the
+//  room's script walks the player in for 2.5 s with no input taken, the
+//  screen showing nothing (FRLG reports no PLAYER_CAN_MOVE), until the
+//  look at `until_ms`. Console B, 20.02 enter_brunos_room, 2026-11-16.
+std::vector<ScreenLook> door_then_walk_in(int until_ms){
+    const ScreenEvents nothing;
+    std::vector<ScreenLook> out;
+    for (int ms = 400; ms <= until_ms; ms += 400){
+        std::vector<Frame> frames = {{0, nothing}, {100, BLACK}};
+        if (ms > 500){
+            frames.push_back({500, nothing});
+        }
+        frames.push_back({ms, frames.back().events});
+        out.push_back(look_of(frames, ms));
+    }
+    return out;
+}
+
+//  A door's fade back up, then a scripted walk: unsettled while a battle
+//  may still show (battle_after_fade, 8 s after the fade), looked at
+//  until it settles as a warp, not failed after a few looks. The scene
+//  after it runs, then the next step.
+UnitTestResult test_door_then_scripted_walk(){
+    FakeGame game;
+    game.screens = door_then_walk_in(8800);
+    StoryInterrupts interrupts = fake_interrupts(game);
+    const FakeRun scene = run_step(game, interrupts, make(StoryStepKind::MASH, "enter_brunos_room"));
+    if (!scene.outcome.succeeded()){
+        return std::format("Expected the scene to run after the walk, got {}", to_string(scene.outcome));
+    }
+    game.screens = {quiet()};
+    game.looks = 0;
+    const FakeRun next = run_step(game, interrupts, make(StoryStepKind::ROUTE, "before_bruno"));
+    if (!next.outcome.succeeded()){
+        return std::format("Expected the next step to run, got {}", to_string(next.outcome));
+    }
+    std::vector<std::string> expected = {"look"};
+    expected.insert(expected.end(), /*count=*/21, "look again");
+    expected.insert(expected.end(), {"clear warp", "told warp ", "run enter_brunos_room", "look", "run before_bruno"});
+    return expect_trace(game, expected);
+}
+
+//  A door's fade that never settles: at most max_unsettled_looks looks.
 UnitTestResult test_unsettled_is_bounded(){
     FakeGame game;
-    game.screens = {black_unsettled()};
+    game.screens = door_then_walk_in(8800);
     StoryInterrupts interrupts = fake_interrupts(game);
+    interrupts.max_unsettled_looks = 3;
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
     if (run.outcome.failure != "interrupt_unsettled"){
         return std::format("Expected interrupt_unsettled, got {}", to_string(run.outcome));
@@ -348,8 +392,7 @@ UnitTestResult test_unsettled_before_a_battle(){
 
 //  A battle's opening still playing when a walk step begins: the walk
 //  before it ended in grass or in a trainer's sight. The looks wait for the
-//  battle, past max_looks,
-//  and its handler clears it before the step.
+//  battle, and its handler clears it before the step.
 UnitTestResult test_opening_before_a_walk(ScreenLook opening, ScreenLook battle, const std::string& kind, const std::string& handler){
     FakeGame game;
     game.screens = {opening, opening, opening, opening, std::move(battle), quiet()};
@@ -370,12 +413,12 @@ UnitTestResult test_trainer_opening_before_a_walk(){
     return test_opening_before_a_walk(trainer_opening(), trainer(), "trainer sight", "trainer");
 }
 
-//  A white that shows no battle and does not settle: max_opening_looks.
+//  A white that shows no battle and does not settle: max_unsettled_looks.
 UnitTestResult test_opening_is_bounded(){
     FakeGame game;
     game.screens = {white_unsettled()};
     StoryInterrupts interrupts = fake_interrupts(game);
-    interrupts.max_opening_looks = 5;
+    interrupts.max_unsettled_looks = 5;
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
     if (run.outcome.failure != "interrupt_unsettled"){
         return std::format("Expected interrupt_unsettled, got {}", to_string(run.outcome));
@@ -468,7 +511,7 @@ UnitTestResult test_screen_before_each_step(){
     //  fails unsettled, and the guard hears the fade was showing.
     game.screens = {look_of({{0, WALK}, {100, BLACK}}, 300)};
     StoryInterrupts interrupts = fake_interrupts(game);
-    interrupts.max_opening_looks = 2;
+    interrupts.max_unsettled_looks = 2;
     const StoryActionTable table = table_of({}, game);
     ScreenGuard guard(game);
     TableExecutor executor(table, guard);
@@ -733,8 +776,12 @@ const StoryInterruptsCase STORY_INTERRUPTS_CASES[] = {
         .expectation = {.description = "a white with no battle after it is a warp"},
     },
     {
-        .input = {.name = "unsettled: at most max_looks looks", .test = test_unsettled_is_bounded},
-        .expectation = {.description = "a door's fade: interrupt_unsettled after three looks"},
+        .input = {.name = "unsettled: a door's fade, then the room's scripted walk", .test = test_door_then_scripted_walk},
+        .expectation = {.description = "looked at until it settles as a warp; the scene, then the next step"},
+    },
+    {
+        .input = {.name = "unsettled: at most max_unsettled_looks looks", .test = test_unsettled_is_bounded},
+        .expectation = {.description = "a fade that never settles: interrupt_unsettled after them"},
     },
     {
         .input = {.name = "unsettled: a battle's opening before a battle step", .test = test_unsettled_before_a_battle},
@@ -749,7 +796,7 @@ const StoryInterruptsCase STORY_INTERRUPTS_CASES[] = {
         .expectation = {.description = "waits for the battle, fights it, then the walk"},
     },
     {
-        .input = {.name = "unsettled: at most max_opening_looks for an opening", .test = test_opening_is_bounded},
+        .input = {.name = "unsettled: at most max_unsettled_looks for an opening", .test = test_opening_is_bounded},
         .expectation = {.description = "a white with no battle: interrupt_unsettled"},
     },
     {

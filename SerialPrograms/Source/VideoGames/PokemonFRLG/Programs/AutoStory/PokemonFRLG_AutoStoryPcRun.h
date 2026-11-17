@@ -63,7 +63,8 @@ struct PcResult{
 
 //  Reads after this many presses without the overworld back: a failure.
 constexpr size_t PC_MAX_PRESSES = 80;
-//  OTHER read this many times in a row: a failure.
+//  A screen still changing (OTHER, or a box screen with its hand unread)
+//  read this many times in a row, about 5 s on the console: a failure.
 constexpr size_t PC_MAX_OTHER_IN_A_ROW = 10;
 //  The overworld read this many times after A at the PC: it didn't boot.
 constexpr size_t PC_BOOT_READS = 4;
