@@ -64,10 +64,6 @@
   "execution": {
     "save": "autosave",
     "autosave_step": "save_in_mable_office",
-    "reload_when_chained": "always",
-    "start_signature": {
-      "party": 5,
-      "wild_zone": false
-    }
+    "reload_when_chained": "always"
   }
 }
