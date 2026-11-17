@@ -152,8 +152,6 @@ constexpr Milliseconds FADE_WAIT = 30000ms;
 constexpr Milliseconds STILL_WAIT = 10000ms;
 //  The longest a cutscene may hold one still frame.
 constexpr Milliseconds SCENE_STILL_WAIT = 60000ms;
-//  How often blind_press_after presses.
-constexpr Milliseconds BLIND_PRESS_EVERY = 2000ms;
 //  How often a wait looks again.
 constexpr Milliseconds POLL = 250ms;
 //  The longest the machine waits for the mission banner to go once it has
@@ -366,7 +364,7 @@ bool SceneTimeline::blind_press_due(WallClock now) const{
     if (!m_config.blind_press_after || now - m_last_cue < *m_config.blind_press_after){
         return false;
     }
-    return !m_last_blind_press || now - *m_last_blind_press >= BLIND_PRESS_EVERY;
+    return !m_last_blind_press || now - *m_last_blind_press >= m_config.blind_press_every;
 }
 
 bool SceneTimeline::fades_settled(WallClock now) const{

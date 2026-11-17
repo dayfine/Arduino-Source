@@ -64,6 +64,11 @@ struct SceneMachineConfig{
     //  A at the end of a talk restarts it (01.02's battle area, console B
     //  2026-11-15). A does not skip a cutscene.
     std::optional<Milliseconds> blind_press_after = std::nullopt;
+    //  How often those blind presses come: zero presses on every look, as
+    //  plza/autostory's "scene" step (SceneMash) pressed B on every
+    //  frame with no box, choice, fade or party bar, which closes the menus
+    //  a talk opens (03.11's Mable's mission and reward screens).
+    Milliseconds blind_press_every = Milliseconds(2000);
     //  Once a scene is under way, one blind press (blind_button) when
     //  nothing busy and no sign of control has shown for this long, and
     //  again only after the next cue: a box no detector reads inside a

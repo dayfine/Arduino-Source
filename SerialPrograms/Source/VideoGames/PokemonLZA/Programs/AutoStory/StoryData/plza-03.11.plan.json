@@ -45,9 +45,8 @@
       },
       {
         "id": "leave_mable",
-        "kind": "game_action",
-        "why": "step 71: out of the menu, through Mable's talk, until control in her office; at once when there is control already. plza/autostory's step (a scene that control ends, passed on console B 2026-11-14 22:17), here as mash_to_move_hints: the lean scene step would wait 45 s for a scene and fail when none follows the menu.",
-        "action": "mash_to_move_hints"
+        "kind": "scene",
+        "why": "step 71: out of the menu, through Mable's talk, until control in her office; at once when there is control already. A bare scene, as plza/autostory's (passed on console B 2026-11-14 22:17): B on every look nothing reads closes her mission and reward screens, where mash_to_move_hints pressed nothing for 60 s (console B 2026-11-16 20:42)."
       },
       {
         "id": "save_in_mable_office",

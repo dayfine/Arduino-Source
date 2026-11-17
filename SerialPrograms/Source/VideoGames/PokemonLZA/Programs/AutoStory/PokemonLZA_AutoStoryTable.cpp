@@ -62,7 +62,7 @@ std::vector<std::string> story_row_lead_in_errors(const Pokemon::StoryCheckpoint
         if (step.action == "story_battle" && (before == nullptr || before->action != "story_battle_start")){
             errors.push_back(std::format("{}: a story battle must follow story_battle_start, which ends on the battle HUD", step.name));
         }
-        if (step.kind == Pokemon::StoryStepKind::MASH && before != nullptr && plays_to_control(*before)){
+        if (step.kind == Pokemon::StoryStepKind::MASH && step.action == "a" && before != nullptr && plays_to_control(*before)){
             errors.push_back(std::format(
                 "{}: a scene must follow what starts it, not {}, which plays its scenes through to control", step.name, before->action
             ));

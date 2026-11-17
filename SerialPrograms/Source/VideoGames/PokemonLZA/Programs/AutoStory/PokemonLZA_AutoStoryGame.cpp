@@ -150,6 +150,7 @@ std::vector<StoryActionSpec> make_specs(){
         game_spec("choose_0"),
         game_spec("choose_1"),
         StoryActionSpec{.kind = StoryStepKind::TALK, .name = "talk", .args = {}},
+        StoryActionSpec{.kind = StoryStepKind::MASH, .name = "mash", .args = {}},
         StoryActionSpec{.kind = StoryStepKind::MASH, .name = "a", .args = {}},
         game_spec("story_battle_start"),
         game_spec("story_battle"),
@@ -543,6 +544,24 @@ Outcome scene_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCa
     return run_scene_machine(backend, "scene", config, 120s);
 }
 
+//  A bare "scene" step ("mash"), as plza/autostory ran it
+//  (Actions/PokemonLZA_AutoStoryScenes.cpp:107, mash_scene() with B,
+//  CONTROL_ENDS; its SceneMash, PokemonLZA_AutoStoryScreenEvents.cpp:47):
+//  B at a box, A at a choice or a tutorial card, a fade or the party bar
+//  not held yet waited out, and B on every other look, which closes the
+//  menus a talk opens (03.11's Mable's mission and reward screens),
+//  until the party bar holds a second, at once if it does from the start;
+//  120 s at most. leave_mable passed this way on console B (2026-11-14
+//  22:17); mash_to_move_hints, which presses nothing there, sat 60 s on
+//  her menus (2026-11-16 20:42).
+Outcome mash_scene_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+    SceneMachineConfig config;
+    config.blind_press_after = 0ms;
+    config.blind_press_every = 0ms;
+    config.blind_button = BUTTON_B;
+    return run_scene_machine(backend, "scene", config, 120s);
+}
+
 //  "walk_to_prompt": straight on until an A prompt shows (walk_to_prompt()).
 Outcome walk_to_prompt_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
     return walk_to_prompt(backend, Milliseconds(Pokemon::story_arg<int64_t>(call.args, "timeout_ms")));
@@ -646,6 +665,7 @@ const std::map<std::string_view, StepFunction>& step_functions(){
         {"mash_to_move_hints", move_hints_step},
         {"text_to_choice", text_to_choice_step},
         {"talk", talk_step},
+        {"mash", mash_scene_step},
         {"a", scene_step},
         {"walk_to_prompt", walk_to_prompt_step},
         {"story_battle_start", battle_start_step},
