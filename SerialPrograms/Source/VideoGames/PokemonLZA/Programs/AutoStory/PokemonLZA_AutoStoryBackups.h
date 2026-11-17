@@ -26,6 +26,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.h"
 #include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryBackend.h"
+#include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryStarts.h"
 
 namespace PokemonAutomation{
@@ -55,14 +56,14 @@ struct BackupSave{
 };
 
 //  A run that may rewind: the rows `first` to `last` of `rows` (all the
-//  story's checkpoints), `attempts_per_checkpoint` each, and up to
+//  story's checkpoints), each run as `segments` says, and up to
 //  `max_rewinds` rewinds to the backup saves `starts` name (a backup
 //  card's StartSignature::registered).
 struct RewindPlan{
     std::span<const Pokemon::StoryCheckpoint> rows;
     size_t first = 0;
     size_t last = 0;
-    size_t attempts_per_checkpoint = 1;
+    SegmentRunOptions segments = {};
     std::span<const CheckpointStart> starts = {};
     size_t max_rewinds = 0;
 };

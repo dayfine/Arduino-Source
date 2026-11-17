@@ -140,12 +140,28 @@ Pokemon::Outcome load_checkpoint_start(
     const Pokemon::StoryGame<Pokemon::ZonePose>& game, PlzaBackend& backend, const Pokemon::StoryCheckpoint& row
 );
 
+//  How run_plza_segments() runs its rows.
+struct SegmentRunOptions{
+    //  Whether a chained run keeps the reloads `story` forces with
+    //  reload_when_chained "always". SKIP is a developer option: it tests
+    //  whether a row needs its reload by running it from the live screen.
+    enum class ForcedReloads{
+        KEEP,
+        SKIP,
+    };
+
+    size_t attempts_per_checkpoint = 1;
+    ForcedReloads forced_reloads = ForcedReloads::KEEP;
+};
+
 //  `rows` in order from the save the game is on, each with the story
-//  engine's run_segment() on `backend`, `attempts_per_checkpoint` each when a reload
+//  engine's run_segment() on `backend`, `options.attempts_per_checkpoint` each when a reload
 //  returns to its start (the first row, or one after a row whose autosave
 //  `sightings` saw), else once. Between two rows, the event "chain":
 //    - a row `story` marks reload_when_chained "always" loads its start
 //      (load_checkpoint_start()) when the row before's autosave was seen;
+//      with `options.forced_reloads` SKIP it runs on from the live screen instead,
+//      unchecked, and logs "[Checkpoint] <id>: reload skipped (developer option)";
 //    - any other row runs on from the live screen when its start check
 //      passes or cannot tell (logged as "start unchecked"); when it fails,
 //      the row's start is loaded if the row before's autosave was seen.
@@ -156,7 +172,7 @@ Pokemon::Outcome load_checkpoint_start(
 //  logs "[Save] <id>: the game autosaved in <step> before the run failed".
 Pokemon::SegmentReport run_plza_segments(
     const Pokemon::StoryGame<Pokemon::ZonePose>& game, const Pokemon::StoryRows& story,
-    std::span<const Pokemon::StoryCheckpoint> rows, size_t attempts_per_checkpoint,
+    std::span<const Pokemon::StoryCheckpoint> rows, const SegmentRunOptions& options,
     PlzaBackend& backend, Pokemon::RunState& state, AutosaveSightings& sightings
 );
 
