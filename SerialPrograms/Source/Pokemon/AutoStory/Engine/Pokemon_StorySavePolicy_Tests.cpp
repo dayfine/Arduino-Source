@@ -9,6 +9,7 @@
 
 #include <format>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -44,8 +45,8 @@ struct AutosavePolicyCase{
 StoryCheckpoint test_row(){
     StoryCheckpoint row;
     row.id = "01.00";
-    for (const char* step : {"talk", "walk", "door"}){
-        row.steps.push_back(StoryStep{.name = step});
+    for (std::string_view step : {"talk", "walk", "door"}){
+        row.steps.push_back(StoryStep{.name = std::string(step)});
     }
     return row;
 }
@@ -84,7 +85,7 @@ const AutosavePolicyCase CASES[] = {
 std::string joined(const std::vector<std::string>& lines){
     std::string text;
     for (const std::string& line : lines){
-        text += text.empty() ? line : "; " + line;
+        text = text.empty() ? line : std::format("{}; {}", text, line);
     }
     return text;
 }

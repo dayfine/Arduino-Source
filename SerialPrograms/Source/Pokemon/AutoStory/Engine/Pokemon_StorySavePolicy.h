@@ -65,6 +65,8 @@ StorySavePolicy<PoseType> autosave_policy(
     StoryRows rows, std::function<AutosaveSighting(const StoryCheckpoint& checkpoint)> sighting
 );
 
+//  Instantiated for ZonePose (Pokemon_ZonePose.h), in
+//  Pokemon_StorySavePolicy.cpp.
 extern template StorySavePolicy<ZonePose> autosave_policy<ZonePose>(
     StoryRows rows, std::function<AutosaveSighting(const StoryCheckpoint& checkpoint)> sighting
 );
