@@ -39,12 +39,17 @@ namespace PokemonLZA{
 //  reloaded 03.06's autosave from before the run to Wild Zone 1's gate).
 class AutosaveSightings{
 public:
-    //  A checkpoint starts: no badge seen in it yet.
+    //  A checkpoint starts: no badge seen in it yet; a badge still up
+    //  belongs to the save before it.
     void restart();
     //  `look`, taken during step `step`. A badge with none in the 5 s
     //  before it (the badge shows 1-3 s) is a new sighting, logged as
     //  "[PLZA] autosave badge at <t>s in <step>", t from the checkpoint's
-    //  first look.
+    //  first look. A badge within 5 s of one seen before the checkpoint
+    //  started is that earlier save, not counted: the badge of the save
+    //  that ended the last checkpoint is often still up on the next one's
+    //  first looks (02.04's check-in, 1.2 s into 02.05, console B
+    //  2026-11-16).
     void note(PlzaBackend& backend, const Pokemon::Observation<Pokemon::ZonePose>& look, std::string_view step);
     //  The run saved the game from the menu in step `step` (MENU_SAVE_ACTION):
     //  counted as an autosave seen there, logged as "[PLZA] saved from the
@@ -71,6 +76,9 @@ private:
     std::optional<std::string> m_seen_in;
     std::optional<std::string> m_last_seen_in;
     bool m_last_end_seen = false;
+    //  The badge last seen showed first in the checkpoint under way.
+    bool m_badge_is_ours = false;
+    bool m_earlier_badge_logged = false;
 };
 
 //  The action that saves the game from the menu at a fixed spot, where a

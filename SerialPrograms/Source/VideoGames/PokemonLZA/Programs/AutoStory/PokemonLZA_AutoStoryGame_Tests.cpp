@@ -692,14 +692,24 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
+        //  console B, 2026-11-16 22:47: with no party there is no party
+        //  bar, and the walk waited 10 s of quiet on the starter's prompt.
+        .name = "01.03's walk to Chikorita starts on the A prompt held a second with no party bar",
+        .input = {.checkpoint = "01.03", .first_step = 0, .steps = 1, .looks = {look({ScreenEvent::INTERACT_PROMPT})}},
+        .expectation = {
+            .verdict = "done",
+            .line = "[PLZA] approach_starter: the A prompt held 1000 ms with nothing busy: control.",
+        },
+    },
+    {
         .name = "01.03's walk to Chikorita fails with no A prompt in its 750 ms",
         .input = {.checkpoint = "01.03", .first_step = 0, .steps = 1, .looks = {look(/*events=*/{}, {CONTROLS_HINT_READING})}},
         .expectation = {.verdict = "failed at approach_starter: walk_no_end"},
     },
     {
         .name = "01.03's talk to the starter: A at its prompt, then the text box",
-        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {A_PROMPT, DIALOG}},
-        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms"},
+        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {A_PROMPT, A_PROMPT, DIALOG}},
+        .expectation = {.verdict = "done", .inputs = "wait 250ms, press A, wait 250ms"},
     },
     {
         .name = "01.03's talk fails when nothing starts after A: the prompt stays",
@@ -707,15 +717,33 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at talk_to_starter: talk_no_scene"},
     },
     {
+        //  console B, 2026-11-16: 02.05's A at the elevator was lost and
+        //  the next step read the overworld for 120 s.
+        .name = "a talk presses A again while the A prompt stays with nothing open",
+        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = concat(
+            std::vector<Observation<ZonePose>>(7, A_PROMPT), {DIALOG}
+        )},
+        .expectation = {
+            .verdict = "done",
+            .inputs = std::format("wait 250ms, press A, {}, press A, wait 250ms", repeated("wait 250ms", 4)),
+            .line = "[PLZA] talk: the A prompt still up 1000 ms after A 1 with nothing open; A again",
+        },
+    },
+    {
+        .name = "a talk presses nothing on an A prompt seen on one look only",
+        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {A_PROMPT, CUTSCENE}},
+        .expectation = {.verdict = "failed at talk_to_starter: talk_no_prompt", .inputs = "wait 250ms, wait 250ms, wait 250ms, wait 250ms"},
+    },
+    {
         //  console B, 2026-11-16 (03.02b run 2): the talk counted as
         //  started 0.4 s after A, and no battle followed.
         .name = "a talk does not start on one moving look that the party bar follows",
-        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {A_PROMPT, CUTSCENE, party_bar(Milliseconds(0))}},
+        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {A_PROMPT, A_PROMPT, CUTSCENE, party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at talk_to_starter: talk_no_scene"},
     },
     {
         .name = "a talk fails when the party bar stays after A",
-        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {A_PROMPT, party_bar(Milliseconds(0))}},
+        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {A_PROMPT, A_PROMPT, party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at talk_to_starter: talk_no_scene"},
     },
     {
@@ -957,26 +985,26 @@ const RunCase RUN_CASES[] = {
         //  "Smart Rotom" card, with no text box: her talk had started.
         .name = "03.02b's talk to Taunie starts on a tutorial card with no text box",
         .input = {.checkpoint = "03.02b", .first_step = 3, .steps = 1, .looks = {
-            A_PROMPT, look({ScreenEvent::SCREEN_STILL}, {TUTORIAL_CARD_READING}),
+            A_PROMPT, A_PROMPT, look({ScreenEvent::SCREEN_STILL}, {TUTORIAL_CARD_READING}),
         }},
-        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms"},
+        .expectation = {.verdict = "done", .inputs = "wait 250ms, press A, wait 250ms"},
     },
     {
         .name = "03.02b's talk to Taunie starts on a subtitle: the advance chevron with no text box",
         .input = {.checkpoint = "03.02b", .first_step = 3, .steps = 1, .looks = {
-            A_PROMPT, look({ScreenEvent::SCREEN_STILL}, {ADVANCE_ARROW_READING}),
+            A_PROMPT, A_PROMPT, look({ScreenEvent::SCREEN_STILL}, {ADVANCE_ARROW_READING}),
         }},
-        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms"},
+        .expectation = {.verdict = "done", .inputs = "wait 250ms, press A, wait 250ms"},
     },
     {
         .name = "03.02b's talk to Taunie starts on a fade",
-        .input = {.checkpoint = "03.02b", .first_step = 3, .steps = 1, .looks = {A_PROMPT, BLACK_FADE}},
-        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms"},
+        .input = {.checkpoint = "03.02b", .first_step = 3, .steps = 1, .looks = {A_PROMPT, A_PROMPT, BLACK_FADE}},
+        .expectation = {.verdict = "done", .inputs = "wait 250ms, press A, wait 250ms"},
     },
     {
         .name = "03.02b's talk to Taunie starts on a textless cutscene: the screen moving with no HUD",
-        .input = {.checkpoint = "03.02b", .first_step = 3, .steps = 1, .looks = {A_PROMPT, CUTSCENE}},
-        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms"},
+        .input = {.checkpoint = "03.02b", .first_step = 3, .steps = 1, .looks = {A_PROMPT, A_PROMPT, CUTSCENE}},
+        .expectation = {.verdict = "done", .inputs = "wait 250ms, press A, wait 250ms"},
     },
     {
         .name = "03.02b's battle start: A through Taunie's subtitles and the card, done on the battle HUD",
@@ -1353,7 +1381,7 @@ const ChainCase CHAIN_CASES[] = {
         .name = "a run that autosaved and then failed does not reload: the save moved past its start",
         .input = {
             .reload_always = {},
-            .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, AUTOSAVE, CUTSCENE},
+            .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, look(/*events=*/{}, {AUTOSAVE_READING}, Milliseconds(10000)), CUTSCENE},
             .second_action = "wait_for_platform",
             .attempts = 2,
         },
@@ -1553,10 +1581,105 @@ private:
     MenuSaveCase m_case;
 };
 
+//  One look AutosaveSightings notes, or the start of a checkpoint.
+struct SightingLook{
+    //  The step the look is taken in; empty: a checkpoint starts
+    //  (AutosaveSightings::restart()).
+    std::string step;
+    bool badge = false;
+    Milliseconds at = Milliseconds(0);
+};
+
+struct SightingsCase{
+    std::string name;
+    struct Input{
+        std::vector<SightingLook> looks;
+    };
+    Input input;
+    struct Expectation{
+        //  AutosaveSightings::seen_in() after the looks.
+        std::optional<std::string> seen_in;
+    };
+    Expectation expectation;
+};
+
+const SightingsCase SIGHTINGS_CASES[] = {
+    {
+        //  console B, 2026-11-16 22:58: 02.04's check-in autosave was still
+        //  up 1.2 s later on 02.05's first look, and 02.05's failure then
+        //  took its start save for gone and rewound to the backup save.
+        .name = "a badge still up from the last checkpoint's autosave is not this checkpoint's",
+        .input = {.looks = {
+            {.step = "check_in", .badge = true, .at = Milliseconds(93500)},
+            {.step = ""},
+            {.step = "to_lobby_elevator", .badge = true, .at = Milliseconds(94700)},
+            {.step = "to_lobby_elevator", .badge = true, .at = Milliseconds(95000)},
+            {.step = "to_lobby_elevator", .badge = false, .at = Milliseconds(95500)},
+            {.step = "take_elevator_up", .badge = false, .at = Milliseconds(106000)},
+        }},
+        .expectation = {.seen_in = std::nullopt},
+    },
+    {
+        .name = "a new badge after the last checkpoint's has gone is this checkpoint's",
+        .input = {.looks = {
+            {.step = "check_in", .badge = true, .at = Milliseconds(93500)},
+            {.step = ""},
+            {.step = "to_lobby_elevator", .badge = true, .at = Milliseconds(94700)},
+            {.step = "to_lobby_elevator", .badge = false, .at = Milliseconds(95500)},
+            {.step = "take_elevator_up", .badge = true, .at = Milliseconds(106000)},
+        }},
+        .expectation = {.seen_in = "take_elevator_up"},
+    },
+    {
+        .name = "a badge on a checkpoint's first look with none before it is this checkpoint's",
+        .input = {.looks = {
+            {.step = ""},
+            {.step = "opening", .badge = true, .at = Milliseconds(0)},
+        }},
+        .expectation = {.seen_in = "opening"},
+    },
+};
+
+UnitTestResult check_sightings(const SightingsCase& test, CancellableScope& scope){
+    AutosaveSightings sightings;
+    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = {}}, scope);
+    for (const SightingLook& entry : test.input.looks){
+        if (entry.step.empty()){
+            sightings.finish("");
+            sightings.restart();
+            continue;
+        }
+        sightings.note(backend, look(/*events=*/{}, entry.badge ? std::vector<std::string_view>{AUTOSAVE_READING} : std::vector<std::string_view>{}, entry.at), entry.step);
+    }
+    if (sightings.seen_in() != test.expectation.seen_in){
+        return std::format(
+            "expected seen in \"{}\", got \"{}\"; log:\n{}",
+            test.expectation.seen_in.value_or("none"), sightings.seen_in().value_or("none"), joined(backend.lines(), "\n")
+        );
+    }
+    return true;
+}
+
+class SightingsTest : public UnitTest{
+public:
+    explicit SightingsTest(SightingsCase test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStoryGame autosave sightings - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
+        return check_sightings(m_case, scope);
+    }
+private:
+    SightingsCase m_case;
+};
+
 } // namespace
 
 
 void add_tests_AutoStoryGame(UnitTestDatabase& database){
+    for (const SightingsCase& test : SIGHTINGS_CASES){
+        database.add<SightingsTest>(test);
+    }
     for (const MenuSaveCase& test : MENU_SAVE_CASES){
         database.add<MenuSaveTest>(test);
     }

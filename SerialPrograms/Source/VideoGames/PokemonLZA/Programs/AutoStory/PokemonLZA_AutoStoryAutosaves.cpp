@@ -94,9 +94,12 @@ private:
 
 void AutosaveSightings::restart(){
     m_origin.reset();
-    m_last_badge.reset();
     m_seen_in.reset();
     m_last_seen_in.reset();
+    //  A badge still up from before the start (m_last_badge, kept) is the
+    //  save that ended the last checkpoint.
+    m_badge_is_ours = false;
+    m_earlier_badge_logged = false;
 }
 
 void AutosaveSightings::note(PlzaBackend& backend, const Pokemon::Observation<ZonePose>& look, std::string_view step){
@@ -108,6 +111,16 @@ void AutosaveSightings::note(PlzaBackend& backend, const Pokemon::Observation<Zo
     }
     const bool new_sighting = !m_last_badge || look.when - *m_last_badge >= AUTOSAVE_DEBOUNCE;
     m_last_badge = look.when;
+    if (new_sighting){
+        m_badge_is_ours = true;
+    }
+    if (!m_badge_is_ours){
+        if (!m_earlier_badge_logged){
+            m_earlier_badge_logged = true;
+            backend.log(std::format("[PLZA] autosave badge in {}: still up from the last checkpoint's save, not counted", step));
+        }
+        return;
+    }
     if (!m_seen_in){
         m_seen_in = std::string(step);
     }

@@ -27,8 +27,11 @@ namespace PokemonLZA{
 //  Waits for free control: two looks in a row 250 ms apart with a sign of
 //  control (the party bar, the station platform, the controls hint) and no advance arrow,
 //  dialog box or fade. The end of a scene is not control: 01.01's scenes
-//  end ~7 s before it. Where no sign shows (Hotel Z), 10 s with none of
-//  those is taken as control. Fails as "walk_not_free" when neither comes
+//  end ~7 s before it. An A prompt held a second with none of those is
+//  control too (01.03 has no party, so no party bar). Where no sign shows
+//  (Hotel Z: the party bar reads by its D-pad arrows, which a party of one
+//  does not show), 10 s with none of those is taken as control. Fails as
+//  "walk_not_free" when neither comes
 //  within 30 s: a walk started anywhere else walks blind.
 Pokemon::Outcome check_can_walk(PlzaBackend& backend, std::string_view walk);
 
@@ -57,6 +60,16 @@ Pokemon::Outcome walk_to_prompt(PlzaBackend& backend, Milliseconds timeout);
 //  (INTERACT_PROMPT), "story_battle" fights only on the battle HUD
 //  (BATTLE_STARTED).
 bool event_shows_within(PlzaBackend& backend, ScreenEvent event, Milliseconds within);
+
+//  "talk": on the A prompt of what the player faces (two looks in a row),
+//  A, then its scene under way (scene_under_way(): Taunie's opens on a
+//  card, 03.02b) on two looks in a row within 5 s, not one look of the
+//  press itself. While the prompt stays up with nothing open, A again
+//  every second, 3 As at most: the game can drop an A (02.05's elevator,
+//  console B 2026-11-16, then read the overworld 120 s). No prompt within
+//  1 s: nothing pressed, "talk_no_prompt" (the walk stopped short, 03.02,
+//  2026-11-16); nothing after the As: "talk_no_scene".
+Pokemon::Outcome talk_at_prompt(PlzaBackend& backend);
 
 //  A at the A prompt the player stands at (a door's "A Enter"), then looks
 //  for up to 3 s for a fade or text; while the prompt stays with neither,

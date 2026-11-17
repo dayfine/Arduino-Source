@@ -34,6 +34,14 @@ constexpr Milliseconds FREE_CONTROL_LOOK = 250ms;
 //  (console B, 2026-11-15).
 constexpr Milliseconds QUIET_IS_CONTROL = 10000ms;
 
+//  An A prompt held this long with nothing busy is control: it shows only
+//  in the overworld, and where no party bar reads (01.03 before the
+//  starter has no party; the bar's D-pad arrows that
+//  OverworldPartySelectionDetector reads show only with 2+ Pokemon) it is
+//  the one sign there is. A second, as the scene machine holds it, so a
+//  prompt left up under a late fade after A at a door is not taken.
+constexpr Milliseconds PROMPT_IS_CONTROL = 1000ms;
+
 //  One slice of walk_to_prompt()'s walk between looks.
 constexpr Milliseconds PROMPT_WALK_SLICE = 250ms;
 
@@ -89,6 +97,35 @@ bool control_shows(const ScreenObservation& look){
         look.readings.contains(CONTROLS_HINT_READING);
 }
 
+//  How long "talk" looks for its A prompt before A, how long it waits for
+//  its scene to start after A, and how often it looks.
+constexpr Milliseconds TALK_PROMPT_WAIT = 1000ms;
+constexpr Milliseconds TALK_WAIT = 5000ms;
+constexpr Milliseconds TALK_POLL = 250ms;
+//  A dropped A: the prompt still up this long after A with nothing open
+//  gets A again, up to TALK_PRESSES As in all.
+constexpr Milliseconds TALK_REPRESS_AFTER = 1000ms;
+constexpr size_t TALK_PRESSES = 3;
+
+//  Whether the A prompt shows on two looks in a row within
+//  TALK_PROMPT_WAIT: a walk that ends as it comes into reach can drift out
+//  of it again, and an A on that one look is lost (02.05's elevator,
+//  console B 2026-11-16).
+bool talk_prompt_settled(PlzaBackend& backend){
+    size_t prompt_looks = 0;
+    for (Milliseconds waited(0); ; waited += TALK_POLL){
+        backend.scope().throw_if_cancelled();
+        prompt_looks = backend.observe().events.has(ScreenEvent::INTERACT_PROMPT) ? prompt_looks + 1 : 0;
+        if (prompt_looks >= 2){
+            return true;
+        }
+        if (waited >= TALK_PROMPT_WAIT){
+            return false;
+        }
+        backend.wait(TALK_POLL);
+    }
+}
+
 } // namespace
 
 
@@ -96,6 +133,7 @@ Pokemon::Outcome check_can_walk(PlzaBackend& backend, std::string_view walk){
     std::string_view last_busy = "nothing";
     int control_looks = 0;
     std::optional<Milliseconds> quiet_since;
+    std::optional<Milliseconds> prompt_since;
     for (Milliseconds waited = 0ms; waited <= FREE_CONTROL_WAIT; waited += FREE_CONTROL_LOOK){
         const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
         const std::string_view busy = not_free_control(look);
@@ -107,6 +145,17 @@ Pokemon::Outcome check_can_walk(PlzaBackend& backend, std::string_view walk){
         }
         control_looks = busy.empty() && control_shows(look) ? control_looks + 1 : 0;
         if (control_looks >= 2){
+            return Pokemon::outcome_ok();
+        }
+        if (busy.empty() && look.events.has(ScreenEvent::INTERACT_PROMPT)){
+            if (!prompt_since){
+                prompt_since = waited;
+            }
+        }else{
+            prompt_since.reset();
+        }
+        if (prompt_since && waited - *prompt_since >= PROMPT_IS_CONTROL){
+            backend.log(std::format("[PLZA] {}: the A prompt held {} ms with nothing busy: control.", walk, PROMPT_IS_CONTROL.count()));
             return Pokemon::outcome_ok();
         }
         if (quiet_since && waited - *quiet_since >= QUIET_IS_CONTROL){
@@ -190,6 +239,49 @@ bool event_shows_within(PlzaBackend& backend, ScreenEvent event, Milliseconds wi
         }
         backend.wait(PROMPT_POLL);
     }
+}
+
+Pokemon::Outcome talk_at_prompt(PlzaBackend& backend){
+    if (!talk_prompt_settled(backend)){
+        return Pokemon::outcome_failed(
+            "talk_no_prompt", std::format("no A prompt on two looks within {} ms: not at what the talk is for", TALK_PROMPT_WAIT.count())
+        );
+    }
+    backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
+    size_t presses = 1;
+    Milliseconds since_press(0);
+    size_t scene_looks = 0;
+    for (Milliseconds waited(0); ; ){
+        backend.scope().throw_if_cancelled();
+        const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+        scene_looks = scene_under_way(look) ? scene_looks + 1 : 0;
+        if (scene_looks >= 2){
+            backend.log_detail(std::format("[PLZA] talk: started {} ms after A {}: {}", since_press.count(), presses, describe_scene_look(look)));
+            return Pokemon::outcome_ok();
+        }
+        const bool prompt_stays = scene_looks == 0 && look.events.has(ScreenEvent::INTERACT_PROMPT);
+        if (prompt_stays && since_press >= TALK_REPRESS_AFTER){
+            if (presses >= TALK_PRESSES){
+                return Pokemon::outcome_failed("talk_no_scene", std::format(
+                    "the A prompt still up with nothing open after {} As: the game took none", presses
+                ));
+            }
+            backend.log(std::format(
+                "[PLZA] talk: the A prompt still up {} ms after A {} with nothing open; A again", since_press.count(), presses
+            ));
+            backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
+            presses++;
+            since_press = Milliseconds(0);
+            continue;
+        }
+        if (waited >= TALK_WAIT){
+            break;
+        }
+        backend.wait(TALK_POLL);
+        waited += TALK_POLL;
+        since_press += TALK_POLL;
+    }
+    return Pokemon::outcome_failed("talk_no_scene", std::format("nothing started within {} ms of A: the HUD stayed", TALK_WAIT.count()));
 }
 
 void press_through_prompt(PlzaBackend& backend){

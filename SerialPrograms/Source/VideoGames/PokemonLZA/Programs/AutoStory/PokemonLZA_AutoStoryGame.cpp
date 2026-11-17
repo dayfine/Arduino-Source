@@ -613,39 +613,9 @@ Outcome pokedex_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAction
 }
 
 
-//  How long "talk" looks for its A prompt before A, how long it waits for
-//  its scene to start after A, and how often it looks.
-constexpr Milliseconds TALK_PROMPT_WAIT(1000);
-constexpr Milliseconds TALK_WAIT(5000);
-constexpr Milliseconds TALK_POLL(250);
-
-//  "talk": on the A prompt of what the player faces, A, then its scene
-//  under way (scene_under_way(): Taunie's opens on a card, 03.02b) on two
-//  looks in a row within TALK_WAIT, not one look of the press itself. No
-//  prompt within TALK_PROMPT_WAIT: nothing pressed, "talk_no_prompt" (the
-//  walk stopped short, 03.02, 2026-11-16); nothing after A: "talk_no_scene".
+//  "talk": talk_at_prompt().
 Outcome talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
-    if (!event_shows_within(backend, ScreenEvent::INTERACT_PROMPT, TALK_PROMPT_WAIT)){
-        return Pokemon::outcome_failed(
-            "talk_no_prompt", std::format("no A prompt within {} ms: not at what the talk is for", TALK_PROMPT_WAIT.count())
-        );
-    }
-    backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
-    size_t scene_looks = 0;
-    for (Milliseconds waited(0); ; waited += TALK_POLL){
-        backend.scope().throw_if_cancelled();
-        const Pokemon::Observation<ZonePose> look = backend.observe();
-        scene_looks = scene_under_way(look) ? scene_looks + 1 : 0;
-        if (scene_looks >= 2){
-            backend.log_detail(std::format("[PLZA] talk: started {} ms after A: {}", waited.count(), describe_scene_look(look)));
-            return Pokemon::outcome_ok();
-        }
-        if (waited >= TALK_WAIT){
-            break;
-        }
-        backend.wait(TALK_POLL);
-    }
-    return Pokemon::outcome_failed("talk_no_scene", std::format("nothing started within {} ms of A: the HUD stayed", TALK_WAIT.count()));
+    return talk_at_prompt(backend);
 }
 
 
