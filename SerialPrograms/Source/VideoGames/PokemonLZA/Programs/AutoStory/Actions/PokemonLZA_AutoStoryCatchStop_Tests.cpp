@@ -161,7 +161,7 @@ const AfterThrowCase AFTER_THROW_CASES[] = {
         .name = "a third miss with the plate locking on again moves on",
         .input = {
             .seen = {.registered = false, .plate_caught = false, .target_gone = false},
-            .relocked = plate(0.53, 0.40, false),
+            .relocked = plate(/*x=*/0.53, /*y=*/0.40, /*caught=*/false),
             .throws_at_lock = 3,
         },
         .expectation = {.next = AfterThrow::MOVE_ON},

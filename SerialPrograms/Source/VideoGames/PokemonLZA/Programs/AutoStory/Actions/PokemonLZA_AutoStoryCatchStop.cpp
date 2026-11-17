@@ -17,7 +17,7 @@ SpotVisit spot_visit(int spot, std::span<const int> caught_at){
     return caught ? SpotVisit::TURN_BACK : SpotVisit::CATCH;
 }
 
-AfterThrow after_throw(const ThrowSeen& seen, bool battle, const std::optional<LockTarget>& relocked){
+AfterThrow after_throw(const ThrowSeen& seen, bool battle, const std::optional<LockTarget>& relocked, int throws_at_lock){
     if (seen.registered){
         return AfterThrow::STOP_ENDS;
     }
@@ -28,7 +28,7 @@ AfterThrow after_throw(const ThrowSeen& seen, bool battle, const std::optional<L
         return AfterThrow::STOP_ENDS;
     }
     if (relocked && relocked->caught != true){
-        return AfterThrow::THROW_AGAIN;
+        return throws_at_lock >= THROWS_AT_ONE_TARGET ? AfterThrow::MOVE_ON : AfterThrow::THROW_AGAIN;
     }
     return AfterThrow::LOOK_AGAIN;
 }

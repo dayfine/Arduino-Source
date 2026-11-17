@@ -59,16 +59,20 @@ enum class AfterThrow{
     THROW_AGAIN,
     //  No plate locks on, or one of a species already caught: look again.
     LOOK_AGAIN,
+    //  THROWS_AT_ONE_TARGET missed at one lock: on to the next stop, as a
+    //  sweep there finds the same target again (12 throws at one Mareep at
+    //  60, console B 2026-11-16).
+    MOVE_ON,
 };
+
+//  Throws in a row at one target before the stop moves on, so a target
+//  that keeps dodging does not take all of the patrol's throws.
+inline constexpr int THROWS_AT_ONE_TARGET = 3;
 
 //  What follows a throw that showed `seen`, with a wild battle on
 //  (`battle`) or not, and `relocked`: the plate that locks on with ZL held
-//  after it (nothing: none).
-AfterThrow after_throw(const ThrowSeen& seen, bool battle, const std::optional<LockTarget>& relocked);
-
-//  Throws in a row at one target before the stop looks again, so a target
-//  that keeps dodging does not take all of the patrol's throws.
-inline constexpr int THROWS_AT_ONE_TARGET = 3;
+//  after it (nothing: none), `throws_at_lock` throws at this lock so far.
+AfterThrow after_throw(const ThrowSeen& seen, bool battle, const std::optional<LockTarget>& relocked, int throws_at_lock);
 
 //  Whether the camera needs its pitch reset (level_camera()) before a
 //  sweep for brackets or the walk on: a ZL lock-on or throw leaves it
