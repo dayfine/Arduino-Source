@@ -13,6 +13,7 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_StoryCheckpoint_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_StoryCheckpoint_H
 
+#include <functional>
 #include <optional>
 #include <set>
 #include <string>
@@ -63,6 +64,8 @@ struct StoryEnv{
     ProControllerContext& context;
     StarterChoice starter = StarterChoice::CHIMCHAR;
     std::string player_name;
+    //  Runs Starter RNG at 00.02's starter pick; empty when the option is off.
+    std::function<Pokemon::Outcome()> run_starter_rng;
 };
 
 
