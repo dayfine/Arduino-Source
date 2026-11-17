@@ -1,0 +1,216 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "20.04",
+    "title": "The League: Lance",
+    "start": {
+      "map": "PokemonLeague_LancesRoom",
+      "tiles": [
+        [
+          6,
+          10
+        ]
+      ],
+      "facing": "north"
+    },
+    "events": [
+      {
+        "id": "lead_lv54_for_lance",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 54
+        },
+        "why": "the precondition for Lance: the lead at least Lv54, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md lance)"
+      },
+      {
+        "id": "top_up_before_lance",
+        "kind": "game_action",
+        "action": "league_top_up",
+        "args": {
+          "fight": "lance",
+          "max_hp": 168
+        },
+        "why": "after the reload, before the walk: reads the lead's HP and the Items pocket, then the plan's top-up before the fight (planned_between(): a Super Potion for up to 50 missing HP, two for up to 100 if two are spare, else a Full Restore; the Elixir only before the Champion), then checks the fight's entry contract (contract.entry: the items it starts with); a broken contract fails the row's start"
+      },
+      {
+        "id": "before_lance",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_LancesRoom",
+            "tiles": [
+              [
+                6,
+                9
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "to (6, 9) facing Lance (6, 8), planned from where the room's walk left the player: a tile north, or a step round if the walk ended a tile off"
+      },
+      {
+        "id": "challenge_lance",
+        "kind": "talk",
+        "why": "Lance (6, 8): the intro, then the battle (trainerbattle_no_intro)"
+      },
+      {
+        "id": "lance",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_ELITE_FOUR_LANCE",
+          "foes": [
+            "gyarados",
+            "dragonair",
+            "dragonair",
+            "aerodactyl",
+            "dragonite"
+          ],
+          "policy": "budgeted-setup",
+          "setup_spa": 3,
+          "setup_accuracy": 2,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": true,
+          "foe_threats": [
+            [
+              112,
+              40,
+              31,
+              40,
+              80,
+              0,
+              0
+            ],
+            [
+              96,
+              40,
+              16,
+              78,
+              53,
+              0,
+              0
+            ],
+            [
+              96,
+              0,
+              0,
+              0,
+              53,
+              0,
+              0
+            ],
+            [
+              173,
+              41,
+              41,
+              84,
+              67,
+              0,
+              0
+            ],
+            [
+              107,
+              56,
+              19,
+              126,
+              98,
+              0,
+              0
+            ]
+          ],
+          "foe_stats": [
+            [
+              110,
+              119,
+              189
+            ],
+            [
+              91,
+              96,
+              146
+            ],
+            [
+              91,
+              96,
+              146
+            ],
+            [
+              106,
+              109,
+              178
+            ],
+            [
+              137,
+              157,
+              197
+            ]
+          ]
+        },
+        "declared_after": {
+          "map": "PokemonLeague_LancesRoom",
+          "tiles": [
+            [
+              6,
+              9
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "Lance (TRAINER_ELITE_FOUR_LANCE): Gyarados Lv56, Dragonair Lv54, Dragonair Lv54, Aerodactyl Lv58, Dragonite Lv60, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +3 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first against an accuracy drop; the doc's lance row, 99.2% at 168/168); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against console B's Lv54 Blastoise (171 HP, Def 135, Sp. Def 150) at full HP: Dragonite's worst case is 126 and its worst normal hit (Hyper Beam) 98. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table, for the damage each attack would do and whether the best one KOs (no X item then). Then the Champion's door north (6, 5) opens"
+      },
+      {
+        "id": "below_champions_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_LancesRoom",
+            "tiles": [
+              [
+                6,
+                6
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "from in front of Lance (6, 8) around him to below the Champion's door (6, 5), open since his defeat"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "verify": {
+      "tries": 10,
+      "min_pass": 2,
+      "reset_budget": 7
+    },
+    "notes": {
+      "checkpoint": [
+        "Starts in Lance's room (6, 10), where 20.03 ends. Ends below the Champion's door (6, 6): the door itself starts the Champion's battle, which is 20.05's.",
+        "One League fight per row, each run as a verification loop from its start save (execution.verify, copied from frlg-league-plan.json's contract.pass: tries = min_pass.of, min_pass = min_pass.k, reset_budget): phase 1 plays it that many times saving none and stops the run under min_pass; phase 2 plays it until a try passes (won, within the fight's item caps: league_row_pass()) and saves that one.",
+        "The League rooms are one-way: the entrance closes behind the player, and the next room's door opens only when the room's trainer is beaten.",
+        "PokeGuy's fights: Lorelei 1:46:37, Bruno 1:49:15, Agatha 1:51:12, Lance 1:53:07, the Champion 1:55:44 (docs/battles/pokeguy-conditions.md); his turns: ~/BDSPLab/notes/pokeguy-league-turns.md."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {
+        "map": "PokemonLeague_LancesRoom",
+        "tiles": [
+          [
+            6,
+            6
+          ]
+        ],
+        "facing": "north"
+      }
+    }
+  }
+}

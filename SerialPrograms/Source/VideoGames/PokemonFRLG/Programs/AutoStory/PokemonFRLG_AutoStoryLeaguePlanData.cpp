@@ -136,6 +136,9 @@ void read_contract(const JsonObject& contract, LeagueFightData& fight){
     if (const JsonObject* entry = contract.get_object("entry")){
         fight.entry_items = counts_of(entry->get_object("items"), true);
         fight.entry_pp = counts_of(entry->get_object("pp"), false);
+        if (const JsonObject* hp = entry->get_object("hp_sim")){
+            fight.entry_hp_share = static_cast<double>(hp->get_integer_throw("p10")) / LEAGUE_PLAN_LEAD_MAX_HP;
+        }
     }
 }
 

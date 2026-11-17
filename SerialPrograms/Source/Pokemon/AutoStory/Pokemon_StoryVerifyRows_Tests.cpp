@@ -60,6 +60,9 @@ struct FakeFight{
     int saved_potions = 0;
     int potions = 0;
     std::vector<ScriptedTry> tries;
+    //  The game's postcondition check holds; its pass check reads the game.
+    bool postconditions_hold = true;
+    bool pass_readable = true;
     int fights = 0;
     int saves = 0;
     int reloads = 0;
@@ -103,7 +106,13 @@ struct FakeFight{
             potions = saved_potions;
             return outcome_ok();
         };
+        hooks.check_postconditions = [this](const std::string&, RunState&){
+            return postconditions_hold ? outcome_ok() : outcome_failed("postconditions", "the bag is short of the next fight's entry");
+        };
         hooks.verify_pass = [this](const std::string&, RunState&){
+            if (!pass_readable){
+                return outcome_failed(std::string(VERIFY_UNREAD), "the bag wasn't read");
+            }
             return spent <= POTION_CAP ? outcome_ok() : outcome_failed("over_cap", std::format("{} potions", spent));
         };
         hooks.log = [&lines](const std::string& line){ lines.push_back(line); };
@@ -117,6 +126,8 @@ struct VerifyRowCase{
         StoryVerify verify = {};
         int potions = POTIONS_NEEDED;
         std::vector<ScriptedTry> tries = {};
+        bool postconditions_hold = true;
+        bool pass_readable = true;
     };
     struct Expectation{
         bool completed = false;
@@ -139,7 +150,10 @@ public:
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        FakeFight game{.saved_potions = m_case.input.potions, .potions = m_case.input.potions, .tries = m_case.input.tries};
+        FakeFight game{
+            .saved_potions = m_case.input.potions, .potions = m_case.input.potions, .tries = m_case.input.tries,
+            .postconditions_hold = m_case.input.postconditions_hold, .pass_readable = m_case.input.pass_readable,
+        };
         Segment segment;
         segment.id = "20";
         segment.checkpoints.push_back(game.spec(m_case.input.verify));
@@ -199,6 +213,16 @@ const VerifyRowCase VERIFY_ROW_CASES[] = {
         .name = "the save is short of the start check: stop before fighting",
         .input = {.potions = POTIONS_NEEDED - 1, .tries = {win()}},
         .expectation = {.failure = "start_failed", .fights = 0, .saves = 0, .reloads = 0},
+    },
+    {
+        .name = "a won try whose postcondition check fails right before the save: never saved",
+        .input = {.verify = {.tries = 2, .min_pass = 0, .reset_budget = 2}, .tries = {win()}, .postconditions_hold = false},
+        .expectation = {.failure = "verify_out_of_budget", .fights = 4, .saves = 0, .reloads = 3},
+    },
+    {
+        .name = "the pass check can't read the game: no save, the loop stops at once",
+        .input = {.tries = {win()}, .pass_readable = false},
+        .expectation = {.failure = "postcondition_unread", .fights = 1, .saves = 0, .reloads = 0},
     },
     {
         .name = "min_pass 0 of 2: straight to phase 2",

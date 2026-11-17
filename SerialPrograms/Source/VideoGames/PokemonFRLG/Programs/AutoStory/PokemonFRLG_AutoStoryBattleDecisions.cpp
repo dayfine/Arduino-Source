@@ -209,12 +209,6 @@ BattleDecisions::BattleDecisions(Supplies& supplies, BattleKind kind)
     if (!m_planned && kind == BattleKind::TRAINER && supplies.policy.kind != BattlePolicyKind::NONE && supplies.lead.stats){
         m_policy.emplace(supplies.policy);
     }
-    //  A League fight spends its plan's budget and what the fights before
-    //  left (end_trainer_battle() rolls it forward).
-    const LeagueFightPlan* league = supplies.league ? league_fight(supplies.league->plan, supplies.trainer) : nullptr;
-    if (kind == BattleKind::TRAINER && league != nullptr){
-        supplies.budget = add_budgets(league->budget, supplies.league->carried);
-    }
 }
 
 TurnAction BattleDecisions::turn(const PartyStatus& status){

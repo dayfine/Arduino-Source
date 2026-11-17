@@ -1,0 +1,241 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "20.02",
+    "title": "The League: Bruno",
+    "start": {
+      "map": "PokemonLeague_BrunosRoom",
+      "tiles": [
+        [
+          6,
+          7
+        ]
+      ],
+      "facing": "north"
+    },
+    "events": [
+      {
+        "id": "lead_lv52_for_bruno",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 52
+        },
+        "why": "the precondition for Bruno: the lead at least Lv52, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md bruno; Lorelei's fight takes it a level up)"
+      },
+      {
+        "id": "top_up_before_bruno",
+        "kind": "game_action",
+        "action": "league_top_up",
+        "args": {
+          "fight": "bruno",
+          "max_hp": 165
+        },
+        "why": "after the reload, before the walk: reads the lead's HP and the Items pocket, then the plan's top-up before the fight (planned_between(): a Super Potion for up to 50 missing HP, two for up to 100 if two are spare, else a Full Restore; the Elixir only before the Champion), then checks the fight's entry contract (contract.entry: the items it starts with); a broken contract fails the row's start"
+      },
+      {
+        "id": "before_bruno",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_BrunosRoom",
+            "tiles": [
+              [
+                6,
+                6
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "to (6, 6) facing Bruno (6, 5), planned from where the room's walk left the player: a tile north, or a step round if the walk ended a tile off"
+      },
+      {
+        "id": "challenge_bruno",
+        "kind": "talk",
+        "why": "Bruno (6, 5): the intro, then the battle (trainerbattle_no_intro)"
+      },
+      {
+        "id": "bruno",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_ELITE_FOUR_BRUNO",
+          "foes": [
+            "onix",
+            "hitmonchan",
+            "hitmonlee",
+            "onix",
+            "machamp"
+          ],
+          "policy": "budgeted-setup",
+          "setup_spa": 2,
+          "setup_accuracy": 0,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": true,
+          "setup_target_torrent": true,
+          "foe_threats": [
+            [
+              81,
+              26,
+              16,
+              63,
+              31,
+              0,
+              0,
+              1
+            ],
+            [
+              101,
+              43,
+              24,
+              108,
+              54,
+              0,
+              0
+            ],
+            [
+              113,
+              54,
+              44,
+              114,
+              57,
+              0,
+              0
+            ],
+            [
+              96,
+              33,
+              33,
+              69,
+              34,
+              0,
+              0
+            ],
+            [
+              83,
+              0,
+              4,
+              150,
+              75,
+              0,
+              0
+            ]
+          ],
+          "foe_stats": [
+            [
+              183,
+              72,
+              112
+            ],
+            [
+              104,
+              137,
+              131
+            ],
+            [
+              77,
+              137,
+              131
+            ],
+            [
+              194,
+              75,
+              118
+            ],
+            [
+              111,
+              117,
+              183
+            ]
+          ]
+        },
+        "declared_after": {
+          "map": "PokemonLeague_BrunosRoom",
+          "tiles": [
+            [
+              6,
+              6
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "Bruno (TRAINER_ELITE_FOUR_BRUNO): Onix Lv51, Hitmonchan Lv53, Hitmonlee Lv53, Onix Lv54, Machamp Lv56, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +2 by X Specials, X Speed until faster, Guard Spec first against an accuracy drop; the doc's bruno row, 95.9% at 130/162. The doc's target_torrent (stalling to Torrent in the opening) is the C++ policy's extra X Specials against the first Onix, up to +4 while Torrent is off; its weaker-move stall needs the foe's HP and is not modelled (PokemonFRLG_AutoStoryBattlePolicy.h)); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against console B's Lv54 Blastoise (171 HP, Def 135, Sp. Def 150) at full HP: Machamp's worst case (crit Cross Chop) is 150, Hitmonlee's 114. The first Onix has Roar (marked as phazing in its row): console B, 2026-11-16, its Roar sent Blastoise out after four X Specials. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table: Surf KOs both Onix at +0, so no X item is spent on them and setup waits for Hitmonchan. Then the door north (6, 2) opens"
+      },
+      {
+        "id": "below_brunos_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_BrunosRoom",
+            "tiles": [
+              [
+                6,
+                3
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "from in front of Bruno (6, 5) around him to below his door (6, 2), open since his defeat"
+      },
+      {
+        "id": "brunos_door",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "into the door (6, 2), the warp into Agatha's room at its south entrance (6, 12)"
+      },
+      {
+        "id": "enter_agathas_room",
+        "kind": "scene",
+        "declared_after": {
+          "map": "PokemonLeague_AgathasRoom",
+          "tiles": [
+            [
+              6,
+              7
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "the room's OnFrame script (PokemonLeague_EventScript_EnterRoom) walks the player five tiles north from (6, 12) to (6, 7) and closes the entrance behind; no text"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "verify": {
+      "tries": 10,
+      "min_pass": 1,
+      "reset_budget": 9
+    },
+    "notes": {
+      "checkpoint": [
+        "Starts in Bruno's room (6, 7), where 20.01 ends. Ends in Agatha's room (6, 7).",
+        "One League fight per row, each run as a verification loop from its start save (execution.verify, copied from frlg-league-plan.json's contract.pass: tries = min_pass.of, min_pass = min_pass.k, reset_budget): phase 1 plays it that many times saving none and stops the run under min_pass; phase 2 plays it until a try passes (won, within the fight's item caps: league_row_pass()) and saves that one.",
+        "The League rooms are one-way: the entrance closes behind the player, and the next room's door opens only when the room's trainer is beaten.",
+        "PokeGuy's fights: Lorelei 1:46:37, Bruno 1:49:15, Agatha 1:51:12, Lance 1:53:07, the Champion 1:55:44 (docs/battles/pokeguy-conditions.md); his turns: ~/BDSPLab/notes/pokeguy-league-turns.md."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {
+        "map": "PokemonLeague_AgathasRoom",
+        "tiles": [
+          [
+            6,
+            7
+          ]
+        ],
+        "facing": "north"
+      }
+    }
+  }
+}

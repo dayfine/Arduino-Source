@@ -598,12 +598,12 @@ UnitTestResult test_plan_blaine(){
 }
 
 UnitTestResult test_plan_bruno(){
-    const UnitTestResult result = check_policy_step("20.01", "bruno", {.spa = 2, .outspeed = true, .guard_accuracy = true}, /*policy=*/"budgeted-setup");
+    const UnitTestResult result = check_policy_step("20.02", "bruno", {.spa = 2, .outspeed = true, .guard_accuracy = true}, /*policy=*/"budgeted-setup");
     if (result.result != UnitTestResult::PASSED){
         return result;
     }
-    if (arg_of<bool>(battle_step("20.01", "bruno"), "setup_target_torrent") != true){
-        return "20.01 bruno: expected the doc's target_torrent.";
+    if (arg_of<bool>(battle_step("20.02", "bruno"), "setup_target_torrent") != true){
+        return "20.02 bruno: expected the doc's target_torrent.";
     }
     return true;
 }
@@ -778,14 +778,14 @@ struct LeagueTurnCase{
 //  out. Setup only where it pays: not against a foe the best attack KOs,
 //  nor one that phazes; still against Lorelei's Dewgong.
 const LeagueTurnCase LEAGUE_TURN_CASES[] = {
-    {"Bruno's Onix at +0, 71% HP: Surf", {"20.01", "bruno", 0, 0, 117}, {"", "surf"}},
-    {"Bruno's Onix at +2: Surf", {"20.01", "bruno", 0, 2, 165}, {"", "surf"}},
-    {"Bruno's Onix at +4: Surf", {"20.01", "bruno", 0, 4, 165}, {"", "surf"}},
-    {"Bruno's second Onix at +0: Surf", {"20.01", "bruno", 3, 0, 165}, {"", "surf"}},
-    {"Bruno's Hitmonchan at +0: X Special", {"20.01", "bruno", 1, 0, 165}, {"x-special", ""}},
+    {"Bruno's Onix at +0, 71% HP: Surf", {"20.02", "bruno", 0, 0, 117}, {"", "surf"}},
+    {"Bruno's Onix at +2: Surf", {"20.02", "bruno", 0, 2, 165}, {"", "surf"}},
+    {"Bruno's Onix at +4: Surf", {"20.02", "bruno", 0, 4, 165}, {"", "surf"}},
+    {"Bruno's second Onix at +0: Surf", {"20.02", "bruno", 3, 0, 165}, {"", "surf"}},
+    {"Bruno's Hitmonchan at +0: X Special", {"20.02", "bruno", 1, 0, 165}, {"x-special", ""}},
     {"Lorelei's Dewgong at +0: X Special", {"20.01", "lorelei", 0, 0, 165}, {"x-special", ""}},
-    {"the Champion's Pidgeot (Whirlwind): no X item", {"20.01", "champion", 0, 0, 165}, {"", ""}},
-    {"the Champion's Arcanine (Roar): no X item", {"20.01", "champion", 4, 0, 165}, {"", ""}},
+    {"the Champion's Pidgeot (Whirlwind): no X item", {"20.05", "champion", 0, 0, 165}, {"", ""}},
+    {"the Champion's Arcanine (Roar): no X item", {"20.05", "champion", 4, 0, 165}, {"", ""}},
 };
 
 UnitTestResult test_league_turns(){
@@ -923,7 +923,7 @@ const std::vector<AutoStoryBattlePolicyCase> AUTO_STORY_BATTLE_POLICY_CASES = {
         .expectation = {.description = "4 in the opening, 2 with Torrent, on a later foe or a lone one"},
     },
     {
-        .input = {.name = "plan: 20.01 bruno names budgeted-setup, its goals and target_torrent", .body = test_plan_bruno},
+        .input = {.name = "plan: 20.02 bruno names budgeted-setup, its goals and target_torrent", .body = test_plan_bruno},
         .expectation = {.description = "the policy, goals, target_torrent and 5 foe rows"},
     },
     {
