@@ -7,6 +7,9 @@ cc_library(
         exclude = [
             "*_Tests.cpp",
             "*Reader.cpp",
+            "PokemonFRLG_OverworldBike.cpp",
+            "PokemonFRLG_OverworldFacing.cpp",
+            "PokemonFRLG_OverworldWalk.cpp",
         ],
     ),
     hdrs = glob([
@@ -26,7 +29,11 @@ cc_library(
 
 cc_library(
     name = "frlg_overworld_readers",
-    srcs = glob(["*Reader.cpp"]),
+    srcs = glob(["*Reader.cpp"]) + [
+        "PokemonFRLG_OverworldBike.cpp",
+        "PokemonFRLG_OverworldFacing.cpp",
+        "PokemonFRLG_OverworldWalk.cpp",
+    ],
     hdrs = glob([
         "**/*.h",
         "**/*.hpp",
