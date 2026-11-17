@@ -304,6 +304,11 @@ Outcome check_league_save(StoryEnv& env, const StoryCheckpoint& row){
     if (fight == nullptr){
         return Pokemon::outcome_ok();
     }
+    //  The last fight passes on the win: the Hall of Fame after it saved the
+    //  game and runs into the credits, with no menu to read.
+    if (next_league_fight(*fight) == nullptr){
+        return Pokemon::outcome_ok();
+    }
     Supplies now = env.supplies;
     if (std::optional<Outcome> failed = read_bag(env, row, now)){
         return *failed;
