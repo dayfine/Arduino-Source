@@ -34,15 +34,43 @@ constexpr std::string_view LEAGUE_ITEMS[] = {
 };
 
 //  One side of a hit: its stats as the battle uses them (badges applied),
-//  its stages and its status.
+//  its HP, stages and status.
 struct Side{
     int level = 1;
     Stats stats = {};
+    int hp = 0;
     SpeciesData types = {};
     std::string ability = {};
     StatStages stages = {};
     PlannedStatus status = PlannedStatus::NONE;
 };
+
+//  The pinch abilities of the species that have one as their only
+//  ability (the starters' lines): our lead's, which the story doesn't read.
+std::string pinch_ability(std::string_view species){
+    static const std::map<std::string_view, std::string_view> ABILITIES{
+        {"bulbasaur", "overgrow"}, {"ivysaur", "overgrow"}, {"venusaur", "overgrow"},
+        {"charmander", "blaze"}, {"charmeleon", "blaze"}, {"charizard", "blaze"},
+        {"squirtle", "torrent"}, {"wartortle", "torrent"}, {"blastoise", "torrent"},
+    };
+    const auto it = ABILITIES.find(species);
+    return it == ABILITIES.end() ? std::string() : std::string(it->second);
+}
+
+//  Overgrow, Blaze, Torrent and Swarm: x1.5 power to their type at a
+//  third of the HP or less (@smogon/calc calculateBasePowerADV, pret).
+int base_power(const LeagueMoveData& move, const Side& attacker){
+    const bool pinch = (attacker.ability == "overgrow" && move.type == PokemonType::GRASS)
+        || (attacker.ability == "blaze" && move.type == PokemonType::FIRE)
+        || (attacker.ability == "torrent" && move.type == PokemonType::WATER)
+        || (attacker.ability == "swarm" && move.type == PokemonType::BUG);
+    return pinch && attacker.hp * 3 <= attacker.stats.hp ? move.power * 3 / 2 : move.power;
+}
+
+//  The foe's HP as its bar's fill shows it.
+int hp_of_fill(double fill, int max_hp){
+    return fill <= 0 ? 0 : std::max(1, static_cast<int>(std::lround(fill * max_hp)));
+}
 
 //  The weather on a move of `type` (@smogon/calc calculateFinalModsADV).
 double weather_modifier(FieldWeather weather, PokemonType type, bool solar_beam){
@@ -136,7 +164,7 @@ std::vector<int> damage_rolls(std::string_view id, const LeagueMoveData& move, c
         .level = attacker.level,
         .attack = attack_stat(move, attacker, defender),
         .defense = move.physical ? defender.stats.defense : defender.stats.sp_defense,
-        .power = move.power,
+        .power = base_power(move, attacker),
         .attack_stage = move.physical ? attacker.stages.attack : attacker.stages.sp_attack,
         .defense_stage = move.physical ? defender.stages.defense : defender.stages.sp_defense,
         .stab = move.type == attacker.types.first || move.type == attacker.types.second,
@@ -224,7 +252,7 @@ PlannedFoe planned_foe(const PlannedInputs& inputs, const std::pair<Side, Side>&
     const PlannedFoeTrack& foe = inputs.foe;
     const Side& them = sides.second;
     const int max_hp = foe.foe.stats.hp;
-    const int hp = foe.fill <= 0 ? 0 : std::max(1, static_cast<int>(std::lround(foe.fill * max_hp)));
+    const int hp = hp_of_fill(foe.fill, max_hp);
     PlannedFoe planned{
         .species = foe.foe.species,
         .slot = foe.slot,
@@ -273,13 +301,16 @@ PlannedState planned_state(const PlannedInputs& inputs, const LeagueFoesData& da
     const Side us{
         .level = static_cast<int>(battle_level(inputs.lead)),
         .stats = boosted_stats(raw),
+        .hp = inputs.hp,
         .types = types_of(inputs.lead.species),
+        .ability = pinch_ability(inputs.lead.species),
         .stages = track.own,
         .status = planned_status(inputs.status),
     };
     const LeagueFoeData& foe_data = inputs.foe.foe;
     const Side foe{
-        .level = foe_data.level, .stats = foe_data.stats, .types = types_of(foe_data.species), .ability = foe_data.ability,
+        .level = foe_data.level, .stats = foe_data.stats, .hp = hp_of_fill(inputs.foe.fill, foe_data.stats.hp),
+        .types = types_of(foe_data.species), .ability = foe_data.ability,
         .stages = track.foe, .status = track.foe_status,
     };
     const PlannedFoeTrack& foe_track = inputs.foe;

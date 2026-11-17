@@ -8,7 +8,8 @@
  *  it (PokemonFRLG_AutoStoryLeagueFoes.h) and what the items used and the
  *  battle texts tell (PokemonFRLG_AutoStoryBattleTrack.h), with every
  *  move's damage from Gen3Damage as @smogon/calc gives it: both sides'
- *  stages, the sun or rain, a burn, Guts and Thick Fat.
+ *  stages, the sun or rain, a burn, Guts, Thick Fat and the pinch
+ *  abilities (our Blastoise's Torrent).
  *
  *  Not modelled: the foe's PP (full, where the sim's engine counts it
  *  down), Reflect, and a sleep's exact length (the fewest turns it can
