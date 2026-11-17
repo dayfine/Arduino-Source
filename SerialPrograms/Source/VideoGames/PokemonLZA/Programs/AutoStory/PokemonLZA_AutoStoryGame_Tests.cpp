@@ -133,6 +133,13 @@ const LintCase LINT_CASES[] = {
         .expectation = {.errors = "01.01 w: \"end\" must be \"fade_white\", \"fade_black\", \"dialog\" or \"prompt\""},
     },
     {
+        .name = "a walk with a time before its end but no end fails",
+        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end_after_ms", int64_t(1500)},
+        }}},
+        .expectation = {.errors = "01.01 w: \"end_after_ms\" needs an \"end\""},
+    },
+    {
         .name = "a walk to an A prompt passes",
         .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
             {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
@@ -928,7 +935,7 @@ const RunCase RUN_CASES[] = {
         .input = {.checkpoint = "02.06", .first_step = 0, .steps = 1, .looks = {
             party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), A_PROMPT,
         }},
-        .expectation = {.verdict = "done", .inputs = "wait 250ms, stick 45deg 250ms walk, stick 45deg 250ms walk, wait 300ms"},
+        .expectation = {.verdict = "done", .inputs = std::format("wait 250ms, {}, wait 300ms", repeated("stick 45deg 250ms walk", 3))},
     },
     {
         .name = "02.06 with no autosave badge seen is not saved",
@@ -979,6 +986,23 @@ const RunCase RUN_CASES[] = {
             .verdict = "done",
             .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk, wait 300ms, hold north 250ms walk, wait 300ms",
             .line = "[PLZA] to_plaza_scene_prompt: the end event after 750 ms of the last leg.",
+        },
+    },
+    {
+        //  console B, 2026-11-16 23:48 (German, 02.05, run 14): 750 ms into
+        //  the walk to the elevator, NPC Alton's "A Ansprechen" showed
+        //  beside the path and stood steady; the walk ended there, short of
+        //  the door, and the talk opened Alton's line. The elevator's
+        //  prompt shows at the door, about 2 s in.
+        .name = "02.05's walk to the elevator walks past a prompt before its measured time to the one at the door",
+        .input = {.checkpoint = "02.05", .first_step = 0, .steps = 1, .looks = concat(
+            std::vector<Observation<ZonePose>>(4, party_bar(Milliseconds(0))),
+            concat({A_PROMPT, A_PROMPT}, concat(std::vector<Observation<ZonePose>>(3, party_bar(Milliseconds(0))), {A_PROMPT}))
+        )},
+        .expectation = {
+            .verdict = "done",
+            .inputs = std::format("wait 250ms, {}, wait 300ms", repeated("hold north 250ms walk", 8)),
+            .line = "[PLZA] to_lobby_elevator: the end event after 2000 ms of the last leg.",
         },
     },
     {
@@ -1665,10 +1689,27 @@ const SightingsCase SIGHTINGS_CASES[] = {
         .expectation = {.seen_in = "take_elevator_up"},
     },
     {
-        .name = "a badge on a checkpoint's first look with none before it is this checkpoint's",
+        //  console B, 2026-11-16 23:54: 02.07 ended on the mission banner
+        //  with no badge seen; 02.07's autosave on entering Room 202 was
+        //  still up on 03.01's first look, 37 ms in, and 03.01's failure
+        //  then took its start save for gone.
+        .name = "a badge on a checkpoint's first look with none seen before it is the last checkpoint's save",
+        .input = {.looks = {
+            {.step = "first_evening", .badge = false, .at = Milliseconds(0)},
+            {.step = ""},
+            {.step = "out_of_room_202", .badge = true, .at = Milliseconds(1300)},
+            {.step = "out_of_room_202", .badge = true, .at = Milliseconds(1700)},
+            {.step = "out_of_room_202", .badge = false, .at = Milliseconds(3000)},
+            {.step = "leave_room_202", .badge = false, .at = Milliseconds(9000)},
+        }},
+        .expectation = {.seen_in = std::nullopt},
+    },
+    {
+        .name = "a badge first seen past the checkpoint's first moments is this checkpoint's",
         .input = {.looks = {
             {.step = ""},
-            {.step = "opening", .badge = true, .at = Milliseconds(0)},
+            {.step = "opening", .badge = false, .at = Milliseconds(0)},
+            {.step = "opening", .badge = true, .at = Milliseconds(2000)},
         }},
         .expectation = {.seen_in = "opening"},
     },

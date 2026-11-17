@@ -190,7 +190,7 @@ void finish_walk(PlzaBackend& backend, std::string_view walk){
     backend.log(std::format("[PLZA] {}: legs done, screen now: {}", walk, describe(look.events)));
 }
 
-Pokemon::Outcome walk_until(PlzaBackend& backend, std::string_view walk, const StoryMove& move, ScreenEvent end){
+Pokemon::Outcome walk_until(PlzaBackend& backend, std::string_view walk, const StoryMove& move, ScreenEvent end, Milliseconds end_after){
     const Milliseconds hold = move.legs.empty() ? 0ms : move.legs.back().walk;
     const Pokemon::Outcome walked = run_story_move_but_last_walk(backend, move);
     if (!walked.succeeded()){
@@ -213,6 +213,13 @@ Pokemon::Outcome walk_until(PlzaBackend& backend, std::string_view walk, const S
         hold_last_leg(backend, move, slice);
         held += slice;
         const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+        if (look.events.has(end) && held < end_after){
+            backend.log(std::format(
+                "[PLZA] {}: the end event after {} ms of the last leg, before its {} ms: passed on the way, on.",
+                walk, held.count(), end_after.count()
+            ));
+            continue;
+        }
         if (look.events.has(end) && end == ScreenEvent::INTERACT_PROMPT && !prompt_steady(backend)){
             backend.log(std::format("[PLZA] {}: the A prompt after {} ms of the last leg went again: on.", walk, held.count()));
             continue;

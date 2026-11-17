@@ -47,7 +47,8 @@ namespace PokemonLZA{
 //      "wait_for_platform"     the station platform holds: a start check
 //      "walk"                  args "legs", [[turn, ms], ...] as
 //                              story_walk_move() reads them, "held",
-//                              "wait_ms", and "end",
+//                              "wait_ms", "end_after_ms" (no end before
+//                              that much of the last leg), and "end",
 //                              "fade_white", "fade_black", "dialog" or
 //                              "prompt" (an A prompt);
 //                              walked once the screen shows free control

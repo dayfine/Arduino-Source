@@ -95,6 +95,26 @@ std::vector<StoryArgSpec> gate_args(int64_t timeout_ms){
     };
 }
 
+//  A walk's args: "legs", "end", "held", "wait_ms" and "end_after_ms".
+std::vector<StoryArgSpec> walk_args(){
+    return {
+        StoryArgSpec{
+            .key = "legs", .type = StoryArgType::TIMED_LEGS, .required = true, .fallback = std::nullopt,
+            .why = "the legs: [turn in degrees, clockwise (negative: left), walk ms] each",
+        },
+        StoryArgSpec{
+            .key = "end", .type = StoryArgType::WORD, .required = false, .fallback = std::nullopt,
+            .why = "\"fade_white\", \"fade_black\", \"dialog\" or \"prompt\" (an A prompt): the last leg is held until it shows, its ms the bound",
+        },
+        flag("held", "hold the stick at each leg's angle (L only before a later turning leg), not tap-and-forward"),
+        optional_int("wait_ms", "wait this long before looking for free control: NPCs moving off"),
+        optional_int(
+            "end_after_ms",
+            "with \"end\": the end event counts only after this much of the last leg, about 3/4 of its measured walk; none: from the start"
+        ),
+    };
+}
+
 //  The GAME actions that run only on a console.
 std::vector<StoryActionSpec> console_specs(){
     return {
@@ -120,18 +140,7 @@ std::vector<StoryActionSpec> make_specs(){
         game_spec("opening_to_platform", {
             optional_ms("timeout_ms", 240000, "no autosave and platform this long fails the step"),
         }),
-        game_spec("walk", {
-            StoryArgSpec{
-                .key = "legs", .type = StoryArgType::TIMED_LEGS, .required = true, .fallback = std::nullopt,
-                .why = "the legs: [turn in degrees, clockwise (negative: left), walk ms] each",
-            },
-            StoryArgSpec{
-                .key = "end", .type = StoryArgType::WORD, .required = false, .fallback = std::nullopt,
-                .why = "\"fade_white\", \"fade_black\", \"dialog\" or \"prompt\" (an A prompt): the last leg is held until it shows, its ms the bound",
-            },
-            flag("held", "hold the stick at each leg's angle (L only before a later turning leg), not tap-and-forward"),
-            optional_int("wait_ms", "wait this long before looking for free control: NPCs moving off"),
-        }),
+        game_spec("walk", walk_args()),
         game_spec("walk_to_prompt", {
             optional_ms("timeout_ms", 10000, "walking this long with no A prompt fails the step"),
         }),
@@ -456,7 +465,11 @@ Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
     if (end != call.args.end()){
         const std::optional<ScreenEvent> event = walk_end_event(std::get<std::string>(end->second));
         if (event){
-            return walk_until(backend, name, move, *event);
+            const auto end_after = call.args.find("end_after_ms");
+            return walk_until(
+                backend, name, move, *event,
+                end_after == call.args.end() ? Milliseconds(0) : Milliseconds(std::get<int64_t>(end_after->second))
+            );
         }
     }
     const Outcome walked = run_story_move(backend, move);
@@ -718,6 +731,9 @@ std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpo
     }
     for (const Pokemon::StoryStep& step : checkpoint.steps){
         const auto end = step.args.find("end");
+        if (step.action == "walk" && end == step.args.end() && step.args.contains("end_after_ms")){
+            errors.push_back(std::format("{} {}: \"end_after_ms\" needs an \"end\"", checkpoint.id, step.name));
+        }
         if (step.action != "walk" || end == step.args.end()){
             continue;
         }
