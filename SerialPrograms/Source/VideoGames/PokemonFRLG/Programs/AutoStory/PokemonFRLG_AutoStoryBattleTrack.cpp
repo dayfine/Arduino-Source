@@ -59,15 +59,22 @@ constexpr std::array<StageWord, 4> STAGE_WORDS{{
     {"sharplyrose", 2}, {"rose", 1}, {"harshlyfell", -2}, {"fell", -1},
 }};
 
+//  The stages "[sharply ]rose!" or "[harshly ]fell!" at the start of `after`.
+std::optional<int> stages_at(std::string_view after){
+    for (const StageWord& stage : STAGE_WORDS){
+        if (after.starts_with(stage.word)){
+            return stage.stages;
+        }
+    }
+    return std::nullopt;
+}
+
 //  "<Pokemon>'s <STAT> [sharply ]rose!" or "[harshly ]fell!".
 std::optional<StatChange> stat_change(std::string_view letters){
     for (const StatWord& stat : STAT_WORDS){
         for (size_t at = letters.find(stat.word); at != std::string_view::npos; at = letters.find(stat.word, at + 1)){
-            const std::string_view after = letters.substr(at + stat.word.size());
-            for (const StageWord& stage : STAGE_WORDS){
-                if (after.starts_with(stage.word)){
-                    return StatChange{.foe = letters.starts_with("foe"), .stat = stat.stat, .stages = stage.stages};
-                }
+            if (const std::optional<int> stages = stages_at(letters.substr(at + stat.word.size()))){
+                return StatChange{.foe = letters.starts_with("foe"), .stat = stat.stat, .stages = *stages};
             }
         }
     }
@@ -110,7 +117,7 @@ std::optional<FoeStatusText> foe_status_text(std::string_view letters){
     return std::nullopt;
 }
 
-void apply_status(BattleTrackState& state, FoeStatusText text){
+void apply_status(FoeStatusText text, BattleTrackState& state){
     switch (text){
     case FoeStatusText::ASLEEP:
         state.foe_status = PlannedStatus::SLEEP;
@@ -144,29 +151,29 @@ void apply_status(BattleTrackState& state, FoeStatusText text){
     }
 }
 
-void set_weather(BattleTrackState& state, FieldWeather weather, int turns){
+void set_weather(FieldWeather weather, int turns, BattleTrackState& state){
     state.weather = weather;
     state.weather_turns = turns;
 }
 
 //  Sunny Day's and Rain Dance's start, their end-of-turn reminder (when
 //  the start was missed) and their end.
-void read_weather(BattleTrackState& state, std::string_view letters){
+void read_weather(std::string_view letters, BattleTrackState& state){
     if (has(letters, "sunlightgotbright")){
-        set_weather(state, FieldWeather::SUN, WEATHER_TURNS);
+        set_weather(FieldWeather::SUN, WEATHER_TURNS, state);
     }else if (has(letters, "sunlightisstrong")){
-        set_weather(state, FieldWeather::SUN, std::max(1, state.weather == FieldWeather::SUN ? state.weather_turns : 0));
+        set_weather(FieldWeather::SUN, std::max(1, state.weather == FieldWeather::SUN ? state.weather_turns : 0), state);
     }else if (has(letters, "startedtorain")){
-        set_weather(state, FieldWeather::RAIN, WEATHER_TURNS);
+        set_weather(FieldWeather::RAIN, WEATHER_TURNS, state);
     }else if (has(letters, "raincontinuestofall")){
-        set_weather(state, FieldWeather::RAIN, std::max(1, state.weather == FieldWeather::RAIN ? state.weather_turns : 0));
+        set_weather(FieldWeather::RAIN, std::max(1, state.weather == FieldWeather::RAIN ? state.weather_turns : 0), state);
     }else if (has(letters, "sunlightfaded") || has(letters, "rainstopped")){
-        set_weather(state, FieldWeather::NONE, 0);
+        set_weather(FieldWeather::NONE, /*turns=*/0, state);
     }
 }
 
 //  The foe's moves that take a turn of charging, by their charge text.
-void read_charge(BattleTrackState& state, std::string_view letters){
+void read_charge(std::string_view letters, BattleTrackState& state){
     if (has(letters, "tookinsunlight")){
         state.foe_charging = "solar-beam";
     }else if (has(letters, "underwater")){
@@ -174,7 +181,7 @@ void read_charge(BattleTrackState& state, std::string_view letters){
     }
 }
 
-void apply_stat(BattleTrackState& state, const StatChange& change){
+void apply_stat(const StatChange& change, BattleTrackState& state){
     //  Ours rise from our items only (item_used()).
     if (!change.foe && change.stages > 0){
         return;
@@ -204,19 +211,19 @@ void BattleTrack::read_turn(const std::vector<std::string>& texts){
         if (!restored && has(letters, "usedfullrestore")){
             restored = true;
             m_state.trainer_full_restores++;
-            apply_status(m_state, FoeStatusText::CURED);
+            apply_status(FoeStatusText::CURED, m_state);
         }
         m_state.foe_recharging = m_state.foe_recharging || has(letters, "usedhyperbeam");
-        read_charge(m_state, letters);
-        read_weather(m_state, letters);
+        read_charge(letters, m_state);
+        read_weather(letters, m_state);
         const std::optional<StatChange> stat = stat_change(letters);
         if (stat && stat != last_stat){
-            apply_stat(m_state, *stat);
+            apply_stat(*stat, m_state);
         }
         last_stat = stat;
         const std::optional<FoeStatusText> status = foe_status_text(letters);
         if (status && status != last_status){
-            apply_status(m_state, *status);
+            apply_status(*status, m_state);
         }
         last_status = status;
     }
@@ -241,7 +248,7 @@ void BattleTrack::item_used(std::string_view item){
 void BattleTrack::foe_out(size_t slot, std::string_view ability){
     if (m_foe_slot && *m_foe_slot != slot){
         m_state.foe = StatStages{};
-        apply_status(m_state, FoeStatusText::CURED);
+        apply_status(FoeStatusText::CURED, m_state);
     }
     m_foe_slot = slot;
     if (m_intimidated_by == slot){
