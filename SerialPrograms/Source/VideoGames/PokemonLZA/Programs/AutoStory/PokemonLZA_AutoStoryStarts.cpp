@@ -10,7 +10,7 @@
 #include <string_view>
 #include <vector>
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattlePanelDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1Map.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 #include "PokemonLZA_AutoStoryStarts.h"
 
@@ -136,7 +136,6 @@ StartSignature read_start_screen(const ImageViewRGB32& screen){
     if (unreadable){
         return StartSignature{};
     }
-    BattlePanelDetector lead_panel;
     PartyBarDetector party_bar;
     std::optional<size_t> party;
     if (party_bar.detect(screen) && party_bar.filled_slots() > 0){
@@ -144,9 +143,15 @@ StartSignature read_start_screen(const ImageViewRGB32& screen){
     }
     return StartSignature{
         .talk_prompt = events.has(ScreenEvent::INTERACT_PROMPT),
-        .wild_zone = lead_panel.detect(screen),
         .party = party,
     };
+}
+
+std::optional<bool> wild_zone_from_map(const std::optional<MapPoint>& pin){
+    if (!pin){
+        return std::nullopt;
+    }
+    return pin_in_zone_1(*pin);
 }
 
 

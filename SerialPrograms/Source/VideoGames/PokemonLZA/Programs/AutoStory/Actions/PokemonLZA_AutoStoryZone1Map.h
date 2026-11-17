@@ -67,6 +67,13 @@ inline constexpr MapWaypoint ROCKS_TO_SPOT_100[] = {ZONE1_ROAD_ENTRY, ZONE1_SPOT
 std::optional<MapWaypoint> catch_spot_waypoint(int spot);
 
 
+//  Whether `pin`, a read of read_map_pin(), is in Wild Zone 1: inside the
+//  zone's outline on the full map, traced from console B's map frames,
+//  and not at the map's centre, where the map puts a player out of every
+//  wild zone (see the .cpp for both).
+bool pin_in_zone_1(MapPoint pin);
+
+
 
 } // namespace PokemonLZA
 } // namespace NintendoSwitch

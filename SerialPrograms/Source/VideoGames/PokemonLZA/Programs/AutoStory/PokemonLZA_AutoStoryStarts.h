@@ -22,6 +22,7 @@
 #include <string>
 #include <string_view>
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMapPinReader.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 
 namespace PokemonAutomation{
@@ -37,8 +38,10 @@ struct StartSignature{
     std::optional<size_t> registered = std::nullopt;
     //  An A prompt over the scene, as at the Center counter ("A Talk").
     std::optional<bool> talk_prompt = std::nullopt;
-    //  The lead Pokemon's panel at the bottom left (level badge and HP
-    //  bar): the player is in a wild zone.
+    //  In Wild Zone 1, by the player's pin on the full map
+    //  (wild_zone_from_map()). Not the lead Pokemon's panel at the bottom
+    //  left: it shows on the street outside the zone too, and 03.08b's menu
+    //  save there read as in the zone (console B, 2026-11-17 01:06).
     std::optional<bool> wild_zone = std::nullopt;
     //  The overworld party bar's filled slots (PartyBarDetector): every
     //  catch in Main Mission 03 is a new species, so the party tells 03.08's
@@ -85,10 +88,15 @@ std::optional<size_t> run_start(
     size_t asked, const StartSignature& read
 );
 
-//  The overworld fields of the signature on `screen`: talk_prompt,
-//  wild_zone and, when the party bar shows, party. A fading screen reads
-//  nothing.
+//  The overworld fields of the signature on `screen`: talk_prompt and,
+//  when the party bar shows, party. A fading screen reads nothing.
+//  wild_zone needs the full map: wild_zone_from_map().
 StartSignature read_start_screen(const ImageViewRGB32& screen);
+
+//  The signature's wild_zone by the player's pin on the full map
+//  (read_map_pin()): whether it is in Wild Zone 1 (pin_in_zone_1()).
+//  None when the pin was not read.
+std::optional<bool> wild_zone_from_map(const std::optional<MapPoint>& pin);
 
 
 

@@ -21,6 +21,7 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "Actions/PokemonLZA_AutoStoryBackupSave.h"
+#include "Actions/PokemonLZA_AutoStoryMapWalk.h"
 #include "Actions/PokemonLZA_AutoStoryNewGame.h"
 #include "PokemonLZA_AutoStoryBackups.h"
 #include "PokemonLZA_AutoStoryGame.h"
@@ -164,20 +165,29 @@ StartSignature read_start_signature(ConsoleHandle& console, ProControllerContext
     return StartSignature{};
 }
 
+//  Where the player stands: read_start_signature() and, when the overworld
+//  reads, wild_zone from the player's pin on the full map (PLUS opens it,
+//  B closes it: read_pin_on_map()).
+StartSignature read_start_position(StoryEnv& story, PlzaBackend& backend){
+    StartSignature read = read_start_signature(story.env.console, story.context);
+    if (read != StartSignature{}){
+        read.wild_zone = wild_zone_from_map(read_pin_on_map(story, backend));
+    }
+    return read;
+}
+
 //  The checkpoint a run asked to start at `plan.first` plays from: where the
-//  screen says the player is (run_start()), `first` or an earlier
-//  checkpoint. Throws OperationFailedException, with a screenshot, as
+//  screen and the map say the player is (run_start()), `first` or an
+//  earlier checkpoint. Throws OperationFailedException, with a screenshot, as
 //  "start_position_unknown" when the position matches no start: no
 //  checkpoint's events run from the wrong place. When `plan.max_rewinds`
 //  allows, an unknown start first rewinds to `backup` (start_or_rewind()).
-size_t checked_first_row(
-    ConsoleHandle& console, ProControllerContext& context, PlzaBackend& backend,
-    const RewindPlan& plan, const BackupSave& backup
-){
+size_t checked_first_row(StoryEnv& story, PlzaBackend& backend, const RewindPlan& plan, const BackupSave& backup){
+    ConsoleHandle& console = story.env.console;
     const std::span<const StoryCheckpoint> rows = plan.rows;
     const size_t first = plan.first;
     const std::span<const CheckpointStart> starts = plan.starts;
-    const StartSignature read = read_start_signature(console, context);
+    const StartSignature read = read_start_position(story, backend);
     const std::optional<size_t> from = start_or_rewind(backend, plan, read, backup);
     if (!from){
         OperationFailedExceptionWithScreenshot::fire(
@@ -282,7 +292,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         if (LOAD_SAVE_FIRST){
             load_first_save(env.console, game, backend, rows[first]);
         }
-        plan.first = checked_first_row(env.console, context, backend, plan, console_backup_save(story));
+        plan.first = checked_first_row(story, backend, plan, console_backup_save(story));
     }
 
     const SegmentReport report = run_plza_with_rewinds(game, plan, console_backup_save(story), backend, sightings, state);
