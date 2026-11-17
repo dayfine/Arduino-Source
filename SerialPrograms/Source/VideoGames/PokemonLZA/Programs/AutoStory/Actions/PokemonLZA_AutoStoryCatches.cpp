@@ -657,7 +657,8 @@ Pokemon::Outcome go_to_zone_spot(StoryEnv& env, PlzaBackend& backend, const Zone
         ));
         switch (move){
         case ZoneStartMove::WALK_TO_SPOT:
-            distance = walk_toward_marker(env, backend, route.walk_stop, ROAD_FLOOR, route.walk_limit);
+            pbf_move_left_joystick(env.context, /*position=*/{0, 1}, route.walk_hold, /*release=*/Milliseconds(300));
+            distance = read_at_marker(env, backend);
             continue;
         case ZoneStartMove::SEARCH:
             return Pokemon::outcome_ok();
@@ -668,7 +669,7 @@ Pokemon::Outcome go_to_zone_spot(StoryEnv& env, PlzaBackend& backend, const Zone
             ));
         case ZoneStartMove::SPOT_NOT_REACHED:
             return Pokemon::outcome_failed("zone_spot_not_reached", std::format(
-                "the marker walk to {} ended at {}", route.walk_stop,
+                "the walk to {} ended at {}", ZONE_SPOT_DISTANCE,
                 distance ? std::to_string(*distance) : std::string("no agreed read")
             ));
         }
