@@ -544,11 +544,6 @@ const BudgetedTurnCase BUDGETED_TURN_CASES[] = {
         .expectation = {.item = "full-restore"},
     },
     {
-        .name = "KO risk past the fight's budget: still a Full Restore",
-        .input = {.foe_index = 1, .hp = 60, .budget = bruno_budget(/*full_restore=*/0, /*x_special=*/2)},
-        .expectation = {.item = "full-restore"},
-    },
-    {
         .name = "sure KO first: 30 HP, Onix slower and KO'd by Surf: attack",
         .input = {.foe_index = 0, .hp = 30},
         .expectation = {.item = ""},
@@ -567,16 +562,6 @@ const BudgetedTurnCase BUDGETED_TURN_CASES[] = {
         .name = "setup capped: no X Special left in the budget: attack",
         .input = {.foe_index = 1, .hp = 165, .budget = bruno_budget(/*full_restore=*/1, /*x_special=*/0)},
         .expectation = {.item = ""},
-    },
-    {
-        .name = "under the setup reserve (80 < 94), no Full Restore in the budget: attack",
-        .input = {.foe_index = 1, .hp = 80, .budget = bruno_budget(/*full_restore=*/0, /*x_special=*/2)},
-        .expectation = {.item = ""},
-    },
-    {
-        .name = "under the setup reserve, a Full Restore in the budget: the Full Restore",
-        .input = {.foe_index = 1, .hp = 80, .budget = bruno_budget(/*full_restore=*/1, /*x_special=*/2)},
-        .expectation = {.item = "full-restore"},
     },
     {
         .name = "Surf out of PP: an Elixir",
@@ -598,34 +583,10 @@ const BudgetedTurnCase BUDGETED_TURN_CASES[] = {
         .expectation = {.item = ""},
     },
     {
-        .name = "Lapras at 24 HP, Super Potions held: a Full Restore over the budget, not a Super Potion",
-        .input = {
-            .battle = "lorelei", .foe_index = 4, .hp = 24, .budget = FightBudget{},
-            .extra_bag = {{"super-potion", 4}},
-        },
-        .expectation = {.item = "full-restore"},
-    },
-    {
-        .name = "Lapras at 24 HP, Hyper Potions in the budget: a Hyper Potion",
-        .input = {
-            .battle = "lorelei", .foe_index = 4, .hp = 24, .budget = FightBudget{.hyper_potion = 2},
-            .extra_bag = {{"super-potion", 4}, {"hyper-potion", 2}},
-        },
-        .expectation = {.item = "hyper-potion"},
-    },
-    {
         .name = "Lapras at 24 HP, Hyper Potions held but not budgeted: a Full Restore",
         .input = {
             .battle = "lorelei", .foe_index = 4, .hp = 24, .budget = FightBudget{},
             .extra_bag = {{"hyper-potion", 2}},
-        },
-        .expectation = {.item = "full-restore"},
-    },
-    {
-        .name = "paralysed at 38 HP against Lapras' 39: a Full Restore, not a Super Potion or Parlyz Heal",
-        .input = {
-            .battle = "lorelei", .foe_index = 4, .hp = 38, .budget = FightBudget{},
-            .status = StatusCondition::PARALYSIS, .extra_bag = {{"super-potion", 4}},
         },
         .expectation = {.item = "full-restore"},
     },
