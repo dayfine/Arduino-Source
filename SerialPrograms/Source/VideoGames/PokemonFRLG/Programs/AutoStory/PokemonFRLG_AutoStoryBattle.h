@@ -61,6 +61,10 @@ enum class BattleEnd{
     //  by the next member, except in the lab's rival battle, which the
     //  story goes on from.
     LOST,
+    //  A League fight's try ended by a soft reset (TurnChoice::RESET_ON_ROAR,
+    //  EARLY_RESET): the game is back at its save.
+    ROARED,
+    EARLY_RESET,
 };
 
 

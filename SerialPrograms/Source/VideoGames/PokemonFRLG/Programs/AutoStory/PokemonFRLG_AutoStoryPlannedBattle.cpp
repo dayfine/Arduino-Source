@@ -358,6 +358,16 @@ PlannedBattle::Turn PlannedBattle::choose(const Supplies& supplies, const Policy
         .status = view.status,
         .foe = foe_out(supplies, view),
     };
+    //  The foe out last turn fell.
+    const std::optional<size_t> fallen = m_slot && *m_slot < inputs.foe.slot ? m_slot : std::nullopt;
+    m_slot = inputs.foe.slot;
+    const int speed = m_track.state().own.speed;
+    if (fallen && league_early_reset(*m_fight, *fallen, speed, m_used)){
+        return Turn{
+            .log = std::format("{}: the foe at slot {} fell with our Speed at {}: the plan's early reset", m_fight->name, *fallen + 1, speed),
+            .early_reset = true,
+        };
+    }
     inputs.track = m_track.state();
     for (std::string_view item : LEAGUE_ITEMS){
         inputs.bag[std::string(item)] = bag_count(supplies, item);
@@ -373,6 +383,11 @@ PlannedBattle::Turn PlannedBattle::choose(const Supplies& supplies, const Policy
 
 void PlannedBattle::item_used(std::string_view item){
     m_track.item_used(item);
+    m_used[std::string(item)]++;
+}
+
+bool PlannedBattle::resets_on_roar() const{
+    return m_fight->reset_on_roar;
 }
 
 void PlannedBattle::lead_switched_in(){

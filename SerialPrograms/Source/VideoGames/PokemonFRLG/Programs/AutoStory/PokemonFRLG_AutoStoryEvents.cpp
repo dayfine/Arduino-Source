@@ -280,6 +280,10 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     }
     const BattleKind kind = arg<bool>(step, "run") ? BattleKind::WILD_RUN : BattleKind::TRAINER;
     const BattleEnd end = fight_battle(env.console, env.context, env.supplies, kind, env.checks, env.language);
+    //  A League try the plan ended: the game was soft reset to its save.
+    if (end == BattleEnd::ROARED || end == BattleEnd::EARLY_RESET){
+        return Pokemon::outcome_failed(end == BattleEnd::ROARED ? "league_roar_reset" : "league_early_reset", step.name);
+    }
     end_trainer_battle(env.supplies);
     if (end == BattleEnd::LOST && !arg<bool>(step, "may_lose")){
         return Pokemon::outcome_failed("blackout");

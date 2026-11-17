@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <format>
+#include <optional>
 #include <memory>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
@@ -269,8 +270,12 @@ public:
             m_kind == BattleKind::WILD_FIGHT ? "Battle: fighting a wild Pokemon." : "Battle: running from a wild Pokemon."
         );
         bool over = false;
-        while (!over){
+        while (!over && !m_reset){
             over = step();
+        }
+        if (m_reset){
+            m_console.log(std::format("Battle: the try ended by a soft reset after {} turns.", m_decisions.turns()), COLOR_ORANGE);
+            return *m_reset;
         }
         m_console.log(std::format(
             "Battle: over after {} turns{}.", m_decisions.turns(), m_decisions.lost() ? ", the starter fainted" : ""
@@ -610,6 +615,13 @@ private:
         case TurnChoice::SWITCH_LEAD:
             m_decisions.turn_done(action.choice, switch_lead_in(m_console, m_context, m_language, m_supplies.lead.species) ? TurnResult::DONE : TurnResult::NOT_DONE);
             return;
+        case TurnChoice::RESET_ON_ROAR:
+        case TurnChoice::EARLY_RESET:
+            m_console.log("Battle: soft reset: the plan ends this try.", COLOR_ORANGE);
+            dump_debug_image(m_console, "AutoStory/battle", std::format("turn{}-reset", m_decisions.turns()), screen);
+            soft_reset(m_console, m_context);
+            m_reset = action.choice == TurnChoice::RESET_ON_ROAR ? BattleEnd::ROARED : BattleEnd::EARLY_RESET;
+            return;
         case TurnChoice::MOVE:
             m_console.log(std::format("Battle: move {}.", action.slot + 1));
             m_refusal.move_chosen(current_time());
@@ -697,6 +709,8 @@ private:
     bool m_move_chosen = false;
     //  RUN was chosen and no battle menu has shown since.
     bool m_ran = false;
+    //  The try was ended by a soft reset.
+    std::optional<BattleEnd> m_reset;
 };
 
 
