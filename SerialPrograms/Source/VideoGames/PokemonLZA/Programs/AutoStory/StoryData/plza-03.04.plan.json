@@ -32,7 +32,7 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "No forced reload when chained (reload_when_chained \"always\" dropped 2026-11-17, user): assumed unneeded, TO BE VERIFIED by a chained 03.03 -> 03.04 run; put it back if 03.04 fails from the live screen. 03.03's autosave shows in its rooftop_scene, not at its end (console B 2026-11-17, German). console B recording, 2026-11-08/09: played step by step from a new game. Ends outside the Pokemon Center, in control, on the game's autosave: console B 2026-11-16 logged the autosave badge after Taunie's scene's last black fade, then the party bar outside the Center."
+      "source": "No forced reload when chained (reload_when_chained \"always\" dropped 2026-11-17, user): assumed unneeded. The chained run failed: 03.03 -> 03.04 with no reload (console B, French, 2026-11-17 02:34), into_pokemon_center's timed legs ran along a building wall (walk_no_end), and the same legs passed from the reloaded save at 02:36 (and at 00:39, German): the legs assume the reloaded save's facing. The fix is a \"heading\" on the walk, as 03.09's, so chained and reloaded runs start facing the same way; no log has an arrow read at 03.04's start, so the heading is TO BE READ on console B from the reloaded save. 03.03's autosave shows in its rooftop_scene, not at its end (console B 2026-11-17, German). console B recording, 2026-11-08/09: played step by step from a new game. Ends outside the Pokemon Center, in control, on the game's autosave: console B 2026-11-16 logged the autosave badge after Taunie's scene's last black fade, then the party bar outside the Center."
     }
   },
   "execution": {

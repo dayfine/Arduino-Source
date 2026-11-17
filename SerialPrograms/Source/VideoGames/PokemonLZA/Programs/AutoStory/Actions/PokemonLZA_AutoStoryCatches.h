@@ -48,7 +48,8 @@ struct ZoneCatchGoal{
 //  tutorial), in Wild Zone 1, as plza/autostory's passed on console B
 //  (2026-11-14). From Taunie's rocks, where the start save stands, first
 //  to the road's spot at 100: ZoneStart's measured leg left off the rocks
-//  (TAUNIE_ROCKS_ROUTE) and a marker read in its range, then map legs
+//  (TAUNIE_ROCKS_ROUTE), the start checked by the map pin (a marker read
+//  only when the pin is unread), then map legs
 //  (walk_map_legs(), ROCKS_TO_SPOT_100); it fails there, before any
 //  catch, as "rocks_not_left", "leg_off_target" or "map_pin_not_read".
 //  Then it patrols the user's two catch spots (CATCH_SPOTS): 100

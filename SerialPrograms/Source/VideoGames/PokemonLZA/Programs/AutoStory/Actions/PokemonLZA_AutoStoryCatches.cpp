@@ -667,7 +667,7 @@ std::string_view start_move_name(ZoneStartMove move){
     case ZoneStartMove::SEARCH:
         return "at the spot: the patrol";
     case ZoneStartMove::ROCKS_NOT_LEFT:
-        return "not the read off the rocks the route expects: stop";
+        return "not at the rocks by the pin (or, unread, by the read off them): stop";
     case ZoneStartMove::SPOT_NOT_REACHED:
         return "the marker walk ended off the spot: stop";
     }
@@ -687,32 +687,36 @@ std::optional<int> cross_check_marker(StoryEnv& env, PlzaBackend& backend, const
 }
 
 //  From the start save at Taunie's rocks to the patrol's first spot: the
-//  pin read at the rocks (logged against ZONE1_ROCKS), L puts the camera
-//  behind the player, who faces the rocks and the marker; the leg off the
-//  rocks by `route` (ZoneStart) and an agreed read in its range, then the
-//  map legs to the 100 spot (ROCKS_TO_SPOT_100). Fails as
-//  "rocks_not_left", or as walk_map_legs() does, before any catch.
+//  pin read at the rocks (route.start), L puts the camera behind the
+//  player, who faces the rocks and the marker; the leg off the rocks by
+//  `route`, then the map legs to the 100 spot (ROCKS_TO_SPOT_100). The
+//  pin decides whether the player starts at the rocks (ZoneStart::leave());
+//  the marker read after the leg is a cross-check, and decides only when
+//  the pin did not read. Fails as "rocks_not_left", or as
+//  walk_map_legs() does, before any catch.
 Pokemon::Outcome go_to_zone_spot(StoryEnv& env, PlzaBackend& backend, const ZoneStartRoute& route){
     backend.log(std::format(
         "[PLZA] catch_in_zone: at the start, {} is put at ({:.0f}, {:.0f}) on the map{}",
-        ZONE1_ROCKS.name, ZONE1_ROCKS.pin.x, ZONE1_ROCKS.pin.y, ZONE1_ROCKS.provisional ? " [provisional]" : ""
+        route.start.name, route.start.pin.x, route.start.pin.y, route.start.provisional ? " [provisional]" : ""
     ));
-    read_pin_on_map(env, backend);
+    const std::optional<MapPoint> start_pin = read_pin_on_map(env, backend);
     backend.press(BUTTON_L, /*hold=*/Milliseconds(100), /*release=*/Milliseconds(150));
     backend.observe();
     backend.log(std::format("[PLZA] catch_in_zone: at Taunie's rocks, the arrow reads {:.0f} deg", minimap_arrow(env)()));
     pbf_move_left_joystick(env.context, /*position=*/{route.leg_x, route.leg_y}, route.leg_hold, /*release=*/Milliseconds(300));
     ZoneStart start(route);
     const std::optional<int> distance = read_at_marker(env, backend);
-    const ZoneStartMove move = start.next(distance);
+    const ZoneStartMove move = start.leave(start_pin, distance);
+    const std::string pin_text = start_pin ? std::format("({:.0f}, {:.0f})", start_pin->x, start_pin->y) : std::string("not read");
+    const std::string distance_text = distance ? std::to_string(*distance) : std::string("not read");
     backend.log(std::format(
-        "[PLZA] catch_in_zone: distance {}: {}",
-        distance ? std::to_string(*distance) : std::string("not read"), start_move_name(move)
+        "[PLZA] catch_in_zone: pin at the start {}, distance off the rocks {} (expected {} to {}): {}",
+        pin_text, distance_text, route.leg_read_min, route.leg_read_max, start_move_name(move)
     ));
     if (move != ZoneStartMove::WALK_TO_SPOT){
         return Pokemon::outcome_failed("rocks_not_left", std::format(
-            "the read off Taunie's rocks was {}, not {} to {}",
-            distance ? std::to_string(*distance) : std::string("none"), route.leg_read_min, route.leg_read_max
+            "the pin at the start was {}, not within {:.0f} of ({:.0f}, {:.0f}); the read off Taunie's rocks was {}, not {} to {}",
+            pin_text, route.start_radius, route.start.pin.x, route.start.pin.y, distance_text, route.leg_read_min, route.leg_read_max
         ));
     }
     return walk_map_legs(env, backend, ROCKS_TO_SPOT_100);

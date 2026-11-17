@@ -20,6 +20,7 @@
 
 #include <optional>
 #include "Common/Cpp/Time.h"
+#include "PokemonLZA_AutoStoryZone1Map.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -39,7 +40,11 @@ bool at_zone_spot(std::optional<int> distance);
 //  a leg off the start with the left stick, camera-relative, an agreed
 //  marker read that must fall in the leg's range, then the marker walk
 //  toward the objective for `walk_hold` (measured by hand, 2026-11-16: 127 to 102 in 4.8 s), then one read.
+//  The pin read at the start, within `start_radius` map pixels of
+//  `start`, says the player stands there (ZoneStart::leave()).
 struct ZoneStartRoute{
+    MapWaypoint start;
+    double start_radius;
     double leg_x;
     double leg_y;
     Milliseconds leg_hold;
@@ -53,7 +58,11 @@ struct ZoneStartRoute{
 //  them at 127. Left 900 ms sidesteps clear of the rocks onto the grass
 //  strip, still 127; then forward the marker read 113 after 2.5 s and 102
 //  after 4.8 s, at the plaza (about 5.6 a second), with every read clean.
+//  The pin at the rocks read (476, 224) in every run there; the leg off
+//  them moves it 4 to 5 pixels.
 constexpr ZoneStartRoute TAUNIE_ROCKS_ROUTE{
+    .start = ZONE1_ROCKS,
+    .start_radius = 8,
     .leg_x = -1,
     .leg_y = 0,
     .leg_hold = Milliseconds(900),
@@ -67,7 +76,7 @@ constexpr ZoneStartRoute TAUNIE_ROCKS_ROUTE{
 enum class ZoneStartMove{
     WALK_TO_SPOT,       //  the timed walk toward the objective (walk_hold)
     SEARCH,             //  at the spot: the search (ZoneSearch)
-    ROCKS_NOT_LEFT,     //  stop: the read after the leg is missing or out of its range
+    ROCKS_NOT_LEFT,     //  stop: not at the start by the pin, or, the pin unread, the read after the leg is missing or out of its range
     SPOT_NOT_REACHED,   //  stop: the marker walk did not end at the spot
 };
 
@@ -79,6 +88,12 @@ public:
     explicit ZoneStart(const ZoneStartRoute& route)
         : m_route(route)
     {}
+
+    //  The move off the start: `start_pin`, the pin read before the leg,
+    //  decides (the marker's digits did not read in 24 looks off the rocks
+    //  in French, console B, 2026-11-17 02:41); `distance`, the agreed read
+    //  after the leg, only when the pin did not read (none: no read).
+    ZoneStartMove leave(std::optional<MapPoint> start_pin, std::optional<int> distance);
 
     //  The move after `distance`, the agreed read (none: no read) after
     //  the leg, then at the end of the marker walk.

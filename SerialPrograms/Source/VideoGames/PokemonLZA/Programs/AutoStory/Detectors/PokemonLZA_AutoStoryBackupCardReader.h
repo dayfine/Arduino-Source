@@ -22,9 +22,11 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  On the backup card, its "Registered in the Pokedex" count, read by OCR
-//  (numbers read the same in every language). None for a frame with no
-//  backup card, an empty one included, or no number there.
+//  On the backup card, its "Registered in the Pokedex" count: the digits
+//  that start the line under its label, so a counter word after them
+//  (Japanese "3" and the counter kanji hiki) is not read as a digit. The card is found by its
+//  white strips away from any text, so in every language. None for a
+//  frame with no backup card, an empty one included, or no number there.
 std::optional<size_t> read_backup_card_registered(Logger& logger, const ImageViewRGB32& frame);
 
 

@@ -7,6 +7,8 @@
 #include <chrono>
 #include <format>
 #include <optional>
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
@@ -47,17 +49,24 @@ std::optional<BackupCard> open_card(StoryEnv& env){
     pbf_wait(context, 1000ms);
     ssf_press_dpad(context, DPAD_UP, /*delay=*/0ms, /*hold=*/BACKUP_COMBO_HOLD);
     ssf_press_button(context, BUTTON_B | BUTTON_X, /*delay=*/BACKUP_COMBO_HOLD, /*hold=*/BACKUP_COMBO_HOLD, /*cool=*/0ms);
+    VideoSnapshot last;
     for (size_t look = 0; look < CARD_LOOKS; look++){
         context.wait_for(CARD_POLL);
         const VideoSnapshot frame = console.video().snapshot();
         if (!frame){
             continue;
         }
+        last = frame;
         if (const std::optional<size_t> registered = read_backup_card_registered(console.logger(), frame)){
             return BackupCard{.registered = *registered};
         }
     }
     console.log(std::format("[Rewind] no backup card read on {} looks", CARD_LOOKS));
+    //  The last look, for the reader's tests: a French title screen read no
+    //  card and left no frame (console B, 2026-11-17 02:42).
+    if (last){
+        dump_debug_image(console.logger(), "PokemonLZA/AutoStoryBackupCard", "no_card", *last.frame);
+    }
     return std::nullopt;
 }
 
