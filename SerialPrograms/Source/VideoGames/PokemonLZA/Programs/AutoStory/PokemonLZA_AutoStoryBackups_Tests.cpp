@@ -26,6 +26,7 @@ namespace PokemonLZA{
 
 namespace{
 
+using namespace std::chrono_literals;
 using Pokemon::Observation;
 using Pokemon::StoryCheckpoint;
 using Pokemon::StoryStep;
@@ -100,10 +101,10 @@ UnitTestResult check_card(const CardCase& test){
 }
 
 
-//  A look with the readings named in `readings`.
-Observation<ZonePose> look(std::vector<std::string_view> readings){
+//  A look `after` the first, with the readings named in `readings`.
+Observation<ZonePose> look(std::vector<std::string_view> readings, Milliseconds after = 0ms){
     Observation<ZonePose> observation;
-    observation.when = WallClock::min();
+    observation.when = WallClock::min() + after;
     for (std::string_view reading : readings){
         observation.readings[std::string(reading)] = 1;
     }
@@ -292,6 +293,16 @@ bool has_line(const std::vector<std::string>& lines, std::string_view wanted){
     return false;
 }
 
+//  A badge this long after a checkpoint's first look is its own autosave:
+//  one in its first 1.5 s is the save before it.
+constexpr Milliseconds OWN_BADGE = 2000ms;
+
+//  The looks of a checkpoint that autosaves in its first step: a plain
+//  look, the badge, then the platform.
+std::vector<Observation<ZonePose>> badge_in_first_step(){
+    return {look({}), look({AUTOSAVE_READING}, OWN_BADGE), look({PLATFORM_READING}, OWN_BADGE + 1000ms)};
+}
+
 UnitTestResult check_rewind(const RewindCase& test, CancellableScope& scope){
     const StoryData& story = builtin_story_data();
     AutosaveSightings sightings;
@@ -299,11 +310,9 @@ UnitTestResult check_rewind(const RewindCase& test, CancellableScope& scope){
     const Pokemon::StoryGame<ZonePose> game = rewind_game(story, test.input.failed_catches, test.input.failure, sightings, catches);
     std::vector<std::string> calls;
     const BackupSave backup = recording_backup(test.input.card, calls);
-    std::vector<Observation<ZonePose>> looks;
-    if (test.input.autosave_in_failed_run){
-        looks.push_back(look({AUTOSAVE_READING}));
-    }
-    looks.push_back(look({PLATFORM_READING}));
+    const std::vector<Observation<ZonePose>> looks = test.input.autosave_in_failed_run
+        ? badge_in_first_step()
+        : std::vector{look({PLATFORM_READING})};
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = looks}, scope);
     Pokemon::RunState state;
     const std::vector<StoryCheckpoint> rows = story_rows();
