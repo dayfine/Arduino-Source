@@ -38,6 +38,7 @@ struct TrackExpectation{
     StatStages foe = {};
     PlannedStatus foe_status = PlannedStatus::NONE;
     int foe_sleep_turns = 0;
+    bool own_frozen = false;
     FieldWeather weather = FieldWeather::NONE;
     int trainer_full_restores = 0;
 };
@@ -79,10 +80,10 @@ public:
         const BattleTrackState& got = track.state();
         const TrackExpectation& want = m_case.expectation;
         if (!same(got.own, want.own) || !same(got.foe, want.foe) || got.foe_status != want.foe_status
-            || got.foe_sleep_turns != want.foe_sleep_turns || got.weather != want.weather
+            || got.foe_sleep_turns != want.foe_sleep_turns || got.own_frozen != want.own_frozen || got.weather != want.weather
             || got.trainer_full_restores != want.trainer_full_restores){
-            return std::format("Ours {}; the foe's {}, status {}, sleep {}; weather {}; Full Restores {}.",
-                describe(got.own), describe(got.foe), static_cast<int>(got.foe_status), got.foe_sleep_turns,
+            return std::format("Ours {}, frozen {}; the foe's {}, status {}, sleep {}; weather {}; Full Restores {}.",
+                describe(got.own), got.own_frozen, describe(got.foe), static_cast<int>(got.foe_status), got.foe_sleep_turns,
                 static_cast<int>(got.weather), got.trainer_full_restores);
         }
         return true;
@@ -155,6 +156,25 @@ const TrackCase TRACK_CASES[] = {
         .name = "our lead falls asleep: not the foe's status",
         .input = {.turns = {{.texts = {"foejynxusedlovelykiss", "blastoisefellasleep"}}}},
         .expectation = {},
+    },
+    {
+        .name = "Ice Beam freezes our lead: the BRN/FRZ icon is a freeze",
+        .input = {.turns = {{.texts = {"foedewgongusedicebeam", "blastoisewasfrozensolid"}}}},
+        .expectation = {.own_frozen = true},
+    },
+    {
+        .name = "our lead defrosted, then burned: the BRN/FRZ icon is a burn",
+        .input = {.turns = {
+            {.texts = {"foedewgongusedicebeam", "blastoisewasfrozensolid"}},
+            {.texts = {"blastoisewasdefrosted"}},
+            {.texts = {"foearcanineusedflamethrower", "blastoisewasburned"}},
+        }},
+        .expectation = {},
+    },
+    {
+        .name = "the foe frozen: not our lead",
+        .input = {.turns = {{.texts = {"foelaprasisfrozensolid"}}}},
+        .expectation = {.foe_status = PlannedStatus::FREEZE},
     },
     {
         .name = "Rest: 3 turns, one less per turn slept through",
