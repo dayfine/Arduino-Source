@@ -18,6 +18,7 @@
 #include "PokemonFRLG_AutoStoryMartPlan.h"
 #include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStoryPcTransfer.h"
+#include "PokemonFRLG_AutoStoryRepelStep.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStorySlope.h"
@@ -50,7 +51,7 @@ constexpr std::string_view RESTORE_PP = "restore_pp";
 //  items (spend_item()) and the recovery after it, a READY's, a GRIND's
 //  battles, the healing steps (took_recovery_item()), count_items
 //  (set_from_bag()). STALE: the Marts (SHOP, mart: bought and sold), a
-//  TALK, its ANSWER or the text after it (gifts, item balls), a use_item
+//  TALK, its ANSWER or the text after it (gifts, item balls), a use_item or use_repel
 //  step (Repels, Rare Candies). A walk's Repel renewed when one wears off
 //  is marked where it is used (StoryWildBattle). TMs, HMs, Poke Balls and
 //  key items have pockets of their own: a TEACH, a capture or a fossil
@@ -89,6 +90,7 @@ const std::vector<ItemsPocketChangeRow>& items_pocket_change_rows(){
         {StoryStepKind::GAME,       POSTER_SWITCH_VARIANT,  ItemsPocketChange::NONE},
         {StoryStepKind::GAME,       LIFT_FLOOR_VARIANT,     ItemsPocketChange::NONE},
         {StoryStepKind::GAME,       USE_ITEM_VARIANT,       ItemsPocketChange::STALE},
+        {StoryStepKind::GAME,       USE_REPEL_VARIANT,      ItemsPocketChange::STALE},
         {StoryStepKind::GAME,       RIDE_BIKE_VARIANT,      ItemsPocketChange::NONE},
         {StoryStepKind::GAME,       REGISTER_BIKE_VARIANT,  ItemsPocketChange::NONE},
         {StoryStepKind::GAME,       CENTER_ENTER_VARIANT,   ItemsPocketChange::NONE},
