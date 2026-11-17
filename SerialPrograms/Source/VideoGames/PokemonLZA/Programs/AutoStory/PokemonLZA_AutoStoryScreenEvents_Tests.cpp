@@ -82,6 +82,28 @@ const FrameCase FRAME_CASES[] = {
         .input = {.path = "AutoStoryScreenEvents/it_0102_parla_talk_prompt.png"},
         .expectation = {.events = {.interact_prompt = true, .can_move = false}},
     },
+    {
+        //  console B, 2026-11-16 23:11 (German, 02.05's start): Hotel Z's
+        //  lobby in control, one Pokemon and five empty slot frames, no
+        //  D-pad arrows; the walk waited 10 s of quiet.
+        .name = "the party bar of one Pokemon: five empty slot frames, no D-pad arrows",
+        .input = {.path = "AutoStoryScreenEvents/de_0205_lobby_start_party1.png"},
+        .expectation = {.events = {.interact_prompt = false, .can_move = true}},
+    },
+    {
+        //  console B, 2026-11-16 23:12: at the lobby's elevator door, "A
+        //  Aufzug nehmen" up and steady, the party bar of one under it.
+        .name = "the elevator's A prompt over the party bar of one on the German game",
+        .input = {.path = "AutoStoryScreenEvents/de_0205_elevator_prompt_steady.png"},
+        .expectation = {.events = {.interact_prompt = true, .can_move = true}},
+    },
+    {
+        //  console B, 2026-11-16: Wild Zone 1's road, four Pokemon and two
+        //  empty slot frames.
+        .name = "the party bar of four over a sunlit road",
+        .input = {.path = "AutoStoryScreenEvents/it_0308_zone1_road_no_battle.png"},
+        .expectation = {.events = {.interact_prompt = false, .can_move = true}},
+    },
 };
 
 struct BattleFrameCase{

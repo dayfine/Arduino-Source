@@ -687,7 +687,7 @@ const RunCase RUN_CASES[] = {
         )},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, press L, stick -70deg 150ms walk, release 100ms, press L, hold north 250ms walk, hold north 250ms walk",
+            .inputs = "wait 250ms, press L, stick -70deg 150ms walk, release 100ms, press L, hold north 250ms walk, hold north 250ms walk, wait 300ms",
             .line = "[PLZA] approach_starter: the end event after 500 ms of the last leg.",
         },
     },
@@ -732,7 +732,18 @@ const RunCase RUN_CASES[] = {
     {
         .name = "a talk presses nothing on an A prompt seen on one look only",
         .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {A_PROMPT, CUTSCENE}},
-        .expectation = {.verdict = "failed at talk_to_starter: talk_no_prompt", .inputs = "wait 250ms, wait 250ms, wait 250ms, wait 250ms"},
+        .expectation = {.verdict = "failed at talk_to_starter: talk_no_prompt", .inputs = repeated("wait 250ms", 12)},
+    },
+    {
+        //  console B, 2026-11-16 23:11 (German, 02.05): the walk to the
+        //  elevator ended on a first glimpse of its prompt, the talk gave
+        //  up after 1 s with none, and "A Aufzug nehmen" stood steady a few
+        //  seconds later.
+        .name = "a talk waits for an A prompt that comes up 2 s in, then presses A",
+        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = concat(
+            std::vector<Observation<ZonePose>>(8, party_bar(Milliseconds(0))), {A_PROMPT, A_PROMPT, DIALOG}
+        )},
+        .expectation = {.verdict = "done", .inputs = std::format("{}, press A, wait 250ms", repeated("wait 250ms", 9))},
     },
     {
         //  console B, 2026-11-16 (03.02b run 2): the talk counted as
@@ -843,7 +854,16 @@ const RunCase RUN_CASES[] = {
         .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {CUTSCENE, CUTSCENE, A_PROMPT}},
         .expectation = {
             .verdict = "done",
-            .inputs = "hold north 250ms walk, hold north 250ms walk",
+            .inputs = "hold north 250ms walk, hold north 250ms walk, wait 300ms",
+            .line = "[PLZA] walk_to_prompt: the A prompt shows after 500 ms of walking",
+        },
+    },
+    {
+        .name = "walk_to_prompt walks on past an A prompt gone again 300 ms later",
+        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {CUTSCENE, A_PROMPT, CUTSCENE, A_PROMPT}},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "hold north 250ms walk, wait 300ms, hold north 250ms walk, wait 300ms",
             .line = "[PLZA] walk_to_prompt: the A prompt shows after 500 ms of walking",
         },
     },
@@ -908,7 +928,7 @@ const RunCase RUN_CASES[] = {
         .input = {.checkpoint = "02.06", .first_step = 0, .steps = 1, .looks = {
             party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), A_PROMPT,
         }},
-        .expectation = {.verdict = "done", .inputs = "wait 250ms, stick 45deg 250ms walk, stick 45deg 250ms walk"},
+        .expectation = {.verdict = "done", .inputs = "wait 250ms, stick 45deg 250ms walk, stick 45deg 250ms walk, wait 300ms"},
     },
     {
         .name = "02.06 with no autosave badge seen is not saved",
@@ -943,8 +963,22 @@ const RunCase RUN_CASES[] = {
         )},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk",
+            .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk, wait 300ms",
             .line = "[PLZA] to_plaza_scene_prompt: the end event after 500 ms of the last leg.",
+        },
+    },
+    {
+        //  console B, 2026-11-16 23:11 (German, 02.05): the walk to the
+        //  elevator ended on a first glimpse of "A Aufzug nehmen", and the
+        //  talk after it found no prompt.
+        .name = "a walk to an A prompt holds on past a glimpse gone again 300 ms later",
+        .input = {.checkpoint = "03.02b", .first_step = 0, .steps = 1, .looks = concat(
+            std::vector<Observation<ZonePose>>(4, party_bar(Milliseconds(0))), {A_PROMPT, party_bar(Milliseconds(0)), A_PROMPT}
+        )},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk, wait 300ms, hold north 250ms walk, wait 300ms",
+            .line = "[PLZA] to_plaza_scene_prompt: the end event after 750 ms of the last leg.",
         },
     },
     {
@@ -968,7 +1002,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "03.02b walks on from the arch to Taunie's A prompt",
         .input = {.checkpoint = "03.02b", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), A_PROMPT}},
-        .expectation = {.verdict = "done", .inputs = "hold north 250ms walk, hold north 250ms walk"},
+        .expectation = {.verdict = "done", .inputs = "hold north 250ms walk, hold north 250ms walk, wait 300ms"},
     },
     {
         //  console B, 2026-11-16: the walk stopped short of Taunie, under
@@ -977,7 +1011,7 @@ const RunCase RUN_CASES[] = {
         .input = {.checkpoint = "03.02b", .first_step = 3, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {
             .verdict = "failed at talk_to_taunie: talk_no_prompt",
-            .inputs = "wait 250ms, wait 250ms, wait 250ms, wait 250ms",
+            .inputs = repeated("wait 250ms", 12),
         },
     },
     {

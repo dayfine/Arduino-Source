@@ -18,6 +18,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattleMarkersDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattlePanelDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryPartySlotsDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -33,9 +34,10 @@ namespace PokemonLZA{
 //    (dialog_choice_box());
 //  - INTERACT_PROMPT: an A prompt over the scene ("A Talk", "A Leave"),
 //    with no box;
-//  - PLAYER_CAN_MOVE: the party bar at the bottom left
-//    (OverworldPartySelectionDetector), with no box. Hotel Z's lobby,
-//    halls and rooms do not show it;
+//  - PLAYER_CAN_MOVE: the party bar at the bottom left, with no box: its
+//    D-pad arrows (OverworldPartySelectionDetector, 2+ Pokemon) or its
+//    empty last slot (PartySlotsDetector, a party of 1 to 5: Hotel Z's
+//    lobby on 02.05, console B 2026-11-16). With no party there is no bar;
 //  - BATTLE_STARTED: the battle HUD's hints at the bottom centre ("X A:
 //    Select Move"), read by their A icon, or the player's Pokemon's panel
 //    at the bottom left (BattlePanelDetector) with the battle's markers
@@ -64,6 +66,7 @@ private:
     BattlePanelDetector m_battle_panel;
     BattleMarkersDetector m_battle_markers;
     OverworldPartySelectionDetector m_party;
+    PartySlotsDetector m_party_slots;
 };
 
 

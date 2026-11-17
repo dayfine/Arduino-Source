@@ -35,15 +35,19 @@ constexpr Milliseconds FREE_CONTROL_LOOK = 250ms;
 constexpr Milliseconds QUIET_IS_CONTROL = 10000ms;
 
 //  An A prompt held this long with nothing busy is control: it shows only
-//  in the overworld, and where no party bar reads (01.03 before the
-//  starter has no party; the bar's D-pad arrows that
-//  OverworldPartySelectionDetector reads show only with 2+ Pokemon) it is
-//  the one sign there is. A second, as the scene machine holds it, so a
+//  in the overworld, and where no party bar shows (01.03 before the
+//  starter has no party) it is the one sign there is. A second, as the scene machine holds it, so a
 //  prompt left up under a late fade after A at a door is not taken.
 constexpr Milliseconds PROMPT_IS_CONTROL = 1000ms;
 
 //  One slice of walk_to_prompt()'s walk between looks.
 constexpr Milliseconds PROMPT_WALK_SLICE = 250ms;
+
+//  A walk to an A prompt ends on it only when it shows again this long
+//  after a look that saw it, the stick let go: a first glimpse can be the
+//  prompt fading in or the player still moving, and the talk after it
+//  then finds none (02.05's elevator in German, console B 2026-11-16).
+constexpr Milliseconds PROMPT_STEADY_GAP = 300ms;
 
 //  After A at a prompt: how long a fade or text may take to show (a late
 //  fade starts 1.8 s after the A), how often it is looked for, and how many
@@ -97,9 +101,18 @@ bool control_shows(const ScreenObservation& look){
         look.readings.contains(CONTROLS_HINT_READING);
 }
 
+//  Whether the A prompt a look just saw shows again PROMPT_STEADY_GAP
+//  later, the player standing.
+bool prompt_steady(PlzaBackend& backend){
+    backend.wait(PROMPT_STEADY_GAP);
+    return backend.observe().events.has(ScreenEvent::INTERACT_PROMPT);
+}
+
 //  How long "talk" looks for its A prompt before A, how long it waits for
-//  its scene to start after A, and how often it looks.
-constexpr Milliseconds TALK_PROMPT_WAIT = 1000ms;
+//  its scene to start after A, and how often it looks. The prompt can take
+//  seconds to come up after the walk to it (02.05's elevator in German,
+//  console B 2026-11-16: none within 1 s, steady a few seconds later).
+constexpr Milliseconds TALK_PROMPT_WAIT = 3000ms;
 constexpr Milliseconds TALK_WAIT = 5000ms;
 constexpr Milliseconds TALK_POLL = 250ms;
 //  A dropped A: the prompt still up this long after A with nothing open
@@ -200,6 +213,10 @@ Pokemon::Outcome walk_until(PlzaBackend& backend, std::string_view walk, const S
         hold_last_leg(backend, move, slice);
         held += slice;
         const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+        if (look.events.has(end) && end == ScreenEvent::INTERACT_PROMPT && !prompt_steady(backend)){
+            backend.log(std::format("[PLZA] {}: the A prompt after {} ms of the last leg went again: on.", walk, held.count()));
+            continue;
+        }
         if (look.events.has(end)){
             backend.log(std::format("[PLZA] {}: the end event after {} ms of the last leg.", walk, held.count()));
             backend.log_detail(std::format("[PLZA] {}: ended on: {}", walk, describe_scene_look(look)));
@@ -217,8 +234,11 @@ Pokemon::Outcome walk_to_prompt(PlzaBackend& backend, Milliseconds timeout){
     for (Milliseconds walked = 0ms; ; walked += PROMPT_WALK_SLICE){
         backend.scope().throw_if_cancelled();
         if (backend.observe().events.has(ScreenEvent::INTERACT_PROMPT)){
-            backend.log(std::format("[PLZA] walk_to_prompt: the A prompt shows after {} ms of walking", walked.count()));
-            return Pokemon::outcome_ok();
+            if (prompt_steady(backend)){
+                backend.log(std::format("[PLZA] walk_to_prompt: the A prompt shows after {} ms of walking", walked.count()));
+                return Pokemon::outcome_ok();
+            }
+            backend.log(std::format("[PLZA] walk_to_prompt: the A prompt after {} ms of walking went again: on.", walked.count()));
         }
         if (walked >= timeout){
             break;
