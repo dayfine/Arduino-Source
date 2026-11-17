@@ -370,7 +370,7 @@ std::optional<Pokemon::Outcome> run_storage_game_step(
             return Pokemon::outcome_failed("bad_args", step.action);
         }
         const PcResult result = run_pc_transfer(logger, pc, *transfer);
-        if (result.end == PcEnd::DONE && transfer->protect && result.party_slot
+        if ((result.end == PcEnd::DONE || result.end == PcEnd::SKIPPED) && transfer->protect && result.party_slot
             && std::ranges::find(protected_slots, *result.party_slot) == protected_slots.end()
         ){
             protected_slots.push_back(*result.party_slot);
