@@ -4,7 +4,7 @@
  *
  *  Story steps that press through one particular screen of the story, on
  *  the engine's backend: Taunie's first map (03.02b) and the side street's
- *  ladder (03.03).
+ *  ladder (03.03), and a story choice box ("choose_<index>").
  *
  */
 
@@ -36,6 +36,14 @@ Pokemon::Outcome talk_through_map_screen(PlzaBackend& backend);
 //  (0.6 s), face it (150 ms), A at "A Climb Up", then hold up 5 s to the
 //  top. Reads nothing: the rooftop scene after it is the check.
 void climb_ladder(PlzaBackend& backend);
+
+//  "choose_<index>": with a choice box on screen (within 3 s, or after up
+//  to 3 A presses through the text, 3 s apart), moves the
+//  highlight from its row to row `index` (0 the top) with the D-pad, reads it there, then A. Fails as "no_choice" when no choice
+//  box with rows that read shows, "no_such_choice" when it has no row
+//  `index`, and "choice_not_reached" when the highlight is elsewhere after
+//  the presses.
+Pokemon::Outcome choose_row(PlzaBackend& backend, int index);
 
 
 

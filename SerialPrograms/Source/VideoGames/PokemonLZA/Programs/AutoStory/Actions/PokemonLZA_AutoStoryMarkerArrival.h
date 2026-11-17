@@ -34,6 +34,15 @@ enum class MarkerProof{
     NO_FAR_READ,
 };
 
+//  One look on a walk to the objective's prompt.
+struct MarkerLook{
+    //  The marker's digits as read; none: no marker, or no digits.
+    std::optional<int> distance;
+    bool marker_shows = true;
+    //  An A prompt or a dialog shows.
+    bool prompt_or_dialog = false;
+};
+
 //  Where a walk to the objective's prompt is, one look at a time.
 class MarkerArrival{
 public:
@@ -42,13 +51,19 @@ public:
         , m_distance(MarkerDirection::TOWARD, std::nullopt)
     {}
 
-    //  A look: the marker's digits read (none: no marker, or no digits),
-    //  and whether an A prompt or a dialog shows. Returns whether the read
-    //  is taken (MarkerDistance::read()).
-    bool look(std::optional<int> distance, bool prompt_or_dialog);
+    //  A look. Returns whether its distance is taken
+    //  (MarkerDistance::read()).
+    //  A read below 10 is taken only after one of 10 or more: junk OCR
+    //  ("E5", "v1", "E6") by a street dialog agreed on 6 at the start of
+    //  03.09's walk and passed it there (console B, 2026-11-16 18:47).
+    bool look(const MarkerLook& look);
 
     //  Whether the last look showed an A prompt or a dialog with the walk
-    //  near().
+    //  near(), and, with the marker still up, with no read taken or the
+    //  last below 10: a scene at the objective takes the marker away
+    //  before its dialog (the lab gate's at 10 to 13, console B
+    //  2026-11-14 and 2026-11-16 18:47), so a prompt with the marker up
+    //  at 10 or more is something else on the way.
     bool arrived() const{
         return m_arrived;
     }
@@ -66,6 +81,7 @@ private:
     const MarkerProof m_proof;
     MarkerDistance m_distance;
     bool m_far_digits = false;  //  digits over 20 read on some look
+    bool m_double_digits = false;   //  a read of 10 or more taken
     bool m_arrived = false;
 };
 

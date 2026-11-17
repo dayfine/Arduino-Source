@@ -116,11 +116,13 @@ private:
     //  A walk to the objective's prompt: `look` and its `marker`'s digits
     //  to m_arrival, a read taken toward a held-up walk (on_distance()).
     //  Whether it arrived: a prompt or a dialog near the objective. One
-    //  farther on is walked past, logged once while it shows.
+    //  farther on is walked past, logged once while it shows; its dialog
+    //  gets B (B cannot talk again), as a street dialog 41 to go held the
+    //  walk (console B, 2026-11-16 18:47).
     bool at_objective(const ScreenObservation& look, const std::optional<ObjectiveMarker>& marker){
         const bool prompt = look.events.has(ScreenEvent::INTERACT_PROMPT) || look.events.has(ScreenEvent::DIALOG_BOX);
         const std::optional<int> read = marker && marker->distance > 0 ? std::optional<int>(marker->distance) : std::nullopt;
-        if (m_arrival.look(read, prompt)){
+        if (m_arrival.look(MarkerLook{.distance = read, .marker_shows = marker.has_value(), .prompt_or_dialog = prompt})){
             on_distance(*read);
         }
         if (m_arrival.arrived()){
@@ -135,6 +137,9 @@ private:
             ));
         }
         m_prompt_passed = prompt;
+        if (look.events.has(ScreenEvent::DIALOG_BOX)){
+            pbf_press_button(m_env.context, BUTTON_B, /*hold=*/160ms, /*release=*/240ms);
+        }
         return false;
     }
 
@@ -309,16 +314,21 @@ private:
 
 //  After a walk that did not arrive (the marker gone, a scene at the
 //  objective taking it away): whether an A prompt or a dialog shows within
-//  MARKER_SCENE_WAIT while `arrival` is near the objective. Not near:
-//  false at once.
-bool objective_reached(PlzaBackend& backend, MarkerArrival& arrival){
+//  MARKER_SCENE_WAIT while `arrival` is near the objective (with the
+//  marker up, MarkerArrival::arrived()'s rule). Not near: false at once.
+bool objective_reached(StoryEnv& env, PlzaBackend& backend, MarkerArrival& arrival){
     if (!arrival.near()){
         return false;
     }
     for (Milliseconds waited(0); ; waited += MARKER_POLL){
         backend.scope().throw_if_cancelled();
         const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
-        arrival.look(std::nullopt, look.events.has(ScreenEvent::INTERACT_PROMPT) || look.events.has(ScreenEvent::DIALOG_BOX));
+        const bool marker = look.frame && *look.frame && read_objective_marker(env.env.console, *look.frame->frame).has_value();
+        arrival.look(MarkerLook{
+            .distance = std::nullopt,
+            .marker_shows = marker,
+            .prompt_or_dialog = look.events.has(ScreenEvent::INTERACT_PROMPT) || look.events.has(ScreenEvent::DIALOG_BOX),
+        });
         if (arrival.arrived()){
             return true;
         }
@@ -361,7 +371,7 @@ Pokemon::Outcome walk_to_objective(StoryEnv& env, PlzaBackend& backend, MarkerPr
     if (run_marker_walk(MARKER_WALK_LIMIT, walk, backend)){
         return Pokemon::outcome_ok();
     }
-    if (!objective_reached(backend, walk.arrival())){
+    if (!objective_reached(env, backend, walk.arrival())){
         return Pokemon::outcome_failed("objective_not_reached", std::format(
             "no A prompt or dialog near the objective marker (last read taken {}, near: {})",
             walk.position().value_or(-1), walk.arrival().near() ? "yes" : "no"

@@ -11,19 +11,19 @@
       {
         "id": "to_research_lab",
         "kind": "game_action",
-        "why": "step 63: across to the Pokemon Research Lab's gate, into Taunie's scene, by the objective marker: out of the zone's gate the player faces whichever way it faced before (the timed legs from 2026-11-08 depended on that; console B, 2026-11-10). Taunie's dialog counts only after a distance read taken at 20 or less (the pass read 37 down to 13, console B 2026-11-14): with none, a prompt on the street passed it 4 s in (console B, 2026-11-16 17:34).",
+        "why": "step 63: across to the Pokemon Research Lab's gate, into the rival's scene (Ryon on this save: \"Allora, come va? Sei riuscita a catturare cinque specie di Pokemon?\"), by the objective marker: out of the zone's gate the player faces whichever way it faced before (the timed legs from 2026-11-08 depended on that; console B, 2026-11-10). The scene takes the marker away at 10 to 13 to go and its dialog shows 9 to 11 s later (console B, 2026-11-14; 2026-11-16 18:47): a prompt or dialog counts after a distance read taken at 20 or less with the marker gone, or below 10 with it up. A prompt on the street with no read passed it 4 s in (17:34); junk single digits by a street dialog passed it at \"6 to go\" (18:47), and the real scene then played in lab_lobby.",
         "action": "walk_to_marker"
       },
       {
         "id": "research_lab_gate",
         "kind": "scene",
-        "why": "step 63: Taunie at the lab gate; with five species registered she goes on. The walk ends on her dialog, so the scene has started.",
+        "why": "step 63: Ryon at the lab gate; with five species registered he goes on, then the scene's black fade puts the player at the lab's steps (20 s, console B 2026-11-14 21:01). The walk ends on his dialog, so the scene has started.",
         "action": "a"
       },
       {
         "id": "five_registered",
         "kind": "game_action",
-        "why": "step 65: Taunie's scene at the lab gate after 5/5, until control; at once when there is control already. plza/autostory's step (a scene that control ends, passed on console B 2026-11-14), here as mash_to_move_hints: the lean scene step waits 45 s for a scene to start, and nothing starts this part.",
+        "why": "step 65: Ryon's scene at the lab gate after 5/5, until control; at once when there is control already: plza/autostory's pass had control at once here too (1.2 s, console B 2026-11-14 21:01:47), research_lab_gate having played the whole scene. Here as mash_to_move_hints: the lean scene step waits 45 s for a scene to start, and nothing starts this part.",
         "action": "mash_to_move_hints"
       },
       {
@@ -35,10 +35,11 @@
       {
         "id": "lab_lobby",
         "kind": "game_action",
-        "why": "steps 65-66: A Enter, the receptionist: third floor; autosave (A first: the door's prompt shows with the party bar up)",
+        "why": "steps 65-66: A Enter, the receptionist: third floor; autosave (A first: the door's prompt shows with the party bar up). The door's black fade comes 0.5 s after A (console B, 2026-11-14 21:01:52): control with no scene for 3 s is the player not at the door, not a pass.",
         "action": "mash_to_move_hints",
         "args": {
-          "press_a_first": true
+          "press_a_first": true,
+          "scene_start_ms": 3000
         }
       },
       {
