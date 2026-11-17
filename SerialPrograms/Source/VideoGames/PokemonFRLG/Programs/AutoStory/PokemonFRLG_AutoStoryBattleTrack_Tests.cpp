@@ -21,10 +21,13 @@ namespace PokemonFRLG{
 
 namespace{
 
-//  One turn: the texts since the last choice, and the foe out after them.
+//  One turn: the texts since the last choice, and the foe out after them
+//  with its ability; our lead came back in after Roar or Whirlwind first.
 struct TrackTurn{
     std::vector<std::string> texts = {};
     size_t foe_slot = 0;
+    std::string foe_ability = {};
+    bool lead_back_in = false;
 };
 struct TrackInput{
     std::vector<TrackTurn> turns = {};
@@ -66,8 +69,12 @@ public:
             if (turn > 0){
                 track.turn_chosen();
             }
-            track.read_turn(m_case.input.turns[turn].texts);
-            track.foe_out(m_case.input.turns[turn].foe_slot, "");
+            const TrackTurn& input = m_case.input.turns[turn];
+            if (input.lead_back_in){
+                track.lead_switched_in();
+            }
+            track.read_turn(input.texts);
+            track.foe_out(input.foe_slot, input.foe_ability);
         }
         const BattleTrackState& got = track.state();
         const TrackExpectation& want = m_case.expectation;
@@ -124,6 +131,24 @@ const TrackCase TRACK_CASES[] = {
     {
         .name = "a new foe starts at stage 0",
         .input = {.turns = {{.texts = {"foevenusaursspatkrose"}, .foe_slot = 4}, {.texts = {}, .foe_slot = 5}}},
+        .expectation = {},
+    },
+    {
+        .name = "Arcanine's Intimidate cuts our Attack once",
+        .input = {.turns = {
+            {.texts = {}, .foe_slot = 4, .foe_ability = "intimidate"},
+            {.texts = {}, .foe_slot = 4, .foe_ability = "intimidate"},
+        }},
+        .expectation = {.own = {.attack = -1}},
+    },
+    {
+        //  pret AbilityBattleEffects: Intimidate acts on its holder's entry
+        //  only (STATUS3_INTIMIDATE_POKES), not on ours.
+        .name = "back in after Arcanine's Roar: our stages gone, no second Intimidate",
+        .input = {.turns = {
+            {.texts = {}, .foe_slot = 4, .foe_ability = "intimidate"},
+            {.texts = {}, .foe_slot = 4, .foe_ability = "intimidate", .lead_back_in = true},
+        }},
         .expectation = {},
     },
     {
