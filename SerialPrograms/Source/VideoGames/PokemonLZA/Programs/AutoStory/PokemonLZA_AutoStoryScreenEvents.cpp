@@ -35,6 +35,7 @@ PlzaScreenObserver::PlzaScreenObserver()
     , m_interact(COLOR_RED, ButtonType::ButtonA, INTERACT_PROMPT_BOX)
     , m_battle_hint(COLOR_CYAN, ButtonType::ButtonA, BATTLE_HINT_BOX)
     , m_battle_panel(COLOR_GREEN)
+    , m_battle_markers(COLOR_BLUE)
     , m_party(COLOR_WHITE)
 {}
 
@@ -54,7 +55,7 @@ ScreenEvents PlzaScreenObserver::read(const ImageViewRGB32& screen){
     out.set(ScreenEvent::DIALOG_BOX, box);
     out.set(ScreenEvent::CHOICE_BOX, m_choice_arrow.detect(screen));
     out.set(ScreenEvent::INTERACT_PROMPT, !box && m_interact.detect(screen));
-    out.set(ScreenEvent::BATTLE_STARTED, m_battle_hint.detect(screen) || m_battle_panel.detect(screen));
+    out.set(ScreenEvent::BATTLE_STARTED, m_battle_hint.detect(screen) || (m_battle_panel.detect(screen) && m_battle_markers.detect(screen)));
     out.set(ScreenEvent::PLAYER_CAN_MOVE, !box && m_party.detect(screen));
     return out;
 }
@@ -65,6 +66,7 @@ void PlzaScreenObserver::make_overlays(VideoOverlaySet& items) const{
     m_interact.make_overlays(items);
     m_battle_hint.make_overlays(items);
     m_battle_panel.make_overlays(items);
+    m_battle_markers.make_overlays(items);
     m_party.make_overlays(items);
 }
 

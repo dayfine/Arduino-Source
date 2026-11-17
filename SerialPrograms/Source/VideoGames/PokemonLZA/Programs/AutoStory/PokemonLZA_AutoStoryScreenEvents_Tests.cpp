@@ -115,6 +115,21 @@ const BattleFrameCase BATTLE_FRAME_CASES[] = {
         .expectation = {.battle = true},
     },
     {
+        //  console B, 2026-11-16 19:24 (03.08b zone_1_to_far_gate, run
+        //  3): Wild Zone 1's far pillar, no Pokemon out; the lead's panel
+        //  shows all through the zone, and read as a battle the gate walk
+        //  walked on into the pillar for 20 s.
+        .name = "no battle at the zone's pillar with the lead's panel up",
+        .input = {.path = "AutoStoryScreenEvents/it_0308b_zone_pillar_no_battle.png"},
+        .expectation = {.battle = false},
+    },
+    {
+        //  console B, 2026-11-16: Wild Zone 1's road at the 60 spot.
+        .name = "no battle on the zone's road with the lead's panel up",
+        .input = {.path = "AutoStoryScreenEvents/it_0308_zone1_road_no_battle.png"},
+        .expectation = {.battle = false},
+    },
+    {
         .name = "no battle at the A Talk prompt on the Italian game",
         .input = {.path = "AutoStoryScreenEvents/it_0102_parla_talk_prompt.png"},
         .expectation = {.battle = false},
