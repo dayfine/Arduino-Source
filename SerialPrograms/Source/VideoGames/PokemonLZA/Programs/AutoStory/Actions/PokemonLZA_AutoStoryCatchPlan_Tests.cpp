@@ -338,48 +338,76 @@ private:
 };
 
 
-//  lock_target_far(): a plate high on the screen is far.
-struct FarCase{
+//  step_toward_target(): whether to take another 0.5 s step toward a
+//  locked target before throwing at it. The plates are console B's
+//  (2026-11-16): first-throw catches at 98 and 100 at 0.49 and 0.50 of the
+//  height, the Mareep missed 11 times at 60 at 0.40.
+struct StepCase{
     std::string name;
     struct Input{
         Plate plate;
+        //  Throws missed at this lock so far.
+        int misses;
+        //  Steps already taken toward it since the last read or throw.
+        int steps;
     };
     Input input;
     struct Expectation{
-        bool far;
+        bool step;
     };
     Expectation expectation;
 };
 
-const FarCase FAR_CASES[] = {
+const StepCase STEP_CASES[] = {
     {
-        .name = "a high plate is far",
-        .input = {.plate = {0.5, 0.20}},
-        .expectation = {.far = true},
+        .name = "the Mareep missed at 60 is stepped toward before the first throw",
+        .input = {.plate = {0.53, 0.40}, .misses = 0, .steps = 0},
+        .expectation = {.step = true},
     },
     {
-        .name = "a lower plate is near",
-        .input = {.plate = {0.5, 0.40}},
-        .expectation = {.far = false},
+        .name = "a plate as low as the first-throw catch at 98 is thrown at",
+        .input = {.plate = {0.53, 0.49}, .misses = 0, .steps = 0},
+        .expectation = {.step = false},
+    },
+    {
+        .name = "a far plate after 4 steps before the first throw is thrown at",
+        .input = {.plate = {0.53, 0.40}, .misses = 0, .steps = 4},
+        .expectation = {.step = false},
+    },
+    {
+        .name = "a far plate after a miss is stepped toward",
+        .input = {.plate = {0.53, 0.40}, .misses = 1, .steps = 1},
+        .expectation = {.step = true},
+    },
+    {
+        .name = "a far plate after a miss and 2 steps is thrown at",
+        .input = {.plate = {0.53, 0.40}, .misses = 1, .steps = 2},
+        .expectation = {.step = false},
+    },
+    {
+        .name = "a near plate after a miss is thrown at",
+        .input = {.plate = {0.53, 0.50}, .misses = 2, .steps = 0},
+        .expectation = {.step = false},
     },
 };
 
-class Test_LockTargetFar : public UnitTest{
+class Test_StepTowardTarget : public UnitTest{
 public:
-    explicit Test_LockTargetFar(const FarCase& test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: far target: {}", test_case.name))
+    explicit Test_StepTowardTarget(const StepCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: step toward the target: {}", test_case.name))
         , m_case(test_case)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const bool far = lock_target_far(lock_target(m_case.input.plate));
-        if (far != m_case.expectation.far){
-            return std::format("Expected far: {}, got {}.", m_case.expectation.far, far);
+        const StepCase::Input& in = m_case.input;
+        const bool step = step_toward_target(lock_target(in.plate), in.misses, in.steps);
+        if (step != m_case.expectation.step){
+            return std::format("Expected step: {}, got {}.", m_case.expectation.step, step);
         }
         return true;
     }
 
 private:
-    const FarCase& m_case;
+    const StepCase& m_case;
 };
 
 
@@ -813,8 +841,8 @@ void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
     for (const PartyCountCase& item : PARTY_COUNT_CASES){
         database.add<Test_PartyCount>(item);
     }
-    for (const FarCase& item : FAR_CASES){
-        database.add<Test_LockTargetFar>(item);
+    for (const StepCase& item : STEP_CASES){
+        database.add<Test_StepTowardTarget>(item);
     }
     for (const CycleCase& item : CYCLE_CASES){
         database.add<Test_LockTargetCycle>(item);

@@ -99,6 +99,8 @@ struct AfterThrowCase{
         bool battle = false;
         //  The plate that locks on with ZL held after the throw; nothing: none.
         std::optional<LockTarget> relocked = std::nullopt;
+        //  Throws at this lock, this one included.
+        int throws_at_lock = 1;
     };
     Input input;
     struct Expectation{
@@ -117,6 +119,8 @@ std::string_view after_throw_text(AfterThrow next){
         return "throw again";
     case AfterThrow::LOOK_AGAIN:
         return "look again";
+    case AfterThrow::MOVE_ON:
+        return "move on";
     }
     return "?";
 }
@@ -154,6 +158,15 @@ const AfterThrowCase AFTER_THROW_CASES[] = {
         .expectation = {.next = AfterThrow::THROW_AGAIN},
     },
     {
+        .name = "a third miss with the plate locking on again moves on",
+        .input = {
+            .seen = {.registered = false, .plate_caught = false, .target_gone = false},
+            .relocked = plate(0.53, 0.40, false),
+            .throws_at_lock = 3,
+        },
+        .expectation = {.next = AfterThrow::MOVE_ON},
+    },
+    {
         .name = "a plate of a caught species locking on after the throw looks again",
         .input = {
             .seen = {.registered = false, .plate_caught = false, .target_gone = false},
@@ -176,7 +189,7 @@ public:
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const AfterThrowCase::Input& in = m_case.input;
-        const AfterThrow next = after_throw(in.seen, in.battle, in.relocked);
+        const AfterThrow next = after_throw(in.seen, in.battle, in.relocked, in.throws_at_lock);
         if (next != m_case.expectation.next){
             return std::format("Expected {}, got {}.", after_throw_text(m_case.expectation.next), after_throw_text(next));
         }
