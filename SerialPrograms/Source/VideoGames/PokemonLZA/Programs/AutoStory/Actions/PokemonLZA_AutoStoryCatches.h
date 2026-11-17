@@ -76,7 +76,8 @@ struct ZoneCatchGoal{
 Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal);
 
 //  After 03.08's catches: back onto the road at the 60 spot by a map leg
-//  (walk_map_legs(), ZONE1_SPOT_60). From 60 the far gate's pillars are
+//  (walk_map_legs(), ZONE1_SPOT_60), no walk when the last catch left
+//  the pin in the spot's stop area already. From 60 the far gate's pillars are
 //  straight down the road; the marker is not on the gate but past it and
 //  to its left, behind the zone's fence, so a walk at the marker was held
 //  up at 36 and wandered off (console B, 2026-11-13 and 2026-11-14). Ends
