@@ -15,6 +15,7 @@
 #include <optional>
 #include <span>
 #include <vector>
+#include "PokemonLZA_AutoStoryMarkerDistance.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -53,6 +54,69 @@ std::vector<int> alternating_stops(std::span<const int> spots, size_t visits);
 //  of the zone (console B, 2026-11-13, last read 49). With no distance
 //  read, every spot.
 std::vector<int> road_stops_to_gate(std::span<const int> spots, std::optional<int> distance);
+
+
+//  What the walk between two road stops does after a look at the
+//  objective marker (RoadWalkReads).
+enum class RoadLook{
+    STEP,               //  a step on: the read taken short of the stop, dropped, or none
+    SIDESTEP_RIGHT,     //  held up: a sidestep (RoadWalkReads::sidesteps()), then a step on
+    SIDESTEP_LEFT,
+    ARRIVED,            //  a read taken at the stop or past it
+};
+
+//  The walk between the patrol's road stops, read by read, as
+//  plza/autostory's walk_to_objective() took the marker's distance (03.08
+//  passed about 11 times on console B, 2026-11-14). It steps on after
+//  every look, a read taken or not: only arriving needs a read. The lean
+//  walker stood on looks with no read taken, nudged the camera and
+//  sidestepped, and ended blocked: its walks toward 60 ended at no read,
+//  74 and 92, sideways off the road (console B, 2026-11-16 16:17).
+class RoadWalkReads{
+public:
+    //  A walk `direction` to `stop_at`. `floor`: a read below it is taken
+    //  only near the last read taken: by the green column at 101 to 105
+    //  the digits read "1", "5", "21" and "41" (console B, 2026-11-16).
+    RoadWalkReads(MarkerDirection direction, int stop_at, std::optional<int> floor)
+        : m_direction(direction)
+        , m_stop_at(stop_at)
+        , m_floor(floor)
+    {}
+
+    //  A look with `distance` read (none: no digits). The first read is
+    //  taken at once; after it, a read within 12 of the last one taken (a
+    //  0.6 s step covers about 3), or a third in a row that agree with
+    //  each other far from it (110 read as "1110", console B 2026-11-13).
+    //  Toward the objective, 4 reads taken with none nearer than the best
+    //  is a walk held up (the Research Lab's fence, console B 2026-11-10):
+    //  a sidestep right, then left, 4 at most.
+    RoadLook next(std::optional<int> distance);
+
+    //  The last read taken, if any.
+    std::optional<int> position() const{
+        return m_last;
+    }
+
+    //  The held-up sidesteps so far; the n-th is held n times 1.5 s.
+    size_t sidesteps() const{
+        return m_sidesteps;
+    }
+
+private:
+    bool take(int distance);
+    bool reached() const;
+    RoadLook held_up(int distance);
+
+    const MarkerDirection m_direction;
+    const int m_stop_at;
+    const std::optional<int> m_floor;
+    std::optional<int> m_last;
+    std::optional<int> m_far_read;      //  the last read far from m_last
+    size_t m_far_reads = 0;             //  reads in a row far from m_last that agree with each other
+    std::optional<int> m_best;          //  the nearest read taken (toward)
+    size_t m_unmoved_reads = 0;         //  reads taken in a row none nearer than m_best
+    size_t m_sidesteps = 0;
+};
 
 } // namespace PokemonLZA
 } // namespace NintendoSwitch

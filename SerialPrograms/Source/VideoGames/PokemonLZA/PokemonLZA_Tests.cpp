@@ -35,6 +35,7 @@
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchStop_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryGateWalk_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1Road_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryZoneGateReader_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryBackend_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryBackups_Tests.h"
@@ -91,6 +92,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStoryCatchStop(database);
     add_tests_AutoStoryGateWalk(database);
     add_tests_AutoStoryZoneGateReader(database);
+    add_tests_AutoStoryZone1Road(database);
 
 }
 

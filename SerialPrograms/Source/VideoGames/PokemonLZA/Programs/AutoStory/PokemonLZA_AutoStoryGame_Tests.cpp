@@ -1055,9 +1055,13 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at zone_1_to_far_gate: console_only", .inputs = ""},
     },
     {
-        .name = "03.08b's way out of the gate needs a console",
-        .input = {.checkpoint = "03.08b", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
-        .expectation = {.verdict = "failed at leave_zone_1: console_only", .inputs = ""},
+        .name = "03.08b's way out of the gate: A Leave at its prompt, through the fade, done on the party bar held a second",
+        .input = {.checkpoint = "03.08b", .first_step = 2, .steps = 1, .looks = {
+            A_PROMPT, BLACK_FADE,
+            look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(1000)),
+            party_bar(Milliseconds(2000)), party_bar(Milliseconds(3100)),
+        }},
+        .expectation = {.verdict = "done", .line = "[PLZA mash_to_move_hints] done on can_move."},
     },
     {
         .name = "03.09's walk to the objective marker needs a console",
