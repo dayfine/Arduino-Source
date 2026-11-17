@@ -44,11 +44,11 @@ inline const std::string LEAGUE_TOP_UP_ACTION = "league_top_up";
 //  be saved (league_row_pass()), from our side as read off the console
 //  now, not the story's own counts: the Items pocket, the lead's HP
 //  (summary_current_hp()) and its moves' PP (the summary's KNOWN MOVES).
-//  `start` is the start save's supplies. Every value compared is logged,
+//  Every value compared is logged,
 //  wanted against read. A read that fails or is unsure fails
 //  "postcondition_unread" (the loop stops: never a save on a guess), with
 //  the screen kept in DebugDumps/AutoStory/league.
-Pokemon::Outcome check_league_save(StoryEnv& env, const StoryCheckpoint& row, const Supplies& start);
+Pokemon::Outcome check_league_save(StoryEnv& env, const StoryCheckpoint& row);
 
 //  LEAGUE_TOP_UP_ACTION's spec.
 std::vector<Pokemon::StoryActionSpec> league_action_specs();

@@ -61,17 +61,6 @@ const LeagueFightData* next_league_fight(const LeagueFightData& fight){
     return nullptr;
 }
 
-SlugCounts supplies_counts(const Supplies& supplies){
-    SlugCounts counts(supplies.other_counts.begin(), supplies.other_counts.end());
-    counts["potion"] = supplies.potions;
-    counts["super-potion"] = supplies.super_potions;
-    counts["antidote"] = supplies.antidotes;
-    counts["parlyz-heal"] = supplies.parlyz_heals;
-    counts["awakening"] = supplies.awakenings;
-    counts["full-heal"] = supplies.full_heals;
-    return counts;
-}
-
 LeagueEntryCheck league_entry_check(const LeagueFightData& next, LeagueSide side){
     LeagueEntryCheck check;
     PlannedCarry carry{.hp = side.hp, .max_hp = side.max_hp, .pp = side.pp, .full_pp = side.full_pp, .bag = side.bag};
@@ -88,22 +77,10 @@ LeagueEntryCheck league_entry_check(const LeagueFightData& next, LeagueSide side
     return check;
 }
 
-Pokemon::Outcome league_row_pass(const StoryCheckpoint& row, const SlugCounts& start_bag, const LeagueSide& end){
+Pokemon::Outcome league_row_pass(const StoryCheckpoint& row, const LeagueSide& end){
     const LeagueFightData* fight = league_row_fight(row);
     if (fight == nullptr){
         return Pokemon::outcome_ok();
-    }
-    SlugCounts used;
-    std::vector<std::string> spent;
-    for (const auto& [item, count] : start_bag){
-        const int less = count - count_of(end.bag, item);
-        if (less > 0){
-            used[item] = less;
-            spent.push_back(std::format("{} {}", item, less));
-        }
-    }
-    if (!league_try_passes(*fight, LeagueTry{.won = true, .used = used})){
-        return Pokemon::outcome_failed("league_over_caps", std::format("{} spent {}", fight->name, joined(spent)));
     }
     const LeagueFightData* next = next_league_fight(*fight);
     if (next == nullptr){
@@ -112,8 +89,8 @@ Pokemon::Outcome league_row_pass(const StoryCheckpoint& row, const SlugCounts& s
     const LeagueEntryCheck check = league_entry_check(*next, end);
     if (!check.short_of.empty()){
         return Pokemon::outcome_failed("league_next_entry", std::format(
-            "{} spent {}; after the top-up [{}] before {}, read vs wanted: {}; short of {}",
-            fight->name, joined(spent), joined(check.topped_up), next->name, joined(check.compared), joined(check.short_of)
+            "after {} and the top-up [{}] before {}, read vs wanted: {}; short of {}",
+            fight->name, joined(check.topped_up), next->name, joined(check.compared), joined(check.short_of)
         ));
     }
     return Pokemon::outcome_ok();
