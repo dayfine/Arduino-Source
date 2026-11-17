@@ -1295,8 +1295,8 @@ UnitTestResult test_save_place_error(){
         //  A card that can't be read is let pass.
         {.start_map = "PalletTown_PlayersHouse_2F", .place = "", .error = false},
         {.start_map = "ViridianForest", .place = "viridian-city", .error = true},
-        //  A map with no known place isn't checked.
-        {.start_map = "Route9", .place = "pewter-city", .error = false},
+        //  A map with no known place (a Sevii island) isn't checked.
+        {.start_map = "OneIsland_PokemonCenter_1F", .place = "pewter-city", .error = false},
     };
     for (const Case& c : CASES){
         const std::string error = save_place_error(c.start_map, c.place);
@@ -1372,8 +1372,8 @@ UnitTestResult test_save_end_error(){
         {.end_map = end, .place = "cinnabar-island", .error = false},
         {.end_map = end, .place = "", .error = true},
         {.end_map = "Route21_North", .place = "route-21", .error = false},
-        //  A map with no known place isn't checked.
-        {.end_map = "Route9", .place = "pewter-city", .error = false},
+        //  A map with no known place (a Sevii island) isn't checked.
+        {.end_map = "OneIsland_PokemonCenter_1F", .place = "pewter-city", .error = false},
         {.end_map = "", .place = "route-21", .error = false},
     };
     for (const Case& c : CASES){
