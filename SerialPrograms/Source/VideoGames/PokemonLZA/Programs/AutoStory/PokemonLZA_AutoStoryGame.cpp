@@ -152,6 +152,7 @@ std::vector<StoryActionSpec> make_specs(){
             optional_int("end_after_black_fades", "end 5 s after this many black fades, or on the controls hint; the banner does not end it"),
             optional_int("scene_start_ms", "the step plays a scene: control with no scene seen this long fails it"),
             optional_int("gap_press_ms", "inside the scene, one A when nothing shows this long (a box no detector reads)"),
+            flag("advance_with_a", "advance the text with A, for a scene whose choice B would answer with its cancel row (03.01's lobby)"),
         }),
         game_spec("text_to_choice", {
             flag("advance_with_a", "advance the text with A, for a talk that B cancels (Hotel Z's elevator)"),
@@ -509,6 +510,10 @@ Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
 //  scene seen for that long fails it ("scene_never_started") instead of
 //  passing at once: 03.09's lab_lobby, A at the door to its fade.
 //  "gap_press_ms": SceneMachineConfig::gap_press.
+//  "advance_with_a": A, not B, through the text. A B that lands as a
+//  choice box opens picks its last (cancel) row before any look can see
+//  the box, while an A there picks the top row, the default. 03.01's
+//  lobby: Alton asks until he gets the top answer (console B, 2026-11-17).
 Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
     if (Pokemon::story_arg<bool>(call.args, "press_a_first")){
         press_through_prompt(backend);
@@ -517,6 +522,7 @@ Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAct
     config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));
     config.quiet_is_control = Pokemon::story_arg<bool>(call.args, "quiet_is_control");
     config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
+    config.text_with_a = Pokemon::story_arg<bool>(call.args, "advance_with_a");
     const auto gap = call.args.find("gap_press_ms");
     if (gap != call.args.end()){
         config.gap_press = Milliseconds(std::get<int64_t>(gap->second));

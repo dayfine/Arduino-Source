@@ -45,7 +45,7 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends on the autosave in wild_zones_tutorial, its last step (console B, 2026-11-16: badge at 41.4 s), so a checkpoint starts where that save reloads; 03.07 goes on into Wild Zone 1. The menu save of plza/autostory is dropped. Backup card: after 03.08 autosaved, the title's backup (Up + B + X) showed 1 registered and loaded at the Center counter, this checkpoint's start (console B, 2026-11-16). Start signature: at the counter the A Talk prompt shows and no lead panel (za_bk5_g, console B 2026-11-16)."
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends on the autosave in wild_zones_tutorial, its last step (console B, 2026-11-16: badge at 41.4 s), so a checkpoint starts where that save reloads; 03.07 goes on into Wild Zone 1. The menu save of plza/autostory is dropped. Backup card: after 03.08 autosaved, the title's backup (Up + B + X) showed 1 registered and loaded at the Center counter, this checkpoint's start (console B, 2026-11-16). It is the first checkpoint a backup can load at: the start_signature's \"registered\" marks it, and a run never opens the backup card before it (runs 12 and 15 tried at 02.05 and 03.01 and read no card, console B 2026-11-16). Start signature: at the counter the A Talk prompt shows and no lead panel (za_bk5_g, console B 2026-11-16)."
     }
   },
   "execution": {

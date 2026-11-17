@@ -9,7 +9,10 @@
  *  finds which checkpoint starts where that backup is (the card's count
  *  in the plans' "start_signature"), loads it and plays on from that
  *  checkpoint, the failed one again included. Nothing is saved by hand: the game's own autosaves
- *  take over from the backup.
+ *  take over from the backup. There is no backup until the first Pokemon
+ *  Center save (03.05's heal): the first checkpoint a backup loads at is
+ *  the first whose start names a card's count, and before it no run opens
+ *  the card (runs 12 and 15, console B 2026-11-16, read none).
  *
  */
 
@@ -75,7 +78,8 @@ struct RewindPlan{
 //  rewinds to `backup` first, and plays from the checkpoint its card names:
 //  a catch autosaves where it lands, so 03.08's latest save can stand
 //  mid-zone (console B, 2026-11-16 17:24, at the 100 spot). None: neither
-//  names a checkpoint, and nothing may run.
+//  names a checkpoint, or `plan.first` comes before the first backup
+//  (none is opened), and nothing may run.
 std::optional<size_t> start_or_rewind(
     PlzaBackend& backend, const RewindPlan& plan, const StartSignature& read, const BackupSave& backup
 );
@@ -87,7 +91,12 @@ std::optional<size_t> start_or_rewind(
 //  failed one (checkpoint_at()), loads it and runs from that checkpoint to
 //  `plan.last`, up to `plan.max_rewinds` times. A card not read, or one no
 //  start matches, is cancelled and the run stops as "unknown_backup": an
-//  unknown backup is never loaded. A failure with no autosave in it stops
+//  unknown backup is never loaded. Before the first checkpoint a backup
+//  loads at (the first start in `plan.starts` with a card's count) there
+//  is no backup, and none is opened: an autosave in the failed
+//  checkpoint's last step is the next one's start, which the run reloads
+//  and plays on from; any other stops the run as "no_backup_yet", "no
+//  backup save exists before <checkpoint>: the latest save is <where>". A failure with no autosave in it stops
 //  the run, as do the failures past the last rewind. Logs each decision
 //  as "[Rewind] ...".
 Pokemon::SegmentReport run_plza_with_rewinds(

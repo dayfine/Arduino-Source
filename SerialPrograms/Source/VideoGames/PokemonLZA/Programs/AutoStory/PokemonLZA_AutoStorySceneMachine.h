@@ -89,6 +89,12 @@ struct SceneMachineConfig{
     //  land on a choice that shows the moment the text ends. A text box in
     //  any other machine gets B, a choice A.
     Button text_button = BUTTON_A;
+    //  A, not B, on every text box, also in a machine that ends in
+    //  control: for a scene whose choice a B would answer with its cancel
+    //  row as the box opens, before any look can see it (03.01's lobby,
+    //  console B 2026-11-17). An A on a box that is closing can start the
+    //  talk again, so only scenes that end with no A prompt set it.
+    bool text_with_a = false;
     //  The quiet end is control, not a failure: Hotel Z's lobby, halls and
     //  rooms show no party bar or prompt (02.04-02.06, console B
     //  2026-11-10).

@@ -54,6 +54,28 @@ std::optional<size_t> row_index(std::span<const StoryCheckpoint> rows, std::stri
     return std::nullopt;
 }
 
+//  The index of the first row of `rows` a backup save can load at: the
+//  first whose start in `starts` names a backup card's count
+//  ("registered"). There is no backup until the first Pokemon Center save:
+//  03.05's heal, which loads at 03.06's start (console B, 2026-11-16).
+//  None: no plan names one, and no backup is ever opened.
+std::optional<size_t> first_backup_row(std::span<const StoryCheckpoint> rows, std::span<const CheckpointStart> starts){
+    for (size_t index = 0; index < rows.size(); index++){
+        const CheckpointStart* start = find_start(starts, rows[index].id);
+        if (start != nullptr && start->signature.registered){
+            return index;
+        }
+    }
+    return std::nullopt;
+}
+
+//  "no backup save exists before 03.06", by first_backup_row().
+std::string no_backup_before(std::span<const StoryCheckpoint> rows, std::optional<size_t> first_backup){
+    return first_backup
+        ? std::format("no backup save exists before {}", rows[*first_backup].id)
+        : std::string("no plan names a backup save's start");
+}
+
 //  `part` added to the run's `total` so far: its counts and runs, and its
 //  end.
 void add_part(const SegmentReport& part, SegmentReport& total){
@@ -99,6 +121,61 @@ std::variant<size_t, Outcome> rewind_to_backup(
     return *index;
 }
 
+//  After `failed` (an index of `plan.rows`, before the first backup) failed
+//  with the latest save past its start: an autosave in its last step
+//  (`seen_in`) is the plan's autosave, the next checkpoint's start; that
+//  save is loaded and its index returned. Anywhere else the position is
+//  unknown: nothing is loaded, and the failure ("no_backup_yet") says
+//  where the save is.
+std::variant<size_t, Outcome> reload_latest_save(
+    const Pokemon::StoryGame<ZonePose>& game, PlzaBackend& backend, const RewindPlan& plan,
+    size_t failed, const std::optional<std::string>& seen_in
+){
+    const std::span<const StoryCheckpoint> rows = plan.rows;
+    const StoryCheckpoint& row = rows[failed];
+    const std::string none = no_backup_before(rows, first_backup_row(rows, plan.starts));
+    const bool at_end = seen_in && !row.steps.empty() && *seen_in == row.steps.back().name;
+    if (at_end && failed + 1 <= plan.last){
+        const StoryCheckpoint& next = rows[failed + 1];
+        backend.log(std::format(
+            "[Rewind] {}: the latest save is {}'s start ({}'s autosave in {}); loading it", none, next.id, row.id, *seen_in
+        ));
+        const Outcome loaded = load_checkpoint_start(game, backend, next);
+        if (!loaded.succeeded()){
+            return loaded;
+        }
+        return failed + 1;
+    }
+    std::string where = std::format("past {}'s start", row.id);
+    if (at_end && failed + 1 < rows.size()){
+        where = std::format("{}'s start, past the run's end", rows[failed + 1].id);
+    }else if (seen_in){
+        where = std::format("in {}'s {}", row.id, *seen_in);
+    }
+    const std::string message = std::format("{}: the latest save is {}", none, where);
+    backend.log(std::format("[Rewind] {}", message));
+    return Pokemon::outcome_failed("no_backup_yet", message);
+}
+
+//  After `failed` (an index of `plan.rows`) failed with its start save
+//  gone, as rewind `attempt` of `plan.max_rewinds`: to the backup when one
+//  exists at or before it (rewind_to_backup()), else to the latest save
+//  (reload_latest_save()).
+std::variant<size_t, Outcome> rewind_after(
+    const Pokemon::StoryGame<ZonePose>& game, PlzaBackend& backend, const RewindPlan& plan, const BackupSave& backup,
+    size_t failed, const std::optional<std::string>& seen_in, size_t attempt
+){
+    const std::optional<size_t> first_backup = first_backup_row(plan.rows, plan.starts);
+    if (!first_backup || failed < *first_backup){
+        return reload_latest_save(game, backend, plan, failed, seen_in);
+    }
+    backend.log(std::format(
+        "[Rewind] {} failed after the game autosaved in {}: its start save is gone; rewinding to the backup save ({} of {})",
+        plan.rows[failed].id, seen_in.value_or("a step"), attempt, plan.max_rewinds
+    ));
+    return rewind_to_backup(backend, plan.rows, failed, plan.starts, backup);
+}
+
 } // namespace
 
 
@@ -108,6 +185,14 @@ std::optional<size_t> start_or_rewind(
     const std::optional<size_t> from = run_start(plan.rows, plan.starts, plan.first, read);
     if (from || plan.max_rewinds == 0){
         return from;
+    }
+    const std::optional<size_t> first_backup = first_backup_row(plan.rows, plan.starts);
+    if (!first_backup || plan.first < *first_backup){
+        backend.log(std::format(
+            "AutoStory: the screen ({}) matches no checkpoint start up to {}, and {}: no rewind",
+            to_string(read), plan.rows[plan.first].id, no_backup_before(plan.rows, first_backup)
+        ));
+        return std::nullopt;
     }
     backend.log(std::format(
         "AutoStory: the screen ({}) matches no checkpoint start up to {}: rewinding to the backup save", to_string(read), plan.rows[plan.first].id
@@ -154,11 +239,7 @@ SegmentReport run_plza_with_rewinds(
         case AfterFailure::REWIND:
             break;
         }
-        backend.log(std::format(
-            "[Rewind] {} failed after the game autosaved in {}: its start save is gone; rewinding to the backup save ({} of {})",
-            failed_id, seen_in.value_or("a step"), rewinds + 1, plan.max_rewinds
-        ));
-        const std::variant<size_t, Outcome> back = rewind_to_backup(backend, rows, *failed, plan.starts, backup);
+        const std::variant<size_t, Outcome> back = rewind_after(game, backend, plan, backup, *failed, seen_in, rewinds + 1);
         if (const Outcome* failure = std::get_if<Outcome>(&back)){
             total.failed_event = "rewind";
             total.failure = *failure;

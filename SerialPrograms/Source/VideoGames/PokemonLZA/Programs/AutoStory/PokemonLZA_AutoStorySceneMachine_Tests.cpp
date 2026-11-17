@@ -121,6 +121,13 @@ SceneMachineConfig quiet_room_config(){
     return config;
 }
 
+//  03.01's lobby: Hotel Z's quiet end, A through the text.
+SceneMachineConfig lobby_config(){
+    SceneMachineConfig config = quiet_room_config();
+    config.text_with_a = true;
+    return config;
+}
+
 //  03.07's gate scene (console B, 2026-11-16 18:39): a black fade, then
 //  "received 10 Poke Balls", which no detector reads, looked at every
 //  500 ms to 11.5 s, Taunie's text, then the controls hint held a second.
@@ -687,6 +694,14 @@ const RunCase RUN_CASES[] = {
         .name = "Hotel Z's room: the quiet end is control",
         .input = {.looks = {look_at(0ms, DIALOG), look_at(1000ms), look_at(4100ms, STILL)}, .config = quiet_room_config()},
         .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 1, .line = "[PLZA test] done: quiet, taken as control."},
+    },
+    {
+        //  03.01's lobby (console B, 2026-11-17): a B for the text that
+        //  lands as Alton's choice opens picks its cancel row, so the
+        //  scene advances its text with A.
+        .name = "Hotel Z's lobby with advance_with_a: A, not B, on its text",
+        .input = {.looks = {look_at(0ms, DIALOG), look_at(1000ms), look_at(4100ms, STILL)}, .config = lobby_config()},
+        .expectation = {.verdict = "done", .a_presses = 1, .b_presses = 0, .line = "[PLZA test] done: quiet, taken as control."},
     },
     {
         //  console B, 2026-11-15: 02.02's street scene moved 41 s with no
