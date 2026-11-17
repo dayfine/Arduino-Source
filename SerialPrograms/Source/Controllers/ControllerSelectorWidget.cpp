@@ -12,6 +12,7 @@
 #include "CommonFramework/Panels/ConsoleSettingsStretch.h"
 #include "CommonFramework/StaticGlobals.h"
 #include "Controllers/ControllerTypeStrings.h"
+#include "Controllers/MgbaLink/MgbaLink_SharedLink.h"
 #include "ControllerSelectorWidget.h"
 
 //#include <iostream>
@@ -32,7 +33,7 @@ std::vector<ControllerInterface> supported_interfaces(){
         ControllerInterface::TcpSysbotBase,
 //        ControllerInterface::UsbSysbotBase,
     };
-    if (STATIC_GLOBALS.DEVELOPER_MODE){
+    if (STATIC_GLOBALS.DEVELOPER_MODE || MgbaLink::lab_opt_in()){
         interfaces.emplace_back(ControllerInterface::MgbaLink);
     }
     return interfaces;

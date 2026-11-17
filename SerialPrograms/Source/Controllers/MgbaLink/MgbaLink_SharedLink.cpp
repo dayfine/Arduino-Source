@@ -4,6 +4,7 @@
  *
  */
 
+#include <stdlib.h>
 #include "MgbaLink_SharedLink.h"
 
 namespace PokemonAutomation{
@@ -65,6 +66,14 @@ void LinkRegistry::unpublish(const std::string& address, uint64_t serial) noexce
 LinkRegistry& link_registry(){
     static LinkRegistry registry;
     return registry;
+}
+
+bool lab_opt_in(){
+    static const bool enabled = []{
+        const char* value = getenv("PA_MGBA_LINK");
+        return value != nullptr && std::string_view(value) == "1";
+    }();
+    return enabled;
 }
 
 

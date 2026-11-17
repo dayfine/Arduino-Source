@@ -78,6 +78,12 @@ private:
 //  The registry the app's video sources and controllers share.
 LinkRegistry& link_registry();
 
+//  True when the environment has PA_MGBA_LINK=1. The mGBA Link controller
+//  and video source are Developer-mode entries; this lets a lab instance
+//  without a developer token offer them too, e.g.
+//  open -n --env PA_MGBA_LINK=1 SerialPrograms.app --args --profile lab-mgba
+bool lab_opt_in();
+
 
 }  // namespace MgbaLink
 }  // namespace PokemonAutomation
