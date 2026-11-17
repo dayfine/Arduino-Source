@@ -177,6 +177,11 @@ Outcome league_top_up(StoryEnv& env, const StoryStep& step){
     //  save's bag, which the save check counts the try's spending from.
     set_from_bag(env.saved_supplies, rows);
 
+    //  The lead's PP off its summary every try: after a reload the story's
+    //  moves can be a later try's (console B, 2026-11-17: tries 2 to 4
+    //  before the Champion skipped the Elixir with Blizzard at 0, counting
+    //  try 1's PP after its Elixir).
+    read_lead_moves(env, step_start_menu(step.args));
     if (!know_lead_hp(env, step, max_hp, full_if_unknown != nullptr && *full_if_unknown)){
         return Pokemon::outcome_failed("precondition_failed", std::format("{}: the lead's HP is unknown before {}", step.name, fight->name));
     }
