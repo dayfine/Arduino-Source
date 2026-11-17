@@ -35,12 +35,17 @@ enum class NewGameStart{
 //  having pressed nothing, if it is none of NewGameStart's.
 NewGameStart require_new_game_start(ConsoleHandle& console, ProControllerContext& context);
 
+//  Why `choices` cannot be played from `start`; nullopt when they can. From
+//  HOME or the language list the program types the name
+//  (name_typing_problem()); on Confirm Choices it is typed already.
+std::optional<std::string> new_game_start_problem(NewGameStart start, const NewGameChoices& choices);
+
 //  01.00's first step: from HOME (launch_plza_from_home()) or the language list, plays the language, the look and
 //  the name of `choices` up to "Confirm Choices"; on "Confirm Choices" it
 //  presses nothing. Each screen's highlight is read before and after each
 //  press; the name is typed with the Switch keyboard typer. Throws
 //  UserSetupError before any press if `choices` cannot be played
-//  (new_game_problem()) or the keyboard's counter takes fewer characters
+//  (new_game_problem(), new_game_start_problem()) or the keyboard's counter takes fewer characters
 //  than the name, OperationFailedException (with a screenshot) if a screen
 //  does not show, its highlight does not reach the choice, or a key press
 //  does not reach the name's field.

@@ -90,7 +90,7 @@ const EnumDropdownDatabase<NewGameLanguage>& new_game_language_database(){
         {NewGameLanguage::German,              "de",      "Deutsch"},
         {NewGameLanguage::Italian,             "it",      "Italiano"},
         {NewGameLanguage::Japanese,            "ja",      "Japanese"},
-        {NewGameLanguage::Korean,              "ko",      "Korean (not supported yet)"},
+        {NewGameLanguage::Korean,              "ko",      "Korean (start on Confirm Choices)"},
         {NewGameLanguage::ChineseSimplified,   "zh-Hans", "Chinese (Simplified)"},
         {NewGameLanguage::ChineseTraditional,  "zh-Hant", "Chinese (Traditional)"},
     };
@@ -110,10 +110,14 @@ void check_new_game_choices(ConsoleHandle& console, const StoryCheckpoint& first
 
 //  Connects the controller for a run from `first_row`. 01.00 starts on a
 //  screen that proves the save is fresh, so it is checked before any press,
-//  the connect press included.
-void connect_controller(ConsoleHandle& console, ProControllerContext& context, const StoryCheckpoint& first_row){
+//  the connect press included, with the choices that depend on it (a name
+//  the program cannot type is fine on Confirm Choices).
+void connect_controller(ConsoleHandle& console, ProControllerContext& context, const StoryCheckpoint& first_row, const NewGameChoices& choices){
     if (story_row_starts_without_save(first_row)){
-        require_new_game_start(console, context);
+        const NewGameStart start = require_new_game_start(console, context);
+        if (const std::optional<std::string> problem = new_game_start_problem(start, choices)){
+            throw UserSetupError(console, *problem);
+        }
     }
     require_player(console, context, BUTTON_L);
 }
@@ -281,7 +285,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const size_t last = RANGE.end_index();
     check_checkpoint_range(env.console, first, last, rows.size());
     check_new_game_choices(env.console, rows[first], new_game);
-    connect_controller(env.console, context, rows[first]);
+    connect_controller(env.console, context, rows[first], new_game);
 
     StoryEnv story{.env = env, .context = context, .battle_ai = BATTLE_AI, .new_game = new_game};
     PlzaConsoleBackend backend(story);

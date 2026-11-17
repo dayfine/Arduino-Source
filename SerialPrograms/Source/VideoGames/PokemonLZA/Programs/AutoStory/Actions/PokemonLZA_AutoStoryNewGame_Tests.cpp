@@ -50,8 +50,13 @@ std::string press_text(const std::optional<std::vector<IntroKey>>& presses){
 }
 
 
+//  Hangul names: 6 and 7 characters of 3 UTF-8 bytes each.
+const std::string HANGUL_6 = "\xec\xbd\x94\xec\x8a\xa4\xeb\xaa\xa8\xec\x8a\xa4\xec\xbd\x94\xec\x8a\xa4";
+const std::string HANGUL_7 = "\xec\xbd\x94\xec\x8a\xa4\xeb\xaa\xa8\xec\x8a\xa4\xec\xbd\x94\xec\x8a\xa4\xeb\xaa\xa8";
+
+
 //  new_game_problem(): whether the program refuses the choices before any
-//  press.
+//  press, whatever screen the run starts on.
 struct ProblemCase{
     std::string name;
     struct Input{
@@ -97,15 +102,16 @@ const ProblemCase PROBLEM_CASES[] = {
         .expectation = {.refused = true},
     },
     {
-        .name = "Korean is not supported",
-        .input = {.choices = {.language = NewGameLanguage::Korean, .name = "Kosmos"}},
+        .name = "6 Hangul characters in Korean",
+        .input = {.choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
+        .expectation = {.refused = false},
+    },
+    {
+        .name = "7 Hangul characters in Korean",
+        .input = {.choices = {.language = NewGameLanguage::Korean, .name = HANGUL_7}},
         .expectation = {.refused = true},
     },
     {.name = "an empty name", .input = {.choices = {.name = ""}}, .expectation = {.refused = true}},
-    {.name = "a space in the name", .input = {.choices = {.name = "Kos mos"}}, .expectation = {.refused = true}},
-    {.name = "digits and the first page's symbols", .input = {.choices = {.name = "a1-/:',.?!"}}, .expectation = {.refused = false}},
-    {.name = "an accented letter", .input = {.choices = {.name = "Jos\xc3\xa9"}}, .expectation = {.refused = true}},
-    {.name = "a symbol of the second page", .input = {.choices = {.name = "a#"}}, .expectation = {.refused = true}},
     {.name = "look 8", .input = {.choices = {.look = 8}}, .expectation = {.refused = false}},
     {.name = "look 0", .input = {.choices = {.look = 0}}, .expectation = {.refused = true}},
     {.name = "look 9", .input = {.choices = {.look = 9}}, .expectation = {.refused = true}},
@@ -131,6 +137,73 @@ public:
 
 private:
     const ProblemCase& m_test;
+};
+
+
+//  new_game_start_problem(): whether the program refuses the choices once it
+//  knows the start screen: from HOME or the language list it types the name,
+//  on Confirm Choices the name is typed already.
+struct StartProblemCase{
+    std::string name;
+    struct Input{
+        NewGameStart start = NewGameStart::LANGUAGE_LIST;
+        NewGameChoices choices;
+    };
+    Input input;
+    struct Expectation{
+        bool refused = false;
+    };
+    Expectation expectation;
+};
+
+const StartProblemCase START_PROBLEM_CASES[] = {
+    {.name = "the defaults from the language list", .input = {.choices = {}}, .expectation = {.refused = false}},
+    {
+        .name = "Korean from the language list",
+        .input = {.choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
+        .expectation = {.refused = true},
+    },
+    {
+        .name = "Korean from HOME",
+        .input = {.start = NewGameStart::HOME, .choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
+        .expectation = {.refused = true},
+    },
+    {
+        .name = "Korean on Confirm Choices",
+        .input = {.start = NewGameStart::CONFIRM_CHOICES, .choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
+        .expectation = {.refused = false},
+    },
+    {.name = "a space in the name", .input = {.choices = {.name = "Kos mos"}}, .expectation = {.refused = true}},
+    {.name = "digits and the first page's symbols", .input = {.choices = {.name = "a1-/:',.?!"}}, .expectation = {.refused = false}},
+    {.name = "an accented letter", .input = {.choices = {.name = "Jos\xc3\xa9"}}, .expectation = {.refused = true}},
+    {
+        .name = "an accented letter on Confirm Choices",
+        .input = {.start = NewGameStart::CONFIRM_CHOICES, .choices = {.name = "Jos\xc3\xa9"}},
+        .expectation = {.refused = false},
+    },
+    {.name = "a symbol of the second page", .input = {.choices = {.name = "a#"}}, .expectation = {.refused = true}},
+};
+
+class Test_NewGameStartProblem : public UnitTest{
+public:
+    explicit Test_NewGameStartProblem(const StartProblemCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStory - new game choices by start screen: {}", test.name))
+        , m_test(test)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::optional<std::string> problem = new_game_start_problem(m_test.input.start, m_test.input.choices);
+        if (problem.has_value() != m_test.expectation.refused){
+            return std::format(
+                "Expected {}, got {}.",
+                m_test.expectation.refused ? "a refusal" : "no problem",
+                problem ? *problem : std::string("no problem")
+            );
+        }
+        return true;
+    }
+
+private:
+    const StartProblemCase& m_test;
 };
 
 
@@ -293,6 +366,9 @@ private:
 void add_tests_AutoStoryNewGame(UnitTestDatabase& database){
     for (const ProblemCase& test : PROBLEM_CASES){
         database.add<Test_NewGameProblem>(test);
+    }
+    for (const StartProblemCase& test : START_PROBLEM_CASES){
+        database.add<Test_NewGameStartProblem>(test);
     }
     for (const GridCase& test : GRID_CASES){
         database.add<Test_GridMoves>(test);

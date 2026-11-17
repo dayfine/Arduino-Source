@@ -4,8 +4,10 @@
  *
  */
 
+#include <cctype>
 #include <format>
 #include <functional>
+#include <map>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/GlobalAutoPaths.h"
@@ -17,6 +19,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
+#include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_KeyboardEntryMappings.h"
 #include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryConfirmChoicesReader.h"
@@ -30,6 +33,41 @@ namespace PokemonLZA{
 
 
 namespace{
+
+//  Whether every character of `name` has a key on the name keyboard's
+//  first page, which the Switch keyboard typer types (letters by their
+//  capital).
+bool on_keyboard(std::string_view name){
+    const std::map<char, KeyboardEntryPosition>& keys = KEYBOARD_POSITIONS(KeyboardLayout::QWERTY);
+    for (const char ch : name){
+        if (!keys.contains((char)std::toupper((unsigned char)ch))){
+            return false;
+        }
+    }
+    return true;
+}
+
+//  Why the program cannot type `choices`' name on its language's keyboard;
+//  nullopt when it can.
+std::optional<std::string> name_typing_problem(const NewGameChoices& choices){
+    const NewGameLanguageInfo& info = new_game_language_info(choices.language);
+    if (!info.keyboard_supported){
+        return std::format(
+            "AutoStory: the program cannot type a name on the {} keyboard (Hangul). "
+            "Type the name by hand and start the run on \"Confirm Choices\".",
+            info.tag
+        );
+    }
+    if (!on_keyboard(choices.name)){
+        return std::format(
+            "AutoStory: the player name \"{}\" has a character that is not on the name keyboard's first page "
+            "(letters, digits and - / : ' , . ? !).",
+            choices.name
+        );
+    }
+    return std::nullopt;
+}
+
 
 using FrameCheck = std::function<bool(const ImageViewRGB32& frame)>;
 
@@ -381,11 +419,22 @@ NewGameStart require_new_game_start(ConsoleHandle& console, ProControllerContext
     }
 }
 
+std::optional<std::string> new_game_start_problem(NewGameStart start, const NewGameChoices& choices){
+    if (start == NewGameStart::CONFIRM_CHOICES){
+        return std::nullopt;
+    }
+    return name_typing_problem(choices);
+}
+
 void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices){
     if (const std::optional<std::string> problem = new_game_problem(choices)){
         throw UserSetupError(console, *problem);
     }
-    switch (require_new_game_start(console, context)){
+    const NewGameStart start = require_new_game_start(console, context);
+    if (const std::optional<std::string> problem = new_game_start_problem(start, choices)){
+        throw UserSetupError(console, *problem);
+    }
+    switch (start){
     case NewGameStart::CONFIRM_CHOICES:
         console.log("AutoStory intro: already on Confirm Choices; its check reads the language and name.");
         return;
