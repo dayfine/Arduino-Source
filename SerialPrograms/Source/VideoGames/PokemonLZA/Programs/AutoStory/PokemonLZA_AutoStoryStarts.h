@@ -76,8 +76,10 @@ std::optional<size_t> checkpoint_at(
 //  The checkpoint a run asked to start at `asked` (an index of `rows`)
 //  plays from, by the reading `read` taken after the load:
 //  checkpoint_at(). When no plan names `asked`'s start, there is nothing
-//  to check it against: `asked`, unless one earlier start matches. None:
-//  the run must stop ("start_position_unknown").
+//  to check it against: `asked`. An earlier start matching is no sign of
+//  being there: 03.09 to 03.11 all read as party 5 outside a wild zone, and
+//  Mable's office (03.11) ran 03.09's legs (console B, 2026-11-16 21:10).
+//  None: the run must stop ("start_position_unknown").
 std::optional<size_t> run_start(
     std::span<const Pokemon::StoryCheckpoint> rows, std::span<const CheckpointStart> starts,
     size_t asked, const StartSignature& read
