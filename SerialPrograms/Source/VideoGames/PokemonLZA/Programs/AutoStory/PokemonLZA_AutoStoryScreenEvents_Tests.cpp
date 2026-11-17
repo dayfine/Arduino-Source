@@ -70,9 +70,13 @@ struct FrameCase{
 
 const FrameCase FRAME_CASES[] = {
     {
-        .name = "an A prompt while the player is held",
+        //  The English elevator door's "A Take Elevator" over the party bar
+        //  of one (a Pokemon and five empty slot frames). This case expected
+        //  no party bar while the bar was read by its D-pad arrows, which
+        //  this frame lacks; the empty slot frames show it is up.
+        .name = "the elevator's A prompt over the party bar of one",
         .input = {.path = "AutoStoryScreenEvents/za2_m3v_s1.png"},
-        .expectation = {.events = {.interact_prompt = true, .can_move = false}},
+        .expectation = {.events = {.interact_prompt = true, .can_move = true}},
     },
     {
         //  console B, 2026-11-15: 01.02's battle area, the scene over;
@@ -157,7 +161,7 @@ const BattleFrameCase BATTLE_FRAME_CASES[] = {
         .expectation = {.battle = false},
     },
     {
-        .name = "no battle at an A prompt while the player is held",
+        .name = "no battle at the elevator's A prompt over the party bar of one",
         .input = {.path = "AutoStoryScreenEvents/za2_m3v_s1.png"},
         .expectation = {.battle = false},
     },
