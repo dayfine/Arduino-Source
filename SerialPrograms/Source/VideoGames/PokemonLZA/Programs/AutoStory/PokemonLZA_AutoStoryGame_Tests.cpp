@@ -23,6 +23,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
+#include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryReadings.h"
@@ -37,6 +38,7 @@ namespace PokemonLZA{
 namespace{
 
 using Pokemon::Observation;
+using Pokemon::StoryActionCall;
 using Pokemon::StoryCheckpoint;
 using Pokemon::StoryStep;
 using Pokemon::ZonePose;
@@ -1421,10 +1423,85 @@ private:
     ChainCase m_case;
 };
 
+//  A checkpoint whose last step saves from the menu.
+struct MenuSaveCase{
+    std::string name;
+    struct Input{
+        //  The last step's action.
+        std::string action;
+        //  Whether that step succeeds.
+        bool succeeds = true;
+    };
+    Input input;
+    struct Expectation{
+        //  The checkpoint's save: "saved", or its failure's detail.
+        std::string save;
+    };
+    Expectation expectation;
+};
+
+const MenuSaveCase MENU_SAVE_CASES[] = {
+    {
+        .name = "a menu save that succeeds saves the checkpoint",
+        .input = {.action = std::string(MENU_SAVE_ACTION)},
+        .expectation = {.save = "saved"},
+    },
+    {
+        .name = "a menu save that fails saves nothing",
+        .input = {.action = std::string(MENU_SAVE_ACTION), .succeeds = false},
+        .expectation = {.save = "no autosave seen"},
+    },
+    {
+        .name = "another step that succeeds saves nothing",
+        .input = {.action = "walk_to_marker"},
+        .expectation = {.save = "no autosave seen"},
+    },
+};
+
+UnitTestResult check_menu_save(const MenuSaveCase& test, CancellableScope& scope){
+    const bool succeeds = test.input.succeeds;
+    Pokemon::StoryGame<ZonePose> inner;
+    inner.actions.push_back(Pokemon::StoryAction<ZonePose>{
+        .spec = {.kind = Pokemon::StoryStepKind::GAME, .name = test.input.action},
+        .handler = [succeeds](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
+            return succeeds ? Pokemon::outcome_ok() : Pokemon::outcome_failed("save_failed", "no save dialog");
+        },
+    });
+    AutosaveSightings sightings;
+    const Pokemon::StoryGame<ZonePose> game = with_autosave_sightings(inner, Pokemon::StoryRows{}, sightings);
+    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = {}}, scope);
+    const StoryCheckpoint row = one_step_row("T", test.input.action);
+    const Pokemon::StoryActionArgs args;
+    Pokemon::RunState state;
+    game.actions.front().handler(backend, StoryActionCall{.step = row.steps.front(), .args = args}, state);
+    const Pokemon::Outcome saved = game.save(backend, row);
+    const std::string save = saved.succeeded() ? "saved" : saved.detail;
+    if (save != test.expectation.save){
+        return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.save, save, joined(backend.lines(), "\n"));
+    }
+    return true;
+}
+
+class MenuSaveTest : public UnitTest{
+public:
+    explicit MenuSaveTest(MenuSaveCase test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStoryGame menu save - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
+        return check_menu_save(m_case, scope);
+    }
+private:
+    MenuSaveCase m_case;
+};
+
 } // namespace
 
 
 void add_tests_AutoStoryGame(UnitTestDatabase& database){
+    for (const MenuSaveCase& test : MENU_SAVE_CASES){
+        database.add<MenuSaveTest>(test);
+    }
     for (const StoryDataCase& test : STORY_DATA_CASES){
         database.add<StoryDataTest>(test);
     }

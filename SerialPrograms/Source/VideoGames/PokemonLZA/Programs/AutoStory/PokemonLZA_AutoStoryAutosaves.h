@@ -46,6 +46,10 @@ public:
     //  "[PLZA] autosave badge at <t>s in <step>", t from the checkpoint's
     //  first look.
     void note(PlzaBackend& backend, const Pokemon::Observation<Pokemon::ZonePose>& look, std::string_view step);
+    //  The run saved the game from the menu in step `step` (MENU_SAVE_ACTION):
+    //  counted as an autosave seen there, logged as "[PLZA] saved from the
+    //  menu in <step>".
+    void saved(PlzaBackend& backend, std::string_view step);
     //  The checkpoint ends with step `last_step`: the step the badge last
     //  showed in, if it did. Whether that is `last_step` is kept for
     //  last_end_seen().
@@ -69,6 +73,11 @@ private:
     bool m_last_end_seen = false;
 };
 
+//  The action that saves the game from the menu at a fixed spot, where a
+//  checkpoint would otherwise end on an autosave the plan does not place
+//  (a catch's). A plan names its step as "autosave_step".
+inline constexpr std::string_view MENU_SAVE_ACTION = "save_from_menu";
+
 //  Why `row` cannot end on the game's autosave in its step `autosave_step`
 //  (the plan's "autosave_step"; `save` is the plan's "save"), none when it
 //  can: the step must be one of its steps and its last, and an "autosave"
@@ -79,7 +88,8 @@ std::optional<std::string> autosave_step_error(
 );
 
 //  `game` with every action's looks noted in `sightings`, which must
-//  outlive it, and its save counting the autosave `sightings` saw in the
+//  outlive it, a MENU_SAVE_ACTION step that succeeds noted as saved, and
+//  its save counting the autosave `sightings` saw in the
 //  checkpoint's last step ("[Save] <id>: the game autosaved (seen)"); one
 //  seen only before it saves nothing ("[Save] <id>: the game autosaved in
 //  <step>, before <next>"); else nothing saved (Pokemon::NOT_SAVED),

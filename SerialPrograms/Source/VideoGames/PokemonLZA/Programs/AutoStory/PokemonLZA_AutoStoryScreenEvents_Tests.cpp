@@ -107,6 +107,14 @@ const BattleFrameCase BATTLE_FRAME_CASES[] = {
         .expectation = {.battle = true},
     },
     {
+        //  console B, 2026-11-16 18:44:57 (03.08b zone_1_to_far_gate): a
+        //  wild Mareep's "Ruggito" at Wild Zone 1's far pillar, the player
+        //  not locked on; the gate walk read no gate (gate_not_seen).
+        .name = "a wild battle at the zone's pillar, not locked on",
+        .input = {.path = "AutoStoryScreenEvents/it_0308b_zone_pillar_wild_battle.png"},
+        .expectation = {.battle = true},
+    },
+    {
         .name = "no battle at the A Talk prompt on the Italian game",
         .input = {.path = "AutoStoryScreenEvents/it_0102_parla_talk_prompt.png"},
         .expectation = {.battle = false},
@@ -124,6 +132,48 @@ UnitTestResult check_battle_frame(const BattleFrameCase& test){
     const bool battle = observer.read(ImageRGB32(path)).has(ScreenEvent::BATTLE_STARTED);
     if (battle != test.expectation.battle){
         return std::format("{}: expected battle {}, got {}", test.input.path, test.expectation.battle ? "yes" : "no", battle ? "yes" : "no");
+    }
+    return true;
+}
+
+struct DialogFrameCase{
+    std::string name;
+    struct Input{
+        std::string_view path;  //  In CommandLineTests/PokemonLZA/.
+    };
+    Input input;
+    struct Expectation{
+        bool dialog = false;
+        bool interact_prompt = false;
+    };
+    Expectation expectation;
+};
+
+const DialogFrameCase DIALOG_FRAME_CASES[] = {
+    {
+        //  console B, 2026-11-16 18:48 (03.10's first walk): Ryon at the
+        //  Research Lab's doors, "Allora, come va? Sei riuscita a
+        //  catturare cinque specie di Pokemon?", the lab gate's scene that
+        //  03.09 must play before it ends; a dialog, not a prompt, ends
+        //  03.09's walk to the gate (walk_to_marker()).
+        .name = "Ryon's five-species dialog at the lab gate on the Italian game",
+        .input = {.path = "AutoStoryScreenEvents/it_0309_lab_gate_ryon_dialog.png"},
+        .expectation = {.dialog = true, .interact_prompt = false},
+    },
+};
+
+UnitTestResult check_dialog_frame(const DialogFrameCase& test){
+    const std::string path = std::format("{}PokemonLZA/{}", UNIT_TEST_RESOURCE_PATH(), test.input.path);
+    PlzaScreenObserver observer;
+    const ScreenEvents events = observer.read(ImageRGB32(path));
+    const bool dialog = events.has(ScreenEvent::DIALOG_BOX);
+    const bool prompt = events.has(ScreenEvent::INTERACT_PROMPT);
+    if (dialog != test.expectation.dialog || prompt != test.expectation.interact_prompt){
+        return std::format(
+            "{}: expected dialog {}, A prompt {}; got dialog {}, A prompt {}", test.input.path,
+            test.expectation.dialog ? "yes" : "no", test.expectation.interact_prompt ? "yes" : "no",
+            dialog ? "yes" : "no", prompt ? "yes" : "no"
+        );
     }
     return true;
 }
@@ -216,6 +266,20 @@ private:
     const BattleFrameCase& m_test;
 };
 
+class Test_DialogFrame : public UnitTest{
+public:
+    explicit Test_DialogFrame(const DialogFrameCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStoryScreenEvents - dialog frame: {}", test.name))
+        , m_test(test)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return check_dialog_frame(m_test);
+    }
+
+private:
+    const DialogFrameCase& m_test;
+};
+
 class Test_Folder : public UnitTest{
 public:
     explicit Test_Folder(const FolderCase& test)
@@ -239,6 +303,9 @@ void add_tests_AutoStoryScreenEvents(UnitTestDatabase& database){
     }
     for (const BattleFrameCase& test : BATTLE_FRAME_CASES){
         database.add<Test_BattleFrame>(test);
+    }
+    for (const DialogFrameCase& test : DIALOG_FRAME_CASES){
+        database.add<Test_DialogFrame>(test);
     }
     for (const FolderCase& test : FOLDER_CASES){
         database.add<Test_Folder>(test);

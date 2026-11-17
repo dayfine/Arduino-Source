@@ -112,6 +112,18 @@ SceneMachineConfig quiet_room_config(){
     return config;
 }
 
+//  03.07's gate scene (console B, 2026-11-16 18:39): a black fade, then
+//  "received 10 Poke Balls", which no detector reads, looked at every
+//  500 ms to 11.5 s, Taunie's text, then the controls hint held a second.
+std::vector<Observation<ZonePose>> gift_box_scene(){
+    std::vector<Observation<ZonePose>> looks{look_at(0ms, BLACK)};
+    for (Milliseconds at = 1500ms; at <= 11500ms; at += 500ms){
+        looks.push_back(look_at(at));
+    }
+    looks.insert(looks.end(), {look_at(11700ms, DIALOG), look_at(/*at=*/12500ms, NOTHING, {CONTROLS_HINT_READING}), look_at(/*at=*/13600ms, NOTHING, {CONTROLS_HINT_READING})});
+    return looks;
+}
+
 //  Blind A after 5 s and no quiet time.
 SceneMachineConfig blind_press_config(){
     SceneMachineConfig config;
@@ -293,6 +305,12 @@ const RunCase RUN_CASES[] = {
             .states = "dialog, scene_still, fade_white, scene_still, quiet_end",
         },
     },
+    {.name = "gap_press: a box no detector reads inside the scene gets one A after 2 s", .input = {.looks = gift_box_scene(), .config = [](){
+        SceneMachineConfig config = arrival_config();
+        config.gap_press = 2000ms;
+        return config;
+    }()}, .expectation = {.verdict = "done", .a_presses = 1, .b_presses = 1}},
+    {.name = "no gap_press: the same box gets no press", .input = {.looks = gift_box_scene()}, .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 1}},
     {
         .name = "a black fade longer than the quiet time is waited out",
         .input = {

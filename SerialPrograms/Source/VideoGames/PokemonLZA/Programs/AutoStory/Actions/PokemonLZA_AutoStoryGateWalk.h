@@ -55,6 +55,9 @@ struct GateWalk{
 //  the first second of looks shows no gate (the player faces away from
 //  it; walking on ran into the zone's wall), and as "no_prompt" after the
 //  timeout, each with how many looks saw the gate and its last reading.
+//  A wild battle (BATTLE_STARTED; a Mareep at the zone's pillar, console
+//  B 2026-11-16) is walked on through at the last angle, its looks counted
+//  toward neither; still in battle after 20 s fails as "wild_battle".
 //  The heading at the prompt is logged when `arrow` is set.
 Pokemon::Outcome walk_to_zone_gate_entrance(
     PlzaBackend& backend, const MinimapArrowReader& arrow, const LookReader& gate, const GateWalk& walk

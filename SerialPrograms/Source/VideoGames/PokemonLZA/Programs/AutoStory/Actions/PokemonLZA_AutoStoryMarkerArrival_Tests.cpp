@@ -20,22 +20,21 @@ namespace PokemonLZA{
 
 namespace{
 
-//  One look on the walk: the marker's digits as OCR read them (none: no
-//  marker, or no digits), and whether an A prompt or a dialog shows.
-struct Look{
-    std::optional<int> read;
-    bool prompt_or_dialog = false;
-};
+using Look = MarkerLook;
 
 constexpr std::optional<int> NO_DIGITS = std::nullopt;
 
-//  A look with an A prompt or a dialog, and no digits.
-constexpr Look PROMPT{.read = NO_DIGITS, .prompt_or_dialog = true};
+//  A look with an A prompt or a dialog, the marker up with no digits.
+constexpr Look PROMPT{.distance = NO_DIGITS, .marker_shows = true, .prompt_or_dialog = true};
+//  A look with a dialog and no marker: a scene took it away.
+constexpr Look SCENE_DIALOG{.distance = NO_DIGITS, .marker_shows = false, .prompt_or_dialog = true};
+//  A look with no marker and no prompt.
+constexpr Look MARKER_GONE{.distance = NO_DIGITS, .marker_shows = false, .prompt_or_dialog = false};
 
 std::vector<Look> reads(std::vector<std::optional<int>> distances){
     std::vector<Look> looks;
     for (const std::optional<int>& distance : distances){
-        looks.push_back(Look{.read = distance, .prompt_or_dialog = false});
+        looks.push_back(Look{.distance = distance, .marker_shows = true, .prompt_or_dialog = false});
     }
     return looks;
 }
@@ -78,22 +77,66 @@ const ArrivalCase ARRIVAL_CASES[] = {
     {
         //  console B, 2026-11-14 21:27:50 to 21:28:12 (plza/autostory,
         //  passed): 37 down to 13, then the gate's scene took the marker
-        //  away, and Taunie's dialog showed after the camera's sweep.
+        //  away, and Ryon's dialog showed after the camera's sweep.
         .name = "03.09's walk that passed: 37 down to 13, the marker gone, then the dialog",
         .input = {
             .proof = MarkerProof::NEAR_READ,
             .looks = concat(
-                reads({37, 35, 32, 29, NO_DIGITS, 24, 24, 21, 18, 16, 13, NO_DIGITS, NO_DIGITS, NO_DIGITS}),
-                {PROMPT}
+                reads({37, 35, 32, 29, NO_DIGITS, 24, 24, 21, 18, 16, 13}),
+                {MARKER_GONE, MARKER_GONE, MARKER_GONE, SCENE_DIALOG}
             ),
         },
         .expectation = {.arrived_on = 15, .near = true},
     },
     {
+        //  console B, 2026-11-16 18:47:15 to 18:47:18: by a dialog on the
+        //  street (not the lab gate's scene), OCR read "E5", "41", "v1" and
+        //  "E6"; 5, 1 and 6 agreed and were taken, and the dialog passed
+        //  the walk at "6 to go". The gate's scene came 23 to go later.
+        .name = "03.09's walk: junk single digits by a street dialog are not near the lab gate",
+        .input = {
+            .proof = MarkerProof::NEAR_READ,
+            .looks = concat(
+                reads({NO_DIGITS, NO_DIGITS, 5, 41, NO_DIGITS, NO_DIGITS, 1}),
+                {Look{.distance = 6, .marker_shows = true, .prompt_or_dialog = true}}
+            ),
+        },
+        .expectation = {.arrived_on = std::nullopt, .near = false},
+    },
+    {
+        //  A prompt with the marker still up at 12 to go: the lab gate's
+        //  scene takes the marker away before its dialog (console B,
+        //  2026-11-14 and 2026-11-16 18:47:40 to 18:47:51).
+        .name = "a prompt with the marker up at 12 to go is not the objective",
+        .input = {
+            .proof = MarkerProof::NEAR_READ,
+            .looks = concat(reads({24, 21, 18, 15, 12}), {Look{.distance = 12, .marker_shows = true, .prompt_or_dialog = true}}),
+        },
+        .expectation = {.arrived_on = std::nullopt, .near = true},
+    },
+    {
+        .name = "a prompt with the marker up below 10 to go is the objective",
+        .input = {
+            .proof = MarkerProof::NEAR_READ,
+            .looks = concat(reads({18, 15, 12, 9}), {Look{.distance = 8, .marker_shows = true, .prompt_or_dialog = true}}),
+        },
+        .expectation = {.arrived_on = 5, .near = true},
+    },
+    {
+        //  console B, 2026-11-16 18:47:37 to 18:47:51: 23 down to 12, the
+        //  marker gone, Ryon's dialog 10 s later: the lab gate's scene.
+        .name = "the lab gate's scene after 23 down to 12: the marker gone, then the dialog",
+        .input = {
+            .proof = MarkerProof::NO_FAR_READ,
+            .looks = concat(reads({23, 22, 18, 15, 12, NO_DIGITS}), {MARKER_GONE, MARKER_GONE, SCENE_DIALOG}),
+        },
+        .expectation = {.arrived_on = 9, .near = true},
+    },
+    {
         .name = "a prompt at 44 to go, the reads agreeing, is not the objective",
         .input = {
             .proof = MarkerProof::NEAR_READ,
-            .looks = concat(reads({50, 47, 44}), {Look{.read = 44, .prompt_or_dialog = true}}),
+            .looks = concat(reads({50, 47, 44}), {Look{.distance = 44, .prompt_or_dialog = true}}),
         },
         .expectation = {.arrived_on = std::nullopt, .near = false},
     },
@@ -135,7 +178,7 @@ UnitTestResult check_arrival(const ArrivalCase& test){
     std::optional<size_t> arrived_on;
     for (size_t index = 0; index < test.input.looks.size() && !arrived_on; index++){
         const Look& look = test.input.looks[index];
-        arrival.look(look.read, look.prompt_or_dialog);
+        arrival.look(look);
         if (arrival.arrived()){
             arrived_on = index + 1;
         }

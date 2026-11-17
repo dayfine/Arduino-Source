@@ -29,6 +29,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLaunch.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLines.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerWalk.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMenuSave.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
@@ -106,6 +107,7 @@ std::vector<StoryActionSpec> console_specs(){
         console_only(game_spec("walk_to_marker")),
         console_only(game_spec("walk_to_unread_marker")),
         console_only(game_spec("claim_mable_research_reward")),
+        console_only(game_spec(std::string(MENU_SAVE_ACTION))),
     };
 }
 
@@ -138,6 +140,8 @@ std::vector<StoryActionSpec> make_specs(){
             flag("press_a_first", "press A first, at the prompt that starts the scene (a door's \"A Enter\")"),
             flag("quiet_is_control", "the quiet time ends the step with control, where no party bar or prompt shows (Hotel Z)"),
             optional_int("end_after_black_fades", "end 5 s after this many black fades, or on the controls hint; the banner does not end it"),
+            optional_int("scene_start_ms", "the step plays a scene: control with no scene seen this long fails it"),
+            optional_int("gap_press_ms", "inside the scene, one A when nothing shows this long (a box no detector reads)"),
         }),
         game_spec("text_to_choice", {
             flag("advance_with_a", "advance the text with A, for a talk that B cancels (Hotel Z's elevator)"),
@@ -301,6 +305,7 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
         {"walk_to_marker", walk_to_marker},
         {"walk_to_unread_marker", walk_to_unread_marker},
         {"claim_mable_research_reward", claim_research_reward},
+        {MENU_SAVE_ACTION, save_from_menu},
     };
     return steps;
 }
@@ -481,7 +486,11 @@ Outcome walk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
 //  "quiet_ms" is the quiet time, which with "quiet_is_control" ends the
 //  step with control (Hotel Z shows no party bar). "press_a_first" presses
 //  A at the prompt the scene starts from (press_through_prompt()), which
-//  would otherwise read as control at once.
+//  would otherwise read as control at once. "scene_start_ms": the step
+//  plays a scene (SceneMachineConfig::start_window), so control with no
+//  scene seen for that long fails it ("scene_never_started") instead of
+//  passing at once: 03.09's lab_lobby, A at the door to its fade.
+//  "gap_press_ms": SceneMachineConfig::gap_press.
 Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
     if (Pokemon::story_arg<bool>(call.args, "press_a_first")){
         press_through_prompt(backend);
@@ -490,6 +499,14 @@ Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAct
     config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));
     config.quiet_is_control = Pokemon::story_arg<bool>(call.args, "quiet_is_control");
     config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
+    const auto gap = call.args.find("gap_press_ms");
+    if (gap != call.args.end()){
+        config.gap_press = Milliseconds(std::get<int64_t>(gap->second));
+    }
+    const auto start = call.args.find("scene_start_ms");
+    if (start != call.args.end()){
+        config.start_window = Milliseconds(std::get<int64_t>(start->second));
+    }
     const auto fades = call.args.find("end_after_black_fades");
     if (fades != call.args.end()){
         config.end_after_black_fades = (size_t)std::get<int64_t>(fades->second);
@@ -609,78 +626,9 @@ Outcome talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCal
 }
 
 
-//  How long "choose_N" waits for the choice box.
-constexpr Milliseconds CHOICE_WAIT(3000);
-constexpr Milliseconds CHOICE_POLL(250);
-
-//  The highlighted row of the choice box on `look`, and how many rows it
-//  has; none without a choice box or rows that read.
-std::optional<std::pair<int, int>> choice_rows(const ScreenObservation& look){
-    const auto selected = look.readings.find(CHOICE_SELECTED_READING);
-    const auto rows = look.readings.find(CHOICE_ROWS_READING);
-    if (!look.events.has(ScreenEvent::CHOICE_BOX) || selected == look.readings.end() || rows == look.readings.end()){
-        return std::nullopt;
-    }
-    return std::make_pair(selected->second, rows->second);
-}
-
-//  The choice box's rows within CHOICE_WAIT, if it shows with rows that read.
-std::optional<std::pair<int, int>> wait_for_choice_rows(Pokemon::StoryBackend<ZonePose>& backend){
-    for (Milliseconds waited(0); ; waited += CHOICE_POLL){
-        backend.scope().throw_if_cancelled();
-        const std::optional<std::pair<int, int>> rows = choice_rows(backend.observe());
-        if (rows || waited >= CHOICE_WAIT){
-            return rows;
-        }
-        backend.wait(CHOICE_POLL);
-    }
-}
-
-//  A presses through a question's text until its choices show (the lab
-//  elevator's "Which floor?"), each after CHOICE_WAIT with no choice.
-constexpr int CHOICE_TEXT_PRESSES = 3;
-
-//  "choose_<index>": with a choice box on screen (within CHOICE_WAIT, or
-//  after up to CHOICE_TEXT_PRESSES A presses through the text), moves the
-//  highlight from its row to row `index` (0 the top) with the D-pad, reads it there, then A. Fails as "no_choice" when no choice
-//  box with rows that read shows, "no_such_choice" when it has no row
-//  `index`, and "choice_not_reached" when the highlight is elsewhere after
-//  the presses.
-Outcome choose_step(Pokemon::StoryBackend<ZonePose>& backend, int index){
-    std::optional<std::pair<int, int>> rows = wait_for_choice_rows(backend);
-    for (int press = 0; !rows && press < CHOICE_TEXT_PRESSES; press++){
-        backend.log(std::format("[PLZA] choose_{}: no choice yet: A through the text", index));
-        backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
-        rows = wait_for_choice_rows(backend);
-    }
-    if (!rows){
-        return Pokemon::outcome_failed("no_choice", std::format("no choice box with rows that read after {} A presses", CHOICE_TEXT_PRESSES));
-    }
-    const auto [selected, count] = *rows;
-    if (index >= count){
-        return Pokemon::outcome_failed("no_such_choice", std::format("row {} of a choice of {} rows", index, count));
-    }
-    backend.log(std::format("[PLZA] choose_{}: row {} of {} highlighted", index, selected, count));
-    const int moves = index - selected;
-    for (int moved = 0; moved < std::abs(moves); moved++){
-        backend.press(moves > 0 ? BUTTON_DOWN : BUTTON_UP, /*hold=*/160ms, /*release=*/240ms);
-    }
-    if (moves != 0){
-        const std::optional<std::pair<int, int>> now = choice_rows(backend.observe());
-        if (!now || now->first != index){
-            return Pokemon::outcome_failed("choice_not_reached", std::format(
-                "the highlight is on row {}, not {}, after {} presses from row {}",
-                now ? std::to_string(now->first) : "none", index, std::abs(moves), selected
-            ));
-        }
-    }
-    backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
-    return Pokemon::outcome_ok();
-}
-
 Handler choose_handler(int index){
     return [index](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
-        return choose_step(backend, index);
+        return choose_row(backend, index);
     };
 }
 
