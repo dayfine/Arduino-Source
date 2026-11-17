@@ -187,6 +187,13 @@ size_t checked_first_row(StoryEnv& story, PlzaBackend& backend, const RewindPlan
     const std::span<const StoryCheckpoint> rows = plan.rows;
     const size_t first = plan.first;
     const std::span<const CheckpointStart> starts = plan.starts;
+    //  A row with no start signature runs as it is: no screen read, no map
+    //  (03.11's start indoors, the user 2026-11-17: "we don't need a start
+    //  check for this checkpoint").
+    if (find_start(starts, rows[first].id) == nullptr){
+        console.log(std::format("AutoStory: {} has no start signature: running it, no start check", rows[first].id));
+        return first;
+    }
     const StartSignature read = read_start_position(story, backend);
     const std::optional<size_t> from = start_or_rewind(backend, plan, read, backup);
     if (!from){
@@ -203,8 +210,6 @@ size_t checked_first_row(StoryEnv& story, PlzaBackend& backend, const RewindPlan
         console.log(std::format(
             "AutoStory: the save is at {}'s start ({}), not {}'s: running from {}", rows[*from].id, to_string(read), rows[first].id, rows[*from].id
         ));
-    }else if (find_start(starts, rows[first].id) == nullptr){
-        console.log(std::format("AutoStory: {} has no start signature to check the screen ({}) against: running it", rows[first].id, to_string(read)));
     }else{
         console.log(std::format("AutoStory: the screen ({}) is {}'s start", to_string(read), rows[first].id));
     }
