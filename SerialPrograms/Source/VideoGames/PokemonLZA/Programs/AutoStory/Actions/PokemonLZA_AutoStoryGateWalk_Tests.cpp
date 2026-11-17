@@ -37,6 +37,8 @@ struct Look{
     //  The gate's middle, in thousandths of the width; none: no gate.
     std::optional<int> gate_x = std::nullopt;
     bool prompt = false;
+    //  A wild battle's HUD (BATTLE_STARTED).
+    bool battle = false;
 };
 
 std::vector<Observation<ZonePose>> looks_of(const std::vector<Look>& looks){
@@ -51,6 +53,9 @@ std::vector<Observation<ZonePose>> looks_of(const std::vector<Look>& looks){
         }
         if (look.prompt){
             observation.events.set(ScreenEvent::INTERACT_PROMPT, true);
+        }
+        if (look.battle){
+            observation.events.set(ScreenEvent::BATTLE_STARTED, true);
         }
         out.push_back(std::move(observation));
     }
@@ -67,6 +72,17 @@ std::string joined(const std::vector<std::string>& lines){
 
 std::string slice(int degrees){
     return std::format("stick {}deg 250ms walk", degrees);
+}
+
+//  `count` looks of a wild battle, then `after`.
+std::vector<Look> battle_then(size_t count, std::vector<Look> after){
+    std::vector<Look> looks(count, Look{.battle = true});
+    looks.insert(looks.end(), after.begin(), after.end());
+    return looks;
+}
+
+std::vector<std::string> slices(size_t count, int degrees){
+    return std::vector<std::string>(count, slice(degrees));
 }
 
 
@@ -116,6 +132,20 @@ const GateWalkCase GATE_WALK_CASES[] = {
         .name = "a gate late in the first second is seen",
         .input = {.looks = {{}, {}, {}, {.gate_x = 400}, {.prompt = true}}},
         .expectation = {.failure = std::nullopt, .inputs = {slice(0), slice(0), slice(0), slice(-6)}},
+    },
+    {
+        //  console B, 2026-11-16 18:44:57 (03.08b zone_1_to_far_gate): a
+        //  wild Mareep engaged at the zone's pillar, the gate never read
+        //  in 3 s, and the walk failed as gate_not_seen. A battle's looks
+        //  walk on at the last angle and do not count toward it.
+        .name = "a wild battle at the start: walks on, then the gate",
+        .input = {.looks = battle_then(16, {{.gate_x = 500}, {.prompt = true}}), .timeout = 15000ms},
+        .expectation = {.failure = std::nullopt, .inputs = slices(17, 0)},
+    },
+    {
+        .name = "a wild battle that does not end in 20 s fails",
+        .input = {.looks = battle_then(1, {}), .timeout = 15000ms},
+        .expectation = {.failure = "wild_battle", .inputs = slices(80, 0), .message = "20000 ms"},
     },
     {
         .name = "no prompt by the timeout fails with the last gate read",

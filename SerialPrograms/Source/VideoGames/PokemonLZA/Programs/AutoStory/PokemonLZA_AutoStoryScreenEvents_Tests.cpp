@@ -107,6 +107,14 @@ const BattleFrameCase BATTLE_FRAME_CASES[] = {
         .expectation = {.battle = true},
     },
     {
+        //  console B, 2026-11-16 18:44:57 (03.08b zone_1_to_far_gate): a
+        //  wild Mareep's "Ruggito" at Wild Zone 1's far pillar, the player
+        //  not locked on; the gate walk read no gate (gate_not_seen).
+        .name = "a wild battle at the zone's pillar, not locked on",
+        .input = {.path = "AutoStoryScreenEvents/it_0308b_zone_pillar_wild_battle.png"},
+        .expectation = {.battle = true},
+    },
+    {
         .name = "no battle at the A Talk prompt on the Italian game",
         .input = {.path = "AutoStoryScreenEvents/it_0102_parla_talk_prompt.png"},
         .expectation = {.battle = false},

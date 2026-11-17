@@ -25,6 +25,9 @@ constexpr Milliseconds GATE_WALK_SLICE(250);
 //  Wild Zone 1's catch spot at 60 the far gate is small at first: 1 s
 //  missed it once (console B, 2026-11-14).
 constexpr Milliseconds GATE_FIRST_SEEN_WITHIN(3000);
+//  Walking this long in a wild battle fails the walk. Away from the
+//  Pokemon toward the gate the battle ends; not measured on console.
+constexpr Milliseconds GATE_BATTLE_LIMIT(20000);
 //  The screen's width in degrees of view, for the steer: a guess.
 constexpr double VIEW_DEGREES = 60;
 //  Closer to the middle than this, the gate is dead ahead.
@@ -106,6 +109,7 @@ Pokemon::Outcome walk_to_zone_gate_entrance(
     size_t looks = 0;
     size_t seen = 0;
     std::optional<GateRead> last;
+    Milliseconds in_battle(0);
     while (true){
         backend.scope().throw_if_cancelled();
         Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
@@ -116,6 +120,19 @@ Pokemon::Outcome walk_to_zone_gate_entrance(
         if (look.events.has(PokemonAutomation::ScreenEvent::INTERACT_PROMPT)){
             log_gate_prompt(backend, arrow, walked, gate_readings(seen, looks, last));
             return Pokemon::outcome_ok();
+        }
+        if (look.events.has(PokemonAutomation::ScreenEvent::BATTLE_STARTED)){
+            if (in_battle == Milliseconds(0)){
+                backend.log(std::format("[PLZA] walk_to_zone_gate_entrance: a wild battle after {} ms: walking on at {} deg", walked.count(), angle));
+            }
+            if (in_battle >= GATE_BATTLE_LIMIT){
+                return Pokemon::outcome_failed("wild_battle", std::format(
+                    "walk_to_zone_gate_entrance: still in a wild battle after {} ms of walking on, {}", in_battle.count(), gate_readings(seen, looks, last)
+                ));
+            }
+            backend.stick(angle, GATE_WALK_SLICE, /*release=*/0ms, Pokemon::StoryPace::WALK);
+            in_battle += GATE_WALK_SLICE;
+            continue;
         }
         const std::optional<GateRead> read = gate_on(look);
         if (read){
