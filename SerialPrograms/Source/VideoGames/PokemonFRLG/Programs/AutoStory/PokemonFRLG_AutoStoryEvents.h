@@ -65,12 +65,12 @@ struct StoryEnv{
     ProControllerContext& context;
     Supplies supplies;
     Supplies saved_supplies;
-    //  A League fight's bag after the heal between fights: what the fight's
-    //  item caps count its spending from. Nothing before a top-up ran.
-    std::optional<Supplies> fight_start = std::nullopt;
     //  Whether the game has a save to reload.
     bool has_save = false;
     Pokemon::StoryCheckLevel checks = Pokemon::StoryCheckLevel::DEFAULT;
+    //  A League fight's bag after the heal between fights: what the fight's
+    //  item caps count its spending from. Nothing before a top-up ran.
+    std::optional<Supplies> fight_start = std::nullopt;
     //  The game's language, for reading item names. In one the readers have
     //  no names for, the checks fall back to positions and counts.
     Language language = Language::English;
