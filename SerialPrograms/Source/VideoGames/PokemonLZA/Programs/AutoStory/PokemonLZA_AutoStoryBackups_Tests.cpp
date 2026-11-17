@@ -333,7 +333,7 @@ UnitTestResult check_run(const RewindRun& run, const RewindExpectation& expected
         .rows = run.rows, .first = run.first, .last = run.last, .segments = {.attempts_per_checkpoint = 1},
         .starts = starts, .max_rewinds = run.max_rewinds,
     };
-    const Pokemon::SegmentReport report = run_plza_with_rewinds(game, story, plan, backup, backend, sightings, state);
+    const Pokemon::SegmentReport report = run_plza_with_rewinds(game, plan, backup, backend, sightings, state);
     const std::string verdict = report.completed
         ? "done"
         : std::format("failed at {} {}: {}", report.failed_checkpoint, report.failed_event, report.failure.failure);

@@ -14,6 +14,7 @@
 #include <format>
 #include <functional>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
@@ -251,6 +252,42 @@ const LintCase LINT_CASES[] = {
         .expectation = {.errors = "01.01 t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\", or walk_to_prompt)"},
     },
     {
+        .name = "a walk with a first turn when chained passes",
+        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}}, {"first_turn_when_chained", int64_t(90)},
+        }}},
+        .expectation = {.errors = ""},
+    },
+    {
+        .name = "a walk with a heading passes",
+        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}}, {"heading", int64_t(264)},
+        }}},
+        .expectation = {.errors = ""},
+    },
+    {
+        .name = "a heading on a step that does not take one fails",
+        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "p", .why = "", .action = "walk_to_prompt", .args = {
+            {"heading", int64_t(264)},
+        }}},
+        .expectation = {.errors = "01.01 step 1 p: unknown argument \"heading\""},
+    },
+    {
+        .name = "a walk with a heading and a first turn when chained fails",
+        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}},
+            {"heading", int64_t(264)}, {"first_turn_when_chained", int64_t(90)},
+        }}},
+        .expectation = {.errors = "01.01 w: a \"heading\" sets the facing: no \"first_turn_when_chained\""},
+    },
+    {
+        .name = "a first turn when chained on a step that is not a walk fails",
+        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "p", .why = "", .action = "walk_to_prompt", .args = {
+            {"first_turn_when_chained", int64_t(90)},
+        }}},
+        .expectation = {.errors = "01.01 step 1 p: unknown argument \"first_turn_when_chained\""},
+    },
+    {
         .name = "an action PLZA does not have fails",
         .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "m", .why = "", .action = "choose_7", .args = {}}},
         .expectation = {.errors = "01.01 step 1 m: unknown action \"choose_7\" for GAME"},
@@ -422,6 +459,11 @@ struct RunCase{
         std::vector<Observation<ZonePose>> looks;
         //  How the backend's battles end.
         Pokemon::Outcome battle = Pokemon::outcome_ok();
+        //  How the checkpoint began.
+        Pokemon::RowStart row_start = Pokemon::RowStart::LOADED;
+        //  What the minimap arrow reads, in order (the last repeats); none:
+        //  the game has no minimap arrow, as off a console.
+        std::vector<double> arrow_reads = {};
     };
     Input input;
     struct Expectation{
@@ -1193,9 +1235,63 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .line = "[PLZA mash_to_move_hints] done on can_move."},
     },
     {
-        .name = "03.09's walk to the objective marker needs a console",
+        .name = "03.09's walk faces the street by the minimap arrow, which needs a console",
         .input = {.checkpoint = "03.09", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
-        .expectation = {.verdict = "failed at to_research_lab: console_only", .inputs = ""},
+        .expectation = {.verdict = "failed at to_research_lab: console_only", .inputs = "wait 250ms"},
+    },
+    {
+        .name = "03.09's walk faces the street first, then walks its legs into Ryon's dialog",
+        .input = {
+            .checkpoint = "03.09", .first_step = 0, .steps = 1,
+            .looks = concat(std::vector<Observation<ZonePose>>(7, party_bar(Milliseconds(0))), {DIALOG}),
+            .arrow_reads = {180, 264},
+        },
+        .expectation = {
+            .verdict = "done",
+            .inputs = "wait 250ms, press L, stick 84deg 150ms walk, release 100ms, press L, hold north 6500ms walk, "
+                "press L, stick -90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
+            .line = "[PLZA] to_research_lab: the end event after 250 ms of the last leg.",
+        },
+    },
+    {
+        .name = "03.09's walk stops when the player does not turn to the street",
+        .input = {
+            .checkpoint = "03.09", .first_step = 0, .steps = 1,
+            .looks = {party_bar(Milliseconds(0))},
+            .arrow_reads = {180},
+        },
+        .expectation = {.verdict = "failed at to_research_lab: heading_missed"},
+    },
+    {
+        .name = "03.11's walk to Mable from a save: its legs only",
+        .input = {.checkpoint = "03.11", .first_step = 0, .steps = 1, .looks = concat(
+            std::vector<Observation<ZonePose>>(8, party_bar(Milliseconds(0))), {DIALOG}
+        )},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "wait 250ms, press L, stick -90deg 150ms walk, release 100ms, press L, hold north 900ms walk, "
+                "press L, stick 90deg 150ms walk, release 100ms, press L, hold north 1300ms walk, "
+                "press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
+            .line = "[PLZA] to_mable: started from a save: no turn",
+        },
+    },
+    {
+        //  The user, 2026-11-17: out of the elevator after 03.10 the player
+        //  faces 90 degrees left of the reloaded save's facing.
+        .name = "03.11's walk to Mable chained from 03.10: a right turn, then its legs",
+        .input = {
+            .checkpoint = "03.11", .first_step = 0, .steps = 1,
+            .looks = concat(std::vector<Observation<ZonePose>>(9, party_bar(Milliseconds(0))), {DIALOG}),
+            .row_start = Pokemon::RowStart::CHAINED,
+        },
+        .expectation = {
+            .verdict = "done",
+            .inputs = "wait 250ms, press L, stick 90deg 150ms walk, release 100ms, press L, "
+                "press L, stick -90deg 150ms walk, release 100ms, press L, hold north 900ms walk, "
+                "press L, stick 90deg 150ms walk, release 100ms, press L, hold north 1300ms walk, "
+                "press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
+            .line = "[PLZA] to_mable: chained: turning 90 first",
+        },
     },
     {
         .name = "03.11's reward needs a console",
@@ -1204,12 +1300,29 @@ const RunCase RUN_CASES[] = {
     },
 };
 
+//  A minimap arrow that reads `reads` in order, the last again and again;
+//  none for no reads.
+std::optional<MinimapArrowReader> scripted_arrow(const std::vector<double>& reads){
+    if (reads.empty()){
+        return std::nullopt;
+    }
+    auto next = std::make_shared<size_t>(0);
+    return MinimapArrowReader([reads, next](){
+        const double read = reads[std::min(*next, reads.size() - 1)];
+        (*next)++;
+        return read;
+    });
+}
+
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(builtin_story_data(), sightings);
+    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(
+        builtin_story_data(), sightings, scripted_arrow(test.input.arrow_reads)
+    );
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks, .battle = test.input.battle}, scope);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
+    state.row_start = test.input.row_start;
     const std::vector<StoryCheckpoint> rows{builtin_row(test.input.checkpoint, test.input.first_step, test.input.steps)};
     const Pokemon::SegmentReport report = engine.run_segment("test", rows, 1, state);
     const std::string verdict = report.completed
@@ -1338,14 +1451,13 @@ UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
 struct ChainCase{
     std::string name;
     struct Input{
-        std::set<std::string, std::less<>> reload_always;
         std::vector<Observation<ZonePose>> looks;
         //  The actions of 01.01's steps; a repeated one's step is named
         //  "<action>_again".
         std::vector<std::string> first_actions = {"wait_for_platform"};
         std::string second_action = "text_to_choice";
+        Pokemon::StoryActionArgs second_args = {};
         size_t attempts = 1;
-        SegmentRunOptions::ForcedReloads forced_reloads = SegmentRunOptions::ForcedReloads::KEEP;
     };
     Input input;
     struct Expectation{
@@ -1361,60 +1473,56 @@ struct ChainCase{
 
 const Observation<ZonePose> PLATFORM_SAVING = look({}, {PLATFORM_READING, AUTOSAVE_READING});
 
+//  A walk 250 ms straight on that turns right first when chained.
+const Pokemon::StoryActionArgs CHAINED_TURN_WALK = {
+    {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(250)}}},
+    {"first_turn_when_chained", int64_t(90)},
+};
+
 const ChainCase CHAIN_CASES[] = {
     {
         .name = "autosave seen and the start check does not fail: on without a reload",
-        .input = {.reload_always = {}, .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
+        .input = {.looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
         .expectation = {.verdict = "done", .reloads = 0},
     },
     {
         .name = "no autosave seen and the start check does not fail: on without a reload",
-        .input = {.reload_always = {}, .looks = {PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
+        .input = {.looks = {PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
         .expectation = {.verdict = "done", .reloads = 0},
     },
     {
         .name = "autosave seen and the start check fails: reloads the start",
-        .input = {.reload_always = {}, .looks = {
+        .input = {.looks = {
             PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0),
         }},
         .expectation = {.verdict = "done", .reloads = 1},
     },
     {
         .name = "no autosave seen and the start check fails: no reload, no save to start from",
-        .input = {.reload_always = {}, .looks = {PLATFORM}},
+        .input = {.looks = {PLATFORM}},
         .expectation = {.verdict = "failed at 01.02 chain: no_start_save", .reloads = 0},
     },
     {
-        .name = "reload always, autosave seen: reloads the start",
-        .input = {.reload_always = {"01.02"}, .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
-        .expectation = {.verdict = "done", .reloads = 1},
-    },
-    {
-        .name = "reload always, no autosave seen: no reload, no save to start from",
-        .input = {.reload_always = {"01.02"}, .looks = {PLATFORM}},
-        .expectation = {.verdict = "failed at 01.02 chain: no_start_save", .reloads = 0},
-    },
-    {
-        .name = "reload always, forced reloads skipped: on from the live screen",
+        .name = "on from the live screen: a walk turns first by its first_turn_when_chained",
         .input = {
-            .reload_always = {"01.02"},
-            .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)},
-            .forced_reloads = SegmentRunOptions::ForcedReloads::SKIP,
+            .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, party_bar(Milliseconds(0))},
+            .second_action = "walk",
+            .second_args = CHAINED_TURN_WALK,
         },
-        .expectation = {.verdict = "done", .reloads = 0, .line = "[Checkpoint] 01.02: reload skipped (developer option)"},
+        .expectation = {.verdict = "done", .reloads = 0, .line = "[PLZA] walk: chained: turning 90 first"},
     },
     {
-        .name = "reload always, forced reloads skipped, no autosave seen: on from the live screen",
+        .name = "reloaded at its start: a walk does not turn first",
         .input = {
-            .reload_always = {"01.02"},
-            .looks = {PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)},
-            .forced_reloads = SegmentRunOptions::ForcedReloads::SKIP,
+            .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM, party_bar(Milliseconds(0))},
+            .second_action = "walk",
+            .second_args = CHAINED_TURN_WALK,
         },
-        .expectation = {.verdict = "done", .reloads = 0, .line = "[Checkpoint] 01.02: reload skipped (developer option)"},
+        .expectation = {.verdict = "done", .reloads = 1, .line = "[PLZA] walk: started from a save: no turn"},
     },
     {
         .name = "a reload onto an older save stops",
-        .input = {.reload_always = {"01.02"}, .looks = {PLATFORM_SAVING, PLATFORM}},
+        .input = {.looks = {PLATFORM_SAVING, PLATFORM}},
         .expectation = {.verdict = "failed at 01.02 chain: older_save", .reloads = 1},
     },
     {
@@ -1423,7 +1531,6 @@ const ChainCase CHAIN_CASES[] = {
         //  the gate, and threw Poke Balls there.
         .name = "an autosave before the last step does not save the row: no save to reload the next from",
         .input = {
-            .reload_always = {"01.02"},
             .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM},
             .first_actions = {"wait_for_platform", "wait_for_platform"},
         },
@@ -1438,7 +1545,6 @@ const ChainCase CHAIN_CASES[] = {
         //  outside the Center, and its walk to the Center found no prompt.
         .name = "a run that autosaved and then failed does not reload: the save moved past its start",
         .input = {
-            .reload_always = {},
             .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, look(/*events=*/{}, {AUTOSAVE_READING}, Milliseconds(10000)), CUTSCENE},
             .second_action = "wait_for_platform",
             .attempts = 2,
@@ -1451,10 +1557,8 @@ const ChainCase CHAIN_CASES[] = {
 };
 
 UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
-    Pokemon::StoryRows story;
-    story.reload_always = test.input.reload_always;
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = game_with_reload(story, sightings);
+    const Pokemon::StoryGame<ZonePose> game = game_with_reload(Pokemon::StoryRows{}, sightings);
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
     Pokemon::RunState state;
     StoryCheckpoint first = one_step_row("01.01", test.input.first_actions[0]);
@@ -1462,9 +1566,11 @@ UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
         const std::string& action = test.input.first_actions[index];
         first.steps.push_back(StoryStep{.kind = Pokemon::StoryStepKind::GAME, .name = std::format("{}_again", action), .why = "", .action = action, .args = {}});
     }
-    const std::vector<StoryCheckpoint> rows{first, one_step_row("01.02", test.input.second_action)};
+    StoryCheckpoint second = one_step_row("01.02", test.input.second_action);
+    second.steps.front().args = test.input.second_args;
+    const std::vector<StoryCheckpoint> rows{first, second};
     const Pokemon::SegmentReport report = run_plza_segments(
-        game, story, rows, {.attempts_per_checkpoint = test.input.attempts, .forced_reloads = test.input.forced_reloads},
+        game, rows, {.attempts_per_checkpoint = test.input.attempts},
         backend, state, sightings
     );
     const std::string verdict = report.completed

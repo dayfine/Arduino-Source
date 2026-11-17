@@ -67,16 +67,16 @@ std::vector<std::string> ids(const std::vector<StoryCheckpoint>& rows){
     return result;
 }
 
-//  "rows 01.00 01.01 | titles Row Row | autosave 01.00 | unverified  | chained 01.01 | always "
+//  "rows 01.00 01.01 | titles Row Row | autosave 01.00 | unverified  | chained 01.01"
 std::string summary(const StoryData<StoryCheckpoint>& data){
     std::vector<std::string> titles;
     for (const StoryCheckpoint& row : data.checkpoints){
         titles.push_back(row.title);
     }
     return std::format(
-        "rows {} | titles {} | autosave {} | unverified {} | chained {} | always {}",
+        "rows {} | titles {} | autosave {} | unverified {} | chained {}",
         joined(ids(data.checkpoints)), joined(titles), joined(data.autosaves), joined(data.unverified_autosaves),
-        joined(data.reload_when_chained), joined(data.reload_always)
+        joined(data.reload_when_chained)
     );
 }
 
@@ -104,12 +104,12 @@ const LoadCase LOAD_CASES[] = {
     {
         .name = "built-in files in order, their shared execution fields read",
         .input = {.builtin = {ROW_0, ROW_1, ROW_2}},
-        .expectation = {.summary = "rows 01.00 01.01 01.02 | titles Row Row Row | autosave 01.00 | unverified 01.02 | chained 01.01 | always "},
+        .expectation = {.summary = "rows 01.00 01.01 01.02 | titles Row Row Row | autosave 01.00 | unverified 01.02 | chained 01.01"},
     },
     {
-        .name = "reload_when_chained always",
+        .name = "reload_when_chained always fails",
         .input = {.builtin = {ROW_0, {"test-01.01.plan", file_text("01.01", R"({"reload_when_chained": "always"})")}}},
-        .expectation = {.summary = "rows 01.00 01.01 | titles Row Row | autosave 01.00 | unverified  | chained 01.01 | always 01.01"},
+        .expectation = {.error = "reload_when_chained is true or left out"},
     },
     {
         .name = "an unknown execution field fails",
@@ -119,17 +119,17 @@ const LoadCase LOAD_CASES[] = {
     {
         .name = "save autosave",
         .input = {.builtin = {ROW_0}},
-        .expectation = {.summary = "rows 01.00 | titles Row | autosave 01.00 | unverified  | chained  | always "},
+        .expectation = {.summary = "rows 01.00 | titles Row | autosave 01.00 | unverified  | chained "},
     },
     {
         .name = "save unverified",
         .input = {.builtin = {{"test-01.00.plan", file_text("01.00", R"({"save": "unverified"})")}}},
-        .expectation = {.summary = "rows 01.00 | titles Row | autosave  | unverified 01.00 | chained  | always "},
+        .expectation = {.summary = "rows 01.00 | titles Row | autosave  | unverified 01.00 | chained "},
     },
     {
         .name = "save left out",
         .input = {.builtin = {{"test-01.00.plan", file_text("01.00", "{}")}}},
-        .expectation = {.summary = "rows 01.00 | titles Row | autosave  | unverified  | chained  | always "},
+        .expectation = {.summary = "rows 01.00 | titles Row | autosave  | unverified  | chained "},
     },
     {
         .name = "save menu fails",
@@ -144,7 +144,7 @@ const LoadCase LOAD_CASES[] = {
     {
         .name = "reload_when_chained false fails",
         .input = {.builtin = {ROW_0, {"test-01.01.plan", file_text("01.01", R"({"reload_when_chained": false})")}}},
-        .expectation = {.error = "reload_when_chained is true, \"always\" or left out"},
+        .expectation = {.error = "reload_when_chained is true or left out"},
     },
     {
         .name = "reload_when_chained after a row that does not autosave fails",

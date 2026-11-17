@@ -52,7 +52,6 @@ private:
     SimpleIntegerOption<uint8_t> ATTEMPTS_PER_CHECKPOINT;
     SimpleIntegerOption<uint8_t> REWINDS_TO_BACKUP;
     BooleanCheckBoxOption LOAD_SAVE_FIRST;
-    BooleanCheckBoxOption SKIP_FORCED_RELOADS;
     BattleAIOption BATTLE_AI;
     GoHomeWhenDoneOption GO_HOME_WHEN_DONE;
     EventNotificationsOption NOTIFICATIONS;

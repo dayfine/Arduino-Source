@@ -29,9 +29,6 @@ void add_story_row(
         }
         rows.reload_when_chained.emplace(id);
     }
-    if (execution.reload == StoryReload::ALWAYS){
-        rows.reload_always.emplace(id);
-    }
     switch (execution.save){
     case StoryRowSave::NONE:
         break;
