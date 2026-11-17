@@ -309,7 +309,7 @@ UnitTestResult check_rewind(const RewindCase& test, CancellableScope& scope){
     const std::vector<StoryCheckpoint> rows = story_rows();
     const std::vector<CheckpointStart> starts{{.checkpoint = "03.06", .signature = {.registered = 1}}};
     const RewindPlan plan{
-        .rows = rows, .first = RUN_FROM, .last = RUN_TO, .attempts_per_checkpoint = 1,
+        .rows = rows, .first = RUN_FROM, .last = RUN_TO, .segments = {.attempts_per_checkpoint = 1},
         .starts = starts, .max_rewinds = test.input.max_rewinds,
     };
     const Pokemon::SegmentReport report = run_plza_with_rewinds(game, story, plan, backup, backend, sightings, state);
