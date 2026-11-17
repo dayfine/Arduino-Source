@@ -4,6 +4,7 @@
  *
  */
 
+#include <chrono>
 #include <format>
 #include <optional>
 #include <string>
@@ -21,6 +22,7 @@ namespace PokemonLZA{
 namespace{
 
 using Look = MarkerLook;
+using namespace std::chrono_literals;
 
 constexpr std::optional<int> NO_DIGITS = std::nullopt;
 
@@ -50,6 +52,10 @@ struct ArrivalCase{
     struct Input{
         MarkerProof proof = MarkerProof::NEAR_READ;
         std::vector<Look> looks = {};
+        //  The time from one look to the next: 0.64 s on the walk that
+        //  passed 03.09 in run 10 (console B, 2026-11-16 21:36:55 to
+        //  21:36:58).
+        Milliseconds look_period = 640ms;
     };
     Input input;
     struct Expectation{
@@ -63,6 +69,43 @@ struct ArrivalCase{
 };
 
 const ArrivalCase ARRIVAL_CASES[] = {
+    {
+        //  console B, 2026-11-16 21:33:36 to 21:33:50 (run 9): 40 taken at
+        //  Wild Zone 1's exit, then "1", "0", "4" and "4" (the marker
+        //  showed 39) agreed on 4 with the exit pillar's "Esci" prompt up,
+        //  5.4 s after 40, and the walk passed there.
+        .name = "03.09's walk: a read of 4 five seconds after 40 is a misread, so the exit's prompt is not the lab gate",
+        .input = {
+            .proof = MarkerProof::NEAR_READ,
+            .looks = concat(
+                reads({174, 1, NO_DIGITS, 731, 1, 51, 7, 5, 41, NO_DIGITS, 4, NO_DIGITS, NO_DIGITS, 40, NO_DIGITS, 1, NO_DIGITS, 4, NO_DIGITS, NO_DIGITS}),
+                {Look{.distance = 4, .marker_shows = true, .prompt_or_dialog = true}}
+            ),
+            .look_period = 770ms,
+        },
+        .expectation = {.arrived_on = std::nullopt, .near = false},
+    },
+    {
+        //  console B, 2026-11-16 21:36:55 to 21:36:58 (run 10, passed): 23
+        //  down to 12 at 0.64 s a look, 16 to 12 in one.
+        .name = "a walk at full pace: 23 down to 8, then a prompt, is at the objective",
+        .input = {
+            .proof = MarkerProof::NEAR_READ,
+            .looks = concat(reads({23, 21, 18, 16, 12, 9}), {Look{.distance = 8, .marker_shows = true, .prompt_or_dialog = true}}),
+        },
+        .expectation = {.arrived_on = 7, .near = true},
+    },
+    {
+        .name = "40, then no digits for 7 s, then 9 and 8: the walk can have come that near",
+        .input = {
+            .proof = MarkerProof::NEAR_READ,
+            .looks = concat(
+                reads({46, 44, 42, 40, NO_DIGITS, NO_DIGITS, NO_DIGITS, NO_DIGITS, NO_DIGITS, NO_DIGITS, NO_DIGITS, NO_DIGITS, NO_DIGITS, NO_DIGITS, 9, 8}),
+                {Look{.distance = 8, .marker_shows = true, .prompt_or_dialog = true}}
+            ),
+        },
+        .expectation = {.arrived_on = 17, .near = true},
+    },
     {
         //  console B, 2026-11-16 17:34:33 to 17:34:37: 03.09's walk from
         //  the far gate read "t", "", "1" and nothing more, and passed on
@@ -177,7 +220,8 @@ UnitTestResult check_arrival(const ArrivalCase& test){
     MarkerArrival arrival(test.input.proof);
     std::optional<size_t> arrived_on;
     for (size_t index = 0; index < test.input.looks.size() && !arrived_on; index++){
-        const Look& look = test.input.looks[index];
+        Look look = test.input.looks[index];
+        look.at = WallClock{} + test.input.look_period * index;
         arrival.look(look);
         if (arrival.arrived()){
             arrived_on = index + 1;

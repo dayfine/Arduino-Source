@@ -882,7 +882,8 @@ enum class Chain{
 //  autosave showed; a failure when only a reload would do and there is no
 //  save to load. Logs the decision.
 std::variant<Chain, Outcome> decide_chain(
-    PlzaBackend& backend, const Pokemon::StoryRows& story, const Pokemon::StoryCheckpoint& row, bool seen
+    PlzaBackend& backend, const Pokemon::StoryRows& story, SegmentRunOptions::ForcedReloads forced_reloads,
+    const Pokemon::StoryCheckpoint& row, bool seen
 ){
     const auto no_save = [&](std::string_view why){
         backend.log(std::format("[Checkpoint] {}: no save at its start: {}", row.id, why));
@@ -891,6 +892,10 @@ std::variant<Chain, Outcome> decide_chain(
         ));
     };
     if (story.reload_always.contains(row.id)){
+        if (forced_reloads == SegmentRunOptions::ForcedReloads::SKIP){
+            backend.log(std::format("[Checkpoint] {}: reload skipped (developer option)", row.id));
+            return Chain::ON;
+        }
         if (!seen){
             return no_save("it always reloads, and the autosave before it was not seen");
         }
@@ -921,7 +926,7 @@ std::variant<Chain, Outcome> decide_chain(
 
 Pokemon::SegmentReport run_plza_segments(
     const Pokemon::StoryGame<ZonePose>& game, const Pokemon::StoryRows& story,
-    std::span<const Pokemon::StoryCheckpoint> rows, size_t attempts_per_checkpoint,
+    std::span<const Pokemon::StoryCheckpoint> rows, const SegmentRunOptions& options,
     PlzaBackend& backend, Pokemon::RunState& state, AutosaveSightings& sightings
 ){
     const Pokemon::StoryGame<ZonePose> retry_game = reloading_only_to_start(game, sightings);
@@ -939,7 +944,7 @@ Pokemon::SegmentReport run_plza_segments(
                 return total;
             };
             start_saved = sightings.last_end_seen();
-            const std::variant<Chain, Outcome> chain = decide_chain(backend, story, row, start_saved);
+            const std::variant<Chain, Outcome> chain = decide_chain(backend, story, options.forced_reloads, row, start_saved);
             if (const Outcome* failure = std::get_if<Outcome>(&chain)){
                 return fail(*failure);
             }
@@ -951,12 +956,12 @@ Pokemon::SegmentReport run_plza_segments(
                 state = Pokemon::RunState{};
             }
         }
-        if (!start_saved && attempts_per_checkpoint > 1){
+        if (!start_saved && options.attempts_per_checkpoint > 1){
             backend.log(std::format("[Checkpoint] {}: no autosave seen at its start, so no reload if it fails", row.id));
         }
         sightings.restart();
         const Pokemon::SegmentReport part = engine.run_segment(
-            "PLZA", std::span<const Pokemon::StoryCheckpoint>(&row, 1), start_saved ? attempts_per_checkpoint : 1, state
+            "PLZA", std::span<const Pokemon::StoryCheckpoint>(&row, 1), start_saved ? options.attempts_per_checkpoint : 1, state
         );
         add_segment(part, total);
         if (!part.completed){

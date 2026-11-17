@@ -73,9 +73,9 @@ const StoryDataCase STORY_DATA_CASES[] = {
             "02.01:from_save:unverified 02.02:from_save:unverified 02.03:from_save:unverified 02.04:from_save:unverified "
             "02.05:from_save:unverified 02.06:from_save:autosave 02.07:from_save:unverified "
             "03.01:from_save:unverified 03.02:from_save:autosave 03.02b:from_save 03.03:from_save:autosave 03.04:from_save:autosave "
-            "03.05:from_save:autosave 03.06:from_save:autosave 03.07:from_save:autosave 03.08:from_save:autosave 03.08b:from_save "
-            "03.09:from_save:unverified "
-            "03.10:from_save:autosave 03.11:from_save:unverified"
+            "03.05:from_save:autosave 03.06:from_save:autosave 03.07:from_save:autosave 03.08:from_save:autosave 03.08b:from_save:autosave "
+            "03.09:from_save:autosave "
+            "03.10:from_save:autosave 03.11:from_save:autosave"
         },
     },
 };
@@ -1259,6 +1259,7 @@ struct ChainCase{
         std::vector<std::string> first_actions = {"wait_for_platform"};
         std::string second_action = "text_to_choice";
         size_t attempts = 1;
+        SegmentRunOptions::ForcedReloads forced_reloads = SegmentRunOptions::ForcedReloads::KEEP;
     };
     Input input;
     struct Expectation{
@@ -1306,6 +1307,24 @@ const ChainCase CHAIN_CASES[] = {
         .name = "reload always, no autosave seen: no reload, no save to start from",
         .input = {.reload_always = {"01.02"}, .looks = {PLATFORM}},
         .expectation = {.verdict = "failed at 01.02 chain: no_start_save", .reloads = 0},
+    },
+    {
+        .name = "reload always, forced reloads skipped: on from the live screen",
+        .input = {
+            .reload_always = {"01.02"},
+            .looks = {PLATFORM_SAVING, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)},
+            .forced_reloads = SegmentRunOptions::ForcedReloads::SKIP,
+        },
+        .expectation = {.verdict = "done", .reloads = 0, .line = "[Checkpoint] 01.02: reload skipped (developer option)"},
+    },
+    {
+        .name = "reload always, forced reloads skipped, no autosave seen: on from the live screen",
+        .input = {
+            .reload_always = {"01.02"},
+            .looks = {PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)},
+            .forced_reloads = SegmentRunOptions::ForcedReloads::SKIP,
+        },
+        .expectation = {.verdict = "done", .reloads = 0, .line = "[Checkpoint] 01.02: reload skipped (developer option)"},
     },
     {
         .name = "a reload onto an older save stops",
@@ -1359,7 +1378,8 @@ UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
     }
     const std::vector<StoryCheckpoint> rows{first, one_step_row("01.02", test.input.second_action)};
     const Pokemon::SegmentReport report = run_plza_segments(
-        game, story, rows, test.input.attempts, backend, state, sightings
+        game, story, rows, {.attempts_per_checkpoint = test.input.attempts, .forced_reloads = test.input.forced_reloads},
+        backend, state, sightings
     );
     const std::string verdict = report.completed
         ? "done"
