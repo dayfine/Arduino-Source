@@ -31,6 +31,7 @@
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryParty.h"
+#include "PokemonFRLG_AutoStoryPlannedBattle.h"
 #include "PokemonFRLG_AutoStoryBattleTurns.h"
 
 namespace PokemonAutomation{
@@ -97,6 +98,8 @@ private:
     //  The battle policy's turn, with the lead's HP and speed known: its
     //  item, or an attack.
     TurnAction policy_turn(const PartyStatus& status, std::string heal_reason);
+    //  A League fight's turn: the planned policy's item or move.
+    TurnAction planned_turn(const PartyStatus& status);
     //  The foe out, as an index into the step's foes.
     size_t track_foe();
     //  The HP the lead lost since the last turn, from the bar.
@@ -121,6 +124,9 @@ private:
     std::string m_planned_item;
     //  The step's battle policy, if it has one and the lead's stats are read.
     std::optional<PolicyState> m_policy;
+    //  A League fight's planned policy (planned_battle()); the step's
+    //  policy is not used then.
+    std::optional<PlannedBattle> m_planned;
     //  The lead's Attack and Sp. Atk stages from the X items used, for its attack.
     AttackContext m_attack;
     size_t m_foe_index = 0;
