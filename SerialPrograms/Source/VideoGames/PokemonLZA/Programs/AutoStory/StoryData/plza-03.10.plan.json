@@ -48,11 +48,6 @@
   },
   "execution": {
     "save": "autosave",
-    "autosave_step": "arrive_3f",
-    "start_signature": {
-      "party": 5,
-      "talk_prompt": false,
-      "wild_zone": false
-    }
+    "autosave_step": "arrive_3f"
   }
 }
