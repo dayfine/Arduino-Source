@@ -1,0 +1,97 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+cc_library(
+    name = "common_cpp",
+    srcs = glob(
+        [
+            "Common/Cpp/*.cpp",
+            "Common/Cpp/Concurrency/*.cpp",
+            "Common/Cpp/Containers/*.cpp",
+            "Common/Cpp/Filesystem/*.cpp",
+            "Common/Cpp/Json/*.cpp",
+            "Common/Cpp/Logging/*.cpp",
+            "Common/Cpp/Options/*.cpp",
+            "Common/Cpp/Strings/*.cpp",
+        ],
+        exclude = [
+            "Common/Cpp/*Qt*",
+            "Common/Cpp/**/*Qt*",
+            "Common/Cpp/**/*disabled*",
+            "Common/Cpp/Concurrency/PeriodicRunner.cpp",
+        ],
+    ),
+    hdrs = glob([
+        "Common/**/*.h",
+        "Common/**/*.hpp",
+        "Common/**/*.tpp",
+        "3rdParty/**/*.h",
+        "3rdParty/**/*.hpp",
+        "3rdParty-Core/**/*.h",
+        "3rdParty-Core/**/*.hpp",
+    ]),
+    includes = [
+        "3rdParty-Core",
+    ],
+    deps = [
+        ":frlg_headers",
+    ],
+)
+
+cc_library(
+    name = "frlg_headers",
+    hdrs = glob([
+        "SerialPrograms/Source/**/*.h",
+        "SerialPrograms/Source/**/*.hpp",
+        "SerialPrograms/Source/**/*.tpp",
+    ]),
+    includes = ["SerialPrograms/Source"],
+)
+
+genrule(
+    name = "autostory_battle_json_gen",
+    srcs = glob(["SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/BattleData/*.json"]) + [
+        "bazel_embed_text.py",
+    ],
+    outs = ["autostory_battle_json.cpp"],
+    cmd = "python3 $(location bazel_embed_text.py) $@ VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleData.h PokemonAutomation::NintendoSwitch::PokemonFRLG autostory_battle_json $(SRCS)",
+)
+
+genrule(
+    name = "autostory_checkpoint_json_gen",
+    srcs = glob(["SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/StoryData/*.json"]) + [
+        "bazel_embed_text.py",
+    ],
+    outs = ["autostory_checkpoint_json.cpp"],
+    cmd = "python3 $(location bazel_embed_text.py) $@ VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.h PokemonAutomation::NintendoSwitch::PokemonFRLG autostory_checkpoint_json $(SRCS)",
+)
+
+cc_test(
+    name = "frlg_planned_battle_fake_test",
+    linkstatic = True,
+    srcs = [
+        "bazel_frlg_test_main.cpp",
+        ":autostory_battle_json_gen",
+        ":autostory_checkpoint_json_gen",
+        "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPlannedBattleFake_Tests.cpp",
+        "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPlannedBattle.cpp",
+        "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPlannedPolicy.cpp",
+        "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPlannedBetween.cpp",
+        "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPlannedRisk.cpp",
+        "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLeagueFightData.cpp",
+        "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLeaguePlanData.cpp",
+        "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLeagueFoes.cpp",
+        "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryGen3Damage.cpp",
+        "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleTrack.cpp",
+        "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMember.cpp",
+        "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryParty.cpp",
+        "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattlePolicy.cpp",
+        "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleData.cpp",
+        "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryItemsPocket.cpp",
+        "SerialPrograms/Source/Pokemon/Pokemon_Types.cpp",
+    ],
+    linkopts = ["-Wl,-undefined,error"],
+    deps = [
+        ":common_cpp",
+        ":frlg_headers",
+    ],
+)
