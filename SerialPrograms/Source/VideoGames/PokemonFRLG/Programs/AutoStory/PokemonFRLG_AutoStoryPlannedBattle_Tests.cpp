@@ -471,7 +471,12 @@ const SendsCase SENDS_CASES[] = {
                 {.foe_out = "onix", .used = {"x-speed", "x-speed", "x-speed"}},
                 {
                     .foe_out = "hitmonlee",
-                    .texts = {"blastoisesspeedfell", "blastoisesspeedfell", "blastoisesspeedfell", "blastoisesspeedfell"},
+                    //  Four falls, each after another text: a text read twice in a row
+                    //  is one change (BattleTrack::read_turn()).
+                    .texts = {
+                        "blastoisesspeedfell", "foeonixusedrocktomb", "blastoisesspeedfell", "foeonixusedrocktomb",
+                        "blastoisesspeedfell", "foeonixusedrocktomb", "blastoisesspeedfell",
+                    },
                 },
             },
         },
@@ -488,7 +493,12 @@ const SendsCase SENDS_CASES[] = {
                 },
                 {
                     .foe_out = "onix",
-                    .texts = {"blastoisesspeedfell", "blastoisesspeedfell", "blastoisesspeedfell", "blastoisesspeedfell"},
+                    //  Four falls, each after another text: a text read twice in a row
+                    //  is one change (BattleTrack::read_turn()).
+                    .texts = {
+                        "blastoisesspeedfell", "foeonixusedrocktomb", "blastoisesspeedfell", "foeonixusedrocktomb",
+                        "blastoisesspeedfell", "foeonixusedrocktomb", "blastoisesspeedfell",
+                    },
                 },
             },
         },
