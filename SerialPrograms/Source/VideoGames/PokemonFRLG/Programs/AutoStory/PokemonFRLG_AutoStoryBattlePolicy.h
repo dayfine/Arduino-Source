@@ -23,25 +23,37 @@
  *  take them once something does.
  *
  *  "budgeted-setup" (budgeted C2, the League's; design and sim:
- *  ~/BDSPLab/notes/frlg-e4-replica-policy.md, 54% for the whole League
- *  with the bag of 2026-11-16). One ordered rule list, from the screen
+ *  ~/BDSPLab/notes/frlg-e4-replica-policy.md). One state -> action table
+ *  (choose_budgeted()'s rows), first row that applies, from the screen
  *  state each turn; D is the foe's best ordinary hit (foe_threats'
- *  normal_max, plus poison):
- *    1. we move first and our lowest roll KOs the foe at its HP bar:
- *       attack, at any HP (PokeGuy's Surf at 3/171);
- *    2. a status with a cure and HP > D: the cure, else a Full Heal;
- *    3. HP <= D (KO risk): the smallest medicine that lifts HP above D and
- *       nets HP after the foe's mean hit, else a Full Restore, over the
- *       fight's budget if need be; none helps (D >= max HP): attack;
- *    4. asleep: attack;
- *    5. Surf out of PP: an Elixir, else a Max Elixir;
- *    6. setup (Guard Spec, X Special, X Speed, X Accuracy towards the
+ *  normal_max, plus poison), "medicine" an item on the lead:
+ *    1. awake, we move first and our lowest roll KOs the foe at its HP
+ *       bar: attack, at any HP (PokeGuy's Surf at 3/171), with Strength
+ *       when its lowest roll KOs (Bite and Surf keep their PP);
+ *    2. Strength's lowest roll KOs and the foe can't KO first (HP > D):
+ *       Strength (Bruno, console B, 2026-11-16: Surf on Hitmonchan at 4%
+ *       and 2%);
+ *    3. the last two turns were medicine and the foe's bar didn't move:
+ *       at KO risk a Full Restore (or Max Potion), unless the last was
+ *       one; else attack. Never a third heal in a row (Lorelei's Lapras,
+ *       console B, 2026-11-16: six turns of Super Potions and Parlyz
+ *       Heals);
+ *    4. a status and HP <= D: a Full Restore, over the budget if need be;
+ *    5. asleep: an Awakening, else a Full Heal; with none, attack
+ *       (Agatha's Gengar, 2026-11-16: two turns asleep, then Dream Eater);
+ *    6. a status with a cure and HP > D: the cure, else a Full Heal;
+ *    7. HP <= D (KO risk): the smallest medicine that lifts HP above D and
+ *       heals at least D plus the foe's mean hit (a Hyper or Max Potion
+ *       only within the budget), else a Full Restore, over the fight's
+ *       budget if need be; none helps (D >= max HP): attack;
+ *    8. Surf out of PP: an Elixir, else a Max Elixir;
+ *    9. setup (Guard Spec, X Special, X Speed, X Accuracy towards the
  *       step's goals; accuracy goal without the foe's evasion), each item
  *       capped by the fight's budget (Supplies::budget), none when the
  *       next hit KOs the foe or the foe phazes; HP under C2's reserve
  *       min(75% max HP, D + (setup turns - 1) x mean hit) first heals
  *       within the budget, else the setup is dropped;
- *    7. attack.
+ *   10. attack.
  *  The budget comes from the League plan (PokemonFRLG_AutoStoryLeaguePlan.h);
  *  every turn's state and choice is logged on one line (state_line()).
  *
@@ -112,8 +124,15 @@ class PolicyState{
 public:
     explicit PolicyState(const BattlePolicy& policy);
 
-    //  The item to use at a battle menu, or none to attack.
-    std::optional<PolicyItem> choose(const Supplies& supplies, const PolicyView& view);
+    //  A turn's choice: the item to use, or none to attack, with the move
+    //  the policy names for it ("strength"; none leaves it to the move choice).
+    struct Turn{
+        std::optional<PolicyItem> item = std::nullopt;
+        std::optional<std::string> move = std::nullopt;
+    };
+
+    //  The choice at a battle menu.
+    Turn choose(const Supplies& supplies, const PolicyView& view);
     //  `item` was used: its stage, or Mist, applies.
     void item_used(const std::string& item);
 
@@ -149,10 +168,27 @@ private:
         const Supplies& supplies, const PolicyView& view, const Danger& danger, int turns, std::string_view waiting_on
     ) const;
     int setup_turns(const Supplies& supplies, const PolicyView& view, bool guard) const;
-    //  BUDGETED_SETUP's rules (the header).
-    std::optional<PolicyItem> choose_budgeted(const Supplies& supplies, const PolicyView& view);
-    std::optional<PolicyItem> budgeted_setup_turn(const Supplies& supplies, const PolicyView& view, const Danger& danger);
+    //  BUDGETED_SETUP's table (the header): each row is the turn's choice
+    //  when it applies, none when it doesn't.
+    struct Choice{
+        std::optional<PolicyItem> item;
+        //  An attack's reason, for the log, and its move if the row names one.
+        std::string attack_reason = {};
+        std::optional<std::string> move = std::nullopt;
+    };
+    Turn choose_budgeted(const Supplies& supplies, const PolicyView& view);
+    std::optional<PolicyItem> choose_unbudgeted(const Supplies& supplies, const PolicyView& view);
+    std::optional<Choice> row_sure_ko(const Supplies& supplies, const PolicyView& view, const Danger& danger) const;
+    std::optional<Choice> row_strength_finisher(const Supplies& supplies, const PolicyView& view, const Danger& danger) const;
+    std::optional<Choice> row_escalate(const Supplies& supplies, const PolicyView& view, const Danger& danger) const;
+    std::optional<Choice> row_status_at_ko_risk(const Supplies& supplies, const PolicyView& view, const Danger& danger) const;
+    std::optional<Choice> row_asleep(const Supplies& supplies, const PolicyView& view, const Danger& danger) const;
+    std::optional<Choice> row_status_cure(const Supplies& supplies, const PolicyView& view, const Danger& danger) const;
+    std::optional<Choice> row_ko_risk(const Supplies& supplies, const PolicyView& view, const Danger& danger) const;
+    std::optional<Choice> row_surf_empty(const Supplies& supplies, const PolicyView& view, const Danger& danger) const;
+    std::optional<Choice> row_setup(const Supplies& supplies, const PolicyView& view, const Danger& danger) const;
     bool sure_ko_first(const Supplies& supplies, const PolicyView& view) const;
+    bool strength_kos(const Supplies& supplies, const PolicyView& view) const;
     std::optional<PolicyItem> budgeted_setup(const Supplies& supplies, const PolicyView& view) const;
     std::optional<PolicyItem> ko_risk_heal(const Supplies& supplies, const PolicyView& view, const Danger& danger) const;
     std::optional<PolicyItem> reserve_heal(
@@ -166,6 +202,12 @@ private:
     int m_foe_evasion = 0;
     int m_mist_turns = 0;
     std::string m_attack_reason;
+    //  The medicine turns in a row against the foe's bar m_streak_fill
+    //  (foe m_streak_foe), and the last one's item.
+    int m_medicine_streak = 0;
+    size_t m_streak_foe = 0;
+    double m_streak_fill = 1.0;
+    std::string m_last_medicine;
 };
 
 

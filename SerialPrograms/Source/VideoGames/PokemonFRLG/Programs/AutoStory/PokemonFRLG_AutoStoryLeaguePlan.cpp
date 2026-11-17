@@ -17,8 +17,10 @@ namespace PokemonFRLG{
 
 namespace{
 
-//  The bag of 2026-11-16, which the user set as the least the League is
-//  entered with.
+//  The bag the League is restocked to (20.01a's Mart and earlier rows):
+//  the bag of 2026-11-16, plus Full Heals for the fights' budgets. Not a
+//  precondition: the League is planned from whatever the bag holds (user,
+//  2026-11-16: no money left for the next run).
 struct MinimumRow{
     std::string_view item;
     int count;
@@ -32,6 +34,7 @@ constexpr MinimumRow LEAGUE_MINIMUM[] = {
     {"max-elixir", 1},
     {"elixir", 1},
     {"super-potion", 6},
+    {"full-heal", 6},
 };
 
 //  The Champion keeps at least this many Full Restores (at most half the
@@ -40,7 +43,10 @@ constexpr int CHAMPION_FULL_RESTORES = 3;
 
 //  One fight's row: its Full Restore weight (the sim's median spend in
 //  tenths), the setup items it wants (the note's budgeted-C2 table, X Sp /
-//  X Spe / X Acc), Guard Spec and Elixirs, and its entry HP and PP.
+//  X Spe / X Acc), Guard Spec and Elixirs, its entry HP and PP, and the
+//  Hyper (or Max) Potions and Full Heals it wants: two each against
+//  Lorelei's Lapras (user, 2026-11-16), Full Heals against Agatha's
+//  Hypnosis.
 struct FightRow{
     std::string_view trainer;
     std::string_view name;
@@ -53,17 +59,19 @@ struct FightRow{
     int entry_hp_percent;
     int surf_pp_floor;
     int blizzard_pp_floor;
+    int hyper_potion;
+    int full_heal;
 };
 constexpr size_t FIGHTS = 5;
 constexpr std::array<FightRow, FIGHTS> LEAGUE_FIGHTS = {{
     //  Full HP from Indigo Plateau's nurse.
-    {"TRAINER_ELITE_FOUR_LORELEI",       "lorelei",  6, 4, 1, 0, 0, 0, 100, 0, 0},
+    {"TRAINER_ELITE_FOUR_LORELEI",       "lorelei",  6, 4, 1, 0, 0, 0, 100, 0, 0, 2, 2},
     //  80%: PokeGuy's 130/162; a 30% floor lost 26% of the sim's chains here.
-    {"TRAINER_ELITE_FOUR_BRUNO",         "bruno",   15, 4, 5, 0, 0, 0,  80, 7, 0},
+    {"TRAINER_ELITE_FOUR_BRUNO",         "bruno",   15, 4, 5, 0, 0, 0,  80, 7, 0, 1, 0},
     //  27%: PokeGuy's 45/165, Torrent on.
-    {"TRAINER_ELITE_FOUR_AGATHA",        "agatha",   2, 2, 1, 0, 0, 0,  27, 6, 0},
-    {"TRAINER_ELITE_FOUR_LANCE",         "lance",   30, 3, 1, 1, 0, 1, 100, 6, 5},
-    {"TRAINER_CHAMPION_FIRST_BULBASAUR", "champion", 22, 4, 2, 2, 1, 1, 100, 8, 2},
+    {"TRAINER_ELITE_FOUR_AGATHA",        "agatha",   2, 2, 1, 0, 0, 0,  27, 6, 0, 1, 2},
+    {"TRAINER_ELITE_FOUR_LANCE",         "lance",   30, 3, 1, 1, 0, 1, 100, 6, 5, 2, 1},
+    {"TRAINER_CHAMPION_FIRST_BULBASAUR", "champion", 22, 4, 2, 2, 1, 1, 100, 8, 2, 2, 1},
 }};
 
 using Split = std::array<int, FIGHTS>;
@@ -170,6 +178,8 @@ LeaguePlan plan_league(const BagCounts& bag){
     int spare_accuracy = 0;
     int spare_guard = 0;
     int spare_elixir = 0;
+    int spare_hyper = 0;
+    int spare_full_heal = 0;
     const Split full_restore = split_full_restores(held(bag, "full-restore"));
     const Split special = split_wanted(held(bag, "x-special"), wanted_of(&FightRow::x_special), spare_special);
     const Split speed = split_wanted(held(bag, "x-speed"), wanted_of(&FightRow::x_speed), spare_speed);
@@ -178,6 +188,10 @@ LeaguePlan plan_league(const BagCounts& bag){
     const Split elixir = split_wanted(
         held(bag, "elixir") + held(bag, "max-elixir"), wanted_of(&FightRow::elixir), spare_elixir
     );
+    const Split hyper = split_wanted(
+        held(bag, "hyper-potion") + held(bag, "max-potion"), wanted_of(&FightRow::hyper_potion), spare_hyper
+    );
+    const Split full_heal = split_wanted(held(bag, "full-heal"), wanted_of(&FightRow::full_heal), spare_full_heal);
     LeaguePlan plan;
     for (size_t c = 0; c < FIGHTS; c++){
         const FightRow& row = LEAGUE_FIGHTS[c];
@@ -187,6 +201,7 @@ LeaguePlan plan_league(const BagCounts& bag){
             .budget = {
                 .full_restore = full_restore[c], .x_special = special[c], .x_speed = speed[c],
                 .x_accuracy = accuracy[c], .guard_spec = guard[c], .elixir = elixir[c],
+                .hyper_potion = hyper[c], .full_heal = full_heal[c],
             },
             .entry_hp_percent = row.entry_hp_percent,
             .surf_pp_floor = row.surf_pp_floor,
@@ -196,6 +211,7 @@ LeaguePlan plan_league(const BagCounts& bag){
     plan.spare = FightBudget{
         .full_restore = 0, .x_special = spare_special, .x_speed = spare_speed,
         .x_accuracy = spare_accuracy, .guard_spec = spare_guard, .elixir = spare_elixir,
+        .hyper_potion = spare_hyper, .full_heal = spare_full_heal,
     };
     return plan;
 }

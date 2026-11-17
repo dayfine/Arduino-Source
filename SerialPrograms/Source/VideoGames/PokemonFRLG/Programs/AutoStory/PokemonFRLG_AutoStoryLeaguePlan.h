@@ -8,16 +8,17 @@
  *  counts to an item budget per fight, and the rules between the fights.
  *
  *  The planner (plan_league()):
- *    - The bag must hold LEAGUE_MINIMUM (the bag of 2026-11-16, the user's
- *      minimum): league_shortfalls() names what is short, and the League
- *      is not entered with less.
+ *    - LEAGUE_MINIMUM is the bag the League is restocked to;
+ *      league_shortfalls() names what is short, for the log. The League
+ *      is planned from whatever the bag holds (user, 2026-11-16).
  *    - Full Restores are spread over the five fights by the median each
  *      fight spends in PokemonSimulation's budgeted-C2 League chains
  *      (sim/frlg-e4-replica, ~/BDSPLab/notes/frlg-e4-replica-policy.md):
  *      Lance and the Champion take the most. The Champion keeps a reserve
  *      of at least CHAMPION_FULL_RESTORES (half the bag at most), taken
  *      from the earliest fights.
- *    - X Special, X Speed, X Accuracy, Guard Spec and the Elixirs go by
+ *    - X Special, X Speed, X Accuracy, Guard Spec, the Elixirs, Hyper (and
+ *      Max) Potions and Full Heals go by
  *      each fight's wanted count (the note's budgeted-C2 table); a bag
  *      short of the sum gives the Champion its count first and splits the
  *      rest in proportion. A bag with more than the sum keeps the extra

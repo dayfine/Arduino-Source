@@ -5,16 +5,15 @@
  *  The League's own steps (one checkpoint from Lorelei's door to the Hall
  *  of Fame, no save between; PokemonFRLG_AutoStoryLeaguePlan.h plans it):
  *
- *  league_start: reads the Items pocket, stops the program (UserSetupError)
- *  when the bag holds less than the League's minimum, naming each short
- *  item and the count needed, and logs and keeps the plan; the fights'
- *  battles spend its budgets (Supplies::budget).
+ *  league_start: reads the Items pocket, logs what the bag lacks of the
+ *  League's restock list, and logs and keeps the plan made from the bag
+ *  as it is; the fights' battles spend its budgets (Supplies::budget).
  *
  *  league_between_fights (next WORD, the next fight's trainer; max_hp
  *  INTEGER, the lead's maximum HP when its summary wasn't read): does
  *  between_fight_action()'s moves one at a time from the lead's state. A
- *  Full Restore, Elixir or Max Elixir counts against the next fight's
- *  budget. Never a fight on an unknown HP (Bruno, console B, 2026-11-16:
+ *  budgeted item (Full Restore, Hyper or Max Potion, Full Heal, Elixir,
+ *  Max Elixir) counts against the next fight's budget. Never a fight on an unknown HP (Bruno, console B, 2026-11-16:
  *  entered at 71%), and never a Full Restore for a read failure.
  *
  */
@@ -83,8 +82,9 @@ struct BetweenFightAction{
 //    1. a status: its own cure, else a Full Heal, else a Full Restore;
 //    2. HP unknown: read it again; still unknown: HP_UNKNOWN (a Full
 //       Restore is never spent on a read failure);
-//    3. HP below the fight's entry target: a Super Potion, a Full Restore
-//       only when none is left;
+//    3. HP below the fight's entry target: the cheapest heal held, a
+//       Super Potion, then a Hyper Potion, a Max Potion, a Full Restore
+//       last;
 //    4. Surf or Blizzard below the fight's PP floor: an Elixir when it
 //       reaches the floor, else a Max Elixir, else the Elixir anyway;
 //    5. READY (also when the bag has nothing that helps).

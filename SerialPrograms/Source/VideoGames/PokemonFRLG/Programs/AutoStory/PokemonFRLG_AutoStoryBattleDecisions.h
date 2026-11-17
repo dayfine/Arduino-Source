@@ -83,7 +83,9 @@ private:
     //  The lead was dragged out (LeadOnField::FORCED_OUT): alive, back in,
     //  its stages gone.
     TurnAction switch_lead_back();
-    TurnAction move_turn();
+    //  The move to attack with: `named` when the lead knows it with PP left
+    //  and the game hasn't refused it, else the usual choice.
+    TurnAction move_turn(const std::optional<std::string>& named = std::nullopt);
     //  The next of the plan's battle items whose pocket row is known, for
     //  a trainer's battle with the lead's HP not red; none otherwise.
     std::optional<std::string> planned_item(const PartyStatus& status) const;
