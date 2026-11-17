@@ -35,6 +35,7 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryFailureClasses.h"
 #include "PokemonFRLG_AutoStoryLaunch.h"
+#include "PokemonFRLG_AutoStoryLeagueSteps.h"
 #include "PokemonFRLG_AutoStoryRngLoop.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStory.h"
@@ -556,6 +557,18 @@ static void run_story_rows(
     }
     Pokemon::StoryGameHooks game = story_game(env, story);
     Pokemon::SegmentHooks hooks = Pokemon::story_segment_hooks(game);
+    //  A verify row's try passes by the League's item caps, counted from
+    //  its start save (the loop reloads it before each try), and by our
+    //  side as read off the console meeting the next fight's entry
+    //  contract: checked right before the save, never on a guess.
+    hooks.verify_pass = [&story, &rows](const std::string& id, Pokemon::RunState&){
+        for (const StoryCheckpoint& row : rows){
+            if (row.id == id){
+                return check_league_save(story, row, story.saved_supplies);
+            }
+        }
+        return Pokemon::outcome_ok();
+    };
 
     Pokemon::RunState state;
     Pokemon::SegmentReport report;

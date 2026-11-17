@@ -17,8 +17,16 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Rows 20.01a and 20.01 on the overworld sim (PokemonFRLG_AutoStoryLeague_Tests.cpp).
+//  Rows 20.01a to 20.05 on the overworld sim (PokemonFRLG_AutoStoryLeague_Tests.cpp).
 void add_tests_AutoStoryLeague(UnitTestDatabase& database);
+
+//  The budgeted C2 policy's turns in the League's battles
+//  (PokemonFRLG_AutoStoryLeaguePlan_Tests.cpp).
+void add_tests_AutoStoryLeaguePlan(UnitTestDatabase& database);
+
+//  The League's fight rows through the engine's verification loop, and the
+//  top-up before each (PokemonFRLG_AutoStoryLeagueRows_Tests.cpp).
+void add_tests_AutoStoryLeagueRows(UnitTestDatabase& database);
 
 
 } // namespace PokemonFRLG

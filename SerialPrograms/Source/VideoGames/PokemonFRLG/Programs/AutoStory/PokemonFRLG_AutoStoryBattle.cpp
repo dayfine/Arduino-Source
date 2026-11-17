@@ -153,16 +153,6 @@ void tap(ProControllerContext& context, DpadPosition position){
     pbf_press_dpad(context, position, 160ms, 240ms);
 }
 
-//  From the battle menu: `item` from the Items pocket on `target`
-//  (use_battle_item()). Returns whether it was used; else back at the menu.
-bool use_item(
-    ConsoleHandle& console, ProControllerContext& context,
-    Supplies& supplies, const std::string& item, ItemTarget target, Pokemon::StoryCheckLevel checks, Language language
-){
-    ConsoleBattleBag bag(console, context, target, checks, language);
-    return use_battle_item(item, console.logger(), bag, supplies);
-}
-
 //  RUN, bottom right of the battle menu.
 //  Overlaps flee_battle() in PokemonFRLG_Navigation.h.
 //  Ours is one blind turn that resets the cursor first, since the battle loop reads the result itself;
@@ -251,10 +241,6 @@ bool forget_move(ConsoleHandle& console, ProControllerContext& context, size_t s
     return true;
 }
 
-TurnResult item_result(bool used){
-    return used ? TurnResult::DONE : TurnResult::NOT_DONE;
-}
-
 
 class BattleLoop{
 public:
@@ -283,13 +269,11 @@ public:
             m_kind == BattleKind::WILD_FIGHT ? "Battle: fighting a wild Pokemon." : "Battle: running from a wild Pokemon."
         );
         bool over = false;
-        while (!over){
+        while (!over && !m_try_end){
             over = step();
         }
-        m_console.log(std::format(
-            "Battle: over after {} turns{}.", m_decisions.turns(), m_decisions.lost() ? ", the starter fainted" : ""
-        ));
-        return m_decisions.lost() ? BattleEnd::LOST : BattleEnd::WON;
+        m_console.log(std::format("Battle: over after {} turns{}.", m_decisions.turns(), m_try_end ? ", the plan ended the try" : m_decisions.lost() ? ", the starter fainted" : ""));
+        return m_try_end.value_or(m_decisions.lost() ? BattleEnd::LOST : BattleEnd::WON);
     }
 
 private:
@@ -540,6 +524,8 @@ private:
         m_console.log("Battle: the Items pocket's counts are not known; reading it before the first turn.");
         //  The pocket's rows as counted, and its CANCEL.
         const std::vector<BagRow> rows = read_battle_pocket(m_console, m_context, m_language, m_supplies.pocket.size() + 1);
+        //  A read ends with the cursor on the top row.
+        m_bag_cursor.row = 0;
         if (rows.empty()){
             OperationFailedExceptionWithScreenshot::fire(
                 ErrorReportMode::SEND_ERROR_REPORT,
@@ -605,22 +591,25 @@ private:
             run_away(m_context);
             return;
         case TurnChoice::POTION:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "potion", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, use_item("potion", ItemTarget::PARTY_MEMBER));
             return;
         case TurnChoice::ANTIDOTE:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "antidote", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, use_item("antidote", ItemTarget::PARTY_MEMBER));
             return;
         case TurnChoice::AWAKENING:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "awakening", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, use_item("awakening", ItemTarget::PARTY_MEMBER));
             return;
         case TurnChoice::MEDICINE:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, action.item, ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, use_item(action.item, ItemTarget::PARTY_MEMBER));
             return;
         case TurnChoice::BATTLE_ITEM:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, action.item, ItemTarget::POKEMON_OUT, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, use_item(action.item, ItemTarget::POKEMON_OUT));
             return;
         case TurnChoice::SWITCH_LEAD:
             m_decisions.turn_done(action.choice, switch_lead_in(m_console, m_context, m_language, m_supplies.lead.species) ? TurnResult::DONE : TurnResult::NOT_DONE);
+            return;
+        case TurnChoice::END_TRY:
+            m_try_end = action.try_end;
             return;
         case TurnChoice::MOVE:
             m_console.log(std::format("Battle: move {}.", action.slot + 1));
@@ -659,6 +648,13 @@ private:
         m_decisions.turn_done(TurnChoice::RUN, TurnResult::REFUSED);
     }
 
+    //  From the battle menu: `item` from the Items pocket on `target`
+    //  (use_battle_item()); back at the menu if it wasn't used.
+    TurnResult use_item(const std::string& item, ItemTarget target){
+        ConsoleBattleBag bag(m_console, m_context, target, m_checks, m_language, m_bag_cursor);
+        return use_battle_item(item, m_console.logger(), bag, m_supplies) ? TurnResult::DONE : TurnResult::NOT_DONE;
+    }
+
     //  A League fight's battle texts, kept for the policy's next turn (PokemonSimulation #110).
     void read_policy_text(BattleScreen seen, const ImageViewRGB32& screen, WallClock now){
         const bool text = seen == BattleScreen::ADVANCE || seen == BattleScreen::OTHER;
@@ -685,6 +681,8 @@ private:
     BattleKind m_kind;
     const Pokemon::StoryCheckLevel m_checks;
     const Language m_language;
+    //  The bag's cursor in this battle.
+    BattleBagCursor m_bag_cursor;
     const WallClock m_start;
     WallClock m_last_battle;
     WallClock m_last_press;
@@ -700,6 +698,7 @@ private:
     bool m_move_chosen = false;
     //  RUN was chosen and no battle menu has shown since.
     bool m_ran = false;
+    std::optional<BattleEnd> m_try_end;
 };
 
 

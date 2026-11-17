@@ -36,7 +36,7 @@ void measured_hp(Supplies& supplies, double fill);
 //  One of `item` was used on the lead: its count spent (spend_item()),
 //  and what it does taken into `supplies`: its HP (healing_hp()); a Full
 //  Restore's whole HP and cure; an Elixir's PP (ELIXIR_PP for every move,
-//  add_pp()); else its cure.
+//  add_pp()) and a Max Elixir's (all of it, restore_pp()); else its cure.
 void took_recovery_item(Supplies& supplies, const std::string& item);
 
 //  The HP the lead misses: the bar's empty share of its maximum HP (the

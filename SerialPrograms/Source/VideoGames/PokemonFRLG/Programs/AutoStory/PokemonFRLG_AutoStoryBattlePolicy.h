@@ -56,7 +56,7 @@
  *       min(75% max HP, D + (setup turns - 1) x mean hit) first heals
  *       within the budget, else the setup is dropped;
  *   10. attack.
- *  The budget comes from the League plan (PokemonFRLG_AutoStoryLeaguePlan.h);
+ *  The budget is the battle's Supplies::budget (none: no cap);
  *  every turn's state and choice is logged on one line (state_line()).
  *
  */
@@ -122,7 +122,7 @@ struct PolicyStages{
 };
 
 //  A trainer battle's plan is over: its party, items and policy go from
-//  `supplies`; a League fight's budget left rolls forward to the next.
+//  `supplies`.
 void end_trainer_battle(Supplies& supplies);
 
 //  The lead's side of the battle as the policy tracks it: the stages and

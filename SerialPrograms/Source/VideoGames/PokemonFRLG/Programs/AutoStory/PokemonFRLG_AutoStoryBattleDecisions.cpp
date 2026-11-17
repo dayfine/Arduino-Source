@@ -203,14 +203,11 @@ BattleDecisions::BattleDecisions(Supplies& supplies, BattleKind kind)
         m_level_cap = static_cast<uint8_t>(std::min(battle_level(supplies.lead) + MAX_LEVELS_IN_BATTLE, 255));
     }
     //  The policy needs the lead's HP and Speed, which its stats give.
-    if (kind == BattleKind::TRAINER && supplies.policy.kind != BattlePolicyKind::NONE && supplies.lead.stats){
-        m_policy.emplace(supplies.policy);
+    if (kind == BattleKind::TRAINER && supplies.lead.stats){
+        m_planned = planned_battle(supplies.trainer);
     }
-    //  A League fight spends its plan's budget and what the fights before
-    //  left (end_trainer_battle() rolls it forward).
-    const LeagueFightPlan* league = supplies.league ? league_fight(supplies.league->plan, supplies.trainer) : nullptr;
-    if (kind == BattleKind::TRAINER && league != nullptr){
-        supplies.budget = add_budgets(league->budget, supplies.league->carried);
+    if (!m_planned && kind == BattleKind::TRAINER && supplies.policy.kind != BattlePolicyKind::NONE && supplies.lead.stats){
+        m_policy.emplace(supplies.policy);
     }
 }
 
@@ -265,6 +262,9 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
         return TurnAction{.choice = TurnChoice::RUN};
     }
     see_hit(status);
+    if (m_planned){
+        return planned_turn(status);
+    }
     if (m_policy){
         return policy_turn(status, {});
     }
@@ -295,6 +295,16 @@ TurnAction BattleDecisions::switch_lead_back(){
     m_attack = {};
     if (m_policy){
         m_policy.emplace(m_supplies.policy);
+    }
+    if (m_planned && m_planned->resets_on_roar()){
+        return TurnAction{
+            .choice = TurnChoice::END_TRY,
+            .heal_reason = std::format("our {} is out, not sent: a Roar or Whirlwind landed; the plan resets the try", m_supplies.own_out),
+            .try_end = BattleEnd::ROARED,
+        };
+    }
+    if (m_planned){
+        m_planned->lead_switched_in();
     }
     return TurnAction{
         .choice = TurnChoice::SWITCH_LEAD,
@@ -341,6 +351,42 @@ TurnAction BattleDecisions::policy_turn(const PartyStatus& status, std::string h
         .heal_reason = budgeted ? std::format("policy: {}; {}", state, item->why) : "policy: " + item->why,
         .item = std::move(item->item),
     };
+}
+
+TurnAction BattleDecisions::planned_turn(const PartyStatus& status){
+    const PolicyView view{
+        .hp = lead_hp(m_supplies, status).value_or(static_cast<double>(m_supplies.lead.stats->hp)),
+        .max_hp = static_cast<double>(m_supplies.lead.stats->hp),
+        .status = status.status,
+        .speed = m_supplies.lead.stats->speed,
+        .foe_index = track_foe(),
+        .foe_fill = status.foe_fill.value_or(1.0),
+        .battle_texts = status.battle_texts,
+    };
+    //  Items off (one read as another): the plan's moves only.
+    PlannedBattle::Turn turn = m_planned->choose(m_supplies, view);
+    if (turn.choice.item && m_items_off){
+        turn.choice = PlannedChoice{.row = "items_off"};
+    }
+    const std::string reason = std::format("planned: {}", turn.log);
+    if (turn.early_reset){
+        return TurnAction{.choice = TurnChoice::END_TRY, .heal_reason = reason, .try_end = BattleEnd::EARLY_RESET};
+    }
+    if (turn.choice.item){
+        m_planned_item = *turn.choice.item;
+        return TurnAction{
+            //  X items and Guard Spec go on the Pokemon out; the rest on the lead through the party list.
+            .choice = m_planned_item.starts_with("x-") || m_planned_item == "guard-spec" ? TurnChoice::BATTLE_ITEM : TurnChoice::MEDICINE,
+            .heal_reason = reason,
+            .item = m_planned_item,
+        };
+    }
+    const std::optional<size_t> slot = turn.choice.move_slot;
+    TurnAction action = move_turn(slot && *slot < m_supplies.lead.moves.size()
+        ? std::optional<std::string>(m_supplies.lead.moves[*slot].move)
+        : std::nullopt);
+    action.heal_reason = reason;
+    return action;
 }
 
 void BattleDecisions::see_hit(const PartyStatus& status){
@@ -417,7 +463,7 @@ void BattleDecisions::policy_item_used(){
     spend_item(m_supplies, m_planned_item);
     //  The story's own Super Potion or Parlyz Heal (item_turn()), with no
     //  policy to tell.
-    if (!m_policy){
+    if (!m_policy && !m_planned){
         m_healed_hp = medicine_hp(m_planned_item);
         if (m_healed_hp > 0){
             m_supplies.hurt = false;
@@ -428,7 +474,11 @@ void BattleDecisions::policy_item_used(){
         }
         return;
     }
-    m_policy->item_used(m_planned_item);
+    if (m_planned){
+        m_planned->item_used(m_planned_item);
+    }else{
+        m_policy->item_used(m_planned_item);
+    }
     if (m_supplies.budget){
         spend_budget(*m_supplies.budget, m_planned_item);
     }
@@ -505,7 +555,7 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
         policy_item_used();
         return;
     case TurnChoice::BATTLE_ITEM:
-        if (m_policy){
+        if (m_policy || m_planned){
             policy_item_used();
         }else{
             planned_item_used();
@@ -514,6 +564,7 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
     case TurnChoice::RUN:
     case TurnChoice::MOVE:
     case TurnChoice::SWITCH_LEAD:
+    case TurnChoice::END_TRY:
         return;
     }
 }

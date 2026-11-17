@@ -61,6 +61,11 @@ enum class BattleEnd{
     //  by the next member, except in the lab's rival battle, which the
     //  story goes on from.
     LOST,
+    //  A League fight's try ended mid-battle (TurnChoice::END_TRY), for the
+    //  League loop to soft reset: a Roar or Whirlwind landed in a fight that
+    //  resets on one, or the plan's early reset (Bruno's after Onix #1).
+    ROARED,
+    EARLY_RESET,
 };
 
 

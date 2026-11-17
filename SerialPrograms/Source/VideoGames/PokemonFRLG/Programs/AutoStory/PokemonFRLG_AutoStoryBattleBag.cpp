@@ -79,24 +79,43 @@ bool use_battle_item(const std::string& item, Logger& logger, BattleBag& bag, Su
 }
 
 ConsoleBattleBag::ConsoleBattleBag(
-    ConsoleHandle& console, ProControllerContext& context, ItemTarget target, Pokemon::StoryCheckLevel checks, Language language
+    ConsoleHandle& console, ProControllerContext& context, ItemTarget target,
+    Pokemon::StoryCheckLevel checks, Language language, BattleBagCursor& cursor
 )
     : m_console(console)
     , m_context(context)
     , m_target(target)
     , m_checks(checks)
     , m_language(language)
+    , m_cursor(cursor)
 {}
 
 std::vector<BagRow> ConsoleBattleBag::read_pocket(const Supplies& supplies){
-    return read_battle_pocket(m_console, m_context, m_language, rows_to_top(supplies));
+    std::vector<BagRow> rows = read_battle_pocket(m_console, m_context, m_language, rows_to_top(supplies));
+    //  A read ends with the cursor on the top row.
+    m_cursor.row = 0;
+    return rows;
 }
 
 bool ConsoleBattleBag::use_row(const Supplies& supplies, int row, int shown, const std::string& item){
-    open_battle_bag(m_context, rows_to_top(supplies));
-    for (int c = 0; c < row; c++){
+    int from = 0;
+    if (m_cursor.row){
+        open_battle_items_pocket(m_context);
+        from = *m_cursor.row;
+        m_console.log(std::format("Bag: cursor from row {} to row {}.", from + 1, row + 1));
+    }else{
+        open_battle_bag(m_context, rows_to_top(supplies));
+        m_console.log(std::format("Bag: cursor to the top, then to row {}.", row + 1));
+    }
+    for (int c = from; c < row; c++){
         pbf_press_dpad(m_context, DPAD_DOWN, /*hold=*/160ms, /*release=*/240ms);
     }
+    for (int c = row; c < from; c++){
+        pbf_press_dpad(m_context, DPAD_UP, /*hold=*/160ms, /*release=*/240ms);
+    }
+    //  Used or not, the bag keeps the cursor here; a used-up item's row
+    //  goes, and the row below it moves up under the cursor.
+    m_cursor.row = row;
     if (!bag_row_is(m_console, m_context, row, shown, item, m_checks, m_language)){
         pbf_press_button(m_context, BUTTON_B, /*hold=*/160ms, /*release=*/1500ms);
         return false;

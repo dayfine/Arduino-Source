@@ -64,6 +64,10 @@ void took_recovery_item(Supplies& supplies, const std::string& item){
         add_pp(supplies.lead, ELIXIR_PP);
         return;
     }
+    if (item == "max-elixir"){
+        restore_pp(supplies.lead);
+        return;
+    }
     if (const int healed = healing_hp(item); healed > 0){
         //  One Potion (20 HP) takes a starter of the early levels from red
         //  to green; the bar can't be read again on the overworld. The HP

@@ -280,8 +280,8 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     const BattleKind kind = arg<bool>(step, "run") ? BattleKind::WILD_RUN : BattleKind::TRAINER;
     const BattleEnd end = fight_battle(env.console, env.context, env.supplies, kind, env.checks, env.language);
     end_trainer_battle(env.supplies);
-    if (end == BattleEnd::LOST && !arg<bool>(step, "may_lose")){
-        return Pokemon::outcome_failed("blackout");
+    if (end != BattleEnd::WON && (end != BattleEnd::LOST || !arg<bool>(step, "may_lose"))){
+        return Pokemon::outcome_failed(end == BattleEnd::LOST ? "blackout" : end == BattleEnd::ROARED ? "league_roar_reset" : "league_early_reset");
     }
     mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
     //  A trainer's script can go on after the battle, its black while the
@@ -988,7 +988,7 @@ Pokemon::Segment make_story_segment(const std::vector<StoryCheckpoint>& checkpoi
     for (const StoryCheckpoint& data : checkpoints){
         segment.checkpoints.push_back(Pokemon::CheckpointSpec{
             data.id, data.title, false,
-            [&data, &executor]{ return build_checkpoint(data, executor); }
+            [&data, &executor]{ return build_checkpoint(data, executor); }, data.verify,
         });
     }
     return segment;

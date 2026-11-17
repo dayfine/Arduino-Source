@@ -40,6 +40,9 @@ enum class TurnChoice{
     //  The lead back in through POKEMON and SHIFT: a Roar or Whirlwind
     //  dragged it out (lead_on_field()).
     SWITCH_LEAD,
+    //  A League fight's try ends here (TurnAction::try_end), mid-battle:
+    //  the League loop soft resets to the fight's save.
+    END_TRY,
 };
 
 //  Before a battle of `kind`'s first turn: whether it reads the Items pocket
@@ -60,6 +63,8 @@ struct TurnAction{
     std::string heal_reason = {};
     //  For BATTLE_ITEM, the item's slug.
     std::string item = {};
+    //  For END_TRY, how the try ends (ROARED, EARLY_RESET).
+    std::optional<BattleEnd> try_end = std::nullopt;
 };
 
 //  What came of a TurnAction.

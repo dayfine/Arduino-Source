@@ -19,6 +19,7 @@
 #include "Pokemon_StoryCheckpointMetadata.h"
 #include "Pokemon_StoryPostconditions.h"
 #include "Pokemon_StoryStep.h"
+#include "Pokemon_StoryVerify.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -49,6 +50,9 @@ struct StoryCheckpoint{
     //  them in the story so far, which a reload loses ("card_key_held" in a
     //  save made after the Card Key). JSON: "start_flags".
     std::vector<std::string> start_flags = {};
+    //  Run as a verification loop (Pokemon_StoryVerify.h); none for a
+    //  checkpoint played once. JSON: "execution": {"verify": ...}.
+    std::optional<StoryVerify> verify = std::nullopt;
 };
 
 //  The gate state of `checkpoint` once its first `steps_done` steps are done:

@@ -15,6 +15,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
@@ -39,7 +40,17 @@ struct SummaryRead{
     std::vector<SummaryMove> moves = {};
     //  POKEMON SKILLS (HP as its maximum), none unless all six were read.
     std::optional<Stats> stats = std::nullopt;
+    //  POKEMON SKILLS' HP box as its digits read: the current HP's, then
+    //  the maximum's (the "/" between is usually not read); empty if not
+    //  read.
+    std::string hp_digits = {};
 };
+
+//  The current HP in `hp_digits` (SummaryRead::hp_digits) of a member whose
+//  maximum HP is `max_hp`: the digits before the maximum's, else, when they
+//  are more than it, those without a last "2" (the "/" read as one).
+//  None if the digits don't end in the maximum or nothing fits.
+std::optional<int> summary_current_hp(std::string_view hp_digits, int max_hp);
 
 //  From the overworld: the party menu, party slot `slot`'s SUMMARY, its
 //  first page (species, level), POKEMON SKILLS (stats) and KNOWN MOVES,

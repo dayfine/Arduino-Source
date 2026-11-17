@@ -212,6 +212,150 @@ CheckpointReport run_row(
     return result;
 }
 
+//  Whether a verify try that completed passes: the game's postcondition
+//  check, then its pass predicate.
+Outcome verify_pass(const std::string& id, SegmentHooks& hooks, RunState& state){
+    if (hooks.check_postconditions){
+        const Outcome checked = hooks.check_postconditions(id, state);
+        if (!checked.succeeded()){
+            return outcome_failed("postconditions_failed", to_string(checked));
+        }
+    }
+    if (hooks.verify_pass){
+        const Outcome passed = hooks.verify_pass(id, state);
+        if (passed.failure == VERIFY_UNREAD){
+            return passed;
+        }
+        if (!passed.succeeded()){
+            return outcome_failed("verify_no_pass", to_string(passed));
+        }
+    }
+    return outcome_ok();
+}
+
+//  The verification loop of a row with `verify` (run_segment()).
+class VerifyRow{
+public:
+    VerifyRow(const Row& row, const SegmentPolicy& policy, SegmentHooks& hooks, SegmentReport& report, CheckpointRun& run, RunState& state)
+        : m_row(row)
+        , m_verify(*row.spec.verify)
+        , m_policy(policy)
+        , m_hooks(hooks)
+        , m_report(report)
+        , m_run(run)
+        , m_state(state)
+    {}
+
+    CheckpointReport run(){
+        const std::string& id = m_row.spec.id;
+        say(std::format(
+            "[Verify] {}: phase 1, {} tries from one save, {} must pass; phase 2, up to {} tries, the first pass saved",
+            id, m_verify.tries, m_verify.min_pass, m_verify.reset_budget
+        ), m_hooks);
+        size_t passes = 0;
+        for (size_t c = 1; c <= m_verify.tries; c++){
+            const std::optional<bool> passed = try_once(/*phase=*/1, c, m_verify.tries);
+            if (!passed){
+                return std::move(m_result);
+            }
+            passes += *passed ? 1 : 0;
+        }
+        if (passes < m_verify.min_pass){
+            return stop("verify_below_min_pass", std::format("phase 1 passed {} of {}, under {}", passes, m_verify.tries, m_verify.min_pass));
+        }
+        for (size_t c = 1; c <= m_verify.reset_budget; c++){
+            const std::optional<bool> passed = try_once(/*phase=*/2, c, m_verify.reset_budget);
+            if (!passed){
+                return std::move(m_result);
+            }
+            if (*passed){
+                m_run.passed = true;
+                say(std::format("[Verify] {}: phase 2 try {} passed and saved", id, c), m_hooks);
+                return std::move(m_result);
+            }
+        }
+        return stop("verify_out_of_budget", std::format("no pass in {} phase 2 tries", m_verify.reset_budget));
+    }
+
+private:
+    CheckpointReport stop(std::string failure, std::string detail){
+        say(std::format("[Verify] {}: {}; stopping", m_row.spec.id, detail), m_hooks);
+        m_result = failed_report(outcome_failed(std::move(failure), std::move(detail)));
+        return std::move(m_result);
+    }
+
+    //  The checkpoint built fresh; phase 1 checks the pass in place of a
+    //  save, phase 2 before the save.
+    Checkpoint build(size_t phase){
+        Checkpoint checkpoint = m_row.spec.build();
+        if (phase == 1){
+            checkpoint.save = nullptr;
+        }else{
+            set_save(m_row, m_policy, m_hooks, checkpoint);
+        }
+        checkpoint.save = [save = std::move(checkpoint.save), id = m_row.spec.id, &hooks = m_hooks, &unread = m_unread](RunState& state) mutable{
+            const Outcome passed = verify_pass(id, hooks, state);
+            unread = passed.failure == VERIFY_UNREAD;
+            if (!passed.succeeded() || !save){
+                return passed;
+            }
+            return save(state);
+        };
+        return checkpoint;
+    }
+
+    //  One try, reloading the start save first after the first; whether it
+    //  passed, or none when the loop stops (no reload, the start check
+    //  or a step's precondition failed, the game is not running).
+    std::optional<bool> try_once(size_t phase, size_t index, size_t of){
+        const std::string& id = m_row.spec.id;
+        if (m_run.attempts > 0){
+            m_report.reloads++;
+            Outcome reloaded = reload(m_state, m_hooks);
+            if (!reloaded.succeeded()){
+                m_result = failed_report(std::move(reloaded));
+                return std::nullopt;
+            }
+        }
+        m_run.attempts++;
+        m_unread = false;
+        Checkpoint checkpoint = build(phase);
+        EventLogger log = [&hooks = m_hooks](const std::string& line){ say(line, hooks); };
+        m_result = run_checkpoint(m_state, checkpoint, log);
+        if (m_result.completed){
+            say(std::format("[Verify] {}: phase {} try {}/{} passed", id, phase, index, of), m_hooks);
+            return true;
+        }
+        if (m_unread){
+            say(std::format("[Verify] {}: the pass check couldn't read the game; no save, stopping", id), m_hooks);
+            m_result = failed_report(outcome_failed(std::string(VERIFY_UNREAD), to_string(m_result.failure)));
+            return std::nullopt;
+        }
+        say(std::format(
+            "[Verify] {}: phase {} try {}/{} failed{}: {}", id, phase, index, of,
+            m_result.failed_name.empty() ? "" : std::format(" at {}", m_result.failed_name), to_string(m_result.failure)
+        ), m_hooks);
+        if (m_result.failure.failure == "start_failed" || m_result.failure.failure == "precondition_failed"
+            || m_result.failure.failure == GAME_NOT_RUNNING
+        ){
+            say(std::format("[Verify] {}: stopping", id), m_hooks);
+            return std::nullopt;
+        }
+        return false;
+    }
+
+    const Row& m_row;
+    const StoryVerify& m_verify;
+    const SegmentPolicy& m_policy;
+    SegmentHooks& m_hooks;
+    SegmentReport& m_report;
+    CheckpointRun& m_run;
+    RunState& m_state;
+    CheckpointReport m_result;
+    //  The last try's pass check couldn't read the game (VERIFY_UNREAD).
+    bool m_unread = false;
+};
+
 SegmentReport stop_segment(const std::string& id, Outcome failure, SegmentHooks& hooks, SegmentReport& report){
     std::string where;
     if (!report.failed_checkpoint.empty()){
@@ -246,7 +390,9 @@ SegmentReport run_segment(
         report.checkpoints_run++;
         report.runs.push_back(CheckpointRun{.id = spec.id});
         const Row row{.spec = spec, .first = c == selected.first, .last = c == selected.last};
-        CheckpointReport result = run_row(segment, row, policy, hooks, report, report.runs.back(), state);
+        CheckpointReport result = spec.verify
+            ? VerifyRow(row, policy, hooks, report, report.runs.back(), state).run()
+            : run_row(segment, row, policy, hooks, report, report.runs.back(), state);
         if (!result.completed){
             report.failed_checkpoint = spec.id;
             report.failed_event = result.failed_name;

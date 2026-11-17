@@ -17,12 +17,14 @@
 
 #include <functional>
 #include <initializer_list>
+#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Json/JsonObject.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryVerify.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -46,10 +48,13 @@ struct StoryRowExecution{
     //  "dev_only": true: a lab walk the story does not need (developer
     //  mode lists and plays it, a user's run does not).
     bool dev_only = false;
+    //  "verify": {"tries", "min_pass", "reset_budget"}: the row runs as a
+    //  verification loop (Pokemon_StoryVerify.h).
+    std::optional<StoryVerify> verify = std::nullopt;
 };
 
-//  The shared fields of `execution`: "save", "reload_when_chained" and
-//  "dev_only", each optional. Throws ParseException naming `where` for a
+//  The shared fields of `execution`: "save", "reload_when_chained",
+//  "dev_only" and "verify", each optional. Throws ParseException naming `where` for a
 //  malformed one, and for a field that is neither shared nor one of
 //  `game_fields`, which the game reads itself.
 StoryRowExecution read_story_row_execution(

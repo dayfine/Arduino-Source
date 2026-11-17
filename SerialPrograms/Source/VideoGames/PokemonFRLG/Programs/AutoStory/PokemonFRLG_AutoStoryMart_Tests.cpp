@@ -662,7 +662,7 @@ const std::vector<ApprovedShopping>& approved_shopping(){
     rival_restock.lines.push_back({"antidote", 1});
     rival_restock.lines.push_back({"parlyz-heal", 2});
     rival_restock.if_affordable = true;
-    MartPlan full_heals = one_line("IndigoPlateau_PokemonCenter_1F", "full-heal", 2);
+    MartPlan full_heals = one_line("IndigoPlateau_PokemonCenter_1F", "full-heal", 4);
     full_heals.if_affordable = true;
     static const std::vector<ApprovedShopping> shopping{
         {
@@ -682,7 +682,8 @@ const std::vector<ApprovedShopping>& approved_shopping(){
             .money = 11000, .bag = {{"super-potion", 15}, {"antidote", 1}, {"parlyz-heal", 2}}, .money_after = 0,
         },
         {
-            //  After 13 Full Restores, money for one Full Heal: skipped.
+            //  4 Full Heals (user, 2026-11-16). After 13 Full Restores, money
+            //  for one: skipped.
             .checkpoint = "20.01a", .step = "buy_full_heals", .before = "20.01",
             .plan = full_heals,
             .money = 1100, .bag = {}, .money_after = 1100,

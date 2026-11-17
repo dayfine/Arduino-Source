@@ -215,6 +215,7 @@ Pokemon::StoryFileRow<StoryCheckpoint> read_story_file(const JsonValue& value, s
     static_cast<Pokemon::StoryCheckpoint&>(checkpoint) = Pokemon::read_authored_checkpoint(
         without_metadata(value, source), "frlg", source, read_execution, story_action_specs()
     );
+    checkpoint.verify = shared.verify;
     for (const std::string& key : note_keys){
         bool found = key == "checkpoint";
         for (const StoryStep& step : checkpoint.steps){
@@ -249,13 +250,28 @@ constexpr std::string_view STORY_ORDER[] = {
     "14.03", "14.04", "14.04b", "15.01", "16.01", "16.02", "16.03", "16.03b", "16.04", "16.05", "16.05b", "16.06", "16.06b",
     "18.01", "18.02", "18.02b", "18.03",
     "17.02", "17.03", "17.04", "17.04b", "19.01a", "19.01", "19.01b", "19.02", "19.03", "19.04", "19.04b", "19.04c", "19.04d", "19.05",
-    "20.01a", "20.01",
+    "20.01a", "20.01", "20.02", "20.03", "20.04", "20.05",
 };
 
 //  Where checkpoint `id` plays in STORY_ORDER; past its end if it is not
 //  listed.
 size_t story_position(std::string_view id){
     return (size_t)(std::find(std::begin(STORY_ORDER), std::end(STORY_ORDER), id) - std::begin(STORY_ORDER));
+}
+
+//  StoryData's checkpoint files: every one but the League plan
+//  (league_plan_data()).
+const std::vector<std::pair<std::string, std::string>>& checkpoint_files(){
+    static const std::vector<std::pair<std::string, std::string>> FILES = []{
+        std::vector<std::pair<std::string, std::string>> files;
+        for (const auto& file : autostory_checkpoint_json()){
+            if (file.first.ends_with(".plan")){
+                files.push_back(file);
+            }
+        }
+        return files;
+    }();
+    return FILES;
 }
 
 } // namespace
@@ -265,7 +281,7 @@ StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_v
 }
 
 Pokemon::StoryData<StoryCheckpoint> load_frlg_story(std::span<const Pokemon::StoryDevFile> dev_files){
-    Pokemon::StoryData<StoryCheckpoint> story = Pokemon::load_story_data<StoryCheckpoint>(autostory_checkpoint_json(), dev_files, {
+    Pokemon::StoryData<StoryCheckpoint> story = Pokemon::load_story_data<StoryCheckpoint>(checkpoint_files(), dev_files, {
         .read = [](std::string_view text, std::string_view source){
             return read_story_file(parse_json(std::string(text)), source);
         },

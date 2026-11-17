@@ -261,9 +261,6 @@ BattlePolicy battle_policy_of(const Pokemon::StoryActionArgs& args){
 }
 
 void end_trainer_battle(Supplies& supplies){
-    if (supplies.league && supplies.budget){
-        supplies.league->carried = *supplies.budget;
-    }
     supplies.budget.reset();
     supplies.foes.clear();
     supplies.trainer.clear();
