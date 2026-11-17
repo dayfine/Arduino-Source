@@ -210,9 +210,9 @@ const TableCase TABLE_CASES[] = {
         .expectation = {.from = "C"},
     },
     {
-        .name = "asked has no signature, the screen matches an earlier start: from it",
+        .name = "asked has no signature, the screen matches an earlier start: runs as asked",
         .input = {.starts = {{.checkpoint = "A", .signature = AT_COUNTER}}, .asked = "C", .read = AT_COUNTER},
-        .expectation = {.from = "A"},
+        .expectation = {.from = "C"},
     },
     {
         .name = "asked has no signature, two earlier starts match: runs as asked",
