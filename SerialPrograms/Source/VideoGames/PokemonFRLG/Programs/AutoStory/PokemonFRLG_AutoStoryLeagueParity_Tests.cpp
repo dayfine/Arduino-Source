@@ -197,7 +197,7 @@ PlannedState visible_state(const JsonObject& line){
     return planned_state(inputs, league_foes_data());
 }
 
-void put_back(PlannedState& state, const JsonObject& hidden, Hidden part){
+void put_back(const JsonObject& hidden, Hidden part, PlannedState& state){
     switch (part){
     case Hidden::FOE_HP:
         state.foe.hp = integer(hidden, "foe_hp");
@@ -277,7 +277,7 @@ public:
         const JsonObject& hidden = line.get_object_throw("hidden");
         PlannedState oracle = visible;
         for (Hidden part : ALL_HIDDEN){
-            put_back(oracle, hidden, part);
+            put_back(hidden, part, oracle);
         }
         const PlannedChoice program = choose_planned(oracle, *fight, streak);
         if (!same_choice(program, sim)){
@@ -295,7 +295,7 @@ private:
     std::string cause(const PlannedState& visible, const JsonObject& hidden, const LeagueFightData& fight, int streak, const SimChoice& sim) const{
         for (Hidden part : ALL_HIDDEN){
             PlannedState state = visible;
-            put_back(state, hidden, part);
+            put_back(hidden, part, state);
             if (same_choice(choose_planned(state, fight, streak), sim)){
                 return std::string(hidden_name(part));
             }
@@ -362,7 +362,7 @@ std::string Parity::table() const{
     }
     text += std::format("with the hidden part back, {} differ with the foe's Reflect or Light Screen up\n", m_screen_lines);
     for (const std::string& example : m_examples){
-        text += "  " + example + "\n";
+        text += std::format("  {}\n", example);
     }
     return text;
 }
