@@ -7,6 +7,7 @@
  */
 
 #include <algorithm>
+#include <optional>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
@@ -18,6 +19,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_Bag.h"
 #include "PokemonBDSP_AutoStory_BagScreen.h"
 #include "PokemonBDSP_AutoStory_Settings.h"
@@ -27,6 +29,46 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 using namespace std::chrono_literals;
+using detail::OptionsLayout;
+using detail::OptionsRow;
+
+
+namespace detail{
+
+OptionsLayout options_layout(Language language){
+    OptionsLayout layout{
+        .rows = {
+            {.label = "textspeed", .value = "fast", .columns = 3, .column = 2},
+            {.label = "changewindow", .value = "type1"},
+            {.label = "battleeffects", .value = "off", .columns = 2, .column = 1},
+            {.label = "battlestyle", .value = "set", .columns = 2, .column = 1},
+            {.label = "sendtoboxes", .value = "automatic", .columns = 2, .column = 1},
+            {.label = "givenicknames", .value = "dontgive", .columns = 2, .column = 1},
+            {.label = "gyroscope", .value = "use", .columns = 2, .column = 0},
+            {.label = "autosave", .value = "off", .columns = 2, .column = 1},
+            {.label = "shownicknames", .value = "show", .columns = 2, .column = 0},
+            {.label = "backgroundmusic", .value = "8", .slider = true},
+            {.label = "soundeffects", .value = "8", .slider = true},
+        },
+        .label_images = language == Language::English,
+    };
+    if (language == Language::Japanese){
+        layout.rows.insert(layout.rows.begin() + 1, OptionsRow{.label = "mojimode", .value = ""});
+    }
+    return layout;
+}
+
+std::optional<size_t> options_value_column(double x, size_t columns){
+    //  The values' box: the one the value images were cut from.
+    constexpr double LEFT = 0.33;
+    constexpr double WIDTH = 0.54;
+    if (columns == 0 || x < LEFT || x >= LEFT + WIDTH){
+        return std::nullopt;
+    }
+    return (size_t)((x - LEFT) / WIDTH * columns);
+}
+
+} // namespace detail
 
 
 namespace{
@@ -113,6 +155,28 @@ public:
             }
         return red > value.width() * value.height() * 0.0005;
     }
+    // The centre of the selected value's red ink, as a fraction of the
+    // screen width; none without red ink.
+    std::optional<double> selected_value_x(const ImageViewRGB32& screen, double y) const {
+        const ImageFloatBox box{0.33, y - 0.025, 0.54, 0.05};
+        ImageViewRGB32 value = extract_box_reference(screen, box);
+        size_t red = 0;
+        double x_sum = 0;
+        for (size_t py = 0; py < value.height(); py++){
+            for (size_t px = 0; px < value.width(); px++){
+                uint32_t p = value.pixel(px, py);
+                int r = (p >> 16) & 255, g = (p >> 8) & 255, b = p & 255;
+                if (r > g + 20 && r > b + 20){
+                    red++;
+                    x_sum += (double)px;
+                }
+            }
+        }
+        if (red == 0 || value.width() == 0){
+            return std::nullopt;
+        }
+        return box.x + box.width * (x_sum / red) / value.width();
+    }
 };
 
 
@@ -164,33 +228,18 @@ bool autosave_off_highlight(const ImageViewRGB32& screen, double y){
     return off >= 10 && on * 10 < off;
 }
 
-//  The options the story needs, as each reference image names them: the
-//  row's label and the value to select.
-struct Setting{
-    std::string label;
-    std::string value;
-};
-const Setting SETTINGS[] = {
-    {"textspeed", "fast"}, {"changewindow", "type1"},
-    {"battleeffects", "off"}, {"battlestyle", "set"},
-    {"sendtoboxes", "automatic"}, {"givenicknames", "dontgive"},
-    {"gyroscope", "use"}, {"autosave", "off"},
-    {"shownicknames", "show"}, {"backgroundmusic", "8"},
-    {"soundeffects", "8"},
-};
-constexpr size_t SETTING_COUNT = sizeof(SETTINGS) / sizeof(SETTINGS[0]);
-constexpr size_t AUTOSAVE_ROW = 7;
-constexpr size_t FIRST_SLIDER_ROW = 9;
 
 //  The Options screen and its selected row, as one reader.
 struct OptionsScreen{
     TutorialOptionsDetector options_screen;
     TutorialOptionPositionDetector position;
 };
-//  A row's label and target value, as the reference images show them.
+//  A row's label and target value, as the reference images show them;
+//  none for a label without images in the game language, or a row the
+//  story leaves as it is.
 struct OptionReferences{
-    ImageRGB32 label;
-    ImageRGB32 value;
+    std::optional<ImageRGB32> label;
+    std::optional<ImageRGB32> value;
 };
 
 //  From the overworld (or the main menu): the main menu, settled.
@@ -245,8 +294,8 @@ void open_options(VideoStream& stream, ProControllerContext& context, const Tuto
 }
 
 //  How well the selected row's value matches the reference.
-double option_value_score(const ImageViewRGB32& frame, double y, size_t row, const ImageRGB32& value_reference){
-    if (row >= FIRST_SLIDER_ROW){
+double option_value_score(const ImageViewRGB32& frame, double y, const OptionsRow& row, const ImageRGB32& value_reference){
+    if (row.slider){
         // Compare the numeric value rather than the long slider:
         // neighboring slider levels otherwise look too similar.
         ImageViewRGB32 number = value_reference.sub_image(
@@ -264,18 +313,18 @@ double option_value_score(const ImageViewRGB32& frame, double y, size_t row, con
 //  Whether Options shows Autosave selected and set to Off: a frame's look.
 bool autosave_off_on_screen(
     const ImageViewRGB32& check, const TutorialOptionsDetector& options_screen,
-    const TutorialOptionPositionDetector& position, const ImageRGB32& autosave_label
+    const TutorialOptionPositionDetector& position, const std::optional<ImageRGB32>& autosave_label
 ){
     const double check_y = check ? position.selected_row(check) : -1;
     return check && options_screen.detect(check) && check_y >= 0 &&
-        option_image_score(check, {0.08, check_y - 0.025, 0.24, 0.05}, autosave_label, false) >= 0.80 &&
+        (!autosave_label || option_image_score(check, {0.08, check_y - 0.025, 0.24, 0.05}, *autosave_label, false) >= 0.80) &&
         autosave_off_highlight(check, check_y);
 }
 
 //  Autosave Off, on three more frames 200 ms apart.
 void confirm_autosave_off(
     VideoStream& stream, ProControllerContext& context, const TutorialOptionsDetector& options_screen,
-    const TutorialOptionPositionDetector& position, const ImageRGB32& label_reference
+    const TutorialOptionPositionDetector& position, const std::optional<ImageRGB32>& label_reference
 ){
     for (size_t confirmation = 0; confirmation < 3; confirmation++){
         pbf_wait(context, 200ms);
@@ -290,8 +339,8 @@ void confirm_autosave_off(
 
 //  One press toward the target value. Sliders clamp at zero: establish a
 //  known endpoint, then increment; the target image is verified afterward.
-void correct_option(ProControllerContext& context, size_t row, bool& slider_reset){
-    if (row >= FIRST_SLIDER_ROW && !slider_reset){
+void correct_option(ProControllerContext& context, const OptionsRow& row, bool& slider_reset){
+    if (row.slider && !slider_reset){
         for (size_t step = 0; step < 12; step++){
             pbf_press_dpad(context, DPAD_LEFT, 80ms, 100ms);
         }
@@ -303,62 +352,110 @@ void correct_option(ProControllerContext& context, size_t row, bool& slider_rese
 }
 
 //  The selected row on screen, if it is the expected one with its value
-//  highlighted; -1 otherwise.
+//  highlighted; -1 otherwise. Without a label image (a game language
+//  other than English) the row is the one the presses reached: the
+//  selected row with its value highlighted.
 double expected_row_y(
-    VideoStream& stream, const ImageViewRGB32& frame, const TutorialOptionsDetector& options_screen,
-    const TutorialOptionPositionDetector& position, size_t row, const ImageRGB32& label_reference
+    VideoStream& stream, const ImageViewRGB32& frame, const OptionsScreen& screen,
+    const OptionsRow& row, const std::optional<ImageRGB32>& label_reference
 ){
-    const double y = frame && options_screen.detect(frame) ? position.selected_row(frame) : -1;
-    const bool value_visible = y >= 0 && position.selected_value(frame, y);
+    const double y = frame && screen.options_screen.detect(frame) ? screen.position.selected_row(frame) : -1;
+    const bool value_visible = y >= 0 && screen.position.selected_value(frame, y);
+    if (!label_reference){
+        stream.log("[Tutorial settings] Expected row=" + std::string(row.label) +
+            " row_y=" + std::to_string(y) + " highlighted_value=" + std::to_string(value_visible) +
+            " (no label image for the game language)");
+        return y >= 0 && value_visible ? y : -1;
+    }
     const double label_score = y >= 0 ? option_image_score(frame,
-        {0.08, y - 0.025, 0.24, 0.05}, label_reference, false) : 0;
-    stream.log("[Tutorial settings] Expected row=" + std::string(SETTINGS[row].label) +
+        {0.08, y - 0.025, 0.24, 0.05}, *label_reference, false) : 0;
+    stream.log("[Tutorial settings] Expected row=" + std::string(row.label) +
         " row_y=" + std::to_string(y) + " highlighted_value=" + std::to_string(value_visible) +
         " label_match=" + std::to_string(label_score));
     return y >= 0 && value_visible && label_score >= 0.80 ? y : -1;
 }
 
+//  Whether the selected row (at `y`) shows the target value by its column:
+//  the check for a game language without the rows' images.
+bool option_column_verified(
+    VideoStream& stream, const ImageViewRGB32& frame, double y, const OptionsRow& row,
+    const TutorialOptionPositionDetector& position
+){
+    if (!row.column){
+        // The Change Window arrow picker: its value has no column; the
+        // story keeps the new game's Type 1.
+        stream.log("[Tutorial settings] " + std::string(row.label) + " kept as it is (no column to check).");
+        return true;
+    }
+    const std::optional<double> x = position.selected_value_x(frame, y);
+    const std::optional<size_t> column = x ? detail::options_value_column(*x, row.columns) : std::nullopt;
+    stream.log("[Tutorial settings] " + std::string(row.label) + " selected column=" +
+        (column ? std::to_string(*column) : "none") + " target=" + std::to_string(*row.column));
+    return column == row.column;
+}
+
 //  Whether the selected row (at `y`) shows the target value: checked on
 //  the frame, with the row's boxes on the overlay.
 bool option_verified(
-    VideoStream& stream, ProControllerContext& context, const ImageViewRGB32& frame, double y, size_t row,
+    VideoStream& stream, ProControllerContext& context, const ImageViewRGB32& frame, double y, const OptionsRow& row,
     const OptionsScreen& screen, const OptionReferences& references
 ){
-    const ImageRGB32& value_reference = references.value;
+    const bool autosave = row.label == "autosave";
     // These are regular video-overlay boxes, so the existing overlay
     // display control can show/hide every active ROI.
     OverlayBoxScope row_overlay(stream.overlay(), COLOR_RED, {0.07, y - 0.04, 0.84, 0.08}, "");
     OverlayBoxScope label_overlay(stream.overlay(), COLOR_YELLOW, {0.08, y - 0.025, 0.24, 0.05}, "");
     OverlayBoxScope value_overlay(stream.overlay(), COLOR_GREEN, {0.33, y - 0.025, 0.54, 0.05}, "");
     VideoOverlaySet autosave_rois(stream.overlay());
-    if (row == AUTOSAVE_ROW){
+    if (autosave){
         autosave_rois.add(COLOR_GREEN, {0.63, y - 0.022, 0.055, 0.044});
         autosave_rois.add(COLOR_RED, {0.34, y - 0.022, 0.055, 0.044});
     }
-    const double score = option_value_score(frame, y, row, value_reference);
-    stream.log("[Tutorial settings] " + std::string(SETTINGS[row].label) + " target match=" + std::to_string(score));
-    // The reference recording uses inactive pale-red text; the focused live
-    // row has a thicker dark-red glyph mask. Verified Fast scores 0.734
-    // while Slow/Normal score 0.
-    if (score < 0.65 || (row == AUTOSAVE_ROW && !autosave_off_highlight(frame, y))){
+    if (references.value){
+        const double score = option_value_score(frame, y, row, *references.value);
+        stream.log("[Tutorial settings] " + std::string(row.label) + " target match=" + std::to_string(score));
+        // The reference recording uses inactive pale-red text; the focused live
+        // row has a thicker dark-red glyph mask. Verified Fast scores 0.734
+        // while Slow/Normal score 0.
+        if (score < 0.65){
+            return false;
+        }
+    }else if (!option_column_verified(stream, frame, y, row, screen.position)){
         return false;
     }
-    if (row == AUTOSAVE_ROW){
+    if (autosave && !autosave_off_highlight(frame, y)){
+        return false;
+    }
+    if (autosave){
         confirm_autosave_off(stream, context, screen.options_screen, screen.position, references.label);
     }
     return true;
 }
 
-//  Sets the option on `row`, the row selected now, to its target value.
-void set_option(VideoStream& stream, ProControllerContext& context, size_t row, const OptionsScreen& screen){
-    const std::string base = RESOURCE_PATH() + "PokemonBDSP/Autostory/Options/" + SETTINGS[row].label;
-    const OptionReferences references{ImageRGB32(base + "_label.png"), ImageRGB32(base + "_value.png")};
+//  The reference images `row` is checked with in a layout: label and value
+//  with label images, else only a slider's number.
+OptionReferences option_references(const OptionsRow& row, bool label_images){
+    const std::string base = RESOURCE_PATH() + "PokemonBDSP/Autostory/Options/" + std::string(row.label);
+    OptionReferences references;
+    if (label_images){
+        references.label.emplace(base + "_label.png");
+    }
+    if (label_images || row.slider){
+        references.value.emplace(base + "_value.png");
+    }
+    return references;
+}
+
+//  Sets the option on `row`, the row selected now, to its target value; a
+//  row without a value is only confirmed selected.
+void set_option(VideoStream& stream, ProControllerContext& context, const OptionsRow& row, bool label_images, const OptionsScreen& screen){
+    const OptionReferences references = option_references(row, label_images);
     bool slider_reset = false;
     for (size_t attempt = 0; attempt < 30; attempt++){
         // Detect the selected row afresh after every navigation/correction.
         context.wait_for_all_requests();
         auto frame = stream.video().snapshot();
-        const double y = expected_row_y(stream, frame, screen.options_screen, screen.position, row, references.label);
+        const double y = expected_row_y(stream, frame, screen, row, references.label);
         if (y < 0){
             // A menu can be detected while its row/text is still fading
             // in. Re-read without directional inputs first.
@@ -368,17 +465,21 @@ void set_option(VideoStream& stream, ProControllerContext& context, size_t row, 
                 continue;
             }
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                "Settings checkpoint: Unable to confirm expected row " + std::string(SETTINGS[row].label), stream);
+                "Settings checkpoint: Unable to confirm expected row " + std::string(row.label), stream);
         }
-        if (option_verified(stream, context, frame, y, row, screen, references)){
-            stream.log("[Tutorial settings] Verified " + std::string(SETTINGS[row].label) + "=" + SETTINGS[row].value);
+        if (row.value.empty()){
+            stream.log("[Tutorial settings] Left " + std::string(row.label) + " as it is.");
             return;
         }
-        stream.log("[Tutorial settings] Correcting " + std::string(SETTINGS[row].label));
+        if (option_verified(stream, context, frame, y, row, screen, references)){
+            stream.log("[Tutorial settings] Verified " + std::string(row.label) + "=" + std::string(row.value));
+            return;
+        }
+        stream.log("[Tutorial settings] Correcting " + std::string(row.label));
         correct_option(context, row, slider_reset);
     }
     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-        "Settings checkpoint: Could not apply " + std::string(SETTINGS[row].label), stream);
+        "Settings checkpoint: Could not apply " + std::string(row.label), stream);
 }
 
 //  Confirms the settings and leaves Options (A A A A B B), back to the overworld.
@@ -427,16 +528,20 @@ void reopen_options(VideoStream& stream, ProControllerContext& context, const Tu
 }
 
 //  In the saved Options: Autosave is Off on three frames. Options starts
-//  on Text Speed; Autosave is seven rows below it.
+//  on Text Speed; Autosave is the layout's rows below it.
 void check_saved_autosave(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const OptionsLayout& layout,
     const TutorialOptionsDetector& options_screen, const TutorialOptionPositionDetector& position
 ){
-    for (size_t step = 0; step < AUTOSAVE_ROW; step++){
+    size_t autosave_row = 0;
+    while (autosave_row < layout.rows.size() && layout.rows[autosave_row].label != "autosave"){
+        autosave_row++;
+    }
+    for (size_t step = 0; step < autosave_row; step++){
         pbf_press_dpad(context, DPAD_DOWN, 80ms, 350ms);
     }
     context.wait_for_all_requests();
-    const ImageRGB32 autosave_label(RESOURCE_PATH() + "PokemonBDSP/Autostory/Options/autosave_label.png");
+    const std::optional<ImageRGB32> autosave_label = option_references(layout.rows[autosave_row], layout.label_images).label;
     for (size_t confirmation = 0; confirmation < 3; confirmation++){
         auto check = stream.video().snapshot();
         if (!autosave_off_on_screen(check, options_screen, position, autosave_label)){
@@ -453,9 +558,10 @@ void verify_tutorial_settings_once(VideoStream& stream, ProControllerContext& co
     open_main_menu(stream, context);
     OptionsScreen screen;
     open_options(stream, context, screen.options_screen);
-    for (size_t row = 0; row < SETTING_COUNT; row++){
-        set_option(stream, context, row, screen);
-        if (row + 1 < SETTING_COUNT){
+    const OptionsLayout layout = detail::options_layout(story_language());
+    for (size_t row = 0; row < layout.rows.size(); row++){
+        set_option(stream, context, layout.rows[row], layout.label_images, screen);
+        if (row + 1 < layout.rows.size()){
             pbf_press_dpad(context, DPAD_DOWN, 80ms, 350ms);
         }
     }
@@ -463,7 +569,7 @@ void verify_tutorial_settings_once(VideoStream& stream, ProControllerContext& co
     // Reopen the saved Options screen and independently verify Autosave.
     // No route movement is permitted until this persisted-value check passes.
     reopen_options(stream, context, screen.options_screen);
-    check_saved_autosave(stream, context, screen.options_screen, screen.position);
+    check_saved_autosave(stream, context, layout, screen.options_screen, screen.position);
     save_options(stream, context, "Autosave verification: Could not return to the overworld.");
     // Report inferred values explicitly: these are visual matches,
     // allowing the user to compare our conclusions with the screen.

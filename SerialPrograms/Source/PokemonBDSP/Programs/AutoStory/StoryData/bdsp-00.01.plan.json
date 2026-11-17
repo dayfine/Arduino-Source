@@ -418,10 +418,31 @@
             {
               "direction": "east",
               "tiles": 6
-            },
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "east",
+          "map": "TwinleafTown",
+          "tiles": [
+            [
+              15,
+              12
+            ]
+          ]
+        },
+        "id": "below_barrys_warning",
+        "kind": "legs",
+        "why": "along row 12 to the foot of Twinleaf's exit (15, 12)"
+      },
+      {
+        "action": "to_dialogue",
+        "args": {
+          "fight_wild": false,
+          "legs": [
             {
               "direction": "north",
-              "tiles": 18
+              "tiles": 19
             }
           ]
         },
@@ -431,21 +452,13 @@
           "tiles": [
             [
               15,
-              19
+              18
             ]
           ]
         },
-        "id": "below_barrys_warning",
-        "kind": "legs",
-        "why": "along row 12, then up Twinleaf's exit to Route 201 (15, 19)"
-      },
-      {
-        "args": {
-          "direction": "north"
-        },
         "id": "barrys_warning",
-        "kind": "step",
-        "why": "the trigger (14..19, 18)"
+        "kind": "legs",
+        "why": "up Twinleaf's exit onto Route 201 until Barry's warning starts: its trigger is row 18 (14..19, 18), coord_event_0 of pret/pokediamond zone_event narc_0327 (Route201.json), 19 tiles north; no tap counting by the \"201\" banner (lab-B 2026-11-15)"
       },
       {
         "declared_after": {

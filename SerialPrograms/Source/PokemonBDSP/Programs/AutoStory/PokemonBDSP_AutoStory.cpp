@@ -24,6 +24,7 @@
 #include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRngAttempts.h"
+#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
@@ -70,6 +71,31 @@ constexpr std::string_view STARTER_RNG_HANDOFF_TEXT =
     "Run the Starter RNG program from that save (Start point: Verity Lakefront). "
     "When it is done, close the Summary page and the menu, let Rowan's scene finish so the player stands "
     "on the Verity Lakefront overworld, save, and start AutoStory at 00.03.";
+
+std::string stop_for_starter_rng_help(){
+    return std::format(
+        "<b>Stop for Starter RNG:</b><br>Off by default. Ignored while Run Starter RNG in AutoStory is on. {}",
+        STARTER_RNG_HANDOFF_TEXT
+    );
+}
+
+constexpr std::string_view PLAYER_NAME_HELP =
+    "<b>Player name:</b><br>For a new game. Letters and digits, typed on the Switch's Latin keyboard. "
+    "If the game takes fewer characters in its language, the intro stops at the name screen.";
+
+constexpr std::string_view PLAYER_LOOK_HELP =
+    "<b>Player's look:</b><br>For a new game: the look picked on the appearance grid. "
+    "The portraits row by row: 1 Lucas light, 2 Lucas dark, 3 Dawn dark-haired, 4 Dawn dark; "
+    "5 Lucas blond, 6 Lucas brown, 7 Dawn blond, 8 Dawn brown-haired. "
+    "The new game's language is Game language above (Japanese: the kana one).";
+
+constexpr std::string_view CAPTURE_INTRO_SCREENS_HELP =
+    "<b>Capture intro screens (developer):</b><br>Instead of a run: for a game with no save, running in front. "
+    "For each language the game lists, restarts the game, picks the language and the look above, "
+    "and records what shows after the look, pressing nothing, to the Screenshots folder as "
+    "&lt;lang&gt;_after-look_NN.png (a frame per change and per second, until the screen holds still). "
+    "Also saves &lt;lang&gt;_before-look-pick.png, and en_before-language-pick.png on the first round. "
+    "Never types a name; ends where the last recording ended.";
 
 //  The start and end dropdowns' entries: segments 00 and 01 joined, 00.00
 //  to 01.11. The options hold a reference to it.
@@ -150,7 +176,9 @@ BDSPAutoStory::BDSPAutoStory()
         "until the player is in control in the bedroom. Only when starting at 00.00.",
         LockMode::LOCK_WHILE_RUNNING, false
     )
-    , PLAYER_NAME(false, "<b>Player name:</b><br>For a new game. Letters and digits.", LockMode::LOCK_WHILE_RUNNING, "Kosmos", "Kosmos")
+    , PLAYER_NAME(false, std::string(PLAYER_NAME_HELP), LockMode::LOCK_WHILE_RUNNING, "Kosmos", "Kosmos")
+    , PLAYER_LOOK(std::string(PLAYER_LOOK_HELP))
+    , CAPTURE_INTRO_SCREENS(std::string(CAPTURE_INTRO_SCREENS_HELP), LockMode::LOCK_WHILE_RUNNING, false)
     , STARTER(
         "<b>Starter Pokemon:</b>",
         {
@@ -161,14 +189,7 @@ BDSPAutoStory::BDSPAutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         StarterChoice::CHIMCHAR
     )
-    , STOP_FOR_STARTER_RNG(
-        std::format(
-            "<b>Stop for Starter RNG:</b><br>Off by default. Ignored while Run Starter RNG in AutoStory is on. {}",
-            STARTER_RNG_HANDOFF_TEXT
-        ),
-        LockMode::LOCK_WHILE_RUNNING,
-        false
-    )
+    , STOP_FOR_STARTER_RNG(stop_for_starter_rng_help(), LockMode::LOCK_WHILE_RUNNING, false)
     , NOTIFICATIONS({
         &STARTER_RNG.notification_shiny(),
         &NOTIFICATION_PROGRAM_FINISH,
@@ -179,6 +200,8 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(NEW_GAME_INTRO);
     PA_ADD_OPTION(PLAYER_NAME);
+    PA_ADD_OPTION(PLAYER_LOOK);
+    PA_ADD_OPTION(CAPTURE_INTRO_SCREENS);
     PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(STOP_FOR_STARTER_RNG);
     add_option(STARTER_RNG.run(), "RUN_STARTER_RNG");
@@ -298,6 +321,11 @@ std::vector<StoryCheckpoint> load_run_rows(ConsoleHandle& console){
 } // namespace
 
 void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    if (CAPTURE_INTRO_SCREENS){
+        capture_intro_screens(env, context, PLAYER_LOOK.index());
+        send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH, "Intro screens captured.");
+        return;
+    }
     const std::vector<StoryCheckpoint> checkpoints = load_run_rows(env.console);
     const size_t first = RUN.start_index();
     const size_t last = RUN.end_index();
@@ -307,7 +335,12 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     //  The reads that use text (Location.h) take the game's language from here.
     set_story_language(RUN.language());
 
-    StoryEnv story{env, context, STARTER, PLAYER_NAME, {}};
+    const bool new_game = first == 0 && NEW_GAME_INTRO;
+    //  Starter RNG watches the player's eyes through the look's template.
+    if (new_game && STARTER_RNG.run() && STARTER_RNG.player_model().index() != PLAYER_LOOK.index()){
+        throw UserSetupError(env.console, "The Starter RNG character model must be the new game's look (Player's look).");
+    }
+    StoryEnv story{env, context, STARTER, PLAYER_NAME, IntroPicks{RUN.language(), PLAYER_LOOK.index()}, {}};
     if (STARTER_RNG.run()){
         story.run_starter_rng = make_starter_rng_hook(
             env, context, STARTER_RNG, STARTER_RNG.config(RUN.language(), STARTER), NOTIFICATION_ERROR_RECOVERABLE
@@ -319,7 +352,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
         StoryHandoffs{.starter_rng = Pokemon::rng_handoff_mode({.stop = STOP_FOR_STARTER_RNG, .run = STARTER_RNG.run()})}
     );
     executor.set_stop_rows(rows_that_stop(plan));
-    run_plan(env, context, plan, first == 0 && NEW_GAME_INTRO, executor);
+    run_plan(env, context, plan, new_game, executor);
 }
 
 void BDSPAutoStory::run_plan(

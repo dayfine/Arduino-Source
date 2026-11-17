@@ -4,42 +4,156 @@
  *
  *  Plays a new game's intro (language, Professor Rowan, appearance, names) up to
  *  the bedroom with the player in control, which is where the Tutorial starts.
+ *  The language and the player's look are picked from their menus by index
+ *  (NintendoSwitch_MenuCursor.h); the menus' shapes are the data below.
+ *  Both menus are read by their detector (PokemonBDSP_AutoStory_IntroMenuDetector.h).
  *
  */
+// code-health: allow header_symbols -- the intro's entry points (play, capture), its two menus' data, its screen classifier and capture mode's recording policy
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_NewGame_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_NewGame_H
 
+#include <chrono>
+#include <cstddef>
+#include <optional>
 #include <string>
+#include <string_view>
+#include <vector>
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
+#include "CommonFramework/Language.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor.h"
+#include "PokemonBDSP_AutoStory_IntroSteps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
+//  The language select: two columns of five buttons, English, Espanol,
+//  Francais, Deutsch, Italiano on the left; Japanese in kana, Japanese in
+//  kanji, Korean, Simplified and Traditional Chinese on the right (lab-B
+//  2026-11-09). Items are numbered row by row, as MenuGrid reads them.
+inline constexpr MenuGrid BDSP_LANGUAGE_GRID{2, 10};
+//  The language of each item of BDSP_LANGUAGE_GRID. Japanese is there twice;
+//  its first item, the kana, is the one picked.
+const std::vector<Language>& bdsp_language_menu();
+//  The look select ("Choose your photo."): two rows of four portraits, the
+//  cursor on the first (lab-B 2026-11-09). PlayerModelOption's "Model N" is
+//  item N - 1, row by row: Lucas light, Lucas dark, Dawn dark-haired, Dawn
+//  dark; Lucas blond, Lucas brown, Dawn blond, Dawn brown-haired. A on it
+//  goes straight to the name keyboard.
+inline constexpr MenuGrid BDSP_LOOK_GRID{4, 8};
+
+//  What the intro picks on its menus.
+struct IntroPicks{
+    Language game_language = Language::English;
+    //  An item of BDSP_LOOK_GRID.
+    size_t look = 0;
+};
+//  The presses from the language select's item `cursor` to the game's
+//  language; nullopt when the menu lacks it or `cursor` is outside it.
+std::optional<std::vector<DpadPosition>> language_pick_moves(size_t cursor, const IntroPicks& picks);
+//  The presses from the look select's item `cursor` to the chosen look;
+//  nullopt when either is outside the grid.
+std::optional<std::vector<DpadPosition>> look_pick_moves(size_t cursor, const IntroPicks& picks);
+
+
 //  Which intro screen `screen` shows, as the intro's steps tell them apart:
-//  "user-select", "home", "keyboard", "rival-list-tell" (the rival's name list on
+//  "user-select", "home", "keyboard", "language-select", "look-select", "rival-list-tell" (the rival's name list on
 //  "I'll tell you..."), "rival-list-preset" (on a preset name), "menu", "dialog" or
 //  "black" (the boot, fades) or "other". The Switch's own screens need
 //  `console`; without it they read as whatever else they look like.
 std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& screen);
 
+namespace detail{
+//  How often the language select may come up, its pick included, before the
+//  intro fails. After the pick it stays up while the game loads the
+//  language, and each look takes A (a pick whose A was dropped): Japanese's
+//  load took the pick and 10 looks (lab-B 2026-11-15), about 6 s.
+inline constexpr size_t INTRO_LANGUAGE_SELECT_VISITS = 30;
+//  Short names of BDSP_LANGUAGE_GRID's items, in its order, for capture
+//  mode's file names: "en", "ja-kana", "es", "ja", ...
+const std::vector<std::string_view>& bdsp_language_tags();
+//  The progress a new intro starts from: which of `picks` need a menu.
+IntroProgress intro_start(const IntroPicks& picks);
+//  Whether the intro restarts the game when `screen` (classify_intro_screen())
+//  shows at its start: on every screen but the user select and the language
+//  select, which come before the language is picked. Past the pick the game's
+//  language may not be the one asked for, and nothing on screen tells it.
+bool intro_restart_needed(std::string_view screen);
+//  Why `name` cannot be typed on a keyboard that takes `limit` characters,
+//  or nullopt when it fits or the limit was not read.
+std::optional<std::string> name_limit_problem(std::string_view name, std::optional<size_t> limit);
+
+//  Capture mode's recording after the look's A, which reads nothing on the
+//  screen: frames are polled, one is saved when it changed or a while after
+//  the last, and the recording stops when the screen holds still.
+//  A change between two frames, pixel RMSD over the whole screen, larger
+//  than this is a change: a frame that far from the last saved is saved.
+inline constexpr double CAPTURE_CHANGE = 4;
+//  A frame is saved at least this long after the last saved.
+inline constexpr std::chrono::milliseconds CAPTURE_EVERY = std::chrono::seconds(1);
+//  The recording stops when no poll changed the screen for this long...
+inline constexpr std::chrono::milliseconds CAPTURE_STILL_FOR = std::chrono::seconds(3);
+//  ...but not before this, which leaves dialogue that pauses before the
+//  keyboard time to show in the frames,
+inline constexpr std::chrono::milliseconds CAPTURE_MIN_LENGTH = std::chrono::seconds(8);
+//  and at the latest at this.
+inline constexpr std::chrono::milliseconds CAPTURE_MAX_LENGTH = std::chrono::seconds(30);
+//  What the recording does with one polled frame.
+struct BurstStep{
+    bool save = false;
+    bool stop = false;
+};
+//  The recording's save and stop decisions; times are since it began.
+class FrameBurst{
+public:
+    //  The frame polled at `at`: `from_saved` is its change from the last
+    //  saved frame (any value before the first save), `from_previous` from
+    //  the frame polled before it.
+    BurstStep see(std::chrono::milliseconds at, double from_saved, double from_previous);
+
+private:
+    std::optional<std::chrono::milliseconds> m_last_saved;
+    std::chrono::milliseconds m_last_change{0};
+};
+} // namespace detail
+
 //  From the title screen or any intro screen of a game with no save, with BDSP
 //  running in front: from HOME it throws UserSetupError, since the restart would
-//  launch whatever tile HOME's cursor is on. Restarts the game first, so it
-//  always starts from the title, waits out the black boot (up to
+//  launch whatever tile HOME's cursor is on, as it does for picks no menu has.
+//  On the user select or the language select (intro_restart_needed()) it takes
+//  the intro up from there, without closing the game. Otherwise it restarts the game, so it
+//  starts from the title, waits out the black boot (up to
 //  INTRO_BOOT_LIMIT) without pressing anything, and fails if no BDSP screen shows within
-//  INTRO_TIME_BEFORE_BDSP of screens. Names the player `player_name`
-//  and picks the rival's default name (Barry) from the list. Each step reads the
+//  INTRO_TIME_BEFORE_BDSP of screens. Picks the language and the look in
+//  `picks`, names the player `player_name` (failing at the name screen,
+//  nothing typed, when the keyboard takes fewer characters) and picks the rival's default name
+//  (Barry) from the list. The language and look selects are read, moved on
+//  and read again before their A. The player's keyboard showing with a pick
+//  still to make fails. Each step reads the
 //  screen and waits for the expected next one; an unexpected screen fails with a
 //  screenshot and the recent screens.
 void play_new_game_intro(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
+    const IntroPicks& picks,
     const std::string& player_name
 );
+
+//  Developer: shoots the intro's screens for each language of the language
+//  select, for a game with no save running in front. Per language it
+//  restarts the game, picks the language and `look` (an item of
+//  BDSP_LOOK_GRID), and records what shows after the look's A, pressing
+//  nothing, as <Screenshots>/<tag>_after-look_NNN.png (bdsp_language_tags(),
+//  NN from 00 in order; FrameBurst). Each round saves the screen as the look
+//  is about to be picked as <tag>_before-look-pick.png, and the first round
+//  the one before the language pick as <tag>_before-language-pick.png. It
+//  never types or confirms a name, and leaves the game where the last
+//  recording ended.
+void capture_intro_screens(SingleSwitchProgramEnvironment& env, ProControllerContext& context, size_t look);
 
 
 } // namespace PokemonBDSP

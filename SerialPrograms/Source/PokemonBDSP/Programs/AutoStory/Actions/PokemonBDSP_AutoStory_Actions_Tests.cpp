@@ -10,9 +10,11 @@
  */
 
 #include <chrono>
+#include <format>
 #include <functional>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
@@ -20,9 +22,13 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Logging/Logger.h"
+#include "NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor_Tests.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_IntroMenuDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_NameLimitReader.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 #include "PokemonBDSP_AutoStory_Center.h"
@@ -36,6 +42,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
+using namespace detail;
 
 namespace{
 
@@ -208,7 +215,7 @@ std::string check_boot(IntroProgress& progress){
 }
 
 UnitTestResult check_confirming_screens(){
-    for (const std::string screen : {"dialog", "rival-list-tell", "rival-list-preset", "menu"}){
+    for (const std::string screen : {"dialog", "language-select", "rival-list-tell", "rival-list-preset", "menu"}){
         if (!intro_screen_confirms_bdsp(screen)){
             return std::string("Expected \"") + screen + "\" to confirm BDSP.";
         }
@@ -252,7 +259,336 @@ UnitTestResult test_intro_gate(Logger&){
     if (decide_intro_step("other", progress) != IntroStep::ADVANCE){
         return "Once BDSP's dialogue has shown, the clock stops.";
     }
+    IntroProgress before_look = progress;
+    before_look.look_pending = true;
+    if (decide_intro_step("other", before_look) != IntroStep::WAIT){
+        return "Between the language pick and the look pick, an unknown screen waits: A there can take the default look.";
+    }
     return check_confirming_screens();
+}
+
+
+//  The menus' data, grids, detectors and the look option agree on their sizes.
+UnitTestResult check_intro_menu_sizes(){
+    if (bdsp_language_menu().size() != BDSP_LANGUAGE_GRID.count || BDSP_LANGUAGE_GRID.count != LANGUAGE_SELECT_BUTTONS){
+        return "The language select's data, grid and detector must agree on ten buttons.";
+    }
+    if (BDSP_LOOK_GRID.count != LOOK_SELECT_PORTRAITS || BDSP_LOOK_GRID.count != BDSP_PLAYER_MODEL_COUNT){
+        return "The look grid, its detector and PlayerModelOption must agree on eight looks.";
+    }
+    return true;
+}
+
+//  The presses for the language select (two columns of five, read row by
+//  row, from wherever its cursor is) and the appearance grid (two rows of
+//  four, from the first look).
+UnitTestResult test_intro_pick_moves(Logger&){
+    using Moves = std::optional<std::vector<DpadPosition>>;
+    const IntroPicks french{Language::French, 2};
+    struct Case{
+        std::string_view what;
+        Moves actual;
+        Moves expected;
+    };
+    const Case cases[] = {
+        {"French from English, where the cursor starts (lab run 3)",
+            language_pick_moves(0, french), Moves(std::vector<DpadPosition>{DPAD_DOWN, DPAD_DOWN})},
+        {"English from English",
+            language_pick_moves(0, IntroPicks{Language::English, 0}), Moves(std::vector<DpadPosition>{})},
+        {"French from Traditional Chinese, bottom right",
+            language_pick_moves(9, french), Moves(std::vector<DpadPosition>{DPAD_UP, DPAD_UP, DPAD_LEFT})},
+        {"Japanese: its kana button, right of English",
+            language_pick_moves(0, IntroPicks{Language::Japanese, 0}), Moves(std::vector<DpadPosition>{DPAD_RIGHT})},
+        {"Traditional Chinese from English",
+            language_pick_moves(0, IntroPicks{Language::ChineseTraditional, 0}),
+            Moves(std::vector<DpadPosition>{DPAD_RIGHT, DPAD_DOWN, DPAD_DOWN, DPAD_DOWN, DPAD_DOWN})},
+        {"Italian, bottom left",
+            language_pick_moves(0, IntroPicks{Language::Italian, 0}), Moves(std::vector<DpadPosition>(4, DPAD_DOWN))},
+        {"a language the menu lacks",
+            language_pick_moves(0, IntroPicks{Language::None, 0}), std::nullopt},
+        {"a cursor outside the menu",
+            language_pick_moves(LANGUAGE_SELECT_BUTTONS, french), std::nullopt},
+        {"Model 1, where the cursor starts",
+            look_pick_moves(0, IntroPicks{Language::English, 0}), Moves(std::vector<DpadPosition>{})},
+        {"Model 3, Dawn's first look (lab run 3)",
+            look_pick_moves(0, french), Moves(std::vector<DpadPosition>{DPAD_RIGHT, DPAD_RIGHT})},
+        {"Model 3 from Model 8",
+            look_pick_moves(7, french), Moves(std::vector<DpadPosition>{DPAD_UP, DPAD_LEFT})},
+        {"Model 8, the last",
+            look_pick_moves(0, IntroPicks{Language::English, 7}), Moves(std::vector<DpadPosition>{DPAD_RIGHT, DPAD_RIGHT, DPAD_RIGHT, DPAD_DOWN})},
+        {"no Model 9",
+            look_pick_moves(0, IntroPicks{Language::English, 8}), std::nullopt},
+        {"a cursor outside the look grid",
+            look_pick_moves(LOOK_SELECT_PORTRAITS, french), std::nullopt},
+    };
+    for (const Case& c : cases){
+        if (c.actual != c.expected){
+            return std::string("Wrong presses for ") + std::string(c.what) + ".";
+        }
+    }
+    return check_intro_menu_sizes();
+}
+
+//  Each select takes its pick, then A if it still shows. Other screens take
+//  A. The player's keyboard with a pick still to make fails.
+UnitTestResult test_intro_pick_steps(Logger&){
+    struct Case{
+        std::string_view what;
+        std::string_view screen;
+        bool language_pending;
+        bool look_pending;
+        IntroStep expected;
+    };
+    const Case cases[] = {
+        {"the language select",             "language-select", true, true, IntroStep::PICK_LANGUAGE},
+        {"the language select, picked",     "language-select", false, true, IntroStep::ADVANCE},
+        {"a logo before the language",      "other",    true,   true,   IntroStep::ADVANCE},
+        {"a dialogue before the language",  "dialog",   true,   true,   IntroStep::ADVANCE},
+        {"the look select",                 "look-select", false, true, IntroStep::PICK_LOOK},
+        {"the look select, picked",         "look-select", false, false, IntroStep::ADVANCE},
+        {"Rowan, look to pick",             "dialog",   false,  true,   IntroStep::ADVANCE},
+        {"a cutscene, look to pick",        "other",    false,  true,   IntroStep::WAIT},
+        {"both picked",                     "dialog",   false,  false,  IntroStep::ADVANCE},
+        {"black, look to pick",             "black",    false,  true,   IntroStep::WAIT},
+        {"the user select",                 "user-select", true, true,  IntroStep::SELECT_USER},
+        {"the keyboard, language missed",   "keyboard", true,   false,  IntroStep::FAIL_PICK_MISSED},
+        {"the keyboard, look missed",       "keyboard", false,  true,   IntroStep::FAIL_PICK_MISSED},
+        {"the keyboard, both picked",       "keyboard", false,  false,  IntroStep::ENTER_PLAYER_NAME},
+    };
+    for (const Case& c : cases){
+        IntroProgress progress = intro_progress(0);
+        progress.language_pending = c.language_pending;
+        progress.look_pending = c.look_pending;
+        if (decide_intro_step(c.screen, progress) != c.expected){
+            return std::string("Wrong step for ") + std::string(c.what) + ".";
+        }
+    }
+    const IntroProgress first_look = intro_start(IntroPicks{Language::English, 0});
+    if (!first_look.language_pending || first_look.look_pending){
+        return "The language is always picked on its select; the first look needs no grid.";
+    }
+    const IntroProgress run3 = intro_start(IntroPicks{Language::French, 2});
+    if (!run3.language_pending || !run3.look_pending){
+        return "French and Model 3 need both menus.";
+    }
+    return true;
+}
+
+//  The intro is taken up, without a restart, only before the language is
+//  picked: past it the game's language may not be the one asked for (jp1,
+//  lab-B 2026-11-15: taken up on the look select of a Traditional Chinese
+//  game while Japanese was asked for, it typed the name on a CJK keyboard).
+UnitTestResult test_intro_restart(Logger&){
+    struct Input{
+        std::string_view screen;
+    };
+    struct Expectation{
+        bool restart;
+    };
+    struct Case{
+        std::string_view name;
+        Input input;
+        Expectation expectation;
+    };
+    const Case cases[] = {
+        {"the title or a logo",     {"other"},              {true}},
+        {"black",                   {"black"},              {true}},
+        {"the bedroom's menu",      {"menu"},               {true}},
+        {"the user select",         {"user-select"},        {false}},
+        {"the language select",     {"language-select"},    {false}},
+        {"the look select",         {"look-select"},        {true}},
+        {"a dialogue",              {"dialog"},             {true}},
+        {"the player's keyboard",   {"keyboard"},           {true}},
+        {"the rival's name list",   {"rival-list-tell"},    {true}},
+        {"a preset rival name",     {"rival-list-preset"},  {true}},
+    };
+    for (const Case& c : cases){
+        if (intro_restart_needed(c.input.screen) != c.expectation.restart){
+            return std::string("Wrong restart for ") + std::string(c.name) + ".";
+        }
+    }
+    return true;
+}
+
+//  After the pick, Japanese's language select stays up while the game loads
+//  the language: the pick and 9 A presses in the capture run, 10 in jp2
+//  (lab-B 2026-11-15), where the cap of 10 failed the intro. The cap allows
+//  twice that.
+UnitTestResult test_language_select_visits(Logger&){
+    const size_t japanese_load_visits = 1 + 10;
+    if (INTRO_LANGUAGE_SELECT_VISITS < 2 * japanese_load_visits){
+        return std::format("The language select may come up {} times; Japanese's load alone took {}.",
+            INTRO_LANGUAGE_SELECT_VISITS, japanese_load_visits);
+    }
+    return true;
+}
+
+//  The keyboard's counter gives the name's limit; a longer name stops the
+//  intro, an unread limit does not.
+UnitTestResult test_name_limit(Logger&){
+    struct ParseCase{
+        std::string_view name;
+        std::string_view input;
+        std::optional<size_t> expectation;
+    };
+    const ParseCase parse_cases[] = {
+        {"an empty field",          "0/6",      6},
+        {"OCR's newline",           "0/5\n",    5},
+        {"spaces",                  " 0 / 12 ", 12},
+        {"a typed name",            "6/12",     12},
+        {"nothing",                 "",         std::nullopt},
+        {"no limit",                "0/",       std::nullopt},
+        {"a zero limit",            "0/0",      std::nullopt},
+        {"text",                    "Name",     std::nullopt},
+        {"text after it",           "0/6 x",    std::nullopt},
+    };
+    for (const ParseCase& c : parse_cases){
+        if (parse_keyboard_counter(c.input) != c.expectation){
+            return std::string("Wrong limit for ") + std::string(c.name) + ".";
+        }
+    }
+    struct FitCase{
+        std::string_view name;
+        std::string_view input_name;
+        std::optional<size_t> input_limit;
+        bool expectation_fails;
+    };
+    const FitCase fit_cases[] = {
+        {"Kosmos in 12",            "Kosmos",   12,             false},
+        {"Kosmos in 6",             "Kosmos",   6,              false},
+        {"Kosmos in 5",             "Kosmos",   5,              true},
+        {"limit not read",          "Kosmos",   std::nullopt,   false},
+        {"two-byte letters in 5",   "\xc3\xa9\xc3\xa9\xc3\xa9", 5, false},
+    };
+    for (const FitCase& c : fit_cases){
+        if (name_limit_problem(c.input_name, c.input_limit).has_value() != c.expectation_fails){
+            return std::string("Wrong fit for ") + std::string(c.name) + ".";
+        }
+    }
+    return true;
+}
+
+//  Capture mode names a file per language select item; Japanese twice.
+UnitTestResult test_language_tags(Logger&){
+    const std::vector<std::string_view>& tags = bdsp_language_tags();
+    if (tags.size() != LANGUAGE_SELECT_BUTTONS || tags.size() != bdsp_language_menu().size()){
+        return "One tag per language select button.";
+    }
+    if (tags[1] != "ja-kana" || bdsp_language_menu()[1] != Language::Japanese){
+        return "Item 1 is the kana Japanese.";
+    }
+    return true;
+}
+
+//  The screen at each 250 ms poll, a letter per look. Past the end the last
+//  letter holds, or with `cycle` the letters start over.
+struct BurstInput{
+    std::string screens;
+    bool cycle = false;
+};
+struct BurstResult{
+    size_t saves;
+    std::optional<std::chrono::milliseconds> stop_at;
+    bool operator==(const BurstResult&) const = default;
+};
+//  Runs FrameBurst over `input`, a change being any other letter.
+BurstResult run_burst(const BurstInput& input){
+    using std::chrono::milliseconds;
+    FrameBurst burst;
+    char saved = 0;
+    char previous = 0;
+    BurstResult result{0, std::nullopt};
+    const std::string& screens = input.screens;
+    milliseconds at(0);
+    for (size_t i = 0; i < 400 && !result.stop_at; i++, at += milliseconds(250)){
+        const char screen = i < screens.size() ? screens[i]
+            : input.cycle ? screens[i % screens.size()] : screens.back();
+        const auto change = [screen](char other){ return other == screen ? 0.0 : 100.0; };
+        const BurstStep step = burst.see(at, change(saved), change(previous));
+        previous = screen;
+        if (step.save){
+            saved = screen;
+            result.saves++;
+        }
+        if (step.stop){
+            result.stop_at = at;
+        }
+    }
+    return result;
+}
+
+//  Capture mode's recording after the look: a frame on each change and each
+//  second, until the screen holds still for CAPTURE_STILL_FOR (not before
+//  CAPTURE_MIN_LENGTH), or CAPTURE_MAX_LENGTH.
+UnitTestResult test_after_look_burst(Logger&){
+    using std::chrono::milliseconds;
+    using Input = BurstInput;
+    using Expectation = BurstResult;
+    struct Case{
+        std::string name;
+        Input input;
+        Expectation expectation;
+    };
+    const Case cases[] = {
+        {"a fade, then the keyboard from 1.5 s", {"LLssssK"},              {9, milliseconds(8000)}},
+        {"still from the start",                  {"L"},                    {9, milliseconds(8000)}},
+        {"a change at 6 s",                       {std::string(24, 'L') + "K"}, {10, milliseconds(9000)}},
+        {"never still",                           {"ab", true},             {121, CAPTURE_MAX_LENGTH}},
+    };
+    for (const Case& c : cases){
+        const BurstResult got = run_burst(c.input);
+        if (got != c.expectation){
+            return std::format("{}: {} frames saved, stopped at {}.", c.name, got.saves,
+                got.stop_at ? std::format("{} ms", got.stop_at->count()) : std::string("never"));
+        }
+    }
+    return true;
+}
+
+//  The intro's two selects from lab-B 2026-11-09 (each cursor on its first
+//  item), the screens one A before and after the look select, and screens
+//  that are neither. Screenshots are in the unit test resources; a missing
+//  one is passed over, and the test is skipped when all are.
+UnitTestResult test_intro_menu_screenshots(Logger& logger){
+    ImageRGB32 black(1920, 1080);
+    black.fill(0xff000000);
+    if (language_select_cursor(black) || look_select_cursor(black)){
+        return "A black screen read as an intro menu.";
+    }
+    struct Case{
+        std::string_view file;
+        std::optional<size_t> language;
+        std::optional<size_t> look;
+    };
+    const Case cases[] = {
+        {.file = "PokemonBDSP/AutoStory/LanguageSelect-20261109.png", .language = 0, .look = std::nullopt},
+        {.file = "PokemonBDSP/AutoStory/LookSelect-20261109.png", .language = std::nullopt, .look = 0},
+        {.file = "PokemonBDSP/AutoStory/LookSelectBefore-20261109.png", .language = std::nullopt, .look = std::nullopt},
+        {.file = "PokemonBDSP/AutoStory/LookSelectAfterA-20261109.png", .language = std::nullopt, .look = std::nullopt},
+        {.file = "PokemonBDSP/AutoStory/OreburghCenterCounter-20261108-094735.png", .language = std::nullopt, .look = std::nullopt},
+        {.file = "PokemonBDSP/AutoStory/OreburghCenterDoorstep-20261108.png", .language = std::nullopt, .look = std::nullopt},
+    };
+    size_t read = 0;
+    for (const Case& c : cases){
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
+        if (!Filesystem::is_regular_file(path)){
+            logger.log("Screenshot not found: " + path);
+            continue;
+        }
+        read++;
+        const ImageRGB32 screen(path);
+        const std::optional<size_t> language = language_select_cursor(screen);
+        const std::optional<size_t> look = look_select_cursor(screen);
+        logger.log(std::string(c.file) + ": language " + (language ? std::to_string(*language) : "none") +
+            ", look " + (look ? std::to_string(*look) : "none"));
+        if (language != c.language || look != c.look){
+            return std::string(c.file) + ": wrong intro menu read.";
+        }
+    }
+    if (read == 0){
+        return UnitTestResult(UnitTestResult::SKIPPED, "No intro menu screenshots found.");
+    }
+    return true;
 }
 
 
@@ -274,7 +610,7 @@ UnitTestResult test_lit_doorway_screenshots(Logger& logger){
         {"PokemonBDSP/AutoStory/SandgemMartDoorFarLeft-20261030-024648.png", -1.3, -0.5, 2.5, 4.5},
     };
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
         }
@@ -345,7 +681,7 @@ UnitTestResult test_pokemon_center_inside(Logger& logger){
         {.file = "PokemonBDSP/AutoStory/JubilifeCenterDoorstep-20261030-c5.png", .inside = false, .doorway = true},
     };
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
         }
@@ -383,7 +719,7 @@ UnitTestResult test_pokemon_center_counter(Logger& logger){
         {.file = "PokemonBDSP/AutoStory/OreburghCenterDoorstep-20261108.png", .inside = false},
     };
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
         }
@@ -417,7 +753,7 @@ UnitTestResult test_school_lamp(Logger& logger){
         {"PokemonBDSP/AutoStory/JubilifeSchoolOneTilePast-20261030.png", 0.5, 1.5},
     };
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
         }
@@ -441,6 +777,29 @@ UnitTestResult test_school_lamp(Logger& logger){
 //  no name read, Piplup's Pound at 35 PP and Growl at 22 PP, and the old
 //  "newest move that is not a status move" fallback used Growl until the
 //  training gave up after 25 turns.
+//  A menu read on an empty image, or with buttons outside the frame, reads
+//  nothing instead of crashing (SIGSEGV in gray_box, 2026-11-12).
+UnitTestResult test_move_menu_unreadable(Logger&){
+    BattleMoveMenuState moves;
+    moves.move_count = 2;
+    moves.buttons[0] = ImageFloatBox{1.1, 0.5, 0.4, 0.1};
+    moves.buttons[1] = ImageFloatBox{1.5, 1.5, 0.4, 0.1};
+    const ImageRGB32 frame(64, 36);
+    const ImageViewRGB32 inputs[] = {ImageViewRGB32(), frame};
+    for (const ImageViewRGB32& screen : inputs){
+        const std::vector<MoveSlot> slots = read_move_menu(screen, moves);
+        if (slots.size() != 2){
+            return "read_move_menu returned " + std::to_string(slots.size()) + " slots, expected 2.";
+        }
+        for (const MoveSlot& slot : slots){
+            if (!slot.slug.empty() || slot.pp != -1){
+                return "a button outside the frame read a move.";
+            }
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_choose_move(Logger&){
     struct Case{ std::string_view name; std::vector<MoveSlot> slots; size_t best; };
     const Case cases[] = {
@@ -482,7 +841,7 @@ UnitTestResult test_move_menu_screenshots(Logger& logger){
     };
     const Language story = story_language();
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
         }
@@ -567,6 +926,38 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
         .expectation = {},
     },
     {
+        .input = {"new-game intro: language and look presses", test_intro_pick_moves},
+        .expectation = {},
+    },
+    {
+        .input = {"new-game intro: steps until the picks are made", test_intro_pick_steps},
+        .expectation = {},
+    },
+    {
+        .input = {"new-game intro: taken up only before the language pick", test_intro_restart},
+        .expectation = {},
+    },
+    {
+        .input = {"new-game intro: the language select through the language's load", test_language_select_visits},
+        .expectation = {},
+    },
+    {
+        .input = {"new-game intro: the name keyboard's limit", test_name_limit},
+        .expectation = {},
+    },
+    {
+        .input = {"new-game intro: capture file per language", test_language_tags},
+        .expectation = {},
+    },
+    {
+        .input = {"new-game intro: capture records what follows the look", test_after_look_burst},
+        .expectation = {},
+    },
+    {
+        .input = {"intro menu screenshots", test_intro_menu_screenshots},
+        .expectation = {},
+    },
+    {
         .input = {"lit doorway screenshots", test_lit_doorway_screenshots},
         .expectation = {},
     },
@@ -591,6 +982,10 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
         .expectation = {},
     },
     {
+        .input = {"battle moves: unreadable menu reads nothing", test_move_menu_unreadable},
+        .expectation = {},
+    },
+    {
         .input = {"battle moves: move menu screenshots in each language", test_move_menu_screenshots},
         .expectation = {},
     },
@@ -600,6 +995,8 @@ void add_tests_AutoStory_Actions(UnitTestDatabase& database){
     for (const auto& item : AUTO_STORY_ACTIONS_CASES){
         database.add<Test_AutoStoryActions>(item);
     }
+    //  The menu cursor's own tests, with those of the intro, its first user.
+    add_tests_MenuCursor(database);
 }
 
 

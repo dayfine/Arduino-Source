@@ -23,8 +23,11 @@ void add_pixel(EdgeDark& edge, bool dark){
     edge.dark += dark;
     edge.count++;
 }
+//  8%: on 2,669 lab screenshots, warm outdoor frames never had more than 3%
+//  black on any edge, and rooms never less than 10.6% (a big room such as
+//  PlayerHouse1F mid-room shows only a narrow band below its floor).
 bool mostly_dark(const EdgeDark& edge){
-    return edge.count > 0 && edge.dark * 100 >= edge.count * 15;
+    return edge.count > 0 && edge.dark * 100 >= edge.count * 8;
 }
 
 } // namespace

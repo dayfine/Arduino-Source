@@ -24,6 +24,7 @@
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
+#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
 
 namespace PokemonAutomation{
@@ -64,6 +65,8 @@ struct StoryEnv{
     ProControllerContext& context;
     StarterChoice starter = StarterChoice::CHIMCHAR;
     std::string player_name;
+    //  The new game's language and look.
+    IntroPicks intro_picks = {};
     //  Runs Starter RNG at 00.02's starter pick; empty when the option is off.
     std::function<Pokemon::Outcome()> run_starter_rng;
 };

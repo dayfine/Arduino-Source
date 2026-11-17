@@ -7,8 +7,15 @@
  */
 
 #include <algorithm>
+#include <cstdint>
+#include <cstdlib>
+#include <format>
+#include <string_view>
 #include <utility>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/PrettyPrint.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
@@ -115,50 +122,82 @@ WarpFade WarpFadeWatch::push(const Pokemon::TransitionSample& sample){
 
 
 namespace detail{
-bool ViewShift::scrolled() const{
-    constexpr double LEAST_DIFFERENCE = 3;  //  standing still in the video: 0 to 1.5
-    return (dx != 0 || dy != 0) && unshifted >= LEAST_DIFFERENCE && unshifted >= 2 * shifted;
+namespace{
+
+constexpr int VIEW_WIDTH = 192;
+constexpr int VIEW_HEIGHT = 108;
+//  A step scrolls 2 to 10 pixels of the copy in 300 ms.
+constexpr int VIEW_REACH = 12;
+
+//  The mean of the pixel at (x, y) and its neighbours, each colour channel.
+uint32_t neighbourhood_mean(const ImageRGB32& image, int x, int y){
+    const int width = (int)image.width();
+    const int height = (int)image.height();
+    uint32_t sums[3] = {0, 0, 0};
+    uint32_t count = 0;
+    for (int ny = std::max(y - 1, 0); ny <= std::min(y + 1, height - 1); ny++){
+        for (int nx = std::max(x - 1, 0); nx <= std::min(x + 1, width - 1); nx++){
+            const uint32_t p = image.pixel(nx, ny);
+            sums[0] += p & 0xff;
+            sums[1] += (p >> 8) & 0xff;
+            sums[2] += (p >> 16) & 0xff;
+            count++;
+        }
+    }
+    return 0xff000000 | (sums[2] / count) << 16 | (sums[1] / count) << 8 | sums[0] / count;
 }
 
-ViewShift walk_view_shift(const ImageViewRGB32& before, const ImageViewRGB32& after){
-    constexpr int W = 192;
-    constexpr int H = 108;
-    //  A step scrolls 2 to 10 pixels of the copy in 300 ms.
-    constexpr int REACH = 12;
-    const ImageRGB32 a = before.scale_to(W, H);
-    const ImageRGB32 b = after.scale_to(W, H);
-    //  The player's box, which moves with the camera, not with the scenery.
-    auto in_player_box = [](int x, int y){
-        return x >= W * 42 / 100 && x < W * 58 / 100 && y >= H * 30 / 100 && y < H * 75 / 100;
-    };
-    auto difference = [&](int dx, int dy){
-        uint64_t sum = 0;
-        size_t count = 0;
-        for (int y = REACH; y < H - REACH; y++){
-            for (int x = REACH; x < W - REACH; x++){
-                if (in_player_box(x, y)){
-                    continue;
-                }
-                const uint32_t p = a.pixel(x - dx, y - dy);
-                const uint32_t q = b.pixel(x, y);
-                for (int shift = 0; shift < 24; shift += 8){
-                    const int c = (int)((p >> shift) & 0xff) - (int)((q >> shift) & 0xff);
-                    sum += c < 0 ? -c : c;
-                }
-                count += 3;
-            }
+//  Each pixel's 3x3 neighbourhood mean. The copy samples the frame every 10
+//  pixels, so grass and roof tiles alias, and a scroll that is not a whole
+//  pixel of the copy, as the far rows' are, lines up only partly.
+ImageRGB32 smoothed(const ImageRGB32& image){
+    ImageRGB32 out(image.width(), image.height());
+    for (int y = 0; y < (int)image.height(); y++){
+        for (int x = 0; x < (int)image.width(); x++){
+            out.pixel(x, y) = neighbourhood_mean(image, x, y);
         }
-        return (double)sum / (double)count;
-    };
-    ViewShift best;
-    best.unshifted = difference(0, 0);
+    }
+    return out;
+}
+
+//  The player's box, which moves with the camera, not with the scenery.
+bool in_player_box(int x, int y){
+    return x >= VIEW_WIDTH * 42 / 100 && x < VIEW_WIDTH * 58 / 100
+        && y >= VIEW_HEIGHT * 30 / 100 && y < VIEW_HEIGHT * 75 / 100;
+}
+
+//  Mean difference per colour channel between `after` and `before` shifted
+//  by (dx, dy), over the rows [top, bottom) outside the player's box.
+double band_difference(const ImageRGB32& before, const ImageRGB32& after, int top, int bottom, int dx, int dy){
+    uint64_t sum = 0;
+    size_t count = 0;
+    for (int y = top; y < bottom; y++){
+        for (int x = VIEW_REACH; x < VIEW_WIDTH - VIEW_REACH; x++){
+            if (in_player_box(x, y)){
+                continue;
+            }
+            const uint32_t p = before.pixel(x - dx, y - dy);
+            const uint32_t q = after.pixel(x, y);
+            for (int shift = 0; shift < 24; shift += 8){
+                const int c = (int)((p >> shift) & 0xff) - (int)((q >> shift) & 0xff);
+                sum += c < 0 ? -c : c;
+            }
+            count += 3;
+        }
+    }
+    return count == 0 ? 0 : (double)sum / (double)count;
+}
+
+BandShift band_shift(const ImageRGB32& before, const ImageRGB32& after, int top, int bottom){
+    BandShift best;
+    best.unshifted = band_difference(before, after, top, bottom, 0, 0);
     best.shifted = best.unshifted;
-    for (int dy = -REACH; dy <= REACH; dy++){
-        for (int dx = -REACH; dx <= REACH; dx++){
+    for (int dy = -VIEW_REACH; dy <= VIEW_REACH; dy++){
+        for (int dx = -VIEW_REACH; dx <= VIEW_REACH; dx++){
             if (dx == 0 && dy == 0){
                 continue;
             }
-            const double d = difference(dx, dy);
+            const double d = band_difference(before, after, top, bottom, dx, dy);
             if (d < best.shifted){
                 best.shifted = d;
                 best.dx = dx;
@@ -169,11 +208,90 @@ ViewShift walk_view_shift(const ImageViewRGB32& before, const ImageViewRGB32& af
     return best;
 }
 
-bool tap_moved(const ImageViewRGB32& before, const ImageViewRGB32& after, double line){
-    if (indoors(after)){
-        return walk_screen_change(before, after) >= line;
+int sign(int value){
+    return (value > 0) - (value < 0);
+}
+
+//  The way a band scrolled: the sign of its larger component, both for a
+//  diagonal. Bands of one step differ by a pixel or two across.
+std::pair<int, int> scroll_way(const BandShift& band){
+    const int across = std::abs(band.dx);
+    const int down = std::abs(band.dy);
+    return {across >= down ? sign(band.dx) : 0, down >= across ? sign(band.dy) : 0};
+}
+
+} // namespace
+
+bool BandShift::lines_up() const{
+    constexpr double LEAST_DIFFERENCE = 3;  //  standing still in the video: 0 to 1.5
+    return (dx != 0 || dy != 0) && unshifted >= LEAST_DIFFERENCE && unshifted >= 2 * shifted;
+}
+
+bool ViewShift::scrolled() const{
+    constexpr size_t LEAST_BANDS = 3;
+    for (const BandShift& band : bands){
+        if (!band.lines_up()){
+            continue;
+        }
+        const size_t agreeing = (size_t)std::count_if(bands.begin(), bands.end(), [&](const BandShift& other){
+            return other.lines_up() && scroll_way(other) == scroll_way(band);
+        });
+        if (agreeing >= LEAST_BANDS){
+            return true;
+        }
     }
-    return walk_view_shift(before, after).scrolled();
+    return false;
+}
+
+ViewShift walk_view_shift(const ImageViewRGB32& before, const ImageViewRGB32& after){
+    const ImageRGB32 a = smoothed(before.scale_to(VIEW_WIDTH, VIEW_HEIGHT));
+    const ImageRGB32 b = smoothed(after.scale_to(VIEW_WIDTH, VIEW_HEIGHT));
+    constexpr int ROWS = VIEW_HEIGHT - 2 * VIEW_REACH;
+    constexpr int BANDS = (int)ViewShift::BANDS;
+    ViewShift shift;
+    for (int i = 0; i < BANDS; i++){
+        shift.bands[i] = band_shift(a, b, VIEW_REACH + ROWS * i / BANDS, VIEW_REACH + ROWS * (i + 1) / BANDS);
+    }
+    return shift;
+}
+
+std::string describe_view_shift(const ViewShift& shift){
+    std::string text;
+    for (const BandShift& band : shift.bands){
+        const std::string ratio = band.shifted > 0 ? std::format("{:.2f}", band.unshifted / band.shifted) : "inf";
+        text += std::format("{}({}, {}) {:.1f}/{:.1f}={}", text.empty() ? "" : ", ",
+            band.dx, band.dy, band.unshifted, band.shifted, ratio);
+    }
+    return text;
+}
+
+bool tap_moved(const ImageViewRGB32& before, const ImageViewRGB32& after, double line){
+    return read_tap(before, after, line).moved;
+}
+
+TapRead read_tap(const ImageViewRGB32& before, const ImageViewRGB32& after, double line){
+    TapRead read;
+    if (indoors(after)){
+        read.moved = walk_screen_change(before, after) >= line;
+        return read;
+    }
+    read.shift = walk_view_shift(before, after);
+    read.moved = read.shift->scrolled();
+    return read;
+}
+
+StillTapFrames::StillTapFrames(Save save, size_t max_pairs)
+    : m_save(std::move(save))
+    , m_max_pairs(max_pairs)
+{}
+
+void StillTapFrames::keep_if_suspect(const TapChunk& tap, const ImageViewRGB32& before, const ImageViewRGB32& after){
+    constexpr double NEAR_A_STEP = 0.6;
+    if (tap.moved || tap.change < NEAR_A_STEP * tap.largest || m_saved >= m_max_pairs || !m_save){
+        return;
+    }
+    m_saved++;
+    m_save(before, after, tap.chunk);
 }
 } // namespace detail
 
@@ -187,6 +305,28 @@ public:
         : DetectorToFinder("BattleDialogWatcher", std::chrono::milliseconds(250), color)
     {}
 };
+
+//  One line a tap: what tap_moved() saw, to tell a missed step from a bump.
+std::string describe_tap(std::string_view label, const TapChunk& tap, double line, const TapRead& read){
+    std::string text = std::format("[Walk] {}: tap {}: change {:.1f}", label, tap.chunk, tap.change);
+    if (read.shift){
+        text += std::format(", bands {}", describe_view_shift(*read.shift));
+    }else{
+        text += std::format(", indoors, line {:.1f}", line);
+    }
+    return std::format("{}, {}.", text, read.moved ? "moved" : "still");
+}
+
+//  Screenshots/AutoStory/route/<time>-<leg>-chunk<N>-before.png and -after.png,
+//  next to the frames where each leg ended.
+void save_still_tap(VideoStream& stream, std::string_view label, const ImageViewRGB32& before, const ImageViewRGB32& after, size_t chunk){
+    const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
+    Filesystem::create_directories(Filesystem::Path(folder));
+    const std::string stem = std::format("{}{}-{}-chunk{}", folder, now_to_filestring(), normalize_location_name(std::string(label)), chunk);
+    before.save(std::format("{}-before.png", stem));
+    after.save(std::format("{}-after.png", stem));
+    stream.log(std::format("[Walk] {}: tap {} read still near a step's change; frames saved as {}-before/after.png.", label, chunk, stem));
+}
 
 VideoSnapshot snapshot_or_fail(VideoStream& stream, const std::string& label){
     VideoSnapshot frame = stream.video().snapshot();
@@ -386,6 +526,9 @@ public:
         , m_escape(escape)
         , m_spec(spec)
         , m_dpad(spec.stick.x < 0 ? DPAD_LEFT : spec.stick.x > 0 ? DPAD_RIGHT : spec.stick.y > 0 ? DPAD_UP : DPAD_DOWN)
+        , m_still_frames([this](const ImageViewRGB32& before, const ImageViewRGB32& after, size_t chunk){
+            save_still_tap(m_stream, m_spec.label, before, after, chunk);
+        })
     {}
 
     WalkResult run(){
@@ -510,7 +653,7 @@ private:
         //  Taps count what scrolled the view, not scenery that moved (r84:
         //  cloud shadows read as steps).
         const bool still = m_spec.input == WalkInput::TAPS
-            ? !tap_moved(*m_before.frame, *after.frame, still_line(change))
+            ? !tap_moved_logged(*after.frame, change)
             : change < still_line(change);
         if (!still){
             //  A quiet tap and then a moving one: the first moved too. What
@@ -527,6 +670,17 @@ private:
         }
         m_before = std::move(after);
         return {ChunkNext::NEXT_CHUNK, WalkStop::LIMIT};
+    }
+
+    //  tap_moved() for this chunk's tap, logged, and its frames kept if it
+    //  read still with a change near the walk's steps.
+    bool tap_moved_logged(const ImageViewRGB32& after, double change){
+        const double line = still_line(change);
+        const TapRead read = read_tap(*m_before.frame, after, line);
+        const TapChunk tap{.chunk = m_chunks, .change = change, .largest = m_largest, .moved = read.moved};
+        m_stream.log(describe_tap(m_spec.label, tap, line, read));
+        m_still_frames.keep_if_suspect(tap, *m_before.frame, after);
+        return read.moved;
     }
 
     //  The largest change a chunk of this walk made is a step. A bump into an
@@ -630,6 +784,7 @@ private:
     size_t m_moved_at_battle = 0;
     double m_largest = 0;
     LocationBannerWatcher m_banner;
+    StillTapFrames m_still_frames;
 };
 
 WalkResult walk_until_spec(
