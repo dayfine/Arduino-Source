@@ -59,18 +59,11 @@ struct Pose{
 std::string to_string(const Pose& pose);
 
 
-//  How the checkpoint being run began.
-enum class RowStart{
-    LOADED,     //  from a save: the run's first row, a reload, a retry
-    CHAINED,    //  on from the live screen where the row before ended
-};
-
 //  What a run knows. Flags are set only by confirmed effects and are lost
-//  on a reload, which also makes `row_start` LOADED again.
+//  on a reload.
 struct RunState{
     Pose pose;
     std::set<std::string> flags;
-    RowStart row_start = RowStart::LOADED;
 };
 
 
