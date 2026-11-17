@@ -47,16 +47,18 @@ struct ZoneCatchGoal{
 //  03.08's catches for the "register five species" quest (3/5 after the
 //  tutorial), in Wild Zone 1, as plza/autostory's passed on console B
 //  (2026-11-14). From Taunie's rocks, where the start save stands, first
-//  to the road's spot at 100 by ZoneStart's measured route
-//  (TAUNIE_ROCKS_ROUTE): a leg left off the rocks, a marker read in its
-//  range, then the marker walk; it fails there, before any catch, as
-//  "rocks_not_left" or "zone_spot_not_reached". Then it patrols the
-//  user's two catch spots (CATCH_SPOTS): 100 (Scatterbug on the plaza's
-//  road) and 60 (Mareep by the far gate), back and forth, 10 visits and
-//  10 minutes at most, turning back at once at a spot where a new
-//  species was caught (spot_visit()). At each stop, from the middle of
-//  the road, it fights a wild battle that is on (one of a species already
-//  caught is fought off), else sweeps the camera for the lock-on brackets
+//  to the road's spot at 100: ZoneStart's measured leg left off the rocks
+//  (TAUNIE_ROCKS_ROUTE) and a marker read in its range, then map legs
+//  (walk_map_legs(), ROCKS_TO_SPOT_100); it fails there, before any
+//  catch, as "rocks_not_left", "leg_off_target" or "map_pin_not_read".
+//  Then it patrols the user's two catch spots (CATCH_SPOTS): 100
+//  (Scatterbug on the plaza's road) and 60 (Mareep by the far gate), back
+//  and forth by map legs to their waypoints, 10 visits and 10 minutes at
+//  most, turning back at once at a spot where a new species was caught
+//  (spot_visit()); a leg that fails ends it with that failure. At each
+//  stop, after a marker read logged as a cross-check, it fights a wild
+//  battle that is on (one of a species already caught is fought off),
+//  else sweeps the camera for the lock-on brackets
 //  (LockOnBracketDetector), turns to the nearest, holds ZL, flicks through
 //  the targets' plates and throws at the nearest not caught
 //  (lock_target_caught()), walking toward it first when far. After a
@@ -71,14 +73,12 @@ struct ZoneCatchGoal{
 //  "short_of_species", still in the zone.
 Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal);
 
-//  After 03.08's catches: back onto the road at the catch spots nearer
-//  the far gate than the player, or at 60 when at or past it, by the
-//  objective marker (walk_toward_marker(), walk_back_from_marker()). From
-//  60 the far gate's pillars are straight down the road; the marker is not
-//  on the gate but past it and to its left, behind the zone's fence, so a
-//  walk at the marker was held up at 36 and wandered off (console B,
-//  2026-11-13 and 2026-11-14). Ends with the camera on the marker. Fails
-//  as "road_stop_not_reached".
+//  After 03.08's catches: back onto the road at the 60 spot by a map leg
+//  (walk_map_legs(), ZONE1_SPOT_60). From 60 the far gate's pillars are
+//  straight down the road; the marker is not on the gate but past it and
+//  to its left, behind the zone's fence, so a walk at the marker was held
+//  up at 36 and wandered off (console B, 2026-11-13 and 2026-11-14). Ends
+//  with the camera on the marker. Fails as walk_map_legs() does.
 Pokemon::Outcome walk_back_to_zone_road(StoryEnv& env, PlzaBackend& backend);
 
 
