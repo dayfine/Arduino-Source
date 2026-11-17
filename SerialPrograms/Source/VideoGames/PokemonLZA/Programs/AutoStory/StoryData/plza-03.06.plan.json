@@ -51,6 +51,6 @@
   "execution": {
     "save": "autosave",
     "autosave_step": "wild_zones_tutorial",
-    "start_signature": {"registered": 1, "talk_prompt": true, "wild_zone": false}
+    "start_signature": {"registered": 1, "talk_prompt": true, "wild_zone": false, "party": 1}
   }
 }
