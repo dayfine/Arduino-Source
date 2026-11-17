@@ -252,17 +252,25 @@ public:
             "[Verify] {}: phase 1, {} tries from one save, {} must pass; phase 2, up to {} tries, the first pass saved",
             id, m_verify.tries, m_verify.min_pass, m_verify.reset_budget
         ), m_hooks);
+        //  Phase 1 ends as soon as its verdict is known: min_pass passes, or
+        //  too few tries left to reach it.
         size_t passes = 0;
-        for (size_t c = 1; c <= m_verify.tries; c++){
+        for (size_t c = 1; c <= m_verify.tries && passes < m_verify.min_pass; c++){
             const std::optional<bool> passed = try_once(/*phase=*/1, c, m_verify.tries);
             if (!passed){
                 return std::move(m_result);
             }
             passes += *passed ? 1 : 0;
+            if (passes + (m_verify.tries - c) < m_verify.min_pass){
+                return stop("verify_below_min_pass", std::format(
+                    "phase 1 passed {} of {}, {} left: under {}", passes, c, m_verify.tries - c, m_verify.min_pass
+                ));
+            }
         }
         if (passes < m_verify.min_pass){
             return stop("verify_below_min_pass", std::format("phase 1 passed {} of {}, under {}", passes, m_verify.tries, m_verify.min_pass));
         }
+        say(std::format("[Verify] {}: phase 1 reached {} passes", id, passes), m_hooks);
         for (size_t c = 1; c <= m_verify.reset_budget; c++){
             const std::optional<bool> passed = try_once(/*phase=*/2, c, m_verify.reset_budget);
             if (!passed){
