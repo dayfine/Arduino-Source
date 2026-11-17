@@ -86,6 +86,8 @@ void print_channel_help(std::ostream& out){
         "  state\n"
         "  snapshot LABEL [TIMEOUT_MS]   (saves the first video frame newer than the call; default 5000 ms)\n"
         "  describe_program   (the selected program's id and option contract, as one line of JSON)\n"
+        "  preflight JSON   (runs the program's start checks with these options, without starting it;\n"
+        "                    puts the options back; one line \"preflight JSON\")\n"
         "  keepawake on|off [seconds]\n"
         "  popups [close]   (the app's message boxes; close presses their default button)\n  help\n";
 }
@@ -365,7 +367,9 @@ void LabChannel::poll(){
             }
         }
     }
-    keep_awake();
+    if (!update_hold()){
+        keep_awake();
+    }
     write_state();
 }
 
@@ -490,13 +494,13 @@ std::string LabChannel::run_line(const LabRequest& request, const LabRequestLine
         return run_describe_program(words, output.out);
     }
     const LabConsoleCommands::Kind kind = m_console->kind(command);
-    if (kind != LabConsoleCommands::Kind::READS_STREAM){
-        std::string error = m_owner.check(request.owner);
-        if (!error.empty()){
-            return error;
-        }
+    const std::string refusal = check_owner_and_hold(request, words, kind == LabConsoleCommands::Kind::READS_STREAM);
+    if (!refusal.empty()){
+        return refusal;
     }
-    if (command == "select" || command == "set" || command == "start" || command == "stop" || command == "popups"){
+    if (command == "select" || command == "set" || command == "start" || command == "stop" || command == "popups"
+        || command == "preflight"
+    ){
         return run_ui_command(request, line, output.out);
     }
     if (command == "keepawake"){
@@ -523,10 +527,65 @@ std::string LabChannel::run_describe_program(const std::vector<std::string>& wor
         return "describe_program: the selected program has no options the lab can read.";
     }
     JsonValue contract = lab_program_contract(
-        m_program->descriptor().identifier(), *options, m_program->precheck_summaries()
+        m_program->descriptor().identifier(), *options, m_program->prechecks().summaries()
     );
     out << "describe_program " << contract.dump(-1) << "\n";
     return "";
+}
+
+//  "preflight JSON": a checks-only run of the selected program with these
+//  options (ProgramSession::Prechecks::run_only()), holding the panel like a
+//  console command. The options are loaded and put back on the UI thread,
+//  like "set"; the checks run on this worker. Prints one line, "preflight "
+//  and lab_preflight_reply() as JSON; "cancelled" after a panel change. A
+//  program that is not STOPPED, a controller that is not ready or a check
+//  that throws fails the line instead; the options are put back all the
+//  same.
+std::string LabChannel::run_preflight(const LabRequestLine& line, std::ostream& out){
+    const JsonValue candidate = parse_json(line_after_words(line.text, 1));
+    if (candidate.to_object() == nullptr){
+        return "preflight: expected preflight JSON, an object of option keys";
+    }
+    return run_on_console([&](PanelSession& panel, CancellableScope& scope){
+        ProgramSession* program = dynamic_cast<ProgramSession*>(&panel);
+        if (program == nullptr){
+            throw ParseException("The selected panel is not a program.");
+        }
+        //  This worker holds m_panel_lock, which set_panel() on the UI thread
+        //  waits for after cancelling `scope`. The UI call is given up then,
+        //  and `body` runs here instead: the UI thread is blocked until this
+        //  worker lets the panel go, so nothing else touches the options, and
+        //  the prior options get back before the app saves its settings.
+        const OptionsThreadCall on_ui = [this, &scope](const std::function<void()>& body){
+            if (!scope.cancelled()){
+                const std::string error = run_on_ui([&]{
+                    body();
+                    return std::string();
+                }, &scope);
+                if (error.empty()){
+                    return;
+                }
+                if (!scope.cancelled()){
+                    throw ParseException(error);
+                }
+            }
+            body();
+        };
+        const PrecheckOnlyRun run = program->prechecks().run_only(candidate, scope, on_ui);
+        JsonValue reply = lab_preflight_reply(program->descriptor().identifier(), run, read_options_hash(panel));
+        out << "preflight " << reply.dump(-1) << "\n";
+    });
+}
+
+//  Reads the options on this worker, not the UI thread, as write_state_json()
+//  does every second: to_json() only reads, and a UI call per second would
+//  cost more than a rare read during an edit.
+std::optional<std::string> LabChannel::read_options_hash(PanelSession& panel){
+    const BatchOption* options = m_console->options(panel);
+    if (options == nullptr){
+        return std::nullopt;
+    }
+    return lab_options_hash(options->to_json());
 }
 
 std::string LabChannel::run_console_command(const std::vector<std::string>& words, LabCommandOutput& output){
@@ -582,6 +641,10 @@ std::string LabChannel::run_ui_command(const LabRequest& request, const LabReque
     const std::string& command = words[0];
     if (command == "popups"){
         return run_popups(words, out);
+    }
+    if (command == "preflight"){
+        //  Stages options on the UI thread like "set"; the checks run on this worker.
+        return run_preflight(line, out);
     }
     if (command == "select"){
         if (words.size() < 2){
@@ -741,7 +804,7 @@ std::string LabChannel::run_snapshot(const std::vector<std::string>& words, LabC
     return reply(lab_snapshot_saved(m_instance_id, wait.frame->token, wait.after, path));
 }
 
-std::string LabChannel::run_on_ui(const std::function<std::string()>& body){
+std::string LabChannel::run_on_ui(const std::function<std::string()>& body, const CancellableScope* scope){
     struct Call{
         Mutex lock;
         ConditionVariable cv;
@@ -774,6 +837,10 @@ std::string LabChannel::run_on_ui(const std::function<std::string()>& body){
             call->abandoned = true;
             return "The app is closing.";
         }
+        if (scope != nullptr && scope->cancelled()){
+            call->abandoned = true;
+            return "cancelled: the panel changed.";
+        }
         call->cv.wait_for(lg, UI_WAIT_SLICE);
     }
     return call->result;
@@ -797,6 +864,46 @@ void LabChannel::keep_awake(){
     }
 }
 
+//  Everything but a read needs the owner's token once claimed, and only
+//  reads run while the user holds the console.
+std::string LabChannel::check_owner_and_hold(const LabRequest& request, const std::vector<std::string>& words, bool reads_stream){
+    if (!reads_stream){
+        std::string error = m_owner.check(request.owner);
+        if (!error.empty()){
+            return error;
+        }
+    }
+    if (lab_runs_while_held(words, reads_stream)){
+        return "";
+    }
+    const std::optional<LabHold> hold = update_hold();
+    return hold ? lab_hold_refusal(*hold) : "";
+}
+
+std::optional<LabHold> LabChannel::update_hold(){
+    const Filesystem::Path path(folder() + "hold");
+    std::string text;
+    std::optional<LabHold> hold;
+    if (file_to_string(path.string(), text)){
+        hold = parse_lab_hold(text);
+    }
+    std::optional<std::string> reason;
+    {
+        std::lock_guard<Mutex> lg(m_panel_lock);
+        if (m_program != nullptr){
+            reason = m_hold_trigger.check(
+                m_program->last_transition(), m_console->controller(*m_panel).last_user_input, m_selected_at
+            );
+        }
+    }
+    if (reason && !hold){
+        hold = LabHold{.owner = "user", .reason = *reason, .acquired_at = lab_timestamp_text(current_time())};
+        write_file_atomically(path, lab_hold_text(*hold));
+        global_logger_tagged().log("Lab: the user drove the console (" + *reason + "); held until hold.sh off.", COLOR_BLUE);
+    }
+    return hold;
+}
+
 void LabChannel::read_program_state(std::string& state, std::string& program, bool& running) const{
     const ProgramSession* session = dynamic_cast<const ProgramSession*>(m_panel);
     program = m_panel == nullptr ? "" : m_panel->descriptor().identifier();
@@ -811,7 +918,7 @@ void LabChannel::read_program_state(std::string& state, std::string& program, bo
 }
 
 std::string LabChannel::read_controller_status(){
-    return m_panel == nullptr ? "" : m_console->controller_status(*m_panel);
+    return m_panel == nullptr ? "" : m_console->controller(*m_panel).status;
 }
 
 void LabChannel::write_state(){
@@ -847,6 +954,7 @@ void LabChannel::write_state_json(WallClock now){
         has_video = m_video != nullptr;
         if (m_program != nullptr){
             state.last_transition = lab_transition_since(m_program->last_transition(), m_selected_at);
+            state.options_hash = read_options_hash(*m_panel);
         }
     }
     state.legacy = m_state;

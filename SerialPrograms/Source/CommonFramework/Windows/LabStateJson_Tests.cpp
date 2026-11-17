@@ -13,6 +13,7 @@
 
 #include <format>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -281,6 +282,7 @@ struct FieldInput{
     std::string state = "STOPPED";
     std::string controller = "ready";
     std::string error = {};
+    std::optional<std::string> options_hash = {};
 };
 struct FieldExpectation{
     std::vector<std::string> lines;     //  Text the JSON must contain.
@@ -295,6 +297,7 @@ UnitTestResult check(const FieldCase& c){
     state.legacy.state = c.input.state;
     state.legacy.controller = c.input.controller;
     state.legacy.error = c.input.error;
+    state.options_hash = c.input.options_hash;
     const std::string text = lab_state_json_text(state);
     for (const std::string& line : c.expectation.lines){
         if (text.find(line) == std::string::npos){
@@ -350,6 +353,11 @@ const FieldCase FIELD_CASES[] = {
             "\"id\": null,\n    \"kind\": \"other\"",
             "\"controller\": {\n    \"state\": \"no_console\"",
         }},
+    },
+    {
+        .name = "the program's options hash",
+        .input = {.options_hash = "ab12"},
+        .expectation = {.lines = {"\"last_transition\": {", "\"options_hash\": \"ab12\"\n  },\n  \"controller\""}},
     },
 };
 
@@ -457,6 +465,7 @@ enum class Change{
     PROGRAM_STARTED,
     REQUEST_FINISHED,
     VIDEO_STALE,
+    OPTIONS_CHANGED,
     APP_RESTARTED,
     FILE_GONE,
 };
@@ -495,6 +504,9 @@ void apply(Change change, LabAppState& state, LabStateJsonThrottle& throttle){
         return;
     case Change::VIDEO_STALE:
         state.video = LabVideoState::STALE;
+        return;
+    case Change::OPTIONS_CHANGED:
+        state.options_hash = "cd34";
         return;
     case Change::APP_RESTARTED:
         state.instance_id = "0c7b3f52-91d4-4e8a-a3f6-5b2e7d10c9a4";
@@ -571,6 +583,11 @@ const ThrottleCase THROTTLE_CASES[] = {
     {
         .name = "stale video is written at once",
         .input = {.calls = {{0ms, Change::NOTHING}, {100ms, Change::VIDEO_STALE}}},
+        .expectation = {.written = {true, true}},
+    },
+    {
+        .name = "an options change is written at once",
+        .input = {.calls = {{0ms, Change::NOTHING}, {100ms, Change::OPTIONS_CHANGED}}},
         .expectation = {.written = {true, true}},
     },
     {

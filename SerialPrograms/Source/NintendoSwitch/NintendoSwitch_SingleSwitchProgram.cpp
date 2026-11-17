@@ -109,6 +109,25 @@ void SingleSwitchProgramInstance::run_start_program_checks(
     start_program_feedback_check(ldescriptor, lenv.console());
     start_program_border_check(lenv.console(), ldescriptor.feedback());
 }
+std::optional<std::vector<PrecheckReport>> SingleSwitchProgramInstance::run_prechecks(
+    GameConsole::ConsoleProgramEnvironment& env, CancellableScope& scope
+){
+    SingleSwitchProgramEnvironment& lenv = static_cast<SingleSwitchProgramEnvironment&>(env);
+    ProControllerContext context(scope, lenv.console.controller<ProController>());
+    if (!context->is_ready()){
+        throw UserSetupError(context->logger(), "Controller is not ready.");
+    }
+    std::optional<std::vector<PrecheckReport>> reports = run_switch_prechecks(lenv, context);
+    context.wait_for_all_requests();
+    return reports;
+}
+std::optional<std::vector<PrecheckReport>> SingleSwitchProgramInstance::run_switch_prechecks(
+    SingleSwitchProgramEnvironment&, ProControllerContext&
+){
+    return std::nullopt;
+}
+
+
 void SingleSwitchProgramInstance::start_program_border_check(
     VideoStream& stream,
     FeedbackType feedback_type

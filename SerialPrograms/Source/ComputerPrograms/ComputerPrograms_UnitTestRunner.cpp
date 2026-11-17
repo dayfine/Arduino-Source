@@ -23,12 +23,14 @@
 #include "CommonFramework/AudioPipeline/Spectrum/FFTStreamer.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
+#include "CommonFramework/ProgramPrecheckRun_Tests.h"
 #include "CommonFramework/ProgramTransition_Tests.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "CommonFramework/Windows/LabChannel_Tests.h"
 #include "CommonFramework/Startup/StartupArguments_Tests.h"
 #include "CommonFramework/Startup/LabStartupPolicy_Tests.h"
 #include "CommonFramework/Devices/LabDeviceAccessQt_Tests.h"
+#include "CommonFramework/Windows/LabHold_Tests.h"
 #include "CommonFramework/VideoPipeline/Sources/VideoSource_MgbaLink_Tests.h"
 #include "Controllers/MgbaLink/MgbaLink_Keys_Tests.h"
 #include "Controllers/MgbaLink/MgbaLink_KeySender_Tests.h"
@@ -117,6 +119,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_StartupArguments(ret);
     add_tests_LabStartupPolicy(ret);
     add_tests_LabDeviceAccess(ret);
+    add_tests_LabHold(ret);
     MgbaLink::add_tests(ret);
     MgbaLink::add_key_tests(ret);
     MgbaLink::add_key_sender_tests(ret);
@@ -125,6 +128,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_LabProgramContract(ret);
     add_tests_LabSnapshot(ret);
     add_tests_LabStateJson(ret);
+    add_tests_ProgramPrecheckRun(ret);
     add_tests_ProgramTransition(ret);
     OCR::add_tests(ret);
     add_tests_ScreenEvents(ret);

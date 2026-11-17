@@ -67,6 +67,8 @@ struct LabAppState{
 
     std::optional<ProgramTransition> last_transition;
     std::optional<std::string> paused;
+    //  lab_options_hash() of the selected program's options, if it has any.
+    std::optional<std::string> options_hash;
 
     LabVideoState video = LabVideoState::MISSING;
     std::optional<LabFrameToken> frame;

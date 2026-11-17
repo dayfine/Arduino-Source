@@ -711,6 +711,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/PersistentSettings.h
     Source/CommonFramework/ProgramSession.cpp
     Source/CommonFramework/ProgramSession.h
+    Source/CommonFramework/ProgramPrecheckRun.cpp
+    Source/CommonFramework/ProgramPrecheckRun.h
+    Source/CommonFramework/ProgramPrecheckRun_Tests.cpp
+    Source/CommonFramework/ProgramPrecheckRun_Tests.h
     Source/CommonFramework/ProgramTransition.cpp
     Source/CommonFramework/ProgramTransition.h
     Source/CommonFramework/ProgramTransition_Tests.cpp
@@ -856,6 +860,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Windows/LabFrames.h
     Source/CommonFramework/Windows/LabPause.cpp
     Source/CommonFramework/Windows/LabPause.h
+    Source/CommonFramework/Windows/LabHold.cpp
+    Source/CommonFramework/Windows/LabHold.h
+    Source/CommonFramework/Windows/LabHold_Tests.cpp
+    Source/CommonFramework/Windows/LabHold_Tests.h
     Source/CommonFramework/Windows/LabProgramContract.cpp
     Source/CommonFramework/Windows/LabProgramContract.h
     Source/CommonFramework/Windows/LabProgramContract_Tests.cpp
