@@ -55,11 +55,18 @@ struct SceneMachineConfig{
     Button blind_button = BUTTON_A;
     //  Ends at the choice box (CHOICE_BOX) instead of taking its top row.
     bool stop_at_choice = false;
-    //  Ends at the battle HUD (BATTLE_STARTED), before anything else.
-    //  The HUD shows only while the player is locked on: after a black
-    //  fade with no text since, nothing busy for 3 s or the party bar held
-    //  a second gets ZL, then up to 4 times a quarter turn, L and ZL.
+    //  Ends at the battle HUD (BATTLE_STARTED), before anything else, or
+    //  at a lock-on. The HUD shows only while the player is locked on:
+    //  after a black fade with no text since, a still screen with nothing
+    //  busy for 3 s or the party bar held a second gets ZL held while
+    //  `lock_on` watches for the move symbols, then up to 4 times a
+    //  quarter turn, L and that again. The symbols end the machine
+    //  (locked on); a cutscene (the screen moving, no party bar) gets no
+    //  ZL, and text starts the tries again.
     bool stop_at_battle = false;
+    //  With stop_at_battle, the lock-on's watch; none: no lock-on (a
+    //  backend that models none).
+    std::optional<LockOnWatch> lock_on = std::nullopt;
     //  The button that advances text in a machine that stops at a choice
     //  or a battle, and the advance chevron with no box: B where an A could
     //  land on a choice that shows the moment the text ends. A text box in
@@ -116,7 +123,7 @@ std::string describe_scene_look(const ScreenObservation& look);
 //  box, with `config.stop_at_battle` on the battle HUD, and neither takes
 //  the party bar or a prompt for control (they show between a talk's
 //  lines; after the battle's fade a battle start locks on to bring the
-//  HUD up: SceneMachineConfig::stop_at_battle); with
+//  HUD up, and ends once locked on: SceneMachineConfig::stop_at_battle); with
 //  `config.end_after_black_fades` once its last fade has lifted and
 //  settled. `label` names its log lines ("[PLZA
 //  mash_to_move_hints] screen 2: dialog at 1.5s: text box"), which go to

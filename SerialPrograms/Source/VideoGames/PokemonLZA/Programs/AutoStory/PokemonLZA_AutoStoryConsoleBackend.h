@@ -51,6 +51,11 @@ struct StoryEnv{
 //  The console's MinimapArrowReader: get_facing_direction() on `env`.
 MinimapArrowReader minimap_arrow(StoryEnv& env);
 
+//  The console's LockOnWatch, upstream TrainerBattle's attempt_one_attack()
+//  on `env`: ZL held while MoveEffectivenessSymbolWatcher watches, let go
+//  once the symbols show.
+LockOnWatch move_symbols_lock_on(StoryEnv& env);
+
 
 //  PLZA on the console: the controller and PlzaScreenObserver.
 //  code-health: allow public_methods -- the engine's backend calls; nothing PLZA adds

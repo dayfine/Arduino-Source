@@ -159,8 +159,9 @@ std::vector<GoldenScreen> golden_screens(std::string_view text){
 
 //  The console as a recording: observe() shows the screen whose time has
 //  come by the clock, which the step's presses and waits move; each press
-//  is put down to the screen the step last looked at. From the
-//  `lock_on_presses`th ZL on, it shows `locked_on` instead, if any.
+//  is put down to the screen the step last looked at. A lock-on watch
+//  (watch_lock_on()) is a ZL press: the move symbols show from its
+//  `symbols_from_watch`th on, if any.
 //  code-health: allow public_methods -- the backend calls a step makes, plus the presses and lines a test reads
 class GoldenBackend : public PlzaBackend{
 public:
@@ -169,12 +170,20 @@ public:
         std::string key;
     };
 
-    GoldenBackend(std::vector<GoldenScreen> screens, std::string_view locked_on, size_t lock_on_presses, CancellableScope& scope)
+    GoldenBackend(std::vector<GoldenScreen> screens, std::optional<size_t> symbols_from_watch, CancellableScope& scope)
         : m_screens(std::move(screens))
-        , m_locked_on(locked_on)
-        , m_lock_on_presses(lock_on_presses)
+        , m_symbols_from_watch(symbols_from_watch)
         , m_scope(scope)
     {}
+
+    //  The story game's LockOnWatch: ZL held `hold` on the screen shown,
+    //  the move symbols from the `symbols_from_watch`th watch on.
+    bool watch_lock_on(Milliseconds hold){
+        m_presses.push_back({m_shown, "ZL"});
+        m_now += hold;
+        m_watches++;
+        return m_symbols_from_watch && m_watches >= *m_symbols_from_watch;
+    }
 
     const std::vector<Press>& presses() const{
         return m_presses;
@@ -189,7 +198,6 @@ public:
     virtual void press(Button button, Milliseconds hold, Milliseconds release) override{
         m_presses.push_back({m_shown, button_to_string(button)});
         m_now += hold + release;
-        m_zl_presses += button == BUTTON_ZL ? 1 : 0;
     }
     virtual void tap(Pokemon::Direction) override{
         m_presses.push_back({m_shown, "tap"});
@@ -208,9 +216,6 @@ public:
     virtual Observation<ZonePose> observe() override{
         while (m_shown + 1 < m_screens.size() && m_screens[m_shown + 1].at <= m_now){
             m_shown++;
-        }
-        if (!m_locked_on.empty() && m_zl_presses >= m_lock_on_presses){
-            return golden_look(m_now, m_locked_on);
         }
         if (m_screens.empty()){
             return golden_look(m_now, "nothing");
@@ -232,12 +237,11 @@ public:
 
 private:
     std::vector<GoldenScreen> m_screens;
-    std::string_view m_locked_on;
-    size_t m_lock_on_presses;
+    std::optional<size_t> m_symbols_from_watch;
     CancellableScope& m_scope;
     Milliseconds m_now = 0ms;
     size_t m_shown = 0;
-    size_t m_zl_presses = 0;
+    size_t m_watches = 0;
     std::vector<Press> m_presses;
     std::vector<std::string> m_lines;
 };
@@ -258,11 +262,9 @@ struct GoldenCase{
         std::string_view step;
         //  golden_screens()' lines.
         std::string_view screens;
-        //  The screen a lock-on shows from the `lock_on_presses`th ZL on,
-        //  over the recording: the battle HUD shows only while the player
-        //  is locked on. Empty: ZL changes nothing.
-        std::string_view locked_on = {};
-        size_t lock_on_presses = 1;
+        //  The lock-on watch (ZL held) from which on the move symbols
+        //  show: the player is locked on. None: they never show.
+        std::optional<size_t> symbols_from_watch = std::nullopt;
     };
     Input input;
     struct Expectation{
@@ -304,6 +306,16 @@ constexpr std::string_view TEPIG_START_OFF_CAMERA = R"(
 3.1s: black fade
 4.1s: nothing
 26.6s: party bar
+)";
+
+//  A battle start whose fade a cutscene follows (the screen moving, no
+//  party bar), as Totodile's start (console B 2026-11-17 23:20) got blind
+//  ZL and turns ~4 s after its fade; the party bar once it settles.
+constexpr std::string_view BATTLE_START_CUTSCENE = R"(
+0.0s: text box, advance arrow
+0.4s: black fade
+1.4s: nothing
+20.0s: party bar
 )";
 
 //  01.02 pancham_cornered, French, passed (console B 2026-11-16 22:45).
@@ -534,33 +546,45 @@ const GoldenCase GOLDEN_CASES[] = {
     },
     {
         //  The battle ran off camera, with no HUD until locked on: the
-        //  run waited out 22 s of it and failed on the party bar.
-        .name = "03.02b tepig_battle_start, nothing for 3 s after the battle's fade: ZL locks on (failed 2026-11-17 23:21)",
-        .input = {.checkpoint = "03.02b", .step = "tepig_battle_start", .screens = TEPIG_START_OFF_CAMERA, .locked_on = "battle"},
+        //  run waited out 22 s of it and failed on the party bar. The
+        //  moving screen with no party bar is waited out as a cutscene.
+        .name = "03.02b tepig_battle_start, the party bar a second after the battle's fade: ZL, the move symbols lock on (failed 2026-11-17 23:21)",
+        .input = {.checkpoint = "03.02b", .step = "tepig_battle_start", .screens = TEPIG_START_OFF_CAMERA, .symbols_from_watch = 1},
         .expectation = {
             .keys = {
                 {"text box, advance arrow", "A"},
                 {"tutorial card", "A"}, {"still, tutorial card", "A"},
-                {"nothing", "ZL"}, {"black fade", "-"},
-                {"party bar", "-"},
+                {"nothing", "-"}, {"black fade", "-"},
+                {"party bar", "ZL"},
             },
-            .verdict = "done", .end = "[PLZA story_battle_start] done on battle.",
+            .verdict = "done", .end = "[PLZA story_battle_start] done on locked_on.",
         },
     },
     {
-        .name = "03.02b tepig_battle_start, the opponent behind the camera: a turn, L and ZL again",
+        .name = "03.02b tepig_battle_start, the opponent behind the camera: no move symbols, a turn, L and ZL again",
         .input = {
-            .checkpoint = "03.02b", .step = "tepig_battle_start", .screens = TEPIG_START_OFF_CAMERA,
-            .locked_on = "battle", .lock_on_presses = 2,
+            .checkpoint = "03.02b", .step = "tepig_battle_start", .screens = TEPIG_START_OFF_CAMERA, .symbols_from_watch = 2,
         },
         .expectation = {
             .keys = {
                 {"text box, advance arrow", "A"},
                 {"tutorial card", "A"}, {"still, tutorial card", "A"},
-                {"nothing", "ZL or stick or L"}, {"black fade", "-"},
-                {"party bar", "-"},
+                {"nothing", "-"}, {"black fade", "-"},
+                {"party bar", "ZL or stick or L"},
             },
-            .verdict = "done", .end = "[PLZA story_battle_start] lock-on 2/5: turned 90 degrees right, L, ZL.",
+            .verdict = "done", .end = "[PLZA story_battle_start] lock-on 2/5: turned 90 degrees right, L, ZL held: the move symbols showed.",
+        },
+    },
+    {
+        .name = "03.02b taunie_battle_start, a cutscene after the battle's fade: no ZL until it settles",
+        .input = {.checkpoint = "03.02b", .step = "taunie_battle_start", .screens = BATTLE_START_CUTSCENE, .symbols_from_watch = 1},
+        .expectation = {
+            .keys = {
+                {"text box, advance arrow", "A"}, {"black fade", "-"},
+                {"nothing", "-"},
+                {"party bar", "ZL"},
+            },
+            .verdict = "done", .end = "[PLZA story_battle_start] done on locked_on.",
         },
     },
     {
@@ -1031,9 +1055,12 @@ UnitTestResult check_golden(const GoldenCase& test, CancellableScope& scope){
     if (row.steps.empty() || (!test.input.step.empty() && row.steps.size() != 1)){
         return std::format("no step {} in {}", test.input.step, test.input.checkpoint);
     }
+    GoldenBackend backend(screens, test.input.symbols_from_watch, scope);
+    const LockOnWatch lock_on = [&backend](Milliseconds hold){
+        return backend.watch_lock_on(hold);
+    };
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = plza_story_game(/*console=*/{}, builtin_story_data(), /*arrow=*/std::nullopt, sightings);
-    GoldenBackend backend(screens, test.input.locked_on, test.input.lock_on_presses, scope);
+    const Pokemon::StoryGame<ZonePose> game = plza_story_game(/*console=*/{}, builtin_story_data(), /*arrow=*/std::nullopt, lock_on, sightings);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
     const Pokemon::SegmentReport report = engine.run_segment("test", std::vector<StoryCheckpoint>{row}, 1, state);
