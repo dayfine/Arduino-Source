@@ -38,6 +38,7 @@
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1Road_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryZoneGateReader_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMapPinReader_Tests.h"
+#include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapMatch_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryMapLegs_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryBackend_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryBackups_Tests.h"
@@ -98,6 +99,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStoryZoneGateReader(database);
     add_tests_AutoStoryZone1Road(database);
     add_tests_AutoStoryMapPinReader(database);
+    add_tests_AutoStoryMinimapMatch(database);
     add_tests_AutoStoryMapLegs(database);
 
 }

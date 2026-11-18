@@ -23,8 +23,9 @@ namespace PokemonLZA{
 
 //  The name of the built-in reference the minimap on `screen` matches, if
 //  any: within the match distance of it (cells_rmsd() over the map's ring,
-//  the player's arrow in the middle and the rim's icons left out), the
-//  closest when several are.
+//  the player's arrow in the middle and the rim's icons left out, after
+//  scaling each channel to the reference's mean, so a darker or lighter
+//  screen still matches), the closest when several are.
 std::optional<std::string> matching_minimap(const ImageViewRGB32& screen);
 
 
