@@ -11,22 +11,6 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-std::string certainty_name(PoseCertainty certainty){
-    switch (certainty){
-    case PoseCertainty::TILE:
-        return "tile";
-    case PoseCertainty::COLUMN:
-        return "column";
-    case PoseCertainty::ROW:
-        return "row";
-    case PoseCertainty::SET:
-        return "set";
-    case PoseCertainty::UNKNOWN:
-        return "unknown";
-    }
-    return "?";
-}
-
 std::string to_string(const Pose& pose){
     std::string text = pose.map.empty() ? "?" : pose.map;
     if (pose.where){
@@ -35,7 +19,7 @@ std::string to_string(const Pose& pose){
             text += std::format(" {}", where);
         }
     }
-    return std::format("{} ({})", text, certainty_name(pose.certainty));
+    return text;
 }
 
 

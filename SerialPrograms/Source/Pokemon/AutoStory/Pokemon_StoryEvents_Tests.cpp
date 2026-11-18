@@ -88,7 +88,7 @@ Act act_of(ScriptedAct kind){
         case ScriptedAct::PASS:
             return outcome_ok();
         case ScriptedAct::PASS_AT_LOBBY:
-            return outcome_ok(Pose{.map = "Lobby", .certainty = PoseCertainty::SET, .where = nullptr});
+            return outcome_ok(Pose{.map = "Lobby", .where = nullptr});
         case ScriptedAct::FAIL:
             return outcome_failed("scripted", "as scripted");
         case ScriptedAct::THROW:
