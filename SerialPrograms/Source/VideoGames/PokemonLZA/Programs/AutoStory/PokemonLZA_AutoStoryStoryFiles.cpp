@@ -47,10 +47,18 @@ void read_signature_field(const std::string& field, const JsonValue& value, std:
         signature.party = (size_t)slots;
         return;
     }
+    if (field == "minimap"){
+        const std::string* name = value.to_string();
+        if (name == nullptr || name->empty()){
+            throw ParseException(std::format("{}: start_signature's minimap is a minimap reference's name", where));
+        }
+        signature.minimap = *name;
+        return;
+    }
     bool flag = false;
     if (field != "talk_prompt" && field != "wild_zone"){
         throw ParseException(std::format(
-            "{}: start_signature has \"{}\"; its fields are registered, talk_prompt, wild_zone and party", where, field
+            "{}: start_signature has \"{}\"; its fields are registered, talk_prompt, wild_zone, party and minimap", where, field
         ));
     }
     if (!value.read_boolean(flag)){
@@ -69,7 +77,7 @@ std::optional<StartSignature> read_start_signature(const JsonObject& execution, 
     }
     const JsonObject* fields = value->to_object();
     if (fields == nullptr || fields->begin() == fields->end()){
-        throw ParseException(std::format("{}: start_signature is an object of registered, talk_prompt, wild_zone and party", where));
+        throw ParseException(std::format("{}: start_signature is an object of registered, talk_prompt, wild_zone, party and minimap", where));
     }
     StartSignature signature;
     for (const auto& [field, field_value] : *fields){

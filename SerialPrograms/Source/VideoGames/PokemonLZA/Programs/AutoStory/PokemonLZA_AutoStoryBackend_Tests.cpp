@@ -4,11 +4,15 @@
  *
  *  face_heading() on a scripted game whose minimap arrow turns only once
  *  the queued turn is done, as on the console: a read before observe()
- *  still shows the facing from before the turn.
+ *  still shows the facing from before the turn. On a lagging video feed
+ *  the reads right after that still show it too (TurningGame's
+ *  stale_reads).
  *
  */
 
+#include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <format>
 #include <string>
 #include <utility>
@@ -30,13 +34,17 @@ using Pokemon::ZonePose;
 
 //  A player facing `facing` on the minimap. A stick tap after L turns it
 //  by the tap's angle (story_turn()), once the queued inputs are done:
-//  observe() waits for them, as PlzaConsoleBackend's does.
+//  observe() waits for them, as PlzaConsoleBackend's does. The arrow then
+//  still shows the facing from before the turn for `stale_reads` reads, as
+//  a video feed running behind the game shows it.
 class TurningGame : public Pokemon::FakeStoryBackend<ZonePose>{
 public:
-    TurningGame(double facing, bool turns_take, CancellableScope& scope)
+    TurningGame(double facing, bool turns_take, size_t stale_reads, CancellableScope& scope)
         : FakeStoryBackend({}, scope)
         , m_facing(facing)
+        , m_shown(facing)
         , m_turns_take(turns_take)
+        , m_stale_reads(stale_reads)
     {}
 
     virtual void stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace pace) override{
@@ -46,21 +54,45 @@ public:
         FakeStoryBackend::stick(degrees, duration, release, pace);
     }
     virtual Observation<ZonePose> observe() override{
+        if (m_queued_turn != 0){
+            m_shown = m_facing;
+            m_stale_left = m_stale_reads;
+        }
         m_facing = std::fmod(std::fmod(m_facing + m_queued_turn, 360) + 360, 360);
         m_queued_turn = 0;
         return FakeStoryBackend::observe();
     }
 
-    //  The arrow as shown now: the queued turn not in yet.
-    double arrow() const{
+    //  The arrow as the feed shows it now: the queued turn not in yet, and
+    //  the facing from before the last turn while the feed lags.
+    double arrow(){
+        if (m_stale_left > 0){
+            m_stale_left--;
+            return m_shown;
+        }
+        return m_facing;
+    }
+
+    //  Where the player faces in the game.
+    double facing() const{
         return m_facing;
     }
 
 private:
     double m_facing;
+    double m_shown;
     const bool m_turns_take;
+    const size_t m_stale_reads;
+    size_t m_stale_left = 0;
     double m_queued_turn = 0;
 };
+
+
+//  How far `facing` is from `heading`, either way round.
+double heading_error(double facing, double heading){
+    const double error = std::fmod(std::fabs(facing - heading), 360.0);
+    return std::min(error, 360 - error);
+}
 
 
 struct FaceHeadingCase{
@@ -70,6 +102,9 @@ struct FaceHeadingCase{
         double heading;
         //  False: the player stands still whatever the stick does.
         bool turns_take = true;
+        //  The reads after each turn that still show the facing from
+        //  before it.
+        size_t stale_reads = 0;
     };
     Input input;
     struct Expectation{
@@ -105,16 +140,34 @@ const FaceHeadingCase FACE_HEADING_CASES[] = {
         .input = {.facing = 272, .heading = 264, .turns_take = false},
         .expectation = {.failure = "heading_missed"},
     },
+    {
+        //  Korean 03.08 catch_more_species read 161, 163, 269, 9, 9 for 265:
+        //  each reading one turn late (console B video, 2026-11-17 23:58).
+        .name = "a lagging feed: from 161 to 265",
+        .input = {.facing = 161, .heading = 265, .stale_reads = 1},
+        .expectation = {.failure = ""},
+    },
+    {
+        .name = "a lagging feed: from 11 to 231",
+        .input = {.facing = 11, .heading = 231, .stale_reads = 1},
+        .expectation = {.failure = ""},
+    },
 };
 
+//  Faced: the player really faces the heading, not only the arrow read.
+constexpr double FACED_TOLERANCE = 4;
+
 UnitTestResult check_face_heading(const FaceHeadingCase& test, CancellableScope& scope){
-    TurningGame game(test.input.facing, test.input.turns_take, scope);
+    TurningGame game(test.input.facing, test.input.turns_take, test.input.stale_reads, scope);
     const Pokemon::Outcome outcome = face_heading(game, [&game](){ return game.arrow(); }, test.input.heading);
     if (outcome.failure != test.expectation.failure){
         return std::format(
             "expected failure \"{}\"; got \"{}\", facing {:.0f}",
-            test.expectation.failure, outcome.failure, game.arrow()
+            test.expectation.failure, outcome.failure, game.facing()
         );
+    }
+    if (outcome.failure.empty() && heading_error(game.facing(), test.input.heading) > FACED_TOLERANCE){
+        return std::format("faced: the player faces {:.0f}, not {:.0f}", game.facing(), test.input.heading);
     }
     return true;
 }

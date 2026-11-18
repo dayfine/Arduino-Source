@@ -41,7 +41,10 @@ using MinimapArrowReader = std::function<double()>;
 //  way (console B, 2026-11-14). The arrow is read only once the last turn
 //  is done (backend.observe() waits for it): in run 10 of 03.08 (console
 //  B, 2026-11-16) it was read while the turns were still queued, read 132
-//  four times, and failed. Fails as "heading_missed".
+//  four times, and failed. After a turn the arrow is read again until it
+//  has moved at least half the turn (10 reads, 100 ms apart, at most): a
+//  feed running behind the game shows the facing from before the turn on
+//  the first reads. Fails as "heading_missed".
 Pokemon::Outcome face_heading(PlzaBackend& backend, const MinimapArrowReader& read_arrow, double heading);
 
 

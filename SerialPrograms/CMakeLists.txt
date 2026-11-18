@@ -243,7 +243,7 @@ include(cmake/EmbedTextFiles.cmake)
 pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonLZA/Programs/AutoStory/StoryData
     VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStoryFiles.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_checkpoint_json)
 pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonLZA/Programs/AutoStory/ReferenceData
-    VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryPlatformArrivalDetector.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_reference_json)
+    VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryReferenceCells.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_reference_json)
 
 
 # Create binary target

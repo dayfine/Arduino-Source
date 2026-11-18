@@ -26,6 +26,13 @@ constexpr double HEADING_TOLERANCE = 4;
 //  The turns face_heading() takes at most.
 constexpr int HEADING_TURNS = 4;
 
+//  How a turn is read back: up to this many arrow reads, this far apart,
+//  until the arrow has moved at least half the turn. The lab feed has run
+//  0.4 s behind the game at 10 fps: the read right after a turn showed the
+//  facing from before it, the same on every frame until the feed caught up.
+constexpr int TURN_READS = 10;
+constexpr Milliseconds TURN_READ_GAP = 100ms;
+
 //  How far clockwise `heading` is of `now`, the short way round: in
 //  (-180, 180].
 double turn_to(double now, double heading){
@@ -38,20 +45,38 @@ double turn_to(double now, double heading){
     return turn;
 }
 
+//  The arrow once the turn of `turn` degrees from `before` shows on the
+//  feed: read until it has moved at least half the turn, TURN_READS reads
+//  at most. The last read when it never does: the turn did not take.
+double read_after_turn(PlzaBackend& backend, const MinimapArrowReader& read_arrow, double before, double turn){
+    backend.observe();
+    double now = read_arrow();
+    for (int reads = 1; reads < TURN_READS; reads++){
+        if (std::abs(turn_to(before, now)) >= std::abs(turn) / 2){
+            break;
+        }
+        backend.wait(TURN_READ_GAP);
+        backend.observe();
+        now = read_arrow();
+    }
+    return now;
+}
+
 } // namespace
 
 Pokemon::Outcome face_heading(PlzaBackend& backend, const MinimapArrowReader& read_arrow, double heading){
+    backend.observe();
+    double now = read_arrow();
     for (int turns = 0; turns <= HEADING_TURNS; turns++){
-        backend.observe();
-        const double now = read_arrow();
         const double turn = turn_to(now, heading);
-        backend.log_detail(std::format("[PLZA] face_heading: the arrow reads {:.0f} deg, {:.0f} wanted: {:.0f} off", now, heading, turn));
+        backend.log_detail(std::format("[PLZA] face_heading: the arrow reads {:.1f} deg, {:.0f} wanted: {:.1f} off", now, heading, turn));
         if (std::abs(turn) <= HEADING_TOLERANCE){
             backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
             return Pokemon::outcome_ok();
         }
         if (turns < HEADING_TURNS){
             story_turn(backend, turn);
+            now = read_after_turn(backend, read_arrow, now, turn);
         }
     }
     return Pokemon::outcome_failed("heading_missed", std::format("not facing {:.0f} deg after {} turns", heading, HEADING_TURNS));

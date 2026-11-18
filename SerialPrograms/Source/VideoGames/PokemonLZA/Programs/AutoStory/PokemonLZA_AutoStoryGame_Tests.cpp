@@ -28,6 +28,7 @@
 #include "PokemonLZA_AutoStoryGame.h"
 #include "Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryReadings.h"
+#include "PokemonLZA_AutoStoryStarts.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
 #include "PokemonLZA_AutoStoryGame_Tests.h"
 
@@ -1085,7 +1086,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .line = "[PLZA story_battle_start] done on battle."},
     },
     {
-        .name = "a battle start that ends in control, the party bar held 5 s, fails at once",
+        .name = "a battle start that ends in control, the party bar held 5 s, fails once lock-on finds no battle",
         //  The fade's wait takes the first look after it: the party bar's
         //  5 s run from the look after that.
         .input = {.checkpoint = "03.02b", .first_step = 4, .steps = 1, .looks = {
@@ -1433,6 +1434,11 @@ struct ChainCase{
         std::vector<std::string> first_actions = {"wait_for_platform"};
         std::string second_action = "text_to_choice";
         size_t attempts = 1;
+        //  01.02 reloads when chained; where the reload lands, and 01.02's
+        //  start signature (none: its plan names none).
+        bool reload_when_chained = false;
+        StartSignature landed = {};
+        std::optional<StartSignature> start = std::nullopt;
     };
     Input input;
     struct Expectation{
@@ -1442,11 +1448,22 @@ struct ChainCase{
         size_t reloads = 0;
         //  A log line the run wrote, if any is checked.
         std::string line = {};
+        //  The run presses nothing after the reload's HOME.
+        bool nothing_pressed_after_reload = false;
     };
     Expectation expectation;
 };
 
 const Observation<ZonePose> PLATFORM_SAVING = look({}, {PLATFORM_READING, AUTOSAVE_READING}, Milliseconds(2000));
+const Observation<ZonePose> IN_CONTROL = look({ScreenEvent::PLAYER_CAN_MOVE});
+//  01.01's two platform waits, the badge in the first.
+const std::vector<Observation<ZonePose>> ROOF_SAVED = {CUTSCENE, PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM};
+//  After a reload: START_LOOKS looks off the platform, then 01.02's scene (B at its box) to the party bar.
+const std::vector<Observation<ZonePose>> AFTER_RELOAD = {
+    CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, DIALOG,
+    look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, Milliseconds(1000)), look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, Milliseconds(3000)),
+};
+const StartSignature STATION_FRONT{.talk_prompt = false, .party = 1};
 
 const ChainCase CHAIN_CASES[] = {
     {
@@ -1500,6 +1517,63 @@ const ChainCase CHAIN_CASES[] = {
             .line = "[Save] 01.02: the game autosaved in wait_for_platform before the run failed: the latest save is past 01.02's start",
         },
     },
+    //  As 03.03 into 03.04: 01.01's badge shows in its first step (the roof's scene), not its last.
+    {
+        .name = "reload when chained: waits for control after the row before's last scene, reloads, lands at the start and runs",
+        .input = {
+            .looks = concat(ROOF_SAVED, concat({BLACK_FADE, BLACK_FADE, IN_CONTROL, IN_CONTROL}, AFTER_RELOAD)),
+            .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "mash_to_move_hints",
+            .reload_when_chained = true, .landed = STATION_FRONT, .start = STATION_FRONT,
+        },
+        .expectation = {
+            .verdict = "done", .reloads = 1,
+            .line = "[Checkpoint] 01.02: control is back after 01.01's last scene; reloading the latest save",
+        },
+    },
+    {
+        .name = "reload when chained: the badge not seen at the row before's end is logged, not a condition",
+        .input = {
+            .looks = concat(ROOF_SAVED, concat({IN_CONTROL, IN_CONTROL}, AFTER_RELOAD)),
+            .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "mash_to_move_hints",
+            .reload_when_chained = true, .landed = STATION_FRONT, .start = STATION_FRONT,
+        },
+        .expectation = {
+            .verdict = "done", .reloads = 1,
+            .line = "[Checkpoint] 01.02: reloads its start save when chained, whether or not 01.01's autosave showed at its end (not seen)",
+        },
+    },
+    {
+        .name = "reload when chained: control never comes back, no reload",
+        .input = {
+            .looks = concat(ROOF_SAVED, {BLACK_FADE}),
+            .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "mash_to_move_hints",
+            .reload_when_chained = true, .landed = STATION_FRONT, .start = STATION_FRONT,
+        },
+        .expectation = {.verdict = "failed at 01.02 chain: walk_not_free", .reloads = 0},
+    },
+    {
+        .name = "reload when chained: the reload lands elsewhere, stops with nothing pressed",
+        .input = {
+            .looks = concat(ROOF_SAVED, concat({IN_CONTROL, IN_CONTROL}, AFTER_RELOAD)),
+            .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "mash_to_move_hints",
+            .reload_when_chained = true, .landed = {.talk_prompt = true, .party = 1}, .start = STATION_FRONT,
+        },
+        .expectation = {
+            .verdict = "failed at 01.02 chain: reload_off_start", .reloads = 1,
+            .line = "[Checkpoint] 01.02: the reload landed somewhere other than its start: the screen reads (talk prompt, party 1), "
+                "the start is (no talk prompt, party 1); nothing pressed after the reload",
+            .nothing_pressed_after_reload = true,
+        },
+    },
+    {
+        .name = "reload when chained: no start signature to check the landing against, stops with nothing pressed",
+        .input = {
+            .looks = concat(ROOF_SAVED, concat({IN_CONTROL, IN_CONTROL}, AFTER_RELOAD)),
+            .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "mash_to_move_hints",
+            .reload_when_chained = true, .landed = STATION_FRONT,
+        },
+        .expectation = {.verdict = "failed at 01.02 chain: reload_unchecked", .reloads = 1, .nothing_pressed_after_reload = true},
+    },
 };
 
 UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
@@ -1513,19 +1587,32 @@ UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
         first.steps.push_back(StoryStep{.kind = Pokemon::StoryStepKind::GAME, .name = std::format("{}_again", action), .why = "", .action = action, .args = {}});
     }
     const std::vector<StoryCheckpoint> rows{first, one_step_row("01.02", test.input.second_action)};
-    const Pokemon::SegmentReport report = run_plza_segments(
-        game, rows, {.attempts_per_checkpoint = test.input.attempts},
-        backend, state, sightings
-    );
+    std::vector<CheckpointStart> starts;
+    if (test.input.start){
+        starts.push_back(CheckpointStart{.checkpoint = "01.02", .signature = *test.input.start});
+    }
+    SegmentRunOptions options{.attempts_per_checkpoint = test.input.attempts, .starts = starts};
+    if (test.input.reload_when_chained){
+        options.reload_when_chained = {"01.02"};
+        options.read_start = [&test]{
+            return test.input.landed;
+        };
+    }
+    const Pokemon::SegmentReport report = run_plza_segments(game, rows, options, backend, state, sightings);
     const std::string verdict = report.completed
         ? "done"
         : std::format("failed at {} {}: {}", report.failed_checkpoint, report.failed_event, report.failure.failure);
     if (verdict != test.expectation.verdict){
         return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.verdict, verdict, joined(backend.lines(), "\n"));
     }
-    const size_t reloads = (size_t)std::count(backend.inputs().begin(), backend.inputs().end(), "press HOME");
+    const std::vector<std::string>& inputs = backend.inputs();
+    const size_t reloads = (size_t)std::count(inputs.begin(), inputs.end(), "press HOME");
     if (reloads != test.expectation.reloads){
-        return std::format("expected {} reloads, got {}: {}", test.expectation.reloads, reloads, joined(backend.inputs(), ", "));
+        return std::format("expected {} reloads, got {}: {}", test.expectation.reloads, reloads, joined(inputs, ", "));
+    }
+    const auto home = std::find(inputs.rbegin(), inputs.rend(), "press HOME");
+    if (test.expectation.nothing_pressed_after_reload && std::any_of(inputs.rbegin(), home, [](const std::string& in){ return in.starts_with("press"); })){
+        return std::format("expected no press after the reload: {}", joined(inputs, ", "));
     }
     if (test.expectation.line.empty()){
         return true;

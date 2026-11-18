@@ -139,14 +139,16 @@ constexpr std::string_view REWINDS_TO_BACKUP_LABEL =
 
 //  Loads the latest save for `row` with `game`: a run that starts after
 //  the new game starts from it (01.01: the platform autosave), not from
-//  wherever the game is. Throws OperationFailedException if that save is
-//  older than its start.
+//  wherever the game is. Throws OperationFailedException, with an error
+//  report (the screenshot and the stream history's clip), if that save
+//  does not load.
 void load_first_save(ConsoleHandle& console, const StoryGame<ZonePose>& game, PlzaBackend& backend, const StoryCheckpoint& row){
     const Outcome loaded = load_checkpoint_start(game, backend, row);
     if (!loaded.succeeded()){
-        throw OperationFailedException(
-            ErrorReportMode::NO_ERROR_REPORT,
-            std::format("AutoStory: could not load the save for {}: {}", row.id, to_string(loaded))
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            std::format("AutoStory: could not load the save for {}: {}", row.id, to_string(loaded)),
+            console
         );
     }
     console.log(std::format("AutoStory: loaded the latest save for {}.", row.id));
@@ -292,8 +294,16 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const StoryGame<ZonePose> game = make_plza_story_game(story, story_data, sightings);
     RunState state;
 
+    const SegmentRunOptions segments{
+        .attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT,
+        .reload_when_chained = story_data.reload_when_chained,
+        .starts = builtin_checkpoint_starts(),
+        .read_start = [&env, &context]{
+            return read_start_signature(env.console, context);
+        },
+    };
     RewindPlan plan{
-        .rows = rows, .first = first, .last = last, .segments = {.attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT},
+        .rows = rows, .first = first, .last = last, .segments = segments,
         .starts = builtin_checkpoint_starts(), .max_rewinds = REWINDS_TO_BACKUP,
     };
     if (!story_row_starts_without_save(rows[first])){
@@ -305,11 +315,12 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
 
     const SegmentReport report = run_plza_with_rewinds(game, plan, console_backup_save(story), backend, sightings, state);
     if (!report.completed){
-        throw OperationFailedException(
-            ErrorReportMode::NO_ERROR_REPORT,
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
             std::format(
                 "AutoStory stopped at {} {}: {}", report.failed_checkpoint, report.failed_event, to_string(report.failure)
-            )
+            ),
+            env.console
         );
     }
     env.console.log(std::format("AutoStory: done through {}.", rows[last].id));

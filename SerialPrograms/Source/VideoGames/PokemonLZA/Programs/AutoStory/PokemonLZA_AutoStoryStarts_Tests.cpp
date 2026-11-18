@@ -116,6 +116,17 @@ const BuiltinCase BUILTIN_CASES[] = {
         .name = "asked 03.08, an unknown backup card: stop",
         .input = {.asked = "03.08", .read = {.registered = 7}},
         .expectation = {.from = "stop"},
+    },
+    {
+        .name = "asked 03.04, the minimap at Station Front: from 03.04",
+        .input = {.asked = "03.04", .read = {.talk_prompt = false, .wild_zone = false, .party = 1, .minimap = "03.04-start"}},
+        .expectation = {.from = "03.04"},
+    },
+    {
+        //  The roof before Station Front reads the same party and prompt.
+        .name = "asked 03.04, the party and prompt of its start but not its minimap: stop",
+        .input = {.asked = "03.04", .read = {.talk_prompt = false, .wild_zone = false, .party = 1}},
+        .expectation = {.from = "stop"},
     },    {
         //  A save on the street by the zone wall read as in a wild zone.
         .name = "asked 03.08, the street with five in the party: stop",

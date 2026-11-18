@@ -24,6 +24,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
+#include "PokemonLZA_AutoStoryStarts.h"
 #include "PokemonLZA_AutoStoryTable.h"
 #include "PokemonLZA_AutoStoryGame.h"
 
@@ -673,6 +674,75 @@ std::variant<Chain, Outcome> decide_chain(PlzaBackend& backend, const Pokemon::S
     return Chain::RELOAD;
 }
 
+//  Into `row`, which reloads its start save when chained, after `previous`:
+//  run_plza_segments()'s chained reload. Logs each decision.
+Outcome reload_into(
+    const Pokemon::StoryGame<ZonePose>& game, PlzaBackend& backend, const SegmentRunOptions& options,
+    const Pokemon::StoryCheckpoint& previous, const Pokemon::StoryCheckpoint& row, const AutosaveSightings& sightings
+){
+    backend.log(std::format(
+        "[Checkpoint] {}: reloads its start save when chained, whether or not {}'s autosave showed at its end ({})",
+        row.id, previous.id, sightings.last_end_seen() ? "seen" : "not seen"
+    ));
+    const Outcome control = check_can_walk(backend, std::format("the reload into {}", row.id));
+    if (!control.succeeded()){
+        backend.log(std::format("[Checkpoint] {}: control never came back after {}: no reload", row.id, previous.id));
+        return control;
+    }
+    backend.log(std::format("[Checkpoint] {}: control is back after {}'s last scene; reloading the latest save", row.id, previous.id));
+    const Outcome loaded = load_checkpoint_start(game, backend, row);
+    if (!loaded.succeeded()){
+        return loaded;
+    }
+    const CheckpointStart* start = find_start(options.starts, row.id);
+    if (start == nullptr || !options.read_start){
+        const std::string why = start == nullptr ? "its plan names no start signature" : "nothing reads the screen";
+        backend.log(std::format("[Checkpoint] {}: where the reload landed is not checked ({}); nothing pressed after the reload", row.id, why));
+        return Pokemon::outcome_failed("reload_unchecked", std::format(
+            "{}: where the reload landed is not checked: {}; nothing pressed after the reload", row.id, why
+        ));
+    }
+    const StartSignature read = options.read_start();
+    if (!run_start(std::span<const Pokemon::StoryCheckpoint>(&row, 1), std::span<const CheckpointStart>(start, 1), /*asked=*/0, read)){
+        const std::string where = std::format(
+            "the screen reads ({}), the start is ({}); nothing pressed after the reload", to_string(read), to_string(start->signature)
+        );
+        backend.log(std::format("[Checkpoint] {}: the reload landed somewhere other than its start: {}", row.id, where));
+        return Pokemon::outcome_failed("reload_off_start", std::format(
+            "the reload into {} landed somewhere other than its start: {}", row.id, where
+        ));
+    }
+    backend.log(std::format("[Checkpoint] {}: the reload landed at its start ({})", row.id, to_string(read)));
+    return Pokemon::outcome_ok();
+}
+
+//  The event "chain" into `row` after `previous`: reload_into() for a row
+//  in `options.reload_when_chained`, else decide_chain() and, when it says
+//  so, load_checkpoint_start(). A reload starts a fresh `state`.
+Outcome chain_into(
+    const Pokemon::StoryGame<ZonePose>& game, PlzaBackend& backend, const SegmentRunOptions& options,
+    const Pokemon::StoryCheckpoint& previous, const Pokemon::StoryCheckpoint& row,
+    const AutosaveSightings& sightings, Pokemon::RunState& state
+){
+    const bool reload = options.reload_when_chained.contains(row.id);
+    const std::variant<Chain, Outcome> chain = reload
+        ? std::variant<Chain, Outcome>(Chain::RELOAD)
+        : decide_chain(backend, row, sightings.last_end_seen());
+    if (const Outcome* failure = std::get_if<Outcome>(&chain)){
+        return *failure;
+    }
+    if (std::get<Chain>(chain) == Chain::ON){
+        return Pokemon::outcome_ok();
+    }
+    const Outcome loaded = reload
+        ? reload_into(game, backend, options, previous, row, sightings)
+        : load_checkpoint_start(game, backend, row);
+    if (loaded.succeeded()){
+        state = Pokemon::RunState{};
+    }
+    return loaded;
+}
+
 } // namespace
 
 Pokemon::SegmentReport run_plza_segments(
@@ -685,26 +755,15 @@ Pokemon::SegmentReport run_plza_segments(
     Pokemon::SegmentReport total;
     for (size_t index = 0; index < rows.size(); index++){
         const Pokemon::StoryCheckpoint& row = rows[index];
-        bool start_saved = true;
+        const bool start_saved = index == 0 || options.reload_when_chained.contains(row.id) || sightings.last_end_seen();
         if (index > 0){
-            const auto fail = [&](const Outcome& failure){
-                backend.log(std::format("[Event] {}/0 chain: failed: {}", row.id, to_string(failure)));
+            const Outcome chained = chain_into(game, backend, options, rows[index - 1], row, sightings, state);
+            if (!chained.succeeded()){
+                backend.log(std::format("[Event] {}/0 chain: failed: {}", row.id, to_string(chained)));
                 total.failed_checkpoint = row.id;
                 total.failed_event = "chain";
-                total.failure = failure;
+                total.failure = chained;
                 return total;
-            };
-            start_saved = sightings.last_end_seen();
-            const std::variant<Chain, Outcome> chain = decide_chain(backend, row, start_saved);
-            if (const Outcome* failure = std::get_if<Outcome>(&chain)){
-                return fail(*failure);
-            }
-            if (std::get<Chain>(chain) == Chain::RELOAD){
-                const Outcome loaded = load_checkpoint_start(game, backend, row);
-                if (!loaded.succeeded()){
-                    return fail(loaded);
-                }
-                state = Pokemon::RunState{};
             }
         }
         if (!start_saved && options.attempts_per_checkpoint > 1){

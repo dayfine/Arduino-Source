@@ -12,8 +12,6 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryPlatformArrivalDetector_H
 
 #include <string>
-#include <utility>
-#include <vector>
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
@@ -22,13 +20,6 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
-
-
-//  The checked-in reference files, ReferenceData/*.json, built into the
-//  program (cmake/EmbedTextFiles.cmake): (name, text), by name.
-//  plza-platform holds the platform reference's cell colors per region.
-//  code-health: allow test_only_api -- the generated embed file (cmake/EmbedTextFiles.cmake) defines it from this declaration
-const std::vector<std::pair<std::string, std::string>>& autostory_reference_json();
 
 
 //  How far a frame's regions are from the platform reference: each region
