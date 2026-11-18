@@ -942,6 +942,31 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
+        //  tepig_battle_start ended locked on and let go of ZL: the HUD
+        //  shows only while ZL is held, so the step holds it and takes
+        //  the move symbols for the battle.
+        .name = "03.02b battle_tepig, the start locked on, the HUD only while ZL is held: ZL, the move symbols, the battle code",
+        .input = {.checkpoint = "03.02b", .step = "battle_tepig", .screens = R"(
+0.0s: party bar
+)", .symbols_from_watch = 1},
+        .expectation = {
+            .keys = {{"party bar", "ZL"}},
+            .verdict = "done", .end = "[Step] battle_tepig GAME/story_battle: ok",
+        },
+    },
+    {
+        .name = "03.02b battle_tepig, no battle HUD and no move symbols under ZL in 10 s: battle_never_started",
+        .input = {.checkpoint = "03.02b", .step = "battle_tepig", .screens = R"(
+0.0s: party bar
+)"},
+        .expectation = {
+            .keys = {{"party bar", "ZL"}},
+            .verdict = "failed: battle_never_started",
+            .end = "[Step] battle_tepig GAME/story_battle: failed: battle_never_started: no battle HUD and no move symbols under ZL "
+                "within 10 s",
+        },
+    },
+    {
         //  The whole checkpoint, its steps' logged screens one after the
         //  other: the walk's end, the talk's start, then heal_party's
         //  screens from where the talk hands over (3.5 s on).

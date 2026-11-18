@@ -392,11 +392,46 @@ Outcome battle_start_step(
     return run_scene_machine(backend, "story_battle_start", config, 90s);
 }
 
-//  "story_battle": the backend's battle code, on the battle HUD within 10 s;
-//  else "battle_never_started", not 2 min of looks on the overworld.
-Outcome battle_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
-    if (!event_shows_within(backend, ScreenEvent::BATTLE_STARTED, 10s)){
-        return Pokemon::outcome_failed("battle_never_started", "no battle HUD within 10 s");
+//  How long a story battle's look for the move symbols holds ZL, as the
+//  start's lock-on does.
+constexpr Milliseconds BATTLE_LOCK_ON_HOLD = 2000ms;
+
+//  Whether the battle is on within `within`: the battle HUD on a look, or,
+//  with `lock_on`, the move symbols while ZL is held on a look without it
+//  (a start that locked on and let go of ZL can leave the HUD down until
+//  ZL is held again); with no `lock_on`, a look every 250 ms.
+bool battle_on_within(PlzaBackend& backend, const std::optional<LockOnWatch>& lock_on, Milliseconds within){
+    for (Milliseconds waited = 0ms; ; ){
+        backend.scope().throw_if_cancelled();
+        if (backend.observe().events.has(ScreenEvent::BATTLE_STARTED)){
+            return true;
+        }
+        if (waited >= within){
+            return false;
+        }
+        if (!lock_on){
+            backend.wait(250ms);
+            waited += 250ms;
+            continue;
+        }
+        if ((*lock_on)(BATTLE_LOCK_ON_HOLD)){
+            backend.log("[PLZA] story_battle: no battle HUD; ZL held: the move symbols showed.");
+            return true;
+        }
+        waited += BATTLE_LOCK_ON_HOLD;
+    }
+}
+
+//  "story_battle": the backend's battle code, once the battle is on within
+//  10 s (battle_on_within(), ZL held by `lock_on`); else
+//  "battle_never_started", not 2 min of looks on the overworld.
+Outcome battle_step(
+    const std::optional<LockOnWatch>& lock_on, Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&
+){
+    if (!battle_on_within(backend, lock_on, 10s)){
+        return Pokemon::outcome_failed(
+            "battle_never_started", lock_on ? "no battle HUD and no move symbols under ZL within 10 s" : "no battle HUD within 10 s"
+        );
     }
     return backend.battle(call.args);
 }
@@ -451,7 +486,6 @@ const std::map<std::string_view, StepFunction>& step_functions(){
         {"talk", talk_step},
         {"mash", mash_scene_step},
         {"a", scene_step},
-        {"story_battle", battle_step},
         {"talk_through_map_screen", map_talk_step},
         {"climb_ladder", ladder_step},
         {"talk_to_pokedex_screen", pokedex_step},
@@ -462,7 +496,7 @@ const std::map<std::string_view, StepFunction>& step_functions(){
 
 //  The handler of each of plza_story_specs(), by name: a console_only one
 //  from `console`, else fails as console_only; walks face their heading by
-//  `arrow`, story battle starts lock on with `lock_on`.
+//  `arrow`, story battles and their starts lock on with `lock_on`.
 Handler plza_handler(
     const PlzaConsoleActions& console, const std::optional<MinimapArrowReader>& arrow, const std::optional<LockOnWatch>& lock_on,
     const StoryActionSpec& spec
@@ -481,6 +515,9 @@ Handler plza_handler(
     }
     if (spec.name == "story_battle_start"){
         return std::bind_front(battle_start_step, lock_on);
+    }
+    if (spec.name == "story_battle"){
+        return std::bind_front(battle_step, lock_on);
     }
     if (spec.name == "wait_for_platform"){
         return platform_handler(PlatformWait::PLATFORM_ONLY);

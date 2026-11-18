@@ -63,12 +63,6 @@ Pokemon::Outcome walk_until(
     PlzaBackend& backend, std::string_view walk, const StoryMove& move, std::optional<ScreenEvent> end, Milliseconds end_after
 );
 
-//  Whether a look shows `event` within `within`, looking every 250 ms and
-//  pressing nothing: "talk" presses A only on an A prompt
-//  (INTERACT_PROMPT), "story_battle" fights only on the battle HUD
-//  (BATTLE_STARTED).
-bool event_shows_within(PlzaBackend& backend, ScreenEvent event, Milliseconds within);
-
 //  "talk": on the A prompt of what the player faces (two looks in a row),
 //  A, then its scene under way (scene_under_way(): Taunie's opens on a
 //  card, 03.02b) on two looks in a row within 5 s, not one look of the

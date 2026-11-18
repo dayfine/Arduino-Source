@@ -291,19 +291,6 @@ Pokemon::Outcome walk_until(
     return Pokemon::outcome_failed("walk_no_end", std::format("{}: no end event within {} ms of the last leg", walk, hold.count()));
 }
 
-bool event_shows_within(PlzaBackend& backend, ScreenEvent event, Milliseconds within){
-    for (Milliseconds waited = 0ms; ; waited += PROMPT_POLL){
-        backend.scope().throw_if_cancelled();
-        if (backend.observe().events.has(event)){
-            return true;
-        }
-        if (waited >= within){
-            return false;
-        }
-        backend.wait(PROMPT_POLL);
-    }
-}
-
 Pokemon::Outcome talk_at_prompt(PlzaBackend& backend){
     if (!talk_prompt_settled(backend)){
         return Pokemon::outcome_failed(
