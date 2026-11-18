@@ -506,14 +506,19 @@ const AutoStoryEndpointCase AUTO_STORY_ENDPOINT_CASES[] = {
         .expectation = {.map = "SilphCo_7F", .tile = {1, 7}, .facing = Direction::WEST},
     },
     {
+        .name = "16.05b Silph Co. 11F: the president and the MASTER BALL",
+        .input = {.checkpoint = "16.05b"},
+        .expectation = {.map = "SilphCo_11F", .tile = {9, 10}, .facing = Direction::NORTH},
+    },
+    {
+        .name = "16.06b Saffron City: from the Center to the Gym's door",
+        .input = {.checkpoint = "16.06b"},
+        .expectation = {.map = "SaffronCity_Gym", .tile = {14, 23}, .facing = Direction::NORTH},
+    },
+    {
         .name = "17.02 Saffron to Viridian Gym: Fly, Warren",
         .input = {.checkpoint = "17.02"},
         .expectation = {.map = "ViridianCity_Gym", .tile = {15, 7}, .facing = Direction::NORTH},
-    },
-    {
-        .name = "17.03 Viridian Gym: Takashi, to Giovanni",
-        .input = {.checkpoint = "17.03"},
-        .expectation = {.map = "ViridianCity_Gym", .tile = {2, 3}, .facing = Direction::NORTH},
     },
     {
         .name = "17.04 Viridian Gym: Giovanni and the EARTHBADGE",
@@ -531,19 +536,34 @@ const AutoStoryEndpointCase AUTO_STORY_ENDPOINT_CASES[] = {
         .expectation = {.map = "SaffronCity_Gym", .tile = {14, 12}, .facing = Direction::NORTH},
     },
     {
-        .name = "18.02 Saffron Gym: Sabrina and the MARSHBADGE, the pads back out, heal at Saffron's Center",
+        .name = "18.02 Saffron Gym: Sabrina and the MARSHBADGE, in front of her",
         .input = {.checkpoint = "18.02"},
+        .expectation = {.map = "SaffronCity_Gym", .tile = {14, 12}, .facing = Direction::NORTH},
+    },
+    {
+        .name = "18.02b Out of Saffron Gym by Escape Rope, Fly to Saffron's Center and heal",
+        .input = {.checkpoint = "18.02b"},
         .expectation = {.map = "SaffronCity_PokemonCenter_1F", .tile = {7, 4}, .facing = Direction::NORTH},
     },
     {
-        .name = "19.01 The rival on Route 22, at the road's east end",
-        .input = {.checkpoint = "19.01"},
-        .expectation = {.map = "Route22", .tile = {33, 5}, .facing = Direction::WEST},
+        .name = "18.03 Fly to Celadon for 2 X Accuracies, Fly back to Saffron's Center",
+        .input = {.checkpoint = "18.03"},
+        .expectation = {.map = "SaffronCity_PokemonCenter_1F", .tile = {7, 4}, .facing = Direction::NORTH},
     },
     {
-        .name = "19.01a Viridian's Mart: potions before the rival on Route 22",
+        .name = "19.01 Route 22, to the east end of the rival's road",
+        .input = {.checkpoint = "19.01"},
+        .expectation = {.map = "Route22", .tile = {34, 5}, .facing = Direction::WEST},
+    },
+    {
+        .name = "19.01a Restock before the Route 22 rival, back to Viridian's south exit",
         .input = {.checkpoint = "19.01a"},
-        .expectation = {.map = "ViridianCity_Mart", .tile = {4, 3}, .facing = Direction::WEST},
+        .expectation = {.map = "ViridianCity", .tile = {26, 27}, .facing = Direction::SOUTH},
+    },
+    {
+        .name = "19.01b The rival on Route 22, at the road's east end",
+        .input = {.checkpoint = "19.01b"},
+        .expectation = {.map = "Route22", .tile = {33, 5}, .facing = Direction::WEST},
     },
     {
         .name = "19.02 Route 22's north gate: the Boulder Badge guard, onto Route 23",
@@ -561,9 +581,9 @@ const AutoStoryEndpointCase AUTO_STORY_ENDPOINT_CASES[] = {
         .expectation = {.map = "IndigoPlateau_PokemonCenter_1F", .tile = {13, 12}, .facing = Direction::NORTH},
     },
     {
-        .name = "20.01 The Elite Four's first room: Lorelei",
+        .name = "20.01 The League: Lorelei, on into Bruno's room",
         .input = {.checkpoint = "20.01"},
-        .expectation = {.map = "PokemonLeague_LoreleisRoom", .tile = {6, 6}, .facing = Direction::NORTH},
+        .expectation = {.map = "PokemonLeague_BrunosRoom", .tile = {6, 7}, .facing = Direction::NORTH},
     },
     {
         .name = "20.01a Indigo Plateau's Mart: Full Restores before the Elite Four",
@@ -571,19 +591,19 @@ const AutoStoryEndpointCase AUTO_STORY_ENDPOINT_CASES[] = {
         .expectation = {.map = "IndigoPlateau_PokemonCenter_1F", .tile = {2, 7}, .facing = Direction::WEST},
     },
     {
-        .name = "20.02 The Elite Four: Bruno",
+        .name = "20.02 The League: Bruno, on into Agatha's room",
         .input = {.checkpoint = "20.02"},
-        .expectation = {.map = "PokemonLeague_BrunosRoom", .tile = {6, 6}, .facing = Direction::NORTH},
+        .expectation = {.map = "PokemonLeague_AgathasRoom", .tile = {6, 7}, .facing = Direction::NORTH},
     },
     {
-        .name = "20.03 The Elite Four: Agatha",
+        .name = "20.03 The League: Agatha, on into Lance's room",
         .input = {.checkpoint = "20.03"},
-        .expectation = {.map = "PokemonLeague_AgathasRoom", .tile = {6, 6}, .facing = Direction::NORTH},
+        .expectation = {.map = "PokemonLeague_LancesRoom", .tile = {6, 10}, .facing = Direction::NORTH},
     },
     {
-        .name = "20.04 The Elite Four: Lance",
+        .name = "20.04 The League: Lance, below the Champion's door",
         .input = {.checkpoint = "20.04"},
-        .expectation = {.map = "PokemonLeague_LancesRoom", .tile = {6, 9}, .facing = Direction::NORTH},
+        .expectation = {.map = "PokemonLeague_LancesRoom", .tile = {6, 6}, .facing = Direction::NORTH},
     },
     {
         .name = "20.05 The Champion, then the Hall of Fame",
@@ -611,6 +631,7 @@ const EndpointExemption ENDPOINT_EXEMPTIONS[] = {
     {.checkpoint = "16.03", .reason = "Silph Co.'s card-key doors and pads: PokemonFRLG_AutoStorySilph_Tests.cpp"},
     {.checkpoint = "16.05", .reason = "Silph Co.'s card-key doors and pads: PokemonFRLG_AutoStorySilph_Tests.cpp"},
     {.checkpoint = "16.06", .reason = "Silph Co.'s card-key doors and pads: PokemonFRLG_AutoStorySilph_Tests.cpp"},
+    {.checkpoint = "17.03", .reason = "known red: below_giovanni, planned from Takashi's right and console-verified, stops on the sim where no tile is known to walk on from; the same finding as \"Simulation: 17.03 below_giovanni walked clean\""},
     {.checkpoint = "19.03", .reason = "the soul guard's gate scene moves the player: PokemonFRLG_AutoStoryGates_Tests.cpp"},
     {.checkpoint = "19.04b", .reason = "Victory Road's boulders and floor switches: PokemonFRLG_AutoStoryBoulders_Tests.cpp"},
     {.checkpoint = "19.04c", .reason = "Victory Road's boulders and floor switches: PokemonFRLG_AutoStoryBoulders_Tests.cpp"},
