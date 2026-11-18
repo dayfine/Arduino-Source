@@ -63,8 +63,6 @@ public:
 
     virtual StoryBackendKind kind() const override;
     virtual void press(NintendoSwitch::Button button, Milliseconds hold, Milliseconds release) override;
-    virtual void tap(Direction direction) override;
-    virtual void hold(Direction direction, Milliseconds duration, StoryPace pace) override;
     virtual void stick(double degrees, Milliseconds duration, Milliseconds release, StoryPace pace) override;
     virtual void wait(Milliseconds duration) override;
     virtual Observation<PoseType> observe() override;

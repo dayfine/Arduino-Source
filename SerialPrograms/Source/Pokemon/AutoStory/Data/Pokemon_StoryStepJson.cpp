@@ -114,9 +114,9 @@ std::vector<StoryTimedLeg> read_timed_legs(const JsonValue& value, std::string_v
     return result;
 }
 
-//  One arg's value read as `type`.
-StoryArgValue read_arg(const JsonValue& value, StoryArgType type, std::string_view source){
-    switch (type){
+//  One arg's value read as `spec` says.
+StoryArgValue read_arg(const JsonValue& value, const StoryArgSpec& spec, std::string_view source){
+    switch (spec.type){
     case StoryArgType::BOOLEAN:
         return value.to_boolean_throw(std::string(source));
     case StoryArgType::INTEGER:
@@ -129,6 +129,11 @@ StoryArgValue read_arg(const JsonValue& value, StoryArgType type, std::string_vi
         return read_integer_rows(value, source);
     case StoryArgType::TIMED_LEGS:
         return read_timed_legs(value, source);
+    case StoryArgType::REGISTERED:
+        if (spec.kind == nullptr || !spec.kind->read){
+            throw ParseException(std::format("{}: argument \"{}\" has no registered kind", source, spec.key));
+        }
+        return spec.kind->read(value, source);
     }
     throw ParseException(std::format("{}: unsupported story arg type", source));
 }
@@ -164,7 +169,7 @@ StoryActionArgs read_args(
             if (arg == action.args.end()){
                 throw ParseException(std::format("{}: step {}: unknown argument \"{}\"", source, step.name, key));
             }
-            result[key] = read_arg(item, arg->type, source);
+            result[key] = read_arg(item, *arg, source);
         }
     }
     const std::vector<std::string> errors = story_args_errors(action, result);
@@ -235,7 +240,10 @@ StoryStep read_story_step(const JsonValue& value, std::string_view source, std::
 } // namespace
 
 
-StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view source, std::span<const StoryActionSpec> actions){
+StoryCheckpoint read_story_checkpoint(
+    const JsonValue& value, std::string_view source,
+    std::span<const StoryActionSpec> actions, const StoryArgKind* declared_pose
+){
     const JsonObject& root = fields(value, {"id", "title", "start", "events", "metadata"}, source);
     StoryCheckpoint result;
     result.id = root.get_string_throw("id");
@@ -244,7 +252,7 @@ StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view s
     }
     result.title = root.get_string_throw("title");
     if (const JsonValue* start = root.get_value("start")){
-        result.start = read_declared_pose(*start, source);
+        result.start = declared_pose ? DeclaredPose(declared_pose->read(*start, source)) : read_declared_pose(*start, source);
     }
     std::set<std::string> names;
     for (const JsonValue& event : root.get_array_throw("events")){

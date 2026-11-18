@@ -41,16 +41,6 @@ void FakeStoryBackend<PoseType>::press(NintendoSwitch::Button button, Millisecon
 }
 
 template <StoryPose PoseType>
-void FakeStoryBackend<PoseType>::tap(Direction direction){
-    m_inputs.push_back(std::format("tap {}", direction_name(direction)));
-}
-
-template <StoryPose PoseType>
-void FakeStoryBackend<PoseType>::hold(Direction direction, Milliseconds duration, StoryPace pace){
-    m_inputs.push_back(std::format("hold {} {}ms {}", direction_name(direction), duration.count(), pace_name(pace)));
-}
-
-template <StoryPose PoseType>
 void FakeStoryBackend<PoseType>::stick(double degrees, Milliseconds duration, Milliseconds release, StoryPace pace){
     std::string input = std::format("stick {}deg {}ms {}", degrees, duration.count(), pace_name(pace));
     if (release > Milliseconds::zero()){

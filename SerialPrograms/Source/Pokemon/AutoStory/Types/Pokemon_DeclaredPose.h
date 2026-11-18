@@ -14,6 +14,7 @@
 #include <optional>
 #include <string>
 #include <variant>
+#include "Pokemon_StoryActionArg.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -29,9 +30,10 @@ struct ZoneDeclared{
     bool operator==(const ZoneDeclared& other) const = default;
 };
 
-//  Where a checkpoint declares the player to be. Only the zone kind so far:
-//  a game with tiles adds its own alternative.
-using DeclaredPose = std::variant<ZoneDeclared>;
+//  Where a checkpoint declares the player to be: a zone, or a pose of a kind
+//  the game registers (a tile game's map, tiles and facing), read by the
+//  StoryArgKind the game passes to the reader (Data/Pokemon_StoryStepJson.h).
+using DeclaredPose = std::variant<ZoneDeclared, StoryRegisteredArgValue>;
 
 
 

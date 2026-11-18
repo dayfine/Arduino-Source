@@ -22,20 +22,6 @@ std::string_view story_backend_kind_name(StoryBackendKind kind){
     return "unknown";
 }
 
-double direction_degrees(Direction direction){
-    switch (direction){
-    case Direction::NORTH:
-        return 0;
-    case Direction::EAST:
-        return 90;
-    case Direction::SOUTH:
-        return 180;
-    case Direction::WEST:
-        return -90;
-    }
-    return 0;
-}
-
 
 
 } // namespace Pokemon

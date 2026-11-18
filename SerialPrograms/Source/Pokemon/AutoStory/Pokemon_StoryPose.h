@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Where the player is believed to be, and how sure the run is of it.
+ *  Where the player is believed to be.
  *  This is the event runner's pose (RunState, Outcome). The story engine
  *  carries a typed pose of its own (the StoryPose concept,
  *  Engine/Pokemon_StoryPoseConcept.h, e.g. ZonePose); a game converts it.
@@ -20,21 +20,8 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  How much of the pose is known. COLUMN and ROW pin one axis (a wall, a
-//  door); SET means one of the positions the pose holds.
-enum class PoseCertainty{
-    TILE,
-    COLUMN,
-    ROW,
-    SET,
-    UNKNOWN,
-};
-//  "tile", "column", ...: for log lines.
-std::string certainty_name(PoseCertainty certainty);
-
-//  Where on a map the player is, in the game's own terms: tiles and a
-//  facing in a 2D game, a map point or a fly point in
-//  an open-world one. The engine only carries and prints it; the game's
+//  Where on a map the player is, in the game's own terms (a game derives
+//  its own: tiles, a spot in a zone, and how sure it is of them). The engine only carries and prints it; the game's
 //  actions read it back.
 struct Position{
     virtual ~Position() = default;
@@ -52,10 +39,9 @@ struct Position{
 //  learned pose into the run) and never changed in place.
 struct Pose{
     std::string map = {};
-    PoseCertainty certainty = PoseCertainty::UNKNOWN;
     std::shared_ptr<const Position> where = {};
 };
-//  "Route 201 (10, 20) facing north (tile)": for log lines.
+//  The map, then the position's description: for log lines.
 std::string to_string(const Pose& pose);
 
 
