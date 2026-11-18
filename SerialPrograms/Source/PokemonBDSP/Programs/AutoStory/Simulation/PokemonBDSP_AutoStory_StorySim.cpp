@@ -157,9 +157,30 @@ void SimStoryStepIO::settle(Button, const std::string& label, SettleKind kind, c
     m_sim.end_dialogue();
 }
 
+namespace{
+
+//  The fault counter for a miss counted from 0: none if not set.
+Pokemon::FaultOccurrences miss_chances(std::optional<size_t> miss){
+    if (!miss){
+        return {};
+    }
+    return Pokemon::FaultOccurrences({(int)*miss + 1});
+}
+
+}  // namespace
+
+void arm_misses(SimMisses& misses){
+    misses.fade_chances = miss_chances(misses.fade);
+    misses.hold_chances = miss_chances(misses.hold);
+    misses.banner_chances = miss_chances(misses.banner);
+    misses.door_chances = miss_chances(misses.dark);
+    misses.tap_step_chances = miss_chances(misses.through);
+}
+
 SimStoryStepIO::FadeShown SimStoryStepIO::next_fade(){
-    const size_t fade = m_misses.fades++;
-    const FadeShown shown = m_misses.fade == fade ? FadeShown::UNSEEN : m_misses.hold == fade ? FadeShown::HOLD_UNSEEN : FadeShown::SEEN;
+    const bool unseen = m_misses.fade_chances.next();
+    const bool hold_unseen = m_misses.hold_chances.next();
+    const FadeShown shown = unseen ? FadeShown::UNSEEN : hold_unseen ? FadeShown::HOLD_UNSEEN : FadeShown::SEEN;
     m_misses.missed |= shown != FadeShown::SEEN;
     return shown;
 }
@@ -243,7 +264,7 @@ std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const s
     return taps;
 }
 std::optional<size_t> SimStoryStepIO::taps_to_banner(Direction direction, const std::string& map, size_t max_taps){
-    if (m_misses.through == m_misses.tap_steps++){
+    if (m_misses.tap_step_chances.next()){
         m_misses.missed = true;
         if (m_far_side() && m_misses.through_banner){
             return 0;

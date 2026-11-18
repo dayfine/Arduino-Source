@@ -28,6 +28,7 @@
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_SimFaults.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_TalkOver.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryActions.h"
@@ -55,11 +56,11 @@ namespace PokemonBDSP{
 //  dark detail::SIM_FALSE_DARK in, short of the door, as lab-B's did on 2026-11-08.
 //  The `through`th tap step (tap_to_banner(), from 0) starts on its far side,
 //  its banner gone unless `through_banner`: the walk before it slid onto the
-//  warp (lab-B 2026-11-08). The counts and flags below are the run's: how
-//  many fades and banners it looked for, whether a miss happened since the
-//  executor last looked, whether a missed fade is still unseen, whether a
-//  walk slid on (SimSlide) since the executor last looked, and the map whose
-//  banner a slide left up for the next step.
+//  warp (lab-B 2026-11-08). The counters and flags below are the run's: each
+//  miss's chances on the shared fault counters (arm_misses()), whether a miss
+//  happened since the executor last looked, whether a missed fade is still
+//  unseen, whether a walk slid on (SimSlide) since the executor last looked,
+//  and the map whose banner a slide left up for the next step.
 struct SimMisses{
     std::optional<size_t> fade;
     std::optional<size_t> banner;
@@ -67,10 +68,14 @@ struct SimMisses{
     std::optional<size_t> dark = {};
     std::optional<size_t> through = {};
     bool through_banner = false;
-    size_t tap_steps = 0;
-    size_t fades = 0;
-    size_t banners = 0;
-    size_t doors = 0;
+    //  The chances of the misses above, numbered from 1 where they count
+    //  from 0: a fade is a chance of `fade` and of `hold`, a door run one of
+    //  `dark`, a tap step one of `through`.
+    Pokemon::FaultOccurrences fade_chances = {};
+    Pokemon::FaultOccurrences hold_chances = {};
+    Pokemon::FaultOccurrences banner_chances = {};
+    Pokemon::FaultOccurrences door_chances = {};
+    Pokemon::FaultOccurrences tap_step_chances = {};
     bool missed = false;
     bool fade_unseen = false;
     //  A door's fade showed and nothing has settled since: on the console
@@ -80,6 +85,14 @@ struct SimMisses{
     bool slid = false;
     std::string banner_up = {};
 };
+
+//  Sets the chances' counters of `misses` from its misses, none counted yet.
+void arm_misses(SimMisses& misses);
+//  How many of a miss's chances the run looked for: its fades, banners,
+//  door runs or tap steps.
+inline size_t looked_for(const Pokemon::FaultOccurrences& chances){
+    return (size_t)chances.chances();
+}
 
 //  How a warp's fade looks on the screen (#268's design note); the
 //  program's fade_of() judges it, as the walk's watchers do.
@@ -365,12 +378,12 @@ private:
     //  Whether this door run reads dark short of the door, or the run
     //  misses this banner (SimMisses).
     bool false_dark(){
-        const bool dark = m_misses.dark == m_misses.doors++;
+        const bool dark = m_misses.door_chances.next();
         m_misses.missed |= dark;
         return dark;
     }
     bool banner_missed(){
-        const bool miss = m_misses.banner == m_misses.banners++;
+        const bool miss = m_misses.banner_chances.next();
         m_misses.missed |= miss;
         return miss;
     }
@@ -435,6 +448,7 @@ public:
         , m_table(story_action_table(m_walks, sim_actions()))
         , m_interrupts(story_interrupts([this](bool fresh){ return look(fresh); }, sim_interrupt_actions()))
     {
+        arm_misses(m_misses);
         if (m_knobs.clear_interrupts){
             set_interrupts(&m_interrupts);
         }
@@ -460,7 +474,7 @@ public:
         m_start_mismatch = data.start ? off_pose(Pokemon::pose_of(*data.start)) : "";
         m_ran.clear();
         m_astray = false;
-        m_result.rows.push_back({.row = data.id, .fades = m_misses.fades, .banners = m_misses.banners});
+        m_result.rows.push_back({.row = data.id, .fades = looked_for(m_misses.fade_chances), .banners = looked_for(m_misses.banner_chances)});
         m_walks.begin_attempt(data.id, data.steps);
         arm("");
     }
