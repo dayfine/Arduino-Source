@@ -246,6 +246,14 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
   - no forward declarations; include the real header
   - never declare a function in one module's header and define it in another
   - module dependencies point one way
+  - keep pure C++23 logic (data tables, enums/slugs, simulation, route planning,
+    interface-injected runners) in its natural module (`*Sim.*`, `*Data.*`,
+    `*Table.*`, `*Types.*`, `*Supplies.*`, `*Policy.*`, `*Plan.*`, `*Core.*`)
+    without `#include`ing `ConsoleHandle`, `ProController`, `ImageViewRGB32`,
+    `*Detector`, `*Reader`, or Qt headers; move hardware and vision
+    implementations into separate `*Console.cpp`, `*Detector.cpp`, or
+    `*Reader.cpp` files. Code Health checks added heavy includes in pure
+    modules.
 - **Tests:** native C++ unit tests registered in the game's `*_Tests.cpp`
   (e.g. `PokemonSV_Tests.cpp`).
   - Data-driven: separate input and expectation structs, a test-case struct with
