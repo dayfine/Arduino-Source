@@ -164,7 +164,7 @@ void dpad_tiles(VideoStream& stream, ProControllerContext& context, DpadPosition
         context.wait_for_all_requests();
         const VideoSnapshot after = stream.video().snapshot();
         const double change = before && after ? walk_screen_change(*before.frame, *after.frame) : 100;
-        if (change > 30){
+        if (!before || !after || tap_moved(*before.frame, *after.frame, 30)){
             moved++;
             continue;
         }
