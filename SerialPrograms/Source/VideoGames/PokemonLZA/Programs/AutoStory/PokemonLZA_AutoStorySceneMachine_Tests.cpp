@@ -133,7 +133,7 @@ SceneMachineConfig quiet_room_config(){
 //  03.01's lobby: Hotel Z's quiet end, A through the text.
 SceneMachineConfig lobby_config(){
     SceneMachineConfig config = quiet_room_config();
-    config.text_with_a = true;
+    config.text_button = BUTTON_A;
     return config;
 }
 

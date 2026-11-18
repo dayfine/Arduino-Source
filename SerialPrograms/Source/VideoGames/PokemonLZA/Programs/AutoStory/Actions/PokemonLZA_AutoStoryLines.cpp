@@ -7,6 +7,7 @@
 #include <optional>
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryLines.h"
 
 namespace PokemonAutomation{
@@ -31,7 +32,7 @@ LinesPassed press_a_through_lines(PlzaBackend& backend, Milliseconds quiet, Mill
         start = start.value_or(look.when);
         last_busy = last_busy.value_or(look.when);
         const bool card = look.readings.contains(TUTORIAL_CARD_READING);
-        const bool text = look.events.has(ScreenEvent::DIALOG_BOX) || look.readings.contains(ADVANCE_ARROW_READING);
+        const bool text = text_shows(look);
         if (card || text){
             passed.card = passed.card || card;
             passed.text = passed.text || text;

@@ -67,17 +67,15 @@ struct SceneMachineConfig{
     //  With stop_at_battle, the lock-on's watch; none: no lock-on (a
     //  backend that models none).
     std::optional<LockOnWatch> lock_on = std::nullopt;
-    //  The button that advances text in a machine that stops at a choice
-    //  or a battle, and the advance chevron with no box: B where an A could
-    //  land on a choice that shows the moment the text ends. A text box in
-    //  any other machine gets B (it cannot talk again once the box
-    //  closes), a choice A.
-    Button text_button = BUTTON_A;
-    //  A, not B, on every text box, also in a machine that ends in
-    //  control: for a scene whose choice a B would answer with its cancel
-    //  row as the box opens (03.01's lobby). An A on a closing box can
-    //  start the talk again, so only scenes that end with no A prompt set it.
-    bool text_with_a = false;
+    //  The button of every text box and of the advance chevron with no
+    //  box. None: B on a text box in a machine that ends in control (it
+    //  cannot talk again once the box closes), else A. B in a machine that
+    //  stops at a choice, where an A could land on a choice that shows the
+    //  moment the text ends. A in one that ends in control, for a scene
+    //  whose choice a B would answer with its cancel row as the box opens
+    //  (03.01's lobby): an A on a closing box can start the talk again, so
+    //  only scenes that end with no A prompt set it.
+    std::optional<Button> text_button = std::nullopt;
     //  The quiet end is control, not a failure: Hotel Z shows no party bar
     //  or prompt (02.04-02.06).
     bool quiet_is_control = false;
@@ -106,15 +104,24 @@ struct SceneMachineConfig{
 //  a dimmed card with no text box.
 bool scene_under_way(const ScreenObservation& look);
 
+//  Text to press on: a text box, or the advance chevron without one.
+bool text_shows(const ScreenObservation& look);
+
+//  A black or a white fade.
+bool fade_shows(const ScreenObservation& look);
+
+//  The party bar with no text box over it: control, once it holds (it
+//  shows between a talk's lines too).
+bool party_bar_free(const ScreenObservation& look);
+
 //  "text box, advance arrow": `look`'s events and readings, as the scene
 //  machine logs them; "nothing" for none.
 std::string describe_scene_look(const ScreenObservation& look);
 
 //  Logs where the step should end, then presses through scenes until
 //  control (run_screen_machine()). A choice takes its top row: Up while a
-//  lower row is highlighted, then A. A text box gets B in a machine that
-//  ends in control, else `config.text_button`, as does the advance
-//  chevron; a tutorial card and the mission complete card get A. Control:
+//  lower row is highlighted, then A. Text gets `config.text_button`
+//  (SceneMachineConfig::text_button); a tutorial card and the mission complete card get A. Control:
 //  the party bar or the controls hint (the tutorial has no party bar)
 //  held a second, or an A prompt held a second past `config.min_length`
 //  (01.02's battle area shows only the prompt to Ryon), or the mission

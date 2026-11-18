@@ -11,6 +11,7 @@
 #include <utility>
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 
 namespace PokemonAutomation{
@@ -31,12 +32,6 @@ constexpr Milliseconds MAP_TALK_RELEASE = 840ms;
 //  How often it looks while the party bar holds.
 constexpr Milliseconds MAP_TALK_POLL = 250ms;
 
-//  Free control: the party bar, with no text box over it (it shows between
-//  the lines of a talk).
-bool shows_control(const ScreenObservation& look){
-    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && !look.events.has(ScreenEvent::DIALOG_BOX);
-}
-
 //  The button for what shows: A on a tutorial card, whose pages B turns
 //  back, and on text until the card has shown; B on the rest: the map
 //  app, where A places a pin, and her talk after it (as played by hand,
@@ -46,8 +41,7 @@ Button map_talk_button(const ScreenObservation& look, MapTalkPart part){
     if (look.readings.contains(TUTORIAL_CARD_READING)){
         return BUTTON_A;
     }
-    const bool text = look.events.has(ScreenEvent::DIALOG_BOX) || look.readings.contains(ADVANCE_ARROW_READING);
-    return text && part == MapTalkPart::BEFORE_CARD ? BUTTON_A : BUTTON_B;
+    return text_shows(look) && part == MapTalkPart::BEFORE_CARD ? BUTTON_A : BUTTON_B;
 }
 
 
@@ -96,7 +90,7 @@ Pokemon::Outcome talk_through_map_screen(PlzaBackend& backend){
         backend.scope().throw_if_cancelled();
         const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
         start = start.value_or(look.when);
-        if (shows_control(look)){
+        if (party_bar_free(look)){
             control_since = control_since.value_or(look.when);
             if (look.when - *control_since >= MAP_TALK_CONTROL_HOLD){
                 backend.log("[PLZA] talk_through_map_screen: the party bar held: back in the overworld");

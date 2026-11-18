@@ -188,15 +188,6 @@ constexpr size_t LOCK_ON_ATTEMPTS = 5;
 //  attempt_one_attack() looks 1 s, the catches' sweep 1.5 s per round.
 constexpr Milliseconds LOCK_ON_HOLD = 2000ms;
 
-//  Text to press on: a box, or the advance chevron without one.
-bool text_shows(const ScreenObservation& look){
-    return look.events.has(ScreenEvent::DIALOG_BOX) || look.readings.contains(ADVANCE_ARROW_READING);
-}
-
-bool fade_shows(const ScreenObservation& look){
-    return look.events.has(ScreenEvent::FADE_BLACK) || look.events.has(ScreenEvent::FADE_WHITE);
-}
-
 //  Something holds the player: text, a fade, the mission complete card or
 //  a tutorial card.
 bool busy(const ScreenObservation& look){
@@ -229,18 +220,15 @@ bool control_prompt_shows(const SceneMachineConfig& config, const ScreenObservat
 }
 
 //  The button DIALOG presses on `look` with no choice box (a choice goes
-//  to the top row first: SceneRunner::choice_button()): B on a text box in
-//  a machine that ends in control; else config.text_button. On a closing
-//  box B does nothing, where A lands on the prompt the talk leaves and
-//  starts it again (03.05's nurse).
+//  to the top row first: SceneRunner::choice_button()): config.text_button;
+//  without one, B on a text box in a machine that ends in control, else A.
+//  On a closing box B does nothing, where A lands on the prompt the talk
+//  leaves and starts it again (03.05's nurse).
 Button dialog_button(const SceneMachineConfig& config, const ScreenObservation& look){
-    if (config.text_with_a){
-        return BUTTON_A;
+    if (config.text_button){
+        return *config.text_button;
     }
-    if (party_bar_is_control(config) && look.events.has(ScreenEvent::DIALOG_BOX)){
-        return BUTTON_B;
-    }
-    return config.text_button;
+    return party_bar_is_control(config) && look.events.has(ScreenEvent::DIALOG_BOX) ? BUTTON_B : BUTTON_A;
 }
 
 constexpr SceneScreen ALL_SCREENS[] = {
@@ -496,8 +484,7 @@ void SceneTimeline::record(const ScreenObservation& look){
     }
     m_scene_seen = m_scene_seen || scene_under_way(look);
     const bool box = look.events.has(ScreenEvent::DIALOG_BOX);
-    const bool party_bar = party_bar_is_control(m_config) && look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
-    track_since(party_bar && !box, look.when, m_party_bar_since);
+    track_since(party_bar_is_control(m_config) && party_bar_free(look), look.when, m_party_bar_since);
     const bool control_instead = !party_bar_is_control(m_config) && look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && !busy(look);
     track_since(control_instead, look.when, m_control_since);
     track_since(look.readings.contains(CONTROLS_HINT_READING) && !box, look.when, m_hint_since);
@@ -940,6 +927,18 @@ Pokemon::Outcome scene_outcome(
 
 std::string describe_scene_look(const ScreenObservation& look){
     return describe_look(look);
+}
+
+bool text_shows(const ScreenObservation& look){
+    return look.events.has(ScreenEvent::DIALOG_BOX) || look.readings.contains(ADVANCE_ARROW_READING);
+}
+
+bool fade_shows(const ScreenObservation& look){
+    return look.events.has(ScreenEvent::FADE_BLACK) || look.events.has(ScreenEvent::FADE_WHITE);
+}
+
+bool party_bar_free(const ScreenObservation& look){
+    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && !look.events.has(ScreenEvent::DIALOG_BOX);
 }
 
 bool scene_under_way(const ScreenObservation& look){
