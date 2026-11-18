@@ -429,6 +429,13 @@ file(GLOB LIBRARY_SOURCES
     ../Common/Cpp/Sockets/ServerSocket_WinSocket.h
     ../Common/Cpp/Sockets/ServerSocket_Qt.h
     ../Common/Cpp/Sockets/ServerSocket.h
+    ../Common/Cpp/Sockets/ServerSocket2.h
+    ../Common/Cpp/Sockets/ServerSocket2_POSIX.cpp
+    ../Common/Cpp/Sockets/ServerSocket2_POSIX.h
+    ../Common/Cpp/Sockets/ServerSocket2_Qt.cpp
+    ../Common/Cpp/Sockets/ServerSocket2_Qt.h
+    ../Common/Cpp/Sockets/ServerSocket2_WinSocket.cpp
+    ../Common/Cpp/Sockets/ServerSocket2_WinSocket.h
     ../Common/Cpp/Sockets/ServerSocket2_Tests.cpp
     ../Common/Cpp/Sockets/ServerSocket2_Tests.h
     ../Common/Cpp/Sockets/Sockets_Tests.cpp
@@ -2539,6 +2546,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_HyperspaceNavigation.cpp
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_HyperspaceNavigation.h
+    Source/VideoGames/PokemonLZA/Programs/PokemonLZA_LockOnSweep.cpp
+    Source/VideoGames/PokemonLZA/Programs/PokemonLZA_LockOnSweep.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_MegaShardFarmer.cpp
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_MegaShardFarmer.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.cpp
