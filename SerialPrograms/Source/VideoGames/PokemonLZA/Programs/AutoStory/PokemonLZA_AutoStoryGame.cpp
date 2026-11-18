@@ -46,7 +46,7 @@ using Handler = Pokemon::StoryActionHandler<ZonePose>;
 namespace{
 
 //  A walk's "end" that holds its last leg until a scene takes control
-//  (walk_until_scene()), not until one screen event.
+//  (walk_until() with no event), not until one screen event.
 constexpr std::string_view WALK_UNTIL_SCENE = "scene";
 
 
@@ -92,7 +92,7 @@ std::vector<StoryArgSpec> walk_args(){
         StoryArgSpec{
             .key = "end", .type = StoryArgType::WORD, .required = false, .fallback = std::nullopt,
             .why = "\"fade_white\", \"fade_black\", \"dialog\" or \"prompt\" (an A prompt): the last leg is held until it shows, its ms the bound; "
-                "\"scene\": held until a scene takes control (walk_until_scene())",
+                "\"scene\": held until a scene takes control",
         },
         flag("held", "hold the stick at each leg's angle (L only before a later turning leg), not tap-and-forward"),
         optional_int("wait_ms", "wait this long before looking for free control: NPCs moving off"),
@@ -273,7 +273,7 @@ Outcome menu_save_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActi
 
 //  "walk": its legs, once the screen shows free control; held until the
 //  event of its "end" arg, if it has one ("scene": until a scene takes
-//  control, walk_until_scene()), else finished with one look
+//  control), else finished with one look
 //  (finish_walk()). With "heading", it faces that by `arrow` (face_heading())
 //  first; no `arrow`: "console_only".
 Outcome walk_step(const std::optional<MinimapArrowReader>& arrow, PlzaBackend& backend, const StoryActionCall& call, Pokemon::RunState&){
@@ -296,18 +296,13 @@ Outcome walk_step(const std::optional<MinimapArrowReader>& arrow, PlzaBackend& b
         }
     }
     const auto end = call.args.find("end");
-    if (end != call.args.end() && std::get<std::string>(end->second) == WALK_UNTIL_SCENE){
-        return walk_until_scene(backend, name, move);
-    }
     if (end != call.args.end()){
-        const std::optional<ScreenEvent> event = walk_end_event(std::get<std::string>(end->second));
-        if (event){
-            const auto end_after = call.args.find("end_after_ms");
-            return walk_until(
-                backend, name, move, *event,
-                end_after == call.args.end() ? Milliseconds(0) : Milliseconds(std::get<int64_t>(end_after->second))
-            );
-        }
+        const std::string& word = std::get<std::string>(end->second);
+        const auto end_after = call.args.find("end_after_ms");
+        return walk_until(
+            backend, name, move, word == WALK_UNTIL_SCENE ? std::nullopt : walk_end_event(word),
+            end_after == call.args.end() ? Milliseconds(0) : Milliseconds(std::get<int64_t>(end_after->second))
+        );
     }
     const Outcome walked = run_story_move(backend, move);
     if (walked.succeeded()){

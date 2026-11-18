@@ -190,41 +190,56 @@ void finish_walk(PlzaBackend& backend, std::string_view walk){
     backend.log(std::format("[PLZA] {}: legs done, screen now: {}", walk, describe(look.events)));
 }
 
-Pokemon::Outcome walk_until(PlzaBackend& backend, std::string_view walk, const StoryMove& move, ScreenEvent end, Milliseconds end_after){
+Pokemon::Outcome walk_until(
+    PlzaBackend& backend, std::string_view walk, const StoryMove& move, std::optional<ScreenEvent> end, Milliseconds end_after
+){
     const Milliseconds hold = move.legs.empty() ? 0ms : move.legs.back().walk;
     const Pokemon::Outcome walked = run_story_move_but_last_walk(backend, move);
     if (!walked.succeeded()){
         return walked;
     }
-    if (hold == 0ms){
+    if (hold == 0ms && end){
         //  A last leg that only turns (to face the clerk): what the walk
         //  goes to shows once the turn is done, or the walk missed it.
-        if (backend.observe().events.has(end)){
+        if (backend.observe().events.has(*end)){
             backend.log(std::format("[PLZA] {}: the end event after the last turn.", walk));
             return Pokemon::outcome_ok();
         }
         return Pokemon::outcome_failed("walk_no_end", std::format("{}: no end event after the last turn", walk));
     }
+    size_t scene_looks = 0;
     //  The slices stop the stick between them for as long as a look takes;
     //  the player barely slows.
     for (Milliseconds held = 0ms; held < hold;){
+        backend.scope().throw_if_cancelled();
         //  The last slice holds only what is left, so the leg walks its time.
         const Milliseconds slice = std::min(HOLD_SLICE, hold - held);
         hold_last_leg(backend, move, slice);
         held += slice;
         const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
-        if (look.events.has(end) && held < end_after){
+        if (!end){
+            const std::string_view busy = not_free_control(look);
+            scene_looks = busy.empty() ? 0 : scene_looks + 1;
+            if (scene_looks >= 2){
+                backend.log(std::format(
+                    "[PLZA] {}: a scene ({}) took control after {} ms of the last leg: the walk stops.", walk, busy, held.count()
+                ));
+                return Pokemon::outcome_ok();
+            }
+            continue;
+        }
+        if (look.events.has(*end) && held < end_after){
             backend.log(std::format(
                 "[PLZA] {}: the end event after {} ms of the last leg, before its {} ms: passed on the way, on.",
                 walk, held.count(), end_after.count()
             ));
             continue;
         }
-        if (look.events.has(end) && end == ScreenEvent::INTERACT_PROMPT && !prompt_steady(backend)){
+        if (look.events.has(*end) && *end == ScreenEvent::INTERACT_PROMPT && !prompt_steady(backend)){
             backend.log(std::format("[PLZA] {}: the A prompt after {} ms of the last leg went again: on.", walk, held.count()));
             continue;
         }
-        if (look.events.has(end)){
+        if (look.events.has(*end)){
             backend.log(std::format("[PLZA] {}: the end event after {} ms of the last leg.", walk, held.count()));
             backend.log_detail(std::format("[PLZA] {}: ended on: {}", walk, describe_scene_look(look)));
             return Pokemon::outcome_ok();
@@ -234,33 +249,12 @@ Pokemon::Outcome walk_until(PlzaBackend& backend, std::string_view walk, const S
             return Pokemon::outcome_ok();
         }
     }
+    if (!end){
+        return Pokemon::outcome_failed(
+            "walk_no_scene", std::format("{}: control still free after {} ms of the last leg: no scene took it", walk, hold.count())
+        );
+    }
     return Pokemon::outcome_failed("walk_no_end", std::format("{}: no end event within {} ms of the last leg", walk, hold.count()));
-}
-
-Pokemon::Outcome walk_until_scene(PlzaBackend& backend, std::string_view walk, const StoryMove& move){
-    const Milliseconds hold = move.legs.empty() ? 0ms : move.legs.back().walk;
-    const Pokemon::Outcome walked = run_story_move_but_last_walk(backend, move);
-    if (!walked.succeeded()){
-        return walked;
-    }
-    size_t scene_looks = 0;
-    for (Milliseconds held = 0ms; held < hold;){
-        backend.scope().throw_if_cancelled();
-        const Milliseconds slice = std::min(HOLD_SLICE, hold - held);
-        hold_last_leg(backend, move, slice);
-        held += slice;
-        const std::string_view busy = not_free_control(backend.observe());
-        scene_looks = busy.empty() ? 0 : scene_looks + 1;
-        if (scene_looks >= 2){
-            backend.log(std::format(
-                "[PLZA] {}: a scene ({}) took control after {} ms of the last leg: the walk stops.", walk, busy, held.count()
-            ));
-            return Pokemon::outcome_ok();
-        }
-    }
-    return Pokemon::outcome_failed(
-        "walk_no_scene", std::format("{}: control still free after {} ms of the last leg: no scene took it", walk, hold.count())
-    );
 }
 
 Pokemon::Outcome walk_to_prompt(PlzaBackend& backend, Milliseconds timeout){
