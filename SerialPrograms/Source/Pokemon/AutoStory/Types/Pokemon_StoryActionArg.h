@@ -26,20 +26,10 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Time.h"
 #include "Pokemon/AutoStory/Pokemon_MapUtil.h"
-#include "Pokemon/Navigation/Pokemon_Direction.h"
-#include "Pokemon_GridPose.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
-
-//  A straight leg of a fixed walk on a tile grid.
-struct StoryLeg{
-    Direction direction = Direction::NORTH;
-    int tiles = 0;
-
-    bool operator==(const StoryLeg& other) const = default;
-};
 
 //  A leg of a timed walk in a game with no tiles: turn `turn` degrees
 //  (clockwise, from the way the player faces), then walk for `walk`.
@@ -50,25 +40,13 @@ struct StoryTimedLeg{
     bool operator==(const StoryTimedLeg& other) const = default;
 };
 
-//  An item and how many to get.
-struct StoryItem{
-    std::string item = {};
-    size_t quantity = 0;
-
-    bool operator==(const StoryItem& other) const = default;
-};
-
 
 //  The type an action declares for an argument, in StoryArgValue's order.
 enum class StoryArgType{
     BOOLEAN,
     INTEGER,
     WORD,
-    DIRECTION,
-    GRID_POSE,
-    LEGS,
     WORDS,
-    ITEMS,
     INTEGER_ROWS,
     TIMED_LEGS,
 };
@@ -76,10 +54,7 @@ enum class StoryArgType{
 //  One argument's value; the index is its StoryArgType.
 using StoryArgValue = std::variant<
     bool, int64_t, std::string,             //  BOOLEAN, INTEGER, WORD
-    Direction, GridPose,                    //  DIRECTION, GRID_POSE: "north"; {"map": ..., "tiles": [[x, y]], "facing": ...}
-    std::vector<StoryLeg>,                  //  LEGS: [{"direction": "north", "tiles": 3}]
     std::vector<std::string>,               //  WORDS
-    std::vector<StoryItem>,                 //  ITEMS: [{"item": "Potion", "quantity": 2}]
     std::vector<std::vector<int64_t>>,      //  INTEGER_ROWS: rows of any length, [[12, 7], [3, 9, 1], []]
     std::vector<StoryTimedLeg>              //  TIMED_LEGS: [turn degrees, ms] pairs, [[0, 4500], [90, 1200]]
 >;

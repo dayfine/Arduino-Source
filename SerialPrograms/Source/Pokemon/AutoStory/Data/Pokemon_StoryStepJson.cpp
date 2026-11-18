@@ -47,14 +47,6 @@ constexpr std::array<std::pair<StoryStepKind, std::string_view>, 15> KINDS{{
     {StoryStepKind::GAME, "game_action"},
 }};
 
-//  The wire names of the directions.
-constexpr std::array<std::pair<Direction, std::string_view>, 4> DIRECTIONS{{
-    {Direction::NORTH, "north"},
-    {Direction::EAST, "east"},
-    {Direction::SOUTH, "south"},
-    {Direction::WEST, "west"},
-}};
-
 
 
 //  `value` as an object with no field outside `keys`.
@@ -90,37 +82,10 @@ int integer(const JsonValue& value, std::string_view source){
     return (int)number;
 }
 
-size_t count(const JsonValue& value, std::string_view source){
-    const int64_t number = value.to_integer_throw(std::string(source));
-    if (number < 0 || (uint64_t)number > std::numeric_limits<size_t>::max()){
-        throw ParseException(std::format("{}: count is out of range", source));
-    }
-    return (size_t)number;
-}
-
 std::vector<std::string> read_strings(const JsonValue& value, std::string_view source){
     std::vector<std::string> result;
     for (const JsonValue& item : value.to_array_throw(std::string(source))){
         result.push_back(item.to_string_throw(std::string(source)));
-    }
-    return result;
-}
-
-std::vector<StoryLeg> read_legs(const JsonValue& value, std::string_view source){
-    std::vector<StoryLeg> result;
-    for (const JsonValue& item : value.to_array_throw(std::string(source))){
-        const JsonObject& row = fields(item, {"direction", "tiles"}, source);
-        result.push_back({.direction = read_enum(DIRECTIONS, row.get_string_throw("direction"), source),
-                          .tiles = integer(row.get_value_throw("tiles"), source)});
-    }
-    return result;
-}
-
-std::vector<StoryItem> read_items(const JsonValue& value, std::string_view source){
-    std::vector<StoryItem> result;
-    for (const JsonValue& item : value.to_array_throw(std::string(source))){
-        const JsonObject& row = fields(item, {"item", "quantity"}, source);
-        result.push_back({.item = row.get_string_throw("item"), .quantity = count(row.get_value_throw("quantity"), source)});
     }
     return result;
 }
@@ -149,33 +114,6 @@ std::vector<StoryTimedLeg> read_timed_legs(const JsonValue& value, std::string_v
     return result;
 }
 
-std::vector<TilePos> read_tiles(const JsonValue& value, std::string_view source){
-    std::vector<TilePos> result;
-    for (const JsonValue& item : value.to_array_throw(std::string(source))){
-        const JsonArray& pair = item.to_array_throw(std::string(source));
-        if (pair.size() != 2){
-            throw ParseException(std::format("{}: a tile needs two coordinates", source));
-        }
-        result.push_back({integer(pair[0], source), integer(pair[1], source)});
-    }
-    return result;
-}
-
-//  A grid pose, {"map": "PalletTown", "tiles": [[3, 4]], "facing": "north"}.
-//  No "tiles" reads as none: any tile of the map.
-GridPose read_grid_pose(const JsonValue& value, std::string_view source){
-    const JsonObject& root = fields(value, {"map", "tiles", "facing"}, source);
-    GridPose result;
-    result.map = root.get_string_throw("map");
-    if (const JsonValue* field = root.get_value("tiles")){
-        result.tiles = read_tiles(*field, source);
-    }
-    if (const JsonValue* field = root.get_value("facing")){
-        result.facing = read_enum(DIRECTIONS, field->to_string_throw(), source);
-    }
-    return result;
-}
-
 //  One arg's value read as `type`.
 StoryArgValue read_arg(const JsonValue& value, StoryArgType type, std::string_view source){
     switch (type){
@@ -185,16 +123,8 @@ StoryArgValue read_arg(const JsonValue& value, StoryArgType type, std::string_vi
         return value.to_integer_throw(std::string(source));
     case StoryArgType::WORD:
         return value.to_string_throw(std::string(source));
-    case StoryArgType::DIRECTION:
-        return read_enum(DIRECTIONS, value.to_string_throw(std::string(source)), source);
-    case StoryArgType::GRID_POSE:
-        return read_grid_pose(value, source);
-    case StoryArgType::LEGS:
-        return read_legs(value, source);
     case StoryArgType::WORDS:
         return read_strings(value, source);
-    case StoryArgType::ITEMS:
-        return read_items(value, source);
     case StoryArgType::INTEGER_ROWS:
         return read_integer_rows(value, source);
     case StoryArgType::TIMED_LEGS:
@@ -262,23 +192,11 @@ void read_metadata(const JsonValue& value, std::string_view source, StoryCheckpo
 }
 
 
-//  Read a declared pose (a checkpoint's "start"): a tile one as a grid pose,
-//  {"map": ..., "tiles": [[x, y]], "facing": ...}, or a zone one,
+//  Read a declared pose (a checkpoint's "start"): a zone one,
 //  {"place": "LumioseCity", "spot": "HotelZ", "heading": 90} (spot and
-//  heading optional). One with both or neither of "map" and "place", and
-//  malformed or unknown fields, fail.
+//  heading optional). Malformed and unknown fields fail.
 DeclaredPose read_declared_pose(const JsonValue& value, std::string_view source){
-    const JsonObject& root = value.to_object_throw(std::string(source));
-    const bool tile = root.get_value("map") != nullptr;
-    const bool zone = root.get_value("place") != nullptr;
-    if (tile == zone){
-        throw ParseException(std::format("{}: a declared pose has a \"map\" (tiles) or a \"place\" (a zone), not {}", source, tile ? "both" : "neither"));
-    }
-    if (tile){
-        GridPose grid = read_grid_pose(value, source);
-        return TileDeclared{.map = std::move(grid.map), .tiles = std::move(grid.tiles), .facing = grid.facing};
-    }
-    fields(value, {"place", "spot", "heading"}, source);
+    const JsonObject& root = fields(value, {"place", "spot", "heading"}, source);
     ZoneDeclared result;
     result.place = root.get_string_throw("place");
     if (const JsonValue* field = root.get_value("spot")){

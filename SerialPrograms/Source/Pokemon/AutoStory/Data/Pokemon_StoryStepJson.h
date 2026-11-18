@@ -23,10 +23,9 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  Read the common checkpoint: its optional declared pose ("start", a tile
-//  one: {"map": "PalletTown", "tiles": [[3, 4]], "facing": "north"}, tiles
-//  and facing optional; or a zone one: {"place": "LumioseCity", "spot":
-//  "HotelZ", "heading": 90}, spot and heading optional) and its steps, each step's args parsed against its
+//  Read the common checkpoint: its optional declared pose ("start", a zone
+//  one: {"place": "LumioseCity", "spot": "HotelZ", "heading": 90}, spot and
+//  heading optional) and its steps, each step's args parsed against its
 //  action among `actions` (the game's) and their fallbacks filled in.
 //  Unknown fields, kinds, actions and args, mistyped values and missing
 //  required args fail.
