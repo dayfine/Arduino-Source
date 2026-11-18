@@ -57,8 +57,7 @@ struct CardCase{
 
 const CardCase CARD_CASES[] = {
     {
-        //  console B, 2026-11-16: after 03.08 autosaved, the backup showed
-        //  1 registered and loaded at the Center counter.
+        //  After 03.08 autosaved, the backup (1 registered) loads at the Center counter.
         .name = "1 registered: 03.06's start at the Center counter",
         .input = {.card = {.registered = 1}},
         .expectation = {.checkpoint = "03.06"},
@@ -125,7 +124,7 @@ StoryCheckpoint row(std::string id, std::vector<std::string> actions){
 }
 
 //  03.06 and 03.07 check the platform; 03.08 does, then catches. The run
-//  goes from 03.08 to 03.08, as on console B 2026-11-16.
+//  goes from 03.08 to 03.08.
 std::vector<StoryCheckpoint> story_rows(){
     return {
         row("03.06", {"wait_for_platform"}),
@@ -167,8 +166,6 @@ struct RewindCase{
 
 const RewindCase REWIND_CASES[] = {
     {
-        //  console B, 2026-11-16: 03.08 autosaved at a catch and failed; the
-        //  backup (1 registered) loaded at the Center counter, 03.06's start.
         .name = "03.08 fails after a catch autosave: rewinds to 03.06 and plays on through 03.08",
         .input = {.autosave_in_failed_run = true, .failed_catches = 1, .card = BackupCard{.registered = 1}},
         .expectation = {
@@ -189,8 +186,7 @@ const RewindCase REWIND_CASES[] = {
         },
     },
     {
-        //  console B, 2026-11-16 16:40: a catch at 98 autosaved with the
-        //  badge unseen; the next try reloaded off the rocks (read 96).
+        //  A catch at 98 autosaved with the badge unseen; the retry reloads off the rocks.
         .name = "03.08 fails as rocks_not_left with no autosave seen: the save moved, rewinds",
         .input = {.autosave_in_failed_run = false, .failed_catches = 1, .card = BackupCard{.registered = 1}, .failure = "rocks_not_left"},
         .expectation = {
@@ -405,8 +401,7 @@ struct GateCase{
 
 const GateCase GATE_CASES[] = {
     {
-        //  run 12, console B 2026-11-16 23:01: 02.05 tried the backup, and
-        //  no card was read: there is none until the first Center save.
+        //  No backup card before the first Center save (02.05).
         .name = "02.05 fails after an autosave mid-checkpoint: no backup opened, the run stops and says where the save is",
         .input = {.from = "02.05", .to = "02.06", .badge = BadgeIn::FIRST_STEP},
         .expectation = {
@@ -502,8 +497,7 @@ const StartCase START_CASES[] = {
         .expectation = {.from = "03.08", .backup_calls = ""},
     },
     {
-        //  console B, 2026-11-16 17:24: 03.08's latest save stood where
-        //  no checkpoint starts, after a catch's autosave.
+        //  03.08's latest save after a catch's autosave stands where no checkpoint starts.
         .name = "a start that matches no checkpoint rewinds to the backup and runs from the checkpoint its card names",
         .input = {.read = ON_THE_STREET, .card = BackupCard{.registered = 1}},
         .expectation = {.from = "03.06", .backup_calls = "open, load"},

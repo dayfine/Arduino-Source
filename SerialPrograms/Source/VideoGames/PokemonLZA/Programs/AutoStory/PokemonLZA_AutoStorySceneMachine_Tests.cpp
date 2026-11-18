@@ -128,9 +128,8 @@ SceneMachineConfig lobby_config(){
     return config;
 }
 
-//  03.07's gate scene (console B, 2026-11-16 18:39): a black fade, then
-//  "received 10 Poke Balls", which no detector reads, looked at every
-//  500 ms to 11.5 s, Taunie's text, then the controls hint held a second.
+//  03.07's gate scene: a black fade, "received 10 Poke Balls" (no detector
+//  reads it) to 11.5 s, Taunie's text, then the controls hint.
 std::vector<Observation<ZonePose>> gift_box_scene(){
     std::vector<Observation<ZonePose>> looks{look_at(0ms, BLACK)};
     for (Milliseconds at = 1500ms; at <= 11500ms; at += 500ms){
@@ -173,9 +172,8 @@ SceneMachineConfig battle_area_config(){
     return config;
 }
 
-//  01.02's battle area on the Italian game (console B, 2026-11-15): the
-//  text, a cutscene, then the overworld with the "A Parla" (talk) prompt
-//  to Ryon at the gate, still, and no controls hint.
+//  01.02's battle area (Italian): text, a cutscene, then Ryon's "A Parla"
+//  prompt with no party bar or controls hint.
 std::vector<Observation<ZonePose>> battle_area_talk_prompt(){
     return {
         look_at(0ms, DIALOG), look_at(500ms), look_at(6000ms),
@@ -236,8 +234,7 @@ std::vector<Observation<ZonePose>> banner_looks(Milliseconds from, Milliseconds 
     return looks;
 }
 
-//  01.01's arrival on the Italian game (console B, 2026-11-15): the banner
-//  stays until A, then the third black fade, then 5 s of nothing.
+//  01.01's arrival (Italian): the banner stays until A, then the third fade.
 std::vector<Observation<ZonePose>> arrival_banner_until_a(){
     std::vector<Observation<ZonePose>> looks = arrival_to_second_fade();
     for (const Observation<ZonePose>& look : banner_looks(/*from=*/5500ms, /*every=*/500ms, /*count=*/5)){
@@ -537,9 +534,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 1, .states = "dialog, hint_showing, controls_hint"},
     },
     {
-        //  03.01's lobby on the German game (console B, 2026-11-17 00:03):
-        //  Alton's choice came up with its second row highlighted, A took
-        //  it, and he asked again, until the step failed on 400 text boxes.
+        //  03.01 (German): Alton's choice opened on its second row.
         .name = "a choice with its second row highlighted: Up, then A on the top row",
         .input = {.looks = {
             choice_at(/*at=*/0ms, /*rows=*/2, /*selected=*/1),
@@ -672,8 +667,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 2, .line = "[PLZA test] done on can_move."},
     },
     {
-        //  console B, 2026-11-15: blind A at the prompt restarted Ryon's
-        //  talk, again and again for 3 min.
+        //  A blind A at the prompt restarts Ryon's talk.
         .name = "01.02's battle area: the talk prompt held past the minimum length is control, with no A at it",
         .input = {.looks = battle_area_talk_prompt(), .config = battle_area_config()},
         .expectation = {
@@ -696,16 +690,12 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 1, .line = "[PLZA test] done: quiet, taken as control."},
     },
     {
-        //  03.01's lobby (console B, 2026-11-17): a B for the text that
-        //  lands as Alton's choice opens picks its cancel row, so the
-        //  scene advances its text with A.
+        //  03.01's lobby: a B as Alton's choice opens picks its cancel row.
         .name = "Hotel Z's lobby with advance_with_a: A, not B, on its text",
         .input = {.looks = {look_at(0ms, DIALOG), look_at(1000ms), look_at(4100ms, STILL)}, .config = lobby_config()},
         .expectation = {.verdict = "done", .a_presses = 1, .b_presses = 0, .line = "[PLZA test] done: quiet, taken as control."},
     },
     {
-        //  console B, 2026-11-15: 02.02's street scene moved 41 s with no
-        //  text and no HUD after its black fade.
         .name = "a scene step's textless cutscene past the start window: the scene is under way, done on the party bar",
         .input = {
             .looks = {
@@ -716,8 +706,6 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 0, .line = "[PLZA test] done on can_move."},
     },
     {
-        //  console B, 2026-11-13: 02.02 after the Brigitte battle walked
-        //  past the street scene's trigger and A-mashed for two minutes.
         .name = "a scene step past its trigger, the controls hint up for the start window, fails as scene_never_started",
         .input = {
             .looks = {
@@ -755,8 +743,6 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        //  01.01's arrival (console B, 2026-11-15): the overlay showed
-        //  every text box, cutscene and white fade.
         .name = "the overlay shows the black fades, the banner and the end; the file log every screen",
         .input = {.looks = arrival_with_three_fades(), .config = three_fades_config()},
         .expectation = {
@@ -777,8 +763,7 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        //  The Italian banner waited 110 s with no press (console B,
-        //  2026-11-15); one A cleared it.
+        //  The Italian banner waited 110 s with no press; one A cleared it.
         .name = "with end_after_black_fades, a banner up 2 s gets A, and the run goes on to the third fade",
         .input = {.looks = arrival_banner_until_a(), .config = three_fades_config()},
         .expectation = {
@@ -879,12 +864,9 @@ private:
 };
 
 
-//  03.05's nurse as a closed loop, on the screens of the console run's log
-//  (console B 2026-11-16): her greeting, a black fade (the heal), her last
-//  lines, then her box closing over one look and the A prompt to her at
-//  the counter. A at the closing box or at the prompt talks to her again
-//  ("Your Pokemon is already in great shape!", one line); B there does
-//  nothing.
+//  03.05's nurse as a closed loop: greeting, the heal's fade, her last
+//  lines, her box closing, then her A prompt. A at the closing box or the
+//  prompt talks to her again; B does nothing.
 class NurseCounter : public Pokemon::FakeStoryBackend<ZonePose>{
 public:
     explicit NurseCounter(CancellableScope& scope)
@@ -986,8 +968,6 @@ struct NurseCase{
 
 const NurseCase NURSE_CASES[] = {
     {
-        //  console B 2026-11-16: A at the closing box talked to her again
-        //  for 110 s, until the 120 s timeout.
         .name = "03.05's heal_party (scene): done on her A prompt, no talk again",
         .input = {.config = scene_step_config()},
         .expectation = {.verdict = "done", .end = "[PLZA test] done on talk_prompt.", .talks_again = 0},

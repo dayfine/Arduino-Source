@@ -2,16 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  How 03.08 gets from its start save at Taunie's rocks to the road's
- *  spot at 100, where ZoneSearch looks for new species: a measured leg
- *  off the rocks, then the marker walk (the legs measured by hand on
- *  console B, 2026-11-16). Run 9 (console B, 2026-11-16) searched at the
- *  rocks: two full turns with no name plate. Run 10 stepped west by the
- *  minimap with a marker read after each step and never read the marker:
- *  the camera faced away from it.
- *
- *  catch_in_zone() now takes only the leg off the rocks and its read from
- *  here (ROCKS_NOT_LEFT); map legs (MapLeg) replace the timed walk.
+  *  How 03.08 gets from its start save at Taunie's rocks to the road's
+  *  spot at 100, where ZoneSearch looks for new species: a measured leg
+  *  off the rocks and its read (ROCKS_NOT_LEFT), then map legs (MapLeg).
  *
  */
 
@@ -28,8 +21,7 @@ namespace PokemonLZA{
 
 
 //  The search spot, as the objective marker's distance: the plaza on the
-//  road by the green advertising column (the user's pick, 2026-11-13),
-//  where runs 5 and 6 threw (console B, 2026-11-16).
+//  road by the green advertising column (the user's pick).
 constexpr int ZONE_SPOT_DISTANCE = 100;
 
 //  Whether an agreed distance read is at the search spot.
@@ -39,7 +31,7 @@ bool at_zone_spot(std::optional<int> distance);
 //  A start's way to the search spot: L puts the camera behind the player,
 //  a leg off the start with the left stick, camera-relative, an agreed
 //  marker read that must fall in the leg's range, then the marker walk
-//  toward the objective for `walk_hold` (measured by hand, 2026-11-16: 127 to 102 in 4.8 s), then one read.
+//  toward the objective for `walk_hold`, then one read.
 //  The pin read at the start, within `start_radius` map pixels of
 //  `start`, says the player stands there (ZoneStart::leave()).
 struct ZoneStartRoute{
@@ -53,13 +45,11 @@ struct ZoneStartRoute{
     Milliseconds walk_hold;
 };
 
-//  From the 03.08 save at Taunie's rocks, measured by hand on console B
-//  (2026-11-16): the player faces the rocks, the marker centred above
-//  them at 127. Left 900 ms sidesteps clear of the rocks onto the grass
-//  strip, still 127; then forward the marker read 113 after 2.5 s and 102
-//  after 4.8 s, at the plaza (about 5.6 a second), with every read clean.
-//  The pin at the rocks read (476, 224) in every run there; the leg off
-//  them moves it 4 to 5 pixels.
+//  From the 03.08 save at Taunie's rocks, measured by hand: the player
+//  faces the rocks, the marker at 127. Left 900 ms sidesteps clear of
+//  them onto the grass strip, still 127; then forward reads 113 after
+//  2.5 s and 102 after 4.8 s, at the plaza. The pin at the rocks reads
+//  (476, 224); the leg off them moves it 4 to 5 pixels.
 constexpr ZoneStartRoute TAUNIE_ROCKS_ROUTE{
     .start = ZONE1_ROCKS,
     .start_radius = 8,
@@ -90,9 +80,9 @@ public:
     {}
 
     //  The move off the start: `start_pin`, the pin read before the leg,
-    //  decides (the marker's digits did not read in 24 looks off the rocks
-    //  in French, console B, 2026-11-17 02:41); `distance`, the agreed read
-    //  after the leg, only when the pin did not read (none: no read).
+    //  decides (the digits may not read off the rocks, as in French);
+    //  `distance`, the agreed read after the leg, only when the pin did not
+    //  read (none: no read).
     ZoneStartMove leave(std::optional<MapPoint> start_pin, std::optional<int> distance);
 
     //  The move after `distance`, the agreed read (none: no read) after

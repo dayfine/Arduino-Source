@@ -2,11 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Whether a walk to the objective marker's prompt (walk_to_unread_marker()) is
- *  there: an A prompt or a dialog counts only near the marker. Any prompt
- *  used to: 03.09's walk from Wild Zone 1's far gate read no distance,
- *  stepped on blind and passed on a prompt on the street 4 s in, so 03.10
- *  started from the street (console B, 2026-11-16 17:34).
+  *  Whether a walk to the objective marker's prompt (walk_to_unread_marker())
+  *  is there: an A prompt or a dialog counts only near the marker, not one
+  *  on the street on the way (03.09 from Wild Zone 1's far gate).
  *
  */
 
@@ -25,13 +23,11 @@ namespace PokemonLZA{
 //  What proves the walk is near the objective, so its prompt or dialog is
 //  the objective's.
 enum class MarkerProof{
-    //  A distance read taken (MarkerDistance) at 20 or less: the walk that
-    //  passed 03.09 read 37 down to 13 before the lab gate's scene took
-    //  the marker away (console B, 2026-11-14).
+    //  A distance read taken (MarkerDistance) at 20 or less: the lab gate's
+    //  scene takes the marker away at 10 to 13.
     NEAR_READ,
-    //  Where the marker's digits do not read (the lab's door up its
-    //  steps: four looks, no digits, console B 2026-11-14): no read over
-    //  20 at all, or a read taken at 20 or less.
+    //  Where the marker's digits do not read (the lab's door up its steps):
+    //  no read over 20 at all, or a read taken at 20 or less.
     NO_FAR_READ,
 };
 
@@ -65,21 +61,17 @@ public:
 
     //  A look. Returns what came of its distance read (MarkerRead).
     //  A read below 10 is taken only after one of 10 or more: junk OCR
-    //  ("E5", "v1", "E6") by a street dialog agreed on 6 at the start of
-    //  03.09's walk and passed it there (console B, 2026-11-16 18:47).
-    //  A read of 20 or less is taken only if the walk can have come that
-    //  near since the last read taken: at Wild Zone 1's exit "1", "4" and
-    //  "4" agreed on 4 5.4 s after 40 (the marker showed 39), and the exit
-    //  pillar's prompt passed 03.09's walk there (console B, 2026-11-16
-    //  21:33).
+    //  ("E5", "v1", "E6") by a street dialog agreed on 6. A read of 20 or
+    //  less is taken only if the walk can have come that near since the last
+    //  read taken: at Wild Zone 1's exit "1", "4", "4" agreed on 4 5.4 s
+    //  after 40.
     MarkerRead look(const MarkerLook& look);
 
     //  Whether the last look showed an A prompt or a dialog with the walk
     //  near(), and, with the marker still up, with no read taken or the
     //  last below 10: a scene at the objective takes the marker away
-    //  before its dialog (the lab gate's at 10 to 13, console B
-    //  2026-11-14 and 2026-11-16 18:47), so a prompt with the marker up
-    //  at 10 or more is something else on the way.
+    //  before its dialog (the lab gate's at 10 to 13), so a prompt with the
+    //  marker up at 10 or more is something else on the way.
     bool arrived() const{
         return m_arrived;
     }

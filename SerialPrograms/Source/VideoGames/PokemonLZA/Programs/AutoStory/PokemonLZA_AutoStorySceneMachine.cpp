@@ -132,15 +132,12 @@ constexpr Milliseconds CONTROLS_HINT_HOLD = 1000ms;
 //  the lines of a scene.
 constexpr Milliseconds PARTY_BAR_HOLD = 1000ms;
 //  An A prompt ("A Talk") on the overworld showing this long is free
-//  control. 01.02's battle area hands control back with only the prompt to
-//  Ryon, no party bar and no controls hint; A there restarts his talk
-//  (console B, 2026-11-15, Italian: 3 min of it).
+//  control: 01.02's battle area shows only Ryon's prompt, and A there
+//  restarts his talk.
 constexpr Milliseconds PROMPT_HOLD = 1000ms;
 //  With stop_at_battle or stop_at_choice, the party bar showing this long
-//  with nothing busy is the scene over with no battle or choice: it shows
-//  for a moment between a talk's lines, but 03.02b's scene before Taunie
-//  handed control back and the battle start waited 90 s for a battle
-//  (console B, 2026-11-16).
+//  with nothing busy is the scene over with no battle or choice (it shows
+//  for a moment between a talk's lines).
 constexpr Milliseconds CONTROL_INSTEAD_HOLD = 5000ms;
 //  How long the screen stays free of text, fades and the banner after the
 //  last of end_after_black_fades' fades before the scene counts as over:
@@ -158,14 +155,11 @@ constexpr Milliseconds POLL = 250ms;
 //  ended the scene ("MAIN MISSION 01" shows ~3 s).
 constexpr Milliseconds BANNER_GONE_WAIT = 10000ms;
 //  A banner still up after BANNER_GONE_WAIT gets A this many times, this
-//  far apart, until it goes: 01.03's "MAIN MISSION 02" stayed past 10 s
-//  (console B, 2026-11-10).
+//  far apart, until it goes (01.03's "MAIN MISSION 02" stays past 10 s).
 constexpr size_t BANNER_PRESSES = 3;
 constexpr Milliseconds BANNER_PRESS_EVERY = 1000ms;
 //  With end_after_black_fades, the banner up this long gets A (the same
-//  BANNER_PRESSES, BANNER_PRESS_EVERY apart): the Italian "MISSIONE
-//  PRINCIPALE 01" stayed 110 s with no press; one A cleared it and the
-//  third black fade came ~4 s later (console B, 2026-11-15).
+//  BANNER_PRESSES, BANNER_PRESS_EVERY apart): the Italian one stays until A.
 constexpr Milliseconds BANNER_PRESS_AFTER = 2000ms;
 
 //  Text to press on: a box, or the advance chevron without one.
@@ -209,12 +203,10 @@ bool control_prompt_shows(const SceneMachineConfig& config, const ScreenObservat
 }
 
 //  The button DIALOG presses on `look` with no choice box (a choice goes
-//  to the top row first: SceneRunner::choice_button()): B on a
-//  text box in a machine that ends in control; else config.text_button. B
-//  turns a line like A, but on a box that is closing it does nothing, where
-//  A lands on the A prompt the talk leaves and starts it again: 03.05's
-//  nurse ("your Pokemon is already in great shape", 110 s of it, console B
-//  2026-11-16).
+//  to the top row first: SceneRunner::choice_button()): B on a text box in
+//  a machine that ends in control; else config.text_button. On a closing
+//  box B does nothing, where A lands on the prompt the talk leaves and
+//  starts it again (03.05's nurse).
 Button dialog_button(const SceneMachineConfig& config, const ScreenObservation& look){
     if (config.text_with_a){
         return BUTTON_A;
@@ -529,19 +521,14 @@ constexpr Milliseconds SUMMARY_EVERY = 30000ms;
 //  How many states may take turns and still count as one run of looks.
 constexpr std::ptrdiff_t TURN_PERIODS[] = {2, 3};
 
-//  The machine's log, short over long runs of the same screens (01.01's
-//  arrival: scene_moving and blind_press took turns for 5 minutes, console
-//  B 2026-11-15). A look whose state or readings differ from the look
-//  before gets a line ("[PLZA label] screen 3: scene_still at 12.5s:
-//  still"; the number counts changes of state), unless the change only
-//  goes on with two or three states taking turns. Those looks, and looks
-//  that change nothing, are counted and summed up every SUMMARY_EVERY,
-//  and before the next line and at the end when they took turns or
-//  pressed ("[PLZA label] scene_moving x46, blind_press x15 over 30.0s, 15
-//  presses"): a wait on one state shows in the next line's time. All of
-//  it goes to the file log; only the lines of scene_screen_for_watcher()'s
-//  states go on the overlay too (01.01's arrival put 12 lines of text and
-//  cutscenes there in 25 s, console B 2026-11-15).
+//  The machine's log, short over long runs of the same screens. A look
+//  whose state or readings differ from the look before gets a line
+//  ("[PLZA label] screen 3: scene_still at 12.5s: still"; the number counts
+//  changes of state), unless only two or three states take turns. Those
+//  looks, and looks that change nothing, are summed up every SUMMARY_EVERY,
+//  before the next line, and at the end ("[PLZA label] scene_moving x46,
+//  blind_press x15 over 30.0s, 15 presses"). All of it goes to the file
+//  log; only scene_screen_for_watcher()'s states go on the overlay too.
 class SceneLog{
 public:
     SceneLog(PlzaBackend& backend, std::string_view label, WallClock start)
@@ -716,12 +703,9 @@ private:
         }
     }
 
-    //  The button for the choice box on `look`: Up while a row below the
-    //  top is highlighted, A on the top row, each look reading the rows
-    //  again. 03.01's lobby on the German game showed Alton's choice with
-    //  its second row highlighted; A took it and he asked again, until the
-    //  step failed on 400 text boxes (console B, 2026-11-17 00:03). A
-    //  choice whose rows do not read gets A.
+    //  The button for the choice box on `look`: Up while a row below the top
+    //  is highlighted (03.01's German lobby), A on the top row, each look
+    //  reading the rows again. A choice whose rows do not read gets A.
     Button choice_button(const ScreenObservation& look){
         const auto rows = look.readings.find(CHOICE_ROWS_READING);
         const auto selected = look.readings.find(CHOICE_SELECTED_READING);
@@ -791,10 +775,9 @@ size_t max_visits(SceneScreen screen){
     case SceneScreen::MISSION_COMPLETE:
         return 30;
     case SceneScreen::BANNER_SHOWING:
-        //  ~30 s of looks on the console: with end_after_black_fades a
-        //  banner its A presses do not clear waits on every look, and its
-        //  frames change too much for max_still (console B, 2026-11-15:
-        //  banner_showing x117 over 30.1 s, again and again).
+        //  ~30 s of looks: with end_after_black_fades a banner its A presses do
+        //  not clear waits on every look, and its frames change too much for
+        //  max_still.
         return 120;
     default:
         return SIZE_MAX;

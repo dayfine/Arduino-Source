@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Wild Zone 1's catches: 03.07's tutorial, from console B, 2026-11-10,
- *  and 03.08's two more species, from console B, 2026-11-13 and 14.
+  *  Wild Zone 1's catches: 03.07's tutorial and 03.08's two more species.
  *  Each throw is throw_ball()'s: ZL 0.5 s to lock on, then ZL + ZR 1.5 s
  *  (0.5 s only aims), then 8 s for the flight, the shakes and the banner.
  *
@@ -22,7 +21,7 @@ namespace PokemonLZA{
 
 //  03.07's first catch (Fletchling). A break-out brings two or three lines
 //  from Taunie and control back; the catch brings her lines and then the
-//  "Battling wild Pokemon" cards (console B, 2026-11-10). So: throw, A
+//  "Battling wild Pokemon" cards. So: throw, A
 //  through the lines (press_a_through_lines()), caught once a card shows.
 //  A break-out into a wild battle gets the battle AI's attacks before the
 //  next throw. Fails as "no_catch" after `max_throws` throws with no card.
@@ -45,8 +44,7 @@ struct ZoneCatchGoal{
 };
 
 //  03.08's catches for the "register five species" quest (3/5 after the
-//  tutorial), in Wild Zone 1, as plza/autostory's passed on console B
-//  (2026-11-14). From Taunie's rocks, where the start save stands, first
+//  tutorial), in Wild Zone 1. From Taunie's rocks, where the start save stands, first
 //  to the road's spot at 100: ZoneStart's measured leg left off the rocks
 //  (TAUNIE_ROCKS_ROUTE), the start checked by the map pin (a marker read
 //  only when the pin is unread), then map legs
@@ -81,7 +79,7 @@ Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCa
 //  the pin in the spot's stop area already. From 60 the far gate's pillars are
 //  straight down the road; the marker is not on the gate but past it and
 //  to its left, behind the zone's fence, so a walk at the marker was held
-//  up at 36 and wandered off (console B, 2026-11-13 and 2026-11-14). Ends
+//  up at 36 and wandered off. Ends
 //  with the camera on the marker. Fails as walk_map_legs() does.
 Pokemon::Outcome walk_back_to_zone_road(StoryEnv& env, PlzaBackend& backend);
 

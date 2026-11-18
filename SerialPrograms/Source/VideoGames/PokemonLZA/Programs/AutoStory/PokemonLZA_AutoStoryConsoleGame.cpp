@@ -137,9 +137,8 @@ Handler gate_handler(StoryEnv& env, std::string name, GateStep step){
 //  03.11's reward: the main menu (overworld_to_main_menu()), Mable's
 //  Research three rows down, A. The page opens on Rewards under her lines on
 //  the level 2 reward, TM004 Rock Smash (console B, 2026-11-10): A through
-//  them, then B out of the menu to her talk. No line at all: the page did
-//  not open on her reward (03.10 r6, console B 2026-11-14: not in her
-//  office). Fails as "no_reward_lines", "reward_lines_endless" or
+//  them, then B out of the menu to her talk. No line at all: not in her
+//  office. Fails as "no_reward_lines", "reward_lines_endless" or
 //  "menu_not_closed".
 Outcome claim_research_reward(StoryEnv& env, PlzaBackend& backend){
     overworld_to_main_menu(env.env.console, env.context);
