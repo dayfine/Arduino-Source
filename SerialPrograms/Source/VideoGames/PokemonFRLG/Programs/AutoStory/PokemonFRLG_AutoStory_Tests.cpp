@@ -536,13 +536,43 @@ struct AllowedRevisit{
     std::string_view step;
     std::string_view reason;
 };
+//  The routes the lint found when it came in (2026-11-17), as the story
+//  ran them on the console to the Champion: kept, not re-planned blind.
+constexpr std::string_view CONSOLE_VERIFIED_REVISIT =
+    "console-verified to the Champion (2026-11-17) before this lint: re-plan it with a console run";
 const AllowedRevisit ALLOWED_REVISITS[] = {
     {"12.03", "land_middle_sand_bar", "west to the wall (5, 3) on Route 21's water and back east 1: the wall places the player, which an open leg on the water can't (OPEN_WATER_STOP)"},
     {"13.01", "mansion_holes", "east to the wall (20, 6), round and back down column 19 rather than end an open leg in the Mansion's wild rooms (OPEN_WILD_STOP): a cost choice to re-weigh"},
     {"13.03", "to_elixir", "to the switch (24, 30) and back: pressing it opens the way on along row 17"},
     {"13.04", "to_key", "up column 30 to the switch (27, 6) and back down it: pressing it opens the way west along row 10"},
     {"19.03", "volcano_guard_approach", "north to the wall (17, 61) and back south 1: the wall places the player after 16 tiles of grass (OPEN_WILD_STOP)"},
-    {"19.04b", "below_ladder", "out to Route 23 and straight back in, onto the cave mouth (11, 20), rather than end an open leg there (OPEN_WILD_STOP): a cost choice to re-weigh"},
+    {"01.03", "front_door", CONSOLE_VERIFIED_REVISIT},
+    {"02.01", "below_mart_door", CONSOLE_VERIFIED_REVISIT},
+    {"02.02", "below_oak", CONSOLE_VERIFIED_REVISIT},
+    {"02.03", "mart_clerk", CONSOLE_VERIFIED_REVISIT},
+    {"04.02", "before_salesman", CONSOLE_VERIFIED_REVISIT},
+    {"05.01", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
+    {"05.03", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
+    {"05.05", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
+    {"05.05", "ready_for_rocket", CONSOLE_VERIFIED_REVISIT},
+    {"05.08", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
+    {"05.09", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
+    {"06.01", "off_2f", CONSOLE_VERIFIED_REVISIT},
+    {"06.01", "vermilion_nurse", CONSOLE_VERIFIED_REVISIT},
+    {"06.02", "above_gym_tree", CONSOLE_VERIFIED_REVISIT},
+    {"06.03", "above_gym_tree", CONSOLE_VERIFIED_REVISIT},
+    {"07.01", "bike_clerk", CONSOLE_VERIFIED_REVISIT},
+    {"08.03", "pidgey_grass", CONSOLE_VERIFIED_REVISIT},
+    {"09.03", "above_tea_woman", CONSOLE_VERIFIED_REVISIT},
+    {"09.03", "facing_eevee_ball", CONSOLE_VERIFIED_REVISIT},
+    {"11.02", "safari_zone_door", CONSOLE_VERIFIED_REVISIT},
+    {"14.01", "to_gym_east_room", CONSOLE_VERIFIED_REVISIT},
+    {"16.05b", "below_president", CONSOLE_VERIFIED_REVISIT},
+    {"17.03", "below_giovanni", CONSOLE_VERIFIED_REVISIT},
+    {"18.01", "by_pad_to_bottom_right", CONSOLE_VERIFIED_REVISIT},
+    {"19.03", "cascade_guard_approach", CONSOLE_VERIFIED_REVISIT},
+    {"19.03", "thunder_guard_approach", CONSOLE_VERIFIED_REVISIT},
+    {"19.03", "rainbow_guard_approach", CONSOLE_VERIFIED_REVISIT},
 };
 
 std::string describe(const RouteRevisit& revisit){
