@@ -156,9 +156,7 @@ namespace LegPlannerInternal{
 //  they are in the middle of a leg that could go on, whether that leg had a
 //  wild step, whether it is one step from where a hold to a wall ended, and
 //  whether such a step was stopped after earlier (see tap_stop_risk() at
-//  the top of this file), how many tiles the leg has so far, and whether
-//  it started on a warp's arrival (at rest: whether a warp put the player
-//  there).
+//  the top of this file).
 //  How far a node counts the tiles of the leg it is in (Node::run): what
 //  open_check_risk() tells apart.
 constexpr int MAX_COUNTED_RUN = 3;
@@ -173,7 +171,6 @@ struct Node{
     bool tapped = false;
     //  The tiles of the leg so far, up to MAX_COUNTED_RUN.
     int run = 0;
-    bool from_warp = false;
 
     bool operator==(const Node& other) const = default;
 };
@@ -182,9 +179,8 @@ struct Node{
 template <typename State, typename StateHash>
 struct NodeHash{
     size_t operator()(const Node<State>& node) const{
-        return ((StateHash()(node.state) * 80 + node.facing * 16 + (node.moving ? 8 : 0) + (node.wild ? 4 : 0)
-            + (node.tap_from_wall ? 2 : 0) + (node.tapped ? 1 : 0)) * (MAX_COUNTED_RUN + 1) + node.run) * 2
-            + (node.from_warp ? 1 : 0);
+        return (StateHash()(node.state) * 80 + node.facing * 16 + (node.moving ? 8 : 0) + (node.wild ? 4 : 0)
+            + (node.tap_from_wall ? 2 : 0) + (node.tapped ? 1 : 0)) * (MAX_COUNTED_RUN + 1) + node.run;
     }
 };
 
@@ -198,18 +194,6 @@ struct Move{
 
 //  Cost incurred when stopping at a node, before a leg `next` (none: the
 //  walk ends there).
-//  A leg of one step off a warp's arrival, followed by the step straight
-//  back, pays no open stop, nor a wild one: a step can't stop part-way, and
-//  the warp put the player on a known tile, so stepping off a teleporter or
-//  a ladder and back on again is one tile each way rather than a hold to a
-//  wall and back. What the model weighs past the stop it still pays. Only
-//  straight back: going on from the stop starts a leg from wherever an
-//  interruption left the player, and free single steps off doors would turn
-//  every walk out of one into an extra leg. Only off a warp: a route's start
-//  may be where an open leg left the player, a step after another leg
-//  starts wherever that leg ended, and steps from walls on land weave runs
-//  of single tiles round longer holds (see tap_stop_risk() at the top of
-//  this file).
 template <typename Model, typename State>
 int stop_cost(const Model& model, const Node<State>& node, const LegCosts& costs, std::optional<Direction> next){
     if (!node.moving || model.held_at(node.state, (Direction)node.facing)){
@@ -222,10 +206,7 @@ int stop_cost(const Model& model, const Node<State>& node, const LegCosts& costs
             }
         }
     }
-    const bool straight_back = next && (int)*next == (node.facing + 2) % 4;
-    int cost = node.run == 1 && node.from_warp && straight_back
-        ? 0
-        : costs.per_open_stop + (node.wild ? costs.per_open_wild_stop : 0);
+    int cost = costs.per_open_stop + (node.wild ? costs.per_open_wild_stop : 0);
     if constexpr (requires { model.open_stop_risk(node.state, Direction::NORTH); }){
         cost += model.open_stop_risk(node.state, (Direction)node.facing);
     }
@@ -320,8 +301,7 @@ void expand(
         const Node<State> next{
             step->next, (int)step->facing, continues, (extends && current.wild) || step->wild,
             !extends && from_wall, current.tapped || (!extends && current.tap_from_wall),
-            extends ? std::min(current.run + 1, MAX_COUNTED_RUN) : 1,
-            step->warped || (extends ? current.from_warp : !current.moving && current.from_warp)
+            extends ? std::min(current.run + 1, MAX_COUNTED_RUN) : 1
         };
         int step_cost = costs.per_tile + step->extra_cost;
         if (current.facing != (int)direction){
@@ -420,7 +400,7 @@ std::optional<std::vector<Leg<typename Model::State>>> plan_legs(
     using State = typename Model::State;
     using Node = LegPlannerInternal::Node<State>;
 
-    const Node first{start, start_facing ? (int)*start_facing : 4, false, false, false, false, 0, false};
+    const Node first{start, start_facing ? (int)*start_facing : 4, false, false, false, false, 0};
     LegPlannerInternal::Search<Model> search;
     const std::optional<Node> end = LegPlannerInternal::search_goal(model, first, at_goal, goal_facing, costs, search);
     if (!end){
