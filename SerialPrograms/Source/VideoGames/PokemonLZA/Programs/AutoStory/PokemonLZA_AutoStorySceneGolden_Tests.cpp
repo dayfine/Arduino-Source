@@ -2,7 +2,10 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Golden sequences: a scene step's screens as a console run showed them,
+ */
+//  code-health: allow file_lines -- one golden table for the scene steps, sharing the recorded screens above it
+
+/*  Golden sequences: a scene step's screens as a console run showed them,
  *  played back through the step itself (the built-in plan's step, with its
  *  args), with the key the step must press on each screen. Every press is
  *  checked against the screen it was pressed on, not counted.

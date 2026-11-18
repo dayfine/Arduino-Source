@@ -314,8 +314,6 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     }
 
     const SegmentReport report = run_plza_with_rewinds(game, plan, console_backup_save(story), backend, sightings, state);
-    //  A failed step is a program failure: its error report keeps the
-    //  screenshot and the stream history's clip of the failure.
     if (!report.completed){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
