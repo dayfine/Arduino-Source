@@ -1,0 +1,33 @@
+name: Logic Tests
+# Builds and runs SerialProgramsLogicTests (SerialPrograms/cmake/LogicTests.cmake): the unit
+# tests that need no Qt, OpenCV, ONNX Runtime, Tesseract or test images. It configures with
+# -DPA_CORE_ONLY=ON, so it downloads nothing and keeps testing refactors when the full
+# build's third-party downloads fail. Runs on every PR push, drafts included.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Ninja
+        run: |
+          sudo apt update
+          sudo apt install ninja-build
+
+      - name: Configure
+        run: cmake -S SerialPrograms -B build-logic -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPA_CORE_ONLY=ON -DCOMMAND_LINE_EXE=OFF -DPA_LOGIC_TESTS=ON
+
+      - name: Build
+        run: cmake --build build-logic --target SerialProgramsLogicTests --parallel 4
+
+      - name: Run the logic tests
+        run: build-logic/SerialProgramsLogicTests
