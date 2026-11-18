@@ -700,14 +700,14 @@ UnitTestResult test_unknown_counts_read_before_first_turn(){
     return true;
 }
 
-//  19.01's rival at Default checks (console B, 2026-11-15): the load's Bag
+//  19.01b's rival at Default checks (console B, 2026-11-15): the load's Bag
 //  check skipped, the row's guess has no X item, so the policy attacked
 //  from turn 1. The battle reads the pocket itself, and the policy sets up
 //  from what it read.
 UnitTestResult test_rival_route22_sets_up_from_its_own_read(){
-    const BattlePolicy policy = battle_policy_of(battle_step("19.01", "rival_route22").args);
+    const BattlePolicy policy = battle_policy_of(battle_step("19.01b", "rival_route22").args);
     if (policy.kind != BattlePolicyKind::GOAL_BASED_SETUP){
-        return "19.01 rival_route22: expected goal-based-setup.";
+        return "19.01b rival_route22: expected goal-based-setup.";
     }
     Supplies supplies;
     supplies.policy = policy;
@@ -971,7 +971,7 @@ const std::vector<AutoStoryBattlePolicyCase> AUTO_STORY_BATTLE_POLICY_CASES = {
         .expectation = {.description = "a read before a trainer's or a wild fight, none to run or once read"},
     },
     {
-        .input = {.name = "19.01 rival at Default checks: sets up from the battle's own read", .body = test_rival_route22_sets_up_from_its_own_read},
+        .input = {.name = "19.01b rival at Default checks: sets up from the battle's own read", .body = test_rival_route22_sets_up_from_its_own_read},
         .expectation = {.description = "a bag read, then an X item or Guard Spec at turn 1"},
     },
     {

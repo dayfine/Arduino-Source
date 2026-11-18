@@ -33,6 +33,7 @@
 #include "PokemonFRLG_AutoStoryMartPlan.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
+#include "PokemonFRLG_AutoStoryRepelStep.h"
 #include "PokemonFRLG_AutoStorySlopeRun.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryTeachPlan.h"
@@ -312,6 +313,7 @@ const PocketChangeCase POCKET_CHANGE_CASES[] = {
     {.name = "a Mart buys and sells", .input = {StoryStepKind::GAME, MART_ACTION}, .expectation = {ItemsPocketChange::STALE}},
     {.name = "Viridian's shop", .input = {StoryStepKind::SHOP, ""}, .expectation = {ItemsPocketChange::STALE}},
     {.name = "a use_item step", .input = {StoryStepKind::GAME, USE_ITEM_VARIANT}, .expectation = {ItemsPocketChange::STALE}},
+    {.name = "a use_repel step", .input = {StoryStepKind::GAME, USE_REPEL_VARIANT}, .expectation = {ItemsPocketChange::STALE}},
     {.name = "a talk: a gift or an item ball", .input = {StoryStepKind::TALK, ""}, .expectation = {ItemsPocketChange::STALE}},
     {.name = "a wanderer's talk", .input = {StoryStepKind::TALK, TALK_WANDERER_VARIANT}, .expectation = {ItemsPocketChange::STALE}},
     {.name = "a battle counts its items", .input = {StoryStepKind::BATTLE, "fight"}, .expectation = {ItemsPocketChange::COUNTED}},
