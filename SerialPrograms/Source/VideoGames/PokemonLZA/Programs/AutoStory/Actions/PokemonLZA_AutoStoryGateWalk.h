@@ -79,11 +79,6 @@ Pokemon::Outcome walk_to_zone_gate_entrance(
     const GateWalk& walk
 );
 
-//  walk_to_zone_gate_entrance() on the console `env`: the minimap arrow
-//  (minimap_arrow()), the gate's pillars and the lead's panel on its frames
-//  (read_zone_gate(), BattlePanelDetector) and the full map's pin
-//  (read_pin_on_map()).
-Pokemon::Outcome walk_to_zone_gate(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk);
 
 
 

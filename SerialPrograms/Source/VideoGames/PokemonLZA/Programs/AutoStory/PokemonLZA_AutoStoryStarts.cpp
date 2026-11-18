@@ -9,9 +9,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include "VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1Map.h"
-#include "PokemonLZA_AutoStoryScreenEvents.h"
 #include "PokemonLZA_AutoStoryStarts.h"
 
 namespace PokemonAutomation{
@@ -126,25 +124,6 @@ std::optional<size_t> run_start(
         return asked;
     }
     return checkpoint_at(rows, starts, asked, read);
-}
-
-StartSignature read_start_screen(const ImageViewRGB32& screen){
-    PlzaScreenObserver observer;
-    const ScreenEvents events = observer.read(screen);
-    const bool unreadable = events.has(ScreenEvent::FADE_BLACK) || events.has(ScreenEvent::FADE_WHITE)
-        || events.has(ScreenEvent::DIALOG_BOX);
-    if (unreadable){
-        return StartSignature{};
-    }
-    PartyBarDetector party_bar;
-    std::optional<size_t> party;
-    if (party_bar.detect(screen) && party_bar.filled_slots() > 0){
-        party = (size_t)party_bar.filled_slots();
-    }
-    return StartSignature{
-        .talk_prompt = events.has(ScreenEvent::INTERACT_PROMPT),
-        .party = party,
-    };
 }
 
 std::optional<bool> wild_zone_from_map(const std::optional<MapPoint>& pin){

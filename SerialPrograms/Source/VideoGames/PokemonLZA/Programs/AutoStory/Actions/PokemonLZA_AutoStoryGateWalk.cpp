@@ -8,9 +8,6 @@
 #include <format>
 #include <string>
 #include <utility>
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattlePanelDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryZoneGateReader.h"
-#include "PokemonLZA_AutoStoryMapWalk.h"
 #include "PokemonLZA_AutoStoryGateWalk.h"
 
 namespace PokemonAutomation{
@@ -164,25 +161,6 @@ private:
     bool m_stalled = false;
 };
 
-//  Sets a look's ZONE_PANEL_READING (BattlePanelDetector), and its
-//  ZONE_GATE_X_READING and ZONE_GATE_WIDTH_READING (read_zone_gate()) when
-//  a gate shows, from its frame; nothing on a look with no frame.
-LookReader zone_gate_reader(){
-    return [](Pokemon::Observation<Pokemon::ZonePose>& look){
-        if (!look.frame || !look.frame->frame){
-            return;
-        }
-        BattlePanelDetector panel;
-        look.readings[std::string(ZONE_PANEL_READING)] = panel.detect(*look.frame->frame) ? 1 : 0;
-        const std::optional<ZoneGateSighting> gate = read_zone_gate(*look.frame->frame);
-        if (!gate){
-            return;
-        }
-        look.readings[std::string(ZONE_GATE_X_READING)] = (int)std::lround(gate->x * 1000);
-        look.readings[std::string(ZONE_GATE_WIDTH_READING)] = (int)std::lround(gate->width * 1000);
-    };
-}
-
 //  What a gate walk's looks have seen of the gate, and the stick's angle
 //  toward it.
 struct GateSight{
@@ -294,13 +272,6 @@ Pokemon::Outcome walk_to_zone_gate_entrance(
         backend.stick(sight.angle, GATE_WALK_SLICE, /*release=*/0ms, Pokemon::StoryPace::WALK);
         walked += GATE_WALK_SLICE;
     }
-}
-
-Pokemon::Outcome walk_to_zone_gate(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk){
-    const PinReader pin = [&env, &backend]{
-        return read_pin_on_map(env, backend);
-    };
-    return walk_to_zone_gate_entrance(backend, minimap_arrow(env), zone_gate_reader(), pin, walk);
 }
 
 

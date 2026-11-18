@@ -939,7 +939,7 @@ UnitTestResult check_golden(const GoldenCase& test, CancellableScope& scope){
         return std::format("no step {} in {}", test.input.step, test.input.checkpoint);
     }
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(builtin_story_data(), sightings);
+    const Pokemon::StoryGame<ZonePose> game = plza_story_game(/*console=*/{}, builtin_story_data(), /*arrow=*/std::nullopt, sightings);
     GoldenBackend backend(screens, scope);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;

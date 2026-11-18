@@ -1187,10 +1187,12 @@ const RunCase RUN_CASES[] = {
     },
     //  A 4 s walk off the roof stopped short of the scene below it (03.03,
     //  console B 2026-11-17): the walk holds on until a scene takes control.
+    //  Its looks: two for control, one as the leg starts, then one after
+    //  each 250 ms slice.
     {
         .name = "03.03's walk off the roof stops on two looks of a scene",
         .input = {.checkpoint = "03.03", .first_step = 5, .steps = 1, .looks = {
-            party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), DIALOG, DIALOG,
+            party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), DIALOG, DIALOG,
         }},
         .expectation = {
             .verdict = "done",
@@ -1201,7 +1203,8 @@ const RunCase RUN_CASES[] = {
     {
         .name = "03.03's walk off the roof walks on past one look of a scene",
         .input = {.checkpoint = "03.03", .first_step = 5, .steps = 1, .looks = {
-            party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), DIALOG, party_bar(Milliseconds(0)), BLACK_FADE, BLACK_FADE,
+            party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), party_bar(Milliseconds(0)),
+            DIALOG, party_bar(Milliseconds(0)), BLACK_FADE, BLACK_FADE,
         }},
         .expectation = {
             .verdict = "done",
@@ -1263,16 +1266,18 @@ const RunCase RUN_CASES[] = {
         .input = {.checkpoint = "03.09", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at to_research_lab: console_only", .inputs = "wait 250ms"},
     },
+    //  The arrow reads of the 03.04-03.11 run that passed (console B,
+    //  2026-11-17 14:34): 272 out of the zone's gate, 254 after one turn.
     {
         .name = "03.09's walk faces the street first, then walks its legs into Ryon's dialog",
         .input = {
             .checkpoint = "03.09", .first_step = 0, .steps = 1,
             .looks = concat(std::vector<Observation<ZonePose>>(7, party_bar(Milliseconds(0))), {DIALOG}),
-            .arrow_reads = {180, 264},
+            .arrow_reads = {272, 254},
         },
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, press L, stick 84deg 150ms walk, release 100ms, press L, hold north 6500ms walk, "
+            .inputs = "wait 250ms, press L, stick -15deg 150ms walk, release 100ms, press L, hold north 6500ms walk, "
                 "press L, stick -90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
             .line = "[PLZA] to_research_lab: the end event after 250 ms of the last leg.",
         },
@@ -1293,7 +1298,7 @@ const RunCase RUN_CASES[] = {
         )},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, press L, stick -90deg 150ms walk, release 100ms, press L, hold north 900ms walk, "
+            .inputs = "wait 250ms, press L, stick -90deg 150ms walk, release 100ms, press L, hold north 700ms walk, "
                 "press L, stick 90deg 150ms walk, release 100ms, press L, hold north 1300ms walk, "
                 "press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
         },
@@ -1321,8 +1326,8 @@ std::optional<MinimapArrowReader> scripted_arrow(const std::vector<double>& read
 
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(
-        builtin_story_data(), sightings, scripted_arrow(test.input.arrow_reads)
+    const Pokemon::StoryGame<ZonePose> game = plza_story_game(
+        /*console=*/{}, builtin_story_data(), scripted_arrow(test.input.arrow_reads), sightings
     );
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks, .battle = test.input.battle}, scope);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
@@ -1354,7 +1359,7 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
 //  The console-less game with a reload that presses HOME, as the console's
 //  does first, and succeeds.
 Pokemon::StoryGame<ZonePose> game_with_reload(const Pokemon::StoryRows& rows, AutosaveSightings& sightings){
-    Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(rows, sightings);
+    Pokemon::StoryGame<ZonePose> game = plza_story_game(/*console=*/{}, rows, /*arrow=*/std::nullopt, sightings);
     game.reload = [](Pokemon::StoryBackend<ZonePose>& backend){
         backend.press(BUTTON_HOME, Milliseconds(80), Milliseconds(80));
         return Pokemon::outcome_ok();
@@ -1426,7 +1431,7 @@ UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
     const Pokemon::StoryGame<ZonePose> game = test.input.has_reload
         ? game_with_reload(story, sightings)
-        : make_plza_story_game_without_console(story, sightings);
+        : plza_story_game(/*console=*/{}, story, /*arrow=*/std::nullopt, sightings);
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
     const Pokemon::Outcome loaded = load_checkpoint_start(game, backend, builtin_row(test.input.checkpoint, /*first_step=*/0, /*steps=*/99));
     const std::string verdict = loaded.succeeded() ? "done" : loaded.failure;
