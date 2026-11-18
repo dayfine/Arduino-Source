@@ -69,13 +69,13 @@ Each move deletes that game's executor; the last one deletes `StoryStepExecutor`
   readers.
 - **PLZA** (ZonePose, in the engine with its instantiations and `observed_state()`): a declared
   pose (`"start"`, a step's `"declared_after"`) is a place, `{"place": "HotelZ"}` with an
-  optional `"spot"` and `"heading"` (`ZoneDeclared`, read by
-  `StoryPoseTraits<ZonePose>::from_declared()`). Walks are `TIMED_LEGS` args; tile args fail
+  optional `"spot"` and `"heading"` (`ZoneDeclared`). The run keeps only the place, as a map
+  with no tiles; spot and heading wait for a position reader. Walks are `TIMED_LEGS` args; tile args fail
   the lint. Turns are `stick()` after the camera recenter; the minimap arrow is the
   `"heading"` reading.
 
 A new pose type: a struct with `pose_matches` / `pose_text`, a `StoryPoseTraits` specialization
-(`TILE_MOVES`, `Declared`, `from_declared()`), and an explicit instantiation line in each engine
+(`TILE_MOVES`, `Declared`), and an explicit instantiation line in each engine
 `.cpp`.
 
 ## Moves in shared code when the last executor goes

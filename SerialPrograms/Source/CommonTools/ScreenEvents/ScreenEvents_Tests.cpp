@@ -11,8 +11,10 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "ScreenEventLog.h"
 #include "ScreenEventTypes.h"
 #include "ScreenFades.h"
 #include "ScreenEvents.h"
@@ -134,12 +136,12 @@ UnitTestResult test_watcher(){
 
 struct ScreenEventsCase{
     struct Input{
-        std::string name;
         std::function<UnitTestResult()> body;
     };
     struct Expectation{
     };
 
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -147,7 +149,7 @@ struct ScreenEventsCase{
 class Test_ScreenEvents : public UnitTest{
 public:
     explicit Test_ScreenEvents(ScreenEventsCase test_case)
-        : UnitTest(std::format("CommonTools::ScreenEvents - {}", test_case.input.name))
+        : UnitTest(std::format("CommonTools::ScreenEvents - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -163,22 +165,114 @@ private:
 
 const ScreenEventsCase SCREEN_EVENTS_CASES[] = {
     {
-        .input = {"a set of events, its fade and its log text", test_set_and_describe},
+        .name = "a set of events, its fade and its log text",
+        .input = {.body = test_set_and_describe},
         .expectation = {},
     },
     {
-        .input = {"a fade is uniform, dark or white; a textured floor is none", test_fade_of_screen},
+        .name = "a fade is uniform, dark or white; a textured floor is none",
+        .input = {.body = test_fade_of_screen},
         .expectation = {},
     },
     {
-        .input = {"an observer as a watcher records and stops", test_watcher},
+        .name = "an observer as a watcher records and stops",
+        .input = {.body = test_watcher},
         .expectation = {},
+    },
+};
+
+namespace{
+
+//  A stream of frames into a ScreenEventLog, and its describe() text.
+struct ScreenEventLogCase{
+    struct Frame{
+        int ms = 0;
+        std::vector<ScreenEvent> events;
+    };
+    struct Input{
+        size_t capacity = 0;
+        std::vector<Frame> frames;
+    };
+    struct Expectation{
+        //  describe() of the log, times from the first frame.
+        std::string text;
+        size_t dropped = 0;
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
+};
+
+class Test_ScreenEventLog : public UnitTest{
+public:
+    explicit Test_ScreenEventLog(ScreenEventLogCase test_case)
+        : UnitTest(std::format("CommonTools::ScreenEventLog - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        ScreenEventLog log(m_case.input.capacity);
+        const WallClock origin = current_time();
+        for (const ScreenEventLogCase::Frame& frame : m_case.input.frames){
+            ScreenEvents events;
+            for (ScreenEvent event : frame.events){
+                events.set(event, true);
+            }
+            log.record(events, origin + Milliseconds(frame.ms));
+        }
+        if (log.dropped() != m_case.expectation.dropped){
+            return std::format("dropped(): expected {}, got {}", m_case.expectation.dropped, log.dropped());
+        }
+        return expect_equal("describe()", describe(log, origin), m_case.expectation.text);
+    }
+
+private:
+    ScreenEventLogCase m_case;
+};
+
+} // namespace
+
+const ScreenEventLogCase SCREEN_EVENT_LOG_CASES[] = {
+    {
+        .name = "no frames",
+        .input = {.capacity = 8, .frames = {}},
+        .expectation = {.text = "no changes", .dropped = 0},
+    },
+    {
+        .name = "the first frame's events all rise",
+        .input = {.capacity = 8, .frames = {{.ms = 0, .events = {ScreenEvent::DIALOG_BOX, ScreenEvent::SCREEN_STILL}}}},
+        .expectation = {.text = "+0 ms dialog box rose\n+0 ms screen still rose\n", .dropped = 0},
+    },
+    {
+        .name = "only changes are kept, rising and falling",
+        .input = {.capacity = 8, .frames = {
+            {.ms = 0, .events = {ScreenEvent::PLAYER_CAN_MOVE}},
+            {.ms = 100, .events = {ScreenEvent::PLAYER_CAN_MOVE}},
+            {.ms = 200, .events = {ScreenEvent::FADE_BLACK}},
+            {.ms = 900, .events = {}},
+        }},
+        .expectation = {
+            .text = "+0 ms player can move rose\n+200 ms black fade rose\n+200 ms player can move fell\n+900 ms black fade fell\n",
+            .dropped = 0,
+        },
+    },
+    {
+        .name = "the oldest changes drop past the capacity",
+        .input = {.capacity = 2, .frames = {
+            {.ms = 0, .events = {ScreenEvent::DIALOG_BOX}},
+            {.ms = 100, .events = {}},
+            {.ms = 200, .events = {ScreenEvent::CHOICE_BOX}},
+        }},
+        .expectation = {.text = "(1 older changes dropped)\n+100 ms dialog box fell\n+200 ms choice box rose\n", .dropped = 1},
     },
 };
 
 void add_tests_ScreenEvents(UnitTestDatabase& database){
     for (const auto& item : SCREEN_EVENTS_CASES){
         database.add<Test_ScreenEvents>(item);
+    }
+    for (const auto& item : SCREEN_EVENT_LOG_CASES){
+        database.add<Test_ScreenEventLog>(item);
     }
 }
 

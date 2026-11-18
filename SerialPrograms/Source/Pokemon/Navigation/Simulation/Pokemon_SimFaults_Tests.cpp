@@ -27,7 +27,6 @@ namespace{
 
 struct SimFaultsTestCase{
     struct Input{
-        std::string name;
         UnitTestResult (*body)();
     };
 
@@ -35,6 +34,7 @@ struct SimFaultsTestCase{
         std::string_view description;
     };
 
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -42,7 +42,7 @@ struct SimFaultsTestCase{
 class Test_SimFaults : public UnitTest{
 public:
     explicit Test_SimFaults(SimFaultsTestCase scenario)
-        : UnitTest("Pokemon::Navigation - Sim faults: " + scenario.input.name)
+        : UnitTest("Pokemon::Navigation - Sim faults: " + scenario.name)
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -159,12 +159,12 @@ UnitTestResult test_classes_match_enum(){
 }
 
 const SimFaultsTestCase SIM_FAULTS_CASES[] = {
-    {.input = {.name = "none named faults none", .body = test_none_named}, .expectation = {.description = "3 chances, none faulted"}},
-    {.input = {.name = "the named chances are faulted, from 1", .body = test_named_from_one}, .expectation = {.description = "1 and 3 of 4 faulted"}},
-    {.input = {.name = "a chance never reached is not faulted", .body = test_never_reached}, .expectation = {.description = "2 of 3 faulted, 9 never reached"}},
-    {.input = {.name = "no chances, nothing counted", .body = test_no_chances}, .expectation = {.description = "0 chances, none faulted"}},
-    {.input = {.name = "each class has its own name", .body = test_class_names}, .expectation = {.description = "no two classes share a name"}},
-    {.input = {.name = "fault_classes() lists every class in order", .body = test_classes_match_enum}, .expectation = {.description = "the list is the enum's values, in order"}},
+    {.name = "none named faults none", .input = {.body = test_none_named}, .expectation = {.description = "3 chances, none faulted"}},
+    {.name = "the named chances are faulted, from 1", .input = {.body = test_named_from_one}, .expectation = {.description = "1 and 3 of 4 faulted"}},
+    {.name = "a chance never reached is not faulted", .input = {.body = test_never_reached}, .expectation = {.description = "2 of 3 faulted, 9 never reached"}},
+    {.name = "no chances, nothing counted", .input = {.body = test_no_chances}, .expectation = {.description = "0 chances, none faulted"}},
+    {.name = "each class has its own name", .input = {.body = test_class_names}, .expectation = {.description = "no two classes share a name"}},
+    {.name = "fault_classes() lists every class in order", .input = {.body = test_classes_match_enum}, .expectation = {.description = "the list is the enum's values, in order"}},
 };
 
 } // namespace

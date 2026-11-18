@@ -42,9 +42,6 @@ template <>
 struct StoryPoseTraits<ZonePose>{
     static constexpr bool TILE_MOVES = false;
     using Declared = ZoneDeclared;
-    static ZonePose from_declared(const ZoneDeclared& declared){
-        return ZonePose{.zone = declared.place};
-    }
 };
 
 

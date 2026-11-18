@@ -83,7 +83,6 @@ std::optional<std::string> mismatch(const ConnectedMaps& world, const std::optio
 
 struct StepCase{
     struct Input{
-        std::string_view name;
         NamedPlace from;
         Direction direction;
     };
@@ -91,6 +90,7 @@ struct StepCase{
     struct Expectation{
         std::optional<NamedPlace> place;
     };
+    std::string_view name;
     Input input;
     Expectation expectation;
 };
@@ -98,7 +98,7 @@ struct StepCase{
 class Test_ConnectedMaps_Step : public UnitTest{
 public:
     explicit Test_ConnectedMaps_Step(StepCase scenario)
-        : UnitTest(std::format("Pokemon::ConnectedMaps - {}", scenario.input.name)), m_scenario(std::move(scenario))
+        : UnitTest(std::format("Pokemon::ConnectedMaps - {}", scenario.name)), m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const ConnectedMaps world(test_maps());
@@ -115,43 +115,53 @@ private:
 
 const StepCase STEP_CASES[] = {
     {
-        .input = {.name = "a step on the same map", .from = {"Town", {1, 1}}, .direction = Direction::EAST},
+        .name = "a step on the same map",
+        .input = {.from = {"Town", {1, 1}}, .direction = Direction::EAST},
         .expectation = {.place = NamedPlace{"Town", {2, 1}}},
     },
     {
-        .input = {.name = "north onto the route, shifted by its offset", .from = {"Town", {0, 0}}, .direction = Direction::NORTH},
+        .name = "north onto the route, shifted by its offset",
+        .input = {.from = {"Town", {0, 0}}, .direction = Direction::NORTH},
         .expectation = {.place = NamedPlace{"Route", {1, 2}}},
     },
     {
-        .input = {.name = "south off the route into the town", .from = {"Route", {1, 2}}, .direction = Direction::SOUTH},
+        .name = "south off the route into the town",
+        .input = {.from = {"Route", {1, 2}}, .direction = Direction::SOUTH},
         .expectation = {.place = NamedPlace{"Town", {0, 0}}},
     },
     {
-        .input = {.name = "east into the lake", .from = {"Town", {3, 2}}, .direction = Direction::EAST},
+        .name = "east into the lake",
+        .input = {.from = {"Town", {3, 2}}, .direction = Direction::EAST},
         .expectation = {.place = NamedPlace{"Lake", {0, 2}}},
     },
     {
-        .input = {.name = "west into the town", .from = {"Lake", {0, 1}}, .direction = Direction::WEST},
+        .name = "west into the town",
+        .input = {.from = {"Lake", {0, 1}}, .direction = Direction::WEST},
         .expectation = {.place = NamedPlace{"Town", {3, 1}}},
     },
     {
-        .input = {.name = "north out of the lake onto the route's last column", .from = {"Lake", {0, 0}}, .direction = Direction::NORTH},
+        .name = "north out of the lake onto the route's last column",
+        .input = {.from = {"Lake", {0, 0}}, .direction = Direction::NORTH},
         .expectation = {.place = NamedPlace{"Route", {5, 2}}},
     },
     {
-        .input = {.name = "north out of the lake past the route's span", .from = {"Lake", {1, 0}}, .direction = Direction::NORTH},
+        .name = "north out of the lake past the route's span",
+        .input = {.from = {"Lake", {1, 0}}, .direction = Direction::NORTH},
         .expectation = {.place = std::nullopt},
     },
     {
-        .input = {.name = "an edge no map joins", .from = {"Town", {0, 1}}, .direction = Direction::WEST},
+        .name = "an edge no map joins",
+        .input = {.from = {"Town", {0, 1}}, .direction = Direction::WEST},
         .expectation = {.place = std::nullopt},
     },
     {
-        .input = {.name = "past the joined map's span", .from = {"Route", {0, 2}}, .direction = Direction::SOUTH},
+        .name = "past the joined map's span",
+        .input = {.from = {"Route", {0, 2}}, .direction = Direction::SOUTH},
         .expectation = {.place = std::nullopt},
     },
     {
-        .input = {.name = "a map off the world grid joins nothing", .from = {"House", {1, 0}}, .direction = Direction::NORTH},
+        .name = "a map off the world grid joins nothing",
+        .input = {.from = {"House", {1, 0}}, .direction = Direction::NORTH},
         .expectation = {.place = std::nullopt},
     },
 };
@@ -159,13 +169,13 @@ const StepCase STEP_CASES[] = {
 
 struct WarpCase{
     struct Input{
-        std::string_view name;
         MapWarp warp;
     };
     //  Where the warp should put the player, or nothing for nowhere.
     struct Expectation{
         std::optional<NamedPlace> place;
     };
+    std::string_view name;
     Input input;
     Expectation expectation;
 };
@@ -173,7 +183,7 @@ struct WarpCase{
 class Test_ConnectedMaps_Warp : public UnitTest{
 public:
     explicit Test_ConnectedMaps_Warp(WarpCase scenario)
-        : UnitTest(std::format("Pokemon::ConnectedMaps - {}", scenario.input.name)), m_scenario(std::move(scenario))
+        : UnitTest(std::format("Pokemon::ConnectedMaps - {}", scenario.name)), m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const ConnectedMaps world(test_maps());
@@ -188,19 +198,23 @@ private:
 
 const WarpCase WARP_CASES[] = {
     {
-        .input = {.name = "a warp to a loaded map's point", .warp = {.to = WarpDestination{"House", "door"}}},
+        .name = "a warp to a loaded map's point",
+        .input = {.warp = {.to = WarpDestination{"House", "door"}}},
         .expectation = {.place = NamedPlace{"House", {0, 1}}},
     },
     {
-        .input = {.name = "a warp to a map that isn't loaded", .warp = {.to = WarpDestination{"Cave", "door"}}},
+        .name = "a warp to a map that isn't loaded",
+        .input = {.warp = {.to = WarpDestination{"Cave", "door"}}},
         .expectation = {.place = std::nullopt},
     },
     {
-        .input = {.name = "a warp to a point the map lacks", .warp = {.to = WarpDestination{"House", "stairs"}}},
+        .name = "a warp to a point the map lacks",
+        .input = {.warp = {.to = WarpDestination{"House", "stairs"}}},
         .expectation = {.place = std::nullopt},
     },
     {
-        .input = {.name = "a warp that leads nowhere", .warp = {}},
+        .name = "a warp that leads nowhere",
+        .input = {.warp = {}},
         .expectation = {.place = std::nullopt},
     },
 };
@@ -208,13 +222,13 @@ const WarpCase WARP_CASES[] = {
 
 struct StalePlaceCase{
     struct Input{
-        std::string_view name;
         size_t map;
     };
     struct Expectation{
         //  Whether reading the place throws InternalProgramError.
         bool rejected = false;
     };
+    std::string_view name;
     Input input;
     Expectation expectation;
 };
@@ -225,7 +239,7 @@ struct StalePlaceCase{
 class Test_ConnectedMaps_StalePlace : public UnitTest{
 public:
     explicit Test_ConnectedMaps_StalePlace(StalePlaceCase scenario)
-        : UnitTest(std::format("Pokemon::ConnectedMaps - {}", scenario.input.name)), m_scenario(std::move(scenario))
+        : UnitTest(std::format("Pokemon::ConnectedMaps - {}", scenario.name)), m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const ConnectedMaps world(test_maps());
@@ -247,9 +261,9 @@ private:
 };
 
 const StalePlaceCase STALE_PLACE_CASES[] = {
-    {.input = {.name = "the last map index is read", .map = 3}, .expectation = {.rejected = false}},
-    {.input = {.name = "a map index one past the last is rejected", .map = 4}, .expectation = {.rejected = true}},
-    {.input = {.name = "a map index far past the last is rejected", .map = 1000}, .expectation = {.rejected = true}},
+    {.name = "the last map index is read", .input = {.map = 3}, .expectation = {.rejected = false}},
+    {.name = "a map index one past the last is rejected", .input = {.map = 4}, .expectation = {.rejected = true}},
+    {.name = "a map index far past the last is rejected", .input = {.map = 1000}, .expectation = {.rejected = true}},
 };
 
 

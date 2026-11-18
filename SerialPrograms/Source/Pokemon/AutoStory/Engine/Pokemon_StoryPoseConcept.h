@@ -6,7 +6,7 @@
  *  off the game is a target, a line of text for the log, and its traits
  *  (StoryPoseTraits): whether the player moves tile by tile, and which kind
  *  of declared pose (Types/Pokemon_DeclaredPose.h) a checkpoint declares
- *  for it (its start, a step's end) and how that reads as this type. The
+ *  for it (its start, a step's end). The
  *  tile games (FRLG, BDSP) use GridPose; a game that moves freely brings
  *  its own type (PLZA: ZonePose, a zone until it has a position reader).
  *
@@ -37,8 +37,11 @@ namespace Pokemon{
 //          The kind of pose a checkpoint of this game declares in its JSON
 //          ("start", a step's "declared_after"). The lint fails a
 //          checkpoint that declares the other kind (check_declared()).
-//      static PoseType from_declared(const Declared& declared);
-//          That declared pose as this type.
+//
+//  A declared pose reaches the run as the event layer's pose
+//  (grid_pose_of() in Pokemon_StoryStepExecutor.h): a zone's place reads
+//  as a map with no tiles, and its spot and heading are not carried. They
+//  wait for a game with a position reader to compare them against.
 template <typename PoseType>
 struct StoryPoseTraits;
 
@@ -47,22 +50,16 @@ template <>
 struct StoryPoseTraits<GridPose>{
     static constexpr bool TILE_MOVES = true;
     using Declared = TileDeclared;
-    static GridPose from_declared(const TileDeclared& declared){
-        return GridPose{.map = declared.map, .tiles = declared.tiles, .facing = declared.facing};
-    }
 };
 
 //  A pose the engine can carry: pose_matches(actual, target) and
 //  pose_text(pose), found by argument-dependent lookup, and its traits.
 template <typename PoseType>
-concept StoryPose = std::copyable<PoseType> && requires(
-    const PoseType& actual, const PoseType& target,
-    const typename StoryPoseTraits<PoseType>::Declared& declared
-){
+concept StoryPose = std::copyable<PoseType> && requires(const PoseType& actual, const PoseType& target){
     { pose_matches(actual, target) } -> std::convertible_to<bool>;
     { pose_text(actual) } -> std::convertible_to<std::string>;
     { StoryPoseTraits<PoseType>::TILE_MOVES } -> std::convertible_to<bool>;
-    { StoryPoseTraits<PoseType>::from_declared(declared) } -> std::same_as<PoseType>;
+    typename StoryPoseTraits<PoseType>::Declared;
 };
 
 //  Whether `declared` is the kind of pose a game of `PoseType` declares.
