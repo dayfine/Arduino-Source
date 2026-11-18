@@ -27,6 +27,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteRevisits.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTileRules.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryActions.h"

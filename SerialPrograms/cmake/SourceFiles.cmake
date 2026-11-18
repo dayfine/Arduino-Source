@@ -2106,6 +2106,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteStrings.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteRevisits.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteRevisits.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h

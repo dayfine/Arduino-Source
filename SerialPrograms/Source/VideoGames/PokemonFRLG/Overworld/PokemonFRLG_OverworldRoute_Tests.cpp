@@ -17,6 +17,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldRoute.h"
+#include "PokemonFRLG_OverworldRouteRevisits.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
