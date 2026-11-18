@@ -18,6 +18,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <set>
 #include <span>
 #include <string>
 #include <string_view>
@@ -31,6 +32,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMoves.h"
 #include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryBackend.h"
+#include "PokemonLZA_AutoStoryStarts.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -80,12 +82,29 @@ Pokemon::Outcome load_checkpoint_start(
 //  How run_plza_segments() runs its rows.
 struct SegmentRunOptions{
     size_t attempts_per_checkpoint = 1;
+    //  The rows that reload their start save when the run chains into them
+    //  (a plan's execution "reload_when_chained").
+    std::set<std::string, std::less<>> reload_when_chained = {};
+    //  The starts the plans name (execution "start_signature"): where a
+    //  chained reload must land.
+    std::span<const CheckpointStart> starts = {};
+    //  What the screen shows where the player stands, pressing nothing.
+    //  Unset: a chained reload's landing cannot be checked.
+    std::function<StartSignature()> read_start = {};
 };
 
 //  `rows` in order from the save the game is on, each with the story
 //  engine's run_segment() on `backend`, `options.attempts_per_checkpoint` each when a reload
-//  returns to its start (the first row, or one after a row whose autosave
-//  `sightings` saw), else once. Between two rows, the event "chain": a row
+//  returns to its start (the first row, a reloaded one, or one after a row
+//  whose autosave `sightings` saw), else once. Between two rows, the event
+//  "chain". A row in `options.reload_when_chained` waits for control after
+//  the row before's last scene (check_can_walk(): its failure stops the
+//  run, nothing reloaded), then loads the latest save, whether or not the
+//  row before's autosave was seen (the sighting is only logged), and reads
+//  where it landed (`options.read_start`) against the row's start in
+//  `options.starts` before any press of the row: "reload_off_start" when
+//  it is not there, "reload_unchecked" when the row names no start or
+//  there is no reader. Any other row
 //  runs on from the live screen when its start check passes or cannot
 //  tell (logged as "start unchecked"); when it fails, the row's start is
 //  loaded (load_checkpoint_start()) if the row before's autosave was seen,

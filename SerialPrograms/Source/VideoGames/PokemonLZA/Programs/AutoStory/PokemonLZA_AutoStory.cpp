@@ -292,8 +292,16 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const StoryGame<ZonePose> game = make_plza_story_game(story, story_data, sightings);
     RunState state;
 
+    const SegmentRunOptions segments{
+        .attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT,
+        .reload_when_chained = story_data.reload_when_chained,
+        .starts = builtin_checkpoint_starts(),
+        .read_start = [&env, &context]{
+            return read_start_signature(env.console, context);
+        },
+    };
     RewindPlan plan{
-        .rows = rows, .first = first, .last = last, .segments = {.attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT},
+        .rows = rows, .first = first, .last = last, .segments = segments,
         .starts = builtin_checkpoint_starts(), .max_rewinds = REWINDS_TO_BACKUP,
     };
     if (!story_row_starts_without_save(rows[first])){
