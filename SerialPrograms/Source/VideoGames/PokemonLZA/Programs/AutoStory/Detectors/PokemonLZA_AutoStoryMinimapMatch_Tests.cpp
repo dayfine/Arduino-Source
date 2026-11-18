@@ -80,10 +80,12 @@ struct MatchCase{
         double brightness = 1.0;
         int shift_cols = 0;
         int shift_rows = 0;
-    } input;
+    };
+    Input input;
     struct Expectation{
         std::optional<std::string> match;
-    } expectation;
+    };
+    Expectation expectation;
 };
 
 const std::vector<MatchCase> MATCH_CASES{
