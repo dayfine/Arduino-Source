@@ -7,6 +7,9 @@ cc_library(
         exclude = [
             "*_Tests.cpp",
             "*Reader.cpp",
+            "PokemonFRLG_OverworldBike.cpp",
+            "PokemonFRLG_OverworldFacing.cpp",
+            "PokemonFRLG_OverworldWalk.cpp",
         ],
     ),
     hdrs = glob([
@@ -19,6 +22,27 @@ cc_library(
         "//SerialPrograms/Source/Pokemon:pokemon_navigation",
         "//SerialPrograms/Source/Pokemon:pokemon_types",
         "//SerialPrograms/Source/Pokemon/AutoStory:pokemon_autostory",
+        "//:serial_programs_headers",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "frlg_overworld_readers",
+    srcs = glob(["*Reader.cpp"]) + [
+        "PokemonFRLG_OverworldBike.cpp",
+        "PokemonFRLG_OverworldFacing.cpp",
+        "PokemonFRLG_OverworldWalk.cpp",
+    ],
+    hdrs = glob([
+        "**/*.h",
+        "**/*.hpp",
+        "**/*.tpp",
+    ]),
+    deps = [
+        ":frlg_overworld",
+        "//Common/Cpp:common_cpp",
+        "//SerialPrograms/Source:frlg_inference_deps",
         "//:serial_programs_headers",
     ],
     visibility = ["//visibility:public"],

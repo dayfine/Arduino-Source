@@ -1,29 +1,30 @@
 # Local Bazel Setup (`Arduino-Source` Fork-Only)
 
-This is a **local, fork-only** Bazel setup for fast incremental C++23 builds and unit tests on GUI-free subsystems (e.g., FRLG AutoStory planning/simulation). Full GUI builds, Qt6/OpenCV targets, and CI remain on `CMakeLists.txt` (`CMake + Ninja + ccache`).
+This is a **local, fork-only** Bazel setup for fast incremental C++23 builds and unit tests. Full GUI builds, Qt6 targets, and CI remain on `CMakeLists.txt` (`CMake + Ninja + ccache`).
 
-## Package Layout (4 `BUILD.bazel` files)
+## Generalized Architecture Rules
 
-| File | Purpose |
-| :--- | :--- |
-| `WORKSPACE` & `.bazelrc` | Bazel 6 workspace root (`--noenable_bzlmod`), `-std=c++23`, `--test_output=errors`. |
-| `BUILD.bazel` | Shared header targets (`third_party_core_headers`, `common_headers`, `serial_programs_headers`) and exports `bazel_embed_text.py` + `bazel_test_main.cpp`. |
-| `Common/Cpp/BUILD.bazel` | `//Common/Cpp:common_cpp` (non-Qt `Common/Cpp` + `3rdParty-Core`). |
-| `SerialPrograms/Source/Pokemon/BUILD.bazel` | `//SerialPrograms/Source/Pokemon:pokemon_types` (`Pokemon_Types.cpp`). |
-| `SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/BUILD.bazel` | Colocated `genrule`s (`BattleData/*.json`, `StoryData/*.json`), `planned_battle_lib`, and `cc_test` targets. |
-| `bazel_embed_text.py` | Python equivalent of `SerialPrograms/cmake/EmbedTextFiles.cmake`. |
-| `bazel_test_main.cpp` | Generic `UnitTestDatabase` runner parameterized by `PA_BAZEL_TEST_NS` and `PA_BAZEL_TEST_FN`. |
+To keep pure logic/simulation suites fast, hermetic, and free of OpenCV/Tesseract/Qt/hardware dependencies:
+
+1. **Separate Pure Logic from Console/Inference Implementations**
+   - Pure C++23 code (enums, data tables, simulation, route planning, `StoryBackend`-abstracted runners, `UnitTest` logic) belongs in its natural module (`*Sim.*`, `*Data.*`, `*Table.*`, `*Types.*`, `*Supplies.*`, `*Policy.*`, `*Plan.*`, `*Core.*`) with **zero** `ConsoleHandle`, `ProController`, `ImageViewRGB32`, `*Detector`, `*Reader`, or Qt includes.
+   - Hardware/vision implementations (`*Console.cpp`, `*Detector.cpp`, `*Reader.cpp`, `pbf_*`, `ssf_*`) live in separate `.cpp` files (e.g. `Capture.cpp` vs. `CaptureConsole.cpp`, `OverworldSim*.cpp` vs. `OverworldWalk.cpp`/`OverworldFacing.cpp`/`OverworldBike.cpp`).
+2. **Keep Pure Headers Free of Heavy Includes**
+   - Never `#include` `ConsoleHandle.h`, `ProController.h`, `ImageViewRGB32.h`, or `*Reader.h` in a pure logic `.h` unless a type in that header's signature actually requires it.
+3. **Two-Tier Bazel Package Structure**
+   - **Tier 1 (Pure C++23):** `//Common/Cpp:common_cpp`, `//SerialPrograms/Source/Pokemon:...`, `//SerialPrograms/Source/Pokemon/AutoStory:pokemon_autostory`, `//SerialPrograms/Source/VideoGames/PokemonFRLG/Overworld:frlg_overworld`, and pure `cc_test` targets (`story_failure_classes_test`, `planned_battle_fake_test`, `pace_sim_test`).
+   - **Tier 2 (Inference / OpenCV / Tesseract):** `//SerialPrograms/Source:frlg_inference_deps` + `//SerialPrograms/Source/VideoGames/PokemonFRLG/Overworld:frlg_overworld_readers` (using `@homebrew_opencv//:opencv` and `@homebrew_tesseract//:tesseract` from `WORKSPACE`) for detector/OCR targets.
 
 ## Running Tests
 
 ```sh
-bazel test --noenable_bzlmod --test_output=all //SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory:planned_battle_fake_test
+bazel test //...
 ```
 
 ## Adding a New Test Target
 
-1. **Create or update the subsystem's `BUILD.bazel`** (next to the `*_Tests.cpp` file).
-2. **Add a `cc_test` using `//:bazel_test_main.cpp`** with `local_defines`:
+1. **Colocate in the subsystem's `BUILD.bazel`** next to the `*_Tests.cpp` file.
+2. **Reuse `//:bazel_test_main.cpp`** with `local_defines`:
    ```python
    cc_test(
        name = "my_test",
@@ -34,24 +35,13 @@ bazel test --noenable_bzlmod --test_output=all //SerialPrograms/Source/VideoGame
        ],
        linkstatic = True,
        linkopts = ["-Wl,-undefined,error"],
-       deps = [":my_lib"],
+       deps = [":my_pure_lib"],
    )
    ```
-3. **Wire any `EmbedTextFiles.cmake` JSON data** via a `genrule` calling `$(location //:bazel_embed_text.py)`.
-4. **If `nm -u bazel-bin/.../<target> | grep PokemonAutomation` shows missing symbols**, either add the defining `.cpp` to the library's `srcs` or stub non-tested helpers in a local `bazel_*_stubs.cpp`.
+3. **Embed JSON data (`EmbedTextFiles.cmake`)** via a `genrule` calling `$(location //:bazel_embed_text.py)`.
+4. **If `dyld` or `nm -u bazel-bin/.../<target> | grep PokemonAutomation` reports missing symbols**, either move the pure helper into its own `.cpp` (preferred, upstream-friendly) or wire the missing library into the Tier 2 target.
 
 ## Upstream PR Hygiene
 
-- **Never merge `bazel/*` branches into upstream-bound branches.** Keep Bazel commits on fork-only branches (e.g. `bazel/*`).
-- **To use Bazel untracked in any worktree**, list these patterns in `~/Projects/Arduino-Source/.git/info/exclude`:
-  ```text
-  WORKSPACE
-  .bazelrc
-  BUILD.bazel
-  **/BUILD.bazel
-  bazel-*
-  bazel_embed_text.py
-  bazel_test_main.cpp
-  **/bazel_*_stubs.cpp
-  BAZEL_LOCAL.md
-  ```
+- **Never merge `bazel/*` branches into upstream-bound branches.** Keep Bazel files on fork-only branches (`bazel/*`) or untracked via `~/Projects/Arduino-Source/.git/info/exclude`.
+- **Clean pure-vs-hardware `.cpp` splits** (e.g. `Supplies.cpp`, `CaptureConsole.cpp`) belong on the earliest open PR in the stack (e.g. `#613`) so `pa-sync` propagates them forward.
