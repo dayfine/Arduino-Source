@@ -28,10 +28,14 @@ constexpr double STRIPE_BOTTOM = 0.598;
 //  Each column sits in the gap right of an icon, clear of the "NEW" tag on
 //  its top right corner. The tag on TOWN MAP extends into a column at 0.160.
 constexpr double STRIPE_LEFT = 0.166;
+//  The selected icon glows about 0.008 past its left edge, into the gap left
+//  of it. A column of 0.015 reached the glow from 0.177 (cursor on the first
+//  icon of a row); 0.010 ends just short of it.
+constexpr double STRIPE_WIDTH = 0.010;
 
 ImageFloatBox menu_stripe(size_t index, bool skip_new_banner){
     double top = skip_new_banner ? STRIPE_TOP_BELOW_BANNER : STRIPE_TOP;
-    return ImageFloatBox(STRIPE_LEFT + 0.166 * (double)index, top, 0.015, STRIPE_BOTTOM - top);
+    return ImageFloatBox(STRIPE_LEFT + 0.166 * (double)index, top, STRIPE_WIDTH, STRIPE_BOTTOM - top);
 }
 
 } // namespace
@@ -149,52 +153,58 @@ private:
     MenuExpectation m_expectation;
 };
 
+//  Every image runs with both column modes.
+constexpr std::array<MenuCase, 22> MENU_CASES{{
+    {.input = {.image = "PokemonBDSP/MenuDetector/FrenchCursorOnMap_True.png", .columns = Columns::FromTop},
+     .expectation = {.detected = true}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/FrenchCursorOnMap_True.png", .columns = Columns::BelowNewTags},
+     .expectation = {.detected = true}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/NewGameBagOptions_True.png", .columns = Columns::FromTop},
+     .expectation = {.detected = true}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/NewGameBagOptions_True.png", .columns = Columns::BelowNewTags},
+     .expectation = {.detected = true}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/JubilifeTownMapNew_True.png", .columns = Columns::FromTop},
+     .expectation = {.detected = true}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/JubilifeTownMapNew_True.png", .columns = Columns::BelowNewTags},
+     .expectation = {.detected = true}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/FloaromaMenuThreeNew_True.png", .columns = Columns::FromTop},
+     .expectation = {.detected = true}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/FloaromaMenuThreeNew_True.png", .columns = Columns::BelowNewTags},
+     .expectation = {.detected = true}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/Home_False.png", .columns = Columns::FromTop},
+     .expectation = {.detected = false}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/Home_False.png", .columns = Columns::BelowNewTags},
+     .expectation = {.detected = false}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/OverworldSandgemMart_False.png", .columns = Columns::FromTop},
+     .expectation = {.detected = false}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/OverworldSandgemMart_False.png", .columns = Columns::BelowNewTags},
+     .expectation = {.detected = false}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/OverworldOreburghMine_False.png", .columns = Columns::FromTop},
+     .expectation = {.detected = false}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/OverworldOreburghMine_False.png", .columns = Columns::BelowNewTags},
+     .expectation = {.detected = false}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/IntroDialog_False.png", .columns = Columns::FromTop},
+     .expectation = {.detected = false}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/IntroDialog_False.png", .columns = Columns::BelowNewTags},
+     .expectation = {.detected = false}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/IntroBarry_False.png", .columns = Columns::FromTop},
+     .expectation = {.detected = false}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/IntroBarry_False.png", .columns = Columns::BelowNewTags},
+     .expectation = {.detected = false}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/FloaromaOldManDialog_False.png", .columns = Columns::FromTop},
+     .expectation = {.detected = false}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/FloaromaOldManDialog_False.png", .columns = Columns::BelowNewTags},
+     .expectation = {.detected = false}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/FloaromaCloudShadows_False.png", .columns = Columns::FromTop},
+     .expectation = {.detected = false}},
+    {.input = {.image = "PokemonBDSP/MenuDetector/FloaromaCloudShadows_False.png", .columns = Columns::BelowNewTags},
+     .expectation = {.detected = false}},
+}};
+
 } // namespace
 
 void add_tests_MenuDetector(UnitTestDatabase& database){
-    static constexpr std::array<MenuCase, 20> CASES{{
-        {.input = {.image = "PokemonBDSP/MenuDetector/NewGameBagOptions_True.png", .columns = Columns::FromTop},
-         .expectation = {.detected = true}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/NewGameBagOptions_True.png", .columns = Columns::BelowNewTags},
-         .expectation = {.detected = true}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/JubilifeTownMapNew_True.png", .columns = Columns::FromTop},
-         .expectation = {.detected = true}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/JubilifeTownMapNew_True.png", .columns = Columns::BelowNewTags},
-         .expectation = {.detected = true}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/FloaromaMenuThreeNew_True.png", .columns = Columns::FromTop},
-         .expectation = {.detected = true}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/FloaromaMenuThreeNew_True.png", .columns = Columns::BelowNewTags},
-         .expectation = {.detected = true}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/Home_False.png", .columns = Columns::FromTop},
-         .expectation = {.detected = false}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/Home_False.png", .columns = Columns::BelowNewTags},
-         .expectation = {.detected = false}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/OverworldSandgemMart_False.png", .columns = Columns::FromTop},
-         .expectation = {.detected = false}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/OverworldSandgemMart_False.png", .columns = Columns::BelowNewTags},
-         .expectation = {.detected = false}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/OverworldOreburghMine_False.png", .columns = Columns::FromTop},
-         .expectation = {.detected = false}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/OverworldOreburghMine_False.png", .columns = Columns::BelowNewTags},
-         .expectation = {.detected = false}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/IntroDialog_False.png", .columns = Columns::FromTop},
-         .expectation = {.detected = false}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/IntroDialog_False.png", .columns = Columns::BelowNewTags},
-         .expectation = {.detected = false}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/IntroBarry_False.png", .columns = Columns::FromTop},
-         .expectation = {.detected = false}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/IntroBarry_False.png", .columns = Columns::BelowNewTags},
-         .expectation = {.detected = false}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/FloaromaOldManDialog_False.png", .columns = Columns::FromTop},
-         .expectation = {.detected = false}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/FloaromaOldManDialog_False.png", .columns = Columns::BelowNewTags},
-         .expectation = {.detected = false}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/FloaromaCloudShadows_False.png", .columns = Columns::FromTop},
-         .expectation = {.detected = false}},
-        {.input = {.image = "PokemonBDSP/MenuDetector/FloaromaCloudShadows_False.png", .columns = Columns::BelowNewTags},
-         .expectation = {.detected = false}},
-    }};
-    for (const MenuCase& test : CASES){
+    for (const MenuCase& test : MENU_CASES){
         database.add<Test_MenuDetector>(test);
     }
 }
